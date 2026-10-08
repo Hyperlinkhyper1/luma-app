@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
+import '../../../../../l10n/current_l.dart';
 import '../../../../../sync/sync_api.dart';
 import '../../../../../sync/sync_crypto.dart';
 import '../../../../../sync/sync_service.dart';
@@ -95,9 +96,7 @@ class McCloudBackup {
     void Function(double)? onProgress,
   }) async {
     if (!serverReady) {
-      throw const McCloudBackupException(
-          'Cloud backups need an approved luma account — create one under '
-          'Settings → Sync & account.');
+      throw McCloudBackupException(currentL.mcCloudBackupNeedsAccount);
     }
 
     final size = await file.length();
@@ -130,7 +129,7 @@ class McCloudBackup {
     } on SyncApiException catch (e) {
       await _rollback(uploaded);
       throw McCloudBackupException(
-          e.code == 'quota_exceeded' ? 'Not enough cloud storage space.' : e.message);
+          e.code == 'quota_exceeded' ? currentL.mcCloudStorageFull : e.message);
     } catch (e) {
       await _rollback(uploaded);
       throw McCloudBackupException('$e');
@@ -145,9 +144,7 @@ class McCloudBackup {
     void Function(double)? onProgress,
   }) async {
     if (!serverReady) {
-      throw const McCloudBackupException(
-          'Cloud backups need an approved luma account — create one under '
-          'Settings → Sync & account.');
+      throw McCloudBackupException(currentL.mcCloudBackupNeedsAccount);
     }
     final out = await File(savePath).open(mode: FileMode.write);
     try {
@@ -155,7 +152,7 @@ class McCloudBackup {
       for (var i = 0; i < entry.chunks; i++) {
         final bytes = await _sync.getObject(_chunkName(entry.id, i));
         if (bytes == null) {
-          throw const McCloudBackupException('Part of this backup is missing on the server.');
+          throw McCloudBackupException(currentL.mcCloudBackupMissingPart);
         }
         await out.writeFrom(bytes);
         written += bytes.length;
@@ -215,7 +212,7 @@ class McCloudBackup {
         rethrow;
       }
     }
-    throw const McCloudBackupException('Could not update the backup list — please try again.');
+    throw McCloudBackupException(currentL.mcCloudBackupIndexFailed);
   }
 
   Future<void> _rollback(List<String> chunkNames) async {

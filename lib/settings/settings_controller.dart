@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme/theme_style.dart';
 
 /// Access codes that unlock paid plans without billing. Only the SHA-256
@@ -37,9 +38,22 @@ Locale? localeForLanguage(AppLanguage lang) => switch (lang) {
 
 /// A selectable accent color. A null [seed] keeps luma's default lavender.
 class AccentPreset {
-  const AccentPreset(this.name, this.seed);
-  final String name;
+  const AccentPreset(this.id, this.seed);
+
+  /// Stable English identifier, never shown to the user.
+  final String id;
   final Color? seed;
+
+  String label(L t) => switch (id) {
+    'Indigo' => t.settingsAccentIndigo,
+    'Ocean' => t.settingsAccentOcean,
+    'Teal' => t.settingsAccentTeal,
+    'Forest' => t.settingsAccentForest,
+    'Amber' => t.settingsAccentAmber,
+    'Coral' => t.settingsAccentCoral,
+    'Rose' => t.settingsAccentRose,
+    _ => t.settingsAccentLavender,
+  };
 }
 
 /// The palette the user can pick from in Settings. The first entry is the

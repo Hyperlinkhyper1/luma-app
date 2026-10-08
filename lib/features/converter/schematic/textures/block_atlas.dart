@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 
 import '../schematic_model.dart';
+import '../../../../l10n/current_l.dart';
 import 'block_model_resolver.dart';
 import 'texture_downloader.dart';
 import 'texture_pack_source.dart';
@@ -139,7 +140,7 @@ class BlockAtlas {
       _pending = null;
       _failure = e is TextureDownloadException
           ? e.message
-          : 'Could not download block textures: $e';
+          : currentL.textureCouldNotDownload('$e');
       return null;
     }
   }
@@ -150,7 +151,7 @@ class BlockAtlas {
       if (path == null) {
         final sources = await findTextureSources();
         if (sources.isEmpty) {
-          _failure = 'No Minecraft installation found on this device.';
+          _failure = currentL.textureNoInstallation;
           _pending = null;
           return null;
         }
@@ -161,7 +162,7 @@ class BlockAtlas {
       // frames for seconds on the UI isolate.
       final bitmap = await compute(readAndBuildAtlas, path);
       if (bitmap.width == 0 || bitmap.tiles.isEmpty) {
-        _failure = 'That file has no block textures in it.';
+        _failure = currentL.textureFileNoBlockTextures;
         _pending = null;
         return null;
       }
@@ -186,7 +187,7 @@ class BlockAtlas {
       _failure = null;
       return atlas;
     } catch (e) {
-      _failure = 'Could not read block textures: $e';
+      _failure = currentL.textureCouldNotRead('$e');
       _pending = null;
       return null;
     }

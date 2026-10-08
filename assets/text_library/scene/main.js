@@ -73,7 +73,12 @@
     try {
       switch (m.type) {
         case 'init':
-          gui.setStrings(m.strings);
+          window.LumaSceneI18n?.set({
+            language: m.language,
+            strings: m.sceneKeys,
+            sourceStrings: m.sourceStrings,
+          });
+          gui.setStrings(m.strings, m.language);
           classroom.setLanguages(m.classStrings);
           $('time').textContent = timeLabel();
           $('weather').textContent = weatherLabel();
@@ -81,6 +86,14 @@
           refreshVideo();
           if (m.reducedMotion) S.reducedMotion = true;
           refreshHud();
+          break;
+        case 'strings':
+          window.LumaSceneI18n?.set({
+            language: m.language,
+            strings: m.sceneKeys,
+            sourceStrings: m.sourceStrings,
+          });
+          gui.setStrings(m.strings, m.language);
           break;
         case 'view':
           S.visible = m.visible !== false;

@@ -4,5 +4,23 @@
   "version": "1.0.0",
   "description": "Your GitHub and Minecraft stuff in one dashboard. Commits, stars, downloads, views - no digging through five websites. Keys stay on your device.",
   "icon": "account_circle",
-  "category": "Productivity"
+  "category": "Productivity",
+  "i18n": {
+    "nl": {
+      "name": "Accountoverzicht",
+      "description": "Je GitHub- en Minecraft-zaken in één dashboard. Commits, sterren, downloads, weergaven: geen gezoek op vijf websites. Sleutels blijven op je apparaat."
+    },
+    "fr": {
+      "name": "Aperçu du compte",
+      "description": "Vos affaires GitHub et Minecraft dans un seul tableau de bord. Commits, étoiles, téléchargements, vues : plus besoin de fouiller cinq sites. Les clés restent sur votre appareil."
+    },
+    "es": {
+      "name": "Resumen de cuentas",
+      "description": "Tus cosas de GitHub y Minecraft en un solo panel. Commits, estrellas, descargas, visualizaciones: sin buscar por cinco webs. Las claves se quedan en tu dispositivo."
+    },
+    "zh": {
+      "name": "账号概览",
+      "description": "在一个仪表盘中查看你的 GitHub 和 Minecraft 内容。提交、星标、下载、浏览量，无需翻看五个网站。密钥保存在你的设备上。"
+    }
+  }
 }

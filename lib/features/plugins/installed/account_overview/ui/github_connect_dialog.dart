@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../account_overview_scope.dart';
 import 'account_shared.dart';
@@ -56,6 +57,7 @@ class _GithubConnectDialogState extends State<_GithubConnectDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final repository = AccountOverviewScope.of(context);
     final existing = repository.credentials;
@@ -74,7 +76,7 @@ class _GithubConnectDialogState extends State<_GithubConnectDialog> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              existing == null ? 'Connect GitHub' : 'Reconnect GitHub',
+              existing == null ? t.githubConnectTitle : t.githubReconnectTitle,
               style: TextStyle(
                 color: luma.textPrimary,
                 fontSize: 17,
@@ -95,14 +97,16 @@ class _GithubConnectDialogState extends State<_GithubConnectDialog> {
                 AccountNotice(
                   icon: Icons.check_circle_outline_rounded,
                   tone: luma.success,
-                  message: 'Connected as ${existing.login} with a token ending '
-                      '${existing.maskedToken.substring(existing.maskedToken.length - 4)}. '
-                      'Pasting a new token replaces it.',
+                  message: t.githubConnectConnectedNotice(
+                    existing.login,
+                    existing.maskedToken
+                        .substring(existing.maskedToken.length - 4),
+                  ),
                 ),
                 const SizedBox(height: 16),
               ],
               Text(
-                'Personal access token',
+                t.githubConnectTokenLabel,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 13,
@@ -119,7 +123,7 @@ class _GithubConnectDialogState extends State<_GithubConnectDialog> {
                 onSubmitted: (_) => _submit(),
                 style: TextStyle(color: luma.textPrimary, fontSize: 13),
                 decoration: InputDecoration(
-                  hintText: 'ghp_… or github_pat_…',
+                  hintText: t.githubConnectTokenHint,
                   hintStyle: TextStyle(color: luma.textMuted, fontSize: 13),
                   errorText: _error,
                   errorMaxLines: 4,
@@ -147,7 +151,9 @@ class _GithubConnectDialogState extends State<_GithubConnectDialog> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        tooltip: _obscured ? 'Show token' : 'Hide token',
+                        tooltip: _obscured
+                            ? t.githubConnectShowToken
+                            : t.githubConnectHideToken,
                         onPressed: () => setState(() => _obscured = !_obscured),
                         icon: Icon(
                           _obscured
@@ -158,7 +164,7 @@ class _GithubConnectDialogState extends State<_GithubConnectDialog> {
                         color: luma.textMuted,
                       ),
                       IconButton(
-                        tooltip: 'Paste',
+                        tooltip: t.commonPaste,
                         onPressed: _busy
                             ? null
                             : () async {
@@ -178,8 +184,7 @@ class _GithubConnectDialogState extends State<_GithubConnectDialog> {
               ),
               const SizedBox(height: 6),
               Text(
-                'The token is encrypted on this device and sent only to '
-                'api.github.com. It never reaches a luma server.',
+                t.githubConnectTokenPrivacy,
                 style:
                     TextStyle(color: luma.textMuted, fontSize: 11, height: 1.45),
               ),
@@ -202,7 +207,7 @@ class _GithubConnectDialogState extends State<_GithubConnectDialog> {
                     if (context.mounted) Navigator.of(context).pop();
                   },
             style: TextButton.styleFrom(foregroundColor: luma.danger),
-            child: const Text('Disconnect'),
+            child: Text(t.githubConnectDisconnect),
           ),
         // AlertDialog lays its actions out in an OverflowBar, not a Flex, so
         // the destructive action is separated by sitting at the opposite end
@@ -210,11 +215,11 @@ class _GithubConnectDialogState extends State<_GithubConnectDialog> {
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
           style: TextButton.styleFrom(foregroundColor: luma.textSecondary),
-          child: const Text('Cancel'),
+          child: Text(t.commonCancel),
         ),
         const SizedBox(width: 6),
         LumaPrimaryButton(
-          label: 'Connect',
+          label: t.githubConnectAction,
           icon: Icons.link_rounded,
           loading: _busy,
           onTap: _busy ? null : _submit,
@@ -224,30 +229,30 @@ class _GithubConnectDialogState extends State<_GithubConnectDialog> {
   }
 
   Future<bool> _confirmDisconnect(BuildContext context) async {
+    final t = L.of(context);
     final luma = context.luma;
     final result = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: luma.surface,
         title: Text(
-          'Disconnect GitHub?',
+          t.githubDisconnectTitle,
           style: TextStyle(color: luma.textPrimary, fontSize: 16),
         ),
         content: Text(
-          'The stored token and every cached number are deleted from this '
-          'device. Your GitHub account itself is untouched.',
+          t.githubDisconnectBody,
           style: TextStyle(color: luma.textSecondary, fontSize: 13, height: 1.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
             style: TextButton.styleFrom(foregroundColor: luma.textSecondary),
-            child: const Text('Keep it'),
+            child: Text(t.githubDisconnectKeep),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: TextButton.styleFrom(foregroundColor: luma.danger),
-            child: const Text('Disconnect'),
+            child: Text(t.githubConnectDisconnect),
           ),
         ],
       ),
@@ -262,6 +267,7 @@ class _GithubConnectDialogState extends State<_GithubConnectDialog> {
 class _ScopeGuide extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
@@ -278,7 +284,7 @@ class _ScopeGuide extends StatelessWidget {
               Icon(Icons.key_rounded, size: 14, color: luma.textSecondary),
               const SizedBox(width: 8),
               Text(
-                'Scopes to tick',
+                t.githubConnectScopesTitle,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 12,
@@ -288,20 +294,18 @@ class _ScopeGuide extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          _scopeRow(context, 'repo', 'Private repositories, their issues and '
-              'their workflow runs'),
-          _scopeRow(context, 'read:user', 'Profile, followers, contributions'),
-          _scopeRow(context, 'user', 'Usage, storage and Copilot allowances'),
+          _scopeRow(context, 'repo', t.githubConnectScopeRepo),
+          _scopeRow(context, 'read:user', t.githubConnectScopeReadUser),
+          _scopeRow(context, 'user', t.githubConnectScopeUser),
           const SizedBox(height: 4),
           Text(
-            'A fine-grained token wants the equivalent read-only permissions '
-            'plus "Plan".',
+            t.githubConnectFineGrainedNote,
             style: TextStyle(color: luma.textMuted, fontSize: 11, height: 1.45),
           ),
           Align(
             alignment: Alignment.centerLeft,
             child: AccountLinkButton(
-              label: 'Open GitHub token settings',
+              label: t.githubConnectOpenTokenSettings,
               icon: Icons.open_in_new_rounded,
               onTap: () =>
                   openExternal('https://github.com/settings/tokens/new'),
@@ -462,6 +466,7 @@ class _AllowanceDialogState extends State<_AllowanceDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return AlertDialog(
       backgroundColor: luma.surface,
@@ -470,7 +475,7 @@ class _AllowanceDialogState extends State<_AllowanceDialog> {
         side: BorderSide(color: luma.border),
       ),
       title: Text(
-        'Your monthly allowances',
+        t.githubAllowanceTitle,
         style: TextStyle(
           color: luma.textPrimary,
           fontSize: 17,
@@ -485,10 +490,7 @@ class _AllowanceDialogState extends State<_AllowanceDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'GitHub reports what you have used but not always what your '
-                'plan includes. Fill in the figures from your billing page '
-                'and the meters get a bar; leave one blank and it shows the '
-                'raw usage instead.',
+                t.githubAllowanceIntro,
                 style: TextStyle(
                   color: luma.textSecondary,
                   fontSize: 12,
@@ -499,7 +501,7 @@ class _AllowanceDialogState extends State<_AllowanceDialog> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: AccountLinkButton(
-                  label: 'Open GitHub billing',
+                  label: t.githubAllowanceOpenBilling,
                   icon: Icons.open_in_new_rounded,
                   onTap: () => openExternal(
                       'https://github.com/settings/billing/summary'),
@@ -508,20 +510,20 @@ class _AllowanceDialogState extends State<_AllowanceDialog> {
               const SizedBox(height: 8),
               _field(
                 controller: _copilot,
-                label: 'Copilot allowance',
-                helper: 'Included AI credits or premium requests per month',
+                label: t.githubAllowanceCopilotLabel,
+                helper: t.githubAllowanceCopilotHelper,
                 quickFills: _kCopilotRequestsByPlan,
               ),
               _field(
                 controller: _storage,
-                label: 'Storage allowance',
-                helper: 'Included Packages and Actions storage, in GB',
+                label: t.githubAllowanceStorageLabel,
+                helper: t.githubAllowanceStorageHelper,
                 quickFills: kGithubStorageGbByPlan,
               ),
               _field(
                 controller: _minutes,
-                label: 'Actions compute allowance',
-                helper: 'Included workflow minutes per month',
+                label: t.githubAllowanceMinutesLabel,
+                helper: t.githubAllowanceMinutesHelper,
                 quickFills: _kActionsMinutesByPlan,
               ),
             ],
@@ -532,11 +534,11 @@ class _AllowanceDialogState extends State<_AllowanceDialog> {
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
           style: TextButton.styleFrom(foregroundColor: luma.textSecondary),
-          child: const Text('Cancel'),
+          child: Text(t.commonCancel),
         ),
         const SizedBox(width: 6),
         LumaPrimaryButton(
-          label: 'Save',
+          label: t.commonSave,
           loading: _busy,
           onTap: _busy
               ? null
@@ -560,6 +562,7 @@ class _AllowanceDialogState extends State<_AllowanceDialog> {
     required String helper,
     Map<String, double> quickFills = const {},
   }) {
+    final t = L.of(context);
     final luma = context.luma;
     return Padding(
       padding: const EdgeInsets.only(top: 14),
@@ -581,7 +584,7 @@ class _AllowanceDialogState extends State<_AllowanceDialog> {
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             style: TextStyle(color: luma.textPrimary, fontSize: 13),
             decoration: InputDecoration(
-              hintText: 'Leave blank if you do not know',
+              hintText: t.githubAllowanceHint,
               hintStyle: TextStyle(color: luma.textMuted, fontSize: 12),
               helperText: helper,
               helperMaxLines: 2,

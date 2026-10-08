@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../account/travel/world_map_data.dart';
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'gallery_media.dart';
 import 'gallery_repository.dart';
@@ -76,6 +77,7 @@ class _GalleryMapPageState extends State<GalleryMapPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final repo = GalleryScope.of(context);
     final located = repo.locatedItems;
@@ -85,7 +87,7 @@ class _GalleryMapPageState extends State<GalleryMapPage> {
       appBar: AppBar(
         backgroundColor: luma.background,
         surfaceTintColor: Colors.transparent,
-        title: const Text('Photo map'),
+        title: Text(t.galleryMapTitle),
         titleTextStyle: TextStyle(
           color: luma.textPrimary,
           fontSize: 17,
@@ -100,10 +102,11 @@ class _GalleryMapPageState extends State<GalleryMapPage> {
               alignment: Alignment.centerLeft,
               child: Text(
                 repo.isLocating
-                    ? '${located.length} placed so far — still reading '
-                        'locations'
-                    : '${located.length} of ${repo.items.length} carry a '
-                        'location',
+                    ? t.galleryMapPlacedSoFar(located.length)
+                    : t.galleryMapLocatedOfTotal(
+                        located.length,
+                        repo.items.length,
+                      ),
                 style: TextStyle(color: luma.textSecondary, fontSize: 12),
               ),
             ),
@@ -124,7 +127,7 @@ class _GalleryMapPageState extends State<GalleryMapPage> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'Reading where your photos were taken…',
+                            t.galleryMapReading,
                             style: TextStyle(
                               color: luma.textSecondary,
                               fontSize: 13,
@@ -135,10 +138,8 @@ class _GalleryMapPageState extends State<GalleryMapPage> {
                     )
                   : LumaEmptyState(
                       icon: Icons.location_off_rounded,
-                      title: 'No photos with a location',
-                      subtitle:
-                          'Photos only carry coordinates when the camera had '
-                          'location tagging switched on when they were taken.',
+                      title: t.galleryMapEmptyTitle,
+                      subtitle: t.galleryMapEmptyBody,
                     ),
             )
           : FutureBuilder<WorldMap>(
@@ -391,6 +392,7 @@ class _ClusterSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final items = cluster.items;
 
@@ -402,9 +404,7 @@ class _ClusterSheet extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              items.length == 1
-                  ? '1 photo here'
-                  : '${items.length} photos here',
+              t.galleryMapClusterCount(items.length),
               style: TextStyle(
                 color: luma.textPrimary,
                 fontSize: 16,

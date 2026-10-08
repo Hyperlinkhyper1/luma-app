@@ -1,5 +1,6 @@
 ﻿import 'package:drift/drift.dart';
 
+import '../../l10n/current_l.dart';
 import '../../storage/storage_guard.dart';
 import 'data/password_database.dart';
 import 'password_crypto.dart';
@@ -155,7 +156,7 @@ class PasswordRepository {
       metadata = PasswordMetadata.open(_rowMetadata(row), _crypto, row.id);
     } catch (_) {
       metadataFailed = true;
-      metadata = {'service': 'Unreadable credential', 'email': ''};
+      metadata = {'service': currentL.passwordsUnreadableCredential, 'email': ''};
     }
     return PasswordRecord(
       id: row.id,

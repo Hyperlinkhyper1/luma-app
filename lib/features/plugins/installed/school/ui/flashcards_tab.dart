@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/school_database.dart';
 import '../logic/spaced_repetition.dart';
@@ -68,6 +69,7 @@ class _DeckListViewState extends State<_DeckListView> {
   Widget build(BuildContext context) {
     final repo = SchoolScope.of(context);
     final luma = context.luma;
+    final t = L.of(context);
     return StreamData<List<FlashcardDeck>>(
       stream: repo.watchDecks(),
       builder: (context, decks) {
@@ -81,8 +83,8 @@ class _DeckListViewState extends State<_DeckListView> {
                   Expanded(
                     child: TextField(
                       controller: _nameController,
-                      decoration: const InputDecoration(
-                        hintText: 'New deck name',
+                      decoration: InputDecoration(
+                        hintText: t.schoolDeckNameHint,
                         isDense: true,
                       ),
                       onSubmitted: (_) => _create(repo),
@@ -90,7 +92,7 @@ class _DeckListViewState extends State<_DeckListView> {
                   ),
                   const SizedBox(width: 12),
                   LumaPrimaryButton(
-                    label: 'Create deck',
+                    label: t.schoolFlashcardsCreateDeck,
                     icon: Icons.add_rounded,
                     onTap: () => _create(repo),
                   ),
@@ -99,10 +101,10 @@ class _DeckListViewState extends State<_DeckListView> {
               const SizedBox(height: 16),
               Expanded(
                 child: decks.isEmpty
-                    ? const LumaEmptyState(
+                    ? LumaEmptyState(
                         icon: Icons.style_rounded,
-                        title: 'No decks yet',
-                        subtitle: 'Create a deck, then add cards to start studying.',
+                        title: t.schoolFlashcardsNoDecks,
+                        subtitle: t.schoolFlashcardsNoDecksSub,
                       )
                     : GridView.builder(
                         gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -131,10 +133,10 @@ class _DeckListViewState extends State<_DeckListView> {
                                           style: TextStyle(
                                               color: luma.textPrimary, fontWeight: FontWeight.w700)),
                                       const Spacer(),
-                                      Text('${cards.length} cards',
+                                      Text(t.schoolFlashcardsCardCount(cards.length),
                                           style: TextStyle(color: luma.textMuted, fontSize: 12)),
                                       if (due > 0)
-                                        Text('$due due now',
+                                        Text(t.schoolFlashcardsDueNow(due),
                                             style: TextStyle(
                                                 color: luma.accent,
                                                 fontSize: 12,
@@ -233,6 +235,7 @@ class _ManageCardsViewState extends State<_ManageCardsView> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
       child: Column(
@@ -245,17 +248,18 @@ class _ManageCardsViewState extends State<_ManageCardsView> {
                 onPressed: widget.onClose,
               ),
               Expanded(
-                child: Text('${widget.cards.length} cards · ${widget.dueCount} due',
+                child: Text(
+                    t.schoolFlashcardsDeckSummary(widget.cards.length, widget.dueCount),
                     style: TextStyle(color: luma.textSecondary)),
               ),
               LumaGhostButton(
-                label: 'Add card',
+                label: t.schoolFlashcardsAddCard,
                 icon: Icons.add_rounded,
                 onTap: () => _openEditor(context),
               ),
               const SizedBox(width: 10),
               LumaPrimaryButton(
-                label: 'Study now',
+                label: t.schoolFlashcardsStudyNow,
                 icon: Icons.play_arrow_rounded,
                 onTap: widget.onStudy,
               ),
@@ -264,10 +268,10 @@ class _ManageCardsViewState extends State<_ManageCardsView> {
           const SizedBox(height: 16),
           Expanded(
             child: widget.cards.isEmpty
-                ? const LumaEmptyState(
+                ? LumaEmptyState(
                     icon: Icons.style_outlined,
-                    title: 'No cards in this deck',
-                    subtitle: 'Add a front/back card to start reviewing.',
+                    title: t.schoolFlashcardsNoCards,
+                    subtitle: t.schoolFlashcardsNoCardsSub,
                   )
                 : ListView.separated(
                     itemCount: widget.cards.length,
@@ -294,7 +298,8 @@ class _ManageCardsViewState extends State<_ManageCardsView> {
                                   if (accuracy != null) ...[
                                     const SizedBox(height: 4),
                                     Text(
-                                      '${c.reviewCount} reviews · $accuracy% correct · avg ${avgSeconds}s',
+                                      t.schoolFlashcardsReviewStats(
+                                          c.reviewCount, accuracy, avgSeconds ?? '0.0'),
                                       style: TextStyle(color: luma.textMuted, fontSize: 11),
                                     ),
                                   ],
@@ -364,27 +369,28 @@ class _CardDialogState extends State<_CardDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return AlertDialog(
-      title: Text(widget.existing == null ? 'Add card' : 'Edit card'),
+      title: Text(widget.existing == null ? t.schoolFlashcardsAddCard : t.schoolFlashcardsEditCard),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           TextField(
             controller: _frontController,
             autofocus: true,
-            decoration: const InputDecoration(labelText: 'Front'),
+            decoration: InputDecoration(labelText: t.schoolCardFront),
             maxLines: 2,
           ),
           TextField(
             controller: _backController,
-            decoration: const InputDecoration(labelText: 'Back'),
+            decoration: InputDecoration(labelText: t.schoolCardBack),
             maxLines: 2,
           ),
         ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-        FilledButton(onPressed: _save, child: const Text('Save')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(t.commonCancel)),
+        FilledButton(onPressed: _save, child: Text(t.commonSave)),
       ],
     );
   }
@@ -460,12 +466,13 @@ class _StudySessionState extends State<_StudySession> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final card = widget.cards[_index];
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
         children: [
-          Text('Card ${_index + 1} of ${widget.cards.length}',
+          Text(t.schoolFlashcardsCardOf(_index + 1, widget.cards.length),
               style: TextStyle(color: luma.textMuted)),
           const SizedBox(height: 24),
           Expanded(
@@ -488,7 +495,7 @@ class _StudySessionState extends State<_StudySession> {
                         autofocus: true,
                         enabled: !_checked,
                         textAlign: TextAlign.center,
-                        decoration: const InputDecoration(hintText: 'Type your answer'),
+                        decoration: InputDecoration(hintText: t.schoolFlashcardsTypeAnswer),
                         onSubmitted: (_) => _checkAnswer(),
                       ),
                       if (_checked) ...[
@@ -503,7 +510,7 @@ class _StudySessionState extends State<_StudySession> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              _correct ? 'Correct' : 'Not quite',
+                              _correct ? t.schoolFlashcardsCorrect : t.schoolFlashcardsNotQuite,
                               style: TextStyle(
                                 color: _correct ? luma.success : luma.danger,
                                 fontWeight: FontWeight.w600,
@@ -512,12 +519,12 @@ class _StudySessionState extends State<_StudySession> {
                           ],
                         ),
                         const SizedBox(height: 10),
-                        Text('Answer: ${card.back}',
+                        Text(t.schoolFlashcardsAnswer(card.back),
                             textAlign: TextAlign.center,
                             style: TextStyle(color: luma.textSecondary, fontSize: 16)),
                       ] else ...[
                         const SizedBox(height: 16),
-                        LumaGhostButton(label: 'Check answer', onTap: _checkAnswer),
+                        LumaGhostButton(label: t.schoolFlashcardsCheckAnswer, onTap: _checkAnswer),
                       ],
                     ],
                   ),
@@ -530,13 +537,13 @@ class _StudySessionState extends State<_StudySession> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                LumaGhostButton(label: 'Stop', onTap: _stop),
+                LumaGhostButton(label: t.commonStop, onTap: _stop),
                 const SizedBox(width: 10),
-                LumaPrimaryButton(label: 'Next', icon: Icons.arrow_forward_rounded, onTap: _next),
+                LumaPrimaryButton(label: t.commonNext, icon: Icons.arrow_forward_rounded, onTap: _next),
               ],
             )
           else
-            LumaGhostButton(label: 'Stop', onTap: _stop),
+            LumaGhostButton(label: t.commonStop, onTap: _stop),
         ],
       ),
     );

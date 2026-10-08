@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../../../../account/plan.dart';
+import '../../../../../l10n/current_l.dart';
 import '../../../../../settings/settings_controller.dart';
 import '../../../../../sync/sync_service.dart';
 import 'classroom_api.dart';
@@ -125,8 +126,8 @@ class ClassroomBridge {
     final api = _api();
     try {
       if (api == null) {
-        throw const ClassroomException(
-          'Sign in to an approved luma account to use the classroom.',
+        throw ClassroomException(
+          currentL.textLibraryClassroomSignIn,
           code: 'signin',
         );
       }
@@ -143,7 +144,7 @@ class ClassroomBridge {
           'items': message['items'],
           'language': _language,
         }),
-        _ => throw const ClassroomException('Unknown classroom request.'),
+        _ => throw ClassroomException(currentL.textLibraryClassroomUnknownRequest),
       };
       send({'type': 'classroom', 'request': request, 'data': data});
     } on ClassroomException catch (e) {

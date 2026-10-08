@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/app_localizations.dart';
+import '../../../../l10n/current_l.dart';
 import '../../../../theme/luma_theme.dart';
 
 /// Categories a recipe can be filed under. 'All' is a filter-only pseudo
@@ -32,6 +34,35 @@ const kRecipeUnits = [
   'to taste',
 ];
 
+String localizedRecipeCategory(L t, String category) => switch (category) {
+      'Breakfast' => t.recipeCategoryBreakfast,
+      'Lunch' => t.recipeCategoryLunch,
+      'Dinner' => t.recipeCategoryDinner,
+      'Dessert' => t.recipeCategoryDessert,
+      'Snack' => t.recipeCategorySnack,
+      'Drink' => t.recipeCategoryDrink,
+      'Baking' => t.recipeCategoryBaking,
+      _ => t.recipeCategoryOther,
+    };
+
+String localizedRecipeUnit(L t, String unit) => switch (unit) {
+      '' => t.recipeUnitNone,
+      'g' => t.recipeUnitG,
+      'kg' => t.recipeUnitKg,
+      'ml' => t.recipeUnitMl,
+      'l' => t.recipeUnitL,
+      'tsp' => t.recipeUnitTsp,
+      'tbsp' => t.recipeUnitTbsp,
+      'cup' => t.recipeUnitCup,
+      'oz' => t.recipeUnitOz,
+      'lb' => t.recipeUnitLb,
+      'piece' => t.recipeUnitPiece,
+      'slice' => t.recipeUnitSlice,
+      'pinch' => t.recipeUnitPinch,
+      'to taste' => t.recipeUnitToTaste,
+      _ => unit,
+    };
+
 Color recipeCategoryColor(String category, LumaPalette luma) =>
     switch (category) {
       'Breakfast' => const Color(0xFFE8A33D),
@@ -44,12 +75,13 @@ Color recipeCategoryColor(String category, LumaPalette luma) =>
       _ => luma.textMuted,
     };
 
-String formatRecipeTime(int minutes) {
+String formatRecipeTime(int minutes, [L? t]) {
+  final l = t ?? currentL;
   if (minutes <= 0) return '';
-  if (minutes < 60) return '${minutes}m';
+  if (minutes < 60) return l.recipeTimeMinutes(minutes);
   final h = minutes ~/ 60;
   final m = minutes % 60;
-  return m == 0 ? '${h}h' : '${h}h ${m}m';
+  return m == 0 ? l.recipeTimeHours(h) : l.recipeTimeHoursMinutes(h, m);
 }
 
 /// A single ingredient line. Shared by local and public recipes; the same
@@ -234,7 +266,7 @@ class PublicRecipe {
 
   factory PublicRecipe.fromJson(Map<String, dynamic> j) => PublicRecipe(
         id: j['id'] as String,
-        authorName: j['authorName'] as String? ?? 'Someone',
+        authorName: j['authorName'] as String? ?? currentL.recipeSomeone,
         mine: j['mine'] as bool? ?? false,
         title: j['title'] as String? ?? '',
         description: j['description'] as String?,
@@ -324,7 +356,7 @@ class RecipeReview {
 
   factory RecipeReview.fromJson(Map<String, dynamic> j) => RecipeReview(
         id: j['id'] as String,
-        authorName: j['authorName'] as String? ?? 'Someone',
+        authorName: j['authorName'] as String? ?? currentL.recipeSomeone,
         mine: j['mine'] as bool? ?? false,
         rating: j['rating'] as int? ?? 0,
         text: j['text'] as String? ?? '',

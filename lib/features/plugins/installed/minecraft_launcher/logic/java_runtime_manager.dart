@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:archive/archive_io.dart';
 import 'package:http/http.dart' as http;
 
+import '../../../../../l10n/current_l.dart';
 import 'mc_paths.dart';
 
 class JavaRuntimeException implements Exception {
@@ -47,42 +48,44 @@ class JavaRuntimeManager {
     final existing = await _findJavawIn(dir);
     if (existing != null) return existing;
 
-    onProgress?.call('Looking up Java $majorVersion…', null);
+    onProgress?.call(currentL.mcJavaLookingUp('$majorVersion'), null);
     final assetUrl = await _resolveDownloadUrl(majorVersion);
 
-    onProgress?.call('Downloading Java $majorVersion…', 0);
+    onProgress?.call(currentL.mcJavaDownloading('$majorVersion'), 0);
     final client = http.Client();
     final bytes = <int>[];
     try {
       final req = http.Request('GET', Uri.parse(assetUrl));
       final res = await client.send(req);
       if (res.statusCode != 200) {
-        throw JavaRuntimeException('Java download failed (${res.statusCode}).');
+        throw JavaRuntimeException(currentL.mcJavaDownloadFailed('${res.statusCode}'));
       }
       final total = res.contentLength ?? 0;
       var received = 0;
       await for (final chunk in res.stream) {
         bytes.addAll(chunk);
         received += chunk.length;
-        if (total > 0) onProgress?.call('Downloading Java $majorVersion…', received / total);
+        if (total > 0) {
+          onProgress?.call(currentL.mcJavaDownloading('$majorVersion'), received / total);
+        }
       }
     } catch (e) {
       if (e is JavaRuntimeException) rethrow;
-      throw JavaRuntimeException('Could not download the Java $majorVersion runtime.');
+      throw JavaRuntimeException(currentL.mcJavaCouldNotDownload('$majorVersion'));
     } finally {
       client.close();
     }
 
-    onProgress?.call('Extracting Java $majorVersion…', null);
+    onProgress?.call(currentL.mcJavaExtracting('$majorVersion'), null);
     await dir.create(recursive: true);
     final archive = ZipDecoder().decodeBytes(bytes);
     extractArchiveToDisk(archive, dir.path);
 
     final javaw = await _findJavawIn(dir);
     if (javaw == null) {
-      throw JavaRuntimeException('Downloaded Java $majorVersion runtime is missing javaw.exe.');
+      throw JavaRuntimeException(currentL.mcJavaMissingJavaw('$majorVersion'));
     }
-    onProgress?.call('Ready', 1);
+    onProgress?.call(currentL.mcJavaReady, 1);
     return javaw;
   }
 
@@ -93,14 +96,16 @@ class JavaRuntimeManager {
     try {
       res = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 20));
     } catch (_) {
-      throw JavaRuntimeException('Could not reach the Java runtime provider.');
+      throw JavaRuntimeException(currentL.mcJavaProviderUnreachable);
     }
     if (res.statusCode != 200) {
-      throw JavaRuntimeException('No Java $majorVersion build found (${res.statusCode}).');
+      throw JavaRuntimeException(
+        currentL.mcJavaNoBuildFound('$majorVersion', '${res.statusCode}'),
+      );
     }
     final list = jsonDecode(res.body) as List;
     if (list.isEmpty) {
-      throw JavaRuntimeException('No Java $majorVersion build available for Windows x64.');
+      throw JavaRuntimeException(currentL.mcJavaNoBuildForWindows('$majorVersion'));
     }
     final binary = (list.first as Map<String, dynamic>)['binary'] as Map<String, dynamic>;
     final package = binary['package'] as Map<String, dynamic>;

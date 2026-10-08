@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../steam_repository.dart';
 import '../steam_scope.dart';
@@ -62,9 +63,10 @@ class _SteamAccountDialogState extends State<SteamAccountDialog> {
     final key =
         typedKey.isNotEmpty ? typedKey : (repository.credentials?.apiKey ?? '');
     final id = _idController.text.trim();
+    final t = L.of(context);
     setState(() {
-      _keyError = key.isEmpty ? 'Paste your Steam Web API key.' : null;
-      _idError = id.isEmpty ? 'Enter your Steam ID or profile URL.' : null;
+      _keyError = key.isEmpty ? t.steamAccountErrorNoKey : null;
+      _idError = id.isEmpty ? t.steamAccountErrorNoId : null;
     });
     // Focus the first field that needs fixing rather than leaving the user
     // to work out which one the message belongs to.
@@ -93,6 +95,7 @@ class _SteamAccountDialogState extends State<SteamAccountDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final repository = SteamScope.of(context);
 
     // The Steam id isn't secret, so a reconnect can start from what is
@@ -137,7 +140,7 @@ class _SteamAccountDialogState extends State<SteamAccountDialog> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              'Steam account',
+                              t.steamAccountTitle,
                               style: TextStyle(
                                 color: luma.textPrimary,
                                 fontSize: 16,
@@ -146,7 +149,7 @@ class _SteamAccountDialogState extends State<SteamAccountDialog> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'So luma can list the games you own.',
+                              t.steamAccountSubtitle,
                               style: TextStyle(
                                 color: luma.textMuted,
                                 fontSize: 12,
@@ -165,10 +168,10 @@ class _SteamAccountDialogState extends State<SteamAccountDialog> {
                   ],
                   const SizedBox(height: 20),
                   _Field(
-                    label: 'Steam Web API key',
+                    label: t.steamAccountApiKeyLabel,
                     helper: connected
-                        ? 'Leave blank to keep the saved key.'
-                        : 'Free, and tied to your own account.',
+                        ? t.steamAccountKeyHelperConnected
+                        : t.steamAccountKeyHelperNew,
                     error: _keyError,
                     child: TextField(
                       controller: _keyController,
@@ -180,7 +183,7 @@ class _SteamAccountDialogState extends State<SteamAccountDialog> {
                       decoration: _decoration(
                         context,
                         hint: connected
-                            ? 'Enter a new key to replace it'
+                            ? t.steamAccountKeyHintReplace
                             : 'e.g. 8A0F2C…',
                         hasError: _keyError != null,
                         suffix: IconButton(
@@ -193,7 +196,9 @@ class _SteamAccountDialogState extends State<SteamAccountDialog> {
                             size: 18,
                             color: luma.textMuted,
                           ),
-                          tooltip: _showKey ? 'Hide key' : 'Show key',
+                          tooltip: _showKey
+                              ? t.steamAccountHideKey
+                              : t.steamAccountShowKey,
                         ),
                       ),
                       onChanged: (_) {
@@ -205,7 +210,7 @@ class _SteamAccountDialogState extends State<SteamAccountDialog> {
                   ),
                   const SizedBox(height: 6),
                   LumaGhostButton(
-                    label: 'Get a key from Steam',
+                    label: t.steamAccountGetKey,
                     icon: Icons.open_in_new_rounded,
                     onTap: () => launchUrl(
                       Uri.parse(_apiKeyUrl),
@@ -214,9 +219,8 @@ class _SteamAccountDialogState extends State<SteamAccountDialog> {
                   ),
                   const SizedBox(height: 18),
                   _Field(
-                    label: 'Steam ID or profile URL',
-                    helper:
-                        'Your 17-digit ID, or a link like steamcommunity.com/id/yourname.',
+                    label: t.steamAccountIdLabel,
+                    helper: t.steamAccountIdHelper,
                     error: _idError,
                     child: TextField(
                       controller: _idController,
@@ -247,7 +251,9 @@ class _SteamAccountDialogState extends State<SteamAccountDialog> {
                     runSpacing: 10,
                     children: [
                       LumaPrimaryButton(
-                        label: connected ? 'Update' : 'Connect',
+                        label: connected
+                            ? t.commonUpdate
+                            : t.steamAccountConnect,
                         icon: Icons.link_rounded,
                         loading: repository.connecting,
                         onTap: repository.connecting
@@ -256,12 +262,12 @@ class _SteamAccountDialogState extends State<SteamAccountDialog> {
                       ),
                       if (connected)
                         LumaGhostButton(
-                          label: 'Disconnect',
+                          label: t.steamAccountDisconnect,
                           icon: Icons.link_off_rounded,
                           onTap: () => _disconnect(repository),
                         ),
                       LumaGhostButton(
-                        label: 'Close',
+                        label: t.commonClose,
                         onTap: () => Navigator.of(context).pop(),
                       ),
                     ],
@@ -283,8 +289,7 @@ class _SteamAccountDialogState extends State<SteamAccountDialog> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Your key is stored encrypted on this device and '
-                            'is sent only to Steam — never to a luma server.',
+                            t.steamAccountEncryptedNote,
                             style: TextStyle(
                               color: luma.textSecondary,
                               fontSize: 11.5,
@@ -297,8 +302,7 @@ class _SteamAccountDialogState extends State<SteamAccountDialog> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Steam only returns your library when "Game details" is '
-                    'set to Public in your privacy settings.',
+                    t.steamAccountPrivacyNote,
                     style: TextStyle(
                       color: luma.textMuted,
                       fontSize: 11.5,
@@ -307,9 +311,7 @@ class _SteamAccountDialogState extends State<SteamAccountDialog> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Price history needs a signed-in luma account too — it '
-                    'is fetched through the server, so no separate key is '
-                    'needed for it.',
+                    t.steamAccountHistoryNote,
                     style: TextStyle(
                       color: luma.textMuted,
                       fontSize: 11.5,
@@ -360,6 +362,7 @@ class _ConnectedStatus extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
@@ -372,7 +375,9 @@ class _ConnectedStatus extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              maskedKey == null ? 'Connected' : 'Connected — $maskedKey',
+              maskedKey == null
+                  ? t.steamAccountConnected
+                  : t.steamAccountConnectedWithKey(maskedKey!),
               style: TextStyle(
                 color: luma.textPrimary,
                 fontSize: 12.5,

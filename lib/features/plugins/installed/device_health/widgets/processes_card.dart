@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../device_health_models.dart';
 import '../device_health_repository.dart';
@@ -19,25 +20,25 @@ class ProcessesCard extends StatelessWidget {
     final state = repo.processes;
     final list = state.data;
     final luma = context.luma;
+    final t = L.of(context);
 
     return CategoryCard(
       icon: Icons.list_alt_rounded,
-      title: 'Background Processes',
+      title: t.deviceHealthCardProcessesTitle,
       loading: state.loading,
       error: state.error,
       onCheck: () => repo.refreshProcesses(),
-      checkLabel: list == null ? 'Scan processes' : 'Rescan',
+      checkLabel: list == null ? t.deviceHealthCardScanProcesses : t.deviceHealthCardRescan,
       child: list == null
           ? Text(
-              'Not scanned yet — this reads every running process, so it '
-              "isn't run automatically.",
+              t.deviceHealthCardProcessesNotScanned,
               style: TextStyle(color: luma.textMuted, fontSize: 13),
             )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  '${list.length} processes · sorted by memory',
+                  t.deviceHealthCardProcessesSummary(list.length),
                   style: TextStyle(color: luma.textSecondary, fontSize: 12),
                 ),
                 const SizedBox(height: 8),
@@ -63,6 +64,7 @@ class _ProcessRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final bloat = process.bloatware;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -82,7 +84,7 @@ class _ProcessRow extends StatelessWidget {
                   Tooltip(
                     message: bloat.reason,
                     child: Text(
-                      'Suggested: ${bloat.label}',
+                      t.deviceHealthCardSuggested(bloat.label),
                       style: TextStyle(color: luma.warning, fontSize: 11, fontWeight: FontWeight.w600),
                     ),
                   ),
@@ -109,7 +111,7 @@ class _ProcessRow extends StatelessWidget {
           IconButton(
             onPressed: () => _confirmEnd(context),
             icon: const Icon(Icons.close_rounded, size: 16),
-            tooltip: 'End process',
+            tooltip: t.deviceHealthCardEndProcess,
             visualDensity: VisualDensity.compact,
             color: luma.textMuted,
           ),
@@ -120,25 +122,27 @@ class _ProcessRow extends StatelessWidget {
 
   Future<void> _confirmEnd(BuildContext context) async {
     final luma = context.luma;
+    final t = L.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: luma.surface,
-        title: Text('End ${process.name}?', style: TextStyle(color: luma.textPrimary, fontSize: 16)),
+        title: Text(t.deviceHealthCardEndProcessTitle(process.name),
+            style: TextStyle(color: luma.textPrimary, fontSize: 16)),
         content: Text(
           process.bloatware != null
-              ? '${process.bloatware!.reason} Unsaved work in this process will be lost.'
-              : 'This closes the process immediately. Unsaved work in it will be lost.',
+              ? t.deviceHealthCardEndProcessWithReason(process.bloatware!.reason)
+              : t.deviceHealthCardEndProcessClosesNow,
           style: TextStyle(color: luma.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+            child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text('End process', style: TextStyle(color: luma.danger)),
+            child: Text(t.deviceHealthCardEndProcess, style: TextStyle(color: luma.danger)),
           ),
         ],
       ),

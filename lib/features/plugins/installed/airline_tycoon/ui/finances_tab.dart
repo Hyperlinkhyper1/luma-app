@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../airline_game_state.dart';
 import '../airline_tycoon_repository.dart';
@@ -18,6 +19,7 @@ class FinancesTab extends StatelessWidget {
     final luma = context.luma;
     final state = repository.state;
     final report = repository.lastDayReport;
+    final t = L.of(context);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -27,7 +29,7 @@ class FinancesTab extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Cash',
+                t.airlineFinCash,
                 style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
               Text(
@@ -55,7 +57,7 @@ class FinancesTab extends StatelessWidget {
                 )
               else
                 Text(
-                  'Trade a few days and the balance chart appears here.',
+                  t.airlineFinChartEmpty,
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
             ],
@@ -69,7 +71,7 @@ class FinancesTab extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'The airline so far',
+                t.airlineFinSoFar,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontWeight: FontWeight.w600,
@@ -80,19 +82,19 @@ class FinancesTab extends StatelessWidget {
                 spacing: 24,
                 runSpacing: 12,
                 children: [
-                  _Stat(label: 'Day', value: '${state.day}'),
+                  _Stat(label: t.airlineLabelDay, value: '${state.day}'),
                   _Stat(
-                    label: 'Flights flown',
+                    label: t.airlineFinStatFlightsFlown,
                     value: fmtCount(state.flightsFlownEver),
                   ),
                   _Stat(
-                    label: 'Passengers carried',
+                    label: t.airlineFinStatPassengers,
                     value: fmtCount(state.passengersCarriedEver),
                   ),
-                  _Stat(label: 'Aircraft', value: '${state.fleet.length}'),
-                  _Stat(label: 'Routes', value: '${state.routes.length}'),
+                  _Stat(label: t.airlineLabelAircraft, value: '${state.fleet.length}'),
+                  _Stat(label: t.airlineLabelRoutes, value: '${state.routes.length}'),
                   _Stat(
-                    label: 'Fuel price',
+                    label: t.airlineFinStatFuelPrice,
                     value: '${(state.fuelPriceIndex * 100).round()}%',
                   ),
                 ],
@@ -115,6 +117,7 @@ class _DayBooks extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return LumaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -123,7 +126,7 @@ class _DayBooks extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Day ${report.day}',
+                  t.airlineFinDayHeading('${report.day}'),
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontWeight: FontWeight.w600,
@@ -142,21 +145,20 @@ class _DayBooks extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          _Line(label: 'Tickets', value: report.revenueEur, income: true),
+          _Line(label: t.airlineFinLineTickets, value: report.revenueEur, income: true),
           if (report.cargoEur > 0)
-            _Line(label: 'Cargo', value: report.cargoEur, income: true),
+            _Line(label: t.airlineFinLineCargo, value: report.cargoEur, income: true),
           const SizedBox(height: 6),
-          _Line(label: 'Fuel', value: -report.fuelEur),
-          _Line(label: 'Crew', value: -report.crewEur),
-          _Line(label: 'Airport fees', value: -report.landingEur),
-          _Line(label: 'Maintenance', value: -report.maintenanceEur),
-          _Line(label: 'Hub upkeep', value: -report.upkeepEur),
+          _Line(label: t.airlineLabelFuel, value: -report.fuelEur),
+          _Line(label: t.airlineFinLineCrew, value: -report.crewEur),
+          _Line(label: t.airlineFinLineAirportFees, value: -report.landingEur),
+          _Line(label: t.airlineLabelMaintenance, value: -report.maintenanceEur),
+          _Line(label: t.airlineFinLineHubUpkeep, value: -report.upkeepEur),
           if (report.leaseEur > 0)
-            _Line(label: 'Lease payments', value: -report.leaseEur),
+            _Line(label: t.airlineFinLineLeasePayments, value: -report.leaseEur),
           const SizedBox(height: 10),
           Text(
-            '${fmtCount(report.flights)} flights · '
-            '${fmtCount(report.passengers)} passengers',
+            t.airlineFinDaySummary(fmtCount(report.flights), fmtCount(report.passengers)),
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
           for (final event in report.events) ...[
@@ -226,13 +228,14 @@ class _ExpansionCard extends StatelessWidget {
     final state = repository.state;
     final atLimit = state.gridSize >= AirlineGameState.maxGridSize;
     final cost = repository.expansionCostEur;
+    final t = L.of(context);
 
     return LumaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'The field',
+            t.airlineFinFieldTitle,
             style: TextStyle(
               color: luma.textPrimary,
               fontWeight: FontWeight.w600,
@@ -241,18 +244,15 @@ class _ExpansionCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             atLimit
-                ? 'Your land is ${state.gridSize} by ${state.gridSize} — '
-                    'the largest the airport authority will sell you.'
-                : 'Your land is ${state.gridSize} by ${state.gridSize}. Buying '
-                    'more gives you room for another terminal and the gates '
-                    'that go with it.',
+                ? t.airlineFinLandAtMax('${state.gridSize}')
+                : t.airlineFinLandGrow('${state.gridSize}'),
             style: TextStyle(color: luma.textSecondary, fontSize: 12),
           ),
           const SizedBox(height: 12),
           LumaPrimaryButton(
             label: atLimit
-                ? 'At the limit'
-                : 'Buy land · ${fmtMoney(cost)}',
+                ? t.airlineFinAtLimit
+                : t.airlineFinBuyLand(fmtMoney(cost)),
             icon: Icons.open_in_full_rounded,
             expand: true,
             onTap: atLimit

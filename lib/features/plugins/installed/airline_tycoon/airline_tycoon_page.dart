@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'airline_game_state.dart';
 import 'airline_tycoon_repository.dart';
@@ -24,10 +26,44 @@ class AirlineTycoonPage extends StatefulWidget {
 class _AirlineTycoonPageState extends State<AirlineTycoonPage> {
   int _tab = 0;
   bool _awayShown = false;
+  AirlineTycoonRepository? _repository;
+  ValueListenable<TickerModeData>? _visibility;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final repository = AirlineTycoonScope.of(context);
+    if (_repository != repository) {
+      _repository?.setAirportPageVisible(this, false);
+      _repository = repository;
+    }
+    final visibility = TickerMode.getValuesNotifier(context);
+    if (_visibility != visibility) {
+      _visibility?.removeListener(_updateVisibility);
+      _visibility = visibility;
+      visibility.addListener(_updateVisibility);
+    }
+    _updateVisibility();
+  }
+
+  void _updateVisibility() {
+    _repository?.setAirportPageVisible(
+      this,
+      _visibility?.value.enabled ?? false,
+    );
+  }
+
+  @override
+  void dispose() {
+    _visibility?.removeListener(_updateVisibility);
+    _repository?.setAirportPageVisible(this, false);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final repo = AirlineTycoonScope.of(context);
+    final t = L.of(context);
 
     if (!repo.isLoaded) {
       return const Center(
@@ -53,7 +89,12 @@ class _AirlineTycoonPageState extends State<AirlineTycoonPage> {
       children: [
         _TopStrip(repository: repo),
         LumaSegmentedTabs(
-          tabs: const ['Fleet', 'Routes', 'Hub', 'Finances'],
+          tabs: [
+            t.airlineTabFleet,
+            t.airlineTabRoutes,
+            t.airlineTabHub,
+            t.airlineTabFinances,
+          ],
           selectedIndex: _tab,
           onSelect: (index) => setState(() => _tab = index),
         ),
@@ -104,6 +145,7 @@ class _TopStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final state = repository.state;
     final broke = state.cashEur < 0;
 
@@ -157,7 +199,7 @@ class _TopStrip extends StatelessWidget {
             icon: repository.isPaused
                 ? Icons.play_arrow_rounded
                 : Icons.pause_rounded,
-            label: repository.isPaused ? 'Resume' : 'Pause',
+            label: repository.isPaused ? t.airlineResume : t.airlinePause,
             active: repository.isPaused,
             onTap: () =>
                 repository.isPaused ? repository.resume() : repository.pause(),
@@ -176,8 +218,9 @@ class _DayDial extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Semantics(
-      label: 'Day ${repository.state.day}',
+      label: t.airlineDaySemantics(repository.state.day),
       child: SizedBox(
         width: 44,
         height: 44,
@@ -225,10 +268,11 @@ class _SpeedButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final decor = context.lumaDecor;
+    final t = L.of(context);
     return Semantics(
       button: true,
       selected: active,
-      label: '${speed}x speed',
+      label: t.airlineSpeedSemantics(speed),
       child: InkWell(
         onTap: onTap,
         borderRadius: decor.buttonBorderRadius,
@@ -324,6 +368,7 @@ class _SetupViewState extends State<_SetupView> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final hubs = widget.repository.starterHubs().take(8).toList();
 
     // The hub list can run past a phone screen, so the primary action is
@@ -342,20 +387,20 @@ class _SetupViewState extends State<_SetupView> {
             mainAxisSize: MainAxisSize.min,
             children: [
               LumaPrimaryButton(
-                label: 'Take off',
+                label: t.airlineTakeOff,
                 icon: Icons.flight_takeoff_rounded,
                 expand: true,
                 onTap: _hub == null
                     ? null
                     : () => widget.repository.startGame(
-                          airlineName: _name.text,
-                          hubIata: _hub!,
-                        ),
+                        airlineName: _name.text,
+                        hubIata: _hub!,
+                      ),
               ),
               if (_hub == null) ...[
                 const SizedBox(height: 6),
                 Text(
-                  'Choose a hub to continue.',
+                  t.airlineChooseHubToContinue,
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
               ],
@@ -368,11 +413,12 @@ class _SetupViewState extends State<_SetupView> {
 
   Widget _buildForm(BuildContext context, List<Airport> hubs) {
     final luma = context.luma;
+    final t = L.of(context);
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
         Text(
-          'Start an airline',
+          t.airlineStartAirlineTitle,
           style: TextStyle(
             color: luma.textPrimary,
             fontSize: 22,
@@ -381,13 +427,12 @@ class _SetupViewState extends State<_SetupView> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Pick a home airport. Everything you fly departs from there, and it '
-          'is the field you will build out.',
+          t.airlinePickHubBlurb,
           style: TextStyle(color: luma.textSecondary, fontSize: 13),
         ),
         const SizedBox(height: 20),
         Text(
-          'Airline name',
+          t.airlineNameLabel,
           style: TextStyle(color: luma.textMuted, fontSize: 12),
         ),
         const SizedBox(height: 6),
@@ -401,18 +446,24 @@ class _SetupViewState extends State<_SetupView> {
               borderRadius: context.lumaDecor.buttonBorderRadius,
               borderSide: BorderSide(color: luma.border),
             ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 14,
+            ),
           ),
         ),
         const SizedBox(height: 20),
-        Text('Home hub', style: TextStyle(color: luma.textMuted, fontSize: 12)),
-        const SizedBox(height: 8),
-        for (final airport in hubs) _HubOption(
-          airport: airport,
-          selected: _hub == airport.iata,
-          onTap: () => setState(() => _hub = airport.iata),
+        Text(
+          t.airlineHomeHubLabel,
+          style: TextStyle(color: luma.textMuted, fontSize: 12),
         ),
+        const SizedBox(height: 8),
+        for (final airport in hubs)
+          _HubOption(
+            airport: airport,
+            selected: _hub == airport.iata,
+            onTap: () => setState(() => _hub = airport.iata),
+          ),
       ],
     );
   }
@@ -433,6 +484,7 @@ class _HubOption extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final decor = context.lumaDecor;
+    final t = L.of(context);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -474,8 +526,11 @@ class _HubOption extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '${airport.name} · ${fmtCount(airport.runwayM)} m '
-                        'runway · ${airport.country}',
+                        t.airlineHubOptionDetail(
+                          airport.name,
+                          fmtCount(airport.runwayM),
+                          airport.country,
+                        ),
                         style: TextStyle(
                           color: luma.textSecondary,
                           fontSize: 12,

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../engine/sketch_document.dart';
 import '../model/sketch_blend.dart';
@@ -43,6 +44,7 @@ class _LayerStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final state = controller.state;
     final layers = state.layers.reversed.toList();
     return Container(
@@ -54,8 +56,8 @@ class _LayerStrip extends StatelessWidget {
       child: Column(
         children: [
           const SizedBox(height: 6),
-          StudioIconButton(icon: Icons.layers_rounded, tooltip: 'Show layer panel', onTap: onExpand),
-          StudioIconButton(icon: Icons.add_rounded, tooltip: 'New layer', onTap: () => controller.addLayer()),
+          StudioIconButton(icon: Icons.layers_rounded, tooltip: t.freeSketchLayersShowPanel, onTap: onExpand),
+          StudioIconButton(icon: Icons.add_rounded, tooltip: t.freeSketchLayerNew, onTap: () => controller.addLayer()),
           Divider(color: luma.border, height: 10, indent: 10, endIndent: 10),
           Expanded(
             child: ListView.builder(
@@ -113,31 +115,33 @@ class _ExpandedLayersState extends State<_ExpandedLayers> {
   StudioController get c => widget.controller;
 
   Future<void> _rename(SketchLayer layer) async {
+    final t = L.of(context);
     final text = TextEditingController(text: layer.name);
     final name = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Rename layer'),
+        title: Text(t.freeSketchLayerRename),
         content: TextField(
           controller: text,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'Name'),
+          decoration: InputDecoration(labelText: t.commonName),
           onSubmitted: (v) => Navigator.pop(context, v),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, text.text), child: const Text('Rename')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(t.commonCancel)),
+          FilledButton(onPressed: () => Navigator.pop(context, text.text), child: Text(t.commonRename)),
         ],
       ),
     ).whenComplete(text.dispose);
     final trimmed = name?.trim();
     if (trimmed == null || trimmed.isEmpty) return;
-    c.updateLayer(layer.id, (l) => l.copyWith(name: trimmed), 'Rename layer');
+    c.updateLayer(layer.id, (l) => l.copyWith(name: trimmed), t.freeSketchLayerRename);
   }
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final state = c.state;
     final layers = state.layers.reversed.toList();
     final active = state.active;
@@ -154,16 +158,16 @@ class _ExpandedLayersState extends State<_ExpandedLayers> {
             padding: const EdgeInsets.fromLTRB(12, 8, 6, 4),
             child: Row(
               children: [
-                Text('Layers', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700, fontSize: 13.5)),
+                Text(t.freeSketchLayersTitle, style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700, fontSize: 13.5)),
                 const SizedBox(width: 6),
                 Text(
                   '${state.layers.length}/${c.maxLayers}',
                   style: TextStyle(color: luma.textMuted, fontSize: 11.5),
                 ),
                 const Spacer(),
-                StudioIconButton(icon: Icons.add_rounded, tooltip: 'New layer (Ctrl+Shift+N)', size: 32, onTap: () => c.addLayer()),
+                StudioIconButton(icon: Icons.add_rounded, tooltip: t.freeSketchLayerNewShortcut, size: 32, onTap: () => c.addLayer()),
                 _LayerMenu(controller: c, onRename: () => _rename(active)),
-                StudioIconButton(icon: Icons.chevron_right_rounded, tooltip: 'Collapse', size: 32, onTap: widget.onCollapse),
+                StudioIconButton(icon: Icons.chevron_right_rounded, tooltip: t.freeSketchLayersCollapse, size: 32, onTap: widget.onCollapse),
               ],
             ),
           ),
@@ -217,10 +221,11 @@ class _LayerRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final subtitle = [
       if (layer.blend != SketchBlend.normal) layer.blend.label,
       if (layer.opacity < 1) '${(layer.opacity * 100).round()}%',
-      if (layer.alphaLocked) 'α lock',
+      if (layer.alphaLocked) t.freeSketchLayerAlphaLockShort,
     ].join(' · ');
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
@@ -284,12 +289,12 @@ class _LayerRow extends StatelessWidget {
                 if (layer.locked) Icon(Icons.lock_rounded, size: 14, color: luma.textMuted),
                 StudioIconButton(
                   icon: layer.visible ? Icons.visibility_rounded : Icons.visibility_off_rounded,
-                  tooltip: layer.visible ? 'Hide layer' : 'Show layer',
+                  tooltip: layer.visible ? t.freeSketchLayerHide : t.freeSketchLayerShow,
                   size: 32,
                   onTap: () => controller.updateLayer(
                     layer.id,
                     (l) => l.copyWith(visible: !l.visible),
-                    layer.visible ? 'Hide layer' : 'Show layer',
+                    layer.visible ? t.freeSketchLayerHide : t.freeSketchLayerShow,
                   ),
                 ),
               ],
@@ -309,13 +314,14 @@ class _BackgroundRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final state = controller.state;
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 4, 8, 6),
       child: Row(
         children: [
           PopupMenuButton<String>(
-            tooltip: 'Background colour',
+            tooltip: t.freeSketchBackgroundColour,
             onSelected: (value) {
               switch (value) {
                 case 'current':
@@ -328,11 +334,11 @@ class _BackgroundRow extends StatelessWidget {
                   controller.setBackground(const Color(0xFF1E1E24));
               }
             },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'current', child: Text('Use current colour')),
-              PopupMenuItem(value: 'white', child: Text('White')),
-              PopupMenuItem(value: 'paper', child: Text('Warm paper')),
-              PopupMenuItem(value: 'dark', child: Text('Charcoal')),
+            itemBuilder: (context) => [
+              PopupMenuItem(value: 'current', child: Text(t.freeSketchBackgroundUseCurrent)),
+              PopupMenuItem(value: 'white', child: Text(t.freeSketchBackgroundWhite)),
+              PopupMenuItem(value: 'paper', child: Text(t.freeSketchBackgroundPaper)),
+              PopupMenuItem(value: 'dark', child: Text(t.freeSketchBackgroundCharcoal)),
             ],
             child: Container(
               width: 52,
@@ -350,13 +356,13 @@ class _BackgroundRow extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              state.showBackground ? 'Background' : 'Background (transparent)',
+              state.showBackground ? t.freeSketchBackground : t.freeSketchBackgroundTransparent,
               style: TextStyle(color: luma.textSecondary, fontSize: 12.5),
             ),
           ),
           StudioIconButton(
             icon: state.showBackground ? Icons.visibility_rounded : Icons.visibility_off_rounded,
-            tooltip: state.showBackground ? 'Transparent background' : 'Show background',
+            tooltip: state.showBackground ? t.freeSketchBackgroundTransparentTip : t.freeSketchBackgroundShow,
             size: 32,
             onTap: controller.toggleBackground,
           ),
@@ -375,6 +381,7 @@ class _LayerProperties extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     Widget toggle(IconData icon, String label, bool on, VoidCallback onTap) => Expanded(
           child: Tooltip(
             message: label,
@@ -409,7 +416,7 @@ class _LayerProperties extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text('Blend', style: TextStyle(color: luma.textSecondary, fontSize: 12)),
+              Text(t.freeSketchBlend, style: TextStyle(color: luma.textSecondary, fontSize: 12)),
               const SizedBox(width: 10),
               Expanded(
                 child: DropdownButton<SketchBlend>(
@@ -425,14 +432,14 @@ class _LayerProperties extends StatelessWidget {
                   ],
                   onChanged: (blend) {
                     if (blend == null) return;
-                    controller.updateLayer(layer.id, (l) => l.copyWith(blend: blend), 'Blend mode');
+                    controller.updateLayer(layer.id, (l) => l.copyWith(blend: blend), t.freeSketchBlendMode);
                   },
                 ),
               ),
             ],
           ),
           LabeledSlider(
-            label: 'Opacity',
+            label: t.freeSketchLayerOpacity,
             value: layer.opacity,
             min: 0,
             max: 1,
@@ -443,12 +450,12 @@ class _LayerProperties extends StatelessWidget {
           const SizedBox(height: 4),
           Row(
             children: [
-              toggle(Icons.lock_outline_rounded, 'Lock', layer.locked,
-                  () => controller.updateLayer(layer.id, (l) => l.copyWith(locked: !l.locked), 'Lock layer')),
-              toggle(Icons.opacity_rounded, 'Alpha lock', layer.alphaLocked,
-                  () => controller.updateLayer(layer.id, (l) => l.copyWith(alphaLocked: !l.alphaLocked), 'Alpha lock')),
-              toggle(Icons.subdirectory_arrow_right_rounded, 'Clip', layer.clipped,
-                  () => controller.updateLayer(layer.id, (l) => l.copyWith(clipped: !l.clipped), 'Clipping mask')),
+              toggle(Icons.lock_outline_rounded, t.freeSketchLayerLock, layer.locked,
+                  () => controller.updateLayer(layer.id, (l) => l.copyWith(locked: !l.locked), t.freeSketchLayerLockLayer)),
+              toggle(Icons.opacity_rounded, t.freeSketchLayerAlphaLock, layer.alphaLocked,
+                  () => controller.updateLayer(layer.id, (l) => l.copyWith(alphaLocked: !l.alphaLocked), t.freeSketchLayerAlphaLock)),
+              toggle(Icons.subdirectory_arrow_right_rounded, t.freeSketchLayerClip, layer.clipped,
+                  () => controller.updateLayer(layer.id, (l) => l.copyWith(clipped: !l.clipped), t.freeSketchLayerClipMask)),
             ],
           ),
         ],
@@ -466,8 +473,9 @@ class _LayerMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = controller;
+    final t = L.of(context);
     return PopupMenuButton<String>(
-      tooltip: 'Layer actions',
+      tooltip: t.freeSketchLayerActions,
       icon: const Icon(Icons.more_horiz_rounded, size: 20),
       onSelected: (value) {
         switch (value) {
@@ -492,17 +500,17 @@ class _LayerMenu extends StatelessWidget {
         }
       },
       itemBuilder: (context) => [
-        const PopupMenuItem(value: 'rename', child: Text('Rename…')),
-        const PopupMenuItem(value: 'duplicate', child: Text('Duplicate (Ctrl+J)')),
-        PopupMenuItem(value: 'merge', enabled: c.canMergeDown(), child: const Text('Merge down (Ctrl+E)')),
-        PopupMenuItem(value: 'flatten', enabled: c.state.layers.length > 1, child: const Text('Flatten all')),
+        PopupMenuItem(value: 'rename', child: Text(t.freeSketchLayerRenameMenu)),
+        PopupMenuItem(value: 'duplicate', child: Text(t.freeSketchLayerDuplicateShortcut)),
+        PopupMenuItem(value: 'merge', enabled: c.canMergeDown(), child: Text(t.freeSketchLayerMergeDownShortcut)),
+        PopupMenuItem(value: 'flatten', enabled: c.state.layers.length > 1, child: Text(t.freeSketchLayerFlattenAll)),
         const PopupMenuDivider(),
-        const PopupMenuItem(value: 'copy', child: Text('Copy (Ctrl+C)')),
-        PopupMenuItem(value: 'paste', enabled: c.hasClipboard, child: const Text('Paste as new layer (Ctrl+V)')),
-        const PopupMenuItem(value: 'fill', child: Text('Fill with colour')),
-        const PopupMenuItem(value: 'clear', child: Text('Clear (Delete)')),
+        PopupMenuItem(value: 'copy', child: Text(t.freeSketchCopyShortcut)),
+        PopupMenuItem(value: 'paste', enabled: c.hasClipboard, child: Text(t.freeSketchPasteAsNewLayerShortcut)),
+        PopupMenuItem(value: 'fill', child: Text(t.freeSketchLayerFillColour)),
+        PopupMenuItem(value: 'clear', child: Text(t.freeSketchLayerClearShortcut)),
         const PopupMenuDivider(),
-        const PopupMenuItem(value: 'delete', child: Text('Delete layer')),
+        PopupMenuItem(value: 'delete', child: Text(t.freeSketchLayerDelete)),
       ],
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../chat_repository.dart';
 import '../data/chat_api.dart';
@@ -40,7 +41,7 @@ class _ChatInviteDialogState extends State<_ChatInviteDialog> {
   Future<void> _submit() async {
     final email = _controller.text.trim();
     if (email.isEmpty || !email.contains('@')) {
-      setState(() => _error = 'Enter a valid email address.');
+      setState(() => _error = L.of(context).secureChatEnterValidEmail);
       return;
     }
     setState(() {
@@ -54,7 +55,11 @@ class _ChatInviteDialogState extends State<_ChatInviteDialog> {
       if (!mounted) return;
       setState(() {
         _sending = false;
-        _error = e is ChatApiException ? e.message : '$e';
+        _error = switch (e) {
+          ChatApiException() => e.message,
+          StateError() => e.message,
+          _ => e.toString(),
+        };
       });
     }
   }
@@ -62,11 +67,12 @@ class _ChatInviteDialogState extends State<_ChatInviteDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return AlertDialog(
       backgroundColor: luma.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text(
-        'Start an encrypted chat',
+        t.secureChatInviteTitle,
         style: TextStyle(
             color: luma.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
       ),
@@ -75,9 +81,7 @@ class _ChatInviteDialogState extends State<_ChatInviteDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'They\'ll see the invite in Chat → Invites the next time they '
-            'open Luma. Once accepted, every message is end-to-end '
-            'encrypted — only the two of you can read them.',
+            t.secureChatInviteBody,
             style: TextStyle(color: luma.textMuted, fontSize: 13, height: 1.4),
           ),
           const SizedBox(height: 16),
@@ -116,7 +120,7 @@ class _ChatInviteDialogState extends State<_ChatInviteDialog> {
       actions: [
         TextButton(
           onPressed: _sending ? null : () => Navigator.of(context).pop(false),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
@@ -131,7 +135,7 @@ class _ChatInviteDialogState extends State<_ChatInviteDialog> {
                   child: CircularProgressIndicator(
                       strokeWidth: 2, color: luma.onAccent),
                 )
-              : const Text('Send invite'),
+              : Text(t.secureChatSendInvite),
         ),
       ],
     );

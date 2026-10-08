@@ -1,11 +1,12 @@
 // Auto-ported from Roblox Server Hosting Tycoon
 
+import '../../../../../l10n/app_localizations.dart';
+
 enum StorageType { hdd, sataSSD, nvmeSSD, enterpriseSSD }
 enum StorageInterface { sata, nvme }
 
 class Drive {
   final String id;
-  final String name;
   final StorageType storageType;
   final StorageInterface interfaceType;
   final int capacityGB;
@@ -17,7 +18,6 @@ class Drive {
 
   const Drive({
     required this.id,
-    required this.name,
     required this.storageType,
     required this.interfaceType,
     required this.capacityGB,
@@ -27,12 +27,32 @@ class Drive {
     required this.failureRatePerYear,
     required this.price,
   });
+
+  String name(L t) => switch (id) {
+        'ENTERPRISE_SSD_8TB' => t.serverTycoonDriveEnterpriseSsd8tb,
+        'GENERIC_128GB_SSD' => t.serverTycoonDriveGeneric128gbSsd,
+        'HDD_500GB' => t.serverTycoonDriveGeneric500gbHdd,
+        'KIOXIA_CM7_15TB' => t.serverTycoonDriveKioxiaCm7Nvme,
+        'MICRON_9400_PRO_30TB' => t.serverTycoonDriveMicron9400Nvme,
+        'SOLIDIGM_D5_61TB' => t.serverTycoonDriveSolidigmD5Nvme,
+        'TOSHIBA_MG10_20TB' => t.serverTycoonDriveToshibaMg10Hdd,
+        'WD_GOLD_24TB' => t.serverTycoonDriveWdGold24tbHdd,
+        'WD_RED_4TB' => t.serverTycoonDriveWdRed4tbNasHdd,
+        'CRUCIAL_MX500_1TB' => 'Crucial MX500 1TB SATA SSD',
+        'KINGSTON_NV3_1TB' => 'Kingston NV3 1TB NVMe',
+        'SAMSUNG_870_EVO_4TB' => 'Samsung 870 EVO 4TB SATA SSD',
+        'SAMSUNG_990_EVO_PLUS_1TB' => 'Samsung 990 EVO Plus 1TB NVMe',
+        'SAMSUNG_990_PRO_4TB' => 'Samsung 990 Pro 4TB',
+        'SEAGATE_EXOS_16TB' => 'Seagate Exos X18 16TB',
+        'SEAGATE_IRONWOLF_8TB' => 'Seagate IronWolf 8TB',
+        'WD_BLACK_SN850X_2TB' => 'WD Black SN850X 2TB',
+        _ => id,
+      };
 }
 
 final Map<String, Drive> storageById = {
   'HDD_500GB': const Drive(
     id: 'HDD_500GB',
-    name: 'Generic 500GB HDD',
     storageType: StorageType.hdd,
     interfaceType: StorageInterface.sata,
     capacityGB: 500,
@@ -44,7 +64,6 @@ final Map<String, Drive> storageById = {
   ),
   'WD_RED_4TB': const Drive(
     id: 'WD_RED_4TB',
-    name: 'WD Red 4TB NAS HDD',
     storageType: StorageType.hdd,
     interfaceType: StorageInterface.sata,
     capacityGB: 4000,
@@ -56,7 +75,6 @@ final Map<String, Drive> storageById = {
   ),
   'SEAGATE_IRONWOLF_8TB': const Drive(
     id: 'SEAGATE_IRONWOLF_8TB',
-    name: 'Seagate IronWolf 8TB',
     storageType: StorageType.hdd,
     interfaceType: StorageInterface.sata,
     capacityGB: 8000,
@@ -68,7 +86,6 @@ final Map<String, Drive> storageById = {
   ),
   'SEAGATE_EXOS_16TB': const Drive(
     id: 'SEAGATE_EXOS_16TB',
-    name: 'Seagate Exos X18 16TB',
     storageType: StorageType.hdd,
     interfaceType: StorageInterface.sata,
     capacityGB: 16000,
@@ -80,7 +97,6 @@ final Map<String, Drive> storageById = {
   ),
   'KINGSTON_NV3_1TB': const Drive(
     id: 'KINGSTON_NV3_1TB',
-    name: 'Kingston NV3 1TB NVMe',
     storageType: StorageType.nvmeSSD,
     interfaceType: StorageInterface.nvme,
     capacityGB: 1000,
@@ -92,7 +108,6 @@ final Map<String, Drive> storageById = {
   ),
   'WD_BLACK_SN850X_2TB': const Drive(
     id: 'WD_BLACK_SN850X_2TB',
-    name: 'WD Black SN850X 2TB',
     storageType: StorageType.nvmeSSD,
     interfaceType: StorageInterface.nvme,
     capacityGB: 2000,
@@ -104,7 +119,6 @@ final Map<String, Drive> storageById = {
   ),
   'SAMSUNG_990_PRO_4TB': const Drive(
     id: 'SAMSUNG_990_PRO_4TB',
-    name: 'Samsung 990 Pro 4TB',
     storageType: StorageType.nvmeSSD,
     interfaceType: StorageInterface.nvme,
     capacityGB: 4000,
@@ -116,7 +130,6 @@ final Map<String, Drive> storageById = {
   ),
   'ENTERPRISE_SSD_8TB': const Drive(
     id: 'ENTERPRISE_SSD_8TB',
-    name: 'Enterprise NVMe U.2 8TB',
     storageType: StorageType.enterpriseSSD,
     interfaceType: StorageInterface.nvme,
     capacityGB: 8000,
@@ -128,7 +141,6 @@ final Map<String, Drive> storageById = {
   ),
   'CRUCIAL_MX500_1TB': const Drive(
     id: 'CRUCIAL_MX500_1TB',
-    name: 'Crucial MX500 1TB SATA SSD',
     storageType: StorageType.sataSSD,
     interfaceType: StorageInterface.sata,
     capacityGB: 1000,
@@ -140,7 +152,6 @@ final Map<String, Drive> storageById = {
   ),
   'SAMSUNG_870_EVO_4TB': const Drive(
     id: 'SAMSUNG_870_EVO_4TB',
-    name: 'Samsung 870 EVO 4TB SATA SSD',
     storageType: StorageType.sataSSD,
     interfaceType: StorageInterface.sata,
     capacityGB: 4000,
@@ -152,7 +163,6 @@ final Map<String, Drive> storageById = {
   ),
   'TOSHIBA_MG10_20TB': const Drive(
     id: 'TOSHIBA_MG10_20TB',
-    name: 'Toshiba MG10 20TB Enterprise HDD',
     storageType: StorageType.hdd,
     interfaceType: StorageInterface.sata,
     capacityGB: 20000,
@@ -164,7 +174,6 @@ final Map<String, Drive> storageById = {
   ),
   'WD_GOLD_24TB': const Drive(
     id: 'WD_GOLD_24TB',
-    name: 'WD Gold 24TB Enterprise HDD',
     storageType: StorageType.hdd,
     interfaceType: StorageInterface.sata,
     capacityGB: 24000,
@@ -176,7 +185,6 @@ final Map<String, Drive> storageById = {
   ),
   'KIOXIA_CM7_15TB': const Drive(
     id: 'KIOXIA_CM7_15TB',
-    name: 'Kioxia CM7-R 15.36TB Enterprise NVMe',
     storageType: StorageType.enterpriseSSD,
     interfaceType: StorageInterface.nvme,
     capacityGB: 15360,
@@ -188,7 +196,6 @@ final Map<String, Drive> storageById = {
   ),
   'MICRON_9400_PRO_30TB': const Drive(
     id: 'MICRON_9400_PRO_30TB',
-    name: 'Micron 9400 Pro 30.72TB Enterprise NVMe',
     storageType: StorageType.enterpriseSSD,
     interfaceType: StorageInterface.nvme,
     capacityGB: 30720,
@@ -200,7 +207,6 @@ final Map<String, Drive> storageById = {
   ),
   'SOLIDIGM_D5_61TB': const Drive(
     id: 'SOLIDIGM_D5_61TB',
-    name: 'Solidigm D5-P5336 61.44TB Enterprise NVMe',
     storageType: StorageType.enterpriseSSD,
     interfaceType: StorageInterface.nvme,
     capacityGB: 61440,
@@ -212,7 +218,6 @@ final Map<String, Drive> storageById = {
   ),
   'GENERIC_128GB_SSD': const Drive(
     id: 'GENERIC_128GB_SSD',
-    name: 'Generic 128GB SATA SSD',
     storageType: StorageType.sataSSD,
     interfaceType: StorageInterface.sata,
     capacityGB: 128,
@@ -224,7 +229,6 @@ final Map<String, Drive> storageById = {
   ),
   'SAMSUNG_990_EVO_PLUS_1TB': const Drive(
     id: 'SAMSUNG_990_EVO_PLUS_1TB',
-    name: 'Samsung 990 EVO Plus 1TB NVMe',
     storageType: StorageType.nvmeSSD,
     interfaceType: StorageInterface.nvme,
     capacityGB: 1000,

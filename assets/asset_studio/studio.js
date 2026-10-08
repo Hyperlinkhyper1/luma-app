@@ -11,6 +11,8 @@
   const config = window.STUDIO || {};
   const catalog = config.catalog || [];
   const $ = (id) => document.getElementById(id);
+  const tr = (text) => window.LumaSceneI18n?.translate(text) || text;
+  const fmt = (key, args, fallback) => window.LumaSceneI18n?.format(key, args) || fallback;
   const HELPER_NAMES = ['box', 'cylinder', 'sphere', 'light', 'label'];
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -79,7 +81,10 @@
   media.addEventListener('change', () => { if (themeSetting() === 'auto') applyTheme(); });
   // luma re-sends the theme when the app's own theme changes.
   const receiveTheme = (value) => { config.theme = value; applyTheme(); };
-  window.studioReceive = (message) => { if (message?.type === 'theme') receiveTheme(message.theme); };
+  window.studioReceive = (message) => {
+    if (message?.type === 'theme') receiveTheme(message.theme);
+    if (message?.type === 'luma-locale') window.LumaSceneI18n?.set(message);
+  };
   window.chrome?.webview?.addEventListener?.('message', (event) => {
     try {
       const message = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
@@ -333,7 +338,7 @@
     renderer.toneMapping = T.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
     renderer.domElement.setAttribute('role', 'img');
-    renderer.domElement.setAttribute('aria-label', 'Interactive 3D model. Drag to orbit and scroll to zoom.');
+    renderer.domElement.setAttribute('aria-label', tr('Interactive 3D model. Drag to orbit and scroll to zoom.'));
     container.appendChild(renderer.domElement);
 
     const scene = new T.Scene();
@@ -657,7 +662,7 @@
     toastTimer = setTimeout(() => { root.innerHTML = ''; }, 3400);
   }
   async function copy(text, message = 'Copied to clipboard') {
-    try { await copyText(text); notify(message); } catch { notify('Clipboard unavailable. Use Download .js instead.', true); }
+    try { await copyText(text); notify(message); } catch { notify(tr('Clipboard unavailable. Use Download .js instead.'), true); }
   }
 
   const TOKENS = new RegExp(`("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*'|\\/\\/.*|0x[\\da-fA-F]+|\\b(?:function|const|let|for|of|return|if|else|true|false)\\b|\\b(?:${[...HELPER_NAMES, ...catalog.map((a) => a.functionName)].join('|')})\\b|\\b\\d*\\.?\\d+\\b)`, 'g');
@@ -673,10 +678,11 @@
   function codeView(code, filename, {compact = false, copyLabel = 'Copy'} = {}) {
     const lines = code.trimEnd().split('\n').map((line, index) =>
       `<span class="code-line"><span class="line-number" aria-hidden="true">${index + 1}</span><span class="line-content">${line.split(TOKENS).map((t) => { const c = tokenClass(t); return c ? `<span class="${c}">${escapeHtml(t)}</span>` : escapeHtml(t); }).join('') || ' '}</span></span>`).join('');
-    return `<div class="code-view ${compact ? 'compact' : ''}"><div class="code-file-bar"><span>${icon('fileCode2', 14)}${escapeHtml(filename)}</span><button class="small-text-button" data-copy>${icon('copy', 13)}${copyLabel}</button></div><div class="code-scroll" tabindex="0" role="region" aria-label="${escapeHtml(filename)} source code"><pre><code>${lines}</code></pre></div></div>`;
+    return `<div class="code-view ${compact ? 'compact' : ''}"><div class="code-file-bar"><span>${icon('fileCode2', 14)}${escapeHtml(filename)}</span><button class="small-text-button" data-copy>${icon('copy', 13)}${copyLabel}</button></div><div class="code-scroll" tabindex="0" role="region" aria-label="${escapeHtml(fmt('sceneAssetStudioSourceCodeAria', {filename}, `${filename} source code`))}"><pre><code data-luma-user-content>${lines}</code></pre></div></div>`;
   }
 
   let closeDialog = null;
+  let refreshDialogOnLocale = null;
   function openDialog({title, subtitle, className, body, footer}) {
     closeDialog?.();
     const root = $('dialog-root');
@@ -697,6 +703,7 @@
       document.removeEventListener('keydown', onKey, true);
       root.innerHTML = '';
       closeDialog = null;
+      refreshDialogOnLocale = null;
       document.body.style.overflow = state.expanded ? 'hidden' : '';
       previous?.focus?.();
     }
@@ -717,7 +724,7 @@
       body: (el) => {
         const draw = () => {
           el.innerHTML = `<div class="export-tabs" role="tablist" aria-label="Export sections"><button role="tab" data-export="function" aria-selected="${tabName === 'function'}" class="${tabName === 'function' ? 'active' : ''}">${icon('code2', 15)}Model function<span>JS</span></button><button role="tab" data-export="wiring" aria-selected="${tabName === 'wiring'}" class="${tabName === 'wiring' ? 'active' : ''}">${icon('layers2', 15)}Integration<span>JS + DART</span></button></div>`
-            + `<div class="export-content">${tabName === 'function' ? codeView(a.source, fileName) : `<div class="wiring-content"><h3>1. Add to your facility router</h3>${codeView(a.facilityLine, 'facility()', {compact: true})}<h3>2. Register in the Dart catalog</h3>${codeView(a.catalogLine, 'AirportFacilityDef', {compact: true})}<p>Catalog footprint: ${a.width} x ${a.depth} m. The model accepts your donor's <code>w</code> and <code>d</code> parameters.</p></div>`}</div>`
+            + `<div class="export-content">${tabName === 'function' ? codeView(a.source, fileName) : `<div class="wiring-content"><h3>1. Add to your facility router</h3>${codeView(a.facilityLine, 'facility()', {compact: true})}<h3>2. Register in the Dart catalog</h3>${codeView(a.catalogLine, 'AirportFacilityDef', {compact: true})}<p>${escapeHtml(fmt('sceneAssetStudioCatalogFootprint', {width: a.width, depth: a.depth}, `Catalog footprint: ${a.width} x ${a.depth} m. The model accepts your donor's w and d parameters.`))}</p></div>`}</div>`
             + `<div class="export-footnote">${icon('info', 14)}<span>Uses your existing <code>box()</code> and <code>light()</code> helpers. No assets included or required.</span></div>`;
           el.querySelectorAll('[data-export]').forEach((b) => { b.onclick = () => { tabName = b.dataset.export; draw(); }; });
           const copies = el.querySelectorAll('[data-copy]');
@@ -728,8 +735,9 @@
       },
       footer: `<footer class="dialog-footer"><button class="button button-secondary" data-download>${icon('arrowDownToLine', 15)}Download .js</button><button class="button button-primary" data-copy-full>${icon('copy', 15)}Copy full snippet</button></footer>`,
     });
-    dialog.querySelector('[data-download]').onclick = () => { saveFile(fileName, 'text/javascript', textDataUrl(a.source, 'text/javascript')); notify(`${fileName} downloaded`); };
+    dialog.querySelector('[data-download]').onclick = () => { saveFile(fileName, 'text/javascript', textDataUrl(a.source, 'text/javascript')); notify(fmt('sceneAssetStudioFileDownloaded', {filename: fileName}, `${fileName} downloaded`)); };
     dialog.querySelector('[data-copy-full]').onclick = () => copy(a.fullSource, 'Function and both wiring lines copied');
+    refreshDialogOnLocale = () => openExport(tabName);
   }
 
   function openGuide() {
@@ -741,6 +749,7 @@
       footer: `<footer class="dialog-footer"><span class="guide-footer-label">A simpler way to make a little world.</span><button class="button button-primary" data-back>Back to the studio${icon('arrowUpRight', 15)}</button></footer>`,
     });
     dialog.querySelector('[data-back]').onclick = () => closeDialog?.();
+    refreshDialogOnLocale = () => openGuide();
   }
 
   // ── Rendering the chrome ────────────────────────────────────────────────
@@ -750,14 +759,17 @@
   let renderedSourceFor = null;
   function render() {
     const a = asset(), r = state.report, s = state.settings;
-    document.title = `${a.name} · Airform Asset Studio`;
-    $('asset-category').textContent = a.category.toUpperCase();
-    $('asset-name').textContent = a.name;
-    $('asset-description').textContent = a.description;
+    document.title = `${tr(a.name)} · ${tr('Airform Asset Studio')}`;
+    $('asset-category').textContent = tr(a.category).toUpperCase();
+    $('asset-name').textContent = tr(a.name);
+    $('asset-description').textContent = tr(a.description);
     $('asset-code').textContent = a.collectionCode;
-    $('save-status').textContent = state.saved ? 'Saved locally' : 'Session workspace';
+    $('save-status').textContent = state.saved ? tr('Saved locally') : tr('Session workspace');
     for (const b of $('asset-switcher').children) {
       const on = b.dataset.asset === a.id;
+      const item = findAsset(b.dataset.asset);
+      b.querySelector('strong').textContent = tr(item.name);
+      b.querySelector('span').textContent = tr(item.keywords);
       b.classList.toggle('active', on);
       b.setAttribute('aria-selected', on);
     }
@@ -774,15 +786,16 @@
     $('camera-select').hidden = state.tab !== 'preview';
     if (state.tab === 'source' && renderedSourceFor !== a.id) {
       renderedSourceFor = a.id;
+      $('source-code').setAttribute('data-luma-user-content', '');
       $('source-code').innerHTML = codeView(a.source, `${a.functionName}.js`);
-      $('source-code').querySelector('[data-copy]').onclick = () => copy(asset().source, 'Model function copied');
+      $('source-code').querySelector('[data-copy]').onclick = () => copy(asset().source, tr('Model function copied'));
     }
     $('view-select').value = state.view;
     $('viewer').classList.toggle('is-expanded', state.expanded);
     $('expand-backdrop').hidden = !state.expanded;
     const expand = $('expand-button');
     expand.innerHTML = icon(state.expanded ? 'minimize2' : 'expand', 16);
-    expand.setAttribute('aria-label', state.expanded ? 'Collapse viewport' : 'Expand viewport');
+    expand.setAttribute('aria-label', tr(state.expanded ? 'Collapse viewport' : 'Expand viewport'));
     expand.title = expand.getAttribute('aria-label');
 
     for (const b of document.querySelectorAll('[data-interaction]')) {
@@ -797,12 +810,12 @@
       b.setAttribute('aria-pressed', on);
     }
     $('model-scene').classList.toggle('is-panning', state.interaction === 'pan');
-    $('orbit-hint').textContent = state.interaction === 'pan' ? 'Drag to pan' : 'Drag to orbit';
+    $('orbit-hint').textContent = tr(state.interaction === 'pan' ? 'Drag to pan' : 'Drag to orbit');
     const turntable = $('turntable-button');
     turntable.classList.toggle('utility-active', state.autoRotate);
     turntable.innerHTML = icon(state.autoRotate ? 'pause' : 'play', 15);
-    turntable.setAttribute('aria-label', state.autoRotate ? 'Pause turntable' : 'Start turntable');
-    turntable.title = state.autoRotate ? 'Pause turntable' : 'Auto orbit';
+    turntable.setAttribute('aria-label', tr(state.autoRotate ? 'Pause turntable' : 'Start turntable'));
+    turntable.title = tr(state.autoRotate ? 'Pause turntable' : 'Auto orbit');
     $('dimension-labels').classList.toggle('is-hidden', !s.bounds || !sceneApi);
     $('width-label').textContent = `${s.width.toFixed(1)} m`;
     $('depth-label').textContent = `${s.depth.toFixed(1)} m`;
@@ -835,8 +848,8 @@
     $('model-height').textContent = `${(r ? r.height : a.maxHeight).toFixed(2)} m`;
     const colors = palette();
     const color = colors[state.selectedColor] || colors[0];
-    $('palette').innerHTML = colors.map((item, index) => `<button class="color-swatch ${index === state.selectedColor ? 'active' : ''}" data-color="${index}" style="--swatch:${item.color};--check-color:${item.light ? '#46544a' : '#ffffff'}" title="${escapeHtml(item.name)}: ${item.color}" aria-label="${escapeHtml(item.name)}, ${item.color}" aria-pressed="${index === state.selectedColor}">${index === state.selectedColor ? icon('check', 13) : ''}</button>`).join('');
-    $('color-name').textContent = color.name;
+    $('palette').innerHTML = colors.map((item, index) => `<button class="color-swatch ${index === state.selectedColor ? 'active' : ''}" data-color="${index}" style="--swatch:${item.color};--check-color:${item.light ? '#46544a' : '#ffffff'}" title="${escapeHtml(tr(item.name))}: ${item.color}" aria-label="${escapeHtml(tr(item.name))}, ${item.color}" aria-pressed="${index === state.selectedColor}">${index === state.selectedColor ? icon('check', 13) : ''}</button>`).join('');
+    $('color-name').textContent = tr(color.name);
     $('color-value').textContent = color.color;
     for (const b of document.querySelectorAll('.toggle[data-setting]')) {
       const on = s[b.dataset.setting];
@@ -845,19 +858,19 @@
     }
 
     $('checks-icon').classList.toggle('has-error', !!(r && !r.passed));
-    $('checks-title').textContent = r?.passed ? 'Built to fit.' : 'Geometry checks';
+    $('checks-title').textContent = tr(r?.passed ? 'Built to fit.' : 'Geometry checks');
     $('check-list').innerHTML = [
-      checkItem(r?.rotations.every(Boolean), 'Footprint-tight', 'Inside the bounds at all 4 rotations'),
-      checkItem(r?.grounded, 'Grounded at y = 0', 'No geometry below the ground'),
-      checkItem(r?.heightValid, 'Within the height limit', `${(r ? r.height : a.maxHeight).toFixed(2)} m of a ${a.maxHeight.toFixed(2)} m maximum`),
-      checkItem(r ? r.helperCalls < a.maxCalls : undefined, `${r?.helperCalls ?? '--'} helper calls`, `Under the ${a.maxCalls}-call geometry budget`),
-      checkItem(r?.colorsOnly, 'Vertex colors only', 'No model textures or font assets'),
-      checkItem(r?.mergeSafe, 'Local geometry merge passed', 'Static meshes with baked transforms'),
+      checkItem(r?.rotations.every(Boolean), tr('Footprint-tight'), tr('Inside the bounds at all 4 rotations')),
+      checkItem(r?.grounded, tr('Grounded at y = 0'), tr('No geometry below the ground')),
+      checkItem(r?.heightValid, tr('Within the height limit'), fmt('sceneAssetStudioHeightCheckDetail', {height: (r ? r.height : a.maxHeight).toFixed(2), maximum: a.maxHeight.toFixed(2)}, `${(r ? r.height : a.maxHeight).toFixed(2)} m of a ${a.maxHeight.toFixed(2)} m maximum`)),
+      checkItem(r ? r.helperCalls < a.maxCalls : undefined, `${r?.helperCalls ?? '--'} ${tr('helper calls')}`, fmt('sceneAssetStudioHelperCallBudget', {calls: a.maxCalls}, `Under the ${a.maxCalls}-call geometry budget`)),
+      checkItem(r?.colorsOnly, tr('Vertex colors only'), tr('No model textures or font assets')),
+      checkItem(r?.mergeSafe, tr('Local geometry merge passed'), tr('Static meshes with baked transforms')),
     ].join('');
 
     const status = $('status-ready');
     status.classList.toggle('status-error', !!(r && !r.passed));
-    $('status-text').textContent = r?.passed ? 'Geometry checks passed' : r ? 'Review geometry checks' : 'Preparing geometry';
+    $('status-text').textContent = tr(r?.passed ? 'Geometry checks passed' : r ? 'Review geometry checks' : 'Preparing geometry');
     $('status-calls').textContent = r?.helperCalls ?? '--';
     $('status-triangles').textContent = r?.triangles ?? '--';
   }
@@ -871,13 +884,13 @@
     if (id === state.assetId) return;
     const next = findAsset(id);
     set({assetId: id, settings: {...state.settings, width: next.width, depth: next.depth}, report: null, selectedColor: 0});
-    notify(`Loaded ${next.name}`);
+    notify(fmt('sceneAssetStudioLoadedAsset', {name: tr(next.name)}, `Loaded ${next.name}`));
   }
   function capture() {
     const image = sceneApi?.capture();
-    if (!image) { notify('A WebGL preview is required to save an image.', true); return; }
+    if (!image) { notify(tr('A WebGL preview is required to save an image.'), true); return; }
     saveFile(`${asset().functionName}.png`, 'image/png', image);
-    notify(`Preview saved as ${asset().functionName}.png`);
+    notify(fmt('sceneAssetStudioPreviewSaved', {filename: `${asset().functionName}.png`}, `Preview saved as ${asset().functionName}.png`));
   }
   const actions = {
     home: () => { set({tab: 'preview'}); resetCamera(); },
@@ -891,22 +904,22 @@
     'zoom-in': () => sceneApi?.zoomBy(10),
     'zoom-out': () => sceneApi?.zoomBy(-10),
     'copy-full': () => copy(asset().fullSource, 'Function and both wiring lines copied'),
-    'copy-color': () => { const c = palette()[state.selectedColor] || palette()[0]; copy(c.code, `${c.name} color copied`); },
+    'copy-color': () => { const c = palette()[state.selectedColor] || palette()[0]; copy(c.code, fmt('sceneAssetStudioColorCopied', {color: tr(c.name)}, `${c.name} color copied`)); },
     'reset-all': () => {
       set({settings: {...DEFAULTS, width: asset().width, depth: asset().depth}, wireframe: false, interaction: 'orbit', selectedColor: 0});
       resetCamera();
-      notify('Model restored to the original specification');
+      notify(tr('Model restored to the original specification'));
     },
     validate: () => {
       const result = sceneApi?.validate();
-      if (!result) { notify('Live validation requires a WebGL-enabled browser.', true); return; }
-      notify(result.passed ? 'All 6 geometry checks passed' : 'A geometry check needs attention', !result.passed);
+      if (!result) { notify(tr('Live validation requires a WebGL-enabled browser.'), true); return; }
+      notify(tr(result.passed ? 'All 6 geometry checks passed' : 'A geometry check needs attention'), !result.passed);
     },
   };
 
   function bind() {
     $('asset-switcher').innerHTML = catalog.map((item) => `<button role="tab" data-asset="${item.id}"><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.keywords)}</span></button>`).join('');
-    $('rotation-buttons').innerHTML = [0, 1, 2, 3].map((v) => `<button data-rotation="${v}" title="Rotate to ${v * 90} degrees">${v * 90}&deg;</button>`).join('');
+    $('rotation-buttons').innerHTML = [0, 1, 2, 3].map((v) => `<button data-rotation="${v}" title="${escapeHtml(window.LumaSceneI18n?.format('sceneAssetStudioRotateToDegrees', {degrees: v * 90}) || '')}">${v * 90}&deg;</button>`).join('');
     document.addEventListener('click', (event) => {
       const el = event.target.closest('button, a');
       if (!el || el.closest('#dialog-root') || el.closest('#toast-root')) return;
@@ -956,6 +969,10 @@
   applyTheme();
   hydrateIcons();
   bind();
+  window.addEventListener('luma-locale-changed', () => {
+    render();
+    refreshDialogOnLocale?.();
+  });
   render();
   try {
     sceneApi = createScene($('canvas-mount'), sceneOptions(), {

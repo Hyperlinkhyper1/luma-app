@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import '../../../../l10n/current_l.dart';
+
 /// Thrown when an expression can't be read, parsed or evaluated. The message is
 /// already written for the user — show `toString()` straight in the display.
 class CalcException implements Exception {
@@ -40,7 +42,7 @@ class CalcExpression {
   /// text isn't a valid expression.
   factory CalcExpression.parse(String source) {
     final trimmed = source.trim();
-    if (trimmed.isEmpty) throw const CalcException('Nothing to work out yet.');
+    if (trimmed.isEmpty) throw CalcException(currentL.calcNothingToWorkOut);
     final parser = _Parser(_tokenize(trimmed));
     final root = parser.parseAll();
     return CalcExpression._(root, trimmed, parser.usesX);
@@ -75,7 +77,7 @@ class CalcExpression {
 /// a decimal tail, float noise (0.1 + 0.2) rounded away, and very large or very
 /// small values in scientific notation that this same parser can read back.
 String formatCalcNumber(double value) {
-  if (value.isNaN) return 'Undefined';
+  if (value.isNaN) return currentL.calcUndefined;
   if (value.isInfinite) return value.isNegative ? '-∞' : '∞';
   if (value == 0) return '0';
 
@@ -177,7 +179,7 @@ List<_Token> _tokenize(String input) {
       }
       final text = s.substring(start, i);
       final value = double.tryParse(text);
-      if (value == null) throw CalcException('"$text" is not a number.');
+      if (value == null) throw CalcException(currentL.calcNotANumber(text));
       tokens.add(_Token(_TokenKind.number, text, value));
       continue;
     }
@@ -213,7 +215,7 @@ List<_Token> _tokenize(String input) {
       continue;
     }
 
-    throw CalcException('I don\'t understand "$c".');
+    throw CalcException(currentL.calcUnknownCharacter(c));
   }
 
   tokens.add(const _Token(_TokenKind.end, ''));
@@ -234,7 +236,7 @@ List<String> _splitName(String name) {
         break;
       }
     }
-    if (matched == 0) throw CalcException('I don\'t know "$name".');
+    if (matched == 0) throw CalcException(currentL.calcUnknownName(name));
     parts.add(name.substring(start, start + matched));
     start += matched;
   }
@@ -273,7 +275,7 @@ class _Parser {
   _Node parseAll() {
     final node = _expression();
     if (_peek.kind != _TokenKind.end) {
-      throw CalcException('"${_peek.text}" doesn\'t belong there.');
+      throw CalcException(currentL.calcUnexpectedToken(_peek.text));
     }
     return node;
   }
@@ -362,16 +364,16 @@ class _Parser {
           _expect(')');
           return inner;
         }
-        throw CalcException('"${token.text}" doesn\'t belong there.');
+        throw CalcException(currentL.calcUnexpectedToken(token.text));
 
       case _TokenKind.end:
-        throw const CalcException('The expression stops too early.');
+        throw CalcException(currentL.calcStopsTooEarly);
     }
   }
 
   _Node _call(String name) {
     final function = _functions[name];
-    if (function == null) throw CalcException('I don\'t know "$name".');
+    if (function == null) throw CalcException(currentL.calcUnknownName(name));
 
     final args = <_Node>[];
     if (_isSymbol('(')) {
@@ -393,8 +395,12 @@ class _Parser {
     if (args.length < function.minArgs || args.length > function.maxArgs) {
       throw CalcException(
         function.minArgs == function.maxArgs
-            ? '$name needs ${function.minArgs} value(s).'
-            : '$name needs ${function.minArgs} to ${function.maxArgs} values.',
+            ? currentL.calcArgCountExact(name, function.minArgs)
+            : currentL.calcArgCountRange(
+                name,
+                function.minArgs,
+                function.maxArgs,
+              ),
       );
     }
     return _Call(name, function, args);
@@ -403,7 +409,9 @@ class _Parser {
   void _expect(String symbol) {
     if (!_isSymbol(symbol)) {
       throw CalcException(
-        symbol == ')' ? 'A bracket is left open.' : 'Expected "$symbol".',
+        symbol == ')'
+            ? currentL.calcBracketLeftOpen
+            : currentL.calcExpectedSymbol(symbol),
       );
     }
     _advance();
@@ -463,7 +471,7 @@ class _Binary extends _Node {
       case '^':
         return _power(a, b);
     }
-    throw CalcException('Unknown operator "$op".');
+    throw CalcException(currentL.calcUnexpectedToken(op));
   }
 }
 
@@ -529,7 +537,7 @@ double _power(double base, double exponent) {
 
 double _factorial(double value) {
   if (value < 0 || value != value.roundToDouble()) {
-    throw const CalcException('Factorial only works on whole numbers from 0.');
+    throw CalcException(currentL.calcFactorialWholeNumbers);
   }
   if (value > 170) return double.infinity;
   var result = 1.0;
@@ -541,7 +549,7 @@ double _factorial(double value) {
 
 double _combinations(double n, double r) {
   if (n < 0 || r < 0 || n != n.roundToDouble() || r != r.roundToDouble()) {
-    throw const CalcException('nCr and nPr need whole numbers from 0.');
+    throw CalcException(currentL.calcCombinatoricsWholeNumbers);
   }
   if (r > n) return 0;
   final k = math.min(r, n - r).toInt();
@@ -554,7 +562,7 @@ double _combinations(double n, double r) {
 
 double _permutations(double n, double r) {
   if (n < 0 || r < 0 || n != n.roundToDouble() || r != r.roundToDouble()) {
-    throw const CalcException('nCr and nPr need whole numbers from 0.');
+    throw CalcException(currentL.calcCombinatoricsWholeNumbers);
   }
   if (r > n) return 0;
   var result = 1.0;

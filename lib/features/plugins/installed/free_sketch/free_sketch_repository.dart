@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../storage/storage_guard.dart';
 import 'model/sketch_meta.dart';
 
@@ -103,7 +104,7 @@ class FreeSketchRepository extends ChangeNotifier {
     int background = 0xFFFFFFFF,
     bool showBackground = true,
     Uint8List? firstLayerPng,
-    String firstLayerName = 'Layer 1',
+    String? firstLayerName,
   }) async {
     final docs = await _docsDir();
     var id = 's${DateTime.now().millisecondsSinceEpoch}';
@@ -128,7 +129,9 @@ class FreeSketchRepository extends ChangeNotifier {
       background: background,
       showBackground: showBackground,
       activeLayerId: 1,
-      layers: [SketchLayerMeta(id: 1, name: firstLayerName, file: file)],
+      layers: [
+        SketchLayerMeta(id: 1, name: firstLayerName ?? currentL.freeSketchLayerNumber(1), file: file),
+      ],
     );
     await _writeMeta(dir, meta);
     StorageGuard.instance.scheduleRefresh();
@@ -259,7 +262,7 @@ class FreeSketchRepository extends ChangeNotifier {
     final now = DateTime.now();
     final copy = SketchMeta(
       id: copyId,
-      title: '${meta.title} copy',
+      title: currentL.freeSketchCopyTitle(meta.title),
       width: meta.width,
       height: meta.height,
       created: now,
@@ -307,7 +310,7 @@ class FreeSketchRepository extends ChangeNotifier {
   Future<void> importData(Object? data) async {
     final docs = data is Map ? data['docs'] : null;
     if (docs is! Map) {
-      throw const FormatException('Invalid sketch snapshot.');
+      throw FormatException(currentL.freeSketchInvalidSnapshot);
     }
     final dir = await _docsDir();
     final incoming = <String>{};

@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/current_l.dart';
 import '../../../../converter/file_saver.dart';
 import '../model/whiteboard_element.dart';
 import '../ui/whiteboard_painter.dart';
@@ -24,7 +25,7 @@ class WhiteboardExport {
     double pixelRatio = 2,
   }) async {
     if (elements.isEmpty) {
-      throw StateError('There is nothing on this board to export.');
+      throw StateError(currentL.whiteboardExportEmpty);
     }
     final image = await render(
       elements: elements,
@@ -33,13 +34,13 @@ class WhiteboardExport {
     );
     try {
       final data = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (data == null) throw StateError('The image could not be encoded.');
+      if (data == null) throw StateError(currentL.whiteboardExportEncodeFailed);
       final result = await saveConvertedFile(
         bytes: data.buffer.asUint8List(),
         suggestedName: '${fileNameFor(title)}.png',
         mimeType: 'image/png',
         extensions: const ['png'],
-        dialogTitle: 'Save whiteboard image',
+        dialogTitle: currentL.whiteboardExportDialogTitle,
       );
       return result.saved ? result.summary : null;
     } finally {

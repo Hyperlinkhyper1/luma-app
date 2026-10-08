@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import 'ai_catalog_scope.dart';
 import 'ai_leaderboard_metric.dart';
@@ -59,6 +60,7 @@ class _AiLeaderboardGraphViewState extends State<AiLeaderboardGraphView> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final repo = AiCatalogScope.of(context);
     return ListenableBuilder(
       listenable: repo,
@@ -73,12 +75,12 @@ class _AiLeaderboardGraphViewState extends State<AiLeaderboardGraphView> {
           );
         }
         if (repo.catalog.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.all(24),
+          return Padding(
+            padding: const EdgeInsets.all(24),
             child: LumaEmptyState(
               icon: Icons.scatter_plot_outlined,
-              title: 'No model data yet',
-              subtitle: 'The graph needs the model catalogue to plot.',
+              title: t.aiLeaderboardGraphEmptyTitle,
+              subtitle: t.aiLeaderboardGraphEmptySubtitle,
             ),
           );
         }
@@ -95,8 +97,7 @@ class _AiLeaderboardGraphViewState extends State<AiLeaderboardGraphView> {
                 child: points.length < 2
                     ? Center(
                         child: Text(
-                          'Not enough models have both ${_x.label} and '
-                          '${_y.label} to plot.',
+                          t.aiLeaderboardGraphNotEnough(_x.label, _y.label),
                           textAlign: TextAlign.center,
                           style: TextStyle(color: context.luma.textMuted),
                         ),
@@ -167,11 +168,12 @@ class _AxisControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('X AXIS', style: _labelStyle(luma)),
+          Text(t.aiLeaderboardGraphXAxis, style: _labelStyle(luma)),
           const SizedBox(height: 6),
           // The other axis's metric is excluded here — plotting a value
           // against itself is never a useful question.
@@ -181,7 +183,7 @@ class _AxisControls extends StatelessWidget {
             _LogToggle(value: logX, onChanged: onLogX),
           ],
           const SizedBox(height: 18),
-          Text('Y AXIS', style: _labelStyle(luma)),
+          Text(t.aiLeaderboardGraphYAxis, style: _labelStyle(luma)),
           const SizedBox(height: 6),
           _MetricDropdown(value: y, exclude: x, onChanged: onY),
           if (y.logUseful) ...[
@@ -189,7 +191,7 @@ class _AxisControls extends StatelessWidget {
             _LogToggle(value: logY, onChanged: onLogY),
           ],
           const SizedBox(height: 22),
-          Text('VENDORS', style: _labelStyle(luma)),
+          Text(t.aiLeaderboardGraphVendors, style: _labelStyle(luma)),
           const SizedBox(height: 8),
           Wrap(
             spacing: 10,
@@ -216,10 +218,10 @@ class _AxisControls extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 22),
-          Text('HIGHLIGHT MODELS', style: _labelStyle(luma)),
+          Text(t.aiLeaderboardGraphHighlight, style: _labelStyle(luma)),
           const SizedBox(height: 4),
           Text(
-            'Pick models to pick out on the plot.',
+            t.aiLeaderboardGraphHighlightHint,
             style: TextStyle(color: luma.textMuted, fontSize: 11),
           ),
           const SizedBox(height: 8),
@@ -359,6 +361,7 @@ class _LogToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Row(
       children: [
         Switch(
@@ -367,7 +370,7 @@ class _LogToggle extends StatelessWidget {
           activeThumbColor: luma.accent,
         ),
         const SizedBox(width: 4),
-        Text('Log scale', style: TextStyle(color: luma.textSecondary, fontSize: 12.5)),
+        Text(t.aiLeaderboardGraphLogScale, style: TextStyle(color: luma.textSecondary, fontSize: 12.5)),
       ],
     );
   }
@@ -395,6 +398,7 @@ class _Scatter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     final anyHighlighted = highlighted.isNotEmpty;
     final spots = [
@@ -425,7 +429,7 @@ class _Scatter extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            '${points.length} models plotted',
+            t.aiLeaderboardGraphPlotted(points.length),
             style: TextStyle(color: luma.textMuted, fontSize: 11.5),
           ),
           const SizedBox(height: 8),

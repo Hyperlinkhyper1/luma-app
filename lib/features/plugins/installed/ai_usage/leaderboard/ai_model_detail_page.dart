@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import 'ai_catalog_scope.dart';
 import 'ai_compare_page.dart';
@@ -28,16 +29,17 @@ class AiModelDetailPage extends StatelessWidget {
       builder: (context, _) {
         final model = repo.byId(modelId);
         final luma = context.luma;
+        final t = L.of(context);
         return Scaffold(
           backgroundColor: luma.background,
           appBar: AppBar(
             backgroundColor: luma.background,
             elevation: 0,
-            title: Text(model?.name ?? 'Model'),
+            title: Text(model?.name ?? t.aiLeaderboardDetailFallbackTitle),
             actions: [
               if (model != null)
                 IconButton(
-                  tooltip: 'Compare with other models',
+                  tooltip: t.aiLeaderboardDetailCompareTooltip,
                   icon: const Icon(Icons.compare_arrows_rounded),
                   onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => AiComparePage(initialModelIds: [model.id]),
@@ -46,7 +48,7 @@ class AiModelDetailPage extends StatelessWidget {
             ],
           ),
           body: model == null
-              ? const Center(child: Text('This model is no longer listed.'))
+              ? Center(child: Text(t.aiLeaderboardDetailNoLongerListed))
               : SafeArea(
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -77,6 +79,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return LumaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -101,9 +104,12 @@ class _Header extends StatelessWidget {
                 ),
               ),
               Tooltip(
-                message: model.openWeights
-                    ? 'Open weights${model.licenseName == null ? "" : " · ${model.licenseName}"}'
-                    : 'Proprietary — API access only',
+                message: !model.openWeights
+                    ? t.aiLeaderboardDetailProprietary
+                    : model.licenseName == null
+                        ? t.aiLeaderboardDetailOpenWeights
+                        : t.aiLeaderboardDetailOpenWeightsLicensed(
+                            model.licenseName!),
                 child: Icon(
                   model.openWeights ? Icons.lock_open_rounded : Icons.lock_rounded,
                   color: model.openWeights ? luma.success : luma.textMuted,
@@ -123,13 +129,16 @@ class _Header extends StatelessWidget {
             children: [
               if (model.releasedAt != null)
                 _Tag(icon: Icons.event_rounded,
-                    text: 'Released ${relativeDay(model.releasedAt!)}'),
+                    text: t.aiLeaderboardDetailReleased(
+                        relativeDay(model.releasedAt!))),
               if (model.knowledgeCutoff != null)
                 _Tag(icon: Icons.schedule_rounded,
-                    text: 'Knowledge cutoff ${model.knowledgeCutoff}'),
+                    text: t.aiLeaderboardDetailKnowledgeCutoff(
+                        model.knowledgeCutoff!)),
               if (model.parametersB != null)
                 _Tag(icon: Icons.memory_rounded,
-                    text: '${model.parametersB!.toStringAsFixed(model.parametersB! >= 100 ? 0 : 1)}B params'),
+                    text: t.aiLeaderboardDetailParamsTag(
+                        '${model.parametersB!.toStringAsFixed(model.parametersB! >= 100 ? 0 : 1)}B')),
               for (final modality in model.inputModalities)
                 _Tag(icon: Icons.input_rounded, text: modality),
             ],
@@ -175,14 +184,38 @@ class _RatingsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final ratings = <(String, double?, String)>[
-      ('Intelligence', model.llmStatsIndex,
-          'Artificial Analysis Intelligence Index, at best effort'),
-      ('Reasoning', model.reasoningIndex, 'Graduate-level reasoning & knowledge'),
-      ('Coding', model.codingIndex, 'Code generation and repair'),
-      ('Agent', model.agentIndex, 'Long-horizon tool use'),
-      ('Code Arena', model.codeArena, 'Head-to-head coding preference Elo'),
-      ('Math', model.mathIndex, 'Competition-level mathematics'),
+      (
+        t.aiLeaderboardDetailRatingIntelligence,
+        model.llmStatsIndex,
+        t.aiLeaderboardDetailRatingIntelligenceHelp
+      ),
+      (
+        t.aiLeaderboardDetailRatingReasoning,
+        model.reasoningIndex,
+        t.aiLeaderboardDetailRatingReasoningHelp
+      ),
+      (
+        t.aiLeaderboardDetailRatingCoding,
+        model.codingIndex,
+        t.aiLeaderboardDetailRatingCodingHelp
+      ),
+      (
+        t.aiLeaderboardDetailRatingAgent,
+        model.agentIndex,
+        t.aiLeaderboardDetailRatingAgentHelp
+      ),
+      (
+        'Code Arena',
+        model.codeArena,
+        t.aiLeaderboardDetailRatingCodeArenaHelp
+      ),
+      (
+        t.aiLeaderboardDetailRatingMath,
+        model.mathIndex,
+        t.aiLeaderboardDetailRatingMathHelp
+      ),
     ];
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -245,24 +278,52 @@ class _SpecsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final rows = <(String, String)>[
       if (model.contextTokens != null)
-        ('Context window', '${formatExactTokens(model.contextTokens!)} tokens'),
+        (
+          t.aiLeaderboardDetailContextWindow,
+          t.aiLeaderboardDetailTokensCount(
+              formatExactTokens(model.contextTokens!))
+        ),
       if (model.maxOutputTokens != null)
-        ('Max output', '${formatExactTokens(model.maxOutputTokens!)} tokens'),
+        (
+          t.aiLeaderboardDetailMaxOutput,
+          t.aiLeaderboardDetailTokensCount(
+              formatExactTokens(model.maxOutputTokens!))
+        ),
       if (model.inputPricePerM != null)
-        ('Input price', '${formatPrice(model.inputPricePerM)}/M tokens'),
+        (
+          t.aiLeaderboardDetailInputPrice,
+          t.aiLeaderboardDetailPricePerMTokens(
+              formatPrice(model.inputPricePerM) ?? '–')
+        ),
       if (model.outputPricePerM != null)
-        ('Output price', '${formatPrice(model.outputPricePerM)}/M tokens'),
+        (
+          t.aiLeaderboardDetailOutputPrice,
+          t.aiLeaderboardDetailPricePerMTokens(
+              formatPrice(model.outputPricePerM) ?? '–')
+        ),
       if (model.cacheReadPerM != null)
-        ('Cache read', '${formatPrice(model.cacheReadPerM)}/M tokens'),
+        (
+          t.aiLeaderboardDetailCacheRead,
+          t.aiLeaderboardDetailPricePerMTokens(
+              formatPrice(model.cacheReadPerM) ?? '–')
+        ),
       if (model.speedTokensPerSec != null)
-        ('Speed', '${model.speedTokensPerSec!.round()} tok/s'),
+        (
+          t.aiLeaderboardMetricSpeed,
+          '${model.speedTokensPerSec!.round()} tok/s'
+        ),
       if (model.latencyMs != null)
-        ('Time to first token', '${(model.latencyMs! / 1000).toStringAsFixed(2)}s'),
+        (
+          t.aiLeaderboardMetricLatency,
+          '${(model.latencyMs! / 1000).toStringAsFixed(2)}s'
+        ),
       if (model.hasEffortLevels)
-        ('Effort levels', model.supportedEfforts.join(', ')),
-      if (model.licenseName != null) ('Licence', model.licenseName!),
+        (t.aiLeaderboardDetailEffortLevels, model.supportedEfforts.join(', ')),
+      if (model.licenseName != null)
+        (t.aiLeaderboardDetailLicence, model.licenseName!),
     ];
     if (rows.isEmpty) return const SizedBox.shrink();
 
@@ -270,7 +331,7 @@ class _SpecsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('SPECIFICATIONS',
+          Text(t.aiLeaderboardDetailSpecifications,
               style: TextStyle(
                   color: luma.textMuted,
                   fontSize: 10.5,
@@ -311,6 +372,7 @@ class _EffortSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final points = [
       for (final e in model.effortProfiles)
         if (e.intelligenceIndex != null) e,
@@ -327,7 +389,7 @@ class _EffortSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('EFFORT VS TOKENS USED',
+          Text(t.aiLeaderboardDetailEffortTitle,
               style: TextStyle(
                   color: luma.textMuted,
                   fontSize: 10.5,
@@ -335,8 +397,7 @@ class _EffortSection extends StatelessWidget {
                   letterSpacing: 0.8)),
           const SizedBox(height: 4),
           Text(
-            'How much smarter each reasoning-effort tier gets, and how many '
-            'tokens it spends thinking to get there.',
+            t.aiLeaderboardDetailEffortBlurb,
             style: TextStyle(color: luma.textMuted, fontSize: 12, height: 1.4),
           ),
           const SizedBox(height: 14),
@@ -375,7 +436,7 @@ class _EffortSection extends StatelessWidget {
                     ),
                   ),
                   leftTitles: AxisTitles(
-                    axisNameWidget: Text('Intelligence index',
+                    axisNameWidget: Text(t.aiLeaderboardDetailIntelligenceAxis,
                         style: TextStyle(color: luma.textMuted, fontSize: 11)),
                     sideTitles: SideTitles(
                       showTitles: true,
@@ -413,11 +474,13 @@ class _EffortSection extends StatelessWidget {
                         LineTooltipItem(
                           () {
                             final p = points[s.x.round()];
-                            final index = 'Index ${s.y.toStringAsFixed(1)}';
-                            final tokens = p.medianOutputTokens == null
-                                ? ''
-                                : ' · ${formatExactTokens(p.medianOutputTokens!)} tok';
-                            return '${p.label}\n$index$tokens';
+                            final index = s.y.toStringAsFixed(1);
+                            final tokens = p.medianOutputTokens;
+                            final detail = tokens == null
+                                ? t.aiLeaderboardDetailIndexOnly(index)
+                                : t.aiLeaderboardDetailIndexTokens(
+                                    index, formatExactTokens(tokens));
+                            return '${p.label}\n$detail';
                           }(),
                           TextStyle(color: luma.textPrimary, fontSize: 12),
                         ),
@@ -435,7 +498,8 @@ class _EffortSection extends StatelessWidget {
               children: [
                 for (final p in tokenPoints)
                   Text(
-                    '${p.label}: ${formatExactTokens(p.medianOutputTokens!)} tok',
+                    t.aiLeaderboardDetailTokenLine(
+                        p.label, formatExactTokens(p.medianOutputTokens!)),
                     style: TextStyle(color: luma.textMuted, fontSize: 11.5),
                   ),
               ],

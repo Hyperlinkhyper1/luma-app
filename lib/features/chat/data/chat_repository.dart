@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../../l10n/current_l.dart';
 import 'chat_database.dart';
 
 /// A saved conversation with the AI assistant.
@@ -55,9 +56,11 @@ class ChatRepository {
         );
   }
 
-  Future<int> createConversation({String title = 'New conversation'}) {
+  Future<int> createConversation({String? title}) {
     return _db.into(_db.chatConversations).insert(
-          ChatConversationsCompanion.insert(title: title),
+          ChatConversationsCompanion.insert(
+            title: title ?? currentL.assistantNewConversation,
+          ),
         );
   }
 

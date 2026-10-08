@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'chart_viewer.dart';
 import 'csv_import_export.dart';
@@ -89,6 +90,7 @@ class _DatasetListViewState extends State<_DatasetListView> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final repo = DataManagementScope.of(context);
 
     return SingleChildScrollView(
@@ -107,7 +109,7 @@ class _DatasetListViewState extends State<_DatasetListView> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Data Management',
+                          t.dataMgmtTitle,
                           style: TextStyle(
                             color: luma.textPrimary,
                             fontSize: 20,
@@ -116,7 +118,7 @@ class _DatasetListViewState extends State<_DatasetListView> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Create tables, tag entries, and build charts from your own datasets.',
+                          t.dataMgmtSubtitle,
                           style: TextStyle(color: luma.textMuted, fontSize: 13),
                         ),
                       ],
@@ -135,7 +137,7 @@ class _DatasetListViewState extends State<_DatasetListView> {
                         controller: _nameController,
                         style: TextStyle(color: luma.textPrimary),
                         decoration: InputDecoration(
-                          hintText: 'New dataset name...',
+                          hintText: t.dataMgmtNewDatasetHint,
                           hintStyle: TextStyle(color: luma.textMuted),
                           filled: true,
                           fillColor: luma.background,
@@ -162,7 +164,7 @@ class _DatasetListViewState extends State<_DatasetListView> {
                     ),
                     const SizedBox(width: 12),
                     LumaPrimaryButton(
-                      label: 'Create',
+                      label: t.commonCreate,
                       icon: Icons.add,
                       loading: _creating,
                       onTap: () => _create(repo),
@@ -180,9 +182,8 @@ class _DatasetListViewState extends State<_DatasetListView> {
                       padding: const EdgeInsets.symmetric(vertical: 40),
                       child: LumaEmptyState(
                         icon: Icons.table_chart_outlined,
-                        title: 'No datasets yet',
-                        subtitle:
-                            'Create a dataset above, or import one from CSV.',
+                        title: t.dataMgmtNoDatasetsTitle,
+                        subtitle: t.dataMgmtNoDatasetsSubtitle,
                       ),
                     );
                   }
@@ -213,30 +214,31 @@ class _DatasetListViewState extends State<_DatasetListView> {
     DatasetRecord ds,
   ) {
     final luma = context.luma;
+    final t = L.of(context);
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: luma.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
-          'Delete "${ds.name}"?',
+          t.dataMgmtDeleteDatasetTitle(ds.name),
           style: TextStyle(color: luma.textPrimary),
         ),
         content: Text(
-          'This will permanently delete the dataset and all its rows.',
+          t.dataMgmtDeleteDatasetBody,
           style: TextStyle(color: luma.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: luma.textMuted)),
+            child: Text(t.commonCancel, style: TextStyle(color: luma.textMuted)),
           ),
           TextButton(
             onPressed: () {
               repo.deleteDataset(ds.id);
               Navigator.pop(context);
             },
-            child: Text('Delete', style: TextStyle(color: luma.danger)),
+            child: Text(t.commonDelete, style: TextStyle(color: luma.danger)),
           ),
         ],
       ),
@@ -278,6 +280,7 @@ class _DatasetCardState extends State<_DatasetCard> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final tagCount = widget.dataset.tags.length;
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
@@ -344,8 +347,7 @@ class _DatasetCardState extends State<_DatasetCard> {
               ),
               const SizedBox(height: 4),
               Text(
-                '${widget.dataset.columns.length} columns'
-                '${tagCount > 0 ? '  ·  $tagCount tags' : ''}',
+                t.dataMgmtDatasetMeta(widget.dataset.columns.length, tagCount),
                 style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
             ],
@@ -423,6 +425,7 @@ class _DatasetEditorViewState extends State<_DatasetEditorView> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final repo = DataManagementScope.of(context);
 
     return SingleChildScrollView(
@@ -450,7 +453,7 @@ class _DatasetEditorViewState extends State<_DatasetEditorView> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            'Back',
+                            t.commonBack,
                             style: TextStyle(
                               color: luma.textMuted,
                               fontSize: 13,
@@ -479,7 +482,7 @@ class _DatasetEditorViewState extends State<_DatasetEditorView> {
                     ),
                   ),
                   LumaGhostButton(
-                    label: 'Tags',
+                    label: t.dataMgmtTags,
                     icon: Icons.sell_outlined,
                     onTap: _dataset == null
                         ? null
@@ -492,7 +495,7 @@ class _DatasetEditorViewState extends State<_DatasetEditorView> {
                   ),
                   const SizedBox(width: 8),
                   LumaGhostButton(
-                    label: 'Import CSV',
+                    label: t.dataMgmtImportCsv,
                     icon: Icons.upload_file_rounded,
                     onTap: () => _importCsv(context, repo),
                   ),
@@ -501,7 +504,7 @@ class _DatasetEditorViewState extends State<_DatasetEditorView> {
                     stream: repo.watchRows(widget.datasetId),
                     builder: (context, rows) {
                       return LumaGhostButton(
-                        label: 'Export CSV',
+                        label: t.dataMgmtExportCsv,
                         icon: Icons.download_rounded,
                         onTap: _dataset == null
                             ? null
@@ -514,7 +517,7 @@ class _DatasetEditorViewState extends State<_DatasetEditorView> {
               const SizedBox(height: 16),
               // Tabs
               LumaSegmentedTabs(
-                tabs: const ['Table', 'Charts'],
+                tabs: [t.dataMgmtTabTable, t.dataMgmtTabCharts],
                 selectedIndex: _tab,
                 onSelect: (i) => setState(() => _tab = i),
               ),
@@ -575,6 +578,7 @@ Future<void> showTagManager(
   VoidCallback onChanged,
 ) async {
   final luma = context.luma;
+  final t = L.of(context);
   var tags = List<DataTagDef>.from(dataset.tags);
 
   await showDialog<void>(
@@ -583,7 +587,7 @@ Future<void> showTagManager(
       builder: (context, setDialogState) => AlertDialog(
         backgroundColor: luma.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Manage Tags', style: TextStyle(color: luma.textPrimary)),
+        title: Text(t.dataMgmtManageTagsTitle, style: TextStyle(color: luma.textPrimary)),
         content: SizedBox(
           width: lumaDialogWidth(dialogContext, 380),
           child: Column(
@@ -591,8 +595,7 @@ Future<void> showTagManager(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Tags can be attached to any row and used to group charts — '
-                'e.g. tag income rows by source and see what earns the most.',
+                t.dataMgmtTagsExplainer,
                 style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
               const SizedBox(height: 12),
@@ -600,7 +603,7 @@ Future<void> showTagManager(
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Text(
-                    'No tags yet.',
+                    t.dataMgmtNoTagsYet,
                     style: TextStyle(color: luma.textMuted, fontSize: 13),
                   ),
                 )
@@ -690,7 +693,7 @@ Future<void> showTagManager(
                 ),
               const SizedBox(height: 8),
               LumaGhostButton(
-                label: 'New tag',
+                label: t.dataMgmtNewTag,
                 icon: Icons.add,
                 onTap: () async {
                   final created = await _editTagDialog(context, luma, null);
@@ -708,7 +711,7 @@ Future<void> showTagManager(
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: Text('Done', style: TextStyle(color: luma.accent)),
+            child: Text(t.commonDone, style: TextStyle(color: luma.accent)),
           ),
         ],
       ),
@@ -722,6 +725,7 @@ Future<DataTagDef?> _editTagDialog(
   LumaPalette luma,
   DataTagDef? existing,
 ) async {
+  final t = L.of(context);
   final nameCtrl = TextEditingController(text: existing?.name ?? '');
   var color = existing?.colorValue ?? kTagColorChoices.first.toARGB32();
 
@@ -732,7 +736,7 @@ Future<DataTagDef?> _editTagDialog(
         backgroundColor: luma.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
-          existing == null ? 'New Tag' : 'Edit Tag',
+          existing == null ? t.dataMgmtNewTagTitle : t.dataMgmtEditTagTitle,
           style: TextStyle(color: luma.textPrimary),
         ),
         content: Column(
@@ -744,7 +748,7 @@ Future<DataTagDef?> _editTagDialog(
               autofocus: true,
               style: TextStyle(color: luma.textPrimary),
               decoration: InputDecoration(
-                hintText: 'Tag name (e.g. Salary, Side gig)',
+                hintText: t.dataMgmtTagNameHint,
                 hintStyle: TextStyle(color: luma.textMuted),
                 filled: true,
                 fillColor: luma.background,
@@ -768,7 +772,7 @@ Future<DataTagDef?> _editTagDialog(
             ),
             const SizedBox(height: 14),
             Text(
-              'Color',
+              t.commonColor,
               style: TextStyle(color: luma.textSecondary, fontSize: 12),
             ),
             const SizedBox(height: 8),
@@ -801,7 +805,7 @@ Future<DataTagDef?> _editTagDialog(
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: Text('Cancel', style: TextStyle(color: luma.textMuted)),
+            child: Text(t.commonCancel, style: TextStyle(color: luma.textMuted)),
           ),
           TextButton(
             onPressed: () {
@@ -812,7 +816,7 @@ Future<DataTagDef?> _editTagDialog(
                 DataTagDef(name: name, colorValue: color),
               );
             },
-            child: Text('Save', style: TextStyle(color: luma.accent)),
+            child: Text(t.commonSave, style: TextStyle(color: luma.accent)),
           ),
         ],
       ),
@@ -909,6 +913,7 @@ class _TableEditorState extends State<_TableEditor> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final repo = DataManagementScope.of(context);
     final rows = _visibleRows;
 
@@ -934,8 +939,10 @@ class _TableEditorState extends State<_TableEditor> {
         _StatCard(
           label: widget.dataset.columns[colIdx].name,
           value: sum.toStringAsFixed(1),
-          sub:
-              'avg ${avg.toStringAsFixed(1)}  ·  max ${maxVal.toStringAsFixed(1)}',
+          sub: t.dataMgmtStatsSub(
+            avg.toStringAsFixed(1),
+            maxVal.toStringAsFixed(1),
+          ),
         ),
       );
     }
@@ -951,13 +958,13 @@ class _TableEditorState extends State<_TableEditor> {
         Row(
           children: [
             LumaGhostButton(
-              label: 'Add Column',
+              label: t.dataMgmtAddColumn,
               icon: Icons.view_column_outlined,
               onTap: () => _addColumn(context, repo),
             ),
             const SizedBox(width: 8),
             LumaPrimaryButton(
-              label: 'Add Row',
+              label: t.dataMgmtAddRow,
               icon: Icons.add,
               onTap: () => _addRow(repo),
             ),
@@ -966,7 +973,7 @@ class _TableEditorState extends State<_TableEditor> {
               child: TextField(
                 style: TextStyle(color: luma.textPrimary, fontSize: 13),
                 decoration: InputDecoration(
-                  hintText: 'Search rows...',
+                  hintText: t.dataMgmtSearchRowsHint,
                   hintStyle: TextStyle(color: luma.textMuted, fontSize: 13),
                   prefixIcon: Icon(
                     Icons.search,
@@ -996,8 +1003,8 @@ class _TableEditorState extends State<_TableEditor> {
             const SizedBox(width: 12),
             Text(
               _search.isEmpty && _tagFilter.isEmpty
-                  ? '${widget.rows.length} rows'
-                  : '${rows.length} of ${widget.rows.length} rows',
+                  ? t.dataMgmtRowCount(widget.rows.length)
+                  : t.dataMgmtRowCountFiltered(rows.length, widget.rows.length),
               style: TextStyle(color: luma.textMuted, fontSize: 12),
             ),
           ],
@@ -1025,7 +1032,7 @@ class _TableEditorState extends State<_TableEditor> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     child: Text(
-                      'Clear filter',
+                      t.dataMgmtClearFilter,
                       style: TextStyle(color: luma.accent, fontSize: 12),
                     ),
                   ),
@@ -1038,10 +1045,10 @@ class _TableEditorState extends State<_TableEditor> {
         if (widget.dataset.columns.isEmpty)
           LumaEmptyState(
             icon: Icons.view_column_outlined,
-            title: 'No columns yet',
-            subtitle: 'Add a column to start building your table.',
+            title: t.dataMgmtNoColumnsTitle,
+            subtitle: t.dataMgmtNoColumnsSubtitle,
             action: LumaGhostButton(
-              label: 'Add Column',
+              label: t.dataMgmtAddColumn,
               icon: Icons.view_column_outlined,
               onTap: () => _addColumn(context, repo),
             ),
@@ -1110,7 +1117,7 @@ class _TableEditorState extends State<_TableEditor> {
                         DataColumn(
                           columnWidth: const FlexColumnWidth(),
                           label: Text(
-                            'Tags',
+                            t.dataMgmtTags,
                             style: TextStyle(
                               color: luma.textPrimary,
                               fontWeight: FontWeight.w700,
@@ -1160,7 +1167,7 @@ class _TableEditorState extends State<_TableEditor> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Tooltip(
-                                      message: 'Duplicate row',
+                                      message: t.dataMgmtDuplicateRow,
                                       child: GestureDetector(
                                         onTap: () => repo.duplicateRow(row),
                                         child: Icon(
@@ -1250,6 +1257,7 @@ class _TableEditorState extends State<_TableEditor> {
     DataColumnDef? existing,
   ) async {
     final luma = context.luma;
+    final t = L.of(context);
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
     String type = existing?.type ?? 'text';
 
@@ -1262,7 +1270,7 @@ class _TableEditorState extends State<_TableEditor> {
             borderRadius: BorderRadius.circular(16),
           ),
           title: Text(
-            existing == null ? 'Add Column' : 'Edit Column',
+            existing == null ? t.dataMgmtAddColumn : t.dataMgmtEditColumnTitle,
             style: TextStyle(color: luma.textPrimary),
           ),
           content: SizedBox(
@@ -1276,7 +1284,7 @@ class _TableEditorState extends State<_TableEditor> {
                   autofocus: true,
                   style: TextStyle(color: luma.textPrimary),
                   decoration: InputDecoration(
-                    hintText: 'Column name',
+                    hintText: t.dataMgmtColumnNameHint,
                     hintStyle: TextStyle(color: luma.textMuted),
                     filled: true,
                     fillColor: luma.background,
@@ -1300,7 +1308,7 @@ class _TableEditorState extends State<_TableEditor> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Type:',
+                  t.dataMgmtColumnTypeLabel,
                   style: TextStyle(color: luma.textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 8),
@@ -1308,22 +1316,22 @@ class _TableEditorState extends State<_TableEditor> {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    for (final (t, label) in const [
-                      ('text', 'Text'),
-                      ('number', 'Number'),
-                      ('date', 'Date'),
+                    for (final (value, label) in [
+                      ('text', t.dataMgmtTypeText),
+                      ('number', t.dataMgmtTypeNumber),
+                      ('date', t.commonDate),
                     ])
                       ChoiceChip(
                         label: Text(
                           label,
                           style: TextStyle(color: luma.textPrimary),
                         ),
-                        selected: type == t,
-                        onSelected: (_) => setDialogState(() => type = t),
+                        selected: type == value,
+                        onSelected: (_) => setDialogState(() => type = value),
                         selectedColor: luma.accentSubtle,
                         backgroundColor: luma.background,
                         side: BorderSide(
-                          color: type == t ? luma.accent : luma.border,
+                          color: type == value ? luma.accent : luma.border,
                         ),
                       ),
                   ],
@@ -1335,16 +1343,16 @@ class _TableEditorState extends State<_TableEditor> {
             if (existing != null)
               TextButton(
                 onPressed: () => Navigator.pop(context, 'delete'),
-                child: Text('Delete', style: TextStyle(color: luma.danger)),
+                child: Text(t.commonDelete, style: TextStyle(color: luma.danger)),
               ),
             TextButton(
               onPressed: () => Navigator.pop(context, 'cancel'),
-              child: Text('Cancel', style: TextStyle(color: luma.textMuted)),
+              child: Text(t.commonCancel, style: TextStyle(color: luma.textMuted)),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, 'save'),
               child: Text(
-                existing == null ? 'Add' : 'Save',
+                existing == null ? t.commonAdd : t.commonSave,
                 style: TextStyle(color: luma.accent),
               ),
             ),
@@ -1496,8 +1504,9 @@ class _TagPickerButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return PopupMenuButton<String>(
-      tooltip: 'Edit tags',
+      tooltip: t.dataMgmtEditTags,
       color: luma.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       icon: Icon(Icons.sell_outlined, size: 15, color: luma.textMuted),
@@ -1507,7 +1516,7 @@ class _TagPickerButton extends StatelessWidget {
           PopupMenuItem<String>(
             value: ' manage',
             child: Text(
-              'Create tags…',
+              t.dataMgmtCreateTags,
               style: TextStyle(color: luma.accent, fontSize: 13),
             ),
           )
@@ -1539,7 +1548,7 @@ class _TagPickerButton extends StatelessWidget {
           PopupMenuItem<String>(
             value: ' manage',
             child: Text(
-              'Manage tags…',
+              t.dataMgmtManageTags,
               style: TextStyle(color: luma.accent, fontSize: 13),
             ),
           ),

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:cryptography/cryptography.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../../l10n/current_l.dart';
 import '../../../../../security/secure_secret_store.dart';
 
 /// Persists this device's long-term X25519 chat identity keypair. The
@@ -62,9 +63,7 @@ class ChatKeyStore {
         type: KeyPairType.x25519,
       );
     } catch (_) {
-      throw StateError(
-        'Chat identity could not be loaded. Restore the original identity.',
-      );
+      throw StateError(currentL.secureChatIdentityLoadFailed);
     }
   }
 

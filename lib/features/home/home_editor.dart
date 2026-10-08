@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../theme/luma_theme.dart';
 import 'dashboard_tiles.dart';
 import 'home_layout.dart';
@@ -142,23 +143,21 @@ class _HomeGridState extends State<HomeGrid> {
                                   ),
                                   const SizedBox(height: 16),
                                   Text(
-                                    'A space for your everyday',
+                                    L.of(context).homeEmptyGridTitle,
                                     style: Theme.of(
                                       context,
                                     ).textTheme.titleLarge,
                                   ),
                                   const SizedBox(height: 8),
-                                  const Text(
-                                    'Add notes, shortcuts, charts and little helpers.',
-                                  ),
+                                  Text(L.of(context).homeEmptyGridBody),
                                   if (widget.editing)
                                     Padding(
                                       padding: const EdgeInsets.only(top: 16),
                                       child: FilledButton.icon(
                                         onPressed: widget.onAdd,
                                         icon: const Icon(Icons.add),
-                                        label: const Text(
-                                          'Add your first tile',
+                                        label: Text(
+                                          L.of(context).homeAddFirstTile,
                                         ),
                                       ),
                                     ),
@@ -232,8 +231,7 @@ class _HomeGridState extends State<HomeGrid> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.stretch,
                                       children: [
-                                        if (_chrome(tile))
-                                          _toolbar(tile, step),
+                                        if (_chrome(tile)) _toolbar(tile, step),
                                         Expanded(
                                           child: Padding(
                                             padding: _chrome(tile)
@@ -265,8 +263,9 @@ class _HomeGridState extends State<HomeGrid> {
                                       right: 0,
                                       bottom: 0,
                                       child: Semantics(
-                                        label:
-                                            'Resize tile. Use tile menu for precise size.',
+                                        label: L
+                                            .of(context)
+                                            .homeResizeTileSemantics,
                                         child: MouseRegion(
                                           cursor: SystemMouseCursors
                                               .resizeDownRight,
@@ -377,9 +376,10 @@ class _HomeGridState extends State<HomeGrid> {
 
   List<(int, String)> _sections() {
     final result = <(int, String)>[];
+    final t = L.of(context);
     for (final entry in {
-      'shortcut': 'Pick up where you left off',
-      'recent_activity': "What you've been up to",
+      'shortcut': t.homeJumpBackIn,
+      'recent_activity': t.homeSectionRecent,
     }.entries) {
       final matching = widget.layout.tiles.where(
         (tile) => tile.kind == entry.key,
@@ -478,7 +478,7 @@ class _HomeGridState extends State<HomeGrid> {
           ),
           if (widget.editing)
             PopupMenuButton<String>(
-              tooltip: 'Edit $title',
+              tooltip: L.of(context).homeEditTileTooltip(title),
               icon: const Icon(Icons.more_horiz_rounded, size: 20),
               onSelected: (action) {
                 switch (action) {
@@ -496,14 +496,20 @@ class _HomeGridState extends State<HomeGrid> {
                     );
                 }
               },
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'configure', child: Text('Configure')),
-                PopupMenuItem(
-                  value: 'position',
-                  child: Text('Position & size'),
-                ),
-                PopupMenuItem(value: 'remove', child: Text('Remove tile')),
-              ],
+              itemBuilder: (_) {
+                final t = L.of(context);
+                return [
+                  PopupMenuItem(
+                    value: 'configure',
+                    child: Text(t.homeTileConfigure),
+                  ),
+                  PopupMenuItem(
+                    value: 'position',
+                    child: Text(t.homeTilePositionSize),
+                  ),
+                  PopupMenuItem(value: 'remove', child: Text(t.homeTileRemove)),
+                ];
+              },
             ),
           const SizedBox(width: 6),
         ],
@@ -562,7 +568,7 @@ class _PositionDialogState extends State<_PositionDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Position & size'),
+    title: Text(L.of(context).homeTilePositionSize),
     content: SizedBox(
       width: 340,
       child: SingleChildScrollView(
@@ -577,18 +583,16 @@ class _PositionDialogState extends State<_PositionDialog> {
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
                     labelText: [
-                      'Column',
-                      'Row',
-                      'Width in columns',
-                      'Height in rows',
+                      L.of(context).homePositionColumn,
+                      L.of(context).homePositionRow,
+                      L.of(context).homePositionWidth,
+                      L.of(context).homePositionHeight,
                     ][i],
                     border: const OutlineInputBorder(),
                   ),
                 ),
               ),
-            const Text(
-              'Positions start at 1. Tiles snap to the grid and make room automatically.',
-            ),
+            Text(L.of(context).homePositionHint),
           ],
         ),
       ),
@@ -596,7 +600,7 @@ class _PositionDialogState extends State<_PositionDialog> {
     actions: [
       TextButton(
         onPressed: () => Navigator.pop(context),
-        child: const Text('Cancel'),
+        child: Text(L.of(context).commonCancel),
       ),
       FilledButton(
         onPressed: () {
@@ -614,7 +618,7 @@ class _PositionDialogState extends State<_PositionDialog> {
             ),
           );
         },
-        child: const Text('Apply'),
+        child: Text(L.of(context).homeApply),
       ),
     ],
   );

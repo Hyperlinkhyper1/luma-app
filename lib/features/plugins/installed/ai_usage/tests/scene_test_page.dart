@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../../_shared/windows_webview.dart';
 import 'ai_benchmark.dart';
@@ -34,47 +35,47 @@ class SceneTest {
 
 /// The scene tests that share [SceneTestPage], in the order the Tests tab
 /// shows their tiles.
-const kSceneTests = <SceneTest>[
+List<SceneTest> sceneTestsOf(L t) => [
   SceneTest(
     kind: 'website_landing_page',
-    title: 'Website landing page',
-    blurb: 'A responsive coffee landing page with working interactions.',
+    title: t.aiTestWebsiteLandingTitle,
+    blurb: t.aiTestWebsiteLandingBlurb,
     icon: Icons.web_rounded,
   ),
   SceneTest(
     kind: 'sports_car',
-    title: 'Sports Car Test',
-    blurb: 'An original sports car: studio configurator and test drive.',
+    title: t.aiTestSportsCarTitle,
+    blurb: t.aiTestSportsCarBlurb,
     icon: Icons.directions_car_filled_rounded,
   ),
   SceneTest(
     kind: 'train_world',
-    title: 'Train World Test',
-    blurb: 'A miniature railway with three trains kept apart by signals.',
+    title: t.aiTestTrainWorldTitle,
+    blurb: t.aiTestTrainWorldBlurb,
     icon: Icons.train_rounded,
   ),
   SceneTest(
     kind: 'world_timeline',
-    title: 'World Timeline Test',
-    blurb: 'An SVG animation of the world from its formation to today.',
+    title: t.aiTestWorldTimelineTitle,
+    blurb: t.aiTestWorldTimelineBlurb,
     icon: Icons.timeline_rounded,
   ),
   SceneTest(
     kind: 'fluid_sim',
-    title: 'Fluid Simulation Test',
-    blurb: 'Real-time 3D water in a glass tank you can stir and tilt.',
+    title: t.aiTestFluidSimTitle,
+    blurb: t.aiTestFluidSimBlurb,
     icon: Icons.water_drop_rounded,
   ),
   SceneTest(
     kind: 'galaxy',
-    title: 'Galaxy Test',
-    blurb: 'A spaceship voyage across a procedural spiral galaxy.',
+    title: t.aiTestGalaxyTitle,
+    blurb: t.aiTestGalaxyBlurb,
     icon: Icons.rocket_launch_rounded,
   ),
   SceneTest(
     kind: 'cruise_port',
-    title: 'Cruise Port Test',
-    blurb: 'A cruise ship docked in Lisbon, below Alfama.',
+    title: t.aiTestCruisePortTitle,
+    blurb: t.aiTestCruisePortBlurb,
     icon: Icons.anchor_rounded,
   ),
 ];
@@ -151,6 +152,7 @@ class _SceneTestPageState extends State<SceneTestPage> {
 
   Widget _listView(BuildContext context, List<AiBenchmark> filtered) {
     final luma = context.luma;
+    final t = L.of(context);
     final repo = AiBenchmarkScope.of(context);
     return Scaffold(
       backgroundColor: luma.background,
@@ -165,7 +167,7 @@ class _SceneTestPageState extends State<SceneTestPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Benchmark Model',
+              t.aiTestBenchmarkModel,
               style: TextStyle(
                 color: luma.textPrimary,
                 fontSize: 18,
@@ -190,7 +192,7 @@ class _SceneTestPageState extends State<SceneTestPage> {
               runSpacing: 8,
               children: [
                 Text(
-                  'Select a Model',
+                  t.aiTestSelectModel,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 14,
@@ -198,7 +200,7 @@ class _SceneTestPageState extends State<SceneTestPage> {
                   ),
                 ),
                 LumaSegmentedTabs(
-                  tabs: const ['List', 'Banners'],
+                  tabs: [t.aiTestViewList, t.aiTestViewBanners],
                   selectedIndex: _bannerView ? 1 : 0,
                   onSelect: (i) {
                     final banners = i == 1;
@@ -223,19 +225,20 @@ class _SceneTestPageState extends State<SceneTestPage> {
             else if (filtered.isEmpty && _query.trim().isNotEmpty)
               LumaEmptyState(
                 icon: Icons.search_off_rounded,
-                title: 'No models match "${_query.trim()}"',
-                subtitle: 'Try a shorter search.',
+                title: t.aiTestNoMatch(_query.trim()),
+                subtitle: t.aiTestTrySearchShorter,
               )
             else if (filtered.isEmpty)
               LumaEmptyState(
                 icon: _test.icon,
-                title: 'No entries yet',
+                title: t.statsNoEntriesYet,
                 subtitle: repo.canRefresh
-                    ? 'No scenes have been added to this test yet.'
-                    : 'Scenes download from the luma server. Sign in to an '
-                          'approved account to fetch them.',
+                    ? t.aiTestNoScenesYet
+                    : t.aiTestScenesDownloadNoAccount,
                 action: LumaGhostButton(
-                  label: repo.refreshing ? 'Refreshing…' : 'Refresh',
+                  label: repo.refreshing
+                      ? t.accountOverviewRefreshing
+                      : t.commonRefresh,
                   icon: Icons.refresh_rounded,
                   onTap: repo.refreshing || !repo.canRefresh
                       ? null
@@ -267,6 +270,7 @@ class _SceneTestPageState extends State<SceneTestPage> {
 
   Widget _sceneView(BuildContext context, AiBenchmark benchmark) {
     final luma = context.luma;
+    final t = L.of(context);
     final repo = AiBenchmarkScope.of(context);
     final back = IconButton(
       icon: const Icon(Icons.arrow_back_rounded),
@@ -286,10 +290,8 @@ class _SceneTestPageState extends State<SceneTestPage> {
           padding: const EdgeInsets.all(24),
           child: LumaEmptyState(
             icon: Icons.computer_rounded,
-            title: 'Not available on this platform',
-            subtitle:
-                'The ${_test.title} requires a Windows desktop. Mobile '
-                'and Linux support are coming soon.',
+            title: t.aiTestNotAvailablePlatform,
+            subtitle: t.aiTestScenePlatformBody(_test.title),
           ),
         ),
       );
@@ -316,7 +318,7 @@ class _SceneTestPageState extends State<SceneTestPage> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Downloading ${benchmark.model}…',
+                    t.aiTestDownloadingModel(benchmark.model),
                     style: TextStyle(color: luma.textMuted, fontSize: 13),
                   ),
                 ],
@@ -328,13 +330,12 @@ class _SceneTestPageState extends State<SceneTestPage> {
               padding: const EdgeInsets.all(24),
               child: LumaEmptyState(
                 icon: Icons.cloud_off_rounded,
-                title: 'Could not load ${benchmark.model}',
-                subtitle:
-                    '${snapshot.error ?? 'The download failed.'} '
-                    'Scenes are cached after the first download, so a retry '
-                    'is usually all it takes.',
+                title: t.aiTestCouldNotLoadModel(benchmark.model),
+                subtitle: t.aiTestLoadFailedBody(
+                  '${snapshot.error ?? t.aiTestDownloadFailed}',
+                ),
                 action: LumaGhostButton(
-                  label: 'Retry',
+                  label: t.commonRetry,
                   icon: Icons.refresh_rounded,
                   onTap: () => setState(() {}),
                 ),

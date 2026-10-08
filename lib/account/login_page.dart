@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../app/widgets.dart';
+import '../l10n/app_localizations.dart';
 import '../sync/sync_api.dart';
 import '../sync/sync_service.dart';
 import '../theme/luma_theme.dart';
@@ -31,7 +33,7 @@ Future<bool> showLoginScreen(
   final completed = await showGeneralDialog<bool>(
     context: context,
     barrierDismissible: true,
-    barrierLabel: 'Sign in',
+    barrierLabel: L.of(context).loginBarrierLabel,
     barrierColor: Colors.black.withValues(alpha: 0.62),
     transitionDuration: const Duration(milliseconds: 260),
     pageBuilder: (_, _, _) => LoginPage(sync: sync, initialMode: initialMode),
@@ -179,24 +181,23 @@ class _LoginPageState extends State<LoginPage> {
   // ---- Email + password ---------------------------------------------------
 
   Future<void> _submitCredentials() async {
+    final t = L.of(context);
     final email = _email.text.trim();
     if (email.isEmpty || !email.contains('@')) {
-      setState(() => _error = 'Enter a valid email address.');
+      setState(() => _error = t.loginEnterValidEmail);
       return;
     }
     final creating = !_cloudMode || _mode == 1;
     if (creating && _password.text.length < 10) {
-      setState(() => _error =
-          'Use at least 10 characters — this password protects your '
-          'encrypted data.');
+      setState(() => _error = t.loginPasswordTooShort);
       return;
     }
     if (_password.text.isEmpty) {
-      setState(() => _error = 'Enter your password.');
+      setState(() => _error = t.loginEnterPassword);
       return;
     }
     if (creating && _password.text != _confirm.text) {
-      setState(() => _error = 'Passwords do not match.');
+      setState(() => _error = t.loginPasswordsMismatch);
       return;
     }
 
@@ -233,7 +234,7 @@ class _LoginPageState extends State<LoginPage> {
           setState(() {
             _step = _Step.code;
             _code.clear();
-            _info = 'Your email is not verified yet. We sent you a new code.';
+            _info = t.loginEmailNotVerified;
           });
           return;
         }
@@ -263,13 +264,14 @@ class _LoginPageState extends State<LoginPage> {
   // ---- 6-digit email code ---------------------------------------------------
 
   Future<void> _submitCode() async {
+    final t = L.of(context);
     final code = _code.text.trim();
     if (code.length != 6 || int.tryParse(code) == null) {
-      setState(() => _error = 'Enter the 6-digit code from your email.');
+      setState(() => _error = t.loginEnterSixDigitCode);
       return;
     }
     if (_password.text.isEmpty) {
-      setState(() => _error = 'Enter your password.');
+      setState(() => _error = t.loginEnterPassword);
       return;
     }
     final email = widget.sync.pendingApprovalEmail ?? _email.text.trim();
@@ -325,9 +327,10 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _sendResetCode() async {
+    final t = L.of(context);
     final email = _email.text.trim();
     if (email.isEmpty || !email.contains('@')) {
-      setState(() => _error = 'Enter a valid email address.');
+      setState(() => _error = t.loginEnterValidEmail);
       return;
     }
     final urlError = SyncApi.validateServerUrl(_server.text);
@@ -351,19 +354,18 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _submitReset() async {
+    final t = L.of(context);
     final code = _code.text.trim();
     if (code.length != 6 || int.tryParse(code) == null) {
-      setState(() => _error = 'Enter the 6-digit code from your email.');
+      setState(() => _error = t.loginEnterSixDigitCode);
       return;
     }
     if (_password.text.length < 10) {
-      setState(() => _error =
-          'Use at least 10 characters — this password protects your '
-          'encrypted data.');
+      setState(() => _error = t.loginPasswordTooShort);
       return;
     }
     if (_password.text != _confirm.text) {
-      setState(() => _error = 'Passwords do not match.');
+      setState(() => _error = t.loginPasswordsMismatch);
       return;
     }
     final email = _email.text.trim();
@@ -387,7 +389,7 @@ class _LoginPageState extends State<LoginPage> {
         // The reset itself went through and burned the code, so sending
         // the user back here would only earn them "code already used".
         _backToSignIn(
-          info: 'Your password was reset. Sign in with your new password.',
+          info: t.loginPasswordResetDone,
         );
         return;
       }
@@ -398,6 +400,7 @@ class _LoginPageState extends State<LoginPage> {
   // ---- Google / GitHub ----------------------------------------------------
 
   Future<void> _startProvider(OAuthProviderInfo provider) async {
+    final t = L.of(context);
     final urlError = SyncApi.validateServerUrl(_server.text);
     if (urlError != null) {
       setState(() {
@@ -454,7 +457,7 @@ class _LoginPageState extends State<LoginPage> {
         _handle = null;
         _step = _Step.credentials;
         _pendingProviderId = null;
-        _error = result.message ?? 'Sign-in did not complete.';
+        _error = result.message ?? t.loginSignInIncomplete;
       });
       return;
     }
@@ -469,6 +472,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _openAuthUrl() async {
+    final t = L.of(context);
     final handle = _handle;
     if (handle == null) return;
     final opened = await launchUrl(
@@ -476,32 +480,27 @@ class _LoginPageState extends State<LoginPage> {
       mode: LaunchMode.externalApplication,
     );
     if (!opened && mounted) {
-      setState(() => _error =
-          'Could not open your browser. Copy the link below and open it '
-          'yourself.');
+      setState(() => _error = t.loginCouldNotOpenBrowser);
     }
   }
 
   Future<void> _submitPassphrase() async {
+    final t = L.of(context);
     final handle = _handle;
     final identity = _identity;
     if (handle == null || identity == null) return;
     final isNew = !identity.existingAccount;
 
     if (_passphrase.text.isEmpty) {
-      setState(() => _error = isNew
-          ? 'Choose a passphrase.'
-          : 'Enter your luma passphrase to unlock your data.');
+      setState(() => _error = isNew ? t.loginChoosePassphrase : t.loginEnterPassphrase);
       return;
     }
     if (isNew && _passphrase.text.length < 10) {
-      setState(() => _error =
-          'Use at least 10 characters — this passphrase is what encrypts '
-          'your data.');
+      setState(() => _error = t.loginPassphraseTooShort);
       return;
     }
     if (isNew && _passphrase.text != _passphraseConfirm.text) {
-      setState(() => _error = 'Passphrases do not match.');
+      setState(() => _error = t.loginPassphrasesMismatch);
       return;
     }
 
@@ -618,6 +617,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _buildFormPane(bool wide) {
+    final t = L.of(context);
     final luma = context.luma;
     return Stack(
       children: [
@@ -657,7 +657,7 @@ class _LoginPageState extends State<LoginPage> {
           child: IconButton(
             onPressed: _busy ? null : _close,
             icon: Icon(Icons.close_rounded, size: 20, color: luma.textMuted),
-            tooltip: 'Close',
+            tooltip: t.commonClose,
             splashRadius: 18,
           ),
         ),
@@ -668,6 +668,7 @@ class _LoginPageState extends State<LoginPage> {
   // ---- Panel: credentials -------------------------------------------------
 
   Widget _credentialsPanel(bool wide) {
+    final t = L.of(context);
     final creating = !_cloudMode || _mode == 1;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -679,21 +680,19 @@ class _LoginPageState extends State<LoginPage> {
         ],
         _Heading(
           title: _cloudMode
-              ? (_mode == 0 ? 'Welcome back' : 'Make your account')
-              : 'Set up local-only sync',
+              ? (_mode == 0 ? t.loginWelcomeBack : t.loginMakeAccount)
+              : t.loginSetUpLocalSync,
           subtitle: _cloudMode
               ? (_mode == 0
-                  ? 'Sign in and grab your stuff from your other devices.'
-                  : 'One account, every device — locked before it leaves '
-                      'this one.')
-              : 'No server, no account. Devices pair directly over your '
-                  'own network.',
+                  ? t.loginSignInSubtitle
+                  : t.loginCreateSubtitle)
+              : t.loginLocalSubtitle,
         ),
         const SizedBox(height: 20),
 
         if (_cloudMode) ...[
           LumaSegmentedTabs(
-            tabs: const ['Sign in', 'Create account'],
+            tabs: [t.commonSignIn, t.loginCreateAccount],
             selectedIndex: _mode,
             onSelect: (i) => setState(() {
               _mode = i;
@@ -720,7 +719,7 @@ class _LoginPageState extends State<LoginPage> {
 
         _LoginField(
           controller: _email,
-          label: 'Email',
+          label: t.commonEmail,
           icon: Icons.alternate_email_rounded,
           enabled: !_busy,
           keyboardType: TextInputType.emailAddress,
@@ -729,7 +728,7 @@ class _LoginPageState extends State<LoginPage> {
         const SizedBox(height: 12),
         _LoginField(
           controller: _password,
-          label: 'Password',
+          label: t.commonPassword,
           icon: Icons.lock_outline_rounded,
           enabled: !_busy,
           obscure: true,
@@ -744,7 +743,7 @@ class _LoginPageState extends State<LoginPage> {
             child: Padding(
               padding: const EdgeInsets.only(top: 8),
               child: _TinyLink(
-                label: 'Forgot password?',
+                label: t.loginForgotPassword,
                 icon: Icons.help_outline_rounded,
                 onTap: _busy ? null : _openForgotPassword,
               ),
@@ -754,7 +753,7 @@ class _LoginPageState extends State<LoginPage> {
           const SizedBox(height: 12),
           _LoginField(
             controller: _confirm,
-            label: 'Confirm password',
+            label: t.loginConfirmPassword,
             icon: Icons.lock_reset_rounded,
             enabled: !_busy,
             obscure: true,
@@ -766,7 +765,7 @@ class _LoginPageState extends State<LoginPage> {
           const SizedBox(height: 12),
           _LoginField(
             controller: _server,
-            label: 'Server address',
+            label: t.loginServerAddress,
             icon: Icons.dns_rounded,
             enabled: !_busy && _cloudMode,
             onChanged: (_) => _loadProviders(),
@@ -776,8 +775,8 @@ class _LoginPageState extends State<LoginPage> {
         const SizedBox(height: 18),
         LumaPrimaryButton(
           label: _cloudMode
-              ? (_mode == 0 ? 'Sign in' : 'Create account')
-              : 'Set up',
+              ? (_mode == 0 ? t.commonSignIn : t.loginCreateAccount)
+              : t.loginSetUp,
           expand: true,
           loading: _busy && _pendingProviderId == null,
           onTap: _busy ? null : _submitCredentials,
@@ -796,8 +795,8 @@ class _LoginPageState extends State<LoginPage> {
           children: [
             _TinyLink(
               label: _cloudMode
-                  ? 'Use local-only sync'
-                  : 'Use a luma account instead',
+                  ? t.loginUseLocalOnly
+                  : t.loginUseLumaAccount,
               icon: _cloudMode ? Icons.wifi_rounded : Icons.cloud_rounded,
               onTap: _busy
                   ? null
@@ -809,7 +808,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
             if (_cloudMode && !_serverFieldVisible)
               _TinyLink(
-                label: 'Self-hosted server',
+                label: t.loginSelfHostedServer,
                 icon: Icons.dns_rounded,
                 onTap: _busy
                     ? null
@@ -826,9 +825,10 @@ class _LoginPageState extends State<LoginPage> {
   // ---- Panel: waiting on the browser --------------------------------------
 
   Widget _browserPanel() {
+    final t = L.of(context);
     final luma = context.luma;
     final provider = _providerById(_pendingProviderId);
-    final name = provider?.name ?? 'your provider';
+    final name = provider?.name ?? t.loginYourProvider;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -843,9 +843,8 @@ class _LoginPageState extends State<LoginPage> {
         ),
         const SizedBox(height: 22),
         _Heading(
-          title: 'Continue in your browser',
-          subtitle: 'We opened $name in your browser. Finish up '
-              'there, then come back — this page sorts itself out.',
+          title: t.loginContinueInBrowser,
+          subtitle: t.loginOpenedInBrowser(name),
           centered: true,
         ),
         const SizedBox(height: 24),
@@ -865,20 +864,20 @@ class _LoginPageState extends State<LoginPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             LumaGhostButton(
-              label: 'Reopen the page',
+              label: t.loginReopenPage,
               icon: Icons.open_in_new_rounded,
               onTap: _openAuthUrl,
             ),
             const SizedBox(width: 10),
             LumaGhostButton(
-              label: 'Copy link',
+              label: t.loginCopyLink,
               icon: Icons.link_rounded,
               onTap: () async {
                 final url = _handle?.authUrl;
                 if (url == null) return;
                 await Clipboard.setData(ClipboardData(text: url));
                 if (mounted) {
-                  setState(() => _info = 'Link copied to your clipboard.');
+                  setState(() => _info = t.loginLinkCopied);
                 }
               },
             ),
@@ -887,7 +886,7 @@ class _LoginPageState extends State<LoginPage> {
         const SizedBox(height: 14),
         Center(
           child: _TinyLink(
-            label: 'Cancel and go back',
+            label: t.loginCancelAndGoBack,
             icon: Icons.arrow_back_rounded,
             onTap: _cancelProviderFlow,
           ),
@@ -899,11 +898,12 @@ class _LoginPageState extends State<LoginPage> {
   // ---- Panel: the passphrase ----------------------------------------------
 
   Widget _passphrasePanel() {
+    final t = L.of(context);
     final identity = _identity;
     if (identity == null) return const SizedBox.shrink();
     final isNew = !identity.existingAccount;
     final provider = _providerById(_pendingProviderId);
-    final providerName = provider?.name ?? 'your provider';
+    final providerName = provider?.name ?? t.loginYourProvider;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -917,19 +917,15 @@ class _LoginPageState extends State<LoginPage> {
         ),
         const SizedBox(height: 20),
         _Heading(
-          title: isNew ? 'One last thing' : 'Unlock your data',
+          title: isNew ? t.loginOneLastThing : t.loginUnlockYourData,
           subtitle: isNew
-              ? '$providerName proved who you are, but it cannot unlock your '
-                  'data — nothing can except a passphrase only you know. '
-                  'Choose one now; you will need it on every device.'
-              : 'This account already exists, so $providerName signed you '
-                  'straight into it. Enter the luma passphrase you set up — '
-                  'the same one you would type to sign in with a password.',
+              ? t.loginNewAccountExplain(providerName)
+              : t.loginExistingAccountExplain(providerName),
         ),
         const SizedBox(height: 20),
         _LoginField(
           controller: _passphrase,
-          label: isNew ? 'Choose a passphrase' : 'Your luma passphrase',
+          label: isNew ? t.loginChoosePassphraseLabel : t.loginYourPassphrase,
           icon: Icons.key_rounded,
           enabled: !_busy,
           obscure: true,
@@ -945,7 +941,7 @@ class _LoginPageState extends State<LoginPage> {
           const SizedBox(height: 12),
           _LoginField(
             controller: _passphraseConfirm,
-            label: 'Confirm passphrase',
+            label: t.loginConfirmPassphrase,
             icon: Icons.lock_reset_rounded,
             enabled: !_busy,
             obscure: true,
@@ -954,7 +950,7 @@ class _LoginPageState extends State<LoginPage> {
         ],
         const SizedBox(height: 18),
         LumaPrimaryButton(
-          label: isNew ? 'Create account' : 'Unlock and sign in',
+          label: isNew ? t.loginCreateAccount : t.loginUnlockAndSignIn,
           expand: true,
           loading: _busy,
           onTap: _busy ? null : _submitPassphrase,
@@ -965,7 +961,7 @@ class _LoginPageState extends State<LoginPage> {
         const SizedBox(height: 12),
         Center(
           child: _TinyLink(
-            label: 'Use a different account',
+            label: t.loginUseDifferentAccount,
             icon: Icons.arrow_back_rounded,
             onTap: _busy ? null : _cancelProviderFlow,
           ),
@@ -977,6 +973,7 @@ class _LoginPageState extends State<LoginPage> {
   // ---- Panel: waiting for approval ----------------------------------------
 
   Widget _pendingPanel() {
+    final t = L.of(context);
     final luma = context.luma;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -996,14 +993,14 @@ class _LoginPageState extends State<LoginPage> {
         ),
         const SizedBox(height: 22),
         _Heading(
-          title: 'Almost there',
+          title: t.loginAlmostThere,
           subtitle: _info ??
-              'Your account has to be approved before you can sign in.',
+              t.loginNeedsApproval,
           centered: true,
         ),
         const SizedBox(height: 24),
         LumaPrimaryButton(
-          label: 'Back to sign in',
+          label: t.loginBackToSignIn,
           expand: true,
           onTap: () => setState(() {
             _step = _Step.credentials;
@@ -1017,7 +1014,7 @@ class _LoginPageState extends State<LoginPage> {
         const SizedBox(height: 10),
         Center(
           child: _TinyLink(
-            label: 'Close',
+            label: t.commonClose,
             icon: Icons.close_rounded,
             onTap: _close,
           ),
@@ -1029,6 +1026,7 @@ class _LoginPageState extends State<LoginPage> {
   // ---- Panel: 6-digit email code -------------------------------------------
 
   Widget _codePanel() {
+    final t = L.of(context);
     final luma = context.luma;
     final email = widget.sync.pendingApprovalEmail ?? _email.text.trim();
     return Column(
@@ -1049,15 +1047,14 @@ class _LoginPageState extends State<LoginPage> {
         ),
         const SizedBox(height: 22),
         _Heading(
-          title: 'Check your email',
-          subtitle: 'We sent a 6-digit code to $email. Enter it below to '
-              'verify your account.',
+          title: t.loginCheckYourEmail,
+          subtitle: t.loginCodeSentTo(email),
           centered: true,
         ),
         const SizedBox(height: 20),
         _LoginField(
           controller: _code,
-          label: '6-digit code',
+          label: t.loginSixDigitCode,
           icon: Icons.pin_rounded,
           enabled: !_busy,
           autofocus: true,
@@ -1068,7 +1065,7 @@ class _LoginPageState extends State<LoginPage> {
         const SizedBox(height: 12),
         _LoginField(
           controller: _password,
-          label: 'Password',
+          label: t.commonPassword,
           icon: Icons.lock_outline_rounded,
           enabled: !_busy,
           obscure: true,
@@ -1077,7 +1074,7 @@ class _LoginPageState extends State<LoginPage> {
         ),
         const SizedBox(height: 18),
         LumaPrimaryButton(
-          label: 'Verify and sign in',
+          label: t.loginVerifyAndSignIn,
           expand: true,
           loading: _busy,
           onTap: _busy ? null : _submitCode,
@@ -1090,12 +1087,12 @@ class _LoginPageState extends State<LoginPage> {
           runSpacing: 6,
           children: [
             _TinyLink(
-              label: _busy ? 'Sending…' : 'Resend code',
+              label: _busy ? t.loginSending : t.loginResendCode,
               icon: Icons.refresh_rounded,
               onTap: _busy ? null : _resendCode,
             ),
             _TinyLink(
-              label: 'Use a different email',
+              label: t.loginUseDifferentEmail,
               icon: Icons.arrow_back_rounded,
               onTap: _busy ? null : _useDifferentEmail,
             ),
@@ -1108,6 +1105,7 @@ class _LoginPageState extends State<LoginPage> {
   // ---- Panels: forgot password ----------------------------------------------
 
   Widget _forgotPanel() {
+    final t = L.of(context);
     final luma = context.luma;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1125,17 +1123,15 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
         const SizedBox(height: 22),
-        const _Heading(
-          title: 'Forgot your password?',
-          subtitle: 'Enter the email of your account and we will send you a '
-              '6-digit code to choose a new password. The code works for 15 '
-              'minutes.',
+        _Heading(
+          title: t.loginForgotTitle,
+          subtitle: t.loginForgotSubtitle,
           centered: true,
         ),
         const SizedBox(height: 20),
         _LoginField(
           controller: _email,
-          label: 'Email',
+          label: t.commonEmail,
           icon: Icons.alternate_email_rounded,
           enabled: !_busy,
           autofocus: true,
@@ -1145,7 +1141,7 @@ class _LoginPageState extends State<LoginPage> {
         ),
         const SizedBox(height: 18),
         LumaPrimaryButton(
-          label: 'Send code',
+          label: t.loginSendCode,
           expand: true,
           loading: _busy,
           onTap: _busy ? null : _sendResetCode,
@@ -1154,7 +1150,7 @@ class _LoginPageState extends State<LoginPage> {
         const SizedBox(height: 10),
         Center(
           child: _TinyLink(
-            label: 'Back to sign in',
+            label: t.loginBackToSignIn,
             icon: Icons.arrow_back_rounded,
             onTap: _busy ? null : _backToSignIn,
           ),
@@ -1164,6 +1160,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _resetPanel() {
+    final t = L.of(context);
     final luma = context.luma;
     final email = _email.text.trim();
     return Column(
@@ -1184,15 +1181,14 @@ class _LoginPageState extends State<LoginPage> {
         ),
         const SizedBox(height: 22),
         _Heading(
-          title: 'Choose a new password',
-          subtitle: 'If $email has an account, a 6-digit code is on its way. '
-              'Enter it within 15 minutes, together with your new password.',
+          title: t.loginChooseNewPassword,
+          subtitle: t.loginResetSubtitle(email),
           centered: true,
         ),
         const SizedBox(height: 20),
         _LoginField(
           controller: _code,
-          label: '6-digit code',
+          label: t.loginSixDigitCode,
           icon: Icons.pin_rounded,
           enabled: !_busy,
           autofocus: true,
@@ -1202,7 +1198,7 @@ class _LoginPageState extends State<LoginPage> {
         const SizedBox(height: 12),
         _LoginField(
           controller: _recovery,
-          label: 'Recovery key (keeps your synced data)',
+          label: t.loginRecoveryKey,
           icon: Icons.key_rounded,
           enabled: !_busy,
           onChanged: (_) => setState(() {}),
@@ -1210,7 +1206,7 @@ class _LoginPageState extends State<LoginPage> {
         const SizedBox(height: 12),
         _LoginField(
           controller: _password,
-          label: 'New password',
+          label: t.loginNewPassword,
           icon: Icons.lock_outline_rounded,
           enabled: !_busy,
           obscure: true,
@@ -1221,7 +1217,7 @@ class _LoginPageState extends State<LoginPage> {
         const SizedBox(height: 12),
         _LoginField(
           controller: _confirm,
-          label: 'Confirm new password',
+          label: t.loginConfirmNewPassword,
           icon: Icons.lock_reset_rounded,
           enabled: !_busy,
           obscure: true,
@@ -1229,7 +1225,7 @@ class _LoginPageState extends State<LoginPage> {
         ),
         const SizedBox(height: 18),
         LumaPrimaryButton(
-          label: 'Reset password and sign in',
+          label: t.loginResetAndSignIn,
           expand: true,
           loading: _busy,
           onTap: _busy ? null : _submitReset,
@@ -1244,12 +1240,12 @@ class _LoginPageState extends State<LoginPage> {
           runSpacing: 6,
           children: [
             _TinyLink(
-              label: _busy ? 'Sending…' : 'Send a new code',
+              label: _busy ? t.loginSending : t.loginSendNewCode,
               icon: Icons.refresh_rounded,
               onTap: _busy ? null : _sendResetCode,
             ),
             _TinyLink(
-              label: 'Back to sign in',
+              label: t.loginBackToSignIn,
               icon: Icons.arrow_back_rounded,
               onTap: _busy ? null : _backToSignIn,
             ),
@@ -1278,6 +1274,7 @@ class _BrandPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final on = luma.onAccent;
+    final t = L.of(context);
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -1331,7 +1328,7 @@ class _BrandPanel extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  'Everything you keep here,\non every device you use.',
+                  t.loginBrandTagline,
                   style: TextStyle(
                     color: on,
                     fontSize: 25,
@@ -1341,22 +1338,21 @@ class _BrandPanel extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 22),
-                const _BrandPoint(
+                _BrandPoint(
                   icon: Icons.lock_rounded,
-                  text: 'Encrypted on this device before it ever leaves it.',
+                  text: t.loginBrandPointEncrypted,
                 ),
-                const _BrandPoint(
+                _BrandPoint(
                   icon: Icons.tune_rounded,
-                  text: 'Nothing syncs until you switch it on, per feature.',
+                  text: t.loginBrandPointPerFeature,
                 ),
-                const _BrandPoint(
+                _BrandPoint(
                   icon: Icons.wifi_rounded,
-                  text: 'Or skip the server entirely and pair over your '
-                      'own network.',
+                  text: t.loginBrandPointSkipServer,
                 ),
                 const Spacer(),
                 Text(
-                  'Not even we can read your data.',
+                  t.loginBrandNotEvenUs,
                   style: TextStyle(
                     color: on.withValues(alpha: 0.72),
                     fontSize: 12,
@@ -1470,6 +1466,7 @@ class _ProviderButtonState extends State<_ProviderButton> {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final active = widget.enabled && !widget.busy;
+    final t = L.of(context);
     return MouseRegion(
       cursor: active ? SystemMouseCursors.click : SystemMouseCursors.basic,
       onEnter: (_) => setState(() => _hovering = true),
@@ -1502,7 +1499,7 @@ class _ProviderButtonState extends State<_ProviderButton> {
                 _ProviderGlyph(providerId: widget.provider.id, size: 18),
               const SizedBox(width: 12),
               Text(
-                'Continue with ${widget.provider.name}',
+                t.loginContinueWith(widget.provider.name),
                 style: TextStyle(
                   color: active ? luma.textPrimary : luma.textMuted,
                   fontSize: 14,
@@ -1789,7 +1786,7 @@ class _LoginFieldState extends State<_LoginField> {
                 size: 18,
                 color: luma.textMuted,
               ),
-              tooltip: _hidden ? 'Show' : 'Hide',
+              tooltip: _hidden ? L.of(context).loginShow : L.of(context).loginHide,
               splashRadius: 18,
               constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
               padding: EdgeInsets.zero,
@@ -1808,11 +1805,11 @@ class _StrengthMeter extends StatelessWidget {
 
   final TextEditingController controller;
 
-  static const _labels = ['Too short', 'Weak', 'Good', 'Strong'];
-
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
+    final labels = [t.loginStrengthTooShort, t.loginStrengthWeak, t.loginStrengthGood, t.loginStrengthStrong];
     return ListenableBuilder(
       listenable: controller,
       builder: (context, _) {
@@ -1845,7 +1842,7 @@ class _StrengthMeter extends StatelessWidget {
             SizedBox(
               width: 62,
               child: Text(
-                value.isEmpty ? '' : _labels[score.clamp(0, 3)],
+                value.isEmpty ? '' : labels[score.clamp(0, 3)],
                 textAlign: TextAlign.end,
                 style: TextStyle(
                   color: value.isEmpty ? luma.textMuted : color,
@@ -1885,7 +1882,7 @@ class _OrDivider extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
-            'or with your email',
+            L.of(context).loginOrWithEmail,
             style: TextStyle(
               color: luma.textMuted,
               fontSize: 11,
@@ -1921,10 +1918,7 @@ class _KeyWarning extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Everything is encrypted with this before it leaves the device. '
-              'If you forget it you can reset it by email, but the synced '
-              'copies on the server are erased — only what is still on your '
-              'devices comes back.',
+              L.of(context).loginKeyWarning,
               style: TextStyle(
                 color: luma.textSecondary,
                 fontSize: 11.5,
@@ -1970,15 +1964,8 @@ class _ResetWarning extends StatelessWidget {
           Expanded(
             child: Text(
               withRecoveryKey
-                  ? 'Your recovery key unlocks your synced data, so it stays '
-                        'on the server and is re-encrypted under your new '
-                        'password. Every device is signed out and picks it '
-                        'up again with the new password.'
-                  : 'Your synced data is locked with your old password. '
-                        'Without your recovery key, a reset erases the copies '
-                        'on the server and signs out every device. Whatever '
-                        'is still on your devices uploads again once they '
-                        'sign in with the new password.',
+                  ? L.of(context).loginResetWithRecoveryKey
+                  : L.of(context).loginResetWithoutRecoveryKey,
               style: TextStyle(
                 color: luma.textSecondary,
                 fontSize: 11.5,
@@ -2075,32 +2062,41 @@ class _LegalLinks extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    TextStyle style() => TextStyle(color: luma.textMuted, fontSize: 11);
-    Widget link(String label, String url) => MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () => launchUrl(Uri.parse(url),
-                mode: LaunchMode.externalApplication),
-            child: Text(
-              label,
-              style: style().copyWith(
-                color: luma.textSecondary,
-                decoration: TextDecoration.underline,
-                decorationColor: luma.textMuted,
-              ),
-            ),
-          ),
-        );
-    return Wrap(
-      alignment: WrapAlignment.center,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 6,
-      children: [
-        Text('By continuing you agree to our', style: style()),
-        link('Terms of service', _kTermsOfServiceUrl),
-        Text('and', style: style()),
-        link('Privacy policy', _kPrivacyPolicyUrl),
-      ],
+    final t = L.of(context);
+    final base = TextStyle(color: luma.textMuted, fontSize: 11);
+    final linkStyle = base.copyWith(
+      color: luma.textSecondary,
+      decoration: TextDecoration.underline,
+      decorationColor: luma.textMuted,
+    );
+    final template = t.loginAgreeLegal('\u0001', '\u0002');
+    final spans = <InlineSpan>[];
+    var last = 0;
+    for (final match in RegExp('[\u0001\u0002]').allMatches(template)) {
+      if (match.start > last) {
+        spans.add(TextSpan(text: template.substring(last, match.start)));
+      }
+      final terms = match.group(0) == '\u0001';
+      spans.add(
+        TextSpan(
+          text: terms ? t.loginTermsOfService : t.loginPrivacyPolicy,
+          style: linkStyle,
+          mouseCursor: SystemMouseCursors.click,
+          recognizer: TapGestureRecognizer()
+            ..onTap = () => launchUrl(
+                  Uri.parse(terms ? _kTermsOfServiceUrl : _kPrivacyPolicyUrl),
+                  mode: LaunchMode.externalApplication,
+                ),
+        ),
+      );
+      last = match.end;
+    }
+    if (last < template.length) {
+      spans.add(TextSpan(text: template.substring(last)));
+    }
+    return Text.rich(
+      TextSpan(style: base, children: spans),
+      textAlign: TextAlign.center,
     );
   }
 }

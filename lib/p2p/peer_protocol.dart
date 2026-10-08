@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import '../l10n/current_l.dart';
+
 /// Wire protocol for luma peer-to-peer sync.
 ///
 /// Every unit on the wire is a length-prefixed frame:
@@ -221,7 +223,7 @@ class PeerHello {
     }
     return PeerHello(
       deviceId: j['deviceId'] as String? ?? '',
-      deviceName: j['name'] as String? ?? 'Unknown device',
+      deviceName: j['name'] as String? ?? currentL.p2pUnknownDevice,
       platform: j['platform'] as String? ?? '',
       token: j['token'] as String? ?? '',
       collections: cols,

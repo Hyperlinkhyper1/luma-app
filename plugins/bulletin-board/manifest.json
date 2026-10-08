@@ -6,5 +6,27 @@
   "icon": "dashboard",
   "category": "Productivity",
   "details": "A blank corkboard for anything that doesn't need its own dedicated app: quick notes, half-formed ideas, reference images, or a running checklist.\n\nDrag pins wherever you like — there's no forced grid or list order, so the board can match how you actually think.",
-  "screenshots": ["board.png", "checklist.png"]
+  "screenshots": ["board.png", "checklist.png"],
+  "i18n": {
+    "nl": {
+      "name": "Prikbord",
+      "description": "Een prikbord voor in je hoofd. Plak er notities, foto's en kleine taken op, precies zoals je wilt.",
+      "details": "Een leeg corkboard voor alles wat geen eigen app nodig heeft: snelle notities, half uitgewerkte ideeën, referentiebeelden of een lopende checklist.\n\nSleep prikspeldjes waar je maar wilt. Er is geen verplicht raster of lijstvolgorde, zodat het bord kan aansluiten bij hoe je echt denkt."
+    },
+    "fr": {
+      "name": "Panneau d'affichage",
+      "description": "Un tableau d'épingles pour votre esprit. Collez-y notes, images et petites tâches comme bon vous semble.",
+      "details": "Un panneau de liège vierge pour tout ce qui n'a pas besoin de sa propre application : notes rapides, idées à moitié formées, images de référence ou liste de tâches en cours.\n\nDéplacez les punaises où vous voulez : il n'y a ni grille ni ordre de liste imposé, pour que le tableau colle à votre façon réelle de penser."
+    },
+    "es": {
+      "name": "Tablón de anuncios",
+      "description": "Un tablero de anuncios para tu cabeza. Pega notas, imágenes y pequeñas tareas como quieras.",
+      "details": "Un tablón de corcho en blanco para todo lo que no necesita su propia app: notas rápidas, ideas a medio formar, imágenes de referencia o una lista de tareas en curso.\n\nArrastra los pines donde quieras: no hay cuadrícula ni orden de lista impuesto, así que el tablón puede adaptarse a cómo piensas de verdad."
+    },
+    "zh": {
+      "name": "公告板",
+      "description": "为你的思绪准备的钉板。想怎么贴便签、图片和小待办，就怎么贴。",
+      "details": "一块空白的软木板，适合放置不需要独立应用的内容：快速笔记、尚不成熟的想法、参考图片或持续更新的清单。\n\n图钉可以随意拖动，没有强制的网格或列表顺序，这块板可以贴合你真实的思维方式。"
+    }
+  }
 }

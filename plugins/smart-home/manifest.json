@@ -7,5 +7,27 @@
   "category": "Utility",
   "tags": ["Utility", "Home"],
   "free": true,
-  "details": "Luma finds IKEA DIRIGERA hubs on your home network. Select your hub and press its action button to pair. You can enter its local IP address if discovery does not find it. After pairing, luma lists only your lamps and lets you switch them on or off. Lamps that support dimming, white temperature or color show those controls too.\n\nCreate presets by choosing lamps and setting each lamp's brightness and color. Your presets appear at the top of Smart Home, where one tap turns on the selected lamps with their saved settings. Presets stay saved on this device even when you disconnect the hub.\n\nThe connection stays on your home network. The hub token and its certificate fingerprint are stored in this device's secure credential store. This first version supports DIRIGERA only; the older TRÅDFRI gateway is not supported."
+  "details": "Luma finds IKEA DIRIGERA hubs on your home network. Select your hub and press its action button to pair. You can enter its local IP address if discovery does not find it. After pairing, luma lists only your lamps and lets you switch them on or off. Lamps that support dimming, white temperature or color show those controls too.\n\nCreate presets by choosing lamps and setting each lamp's brightness and color. Your presets appear at the top of Smart Home, where one tap turns on the selected lamps with their saved settings. Presets stay saved on this device even when you disconnect the hub.\n\nThe connection stays on your home network. The hub token and its certificate fingerprint are stored in this device's secure credential store. This first version supports DIRIGERA only; the older TRÅDFRI gateway is not supported.",
+  "i18n": {
+    "nl": {
+      "name": "Slimme woning",
+      "description": "Bedien IKEA-slimme lampen en bewaar verlichtingspresets die je met één tik activeert, via een DIRIGERA-hub op je thuisnetwerk.",
+      "details": "Luma zoekt IKEA DIRIGERA-hubs op je thuisnetwerk. Selecteer je hub en druk op de actieknop om te koppelen. Als de detectie hem niet vindt, kun je het lokale IP-adres invoeren. Na het koppelen toont luma alleen je lampen en kun je ze aan- of uitzetten. Lampen die dimmen, witte temperatuur of kleur ondersteunen, tonen ook die bedieningen.\n\nMaak presets door lampen te kiezen en per lamp de helderheid en kleur in te stellen. Je presets verschijnen bovenaan Slimme woning; één tik schakelt de geselecteerde lampen in met hun opgeslagen instellingen. Presets blijven op dit apparaat bewaard, ook als je de hub loskoppelt.\n\nDe verbinding blijft op je thuisnetwerk. Het hubtoken en de vingerafdruk van het certificaat worden opgeslagen in de beveiligde opslag van dit apparaat. Deze eerste versie ondersteunt alleen DIRIGERA; de oudere TRÅDFRI-gateway wordt niet ondersteund."
+    },
+    "fr": {
+      "name": "Maison connectée",
+      "description": "Contrôlez les lampes connectées IKEA et enregistrez des préréglages d'éclairage à un seul geste, via un hub DIRIGERA sur votre réseau domestique.",
+      "details": "Luma trouve les hubs IKEA DIRIGERA sur votre réseau domestique. Sélectionnez votre hub et appuyez sur son bouton d'action pour l'associer. Vous pouvez saisir son adresse IP locale si la détection ne le trouve pas. Après l'association, luma ne liste que vos lampes et vous permet de les allumer ou de les éteindre. Les lampes qui prennent en charge la gradation, la température de blanc ou la couleur affichent aussi ces commandes.\n\nCréez des préréglages en choisissant des lampes et en réglant la luminosité et la couleur de chacune. Vos préréglages apparaissent en haut de Maison connectée ; un seul geste allume les lampes sélectionnées avec leurs réglages enregistrés. Les préréglages restent enregistrés sur cet appareil même lorsque vous déconnectez le hub.\n\nLa connexion reste sur votre réseau domestique. Le jeton du hub et l'empreinte de son certificat sont stockés dans le coffre de sécurité de cet appareil. Cette première version ne prend en charge que DIRIGERA ; l'ancienne passerelle TRÅDFRI n'est pas prise en charge."
+    },
+    "es": {
+      "name": "Casa inteligente",
+      "description": "Controla las lámparas inteligentes de IKEA y guarda ajustes de iluminación de un toque a través de un hub DIRIGERA en tu red doméstica.",
+      "details": "Luma encuentra los hubs DIRIGERA de IKEA en tu red doméstica. Selecciona tu hub y pulsa su botón de acción para emparejarlo. Puedes introducir su dirección IP local si la detección no lo encuentra. Tras emparejarlo, luma solo muestra tus lámparas y te permite encenderlas o apagarlas. Las lámparas que admiten regulación de brillo, temperatura de blanco o color también muestran esos controles.\n\nCrea ajustes predefinidos eligiendo lámparas y configurando el brillo y el color de cada una. Tus ajustes aparecen en la parte superior de Casa inteligente; con un toque se encienden las lámparas seleccionadas con sus valores guardados. Los ajustes siguen guardados en este dispositivo aunque desconectes el hub.\n\nLa conexión se mantiene en tu red doméstica. El token del hub y la huella de su certificado se guardan en el almacén de credenciales seguro de este dispositivo. Esta primera versión solo admite DIRIGERA; la antigua pasarela TRÅDFRI no es compatible."
+    },
+    "zh": {
+      "name": "智能家居",
+      "description": "通过家庭网络中的 DIRIGERA 网关控制宜家智能灯，并保存一键照明预设。",
+      "details": "Luma 会在家庭网络中查找宜家 DIRIGERA 网关。选择你的网关，然后按下它的操作按钮即可配对。如果自动发现找不到，可以输入它的本地 IP 地址。配对后，luma 只列出你的灯，并可以开关它们。支持调光、白色色温或颜色的灯也会显示相应的控制。\n\n选择灯并设置每盏灯的亮度和颜色即可创建预设。预设会显示在智能家居顶部，轻点一次即可按保存的设置打开所选灯具。即使断开网关，预设仍保存在此设备上。\n\n连接始终保持在家庭网络内。网关令牌及其证书指纹存储在本设备的安全凭据存储中。此首个版本仅支持 DIRIGERA；较旧的 TRÅDFRI 网关不受支持。"
+    }
+  }
 }

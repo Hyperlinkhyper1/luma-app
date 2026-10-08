@@ -1,3 +1,4 @@
+import '../../../../l10n/current_l.dart';
 import 'ai_usage_pricing_freebuff.dart';
 import 'ai_usage_pricing_luma.dart';
 import 'ai_usage_source.dart';
@@ -12,17 +13,20 @@ import 'ai_usage_source.dart';
 /// 4.8", "gpt-5.4-mini" -> "Codex · GPT 5.4 mini". Names outside the
 /// recognized families for that source fall back to the raw model string
 /// with just the source prefix.
-String displayName(AiUsageSource source, String model) => switch (source) {
+String displayName(AiUsageSource source, String model) {
+  return switch (source) {
       AiUsageSource.claudeCode => 'Claude · ${_shortModelName(model)}',
       AiUsageSource.codexCli => 'Codex · ${_shortOpenAiModelName(model)}',
       // Already a human-readable name extracted from Antigravity's own UI
       // text (e.g. "Claude Opus 4.6 (Thinking)") — no family-name shortening
       // needed the way the other two sources' raw API model IDs require.
-      AiUsageSource.antigravity => 'Antigravity · $model',
+      AiUsageSource.antigravity =>
+        'Antigravity · ${model == 'Unknown model' ? currentL.aiUsageUnknownModel : model}',
       AiUsageSource.opencode => 'OpenCode · ${_shortOpencodeModelName(model)}',
       AiUsageSource.freebuff => 'Freebuff · ${_shortFreebuffModelName(model)}',
       AiUsageSource.luma => 'Luma · ${_shortLumaModelName(model)}',
     };
+}
 
 /// "anthropic/claude-opus-4-6" -> "Opus 4.6", "openai/gpt-5.4" -> "GPT 5.4",
 /// "opencode/x-preview-f-free" -> "x-preview-f-free". Undoes the

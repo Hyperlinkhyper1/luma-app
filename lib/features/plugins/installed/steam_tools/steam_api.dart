@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../l10n/current_l.dart';
 import 'steam_models.dart';
 
 /// Raised for every Steam request that did not come back usable. The
@@ -14,6 +15,17 @@ class SteamApiException implements Exception {
 
   @override
   String toString() => message;
+}
+
+/// The request a Steam failure message is about. The name is the key the
+/// localised messages select on.
+enum _SteamTask {
+  resolveProfile,
+  readLibrary,
+  readStorePage,
+  searchStore;
+
+  String get code => name;
 }
 
 /// Talks to Steam directly from this device.
@@ -42,7 +54,7 @@ class SteamApi {
   Future<String> resolveSteamId(String input, {required String apiKey}) async {
     final raw = input.trim();
     if (raw.isEmpty) {
-      throw const SteamApiException('Enter your Steam ID or profile URL.');
+      throw SteamApiException(currentL.steamApiEnterIdOrUrl);
     }
 
     final direct = _asSteamId64(raw);
@@ -58,26 +70,20 @@ class SteamApi {
     if (vanityMatch != null) {
       vanity = vanityMatch.group(1)!;
     } else if (raw.contains('/') || raw.contains('.')) {
-      throw const SteamApiException(
-        'That does not look like a Steam ID or profile URL. Use your 17-digit '
-        'ID, or the full link to your profile.',
-      );
+      throw SteamApiException(currentL.steamApiNotSteamIdOrUrl);
     }
 
     final uri = Uri.https(_webApiHost, '/ISteamUser/ResolveVanityURL/v1/', {
       'key': apiKey,
       'vanityurl': vanity,
     });
-    final body = await _getJson(uri, what: 'resolve that profile name');
+    final body = await _getJson(uri, what: _SteamTask.resolveProfile);
     final response = body['response'];
     if (response is Map && response['success'] == 1) {
       final id = response['steamid'];
       if (id is String && id.isNotEmpty) return id;
     }
-    throw SteamApiException(
-      'Steam does not know a profile called "$vanity". Check the name, or '
-      'paste your 17-digit Steam ID instead.',
-    );
+    throw SteamApiException(currentL.steamApiUnknownProfile(vanity));
   }
 
   /// Every game on the account, including free ones it has played.
@@ -96,13 +102,10 @@ class SteamApi {
       'include_played_free_games': '1',
       'format': 'json',
     });
-    final body = await _getJson(uri, what: 'read your library');
+    final body = await _getJson(uri, what: _SteamTask.readLibrary);
     final response = body['response'];
     if (response is! Map || !response.containsKey('games')) {
-      throw const SteamApiException(
-        'Steam returned no games. Open your Steam privacy settings and set '
-        '"Game details" to Public, then try again.',
-      );
+      throw SteamApiException(currentL.steamApiNoGames);
     }
     final games = response['games'];
     if (games is! List) return const [];
@@ -132,7 +135,7 @@ class SteamApi {
       'cc': countryCode,
       'l': 'en',
     });
-    final body = await _getJson(uri, what: 'read that store page');
+    final body = await _getJson(uri, what: _SteamTask.readStorePage);
     final entry = body['$appId'];
     if (entry is! Map || entry['success'] != true) return null;
     final data = entry['data'];
@@ -155,7 +158,7 @@ class SteamApi {
       'l': 'english',
       'cc': countryCode,
     });
-    final body = await _getJson(uri, what: 'search the store');
+    final body = await _getJson(uri, what: _SteamTask.searchStore);
     final items = body['items'];
     if (items is! List) return const [];
 
@@ -173,34 +176,30 @@ class SteamApi {
 
   Future<Map<String, dynamic>> _getJson(
     Uri uri, {
-    required String what,
+    required _SteamTask what,
   }) async {
     http.Response response;
     try {
       response = await _client.get(uri).timeout(_timeout);
     } catch (e) {
-      throw SteamApiException(
-        'Could not reach Steam to $what. Check your connection and try again.',
-      );
+      throw SteamApiException(currentL.steamApiUnreachable(what.code));
     }
 
     if (response.statusCode == 401 || response.statusCode == 403) {
       throw SteamApiException(
-        'Steam rejected the API key. Check it under Connect, or generate a '
-        'new one at steamcommunity.com/dev/apikey.',
+        currentL.steamApiRejectedKey,
         status: response.statusCode,
       );
     }
     if (response.statusCode == 429) {
       throw SteamApiException(
-        'Steam is rate limiting this device. Wait a few minutes and try '
-        'again.',
+        currentL.steamApiRateLimited,
         status: response.statusCode,
       );
     }
     if (response.statusCode != 200) {
       throw SteamApiException(
-        'Steam could not $what (HTTP ${response.statusCode}).',
+        currentL.steamApiHttpError(what.code, response.statusCode),
         status: response.statusCode,
       );
     }
@@ -208,13 +207,13 @@ class SteamApi {
     try {
       final decoded = jsonDecode(response.body);
       if (decoded is! Map) {
-        throw const SteamApiException('Steam sent back an unexpected reply.');
+        throw SteamApiException(currentL.steamApiUnreadable(what.code));
       }
       return decoded.cast<String, dynamic>();
     } on SteamApiException {
       rethrow;
     } catch (_) {
-      throw SteamApiException('Steam sent back an unreadable reply to $what.');
+      throw SteamApiException(currentL.steamApiUnreadable(what.code));
     }
   }
 

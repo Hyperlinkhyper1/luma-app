@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import 'ai_compare_page.dart';
 import 'ai_leaderboard_graph.dart';
@@ -30,6 +31,7 @@ class _AiLeaderboardTabState extends State<AiLeaderboardTab> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -39,7 +41,11 @@ class _AiLeaderboardTabState extends State<AiLeaderboardTab> {
             children: [
               Flexible(
                 child: LumaSegmentedTabs(
-                  tabs: const ['Table', 'Graph', 'Insights'],
+                  tabs: [
+                    t.aiLeaderboardTabTable,
+                    t.aiLeaderboardTabGraph,
+                    t.aiLeaderboardTabInsights,
+                  ],
                   selectedIndex: _view.index,
                   onSelect: (i) =>
                       setState(() => _view = _LeaderboardView.values[i]),
@@ -49,7 +55,7 @@ class _AiLeaderboardTabState extends State<AiLeaderboardTab> {
                 child: Align(
                   alignment: Alignment.centerRight,
                   child: LumaGhostButton(
-                    label: 'Compare',
+                    label: t.aiLeaderboardCompare,
                     icon: Icons.compare_arrows_rounded,
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const AiComparePage()),

@@ -7,7 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../features/plugins/plugin_icons.dart';
+import '../features/plugins/plugin_l10n.dart';
 import '../features/plugins/plugin_repository.dart';
+import '../l10n/current_l.dart';
 
 /// Android home-screen widgets: a 1x1 tile per plugin that opens luma
 /// straight onto that plugin.
@@ -87,10 +89,13 @@ class PluginHomeWidgets {
     required Color foreground,
   }) async {
     if (!supported) return;
+    final t = currentL;
+    String nameOf(InstalledPluginRecord p) =>
+        pluginDisplayName(t, p.pluginId, p.name);
     final signature = [
       background.toARGB32(),
       foreground.toARGB32(),
-      for (final p in plugins) '${p.pluginId}|${p.name}|${p.icon}',
+      for (final p in plugins) '${p.pluginId}|${nameOf(p)}|${p.icon}',
     ].join(';');
     if (signature == _lastSignature) return;
     _lastSignature = signature;
@@ -99,7 +104,7 @@ class PluginHomeWidgets {
       for (final p in plugins) {
         entries.add({
           'id': p.pluginId,
-          'name': p.name,
+          'name': nameOf(p),
           'png': await renderIcon(
             pluginIconFor(p.icon),
             background: background,

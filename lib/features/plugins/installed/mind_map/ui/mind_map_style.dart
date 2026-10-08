@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/current_l.dart';
 import '../data/mind_map_database.dart';
 
 /// Visual rules shared by the canvas painter, the node cards and the size
@@ -58,7 +59,7 @@ class MindMapStyle {
     required TextStyle style,
     required TextScaler textScaler,
   }) {
-    final text = label.trim().isEmpty ? 'New idea' : label;
+    final text = label.trim().isEmpty ? currentL.mindMapNewIdea : label;
     final painter = TextPainter(
       text: TextSpan(text: text, style: style),
       textDirection: TextDirection.ltr,

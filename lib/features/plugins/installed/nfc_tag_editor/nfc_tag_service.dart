@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart'
 import 'package:nfc_manager/nfc_manager.dart';
 import 'package:nfc_manager/platform_tags.dart';
 
+import '../../../../l10n/current_l.dart';
 import 'nfc_record.dart';
 
 /// Thrown when a scan/write can't start, can't complete, or is refused.
@@ -81,10 +82,7 @@ class NfcTagService {
         final ndef = Ndef.from(tag);
         if (ndef == null) {
           if (NdefFormatable.from(tag) == null) {
-            throw const NfcTagEditorException(
-              "This tag doesn't support NDEF, so luma can't edit it. Most "
-              'blank NFC stickers and cards do — try another tag.',
-            );
+            throw NfcTagEditorException(currentL.nfcErrNotNdef);
           }
           return ScannedNfcTag(
             techLabel: _techLabel(tag),
@@ -129,15 +127,13 @@ class NfcTagService {
         final ndef = Ndef.from(tag);
         if (ndef != null) {
           if (!ndef.isWritable) {
-            throw const NfcTagEditorException(
-              'This tag is locked read-only and can no longer be written to.',
-            );
+            throw NfcTagEditorException(currentL.nfcErrLocked);
           }
           if (ndef.maxSize > 0 && message.byteLength > ndef.maxSize) {
-            throw NfcTagEditorException(
-              "That's ${message.byteLength} bytes, but this tag only holds "
-              '${ndef.maxSize}. Remove a record and try again.',
-            );
+            throw NfcTagEditorException(currentL.nfcErrTooBig(
+              message.byteLength,
+              ndef.maxSize,
+            ));
           }
           await ndef.write(message);
           if (lock) await ndef.writeLock();
@@ -145,9 +141,7 @@ class NfcTagService {
         }
         final formatable = NdefFormatable.from(tag);
         if (formatable == null) {
-          throw const NfcTagEditorException(
-            "This tag can't be written to — it doesn't support NDEF.",
-          );
+          throw NfcTagEditorException(currentL.nfcErrNotWritable);
         }
         if (lock) {
           await formatable.formatReadOnly(message);
@@ -166,9 +160,7 @@ class NfcTagService {
       onTag: (tag) async {
         final ndef = Ndef.from(tag);
         if (ndef == null) {
-          throw const NfcTagEditorException(
-            "This tag isn't NDEF-formatted, so there's nothing to lock.",
-          );
+          throw NfcTagEditorException(currentL.nfcErrNothingToLock);
         }
         if (!ndef.isWritable) return; // Already locked.
         await ndef.writeLock();
@@ -192,15 +184,10 @@ class NfcTagService {
     required Future<T> Function(NfcTag tag) onTag,
   }) async {
     if (!isSupported) {
-      throw const NfcTagEditorException(
-        "NFC editing isn't available on this device.",
-      );
+      throw NfcTagEditorException(currentL.nfcErrNotAvailable);
     }
     if (!await isAvailable()) {
-      throw const NfcTagEditorException(
-        'NFC is off or unsupported here. Turn it on in your device settings '
-        'and try again.',
-      );
+      throw NfcTagEditorException(currentL.nfcErrNfcOff);
     }
 
     final completer = Completer<T>();
@@ -218,7 +205,7 @@ class NfcTagService {
           } catch (e) {
             if (!completer.isCompleted) {
               completer.completeError(
-                NfcTagEditorException("Couldn't reach that tag. ($e)"),
+                NfcTagEditorException(currentL.nfcErrCouldNotReach('$e')),
               );
             }
           } finally {
@@ -229,16 +216,13 @@ class NfcTagService {
     } catch (e) {
       // The countdown below hasn't started yet, so there's nothing to cancel.
       await stop();
-      throw NfcTagEditorException('Could not start the NFC reader. ($e)');
+      throw NfcTagEditorException(currentL.nfcErrStartFailed('$e'));
     }
 
     timer = Timer(timeout, () async {
       if (!completer.isCompleted) {
         completer.completeError(
-          const NfcTagEditorException(
-            'No tag detected. Hold it flat against the back of your phone '
-            'and try again.',
-          ),
+          NfcTagEditorException(currentL.nfcErrNoTag),
         );
         await stop();
       }

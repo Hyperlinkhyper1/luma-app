@@ -1,6 +1,9 @@
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
+  const tr = source => window.LumaSceneI18n?.translate?.(source) ?? source;
+  const tf = (key, values = {}) => window.LumaSceneI18n?.format?.(key, values) ?? key;
+  let lastHover = null;
   const status = $('status'), error = $('error'), statsBox = $('stats');
   let counter = 0, ready = false;
 
@@ -12,14 +15,14 @@
   }
   function fail(message) {
     error.style.display = 'block';
-    error.textContent = `The 3D airport could not start. ${message} Update your graphics driver or Android System WebView, then reopen the airport.`;
+    error.textContent = tf('sceneAirlineTycoonSceneStartFailure', {details: tr(message)});
     $('loading').classList.add('hidden');
     send({type: 'error', message: String(message)});
   }
   let started = false;
   // After the first frame a stray error must not take the whole airport down.
   window.addEventListener('error', e => { if (started) console.error(e.error || e.message); else fail(e.message); });
-  if (!window.THREE || !window.AirportModels) { fail('A bundled scene asset is missing.'); return; }
+  if (!window.THREE || !window.AirportModels) { fail(window.LumaSceneI18n?.value?.('sceneAirlineTycoonAirportMissingAsset') || ''); return; }
   const T = THREE, M = AirportModels, L = AirportSceneLogic;
 
   // ── Renderer, sky and light ───────────────────────────────────────────
@@ -567,8 +570,8 @@
     zoneTool = zone || null;
     endZoneDrag(false);
     status.textContent = !zoneTool ? ''
-      : zoneTool === 'none' ? 'Drag over a zone to rub it out'
-      : `Drag over the terminal floor to zone it as the ${L.hallNames[zoneTool].toLowerCase()}`;
+      : zoneTool === 'none' ? tf('sceneAirlineTycoonZoneRubOut')
+      : tf('sceneAirlineTycoonZoneMarkType', {zone: tr(L.hallNames[zoneTool].toLowerCase())});
   }
   function zoneRect() {
     if (!zoneDrag) return null;
@@ -1209,7 +1212,7 @@
     grid.visible = (!!tool && !interior) || gridWanted;
     fineGrid.visible = !!interior;
     zoneHints();
-    status.textContent = tool ? 'Click to place · Drag to move · Right-drag to orbit' : '';
+    status.textContent = tool ? tf('sceneAirlineTycoonPlacementInstruction') : '';
   }
   function select(id) {
     const item = facilities.get(id);
@@ -1230,6 +1233,7 @@
       if (m.type === 'snapshot') snapshot(m.world);
       else if (m.type === 'result') window.AirportHud?.result(m);
       else if (m.type === 'theme') window.AirportHud?.theme(m.palette);
+      else if (m.type === 'luma-locale') window.LumaSceneI18n?.set(m);
       else if (m.type === 'tool') setTool(m);
       else if (m.type === 'view') {
         switch (m.action) {
@@ -1337,6 +1341,7 @@
   }
   function hover(x, y) {
     if (!tool) return;
+    lastHover = {x, y};
     ray(x, y);
     if (!raycaster.ray.intersectPlane(plane, point)) return;
     const interior = interiorKinds().has(tool.kind);
@@ -1362,9 +1367,20 @@
     const check = L.validate(world || {}, tool, location);
     const material = check.valid ? ghostOk : ghostBad;
     ghost.traverse(o => { if (o.isMesh) o.material = material; });
-    const euros = n => new Intl.NumberFormat('en', {style: 'currency', currency: 'EUR', maximumFractionDigits: 0}).format(n);
-    status.textContent = `${check.cost === undefined ? '' : `${euros(check.cost)} · `}Cash ${euros(world?.cash || 0)} · ${check.reason || 'Click to confirm'}`;
+    const locale = ({en: 'en-US', nl: 'nl-NL', es: 'es-ES', fr: 'fr-FR', zh: 'zh-CN'})[window.LumaSceneI18n?.language] || 'en-US';
+    const euros = n => new Intl.NumberFormat(locale, {style: 'currency', currency: 'EUR', maximumFractionDigits: 0}).format(n);
+    const cash = tf('sceneAirlineTycoonCashStatus', {cash: euros(world?.cash || 0)});
+    const reason = check.reason ? tr(check.reason) : tf('sceneAirlineTycoonClickToConfirm');
+    status.textContent = `${check.cost === undefined ? '' : `${euros(check.cost)} · `}${cash} · ${reason}`;
+
   }
+  window.addEventListener('luma-locale-changed', () => {
+    if (zoneTool) setZoneTool(zoneTool);
+    else if (tool) {
+      status.textContent = tf('sceneAirlineTycoonPlacementInstruction');
+      if (lastHover) hover(lastHover.x, lastHover.y);
+    }
+  });
   function click(x, y) {
     if (tool) { hover(x, y); if (location) window.AirportHud?.place(location); return; }
     const hits = ray(x, y).intersectObjects([...facilities.values()].map(v => v.mesh), true);

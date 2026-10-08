@@ -3,8 +3,10 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'recipe_editor.dart';
 import 'recipe_models.dart';
@@ -60,6 +62,7 @@ class _LocalRecipeDetailState extends State<_LocalRecipeDetail> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return AnimatedBuilder(
       animation: widget.controller,
       builder: (context, _) {
@@ -80,7 +83,9 @@ class _LocalRecipeDetailState extends State<_LocalRecipeDetail> {
           ],
           category: recipe.category,
           title: recipe.title,
-          subtitle: recipe.isPublished ? 'Shared to Public' : 'Private recipe',
+          subtitle: recipe.isPublished
+              ? t.recipeSharedToPublic
+              : t.recipePrivateRecipe,
           subtitleIcon:
               recipe.isPublished ? Icons.public_rounded : Icons.lock_rounded,
           description: recipe.description,
@@ -95,7 +100,7 @@ class _LocalRecipeDetailState extends State<_LocalRecipeDetail> {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               LumaGhostButton(
-                label: 'Delete',
+                label: t.commonDelete,
                 icon: Icons.delete_outline_rounded,
                 onTap: () async {
                   final ok = await _confirmDelete(context, recipe.title);
@@ -107,7 +112,7 @@ class _LocalRecipeDetailState extends State<_LocalRecipeDetail> {
               ),
               const SizedBox(width: 10),
               LumaGhostButton(
-                label: 'Edit',
+                label: t.commonEdit,
                 icon: Icons.edit_rounded,
                 onTap: () {
                   Navigator.pop(context);
@@ -159,6 +164,7 @@ class _PublicRecipeDetailState extends State<_PublicRecipeDetail> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return AnimatedBuilder(
       animation: widget.controller,
       builder: (context, _) {
@@ -179,10 +185,12 @@ class _PublicRecipeDetailState extends State<_PublicRecipeDetail> {
           ],
           category: recipe.category,
           title: recipe.title,
-          subtitle: 'by ${recipe.authorName}${recipe.mine ? ' · you' : ''}',
+          subtitle: recipe.mine
+              ? t.recipeByAuthorYou(recipe.authorName)
+              : t.recipeByAuthor(recipe.authorName),
           subtitleIcon: Icons.person_rounded,
           description: recipe.description,
-          ratingHeader: _ratingHeader(luma, recipe),
+          ratingHeader: _ratingHeader(t, luma, recipe),
           servings: _servings,
           onServings: (v) => setState(() => _servings = v),
           prepMinutes: recipe.prepMinutes,
@@ -192,18 +200,18 @@ class _PublicRecipeDetailState extends State<_PublicRecipeDetail> {
           scale: scale,
           extraSections: [
             const SizedBox(height: 22),
-            _reviewsSection(luma, recipe),
+            _reviewsSection(t, luma, recipe),
           ],
           footer: recipe.mine
               ? Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     LumaGhostButton(
-                      label: 'Remove from Public',
+                      label: t.recipeRemoveFromPublic,
                       icon: Icons.public_off_rounded,
                       onTap: () async {
                         final ok = await _confirmDelete(context, recipe.title,
-                            action: 'Remove');
+                            remove: true);
                         if (ok == true) {
                           final err = await widget.controller
                               .unpublishByPublicId(recipe.id);
@@ -226,7 +234,7 @@ class _PublicRecipeDetailState extends State<_PublicRecipeDetail> {
     );
   }
 
-  Widget _ratingHeader(LumaPalette luma, PublicRecipe recipe) {
+  Widget _ratingHeader(L t, LumaPalette luma, PublicRecipe recipe) {
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Row(
@@ -235,9 +243,9 @@ class _PublicRecipeDetailState extends State<_PublicRecipeDetail> {
           const SizedBox(width: 8),
           Text(
             recipe.ratingCount == 0
-                ? 'No ratings yet'
-                : '${recipe.ratingAvg.toStringAsFixed(1)} · ${recipe.ratingCount} '
-                    'rating${recipe.ratingCount == 1 ? '' : 's'}',
+                ? t.recipeNoRatingsYet
+                : t.recipeRatingSummary(
+                    recipe.ratingAvg.toStringAsFixed(1), recipe.ratingCount),
             style: TextStyle(
                 color: luma.textSecondary,
                 fontSize: 13,
@@ -248,18 +256,18 @@ class _PublicRecipeDetailState extends State<_PublicRecipeDetail> {
     );
   }
 
-  Widget _reviewsSection(LumaPalette luma, PublicRecipe recipe) {
+  Widget _reviewsSection(L t, LumaPalette luma, PublicRecipe recipe) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SectionHeader(
-            label: 'Reviews (${recipe.reviews.length})',
+            label: t.recipeReviewsCount(recipe.reviews.length),
             icon: Icons.reviews_rounded),
         const SizedBox(height: 12),
         _ReviewComposer(controller: widget.controller, recipe: recipe),
         const SizedBox(height: 16),
         if (recipe.reviews.isEmpty)
-          Text('Be the first to review this recipe.',
+          Text(t.recipeBeFirstToReview,
               style: TextStyle(color: luma.textMuted, fontSize: 13))
         else
           ...recipe.reviews.map((r) => _ReviewTile(
@@ -320,8 +328,8 @@ class _ReviewComposerState extends State<_ReviewComposer> {
 
   Future<void> _submit() async {
     if (_rating == 0) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Pick a star rating first.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(L.of(context).recipePickRatingFirst)));
       return;
     }
     setState(() => _submitting = true);
@@ -338,12 +346,13 @@ class _ReviewComposerState extends State<_ReviewComposer> {
     });
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(SnackBar(
-        content: Text(err ?? 'Thanks for your review!')));
+        content: Text(err ?? L.of(context).recipeThanksForReview)));
   }
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     // Keep the star input in step if the server reports a different existing
     // rating after a refresh (but never stomp an in-progress edit).
     final serverRating = widget.recipe.myRating ?? 0;
@@ -362,7 +371,7 @@ class _ReviewComposerState extends State<_ReviewComposer> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(alreadyReviewed ? 'Your review' : 'Write a review',
+          Text(alreadyReviewed ? t.recipeYourReview : t.recipeWriteReview,
               style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 14,
@@ -373,7 +382,7 @@ class _ReviewComposerState extends State<_ReviewComposer> {
           const SizedBox(height: 12),
           RecipeTextField(
             controller: _text,
-            hint: 'Share how it turned out… (optional)',
+            hint: t.recipeReviewHint,
             maxLines: 3,
           ),
           const SizedBox(height: 10),
@@ -409,7 +418,7 @@ class _ReviewComposerState extends State<_ReviewComposer> {
           Row(
             children: [
               LumaGhostButton(
-                label: _photo == null ? 'Add photo' : 'Change photo',
+                label: _photo == null ? t.recipeAddPhoto : t.recipeChangePhoto,
                 icon: Icons.add_a_photo_outlined,
                 onTap: _pickPhoto,
               ),
@@ -418,7 +427,7 @@ class _ReviewComposerState extends State<_ReviewComposer> {
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: LumaGhostButton(
-                    label: 'Delete',
+                    label: t.commonDelete,
                     onTap: () async {
                       final err = await widget.controller
                           .deleteMyReview(widget.recipe.id);
@@ -432,7 +441,7 @@ class _ReviewComposerState extends State<_ReviewComposer> {
                   ),
                 ),
               LumaPrimaryButton(
-                label: alreadyReviewed ? 'Update' : 'Post review',
+                label: alreadyReviewed ? t.commonUpdate : t.recipePostReview,
                 icon: Icons.send_rounded,
                 loading: _submitting,
                 onTap: _submit,
@@ -458,6 +467,7 @@ class _ReviewTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final initial =
         review.authorName.isNotEmpty ? review.authorName[0].toUpperCase() : '?';
     return Container(
@@ -495,7 +505,7 @@ class _ReviewTile extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text(review.mine ? 'You' : review.authorName,
+                        Text(review.mine ? t.recipeReviewYou : review.authorName,
                             style: TextStyle(
                                 color: luma.textPrimary,
                                 fontSize: 13,
@@ -505,7 +515,7 @@ class _ReviewTile extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 2),
-                    Text(_relativeDate(review.createdAtMs),
+                    Text(_relativeDate(t, review.createdAtMs),
                         style: TextStyle(color: luma.textMuted, fontSize: 11)),
                   ],
                 ),
@@ -588,8 +598,9 @@ class _DetailShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final prepStr = formatRecipeTime(prepMinutes);
-    final cookStr = formatRecipeTime(cookMinutes);
+    final t = L.of(context);
+    final prepStr = formatRecipeTime(prepMinutes, t);
+    final cookStr = formatRecipeTime(cookMinutes, t);
     return Dialog(
       backgroundColor: luma.surface,
       shape: RoundedRectangleBorder(
@@ -662,7 +673,7 @@ class _DetailShell extends StatelessWidget {
                       children: [
                         _StatChip(
                           icon: Icons.people_outline_rounded,
-                          label: '$servings serving${servings == 1 ? '' : 's'}',
+                          label: t.recipeServingsCount(servings),
                           luma: luma,
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -684,19 +695,19 @@ class _DetailShell extends StatelessWidget {
                         if (prepStr.isNotEmpty)
                           _StatChip(
                               icon: Icons.timer_outlined,
-                              label: 'Prep: $prepStr',
+                              label: t.recipePrepTime(prepStr),
                               luma: luma),
                         if (cookStr.isNotEmpty)
                           _StatChip(
                               icon: Icons.local_fire_department_outlined,
-                              label: 'Cook: $cookStr',
+                              label: t.recipeCookTime(cookStr),
                               luma: luma),
                       ],
                     ),
                     const SizedBox(height: 22),
                     if (ingredients.isNotEmpty) ...[
                       _SectionHeader(
-                          label: 'Ingredients',
+                          label: t.recipeIngredients,
                           icon: Icons.format_list_bulleted_rounded),
                       const SizedBox(height: 10),
                       ...ingredients.map((ing) =>
@@ -705,7 +716,7 @@ class _DetailShell extends StatelessWidget {
                     ],
                     if (steps.isNotEmpty) ...[
                       _SectionHeader(
-                          label: 'Instructions',
+                          label: t.recipeInstructions,
                           icon: Icons.format_list_numbered_rounded),
                       const SizedBox(height: 10),
                       ...steps.asMap().entries.map((e) =>
@@ -770,8 +781,10 @@ Future<void> _openPhoto(BuildContext context, RecipeBookController controller,
 }
 
 Future<bool?> _confirmDelete(BuildContext context, String title,
-    {String action = 'Delete'}) {
+    {bool remove = false}) {
   final luma = context.luma;
+  final t = L.of(context);
+  final action = remove ? t.commonRemove : t.commonDelete;
   return showDialog<bool>(
     context: context,
     builder: (_) => AlertDialog(
@@ -780,15 +793,19 @@ Future<bool?> _confirmDelete(BuildContext context, String title,
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(color: luma.border),
       ),
-      title: Text('$action recipe?',
+      title: Text(t.recipeConfirmTitle(action),
           style: TextStyle(
               color: luma.textPrimary, fontWeight: FontWeight.w700)),
-      content: Text('"$title" will be ${action == 'Remove' ? 'removed from the public catalogue' : 'permanently deleted'}.',
+      content: Text(
+          remove
+              ? t.recipeConfirmRemoveBody(title)
+              : t.recipeConfirmDeleteBody(title),
           style: TextStyle(color: luma.textSecondary)),
       actions: [
         TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel', style: TextStyle(color: luma.textSecondary))),
+            child: Text(t.commonCancel,
+                style: TextStyle(color: luma.textSecondary))),
         TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: Text(action, style: TextStyle(color: luma.danger))),
@@ -797,15 +814,15 @@ Future<bool?> _confirmDelete(BuildContext context, String title,
   );
 }
 
-String _relativeDate(int ms) {
+String _relativeDate(L t, int ms) {
   if (ms == 0) return '';
   final then = DateTime.fromMillisecondsSinceEpoch(ms);
   final diff = DateTime.now().difference(then);
-  if (diff.inMinutes < 1) return 'just now';
-  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-  if (diff.inHours < 24) return '${diff.inHours}h ago';
-  if (diff.inDays < 30) return '${diff.inDays}d ago';
-  return '${then.day}/${then.month}/${then.year}';
+  if (diff.inMinutes < 1) return t.commonJustNow;
+  if (diff.inMinutes < 60) return t.commonMinutesAgo(diff.inMinutes);
+  if (diff.inHours < 24) return t.commonHoursAgo(diff.inHours);
+  if (diff.inDays < 30) return t.commonDaysAgo(diff.inDays);
+  return DateFormat.yMd().format(then);
 }
 
 class _SectionHeader extends StatelessWidget {

@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import '../../../l10n/current_l.dart';
 import 'binary_utils.dart';
 import 'corruption_recipe.dart';
 import 'file_signatures.dart';
@@ -29,25 +30,20 @@ class FileRepairService {
     final actualHash = sha256Hex(corrupted);
     if (recipe.corruptedSha256.isNotEmpty &&
         actualHash != recipe.corruptedSha256) {
-      log.warning(
-        'This recipe was written for a different file than the one you opened. '
-        'Undoing it anyway will almost certainly produce nonsense.',
-      );
+      log.warning(currentL.converterRepairRecipeMismatch);
       if (corrupted.length != recipe.corruptedSize) {
         throw FormatException(
-          'That recipe belongs to a ${formatSize(recipe.corruptedSize)} file, '
-          'but the one you opened is ${formatSize(corrupted.length)}. Pick the '
-          'matching pair.',
+          currentL.converterRepairRecipeWrongSize(
+            formatSize(recipe.corruptedSize),
+            formatSize(corrupted.length),
+          ),
         );
       }
     }
 
     if (!recipe.fullyReversible) {
       final lost = recipe.ops.where((op) => !op.canUndo).length;
-      throw FormatException(
-        'This recipe has $lost step${lost == 1 ? '' : 's'} that destroyed bytes '
-        'without recording them, so the original cannot be rebuilt from it.',
-      );
+      throw FormatException(currentL.converterRepairLostSteps(lost));
     }
 
     final Uint8List restored;
@@ -58,28 +54,22 @@ class FileRepairService {
     }
 
     for (final op in recipe.ops.reversed) {
-      log.fixed('Undid: ${op.describe()}');
+      log.fixed(currentL.converterRepairUndid(op.describe()));
     }
 
     final matched =
         recipe.originalSha256.isNotEmpty &&
         sha256Hex(restored) == recipe.originalSha256;
     if (matched) {
-      log.info(
-        'The result matches the original checksum exactly — this is the file '
-        'that was corrupted, byte for byte.',
-      );
+      log.info(currentL.converterRepairChecksumExact);
     } else if (recipe.originalSha256.isNotEmpty) {
-      log.warning(
-        'The rebuilt file does not match the checksum recorded when it was '
-        'corrupted, so something else changed it after the fact.',
-      );
+      log.warning(currentL.converterRepairChecksumChanged);
     }
 
     return RepairResult(
       bytes: restored,
       notes: log.notes,
-      formatLabel: 'Restored from recipe',
+      formatLabel: currentL.converterRepairFormatRecipe,
       suggestedName: recipe.originalName.isEmpty
           ? _restoredName(corruptedName)
           : recipe.originalName,
@@ -92,10 +82,7 @@ class FileRepairService {
   static RepairResult repair(Uint8List bytes, String fileName) {
     final log = RepairLog();
     if (bytes.isEmpty) {
-      throw const FormatException(
-        'That file is empty — there is nothing in it '
-        'to repair.',
-      );
+      throw FormatException(currentL.converterRepairEmpty);
     }
 
     final extension = FileSignatures.extensionOf(fileName);
@@ -110,8 +97,10 @@ class FileRepairService {
         final at = FileSignatures.findSpecific(data, expected);
         if (at > 0) {
           log.fixed(
-            'Found the ${expected.label} header ${formatSize(at)} into the '
-            'file and dropped everything before it.',
+            currentL.converterRepairFoundHeader(
+              expected.label,
+              formatSize(at),
+            ),
           );
           data = data.sublist(at);
           signature = expected;
@@ -125,8 +114,10 @@ class FileRepairService {
         final (candidate, at) = found;
         if (at > 0) {
           log.fixed(
-            'Found a ${candidate.label} starting ${formatSize(at)} into the '
-            'file and dropped everything before it.',
+            currentL.converterRepairFoundStart(
+              candidate.label,
+              formatSize(at),
+            ),
           );
           data = data.sublist(at);
           signature = candidate;
@@ -138,27 +129,32 @@ class FileRepairService {
       final guess = FileSignatures.byExtension(extension);
       if (guess != null) {
         log.warning(
-          'The header is gone, so nothing in the bytes says what this is. '
-          'Going by the .$extension name and treating it as a ${guess.label}.',
+          currentL.converterRepairHeaderGone(extension, guess.label),
         );
         signature = guess;
       }
     }
 
     if (signature == null) {
-      log.failed(
-        'This does not start with any file signature luma recognises, and the '
-        'name gives nothing away either. Only the generic checks were run.',
-      );
+      log.failed(currentL.converterRepairNoSignature);
       final repaired = _repairGeneric(data, log);
-      return _build(repaired, bytes, log, 'Unknown format', fileName);
+      return _build(
+        repaired,
+        bytes,
+        log,
+        currentL.converterRepairFormatUnknown,
+        fileName,
+      );
     }
 
     if (extension.isNotEmpty &&
         !FileSignatures.extensionFits(signature, extension)) {
       log.warning(
-        'The file is named .$extension but the bytes are a ${signature.label}. '
-        'Saving it as .${signature.extension} will make it open again.',
+        currentL.converterRepairExtMismatch(
+          extension,
+          signature.label,
+          signature.extension,
+        ),
       );
     }
 
@@ -183,10 +179,7 @@ class FileRepairService {
       case RepairFamily.mp4:
         repaired = repairMp4(data, log);
       case RepairFamily.generic:
-        log.info(
-          'luma knows this is a ${signature.label} but has no structural '
-          'repairer for that format, so only the generic checks ran.',
-        );
+        log.info(currentL.converterRepairGenericOnly(signature.label));
         repaired = _repairGeneric(data, log);
     }
 
@@ -211,15 +204,12 @@ class FileRepairService {
     }
     final zeroes = data.length - end;
     if (zeroes > 64 && zeroes > data.length ~/ 100) {
-      log.fixed(
-        'Trimmed ${formatSize(zeroes)} of zero-fill from the end, which is '
-        'what an interrupted copy leaves behind.',
-      );
+      log.fixed(currentL.converterRepairTrimmed(formatSize(zeroes)));
       data = data.sublist(0, end);
     }
 
     if (data.isEmpty) {
-      log.failed('Nothing but padding was left once the zero-fill came off.');
+      log.failed(currentL.converterRepairPaddingOnly);
     }
     return data;
   }
@@ -235,7 +225,7 @@ class FileRepairService {
     final changed =
         repaired.length != original.length || !_sameBytes(repaired, original);
     if (!changed && !log.anyFailed) {
-      log.info('Nothing needed changing — the structure already checks out.');
+      log.info(currentL.converterRepairNothingChanged);
     }
     return RepairResult(
       bytes: repaired,

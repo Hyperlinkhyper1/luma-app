@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import 'studio_controller.dart';
 import 'studio_widgets.dart';
@@ -80,6 +81,7 @@ class _ColorPanelState extends State<ColorPanel> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return StudioPanel(
       width: 300,
       child: Column(
@@ -87,7 +89,7 @@ class _ColorPanelState extends State<ColorPanel> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           PanelHeader(
-            title: 'Colour',
+            title: t.freeSketchColourTitle,
             onClose: widget.onClose,
             trailing: [
               _SwatchPair(
@@ -101,10 +103,10 @@ class _ColorPanelState extends State<ColorPanel> {
           SegmentedButton<_ColorTab>(
             showSelectedIcon: false,
             style: const ButtonStyle(visualDensity: VisualDensity.compact),
-            segments: const [
-              ButtonSegment(value: _ColorTab.wheel, label: Text('Wheel')),
-              ButtonSegment(value: _ColorTab.sliders, label: Text('Sliders')),
-              ButtonSegment(value: _ColorTab.palettes, label: Text('Palettes')),
+            segments: [
+              ButtonSegment(value: _ColorTab.wheel, label: Text(t.freeSketchColourTabWheel)),
+              ButtonSegment(value: _ColorTab.sliders, label: Text(t.freeSketchColourTabSliders)),
+              ButtonSegment(value: _ColorTab.palettes, label: Text(t.freeSketchColourTabPalettes)),
             ],
             selected: {_tab},
             onSelectionChanged: (s) => setState(() => _tab = s.first),
@@ -129,7 +131,7 @@ class _ColorPanelState extends State<ColorPanel> {
                   focusNode: _hexFocus,
                   maxLength: 6,
                   style: TextStyle(color: luma.textPrimary, fontSize: 13, letterSpacing: 0.5),
-                  decoration: const InputDecoration(isDense: true, counterText: '', hintText: 'RRGGBB'),
+                  decoration: InputDecoration(isDense: true, counterText: '', hintText: 'RRGGBB'),
                   inputFormatters: [FilteringTextInputFormatter.allow(RegExp('[0-9a-fA-F#]'))],
                   onSubmitted: _applyHex,
                   onTapOutside: (_) {
@@ -143,16 +145,16 @@ class _ColorPanelState extends State<ColorPanel> {
               const Spacer(),
               StudioIconButton(
                 icon: Icons.swap_horiz_rounded,
-                tooltip: 'Swap with secondary colour (X)',
+                tooltip: t.freeSketchColourSwapTooltip,
                 size: 34,
                 onTap: c.swapColors,
               ),
-              ColorDot(color: c.secondary, size: 22, tooltip: 'Secondary colour', onTap: c.swapColors),
+              ColorDot(color: c.secondary, size: 22, tooltip: t.freeSketchColourSecondaryTooltip, onTap: c.swapColors),
             ],
           ),
           if (c.recentColors.isNotEmpty) ...[
             const SizedBox(height: 10),
-            Text('Recent', style: TextStyle(color: luma.textMuted, fontSize: 11.5)),
+            Text(t.freeSketchColourRecent, style: TextStyle(color: luma.textMuted, fontSize: 11.5)),
             const SizedBox(height: 6),
             Wrap(
               spacing: 6,
@@ -185,7 +187,7 @@ class _SwatchPair extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     return Tooltip(
-      message: 'Left: new colour · right: tap to go back to the colour you started with',
+      message: L.of(context).freeSketchColourPairTooltip,
       child: Container(
         margin: const EdgeInsets.only(right: 4),
         decoration: BoxDecoration(
@@ -327,6 +329,7 @@ class _Sliders extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final color = hsv.toColor();
     final r = (color.r * 255).round();
     final g = (color.g * 255).round();
@@ -340,21 +343,21 @@ class _Sliders extends StatelessWidget {
     return Column(
       children: [
         _GradientSlider(
-          label: 'H',
+          label: t.freeSketchChannelHue,
           value: hsv.hue / 360,
           display: '${hsv.hue.round()}°',
           colors: [for (var h = 0; h <= 360; h += 60) HSVColor.fromAHSV(1, h % 360, 1, 1).toColor()],
           onChanged: (t) => onChanged(hsv.withHue((t * 360).clamp(0, 359.9))),
         ),
         _GradientSlider(
-          label: 'S',
+          label: t.freeSketchChannelSaturation,
           value: hsv.saturation,
           display: '${(hsv.saturation * 100).round()}%',
           colors: [hsv.withSaturation(0).toColor(), hsv.withSaturation(1).toColor()],
           onChanged: (t) => onChanged(hsv.withSaturation(t)),
         ),
         _GradientSlider(
-          label: 'B',
+          label: t.freeSketchChannelBrightness,
           value: hsv.value,
           display: '${(hsv.value * 100).round()}%',
           colors: [Colors.black, hsv.withValue(1).toColor()],
@@ -362,21 +365,21 @@ class _Sliders extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         _GradientSlider(
-          label: 'R',
+          label: t.freeSketchChannelRed,
           value: r / 255,
           display: '$r',
           colors: [rgb(0, g, b), rgb(255, g, b)],
           onChanged: (t) => setRgb(rgb((t * 255).round(), g, b)),
         ),
         _GradientSlider(
-          label: 'G',
+          label: t.freeSketchChannelGreen,
           value: g / 255,
           display: '$g',
           colors: [rgb(r, 0, b), rgb(r, 255, b)],
           onChanged: (t) => setRgb(rgb(r, (t * 255).round(), b)),
         ),
         _GradientSlider(
-          label: 'B',
+          label: t.freeSketchChannelBlue,
           value: b / 255,
           display: '$b',
           colors: [rgb(r, g, 0), rgb(r, g, 255)],
@@ -469,6 +472,22 @@ class _GradientSlider extends StatelessWidget {
   }
 }
 
+enum _PaletteGroup {
+  basics,
+  skinTones,
+  nature,
+  pastel,
+  greys;
+
+  String label(L t) => switch (this) {
+        _PaletteGroup.basics => t.freeSketchPaletteBasics,
+        _PaletteGroup.skinTones => t.freeSketchPaletteSkinTones,
+        _PaletteGroup.nature => t.freeSketchPaletteNature,
+        _PaletteGroup.pastel => t.freeSketchPalettePastel,
+        _PaletteGroup.greys => t.freeSketchPaletteGreys,
+      };
+}
+
 class _Palettes extends StatelessWidget {
   const _Palettes({required this.controller, required this.current, required this.onPick});
 
@@ -476,24 +495,24 @@ class _Palettes extends StatelessWidget {
   final Color current;
   final ValueChanged<Color> onPick;
 
-  static const builtIn = <(String, List<int>)>[
-    ('Basics', [
+  static const builtIn = <(_PaletteGroup, List<int>)>[
+    (_PaletteGroup.basics, [
       0xFF000000, 0xFF3A3A3A, 0xFF7A7A7A, 0xFFBDBDBD, 0xFFFFFFFF, 0xFFE53935, 0xFFFB8C00, 0xFFFDD835,
       0xFF43A047, 0xFF00ACC1, 0xFF1E88E5, 0xFF3949AB, 0xFF8E24AA, 0xFFD81B60, 0xFF6D4C41, 0xFF2B2440,
     ]),
-    ('Skin tones', [
+    (_PaletteGroup.skinTones, [
       0xFFFFE0CC, 0xFFF9D2B6, 0xFFF1C27D, 0xFFE0AC69, 0xFFD2996C, 0xFFC68642, 0xFFA86B3C, 0xFF8D5524,
       0xFF6F4125, 0xFF4E2A18, 0xFFF4B6A3, 0xFFE89B8A, 0xFFB5655A, 0xFF7A3E36,
     ]),
-    ('Nature', [
+    (_PaletteGroup.nature, [
       0xFF1B4332, 0xFF2D6A4F, 0xFF40916C, 0xFF74C69D, 0xFFB7E4C7, 0xFF7F5539, 0xFF9C6644, 0xFFB08968,
       0xFFDDB892, 0xFF023E8A, 0xFF0077B6, 0xFF48CAE4, 0xFFADE8F4, 0xFFF4A261, 0xFFE76F51, 0xFF264653,
     ]),
-    ('Pastel', [
+    (_PaletteGroup.pastel, [
       0xFFFFADAD, 0xFFFFD6A5, 0xFFFDFFB6, 0xFFCAFFBF, 0xFF9BF6FF, 0xFFA0C4FF, 0xFFBDB2FF, 0xFFFFC6FF,
       0xFFFFF1E6, 0xFFE2ECE9, 0xFFDFE7FD, 0xFFF0EFEB,
     ]),
-    ('Greys', [
+    (_PaletteGroup.greys, [
       0xFF000000, 0xFF1A1A1A, 0xFF333333, 0xFF4D4D4D, 0xFF666666, 0xFF808080, 0xFF999999, 0xFFB3B3B3,
       0xFFCCCCCC, 0xFFE6E6E6, 0xFFF2F2F2, 0xFFFFFFFF,
     ]),
@@ -502,6 +521,7 @@ class _Palettes extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     Widget swatches(List<Color> colors, {bool removable = false}) => Wrap(
           spacing: 5,
           runSpacing: 5,
@@ -513,7 +533,7 @@ class _Palettes extends StatelessWidget {
                 selected: color.toARGB32() == current.toARGB32(),
                 onTap: () => onPick(color),
                 onLongPress: removable ? () => controller.removeFromPalette(color) : null,
-                tooltip: removable ? 'Long-press or right-click to remove' : null,
+                tooltip: removable ? t.freeSketchColourRemoveHint : null,
               ),
           ],
         );
@@ -527,25 +547,25 @@ class _Palettes extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text('My palette', style: TextStyle(color: luma.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                  child: Text(t.freeSketchColourMyPalette, style: TextStyle(color: luma.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
                 ),
                 TextButton.icon(
                   onPressed: () => controller.addToPalette(current),
                   icon: const Icon(Icons.add_rounded, size: 16),
-                  label: const Text('Add colour'),
+                  label: Text(t.freeSketchColourAdd),
                 ),
               ],
             ),
             if (controller.palette.isEmpty)
               Text(
-                'Save colours you reuse here.',
+                t.freeSketchColourPaletteEmpty,
                 style: TextStyle(color: luma.textMuted, fontSize: 11.5),
               )
             else
               swatches(controller.palette, removable: true),
-            for (final (name, colors) in builtIn) ...[
+            for (final (group, colors) in builtIn) ...[
               const SizedBox(height: 12),
-              Text(name, style: TextStyle(color: luma.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+              Text(group.label(t), style: TextStyle(color: luma.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
               swatches([for (final v in colors) Color(v)]),
             ],

@@ -6,5 +6,27 @@
   "icon": "graphic_eq",
   "category": "Utility",
   "details": "Audio Tools runs your microphone through a nine-band parametric equalizer in real time. Drag the points on the curve to shape your voice, scroll over one to make it wider or narrower, or start from a preset: Clear, Deep, Radio, Telephone, Megaphone, Through a wall or Tiny.\n\nPick where the result goes. Send it to a virtual cable such as the free VB-CABLE and it shows up as a microphone in Discord, OBS, Teams or a game — a voice changer. Windows can't add a new microphone without a driver, so the cable does that part; luma finds it and walks you through the Discord settings.\n\nTurn on Hear myself to listen along on your headset, flip Bypass to compare with your untouched voice, and let it start with luma so it's ready for every call. Windows only.",
-  "screenshots": []
+  "screenshots": [],
+  "i18n": {
+    "nl": {
+      "name": "Audiotools",
+      "description": "Verander hoe je microfoon klinkt in Discord, OBS of elke game, met een live equalizer.",
+      "details": "Audio Tools stuurt je microfoon in realtime door een negenbands parametrische equalizer. Sleep de punten op de curve om je stem vorm te geven, scroll over een punt om het breder of smaller te maken, of begin met een preset: Helder, Diep, Radio, Telefoon, Megafoon, Door een muur of Klein.\n\nKies waar het resultaat heen gaat. Stuur het naar een virtuele kabel zoals de gratis VB-CABLE en het verschijnt als microfoon in Discord, OBS, Teams of een game: een stemwijziger. Windows kan geen nieuwe microfoon toevoegen zonder stuurprogramma, dus de kabel doet dat deel; luma vindt hem en begeleidt je door de Discord-instellingen.\n\nZet Mezelf horen aan om mee te luisteren op je koptelefoon, zet Bypass aan om te vergelijken met je onbewerkte stem, en laat het met luma meestarten zodat het klaar is voor elk gesprek. Alleen Windows."
+    },
+    "fr": {
+      "name": "Outils audio",
+      "description": "Modifiez le son de votre micro dans Discord, OBS ou n'importe quel jeu grâce à un égaliseur en direct.",
+      "details": "Audio Tools fait passer votre microphone dans un égaliseur paramétrique à neuf bandes en temps réel. Faites glisser les points sur la courbe pour façonner votre voix, faites défiler au-dessus de l'un d'eux pour l'élargir ou le resserrer, ou partez d'un préréglage : Clair, Grave, Radio, Téléphone, Mégaphone, À travers un mur ou Minuscule.\n\nChoisissez la destination du résultat. Envoyez-le vers un câble virtuel comme le VB-CABLE gratuit et il apparaîtra comme microphone dans Discord, OBS, Teams ou un jeu : un modificateur de voix. Windows ne peut pas ajouter de nouveau microphone sans pilote ; c'est le câble qui s'en charge. luma le détecte et vous guide dans les paramètres de Discord.\n\nActivez M'entendre pour vous écouter dans votre casque, basculez sur Bypass pour comparer avec votre voix d'origine, et laissez-le démarrer avec luma pour qu'il soit prêt à chaque appel. Windows uniquement."
+    },
+    "es": {
+      "name": "Herramientas de audio",
+      "description": "Cambia cómo suena tu micro en Discord, OBS o cualquier juego con un ecualizador en directo.",
+      "details": "Audio Tools pasa tu micrófono por un ecualizador paramétrico de nueve bandas en tiempo real. Arrastra los puntos de la curva para dar forma a tu voz, desplázate sobre uno para hacerlo más ancho o más estrecho, o empieza desde un preset: Claro, Grave, Radio, Teléfono, Megáfono, A través de una pared o Diminuto.\n\nElige a dónde va el resultado. Envíalo a un cable virtual como el VB-CABLE gratuito y aparecerá como micrófono en Discord, OBS, Teams o un juego: un cambiador de voz. Windows no puede añadir un micrófono nuevo sin un controlador, así que el cable hace esa parte; luma lo encuentra y te guía por la configuración de Discord.\n\nActiva Escucharme para oírte en los auriculares, cambia a Bypass para comparar con tu voz sin procesar, y deja que se inicie con luma para que esté listo en cada llamada. Solo Windows."
+    },
+    "zh": {
+      "name": "音频工具",
+      "description": "通过实时均衡器改变你在 Discord、OBS 或任何游戏中的麦克风音色。",
+      "details": "音频工具可实时将麦克风信号通过九段参数均衡器处理。拖动曲线上的节点来塑造你的声音，将鼠标悬停在节点上滚动可使其变宽或变窄，也可以从预设开始：清晰、深沉、电台、电话、扩音器、穿墙或微小。\n\n选择输出去向。将结果发送到免费的 VB-CABLE 等虚拟声卡后，它会在 Discord、OBS、Teams 或游戏中显示为麦克风，即变声效果。Windows 没有驱动就无法新增麦克风，因此由虚拟声卡完成这一步；luma 会找到它，并引导你完成 Discord 设置。\n\n开启「听到自己」可在耳机中实时监听，切换「旁路」可与未处理的原声对比，还可以让它随 luma 自动启动，以便每次通话都能直接使用。仅限 Windows。"
+    }
+  }
 }

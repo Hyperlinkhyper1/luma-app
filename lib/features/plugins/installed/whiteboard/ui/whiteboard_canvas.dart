@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/whiteboard_database.dart';
 import '../io/whiteboard_export.dart';
@@ -334,9 +335,10 @@ class _WhiteboardCanvasState extends State<WhiteboardCanvas> {
   // ------------------------------------------------------------ text & note
 
   Future<void> _placeTextual(Offset position) async {
+    final t = L.of(context);
     final isNote = _tool == WhiteboardTool.note;
     final text = await _promptForText(
-      title: isNote ? 'New sticky note' : 'New text',
+      title: isNote ? t.whiteboardNewStickyNote : t.whiteboardNewText,
     );
     if (text == null || text.trim().isEmpty || !mounted) return;
     final element = WhiteboardElement(
@@ -354,8 +356,11 @@ class _WhiteboardCanvasState extends State<WhiteboardCanvas> {
   Future<void> _editSelectedText() async {
     final selected = _selected;
     if (selected == null || !selected.kind.isTextual) return;
+    final t = L.of(context);
     final text = await _promptForText(
-      title: selected.kind == WhiteboardKind.note ? 'Edit note' : 'Edit text',
+      title: selected.kind == WhiteboardKind.note
+          ? t.whiteboardEditNote
+          : t.whiteboardEditText,
       initial: selected.text,
     );
     if (text == null || !mounted) return;
@@ -373,6 +378,7 @@ class _WhiteboardCanvasState extends State<WhiteboardCanvas> {
     required String title,
     String initial = '',
   }) {
+    final t = L.of(context);
     final controller = TextEditingController(text: initial);
     return showDialog<String>(
       context: context,
@@ -384,20 +390,20 @@ class _WhiteboardCanvasState extends State<WhiteboardCanvas> {
           maxLines: 5,
           minLines: 1,
           textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(
-            labelText: 'Text',
-            helperText: 'Shift+Enter for a new line',
+          decoration: InputDecoration(
+            labelText: t.whiteboardTextLabel,
+            helperText: t.whiteboardNewLineHint,
           ),
           onSubmitted: (value) => Navigator.pop(dialogContext, value),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text(t.commonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, controller.text),
-            child: const Text('Done'),
+            child: Text(t.commonDone),
           ),
         ],
       ),
@@ -415,25 +421,26 @@ class _WhiteboardCanvasState extends State<WhiteboardCanvas> {
 
   Future<void> _clear() async {
     if (_elements.isEmpty) return;
+    final t = L.of(context);
+    final danger = context.luma.danger;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Clear the board?'),
+        title: Text(t.whiteboardClearTitle),
         content: Text(
-          'All ${_elements.length} things on "${widget.board.title}" will be '
-          'removed. You can undo this straight afterwards.',
+          t.whiteboardClearContent(_elements.length, widget.board.title),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
+            child: Text(t.commonCancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: context.luma.danger,
+              backgroundColor: danger,
             ),
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Clear'),
+            child: Text(t.commonClear),
           ),
         ],
       ),
@@ -447,6 +454,7 @@ class _WhiteboardCanvasState extends State<WhiteboardCanvas> {
   Future<void> _export() async {
     final messenger = ScaffoldMessenger.of(context);
     final brightness = Theme.of(context).brightness;
+    final t = L.of(context);
     try {
       final summary = await WhiteboardExport.savePng(
         elements: _elements,
@@ -458,7 +466,7 @@ class _WhiteboardCanvasState extends State<WhiteboardCanvas> {
       }
     } catch (error) {
       messenger.showSnackBar(
-        SnackBar(content: Text('Could not export the board: $error')),
+        SnackBar(content: Text(t.whiteboardExportFailed('$error'))),
       );
     }
   }
@@ -746,10 +754,11 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final heading = Row(
       children: [
         IconButton(
-          tooltip: 'Back to boards  (Esc)',
+          tooltip: t.whiteboardBackTooltip,
           onPressed: onClose,
           icon: Icon(Icons.arrow_back_rounded, color: luma.textSecondary),
         ),
@@ -769,7 +778,7 @@ class _Header extends StatelessWidget {
                 ),
               ),
               Text(
-                count == 1 ? '1 item' : '$count items',
+                t.whiteboardItemCount(count),
                 style: TextStyle(color: luma.textMuted, fontSize: 11.5),
               ),
             ],

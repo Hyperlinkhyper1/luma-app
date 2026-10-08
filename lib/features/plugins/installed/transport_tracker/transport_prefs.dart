@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
 import 'transit_vehicle.dart';
 
 /// Which layers the user last had switched on.
@@ -128,7 +129,7 @@ class TransportPrefs {
 
   static Future<void> importData(Object? data) async {
     if (data is! Map<String, dynamic>) {
-      throw const FormatException('Invalid transport tracker snapshot.');
+      throw FormatException(currentL.transportPrefsInvalidSnapshot);
     }
     await fromJson(data).save();
   }

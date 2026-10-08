@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../../../../../l10n/current_l.dart';
 import '../device_health_models.dart';
 import 'bloatware_catalog.dart';
 import 'powershell_runner.dart';
@@ -62,7 +63,7 @@ $out = foreach ($p in $s2) {
     final decoded = jsonDecode(json);
     final list = decoded is List ? decoded : const [];
     final processes = list.whereType<Map<String, dynamic>>().map((p) {
-      final name = (p['name'] as String?)?.trim() ?? 'Unknown';
+      final name = (p['name'] as String?)?.trim() ?? currentL.commonUnknown;
       return ProcessInfo(
         pid: (p['pid'] as num).toInt(),
         name: name,

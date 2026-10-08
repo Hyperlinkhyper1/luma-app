@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/widgets.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/luma_theme.dart';
 import '../data/database.dart';
 import '../finance_scope.dart';
@@ -126,6 +127,7 @@ class _TransactionsBodyState extends State<_TransactionsBody> {
   Widget build(BuildContext context) {
     final repo = FinanceScope.of(context);
     final luma = context.luma;
+    final t = L.of(context);
     final catById = {for (final c in widget.categories) c.id: c};
     final merchantById = {for (final m in widget.merchants) m.id: m};
     final potById = {for (final p in widget.pots) p.id: p};
@@ -149,7 +151,7 @@ class _TransactionsBodyState extends State<_TransactionsBody> {
               Expanded(child: _buildSearchField(luma)),
               const SizedBox(width: 10),
               LumaGhostButton(
-                label: 'Import data',
+                label: t.financeTxnImportData,
                 icon: Icons.upload_file_rounded,
                 onTap: () => showImportFlow(
                   context,
@@ -161,7 +163,7 @@ class _TransactionsBodyState extends State<_TransactionsBody> {
               ),
               const SizedBox(width: 10),
               LumaPrimaryButton(
-                label: 'Add entry',
+                label: t.financeTxnAddEntry,
                 icon: Icons.add_rounded,
                 onTap: () => showAddTransaction(
                   context,
@@ -187,17 +189,15 @@ class _TransactionsBodyState extends State<_TransactionsBody> {
                 ? (widget.txns.isEmpty
                       ? LumaEmptyState(
                           icon: Icons.receipt_long_rounded,
-                          title: 'Nothing here yet',
-                          subtitle:
-                              'Add what you spent or earned and it shows up here.',
+                          title: t.commonNothingHereYet,
+                          subtitle: t.financeTxnEmptySubtitle,
                         )
                       : LumaEmptyState(
                           icon: Icons.search_off_rounded,
-                          title: 'No matching entries',
-                          subtitle:
-                              'Try a different search or clear the filters.',
+                          title: t.financeTxnNoMatchTitle,
+                          subtitle: t.financeTxnNoMatchSubtitle,
                           action: LumaGhostButton(
-                            label: 'Clear filters',
+                            label: t.financeTxnClearFilters,
                             icon: Icons.filter_alt_off_rounded,
                             onTap: _clearFilters,
                           ),
@@ -233,6 +233,7 @@ class _TransactionsBodyState extends State<_TransactionsBody> {
   }
 
   Widget _buildSearchField(LumaPalette luma) {
+    final t = L.of(context);
     return SizedBox(
       height: 44,
       child: TextField(
@@ -241,7 +242,7 @@ class _TransactionsBodyState extends State<_TransactionsBody> {
         style: TextStyle(color: luma.textPrimary, fontSize: 14),
         decoration: InputDecoration(
           isDense: true,
-          hintText: 'Search notes, companies, categories…',
+          hintText: t.financeTxnSearchHint,
           hintStyle: TextStyle(color: luma.textMuted, fontSize: 14),
           prefixIcon: Icon(
             Icons.search_rounded,
@@ -281,6 +282,7 @@ class _TransactionsBodyState extends State<_TransactionsBody> {
   }
 
   Widget _buildFilterRow(LumaPalette luma) {
+    final t = L.of(context);
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -288,7 +290,7 @@ class _TransactionsBodyState extends State<_TransactionsBody> {
       children: [
         _ChipButton(
           icon: Icons.fact_check_rounded,
-          label: 'Reconcile statement',
+          label: t.financeTxnReconcile,
           active: false,
           onTap: () => showStatementReconciliation(
             context,
@@ -312,15 +314,15 @@ class _TransactionsBodyState extends State<_TransactionsBody> {
         _PickerChip<int?>(
           icon: Icons.sell_rounded,
           label: _categoryId == null
-              ? 'Category'
+              ? t.commonCategory
               : (widget.categories
                         .where((c) => c.id == _categoryId)
                         .map((c) => c.name)
                         .firstOrNull ??
-                    'Category'),
+                    t.commonCategory),
           active: _categoryId != null,
           items: [
-            const _PickerItem<int?>(value: null, label: 'All categories'),
+            _PickerItem<int?>(value: null, label: t.financeTxnCategoryAll),
             for (final c in widget.categories)
               _PickerItem<int?>(
                 value: c.id,
@@ -334,15 +336,15 @@ class _TransactionsBodyState extends State<_TransactionsBody> {
         _PickerChip<int?>(
           icon: Icons.savings_rounded,
           label: _potId == null
-              ? 'Pot'
+              ? t.financeTxnPot
               : (widget.pots
                         .where((p) => p.id == _potId)
                         .map((p) => p.name)
                         .firstOrNull ??
-                    'Pot'),
+                    t.financeTxnPot),
           active: _potId != null,
           items: [
-            const _PickerItem<int?>(value: null, label: 'All pots'),
+            _PickerItem<int?>(value: null, label: t.financeTxnPotAll),
             for (final p in widget.pots)
               _PickerItem<int?>(
                 value: p.id,
@@ -356,7 +358,7 @@ class _TransactionsBodyState extends State<_TransactionsBody> {
         if (_hasFilters)
           _ChipButton(
             icon: Icons.filter_alt_off_rounded,
-            label: 'Clear',
+            label: t.commonClear,
             active: false,
             onTap: _clearFilters,
           ),
@@ -382,9 +384,10 @@ class _MonthStepper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final label = month == null
-        ? 'All time'
-        : '${_monthName(month!.month)} ${month!.year}';
+        ? t.dataChartRangeAll
+        : '${_monthName(t, month!.month)} ${month!.year}';
     return Container(
       height: 34,
       decoration: BoxDecoration(
@@ -442,31 +445,32 @@ class _KindFilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final label = switch (value) {
-      null => 'All types',
-      TxnKind.income => 'Income',
-      TxnKind.expense => 'Expenses',
-      TxnKind.allocation => 'Allocations',
+      null => t.financeTxnAllTypes,
+      TxnKind.income => t.financeTxnKindIncome,
+      TxnKind.expense => t.financeTxnKindExpenses,
+      TxnKind.allocation => t.financeTxnKindAllocations,
     };
     return _PickerChip<TxnKind?>(
       icon: Icons.swap_vert_rounded,
       label: label,
       active: value != null,
-      items: const [
-        _PickerItem<TxnKind?>(value: null, label: 'All types'),
+      items: [
+        _PickerItem<TxnKind?>(value: null, label: t.financeTxnAllTypes),
         _PickerItem<TxnKind?>(
           value: TxnKind.expense,
-          label: 'Expenses',
+          label: t.financeTxnKindExpenses,
           icon: Icons.north_east_rounded,
         ),
         _PickerItem<TxnKind?>(
           value: TxnKind.income,
-          label: 'Income',
+          label: t.financeTxnKindIncome,
           icon: Icons.south_west_rounded,
         ),
         _PickerItem<TxnKind?>(
           value: TxnKind.allocation,
-          label: 'Allocations',
+          label: t.financeTxnKindAllocations,
           icon: Icons.savings_rounded,
         ),
       ],
@@ -622,6 +626,7 @@ class _SummaryBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final net = incomeCents - expenseCents;
     return LumaCard(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
@@ -631,13 +636,21 @@ class _SummaryBar extends StatelessWidget {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Text(
-            '$entryCount ${entryCount == 1 ? 'entry' : 'entries'}',
+            t.financeTxnEntriesCount(entryCount),
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
-          _SummaryStat(label: 'In', cents: incomeCents, color: luma.success),
-          _SummaryStat(label: 'Out', cents: -expenseCents, color: luma.danger),
           _SummaryStat(
-            label: 'Net',
+            label: t.financeTxnSummaryIn,
+            cents: incomeCents,
+            color: luma.success,
+          ),
+          _SummaryStat(
+            label: t.financeTxnSummaryOut,
+            cents: -expenseCents,
+            color: luma.danger,
+          ),
+          _SummaryStat(
+            label: t.financeTxnSummaryNet,
             cents: net,
             color: net >= 0 ? luma.success : luma.danger,
           ),
@@ -765,10 +778,11 @@ class _DayHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Row(
       children: [
         Text(
-          _dayLabel(data.day),
+          _dayLabel(t, data.day),
           style: TextStyle(
             color: luma.textSecondary,
             fontSize: 12,
@@ -813,6 +827,7 @@ class _TxnRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     late final IconData icon;
     late final Color color;
@@ -823,19 +838,23 @@ class _TxnRow extends StatelessWidget {
       case TxnKind.income:
         icon = Icons.south_west_rounded;
         color = luma.success;
-        title = txn.note ?? 'Income';
+        title = txn.note ?? t.financeTxnKindIncome;
         signedAmount = txn.amountCents;
       case TxnKind.allocation:
         icon = Icons.savings_rounded;
         color = luma.accent;
-        title = txn.note ?? 'Allocation';
+        title = txn.note ?? t.financeTxnAllocationTitle;
         signedAmount = txn.amountCents; // shown neutral below
       case TxnKind.expense:
         icon = category != null
             ? materialIcon(category!.iconCodepoint)
             : Icons.shopping_bag_rounded;
         color = category != null ? Color(category!.colorValue) : luma.textMuted;
-        title = merchant?.name ?? category?.name ?? txn.note ?? 'Expense';
+        title =
+            merchant?.name ??
+            category?.name ??
+            txn.note ??
+            t.financeTxnExpenseTitle;
         signedAmount = -txn.amountCents;
     }
 
@@ -924,6 +943,7 @@ class _RowMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return PopupMenuButton<String>(
       icon: Icon(Icons.more_vert_rounded, size: 18, color: luma.textMuted),
       color: luma.surface,
@@ -946,7 +966,7 @@ class _RowMenu extends StatelessWidget {
             children: [
               Icon(Icons.edit_rounded, size: 18, color: luma.textSecondary),
               const SizedBox(width: 8),
-              Text('Edit', style: TextStyle(color: luma.textPrimary)),
+              Text(t.commonEdit, style: TextStyle(color: luma.textPrimary)),
             ],
           ),
         ),
@@ -957,7 +977,10 @@ class _RowMenu extends StatelessWidget {
             children: [
               Icon(Icons.copy_rounded, size: 18, color: luma.textSecondary),
               const SizedBox(width: 8),
-              Text('Duplicate', style: TextStyle(color: luma.textPrimary)),
+              Text(
+                t.financeTxnDuplicate,
+                style: TextStyle(color: luma.textPrimary),
+              ),
             ],
           ),
         ),
@@ -968,7 +991,7 @@ class _RowMenu extends StatelessWidget {
             children: [
               Icon(Icons.delete_outline_rounded, size: 18, color: luma.danger),
               const SizedBox(width: 8),
-              Text('Delete', style: TextStyle(color: luma.textPrimary)),
+              Text(t.commonDelete, style: TextStyle(color: luma.textPrimary)),
             ],
           ),
         ),
@@ -977,30 +1000,30 @@ class _RowMenu extends StatelessWidget {
   }
 }
 
-String _monthName(int month) {
-  const months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
+String _monthName(L t, int month) {
+  final months = [
+    t.monthJan,
+    t.monthFeb,
+    t.monthMar,
+    t.monthApr,
+    t.monthMay,
+    t.monthJun,
+    t.monthJul,
+    t.monthAug,
+    t.monthSep,
+    t.monthOct,
+    t.monthNov,
+    t.monthDec,
   ];
   return months[month - 1];
 }
 
-String _dayLabel(DateTime day) {
+String _dayLabel(L t, DateTime day) {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
   final diff = today.difference(day).inDays;
-  if (diff == 0) return 'Today';
-  if (diff == 1) return 'Yesterday';
-  final label = '${day.day} ${_monthName(day.month)}';
+  if (diff == 0) return t.commonToday;
+  if (diff == 1) return t.commonYesterday;
+  final label = '${day.day} ${_monthName(t, day.month)}';
   return day.year == now.year ? label : '$label ${day.year}';
 }

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../app/widgets.dart';
 import '../finance/data/database.dart';
+import '../l10n/app_localizations.dart';
 import '../finance/finance_scope.dart';
 import '../finance/logic/money.dart';
 import '../settings/settings_controller.dart';
@@ -21,14 +22,15 @@ class StatsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final finance = FinanceScope.of(context);
     final settings = SettingsScope.of(context);
+    final t = L.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _StatsHeader(
+        _StatsHeader(
           icon: Icons.insights_rounded,
-          title: 'Net worth',
-          subtitle: 'Everything you\'ve earned since you started tracking.',
+          title: t.statsNetWorthTitle,
+          subtitle: t.statsNetWorthSubtitle,
         ),
         const SizedBox(height: 12),
         StreamData<List<FinanceTransaction>>(
@@ -61,10 +63,10 @@ class StatsSection extends StatelessWidget {
           },
         ),
         const SizedBox(height: 24),
-        const _StatsHeader(
+        _StatsHeader(
           icon: Icons.public_rounded,
-          title: 'Travel',
-          subtitle: 'The countries you\'ve been to, on a map.',
+          title: t.statsTravelTitle,
+          subtitle: t.statsTravelSubtitle,
         ),
         const SizedBox(height: 12),
         const _TravelCard(),
@@ -84,6 +86,7 @@ class _NetWorthHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -102,7 +105,7 @@ class _NetWorthHero extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Total income of all time',
+            t.statsTotalIncomeAllTime,
             style: TextStyle(color: luma.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 6),
@@ -123,17 +126,17 @@ class _NetWorthHero extends StatelessWidget {
           Row(
             children: [
               _HeroStat(
-                label: 'Spent',
+                label: t.statsSpent,
                 value: hide ? '••••' : formatCents(stats.spentCents),
               ),
               const _HeroDivider(),
               _HeroStat(
-                label: 'Kept',
+                label: t.statsKept,
                 value: hide ? '••••' : formatCents(stats.keptCents),
               ),
               const _HeroDivider(),
               _HeroStat(
-                label: 'Per month',
+                label: t.statsPerMonth,
                 value: hide
                     ? '••••'
                     : formatCents(stats.averageMonthlyIncomeCents),
@@ -202,6 +205,7 @@ class _LifetimeList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final since = stats.firstEntry;
     String money(int cents) => hide ? '••••' : formatCents(cents);
 
@@ -209,22 +213,27 @@ class _LifetimeList extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
       child: Column(
         children: [
-          _StatRow(label: 'Total income', value: money(stats.incomeCents)),
-          _StatRow(label: 'Total spent', value: money(stats.spentCents)),
+          _StatRow(label: t.statsTotalIncome, value: money(stats.incomeCents)),
+          _StatRow(label: t.statsTotalSpent, value: money(stats.spentCents)),
           _StatRow(
-            label: 'Kept',
-            value: '${money(stats.keptCents)} · '
-                '${(stats.keptFraction * 100).toStringAsFixed(0)}% of income',
+            label: t.statsKept,
+            value: t.statsKeptOfIncome(
+              money(stats.keptCents),
+              (stats.keptFraction * 100).toStringAsFixed(0),
+            ),
           ),
           _StatRow(
-            label: 'Average income per month',
+            label: t.statsAverageIncomePerMonth,
             value: money(stats.averageMonthlyIncomeCents),
           ),
-          _StatRow(label: 'Entries logged', value: '${stats.entryCount}'),
           _StatRow(
-            label: 'Tracking since',
+            label: t.statsEntriesLogged,
+            value: '${stats.entryCount}',
+          ),
+          _StatRow(
+            label: t.statsTrackingSince,
             value: since == null
-                ? 'No entries yet'
+                ? t.statsNoEntriesYet
                 : DateFormat.yMMMM().format(since),
             last: true,
           ),
@@ -296,6 +305,7 @@ class _TravelCardState extends State<_TravelCard> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final settings = SettingsScope.of(context);
 
     return ListenableBuilder(
@@ -332,7 +342,7 @@ class _TravelCardState extends State<_TravelCard> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Countries visited',
+                              t.statsCountriesVisited,
                               style: TextStyle(
                                 color: luma.textPrimary,
                                 fontSize: 14,
@@ -342,10 +352,12 @@ class _TravelCardState extends State<_TravelCard> {
                             const SizedBox(height: 2),
                             Text(
                               total == null
-                                  ? '$visited so far'
-                                  : '$visited of $total · '
-                                      '${(visited / total * 100).toStringAsFixed(0)}% '
-                                      'of the world',
+                                  ? t.statsVisitedSoFar(visited)
+                                  : t.statsVisitedOfTotal(
+                                      visited,
+                                      total,
+                                      (visited / total * 100).toStringAsFixed(0),
+                                    ),
                               style: TextStyle(
                                 color: luma.textMuted,
                                 fontSize: 12,
@@ -379,7 +391,7 @@ class _TravelCardState extends State<_TravelCard> {
                   ],
                   const SizedBox(height: 16),
                   LumaPrimaryButton(
-                    label: 'Map',
+                    label: t.statsMapButton,
                     icon: Icons.map_rounded,
                     expand: true,
                     onTap: () => Navigator.of(context).push(

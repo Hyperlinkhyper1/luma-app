@@ -1,3 +1,4 @@
+import '../../../../l10n/current_l.dart';
 import 'texture_pack_types.dart';
 
 /// Web stub: there is no filesystem to find a Minecraft installation on, so
@@ -11,4 +12,4 @@ Future<List<TexturePackSource>> findTextureSources() async =>
     const <TexturePackSource>[];
 
 AtlasBitmap readAndBuildAtlas(String path) =>
-    throw UnsupportedError('Block textures need a filesystem to read from.');
+    throw UnsupportedError(currentL.textureNeedsFilesystem);

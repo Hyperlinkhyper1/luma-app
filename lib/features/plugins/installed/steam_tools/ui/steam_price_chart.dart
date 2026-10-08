@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/steam_database.dart';
 import '../steam_price_history.dart';
@@ -55,6 +56,7 @@ class _SteamPriceHistoryCardState extends State<SteamPriceHistoryCard> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final series = buildSteamPriceSeries(
       widget.points,
       _range,
@@ -72,7 +74,7 @@ class _SteamPriceHistoryCardState extends State<SteamPriceHistoryCard> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Price history',
+                  t.steamChartTitle,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 15,
@@ -145,7 +147,7 @@ class _PriceChart extends StatelessWidget {
     final formatter = _AxisDates(series.range);
 
     return Semantics(
-      label: _chartSummary(series),
+      label: _chartSummary(L.of(context), series),
       excludeSemantics: true,
       child: LineChart(
         duration:
@@ -318,17 +320,31 @@ class _AxisDates {
       };
 }
 
-String _chartSummary(SteamPriceSeries series) {
+String _rangeBlurb(L t, SteamPriceRange range) => switch (range) {
+      SteamPriceRange.fiveYears => t.steamChartRangeFiveYears,
+      SteamPriceRange.year => t.steamChartRangeYear,
+      SteamPriceRange.sixMonths => t.steamChartRangeSixMonths,
+      SteamPriceRange.month => t.steamChartRangeMonth,
+      SteamPriceRange.week => t.steamChartRangeWeek,
+      SteamPriceRange.day => t.steamChartRangeDay,
+    };
+
+String _chartSummary(L t, SteamPriceSeries series) {
   final low = series.lowestCents;
   final high = series.highestCents;
-  if (low == null || high == null) return 'No price history available.';
+  if (low == null || high == null) return t.steamChartNoHistory;
+  final range = _rangeBlurb(t, series.range);
   if (series.isFlat) {
-    return 'Price history over ${series.range.blurb}: unchanged at '
-        '${formatSteamPrice(low, series.currency)}.';
+    return t.steamChartSummaryFlat(
+      range,
+      formatSteamPrice(low, series.currency),
+    );
   }
-  return 'Price history over ${series.range.blurb}: between '
-      '${formatSteamPrice(low, series.currency)} and '
-      '${formatSteamPrice(high, series.currency)}.';
+  return t.steamChartSummaryRange(
+    range,
+    formatSteamPrice(low, series.currency),
+    formatSteamPrice(high, series.currency),
+  );
 }
 
 /// Lowest / highest across the shown window, plus the all-time low across
@@ -349,6 +365,7 @@ class _SeriesSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final low = series.lowestCents;
     final high = series.highestCents;
     if (low == null || high == null) return const SizedBox.shrink();
@@ -360,14 +377,16 @@ class _SeriesSummary extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Unchanged at ${formatSteamPrice(low, series.currency)} across '
-            '${series.range.blurb}.',
+            t.steamChartUnchangedAcross(
+              formatSteamPrice(low, series.currency),
+              _rangeBlurb(t, series.range),
+            ),
             style: TextStyle(color: luma.textSecondary, fontSize: 12),
           ),
           if (allTime != null) ...[
             const SizedBox(height: 10),
             _Stat(
-              label: _allTimeLabel(lowestEverAt),
+              label: _allTimeLabel(t, lowestEverAt),
               value: formatSteamPrice(allTime, series.currency),
               color: luma.success,
             ),
@@ -381,12 +400,12 @@ class _SeriesSummary extends StatelessWidget {
       runSpacing: 12,
       children: [
         _Stat(
-          label: 'Lowest in range',
+          label: t.steamChartLowestInRange,
           value: formatSteamPrice(low, series.currency),
           color: luma.success,
         ),
         _Stat(
-          label: 'Highest in range',
+          label: t.steamChartHighestInRange,
           value: formatSteamPrice(high, series.currency),
           color: luma.textPrimary,
         ),
@@ -394,7 +413,7 @@ class _SeriesSummary extends StatelessWidget {
         // rarely inside the window they happen to be looking at.
         if (allTime != null)
           _Stat(
-            label: _allTimeLabel(lowestEverAt),
+            label: _allTimeLabel(t, lowestEverAt),
             value: formatSteamPrice(allTime, series.currency),
             color: luma.success,
           ),
@@ -402,9 +421,9 @@ class _SeriesSummary extends StatelessWidget {
     );
   }
 
-  static String _allTimeLabel(DateTime? at) => at == null
-      ? 'All-time low'
-      : 'All-time low (${DateFormat.yMMM().format(at)})';
+  static String _allTimeLabel(L t, DateTime? at) => at == null
+      ? t.steamChartAllTimeLow
+      : t.steamChartAllTimeLowSince(DateFormat.yMMM().format(at));
 }
 
 class _Stat extends StatelessWidget {
@@ -448,20 +467,21 @@ class _HistoryNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final from = series.historyFrom;
 
     final String message;
     if (from == null) {
-      message = 'Steam price history from IsThereAnyDeal.';
+      message = t.steamChartFromIsThereAnyDeal;
     } else if (series.coversFullRange) {
-      message = 'Steam price history from IsThereAnyDeal, covering all of '
-          '${range.blurb}.';
+      message = t.steamChartFromIsThereAnyDealFull(_rangeBlurb(t, range));
     } else {
       // A game released recently has no long history and never will, so the
       // shortfall is stated as a fact about the record, not a fault.
-      message = 'IsThereAnyDeal has this game from '
-          '${DateFormat.yMMMd().format(from)}, which is less than '
-          '${range.blurb}.';
+      message = t.steamChartShortHistory(
+        DateFormat.yMMMd().format(from),
+        _rangeBlurb(t, range),
+      );
     }
 
     return Row(
@@ -496,6 +516,7 @@ class _NeedsAccount extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -505,7 +526,7 @@ class _NeedsAccount extends StatelessWidget {
             Icon(Icons.person_outline_rounded, size: 26, color: luma.textMuted),
             const SizedBox(height: 10),
             Text(
-              'Sign in for price history',
+              t.steamChartSignInTitle,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: luma.textSecondary,
@@ -515,9 +536,7 @@ class _NeedsAccount extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Steam only publishes what a game costs today. A signed-in '
-              'luma account reads the years behind it — no extra key to '
-              'find or paste in.',
+              t.steamChartSignInBody,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: luma.textMuted,
@@ -528,7 +547,7 @@ class _NeedsAccount extends StatelessWidget {
             if (onSignIn != null) ...[
               const SizedBox(height: 14),
               LumaPrimaryButton(
-                label: 'Sign in',
+                label: t.commonSignIn,
                 icon: Icons.person_add_rounded,
                 onTap: onSignIn,
               ),
@@ -548,6 +567,7 @@ class _ChartEmpty extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -555,7 +575,7 @@ class _ChartEmpty extends StatelessWidget {
           Icon(Icons.timeline_rounded, size: 26, color: luma.textMuted),
           const SizedBox(height: 10),
           Text(
-            'No price history over ${range.blurb}',
+            t.steamChartNoHistoryOver(_rangeBlurb(t, range)),
             style: TextStyle(
               color: luma.textSecondary,
               fontSize: 13,
@@ -564,7 +584,7 @@ class _ChartEmpty extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'IsThereAnyDeal has nothing on file for this game.',
+            t.steamChartNothingOnFile,
             textAlign: TextAlign.center,
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),

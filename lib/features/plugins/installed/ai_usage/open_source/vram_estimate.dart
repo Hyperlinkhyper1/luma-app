@@ -8,6 +8,8 @@ library;
 
 import 'dart:math' as math;
 
+import '../../../../../l10n/app_localizations.dart';
+
 /// One quantisation someone might download, and what it costs per weight.
 ///
 /// The bit figures are the effective average over a whole GGUF including its
@@ -15,19 +17,28 @@ import 'dart:math' as math;
 /// 4 bits but averages nearer 4.8, and sizing against 4.0 would tell people a
 /// model fits when it doesn't.
 enum Quantization {
-  fp16('FP16', 16.0, 'Full precision. What the weights ship as.'),
-  q8('Q8_0', 8.5, 'Near-lossless. The safe choice when it fits.'),
-  q6('Q6_K', 6.6, 'Very close to Q8, noticeably smaller.'),
-  q5('Q5_K_M', 5.7, 'Small quality loss, good balance.'),
-  q4('Q4_K_M', 4.8, 'The usual pick. Real but modest quality loss.'),
-  q3('Q3_K_M', 3.9, 'Visible quality loss. For fitting one tier up.'),
-  iq2('IQ2_M', 2.7, 'Heavy loss. Last resort to fit at all.');
+  fp16('FP16', 16.0),
+  q8('Q8_0', 8.5),
+  q6('Q6_K', 6.6),
+  q5('Q5_K_M', 5.7),
+  q4('Q4_K_M', 4.8),
+  q3('Q3_K_M', 3.9),
+  iq2('IQ2_M', 2.7);
 
-  const Quantization(this.label, this.bitsPerWeight, this.blurb);
+  const Quantization(this.label, this.bitsPerWeight);
 
   final String label;
   final double bitsPerWeight;
-  final String blurb;
+
+  String blurb(L t) => switch (this) {
+        Quantization.fp16 => t.aiOsQuantFp16,
+        Quantization.q8 => t.aiOsQuantQ8,
+        Quantization.q6 => t.aiOsQuantQ6,
+        Quantization.q5 => t.aiOsQuantQ5,
+        Quantization.q4 => t.aiOsQuantQ4,
+        Quantization.q3 => t.aiOsQuantQ3,
+        Quantization.iq2 => t.aiOsQuantIq2,
+      };
 }
 
 /// How much memory the KV cache takes per billion parameters per 1K tokens,

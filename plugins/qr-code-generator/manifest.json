@@ -6,5 +6,27 @@
   "icon": "qr_code_2",
   "category": "Utility",
   "details": "Paste any link and get an instant, scannable QR code — no account, no internet round-trip beyond generating the image itself.\n\nEvery code you make is kept in a local history so you can come back and re-download or re-share it later without retyping the URL.",
-  "screenshots": ["generator.png", "history.png"]
+  "screenshots": ["generator.png", "history.png"],
+  "i18n": {
+    "nl": {
+      "name": "QR-codegenerator",
+      "description": "Een link bij de hand? Maak er zo een QR-code van. We bewaren de codes die je maakt, zodat je ze later weer terugvindt.",
+      "details": "Plak een willekeurige link en krijg direct een scanbare QR-code: geen account nodig en geen extra internetverkeer buiten het genereren van de afbeelding zelf.\n\nElke code die je maakt, wordt bewaard in een lokale geschiedenis, zodat je later terug kunt komen om hem opnieuw te downloaden of te delen zonder de URL opnieuw te typen."
+    },
+    "fr": {
+      "name": "Générateur de QR codes",
+      "description": "Vous avez un lien ? Créez-en un QR code en un instant. Nous conservons ceux que vous créez, pour que vous puissiez les retrouver.",
+      "details": "Collez n'importe quel lien et obtenez instantanément un QR code scannable : pas de compte, pas d'aller-retour internet au-delà de la génération de l'image elle-même.\n\nChaque code que vous créez est conservé dans un historique local, pour que vous puissiez revenir le télécharger ou le partager à nouveau sans retaper l'URL."
+    },
+    "es": {
+      "name": "Generador de códigos QR",
+      "description": "¿Tienes un enlace? Crea un QR para él en un segundo. Guardamos los que creas para que puedas encontrarlos después.",
+      "details": "Pega cualquier enlace y obtén al instante un código QR escaneable: sin cuenta y sin más conexión que la necesaria para generar la imagen.\n\nCada código que creas se guarda en un historial local, para que puedas volver más tarde a descargarlo o compartirlo de nuevo sin volver a escribir la URL."
+    },
+    "zh": {
+      "name": "二维码生成器",
+      "description": "有链接？几秒钟就能为它生成二维码。我们会保存你做过的二维码，方便你随时找回。",
+      "details": "粘贴任意链接，即可立即获得可扫描的二维码。无需账户，除了生成图片本身外，不需要额外的网络往返。\n\n你生成的每个二维码都会保存在本地历史记录中，之后可以随时回来重新下载或分享，无需再次输入网址。"
+    }
+  }
 }

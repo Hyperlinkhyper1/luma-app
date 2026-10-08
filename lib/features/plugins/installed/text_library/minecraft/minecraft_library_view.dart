@@ -12,6 +12,7 @@ import '../../../../../settings/settings_scope.dart';
 import '../../../../../sync/sync_scope.dart';
 import '../../../../converter/schematic/textures/texture_downloader.dart';
 import '../../_shared/native_webview.dart';
+import '../../_shared/scene_localizations.dart';
 import '../../_shared/windows_webview.dart' show windowsAssetPath;
 import '../text_library_models.dart';
 import '../text_library_repository.dart';
@@ -56,6 +57,7 @@ class _MinecraftLibraryViewState extends State<MinecraftLibraryView>
   bool _onScreen = true;
   bool _downloading = false;
   String? _error;
+  String? _sceneLanguage;
   int _generation = 0;
 
   bool get _showing => _tickerEnabled && _foreground && _onScreen;
@@ -86,6 +88,20 @@ class _MinecraftLibraryViewState extends State<MinecraftLibraryView>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final language = Localizations.localeOf(context).languageCode;
+    if (_sceneLanguage != language) {
+      _sceneLanguage = language;
+      if (_ready) {
+        _send({
+          'type': 'strings',
+          'language': language,
+          'strings': sceneStrings(L.of(context)),
+          'sceneKeys': sceneKeyStrings(L.of(context), 'text_library/scene'),
+          'sourceStrings':
+              sceneSourceStrings(L.of(context), 'text_library/scene'),
+        });
+      }
+    }
     final repository = TextLibraryScope.of(context);
     if (_library == null) {
       _repository = repository;
@@ -186,6 +202,10 @@ class _MinecraftLibraryViewState extends State<MinecraftLibraryView>
         _send({
           'type': 'init',
           'strings': sceneStrings(L.of(context)),
+          'language': Localizations.localeOf(context).languageCode,
+          'sceneKeys': sceneKeyStrings(L.of(context), 'text_library/scene'),
+          'sourceStrings':
+              sceneSourceStrings(L.of(context), 'text_library/scene'),
           'classStrings': classroomStringsByLanguage(),
           'reducedMotion': MediaQuery.of(context).disableAnimations,
         });

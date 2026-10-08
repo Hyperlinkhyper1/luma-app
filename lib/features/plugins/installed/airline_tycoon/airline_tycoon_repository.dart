@@ -9,6 +9,7 @@ import 'package:flutter/widgets.dart'
 
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../storage/storage_guard.dart';
 import 'airline_game_state.dart';
 import 'data/aircraft.dart';
@@ -42,7 +43,12 @@ class AirlineTycoonRepository extends ChangeNotifier
     this.airportMode = false,
   }) : _state = initialState ?? AirlineGameState(airlineName: '', hubIata: '') {
     if (initialState != null) _loaded = true;
-    if (airportMode) WidgetsBinding.instance.addObserver(this);
+    if (airportMode) {
+      final lifecycle = WidgetsBinding.instance.lifecycleState;
+      _airportSuspended =
+          lifecycle != null && lifecycle != AppLifecycleState.resumed;
+      WidgetsBinding.instance.addObserver(this);
+    }
     if (autoStart) unawaited(_boot());
   }
 
@@ -55,6 +61,12 @@ class AirlineTycoonRepository extends ChangeNotifier
   int _lastCheckpointMs = 0;
   String? airportSaveError;
   bool _airportSuspended = false;
+  final Set<Object> _visibleAirportPages = {};
+  String? _lastQueuedAirportSave;
+  bool _disposed = false;
+
+  bool get _airportActive =>
+      _visibleAirportPages.isNotEmpty && !_airportSuspended && !_disposed;
 
   /// Real seconds one in-game day takes at 1x speed.
   static const int dayLengthSeconds = 24;
@@ -114,10 +126,12 @@ class AirlineTycoonRepository extends ChangeNotifier
 
   Future<void> _boot() async {
     _catalog = await AirportCatalog.load();
+    if (_disposed) return;
     if (airportMode) {
       await _loadAirport();
+      if (_disposed) return;
       _loaded = true;
-      if (hasGame && _airportWorld != null) {
+      if (_airportActive && hasGame && _airportWorld != null) {
         _catchUpAirport();
         if (!isPaused) _startDayTimer();
       }
@@ -163,7 +177,9 @@ class AirlineTycoonRepository extends ChangeNotifier
 
   @override
   void dispose() {
+    _disposed = true;
     _dayTimer?.cancel();
+    _dayTimer = null;
     if (airportMode) {
       WidgetsBinding.instance.removeObserver(this);
       unawaited(flushAirport());
@@ -177,11 +193,34 @@ class AirlineTycoonRepository extends ChangeNotifier
     if (state == AppLifecycleState.resumed) {
       if (!_airportSuspended) return;
       _airportSuspended = false;
-      _catchUpAirport();
-      if (hasGame && !isPaused) _startDayTimer();
-      notifyListeners();
+      if (_airportActive) {
+        _catchUpAirport();
+        if (hasGame && !isPaused) _startDayTimer();
+        notifyListeners();
+      }
     } else if (!_airportSuspended) {
       _airportSuspended = true;
+      _dayTimer?.cancel();
+      _dayTimer = null;
+      unawaited(flushAirport());
+    }
+  }
+
+  /// Each mounted page reports visibility independently because multiple
+  /// app tabs can share this repository. Hidden pages never run the clock.
+  void setAirportPageVisible(Object page, bool visible) {
+    if (!airportMode || _disposed) return;
+    final wasActive = _airportActive;
+    if (visible) {
+      _visibleAirportPages.add(page);
+    } else {
+      _visibleAirportPages.remove(page);
+    }
+    if (wasActive == _airportActive) return;
+    if (_airportActive) {
+      _catchUpAirport();
+      if (hasGame && !isPaused) _startDayTimer();
+    } else {
       _dayTimer?.cancel();
       _dayTimer = null;
       unawaited(flushAirport());
@@ -192,6 +231,8 @@ class AirlineTycoonRepository extends ChangeNotifier
 
   void _startDayTimer() {
     _dayTimer?.cancel();
+    _dayTimer = null;
+    if (_disposed || (airportMode && !_airportActive)) return;
     _dayTimer = Timer.periodic(
       Duration(milliseconds: airportMode ? 200 : 1000),
       (_) => _tick(),
@@ -237,6 +278,7 @@ class AirlineTycoonRepository extends ChangeNotifier
 
   void _tick() {
     if (airportMode) {
+      if (!_airportActive) return;
       final world = _airportWorld;
       if (world == null || world.paused || _catalog == null) return;
       world.advance(.2 * world.speed, _state, _catalog!);
@@ -432,8 +474,10 @@ class AirlineTycoonRepository extends ChangeNotifier
           final checkCost = model.maintPerHourEur * 260;
           maintenance += checkCost;
           events.add(
-            '${aircraft.registration} went in for a heavy check '
-            '($checkGroundDays days).',
+            currentL.airlineEventHeavyCheck(
+              aircraft.registration,
+              checkGroundDays,
+            ),
           );
         }
       }
@@ -559,17 +603,13 @@ class AirlineTycoonRepository extends ChangeNotifier
 
   ActionResult acquireAircraft(AircraftModel model, {required bool lease}) {
     if (airportMode && _state.cashEur < 0) {
-      return const ActionResult.failed(
-        'Restore a positive balance before acquiring aircraft.',
-      );
+      return ActionResult.failed(currentL.airlineErrRestoreBalance);
     }
     if (!lease && _state.cashEur < model.priceEur) {
-      return const ActionResult.failed('Not enough cash for that aircraft.');
+      return ActionResult.failed(currentL.airlineErrNotEnoughCashAircraft);
     }
     if (lease && _state.cashEur < model.leasePerDayEur * 7) {
-      return const ActionResult.failed(
-        'You need at least a week of lease payments in the bank first.',
-      );
+      return ActionResult.failed(currentL.airlineErrLeaseWeek);
     }
     if (!lease) {
       if (airportMode && _airportWorld != null) {
@@ -604,12 +644,12 @@ class AirlineTycoonRepository extends ChangeNotifier
               (f) => f.aircraftId == aircraftId && !f.finished,
             ) ??
             false)) {
-      return const ActionResult.failed(
-        'Cancel scheduled flights and wait for this aircraft to return before releasing it.',
-      );
+      return ActionResult.failed(currentL.airlineErrCancelFlightsFirst);
     }
     final aircraft = _state.aircraftById(aircraftId);
-    if (aircraft == null) return const ActionResult.failed('No such aircraft.');
+    if (aircraft == null) {
+      return ActionResult.failed(currentL.airlineErrNoSuchAircraft);
+    }
     final model = aircraftModelById(aircraft.modelId);
     if (!aircraft.leased && model != null) {
       final price = model.resaleValueEur(aircraft.blockHours);
@@ -632,7 +672,9 @@ class AirlineTycoonRepository extends ChangeNotifier
 
   ActionResult assignAircraft(String aircraftId, String? routeId) {
     final aircraft = _state.aircraftById(aircraftId);
-    if (aircraft == null) return const ActionResult.failed('No such aircraft.');
+    if (aircraft == null) {
+      return ActionResult.failed(currentL.airlineErrNoSuchAircraft);
+    }
     if (routeId == null) {
       aircraft.routeId = null;
       unawaited(_save());
@@ -645,7 +687,7 @@ class AirlineTycoonRepository extends ChangeNotifier
     final hub = hubAirport;
     final model = aircraftModelById(aircraft.modelId);
     if (route == null || dest == null || hub == null || model == null) {
-      return const ActionResult.failed('That route is not available.');
+      return ActionResult.failed(currentL.airlineErrRouteUnavailable);
     }
 
     final distance = hub.distanceToKm(dest);
@@ -656,14 +698,21 @@ class AirlineTycoonRepository extends ChangeNotifier
     );
     if (blocker == RouteBlocker.outOfRange) {
       return ActionResult.failed(
-        '${model.name} cannot reach ${dest.city} — '
-        '${distance.round()} km against ${model.rangeKm} km of range.',
+        currentL.airlineErrOutOfRange(
+          model.name,
+          dest.city,
+          '${distance.round()}',
+          '${model.rangeKm}',
+        ),
       );
     }
     if (blocker == RouteBlocker.runwayTooShort) {
       return ActionResult.failed(
-        '${model.name} needs ${model.minRunwayM} m of runway; your longest '
-        'is ${hubEffects.maxRunwayM} m.',
+        currentL.airlineErrRunwayTooShort(
+          model.name,
+          '${model.minRunwayM}',
+          '${hubEffects.maxRunwayM}',
+        ),
       );
     }
 
@@ -681,30 +730,28 @@ class AirlineTycoonRepository extends ChangeNotifier
     final hub = hubAirport;
     final dest = _catalog?.byIata(destIata);
     if (hub == null || dest == null) {
-      return const ActionResult.failed('Unknown destination.');
+      return ActionResult.failed(currentL.airlineErrUnknownDestination);
     }
     if (dest.iata == hub.iata) {
-      return const ActionResult.failed('That is your own hub.');
+      return ActionResult.failed(currentL.airlineErrOwnHub);
     }
     if (_state.routes.any((r) => r.destIata == dest.iata && r.active)) {
-      return ActionResult.failed('You already fly to ${dest.city}.');
+      return ActionResult.failed(currentL.airlineErrAlreadyFly(dest.city));
     }
 
     final effects = hubEffects;
     if (!airportMode && activeRouteCount >= effects.activeGates) {
       return ActionResult.failed(
         effects.inactiveGates > 0
-            ? 'Every usable gate is taken. You have '
-                  '${effects.inactiveGates} gate(s) not touching a terminal — '
-                  'move them next to one to put them to work.'
-            : 'You need another gate next to a terminal to add a route.',
+            ? currentL.airlineErrGatesTaken(effects.inactiveGates)
+            : currentL.airlineErrNeedGate,
       );
     }
 
     final distance = hub.distanceToKm(dest);
     final launchCost = (45000 + 12 * distance).round();
     if (_state.cashEur < launchCost) {
-      return const ActionResult.failed('Not enough cash to launch the route.');
+      return ActionResult.failed(currentL.airlineErrNotEnoughCashLaunch);
     }
     if (airportMode && _airportWorld != null) {
       _airportWorld!.recordTransaction(
@@ -780,15 +827,14 @@ class AirlineTycoonRepository extends ChangeNotifier
     );
     final error = HubGrid.check(candidate, _state.gridSize, _state.buildings);
     if (error == PlacementError.outOfBounds) {
-      return const ActionResult.failed('That does not fit on the field.');
+      return ActionResult.failed(currentL.airlineErrDoesNotFit);
     }
     if (error == PlacementError.overlaps) {
-      return const ActionResult.failed('Something is already built there.');
+      return ActionResult.failed(currentL.airlineErrAlreadyBuilt);
     }
     if (_state.cashEur < def.costEur) {
       return ActionResult.failed(
-        'A ${def.name.toLowerCase()} costs more '
-        'than you have.',
+        currentL.airlineErrCannotAffordBuilding(def.name),
       );
     }
 
@@ -804,7 +850,7 @@ class AirlineTycoonRepository extends ChangeNotifier
   ActionResult demolishAt(int x, int y) {
     final building = HubGrid.at((x: x, y: y), _state.buildings);
     if (building == null) {
-      return const ActionResult.failed('Nothing to demolish there.');
+      return ActionResult.failed(currentL.airlineErrNothingToDemolish);
     }
     _state.buildings.remove(building);
     _state.cashEur += (building.def.costEur * 0.5).round();
@@ -822,11 +868,11 @@ class AirlineTycoonRepository extends ChangeNotifier
 
   ActionResult expandField() {
     if (_state.gridSize >= AirlineGameState.maxGridSize) {
-      return const ActionResult.failed('The field is already at its limit.');
+      return ActionResult.failed(currentL.airlineErrFieldAtLimit);
     }
     final cost = expansionCostEur;
     if (_state.cashEur < cost) {
-      return const ActionResult.failed('Not enough cash to buy more land.');
+      return ActionResult.failed(currentL.airlineErrNotEnoughCashLand);
     }
     _state.cashEur -= cost;
     _state.gridSize += 2;
@@ -840,10 +886,16 @@ class AirlineTycoonRepository extends ChangeNotifier
 
   Future<void> _loadAirport() async {
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/$airportSaveFileName');
-      if (!await file.exists()) return;
+      final support = await getApplicationSupportDirectory();
+      var file = File('${support.path}/$airportSaveFileName');
+      var migrating = false;
+      if (!await file.exists() && !await File('${file.path}.bak').exists()) {
+        final documents = await getApplicationDocumentsDirectory();
+        file = File('${documents.path}/$airportSaveFileName');
+        migrating = true;
+      }
       for (final candidate in [file, File('${file.path}.bak')]) {
+        if (!await candidate.exists()) continue;
         try {
           final json = jsonDecode(await candidate.readAsString()) as Map;
           if (json['format'] != 2) {
@@ -858,42 +910,64 @@ class AirlineTycoonRepository extends ChangeNotifier
           _state = state;
           _airportWorld = world;
           _userPaused = world.paused;
+          airportSaveError = null;
+          if (migrating || candidate.path != file.path) {
+            await flushAirport(checkpoint: false, preserveBackup: true);
+            if (migrating && airportSaveError == null) {
+              final migrated = File('${support.path}/$airportSaveFileName');
+              await migrated.copy('${migrated.path}.bak');
+            }
+          } else {
+            _lastQueuedAirportSave = _encodeAirport();
+          }
           return;
         } catch (_) {
-          airportSaveError =
-              'Could not read the airport save. The original file has been preserved.';
+          airportSaveError = currentL.airlineErrSaveUnreadable;
         }
       }
     } catch (_) {
-      airportSaveError = 'Airport save storage is unavailable.';
+      airportSaveError = currentL.airlineErrSaveStorageUnavailable;
     }
   }
 
+  String _encodeAirport() => jsonEncode({
+    'format': 2,
+    'airline': _state.toJson(),
+    'airport': _airportWorld!.toJson(),
+  });
+
   /// Serialized, atomic replacement, with one recovery copy. The legacy save
   /// has a different filename and is never opened for writing in airport mode.
-  Future<void> flushAirport() {
+  Future<void> flushAirport({
+    bool checkpoint = true,
+    bool preserveBackup = false,
+  }) {
     if (!airportMode || _airportWorld == null) return Future.value();
+    if (_encodeAirport() == _lastQueuedAirportSave) return _pendingSave;
     final now = DateTime.now().millisecondsSinceEpoch;
-    _state.lastSeenEpochMs = now;
-    _airportWorld!.lastSeenEpochMs = now;
-    final encoded = jsonEncode({
-      'format': 2,
-      'airline': _state.toJson(),
-      'airport': _airportWorld!.toJson(),
-    });
+    if (checkpoint) {
+      _state.lastSeenEpochMs = now;
+      _airportWorld!.lastSeenEpochMs = now;
+    }
+    _lastCheckpointMs = now;
+    final encoded = _encodeAirport();
+    _lastQueuedAirportSave = encoded;
     _pendingSave = _pendingSave.then((_) async {
       try {
-        final dir = await getApplicationDocumentsDirectory();
+        final dir = await getApplicationSupportDirectory();
+        await dir.create(recursive: true);
         final file = File('${dir.path}/$airportSaveFileName');
         final temporary = File('${file.path}.tmp');
         await temporary.writeAsString(encoded, flush: true);
-        if (await file.exists()) await file.copy('${file.path}.bak');
+        if (!preserveBackup && await file.exists()) {
+          await file.copy('${file.path}.bak');
+        }
         await temporary.rename(file.path);
         airportSaveError = null;
         StorageGuard.instance.scheduleRefresh();
       } catch (_) {
-        airportSaveError =
-            'Could not save this airport. Progress is still in memory; check available storage.';
+        if (_lastQueuedAirportSave == encoded) _lastQueuedAirportSave = null;
+        airportSaveError = currentL.airlineErrSaveFailed;
       }
     });
     return _pendingSave;
@@ -922,7 +996,7 @@ class AirlineTycoonRepository extends ChangeNotifier
       netProfitEur: profit,
       passengers: _state.passengersCarriedEver - pax,
       rate: 1,
-      events: ['Airport operations advanced ${minutes.round()} game minutes.'],
+      events: [currentL.airlineEventAdvanced('${minutes.round()}')],
     );
     unawaited(flushAirport());
   }
@@ -1060,7 +1134,7 @@ class AirlineTycoonRepository extends ChangeNotifier
   ActionResult airportCommand(String action, Map<String, Object?> args) {
     final world = _airportWorld;
     if (!airportMode || world == null) {
-      return const ActionResult.failed('Start an airport first.');
+      return ActionResult.failed(currentL.airlineErrStartAirportFirst);
     }
     String? error;
     String string(String name) =>
@@ -1080,7 +1154,7 @@ class AirlineTycoonRepository extends ChangeNotifier
         case 'move':
           final f = world.facility(string('facilityId'));
           if (f == null) {
-            error = 'Select a building first.';
+            error = currentL.airlineErrSelectBuildingFirst;
             break;
           }
           error = world.build(
@@ -1140,7 +1214,7 @@ class AirlineTycoonRepository extends ChangeNotifier
           );
         case 'schedule':
           if (_catalog == null) {
-            return const ActionResult.failed('Airport catalog is unavailable.');
+            return ActionResult.failed(currentL.airlineErrCatalogUnavailable);
           }
           error = world.schedule(
             _state,
@@ -1152,7 +1226,7 @@ class AirlineTycoonRepository extends ChangeNotifier
           );
         case 'speed':
           if (![1, 4, 12].contains(args['speed'])) {
-            return const ActionResult.failed('Choose 1×, 4× or 12×.');
+            return ActionResult.failed(currentL.airlineErrChooseSpeed);
           }
           setSpeed((args['speed'] as num).toInt());
           return const ActionResult.ok();
@@ -1166,10 +1240,10 @@ class AirlineTycoonRepository extends ChangeNotifier
           clearAwayReport();
           return const ActionResult.ok();
         default:
-          return const ActionResult.failed('Unknown airport command.');
+          return ActionResult.failed(currentL.airlineErrUnknownCommand);
       }
     } on ArgumentError {
-      return const ActionResult.failed('Invalid airport command.');
+      return ActionResult.failed(currentL.airlineErrInvalidCommand);
     }
     if (error != null) return ActionResult.failed(error);
     unawaited(flushAirport());

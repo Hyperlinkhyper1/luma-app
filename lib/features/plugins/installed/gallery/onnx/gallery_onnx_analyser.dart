@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_onnxruntime/flutter_onnxruntime.dart';
 import 'package:image/image.dart' as img;
 
+import '../../../../../l10n/current_l.dart';
 import '../gallery_cache.dart';
 import '../gallery_people.dart';
 import 'gallery_face_embedder.dart';
@@ -127,7 +128,7 @@ class GalleryOnnxAnalyser {
         GalleryModelStore.labelModels,
         onProgress: onProgress,
       );
-      onProgress?.call('Starting the models', null);
+      onProgress?.call(currentL.galleryModelStarting, null);
 
       final runtime = OnnxRuntime();
       _classifier = await runtime.createSession(

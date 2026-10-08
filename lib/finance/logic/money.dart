@@ -1,7 +1,6 @@
 import 'package:intl/intl.dart';
 
-final NumberFormat _euro =
-    NumberFormat.currency(locale: 'nl_NL', symbol: '€', decimalDigits: 2);
+NumberFormat get _euro => NumberFormat.currency(symbol: '€', decimalDigits: 2);
 
 /// Formats integer [cents] as a euro string, e.g. 123456 -> "€1.234,56".
 String formatCents(int cents) => _euro.format(cents / 100.0);

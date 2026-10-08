@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'smart_home_repository.dart';
 import 'smart_home_presets_ui.dart';
@@ -35,6 +36,7 @@ class _SmartHomePageState extends State<SmartHomePage> {
       });
     }
     final palette = context.luma;
+    final t = L.of(context);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 48),
       child: Center(
@@ -53,13 +55,13 @@ class _SmartHomePageState extends State<SmartHomePage> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Smart Home',
+                      t.pluginNameSmartHome,
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                   ),
                   if (repo.paired)
                     IconButton(
-                      tooltip: 'Refresh lights',
+                      tooltip: t.smartHomeRefreshLights,
                       onPressed: repo.busy ? null : repo.refresh,
                       icon: const Icon(Icons.refresh_rounded),
                     ),
@@ -67,7 +69,7 @@ class _SmartHomePageState extends State<SmartHomePage> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Control IKEA lamps through your DIRIGERA hub on this network.',
+                t.smartHomeSubtitle,
                 style: TextStyle(color: palette.textSecondary),
               ),
               const SizedBox(height: 24),
@@ -109,10 +111,10 @@ class _SmartHomePageState extends State<SmartHomePage> {
                           color: palette.textMuted,
                         ),
                         const SizedBox(height: 12),
-                        const Text('No IKEA lamps found'),
+                        Text(t.smartHomeNoLampsFound),
                         const SizedBox(height: 6),
                         Text(
-                          'Add a lamp in the IKEA Home smart app, then refresh here.',
+                          t.smartHomeAddLampHint,
                           textAlign: TextAlign.center,
                           style: TextStyle(color: palette.textSecondary),
                         ),
@@ -121,7 +123,7 @@ class _SmartHomePageState extends State<SmartHomePage> {
                   )
                 else ...[
                   Text(
-                    '${repo.lights.length} ${repo.lights.length == 1 ? 'lamp' : 'lamps'}',
+                    t.smartHomeLampsCount(repo.lights.length),
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 12),
@@ -144,17 +146,18 @@ class _SmartHomePageState extends State<SmartHomePage> {
 
   Widget _pairingCard(SmartHomeRepository repo) {
     final palette = context.luma;
+    final t = L.of(context);
     return LumaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Connect a DIRIGERA hub',
+            t.smartHomeConnectHub,
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 8),
           Text(
-            'Make sure this device and the hub are on the same home network.',
+            t.smartHomeSameNetworkHint,
             style: TextStyle(color: palette.textSecondary),
           ),
           const SizedBox(height: 18),
@@ -162,11 +165,11 @@ class _SmartHomePageState extends State<SmartHomePage> {
             if (repo.discovering) ...[
               const LinearProgressIndicator(),
               const SizedBox(height: 10),
-              const Text('Looking for DIRIGERA hubs…'),
+              Text(t.smartHomeLookingForHubs),
             ] else ...[
               if (repo.discoveredHubs.isNotEmpty) ...[
                 Text(
-                  'Hubs found',
+                  t.smartHomeHubsFound,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 8),
@@ -188,14 +191,14 @@ class _SmartHomePageState extends State<SmartHomePage> {
                   ),
               ] else if (repo.discoveryAttempted && repo.error == null)
                 Text(
-                  'No hub found. Check that DIRIGERA is powered on and this device is on the same home network.',
+                  t.smartHomeNoHubFound,
                   style: TextStyle(color: palette.textSecondary),
                 ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: repo.busy ? null : repo.discoverHubs,
                 icon: const Icon(Icons.search_rounded),
-                label: const Text('Find my hub'),
+                label: Text(t.smartHomeFindMyHub),
               ),
             ],
             const SizedBox(height: 8),
@@ -207,8 +210,8 @@ class _SmartHomePageState extends State<SmartHomePage> {
                     ),
               child: Text(
                 _showManualAddress
-                    ? 'Hide manual address'
-                    : 'Enter IP address manually',
+                    ? t.smartHomeHideManualAddress
+                    : t.smartHomeEnterIpManually,
               ),
             ),
             if (_showManualAddress) ...[
@@ -217,10 +220,10 @@ class _SmartHomePageState extends State<SmartHomePage> {
                 controller: _host,
                 enabled: !repo.busy,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Hub IP address',
+                decoration: InputDecoration(
+                  labelText: t.smartHomeHubIpAddress,
                   hintText: '192.168.1.20',
-                  prefixIcon: Icon(Icons.router_rounded),
+                  prefixIcon: const Icon(Icons.router_rounded),
                 ),
                 onSubmitted: repo.busy ? null : repo.beginPairing,
               ),
@@ -230,12 +233,12 @@ class _SmartHomePageState extends State<SmartHomePage> {
                     ? null
                     : () => repo.beginPairing(_host.text),
                 icon: const Icon(Icons.link_rounded),
-                label: const Text('Start pairing'),
+                label: Text(t.smartHomeStartPairing),
               ),
             ],
           ] else ...[
             Text(
-              'Press the action button on the bottom of the DIRIGERA hub.',
+              t.smartHomePressHubButton,
               style: TextStyle(
                 color: palette.textPrimary,
                 fontWeight: FontWeight.w600,
@@ -245,16 +248,16 @@ class _SmartHomePageState extends State<SmartHomePage> {
             FilledButton.icon(
               onPressed: repo.busy ? null : repo.completePairing,
               icon: const Icon(Icons.check_rounded),
-              label: const Text('I pressed the button'),
+              label: Text(t.smartHomePressedButton),
             ),
             const SizedBox(height: 8),
             Text(
-              'If pairing expires, start again.',
+              t.smartHomePairingExpires,
               style: TextStyle(color: palette.textSecondary),
             ),
             TextButton(
               onPressed: repo.busy ? null : () => repo.beginPairing(_host.text),
-              child: const Text('Start again'),
+              child: Text(t.smartHomeStartAgain),
             ),
           ],
           if (repo.busy) ...[
@@ -268,6 +271,7 @@ class _SmartHomePageState extends State<SmartHomePage> {
 
   Widget _connectionCard(SmartHomeRepository repo) {
     final palette = context.luma;
+    final t = L.of(context);
     return LumaCard(
       child: Row(
         children: [
@@ -277,9 +281,9 @@ class _SmartHomePageState extends State<SmartHomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'DIRIGERA connected',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                Text(
+                  t.smartHomeConnected,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 Text(
                   repo.host ?? '',
@@ -290,7 +294,7 @@ class _SmartHomePageState extends State<SmartHomePage> {
           ),
           TextButton(
             onPressed: repo.busy ? null : repo.disconnect,
-            child: const Text('Disconnect'),
+            child: Text(t.smartHomeDisconnect),
           ),
         ],
       ),
@@ -335,6 +339,7 @@ class _LightCardState extends State<_LightCard> {
   Widget build(BuildContext context) {
     final light = widget.light;
     final palette = context.luma;
+    final t = L.of(context);
     final enabled = light.isReachable && !widget.repo.busy;
     return LumaCard(
       child: Column(
@@ -360,8 +365,8 @@ class _LightCardState extends State<_LightCard> {
                     ),
                     Text(
                       light.isReachable
-                          ? (light.room ?? 'IKEA lamp')
-                          : 'Offline',
+                          ? (light.room ?? t.smartHomeIkeaLamp)
+                          : t.smartHomeOffline,
                       style: TextStyle(color: palette.textSecondary),
                     ),
                   ],
@@ -384,7 +389,7 @@ class _LightCardState extends State<_LightCard> {
           ),
           if (light.canDim) ...[
             const SizedBox(height: 12),
-            Text('Brightness  ${_brightness.round()}%'),
+            Text(t.smartHomeBrightnessPercent(_brightness.round())),
             Slider(
               min: 1,
               max: 100,
@@ -399,7 +404,7 @@ class _LightCardState extends State<_LightCard> {
           ],
           if (light.canSetTemperature) ...[
             const SizedBox(height: 8),
-            Text('White temperature  ${_temperature.round()} K'),
+            Text(t.smartHomeWhiteTemperatureKelvin(_temperature.round())),
             Slider(
               min: light.colorTemperatureMax!.toDouble(),
               max: light.colorTemperatureMin!.toDouble(),
@@ -416,17 +421,32 @@ class _LightCardState extends State<_LightCard> {
           ],
           if (light.canSetColor) ...[
             const SizedBox(height: 8),
-            const Text('Color'),
+            Text(t.commonColor),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                _colorButton('Red', Colors.red, 0, enabled),
-                _colorButton('Orange', Colors.orange, 30, enabled),
-                _colorButton('Green', Colors.green, 120, enabled),
-                _colorButton('Blue', Colors.blue, 240, enabled),
-                _colorButton('Purple', Colors.purple, 280, enabled),
+                _colorButton(t.smartHomeColorRed, Colors.red, 0, enabled),
+                _colorButton(
+                  t.smartHomeColorOrange,
+                  Colors.orange,
+                  30,
+                  enabled,
+                ),
+                _colorButton(
+                  t.smartHomeColorGreen,
+                  Colors.green,
+                  120,
+                  enabled,
+                ),
+                _colorButton(t.smartHomeColorBlue, Colors.blue, 240, enabled),
+                _colorButton(
+                  t.smartHomeColorPurple,
+                  Colors.purple,
+                  280,
+                  enabled,
+                ),
               ],
             ),
           ],

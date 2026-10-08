@@ -1,3 +1,4 @@
+import '../../../../../l10n/current_l.dart';
 import 'sketch_blend.dart';
 
 /// A layer as stored in `document.json`: its properties, and which PNG in
@@ -39,7 +40,7 @@ class SketchLayerMeta {
 
   static SketchLayerMeta fromJson(Map<String, Object?> json) => SketchLayerMeta(
         id: (json['id'] as num).toInt(),
-        name: json['name'] as String? ?? 'Layer',
+        name: json['name'] as String? ?? currentL.freeSketchFallbackLayerName,
         file: json['file'] as String?,
         opacity: (json['opacity'] as num?)?.toDouble().clamp(0.0, 1.0) ?? 1,
         blend: SketchBlend.parse(json['blend'] as String?),
@@ -119,7 +120,7 @@ class SketchMeta {
     final width = (json['width'] as num?)?.toInt() ?? 0;
     final height = (json['height'] as num?)?.toInt() ?? 0;
     if (width <= 0 || height <= 0) {
-      throw const FormatException('Document has no canvas size.');
+      throw FormatException(currentL.freeSketchNoCanvasSize);
     }
     final layers = [
       for (final raw in (json['layers'] as List? ?? const []))
@@ -127,7 +128,7 @@ class SketchMeta {
     ];
     return SketchMeta(
       id: id,
-      title: json['title'] as String? ?? 'Untitled',
+      title: json['title'] as String? ?? currentL.commonUntitled,
       width: width,
       height: height,
       created: DateTime.tryParse(json['created'] as String? ?? '')?.toLocal() ?? DateTime.now(),
@@ -142,22 +143,34 @@ class SketchMeta {
 
 /// Canvas size presets offered when creating a document.
 class CanvasPreset {
-  const CanvasPreset(this.name, this.width, this.height, {this.note});
+  const CanvasPreset(this.id, this.width, this.height, {this.note});
 
-  final String name;
+  final String id;
   final int width;
   final int height;
   final String? note;
 
+  String get name => switch (id) {
+        'screen' => currentL.freeSketchPresetScreen,
+        'square' => currentL.freeSketchPresetSquare,
+        'portrait' => currentL.freeSketchPresetPortrait,
+        'a4' => 'A4',
+        'a4_draft' => currentL.freeSketchPresetA4Draft,
+        '4k' => '4K',
+        'comic_page' => currentL.freeSketchPresetComicPage,
+        'phone_wallpaper' => currentL.freeSketchPresetPhoneWallpaper,
+        _ => id,
+      };
+
   static const all = [
-    CanvasPreset('Screen', 1920, 1080, note: 'Full HD'),
-    CanvasPreset('Square', 2048, 2048),
-    CanvasPreset('Portrait', 1536, 2048, note: '3:4'),
-    CanvasPreset('A4', 2480, 3508, note: '300 dpi'),
-    CanvasPreset('A4 draft', 1240, 1754, note: '150 dpi'),
-    CanvasPreset('4K', 3840, 2160, note: 'UHD'),
-    CanvasPreset('Comic page', 1988, 3075, note: '6.6×10.2 in'),
-    CanvasPreset('Phone wallpaper', 1284, 2778),
+    CanvasPreset('screen', 1920, 1080, note: 'Full HD'),
+    CanvasPreset('square', 2048, 2048),
+    CanvasPreset('portrait', 1536, 2048, note: '3:4'),
+    CanvasPreset('a4', 2480, 3508, note: '300 dpi'),
+    CanvasPreset('a4_draft', 1240, 1754, note: '150 dpi'),
+    CanvasPreset('4k', 3840, 2160, note: 'UHD'),
+    CanvasPreset('comic_page', 1988, 3075, note: '6.6×10.2 in'),
+    CanvasPreset('phone_wallpaper', 1284, 2778),
   ];
 
   /// The largest side we allow. Past this a single layer is over 64 MB of

@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
+
 /// One entry in the local pane. Deliberately the same shape as
 /// [SftpEntry] so both panes can share a list widget.
 class LocalEntry {
@@ -123,7 +125,7 @@ class LocalBrowser {
         if (external != null) {
           roots.add(
             LocalEntry(
-              name: 'App storage',
+              name: currentL.sftpLocalAppStorage,
               path: external.path,
               isDirectory: true,
             ),
@@ -150,7 +152,7 @@ class LocalBrowser {
     roots.add(const LocalEntry(name: '/', path: '/', isDirectory: true));
     final home = Platform.environment['HOME'];
     if (home != null && home.isNotEmpty && await Directory(home).exists()) {
-      roots.add(LocalEntry(name: 'Home', path: home, isDirectory: true));
+      roots.add(LocalEntry(name: currentL.sftpLocalHome, path: home, isDirectory: true));
     }
     return roots;
   }

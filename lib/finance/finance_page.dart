@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app/widgets.dart';
+import '../l10n/app_localizations.dart';
 import 'ui/debts_tab.dart';
 import 'ui/overview_tab.dart';
 import 'ui/pots_tab.dart';
@@ -22,25 +23,25 @@ class FinancePage extends StatefulWidget {
 class _FinancePageState extends State<FinancePage> {
   int _tab = 0;
 
-  static const _tabs = [
-    'Overview',
-    'Transactions',
-    'Pots',
-    'Recurring',
-    'Debts',
-    'Stocks',
-    'Reports',
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
+    final tabs = [
+      t.commonOverview,
+      t.financeTabTransactions,
+      t.financeTabPots,
+      t.financeTabRecurring,
+      t.financeTabDebts,
+      t.financeTabStocks,
+      t.financeTabReports,
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
           child: LumaSegmentedTabs(
-            tabs: _tabs,
+            tabs: tabs,
             selectedIndex: _tab,
             onSelect: (i) => setState(() => _tab = i),
             scrollable: context.isPhoneWidth,

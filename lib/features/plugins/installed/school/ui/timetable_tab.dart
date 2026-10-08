@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/school_database.dart';
 import '../school_repository.dart';
@@ -15,6 +16,7 @@ class TimetableTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repo = SchoolScope.of(context);
+    final t = L.of(context);
     return StreamData<List<SchoolSubject>>(
       stream: repo.watchSubjects(),
       builder: (context, subjects) {
@@ -29,11 +31,11 @@ class TimetableTab extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Text('Weekly schedule',
+                      Text(t.schoolTimetableWeeklySchedule,
                           style: TextStyle(color: context.luma.textSecondary, fontSize: 13)),
                       const Spacer(),
                       LumaPrimaryButton(
-                        label: 'Add class',
+                        label: t.schoolTimetableAddClass,
                         icon: Icons.add_rounded,
                         onTap: () => subjects.isEmpty
                             ? showSubjectDialog(context, repo)
@@ -46,10 +48,10 @@ class TimetableTab extends StatelessWidget {
                     child: entries.isEmpty
                         ? LumaEmptyState(
                             icon: Icons.calendar_view_week_rounded,
-                            title: 'No classes scheduled',
+                            title: t.schoolTimetableNoClasses,
                             subtitle: subjects.isEmpty
-                                ? 'Add a subject first, then add its class times.'
-                                : 'Tap "Add class" to build your weekly schedule.',
+                                ? t.schoolTimetableAddSubjectFirst
+                                : t.schoolTimetableTapAddClass,
                           )
                         : ListView(
                             padding: const EdgeInsets.only(bottom: 24),
@@ -82,6 +84,7 @@ class TimetableTab extends StatelessWidget {
                                                 _EntryRow(
                                                   entry: dayEntries[i],
                                                   subject: subjectById[dayEntries[i].subjectId],
+                                                  classLabel: t.schoolTimetableClass,
                                                   onDelete: () =>
                                                       repo.deleteTimetableEntry(dayEntries[i].id),
                                                 ),
@@ -116,9 +119,15 @@ class TimetableTab extends StatelessWidget {
 }
 
 class _EntryRow extends StatelessWidget {
-  const _EntryRow({required this.entry, required this.subject, required this.onDelete});
+  const _EntryRow({
+    required this.entry,
+    required this.subject,
+    required this.classLabel,
+    required this.onDelete,
+  });
   final TimetableEntry entry;
   final SchoolSubject? subject;
+  final String classLabel;
   final VoidCallback onDelete;
 
   @override
@@ -136,7 +145,7 @@ class _EntryRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(subject?.name ?? 'Class',
+              Text(subject?.name ?? classLabel,
                   style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w600)),
               Text(
                 [
@@ -184,8 +193,9 @@ class _TimetableEditorDialogState extends State<_TimetableEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return AlertDialog(
-      title: const Text('Add class'),
+      title: Text(t.schoolTimetableAddClass),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -193,7 +203,7 @@ class _TimetableEditorDialogState extends State<_TimetableEditorDialog> {
           children: [
             DropdownButtonFormField<int>(
               initialValue: _subjectId,
-              decoration: const InputDecoration(labelText: 'Subject'),
+              decoration: InputDecoration(labelText: t.schoolTimetableSubject),
               items: [
                 for (final s in widget.subjects)
                   DropdownMenuItem(value: s.id, child: Text(s.name)),
@@ -202,7 +212,7 @@ class _TimetableEditorDialogState extends State<_TimetableEditorDialog> {
             ),
             DropdownButtonFormField<int>(
               initialValue: _dayOfWeek,
-              decoration: const InputDecoration(labelText: 'Day'),
+              decoration: InputDecoration(labelText: t.schoolTimetableDay),
               items: [
                 for (var d = 1; d <= 7; d++)
                   DropdownMenuItem(value: d, child: Text(weekdayName(d))),
@@ -218,7 +228,7 @@ class _TimetableEditorDialogState extends State<_TimetableEditorDialog> {
                       final t = await showTimePicker(context: context, initialTime: _start);
                       if (t != null) setState(() => _start = t);
                     },
-                    child: Text('Start: ${_start.format(context)}'),
+                    child: Text(t.schoolTimetableStart(_start.format(context))),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -228,7 +238,7 @@ class _TimetableEditorDialogState extends State<_TimetableEditorDialog> {
                       final t = await showTimePicker(context: context, initialTime: _end);
                       if (t != null) setState(() => _end = t);
                     },
-                    child: Text('End: ${_end.format(context)}'),
+                    child: Text(t.schoolTimetableEnd(_end.format(context))),
                   ),
                 ),
               ],
@@ -236,17 +246,17 @@ class _TimetableEditorDialogState extends State<_TimetableEditorDialog> {
             const SizedBox(height: 8),
             TextField(
               controller: _locationController,
-              decoration: const InputDecoration(labelText: 'Location (optional)'),
+              decoration: InputDecoration(labelText: t.schoolTimetableLocation),
             ),
             TextField(
               controller: _instructorController,
-              decoration: const InputDecoration(labelText: 'Instructor (optional)'),
+              decoration: InputDecoration(labelText: t.schoolTimetableInstructor),
             ),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(t.commonCancel)),
         FilledButton(
           onPressed: () async {
             await widget.repo.createTimetableEntry(
@@ -263,7 +273,7 @@ class _TimetableEditorDialogState extends State<_TimetableEditorDialog> {
             );
             if (context.mounted) Navigator.pop(context);
           },
-          child: const Text('Add'),
+          child: Text(t.commonAdd),
         ),
       ],
     );

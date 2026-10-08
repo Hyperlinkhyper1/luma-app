@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/luma_theme.dart';
 import '../converter_widgets.dart';
 import '../file_saver.dart';
@@ -56,9 +57,11 @@ class _PictureConverterViewState extends State<PictureConverterView> {
     if (result == null || result.files.isEmpty) return;
 
     final file = result.files.first;
+    if (!mounted) return;
+    final t = L.of(context);
     final bytes = file.bytes;
     if (bytes == null) {
-      setState(() => _error = 'Could not read the selected file.');
+      setState(() => _error = t.convFileReadFailed);
       return;
     }
     final source = ImageConvert.detect(bytes, file.name);
@@ -68,9 +71,7 @@ class _PictureConverterViewState extends State<PictureConverterView> {
       _size = file.size;
       _source = source;
       _result = null;
-      _error = source == null
-          ? 'That file is not a supported image (PNG, JPG, BMP, TIFF, ICO, SVG or OIP).'
-          : null;
+      _error = source == null ? t.pictureConvUnsupported : null;
       // Default the target to something different from the source.
       _target =
           source == PictureFormat.png ? PictureFormat.jpg : PictureFormat.png;
@@ -118,7 +119,7 @@ class _PictureConverterViewState extends State<PictureConverterView> {
       if (!mounted) return;
       setState(() {
         _converting = false;
-        _error = 'Something went wrong while converting: $e';
+        _error = L.of(context).convMediaConvertFailed('$e');
       });
     }
   }
@@ -126,6 +127,7 @@ class _PictureConverterViewState extends State<PictureConverterView> {
   /// Rasterizes an SVG to PNG bytes, scaling so the longest side is at least
   /// 512px (and at most 4096px) for crisp output.
   Future<Uint8List> _rasterizeSvg(Uint8List svgBytes) async {
+    final t = L.of(context);
     final info = await vg.loadPicture(SvgBytesLoader(svgBytes), null);
     try {
       final size = info.size;
@@ -145,7 +147,7 @@ class _PictureConverterViewState extends State<PictureConverterView> {
           final data =
               await image.toByteData(format: ui.ImageByteFormat.png);
           if (data == null) {
-            throw const FormatException('Could not rasterize the SVG.');
+            throw FormatException(t.pictureConvRasterizeFailed);
           }
           return data.buffer.asUint8List();
         } finally {
@@ -173,17 +175,18 @@ class _PictureConverterViewState extends State<PictureConverterView> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return ToolScaffold(
       icon: Icons.image_outlined,
-      title: 'Picture converter',
-      subtitle: 'Convert between PNG, JPG, BMP, TIFF, ICO, SVG and OIP',
+      title: t.converterHubPictureTitle,
+      subtitle: t.pictureConvSubtitle,
       onBack: widget.onBack,
       children: [
         if (_bytes == null)
           ConverterDropZone(
             onTap: _pickFile,
             icon: Icons.add_photo_alternate_outlined,
-            title: 'Tap to pick a picture',
+            title: t.downscalerPickPrompt,
             subtitle: 'PNG · JPG · BMP · TIFF · ICO · SVG · OIP',
           )
         else
@@ -207,7 +210,7 @@ class _PictureConverterViewState extends State<PictureConverterView> {
                   target: _target.label,
                 ),
                 const SizedBox(height: 20),
-                Text('Convert to',
+                Text(t.convMediaConvertTo,
                     style: TextStyle(
                         color: luma.textSecondary,
                         fontSize: 13,
@@ -224,7 +227,7 @@ class _PictureConverterViewState extends State<PictureConverterView> {
                   const SizedBox(height: 18),
                   Row(
                     children: [
-                      Text('Quality',
+                      Text(t.convMediaQuality,
                           style: TextStyle(
                               color: luma.textSecondary,
                               fontSize: 13,
@@ -250,14 +253,15 @@ class _PictureConverterViewState extends State<PictureConverterView> {
                 if (_isSvg) ...[
                   const SizedBox(height: 12),
                   Text(
-                    'SVG is vector — it will be rasterized at a crisp size '
-                    'before converting.',
+                    t.pictureConvSvgVector,
                     style: TextStyle(color: luma.textMuted, fontSize: 12),
                   ),
                 ],
                 const SizedBox(height: 16),
                 ConverterPrimaryButton(
-                  label: kIsWeb ? 'Convert & download' : 'Convert & save',
+                  label: kIsWeb
+                      ? t.pictureConvConvertDownload
+                      : t.convMediaConvertSave,
                   icon: Icons.bolt_rounded,
                   loading: _converting,
                   onTap: _convert,
@@ -281,7 +285,8 @@ class _PictureConverterViewState extends State<PictureConverterView> {
             color: luma.success,
             message: _result!.summary,
             trailing:
-                ConverterTextButton(label: 'Convert another', onTap: _reset),
+                ConverterTextButton(
+                    label: t.convMediaConvertAnother, onTap: _reset),
           ),
         ],
       ],

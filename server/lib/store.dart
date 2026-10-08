@@ -214,8 +214,12 @@ class StoredUser {
         accessRevokedReason: j['accessRevokedReason'] as String?,
         recoveryEnvelope: j['recoveryEnvelope'] as String?,
         recoveryKeyBox: j['recoveryKeyBox'] as String?,
-        oauthSubjects:
-            (j['oauthSubjects'] as Map?)?.map((k, v) => MapEntry('$k', '$v')),
+        // A missing subject is skipped rather than stringified: '$v' would
+        // turn it into the subject "null", which could then match a sign-in.
+        oauthSubjects: {
+          for (final e in (j['oauthSubjects'] as Map? ?? const {}).entries)
+            if (e.value is String) '${e.key}': e.value as String,
+        },
         recentIps: (j['recentIps'] as List?)?.whereType<String>().toList(),
       );
 }

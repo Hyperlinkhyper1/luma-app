@@ -1,3 +1,4 @@
+import '../../../../l10n/current_l.dart';
 import 'ai_usage_pricing.dart';
 import 'ai_usage_source.dart';
 import 'data/ai_usage_database.dart';
@@ -5,13 +6,17 @@ import 'data/ai_usage_database.dart';
 /// Quick time-range presets shown in the page's filter bar. `all` has no
 /// lower bound.
 enum AiUsageRangePreset {
-  today('Today'),
-  last7Days('7d'),
-  last30Days('30d'),
-  all('All');
+  today,
+  last7Days,
+  last30Days,
+  all;
 
-  const AiUsageRangePreset(this.label);
-  final String label;
+  String get label => switch (this) {
+    AiUsageRangePreset.today => currentL.commonToday,
+    AiUsageRangePreset.last7Days => currentL.aiUsageRangeLast7Days,
+    AiUsageRangePreset.last30Days => currentL.aiUsageRangeLast30Days,
+    AiUsageRangePreset.all => currentL.aiUsageRangeAll,
+  };
 }
 
 /// Resolves [preset] to a `[start, end)` local-time window anchored at [now].
@@ -101,7 +106,7 @@ class AiDayUsageBucket {
 /// Fallback label for turns with no derivable project (currently every
 /// Antigravity turn, and any Claude Code/Codex turn with a missing/empty
 /// `cwd`) — a real, visible row rather than silently dropped.
-const String kUnknownProject = 'Unknown project';
+String get kUnknownProject => currentL.aiUsageUnknownProject;
 
 /// Total usage for one project (derived from `cwd`, see
 /// `ai_usage_project.dart`) within a queried range.
@@ -315,7 +320,7 @@ List<ModelUsageTotal> aggregateByModel(Iterable<AiUsageTurn> turns) {
 }
 
 /// Fallback label for an opencode turn whose record carried no provider id.
-const String kUnknownProvider = 'unknown';
+String get kUnknownProvider => currentL.aiUsageUnknownProvider;
 
 /// Total usage routed through one underlying provider, for opencode turns.
 class ProviderUsageTotal {
@@ -628,12 +633,15 @@ List<AiHourlyUsageBucket> aggregateByHour(Iterable<AiUsageTurn> turns) {
 /// default everywhere — it matches the historical ordering — while turns
 /// and cost are the two other totals every breakdown already computes.
 enum AiUsageSortMetric {
-  tokens('Tokens'),
-  turns('Turns'),
-  cost('Cost');
+  tokens,
+  turns,
+  cost;
 
-  const AiUsageSortMetric(this.label);
-  final String label;
+  String get label => switch (this) {
+    AiUsageSortMetric.tokens => currentL.aiUsageSortTokens,
+    AiUsageSortMetric.turns => currentL.aiUsageSortTurns,
+    AiUsageSortMetric.cost => currentL.aiUsageSortCost,
+  };
 }
 
 /// Company a (source, model) pair belongs to, for the "combine models by
@@ -653,10 +661,10 @@ String companyForModel(AiUsageSource source, String model) {
       if (m.contains('gpt') || m.contains('openai') || m.contains('codex')) {
         return 'OpenAI';
       }
-      return 'Other';
+      return currentL.commonOther;
     case AiUsageSource.opencode:
       final split = splitOpencodeModel(model);
-      if (split == null) return 'Other';
+      if (split == null) return currentL.commonOther;
       final provider = split.$1.toLowerCase();
       return switch (provider) {
         'anthropic' => 'Anthropic',
@@ -672,7 +680,7 @@ String companyForModel(AiUsageSource source, String model) {
         'lmstudio' ||
         'lm-studio' ||
         'local' =>
-          'Local',
+          currentL.aiUsageCompanyLocal,
         'mistral' => 'Mistral',
         'xai' => 'xAI',
         'groq' => 'Groq',
@@ -682,7 +690,7 @@ String companyForModel(AiUsageSource source, String model) {
         'azure' => 'Microsoft',
         'amazon-bedrock' || 'bedrock' => 'Amazon',
         _ => provider.isEmpty
-            ? 'Other'
+            ? currentL.commonOther
             : '${provider[0].toUpperCase()}${provider.substring(1)}',
       };
     case AiUsageSource.freebuff:
@@ -691,7 +699,7 @@ String companyForModel(AiUsageSource source, String model) {
         final m = model.toLowerCase();
         if (m.contains('claude')) return 'Anthropic';
         if (m.contains('gpt') || m.contains('codex')) return 'OpenAI';
-        return 'Other';
+        return currentL.commonOther;
       }
       final provider = split.$1.toLowerCase();
       return switch (provider) {
@@ -706,7 +714,7 @@ String companyForModel(AiUsageSource source, String model) {
         'xai' => 'xAI',
         'openrouter' => 'OpenRouter',
         _ => provider.isEmpty
-            ? 'Other'
+            ? currentL.commonOther
             : '${provider[0].toUpperCase()}${provider.substring(1)}',
       };
     case AiUsageSource.luma:
@@ -715,7 +723,7 @@ String companyForModel(AiUsageSource source, String model) {
         'openai' => 'OpenAI',
         'google' => 'Google',
         'mistral' => 'Mistral',
-        _ => 'Other',
+        _ => currentL.commonOther,
       };
   }
 }

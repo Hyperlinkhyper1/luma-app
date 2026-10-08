@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app/window_title_bar.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/luma_theme.dart';
 import 'family_scope.dart';
 import 'inbox_dialog.dart';
@@ -22,12 +23,13 @@ class _InboxButtonState extends State<InboxButton> {
   Widget build(BuildContext context) {
     final familyRepo = FamilyScope.of(context);
     final luma = context.luma;
+    final t = L.of(context);
     return ListenableBuilder(
       listenable: familyRepo,
       builder: (context, _) {
         final count = familyRepo.inboxCount;
         return Tooltip(
-          message: 'Inbox',
+          message: t.familyInboxTitle,
           waitDuration: const Duration(milliseconds: 500),
           child: MouseRegion(
             cursor: SystemMouseCursors.click,

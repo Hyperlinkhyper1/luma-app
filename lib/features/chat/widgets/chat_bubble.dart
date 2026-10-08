@@ -174,7 +174,7 @@ class _ChatBubbleState extends State<ChatBubble> {
               padding: const EdgeInsets.symmetric(horizontal: 8),
             ),
             icon: const Icon(Icons.open_in_new_rounded, size: 15),
-            label: const Text('Open in QR Generator'),
+            label: Text(L.of(context).chatBubbleOpenInQrGenerator),
           ),
         ],
         _actions(context, visible: widget.isLast || _hovering),

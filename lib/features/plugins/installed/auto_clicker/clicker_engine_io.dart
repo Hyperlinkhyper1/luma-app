@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:ffi/ffi.dart';
 import 'package:win32/win32.dart';
 
+import '../../../../l10n/current_l.dart';
+
 /// Which mouse button a click should use.
 enum ClickButton { left, middle, right }
 
@@ -47,7 +49,7 @@ class ClickerEngine {
     ClickPoint? at,
   }) {
     if (!Platform.isWindows) {
-      throw UnsupportedError('Auto Clicker only supports Windows.');
+      throw UnsupportedError(currentL.autoClickerWindowsOnlyBody);
     }
 
     ClickPoint? previous;

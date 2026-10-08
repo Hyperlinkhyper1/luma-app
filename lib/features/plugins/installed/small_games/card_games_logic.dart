@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import '../../../../l10n/current_l.dart';
+
 enum CardSuit { clubs, diamonds, hearts, spades }
 
 class PlayingCard {
@@ -79,11 +81,12 @@ class BlackjackGame {
     dealer.add(_deck.removeLast());
     if (playerTotal == 21 || dealerTotal == 21) {
       finished = true;
+      final t = currentL;
       result = playerTotal == dealerTotal
-          ? 'Push — both have blackjack.'
+          ? t.cardGamesBjPushBlackjack
           : playerTotal == 21
-          ? 'Blackjack! You win.'
-          : 'Dealer has blackjack.';
+          ? t.cardGamesBjPlayerBlackjack
+          : t.cardGamesBjDealerBlackjack;
     }
   }
 
@@ -92,7 +95,7 @@ class BlackjackGame {
     player.add(_deck.removeLast());
     if (playerTotal > 21) {
       finished = true;
-      result = 'Bust — dealer wins.';
+      result = currentL.cardGamesBjBust;
     }
   }
 
@@ -102,11 +105,12 @@ class BlackjackGame {
       dealer.add(_deck.removeLast());
     }
     finished = true;
+    final t = currentL;
     result = dealerTotal > 21 || playerTotal > dealerTotal
-        ? 'You win this hand!'
+        ? t.cardGamesBjPlayerWins
         : playerTotal == dealerTotal
-        ? 'Push — it is a tie.'
-        : 'Dealer wins this hand.';
+        ? t.cardGamesBjPushTie
+        : t.cardGamesBjDealerWins;
   }
 }
 
@@ -116,17 +120,20 @@ class PokerHand implements Comparable<PokerHand> {
   final int category;
   final List<int> kickers;
 
-  String get label => const [
-    'High card',
-    'One pair',
-    'Two pair',
-    'Three of a kind',
-    'Straight',
-    'Flush',
-    'Full house',
-    'Four of a kind',
-    'Straight flush',
-  ][category];
+  String get label {
+    final t = currentL;
+    return [
+      t.cardGamesHandHighCard,
+      t.cardGamesHandOnePair,
+      t.cardGamesHandTwoPair,
+      t.cardGamesHandThreeOfKind,
+      t.cardGamesHandStraight,
+      t.cardGamesHandFlush,
+      t.cardGamesHandFullHouse,
+      t.cardGamesHandFourOfKind,
+      t.cardGamesHandStraightFlush,
+    ][category];
+  }
 
   @override
   int compareTo(PokerHand other) {
@@ -243,11 +250,12 @@ class PokerGame {
     final yours = evaluatePokerHand(player);
     final theirs = evaluatePokerHand(dealer);
     final comparison = yours.compareTo(theirs);
+    final t = currentL;
     result = comparison > 0
-        ? 'You win! ${yours.label} beats ${theirs.label}.'
+        ? t.cardGamesPokerPlayerWins(yours.label, theirs.label)
         : comparison < 0
-        ? 'Dealer wins. ${theirs.label} beats ${yours.label}.'
-        : 'Push — both hands tie with ${yours.label}.';
+        ? t.cardGamesPokerDealerWins(yours.label, theirs.label)
+        : t.cardGamesPokerPush(yours.label);
   }
 }
 
@@ -279,7 +287,7 @@ class PatienceGame {
   final tableau = List.generate(7, (_) => <PatienceCard>[]);
   final foundations = List.generate(4, (_) => <PlayingCard>[]);
   PatienceSelection? selection;
-  String message = 'Draw a card or tap a face-up card to select it.';
+  String message = currentL.cardGamesPatienceStart;
 
   bool get won => foundations.every((pile) => pile.length == 13);
 
@@ -302,25 +310,25 @@ class PatienceGame {
     }
     stock.addAll(deck);
     selection = null;
-    message = 'Draw a card or tap a face-up card to select it.';
+    message = currentL.cardGamesPatienceStart;
   }
 
   void draw() {
     selection = null;
     if (stock.isNotEmpty) {
       waste.add(stock.removeLast());
-      message = 'Tap the drawn card, then a tableau column or foundation.';
+      message = currentL.cardGamesPatienceDrawn;
     } else if (waste.isNotEmpty) {
       stock.addAll(waste.reversed);
       waste.clear();
-      message = 'Stock recycled. Draw again.';
+      message = currentL.cardGamesPatienceRecycled;
     }
   }
 
   void selectWaste() {
     if (waste.isEmpty) return;
     selection = const PatienceSelection(PatienceArea.waste, 0, 0);
-    message = 'Choose a tableau column or foundation.';
+    message = currentL.cardGamesPatienceChooseTarget;
   }
 
   void selectTableau(int column, int index) {
@@ -328,7 +336,7 @@ class PatienceGame {
     if (index >= pile.length || !pile[index].faceUp) return;
     if (selection != null && moveToTableau(column)) return;
     selection = PatienceSelection(PatienceArea.tableau, column, index);
-    message = 'Choose another column, or move the top card to a foundation.';
+    message = currentL.cardGamesPatienceChooseAnother;
   }
 
   void selectFoundation(int column) {
@@ -340,7 +348,7 @@ class PatienceGame {
       column,
       pile.length - 1,
     );
-    message = 'Choose a tableau column.';
+    message = currentL.cardGamesPatienceChooseColumn;
   }
 
   PlayingCard? get selectedCard {
@@ -368,8 +376,8 @@ class PatienceGame {
               target.last.card.rank == card.rank + 1;
     if (!allowed) {
       message = target.isEmpty
-          ? 'Only a king can start an empty column.'
-          : 'Build down by rank, alternating red and black.';
+          ? currentL.cardGamesPatienceOnlyKing
+          : currentL.cardGamesPatienceBuildDown;
       return false;
     }
     switch (chosen.area) {
@@ -386,7 +394,7 @@ class PatienceGame {
         if (source.isNotEmpty) source.last.faceUp = true;
     }
     selection = null;
-    message = 'Nice move. Keep building the foundations.';
+    message = currentL.cardGamesPatienceNiceMove;
     return true;
   }
 
@@ -405,7 +413,7 @@ class PatienceGame {
         ? card.rank == 1
         : target.last.suit == card.suit && card.rank == target.last.rank + 1;
     if (!allowed) {
-      message = 'Foundations start with an ace and build up by suit.';
+      message = currentL.cardGamesPatienceFoundationRule;
       return false;
     }
     if (chosen.area == PatienceArea.waste) {
@@ -416,7 +424,7 @@ class PatienceGame {
       if (source.isNotEmpty) source.last.faceUp = true;
     }
     selection = null;
-    message = won ? 'You won Patience!' : 'Card moved to a foundation.';
+    message = won ? currentL.cardGamesPatienceWon : currentL.cardGamesPatienceMoved;
     return true;
   }
 }

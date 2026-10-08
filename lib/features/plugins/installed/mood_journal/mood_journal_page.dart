@@ -4,26 +4,44 @@ import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'mood_journal_repository.dart';
 import 'mood_journal_scope.dart';
 
 const _kMoodTags = ['Work', 'Sleep', 'Exercise', 'Social', 'Health', 'Other'];
 
+String _tagLabel(L t, String tag) => switch (tag) {
+      'Work' => t.moodJournalTagWork,
+      'Sleep' => t.moodJournalTagSleep,
+      'Exercise' => t.moodJournalTagExercise,
+      'Social' => t.moodJournalTagSocial,
+      'Health' => t.moodJournalTagHealth,
+      'Other' => t.commonOther,
+      _ => tag,
+    };
+
 class _MoodInfo {
-  const _MoodInfo(this.emoji, this.label, this.colorOf);
+  const _MoodInfo(this.emoji, this.colorOf);
   final String emoji;
-  final String label;
   final Color Function(LumaPalette luma) colorOf;
 }
 
 const Map<int, _MoodInfo> _kMoods = {
-  1: _MoodInfo('😞', 'Terrible', _dangerColor),
-  2: _MoodInfo('🙁', 'Bad', _orangeColor),
-  3: _MoodInfo('😐', 'Okay', _amberColor),
-  4: _MoodInfo('🙂', 'Good', _successColor),
-  5: _MoodInfo('😄', 'Great', _accentColor),
+  1: _MoodInfo('😞', _dangerColor),
+  2: _MoodInfo('🙁', _orangeColor),
+  3: _MoodInfo('😐', _amberColor),
+  4: _MoodInfo('🙂', _successColor),
+  5: _MoodInfo('😄', _accentColor),
 };
+
+String _moodLabel(L t, int mood) => switch (mood) {
+      1 => t.moodJournalMoodTerrible,
+      2 => t.moodJournalMoodBad,
+      3 => t.moodJournalMoodOkay,
+      4 => t.moodJournalMoodGood,
+      _ => t.moodJournalMoodGreat,
+    };
 
 Color _dangerColor(LumaPalette luma) => luma.danger;
 Color _orangeColor(LumaPalette luma) => const Color(0xFFE8A33D);
@@ -44,6 +62,7 @@ class _MoodJournalPageState extends State<MoodJournalPage> {
   @override
   Widget build(BuildContext context) {
     final repo = MoodJournalScope.of(context);
+    final t = L.of(context);
 
     return Padding(
       padding: const EdgeInsets.all(20),
@@ -53,13 +72,13 @@ class _MoodJournalPageState extends State<MoodJournalPage> {
           Row(
             children: [
               LumaSegmentedTabs(
-                tabs: const ['Journal', 'Calendar'],
+                tabs: [t.moodJournalTabJournal, t.moodJournalTabCalendar],
                 selectedIndex: _tab,
                 onSelect: (i) => setState(() => _tab = i),
               ),
               const Spacer(),
               LumaPrimaryButton(
-                label: 'Add entry',
+                label: t.moodJournalAddEntry,
                 icon: Icons.add_rounded,
                 onTap: () => _openEditor(context, repo),
               ),
@@ -97,14 +116,15 @@ class _JournalList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return StreamData<List<MoodEntryRecord>>(
       stream: repo.watchAll(),
       builder: (context, entries) {
         if (entries.isEmpty) {
-          return const LumaEmptyState(
+          return LumaEmptyState(
             icon: Icons.mood_rounded,
-            title: 'No entries yet',
-            subtitle: 'Log your mood to start tracking your patterns.',
+            title: t.moodJournalEmptyTitle,
+            subtitle: t.moodJournalEmptySubtitle,
           );
         }
         return ListView.separated(
@@ -157,7 +177,7 @@ class _JournalList extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  mood.label,
+                                  _moodLabel(t, entry.mood),
                                   style: TextStyle(
                                     color: color,
                                     fontSize: 12,
@@ -209,7 +229,7 @@ class _JournalList extends StatelessWidget {
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
-                                        tag,
+                                        _tagLabel(t, tag),
                                         style: TextStyle(
                                           color: luma.accent,
                                           fontSize: 11,
@@ -258,6 +278,7 @@ class _CalendarHeatmapState extends State<_CalendarHeatmap> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return StreamData<Map<String, List<MoodEntryRecord>>>(
       stream: widget.repo.watchByMonth(_month.year, _month.month),
       builder: (context, entries) {
@@ -295,7 +316,15 @@ class _CalendarHeatmapState extends State<_CalendarHeatmap> {
             const SizedBox(height: 8),
             Row(
               children: [
-                for (final d in const ['S', 'M', 'T', 'W', 'T', 'F', 'S'])
+                for (final d in [
+                  t.moodJournalDaySun,
+                  t.moodJournalDayMon,
+                  t.moodJournalDayTue,
+                  t.moodJournalDayWed,
+                  t.moodJournalDayThu,
+                  t.moodJournalDayFri,
+                  t.moodJournalDaySat,
+                ])
                   Expanded(
                     child: Center(
                       child: Text(
@@ -383,6 +412,7 @@ class _CalendarHeatmapState extends State<_CalendarHeatmap> {
 
   void _showDayOptions(BuildContext context, String date, List<MoodEntryRecord> dayEntries) {
     final luma = context.luma;
+    final t = L.of(context);
     showDialog(
       context: context,
       builder: (_) => Dialog(
@@ -411,9 +441,9 @@ class _CalendarHeatmapState extends State<_CalendarHeatmap> {
                 ),
               ),
               if (dayEntries.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 40),
-                  child: Text('No entries for this day'),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 40),
+                  child: Text(t.moodJournalNoEntriesForDay),
                 )
               else
                 Flexible(
@@ -438,7 +468,7 @@ class _CalendarHeatmapState extends State<_CalendarHeatmap> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  e.note ?? mood.label,
+                                  e.note ?? _moodLabel(t, e.mood),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(color: luma.textPrimary, fontSize: 13),
@@ -455,7 +485,7 @@ class _CalendarHeatmapState extends State<_CalendarHeatmap> {
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: LumaPrimaryButton(
-                  label: 'Add new entry',
+                  label: t.moodJournalAddNewEntry,
                   expand: true,
                   onTap: () {
                     Navigator.pop(context);
@@ -537,6 +567,7 @@ class _MoodEditorDialogState extends State<_MoodEditorDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Dialog(
       backgroundColor: luma.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -553,24 +584,24 @@ class _MoodEditorDialogState extends State<_MoodEditorDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _label(luma, 'How are you feeling?'),
+                    _label(luma, t.moodJournalFeelingQuestion),
                     const SizedBox(height: 12),
                     _moodRow(luma),
                     const SizedBox(height: 24),
-                    _label(luma, 'Journal entry'),
+                    _label(luma, t.moodJournalEntryLabel),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _note,
                       maxLines: 4,
                       style: TextStyle(color: luma.textPrimary, fontSize: 14),
-                      decoration: _decoration(luma, hint: 'What\'s on your mind?'),
+                      decoration: _decoration(luma, hint: t.moodJournalNoteHint),
                     ),
                     const SizedBox(height: 24),
-                    _label(luma, 'Photos'),
+                    _label(luma, t.moodJournalPhotos),
                     const SizedBox(height: 12),
                     _imageGrid(luma),
                     const SizedBox(height: 24),
-                    _label(luma, 'Tags'),
+                    _label(luma, t.moodJournalTags),
                     const SizedBox(height: 12),
                     _tagsSection(luma),
                     const SizedBox(height: 16),
@@ -586,13 +617,14 @@ class _MoodEditorDialogState extends State<_MoodEditorDialog> {
   }
 
   Widget _header(LumaPalette luma) {
+    final t = L.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 18, 12, 10),
       child: Row(
         children: [
           Expanded(
             child: Text(
-              _isEditing ? 'Edit entry' : 'New entry',
+              _isEditing ? t.moodJournalEditEntry : t.moodJournalNewEntry,
               style: TextStyle(
                 color: luma.textPrimary,
                 fontSize: 17,
@@ -602,7 +634,7 @@ class _MoodEditorDialogState extends State<_MoodEditorDialog> {
           ),
           IconButton(
             icon: Icon(Icons.close_rounded, color: luma.textMuted, size: 20),
-            tooltip: 'Close',
+            tooltip: t.commonClose,
             onPressed: () => Navigator.of(context).pop(),
           ),
         ],
@@ -611,13 +643,14 @@ class _MoodEditorDialogState extends State<_MoodEditorDialog> {
   }
 
   Widget _moodRow(LumaPalette luma) {
+    final t = L.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         for (final entry in _kMoods.entries)
           _MoodDot(
             emoji: entry.value.emoji,
-            label: entry.value.label,
+            label: _moodLabel(t, entry.key),
             color: entry.value.colorOf(luma),
             selected: _mood == entry.key,
             onTap: () => setState(() => _mood = entry.key),
@@ -675,6 +708,7 @@ class _MoodEditorDialogState extends State<_MoodEditorDialog> {
   }
 
   Widget _tagsSection(LumaPalette luma) {
+    final t = L.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -684,12 +718,12 @@ class _MoodEditorDialogState extends State<_MoodEditorDialog> {
           children: [
             for (final tag in _kMoodTags)
               _TagChip(
-                label: tag,
+                label: _tagLabel(t, tag),
                 selected: _tags.contains(tag),
                 onTap: () => setState(() => _tags.contains(tag) ? _tags.remove(tag) : _tags.add(tag)),
                 luma: luma,
               ),
-            for (final tag in _tags.where((t) => !_kMoodTags.contains(t)))
+            for (final tag in _tags.where((x) => !_kMoodTags.contains(x)))
               _TagChip(
                 label: tag,
                 selected: true,
@@ -705,13 +739,13 @@ class _MoodEditorDialogState extends State<_MoodEditorDialog> {
               child: TextField(
                 controller: _tagInput,
                 style: TextStyle(color: luma.textPrimary, fontSize: 13),
-                decoration: _decoration(luma, hint: 'Add custom tag...'),
+                decoration: _decoration(luma, hint: t.moodJournalCustomTagHint),
                 onSubmitted: (_) => _addTag(),
               ),
             ),
             const SizedBox(width: 8),
             LumaGhostButton(
-              label: 'Add',
+              label: t.commonAdd,
               onTap: _addTag,
             ),
           ],
@@ -747,6 +781,7 @@ class _MoodEditorDialogState extends State<_MoodEditorDialog> {
   }
 
   Widget _footer(LumaPalette luma) {
+    final t = L.of(context);
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Row(
@@ -761,12 +796,12 @@ class _MoodEditorDialogState extends State<_MoodEditorDialog> {
             ),
           const Spacer(),
           LumaGhostButton(
-            label: 'Cancel',
+            label: t.commonCancel,
             onTap: () => Navigator.pop(context),
           ),
           const SizedBox(width: 12),
           LumaPrimaryButton(
-            label: _isEditing ? 'Save changes' : 'Save entry',
+            label: _isEditing ? t.moodJournalSaveChanges : t.moodJournalSaveEntry,
             loading: _saving,
             onTap: _save,
           ),

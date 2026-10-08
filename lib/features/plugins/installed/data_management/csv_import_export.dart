@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 
+import '../../../../l10n/current_l.dart';
 import 'data_management_repository.dart';
 
 /// CSV import / export helpers for datasets.
@@ -68,7 +69,7 @@ class CsvHelper {
     }
 
     final outputPath = await FilePicker.saveFile(
-      dialogTitle: 'Save CSV',
+      dialogTitle: currentL.dataMgmtSaveCsvTitle,
       fileName: '${dataset.name.replaceAll(RegExp(r'[^\w\s-]'), '_')}.csv',
       type: FileType.custom,
       allowedExtensions: ['csv'],

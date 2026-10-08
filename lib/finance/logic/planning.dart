@@ -1,3 +1,4 @@
+import '../../l10n/current_l.dart';
 import '../data/database.dart';
 import 'finance_logic.dart';
 
@@ -199,7 +200,11 @@ CashFlowForecast forecastMainBalance({
   }
   for (final a in allocations) {
     if (!a.active) continue;
-    schedule(a.nextDue, a.cadence, _Scheduled('Allocation', allocation: a));
+    schedule(
+      a.nextDue,
+      a.cadence,
+      _Scheduled(currentL.financeAllocationLabel, allocation: a),
+    );
   }
 
   final daily = <int>[];

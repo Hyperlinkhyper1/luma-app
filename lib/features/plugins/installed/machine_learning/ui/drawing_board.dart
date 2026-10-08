@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../creature/creature_model.dart';
 
@@ -29,9 +30,10 @@ class DrawingBoard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final empty = strokes.isEmpty && draft == null;
     return Semantics(
-      label: 'Drawing board. Draw a creature with one or more strokes.',
+      label: t.mlBoardSemantics,
       child: AspectRatio(
         aspectRatio: 1,
         child: LayoutBuilder(
@@ -80,7 +82,7 @@ class DrawingBoard extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    'Draw a body here',
+                                    t.mlBoardEmptyTitle,
                                     style: TextStyle(
                                       color: luma.textSecondary,
                                       fontSize: 13,
@@ -89,7 +91,7 @@ class DrawingBoard extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    'or start from an example below',
+                                    t.mlBoardEmptySubtitle,
                                     style: TextStyle(
                                       color: luma.textMuted,
                                       fontSize: 12,

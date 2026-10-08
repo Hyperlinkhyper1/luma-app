@@ -6,5 +6,27 @@
   "icon": "speed",
   "category": "Utility",
   "details": "Run a full internet speed test without leaving luma. The test measures latency (ping), download speed, and upload speed using Cloudflare's public speed test endpoints, with a live speedometer gauge showing real-time progress.\n\nEvery test result is saved locally so you can track your connection quality over time with a history graph and a list of past results.",
-  "screenshots": ["gauge.png", "history.png"]
+  "screenshots": ["gauge.png", "history.png"],
+  "i18n": {
+    "nl": {
+      "name": "Wi-Fi-snelheidstest",
+      "description": "Hoe snel is je internet nu? Eén tik en je weet het. We bewaren oude tests, zodat je ze kunt vergelijken.",
+      "details": "Voer een volledige internetsnelheidstest uit zonder luma te verlaten. De test meet latentie (ping), downloadsnelheid en uploadsnelheid via de openbare snelheidstest-endpoints van Cloudflare, met een live snelheidsmeter die de voortgang in realtime toont.\n\nElk testresultaat wordt lokaal opgeslagen, zodat je de kwaliteit van je verbinding in de loop van de tijd kunt volgen met een geschiedenisgrafiek en een lijst met eerdere resultaten."
+    },
+    "fr": {
+      "name": "Test de débit Wi-Fi",
+      "description": "Quelle est la vitesse de votre internet en ce moment ? Un seul geste et vous le saurez. Nous conservons les anciens tests pour que vous puissiez les comparer.",
+      "details": "Lancez un test complet de vitesse internet sans quitter luma. Le test mesure la latence (ping), le débit descendant et le débit montant à l'aide des points de terminaison publics de test de vitesse de Cloudflare, avec un compteur de vitesse qui affiche la progression en temps réel.\n\nChaque résultat de test est enregistré localement afin que vous puissiez suivre la qualité de votre connexion dans le temps, grâce à un graphique d'historique et une liste des résultats passés."
+    },
+    "es": {
+      "name": "Test de velocidad Wi-Fi",
+      "description": "¿Qué velocidad tiene tu internet ahora mismo? Un toque y lo sabrás. Guardamos las pruebas anteriores para que puedas compararlas.",
+      "details": "Ejecuta una prueba completa de velocidad de internet sin salir de luma. La prueba mide la latencia (ping), la velocidad de descarga y la de subida usando los endpoints públicos de prueba de velocidad de Cloudflare, con un velocímetro que muestra el progreso en tiempo real.\n\nCada resultado se guarda localmente para que puedas seguir la calidad de tu conexión a lo largo del tiempo, con un gráfico histórico y una lista de resultados anteriores."
+    },
+    "zh": {
+      "name": "Wi-Fi 速度测试",
+      "description": "你的网速现在有多快？轻点一下就能知道。我们会保留历史测试，方便你进行对比。",
+      "details": "无需离开 luma 即可运行完整的网络速度测试。测试使用 Cloudflare 公开的测速端点测量延迟（ping）、下载速度和上传速度，并通过实时速度表显示进度。\n\n每次测试结果都会保存在本地，你可以通过历史曲线图和过往结果列表，长期追踪网络连接质量。"
+    }
+  }
 }

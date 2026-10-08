@@ -5,6 +5,7 @@ import '../../../../app/widgets.dart';
 import '../../../../family/family_api.dart';
 import '../../../../family/family_repository.dart';
 import '../../../../family/family_scope.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'calendar_repository.dart';
 
@@ -21,14 +22,14 @@ const List<int> kEventColors = [
 ];
 
 /// Reminder presets, in minutes-before-start. `null` value = no reminder.
-const List<({String label, int? minutes})> _reminderOptions = [
-  (label: 'No reminder', minutes: null),
-  (label: 'At start time', minutes: 0),
-  (label: '5 minutes before', minutes: 5),
-  (label: '10 minutes before', minutes: 10),
-  (label: '30 minutes before', minutes: 30),
-  (label: '1 hour before', minutes: 60),
-  (label: '1 day before', minutes: 1440),
+List<({String label, int? minutes})> _reminderOptions(L t) => [
+  (label: t.calendarReminderNone, minutes: null),
+  (label: t.calendarReminderAtStartTime, minutes: 0),
+  (label: t.calendarReminderMinutesBefore(5), minutes: 5),
+  (label: t.calendarReminderMinutesBefore(10), minutes: 10),
+  (label: t.calendarReminderMinutesBefore(30), minutes: 30),
+  (label: t.calendarReminderHourBefore, minutes: 60),
+  (label: t.calendarReminderDayBefore, minutes: 1440),
 ];
 
 /// Who a new/edited event is shared with.
@@ -199,11 +200,11 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
   Future<void> _save() async {
     final title = _title.text.trim();
     if (title.isEmpty) {
-      setState(() => _error = 'Give the event a title.');
+      setState(() => _error = L.of(context).calendarGiveTitle);
       return;
     }
     if (_shareScope == _ShareScope.chooseMembers && _selectedMemberIds.isEmpty) {
-      setState(() => _error = 'Choose at least one person to share with.');
+      setState(() => _error = L.of(context).calendarChooseShareOne);
       return;
     }
     // Normalize: an all-day event spans whole days; a timed event can't end
@@ -351,6 +352,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
     final luma = context.luma;
     final familyRepo = FamilyScope.of(context);
     final readOnly = _isEditing && !_canEditSharedEvent(familyRepo);
+    final t = L.of(context);
     return Dialog(
       backgroundColor: luma.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -378,11 +380,11 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
                         const SizedBox(height: 12),
                         _whenSection(luma),
                         const SizedBox(height: 18),
-                        _label(luma, 'Color'),
+                        _label(luma, t.commonColor),
                         const SizedBox(height: 8),
                         _colorRow(luma),
                         const SizedBox(height: 18),
-                        _label(luma, 'Repeat'),
+                        _label(luma, t.calendarRepeat),
                         const SizedBox(height: 8),
                         _recurrenceRow(luma),
                         if (_recurrence != Recurrence.none) ...[
@@ -391,24 +393,24 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
                         ],
                         if (familyRepo.family != null) ...[
                           const SizedBox(height: 18),
-                          _label(luma, 'Share'),
+                          _label(luma, t.commonShare),
                           const SizedBox(height: 8),
                           _shareSection(luma, familyRepo),
                         ],
                         const SizedBox(height: 18),
-                        _label(luma, 'Reminder'),
+                        _label(luma, t.calendarReminder),
                         const SizedBox(height: 8),
                         _reminderRow(luma),
                         const SizedBox(height: 18),
-                        _label(luma, 'Location'),
+                        _label(luma, t.calendarLocation),
                         const SizedBox(height: 8),
                         _plainField(luma, _location,
-                            hint: 'Add a place', icon: Icons.place_outlined),
+                            hint: t.calendarAddPlace, icon: Icons.place_outlined),
                         const SizedBox(height: 16),
-                        _label(luma, 'Notes'),
+                        _label(luma, t.commonNotes),
                         const SizedBox(height: 8),
                         _plainField(luma, _notes,
-                            hint: 'Add details', maxLines: 3),
+                            hint: t.calendarAddDetails, maxLines: 3),
                         if (_error != null) ...[
                           const SizedBox(height: 12),
                           Text(_error!,
@@ -435,7 +437,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
             .cast<RemoteFamilyMember?>()
             .firstWhere((m) => m?.userId == share.authorUserId, orElse: () => null)
             ?.email ??
-        'a family member';
+        L.of(context).calendarFamilyMemberFallback;
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -448,7 +450,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
           Icon(Icons.diversity_3_rounded, size: 16, color: luma.accent),
           const SizedBox(width: 8),
           Expanded(
-            child: Text('Shared by $authorEmail — view only',
+            child: Text(L.of(context).calendarSharedByView(authorEmail),
                 style: TextStyle(color: luma.textSecondary, fontSize: 12.5)),
           ),
         ],
@@ -457,6 +459,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
   }
 
   Widget _shareSection(LumaPalette luma, FamilyRepository familyRepo) {
+    final t = L.of(context);
     final family = familyRepo.family!;
     final myId = familyRepo.myUserId;
     final others = family.members.where((m) => m.userId != myId).toList();
@@ -464,14 +467,14 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         LumaSegmentedTabs(
-          tabs: const ['Just me', 'Whole family', 'Choose people'],
+          tabs: [t.calendarShareJustMe, t.calendarShareWholeFamily, t.calendarShareChoosePeople],
           selectedIndex: _shareScope.index,
           onSelect: (i) => setState(() => _shareScope = _ShareScope.values[i]),
         ),
         if (_shareScope == _ShareScope.chooseMembers) ...[
           const SizedBox(height: 10),
           if (others.isEmpty)
-            Text('No other family members yet.',
+            Text(t.calendarNoOtherMembers,
                 style: TextStyle(color: luma.textMuted, fontSize: 12))
           else
             Wrap(
@@ -498,13 +501,14 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
   }
 
   Widget _header(LumaPalette luma) {
+    final t = L.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 18, 12, 10),
       child: Row(
         children: [
           Expanded(
             child: Text(
-              _isEditing ? 'Edit event' : 'New event',
+              _isEditing ? t.calendarEditEvent : t.calendarNewEvent,
               style: TextStyle(
                 color: luma.textPrimary,
                 fontSize: 17,
@@ -514,7 +518,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
           ),
           IconButton(
             icon: Icon(Icons.close_rounded, color: luma.textMuted, size: 20),
-            tooltip: 'Close',
+            tooltip: t.commonClose,
             onPressed: () => Navigator.of(context).pop(),
           ),
         ],
@@ -528,7 +532,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
       autofocus: !_isEditing,
       style: TextStyle(
           color: luma.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
-      decoration: _decoration(luma, hint: 'Event title'),
+      decoration: _decoration(luma, hint: L.of(context).calendarEventTitleHint),
       onSubmitted: (_) => _save(),
     );
   }
@@ -539,7 +543,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
         Icon(Icons.wb_sunny_outlined, size: 18, color: luma.textSecondary),
         const SizedBox(width: 10),
         Expanded(
-          child: Text('All-day',
+          child: Text(L.of(context).calendarAllDay,
               style: TextStyle(color: luma.textPrimary, fontSize: 14)),
         ),
         Switch(
@@ -554,9 +558,9 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
   Widget _whenSection(LumaPalette luma) {
     return Column(
       children: [
-        _whenRow(luma, label: 'Starts', dt: _start, isStart: true),
+        _whenRow(luma, label: L.of(context).calendarStarts, dt: _start, isStart: true),
         const SizedBox(height: 8),
-        _whenRow(luma, label: 'Ends', dt: _end, isStart: false),
+        _whenRow(luma, label: L.of(context).calendarEnds, dt: _end, isStart: false),
       ],
     );
   }
@@ -651,7 +655,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
         style: TextStyle(color: luma.textPrimary, fontSize: 14),
         items: [
           for (final r in Recurrence.values)
-            DropdownMenuItem(value: r, child: Text(r.label)),
+            DropdownMenuItem(value: r, child: Text(r.label(L.of(context)))),
         ],
         onChanged: (v) => setState(() => _recurrence = v ?? Recurrence.none),
       ),
@@ -666,19 +670,19 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
         Expanded(
           child: Text(
             _recurrenceEnd == null
-                ? 'Repeats forever'
-                : 'Until ${DateFormat('d MMM yyyy').format(_recurrenceEnd!)}',
+                ? L.of(context).calendarRepeatsForever
+                : L.of(context).calendarRepeatsUntil(DateFormat('d MMM yyyy').format(_recurrenceEnd!)),
             style: TextStyle(color: luma.textSecondary, fontSize: 13),
           ),
         ),
         if (_recurrenceEnd != null)
           IconButton(
             icon: Icon(Icons.clear_rounded, size: 16, color: luma.textMuted),
-            tooltip: 'Clear end date',
+            tooltip: L.of(context).calendarClearEndDate,
             onPressed: () => setState(() => _recurrenceEnd = null),
           ),
         LumaGhostButton(
-          label: _recurrenceEnd == null ? 'Set end' : 'Change',
+          label: _recurrenceEnd == null ? L.of(context).calendarSetEnd : L.of(context).calendarChangeEnd,
           onTap: _pickRecurrenceEnd,
         ),
       ],
@@ -697,7 +701,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
         icon: Icon(Icons.expand_more_rounded, color: luma.textSecondary),
         style: TextStyle(color: luma.textPrimary, fontSize: 14),
         items: [
-          for (final o in _reminderOptions)
+          for (final o in _reminderOptions(L.of(context)))
             DropdownMenuItem(value: o.minutes, child: Text(o.label)),
         ],
         onChanged: (v) => setState(() => _reminderMinutes = v),
@@ -746,7 +750,7 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
         children: [
           if (_isEditing && !readOnly)
             Tooltip(
-              message: 'Delete event',
+              message: L.of(context).calendarDeleteEvent,
               child: IconButton(
                 icon: Icon(Icons.delete_outline_rounded, color: luma.danger),
                 onPressed: _delete,
@@ -754,13 +758,13 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
             ),
           const Spacer(),
           LumaGhostButton(
-            label: readOnly ? 'Close' : 'Cancel',
+            label: readOnly ? L.of(context).commonClose : L.of(context).commonCancel,
             onTap: () => Navigator.of(context).pop(),
           ),
           if (!readOnly) ...[
             const SizedBox(width: 10),
             LumaPrimaryButton(
-              label: _isEditing ? 'Save' : 'Add event',
+              label: _isEditing ? L.of(context).commonSave : L.of(context).calendarAddEvent,
               icon: Icons.check_rounded,
               loading: _saving,
               onTap: _save,

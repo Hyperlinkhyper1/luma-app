@@ -7,25 +7,28 @@
 
 import 'dart:math' as math;
 
+import '../../../../../l10n/current_l.dart';
+
 enum ResearchBranch { lab, compute, storage, networking, power, business }
 
-const Map<ResearchBranch, String> researchBranchNames = {
-  ResearchBranch.lab: 'R&D Lab',
-  ResearchBranch.compute: 'Compute',
-  ResearchBranch.storage: 'Storage & Data',
-  ResearchBranch.networking: 'Networking',
-  ResearchBranch.power: 'Power & Cooling',
-  ResearchBranch.business: 'Business',
-};
+Map<ResearchBranch, String> get researchBranchNames {
+  final t = currentL;
+  return {
+    ResearchBranch.lab: t.serverTycoonResearchBranchLab,
+    ResearchBranch.compute: t.serverTycoonResearchBranchCompute,
+    ResearchBranch.storage: t.serverTycoonResearchBranchStorage,
+    ResearchBranch.networking: t.serverTycoonResearchBranchNetworking,
+    ResearchBranch.power: t.serverTycoonResearchBranchPower,
+    ResearchBranch.business: t.serverTycoonResearchBranchBusiness,
+  };
+}
 
 class ResearchProject {
   final String id;
-  final String name;
   final ResearchBranch branch;
 
   /// Depth in the branch, 1-based. Drives the tier rows in the tree UI.
   final int tier;
-  final String description;
 
   /// Paid immediately on queueing.
   final int cost;
@@ -59,10 +62,8 @@ class ResearchProject {
 
   const ResearchProject({
     required this.id,
-    required this.name,
     required this.branch,
     required this.tier,
-    required this.description,
     required this.cost,
     required this.rpCost,
     required this.requires,
@@ -86,6 +87,89 @@ class ResearchProject {
     this.maxLevel = 1,
   });
 
+  String get name => switch (id) {
+        'HOME_LAB' => currentL.serverTycoonResearchHomeLab,
+        'RESEARCH_WING' => currentL.serverTycoonResearchResearchWing,
+        'RND_DIVISION' => currentL.serverTycoonResearchRndDivision,
+        'AUTOMATED_TELEMETRY' => currentL.serverTycoonResearchAutomatedTelemetry,
+        'LIGHTS_OUT_OPERATIONS' => currentL.serverTycoonResearchLightsOutOperations,
+        'CONTINUOUS_OPTIMIZATION' => currentL.serverTycoonResearchContinuousOptimization,
+        'KERNEL_TUNING' => currentL.serverTycoonResearchKernelTuning,
+        'HYPERVISOR_OPTIMIZATION' => currentL.serverTycoonResearchHypervisorOptimization,
+        'OVERCLOCK_PROFILES' => currentL.serverTycoonResearchOverclockProfiles,
+        'SILICON_BINNING' => currentL.serverTycoonResearchSiliconBinning,
+        'BLOCK_DEDUP' => currentL.serverTycoonResearchBlockDedup,
+        'COMPRESSION_I' => currentL.serverTycoonResearchCompressionI,
+        'COMPRESSION_II' => currentL.serverTycoonResearchCompressionIi,
+        'TIERED_CACHING' => currentL.serverTycoonResearchTieredCaching,
+        'MESH_NETWORKING' => currentL.serverTycoonResearchMeshNetworking,
+        'PACKET_SHAPING' => currentL.serverTycoonResearchPacketShaping,
+        'BACKBONE_ROUTING' => currentL.serverTycoonResearchBackboneRouting,
+        'QOS_PRIORITIZATION' => currentL.serverTycoonResearchQosPrioritization,
+        'FIBER_BACKHAUL' => currentL.serverTycoonResearchFiberBackhaul,
+        'ANYCAST_EDGE' => currentL.serverTycoonResearchAnycastEdge,
+        'HYPERSCALE_NETWORKING' => currentL.serverTycoonResearchHyperscaleNetworking,
+        'POWER_TUNING' => currentL.serverTycoonResearchPowerTuning,
+        'LIQUID_COOLING_I' => currentL.serverTycoonResearchLiquidCoolingI,
+        'SMART_PDU' => currentL.serverTycoonResearchSmartPdu,
+        'LIQUID_COOLING_II' => currentL.serverTycoonResearchLiquidCoolingIi,
+        'RENEWABLE_ENERGY' => currentL.serverTycoonResearchRenewableEnergy,
+        'IMMERSION_COOLING' => currentL.serverTycoonResearchImmersionCooling,
+        'WASTE_HEAT_RECOVERY' => currentL.serverTycoonResearchWasteHeatRecovery,
+        'BULK_PURCHASING' => currentL.serverTycoonResearchBulkPurchasing,
+        'SALES_TEAM' => currentL.serverTycoonResearchSalesTeam,
+        'RUNBOOK_AUTOMATION' => currentL.serverTycoonResearchRunbookAutomation,
+        'SUPPLY_CHAIN_OPTIMIZATION' => currentL.serverTycoonResearchSupplyChainOptimization,
+        'ACCOUNT_MANAGERS' => currentL.serverTycoonResearchAccountManagers,
+        'REPUTATION_MANAGEMENT' => currentL.serverTycoonResearchReputationManagement,
+        'PREMIUM_SLAS' => currentL.serverTycoonResearchPremiumSlas,
+        'ENTERPRISE_SALES' => currentL.serverTycoonResearchEnterpriseSales,
+        'AUTO_RENEWAL' => currentL.serverTycoonResearchAutoRenewal,
+        _ => id,
+      };
+
+  String get description => switch (id) {
+        'HOME_LAB' => currentL.serverTycoonResearchHomeLabDesc,
+        'RESEARCH_WING' => currentL.serverTycoonResearchResearchWingDesc,
+        'RND_DIVISION' => currentL.serverTycoonResearchRndDivisionDesc,
+        'AUTOMATED_TELEMETRY' => currentL.serverTycoonResearchAutomatedTelemetryDesc,
+        'LIGHTS_OUT_OPERATIONS' => currentL.serverTycoonResearchLightsOutOperationsDesc,
+        'CONTINUOUS_OPTIMIZATION' => currentL.serverTycoonResearchContinuousOptimizationDesc,
+        'KERNEL_TUNING' => currentL.serverTycoonResearchKernelTuningDesc,
+        'HYPERVISOR_OPTIMIZATION' => currentL.serverTycoonResearchHypervisorOptimizationDesc,
+        'OVERCLOCK_PROFILES' => currentL.serverTycoonResearchOverclockProfilesDesc,
+        'SILICON_BINNING' => currentL.serverTycoonResearchSiliconBinningDesc,
+        'BLOCK_DEDUP' => currentL.serverTycoonResearchBlockDedupDesc,
+        'COMPRESSION_I' => currentL.serverTycoonResearchCompressionIDesc,
+        'COMPRESSION_II' => currentL.serverTycoonResearchCompressionIiDesc,
+        'TIERED_CACHING' => currentL.serverTycoonResearchTieredCachingDesc,
+        'MESH_NETWORKING' => currentL.serverTycoonResearchMeshNetworkingDesc,
+        'PACKET_SHAPING' => currentL.serverTycoonResearchPacketShapingDesc,
+        'BACKBONE_ROUTING' => currentL.serverTycoonResearchBackboneRoutingDesc,
+        'QOS_PRIORITIZATION' => currentL.serverTycoonResearchQosPrioritizationDesc,
+        'FIBER_BACKHAUL' => currentL.serverTycoonResearchFiberBackhaulDesc,
+        'ANYCAST_EDGE' => currentL.serverTycoonResearchAnycastEdgeDesc,
+        'HYPERSCALE_NETWORKING' => currentL.serverTycoonResearchHyperscaleNetworkingDesc,
+        'POWER_TUNING' => currentL.serverTycoonResearchPowerTuningDesc,
+        'LIQUID_COOLING_I' => currentL.serverTycoonResearchLiquidCoolingIDesc,
+        'SMART_PDU' => currentL.serverTycoonResearchSmartPduDesc,
+        'LIQUID_COOLING_II' => currentL.serverTycoonResearchLiquidCoolingIiDesc,
+        'RENEWABLE_ENERGY' => currentL.serverTycoonResearchRenewableEnergyDesc,
+        'IMMERSION_COOLING' => currentL.serverTycoonResearchImmersionCoolingDesc,
+        'WASTE_HEAT_RECOVERY' => currentL.serverTycoonResearchWasteHeatRecoveryDesc,
+        'BULK_PURCHASING' => currentL.serverTycoonResearchBulkPurchasingDesc,
+        'SALES_TEAM' => currentL.serverTycoonResearchSalesTeamDesc,
+        'RUNBOOK_AUTOMATION' => currentL.serverTycoonResearchRunbookAutomationDesc,
+        'SUPPLY_CHAIN_OPTIMIZATION' => currentL.serverTycoonResearchSupplyChainOptimizationDesc,
+        'ACCOUNT_MANAGERS' => currentL.serverTycoonResearchAccountManagersDesc,
+        'REPUTATION_MANAGEMENT' => currentL.serverTycoonResearchReputationManagementDesc,
+        'PREMIUM_SLAS' => currentL.serverTycoonResearchPremiumSlasDesc,
+        'ENTERPRISE_SALES' => currentL.serverTycoonResearchEnterpriseSalesDesc,
+        'AUTO_RENEWAL' => currentL.serverTycoonResearchAutoRenewalDesc,
+        _ => id,
+      };
+
+
   String get category => researchBranchNames[branch] ?? '';
 
   /// Cash price of the next purchase. Only repeatable projects scale.
@@ -100,10 +184,8 @@ final Map<String, ResearchProject> researchById = {
   // ── R&D Lab: gates the whole system by raising research throughput. ──
   'HOME_LAB': const ResearchProject(
     id: 'HOME_LAB',
-    name: 'Home Lab',
     branch: ResearchBranch.lab,
     tier: 1,
-    description: 'A corner of the office set aside for testing. Adds 1.0 research point per day.',
     cost: 400,
     rpCost: 4,
     requires: [],
@@ -112,10 +194,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'RESEARCH_WING': const ResearchProject(
     id: 'RESEARCH_WING',
-    name: 'Research Wing',
     branch: ResearchBranch.lab,
     tier: 2,
-    description: 'A proper lab space with bench hardware. Adds 2.5 research points per day and a second queue slot.',
     cost: 3200,
     rpCost: 26,
     requires: ['HOME_LAB'],
@@ -125,10 +205,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'RND_DIVISION': const ResearchProject(
     id: 'RND_DIVISION',
-    name: 'R&D Division',
     branch: ResearchBranch.lab,
     tier: 3,
-    description: 'A staffed research division. Adds 6.0 research points per day and a third queue slot.',
     cost: 14000,
     rpCost: 90,
     requires: ['RESEARCH_WING'],
@@ -138,10 +216,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'AUTOMATED_TELEMETRY': const ResearchProject(
     id: 'AUTOMATED_TELEMETRY',
-    name: 'Automated Telemetry',
     branch: ResearchBranch.lab,
     tier: 3,
-    description: 'Rigs report their own performance data, so your fleet keeps earning while the app is closed. Away earnings pay out 15% more.',
     cost: 6000,
     rpCost: 55,
     requires: ['RESEARCH_WING'],
@@ -150,10 +226,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'LIGHTS_OUT_OPERATIONS': const ResearchProject(
     id: 'LIGHTS_OUT_OPERATIONS',
-    name: 'Lights-Out Operations',
     branch: ResearchBranch.lab,
     tier: 4,
-    description: 'The floor runs unattended overnight. Away earnings pay out a further 20% more.',
     cost: 22000,
     rpCost: 130,
     requires: ['AUTOMATED_TELEMETRY'],
@@ -162,10 +236,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'CONTINUOUS_OPTIMIZATION': const ResearchProject(
     id: 'CONTINUOUS_OPTIMIZATION',
-    name: 'Continuous Optimization',
     branch: ResearchBranch.lab,
     tier: 4,
-    description: 'A standing programme of incremental tuning. Each level adds 2% to all service income, and it never runs out of levels.',
     cost: 9000,
     rpCost: 70,
     requires: ['RND_DIVISION'],
@@ -179,10 +251,8 @@ final Map<String, ResearchProject> researchById = {
   // ── Compute ──
   'KERNEL_TUNING': const ResearchProject(
     id: 'KERNEL_TUNING',
-    name: 'Kernel Tuning',
     branch: ResearchBranch.compute,
     tier: 1,
-    description: 'Scheduler and IRQ tuning squeeze 8% more useful work out of every CPU.',
     cost: 700,
     rpCost: 7,
     requires: [],
@@ -191,10 +261,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'HYPERVISOR_OPTIMIZATION': const ResearchProject(
     id: 'HYPERVISOR_OPTIMIZATION',
-    name: 'Hypervisor Optimization',
     branch: ResearchBranch.compute,
     tier: 2,
-    description: 'Paravirtualised drivers and CPU pinning cut virtualisation overhead for another 12% of CPU capacity.',
     cost: 3000,
     rpCost: 28,
     requires: ['KERNEL_TUNING'],
@@ -203,10 +271,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'OVERCLOCK_PROFILES': const ResearchProject(
     id: 'OVERCLOCK_PROFILES',
-    name: 'Overclock Profiles',
     branch: ResearchBranch.compute,
     tier: 3,
-    description: 'Per-chip tuned clocks add 15% CPU capacity, at the price of 10% less cooling headroom.',
     cost: 7500,
     rpCost: 62,
     requires: ['HYPERVISOR_OPTIMIZATION'],
@@ -216,10 +282,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'SILICON_BINNING': const ResearchProject(
     id: 'SILICON_BINNING',
-    name: 'Silicon Binning',
     branch: ResearchBranch.compute,
     tier: 4,
-    description: 'Hand-picked chips run cooler and faster: 18% more CPU capacity and 10% more cooling headroom.',
     cost: 20000,
     rpCost: 135,
     requires: ['OVERCLOCK_PROFILES'],
@@ -231,10 +295,8 @@ final Map<String, ResearchProject> researchById = {
   // ── Storage & Data ──
   'BLOCK_DEDUP': const ResearchProject(
     id: 'BLOCK_DEDUP',
-    name: 'Block Deduplication',
     branch: ResearchBranch.storage,
     tier: 1,
-    description: 'Identical blocks are stored once, cutting the storage every service needs by 10%.',
     cost: 800,
     rpCost: 8,
     requires: [],
@@ -243,10 +305,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'COMPRESSION_I': const ResearchProject(
     id: 'COMPRESSION_I',
-    name: 'Inline Compression',
     branch: ResearchBranch.storage,
     tier: 2,
-    description: 'Compress data on the way to disk for another 12% off storage requirements.',
     cost: 2800,
     rpCost: 26,
     requires: ['BLOCK_DEDUP'],
@@ -255,10 +315,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'COMPRESSION_II': const ResearchProject(
     id: 'COMPRESSION_II',
-    name: 'Adaptive Compression',
     branch: ResearchBranch.storage,
     tier: 3,
-    description: 'Per-workload compression algorithms shave a further 15% off storage requirements.',
     cost: 9000,
     rpCost: 70,
     requires: ['COMPRESSION_I'],
@@ -267,10 +325,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'TIERED_CACHING': const ResearchProject(
     id: 'TIERED_CACHING',
-    name: 'Tiered Caching',
     branch: ResearchBranch.storage,
     tier: 4,
-    description: 'Hot data is served from RAM and NVMe, lifting customer satisfaction by 5%.',
     cost: 16000,
     rpCost: 120,
     requires: ['COMPRESSION_II'],
@@ -281,10 +337,8 @@ final Map<String, ResearchProject> researchById = {
   // ── Networking ──
   'MESH_NETWORKING': const ResearchProject(
     id: 'MESH_NETWORKING',
-    name: 'Mesh Networking',
     branch: ResearchBranch.networking,
     tier: 1,
-    description: 'Learn to run a second router so rigs can be split across separate ISP connections.',
     cost: 390,
     rpCost: 6,
     requires: [],
@@ -293,10 +347,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'PACKET_SHAPING': const ResearchProject(
     id: 'PACKET_SHAPING',
-    name: 'Packet Shaping',
     branch: ResearchBranch.networking,
     tier: 2,
-    description: 'Smarter queuing trims 10% off the bandwidth every service consumes.',
     cost: 1600,
     rpCost: 20,
     requires: ['MESH_NETWORKING'],
@@ -305,10 +357,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'BACKBONE_ROUTING': const ResearchProject(
     id: 'BACKBONE_ROUTING',
-    name: 'Backbone Routing',
     branch: ResearchBranch.networking,
     tier: 2,
-    description: 'Advanced routing tables support a third router on the network.',
     cost: 1600,
     rpCost: 24,
     requires: ['MESH_NETWORKING'],
@@ -317,10 +367,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'QOS_PRIORITIZATION': const ResearchProject(
     id: 'QOS_PRIORITIZATION',
-    name: 'QoS Prioritization',
     branch: ResearchBranch.networking,
     tier: 3,
-    description: 'Latency-sensitive traffic goes first, lifting customer satisfaction by 4%.',
     cost: 5200,
     rpCost: 52,
     requires: ['PACKET_SHAPING'],
@@ -329,10 +377,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'FIBER_BACKHAUL': const ResearchProject(
     id: 'FIBER_BACKHAUL',
-    name: 'Fiber Backhaul',
     branch: ResearchBranch.networking,
     tier: 3,
-    description: 'Dedicated backhaul lets you operate up to five routers total.',
     cost: 5200,
     rpCost: 58,
     requires: ['BACKBONE_ROUTING'],
@@ -341,10 +387,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'ANYCAST_EDGE': const ResearchProject(
     id: 'ANYCAST_EDGE',
-    name: 'Anycast Edge',
     branch: ResearchBranch.networking,
     tier: 4,
-    description: 'Traffic lands at the nearest edge node, cutting bandwidth needs by a further 15%.',
     cost: 18000,
     rpCost: 125,
     requires: ['QOS_PRIORITIZATION'],
@@ -353,10 +397,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'HYPERSCALE_NETWORKING': const ResearchProject(
     id: 'HYPERSCALE_NETWORKING',
-    name: 'Hyperscale Networking',
     branch: ResearchBranch.networking,
     tier: 4,
-    description: 'Software-defined networking lets you operate up to eight routers total.',
     cost: 16000,
     rpCost: 140,
     requires: ['FIBER_BACKHAUL'],
@@ -367,10 +409,8 @@ final Map<String, ResearchProject> researchById = {
   // ── Power & Cooling ──
   'POWER_TUNING': const ResearchProject(
     id: 'POWER_TUNING',
-    name: 'Power Tuning',
     branch: ResearchBranch.power,
     tier: 1,
-    description: 'Undervolting and smarter fan curves cut your electricity bill by 10%.',
     cost: 580,
     rpCost: 7,
     requires: [],
@@ -379,10 +419,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'LIQUID_COOLING_I': const ResearchProject(
     id: 'LIQUID_COOLING_I',
-    name: 'Liquid Cooling Research',
     branch: ResearchBranch.power,
     tier: 2,
-    description: 'In-house loop designs give every rig 12% more cooling headroom.',
     cost: 2400,
     rpCost: 24,
     requires: ['POWER_TUNING'],
@@ -391,10 +429,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'SMART_PDU': const ResearchProject(
     id: 'SMART_PDU',
-    name: 'Smart Power Distribution',
     branch: ResearchBranch.power,
     tier: 2,
-    description: 'Rack-grade PDUs shave another 15% off the power bill.',
     cost: 2600,
     rpCost: 28,
     requires: ['POWER_TUNING'],
@@ -403,10 +439,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'LIQUID_COOLING_II': const ResearchProject(
     id: 'LIQUID_COOLING_II',
-    name: 'Direct-to-Chip Cooling',
     branch: ResearchBranch.power,
     tier: 3,
-    description: 'Cold plates straight onto the die add a further 15% cooling headroom.',
     cost: 8000,
     rpCost: 66,
     requires: ['LIQUID_COOLING_I'],
@@ -415,10 +449,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'RENEWABLE_ENERGY': const ResearchProject(
     id: 'RENEWABLE_ENERGY',
-    name: 'Renewable Energy Contracts',
     branch: ResearchBranch.power,
     tier: 3,
-    description: 'Solar and wind PPAs slash your electricity bill by another 15%.',
     cost: 7800,
     rpCost: 72,
     requires: ['SMART_PDU'],
@@ -427,10 +459,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'IMMERSION_COOLING': const ResearchProject(
     id: 'IMMERSION_COOLING',
-    name: 'Immersion Cooling',
     branch: ResearchBranch.power,
     tier: 4,
-    description: 'Whole rigs submerged in dielectric fluid: 25% more cooling headroom and far steadier temperatures.',
     cost: 24000,
     rpCost: 145,
     requires: ['LIQUID_COOLING_II'],
@@ -440,10 +470,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'WASTE_HEAT_RECOVERY': const ResearchProject(
     id: 'WASTE_HEAT_RECOVERY',
-    name: 'Waste Heat Recovery',
     branch: ResearchBranch.power,
     tier: 4,
-    description: 'Sell your exhaust heat to the district network for another 12% off the power bill.',
     cost: 21000,
     rpCost: 138,
     requires: ['RENEWABLE_ENERGY'],
@@ -454,10 +482,8 @@ final Map<String, ResearchProject> researchById = {
   // ── Business ──
   'BULK_PURCHASING': const ResearchProject(
     id: 'BULK_PURCHASING',
-    name: 'Bulk Purchasing',
     branch: ResearchBranch.business,
     tier: 1,
-    description: 'Supplier deals knock 20% off the price of every new rig.',
     cost: 780,
     rpCost: 9,
     requires: [],
@@ -466,10 +492,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'SALES_TEAM': const ResearchProject(
     id: 'SALES_TEAM',
-    name: 'Sales Team',
     branch: ResearchBranch.business,
     tier: 1,
-    description: 'A part-time sales rep lets you juggle one more company contract at a time.',
     cost: 980,
     rpCost: 10,
     requires: [],
@@ -478,10 +502,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'RUNBOOK_AUTOMATION': const ResearchProject(
     id: 'RUNBOOK_AUTOMATION',
-    name: 'Runbook Automation',
     branch: ResearchBranch.business,
     tier: 2,
-    description: 'Documented, automated responses mean 20% fewer incidents reach you at all.',
     cost: 3400,
     rpCost: 30,
     requires: ['SALES_TEAM'],
@@ -490,10 +512,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'SUPPLY_CHAIN_OPTIMIZATION': const ResearchProject(
     id: 'SUPPLY_CHAIN_OPTIMIZATION',
-    name: 'Supply Chain Optimization',
     branch: ResearchBranch.business,
     tier: 2,
-    description: 'Streamlined procurement knocks an additional 15% off every new rig.',
     cost: 3250,
     rpCost: 32,
     requires: ['BULK_PURCHASING'],
@@ -502,10 +522,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'ACCOUNT_MANAGERS': const ResearchProject(
     id: 'ACCOUNT_MANAGERS',
-    name: 'Account Managers',
     branch: ResearchBranch.business,
     tier: 2,
-    description: 'Dedicated account managers handle two additional simultaneous contracts.',
     cost: 3900,
     rpCost: 36,
     requires: ['SALES_TEAM'],
@@ -514,10 +532,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'REPUTATION_MANAGEMENT': const ResearchProject(
     id: 'REPUTATION_MANAGEMENT',
-    name: 'Reputation Management',
     branch: ResearchBranch.business,
     tier: 3,
-    description: 'Public status pages and proactive comms lift customer satisfaction by 4%.',
     cost: 6400,
     rpCost: 58,
     requires: ['RUNBOOK_AUTOMATION'],
@@ -526,10 +542,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'PREMIUM_SLAS': const ResearchProject(
     id: 'PREMIUM_SLAS',
-    name: 'Premium SLAs',
     branch: ResearchBranch.business,
     tier: 3,
-    description: 'Guaranteed uptime tiers customers will pay for: 8% more income from every service.',
     cost: 11000,
     rpCost: 80,
     requires: ['ACCOUNT_MANAGERS'],
@@ -538,10 +552,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'ENTERPRISE_SALES': const ResearchProject(
     id: 'ENTERPRISE_SALES',
-    name: 'Enterprise Sales Division',
     branch: ResearchBranch.business,
     tier: 4,
-    description: 'A dedicated enterprise sales team lets you manage one more contract simultaneously.',
     cost: 9750,
     rpCost: 128,
     requires: ['PREMIUM_SLAS'],
@@ -550,10 +562,8 @@ final Map<String, ResearchProject> researchById = {
   ),
   'AUTO_RENEWAL': const ResearchProject(
     id: 'AUTO_RENEWAL',
-    name: 'Auto-Renewal Contracts',
     branch: ResearchBranch.business,
     tier: 4,
-    description: 'Customers roll over by default, adding 12% to all service income.',
     cost: 19000,
     rpCost: 132,
     requires: ['PREMIUM_SLAS'],

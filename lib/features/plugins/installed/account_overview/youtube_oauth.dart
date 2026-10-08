@@ -7,6 +7,8 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../l10n/current_l.dart';
+
 /// Raised when Google's OAuth endpoints answer with something the UI needs
 /// to explain rather than swallow.
 class YoutubeOAuthException implements Exception {
@@ -118,10 +120,7 @@ class YoutubeOAuth {
   }) async {
     final request = await server.first.timeout(
       timeout,
-      onTimeout: () => throw YoutubeOAuthException(
-        'Timed out waiting for Google to redirect back. Try connecting '
-        'again.',
-      ),
+      onTimeout: () => throw YoutubeOAuthException(currentL.youtubeOAuthTimeout),
     );
     final params = request.uri.queryParameters;
     final code = params['code'];
@@ -135,15 +134,13 @@ class YoutubeOAuth {
     await request.response.close();
 
     if (error != null) {
-      throw YoutubeOAuthException('Google declined the request: $error');
+      throw YoutubeOAuthException(currentL.youtubeOAuthDeclined(error));
     }
     if (state != expectedState) {
-      throw YoutubeOAuthException(
-          "Google's response did not match this request.");
+      throw YoutubeOAuthException(currentL.youtubeOAuthStateMismatch);
     }
     if (code == null || code.isEmpty) {
-      throw YoutubeOAuthException(
-          'Google did not return an authorization code.');
+      throw YoutubeOAuthException(currentL.youtubeOAuthNoCode);
     }
     return code;
   }
@@ -153,8 +150,8 @@ class YoutubeOAuth {
 <style>body{font-family:sans-serif;background:#0d0f14;color:#e6e8ee;
 display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
 div{text-align:center;padding:0 24px}</style></head><body><div>
-<h2>${success ? "You're connected" : 'Something went wrong'}</h2>
-<p>You can close this tab and go back to luma.</p></div></body></html>''';
+<h2>${success ? currentL.youtubeOAuthLandingConnected : currentL.commonSomethingWentWrong}</h2>
+<p>${currentL.youtubeOAuthLandingClose}</p></div></body></html>''';
 
   Future<YoutubeTokenResult> _exchangeCode({
     required String code,
@@ -209,8 +206,8 @@ div{text-align:center;padding:0 24px}</style></head><body><div>
       final description = body?['error_description'] ?? body?['error'];
       throw YoutubeOAuthException(
         description != null
-            ? 'Google rejected the request: $description'
-            : 'Google returned HTTP ${response.statusCode}.',
+            ? currentL.youtubeOAuthRejected('$description')
+            : currentL.youtubeApiHttpStatus('${response.statusCode}'),
       );
     }
 
@@ -218,13 +215,10 @@ div{text-align:center;padding:0 24px}</style></head><body><div>
     final refreshToken = body['refresh_token'] as String?;
     final expiresIn = (body['expires_in'] as num?)?.toInt() ?? 3600;
     if (accessToken == null || accessToken.isEmpty) {
-      throw YoutubeOAuthException('Google did not return an access token.');
+      throw YoutubeOAuthException(currentL.youtubeOAuthNoAccessToken);
     }
     if (requireRefreshToken && (refreshToken == null || refreshToken.isEmpty)) {
-      throw YoutubeOAuthException(
-        "Google did not return a refresh token. Remove luma's access at "
-        'myaccount.google.com/permissions and try connecting again.',
-      );
+      throw YoutubeOAuthException(currentL.youtubeOAuthNoRefreshToken);
     }
     return YoutubeTokenResult(
       accessToken: accessToken,

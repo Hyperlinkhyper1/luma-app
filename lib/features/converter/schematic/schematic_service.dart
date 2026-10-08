@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import '../../../l10n/current_l.dart';
 import 'formats/litematic.dart';
 import 'formats/mcedit_schematic.dart';
 import 'formats/mcstructure.dart';
@@ -47,10 +48,7 @@ class SchematicService {
     final sniffed = _sniff(bytes);
     if (sniffed != null) return _readAs(bytes, sniffed);
 
-    throw const FormatException(
-      'This file is not a Minecraft schematic, structure or litematic that '
-      'luma recognises.',
-    );
+    throw FormatException(currentL.schematicNotRecognised);
   }
 
   static Schematic _readAs(Uint8List bytes, SchematicFormat format) {
@@ -129,10 +127,7 @@ class SchematicService {
 
     if (schematic.palette.length > 4096 &&
         target == SchematicFormat.mcedit) {
-      notes.add(
-        'The legacy format has no palette, so builds with many block variants '
-        'lose the most detail here.',
-      );
+      notes.add(currentL.schematicLegacyPaletteLoss);
     }
 
     return SchematicExport(bytes: bytes, format: target, notes: notes);

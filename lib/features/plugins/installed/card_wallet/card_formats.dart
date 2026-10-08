@@ -1,5 +1,7 @@
 import 'package:barcode_widget/barcode_widget.dart';
 
+import '../../../../l10n/current_l.dart';
+
 /// The kinds of code a wallet card can present. Most are 1D/2D barcodes a
 /// checkout scanner reads; [nfc] is a stored tag payload shown for copy and
 /// QR-fallback — live tap-to-scan emulation is a mobile-only capability (see
@@ -35,7 +37,7 @@ extension CardFormatX on CardFormat {
         CardFormat.pdf417 => 'PDF417',
         CardFormat.aztec => 'Aztec',
         CardFormat.dataMatrix => 'Data Matrix',
-        CardFormat.nfc => 'NFC tag',
+        CardFormat.nfc => currentL.cardWalletFormatNfc,
       };
 
   bool get isNfc => this == CardFormat.nfc;

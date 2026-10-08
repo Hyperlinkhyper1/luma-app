@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import '../../../../l10n/current_l.dart';
 import '../nbt.dart';
 import '../schematic_model.dart';
 
@@ -25,9 +26,7 @@ class SpongeSchematic {
     final height = s.unsignedShortValue('Height');
     final length = s.unsignedShortValue('Length');
     if (width == null || height == null || length == null) {
-      throw const FormatException(
-        'This .schem file is missing its Width/Height/Length tags.',
-      );
+      throw FormatException(currentL.schematicSpongeMissingSize);
     }
     guardVolume(width, height, length);
 
@@ -36,9 +35,7 @@ class SpongeSchematic {
     if (version >= 3) {
       final blocks = s.compound('Blocks');
       if (blocks == null) {
-        throw const FormatException(
-          'This version 3 .schem file has no Blocks compound.',
-        );
+        throw FormatException(currentL.schematicSpongeV3NoBlocks);
       }
       paletteTag = blocks.compound('Palette');
       data = blocks.byteArray('Data');
@@ -48,9 +45,7 @@ class SpongeSchematic {
     }
 
     if (paletteTag == null || data == null) {
-      throw const FormatException(
-        'This .schem file has no block palette or block data.',
-      );
+      throw FormatException(currentL.schematicSpongeNoPalette);
     }
 
     // The palette maps a state string to its own index, which is not
@@ -78,16 +73,14 @@ class SpongeSchematic {
       var shift = 0;
       while (true) {
         if (cursor >= data.length) {
-          throw const FormatException(
-            'The block data ends in the middle of a value.',
-          );
+          throw FormatException(currentL.schematicSpongeTruncatedValue);
         }
         final byte = data[cursor++] & 0xFF;
         value |= (byte & 0x7F) << shift;
         if ((byte & 0x80) == 0) break;
         shift += 7;
         if (shift > 35) {
-          throw const FormatException('The block data is corrupt.');
+          throw FormatException(currentL.schematicSpongeCorrupt);
         }
       }
       blocks[written++] = remap[value] ?? 0;
@@ -104,10 +97,7 @@ class SpongeSchematic {
       dataVersion: s.intValue('DataVersion'),
       sourceFormat: SchematicFormat.sponge,
       notes: written < volume
-          ? [
-              'The block data stopped ${volume - written} blocks short of the '
-                  'declared size; the rest was filled with air.',
-            ]
+          ? [currentL.schematicSpongeShortBlocks(volume - written)]
           : const <String>[],
     );
   }

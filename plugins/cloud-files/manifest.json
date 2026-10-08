@@ -7,5 +7,27 @@
   "category": "Utility",
   "requiresAccount": true,
   "details": "Upload files to your own sync server and pull them back down on any other device signed into the same account.\n\nEverything is encrypted on-device before it ever leaves your machine, so the server only ever holds unreadable data. Files count against your account's 3 GB quota, shown as a usage bar in the plugin. Requires signing in under Settings → Sync & account.",
-  "screenshots": ["file-list.png", "usage-bar.png"]
+  "screenshots": ["file-list.png", "usage-bar.png"],
+  "i18n": {
+    "nl": {
+      "name": "Cloudbestanden",
+      "description": "Je bestanden, op al je apparaten. Vergrendeld op je apparaat voordat ze vertrekken, zodat alleen jij ze kunt lezen. Log in onder Instellingen, Sync en account om het te gebruiken.",
+      "details": "Upload bestanden naar je eigen synchronisatieserver en haal ze terug op elk ander apparaat dat met hetzelfde account is ingelogd.\n\nAlles wordt op het apparaat versleuteld voordat het je machine verlaat, zodat de server alleen onleesbare gegevens bevat. Bestanden tellen mee voor het 3 GB-quotum van je account, zichtbaar als gebruiksbalk in de plug-in. Vereist inloggen onder Instellingen → Sync & account."
+    },
+    "fr": {
+      "name": "Fichiers cloud",
+      "description": "Vos fichiers, sur tous vos appareils. Verrouillés sur votre appareil avant de partir, pour que vous seul puissiez les lire. Connectez-vous dans Paramètres, Synchronisation et compte pour l'utiliser.",
+      "details": "Envoyez des fichiers vers votre propre serveur de synchronisation et récupérez-les sur tout autre appareil connecté au même compte.\n\nTout est chiffré sur l'appareil avant de quitter votre machine, donc le serveur ne contient que des données illisibles. Les fichiers comptent dans le quota de 3 Go de votre compte, affiché sous forme de barre d'utilisation dans le module. Connexion requise dans Paramètres → Synchronisation et compte."
+    },
+    "es": {
+      "name": "Archivos en la nube",
+      "description": "Tus archivos, en todos tus dispositivos. Bloqueados en tu dispositivo antes de salir, para que solo tú puedas leerlos. Inicia sesión en Ajustes, Sincronización y cuenta para usarlo.",
+      "details": "Sube archivos a tu propio servidor de sincronización y descárgalos en cualquier otro dispositivo con la misma cuenta.\n\nTodo se cifra en el dispositivo antes de salir de tu equipo, así que el servidor solo guarda datos ilegibles. Los archivos cuentan para la cuota de 3 GB de tu cuenta, que se muestra como barra de uso en el complemento. Requiere iniciar sesión en Ajustes → Sincronización y cuenta."
+    },
+    "zh": {
+      "name": "云文件",
+      "description": "你的文件，同步到所有设备。离开设备前已在本地加密，只有你能读取。请在「设置」的「同步与账号」中登录后使用。",
+      "details": "将文件上传到你自己的同步服务器，并在使用同一账号登录的任何其他设备上下载。\n\n所有内容在离开你的设备前都已在本地加密，因此服务器只保存无法读取的数据。文件会计入账号的 3 GB 配额，并在插件中以用量条显示。需在「设置 → 同步与账号」中登录。"
+    }
+  }
 }

@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import '../../l10n/current_l.dart';
+
 /// Positions are logical grid cells, independent of window pixels.
 class HomeTile {
   const HomeTile({
@@ -57,7 +59,7 @@ class HomeTile {
         json['kind'] is! String ||
         json['config'] is! Map ||
         ['x', 'y', 'w', 'h'].any((key) => json[key] is! int)) {
-      throw const FormatException('Invalid home tile.');
+      throw FormatException(currentL.homeTileInvalid);
     }
     return HomeTile(
       id: json['id'],
@@ -161,7 +163,7 @@ class HomeLayout {
         raw['columns'] != columns ||
         raw['tiles'] is! List ||
         (raw['tiles'] as List).length > 100) {
-      throw const FormatException('Invalid home layout.');
+      throw FormatException(currentL.homeLayoutInvalid);
     }
     final metric = raw['heroMetric'];
     var result = HomeLayout(
@@ -176,11 +178,11 @@ class HomeLayout {
     final ids = <String>{};
     for (final value in raw['tiles'] as List) {
       if (value is! Map<String, dynamic>) {
-        throw const FormatException('Invalid home tile.');
+        throw FormatException(currentL.homeTileInvalid);
       }
       final tile = HomeTile.fromJson(value);
       if (!ids.add(tile.id)) {
-        throw const FormatException('Duplicate home tile.');
+        throw FormatException(currentL.homeTileDuplicate);
       }
       result = result.place(tile);
     }
@@ -238,7 +240,12 @@ class HomeLayout {
         return false;
       }
     }
-    const shortcuts = ['assistant', 'finance-shortcut', 'converter', 'settings'];
+    const shortcuts = [
+      'assistant',
+      'finance-shortcut',
+      'converter',
+      'settings',
+    ];
     const destinations = [5, 2, 1, 7];
     for (var i = 0; i < 4; i++) {
       final tile = tiles[4 + i];

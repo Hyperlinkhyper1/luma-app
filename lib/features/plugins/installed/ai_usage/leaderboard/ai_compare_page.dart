@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import 'ai_catalog_scope.dart';
 import 'ai_leaderboard_metric.dart';
@@ -62,13 +63,14 @@ class _AiComparePageState extends State<AiComparePage> {
   Widget build(BuildContext context) {
     final repo = AiCatalogScope.of(context);
     final luma = context.luma;
+    final t = L.of(context);
 
     return Scaffold(
       backgroundColor: luma.background,
       appBar: AppBar(
         backgroundColor: luma.background,
         elevation: 0,
-        title: const Text('Compare models'),
+        title: Text(t.aiCompareTitle),
       ),
       body: ListenableBuilder(
         listenable: repo,
@@ -94,7 +96,7 @@ class _AiComparePageState extends State<AiComparePage> {
                     padding: const EdgeInsets.symmetric(vertical: 40),
                     child: Center(
                       child: Text(
-                        'Pick at least two models to compare.',
+                        L.of(context).aiComparePickTwo,
                         style: TextStyle(color: luma.textMuted),
                       ),
                     ),
@@ -123,6 +125,7 @@ class _ModelPickerRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -142,7 +145,7 @@ class _ModelPickerRow extends StatelessWidget {
           ),
         if (selected.isEmpty)
           Text(
-            'Add models to compare them side by side.',
+            t.aiCompareAddHint,
             style: TextStyle(color: luma.textMuted, fontSize: 12.5),
           ),
       ],
@@ -202,10 +205,11 @@ class _AddModelButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final options = [for (final m in all) if (!excluded.contains(m.id)) m]
       ..sort((a, b) => a.name.compareTo(b.name));
     return PopupMenuButton<String>(
-      tooltip: 'Add a model',
+      tooltip: t.aiCompareAddTooltip,
       color: luma.surface,
       constraints: const BoxConstraints(maxHeight: 360),
       onSelected: onPick,
@@ -223,7 +227,7 @@ class _AddModelButton extends StatelessWidget {
           children: [
             Icon(Icons.add_rounded, size: 15, color: luma.accent),
             const SizedBox(width: 4),
-            Text('Add model', style: TextStyle(color: luma.accent, fontSize: 12.5)),
+            Text(t.aiCompareAddModel, style: TextStyle(color: luma.accent, fontSize: 12.5)),
           ],
         ),
       ),
@@ -252,7 +256,7 @@ class _RadarCard extends StatelessWidget {
           height: 160,
           child: Center(
             child: Text(
-              'Not enough shared ratings to draw a radar for this selection.',
+              L.of(context).aiCompareNotEnoughRatings,
               textAlign: TextAlign.center,
               style: TextStyle(color: luma.textMuted),
             ),

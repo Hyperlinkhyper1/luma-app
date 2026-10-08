@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'calc_expression.dart';
 import 'calculator_store.dart';
@@ -100,7 +101,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
       return;
     }
     if (parsed.usesX) {
-      setState(() => _error = 'That has an x in it — press Plot to draw it.');
+      setState(() => _error = L.of(context).calcErrorHasX);
       return;
     }
     try {
@@ -124,7 +125,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   void _plot() {
     final source = _input.trim();
     if (source.isEmpty) {
-      setState(() => _error = 'Type something like x^2 - 3 first.');
+      setState(() => _error = L.of(context).calcPlotNeedsExpression);
       return;
     }
     try {
@@ -136,7 +137,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     final added = _store.addFunction(source, nextGraphColor(_store.functions));
     setState(() {
       _error = added == null
-          ? 'Local storage is full, so this function was not saved.'
+          ? L.of(context).calcStorageFullFunctionNotSaved
           : null;
       if (added != null) {
         _input = '';
@@ -250,6 +251,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
   Widget _header(BuildContext context, bool wide) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
       decoration: BoxDecoration(
@@ -259,13 +261,13 @@ class _CalculatorPageState extends State<CalculatorPage> {
         children: [
           _HeaderButton(
             icon: Icons.menu_rounded,
-            tooltip: 'Convert units',
+            tooltip: t.calcConvertUnitsTooltip,
             onTap: () => _scaffoldKey.currentState?.openDrawer(),
           ),
           const SizedBox(width: 6),
           Flexible(
             child: LumaSegmentedTabs(
-              tabs: const ['Basic', 'Advanced'],
+              tabs: [t.calcModeBasic, t.calcModeAdvanced],
               selectedIndex: _advanced ? 1 : 0,
               scrollable: true,
               onSelect: (index) => setState(() {
@@ -282,7 +284,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
             ),
           _HeaderButton(
             icon: Icons.history_rounded,
-            tooltip: 'History',
+            tooltip: t.commonHistory,
             onTap: () => _showHistory(context),
           ),
         ],
@@ -313,7 +315,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         LumaSegmentedTabs(
-          tabs: const ['Keypad', 'Graph'],
+          tabs: [L.of(context).calcKeypadTab, L.of(context).calcGraphTab],
           selectedIndex: _showGraphTab ? 1 : 0,
           onSelect: (index) => setState(() => _showGraphTab = index == 1),
         ),
@@ -365,7 +367,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
           if (_advanced) ...[
             const SizedBox(height: 10),
             LumaPrimaryButton(
-              label: 'Plot as y = ${_input.trim().isEmpty ? '…' : _input.trim()}',
+              label: L.of(context).calcPlotAs(
+                _input.trim().isEmpty ? '…' : _input.trim(),
+              ),
               icon: Icons.show_chart_rounded,
               expand: true,
               onTap: _plot,
@@ -411,6 +415,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
   Future<void> _showHistory(BuildContext context) async {
     final luma = context.luma;
+    final t = L.of(context);
     final picked = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -419,7 +424,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
           children: [
             Expanded(
               child: Text(
-                'History',
+                t.commonHistory,
                 style: TextStyle(color: luma.textPrimary, fontSize: 16),
               ),
             ),
@@ -429,7 +434,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   _store.clearHistory();
                   Navigator.of(dialogContext).pop();
                 },
-                child: Text('Clear', style: TextStyle(color: luma.danger)),
+                child: Text(t.commonClear, style: TextStyle(color: luma.danger)),
               ),
           ],
         ),
@@ -437,7 +442,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
           width: lumaDialogWidth(dialogContext, 360),
           child: _store.history.isEmpty
               ? Text(
-                  'Sums you work out show up here.',
+                  t.calcHistoryEmpty,
                   style: TextStyle(color: luma.textMuted, fontSize: 13),
                 )
               : ListView.builder(
@@ -474,7 +479,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text('Close', style: TextStyle(color: luma.textSecondary)),
+            child: Text(t.commonClose, style: TextStyle(color: luma.textSecondary)),
           ),
         ],
       ),
@@ -949,7 +954,9 @@ class _AngleToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     return Tooltip(
-      message: degrees ? 'Switch to radians' : 'Switch to degrees',
+      message: degrees
+          ? L.of(context).calcSwitchToRadians
+          : L.of(context).calcSwitchToDegrees,
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
         onTap: () => onChanged(!degrees),

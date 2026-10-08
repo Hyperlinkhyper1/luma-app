@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
 import 'audio_engine.dart';
 import 'audio_types.dart';
 import 'eq.dart';
@@ -232,7 +233,7 @@ class AudioToolsRepository extends ChangeNotifier {
 
   Future<void> importData(Object? data) async {
     if (data is! Map<String, dynamic>) {
-      throw const FormatException('Invalid audio tools snapshot.');
+      throw FormatException(currentL.audioToolsInvalidSnapshot);
     }
     final eq = data['eq'];
     if (eq is Map) setEq(EqSettings.fromJson(eq.cast<String, dynamic>()));

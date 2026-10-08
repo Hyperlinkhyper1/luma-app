@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/widgets.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/luma_theme.dart';
 import '../data/database.dart';
 import '../finance_repository.dart';
@@ -59,6 +60,7 @@ class _SuggestionsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final monthly = found.fold<int>(
       0,
       (sum, c) =>
@@ -77,9 +79,7 @@ class _SuggestionsCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  found.length == 1
-                      ? '1 possible subscription'
-                      : '${found.length} possible subscriptions',
+                  t.financeSubsPossibleCount(found.length),
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 14,
@@ -88,14 +88,14 @@ class _SuggestionsCard extends StatelessWidget {
                 ),
               ),
               Text(
-                '≈ ${formatCents(monthly)}/month',
+                t.financeSubsMonthlyEstimate(formatCents(monthly)),
                 style: TextStyle(color: luma.textSecondary, fontSize: 12),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
-            'These charges repeat on a schedule but aren\'t tracked yet.',
+            t.financeSubsExplainer,
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
           const SizedBox(height: 8),
@@ -115,7 +115,10 @@ class _SuggestionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final c = candidate;
-    final cadence = c.cadence == Cadence.monthly ? 'Monthly' : 'Weekly';
+    final t = L.of(context);
+    final cadence = c.cadence == Cadence.monthly
+        ? t.financeSubsCadenceMonthly
+        : t.financeSubsCadenceWeekly;
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Row(
@@ -135,7 +138,12 @@ class _SuggestionRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '$cadence · ${formatCents(c.amountCents)} · seen ${c.occurrences}× · last ${shortDate(c.lastDate)}',
+                  t.financeSubsRowDetail(
+                    cadence,
+                    formatCents(c.amountCents),
+                    '${c.occurrences}',
+                    shortDate(c.lastDate),
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
@@ -144,7 +152,7 @@ class _SuggestionRow extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Not a subscription',
+            tooltip: t.financeSubsNotSubscription,
             icon: Icon(Icons.close_rounded, size: 18, color: luma.textMuted),
             onPressed: () => repo.dismissSubscription(c.key),
           ),
@@ -155,14 +163,17 @@ class _SuggestionRow extends StatelessWidget {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      '${c.name} is now a bill, next due ${shortDate(c.nextDue)}.',
+                      t.financeSubsTrackedSnack(
+                        c.name,
+                        shortDate(c.nextDue),
+                      ),
                     ),
                   ),
                 );
               }
             },
             style: TextButton.styleFrom(foregroundColor: luma.accent),
-            child: const Text('Track as bill'),
+            child: Text(t.financeSubsTrackAsBill),
           ),
         ],
       ),

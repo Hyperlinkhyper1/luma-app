@@ -6,5 +6,27 @@
   "icon": "calendar_month",
   "category": "Productivity",
   "details": "A full month grid alongside an upcoming-agenda list, so you can see both the big picture and what's coming up next.\n\nEvents support times, all-day toggles, locations, notes, reminders, and repeat rules (daily, weekly, monthly, yearly) — and everything is searchable and stored entirely on-device.",
-  "screenshots": ["month-view.png", "event-editor.png"]
+  "screenshots": ["month-view.png", "event-editor.png"],
+  "i18n": {
+    "nl": {
+      "name": "Agenda",
+      "description": "Je dagen in één oogopslag. Zet neer wat er gebeurt, geef het een kleur en laat het herhalen als het terugkomt.",
+      "details": "Een volledig maandrooster naast een lijst met aankomende afspraken, zodat je zowel het grote plaatje als wat er hierna komt ziet.\n\nGebeurtenissen ondersteunen tijden, hele-dagschakelaars, locaties, notities, herinneringen en herhaalregels (dagelijks, wekelijks, maandelijks, jaarlijks). Alles is doorzoekbaar en volledig op het apparaat opgeslagen."
+    },
+    "fr": {
+      "name": "Calendrier",
+      "description": "Vos journées d'un coup d'œil. Notez ce qui se passe, donnez-lui une couleur, et programmez la répétition si ça revient.",
+      "details": "Une grille mensuelle complète à côté d'une liste des prochains rendez-vous, pour voir à la fois la vue d'ensemble et ce qui arrive ensuite.\n\nLes événements prennent en charge les horaires, l'option journée entière, les lieux, les notes, les rappels et les règles de répétition (quotidienne, hebdomadaire, mensuelle, annuelle). Tout est consultable et stocké entièrement sur l'appareil."
+    },
+    "es": {
+      "name": "Calendario",
+      "description": "Tus días de un vistazo. Anota lo que pasa, ponle un color y repítelo si vuelve a suceder.",
+      "details": "Una cuadrícula mensual completa junto a una lista de la agenda próxima, para ver tanto el panorama general como lo que viene después.\n\nLos eventos admiten horas, opción de todo el día, ubicaciones, notas, recordatorios y reglas de repetición (diaria, semanal, mensual, anual). Todo se puede buscar y se guarda por completo en el dispositivo."
+    },
+    "zh": {
+      "name": "日历",
+      "description": "你的日程一目了然。记下要发生的事，选个颜色，如果会重复出现就设置重复。",
+      "details": "完整的月份网格与即将到来的日程列表并排显示，让你既能看到整体安排，也能看到接下来要做的事。\n\n事件支持时间、全天开关、地点、备注、提醒和重复规则（每天、每周、每月、每年）。所有内容均可搜索，并完全存储在设备本地。"
+    }
+  }
 }

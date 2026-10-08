@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'bulletin_board_repository.dart';
 import 'bulletin_board_scope.dart';
@@ -18,6 +19,7 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
   final TransformationController _transformController = TransformationController();
 
   void _addCard(BulletinBoardRepository repo, String type) async {
+    final t = L.of(context);
     String content = '';
     if (type == 'image') {
       final result = await FilePicker.pickFiles(
@@ -30,15 +32,19 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
       }
     } else if (type == 'checklist') {
       content = jsonEncode([
-        {'text': 'Item 1', 'done': false},
-        {'text': 'Item 2', 'done': false}
+        {'text': t.bulletinBoardChecklistItem('1'), 'done': false},
+        {'text': t.bulletinBoardChecklistItem('2'), 'done': false}
       ]);
     }
 
     // Default position near center of viewport, could be improved by using Matrix4 inversion
     await repo.add(
       type: type,
-      title: type == 'note' ? 'New Note' : type == 'checklist' ? 'New Checklist' : null,
+      title: type == 'note'
+          ? t.bulletinBoardNewNote
+          : type == 'checklist'
+          ? t.bulletinBoardNewChecklist
+          : null,
       content: content,
       posX: 500,
       posY: 500,
@@ -289,7 +295,7 @@ class _NoteContent extends StatelessWidget {
         TextFormField(
           initialValue: record.title,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
-          decoration: const InputDecoration(border: InputBorder.none, hintText: 'Title'),
+          decoration: InputDecoration(border: InputBorder.none, hintText: L.of(context).commonTitle),
           onChanged: (val) => onUpdate(record.copyWith(title: val)),
         ),
         Expanded(
@@ -298,7 +304,7 @@ class _NoteContent extends StatelessWidget {
             maxLines: null,
             expands: true,
             style: const TextStyle(fontSize: 14, color: Colors.black87),
-            decoration: const InputDecoration(border: InputBorder.none, hintText: 'Note content...'),
+            decoration: InputDecoration(border: InputBorder.none, hintText: L.of(context).bulletinBoardNoteContentHint),
             onChanged: (val) => onUpdate(record.copyWith(content: val)),
           ),
         ),
@@ -324,7 +330,7 @@ class _IdeaContent extends StatelessWidget {
             initialValue: record.content,
             maxLines: null,
             style: const TextStyle(fontSize: 15, color: Colors.black87),
-            decoration: const InputDecoration(border: InputBorder.none, hintText: 'Quick idea...'),
+            decoration: InputDecoration(border: InputBorder.none, hintText: L.of(context).bulletinBoardQuickIdeaHint),
             onChanged: (val) => onUpdate(record.copyWith(content: val)),
           ),
         ),
@@ -350,7 +356,7 @@ class _ChecklistContent extends StatelessWidget {
         TextFormField(
           initialValue: record.title,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
-          decoration: const InputDecoration(border: InputBorder.none, hintText: 'Checklist'),
+          decoration: InputDecoration(border: InputBorder.none, hintText: L.of(context).bulletinBoardChecklist),
           onChanged: (val) => onUpdate(record.copyWith(title: val)),
         ),
         Expanded(
@@ -363,7 +369,7 @@ class _ChecklistContent extends StatelessWidget {
                     items.add({'text': '', 'done': false});
                     onUpdate(record.copyWith(content: jsonEncode(items)));
                   },
-                  child: const Text('+ Add Item'),
+                  child: Text(L.of(context).bulletinBoardAddItem),
                 );
               }
               final item = items[index];
@@ -406,12 +412,15 @@ class _ImageContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (record.content.isEmpty) return const Center(child: Text('No image'));
+    final t = L.of(context);
+    if (record.content.isEmpty) {
+      return Center(child: Text(t.bulletinBoardNoImage));
+    }
     return Center(
       child: Image.file(
         File(record.content),
         fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => const Text('Image not found'),
+        errorBuilder: (_, __, ___) => Text(t.bulletinBoardImageNotFound),
       ),
     );
   }
@@ -439,18 +448,19 @@ class _FloatingAddMenuState extends State<_FloatingAddMenu> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         if (_open) ...[
-          _MenuItem(icon: Icons.note_add, label: 'Note', onTap: () { setState(() => _open = false); widget.onAddNote(); }),
+          _MenuItem(icon: Icons.note_add, label: t.bulletinBoardNote, onTap: () { setState(() => _open = false); widget.onAddNote(); }),
           const SizedBox(height: 8),
-          _MenuItem(icon: Icons.lightbulb, label: 'Idea', onTap: () { setState(() => _open = false); widget.onAddIdea(); }),
+          _MenuItem(icon: Icons.lightbulb, label: t.bulletinBoardIdea, onTap: () { setState(() => _open = false); widget.onAddIdea(); }),
           const SizedBox(height: 8),
-          _MenuItem(icon: Icons.checklist, label: 'Checklist', onTap: () { setState(() => _open = false); widget.onAddChecklist(); }),
+          _MenuItem(icon: Icons.checklist, label: t.bulletinBoardChecklist, onTap: () { setState(() => _open = false); widget.onAddChecklist(); }),
           const SizedBox(height: 8),
-          _MenuItem(icon: Icons.image, label: 'Image', onTap: () { setState(() => _open = false); widget.onAddImage(); }),
+          _MenuItem(icon: Icons.image, label: t.bulletinBoardImage, onTap: () { setState(() => _open = false); widget.onAddImage(); }),
           const SizedBox(height: 16),
         ],
         FloatingActionButton(

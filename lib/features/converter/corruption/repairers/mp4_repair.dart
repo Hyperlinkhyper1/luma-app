@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import '../../../../l10n/current_l.dart';
 import '../binary_utils.dart';
 import '../repair_report.dart';
 
@@ -12,7 +13,7 @@ import '../repair_report.dart';
 /// index for the whole video, and nothing else in the file repeats it.
 Uint8List repairMp4(Uint8List bytes, RepairLog log) {
   if (bytes.length < 8) {
-    log.failed('The file is too short to hold a single box.');
+    log.failed(currentL.repairMp4TooShort);
     return bytes;
   }
 
@@ -21,15 +22,10 @@ Uint8List repairMp4(Uint8List bytes, RepairLog log) {
   if (!matchesAt(data, 4, asciiBytes('ftyp'))) {
     final ftypAt = indexOfBytes(data, asciiBytes('ftyp'), 0, 1 << 16);
     if (ftypAt >= 4) {
-      log.fixed(
-        'Dropped ${formatSize(ftypAt - 4)} of junk before the ftyp box.',
-      );
+      log.fixed(currentL.repairMp4JunkDropped(formatSize(ftypAt - 4)));
       data = data.sublist(ftypAt - 4);
     } else {
-      log.warning(
-        'There is no ftyp box, so the exact flavour of MP4 is unknown. The box '
-        'tree was still checked.',
-      );
+      log.warning(currentL.repairMp4NoFtyp);
     }
   }
 
@@ -44,10 +40,7 @@ Uint8List repairMp4(Uint8List bytes, RepairLog log) {
     var size = readU32be(data, offset);
     final type = String.fromCharCodes(data, offset + 4, offset + 8);
     if (!_isBoxType(type)) {
-      log.warning(
-        'Unreadable box name at ${formatOffset(offset)} — stopping the walk '
-        'there.',
-      );
+      log.warning(currentL.repairMp4UnreadableBox(formatOffset(offset)));
       stopped = offset;
       break;
     }
@@ -73,9 +66,12 @@ Uint8List repairMp4(Uint8List bytes, RepairLog log) {
       final available = data.length - offset;
       writeU32be(data, offset, available);
       log.fixed(
-        'The "$type" box at ${formatOffset(offset)} claimed '
-        '${formatSize(size)} but only ${formatSize(available)} follows — '
-        'clamped it to fit.',
+        currentL.repairMp4BoxClamped(
+          type,
+          formatOffset(offset),
+          formatSize(size),
+          formatSize(available),
+        ),
       );
       size = available;
       clamped++;
@@ -87,42 +83,31 @@ Uint8List repairMp4(Uint8List bytes, RepairLog log) {
     offset += size;
   }
 
-  log.info('$boxes top-level boxes parsed.');
+  log.info(currentL.repairMp4BoxesParsed(boxes));
 
   if (!sawMoov) {
     final moovAt = indexOfBytes(data, asciiBytes('moov'));
     if (moovAt >= 4) {
-      log.warning(
-        'A moov box exists at ${formatOffset(moovAt - 4)} but the box chain '
-        'never reaches it. Some players will still find it by scanning.',
-      );
+      log.warning(currentL.repairMp4MoovMisplaced(formatOffset(moovAt - 4)));
     } else {
-      log.failed(
-        'There is no moov box. That box is the index of every video and audio '
-        'sample in the file, and without it the media data cannot be played '
-        'back — recovering it needs an undamaged file recorded by the same '
-        'device.',
-      );
+      log.failed(currentL.repairMp4NoMoov);
     }
   }
   if (!sawMdat) {
-    log.warning('No mdat box was found, so there may be no media data left.');
+    log.warning(currentL.repairMp4NoMdat);
   }
   if (clamped > 0) {
-    log.info(
-      'Clamping a box size keeps readers from walking off the end; it does not '
-      'bring back what was cut off.',
-    );
+    log.info(currentL.repairMp4ClampExplain);
   }
 
   if (stopped >= 0 && stopped > 0) {
-    log.fixed(
-      'Trimmed ${formatSize(data.length - stopped)} of unreadable tail.',
-    );
+    log.fixed(currentL.repairMp4TailTrimmed(formatSize(data.length - stopped)));
     return data.sublist(0, stopped);
   }
   if (stopped < 0 && offset < data.length && offset > 0) {
-    log.fixed('Trimmed ${formatSize(data.length - offset)} of trailing junk.');
+    log.fixed(
+      currentL.repairMp4TrailingTrimmed(formatSize(data.length - offset)),
+    );
     return data.sublist(0, offset);
   }
 

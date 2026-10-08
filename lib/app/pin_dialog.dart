@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/luma_theme.dart';
 
 Future<String?> showPinDialog(BuildContext context, {required String title}) {
@@ -24,7 +25,7 @@ class _PinDialogState extends State<_PinDialog> {
   void _submit() {
     final pin = _controller.text;
     if (pin.length != 8) {
-      setState(() => _error = 'PIN must be exactly 8 digits.');
+      setState(() => _error = L.of(context).pinMustBe8Digits);
       return;
     }
     Navigator.of(context).pop(pin);
@@ -39,6 +40,7 @@ class _PinDialogState extends State<_PinDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return AlertDialog(
       backgroundColor: luma.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -86,7 +88,7 @@ class _PinDialogState extends State<_PinDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
@@ -94,7 +96,7 @@ class _PinDialogState extends State<_PinDialog> {
             foregroundColor: luma.surface,
           ),
           onPressed: _submit,
-          child: const Text('OK'),
+          child: Text(t.commonOk),
         ),
       ],
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import 'mafia_disguise_names.dart';
 import 'mafia_role_data.dart';
@@ -68,6 +69,7 @@ class _MafiaRoleCounterTabState extends State<MafiaRoleCounterTab> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final byFaction = rolesForPlayerCount(_players);
     final instanceKeys = <String>[
       for (final entries in byFaction.values)
@@ -91,7 +93,7 @@ class _MafiaRoleCounterTabState extends State<MafiaRoleCounterTab> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Role Counting',
+                      t.mafiaRoleCountingTitle,
                       style: TextStyle(
                         color: luma.textPrimary,
                         fontSize: 20,
@@ -100,8 +102,7 @@ class _MafiaRoleCounterTabState extends State<MafiaRoleCounterTab> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Pick how many players are in the lobby, then check off '
-                      'roles as they get claimed.',
+                      t.mafiaRoleCountingIntro,
                       style: TextStyle(color: luma.textMuted, fontSize: 13),
                     ),
                   ],
@@ -111,7 +112,7 @@ class _MafiaRoleCounterTabState extends State<MafiaRoleCounterTab> {
               OutlinedButton.icon(
                 onPressed: claimedCount == 0 ? null : _reset,
                 icon: const Icon(Icons.refresh_rounded, size: 16),
-                label: const Text('Reset'),
+                label: Text(t.commonReset),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: luma.textSecondary,
                   side: BorderSide(color: luma.border),
@@ -128,7 +129,7 @@ class _MafiaRoleCounterTabState extends State<MafiaRoleCounterTab> {
                   children: [
                     Expanded(
                       child: Text(
-                        'Players in lobby',
+                        t.mafiaRoleCountingPlayersInLobby,
                         style: TextStyle(
                           color: luma.textSecondary,
                           fontSize: 13,
@@ -174,8 +175,7 @@ class _MafiaRoleCounterTabState extends State<MafiaRoleCounterTab> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            "The wiki flags its data below 7 players as possibly "
-                            "inaccurate — treat this count as a rough guide.",
+                            t.mafiaRoleCountingLowCountWarning,
                             style:
                                 TextStyle(color: luma.textMuted, fontSize: 11),
                           ),
@@ -200,7 +200,7 @@ class _MafiaRoleCounterTabState extends State<MafiaRoleCounterTab> {
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        '$claimedCount / $totalRoles claimed',
+                        t.mafiaRoleCountingClaimedOfTotal(claimedCount, totalRoles),
                         style: TextStyle(color: luma.textMuted, fontSize: 12),
                       ),
                     ],
@@ -211,10 +211,10 @@ class _MafiaRoleCounterTabState extends State<MafiaRoleCounterTab> {
           ),
           const SizedBox(height: 16),
           if (totalRoles == 0)
-            const LumaEmptyState(
+            LumaEmptyState(
               icon: Icons.groups_outlined,
-              title: 'No roles for this lobby size',
-              subtitle: 'Try a different player count.',
+              title: t.mafiaRoleCountingNoRoles,
+              subtitle: t.mafiaRoleCountingNoRolesHint,
             )
           else
             for (final faction in MafiaFaction.values)
@@ -249,6 +249,7 @@ class _FactionSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final color = _factionColor(luma, faction);
     final count = entries.fold<int>(0, (a, e) => a + e.value);
     final claimedInSection = entries
@@ -270,7 +271,7 @@ class _FactionSection extends StatelessWidget {
               const SizedBox(width: 8),
               Flexible(
                 child: Text(
-                  faction.label,
+                  faction.label(t),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -300,7 +301,7 @@ class _FactionSection extends StatelessWidget {
               if (!context.isPhoneWidth) ...[
                 const Spacer(),
                 Text(
-                  faction.winCondition,
+                  faction.winCondition(t),
                   style: TextStyle(color: luma.textMuted, fontSize: 11),
                 ),
               ],
@@ -309,7 +310,7 @@ class _FactionSection extends StatelessWidget {
           if (context.isPhoneWidth) ...[
             const SizedBox(height: 4),
             Text(
-              faction.winCondition,
+              faction.winCondition(t),
               style: TextStyle(color: luma.textMuted, fontSize: 11),
             ),
           ],
@@ -349,6 +350,7 @@ class _RoleClaimRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -398,7 +400,7 @@ class _RoleClaimRow extends StatelessWidget {
                     Icon(Icons.check_rounded, size: 12, color: color),
                     const SizedBox(width: 3),
                     Text(
-                      'Claimed',
+                      t.mafiaRoleCountingClaimed,
                       style: TextStyle(
                         color: color,
                         fontSize: 11,
@@ -438,6 +440,7 @@ class _NameField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     return RawAutocomplete<String>(
       textEditingController: claim.nameController,
@@ -457,7 +460,7 @@ class _NameField extends StatelessWidget {
           style: TextStyle(color: luma.textPrimary, fontSize: 13),
           decoration: InputDecoration(
             isDense: true,
-            hintText: 'Claimed by… (disguise name)',
+            hintText: t.mafiaRoleCountingClaimedBy,
             hintStyle: TextStyle(color: luma.textMuted, fontSize: 13),
             prefixIcon: Icon(Icons.person_search_rounded,
                 size: 16, color: luma.textMuted),

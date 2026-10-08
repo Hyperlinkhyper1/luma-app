@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../../l10n/current_l.dart';
 import '../../account_overview/mc_credentials.dart';
 import 'modrinth_api_client.dart';
 
@@ -10,7 +11,7 @@ import 'modrinth_api_client.dart';
 /// rather than a generic failure.
 class CurseForgeKeyMissingException extends ModrinthApiException {
   CurseForgeKeyMissingException()
-      : super('CurseForge needs an API key. Add one to browse CurseForge.');
+      : super(currentL.mcCurseForgeNeedsKey);
 }
 
 /// Read-only CurseForge client for the launcher's browse and install flow.
@@ -151,7 +152,7 @@ class CurseForgeApiClient {
       for (final (i, a) in authors.indexed)
         ModrinthTeamMember(
           username: (a as Map<String, dynamic>)['name'] as String? ?? '',
-          role: i == 0 ? 'Owner' : 'Member',
+          role: i == 0 ? currentL.mcTeamRoleOwner : currentL.mcTeamRoleMember,
           avatarUrl: null,
         ),
     ].where((m) => m.username.isNotEmpty).toList();
@@ -184,13 +185,13 @@ class CurseForgeApiClient {
 
   Future<ModrinthVersion> getVersion(String versionId) async {
     final fileId = int.tryParse(_rawId(versionId));
-    if (fileId == null) throw ModrinthApiException('Unknown CurseForge file "$versionId".');
+    if (fileId == null) throw ModrinthApiException(currentL.mcCurseForgeUnknownFile(versionId));
     final json = await _post(
       Uri.parse('$_base/mods/files'),
       {'fileIds': [fileId]},
     );
     final data = (json['data'] as List?) ?? const [];
-    if (data.isEmpty) throw ModrinthApiException('CurseForge no longer has that file.');
+    if (data.isEmpty) throw ModrinthApiException(currentL.mcCurseForgeFileGone);
     return versionFromJson(data.first as Map<String, dynamic>);
   }
 
@@ -234,7 +235,7 @@ class CurseForgeApiClient {
     return ModrinthSearchHit(
       projectId: '$idPrefix$id',
       slug: json['slug'] as String? ?? id,
-      title: json['name'] as String? ?? 'Untitled',
+      title: json['name'] as String? ?? currentL.commonUntitled,
       description: json['summary'] as String? ?? '',
       iconUrl: _nonEmpty(logo?['thumbnailUrl'] as String?) ?? _nonEmpty(logo?['url'] as String?),
       downloads: (json['downloadCount'] as num?)?.toInt() ?? 0,
@@ -276,7 +277,7 @@ class CurseForgeApiClient {
     return ModrinthProject(
       id: '$idPrefix$id',
       slug: slug,
-      title: json['name'] as String? ?? 'Untitled',
+      title: json['name'] as String? ?? currentL.commonUntitled,
       description: json['summary'] as String? ?? '',
       body: htmlToMarkdown(descriptionHtml),
       iconUrl: _nonEmpty(logo?['thumbnailUrl'] as String?) ?? _nonEmpty(logo?['url'] as String?),
@@ -431,16 +432,14 @@ class CurseForgeApiClient {
     try {
       res = await send().timeout(const Duration(seconds: 20));
     } catch (_) {
-      throw ModrinthApiException('Could not reach CurseForge. Check your connection.');
+      throw ModrinthApiException(currentL.mcCurseForgeUnreachable);
     }
     if (res.statusCode == 401 || res.statusCode == 403) {
       _apiKey = null;
-      throw ModrinthApiException(
-        'CurseForge rejected the API key. Check it in the launcher settings.',
-      );
+      throw ModrinthApiException(currentL.mcCurseForgeKeyRejected);
     }
     if (res.statusCode != 200) {
-      throw ModrinthApiException('CurseForge request failed (${res.statusCode}).');
+      throw ModrinthApiException(currentL.mcCurseForgeRequestFailed('${res.statusCode}'));
     }
     return jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
   }

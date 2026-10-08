@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:nfc_manager/nfc_manager.dart' show NdefMessage;
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'nfc_record.dart';
 import 'nfc_record_editor_sheet.dart';
@@ -40,6 +41,7 @@ class _NfcTagEditorPageState extends State<NfcTagEditorPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Column(
@@ -48,7 +50,7 @@ class _NfcTagEditorPageState extends State<NfcTagEditorPage> {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
             child: LumaSegmentedTabs(
-              tabs: const ['Editor', 'Templates', 'History'],
+              tabs: [t.nfcTabEditor, t.nfcTabTemplates, t.nfcTabHistory],
               selectedIndex: _tabIndex,
               onSelect: (i) => setState(() => _tabIndex = i),
             ),
@@ -71,14 +73,15 @@ class _NfcTagEditorPageState extends State<NfcTagEditorPage> {
   // ---- Editor tab -----------------------------------------------------
 
   Widget _buildEditorTab(BuildContext context) {
+    final t = L.of(context);
     if (!NfcTagEditorPlatform.isSupported) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: LumaEmptyState(
             icon: Icons.phonelink_erase_rounded,
-            title: 'Android only',
-            subtitle: NfcTagEditorPlatform.unsupportedNotice,
+            title: t.nfcAndroidOnlyTitle,
+            subtitle: NfcTagEditorPlatform.unsupportedNotice(t),
           ),
         ),
       );
@@ -94,6 +97,7 @@ class _NfcTagEditorPageState extends State<NfcTagEditorPage> {
 
   Widget _buildHero(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -111,7 +115,7 @@ class _NfcTagEditorPageState extends State<NfcTagEditorPage> {
             ),
             const SizedBox(height: 20),
             Text(
-              "Scan a tag to see what's on it",
+              t.nfcHeroTitle,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: luma.textPrimary,
@@ -121,21 +125,19 @@ class _NfcTagEditorPageState extends State<NfcTagEditorPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Hold any NFC tag or sticker to your phone to read and edit '
-              'its records — or start from scratch and write a brand-new '
-              'tag.',
+              t.nfcHeroBody,
               textAlign: TextAlign.center,
               style: TextStyle(color: luma.textMuted, fontSize: 13, height: 1.4),
             ),
             const SizedBox(height: 24),
             LumaPrimaryButton(
-              label: 'Scan a tag',
+              label: t.nfcScanTag,
               icon: Icons.nfc_rounded,
               onTap: _startScan,
             ),
             const SizedBox(height: 10),
             LumaGhostButton(
-              label: 'Start from scratch',
+              label: t.nfcStartFromScratch,
               icon: Icons.add_rounded,
               onTap: _startFromScratch,
             ),
@@ -151,6 +153,7 @@ class _NfcTagEditorPageState extends State<NfcTagEditorPage> {
 
   Widget _buildLoadedEditor(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -167,7 +170,7 @@ class _NfcTagEditorPageState extends State<NfcTagEditorPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Records',
+                      t.nfcRecordsHeading,
                       style: TextStyle(
                         color: luma.textPrimary,
                         fontSize: 15,
@@ -177,7 +180,7 @@ class _NfcTagEditorPageState extends State<NfcTagEditorPage> {
                   ),
                   _SquareIconButton(
                     icon: Icons.add_rounded,
-                    tooltip: 'Add record',
+                    tooltip: t.nfcRecordEditorAddTitle,
                     onTap: _addRecord,
                   ),
                 ],
@@ -192,9 +195,8 @@ class _NfcTagEditorPageState extends State<NfcTagEditorPage> {
                   child: Center(
                     child: LumaEmptyState(
                       icon: Icons.playlist_add_rounded,
-                      title: 'No records yet',
-                      subtitle: 'Add a record above — text, a link, Wi-Fi '
-                          'details, a contact card and more.',
+                      title: t.nfcNoRecordsTitle,
+                      subtitle: t.nfcNoRecordsBody,
                     ),
                   ),
                 )
@@ -231,6 +233,7 @@ class _NfcTagEditorPageState extends State<NfcTagEditorPage> {
 
   Widget _buildBottomBar(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
       decoration: BoxDecoration(
@@ -245,7 +248,7 @@ class _NfcTagEditorPageState extends State<NfcTagEditorPage> {
             children: [
               Expanded(
                 child: LumaPrimaryButton(
-                  label: 'Write to tag',
+                  label: t.nfcWriteToTag,
                   icon: Icons.upload_rounded,
                   expand: true,
                   onTap: _records.isEmpty ? null : () => _startWrite(),
@@ -261,8 +264,7 @@ class _NfcTagEditorPageState extends State<NfcTagEditorPage> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Works on the tag you scanned or a different one — just hold '
-            "whichever you want to write to when it's ready.",
+            t.nfcWriteHint,
             textAlign: TextAlign.center,
             style: TextStyle(color: luma.textMuted, fontSize: 11),
           ),
@@ -318,24 +320,24 @@ class _NfcTagEditorPageState extends State<NfcTagEditorPage> {
       return;
     }
     final luma = context.luma;
+    final t = L.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: luma.surface,
-        title: Text('Start over?', style: TextStyle(color: luma.textPrimary, fontSize: 16)),
+        title: Text(t.nfcStartOverTitle, style: TextStyle(color: luma.textPrimary, fontSize: 16)),
         content: Text(
-          'This clears every record in the editor. Anything already written '
-          'to a tag is unaffected.',
+          t.nfcStartOverBody,
           style: TextStyle(color: luma.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+            child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text('Start over', style: TextStyle(color: luma.danger)),
+            child: Text(t.nfcStartOver, style: TextStyle(color: luma.danger)),
           ),
         ],
       ),
@@ -388,7 +390,7 @@ class _NfcTagEditorPageState extends State<NfcTagEditorPage> {
       if (_busyToken != token || !mounted) return;
       setState(() {
         _busy = false;
-        _error = 'Something went wrong reading that tag.';
+        _error = L.of(context).nfcReadFailed;
       });
     }
   }
@@ -414,9 +416,10 @@ class _NfcTagEditorPageState extends State<NfcTagEditorPage> {
         uid: _tag?.uid,
         locked: lock,
       )));
+      final t = L.of(context);
       _snack(
-        lock ? 'Written and locked read-only.' : 'Written to the tag.',
-        action: SnackBarAction(label: 'Write another', onPressed: () => _startWrite(lock: lock)),
+        lock ? t.nfcWrittenLocked : t.nfcWritten,
+        action: SnackBarAction(label: t.nfcWriteAnother, onPressed: () => _startWrite(lock: lock)),
       );
     } on NfcTagEditorException catch (e) {
       if (_busyToken != token || !mounted) return;
@@ -425,7 +428,7 @@ class _NfcTagEditorPageState extends State<NfcTagEditorPage> {
     } catch (_) {
       if (_busyToken != token || !mounted) return;
       setState(() => _busy = false);
-      _snack("Couldn't write to that tag.");
+      _snack(L.of(context).nfcWriteFailed);
     }
   }
 
@@ -444,19 +447,20 @@ class _NfcTagEditorPageState extends State<NfcTagEditorPage> {
 
   Future<void> _showSaveTemplateDialog() async {
     final luma = context.luma;
+    final t = L.of(context);
     final controller = TextEditingController();
     final name = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: luma.surface,
-        title: Text('Save as template', style: TextStyle(color: luma.textPrimary, fontSize: 16)),
+        title: Text(t.nfcSaveAsTemplate, style: TextStyle(color: luma.textPrimary, fontSize: 16)),
         content: TextField(
           controller: controller,
           autofocus: true,
           style: TextStyle(color: luma.textPrimary),
           decoration: InputDecoration(
             isDense: true,
-            hintText: 'e.g. Guest Wi-Fi',
+            hintText: t.nfcTemplateNameHint,
             hintStyle: TextStyle(color: luma.textMuted, fontSize: 13),
             filled: true,
             fillColor: luma.background,
@@ -475,11 +479,11 @@ class _NfcTagEditorPageState extends State<NfcTagEditorPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+            child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(controller.text),
-            child: Text('Save', style: TextStyle(color: luma.accent)),
+            child: Text(t.commonSave, style: TextStyle(color: luma.accent)),
           ),
         ],
       ),
@@ -488,30 +492,30 @@ class _NfcTagEditorPageState extends State<NfcTagEditorPage> {
     final trimmed = name?.trim();
     if (trimmed == null || trimmed.isEmpty || !mounted) return;
     await NfcTagStore.instance.saveTemplate(trimmed, _records);
-    _snack('Saved "$trimmed".');
+    if (!mounted) return;
+    _snack(L.of(context).nfcTemplateSaved(trimmed));
   }
 
   Future<void> _confirmLockAndWrite() async {
     final luma = context.luma;
+    final t = L.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: luma.surface,
-        title: Text('Write & lock this tag?', style: TextStyle(color: luma.textPrimary, fontSize: 16)),
+        title: Text(t.nfcWriteLockTitle, style: TextStyle(color: luma.textPrimary, fontSize: 16)),
         content: Text(
-          'This writes the records below, then makes the tag permanently '
-          "read-only. It can never be written to again — not by luma, not "
-          'by any other app.',
+          t.nfcWriteLockBody,
           style: TextStyle(color: luma.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+            child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text('Write & lock', style: TextStyle(color: luma.danger)),
+            child: Text(t.nfcWriteLockAction, style: TextStyle(color: luma.danger)),
           ),
         ],
       ),
@@ -582,6 +586,7 @@ class _OverflowButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       height: 44,
       width: 44,
@@ -590,7 +595,7 @@ class _OverflowButton extends StatelessWidget {
         border: Border.all(color: luma.border),
       ),
       child: PopupMenuButton<String>(
-        tooltip: 'More',
+        tooltip: t.commonMore,
         color: luma.surface,
         icon: Icon(Icons.more_vert_rounded, color: luma.textSecondary, size: 20),
         onSelected: (value) {
@@ -610,17 +615,17 @@ class _OverflowButton extends StatelessWidget {
           PopupMenuItem(
             value: 'template',
             enabled: onSaveTemplate != null,
-            child: Text('Save as template', style: TextStyle(color: luma.textPrimary, fontSize: 13.5)),
+            child: Text(t.nfcSaveAsTemplate, style: TextStyle(color: luma.textPrimary, fontSize: 13.5)),
           ),
           PopupMenuItem(
             value: 'lock',
             enabled: onLockAndWrite != null,
-            child: Text('Write & lock (read-only)', style: TextStyle(color: luma.danger, fontSize: 13.5)),
+            child: Text(t.nfcWriteLockMenu, style: TextStyle(color: luma.danger, fontSize: 13.5)),
           ),
           const PopupMenuDivider(),
           PopupMenuItem(
             value: 'reset',
-            child: Text('Start over', style: TextStyle(color: luma.textPrimary, fontSize: 13.5)),
+            child: Text(t.nfcStartOver, style: TextStyle(color: luma.textPrimary, fontSize: 13.5)),
           ),
         ],
       ),
@@ -679,6 +684,7 @@ class _TagInfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     int? used;
     try {
       used = NdefMessage(records.map((r) => r.toNdefRecord()).toList()).byteLength;
@@ -696,19 +702,19 @@ class _TagInfoCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  tag.techLabel ?? 'NFC tag',
+                  tag.techLabel ?? t.nfcGenericTagName,
                   style: TextStyle(color: luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
                 ),
               ),
               if (tag.isLocked)
-                _Badge(label: 'Read-only', color: luma.danger)
+                _Badge(label: t.nfcTagReadOnly, color: luma.danger)
               else if (!tag.isNdef)
-                _Badge(label: 'Blank — will format', color: luma.textMuted),
+                _Badge(label: t.nfcTagBlankWillFormat, color: luma.textMuted),
             ],
           ),
           if (tag.uid != null) ...[
             const SizedBox(height: 6),
-            Text('UID ${tag.uid}', style: TextStyle(color: luma.textMuted, fontSize: 12)),
+            Text(t.nfcTagUid(tag.uid!), style: TextStyle(color: luma.textMuted, fontSize: 12)),
           ],
           if (used != null && max > 0) ...[
             const SizedBox(height: 12),
@@ -722,7 +728,7 @@ class _TagInfoCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            Text('$used / $max bytes', style: TextStyle(color: luma.textMuted, fontSize: 11.5)),
+            Text(t.nfcTagBytesUsed(used, max), style: TextStyle(color: luma.textMuted, fontSize: 11.5)),
           ],
         ],
       ),
@@ -754,9 +760,10 @@ class _BusyCardState extends State<_BusyCard> with SingleTickerProviderStateMixi
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final label = widget.mode == _BusyMode.scanning
-        ? 'Hold a tag against your phone'
-        : 'Hold the tag you want to write to';
+        ? t.nfcBusyScanLabel
+        : t.nfcBusyWriteLabel;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -781,12 +788,12 @@ class _BusyCardState extends State<_BusyCard> with SingleTickerProviderStateMixi
             ),
             const SizedBox(height: 8),
             Text(
-              'Keep it flat against the back of the phone until it beeps or vibrates.',
+              t.nfcBusyHint,
               textAlign: TextAlign.center,
               style: TextStyle(color: luma.textMuted, fontSize: 12.5),
             ),
             const SizedBox(height: 20),
-            LumaGhostButton(label: 'Cancel', icon: Icons.close_rounded, onTap: widget.onCancel),
+            LumaGhostButton(label: t.commonCancel, icon: Icons.close_rounded, onTap: widget.onCancel),
           ],
         ),
       ),
@@ -822,10 +829,8 @@ class _TemplatesTab extends StatelessWidget {
             child: Center(
               child: LumaEmptyState(
                 icon: Icons.bookmark_add_rounded,
-                title: 'No templates yet',
-                subtitle: 'Build a set of records in the Editor tab, then '
-                    'save it here to write the same tag content again and '
-                    'again — handy for a batch of stickers.',
+                title: L.of(context).nfcNoTemplatesTitle,
+                subtitle: L.of(context).nfcNoTemplatesBody,
               ),
             ),
           );
@@ -851,24 +856,24 @@ class _TemplatesTab extends StatelessWidget {
 
   Future<void> _confirmDeleteTemplate(BuildContext context, NfcTagTemplate template) async {
     final luma = context.luma;
+    final t = L.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: luma.surface,
-        title: Text('Delete template?', style: TextStyle(color: luma.textPrimary, fontSize: 16)),
+        title: Text(t.nfcDeleteTemplateTitle, style: TextStyle(color: luma.textPrimary, fontSize: 16)),
         content: Text(
-          'This removes "${template.name}" — tags already written with it '
-          'keep their content.',
+          t.nfcDeleteTemplateBody(template.name),
           style: TextStyle(color: luma.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+            child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text('Delete', style: TextStyle(color: luma.danger)),
+            child: Text(t.commonDelete, style: TextStyle(color: luma.danger)),
           ),
         ],
       ),
@@ -886,8 +891,9 @@ class _TemplateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final kinds = template.records
-        .map((r) => nfcRecordKindMeta(r.kind).label)
+        .map((r) => nfcRecordKindLabel(t, r.kind))
         .toSet()
         .join(' · ');
     return LumaCard(
@@ -909,9 +915,8 @@ class _TemplateCard extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   template.records.isEmpty
-                      ? 'No records'
-                      : '${template.records.length} record'
-                          '${template.records.length == 1 ? '' : 's'} · $kinds',
+                      ? t.nfcNoRecords
+                      : t.nfcTemplateRecordsSummary(template.records.length, kinds),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
@@ -920,9 +925,9 @@ class _TemplateCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 4),
-          LumaGhostButton(label: 'Use', icon: Icons.edit_rounded, onTap: onUse),
+          LumaGhostButton(label: t.nfcUseTemplate, icon: Icons.edit_rounded, onTap: onUse),
           IconButton(
-            tooltip: 'Delete',
+            tooltip: t.commonDelete,
             onPressed: onDelete,
             icon: Icon(Icons.delete_outline_rounded, color: luma.textMuted, size: 20),
           ),
@@ -960,14 +965,14 @@ class _HistoryTab extends StatelessWidget {
             child: Center(
               child: LumaEmptyState(
                 icon: Icons.history_rounded,
-                title: 'No history yet',
-                subtitle: 'Every tag you scan or write shows up here, so you '
-                    'can revisit what was on it.',
+                title: L.of(context).nfcNoHistoryTitle,
+                subtitle: L.of(context).nfcNoHistoryBody,
               ),
             ),
           );
         }
         final luma = context.luma;
+        final t = L.of(context);
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
           itemCount: history.length + 1,
@@ -978,7 +983,7 @@ class _HistoryTab extends StatelessWidget {
                 child: TextButton.icon(
                   onPressed: () => _confirmClear(context),
                   icon: Icon(Icons.delete_sweep_rounded, size: 16, color: luma.textSecondary),
-                  label: Text('Clear history', style: TextStyle(color: luma.textSecondary, fontSize: 12.5)),
+                  label: Text(t.nfcClearHistory, style: TextStyle(color: luma.textSecondary, fontSize: 12.5)),
                 ),
               );
             }
@@ -999,24 +1004,24 @@ class _HistoryTab extends StatelessWidget {
 
   Future<void> _confirmClear(BuildContext context) async {
     final luma = context.luma;
+    final t = L.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: luma.surface,
-        title: Text('Clear history?', style: TextStyle(color: luma.textPrimary, fontSize: 16)),
+        title: Text(t.nfcClearHistoryTitle, style: TextStyle(color: luma.textPrimary, fontSize: 16)),
         content: Text(
-          'Every scan and write in the list is removed. Saved templates are '
-          'unaffected.',
+          t.nfcClearHistoryBody,
           style: TextStyle(color: luma.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+            child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text('Clear', style: TextStyle(color: luma.danger)),
+            child: Text(t.commonClear, style: TextStyle(color: luma.danger)),
           ),
         ],
       ),
@@ -1030,18 +1035,21 @@ class _HistoryTab extends StatelessWidget {
     ValueChanged<NfcHistoryEntry> onReopen,
   ) {
     final luma = context.luma;
+    final t = L.of(context);
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: luma.surface,
         title: Text(
-          entry.direction == NfcHistoryDirection.written ? 'Written tag' : 'Scanned tag',
+          entry.direction == NfcHistoryDirection.written
+              ? t.nfcWrittenTagTitle
+              : t.nfcScannedTagTitle,
           style: TextStyle(color: luma.textPrimary, fontSize: 16),
         ),
         content: SizedBox(
           width: lumaDialogWidth(ctx, 360),
           child: entry.records.isEmpty
-              ? Text('No records.', style: TextStyle(color: luma.textMuted))
+              ? Text(t.nfcNoRecords, style: TextStyle(color: luma.textMuted))
               : SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -1059,7 +1067,7 @@ class _HistoryTab extends StatelessWidget {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  nfcRecordSummary(record),
+                                  nfcRecordSummary(t, record),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(color: luma.textPrimary, fontSize: 13),
@@ -1075,7 +1083,7 @@ class _HistoryTab extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('Close', style: TextStyle(color: luma.textSecondary)),
+            child: Text(t.commonClose, style: TextStyle(color: luma.textSecondary)),
           ),
           if (entry.records.isNotEmpty)
             TextButton(
@@ -1083,7 +1091,7 @@ class _HistoryTab extends StatelessWidget {
                 Navigator.of(ctx).pop();
                 onReopen(entry);
               },
-              child: Text('Load into editor', style: TextStyle(color: luma.accent)),
+              child: Text(t.nfcLoadIntoEditor, style: TextStyle(color: luma.accent)),
             ),
         ],
       ),
@@ -1100,7 +1108,9 @@ class _HistoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final written = entry.direction == NfcHistoryDirection.written;
+    final tech = entry.techLabel ?? t.nfcGenericTagName;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
@@ -1120,18 +1130,21 @@ class _HistoryCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '${written ? 'Written' : 'Scanned'} · ${entry.techLabel ?? 'NFC tag'}',
+                      written
+                          ? t.nfcHistoryWrittenLine(tech)
+                          : t.nfcHistoryScannedLine(tech),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      _relativeTime(entry.timestamp) +
-                          (entry.records.isEmpty
-                              ? ''
-                              : ' · ${entry.records.length} record'
-                                  '${entry.records.length == 1 ? '' : 's'}'),
+                      entry.records.isEmpty
+                          ? _relativeTime(t, entry.timestamp)
+                          : t.nfcHistoryTimeAndRecords(
+                              _relativeTime(t, entry.timestamp),
+                              entry.records.length,
+                            ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: luma.textMuted, fontSize: 12),
@@ -1145,7 +1158,7 @@ class _HistoryCard extends StatelessWidget {
                   child: Icon(Icons.lock_rounded, color: luma.textMuted, size: 16),
                 ),
               IconButton(
-                tooltip: 'Delete',
+                tooltip: t.commonDelete,
                 onPressed: onDelete,
                 icon: Icon(Icons.delete_outline_rounded, color: luma.textMuted, size: 20),
               ),
@@ -1157,11 +1170,11 @@ class _HistoryCard extends StatelessWidget {
   }
 }
 
-String _relativeTime(DateTime time) {
+String _relativeTime(L t, DateTime time) {
   final diff = DateTime.now().difference(time);
-  if (diff.inMinutes < 1) return 'Just now';
-  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-  if (diff.inHours < 24) return '${diff.inHours}h ago';
-  if (diff.inDays < 7) return '${diff.inDays}d ago';
+  if (diff.inMinutes < 1) return t.nfcTimeJustNow;
+  if (diff.inMinutes < 60) return t.nfcTimeMinutesAgo(diff.inMinutes);
+  if (diff.inHours < 24) return t.nfcTimeHoursAgo(diff.inHours);
+  if (diff.inDays < 7) return t.nfcTimeDaysAgo(diff.inDays);
   return '${time.day.toString().padLeft(2, '0')}/${time.month.toString().padLeft(2, '0')}/${time.year}';
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/luma_theme.dart';
 import 'ffmpeg_installer.dart';
 import 'ffmpeg_service.dart';
@@ -23,6 +24,7 @@ class _FfmpegSetupState extends State<FfmpegSetup> {
   bool _checking = false;
 
   Future<void> _install() async {
+    final t = L.of(context);
     setState(() {
       _installing = true;
       _progress = null;
@@ -41,7 +43,7 @@ class _FfmpegSetupState extends State<FfmpegSetup> {
       } else {
         setState(() {
           _installing = false;
-          _error = 'Installed, but ffmpeg still could not be started.';
+          _error = t.ffmpegInstalledNotStarted;
         });
       }
     } on FfmpegInstallException catch (e) {
@@ -54,12 +56,13 @@ class _FfmpegSetupState extends State<FfmpegSetup> {
       if (!mounted) return;
       setState(() {
         _installing = false;
-        _error = 'Install failed: $e';
+        _error = t.ffmpegInstallFailed('$e');
       });
     }
   }
 
   Future<void> _recheck() async {
+    final t = L.of(context);
     setState(() {
       _checking = true;
       _error = null;
@@ -71,13 +74,14 @@ class _FfmpegSetupState extends State<FfmpegSetup> {
     if (ok) {
       widget.onReady();
     } else {
-      setState(() => _error = 'Still not found.');
+      setState(() => _error = t.ffmpegStillNotFound);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -98,7 +102,7 @@ class _FfmpegSetupState extends State<FfmpegSetup> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'ffmpeg is required',
+                      t.ffmpegSetupTitle,
                       style: TextStyle(
                         color: luma.textPrimary,
                         fontSize: 14,
@@ -108,10 +112,8 @@ class _FfmpegSetupState extends State<FfmpegSetup> {
                     const SizedBox(height: 3),
                     Text(
                       FfmpegInstaller.supported
-                          ? 'Audio & video tools need ffmpeg. Install it once '
-                              'and luma will keep using it.'
-                          : 'Audio & video tools need ffmpeg on your PATH. '
-                              'Automatic install is Windows-only.',
+                          ? t.ffmpegSetupBodyInstall
+                          : t.ffmpegSetupBodyManual,
                       style:
                           TextStyle(color: luma.textSecondary, fontSize: 12.5),
                     ),
@@ -134,8 +136,10 @@ class _FfmpegSetupState extends State<FfmpegSetup> {
             const SizedBox(height: 8),
             Text(
               _progress == null
-                  ? 'Preparing…'
-                  : 'Downloading ffmpeg… ${(_progress! * 100).toStringAsFixed(0)}%',
+                  ? t.ffmpegSetupPreparing
+                  : t.ffmpegSetupDownloading(
+                      (_progress! * 100).toStringAsFixed(0),
+                    ),
               style: TextStyle(color: luma.textMuted, fontSize: 12),
             ),
           ] else ...[
@@ -151,14 +155,16 @@ class _FfmpegSetupState extends State<FfmpegSetup> {
               children: [
                 if (FfmpegInstaller.supported)
                   _SetupButton(
-                    label: 'Install ffmpeg',
+                    label: t.ffmpegSetupInstall,
                     icon: Icons.download_rounded,
                     primary: true,
                     onTap: _install,
                   ),
                 if (FfmpegInstaller.supported) const SizedBox(width: 10),
                 _SetupButton(
-                  label: _checking ? 'Checking…' : 'Re-check',
+                  label: _checking
+                      ? t.ffmpegSetupChecking
+                      : t.ffmpegSetupRecheck,
                   icon: Icons.refresh_rounded,
                   primary: false,
                   onTap: _checking ? null : _recheck,

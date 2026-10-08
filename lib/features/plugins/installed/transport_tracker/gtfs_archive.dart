@@ -4,6 +4,8 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../l10n/current_l.dart';
+
 /// Thrown when the static GTFS archive can't be read the way this code needs.
 class GtfsArchiveException implements Exception {
   GtfsArchiveException(this.message);
@@ -58,8 +60,7 @@ class GtfsArchive {
     ).timeout(const Duration(seconds: 60));
     if (response.statusCode != 206 && response.statusCode != 200) {
       throw GtfsArchiveException(
-          'The transit archive does not support partial downloads '
-          '(HTTP ${response.statusCode}).');
+          currentL.transitArchivePartialUnsupported(response.statusCode));
     }
     return Uint8List.fromList(response.bodyBytes);
   }
@@ -70,7 +71,7 @@ class GtfsArchive {
     final length = response.headers['content-length'];
     final size = length == null ? null : int.tryParse(length);
     if (size == null || size <= 0) {
-      throw GtfsArchiveException('Could not determine the archive size.');
+      throw GtfsArchiveException(currentL.transitArchiveSizeUnknown);
     }
     return size;
   }
@@ -88,7 +89,7 @@ class GtfsArchive {
     final tail = await _rangeGet(client, tailStart, size - 1);
     final eocd = _lastIndexOfSignature(tail, 0x06054b50);
     if (eocd < 0) {
-      throw GtfsArchiveException('The archive index is unreadable.');
+      throw GtfsArchiveException(currentL.transitArchiveIndexUnreadable);
     }
 
     final view = ByteData.sublistView(tail);
@@ -100,7 +101,8 @@ class GtfsArchive {
     if (cdOffset == 0xffffffff || cdSize == 0xffffffff || entryCount == 0xffff) {
       final locator = _lastIndexOfSignature(tail, 0x07064b50);
       if (locator < 0) {
-        throw GtfsArchiveException('The archive index is unreadable (zip64).');
+        throw GtfsArchiveException(
+            currentL.transitArchiveIndexUnreadableZip64);
       }
       final z64Offset = view.getUint64(locator + 8, Endian.little);
       final z64 = await _rangeGet(client, z64Offset, z64Offset + 55);
@@ -115,7 +117,7 @@ class GtfsArchive {
 
     final entry = _findEntry(centralDirectory, name);
     if (entry == null) {
-      throw GtfsArchiveException('$name is not in the archive.');
+      throw GtfsArchiveException(currentL.transitArchiveMemberMissing(name));
     }
 
     // The local header repeats the name/extra lengths, and they can differ

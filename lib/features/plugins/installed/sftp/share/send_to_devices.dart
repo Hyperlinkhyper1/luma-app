@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../p2p/peer_sync_scope.dart';
 import '../../../../../theme/luma_theme.dart';
 import 'device_share_repository.dart';
@@ -81,6 +82,7 @@ class _SendSheetState extends State<_SendSheet> {
   Future<void> _send(DeviceShareRepository repository) async {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
+    final t = L.of(context);
     setState(() {
       _sending = true;
       _done = 0;
@@ -101,7 +103,7 @@ class _SendSheetState extends State<_SendSheet> {
     if (files.isEmpty) {
       setState(() {
         _sending = false;
-        _error = 'None of those could be read from this device.';
+        _error = t.sendToDevicesNoneReadable;
       });
       return;
     }
@@ -120,15 +122,12 @@ class _SendSheetState extends State<_SendSheet> {
 
     final connected = repository.connectedCount;
     final count = files.length;
-    final noun = count == 1 ? 'file' : 'files';
     messenger.showSnackBar(
       SnackBar(
         content: Text(
           connected > 0
-              ? '$count $noun on the way to your other '
-                  '${connected == 1 ? 'device' : 'devices'}.'
-              : '$count $noun ready — they will go over as soon as another '
-                  'device is on this network.',
+              ? t.sendToDevicesOnTheWay(count, connected)
+              : t.sendToDevicesQueued(count),
         ),
       ),
     );
@@ -140,6 +139,7 @@ class _SendSheetState extends State<_SendSheet> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final repository = DeviceShareScope.of(context);
 
     return SafeArea(
@@ -162,7 +162,7 @@ class _SendSheetState extends State<_SendSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Send to your devices',
+                          t.sendToDevicesTitle,
                           style: TextStyle(
                             color: luma.textPrimary,
                             fontSize: 16,
@@ -172,7 +172,7 @@ class _SendSheetState extends State<_SendSheet> {
                         Text(
                           widget.items.length == 1
                               ? widget.items.first.name
-                              : '${widget.items.length} items',
+                              : t.sendToDevicesItemCount(widget.items.length),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -196,8 +196,8 @@ class _SendSheetState extends State<_SendSheet> {
                   controller: _folder,
                   enabled: !_sending,
                   decoration: InputDecoration(
-                    labelText: 'Folder in the shared folder',
-                    hintText: 'Leave empty to drop them at the top',
+                    labelText: t.sendToDevicesFolderLabel,
+                    hintText: t.sendToDevicesFolderHint,
                     isDense: true,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -217,8 +217,8 @@ class _SendSheetState extends State<_SendSheet> {
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
                 child: LumaPrimaryButton(
                   label: _sending
-                      ? 'Copying $_done of ${widget.items.length}…'
-                      : 'Send',
+                      ? t.sendToDevicesCopying(_done, widget.items.length)
+                      : t.commonSend,
                   icon: Icons.send_rounded,
                   onTap: _sending ? null : () => _send(repository),
                 ),
@@ -240,6 +240,7 @@ class _Devices extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final peerSync = PeerSyncScope.of(context);
 
     return AnimatedBuilder(
@@ -251,11 +252,8 @@ class _Devices extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
             child: Text(
               peerSync.isRunning
-                  ? 'No other device on this network right now. What you send '
-                      'waits in the shared folder and goes over the moment one '
-                      'turns up.'
-                  : 'Device sync is off. Turn it on in Settings → Sync & '
-                      'account and your other devices will pick these up.',
+                  ? t.sendToDevicesNoPeers
+                  : t.sendToDevicesSyncOff,
               style: TextStyle(
                 color: luma.textSecondary,
                 fontSize: 12,
@@ -304,7 +302,7 @@ class _Devices extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        peer.connected ? 'here' : 'away',
+                        peer.connected ? t.sendToDevicesHere : t.sendToDevicesAway,
                         style: TextStyle(color: luma.textMuted, fontSize: 11),
                       ),
                     ],
@@ -324,12 +322,11 @@ class _Unavailable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       child: Text(
-        'The shared folder is not running on this device. It comes with Orbit and Nova '
-        'and needs device sync switched on under Settings → Sync & account, '
-        'on this device and the one you want to send to.',
+        t.sendToDevicesUnavailable,
         style: TextStyle(color: luma.textSecondary, fontSize: 12.5, height: 1.5),
       ),
     );

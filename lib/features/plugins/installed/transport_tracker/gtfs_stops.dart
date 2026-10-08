@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
+
 /// A stop or station from the static GTFS dataset.
 class GtfsStop {
   const GtfsStop(this.id, this.name, this.lat, this.lon);
@@ -126,7 +128,7 @@ class GtfsStopsCache {
 
       final stops = _parseStopsCsv(utf8.decode(raw, allowMalformed: true));
       if (stops.isEmpty) {
-        throw GtfsStopsException('The stop list came back empty.');
+        throw GtfsStopsException(currentL.transitStopsEmpty);
       }
       final file = await _cacheFile(directory);
       await file.writeAsString(_encodeCacheFile(stops), flush: true);
@@ -146,8 +148,7 @@ class GtfsStopsCache {
     ).timeout(const Duration(seconds: 60));
     if (response.statusCode != 206 && response.statusCode != 200) {
       throw GtfsStopsException(
-          'The stop archive does not support partial downloads '
-          '(HTTP ${response.statusCode}).');
+          currentL.transitArchivePartialUnsupported(response.statusCode));
     }
     return Uint8List.fromList(response.bodyBytes);
   }
@@ -159,7 +160,7 @@ class GtfsStopsCache {
     final length = response.headers['content-length'];
     final size = length == null ? null : int.tryParse(length);
     if (size == null || size <= 0) {
-      throw GtfsStopsException('Could not determine the archive size.');
+      throw GtfsStopsException(currentL.transitArchiveSizeUnknown);
     }
     return size;
   }
@@ -176,7 +177,9 @@ class GtfsStopsCache {
     final tailStart = size - tailLength < 0 ? 0 : size - tailLength;
     final tail = await _rangeGet(client, tailStart, size - 1);
     final eocd = _lastIndexOfSignature(tail, 0x06054b50);
-    if (eocd < 0) throw GtfsStopsException('The archive index is unreadable.');
+    if (eocd < 0) {
+      throw GtfsStopsException(currentL.transitArchiveIndexUnreadable);
+    }
 
     final view = ByteData.sublistView(tail);
     var entryCount = view.getUint16(eocd + 10, Endian.little);
@@ -187,7 +190,8 @@ class GtfsStopsCache {
     if (cdOffset == 0xffffffff || cdSize == 0xffffffff || entryCount == 0xffff) {
       final locator = _lastIndexOfSignature(tail, 0x07064b50);
       if (locator < 0) {
-        throw GtfsStopsException('The archive index is unreadable (zip64).');
+        throw GtfsStopsException(
+            currentL.transitArchiveIndexUnreadableZip64);
       }
       final z64Offset = view.getUint64(locator + 8, Endian.little);
       final z64 = await _rangeGet(client, z64Offset, z64Offset + 55);
@@ -202,7 +206,8 @@ class GtfsStopsCache {
 
     final member = _findMember(centralDirectory, _memberName);
     if (member == null) {
-      throw GtfsStopsException('$_memberName is not in the archive.');
+      throw GtfsStopsException(
+          currentL.transitArchiveMemberMissing(_memberName));
     }
 
     // The local header repeats the name/extra lengths, and they can differ
@@ -332,7 +337,7 @@ class GtfsStopsCache {
     final latIndex = header.indexOf('stop_lat');
     final lonIndex = header.indexOf('stop_lon');
     if (idIndex < 0 || nameIndex < 0 || latIndex < 0 || lonIndex < 0) {
-      throw GtfsStopsException('The stop list is missing expected columns.');
+      throw GtfsStopsException(currentL.transitStopsMissingColumns);
     }
 
     final out = <String, GtfsStop>{};

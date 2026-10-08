@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/minecraft_launcher_database.dart';
 import '../logic/active_launch_registry.dart';
@@ -23,6 +24,7 @@ class LibraryTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repository = MinecraftLauncherScope.of(context);
+    final t = L.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
       child: Column(
@@ -32,7 +34,7 @@ class LibraryTab extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Instances',
+                  t.mcLauncherInstancesTitle,
                   style: TextStyle(
                     color: context.luma.textPrimary,
                     fontSize: 20,
@@ -41,7 +43,7 @@ class LibraryTab extends StatelessWidget {
                 ),
               ),
               LumaGhostButton(
-                label: 'Open folder',
+                label: t.mcLauncherOpenFolder,
                 icon: Icons.folder_open_rounded,
                 onTap: () async {
                   final dir = await McPaths.instancesRoot();
@@ -50,13 +52,13 @@ class LibraryTab extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               LumaGhostButton(
-                label: 'Import modpack',
+                label: t.mcLauncherImportModpack,
                 icon: Icons.upload_file_rounded,
                 onTap: () => _importModpack(context, repository),
               ),
               const SizedBox(width: 10),
               LumaPrimaryButton(
-                label: 'New instance',
+                label: t.mcLauncherNewInstance,
                 icon: Icons.add_rounded,
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const CreateInstanceWizard()),
@@ -70,10 +72,10 @@ class LibraryTab extends StatelessWidget {
               stream: repository.watchInstances(),
               builder: (context, instances) {
                 if (instances.isEmpty) {
-                  return const LumaEmptyState(
+                  return LumaEmptyState(
                     icon: Icons.videogame_asset_outlined,
-                    title: 'No instances yet',
-                    subtitle: 'Create one to install Minecraft and start playing.',
+                    title: t.mcLauncherNoInstances,
+                    subtitle: t.mcLauncherNoInstancesSubtitle,
                   );
                 }
                 return HoverSyncScroll(
@@ -100,6 +102,7 @@ class LibraryTab extends StatelessWidget {
   }
 
   Future<void> _importModpack(BuildContext context, MinecraftLauncherRepository repository) async {
+    final t = L.of(context);
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['mrpack', 'zip'],
@@ -107,7 +110,7 @@ class LibraryTab extends StatelessWidget {
     final path = result?.files.single.path;
     if (path == null) return;
 
-    final notifier = ValueNotifier<_ImportStatus>(_ImportStatus('Starting…', null));
+    final notifier = ValueNotifier<_ImportStatus>(_ImportStatus(t.mcLauncherImportStarting, null));
     final navigator = Navigator.of(context);
     unawaited(showDialog<void>(
       context: context,
@@ -147,7 +150,7 @@ class _ImportProgressDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     return AlertDialog(
-      title: const Text('Importing modpack'),
+      title: Text(L.of(context).mcLauncherImportingModpack),
       content: SizedBox(
         width: lumaDialogWidth(context, 380),
         child: ValueListenableBuilder<_ImportStatus>(
@@ -183,11 +186,11 @@ class _InstanceCard extends StatelessWidget {
   final MinecraftLauncherRepository repository;
 
   Future<void> _play(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final addAccountFirst = L.of(context).mcLauncherAddAccountFirst;
     final account = await repository.watchActiveAccount().first;
     if (account == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add an account under the Accounts tab first.')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(addAccountFirst)));
       return;
     }
 

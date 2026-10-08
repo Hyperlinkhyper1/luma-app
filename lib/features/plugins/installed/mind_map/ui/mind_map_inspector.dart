@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/mind_map_database.dart';
 import '../mind_map_repository.dart';
@@ -100,6 +101,7 @@ class _MindMapInspectorState extends State<MindMapInspector> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Container(
       decoration: BoxDecoration(
@@ -117,7 +119,7 @@ class _MindMapInspectorState extends State<MindMapInspector> {
               children: [
                 Expanded(
                   child: Text(
-                    'Node details',
+                    t.mindMapInspectorTitle,
                     style: TextStyle(
                       color: luma.textPrimary,
                       fontWeight: FontWeight.w700,
@@ -126,14 +128,14 @@ class _MindMapInspectorState extends State<MindMapInspector> {
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Close',
+                  tooltip: t.commonClose,
                   icon: const Icon(Icons.close_rounded),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            _FieldLabel('Label'),
+            _FieldLabel(t.mindMapFieldLabel),
             TextField(
               controller: _label,
               autofocus: true,
@@ -142,18 +144,18 @@ class _MindMapInspectorState extends State<MindMapInspector> {
               decoration: const InputDecoration(isDense: true),
             ),
             const SizedBox(height: 16),
-            _FieldLabel('Note'),
+            _FieldLabel(t.mindMapFieldNote),
             TextField(
               controller: _note,
               maxLines: 6,
               minLines: 3,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 isDense: true,
-                hintText: 'Anything that does not belong on the canvas',
+                hintText: t.mindMapNoteHint,
               ),
             ),
             const SizedBox(height: 16),
-            _FieldLabel('Link'),
+            _FieldLabel(t.mindMapFieldLink),
             TextField(
               controller: _link,
               keyboardType: TextInputType.url,
@@ -165,7 +167,7 @@ class _MindMapInspectorState extends State<MindMapInspector> {
               ),
             ),
             const SizedBox(height: 18),
-            _FieldLabel('Colour'),
+            _FieldLabel(t.mindMapFieldColour),
             const SizedBox(height: 4),
             Wrap(
               spacing: 8,
@@ -191,12 +193,12 @@ class _MindMapInspectorState extends State<MindMapInspector> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 LumaGhostButton(
-                  label: 'Cancel',
+                  label: t.commonCancel,
                   onTap: () => Navigator.pop(context),
                 ),
                 const SizedBox(width: 10),
                 LumaPrimaryButton(
-                  label: 'Save',
+                  label: t.commonSave,
                   icon: Icons.check_rounded,
                   onTap: _save,
                 ),
@@ -245,13 +247,14 @@ class _Swatch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Semantics(
       button: true,
       selected: selected,
-      label: inherit ? 'Inherit branch colour' : 'Colour swatch',
+      label: inherit ? t.mindMapInheritColour : t.mindMapColourSwatch,
       child: Tooltip(
-        message: inherit ? 'Inherit from branch' : '',
+        message: inherit ? t.mindMapInheritFromBranch : '',
         child: MouseRegion(
           cursor: SystemMouseCursors.click,
           child: GestureDetector(

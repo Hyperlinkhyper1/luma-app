@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
+
 class PresetLightSetting {
   const PresetLightSetting({
     required this.lightId,
@@ -32,7 +34,7 @@ class PresetLightSetting {
         hue != null && (hue < 0 || hue > 359) ||
         saturation != null && (saturation < 0 || saturation > 1) ||
         (hue == null) != (saturation == null)) {
-      throw const FormatException('Invalid preset lamp settings.');
+      throw FormatException(currentL.smartHomeInvalidPresetLamp);
     }
     return PresetLightSetting(
       lightId: json['lightId'] as String,

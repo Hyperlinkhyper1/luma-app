@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../l10n/current_l.dart';
 import 'mc_models.dart';
 
 /// Raised when a Minecraft platform answers with something the UI should
@@ -61,21 +62,21 @@ class ModrinthApi {
       return jsonDecode(utf8.decode(response.bodyBytes));
     }
     if (response.statusCode == 404) {
-      throw McApiException('Modrinth has no user by that name.',
+      throw McApiException(currentL.accountOverviewModrinthNoUser,
           statusCode: 404);
     }
     if (response.statusCode == 401 || response.statusCode == 403) {
       throw McApiException(
-        'Modrinth rejected the token. Check it has the analytics scope.',
+        currentL.accountOverviewModrinthTokenRejected,
         statusCode: response.statusCode,
       );
     }
     if (response.statusCode == 429) {
-      throw McApiException('Modrinth rate limit reached. Try again shortly.',
+      throw McApiException(currentL.accountOverviewModrinthRateLimited,
           statusCode: 429);
     }
     throw McApiException(
-      'Modrinth returned HTTP ${response.statusCode}.',
+      currentL.accountOverviewModrinthHttpError('${response.statusCode}'),
       statusCode: response.statusCode,
     );
   }
@@ -87,7 +88,7 @@ class ModrinthApi {
   }) async {
     final user = await _get('$_base/user/$username', token: token);
     if (user is! Map<String, dynamic>) {
-      throw McApiException('Modrinth returned an unexpected user payload.');
+      throw McApiException(currentL.accountOverviewModrinthUnexpectedPayload);
     }
 
     final id = user['id'] as String? ?? username;
@@ -226,13 +227,12 @@ class CurseForgeApi {
     }
     if (response.statusCode == 401 || response.statusCode == 403) {
       throw McApiException(
-        'CurseForge rejected the API key. Generate one in the CurseForge '
-        'for Studios console.',
+        currentL.accountOverviewCurseforgeKeyRejected,
         statusCode: response.statusCode,
       );
     }
     throw McApiException(
-      'CurseForge returned HTTP ${response.statusCode}.',
+      currentL.accountOverviewCurseforgeHttpError('${response.statusCode}'),
       statusCode: response.statusCode,
     );
   }
@@ -261,15 +261,15 @@ class CurseForgeApi {
   /// Minecraft ones are named; anything else falls back to a neutral label
   /// rather than a wrong one.
   static String _kindFromClassId(int? classId) => switch (classId) {
-        6 => 'mod',
-        12 => 'resourcepack',
-        17 => 'world',
-        4471 => 'modpack',
-        4546 => 'customization',
-        4559 => 'addon',
-        6552 => 'shader',
-        6945 => 'datapack',
-        _ => 'project',
+        6 => currentL.accountOverviewKindMod,
+        12 => currentL.accountOverviewKindResourcePack,
+        17 => currentL.accountOverviewKindWorld,
+        4471 => currentL.accountOverviewKindModpack,
+        4546 => currentL.accountOverviewKindCustomization,
+        4559 => currentL.accountOverviewKindAddon,
+        6552 => currentL.accountOverviewKindShader,
+        6945 => currentL.accountOverviewKindDataPack,
+        _ => currentL.accountOverviewKindProject,
       };
 
   /// Every Minecraft project owned by an author id.

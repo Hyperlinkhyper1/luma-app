@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'gallery_cache.dart';
+import 'gallery_categories.dart';
 import 'gallery_file_editor.dart';
 import 'gallery_media.dart';
 import 'gallery_repository.dart';
@@ -116,19 +118,20 @@ class _GalleryDetailsPanelState extends State<GalleryDetailsPanel> {
       widget.onClose();
       return;
     }
+    final t = L.of(context);
     final discard = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Discard your changes?'),
-        content: const Text('The name and date you typed will be lost.'),
+        title: Text(t.galleryDetailsDiscardTitle),
+        content: Text(t.galleryDetailsDiscardBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Keep editing'),
+            child: Text(t.galleryDetailsKeepEditing),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Discard'),
+            child: Text(t.galleryDetailsDiscard),
           ),
         ],
       ),
@@ -194,7 +197,7 @@ class _GalleryDetailsPanelState extends State<GalleryDetailsPanel> {
     _stopEditing();
     // §8 success-feedback.
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Saved')),
+      SnackBar(content: Text(L.of(context).commonSaved)),
     );
   }
 
@@ -228,46 +231,50 @@ class _GalleryDetailsPanelState extends State<GalleryDetailsPanel> {
     );
   }
 
-  Widget _header(LumaPalette luma) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                _editing ? 'Edit details' : 'Details',
-                style: TextStyle(
-                  color: luma.textPrimary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
+  Widget _header(LumaPalette luma) {
+    final t = L.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              _editing ? t.galleryDetailsEditTitle : t.commonDetails,
+              style: TextStyle(
+                color: luma.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            if (!_editing)
-              IconButton(
-                // §1 aria-labels: an icon-only control needs a name.
-                tooltip: widget.repository.canEditFiles
-                    ? 'Edit name and date'
-                    : 'Editing is only available on the desktop app',
-                onPressed:
-                    widget.repository.canEditFiles ? _startEditing : null,
-                icon: Icon(
-                  Icons.edit_outlined,
-                  size: 18,
-                  color: widget.repository.canEditFiles
-                      ? luma.textSecondary
-                      : luma.textMuted,
-                ),
-              ),
+          ),
+          if (!_editing)
             IconButton(
-              tooltip: 'Close details',
-              onPressed: _requestClose,
-              icon: Icon(Icons.close_rounded, size: 18, color: luma.textSecondary),
+              // §1 aria-labels: an icon-only control needs a name.
+              tooltip: widget.repository.canEditFiles
+                  ? t.galleryDetailsEditTooltip
+                  : t.galleryDetailsEditDisabled,
+              onPressed:
+                  widget.repository.canEditFiles ? _startEditing : null,
+              icon: Icon(
+                Icons.edit_outlined,
+                size: 18,
+                color: widget.repository.canEditFiles
+                    ? luma.textSecondary
+                    : luma.textMuted,
+              ),
             ),
-          ],
-        ),
-      );
+          IconButton(
+            tooltip: t.galleryDetailsCloseTooltip,
+            onPressed: _requestClose,
+            icon: Icon(Icons.close_rounded, size: 18, color: luma.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
 
   List<Widget> _readOnly(LumaPalette luma, GalleryItem item) {
+    final t = L.of(context);
     final entry = widget.repository.cacheEntries[item.cacheKey];
     final format = GalleryFileEditor.extensionOf(item.name).toUpperCase();
 
@@ -281,43 +288,55 @@ class _GalleryDetailsPanelState extends State<GalleryDetailsPanel> {
         ),
       ),
       const SizedBox(height: 16),
-      _Section(label: 'File', luma: luma),
+      _Section(label: t.galleryDetailsSectionFile, luma: luma),
       _Row(
-        label: 'Format',
-        value: format.isEmpty ? 'Unknown' : format,
+        label: t.galleryDetailsFormat,
+        value: format.isEmpty ? t.commonUnknown : format,
         luma: luma,
       ),
       _SizeRow(item: item, repository: widget.repository, luma: luma),
       if (item.cloudOnly)
-        _Row(label: 'Stored', value: 'Online only — not on this PC', luma: luma),
+        _Row(
+          label: t.galleryDetailsStored,
+          value: t.galleryDetailsOnlineOnly,
+          luma: luma,
+        ),
       _PathRow(item: item, luma: luma),
       const SizedBox(height: 18),
-      _Section(label: 'Picture', luma: luma),
-      _Row(label: 'Taken', value: _formatDateTime(item.takenAt), luma: luma),
+      _Section(label: t.galleryDetailsSectionPicture, luma: luma),
+      _Row(
+        label: t.galleryDetailsTaken,
+        value: _formatDateTime(t, item.takenAt),
+        luma: luma,
+      ),
       if (item.width > 0 && item.height > 0)
         _Row(
-          label: 'Dimensions',
+          label: t.galleryDetailsDimensions,
           value: '${item.width} × ${item.height}',
           luma: luma,
         ),
       if (item.isVideo)
-        _Row(label: 'Length', value: formatDuration(item.duration), luma: luma),
+        _Row(
+          label: t.galleryDetailsLength,
+          value: formatDuration(item.duration),
+          luma: luma,
+        ),
       if (item.hasLocation)
         _Row(
-          label: 'Location',
+          label: t.galleryDetailsLocation,
           value: '${item.latitude!.toStringAsFixed(5)}, '
               '${item.longitude!.toStringAsFixed(5)}',
           luma: luma,
         ),
-      if (_smartLabels(entry).isNotEmpty) ...[
+      if (_smartLabels(t, entry).isNotEmpty) ...[
         const SizedBox(height: 18),
-        _Section(label: 'Recognised', luma: luma),
+        _Section(label: t.galleryDetailsSectionRecognised, luma: luma),
         const SizedBox(height: 4),
         Wrap(
           spacing: 6,
           runSpacing: 6,
           children: [
-            for (final label in _smartLabels(entry))
+            for (final label in _smartLabels(t, entry))
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -336,21 +355,22 @@ class _GalleryDetailsPanelState extends State<GalleryDetailsPanel> {
     ];
   }
 
-  List<String> _smartLabels(GalleryCacheEntry? entry) {
+  List<String> _smartLabels(L t, GalleryCacheEntry? entry) {
     if (entry == null) return const [];
     final buckets = <String>{
       for (final label in entry.labels)
         if (bucketForLabel(label) != null) bucketForLabel(label)!,
     };
     return [
-      if (entry.faceCount == 1) '1 face',
-      if (entry.faceCount > 1) '${entry.faceCount} faces',
-      ...buckets,
+      if (entry.faceCount > 0) t.galleryDetailsFaces(entry.faceCount),
+      for (final bucket in buckets) galleryBucketName(t, bucket),
     ];
   }
 
-  List<Widget> _editFields(LumaPalette luma) => [
-        _FieldLabel(text: 'File name', luma: luma),
+  List<Widget> _editFields(LumaPalette luma) {
+    final t = L.of(context);
+    return [
+        _FieldLabel(text: t.galleryDetailsFileName, luma: luma),
         const SizedBox(height: 6),
         TextField(
           controller: _nameController,
@@ -381,11 +401,13 @@ class _GalleryDetailsPanelState extends State<GalleryDetailsPanel> {
         ),
         const SizedBox(height: 6),
         Text(
-          'Keep the .${GalleryFileEditor.extensionOf(widget.item.name)} ending.',
+          t.galleryDetailsKeepExtension(
+            GalleryFileEditor.extensionOf(widget.item.name),
+          ),
           style: TextStyle(color: luma.textMuted, fontSize: 11),
         ),
         const SizedBox(height: 18),
-        _FieldLabel(text: 'Date taken', luma: luma),
+        _FieldLabel(text: t.galleryDetailsDateTaken, luma: luma),
         const SizedBox(height: 6),
         OutlinedButton.icon(
           onPressed: _saving ? null : _pickDate,
@@ -393,7 +415,7 @@ class _GalleryDetailsPanelState extends State<GalleryDetailsPanel> {
           label: Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              _formatDateTime(_takenAt ?? widget.item.takenAt),
+              _formatDateTime(t, _takenAt ?? widget.item.takenAt),
               style: TextStyle(color: luma.textPrimary, fontSize: 13),
             ),
           ),
@@ -409,8 +431,7 @@ class _GalleryDetailsPanelState extends State<GalleryDetailsPanel> {
         ),
         const SizedBox(height: 6),
         Text(
-          'Written as the file’s date on disk. The photo itself is not '
-          're-saved, so nothing is re-compressed.',
+          t.galleryDetailsDateNote,
           style: TextStyle(color: luma.textMuted, fontSize: 11),
         ),
         if (_saveError != null) ...[
@@ -437,32 +458,36 @@ class _GalleryDetailsPanelState extends State<GalleryDetailsPanel> {
             ),
           ),
         ],
-      ];
+    ];
+  }
 
-  Widget _editActions(LumaPalette luma) => Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: luma.border)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: LumaGhostButton(
-                label: 'Cancel',
-                onTap: _saving ? () {} : _stopEditing,
-              ),
+  Widget _editActions(LumaPalette luma) {
+    final t = L.of(context);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: luma.border)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: LumaGhostButton(
+              label: t.commonCancel,
+              onTap: _saving ? () {} : _stopEditing,
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: LumaPrimaryButton(
-                label: _saving ? 'Saving…' : 'Save',
-                icon: Icons.check_rounded,
-                onTap: _saving ? () {} : _save,
-              ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: LumaPrimaryButton(
+              label: _saving ? t.galleryDetailsSaving : t.commonSave,
+              icon: Icons.check_rounded,
+              onTap: _saving ? () {} : _save,
             ),
-          ],
-        ),
-      );
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _Section extends StatelessWidget {
@@ -550,18 +575,21 @@ class _SizeRow extends StatelessWidget {
   final LumaPalette luma;
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<int?>(
-        future: repository.fileSize(item),
-        initialData: item.sizeBytes,
-        builder: (context, snapshot) {
-          final bytes = snapshot.data;
-          return _Row(
-            label: 'Size',
-            value: bytes == null ? '—' : formatBytes(bytes),
-            luma: luma,
-          );
-        },
-      );
+  Widget build(BuildContext context) {
+    final t = L.of(context);
+    return FutureBuilder<int?>(
+      future: repository.fileSize(item),
+      initialData: item.sizeBytes,
+      builder: (context, snapshot) {
+        final bytes = snapshot.data;
+        return _Row(
+          label: t.commonSize,
+          value: bytes == null ? '—' : formatBytes(bytes),
+          luma: luma,
+        );
+      },
+    );
+  }
 }
 
 /// The folder the file sits in. Wrapped rather than truncated — a path you
@@ -574,6 +602,7 @@ class _PathRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final full = item.path ?? item.id;
     final separator = full.contains(r'\') ? r'\' : '/';
     final cut = full.lastIndexOf(separator);
@@ -589,18 +618,18 @@ class _PathRow extends StatelessWidget {
               SizedBox(
                 width: 92,
                 child: Text(
-                  'Folder',
+                  t.galleryDetailsFolder,
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
               ),
               IconButton(
-                tooltip: 'Copy folder path',
+                tooltip: t.galleryDetailsCopyPath,
                 visualDensity: VisualDensity.compact,
                 onPressed: () async {
                   await Clipboard.setData(ClipboardData(text: directory));
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Path copied')),
+                    SnackBar(content: Text(t.galleryDetailsPathCopied)),
                   );
                 },
                 icon: Icon(
@@ -625,14 +654,14 @@ class _PathRow extends StatelessWidget {
   }
 }
 
-String _formatDateTime(DateTime when) {
-  const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
+String _formatDateTime(L t, DateTime when) {
   String two(int value) => value.toString().padLeft(2, '0');
-  return '${when.day} ${months[when.month - 1]} ${when.year}, '
-      '${two(when.hour)}:${two(when.minute)}';
+  return t.galleryDetailsDateTime(
+    when.day,
+    galleryMonthShort(t, when.month),
+    when.year,
+    '${two(when.hour)}:${two(when.minute)}',
+  );
 }
 
 /// Whether this build can rename files at all. The desktop sources work in

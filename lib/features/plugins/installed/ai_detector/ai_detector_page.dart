@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../sync/sync_scope.dart';
 import '../../../../sync/sync_service.dart';
 import '../../../../theme/luma_theme.dart';
@@ -36,6 +37,7 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
   String? _error;
   int _tab = 0;
   int _words = 0;
+  String? _localeTag;
 
   AiReview? _aiReview;
   String? _aiError;
@@ -51,6 +53,18 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
     super.initState();
     _controller.addListener(_onTextChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadStatus());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final localeTag = Localizations.localeOf(context).toLanguageTag();
+    if (_localeTag != null && _localeTag != localeTag && _analysed != null) {
+      // Engine output contains localized labels and explanations, so rebuild
+      // the cached report when Settings changes the app locale.
+      _report = AiDetectorEngine.analyze(_analysed!);
+    }
+    _localeTag = localeTag;
   }
 
   @override
@@ -70,10 +84,11 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
   }
 
   Future<void> _paste() async {
+    final t = L.of(context);
     final data = await Clipboard.getData('text/plain');
     final text = data?.text?.trim() ?? '';
     if (text.isEmpty) {
-      setState(() => _error = 'Your clipboard is empty.');
+      setState(() => _error = t.aiDetectorClipboardEmpty);
       return;
     }
     setState(() {
@@ -180,6 +195,7 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final report = _report;
     return Scaffold(
@@ -218,8 +234,9 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
                         const SizedBox(height: 16),
                         LumaSegmentedTabs(
                           tabs: [
-                            'Highlights  ${report.highlights.length}',
-                            'Signals  ${report.triggers.where((t) => t.fired).length}',
+                            t.aiDetectorTabHighlights(report.highlights.length),
+                            t.aiDetectorTabSignals(
+                                report.triggers.where((s) => s.fired).length),
                           ],
                           selectedIndex: _tab,
                           onSelect: (i) => setState(() => _tab = i),
@@ -238,13 +255,7 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
                 ],
                 const SizedBox(height: 20),
                 Text(
-                  'Heuristic style analysis — arithmetic on sentence lengths '
-                  'and word choices, not proof of anything. Formal human '
-                  'writing can look machine-like; edited machine output can '
-                  'look human. A named verdict rests on a signature the text '
-                  'carries itself, and a signature can be stripped or forged. '
-                  'The statistics run on this device. Signed in, the text is '
-                  'also sent to the luma server for an AI model review.',
+                  t.aiDetectorDisclaimer,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: luma.textMuted,
@@ -314,6 +325,7 @@ class _InputCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final short = words < minWords;
     // On a phone a sixteen-line field pushes Review most of a screen below
@@ -341,7 +353,7 @@ class _InputCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Review a piece of writing',
+                      t.aiDetectorInputTitle,
                       style: TextStyle(
                         color: luma.textPrimary,
                         fontSize: 15,
@@ -350,7 +362,7 @@ class _InputCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Style statistics plus a Claude watermark scan.',
+                      t.aiDetectorInputSubtitle,
                       style: TextStyle(color: luma.textMuted, fontSize: 12),
                     ),
                   ],
@@ -363,7 +375,7 @@ class _InputCard extends StatelessWidget {
                 children: [
                   _Chip(
                     icon: Icons.lock_outline_rounded,
-                    label: 'On device',
+                    label: t.aiDetectorOnDevice,
                     color: luma.success,
                   ),
                   if (status case final status?) ...[
@@ -371,10 +383,9 @@ class _InputCard extends StatelessWidget {
                     _Chip(
                       icon: Icons.bolt_rounded,
                       label: status.aiCheckRemaining > 0
-                          ? '${status.aiCheckRemaining}/${status.aiCheckLimit} '
-                              'AI reviews left this week'
-                          : 'Reviews cost ${status.aiCheckExchangePct}% '
-                              'of your weekly limit',
+                          ? t.aiDetectorReviewsLeft(
+                              status.aiCheckRemaining, status.aiCheckLimit)
+                          : t.aiDetectorReviewsCost(status.aiCheckExchangePct),
                       color: status.aiCheckRemaining > 0
                           ? luma.accent
                           : luma.warning,
@@ -396,8 +407,7 @@ class _InputCard extends StatelessWidget {
               height: 1.5,
             ),
             decoration: InputDecoration(
-              hintText: 'Paste the text you want checked — an essay, an '
-                  'email, a product review…',
+              hintText: t.aiDetectorHint,
               hintStyle: TextStyle(color: luma.textMuted, fontSize: 13),
               filled: true,
               fillColor: luma.background,
@@ -427,9 +437,8 @@ class _InputCard extends StatelessWidget {
                 child: Text(
                   error ??
                       (short
-                          ? '$words of $minWords words — style statistics need '
-                              'a bit more to work on.'
-                          : '$words words ready to review.'),
+                          ? t.aiDetectorWordsShort(words, minWords)
+                          : t.aiDetectorWordsReady(words)),
                   style: TextStyle(
                     color: error != null ? luma.danger : luma.textMuted,
                     fontSize: 12,
@@ -445,17 +454,17 @@ class _InputCard extends StatelessWidget {
             runSpacing: 8,
             children: [
               LumaGhostButton(
-                label: 'Paste',
+                label: t.commonPaste,
                 icon: Icons.content_paste_rounded,
                 onTap: onPaste,
               ),
               LumaGhostButton(
-                label: 'Clear',
+                label: t.commonClear,
                 icon: Icons.backspace_outlined,
                 onTap: onClear,
               ),
               LumaPrimaryButton(
-                label: 'Review',
+                label: t.aiDetectorReview,
                 icon: Icons.auto_awesome_motion_rounded,
                 onTap: onAnalyze,
               ),
@@ -476,6 +485,7 @@ class _VerdictCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final color = _scoreColor(context, report);
     return LumaCard(
@@ -517,17 +527,17 @@ class _VerdictCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                _Stat(label: 'words', value: '${report.wordCount}'),
+                _Stat(label: t.aiDetectorStatWords, value: '${report.wordCount}'),
                 _Divider(color: luma.border),
-                _Stat(label: 'sentences', value: '${report.sentenceCount}'),
+                _Stat(label: t.aiDetectorStatSentences, value: '${report.sentenceCount}'),
                 _Divider(color: luma.border),
                 _Stat(
-                  label: 'avg words/sentence',
+                  label: t.aiDetectorStatAvgWords,
                   value: report.avgSentenceWords.toStringAsFixed(1),
                 ),
                 _Divider(color: luma.border),
                 _Stat(
-                  label: 'flagged spans',
+                  label: t.aiDetectorStatFlagged,
                   value: '${report.highlights.length}',
                 ),
               ],
@@ -555,11 +565,11 @@ class _Gauge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final target = report.score / 100;
     return Semantics(
-      label: 'AI likelihood ${report.score.round()} out of 100. '
-          '${report.verdict}.',
+      label: t.aiDetectorGaugeSemantic(report.score.round(), report.verdict),
       excludeSemantics: true,
       child: SizedBox(
         width: 132,
@@ -592,7 +602,7 @@ class _Gauge extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'AI-likelihood',
+                    t.aiDetectorAiLikelihood,
                     style: TextStyle(color: luma.textMuted, fontSize: 10.5),
                   ),
                 ],
@@ -613,6 +623,7 @@ class _Summary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -621,7 +632,7 @@ class _Summary extends StatelessWidget {
         if (report.claudeSigned) ...[
           _Chip(
             icon: Icons.verified_rounded,
-            label: 'Watermark match',
+            label: t.aiDetectorWatermarkMatch,
             color: color,
           ),
           const SizedBox(height: 8),
@@ -638,14 +649,11 @@ class _Summary extends StatelessWidget {
         const SizedBox(height: 6),
         Text(
           report.claudeSigned
-              ? 'The text signs itself — the scan found the hidden marks a '
-                  'Claude watermark is carried in, so this is an attribution '
-                  'rather than a guess about style.'
+              ? t.aiDetectorSummarySigned
               : report.reliable
-                  ? 'Based on ${report.wordCount} words across '
-                      '${report.sentenceCount} sentences.'
-                  : 'Short sample — treat every signal as a hint rather than '
-                      'a measurement.',
+                  ? t.aiDetectorSummaryBased(
+                      report.wordCount, report.sentenceCount)
+                  : t.aiDetectorSummaryShort,
           style: TextStyle(
             color: report.reliable || report.claudeSigned
                 ? luma.textSecondary
@@ -766,6 +774,7 @@ class _DeepCheckCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final review = this.review;
     return LumaCard(
@@ -786,7 +795,7 @@ class _DeepCheckCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'AI model review',
+                      t.aiDetectorDeepCheckTitle,
                       style: TextStyle(
                         color: luma.textPrimary,
                         fontSize: 15,
@@ -796,22 +805,16 @@ class _DeepCheckCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       !available
-                          ? 'Sign in to an approved luma account to also have '
-                              'an AI model review the text. Below is the '
-                              'on-device analysis.'
+                          ? t.aiDetectorDeepCheckSignIn
                           : busy
-                              ? 'The AI model is reading the text…'
+                              ? t.aiDetectorDeepCheckReading
                               : review != null
-                                  ? _chargeNote(review.charge)
+                                  ? _chargeNote(t, review.charge)
                                   : status != null &&
                                           status!.aiCheckRemaining <= 0
-                                      ? 'No included reviews left this week. '
-                                          'Exchange ${status!.aiCheckExchangePct}% '
-                                          'of your weekly Luma AI limit to run '
-                                          'one more.'
-                                      : 'Where and how the text reads '
-                                          'AI-generated, according to the AI '
-                                          'model.',
+                                      ? t.aiDetectorDeepCheckExhausted(
+                                          status!.aiCheckExchangePct)
+                                      : t.aiDetectorDeepCheckIntro,
                       style: TextStyle(
                         color: luma.textMuted,
                         fontSize: 12,
@@ -830,15 +833,15 @@ class _DeepCheckCard extends StatelessWidget {
                 )
               else if (available && error != null)
                 LumaGhostButton(
-                  label: 'Try again',
+                  label: t.commonTryAgain,
                   icon: Icons.refresh_rounded,
                   onTap: onRun,
                 )
               else if (available && review == null && status != null)
                 LumaPrimaryButton(
                   label: status!.aiCheckRemaining > 0
-                      ? 'Run AI review'
-                      : 'Exchange ${status!.aiCheckExchangePct}% of weekly',
+                      ? t.aiDetectorRunReview
+                      : t.aiDetectorExchangeWeekly(status!.aiCheckExchangePct),
                   icon: Icons.psychology_alt_rounded,
                   onTap: onRun,
                 ),
@@ -869,15 +872,12 @@ class _DeepCheckCard extends StatelessWidget {
   }
 }
 
-String _chargeNote(AiReviewCharge? charge) {
-  const base = 'Where and how the text reads AI-generated, according to the '
-      'AI model.';
-  if (charge == null) return base;
+String _chargeNote(L t, AiReviewCharge? charge) {
+  if (charge == null) return t.aiDetectorDeepCheckIntro;
   if (charge.exchanged) {
-    return '$base Exchanged ${charge.exchangePct}% of your weekly limit.';
+    return t.aiDetectorChargeExchanged(charge.exchangePct);
   }
-  return '$base ${charge.used} of ${charge.included} included reviews used '
-      'this week.';
+  return t.aiDetectorChargeUsed(charge.used, charge.included);
 }
 
 Color _likelihoodColor(BuildContext context, int likelihood) {
@@ -976,6 +976,7 @@ class _DeepCheckResult extends StatelessWidget {
   }
 
   List<TextSpan> _spans(BuildContext context, List<AiReviewPassage> passages) {
+    final t = L.of(context);
     final luma = context.luma;
     final spans = <TextSpan>[];
     var cursor = 0;
@@ -994,8 +995,8 @@ class _DeepCheckResult extends StatelessWidget {
           decoration: TextDecoration.underline,
           decorationColor: color,
         ),
-        semanticsLabel:
-            '${p.likelihood}% AI-likely: ${text.substring(start, p.end!)}',
+        semanticsLabel: t.aiDetectorPassageSemantic(
+            p.likelihood, text.substring(start, p.end!)),
       ));
       cursor = p.end!;
     }
@@ -1076,6 +1077,7 @@ class _HighlightsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     if (report.highlights.isEmpty) {
       return LumaCard(
@@ -1083,10 +1085,8 @@ class _HighlightsView extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 16),
           child: LumaEmptyState(
             icon: Icons.verified_outlined,
-            title: 'Nothing flagged',
-            subtitle: 'No stock phrases, no hidden characters, no formulaic '
-                'openers. Every stretch of this text reads as written by '
-                'hand.',
+            title: t.aiDetectorNothingFlagged,
+            subtitle: t.aiDetectorNothingFlaggedBody,
           ),
         ),
       );
@@ -1105,7 +1105,7 @@ class _HighlightsView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Everything the checks matched, marked in place',
+            t.aiDetectorHighlightsTitle,
             style: TextStyle(
               color: luma.textPrimary,
               fontSize: 14,
@@ -1114,9 +1114,7 @@ class _HighlightsView extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Each mark is styled by how strongly it counts, not only by '
-            'colour: wavy for a signature, solid for a strong tell, dotted '
-            'for a mild one.',
+            t.aiDetectorHighlightsLegend,
             style: TextStyle(color: luma.textMuted, fontSize: 12, height: 1.4),
           ),
           const SizedBox(height: 12),
@@ -1151,8 +1149,7 @@ class _HighlightsView extends StatelessWidget {
           if (truncated) ...[
             const SizedBox(height: 10),
             Text(
-              'Showing the first $_highlightTextLimit characters. The score '
-              'and the signals below cover the whole text.',
+              t.aiDetectorTruncated(_highlightTextLimit),
               style: TextStyle(color: luma.textMuted, fontSize: 11.5),
             ),
           ],
@@ -1168,6 +1165,7 @@ class _HighlightsView extends StatelessWidget {
     String text,
     List<AiHighlight> highlights,
   ) {
+    final t = L.of(context);
     final spans = <TextSpan>[];
     var cursor = 0;
     for (final h in highlights) {
@@ -1179,7 +1177,8 @@ class _HighlightsView extends StatelessWidget {
       spans.add(TextSpan(
         text: text.substring(h.start, end),
         style: _styleFor(context, h.kind),
-        semanticsLabel: '${h.note}: ${text.substring(h.start, end)}',
+        semanticsLabel:
+            t.aiDetectorHighlightSemantic(h.note, text.substring(h.start, end)),
       ));
       cursor = end;
     }
@@ -1298,9 +1297,10 @@ class _SignalsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
-    final fired = report.triggers.where((t) => t.fired).toList();
-    final quiet = report.triggers.where((t) => !t.fired).toList();
+    final fired = report.triggers.where((c) => c.fired).toList();
+    final quiet = report.triggers.where((c) => !c.fired).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1312,8 +1312,7 @@ class _SignalsView extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Nothing suspicious fired — varied lengths, no stock '
-                    'phrases, no watermark. Reads like human writing.',
+                    t.aiDetectorSignalsNothing,
                     style: TextStyle(
                       color: luma.textSecondary,
                       fontSize: 13.5,
@@ -1334,16 +1333,14 @@ class _SignalsView extends StatelessWidget {
           LumaCard(
             child: LumaCollapsibleSection(
               icon: Icons.remove_circle_outline_rounded,
-              title: 'Quiet checks',
-              subtitle: quiet.any((t) => t.oneWay)
-                  ? '${quiet.length} found nothing — a dash means the '
-                      'check only ever counts against a text, so finding '
-                      'nothing left it with no opinion'
-                  : '${quiet.length} checks found nothing worth flagging',
+              title: t.aiDetectorQuietChecks,
+              subtitle: quiet.any((c) => c.oneWay)
+                  ? t.aiDetectorQuietOneWay(quiet.length)
+                  : t.aiDetectorQuietNothing(quiet.length),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (final t in quiet)
+                  for (final c in quiet)
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
                       child: Row(
@@ -1355,7 +1352,7 @@ class _SignalsView extends StatelessWidget {
                               // A tick would claim the text passed something.
                               // A one-way check that found nothing has not
                               // cleared the text; it simply has no opinion.
-                              t.oneWay
+                              c.oneWay
                                   ? Icons.remove_rounded
                                   : Icons.check_rounded,
                               size: 15,
@@ -1368,7 +1365,7 @@ class _SignalsView extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  t.title,
+                                  c.title,
                                   style: TextStyle(
                                     color: luma.textSecondary,
                                     fontSize: 12.5,
@@ -1377,7 +1374,7 @@ class _SignalsView extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  t.detail,
+                                  c.detail,
                                   style: TextStyle(
                                     color: luma.textMuted,
                                     fontSize: 11.5,
@@ -1407,6 +1404,7 @@ class _TriggerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     // The watermark scan is the only check that can name an author, so it
     // gets the loudest treatment regardless of how the others landed.
@@ -1451,7 +1449,7 @@ class _TriggerCard extends StatelessWidget {
                 ),
                 child: Text(
                   signature
-                      ? 'match'
+                      ? t.aiDetectorMatch
                       : '${(trigger.strength * 100).round()}%',
                   style: TextStyle(
                     color: color,

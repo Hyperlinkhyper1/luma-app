@@ -8,6 +8,8 @@
   const SB = (window.SB = window.SB || {});
 
   const SAVE_KEY = 'subway_builder_geo_v1';
+  const tr = (key, values = {}) => window.LumaSceneI18n.format(key, values);
+  const localized = (source) => window.LumaSceneI18n.translate(source);
 
   // ── Mode catalog ─────────────────────────────────────────────────────
   // Metro and tram are short-hop modes (maxSegM caps how far one segment can
@@ -312,7 +314,7 @@
     const M = MODES[mode];
     const chord = Math.hypot(b.x - a.x, b.y - a.y);
     if (M.maxSegM && chord > M.maxSegM) {
-      return { err: M.label + ' hops max ' + (M.maxSegM / 1000).toFixed(1) + ' km between stops — add a stop in between, or use Train for long distances' };
+      return { err: tr('sceneSubwayRouteHopsMax', {mode: localized(M.label), maxKm: (M.maxSegM / 1000).toFixed(1)}) };
     }
     if (mode === 'metro') {
       const len = Math.hypot(b.x - a.x, b.y - a.y);
@@ -332,8 +334,8 @@
     const r = SB.net.route(graph, a.x, a.y, b.x, b.y, snap, { bridge: M.rail });
     if (!r) {
       return { err: M.rail
-        ? 'No rail connection exists between these stations'
-        : 'No street route between these stops' };
+        ? tr('sceneSubwayRouteNoRailConnection')
+        : tr('sceneSubwayRouteNoStreetRoute') };
     }
     // A bridged (undersea/unbuilt) tunnel segment costs a tunnelling premium;
     // the rest follows existing track at the normal per-km rate.
@@ -371,19 +373,19 @@
   game.canPlaceStation = function (x, y, mode) {
     const city = game.city;
     const M = MODES[mode];
-    if (city.isWater(x, y)) return { ok: false, err: 'That’s open water' };
+    if (city.isWater(x, y)) return { ok: false, err: tr('sceneSubwayStationInOpenWater') };
     if ((mode === 'bus' || mode === 'tram') &&
         SB.net.nearestNode(SB.net.roads, x, y, 130) < 0) {
-      return { ok: false, err: 'Place ' + M.label.toLowerCase() + ' stops on a street' };
+      return { ok: false, err: tr('sceneSubwayPlaceModeStopsOnStreet', {mode: localized(M.label)}) };
     }
     const cost = game.stationCostAt(x, y, mode);
-    if (cost > game.state.money) return { ok: false, err: 'Not enough funds', cost };
+    if (cost > game.state.money) return { ok: false, err: tr('sceneSubwayNotEnoughFunds'), cost };
     return { ok: true, cost };
   };
 
   // ── Actions ──────────────────────────────────────────────────────────
   game.addStation = function (lng, lat, mode) {
-    if (MODES[mode].rail) return { ok: false, err: MODES[mode].label + ' services only call at real railway stations — click one' };
+    if (MODES[mode].rail) return { ok: false, err: tr('sceneSubwayModeServicesRealRailStations', {mode: localized(MODES[mode].label)}) };
     const [x, y] = SB.geo.toM(lng, lat);
     const check = game.canPlaceStation(x, y, mode);
     if (!check.ok) return check;
@@ -419,7 +421,7 @@
       (s) => s.mode === mode && Math.hypot(s.x - real.x, s.y - real.y) < 120);
     if (existing) return { ok: true, station: existing, cost: 0, existing: true };
     const cost = game.stationCostAt(real.x, real.y, mode);
-    if (cost > st.money) return { ok: false, err: 'Not enough funds', cost };
+    if (cost > st.money) return { ok: false, err: tr('sceneSubwayNotEnoughFunds'), cost };
     const station = {
       id: st.nextStationId++,
       mode, real: true,
@@ -441,7 +443,7 @@
   };
 
   game.commitLine = function (mode, stationIds) {
-    if (stationIds.length < 2) return { ok: false, err: 'A line needs at least two stops' };
+    if (stationIds.length < 2) return { ok: false, err: tr('sceneSubwayLineRequiresTwoStops') };
     const st = game.state;
     const paths = [];
     let cost = 0;
@@ -453,7 +455,7 @@
       paths.push(seg.pts);
       cost += seg.cost;
     }
-    if (cost > st.money) return { ok: false, err: 'Not enough funds' };
+    if (cost > st.money) return { ok: false, err: tr('sceneSubwayNotEnoughFunds') };
     const color = game.nextLineColor();
     const entry = LINE_COLORS.find(([hex]) => hex === color);
     const line = {
@@ -476,15 +478,15 @@
   game.extendLine = function (lineId, stationId, atStart) {
     const line = game.lineById(lineId);
     const station = game.stationById(stationId);
-    if (!line || !station) return { ok: false, err: 'Unknown line or station' };
-    if (station.mode !== line.mode) return { ok: false, err: 'That stop belongs to a different mode' };
-    if (line.stationIds.includes(stationId)) return { ok: false, err: 'Already on this line' };
+    if (!line || !station) return { ok: false, err: tr('sceneSubwayUnknownLineOrStation') };
+    if (station.mode !== line.mode) return { ok: false, err: tr('sceneSubwayStopDifferentMode') };
+    if (line.stationIds.includes(stationId)) return { ok: false, err: tr('sceneSubwayStopAlreadyOnLine') };
     const endId = atStart ? line.stationIds[0] : line.stationIds[line.stationIds.length - 1];
     const end = game.stationById(endId);
     const seg = atStart ? game.routeSegment(line.mode, station, end)
                         : game.routeSegment(line.mode, end, station);
     if (seg.err) return { ok: false, err: seg.err };
-    if (seg.cost > game.state.money) return { ok: false, err: 'Not enough funds' };
+    if (seg.cost > game.state.money) return { ok: false, err: tr('sceneSubwayNotEnoughFunds') };
     if (atStart) { line.stationIds.unshift(stationId); line.paths.unshift(seg.pts); }
     else { line.stationIds.push(stationId); line.paths.push(seg.pts); }
     delete line._pm;
@@ -498,7 +500,7 @@
   game.removeStation = function (stationId) {
     const st = game.state;
     const idx = st.stations.findIndex((s) => s.id === stationId);
-    if (idx < 0) return { ok: false, err: 'Unknown station' };
+    if (idx < 0) return { ok: false, err: tr('sceneSubwayUnknownStation') };
     const station = st.stations[idx];
     let refund = game.stationCostAt(station.x, station.y, station.mode) * ECON.demolishRefund;
     for (let i = st.lines.length - 1; i >= 0; i--) {
@@ -537,7 +539,7 @@
   game.deleteLine = function (lineId) {
     const st = game.state;
     const idx = st.lines.findIndex((l) => l.id === lineId);
-    if (idx < 0) return { ok: false, err: 'Unknown line' };
+    if (idx < 0) return { ok: false, err: tr('sceneSubwayUnknownLine') };
     const line = st.lines[idx];
     const M = MODES[line.mode];
     const refund = (game.lineLengthM(line) / 1000) * M.perKm * ECON.demolishRefund +
@@ -551,12 +553,12 @@
 
   game.addVehicle = function (lineId) {
     const line = game.lineById(lineId);
-    if (!line) return { ok: false, err: 'Unknown line' };
+    if (!line) return { ok: false, err: tr('sceneSubwayUnknownLine') };
     const M = MODES[line.mode];
     if (line.vehicles >= M.maxVehicles) {
-      return { ok: false, err: 'Line is at its fleet limit (' + M.maxVehicles + ')' };
+      return { ok: false, err: tr('sceneSubwayLineFleetLimit', {maxVehicles: M.maxVehicles}) };
     }
-    if (M.vehicleCost > game.state.money) return { ok: false, err: 'Not enough funds' };
+    if (M.vehicleCost > game.state.money) return { ok: false, err: tr('sceneSubwayNotEnoughFunds') };
     line.vehicles++;
     game.state.money -= M.vehicleCost;
     game.state.totalSpent += M.vehicleCost;
@@ -567,8 +569,8 @@
 
   game.removeVehicle = function (lineId) {
     const line = game.lineById(lineId);
-    if (!line) return { ok: false, err: 'Unknown line' };
-    if (line.vehicles <= 1) return { ok: false, err: 'A line needs at least one vehicle' };
+    if (!line) return { ok: false, err: tr('sceneSubwayUnknownLine') };
+    if (line.vehicles <= 1) return { ok: false, err: tr('sceneSubwayLineRequiresVehicle') };
     line.vehicles--;
     const refund = MODES[line.mode].vehicleRefund;
     game.state.money += refund;
@@ -580,7 +582,7 @@
   /* Per-line service window toggles ('night' | 'weekend'). */
   game.setLineService = function (lineId, which, on) {
     const line = game.lineById(lineId);
-    if (!line) return { ok: false, err: 'Unknown line' };
+    if (!line) return { ok: false, err: tr('sceneSubwayUnknownLine') };
     if (which === 'night') line.nightService = !!on;
     else if (which === 'weekend') line.weekendService = !!on;
     game.save();
@@ -604,9 +606,9 @@
 
   game.repayLoan = function () {
     const st = game.state;
-    if (st.loans <= 0) return { ok: false, err: 'No outstanding loans' };
+    if (st.loans <= 0) return { ok: false, err: tr('sceneSubwayNoOutstandingLoans') };
     const amount = Math.min(ECON.loanAmount, st.loans, st.money);
-    if (amount <= 0) return { ok: false, err: 'Not enough funds' };
+    if (amount <= 0) return { ok: false, err: tr('sceneSubwayNotEnoughFunds') };
     st.loans -= amount;
     st.money -= amount;
     game.save();
@@ -677,7 +679,8 @@
           const s = game.stationById(ev.sid);
           events.push({
             type: 'event',
-            label: ev.name + (s ? ' at ' + s.name : ''),
+            eventName: ev.name,
+            stationName: s ? s.name : '',
             grant: bonus,
             crowded: crowdedHere,
           });
@@ -696,7 +699,7 @@
       if (share >= MILESTONES[i].share && !st.milestonesHit.includes(i)) {
         st.milestonesHit.push(i);
         st.money += MILESTONES[i].grant;
-        events.push({ type: 'milestone', label: MILESTONES[i].label, grant: MILESTONES[i].grant, share: MILESTONES[i].share });
+        events.push({ type: 'milestone', index: i, label: MILESTONES[i].label, grant: MILESTONES[i].grant, share: MILESTONES[i].share });
       }
     }
 
@@ -708,7 +711,7 @@
       if (hit) {
         st.achievementsHit.push(a.id);
         st.money += a.grant;
-        events.push({ type: 'achievement', label: a.label, sub: a.sub, grant: a.grant });
+        events.push({ type: 'achievement', id: a.id, label: a.label, sub: a.sub, grant: a.grant });
       }
     }
 

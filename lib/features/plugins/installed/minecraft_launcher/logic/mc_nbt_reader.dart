@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import '../../../../../l10n/current_l.dart';
+
 /// A tiny, read-only NBT (Named Binary Tag) parser — just enough to read
 /// `level.dat`'s world metadata. No package on pub covers this, so it's
 /// hand-rolled: NBT is a simple big-endian, self-describing tree format
@@ -19,7 +21,7 @@ class NbtReader {
   Map<String, dynamic> parseRoot() {
     final type = _readU8();
     if (type != 10) {
-      throw const FormatException('Expected a root compound tag.');
+      throw FormatException(currentL.mcNbtExpectedCompound);
     }
     _readString(); // root tag name, conventionally empty
     return _readCompoundBody();
@@ -69,7 +71,7 @@ class NbtReader {
         final len = _readI32();
         return List<int>.generate(len, (_) => _readI64());
       default:
-        throw FormatException('Unknown NBT tag type $type at byte $_pos.');
+        throw FormatException(currentL.mcNbtUnknownTag('$type', '$_pos'));
     }
   }
 

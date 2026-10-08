@@ -1,5 +1,8 @@
 // Milestone achievements — evaluated against GameState counters once per day.
 
+import '../../../../../l10n/app_localizations.dart';
+import '../../../../../l10n/current_l.dart';
+
 enum AchievementMetric {
   totalMoneyEarned,
   reputation,
@@ -13,213 +16,221 @@ enum AchievementMetric {
 
 class AchievementDef {
   final String id;
-  final String name;
-  final String description;
   final AchievementMetric metric;
   final double threshold;
 
   const AchievementDef({
     required this.id,
-    required this.name,
-    required this.description,
     required this.metric,
     required this.threshold,
   });
+
+  String get name => _name(currentL);
+
+  String get description => _description(currentL);
+
+  String _name(L t) => switch (id) {
+        'FIRST_GRAND' => t.serverTycoonAchFirstGrand,
+        'FIVE_FIGURES' => t.serverTycoonAchFiveFigures,
+        'SIX_FIGURES' => t.serverTycoonAchSixFigures,
+        'MILLIONAIRE' => t.serverTycoonAchMillionaire,
+        'TRUSTED_HOST' => t.serverTycoonAchTrustedHost,
+        'WELL_REGARDED' => t.serverTycoonAchWellRegarded,
+        'INDUSTRY_LEADER' => t.serverTycoonAchIndustryLeader,
+        'PERFECT_REPUTATION' => t.serverTycoonAchPerfectReputation,
+        'ONE_WEEK_IN' => t.serverTycoonAchOneWeekIn,
+        'ONE_MONTH_IN' => t.serverTycoonAchOneMonthIn,
+        'CENTURY_CLUB' => t.serverTycoonAchCenturyClub,
+        'OLD_GUARD' => t.serverTycoonAchOldGuard,
+        'GIGABIT_PIPE' => t.serverTycoonAchGigabitPipe,
+        'TEN_GIG_BACKBONE' => t.serverTycoonAchTenGigBackbone,
+        'FIRST_DEAL' => t.serverTycoonAchFirstDeal,
+        'DEAL_MAKER' => t.serverTycoonAchDealMaker,
+        'CONTRACT_MACHINE' => t.serverTycoonAchContractMachine,
+        'RELIABLE_HOST' => t.serverTycoonAchReliableHost,
+        'ROCK_SOLID' => t.serverTycoonAchRockSolid,
+        'GROWING_FLEET' => t.serverTycoonAchGrowingFleet,
+        'SCALED_UP' => t.serverTycoonAchScaledUp,
+        'MEGA_FLEET' => t.serverTycoonAchMegaFleet,
+        'CONTRACT_LEGEND' => t.serverTycoonAchContractLegend,
+        'BANDWIDTH_KING' => t.serverTycoonAchBandwidthKing,
+        'UNBREAKABLE' => t.serverTycoonAchUnbreakable,
+        'PRESTIGE_MASTER' => t.serverTycoonAchPrestigeMaster,
+        'TEN_MILLION' => t.serverTycoonAchTenMillion,
+        _ => id,
+      };
+
+  String _description(L t) => switch (id) {
+        'FIRST_GRAND' => t.serverTycoonAchEarnTotalDesc(r'$1,000'),
+        'FIVE_FIGURES' => t.serverTycoonAchEarnTotalDesc(r'$10,000'),
+        'SIX_FIGURES' => t.serverTycoonAchEarnTotalDesc(r'$100,000'),
+        'MILLIONAIRE' => t.serverTycoonAchEarnTotalDesc(r'$1,000,000'),
+        'TEN_MILLION' => t.serverTycoonAchEarnTotalDesc(r'$10,000,000'),
+        'TRUSTED_HOST' => t.serverTycoonAchReputationDesc(25),
+        'WELL_REGARDED' => t.serverTycoonAchReputationDesc(50),
+        'INDUSTRY_LEADER' => t.serverTycoonAchReputationDesc(75),
+        'PERFECT_REPUTATION' => t.serverTycoonAchReputationDesc(100),
+        'ONE_WEEK_IN' => t.serverTycoonAchSurviveDaysDesc(7),
+        'ONE_MONTH_IN' => t.serverTycoonAchSurviveDaysDesc(30),
+        'CENTURY_CLUB' => t.serverTycoonAchSurviveDaysDesc(100),
+        'OLD_GUARD' => t.serverTycoonAchSurviveDaysDesc(365),
+        'GIGABIT_PIPE' => t.serverTycoonAchBandwidthDesc('1,000'),
+        'TEN_GIG_BACKBONE' => t.serverTycoonAchBandwidthDesc('10,000'),
+        'BANDWIDTH_KING' => t.serverTycoonAchBandwidthDesc('100,000'),
+        'FIRST_DEAL' => t.serverTycoonAchFirstDealDesc,
+        'DEAL_MAKER' => t.serverTycoonAchContractsDesc(10),
+        'CONTRACT_MACHINE' => t.serverTycoonAchContractsDesc(50),
+        'CONTRACT_LEGEND' => t.serverTycoonAchContractsDesc(100),
+        'RELIABLE_HOST' => t.serverTycoonAchUptimeDesc(7),
+        'ROCK_SOLID' => t.serverTycoonAchUptimeDesc(30),
+        'UNBREAKABLE' => t.serverTycoonAchUptimeDesc(100),
+        'GROWING_FLEET' => t.serverTycoonAchRigsDesc(10),
+        'MEGA_FLEET' => t.serverTycoonAchRigsDesc(25),
+        'SCALED_UP' => t.serverTycoonAchRebirthDesc,
+        'PRESTIGE_MASTER' => t.serverTycoonAchPrestigeDesc(5),
+        _ => id,
+      };
 }
 
-final Map<String, AchievementDef> achievementDefsById = {
-  'FIRST_GRAND': const AchievementDef(
+const Map<String, AchievementDef> achievementDefsById = {
+  'FIRST_GRAND': AchievementDef(
     id: 'FIRST_GRAND',
-    name: 'First Grand',
-    description: 'Earn a lifetime total of \$1,000.',
     metric: AchievementMetric.totalMoneyEarned,
     threshold: 1000,
   ),
-  'FIVE_FIGURES': const AchievementDef(
+  'FIVE_FIGURES': AchievementDef(
     id: 'FIVE_FIGURES',
-    name: 'Five Figures',
-    description: 'Earn a lifetime total of \$10,000.',
     metric: AchievementMetric.totalMoneyEarned,
     threshold: 10000,
   ),
-  'SIX_FIGURES': const AchievementDef(
+  'SIX_FIGURES': AchievementDef(
     id: 'SIX_FIGURES',
-    name: 'Six Figures',
-    description: 'Earn a lifetime total of \$100,000.',
     metric: AchievementMetric.totalMoneyEarned,
     threshold: 100000,
   ),
-  'MILLIONAIRE': const AchievementDef(
+  'MILLIONAIRE': AchievementDef(
     id: 'MILLIONAIRE',
-    name: 'Data Center Millionaire',
-    description: 'Earn a lifetime total of \$1,000,000.',
     metric: AchievementMetric.totalMoneyEarned,
     threshold: 1000000,
   ),
-  'TRUSTED_HOST': const AchievementDef(
+  'TRUSTED_HOST': AchievementDef(
     id: 'TRUSTED_HOST',
-    name: 'Trusted Host',
-    description: 'Reach 25 reputation.',
     metric: AchievementMetric.reputation,
     threshold: 25,
   ),
-  'WELL_REGARDED': const AchievementDef(
+  'WELL_REGARDED': AchievementDef(
     id: 'WELL_REGARDED',
-    name: 'Well Regarded',
-    description: 'Reach 50 reputation.',
     metric: AchievementMetric.reputation,
     threshold: 50,
   ),
-  'INDUSTRY_LEADER': const AchievementDef(
+  'INDUSTRY_LEADER': AchievementDef(
     id: 'INDUSTRY_LEADER',
-    name: 'Industry Leader',
-    description: 'Reach 75 reputation.',
     metric: AchievementMetric.reputation,
     threshold: 75,
   ),
-  'PERFECT_REPUTATION': const AchievementDef(
+  'PERFECT_REPUTATION': AchievementDef(
     id: 'PERFECT_REPUTATION',
-    name: 'Perfect Reputation',
-    description: 'Reach 100 reputation.',
     metric: AchievementMetric.reputation,
     threshold: 100,
   ),
-  'ONE_WEEK_IN': const AchievementDef(
+  'ONE_WEEK_IN': AchievementDef(
     id: 'ONE_WEEK_IN',
-    name: 'One Week In',
-    description: 'Survive 7 days in business.',
     metric: AchievementMetric.dayCount,
     threshold: 7,
   ),
-  'ONE_MONTH_IN': const AchievementDef(
+  'ONE_MONTH_IN': AchievementDef(
     id: 'ONE_MONTH_IN',
-    name: 'One Month In',
-    description: 'Survive 30 days in business.',
     metric: AchievementMetric.dayCount,
     threshold: 30,
   ),
-  'CENTURY_CLUB': const AchievementDef(
+  'CENTURY_CLUB': AchievementDef(
     id: 'CENTURY_CLUB',
-    name: 'Century Club',
-    description: 'Survive 100 days in business.',
     metric: AchievementMetric.dayCount,
     threshold: 100,
   ),
-  'OLD_GUARD': const AchievementDef(
+  'OLD_GUARD': AchievementDef(
     id: 'OLD_GUARD',
-    name: 'Old Guard',
-    description: 'Survive 365 days in business.',
     metric: AchievementMetric.dayCount,
     threshold: 365,
   ),
-  'GIGABIT_PIPE': const AchievementDef(
+  'GIGABIT_PIPE': AchievementDef(
     id: 'GIGABIT_PIPE',
-    name: 'Gigabit Pipe',
-    description: 'Serve 1,000 Mbps of bandwidth at once.',
     metric: AchievementMetric.peakBandwidthServed,
     threshold: 1000,
   ),
-  'TEN_GIG_BACKBONE': const AchievementDef(
+  'TEN_GIG_BACKBONE': AchievementDef(
     id: 'TEN_GIG_BACKBONE',
-    name: '10-Gig Backbone',
-    description: 'Serve 10,000 Mbps of bandwidth at once.',
     metric: AchievementMetric.peakBandwidthServed,
     threshold: 10000,
   ),
-  'FIRST_DEAL': const AchievementDef(
+  'FIRST_DEAL': AchievementDef(
     id: 'FIRST_DEAL',
-    name: 'First Deal',
-    description: 'Complete your first contract.',
     metric: AchievementMetric.contractsCompleted,
     threshold: 1,
   ),
-  'DEAL_MAKER': const AchievementDef(
+  'DEAL_MAKER': AchievementDef(
     id: 'DEAL_MAKER',
-    name: 'Deal Maker',
-    description: 'Complete 10 contracts.',
     metric: AchievementMetric.contractsCompleted,
     threshold: 10,
   ),
-  'CONTRACT_MACHINE': const AchievementDef(
+  'CONTRACT_MACHINE': AchievementDef(
     id: 'CONTRACT_MACHINE',
-    name: 'Contract Machine',
-    description: 'Complete 50 contracts.',
     metric: AchievementMetric.contractsCompleted,
     threshold: 50,
   ),
-  'RELIABLE_HOST': const AchievementDef(
+  'RELIABLE_HOST': AchievementDef(
     id: 'RELIABLE_HOST',
-    name: 'Reliable Host',
-    description: 'Keep 7 consecutive days of uptime with no overloads or contract failures.',
     metric: AchievementMetric.uptimeStreakDays,
     threshold: 7,
   ),
-  'ROCK_SOLID': const AchievementDef(
+  'ROCK_SOLID': AchievementDef(
     id: 'ROCK_SOLID',
-    name: 'Rock Solid',
-    description: 'Keep 30 consecutive days of uptime with no overloads or contract failures.',
     metric: AchievementMetric.uptimeStreakDays,
     threshold: 30,
   ),
-  'GROWING_FLEET': const AchievementDef(
+  'GROWING_FLEET': AchievementDef(
     id: 'GROWING_FLEET',
-    name: 'Growing Fleet',
-    description: 'Own 10 rigs at once.',
     metric: AchievementMetric.rigCount,
     threshold: 10,
   ),
-  'SCALED_UP': const AchievementDef(
+  'SCALED_UP': AchievementDef(
     id: 'SCALED_UP',
-    name: 'Scaled Up',
-    description: 'Rebirth for the first time.',
     metric: AchievementMetric.prestigeLevel,
     threshold: 1,
   ),
-  'MEGA_FLEET': const AchievementDef(
+  'MEGA_FLEET': AchievementDef(
     id: 'MEGA_FLEET',
-    name: 'Mega Fleet',
-    description: 'Own 25 rigs at once.',
     metric: AchievementMetric.rigCount,
     threshold: 25,
   ),
-  'CONTRACT_LEGEND': const AchievementDef(
+  'CONTRACT_LEGEND': AchievementDef(
     id: 'CONTRACT_LEGEND',
-    name: 'Contract Legend',
-    description: 'Complete 100 contracts.',
     metric: AchievementMetric.contractsCompleted,
     threshold: 100,
   ),
-  'BANDWIDTH_KING': const AchievementDef(
+  'BANDWIDTH_KING': AchievementDef(
     id: 'BANDWIDTH_KING',
-    name: 'Bandwidth King',
-    description: 'Serve 100,000 Mbps of bandwidth at once.',
     metric: AchievementMetric.peakBandwidthServed,
     threshold: 100000,
   ),
-  'UNBREAKABLE': const AchievementDef(
+  'UNBREAKABLE': AchievementDef(
     id: 'UNBREAKABLE',
-    name: 'Unbreakable',
-    description: 'Keep 100 consecutive days of uptime with no overloads or contract failures.',
     metric: AchievementMetric.uptimeStreakDays,
     threshold: 100,
   ),
-  'PRESTIGE_MASTER': const AchievementDef(
+  'PRESTIGE_MASTER': AchievementDef(
     id: 'PRESTIGE_MASTER',
-    name: 'Prestige Master',
-    description: 'Reach prestige level 5.',
     metric: AchievementMetric.prestigeLevel,
     threshold: 5,
   ),
-  'TEN_MILLION': const AchievementDef(
+  'TEN_MILLION': AchievementDef(
     id: 'TEN_MILLION',
-    name: 'Ten Million Club',
-    description: 'Earn a lifetime total of \$10,000,000.',
     metric: AchievementMetric.totalMoneyEarned,
     threshold: 10000000,
   ),
 };
 
-late final List<AchievementDef> achievementDefList = achievementDefsById.values.toList()
+final List<AchievementDef> achievementDefList = achievementDefsById.values.toList()
   ..sort((a, b) {
     if (a.metric != b.metric) return a.metric.index.compareTo(b.metric.index);
     return a.threshold.compareTo(b.threshold);

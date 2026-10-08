@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
 
+import '../../../../../l10n/current_l.dart';
 import 'mc_nbt_reader.dart';
 import 'mc_paths.dart';
 import 'safe_path.dart';
@@ -27,11 +28,11 @@ class McWorldInfo {
   final int sizeBytes;
 
   String get gameModeLabel => switch (gameType) {
-        0 => 'Survival',
-        1 => 'Creative',
-        2 => 'Adventure',
-        3 => 'Spectator',
-        _ => 'Unknown',
+        0 => currentL.mcWorldModeSurvival,
+        1 => currentL.mcWorldModeCreative,
+        2 => currentL.mcWorldModeAdventure,
+        3 => currentL.mcWorldModeSpectator,
+        _ => currentL.commonUnknown,
       };
 }
 
@@ -118,7 +119,7 @@ class WorldReader {
     final savesDir = await McPaths.instanceSubDir(instanceId, 'saves');
     final source = Directory('${savesDir.path}${Platform.pathSeparator}$folderName');
     if (!await source.exists()) {
-      throw WorldReaderException('World "$folderName" no longer exists.');
+      throw WorldReaderException(currentL.mcWorldNoLongerExists(folderName));
     }
     var copyName = '$folderName (copy)';
     var target = Directory('${savesDir.path}${Platform.pathSeparator}$copyName');
@@ -137,7 +138,7 @@ class WorldReader {
     final savesDir = await McPaths.instanceSubDir(instanceId, 'saves');
     final source = Directory('${savesDir.path}${Platform.pathSeparator}$folderName');
     if (!await source.exists()) {
-      throw WorldReaderException('World "$folderName" no longer exists.');
+      throw WorldReaderException(currentL.mcWorldNoLongerExists(folderName));
     }
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final zipFile = File('${savesDir.path}${Platform.pathSeparator}$folderName-backup-$timestamp.zip');

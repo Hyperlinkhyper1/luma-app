@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../app/widgets.dart';
+import '../../l10n/app_localizations.dart';
 import '../data/database.dart';
+import '../data/seed_data.dart';
 import '../finance_repository.dart';
 import '../logic/money.dart';
 import '../../theme/luma_theme.dart';
@@ -94,12 +96,16 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
     }
 
     // Try to match category by suggestion.
+    // Suggestions are English category keys; they also match the category's
+    // label in the user's language.
     if (_categoryId == null && entry.categorySuggestion != null) {
+      final suggestion = entry.categorySuggestion!;
+      final wanted = {
+        suggestion.toLowerCase(),
+        (seedCategoryLabel(suggestion) ?? suggestion).toLowerCase(),
+      };
       final match = widget.categories
-          .where(
-            (c) =>
-                c.name.toLowerCase() == entry.categorySuggestion!.toLowerCase(),
-          )
+          .where((c) => wanted.contains(c.name.toLowerCase()))
           .firstOrNull;
       if (match != null) _categoryId = match.id;
     }
@@ -166,6 +172,7 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final entry = _current;
     final total = widget.entries.length;
     final progress = '${_index + 1} / $total';
@@ -180,7 +187,7 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
             children: [
               Expanded(
                 child: Text(
-                  'Review entry',
+                  t.financeReviewEntryTitle,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 18,
@@ -210,7 +217,7 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
           ),
           const SizedBox(height: 4),
           Text(
-            '$_savedCount saved · $_skippedCount skipped',
+            t.financeReviewSavedSkipped(_savedCount, _skippedCount),
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
           const SizedBox(height: 20),
@@ -273,16 +280,16 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
                         ),
                         const SizedBox(height: 14),
                         _DetailRow(
-                          label: 'Date',
+                          label: t.commonDate,
                           value: _formatDate(entry.date),
                         ),
                         if (entry.merchantName != null)
                           _DetailRow(
-                            label: 'Merchant',
+                            label: t.financeReviewMerchant,
                             value: entry.merchantName!,
                           ),
                         _DetailRow(
-                          label: 'Description',
+                          label: t.commonDescription,
                           value: entry.description,
                         ),
                         if (entry.iban != null)
@@ -296,20 +303,23 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
                   if (_loadingMatches) const LinearProgressIndicator(),
                   if (_error != null) Text(_error!),
                   if (_matches.isNotEmpty) ...[
-                    const Text(
-                      'Possible matches',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                    Text(
+                      t.financeReviewPossibleMatches,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
-                    const Text(
-                      'Select the same payment to count it once. Existing entries keep their pot and category.',
-                    ),
+                    Text(t.financeReviewMatchHelp),
                     for (final match in _matches)
                       CheckboxListTile(
                         contentPadding: EdgeInsets.zero,
                         value: identical(_match, match),
                         title: Text(match.name),
                         subtitle: Text(
-                          '${_formatDate(match.date)} · ${match.transaction != null ? "Already recorded" : "Recurring payment"}',
+                          t.financeReviewMatchSubtitle(
+                            _formatDate(match.date),
+                            match.transaction != null
+                                ? t.financeReviewAlreadyRecorded
+                                : t.financeReviewRecurringPayment,
+                          ),
                         ),
                         onChanged: _saving
                             ? null
@@ -321,7 +331,7 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
                   ],
                   // Assignment fields
                   if (!entry.isIncome) ...[
-                    _FieldLabel('Pot'),
+                    _FieldLabel(t.financeReviewPot),
                     _PotDropdown(
                       pots: widget.pots,
                       value: _potId,
@@ -329,14 +339,14 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
                     ),
                     const SizedBox(height: 14),
                   ],
-                  _FieldLabel('Category'),
+                  _FieldLabel(t.commonCategory),
                   _CategoryDropdown(
                     categories: widget.categories,
                     value: _categoryId,
                     onChanged: (v) => setState(() => _categoryId = v),
                   ),
                   const SizedBox(height: 14),
-                  _FieldLabel('Company'),
+                  _FieldLabel(t.financeReviewCompany),
                   _MerchantPicker(
                     merchants: widget.merchants,
                     selected: _merchant,
@@ -360,15 +370,17 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
             alignment: WrapAlignment.end,
             children: [
               LumaGhostButton(
-                label: 'Skip',
+                label: t.financeReviewSkip,
                 onTap: _saving ? null : _skipCurrent,
               ),
               LumaGhostButton(
-                label: 'Cancel',
+                label: t.commonCancel,
                 onTap: () => Navigator.of(context).pop(),
               ),
               LumaPrimaryButton(
-                label: _match == null ? 'Add & next' : 'Match & next',
+                label: _match == null
+                    ? t.financeReviewAddNext
+                    : t.financeReviewMatchNext,
                 icon: Icons.check_rounded,
                 loading: _saving,
                 onTap: _saving || _loadingMatches ? null : _saveCurrent,
@@ -505,6 +517,7 @@ class _CategoryDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -518,14 +531,14 @@ class _CategoryDropdown extends StatelessWidget {
           value: value,
           dropdownColor: luma.surface,
           hint: Text(
-            'No category',
+            t.financeNoCategory,
             style: TextStyle(color: luma.textMuted, fontSize: 14),
           ),
           items: [
             DropdownMenuItem<int?>(
               value: null,
               child: Text(
-                'No category',
+                t.financeNoCategory,
                 style: TextStyle(color: luma.textMuted),
               ),
             ),
@@ -565,6 +578,7 @@ class _MerchantPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return InkWell(
       borderRadius: BorderRadius.circular(10),
       onTap: () async {
@@ -587,7 +601,7 @@ class _MerchantPicker extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                selected?.name ?? 'Pick a company (optional)',
+                selected?.name ?? t.financeReviewPickCompany,
                 style: TextStyle(
                   color: selected == null ? luma.textMuted : luma.textPrimary,
                 ),
@@ -625,6 +639,7 @@ class _MerchantSearchDialogState extends State<_MerchantSearchDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final filtered = widget.merchants
         .where((m) => m.name.toLowerCase().contains(_query.toLowerCase()))
         .toList();
@@ -643,7 +658,7 @@ class _MerchantSearchDialogState extends State<_MerchantSearchDialog> {
                 style: TextStyle(color: luma.textPrimary),
                 decoration: InputDecoration(
                   isDense: true,
-                  hintText: 'Search companies',
+                  hintText: t.financeReviewSearchCompanies,
                   hintStyle: TextStyle(color: luma.textMuted),
                   filled: true,
                   fillColor: luma.background,

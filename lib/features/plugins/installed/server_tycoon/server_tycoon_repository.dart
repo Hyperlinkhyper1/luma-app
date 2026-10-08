@@ -9,6 +9,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../storage/storage_guard.dart';
 import 'data/boosts.dart';
 import 'data/companies.dart';
@@ -458,10 +459,10 @@ class ServerTycoonRepository extends ChangeNotifier {
       if (project != null) {
         if (project.repeatable) {
           _state.researchLevels[project.id] = active.level + 1;
-          events.add('Research complete: ${project.name} (level ${active.level + 1})');
+          events.add(currentL.serverTycoonRepoResearchCompleteLevel(project.name, active.level + 1));
         } else {
           _state.research.add(project.id);
-          events.add('Research complete: ${project.name}');
+          events.add(currentL.serverTycoonRepoResearchComplete(project.name));
         }
         _state.researchCompletedCount++;
       }
@@ -521,28 +522,28 @@ class ServerTycoonRepository extends ChangeNotifier {
   /// following days as research points accrue.
   ActionResult queueResearch(String researchId) {
     final project = researchById[researchId];
-    if (project == null) return const ActionResult(ok: false, errors: ['Unknown research project']);
+    if (project == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownResearch]);
 
     final level = pendingLevelFor(researchId);
     if (!project.repeatable) {
       if (_state.research.contains(researchId)) {
-        return const ActionResult(ok: false, errors: ['Already researched']);
+        return ActionResult(ok: false, errors: [currentL.serverTycoonRepoAlreadyResearched]);
       }
       if (isResearchPending(researchId)) {
-        return const ActionResult(ok: false, errors: ['Already queued']);
+        return ActionResult(ok: false, errors: [currentL.serverTycoonRepoAlreadyQueued]);
       }
     } else if (level >= project.maxLevel) {
-      return const ActionResult(ok: false, errors: ['Already at maximum level']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoMaxLevel]);
     }
 
     for (final reqId in project.requires) {
       if (!_state.research.contains(reqId)) {
         final req = researchById[reqId];
-        return ActionResult(ok: false, errors: ['Requires ${req?.name ?? reqId} first']);
+        return ActionResult(ok: false, errors: [currentL.serverTycoonRepoRequiresProjectFirst(req?.name ?? reqId)]);
       }
     }
     if (_state.reputation < project.minReputation) {
-      return ActionResult(ok: false, errors: ['Requires ${project.minReputation} reputation']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoRequiresReputation('${project.minReputation}')]);
     }
 
     final queueSlots = effects.queueSlots;
@@ -550,13 +551,13 @@ class ServerTycoonRepository extends ChangeNotifier {
     if (inFlight >= queueSlots) {
       return ActionResult(ok: false, errors: [
         queueSlots == 1
-            ? 'Only one project at a time — build the R&D Lab branch for more queue slots'
-            : 'All $queueSlots research slots are busy',
+            ? currentL.serverTycoonRepoOneProjectAtATime
+            : currentL.serverTycoonRepoResearchSlotsBusy('$queueSlots'),
       ]);
     }
 
     final cost = project.costAtLevel(level);
-    if (_state.money < cost) return ActionResult(ok: false, errors: ['Not enough money (needs \$$cost)']);
+    if (_state.money < cost) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNotEnoughMoneyNeeds('\$$cost')]);
 
     _state.money -= cost;
     _state.researchQueue.add(researchId);
@@ -570,7 +571,7 @@ class ServerTycoonRepository extends ChangeNotifier {
   /// already accrued are lost.
   ActionResult cancelResearch(String researchId) {
     final project = researchById[researchId];
-    if (project == null) return const ActionResult(ok: false, errors: ['Unknown research project']);
+    if (project == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownResearch]);
 
     final queueIndex = _state.researchQueue.lastIndexOf(researchId);
     if (queueIndex >= 0) {
@@ -579,7 +580,7 @@ class ServerTycoonRepository extends ChangeNotifier {
       _state.activeResearch = null;
       _startNextQueuedResearch();
     } else {
-      return const ActionResult(ok: false, errors: ['That project is not in progress']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNotInProgress]);
     }
 
     final refundLevel = _state.researchLevels[researchId] ?? 0;
@@ -597,7 +598,7 @@ class ServerTycoonRepository extends ChangeNotifier {
       final boost = _state.activeBoosts[i];
       boost.daysRemaining--;
       if (boost.daysRemaining <= 0) {
-        events.add('${boost.def?.name ?? boost.defId} wore off');
+        events.add(currentL.serverTycoonRepoBoostWoreOff(boost.def?.name ?? boost.defId));
         _state.activeBoosts.removeAt(i);
       }
     }
@@ -606,9 +607,9 @@ class ServerTycoonRepository extends ChangeNotifier {
 
   ActionResult buyBoost(String boostId) {
     final def = boostDefsById[boostId];
-    if (def == null) return const ActionResult(ok: false, errors: ['Unknown boost']);
+    if (def == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownBoost]);
     if (_state.money < def.cost) {
-      return ActionResult(ok: false, errors: ['Not enough money (needs \$${def.cost})']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNotEnoughMoneyNeeds('\$${def.cost}')]);
     }
 
     _state.money -= def.cost;
@@ -662,7 +663,7 @@ class ServerTycoonRepository extends ChangeNotifier {
       _state.money += mission.rewardCash;
       _state.reputation =
           (_state.reputation + mission.rewardRep).clamp(Economy.reputationMin, Economy.reputationMax);
-      events.add('${def.name}: +\$${mission.rewardCash}, +${mission.rewardRep.toStringAsFixed(1)} rep');
+      events.add(currentL.serverTycoonRepoMissionReward(def.name, '\$${mission.rewardCash}', mission.rewardRep.toStringAsFixed(1)));
     }
     if (events.isNotEmpty) {
       _save();
@@ -804,7 +805,7 @@ class ServerTycoonRepository extends ChangeNotifier {
           contractIncome += contract.completionBonus;
           _state.reputation = (_state.reputation + contract.repBonus).clamp(Economy.reputationMin, Economy.reputationMax);
           _state.contractsCompletedCount++;
-          events.add('$companyName contract completed: +\$${contract.completionBonus.toStringAsFixed(0)} bonus, +${contract.repBonus} rep');
+          events.add(currentL.serverTycoonRepoContractCompleted(companyName, '\$${contract.completionBonus.toStringAsFixed(0)}', '${contract.repBonus}'));
           _state.contracts.removeAt(i);
           _bumpMission(MissionMetric.contractsCompleted, 1);
         }
@@ -816,7 +817,7 @@ class ServerTycoonRepository extends ChangeNotifier {
       } else {
         anyFailed = true;
         _state.reputation = (_state.reputation - contract.repPenalty).clamp(Economy.reputationMin, Economy.reputationMax);
-        events.add('$companyName contract FAILED (needed ${contract.minCapacity} served capacity): -${contract.repPenalty} rep');
+        events.add(currentL.serverTycoonRepoContractFailed(companyName, '${contract.minCapacity}', '${contract.repPenalty}'));
         _state.contracts.removeAt(i);
       }
     }
@@ -985,13 +986,13 @@ class ServerTycoonRepository extends ChangeNotifier {
 
   ActionResult mitigateIncident(String incidentId) {
     final incident = _activeIncidents.where((i) => i.incidentId == incidentId).firstOrNull;
-    if (incident == null) return const ActionResult(ok: false, errors: ['Incident not found']);
-    if (incident.type != IncidentType.routerDdos) return const ActionResult(ok: false, errors: ['This incident cannot be mitigated']);
+    if (incident == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoIncidentNotFound]);
+    if (incident.type != IncidentType.routerDdos) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoIncidentNotMitigable]);
 
     final router = _state.routers[incident.targetId];
     final plan = router != null ? internetPlansById[router.internetPlanId] : null;
     final cost = 50 + (plan?.upMbps ?? 0) * 0.05;
-    if (_state.money < cost) return ActionResult(ok: false, errors: ['Not enough money (needs \$${cost.toStringAsFixed(0)})']);
+    if (_state.money < cost) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNotEnoughMoneyNeeds('\$${cost.toStringAsFixed(0)}')]);
 
     _state.money -= cost;
     _activeIncidents.remove(incident);
@@ -1003,10 +1004,10 @@ class ServerTycoonRepository extends ChangeNotifier {
 
   ActionResult emergencyCooldown(String incidentId) {
     final incident = _activeIncidents.where((i) => i.incidentId == incidentId).firstOrNull;
-    if (incident == null) return const ActionResult(ok: false, errors: ['Incident not found']);
-    if (incident.type != IncidentType.rigOverheatSpike) return const ActionResult(ok: false, errors: ['This incident cannot be cooled down']);
+    if (incident == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoIncidentNotFound]);
+    if (incident.type != IncidentType.rigOverheatSpike) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoIncidentNotCooled]);
     if (_cooldownsUsedToday >= _maxEmergencyCooldownsPerDay) {
-      return const ActionResult(ok: false, errors: ['Emergency cooldown already used twice today']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoCooldownsUsed]);
     }
 
     _cooldownsUsedToday++;
@@ -1018,13 +1019,13 @@ class ServerTycoonRepository extends ChangeNotifier {
 
   ActionResult repairIncident(String incidentId) {
     final incident = _activeIncidents.where((i) => i.incidentId == incidentId).firstOrNull;
-    if (incident == null) return const ActionResult(ok: false, errors: ['Incident not found']);
-    if (incident.type != IncidentType.coolingLeak) return const ActionResult(ok: false, errors: ['This incident cannot be repaired']);
+    if (incident == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoIncidentNotFound]);
+    if (incident.type != IncidentType.coolingLeak) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoIncidentNotRepairable]);
 
     final rig = _state.rigs[incident.targetId];
     final cooler = rig != null ? coolingById[rig.build.coolingId] : null;
     final cost = (cooler?.maintenanceCostPerWeek ?? 20) * 2.0;
-    if (_state.money < cost) return ActionResult(ok: false, errors: ['Not enough money (needs \$${cost.toStringAsFixed(0)})']);
+    if (_state.money < cost) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNotEnoughMoneyNeeds('\$${cost.toStringAsFixed(0)}')]);
 
     _state.money -= cost;
     _activeIncidents.remove(incident);
@@ -1036,7 +1037,7 @@ class ServerTycoonRepository extends ChangeNotifier {
 
   ActionResult ignoreIncident(String incidentId) {
     final incident = _activeIncidents.where((i) => i.incidentId == incidentId).firstOrNull;
-    if (incident == null) return const ActionResult(ok: false, errors: ['Incident not found']);
+    if (incident == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoIncidentNotFound]);
     incident.acknowledged = true;
     notifyListeners();
     return const ActionResult(ok: true);
@@ -1121,7 +1122,7 @@ class ServerTycoonRepository extends ChangeNotifier {
     final cost = (baseCost * (1 - effects.rigCostDiscount)).round();
 
     if (_state.money < cost) {
-      return ActionResult(ok: false, errors: ['Not enough money (needs \$$cost)']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNotEnoughMoneyNeeds('\$$cost')]);
     }
 
     Router? bestRouter;
@@ -1140,7 +1141,7 @@ class ServerTycoonRepository extends ChangeNotifier {
       }
     }
     if (bestRouter == null) {
-      return const ActionResult(ok: false, errors: ['You need at least one router first']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNeedRouterFirst]);
     }
 
     final rigId = '${_state.nextRigId}';
@@ -1171,10 +1172,10 @@ class ServerTycoonRepository extends ChangeNotifier {
       lastPos = router.pos;
     }
     if (count >= effects.maxRouters) {
-      return const ActionResult(ok: false, errors: ['Research more networking tech to run additional routers']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoResearchRouters]);
     }
     if (_state.money < GameState.newRouterCost) {
-      return ActionResult(ok: false, errors: ['Not enough money (needs \$${GameState.newRouterCost})']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNotEnoughMoneyNeeds('\$${GameState.newRouterCost}')]);
     }
 
     final routerId = '${_state.nextRouterId}';
@@ -1200,18 +1201,18 @@ class ServerTycoonRepository extends ChangeNotifier {
 
     if (kind == 'rig') {
       final rig = _state.rigs[id];
-      if (rig == null) return const ActionResult(ok: false, errors: ['Unknown rig']);
+      if (rig == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownRig]);
       rig.pos = NodePos(x: x, y: y);
     } else if (kind == 'router') {
       final router = _state.routers[id];
-      if (router == null) return const ActionResult(ok: false, errors: ['Unknown router']);
+      if (router == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownRouter]);
       router.pos = NodePos(x: x, y: y);
     } else if (kind == 'service') {
       final service = _state.services[id];
-      if (service == null) return const ActionResult(ok: false, errors: ['Unknown service']);
+      if (service == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownService]);
       service.pos = NodePos(x: x, y: y);
     } else {
-      return const ActionResult(ok: false, errors: ['Unknown node kind']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownNodeKind]);
     }
     _save();
     notifyListeners();
@@ -1220,8 +1221,8 @@ class ServerTycoonRepository extends ChangeNotifier {
 
   ActionResult assignRigRouter(String rigId, String routerId) {
     final rig = _state.rigs[rigId];
-    if (rig == null) return const ActionResult(ok: false, errors: ['Unknown rig']);
-    if (!_state.routers.containsKey(routerId)) return const ActionResult(ok: false, errors: ['Unknown router']);
+    if (rig == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownRig]);
+    if (!_state.routers.containsKey(routerId)) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownRouter]);
     rig.routerId = routerId;
     _save();
     notifyListeners();
@@ -1237,12 +1238,12 @@ class ServerTycoonRepository extends ChangeNotifier {
     NodePos? pos,
   }) {
     if (rigId != null && !_state.rigs.containsKey(rigId)) {
-      return const ActionResult(ok: false, errors: ['Unknown rig']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownRig]);
     }
     final serviceType = servicesById[serviceTypeId];
-    if (serviceType == null) return const ActionResult(ok: false, errors: ['Unknown service type']);
+    if (serviceType == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownServiceType]);
     if (serviceType.requiredLicense != null && !_state.licenses.contains(serviceType.requiredLicense)) {
-      return ActionResult(ok: false, errors: ['Requires the ${serviceType.requiredLicense} license']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoRequiresLicense('${serviceType.requiredLicense}')]);
     }
     if (capacity < 1) capacity = 1;
 
@@ -1285,7 +1286,7 @@ class ServerTycoonRepository extends ChangeNotifier {
 
   ActionResult uninstallService(String instanceId) {
     if (_state.services.remove(instanceId) == null) {
-      return const ActionResult(ok: false, errors: ['Service instance not found']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoServiceInstanceNotFound]);
     }
     _save();
     notifyListeners();
@@ -1294,7 +1295,7 @@ class ServerTycoonRepository extends ChangeNotifier {
 
   ActionResult setServiceCapacity(String instanceId, int capacity) {
     final service = _state.services[instanceId];
-    if (service == null) return const ActionResult(ok: false, errors: ['Service instance not found']);
+    if (service == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoServiceInstanceNotFound]);
     service.capacity = capacity < 1 ? 1 : capacity;
     _save();
     notifyListeners();
@@ -1309,13 +1310,13 @@ class ServerTycoonRepository extends ChangeNotifier {
   ActionResult connectNodes(String fromKind, String fromId, String toKind, String toId) {
     if (fromKind == 'service' && toKind == 'rig') {
       final service = _state.services[fromId];
-      if (service == null) return const ActionResult(ok: false, errors: ['Unknown service']);
-      if (!_state.rigs.containsKey(toId)) return const ActionResult(ok: false, errors: ['Unknown rig']);
+      if (service == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownService]);
+      if (!_state.rigs.containsKey(toId)) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownRig]);
       service.rigId = toId;
     } else if (fromKind == 'rig' && toKind == 'router') {
       final rig = _state.rigs[fromId];
-      if (rig == null) return const ActionResult(ok: false, errors: ['Unknown rig']);
-      if (!_state.routers.containsKey(toId)) return const ActionResult(ok: false, errors: ['Unknown router']);
+      if (rig == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownRig]);
+      if (!_state.routers.containsKey(toId)) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownRouter]);
       rig.routerId = toId;
     } else if (fromKind == 'rig' && toKind == 'service') {
       // Dragging the other way round is the same link; be forgiving about it.
@@ -1323,9 +1324,9 @@ class ServerTycoonRepository extends ChangeNotifier {
     } else if (fromKind == 'router' && toKind == 'rig') {
       return connectNodes('rig', toId, 'router', fromId);
     } else if (fromKind == toKind) {
-      return ActionResult(ok: false, errors: ['Two ${fromKind}s cannot be connected to each other']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoSameKindConnect]);
     } else {
-      return const ActionResult(ok: false, errors: ['Those two cannot be connected']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoCannotConnect]);
     }
 
     _save();
@@ -1337,14 +1338,14 @@ class ServerTycoonRepository extends ChangeNotifier {
   ActionResult disconnectNode(String kind, String id) {
     if (kind == 'service') {
       final service = _state.services[id];
-      if (service == null) return const ActionResult(ok: false, errors: ['Unknown service']);
+      if (service == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownService]);
       service.rigId = null;
     } else if (kind == 'rig') {
       final rig = _state.rigs[id];
-      if (rig == null) return const ActionResult(ok: false, errors: ['Unknown rig']);
+      if (rig == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownRig]);
       rig.routerId = null;
     } else {
-      return const ActionResult(ok: false, errors: ['Nothing to disconnect']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNothingToDisconnect]);
     }
     _save();
     notifyListeners();
@@ -1353,17 +1354,17 @@ class ServerTycoonRepository extends ChangeNotifier {
 
   ActionResult buyLicense(String licenseId) {
     final license = licensesById[licenseId];
-    if (license == null) return const ActionResult(ok: false, errors: ['Unknown license']);
-    if (_state.licenses.contains(licenseId)) return const ActionResult(ok: false, errors: ['Already owned']);
+    if (license == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownLicense]);
+    if (_state.licenses.contains(licenseId)) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoAlreadyOwned]);
     for (final reqId in license.requires) {
       if (!_state.licenses.contains(reqId)) {
-        return ActionResult(ok: false, errors: ['Requires the $reqId license first']);
+        return ActionResult(ok: false, errors: [currentL.serverTycoonRepoRequiresLicenseFirst(reqId)]);
       }
     }
     if (_state.reputation < license.minReputation) {
-      return ActionResult(ok: false, errors: ['Requires ${license.minReputation} reputation']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoRequiresReputation('${license.minReputation}')]);
     }
-    if (_state.money < license.cost) return const ActionResult(ok: false, errors: ['Not enough money']);
+    if (_state.money < license.cost) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNotEnoughMoney]);
 
     _state.money -= license.cost;
     _state.licenses.add(licenseId);
@@ -1375,18 +1376,18 @@ class ServerTycoonRepository extends ChangeNotifier {
 
   ActionResult hireStaff(String staffId) {
     final def = staffDefsById[staffId];
-    if (def == null) return const ActionResult(ok: false, errors: ['Unknown staff member']);
-    if (_state.hiredStaffIds.contains(staffId)) return const ActionResult(ok: false, errors: ['Already hired']);
+    if (def == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownStaff]);
+    if (_state.hiredStaffIds.contains(staffId)) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoAlreadyHired]);
     if (_state.reputation < def.minReputation) {
-      return ActionResult(ok: false, errors: ['Requires ${def.minReputation} reputation']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoRequiresReputation('${def.minReputation}')]);
     }
     if (def.requiresLicense != null && !_state.licenses.contains(def.requiresLicense)) {
-      return ActionResult(ok: false, errors: ['Requires the ${def.requiresLicense} license']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoRequiresLicense('${def.requiresLicense}')]);
     }
     if (def.requiresResearch != null && !_state.research.contains(def.requiresResearch)) {
-      return ActionResult(ok: false, errors: ['Requires the ${def.requiresResearch} research']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoRequiresResearch('${def.requiresResearch}')]);
     }
-    if (_state.money < def.cost) return const ActionResult(ok: false, errors: ['Not enough money']);
+    if (_state.money < def.cost) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNotEnoughMoney]);
 
     _state.money -= def.cost;
     _state.hiredStaffIds.add(staffId);
@@ -1396,7 +1397,7 @@ class ServerTycoonRepository extends ChangeNotifier {
   }
 
   ActionResult fireStaff(String staffId) {
-    if (!_state.hiredStaffIds.contains(staffId)) return const ActionResult(ok: false, errors: ['Not currently hired']);
+    if (!_state.hiredStaffIds.contains(staffId)) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNotCurrentlyHired]);
     _state.hiredStaffIds.remove(staffId);
     _save();
     notifyListeners();
@@ -1405,14 +1406,14 @@ class ServerTycoonRepository extends ChangeNotifier {
 
   ActionResult acceptContract(String offerId) {
     if (_acceptedOfferIds.contains(offerId)) {
-      return const ActionResult(ok: false, errors: ['Offer already accepted']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoOfferAccepted]);
     }
     final offer = _contractOffers.where((o) => o.offerId == offerId).firstOrNull;
-    if (offer == null) return const ActionResult(ok: false, errors: ['That offer has expired']);
+    if (offer == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoOfferExpired]);
 
     final effects = this.effects;
     if (_state.contracts.length >= effects.contractSlots) {
-      return ActionResult(ok: false, errors: ['You can only run ${effects.contractSlots} contracts at once (research Sales Team for more)']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoContractSlots('${effects.contractSlots}')]);
     }
 
     final contractId = '${_state.nextContractId}';
@@ -1458,11 +1459,11 @@ class ServerTycoonRepository extends ChangeNotifier {
 
   ActionResult buyToInventory(String slot, String itemId) {
     final catalog = _allCatalogs()[slot];
-    if (catalog == null) return const ActionResult(ok: false, errors: ['Unknown item category']);
+    if (catalog == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownCategory]);
     final item = catalog[itemId];
-    if (item == null) return const ActionResult(ok: false, errors: ['Unknown item']);
+    if (item == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownItem]);
     final price = (item as dynamic).price as int;
-    if (_state.money < price) return const ActionResult(ok: false, errors: ['Not enough money']);
+    if (_state.money < price) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNotEnoughMoney]);
 
     _state.money -= price;
     _state.inventory[itemId] = (_state.inventory[itemId] ?? 0) + 1;
@@ -1474,7 +1475,7 @@ class ServerTycoonRepository extends ChangeNotifier {
 
   ActionResult buyComponent(String rigId, String slot, String itemId) {
     final rig = _state.rigs[rigId];
-    if (rig == null) return const ActionResult(ok: false, errors: ['Unknown rig']);
+    if (rig == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownRig]);
 
     final catalogs = <String, Map<String, dynamic>>{
       'cpu': cpusById as Map<String, dynamic>,
@@ -1494,13 +1495,13 @@ class ServerTycoonRepository extends ChangeNotifier {
     final catalog = catalogs[slot];
     final buildKey = buildKeys[slot];
     if (catalog == null || buildKey == null) {
-      return const ActionResult(ok: false, errors: ['Unknown component slot']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownSlot]);
     }
     final item = catalog[itemId];
-    if (item == null) return const ActionResult(ok: false, errors: ['Unknown item']);
+    if (item == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownItem]);
     final price = (item as dynamic).price as int;
     final fromInventory = (_state.inventory[itemId] ?? 0) > 0;
-    if (!fromInventory && _state.money < price) return const ActionResult(ok: false, errors: ['Not enough money']);
+    if (!fromInventory && _state.money < price) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNotEnoughMoney]);
 
     final trialBuild = rig.build.copyWith();
     switch (buildKey) {
@@ -1526,7 +1527,7 @@ class ServerTycoonRepository extends ChangeNotifier {
     notifyListeners();
 
     if (!ok) {
-      final msg = '${(item as dynamic).name} installed, but it doesn\'t work: ${errors.join('; ')}. This rig will not generate income until fixed.';
+      final msg = currentL.serverTycoonRepoPartBroken((item as dynamic).name, errors.join('; '));
       _lastNotification = msg;
       return ActionResult(ok: true, warning: msg);
     }
@@ -1535,8 +1536,8 @@ class ServerTycoonRepository extends ChangeNotifier {
 
   ActionResult buyInternetPlan(String routerId, String planId) {
     final router = _state.routers[routerId];
-    if (router == null) return const ActionResult(ok: false, errors: ['Unknown router']);
-    if (!internetPlansById.containsKey(planId)) return const ActionResult(ok: false, errors: ['Unknown plan']);
+    if (router == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownRouter]);
+    if (!internetPlansById.containsKey(planId)) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownPlan]);
     router.internetPlanId = planId;
     _save();
     notifyListeners();
@@ -1545,11 +1546,11 @@ class ServerTycoonRepository extends ChangeNotifier {
 
   ActionResult addRAM(String rigId, String itemId) {
     final rig = _state.rigs[rigId];
-    if (rig == null) return const ActionResult(ok: false, errors: ['Unknown rig']);
+    if (rig == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownRig]);
     final stick = ramById[itemId];
-    if (stick == null) return const ActionResult(ok: false, errors: ['Unknown RAM stick']);
+    if (stick == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownRamStick]);
     final fromInventory = (_state.inventory[itemId] ?? 0) > 0;
-    if (!fromInventory && _state.money < stick.price) return const ActionResult(ok: false, errors: ['Not enough money']);
+    if (!fromInventory && _state.money < stick.price) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNotEnoughMoney]);
 
     final trialBuild = rig.build.copyWith(ramIds: [...rig.build.ramIds, itemId]);
     final (errors, ok) = validateBuild(trialBuild, rigKind: rig.kind);
@@ -1565,7 +1566,7 @@ class ServerTycoonRepository extends ChangeNotifier {
     notifyListeners();
 
     if (!ok) {
-      final msg = '${stick.name} installed, but it doesn\'t work: ${errors.join('; ')}. This rig will not generate income until fixed.';
+      final msg = currentL.serverTycoonRepoPartBroken(stick.name, errors.join('; '));
       _lastNotification = msg;
       return ActionResult(ok: true, warning: msg);
     }
@@ -1574,9 +1575,9 @@ class ServerTycoonRepository extends ChangeNotifier {
 
   ActionResult removeRAM(String rigId, int index) {
     final rig = _state.rigs[rigId];
-    if (rig == null) return const ActionResult(ok: false, errors: ['Unknown rig']);
+    if (rig == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownRig]);
     if (index < 0 || index >= rig.build.ramIds.length) {
-      return const ActionResult(ok: false, errors: ['No RAM stick at that slot']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNoRamAtSlot]);
     }
     final trialBuild = rig.build.copyWith(ramIds: [...rig.build.ramIds]..removeAt(index));
     rig.build = trialBuild;
@@ -1587,11 +1588,11 @@ class ServerTycoonRepository extends ChangeNotifier {
 
   ActionResult addStorage(String rigId, String itemId) {
     final rig = _state.rigs[rigId];
-    if (rig == null) return const ActionResult(ok: false, errors: ['Unknown rig']);
+    if (rig == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownRig]);
     final drive = storageById[itemId];
-    if (drive == null) return const ActionResult(ok: false, errors: ['Unknown drive']);
+    if (drive == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownDrive]);
     final fromInventory = (_state.inventory[itemId] ?? 0) > 0;
-    if (!fromInventory && _state.money < drive.price) return const ActionResult(ok: false, errors: ['Not enough money']);
+    if (!fromInventory && _state.money < drive.price) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNotEnoughMoney]);
 
     final trialBuild = rig.build.copyWith(storageIds: [...rig.build.storageIds, itemId]);
     final (errors, ok) = validateBuild(trialBuild, rigKind: rig.kind);
@@ -1608,7 +1609,7 @@ class ServerTycoonRepository extends ChangeNotifier {
     notifyListeners();
 
     if (!ok) {
-      final msg = '${drive.name} installed, but it doesn\'t work: ${errors.join('; ')}. This rig will not generate income until fixed.';
+      final msg = currentL.serverTycoonRepoPartBroken(drive.name(currentL), errors.join('; '));
       _lastNotification = msg;
       return ActionResult(ok: true, warning: msg);
     }
@@ -1617,9 +1618,9 @@ class ServerTycoonRepository extends ChangeNotifier {
 
   ActionResult removeStorage(String rigId, int index) {
     final rig = _state.rigs[rigId];
-    if (rig == null) return const ActionResult(ok: false, errors: ['Unknown rig']);
+    if (rig == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownRig]);
     if (index < 0 || index >= rig.build.storageIds.length) {
-      return const ActionResult(ok: false, errors: ['No drive at that slot']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNoDriveAtSlot]);
     }
     final trialBuild = rig.build.copyWith(storageIds: [...rig.build.storageIds]..removeAt(index));
     rig.build = trialBuild;
@@ -1688,7 +1689,7 @@ class ServerTycoonRepository extends ChangeNotifier {
           if (!affordable(drive.id, drive.price)) continue;
           final trial = rig.build.copyWith(storageIds: [...rig.build.storageIds, drive.id]);
           final (_, ok) = validateBuild(trial, rigKind: rig.kind);
-          if (ok) return ('storage', drive.id, drive.name, drive.price);
+          if (ok) return ('storage', drive.id, drive.name(currentL), drive.price);
         }
         return null;
       case 'disk':
@@ -1708,7 +1709,7 @@ class ServerTycoonRepository extends ChangeNotifier {
           if (!affordable(drive.id, drive.price)) continue;
           final trial = rig.build.copyWith(storageIds: [...rig.build.storageIds, drive.id]);
           final (_, ok) = validateBuild(trial, rigKind: rig.kind);
-          if (ok) return ('storage', drive.id, drive.name, drive.price);
+          if (ok) return ('storage', drive.id, drive.name(currentL), drive.price);
         }
         return null;
       default:
@@ -1722,14 +1723,14 @@ class ServerTycoonRepository extends ChangeNotifier {
     final fix = bottleneckFixFor(rigId);
     if (fix == null) {
       final rigLoad = calculateLoad().rigs[rigId];
-      if (rigLoad == null) return const ActionResult(ok: false, errors: ['Unknown rig']);
+      if (rigLoad == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownRig]);
       if (rigLoad.incompatible) {
-        return const ActionResult(ok: false, errors: ['Fix the incompatible parts first']);
+        return ActionResult(ok: false, errors: [currentL.serverTycoonRepoFixIncompatible]);
       }
       if (rigLoad.localBottleneck == null) {
-        return const ActionResult(ok: false, errors: ['Nothing is holding this rig back']);
+        return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNothingHoldingBack]);
       }
-      return const ActionResult(ok: false, errors: ['No affordable upgrade for that bottleneck']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNoAffordableUpgrade]);
     }
 
     final (slot, itemId, _, _) = fix;
@@ -1743,14 +1744,14 @@ class ServerTycoonRepository extends ChangeNotifier {
   /// Upgrades a router to the cheapest faster plan it can afford.
   ActionResult upgradeRouterPlan(String routerId) {
     final router = _state.routers[routerId];
-    if (router == null) return const ActionResult(ok: false, errors: ['Unknown router']);
+    if (router == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownRouter]);
     final current = internetPlansById[router.internetPlanId];
     final currentUp = current?.upMbps ?? 0;
 
     final candidates = internetPlanList.where((p) => p.upMbps > currentUp).toList()
       ..sort((a, b) => a.monthlyPrice.compareTo(b.monthlyPrice));
     if (candidates.isEmpty) {
-      return const ActionResult(ok: false, errors: ['Already on the fastest plan']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoFastestPlan]);
     }
     return buyInternetPlan(routerId, candidates.first.id);
   }
@@ -1758,7 +1759,7 @@ class ServerTycoonRepository extends ChangeNotifier {
   /// Buys a fresh rig with the same build as an existing one.
   ActionResult cloneRig(String rigId) {
     final source = _state.rigs[rigId];
-    if (source == null) return const ActionResult(ok: false, errors: ['Unknown rig']);
+    if (source == null) return ActionResult(ok: false, errors: [currentL.serverTycoonRepoUnknownRig]);
 
     final baseCost = source.kind == RigKind.server ? GameState.newServerRigCost : GameState.newRigCost;
     var partsCost = 0;
@@ -1776,7 +1777,7 @@ class ServerTycoonRepository extends ChangeNotifier {
 
     final cost = ((baseCost + partsCost) * (1 - effects.rigCostDiscount)).round();
     if (_state.money < cost) {
-      return ActionResult(ok: false, errors: ['Not enough money (needs \$$cost)']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNotEnoughMoneyNeeds('\$$cost')]);
     }
 
     final newId = '${_state.nextRigId}';
@@ -1801,7 +1802,7 @@ class ServerTycoonRepository extends ChangeNotifier {
     _bumpMission(MissionMetric.componentsBought, 1);
     _save();
     notifyListeners();
-    return ActionResult(ok: true, warning: 'Cloned for \$$cost — install services on it to start earning');
+    return ActionResult(ok: true, warning: currentL.serverTycoonRepoCloned('\$$cost'));
   }
 
   /// Lays the graph out left to right — routers, then the rigs feeding them,
@@ -1809,7 +1810,7 @@ class ServerTycoonRepository extends ChangeNotifier {
   /// enough without also having to tidy it.
   ActionResult autoArrange() {
     if (_state.routers.isEmpty && _state.rigs.isEmpty && _state.services.isEmpty) {
-      return const ActionResult(ok: false, errors: ['Nothing to arrange']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNothingToArrange]);
     }
 
     const routerX = 60.0;
@@ -1902,7 +1903,7 @@ class ServerTycoonRepository extends ChangeNotifier {
 
   ActionResult rebirth() {
     if (!canRebirth) {
-      return ActionResult(ok: false, errors: ['Need \$${rebirthThreshold.toStringAsFixed(0)} net worth to scale up']);
+      return ActionResult(ok: false, errors: [currentL.serverTycoonRepoNeedNetWorth('\$${rebirthThreshold.toStringAsFixed(0)}')]);
     }
     final newLevel = _state.prestigeLevel + 1;
     final newMultiplier = 1 + 2 * (1 - math.exp(-0.3 * newLevel));

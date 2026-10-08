@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../account/plan.dart';
 import '../features/plugins/plugin_icons.dart';
+import '../features/plugins/plugin_l10n.dart';
 import '../features/plugins/plugin_repository.dart';
 import '../l10n/app_localizations.dart';
 import '../settings/settings_scope.dart';
@@ -172,7 +173,11 @@ class BottomNav extends StatelessWidget {
                   for (final plugin in installedPlugins)
                     _MoreRow(
                       icon: pluginIconFor(plugin.icon),
-                      label: plugin.name,
+                      label: pluginDisplayName(
+                        L.of(sheetContext),
+                        plugin.pluginId,
+                        plugin.name,
+                      ),
                       onTap: () {
                         Navigator.pop(sheetContext);
                         onSelectPlugin(plugin.pluginId);

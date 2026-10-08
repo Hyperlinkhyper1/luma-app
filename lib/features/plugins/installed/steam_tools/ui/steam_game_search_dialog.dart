@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/steam_database.dart';
 import '../steam_api.dart';
@@ -97,7 +98,7 @@ class _SteamGameSearchDialogState extends State<SteamGameSearchDialog> {
     } catch (e) {
       if (!mounted || query != _query) return;
       setState(() {
-        _error = 'Could not search Steam: $e';
+        _error = L.of(context).steamSearchCouldNot(e.toString());
         _loading = false;
       });
     }
@@ -114,6 +115,7 @@ class _SteamGameSearchDialogState extends State<SteamGameSearchDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Dialog(
       backgroundColor: luma.surface,
       shape: RoundedRectangleBorder(
@@ -132,7 +134,7 @@ class _SteamGameSearchDialogState extends State<SteamGameSearchDialog> {
                   Icon(Icons.search_rounded, color: luma.accent, size: 18),
                   const SizedBox(width: 8),
                   Text(
-                    'Track a game',
+                    t.steamTrackAGame,
                     style: TextStyle(
                       color: luma.textPrimary,
                       fontSize: 16,
@@ -143,7 +145,7 @@ class _SteamGameSearchDialogState extends State<SteamGameSearchDialog> {
               ),
               const SizedBox(height: 2),
               Text(
-                'Search the Steam store — no account needed.',
+                t.steamSearchSubtitle,
                 style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
               const SizedBox(height: 16),
@@ -154,7 +156,7 @@ class _SteamGameSearchDialogState extends State<SteamGameSearchDialog> {
                 style: TextStyle(color: luma.textPrimary, fontSize: 13),
                 decoration: InputDecoration(
                   isDense: true,
-                  hintText: 'Search for a game',
+                  hintText: t.steamSearchHint,
                   hintStyle: TextStyle(color: luma.textMuted, fontSize: 13),
                   prefixIcon: Icon(Icons.search_rounded,
                       size: 18, color: luma.textMuted),
@@ -182,7 +184,7 @@ class _SteamGameSearchDialogState extends State<SteamGameSearchDialog> {
               Align(
                 alignment: Alignment.centerRight,
                 child: LumaGhostButton(
-                  label: 'Done',
+                  label: t.commonDone,
                   onTap: () => Navigator.of(context).pop(),
                 ),
               ),
@@ -195,11 +197,12 @@ class _SteamGameSearchDialogState extends State<SteamGameSearchDialog> {
 
   Widget _buildResults(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     if (_query.isEmpty) {
       return _Hint(
         icon: Icons.videogame_asset_outlined,
-        message: "Search by a game's name to start tracking its price.",
+        message: t.steamSearchStartHint,
       );
     }
     if (_loading) {
@@ -218,7 +221,7 @@ class _SteamGameSearchDialogState extends State<SteamGameSearchDialog> {
     if (results.isEmpty) {
       return _Hint(
         icon: Icons.search_off_rounded,
-        message: 'No games matched "$_query".',
+        message: t.steamSearchNoMatch(_query),
       );
     }
 
@@ -293,6 +296,7 @@ class _SearchResultRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(8),
@@ -302,8 +306,8 @@ class _SearchResultRow extends StatelessWidget {
         hoverColor: luma.surfaceHover,
         child: Semantics(
           label: tracked
-              ? '${result.name}, already tracked'
-              : '${result.name}, tap to track',
+              ? t.steamSearchAlreadyTracked(result.name)
+              : t.steamSearchTapToTrack(result.name),
           button: !tracked,
           excludeSemantics: true,
           child: Container(

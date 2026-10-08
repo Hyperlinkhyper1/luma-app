@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import '../../../../l10n/current_l.dart';
 import '../legacy_blocks.dart';
 import '../nbt.dart';
 import '../schematic_model.dart';
@@ -17,17 +18,13 @@ class MceditSchematic {
     final height = root.unsignedShortValue('Height');
     final length = root.unsignedShortValue('Length');
     if (width == null || height == null || length == null) {
-      throw const FormatException(
-        'This .schematic file is missing its Width/Height/Length tags.',
-      );
+      throw FormatException(currentL.schematicMceditMissingSize);
     }
     guardVolume(width, height, length);
 
     final rawBlocks = root.byteArray('Blocks');
     if (rawBlocks == null) {
-      throw const FormatException(
-        'This .schematic file has no Blocks array.',
-      );
+      throw FormatException(currentL.schematicMceditNoBlocks);
     }
     final rawData = root.byteArray('Data');
     final add = root.byteArray('AddBlocks') ?? root.byteArray('Add');
@@ -73,16 +70,14 @@ class MceditSchematic {
       final ids = unmapped.toList()..sort();
       final shown = ids.take(8).join(', ');
       notes.add(
-        '${ids.length} legacy block ${ids.length == 1 ? 'id' : 'ids'} had no '
-        'modern equivalent and became air (id $shown'
-        '${ids.length > 8 ? ', …' : ''}).',
+        currentL.schematicMceditUnmappedIds(
+          ids.length,
+          '$shown${ids.length > 8 ? ', …' : ''}',
+        ),
       );
     }
     if (root.list('TileEntities')?.items.isNotEmpty ?? false) {
-      notes.add(
-        'Tile entity contents (chest inventories, sign text) are not carried '
-        'across.',
-      );
+      notes.add(currentL.schematicMceditTileEntities);
     }
 
     return Schematic(
@@ -153,18 +148,15 @@ class MceditSchematic {
     final notes = <String>[];
     if (unmapped.isNotEmpty) {
       final names = unmapped.toList()..sort();
-      notes.add(
-        '${names.length} block ${names.length == 1 ? 'type' : 'types'} did not '
-        'exist before Minecraft 1.13 and became stone '
-        '(${names.take(5).map((n) => n.split(':').last).join(', ')}'
-        '${names.length > 5 ? ', …' : ''}).',
-      );
+      final list = names
+              .take(5)
+              .map((n) => n.split(':').last)
+              .join(', ') +
+          (names.length > 5 ? ', …' : '');
+      notes.add(currentL.schematicMceditUnmappedTypes(names.length, list));
     }
     if (inexact > 0) {
-      notes.add(
-        '$inexact block ${inexact == 1 ? 'state' : 'states'} kept the right '
-        'block but lost its orientation or variant.',
-      );
+      notes.add(currentL.schematicMceditInexactStates(inexact));
     }
 
     return (bytes: Nbt.write(NamedTag('Schematic', root)), notes: notes);

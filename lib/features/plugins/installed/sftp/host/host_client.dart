@@ -8,7 +8,9 @@ import '../sftp_paths.dart';
 import '../sftp_session.dart';
 import '../sftp_site.dart';
 import 'host_crypto.dart';
+import 'host_error_localizer.dart';
 import 'host_protocol.dart';
+import '../../../../../l10n/current_l.dart';
 
 /// The browsing half of device-to-device transfer: a [SftpSession] whose
 /// other end is another luma device running [SftpHostServer].
@@ -100,12 +102,12 @@ class LumaHostSession extends SftpSession {
   }) async {
     final host = site.host.trim();
     if (host.isEmpty) {
-      throw SftpConnectionException('This device has no address.');
+      throw SftpConnectionException(currentL.sftpHostNoAddress);
     }
     final password = secret ?? '';
     if (password.isEmpty) {
       throw SftpConnectionException(
-        'Type the pairing password shown on that device.',
+        currentL.sftpHostTypePassword,
         isAuthFailure: true,
       );
     }
@@ -115,13 +117,15 @@ class LumaHostSession extends SftpSession {
       socket = await Socket.connect(host, site.port, timeout: timeout);
     } on SocketException catch (e) {
       throw SftpConnectionException(
-        'Could not reach $host on port ${site.port}. Check that the other '
-        'device is still showing its pairing screen and that both are on the '
-        'same network.\n${e.osError?.message ?? e.message}',
+        currentL.sftpHostCouldNotReach(
+          host,
+          '${site.port}',
+          e.osError?.message ?? e.message,
+        ),
       );
     } on TimeoutException {
       throw SftpConnectionException(
-        'Timed out connecting to $host on port ${site.port}.',
+        currentL.sftpHostConnectTimedOut(host, '${site.port}'),
       );
     }
     socket.setOption(SocketOption.tcpNoDelay, true);
@@ -161,7 +165,7 @@ class LumaHostSession extends SftpSession {
       },
       onError: fail,
       onDone: () => fail(
-        const HostAuthException('That device closed the connection.'),
+        HostAuthException(currentL.sftpHostDeviceClosed),
       ),
       cancelOnError: false,
     );
@@ -182,7 +186,7 @@ class LumaHostSession extends SftpSession {
         readControl: () async {
           final frame = decodeFrame(await nextFrame());
           if (!frame.isControl) {
-            throw const HostProtocolException('Expected a handshake message.');
+            throw HostProtocolException(currentL.sftpHostExpectedHandshake);
           }
           return frame.control!;
         },
@@ -231,10 +235,8 @@ class LumaHostSession extends SftpSession {
       socket.destroy();
       throw SftpConnectionException(
         channel == null
-            ? 'That device did not answer in time. Make sure it is still '
-                'hosting.'
-            : 'Nobody allowed this device in on the other end in time. Ask '
-                'them to press Allow, then connect again.',
+            ? currentL.sftpHostDidNotAnswer
+            : currentL.sftpHostApprovalTimedOut,
       );
     } on SftpConnectionException {
       await subscription.cancel();
@@ -243,7 +245,7 @@ class LumaHostSession extends SftpSession {
     } catch (e) {
       await subscription.cancel();
       socket.destroy();
-      throw SftpConnectionException('Could not connect to that device.\n$e');
+      throw SftpConnectionException(currentL.sftpHostCouldNotConnect('$e'));
     }
   }
 
@@ -256,7 +258,7 @@ class LumaHostSession extends SftpSession {
       final frame = decodeFrame(await channel.open(await nextFrame()));
       final message = frame.control;
       if (message == null) {
-        throw const HostProtocolException('Expected to be let in first.');
+        throw HostProtocolException(currentL.sftpHostExpectedAdmission);
       }
       if (message[kWaitKey] == true) {
         onWaiting();
@@ -264,7 +266,7 @@ class LumaHostSession extends SftpSession {
       }
       if (message[kAdmitKey] == true) return;
       throw SftpConnectionException(
-        message['e']?.toString() ?? 'That device did not let this one in.',
+        localizeHostWireError(message, fallback: currentL.sftpHostNotLetIn),
       );
     }
   }
@@ -295,7 +297,7 @@ class LumaHostSession extends SftpSession {
       ..onError(_tearDown)
       ..onDone(
         () => _tearDown(
-          SftpConnectionException('That device closed the connection.'),
+          SftpConnectionException(currentL.sftpHostDeviceClosed),
         ),
       );
   }
@@ -346,7 +348,7 @@ class LumaHostSession extends SftpSession {
       } catch (e) {
         // A full disk or a locked destination ends this download, not the
         // whole connection. The host is told to stop sending it.
-        download.fail('The file could not be saved here: $e');
+        download.fail(currentL.sftpHostSaveFailed('$e'));
         unawaited(
           _send(
             encodeControlFrame(hostRequest(frame.chunkId!, HostOp.readStop)),
@@ -371,7 +373,7 @@ class LumaHostSession extends SftpSession {
         download?.finish();
       } else {
         download?.fail(
-          message['e']?.toString() ?? 'The transfer stopped unexpectedly.',
+          localizeHostWireError(message, fallback: currentL.sftpHostTransferStopped),
         );
       }
       return;
@@ -384,7 +386,7 @@ class LumaHostSession extends SftpSession {
     } else {
       completer.completeError(
         SftpConnectionException(
-          message['e']?.toString() ?? 'That device refused the request.',
+          localizeHostWireError(message, fallback: currentL.sftpHostRefusedRequest),
         ),
       );
     }
@@ -406,7 +408,7 @@ class LumaHostSession extends SftpSession {
   ]) {
     if (_isClosed) {
       return Future.error(
-        SftpConnectionException('The connection to that device is closed.'),
+        SftpConnectionException(currentL.sftpHostConnectionClosed),
       );
     }
     final completer = Completer<Map<String, dynamic>>();
@@ -475,7 +477,7 @@ class LumaHostSession extends SftpSession {
     }
     final raw = reply['es'];
     if (raw is! List) {
-      throw SftpConnectionException('That device sent a folder we could not read.');
+      throw SftpConnectionException(currentL.sftpHostFolderUnreadable);
     }
     final entries = <SftpEntry>[];
     for (final item in [...earlier, ...raw]) {
@@ -492,7 +494,7 @@ class LumaHostSession extends SftpSession {
     final reply = await _request(HostOp.stat, {'p': normalized});
     final raw = reply['e'];
     if (raw is! Map<String, dynamic>) {
-      throw SftpConnectionException('That item could not be read.');
+      throw SftpConnectionException(currentL.sftpHostItemUnreadable);
     }
     return _toEntry(HostEntry.fromJson(raw), RemotePath.parent(normalized));
   }
@@ -547,10 +549,7 @@ class LumaHostSession extends SftpSession {
 
   void _refuseIfReadOnly() {
     if (!readOnly) return;
-    throw SftpConnectionException(
-      '$hostName is sharing this folder read-only, so it cannot be changed '
-      'from here.',
-    );
+    throw SftpConnectionException(currentL.sftpHostReadOnlyHere(hostName));
   }
 
   @override
@@ -682,7 +681,7 @@ class LumaHostSession extends SftpSession {
     }
     _downloads.clear();
     // Anything still waiting on a reply would otherwise wait forever.
-    final closed = SftpConnectionException('The connection was closed.');
+    final closed = SftpConnectionException(currentL.sftpHostConnectionWasClosed);
     for (final completer in _pending.values) {
       if (!completer.isCompleted) completer.completeError(closed);
     }

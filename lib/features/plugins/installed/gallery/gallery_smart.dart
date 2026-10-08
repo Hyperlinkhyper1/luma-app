@@ -9,6 +9,8 @@ import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
 
 import 'package:image/image.dart' as img;
 
+import '../../../../l10n/app_localizations.dart';
+import '../../../../l10n/current_l.dart';
 import 'gallery_cache.dart';
 import 'gallery_media.dart';
 import 'gallery_people.dart';
@@ -21,18 +23,49 @@ import 'onnx/gallery_onnx_analyser.dart';
 class GallerySmartGroup {
   const GallerySmartGroup({
     required this.id,
-    required this.label,
     required this.icon,
     required this.items,
   });
 
   final String id;
-  final String label;
   final IconData icon;
   final List<GalleryItem> items;
 
   int get count => items.length;
+
+  /// The name shown for this group. The id stays English so the tab can be
+  /// found again whatever language is picked.
+  String labelFor(L t) => switch (id) {
+        'people' => t.galleryPagePeople,
+        'selfies' => t.gallerySmartSelfies,
+        'groups' => t.gallerySmartGroupShots,
+        'panoramas' => t.gallerySmartPanoramas,
+        'places' => t.gallerySmartPlaces,
+        _ when id.startsWith('label:') =>
+          bucketLabel(t, id.substring('label:'.length)),
+        _ => id,
+      };
+
+  String get label => labelFor(currentL);
 }
+
+/// The displayed name of a smart bucket. [bucket] is the English id that
+/// [bucketForLabel] and the cache store, so it is only translated here.
+String bucketLabel(L t, String bucket) => switch (bucket) {
+      'Food' => t.galleryBucketFood,
+      'Pets' => t.galleryBucketPets,
+      'Animals' => t.galleryBucketAnimals,
+      'Nature' => t.galleryBucketNature,
+      'Ocean' => t.galleryBucketOcean,
+      'Sky' => t.galleryBucketSky,
+      'Night' => t.galleryBucketNight,
+      'Architecture' => t.galleryBucketArchitecture,
+      'Transport' => t.galleryBucketTransport,
+      'Documents' => t.galleryBucketDocuments,
+      'Celebrations' => t.galleryBucketCelebrations,
+      'Art' => t.galleryBucketArt,
+      _ => bucket,
+    };
 
 /// Runs Google's on-device vision models over photos. Both models ship inside
 /// the app and run offline — nothing about a photo leaves the device.
@@ -369,38 +402,32 @@ List<GallerySmartGroup> buildSmartGroups(
   final groups = <GallerySmartGroup>[
     GallerySmartGroup(
       id: 'people',
-      label: 'People',
       icon: Icons.people_rounded,
       items: people,
     ),
     GallerySmartGroup(
       id: 'selfies',
-      label: 'Selfies',
       icon: Icons.face_rounded,
       items: selfies,
     ),
     GallerySmartGroup(
       id: 'groups',
-      label: 'Group shots',
       icon: Icons.groups_rounded,
       items: groupShots,
     ),
     for (final entry in buckets.entries)
       GallerySmartGroup(
         id: 'label:${entry.key}',
-        label: entry.key,
         icon: _bucketIcons[entry.key] ?? Icons.auto_awesome_rounded,
         items: entry.value,
       ),
     GallerySmartGroup(
       id: 'panoramas',
-      label: 'Panoramas',
       icon: Icons.panorama_horizontal_rounded,
       items: panoramas,
     ),
     GallerySmartGroup(
       id: 'places',
-      label: 'Places',
       icon: Icons.place_rounded,
       items: places,
     ),

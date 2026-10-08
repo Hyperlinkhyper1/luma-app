@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../youtube_models.dart';
 import '../youtube_scope.dart';
@@ -17,6 +18,7 @@ class YoutubeOverviewTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repository = YoutubeScope.of(context);
+    final t = L.of(context);
     final snapshot = repository.snapshot;
     final channel = snapshot.channel;
     final luma = context.luma;
@@ -41,8 +43,8 @@ class YoutubeOverviewTab extends StatelessWidget {
         Center(
           child: Text(
             snapshot.fetchedAt.millisecondsSinceEpoch == 0
-                ? 'Not refreshed yet'
-                : 'Updated ${formatRelative(snapshot.fetchedAt)}',
+                ? t.youtubeNotRefreshedYet
+                : t.youtubeUpdatedAgo(formatRelative(snapshot.fetchedAt)),
             style: TextStyle(color: luma.textMuted, fontSize: 11),
           ),
         ),
@@ -58,6 +60,7 @@ class _ChannelHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final decor = context.lumaDecor;
 
@@ -95,18 +98,20 @@ class _ChannelHeader extends StatelessWidget {
                   AccountMetaCount(
                     icon: Icons.people_outline_rounded,
                     value: channel.hiddenSubscriberCount
-                        ? 'Subscribers hidden'
-                        : '${formatCompact(channel.subscriberCount)} subscribers',
+                        ? t.youtubeSubscribersHidden
+                        : t.youtubeSubscribersCount(
+                            formatCompact(channel.subscriberCount)),
                     semanticLabel: channel.hiddenSubscriberCount
-                        ? 'Subscriber count hidden'
-                        : '${channel.subscriberCount} subscribers',
+                        ? t.youtubeSubscriberCountHiddenSemantic
+                        : t.youtubeSubscribersExact(channel.subscriberCount),
                   ),
                   if (channel.publishedAt != null)
                     AccountMetaCount(
                       icon: Icons.cake_outlined,
-                      value: 'Since ${formatDate(channel.publishedAt!)}',
-                      semanticLabel:
-                          'Channel created ${formatDate(channel.publishedAt!)}',
+                      value: t.youtubeChannelSince(
+                          formatDate(channel.publishedAt!)),
+                      semanticLabel: t.youtubeChannelCreated(
+                          formatDate(channel.publishedAt!)),
                     ),
                 ],
               ),
@@ -114,7 +119,7 @@ class _ChannelHeader extends StatelessWidget {
           );
 
           final actions = AccountLinkButton(
-            label: 'Channel',
+            label: t.youtubeChannelButton,
             icon: Icons.open_in_new_rounded,
             onTap: () => openExternal(channel.htmlUrl),
           );
@@ -156,6 +161,7 @@ class _Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final fallback = Container(
       width: 74,
@@ -171,7 +177,7 @@ class _Avatar extends StatelessWidget {
     if (url.isEmpty) return fallback;
 
     return Semantics(
-      label: '$title avatar',
+      label: t.youtubeAvatarSemantic(title),
       image: true,
       child: ClipOval(
         child: Image.network(
@@ -201,35 +207,36 @@ class _StatGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final analytics = snapshot.analytics;
 
     final tiles = <Widget>[
       AccountStatTile(
         icon: Icons.play_circle_outline_rounded,
-        label: 'Total views',
+        label: t.youtubeStatTotalViews,
         value: formatCompact(channel.viewCount),
-        caption: 'all time',
+        caption: t.youtubeStatAllTime,
       ),
       AccountStatTile(
         icon: Icons.people_outline_rounded,
-        label: 'Subscribers',
+        label: t.youtubeStatSubscribers,
         value: channel.hiddenSubscriberCount
-            ? 'Hidden'
+            ? t.youtubeStatHidden
             : formatCompact(channel.subscriberCount),
         tint: luma.warning,
       ),
       AccountStatTile(
         icon: Icons.video_library_outlined,
-        label: 'Videos',
+        label: t.accountOverviewSectionVideos,
         value: formatCount(channel.videoCount),
         onTap: () => onOpenSection('youtube-videos'),
       ),
       AccountStatTile(
         icon: Icons.timer_outlined,
-        label: 'Watch time',
+        label: t.youtubeStatWatchTime,
         value: formatMinutes(analytics.totalMinutesWatched.toDouble()),
-        caption: 'last 90 days',
+        caption: t.youtubeStatLast90Days,
         tint: luma.success,
         onTap: () => onOpenSection('youtube-analytics'),
       ),
@@ -237,18 +244,18 @@ class _StatGrid extends StatelessWidget {
         icon: analytics.netSubscribers >= 0
             ? Icons.trending_up_rounded
             : Icons.trending_down_rounded,
-        label: 'Net subscribers',
+        label: t.youtubeStatNetSubscribers,
         value: '${analytics.netSubscribers >= 0 ? '+' : ''}'
             '${formatCount(analytics.netSubscribers)}',
-        caption: 'last 90 days',
+        caption: t.youtubeStatLast90Days,
         tint: luma.accent,
         onTap: () => onOpenSection('youtube-analytics'),
       ),
       AccountStatTile(
         icon: Icons.visibility_outlined,
-        label: 'Views',
+        label: t.youtubeStatViews,
         value: formatCompact(analytics.totalViews),
-        caption: 'last 90 days',
+        caption: t.youtubeStatLast90Days,
         onTap: () => onOpenSection('youtube-analytics'),
       ),
     ];
@@ -279,21 +286,22 @@ class _RecentVideosPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final visible = videos.take(6).toList();
 
     return AccountPanel(
-      title: 'Recent uploads',
+      title: t.youtubeRecentUploads,
       icon: Icons.video_library_outlined,
       trailing: videos.length > 6
-          ? AccountLinkButton(label: 'View all', onTap: onViewAll)
+          ? AccountLinkButton(label: t.youtubeViewAll, onTap: onViewAll)
           : null,
       padding: EdgeInsets.zero,
       child: visible.isEmpty
           ? Padding(
               padding: const EdgeInsets.all(20),
               child: Text(
-                'No videos yet.',
+                t.youtubeNoVideosYet,
                 style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
             )
@@ -316,6 +324,7 @@ class YoutubeVideoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Material(
       color: Colors.transparent,
@@ -373,13 +382,13 @@ class YoutubeVideoRow extends StatelessWidget {
               AccountMetaCount(
                 icon: Icons.visibility_outlined,
                 value: formatCompact(video.viewCount),
-                semanticLabel: '${video.viewCount} views',
+                semanticLabel: t.youtubeViewsExact(video.viewCount),
               ),
               const SizedBox(width: 12),
               AccountMetaCount(
                 icon: Icons.thumb_up_outlined,
                 value: formatCompact(video.likeCount),
-                semanticLabel: '${video.likeCount} likes',
+                semanticLabel: t.youtubeLikesExact(video.likeCount),
                 color: luma.warning,
               ),
             ],

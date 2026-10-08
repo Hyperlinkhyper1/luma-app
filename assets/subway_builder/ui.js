@@ -3,6 +3,15 @@
   'use strict';
   const SB = (window.SB = window.SB || {});
   const $ = (id) => document.getElementById(id);
+  const translate = (source) => window.LumaSceneI18n.translate(source);
+  const format = (key, values = {}) => window.LumaSceneI18n.format(key, values);
+  const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+  const localizedWeekday = (shortName) => {
+    const index = {Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6}[shortName];
+    if (index === undefined) return translate(shortName);
+    return new Intl.DateTimeFormat(window.LumaSceneI18n.language, {weekday: 'short', timeZone: 'UTC'})
+      .format(new Date(Date.UTC(2024, 0, 1 + index)));
+  };
 
   const ui = (SB.ui = {
     tool: 'select',        // select | station | line | bulldoze
@@ -30,11 +39,54 @@
   ui.ic = ic;
 
   const MODE_ICON = { metro: 'metro', tram: 'tram', bus: 'bus', train: 'train', hst: 'hst' };
+  const LINE_COLOR_KEYS = {
+    '#e6493f': 'sceneSubwayLineColorRed', '#2f6fdb': 'sceneSubwayLineColorBlue',
+    '#2e9e4f': 'sceneSubwayLineColorGreen', '#f28c28': 'sceneSubwayLineColorOrange',
+    '#8e4fc7': 'sceneSubwayLineColorPurple', '#e8c11c': 'sceneSubwayLineColorYellow',
+    '#18a999': 'sceneSubwayLineColorTeal', '#e05a9b': 'sceneSubwayLineColorPink',
+    '#7aa711': 'sceneSubwayLineColorLime', '#5058c8': 'sceneSubwayLineColorIndigo',
+    '#b9791a': 'sceneSubwayLineColorAmber', '#12a5c9': 'sceneSubwayLineColorCyan',
+  };
+  const ACHIEVEMENT_KEYS = {
+    first1k: 'CommuterFavourite', riders25k: 'CityMover', riders100k: 'MetropolisMachine',
+    st10: 'NetworkEffect', st40: 'EveryCorner', km50: 'GoingDistance', km250: 'SteelSpine',
+    allmodes: 'FullSpectrum', water: 'UnderRiver', intercity: 'IntercityExpress',
+    airport: 'AirportLink', ring: 'RingLine', bullet: 'BulletService',
+    nightowl: 'CityNeverSleeps', profit: 'InTheBlack',
+  };
+  const MILESTONE_KEYS = [
+    'sceneSubwayMilestoneCityHall', 'sceneSubwayMilestoneStateGrant',
+    'sceneSubwayMilestoneFederalGrant', 'sceneSubwayMilestoneTransitCityAward',
+    'sceneSubwayMilestoneWorldMetroFund', 'sceneSubwayMilestoneTransitCapital',
+  ];
   const MODE_TINT = { metro: '#e05252', tram: '#2e9e4f', bus: '#f2a33c', train: '#7a6ff0', hst: '#d452c4' };
   ui.MODE_TINT = MODE_TINT;
+  ui.lineDisplayName = function (line) {
+    const colorLabel = Object.keys(LINE_COLOR_KEYS).find((hex) => hex === line.color);
+    const mode = SB.MODES[line.mode];
+    if (!colorLabel || !mode) return line.name;
+    const colorNames = {
+      '#e6493f': 'Red', '#2f6fdb': 'Blue', '#2e9e4f': 'Green', '#f28c28': 'Orange',
+      '#8e4fc7': 'Purple', '#e8c11c': 'Yellow', '#18a999': 'Teal', '#e05a9b': 'Pink',
+      '#7aa711': 'Lime', '#5058c8': 'Indigo', '#b9791a': 'Amber', '#12a5c9': 'Cyan',
+    };
+    const original = colorNames[colorLabel] + ' ' + mode.label;
+    if (line.name !== original) return line.name;
+    return window.LumaSceneI18n.value(LINE_COLOR_KEYS[colorLabel]) + ' ' +
+      window.LumaSceneI18n.translate(mode.label);
+  };
+  ui.achievementLabel = (id, suffix = '') => {
+    const key = ACHIEVEMENT_KEYS[id];
+    return key ? window.LumaSceneI18n.value('sceneSubwayAchievement' + key + suffix) : '';
+  };
+  ui.milestoneLabel = (share) => {
+    const index = [0.03, 0.06, 0.10, 0.15, 0.22, 0.30].indexOf(share);
+    return index < 0 ? '' : window.LumaSceneI18n.value(MILESTONE_KEYS[index]);
+  };
 
   // ── Toasts & banners ─────────────────────────────────────────────────
   ui.toast = function (msg, kind) {
+    msg = translate(String(msg));
     const el = document.createElement('div');
     el.className = 'toast' + (kind ? ' ' + kind : '');
     el.innerHTML = ic(kind === 'bad' ? 'alert' : kind === 'good' ? 'check' : 'info') + '<span></span>';
@@ -48,6 +100,8 @@
   };
 
   ui.banner = function (title, sub) {
+    title = translate(title);
+    sub = translate(sub);
     const el = $('milestone');
     $('milestone-title').textContent = title;
     $('milestone-sub').textContent = sub;
@@ -87,20 +141,19 @@
 
   ui.hintForTool = function () {
     const M = SB.MODES[ui.mode];
-    const role = M.role ? M.role + ' — ' : '';
     const hints = {
-      select: 'Click a stop or line to inspect it. Drag to pan, scroll to zoom, right-drag to rotate.',
+      select: window.LumaSceneI18n.value('sceneSubwayUiSelectHint'),
       station: SB.isRailMode(ui.mode)
-        ? role + M.label + ' services only call at real stations, highlighted on the map. Click one to lease it.'
+        ? format('sceneSubwayUiRailStationHint', {mode: translate(M.label)})
         : ui.mode === 'metro'
-          ? role + 'click the map to dig a metro station. Denser areas cost more.'
-          : role + 'click near a street to place a ' + M.label.toLowerCase() + ' stop — it snaps to the road.',
+          ? window.LumaSceneI18n.value('sceneSubwayUiMetroStationHint')
+          : format('sceneSubwayUiStreetStationHint', {mode: translate(M.label)}),
       line: SB.isRailMode(ui.mode)
-        ? role + 'click real stations in order — the route follows existing tracks. Enter to finish, or click the first station again to close a loop.'
+        ? window.LumaSceneI18n.value('sceneSubwayUiRailLineHint')
         : ui.mode === 'metro'
-          ? role + 'click stations in order to bore tunnels between them. Enter to finish, or click the first station again to close a loop.'
-          : role + 'click stops in order — the route follows real streets. Enter to finish, or click the first stop again to close a loop.',
-      bulldoze: 'Click a stop to demolish it (25% refund). Click a line to remove the whole line.',
+          ? window.LumaSceneI18n.value('sceneSubwayUiMetroLineHint')
+          : window.LumaSceneI18n.value('sceneSubwayUiStreetLineHint'),
+      bulldoze: window.LumaSceneI18n.value('sceneSubwayUiBulldozeHint'),
     };
     ui.hint(hints[ui.tool]);
   };
@@ -122,7 +175,7 @@
   };
 
   ui.hint = function (text) {
-    $('hint').textContent = text || '';
+    $('hint').textContent = text ? translate(text) : '';
     $('hint').style.display = text ? 'block' : 'none';
   };
 
@@ -152,8 +205,8 @@
       const line = SB.game.lineById(ui.draftLineId);
       ui.hint(line
         ? (ui.draftIds.length
-            ? 'Extending ' + line.name + ' — click the next stop. Esc to stop.'
-            : 'Extending ' + line.name + ': click a stop at either end, then the new stop.')
+            ? format('sceneSubwayUiExtendNextStop', {line: ui.lineDisplayName(line)})
+            : format('sceneSubwayUiExtendNewStop', {line: ui.lineDisplayName(line)}))
         : '');
       return;
     }
@@ -162,10 +215,8 @@
     } else {
       const d = SB.game.draftCost(ui.mode, ui.draftIds);
       if (d.err) { ui.hint(d.err); return; }
-      let t = ui.draftIds.length + ' stops · ' + SB.fmtKm(d.len) + ' · ' + SB.fmtMoney(d.cost);
-      if (d.waterM > 0) t += ' (incl. underwater tunnelling)';
-      t += ' — Enter to build, Esc to cancel.';
-      ui.hint(t);
+      const template = d.waterM > 0 ? 'sceneSubwayUiDraftCostWater' : 'sceneSubwayUiDraftCost';
+      ui.hint(format(template, {count: ui.draftIds.length, distance: SB.fmtKm(d.len), cost: SB.fmtMoney(d.cost)}));
     }
   };
 
@@ -183,6 +234,7 @@
     if (!g.state) return;
     const res = SB.sim.results;
 
+    $('cityname').dataset.lumaUserContent = 'true';
     $('cityname').textContent = g.city.def.name;
     if (SB.map3d.ready) {
       SB.map3d.updateNetwork(ui.mapState());
@@ -206,16 +258,16 @@
     if (!g.state || !SB.world) return;
     SB.world.ensure();
     const season = SB.world.season();
-    $('stat-day').textContent = 'Day ' + SB.world.day() + ' · ' + SB.world.weekday() +
+    $('stat-day').textContent = format('sceneSubwayUiClockDay', {day: SB.world.day(), weekday: localizedWeekday(SB.world.weekday())}) +
       ' · ' + season.emoji;
     $('stat-time').textContent = SB.world.timeString() +
-      (SB.world.isRushHour() ? ' 🔺 rush' : SB.world.isNight() ? ' 🌙 night' : '');
-    $('stat-clock').title = season.label + ' · Day ' + SB.world.day();
+      (SB.world.isRushHour() ? ' 🔺 ' + window.LumaSceneI18n.value('sceneSubwayUiRushHour') : SB.world.isNight() ? ' 🌙 ' + window.LumaSceneI18n.value('sceneSubwayUiNight') : '');
+    $('stat-clock').title = translate(season.label) + ' · ' + format('sceneSubwayUiClockDay', {day: SB.world.day(), weekday: localizedWeekday(SB.world.weekday())});
     const w = SB.world.weatherInfo();
     $('weather-emoji').textContent = w.emoji;
-    $('stat-weather-label').textContent = w.label;
-    $('stat-weather').title = w.label +
-      (w.surface > 1 ? ' — surface transit slowed ×' + w.surface.toFixed(2) : '');
+    $('stat-weather-label').textContent = translate(w.label);
+    $('stat-weather').title = translate(w.label) +
+      (w.surface > 1 ? ' ' + format('sceneSubwayUiSurfaceSlowdown', {factor: w.surface.toFixed(2)}) : '');
 
     const badge = $('ach-badge');
     const newCount = g.state.achievementsHit.length - g.state.achievementsSeen;
@@ -224,23 +276,23 @@
 
     const coopBtn = $('btn-coop');
     coopBtn.classList.toggle('active', SB.mp.connected);
-    coopBtn.lastChild.textContent = SB.mp.connected ? SB.mp.roomCode : 'Co-op';
+    coopBtn.lastChild.textContent = SB.mp.connected ? SB.mp.roomCode : translate('Co-op');
   };
 
   // ── Achievements ─────────────────────────────────────────────────────
   ui.showAchievements = function () {
+    ui._localeRefresh = () => ui.showAchievements();
     const st = SB.game.state;
     const rows = SB.ACHIEVEMENTS.map((a) => {
       const done = st.achievementsHit.includes(a.id);
       return '<div class="achrow' + (done ? ' done' : '') + '">' +
         ic(done ? 'trophy' : 'trophy') +
-        '<span class="at"><b>' + a.label + '</b><span>' + a.sub + '</span></span>' +
-        '<span class="av">' + (done ? 'Unlocked' : SB.fmtMoney(a.grant)) + '</span></div>';
+        '<span class="at"><b>' + ui.achievementLabel(a.id) + '</b><span>' + ui.achievementLabel(a.id, 'Sub') + '</span></span>' +
+        '<span class="av">' + (done ? translate('Unlocked') : SB.fmtMoney(a.grant)) + '</span></div>';
     }).join('');
     const doneCount = st.achievementsHit.length;
     openModal(
-      '<h2>Achievements</h2><p class="sub">' + doneCount + ' / ' + SB.ACHIEVEMENTS.length +
-      ' unlocked — real facts about the network you actually built.</p>' +
+      '<h2>' + translate('Achievements') + '</h2><p class="sub">' + escapeHtml(format('sceneSubwayUiAchievementSummary', {done: doneCount, total: SB.ACHIEVEMENTS.length})) + '</p>' +
       '<div class="achlist">' + rows + '</div>' +
       '<div class="mrow"><button id="m-close">Close</button></div>',
       true
@@ -254,10 +306,9 @@
   function renderFinance() {
     const st = SB.game.state;
     $('fare-val').textContent = '$' + st.fare.toFixed(2);
-    $('loan-out').textContent = st.loans > 0 ? SB.fmtMoney(st.loans) + ' owed' : 'No debt';
+    $('loan-out').textContent = st.loans > 0 ? format('sceneSubwayUiLoanOwed', {amount: SB.fmtMoney(st.loans)}) : window.LumaSceneI18n.value('sceneSubwayUiNoDebt');
     $('btn-repay').disabled = st.loans <= 0;
-    $('funding-line').innerHTML =
-      SB.fmtMoney(SB.game.city.def.funding) + '/day operating subsidy';
+    $('funding-line').textContent = format('sceneSubwayUiFundingSubsidy', {amount: SB.fmtMoney(SB.game.city.def.funding)});
   }
 
   function renderLineList() {
@@ -268,7 +319,7 @@
     if (!st.lines.length) {
       const d = document.createElement('div');
       d.className = 'empty';
-      d.textContent = 'No lines yet. Pick a mode, place stops, then connect them with the Line tool.';
+      d.textContent = translate('No lines yet. Pick a mode, place stops, then connect them with the Line tool.');
       wrap.appendChild(d);
     }
     for (const line of st.lines) {
@@ -285,14 +336,14 @@
       const M = SB.MODES[line.mode];
       row.innerHTML =
         '<span class="sw" style="background:' + line.color + '">' + ic(MODE_ICON[line.mode]) + '</span>' +
-        '<span class="lcol"><span class="lname">' + line.name + '</span>' +
-        '<span class="lmeta">' + stopCount + ' stops' + (isLoop ? ' · loop' : '') + ' · ' + SB.fmtInt(riders) + '/d · ' + SB.fmtMoney(revenue) + '/d' +
-        (ratio > 1.05 ? ' · <b class="bad">crowded</b>' : '') +
-        (disruption ? ' · <b class="dis-flag">' + disruption.label + '</b>' : '') + '</span></span>' +
+        '<span class="lcol"><span class="lname" data-luma-user-content>' + escapeHtml(ui.lineDisplayName(line)) + '</span>' +
+        '<span class="lmeta">' + stopCount + ' ' + translate('stops') + (isLoop ? ' · ' + translate('loop') : '') + ' · ' + SB.fmtInt(riders) + '/d · ' + SB.fmtMoney(revenue) + '/d' +
+        (ratio > 1.05 ? ' · <b class="bad">' + translate('crowded') + '</b>' : '') +
+        (disruption ? ' · <b class="dis-flag">' + escapeHtml(translate(disruption.label)) + '</b>' : '') + '</span></span>' +
         '<span class="tctl">' +
-        '<button class="mini" data-act="vminus" title="Sell a ' + M.vehicle + '">' + ic('minus') + '</button>' +
+        '<button class="mini" data-act="vminus" title="' + escapeHtml(window.LumaSceneI18n.value('sceneSubwayVehicleSellTitle')) + '">' + ic('minus') + '</button>' +
         '<span class="tcount">' + line.vehicles + '</span>' +
-        '<button class="mini" data-act="vplus" title="Buy a ' + M.vehicle + ' (' + SB.fmtMoney(M.vehicleCost) + ')">' + ic('plus') + '</button>' +
+        '<button class="mini" data-act="vplus" title="' + escapeHtml(window.LumaSceneI18n.value('sceneSubwayVehicleBuyTitle')) + '">' + ic('plus') + '</button>' +
         '</span>';
       row.addEventListener('click', (e) => {
         const btn = e.target.closest && e.target.closest('[data-act]');
@@ -326,18 +377,18 @@
       const boardings = res ? res.boardings.get(s.id) || 0 : 0;
       panel.innerHTML =
         '<div class="ip-head">' + ic(MODE_ICON[s.mode], 'tint-' + s.mode) +
-        '<span class="ip-title">' + s.name + '</span>' +
+        '<span class="ip-title" data-luma-user-content>' + escapeHtml(s.name) + '</span>' +
         '<button class="mini ghostbtn" id="ip-close">' + ic('x') + '</button></div>' +
-        '<div class="ip-row">Type <b>' + SB.MODES[s.mode].label + (s.real ? ' · real station' : '') + '</b></div>' +
-        '<div class="ip-row">Boardings <b>' + SB.fmtInt(boardings) + '/day</b></div>' +
-        '<div class="ip-row">Lines <b>' + (lines.length ? lines.map((l) => '<span class="dot" style="background:' + l.color + '"></span>').join('') : 'none yet') + '</b></div>' +
-        '<div class="ip-row">Area <b>' + (SB.game.city.districtNameAt(s.x, s.y) || '—') + '</b></div>' +
-        '<div class="ip-actions"><button id="ip-demolish" class="danger">' + ic('trash') + 'Demolish</button></div>';
+        '<div class="ip-row">' + translate('Type') + ' <b>' + escapeHtml(translate(SB.MODES[s.mode].label)) + (s.real ? ' · ' + translate('real station') : '') + '</b></div>' +
+        '<div class="ip-row">' + escapeHtml(format('sceneSubwayUiBoardings', {count: SB.fmtInt(boardings)})) + '</div>' +
+        '<div class="ip-row">' + translate('Lines') + ' <b>' + (lines.length ? lines.map((l) => '<span class="dot" style="background:' + l.color + '"></span>').join('') : translate('none yet')) + '</b></div>' +
+        '<div class="ip-row">' + translate('Area') + ' <b data-luma-user-content>' + escapeHtml(SB.game.city.districtNameAt(s.x, s.y) || '—') + '</b></div>' +
+        '<div class="ip-actions"><button id="ip-demolish" class="danger">' + ic('trash') + translate('Demolish') + '</button></div>';
       panel.style.display = 'block';
       $('ip-close').onclick = () => { ui.selection = null; ui.updateAll(); };
       $('ip-demolish').onclick = () => {
         const r = SB.game.removeStation(s.id);
-        if (r.ok) ui.toast(s.name + ' demolished · ' + SB.fmtMoney(r.refund) + ' refunded');
+        if (r.ok) ui.toast(window.LumaSceneI18n.format('sceneSubwayStationDemolished', {station: s.name, refund: SB.fmtMoney(r.refund)}));
         ui.selection = null;
         doAction(r);
       };
@@ -354,26 +405,28 @@
       const isLoop = SB.isLoopLine(line);
       const stopCount = line.stationIds.length - (isLoop ? 1 : 0);
       const disruption = SB.world ? SB.world.disruptionFor(line.id) : null;
+      const modeLabel = translate(M.label);
+      const vehicleLabel = translate(M.vehicle);
       panel.innerHTML =
         '<div class="ip-head"><span class="dot big" style="background:' + line.color + '"></span>' +
-        '<span class="ip-title">' + line.name + (isLoop ? ' <span class="pill">loop</span>' : '') + '</span>' +
+        '<span class="ip-title" data-luma-user-content>' + escapeHtml(ui.lineDisplayName(line)) + (isLoop ? ' <span class="pill">' + translate('loop') + '</span>' : '') + '</span>' +
         '<button class="mini ghostbtn" id="ip-close">' + ic('x') + '</button></div>' +
-        '<div class="ip-row">Mode <b>' + M.label + ' · ' + M.speedKmh + ' km/h</b></div>' +
-        '<div class="ip-row">Stops <b>' + stopCount + '</b> · length <b>' + SB.fmtKm(lenM) + '</b></div>' +
-        '<div class="ip-row">Fleet <b>' + line.vehicles + ' ' + M.vehicle + 's</b> · headway <b>' + (isFinite(headway) ? headway.toFixed(1) + ' min' : '—') + '</b></div>' +
-        '<div class="ip-row">Riders <b>' + SB.fmtInt(riders) + '/day</b> · revenue <b>' + SB.fmtMoney(riders * SB.game.state.fare) + '/day</b></div>' +
-        '<div class="ip-row">Peak crowding <b class="' + crowdCls + '">' + Math.round(ratio * 100) + '%</b>' +
-        (delay > 1.02 ? ' <span class="warn">delays ×' + delay.toFixed(2) + '</span>' : '') + '</div>' +
-        (disruption ? '<div class="ip-row"><b class="bad">⚠ ' + disruption.label + '</b> — service is slowed until it clears</div>' : '') +
-        '<div class="ip-row">Service window' +
+        '<div class="ip-row">' + escapeHtml(format('sceneSubwayLinePanelModeSpeed', {mode: modeLabel, speed: M.speedKmh + ' km/h'})) + '</div>' +
+        '<div class="ip-row">' + escapeHtml(format('sceneSubwayLinePanelStopsLength', {count: stopCount, length: SB.fmtKm(lenM)})) + '</div>' +
+        '<div class="ip-row">' + escapeHtml(format('sceneSubwayLinePanelFleetHeadway', {count: line.vehicles, vehicle: vehicleLabel, headway: isFinite(headway) ? headway.toFixed(1) + ' min' : '—'})) + '</div>' +
+        '<div class="ip-row">' + escapeHtml(format('sceneSubwayLinePanelRidersRevenue', {count: SB.fmtInt(riders), revenue: SB.fmtMoney(riders * SB.game.state.fare)})) + '</div>' +
+        '<div class="ip-row">' + escapeHtml(format('sceneSubwayLinePanelPeakCrowding', {percent: Math.round(ratio * 100)})) +
+        (delay > 1.02 ? ' <span class="warn">' + escapeHtml(format('sceneSubwayLinePanelDelays', {factor: delay.toFixed(2)})) + '</span>' : '') + '</div>' +
+        (disruption ? '<div class="ip-row"><b class="bad">⚠ ' + escapeHtml(format('sceneSubwayLinePanelDisruption', {label: translate(disruption.label)})) + '</b></div>' : '') +
+        '<div class="ip-row">' + window.LumaSceneI18n.value('sceneSubwayLinePanelServiceWindow') +
         '<div class="svctoggle">' +
-        '<button class="mini' + (line.nightService ? ' active' : ' off') + '" id="ip-night" title="Toggle overnight (22:00–05:00) service">' + ic('moonwave') + 'Night</button>' +
-        '<button class="mini' + (line.weekendService ? ' active' : ' off') + '" id="ip-weekend" title="Toggle weekend service">' + ic('week') + 'Weekend</button>' +
+        '<button class="mini' + (line.nightService ? ' active' : ' off') + '" id="ip-night" title="' + escapeHtml(translate('Toggle overnight (22:00–05:00) service')) + '">' + ic('moonwave') + window.LumaSceneI18n.value('sceneSubwayLinePanelNight') + '</button>' +
+        '<button class="mini' + (line.weekendService ? ' active' : ' off') + '" id="ip-weekend" title="' + escapeHtml(translate('Toggle weekend service')) + '">' + ic('week') + window.LumaSceneI18n.value('sceneSubwayLinePanelWeekend') + '</button>' +
         '</div></div>' +
         '<div class="ip-actions">' +
-        '<button id="ip-veh">' + ic('plus') + M.vehicle.charAt(0).toUpperCase() + M.vehicle.slice(1) + ' · ' + SB.fmtMoney(M.vehicleCost) + '</button>' +
-        '<button id="ip-extend">' + ic('route') + 'Extend</button>' +
-        '<button id="ip-delete" class="danger">' + ic('trash') + 'Delete</button></div>';
+        '<button id="ip-veh" title="' + escapeHtml(window.LumaSceneI18n.value('sceneSubwayVehicleBuyTitle')) + '">' + ic('plus') + escapeHtml(vehicleLabel) + ' · ' + SB.fmtMoney(M.vehicleCost) + '</button>' +
+        '<button id="ip-extend">' + ic('route') + window.LumaSceneI18n.value('sceneSubwayLinePanelExtend') + '</button>' +
+        '<button id="ip-delete" class="danger">' + ic('trash') + translate('Delete') + '</button></div>';
       panel.style.display = 'block';
       $('ip-close').onclick = () => { ui.selection = null; ui.updateAll(); };
       $('ip-night').onclick = () => doAction(SB.game.setLineService(line.id, 'night', !line.nightService));
@@ -386,37 +439,45 @@
         ui.updateDraftHint();
       };
       $('ip-delete').onclick = () => {
-        ui.confirm('Delete ' + line.name + '?', 'You get 25% of construction plus vehicle resale back.', () => {
-          const r = SB.game.deleteLine(line.id);
-          if (r.ok) ui.toast(line.name + ' removed · ' + SB.fmtMoney(r.refund) + ' refunded');
-          ui.selection = null;
-          doAction(r);
-        });
+        const confirmDelete = () => ui.confirm(
+          escapeHtml(format('sceneSubwayDeleteLineQuestion', {line: ui.lineDisplayName(line)})),
+          window.LumaSceneI18n.value('sceneSubwayDeleteLineRefundDetails'),
+          () => {
+            const r = SB.game.deleteLine(line.id);
+            if (r.ok) ui.toast(format('sceneSubwayLineRemoved', {line: ui.lineDisplayName(line), refund: SB.fmtMoney(r.refund)}));
+            ui.selection = null;
+            doAction(r);
+          },
+          confirmDelete,
+        );
+        confirmDelete();
       };
     }
   }
 
   // ── Co-op ────────────────────────────────────────────────────────────
   function renderCoopSignedOut() {
+    ui._localeRefresh = renderCoopSignedOut;
     openModal(
-      '<h2>Play together</h2>' +
-      '<p class="sub">Co-op rooms are tied to your luma account — that’s what makes invites and room membership work. Sign in from the app’s account settings, then come back here.</p>' +
-      '<div class="mrow"><button id="m-close">Close</button></div>'
+      '<h2>' + translate('Play together') + '</h2>' +
+      '<p class="sub">' + translate('Co-op rooms are tied to your luma account — that’s what makes invites and room membership work. Sign in from the app’s account settings, then come back here.') + '</p>' +
+      '<div class="mrow"><button id="m-close">' + translate('Close') + '</button></div>'
     );
     $('m-close').onclick = ui.closeModal;
   }
 
   function renderCoopConnected() {
+    ui._localeRefresh = renderCoopConnected;
     const authLine = SB.mp.isClockAuthority
-      ? 'You’re currently running the clock for this room.'
-      : 'A fellow builder is currently running the clock — you’ll pick it up automatically if they leave.';
+      ? window.LumaSceneI18n.value('sceneSubwayCoopClockYou')
+      : window.LumaSceneI18n.value('sceneSubwayCoopClockPeer');
     openModal(
-      '<h2>Co-op — room ' + SB.mp.roomCode + '</h2>' +
-      '<p class="sub">Anyone with the code (or an invite) can join and build on this network with you.</p>' +
-      '<div class="statgrid" style="grid-template-columns:1fr"><div class="stat"><div class="v">' + SB.mp.roomCode + '</div><div class="l">room code</div></div></div>' +
+      '<h2>' + escapeHtml(format('sceneSubwayCoopRoomCodeTitle', {code: SB.mp.roomCode})) + '</h2>' +
+      '<p class="sub">' + window.LumaSceneI18n.value('sceneSubwayCoopRoomCodeDescription') + '</p>' +
+      '<div class="statgrid" style="grid-template-columns:1fr"><div class="stat"><div class="v" data-luma-user-content>' + escapeHtml(SB.mp.roomCode) + '</div><div class="l">' + window.LumaSceneI18n.value('sceneSubwayBuilderRoomCode') + '</div></div></div>' +
       '<p class="sub">' + authLine + '</p>' +
-      '<div class="mrow"><button id="cp-invite">Invite a chat contact</button></div>' +
-      '<div class="mrow"><button id="cp-leave" class="danger">Leave room</button><button id="m-close">Close</button></div>',
+      '<div class="mrow"><button id="cp-invite">' + window.LumaSceneI18n.value('sceneSubwayCoopInviteContact') + '</button></div>' +
+      '<div class="mrow"><button id="cp-leave" class="danger">' + translate('Leave room') + '</button><button id="m-close">' + translate('Close') + '</button></div>',
       true
     );
     $('m-close').onclick = ui.closeModal;
@@ -425,8 +486,9 @@
   }
 
   async function renderCoopInvite() {
+    ui._localeRefresh = renderCoopInvite;
     openModal(
-      '<h2>Invite a contact</h2><p class="sub">Loading your chat contacts…</p>' +
+      '<h2>' + window.LumaSceneI18n.value('sceneSubwayCoopInviteContact') + '</h2><p class="sub">' + window.LumaSceneI18n.value('sceneSubwayCoopLoadingContacts') + '</p>' +
       '<div class="mrow"><button id="m-close">Back</button></div>', true);
     $('m-close').onclick = renderCoopConnected;
     let contacts = [];
@@ -434,13 +496,13 @@
     const ready = contacts.filter((c) => c.ready);
     const rows = ready.length
       ? ready.map((c) =>
-          '<div class="achrow done" style="opacity:1"><span class="at"><b>' + c.peerEmail + '</b></span>' +
-          '<button class="mini" data-cid="' + c.conversationId + '" data-uid="' + c.peerUserId + '">Invite</button></div>'
+          '<div class="achrow done" style="opacity:1"><span class="at"><b data-luma-user-content>' + escapeHtml(c.peerEmail) + '</b></span>' +
+          '<button class="mini" data-cid="' + escapeHtml(c.conversationId) + '" data-uid="' + escapeHtml(c.peerUserId) + '">' + translate('Invite') + '</button></div>'
         ).join('')
-      : '<div class="empty">No chat contacts yet — set up the Chat plugin first, or just share the room code ' + SB.mp.roomCode + ' directly.</div>';
+      : '<div class="empty">' + escapeHtml(format('sceneSubwayCoopNoChatContacts', {code: SB.mp.roomCode})) + '</div>';
     openModal(
-      '<h2>Invite a contact</h2>' +
-      '<p class="sub">Sends them a chat message with the room code — they still need to tap Join.</p>' +
+      '<h2>' + window.LumaSceneI18n.value('sceneSubwayCoopInviteContact') + '</h2>' +
+      '<p class="sub">' + window.LumaSceneI18n.value('sceneSubwayCoopInviteInstruction') + '</p>' +
       '<div class="achlist">' + rows + '</div>' +
       '<div class="mrow"><button id="m-close">Back</button></div>',
       true
@@ -455,7 +517,7 @@
           ui.toast('Invite sent', 'good');
           renderCoopConnected();
         } catch (e) {
-          ui.toast('Could not send invite: ' + e.message, 'bad');
+          ui.toast(format('sceneSubwayCouldNotSendInvite', {error: e.message}), 'bad');
           btn.disabled = false;
         }
       };
@@ -463,27 +525,28 @@
   }
 
   async function renderCoopSetup() {
+    ui._localeRefresh = renderCoopSetup;
     openModal(
-      '<h2>Play together</h2><p class="sub">Loading your rooms…</p>' +
+      '<h2>' + window.LumaSceneI18n.value('sceneSubwayCoopCreateRoom') + '</h2><p class="sub">' + window.LumaSceneI18n.value('sceneSubwayCoopLoadingRooms') + '</p>' +
       '<div class="mrow"><button id="m-close">Cancel</button></div>', true);
     $('m-close').onclick = ui.closeModal;
     let rooms = [];
     try { rooms = await SB.mp.myRooms(); } catch (e) { /* fall through to empty list */ }
     const roomRows = rooms.length
       ? rooms.map((r) =>
-          '<div class="achrow done" style="opacity:1"><span class="at"><b>' + r.code + '</b><span>' +
-          r.memberCount + ' member' + (r.memberCount === 1 ? '' : 's') + (r.isOwner ? ' · yours' : '') +
-          '</span></span><button class="mini" data-rejoin="' + r.code + '">Open</button></div>'
+          '<div class="achrow done" style="opacity:1"><span class="at"><b data-luma-user-content>' + escapeHtml(r.code) + '</b><span>' +
+          escapeHtml(r.memberCount === 1 ? format('sceneSubwayCoopMemberCountOne', {count: r.memberCount}) : format('sceneSubwayCoopMemberCountMany', {count: r.memberCount})) + (r.isOwner ? ' · ' + window.LumaSceneI18n.value('sceneSubwayCoopRoomYours') : '') +
+          '</span></span><button class="mini" data-rejoin="' + escapeHtml(r.code) + '">' + window.LumaSceneI18n.value('sceneSubwayCoopOpenRoom') + '</button></div>'
         ).join('')
-      : '';
+      : '<div class="empty">' + window.LumaSceneI18n.value('sceneSubwayCoopRoomsEmpty') + '</div>';
     openModal(
-      '<h2>Play together</h2>' +
+      '<h2>' + window.LumaSceneI18n.value('sceneSubwayCoopCreateRoom') + '</h2>' +
       '<p class="sub">Build on the same network as friends — invite via chat, or share a room code. Whoever’s connected keeps the clock running; leave and rejoin any time.</p>' +
-      (roomRows ? '<h3>Your rooms</h3><div class="achlist">' + roomRows + '</div>' : '') +
-      '<div class="mrow" style="margin-top:10px"><button id="cp-create" class="primary">Create a new room</button></div>' +
-      '<p class="sub" style="margin-top:14px">— or join by code —</p>' +
-      '<div class="mrow"><input type="text" id="cp-code" placeholder="Room code" maxlength="6" style="flex:1;text-transform:uppercase"></div>' +
-      '<div class="mrow"><button id="cp-join">Join room</button></div>' +
+      (rooms.length ? '<h3>' + translate('Your rooms') + '</h3><div class="achlist">' + roomRows + '</div>' : roomRows) +
+      '<div class="mrow" style="margin-top:10px"><button id="cp-create" class="primary">' + window.LumaSceneI18n.value('sceneSubwayCoopCreateRoom') + '</button></div>' +
+      '<p class="sub" style="margin-top:14px">' + window.LumaSceneI18n.value('sceneSubwayCoopJoinByCode') + '</p>' +
+      '<div class="mrow"><input type="text" id="cp-code" placeholder="' + escapeHtml(window.LumaSceneI18n.value('sceneSubwayBuilderRoomCode')) + '" maxlength="6" style="flex:1;text-transform:uppercase"></div>' +
+      '<div class="mrow"><button id="cp-join">' + window.LumaSceneI18n.value('sceneSubwayCoopJoinRoom') + '</button></div>' +
       '<div class="mrow"><button id="m-close">Cancel</button></div>',
       true
     );
@@ -515,9 +578,10 @@
     $('modal').classList.toggle('wide', !!wide);
     back.style.display = 'flex';
   }
-  ui.closeModal = function () { $('modalback').style.display = 'none'; };
+  ui.closeModal = function () { $('modalback').style.display = 'none'; ui._localeRefresh = null; };
 
-  ui.confirm = function (title, sub, onYes) {
+  ui.confirm = function (title, sub, onYes, localeRefresh) {
+    ui._localeRefresh = localeRefresh || (() => ui.confirm(title, sub, onYes));
     openModal(
       '<h2>' + title + '</h2><p class="sub">' + sub + '</p>' +
       '<div class="mrow"><button id="m-no">Cancel</button>' +
@@ -544,29 +608,30 @@
   }
 
   ui.showPlacePicker = function (allowClose) {
+    ui._localeRefresh = () => ui.showPlacePicker(allowClose);
     const saved = SB.game.savedGames();
     let savedHtml = '';
     if (saved.length) {
-      savedHtml = '<h3>Your cities</h3><div class="citygrid">' + saved.map((s) =>
+      savedHtml = '<h3>' + translate('Your cities') + '</h3><div class="citygrid">' + saved.map((s) =>
         '<div class="citycard" data-save="' + s.id + '">' +
-        '<div class="cc-head"><b>' + s.place.name + '</b><span class="pill">Day ' + s.day + '</span></div>' +
-        '<div class="cc-meta">' + s.lines + ' lines · ' + s.stations + ' stops</div>' +
-        '<div class="cc-save">Continue · <a href="#" class="cc-del" data-save="' + s.id + '">delete save</a></div>' +
+        '<div class="cc-head"><b data-luma-user-content>' + escapeHtml(s.place.name) + '</b><span class="pill">' + translate('Day') + ' ' + s.day + '</span></div>' +
+        '<div class="cc-meta">' + s.lines + ' ' + translate('lines') + ' · ' + s.stations + ' ' + translate('stops') + '</div>' +
+        '<div class="cc-save">' + translate('Continue') + ' · <a href="#" class="cc-del" data-save="' + s.id + '">' + translate('delete save') + '</a></div>' +
         '</div>').join('') + '</div>';
     }
     openModal(
       '<div class="brandrow">' + ic('metro', 'brandmark') + '<span class="brand">Subway Builder</span>' +
-      '<span class="sub">Pick any real place on Earth and build the transit it deserves</span></div>' +
-      '<div class="searchrow"><input type="text" id="place-q" placeholder="Search any city, town or address…">' +
-      '<button id="place-go" class="primary">Search</button></div>' +
+      '<span class="sub">' + translate('Pick any real place on Earth and build the transit it deserves') + '</span></div>' +
+      '<div class="searchrow"><input type="text" id="place-q" placeholder="' + escapeHtml(translate('Search any city, town or address…')) + '">' +
+      '<button id="place-go" class="primary">' + translate('Search') + '</button></div>' +
       '<div id="place-results"></div>' +
       savedHtml +
-      '<h3>Featured cities</h3><div class="citygrid">' + FEATURED.map((c, i) =>
+      '<h3>' + translate('Featured cities') + '</h3><div class="citygrid">' + FEATURED.map((c, i) =>
         '<div class="citycard" data-feat="' + i + '">' +
-        '<div class="cc-head"><b>' + c.name + '</b></div>' +
-        '<div class="cc-meta">' + c.country + '</div>' +
+        '<div class="cc-head"><b data-luma-user-content>' + escapeHtml(c.name) + '</b></div>' +
+        '<div class="cc-meta" data-luma-user-content>' + escapeHtml(c.country) + '</div>' +
         '</div>').join('') + '</div>' +
-      (allowClose ? '<div class="mrow"><button id="m-close">Back to the map</button></div>' : ''),
+      (allowClose ? '<div class="mrow"><button id="m-close">' + translate('Back to the map') + '</button></div>' : ''),
       true
     );
 
@@ -596,21 +661,21 @@
     async function doSearch() {
       const q = $('place-q').value.trim();
       if (!q) return;
-      $('place-results').innerHTML = '<div class="sub" style="padding:8px 2px">Searching…</div>';
+      $('place-results').innerHTML = '<div class="sub" style="padding:8px 2px">' + translate('Searching…') + '</div>';
       try {
-        const r = await fetch('https://photon.komoot.io/api/?q=' + encodeURIComponent(q) + '&limit=6&lang=en');
+        const r = await fetch('https://photon.komoot.io/api/?q=' + encodeURIComponent(q) + '&limit=6&lang=' + encodeURIComponent(window.LumaSceneI18n.language));
         const data = await r.json();
         const feats = (data.features || []).filter((f) => f.geometry && f.geometry.type === 'Point');
         if (!feats.length) {
-          $('place-results').innerHTML = '<div class="sub" style="padding:8px 2px">No places found.</div>';
+          $('place-results').innerHTML = '<div class="sub" style="padding:8px 2px">' + translate('No places found.') + '</div>';
           return;
         }
         $('place-results').innerHTML = '<div class="citygrid">' + feats.map((f, i) => {
           const p = f.properties || {};
           const ctx = [p.city, p.state, p.country].filter((v) => v && v !== p.name).join(', ');
           return '<div class="citycard" data-res="' + i + '">' +
-            '<div class="cc-head"><b>' + (p.name || q) + '</b></div>' +
-            '<div class="cc-meta">' + (ctx || p.osm_value || '') + '</div></div>';
+            '<div class="cc-head"><b data-luma-user-content>' + escapeHtml(p.name || q) + '</b></div>' +
+            '<div class="cc-meta" data-luma-user-content>' + escapeHtml(ctx || p.osm_value || '') + '</div></div>';
         }).join('') + '</div>';
         document.querySelectorAll('[data-res]').forEach((el) => {
           el.addEventListener('click', () => {
@@ -621,7 +686,7 @@
           });
         });
       } catch (err) {
-        $('place-results').innerHTML = '<div class="sub" style="padding:8px 2px">Search failed — check your internet connection.</div>';
+        $('place-results').innerHTML = '<div class="sub" style="padding:8px 2px">' + translate('Search failed — check your internet connection.') + '</div>';
       }
     }
     $('place-go').onclick = doSearch;
@@ -631,6 +696,7 @@
   };
 
   ui.showHelp = function () {
+    ui._localeRefresh = ui.showHelp;
     openModal(
       '<h2>How to play</h2>' +
       '<div class="helpgrid">' +
@@ -653,6 +719,7 @@
   };
 
   ui.showStats = function () {
+    ui._localeRefresh = ui.showStats;
     const st = SB.game.state;
     const res = SB.sim.results;
     const hist = st.history;
@@ -664,15 +731,15 @@
       const rows = [...res.boardings.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
       for (const [id, n] of rows) {
         const s = SB.game.stationById(id);
-        if (s) topStations += '<tr><td>' + s.name + '</td><td>' + SB.fmtInt(n) + '</td></tr>';
+        if (s) topStations += '<tr><td data-luma-user-content>' + escapeHtml(s.name) + '</td><td>' + SB.fmtInt(n) + '</td></tr>';
       }
     }
     const share = res ? res.share : 0, car = res ? res.carShare : 0;
     let modeSplit = '';
     if (res && res.ridersDaily > 1) {
-      modeSplit = '<h3>Boardings by mode</h3><div class="modebars">' +
+      modeSplit = '<h3>' + window.LumaSceneI18n.value('sceneSubwayStatsBoardingsByMode') + '</h3><div class="modebars">' +
         Object.entries(res.modeRiders).filter(([, v]) => v > 0.5).map(([m, v]) =>
-          '<div class="modebar"><span class="mb-label">' + ic(MODE_ICON[m]) + SB.MODES[m].label + '</span>' +
+          '<div class="modebar"><span class="mb-label">' + ic(MODE_ICON[m]) + escapeHtml(translate(SB.MODES[m].label)) + '</span>' +
           '<span class="mb-track"><span style="width:' + Math.min(100, (v / res.ridersDaily) * 100) + '%;background:' + MODE_TINT[m] + '"></span></span>' +
           '<span class="mb-val">' + SB.fmtInt(v) + '</span></div>').join('') + '</div>';
     }
@@ -680,30 +747,30 @@
     openModal(
       '<h2>Network analysis</h2>' +
       '<div class="statgrid">' +
-      stat('Transit share', (share * 100).toFixed(1) + '%') +
-      stat('Daily riders', res ? SB.fmtInt(res.ridersDaily) : '—') +
-      stat('Coverage', res ? Math.round(res.coverage * 100) + '%' : '—', 'residents near a stop') +
-      stat('Transfers', res ? SB.fmtInt(res.transfersDaily) + '/day' : '—') +
-      stat('Avg transit trip', res && res.avgTransitMin ? res.avgTransitMin.toFixed(0) + ' min' : '—') +
-      stat('Avg car trip', res && res.avgCarMin ? res.avgCarMin.toFixed(0) + ' min' : '—') +
-      stat('Route length', totalKm.toFixed(1) + ' km') +
-      stat('Stops', st.stations.length) +
-      stat('Fleet', totalVeh) +
-      stat('Spent to date', SB.fmtMoney(st.totalSpent)) +
+      stat(window.LumaSceneI18n.value('sceneSubwayStatsTransitShare'), (share * 100).toFixed(1) + '%') +
+      stat(window.LumaSceneI18n.value('sceneSubwayStatsDailyRiders'), res ? SB.fmtInt(res.ridersDaily) : '—') +
+      stat(window.LumaSceneI18n.value('sceneSubwayStatsCoverage'), res ? Math.round(res.coverage * 100) + '%' : '—', window.LumaSceneI18n.value('sceneSubwayStatsResidentsNearStop')) +
+      stat(window.LumaSceneI18n.value('sceneSubwayStatsTransfers'), res ? SB.fmtInt(res.transfersDaily) + '/day' : '—') +
+      stat(window.LumaSceneI18n.value('sceneSubwayStatsAvgTransitTrip'), res && res.avgTransitMin ? res.avgTransitMin.toFixed(0) + ' min' : '—') +
+      stat(window.LumaSceneI18n.value('sceneSubwayStatsAvgCarTrip'), res && res.avgCarMin ? res.avgCarMin.toFixed(0) + ' min' : '—') +
+      stat(window.LumaSceneI18n.value('sceneSubwayStatsRouteLength'), totalKm.toFixed(1) + ' km') +
+      stat(window.LumaSceneI18n.value('sceneSubwayStatsStops'), st.stations.length) +
+      stat(window.LumaSceneI18n.value('sceneSubwayStatsFleet'), totalVeh) +
+      stat(window.LumaSceneI18n.value('sceneSubwayStatsSpentToDate'), SB.fmtMoney(st.totalSpent)) +
       '</div>' +
       '<div class="modesplit"><div class="ms-bar">' +
       '<span style="width:' + (share * 100) + '%;background:var(--accent)"></span>' +
       '<span style="width:' + (car * 100) + '%;background:#616b7d"></span></div>' +
-      '<div class="ms-legend"><span><i style="background:var(--accent)"></i>Transit ' + (share * 100).toFixed(1) + '%</span>' +
-      '<span><i style="background:#616b7d"></i>Driving ' + (car * 100).toFixed(1) + '%</span></div></div>' +
+      '<div class="ms-legend"><span><i style="background:var(--accent)"></i>' + escapeHtml(format('sceneSubwayStatsTransitLegend', {percent: (share * 100).toFixed(1)})) + '</span>' +
+      '<span><i style="background:#616b7d"></i>' + escapeHtml(format('sceneSubwayStatsDrivingLegend', {percent: (car * 100).toFixed(1)})) + '</span></div></div>' +
       modeSplit +
       '<div class="chartrow">' +
-      '<div><h3>Daily riders</h3><canvas id="ch-riders" width="290" height="90"></canvas></div>' +
-      '<div><h3>Transit share %</h3><canvas id="ch-share" width="290" height="90"></canvas></div>' +
-      '<div><h3>Treasury</h3><canvas id="ch-money" width="290" height="90"></canvas></div>' +
+      '<div><h3>' + window.LumaSceneI18n.value('sceneSubwayStatsDailyRiders') + '</h3><canvas id="ch-riders" width="290" height="90"></canvas></div>' +
+      '<div><h3>' + window.LumaSceneI18n.value('sceneSubwayStatsTransitShare') + ' %</h3><canvas id="ch-share" width="290" height="90"></canvas></div>' +
+      '<div><h3>' + translate('Treasury') + '</h3><canvas id="ch-money" width="290" height="90"></canvas></div>' +
       '</div>' +
-      (topStations ? '<h3>Busiest stops</h3><table class="stbl">' + topStations + '</table>' : '') +
-      '<div class="mrow"><button id="m-close">Close</button></div>',
+      (topStations ? '<h3>' + window.LumaSceneI18n.value('sceneSubwayStatsBusiestStops') + '</h3><table class="stbl">' + topStations + '</table>' : '') +
+      '<div class="mrow"><button id="m-close">' + translate('Close') + '</button></div>',
       true
     );
     $('m-close').onclick = ui.closeModal;
@@ -749,13 +816,17 @@
     c.fillText(fmt(values[values.length - 1]), 6, 10);
   }
 
+  document.addEventListener('luma-locale-changed', () => {
+    if (ui._localeRefresh && $('modalback').style.display === 'flex') ui._localeRefresh();
+  });
+
   // ── Rendering settings ───────────────────────────────────────────────
   function syncSettingsUI() {
     const s = SB.map3d.settings;
     $('set-buildings3d').classList.toggle('active', s.buildings3d);
-    $('set-buildings3d').textContent = s.buildings3d ? 'On' : 'Off';
+    $('set-buildings3d').textContent = translate(s.buildings3d ? 'On' : 'Off');
     $('set-2d').classList.toggle('active', s.mode2d);
-    $('set-2d').textContent = s.mode2d ? 'On' : 'Off';
+    $('set-2d').textContent = translate(s.mode2d ? 'On' : 'Off');
     $('mc-2d').classList.toggle('active', s.mode2d);
     $('set-render').value = s.renderDistance;
     $('set-render-val').textContent = s.renderDistance;
@@ -894,7 +965,7 @@
           b.getSouth(), b.getWest(), b.getNorth(), b.getEast());
         if (added < 0) ui.toast('Station lookup failed — the map data service is busy, try again', 'bad');
         else if (added === 0) ui.toast('No new official stations found in view');
-        else ui.toast(added + ' official station' + (added === 1 ? '' : 's') + ' loaded', 'good');
+        else ui.toast(format('sceneSubwayOfficialStationsLoaded', {count: added}), 'good');
         SB.map3d.setRailMode(SB.isRailMode(ui.mode) && (ui.tool === 'station' || ui.tool === 'line'), ui.mode);
       } finally {
         btn.disabled = false;
@@ -908,11 +979,16 @@
     $('fare-plus').addEventListener('click', () => { if (!econGate()) SB.game.setFare(SB.game.state.fare + 0.25); });
     $('btn-loan').addEventListener('click', () => {
       if (econGate()) return;
-      ui.confirm('Take a ' + SB.fmtMoney(SB.ECON.loanAmount) + ' loan?',
-        'Interest accrues daily at 0.06% of the outstanding amount.', () => {
+      const confirmLoan = () => ui.confirm(
+        escapeHtml(format('sceneSubwayUiLoanQuestion', {amount: SB.fmtMoney(SB.ECON.loanAmount)})),
+        window.LumaSceneI18n.value('sceneSubwayUiLoanInterest'),
+        () => {
           SB.game.takeLoan();
-          ui.toast(SB.fmtMoney(SB.ECON.loanAmount) + ' loan received');
-        });
+          ui.toast(format('sceneSubwayLoanReceived', {amount: SB.fmtMoney(SB.ECON.loanAmount)}));
+        },
+        confirmLoan,
+      );
+      confirmLoan();
     });
     $('btn-repay').addEventListener('click', () => { if (!econGate()) doAction(SB.game.repayLoan()); });
     $('modalback').addEventListener('mousedown', (e) => {

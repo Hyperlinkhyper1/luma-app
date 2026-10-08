@@ -1,3 +1,4 @@
+import '../../../../../l10n/current_l.dart';
 import 'ai_leaderboard_format.dart';
 import 'ai_model.dart';
 
@@ -8,29 +9,49 @@ import 'ai_model.dart';
 /// up everywhere at once and can never mean two different things in two
 /// places.
 enum AiMetric {
-  llmStats('Intelligence Index', unit: ''),
-  reasoning('Reasoning Index', unit: ''),
-  coding('Coding Index', unit: ''),
-  agent('Agent Index', unit: ''),
-  math('Math Index', unit: ''),
-  codeArena('Code Arena', unit: 'Elo'),
-  blendedPrice('Blended Price 8:1', unit: r'$/M', higherIsBetter: false),
-  avgPrice('Average Price', unit: r'$/M', higherIsBetter: false),
-  inputPrice('Input Price', unit: r'$/M', higherIsBetter: false),
-  outputPrice('Output Price', unit: r'$/M', higherIsBetter: false),
-  parameters('Parameters', unit: 'B'),
-  context('Context Length', unit: 'tokens'),
-  speed('Speed', unit: 'tok/s'),
-  latency('Time to First Token', unit: 'ms', higherIsBetter: false);
+  llmStats(baseUnit: ''),
+  reasoning(baseUnit: ''),
+  coding(baseUnit: ''),
+  agent(baseUnit: ''),
+  math(baseUnit: ''),
+  codeArena(baseUnit: 'Elo'),
+  blendedPrice(baseUnit: r'$/M', higherIsBetter: false),
+  avgPrice(baseUnit: r'$/M', higherIsBetter: false),
+  inputPrice(baseUnit: r'$/M', higherIsBetter: false),
+  outputPrice(baseUnit: r'$/M', higherIsBetter: false),
+  parameters(baseUnit: 'B'),
+  context(baseUnit: 'tokens'),
+  speed(baseUnit: 'tok/s'),
+  latency(baseUnit: 'ms', higherIsBetter: false);
 
-  const AiMetric(this.label, {required this.unit, this.higherIsBetter = true});
+  const AiMetric({required this.baseUnit, this.higherIsBetter = true});
 
-  final String label;
-  final String unit;
+  final String baseUnit;
 
   /// Which direction is "good". Drives the Pareto frontier and the "best at"
   /// tiles — for price and latency, less is more.
   final bool higherIsBetter;
+
+  String get label => switch (this) {
+        AiMetric.llmStats => currentL.aiLeaderboardMetricIntelligence,
+        AiMetric.reasoning => currentL.aiLeaderboardMetricReasoning,
+        AiMetric.coding => currentL.aiLeaderboardMetricCoding,
+        AiMetric.agent => currentL.aiLeaderboardMetricAgent,
+        AiMetric.math => currentL.aiLeaderboardMetricMath,
+        AiMetric.codeArena => 'Code Arena',
+        AiMetric.blendedPrice => currentL.aiLeaderboardMetricBlendedPrice,
+        AiMetric.avgPrice => currentL.aiLeaderboardMetricAveragePrice,
+        AiMetric.inputPrice => currentL.aiLeaderboardMetricInputPrice,
+        AiMetric.outputPrice => currentL.aiLeaderboardMetricOutputPrice,
+        AiMetric.parameters => currentL.aiLeaderboardMetricParameters,
+        AiMetric.context => currentL.aiLeaderboardMetricContext,
+        AiMetric.speed => currentL.aiLeaderboardMetricSpeed,
+        AiMetric.latency => currentL.aiLeaderboardMetricLatency,
+      };
+
+  String get unit => this == AiMetric.context
+      ? currentL.aiLeaderboardUnitTokens
+      : baseUnit;
 
   String get axisLabel => unit.isEmpty ? label : '$label ($unit)';
 

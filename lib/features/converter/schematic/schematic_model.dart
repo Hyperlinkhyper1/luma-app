@@ -1,14 +1,16 @@
 import 'dart:typed_data';
 
+import '../../../l10n/current_l.dart';
+
 /// The block formats luma can read and write.
 enum SchematicFormat {
-  sponge('schem', 'SCHEM', 'Sponge schematic (WorldEdit)'),
-  litematic('litematic', 'LITEMATIC', 'Litematica'),
-  mcedit('schematic', 'SCHEMATIC', 'MCEdit legacy'),
-  structure('nbt', 'NBT', 'Vanilla structure block'),
-  mcstructure('mcstructure', 'MCSTRUCTURE', 'Bedrock structure');
+  sponge('schem', 'SCHEM'),
+  litematic('litematic', 'LITEMATIC'),
+  mcedit('schematic', 'SCHEMATIC'),
+  structure('nbt', 'NBT'),
+  mcstructure('mcstructure', 'MCSTRUCTURE');
 
-  const SchematicFormat(this.extension, this.label, this.description);
+  const SchematicFormat(this.extension, this.label);
 
   /// The file extension, without a dot.
   final String extension;
@@ -17,7 +19,14 @@ enum SchematicFormat {
   final String label;
 
   /// One-line explanation shown next to the format picker.
-  final String description;
+  String get description => switch (this) {
+        SchematicFormat.sponge => currentL.schematicFormatSpongeDescription,
+        SchematicFormat.litematic => 'Litematica',
+        SchematicFormat.mcedit => currentL.schematicFormatMceditDescription,
+        SchematicFormat.structure => currentL.schematicFormatStructureDescription,
+        SchematicFormat.mcstructure =>
+          currentL.schematicFormatMcstructureDescription,
+      };
 
   /// True for the Bedrock edition format, whose block names and states are a
   /// different vocabulary from the Java ones every other format uses.
@@ -46,15 +55,16 @@ const int kMaxSchematicVolume = 32 * 1024 * 1024;
 /// [kMaxSchematicVolume] before anything tries to allocate for them.
 void guardVolume(int width, int height, int length) {
   if (width <= 0 || height <= 0 || length <= 0) {
-    throw const FormatException(
-      'This file declares an empty area, so there is nothing to convert.',
-    );
+    throw FormatException(currentL.schematicEmptyArea);
   }
   if (width * height * length > kMaxSchematicVolume) {
     throw FormatException(
-      'This build is $width×$height×$length, which is larger than the '
-      '${kMaxSchematicVolume ~/ (1024 * 1024)} million blocks the converter '
-      'can hold in memory.',
+      currentL.schematicVolumeTooLarge(
+        width,
+        height,
+        length,
+        kMaxSchematicVolume ~/ (1024 * 1024),
+      ),
     );
   }
 }
@@ -262,10 +272,7 @@ class PaletteBuilder {
     final existing = _index[key];
     if (existing != null) return existing;
     if (_states.length >= 0xFFFF) {
-      throw const FormatException(
-        'This build uses more than 65535 distinct block states, which is more '
-        'than the converter can hold.',
-      );
+      throw FormatException(currentL.schematicPaletteTooLarge);
     }
     _states.add(state);
     _index[key] = _states.length - 1;

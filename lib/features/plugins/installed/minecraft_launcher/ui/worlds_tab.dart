@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../sync/sync_scope.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/minecraft_launcher_database.dart';
@@ -59,8 +60,9 @@ class _WorldsSectionState extends State<WorldsSection> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     if (_error != null) {
-      return LumaEmptyState(icon: Icons.error_outline_rounded, title: 'Could not read worlds', subtitle: _error);
+      return LumaEmptyState(icon: Icons.error_outline_rounded, title: t.mcLauncherCouldNotReadWorlds, subtitle: _error);
     }
     if (_worlds == null) {
       return const Center(child: CircularProgressIndicator(strokeWidth: 2.4));
@@ -71,7 +73,7 @@ class _WorldsSectionState extends State<WorldsSection> {
         Align(
           alignment: Alignment.centerRight,
           child: LumaGhostButton(
-            label: 'Import world',
+            label: t.mcLauncherImportWorld,
             icon: Icons.upload_file_rounded,
             onTap: _importWorld,
           ),
@@ -98,12 +100,12 @@ class _WorldsSectionState extends State<WorldsSection> {
         ),
         const SizedBox(height: 12),
         if (_worlds!.isEmpty)
-          const Padding(
-            padding: EdgeInsets.only(top: 40),
+          Padding(
+            padding: const EdgeInsets.only(top: 40),
             child: LumaEmptyState(
               icon: Icons.public_off_rounded,
-              title: 'No worlds yet',
-              subtitle: 'Worlds you create in-game will show up here.',
+              title: t.mcLauncherNoWorlds,
+              subtitle: t.mcLauncherNoWorldsSubtitle,
             ),
           )
         else
@@ -135,6 +137,7 @@ class _WorldCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return LumaCard(
       child: Row(
         children: [
@@ -148,9 +151,9 @@ class _WorldCard extends StatelessWidget {
                 Text(
                   [
                     world.gameModeLabel,
-                    if (world.seed != null) 'Seed ${world.seed}',
+                    if (world.seed != null) t.mcLauncherWorldSeed('${world.seed}'),
                     _formatSize(world.sizeBytes),
-                    if (world.lastPlayed != null) 'Last played ${world.lastPlayed}',
+                    if (world.lastPlayed != null) t.mcLauncherLastPlayed('${world.lastPlayed}'),
                   ].join(' · '),
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
@@ -159,12 +162,12 @@ class _WorldCard extends StatelessWidget {
           ),
           PopupMenuButton<String>(
             onSelected: (action) => _handleAction(context, action),
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'open', child: Text('Open folder')),
-              PopupMenuItem(value: 'backup', child: Text('Backup to zip')),
-              PopupMenuItem(value: 'cloud', child: Text('Backup to cloud')),
-              PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
-              PopupMenuItem(value: 'delete', child: Text('Delete')),
+            itemBuilder: (context) => [
+              PopupMenuItem(value: 'open', child: Text(t.mcLauncherOpenFolder)),
+              PopupMenuItem(value: 'backup', child: Text(t.mcLauncherBackupToZip)),
+              PopupMenuItem(value: 'cloud', child: Text(t.mcLauncherBackupToCloud)),
+              PopupMenuItem(value: 'duplicate', child: Text(t.mcLauncherDuplicate)),
+              PopupMenuItem(value: 'delete', child: Text(t.commonDelete)),
             ],
           ),
         ],
@@ -182,7 +185,7 @@ class _WorldCard extends StatelessWidget {
           final file = await WorldReader.backupWorld(instanceId, world.folderName);
           if (!context.mounted) return;
           ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text('Backed up to ${file.path}')));
+              .showSnackBar(SnackBar(content: Text(L.of(context).mcLauncherBackedUpTo(file.path))));
         } catch (e) {
           if (!context.mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
@@ -200,7 +203,7 @@ class _WorldCard extends StatelessWidget {
           await zipFile.delete();
           if (!context.mounted) return;
           ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text('Backed up "${world.name}" to the cloud.')));
+              .showSnackBar(SnackBar(content: Text(L.of(context).mcLauncherBackedUpToCloud(world.name))));
           onChanged();
         } catch (e) {
           if (!context.mounted) return;
@@ -213,11 +216,11 @@ class _WorldCard extends StatelessWidget {
         final confirmed = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            title: Text('Delete "${world.name}"?'),
-            content: const Text('This permanently deletes the world folder.'),
+            title: Text(L.of(context).mcLauncherDeleteWorldTitle(world.name)),
+            content: Text(L.of(context).mcLauncherDeleteWorldBody),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-              TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+              TextButton(onPressed: () => Navigator.pop(context, false), child: Text(L.of(context).commonCancel)),
+              TextButton(onPressed: () => Navigator.pop(context, true), child: Text(L.of(context).commonDelete)),
             ],
           ),
         );

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../l10n/current_l.dart';
 import 'ai_client.dart';
 
 class _RawResponse {
@@ -66,7 +67,7 @@ class AnthropicClient implements AiClient {
 
       if (res.toolUses.isEmpty) {
         final text = res.text.isEmpty
-            ? "I couldn't come up with a reply for that."
+            ? currentL.aiClientNoReply
             : res.text;
         return AiChatResult(text: text, metadataJson: metadataJson, usage: usage);
       }
@@ -75,7 +76,7 @@ class AnthropicClient implements AiClient {
       if (hops > _maxToolHops) {
         return AiChatResult(
           text: res.text.isEmpty
-              ? "I couldn't finish that — too many tool steps."
+              ? currentL.aiClientTooManySteps
               : res.text,
           metadataJson: metadataJson,
           usage: usage,
@@ -129,18 +130,17 @@ class AnthropicClient implements AiClient {
           .timeout(const Duration(seconds: 30));
     } catch (e) {
       throw AiNetworkError(
-          "Couldn't reach Anthropic — check your connection.\n($e)");
+          currentL.aiClientUnreachable('Anthropic', '$e'));
     }
 
     if (res.statusCode == 401) {
-      throw AiAuthError(
-          'Anthropic rejected the API key. Check it in Settings.');
+      throw AiAuthError(currentL.aiClientKeyRejected('Anthropic'));
     }
     if (res.statusCode == 429) {
-      throw AiRateLimitError('Too many requests — try again shortly.');
+      throw AiRateLimitError(currentL.aiClientRateLimited);
     }
     if (res.statusCode != 200) {
-      String message = 'Anthropic returned an error (${res.statusCode}).';
+      String message = currentL.aiClientApiError('Anthropic', res.statusCode);
       try {
         final decoded = jsonDecode(res.body) as Map<String, dynamic>;
         final err = decoded['error'] as Map<String, dynamic>?;

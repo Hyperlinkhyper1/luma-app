@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../app/widgets.dart';
 import '../../../../family/family_scope.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'calendar_repository.dart';
 import 'calendar_scope.dart';
@@ -25,11 +26,11 @@ class CalendarPage extends StatefulWidget {
 enum _View { day, week, month, agenda }
 
 extension on _View {
-  String get label => switch (this) {
-        _View.day => 'Day',
-        _View.week => 'Week',
-        _View.month => 'Month',
-        _View.agenda => 'Agenda',
+  String label(L t) => switch (this) {
+        _View.day => t.calendarViewDay,
+        _View.week => t.calendarViewWeek,
+        _View.month => t.calendarViewMonth,
+        _View.agenda => t.calendarViewAgenda,
       };
 
   IconData get icon => switch (this) {
@@ -223,6 +224,7 @@ class _Toolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         // The full desktop toolbar packs a 200px-wide title, a 220px search
@@ -310,7 +312,7 @@ class _Toolbar extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   LumaGhostButton(
-                      label: 'Today', icon: Icons.today_rounded, onTap: onToday),
+                      label: t.commonToday, icon: Icons.today_rounded, onTap: onToday),
                 ],
               ),
               Row(
@@ -321,7 +323,7 @@ class _Toolbar extends StatelessWidget {
                   _ViewMenuButton(view: view, onView: onView),
                   const SizedBox(width: 12),
                   LumaPrimaryButton(
-                    label: 'New event',
+                    label: t.calendarNewEvent,
                     icon: Icons.add_rounded,
                     onTap: onNew,
                   ),
@@ -343,6 +345,7 @@ class _SearchField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     OutlineInputBorder border(Color c) => OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: c),
@@ -353,7 +356,7 @@ class _SearchField extends StatelessWidget {
       style: TextStyle(color: luma.textPrimary, fontSize: 14),
       decoration: InputDecoration(
         isDense: true,
-        hintText: 'Search events',
+        hintText: t.calendarSearchHint,
         hintStyle: TextStyle(color: luma.textMuted),
         prefixIcon: Icon(Icons.search_rounded, size: 18, color: luma.textMuted),
         suffixIcon: controller.text.isEmpty
@@ -444,7 +447,7 @@ class _ViewMenuButtonState extends State<_ViewMenuButton> {
                   Icon(widget.view.icon, size: 16, color: luma.textSecondary),
                   const SizedBox(width: 7),
                   Text(
-                    widget.view.label,
+                    widget.view.label(L.of(context)),
                     style: TextStyle(
                       color: luma.textPrimary,
                       fontSize: 13,
@@ -509,7 +512,7 @@ class _ViewMenuItemState extends State<_ViewMenuItem> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  widget.view.label,
+                  widget.view.label(L.of(context)),
                   style: TextStyle(
                     color:
                         widget.selected ? luma.accent : luma.textPrimary,
@@ -684,8 +687,6 @@ class _MonthGrid extends StatelessWidget {
   final CalendarRepository repo;
   final ValueChanged<DateTime> onSelectDay;
 
-  static const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
@@ -695,7 +696,7 @@ class _MonthGrid extends StatelessWidget {
       children: [
         Row(
           children: [
-            for (final d in _weekdays)
+            for (final d in _weekdayLabels())
               Expanded(
                 child: Center(
                   child: Text(
@@ -930,7 +931,7 @@ class _CellEvents extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(left: 2, top: 1),
                 child: Text(
-                  '+$hidden more',
+                  L.of(context).calendarMoreCount(hidden),
                   style: TextStyle(
                     color: context.luma.textSecondary,
                     fontSize: 11,
@@ -1059,6 +1060,7 @@ class _DayPanel extends StatelessWidget {
         .where((o) => o.coversDay(day))
         .toList();
     final isToday = _sameDay(day, DateTime.now());
+    final t = L.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1073,7 +1075,7 @@ class _DayPanel extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isToday ? 'Today' : DateFormat('EEEE').format(day),
+                      isToday ? t.commonToday : DateFormat('EEEE').format(day),
                       style: TextStyle(
                         color: luma.accent,
                         fontSize: 13,
@@ -1091,9 +1093,7 @@ class _DayPanel extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      dayEvents.isEmpty
-                          ? 'No events'
-                          : '${dayEvents.length} event${dayEvents.length == 1 ? '' : 's'}',
+                      t.calendarEventCount(dayEvents.length),
                       style: TextStyle(color: luma.textMuted, fontSize: 12),
                     ),
                   ],
@@ -1118,10 +1118,10 @@ class _DayPanel extends StatelessWidget {
               height: embedded ? 220 : null,
               child: LumaEmptyState(
                 icon: Icons.event_available_rounded,
-                title: 'Empty day',
-                subtitle: 'Put something fun here.',
+                title: t.calendarEmptyDayTitle,
+                subtitle: t.calendarEmptyDaySubtitle,
                 action: LumaGhostButton(
-                  label: 'Add event',
+                  label: t.calendarAddEvent,
                   icon: Icons.add_rounded,
                   onTap: () =>
                       showEventEditor(context, repo, initialDate: day),
@@ -1167,6 +1167,7 @@ class _DinnerSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     if (dinner == null) {
       return MouseRegion(
         cursor: SystemMouseCursors.click,
@@ -1185,7 +1186,7 @@ class _DinnerSection extends StatelessWidget {
                 const SizedBox(width: 9),
                 Expanded(
                   child: Text(
-                    'Set dinner for this day',
+                    t.calendarSetDinnerForDay,
                     style: TextStyle(
                         color: luma.textSecondary,
                         fontSize: 13,
@@ -1221,7 +1222,7 @@ class _DinnerSection extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Dinner',
+                      t.calendarDinnerLabel,
                       style: TextStyle(
                         color: luma.accent,
                         fontSize: 10,
@@ -1260,6 +1261,7 @@ class _EventTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final e = occurrence.event;
     final color = Color(occurrence.color);
 
@@ -1309,7 +1311,7 @@ class _EventTile extends StatelessWidget {
                             const SizedBox(width: 5),
                             Expanded(
                               child: Text(
-                                _timeText(occurrence),
+                                _timeText(t, occurrence),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -1351,19 +1353,19 @@ class _EventTile extends StatelessWidget {
                               if (e.recurrence != Recurrence.none)
                                 _MetaChip(
                                   icon: Icons.repeat_rounded,
-                                  label: e.recurrence.label,
+                                  label: e.recurrence.label(t),
                                   luma: luma,
                                 ),
                               if (e.reminderMinutes != null)
                                 _MetaChip(
                                   icon: Icons.notifications_none_rounded,
-                                  label: _reminderText(e.reminderMinutes!),
+                                  label: _reminderText(t, e.reminderMinutes!),
                                   luma: luma,
                                 ),
                               if (e.allDay)
                                 _MetaChip(
                                   icon: Icons.wb_sunny_outlined,
-                                  label: 'All-day',
+                                  label: t.calendarAllDay,
                                   luma: luma,
                                 ),
                             ],
@@ -1648,7 +1650,7 @@ class _AllDayStrip extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.only(top: 8, right: 8),
               child: Text(
-                'all-day',
+                L.of(context).calendarAllDayStrip,
                 textAlign: TextAlign.right,
                 style: TextStyle(
                   color: luma.textMuted,
@@ -1940,15 +1942,16 @@ class _AgendaView extends StatelessWidget {
     final now = DateTime.now();
     final start = _dateOnly(now);
     final end = start.add(const Duration(days: 365));
+    final t = L.of(context);
     final occurrences = expandOccurrences(events, start, end);
 
     if (occurrences.isEmpty) {
       return LumaEmptyState(
         icon: Icons.event_note_rounded,
-        title: 'Nothing coming up',
-        subtitle: 'Whatever you plan shows up here.',
+        title: t.calendarNothingComingUp,
+        subtitle: t.calendarAgendaEmptySubtitle,
         action: LumaPrimaryButton(
-          label: 'New event',
+          label: t.calendarNewEvent,
           icon: Icons.add_rounded,
           onTap: () => showEventEditor(context, repo, initialDate: now),
         ),
@@ -1986,10 +1989,11 @@ class _AgendaGroup extends StatelessWidget {
     final now = DateTime.now();
     final isToday = _sameDay(day, now);
     final isTomorrow = _sameDay(day, now.add(const Duration(days: 1)));
+    final t = L.of(context);
     final label = isToday
-        ? 'Today'
+        ? t.commonToday
         : isTomorrow
-            ? 'Tomorrow'
+            ? t.commonTomorrow
             : DateFormat('EEEE').format(day);
 
     return Padding(
@@ -2056,6 +2060,7 @@ class _SearchResults extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final q = query.toLowerCase();
     final matches = events.where((e) {
       return e.title.toLowerCase().contains(q) ||
@@ -2066,8 +2071,8 @@ class _SearchResults extends StatelessWidget {
     if (matches.isEmpty) {
       return LumaEmptyState(
         icon: Icons.search_off_rounded,
-        title: 'No events match "$query"',
-        subtitle: 'Try a different title, place or note.',
+        title: t.calendarNoEventsMatch(query),
+        subtitle: t.calendarSearchEmptySubtitle,
       );
     }
 
@@ -2097,7 +2102,7 @@ class _SearchResults extends StatelessWidget {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Text(
-                  '${occ.length} result${occ.length == 1 ? '' : 's'} for "$query"',
+                  t.calendarSearchResultCount(occ.length, query),
                   style: TextStyle(
                       color: luma.textSecondary,
                       fontSize: 13,
@@ -2150,10 +2155,10 @@ List<_DayGroup> _groupByDay(List<EventOccurrence> occurrences) {
   return groups;
 }
 
-String _timeText(EventOccurrence o) {
+String _timeText(L t, EventOccurrence o) {
   if (o.allDay) {
     final days = _dateOnly(o.end).difference(_dateOnly(o.start)).inDays;
-    return days >= 1 ? 'All-day · ${days + 1} days' : 'All-day';
+    return days >= 1 ? t.calendarAllDayDays(days + 1) : t.calendarAllDay;
   }
   final sameDay = _sameDay(o.start, o.end);
   final startStr = DateFormat('HH:mm').format(o.start);
@@ -2163,12 +2168,17 @@ String _timeText(EventOccurrence o) {
       '${DateFormat('d MMM HH:mm').format(o.end)}';
 }
 
-String _reminderText(int minutes) {
-  if (minutes == 0) return 'At start';
-  if (minutes % 1440 == 0) return '${minutes ~/ 1440}d before';
-  if (minutes % 60 == 0) return '${minutes ~/ 60}h before';
-  return '${minutes}m before';
+String _reminderText(L t, int minutes) {
+  if (minutes == 0) return t.calendarReminderAtStart;
+  if (minutes % 1440 == 0) return t.calendarReminderDaysBefore(minutes ~/ 1440);
+  if (minutes % 60 == 0) return t.calendarReminderHoursBefore(minutes ~/ 60);
+  return t.calendarReminderMinutesShort(minutes);
 }
+
+List<String> _weekdayLabels() => [
+      for (var i = 0; i < 7; i++)
+        DateFormat('EEE').format(DateTime(2024, 1, 1 + i)),
+    ];
 
 DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 bool _sameDay(DateTime a, DateTime b) =>

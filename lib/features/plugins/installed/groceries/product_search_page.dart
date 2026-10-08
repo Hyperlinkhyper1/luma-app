@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'groceries_api.dart';
 import 'groceries_scope.dart';
@@ -11,7 +12,6 @@ import 'market_style.dart';
 const _marketSlugs = GroceriesApi.marketSlugs;
 const _marketLabels = <String>['Jumbo', 'Albert Heijn', 'Lidl', 'Hoogvliet'];
 const _sortOptions = [ProductSort.relevance, ProductSort.priceAsc, ProductSort.priceDesc];
-const _sortLabels = ['Relevance', 'Price ↑', 'Price ↓'];
 
 /// Search Jumbo/Albert Heijn/Lidl/Hoogvliet products (via the
 /// supermarket-db API), filter by store, sort by price, and add results
@@ -172,12 +172,13 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
     await repo.addProduct(widget.listId, product);
     if (!mounted) return;
     setState(() => _justAdded.add(product.id));
+    final t = L.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Added "${product.name}" to your list'),
+        content: Text(t.groceriesAddedToList(product.name)),
         duration: const Duration(seconds: 2),
         action: SnackBarAction(
-          label: 'Undo',
+          label: t.commonUndo,
           onPressed: () async {
             final items = await repo.watchItems(widget.listId).first;
             final match = items.where((i) => i.productId == product.id);
@@ -192,6 +193,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     return Column(
       children: [
@@ -201,11 +203,11 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
             children: [
               IconButton(
                 icon: Icon(Icons.arrow_back_rounded, color: luma.textPrimary),
-                tooltip: 'Back to list',
+                tooltip: t.groceriesBackToList,
                 onPressed: widget.onBack,
               ),
               Text(
-                'Add products',
+                t.groceriesAddProducts,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 19,
@@ -215,7 +217,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
               const Spacer(),
               IconButton(
                 icon: Icon(Icons.settings_outlined, color: luma.textMuted, size: 20),
-                tooltip: 'Groceries server address',
+                tooltip: t.groceriesServerAddress,
                 onPressed: () => _editServerUrl(context),
               ),
             ],
@@ -231,7 +233,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
             onSubmitted: (_) => _runSearch(),
             decoration: InputDecoration(
               isDense: true,
-              hintText: 'Search products…',
+              hintText: t.groceriesSearchProductsHint,
               hintStyle: TextStyle(color: luma.textMuted),
               prefixIcon: Icon(Icons.search_rounded, color: luma.textMuted, size: 20),
               filled: true,
@@ -277,10 +279,14 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
           padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
           child: Row(
             children: [
-              Text('Sort', style: TextStyle(color: luma.textMuted, fontSize: 12)),
+              Text(t.commonSort, style: TextStyle(color: luma.textMuted, fontSize: 12)),
               const SizedBox(width: 10),
               LumaSegmentedTabs(
-                tabs: _sortLabels,
+                tabs: [
+                  t.marketplaceSortRelevance,
+                  t.groceriesSortPriceAsc,
+                  t.groceriesSortPriceDesc,
+                ],
                 selectedIndex: _sortIndex,
                 onSelect: (i) {
                   setState(() => _sortIndex = i);
@@ -337,14 +343,15 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
   }
 
   Widget _buildBody(BuildContext context) {
+    final t = L.of(context);
     if (_error != null) {
       return Center(
         child: LumaEmptyState(
           icon: Icons.wifi_off_rounded,
-          title: 'Could not load products',
+          title: t.groceriesCouldNotLoad,
           subtitle: _error,
           action: LumaGhostButton(
-            label: 'Retry',
+            label: t.commonRetry,
             icon: Icons.refresh_rounded,
             onTap: _runSearch,
           ),
@@ -366,8 +373,8 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
       return Center(
         child: LumaEmptyState(
           icon: Icons.search_off_rounded,
-          title: 'No products found',
-          subtitle: 'Try a different search term, store or category filter.',
+          title: t.groceriesNoProductsTitle,
+          subtitle: t.groceriesNoProductsSubtitle,
         ),
       );
     }
@@ -443,6 +450,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
     final api = GroceriesApiScope.of(context);
     final controller = TextEditingController(text: api.baseUrl);
     final luma = context.luma;
+    final t = L.of(context);
     String? error;
     final url = await showDialog<String>(
       context: context,
@@ -450,7 +458,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
         builder: (context, setDialogState) {
           return AlertDialog(
             backgroundColor: luma.surface,
-            title: Text('Groceries server address',
+            title: Text(t.groceriesServerAddress,
                 style: TextStyle(color: luma.textPrimary)),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -487,7 +495,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+                child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
               ),
               TextButton(
                 onPressed: () {
@@ -499,7 +507,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
                   }
                   Navigator.pop(context, controller.text);
                 },
-                child: Text('Save', style: TextStyle(color: luma.accent)),
+                child: Text(t.commonSave, style: TextStyle(color: luma.accent)),
               ),
             ],
           );
@@ -527,12 +535,13 @@ class _MarketFilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Wrap(
       spacing: 6,
       runSpacing: 6,
       children: [
         _FilterPill(
-          label: 'All stores',
+          label: t.groceriesAllStores,
           selected: selected.isEmpty,
           onTap: () => onToggle(null),
           luma: luma,
@@ -636,6 +645,7 @@ class _CompactFiltersBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Row(
       children: [
         Expanded(
@@ -656,7 +666,7 @@ class _CompactFiltersBar extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        selected ?? 'All products',
+                        selected ?? t.groceriesAllProducts,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -681,6 +691,7 @@ class _CompactFiltersBar extends StatelessWidget {
 
   void _openCategorySheet(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: luma.surface,
@@ -696,7 +707,7 @@ class _CompactFiltersBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Categories',
+                  t.groceriesCategories,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 16,
@@ -709,7 +720,7 @@ class _CompactFiltersBar extends StatelessWidget {
                     child: Column(
                       children: [
                         _CategoryRow(
-                          label: 'All products',
+                          label: t.groceriesAllProducts,
                           selected: selected == null,
                           onTap: () {
                             onSelect(null);
@@ -760,6 +771,7 @@ class _CategorySidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return SizedBox(
       width: 180,
       child: ListView(
@@ -770,7 +782,7 @@ class _CategorySidebar extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(left: 10, bottom: 6),
             child: Text(
-              'CATEGORIES',
+              t.groceriesCategories.toUpperCase(),
               style: TextStyle(
                 color: luma.textMuted,
                 fontSize: 11,
@@ -780,7 +792,7 @@ class _CategorySidebar extends StatelessWidget {
             ),
           ),
           _CategoryRow(
-            label: 'All products',
+            label: t.groceriesAllProducts,
             selected: selected == null,
             onTap: () => onSelect(null),
           ),
@@ -806,6 +818,7 @@ class _DealsToggleRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
@@ -824,7 +837,7 @@ class _DealsToggleRow extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Only deals',
+                  t.groceriesOnlyDeals,
                   style: TextStyle(
                     color: value ? _saleBadgeColor : luma.textSecondary,
                     fontSize: 12.5,
@@ -970,17 +983,18 @@ class _ProductCard extends StatefulWidget {
 class _ProductCardState extends State<_ProductCard> {
   bool _hovering = false;
 
-  String _discountLabel(RemoteProduct product) {
+  String _discountLabel(RemoteProduct product, L t) {
     final pct = product.discountPercentage;
     if (pct != null && pct > 0) return '-${pct.round()}%';
     final text = product.discountText?.trim();
     if (text != null && text.isNotEmpty) return text;
-    return 'Sale';
+    return t.groceriesSale;
   }
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final product = widget.product;
     final marketColor = colorForMarket(product.market.slug, luma);
 
@@ -1054,7 +1068,7 @@ class _ProductCardState extends State<_ProductCard> {
                               borderRadius: BorderRadius.circular(5),
                             ),
                             child: Text(
-                              _discountLabel(product),
+                              _discountLabel(product, t),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(

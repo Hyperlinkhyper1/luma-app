@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/minecraft_launcher_database.dart';
 import '../logic/game_process_manager.dart';
@@ -24,7 +25,9 @@ Future<GameProcessHandle?> showDownloadProgressAndLaunch(
   required McInstance instance,
   required McAccount account,
 }) async {
-  final notifier = ValueNotifier<_ProgressState>(_ProgressState('Starting…', null));
+  final notifier = ValueNotifier<_ProgressState>(
+    _ProgressState(L.of(context).minecraftLauncherStarting, null),
+  );
   final navigator = Navigator.of(context);
 
   unawaited(showDialog<void>(
@@ -61,8 +64,9 @@ class _DownloadProgressDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return AlertDialog(
-      title: Text('Starting $instanceName'),
+      title: Text(t.minecraftLauncherStartingInstance(instanceName)),
       content: SizedBox(
         width: lumaDialogWidth(context, 380),
         child: ValueListenableBuilder<_ProgressState>(

@@ -1,3 +1,5 @@
+import '../../../../l10n/app_localizations.dart';
+import '../../../../l10n/current_l.dart';
 import 'data/usage_database.dart';
 
 /// Total tracked time for one app within a queried range.
@@ -26,15 +28,21 @@ class DayUsageBucket {
 
 /// Quick time-range presets shown in the page's filter bar.
 enum UsageRangePreset {
-  today('Today'),
-  yesterday('Yesterday'),
-  last7Days('Last week'),
-  thisMonth('This month'),
-  last30Days('Last month'),
-  custom('Custom…');
+  today,
+  yesterday,
+  last7Days,
+  thisMonth,
+  last30Days,
+  custom;
 
-  const UsageRangePreset(this.label);
-  final String label;
+  String label(L t) => switch (this) {
+        UsageRangePreset.today => t.commonToday,
+        UsageRangePreset.yesterday => t.commonYesterday,
+        UsageRangePreset.last7Days => t.usageRangeLast7Days,
+        UsageRangePreset.thisMonth => t.usageRangeThisMonth,
+        UsageRangePreset.last30Days => t.usageRangeLast30Days,
+        UsageRangePreset.custom => t.usageRangeCustom,
+      };
 }
 
 /// Resolves [preset] to a concrete `[start, end)` local-time window, anchored
@@ -158,10 +166,11 @@ List<DayUsageBucket> aggregateByDay(
 /// Formats a duration in seconds as e.g. "1h 23m", "45m", or "32s" — used
 /// wherever tracked time is shown compactly (list rows, chart tooltips).
 String formatUsageDuration(int totalSeconds) {
-  if (totalSeconds < 60) return '${totalSeconds}s';
+  final l = currentL;
+  if (totalSeconds < 60) return l.usageDurationSeconds('$totalSeconds');
   final hours = totalSeconds ~/ 3600;
   final minutes = (totalSeconds % 3600) ~/ 60;
-  if (hours <= 0) return '${minutes}m';
-  if (minutes == 0) return '${hours}h';
-  return '${hours}h ${minutes}m';
+  if (hours <= 0) return l.usageDurationMinutes('$minutes');
+  if (minutes == 0) return l.usageDurationHours('$hours');
+  return l.usageDurationHoursMinutes('$hours', '$minutes');
 }

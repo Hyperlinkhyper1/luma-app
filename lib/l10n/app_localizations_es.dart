@@ -284,127 +284,127 @@ class LEs extends L {
 
   @override
   String homeSaveFailed(String error) {
-    return 'Could not save your home: $error';
+    return 'No se pudo guardar tu inicio: $error';
   }
 
   @override
-  String get homeAddSheetTitle => 'Make room for what matters';
+  String get homeAddSheetTitle => 'Haz sitio para lo que importa';
 
   @override
-  String get homeEditLayout => 'Edit layout';
+  String get homeEditLayout => 'Editar diseño';
 
   @override
-  String get homeEditingTitle => 'Make yourself at home';
+  String get homeEditingTitle => 'Siéntete como en casa';
 
   @override
-  String get homePhoneLayout => 'Phone layout';
+  String get homePhoneLayout => 'Diseño del teléfono';
 
   @override
-  String get homeDesktopLayout => 'Desktop & laptop layout';
+  String get homeDesktopLayout => 'Diseño de escritorio y portátil';
 
   @override
-  String get homeResetDashboard => 'Reset to original dashboard';
+  String get homeResetDashboard => 'Restablecer el panel original';
 
   @override
-  String get homeAddTile => 'Add tile';
+  String get homeAddTile => 'Añadir mosaico';
 
   @override
-  String get homeSaveLayout => 'Save layout';
+  String get homeSaveLayout => 'Guardar diseño';
 
   @override
-  String get homeEdit => 'Edit home';
+  String get homeEdit => 'Editar inicio';
 
   @override
   String get homeDragHint =>
-      'Drag a tile by its title. Drag its lower corner to resize. Everything snaps into place; overlapping tiles move down.';
+      'Arrastra un mosaico por su título. Arrastra su esquina inferior para cambiar su tamaño. Todo encaja automáticamente; los mosaicos que se solapan bajan.';
 
   @override
-  String get homeUnavailable => 'Unavailable';
+  String get homeUnavailable => 'No disponible';
 
   @override
-  String get homeInspiration => 'A little inspiration';
+  String get homeInspiration => 'Un poco de inspiración';
 
   @override
-  String get homeEditSummary => 'Edit summary';
+  String get homeEditSummary => 'Editar resumen';
 
   @override
-  String get homeCashBalance => 'Cash balance';
+  String get homeCashBalance => 'Saldo en efectivo';
 
   @override
-  String get homeCustomText => 'Custom text';
+  String get homeCustomText => 'Texto personalizado';
 
   @override
-  String get homeSummaryTitle => 'Greeting summary';
+  String get homeSummaryTitle => 'Resumen del saludo';
 
   @override
   String get homeSummaryDescription =>
-      'Your greeting always stays at the top. Choose what appears beneath it.';
+      'Tu saludo siempre se mantiene arriba. Elige qué aparece debajo.';
 
   @override
-  String get homeShowInGreeting => 'Show in greeting';
+  String get homeShowInGreeting => 'Mostrar en el saludo';
 
   @override
-  String get homeSummaryLabel => 'Label';
+  String get homeSummaryLabel => 'Etiqueta';
 
   @override
-  String get homeSummaryLabelHint => 'Today’s focus';
+  String get homeSummaryLabelHint => 'Prioridad de hoy';
 
   @override
-  String get homeSummaryText => 'Text';
+  String get homeSummaryText => 'Texto';
 
   @override
-  String get homeSummaryTextHint => 'Make time for what matters.';
+  String get homeSummaryTextHint => 'Dedica tiempo a lo que importa.';
 
   @override
-  String get homeApply => 'Apply';
+  String get homeApply => 'Aplicar';
 
   @override
-  String get commonCancel => 'Cancel';
+  String get commonCancel => 'Cancelar';
 
   @override
-  String get homeTileShortcut => 'App shortcut';
+  String get homeTileShortcut => 'Acceso directo a la app';
 
   @override
-  String get homeTileRecentActivity => 'Recent activity';
+  String get homeTileRecentActivity => 'Actividad reciente';
 
   @override
-  String get homeTileFinanceOverview => 'Finance overview';
+  String get homeTileFinanceOverview => 'Resumen financiero';
 
   @override
-  String get homeTilePinnedNote => 'Pinned note';
+  String get homeTilePinnedNote => 'Nota fijada';
 
   @override
-  String get homeTilePluginShortcut => 'Plugin shortcut';
+  String get homeTilePluginShortcut => 'Acceso directo a complemento';
 
   @override
-  String get homeTileMinecraftInstance => 'Minecraft instance';
+  String get homeTileMinecraftInstance => 'Instancia de Minecraft';
 
   @override
-  String get homeTileErrands => 'Errands';
+  String get homeTileErrands => 'Recados';
 
   @override
-  String get homeTileStockChart => 'Stock chart';
+  String get homeTileStockChart => 'Gráfico de acciones';
 
   @override
-  String get homeTileGithubActivity => 'GitHub activity';
+  String get homeTileGithubActivity => 'Actividad de GitHub';
 
   @override
-  String get homeTileGithubIssues => 'GitHub issues';
+  String get homeTileGithubIssues => 'Incidencias de GitHub';
 
   @override
-  String get homeTileAiUsage => 'AI usage';
+  String get homeTileAiUsage => 'Uso de IA';
 
   @override
-  String get homeTileCalculator => 'Calculator';
+  String get homeTileCalculator => 'Calculadora';
 
   @override
-  String get homeTileClockDate => 'Clock & date';
+  String get homeTileClockDate => 'Reloj y fecha';
 
   @override
-  String get homeTileFocusTimer => 'Focus timer';
+  String get homeTileFocusTimer => 'Temporizador de concentración';
 
   @override
-  String get homeTileQuickActions => 'Quick actions';
+  String get homeTileQuickActions => 'Acciones rápidas';
 
   @override
   String get pinEnterNew => 'Introduce un nuevo PIN de 8 dígitos';
@@ -1031,38 +1031,38 @@ class LEs extends L {
   String get assistantAgentsNoDescription => 'Sin descripción';
 
   @override
-  String get textLibraryBack => 'Back';
+  String get textLibraryBack => 'Atrás';
 
   @override
-  String get textLibraryBodyHint => 'Write your text…';
+  String get textLibraryBodyHint => 'Escribe tu texto…';
 
   @override
-  String get textLibraryBold => 'Bold';
+  String get textLibraryBold => 'Negrita';
 
   @override
-  String get textLibraryCancel => 'Cancel';
+  String get textLibraryCancel => 'Cancelar';
 
   @override
-  String get textLibraryClearFormatting => 'Clear formatting';
+  String get textLibraryClearFormatting => 'Borrar formato';
 
   @override
   String get textLibraryColor => 'Color';
 
   @override
-  String get textLibraryCover => 'Cover';
+  String get textLibraryCover => 'Portada';
 
   @override
-  String get textLibraryCreate => 'Create';
+  String get textLibraryCreate => 'Crear';
 
   @override
-  String get textLibraryDefaultInk => 'Default ink';
+  String get textLibraryDefaultInk => 'Tinta predeterminada';
 
   @override
-  String get textLibraryDelete => 'Delete';
+  String get textLibraryDelete => 'Eliminar';
 
   @override
   String textLibraryDeleteSubjectTitle(String name) {
-    return 'Delete subject \"$name\"?';
+    return '¿Eliminar el tema «$name»?';
   }
 
   @override
@@ -1070,158 +1070,159 @@ class LEs extends L {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count texts',
-      one: 'one text',
-      zero: 'no texts',
+      other: 'sus $count textos',
+      one: 'su único texto',
+      zero: 'ningún texto',
     );
-    return 'Delete this subject and its $_temp0?';
+    return '¿Eliminar este tema y $_temp0?';
   }
 
   @override
   String get textLibraryDeleteTextBody =>
-      'This text will be permanently deleted.';
+      'Este texto se eliminará de forma permanente.';
 
   @override
   String textLibraryDeleteTextTitle(String title) {
-    return 'Delete \"$title\"?';
+    return '¿Eliminar «$title»?';
   }
 
   @override
   String textLibraryEdited(String date) {
-    return 'Edited $date';
+    return 'Editado el $date';
   }
 
   @override
-  String get textLibraryInk => 'Ink';
+  String get textLibraryInk => 'Tinta';
 
   @override
-  String get textLibraryItalic => 'Italic';
+  String get textLibraryItalic => 'Cursiva';
 
   @override
   String textLibraryMcBooks(String count) {
-    return '$count books';
+    return '$count libros';
   }
 
   @override
-  String get textLibraryMcBuild => 'Build';
+  String get textLibraryMcBuild => 'Construir';
 
   @override
-  String get textLibraryMcBuiltIn => 'Built-in';
+  String get textLibraryMcBuiltIn => 'Integrado';
 
   @override
-  String get textLibraryMcBurn => 'Burn';
+  String get textLibraryMcBurn => 'Quemar';
 
   @override
   String get textLibraryMcBurnConfirm =>
-      'Burn this book? This cannot be undone.';
+      '¿Quemar este libro? Esto no se puede deshacer.';
 
   @override
-  String get textLibraryMcChooseSlot => 'Choose a shelf slot';
+  String get textLibraryMcChooseSlot => 'Elige un hueco de la estantería';
 
   @override
-  String get textLibraryMcDone => 'Done';
+  String get textLibraryMcDone => 'Listo';
 
   @override
-  String get textLibraryMcDownload => 'Download Minecraft assets';
+  String get textLibraryMcDownload => 'Descargar recursos de Minecraft';
 
   @override
   String get textLibraryMcDownloadFailed =>
-      'Could not download Minecraft assets.';
+      'No se pudieron descargar los recursos de Minecraft.';
 
   @override
   String get textLibraryMcDownloadNote =>
-      'Minecraft assets are downloaded from Mojang and cached on this device.';
+      'Los recursos de Minecraft se descargan de Mojang y se guardan en caché en este dispositivo.';
 
   @override
   String get textLibraryMcEmptyHall =>
-      'Your hall is empty. Create a subject to begin.';
+      'Tu sala está vacía. Crea un tema para empezar.';
 
   @override
-  String get textLibraryMcEmptySlot => 'Empty slot';
+  String get textLibraryMcEmptySlot => 'Hueco vacío';
 
   @override
   String get textLibraryMcFailedAndroid =>
-      'Could not open the Minecraft library on Android.';
+      'No se pudo abrir la biblioteca de Minecraft en Android.';
 
   @override
   String get textLibraryMcFailedWindows =>
-      'Could not open the Minecraft library on Windows.';
+      'No se pudo abrir la biblioteca de Minecraft en Windows.';
 
   @override
-  String get textLibraryMcLoading => 'Loading Minecraft library…';
+  String get textLibraryMcLoading => 'Cargando la biblioteca de Minecraft…';
 
   @override
-  String get textLibraryMcLost => 'The Minecraft library connection was lost.';
+  String get textLibraryMcLost =>
+      'Se perdió la conexión con la biblioteca de Minecraft.';
 
   @override
-  String get textLibraryMcMoveHint => 'Move this book to another shelf.';
+  String get textLibraryMcMoveHint => 'Mover este libro a otra estantería.';
 
   @override
-  String get textLibraryMcNewCase => 'New case';
+  String get textLibraryMcNewCase => 'Nuevo mueble';
 
   @override
-  String get textLibraryMcNewCaseTitle => 'Create a case';
+  String get textLibraryMcNewCaseTitle => 'Crear un mueble';
 
   @override
   String textLibraryMcPage(String page, String total) {
-    return 'Page $page of $total';
+    return 'Página $page de $total';
   }
 
   @override
-  String get textLibraryMcQuality => 'Render quality';
+  String get textLibraryMcQuality => 'Calidad de renderizado';
 
   @override
-  String get textLibraryMcQualityHigh => 'High';
+  String get textLibraryMcQualityHigh => 'Alta';
 
   @override
-  String get textLibraryMcQualityLow => 'Low';
+  String get textLibraryMcQualityLow => 'Baja';
 
   @override
-  String get textLibraryMcRedo => 'Redo';
+  String get textLibraryMcRedo => 'Rehacer';
 
   @override
-  String get textLibraryMcRetry => 'Retry';
+  String get textLibraryMcRetry => 'Reintentar';
 
   @override
-  String get textLibraryMcSaveFailed => 'Could not save the book.';
+  String get textLibraryMcSaveFailed => 'No se pudo guardar el libro.';
 
   @override
-  String get textLibraryMcSettings => 'Hall settings';
+  String get textLibraryMcSettings => 'Ajustes de la sala';
 
   @override
   String textLibraryMcShelfPage(String page, String total) {
-    return 'Shelf page $page of $total';
+    return 'Página de estantería $page de $total';
   }
 
   @override
-  String get textLibraryMcSign => 'Sign book';
+  String get textLibraryMcSign => 'Firmar libro';
 
   @override
-  String get textLibraryMcSignAndShelve => 'Sign and shelve';
+  String get textLibraryMcSignAndShelve => 'Firmar y colocar';
 
   @override
-  String get textLibraryMcSignTitle => 'Sign this book?';
+  String get textLibraryMcSignTitle => '¿Firmar este libro?';
 
   @override
-  String get textLibraryMcTime => 'Time';
+  String get textLibraryMcTime => 'Hora';
 
   @override
-  String get textLibraryMcTimeClock => 'My clock';
+  String get textLibraryMcTimeClock => 'Mi reloj';
 
   @override
-  String get textLibraryMcTimeCycle => 'Day and night';
+  String get textLibraryMcTimeCycle => 'Día y noche';
 
   @override
-  String get textLibraryMcTimeDay => 'Always day';
+  String get textLibraryMcTimeDay => 'Siempre de día';
 
   @override
-  String get textLibraryMcTimeNight => 'Always night';
+  String get textLibraryMcTimeNight => 'Siempre de noche';
 
   @override
-  String get textLibraryMcUndo => 'Undo';
+  String get textLibraryMcUndo => 'Deshacer';
 
   @override
-  String get textLibraryMcUntitled => 'Untitled';
+  String get textLibraryMcUntitled => 'Sin título';
 
   @override
   String textLibraryMcVanilla(String version) {
@@ -1230,457 +1231,459 @@ class LEs extends L {
 
   @override
   String get textLibraryMcWalkHint =>
-      'WASD to walk · click to look around · click a bookcase, chair or door to use it · Esc frees the mouse';
+      'WASD para caminar · haz clic para mirar alrededor · haz clic en una estantería, silla o puerta para usarla · Esc libera el ratón';
 
   @override
-  String get textLibraryMcLookHint => 'Click to look around';
+  String get textLibraryMcLookHint => 'Haz clic para mirar alrededor';
 
   @override
-  String get textLibraryMcStandHint => 'Shift or Space to stand up';
+  String get textLibraryMcStandHint => 'Mayús o Espacio para levantarte';
 
   @override
-  String get textLibraryMcStandUp => 'Stand up';
+  String get textLibraryMcStandUp => 'Levantarse';
 
   @override
-  String get textLibraryMcSit => 'Sit down';
+  String get textLibraryMcSit => 'Sentarse';
 
   @override
-  String get textLibraryMcOpenDoor => 'Open the door';
+  String get textLibraryMcOpenDoor => 'Abrir la puerta';
 
   @override
-  String get textLibraryMcCloseDoor => 'Close the door';
+  String get textLibraryMcCloseDoor => 'Cerrar la puerta';
 
   @override
-  String get textLibraryMcOpenDrawer => 'Open the drawer';
+  String get textLibraryMcOpenDrawer => 'Abrir el cajón';
 
   @override
-  String get textLibraryMcCloseDrawer => 'Close the drawer';
+  String get textLibraryMcCloseDrawer => 'Cerrar el cajón';
 
   @override
-  String get textLibraryMcShapes => 'Shapes';
+  String get textLibraryMcShapes => 'Formas';
 
   @override
-  String get textLibraryMcShapeCircle => 'Circle';
+  String get textLibraryMcShapeCircle => 'Círculo';
 
   @override
-  String get textLibraryMcShapeSquare => 'Square';
+  String get textLibraryMcShapeSquare => 'Cuadrado';
 
   @override
-  String get textLibraryMcShapeTriangle => 'Triangle';
+  String get textLibraryMcShapeTriangle => 'Triángulo';
 
   @override
-  String get textLibraryMcShapeStar => 'Star';
+  String get textLibraryMcShapeStar => 'Estrella';
 
   @override
-  String get textLibraryMcShapeHeart => 'Heart';
+  String get textLibraryMcShapeHeart => 'Corazón';
 
   @override
-  String get textLibraryMcShapeLine => 'Line';
+  String get textLibraryMcShapeLine => 'Línea';
 
   @override
-  String get textLibraryMcShapeFill => 'Filled or outline';
+  String get textLibraryMcShapeFill => 'Relleno o contorno';
 
   @override
   String get textLibraryMcDrawHint =>
-      'drag on the page to draw it · right-click a drawing to remove it';
+      'arrastra sobre la página para dibujarla · clic derecho en un dibujo para quitarlo';
 
   @override
   String textLibraryMcSkinCurrent(String name) {
-    return 'Skin: $name';
+    return 'Aspecto: $name';
   }
 
   @override
-  String get textLibraryMcSkinDefault => 'Default skin';
+  String get textLibraryMcSkinDefault => 'Skin predeterminada';
 
   @override
-  String get textLibraryMcSkinYours => 'your own';
+  String get textLibraryMcSkinYours => 'la tuya';
 
   @override
-  String get textLibraryMcSkinImport => 'Import skin…';
+  String get textLibraryMcSkinImport => 'Importar skin…';
 
   @override
-  String get textLibraryMcSkinName => 'Minecraft name…';
+  String get textLibraryMcSkinName => 'Nombre de Minecraft…';
 
   @override
-  String get textLibraryMcSkinNameTitle => 'Your Minecraft username';
+  String get textLibraryMcSkinNameTitle => 'Tu nombre de usuario de Minecraft';
 
   @override
-  String get textLibraryMcSkinNameHint => 'Username';
+  String get textLibraryMcSkinNameHint => 'Nombre de usuario';
 
   @override
-  String get textLibraryMcSkinUse => 'Use skin';
+  String get textLibraryMcSkinUse => 'Usar skin';
 
   @override
-  String get textLibraryMcSkinFailed => 'Couldn\'t load that skin.';
+  String get textLibraryMcSkinFailed => 'No se pudo cargar esa skin.';
 
   @override
-  String get textLibraryMcWriteHint => 'Write your book here…';
+  String get textLibraryMcWriteHint => 'Escribe tu libro aquí…';
 
   @override
-  String get textLibraryModeClassic => 'Classic';
+  String get textLibraryModeClassic => 'Clásico';
 
   @override
-  String get textLibraryModeMinecraft => 'Minecraft hall';
+  String get textLibraryModeMinecraft => 'Sala de Minecraft';
 
   @override
-  String get textLibraryMoveTo => 'Move to';
+  String get textLibraryMoveTo => 'Mover a';
 
   @override
-  String get textLibraryMoveToTitle => 'Move text to a subject';
+  String get textLibraryMoveToTitle => 'Mover el texto a un tema';
 
   @override
-  String get textLibraryNewSubject => 'New subject';
+  String get textLibraryNewSubject => 'Nuevo tema';
 
   @override
-  String get textLibraryNewText => 'New text';
+  String get textLibraryNewText => 'Nuevo texto';
 
   @override
   String textLibraryNoMatches(String query) {
-    return 'No texts match \"$query\"';
+    return 'Ningún texto coincide con \"$query\"';
   }
 
   @override
-  String get textLibraryNoSubjects => 'No subjects yet';
+  String get textLibraryNoSubjects => 'Aún no hay temas';
 
   @override
   String get textLibraryNoSubjectsSub =>
-      'Create a subject to organize your texts.';
+      'Crea un tema para organizar tus textos.';
 
   @override
-  String get textLibraryNoTexts => 'No texts yet';
+  String get textLibraryNoTexts => 'Aún no hay textos';
 
   @override
   String get textLibraryNoTextsSub =>
-      'Add a text to this subject to get started.';
+      'Añade un texto a este tema para empezar.';
 
   @override
-  String get textLibraryRename => 'Rename';
+  String get textLibraryRename => 'Renombrar';
 
   @override
-  String get textLibraryRenameSubject => 'Rename subject';
+  String get textLibraryRenameSubject => 'Renombrar tema';
 
   @override
-  String get textLibrarySave => 'Save';
+  String get textLibrarySave => 'Guardar';
 
   @override
-  String get textLibrarySaved => 'Saved';
+  String get textLibrarySaved => 'Guardado';
 
   @override
-  String get textLibrarySaving => 'Saving…';
+  String get textLibrarySaving => 'Guardando…';
 
   @override
-  String get textLibrarySearchHint => 'Search texts';
+  String get textLibrarySearchHint => 'Buscar textos';
 
   @override
-  String get textLibrarySpineHint => 'A short label shown on the book spine';
+  String get textLibrarySpineHint =>
+      'Una etiqueta corta que se muestra en el lomo del libro';
 
   @override
-  String get textLibrarySpineLabel => 'Spine label';
+  String get textLibrarySpineLabel => 'Etiqueta del lomo';
 
   @override
-  String get textLibraryStrike => 'Strikethrough';
+  String get textLibraryStrike => 'Tachado';
 
   @override
-  String get textLibrarySubjectNameHint => 'Subject name';
+  String get textLibrarySubjectNameHint => 'Nombre del tema';
 
   @override
-  String get textLibrarySubjectNameRequired => 'Enter a subject name.';
+  String get textLibrarySubjectNameRequired => 'Introduce un nombre de tema.';
 
   @override
-  String get textLibrarySubjects => 'Subjects';
+  String get textLibrarySubjects => 'Temas';
 
   @override
   String textLibraryTextCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count texts',
-      one: '1 text',
+      other: '$count textos',
+      one: '1 texto',
     );
     return '$_temp0';
   }
 
   @override
-  String get textLibraryTitleHint => 'Title';
+  String get textLibraryTitleHint => 'Título';
 
   @override
-  String get textLibraryUnderline => 'Underline';
+  String get textLibraryUnderline => 'Subrayado';
 
   @override
-  String get audioToolsTitle => 'Audio Tools';
+  String get audioToolsTitle => 'Herramientas de audio';
 
   @override
   String get audioToolsSubtitle =>
-      'Shape your voice with an equalizer and send it to Discord, OBS or any app that takes a microphone.';
+      'Moldea tu voz con un ecualizador y envíala a Discord, OBS o cualquier app que use micrófono.';
 
   @override
-  String get audioToolsWindowsOnly => 'Windows only';
+  String get audioToolsWindowsOnly => 'Solo Windows';
 
   @override
   String get audioToolsWindowsOnlyBody =>
-      'Audio Tools routes your microphone in real time, which luma can only do in the Windows desktop app.';
+      'Herramientas de audio dirige tu micrófono en tiempo real, algo que luma solo puede hacer en la app de escritorio de Windows.';
 
   @override
-  String get audioToolsStart => 'Start';
+  String get audioToolsStart => 'Iniciar';
 
   @override
-  String get audioToolsStop => 'Stop';
+  String get audioToolsStop => 'Detener';
 
   @override
-  String get audioToolsLive => 'Live';
+  String get audioToolsLive => 'En vivo';
 
   @override
-  String get audioToolsOff => 'Off';
+  String get audioToolsOff => 'Desactivado';
 
   @override
-  String get audioToolsRouting => 'Routing';
+  String get audioToolsRouting => 'Enrutamiento';
 
   @override
-  String get audioToolsMicrophone => 'Microphone';
+  String get audioToolsMicrophone => 'Micrófono';
 
   @override
-  String get audioToolsSendTo => 'Send to';
+  String get audioToolsSendTo => 'Enviar a';
 
   @override
   String audioToolsWindowsDefault(String name) {
-    return 'Windows default ($name)';
+    return 'Predeterminado de Windows ($name)';
   }
 
   @override
-  String get audioToolsWindowsDefaultPlain => 'Windows default';
+  String get audioToolsWindowsDefaultPlain => 'Predeterminado de Windows';
 
   @override
-  String get audioToolsRefreshDevices => 'Refresh devices';
+  String get audioToolsRefreshDevices => 'Actualizar dispositivos';
 
   @override
-  String get audioToolsVirtualCableTag => 'Virtual cable';
+  String get audioToolsVirtualCableTag => 'Cable virtual';
 
   @override
   String get audioToolsNotACable =>
-      'This output is a speaker, not a virtual cable, so other apps won\'t hear it as a microphone.';
+      'Esta salida es un altavoz, no un cable virtual, así que otras apps no lo oirán como micrófono.';
 
   @override
-  String get audioToolsHearMyself => 'Hear myself';
+  String get audioToolsHearMyself => 'Escucharme';
 
   @override
   String get audioToolsHearMyselfBody =>
-      'Also play the result on your default speakers or headset.';
+      'Reproducir también el resultado en tus altavoces o auriculares predeterminados.';
 
   @override
-  String get audioToolsBypass => 'Bypass equalizer';
+  String get audioToolsBypass => 'Omitir el ecualizador';
 
   @override
   String get audioToolsBypassBody =>
-      'Send your voice through untouched, to compare.';
+      'Envía tu voz sin procesar, para comparar.';
 
   @override
-  String get audioToolsAutoStart => 'Start with luma';
+  String get audioToolsAutoStart => 'Iniciar con luma';
 
   @override
   String get audioToolsAutoStartBody =>
-      'Turn the voice changer on as soon as luma opens.';
+      'Activa el modificador de voz en cuanto se abra luma.';
 
   @override
-  String get audioToolsDiscordTitle => 'Use it in Discord';
+  String get audioToolsDiscordTitle => 'Usar en Discord';
 
   @override
-  String get audioToolsCableFound => 'Virtual cable found';
+  String get audioToolsCableFound => 'Cable virtual encontrado';
 
   @override
-  String get audioToolsCableMissingTitle => 'One-time setup: a virtual cable';
+  String get audioToolsCableMissingTitle =>
+      'Configuración única: un cable virtual';
 
   @override
   String get audioToolsCableMissingBody =>
-      'Windows can\'t add a new microphone without a driver, so luma sends your processed voice through a free virtual cable. Install VB-CABLE once, then come back here. Discord, OBS and games will see it as a microphone.';
+      'Windows no puede añadir un micrófono nuevo sin un controlador, así que luma envía tu voz procesada a través de un cable virtual gratuito. Instala VB-CABLE una vez y vuelve aquí. Discord, OBS y los juegos lo verán como un micrófono.';
 
   @override
-  String get audioToolsGetCable => 'Get VB-CABLE';
+  String get audioToolsGetCable => 'Obtener VB-CABLE';
 
   @override
-  String get audioToolsInstalledCheck => 'I installed it';
+  String get audioToolsInstalledCheck => 'Ya lo instalé';
 
   @override
   String audioToolsStepSendTo(String device) {
-    return 'Set Send to to $device.';
+    return 'Establece «Enviar a» en $device.';
   }
 
   @override
-  String get audioToolsUseCable => 'Use it';
+  String get audioToolsUseCable => 'Usar';
 
   @override
   String audioToolsStepDiscord(String device) {
-    return 'In Discord, open Settings → Voice & Video and set Input Device to $device.';
+    return 'En Discord, abre Ajustes → Voz y vídeo y establece Dispositivo de entrada en $device.';
   }
 
   @override
   String get audioToolsStepStart =>
-      'Press Start. If the effect sounds washed out, turn off Discord\'s noise suppression.';
+      'Pulsa Iniciar. Si el efecto suena apagado, desactiva la supresión de ruido de Discord.';
 
   @override
   String get audioToolsErrDeviceMissing =>
-      'That audio device isn\'t connected any more. Pick another one.';
+      'Ese dispositivo de audio ya no está conectado. Elige otro.';
 
   @override
   String get audioToolsErrDeviceInUse =>
-      'Another app is using that device in exclusive mode.';
+      'Otra app está usando ese dispositivo en modo exclusivo.';
 
   @override
   String get audioToolsErrDeviceLost =>
-      'The audio device was disconnected, so the voice changer stopped.';
+      'Se desconectó el dispositivo de audio, así que el modificador de voz se detuvo.';
 
   @override
   String get audioToolsErrMicBlocked =>
-      'Windows is blocking the microphone. Turn on \"Let desktop apps access your microphone\" in Privacy settings.';
+      'Windows está bloqueando el micrófono. Activa «Permitir que las aplicaciones de escritorio accedan al micrófono» en la configuración de privacidad.';
 
   @override
   String get audioToolsErrFailed =>
-      'Couldn\'t start audio. Try another device.';
+      'No se pudo iniciar el audio. Prueba con otro dispositivo.';
 
   @override
-  String get audioToolsOpenSettings => 'Open settings';
+  String get audioToolsOpenSettings => 'Abrir configuración';
 
   @override
-  String get audioToolsDismiss => 'Dismiss';
+  String get audioToolsDismiss => 'Descartar';
 
   @override
-  String get audioToolsEqualizer => 'Equalizer';
+  String get audioToolsEqualizer => 'Ecualizador';
 
   @override
-  String get audioToolsReset => 'Reset';
+  String get audioToolsReset => 'Restablecer';
 
   @override
   String get audioToolsEqHint =>
-      'Drag a point to shape your voice. Scroll over the graph to make the selected band wider or narrower.';
+      'Arrastra un punto para moldear tu voz. Desplázate sobre el gráfico para ensanchar o estrechar la banda seleccionada.';
 
   @override
-  String get audioToolsPreamp => 'Preamp';
+  String get audioToolsPreamp => 'Preamplificador';
 
   @override
-  String get audioToolsFrequency => 'Frequency';
+  String get audioToolsFrequency => 'Frecuencia';
 
   @override
-  String get audioToolsGain => 'Gain';
+  String get audioToolsGain => 'Ganancia';
 
   @override
-  String get audioToolsWidth => 'Width (Q)';
+  String get audioToolsWidth => 'Ancho (Q)';
 
   @override
-  String get audioToolsBandOn => 'On';
+  String get audioToolsBandOn => 'Activada';
 
   @override
-  String get audioToolsTypeHighPass => 'Low cut';
+  String get audioToolsTypeHighPass => 'Corte de graves';
 
   @override
-  String get audioToolsTypeLowShelf => 'Low shelf';
+  String get audioToolsTypeLowShelf => 'Shelf grave';
 
   @override
-  String get audioToolsTypePeak => 'Bell';
+  String get audioToolsTypePeak => 'Campana';
 
   @override
-  String get audioToolsTypeHighShelf => 'High shelf';
+  String get audioToolsTypeHighShelf => 'Shelf agudo';
 
   @override
-  String get audioToolsTypeLowPass => 'High cut';
+  String get audioToolsTypeLowPass => 'Corte de agudos';
 
   @override
-  String get audioToolsPresetFlat => 'Flat';
+  String get audioToolsPresetFlat => 'Plano';
 
   @override
-  String get audioToolsPresetClear => 'Clear';
+  String get audioToolsPresetClear => 'Claro';
 
   @override
-  String get audioToolsPresetDeep => 'Deep';
+  String get audioToolsPresetDeep => 'Profunda';
 
   @override
   String get audioToolsPresetRadio => 'Radio';
 
   @override
-  String get audioToolsPresetTelephone => 'Telephone';
+  String get audioToolsPresetTelephone => 'Teléfono';
 
   @override
-  String get audioToolsPresetMegaphone => 'Megaphone';
+  String get audioToolsPresetMegaphone => 'Megáfono';
 
   @override
-  String get audioToolsPresetMuffled => 'Through a wall';
+  String get audioToolsPresetMuffled => 'A través de una pared';
 
   @override
-  String get audioToolsPresetTiny => 'Tiny';
+  String get audioToolsPresetTiny => 'Diminuta';
 
   @override
-  String get audioToolsPresetCustom => 'Custom';
+  String get audioToolsPresetCustom => 'Personalizado';
 
   @override
-  String get audioToolsSystemTitle => 'Use it in Discord';
+  String get audioToolsSystemTitle => 'Usar en Discord';
 
   @override
   String audioToolsSystemBody(String mic) {
-    return 'luma can put the EQ on $mic itself, so Discord, OBS and games hear it with no extra software. Windows asks for admin permission once. Sound drops out for a few seconds while luma switches over and checks the mic still works, and if it doesn\'t, luma puts it straight back.';
+    return 'luma puede aplicar el ecualizador directamente a $mic, para que Discord, OBS y los juegos lo oigan sin software adicional. Windows pide permiso de administrador una sola vez. El sonido se corta unos segundos mientras luma cambia y comprueba que el micrófono sigue funcionando; si no funciona, luma lo restaura de inmediato.';
   }
 
   @override
-  String get audioToolsSystemEnable => 'Turn on for this mic';
+  String get audioToolsSystemEnable => 'Activar para este micrófono';
 
   @override
   String audioToolsSystemActive(String mic) {
-    return 'On for $mic';
+    return 'Activado para $mic';
   }
 
   @override
-  String get audioToolsSystemPaused => 'Paused';
+  String get audioToolsSystemPaused => 'En pausa';
 
   @override
-  String get audioToolsSystemEveryApp => 'EQ in every app';
+  String get audioToolsSystemEveryApp => 'Ecualizador en todas las apps';
 
   @override
   String get audioToolsSystemEveryAppBody =>
-      'Pausing needs no admin permission and keeps everything set up.';
+      'Pausar no requiere permisos de administrador y mantiene todo configurado.';
 
   @override
   String audioToolsSystemDiscordHint(String mic) {
-    return 'In Discord, keep $mic as your input device. If the EQ sounds washed out, turn off Discord\'s noise suppression and automatic gain control.';
+    return 'En Discord, mantén $mic como dispositivo de entrada. Si el ecualizador suena apagado, desactiva la supresión de ruido y el control automático de ganancia de Discord.';
   }
 
   @override
   String get audioToolsSystemOutdated =>
-      'luma updated its EQ engine. Apply the update to keep this mic in sync.';
+      'luma actualizó su motor de ecualizador. Aplica la actualización para mantener este micrófono sincronizado.';
 
   @override
-  String get audioToolsSystemUpdate => 'Update';
+  String get audioToolsSystemUpdate => 'Actualizar';
 
   @override
-  String get audioToolsSystemRemove => 'Turn off and restore';
+  String get audioToolsSystemRemove => 'Desactivar y restaurar';
 
   @override
   String get audioToolsSystemCancelled =>
-      'Windows didn\'t get permission, so nothing changed.';
+      'Windows no concedió el permiso, así que no cambió nada.';
 
   @override
   String get audioToolsSystemFailed =>
-      'That didn\'t work, and the mic was left as it was.';
+      'No funcionó y el micrófono se quedó como estaba.';
 
   @override
   String get audioToolsSystemRestart =>
-      'Almost there: restart your PC so Windows picks up the change.';
+      'Casi listo: reinicia tu PC para que Windows aplique el cambio.';
 
   @override
   String get audioToolsSystemNoDevice =>
-      'That microphone isn\'t connected right now.';
+      'Ese micrófono no está conectado en este momento.';
 
   @override
   String get audioToolsSystemIncompatible =>
-      'Windows won\'t run luma\'s EQ on this mic, so luma put it back exactly as it was. It still works normally. You can keep using the EQ inside luma.';
+      'Windows no puede ejecutar el ecualizador de luma en este micrófono, así que luma lo dejó exactamente como estaba. Sigue funcionando con normalidad. Puedes seguir usando el ecualizador dentro de luma.';
 
   @override
   String get audioToolsSystemMicSilent =>
-      'luma couldn\'t record from this mic to test it, so nothing changed. Close apps that might have it to themselves and check Windows lets apps use the microphone.';
+      'luma no pudo grabar desde este micrófono para probarlo, así que no cambió nada. Cierra las apps que puedan estar usándolo y comprueba que Windows permite que las apps usen el micrófono.';
 
   @override
   String get audioToolsSystemMissing =>
-      'Parts of luma are missing. Reinstall luma and try again.';
+      'Faltan partes de luma. Reinstala luma e inténtalo de nuevo.';
 
   @override
   String get audioToolsSystemNoMic =>
-      'No microphone found. Plug one in and refresh the device list.';
+      'No se encontró ningún micrófono. Conecta uno y actualiza la lista de dispositivos.';
 
   @override
   String get assistantAddMenu => 'Añadir';
@@ -2300,4 +2303,33172 @@ class LEs extends L {
   @override
   String get pluginAddToHomeScreenUnsupported =>
       'Tu launcher no permite añadir widgets desde apps. Mantén pulsada la pantalla de inicio, abre Widgets y elige luma.';
+
+  @override
+  String get commonSave => 'Guardar';
+
+  @override
+  String get commonDelete => 'Eliminar';
+
+  @override
+  String get commonRemove => 'Quitar';
+
+  @override
+  String get commonClose => 'Cerrar';
+
+  @override
+  String get commonOk => 'Aceptar';
+
+  @override
+  String get commonDone => 'Listo';
+
+  @override
+  String get commonAdd => 'Añadir';
+
+  @override
+  String get commonEdit => 'Editar';
+
+  @override
+  String get commonRename => 'Cambiar nombre';
+
+  @override
+  String get commonRetry => 'Reintentar';
+
+  @override
+  String get commonTryAgain => 'Inténtalo de nuevo';
+
+  @override
+  String get commonBack => 'Atrás';
+
+  @override
+  String get commonNext => 'Siguiente';
+
+  @override
+  String get commonPrevious => 'Anterior';
+
+  @override
+  String get commonContinue => 'Continuar';
+
+  @override
+  String get commonConfirm => 'Confirmar';
+
+  @override
+  String get commonYes => 'Sí';
+
+  @override
+  String get commonNo => 'No';
+
+  @override
+  String get commonCopy => 'Copiar';
+
+  @override
+  String get commonCopied => 'Copiado';
+
+  @override
+  String get commonCopiedToClipboard => 'Copiado al portapapeles';
+
+  @override
+  String get commonPaste => 'Pegar';
+
+  @override
+  String get commonSearch => 'Buscar';
+
+  @override
+  String get commonSearchHint => 'Buscar…';
+
+  @override
+  String get commonRefresh => 'Actualizar';
+
+  @override
+  String get commonLoading => 'Cargando…';
+
+  @override
+  String get commonOpen => 'Abrir';
+
+  @override
+  String get commonCreate => 'Crear';
+
+  @override
+  String get commonImport => 'Importar';
+
+  @override
+  String get commonExport => 'Exportar';
+
+  @override
+  String get commonShare => 'Compartir';
+
+  @override
+  String get commonDownload => 'Descargar';
+
+  @override
+  String get commonUpload => 'Subir';
+
+  @override
+  String get commonSettings => 'Ajustes';
+
+  @override
+  String get commonName => 'Nombre';
+
+  @override
+  String get commonTitle => 'Título';
+
+  @override
+  String get commonDescription => 'Descripción';
+
+  @override
+  String get commonNotes => 'Notas';
+
+  @override
+  String get commonDate => 'Fecha';
+
+  @override
+  String get commonTime => 'Hora';
+
+  @override
+  String get commonAmount => 'Importe';
+
+  @override
+  String get commonTotal => 'Total';
+
+  @override
+  String get commonAll => 'Todo';
+
+  @override
+  String get commonNone => 'Ninguno';
+
+  @override
+  String get commonOther => 'Otro';
+
+  @override
+  String get commonUnknown => 'Desconocido';
+
+  @override
+  String get commonUntitled => 'Sin título';
+
+  @override
+  String get commonOn => 'Activado';
+
+  @override
+  String get commonOff => 'Desactivado';
+
+  @override
+  String get commonEnable => 'Activar';
+
+  @override
+  String get commonDisable => 'Desactivar';
+
+  @override
+  String get commonStart => 'Iniciar';
+
+  @override
+  String get commonStop => 'Detener';
+
+  @override
+  String get commonPause => 'Pausar';
+
+  @override
+  String get commonResume => 'Reanudar';
+
+  @override
+  String get commonReset => 'Restablecer';
+
+  @override
+  String get commonClear => 'Borrar';
+
+  @override
+  String get commonApply => 'Aplicar';
+
+  @override
+  String get commonSend => 'Enviar';
+
+  @override
+  String get commonUndo => 'Deshacer';
+
+  @override
+  String get commonRedo => 'Rehacer';
+
+  @override
+  String get commonMore => 'Más';
+
+  @override
+  String get commonShowMore => 'Mostrar más';
+
+  @override
+  String get commonShowLess => 'Mostrar menos';
+
+  @override
+  String get commonError => 'Error';
+
+  @override
+  String commonErrorDetail(String error) {
+    return 'Algo salió mal: $error';
+  }
+
+  @override
+  String get commonSomethingWentWrong => 'Algo salió mal';
+
+  @override
+  String get commonSaved => 'Guardado';
+
+  @override
+  String get commonDeleted => 'Eliminado';
+
+  @override
+  String get commonNothingHereYet => 'Aún no hay nada';
+
+  @override
+  String get commonNoResults => 'Sin resultados';
+
+  @override
+  String get commonToday => 'Hoy';
+
+  @override
+  String get commonYesterday => 'Ayer';
+
+  @override
+  String get commonTomorrow => 'Mañana';
+
+  @override
+  String get commonNever => 'Nunca';
+
+  @override
+  String get commonJustNow => 'Justo ahora';
+
+  @override
+  String commonMinutesAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'hace $count minutos',
+      one: 'hace 1 minuto',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String commonHoursAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'hace $count horas',
+      one: 'hace 1 hora',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String commonDaysAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'hace $count días',
+      one: 'hace 1 día',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get commonRequired => 'Obligatorio';
+
+  @override
+  String get commonOptional => 'Opcional';
+
+  @override
+  String get commonDetails => 'Detalles';
+
+  @override
+  String get commonHistory => 'Historial';
+
+  @override
+  String get commonOverview => 'Resumen';
+
+  @override
+  String get commonPreview => 'Vista previa';
+
+  @override
+  String get commonHelp => 'Ayuda';
+
+  @override
+  String get commonSelectAll => 'Seleccionar todo';
+
+  @override
+  String get commonBrowse => 'Examinar';
+
+  @override
+  String get commonChooseFile => 'Elegir archivo';
+
+  @override
+  String get commonChooseFolder => 'Elegir carpeta';
+
+  @override
+  String get commonInstall => 'Instalar';
+
+  @override
+  String get commonUninstall => 'Desinstalar';
+
+  @override
+  String get commonUpdate => 'Actualizar';
+
+  @override
+  String get commonSignIn => 'Iniciar sesión';
+
+  @override
+  String get commonSignOut => 'Cerrar sesión';
+
+  @override
+  String get commonEmail => 'Correo electrónico';
+
+  @override
+  String get commonPassword => 'Contraseña';
+
+  @override
+  String get commonUsername => 'Nombre de usuario';
+
+  @override
+  String get commonCategory => 'Categoría';
+
+  @override
+  String get commonType => 'Tipo';
+
+  @override
+  String get commonSize => 'Tamaño';
+
+  @override
+  String get commonStatus => 'Estado';
+
+  @override
+  String get commonPrice => 'Precio';
+
+  @override
+  String get commonQuantity => 'Cantidad';
+
+  @override
+  String get commonColor => 'Color';
+
+  @override
+  String get commonIcon => 'Icono';
+
+  @override
+  String get commonFilter => 'Filtrar';
+
+  @override
+  String get commonSort => 'Ordenar';
+
+  @override
+  String get commonAccountRequired => 'Se requiere una cuenta';
+
+  @override
+  String get marketplaceLoadFailed => 'No se pudo cargar la lista de plugins';
+
+  @override
+  String get marketplaceEmpty => 'Aún no hay plugins disponibles';
+
+  @override
+  String marketplaceCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count plugins',
+      one: '1 plugin',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get marketplaceNoMatches => 'Nada coincide con esos filtros';
+
+  @override
+  String get marketplaceSearchHint => 'Busca un plugin...';
+
+  @override
+  String get marketplaceSortRelevance => 'Relevancia';
+
+  @override
+  String get marketplaceSortNameAsc => 'Nombre (A-Z)';
+
+  @override
+  String get marketplaceSortNameDesc => 'Nombre (Z-A)';
+
+  @override
+  String marketplaceSortBy(String option) {
+    return 'Ordenar por: $option';
+  }
+
+  @override
+  String get marketplaceRemovePlugin => 'Quitar plugin';
+
+  @override
+  String get marketplaceUpdateAvailable => 'Actualización disponible';
+
+  @override
+  String get marketplaceUpdating => 'Actualizando…';
+
+  @override
+  String get marketplaceDownloading => 'Descargando…';
+
+  @override
+  String get marketplaceUpdated => 'Actualizado';
+
+  @override
+  String get marketplaceInstalled => 'Instalado';
+
+  @override
+  String get marketplaceAbout => 'Acerca de';
+
+  @override
+  String get marketplaceScreenshots => 'Capturas de pantalla';
+
+  @override
+  String marketplaceRepoUnreachable(String error) {
+    return 'No se pudo acceder al repositorio de plugins. Comprueba tu conexión.\n($error)';
+  }
+
+  @override
+  String marketplaceRepoError(int status) {
+    return 'El repositorio de plugins devolvió un error ($status).';
+  }
+
+  @override
+  String get pluginNameAccountOverview => 'Resumen de cuentas';
+
+  @override
+  String get pluginNameAiDetector => 'Detector de IA';
+
+  @override
+  String get pluginNameAiUsage => 'Uso de IA';
+
+  @override
+  String get pluginNameAirlineTycoon => 'Magnate aéreo';
+
+  @override
+  String get pluginNameAudioTools => 'Herramientas de audio';
+
+  @override
+  String get pluginNameAutoClicker => 'Autoclicker';
+
+  @override
+  String get pluginNameBulletinBoard => 'Tablón de anuncios';
+
+  @override
+  String get pluginNameCalculator => 'Calculadora';
+
+  @override
+  String get pluginNameCalendar => 'Calendario';
+
+  @override
+  String get pluginNameCardWallet => 'Monedero de tarjetas';
+
+  @override
+  String get pluginNameCityPlanner => 'Planificador urbano';
+
+  @override
+  String get pluginNameCloudFiles => 'Archivos en la nube';
+
+  @override
+  String get pluginNameDataManagement => 'Gestión de datos';
+
+  @override
+  String get pluginNameDeviceHealth => 'Salud del dispositivo';
+
+  @override
+  String get pluginNameErrandManager => 'Gestor de recados';
+
+  @override
+  String get pluginNameFileTree => 'Árbol de archivos';
+
+  @override
+  String get pluginNameFileViewer => 'Visor de archivos';
+
+  @override
+  String get pluginNameFreeSketch => 'Boceto libre';
+
+  @override
+  String get pluginNameGallery => 'Galería';
+
+  @override
+  String get pluginNameGameTools => 'Herramientas de juegos';
+
+  @override
+  String get pluginNameGroceriesList => 'Lista de la compra';
+
+  @override
+  String get pluginNameMachineLearning => 'Aprendizaje automático';
+
+  @override
+  String get pluginNameMindMap => 'Mapa mental';
+
+  @override
+  String get pluginNameMinecraftLauncher => 'Lanzador de Minecraft';
+
+  @override
+  String get pluginNameMoodJournal => 'Diario de ánimo';
+
+  @override
+  String get pluginNameNfcTagEditor => 'Editor de etiquetas NFC';
+
+  @override
+  String get pluginNamePriceTracker => 'Seguidor de precios';
+
+  @override
+  String get pluginNameQrCodeGenerator => 'Generador de códigos QR';
+
+  @override
+  String get pluginNameRecipeBook => 'Libro de recetas';
+
+  @override
+  String get pluginNameSchool => 'Escuela';
+
+  @override
+  String get pluginNameSecureChat => 'Chat';
+
+  @override
+  String get pluginNameServerTycoon => 'Magnate del hosting de servidores';
+
+  @override
+  String get pluginNameSftp => 'SFTP';
+
+  @override
+  String get pluginNameSmallGames => 'Juegos pequeños';
+
+  @override
+  String get pluginNameSmartHome => 'Casa inteligente';
+
+  @override
+  String get pluginNameSpaceColony => 'Colonia espacial';
+
+  @override
+  String get pluginNameSubwayBuilder => 'Constructor de metro';
+
+  @override
+  String get pluginNameTextLibrary => 'Biblioteca de textos';
+
+  @override
+  String get pluginNameTransportTracker => 'Rastreador de transporte';
+
+  @override
+  String get pluginNameUsage => 'Uso';
+
+  @override
+  String get pluginNameWhiteboard => 'Pizarra';
+
+  @override
+  String get pluginNameWifiSpeedTest => 'Test de velocidad Wi-Fi';
+
+  @override
+  String get pluginNameWorthCounter => 'Contador de valor';
+
+  @override
+  String get pluginNameYoutubeDownloader => 'Descargador de medios';
+
+  @override
+  String get pluginTagUtility => 'Utilidades';
+
+  @override
+  String get pluginTagShopping => 'Compras';
+
+  @override
+  String get pluginTagSystem => 'Sistema';
+
+  @override
+  String get pluginTagDocuments => 'Documentos';
+
+  @override
+  String get pluginTagProductivity => 'Productividad';
+
+  @override
+  String get pluginTagSync => 'Sincronización';
+
+  @override
+  String get pluginTagData => 'Datos';
+
+  @override
+  String get pluginTagGames => 'Juegos';
+
+  @override
+  String get pluginTagSimulation => 'Simulación';
+
+  @override
+  String get pluginTagWellness => 'Bienestar';
+
+  @override
+  String get pluginTagAnalytics => 'Análisis';
+
+  @override
+  String get pluginTagAi => 'IA';
+
+  @override
+  String get pluginTagWriting => 'Escritura';
+
+  @override
+  String get pluginTagMedia => 'Multimedia';
+
+  @override
+  String get pluginTagAudio => 'Audio';
+
+  @override
+  String get pluginTagAutomation => 'Automatización';
+
+  @override
+  String get pluginTagEducation => 'Educación';
+
+  @override
+  String get pluginTagNetwork => 'Red';
+
+  @override
+  String get pluginTagSocial => 'Social';
+
+  @override
+  String get pluginTagNova => 'Nova';
+
+  @override
+  String get pluginTagFood => 'Comida';
+
+  @override
+  String get pluginTagPhotos => 'Fotos';
+
+  @override
+  String get pluginTagTravel => 'Viajes';
+
+  @override
+  String get pluginTagFinance => 'Finanzas';
+
+  @override
+  String get pluginTagDeveloper => 'Desarrollador';
+
+  @override
+  String get pluginTagMinecraft => 'Minecraft';
+
+  @override
+  String get pluginTagPaid => 'De pago';
+
+  @override
+  String get pluginTagFree => 'Gratis';
+
+  @override
+  String get accountTabProfile => 'Perfil';
+
+  @override
+  String get accountTabStats => 'Estadísticas';
+
+  @override
+  String get accountProfileSubtitle => 'Cómo te ves en este dispositivo.';
+
+  @override
+  String get accountSyncTitle => 'Sincronización y cuenta';
+
+  @override
+  String get accountSyncSubtitle =>
+      'Tus cosas en cada dispositivo, además de los dispositivos vinculados a este.';
+
+  @override
+  String get accountStorageTitle => 'Almacenamiento';
+
+  @override
+  String get accountStorageSubtitle => 'Cuánto espacio ocupa luma aquí.';
+
+  @override
+  String get accountPlanTitle => 'Plan';
+
+  @override
+  String get accountPlanSubtitle => 'Lo que elegiste y lo que incluye.';
+
+  @override
+  String get accountFamilySubtitle => 'Comparte tu calendario con los tuyos.';
+
+  @override
+  String get accountProfilePicture => 'Foto de perfil';
+
+  @override
+  String get accountProfilePictureNote =>
+      'Solo en este dispositivo — nadie más lo ve.';
+
+  @override
+  String get accountChangePhoto => 'Cambiar foto';
+
+  @override
+  String get accountChoosePhoto => 'Elegir foto';
+
+  @override
+  String get accountLocalStorage => 'Almacenamiento local';
+
+  @override
+  String accountUsedLocally(String size) {
+    return '$size usados localmente';
+  }
+
+  @override
+  String get accountWhatUsingSpace => '¿Qué ocupa espacio?';
+
+  @override
+  String get accountNothingCounted => 'Nada contado todavía.';
+
+  @override
+  String get accountChangePlan => 'Cambiar de plan';
+
+  @override
+  String get accountNoFamilyYet => 'Aún no hay familia';
+
+  @override
+  String get accountStartFamilyHint => 'Crea una para compartir tu calendario.';
+
+  @override
+  String get accountCreateFamily => 'Crear una familia';
+
+  @override
+  String get accountManageFamily => 'Gestionar la familia';
+
+  @override
+  String get familyTitle => 'Familia';
+
+  @override
+  String get familyBackToAccount => 'Volver a la cuenta';
+
+  @override
+  String get familyStartTitle => 'Crear una familia';
+
+  @override
+  String get familyStartSubtitle => 'Invita a los tuyos y planeen juntos.';
+
+  @override
+  String get familyNameLabel => 'Nombre de la familia';
+
+  @override
+  String get familyEnterName => 'Introduce un nombre para la familia.';
+
+  @override
+  String get familyCreate => 'Crear familia';
+
+  @override
+  String familySlotsUsed(String used, String limit) {
+    return '$used de $limit plazas usadas';
+  }
+
+  @override
+  String get familyMembers => 'Miembros';
+
+  @override
+  String get familyPendingInvites => 'Invitaciones pendientes';
+
+  @override
+  String get familyInviteTitle => 'Invitar por correo';
+
+  @override
+  String get familyNoInvites => 'No hay invitaciones pendientes.';
+
+  @override
+  String get familyDeleteFamily => 'Eliminar familia';
+
+  @override
+  String get familyLeaveFamily => 'Salir de la familia';
+
+  @override
+  String get familyRemoveMemberTitle => '¿Quitar al miembro?';
+
+  @override
+  String get familyRemoveMemberBody =>
+      'Perderá el acceso a los eventos compartidos de inmediato.';
+
+  @override
+  String get familyLeaveTitle => '¿Salir de la familia?';
+
+  @override
+  String get familyLeaveBody => 'Perderás el acceso a los eventos compartidos.';
+
+  @override
+  String get familyLeaveConfirm => 'Salir';
+
+  @override
+  String get familyDeleteTitle => '¿Eliminar la familia?';
+
+  @override
+  String get familyDeleteBody =>
+      'Esto elimina a todos los miembros y todos los eventos compartidos. No se puede deshacer.';
+
+  @override
+  String get familyRoleOwner => 'Propietario';
+
+  @override
+  String get familyRoleYou => 'Tú';
+
+  @override
+  String get familyRoleMember => 'Miembro';
+
+  @override
+  String get familyPending => 'Pendiente';
+
+  @override
+  String get familyInviteInvalidEmail =>
+      'Introduce una dirección de correo válida.';
+
+  @override
+  String get familyInviteInfo =>
+      'La verán en su bandeja de entrada (icono arriba a la derecha) la próxima vez que abran Luma.';
+
+  @override
+  String get familyInviteSend => 'Enviar invitación';
+
+  @override
+  String get loginBarrierLabel => 'Iniciar sesión';
+
+  @override
+  String get loginEnterValidEmail =>
+      'Introduce una dirección de correo válida.';
+
+  @override
+  String get loginPasswordTooShort =>
+      'Usa al menos 10 caracteres: esta contraseña protege tus datos cifrados.';
+
+  @override
+  String get loginEnterPassword => 'Introduce tu contraseña.';
+
+  @override
+  String get loginPasswordsMismatch => 'Las contraseñas no coinciden.';
+
+  @override
+  String get loginEmailNotVerified =>
+      'Tu correo aún no está verificado. Te hemos enviado un código nuevo.';
+
+  @override
+  String get loginEnterSixDigitCode =>
+      'Introduce el código de 6 dígitos de tu correo.';
+
+  @override
+  String get loginCouldNotOpenBrowser =>
+      'No se pudo abrir tu navegador. Copia el enlace de abajo y ábrelo tú mismo.';
+
+  @override
+  String get loginSignInIncomplete => 'El inicio de sesión no se completó.';
+
+  @override
+  String get loginChoosePassphrase => 'Elige una frase de contraseña.';
+
+  @override
+  String get loginEnterPassphrase =>
+      'Introduce tu frase de contraseña de luma para desbloquear tus datos.';
+
+  @override
+  String get loginPassphraseTooShort =>
+      'Usa al menos 10 caracteres: esta frase protege tus datos cifrados.';
+
+  @override
+  String get loginPassphrasesMismatch =>
+      'Las frases de contraseña no coinciden.';
+
+  @override
+  String get loginPasswordResetDone =>
+      'Tu contraseña se ha restablecido. Inicia sesión con tu nueva contraseña.';
+
+  @override
+  String get loginLinkCopied => 'Enlace copiado al portapapeles.';
+
+  @override
+  String get loginShow => 'Mostrar';
+
+  @override
+  String get loginHide => 'Ocultar';
+
+  @override
+  String get loginWelcomeBack => 'Bienvenido de nuevo';
+
+  @override
+  String get loginMakeAccount => 'Crea tu cuenta';
+
+  @override
+  String get loginSetUpLocalSync => 'Configurar sincronización solo local';
+
+  @override
+  String get loginSignInSubtitle =>
+      'Inicia sesión y recupera tus cosas desde tus otros dispositivos.';
+
+  @override
+  String get loginCreateSubtitle =>
+      'Una cuenta, todos tus dispositivos — cifrado antes de salir de este.';
+
+  @override
+  String get loginLocalSubtitle =>
+      'Sin servidor ni cuenta. Los dispositivos se emparejan directamente por tu propia red.';
+
+  @override
+  String get loginCreateAccount => 'Crear cuenta';
+
+  @override
+  String get loginConfirmPassword => 'Confirmar contraseña';
+
+  @override
+  String get loginForgotPassword => '¿Olvidaste la contraseña?';
+
+  @override
+  String get loginServerAddress => 'Dirección del servidor';
+
+  @override
+  String get loginSetUp => 'Configurar';
+
+  @override
+  String get loginUseLocalOnly => 'Usar solo sincronización local';
+
+  @override
+  String get loginUseLumaAccount => 'Usar una cuenta de luma en su lugar';
+
+  @override
+  String get loginSelfHostedServer => 'Servidor propio';
+
+  @override
+  String get loginContinueInBrowser => 'Continúa en tu navegador';
+
+  @override
+  String loginOpenedInBrowser(String provider) {
+    return 'Hemos abierto $provider en tu navegador. Termina allí y vuelve: esta página se actualizará sola.';
+  }
+
+  @override
+  String get loginYourProvider => 'tu proveedor';
+
+  @override
+  String get loginReopenPage => 'Volver a abrir la página';
+
+  @override
+  String get loginCopyLink => 'Copiar enlace';
+
+  @override
+  String get loginCancelAndGoBack => 'Cancelar y volver';
+
+  @override
+  String get loginOneLastThing => 'Una última cosa';
+
+  @override
+  String get loginUnlockYourData => 'Desbloquea tus datos';
+
+  @override
+  String loginNewAccountExplain(String provider) {
+    return '$provider ha demostrado quién eres, pero no puede desbloquear tus datos: solo una frase de contraseña que solo tú conozcas puede hacerlo. Elige una ahora; la necesitarás en cada dispositivo.';
+  }
+
+  @override
+  String loginExistingAccountExplain(String provider) {
+    return 'Esta cuenta ya existe, así que $provider te ha conectado directamente. Introduce la frase de contraseña de luma que configuraste: la misma que escribirías para iniciar sesión con una contraseña.';
+  }
+
+  @override
+  String get loginChoosePassphraseLabel => 'Elige una frase de contraseña';
+
+  @override
+  String get loginYourPassphrase => 'Tu frase de contraseña de luma';
+
+  @override
+  String get loginConfirmPassphrase => 'Confirmar frase de contraseña';
+
+  @override
+  String get loginUnlockAndSignIn => 'Desbloquear e iniciar sesión';
+
+  @override
+  String get loginUseDifferentAccount => 'Usar otra cuenta';
+
+  @override
+  String get loginAlmostThere => 'Casi listo';
+
+  @override
+  String get loginNeedsApproval =>
+      'Tu cuenta debe aprobarse antes de que puedas iniciar sesión.';
+
+  @override
+  String get loginBackToSignIn => 'Volver a iniciar sesión';
+
+  @override
+  String get loginCheckYourEmail => 'Revisa tu correo';
+
+  @override
+  String loginCodeSentTo(String email) {
+    return 'Hemos enviado un código de 6 dígitos a $email. Introdúcelo abajo para verificar tu cuenta.';
+  }
+
+  @override
+  String get loginSixDigitCode => 'Código de 6 dígitos';
+
+  @override
+  String get loginVerifyAndSignIn => 'Verificar e iniciar sesión';
+
+  @override
+  String get loginSending => 'Enviando…';
+
+  @override
+  String get loginResendCode => 'Reenviar código';
+
+  @override
+  String get loginUseDifferentEmail => 'Usar otro correo';
+
+  @override
+  String get loginForgotTitle => '¿Olvidaste tu contraseña?';
+
+  @override
+  String get loginForgotSubtitle =>
+      'Introduce el correo de tu cuenta y te enviaremos un código de 6 dígitos para elegir una nueva contraseña. El código funciona durante 15 minutos.';
+
+  @override
+  String get loginSendCode => 'Enviar código';
+
+  @override
+  String get loginChooseNewPassword => 'Elige una nueva contraseña';
+
+  @override
+  String loginResetSubtitle(String email) {
+    return 'Si $email tiene una cuenta, en camino hay un código de 6 dígitos. Introdúcelo en 15 minutos junto con tu nueva contraseña.';
+  }
+
+  @override
+  String get loginRecoveryKey =>
+      'Clave de recuperación (conserva tus datos sincronizados)';
+
+  @override
+  String get loginNewPassword => 'Nueva contraseña';
+
+  @override
+  String get loginConfirmNewPassword => 'Confirmar nueva contraseña';
+
+  @override
+  String get loginResetAndSignIn => 'Restablecer contraseña e iniciar sesión';
+
+  @override
+  String get loginSendNewCode => 'Enviar un código nuevo';
+
+  @override
+  String get loginStrengthTooShort => 'Muy corta';
+
+  @override
+  String get loginStrengthWeak => 'Débil';
+
+  @override
+  String get loginStrengthGood => 'Buena';
+
+  @override
+  String get loginStrengthStrong => 'Fuerte';
+
+  @override
+  String get loginBrandTagline =>
+      'Todo lo que guardas aquí,\nen cada dispositivo que usas.';
+
+  @override
+  String get loginBrandPointEncrypted =>
+      'Cifrado en este dispositivo antes de salir de él.';
+
+  @override
+  String get loginBrandPointPerFeature =>
+      'Nada se sincroniza hasta que lo actives, función por función.';
+
+  @override
+  String get loginBrandPointSkipServer =>
+      'O prescinde del servidor por completo y empareja a través de tu propia red.';
+
+  @override
+  String get loginBrandNotEvenUs =>
+      'Ni siquiera nosotros podemos leer tus datos.';
+
+  @override
+  String loginContinueWith(String provider) {
+    return 'Continuar con $provider';
+  }
+
+  @override
+  String get loginOrWithEmail => 'o con tu correo';
+
+  @override
+  String get loginKeyWarning =>
+      'Todo se cifra con esto antes de salir del dispositivo. Si lo olvidas, puedes restablecerlo por correo, pero las copias sincronizadas en el servidor se borran: solo vuelve lo que siga en tus dispositivos.';
+
+  @override
+  String get loginResetWithRecoveryKey =>
+      'Tu clave de recuperación desbloquea tus datos sincronizados, así que se quedan en el servidor y se vuelven a cifrar con tu nueva contraseña. Todos los dispositivos cierran sesión y los recuperan con la nueva contraseña.';
+
+  @override
+  String get loginResetWithoutRecoveryKey =>
+      'Tus datos sincronizados están bloqueados con tu contraseña antigua. Sin tu clave de recuperación, un restablecimiento borra las copias del servidor y cierra sesión en todos los dispositivos. Lo que siga en tus dispositivos se volverá a subir cuando inicien sesión con la nueva contraseña.';
+
+  @override
+  String loginAgreeLegal(String terms, String privacy) {
+    return 'Al continuar, aceptas nuestros $terms y nuestra $privacy.';
+  }
+
+  @override
+  String get loginTermsOfService => 'Condiciones del servicio';
+
+  @override
+  String get loginPrivacyPolicy => 'Política de privacidad';
+
+  @override
+  String get planPriceFree => 'Gratis';
+
+  @override
+  String get planPriceOrbit => '3 \$ / mes';
+
+  @override
+  String get planPriceNova => '6 \$ / mes';
+
+  @override
+  String get planCoreBlurb => 'Todo lo básico, directamente en tu dispositivo.';
+
+  @override
+  String get planOrbitBlurb =>
+      'Más funciones sincronizadas, SFTP, lista de la compra y el tema Coffee.';
+
+  @override
+  String get planNovaBlurb =>
+      'Todo sincronizado en cada dispositivo, más las herramientas premium.';
+
+  @override
+  String planFeatureSyncUpTo(int count) {
+    return 'Mantén hasta $count funciones sincronizadas entre tus dispositivos, con cifrado de extremo a extremo';
+  }
+
+  @override
+  String get planFeatureEveryPlugin =>
+      'Todos los plugins funcionan gratis en tu dispositivo';
+
+  @override
+  String planFeatureFamilyRoom(int count) {
+    return 'Sitio para $count en tu familia';
+  }
+
+  @override
+  String get planFeatureAiCoreExchange =>
+      'Revisiones de AI Detector: cada una cambia el 10 % de tu límite semanal de IA';
+
+  @override
+  String planFeatureStorage(int mb) {
+    return '$mb MB de almacenamiento de sincronización';
+  }
+
+  @override
+  String get planFeatureAiOrbit =>
+      '10 revisiones de AI Detector a la semana, después el 4 % de tu límite semanal de IA cada una';
+
+  @override
+  String get planFeatureAiNova =>
+      '30 revisiones de AI Detector a la semana, después el 2 % de tu límite semanal de IA cada una';
+
+  @override
+  String get planFeatureOrbitAirline =>
+      'Lleva tu aerolínea de Airline Tycoon de un dispositivo a otro';
+
+  @override
+  String get planFeatureOrbitCs2 => 'Precios del mercado de CS2 en Steam Tools';
+
+  @override
+  String get planFeatureOrbitSftp =>
+      'Cliente SFTP y carpeta compartida entre tus dispositivos';
+
+  @override
+  String get planFeatureOrbitGroceries =>
+      'Lista de la compra con precios de Jumbo, Albert Heijn, Hoogvliet y Lidl';
+
+  @override
+  String get planFeatureOrbitCoffee => 'El tema Coffee';
+
+  @override
+  String get planFeatureNovaEverythingSync =>
+      'Mantén todo sincronizado en todos tus dispositivos, con cifrado de extremo a extremo';
+
+  @override
+  String get planFeatureNovaAssistant =>
+      'Modo de planificación del Asistente, investigación profunda y creación de imágenes';
+
+  @override
+  String get planFeatureNovaGallery => 'Personas y categorías de la galería';
+
+  @override
+  String get planFeatureNovaClassroom =>
+      'Tutor de aula en la sala de la Biblioteca de textos';
+
+  @override
+  String get planFeatureNovaEverythingOrbit =>
+      'Todo lo de Orbit, incluido el tema Coffee';
+
+  @override
+  String get planCodeEnterCode => 'Introduce un código de acceso.';
+
+  @override
+  String planCodeUnlockTitle(String plan) {
+    return 'Desbloquear $plan';
+  }
+
+  @override
+  String planCodeBody(String plan) {
+    return 'Introduce tu código de acceso. Desbloquea $plan durante 30 días y, después, vuelves automáticamente a Core.';
+  }
+
+  @override
+  String get planCodeHint => 'Código de acceso';
+
+  @override
+  String get planCodeUnlockButton => 'Desbloquear';
+
+  @override
+  String get passwordResetChooseNew => 'Elige una contraseña nueva.';
+
+  @override
+  String passwordResetMinLengthError(int min) {
+    return 'Usa al menos $min caracteres.';
+  }
+
+  @override
+  String get passwordResetMismatch => 'Las dos contraseñas no coinciden.';
+
+  @override
+  String get passwordResetTitle => 'Elige una contraseña nueva';
+
+  @override
+  String get passwordResetBodyNoEmail =>
+      'El operador del servidor restableció la contraseña de esta cuenta, así que la anterior ya no funciona.';
+
+  @override
+  String passwordResetBodyWithEmail(String email) {
+    return 'El operador del servidor restableció la contraseña de $email, así que la anterior ya no funciona.';
+  }
+
+  @override
+  String get passwordResetSyncNote =>
+      'Establece una nueva aquí y luma volverá a cifrar tus datos sincronizados con ella, así que no se pierde nada. Tus otros dispositivos pedirán la nueva contraseña la próxima vez que se sincronicen.';
+
+  @override
+  String get passwordResetNewPassword => 'Nueva contraseña';
+
+  @override
+  String passwordResetMinHelper(int min) {
+    return 'Al menos $min caracteres.';
+  }
+
+  @override
+  String get passwordResetRepeatPassword => 'Repite la nueva contraseña';
+
+  @override
+  String get passwordResetSubmit => 'Establecer nueva contraseña';
+
+  @override
+  String get passwordResetLockedNote =>
+      'Todo lo demás de luma permanece bloqueado hasta que esto se complete. Tus datos locales en este dispositivo no se tocan.';
+
+  @override
+  String get passwordResetShowPassword => 'Mostrar contraseña';
+
+  @override
+  String get passwordResetHidePassword => 'Ocultar contraseña';
+
+  @override
+  String get planSelectionBackTooltip => 'Volver a la cuenta';
+
+  @override
+  String get planSelectionTitle => 'Elige tu plan';
+
+  @override
+  String get planSelectionSubtitle =>
+      'Selecciona el plan que mejor se adapte a ti.';
+
+  @override
+  String get planSelectionInvalidCode => 'Ese código de acceso no es válido.';
+
+  @override
+  String planCreditsNotOpen(String tokens, String price) {
+    return 'La compra de créditos aún no está disponible: $tokens tokens por $price estarán disponibles cuando se configuren los pagos.';
+  }
+
+  @override
+  String get planCreditsHeader => 'CRÉDITOS DE IA DE UN SOLO USO';
+
+  @override
+  String get planCreditsBody =>
+      'Tokens extra para cuando se agote el límite de IA de tu plan. Nunca caducan.';
+
+  @override
+  String planCreditsBodyWithBalance(String balance) {
+    return 'Tokens extra para cuando se agote el límite de IA de tu plan. Te quedan $balance. Nunca caducan.';
+  }
+
+  @override
+  String planCreditsPackTokens(String tokens) {
+    return '$tokens tokens';
+  }
+
+  @override
+  String planCreditsBuy(String price) {
+    return '$price · Comprar';
+  }
+
+  @override
+  String planTokenAmountMillions(String amount) {
+    return '$amount M tokens';
+  }
+
+  @override
+  String planTokenAmountThousands(String amount) {
+    return '$amount K tokens';
+  }
+
+  @override
+  String get planCurrentBadge => 'Actual';
+
+  @override
+  String planRevertsToCore(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count días',
+      one: '1 día',
+    );
+    return 'Vuelve a Core en $_temp0';
+  }
+
+  @override
+  String get planWhatYouGet => 'LO QUE OBTIENES';
+
+  @override
+  String get planYourCurrentPlan => 'Tu plan actual';
+
+  @override
+  String planSelectPlan(String plan) {
+    return 'Elegir $plan';
+  }
+
+  @override
+  String get statsNetWorthTitle => 'Patrimonio neto';
+
+  @override
+  String get statsNetWorthSubtitle =>
+      'Todo lo que has ganado desde que empezaste a registrarlo.';
+
+  @override
+  String get statsTravelTitle => 'Viajes';
+
+  @override
+  String get statsTravelSubtitle => 'Los países que has visitado, en un mapa.';
+
+  @override
+  String get statsTotalIncomeAllTime => 'Ingresos totales de todos los tiempos';
+
+  @override
+  String get statsSpent => 'Gastado';
+
+  @override
+  String get statsKept => 'Ahorrado';
+
+  @override
+  String get statsPerMonth => 'Al mes';
+
+  @override
+  String get statsTotalIncome => 'Ingresos totales';
+
+  @override
+  String get statsTotalSpent => 'Total gastado';
+
+  @override
+  String statsKeptOfIncome(String amount, String percent) {
+    return '$amount · $percent % de los ingresos';
+  }
+
+  @override
+  String get statsAverageIncomePerMonth => 'Ingreso medio mensual';
+
+  @override
+  String get statsEntriesLogged => 'Entradas registradas';
+
+  @override
+  String get statsTrackingSince => 'Registrado desde';
+
+  @override
+  String get statsNoEntriesYet => 'Todavía no hay entradas';
+
+  @override
+  String get statsCountriesVisited => 'Países visitados';
+
+  @override
+  String statsVisitedSoFar(int count) {
+    return '$count hasta ahora';
+  }
+
+  @override
+  String statsVisitedOfTotal(int visited, int total, String percent) {
+    return '$visited de $total · $percent % del mundo';
+  }
+
+  @override
+  String get statsMapButton => 'Mapa';
+
+  @override
+  String get travelMapTitle => 'Mapa de viajes';
+
+  @override
+  String get travelResetZoom => 'Restablecer zoom';
+
+  @override
+  String get travelFullscreen => 'Pantalla completa';
+
+  @override
+  String get travelMapLoadFailed => 'No se pudo cargar el mapa';
+
+  @override
+  String get travelClearTitle => '¿Borrar el mapa?';
+
+  @override
+  String get travelClearBody =>
+      'Se desmarcará cada país que hayas marcado como visitado.';
+
+  @override
+  String travelSummaryOfTotal(int total, String percent) {
+    return 'de $total países · $percent % del mundo';
+  }
+
+  @override
+  String get travelRegionAfrica => 'África';
+
+  @override
+  String get travelRegionAsia => 'Asia';
+
+  @override
+  String get travelRegionEurope => 'Europa';
+
+  @override
+  String get travelRegionNorthAmerica => 'América del Norte';
+
+  @override
+  String get travelRegionOceania => 'Oceanía';
+
+  @override
+  String get travelRegionSouthAmerica => 'América del Sur';
+
+  @override
+  String get travelRegionOther => 'Otros';
+
+  @override
+  String travelRegionPill(String region, int visited, int total) {
+    return '$region $visited/$total';
+  }
+
+  @override
+  String get travelMapHint =>
+      'Toca un país para marcarlo como visitado y vuelve a tocarlo para quitarlo. Pellizca para hacer zoom o abre el mapa en pantalla completa.';
+
+  @override
+  String get travelOpenFullscreen => 'Abrir en pantalla completa';
+
+  @override
+  String get travelCountriesTitle => 'Países';
+
+  @override
+  String travelCountriesCount(int count) {
+    return 'Países · $count';
+  }
+
+  @override
+  String get travelClearAll => 'Borrar todo';
+
+  @override
+  String get travelSearchCountry => 'Buscar un país';
+
+  @override
+  String travelNoCountryMatch(String query) {
+    return 'Ningún país coincide con \"$query\".';
+  }
+
+  @override
+  String travelFullscreenCount(int visited, int total) {
+    return '$visited de $total visitados';
+  }
+
+  @override
+  String get pinMustBe8Digits => 'El PIN debe tener exactamente 8 dígitos.';
+
+  @override
+  String get serverGateSetUpAccount => 'Crear cuenta';
+
+  @override
+  String get serverGateEnterCode => 'Introducir código';
+
+  @override
+  String serverGatePendingEmail(String email) {
+    return 'Tu cuenta ($email) aún necesita aprobación. Introduce el código de 6 dígitos que te enviamos por correo para terminar de iniciar sesión; hasta entonces no tocamos el servidor en absoluto.';
+  }
+
+  @override
+  String serverGatePendingApproval(String email) {
+    return 'Tu cuenta ($email) espera a que el propietario del servidor la apruebe. No tienes que hacer nada mientras tanto: inicia sesión cuando te aprueben; hasta entonces no tocamos el servidor.';
+  }
+
+  @override
+  String get serverGateExpired =>
+      'Esta cuenta perdió su aprobación. Cuando vuelva a estar aprobada, inicia sesión y esto se volverá a activar.';
+
+  @override
+  String serverGateSetupHint(String description) {
+    return '$description Crea una cuenta en Ajustes → Sincronización y cuenta, pulsa el enlace del correo que recibas y luego inicia sesión.';
+  }
+
+  @override
+  String get serverGateCloudFilesTitle =>
+      'Cloud Files necesita una cuenta aprobada';
+
+  @override
+  String get serverGateCloudFilesDescription =>
+      'Cloud Files guarda tus archivos en el servidor de luma, bloqueados primero en este dispositivo.';
+
+  @override
+  String get serverGateChatTitle => 'El chat necesita una cuenta aprobada';
+
+  @override
+  String get serverGateChatDescription =>
+      'El chat envía mensajes bloqueados entre cuentas a través del servidor de luma.';
+
+  @override
+  String get titleBarMinimize => 'Minimizar';
+
+  @override
+  String get titleBarMaximize => 'Maximizar';
+
+  @override
+  String get titleBarRestore => 'Restaurar';
+
+  @override
+  String get licensePoweredByFlutter => 'Desarrollado con Flutter';
+
+  @override
+  String get splashTagline => 'La aplicación de utilidades';
+
+  @override
+  String get splashStarting => 'Iniciando luma';
+
+  @override
+  String get updateNoTestBuilds =>
+      'No hay actualizaciones en las compilaciones de prueba: esta está hecha a mano.';
+
+  @override
+  String updateUpToDate(String version) {
+    return 'Estás al día ($version). ¡Genial!';
+  }
+
+  @override
+  String updateDownloadNotReady(String version) {
+    return 'luma $version ya está disponible, pero la descarga aún se está preparando. Espera unos minutos e inténtalo de nuevo.';
+  }
+
+  @override
+  String updateNewVersionTitle(String version) {
+    return 'Hay una nueva versión de luma: $version';
+  }
+
+  @override
+  String updateReadyBody(String current) {
+    return 'Una nueva versión de luma está lista para instalarse.\n\nTienes $current.';
+  }
+
+  @override
+  String updateWhatsNew(String current, String version) {
+    return 'Tienes $current. Esto es lo nuevo en $version:';
+  }
+
+  @override
+  String get updateLater => 'Más tarde';
+
+  @override
+  String get updateInstallIt => 'Instalar';
+
+  @override
+  String get updateFailedGeneric =>
+      'La actualización falló. Inténtalo de nuevo más tarde.';
+
+  @override
+  String get updateAndroidBlocked =>
+      'Android bloqueó la instalación: permite «Instalar apps desconocidas» para luma en los ajustes del sistema y vuelve a intentarlo.';
+
+  @override
+  String get updateDownloadFailed =>
+      'La descarga falló. Comprueba la red y el origen de la actualización.';
+
+  @override
+  String updateServerHttpError(String code) {
+    return 'El servidor devolvió HTTP $code para el instalador.';
+  }
+
+  @override
+  String updateOpenInstallerFailed(String message) {
+    return 'No se pudo abrir el instalador: $message';
+  }
+
+  @override
+  String updateStartInstallerFailed(String error) {
+    return 'No se pudo iniciar el instalador: $error';
+  }
+
+  @override
+  String get updateTitle => 'Actualizando luma';
+
+  @override
+  String get updateDontClose =>
+      'No cierres luma: se volverá a abrir por sí solo.';
+
+  @override
+  String get updateStageDownloading => 'Descargando la actualización';
+
+  @override
+  String get updateStageVerifying => 'Verificando archivos';
+
+  @override
+  String get updateStagePreparing => 'Preparando el instalador';
+
+  @override
+  String get updateRestarting => 'Reiniciando luma';
+
+  @override
+  String get familyInboxTitle => 'Bandeja de entrada';
+
+  @override
+  String familyInboxPendingInvites(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count invitaciones pendientes',
+      one: '1 invitación pendiente',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get familyInboxEmptySubtitle =>
+      'Los mensajes de luma y las invitaciones familiares aparecerán aquí.';
+
+  @override
+  String get familyInboxNew => 'Nuevo';
+
+  @override
+  String familyInboxFromLuma(String date) {
+    return 'De luma · $date';
+  }
+
+  @override
+  String familyInboxInvitedBy(String email) {
+    return 'Invitado por $email';
+  }
+
+  @override
+  String familyInboxSentOn(String date) {
+    return 'Enviada el $date';
+  }
+
+  @override
+  String familyInboxExpiresOn(String date) {
+    return 'Caduca el $date';
+  }
+
+  @override
+  String get familyInboxAccept => 'Aceptar';
+
+  @override
+  String get familyInboxDecline => 'Rechazar';
+
+  @override
+  String familyLimitExceeded(int limit) {
+    String _temp0 = intl.Intl.pluralLogic(
+      limit,
+      locale: localeName,
+      other:
+          'Este plan familiar permite hasta $limit miembros. Mejora el plan del propietario para añadir más.',
+      one:
+          'Este plan familiar permite hasta 1 miembro. Mejora el plan del propietario para añadir más.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get familyNotInFamily => 'No estás en una familia.';
+
+  @override
+  String get familyNotSignedIn => 'No has iniciado sesión.';
+
+  @override
+  String familyApiServerError(String status) {
+    return 'Error del servidor ($status).';
+  }
+
+  @override
+  String get aiSettingsLocalNotAvailableIos =>
+      'El modelo en el dispositivo no está disponible en iOS. Elige otro modelo arriba.';
+
+  @override
+  String get aiSettingsRetentionNotice =>
+      'La retención cero de datos del modelo alojado debe estar activada en la cuenta del proveedor asociada a la clave API, incluida una clave de servidor compartida. Luma no puede cambiar ni verificar esa configuración. Las solicitudes de OpenAI desactivan el almacenamiento de respuestas, pero eso no sustituye la aprobación del proveedor. Mistral usa su endpoint de chat sin estado. El Qwen en el dispositivo no envía mensajes a ningún proveedor de modelos; Luma sigue guardando el historial de chat en este dispositivo.';
+
+  @override
+  String aiSettingsLocalModelTitle(String model) {
+    return 'Asistente de Luma · $model en el dispositivo';
+  }
+
+  @override
+  String aiSettingsLocalModelBlurb(String size) {
+    return 'Descarga una vez el modelo de $size para usar el asistente sin conexión. Las indicaciones se ejecutan en este dispositivo; las acciones en línea, como las descargas de plugins y los precios del mercado, siguen necesitando internet. Qwen se distribuye bajo Apache-2.0.';
+  }
+
+  @override
+  String get aiSettingsDownloadingModel => 'Descargando modelo…';
+
+  @override
+  String aiSettingsDownloadingModelPercent(String percent) {
+    return 'Descargando modelo… $percent%';
+  }
+
+  @override
+  String aiSettingsDownloadFailed(String error) {
+    return 'Error en la descarga: $error';
+  }
+
+  @override
+  String get aiSettingsModelReady => 'Modelo descargado y listo';
+
+  @override
+  String get aiSettingsDownloadModel => 'Descargar modelo';
+
+  @override
+  String get aiSettingsModelUsage => 'Uso de modelos';
+
+  @override
+  String get aiSettingsModelUsageSubtitle =>
+      'Mensajes enviados correctamente con cada modelo en este dispositivo.';
+
+  @override
+  String get aiSettingsNoMessagesYet => 'Aún no se han enviado mensajes.';
+
+  @override
+  String get aiSettingsKeySaved => 'Clave API guardada.';
+
+  @override
+  String get aiSettingsEnterKeyFirst => 'Introduce primero una clave API.';
+
+  @override
+  String get aiSettingsConnectionWorks => 'La conexión funciona.';
+
+  @override
+  String aiSettingsCouldNotVerifyKey(String error) {
+    return 'No se pudo verificar la clave: $error';
+  }
+
+  @override
+  String get aiSettingsKeyRemoved => 'Clave API eliminada.';
+
+  @override
+  String get aiSettingsRemoveKeyTitle => '¿Eliminar la clave API?';
+
+  @override
+  String aiSettingsRemoveKeyBody(String provider) {
+    return 'No podrás chatear con $provider hasta que añadas otra clave.';
+  }
+
+  @override
+  String get aiSettingsRemoveKey => 'Eliminar clave';
+
+  @override
+  String get aiSettingsTestConnection => 'Probar conexión';
+
+  @override
+  String get aiSettingsSharedKeyAvailable =>
+      'Clave compartida disponible desde tu servidor de sincronización';
+
+  @override
+  String get aiSettingsHintReplaceKey =>
+      'Introduce una clave nueva para reemplazarla';
+
+  @override
+  String get aiSettingsHintOverrideSharedKey =>
+      'Introduce tu propia clave para reemplazar la compartida';
+
+  @override
+  String aiSettingsSharedKeyExplanation(String provider) {
+    return 'El administrador de tu servidor de sincronización ha configurado una clave compartida de $provider, así que no necesitas una: los chats se retransmiten a través de tu servidor de sincronización, que guarda la clave; nunca se envía a este dispositivo. Introduce arriba tu propia clave para evitar el servidor y hablar directamente con $provider.';
+  }
+
+  @override
+  String aiSettingsLocalKeyExplanation(String provider) {
+    return 'Se guarda solo en este dispositivo, cifrada en reposo. Se envía directamente a $provider cuando chateas; nunca a ningún servidor de luma.';
+  }
+
+  @override
+  String get assistantNeedsAccountTitle => 'Crea una cuenta para continuar';
+
+  @override
+  String get assistantNeedsAccountBody =>
+      'Configura una cuenta de luma — solo un correo y una contraseña, sin necesidad de servidor — antes de chatear con el asistente.';
+
+  @override
+  String get assistantSetUpAccount => 'Configurar cuenta';
+
+  @override
+  String get assistantRenameTitle => 'Renombrar conversación';
+
+  @override
+  String assistantDeleteTitle(String title) {
+    return '¿Eliminar «$title»?';
+  }
+
+  @override
+  String get assistantDeleteBody =>
+      'Esto elimina la conversación y sus mensajes.';
+
+  @override
+  String get assistantModelUnused => 'Sin usar';
+
+  @override
+  String assistantModelMessageCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count msgs',
+      one: '1 msg',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get assistantModelsHeader => 'Modelos';
+
+  @override
+  String get assistantApiKeyHeader => 'Clave API';
+
+  @override
+  String get assistantWouldntWakeUp => 'El asistente no se despierta';
+
+  @override
+  String get assistantDownloadTitle => 'Descargar Luma Assistant';
+
+  @override
+  String get assistantDownloadUnsupported =>
+      'El modelo en el dispositivo no está disponible en esta plataforma.';
+
+  @override
+  String assistantDownloadingModel(String model, String size) {
+    return 'Descargando $model ($size)…';
+  }
+
+  @override
+  String assistantDownloadPrompt(String model, String size) {
+    return 'Descarga $model ($size) para empezar a chatear. Funciona en este dispositivo.';
+  }
+
+  @override
+  String get assistantChooseAnotherModel =>
+      'Elige otro modelo en el selector de abajo.';
+
+  @override
+  String get assistantDownloadingModelShort => 'Descargando modelo…';
+
+  @override
+  String get assistantDownloadModel => 'Descargar modelo';
+
+  @override
+  String assistantDownloadFailed(String error) {
+    return 'Error de descarga: $error';
+  }
+
+  @override
+  String get assistantModelUnavailableTitle =>
+      'Este modelo aún no está disponible';
+
+  @override
+  String get assistantModelUnavailableBody =>
+      'Añade tu propia clave API en Ajustes para usarlo — se guarda solo en este dispositivo — o cambia a otro modelo abajo.';
+
+  @override
+  String get assistantOpenSettings => 'Abrir ajustes';
+
+  @override
+  String get assistantIAddedKey => 'He añadido una clave';
+
+  @override
+  String assistantNoApiKeyYet(String provider) {
+    return 'Aún no hay ninguna clave API de $provider guardada — añade una en Ajustes.';
+  }
+
+  @override
+  String get assistantPictureNeedsAccount =>
+      'El modo imagen requiere que este dispositivo haya iniciado sesión en una cuenta de luma aprobada.';
+
+  @override
+  String get assistantResearchAgentsEmpty =>
+      'Los agentes de investigación devolvieron resultados vacíos.';
+
+  @override
+  String get assistantNewConversation => 'Nueva conversación';
+
+  @override
+  String get aiClientNoReply => 'No se me ocurrió una respuesta para eso.';
+
+  @override
+  String get aiClientTooManySteps =>
+      'No pude terminarlo: demasiados pasos con herramientas.';
+
+  @override
+  String aiClientUnreachable(String provider, String error) {
+    return 'No se pudo conectar con $provider; revisa tu conexión.\n($error)';
+  }
+
+  @override
+  String aiClientNoConnection(String provider) {
+    return 'No se pudo conectar con $provider; revisa tu conexión.';
+  }
+
+  @override
+  String aiClientKeyRejected(String provider) {
+    return '$provider rechazó la clave de API. Revísala en Ajustes.';
+  }
+
+  @override
+  String get aiClientRateLimited =>
+      'Demasiadas solicitudes; inténtalo de nuevo en unos minutos.';
+
+  @override
+  String aiClientApiError(String provider, int status) {
+    return '$provider devolvió un error ($status).';
+  }
+
+  @override
+  String get aiClientLumaSignIn => 'Vuelve a iniciar sesión para usar Luma AI.';
+
+  @override
+  String aiClientLumaImageFailed(int status) {
+    return 'Luma AI no pudo dibujar eso ($status).';
+  }
+
+  @override
+  String get aiClientLumaBrokenImage => 'Luma AI devolvió una imagen dañada.';
+
+  @override
+  String aiLocalModelMissing(String model) {
+    return 'Descarga $model en los ajustes del asistente antes de usar el modelo del dispositivo.';
+  }
+
+  @override
+  String aiLocalModelFailed(String error) {
+    return 'El modelo del dispositivo no pudo responder: $error';
+  }
+
+  @override
+  String get chatProviderLocalName => 'Asistente Luma (Qwen en el dispositivo)';
+
+  @override
+  String get chatBubbleOpenInQrGenerator => 'Abrir en el generador de QR';
+
+  @override
+  String get chatCodeLanguagePlainText => 'texto';
+
+  @override
+  String get assistantModelDamaged =>
+      'El archivo del modelo está incompleto o dañado. Descárgalo de nuevo.';
+
+  @override
+  String get assistantModelDownloadInvalid =>
+      'La descarga del modelo no produjo un archivo válido.';
+
+  @override
+  String get converterHubPickTool => 'Elige una herramienta para empezar.';
+
+  @override
+  String get converterHubAudioTitle => 'Convertidor de audio';
+
+  @override
+  String get converterHubPictureTitle => 'Convertidor de imágenes';
+
+  @override
+  String get converterHubVideoTitle => 'Convertidor de vídeo';
+
+  @override
+  String get converterHubDownscalerTitle => 'Reductor de imágenes';
+
+  @override
+  String get converterHubDownscalerSubtitle =>
+      'Haz las imágenes más pequeñas a tu manera';
+
+  @override
+  String get converterHubVideoDownscalerTitle => 'Reductor de vídeo';
+
+  @override
+  String get converterHubVideoDownscalerSubtitle =>
+      'Haz los vídeos más pequeños';
+
+  @override
+  String get converterHubImageEditorTitle => 'Editor de imágenes';
+
+  @override
+  String get converterHubImageEditorSubtitle => 'Recorta los fondos blancos';
+
+  @override
+  String get converterHubAudioEditorTitle => 'Editor de audio';
+
+  @override
+  String get converterHubAudioEditorSubtitle => 'Recorta y pule tu sonido';
+
+  @override
+  String get converterHubCollageTitle => 'Creador de collages';
+
+  @override
+  String get converterHubCollageSubtitle => 'Une fotos entre sí';
+
+  @override
+  String get converterHubOtherSubtitle =>
+      'Mundos y construcciones de Minecraft, rompedor y reparador de archivos';
+
+  @override
+  String get converterBadgeAudio => 'AUDIO';
+
+  @override
+  String get converterBadgeImage => 'IMAGEN';
+
+  @override
+  String get converterBadgeVideo => 'VÍDEO';
+
+  @override
+  String get converterBadgeOptimize => 'OPTIMIZAR';
+
+  @override
+  String get converterBadgeEdit => 'EDITAR';
+
+  @override
+  String get converterBadgeCreate => 'CREAR';
+
+  @override
+  String get converterBadgeOther => 'OTRO';
+
+  @override
+  String get converterChange => 'Cambiar';
+
+  @override
+  String get converterSigPngImage => 'Imagen PNG';
+
+  @override
+  String get converterSigJpegImage => 'Imagen JPEG';
+
+  @override
+  String get converterSigGifImage => 'Imagen GIF';
+
+  @override
+  String get converterSigBmpImage => 'Imagen BMP';
+
+  @override
+  String get converterSigTiffImage => 'Imagen TIFF';
+
+  @override
+  String get converterSigWebpImage => 'Imagen WebP';
+
+  @override
+  String get converterSigWindowsIcon => 'Icono de Windows';
+
+  @override
+  String get converterSigPhotoshopDocument => 'Documento de Photoshop';
+
+  @override
+  String get converterSigAvifHeicImage => 'Imagen AVIF/HEIC';
+
+  @override
+  String get converterSigPdfDocument => 'Documento PDF';
+
+  @override
+  String get converterSigRichTextDocument => 'Documento de texto enriquecido';
+
+  @override
+  String get converterSigLegacyOfficeDocument => 'Documento de Office antiguo';
+
+  @override
+  String get converterSigZipArchive => 'Archivo ZIP';
+
+  @override
+  String get converterSigEmptyZipArchive => 'Archivo ZIP vacío';
+
+  @override
+  String get converterSigRarArchive => 'Archivo RAR';
+
+  @override
+  String get converterSig7ZipArchive => 'Archivo 7-Zip';
+
+  @override
+  String get converterSigGzipArchive => 'Archivo GZip';
+
+  @override
+  String get converterSigBzip2Archive => 'Archivo BZip2';
+
+  @override
+  String get converterSigXzArchive => 'Archivo XZ';
+
+  @override
+  String get converterSigZstdArchive => 'Archivo Zstandard';
+
+  @override
+  String get converterSigTarArchive => 'Archivo TAR';
+
+  @override
+  String get converterSigWavAudio => 'Audio WAV';
+
+  @override
+  String get converterSigAviVideo => 'Vídeo AVI';
+
+  @override
+  String get converterSigMp3Audio => 'Audio MP3';
+
+  @override
+  String get converterSigMp4Video => 'Vídeo MP4';
+
+  @override
+  String get converterSigFlacAudio => 'Audio FLAC';
+
+  @override
+  String get converterSigOggMedia => 'Medio Ogg';
+
+  @override
+  String get converterSigMatroskaVideo => 'Vídeo Matroska';
+
+  @override
+  String get converterSigMidiFile => 'Archivo MIDI';
+
+  @override
+  String get converterSigWindowsExecutable => 'Ejecutable de Windows';
+
+  @override
+  String get converterSigElfBinary => 'Binario ELF';
+
+  @override
+  String get converterSigSqliteDatabase => 'Base de datos SQLite';
+
+  @override
+  String get converterSigWebAssemblyModule => 'Módulo WebAssembly';
+
+  @override
+  String get converterSigJavaClass => 'Clase Java';
+
+  @override
+  String get converterSigTrueTypeFont => 'Fuente TrueType';
+
+  @override
+  String get converterSigOpenTypeFont => 'Fuente OpenType';
+
+  @override
+  String get converterSigWoffFont => 'Fuente WOFF';
+
+  @override
+  String get converterSigWoff2Font => 'Fuente WOFF2';
+
+  @override
+  String get converterSigMinecraftNbt => 'NBT de Minecraft (gzip)';
+
+  @override
+  String get converterSigLumaRecipe => 'Receta de recuperación de luma';
+
+  @override
+  String get converterDamageBitRotLabel => 'Degradación de bits';
+
+  @override
+  String get converterDamageScrambleLabel => 'Mezcla';
+
+  @override
+  String get converterDamageShuffleLabel => 'Mezcla de bloques';
+
+  @override
+  String get converterDamageHeaderSmashLabel => 'Destrucción del encabezado';
+
+  @override
+  String get converterDamageTruncateLabel => 'Truncar';
+
+  @override
+  String get converterDamageJunkLabel => 'Inyección de basura';
+
+  @override
+  String get converterDamageBitRotDesc =>
+      'Se voltean bytes sueltos de forma dispersa, como lo hace un almacenamiento defectuoso.';
+
+  @override
+  String get converterDamageScrambleDesc =>
+      'Una región entera se convierte en ruido con XOR. Nada puede leerla.';
+
+  @override
+  String get converterDamageShuffleDesc =>
+      'Trozos del archivo se intercambian de sitio. La estructura sobrevive, el significado no.';
+
+  @override
+  String get converterDamageHeaderSmashDesc =>
+      'Se borran los primeros bytes, así que nada puede saber qué archivo es.';
+
+  @override
+  String get converterDamageTruncateDesc =>
+      'Se corta el final, como si la copia nunca hubiera terminado.';
+
+  @override
+  String get converterDamageJunkDesc =>
+      'Se meten bytes aleatorios que desplazan todo lo que viene después.';
+
+  @override
+  String get converterPresetLight => 'Ligero';
+
+  @override
+  String get converterPresetMedium => 'Medio';
+
+  @override
+  String get converterPresetHeavy => 'Fuerte';
+
+  @override
+  String get converterPresetTotal => 'Total';
+
+  @override
+  String get converterPresetLightHint =>
+      'Normalmente aún se abre, pero se ve mal en algunas partes.';
+
+  @override
+  String get converterPresetMediumHint =>
+      'La mayoría de los programas se negarán a abrirlo.';
+
+  @override
+  String get converterPresetHeavyHint => 'Totalmente roto.';
+
+  @override
+  String get converterPresetTotalHint => 'No queda nada reconocible.';
+
+  @override
+  String converterCorruptTooSmall(int size) {
+    return 'Ese archivo solo tiene $size bytes; es demasiado pequeño para corromperlo de forma interesante.';
+  }
+
+  @override
+  String get converterCorruptPickStyle => 'Elige al menos un tipo de daño.';
+
+  @override
+  String converterCorruptStyleSkipped(String style) {
+    return 'Se omitió $style: el archivo es demasiado pequeño para ello.';
+  }
+
+  @override
+  String get converterCorruptNothingApplied =>
+      'No se pudo aplicar nada a un archivo tan pequeño.';
+
+  @override
+  String get converterCorruptNoRecipeRearranged =>
+      'Estos estilos de daño reorganizan y enmascaran bytes en lugar de eliminarlos. Sin la receta nadie puede leer el archivo, pero los datos siguen técnicamente ahí. Añade Destrucción del encabezado o Truncar si quieres que los bytes desaparezcan de verdad.';
+
+  @override
+  String get converterCorruptNoRecipeDestroyed =>
+      'No se escribió ninguna receta y se destruyeron bytes. Nada puede deshacerlo, ni siquiera luma.';
+
+  @override
+  String converterOpFlipped(int count, String range) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count bytes volteados',
+      one: '1 byte volteado',
+    );
+    return '$_temp0 en $range';
+  }
+
+  @override
+  String converterOpScrambled(String range) {
+    return 'Se mezcló $range con un flujo de claves';
+  }
+
+  @override
+  String converterOpShuffled(int count, String size, String offset) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Se mezclaron $count bloques',
+      one: 'Se mezcló 1 bloque',
+    );
+    return '$_temp0 de $size desde $offset';
+  }
+
+  @override
+  String converterOpWiped(String range) {
+    return 'Borrado: $range';
+  }
+
+  @override
+  String converterOpCutOff(String offset) {
+    return 'Archivo cortado en $offset';
+  }
+
+  @override
+  String converterOpInjected(String size, String offset) {
+    return 'Se inyectaron $size de basura en $offset';
+  }
+
+  @override
+  String converterRecipeUnknownStep(String type) {
+    return 'Paso de daño desconocido \"$type\".';
+  }
+
+  @override
+  String converterRecipeMissingField(String key) {
+    return 'Al paso de la receta le falta \"$key\".';
+  }
+
+  @override
+  String get converterRecipeNotReadable =>
+      'Eso no es una receta .lumafix legible.';
+
+  @override
+  String get converterRecipeNotLuma =>
+      'Ese archivo no es una receta de recuperación de luma.';
+
+  @override
+  String converterRecipeNewerVersion(int version) {
+    return 'Esta receta la escribió una versión más nueva de luma (formato $version). Actualiza la app para usarla.';
+  }
+
+  @override
+  String get converterRecipeNoSteps => 'La receta no tiene pasos que deshacer.';
+
+  @override
+  String get converterRecipeWipedUnrecorded =>
+      'Este paso borró bytes que nunca se registraron.';
+
+  @override
+  String get converterRecipeCutUnrecorded =>
+      'Este paso cortó bytes que nunca se registraron.';
+
+  @override
+  String get converterRecipeShorter =>
+      'El archivo es más corto de lo que espera la receta.';
+
+  @override
+  String get converterRepairRecipeMismatch =>
+      'Esta receta se escribió para otro archivo distinto al que abriste. Deshacerla de todos modos casi seguro producirá basura.';
+
+  @override
+  String converterRepairRecipeWrongSize(String recipeSize, String openedSize) {
+    return 'Esa receta corresponde a un archivo de $recipeSize, pero el que abriste mide $openedSize. Elige la pareja correcta.';
+  }
+
+  @override
+  String converterRepairLostSteps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pasos',
+      one: '1 paso',
+    );
+    return 'Esta receta tiene $_temp0 que destruyeron bytes sin registrarlos, así que el original no se puede reconstruir a partir de ella.';
+  }
+
+  @override
+  String converterRepairUndid(String step) {
+    return 'Deshecho: $step';
+  }
+
+  @override
+  String get converterRepairChecksumExact =>
+      'El resultado coincide exactamente con la suma de comprobación original: es el archivo que se corrompió, byte a byte.';
+
+  @override
+  String get converterRepairChecksumChanged =>
+      'El archivo reconstruido no coincide con la suma de comprobación registrada al corromperlo, así que algo más lo cambió después.';
+
+  @override
+  String get converterRepairFormatRecipe => 'Restaurado desde la receta';
+
+  @override
+  String get converterRepairEmpty =>
+      'Ese archivo está vacío: no hay nada que reparar.';
+
+  @override
+  String converterRepairFoundHeader(String label, String size) {
+    return 'Se encontró el encabezado de $label a $size dentro del archivo y se descartó todo lo anterior.';
+  }
+
+  @override
+  String converterRepairFoundStart(String label, String size) {
+    return 'Se encontró un $label que empieza a $size dentro del archivo y se descartó todo lo anterior.';
+  }
+
+  @override
+  String converterRepairHeaderGone(String ext, String label) {
+    return 'El encabezado ha desaparecido, así que nada en los bytes indica qué es. Se toma por el nombre .$ext y se trata como un $label.';
+  }
+
+  @override
+  String get converterRepairNoSignature =>
+      'Esto no empieza por ninguna firma de archivo que luma reconozca, y el nombre tampoco da pistas. Solo se ejecutaron las comprobaciones genéricas.';
+
+  @override
+  String converterRepairExtMismatch(String ext, String label, String newExt) {
+    return 'El archivo se llama .$ext pero los bytes son un $label. Guardarlo como .$newExt hará que vuelva a abrirse.';
+  }
+
+  @override
+  String converterRepairGenericOnly(String label) {
+    return 'luma sabe que esto es un $label, pero no tiene un reparador estructural para ese formato, así que solo se ejecutaron las comprobaciones genéricas.';
+  }
+
+  @override
+  String get converterRepairFormatUnknown => 'Formato desconocido';
+
+  @override
+  String converterRepairTrimmed(String size) {
+    return 'Se recortaron $size de relleno de ceros del final, lo que deja una copia interrumpida.';
+  }
+
+  @override
+  String get converterRepairPaddingOnly =>
+      'Al quitar el relleno de ceros no quedó nada más que relleno.';
+
+  @override
+  String get converterRepairNothingChanged =>
+      'No hacía falta cambiar nada: la estructura ya es correcta.';
+
+  @override
+  String get repairBmpTooShort =>
+      'Un BMP necesita al menos una cabecera de archivo de 14 bytes y una cabecera DIB.';
+
+  @override
+  String get repairBmpMagicRewritten =>
+      'Se reescribieron los bytes mágicos \"BM\".';
+
+  @override
+  String repairBmpSizeCorrected(int declared, int actual) {
+    return 'Se corrigió el campo de tamaño del archivo de $declared a $actual.';
+  }
+
+  @override
+  String repairBmpDibUnknown(int size) {
+    return 'El tamaño de la cabecera DIB es $size, que no corresponde a ningún diseño de cabecera BMP conocido. El ancho, el alto y la profundidad de color no se pueden recuperar.';
+  }
+
+  @override
+  String repairBmpDimensionsImpossible(int width, int height, int bpp) {
+    return 'La cabecera DIB indica $width×$height a $bpp bpp, lo cual no puede ser correcto. Esos valores no están guardados en ningún otro lugar.';
+  }
+
+  @override
+  String repairBmpImageInfo(int width, int height, int bpp) {
+    return 'Imagen: $width×$height a $bpp bpp.';
+  }
+
+  @override
+  String repairBmpOffsetRecalculated(int expected, int declared) {
+    return 'Se recalculó el desplazamiento de los datos de píxeles como $expected (leía $declared).';
+  }
+
+  @override
+  String repairBmpPadded(String size) {
+    return 'Se rellenaron con negro $size de filas de píxeles que faltaban para que la imagen se abra; se pierde la parte inferior.';
+  }
+
+  @override
+  String repairBmpTrimmed(String size) {
+    return 'Se recortaron $size de bytes más allá del final de los datos de píxeles.';
+  }
+
+  @override
+  String get repairGifTooShort =>
+      'Un GIF necesita al menos 13 bytes de cabecera; este tiene menos.';
+
+  @override
+  String get repairGifSignatureRewritten => 'Se reescribió la firma \"GIF\".';
+
+  @override
+  String get repairGifVersionRestored =>
+      'Se restauró la marca de versión a \"89a\".';
+
+  @override
+  String repairGifScreenSizeBad(int width, int height) {
+    return 'El tamaño de la pantalla lógica es $width×$height, que ningún decodificador aceptará. Las dimensiones reales no están guardadas en ningún otro lugar.';
+  }
+
+  @override
+  String repairGifScreenSizeInfo(int width, int height) {
+    return 'Pantalla lógica: $width×$height.';
+  }
+
+  @override
+  String repairGifTableTruncated(String size) {
+    return 'La tabla de colores global se declara de $size, pero el archivo termina antes.';
+  }
+
+  @override
+  String repairGifJunkTrimmed(String size) {
+    return 'Se recortaron $size de basura después del final del GIF.';
+  }
+
+  @override
+  String get repairGifTrailerAppended =>
+      'Se añadió el byte final 0x3B que faltaba.';
+
+  @override
+  String repairJpegJunkDropped(String size) {
+    return 'Se eliminaron $size de basura delante de la imagen.';
+  }
+
+  @override
+  String get repairJpegTooShort =>
+      'El archivo es demasiado corto para ser un JPEG.';
+
+  @override
+  String get repairJpegSoiRewritten =>
+      'Se restauró el marcador de inicio de imagen FFD8 que faltaba.';
+
+  @override
+  String repairJpegMarkerExpected(String offset, String byte) {
+    return 'Se esperaba un marcador en $offset y se encontró $byte.';
+  }
+
+  @override
+  String repairJpegSegmentPastEnd(String offset) {
+    return 'El segmento en $offset se extiende más allá del final del archivo.';
+  }
+
+  @override
+  String get repairJpegNoSegments =>
+      'No sobrevivió ningún segmento JPEG legible: las tablas de cuantización y de Huffman se han perdido y no se pueden adivinar.';
+
+  @override
+  String get repairJpegNoScan =>
+      'El archivo nunca llega a su escaneo de imagen (SOS), así que hay cabecera pero no imagen que decodificar.';
+
+  @override
+  String get repairJpegEoiAppended =>
+      'Se añadió el marcador de fin de imagen FFD9 que faltaba.';
+
+  @override
+  String repairJpegTrailingTrimmed(String size) {
+    return 'Se recortaron $size de basura después del marcador de fin.';
+  }
+
+  @override
+  String repairMp3TagTooBig(String size) {
+    return 'La etiqueta ID3 declara $size pero el archivo es más pequeño: se eliminó la etiqueta y se conservó el audio.';
+  }
+
+  @override
+  String repairMp3TagKept(String size) {
+    return 'Se conservó la etiqueta ID3 de $size al principio.';
+  }
+
+  @override
+  String get repairMp3NoFrames =>
+      'No se encontró ninguna secuencia de tramas de audio MPEG válidas en el archivo. No queda audio que rescatar.';
+
+  @override
+  String repairMp3JunkSkipped(String size) {
+    return 'Se omitieron $size de basura antes del primer fotograma de audio real.';
+  }
+
+  @override
+  String repairMp3DamagedStretch(String offset) {
+    return 'Se omitió un tramo dañado en $offset; la reproducción dará saltos ahí.';
+  }
+
+  @override
+  String get repairMp3FramesStop =>
+      'Las tramas dejan de ser legibles justo después de la cabecera.';
+
+  @override
+  String repairMp3FramesSurvived(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count fotogramas de audio conservados.',
+      one: '1 fotograma de audio conservado.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String repairMp3CutTail(String size) {
+    return 'Se cortaron $size de bytes no reproducibles del final.';
+  }
+
+  @override
+  String get repairMp4TooShort =>
+      'El archivo es demasiado corto para contener siquiera una caja.';
+
+  @override
+  String repairMp4JunkDropped(String size) {
+    return 'Se eliminaron $size de basura delante de la caja ftyp.';
+  }
+
+  @override
+  String get repairMp4NoFtyp =>
+      'No hay caja ftyp, así que se desconoce la variante exacta de MP4. Aun así se comprobó la estructura de cajas.';
+
+  @override
+  String repairMp4UnreadableBox(String offset) {
+    return 'Nombre de caja ilegible en $offset: se detiene el recorrido aquí.';
+  }
+
+  @override
+  String repairMp4BoxClamped(
+    String type,
+    String offset,
+    String claimed,
+    String available,
+  ) {
+    return 'La caja \"$type\" en $offset declara $claimed pero solo siguen $available; se ajustó para que quepa.';
+  }
+
+  @override
+  String repairMp4BoxesParsed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count cajas de nivel superior analizadas.',
+      one: '1 caja de nivel superior analizada.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String repairMp4MoovMisplaced(String offset) {
+    return 'Existe una caja moov en $offset, pero la cadena de cajas nunca llega a ella. Algunos reproductores la encontrarán igualmente al escanear.';
+  }
+
+  @override
+  String get repairMp4NoMoov =>
+      'No hay caja moov. Esa caja es el índice de cada muestra de vídeo y audio del archivo, y sin ella los datos no se pueden reproducir. Para recuperarla hace falta un archivo intacto grabado por el mismo dispositivo.';
+
+  @override
+  String get repairMp4NoMdat =>
+      'No se encontró ninguna caja mdat, así que puede que no quede ningún dato multimedia.';
+
+  @override
+  String get repairMp4ClampExplain =>
+      'Ajustar el tamaño de una caja evita que los lectores se salgan del final; no recupera lo que se cortó.';
+
+  @override
+  String repairMp4TailTrimmed(String size) {
+    return 'Se recortaron $size del final ilegible.';
+  }
+
+  @override
+  String repairMp4TrailingTrimmed(String size) {
+    return 'Se recortaron $size de basura al final.';
+  }
+
+  @override
+  String get repairPdfHeaderAdded =>
+      'Se restauró el encabezado \"%PDF-1.7\" que faltaba.';
+
+  @override
+  String repairPdfJunkDropped(String size) {
+    return 'Se eliminaron $size de basura delante de la cabecera PDF.';
+  }
+
+  @override
+  String get repairPdfNoObjects =>
+      'No se encontró ningún objeto PDF. No queda estructura de documento que indexar.';
+
+  @override
+  String repairPdfObjectsIntact(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Se encontraron $count objetos aún intactos.',
+      one: 'Se encontró 1 objeto aún intacto.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get repairPdfEncrypted =>
+      'El documento está cifrado. El índice se puede reconstruir, pero el lector seguirá pidiendo la contraseña con la que se protegió.';
+
+  @override
+  String get repairPdfNoCatalog =>
+      'No sobrevivió ningún catálogo de documento (/Type /Catalog), así que nada apunta al árbol de páginas. Los lectores abrirán el archivo sin páginas.';
+
+  @override
+  String repairPdfCatalogFound(int root) {
+    return 'El catálogo del documento es el objeto $root.';
+  }
+
+  @override
+  String repairPdfFreeSlots(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count posiciones de objeto estaban vacías y hubo que marcarlas como libres. Lo que contenían se ha perdido.',
+      one:
+          '1 posición de objeto estaba vacía y hubo que marcarla como libre. Lo que contenía se ha perdido.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get repairPdfXrefRebuilt =>
+      'Se reconstruyó la tabla de referencias cruzadas y se añadió un trailer nuevo.';
+
+  @override
+  String get repairPdfXrefFromScratch =>
+      'Se creó desde cero una tabla de referencias cruzadas y un trailer: el archivo no tenía ninguno.';
+
+  @override
+  String get repairPngTooShort =>
+      'El archivo es demasiado corto para ser un PNG.';
+
+  @override
+  String get repairPngSignatureRewritten =>
+      'Se reescribió la firma PNG de 8 bytes.';
+
+  @override
+  String repairPngUnreadableChunk(String offset) {
+    return 'Nombre de chunk ilegible en $offset: se detiene el recorrido aquí.';
+  }
+
+  @override
+  String repairPngChunkPastEnd(String type, String offset, int length) {
+    return 'El chunk \"$type\" en $offset declara $length bytes, pero el archivo termina antes.';
+  }
+
+  @override
+  String get repairPngNoIhdr =>
+      'No sobrevivió ningún chunk de cabecera IHDR, así que se han perdido el tamaño de la imagen y el tipo de color. Nada puede reconstruirlos.';
+
+  @override
+  String repairPngCrcRecomputed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Se recalcularon $count sumas de control de chunk incorrectas: los datos de píxeles que contienen pueden seguir siendo erróneos, pero los lectores dejarán de rechazar el archivo por completo.',
+      one:
+          'Se recalculó 1 suma de control de chunk incorrecta: los datos de píxeles que contiene pueden seguir siendo erróneos, pero los lectores dejarán de rechazar el archivo por completo.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String repairPngCutAtLastChunk(String size) {
+    return 'Se cortó el archivo en el último chunk válido y se descartaron $size de final inservible.';
+  }
+
+  @override
+  String repairPngJunkAfterIend(String size) {
+    return 'Se recortaron $size de basura después de IEND.';
+  }
+
+  @override
+  String get repairPngNoChunks => 'El archivo ya no tiene chunks.';
+
+  @override
+  String get repairPngIendAppended =>
+      'Se añadió el chunk de fin IEND que faltaba.';
+
+  @override
+  String get repairRiffTooShort =>
+      'Un archivo RIFF necesita una cabecera de al menos 12 bytes; este tiene menos.';
+
+  @override
+  String get repairRiffMagicRewritten =>
+      'Se reescribieron los bytes mágicos \"RIFF\".';
+
+  @override
+  String get repairRiffUnreadableForm =>
+      'El tipo de formulario RIFF es ilegible y no sobrevive ningún nombre de chunk conocido, así que no se sabe qué era este archivo.';
+
+  @override
+  String repairRiffFormRestored(String form) {
+    return 'Se restauró el tipo de formulario a \"$form\".';
+  }
+
+  @override
+  String repairRiffLengthCorrected(int declared, int actual) {
+    return 'Se corrigió el campo de longitud RIFF de $declared a $actual.';
+  }
+
+  @override
+  String repairRiffUnreadableChunk(String offset) {
+    return 'Nombre de chunk ilegible en $offset: se detiene aquí.';
+  }
+
+  @override
+  String repairRiffChunkClamped(String id, String claimed, String available) {
+    return 'El chunk \"$id\" declara $claimed pero solo hay $available; se acortó para que coincida.';
+  }
+
+  @override
+  String get repairRiffNoFmt =>
+      'El chunk \"fmt \" ha desaparecido, así que se desconocen la frecuencia de muestreo, el número de canales y la profundidad de bits. No se pueden deducir solo de las muestras.';
+
+  @override
+  String repairRiffTrailingTrimmed(String size) {
+    return 'Se recortaron $size de bytes después del último chunk válido.';
+  }
+
+  @override
+  String repairZipSkipped(String size, String offset) {
+    return 'Se omitieron $size de bytes ilegibles antes de la entrada en $offset.';
+  }
+
+  @override
+  String get repairZipNoEntries =>
+      'No se encontró ninguna entrada recuperable: se han perdido todas las cabeceras de archivo locales, así que no queda nada desde lo que reconstruir el archivo.';
+
+  @override
+  String repairZipDamagedEntries(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count entradas estaban demasiado dañadas para usarse y se excluyeron del archivo reconstruido.',
+      one:
+          '1 entrada estaba demasiado dañada para usarse y se excluyó del archivo reconstruido.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String repairZipCentralRebuilt(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Se reconstruyó el directorio central que faltaba a partir de $count cabeceras de archivo locales.',
+      one:
+          'Se reconstruyó el directorio central que faltaba a partir de 1 cabecera de archivo local.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String repairZipCentralRewritten(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Se reescribieron el directorio central y el registro de fin de archivo alrededor de $count entradas recuperadas.',
+      one:
+          'Se reescribieron el directorio central y el registro de fin de archivo alrededor de 1 entrada recuperada.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String repairZipUndecompressable(String name) {
+    return '\"$name\" no se pudo descomprimir en absoluto; se descartó.';
+  }
+
+  @override
+  String repairZipUnsupportedMethod(String name, int method) {
+    return '\"$name\" usa el método de compresión $method, que luma no puede descomprimir. Se copió sin cambios.';
+  }
+
+  @override
+  String repairZipChecksumMismatch(String name) {
+    return '\"$name\" no coincide con su suma de control: el contenido está dañado, pero se conservó la entrada para que veas lo que queda.';
+  }
+
+  @override
+  String repairZipOfficeComplete(String ext) {
+    return 'Están presentes todas las partes que necesita un .$ext, así que debería abrirse.';
+  }
+
+  @override
+  String repairZipOfficeMissing(String ext, String missing) {
+    return 'Al .$ext todavía le faltan $missing. Esas partes contienen el propio documento, y nada puede regenerarlas.';
+  }
+
+  @override
+  String get converterSaveDialogTitle => 'Guardar imagen convertida';
+
+  @override
+  String converterSaved(String path) {
+    return 'Guardado en $path';
+  }
+
+  @override
+  String converterReplacedOriginal(String path) {
+    return 'Original reemplazado: $path';
+  }
+
+  @override
+  String converterDownloaded(String name) {
+    return '$name descargado';
+  }
+
+  @override
+  String get converterSaveUnsupported =>
+      'Guardar archivos no es compatible con esta plataforma.';
+
+  @override
+  String get converterReplaceUnsupported =>
+      'Reemplazar archivos no es compatible con esta plataforma.';
+
+  @override
+  String get converterReplaceUnsupportedWeb =>
+      'Reemplazar archivos no es compatible en la web.';
+
+  @override
+  String get downscalerCouldNotRead => 'No se pudo leer esta imagen.';
+
+  @override
+  String get converterImageCouldNotRead =>
+      'No se pudo leer esta imagen: puede estar dañada o no ser compatible.';
+
+  @override
+  String get ffmpegInstallDesktopOnly =>
+      'La instalación automática solo está disponible en Windows. Añade ffmpeg a tu PATH manualmente.';
+
+  @override
+  String ffmpegDownloadFailed(int status) {
+    return 'La descarga falló (HTTP $status). Comprueba tu conexión e inténtalo de nuevo.';
+  }
+
+  @override
+  String get ffmpegArchiveMissingExe =>
+      'El archivo descargado no contenía ffmpeg.exe.';
+
+  @override
+  String ffmpegInstallFailed(String error) {
+    return 'La instalación falló: $error';
+  }
+
+  @override
+  String get ffmpegInstalledNotStarted =>
+      'Instalado, pero ffmpeg aún no se pudo iniciar.';
+
+  @override
+  String get ffmpegStillNotFound => 'Sigue sin encontrarse.';
+
+  @override
+  String get ffmpegNotFound =>
+      'No se encontró ffmpeg. Coloca ffmpeg(.exe) junto a la aplicación o en el PATH del sistema y vuelve a intentarlo.';
+
+  @override
+  String get ffmpegNotFoundShort => 'No se encontró ffmpeg.';
+
+  @override
+  String ffmpegFailedExitCode(int code) {
+    return 'ffmpeg falló (código de salida $code).';
+  }
+
+  @override
+  String ffmpegFailedWithDetail(String detail) {
+    return 'ffmpeg falló: $detail';
+  }
+
+  @override
+  String get ffmpegStubDesktopOnly =>
+      'Instalar ffmpeg solo está disponible en la aplicación de escritorio.';
+
+  @override
+  String get ffmpegAudioVideoDesktopOnly =>
+      'La conversión de audio y vídeo solo está disponible en la aplicación de escritorio.';
+
+  @override
+  String get ffmpegVideoDesktopOnly =>
+      'La conversión de vídeo solo está disponible en la aplicación de escritorio.';
+
+  @override
+  String get ffmpegSetupTitle => 'Se requiere ffmpeg';
+
+  @override
+  String get ffmpegSetupBodyInstall =>
+      'Las herramientas de audio y vídeo necesitan ffmpeg. Instálalo una vez y luma seguirá usándolo.';
+
+  @override
+  String get ffmpegSetupBodyManual =>
+      'Las herramientas de audio y vídeo necesitan ffmpeg en tu PATH. La instalación automática solo está disponible en Windows.';
+
+  @override
+  String get ffmpegSetupPreparing => 'Preparando…';
+
+  @override
+  String ffmpegSetupDownloading(String percent) {
+    return 'Descargando ffmpeg… $percent%';
+  }
+
+  @override
+  String get ffmpegSetupInstall => 'Instalar ffmpeg';
+
+  @override
+  String get ffmpegSetupChecking => 'Comprobando…';
+
+  @override
+  String get ffmpegSetupRecheck => 'Volver a comprobar';
+
+  @override
+  String get converterSaveCancelled => 'Guardado cancelado.';
+
+  @override
+  String get schematicLitematicNoRegions =>
+      'Este archivo .litematic no contiene regiones.';
+
+  @override
+  String get schematicLitematicNoReadableRegions =>
+      'No se pudo leer ninguna de las regiones de este archivo .litematic.';
+
+  @override
+  String schematicLitematicMergedRegions(int count, String size) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count regiones',
+      one: '1 región',
+    );
+    return 'El origen tenía $_temp0; se unieron en una sola caja de $size.';
+  }
+
+  @override
+  String get schematicLitematicConvertedName => 'Convertido con luma';
+
+  @override
+  String get schematicLitematicMainRegion => 'Principal';
+
+  @override
+  String get schematicMceditMissingSize =>
+      'A este archivo .schematic le faltan las etiquetas Width/Height/Length.';
+
+  @override
+  String get schematicMceditNoBlocks =>
+      'Este archivo .schematic no tiene una matriz Blocks.';
+
+  @override
+  String schematicMceditUnmappedIds(int count, String list) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count ids de bloque antiguos no tenían equivalente moderno y se convirtieron en aire (ids $list).',
+      one:
+          '1 id de bloque antiguo no tenía equivalente moderno y se convirtió en aire (id $list).',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get schematicMceditTileEntities =>
+      'El contenido de las entidades de bloque (inventarios de cofres, texto de carteles) no se transfiere.';
+
+  @override
+  String schematicMceditUnmappedTypes(int count, String list) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count tipos de bloque no existían antes de Minecraft 1.13 y se convirtieron en piedra ($list).',
+      one:
+          '1 tipo de bloque no existía antes de Minecraft 1.13 y se convirtió en piedra ($list).',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String schematicMceditInexactStates(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count estados de bloque mantuvieron el bloque correcto pero perdieron su orientación o variante.',
+      one:
+          '1 estado de bloque mantuvo el bloque correcto pero perdió su orientación o variante.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get schematicMcstructureNoSize =>
+      'Este archivo .mcstructure no tiene etiqueta size.';
+
+  @override
+  String get schematicMcstructureNoIndices =>
+      'Este archivo .mcstructure no tiene índices de bloques.';
+
+  @override
+  String get schematicMcstructureNoPalette =>
+      'Este archivo .mcstructure no tiene paleta de bloques.';
+
+  @override
+  String get schematicBedrockApproximate =>
+      'Bedrock y Java no comparten vocabulario de bloques, así que esta conversión es aproximada.';
+
+  @override
+  String schematicBedrockReadApproximate(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count entradas de la paleta tenían propiedades que Java no tiene.',
+      one: '1 entrada de la paleta tenía propiedades que Java no tiene.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String schematicBedrockWriteApproximate(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count entradas de la paleta perdieron una propiedad que Bedrock no tiene.',
+      one: '1 entrada de la paleta perdió una propiedad que Bedrock no tiene.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String schematicMcstructureTooLarge(String size) {
+    return 'Esta construcción es de $size. Una estructura de Bedrock guarda cada posición en dos listas de índices, así que una de ese tamaño sería inutilizablemente grande, y Bedrock solo carga 64 bloques por lado. Convierte a .litematic o .schem en su lugar.';
+  }
+
+  @override
+  String get schematicMcstructureSplitNeeded =>
+      'Los bloques de estructura de Bedrock cargan como máximo 64×64×64 a la vez, así que esta construcción tendrá que dividirse dentro del juego.';
+
+  @override
+  String get schematicFormatSpongeDescription => 'Esquema Sponge (WorldEdit)';
+
+  @override
+  String get schematicFormatMceditDescription => 'MCEdit heredado';
+
+  @override
+  String get schematicFormatStructureDescription =>
+      'Bloque de estructura vanilla';
+
+  @override
+  String get schematicFormatMcstructureDescription => 'Estructura Bedrock';
+
+  @override
+  String get schematicEmptyArea =>
+      'Este archivo declara un área vacía, así que no hay nada que convertir.';
+
+  @override
+  String schematicVolumeTooLarge(
+    int width,
+    int height,
+    int length,
+    int millions,
+  ) {
+    return 'Esta construcción mide $width×$height×$length, más que los $millions millones de bloques que el convertidor puede guardar en memoria.';
+  }
+
+  @override
+  String get schematicPaletteTooLarge =>
+      'Esta construcción usa más de 65535 estados de bloque distintos, más de los que el convertidor puede manejar.';
+
+  @override
+  String get schematicNotRecognised =>
+      'Este archivo no es un esquema, estructura o litematic de Minecraft que luma reconozca.';
+
+  @override
+  String get schematicLegacyPaletteLoss =>
+      'El formato heredado no tiene paleta, así que las construcciones con muchas variantes de bloque pierden aquí la mayor parte del detalle.';
+
+  @override
+  String get schematicSpongeMissingSize =>
+      'A este archivo .schem le faltan sus etiquetas Width/Height/Length.';
+
+  @override
+  String get schematicSpongeV3NoBlocks =>
+      'Este archivo .schem de versión 3 no tiene la etiqueta Blocks.';
+
+  @override
+  String get schematicSpongeNoPalette =>
+      'Este archivo .schem no tiene paleta de bloques ni datos de bloques.';
+
+  @override
+  String get schematicSpongeTruncatedValue =>
+      'Los datos de bloques terminan a mitad de un valor.';
+
+  @override
+  String get schematicSpongeCorrupt => 'Los datos de bloques están dañados.';
+
+  @override
+  String schematicSpongeShortBlocks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count bloques',
+      one: '1 bloque',
+    );
+    return 'Los datos de bloques se quedaron $_temp0 por debajo del tamaño declarado; el resto se rellenó con aire.';
+  }
+
+  @override
+  String get schematicStructureNoSize =>
+      'Este archivo .nbt no tiene la etiqueta size, así que no es un archivo de estructura.';
+
+  @override
+  String get schematicStructureNoPalette =>
+      'Este archivo de estructura no tiene paleta.';
+
+  @override
+  String schematicStructureOutOfBounds(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count bloques estaban',
+      one: '1 bloque estaba',
+    );
+    return '$_temp0 fuera del tamaño declarado y se omitieron.';
+  }
+
+  @override
+  String schematicStructureTooLarge(
+    int width,
+    int height,
+    int length,
+    int limit,
+  ) {
+    return 'Esta construcción mide $width×$height×$length. Un archivo de estructura vanilla guarda cada posición por separado, así que uno de ese tamaño sería demasiado grande para usarlo, y un bloque de estructura solo carga $limit bloques por lado. Conviértelo a .litematic o .schem en su lugar.';
+  }
+
+  @override
+  String schematicStructureTooLong(
+    int width,
+    int height,
+    int length,
+    int limit,
+  ) {
+    return 'Esta construcción mide $width×$height×$length, por encima del límite de $limit bloques que puede cargar un bloque de estructura. Habrá que dividirla dentro del juego.';
+  }
+
+  @override
+  String get schematicNbtNotCompoundRoot =>
+      'La raíz NBT no es una etiqueta compound.';
+
+  @override
+  String get schematicNbtNotNbt =>
+      'Esto no parece un archivo NBT: la raíz no es una etiqueta compound.';
+
+  @override
+  String schematicNbtUnknownTag(int type, int position) {
+    return 'Tipo de etiqueta NBT desconocido $type en el byte $position.';
+  }
+
+  @override
+  String schematicNbtTruncated(int length, int position) {
+    return 'El archivo está truncado o no es NBT válido (longitud incorrecta $length en el byte $position).';
+  }
+
+  @override
+  String get textureNoInstallation =>
+      'No se encontró ninguna instalación de Minecraft en este dispositivo.';
+
+  @override
+  String get textureFileNoBlockTextures =>
+      'Ese archivo no contiene texturas de bloques.';
+
+  @override
+  String textureCouldNotRead(String error) {
+    return 'No se pudieron leer las texturas de bloques: $error';
+  }
+
+  @override
+  String textureCouldNotDownload(String error) {
+    return 'No se pudieron descargar las texturas de bloques: $error';
+  }
+
+  @override
+  String get textureNeedsFilesystem =>
+      'Las texturas de bloques necesitan un sistema de archivos del que leer.';
+
+  @override
+  String get textureDownloadUnsupported =>
+      'Las texturas de bloques solo se pueden descargar en escritorio y Android.';
+
+  @override
+  String get textureMojangBadVersionId =>
+      'Mojang devolvió un id de versión no utilizable.';
+
+  @override
+  String get textureCouldNotReachMojang =>
+      'No se pudo conectar con Mojang. Comprueba tu conexión e inténtalo de nuevo.';
+
+  @override
+  String textureManifestStatus(int code) {
+    return 'Mojang devolvió $code para el manifiesto de versiones.';
+  }
+
+  @override
+  String textureClientStatus(int code) {
+    return 'Mojang devolvió $code para la descarga del cliente.';
+  }
+
+  @override
+  String get textureManifestNoRelease =>
+      'El manifiesto de versiones de Mojang no indica ninguna versión actual.';
+
+  @override
+  String get textureManifestMalformed =>
+      'El manifiesto de versiones de Mojang está mal formado.';
+
+  @override
+  String textureManifestNoEntry(String version) {
+    return 'El manifiesto de Mojang no tiene ninguna entrada para $version.';
+  }
+
+  @override
+  String textureVersionNoClient(String version) {
+    return 'La versión $version no tiene descarga de cliente.';
+  }
+
+  @override
+  String get textureDownloadFailed =>
+      'No se pudieron descargar las texturas. Comprueba tu conexión e inténtalo de nuevo.';
+
+  @override
+  String textureDownloadEndedEarly(int received, int expected) {
+    return 'La descarga terminó antes de tiempo: se recibieron $received de $expected bytes.';
+  }
+
+  @override
+  String get textureChecksumMismatch =>
+      'El archivo descargado no coincide con la suma de comprobación de Mojang.';
+
+  @override
+  String get textureStageAskingVersion =>
+      'Preguntando a Mojang qué versión es la actual…';
+
+  @override
+  String get textureStageUsingCopy => 'Usando la copia ya descargada.';
+
+  @override
+  String textureStageDownloading(String version) {
+    return 'Descargando Minecraft $version…';
+  }
+
+  @override
+  String get textureStageVerifying => 'Verificando la descarga…';
+
+  @override
+  String get textureStageReading => 'Leyendo texturas de bloques…';
+
+  @override
+  String get audioEditorTitle => 'Editor de audio';
+
+  @override
+  String get audioEditorSubtitle =>
+      'Corta, ecualiza y previsualiza el audio antes de exportar';
+
+  @override
+  String get audioEditorPickPrompt => 'Toca para elegir audio';
+
+  @override
+  String get audioEditorEditAnother => 'Editar otro';
+
+  @override
+  String get audioEditorReadingWaveform =>
+      'Leyendo el audio y creando la forma de onda…';
+
+  @override
+  String get audioEditorNoFilePath =>
+      'No se pudo leer la ruta del archivo; editar requiere la app de escritorio.';
+
+  @override
+  String get audioEditorCannotRead => 'No se pudo leer este archivo de audio.';
+
+  @override
+  String audioEditorLoadFailed(String error) {
+    return 'No se pudo cargar este archivo: $error';
+  }
+
+  @override
+  String get audioEditorEverythingCut =>
+      'Todo se ha cortado; quita primero un corte.';
+
+  @override
+  String get audioEditorPreviewDesktopOnly =>
+      'La reproducción de vista previa solo está disponible en la app de escritorio.';
+
+  @override
+  String audioEditorPreviewFailed(String error) {
+    return 'No se pudo reproducir la vista previa: $error';
+  }
+
+  @override
+  String audioEditorSaveFailed(String error) {
+    return 'No se pudo guardar: $error';
+  }
+
+  @override
+  String get audioEditorCutTitle => 'Cortar y recortar';
+
+  @override
+  String get audioEditorCutSubtitle =>
+      'Arrastra sobre la forma de onda para seleccionar un rango y córtalo o conserva solo la selección.';
+
+  @override
+  String audioEditorSelectionRange(String start, String end) {
+    return 'Selección  $start – $end';
+  }
+
+  @override
+  String audioEditorOutputOfTotal(String output, String total) {
+    return 'Salida $output de $total';
+  }
+
+  @override
+  String get audioEditorCutSelection => 'Cortar la selección';
+
+  @override
+  String get audioEditorKeepSelection => 'Conservar solo la selección';
+
+  @override
+  String get audioEditorClearCuts => 'Borrar todos los cortes';
+
+  @override
+  String get audioEditorEqualizerTitle => 'Ecualizador';
+
+  @override
+  String get audioEditorEqualizerSubtitle =>
+      'Sube o baja cada banda hasta 12 dB.';
+
+  @override
+  String get audioEditorReset => 'Restablecer';
+
+  @override
+  String get audioEditorPresetFlat => 'Plano';
+
+  @override
+  String get audioEditorPresetBassBoost => 'Refuerzo de graves';
+
+  @override
+  String get audioEditorPresetVocal => 'Voz';
+
+  @override
+  String get audioEditorPresetTreble => 'Agudos';
+
+  @override
+  String get audioEditorEffectsTitle => 'Efectos';
+
+  @override
+  String get audioEditorVolume => 'Volumen';
+
+  @override
+  String get audioEditorSpeed => 'Velocidad';
+
+  @override
+  String get audioEditorFadeIn => 'Fundido de entrada';
+
+  @override
+  String get audioEditorFadeOut => 'Fundido de salida';
+
+  @override
+  String get audioEditorPreviewRenderHint =>
+      'Procesa tus cambios y luego reproduce el resultado.';
+
+  @override
+  String get audioEditorPreviewExactHint =>
+      'Escucha exactamente lo que se exportará.';
+
+  @override
+  String get audioEditorMakeEditToExport =>
+      'Haz un cambio arriba para habilitar la exportación.';
+
+  @override
+  String get audioEditorGenerateSave => 'Generar y guardar';
+
+  @override
+  String get collageMakerTitle => 'Creador de collages';
+
+  @override
+  String get collageMakerSubtitle => 'Crea collages de fotos con plantillas';
+
+  @override
+  String get collageMakerImportPrompt => 'Importa fotos para empezar';
+
+  @override
+  String get collageMakerImportedPhotos => 'Fotos importadas';
+
+  @override
+  String collageMakerPhotoCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count fotos',
+      one: '1 foto',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get collageMakerChooseLayout => 'Elige un diseño';
+
+  @override
+  String get collageMakerNewShape => 'Nueva forma';
+
+  @override
+  String get collageMakerCanvas => 'Lienzo';
+
+  @override
+  String collageMakerSlotsFilled(int slots, int filled) {
+    return '$slots huecos · $filled llenos';
+  }
+
+  @override
+  String get collageMakerDropHere => 'Suelta aquí';
+
+  @override
+  String get collageMakerDragPhoto => 'Arrastra una foto';
+
+  @override
+  String get collageMakerSettings => 'Ajustes';
+
+  @override
+  String get collageMakerAspectRatio => 'Relación de aspecto';
+
+  @override
+  String get collageMakerBackground => 'Fondo';
+
+  @override
+  String get collageMakerGap => 'Separación';
+
+  @override
+  String get collageMakerRadius => 'Radio';
+
+  @override
+  String get collageMakerBgWhite => 'Blanco';
+
+  @override
+  String get collageMakerBgBlack => 'Negro';
+
+  @override
+  String get collageMakerBgTransparent => 'Transparente';
+
+  @override
+  String get collageMakerBgDark => 'Oscuro';
+
+  @override
+  String get collageMakerTplTwoHorizontal => '2 horizontales';
+
+  @override
+  String get collageMakerTplTwoVertical => '2 verticales';
+
+  @override
+  String get collageMakerTplThreeColumn => '3 columnas';
+
+  @override
+  String get collageMakerTplTwoByTwo => 'Cuadrícula 2×2';
+
+  @override
+  String get collageMakerTplLShape => 'Forma de L';
+
+  @override
+  String get collageMakerTplHeroStrip => 'Principal + tira';
+
+  @override
+  String get collageMakerTplThreeByThree => 'Cuadrícula 3×3';
+
+  @override
+  String get collageMakerTplMosaic => 'Mosaico';
+
+  @override
+  String get collageMakerTplPanorama => 'Panorama';
+
+  @override
+  String get collageMakerTplCross => 'Cruz';
+
+  @override
+  String get collageMakerTplThreeRow => '3 filas';
+
+  @override
+  String get collageMakerTplFourColumn => '4 columnas';
+
+  @override
+  String get collageMakerTplRightLShape => 'Forma de L invertida';
+
+  @override
+  String get collageMakerTplStripHero => 'Tira + principal';
+
+  @override
+  String get collageMakerTplSidebar => 'Barra lateral';
+
+  @override
+  String get collageMakerTplFilmstrip => 'Tira de película';
+
+  @override
+  String get collageMakerTplFrame => 'Marco';
+
+  @override
+  String get collageMakerTplWindowpane => 'Cristal de ventana';
+
+  @override
+  String get collageMakerTplCascade => 'Cascada';
+
+  @override
+  String get collageMakerDownloadPng => 'Descargar PNG';
+
+  @override
+  String get collageMakerExportPng => 'Exportar PNG';
+
+  @override
+  String get collageMakerReset => 'Restablecer';
+
+  @override
+  String get collageMakerNewCollage => 'Nuevo collage';
+
+  @override
+  String collageMakerExportFailed(String error) {
+    return 'Error al exportar: $error';
+  }
+
+  @override
+  String get collageShapeTitle => 'Diseña tu diseño';
+
+  @override
+  String get collageShapeSubtitle =>
+      'Añade, arrastra y redimensiona marcos para crear tu propia forma';
+
+  @override
+  String get collageShapeLayout => 'Diseño';
+
+  @override
+  String collageShapeFrameCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count marcos',
+      one: '1 marco',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get collageShapeName => 'Nombre';
+
+  @override
+  String get collageShapeNameHint => 'p. ej. Mi diseño';
+
+  @override
+  String get collageShapeSave => 'Guardar forma';
+
+  @override
+  String get collageShapeAddFrame => 'Añadir marco';
+
+  @override
+  String get collageShapeSplitHorizontal => 'Dividir ↔';
+
+  @override
+  String get collageShapeSplitVertical => 'Dividir ↕';
+
+  @override
+  String get collageShapeDelete => 'Eliminar';
+
+  @override
+  String get collageShapeClearAll => 'Borrar todo';
+
+  @override
+  String get collageShapeSnap => 'Ajustar a la cuadrícula';
+
+  @override
+  String get collageShapeEmptyHint =>
+      'Toca \"Añadir marco\" para empezar a crear tu forma';
+
+  @override
+  String get downscalerTitle => 'Reductor de imágenes';
+
+  @override
+  String get downscalerSubtitle =>
+      'Reduce el tamaño de los archivos de imagen con optimizaciones combinables';
+
+  @override
+  String get downscalerPickPrompt => 'Toca para elegir una imagen';
+
+  @override
+  String get downscalerPickFormats => 'PNG o JPEG';
+
+  @override
+  String get downscalerOptimizeAnother => 'Optimizar otra';
+
+  @override
+  String get downscalerReadFailed => 'No se pudo leer el archivo seleccionado.';
+
+  @override
+  String get downscalerDecodeFailed =>
+      'No se pudo leer esta imagen; puede estar dañada o no ser compatible.';
+
+  @override
+  String downscalerEstimateFailed(String error) {
+    return 'No se pudo estimar el tamaño: $error';
+  }
+
+  @override
+  String get downscalerOptimizations => 'Optimizaciones';
+
+  @override
+  String get downscalerOptimizationsHint =>
+      'Combina las que quieras. Pasa el cursor para ver detalles; las etiquetas muestran lo que ahorra cada una por separado.';
+
+  @override
+  String get downscalerScale => 'Escala';
+
+  @override
+  String get downscalerColors => 'Colores';
+
+  @override
+  String get downscalerDithering => 'Tramado';
+
+  @override
+  String get downscalerDepth => 'Profundidad';
+
+  @override
+  String get downscalerBits32 => '32 bits';
+
+  @override
+  String get downscalerBits16 => '16 bits';
+
+  @override
+  String get downscalerBits8 => '8 bits';
+
+  @override
+  String get downscalerOriginal => 'Original';
+
+  @override
+  String downscalerEstimated(String format) {
+    return 'Estimado ($format)';
+  }
+
+  @override
+  String downscalerSavesPercent(String percent, String size) {
+    return 'Ahorra $percent % ($size)';
+  }
+
+  @override
+  String downscalerLargerPercent(String percent) {
+    return '$percent % más grande que el original';
+  }
+
+  @override
+  String get downscalerOptimizeDownload => 'Optimizar y descargar';
+
+  @override
+  String get downscalerOptimizeSave => 'Optimizar y guardar';
+
+  @override
+  String get downscalerOptimizeReplace => 'Optimizar y reemplazar el original';
+
+  @override
+  String get downscalerSelectOne => 'Selecciona al menos una optimización';
+
+  @override
+  String get downscalerResizeTitle => 'Cambiar resolución';
+
+  @override
+  String get downscalerResizeDesc =>
+      'Reduce las dimensiones en píxeles. Menos píxeles suele ser el mayor ahorro de tamaño.';
+
+  @override
+  String get downscalerColorDepthTitle => 'Reducir la profundidad de color';
+
+  @override
+  String get downscalerColorDepthDesc =>
+      'Asigna la imagen a una paleta de colores pequeña (p. ej. 64 o 16 colores). Ideal para gráficos planos y capturas.';
+
+  @override
+  String get downscalerBitDepthTitle => 'Reducir la profundidad de bits';
+
+  @override
+  String get downscalerBitDepthDesc =>
+      'Usa menos bits por canal de color (32 → 16 → 8 bits). Algo de bandeado, pero comprime mucho mejor.';
+
+  @override
+  String get downscalerStripMetadataTitle => 'Eliminar metadatos';
+
+  @override
+  String get downscalerStripMetadataDesc =>
+      'Elimina el perfil ICC incrustado, EXIF y los fragmentos de texto. Sin cambios visibles.';
+
+  @override
+  String get downscalerRemoveAlphaTitle => 'Eliminar canal alfa';
+
+  @override
+  String get downscalerRemoveAlphaDesc =>
+      'Elimina el canal de transparencia. Solo se ofrece si la imagen es totalmente opaca, así que no hay pérdida.';
+
+  @override
+  String get downscalerRemoveAlphaDisabled =>
+      'No disponible: esta imagen no tiene canal alfa o usa transparencia real.';
+
+  @override
+  String get downscalerTrimTitle => 'Recortar bordes transparentes';
+
+  @override
+  String get downscalerTrimDesc =>
+      'Recorta los bordes totalmente transparentes alrededor de la imagen.';
+
+  @override
+  String get downscalerTrimDisabled =>
+      'No disponible: no hay borde transparente que recortar.';
+
+  @override
+  String get downscalerPngRecompressTitle => 'Recompresión PNG sin pérdida';
+
+  @override
+  String get downscalerPngRecompressDesc =>
+      'Recodifica el PNG con compresión máxima. Seguro, sin cambios visibles.';
+
+  @override
+  String get downscalerToWebpTitle => 'Convertir a WebP';
+
+  @override
+  String get downscalerToWebpDesc =>
+      'Codifica el resultado como WebP, que suele ser mucho más pequeño que PNG.';
+
+  @override
+  String get downscalerToWebpDisabled =>
+      'No disponible: WebP necesita ffmpeg (solo app de escritorio).';
+
+  @override
+  String get convFileReadFailed => 'No se pudo leer el archivo seleccionado.';
+
+  @override
+  String get convTapToPickFile => 'Toca para elegir un archivo';
+
+  @override
+  String get convOtherSubtitle =>
+      'Trabajos sueltos que no encajan en ningún otro sitio';
+
+  @override
+  String get convOtherMinecraftWorld => 'Conversor de mundos de Minecraft';
+
+  @override
+  String get convOtherMinecraftWorldSub =>
+      'Java ↔ Bedrock · versiones, entidades, jugadores y estadísticas';
+
+  @override
+  String get convOtherMinecraftSchematics => 'Esquemas de Minecraft';
+
+  @override
+  String get convOtherBadgeDamage => 'DAÑOS';
+
+  @override
+  String get convOtherBadgeRepair => 'REPARACIÓN';
+
+  @override
+  String get convOtherCorruptor => 'Corruptor de archivos';
+
+  @override
+  String get convOtherCorruptorSub =>
+      'Rompe un archivo a propósito — arréglalo luego, o no';
+
+  @override
+  String get convOtherFixer => 'Reparador de archivos';
+
+  @override
+  String get convOtherFixerSub => 'Restaura un archivo, o repara uno dañado';
+
+  @override
+  String get convOtherFooter =>
+      'La herramienta de esquemas convierte cualquiera de los cinco formatos de bloques en cualquier otro y muestra la construcción en 3D antes de guardarla. El corruptor y el reparador forman una pareja: corrompe con una receta y el reparador reconstruye el original byte a byte, o apunta el reparador a cualquier archivo dañado y reconstruirá la estructura que pueda.';
+
+  @override
+  String get convCorruptorSubtitle =>
+      'Rompe un archivo a propósito y guarda la clave para deshacerlo';
+
+  @override
+  String get convCorruptPickSubtitle =>
+      'Cualquier archivo — el original nunca se toca';
+
+  @override
+  String get convCorruptDamageLabel => 'Daños';
+
+  @override
+  String get convCorruptPickMany => 'Elige uno o más';
+
+  @override
+  String get convCorruptHowHard => 'Intensidad';
+
+  @override
+  String convCorruptSeed(String seed) {
+    return 'Semilla $seed';
+  }
+
+  @override
+  String get convCorruptNewSeed => 'Nueva semilla';
+
+  @override
+  String get convCorruptButton => 'Corromper archivo';
+
+  @override
+  String get convCorruptNoRecipeWarning =>
+      'No se escribirá ninguna receta de recuperación. Nada, ni siquiera luma, podrá deshacer esto.';
+
+  @override
+  String get convCorruptSaveCorrupted => 'Guardar archivo corrompido';
+
+  @override
+  String get convCorruptDownloadCorrupted => 'Descargar archivo corrompido';
+
+  @override
+  String get convCorruptKeepRecipe =>
+      'Guarda la receta en un lugar seguro: es lo único que puede deshacer esto.';
+
+  @override
+  String get convCorruptSaveRecipe => 'Guardar receta .lumafix';
+
+  @override
+  String get convCorruptDownloadRecipe => 'Descargar receta .lumafix';
+
+  @override
+  String get convCorruptAnother => 'Corromper otro archivo';
+
+  @override
+  String get convCorruptRecoverable => 'Recuperable';
+
+  @override
+  String get convCorruptPermanent => 'Permanente';
+
+  @override
+  String get convCorruptRecipeTitle => 'Escribir una receta de recuperación';
+
+  @override
+  String get convCorruptRecipeOn =>
+      'Un archivo .lumafix registra cada edición, para que el reparador reconstruya el original exactamente.';
+
+  @override
+  String get convCorruptRecipeOff =>
+      'No se registra nada. El daño es permanente.';
+
+  @override
+  String convCorruptUnexpectedError(String error) {
+    return 'Algo salió mal al corromper ese archivo: $error';
+  }
+
+  @override
+  String get convFixPickTitle => 'Toca para elegir el archivo dañado';
+
+  @override
+  String get convFixPickSubtitle =>
+      'Imágenes · archivos · documentos · audio · vídeo';
+
+  @override
+  String get convFixerSubtitle =>
+      'Deshaz lo que hizo el corruptor, o repara un archivo dañado';
+
+  @override
+  String get convFixRecipeReadFailed => 'No se pudo leer la receta.';
+
+  @override
+  String convFixUnexpectedError(String error) {
+    return 'Algo salió mal al reparar ese archivo: $error';
+  }
+
+  @override
+  String get convFixBestEffort => 'Reparación lo mejor posible';
+
+  @override
+  String get convFixExactRestore => 'Restauración exacta desde la receta';
+
+  @override
+  String get convFixNoRecipeBody =>
+      'No hay receta cargada, así que luma detectará qué es el archivo y reconstruirá la estructura que pueda. Las cabeceras, sumas de control e índices pueden recuperarse; los bytes sobrescritos no.';
+
+  @override
+  String convFixRecipeInfo(String age, String name, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pasos',
+      one: '1 paso',
+    );
+    return 'Registrada $age para “$name” en $_temp0. El original se recupera byte a byte.';
+  }
+
+  @override
+  String get convFixAgeJustNow => 'justo ahora';
+
+  @override
+  String convFixAgeMinutes(int count) {
+    return 'hace $count min';
+  }
+
+  @override
+  String convFixAgeHours(int count) {
+    return 'hace $count h';
+  }
+
+  @override
+  String convFixAgeDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'hace $count días',
+      one: 'hace 1 día',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get convFixLoadRecipe => 'Cargar una receta .lumafix';
+
+  @override
+  String get convFixAnalyseRepair => 'Analizar y reparar';
+
+  @override
+  String get convFixRestoreOriginal => 'Restaurar el original';
+
+  @override
+  String get convFixDownloadRepaired => 'Descargar archivo reparado';
+
+  @override
+  String get convFixSaveRepaired => 'Guardar archivo reparado';
+
+  @override
+  String get convFixAnother => 'Reparar otro';
+
+  @override
+  String get convFixRestoredExactly => 'Restaurado exactamente';
+
+  @override
+  String convFixRepairsApplied(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count reparaciones aplicadas',
+      one: '1 reparación aplicada',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get convFixNothingToRepair => 'Nada que reparar';
+
+  @override
+  String convFixSizeInOut(String from, String to) {
+    return '$from de entrada · $to de salida';
+  }
+
+  @override
+  String get convFixStructuralWarning =>
+      'Una reparación estructural vuelve a juntar el contenedor. No puede inventar contenido sobrescrito; revisa el resultado antes de confiar en él.';
+
+  @override
+  String get convMediaAudioTitle => 'Convertidor de audio';
+
+  @override
+  String get convMediaAudioSubtitle =>
+      'Convierte entre MP3, OGG, FLAC, M4A, WAV y AAC';
+
+  @override
+  String get convMediaVideoTitle => 'Convertidor de vídeo';
+
+  @override
+  String get convMediaVideoSubtitle =>
+      'Convierte entre MP4, MOV, WEBM, OGV, MPG, M4V (o a M4A)';
+
+  @override
+  String get convMediaNoFilePath =>
+      'No se pudo leer la ruta del archivo: la conversión necesita la aplicación de escritorio.';
+
+  @override
+  String convMediaConvertFailed(String error) {
+    return 'Algo salió mal durante la conversión: $error';
+  }
+
+  @override
+  String get convMediaConvertTo => 'Convertir a';
+
+  @override
+  String get convMediaQuality => 'Calidad';
+
+  @override
+  String get convMediaQualitySmaller => 'Más pequeño';
+
+  @override
+  String get convMediaQualityBalanced => 'Equilibrado';
+
+  @override
+  String get convMediaQualityHigh => 'Alta';
+
+  @override
+  String get convMediaConvertSave => 'Convertir y guardar';
+
+  @override
+  String get convMediaConvertAnother => 'Convertir otro';
+
+  @override
+  String convImgEditUnexpectedError(String error) {
+    return 'Algo salió mal: $error';
+  }
+
+  @override
+  String get convImgEditCantRead => 'No se pudo leer esta imagen.';
+
+  @override
+  String convImgEditSaveFailed(String error) {
+    return 'No se pudo guardar: $error';
+  }
+
+  @override
+  String get convImgEditTitle => 'Editor de imágenes';
+
+  @override
+  String get convImgEditSubtitle => 'Rota, ajusta, filtra y elimina fondos';
+
+  @override
+  String get convImgEditPickTitle => 'Toca para elegir una imagen';
+
+  @override
+  String get convImgEditSaveReplace => 'Guardar y reemplazar el original';
+
+  @override
+  String get convImgEditDownloadPng => 'Descargar PNG';
+
+  @override
+  String get convImgEditSavePng => 'Guardar PNG';
+
+  @override
+  String get convImgEditResetEdits => 'Restablecer cambios';
+
+  @override
+  String get convImgEditAnother => 'Editar otra';
+
+  @override
+  String get convImgEditMetadata => 'Metadatos';
+
+  @override
+  String get convImgEditTransform => 'Transformar';
+
+  @override
+  String get convImgEditAdjustments => 'Ajustes';
+
+  @override
+  String get convImgEditFilters => 'Filtros';
+
+  @override
+  String get convImgEditBgRemoval => 'Eliminación de fondo';
+
+  @override
+  String get convImgEditBgRemovalBody =>
+      'Haz transparentes los píxeles blancos. Sube la tolerancia para incluir también los píxeles casi blancos.';
+
+  @override
+  String get convImgEditRotateLeft => 'Girar a la izquierda';
+
+  @override
+  String get convImgEditRotateRight => 'Girar a la derecha';
+
+  @override
+  String get convImgEditFlipHorizontal => 'Voltear horizontalmente';
+
+  @override
+  String get convImgEditFlipVertical => 'Voltear verticalmente';
+
+  @override
+  String get convImgEditBrightness => 'Brillo';
+
+  @override
+  String get convImgEditContrast => 'Contraste';
+
+  @override
+  String get convImgEditSaturation => 'Saturación';
+
+  @override
+  String get convImgEditFilterGrayscale => 'Escala de grises';
+
+  @override
+  String get convImgEditFilterSepia => 'Sepia';
+
+  @override
+  String get convImgEditFilterInvert => 'Invertir';
+
+  @override
+  String get convImgEditTolerance => 'Tolerancia';
+
+  @override
+  String get convImgEditRemoveAllMeta => 'Quitar todo';
+
+  @override
+  String get convImgEditMetaExisting =>
+      'Esta imagen ya tiene metadatos incrustados. Edítalos abajo o elimínalos todos.';
+
+  @override
+  String get convImgEditMetaNew =>
+      'Añade un título, autor o aviso de copyright al archivo guardado.';
+
+  @override
+  String get convImgEditAuthor => 'Autor';
+
+  @override
+  String get convImgEditCopyright => 'Copyright';
+
+  @override
+  String get convImgEditNotSet => 'Sin definir';
+
+  @override
+  String get pictureConvUnsupported =>
+      'Ese archivo no es una imagen compatible (PNG, JPG, BMP, TIFF, ICO, SVG u OIP).';
+
+  @override
+  String get pictureConvSubtitle =>
+      'Convierte entre PNG, JPG, BMP, TIFF, ICO, SVG y OIP';
+
+  @override
+  String get pictureConvSvgVector =>
+      'SVG es vectorial: se rasterizará a un tamaño nítido antes de convertir.';
+
+  @override
+  String get pictureConvConvertDownload => 'Convertir y descargar';
+
+  @override
+  String get schemConvTitle => 'Esquemas de Minecraft';
+
+  @override
+  String get schemConvSubtitle =>
+      'Convierte entre schem, litematic, schematic, nbt y mcstructure';
+
+  @override
+  String get schemConvPickPrompt => 'Toca para elegir una construcción';
+
+  @override
+  String get schemConvReading => 'Leyendo la construcción…';
+
+  @override
+  String schemConvReadFailed(String error) {
+    return 'Algo salió mal al leer ese archivo: $error';
+  }
+
+  @override
+  String get schemConvBedrockNote =>
+      'Bedrock usa ids y estados de bloque distintos a Java, así que esta dirección es una traducción aproximada.';
+
+  @override
+  String get schemConvConvertDownload => 'Convertir y descargar';
+
+  @override
+  String get schemConvWorthKnowing => 'Conviene saberlo';
+
+  @override
+  String schemConvBlockCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count bloques',
+      one: '1 bloque',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get schemConvPreview3d => 'Vista previa 3D';
+
+  @override
+  String get schemConvPreviewHint =>
+      'Arrastra para orbitar · desplaza para acercar';
+
+  @override
+  String get schemConvMaterials => 'Materiales';
+
+  @override
+  String get schemConvStatBlocks => 'Bloques';
+
+  @override
+  String get schemConvStatVolume => 'Volumen';
+
+  @override
+  String get schemConvStatBlockTypes => 'Tipos de bloque';
+
+  @override
+  String get schemConvNoBlocks => 'Esta construcción no tiene bloques.';
+
+  @override
+  String get schemConvShowFewer => 'Mostrar menos';
+
+  @override
+  String schemConvShowAll(int count) {
+    return 'Mostrar los $count tipos de bloque';
+  }
+
+  @override
+  String get schemViewerEmpty =>
+      'Nada que mostrar: esta construcción está hecha solo de aire.';
+
+  @override
+  String schemViewerSemantics(int width, int height, int length) {
+    return 'Vista previa 3D de la construcción, de $width por $height por $length bloques. Arrastra para girar, o usa los botones de giro y zoom de abajo.';
+  }
+
+  @override
+  String schemViewerSimplified(int stride) {
+    return 'Esta construcción es demasiado grande para dibujarla bloque a bloque, así que la vista previa está simplificada $stride× — el archivo convertido conserva todos los bloques.';
+  }
+
+  @override
+  String schemViewerDownloadProgress(
+    String stage,
+    String received,
+    String total,
+  ) {
+    return '$stage $received de $total';
+  }
+
+  @override
+  String schemViewerTexturesFrom(String source, int count) {
+    return 'Texturas de $source ($count bloques)';
+  }
+
+  @override
+  String schemViewerFlatColours(String size) {
+    return 'Colores planos: no se encontró Minecraft. Descarga las texturas de Mojang (~$size) o usa tu propia copia.';
+  }
+
+  @override
+  String schemViewerFailureFallback(String failure) {
+    return '$failure Mostrando colores de bloque planos.';
+  }
+
+  @override
+  String get schemViewerDownloadTextures => 'Descargar texturas';
+
+  @override
+  String get schemViewerUseInstall => 'Usar mi instalación';
+
+  @override
+  String get schemViewerLayers => 'Capas';
+
+  @override
+  String schemViewerLayerRange(int startY, int endY) {
+    return 'Y $startY–$endY';
+  }
+
+  @override
+  String get schemViewerZoomOut => 'Alejar';
+
+  @override
+  String get schemViewerZoomIn => 'Acercar';
+
+  @override
+  String get schemViewerResetView => 'Restablecer la vista';
+
+  @override
+  String get vidDownNoPath =>
+      'No se pudo leer la ruta del archivo: reducir vídeos necesita la aplicación de escritorio.';
+
+  @override
+  String get vidDownProbeFailed =>
+      'No se pudo leer este vídeo: puede que no sea compatible o que falte ffmpeg.';
+
+  @override
+  String vidDownEstimateFailed(String error) {
+    return 'No se pudo estimar el tamaño: $error';
+  }
+
+  @override
+  String get vidDownSubtitle =>
+      'Comprime y reduce vídeos con optimizaciones combinables';
+
+  @override
+  String get vidDownPickPrompt => 'Toca para elegir un vídeo';
+
+  @override
+  String get vidDownShrinkAnother => 'Reducir otro';
+
+  @override
+  String get vidDownShrinkDownload => 'Reducir y descargar';
+
+  @override
+  String get vidDownShrinkSave => 'Reducir y guardar';
+
+  @override
+  String get vidDownOptimizationsHint =>
+      'Combina las que quieras. Pasa el cursor sobre una opción para ver más detalles.';
+
+  @override
+  String get vidDownMaxHeight => 'Altura máx.';
+
+  @override
+  String get vidDownFrameRate => 'Fotogramas';
+
+  @override
+  String get vidDownAudio => 'Audio';
+
+  @override
+  String get vidDownCrfHigh => 'Alta calidad';
+
+  @override
+  String get vidDownCrfSmallest => 'Más pequeño';
+
+  @override
+  String vidDownCrfLabel(String word, int crf) {
+    return '$word · CRF $crf';
+  }
+
+  @override
+  String get vidDownResizeTitle => 'Reducir resolución';
+
+  @override
+  String get vidDownResizeBody =>
+      'Limita la altura del fotograma (p. ej. 1080p → 720p) manteniendo la proporción. Es el mayor ahorro de tamaño para vídeos de alta resolución.';
+
+  @override
+  String get vidDownQualityTitle => 'Calidad (CRF)';
+
+  @override
+  String get vidDownQualityBody =>
+      'El principal control de compresión. Un valor bajo conserva más detalle; uno alto genera un archivo mucho más pequeño.';
+
+  @override
+  String get vidDownFpsTitle => 'Límite de fotogramas por segundo';
+
+  @override
+  String get vidDownFpsBody =>
+      'Limita los fotogramas por segundo (p. ej. 60 → 30). Invisible en la mayoría de grabaciones y reduce bastante el tamaño.';
+
+  @override
+  String get vidDownH265Title => 'Recodificar a H.265';
+
+  @override
+  String get vidDownH265Body =>
+      'Usa el códec HEVC más reciente: unos 40–50 % más pequeño que H.264 con la misma calidad, pero más lento al codificar y menos compatible con reproductores antiguos.';
+
+  @override
+  String get vidDownAudioBitrateTitle => 'Reducir la tasa de bits de audio';
+
+  @override
+  String get vidDownAudioBitrateBody =>
+      'Recodifica la banda sonora a una tasa de bits más baja (p. ej. 96 kbps).';
+
+  @override
+  String get vidDownNoAudio =>
+      'No disponible: este vídeo no tiene pista de audio.';
+
+  @override
+  String get vidDownRemoveAudioTitle => 'Quitar la pista de audio';
+
+  @override
+  String get vidDownRemoveAudioBody =>
+      'Elimina por completo el audio; ideal para grabaciones de pantalla y clips silenciosos.';
+
+  @override
+  String get vidDownStripTitle => 'Eliminar metadatos';
+
+  @override
+  String get vidDownStripBody =>
+      'Elimina los metadatos incrustados y los marcadores de capítulo. Sin cambios visibles.';
+
+  @override
+  String get vidDownWebmTitle => 'Convertir a WebM (VP9)';
+
+  @override
+  String get vidDownWebmBody =>
+      'Recodifica al códec VP9/WebM: suele ser más pequeño que H.264 y va muy bien para la web. Codificación más lenta; genera un archivo .webm.';
+
+  @override
+  String vidDownSmaller(String percent, String saved) {
+    return '≈ $percent % más pequeño (ahorra $saved)';
+  }
+
+  @override
+  String vidDownLarger(String percent) {
+    return '≈ $percent % más grande que el original';
+  }
+
+  @override
+  String vidDownSampleNote(String seconds) {
+    return 'Estimado a partir de un fragmento de $seconds s; el tamaño final puede variar.';
+  }
+
+  @override
+  String get worldConvPickFolderTitle =>
+      'Selecciona la carpeta del mundo que contiene level.dat';
+
+  @override
+  String get worldConvPickArchiveTitle =>
+      'Selecciona un mundo de Minecraft exportado';
+
+  @override
+  String get worldConvReading => 'Leyendo el mundo…';
+
+  @override
+  String get worldConvPickOutputTitle =>
+      'Elige dónde guardar el mundo convertido';
+
+  @override
+  String get worldConvSubtitle =>
+      'Java ↔ Bedrock · terreno, entidades y datos de jugadores';
+
+  @override
+  String get worldConvPlatformUnsupported =>
+      'La conversión de mundos está disponible en Windows y Linux.';
+
+  @override
+  String get worldConvIntro =>
+      'Cierra este mundo en Minecraft antes de convertir. Elige su carpeta o un archivo .mcworld / .zip exportado, o pega su ruta abajo. El original no se modifica.';
+
+  @override
+  String get worldConvChooseFolder => 'Elegir carpeta del mundo';
+
+  @override
+  String get worldConvChooseArchive => 'Elegir archivo .mcworld';
+
+  @override
+  String get worldConvPathLabel =>
+      'Ruta de la carpeta del mundo o de .mcworld / .zip';
+
+  @override
+  String get worldConvPathHint => 'Pega una ruta aquí';
+
+  @override
+  String get worldConvLoad => 'Cargar mundo';
+
+  @override
+  String worldConvCensusLine(
+    String edition,
+    int entities,
+    int localPlayers,
+    int remotePlayers,
+  ) {
+    String _temp0 = intl.Intl.pluralLogic(
+      entities,
+      locale: localeName,
+      other: '$entities entidades',
+      one: '1 entidad',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      localPlayers,
+      locale: localeName,
+      other: '$localPlayers jugadores locales',
+      one: '1 jugador local',
+    );
+    String _temp2 = intl.Intl.pluralLogic(
+      remotePlayers,
+      locale: localeName,
+      other: '$remotePlayers jugadores adicionales',
+      one: '1 jugador adicional',
+    );
+    return '$edition · $_temp0 · $_temp1 · $_temp2';
+  }
+
+  @override
+  String get worldConvTargetVersion => 'Versión de Minecraft de destino';
+
+  @override
+  String get worldConvVersionNote =>
+      'Formatos de las versiones Java 1.8.8–26.3 y Bedrock 1.12–1.26.60. Los destinos anteriores a Java 1.13 o Bedrock 1.18.30 requieren excluir entidades y jugadores. Los registros incompatibles seleccionados provocan un error. Las dimensiones personalizadas se rechazan.';
+
+  @override
+  String get worldConvEntitiesTitle => 'Convertir entidades';
+
+  @override
+  String get worldConvEntitiesBody =>
+      'Mobs, mascotas, aldeanos, vehículos y pasajeros. Cada entidad de origen debe coincidir con un registro de salida guardado o la conversión falla. Los proyectiles que aún están en el aire se listan, pero no se trasladan.';
+
+  @override
+  String get worldConvPlayersTitle => 'Convertir jugadores';
+
+  @override
+  String worldConvPlayersMultiple(int count) {
+    return 'Este mundo tiene $count registros de jugadores adicionales. Desactiva «Convertir jugadores» para convertir el terreno y las entidades. Trasladar a estos jugadores requiere asignaciones de cuentas.';
+  }
+
+  @override
+  String get worldConvPlayersSingle =>
+      'Inventario, equipo y posición del jugador individual. Los jugadores adicionales requieren asignaciones de cuentas y provocan un error si se seleccionan.';
+
+  @override
+  String get worldConvStatsTitle => 'Conservar estadísticas';
+
+  @override
+  String get worldConvStatsBody =>
+      'Las estadísticas de Java se archivan para poder convertir de nuevo a Java. Bedrock no tiene un formato de estadísticas por mundo compatible.';
+
+  @override
+  String get worldConvChooseOutput => 'Elegir ubicación de salida';
+
+  @override
+  String worldConvAlreadyEdition(String edition) {
+    return 'Este mundo ya es $edition. Elige la otra edición para convertirlo.';
+  }
+
+  @override
+  String get worldConvConvertVerify => 'Convertir y verificar el mundo';
+
+  @override
+  String worldConvSaved(String path) {
+    return 'Guardado en $path';
+  }
+
+  @override
+  String worldConvEntitiesVerified(int count) {
+    return '$count registros de entidades verificados.';
+  }
+
+  @override
+  String get worldConvEntitiesExcluded => 'Entidades excluidas.';
+
+  @override
+  String get pictureConvRasterizeFailed => 'No se pudo rasterizar el SVG.';
+
+  @override
+  String get worldEditionJava => 'Edición Java';
+
+  @override
+  String get worldEditionBedrock => 'Edición Bedrock';
+
+  @override
+  String worldConvEntityUnrepresentable(
+    String target,
+    String entity,
+    String minimum,
+  ) {
+    return '$target no puede representar $entity. Elige $minimum o una versión posterior, o excluye las entidades.';
+  }
+
+  @override
+  String get worldConvInvalidEntityPosition =>
+      'Posición de entidad no válida en la auditoría del mundo.';
+
+  @override
+  String get worldConvWrongTargetVersion =>
+      'El mundo guardado tiene la versión de destino incorrecta.';
+
+  @override
+  String get worldConvAdditionalPlayers =>
+      'Los jugadores adicionales necesitan asignaciones de Java UUID / Bedrock XUID. La conversión de jugadores solo admite mundos de un jugador.';
+
+  @override
+  String get worldConvLocalPlayerMissing =>
+      'No se transfirió el jugador local.';
+
+  @override
+  String get worldConvPlayersRemain =>
+      'Los registros de jugadores excluidos siguen en la salida.';
+
+  @override
+  String get worldConvEntitiesRemain =>
+      'Las entidades excluidas siguen en la salida.';
+
+  @override
+  String worldConvEntityVerificationFailed(String detail) {
+    return 'La transferencia de entidades falló la verificación: $detail. El mundo convertido no se guardó. Tu origen no ha cambiado.';
+  }
+
+  @override
+  String get worldConvUnsupportedPlatform =>
+      'La conversión de mundos requiere Windows o Linux.';
+
+  @override
+  String get worldConvEngineMissing =>
+      'Falta el motor de conversión de mundos en esta compilación. Instala una versión de escritorio que incluya el convertidor de mundos.';
+
+  @override
+  String worldConvEngineStopped(String code) {
+    return 'El motor de conversión de mundos se detuvo inesperadamente (código de salida $code). El mundo original no ha cambiado.';
+  }
+
+  @override
+  String get worldConvMissingAudit => 'Falta la auditoría del mundo guardado.';
+
+  @override
+  String get worldConvVersionEngineMissing =>
+      'Falta el motor de versiones de Minecraft en esta compilación. Instala una versión de escritorio que incluya ambos motores de conversión de mundos.';
+
+  @override
+  String worldConvVersionConversionFailed(String detail) {
+    return 'Error en la conversión de versión: $detail';
+  }
+
+  @override
+  String worldConvExitCodeDetail(String code) {
+    return 'código de salida $code';
+  }
+
+  @override
+  String get worldConvLinkedFiles =>
+      'Los archivos de mundo vinculados no son compatibles.';
+
+  @override
+  String get worldConvProgressCopy =>
+      'Abriendo una copia temporal del mundo de origen…';
+
+  @override
+  String get worldConvProgressChecking => 'Comprobando entidades y jugadores…';
+
+  @override
+  String get worldConvChooseOtherEdition =>
+      'Elige la otra edición de Minecraft.';
+
+  @override
+  String get worldConvProgressConverting =>
+      'Convirtiendo terreno, contenedores y registros seleccionados…';
+
+  @override
+  String worldConvProgressTerrain(String target) {
+    return 'Convirtiendo el terreno a $target…';
+  }
+
+  @override
+  String get worldConvProgressVerifying =>
+      'Verificando las entidades del mundo guardado…';
+
+  @override
+  String worldConvProgressAdapting(String target) {
+    return 'Adaptando los registros seleccionados a $target…';
+  }
+
+  @override
+  String get worldConvOutputInsideSource =>
+      'Elige una carpeta de salida fuera de tu mundo de origen.';
+
+  @override
+  String get worldConvOutputExists =>
+      'La ruta de salida ya existe. Elige un nombre nuevo.';
+
+  @override
+  String get worldConvJavaTooOldForRecords =>
+      'Las versiones de Java anteriores a la 1.13 no pueden guardar de forma segura los registros de entidades y jugadores. Elige Java 1.13 o una posterior, o desactiva «Convertir entidades» y «Convertir jugadores». El mundo original no ha cambiado.';
+
+  @override
+  String get worldConvBedrockTooOldForRecords =>
+      'Las versiones de Bedrock anteriores a la 1.18.30 requieren un almacenamiento antiguo de entidades y jugadores que este convertidor no puede escribir de forma segura. Elige un destino más reciente o excluye esos registros. El mundo original no ha cambiado.';
+
+  @override
+  String get worldConvOlderJavaCannotRead =>
+      'Este destino Java más antiguo no puede leer de forma segura los esquemas de entidades y jugadores más recientes seleccionados. Elige una versión de Java más reciente o excluye esos registros. El mundo original no ha cambiado.';
+
+  @override
+  String get worldConvUnsupportedTarget => 'Versión de destino no compatible.';
+
+  @override
+  String get worldConvChooseWorldSource =>
+      'Elige una carpeta de mundo o un archivo .mcworld / .zip exportado.';
+
+  @override
+  String get worldConvMissingLevelDat =>
+      'Al mundo seleccionado le falta level.dat.';
+
+  @override
+  String get worldConvNoJavaStats =>
+      'No había estadísticas del mundo de Java. Las estadísticas de cuenta de Bedrock no se guardan en el mundo.';
+
+  @override
+  String get worldConvJavaStatsRestored =>
+      'Estadísticas de Java restauradas desde el archivo.';
+
+  @override
+  String get worldConvJavaStatsArchived =>
+      'Estadísticas de Java archivadas para una futura conversión a Java. Bedrock no puede mostrarlas.';
+
+  @override
+  String get worldConvArchiveUnsafePath =>
+      'El archivo del mundo contiene una ruta de archivo no segura.';
+
+  @override
+  String get worldConvArchiveDuplicatePath =>
+      'El archivo del mundo contiene rutas de archivo duplicadas.';
+
+  @override
+  String get worldConvArchiveLinkedFiles =>
+      'Los archivos vinculados en los archivos de mundos no son compatibles.';
+
+  @override
+  String get worldConvArchiveNeedsOneLevel =>
+      'El archivo debe contener exactamente un mundo con level.dat.';
+
+  @override
+  String worldConvArchiveTruncated(String path) {
+    return 'El archivo del mundo contiene un archivo truncado: $path';
+  }
+
+  @override
+  String worldConvArchiveDamaged(String path) {
+    return 'El archivo del mundo contiene un archivo dañado: $path';
+  }
+
+  @override
+  String get homeGithubUnavailable => 'GitHub no está disponible.';
+
+  @override
+  String get homeGithubConnectHint =>
+      'Conecta GitHub para ver tu actividad y tus repositorios privados. Tu token permanece en este dispositivo.';
+
+  @override
+  String get homeGithubConnect => 'Conectar GitHub';
+
+  @override
+  String get homeGithubRefresh => 'Actualizar GitHub';
+
+  @override
+  String get homeGithubRecentIssues => 'Incidencias recientes';
+
+  @override
+  String homeGithubContributions(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count contribuciones',
+      one: '1 contribución',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeGithubNoIssues =>
+      'No hay incidencias recientes en la instantánea de la cuenta conectada.';
+
+  @override
+  String get homeGithubOpenFailed => 'No se pudo abrir GitHub.';
+
+  @override
+  String get homeGithubNoHistory =>
+      'El historial de contribuciones aún no está disponible.';
+
+  @override
+  String homeGithubCommitsAndPrs(int commits, int prs) {
+    String _temp0 = intl.Intl.pluralLogic(
+      commits,
+      locale: localeName,
+      other: '$commits commits',
+      one: '1 commit',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      prs,
+      locale: localeName,
+      other: '$prs solicitudes de extracción',
+      one: '1 solicitud de extracción',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
+  String get homeGithubPastYear =>
+      'Último año · incluye la actividad privada que permite tu token';
+
+  @override
+  String get homeStocksFinanceUnavailable => 'Finanzas no está disponible.';
+
+  @override
+  String get homeStocksLoadFailed => 'No se pudieron cargar tus posiciones.';
+
+  @override
+  String get homeStocksAddHoldings =>
+      'Añade posiciones en Finanzas o elige un ticker en los ajustes de esta tarjeta.';
+
+  @override
+  String get homeStocksRefreshPrices => 'Actualizar precios';
+
+  @override
+  String get homeStocksHistoryUnavailable =>
+      'Historial de precios no disponible. Prueba a actualizar.';
+
+  @override
+  String get homeAiUsageUnavailable => 'El uso de IA no está disponible.';
+
+  @override
+  String get homeAiUsageNewTokens => 'tokens nuevos · últimos 7 días';
+
+  @override
+  String homeAiUsageTurns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count turnos',
+      one: '1 turno',
+    );
+    return '$_temp0 en herramientas de IA locales';
+  }
+
+  @override
+  String get homeAiUsageReadFailed =>
+      'No se pudieron leer los registros de uso.';
+
+  @override
+  String get homeAiUsageScanHint =>
+      'Escanea este dispositivo para importar los registros de sesión de IA compatibles.';
+
+  @override
+  String get homeAiUsageScanFailed => 'Error al escanear. Inténtalo de nuevo.';
+
+  @override
+  String get homeAiUsageScanning => 'Escaneando…';
+
+  @override
+  String get homeAiUsageScan => 'Escanear uso';
+
+  @override
+  String get homeAiUsageLocalNote =>
+      'Registros de sesión locales; excluye las repeticiones de entrada en caché.';
+
+  @override
+  String get homeLayoutDifferentFormat =>
+      'Esta disposición de inicio pertenece a un formato de dispositivo diferente.';
+
+  @override
+  String get homeTileInvalid => 'Mosaico de inicio no válido.';
+
+  @override
+  String get homeTileDuplicate => 'Mosaico de inicio duplicado.';
+
+  @override
+  String get homeLayoutInvalid => 'Disposición de inicio no válida.';
+
+  @override
+  String homeLayoutLoadFailed(String error) {
+    return 'No se pudo cargar tu disposición guardada. $error';
+  }
+
+  @override
+  String get homeConnectFinancesSummary =>
+      'Conecta tus finanzas para ver este resumen.';
+
+  @override
+  String get homeCouldNotLoadInvestments =>
+      'No se pudieron cargar las inversiones.';
+
+  @override
+  String get homeCouldNotLoadFinances => 'No se pudieron cargar las finanzas.';
+
+  @override
+  String get homeShortcutPasswords => 'Contraseñas';
+
+  @override
+  String get homeShortcutAssistantSubtitle =>
+      'Charla y pregunta lo que quieras';
+
+  @override
+  String get homeShortcutFinanceSubtitle => 'Tu dinero, botes y acciones';
+
+  @override
+  String get homeShortcutConverterSubtitle => 'Transforma imágenes y archivos';
+
+  @override
+  String get homeShortcutSettingsSubtitle => 'Colores, tema y más';
+
+  @override
+  String get homeShortcutNotesSubtitle => 'Tus ideas, siempre a mano';
+
+  @override
+  String get homeShortcutPasswordsSubtitle => 'Mantén tus secretos a salvo';
+
+  @override
+  String get homeShortcutPluginsSubtitle =>
+      'Descubre tu próximo pequeño ayudante';
+
+  @override
+  String get homeNothingRecentYet =>
+      'Aún no hay nada. Tu próximo capítulo empieza con tu primera transacción.';
+
+  @override
+  String get homeRecentTransactionsEmpty =>
+      'Tus transacciones recientes aparecerán aquí.';
+
+  @override
+  String get homeCouldNotLoadRecentActivity =>
+      'No se pudo cargar la actividad reciente.';
+
+  @override
+  String get homeActivityIncome => 'Ingreso';
+
+  @override
+  String get homeActivityExpense => 'Gasto';
+
+  @override
+  String get homeResizeTileSemantics =>
+      'Cambiar tamaño del mosaico. Usa el menú del mosaico para un tamaño exacto.';
+
+  @override
+  String get homeEmptyGridTitle => 'Un espacio para tu día a día';
+
+  @override
+  String get homeEmptyGridBody =>
+      'Añade notas, accesos directos, gráficos y pequeños ayudantes.';
+
+  @override
+  String get homeAddFirstTile => 'Añade tu primer mosaico';
+
+  @override
+  String get homeSectionRecent => 'Lo que has hecho';
+
+  @override
+  String homeEditTileTooltip(String title) {
+    return 'Editar $title';
+  }
+
+  @override
+  String get homeTileConfigure => 'Configurar';
+
+  @override
+  String get homeTilePositionSize => 'Posición y tamaño';
+
+  @override
+  String get homeTileRemove => 'Quitar mosaico';
+
+  @override
+  String get homePositionColumn => 'Columna';
+
+  @override
+  String get homePositionRow => 'Fila';
+
+  @override
+  String get homePositionWidth => 'Ancho en columnas';
+
+  @override
+  String get homePositionHeight => 'Alto en filas';
+
+  @override
+  String get homePositionHint =>
+      'Las posiciones empiezan en 1. Los mosaicos se ajustan a la cuadrícula y se reacomodan solos.';
+
+  @override
+  String get homeChooseShortcut => 'Elige un acceso directo';
+
+  @override
+  String get homeChooseNote => 'Elige una nota';
+
+  @override
+  String get homeUntitledNote => 'Nota sin título';
+
+  @override
+  String get homeCreateNoteFirst => 'Crea primero una nota en Notas.';
+
+  @override
+  String get homeChoosePlugin => 'Elige un complemento';
+
+  @override
+  String get homeInstallPluginFirst =>
+      'Instala primero un complemento del mercado.';
+
+  @override
+  String get homeChooseInstance => 'Elige una instancia';
+
+  @override
+  String get homeCreateInstanceFirst =>
+      'Crea primero una instancia en Lanzador de Minecraft.';
+
+  @override
+  String get homeStockSymbolInput =>
+      'Símbolo bursátil (vacío para todas las posiciones)';
+
+  @override
+  String get homeTimerMinutesInput => 'Minutos del temporizador (1–1440)';
+
+  @override
+  String get homeRepositoryInput =>
+      'Repositorio: propietario/nombre (vacío para todos)';
+
+  @override
+  String get homeQuickConvertFiles => 'Convertir archivos';
+
+  @override
+  String get homeQuickFinances => 'Finanzas';
+
+  @override
+  String get homeTileUnavailable =>
+      'Este mosaico no está disponible en esta versión.';
+
+  @override
+  String get homeCouldNotLoadPlugins =>
+      'No se pudieron cargar los complementos instalados.';
+
+  @override
+  String homeInstallPluginToUse(String name) {
+    return 'Instala $name para usar este mosaico.';
+  }
+
+  @override
+  String get homeNoteTileEmpty =>
+      'Elige una nota en los ajustes de este mosaico. Las notas deben sincronizarse por separado para aparecer en otro dispositivo.';
+
+  @override
+  String get homeChoosePluginInSettings =>
+      'Elige un complemento instalado en los ajustes del mosaico.';
+
+  @override
+  String get homeCouldNotLoadErrands => 'No se pudieron cargar los recados.';
+
+  @override
+  String get homeErrandsEmpty =>
+      'Añade tus tareas recurrentes en el complemento Recados.';
+
+  @override
+  String get homeErrandDueToday => 'Vence hoy';
+
+  @override
+  String homeErrandUpdateFailed(String error) {
+    return 'No se pudo actualizar el recado: $error';
+  }
+
+  @override
+  String get homeMinecraftAddAccount =>
+      'Añade primero una cuenta en Lanzador de Minecraft.';
+
+  @override
+  String homeLaunchFailed(String error) {
+    return 'Error al iniciar: $error';
+  }
+
+  @override
+  String get homeMinecraftPreparing => 'Preparando…';
+
+  @override
+  String get homeMinecraftRunning => 'En marcha';
+
+  @override
+  String get homeMinecraftPlayNow => 'Jugar ahora';
+
+  @override
+  String get homeChooseInstanceInSettings =>
+      'Elige una instancia disponible en este dispositivo en los ajustes del mosaico.';
+
+  @override
+  String get homeCalcHint => 'p. ej. (42 + 8) / 2';
+
+  @override
+  String get homeTimeIsUp => 'Se acabó el tiempo. Tómate un respiro.';
+
+  @override
+  String get homeTimerHint => 'Un pequeño espacio para concentrarte.';
+
+  @override
+  String get homeAvailableBalance => 'SALDO DISPONIBLE';
+
+  @override
+  String homeInPotsAmount(String amount) {
+    return 'En alcancías  $amount';
+  }
+
+  @override
+  String homeTotalCashAmount(String amount) {
+    return 'Efectivo total  $amount';
+  }
+
+  @override
+  String get notesNewNoteTooltip => 'Nueva nota';
+
+  @override
+  String get notesNewNoteButton => '+ Nueva nota';
+
+  @override
+  String get notesNoNotesYet => 'Aún no hay notas';
+
+  @override
+  String get notesBackTooltip => 'Volver a las notas';
+
+  @override
+  String get notesAddChecklistTooltip => 'Añadir elemento a la lista';
+
+  @override
+  String get notesJotHint => 'Escribe algo…';
+
+  @override
+  String get notesTapEditToAdd => 'Toca Editar para añadir contenido.';
+
+  @override
+  String get notesNoneSelected => 'Ninguna nota seleccionada';
+
+  @override
+  String get notesCreateToStart => 'Crea una nota nueva para empezar.';
+
+  @override
+  String get passwordsUnreadableCredential => 'Credencial ilegible';
+
+  @override
+  String get passwordsErrorEnterService => 'Introduce el nombre del servicio.';
+
+  @override
+  String get passwordsErrorEnterEmail => 'Introduce el correo electrónico.';
+
+  @override
+  String get passwordsErrorEnterPassword => 'Introduce la contraseña.';
+
+  @override
+  String get passwordsErrorInvalidTotp =>
+      'Eso no parece un secreto 2FA válido (debe estar en base32, p. ej. JBSWY3DPEHPK3PXP).';
+
+  @override
+  String passwordsErrorPickImage(String error) {
+    return 'No se pudo elegir la imagen: $error';
+  }
+
+  @override
+  String get passwordsWeakTitle => 'Contraseña débil';
+
+  @override
+  String get passwordsWeakBody =>
+      'Esta contraseña está en una lista de contraseñas muy comunes o filtradas anteriormente. Cualquiera con esa lista podría adivinarla. Usa el botón de generar para una segura, o guárdala de todos modos.';
+
+  @override
+  String get passwordsSaveAnyway => 'Guardar de todos modos';
+
+  @override
+  String get passwordsUploadPng => 'Subir PNG';
+
+  @override
+  String get passwordsGenerateTooltip => 'Generar contraseña aleatoria';
+
+  @override
+  String get passwordsShow => 'Mostrar';
+
+  @override
+  String get passwordsHide => 'Ocultar';
+
+  @override
+  String get passwordsReveal => 'Revelar';
+
+  @override
+  String get passwordsNewCredential => 'Nueva credencial';
+
+  @override
+  String get passwordsEditCredential => 'Editar credencial';
+
+  @override
+  String get passwordsFieldService => 'Servicio *';
+
+  @override
+  String get passwordsFieldIconOptional => 'Icono (opcional)';
+
+  @override
+  String get passwordsFieldEmail => 'Correo electrónico *';
+
+  @override
+  String get passwordsFieldPassword => 'Contraseña *';
+
+  @override
+  String get passwordsFieldUsername => 'Nombre de usuario (opcional)';
+
+  @override
+  String get passwordsFieldPhone => 'Número de teléfono (opcional)';
+
+  @override
+  String get passwordsFieldInfo => 'Información (opcional)';
+
+  @override
+  String get passwordsFieldTotp => 'Secreto 2FA (opcional)';
+
+  @override
+  String get passwordsHintService => 'p. ej. Netflix';
+
+  @override
+  String get passwordsHintIcon => 'p. ej. 🍿';
+
+  @override
+  String get passwordsHintUsername => 'p. ej. ayden31';
+
+  @override
+  String get passwordsHintPhone => 'p. ej. +34 612 34 56 78';
+
+  @override
+  String get passwordsHintInfo =>
+      'Pregunta de seguridad, códigos de recuperación, notas…';
+
+  @override
+  String get passwordsHintTotp =>
+      'Clave base32 de la configuración \"manual\" (si el QR no funciona)';
+
+  @override
+  String get passwordsSaveChanges => 'Guardar cambios';
+
+  @override
+  String get passwordsAddCredential => 'Añadir credencial';
+
+  @override
+  String get passwordsSearchHint =>
+      'Buscar por servicio, correo o nombre de usuario';
+
+  @override
+  String get passwordsEmptyTitle => 'Aún no hay contraseñas guardadas';
+
+  @override
+  String get passwordsEmptySubtitle =>
+      'Las contraseñas y los secretos 2FA se cifran en este dispositivo.';
+
+  @override
+  String get passwordsNoMatches => 'Sin coincidencias';
+
+  @override
+  String passwordsNoMatchesSubtitle(String query) {
+    return 'Ningún acceso se parece a \"$query\".';
+  }
+
+  @override
+  String get passwordsTotpCode => 'Código 2FA';
+
+  @override
+  String passwordsCopiedToast(String label) {
+    return '$label copiado';
+  }
+
+  @override
+  String get passwordsEnterPinToUnlock => 'Introduce el PIN para desbloquear';
+
+  @override
+  String get passwordsIncorrectPin => 'PIN incorrecto';
+
+  @override
+  String get passwordsDeleteTitle => '¿Eliminar credencial?';
+
+  @override
+  String passwordsDeleteBody(String service) {
+    return 'Se eliminará de forma permanente la credencial guardada de \"$service\".';
+  }
+
+  @override
+  String get passwordsCopyPassword => 'Copiar contraseña';
+
+  @override
+  String get passwordsCopyEmail => 'Copiar correo';
+
+  @override
+  String get passwordsCopyUsername => 'Copiar nombre de usuario';
+
+  @override
+  String get passwordsCopyTotp => 'Copiar código 2FA';
+
+  @override
+  String get passwordsDecryptFailed =>
+      '⚠ No se pudo descifrar: datos dañados o archivo de clave modificado';
+
+  @override
+  String get passwordsInvalidSecret => 'Secreto no válido';
+
+  @override
+  String get passwordsPhone => 'Teléfono';
+
+  @override
+  String get passwordsInfo => 'Información';
+
+  @override
+  String get passwordsBreachedWarning =>
+      'Esta contraseña apareció en una filtración conocida; cámbiala donde la uses.';
+
+  @override
+  String get nativeWebviewNoHost =>
+      'Esta versión no tiene un host de webview nativo.';
+
+  @override
+  String get accountOverviewPasteTokenFirst =>
+      'Pega primero un token de acceso personal.';
+
+  @override
+  String get accountOverviewStageIdle => 'Inactivo';
+
+  @override
+  String get accountOverviewStageProfile => 'Leyendo tu perfil';
+
+  @override
+  String get accountOverviewStageRepos => 'Listando repositorios';
+
+  @override
+  String get accountOverviewStageContributions => 'Contando contribuciones';
+
+  @override
+  String get accountOverviewStageDownloads =>
+      'Sumando las descargas de versiones';
+
+  @override
+  String get accountOverviewStageIssues =>
+      'Recopilando incidencias y pull requests';
+
+  @override
+  String get accountOverviewStageActions =>
+      'Obteniendo ejecuciones de flujos de trabajo';
+
+  @override
+  String get accountOverviewStageBilling => 'Leyendo el uso y las cuotas';
+
+  @override
+  String accountOverviewWarnContributions(String error) {
+    return 'Gráfico de contribuciones no disponible: $error';
+  }
+
+  @override
+  String accountOverviewWarnDownloads(String error) {
+    return 'Descargas de versiones no disponibles: $error';
+  }
+
+  @override
+  String accountOverviewWarnIssues(String error) {
+    return 'Incidencias y pull requests no disponibles: $error';
+  }
+
+  @override
+  String accountOverviewWarnWorkflowRuns(String error) {
+    return 'Ejecuciones de flujos de trabajo no disponibles: $error';
+  }
+
+  @override
+  String accountOverviewWarnBilling(String error) {
+    return 'Uso y cuotas no disponibles: $error';
+  }
+
+  @override
+  String get accountOverviewSectionRepositories => 'Repositorios';
+
+  @override
+  String get accountOverviewSectionIssues => 'Incidencias y PR';
+
+  @override
+  String get accountOverviewSectionActions => 'Acciones';
+
+  @override
+  String get accountOverviewSectionUsage => 'Uso';
+
+  @override
+  String get accountOverviewSectionMcContent => 'Contenido de MC';
+
+  @override
+  String get accountOverviewSectionVideos => 'Videos';
+
+  @override
+  String get accountOverviewSectionAnalytics => 'Analíticas';
+
+  @override
+  String get accountOverviewSectionStats => 'Estadísticas';
+
+  @override
+  String get accountOverviewBlurbOverview => 'Commits, estrellas, actividad';
+
+  @override
+  String get accountOverviewBlurbRepositories => 'Cada repositorio que posees';
+
+  @override
+  String get accountOverviewBlurbIssues => 'Lo que tienes pendiente';
+
+  @override
+  String get accountOverviewBlurbActions => 'Ejecuciones de flujos y estado';
+
+  @override
+  String get accountOverviewBlurbUsage => 'Copilot, almacenamiento, cómputo';
+
+  @override
+  String get accountOverviewBlurbYoutubeOverview =>
+      'Suscriptores, vistas, videos';
+
+  @override
+  String get accountOverviewBlurbYoutubeVideos => 'Cada subida reciente';
+
+  @override
+  String get accountOverviewBlurbYoutubeAnalytics =>
+      'Tiempo de visualización, tráfico, suscriptores';
+
+  @override
+  String get accountOverviewBlurbSpotifyStats =>
+      'Música top, reproducciones recientes, biblioteca';
+
+  @override
+  String get accountOverviewConnected => 'Conectado';
+
+  @override
+  String get accountOverviewNotSetUp => 'Sin configurar';
+
+  @override
+  String accountOverviewServiceTooltip(String service, String status) {
+    return '$service — $status';
+  }
+
+  @override
+  String accountOverviewSectionListLabel(String service) {
+    return 'Lista de secciones de $service';
+  }
+
+  @override
+  String accountOverviewSectionTooltip(String label, String blurb) {
+    return '$label — $blurb';
+  }
+
+  @override
+  String get accountOverviewMoreServicesComing => 'Más servicios próximamente';
+
+  @override
+  String get accountOverviewExpandSidebar => 'Expandir la barra lateral';
+
+  @override
+  String get accountOverviewCollapseSidebar => 'Contraer la barra lateral';
+
+  @override
+  String get accountOverviewCollapse => 'Contraer';
+
+  @override
+  String get accountOverviewRefreshing => 'Actualizando…';
+
+  @override
+  String accountOverviewStageInProgress(String stage) {
+    return '$stage…';
+  }
+
+  @override
+  String accountOverviewStepOf(int step, int total) {
+    return 'Paso $step de $total';
+  }
+
+  @override
+  String get accountOverviewAccountSettings => 'Ajustes de la cuenta';
+
+  @override
+  String get accountOverviewConnectGithubTitle => 'Conecta tu cuenta de GitHub';
+
+  @override
+  String get accountOverviewConnectGithubSubtitle =>
+      'Consulta tus commits, estrellas, descargas, repositorios, incidencias y ejecuciones de flujos en un solo lugar, además de tus cuotas de Copilot, almacenamiento y cómputo.';
+
+  @override
+  String get accountOverviewConnectGithubButton => 'Conectar GitHub';
+
+  @override
+  String get accountOverviewGithubPrivacy =>
+      'luma guarda tu token de acceso personal cifrado en este dispositivo y se comunica directamente con api.github.com. Nada de tu cuenta de GitHub se envía a un servidor de luma, y no necesitas ninguna cuenta para usar este complemento.';
+
+  @override
+  String get accountOverviewConnectYoutubeTitle =>
+      'Conecta tu canal de YouTube';
+
+  @override
+  String get accountOverviewConnectYoutubeSubtitle =>
+      'Consulta tus suscriptores, vistas, subidas recientes y analíticas detalladas (tiempo de visualización, fuentes de tráfico y tendencias de suscriptores) en un solo lugar.';
+
+  @override
+  String get accountOverviewConnectYoutubeButton => 'Conectar YouTube';
+
+  @override
+  String get accountOverviewYoutubePrivacy =>
+      'luma guarda tus credenciales OAuth de Google cifradas en este dispositivo y se comunica directamente con Google. Nada de tu cuenta se envía a un servidor de luma, y no necesitas una cuenta de luma para usar este complemento.';
+
+  @override
+  String get accountOverviewGithubRateLimited =>
+      'Se alcanzó el límite de solicitudes de GitHub. Vuelve a intentarlo en breve.';
+
+  @override
+  String accountOverviewGithubRateLimitResets(String time) {
+    return 'Se alcanzó el límite de GitHub. Se restablece a las $time.';
+  }
+
+  @override
+  String get accountOverviewGithubTokenRejected =>
+      'GitHub rechazó el token. Puede que haya caducado o se haya revocado.';
+
+  @override
+  String accountOverviewGithubRefused(String path) {
+    return 'GitHub rechazó $path. Es probable que al token le falte un permiso.';
+  }
+
+  @override
+  String accountOverviewGithubHttpError(String code, String path) {
+    return 'GitHub devolvió HTTP $code para $path.';
+  }
+
+  @override
+  String get accountOverviewGithubUnexpectedProfile =>
+      'GitHub devolvió un perfil con un formato inesperado.';
+
+  @override
+  String get accountOverviewGithubUnexpectedGraphql =>
+      'GitHub devolvió una respuesta GraphQL inesperada.';
+
+  @override
+  String get accountOverviewGithubContributionsFailed =>
+      'GitHub no pudo leer tu gráfico de contribuciones.';
+
+  @override
+  String get accountOverviewBillingItemActionsMinutes => 'minutos de Actions';
+
+  @override
+  String get accountOverviewBillingItemSharedStorage =>
+      'almacenamiento compartido';
+
+  @override
+  String get accountOverviewBillingItemCopilot => 'uso de Copilot';
+
+  @override
+  String get accountOverviewGithubBillingNoAccess =>
+      'Este token no puede leer la facturación. Un token clásico necesita el permiso \"user\"; un token de grano fino necesita el permiso \"Plan\" (solo lectura).';
+
+  @override
+  String accountOverviewGithubBillingMissing(String items) {
+    return 'GitHub no devolvió $items para esta cuenta.';
+  }
+
+  @override
+  String get accountOverviewGithubWorkflowDefault => 'Flujo de trabajo';
+
+  @override
+  String get accountOverviewCopilotUnitDefault => 'solicitudes';
+
+  @override
+  String get accountOverviewModrinthNoUser =>
+      'Modrinth no tiene ningún usuario con ese nombre.';
+
+  @override
+  String get accountOverviewModrinthTokenRejected =>
+      'Modrinth rechazó el token. Comprueba que tenga el permiso de analíticas.';
+
+  @override
+  String get accountOverviewModrinthRateLimited =>
+      'Se alcanzó el límite de solicitudes de Modrinth. Vuelve a intentarlo en breve.';
+
+  @override
+  String accountOverviewModrinthHttpError(String code) {
+    return 'Modrinth devolvió HTTP $code.';
+  }
+
+  @override
+  String get accountOverviewModrinthUnexpectedPayload =>
+      'Modrinth devolvió datos de usuario inesperados.';
+
+  @override
+  String get accountOverviewCurseforgeKeyRejected =>
+      'CurseForge rechazó la clave de API. Genera una en la consola de CurseForge for Studios.';
+
+  @override
+  String accountOverviewCurseforgeHttpError(String code) {
+    return 'CurseForge devolvió HTTP $code.';
+  }
+
+  @override
+  String get accountOverviewCurseforgeNeedKey =>
+      'Añade primero tu clave de API de CurseForge.';
+
+  @override
+  String get accountOverviewCurseforgeBadSlug =>
+      'Eso no parece una URL o un slug de proyecto de CurseForge.';
+
+  @override
+  String accountOverviewCurseforgeNoProject(String slug) {
+    return 'CurseForge no tiene ningún proyecto llamado \"$slug\".';
+  }
+
+  @override
+  String get accountOverviewCurseforgeNeedAuthor =>
+      'Añade tu id de autor de CurseForge o sigue los proyectos por separado.';
+
+  @override
+  String get accountOverviewCurseforgeNeedKeyToInclude =>
+      'Añade una clave de API de CurseForge para incluirlo.';
+
+  @override
+  String get accountOverviewModrinthNeedUsername =>
+      'Añade tu nombre de usuario de Modrinth para incluirlo.';
+
+  @override
+  String get accountOverviewPmcNeedUsername =>
+      'Añade tu nombre de usuario de Planet Minecraft para incluirlo.';
+
+  @override
+  String get accountOverviewPmcNeedsBrowser =>
+      'Planet Minecraft necesita un navegador integrado, que no está disponible en esta plataforma.';
+
+  @override
+  String get accountOverviewCurseforgeTrackedProjects => 'proyectos seguidos';
+
+  @override
+  String get accountOverviewSpotifyUnknownArtist => 'Artista desconocido';
+
+  @override
+  String get accountOverviewSpotifyUnknownTrack => 'Canción desconocida';
+
+  @override
+  String accountOverviewSpotifyHttpError(String code) {
+    return 'Spotify devolvió HTTP $code.';
+  }
+
+  @override
+  String get accountOverviewSpotifyOAuthTimedOut =>
+      'Se agotó el tiempo de espera de Spotify. Intenta conectarte de nuevo.';
+
+  @override
+  String get accountOverviewSpotifyConnectedPage =>
+      'Spotify conectado. Vuelve a luma.';
+
+  @override
+  String get accountOverviewSpotifyFailedPage =>
+      'La conexión con Spotify falló. Vuelve a luma.';
+
+  @override
+  String accountOverviewSpotifyDeclined(String error) {
+    return 'Spotify rechazó la solicitud: $error';
+  }
+
+  @override
+  String get accountOverviewSpotifyInvalidResponse =>
+      'La respuesta de inicio de sesión de Spotify no es válida.';
+
+  @override
+  String get accountOverviewSpotifyNoAccessToken =>
+      'Spotify no devolvió un token de acceso.';
+
+  @override
+  String get accountOverviewSpotifyCouldNotOpenPage =>
+      'No se pudo abrir la página de inicio de sesión de Spotify.';
+
+  @override
+  String accountOverviewSpotifyReadSavedFailed(String error) {
+    return 'No se pudo leer la conexión de Spotify guardada: $error';
+  }
+
+  @override
+  String get accountOverviewSpotifyEnterClientId =>
+      'Introduce tu ID de cliente de Spotify.';
+
+  @override
+  String get accountOverviewSpotifyNoRefreshToken =>
+      'Spotify no devolvió un token de actualización.';
+
+  @override
+  String get accountOverviewSpotifyAccountDefault => 'Cuenta de Spotify';
+
+  @override
+  String get accountOverviewSpotifyNotConnected => 'Spotify no está conectado.';
+
+  @override
+  String get accountOverviewSpotifyConnectionChanged =>
+      'La conexión de Spotify cambió durante la actualización.';
+
+  @override
+  String get accountOverviewSpotifyPaginationStalled =>
+      'La paginación de reproducciones recientes no avanzó.';
+
+  @override
+  String get accountOverviewSpotifyHistoryGap =>
+      'El historial de Spotify no llega a la última reproducción contada. Puede que falten algunas reproducciones.';
+
+  @override
+  String accountOverviewSpotifyWarningListeningTotal(String error) {
+    return 'Total de escucha: $error';
+  }
+
+  @override
+  String accountOverviewSpotifyWarningRecentPlays(String error) {
+    return 'Reproducciones recientes: $error';
+  }
+
+  @override
+  String accountOverviewSpotifyWarningLabeled(String label, String error) {
+    return '$label: $error';
+  }
+
+  @override
+  String get accountOverviewSpotifyTopArtists => 'Artistas más escuchados';
+
+  @override
+  String get accountOverviewSpotifyTopTracks => 'Canciones más escuchadas';
+
+  @override
+  String get accountOverviewSpotifySavedTracks => 'Canciones guardadas';
+
+  @override
+  String get accountOverviewSpotifyPlaylists => 'Listas de reproducción';
+
+  @override
+  String accountOverviewSpotifyRefreshFailed(String error) {
+    return 'No se pudo actualizar Spotify: $error';
+  }
+
+  @override
+  String get accountOverviewKindSubmission => 'envío';
+
+  @override
+  String get accountOverviewKindMod => 'mod';
+
+  @override
+  String get accountOverviewKindModpack => 'modpack';
+
+  @override
+  String get accountOverviewKindSkin => 'skin';
+
+  @override
+  String get accountOverviewKindProject => 'proyecto';
+
+  @override
+  String get accountOverviewKindResourcePack => 'paquete de recursos';
+
+  @override
+  String get accountOverviewKindDataPack => 'paquete de datos';
+
+  @override
+  String get accountOverviewKindBlog => 'blog';
+
+  @override
+  String get accountOverviewKindServer => 'servidor';
+
+  @override
+  String get accountOverviewKindCollection => 'colección';
+
+  @override
+  String get accountOverviewKindCustomization => 'personalización';
+
+  @override
+  String get accountOverviewKindAddon => 'complemento';
+
+  @override
+  String get accountOverviewKindShader => 'shader';
+
+  @override
+  String get accountOverviewKindWorld => 'mundo';
+
+  @override
+  String get accountOverviewJustNow => 'justo ahora';
+
+  @override
+  String accountOverviewMonthsAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'hace $count meses',
+      one: 'hace 1 mes',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String accountOverviewYearsAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'hace $count años',
+      one: 'hace 1 año',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get accountOverviewTimeUnknown => 'desconocido';
+
+  @override
+  String accountOverviewMinutesValue(String value) {
+    return '$value min';
+  }
+
+  @override
+  String accountOverviewHoursValue(String value) {
+    return '$value h';
+  }
+
+  @override
+  String accountOverviewDurationSeconds(String seconds) {
+    return '$seconds s';
+  }
+
+  @override
+  String accountOverviewDurationMinutesSeconds(String minutes, String seconds) {
+    return '$minutes m $seconds s';
+  }
+
+  @override
+  String accountOverviewDurationHoursMinutes(String hours, String minutes) {
+    return '$hours h $minutes m';
+  }
+
+  @override
+  String get accountOverviewWeekdayMonShort => 'lun';
+
+  @override
+  String get accountOverviewWeekdayWedShort => 'mié';
+
+  @override
+  String get accountOverviewWeekdayFriShort => 'vie';
+
+  @override
+  String get accountOverviewAllowanceUsedUp => 'Cuota agotada';
+
+  @override
+  String get accountOverviewNearAllowance => 'Cerca de tu cuota';
+
+  @override
+  String get accountOverviewNoIncludedAllowance =>
+      'GitHub no informó de una cuota incluida.';
+
+  @override
+  String get accountOverviewSetAllowance => 'Establecer';
+
+  @override
+  String accountOverviewAllowanceIncluded(String unit, String total) {
+    return '$unit de $total $unit incluidos';
+  }
+
+  @override
+  String accountOverviewMeterSemantics(
+    String label,
+    String used,
+    String total,
+    String unit,
+    String percent,
+  ) {
+    return '$label: $used de $total $unit usados, $percent';
+  }
+
+  @override
+  String accountOverviewStatSemantics(String label, String value) {
+    return '$label: $value';
+  }
+
+  @override
+  String accountOverviewStatSemanticsCaption(
+    String label,
+    String value,
+    String caption,
+  ) {
+    return '$label: $value. $caption';
+  }
+
+  @override
+  String get accountOverviewNoContributionData =>
+      'Aún no hay datos de contribuciones.';
+
+  @override
+  String accountOverviewNoContributionsOn(String date) {
+    return 'Sin contribuciones el $date';
+  }
+
+  @override
+  String accountOverviewContributionsOn(int count, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count contribuciones el $date',
+      one: '1 contribución el $date',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get accountOverviewLess => 'Menos';
+
+  @override
+  String get accountOverviewRunFilterAll => 'Todas las ejecuciones';
+
+  @override
+  String get accountOverviewFailed => 'Fallidas';
+
+  @override
+  String get accountOverviewRunFilterInProgress => 'En curso';
+
+  @override
+  String get accountOverviewRunFilterSucceeded => 'Exitosas';
+
+  @override
+  String get accountOverviewNoWorkflowRuns =>
+      'No hay ejecuciones de flujos de trabajo';
+
+  @override
+  String get accountOverviewNoWorkflowRunsSub =>
+      'luma revisa tus doce repositorios enviados más recientemente. Las ejecuciones aparecen aquí cuando alguno tiene historial de CI.';
+
+  @override
+  String get accountOverviewNoRunsMatch => 'Ninguna ejecución coincide';
+
+  @override
+  String accountOverviewNoRunsMatchSub(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Quita el filtro para ver las $count ejecuciones.',
+      one: 'Quita el filtro para ver la 1 ejecución.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get accountOverviewSuccessRate => 'Tasa de éxito';
+
+  @override
+  String get accountOverviewNoCompletedRuns => 'sin ejecuciones completadas';
+
+  @override
+  String get accountOverviewOfRecentCompletedRuns =>
+      'de las ejecuciones completadas recientes';
+
+  @override
+  String get accountOverviewRunsSeen => 'Ejecuciones vistas';
+
+  @override
+  String get accountOverviewMostRecentFirst => 'las más recientes primero';
+
+  @override
+  String accountOverviewRunsInProgress(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count en curso',
+      one: '1 en curso',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get accountOverviewInThisWindow => 'en este periodo';
+
+  @override
+  String get accountOverviewAverageDuration => 'Duración media';
+
+  @override
+  String get accountOverviewPerCompletedRun => 'por ejecución completada';
+
+  @override
+  String get accountOverviewFilterByRepository => 'Filtrar por repositorio';
+
+  @override
+  String get accountOverviewAllRepositories => 'Todos los repositorios';
+
+  @override
+  String get githubConnectTitle => 'Conectar GitHub';
+
+  @override
+  String get githubReconnectTitle => 'Volver a conectar GitHub';
+
+  @override
+  String githubConnectConnectedNotice(String login, String tokenEnd) {
+    return 'Conectado como $login con un token que termina en $tokenEnd. Pegar un token nuevo lo reemplaza.';
+  }
+
+  @override
+  String get githubConnectTokenLabel => 'Token de acceso personal';
+
+  @override
+  String get githubConnectShowToken => 'Mostrar token';
+
+  @override
+  String get githubConnectHideToken => 'Ocultar token';
+
+  @override
+  String get githubConnectTokenPrivacy =>
+      'El token se cifra en este dispositivo y solo se envía a api.github.com. Nunca llega a un servidor de luma.';
+
+  @override
+  String get githubConnectAction => 'Conectar';
+
+  @override
+  String get githubConnectDisconnect => 'Desconectar';
+
+  @override
+  String get githubConnectScopesTitle => 'Permisos que marcar';
+
+  @override
+  String get githubConnectScopeRepo =>
+      'Repositorios privados, sus incidencias y sus ejecuciones de flujos de trabajo';
+
+  @override
+  String get githubConnectScopeReadUser => 'Perfil, seguidores, contribuciones';
+
+  @override
+  String get githubConnectScopeUser =>
+      'Uso, almacenamiento y cuotas de Copilot';
+
+  @override
+  String get githubConnectFineGrainedNote =>
+      'Un token de grano fino necesita los permisos de solo lectura equivalentes más \"Plan\".';
+
+  @override
+  String get githubConnectOpenTokenSettings =>
+      'Abrir la configuración de tokens de GitHub';
+
+  @override
+  String get githubDisconnectTitle => '¿Desconectar GitHub?';
+
+  @override
+  String get githubDisconnectBody =>
+      'El token guardado y todas las cifras en caché se eliminan de este dispositivo. Tu cuenta de GitHub no se modifica.';
+
+  @override
+  String get githubDisconnectKeep => 'Mantener';
+
+  @override
+  String get githubAllowanceTitle => 'Tus cuotas mensuales';
+
+  @override
+  String get githubAllowanceIntro =>
+      'GitHub muestra lo que has usado, pero no siempre lo que incluye tu plan. Rellena las cifras de tu página de facturación para que los medidores muestren una barra; si dejas una en blanco, se muestra el uso sin procesar.';
+
+  @override
+  String get githubAllowanceOpenBilling => 'Abrir facturación de GitHub';
+
+  @override
+  String get githubAllowanceCopilotLabel => 'Cuota de Copilot';
+
+  @override
+  String get githubAllowanceCopilotHelper =>
+      'Créditos de IA o solicitudes premium incluidos al mes';
+
+  @override
+  String get githubAllowanceStorageLabel => 'Cuota de almacenamiento';
+
+  @override
+  String get githubAllowanceStorageHelper =>
+      'Almacenamiento de Packages y Actions incluido, en GB';
+
+  @override
+  String get githubAllowanceMinutesLabel => 'Cuota de cómputo de Actions';
+
+  @override
+  String get githubAllowanceMinutesHelper =>
+      'Minutos de flujo de trabajo incluidos al mes';
+
+  @override
+  String get githubAllowanceHint => 'Déjalo en blanco si no lo sabes';
+
+  @override
+  String get githubOpenIssues => 'Incidencias abiertas';
+
+  @override
+  String get githubOpenPrs => 'PR abiertas';
+
+  @override
+  String get githubMergedPrs => 'PR fusionadas';
+
+  @override
+  String get githubClosedIssues => 'Incidencias cerradas';
+
+  @override
+  String get githubIssuesFilterAll => 'Todo';
+
+  @override
+  String get githubIssuesFilterMerged => 'Fusionados';
+
+  @override
+  String get githubIssuesFilterClosed => 'Cerrados';
+
+  @override
+  String get githubCaptionYouOpened => 'abiertas por ti';
+
+  @override
+  String get githubCaptionAwaitingReview => 'pendientes de revisión';
+
+  @override
+  String get githubCaptionAllTime => 'en total';
+
+  @override
+  String get githubIssuesEmptyTitle => 'Todavía no hay nada que mostrar';
+
+  @override
+  String get githubIssuesEmptySubtitle =>
+      'Las incidencias y pull requests en las que participas aparecen aquí tras actualizar.';
+
+  @override
+  String githubIssuesNothingInFilter(String filter) {
+    return 'Nada en $filter';
+  }
+
+  @override
+  String get githubIssuesPickAnotherFilter =>
+      'Elige otro filtro para ver el resto.';
+
+  @override
+  String get githubStatusMergedPr => 'Pull request fusionada';
+
+  @override
+  String get githubStatusClosedPr => 'Pull request cerrada';
+
+  @override
+  String get githubStatusDraftPr => 'Pull request en borrador';
+
+  @override
+  String get githubStatusOpenPr => 'Pull request abierta';
+
+  @override
+  String get githubStatusOpenIssue => 'Incidencia abierta';
+
+  @override
+  String get githubStatusClosedIssue => 'Incidencia cerrada';
+
+  @override
+  String githubIssueRowMeta(String repo, String number, String when) {
+    return '$repo #$number  ·  actualizado $when';
+  }
+
+  @override
+  String githubIssueCommentsSemantic(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count comentarios',
+      one: '1 comentario',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get githubContributions => 'Contribuciones';
+
+  @override
+  String githubContributionsInLastYear(String count) {
+    return '$count en el último año';
+  }
+
+  @override
+  String get githubContributionsYearActivity => 'La actividad del último año';
+
+  @override
+  String get githubTopRepositories => 'Repositorios principales';
+
+  @override
+  String get githubByStars => 'Por estrellas';
+
+  @override
+  String get githubViewAll => 'Ver todo';
+
+  @override
+  String get githubLanguages => 'Lenguajes';
+
+  @override
+  String get githubByRepoCount => 'Por número de repositorios';
+
+  @override
+  String get githubLatestRuns => 'Últimas ejecuciones de flujos de trabajo';
+
+  @override
+  String get githubNoRepositoriesYet => 'Todavía no hay repositorios.';
+
+  @override
+  String get githubNoLanguagesYet => 'Todavía no se han detectado lenguajes.';
+
+  @override
+  String get githubNoRunsFound =>
+      'No se encontraron ejecuciones de flujos de trabajo en tus repositorios enviados más recientemente.';
+
+  @override
+  String get githubNotRefreshedYet => 'Aún no actualizado';
+
+  @override
+  String githubUpdated(String when) {
+    return 'Actualizado $when';
+  }
+
+  @override
+  String get githubProfile => 'Perfil';
+
+  @override
+  String githubFollowers(String count) {
+    return '$count seguidores';
+  }
+
+  @override
+  String githubFollowing(String count) {
+    return '$count siguiendo';
+  }
+
+  @override
+  String githubCompanySemantic(String name) {
+    return 'Empresa $name';
+  }
+
+  @override
+  String githubLocationSemantic(String name) {
+    return 'Ubicación $name';
+  }
+
+  @override
+  String githubJoined(String date) {
+    return 'Se unió el $date';
+  }
+
+  @override
+  String githubAvatarSemantic(String login) {
+    return 'Avatar de $login';
+  }
+
+  @override
+  String githubCurrentStreakSemantic(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Racha actual de $days días',
+      one: 'Racha actual de 1 día',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String githubLongestStreakSemantic(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Racha más larga de $days días',
+      one: 'Racha más larga de 1 día',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String githubStreakCurrent(String days) {
+    return '$days d de racha';
+  }
+
+  @override
+  String githubStreakBest(String days) {
+    return '$days d máx.';
+  }
+
+  @override
+  String get githubCommits => 'Commits';
+
+  @override
+  String githubPrivateCountPlus(String count) {
+    return '+$count privados';
+  }
+
+  @override
+  String get githubInLastYear => 'en el último año';
+
+  @override
+  String get githubStarsEarned => 'Estrellas obtenidas';
+
+  @override
+  String githubAcrossRepos(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count repositorios',
+      one: '1 repositorio',
+    );
+    return 'en $_temp0';
+  }
+
+  @override
+  String get githubRepositories => 'Repositorios';
+
+  @override
+  String githubPrivateCount(String count) {
+    return '$count privados';
+  }
+
+  @override
+  String get githubDownloads => 'Descargas';
+
+  @override
+  String get githubReleaseAssets => 'archivos de versión';
+
+  @override
+  String githubClosedCount(String count) {
+    return '$count cerrados';
+  }
+
+  @override
+  String githubOpenCount(String count) {
+    return '$count abiertos';
+  }
+
+  @override
+  String get githubForks => 'Forks';
+
+  @override
+  String get githubOfYourRepos => 'de tus repositorios';
+
+  @override
+  String get githubRecent => 'recientes';
+
+  @override
+  String get githubWorkflowRuns => 'Ejecuciones de flujos';
+
+  @override
+  String get githubRunStatusInProgress => 'En curso';
+
+  @override
+  String get githubRunStatusSucceeded => 'Correcto';
+
+  @override
+  String get githubRunStatusFailed => 'Fallido';
+
+  @override
+  String get githubRunStatusCancelled => 'Cancelado';
+
+  @override
+  String get githubRunStatusSkipped => 'Omitido';
+
+  @override
+  String get githubRunStatusUnknown => 'Desconocido';
+
+  @override
+  String get githubRepoSortRecentlyPushed => 'Enviados recientemente';
+
+  @override
+  String get githubRepoSortStars => 'Estrellas';
+
+  @override
+  String get githubRepoFilterSources => 'Originales';
+
+  @override
+  String get githubPrivate => 'Privado';
+
+  @override
+  String get githubPublic => 'Público';
+
+  @override
+  String get githubFork => 'Fork';
+
+  @override
+  String get githubArchived => 'Archivado';
+
+  @override
+  String get githubRepoSearchHint => 'Buscar un repositorio';
+
+  @override
+  String get githubRepoSortTooltip => 'Ordenar repositorios';
+
+  @override
+  String get githubReposEmptyTitle => 'No hay repositorios';
+
+  @override
+  String get githubReposEmptySubtitle =>
+      'Actualiza cuando tu cuenta tenga repositorios, o amplía los permisos del token para incluir los privados.';
+
+  @override
+  String get githubReposNothingMatches => 'Nada coincide con este filtro';
+
+  @override
+  String githubReposNoMatch(String query) {
+    return 'Ningún repositorio coincide con \"$query\"';
+  }
+
+  @override
+  String get githubReposTryDifferent =>
+      'Prueba con otro filtro o una búsqueda más corta.';
+
+  @override
+  String githubReposCountOf(int shown, int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$shown de $total repositorios',
+      one: '$shown de 1 repositorio',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get githubReposStarsInView => 'Estrellas en pantalla';
+
+  @override
+  String get githubReposDownloadsInView => 'Descargas en pantalla';
+
+  @override
+  String get githubReposSizeInView => 'Tamaño en pantalla';
+
+  @override
+  String githubStarsCount(String count) {
+    return '$count estrellas';
+  }
+
+  @override
+  String githubForksCount(String count) {
+    return '$count forks';
+  }
+
+  @override
+  String githubOpenIssuesAndPrsCount(String count) {
+    return '$count incidencias y pull requests abiertos';
+  }
+
+  @override
+  String githubReleaseDownloadsCount(String count) {
+    return '$count descargas de versiones';
+  }
+
+  @override
+  String githubSizeSemantic(String size) {
+    return 'Tamaño $size';
+  }
+
+  @override
+  String get ghUsageBillingUnavailable =>
+      'Los datos de facturación no están disponibles para este token.';
+
+  @override
+  String get ghUsageReconnect => 'Volver a conectar';
+
+  @override
+  String get ghUsageThisPeriod => 'Este periodo de facturación';
+
+  @override
+  String get ghUsageCopilotUsage => 'Uso de Copilot';
+
+  @override
+  String ghUsageCopilotSpend(String amount) {
+    return 'Facturado más allá de la cuota incluida: $amount';
+  }
+
+  @override
+  String get ghUsageNoCopilotSpend =>
+      'Nada facturado más allá de la cuota incluida.';
+
+  @override
+  String get ghUsageStorage => 'Almacenamiento';
+
+  @override
+  String get ghUsageStorageSubtitle =>
+      'Artefactos de Actions, solo repositorios privados';
+
+  @override
+  String get ghUsageSharedStorage => 'Almacenamiento compartido';
+
+  @override
+  String ghUsageStoragePartial(int counted, int total) {
+    return 'Se contaron los $counted repositorios privados con actividad más reciente de los $total que tienes. Los repositorios públicos nunca se miden, así que se excluyen por completo.';
+  }
+
+  @override
+  String get ghUsageStorageSummed =>
+      'Sumado directamente a partir de los artefactos de Actions de cada repositorio privado — GitHub no tiene API para el almacenamiento de Packages, así que no se incluye.';
+
+  @override
+  String get ghUsagePackagesBandwidth => 'Ancho de banda de Packages';
+
+  @override
+  String get ghUsageWorkflowCompute => 'Cómputo de workflows';
+
+  @override
+  String get ghUsageActionsSubtitle => 'Minutos de GitHub Actions';
+
+  @override
+  String get ghUsageActionsMinutes => 'Minutos de Actions';
+
+  @override
+  String get ghUsageUnitMinutes => 'minutos';
+
+  @override
+  String ghUsageMinutesBilled(String minutes) {
+    return '$minutes minutos facturados más allá de la cuota.';
+  }
+
+  @override
+  String get ghUsageAdjustAllowances => 'Ajustar tus cuotas';
+
+  @override
+  String get ghUsageFootnote =>
+      'GitHub informa del consumo, pero no siempre de la cuota que le corresponde. Los medidores sin barra esperan una cifra de tu página de facturación.';
+
+  @override
+  String get ghUsageDaysLeft => 'Días restantes del ciclo';
+
+  @override
+  String get ghUsageUntilReset => 'hasta que se reinicien los medidores';
+
+  @override
+  String get ghUsageBilledThisPeriod => 'Facturado en este periodo';
+
+  @override
+  String get ghUsageBeyondIncluded => 'más allá de las cuotas incluidas';
+
+  @override
+  String get ghUsageUsageLines => 'Líneas de uso';
+
+  @override
+  String get ghUsageProductsWithActivity => 'productos con actividad';
+
+  @override
+  String get ghUsageByRunner => 'Por runner';
+
+  @override
+  String get ghUsageNoBillable =>
+      'No se ha informado de uso facturable en este periodo.';
+
+  @override
+  String get ghUsageConnectForBreakdown =>
+      'Conecta un token que pueda leer la facturación para ver el desglose.';
+
+  @override
+  String get ghUsageBreakdownTitle => 'Desglose de uso';
+
+  @override
+  String get ghUsageBreakdownSubtitle =>
+      'Totales por producto para este periodo de facturación';
+
+  @override
+  String get ghUsageColProduct => 'Producto';
+
+  @override
+  String get ghUsageColQuantity => 'Cantidad';
+
+  @override
+  String get ghUsageColBilled => 'Facturado';
+
+  @override
+  String get mcAll => 'Todo';
+
+  @override
+  String get mcMetricDownloads => 'Descargas';
+
+  @override
+  String get mcMetricFollowers => 'Seguidores';
+
+  @override
+  String get mcMetricViews => 'Visualizaciones';
+
+  @override
+  String mcChartSemantics(
+    String metric,
+    String fromDate,
+    String toDate,
+    String low,
+    String high,
+  ) {
+    return '$metric del $fromDate al $toDate: de $low a $high';
+  }
+
+  @override
+  String mcChartValueWithMetric(String count, String metric) {
+    return '$count $metric';
+  }
+
+  @override
+  String mcGainSemantics(int days, String peak) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days días',
+      one: '1 día',
+    );
+    return 'Ganancia diaria en $_temp0, con un pico de $peak';
+  }
+
+  @override
+  String mcGainTooltip(String count) {
+    return '+$count descargas';
+  }
+
+  @override
+  String get mcChartNoHistory => 'Todavía no hay historial';
+
+  @override
+  String get mcChartOneDay => 'Hasta ahora se ha registrado un día';
+
+  @override
+  String get mcChartCollecting =>
+      'Estas plataformas publican un total acumulado y ningún historial, así que luma registra un punto al día. La línea aparece cuando hay dos.';
+
+  @override
+  String get mcViewProjects => 'Proyectos';
+
+  @override
+  String get mcViewTrends => 'Tendencias';
+
+  @override
+  String get mcPlatformSettings => 'Ajustes de plataformas';
+
+  @override
+  String get mcViaEmbeddedBrowser => 'mediante el navegador integrado';
+
+  @override
+  String mcReadingPlatform(String platform) {
+    return 'Leyendo $platform…';
+  }
+
+  @override
+  String get mcCombinedLibrary => 'Biblioteca combinada';
+
+  @override
+  String get mcCombinedLibrarySubtitle => 'CurseForge y Modrinth, sumados.';
+
+  @override
+  String get mcCurseforgeModrinthCombined => 'CurseForge y Modrinth combinados';
+
+  @override
+  String get mcTotalDownloads => 'Descargas totales';
+
+  @override
+  String get mcAcrossBothPlatforms => 'en ambas plataformas';
+
+  @override
+  String get mcLast30Days => 'Últimos 30 días';
+
+  @override
+  String get mcDownloadsGained => 'descargas ganadas';
+
+  @override
+  String get mcStillCollecting => 'aún recopilando';
+
+  @override
+  String get mcFollowersCaption => 'seguidores y me gusta';
+
+  @override
+  String mcProjectsSplit(int cf, int mr) {
+    return '$cf CF · $mr MR';
+  }
+
+  @override
+  String get mcNothingToShowYet => 'Todavía no hay nada que mostrar.';
+
+  @override
+  String mcSemDownloads(int count) {
+    return '$count descargas';
+  }
+
+  @override
+  String mcSemFollowers(int count) {
+    return '$count seguidores';
+  }
+
+  @override
+  String mcSemViews(int count) {
+    return '$count visualizaciones';
+  }
+
+  @override
+  String mcProjectsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count proyectos',
+      one: '1 proyecto',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String mcUpdatedRelative(String when) {
+    return 'actualizado $when';
+  }
+
+  @override
+  String get mcSetUp => 'Configurar';
+
+  @override
+  String get mcSetUpPlatforms => 'Configurar plataformas';
+
+  @override
+  String get mcStateNotSetUp => 'Sin configurar';
+
+  @override
+  String get mcStateConnected => 'Conectado';
+
+  @override
+  String get mcStateUnavailable => 'No disponible';
+
+  @override
+  String get mcPmcKeptSeparate =>
+      'Por separado: PMC cuenta visualizaciones, y sus skins, blogs y construcciones no son mods.';
+
+  @override
+  String get mcPmcAddUsername =>
+      'Añade tu nombre de usuario de Planet Minecraft para incluirlo.';
+
+  @override
+  String get mcPmcApproximate =>
+      'Planet Minecraft redondea las visualizaciones y descargas por encima de mil en las páginas de listados («1.1k»), así que estos totales son aproximados. Los diamantes y favoritos son exactos.';
+
+  @override
+  String get mcPmcViewsDownloadsOverTime =>
+      'Visualizaciones y descargas a lo largo del tiempo';
+
+  @override
+  String get mcRecordedOnePointPerDay => 'Registrado por luma, un punto al día';
+
+  @override
+  String get mcApproximate => 'aproximado';
+
+  @override
+  String get mcAcrossSubmissions => 'en todas las publicaciones';
+
+  @override
+  String get mcExact => 'exacto';
+
+  @override
+  String get mcDiamonds => 'Diamantes';
+
+  @override
+  String get mcFavourites => 'Favoritos';
+
+  @override
+  String mcFavouritesCount(int count) {
+    return '$count favoritos';
+  }
+
+  @override
+  String mcSubmissionsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count publicaciones',
+      one: '1 publicación',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mcFindProject => 'Buscar un proyecto';
+
+  @override
+  String get mcNoProjectsYet => 'Todavía no hay proyectos';
+
+  @override
+  String get mcNothingMatchesFilter => 'Nada coincide con este filtro';
+
+  @override
+  String get mcSetUpToPullProjects =>
+      'Configura una plataforma y actualiza para importar tus proyectos.';
+
+  @override
+  String get mcTryDifferentFilter =>
+      'Prueba con otra plataforma o una búsqueda más corta.';
+
+  @override
+  String get mcBadgeRounded => 'redondeado';
+
+  @override
+  String get mcDownloadsOverTime => 'Descargas a lo largo del tiempo';
+
+  @override
+  String get mcHoverBarTopProjects =>
+      'Pasa el cursor sobre una barra para ver los proyectos principales de ese día';
+
+  @override
+  String get mcDownloadsGainedPerDay => 'Descargas ganadas por día';
+
+  @override
+  String mcPlatformDownloads(String platform) {
+    return 'Descargas de $platform';
+  }
+
+  @override
+  String get mcPmcViews => 'Visualizaciones de PMC';
+
+  @override
+  String get mcPmcApproximateSubtitle =>
+      'Aproximado: PMC redondea las cifras por encima de mil';
+
+  @override
+  String get mcPmcDownloads => 'Descargas de PMC';
+
+  @override
+  String mcSinceDate(String date) {
+    return 'desde el $date';
+  }
+
+  @override
+  String get mcSetupTitle => 'Sigue tu contenido de Minecraft';
+
+  @override
+  String get mcSetupSubtitle =>
+      'Reúne CurseForge, Modrinth y Planet Minecraft en un solo panel: descargas, seguidores, visualizaciones y tendencias a lo largo del tiempo.';
+
+  @override
+  String get mcReqModrinthTitle => 'Modrinth — solo nombre de usuario';
+
+  @override
+  String get mcReqModrinthBody =>
+      'Los totales son públicos. Un token es opcional y solo desbloquea el historial real de descargas.';
+
+  @override
+  String get mcReqCurseforgeTitle => 'CurseForge — se requiere clave de API';
+
+  @override
+  String get mcReqCurseforgeBody =>
+      'CurseForge no muestra nada de forma anónima. Añade una clave y tu ID de autor numérico o los enlaces de tus proyectos.';
+
+  @override
+  String get mcReqPmcTitle => 'Planet Minecraft — solo nombre de usuario';
+
+  @override
+  String get mcReqPmcBody =>
+      'PMC no tiene API, así que luma lee tu perfil público en un navegador integrado. Solo Windows y Android.';
+
+  @override
+  String get mcSetupPlatformsTitle => 'Plataformas de Minecraft';
+
+  @override
+  String get mcSetupModrinthNote => 'Público: basta con un nombre de usuario.';
+
+  @override
+  String get mcSetupModrinthUsername => 'Nombre de usuario de Modrinth';
+
+  @override
+  String get mcSetupModrinthUsernameHint => 'p. ej. jellysquid3';
+
+  @override
+  String get mcSetupModrinthToken => 'Token de acceso (opcional)';
+
+  @override
+  String get mcSetupModrinthTokenHelper =>
+      'Solo hace falta para el historial real de descargas. Sin él, luma construye el gráfico a partir de capturas diarias.';
+
+  @override
+  String get mcSetupModrinthTokenLink => 'Ajustes del token de Modrinth';
+
+  @override
+  String get mcSetupCurseNote =>
+      'Necesita una clave de API: CurseForge no sirve nada sin ella.';
+
+  @override
+  String get mcSetupCurseKey => 'Clave de API de CurseForge';
+
+  @override
+  String get mcSetupCurseKeyHint => 'x-api-key de la consola de Studios';
+
+  @override
+  String get mcSetupCurseKeysLink => 'Claves de API de CurseForge';
+
+  @override
+  String get mcSetupTestingKey => 'Probando…';
+
+  @override
+  String get mcSetupTestKey => 'Probar clave';
+
+  @override
+  String get mcSetupEnterKeyFirst => 'Introduce primero una clave.';
+
+  @override
+  String get mcSetupKeyWorks =>
+      'La clave funciona: CurseForge respondió HTTP 200.';
+
+  @override
+  String get mcSetupAuthorId => 'ID de autor (opcional)';
+
+  @override
+  String get mcSetupAuthorIdHint => 'ID numérico, p. ej. 123456';
+
+  @override
+  String get mcSetupAuthorIdHelper =>
+      'CurseForge filtra por ID numérico y no ofrece búsqueda por nombre de usuario. Déjalo en blanco y sigue los proyectos uno a uno.';
+
+  @override
+  String get mcSetupTrackTitle => 'Seguir un solo proyecto';
+
+  @override
+  String get mcSetupTrackHint =>
+      'Pega la URL o el slug de un proyecto de CurseForge';
+
+  @override
+  String get mcSetupTrack => 'Seguir';
+
+  @override
+  String mcSetupNowTracking(String name) {
+    return 'Ahora siguiendo $name.';
+  }
+
+  @override
+  String mcSetupStopTracking(String id) {
+    return 'Dejar de seguir #$id';
+  }
+
+  @override
+  String get mcSetupCurseConsole => 'Consola de CurseForge';
+
+  @override
+  String get mcSetupPmcNote =>
+      'Sin API: se lee de tu perfil público en un navegador integrado.';
+
+  @override
+  String get mcSetupPmcUsername => 'Nombre de usuario de Planet Minecraft';
+
+  @override
+  String get mcSetupPmcUsernameHint => 'p. ej. cyprezz';
+
+  @override
+  String get mcSetupPmcUnsupported =>
+      'Esta plataforma no tiene motor de navegador integrado, así que Planet Minecraft no puede leerse aquí. Windows y Android sí pueden.';
+
+  @override
+  String get mcSetupPrivacy =>
+      'Cada clave se cifra en este dispositivo y solo se envía a la plataforma a la que pertenece. Nada de ello llega a un servidor de luma.';
+
+  @override
+  String get mcSetupDisconnectAll => 'Desconectar todo';
+
+  @override
+  String get mcSetupDisconnectTitle => '¿Desconectar todas las plataformas?';
+
+  @override
+  String get mcSetupDisconnectBody =>
+      'Las claves guardadas, las cifras en caché y el historial de descargas que luma ha registrado se borrarán de este dispositivo. El historial no se puede volver a obtener: CurseForge y Planet Minecraft no publican datos pasados.';
+
+  @override
+  String get accountOverviewKeepIt => 'Conservar';
+
+  @override
+  String get accountOverviewDisconnect => 'Desconectar';
+
+  @override
+  String get accountOverviewOneTimeSetup => 'Configuración única';
+
+  @override
+  String get pmcBrowserNotReady => 'El navegador integrado aún no está listo.';
+
+  @override
+  String get pmcDidNotFinishLoading =>
+      'Planet Minecraft no terminó de cargar. Cloudflare podría estar verificando este dispositivo.';
+
+  @override
+  String get spotifyConnectTitle => 'Conectar Spotify';
+
+  @override
+  String get spotifyAccountSettingsTitle => 'Ajustes de la cuenta de Spotify';
+
+  @override
+  String spotifyConnectedAs(String name) {
+    return 'Conectado como $name.';
+  }
+
+  @override
+  String get spotifyDisconnectNote =>
+      'Al desconectar se elimina el total de escucha guardado en este dispositivo.';
+
+  @override
+  String get spotifyClientIdLabel => 'ID de cliente de Spotify';
+
+  @override
+  String get spotifyClientIdHint => 'Pega tu ID de cliente';
+
+  @override
+  String get spotifySetupSteps =>
+      '1. Crea una aplicación en el Spotify Developer Dashboard (Web API).\n2. Añade http://127.0.0.1/callback como URI de redirección. Spotify permite a luma usar un puerto dinámico para esta dirección de bucle local.\n3. Copia aquí el ID de cliente de la aplicación y luego inicia sesión en tu navegador. Una aplicación en modo desarrollo requiere Spotify Premium.';
+
+  @override
+  String get spotifyOpenDashboard => 'Abrir Spotify Developer Dashboard';
+
+  @override
+  String get spotifyTokensNote =>
+      'Los tokens se quedan en el almacenamiento seguro de este dispositivo. luma lee tus datos de Spotify directamente.';
+
+  @override
+  String get spotifyReconnect => 'Volver a conectar';
+
+  @override
+  String get spotifySignIn => 'Iniciar sesión con Spotify';
+
+  @override
+  String get spotifyEmptyTitle => 'Conecta tu cuenta de Spotify';
+
+  @override
+  String get spotifyEmptySubtitle =>
+      'Consulta tus artistas y canciones principales, las reproducciones recientes, las canciones guardadas, las listas de reproducción y las estadísticas del perfil.';
+
+  @override
+  String get spotifyStatFollowers => 'Seguidores';
+
+  @override
+  String get spotifyStatSavedTracks => 'Canciones guardadas';
+
+  @override
+  String get spotifyStatPlaylists => 'Listas de reproducción';
+
+  @override
+  String get spotifyStatTrackedMinutes => 'Minutos registrados';
+
+  @override
+  String spotifyMinutesShort(int count) {
+    return '$count min';
+  }
+
+  @override
+  String get spotifyWaitingForPlays => 'Esperando reproducciones recientes';
+
+  @override
+  String spotifyFromDate(String date) {
+    return 'Desde el $date';
+  }
+
+  @override
+  String get spotifyEstimateNote =>
+      'Estimado a partir de la duración completa de las canciones en las reproducciones recientes disponibles de Spotify. Actualiza con regularidad para mantener el total al día.';
+
+  @override
+  String get spotifyFavoritesTitle => 'Tus favoritos';
+
+  @override
+  String get spotifyFavoritesSubtitle =>
+      'Clasificaciones de Spotify para el periodo seleccionado';
+
+  @override
+  String get spotifyRangeShort => 'Últimas 4 semanas';
+
+  @override
+  String get spotifyRangeMedium => 'Últimos 6 meses';
+
+  @override
+  String get spotifyRangeLong => 'Largo plazo';
+
+  @override
+  String spotifyUpdatedAgo(String time) {
+    return 'Actualizado $time';
+  }
+
+  @override
+  String get spotifyRefreshToLoad =>
+      'Actualiza para cargar tus estadísticas de Spotify.';
+
+  @override
+  String get spotifyTopArtists => 'Artistas principales';
+
+  @override
+  String get spotifyTopTracks => 'Canciones principales';
+
+  @override
+  String get spotifyRecentlyPlayed => 'Reproducido recientemente';
+
+  @override
+  String get spotifyNoTopArtists =>
+      'No hay artistas principales disponibles para este periodo.';
+
+  @override
+  String get spotifyNoTopTracks =>
+      'No hay canciones principales disponibles para este periodo.';
+
+  @override
+  String get spotifyNoRecentTracks => 'No hay canciones recientes disponibles.';
+
+  @override
+  String get youtubeAnalyticsLoading => 'Cargando analíticas…';
+
+  @override
+  String get youtubeAnalyticsEmpty =>
+      'Aún no hay analíticas. Actualiza para obtener los últimos 90 días.';
+
+  @override
+  String get youtubeMetricViews => 'Visualizaciones';
+
+  @override
+  String get youtubeMetricWatchTime => 'Tiempo de visualización';
+
+  @override
+  String get youtubeLast90Days => 'Últimos 90 días';
+
+  @override
+  String get youtubeLast90DaysCaption => 'últimos 90 días';
+
+  @override
+  String get youtubeWatchTimeSubtitle => 'Minutos vistos, últimos 90 días';
+
+  @override
+  String get youtubeUnitViews => 'visualizaciones';
+
+  @override
+  String get youtubeUnitMinutes => 'minutos';
+
+  @override
+  String get youtubeAvgViewDuration => 'Duración media de visualización';
+
+  @override
+  String get youtubeNetSubscribers => 'Suscriptores netos';
+
+  @override
+  String get youtubeTrafficSources => 'Fuentes de tráfico';
+
+  @override
+  String get youtubeTrafficSourcesSubtitle =>
+      'De dónde llegaron las visualizaciones, últimos 90 días';
+
+  @override
+  String get youtubeNoTrafficData => 'Aún no hay datos de tráfico.';
+
+  @override
+  String get youtubeChartNotEnoughData => 'Aún no hay suficientes datos.';
+
+  @override
+  String youtubeChartSemantics(
+    String unit,
+    String start,
+    String end,
+    String low,
+    String high,
+  ) {
+    return '$unit del $start al $end: de $low a $high';
+  }
+
+  @override
+  String youtubeChartTooltip(String value, String unit, String date) {
+    return '$value $unit\n$date';
+  }
+
+  @override
+  String get youtubeReconnectTitle => 'Volver a conectar YouTube';
+
+  @override
+  String get youtubeYourChannel => 'tu canal';
+
+  @override
+  String youtubeConnectedAs(String channel) {
+    return 'Conectado como $channel. Volver a iniciar sesión sustituye las credenciales guardadas.';
+  }
+
+  @override
+  String get youtubeClientId => 'ID de cliente';
+
+  @override
+  String get youtubeClientSecret => 'Secreto de cliente';
+
+  @override
+  String get youtubeCredentialsNote =>
+      'Se guardan cifradas en este dispositivo. Al conectar se abre una página de inicio de sesión de Google en tu navegador; nada de tu cuenta llega a un servidor de luma.';
+
+  @override
+  String get youtubeSignIn => 'Iniciar sesión con Google';
+
+  @override
+  String get youtubeDisconnectTitle => '¿Desconectar YouTube?';
+
+  @override
+  String get youtubeDisconnectBody =>
+      'Las credenciales guardadas y todas las cifras en caché se borran de este dispositivo. Tu cuenta de Google no se modifica.';
+
+  @override
+  String get youtubeSetupStep1 =>
+      'Crea un proyecto en la Google Cloud Console.';
+
+  @override
+  String get youtubeSetupStep2 =>
+      'En “OAuth consent screen”, ponlo en Testing y añade tu propia cuenta de Google como usuario de prueba.';
+
+  @override
+  String get youtubeSetupStep3 =>
+      'En “Library”, activa “YouTube Data API v3” y “YouTube Analytics API”.';
+
+  @override
+  String get youtubeSetupStep4 =>
+      'En “Credentials”, crea un ID de cliente OAuth de tipo “Desktop app” y pega arriba su ID y su secreto.';
+
+  @override
+  String get youtubeOpenConsole => 'Abrir Google Cloud Console';
+
+  @override
+  String get youtubeNotRefreshedYet => 'Aún no actualizado';
+
+  @override
+  String youtubeUpdatedAgo(String when) {
+    return 'Actualizado $when';
+  }
+
+  @override
+  String get youtubeSubscribersHidden => 'Suscriptores ocultos';
+
+  @override
+  String youtubeSubscribersCount(String formatted) {
+    return '$formatted suscriptores';
+  }
+
+  @override
+  String get youtubeSubscriberCountHiddenSemantic =>
+      'Número de suscriptores oculto';
+
+  @override
+  String youtubeSubscribersExact(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count suscriptores',
+      one: '1 suscriptor',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String youtubeChannelSince(String date) {
+    return 'Desde $date';
+  }
+
+  @override
+  String youtubeChannelCreated(String date) {
+    return 'Canal creado el $date';
+  }
+
+  @override
+  String get youtubeChannelButton => 'Canal';
+
+  @override
+  String get youtubeStatTotalViews => 'Visualizaciones totales';
+
+  @override
+  String get youtubeStatAllTime => 'de siempre';
+
+  @override
+  String get youtubeStatSubscribers => 'Suscriptores';
+
+  @override
+  String get youtubeStatHidden => 'Oculto';
+
+  @override
+  String get youtubeStatWatchTime => 'Tiempo de reproducción';
+
+  @override
+  String get youtubeStatLast90Days => 'últimos 90 días';
+
+  @override
+  String get youtubeStatNetSubscribers => 'Suscriptores netos';
+
+  @override
+  String get youtubeStatViews => 'Visualizaciones';
+
+  @override
+  String get youtubeRecentUploads => 'Subidas recientes';
+
+  @override
+  String get youtubeViewAll => 'Ver todo';
+
+  @override
+  String get youtubeNoVideosYet => 'Todavía no hay vídeos.';
+
+  @override
+  String youtubeAvatarSemantic(String title) {
+    return 'Avatar de $title';
+  }
+
+  @override
+  String youtubeViewsExact(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count visualizaciones',
+      one: '1 visualización',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String youtubeLikesExact(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count me gusta',
+      one: '1 me gusta',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String youtubeVideosCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count vídeos',
+      one: '1 vídeo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get youtubeSortNewest => 'Más recientes';
+
+  @override
+  String get youtubeSortMostViewed => 'Más vistos';
+
+  @override
+  String get youtubeSortMostLiked => 'Más gustados';
+
+  @override
+  String get youtubeUploadsTitle => 'Subidas';
+
+  @override
+  String get youtubeTrafficAdvertising => 'Publicidad';
+
+  @override
+  String get youtubeTrafficAnnotations => 'Anotaciones';
+
+  @override
+  String get youtubeTrafficCampaignCards => 'Tarjetas de campaña';
+
+  @override
+  String get youtubeTrafficEndScreens => 'Pantallas finales';
+
+  @override
+  String get youtubeTrafficExternalSites => 'Sitios externos';
+
+  @override
+  String get youtubeTrafficEmbeddedPlayer => 'Reproductor incrustado';
+
+  @override
+  String get youtubeTrafficDirectOrUnknown => 'Directo o desconocido';
+
+  @override
+  String get youtubeTrafficNotifications => 'Notificaciones';
+
+  @override
+  String get youtubeTrafficPlaylists => 'Listas de reproducción';
+
+  @override
+  String get youtubeTrafficPromoted => 'Contenido promocionado';
+
+  @override
+  String get youtubeTrafficSuggestedVideos => 'Vídeos sugeridos';
+
+  @override
+  String get youtubeTrafficSubscriptionFeed => 'Feed de suscripciones';
+
+  @override
+  String get youtubeTrafficChannelPage => 'Página del canal';
+
+  @override
+  String get youtubeTrafficOtherPages => 'Otras páginas de YouTube';
+
+  @override
+  String get youtubeTrafficYoutubeSearch => 'Búsqueda de YouTube';
+
+  @override
+  String get youtubeTrafficShortsFeed => 'Feed de Shorts';
+
+  @override
+  String get youtubeApiRejectedToken => 'Google rechazó el token de acceso.';
+
+  @override
+  String get youtubeApiForbidden =>
+      'Google rechazó la solicitud. Es posible que el canal aún no tenga analíticas disponibles, o que haya que habilitar la API en tu proyecto de Google Cloud.';
+
+  @override
+  String youtubeApiHttpStatus(String status) {
+    return 'Google devolvió HTTP $status.';
+  }
+
+  @override
+  String get youtubeApiNoChannel =>
+      'Esta cuenta de Google no tiene un canal de YouTube.';
+
+  @override
+  String get youtubeOAuthTimeout =>
+      'Se agotó el tiempo esperando a que Google redirigiera de vuelta. Intenta conectar de nuevo.';
+
+  @override
+  String youtubeOAuthDeclined(String error) {
+    return 'Google rechazó la solicitud: $error';
+  }
+
+  @override
+  String get youtubeOAuthStateMismatch =>
+      'La respuesta de Google no coincide con esta solicitud.';
+
+  @override
+  String get youtubeOAuthNoCode =>
+      'Google no devolvió un código de autorización.';
+
+  @override
+  String get youtubeOAuthLandingConnected => 'Estás conectado';
+
+  @override
+  String get youtubeOAuthLandingClose =>
+      'Puedes cerrar esta pestaña y volver a luma.';
+
+  @override
+  String youtubeOAuthRejected(String description) {
+    return 'Google rechazó la solicitud: $description';
+  }
+
+  @override
+  String get youtubeOAuthNoAccessToken =>
+      'Google no devolvió un token de acceso.';
+
+  @override
+  String get youtubeOAuthNoRefreshToken =>
+      'Google no devolvió un token de actualización. Quita el acceso de luma en myaccount.google.com/permissions e intenta conectar de nuevo.';
+
+  @override
+  String get youtubeStageChannel => 'Leyendo tu canal';
+
+  @override
+  String get youtubeStageVideos => 'Listando vídeos recientes';
+
+  @override
+  String get youtubeStageAnalytics => 'Obteniendo analíticas';
+
+  @override
+  String get youtubeEnterCredentialsFirst =>
+      'Introduce primero el ID de cliente y el secreto de cliente.';
+
+  @override
+  String get youtubeNotConnected => 'YouTube no está conectado.';
+
+  @override
+  String youtubeWarnVideos(String error) {
+    return 'Vídeos recientes no disponibles: $error';
+  }
+
+  @override
+  String youtubeWarnAnalytics(String error) {
+    return 'Analíticas no disponibles: $error';
+  }
+
+  @override
+  String get aiDetectorClipboardEmpty => 'Tu portapapeles está vacío.';
+
+  @override
+  String aiDetectorTabHighlights(int count) {
+    return 'Destacados  $count';
+  }
+
+  @override
+  String aiDetectorTabSignals(int count) {
+    return 'Señales  $count';
+  }
+
+  @override
+  String get aiDetectorDisclaimer =>
+      'Análisis heurístico de estilo: aritmética sobre la longitud de las frases y la elección de palabras, no es una prueba de nada. La escritura humana formal puede parecer de máquina; la salida de una máquina editada puede parecer humana. Un veredicto con nombre se basa en una firma que el propio texto contiene, y una firma se puede quitar o falsificar. Las estadísticas se ejecutan en este dispositivo. Si has iniciado sesión, el texto también se envía al servidor de luma para una revisión con un modelo de IA.';
+
+  @override
+  String get aiDetectorInputTitle => 'Revisar un texto';
+
+  @override
+  String get aiDetectorInputSubtitle =>
+      'Estadísticas de estilo y un análisis de marca de agua de Claude.';
+
+  @override
+  String get aiDetectorOnDevice => 'En el dispositivo';
+
+  @override
+  String aiDetectorReviewsLeft(int remaining, int limit) {
+    return '$remaining/$limit revisiones de IA restantes esta semana';
+  }
+
+  @override
+  String aiDetectorReviewsCost(int percent) {
+    return 'Las revisiones cuestan el $percent % de tu límite semanal';
+  }
+
+  @override
+  String get aiDetectorHint =>
+      'Pega el texto que quieres revisar: un ensayo, un correo, una reseña de producto…';
+
+  @override
+  String aiDetectorWordsShort(int words, int minWords) {
+    return '$words de $minWords palabras: las estadísticas de estilo necesitan un poco más de texto.';
+  }
+
+  @override
+  String aiDetectorWordsReady(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count palabras listas para revisar.',
+      one: '1 palabra lista para revisar.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get aiDetectorReview => 'Revisar';
+
+  @override
+  String get aiDetectorAiLikelihood => 'Probabilidad de IA';
+
+  @override
+  String aiDetectorGaugeSemantic(int score, String verdict) {
+    return 'Probabilidad de IA $score de 100. $verdict.';
+  }
+
+  @override
+  String get aiDetectorWatermarkMatch => 'Marca de agua detectada';
+
+  @override
+  String get aiDetectorSummarySigned =>
+      'El texto se firma a sí mismo: el análisis encontró las marcas ocultas en las que va la marca de agua de Claude, así que es una atribución y no una suposición sobre el estilo.';
+
+  @override
+  String aiDetectorSummaryBased(int words, int sentences) {
+    return 'Basado en $words palabras repartidas en $sentences frases.';
+  }
+
+  @override
+  String get aiDetectorSummaryShort =>
+      'Muestra corta: trata cada señal como una pista y no como una medición.';
+
+  @override
+  String get aiDetectorStatWords => 'palabras';
+
+  @override
+  String get aiDetectorStatSentences => 'frases';
+
+  @override
+  String get aiDetectorStatAvgWords => 'palabras/frase (media)';
+
+  @override
+  String get aiDetectorStatFlagged => 'fragmentos marcados';
+
+  @override
+  String get aiDetectorDeepCheckTitle => 'Revisión con modelo de IA';
+
+  @override
+  String get aiDetectorDeepCheckSignIn =>
+      'Inicia sesión en una cuenta de luma aprobada para que además un modelo de IA revise el texto. Abajo está el análisis en el dispositivo.';
+
+  @override
+  String get aiDetectorDeepCheckReading =>
+      'El modelo de IA está leyendo el texto…';
+
+  @override
+  String aiDetectorDeepCheckExhausted(int percent) {
+    return 'No quedan revisiones incluidas esta semana. Canjea el $percent % de tu límite semanal de Luma AI para hacer una más.';
+  }
+
+  @override
+  String get aiDetectorDeepCheckIntro =>
+      'Dónde y cómo parece generado por IA el texto, según el modelo de IA.';
+
+  @override
+  String aiDetectorChargeExchanged(int percent) {
+    return 'Dónde y cómo parece generado por IA el texto, según el modelo de IA. Se canjeó el $percent % de tu límite semanal.';
+  }
+
+  @override
+  String aiDetectorChargeUsed(int used, int included) {
+    return 'Dónde y cómo parece generado por IA el texto, según el modelo de IA. Has usado $used de $included revisiones incluidas esta semana.';
+  }
+
+  @override
+  String get aiDetectorRunReview => 'Iniciar revisión con IA';
+
+  @override
+  String aiDetectorExchangeWeekly(int percent) {
+    return 'Canjear el $percent % semanal';
+  }
+
+  @override
+  String aiDetectorPassageSemantic(int percent, String passage) {
+    return '$percent % probable IA: $passage';
+  }
+
+  @override
+  String aiDetectorHighlightSemantic(String note, String passage) {
+    return '$note: $passage';
+  }
+
+  @override
+  String get aiDetectorNothingFlagged => 'Nada marcado';
+
+  @override
+  String get aiDetectorNothingFlaggedBody =>
+      'Ni frases hechas, ni caracteres ocultos, ni aperturas formularias. Cada fragmento de este texto parece escrito a mano.';
+
+  @override
+  String get aiDetectorHighlightsTitle =>
+      'Todo lo que detectaron las comprobaciones, marcado en su lugar';
+
+  @override
+  String get aiDetectorHighlightsLegend =>
+      'Cada marca se muestra según lo fuerte que sea, no solo por el color: ondulada para una firma, sólida para una pista fuerte y punteada para una leve.';
+
+  @override
+  String aiDetectorTruncated(int limit) {
+    return 'Mostrando los primeros $limit caracteres. La puntuación y las señales de abajo abarcan todo el texto.';
+  }
+
+  @override
+  String get aiDetectorSignalsNothing =>
+      'Nada sospechoso: longitudes variadas, sin frases hechas ni marca de agua. Se lee como escritura humana.';
+
+  @override
+  String get aiDetectorQuietChecks => 'Comprobaciones sin resultado';
+
+  @override
+  String aiDetectorQuietOneWay(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count comprobaciones no encontraron nada: un guion significa que la comprobación solo suma en contra de un texto, así que no encontrar nada no le da opinión',
+      one:
+          '1 comprobación no encontró nada: un guion significa que la comprobación solo suma en contra de un texto, así que no encontrar nada no le da opinión',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiDetectorQuietNothing(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count comprobaciones no encontraron nada que merezca marcarse',
+      one: '1 comprobación no encontró nada que merezca marcarse',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get aiDetectorMatch => 'coincidencia';
+
+  @override
+  String get aiReviewSignInRequired =>
+      'Inicia sesión con una cuenta de luma aprobada para usar la comprobación profunda.';
+
+  @override
+  String get aiReviewUnreachable =>
+      'No se pudo conectar con el servidor de luma. Revisa tu conexión e inténtalo de nuevo.';
+
+  @override
+  String aiReviewFailedStatus(int status) {
+    return 'La comprobación profunda falló (HTTP $status).';
+  }
+
+  @override
+  String get aiReviewMalformed =>
+      'El servidor envió un resultado con formato incorrecto.';
+
+  @override
+  String aiUsageSyncOsDevice(String os) {
+    return 'Dispositivo $os';
+  }
+
+  @override
+  String get aiUsageSyncAnotherDevice => 'Otro dispositivo';
+
+  @override
+  String get aiAgentHeader => 'Creador de agentes';
+
+  @override
+  String aiAgentHeaderCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count agentes',
+      one: '1 agente',
+    );
+    return '$_temp0 · especialistas reutilizables para Codex, Claude Code y opencode';
+  }
+
+  @override
+  String get aiAgentNew => 'Nuevo agente';
+
+  @override
+  String get aiAgentEmptyTitle => 'Aún no hay agentes';
+
+  @override
+  String get aiAgentEmptyBody =>
+      'Dale a una tarea repetitiva su propio especialista.';
+
+  @override
+  String get aiAgentCreate => 'Crear agente';
+
+  @override
+  String get aiAgentSpecialistSubtitle => 'Agente especializado';
+
+  @override
+  String get aiAgentDeleteTitle => '¿Eliminar agente?';
+
+  @override
+  String aiAgentDeleteBody(String name) {
+    return '\"$name\" se eliminará de Luma.';
+  }
+
+  @override
+  String get aiAgentSaved => 'Agente guardado';
+
+  @override
+  String aiAgentPromptCopied(String target) {
+    return 'Prompt copiado — pégalo en $target';
+  }
+
+  @override
+  String aiAgentExportDialogTitle(String target, String file) {
+    return 'Exportar $target $file';
+  }
+
+  @override
+  String aiAgentExported(String target, String file) {
+    return '$target $file exportado';
+  }
+
+  @override
+  String aiAgentChooseProjectFolder(String target) {
+    return 'Elige la carpeta del proyecto de $target';
+  }
+
+  @override
+  String aiAgentReplaceTitle(String file) {
+    return '¿Reemplazar $file existente?';
+  }
+
+  @override
+  String aiAgentReplaceBody(String path) {
+    return '$path ya existe en este proyecto.';
+  }
+
+  @override
+  String get aiAgentReplace => 'Reemplazar';
+
+  @override
+  String aiAgentInstalledAt(String path) {
+    return 'Instalado en $path';
+  }
+
+  @override
+  String get aiAgentEdit => 'Editar agente';
+
+  @override
+  String get aiAgentDeleteTooltip => 'Eliminar agente';
+
+  @override
+  String get aiAgentNameHint => 'Revisor de código Flutter';
+
+  @override
+  String get aiAgentFieldDescription => 'Descripción breve';
+
+  @override
+  String get aiAgentDescriptionHint => 'Para qué sirve este especialista';
+
+  @override
+  String get aiAgentFieldModel => 'Modelo preferido (opcional)';
+
+  @override
+  String get aiAgentModelHint =>
+      'sonnet para Claude Code, anthropic/claude-sonnet-5 para opencode';
+
+  @override
+  String get aiAgentFieldInstructions => 'Instrucciones';
+
+  @override
+  String get aiAgentInstructionsHint =>
+      'Eres un especialista…\n\nDescribe la tarea, los límites y el enfoque de razonamiento.';
+
+  @override
+  String get aiAgentFieldOutput => 'Formato de salida (opcional)';
+
+  @override
+  String get aiAgentOutputHint =>
+      'Hallazgos agrupados por gravedad, con referencias al archivo y la línea';
+
+  @override
+  String get aiAgentLibraryContext => 'Contexto de la biblioteca';
+
+  @override
+  String get aiAgentLibraryContextHelp =>
+      'Las notas seleccionadas se incluyen al copiar o exportar este agente.';
+
+  @override
+  String get aiAgentLibraryEmpty =>
+      'Crea primero notas en Markdown en la pestaña Biblioteca.';
+
+  @override
+  String get aiAgentUseWith => 'Usar con';
+
+  @override
+  String get aiAgentCopyPrompt => 'Copiar prompt';
+
+  @override
+  String aiAgentExportFile(String file) {
+    return 'Exportar $file';
+  }
+
+  @override
+  String aiAgentInstallFor(String target) {
+    return 'Instalar para $target';
+  }
+
+  @override
+  String get aiAgentSave => 'Guardar agente';
+
+  @override
+  String get aiUsageSaving => 'Guardando…';
+
+  @override
+  String get aiMarkdownNoteLabel => 'Nota Markdown';
+
+  @override
+  String get aiLibrarySaved => 'Nota Markdown guardada';
+
+  @override
+  String get aiLibraryImportTitle => 'Importar nota Markdown';
+
+  @override
+  String aiLibraryImported(String name) {
+    return '$name importado — guárdalo para añadirlo a la biblioteca';
+  }
+
+  @override
+  String get aiLibraryExportTitle => 'Exportar nota Markdown';
+
+  @override
+  String aiLibraryExported(String name) {
+    return '$name exportado';
+  }
+
+  @override
+  String get aiLibraryDeleteTitle => '¿Eliminar nota Markdown?';
+
+  @override
+  String aiLibraryDeleteBody(String title) {
+    return '\"$title\" se eliminará de la biblioteca.';
+  }
+
+  @override
+  String get aiLibraryHeader => 'Biblioteca Markdown';
+
+  @override
+  String aiLibraryHeaderCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count notas',
+      one: '1 nota',
+    );
+    return '$_temp0 · contexto reutilizable para tus agentes';
+  }
+
+  @override
+  String get aiLibraryNewNote => 'Nueva nota';
+
+  @override
+  String get aiLibraryEmptyTitle => 'Tu biblioteca está vacía';
+
+  @override
+  String get aiLibraryEmptyBody =>
+      'Guarda aquí prompts, contexto del proyecto y listas de comprobación.';
+
+  @override
+  String get aiLibraryCreateNote => 'Crear nota';
+
+  @override
+  String get aiLibraryNewEditorTitle => 'Nueva nota Markdown';
+
+  @override
+  String get aiLibraryEditNote => 'Editar nota';
+
+  @override
+  String get aiLibraryExportMdTooltip => 'Exportar .md';
+
+  @override
+  String get aiLibraryDeleteNoteTooltip => 'Eliminar nota';
+
+  @override
+  String get aiLibraryTitleHint => 'Convenciones del proyecto';
+
+  @override
+  String get aiLibraryFieldTags => 'Etiquetas';
+
+  @override
+  String get aiLibraryTagsHint => 'flutter, convenciones, proyecto';
+
+  @override
+  String get aiLibraryContent => 'Contenido';
+
+  @override
+  String get aiLibraryNothingWritten => 'Todavía no hay nada escrito.';
+
+  @override
+  String get aiLibraryBodyHint =>
+      '# Instrucciones\n\nEscribe contexto reutilizable en Markdown…';
+
+  @override
+  String get aiLibrarySaveNote => 'Guardar nota';
+
+  @override
+  String get aiUsageNoLogsTitle =>
+      'No se encontraron registros de uso de IA locales';
+
+  @override
+  String get aiUsageNoLogsSubtitle =>
+      'Uso de IA lee los registros de sesión de Claude Code (~/.claude/projects), Codex CLI (~/.codex/sessions), Antigravity (~/.gemini/antigravity), OpenCode (~/.local/share/opencode) y Freebuff (~/.config/freebuff-desktop/projects) en este dispositivo, y registra cada llamada que hace el Asistente de luma. No sale nada de aquí a menos que actives la sincronización de Uso de IA en Ajustes, que además suma tus otros dispositivos. Usa una de estas herramientas aquí y luego vuelve a escanear.';
+
+  @override
+  String get aiUsageRescan => 'Volver a escanear';
+
+  @override
+  String get aiUsageSettingsTitle => 'Ajustes de uso';
+
+  @override
+  String get aiUsageCombineByCompany => 'Combinar modelos por empresa';
+
+  @override
+  String get aiUsageCombineByCompanyHint =>
+      'Agrupa todos los modelos de una empresa en una sola fila';
+
+  @override
+  String get aiUsageSorting => 'Orden';
+
+  @override
+  String get aiUsageSortingHint => 'Criterio de orden de cada tabla y gráfico';
+
+  @override
+  String get aiUsageSortModels => 'Modelos (circular + tabla)';
+
+  @override
+  String get aiUsageSortProjects => 'Proyectos principales';
+
+  @override
+  String get aiUsageSortProviders => 'Proveedores (OpenCode)';
+
+  @override
+  String get aiUsageRescanTooltip =>
+      'Volver a escanear los registros de uso locales';
+
+  @override
+  String get aiUsageDisplaySettingsTooltip =>
+      'Ajustes de visualización del uso';
+
+  @override
+  String aiUsageStatusUpToDate(String time, String synced) {
+    return 'Al día · $time$synced';
+  }
+
+  @override
+  String aiUsageStatusNewTurns(int count, String time, String synced) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count turnos nuevos',
+      one: '1 turno nuevo',
+    );
+    return '$_temp0 · $time$synced';
+  }
+
+  @override
+  String aiUsageStatusSyncedDevices(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count otros dispositivos',
+      one: '1 otro dispositivo',
+    );
+    return ' · incl. $_temp0';
+  }
+
+  @override
+  String get aiUsageDevicesTooltipHeader => 'Uso sumado en tus dispositivos:';
+
+  @override
+  String get aiUsageThisDevice => 'Este dispositivo';
+
+  @override
+  String aiUsageDeviceLine(String name, int count, String synced) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count turnos',
+      one: '1 turno',
+    );
+    return '$name · $_temp0 · sincronizado $synced';
+  }
+
+  @override
+  String get aiUsageSourceAntigravityEst => 'Antigravity (est.)';
+
+  @override
+  String get aiUsageNoUsageTitle => 'No hay uso registrado en este rango';
+
+  @override
+  String get aiUsageNoUsageSubtitle =>
+      'Prueba con un rango más amplio, o usa una de las herramientas compatibles y vuelve a escanear.';
+
+  @override
+  String aiUsageNoUsageSourceSubtitle(String source) {
+    return 'Prueba con un rango más amplio, o usa $source y vuelve a escanear.';
+  }
+
+  @override
+  String get aiUsageTotalTokens => 'Tokens totales';
+
+  @override
+  String get aiUsageTotalTokensTooltip =>
+      'Solo tokens nuevos: entrada + salida + escrituras de caché por primera vez. No incluye las lecturas de caché (mira esa tarjeta). Una sesión larga vuelve a leer casi en cada turno el mismo contexto creciente, lo que contaría la misma conversación una y otra vez.';
+
+  @override
+  String get aiUsageCacheReads => 'Lecturas de caché';
+
+  @override
+  String get aiUsageCacheReadsTooltip =>
+      'Contexto en caché releído en todos los turnos del rango: es real y se factura, pero con un gran descuento, y no se cuenta en \"Tokens totales\" porque es reutilización de contenido, no contenido nuevo.';
+
+  @override
+  String get aiUsageEstCost => 'Coste est.';
+
+  @override
+  String get aiUsageEstCostTooltip =>
+      'Coste estimado a tarifas de API, incluidas las lecturas/escrituras de caché con su tarifa rebajada, así que refleja más uso que \"Tokens totales\" por sí solo. Los planes de suscripción (Max/Pro) se facturan de forma distinta a esta estimación por token.';
+
+  @override
+  String get aiUsageTurns => 'Turnos';
+
+  @override
+  String get aiUsageSessions => 'Sesiones';
+
+  @override
+  String get aiUsageTopCompany => 'Empresa principal';
+
+  @override
+  String get aiUsageTopModel => 'Modelo principal';
+
+  @override
+  String get aiUsageUnbillableNote =>
+      '* excluye el uso de modelos fuera de los precios conocidos de su proveedor';
+
+  @override
+  String get aiUsageAntigravityNote =>
+      'Las cifras de Antigravity se estiman a partir de la longitud de los mensajes; no registra el uso real de tokens localmente. No son exactas como las de Claude Code/Codex CLI. El coste (marcado con ~) solo aparece para modelos Gemini/Claude reconocidos, y es una estimación más aproximada que las otras dos fuentes.';
+
+  @override
+  String get aiUsagePickWiderRange =>
+      'Elige un rango más amplio para ver el desglose diario';
+
+  @override
+  String get aiUsageCompanies => 'Empresas';
+
+  @override
+  String get aiUsageModels => 'Modelos';
+
+  @override
+  String aiUsageSortedBy(String metric) {
+    return 'Ordenado por $metric';
+  }
+
+  @override
+  String get aiUsageSwitchToAllHeatmap =>
+      'Cambia a \"Todo\" para ver tu mapa de calor anual de contribuciones';
+
+  @override
+  String get aiUsageLongestSession => 'Sesión más larga';
+
+  @override
+  String get aiUsagePriciestSession => 'Sesión más cara';
+
+  @override
+  String get aiUsageLongestStreak => 'Racha más larga';
+
+  @override
+  String aiUsageStreakDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count días',
+      one: '1 día',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiUsageDurationDaysHours(int days, int hours) {
+    return '$days d $hours h';
+  }
+
+  @override
+  String aiUsageDurationHoursMinutes(int hours, int minutes) {
+    return '$hours h $minutes min';
+  }
+
+  @override
+  String aiUsageDurationMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get aiUsageOther => 'Otros';
+
+  @override
+  String aiUsageTooltipDay(
+    String day,
+    String input,
+    String output,
+    String cacheRead,
+    String cacheWrite,
+    String cost,
+  ) {
+    return '$day\nEntrada: $input\nSalida: $output\nLectura de caché: $cacheRead\nEscritura de caché: $cacheWrite\n$cost';
+  }
+
+  @override
+  String get aiUsageInput => 'Entrada';
+
+  @override
+  String get aiUsageOutput => 'Salida';
+
+  @override
+  String get aiUsageCacheWrite => 'Escritura de caché';
+
+  @override
+  String get aiUsageAvgHourly => 'Distribución horaria media';
+
+  @override
+  String get aiUsageAnthropicPeakTooltip =>
+      'Anthropic publicó este intervalo para Claude Code en marzo de 2026; la reducción de límites de uso se levantó para Pro/Max el 6 de mayo de 2026, pero las horas siguen citándose con frecuencia.';
+
+  @override
+  String aiUsageAnthropicPeak(String start, String end) {
+    return 'Pico de Anthropic: $start–$end';
+  }
+
+  @override
+  String get aiUsageHourlyHint =>
+      'Tokens por hora, promediados en los días del rango, hora local. Las barras resaltadas caen dentro del intervalo de arriba (laborables de 5 a 11 h PT).';
+
+  @override
+  String aiUsageHourlyTooltip(String hour, String tokens, String turns) {
+    return '$hour\n$tokens tokens/día de media\n$turns turnos/día de media';
+  }
+
+  @override
+  String get aiUsageNoProjectData => 'No hay datos de proyectos en este rango';
+
+  @override
+  String aiUsageTopProjectsBy(String metric) {
+    return 'Proyectos principales por $metric';
+  }
+
+  @override
+  String get aiUsageProjectSourceNote =>
+      'Solo Claude Code, Codex CLI y OpenCode. Antigravity no tiene una fuente de proyecto fiable, así que se agrupa como \"Proyecto desconocido\".';
+
+  @override
+  String get aiUsageUnknownProject => 'Proyecto desconocido';
+
+  @override
+  String aiUsageProjectTooltip(
+    String input,
+    String output,
+    int turns,
+    int sessions,
+  ) {
+    String _temp0 = intl.Intl.pluralLogic(
+      turns,
+      locale: localeName,
+      other: '$turns turnos',
+      one: '1 turno',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      sessions,
+      locale: localeName,
+      other: '$sessions sesiones',
+      one: '1 sesión',
+    );
+    return 'Entrada: $input · Salida: $output\n$_temp0 · $_temp1';
+  }
+
+  @override
+  String get aiUsageNoProviderData =>
+      'No hay datos de proveedores en este rango';
+
+  @override
+  String aiUsageProvidersBy(String metric) {
+    return 'Proveedores por $metric';
+  }
+
+  @override
+  String get aiUsageProvidersHint =>
+      'A qué proveedor se envió cada turno de OpenCode. Cada proveedor se valora como si se hubiera usado con una clave de API de pago normal, incluidos los modelos \"gratuitos\" de OpenCode y cualquier proveedor que esta app no conozca específicamente. Ambos se muestran a una tarifa estimada, en lugar de tomarse al pie de la letra o mostrarse como n/d. Un proveedor que realmente funciona en tu propio hardware (Ollama, llama.cpp, ...) sigue mostrando un \$0.00 real.';
+
+  @override
+  String aiUsageModelCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count modelos',
+      one: '1 modelo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiUsageProviderTooltip(
+    String input,
+    String output,
+    String cacheRead,
+    int turns,
+    String models,
+  ) {
+    String _temp0 = intl.Intl.pluralLogic(
+      turns,
+      locale: localeName,
+      other: '$turns turnos',
+      one: '1 turno',
+    );
+    return 'Entrada: $input · Salida: $output\nLecturas de caché: $cacheRead\n$_temp0 · $models';
+  }
+
+  @override
+  String get aiUsageNotApplicable => 'n/d';
+
+  @override
+  String get aiUsageCompany => 'Empresa';
+
+  @override
+  String get aiUsageModel => 'Modelo';
+
+  @override
+  String get aiUsageCompanyHeaderTip => 'Qué empresa creó los modelos usados';
+
+  @override
+  String get aiUsageModelHeaderTip =>
+      'Qué modelo se usó y de qué herramienta local procede';
+
+  @override
+  String get aiUsageTurnsHeaderTip =>
+      'Cuántas respuestas de IA separadas (llamadas a la API) se hicieron con este modelo';
+
+  @override
+  String get aiUsageTokens => 'Tokens';
+
+  @override
+  String get aiUsageTokensHeaderTip =>
+      'Solo tokens nuevos: entrada + salida + escrituras de caché por primera vez. Excluye las lecturas de caché (reutilización repetida del contexto previo). Consulta la tarjeta Lecturas de caché de arriba para esa cifra.';
+
+  @override
+  String get aiUsageCost => 'Coste';
+
+  @override
+  String get aiUsageCostHeaderTip =>
+      'Coste en USD que informa el proveedor para las llamadas de luma cuando está disponible; si no, una estimación a la tarifa de la API del modelo o proveedor. \"n/d\" significa que no se pudo determinar ningún coste.';
+
+  @override
+  String get aiUsageHeatmapTitle => 'Mapa de calor de contribuciones';
+
+  @override
+  String get aiUsageHeatmapHint =>
+      'Intensidad diaria de tokens en el último año. Pasa el cursor sobre un día para ver detalles.';
+
+  @override
+  String get aiUsageNoUsageYet => 'Aún no hay uso registrado';
+
+  @override
+  String aiUsageHeatmapCellTooltip(String date, String tokens, String cost) {
+    return '$date\n$tokens tokens · $cost';
+  }
+
+  @override
+  String aiUsageHeatmapEmptyTooltip(String date) {
+    return '$date\nSin uso';
+  }
+
+  @override
+  String get aiUsageLess => 'Menos';
+
+  @override
+  String get aiUsageSectionUsage => 'Uso de IA';
+
+  @override
+  String get aiUsageSectionUsageBlurb => 'Tu propio gasto de tokens';
+
+  @override
+  String get aiUsageSectionLeaderboard => 'Clasificación';
+
+  @override
+  String get aiUsageSectionLeaderboardBlurb => 'Todos los modelos, ordenados';
+
+  @override
+  String get aiUsageSectionOpenSource => 'Código abierto';
+
+  @override
+  String get aiUsageSectionOpenSourceBlurb =>
+      'Lo que puede ejecutar tu hardware';
+
+  @override
+  String get aiUsageSectionLibrary => 'Biblioteca';
+
+  @override
+  String get aiUsageSectionLibraryBlurb => 'Contexto Markdown reutilizable';
+
+  @override
+  String get aiUsageSectionAgents => 'Agentes';
+
+  @override
+  String get aiUsageSectionAgentsBlurb => 'Codex, Claude Code y opencode';
+
+  @override
+  String get aiUsageSectionTests => 'Pruebas';
+
+  @override
+  String get aiUsageSectionTestsBlurb => 'Experimentos en curso';
+
+  @override
+  String get aiUsageSectionAssets => 'Recursos';
+
+  @override
+  String get aiUsageSectionAssetsBlurb => 'Libre de uso';
+
+  @override
+  String get aiUsageSidebarExpand => 'Expandir la barra lateral';
+
+  @override
+  String get aiUsageSidebarCollapse => 'Contraer la barra lateral';
+
+  @override
+  String get aiUsageSidebarCollapseShort => 'Contraer';
+
+  @override
+  String aiUsageSectionTooltip(String label, String blurb) {
+    return '$label — $blurb';
+  }
+
+  @override
+  String get aiUsageRangeLast7Days => '7d';
+
+  @override
+  String get aiUsageRangeLast30Days => '30d';
+
+  @override
+  String get aiUsageRangeAll => 'Todo';
+
+  @override
+  String get aiUsageUnknownProvider => 'desconocido';
+
+  @override
+  String get aiUsageSortTokens => 'Tokens';
+
+  @override
+  String get aiUsageSortTurns => 'Turnos';
+
+  @override
+  String get aiUsageSortCost => 'Coste';
+
+  @override
+  String get aiUsageCompanyLocal => 'Local';
+
+  @override
+  String get aiUsageUntitledNote => 'Nota sin título';
+
+  @override
+  String get aiUsageUntitledAgent => 'Agente sin título';
+
+  @override
+  String get aiAgentTargetFileSubagent => 'subagente';
+
+  @override
+  String get aiAgentTargetFileAgent => 'agente';
+
+  @override
+  String get aiUsageEffortUnspecified => 'No especificado';
+
+  @override
+  String get aiUsageEffortMinimal => 'Mínimo';
+
+  @override
+  String get aiUsageEffortLow => 'Baja';
+
+  @override
+  String get aiUsageEffortMedium => 'Media';
+
+  @override
+  String get aiUsageEffortHigh => 'Alta';
+
+  @override
+  String get aiUsageEffortExtraHigh => 'Muy alta';
+
+  @override
+  String get aiUsageEffortMax => 'Máxima';
+
+  @override
+  String get aiUsageEffortBreakdownTitle => 'Desglose del esfuerzo de Claude';
+
+  @override
+  String get aiUsageEffortBreakdownBlurb =>
+      'Cuánto se pidió pensar a cada modelo de Claude, según los turnos y los tokens gastados.';
+
+  @override
+  String aiUsageEffortTurns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count turnos',
+      one: '1 turno',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiUsageAssetsIntro(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count modelos procedurales del juego del aeropuerto. Abre uno para inspeccionarlo en 3D o descárgalo como archivo HTML.',
+      one:
+          '1 modelo procedural del juego del aeropuerto. Ábrelo para inspeccionarlo en 3D o descárgalo como archivo HTML.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get aiUsageAssetsSearchHint => 'Buscar modelos';
+
+  @override
+  String get aiUsageAssetsClearSearch => 'Borrar búsqueda';
+
+  @override
+  String get aiUsageAssetsCategoryAll => 'Todos';
+
+  @override
+  String get aiUsageAssetsCategoryRetail => 'Comercios';
+
+  @override
+  String get aiUsageAssetsCategoryFood => 'Comida';
+
+  @override
+  String get aiUsageAssetsCategoryEntertainment => 'Ocio';
+
+  @override
+  String get aiUsageAssetsCategorySecurity => 'Seguridad';
+
+  @override
+  String get aiUsageAssetsCategoryPassenger => 'Pasajeros';
+
+  @override
+  String get aiUsageAssetsNoMatch => 'Ningún modelo coincide';
+
+  @override
+  String get aiUsageAssetsNoMatchHint =>
+      'Prueba con otro nombre o borra el filtro.';
+
+  @override
+  String aiUsageAssetOpenLabel(String name) {
+    return 'Abrir $name';
+  }
+
+  @override
+  String get aiUsageAssetsLoadFailed => 'No se pudieron cargar los recursos';
+
+  @override
+  String get aiUsageAssetBackTooltip => 'Volver a recursos';
+
+  @override
+  String get aiUsageAssetDownloadHtmlTooltip =>
+      'Un único archivo HTML que abre este modelo sin conexión en cualquier navegador';
+
+  @override
+  String get aiUsageAssetDownloadHtml => 'Descargar HTML';
+
+  @override
+  String aiUsageAssetSaved(String fileName) {
+    return '$fileName guardado';
+  }
+
+  @override
+  String aiUsageAssetSaveFailed(String error) {
+    return 'No se pudo guardar: $error';
+  }
+
+  @override
+  String aiUsageAssetSaveDialogTitle(String name) {
+    return 'Guardar $name';
+  }
+
+  @override
+  String get aiUsageAssetStudioUnsupported =>
+      'El estudio 3D funciona en Windows y Android';
+
+  @override
+  String get aiUsageAssetStudioUnsupportedHint =>
+      'Descarga el HTML para abrir este modelo en cualquier navegador; funciona sin conexión.';
+
+  @override
+  String get aiUsageAssetStudioUnavailable => 'Estudio no disponible';
+
+  @override
+  String aiUsageAssetStudioPrepareFailed(String error) {
+    return 'No se pudo preparar el estudio: $error';
+  }
+
+  @override
+  String aiCatalogServerError(String status) {
+    return 'El servidor no pudo devolver la clasificación de modelos (HTTP $status).';
+  }
+
+  @override
+  String get aiCatalogMalformedResponse =>
+      'Respuesta de la clasificación mal formada.';
+
+  @override
+  String get aiCompareTitle => 'Comparar modelos';
+
+  @override
+  String get aiComparePickTwo => 'Elige al menos dos modelos para comparar.';
+
+  @override
+  String get aiCompareAddHint => 'Añade modelos para compararlos lado a lado.';
+
+  @override
+  String get aiCompareAddTooltip => 'Añadir un modelo';
+
+  @override
+  String get aiCompareAddModel => 'Añadir modelo';
+
+  @override
+  String get aiCompareNotEnoughRatings =>
+      'No hay suficientes valoraciones comunes para dibujar un radar con esta selección.';
+
+  @override
+  String get aiLeaderboardMetricIntelligence => 'Índice de inteligencia';
+
+  @override
+  String get aiLeaderboardMetricReasoning => 'Índice de razonamiento';
+
+  @override
+  String get aiLeaderboardMetricCoding => 'Índice de programación';
+
+  @override
+  String get aiLeaderboardMetricAgent => 'Índice de agentes';
+
+  @override
+  String get aiLeaderboardMetricMath => 'Índice de matemáticas';
+
+  @override
+  String get aiLeaderboardMetricBlendedPrice => 'Precio combinado 8:1';
+
+  @override
+  String get aiLeaderboardMetricAveragePrice => 'Precio medio';
+
+  @override
+  String get aiLeaderboardMetricInputPrice => 'Precio de entrada';
+
+  @override
+  String get aiLeaderboardMetricOutputPrice => 'Precio de salida';
+
+  @override
+  String get aiLeaderboardMetricParameters => 'Parámetros';
+
+  @override
+  String get aiLeaderboardMetricContext => 'Longitud de contexto';
+
+  @override
+  String get aiLeaderboardMetricSpeed => 'Velocidad';
+
+  @override
+  String get aiLeaderboardMetricLatency => 'Tiempo hasta el primer token';
+
+  @override
+  String get aiLeaderboardUnitTokens => 'tokens';
+
+  @override
+  String get aiLeaderboardColumnRank => 'RANGO';
+
+  @override
+  String get aiLeaderboardColumnRankHelp => 'Posición en la ordenación actual';
+
+  @override
+  String get aiLeaderboardColumnName => 'MODELO';
+
+  @override
+  String get aiLeaderboardColumnNameHelp =>
+      'Nombre del modelo y el proveedor que lo ofrece';
+
+  @override
+  String get aiLeaderboardColumnIntelligence => 'INTELIGENCIA';
+
+  @override
+  String get aiLeaderboardColumnIntelligenceHelp =>
+      'Índice de inteligencia de Artificial Analysis: la puntuación compuesta de todos los benchmarks que ejecuta, con el mejor esfuerzo de razonamiento del modelo';
+
+  @override
+  String get aiLeaderboardColumnCoding => 'CÓDIGO';
+
+  @override
+  String get aiLeaderboardColumnCodingHelp =>
+      'Benchmarks de generación y reparación de código';
+
+  @override
+  String get aiLeaderboardColumnAgent => 'AGENTE';
+
+  @override
+  String get aiLeaderboardColumnAgentHelp =>
+      'Benchmarks de uso de herramientas a largo plazo y tareas de varios pasos';
+
+  @override
+  String get aiLeaderboardColumnCodeArenaHelp =>
+      'Elo cara a cara según la preferencia humana en tareas de código';
+
+  @override
+  String get aiLeaderboardColumnParams => 'PARÁM.';
+
+  @override
+  String get aiLeaderboardColumnParamsHelp =>
+      'Número total de parámetros, en miles de millones. Solo se conoce en modelos de pesos abiertos';
+
+  @override
+  String get aiLeaderboardColumnContext => 'CONTEXTO';
+
+  @override
+  String get aiLeaderboardColumnContextHelp =>
+      'Prompt más grande que acepta el modelo, en tokens';
+
+  @override
+  String get aiLeaderboardColumnPrice => 'PRECIO \$/M';
+
+  @override
+  String get aiLeaderboardColumnPriceHelp =>
+      'Precio de entrada y salida promediado, en USD por millón de tokens';
+
+  @override
+  String get aiLeaderboardColumnLicense => 'LICENCIA';
+
+  @override
+  String get aiLeaderboardColumnLicenseHelp =>
+      'El candado abierto indica que los pesos se pueden descargar';
+
+  @override
+  String get aiLeaderboardGraphEmptyTitle => 'Aún no hay datos de modelos';
+
+  @override
+  String get aiLeaderboardGraphEmptySubtitle =>
+      'El gráfico necesita el catálogo de modelos para dibujarse.';
+
+  @override
+  String aiLeaderboardGraphNotEnough(String x, String y) {
+    return 'No hay suficientes modelos con $x e $y para dibujarlos.';
+  }
+
+  @override
+  String get aiLeaderboardGraphXAxis => 'EJE X';
+
+  @override
+  String get aiLeaderboardGraphYAxis => 'EJE Y';
+
+  @override
+  String get aiLeaderboardGraphVendors => 'PROVEEDORES';
+
+  @override
+  String get aiLeaderboardGraphHighlight => 'RESALTAR MODELOS';
+
+  @override
+  String get aiLeaderboardGraphHighlightHint =>
+      'Elige modelos para resaltarlos en el gráfico.';
+
+  @override
+  String get aiLeaderboardGraphLogScale => 'Escala logarítmica';
+
+  @override
+  String aiLeaderboardGraphPlotted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count modelos dibujados',
+      one: '1 modelo dibujado',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get aiLeaderboardTabTable => 'Tabla';
+
+  @override
+  String get aiLeaderboardTabGraph => 'Gráfico';
+
+  @override
+  String get aiLeaderboardTabInsights => 'Análisis';
+
+  @override
+  String get aiLeaderboardCompare => 'Comparar';
+
+  @override
+  String get aiLeaderboardEffortMinimal => 'Mínimo';
+
+  @override
+  String get aiLeaderboardEffortLow => 'Bajo';
+
+  @override
+  String get aiLeaderboardEffortMedium => 'Medio';
+
+  @override
+  String get aiLeaderboardEffortHigh => 'Alto';
+
+  @override
+  String get aiLeaderboardEffortXhigh => 'Muy alto';
+
+  @override
+  String get aiLeaderboardEffortMax => 'Máximo';
+
+  @override
+  String get aiLeaderboardInsightsEmptySubtitle =>
+      'Los análisis necesitan el catálogo de modelos para generarse.';
+
+  @override
+  String get aiLeaderboardInsightsEyebrowEfficiency => 'EFICIENCIA';
+
+  @override
+  String get aiLeaderboardInsightsPriceVsPerformance =>
+      'Precio frente a rendimiento';
+
+  @override
+  String aiLeaderboardInsightsFrontierBlurb(String metric) {
+    return 'Coste combinado (8:1 entrada/salida) frente a $metric. Los modelos sobre la línea son eficientes en sentido de Pareto: ningún otro es a la vez más barato y al menos igual de bueno.';
+  }
+
+  @override
+  String get aiLeaderboardInsightsEyebrowBestByTask => 'MEJORES POR TAREA';
+
+  @override
+  String get aiLeaderboardInsightsCategoryLeaders => 'Líderes por categoría';
+
+  @override
+  String get aiLeaderboardInsightsEyebrowResearch => 'INVESTIGACIÓN';
+
+  @override
+  String get aiLeaderboardInsightsLatestNews => 'Últimas noticias';
+
+  @override
+  String get aiLeaderboardInsightsScoreAxis => 'Eje de puntuación';
+
+  @override
+  String aiLeaderboardInsightsNotEnoughPriced(String metric) {
+    return 'Todavía no hay suficientes modelos con precio evaluados en $metric.';
+  }
+
+  @override
+  String get aiLeaderboardInsightsBlendedCostAxis =>
+      'Coste combinado \$/1M tokens (8:1 entrada/salida)';
+
+  @override
+  String get aiLeaderboardInsightsTaskReasoning => 'Mejor para razonamiento';
+
+  @override
+  String get aiLeaderboardInsightsTaskCoding => 'Mejor para programar';
+
+  @override
+  String get aiLeaderboardInsightsTaskAgents => 'Mejor para agentes';
+
+  @override
+  String get aiLeaderboardInsightsTaskFastest => 'Más rápido';
+
+  @override
+  String get aiLeaderboardInsightsTaskCheapest => 'Frontera más barata';
+
+  @override
+  String get aiLeaderboardInsightsTaskLargest => 'Mayor contexto';
+
+  @override
+  String get aiLeaderboardInsightsNewBadge => 'NUEVO';
+
+  @override
+  String get aiLeaderboardDetailFallbackTitle => 'Modelo';
+
+  @override
+  String get aiLeaderboardDetailCompareTooltip => 'Comparar con otros modelos';
+
+  @override
+  String get aiLeaderboardDetailNoLongerListed =>
+      'Este modelo ya no aparece en la lista.';
+
+  @override
+  String get aiLeaderboardDetailProprietary =>
+      'Propietario — solo acceso por API';
+
+  @override
+  String get aiLeaderboardDetailOpenWeights => 'Pesos abiertos';
+
+  @override
+  String aiLeaderboardDetailOpenWeightsLicensed(String license) {
+    return 'Pesos abiertos · $license';
+  }
+
+  @override
+  String aiLeaderboardDetailReleased(String date) {
+    return 'Lanzado $date';
+  }
+
+  @override
+  String aiLeaderboardDetailKnowledgeCutoff(String date) {
+    return 'Fecha de corte del conocimiento $date';
+  }
+
+  @override
+  String aiLeaderboardDetailParamsTag(String params) {
+    return '$params parámetros';
+  }
+
+  @override
+  String get aiLeaderboardDetailRatingIntelligence => 'Inteligencia';
+
+  @override
+  String get aiLeaderboardDetailRatingIntelligenceHelp =>
+      'Índice de inteligencia de Artificial Analysis, con el mejor esfuerzo';
+
+  @override
+  String get aiLeaderboardDetailRatingReasoning => 'Razonamiento';
+
+  @override
+  String get aiLeaderboardDetailRatingReasoningHelp =>
+      'Razonamiento y conocimiento de nivel universitario';
+
+  @override
+  String get aiLeaderboardDetailRatingCoding => 'Programación';
+
+  @override
+  String get aiLeaderboardDetailRatingCodingHelp =>
+      'Generación y reparación de código';
+
+  @override
+  String get aiLeaderboardDetailRatingAgent => 'Agente';
+
+  @override
+  String get aiLeaderboardDetailRatingAgentHelp =>
+      'Uso de herramientas a largo plazo';
+
+  @override
+  String get aiLeaderboardDetailRatingCodeArenaHelp =>
+      'Elo de preferencia en código cara a cara';
+
+  @override
+  String get aiLeaderboardDetailRatingMath => 'Matemáticas';
+
+  @override
+  String get aiLeaderboardDetailRatingMathHelp =>
+      'Matemáticas de nivel de competición';
+
+  @override
+  String aiLeaderboardDetailTokensCount(String tokens) {
+    return '$tokens tokens';
+  }
+
+  @override
+  String aiLeaderboardDetailPricePerMTokens(String price) {
+    return '$price/M tokens';
+  }
+
+  @override
+  String get aiLeaderboardDetailContextWindow => 'Ventana de contexto';
+
+  @override
+  String get aiLeaderboardDetailMaxOutput => 'Salida máxima';
+
+  @override
+  String get aiLeaderboardDetailInputPrice => 'Precio de entrada';
+
+  @override
+  String get aiLeaderboardDetailOutputPrice => 'Precio de salida';
+
+  @override
+  String get aiLeaderboardDetailCacheRead => 'Lectura de caché';
+
+  @override
+  String get aiLeaderboardDetailEffortLevels => 'Niveles de esfuerzo';
+
+  @override
+  String get aiLeaderboardDetailLicence => 'Licencia';
+
+  @override
+  String get aiLeaderboardDetailSpecifications => 'ESPECIFICACIONES';
+
+  @override
+  String get aiLeaderboardDetailEffortTitle =>
+      'ESFUERZO FRENTE A TOKENS USADOS';
+
+  @override
+  String get aiLeaderboardDetailEffortBlurb =>
+      'Cuánto más inteligente se vuelve cada nivel de esfuerzo de razonamiento, y cuántos tokens gasta pensando para lograrlo.';
+
+  @override
+  String get aiLeaderboardDetailIntelligenceAxis => 'Índice de inteligencia';
+
+  @override
+  String aiLeaderboardDetailIndexOnly(String index) {
+    return 'Índice $index';
+  }
+
+  @override
+  String aiLeaderboardDetailIndexTokens(String index, String tokens) {
+    return 'Índice $index · $tokens tok';
+  }
+
+  @override
+  String aiLeaderboardDetailTokenLine(String label, String tokens) {
+    return '$label: $tokens tok';
+  }
+
+  @override
+  String get aiLeaderboardTableEmptyTitle => 'Aún no hay datos de modelos';
+
+  @override
+  String get aiLeaderboardTableLoadFailed =>
+      'No se pudo cargar la clasificación. Inténtalo de nuevo o pide al administrador del servidor que actualice el catálogo de modelos.';
+
+  @override
+  String get aiLeaderboardTableSignInHint =>
+      'La clasificación se descarga del servidor de luma. Inicia sesión con una cuenta aprobada para obtenerla; después queda en caché para verla sin conexión.';
+
+  @override
+  String get aiLeaderboardTableRefreshing => 'Actualizando…';
+
+  @override
+  String get aiLeaderboardTableNoMatch =>
+      'Ningún modelo coincide con esos filtros.';
+
+  @override
+  String get aiLeaderboardTableSearchHint => 'Buscar modelos';
+
+  @override
+  String get aiLeaderboardTableOpenWeights => 'Pesos abiertos';
+
+  @override
+  String get aiLeaderboardTableOpenWeightsTooltip =>
+      'Mostrar solo los modelos cuyos pesos puedes descargar';
+
+  @override
+  String get aiLeaderboardTableDetailed => 'Detallado';
+
+  @override
+  String get aiLeaderboardTableDetailedTooltip =>
+      'Una fila por modelo y nivel de esfuerzo, para que cada nivel se clasifique con sus propias puntuaciones';
+
+  @override
+  String aiLeaderboardTableModelsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count modelos',
+      one: '1 modelo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiLeaderboardTableVariantsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count variantes',
+      one: '1 variante',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiLeaderboardTableShownOfModels(int shown, int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total modelos',
+      one: '1 modelo',
+    );
+    return '$shown de $_temp0';
+  }
+
+  @override
+  String aiLeaderboardTableShownOfVariants(int shown, int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total variantes',
+      one: '1 variante',
+    );
+    return '$shown de $_temp0';
+  }
+
+  @override
+  String get aiLeaderboardOriginNotLoaded => 'aún no cargado';
+
+  @override
+  String get aiLeaderboardOriginCached => 'de tu última sincronización';
+
+  @override
+  String get aiLeaderboardOriginServer => 'del servidor de luma';
+
+  @override
+  String aiLeaderboardFreshnessText(String time, String origin) {
+    return '$time · $origin';
+  }
+
+  @override
+  String aiLeaderboardFreshnessTooltip(String text) {
+    return 'Datos de modelos $text';
+  }
+
+  @override
+  String get aiLeaderboardTableFilterProvider => 'Filtrar por proveedor';
+
+  @override
+  String get aiLeaderboardTableAllProviders => 'Todos los proveedores';
+
+  @override
+  String get aiLeaderboardTableSortBy => 'Ordenar por';
+
+  @override
+  String aiLeaderboardTableSortedDescending(String column) {
+    return '$column, ordenado de forma descendente';
+  }
+
+  @override
+  String aiLeaderboardTableSortedAscending(String column) {
+    return '$column, ordenado de forma ascendente';
+  }
+
+  @override
+  String aiLeaderboardTableNotSorted(String column) {
+    return '$column, sin ordenar';
+  }
+
+  @override
+  String get aiLeaderboardTableArena => 'Arena';
+
+  @override
+  String aiLeaderboardCardPricePerM(String price) {
+    return '$price /M';
+  }
+
+  @override
+  String aiLeaderboardCardContext(String tokens) {
+    return '$tokens de contexto';
+  }
+
+  @override
+  String aiLeaderboardCardParams(String params) {
+    return '$params parámetros';
+  }
+
+  @override
+  String get aiOsEmptyTitle => 'Todavía no hay modelos de pesos abiertos';
+
+  @override
+  String get aiOsEmptySubtitle =>
+      'Esta calculadora dimensiona los modelos cuyos pesos puedes descargar. Ninguno del catálogo actual tiene un número de parámetros conocido: actualiza la clasificación e inténtalo de nuevo.';
+
+  @override
+  String get aiOsWhatCanRunIt => 'QUÉ PUEDE EJECUTARLO';
+
+  @override
+  String get aiOsFootnote =>
+      'La memoria de los pesos es un cálculo exacto. El coste del contexto se estima a partir del número de parámetros: el catálogo no indica el número de capas ni la forma de atención de cada modelo, así que un modelo con un diseño poco habitual variará. Deja margen.';
+
+  @override
+  String get aiOsFieldModel => 'Modelo';
+
+  @override
+  String get aiOsFieldQuantization => 'Cuantización';
+
+  @override
+  String get aiOsFieldContext => 'Contexto';
+
+  @override
+  String get aiOsKv8bit => 'KV de 8 bits';
+
+  @override
+  String get aiOsKv8bitTooltip =>
+      'Guarda la caché del contexto en 8 bits en lugar de 16: reduce a la mitad aproximadamente el coste del contexto.';
+
+  @override
+  String get aiOsGbOfMemory => 'GB de memoria';
+
+  @override
+  String get aiOsPartWeights => 'Pesos';
+
+  @override
+  String get aiOsPartContextCache => 'Caché del contexto';
+
+  @override
+  String get aiOsPartRuntime => 'Ejecución';
+
+  @override
+  String get aiOsVerdictRunsWell => 'Funciona bien';
+
+  @override
+  String get aiOsVerdictTightFit => 'Justo';
+
+  @override
+  String get aiOsVerdictSpills => 'Se desborda a la RAM';
+
+  @override
+  String get aiOsVerdictWontRun => 'No funciona';
+
+  @override
+  String get aiOsUnified => 'unificada';
+
+  @override
+  String get aiOsUnifiedTooltip =>
+      'Memoria de CPU/GPU compartida: es la parte que un modelo puede usar realmente, no el total de la máquina.';
+
+  @override
+  String aiOsBitsPerWeight(String bits) {
+    return '$bits bits';
+  }
+
+  @override
+  String get aiOsQuantFp16 =>
+      'Precisión completa. Así se distribuyen los pesos.';
+
+  @override
+  String get aiOsQuantQ8 => 'Casi sin pérdida. La opción segura si cabe.';
+
+  @override
+  String get aiOsQuantQ6 => 'Muy cercano a Q8, notablemente más pequeño.';
+
+  @override
+  String get aiOsQuantQ5 => 'Pequeña pérdida de calidad, buen equilibrio.';
+
+  @override
+  String get aiOsQuantQ4 =>
+      'La opción habitual. Pérdida de calidad real pero moderada.';
+
+  @override
+  String get aiOsQuantQ3 =>
+      'Pérdida de calidad visible. Para encajar un nivel superior.';
+
+  @override
+  String get aiOsQuantIq2 => 'Gran pérdida. Último recurso para que quepa.';
+
+  @override
+  String aiBenchmarkServerFailed(String what, int status) {
+    return 'El servidor no pudo devolver $what (HTTP $status).';
+  }
+
+  @override
+  String get aiBenchmarkWhatList => 'la lista de benchmarks';
+
+  @override
+  String get aiBenchmarkWhatScene => 'la escena de benchmark';
+
+  @override
+  String get aiBenchmarkWhatPreview => 'la vista previa del benchmark';
+
+  @override
+  String get aiBenchmarkWhatArtwork => 'la ilustración del benchmark';
+
+  @override
+  String get aiBenchmarkMalformed => 'Respuesta de benchmark mal formada.';
+
+  @override
+  String aiBenchmarkUnknownId(String id) {
+    return 'Benchmark desconocido \"$id\".';
+  }
+
+  @override
+  String get aiBenchmarkSignInToDownload =>
+      'Inicia sesión en una cuenta de luma aprobada para descargar este benchmark.';
+
+  @override
+  String get aiBenchmarkIntegrityFailed =>
+      'La escena descargada no superó la comprobación de integridad.';
+
+  @override
+  String get aiBenchmarkSelectModel => 'Selecciona un modelo';
+
+  @override
+  String get aiBenchmarkViewList => 'Lista';
+
+  @override
+  String get aiBenchmarkViewBanners => 'Banners';
+
+  @override
+  String aiBenchmarkNoMatch(String query) {
+    return 'Ningún modelo coincide con \"$query\"';
+  }
+
+  @override
+  String get aiBenchmarkTryShorterSearch =>
+      'Prueba con una búsqueda más corta.';
+
+  @override
+  String get aiBenchmarkNoEntries => 'Todavía no hay entradas';
+
+  @override
+  String get aiBenchmarkSignInToFetch =>
+      'Los modelos se descargan del servidor de luma. Inicia sesión en una cuenta aprobada para obtenerlos.';
+
+  @override
+  String aiBenchmarkDownloading(String model) {
+    return 'Descargando $model…';
+  }
+
+  @override
+  String aiBenchmarkCouldNotLoad(String model) {
+    return 'No se pudo cargar $model';
+  }
+
+  @override
+  String get aiBenchmarkDownloadFailed => 'La descarga ha fallado.';
+
+  @override
+  String aiBenchmarkLoadFailedDetail(String error) {
+    return '$error Los modelos se guardan en caché tras la primera descarga, así que normalmente basta con reintentarlo.';
+  }
+
+  @override
+  String get aiBenchmarkBackToModels => 'Volver a los modelos';
+
+  @override
+  String get aiBenchmarkOpenInBrowser => 'Abrir en el navegador';
+
+  @override
+  String get aiBenchmarkCouldNotOpenBrowser => 'No se pudo abrir un navegador.';
+
+  @override
+  String get aiCathedralTitle => 'Prueba de la catedral';
+
+  @override
+  String get aiCathedralHeading => 'Modelo de referencia';
+
+  @override
+  String get aiCathedralIntro =>
+      'Una catedral modelada como archivo 3D .glb, uno por modelo. Orbita, haz zoom y desplázate para inspeccionarla.';
+
+  @override
+  String get aiCathedralEmptyNone =>
+      'Todavía no se ha añadido ningún modelo de catedral.';
+
+  @override
+  String get aiCathedralUnsupportedTitle => 'No disponible en esta plataforma';
+
+  @override
+  String get aiCathedralUnsupportedBody =>
+      'La prueba de la catedral requiere un escritorio Windows. El soporte para móvil y Linux llegará pronto.';
+
+  @override
+  String get aiCruiseTitle => 'Prueba del crucero';
+
+  @override
+  String get aiCruiseIntro =>
+      'Explora un crucero vacío a escala humana, desde el paseo de los botes salvavidas hasta las cubiertas superiores al aire libre.';
+
+  @override
+  String get aiCruiseGptDescription =>
+      'MSC Virtuosa en alta mar: recorre las cubiertas exteriores y el paseo de botes salvavidas de la cubierta 7, con ciclo día/noche, clima y vistas desde las lanchas.';
+
+  @override
+  String get aiCruiseOpusDescription =>
+      'MSC Virtuosa a escala real en un mar WebGPU: recorre las cubiertas exteriores y el paseo de botes salvavidas de la cubierta 7, viaja en una lancha a nivel del mar, sobrevuela con un dron o atraca en puerto, con ciclo día/noche, nubes volumétricas, lluvia, niebla y tormentas.';
+
+  @override
+  String get aiCruiseWindowsOnlyTitle => 'Se requiere el escritorio de Windows';
+
+  @override
+  String get aiCruiseWindowsOnlyBody =>
+      'La prueba del crucero usa controles de teclado y ratón en la aplicación de escritorio de Windows.';
+
+  @override
+  String get aiCruiseCouldNotLoad => 'No se pudo cargar este crucero';
+
+  @override
+  String get aiCruiseCouldNotStart => 'No se pudo iniciar el crucero';
+
+  @override
+  String get aiCruiseTimeout =>
+      'El barco no terminó de cargarse. Inténtalo de nuevo.';
+
+  @override
+  String get aiCruiseRendererFailed =>
+      'El motor de renderizado del crucero no pudo iniciarse.';
+
+  @override
+  String get aiTestsKeyboardTitle => 'Prueba de teclado';
+
+  @override
+  String get aiTestsEngineTitle => 'Prueba de motor';
+
+  @override
+  String get aiTestsPagodaTitle => 'Prueba de la pagoda';
+
+  @override
+  String get aiTestsBenchmarkModelHeading => 'Modelo de referencia';
+
+  @override
+  String get aiTestsBenchmarkSceneHeading => 'Escena de referencia';
+
+  @override
+  String get aiTestsKeyboardIntro =>
+      'Un teclado creado como escena interactiva, uno por modelo.';
+
+  @override
+  String get aiTestsEngineIntro =>
+      'V8 en corte — un benchmark 3D en tiempo real de un motor V8 cross-plane con pistones movidos por el cigüeñal, árboles de levas a media velocidad, válvulas sincronizadas, efectos de combustión y un benchmark de FPS de 30 segundos.';
+
+  @override
+  String get aiTestsPagodaIntro =>
+      'Fiesta de primavera en la pagoda de cinco pisos — un benchmark interactivo de jardín de vóxeles con terreno procedural, elementos animados e iluminación dinámica.';
+
+  @override
+  String get aiTestsSelectModel => 'Selecciona un modelo';
+
+  @override
+  String get aiTestsListView => 'Lista';
+
+  @override
+  String get aiTestsBannersView => 'Banners';
+
+  @override
+  String aiTestsNoModelsMatch(String query) {
+    return 'Ningún modelo coincide con \"$query\"';
+  }
+
+  @override
+  String get aiTestsTryShorterSearch => 'Prueba con una búsqueda más corta.';
+
+  @override
+  String get aiTestsKeyboardNoEntries => 'Aún no hay entradas';
+
+  @override
+  String get aiTestsKeyboardNoScenes =>
+      'Todavía no se han añadido escenas de teclado.';
+
+  @override
+  String get aiTestsScenesSignInHint =>
+      'Las escenas se descargan del servidor de luma. Inicia sesión con una cuenta aprobada para obtenerlas.';
+
+  @override
+  String get aiTestsNoBenchmarksYet => 'Aún no hay benchmarks';
+
+  @override
+  String get aiTestsBenchmarkListFailed =>
+      'No se pudo cargar la lista de benchmarks. Inténtalo de nuevo o pide al administrador del servidor que añada escenas.';
+
+  @override
+  String get aiTestsBenchmarksSignInHint =>
+      'Los benchmarks se descargan del servidor de luma. Inicia sesión con una cuenta aprobada para obtenerlos.';
+
+  @override
+  String get aiTestsRefreshing => 'Actualizando…';
+
+  @override
+  String get aiTestsEngineBundledHeading => 'Motores incluidos';
+
+  @override
+  String get aiTestsEngineOnlineHeading => 'Benchmarks en línea';
+
+  @override
+  String aiTestsEngineNoBundledMatch(String query) {
+    return 'Ninguna entrada incluida coincide con \"$query\".';
+  }
+
+  @override
+  String aiTestsEngineDescProcedural(String model) {
+    return 'V8 cross-plane procedural generado por $model.';
+  }
+
+  @override
+  String aiTestsEngineDescStudy(String model) {
+    return 'Estudio interactivo de motor V8 generado por $model.';
+  }
+
+  @override
+  String get aiTestsNotAvailableOnPlatform =>
+      'No disponible en esta plataforma';
+
+  @override
+  String aiTestsNeedsWindowsDesktop(String test) {
+    return '$test requiere un escritorio Windows. La compatibilidad con móvil y Linux llegará pronto.';
+  }
+
+  @override
+  String aiTestsDownloadingModel(String model) {
+    return 'Descargando $model…';
+  }
+
+  @override
+  String aiTestsCouldNotLoadModel(String model) {
+    return 'No se pudo cargar $model';
+  }
+
+  @override
+  String get aiTestsDownloadFailed => 'La descarga ha fallado.';
+
+  @override
+  String aiTestsSceneLoadFailedBody(String error) {
+    return '$error Las escenas se guardan en caché tras la primera descarga, así que normalmente basta con reintentarlo.';
+  }
+
+  @override
+  String aiTestsByVendor(String vendor) {
+    return 'por $vendor';
+  }
+
+  @override
+  String get aiTestsPagodaDescStep5 =>
+      'Benchmark de jardín de vóxeles de StepFun Step 5 Preview';
+
+  @override
+  String get aiTestsPagodaDescIndependent =>
+      'Benchmark independiente de jardín de vóxeles';
+
+  @override
+  String get aiTestsPagodaDescSpaceBunny =>
+      'Benchmark independiente de jardín de vóxeles — isla voladora, cascadas celestes y una pagoda de cinco pisos';
+
+  @override
+  String get aiTestsPagodaDescSonnetXhigh =>
+      'Sonnet 5.5 con esfuerzo de razonamiento extra alto — una isla-jardín flotante con una cascada y una pagoda de cinco pisos';
+
+  @override
+  String get aiTestsPagodaDescGptSolXhigh =>
+      'GPT 6.1 Sol con esfuerzo de razonamiento extra alto — jardín de vóxeles de fiesta de primavera con una pagoda de cinco pisos';
+
+  @override
+  String get aiTestsPagodaDescGptSolLow =>
+      'GPT 6.1 Sol con esfuerzo de razonamiento bajo — jardín de vóxeles de fiesta de primavera con una pagoda de cinco pisos';
+
+  @override
+  String get aiTestPagodaTitle => 'Prueba de pagoda';
+
+  @override
+  String get aiTestEngineTitle => 'Prueba de motor';
+
+  @override
+  String get aiTestPcTitle => 'Prueba de PC';
+
+  @override
+  String get aiTestCathedralTitle => 'Prueba de catedral';
+
+  @override
+  String get aiTestKeyboardTitle => 'Prueba de teclado';
+
+  @override
+  String get aiTestServerRackTitle => 'Prueba de rack de servidores';
+
+  @override
+  String get aiTestCruiseShipTitle => 'Prueba de crucero';
+
+  @override
+  String get aiTestWebsiteLandingTitle => 'Página de inicio de sitio web';
+
+  @override
+  String get aiTestSportsCarTitle => 'Prueba de coche deportivo';
+
+  @override
+  String get aiTestTrainWorldTitle => 'Prueba del mundo ferroviario';
+
+  @override
+  String get aiTestWorldTimelineTitle => 'Prueba de línea temporal del mundo';
+
+  @override
+  String get aiTestFluidSimTitle => 'Prueba de simulación de fluidos';
+
+  @override
+  String get aiTestGalaxyTitle => 'Prueba de galaxia';
+
+  @override
+  String get aiTestCruisePortTitle => 'Prueba de puerto de cruceros';
+
+  @override
+  String get aiTestOpenScreen => 'Abrir la pantalla de prueba';
+
+  @override
+  String get aiTestNewOpenScreen => 'Nuevo · Abrir la pantalla de prueba';
+
+  @override
+  String get aiTestsBlurb =>
+      'Espacio de pruebas para experimentos que aún no están listos para ser una sección propia.';
+
+  @override
+  String get aiTestBenchmarkScene => 'Escena de referencia';
+
+  @override
+  String get aiTestBenchmarkModel => 'Modelo de referencia';
+
+  @override
+  String get aiTestSelectModel => 'Selecciona un modelo';
+
+  @override
+  String get aiTestViewList => 'Lista';
+
+  @override
+  String get aiTestViewBanners => 'Banners';
+
+  @override
+  String get aiTestNotAvailablePlatform => 'No disponible en esta plataforma';
+
+  @override
+  String aiTestNoMatch(String query) {
+    return 'Ningún modelo coincide con «$query»';
+  }
+
+  @override
+  String get aiTestTrySearchShorter => 'Prueba con una búsqueda más corta.';
+
+  @override
+  String aiTestDownloadingModel(String model) {
+    return 'Descargando $model…';
+  }
+
+  @override
+  String aiTestCouldNotLoadModel(String model) {
+    return 'No se pudo cargar $model';
+  }
+
+  @override
+  String aiTestLoadFailedBody(String error) {
+    return '$error Las escenas se guardan en caché tras la primera descarga, así que normalmente basta con reintentar.';
+  }
+
+  @override
+  String get aiTestDownloadFailed => 'La descarga ha fallado.';
+
+  @override
+  String get aiTestPcBlurb =>
+      'Explora equipos de juego 3D interactivos con secuencias de encendido, iluminación RGB y controles de hardware.';
+
+  @override
+  String get aiTestPcBundledDesc =>
+      'HELIX 01 — un escaparate de marfil y aluminio con circuito de refrigeración líquida a medida, cristal abatible, inspección desmontada y controles de energía/RGB.';
+
+  @override
+  String get aiTestPcPlatformBody =>
+      'La prueba de PC requiere un escritorio Windows. La compatibilidad con móvil y Linux llegará pronto.';
+
+  @override
+  String get aiTestPcEmptyCanRefresh =>
+      'No se pudo cargar la lista de referencias. Inténtalo de nuevo o pide al administrador del servidor que añada escenas.';
+
+  @override
+  String get aiTestEmptyNoAccount =>
+      'Las referencias se descargan del servidor de luma. Inicia sesión con una cuenta aprobada para obtenerlas.';
+
+  @override
+  String get aiTestNoScenesYet =>
+      'Todavía no se han añadido escenas a esta prueba.';
+
+  @override
+  String get aiTestScenesDownloadNoAccount =>
+      'Las escenas se descargan del servidor de luma. Inicia sesión con una cuenta aprobada para obtenerlas.';
+
+  @override
+  String aiTestScenePlatformBody(String title) {
+    return '$title requiere un escritorio Windows. La compatibilidad con móvil y Linux llegará pronto.';
+  }
+
+  @override
+  String get aiTestSportsCarBlurb =>
+      'Un coche deportivo original: configurador de estudio y prueba de conducción.';
+
+  @override
+  String get aiTestTrainWorldBlurb =>
+      'Un ferrocarril en miniatura con tres trenes separados por señales.';
+
+  @override
+  String get aiTestWorldTimelineBlurb =>
+      'Una animación SVG del mundo desde su formación hasta hoy.';
+
+  @override
+  String get aiTestFluidSimBlurb =>
+      'Agua 3D en tiempo real en un tanque de cristal que puedes agitar e inclinar.';
+
+  @override
+  String get aiTestGalaxyBlurb =>
+      'Un viaje en nave espacial por una galaxia espiral generada proceduralmente.';
+
+  @override
+  String get aiTestCruisePortBlurb =>
+      'Un crucero atracado en Lisboa, bajo el Alfama.';
+
+  @override
+  String get aiTestWebsiteLandingBlurb =>
+      'Una página de inicio responsive para una cafetería, con interacciones funcionales.';
+
+  @override
+  String get aiTestServerRackBlurb =>
+      'Un rack de 42U completo y una vista de un solo servidor: la arquitectura macro de cómo encajan las máquinas en un rack y la micro del hardware dentro de un chasis.';
+
+  @override
+  String get aiTestRackPlatformBody =>
+      'La prueba de rack de servidores requiere un escritorio Windows.';
+
+  @override
+  String get aiTestRackSonnetLowDesc =>
+      'Rack de 42U completo más inspección de un solo servidor por Sonnet 5.5 Low.';
+
+  @override
+  String get aiTestRackSonnetXhighDesc =>
+      'Un rack de 42U con nueve servidores inspeccionables; cada uno se desliza sobre sus raíles hacia una vista abierta de un solo servidor, con modos desmontado, corte y flujo de aire.';
+
+  @override
+  String get aiTestRackSonnetHighDesc =>
+      'Un rack de 42U con unidades etiquetadas que se abre en una vista de detalle por servidor, con simulación de flujo de aire.';
+
+  @override
+  String get aiTestRackOpusLowDesc =>
+      'Un rack de 42U cableado con nueve servidores de cinco arquetipos; cada uno se desliza hacia un chasis abierto con vistas desmontada, de corte y de flujo de aire que esquiva obstáculos.';
+
+  @override
+  String get aiTestRackOpusXhighDesc =>
+      'Un rack de 42U cableado y con presupuesto energético, con nueve servidores de nueve distribuciones distintas; cada uno se desbloquea, se desliza sobre sus raíles y se abre en una vista interactiva con vistas desmontada, de corte y de flujo de aire resuelto.';
+
+  @override
+  String get aiTestRackMuseDesc =>
+      'RACKSCOPE·42U: un rack cableado con un navegador de unidades y una vista inspeccionable de un solo servidor.';
+
+  @override
+  String get airlineBuildingApronName => 'Plataforma';
+
+  @override
+  String get airlineBuildingApronBlurb =>
+      'Superficie pavimentada de estacionamiento y rodaje. Los hangares y depósitos de combustible funcionan mejor junto a ella.';
+
+  @override
+  String get airlineBuildingGateName => 'Puerta';
+
+  @override
+  String get airlineBuildingGateBlurb =>
+      'Una posición para una ruta. Solo funciona si toca una terminal.';
+
+  @override
+  String get airlineBuildingTerminalName => 'Terminal';
+
+  @override
+  String get airlineBuildingTerminalBlurb =>
+      'Edificio de pasajeros. Las puertas deben tocarlo para poder usarse.';
+
+  @override
+  String get airlineBuildingRunwayShortName => 'Pista corta';
+
+  @override
+  String get airlineBuildingRunwayShortBlurb =>
+      '1.800 m. Solo para turbohélices y pequeños reactores regionales.';
+
+  @override
+  String get airlineBuildingRunwayMediumName => 'Pista media';
+
+  @override
+  String get airlineBuildingRunwayMediumBlurb =>
+      '2.600 m. Permite operar monopasillos y los bipasillos más pequeños.';
+
+  @override
+  String get airlineBuildingRunwayLongName => 'Pista larga';
+
+  @override
+  String get airlineBuildingRunwayLongBlurb =>
+      '3.400 m. Todo hasta el A380 puede usarla.';
+
+  @override
+  String get airlineBuildingHangarName => 'Hangar';
+
+  @override
+  String get airlineBuildingHangarBlurb =>
+      'Reduce el mantenimiento. Vale más si da a una plataforma.';
+
+  @override
+  String get airlineBuildingFuelDepotName => 'Depósito de combustible';
+
+  @override
+  String get airlineBuildingFuelDepotBlurb =>
+      'Compra combustible al por mayor. Vale más si da a una plataforma.';
+
+  @override
+  String get airlineBuildingCargoName => 'Terminal de carga';
+
+  @override
+  String get airlineBuildingCargoBlurb =>
+      'Vende el espacio de bodega bajo la cabina en cada vuelo.';
+
+  @override
+  String get airlineBuildingLoungeName => 'Sala VIP';
+
+  @override
+  String get airlineBuildingLoungeBlurb =>
+      'Tarifas premium en largo recorrido. Debe tocar una terminal.';
+
+  @override
+  String get airlineSlotAnyTime => 'a cualquier hora';
+
+  @override
+  String get airlineErrRestoreBalance =>
+      'Recupera un saldo positivo antes de adquirir aviones.';
+
+  @override
+  String get airlineErrNotEnoughCashAircraft =>
+      'No hay suficiente dinero para ese avión.';
+
+  @override
+  String get airlineErrLeaseWeek =>
+      'Primero necesitas al menos una semana de pagos de arrendamiento en el banco.';
+
+  @override
+  String get airlineErrCancelFlightsFirst =>
+      'Cancela los vuelos programados y espera a que este avión regrese antes de devolverlo.';
+
+  @override
+  String get airlineErrNoSuchAircraft => 'Ese avión no existe.';
+
+  @override
+  String get airlineErrRouteUnavailable => 'Esa ruta no está disponible.';
+
+  @override
+  String airlineErrOutOfRange(
+    String model,
+    String city,
+    String km,
+    String rangeKm,
+  ) {
+    return '$model no puede llegar a $city — $km km frente a un alcance de $rangeKm km.';
+  }
+
+  @override
+  String airlineErrRunwayTooShort(String model, String needM, String longestM) {
+    return '$model necesita $needM m de pista; tu pista más larga mide $longestM m.';
+  }
+
+  @override
+  String get airlineErrUnknownDestination => 'Destino desconocido.';
+
+  @override
+  String get airlineErrOwnHub => 'Ese es tu propio centro de operaciones.';
+
+  @override
+  String airlineErrAlreadyFly(String city) {
+    return 'Ya vuelas a $city.';
+  }
+
+  @override
+  String airlineErrGatesTaken(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count puertas',
+      one: '1 puerta',
+    );
+    return 'Todas las puertas útiles están ocupadas. Tienes $_temp0 que no tocan una terminal; acércalas a una para ponerlas en servicio.';
+  }
+
+  @override
+  String get airlineErrNeedGate =>
+      'Necesitas otra puerta junto a una terminal para añadir una ruta.';
+
+  @override
+  String get airlineErrNotEnoughCashLaunch =>
+      'No hay suficiente dinero para lanzar la ruta.';
+
+  @override
+  String get airlineErrDoesNotFit => 'Eso no cabe en el terreno.';
+
+  @override
+  String get airlineErrAlreadyBuilt => 'Ya hay algo construido ahí.';
+
+  @override
+  String airlineErrCannotAffordBuilding(String name) {
+    return 'No hay suficiente dinero para $name.';
+  }
+
+  @override
+  String get airlineErrNothingToDemolish => 'No hay nada que demoler ahí.';
+
+  @override
+  String get airlineErrFieldAtLimit => 'El terreno ya ha alcanzado su límite.';
+
+  @override
+  String get airlineErrNotEnoughCashLand =>
+      'No hay suficiente dinero para comprar más terreno.';
+
+  @override
+  String get airlineErrSaveUnreadable =>
+      'No se pudo leer el guardado del aeropuerto. El archivo original se ha conservado.';
+
+  @override
+  String get airlineErrSaveStorageUnavailable =>
+      'El almacenamiento del guardado del aeropuerto no está disponible.';
+
+  @override
+  String get airlineErrSaveFailed =>
+      'No se pudo guardar este aeropuerto. El progreso sigue en memoria; revisa el almacenamiento disponible.';
+
+  @override
+  String airlineEventAdvanced(String minutes) {
+    return 'Las operaciones del aeropuerto avanzaron $minutes minutos de juego.';
+  }
+
+  @override
+  String airlineEventHeavyCheck(String registration, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days días',
+      one: '1 día',
+    );
+    return '$registration entró en una revisión mayor ($_temp0).';
+  }
+
+  @override
+  String get airlineErrStartAirportFirst => 'Primero inicia un aeropuerto.';
+
+  @override
+  String get airlineErrSelectBuildingFirst => 'Primero selecciona un edificio.';
+
+  @override
+  String get airlineErrCatalogUnavailable =>
+      'El catálogo de aeropuertos no está disponible.';
+
+  @override
+  String get airlineErrChooseSpeed => 'Elige 1×, 4× o 12×.';
+
+  @override
+  String get airlineErrUnknownCommand => 'Comando de aeropuerto desconocido.';
+
+  @override
+  String get airlineErrInvalidCommand => 'Comando de aeropuerto no válido.';
+
+  @override
+  String get airlineErrNoPanel => 'Ese panel no existe.';
+
+  @override
+  String get airlineTabFleet => 'Flota';
+
+  @override
+  String get airlineTabRoutes => 'Rutas';
+
+  @override
+  String get airlineTabHub => 'Centro';
+
+  @override
+  String get airlineTabFinances => 'Finanzas';
+
+  @override
+  String get airlinePause => 'Pausa';
+
+  @override
+  String get airlineResume => 'Reanudar';
+
+  @override
+  String airlineDaySemantics(int day) {
+    return 'Día $day';
+  }
+
+  @override
+  String airlineSpeedSemantics(int speed) {
+    return 'Velocidad ${speed}x';
+  }
+
+  @override
+  String get airlineTakeOff => 'Despegar';
+
+  @override
+  String get airlineChooseHubToContinue => 'Elige un centro para continuar.';
+
+  @override
+  String get airlineStartAirlineTitle => 'Crea una aerolínea';
+
+  @override
+  String get airlinePickHubBlurb =>
+      'Elige un aeropuerto base. Todos tus vuelos saldrán de allí, y es el terreno que vas a ampliar.';
+
+  @override
+  String get airlineNameLabel => 'Nombre de la aerolínea';
+
+  @override
+  String get airlineHomeHubLabel => 'Centro base';
+
+  @override
+  String airlineHubOptionDetail(String name, String runway, String country) {
+    return '$name · pista de $runway m · $country';
+  }
+
+  @override
+  String get airlineBackToAirport => 'Volver al aeropuerto';
+
+  @override
+  String get airlineRoutesEstimateNote =>
+      'Las estimaciones de rutas suponen un uso de los aviones durante todo el día. Los ingresos del aeropuerto proceden de los vuelos que programas.';
+
+  @override
+  String get airlineSceneStartFailedWindows =>
+      'El aeropuerto no se inició. Comprueba que Microsoft Edge WebView2 Runtime esté instalado y vuelve a intentarlo.';
+
+  @override
+  String get airlineSceneStartFailedAndroid =>
+      'El aeropuerto no se inició. Actualiza Android System WebView y vuelve a intentarlo.';
+
+  @override
+  String get airlineSceneConnectionLost =>
+      'Se interrumpió la conexión con el aeropuerto. Reintenta para reconectar.';
+
+  @override
+  String get airlineSceneWebglFailed => 'No se pudo inicializar WebGL.';
+
+  @override
+  String airlineSceneLoadFailed(String error) {
+    return 'No se pudo cargar el aeropuerto incluido: $error';
+  }
+
+  @override
+  String get airlineReloadAirport => 'Recargar aeropuerto';
+
+  @override
+  String get airlineAwayTitle => 'Mientras no estabas';
+
+  @override
+  String airlineAwayDuration(String duration, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count días',
+      one: '1 día',
+    );
+    return '$duration fuera · $_temp0 volados';
+  }
+
+  @override
+  String get airlineAwayEarned => 'ganados';
+
+  @override
+  String get airlineAwayLost => 'perdidos';
+
+  @override
+  String get airlineAwayIncome => 'Ingresos';
+
+  @override
+  String get airlineAwayCosts => 'Costes';
+
+  @override
+  String get airlineAwayPassengers => 'Pasajeros';
+
+  @override
+  String get airlineAwayOfflineRate => 'Tasa sin conexión';
+
+  @override
+  String airlineAwayCapped(int elapsed, int maxDays) {
+    String _temp0 = intl.Intl.pluralLogic(
+      elapsed,
+      locale: localeName,
+      other: 'Pasaron $elapsed días',
+      one: 'Pasó 1 día',
+    );
+    return '$_temp0, pero una ausencia solo cuenta hasta $maxDays días. El resto no se voló.';
+  }
+
+  @override
+  String get airlineBackToWork => 'Volver al trabajo';
+
+  @override
+  String get airlineLabelDay => 'Día';
+
+  @override
+  String get airlineLabelSeats => 'Asientos';
+
+  @override
+  String get airlineLabelRange => 'Alcance';
+
+  @override
+  String get airlineLabelHours => 'Horas';
+
+  @override
+  String get airlineLabelLease => 'Arrendamiento';
+
+  @override
+  String get airlineLabelResale => 'Valor de reventa';
+
+  @override
+  String get airlineLabelCruise => 'Crucero';
+
+  @override
+  String get airlineLabelRunway => 'Pista';
+
+  @override
+  String get airlineLabelAircraft => 'Aviones';
+
+  @override
+  String get airlineLabelRoutes => 'Rutas';
+
+  @override
+  String get airlineLabelDistance => 'Distancia';
+
+  @override
+  String get airlineLabelDailyDemand => 'Demanda diaria';
+
+  @override
+  String get airlineLabelFairFare => 'Tarifa justa';
+
+  @override
+  String get airlineLabelRunwayThere => 'Pista en destino';
+
+  @override
+  String get airlineLabelType => 'Tipo';
+
+  @override
+  String get airlineLabelMaintenance => 'Mantenimiento';
+
+  @override
+  String get airlineLabelFuel => 'Combustible';
+
+  @override
+  String get airlineLabelUpkeep => 'Mantenimiento';
+
+  @override
+  String airlineFactPerDay(String amount) {
+    return '$amount/día';
+  }
+
+  @override
+  String airlineFactMetres(String value) {
+    return '$value m';
+  }
+
+  @override
+  String airlineFactKmh(String speed) {
+    return '$speed km/h';
+  }
+
+  @override
+  String get airlineRunwayNone => 'ninguna';
+
+  @override
+  String get airlineFinCash => 'Efectivo';
+
+  @override
+  String get airlineFinChartEmpty =>
+      'Opera unos días y el gráfico del saldo aparecerá aquí.';
+
+  @override
+  String get airlineFinSoFar => 'La aerolínea hasta ahora';
+
+  @override
+  String airlineFinDayHeading(String day) {
+    return 'Día $day';
+  }
+
+  @override
+  String get airlineFinStatFlightsFlown => 'Vuelos realizados';
+
+  @override
+  String get airlineFinStatPassengers => 'Pasajeros transportados';
+
+  @override
+  String get airlineFinStatFuelPrice => 'Precio del combustible';
+
+  @override
+  String get airlineFinLineTickets => 'Billetes';
+
+  @override
+  String get airlineFinLineCargo => 'Carga';
+
+  @override
+  String get airlineFinLineCrew => 'Tripulación';
+
+  @override
+  String get airlineFinLineAirportFees => 'Tasas aeroportuarias';
+
+  @override
+  String get airlineFinLineHubUpkeep => 'Mantenimiento del hub';
+
+  @override
+  String get airlineFinLineLeasePayments => 'Pagos de arrendamiento';
+
+  @override
+  String airlineFinDaySummary(String flights, String passengers) {
+    return '$flights vuelos · $passengers pasajeros';
+  }
+
+  @override
+  String get airlineFinFieldTitle => 'El terreno';
+
+  @override
+  String airlineFinLandAtMax(String size) {
+    return 'Tu terreno mide $size por $size: lo más grande que te vende la autoridad aeroportuaria.';
+  }
+
+  @override
+  String airlineFinLandGrow(String size) {
+    return 'Tu terreno mide $size por $size. Comprar más te da espacio para otra terminal y las puertas que la acompañan.';
+  }
+
+  @override
+  String get airlineFinAtLimit => 'En el límite';
+
+  @override
+  String airlineFinBuyLand(String price) {
+    return 'Comprar terreno · $price';
+  }
+
+  @override
+  String airlineFleetCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count aviones',
+      one: '1 avión',
+      zero: 'Ningún avión',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get airlineFleetAcquire => 'Adquirir';
+
+  @override
+  String get airlineFleetEmptyTitle => 'Tu hangar está vacío';
+
+  @override
+  String get airlineFleetEmptySubtitle =>
+      'Compra o alquila un avión para empezar a volar.';
+
+  @override
+  String get airlineFleetBrowse => 'Ver aviones';
+
+  @override
+  String airlineFleetInCheck(String days) {
+    return 'En revisión · ${days}d';
+  }
+
+  @override
+  String airlineFleetDetail(String registration, String maker) {
+    return '$registration · $maker';
+  }
+
+  @override
+  String airlineFleetDetailLeased(String registration, String maker) {
+    return '$registration · $maker · en arrendamiento';
+  }
+
+  @override
+  String get airlineFleetReturnTitle => '¿Devolver este avión?';
+
+  @override
+  String get airlineFleetSellTitle => '¿Vender este avión?';
+
+  @override
+  String airlineFleetReturnBody(String registration) {
+    return '$registration vuelve al arrendador. El pago diario se detiene.';
+  }
+
+  @override
+  String airlineFleetSellBody(String registration, String value, String price) {
+    return '$registration se vende por $value, muy por debajo de los $price que costó.';
+  }
+
+  @override
+  String get airlineFleetKeepIt => 'Quedárselo';
+
+  @override
+  String get airlineFleetReturn => 'Devolver';
+
+  @override
+  String get airlineFleetSell => 'Vender';
+
+  @override
+  String get airlineFleetOpenRouteFirst => 'Abre primero una ruta';
+
+  @override
+  String get airlineFleetUnassigned => 'Sin asignar';
+
+  @override
+  String get airlineMarketTitle => 'Mercado de aviones';
+
+  @override
+  String airlineMarketJoinedFleet(String name) {
+    return '$name se ha unido a la flota.';
+  }
+
+  @override
+  String airlineMarketNeedsRunway(String needed, String longest) {
+    return 'Necesita $needed de pista; tu pista más larga mide $longest. Aun así puedes comprarlo y ampliar la pista.';
+  }
+
+  @override
+  String get airlineMarketLease => 'Arrendar';
+
+  @override
+  String get airlineMarketBuy => 'Comprar';
+
+  @override
+  String get airlineRoutesEmptyTitle => 'Aún no hay rutas';
+
+  @override
+  String get airlineRoutesEmptySubtitle =>
+      'Toca un aeropuerto en el mapa para abrir tu primera ruta.';
+
+  @override
+  String airlineRoutesSummary(int routes, int gates) {
+    String _temp0 = intl.Intl.pluralLogic(
+      routes,
+      locale: localeName,
+      other: '$routes rutas',
+      one: '1 ruta',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      gates,
+      locale: localeName,
+      other: '$gates puertas',
+      one: '1 puerta',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
+  String get airlineRoutesNoUsableAircraft =>
+      'Ningún avión del catálogo puede volar esta ruta desde tu hub todavía: necesitas una pista más larga, o este trayecto está fuera del alcance de todos los aviones que podrías comprar.';
+
+  @override
+  String airlineRoutesCanBeFlownBy(String names) {
+    return 'Pueden volarla: $names.';
+  }
+
+  @override
+  String airlineRoutesCanBeFlownByMore(String names, String more) {
+    return 'Pueden volarla: $names y $more más.';
+  }
+
+  @override
+  String airlineRoutesOpenRoute(String price) {
+    return 'Abrir ruta · $price';
+  }
+
+  @override
+  String airlineRoutesPax(String count) {
+    return '$count pax';
+  }
+
+  @override
+  String get airlineRoutesNoAircraft => 'ningún avión';
+
+  @override
+  String airlineRoutesAssigned(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count asignados',
+      one: '1 asignado',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get airlineRoutesFare => 'Tarifa';
+
+  @override
+  String get airlineRoutesCabinFilled => 'Cabina ocupada';
+
+  @override
+  String get airlineRoutesNoAircraftAssigned => 'Ningún avión asignado';
+
+  @override
+  String get airlineRoutesProjectedToday => 'Previsión de hoy';
+
+  @override
+  String get airlineRoutesAssignInFleet => 'Asigna uno en Flota';
+
+  @override
+  String airlineRoutesProjection(String profit, String pax) {
+    return '$profit · $pax pax';
+  }
+
+  @override
+  String get airlineRoutesCloseRoute => 'Cerrar esta ruta';
+
+  @override
+  String get airlineHubFailed => 'Eso no funcionó.';
+
+  @override
+  String airlineHubTileTooltip(String name, String blurb) {
+    return '$name — $blurb';
+  }
+
+  @override
+  String airlineHubTileSemantics(String name, String price) {
+    return '$name, $price';
+  }
+
+  @override
+  String airlineHubTileSemanticsTooExpensive(String name, String price) {
+    return '$name, $price, demasiado caro';
+  }
+
+  @override
+  String get airlineHubRotate => 'Rotar';
+
+  @override
+  String get airlineHubDemolish => 'Demoler';
+
+  @override
+  String get airlineHubGates => 'Puertas';
+
+  @override
+  String get airlineHubNotOnTerminal => 'No conectadas a una terminal';
+
+  @override
+  String get calcNothingToWorkOut => 'Todavía no hay nada que calcular.';
+
+  @override
+  String get calcUndefined => 'Indefinido';
+
+  @override
+  String calcNotANumber(String text) {
+    return '\"$text\" no es un número.';
+  }
+
+  @override
+  String calcUnknownCharacter(String character) {
+    return 'No entiendo \"$character\".';
+  }
+
+  @override
+  String calcUnknownName(String name) {
+    return 'No conozco \"$name\".';
+  }
+
+  @override
+  String calcUnexpectedToken(String token) {
+    return '\"$token\" no pertenece ahí.';
+  }
+
+  @override
+  String get calcStopsTooEarly => 'La expresión termina demasiado pronto.';
+
+  @override
+  String get calcBracketLeftOpen => 'Hay un paréntesis sin cerrar.';
+
+  @override
+  String calcExpectedSymbol(String symbol) {
+    return 'Se esperaba \"$symbol\".';
+  }
+
+  @override
+  String calcArgCountExact(String name, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count valores',
+      one: '1 valor',
+    );
+    return '$name necesita $_temp0.';
+  }
+
+  @override
+  String calcArgCountRange(String name, int minCount, int maxCount) {
+    return '$name necesita de $minCount a $maxCount valores.';
+  }
+
+  @override
+  String get calcFactorialWholeNumbers =>
+      'El factorial solo funciona con números enteros desde 0.';
+
+  @override
+  String get calcCombinatoricsWholeNumbers =>
+      'nCr y nPr necesitan números enteros desde 0.';
+
+  @override
+  String get audioToolsInvalidSnapshot =>
+      'Instantánea de herramientas de audio no válida.';
+
+  @override
+  String get autoClickerPressNewHotkey => 'Pulsa un nuevo atajo';
+
+  @override
+  String get autoClickerWindowsOnlyBody =>
+      'Auto Clicker simula clics reales del ratón, algo que luma solo puede hacer en la app de escritorio de Windows.';
+
+  @override
+  String get autoClickerClicking => 'Haciendo clic…';
+
+  @override
+  String get autoClickerStopped => 'Detenido';
+
+  @override
+  String autoClickerClicksSoFar(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count clics',
+      one: '1 clic',
+    );
+    return '$_temp0 hasta ahora';
+  }
+
+  @override
+  String autoClickerStartHint(String hotkey) {
+    return 'Inícialo, o pulsa $hotkey desde cualquier lugar';
+  }
+
+  @override
+  String get autoClickerStopClicking => 'Dejar de hacer clic';
+
+  @override
+  String get autoClickerStartClicking => 'Empezar a hacer clic';
+
+  @override
+  String get autoClickerPickFixedFirst =>
+      'Elige primero una posición fija abajo antes de empezar.';
+
+  @override
+  String get autoClickerRandomHelpExact =>
+      'Añade aleatoriedad ± al retraso de cada clic. Deja 0 para un tiempo exacto.';
+
+  @override
+  String autoClickerRandomHelpRange(String low, String high) {
+    return 'Cada clic se produce entre $low y $high ms (nunca menos de 1 ms).';
+  }
+
+  @override
+  String get autoClickerClickEvery => 'Hacer clic cada';
+
+  @override
+  String get autoClickerHours => 'Horas';
+
+  @override
+  String get autoClickerMinutes => 'Minutos';
+
+  @override
+  String get autoClickerSeconds => 'Segundos';
+
+  @override
+  String get autoClickerMillis => 'Ms';
+
+  @override
+  String get autoClickerRandomOffset => 'Desfase aleatorio';
+
+  @override
+  String get autoClickerMilliseconds => 'milisegundos';
+
+  @override
+  String get autoClickerMouseButton => 'Botón del ratón';
+
+  @override
+  String get autoClickerLeft => 'Izquierdo';
+
+  @override
+  String get autoClickerMiddle => 'Central';
+
+  @override
+  String get autoClickerRight => 'Derecho';
+
+  @override
+  String get autoClickerClickType => 'Tipo de clic';
+
+  @override
+  String get autoClickerSingle => 'Simple';
+
+  @override
+  String get autoClickerDouble => 'Doble';
+
+  @override
+  String get autoClickerClickLocation => 'Ubicación del clic';
+
+  @override
+  String get autoClickerCurrentCursor => 'Cursor actual';
+
+  @override
+  String get autoClickerFixedPosition => 'Posición fija';
+
+  @override
+  String autoClickerHoldCursor(int countdown) {
+    return 'Mantén el cursor sobre el objetivo… $countdown';
+  }
+
+  @override
+  String autoClickerTarget(String x, String y) {
+    return 'Objetivo: $x, $y';
+  }
+
+  @override
+  String get autoClickerNoPositionYet => 'Aún no hay ninguna posición';
+
+  @override
+  String get autoClickerPicking => 'Eligiendo…';
+
+  @override
+  String get autoClickerPickLocation => 'Elegir ubicación';
+
+  @override
+  String get autoClickerRepeat => 'Repetir';
+
+  @override
+  String get autoClickerUntilStopped => 'Hasta detenerlo';
+
+  @override
+  String get autoClickerSetAmount => 'Cantidad fija';
+
+  @override
+  String get autoClickerClicksTotal => 'clics en total';
+
+  @override
+  String get autoClickerHotkeyLabel => 'Atajo de inicio/parada';
+
+  @override
+  String get autoClickerChange => 'Cambiar';
+
+  @override
+  String get autoClickerHotKeyRegisterFailed =>
+      'No se pudo registrar el atajo global; es posible que otra aplicación ya lo esté usando.';
+
+  @override
+  String get autoClickerInvalidSnapshot =>
+      'Instantánea del auto clicker no válida.';
+
+  @override
+  String get bulletinBoardNewNote => 'Nueva nota';
+
+  @override
+  String get bulletinBoardNewChecklist => 'Nueva lista de tareas';
+
+  @override
+  String bulletinBoardChecklistItem(String number) {
+    return 'Elemento $number';
+  }
+
+  @override
+  String get bulletinBoardNote => 'Nota';
+
+  @override
+  String get bulletinBoardIdea => 'Idea';
+
+  @override
+  String get bulletinBoardChecklist => 'Lista de tareas';
+
+  @override
+  String get bulletinBoardImage => 'Imagen';
+
+  @override
+  String get bulletinBoardNoteContentHint => 'Contenido de la nota...';
+
+  @override
+  String get bulletinBoardQuickIdeaHint => 'Idea rápida...';
+
+  @override
+  String get bulletinBoardAddItem => '+ Añadir elemento';
+
+  @override
+  String get bulletinBoardNoImage => 'Sin imagen';
+
+  @override
+  String get bulletinBoardImageNotFound => 'Imagen no encontrada';
+
+  @override
+  String get calcErrorHasX => 'Contiene una x — pulsa Graficar para dibujarla.';
+
+  @override
+  String get calcPlotNeedsExpression => 'Escribe primero algo como x^2 - 3.';
+
+  @override
+  String get calcStorageFullFunctionNotSaved =>
+      'El almacenamiento local está lleno, así que esta función no se guardó.';
+
+  @override
+  String get calcConvertUnitsTooltip => 'Convertir unidades';
+
+  @override
+  String get calcModeBasic => 'Básica';
+
+  @override
+  String get calcModeAdvanced => 'Avanzada';
+
+  @override
+  String get calcSwitchToRadians => 'Cambiar a radianes';
+
+  @override
+  String get calcSwitchToDegrees => 'Cambiar a grados';
+
+  @override
+  String get calcKeypadTab => 'Teclado';
+
+  @override
+  String get calcGraphTab => 'Gráfica';
+
+  @override
+  String calcPlotAs(String expression) {
+    return 'Graficar como y = $expression';
+  }
+
+  @override
+  String get calcHistoryEmpty => 'Las operaciones que hagas aparecerán aquí.';
+
+  @override
+  String get calcFunctionsTitle => 'Funciones';
+
+  @override
+  String get calcNothingPlotted =>
+      'Aún no hay nada graficado. Escribe algo con una x, como x^2 - 3 o sin(x), y pulsa Graficar.';
+
+  @override
+  String get calcFunctionHide => 'Ocultar';
+
+  @override
+  String get calcFunctionShow => 'Mostrar';
+
+  @override
+  String get calcClearTrace => 'Borrar el trazo';
+
+  @override
+  String get calcResetView => 'Restablecer la vista';
+
+  @override
+  String get calcPlotFunctionTitle => 'Graficar una función';
+
+  @override
+  String get calcEditFunctionTitle => 'Editar función';
+
+  @override
+  String get calcFunctionEmpty => 'Escribe primero una función de x.';
+
+  @override
+  String get calcStorageFullNotSaved =>
+      'El almacenamiento local está lleno, así que no se guardó.';
+
+  @override
+  String get calcFunctionColour => 'Color';
+
+  @override
+  String get calcPlot => 'Graficar';
+
+  @override
+  String get calcConvertFrom => 'De';
+
+  @override
+  String get calcConvertTo => 'A';
+
+  @override
+  String get calcConvertEveryUnit => 'Todas las unidades';
+
+  @override
+  String get calcConvertSwapUnits => 'Intercambiar unidades';
+
+  @override
+  String get calcConvertUseInCalculator => 'Usar en la calculadora';
+
+  @override
+  String get calcInvalidSnapshot => 'Copia de la calculadora no válida.';
+
+  @override
+  String get calcCategoryLength => 'Longitud';
+
+  @override
+  String get calcCategoryWeight => 'Peso';
+
+  @override
+  String get calcCategoryTemperature => 'Temperatura';
+
+  @override
+  String get calcCategorySpeed => 'Velocidad';
+
+  @override
+  String get calcCategoryArea => 'Área';
+
+  @override
+  String get calcCategoryVolume => 'Volumen';
+
+  @override
+  String get calcCategoryTime => 'Tiempo';
+
+  @override
+  String get calcCategoryData => 'Datos';
+
+  @override
+  String get calcCategoryPressure => 'Presión';
+
+  @override
+  String get calcCategoryEnergy => 'Energía';
+
+  @override
+  String get calcCategoryAngle => 'Ángulo';
+
+  @override
+  String get calcUnitKilometre => 'Kilómetro';
+
+  @override
+  String get calcUnitMetre => 'Metro';
+
+  @override
+  String get calcUnitCentimetre => 'Centímetro';
+
+  @override
+  String get calcUnitMillimetre => 'Milímetro';
+
+  @override
+  String get calcUnitMile => 'Milla';
+
+  @override
+  String get calcUnitYard => 'Yarda';
+
+  @override
+  String get calcUnitFoot => 'Pie';
+
+  @override
+  String get calcUnitInch => 'Pulgada';
+
+  @override
+  String get calcUnitNauticalMile => 'Milla náutica';
+
+  @override
+  String get calcUnitTonne => 'Tonelada';
+
+  @override
+  String get calcUnitKilogram => 'Kilogramo';
+
+  @override
+  String get calcUnitGram => 'Gramo';
+
+  @override
+  String get calcUnitMilligram => 'Miligramo';
+
+  @override
+  String get calcUnitPound => 'Libra';
+
+  @override
+  String get calcUnitOunce => 'Onza';
+
+  @override
+  String get calcUnitStone => 'Stone';
+
+  @override
+  String get calcUnitCelsius => 'Celsius';
+
+  @override
+  String get calcUnitFahrenheit => 'Fahrenheit';
+
+  @override
+  String get calcUnitKelvin => 'Kelvin';
+
+  @override
+  String get calcUnitKilometresPerHour => 'Kilómetros por hora';
+
+  @override
+  String get calcUnitMetresPerSecond => 'Metros por segundo';
+
+  @override
+  String get calcUnitMilesPerHour => 'Millas por hora';
+
+  @override
+  String get calcUnitKnot => 'Nudo';
+
+  @override
+  String get calcUnitFeetPerSecond => 'Pies por segundo';
+
+  @override
+  String get calcUnitSquareKilometre => 'Kilómetro cuadrado';
+
+  @override
+  String get calcUnitHectare => 'Hectárea';
+
+  @override
+  String get calcUnitSquareMetre => 'Metro cuadrado';
+
+  @override
+  String get calcUnitSquareCentimetre => 'Centímetro cuadrado';
+
+  @override
+  String get calcUnitSquareMile => 'Milla cuadrada';
+
+  @override
+  String get calcUnitAcre => 'Acre';
+
+  @override
+  String get calcUnitSquareYard => 'Yarda cuadrada';
+
+  @override
+  String get calcUnitSquareFoot => 'Pie cuadrado';
+
+  @override
+  String get calcUnitCubicMetre => 'Metro cúbico';
+
+  @override
+  String get calcUnitLitre => 'Litro';
+
+  @override
+  String get calcUnitMillilitre => 'Mililitro';
+
+  @override
+  String get calcUnitGallonUs => 'Galón (EE. UU.)';
+
+  @override
+  String get calcUnitGallonUk => 'Galón (RU)';
+
+  @override
+  String get calcUnitQuartUs => 'Cuarto (EE. UU.)';
+
+  @override
+  String get calcUnitPintUs => 'Pinta (EE. UU.)';
+
+  @override
+  String get calcUnitCupUs => 'Taza (EE. UU.)';
+
+  @override
+  String get calcUnitFluidOunceUs => 'Onza líquida (EE. UU.)';
+
+  @override
+  String get calcUnitTablespoonUs => 'Cucharada (EE. UU.)';
+
+  @override
+  String get calcUnitTeaspoonUs => 'Cucharadita (EE. UU.)';
+
+  @override
+  String get calcUnitMillisecond => 'Milisegundo';
+
+  @override
+  String get calcUnitSecond => 'Segundo';
+
+  @override
+  String get calcUnitMinute => 'Minuto';
+
+  @override
+  String get calcUnitHour => 'Hora';
+
+  @override
+  String get calcUnitDay => 'Día';
+
+  @override
+  String get calcUnitWeek => 'Semana';
+
+  @override
+  String get calcUnitMonth30Days => 'Mes (30 días)';
+
+  @override
+  String get calcUnitYear365Days => 'Año (365 días)';
+
+  @override
+  String get calcUnitBit => 'Bit';
+
+  @override
+  String get calcUnitByte => 'Byte';
+
+  @override
+  String get calcUnitKilobyte => 'Kilobyte';
+
+  @override
+  String get calcUnitMegabyte => 'Megabyte';
+
+  @override
+  String get calcUnitGigabyte => 'Gigabyte';
+
+  @override
+  String get calcUnitTerabyte => 'Terabyte';
+
+  @override
+  String get calcUnitKibibyte => 'Kibibyte';
+
+  @override
+  String get calcUnitMebibyte => 'Mebibyte';
+
+  @override
+  String get calcUnitGibibyte => 'Gibibyte';
+
+  @override
+  String get calcUnitTebibyte => 'Tebibyte';
+
+  @override
+  String get calcUnitPascal => 'Pascal';
+
+  @override
+  String get calcUnitHectopascal => 'Hectopascal';
+
+  @override
+  String get calcUnitKilopascal => 'Kilopascal';
+
+  @override
+  String get calcUnitBar => 'Bar';
+
+  @override
+  String get calcUnitMillibar => 'Milibar';
+
+  @override
+  String get calcUnitAtmosphere => 'Atmósfera';
+
+  @override
+  String get calcUnitPoundPerSquareInch => 'Libra por pulgada cuadrada';
+
+  @override
+  String get calcUnitMillimetreOfMercury => 'Milímetro de mercurio';
+
+  @override
+  String get calcUnitJoule => 'Julio';
+
+  @override
+  String get calcUnitKilojoule => 'Kilojulio';
+
+  @override
+  String get calcUnitCalorie => 'Caloría';
+
+  @override
+  String get calcUnitKilocalorie => 'Kilocaloría';
+
+  @override
+  String get calcUnitWattHour => 'Vatio-hora';
+
+  @override
+  String get calcUnitKilowattHour => 'Kilovatio-hora';
+
+  @override
+  String get calcUnitBritishThermalUnit => 'Unidad térmica británica';
+
+  @override
+  String get calcUnitDegree => 'Grado';
+
+  @override
+  String get calcUnitRadian => 'Radián';
+
+  @override
+  String get calcUnitGradian => 'Grado centesimal';
+
+  @override
+  String get calcUnitTurn => 'Vuelta';
+
+  @override
+  String get calcUnitArcminute => 'Minuto de arco';
+
+  @override
+  String get calcUnitArcsecond => 'Segundo de arco';
+
+  @override
+  String get calendarRepeatNone => 'No se repite';
+
+  @override
+  String get calendarRepeatDaily => 'Todos los días';
+
+  @override
+  String get calendarRepeatWeekly => 'Cada semana';
+
+  @override
+  String get calendarRepeatMonthly => 'Cada mes';
+
+  @override
+  String get calendarRepeatYearly => 'Cada año';
+
+  @override
+  String get calendarViewDay => 'Día';
+
+  @override
+  String get calendarViewWeek => 'Semana';
+
+  @override
+  String get calendarViewMonth => 'Mes';
+
+  @override
+  String get calendarViewAgenda => 'Agenda';
+
+  @override
+  String get calendarNewEvent => 'Nuevo evento';
+
+  @override
+  String get calendarAddEvent => 'Añadir evento';
+
+  @override
+  String get calendarSearchHint => 'Buscar eventos';
+
+  @override
+  String calendarMoreCount(int count) {
+    return '+$count más';
+  }
+
+  @override
+  String calendarEventCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count eventos',
+      one: '1 evento',
+      zero: 'Ningún evento',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get calendarEmptyDayTitle => 'Día vacío';
+
+  @override
+  String get calendarEmptyDaySubtitle => 'Añade algo divertido aquí.';
+
+  @override
+  String get calendarSetDinnerForDay => 'Planificar la cena de este día';
+
+  @override
+  String get calendarDinnerLabel => 'Cena';
+
+  @override
+  String get calendarAllDay => 'Todo el día';
+
+  @override
+  String get calendarAllDayStrip => 'todo el día';
+
+  @override
+  String calendarAllDayDays(int count) {
+    return 'Todo el día · $count días';
+  }
+
+  @override
+  String get calendarReminderAtStart => 'Al inicio';
+
+  @override
+  String calendarReminderDaysBefore(int count) {
+    return '$count d antes';
+  }
+
+  @override
+  String calendarReminderHoursBefore(int count) {
+    return '$count h antes';
+  }
+
+  @override
+  String calendarReminderMinutesShort(int count) {
+    return '$count min antes';
+  }
+
+  @override
+  String get calendarNothingComingUp => 'Nada próximo';
+
+  @override
+  String get calendarAgendaEmptySubtitle => 'Lo que planees aparecerá aquí.';
+
+  @override
+  String calendarNoEventsMatch(String query) {
+    return 'Ningún evento coincide con “$query”';
+  }
+
+  @override
+  String get calendarSearchEmptySubtitle =>
+      'Prueba con otro título, lugar o nota.';
+
+  @override
+  String calendarSearchResultCount(int count, String query) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count resultados para “$query”',
+      one: '1 resultado para “$query”',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get calendarEditEvent => 'Editar evento';
+
+  @override
+  String get calendarEventTitleHint => 'Título del evento';
+
+  @override
+  String get calendarStarts => 'Empieza';
+
+  @override
+  String get calendarEnds => 'Termina';
+
+  @override
+  String get calendarRepeat => 'Repetir';
+
+  @override
+  String get calendarLocation => 'Ubicación';
+
+  @override
+  String get calendarReminder => 'Recordatorio';
+
+  @override
+  String get calendarAddPlace => 'Añade un lugar';
+
+  @override
+  String get calendarAddDetails => 'Añade detalles';
+
+  @override
+  String calendarSharedByView(String author) {
+    return 'Compartido por $author — solo lectura';
+  }
+
+  @override
+  String get calendarFamilyMemberFallback => 'un miembro de la familia';
+
+  @override
+  String get calendarShareJustMe => 'Solo yo';
+
+  @override
+  String get calendarShareWholeFamily => 'Toda la familia';
+
+  @override
+  String get calendarShareChoosePeople => 'Elegir personas';
+
+  @override
+  String get calendarNoOtherMembers =>
+      'Todavía no hay otros miembros de la familia.';
+
+  @override
+  String get calendarGiveTitle => 'Ponle un título al evento.';
+
+  @override
+  String get calendarChooseShareOne =>
+      'Elige al menos una persona con la que compartir.';
+
+  @override
+  String get calendarDeleteEvent => 'Eliminar evento';
+
+  @override
+  String get calendarRepeatsForever => 'Se repite siempre';
+
+  @override
+  String calendarRepeatsUntil(String date) {
+    return 'Hasta $date';
+  }
+
+  @override
+  String get calendarClearEndDate => 'Borrar fecha de fin';
+
+  @override
+  String get calendarSetEnd => 'Definir fin';
+
+  @override
+  String get calendarChangeEnd => 'Cambiar';
+
+  @override
+  String get calendarReminderNone => 'Sin recordatorio';
+
+  @override
+  String get calendarReminderAtStartTime => 'A la hora de inicio';
+
+  @override
+  String calendarReminderMinutesBefore(int count) {
+    return '$count minutos antes';
+  }
+
+  @override
+  String get calendarReminderHourBefore => '1 hora antes';
+
+  @override
+  String get calendarReminderDayBefore => '1 día antes';
+
+  @override
+  String get calendarDinnerNameRequired => 'Ponle un nombre a la cena.';
+
+  @override
+  String get calendarDishNameHint => 'Nombre del plato';
+
+  @override
+  String get calendarServings => 'Raciones';
+
+  @override
+  String get calendarMinutes => 'Minutos';
+
+  @override
+  String get calendarIngredients => 'Ingredientes';
+
+  @override
+  String get calendarAddIngredient => 'Añadir ingrediente';
+
+  @override
+  String get calendarInstructions => 'Preparación';
+
+  @override
+  String get calendarInstructionsHint => 'Cómo prepararlo';
+
+  @override
+  String get calendarEditDinner => 'Editar cena';
+
+  @override
+  String get calendarSetDinner => 'Planificar cena';
+
+  @override
+  String get calendarIngredientHint => 'p. ej. 2 pechugas de pollo';
+
+  @override
+  String get calendarRemoveDinner => 'Eliminar cena';
+
+  @override
+  String get calendarWhatYouNeed => 'Lo que necesitas';
+
+  @override
+  String get calendarDinnerEmpty =>
+      'Todavía no hay ingredientes ni preparación.';
+
+  @override
+  String calendarServingsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count raciones',
+      one: '1 ración',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String calendarMinutesShort(int count) {
+    return '$count min';
+  }
+
+  @override
+  String get cardWalletAddCard => 'Añadir tarjeta';
+
+  @override
+  String get cardWalletNoCardsTitle => 'Todavía no hay tarjetas';
+
+  @override
+  String get cardWalletNoCardsSubtitle =>
+      'Añade tu primera tarjeta de fidelidad o de socio y aparecerá aquí, lista para escanearse.';
+
+  @override
+  String get cardWalletReadOnlyNotice =>
+      'Las tarjetas se añaden en tu teléfono, donde están la cámara y el lector NFC. Activa la sincronización de la cartera de tarjetas y aparecerán aquí para verlas y presentarlas.';
+
+  @override
+  String get cardWalletTapToScan => 'Toca para escanear';
+
+  @override
+  String get cardWalletNoCodeToShow => 'No hay código que mostrar';
+
+  @override
+  String cardWalletValueNotValidFor(String format) {
+    return 'Este valor no es válido para $format.';
+  }
+
+  @override
+  String get cardWalletEmptyTag => '(etiqueta vacía)';
+
+  @override
+  String get cardWalletEmulationNote =>
+      'La emulación de toque para escanear funciona en la app móvil de luma. En este dispositivo puedes copiar los datos de la etiqueta o escanear el QR de arriba.';
+
+  @override
+  String get cardWalletCouldntScan => 'No se pudo escanear';
+
+  @override
+  String get cardWalletReadyToScan => 'Listo para escanear';
+
+  @override
+  String get cardWalletScanATag => 'Escanear una etiqueta';
+
+  @override
+  String get cardWalletHoldFlat =>
+      'Pon tu tarjeta plana contra la parte trasera del teléfono y mantenla quieta; las tarjetas más grandes tardan un segundo en leerse.';
+
+  @override
+  String cardWalletScanUnexpectedError(String error) {
+    return 'Algo salió mal al escanear. ($error)';
+  }
+
+  @override
+  String get cardWalletScanBarcodeTitle => 'Escanear un código de barras';
+
+  @override
+  String get cardWalletScanBarcodeHint =>
+      'Apunta la cámara al código de barras o QR de la tarjeta.';
+
+  @override
+  String get cardWalletEditCard => 'Editar tarjeta';
+
+  @override
+  String get cardWalletCategoryOptional => 'Categoría (opcional)';
+
+  @override
+  String get cardWalletCategoryHint => 'Fidelidad, Socio, Transporte…';
+
+  @override
+  String get cardWalletNfcTagData => 'Datos de la etiqueta NFC';
+
+  @override
+  String get cardWalletCardNumberLabel =>
+      'Número de tarjeta / valor del código de barras';
+
+  @override
+  String get cardWalletScanTag => 'Escanear etiqueta';
+
+  @override
+  String get cardWalletScan => 'Escanear';
+
+  @override
+  String get cardWalletFromImage => 'Desde imagen';
+
+  @override
+  String get cardWalletNfcHintScanOrPaste =>
+      'Toca «Escanear etiqueta» o pégala (texto o hex)';
+
+  @override
+  String get cardWalletNfcHintPaste =>
+      'Pega el contenido de la etiqueta (texto o hex)';
+
+  @override
+  String get cardWalletCodeHintScan =>
+      'Escanéalo arriba o escríbelo, p. ej. 2601234567890';
+
+  @override
+  String get cardWalletCodeHint => 'p. ej. 2601234567890';
+
+  @override
+  String get cardWalletNotesOptional => 'Notas (opcional)';
+
+  @override
+  String get cardWalletNotesHint => 'PIN, socio desde, lo que te sirva';
+
+  @override
+  String get cardWalletNameRequired => 'Pon un nombre a la tarjeta.';
+
+  @override
+  String get cardWalletEnterNfcData =>
+      'Introduce los datos de la etiqueta NFC.';
+
+  @override
+  String get cardWalletEnterCardNumber =>
+      'Introduce el número de tarjeta o el valor del código de barras.';
+
+  @override
+  String cardWalletCantEncodeAs(String format) {
+    return 'Este valor no se puede codificar como $format. Elige otro formato o vuelve a activar la detección.';
+  }
+
+  @override
+  String cardWalletSaveFailed(String error) {
+    return 'No se pudo guardar la tarjeta. ($error)';
+  }
+
+  @override
+  String cardWalletScannedTag(String source) {
+    return 'Etiqueta escaneada ($source)';
+  }
+
+  @override
+  String get cardWalletSourceTagUid => 'UID de la etiqueta';
+
+  @override
+  String get cardWalletSourceNdef => 'registro NDEF';
+
+  @override
+  String get cardWalletNoCodeInImage =>
+      'No se encontró ningún código de barras ni QR en esa imagen.';
+
+  @override
+  String cardWalletImageReadFailed(String error) {
+    return 'No se pudo leer esa imagen. ($error)';
+  }
+
+  @override
+  String cardWalletScannedFormat(String format) {
+    return '$format escaneado';
+  }
+
+  @override
+  String cardWalletDetectionOff(String format) {
+    return '$format · detección desactivada';
+  }
+
+  @override
+  String get cardWalletStatusWaiting =>
+      'Escanea o escribe un código y luma elige el formato';
+
+  @override
+  String cardWalletRecognizedAs(String format) {
+    return 'Reconocido como $format';
+  }
+
+  @override
+  String cardWalletNoStandardMatch(String format) {
+    return 'Ninguna coincidencia estándar: se usa $format';
+  }
+
+  @override
+  String get cardWalletChange => 'Cambiar';
+
+  @override
+  String get cardWalletAdvanced => 'Avanzado';
+
+  @override
+  String get cardWalletAutoDetect => 'Detectar el formato automáticamente';
+
+  @override
+  String get cardWalletAutoDetectHint =>
+      'luma lee el valor y elige la simbología correspondiente.';
+
+  @override
+  String get cardWalletFormat => 'Formato';
+
+  @override
+  String get cardWalletFormatNfc => 'Etiqueta NFC';
+
+  @override
+  String get cardWalletNfcTagReady => 'Etiqueta NFC lista';
+
+  @override
+  String get cardWalletPreviewHere => 'La vista previa aparece aquí';
+
+  @override
+  String cardWalletNotValidYet(String format) {
+    return 'Aún no es válido para $format';
+  }
+
+  @override
+  String get cardWalletDeleteTitle => '¿Eliminar tarjeta?';
+
+  @override
+  String get cardWalletDeleteBody =>
+      'Esto elimina la tarjeta de tu cartera en este dispositivo.';
+
+  @override
+  String get cardWalletNfcUnavailable =>
+      'El escaneo NFC no está disponible en este dispositivo.';
+
+  @override
+  String get cardWalletNfcOff =>
+      'El NFC está desactivado o no es compatible aquí. Actívalo en los ajustes del dispositivo e inténtalo de nuevo.';
+
+  @override
+  String cardWalletNfcStartFailed(String error) {
+    return 'No se pudo iniciar el lector NFC. ($error)';
+  }
+
+  @override
+  String get cardWalletNfcNoTag =>
+      'No se detectó ninguna etiqueta. Pon la tarjeta plana contra la parte trasera del teléfono e inténtalo de nuevo.';
+
+  @override
+  String get cardWalletNfcReadFailed =>
+      'No se pudo leer esa etiqueta: parece vacía o no compatible.';
+
+  @override
+  String get cardWalletNfcPaymentCardRefused =>
+      'Parece una tarjeta bancaria o de crédito: luma no copia tarjetas de pago por tu seguridad. Añade en su lugar una tarjeta de fidelidad, de hotel, de transporte o de evento.';
+
+  @override
+  String get cardWalletNfcEmptyTag =>
+      'No se pudo leer nada de esa etiqueta: puede estar vacía o bloqueada.';
+
+  @override
+  String get cityPlannerLinuxTitle => 'No disponible en Linux';
+
+  @override
+  String get cityPlannerLinuxSubtitle =>
+      'City Planner necesita una WebView integrada, que todavía no es compatible con esta plataforma.';
+
+  @override
+  String get cloudFilesSessionExpired =>
+      'Tu sesión ha caducado — vuelve a iniciar sesión en Ajustes → Sincronización.';
+
+  @override
+  String get cloudFilesSignInFirst =>
+      'Inicia sesión primero en Ajustes → Sincronización.';
+
+  @override
+  String get cloudFilesBusy => 'Ya hay otra transferencia en curso.';
+
+  @override
+  String cloudFilesNotEnoughSpace(String name, String needed, String free) {
+    return 'No hay espacio suficiente: «$name» necesita $needed, pero solo quedan $free libres.';
+  }
+
+  @override
+  String get cloudFilesServerFull =>
+      'El servidor no tiene más espacio para tu cuenta.';
+
+  @override
+  String get cloudFilesPartMissing =>
+      'Falta una parte de este archivo en el servidor.';
+
+  @override
+  String get cloudFilesIndexConflict =>
+      'No se pudo actualizar la lista de archivos. Inténtalo de nuevo.';
+
+  @override
+  String cloudFilesSizeB(String value) {
+    return '$value B';
+  }
+
+  @override
+  String cloudFilesSizeKb(String value) {
+    return '$value KB';
+  }
+
+  @override
+  String cloudFilesSizeMb(String value) {
+    return '$value MB';
+  }
+
+  @override
+  String cloudFilesSizeGb(String value) {
+    return '$value GB';
+  }
+
+  @override
+  String get cloudFilesSignedOutTitle => 'Cloud Files necesita sincronización';
+
+  @override
+  String get cloudFilesSignedOutBody =>
+      'Inicia sesión en tu servidor de sincronización en Ajustes → Sincronización y cuenta, y luego vuelve aquí para subir archivos. Los archivos se cifran en este dispositivo antes de subirlos; el servidor nunca puede leerlos.';
+
+  @override
+  String get cloudFilesHeaderSubtitle =>
+      'Archivos cifrados en tu servidor, en todos tus dispositivos.';
+
+  @override
+  String get cloudFilesEmptyTitle => 'Aún no hay archivos';
+
+  @override
+  String get cloudFilesEmptySubtitle =>
+      'Añade uno para tenerlo a salvo en todas partes.';
+
+  @override
+  String get cloudFilesStorageUsed => 'Almacenamiento usado';
+
+  @override
+  String cloudFilesStorageOf(String used, String quota) {
+    return '$used de $quota';
+  }
+
+  @override
+  String cloudFilesFreeSpace(String size) {
+    return '$size libres';
+  }
+
+  @override
+  String cloudFilesSaveDialogTitle(String name) {
+    return 'Guardar $name';
+  }
+
+  @override
+  String cloudFilesSaved(String name) {
+    return '$name guardado';
+  }
+
+  @override
+  String get cloudFilesDeleteTitle => '¿Eliminar archivo?';
+
+  @override
+  String cloudFilesDeleteBody(String name, String size) {
+    return '¿Quitar «$name» del servidor? Liberarás $size y no se puede deshacer.';
+  }
+
+  @override
+  String cloudFilesUploadingProgress(String name, String pct) {
+    return 'Subiendo $name… $pct%';
+  }
+
+  @override
+  String cloudFilesDownloadingProgress(String name, String pct) {
+    return 'Descargando $name… $pct%';
+  }
+
+  @override
+  String get dataChartAggSum => 'Suma';
+
+  @override
+  String get dataChartAverage => 'Promedio';
+
+  @override
+  String get dataChartAggCount => 'Recuento';
+
+  @override
+  String get dataChartAggMin => 'Mín';
+
+  @override
+  String get dataChartAggMax => 'Máx';
+
+  @override
+  String get dataChartRangeAll => 'Todo el tiempo';
+
+  @override
+  String get dataChartRangeLast7 => 'Últimos 7 días';
+
+  @override
+  String get dataChartRangeLast30 => 'Últimos 30 días';
+
+  @override
+  String get dataChartRangeLast90 => 'Últimos 90 días';
+
+  @override
+  String get dataChartRangeThisMonth => 'Este mes';
+
+  @override
+  String get dataChartRangeThisYear => 'Este año';
+
+  @override
+  String get dataChartRangeCustom => 'Personalizado…';
+
+  @override
+  String get dataChartSortValueDesc => 'Valor ↓';
+
+  @override
+  String get dataChartSortValueAsc => 'Valor ↑';
+
+  @override
+  String get dataChartSortLabelAsc => 'Etiqueta A-Z';
+
+  @override
+  String get dataChartTypeBar => 'Barras';
+
+  @override
+  String get dataChartTypeLine => 'Líneas';
+
+  @override
+  String get dataChartTypeArea => 'Área';
+
+  @override
+  String get dataChartTypePie => 'Circular';
+
+  @override
+  String get dataChartTypeDonut => 'Anillo';
+
+  @override
+  String get dataChartGroupBy => 'Agrupar por';
+
+  @override
+  String get dataChartAggregation => 'Agregación';
+
+  @override
+  String get dataChartValue => 'Valor';
+
+  @override
+  String get dataChartShow => 'Mostrar';
+
+  @override
+  String dataChartTopN(int count) {
+    return 'Top $count';
+  }
+
+  @override
+  String get dataChartDateColumn => 'Columna de fecha';
+
+  @override
+  String get dataChartPeriod => 'Periodo';
+
+  @override
+  String get dataChartGroupTags => 'Etiquetas';
+
+  @override
+  String get dataChartUntagged => 'Sin etiqueta';
+
+  @override
+  String get dataChartEmptyGroup => '(vacío)';
+
+  @override
+  String dataChartNeedsNumeric(String aggregation) {
+    return 'Añade una columna numérica para graficar valores,\no cambia la agregación a «$aggregation».';
+  }
+
+  @override
+  String get dataChartNoMatch =>
+      'Ningún dato coincide con los filtros actuales';
+
+  @override
+  String get dataChartSummaryGroups => 'Grupos';
+
+  @override
+  String get dataChartSummaryTop => 'Principal';
+
+  @override
+  String dataChartTitle(String aggregation, String value, String group) {
+    return '$aggregation de $value por $group';
+  }
+
+  @override
+  String get dataChartRowsWord => 'filas';
+
+  @override
+  String get dataChartTagWord => 'etiqueta';
+
+  @override
+  String get dataMgmtTitle => 'Gestión de datos';
+
+  @override
+  String get dataMgmtSubtitle =>
+      'Crea tablas, etiqueta entradas y construye gráficos a partir de tus propios conjuntos de datos.';
+
+  @override
+  String get dataMgmtNewDatasetHint => 'Nombre del nuevo conjunto de datos...';
+
+  @override
+  String get dataMgmtNoDatasetsTitle => 'Aún no hay conjuntos de datos';
+
+  @override
+  String get dataMgmtNoDatasetsSubtitle =>
+      'Crea un conjunto de datos arriba o importa uno desde CSV.';
+
+  @override
+  String dataMgmtDeleteDatasetTitle(String name) {
+    return '¿Eliminar \"$name\"?';
+  }
+
+  @override
+  String get dataMgmtDeleteDatasetBody =>
+      'Esto eliminará permanentemente el conjunto de datos y todas sus filas.';
+
+  @override
+  String dataMgmtDatasetMeta(int columns, int tags) {
+    String _temp0 = intl.Intl.pluralLogic(
+      columns,
+      locale: localeName,
+      other: '$columns columnas',
+      one: '1 columna',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      tags,
+      locale: localeName,
+      other: '$tags etiquetas',
+      one: '1 etiqueta',
+    );
+    String _temp2 = intl.Intl.pluralLogic(
+      tags,
+      locale: localeName,
+      other: '  ·  $_temp1',
+      zero: '',
+    );
+    return '$_temp0$_temp2';
+  }
+
+  @override
+  String get dataMgmtTabTable => 'Tabla';
+
+  @override
+  String get dataMgmtTabCharts => 'Gráficos';
+
+  @override
+  String get dataMgmtTags => 'Etiquetas';
+
+  @override
+  String get dataMgmtImportCsv => 'Importar CSV';
+
+  @override
+  String get dataMgmtExportCsv => 'Exportar CSV';
+
+  @override
+  String get dataMgmtSaveCsvTitle => 'Guardar CSV';
+
+  @override
+  String get dataMgmtImportedName => 'Importado';
+
+  @override
+  String get dataMgmtManageTagsTitle => 'Gestionar etiquetas';
+
+  @override
+  String get dataMgmtTagsExplainer =>
+      'Las etiquetas se pueden asignar a cualquier fila y usar para agrupar gráficos; por ejemplo, etiqueta los ingresos por fuente y mira qué genera más.';
+
+  @override
+  String get dataMgmtNoTagsYet => 'Aún no hay etiquetas.';
+
+  @override
+  String get dataMgmtNewTag => 'Nueva etiqueta';
+
+  @override
+  String get dataMgmtNewTagTitle => 'Nueva etiqueta';
+
+  @override
+  String get dataMgmtEditTagTitle => 'Editar etiqueta';
+
+  @override
+  String get dataMgmtTagNameHint =>
+      'Nombre de la etiqueta (p. ej. Salario, Trabajo extra)';
+
+  @override
+  String get dataMgmtNoColumnsTitle => 'Aún no hay columnas';
+
+  @override
+  String get dataMgmtNoColumnsSubtitle =>
+      'Añade una columna para empezar a construir tu tabla.';
+
+  @override
+  String get dataMgmtAddColumn => 'Añadir columna';
+
+  @override
+  String get dataMgmtEditColumnTitle => 'Editar columna';
+
+  @override
+  String get dataMgmtColumnNameHint => 'Nombre de la columna';
+
+  @override
+  String get dataMgmtColumnTypeLabel => 'Tipo:';
+
+  @override
+  String get dataMgmtTypeText => 'Texto';
+
+  @override
+  String get dataMgmtTypeNumber => 'Número';
+
+  @override
+  String get dataMgmtAddRow => 'Añadir fila';
+
+  @override
+  String get dataMgmtSearchRowsHint => 'Buscar filas...';
+
+  @override
+  String dataMgmtRowCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count filas',
+      one: '1 fila',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dataMgmtRowCountFiltered(int shown, int total) {
+    return '$shown de $total filas';
+  }
+
+  @override
+  String get dataMgmtClearFilter => 'Borrar filtro';
+
+  @override
+  String dataMgmtStatsSub(String avg, String max) {
+    return 'prom. $avg  ·  máx. $max';
+  }
+
+  @override
+  String get dataMgmtDuplicateRow => 'Duplicar fila';
+
+  @override
+  String get dataMgmtEditTags => 'Editar etiquetas';
+
+  @override
+  String get dataMgmtCreateTags => 'Crear etiquetas…';
+
+  @override
+  String get dataMgmtManageTags => 'Gestionar etiquetas…';
+
+  @override
+  String get deviceHealthWindowsOnlyTitle =>
+      'Device Health solo funciona en Windows';
+
+  @override
+  String get deviceHealthWindowsOnlySubtitle =>
+      'Los datos de CPU, controladores y Defender proceden de API exclusivas de Windows, así que este complemento solo funciona allí por ahora.';
+
+  @override
+  String get deviceHealthReadingStatus => 'Leyendo el estado del sistema…';
+
+  @override
+  String deviceHealthChecksRun(int checked, int total) {
+    return '$checked de $total comprobaciones realizadas';
+  }
+
+  @override
+  String get deviceHealthChecking => 'Comprobando…';
+
+  @override
+  String get deviceHealthCheckEverything => 'Comprobar todo';
+
+  @override
+  String get deviceHealthWhatNeedsAttention => 'Qué requiere atención';
+
+  @override
+  String get deviceHealthErrReadStatus =>
+      'No se pudo leer el estado del sistema.';
+
+  @override
+  String get deviceHealthErrCpuRamUnavailable =>
+      'Lectura de CPU/RAM no disponible.';
+
+  @override
+  String get deviceHealthErrDefenderUnavailable =>
+      'No se pudo leer el estado de Windows Defender: puede que otro antivirus esté activo o que el servicio Defender esté desactivado.';
+
+  @override
+  String get deviceHealthErrListProcesses =>
+      'No se pudieron listar los procesos.';
+
+  @override
+  String get deviceHealthErrWingetMissing =>
+      'winget no está disponible en este sistema.';
+
+  @override
+  String get deviceHealthNeedsManualUpdate =>
+      'Necesita una actualización manual: winget no pudo terminar en silencio.';
+
+  @override
+  String deviceHealthIssueRamHigh(int percent) {
+    return 'El uso de RAM es muy alto ($percent %).';
+  }
+
+  @override
+  String deviceHealthIssueCpuHigh(int percent) {
+    return 'El uso de CPU es muy alto ($percent %).';
+  }
+
+  @override
+  String deviceHealthIssueBatteryDegraded(int percent) {
+    return 'La salud de la batería está muy degradada ($percent % de capacidad perdida).';
+  }
+
+  @override
+  String deviceHealthIssueBatteryFading(int percent) {
+    return 'La salud de la batería se está deteriorando ($percent % de capacidad perdida).';
+  }
+
+  @override
+  String get deviceHealthIssueDefenderOff =>
+      'La protección de Windows Defender está desactivada.';
+
+  @override
+  String get deviceHealthIssueDefinitionsOld =>
+      'Las definiciones del antivirus están desactualizadas.';
+
+  @override
+  String get deviceHealthIssueNoScan =>
+      'No hay análisis antivirus en los últimos 30 días.';
+
+  @override
+  String deviceHealthIssueBloatware(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count aplicaciones en segundo plano que suelen considerarse innecesarias.',
+      one: '1 aplicación en segundo plano que suele considerarse innecesaria.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String deviceHealthIssueAppUpdates(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count actualizaciones de aplicaciones disponibles.',
+      one: '1 actualización de aplicación disponible.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get deviceHealthCardAppUpdatesTitle => 'Actualizaciones de apps';
+
+  @override
+  String get deviceHealthCardRescan => 'Volver a buscar';
+
+  @override
+  String get deviceHealthCardScanForUpdates => 'Buscar actualizaciones';
+
+  @override
+  String get deviceHealthCardAppUpdatesNotScanned =>
+      'Aún no se ha buscado: comprueba winget y luma por si hay actualizaciones.';
+
+  @override
+  String deviceHealthCardUpdateAll(int count) {
+    return 'Actualizar todo ($count)';
+  }
+
+  @override
+  String deviceHealthCardUpdateSourceMayPrompt(String source) {
+    return '$source, puede pedir confirmación';
+  }
+
+  @override
+  String get deviceHealthCardUpdateFailedHint =>
+      'No se pudo actualizar automáticamente; prueba a actualizarla tú mismo.';
+
+  @override
+  String get deviceHealthCardAppsUpToDate =>
+      'Todo lo que luma ha revisado está actualizado.';
+
+  @override
+  String get deviceHealthCardBatteryTitle => 'Batería';
+
+  @override
+  String get deviceHealthCardNotCheckedYet => 'Aún no se ha comprobado.';
+
+  @override
+  String get deviceHealthCardNoBattery =>
+      'No se detecta batería; parece un equipo de escritorio.';
+
+  @override
+  String deviceHealthCardBatteryHealth(int percent) {
+    return 'Estado de la batería: queda el $percent % de la capacidad de diseño.';
+  }
+
+  @override
+  String get deviceHealthCardBatteryNoWearData =>
+      'Esta batería no informa de la capacidad de diseño ni de la carga completa, así que no se puede estimar el desgaste.';
+
+  @override
+  String get deviceHealthBatteryDischarging => 'Descargando';
+
+  @override
+  String get deviceHealthBatteryOnAc => 'Con corriente';
+
+  @override
+  String get deviceHealthBatteryFullyCharged => 'Totalmente cargada';
+
+  @override
+  String get deviceHealthBatteryLow => 'Baja';
+
+  @override
+  String get deviceHealthBatteryCritical => 'Crítica';
+
+  @override
+  String get deviceHealthBatteryCharging => 'Cargando';
+
+  @override
+  String get deviceHealthBatteryPartiallyCharged => 'Parcialmente cargada';
+
+  @override
+  String get deviceHealthGpuUnknownName => 'GPU desconocida';
+
+  @override
+  String get deviceHealthCardCpuRamTitle => 'CPU y RAM';
+
+  @override
+  String get deviceHealthCardDefenderTitle =>
+      'Protección contra virus y amenazas';
+
+  @override
+  String get deviceHealthCardRealTimeOn =>
+      'La protección en tiempo real está activada.';
+
+  @override
+  String get deviceHealthCardRealTimeOff =>
+      'La protección en tiempo real está DESACTIVADA.';
+
+  @override
+  String deviceHealthCardDefenderSummary(String definitions, String lastScan) {
+    return 'Definiciones: $definitions · Último análisis: $lastScan';
+  }
+
+  @override
+  String get deviceHealthCardRelativeNever => 'nunca';
+
+  @override
+  String get deviceHealthCardRelativeToday => 'hoy';
+
+  @override
+  String get deviceHealthCardRelativeYesterday => 'ayer';
+
+  @override
+  String deviceHealthCardRelativeDaysAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'hace $count días',
+      one: 'hace 1 día',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get deviceHealthCardRunQuickScan => 'Ejecutar análisis rápido';
+
+  @override
+  String get deviceHealthCardOpenWindowsSecurity =>
+      'Abrir Seguridad de Windows';
+
+  @override
+  String get deviceHealthCardGpuTitle => 'GPU y controladores';
+
+  @override
+  String deviceHealthCardDriverVersion(String version) {
+    return 'Controlador $version';
+  }
+
+  @override
+  String deviceHealthCardDriverVersionDate(String version, String date) {
+    return 'Controlador $version · $date';
+  }
+
+  @override
+  String deviceHealthCardOpenVendorTool(String vendor) {
+    return 'Abrir la herramienta de actualización de $vendor';
+  }
+
+  @override
+  String get deviceHealthCardOpenWindowsUpdate => 'Abrir Windows Update';
+
+  @override
+  String get deviceHealthCardGpuDisclaimer =>
+      'Windows no ofrece una forma de comprobar directamente si un controlador está actualizado; estos botones abren la herramienta que sí lo sabe. No se instala nada automáticamente.';
+
+  @override
+  String get deviceHealthCardProcessesTitle => 'Procesos en segundo plano';
+
+  @override
+  String get deviceHealthCardScanProcesses => 'Analizar procesos';
+
+  @override
+  String get deviceHealthCardProcessesNotScanned =>
+      'Aún no se ha analizado: esto lee todos los procesos en ejecución, por eso no se ejecuta automáticamente.';
+
+  @override
+  String deviceHealthCardProcessesSummary(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count procesos · ordenados por memoria',
+      one: '1 proceso · ordenado por memoria',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String deviceHealthCardSuggested(String label) {
+    return 'Sugerido: $label';
+  }
+
+  @override
+  String get deviceHealthCardEndProcess => 'Finalizar proceso';
+
+  @override
+  String deviceHealthCardEndProcessTitle(String name) {
+    return '¿Finalizar $name?';
+  }
+
+  @override
+  String get deviceHealthCardEndProcessClosesNow =>
+      'Esto cierra el proceso de inmediato. El trabajo sin guardar se perderá.';
+
+  @override
+  String deviceHealthCardEndProcessWithReason(String reason) {
+    return '$reason El trabajo sin guardar de este proceso se perderá.';
+  }
+
+  @override
+  String get deviceHealthStatusGood => 'Bien';
+
+  @override
+  String get deviceHealthStatusWarning => 'Requiere atención';
+
+  @override
+  String get deviceHealthStatusBad => 'Mal';
+
+  @override
+  String get deviceHealthStatusNotChecked => 'Sin comprobar';
+
+  @override
+  String get deviceHealthCardCheck => 'Comprobar';
+
+  @override
+  String get errandsEmptyTitle => 'Todavía no hay tareas';
+
+  @override
+  String get errandsEmptySubtitle =>
+      'Añade una tarea recurrente — diaria, semanal, mensual o cada pocos días — y aparecerá en tu lista el día que toque.';
+
+  @override
+  String get errandsAddErrand => 'Añadir tarea';
+
+  @override
+  String get errandsAllDoneToday => 'Todo hecho por hoy — ¡buen trabajo!';
+
+  @override
+  String get errandsNothingDueToday =>
+      'Nada pendiente hoy. Tus próximas tareas aparecen en Próximamente.';
+
+  @override
+  String get errandsComingUp => 'Próximamente';
+
+  @override
+  String get errandsDoneToday => 'Hechas hoy';
+
+  @override
+  String get errandsTodayTitle => 'Tareas de hoy';
+
+  @override
+  String errandsDoneOfTotal(int done, int total) {
+    return '$done de $total hechas';
+  }
+
+  @override
+  String get errandsCategories => 'Categorías';
+
+  @override
+  String get errandsNewCategory => 'Nueva categoría';
+
+  @override
+  String get errandsEditCategoryTitle => 'Editar categoría';
+
+  @override
+  String errandsDaysLate(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count días de retraso',
+      one: '1 día de retraso',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get errandsDelay => 'Posponer';
+
+  @override
+  String get errandsDelayByDaysTitle => '¿Posponer cuántos días?';
+
+  @override
+  String errandsInDays(int count) {
+    return 'En $count días';
+  }
+
+  @override
+  String get errandsInAWeek => 'En una semana';
+
+  @override
+  String get errandsCustom => 'Personalizado…';
+
+  @override
+  String get errandsCustomDaysHint => 'p. ej. 5';
+
+  @override
+  String get errandsRepeatDaily => 'Diaria';
+
+  @override
+  String get errandsRepeatWeekly => 'Semanal';
+
+  @override
+  String get errandsRepeatMonthly => 'Mensual';
+
+  @override
+  String get errandsRepeatCustom => 'Personalizado';
+
+  @override
+  String errandsRepeatEveryDays(int count) {
+    return 'Cada $count días';
+  }
+
+  @override
+  String errandsRepeatEveryWeeks(int count) {
+    return 'Cada $count semanas';
+  }
+
+  @override
+  String errandsRepeatEveryMonths(int count) {
+    return 'Cada $count meses';
+  }
+
+  @override
+  String get errandsEditTitle => 'Editar tarea';
+
+  @override
+  String get errandsNameRequired => 'Ponle un nombre a la tarea.';
+
+  @override
+  String get errandsIntervalInvalid =>
+      'Introduce un intervalo de repetición entre 1 y 365 días.';
+
+  @override
+  String errandsSaveFailed(String error) {
+    return 'No se pudo guardar la tarea. ($error)';
+  }
+
+  @override
+  String get errandsNameHint => 'Regar las plantas';
+
+  @override
+  String get errandsRepeats => 'Repetición';
+
+  @override
+  String get errandsEvery => 'Cada';
+
+  @override
+  String get errandsDays => 'días';
+
+  @override
+  String get errandsNextDue => 'Próximo vencimiento';
+
+  @override
+  String get errandsFirstDue => 'Primer vencimiento';
+
+  @override
+  String get errandsNotesOptional => 'Notas (opcional)';
+
+  @override
+  String get errandsNotesHint => 'Qué plantas, qué tienda, lo que sea útil';
+
+  @override
+  String get errandsNoCategory => 'Sin categoría';
+
+  @override
+  String get errandsNoCategoriesYet => 'Todavía no hay categorías.';
+
+  @override
+  String get errandsCategoriesHelp =>
+      'Agrupa tu lista como quieras: Hogar, Salud, Administración… Eliminar una categoría conserva sus tareas.';
+
+  @override
+  String get errandsCategoryNameHint => 'Hogar';
+
+  @override
+  String get errandsCategoryNameRequired => 'Ponle un nombre a la categoría.';
+
+  @override
+  String get errandsDeleteTitle => '¿Eliminar tarea?';
+
+  @override
+  String get errandsDeleteBody =>
+      'Esto elimina la tarea y su programación de este dispositivo.';
+
+  @override
+  String get errandsDeleteCategoryTitle => '¿Eliminar categoría?';
+
+  @override
+  String get errandsDeleteCategoryBody =>
+      'Las tareas de esta categoría se conservan y quedan sin categoría.';
+
+  @override
+  String get errandsDueTomorrow => 'Vence mañana';
+
+  @override
+  String errandsDueInDays(int count) {
+    return 'Vence en $count días';
+  }
+
+  @override
+  String errandsDueOn(String date) {
+    return 'Vence el $date';
+  }
+
+  @override
+  String get fileTreePickFolderTitle =>
+      'Elige una carpeta o unidad para analizar';
+
+  @override
+  String get fileTreeNothingScanned => 'Aún no se ha analizado nada';
+
+  @override
+  String get fileTreeNothingScannedHint =>
+      'Elige una unidad o carpeta arriba y luma mostrará qué está ocupando el espacio.';
+
+  @override
+  String get fileTreeFolderEmpty => 'Esta carpeta está vacía';
+
+  @override
+  String get fileTreeFolderEmptyHint =>
+      'No se encontraron archivos o no se pudieron leer.';
+
+  @override
+  String get fileTreeDiskUsage => 'Uso del disco';
+
+  @override
+  String get fileTreeDiskUsageHint =>
+      'Mira exactamente qué está llenando tu disco.';
+
+  @override
+  String get fileTreeRescan => 'Volver a analizar';
+
+  @override
+  String get fileTreeTotalSize => 'Tamaño total';
+
+  @override
+  String get fileTreeFiles => 'Archivos';
+
+  @override
+  String get fileTreeFolders => 'Carpetas';
+
+  @override
+  String get fileTreeList => 'Lista';
+
+  @override
+  String get fileTreeDetailed => 'Detallado';
+
+  @override
+  String get fileTreeDrives => 'Unidades';
+
+  @override
+  String get fileTreeMapping => 'Analizando tus archivos…';
+
+  @override
+  String get fileTreeProgressAtBottom => 'El progreso se muestra abajo.';
+
+  @override
+  String get fileTreeIndexing => 'Indexando archivos…';
+
+  @override
+  String get fileTreeMeasuring => 'Midiendo tamaños…';
+
+  @override
+  String fileTreeItemsFound(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count elementos encontrados',
+      one: '1 elemento encontrado',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String fileTreeItemsProgress(String done, String total) {
+    return '$done / $total elementos';
+  }
+
+  @override
+  String fileTreeBytesScanned(String size) {
+    return '$size analizados';
+  }
+
+  @override
+  String get fileTreeCancelScan => 'Cancelar análisis';
+
+  @override
+  String get fileTreeNoFilesHere =>
+      'No hay archivos que mostrar en esta carpeta.';
+
+  @override
+  String fileTreeOtherItems(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count elementos más',
+      one: '1 elemento más',
+    );
+    return '($_temp0)';
+  }
+
+  @override
+  String get fileViewerCouldNotReadFile =>
+      'No se pudo leer el archivo seleccionado.';
+
+  @override
+  String fileViewerCouldNotOpen(String error) {
+    return 'No se pudo abrir este archivo: $error';
+  }
+
+  @override
+  String fileViewerOpenExternallyFailed(String message) {
+    return 'No se pudo abrir externamente: $message';
+  }
+
+  @override
+  String get fileViewerTapToPick => 'Toca para elegir un archivo';
+
+  @override
+  String get fileViewerFormatsHint =>
+      'PDF · DOCX · XLSX · imágenes · SVG · texto y código';
+
+  @override
+  String get fileViewerOpenExternally => 'Abrir externamente';
+
+  @override
+  String get fileViewerNoPreview =>
+      'Sin vista previa para este tipo de archivo';
+
+  @override
+  String get fileViewerOpenExternallyHint =>
+      'Usa \"Abrir externamente\" para verlo en su aplicación predeterminada.';
+
+  @override
+  String get fileViewerCannotPreview =>
+      'Este tipo de archivo no se puede previsualizar aquí.';
+
+  @override
+  String get fileViewerUnknownExtension => 'ARCHIVO';
+
+  @override
+  String fileViewerPageOf(int page, int total) {
+    return 'Página $page de $total';
+  }
+
+  @override
+  String get fileViewerNoPageText => 'No hay texto en esta página';
+
+  @override
+  String get fileViewerNoPageTextHint =>
+      'Esta página no tiene texto extraíble; puede ser un escaneo o una imagen.';
+
+  @override
+  String get fileViewerNoReadableText =>
+      'Este documento no tiene texto legible';
+
+  @override
+  String get fileViewerEmptyWorksheet => 'Esta hoja de cálculo está vacía';
+
+  @override
+  String fileViewerShowingRows(int shown, int total) {
+    return 'Mostrando las primeras $shown de $total filas.';
+  }
+
+  @override
+  String get fileViewerLargeFile =>
+      'Archivo grande: se muestran los primeros 500 KB.';
+
+  @override
+  String get fileViewerNotWordDocument =>
+      'Este archivo no parece un documento de Word.';
+
+  @override
+  String get fileViewerNoDocumentBody =>
+      'No se pudo encontrar el cuerpo del documento.';
+
+  @override
+  String get fileViewerNoWorksheets => 'Este libro no tiene hojas de cálculo.';
+
+  @override
+  String freeSketchImageCouldNotOpen(String error) {
+    return 'No se pudo abrir esa imagen: $error';
+  }
+
+  @override
+  String freeSketchArtworkCouldNotOpen(String error) {
+    return 'No se pudo abrir esa obra: $error';
+  }
+
+  @override
+  String get freeSketchRenameArtwork => 'Renombrar obra';
+
+  @override
+  String freeSketchDeleteConfirm(String title) {
+    return '¿Eliminar \"$title\"?';
+  }
+
+  @override
+  String freeSketchDeleteBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count capas',
+      one: '1 capa',
+    );
+    return '$_temp0 se eliminarán de este dispositivo para siempre. Expórtalo primero si quieres conservar una copia.';
+  }
+
+  @override
+  String get freeSketchGallery => 'Galería';
+
+  @override
+  String get freeSketchGallerySubtitle =>
+      'Cada obra se guarda en este dispositivo mientras pintas.';
+
+  @override
+  String get freeSketchImportImage => 'Importar imagen';
+
+  @override
+  String get freeSketchNew => 'Nuevo';
+
+  @override
+  String get freeSketchNewArtwork => 'Nueva obra';
+
+  @override
+  String get freeSketchCouldNotReadGallery => 'No se pudo leer la galería';
+
+  @override
+  String get freeSketchGalleryEmpty => 'Tu galería está vacía';
+
+  @override
+  String get freeSketchGalleryEmptyHint =>
+      'Empieza una obra nueva: lápices, tintas, acuarelas, rotuladores, aerógrafos y difuminadores, con capas, modos de fusión, simetría y presión. Exporta a PNG, JPEG, Photoshop u OpenRaster.';
+
+  @override
+  String freeSketchArtworkInfo(String size, int count, String updated) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count capas',
+      one: '1 capa',
+    );
+    return '$size · $_temp0 · $updated';
+  }
+
+  @override
+  String get freeSketchArtworkActions => 'Acciones de la obra';
+
+  @override
+  String get freeSketchDuplicate => 'Duplicar';
+
+  @override
+  String get freeSketchUntitledArtwork => 'Obra sin título';
+
+  @override
+  String get freeSketchCanvas => 'Lienzo';
+
+  @override
+  String get freeSketchBackground => 'Fondo';
+
+  @override
+  String get freeSketchTransparent => 'Transparente';
+
+  @override
+  String get freeSketchSwapSize => 'Intercambiar ancho y alto';
+
+  @override
+  String get freeSketchWidthPx => 'Ancho (px)';
+
+  @override
+  String get freeSketchHeightPx => 'Alto (px)';
+
+  @override
+  String freeSketchCanvasMemory(String megabytes, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count capas',
+      one: '1 capa',
+    );
+    return '$megabytes MB por capa · hasta $_temp0';
+  }
+
+  @override
+  String get freeSketchFirstLayerName => 'Capa 1';
+
+  @override
+  String get freeSketchSymmetryOff => 'Desactivada';
+
+  @override
+  String get freeSketchSymmetryVertical => 'Vertical';
+
+  @override
+  String get freeSketchSymmetryHorizontal => 'Horizontal';
+
+  @override
+  String get freeSketchSymmetryQuadrant => 'Cuadrante';
+
+  @override
+  String get freeSketchSymmetryRadial => 'Radial';
+
+  @override
+  String get freeSketchAdjHueSaturation => 'Tono / saturación';
+
+  @override
+  String get freeSketchAdjBrightnessContrast => 'Brillo / contraste';
+
+  @override
+  String get freeSketchAdjColorBalance => 'Balance de color';
+
+  @override
+  String get freeSketchAdjBlur => 'Desenfoque gaussiano';
+
+  @override
+  String get freeSketchAdjInvert => 'Invertir';
+
+  @override
+  String get freeSketchAdjDesaturate => 'Blanco y negro';
+
+  @override
+  String get freeSketchAdjParamHue => 'Tono';
+
+  @override
+  String get freeSketchAdjParamSaturation => 'Saturación';
+
+  @override
+  String get freeSketchAdjParamLightness => 'Luminosidad';
+
+  @override
+  String get freeSketchAdjParamBrightness => 'Brillo';
+
+  @override
+  String get freeSketchAdjParamContrast => 'Contraste';
+
+  @override
+  String get freeSketchAdjParamCyanRed => 'Cian ↔ Rojo';
+
+  @override
+  String get freeSketchAdjParamMagentaGreen => 'Magenta ↔ Verde';
+
+  @override
+  String get freeSketchAdjParamYellowBlue => 'Amarillo ↔ Azul';
+
+  @override
+  String get freeSketchAdjParamRadius => 'Radio';
+
+  @override
+  String get freeSketchBrushPencilHb => 'Lápiz HB';
+
+  @override
+  String get freeSketchBrushPencil6b => 'Lápiz 6B';
+
+  @override
+  String get freeSketchBrushMechanical => 'Portaminas';
+
+  @override
+  String get freeSketchBrushCharcoal => 'Carboncillo';
+
+  @override
+  String get freeSketchBrushPastel => 'Pastel blando';
+
+  @override
+  String get freeSketchBrushCrayon => 'Crayón de cera';
+
+  @override
+  String get freeSketchBrushStudioPen => 'Pluma de estudio';
+
+  @override
+  String get freeSketchBrushFineliner => 'Rotulador fino';
+
+  @override
+  String get freeSketchBrushBrushPen => 'Pincel rotulador';
+
+  @override
+  String get freeSketchBrushCalligraphy => 'Plumilla caligráfica';
+
+  @override
+  String get freeSketchBrushTechnical => 'Plumilla técnica';
+
+  @override
+  String get freeSketchBrushDryInk => 'Tinta seca';
+
+  @override
+  String get freeSketchBrushRoundHard => 'Redondo duro';
+
+  @override
+  String get freeSketchBrushRoundSoft => 'Redondo suave';
+
+  @override
+  String get freeSketchBrushOil => 'Óleo';
+
+  @override
+  String get freeSketchBrushGouache => 'Gouache';
+
+  @override
+  String get freeSketchBrushFlatAcrylic => 'Acrílico plano';
+
+  @override
+  String get freeSketchBrushPaletteKnife => 'Espátula';
+
+  @override
+  String get freeSketchBrushWcWash => 'Lavado de acuarela';
+
+  @override
+  String get freeSketchBrushWcRound => 'Acuarela redonda';
+
+  @override
+  String get freeSketchBrushWcBleed => 'Difuminado húmedo';
+
+  @override
+  String get freeSketchBrushWcSpatter => 'Salpicadura';
+
+  @override
+  String get freeSketchBrushMarker => 'Rotulador de alcohol';
+
+  @override
+  String get freeSketchBrushHighlighter => 'Marcador fluorescente';
+
+  @override
+  String get freeSketchBrushFeltTip => 'Rotulador';
+
+  @override
+  String get freeSketchBrushAirbrush => 'Aerógrafo';
+
+  @override
+  String get freeSketchBrushFineAirbrush => 'Aerógrafo fino';
+
+  @override
+  String get freeSketchBrushSpray => 'Pintura en spray';
+
+  @override
+  String get freeSketchBrushSplatter => 'Salpicaduras';
+
+  @override
+  String get freeSketchBrushSparkle => 'Destello';
+
+  @override
+  String get freeSketchBrushGlow => 'Resplandor';
+
+  @override
+  String get freeSketchBrushFoliage => 'Follaje';
+
+  @override
+  String get freeSketchBrushStipple => 'Punteado';
+
+  @override
+  String get freeSketchBrushBlendSoft => 'Difuminador suave';
+
+  @override
+  String get freeSketchBrushSmudge => 'Difuminar';
+
+  @override
+  String get freeSketchBrushBlendBristle => 'Difuminador de cerdas';
+
+  @override
+  String get freeSketchBrushBlur => 'Desenfocar';
+
+  @override
+  String get freeSketchCategorySketching => 'Bocetos';
+
+  @override
+  String get freeSketchCategoryInking => 'Entintado';
+
+  @override
+  String get freeSketchCategoryPainting => 'Pintura';
+
+  @override
+  String get freeSketchCategoryWatercolor => 'Acuarela';
+
+  @override
+  String get freeSketchCategoryMarkers => 'Rotuladores';
+
+  @override
+  String get freeSketchCategoryAirbrush => 'Aerógrafo';
+
+  @override
+  String get freeSketchCategoryTexture => 'Texturas y efectos';
+
+  @override
+  String get freeSketchCategoryBlending => 'Mezclas';
+
+  @override
+  String get freeSketchParamOpacity => 'Opacidad';
+
+  @override
+  String get freeSketchParamFlow => 'Flujo';
+
+  @override
+  String get freeSketchParamHardness => 'Dureza';
+
+  @override
+  String get freeSketchParamSpacing => 'Espaciado';
+
+  @override
+  String get freeSketchParamStreamline => 'StreamLine';
+
+  @override
+  String get freeSketchParamSizePressure => 'Presión → tamaño';
+
+  @override
+  String get freeSketchParamFlowPressure => 'Presión → opacidad';
+
+  @override
+  String get freeSketchParamTaperStart => 'Inicio de afilado';
+
+  @override
+  String get freeSketchParamTaperEnd => 'Fin de afilado';
+
+  @override
+  String get freeSketchParamSizeJitter => 'Variación de tamaño';
+
+  @override
+  String get freeSketchParamAngleJitter => 'Variación de rotación';
+
+  @override
+  String get freeSketchParamScatter => 'Dispersión';
+
+  @override
+  String get freeSketchParamRoundness => 'Redondez';
+
+  @override
+  String get freeSketchParamAngle => 'Ángulo';
+
+  @override
+  String get freeSketchParamGrain => 'Grano';
+
+  @override
+  String get freeSketchParamWetEdges => 'Bordes húmedos';
+
+  @override
+  String get freeSketchParamColorJitter => 'Variación de color';
+
+  @override
+  String get freeSketchParamStrength => 'Intensidad';
+
+  @override
+  String get freeSketchGrainNone => 'Ninguno';
+
+  @override
+  String get freeSketchGrainPaper => 'Papel';
+
+  @override
+  String get freeSketchGrainCanvas => 'Lienzo';
+
+  @override
+  String get freeSketchGrainRough => 'Rugoso';
+
+  @override
+  String get freeSketchEnginePaints => 'Pinta';
+
+  @override
+  String get freeSketchEngineSmudges => 'Difumina el color de debajo';
+
+  @override
+  String get freeSketchEngineBlurs => 'Desenfoca lo que hay debajo';
+
+  @override
+  String get freeSketchTraitGlazes =>
+      'se superpone como un rotulador: los solapes oscurecen';
+
+  @override
+  String get freeSketchTraitAddsLight => 'añade luz';
+
+  @override
+  String freeSketchTraitGrain(String grain) {
+    return 'con grano $grain';
+  }
+
+  @override
+  String get freeSketchTraitBuildsUp => 'se acumula mientras mantienes quieto';
+
+  @override
+  String get freeSketchListSeparator => ', ';
+
+  @override
+  String freeSketchBrushDescription(
+    String engine,
+    String traits,
+    String pressure,
+  ) {
+    return '$engine$traits. $pressure';
+  }
+
+  @override
+  String get freeSketchPressureSizeAndOpacity =>
+      'La presión cambia el tamaño y la opacidad.';
+
+  @override
+  String get freeSketchPressureSize => 'La presión cambia el tamaño.';
+
+  @override
+  String get freeSketchPressureOpacity => 'La presión cambia la opacidad.';
+
+  @override
+  String get freeSketchPressureNothing => 'La presión no cambia nada.';
+
+  @override
+  String get freeSketchBlendNormal => 'Normal';
+
+  @override
+  String get freeSketchBlendMultiply => 'Multiplicar';
+
+  @override
+  String get freeSketchBlendColorBurn => 'Subexponer color';
+
+  @override
+  String get freeSketchBlendDarken => 'Oscurecer';
+
+  @override
+  String get freeSketchBlendScreen => 'Trama';
+
+  @override
+  String get freeSketchBlendColorDodge => 'Sobreexponer color';
+
+  @override
+  String get freeSketchBlendLighten => 'Aclarar';
+
+  @override
+  String get freeSketchBlendAdd => 'Sumar';
+
+  @override
+  String get freeSketchBlendOverlay => 'Superponer';
+
+  @override
+  String get freeSketchBlendSoftLight => 'Luz suave';
+
+  @override
+  String get freeSketchBlendHardLight => 'Luz fuerte';
+
+  @override
+  String get freeSketchBlendDifference => 'Diferencia';
+
+  @override
+  String get freeSketchBlendExclusion => 'Exclusión';
+
+  @override
+  String get freeSketchBlendHue => 'Tono';
+
+  @override
+  String get freeSketchBlendSaturation => 'Saturación';
+
+  @override
+  String get freeSketchBlendColor => 'Color';
+
+  @override
+  String get freeSketchBlendLuminosity => 'Luminosidad';
+
+  @override
+  String get freeSketchToolBrush => 'Pincel';
+
+  @override
+  String get freeSketchToolEraser => 'Borrador';
+
+  @override
+  String get freeSketchToolSmudge => 'Dedo';
+
+  @override
+  String get freeSketchToolFill => 'Relleno';
+
+  @override
+  String get freeSketchToolGradient => 'Degradado';
+
+  @override
+  String get freeSketchToolShapes => 'Formas';
+
+  @override
+  String get freeSketchToolSelection => 'Selección';
+
+  @override
+  String get freeSketchToolTransform => 'Transformar';
+
+  @override
+  String get freeSketchToolEyedropper => 'Cuentagotas';
+
+  @override
+  String get freeSketchShapeLine => 'Línea';
+
+  @override
+  String get freeSketchShapeRectangle => 'Rectángulo';
+
+  @override
+  String get freeSketchShapeEllipse => 'Elipse';
+
+  @override
+  String get freeSketchShapePolygon => 'Polígono';
+
+  @override
+  String get freeSketchSelectionLasso => 'Lazo';
+
+  @override
+  String get freeSketchSelectionCombineNew => 'Nueva';
+
+  @override
+  String get freeSketchSelectionCombineAdd => 'Añadir';
+
+  @override
+  String get freeSketchSelectionCombineSubtract => 'Restar';
+
+  @override
+  String get freeSketchPresetScreen => 'Pantalla';
+
+  @override
+  String get freeSketchPresetSquare => 'Cuadrado';
+
+  @override
+  String get freeSketchPresetPortrait => 'Vertical';
+
+  @override
+  String get freeSketchPresetA4Draft => 'Borrador A4';
+
+  @override
+  String get freeSketchPresetComicPage => 'Página de cómic';
+
+  @override
+  String get freeSketchPresetPhoneWallpaper => 'Fondo de pantalla del móvil';
+
+  @override
+  String get freeSketchExportPngNote => 'Aplanado, conserva la transparencia';
+
+  @override
+  String get freeSketchExportJpegNote => 'Aplanado, archivo más pequeño';
+
+  @override
+  String get freeSketchExportPsdNote =>
+      'Todas las capas, modos de fusión y máscaras';
+
+  @override
+  String get freeSketchExportOraNote => 'Capas para Krita, GIMP y MyPaint';
+
+  @override
+  String freeSketchExportDialogTitle(String format) {
+    return 'Exportar $format';
+  }
+
+  @override
+  String get freeSketchEncodeFailed => 'No se pudo codificar la imagen.';
+
+  @override
+  String get freeSketchPixelsReadFailed =>
+      'No se pudieron leer los píxeles de la imagen.';
+
+  @override
+  String freeSketchLayerNumber(int number) {
+    return 'Capa $number';
+  }
+
+  @override
+  String freeSketchCopyTitle(String title) {
+    return '$title (copia)';
+  }
+
+  @override
+  String get freeSketchNoCanvasSize =>
+      'El documento no tiene tamaño de lienzo.';
+
+  @override
+  String get freeSketchBrushesTitle => 'Pinceles';
+
+  @override
+  String freeSketchBrushesForTool(String tool) {
+    return 'Pinceles de $tool';
+  }
+
+  @override
+  String get freeSketchBrushLibrary => 'Biblioteca';
+
+  @override
+  String get freeSketchBrushSettings => 'Ajustes';
+
+  @override
+  String get freeSketchBrushCustomised => 'Personalizado';
+
+  @override
+  String get freeSketchInvalidSnapshot => 'Instantánea de boceto no válida.';
+
+  @override
+  String get freeSketchFallbackLayerName => 'Capa';
+
+  @override
+  String get freeSketchColourTitle => 'Color';
+
+  @override
+  String get freeSketchColourTabWheel => 'Rueda';
+
+  @override
+  String get freeSketchColourTabSliders => 'Deslizadores';
+
+  @override
+  String get freeSketchColourTabPalettes => 'Paletas';
+
+  @override
+  String get freeSketchColourSwapTooltip =>
+      'Intercambiar con el color secundario (X)';
+
+  @override
+  String get freeSketchColourSecondaryTooltip => 'Color secundario';
+
+  @override
+  String get freeSketchColourRecent => 'Recientes';
+
+  @override
+  String get freeSketchColourPairTooltip =>
+      'Izquierda: color nuevo · derecha: toca para volver al color inicial';
+
+  @override
+  String get freeSketchChannelHue => 'M';
+
+  @override
+  String get freeSketchChannelSaturation => 'S';
+
+  @override
+  String get freeSketchChannelBrightness => 'B';
+
+  @override
+  String get freeSketchChannelRed => 'R';
+
+  @override
+  String get freeSketchChannelGreen => 'V';
+
+  @override
+  String get freeSketchChannelBlue => 'A';
+
+  @override
+  String get freeSketchPaletteBasics => 'Básicos';
+
+  @override
+  String get freeSketchPaletteSkinTones => 'Tonos de piel';
+
+  @override
+  String get freeSketchPaletteNature => 'Naturaleza';
+
+  @override
+  String get freeSketchPalettePastel => 'Pastel';
+
+  @override
+  String get freeSketchPaletteGreys => 'Grises';
+
+  @override
+  String get freeSketchColourRemoveHint =>
+      'Mantén pulsado o haz clic derecho para quitar';
+
+  @override
+  String get freeSketchColourMyPalette => 'Mi paleta';
+
+  @override
+  String get freeSketchColourAdd => 'Añadir color';
+
+  @override
+  String get freeSketchColourPaletteEmpty =>
+      'Guarda aquí los colores que reutilices.';
+
+  @override
+  String get freeSketchLayersShowPanel => 'Mostrar panel de capas';
+
+  @override
+  String get freeSketchLayerNew => 'Nueva capa';
+
+  @override
+  String get freeSketchLayerRename => 'Renombrar capa';
+
+  @override
+  String get freeSketchLayerNewShortcut => 'Nueva capa (Ctrl+Mayús+N)';
+
+  @override
+  String get freeSketchLayersTitle => 'Capas';
+
+  @override
+  String get freeSketchLayersCollapse => 'Contraer';
+
+  @override
+  String get freeSketchLayerAlphaLockShort => 'α bloq.';
+
+  @override
+  String get freeSketchLayerHide => 'Ocultar capa';
+
+  @override
+  String get freeSketchLayerShow => 'Mostrar capa';
+
+  @override
+  String get freeSketchBackgroundColour => 'Color de fondo';
+
+  @override
+  String get freeSketchBackgroundUseCurrent => 'Usar el color actual';
+
+  @override
+  String get freeSketchBackgroundWhite => 'Blanco';
+
+  @override
+  String get freeSketchBackgroundPaper => 'Papel cálido';
+
+  @override
+  String get freeSketchBackgroundCharcoal => 'Carbón';
+
+  @override
+  String get freeSketchBackgroundTransparent => 'Fondo (transparente)';
+
+  @override
+  String get freeSketchBackgroundTransparentTip => 'Fondo transparente';
+
+  @override
+  String get freeSketchBackgroundShow => 'Mostrar fondo';
+
+  @override
+  String get freeSketchBlend => 'Fusión';
+
+  @override
+  String get freeSketchBlendMode => 'Modo de fusión';
+
+  @override
+  String get freeSketchLayerOpacity => 'Opacidad';
+
+  @override
+  String get freeSketchLayerLock => 'Bloquear';
+
+  @override
+  String get freeSketchLayerLockLayer => 'Bloquear capa';
+
+  @override
+  String get freeSketchLayerAlphaLock => 'Bloqueo alfa';
+
+  @override
+  String get freeSketchLayerClip => 'Recortar';
+
+  @override
+  String get freeSketchLayerClipMask => 'Máscara de recorte';
+
+  @override
+  String get freeSketchLayerActions => 'Acciones de capa';
+
+  @override
+  String get freeSketchLayerRenameMenu => 'Renombrar…';
+
+  @override
+  String get freeSketchLayerDuplicateShortcut => 'Duplicar (Ctrl+J)';
+
+  @override
+  String get freeSketchLayerMergeDownShortcut =>
+      'Combinar con la inferior (Ctrl+E)';
+
+  @override
+  String get freeSketchLayerFlattenAll => 'Aplanar todo';
+
+  @override
+  String get freeSketchCopyShortcut => 'Copiar (Ctrl+C)';
+
+  @override
+  String get freeSketchPasteAsNewLayerShortcut =>
+      'Pegar como nueva capa (Ctrl+V)';
+
+  @override
+  String get freeSketchLayerFillColour => 'Rellenar con color';
+
+  @override
+  String get freeSketchLayerClearShortcut => 'Borrar (Supr)';
+
+  @override
+  String get freeSketchLayerDelete => 'Eliminar capa';
+
+  @override
+  String get freeSketchToolPaintInSelection =>
+      'Pintando dentro de la selección';
+
+  @override
+  String get freeSketchDeselect => 'Deseleccionar';
+
+  @override
+  String get freeSketchFillTolerance => 'Tolerancia';
+
+  @override
+  String get freeSketchAllLayers => 'Todas las capas';
+
+  @override
+  String get freeSketchThisLayer => 'Esta capa';
+
+  @override
+  String get freeSketchFillGrow => 'Expandir';
+
+  @override
+  String get freeSketchFillShrinkTip => 'Reducir borde del relleno';
+
+  @override
+  String get freeSketchFillGrowTip =>
+      'Expandir el borde del relleno bajo el dibujo';
+
+  @override
+  String get freeSketchGradientLinear => 'Lineal';
+
+  @override
+  String get freeSketchGradientRadial => 'Radial';
+
+  @override
+  String get freeSketchGradientToTransparent => 'A transparente';
+
+  @override
+  String get freeSketchGradientToSecondary => 'A secundario';
+
+  @override
+  String get freeSketchGradientDragHint => 'Arrastra sobre el lienzo';
+
+  @override
+  String get freeSketchPolygonFewerSides => 'Menos lados';
+
+  @override
+  String get freeSketchPolygonMoreSides => 'Más lados';
+
+  @override
+  String freeSketchPolygonSides(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count lados',
+      one: '1 lado',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get freeSketchShapeStroke => 'Trazo';
+
+  @override
+  String get freeSketchShapeFill => 'Relleno';
+
+  @override
+  String get freeSketchShapeShiftHint =>
+      'Mayús mantiene recta/cuadrada la forma';
+
+  @override
+  String freeSketchSelectionCombineTip(String mode) {
+    return 'Selección $mode';
+  }
+
+  @override
+  String get freeSketchSelectAll => 'Todo';
+
+  @override
+  String get freeSketchSelectInvert => 'Invertir';
+
+  @override
+  String get freeSketchCutShortcut => 'Cortar (Ctrl+X)';
+
+  @override
+  String get freeSketchClearSelectionShortcut => 'Borrar selección (Supr)';
+
+  @override
+  String get freeSketchTransformSelectLayerHint =>
+      'Selecciona una capa con algo dibujado';
+
+  @override
+  String get freeSketchTransformFlipH => 'Voltear horizontalmente';
+
+  @override
+  String get freeSketchTransformFlipV => 'Voltear verticalmente';
+
+  @override
+  String get freeSketchTransformRotate90 => 'Girar 90°';
+
+  @override
+  String get freeSketchTransformUniformScale =>
+      'Escala uniforme (Mayús para libre)';
+
+  @override
+  String get freeSketchTransformFreeScale =>
+      'Escala libre (Mayús para uniforme)';
+
+  @override
+  String get freeSketchEyedropperTip =>
+      'Consejo: mantén Alt con cualquier herramienta para elegir un color';
+
+  @override
+  String freeSketchStudioDefaultLayerName(int n) {
+    return 'Capa $n';
+  }
+
+  @override
+  String freeSketchLayerLocked(String name) {
+    return '“$name” está bloqueada.';
+  }
+
+  @override
+  String freeSketchLayerHidden(String name) {
+    return '“$name” está oculta — muéstrala para pintar en ella.';
+  }
+
+  @override
+  String get freeSketchStrokeModeErase => 'Borrar';
+
+  @override
+  String get freeSketchStrokeModeSmudge => 'Difuminar';
+
+  @override
+  String get freeSketchStrokeModeBlur => 'Desenfocar';
+
+  @override
+  String get freeSketchUndoGradient => 'Degradado';
+
+  @override
+  String get freeSketchUndoSelect => 'Seleccionar';
+
+  @override
+  String get freeSketchUndoSelectAll => 'Seleccionar todo';
+
+  @override
+  String get freeSketchUndoInvertSelection => 'Invertir selección';
+
+  @override
+  String get freeSketchNothingToCopy => 'No hay nada que copiar en esta capa.';
+
+  @override
+  String get freeSketchLayerCopied => 'Capa copiada.';
+
+  @override
+  String get freeSketchSelectionCopied => 'Selección copiada.';
+
+  @override
+  String get freeSketchUndoCut => 'Cortar';
+
+  @override
+  String get freeSketchLayerPasted => 'Pegado';
+
+  @override
+  String get freeSketchLayerEmptyTransform =>
+      'Esta capa está vacía — no hay nada que transformar.';
+
+  @override
+  String get freeSketchUndoTransform => 'Transformar';
+
+  @override
+  String get freeSketchLayerEmptyAdjust =>
+      'Esta capa está vacía — no hay nada que ajustar.';
+
+  @override
+  String get freeSketchUndoFill => 'Rellenar';
+
+  @override
+  String freeSketchFillFailed(String error) {
+    return 'Error al rellenar: $error';
+  }
+
+  @override
+  String freeSketchLayerLimit(int limit) {
+    return 'Este tamaño de lienzo permite hasta $limit capas.';
+  }
+
+  @override
+  String freeSketchLayerCopyName(String name) {
+    return '$name copia';
+  }
+
+  @override
+  String get freeSketchUndoDuplicateLayer => 'Duplicar capa';
+
+  @override
+  String get freeSketchUndoMergeDown => 'Combinar con la inferior';
+
+  @override
+  String get freeSketchLayerFlattened => 'Aplanada';
+
+  @override
+  String get freeSketchUndoFlatten => 'Aplanar';
+
+  @override
+  String get freeSketchUndoReorderLayers => 'Reordenar capas';
+
+  @override
+  String get freeSketchUndoLayerOpacity => 'Opacidad de la capa';
+
+  @override
+  String get freeSketchUndoFillLayer => 'Rellenar capa';
+
+  @override
+  String get freeSketchCanvasFlipH => 'Voltear el lienzo horizontalmente';
+
+  @override
+  String get freeSketchCanvasFlipV => 'Voltear el lienzo verticalmente';
+
+  @override
+  String freeSketchImageOpenFailed(String error) {
+    return 'No se pudo abrir esa imagen: $error';
+  }
+
+  @override
+  String freeSketchSaveFailed(String error) {
+    return 'No se pudo guardar: $error';
+  }
+
+  @override
+  String freeSketchExportFailed(String error) {
+    return 'Error al exportar: $error';
+  }
+
+  @override
+  String get freeSketchExporting => 'Exportando…';
+
+  @override
+  String get freeSketchFilling => 'Rellenando…';
+
+  @override
+  String get freeSketchShowInterfaceTip => 'Mostrar interfaz (Tab)';
+
+  @override
+  String get freeSketchSaving => 'Guardando…';
+
+  @override
+  String get freeSketchEdited => 'Editado';
+
+  @override
+  String get freeSketchFitToScreenShortcut => 'Ajustar a la pantalla (Ctrl+0)';
+
+  @override
+  String freeSketchResetRotationTip(String degrees) {
+    return 'Restablecer rotación ($degrees°)';
+  }
+
+  @override
+  String get freeSketchViewMirroredTip =>
+      'La vista está reflejada — toca para deshacer (H)';
+
+  @override
+  String get freeSketchUndoTip => 'Deshacer (Ctrl+Z)';
+
+  @override
+  String freeSketchUndoLabelTip(String label) {
+    return 'Deshacer $label (Ctrl+Z)';
+  }
+
+  @override
+  String get freeSketchRedoTip => 'Rehacer (Ctrl+Mayús+Z)';
+
+  @override
+  String freeSketchRedoLabelTip(String label) {
+    return 'Rehacer $label';
+  }
+
+  @override
+  String get freeSketchPenSettings => 'Ajustes de lápiz y entrada';
+
+  @override
+  String get freeSketchBackToGallery => 'Volver a la galería';
+
+  @override
+  String get freeSketchSymmetryTip => 'Simetría';
+
+  @override
+  String get freeSketchViewMenu => 'Vista';
+
+  @override
+  String get freeSketchAdjustmentsTip => 'Ajustes';
+
+  @override
+  String get freeSketchCanvasMenu => 'Lienzo';
+
+  @override
+  String freeSketchRadialSegments(int n) {
+    return 'Radial × $n';
+  }
+
+  @override
+  String get freeSketchMirrorRadialCopies => 'Reflejar copias radiales';
+
+  @override
+  String get freeSketchFitToScreen => 'Ajustar a la pantalla';
+
+  @override
+  String get freeSketchMirrorView => 'Reflejar vista';
+
+  @override
+  String get freeSketchResetRotation => 'Restablecer rotación';
+
+  @override
+  String freeSketchSymmetryMode(String mode) {
+    return 'Simetría: $mode';
+  }
+
+  @override
+  String get freeSketchImportImageAsLayer => 'Importar imagen como capa…';
+
+  @override
+  String freeSketchExportFormatLabel(String label, String extension) {
+    return 'Exportar como $label (.$extension)';
+  }
+
+  @override
+  String get freeSketchViewFitMenu => 'Ajustar a la pantalla   Ctrl+0';
+
+  @override
+  String get freeSketchViewActualMenu => 'Píxeles reales   Ctrl+1';
+
+  @override
+  String get freeSketchViewMirrorMenu => 'Reflejar vista   H';
+
+  @override
+  String get freeSketchViewHideMenu => 'Ocultar interfaz   Tab';
+
+  @override
+  String freeSketchToolTapAgainBrushes(String tool) {
+    return '$tool — toca de nuevo para los pinceles';
+  }
+
+  @override
+  String get freeSketchBrushSize => 'Tamaño del pincel';
+
+  @override
+  String get freeSketchPenInput => 'Lápiz y entrada';
+
+  @override
+  String get freeSketchPressureCurve => 'Curva de presión';
+
+  @override
+  String get freeSketchPressureSoft =>
+      'Suave — un toque ligero llega más lejos';
+
+  @override
+  String get freeSketchPressureFirm =>
+      'Firme — presiona más fuerte para la intensidad máxima';
+
+  @override
+  String get freeSketchPressureLinear => 'Lineal';
+
+  @override
+  String get freeSketchDrawPenOnly => 'Dibujar solo con lápiz';
+
+  @override
+  String get freeSketchPalmRejectionHint =>
+      'Una vez usado el lápiz, los dedos desplazan y amplían en lugar de pintar — rechazo de la palma.';
+
+  @override
+  String get freeSketchShortcutsHelp =>
+      'Atajos: B pincel · E borrador · S difuminar · G rellenar · D degradado · U formas · L seleccionar · V transformar · I cuentagotas · [ ] tamaño · X intercambiar colores · H reflejar vista · Espacio y arrastrar para mover · R y arrastrar para girar · Alt y clic para tomar color · Mayús y clic para línea recta · toque con dos dedos para deshacer · toque con tres dedos para rehacer.';
+
+  @override
+  String get galleryCategoryPictures => 'Fotos';
+
+  @override
+  String get galleryCategoryVideos => 'Vídeos';
+
+  @override
+  String get galleryCategoryScreenshots => 'Capturas de pantalla';
+
+  @override
+  String get galleryCategoryGifs => 'GIF';
+
+  @override
+  String get galleryFolderDownloads => 'Descargas';
+
+  @override
+  String get galleryFolderCamera => 'Cámara';
+
+  @override
+  String get galleryMonthJanuary => 'enero';
+
+  @override
+  String get galleryMonthFebruary => 'febrero';
+
+  @override
+  String get galleryMonthMarch => 'marzo';
+
+  @override
+  String get galleryMonthApril => 'abril';
+
+  @override
+  String get galleryMonthMay => 'mayo';
+
+  @override
+  String get galleryMonthJune => 'junio';
+
+  @override
+  String get galleryMonthJuly => 'julio';
+
+  @override
+  String get galleryMonthAugust => 'agosto';
+
+  @override
+  String get galleryMonthSeptember => 'septiembre';
+
+  @override
+  String get galleryMonthOctober => 'octubre';
+
+  @override
+  String get galleryMonthNovember => 'noviembre';
+
+  @override
+  String get galleryMonthDecember => 'diciembre';
+
+  @override
+  String get galleryMonthShortJan => 'ene';
+
+  @override
+  String get galleryMonthShortFeb => 'feb';
+
+  @override
+  String get galleryMonthShortMar => 'mar';
+
+  @override
+  String get galleryMonthShortApr => 'abr';
+
+  @override
+  String get galleryMonthShortMay => 'may';
+
+  @override
+  String get galleryMonthShortJun => 'jun';
+
+  @override
+  String get galleryMonthShortJul => 'jul';
+
+  @override
+  String get galleryMonthShortAug => 'ago';
+
+  @override
+  String get galleryMonthShortSep => 'sept';
+
+  @override
+  String get galleryMonthShortOct => 'oct';
+
+  @override
+  String get galleryMonthShortNov => 'nov';
+
+  @override
+  String get galleryMonthShortDec => 'dic';
+
+  @override
+  String galleryDateMonthDay(String month, int day) {
+    return '$day de $month';
+  }
+
+  @override
+  String galleryDateMonthDayYear(String month, int day, int year) {
+    return '$day de $month de $year';
+  }
+
+  @override
+  String galleryDayMonth(String month, int day) {
+    return '$day $month';
+  }
+
+  @override
+  String galleryDayMonthYear(String month, int day, int year) {
+    return '$day $month $year';
+  }
+
+  @override
+  String galleryMemoryRange(String start, String end) {
+    return '$start – $end';
+  }
+
+  @override
+  String galleryDetailsDateTime(int day, String month, int year, String time) {
+    return '$day $month $year, $time';
+  }
+
+  @override
+  String get galleryBucketFood => 'Comida';
+
+  @override
+  String get galleryBucketPets => 'Mascotas';
+
+  @override
+  String get galleryBucketAnimals => 'Animales';
+
+  @override
+  String get galleryBucketNature => 'Naturaleza';
+
+  @override
+  String get galleryBucketOcean => 'Océano';
+
+  @override
+  String get galleryBucketSky => 'Cielo';
+
+  @override
+  String get galleryBucketNight => 'Noche';
+
+  @override
+  String get galleryBucketArchitecture => 'Arquitectura';
+
+  @override
+  String get galleryBucketTransport => 'Transporte';
+
+  @override
+  String get galleryBucketDocuments => 'Documentos';
+
+  @override
+  String get galleryBucketCelebrations => 'Celebraciones';
+
+  @override
+  String get galleryBucketArt => 'Arte';
+
+  @override
+  String get galleryDetailsDiscardTitle => '¿Descartar los cambios?';
+
+  @override
+  String get galleryDetailsDiscardBody =>
+      'Se perderán el nombre y la fecha que escribiste.';
+
+  @override
+  String get galleryDetailsKeepEditing => 'Seguir editando';
+
+  @override
+  String get galleryDetailsDiscard => 'Descartar';
+
+  @override
+  String get galleryDetailsEditTitle => 'Editar detalles';
+
+  @override
+  String get galleryDetailsEditTooltip => 'Editar nombre y fecha';
+
+  @override
+  String get galleryDetailsEditDisabled =>
+      'La edición solo está disponible en la aplicación de escritorio';
+
+  @override
+  String get galleryDetailsCloseTooltip => 'Cerrar detalles';
+
+  @override
+  String get galleryDetailsSectionFile => 'Archivo';
+
+  @override
+  String get galleryDetailsSectionPicture => 'Foto';
+
+  @override
+  String get galleryDetailsSectionRecognised => 'Reconocido';
+
+  @override
+  String get galleryDetailsFormat => 'Formato';
+
+  @override
+  String get galleryDetailsStored => 'Almacenamiento';
+
+  @override
+  String get galleryDetailsOnlineOnly => 'Solo en línea, no en este PC';
+
+  @override
+  String get galleryDetailsFolder => 'Carpeta';
+
+  @override
+  String get galleryDetailsTaken => 'Tomada';
+
+  @override
+  String get galleryDetailsDimensions => 'Dimensiones';
+
+  @override
+  String get galleryDetailsLength => 'Duración';
+
+  @override
+  String get galleryDetailsLocation => 'Ubicación';
+
+  @override
+  String galleryDetailsFaces(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count caras',
+      one: '1 cara',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get galleryDetailsFileName => 'Nombre del archivo';
+
+  @override
+  String get galleryDetailsDateTaken => 'Fecha de captura';
+
+  @override
+  String galleryDetailsKeepExtension(String extension) {
+    return 'Mantén la extensión .$extension.';
+  }
+
+  @override
+  String get galleryDetailsDateNote =>
+      'Se guarda como la fecha del archivo en el disco. La foto no se vuelve a guardar, así que no se recomprime nada.';
+
+  @override
+  String get galleryDetailsSaving => 'Guardando…';
+
+  @override
+  String get galleryDetailsCopyPath => 'Copiar ruta de la carpeta';
+
+  @override
+  String get galleryDetailsPathCopied => 'Ruta copiada';
+
+  @override
+  String get galleryEditNameEmpty => 'Un archivo necesita un nombre.';
+
+  @override
+  String get galleryEditNameTooLong =>
+      'Ese nombre es demasiado largo: mantenlo por debajo de 250 caracteres.';
+
+  @override
+  String galleryEditNameIllegal(String characters) {
+    return 'Un nombre de archivo no puede contener $characters';
+  }
+
+  @override
+  String get galleryEditNameDot =>
+      'Un nombre que empieza por un punto ocultaría el archivo.';
+
+  @override
+  String get galleryEditNameTrailing =>
+      'Los nombres no pueden terminar en punto ni en espacio.';
+
+  @override
+  String galleryEditNameReserved(String name) {
+    return '“$name” es un nombre reservado por Windows. Elige otro.';
+  }
+
+  @override
+  String galleryEditKeepExtension(String extension) {
+    return 'Mantén la extensión .$extension: cambiarla impide abrir el archivo.';
+  }
+
+  @override
+  String get galleryEditFileGone => 'Ese archivo ya no está.';
+
+  @override
+  String get galleryEditNameTaken =>
+      'Ya hay un archivo con ese nombre en esta carpeta.';
+
+  @override
+  String galleryEditRenameFailed(String reason) {
+    return 'Windows no pudo renombrarlo: $reason';
+  }
+
+  @override
+  String get galleryEditDateFuture => 'Esa fecha está en el futuro.';
+
+  @override
+  String get galleryEditDateTooOld => 'La fotografía no existía en esa época.';
+
+  @override
+  String galleryEditDateFailed(String reason) {
+    return 'No se pudo guardar la fecha: $reason';
+  }
+
+  @override
+  String get galleryMapTitle => 'Mapa de fotos';
+
+  @override
+  String galleryMapPlacedSoFar(int placed) {
+    return '$placed colocadas hasta ahora — aún leyendo ubicaciones';
+  }
+
+  @override
+  String galleryMapLocatedOfTotal(int located, int total) {
+    return '$located de $total tienen ubicación';
+  }
+
+  @override
+  String get galleryMapReading => 'Leyendo dónde se tomaron tus fotos…';
+
+  @override
+  String get galleryMapEmptyTitle => 'No hay fotos con ubicación';
+
+  @override
+  String get galleryMapEmptyBody =>
+      'Las fotos solo tienen coordenadas si la cámara tenía activada la etiqueta de ubicación al tomarlas.';
+
+  @override
+  String galleryMapClusterCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count fotos aquí',
+      one: '1 foto aquí',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get galleryPageAddFolderDialogTitle =>
+      'Añadir una carpeta a la galería';
+
+  @override
+  String get galleryPageScanOneFolderDialogTitle =>
+      'Escanear solo esta carpeta';
+
+  @override
+  String get galleryPageNoFoldersYet =>
+      'Aún no se han encontrado carpetas: espera a que termine el primer escaneo.';
+
+  @override
+  String get galleryPageScanOneFolder => 'Escanear una carpeta';
+
+  @override
+  String get galleryPageScanOneFolderBody =>
+      'Se incluye todo lo que hay dentro de la carpeta elegida, incluidas las subcarpetas. No se mira nada más.';
+
+  @override
+  String get galleryPageWholeLibrary => 'Toda la biblioteca';
+
+  @override
+  String galleryPageRenamePersonTitle(String name) {
+    return 'Nombre para $name';
+  }
+
+  @override
+  String get galleryPageRenameHint => 'p. ej. Mamá, Alex…';
+
+  @override
+  String galleryPageSortingProgress(int count, int total) {
+    return 'Ordenando fotos en Personas y Categorías — $count de $total';
+  }
+
+  @override
+  String get galleryPageSortingStarting =>
+      'Ordenando fotos en Personas y Categorías…';
+
+  @override
+  String get galleryPageWaitingPermission => 'Esperando permiso…';
+
+  @override
+  String get galleryPageFindingPhotos => 'Buscando tus fotos y vídeos…';
+
+  @override
+  String get galleryPageLibraryUnreadable => 'No se pudo leer la biblioteca';
+
+  @override
+  String get galleryPageNoMediaYet => 'Todavía no hay fotos ni vídeos';
+
+  @override
+  String galleryPageNothingInRoot(String root) {
+    return 'No hay nada en $root. La galería solo escanea esa carpeta.';
+  }
+
+  @override
+  String get galleryPageAnythingShowsHere =>
+      'Todo lo que fotografíes o descargues aparecerá aquí.';
+
+  @override
+  String get galleryPageRescan => 'Volver a escanear';
+
+  @override
+  String get galleryPageSectionAlbums => 'Álbumes';
+
+  @override
+  String get galleryPageSectionMoreAlbums => 'Más álbumes';
+
+  @override
+  String get galleryPageSectionSmartAlbums => 'Álbumes inteligentes';
+
+  @override
+  String get galleryPageMemories => 'Recuerdos';
+
+  @override
+  String get galleryPageNoneYet => 'Ninguno todavía';
+
+  @override
+  String galleryPageTripCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count viajes',
+      one: '1 viaje',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get galleryPagePeople => 'Personas';
+
+  @override
+  String get galleryPageNoneFoundYet => 'Aún no se ha encontrado nada';
+
+  @override
+  String galleryPagePersonCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count personas',
+      one: '1 persona',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get galleryPageCategories => 'Categorías';
+
+  @override
+  String galleryPageCategoryCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count categorías',
+      one: '1 categoría',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get galleryPagePeopleAndCategories => 'Personas y categorías';
+
+  @override
+  String get galleryPageIncludedWithNova => 'Incluido con Nova';
+
+  @override
+  String galleryItemCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count elementos',
+      one: '1 elemento',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get galleryPageCategoryFallback => 'Categoría';
+
+  @override
+  String get galleryPageNoOneRecognised => 'Aún no se ha reconocido a nadie';
+
+  @override
+  String get galleryPagePeopleStillSorting =>
+      'Todavía se está ordenando la biblioteca: las personas aparecen aquí cuando un rostro sale en algunas fotos.';
+
+  @override
+  String get galleryPagePeopleSortHint =>
+      'Ordena la biblioteca desde la pantalla de álbumes y las personas que aparezcan juntas en algunas fotos se mostrarán aquí.';
+
+  @override
+  String get galleryPageNoTripsYet => 'Todavía no hay viajes';
+
+  @override
+  String get galleryPageNoTripsBody =>
+      'Una serie de fotos de unos días ajetreados —un fin de semana fuera, unas vacaciones— aparece aquí automáticamente. No hay nada que configurar y funciona sin Nova.';
+
+  @override
+  String get galleryPageNothingSortedYet => 'Todavía no hay nada ordenado';
+
+  @override
+  String get galleryPageStillLooking =>
+      'Todavía se está revisando la biblioteca.';
+
+  @override
+  String get galleryPageSortToFill =>
+      'Ordena la biblioteca desde la pantalla de álbumes para llenar estas secciones.';
+
+  @override
+  String galleryPageScanCountOf(int scanned, int total) {
+    return '$scanned de $total';
+  }
+
+  @override
+  String galleryPageItemsFound(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count elementos encontrados',
+      one: '1 elemento encontrado',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get galleryPageReadingLibrary => 'Leyendo tu biblioteca…';
+
+  @override
+  String galleryPageItemCountReadingLocations(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count elementos · leyendo ubicaciones',
+      one: '1 elemento · leyendo ubicaciones',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get galleryPageSelectToSend => 'Seleccionar fotos para enviar';
+
+  @override
+  String get galleryPageAddFolder => 'Añadir una carpeta';
+
+  @override
+  String get galleryPageScanOneFolderOnly => 'Escanear solo una carpeta';
+
+  @override
+  String get galleryPagePhotoMap => 'Mapa de fotos';
+
+  @override
+  String get galleryPageTapToPick => 'Toca las fotos para elegirlas';
+
+  @override
+  String galleryPageSelectedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count seleccionados',
+      one: '1 seleccionado',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get galleryPageNothingInAlbum => 'Nada en este álbum';
+
+  @override
+  String get galleryPageLandHere => 'Las fotos aparecerán aquí en cuanto haya.';
+
+  @override
+  String get galleryPageFolderGone => 'Esa carpeta ya no está';
+
+  @override
+  String get galleryPageNoPictureFolders =>
+      'No se han encontrado carpetas de imágenes';
+
+  @override
+  String get galleryPageNeedsAccess => 'La galería necesita acceso a tus fotos';
+
+  @override
+  String galleryPageScanRootUnreadable(String root) {
+    return 'La galería solo escanea $root, y esa carpeta ya no se puede leer.';
+  }
+
+  @override
+  String get galleryPageNothingFoundPoint =>
+      'No se encontró nada en Imágenes, Vídeos o Descargas. Indica a la galería una carpeta y escaneará esa en su lugar.';
+
+  @override
+  String get galleryPageStaysOnDevice =>
+      'Las fotos y los vídeos permanecen en este dispositivo: la galería solo los lee para mostrarlos aquí.';
+
+  @override
+  String get galleryPageScanEverything => 'Escanear todo';
+
+  @override
+  String get galleryPagePickAnotherFolder => 'Elegir otra carpeta';
+
+  @override
+  String get galleryPageAllowAccess => 'Permitir acceso';
+
+  @override
+  String get galleryPageOpenSettings => 'Abrir ajustes';
+
+  @override
+  String galleryPageOnlyScanningRoot(String root) {
+    return 'Solo se escanea $root y todo lo que contiene.';
+  }
+
+  @override
+  String get galleryPageChange => 'Cambiar';
+
+  @override
+  String get galleryPageLimitedAccess =>
+      'Solo se comparten con luma las fotos que elegiste.';
+
+  @override
+  String get galleryPageSelectMore => 'Seleccionar más';
+
+  @override
+  String galleryPageSortingPhotosProgress(int count, int total) {
+    return 'Ordenando fotos — $count de $total';
+  }
+
+  @override
+  String galleryPageReadingDetails(int count) {
+    return 'Leyendo detalles de fotos — quedan $count';
+  }
+
+  @override
+  String get galleryPageUpToDate => 'Personas y categorías están actualizadas';
+
+  @override
+  String galleryPageLookedAt(int examined) {
+    String _temp0 = intl.Intl.pluralLogic(
+      examined,
+      locale: localeName,
+      other: '$examined fotos revisadas.',
+      one: '1 foto revisada.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String galleryPageLookedAtSkipped(int examined, int skipped) {
+    String _temp0 = intl.Intl.pluralLogic(
+      examined,
+      locale: localeName,
+      other: '$examined fotos revisadas',
+      one: '1 foto revisada',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      skipped,
+      locale: localeName,
+      other: '$skipped se omitieron',
+      one: '1 se omitió',
+    );
+    return '$_temp0. $_temp1 porque están solo en la nube o en un formato que no se puede leer aquí; haz que estén disponibles sin conexión y vuelve a revisarlas.';
+  }
+
+  @override
+  String get galleryPageLookAgain => 'Revisar de nuevo';
+
+  @override
+  String galleryPageSmartDownloadDesktop(int pending, int megabytes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      pending,
+      locale: localeName,
+      other: '$pending fotos por revisar.',
+      one: '1 foto por revisar.',
+    );
+    return '$_temp0 Esto descarga una vez unos $megabytes MB de modelos (reconocimiento y comparación de rostros); después, todo ocurre en este PC, sin conexión, y no se sube ninguna foto.';
+  }
+
+  @override
+  String galleryPageSmartDownloadPhone(int pending, int megabytes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      pending,
+      locale: localeName,
+      other: '$pending fotos por revisar.',
+      one: '1 foto por revisar.',
+    );
+    return '$_temp0 Esto descarga una vez un pequeño modelo (~$megabytes MB) de comparación de rostros para agrupar las fotos de una misma persona: sin conexión y sin subir nada.';
+  }
+
+  @override
+  String galleryPageSmartRemaining(int pending) {
+    String _temp0 = intl.Intl.pluralLogic(
+      pending,
+      locale: localeName,
+      other: '$pending fotos quedan por revisar.',
+      one: '1 foto queda por revisar.',
+    );
+    return '$_temp0 Se ejecuta en este dispositivo, sin conexión, y continúa donde se quedó.';
+  }
+
+  @override
+  String get galleryPageTryAgain => 'Intentar de nuevo';
+
+  @override
+  String get galleryPageGetModels => 'Descargar los modelos';
+
+  @override
+  String get galleryPageSortThem => 'Ordenarlas';
+
+  @override
+  String get galleryPageSmartUpsellTitle =>
+      'Personas y categorías son una función extra de Nova';
+
+  @override
+  String get galleryPageSmartUpsellBodyModels =>
+      'Nova agrupa tus fotos según quién aparece en ellas y lo que hay realmente en la imagen (comida, mascotas, océano y más), con modelos que se ejecutan en este dispositivo, sin conexión. No se sube nada.';
+
+  @override
+  String get galleryPageSmartUpsellBodyPhone =>
+      'Nova agrupa tus fotos según lo que contienen. El conjunto completo de categorías necesita los modelos de la versión para teléfono; este dispositivo sigue obteniendo Panorámicas y Lugares gratis.';
+
+  @override
+  String galleryPageUpgradeTo(String plan) {
+    return 'Mejorar a $plan';
+  }
+
+  @override
+  String get gallerySmartSelfies => 'Selfis';
+
+  @override
+  String get gallerySmartGroupShots => 'Fotos de grupo';
+
+  @override
+  String get gallerySmartPanoramas => 'Panorámicas';
+
+  @override
+  String get gallerySmartPlaces => 'Lugares';
+
+  @override
+  String galleryPersonDefaultName(int id) {
+    return 'Persona $id';
+  }
+
+  @override
+  String galleryMediaItemDefaultName(String id) {
+    return 'Elemento $id';
+  }
+
+  @override
+  String get galleryRepoModelsNotStarted =>
+      'No se pudieron iniciar los modelos de los álbumes inteligentes.';
+
+  @override
+  String get galleryRepoRenameDesktopOnly =>
+      'Los archivos solo se pueden renombrar en la aplicación de escritorio.';
+
+  @override
+  String galleryViewerCouldNotOpenVideo(String message) {
+    return 'No se pudo abrir el vídeo: $message';
+  }
+
+  @override
+  String get galleryViewerDefaultFolder => 'Fotos';
+
+  @override
+  String galleryViewerPosition(int current, int total) {
+    return '$current de $total';
+  }
+
+  @override
+  String get galleryViewerFileNotOpened => 'No se pudo abrir este archivo.';
+
+  @override
+  String get galleryViewerImageNotDecoded =>
+      'No se pudo decodificar esta imagen.';
+
+  @override
+  String get galleryViewerCloudOnlyTitle => 'Este solo está en la nube';
+
+  @override
+  String galleryViewerCloudOnlyBody(String name) {
+    return '$name está almacenado en línea y no está en este PC. Mostrarlo lo descarga y lo mantiene aquí hasta que tu aplicación de la nube vuelva a liberarlo.';
+  }
+
+  @override
+  String galleryViewerCloudOnlyBodySized(String name, String size) {
+    return '$name está almacenado en línea y no está en este PC. Mostrarlo lo descarga ($size) y lo mantiene aquí hasta que tu aplicación de la nube vuelva a liberarlo.';
+  }
+
+  @override
+  String get galleryViewerDownloadAndShow => 'Descargar y mostrar';
+
+  @override
+  String galleryViewerPlay(String duration) {
+    return 'Reproducir $duration';
+  }
+
+  @override
+  String get galleryViewerSendToDevices => 'Enviar a mis dispositivos';
+
+  @override
+  String get galleryViewerHideDetails => 'Ocultar detalles';
+
+  @override
+  String get galleryViewerShowDetails => 'Mostrar detalles';
+
+  @override
+  String get galleryModelPurposeLabelling => 'modelo de etiquetado de imágenes';
+
+  @override
+  String get galleryModelPurposeFaceDetection =>
+      'modelo de detección de rostros';
+
+  @override
+  String get galleryModelPurposeFaceRecognition =>
+      'modelo de reconocimiento facial';
+
+  @override
+  String galleryModelDownloading(String model) {
+    return 'Descargando el $model';
+  }
+
+  @override
+  String galleryModelHttpError(String model, int status) {
+    return 'No se pudo descargar el $model (HTTP $status).';
+  }
+
+  @override
+  String galleryModelEmptyFile(String model) {
+    return 'El $model se descargó como un archivo vacío.';
+  }
+
+  @override
+  String galleryModelDownloadFailed(String model, String error) {
+    return 'No se pudo descargar el $model: $error';
+  }
+
+  @override
+  String get galleryModelReady => 'Listo';
+
+  @override
+  String get galleryModelStarting => 'Iniciando los modelos';
+
+  @override
+  String get gameToolsPriceTrackerBlurb => 'Tu biblioteca, con precios';
+
+  @override
+  String get gameToolsCs2MarketLabel => 'Mercado CS2';
+
+  @override
+  String get gameToolsCs2MarketBlurb => 'Skins, con precios y gráficos';
+
+  @override
+  String get gameToolsSellingCalculatorLabel => 'Calculadora de venta';
+
+  @override
+  String get gameToolsSellingCalculatorBlurb =>
+      'Estimar las ganancias de venta de CS2';
+
+  @override
+  String get gameToolsMafiaBlurb => 'Recuento de roles';
+
+  @override
+  String gameToolsComingSoonTitle(String game) {
+    return 'Las herramientas de $game llegarán pronto';
+  }
+
+  @override
+  String gameToolsComingSoonSubtitle(String game) {
+    return 'Aquí estarán las ayudas para $game. Todavía no hay nada que configurar; aparecerán aquí en una futura actualización.';
+  }
+
+  @override
+  String gameToolsToolCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count herramientas',
+      one: '1 herramienta',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String gameToolsSectionTooltip(String label, String blurb) {
+    return '$label — $blurb';
+  }
+
+  @override
+  String get groceriesApiEnterFullAddress =>
+      'Introduce la dirección completa del servidor, p. ej. https://groceries.example.com';
+
+  @override
+  String get groceriesApiOnlyHttp => 'Solo se admiten direcciones http(s).';
+
+  @override
+  String get groceriesApiPlainHttp =>
+      'El http sin cifrar solo se permite en servidores locales o de la red doméstica. Usa https:// para los servidores en Internet.';
+
+  @override
+  String groceriesApiServerError(String code) {
+    return 'El servidor de la compra devolvió un error ($code).';
+  }
+
+  @override
+  String groceriesApiNeedsAccount(String section) {
+    return 'La búsqueda de productos requiere una cuenta de luma aprobada. Crea una en Ajustes → $section; tu lista de la compra sigue funcionando sin conexión.';
+  }
+
+  @override
+  String get groceriesApiTimeout =>
+      'El servidor de la compra tardó demasiado en responder.';
+
+  @override
+  String groceriesApiUnreachable(String url) {
+    return 'No se pudo conectar con el servidor de la compra en $url. Revisa la dirección en los ajustes.';
+  }
+
+  @override
+  String get groceriesApiBadResponse =>
+      'El servidor de la compra envió una respuesta inesperada.';
+
+  @override
+  String get groceriesApiCouldNotReach =>
+      'No se pudo conectar con el servidor de la compra.';
+
+  @override
+  String get groceriesTitle => 'Compras';
+
+  @override
+  String get groceriesGateTitle =>
+      'La lista de la compra viene con Orbit y Nova';
+
+  @override
+  String get groceriesGateSubtitle =>
+      'Compara los precios de Jumbo, Albert Heijn, Hoogvliet y Lidl lado a lado, y crea listas de la compra que se separan solas por tienda y pasillo, con totales acumulados; incluido gratis con Orbit y Nova.';
+
+  @override
+  String groceriesUpgradeTo(String plan) {
+    return 'Mejorar a $plan';
+  }
+
+  @override
+  String get groceriesOverviewSubtitle =>
+      'Busca productos en Jumbo, Albert Heijn, Hoogvliet y Lidl, y crea listas de la compra separadas por tienda.';
+
+  @override
+  String get groceriesNewList => 'Nueva lista';
+
+  @override
+  String get groceriesNoListsTitle => 'Aún no hay listas';
+
+  @override
+  String get groceriesNoListsSubtitle =>
+      'Crea una lista y luego busca productos para añadirlos.';
+
+  @override
+  String get groceriesCreateFirstList => 'Crea tu primera lista';
+
+  @override
+  String groceriesItemCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count artículos',
+      one: '1 artículo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String groceriesDeleteListTitle(String name) {
+    return '¿Eliminar «$name»?';
+  }
+
+  @override
+  String get groceriesDeleteListBody =>
+      'Esto elimina la lista y todo lo que contiene. No se puede deshacer.';
+
+  @override
+  String get groceriesListNameHint => 'Nombre de la lista';
+
+  @override
+  String get groceriesRenameList => 'Renombrar lista';
+
+  @override
+  String get groceriesBackToLists => 'Volver a las listas';
+
+  @override
+  String get groceriesListFallbackTitle => 'Lista';
+
+  @override
+  String get groceriesAddProducts => 'Añadir productos';
+
+  @override
+  String get groceriesNoItemsTitle => 'Aún no hay artículos';
+
+  @override
+  String get groceriesNoItemsSubtitle =>
+      'Busca productos para añadirlos a esta lista.';
+
+  @override
+  String get groceriesAllStores => 'Todas las tiendas';
+
+  @override
+  String get groceriesSortPriceAsc => 'Precio ↑';
+
+  @override
+  String get groceriesSortPriceDesc => 'Precio ↓';
+
+  @override
+  String groceriesAddedToList(String name) {
+    return '«$name» añadido a tu lista';
+  }
+
+  @override
+  String get groceriesBackToList => 'Volver a la lista';
+
+  @override
+  String get groceriesServerAddress => 'Dirección del servidor de la compra';
+
+  @override
+  String get groceriesSearchProductsHint => 'Buscar productos…';
+
+  @override
+  String get groceriesCouldNotLoad => 'No se pudieron cargar los productos';
+
+  @override
+  String get groceriesNoProductsTitle => 'No se encontraron productos';
+
+  @override
+  String get groceriesNoProductsSubtitle =>
+      'Prueba con otro término de búsqueda, tienda o filtro de categoría.';
+
+  @override
+  String get groceriesAllProducts => 'Todos los productos';
+
+  @override
+  String get groceriesCategories => 'Categorías';
+
+  @override
+  String get groceriesOnlyDeals => 'Solo ofertas';
+
+  @override
+  String get groceriesSale => 'Oferta';
+
+  @override
+  String get mlTabCreatureLab => 'Laboratorio de criaturas';
+
+  @override
+  String get mlTabHowItWorks => 'Cómo funciona';
+
+  @override
+  String get mlSubtitle =>
+      'Dibuja un cuerpo y deja que la evolución encuentre el movimiento.';
+
+  @override
+  String get mlHowStep1Title => 'Tu dibujo se convierte en un cuerpo';
+
+  @override
+  String get mlHowStep1Body =>
+      'Cada trazo se estampa con un grosor y se une a los demás donde se tocan. Eso se adelgaza hasta su línea central, que se convierte en un grafo de huesos colocado exactamente sobre lo dibujado: un anillo sigue siendo un anillo, una figura de palo sigue siendo una figura de palo. Las púas cortas causadas por temblores se podan, las curvas conservan una articulación y los tramos rectos no, y el resultado se limita a dieciocho huesos para que la búsqueda sea lo bastante pequeña para terminar.';
+
+  @override
+  String get mlHowStep2Title => 'Los huesos reciben motores';
+
+  @override
+  String get mlHowStep2Body =>
+      'Los huesos son rígidos y se mantienen unidos por restricciones de distancia. Donde se encuentran dos huesos hay una articulación, y cada articulación es un muelle amortiguador que persigue un ángulo objetivo que oscila como una onda senoidal: reposo + centro + amplitud x sin(2 pi f t + fase). Una articulación tiene un límite de fuerza, el suelo tiene fricción de Coulomb normal, y nada de lo que la criatura hace consigo misma puede desplazar su centro de masa. El avance hay que forzarlo.';
+
+  @override
+  String get mlHowStep3Title => 'La marcha es el genoma';
+
+  @override
+  String get mlHowStep3Body =>
+      'Un gen fija la frecuencia a la que da pasos todo el cuerpo, y luego cada articulación recibe tres: cuánto oscila, en qué punto del ciclo oscila y alrededor de qué ángulo oscila. Ese puñado de números es todo el sistema nervioso. No hay ningún cerebro que reaccione al mundo, solo un ritmo, por eso una buena marcha parece obstinada.';
+
+  @override
+  String get mlHowStep4Title => 'Sesenta de ellos corren en cada generación';
+
+  @override
+  String get mlHowStep4Body =>
+      'Cada criatura tiene una prueba de veinticinco segundos, puntuada por los metros recorridos, con descuento por el tiempo que pasa con la cabeza en el suelo y una bonificación por cada segundo ahorrado una vez cruza los 50 m. Los cuatro mejores sobreviven sin cambios, cinco genomas aleatorios nuevos se unen en cada ronda para que la población no se estanque, y el resto se cría mediante selección por torneo, cruce uniforme y mutación gaussiana.';
+
+  @override
+  String get mlHowStep5Title => 'Y sube';
+
+  @override
+  String get mlHowStep5Body =>
+      'La línea de los mejores sube rápido y luego se aplana, porque la búsqueda ha encontrado un truco local y lo está puliendo. La línea media se mantiene irregular y muy por debajo: es la mutación, que aún descarta la mayoría de sus intentos. Reiniciar tira los dados de nuevo, y el mismo cuerpo a menudo aprende una marcha completamente distinta.';
+
+  @override
+  String get mlHowFooter =>
+      'Todo se ejecuta en este dispositivo. La población se evalúa en isolates en segundo plano, así que la marcha que estás viendo sigue fluida mientras se puntúa la siguiente generación.';
+
+  @override
+  String get mlStepDrawCreature => 'Dibuja tu criatura';
+
+  @override
+  String get mlTooSmall => 'demasiado pequeño';
+
+  @override
+  String get mlSkeletonFound => 'esqueleto encontrado';
+
+  @override
+  String get mlStartFromExample => 'EMPEZAR CON UN EJEMPLO';
+
+  @override
+  String get mlPresetBlob => 'Masa';
+
+  @override
+  String get mlPresetPerson => 'Persona';
+
+  @override
+  String get mlPresetLetterA => 'Letra A';
+
+  @override
+  String get mlPresetSpider => 'Araña';
+
+  @override
+  String get mlPresetDog => 'Perro';
+
+  @override
+  String get mlPresetWorm => 'Gusano';
+
+  @override
+  String get mlBodies => 'Cuerpos';
+
+  @override
+  String get mlJoints => 'Articulaciones';
+
+  @override
+  String get mlGenes => 'Genes';
+
+  @override
+  String get mlDrawHelp =>
+      'A los trazos se les da un grosor y se unen donde se tocan, y luego se adelgazan hasta una línea central: las cápsulas lavanda son los huesos, los puntos verdes las articulaciones, y el ámbar la cabeza. Volver a dibujar reinicia la búsqueda desde cero.';
+
+  @override
+  String get mlShowDrawing => 'Mostrar dibujo';
+
+  @override
+  String get mlFollowLatest => 'Seguir el último';
+
+  @override
+  String get mlStopNever => 'nunca';
+
+  @override
+  String get mlPauseEvolution => 'Pausar la evolución';
+
+  @override
+  String get mlResumeEvolution => 'Reanudar la evolución';
+
+  @override
+  String get mlRestart => 'Reiniciar';
+
+  @override
+  String get mlReplaySpeed => 'Velocidad de repetición';
+
+  @override
+  String get mlWorkers => 'Trabajadores';
+
+  @override
+  String get mlStopAfter => 'Parar después de';
+
+  @override
+  String get mlWatchGeneration => 'Ver generación';
+
+  @override
+  String mlGenerationNumber(String number) {
+    return 'Generación $number';
+  }
+
+  @override
+  String mlGenerationOf(String current, String total) {
+    return 'generación $current de $total';
+  }
+
+  @override
+  String mlStoppedAtLimit(String limit) {
+    return 'detenido en $limit — sube \"parar después de\" para seguir';
+  }
+
+  @override
+  String mlBestDistance(String distance, String generation) {
+    return 'mejor $distance m (gen $generation)';
+  }
+
+  @override
+  String mlGenPerSecond(String rate) {
+    return '$rate gen/s';
+  }
+
+  @override
+  String mlWorkerCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count trabajadores',
+      one: '1 trabajador',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String mlReachedGoal(String seconds) {
+    return '50 m alcanzados en $seconds s';
+  }
+
+  @override
+  String get mlChartHintDraw => 'Dibuja una criatura para iniciar la búsqueda.';
+
+  @override
+  String get mlChartHintTap =>
+      'Toca la gráfica para volver a ver la marcha de cualquier generación.';
+
+  @override
+  String get mlFitnessTitle => 'Aptitud a lo largo de las generaciones';
+
+  @override
+  String get mlLegendBest => 'Mejor';
+
+  @override
+  String get mlEmptyWalkTitle => 'Nada que caminar todavía';
+
+  @override
+  String get mlEmptyWalkBody =>
+      'Dibuja un cuerpo a la izquierda y la búsqueda empezará sola.';
+
+  @override
+  String get mlHudDistance => 'DISTANCIA';
+
+  @override
+  String get mlHudTime => 'TIEMPO';
+
+  @override
+  String get mlHudHeadDown => 'CABEZA ABAJO';
+
+  @override
+  String mlMetres(String value) {
+    return '$value m';
+  }
+
+  @override
+  String mlHudTimeValue(String elapsed, String total) {
+    return '$elapsed / $total s';
+  }
+
+  @override
+  String mlSeconds(String value) {
+    return '$value s';
+  }
+
+  @override
+  String get mlBoardSemantics =>
+      'Lienzo de dibujo. Dibuja una criatura con uno o más trazos.';
+
+  @override
+  String get mlBoardEmptyTitle => 'Dibuja un cuerpo aquí';
+
+  @override
+  String get mlBoardEmptySubtitle => 'o empieza con un ejemplo de abajo';
+
+  @override
+  String get mlChartEmpty => 'Cada generación dejará una marca aquí.';
+
+  @override
+  String mlChartSemantics(int count, String metres) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count generaciones',
+      one: '1 generación',
+    );
+    return 'Aptitud en $_temp0. Mejor: $metres metros.';
+  }
+
+  @override
+  String get mlMetresAxis => 'metros';
+
+  @override
+  String mlChartGen(String number) {
+    return 'gen $number';
+  }
+
+  @override
+  String get mlWalkTitle => 'La marcha hasta 50 metros';
+
+  @override
+  String get mediaDlHistoryInvalidSnapshot =>
+      'Instantánea del historial de descargas no válida.';
+
+  @override
+  String get mediaDlStatusDownloadingYtDlp => 'Descargando yt-dlp…';
+
+  @override
+  String get mediaDlStatusDownloadingFfmpeg => 'Descargando ffmpeg…';
+
+  @override
+  String get mediaDlStatusExtractingFfmpeg => 'Extrayendo ffmpeg…';
+
+  @override
+  String get mediaDlStatusReady => 'Listo';
+
+  @override
+  String get mediaDlStatusUpdatingYtDlp => 'Actualizando yt-dlp…';
+
+  @override
+  String get mediaDlFfmpegNotInDownload =>
+      'No se encontró ffmpeg.exe en la descarga.';
+
+  @override
+  String get mediaDlFfmpegNotOnPath =>
+      'No se encontró ffmpeg en tu PATH. Instálalo con tu gestor de paquetes (p. ej., sudo apt install ffmpeg) e inténtalo de nuevo.';
+
+  @override
+  String mediaDlHttpFailed(String status, String url) {
+    return 'La descarga falló ($status) para $url.';
+  }
+
+  @override
+  String mediaDlCouldNotReach(String url) {
+    return 'No se pudo acceder a $url. Comprueba tu conexión.';
+  }
+
+  @override
+  String get mediaDlToolsNotReady =>
+      'Las herramientas aún no están configuradas.';
+
+  @override
+  String get mediaDlCouldNotReadInfo =>
+      'No se pudo leer la información del vídeo.';
+
+  @override
+  String get mediaDlCouldNotParseInfo =>
+      'No se pudo interpretar la información del vídeo.';
+
+  @override
+  String get mediaDlYtDlpUnknownError =>
+      'yt-dlp falló por una razón desconocida.';
+
+  @override
+  String get mediaDlSetupTitle => 'Configurando Media Downloader';
+
+  @override
+  String get mediaDlSetupBody =>
+      'Obteniendo yt-dlp y ffmpeg; esto solo ocurre una vez.';
+
+  @override
+  String get mediaDlSetupFailed => 'No se pudo configurar yt-dlp / ffmpeg.';
+
+  @override
+  String get mediaDlPasteLinkFirst => 'Pega primero un enlace de YouTube.';
+
+  @override
+  String get mediaDlCouldNotReadLink => 'No se pudo leer ese enlace.';
+
+  @override
+  String get mediaDlCouldNotUpdate => 'No se pudo actualizar yt-dlp.';
+
+  @override
+  String get mediaDlChooseFolderTitle => 'Elige una carpeta de descargas';
+
+  @override
+  String get mediaDlChooseFolderFirst =>
+      'Elige primero una carpeta de descargas.';
+
+  @override
+  String get mediaDlStarting => 'Iniciando…';
+
+  @override
+  String get mediaDlDownloadFailed => 'La descarga falló.';
+
+  @override
+  String get mediaDlIntroTitle => 'Descarga un vídeo o una canción';
+
+  @override
+  String get mediaDlUpdateYtDlp => 'Actualizar yt-dlp';
+
+  @override
+  String get mediaDlUpdating => 'Actualizando…';
+
+  @override
+  String mediaDlIntroBody(String updateLabel) {
+    return 'Pega un enlace de vídeo de YouTube para empezar. Si las descargas empiezan a fallar con un error 403, es probable que YouTube haya cambiado algo; prueba con «$updateLabel» de arriba.';
+  }
+
+  @override
+  String get mediaDlLinkHint => 'Enlace de vídeo de YouTube…';
+
+  @override
+  String get mediaDlFetch => 'Obtener';
+
+  @override
+  String get mediaDlResolution => 'Resolución';
+
+  @override
+  String get mediaDlAudioBitrate => 'Tasa de bits de audio';
+
+  @override
+  String get mediaDlFormat => 'Formato';
+
+  @override
+  String get mediaDlBitrate => 'Tasa de bits';
+
+  @override
+  String get mediaDlModeVideo => 'Vídeo';
+
+  @override
+  String get mediaDlModeAudio => 'Audio';
+
+  @override
+  String get mediaDlModeAudioOnly => 'Solo audio';
+
+  @override
+  String get mediaDlSaveTo => 'Guardar en';
+
+  @override
+  String get mediaDlChooseFolder => 'Elige una carpeta…';
+
+  @override
+  String get mediaDlWorking => 'Procesando…';
+
+  @override
+  String mediaDlEta(String eta) {
+    return 'ETA $eta';
+  }
+
+  @override
+  String mediaDlKbps(int kbps) {
+    return '$kbps kbps';
+  }
+
+  @override
+  String get mediaDlHistory => 'Historial';
+
+  @override
+  String get mediaDlHistoryEmpty => 'Todavía no se ha descargado nada';
+
+  @override
+  String get mediaDlHistoryEmptyHint =>
+      'Las descargas completadas aparecen aquí.';
+
+  @override
+  String get mediaDlOpenFolder => 'Abrir carpeta';
+
+  @override
+  String get mediaDlRemoveFromHistory => 'Quitar del historial';
+
+  @override
+  String get mindMapExportCanvasNotReady =>
+      'El lienzo aún no está listo para capturarse.';
+
+  @override
+  String get mindMapExportEncodeFailed => 'No se pudo codificar la imagen.';
+
+  @override
+  String get mindMapExportSaveImageTitle => 'Guardar imagen del mapa mental';
+
+  @override
+  String get mindMapExportSaveOutlineTitle => 'Guardar esquema del mapa mental';
+
+  @override
+  String mindMapExportFailed(String error) {
+    return 'Error al exportar: $error';
+  }
+
+  @override
+  String get mindMapDirectionRight => 'Derecha';
+
+  @override
+  String get mindMapDirectionBoth => 'Ambos lados';
+
+  @override
+  String get mindMapDirectionDown => 'Hacia abajo';
+
+  @override
+  String mindMapDeleteMapTitle(String title) {
+    return '¿Eliminar \"$title\"?';
+  }
+
+  @override
+  String get mindMapDeleteMapEmpty =>
+      'Este mapa está vacío. Se eliminará para siempre.';
+
+  @override
+  String mindMapDeleteMapNodes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Los $count nodos de este mapa se eliminarán para siempre.',
+      one: 'El 1 nodo de este mapa se eliminará para siempre.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mindMapNewMapHint => 'Nombra un nuevo mapa mental';
+
+  @override
+  String get mindMapLibraryEmptyTitle => 'Aún no hay mapas mentales';
+
+  @override
+  String get mindMapLibraryEmptySubtitle =>
+      'Ponle un nombre arriba. Empiezas en la idea central y pulsas Tab para ramificar; no hace falta arrastrar.';
+
+  @override
+  String get mindMapDeleteMapTooltip => 'Eliminar mapa';
+
+  @override
+  String mindMapNodeCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count nodos',
+      one: '1 nodo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String mindMapDeletedNamed(String label, int below) {
+    String _temp0 = intl.Intl.pluralLogic(
+      below,
+      locale: localeName,
+      other: 'Se eliminó \"$label\" y $below por debajo',
+      one: 'Se eliminó \"$label\" y 1 por debajo',
+      zero: 'Se eliminó \"$label\"',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String mindMapDeletedUnnamed(int below) {
+    String _temp0 = intl.Intl.pluralLogic(
+      below,
+      locale: localeName,
+      other: 'Se eliminó un nodo y $below por debajo',
+      one: 'Se eliminó un nodo y 1 por debajo',
+      zero: 'Se eliminó un nodo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mindMapNewIdea => 'Nueva idea';
+
+  @override
+  String mindMapExpandHidden(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Expandir $count nodos ocultos',
+      one: 'Expandir 1 nodo oculto',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String mindMapCollapseNodes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Contraer $count nodos',
+      one: 'Contraer 1 nodo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String mindMapShowHidden(int count) {
+    return 'Mostrar $count ocultos';
+  }
+
+  @override
+  String mindMapHideCount(int count) {
+    return 'Ocultar $count';
+  }
+
+  @override
+  String get mindMapPasteOutline => 'Pegar un esquema';
+
+  @override
+  String get mindMapAddsAtRoot => 'Añade nuevas ramas en la raíz de este mapa.';
+
+  @override
+  String mindMapAddsUnder(String target) {
+    return 'Añade bajo \"$target\".';
+  }
+
+  @override
+  String get mindMapImportHint =>
+      'Plan de lanzamiento\n  Investigación\n    Competidores\n  Diseño\n  Publicación';
+
+  @override
+  String get mindMapImportHelp =>
+      'La sangría crea los hijos. Funcionan tabuladores o espacios, viñetas, números y encabezados Markdown. Una línea \"> \" se convierte en una nota.';
+
+  @override
+  String mindMapNodesWillBeAdded(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Se añadirán $count nodos',
+      one: 'Se añadirá 1 nodo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mindMapAddToMap => 'Añadir al mapa';
+
+  @override
+  String get mindMapInspectorTitle => 'Detalles del nodo';
+
+  @override
+  String get mindMapFieldLabel => 'Etiqueta';
+
+  @override
+  String get mindMapFieldNote => 'Nota';
+
+  @override
+  String get mindMapFieldLink => 'Enlace';
+
+  @override
+  String get mindMapFieldColour => 'Color';
+
+  @override
+  String get mindMapNoteHint => 'Todo lo que no cabe en el lienzo';
+
+  @override
+  String get mindMapInheritColour => 'Heredar color de la rama';
+
+  @override
+  String get mindMapColourSwatch => 'Muestra de color';
+
+  @override
+  String get mindMapInheritFromBranch => 'Heredar de la rama';
+
+  @override
+  String get mindMapAiAllowanceUsed =>
+      'Has usado tu cuota de IA de hoy; mañana tendrás más.';
+
+  @override
+  String mindMapAiNoKey(String provider, String settings, String assistant) {
+    return 'No hay ninguna clave API guardada para $provider. Añade una en $settings → $assistant para usar esto.';
+  }
+
+  @override
+  String get mindMapAiNoSuggestions =>
+      'El modelo no sugirió nada útil. Inténtalo de nuevo.';
+
+  @override
+  String mindMapAiSheetTitle(String label) {
+    return 'Expandir \"$label\"';
+  }
+
+  @override
+  String mindMapAiSelected(int chosen, int total) {
+    return '$chosen de $total seleccionados';
+  }
+
+  @override
+  String get mindMapSuggestMore => 'Sugerir más';
+
+  @override
+  String mindMapAddCount(int count) {
+    return 'Añadir $count';
+  }
+
+  @override
+  String get mindMapCannotMoveIntoSelf =>
+      'Un nodo no puede moverse dentro de sí mismo.';
+
+  @override
+  String get mindMapMenuAddChild => 'Añadir hijo';
+
+  @override
+  String get mindMapMenuAddSibling => 'Añadir hermano';
+
+  @override
+  String get mindMapMenuDetails => 'Nota, enlace y color';
+
+  @override
+  String get mindMapMenuExpandAi => 'Expandir con IA';
+
+  @override
+  String get mindMapMenuExpandBranch => 'Expandir rama';
+
+  @override
+  String get mindMapMenuCollapseBranch => 'Contraer rama';
+
+  @override
+  String get mindMapMenuDeleteBranch => 'Eliminar rama';
+
+  @override
+  String get mindMapTouchChild => 'Hijo';
+
+  @override
+  String get mindMapTouchSibling => 'Hermano';
+
+  @override
+  String get mindMapAllMaps => 'Todos los mapas';
+
+  @override
+  String get mindMapRenameMap => 'Renombrar mapa';
+
+  @override
+  String mindMapLayoutTooltip(String direction) {
+    return 'Diseño: $direction';
+  }
+
+  @override
+  String get mindMapFitToScreenShortcut => 'Ajustar a la pantalla (Ctrl+0)';
+
+  @override
+  String get mindMapFitToScreen => 'Ajustar a la pantalla';
+
+  @override
+  String get mindMapExportMenuPng => 'Imagen (PNG)';
+
+  @override
+  String get mindMapExportMenuMarkdown => 'Esquema (Markdown)';
+
+  @override
+  String get mindMapExportMenuOpml => 'Esquema (OPML)';
+
+  @override
+  String get mindMapHintChild => 'hijo';
+
+  @override
+  String get mindMapHintSibling => 'hermano';
+
+  @override
+  String get mindMapHintRename => 'renombrar';
+
+  @override
+  String get mindMapHintFold => 'plegar';
+
+  @override
+  String get mindMapHintMoveAround => 'moverse';
+
+  @override
+  String get mindMapHintArrows => 'Flechas';
+
+  @override
+  String get mindMapHintAltArrows => 'Alt+Flechas';
+
+  @override
+  String get mindMapHintReorder => 'reordenar';
+
+  @override
+  String get mindMapHintDelete => 'eliminar';
+
+  @override
+  String get mindMapHintDrag => 'Arrastrar';
+
+  @override
+  String get mindMapHintReparent => 'cambiar de padre';
+
+  @override
+  String get mindMapFirstBranchHintNarrow =>
+      'Toca el nodo central y luego Hijo';
+
+  @override
+  String get mindMapFirstBranchHint =>
+      'Selecciona el nodo central y pulsa Tab para añadir tu primera rama';
+
+  @override
+  String get mindMapEmptyNodeLabel => 'Nodo vacío';
+
+  @override
+  String get mcCrashAiUsageLimit =>
+      'Has alcanzado el límite de uso de IA de hoy; vuelve a intentarlo mañana.';
+
+  @override
+  String mcCrashAiNoKey(String provider) {
+    return 'No hay ninguna clave API para $provider. Añade una en Ajustes → Asistente de IA.';
+  }
+
+  @override
+  String get mcAssetIndexDownloadFailed =>
+      'No se pudo descargar el índice de recursos.';
+
+  @override
+  String mcAssetIndexRequestFailed(String status) {
+    return 'La solicitud del índice de recursos falló ($status).';
+  }
+
+  @override
+  String get mcCurseForgeNeedsKey =>
+      'CurseForge necesita una clave API. Añade una para explorar CurseForge.';
+
+  @override
+  String get mcTeamRoleOwner => 'Propietario';
+
+  @override
+  String get mcTeamRoleMember => 'Miembro';
+
+  @override
+  String mcCurseForgeUnknownFile(String id) {
+    return 'Archivo de CurseForge desconocido \"$id\".';
+  }
+
+  @override
+  String get mcCurseForgeFileGone => 'CurseForge ya no tiene ese archivo.';
+
+  @override
+  String get mcCurseForgeUnreachable =>
+      'No se pudo conectar con CurseForge. Comprueba tu conexión.';
+
+  @override
+  String get mcCurseForgeKeyRejected =>
+      'CurseForge rechazó la clave API. Revísala en los ajustes del lanzador.';
+
+  @override
+  String mcCurseForgeRequestFailed(String status) {
+    return 'La solicitud a CurseForge falló ($status).';
+  }
+
+  @override
+  String get mcModrinthUnreachable =>
+      'No se pudo conectar con Modrinth. Comprueba tu conexión.';
+
+  @override
+  String mcModrinthRequestFailed(String status) {
+    return 'La solicitud a Modrinth falló ($status).';
+  }
+
+  @override
+  String get mcSortRelevance => 'Relevancia';
+
+  @override
+  String get mcSortDownloads => 'Descargas';
+
+  @override
+  String get mcSortFollows => 'Seguidores';
+
+  @override
+  String get mcSortNewest => 'Más nuevos';
+
+  @override
+  String get mcSortRecentlyUpdated => 'Actualizados recientemente';
+
+  @override
+  String mcDownloadBatchFailed(int count, String details) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Error al descargar $count archivos:',
+      one: 'Error al descargar 1 archivo:',
+    );
+    return '$_temp0\n$details';
+  }
+
+  @override
+  String mcDownloadCouldNotReach(String url) {
+    return 'No se pudo conectar con $url.';
+  }
+
+  @override
+  String mcDownloadHttpError(String status, String url) {
+    return 'HTTP $status para $url.';
+  }
+
+  @override
+  String mcDownloadChecksumMismatch(String path) {
+    return 'La suma de comprobación no coincide para $path.';
+  }
+
+  @override
+  String mcDownloadFailed(String url) {
+    return 'Error al descargar $url.';
+  }
+
+  @override
+  String mcFabricNoBuilds(String mcVersion) {
+    return 'No se encontraron versiones del cargador Fabric para Minecraft $mcVersion.';
+  }
+
+  @override
+  String mcFabricProfileFailed(String loaderVersion) {
+    return 'No se pudo obtener el perfil de Fabric $loaderVersion.';
+  }
+
+  @override
+  String mcQuiltNoBuilds(String mcVersion) {
+    return 'No se encontraron versiones del cargador Quilt para Minecraft $mcVersion.';
+  }
+
+  @override
+  String mcQuiltProfileFailed(String loaderVersion) {
+    return 'No se pudo obtener el perfil de Quilt $loaderVersion.';
+  }
+
+  @override
+  String get mcForgeVersionListUnreachable =>
+      'No se pudo conectar con la lista de versiones de Forge.';
+
+  @override
+  String get mcForgeDownloadingInstaller =>
+      'Descargando el instalador de Forge…';
+
+  @override
+  String get mcForgeRunningInstaller => 'Ejecutando el instalador de Forge…';
+
+  @override
+  String mcForgeInstallerFailed(String output) {
+    return 'El instalador de Forge falló:\n$output';
+  }
+
+  @override
+  String get mcForgeInstallerNoNewProfile =>
+      'El instalador de Forge se ejecutó, pero no se encontró ningún perfil de versión nuevo.';
+
+  @override
+  String mcForgeInstallerNoProfile(String versionId) {
+    return 'El instalador de Forge no generó $versionId.json.';
+  }
+
+  @override
+  String mcForgeInstallerDownloadFailed(String version) {
+    return 'No se pudo descargar el instalador de Forge $version.';
+  }
+
+  @override
+  String get mcNeoForgeVersionListUnreachable =>
+      'No se pudo conectar con la lista de versiones de NeoForge.';
+
+  @override
+  String get mcNeoForgeDownloadingInstaller =>
+      'Descargando el instalador de NeoForge…';
+
+  @override
+  String get mcNeoForgeRunningInstaller =>
+      'Ejecutando el instalador de NeoForge…';
+
+  @override
+  String mcNeoForgeInstallerFailed(String output) {
+    return 'El instalador de NeoForge falló:\n$output';
+  }
+
+  @override
+  String get mcNeoForgeInstallerNoNewProfile =>
+      'El instalador de NeoForge se ejecutó, pero no se encontró ningún perfil de versión nuevo.';
+
+  @override
+  String mcNeoForgeInstallerNoProfile(String versionId) {
+    return 'El instalador de NeoForge no generó $versionId.json.';
+  }
+
+  @override
+  String mcNeoForgeInstallerDownloadFailed(String version) {
+    return 'No se pudo descargar el instalador de NeoForge $version.';
+  }
+
+  @override
+  String get mcLaunchCheckingUpdates => 'Buscando actualizaciones…';
+
+  @override
+  String mcLaunchVersionNotListed(String version) {
+    return 'Mojang ya no incluye Minecraft $version en su lista.';
+  }
+
+  @override
+  String get mcLaunchResolvingFiles =>
+      'Resolviendo los archivos base del juego…';
+
+  @override
+  String get mcLaunchAssetLabel => 'recurso';
+
+  @override
+  String get mcLaunchDownloadingGame => 'Descargando los archivos del juego…';
+
+  @override
+  String mcLaunchDownloadingGameProgress(String done, String total) {
+    return 'Descargando los archivos del juego ($done/$total)…';
+  }
+
+  @override
+  String mcLaunchNoLoaderVersion(String loader) {
+    return 'Esta instancia no tiene ninguna versión de $loader seleccionada.';
+  }
+
+  @override
+  String mcLaunchSettingUpLoader(String loader) {
+    return 'Configurando $loader…';
+  }
+
+  @override
+  String mcLaunchDownloadingLoaderLibraries(String loader) {
+    return 'Descargando las bibliotecas de $loader…';
+  }
+
+  @override
+  String mcLaunchDownloadingLoaderLibrariesProgress(
+    String loader,
+    String done,
+    String total,
+  ) {
+    return 'Descargando las bibliotecas de $loader ($done/$total)…';
+  }
+
+  @override
+  String get mcLaunchExtractingNatives => 'Extrayendo las bibliotecas nativas…';
+
+  @override
+  String get mcLaunchLaunching => 'Iniciando…';
+
+  @override
+  String mcLaunchUnknownLoader(String loader) {
+    return 'Cargador de mods desconocido \"$loader\".';
+  }
+
+  @override
+  String mcLaunchUnsafeLibraryPath(String path) {
+    return 'Se rechaza descargar la biblioteca con una ruta no segura \"$path\".';
+  }
+
+  @override
+  String mcJavaLookingUp(String version) {
+    return 'Buscando Java $version…';
+  }
+
+  @override
+  String mcJavaDownloading(String version) {
+    return 'Descargando Java $version…';
+  }
+
+  @override
+  String mcJavaDownloadFailed(String status) {
+    return 'Error al descargar Java ($status).';
+  }
+
+  @override
+  String mcJavaCouldNotDownload(String version) {
+    return 'No se pudo descargar el entorno de ejecución de Java $version.';
+  }
+
+  @override
+  String mcJavaExtracting(String version) {
+    return 'Extrayendo Java $version…';
+  }
+
+  @override
+  String mcJavaMissingJavaw(String version) {
+    return 'Al entorno de Java $version descargado le falta javaw.exe.';
+  }
+
+  @override
+  String get mcJavaReady => 'Listo';
+
+  @override
+  String get mcJavaProviderUnreachable =>
+      'No se pudo conectar con el proveedor del entorno de Java.';
+
+  @override
+  String mcJavaNoBuildFound(String version, String status) {
+    return 'No se encontró ninguna versión de Java $version ($status).';
+  }
+
+  @override
+  String mcJavaNoBuildForWindows(String version) {
+    return 'No hay ninguna versión de Java $version disponible para Windows x64.';
+  }
+
+  @override
+  String mcGameCouldNotStartJava(String error) {
+    return 'No se pudo iniciar Java: $error';
+  }
+
+  @override
+  String get mcCloudBackupNeedsAccount =>
+      'Las copias de seguridad en la nube necesitan una cuenta de luma aprobada; crea una en Ajustes → Sincronización y cuenta.';
+
+  @override
+  String get mcCloudStorageFull =>
+      'No hay suficiente espacio de almacenamiento en la nube.';
+
+  @override
+  String get mcCloudBackupMissingPart =>
+      'Falta una parte de esta copia de seguridad en el servidor.';
+
+  @override
+  String get mcCloudBackupIndexFailed =>
+      'No se pudo actualizar la lista de copias de seguridad; inténtalo de nuevo.';
+
+  @override
+  String get mcMsAuthNotConfigured =>
+      'El inicio de sesión de Microsoft no está configurado en esta versión.';
+
+  @override
+  String get mcMsAuthDeclined => 'Se rechazó el inicio de sesión.';
+
+  @override
+  String get mcMsAuthCodeExpired =>
+      'El código de inicio de sesión ha caducado. Inténtalo de nuevo.';
+
+  @override
+  String get mcMsAuthTimedOut =>
+      'Se agotó el tiempo de espera del inicio de sesión.';
+
+  @override
+  String get mcMsAuthNoXboxProfile =>
+      'Esta cuenta de Microsoft no tiene perfil de Xbox. Crea uno en xbox.com e inténtalo de nuevo.';
+
+  @override
+  String get mcMsAuthUnder18 =>
+      'Esta cuenta es menor de 18 años y necesita un grupo familiar para iniciar sesión en los servicios de Xbox.';
+
+  @override
+  String get mcMsAuthXboxRejected =>
+      'El inicio de sesión de Xbox fue rechazado.';
+
+  @override
+  String get mcMsAuthNoMinecraft =>
+      'Esta cuenta de Microsoft no tiene Minecraft.';
+
+  @override
+  String mcMsAuthUnexpectedResponse(String status) {
+    return 'Respuesta inesperada ($status).';
+  }
+
+  @override
+  String mcMsAuthRequestFailed(String status) {
+    return 'La solicitud falló ($status).';
+  }
+
+  @override
+  String mcModInstalledInto(String title, String instance) {
+    return '$title instalado en $instance.';
+  }
+
+  @override
+  String mcModInstalledWithDeps(String title, int count, String instance) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count dependencias',
+      one: '1 dependencia',
+    );
+    return '$title + $_temp0 instalado(s) en $instance.';
+  }
+
+  @override
+  String mcModNoBuildVanilla(String version) {
+    return 'No hay ninguna versión de esto para $version.';
+  }
+
+  @override
+  String mcModNoBuildForLoader(String version, String loader) {
+    return 'No hay ninguna versión de esto para $version con $loader.';
+  }
+
+  @override
+  String get mcModDepsPromptTitle => '¿Instalar las dependencias necesarias?';
+
+  @override
+  String mcModNeedsDeps(String title) {
+    return '$title necesita estos para funcionar:';
+  }
+
+  @override
+  String get mcModInstallAll => 'Instalar todo';
+
+  @override
+  String get mcContentTypeMods => 'Mods';
+
+  @override
+  String get mcContentTypeResourcePacks => 'Paquetes de recursos';
+
+  @override
+  String get mcContentTypeShaderPacks => 'Paquetes de shaders';
+
+  @override
+  String mcModCurseForgeOnly(String title) {
+    return '$title solo se puede descargar desde su página de CurseForge: el autor ha desactivado las descargas en otros lanzadores.';
+  }
+
+  @override
+  String mcModUnsafeFileName(String filename) {
+    return 'Se rechaza instalar \"$filename\": nombre de archivo no seguro.';
+  }
+
+  @override
+  String mcModIncompatible(String a, String b) {
+    return '$a está marcado como incompatible con $b.';
+  }
+
+  @override
+  String get mcModpackReading => 'Leyendo el modpack…';
+
+  @override
+  String get mcModpackNotValid =>
+      'No es un archivo .mrpack válido (falta modrinth.index.json).';
+
+  @override
+  String get mcModpackNoMinecraftVersion =>
+      'Este modpack no declara una versión de Minecraft.';
+
+  @override
+  String get mcModpackDefaultName => 'Modpack importado';
+
+  @override
+  String get mcModpackDownloadingFiles =>
+      'Descargando los archivos del modpack…';
+
+  @override
+  String mcModpackDownloadingFilesProgress(String done, String total) {
+    return 'Descargando los archivos del modpack ($done/$total)…';
+  }
+
+  @override
+  String get mcModpackExtractingOverrides => 'Extrayendo las sustituciones…';
+
+  @override
+  String get mcModpackRecording => 'Registrando el contenido instalado…';
+
+  @override
+  String get mcModpackDone => 'Hecho';
+
+  @override
+  String mcPistonUnreachable(String url) {
+    return 'No se pudo conectar con $url. Comprueba tu conexión.';
+  }
+
+  @override
+  String mcPistonRequestFailed(String status, String url) {
+    return 'La solicitud falló ($status) para $url.';
+  }
+
+  @override
+  String get minecraftLauncherTabLibrary => 'Biblioteca';
+
+  @override
+  String get minecraftLauncherTabAccounts => 'Cuentas';
+
+  @override
+  String get minecraftLauncherTabServers => 'Servidores';
+
+  @override
+  String get minecraftLauncherTabSettings => 'Ajustes';
+
+  @override
+  String get minecraftLauncherNotWindowsTitle =>
+      'No disponible en esta plataforma';
+
+  @override
+  String get minecraftLauncherNotWindowsSubtitle =>
+      'Minecraft Launcher solo es compatible con Windows por el momento.';
+
+  @override
+  String get minecraftLauncherOfflineNeedsMicrosoft =>
+      'Inicia sesión primero con una cuenta de Microsoft que tenga Minecraft — los perfiles sin conexión sirven para jugar sin conexión después, no en su lugar.';
+
+  @override
+  String get minecraftLauncherCloudBackups => 'Copias de seguridad en la nube';
+
+  @override
+  String minecraftLauncherBackedUpCount(int count) {
+    return '$count con copia de seguridad';
+  }
+
+  @override
+  String get minecraftLauncherRestore => 'Restaurar';
+
+  @override
+  String get minecraftLauncherCurseForgeKeyTitle =>
+      'Clave de API de CurseForge';
+
+  @override
+  String minecraftLauncherCurseForgeKeyBody(String accountOverview) {
+    return 'CurseForge solo responde a las apps que envían una clave de API. Crea una gratis en la consola de CurseForge for Studios y pégala aquí. Se guarda cifrada en este dispositivo, se comparte con $accountOverview y solo se envía a CurseForge.';
+  }
+
+  @override
+  String get minecraftLauncherCurseForgeOpenConsole =>
+      'Abrir la consola de CurseForge';
+
+  @override
+  String get minecraftLauncherCurseForgePasteKeyHint => 'Pega tu clave de API';
+
+  @override
+  String get minecraftLauncherStarting => 'Iniciando…';
+
+  @override
+  String minecraftLauncherStartingInstance(String name) {
+    return 'Iniciando $name';
+  }
+
+  @override
+  String get minecraftLauncherSearchHint => 'Buscar instancias y mods…';
+
+  @override
+  String get minecraftLauncherInstances => 'Instancias';
+
+  @override
+  String get minecraftLauncherMods => 'Mods';
+
+  @override
+  String get minecraftLauncherNoModsFound => 'No se encontraron mods.';
+
+  @override
+  String get minecraftLauncherNewInstance => 'Nueva instancia';
+
+  @override
+  String get minecraftLauncherCouldNotLoadVersions =>
+      'No se pudieron cargar las versiones de Minecraft';
+
+  @override
+  String get minecraftLauncherInstanceNameHint => 'Nombre de la instancia';
+
+  @override
+  String get minecraftLauncherModLoader => 'Cargador de mods';
+
+  @override
+  String get minecraftLauncherLoaderVanilla => 'Vanilla';
+
+  @override
+  String minecraftLauncherLoaderVersion(String loader) {
+    return 'Versión de $loader';
+  }
+
+  @override
+  String minecraftLauncherNoLoaderBuilds(String loader, String version) {
+    return 'No se encontraron compilaciones de $loader para $version.';
+  }
+
+  @override
+  String get minecraftLauncherShowSnapshots => 'Mostrar instantáneas';
+
+  @override
+  String get minecraftLauncherVersion => 'Versión';
+
+  @override
+  String get minecraftLauncherSearchVersionsHint => 'Buscar versiones…';
+
+  @override
+  String get minecraftLauncherVersionTypeRelease => 'Lanzamiento';
+
+  @override
+  String get minecraftLauncherVersionTypeSnapshot => 'Instantánea';
+
+  @override
+  String get minecraftLauncherVersionTypeOldBeta => 'Beta antigua';
+
+  @override
+  String get minecraftLauncherVersionTypeOldAlpha => 'Alfa antigua';
+
+  @override
+  String minecraftLauncherBrowseFor(String name) {
+    return 'Explorar para $name';
+  }
+
+  @override
+  String minecraftLauncherSearchKindHint(String kind) {
+    return 'Buscar $kind…';
+  }
+
+  @override
+  String minecraftLauncherCompatibleWith(String version) {
+    return 'Compatible con $version';
+  }
+
+  @override
+  String minecraftLauncherCompatibleWithLoader(String version, String loader) {
+    return 'Compatible con $version · $loader';
+  }
+
+  @override
+  String minecraftLauncherResultCount(int count, String shown) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$shown resultados',
+      one: '$shown resultado',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String minecraftLauncherInstallInto(String name) {
+    return 'Instalar en $name';
+  }
+
+  @override
+  String get minecraftLauncherCurseForgeNeedsKey =>
+      'CurseForge necesita una clave de API';
+
+  @override
+  String get minecraftLauncherCurseForgeNeedsKeySubtitle =>
+      'Añade tu propia clave gratuita una vez y los mods, paquetes de recursos y shaders de CurseForge aparecerán aquí.';
+
+  @override
+  String get minecraftLauncherAddApiKey => 'Añadir clave de API';
+
+  @override
+  String get minecraftLauncherChangeApiKey => 'Cambiar clave de API';
+
+  @override
+  String get minecraftLauncherSearchFailed => 'La búsqueda falló';
+
+  @override
+  String get minecraftLauncherNoResults => 'Sin resultados';
+
+  @override
+  String get minecraftLauncherNoResultsSubtitle =>
+      'Prueba con otra búsqueda, orden o tipo de contenido.';
+
+  @override
+  String get minecraftLauncherEndOfResults => 'Eso es todo.';
+
+  @override
+  String get minecraftLauncherLoadMore => 'Cargar más';
+
+  @override
+  String get minecraftLauncherAddOfflineAccount => 'Añadir cuenta sin conexión';
+
+  @override
+  String get minecraftLauncherSignInMicrosoft => 'Iniciar sesión con Microsoft';
+
+  @override
+  String get minecraftLauncherNoAccounts => 'Aún no hay cuentas';
+
+  @override
+  String get minecraftLauncherNoAccountsSubtitle =>
+      'Inicia sesión con una cuenta de Microsoft que tenga Minecraft para empezar. Después podrás añadir un perfil sin conexión para jugar sin conexión.';
+
+  @override
+  String get minecraftLauncherMicrosoftUnavailable =>
+      'El inicio de sesión de Microsoft no está disponible';
+
+  @override
+  String get minecraftLauncherMicrosoftUnavailableBody =>
+      'A esta versión le falta el registro de app de Microsoft de Luma. No aceptes una pantalla de consentimiento que diga Prism Launcher.';
+
+  @override
+  String get minecraftLauncherDeviceCodeInstructions =>
+      'El código se muestra abajo. Introdúcelo en la página de Microsoft que acaba de abrirse:';
+
+  @override
+  String get minecraftLauncherCopyCode => 'Copiar código';
+
+  @override
+  String get minecraftLauncherCodeCopied => 'Código copiado.';
+
+  @override
+  String get minecraftLauncherWaitingForBrowser =>
+      'Esperando a que termines en el navegador…';
+
+  @override
+  String get minecraftLauncherOpenMicrosoftSignIn =>
+      'Abrir inicio de sesión de Microsoft';
+
+  @override
+  String get minecraftLauncherMicrosoftAccount => 'Cuenta de Microsoft';
+
+  @override
+  String get minecraftLauncherOfflineAccount => 'Cuenta sin conexión';
+
+  @override
+  String get minecraftLauncherActive => 'Activa';
+
+  @override
+  String get minecraftLauncherUseAccount => 'Usar esta cuenta';
+
+  @override
+  String get mcLauncherInstanceNotFound => 'Instancia no encontrada';
+
+  @override
+  String get mcLauncherExportModpack => 'Exportar como modpack';
+
+  @override
+  String get mcLauncherDeleteInstance => 'Eliminar instancia';
+
+  @override
+  String get mcLauncherTabContent => 'Contenido';
+
+  @override
+  String get mcLauncherTabWorlds => 'Mundos';
+
+  @override
+  String get mcLauncherTabScreenshots => 'Capturas de pantalla';
+
+  @override
+  String get mcLauncherTabLogs => 'Registros';
+
+  @override
+  String get mcLauncherExportModpackTitle => 'Exportar modpack';
+
+  @override
+  String mcLauncherExportedTo(String path) {
+    return 'Exportado a $path';
+  }
+
+  @override
+  String mcLauncherDeleteInstanceTitle(String name) {
+    return '¿Eliminar \"$name\"?';
+  }
+
+  @override
+  String get mcLauncherDeleteInstanceBody =>
+      'Esto quita la instancia de tu biblioteca. Las partidas guardadas y otros archivos siguen en el disco, a menos que los borres manualmente desde la carpeta de la instancia.';
+
+  @override
+  String get mcLauncherAddAccountFirst =>
+      'Primero añade una cuenta en la pestaña Cuentas.';
+
+  @override
+  String get mcLauncherNeverPlayed => 'Nunca jugado';
+
+  @override
+  String mcLauncherLastPlayed(String date) {
+    return 'Última vez jugado: $date';
+  }
+
+  @override
+  String mcLauncherTotalPlaytime(int hours, int minutes) {
+    return 'Tiempo total de juego: $hours h $minutes min';
+  }
+
+  @override
+  String get mcLauncherOpenFolder => 'Abrir carpeta';
+
+  @override
+  String get mcLauncherPlay => 'Jugar';
+
+  @override
+  String get mcLauncherCheckUpdates => 'Buscar actualizaciones';
+
+  @override
+  String get mcLauncherNothingInstalled => 'Todavía no hay nada instalado';
+
+  @override
+  String get mcLauncherNothingInstalledSubtitle =>
+      'Busca mods, paquetes de recursos y paquetes de shaders en Modrinth o CurseForge.';
+
+  @override
+  String get mcLauncherKindMods => 'Mods';
+
+  @override
+  String get mcLauncherKindResourcePacks => 'Paquetes de recursos';
+
+  @override
+  String get mcLauncherKindShaderPacks => 'Paquetes de shaders';
+
+  @override
+  String get mcLauncherKindDatapacks => 'Paquetes de datos';
+
+  @override
+  String get mcLauncherAnalyzeWithAi => 'Analizar con IA';
+
+  @override
+  String get mcLauncherAnalyzing => 'Analizando…';
+
+  @override
+  String get mcLauncherAiAnalysis => 'Análisis con IA';
+
+  @override
+  String get mcLauncherWaitingForOutput => 'Esperando la salida…';
+
+  @override
+  String get mcLauncherNotRunning => 'No se está ejecutando';
+
+  @override
+  String get mcLauncherNotRunningSubtitle =>
+      'Inicia la instancia para ver aquí la salida en directo.';
+
+  @override
+  String get mcLauncherInstanceIcon => 'Icono de la instancia';
+
+  @override
+  String get mcLauncherMemory => 'Memoria';
+
+  @override
+  String mcLauncherMemoryRange(int minMb, int maxMb) {
+    return 'Mín. $minMb MB · Máx. $maxMb MB';
+  }
+
+  @override
+  String get mcLauncherJavaOverride => 'Ejecutable de Java personalizado';
+
+  @override
+  String get mcLauncherJavaOverrideHint =>
+      'Déjalo en blanco para gestionarlo automáticamente';
+
+  @override
+  String get mcLauncherJvmArgs => 'Argumentos JVM adicionales';
+
+  @override
+  String get mcLauncherInstancesTitle => 'Instancias';
+
+  @override
+  String get mcLauncherImportModpack => 'Importar modpack';
+
+  @override
+  String get mcLauncherNewInstance => 'Nueva instancia';
+
+  @override
+  String get mcLauncherImportStarting => 'Iniciando…';
+
+  @override
+  String get mcLauncherNoInstances => 'Todavía no hay instancias';
+
+  @override
+  String get mcLauncherNoInstancesSubtitle =>
+      'Crea una para instalar Minecraft y empezar a jugar.';
+
+  @override
+  String get mcLauncherImportingModpack => 'Importando modpack';
+
+  @override
+  String get mcLauncherNoDescription => 'Este proyecto no tiene descripción.';
+
+  @override
+  String get mcLauncherUpdatesTitle => 'Actualizaciones y conflictos';
+
+  @override
+  String get mcLauncherConflicts => 'Conflictos';
+
+  @override
+  String get mcLauncherUpdates => 'Actualizaciones';
+
+  @override
+  String get mcLauncherUpToDate => 'Todo está actualizado.';
+
+  @override
+  String get mcLauncherUpdating => 'Actualizando…';
+
+  @override
+  String get mcLauncherUpdate => 'Actualizar';
+
+  @override
+  String mcLauncherYearsAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'hace $count años',
+      one: 'hace 1 año',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String mcLauncherMonthsAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'hace $count meses',
+      one: 'hace 1 mes',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String mcLauncherDaysAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'hace $count días',
+      one: 'hace 1 día',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String mcLauncherHoursAgo(int count) {
+    return 'hace $count h';
+  }
+
+  @override
+  String mcLauncherMinutesAgo(int count) {
+    return 'hace $count min';
+  }
+
+  @override
+  String mcLauncherByAuthor(String author) {
+    return 'por $author';
+  }
+
+  @override
+  String mcLauncherUpdatedAgo(String time) {
+    return 'Actualizado $time';
+  }
+
+  @override
+  String get mcLauncherInstalled => 'Instalado';
+
+  @override
+  String get mcLauncherAlreadyInstalled => 'Ya instalado';
+
+  @override
+  String get mcLauncherPickInstanceTitle => '¿En qué instancia instalar?';
+
+  @override
+  String get mcLauncherCreateInstanceFirst => 'Crea primero una instancia.';
+
+  @override
+  String mcLauncherNoBuildFor(String version) {
+    return 'No hay ninguna versión de esto para $version.';
+  }
+
+  @override
+  String mcLauncherNoBuildForLoader(String version, String loader) {
+    return 'No hay ninguna versión de esto para $version con $loader.';
+  }
+
+  @override
+  String mcLauncherOpenOn(String source) {
+    return 'Abrir en $source';
+  }
+
+  @override
+  String get mcLauncherCouldNotLoadProject => 'No se pudo cargar este proyecto';
+
+  @override
+  String get mcLauncherGallery => 'Galería';
+
+  @override
+  String mcLauncherImageCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count imágenes',
+      one: '1 imagen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mcLauncherStatDownloads => 'descargas';
+
+  @override
+  String get mcLauncherStatFollowers => 'seguidores';
+
+  @override
+  String get mcLauncherStatUpdated => 'actualizado';
+
+  @override
+  String get mcLauncherLinkSource => 'Código fuente';
+
+  @override
+  String get mcLauncherLinkIssues => 'Incidencias';
+
+  @override
+  String get mcLauncherLinkWiki => 'Wiki';
+
+  @override
+  String get mcLauncherInstallInto => 'Instalar en…';
+
+  @override
+  String get mcLauncherPickInstanceTooltip =>
+      'Elige una instancia donde instalar';
+
+  @override
+  String mcLauncherInstallNewestInto(String name) {
+    return 'Instalar la versión compatible más reciente en $name';
+  }
+
+  @override
+  String get mcLauncherChooseInstance => 'Elegir instancia';
+
+  @override
+  String get mcLauncherTabVersions => 'Versiones';
+
+  @override
+  String mcLauncherVersionsCount(int count) {
+    return 'Versiones ($count)';
+  }
+
+  @override
+  String get mcLauncherPickInstanceToSee =>
+      'Elige una instancia para ver qué versiones encajan.';
+
+  @override
+  String mcLauncherNoBuildWorksWith(String version) {
+    return 'Ninguna versión de esto funciona con $version.';
+  }
+
+  @override
+  String mcLauncherNoBuildWorksWithLoader(String version, String loader) {
+    return 'Ninguna versión de esto funciona con $version en $loader.';
+  }
+
+  @override
+  String mcLauncherImageIndex(int index, int total) {
+    return 'Imagen $index de $total';
+  }
+
+  @override
+  String get mcLauncherRevealInFolder => 'Mostrar en la carpeta';
+
+  @override
+  String get mcLauncherCopyPath => 'Copiar ruta';
+
+  @override
+  String get mcLauncherBackupToCloud => 'Copia de seguridad en la nube';
+
+  @override
+  String mcLauncherBackedUpToCloud(String label) {
+    return '\"$label\" guardado en la nube.';
+  }
+
+  @override
+  String get mcLauncherNoScreenshots => 'Todavía no hay capturas de pantalla';
+
+  @override
+  String get mcLauncherNoScreenshotsSubtitle =>
+      'Las capturas que hagas en el juego (F2) aparecerán aquí.';
+
+  @override
+  String get mcLauncherCouldNotOpenBrowser => 'No se pudo abrir el navegador.';
+
+  @override
+  String get mcLauncherServersTitle => 'Servidores';
+
+  @override
+  String get mcLauncherServersIntro =>
+      'Alquila un servidor de Minecraft para jugar tus instancias con amigos.';
+
+  @override
+  String get mcLauncherKineticBody =>
+      'Compatibilidad con modpacks y plugins, soporte 24/7 e instalaciones con un clic. Registrarte con este enlace apoya a luma sin coste adicional para ti.';
+
+  @override
+  String get mcLauncherBrowsePlans => 'Ver planes';
+
+  @override
+  String get mcLauncherServerHostingEyebrow =>
+      'HOSPEDAJE DE SERVIDORES DE MINECRAFT';
+
+  @override
+  String get mcLauncherServerHostingHeadline =>
+      'HOSPEDAJE DE CALIDAD,\n¡PRECIOS BAJOS!';
+
+  @override
+  String get mcLauncherPillSupport => 'Soporte 24/7';
+
+  @override
+  String get mcLauncherPillModSupport => 'Compatibilidad con mods';
+
+  @override
+  String get mcLauncherStartToday => '¡EMPIEZA HOY!';
+
+  @override
+  String get mcLauncherJavaRuntimes => 'Entornos de ejecución de Java';
+
+  @override
+  String get mcLauncherRuntimesHint =>
+      'Se descargan automáticamente la primera vez que una instancia los necesita.';
+
+  @override
+  String get mcLauncherNoRuntimes => 'Todavía no se ha descargado ninguno.';
+
+  @override
+  String get mcLauncherCurseForgeKeySaved =>
+      'Clave de API guardada. Las páginas de exploración pueden buscar e instalar desde CurseForge.';
+
+  @override
+  String get mcLauncherCurseForgeKeyAdd =>
+      'Añade tu propia clave de API para explorar e instalar contenido de CurseForge.';
+
+  @override
+  String get mcLauncherChangeApiKey => 'Cambiar clave de API';
+
+  @override
+  String get mcLauncherAddApiKey => 'Añadir clave de API';
+
+  @override
+  String get mcLauncherRemoveKey => 'Quitar clave';
+
+  @override
+  String get mcLauncherCouldNotReadWorlds => 'No se pudieron leer los mundos';
+
+  @override
+  String get mcLauncherImportWorld => 'Importar mundo';
+
+  @override
+  String get mcLauncherNoWorlds => 'Todavía no hay mundos';
+
+  @override
+  String get mcLauncherNoWorldsSubtitle =>
+      'Los mundos que crees en el juego aparecerán aquí.';
+
+  @override
+  String mcLauncherWorldSeed(String seed) {
+    return 'Semilla $seed';
+  }
+
+  @override
+  String get mcLauncherBackupToZip => 'Copia de seguridad en zip';
+
+  @override
+  String get mcLauncherDuplicate => 'Duplicar';
+
+  @override
+  String mcLauncherBackedUpTo(String path) {
+    return 'Copia de seguridad guardada en $path';
+  }
+
+  @override
+  String mcLauncherDeleteWorldTitle(String name) {
+    return '¿Eliminar \"$name\"?';
+  }
+
+  @override
+  String get mcLauncherDeleteWorldBody =>
+      'Esto elimina permanentemente la carpeta del mundo.';
+
+  @override
+  String get moodJournalTabJournal => 'Diario';
+
+  @override
+  String get moodJournalTabCalendar => 'Calendario';
+
+  @override
+  String get moodJournalAddEntry => 'Añadir entrada';
+
+  @override
+  String get moodJournalEmptyTitle => 'Todavía no hay entradas';
+
+  @override
+  String get moodJournalEmptySubtitle =>
+      'Registra tu estado de ánimo para empezar a seguir tus patrones.';
+
+  @override
+  String get moodJournalMoodTerrible => 'Terrible';
+
+  @override
+  String get moodJournalMoodBad => 'Mal';
+
+  @override
+  String get moodJournalMoodOkay => 'Regular';
+
+  @override
+  String get moodJournalMoodGood => 'Bien';
+
+  @override
+  String get moodJournalMoodGreat => 'Genial';
+
+  @override
+  String get moodJournalTagWork => 'Trabajo';
+
+  @override
+  String get moodJournalTagSleep => 'Sueño';
+
+  @override
+  String get moodJournalTagExercise => 'Ejercicio';
+
+  @override
+  String get moodJournalTagSocial => 'Social';
+
+  @override
+  String get moodJournalTagHealth => 'Salud';
+
+  @override
+  String get moodJournalDaySun => 'D';
+
+  @override
+  String get moodJournalDayMon => 'L';
+
+  @override
+  String get moodJournalDayTue => 'M';
+
+  @override
+  String get moodJournalDayWed => 'X';
+
+  @override
+  String get moodJournalDayThu => 'J';
+
+  @override
+  String get moodJournalDayFri => 'V';
+
+  @override
+  String get moodJournalDaySat => 'S';
+
+  @override
+  String get moodJournalNoEntriesForDay => 'No hay entradas para este día';
+
+  @override
+  String get moodJournalAddNewEntry => 'Añadir nueva entrada';
+
+  @override
+  String get moodJournalEditEntry => 'Editar entrada';
+
+  @override
+  String get moodJournalNewEntry => 'Nueva entrada';
+
+  @override
+  String get moodJournalSaveChanges => 'Guardar cambios';
+
+  @override
+  String get moodJournalSaveEntry => 'Guardar entrada';
+
+  @override
+  String get moodJournalFeelingQuestion => '¿Cómo te sientes?';
+
+  @override
+  String get moodJournalEntryLabel => 'Entrada del diario';
+
+  @override
+  String get moodJournalPhotos => 'Fotos';
+
+  @override
+  String get moodJournalTags => 'Etiquetas';
+
+  @override
+  String get moodJournalNoteHint => '¿En qué estás pensando?';
+
+  @override
+  String get moodJournalCustomTagHint => 'Añadir etiqueta personalizada...';
+
+  @override
+  String get nfcRecordEditorTypeText => 'Texto';
+
+  @override
+  String get nfcRecordEditorTypeLink => 'Enlace';
+
+  @override
+  String get nfcRecordEditorTypePhone => 'Teléfono';
+
+  @override
+  String get nfcRecordEditorTypeWifi => 'Wi-Fi';
+
+  @override
+  String get nfcRecordEditorTypeContact => 'Contacto';
+
+  @override
+  String get nfcRecordEditorTypeApp => 'App';
+
+  @override
+  String get nfcRecordEditorTypeCustom => 'Personalizado';
+
+  @override
+  String get nfcRecordEditorAddTitle => 'Añadir registro';
+
+  @override
+  String get nfcRecordEditorEditTitle => 'Editar registro';
+
+  @override
+  String get nfcRecordEditorErrorText => 'Introduce algo de texto.';
+
+  @override
+  String get nfcRecordEditorErrorLink => 'Introduce un enlace válido.';
+
+  @override
+  String get nfcRecordEditorErrorPhone => 'Introduce un número de teléfono.';
+
+  @override
+  String get nfcRecordEditorErrorEmail => 'Introduce una dirección de correo.';
+
+  @override
+  String get nfcRecordEditorErrorNetwork => 'Introduce el nombre de la red.';
+
+  @override
+  String get nfcRecordEditorErrorName => 'Introduce un nombre.';
+
+  @override
+  String get nfcRecordEditorErrorPackage =>
+      'Introduce un nombre de paquete, p. ej. com.example.app.';
+
+  @override
+  String get nfcRecordEditorErrorMime =>
+      'Introduce un tipo MIME, p. ej. text/plain.';
+
+  @override
+  String get nfcRecordEditorTextHint => 'Lo que debe decir esta etiqueta';
+
+  @override
+  String get nfcRecordEditorLanguageCode => 'Código de idioma';
+
+  @override
+  String get nfcRecordEditorPhoneNumber => 'Número de teléfono';
+
+  @override
+  String get nfcRecordEditorAddress => 'Dirección';
+
+  @override
+  String get nfcRecordEditorSubjectOptional => 'Asunto (opcional)';
+
+  @override
+  String get nfcRecordEditorBodyOptional => 'Cuerpo (opcional)';
+
+  @override
+  String get nfcRecordEditorNetworkName => 'Nombre de la red (SSID)';
+
+  @override
+  String get nfcRecordEditorSecurity => 'Seguridad';
+
+  @override
+  String get nfcRecordEditorSecurityOpen => 'Abierta';
+
+  @override
+  String get nfcRecordEditorWifiNote =>
+      'Se guarda como un registro de texto que la mayoría de los teléfonos pueden leer al acercarlos a la etiqueta. No se conecta automáticamente a todos los dispositivos, como a veces hace el código QR Wi-Fi del propio router.';
+
+  @override
+  String get nfcRecordEditorPhoneOptional => 'Teléfono (opcional)';
+
+  @override
+  String get nfcRecordEditorEmailOptional => 'Correo (opcional)';
+
+  @override
+  String get nfcRecordEditorOrganizationOptional => 'Organización (opcional)';
+
+  @override
+  String get nfcRecordEditorPackageName => 'Nombre del paquete';
+
+  @override
+  String get nfcRecordEditorAppHint =>
+      'Lo encontrarás en Ajustes → Aplicaciones → (la app) → Avanzado → Detalles de la aplicación, en el teléfono donde esté instalada. Android ofrece abrir o instalar esta app cuando lee la etiqueta.';
+
+  @override
+  String get nfcRecordEditorMimeType => 'Tipo MIME';
+
+  @override
+  String get nfcRecordEditorContent => 'Contenido';
+
+  @override
+  String get nfcKindPhone => 'Número de teléfono';
+
+  @override
+  String get nfcKindWifi => 'Datos de Wi-Fi';
+
+  @override
+  String get nfcKindContact => 'Tarjeta de contacto';
+
+  @override
+  String get nfcKindAppLaunch => 'Acceso directo a app';
+
+  @override
+  String get nfcKindMime => 'Datos personalizados';
+
+  @override
+  String get nfcKindRaw => 'Registro no reconocido';
+
+  @override
+  String get nfcSummaryEmpty => 'Vacío';
+
+  @override
+  String get nfcSummaryNoLink => 'No hay enlace definido';
+
+  @override
+  String get nfcSummaryNoNumber => 'No hay número definido';
+
+  @override
+  String get nfcSummaryNoAddress => 'No hay dirección definida';
+
+  @override
+  String get nfcSummaryNoNetwork => 'No hay red definida';
+
+  @override
+  String get nfcSummaryNoName => 'No hay nombre definido';
+
+  @override
+  String get nfcSummaryNoPackage => 'No hay paquete definido';
+
+  @override
+  String nfcSummaryRawBytes(int bytes) {
+    return 'Se mantiene tal cual ($bytes bytes) — no editable';
+  }
+
+  @override
+  String get nfcDuplicate => 'Duplicar';
+
+  @override
+  String get nfcAndroidOnlyTitle => 'Solo Android';
+
+  @override
+  String get nfcUnsupportedNotice =>
+      'NFC Tag Editor necesita el hardware NFC y las API de lectura de Android, así que solo funciona en un teléfono o tableta Android; aquí no hay nada que escanear ni escribir.';
+
+  @override
+  String get nfcErrNotNdef =>
+      'Esta etiqueta no admite NDEF, así que luma no puede editarla. La mayoría de pegatinas y tarjetas NFC vacías sí lo admiten; prueba con otra etiqueta.';
+
+  @override
+  String get nfcErrNotAvailable =>
+      'La edición NFC no está disponible en este dispositivo.';
+
+  @override
+  String get nfcErrNfcOff =>
+      'El NFC está desactivado o no es compatible aquí. Actívalo en los ajustes del dispositivo e inténtalo de nuevo.';
+
+  @override
+  String nfcErrStartFailed(String error) {
+    return 'No se pudo iniciar el lector NFC. ($error)';
+  }
+
+  @override
+  String nfcErrCouldNotReach(String error) {
+    return 'No se pudo acceder a esa etiqueta. ($error)';
+  }
+
+  @override
+  String get nfcErrLocked =>
+      'Esta etiqueta está bloqueada como solo lectura y ya no se puede escribir.';
+
+  @override
+  String nfcErrTooBig(int bytes, int capacity) {
+    return 'Son $bytes bytes, pero esta etiqueta solo admite $capacity. Quita un registro e inténtalo de nuevo.';
+  }
+
+  @override
+  String get nfcErrNotWritable =>
+      'No se puede escribir en esta etiqueta: no admite NDEF.';
+
+  @override
+  String get nfcErrNothingToLock =>
+      'Esta etiqueta no tiene formato NDEF, así que no hay nada que bloquear.';
+
+  @override
+  String get nfcErrNoTag =>
+      'No se detectó ninguna etiqueta. Colócala plana contra la parte trasera del teléfono e inténtalo de nuevo.';
+
+  @override
+  String get nfcTabEditor => 'Editor';
+
+  @override
+  String get nfcTabTemplates => 'Plantillas';
+
+  @override
+  String get nfcTabHistory => 'Historial';
+
+  @override
+  String get nfcHeroTitle => 'Escanea una etiqueta para ver lo que contiene';
+
+  @override
+  String get nfcHeroBody =>
+      'Acerca cualquier etiqueta o pegatina NFC al teléfono para leer y editar sus registros, o empieza desde cero y escribe una etiqueta nueva.';
+
+  @override
+  String get nfcScanTag => 'Escanear una etiqueta';
+
+  @override
+  String get nfcStartFromScratch => 'Empezar desde cero';
+
+  @override
+  String get nfcRecordsHeading => 'Registros';
+
+  @override
+  String get nfcNoRecordsTitle => 'Aún no hay registros';
+
+  @override
+  String get nfcNoRecordsBody =>
+      'Añade un registro arriba: texto, un enlace, datos de Wi-Fi, una tarjeta de contacto y más.';
+
+  @override
+  String get nfcWriteToTag => 'Escribir en la etiqueta';
+
+  @override
+  String get nfcWriteHint =>
+      'Funciona con la etiqueta escaneada o con otra: basta con acercar la que quieras escribir cuando esté lista.';
+
+  @override
+  String get nfcStartOver => 'Empezar de nuevo';
+
+  @override
+  String get nfcStartOverTitle => '¿Empezar de nuevo?';
+
+  @override
+  String get nfcStartOverBody =>
+      'Esto borra todos los registros del editor. Lo que ya se haya escrito en una etiqueta no se modifica.';
+
+  @override
+  String get nfcWrittenLocked => 'Escrito y bloqueado como solo lectura.';
+
+  @override
+  String get nfcWritten => 'Escrito en la etiqueta.';
+
+  @override
+  String get nfcWriteAnother => 'Escribir otra';
+
+  @override
+  String get nfcWriteFailed => 'No se pudo escribir en esa etiqueta.';
+
+  @override
+  String get nfcReadFailed => 'Algo salió mal al leer esa etiqueta.';
+
+  @override
+  String get nfcSaveAsTemplate => 'Guardar como plantilla';
+
+  @override
+  String get nfcTemplateNameHint => 'p. ej. Wi-Fi de invitados';
+
+  @override
+  String nfcTemplateSaved(String name) {
+    return '“$name” guardada.';
+  }
+
+  @override
+  String get nfcWriteLockTitle => '¿Escribir y bloquear esta etiqueta?';
+
+  @override
+  String get nfcWriteLockBody =>
+      'Esto escribe los registros de abajo y después convierte la etiqueta en solo lectura de forma permanente. Nunca más se podrá escribir en ella, ni desde luma ni desde ninguna otra app.';
+
+  @override
+  String get nfcWriteLockAction => 'Escribir y bloquear';
+
+  @override
+  String get nfcWriteLockMenu => 'Escribir y bloquear (solo lectura)';
+
+  @override
+  String get nfcNoRecords => 'Sin registros';
+
+  @override
+  String get nfcDeleteTemplateTitle => '¿Eliminar plantilla?';
+
+  @override
+  String nfcDeleteTemplateBody(String name) {
+    return 'Esto elimina “$name”; las etiquetas que ya se escribieron con ella conservan su contenido.';
+  }
+
+  @override
+  String get nfcNoTemplatesTitle => 'Aún no hay plantillas';
+
+  @override
+  String get nfcNoTemplatesBody =>
+      'Crea un conjunto de registros en la pestaña Editor y guárdalo aquí para escribir el mismo contenido en etiquetas una y otra vez; útil para un lote de pegatinas.';
+
+  @override
+  String nfcTemplateRecordsSummary(int count, String kinds) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count registros',
+      one: '1 registro',
+    );
+    return '$_temp0 · $kinds';
+  }
+
+  @override
+  String get nfcUseTemplate => 'Usar';
+
+  @override
+  String get nfcClearHistory => 'Borrar historial';
+
+  @override
+  String get nfcClearHistoryTitle => '¿Borrar historial?';
+
+  @override
+  String get nfcClearHistoryBody =>
+      'Se eliminan todos los escaneos y escrituras de la lista. Las plantillas guardadas no se modifican.';
+
+  @override
+  String get nfcNoHistoryTitle => 'Aún no hay historial';
+
+  @override
+  String get nfcNoHistoryBody =>
+      'Cada etiqueta que escanees o escribas aparecerá aquí, para que puedas revisar lo que contenía.';
+
+  @override
+  String get nfcWrittenTagTitle => 'Etiqueta escrita';
+
+  @override
+  String get nfcScannedTagTitle => 'Etiqueta escaneada';
+
+  @override
+  String get nfcLoadIntoEditor => 'Cargar en el editor';
+
+  @override
+  String nfcHistoryWrittenLine(String tech) {
+    return 'Escrito · $tech';
+  }
+
+  @override
+  String nfcHistoryScannedLine(String tech) {
+    return 'Escaneado · $tech';
+  }
+
+  @override
+  String get nfcGenericTagName => 'Etiqueta NFC';
+
+  @override
+  String nfcHistoryTimeAndRecords(String time, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count registros',
+      one: '1 registro',
+    );
+    return '$time · $_temp0';
+  }
+
+  @override
+  String get nfcTimeJustNow => 'Justo ahora';
+
+  @override
+  String nfcTimeMinutesAgo(int count) {
+    return 'hace $count min';
+  }
+
+  @override
+  String nfcTimeHoursAgo(int count) {
+    return 'hace $count h';
+  }
+
+  @override
+  String nfcTimeDaysAgo(int count) {
+    return 'hace $count d';
+  }
+
+  @override
+  String get nfcBusyScanLabel => 'Acerca una etiqueta al teléfono';
+
+  @override
+  String get nfcBusyWriteLabel =>
+      'Acerca la etiqueta en la que quieras escribir';
+
+  @override
+  String get nfcBusyHint =>
+      'Mantenla plana contra la parte trasera del teléfono hasta que suene o vibre.';
+
+  @override
+  String get nfcTagReadOnly => 'Solo lectura';
+
+  @override
+  String get nfcTagBlankWillFormat => 'En blanco: se formateará';
+
+  @override
+  String nfcTagUid(String uid) {
+    return 'UID $uid';
+  }
+
+  @override
+  String nfcTagBytesUsed(int used, int capacity) {
+    return '$used / $capacity bytes';
+  }
+
+  @override
+  String get nfcTemplateDefaultName => 'Plantilla';
+
+  @override
+  String get nfcSnapshotInvalid =>
+      'Instantánea del editor de etiquetas NFC no válida.';
+
+  @override
+  String get priceScraperInvalidUrl => 'URL no válida.';
+
+  @override
+  String get priceScraperUnreachable =>
+      'No se pudo acceder a la URL. Comprueba tu conexión.';
+
+  @override
+  String priceScraperHttpError(int status) {
+    return 'La página devolvió un error ($status).';
+  }
+
+  @override
+  String get priceScraperNoPrice =>
+      'No se encontró ningún precio en esta página. Es posible que el sitio requiera JavaScript o bloquee el scraping.';
+
+  @override
+  String get priceTrackerEnterUrl => 'Introduce la URL de un producto.';
+
+  @override
+  String get priceTrackerCheckFailed => 'No se pudo comprobar el precio.';
+
+  @override
+  String get priceTrackerTrackTitle => 'Seguir un producto';
+
+  @override
+  String get priceTrackerTrackSubtitle =>
+      'Pega la URL de un producto y luma comprueba el precio por ti.';
+
+  @override
+  String get priceTrackerNameHint => 'Nombre (opcional)';
+
+  @override
+  String get priceTrackerTrack => 'Seguir';
+
+  @override
+  String get priceTrackerTrackedItems => 'Artículos seguidos';
+
+  @override
+  String get priceTrackerEmptyTitle => 'Todavía no hay nada seguido';
+
+  @override
+  String get priceTrackerEmptySubtitle =>
+      'Los productos que sigues se guardan aquí con un gráfico del historial de precios.';
+
+  @override
+  String get priceTrackerCheckNow => 'Comprobar el precio ahora';
+
+  @override
+  String get priceTrackerInvalidSnapshot =>
+      'Instantánea del seguidor de precios no válida.';
+
+  @override
+  String get qrEnterUrl => 'Introduce una URL.';
+
+  @override
+  String get qrGenerateTitle => 'Generar un código QR';
+
+  @override
+  String get qrGenerateSubtitle =>
+      'Pega una URL y conviértela en un código QR escaneable.';
+
+  @override
+  String get qrGenerate => 'Generar';
+
+  @override
+  String get qrEmptyTitle => 'Todavía no hay códigos QR';
+
+  @override
+  String get qrEmptySubtitle =>
+      'Los códigos que generes se guardan aquí para que puedas volver a abrirlos cuando quieras.';
+
+  @override
+  String get qrCopyUrl => 'Copiar URL';
+
+  @override
+  String get recipeBookCouldNotLoadPhoto => 'No se pudo cargar la foto.';
+
+  @override
+  String recipeBookServerError(int status) {
+    return 'Error del servidor ($status).';
+  }
+
+  @override
+  String get recipeBookSignInToManage =>
+      'Inicia sesión para gestionar las recetas publicadas.';
+
+  @override
+  String get recipeBookNotFound => 'Receta no encontrada.';
+
+  @override
+  String get recipeBookSavedPrivately =>
+      'Guardada en privado. Inicia sesión en Ajustes → Sincronización para publicarla.';
+
+  @override
+  String recipeBookCouldNotPublish(String error) {
+    return 'No se pudo publicar: $error';
+  }
+
+  @override
+  String recipeBookCouldNotUpdatePublished(String error) {
+    return 'No se pudo actualizar la copia publicada: $error';
+  }
+
+  @override
+  String get recipeBookCouldNotReachServer =>
+      'No se pudo conectar con el servidor.';
+
+  @override
+  String recipeBookCouldNotPostReview(String error) {
+    return 'No se pudo publicar tu reseña: $error';
+  }
+
+  @override
+  String get recipeBookSignInToReview => 'Inicia sesión para valorar recetas.';
+
+  @override
+  String get recipeBookSignInToManageReviews =>
+      'Inicia sesión para gestionar las reseñas.';
+
+  @override
+  String get recipeBookInvalidSnapshot =>
+      'Instantánea del libro de recetas no válida.';
+
+  @override
+  String get recipeBookSearchHint => 'Buscar recetas…';
+
+  @override
+  String get recipeBookTabFavourites => 'Favoritos';
+
+  @override
+  String recipeBookTabFavouritesCount(int count) {
+    return 'Favoritos ($count)';
+  }
+
+  @override
+  String get recipeBookTabPublic => 'Públicas';
+
+  @override
+  String get recipeBookTabPrivate => 'Privadas';
+
+  @override
+  String get recipeBookCategoryBreakfast => 'Desayuno';
+
+  @override
+  String get recipeBookCategoryLunch => 'Almuerzo';
+
+  @override
+  String get recipeBookCategoryDinner => 'Cena';
+
+  @override
+  String get recipeBookCategoryDessert => 'Postre';
+
+  @override
+  String get recipeBookCategorySnack => 'Tentempié';
+
+  @override
+  String get recipeBookCategoryDrink => 'Bebida';
+
+  @override
+  String get recipeBookCategoryBaking => 'Repostería';
+
+  @override
+  String get recipeBookNoRecipesYet => 'Todavía no hay recetas';
+
+  @override
+  String get recipeBookNoRecipesFound => 'No se encontraron recetas';
+
+  @override
+  String get recipeBookAddFirstHint =>
+      'Toca el botón + para añadir tu primera receta.';
+
+  @override
+  String get recipeBookTryOtherSearch =>
+      'Prueba con otra búsqueda o categoría.';
+
+  @override
+  String get recipeBookSignInToBrowseTitle =>
+      'Inicia sesión para explorar recetas públicas';
+
+  @override
+  String get recipeBookSignInToBrowseSubtitle =>
+      'Las recetas públicas se comparten a través de tu cuenta de sincronización. Inicia sesión en Ajustes → Sincronización y cuenta para explorar, publicar, valorar y reseñar.';
+
+  @override
+  String get recipeBookCouldNotLoadPublic =>
+      'No se pudieron cargar las recetas públicas';
+
+  @override
+  String get recipeBookNoPublicYet => 'Todavía no hay recetas públicas';
+
+  @override
+  String get recipeBookPublishFirstHint =>
+      'Publica una de tus recetas para empezar el catálogo.';
+
+  @override
+  String get recipeBookNoFavouritesYet => 'Todavía no hay favoritos';
+
+  @override
+  String get recipeBookFavouritesHint =>
+      'Toca el corazón de cualquier receta, privada o pública, para guardarla aquí.';
+
+  @override
+  String get recipeBookNew => 'Nueva';
+
+  @override
+  String get recipeBookYou => 'Tú';
+
+  @override
+  String get recipeBookPlanner => 'Planificador';
+
+  @override
+  String get recipeCategoryBreakfast => 'Desayuno';
+
+  @override
+  String get recipeCategoryLunch => 'Almuerzo';
+
+  @override
+  String get recipeCategoryDinner => 'Cena';
+
+  @override
+  String get recipeCategoryDessert => 'Postre';
+
+  @override
+  String get recipeCategorySnack => 'Aperitivo';
+
+  @override
+  String get recipeCategoryDrink => 'Bebida';
+
+  @override
+  String get recipeCategoryBaking => 'Repostería';
+
+  @override
+  String get recipeCategoryOther => 'Otro';
+
+  @override
+  String get recipeUnitNone => 'Unidad';
+
+  @override
+  String get recipeUnitG => 'g';
+
+  @override
+  String get recipeUnitKg => 'kg';
+
+  @override
+  String get recipeUnitMl => 'ml';
+
+  @override
+  String get recipeUnitL => 'l';
+
+  @override
+  String get recipeUnitTsp => 'cdta';
+
+  @override
+  String get recipeUnitTbsp => 'cda';
+
+  @override
+  String get recipeUnitCup => 'taza';
+
+  @override
+  String get recipeUnitOz => 'oz';
+
+  @override
+  String get recipeUnitLb => 'lb';
+
+  @override
+  String get recipeUnitPiece => 'unidad';
+
+  @override
+  String get recipeUnitSlice => 'loncha';
+
+  @override
+  String get recipeUnitPinch => 'pizca';
+
+  @override
+  String get recipeUnitToTaste => 'al gusto';
+
+  @override
+  String recipeTimeMinutes(int count) {
+    return '$count min';
+  }
+
+  @override
+  String recipeTimeHours(int count) {
+    return '$count h';
+  }
+
+  @override
+  String recipeTimeHoursMinutes(int hours, int minutes) {
+    return '$hours h $minutes min';
+  }
+
+  @override
+  String get recipeSomeone => 'Alguien';
+
+  @override
+  String get recipeSharedToPublic => 'Compartido en Público';
+
+  @override
+  String get recipePrivateRecipe => 'Receta privada';
+
+  @override
+  String get recipeRemoveFromPublic => 'Quitar de Público';
+
+  @override
+  String recipeConfirmTitle(String action) {
+    return '¿$action la receta?';
+  }
+
+  @override
+  String recipeConfirmRemoveBody(String title) {
+    return '\"$title\" se quitará del catálogo público.';
+  }
+
+  @override
+  String recipeConfirmDeleteBody(String title) {
+    return '\"$title\" se eliminará de forma permanente.';
+  }
+
+  @override
+  String recipeByAuthor(String name) {
+    return 'por $name';
+  }
+
+  @override
+  String recipeByAuthorYou(String name) {
+    return 'por $name · tú';
+  }
+
+  @override
+  String get recipeNoRatingsYet => 'Aún no hay valoraciones';
+
+  @override
+  String recipeRatingSummary(String average, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count valoraciones',
+      one: '1 valoración',
+    );
+    return '$average · $_temp0';
+  }
+
+  @override
+  String recipeReviewsCount(int count) {
+    return 'Reseñas ($count)';
+  }
+
+  @override
+  String get recipeBeFirstToReview => 'Sé el primero en valorar esta receta.';
+
+  @override
+  String get recipePickRatingFirst =>
+      'Primero elige una valoración con estrellas.';
+
+  @override
+  String get recipeThanksForReview => '¡Gracias por tu reseña!';
+
+  @override
+  String get recipeYourReview => 'Tu reseña';
+
+  @override
+  String get recipeWriteReview => 'Escribe una reseña';
+
+  @override
+  String get recipeReviewHint => 'Cuenta cómo salió… (opcional)';
+
+  @override
+  String get recipeAddPhoto => 'Añadir foto';
+
+  @override
+  String get recipeChangePhoto => 'Cambiar foto';
+
+  @override
+  String get recipePostReview => 'Publicar reseña';
+
+  @override
+  String get recipeReviewYou => 'Tú';
+
+  @override
+  String recipeServingsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count raciones',
+      one: '1 ración',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recipePrepTime(String time) {
+    return 'Preparación: $time';
+  }
+
+  @override
+  String recipeCookTime(String time) {
+    return 'Cocción: $time';
+  }
+
+  @override
+  String get recipeIngredients => 'Ingredientes';
+
+  @override
+  String get recipeInstructions => 'Instrucciones';
+
+  @override
+  String get recipeAddIngredient => 'Añadir ingrediente';
+
+  @override
+  String get recipeAddStep => 'Añadir paso';
+
+  @override
+  String get recipeIngredientHint => 'Ingrediente';
+
+  @override
+  String get recipeAmountHint => 'Cant.';
+
+  @override
+  String get recipeStepHint => 'Describe este paso…';
+
+  @override
+  String get recipeTitleRequired => 'Ponle un título a tu receta.';
+
+  @override
+  String get recipeEditTitle => 'Editar receta';
+
+  @override
+  String get recipeNewTitle => 'Nueva receta';
+
+  @override
+  String get recipeStepsTab => 'Pasos';
+
+  @override
+  String get recipeSaveChanges => 'Guardar cambios';
+
+  @override
+  String get recipeAddRecipe => 'Añadir receta';
+
+  @override
+  String get recipeAddARecipe => 'Añadir una receta';
+
+  @override
+  String get recipeTitleHint => 'p. ej. Espaguetis carbonara';
+
+  @override
+  String get recipeDescriptionLabel => 'Descripción (opcional)';
+
+  @override
+  String get recipeDescriptionHint => 'Una breve nota sobre esta receta…';
+
+  @override
+  String get recipeCategoryField => 'Categoría';
+
+  @override
+  String get recipeServingsLabel => 'Raciones';
+
+  @override
+  String get recipePrepTimeLabel => 'Tiempo de preparación (min)';
+
+  @override
+  String get recipeCookTimeLabel => 'Tiempo de cocción (min)';
+
+  @override
+  String get recipeShareToPublic => 'Compartir en Público';
+
+  @override
+  String get recipeShareToPublicHint =>
+      'Publícala para que otros usuarios de luma la encuentren, la valoren y la reseñen.';
+
+  @override
+  String get recipeSignInToPublish =>
+      'Inicia sesión en Ajustes → Sincronización para publicar recetas.';
+
+  @override
+  String get recipePhotoOptional => 'Foto (opcional)';
+
+  @override
+  String get recipeReplacePhoto => 'Reemplazar';
+
+  @override
+  String get recipeChoosePhoto => 'Elegir foto';
+
+  @override
+  String get recipePlannerTitle => 'Planificador de comidas';
+
+  @override
+  String get recipeThisWeek => 'Esta semana';
+
+  @override
+  String get recipeJumpToThisWeek => 'Ir a esta semana';
+
+  @override
+  String get recipeWeekStartsOn => 'La semana empieza el';
+
+  @override
+  String get recipeNothingPlanned => 'Nada planeado todavía.';
+
+  @override
+  String recipeCategoryPublic(String category) {
+    return '$category · público';
+  }
+
+  @override
+  String get recipeTabMyRecipes => 'Mis recetas';
+
+  @override
+  String get recipeTabPublic => 'Público';
+
+  @override
+  String get recipeNoRecipesYet => 'Aún no tienes recetas.';
+
+  @override
+  String get recipeNoMatches => 'Sin coincidencias.';
+
+  @override
+  String get recipeSignInToBrowse =>
+      'Inicia sesión para explorar recetas públicas.';
+
+  @override
+  String get recipeNoPublicRecipesYet => 'Aún no hay recetas públicas.';
+
+  @override
+  String get recipeSearchHint => 'Buscar recetas…';
+
+  @override
+  String get mafiaRoleCountingTitle => 'Recuento de roles';
+
+  @override
+  String get mafiaRoleCountingIntro =>
+      'Elige cuántos jugadores hay en el lobby y marca los roles a medida que se reclamen.';
+
+  @override
+  String get mafiaRoleCountingPlayersInLobby => 'Jugadores en el lobby';
+
+  @override
+  String get mafiaRoleCountingLowCountWarning =>
+      'El wiki indica que sus datos para menos de 7 jugadores pueden ser inexactos; toma este recuento como una guía aproximada.';
+
+  @override
+  String mafiaRoleCountingClaimedOfTotal(int claimed, int total) {
+    return '$claimed / $total reclamados';
+  }
+
+  @override
+  String get mafiaRoleCountingNoRoles =>
+      'No hay roles para este tamaño de lobby';
+
+  @override
+  String get mafiaRoleCountingNoRolesHint =>
+      'Prueba con otro número de jugadores.';
+
+  @override
+  String get mafiaRoleCountingClaimed => 'Reclamado';
+
+  @override
+  String get mafiaRoleCountingClaimedBy => 'Reclamado por… (nombre de disfraz)';
+
+  @override
+  String get mafiaFactionTown => 'Pueblo';
+
+  @override
+  String get mafiaFactionNeutral => 'Neutral';
+
+  @override
+  String get mafiaFactionMafia => 'Mafia';
+
+  @override
+  String get mafiaFactionVeil => 'Velo';
+
+  @override
+  String get mafiaFactionTownWin => 'Gana eliminando a la Mafia';
+
+  @override
+  String get mafiaFactionNeutralWin => 'Tiene su propia condición de victoria';
+
+  @override
+  String get mafiaFactionMafiaWin => 'Gana al igualar en número al Pueblo';
+
+  @override
+  String get mafiaFactionVeilWin => 'Gana al alcanzar el 100 % de corrupción';
+
+  @override
+  String get schoolCitationSourceBook => 'Libro';
+
+  @override
+  String get schoolCitationSourceWebsite => 'Sitio web';
+
+  @override
+  String get schoolCitationSourceJournalArticle => 'Artículo de revista';
+
+  @override
+  String get schoolCitationSourceNewspaper => 'Artículo de periódico';
+
+  @override
+  String get schoolCitationSourceVideo => 'Vídeo';
+
+  @override
+  String get schoolQuizLevel => 'Grupo 8 · práctica para la prueba IEP';
+
+  @override
+  String get schoolQuizBlurbRekenen =>
+      'Números, proporciones, medida y geometría, relaciones';
+
+  @override
+  String get schoolQuizBlurbTaalverzorging =>
+      'Ortografía, ortografía de verbos y puntuación';
+
+  @override
+  String get schoolQuizBlurbLezen =>
+      'Comprender textos, resumir, significado de palabras y búsqueda';
+
+  @override
+  String get schoolQuizBlurbEngels =>
+      'Práctica extra · Inglés para los cursos superiores y primero de secundaria';
+
+  @override
+  String get schoolQuizBlurbAardrijkskunde =>
+      'Práctica extra · Países Bajos, Europa, el mundo y el tiempo';
+
+  @override
+  String get schoolQuizBlurbGeschiedenis =>
+      'Práctica extra · Las diez épocas, desde los cazadores hasta hoy';
+
+  @override
+  String get schoolQuizBlurbBiologie =>
+      'Práctica extra · Cuerpo, naturaleza, energía y técnica';
+
+  @override
+  String get schoolQuizDefaultTitle => 'Prueba de práctica, grupo 8';
+
+  @override
+  String get schoolQuizPickSubject => 'Elige al menos una asignatura.';
+
+  @override
+  String schoolQuizChooseBetween(int min, int max) {
+    return 'Elige entre $min y $max preguntas.';
+  }
+
+  @override
+  String get schoolQuizNotEnoughQuestions =>
+      'No hay suficientes preguntas disponibles para estas asignaturas.';
+
+  @override
+  String schoolQuizMaxQuestionsPerPdf(int max) {
+    return 'Elige como máximo $max preguntas por PDF.';
+  }
+
+  @override
+  String schoolQuizInvalidCount(String subject) {
+    return 'Número de preguntas no válido para $subject.';
+  }
+
+  @override
+  String schoolQuizPdfRunningHeader(String section) {
+    return 'LUMA SCHOOL  |  $section';
+  }
+
+  @override
+  String get schoolQuizPdfSectionQuestions => 'Preguntas';
+
+  @override
+  String get schoolQuizPdfSectionAnswerSheet => 'Hoja de respuestas';
+
+  @override
+  String schoolQuizPdfCountLine(int count, String mode) {
+    return '$count preguntas | $mode';
+  }
+
+  @override
+  String get schoolQuizPdfMixed => 'Asignaturas mezcladas';
+
+  @override
+  String get schoolQuizPdfPerSubject => 'Por asignatura';
+
+  @override
+  String schoolQuizPdfQuestionTitle(String number, String subject) {
+    return 'Pregunta $number - $subject';
+  }
+
+  @override
+  String schoolQuizPdfQuestionTitlePassage(
+    String number,
+    String subject,
+    String passage,
+  ) {
+    return 'Pregunta $number - $subject - Texto $passage';
+  }
+
+  @override
+  String schoolQuizPdfPassageHeading(String number) {
+    return 'Texto $number';
+  }
+
+  @override
+  String schoolQuizPdfPageOf(String page, String total) {
+    return 'Página $page de $total';
+  }
+
+  @override
+  String get schoolQuizPdfNameDateLine =>
+      'Nombre: ........................................  Fecha: ........................';
+
+  @override
+  String get schoolQuizPdfInstructions =>
+      'Lee cada pregunta con atención. Marca la respuesta o escribe la respuesta pedida. Cuando haya varias respuestas, la pregunta indica cuántas elegir.';
+
+  @override
+  String get schoolQuizPdfDisclaimer =>
+      'Material de práctica propio. No es una prueba IEP oficial ni un consejo escolar.';
+
+  @override
+  String get schoolQuizPdfAnswerBlank =>
+      'Respuesta: .....................................';
+
+  @override
+  String get schoolQuizPdfAnswersHeading => 'Respuestas';
+
+  @override
+  String get schoolQuizPdfAnswersNote =>
+      'Para corregir. Mantén esta hoja de respuestas separada de las preguntas.';
+
+  @override
+  String get schoolTabDashboard => 'Panel';
+
+  @override
+  String get schoolTabTimetable => 'Horario';
+
+  @override
+  String get schoolTabAssignments => 'Tareas';
+
+  @override
+  String get schoolTabFlashcards => 'Tarjetas';
+
+  @override
+  String get schoolTabPracticeTests => 'Pruebas de práctica';
+
+  @override
+  String get schoolTabFormulas => 'Fórmulas';
+
+  @override
+  String get schoolTabStudyTimer => 'Temporizador de estudio';
+
+  @override
+  String get schoolTabGpa => 'GPA';
+
+  @override
+  String get schoolTabCitations => 'Citas';
+
+  @override
+  String get schoolPracticeTestSaveTitle =>
+      'Guardar prueba de práctica como PDF';
+
+  @override
+  String get schoolPdfSaveUnsupported =>
+      'Guardar PDF no es compatible con este dispositivo.';
+
+  @override
+  String get schoolPriorityLow => 'Baja';
+
+  @override
+  String get schoolPriorityMedium => 'Media';
+
+  @override
+  String get schoolPriorityHigh => 'Alta';
+
+  @override
+  String get schoolPriority => 'Prioridad';
+
+  @override
+  String get schoolAssignmentsShowCompleted => 'Mostrar completadas';
+
+  @override
+  String get schoolAssignmentsAdd => 'Añadir tarea';
+
+  @override
+  String get schoolAssignmentsEdit => 'Editar tarea';
+
+  @override
+  String get schoolAssignmentsEmpty => 'No hay tareas';
+
+  @override
+  String get schoolAssignmentsEmptySub =>
+      'Añade deberes o una tarea para verla aquí.';
+
+  @override
+  String schoolAssignmentDue(String date) {
+    return 'Entrega $date';
+  }
+
+  @override
+  String get schoolSubject => 'Asignatura';
+
+  @override
+  String get schoolSubjectOptional => 'Asignatura (opcional)';
+
+  @override
+  String get schoolCitationsNew => 'Nueva cita';
+
+  @override
+  String get schoolCitationStyle => 'Estilo';
+
+  @override
+  String get schoolCitationSourceType => 'Tipo de fuente';
+
+  @override
+  String get schoolCitationAuthor => 'Autor (apellido, nombre)';
+
+  @override
+  String get schoolCitationYear => 'Año';
+
+  @override
+  String get schoolCitationPublisher => 'Editorial';
+
+  @override
+  String get schoolCitationContainer => 'Sitio web / revista';
+
+  @override
+  String get schoolCitationVolume => 'Volumen';
+
+  @override
+  String get schoolCitationIssue => 'Número';
+
+  @override
+  String get schoolCitationPages => 'Páginas';
+
+  @override
+  String get schoolCitationCity => 'Ciudad';
+
+  @override
+  String get schoolCitationAccessDate => 'Fecha de consulta';
+
+  @override
+  String get schoolCitationPreviewEmpty => 'La vista previa aparecerá aquí.';
+
+  @override
+  String get schoolCitationSave => 'Guardar cita';
+
+  @override
+  String get schoolCitationsEmpty => 'Aún no hay citas guardadas';
+
+  @override
+  String get schoolSubjects => 'Asignaturas';
+
+  @override
+  String get schoolStatDueThisWeek => 'Entregas esta semana';
+
+  @override
+  String get schoolStatOverdue => 'Atrasadas';
+
+  @override
+  String get schoolAddSubject => 'Añadir asignatura';
+
+  @override
+  String get schoolDashboardNoSubjects =>
+      'Aún no hay asignaturas. Añade una para empezar.';
+
+  @override
+  String get schoolDashboardNoClasses => 'No hay clases programadas hoy.';
+
+  @override
+  String get schoolDashboardDueSoon => 'Próximas entregas';
+
+  @override
+  String get schoolDashboardNothingDueSoon =>
+      'Nada que entregar en los próximos 7 días.';
+
+  @override
+  String get schoolClassFallback => 'Clase';
+
+  @override
+  String get schoolFormulasSearchHint => 'Buscar fórmulas';
+
+  @override
+  String get schoolFormulasAdd => 'Añadir fórmula';
+
+  @override
+  String get schoolFormulasEdit => 'Editar fórmula';
+
+  @override
+  String get schoolFormulasEmpty => 'Aún no hay fórmulas';
+
+  @override
+  String get schoolFormulasEmptySub =>
+      'Añade tus propias fórmulas para crear una biblioteca de referencia personal.';
+
+  @override
+  String get schoolFormulaExpression => 'Expresión';
+
+  @override
+  String get schoolFormulaDescriptionOptional => 'Descripción (opcional)';
+
+  @override
+  String get schoolDeckNameHint => 'Nombre del nuevo mazo';
+
+  @override
+  String get schoolFlashcardsCreateDeck => 'Crear mazo';
+
+  @override
+  String get schoolFlashcardsNoDecks => 'Aún no hay mazos';
+
+  @override
+  String get schoolFlashcardsNoDecksSub =>
+      'Crea un mazo y añade tarjetas para empezar a estudiar.';
+
+  @override
+  String schoolFlashcardsCardCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tarjetas',
+      one: '1 tarjeta',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String schoolFlashcardsDueNow(int count) {
+    return '$count para repasar';
+  }
+
+  @override
+  String schoolFlashcardsDeckSummary(int total, int due) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total tarjetas',
+      one: '1 tarjeta',
+    );
+    return '$_temp0 · $due para repasar';
+  }
+
+  @override
+  String get schoolFlashcardsAddCard => 'Añadir tarjeta';
+
+  @override
+  String get schoolFlashcardsEditCard => 'Editar tarjeta';
+
+  @override
+  String get schoolFlashcardsStudyNow => 'Estudiar ahora';
+
+  @override
+  String get schoolFlashcardsNoCards => 'No hay tarjetas en este mazo';
+
+  @override
+  String get schoolFlashcardsNoCardsSub =>
+      'Añade una tarjeta de anverso y reverso para empezar a repasar.';
+
+  @override
+  String schoolFlashcardsReviewStats(
+    int reviews,
+    int accuracy,
+    String seconds,
+  ) {
+    String _temp0 = intl.Intl.pluralLogic(
+      reviews,
+      locale: localeName,
+      other: '$reviews repasos',
+      one: '1 repaso',
+    );
+    return '$_temp0 · $accuracy % correctas · media $seconds s';
+  }
+
+  @override
+  String get schoolCardFront => 'Anverso';
+
+  @override
+  String get schoolCardBack => 'Reverso';
+
+  @override
+  String schoolFlashcardsCardOf(int current, int total) {
+    return 'Tarjeta $current de $total';
+  }
+
+  @override
+  String get schoolFlashcardsTypeAnswer => 'Escribe tu respuesta';
+
+  @override
+  String get schoolFlashcardsCorrect => 'Correcto';
+
+  @override
+  String get schoolFlashcardsNotQuite => 'Casi';
+
+  @override
+  String schoolFlashcardsAnswer(String back) {
+    return 'Respuesta: $back';
+  }
+
+  @override
+  String get schoolFlashcardsCheckAnswer => 'Comprobar respuesta';
+
+  @override
+  String get schoolGpaGradeCalculator => 'Calculadora de notas';
+
+  @override
+  String get schoolGpaOverallGpa => 'GPA general';
+
+  @override
+  String get schoolGpaOverallGrade => 'Nota general';
+
+  @override
+  String get schoolGpaAddRecord => 'Añadir registro';
+
+  @override
+  String get schoolGpaAddRecordTitle => 'Añadir registro de GPA';
+
+  @override
+  String get schoolGpaTrend => 'Tendencia';
+
+  @override
+  String get schoolGpaNoRecords => 'Aún no hay registros de GPA';
+
+  @override
+  String get schoolGpaNoRecordsSub =>
+      'Registra la nota de un periodo terminado para empezar a seguir tu GPA.';
+
+  @override
+  String schoolGpaRecordAmerican(String term, String credits, String points) {
+    return '$term · $credits créditos · $points pts';
+  }
+
+  @override
+  String schoolGpaRecordDutch(String term, String credits, String points) {
+    return '$term · $credits créditos · $points';
+  }
+
+  @override
+  String get schoolGpaCreditHours => 'Créditos';
+
+  @override
+  String get schoolGpaTermLabel => 'Periodo (p. ej. otoño 2026)';
+
+  @override
+  String get schoolGpaFinalPercentage => 'Nota final en porcentaje';
+
+  @override
+  String get schoolGpaFinalGrade => 'Nota final (1-10)';
+
+  @override
+  String schoolGpaPointsHelper(String points) {
+    return '= $points puntos GPA';
+  }
+
+  @override
+  String get schoolGradeNoSubjects => 'Aún no hay asignaturas';
+
+  @override
+  String get schoolGradeNoSubjectsSub =>
+      'Añade una asignatura para empezar a ponderar sus componentes de nota.';
+
+  @override
+  String get schoolGradeAddComponent => 'Añadir componente';
+
+  @override
+  String get schoolGradeEditComponent => 'Editar componente';
+
+  @override
+  String get schoolGradeCurrent => 'Nota actual';
+
+  @override
+  String get schoolGradeTarget => 'Nota objetivo en %';
+
+  @override
+  String schoolGradeWeightGraded(String percent) {
+    return '$percent % del peso calificado';
+  }
+
+  @override
+  String get schoolGradeAddUngraded =>
+      'Añade componentes sin calificar para proyectar';
+
+  @override
+  String schoolGradeNeeded(String percent) {
+    return 'Necesitas $percent % en el resto';
+  }
+
+  @override
+  String get schoolGradeNoComponents => 'Aún no hay componentes de nota';
+
+  @override
+  String get schoolGradeNoComponentsSub =>
+      'Añade componentes ponderados como \"Parcial\" o \"Final\".';
+
+  @override
+  String schoolGradeComponentScored(
+    String weight,
+    String earned,
+    String total,
+  ) {
+    return '$weight % de peso · $earned/$total';
+  }
+
+  @override
+  String schoolGradeComponentUngraded(String weight) {
+    return '$weight % de peso · aún sin calificar';
+  }
+
+  @override
+  String get schoolGradeNameLabel => 'Nombre (p. ej. parcial)';
+
+  @override
+  String get schoolGradeWeightLabel => 'Peso (%)';
+
+  @override
+  String get schoolGradeScoreEarned => 'Puntuación obtenida (opcional)';
+
+  @override
+  String get schoolGradeOutOf => 'De';
+
+  @override
+  String get schoolSubjectAddTitle => 'Añadir asignatura';
+
+  @override
+  String get schoolSubjectEditTitle => 'Editar asignatura';
+
+  @override
+  String get schoolSubjectCreditHours => 'Créditos';
+
+  @override
+  String get schoolSubjectGroupOther => 'Otras asignaturas · práctica extra';
+
+  @override
+  String get schoolTimetableWeeklySchedule => 'Horario semanal';
+
+  @override
+  String get schoolTimetableAddClass => 'Añadir clase';
+
+  @override
+  String get schoolTimetableNoClasses => 'No hay clases programadas';
+
+  @override
+  String get schoolTimetableAddSubjectFirst =>
+      'Añade primero una asignatura y luego sus horarios de clase.';
+
+  @override
+  String get schoolTimetableTapAddClass =>
+      'Toca \"Añadir clase\" para crear tu horario semanal.';
+
+  @override
+  String get schoolTimetableClass => 'Clase';
+
+  @override
+  String get schoolTimetableSubject => 'Asignatura';
+
+  @override
+  String get schoolTimetableDay => 'Día';
+
+  @override
+  String schoolTimetableStart(String time) {
+    return 'Inicio: $time';
+  }
+
+  @override
+  String schoolTimetableEnd(String time) {
+    return 'Fin: $time';
+  }
+
+  @override
+  String get schoolTimetableLocation => 'Ubicación (opcional)';
+
+  @override
+  String get schoolTimetableInstructor => 'Profesor (opcional)';
+
+  @override
+  String get schoolStudyTimeBySubject => 'Tiempo por asignatura';
+
+  @override
+  String get schoolStudyNoSessionsLogged =>
+      'Todavía no hay sesiones de estudio registradas.';
+
+  @override
+  String get schoolStudyRecentSessions => 'Sesiones recientes';
+
+  @override
+  String get schoolStudyNoCompletedSessions => 'No hay sesiones completadas';
+
+  @override
+  String get schoolStudyNoSubject => 'Sin asignatura';
+
+  @override
+  String schoolStudySessionMeta(String date, int minutes) {
+    return '$date · $minutes min';
+  }
+
+  @override
+  String get schoolStudyStartStudying => 'Empezar a estudiar';
+
+  @override
+  String get schoolStudySubjectOptional => 'Asignatura (opcional)';
+
+  @override
+  String get schoolStudyStartTimer => 'Iniciar temporizador';
+
+  @override
+  String get schoolStudyStudying => 'Estudiando';
+
+  @override
+  String get schoolPdfDefaultTitle => 'Prueba de práctica, grupo 8';
+
+  @override
+  String get schoolPdfPickOneSubject => 'Elige al menos una asignatura.';
+
+  @override
+  String schoolPdfCountRange(String name, int max) {
+    return 'Elige entre 1 y $max preguntas para $name.';
+  }
+
+  @override
+  String schoolPdfMaxQuestions(int max) {
+    return 'Elige como máximo $max preguntas por PDF.';
+  }
+
+  @override
+  String get schoolPdfSaveCancelled => 'Guardado cancelado.';
+
+  @override
+  String schoolPdfSaved(String path) {
+    return 'PDF guardado: $path';
+  }
+
+  @override
+  String get schoolPdfSaveFailed =>
+      'No se pudo guardar el PDF. Inténtalo de nuevo.';
+
+  @override
+  String get schoolPdfAsPdf => 'Prueba de práctica en PDF';
+
+  @override
+  String get schoolPdfTitle => 'Crea tu prueba de práctica';
+
+  @override
+  String get schoolPdfIntro =>
+      'Elige una o más asignaturas. El PDF contiene una selección nueva sin preguntas repetidas, en formato A4.';
+
+  @override
+  String get schoolPdfSectionLayout => 'Título y diseño';
+
+  @override
+  String get schoolPdfTitleField => 'Título del PDF';
+
+  @override
+  String get schoolPdfSpreadTotal => 'Repartir un total';
+
+  @override
+  String get schoolPdfCountPerSubject => 'Cantidad por asignatura';
+
+  @override
+  String get schoolPdfTotalQuestions => 'Número total de preguntas';
+
+  @override
+  String schoolPdfTotalHint(int max) {
+    return 'Hasta $max; repartido lo más equitativamente posible.';
+  }
+
+  @override
+  String get schoolPdfGroupDoorstroom => 'Doorstroomtoets (prueba de acceso)';
+
+  @override
+  String get schoolPdfOrder => 'Orden';
+
+  @override
+  String get schoolPdfOrderPerSubject => 'Por asignatura';
+
+  @override
+  String get schoolPdfOrderMixed => 'Mezclado';
+
+  @override
+  String get schoolPdfOrderHelp =>
+      'Las preguntas que comparten un texto se mantienen juntas. Con \"Por asignatura\", cada asignatura siguiente empieza en una página nueva.';
+
+  @override
+  String get schoolPdfExtraWritingSpace => 'Espacio extra para escribir';
+
+  @override
+  String get schoolPdfAddAnswerSheet => 'Añadir hoja de respuestas';
+
+  @override
+  String get schoolPdfAnswerSheetHelp =>
+      'Empieza en una página nueva después de las preguntas.';
+
+  @override
+  String get schoolPdfExplanations => 'Explicaciones de las respuestas';
+
+  @override
+  String schoolPdfSummary(int total, int subjects, String order) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total preguntas',
+      one: '1 pregunta',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      subjects,
+      locale: localeName,
+      other: '$subjects asignaturas',
+      one: '1 asignatura',
+    );
+    return '$_temp0 · $_temp1 · $order';
+  }
+
+  @override
+  String get schoolPdfMaking => 'Creando PDF…';
+
+  @override
+  String get schoolPdfMakeAndSave => 'Crear y guardar PDF';
+
+  @override
+  String schoolPdfAvailable(int count) {
+    return '$count disponibles';
+  }
+
+  @override
+  String schoolPdfAvailableInPdf(int count, int inPdf) {
+    return '$count disponibles · $inPdf en el PDF';
+  }
+
+  @override
+  String schoolPdfCountLabel(String name) {
+    return 'Preguntas de $name';
+  }
+
+  @override
+  String get schoolTestsTitle => 'Pruebas de práctica';
+
+  @override
+  String schoolTestsIntro(String level, int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total preguntas',
+      one: '1 pregunta',
+    );
+    return '$level. Preguntas de práctica propias con el formato de las preguntas del IEP, no es una prueba oficial del IEP. Para la doorstroomtoets practicas cálculo, lectura y lengua. Las demás asignaturas son práctica extra. Tu puntuación de práctica no es un consejo sobre la prueba ni una determinación de nivel. $_temp0 en el banco.';
+  }
+
+  @override
+  String get schoolTestsChooseSubject => 'Elige una asignatura';
+
+  @override
+  String get schoolTestsGroupPractice => 'Práctica para el IEP';
+
+  @override
+  String get schoolTestsHowMany => '¿Cuántas preguntas?';
+
+  @override
+  String schoolQuestionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count preguntas',
+      one: '1 pregunta',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get schoolTestsWhatYouGet => 'Qué obtienes';
+
+  @override
+  String get schoolTestsWhatYouGetBody =>
+      'Las preguntas se reparten de forma equilibrada entre los temas, para que practiques distintas habilidades. Lee bien cada instrucción: a veces eliges una respuesta y a veces escribes algo. Solo verás las explicaciones después de revisar.';
+
+  @override
+  String get schoolTestsChooseFirst => 'Elige primero una asignatura';
+
+  @override
+  String schoolTestsStartTest(String subject) {
+    return 'Empezar la prueba $subject';
+  }
+
+  @override
+  String get schoolTestsPdfBannerSub =>
+      'Crea una prueba imprimible con tus propias asignaturas y cantidades.';
+
+  @override
+  String schoolTestsSubjectMeta(int questions, int topics) {
+    String _temp0 = intl.Intl.pluralLogic(
+      questions,
+      locale: localeName,
+      other: '$questions preguntas',
+      one: '1 pregunta',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      topics,
+      locale: localeName,
+      other: '$topics temas',
+      one: '1 tema',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
+  String schoolTestsProgress(int number, int total, int answered) {
+    return 'Pregunta $number de $total · $answered respondidas';
+  }
+
+  @override
+  String get schoolTestsYourAnswer => 'Tu respuesta';
+
+  @override
+  String get schoolTestsHelperNumber =>
+      'Escribe solo el número. Usa una coma para los decimales.';
+
+  @override
+  String get schoolTestsHelperWord =>
+      'Escribe solo la palabra pedida o las letras que faltan.';
+
+  @override
+  String get schoolTestsCheck => 'Revisar';
+
+  @override
+  String get schoolTestsCheckNow => 'Revisar ahora';
+
+  @override
+  String schoolTestsCorrectOf(int correct, int total) {
+    return '$correct de $total correctas';
+  }
+
+  @override
+  String schoolTestsResultMeta(
+    String subject,
+    String duration,
+    String perQuestion,
+    int skipped,
+  ) {
+    String _temp0 = intl.Intl.pluralLogic(
+      skipped,
+      locale: localeName,
+      other: ' · $skipped omitida(s)',
+      zero: '',
+    );
+    return '$subject · $duration · $perQuestion por pregunta$_temp0';
+  }
+
+  @override
+  String get schoolTestsPerTopic => 'Por tema';
+
+  @override
+  String get schoolTestsNewTest => 'Nueva prueba';
+
+  @override
+  String get schoolTestsOtherSubject => 'Otra asignatura';
+
+  @override
+  String get schoolTestsAnswers => 'Respuestas';
+
+  @override
+  String get schoolTestsOnlyMistakes => 'Solo errores';
+
+  @override
+  String get schoolTestsAllQuestions => 'Todas las preguntas';
+
+  @override
+  String get schoolTestsAllCorrect => 'Todo correcto';
+
+  @override
+  String get schoolTestsNoMistakes => 'No hay errores que revisar.';
+
+  @override
+  String get schoolTestsSkippedThis => 'Has omitido esta pregunta.';
+
+  @override
+  String get schoolTestsAnsweredCorrectly => 'Respondida correctamente.';
+
+  @override
+  String schoolTestsYourAnswerValue(String answer) {
+    return 'Tu respuesta: $answer';
+  }
+
+  @override
+  String schoolTestsCorrectAnswerValue(String answer) {
+    return 'Respuesta correcta: $answer';
+  }
+
+  @override
+  String schoolTestsQuestionNumber(int number) {
+    return 'Pregunta $number';
+  }
+
+  @override
+  String schoolTestsDurationSec(int seconds) {
+    return '$seconds s';
+  }
+
+  @override
+  String schoolTestsDurationMinSec(int minutes, int seconds) {
+    return '$minutes min $seconds s';
+  }
+
+  @override
+  String get secureChatNotReady => 'El cifrado del chat aún no está listo.';
+
+  @override
+  String get secureChatPeerNoKey =>
+      'Esta persona aún no ha configurado el cifrado del chat; inténtalo más tarde.';
+
+  @override
+  String get secureChatNotSignedIn => 'No has iniciado sesión.';
+
+  @override
+  String get secureChatIdentityLoadFailed =>
+      'No se pudo cargar la identidad del chat. Restaura la identidad original.';
+
+  @override
+  String secureChatServerError(int status) {
+    return 'Error del servidor ($status).';
+  }
+
+  @override
+  String get secureChatTitle => 'Chat cifrado de extremo a extremo';
+
+  @override
+  String get secureChatPickOrInvite =>
+      'Elige una conversación o invita a alguien nuevo por correo.';
+
+  @override
+  String get secureChatBack => 'Chats';
+
+  @override
+  String get secureChatNeedsSyncTitle => 'El chat necesita sincronización';
+
+  @override
+  String get secureChatNeedsSyncBody =>
+      'Inicia sesión en Ajustes → Sincronización y cuenta para invitar a personas y chatear. Los mensajes están cifrados de extremo a extremo en este dispositivo; el servidor solo retransmite texto cifrado.';
+
+  @override
+  String get secureChatHeading => 'Chat';
+
+  @override
+  String get secureChatNewChat => 'Nuevo chat';
+
+  @override
+  String get secureChatInviteSent => 'Invitación enviada.';
+
+  @override
+  String get secureChatNoChatsYet => 'Aún no hay chats';
+
+  @override
+  String get secureChatNoChatsHint =>
+      'Invita a alguien con su correo y saluda.';
+
+  @override
+  String get secureChatWaitingForEncryption =>
+      'Esperando a que configure el cifrado…';
+
+  @override
+  String get secureChatNoMessagesYet => 'Aún no hay mensajes';
+
+  @override
+  String get secureChatInvites => 'Invitaciones';
+
+  @override
+  String secureChatWantsToChat(String email) {
+    return '$email quiere chatear';
+  }
+
+  @override
+  String get secureChatSayHello => 'Saluda';
+
+  @override
+  String get secureChatMessagesEncrypted =>
+      'Los mensajes aquí están cifrados de extremo a extremo.';
+
+  @override
+  String secureChatPeerNotReady(String email) {
+    return '$email aún no ha configurado el cifrado del chat en ningún dispositivo; podrás escribirle cuando lo haga.';
+  }
+
+  @override
+  String get secureChatMessageHint => 'Mensaje…';
+
+  @override
+  String get secureChatCouldNotDecrypt => 'No se pudo descifrar este mensaje.';
+
+  @override
+  String get secureChatEnterValidEmail =>
+      'Introduce una dirección de correo válida.';
+
+  @override
+  String get secureChatInviteTitle => 'Iniciar un chat cifrado';
+
+  @override
+  String get secureChatInviteBody =>
+      'Verán la invitación en Chat → Invitaciones la próxima vez que abran Luma. Una vez aceptada, cada mensaje está cifrado de extremo a extremo: solo los dos podréis leerlos.';
+
+  @override
+  String get secureChatSendInvite => 'Enviar invitación';
+
+  @override
+  String get serverTycoonAchFirstGrand => 'Primer millar';
+
+  @override
+  String get serverTycoonAchFiveFigures => 'Cinco cifras';
+
+  @override
+  String get serverTycoonAchSixFigures => 'Seis cifras';
+
+  @override
+  String get serverTycoonAchMillionaire => 'Millonario del centro de datos';
+
+  @override
+  String get serverTycoonAchTrustedHost => 'Anfitrión de confianza';
+
+  @override
+  String get serverTycoonAchWellRegarded => 'Bien valorado';
+
+  @override
+  String get serverTycoonAchIndustryLeader => 'Líder del sector';
+
+  @override
+  String get serverTycoonAchPerfectReputation => 'Reputación perfecta';
+
+  @override
+  String get serverTycoonAchOneWeekIn => 'Una semana en el negocio';
+
+  @override
+  String get serverTycoonAchOneMonthIn => 'Un mes en el negocio';
+
+  @override
+  String get serverTycoonAchCenturyClub => 'Club del siglo';
+
+  @override
+  String get serverTycoonAchOldGuard => 'Veteranos';
+
+  @override
+  String get serverTycoonAchGigabitPipe => 'Conexión gigabit';
+
+  @override
+  String get serverTycoonAchTenGigBackbone => 'Columna vertebral de 10 Gb';
+
+  @override
+  String get serverTycoonAchFirstDeal => 'Primer trato';
+
+  @override
+  String get serverTycoonAchDealMaker => 'Cerrador de tratos';
+
+  @override
+  String get serverTycoonAchContractMachine => 'Máquina de contratos';
+
+  @override
+  String get serverTycoonAchReliableHost => 'Anfitrión fiable';
+
+  @override
+  String get serverTycoonAchRockSolid => 'Sólido como una roca';
+
+  @override
+  String get serverTycoonAchGrowingFleet => 'Flota en crecimiento';
+
+  @override
+  String get serverTycoonAchScaledUp => 'A lo grande';
+
+  @override
+  String get serverTycoonAchMegaFleet => 'Megaflota';
+
+  @override
+  String get serverTycoonAchContractLegend => 'Leyenda de los contratos';
+
+  @override
+  String get serverTycoonAchBandwidthKing => 'Rey del ancho de banda';
+
+  @override
+  String get serverTycoonAchUnbreakable => 'Indestructible';
+
+  @override
+  String get serverTycoonAchPrestigeMaster => 'Maestro del prestigio';
+
+  @override
+  String get serverTycoonAchTenMillion => 'Club de los diez millones';
+
+  @override
+  String serverTycoonAchEarnTotalDesc(String amount) {
+    return 'Gana un total acumulado de $amount.';
+  }
+
+  @override
+  String serverTycoonAchReputationDesc(int count) {
+    return 'Alcanza $count de reputación.';
+  }
+
+  @override
+  String serverTycoonAchSurviveDaysDesc(int count) {
+    return 'Sobrevive $count días en el negocio.';
+  }
+
+  @override
+  String serverTycoonAchBandwidthDesc(String amount) {
+    return 'Sirve $amount Mbps de ancho de banda a la vez.';
+  }
+
+  @override
+  String get serverTycoonAchFirstDealDesc => 'Completa tu primer contrato.';
+
+  @override
+  String serverTycoonAchContractsDesc(int count) {
+    return 'Completa $count contratos.';
+  }
+
+  @override
+  String serverTycoonAchUptimeDesc(int count) {
+    return 'Mantén $count días seguidos de actividad sin sobrecargas ni fallos de contrato.';
+  }
+
+  @override
+  String serverTycoonAchRigsDesc(int count) {
+    return 'Ten $count servidores a la vez.';
+  }
+
+  @override
+  String get serverTycoonAchRebirthDesc => 'Renace por primera vez.';
+
+  @override
+  String serverTycoonAchPrestigeDesc(int count) {
+    return 'Alcanza el nivel de prestigio $count.';
+  }
+
+  @override
+  String get serverTycoonBoostOverclockName => 'Overclock';
+
+  @override
+  String get serverTycoonBoostOverclockDescription =>
+      'Lleva cada equipo un 25 % por encima de las especificaciones. Consume un 30 % más de energía y se calienta más.';
+
+  @override
+  String get serverTycoonBoostMarketingPushName => 'Campaña de marketing';
+
+  @override
+  String get serverTycoonBoostMarketingPushDescription =>
+      'Una inversión publicitaria que aporta una oferta de contrato extra al día y pagos un 15 % mejores.';
+
+  @override
+  String get serverTycoonBoostColdSnapName => 'Ola de frío';
+
+  @override
+  String get serverTycoonBoostColdSnapDescription =>
+      'Los enfriadores portátiles alquilados ofrecen un 20 % más de margen de refrigeración y hardware más estable.';
+
+  @override
+  String get serverTycoonBoostSurgePricingName => 'Precios dinámicos';
+
+  @override
+  String get serverTycoonBoostSurgePricingDescription =>
+      'Cobra tarifas punta durante dos días: un 35 % más de ingresos por servicios mientras dure.';
+
+  @override
+  String get serverTycoonCompanyBakeryBlurb =>
+      'Una panadería familiar que solo quiere su menú en línea sin que la web se caiga.';
+
+  @override
+  String get serverTycoonCompanyPixelPalsBlurb =>
+      'Estudio de juegos independiente que necesita alojar bots para su Discord de la comunidad.';
+
+  @override
+  String get serverTycoonCompanyStreamForgeBlurb =>
+      'Un colectivo de streamers que necesita servidores de voz a prueba de todo para la noche de podcast.';
+
+  @override
+  String get serverTycoonCompanyNimbusSoftBlurb =>
+      'Una startup SaaS que te externaliza su entorno de API de pruebas.';
+
+  @override
+  String get serverTycoonCompanyDataVaultBlurb =>
+      'Revendedores de copias de seguridad que buscan capacidad de almacenamiento en la nube barata pero fiable.';
+
+  @override
+  String get serverTycoonCompanyCraftedRealmsBlurb =>
+      'Una red comunitaria de Minecraft que alquila plazas de jugadores sobrantes.';
+
+  @override
+  String get serverTycoonCompanyQuantumQuarryBlurb =>
+      'Empresa de análisis de datos que quiere bases de datos gestionadas sin equipo de operaciones.';
+
+  @override
+  String get serverTycoonCompanyAegisSecureBlurb =>
+      'Empresa de privacidad que revende puntos finales de VPN con su propia marca.';
+
+  @override
+  String get serverTycoonCompanyGlobexMediaBlurb =>
+      'Un conglomerado de medios que necesita capacidad de borde CDN cerca de sus espectadores.';
+
+  @override
+  String get serverTycoonCompanyHeliosAiBlurb =>
+      'Laboratorio de IA que alquila capacidad de inferencia mientras su propio clúster está pendiente de entrega.';
+
+  @override
+  String get serverTycoonCompanyOmniCorpBlurb =>
+      'Gigante empresarial. Exigente, pero los cheques se cobran y nunca rebotan.';
+
+  @override
+  String get serverTycoonCompanyDockerHarborBlurb =>
+      'Una startup nativa de contenedores que necesita capacidad de orquestación mientras construye su propio clúster.';
+
+  @override
+  String get serverTycoonCompanyCodeForgeDevOpsBlurb =>
+      'Una empresa de herramientas para desarrolladores que externaliza su granja de compilación CI/CD y sus API de staging.';
+
+  @override
+  String get serverTycoonCompanyMegacastNetworkBlurb =>
+      'Una red de podcasts que necesita capacidad de voz y retransmisión de streaming de baja latencia para eventos en directo.';
+
+  @override
+  String get serverTycoonCompanyStreamVerseBlurb =>
+      'Una plataforma de streaming que necesita capacidad CDN de borde y nodos de retransmisión para los picos de espectadores.';
+
+  @override
+  String get serverTycoonCompanyNexusContainersBlurb =>
+      'Plataforma de contenedores empresarial que alquila capacidad de orquestación y de almacenamiento de respaldo.';
+
+  @override
+  String get serverTycoonCompanyOmnibuildCollectiveBlurb =>
+      'Un conglomerado de estudios independientes que necesita ejecutores CI/CD, servidores de juegos y monitorización.';
+
+  @override
+  String get serverTycoonCompanyTitanCloudBlurb =>
+      'Un proveedor de nube hiperescala que alquila capacidad de contenedores, bases de datos e IA durante su expansión.';
+
+  @override
+  String get serverTycoonCoolerStockName => 'Refrigerador de CPU de serie';
+
+  @override
+  String get serverTycoonCoolerCustomLoopName =>
+      'Circuito personalizado - radiador doble de 480 mm';
+
+  @override
+  String get serverTycoonCoolerRackAirHandlerName =>
+      'Climatizador de precisión para rack';
+
+  @override
+  String get serverTycoonCoolerActiveArrayName =>
+      'Matriz de disipadores activos 4U';
+
+  @override
+  String get serverTycoonCoolerRearDoorName =>
+      'Intercambiador de calor de puerta trasera';
+
+  @override
+  String get serverTycoonCoolerImmersionName =>
+      'Tanque de refrigeración por inmersión bifásica';
+
+  @override
+  String get serverTycoonCoolerChillerName =>
+      'Unidad enfriadora industrial para centro de datos';
+
+  @override
+  String get serverTycoonCoolerNoNameHeatsinkName =>
+      'Disipador de aluminio genérico';
+
+  @override
+  String get serverTycoonCoolerPassive1UName =>
+      'Disipador pasivo 1U con flujo de aire del chasis';
+
+  @override
+  String get serverTycoonCoolingTypeAir => 'Aire';
+
+  @override
+  String get serverTycoonCoolingTypeCustomLoop => 'Circuito personalizado';
+
+  @override
+  String get serverTycoonCoolingTypeIndustrial => 'Industrial';
+
+  @override
+  String get serverTycoonIncidentDdosName => 'Ataque DDoS';
+
+  @override
+  String get serverTycoonIncidentDdosDescription =>
+      'Una avalancha de tráfico basura está saturando el ancho de banda de este router.';
+
+  @override
+  String get serverTycoonIncidentDdosAction => 'Mitigar';
+
+  @override
+  String get serverTycoonIncidentOverheatName => 'Pico de sobrecalentamiento';
+
+  @override
+  String get serverTycoonIncidentOverheatDescription =>
+      'Un pico térmico repentino está limitando el rendimiento de este equipo.';
+
+  @override
+  String get serverTycoonIncidentOverheatAction => 'Enfriamiento de emergencia';
+
+  @override
+  String get serverTycoonIncidentDriveName => 'Fallo de disco';
+
+  @override
+  String get serverTycoonIncidentDriveDescription =>
+      'Un disco de este equipo acaba de fallar. Reemplázalo para restablecer el servicio completo.';
+
+  @override
+  String get serverTycoonIncidentDriveAction => 'Reemplazar disco';
+
+  @override
+  String get serverTycoonIncidentLeakName => 'Fuga de refrigeración';
+
+  @override
+  String get serverTycoonIncidentLeakDescription =>
+      'El circuito de refrigeración por agua de este equipo tiene una fuga, lo que reduce su capacidad de refrigeración.';
+
+  @override
+  String get serverTycoonIncidentLeakAction => 'Reparar';
+
+  @override
+  String get serverTycoonIncidentViralName => 'Pico de demanda viral';
+
+  @override
+  String get serverTycoonIncidentViralDescription =>
+      '¡Uno de tus servicios se ha vuelto viral! Ingresos extra por el resto del día.';
+
+  @override
+  String get serverTycoonIncidentViralAction => '¡Genial!';
+
+  @override
+  String serverTycoonPlanHome(String speed) {
+    return 'Internet doméstico - $speed';
+  }
+
+  @override
+  String serverTycoonPlanBusiness(String speed) {
+    return 'Fibra empresarial - $speed';
+  }
+
+  @override
+  String serverTycoonPlanDedicated(String speed) {
+    return 'Fibra dedicada - $speed';
+  }
+
+  @override
+  String serverTycoonPlanColocation(String speed) {
+    return 'Enlace ascendente de colocación - $speed';
+  }
+
+  @override
+  String get serverTycoonLicenseGameHosting =>
+      'Licencia de alojamiento de juegos';
+
+  @override
+  String get serverTycoonLicenseGameHostingDesc =>
+      'Alojar legalmente Minecraft y otros servidores de juegos para clientes de pago.';
+
+  @override
+  String get serverTycoonLicenseCloudStorage =>
+      'Licencia de almacenamiento en la nube';
+
+  @override
+  String get serverTycoonLicenseCloudStorageDesc =>
+      'Ofrece almacenamiento personal en la nube y alojamiento de archivos de pago.';
+
+  @override
+  String get serverTycoonLicenseVpnHosting => 'Licencia de alojamiento VPN';
+
+  @override
+  String get serverTycoonLicenseVpnHostingDesc =>
+      'Opera un servicio de punto final VPN para clientes.';
+
+  @override
+  String get serverTycoonLicenseCdnHosting => 'Licencia de alojamiento CDN';
+
+  @override
+  String get serverTycoonLicenseCdnHostingDesc =>
+      'Ejecuta un nodo de caché perimetral CDN para el tráfico web.';
+
+  @override
+  String get serverTycoonLicenseEmailHosting =>
+      'Licencia de alojamiento de correo';
+
+  @override
+  String get serverTycoonLicenseEmailHostingDesc =>
+      'Aloja dominios de correo y buzones para empresas.';
+
+  @override
+  String get serverTycoonLicenseDatabaseHosting =>
+      'Licencia de alojamiento de bases de datos';
+
+  @override
+  String get serverTycoonLicenseDatabaseHostingDesc =>
+      'Ofrece instancias de bases de datos gestionadas a los clientes.';
+
+  @override
+  String get serverTycoonLicenseAiHosting => 'Licencia de alojamiento de IA';
+
+  @override
+  String get serverTycoonLicenseAiHostingDesc =>
+      'Ejecuta cargas de inferencia de IA como servicio de pago.';
+
+  @override
+  String get serverTycoonLicenseEnterpriseHosting =>
+      'Licencia de alojamiento empresarial';
+
+  @override
+  String get serverTycoonLicenseEnterpriseHostingDesc =>
+      'Cualifícate para contratos empresariales y gubernamentales.';
+
+  @override
+  String get serverTycoonLicenseContainerHosting =>
+      'Licencia de alojamiento de contenedores';
+
+  @override
+  String get serverTycoonLicenseContainerHostingDesc =>
+      'Opera legalmente plataformas de orquestación de contenedores Docker/Kubernetes para clientes.';
+
+  @override
+  String get serverTycoonLicenseStreamingHosting =>
+      'Licencia de alojamiento de streaming';
+
+  @override
+  String get serverTycoonLicenseStreamingHostingDesc =>
+      'Ejecuta infraestructura de retransmisión y transcodificación de vídeo para creadores de contenido.';
+
+  @override
+  String get serverTycoonMissionProfitableDay => 'En positivo';
+
+  @override
+  String get serverTycoonMissionProfitableDayDesc =>
+      'Obtén un beneficio neto hoy.';
+
+  @override
+  String get serverTycoonMissionBigDay => 'Día de cobro';
+
+  @override
+  String get serverTycoonMissionBigDayDesc =>
+      'Obtén un beneficio neto considerable en un solo día.';
+
+  @override
+  String get serverTycoonMissionExpandServices => 'Ponlo en marcha';
+
+  @override
+  String get serverTycoonMissionExpandServicesDesc =>
+      'Instala 2 servicios nuevos hoy.';
+
+  @override
+  String get serverTycoonMissionGoShopping => 'Ronda de piezas';
+
+  @override
+  String get serverTycoonMissionGoShoppingDesc => 'Compra 3 componentes hoy.';
+
+  @override
+  String get serverTycoonMissionCloseAContract => 'Entregado';
+
+  @override
+  String get serverTycoonMissionCloseAContractDesc =>
+      'Completa un contrato de empresa hoy.';
+
+  @override
+  String get serverTycoonMissionFirefighter => 'Bombero';
+
+  @override
+  String get serverTycoonMissionFirefighterDesc => 'Resuelve 2 incidentes hoy.';
+
+  @override
+  String get serverTycoonMissionLabWork => 'Trabajo de laboratorio';
+
+  @override
+  String get serverTycoonMissionLabWorkDesc =>
+      'Termina un proyecto de investigación hoy.';
+
+  @override
+  String get serverTycoonMissionPushTraffic => 'Pico de tráfico';
+
+  @override
+  String get serverTycoonMissionPushTrafficDesc =>
+      'Atiende una carga de tráfico sostenida hoy.';
+
+  @override
+  String get serverTycoonMissionCleanRun => 'Día sin incidencias';
+
+  @override
+  String get serverTycoonMissionCleanRunDesc =>
+      'Supera el día sin ninguna sobrecarga.';
+
+  @override
+  String get serverTycoonNicRealtekOnboard =>
+      'Ethernet gigabit Realtek (integrado)';
+
+  @override
+  String get serverTycoonNicGenericOnboard =>
+      'Fast Ethernet genérico (integrado)';
+
+  @override
+  String get serverTycoonPsuRedundant2000 =>
+      'Fuente de servidor redundante 2000 W (doble)';
+
+  @override
+  String get serverTycoonPsuRedundant3000Titanium =>
+      'Fuente de servidor redundante 3000 W Titanium (doble)';
+
+  @override
+  String get serverTycoonPsuHyperscale5000 =>
+      'Fuente de rack hyperscale 5000 W (N+1)';
+
+  @override
+  String get serverTycoonPsuGeneric300 => 'OEM genérico 300 W';
+
+  @override
+  String get serverTycoonPsuRedundant1200 =>
+      'Fuente de servidor redundante 1200 W (doble)';
+
+  @override
+  String get serverTycoonRamGenericDdr3Gb8 => 'DDR3 genérica 8 GB 1600 MHz';
+
+  @override
+  String get serverTycoonRamGenericDdr3Gb4 => 'DDR3 genérica 4 GB 1333 MHz';
+
+  @override
+  String get serverTycoonResearchBranchLab => 'Laboratorio de I+D';
+
+  @override
+  String get serverTycoonResearchBranchCompute => 'Cómputo';
+
+  @override
+  String get serverTycoonResearchBranchStorage => 'Almacenamiento y datos';
+
+  @override
+  String get serverTycoonResearchBranchNetworking => 'Redes';
+
+  @override
+  String get serverTycoonResearchBranchPower => 'Energía y refrigeración';
+
+  @override
+  String get serverTycoonResearchBranchBusiness => 'Negocio';
+
+  @override
+  String get serverTycoonResearchHomeLab => 'Laboratorio en casa';
+
+  @override
+  String get serverTycoonResearchHomeLabDesc =>
+      'Una esquina de la oficina reservada para pruebas. Añade 1,0 punto de investigación al día.';
+
+  @override
+  String get serverTycoonResearchResearchWing => 'Ala de investigación';
+
+  @override
+  String get serverTycoonResearchResearchWingDesc =>
+      'Un auténtico espacio de laboratorio con equipos de banco. Añade 2,5 puntos de investigación al día y una segunda ranura de cola.';
+
+  @override
+  String get serverTycoonResearchRndDivision => 'División de I+D';
+
+  @override
+  String get serverTycoonResearchRndDivisionDesc =>
+      'Una división de investigación con personal. Añade 6,0 puntos de investigación al día y una tercera ranura de cola.';
+
+  @override
+  String get serverTycoonResearchAutomatedTelemetry =>
+      'Telemetría automatizada';
+
+  @override
+  String get serverTycoonResearchAutomatedTelemetryDesc =>
+      'Los equipos informan de su propio rendimiento, así que tu flota sigue generando ingresos con la app cerrada. Las ganancias en ausencia se pagan un 15% más.';
+
+  @override
+  String get serverTycoonResearchLightsOutOperations =>
+      'Operaciones sin personal';
+
+  @override
+  String get serverTycoonResearchLightsOutOperationsDesc =>
+      'La sala funciona sin supervisión durante la noche. Las ganancias en ausencia se pagan otro 20% más.';
+
+  @override
+  String get serverTycoonResearchContinuousOptimization =>
+      'Optimización continua';
+
+  @override
+  String get serverTycoonResearchContinuousOptimizationDesc =>
+      'Un programa permanente de ajustes incrementales. Cada nivel añade un 2% a todos los ingresos de servicio, y nunca se agotan los niveles.';
+
+  @override
+  String get serverTycoonResearchKernelTuning => 'Ajuste del kernel';
+
+  @override
+  String get serverTycoonResearchKernelTuningDesc =>
+      'El ajuste del planificador y de las IRQ exprime un 8% más de trabajo útil de cada CPU.';
+
+  @override
+  String get serverTycoonResearchHypervisorOptimization =>
+      'Optimización del hipervisor';
+
+  @override
+  String get serverTycoonResearchHypervisorOptimizationDesc =>
+      'Los controladores paravirtualizados y el anclaje de CPU reducen la sobrecarga de virtualización, liberando otro 12% de capacidad de CPU.';
+
+  @override
+  String get serverTycoonResearchOverclockProfiles => 'Perfiles de overclock';
+
+  @override
+  String get serverTycoonResearchOverclockProfilesDesc =>
+      'Las frecuencias ajustadas por chip añaden un 15% de capacidad de CPU, a costa de un 10% menos de margen de refrigeración.';
+
+  @override
+  String get serverTycoonResearchSiliconBinning => 'Clasificación de silicio';
+
+  @override
+  String get serverTycoonResearchSiliconBinningDesc =>
+      'Los chips seleccionados a mano funcionan más frescos y rápidos: un 18% más de capacidad de CPU y un 10% más de margen de refrigeración.';
+
+  @override
+  String get serverTycoonResearchBlockDedup => 'Deduplicación de bloques';
+
+  @override
+  String get serverTycoonResearchBlockDedupDesc =>
+      'Los bloques idénticos se almacenan una sola vez, reduciendo un 10% el almacenamiento que necesita cada servicio.';
+
+  @override
+  String get serverTycoonResearchCompressionI => 'Compresión en línea';
+
+  @override
+  String get serverTycoonResearchCompressionIDesc =>
+      'Comprime los datos al escribirlos en disco para reducir otro 12% los requisitos de almacenamiento.';
+
+  @override
+  String get serverTycoonResearchCompressionIi => 'Compresión adaptativa';
+
+  @override
+  String get serverTycoonResearchCompressionIiDesc =>
+      'Los algoritmos de compresión por carga de trabajo reducen aún más un 15% los requisitos de almacenamiento.';
+
+  @override
+  String get serverTycoonResearchTieredCaching => 'Caché por niveles';
+
+  @override
+  String get serverTycoonResearchTieredCachingDesc =>
+      'Los datos más solicitados se sirven desde RAM y NVMe, elevando la satisfacción del cliente un 5%.';
+
+  @override
+  String get serverTycoonResearchMeshNetworking => 'Red en malla';
+
+  @override
+  String get serverTycoonResearchMeshNetworkingDesc =>
+      'Aprende a usar un segundo router para repartir los equipos entre conexiones de distintos proveedores.';
+
+  @override
+  String get serverTycoonResearchPacketShaping => 'Modelado de paquetes';
+
+  @override
+  String get serverTycoonResearchPacketShapingDesc =>
+      'Unas colas más inteligentes reducen un 10% el ancho de banda que consume cada servicio.';
+
+  @override
+  String get serverTycoonResearchBackboneRouting => 'Enrutamiento troncal';
+
+  @override
+  String get serverTycoonResearchBackboneRoutingDesc =>
+      'Las tablas de enrutamiento avanzadas permiten un tercer router en la red.';
+
+  @override
+  String get serverTycoonResearchQosPrioritization => 'Priorización de QoS';
+
+  @override
+  String get serverTycoonResearchQosPrioritizationDesc =>
+      'El tráfico sensible a la latencia va primero, elevando la satisfacción del cliente un 4%.';
+
+  @override
+  String get serverTycoonResearchFiberBackhaul => 'Backhaul de fibra';
+
+  @override
+  String get serverTycoonResearchFiberBackhaulDesc =>
+      'Un backhaul dedicado te permite operar hasta cinco routers en total.';
+
+  @override
+  String get serverTycoonResearchAnycastEdge => 'Borde anycast';
+
+  @override
+  String get serverTycoonResearchAnycastEdgeDesc =>
+      'El tráfico llega al nodo de borde más cercano, reduciendo otro 15% las necesidades de ancho de banda.';
+
+  @override
+  String get serverTycoonResearchHyperscaleNetworking => 'Redes hiperescala';
+
+  @override
+  String get serverTycoonResearchHyperscaleNetworkingDesc =>
+      'Las redes definidas por software te permiten operar hasta ocho routers en total.';
+
+  @override
+  String get serverTycoonResearchPowerTuning => 'Ajuste de energía';
+
+  @override
+  String get serverTycoonResearchPowerTuningDesc =>
+      'El undervolting y unas curvas de ventilador más inteligentes reducen tu factura de electricidad un 10%.';
+
+  @override
+  String get serverTycoonResearchLiquidCoolingI =>
+      'Investigación de refrigeración líquida';
+
+  @override
+  String get serverTycoonResearchLiquidCoolingIDesc =>
+      'Los diseños de circuito propios dan a cada equipo un 12% más de margen de refrigeración.';
+
+  @override
+  String get serverTycoonResearchSmartPdu =>
+      'Distribución de energía inteligente';
+
+  @override
+  String get serverTycoonResearchSmartPduDesc =>
+      'Las PDU de grado rack reducen otro 15% la factura de energía.';
+
+  @override
+  String get serverTycoonResearchLiquidCoolingIi =>
+      'Refrigeración directa al chip';
+
+  @override
+  String get serverTycoonResearchLiquidCoolingIiDesc =>
+      'Las placas frías directamente sobre el die añaden un 15% más de margen de refrigeración.';
+
+  @override
+  String get serverTycoonResearchRenewableEnergy =>
+      'Contratos de energía renovable';
+
+  @override
+  String get serverTycoonResearchRenewableEnergyDesc =>
+      'Los PPA solares y eólicos reducen otro 15% tu factura de electricidad.';
+
+  @override
+  String get serverTycoonResearchImmersionCooling =>
+      'Refrigeración por inmersión';
+
+  @override
+  String get serverTycoonResearchImmersionCoolingDesc =>
+      'Equipos completos sumergidos en fluido dieléctrico: un 25% más de margen de refrigeración y temperaturas mucho más estables.';
+
+  @override
+  String get serverTycoonResearchWasteHeatRecovery =>
+      'Recuperación de calor residual';
+
+  @override
+  String get serverTycoonResearchWasteHeatRecoveryDesc =>
+      'Vende tu calor residual a la red de calefacción del distrito y reduce otro 12% la factura de energía.';
+
+  @override
+  String get serverTycoonResearchBulkPurchasing => 'Compras al por mayor';
+
+  @override
+  String get serverTycoonResearchBulkPurchasingDesc =>
+      'Los acuerdos con proveedores reducen un 20% el precio de cada equipo nuevo.';
+
+  @override
+  String get serverTycoonResearchSalesTeam => 'Equipo de ventas';
+
+  @override
+  String get serverTycoonResearchSalesTeamDesc =>
+      'Un comercial a tiempo parcial te permite gestionar un contrato de empresa más a la vez.';
+
+  @override
+  String get serverTycoonResearchRunbookAutomation =>
+      'Automatización de runbooks';
+
+  @override
+  String get serverTycoonResearchRunbookAutomationDesc =>
+      'Las respuestas documentadas y automatizadas hacen que lleguen un 20% menos de incidentes hasta ti.';
+
+  @override
+  String get serverTycoonResearchSupplyChainOptimization =>
+      'Optimización de la cadena de suministro';
+
+  @override
+  String get serverTycoonResearchSupplyChainOptimizationDesc =>
+      'Unas compras optimizadas reducen otro 15% el precio de cada equipo nuevo.';
+
+  @override
+  String get serverTycoonResearchAccountManagers => 'Gestores de cuentas';
+
+  @override
+  String get serverTycoonResearchAccountManagersDesc =>
+      'Los gestores de cuentas dedicados gestionan dos contratos adicionales a la vez.';
+
+  @override
+  String get serverTycoonResearchReputationManagement =>
+      'Gestión de la reputación';
+
+  @override
+  String get serverTycoonResearchReputationManagementDesc =>
+      'Las páginas de estado públicas y la comunicación proactiva elevan la satisfacción del cliente un 4%.';
+
+  @override
+  String get serverTycoonResearchPremiumSlas => 'SLA premium';
+
+  @override
+  String get serverTycoonResearchPremiumSlasDesc =>
+      'Niveles de disponibilidad garantizados por los que pagarán los clientes: un 8% más de ingresos por cada servicio.';
+
+  @override
+  String get serverTycoonResearchEnterpriseSales =>
+      'División de ventas empresariales';
+
+  @override
+  String get serverTycoonResearchEnterpriseSalesDesc =>
+      'Un equipo comercial empresarial dedicado te permite gestionar un contrato más a la vez.';
+
+  @override
+  String get serverTycoonResearchAutoRenewal =>
+      'Contratos de renovación automática';
+
+  @override
+  String get serverTycoonResearchAutoRenewalDesc =>
+      'Los clientes se renuevan por defecto, añadiendo un 12% a todos los ingresos por servicio.';
+
+  @override
+  String get serverTycoonServiceDiscordBotName => 'Bot de Discord';
+
+  @override
+  String get serverTycoonServiceDiscordBotDesc =>
+      'Bots ligeros para comunidades de Discord. Apenas consumen CPU ni ancho de banda.';
+
+  @override
+  String get serverTycoonServiceDiscordBotCapacity => 'instancia de bot';
+
+  @override
+  String get serverTycoonServiceStaticWebsiteName => 'Sitio web estático';
+
+  @override
+  String get serverTycoonServiceStaticWebsiteDesc =>
+      'Sitios HTML/CSS sin backend. Baratos de ejecutar a cualquier escala.';
+
+  @override
+  String get serverTycoonServiceStaticWebsiteCapacity =>
+      '1 mil visitantes mensuales';
+
+  @override
+  String get serverTycoonServiceDynamicWebsiteApiName =>
+      'Sitio web dinámico / API';
+
+  @override
+  String get serverTycoonServiceDynamicWebsiteApiDesc =>
+      'Sitios renderizados en el servidor y endpoints de API. Necesitan CPU y RAM reales.';
+
+  @override
+  String get serverTycoonServiceDynamicWebsiteApiCapacity =>
+      'nivel de peticiones';
+
+  @override
+  String get serverTycoonServiceMonitoringServerName =>
+      'Servidor de monitorización';
+
+  @override
+  String get serverTycoonServiceMonitoringServerDesc =>
+      'Monitorización de disponibilidad y métricas para la infraestructura de otros.';
+
+  @override
+  String get serverTycoonServiceMonitoringServerCapacity => 'host monitorizado';
+
+  @override
+  String get serverTycoonServiceVoiceServerName => 'Servidor de voz';
+
+  @override
+  String get serverTycoonServiceVoiceServerDesc =>
+      'Alojamiento de chat de voz de baja latencia (estilo TeamSpeak/Mumble).';
+
+  @override
+  String get serverTycoonServiceVoiceServerCapacity =>
+      'usuario de voz simultáneo';
+
+  @override
+  String get serverTycoonServiceMinecraftServerName => 'Servidor de Minecraft';
+
+  @override
+  String get serverTycoonServiceMinecraftServerDesc =>
+      'CPU muy exigente, RAM/almacenamiento/red moderados. Sensible a la latencia.';
+
+  @override
+  String get serverTycoonServiceMinecraftServerCapacity => 'plaza de jugador';
+
+  @override
+  String get serverTycoonServiceGenericGameServerName =>
+      'Servidor de juegos (supervivencia/sandbox)';
+
+  @override
+  String get serverTycoonServiceGenericGameServerDesc =>
+      'Servidores dedicados al estilo Rust/Valheim. Más pesados que Minecraft por plaza.';
+
+  @override
+  String get serverTycoonServiceGenericGameServerCapacity => 'plaza de jugador';
+
+  @override
+  String get serverTycoonServiceCloudStorageName => 'Almacenamiento en la nube';
+
+  @override
+  String get serverTycoonServiceCloudStorageDesc =>
+      'Almacenamiento en la nube personal y alojamiento de archivos. Consume mucho almacenamiento, no CPU.';
+
+  @override
+  String get serverTycoonServiceCloudStorageCapacity =>
+      'cliente de almacenamiento (~50 GB)';
+
+  @override
+  String get serverTycoonServiceVpnProviderName => 'Proveedor de VPN';
+
+  @override
+  String get serverTycoonServiceVpnProviderDesc =>
+      'Puntos finales de túneles cifrados para clientes centrados en la privacidad.';
+
+  @override
+  String get serverTycoonServiceVpnProviderCapacity =>
+      'usuario de VPN simultáneo';
+
+  @override
+  String get serverTycoonServiceCdnEdgeName => 'Nodo de borde CDN';
+
+  @override
+  String get serverTycoonServiceCdnEdgeDesc =>
+      'Almacena en caché y sirve los recursos estáticos de otros sitios cerca de sus usuarios.';
+
+  @override
+  String get serverTycoonServiceCdnEdgeCapacity =>
+      'nivel de caché (~100 GB/día)';
+
+  @override
+  String get serverTycoonServiceEmailHostingName => 'Alojamiento de correo';
+
+  @override
+  String get serverTycoonServiceEmailHostingDesc =>
+      'Dominios de correo empresarial y buzones. Carga ligera, ingresos constantes.';
+
+  @override
+  String get serverTycoonServiceEmailHostingCapacity => 'buzón';
+
+  @override
+  String get serverTycoonServiceDatabaseHostingName =>
+      'Alojamiento de bases de datos';
+
+  @override
+  String get serverTycoonServiceDatabaseHostingDesc =>
+      'Instancias de base de datos gestionadas para otras empresas.';
+
+  @override
+  String get serverTycoonServiceDatabaseHostingCapacity =>
+      'instancia de base de datos';
+
+  @override
+  String get serverTycoonServiceAiInferenceName =>
+      'Alojamiento de inferencia de IA';
+
+  @override
+  String get serverTycoonServiceAiInferenceDesc =>
+      'Cargas de inferencia basadas en CPU. Extremadamente exigentes en CPU y RAM.';
+
+  @override
+  String get serverTycoonServiceAiInferenceCapacity =>
+      'nivel de peticiones de inferencia';
+
+  @override
+  String get serverTycoonServiceContainerHostingName =>
+      'Alojamiento de contenedores';
+
+  @override
+  String get serverTycoonServiceContainerHostingDesc =>
+      'Orquestación de contenedores Docker/Kubernetes. Carga equilibrada de CPU, RAM y almacenamiento.';
+
+  @override
+  String get serverTycoonServiceContainerHostingCapacity => 'pod de contenedor';
+
+  @override
+  String get serverTycoonServiceStreamingRelayName => 'Relé de streaming';
+
+  @override
+  String get serverTycoonServiceStreamingRelayDesc =>
+      'Nodos de retransmisión y transcodificación de flujos de vídeo. Extremadamente exigentes en ancho de banda.';
+
+  @override
+  String get serverTycoonServiceStreamingRelayCapacity =>
+      'relé de streaming (~500 espectadores)';
+
+  @override
+  String get serverTycoonServiceCiCdRunnerName => 'Ejecutor de pipelines CI/CD';
+
+  @override
+  String get serverTycoonServiceCiCdRunnerDesc =>
+      'Ejecutores de compilación y despliegue alojados. CPU con picos y mucha E/S de almacenamiento.';
+
+  @override
+  String get serverTycoonServiceCiCdRunnerCapacity =>
+      'pipeline de compilación simultáneo';
+
+  @override
+  String get serverTycoonServiceCategoryAutomation => 'Automatización';
+
+  @override
+  String get serverTycoonServiceCategoryWeb => 'Web';
+
+  @override
+  String get serverTycoonServiceCategoryOps => 'Operaciones';
+
+  @override
+  String get serverTycoonServiceCategoryCommunication => 'Comunicación';
+
+  @override
+  String get serverTycoonServiceCategoryGameHosting => 'Alojamiento de juegos';
+
+  @override
+  String get serverTycoonServiceCategoryStorage => 'Almacenamiento';
+
+  @override
+  String get serverTycoonServiceCategoryNetwork => 'Red';
+
+  @override
+  String get serverTycoonServiceCategoryData => 'Datos';
+
+  @override
+  String get serverTycoonServiceCategoryAi => 'IA';
+
+  @override
+  String get serverTycoonServiceCategoryCloud => 'Nube';
+
+  @override
+  String get serverTycoonServiceCategoryMedia => 'Medios';
+
+  @override
+  String get serverTycoonServiceCategoryDevops => 'DevOps';
+
+  @override
+  String get serverTycoonStaffSysadminName =>
+      'Jordan, el administrador de sistemas';
+
+  @override
+  String get serverTycoonStaffSysadminDesc =>
+      'Resuelve en silencio los incidentes menores (sobrecalentamiento, fugas de refrigeración, DDoS) antes de que te cuesten algo.';
+
+  @override
+  String get serverTycoonStaffElectricianName => 'Sam, el electricista';
+
+  @override
+  String get serverTycoonStaffElectricianDesc =>
+      'Mantiene tu cableado y tus PDU eficientes, y recorta un 8 % extra de tu factura de electricidad.';
+
+  @override
+  String get serverTycoonStaffSalesRepName =>
+      'Casey, el representante de ventas';
+
+  @override
+  String get serverTycoonStaffSalesRepDesc =>
+      'Consigue cada día una oferta de contrato adicional y negocia mejores pagos.';
+
+  @override
+  String get serverTycoonStaffSysadminSeniorName =>
+      'Riley, administrador de sistemas senior';
+
+  @override
+  String get serverTycoonStaffSysadminSeniorDesc =>
+      'Un veterano de operaciones curtido que resuelve incidentes con casi total certeza. Se acumula con Jordan.';
+
+  @override
+  String get serverTycoonStaffElectricianMasterName =>
+      'Drew, maestro electricista';
+
+  @override
+  String get serverTycoonStaffElectricianMasterDesc =>
+      'Un electricista industrial titulado que recorta otro 12 % de tu factura de luz. Se acumula con Sam.';
+
+  @override
+  String get serverTycoonStaffSalesDirectorName => 'Morgan, director de ventas';
+
+  @override
+  String get serverTycoonStaffSalesDirectorDesc =>
+      'Un director muy bien conectado que trae otra oferta diaria y negocia aún con más dureza. Se acumula con Casey.';
+
+  @override
+  String get serverTycoonDriveGeneric500gbHdd => 'HDD genérico de 500 GB';
+
+  @override
+  String get serverTycoonDriveWdRed4tbNasHdd => 'HDD NAS WD Red 4 TB';
+
+  @override
+  String get serverTycoonDriveEnterpriseSsd8tb => 'NVMe U.2 empresarial 8 TB';
+
+  @override
+  String get serverTycoonDriveToshibaMg10Hdd =>
+      'HDD empresarial Toshiba MG10 20 TB';
+
+  @override
+  String get serverTycoonDriveWdGold24tbHdd => 'HDD empresarial WD Gold 24 TB';
+
+  @override
+  String get serverTycoonDriveKioxiaCm7Nvme =>
+      'NVMe empresarial Kioxia CM7-R 15,36 TB';
+
+  @override
+  String get serverTycoonDriveMicron9400Nvme =>
+      'NVMe empresarial Micron 9400 Pro 30,72 TB';
+
+  @override
+  String get serverTycoonDriveSolidigmD5Nvme =>
+      'NVMe empresarial Solidigm D5-P5336 61,44 TB';
+
+  @override
+  String get serverTycoonDriveGeneric128gbSsd => 'SSD SATA genérico de 128 GB';
+
+  @override
+  String get serverTycoonGradeServer => 'servidor';
+
+  @override
+  String get serverTycoonGradePc => 'PC';
+
+  @override
+  String serverTycoonBuildPartGradeMismatch(
+    String part,
+    String grade,
+    String rig,
+  ) {
+    return '$part es hardware de $grade y no encaja en un equipo $rig';
+  }
+
+  @override
+  String serverTycoonBuildUnknownCpu(String id) {
+    return 'CPU desconocida: $id';
+  }
+
+  @override
+  String serverTycoonBuildUnknownMotherboard(String id) {
+    return 'Placa base desconocida: $id';
+  }
+
+  @override
+  String serverTycoonBuildSocketMismatch(
+    String cpu,
+    String cpuSocket,
+    String board,
+    String boardSocket,
+  ) {
+    return '$cpu es del socket $cpuSocket, $board necesita $boardSocket';
+  }
+
+  @override
+  String serverTycoonBuildRamSlotsExceeded(
+    String board,
+    int slots,
+    int sticks,
+  ) {
+    String _temp0 = intl.Intl.pluralLogic(
+      slots,
+      locale: localeName,
+      other: '$slots ranuras RAM',
+      one: '1 ranura RAM',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      sticks,
+      locale: localeName,
+      other: '$sticks módulos instalados',
+      one: '1 módulo instalado',
+    );
+    return '$board solo tiene $_temp0, y hay $_temp1';
+  }
+
+  @override
+  String serverTycoonBuildRamTypeMismatch(
+    String stick,
+    String stickType,
+    String board,
+    String boardType,
+  ) {
+    return '$stick es $stickType, $board requiere $boardType';
+  }
+
+  @override
+  String serverTycoonBuildEccUnsupported(String board, String stick) {
+    return '$board no admite memoria registrada/ECC ($stick)';
+  }
+
+  @override
+  String serverTycoonBuildRamCapExceeded(
+    String board,
+    int maxGb,
+    int installedGb,
+  ) {
+    return '$board admite hasta $maxGb GB de RAM, $installedGb GB instalados';
+  }
+
+  @override
+  String serverTycoonBuildUnknownRam(String id) {
+    return 'Módulo de RAM desconocido: $id';
+  }
+
+  @override
+  String serverTycoonBuildUnknownDrive(String id) {
+    return 'Disco desconocido: $id';
+  }
+
+  @override
+  String serverTycoonBuildSataExceeded(String board, int ports, int drives) {
+    String _temp0 = intl.Intl.pluralLogic(
+      ports,
+      locale: localeName,
+      other: '$ports puertos SATA',
+      one: '1 puerto SATA',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      drives,
+      locale: localeName,
+      other: '$drives unidades necesitan',
+      one: '1 unidad necesita',
+    );
+    return '$board solo tiene $_temp0, y $_temp1 uno';
+  }
+
+  @override
+  String serverTycoonBuildM2Exceeded(String board, int slots, int drives) {
+    String _temp0 = intl.Intl.pluralLogic(
+      slots,
+      locale: localeName,
+      other: '$slots ranuras M.2',
+      one: '1 ranura M.2',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      drives,
+      locale: localeName,
+      other: '$drives unidades NVMe instaladas',
+      one: '1 unidad NVMe instalada',
+    );
+    return '$board solo tiene $_temp0, y hay $_temp1';
+  }
+
+  @override
+  String serverTycoonBuildPowerExceeded(
+    int watts,
+    String psu,
+    int ratingWatts,
+  ) {
+    return 'El consumo máximo estimado de $watts W supera la potencia de $psu ($ratingWatts W)';
+  }
+
+  @override
+  String serverTycoonDay(int day) {
+    return 'Día $day';
+  }
+
+  @override
+  String get serverTycoonNextDay => 'Día siguiente';
+
+  @override
+  String serverTycoonNextDayIn(int seconds) {
+    return 'Día siguiente en $seconds s';
+  }
+
+  @override
+  String get serverTycoonResume => 'Reanudar';
+
+  @override
+  String get serverTycoonPause => 'Pausa';
+
+  @override
+  String get serverTycoonBuild => 'Construir';
+
+  @override
+  String get serverTycoonShop => 'Tienda';
+
+  @override
+  String get serverTycoonContracts => 'Contratos';
+
+  @override
+  String get serverTycoonResearch => 'Investigación';
+
+  @override
+  String get serverTycoonMore => 'Más';
+
+  @override
+  String get serverTycoonFitToView => 'Ajustar a la vista';
+
+  @override
+  String get serverTycoonAutoArrange => 'Organizar automáticamente';
+
+  @override
+  String get serverTycoonPhoneHint =>
+      'Toca para inspeccionar · mantén pulsado para mover';
+
+  @override
+  String get serverTycoonServerRig => 'Equipo servidor';
+
+  @override
+  String get serverTycoonPcRig => 'Equipo PC';
+
+  @override
+  String get serverTycoonIncompatibleHardware =>
+      'HARDWARE INCOMPATIBLE -- GANA \$0/DÍA';
+
+  @override
+  String serverTycoonDiskSpeed(String speed) {
+    return 'Velocidad del disco ($speed MB/s)';
+  }
+
+  @override
+  String serverTycoonThermalThrottling(String percent) {
+    return 'LIMITACIÓN TÉRMICA: $percent% de capacidad';
+  }
+
+  @override
+  String get serverTycoonStorage => 'Almacenamiento';
+
+  @override
+  String get serverTycoonHardware => 'Hardware';
+
+  @override
+  String get serverTycoonMotherboard => 'Placa base';
+
+  @override
+  String get serverTycoonCooling => 'Refrigeración';
+
+  @override
+  String serverTycoonStorageGb(String gb) {
+    return 'Almacenamiento ($gb GB)';
+  }
+
+  @override
+  String get serverTycoonAdd => '+ Añadir';
+
+  @override
+  String get serverTycoonServices => 'Servicios';
+
+  @override
+  String get serverTycoonNothingPluggedIn =>
+      'Nada conectado: arrastra un nodo de servicio a este equipo.';
+
+  @override
+  String get serverTycoonInstallService => 'Instalar servicio';
+
+  @override
+  String get serverTycoonNetwork => 'Red';
+
+  @override
+  String get serverTycoonNotConnected => 'No conectado';
+
+  @override
+  String get serverTycoonNoFixNeeded => 'No hace falta ninguna solución';
+
+  @override
+  String serverTycoonFixWith(String name) {
+    return 'Arreglar: $name';
+  }
+
+  @override
+  String get serverTycoonClone => 'Clonar';
+
+  @override
+  String get serverTycoonService => 'Servicio';
+
+  @override
+  String get serverTycoonServiceNotPluggedIn =>
+      'No conectado: arrastra el puerto de este nodo a un equipo.';
+
+  @override
+  String serverTycoonRunningOn(String name) {
+    return 'Ejecutándose en $name';
+  }
+
+  @override
+  String get serverTycoonCapacity => 'Capacidad';
+
+  @override
+  String serverTycoonMoneyPerDay(String amount) {
+    return '$amount/día';
+  }
+
+  @override
+  String get serverTycoonIncome => 'Ingresos';
+
+  @override
+  String get serverTycoonSatisfaction => 'Satisfacción';
+
+  @override
+  String get serverTycoonBottleneck => 'Cuello de botella';
+
+  @override
+  String get serverTycoonUnplug => 'Desconectar';
+
+  @override
+  String get serverTycoonDeleteService => 'Eliminar servicio';
+
+  @override
+  String get serverTycoonRouter => 'Router';
+
+  @override
+  String get serverTycoonUpgradeToNextPlan => 'Cambiar al plan siguiente';
+
+  @override
+  String get serverTycoonInternetPlan => 'Plan de internet';
+
+  @override
+  String serverTycoonLatencyMs(String ms) {
+    return 'Latencia: $ms ms';
+  }
+
+  @override
+  String serverTycoonMonthlyPrice(String price) {
+    return 'Mensual: $price';
+  }
+
+  @override
+  String get serverTycoonUpgradePlan => 'Mejorar plan';
+
+  @override
+  String get serverTycoonSelect => 'Seleccionar';
+
+  @override
+  String get serverTycoonConnectedRigs => 'Equipos conectados';
+
+  @override
+  String get serverTycoonPcRigTool => 'Equipo PC';
+
+  @override
+  String get serverTycoonServerTool => 'Servidor';
+
+  @override
+  String get serverTycoonServiceTool => 'Servicio';
+
+  @override
+  String get serverTycoonResearchTool => 'Investigación';
+
+  @override
+  String get serverTycoonContractsTool => 'Contratos';
+
+  @override
+  String get serverTycoonGoals => 'Objetivos';
+
+  @override
+  String get serverTycoonBoosts => 'Impulsos';
+
+  @override
+  String get serverTycoonLicenses => 'Licencias';
+
+  @override
+  String get serverTycoonAchievements => 'Logros';
+
+  @override
+  String get serverTycoonStaff => 'Personal';
+
+  @override
+  String get serverTycoonStats => 'Estadísticas';
+
+  @override
+  String get serverTycoonAutoAdvanceDays => 'Avanzar días automáticamente';
+
+  @override
+  String get serverTycoonScaleUp => 'Escalar';
+
+  @override
+  String get serverTycoonReset => 'Restablecer';
+
+  @override
+  String get serverTycoonChange => 'Cambiar';
+
+  @override
+  String serverTycoonSatisfactionPercent(String percent) {
+    return '$percent% sat.';
+  }
+
+  @override
+  String serverTycoonBottleneckValue(String value) {
+    return 'Cuello de botella: $value';
+  }
+
+  @override
+  String get serverTycoonSet => 'Establecer';
+
+  @override
+  String get serverTycoonResetGameTitle => '¿Restablecer la partida?';
+
+  @override
+  String get serverTycoonResetGameBody =>
+      'Se perderá todo el progreso. Esto no se puede deshacer.';
+
+  @override
+  String serverTycoonScaleUpTitle(String tier) {
+    return '¿Escalar a $tier?';
+  }
+
+  @override
+  String serverTycoonScaleUpBody(String multiplier) {
+    return 'Conservas: el nivel de prestigio, el multiplicador de ingresos de por vida (ahora ${multiplier}x), los logros y tu registro de ganancias de por vida.\n\nPerderás: todos los equipos, routers, personal, investigación, licencias, contratos activos, inventario, efectivo, reputación y días -- reinicias desde el día 0 con \$250.';
+  }
+
+  @override
+  String serverTycoonAddSlot(String slot) {
+    return 'Añadir $slot';
+  }
+
+  @override
+  String serverTycoonSwapSlot(String slot) {
+    return 'Cambiar $slot';
+  }
+
+  @override
+  String serverTycoonInInventory(int count) {
+    return 'En inventario x$count';
+  }
+
+  @override
+  String get serverTycoonConsumerHardware => 'Hardware de consumo';
+
+  @override
+  String get serverTycoonServerHardware => 'Hardware de servidor';
+
+  @override
+  String get serverTycoonInstall => 'Instalar';
+
+  @override
+  String get serverTycoonBuy => 'Comprar';
+
+  @override
+  String get serverTycoonSwap => 'Cambiar';
+
+  @override
+  String serverTycoonBuildPcRigSub(String price) {
+    return '$price • un equipo barato para empezar';
+  }
+
+  @override
+  String serverTycoonBuildServerRigSub(String price) {
+    return '$price • admite piezas de nivel servidor';
+  }
+
+  @override
+  String serverTycoonBuildRouterSub(String price, String used, String max) {
+    return '$price • $used/$max en uso';
+  }
+
+  @override
+  String get serverTycoonBuildServiceSub =>
+      'Coloca un nodo de servicio en el lienzo para conectarlo';
+
+  @override
+  String get serverTycoonAutoArrangeSub =>
+      'Organiza todo el grafo: routers, equipos y luego sus servicios';
+
+  @override
+  String get serverTycoonAutoAdvanceSub =>
+      'Pasa directamente al día siguiente sin tocar el informe';
+
+  @override
+  String get serverTycoonDailyGoals => 'Objetivos diarios';
+
+  @override
+  String serverTycoonDailyGoalsSub(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count aún pendientes hoy',
+      zero: 'Todo hecho por hoy',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String serverTycoonBoostsSub(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count activos',
+      zero: 'Ninguno activo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get serverTycoonStatsSub => 'Historial de ingresos y energía';
+
+  @override
+  String serverTycoonLicensesHeld(int count) {
+    return '$count en posesión';
+  }
+
+  @override
+  String serverTycoonStaffHired(int count) {
+    return '$count contratados';
+  }
+
+  @override
+  String serverTycoonAchievementsUnlocked(int count) {
+    return '$count desbloqueados';
+  }
+
+  @override
+  String get serverTycoonScaleUpSub =>
+      'Reinicia más grande con un multiplicador de ingresos permanente';
+
+  @override
+  String get serverTycoonResetGame => 'Restablecer partida';
+
+  @override
+  String get serverTycoonResetGameSub => 'Empezar de nuevo desde el día cero';
+
+  @override
+  String get serverTycoonCatMotherboards => 'Placas base';
+
+  @override
+  String serverTycoonOwnedCount(int count) {
+    return 'Posees x$count';
+  }
+
+  @override
+  String get serverTycoonLocked => 'Bloqueado';
+
+  @override
+  String get serverTycoonBadgeServer => 'SERVIDOR';
+
+  @override
+  String serverTycoonServiceCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count servicios',
+      one: '1 servicio',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String serverTycoonServiceCountNoRouter(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count servicios · sin router',
+      one: '1 servicio · sin router',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get serverTycoonIncompatible => 'Incompatible';
+
+  @override
+  String serverTycoonRigCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count equipos',
+      one: '1 equipo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String serverTycoonServiceNodeStats(
+    String capacity,
+    String unit,
+    String income,
+  ) {
+    return '$capacity $unit · $income';
+  }
+
+  @override
+  String get serverTycoonNotPluggedIn => 'No conectado';
+
+  @override
+  String get serverTycoonNoOffersToday =>
+      'No hay ofertas hoy: gana reputación y compra licencias para atraer empresas.';
+
+  @override
+  String get serverTycoonActive => 'Activos';
+
+  @override
+  String get serverTycoonTodaysOffers => 'Ofertas de hoy';
+
+  @override
+  String get serverTycoonAccept => 'Aceptar';
+
+  @override
+  String get serverTycoonFull => 'Completo';
+
+  @override
+  String get serverTycoonErrorGeneric => 'Error';
+
+  @override
+  String serverTycoonOfferSubtitle(
+    String capacity,
+    String unit,
+    int days,
+    String payout,
+    String bonus,
+  ) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days días',
+      one: '1 día',
+    );
+    return '$capacity $unit • $_temp0 • $payout + $bonus de bonificación';
+  }
+
+  @override
+  String serverTycoonDaysLeft(int count) {
+    return '$count d restantes';
+  }
+
+  @override
+  String serverTycoonContractNeeds(
+    String capacity,
+    String unit,
+    String payout,
+  ) {
+    return 'Necesita $capacity $unit atendidos • $payout';
+  }
+
+  @override
+  String serverTycoonResearchIdle(String rate) {
+    return 'Nada en el laboratorio: ganando $rate RP/día';
+  }
+
+  @override
+  String serverTycoonResearchingValue(String name) {
+    return 'Investigando: $name';
+  }
+
+  @override
+  String serverTycoonResearchProgress(
+    String accrued,
+    String needed,
+    String rate,
+  ) {
+    return '$accrued / $needed RP · $rate/día';
+  }
+
+  @override
+  String serverTycoonQueuedCount(int count) {
+    return '$count en cola';
+  }
+
+  @override
+  String serverTycoonTier(int tier) {
+    return 'Nivel $tier';
+  }
+
+  @override
+  String serverTycoonResearchLevel(int level) {
+    return 'Nivel $level — repetible';
+  }
+
+  @override
+  String get serverTycoonResearched => 'Investigado';
+
+  @override
+  String get serverTycoonCancelResearch => 'Cancelar (50 % devuelto)';
+
+  @override
+  String get serverTycoonRemoveFromQueue => 'Quitar de la cola';
+
+  @override
+  String serverTycoonResearchCostDays(String cost, String days) {
+    return '$cost · ~${days}d';
+  }
+
+  @override
+  String serverTycoonNeedsResearch(String projects) {
+    return 'Necesita $projects';
+  }
+
+  @override
+  String serverTycoonNeedsReputation(String reputation) {
+    return 'Necesita $reputation de reputación';
+  }
+
+  @override
+  String serverTycoonLicenseSubtitle(String description, String reputation) {
+    return '$description\nRequiere $reputation de rep.';
+  }
+
+  @override
+  String get serverTycoonHired => 'CONTRATADO';
+
+  @override
+  String serverTycoonSalary(String amount) {
+    return 'Salario: $amount';
+  }
+
+  @override
+  String get serverTycoonRequirementsNotMet => 'Requisitos no cumplidos';
+
+  @override
+  String get serverTycoonFire => 'Despedir';
+
+  @override
+  String serverTycoonHire(String amount) {
+    return 'Contratar $amount';
+  }
+
+  @override
+  String get serverTycoonIncidentMitigate => 'Mitigar';
+
+  @override
+  String get serverTycoonIncidentCooldown => 'Enfriar';
+
+  @override
+  String get serverTycoonIncidentRepair => 'Reparar';
+
+  @override
+  String get serverTycoonIncidentReplaceDrive => 'Reemplazar disco';
+
+  @override
+  String get serverTycoonIncidentNice => '¡Genial!';
+
+  @override
+  String get serverTycoonIgnore => 'Ignorar';
+
+  @override
+  String get serverTycoonAchievementUnlocked => 'Logro desbloqueado';
+
+  @override
+  String get serverTycoonContractIncome => 'Ingresos por contratos';
+
+  @override
+  String get serverTycoonElectricity => 'Electricidad';
+
+  @override
+  String get serverTycoonInternet => 'Internet';
+
+  @override
+  String get serverTycoonStaffSalaries => 'Salarios del personal';
+
+  @override
+  String get serverTycoonNetProfit => 'Beneficio neto';
+
+  @override
+  String get serverTycoonAvgSatisfaction => 'Satisfacción media';
+
+  @override
+  String get serverTycoonReputation => 'Reputación';
+
+  @override
+  String get serverTycoonContractEvents => 'Eventos de contratos';
+
+  @override
+  String get serverTycoonGoalsCompleted => 'Objetivos completados';
+
+  @override
+  String get serverTycoonContinue => 'Continuar';
+
+  @override
+  String get serverTycoonDayReportFailedWord => 'FALLIDO';
+
+  @override
+  String get serverTycoonGoalsIntro =>
+      'Cada día se genera una lista nueva. Las recompensas se pagan en cuanto se cumple un objetivo.';
+
+  @override
+  String get serverTycoonNoGoalsToday => 'No hay objetivos hoy.';
+
+  @override
+  String serverTycoonGoalProgressReward(
+    String progress,
+    String target,
+    String rep,
+  ) {
+    return '$progress / $target · +$rep rep.';
+  }
+
+  @override
+  String serverTycoonBoostExtend(String cost, String days) {
+    return 'Ampliar — $cost por $days días';
+  }
+
+  @override
+  String serverTycoonBoostActivate(String cost, String days) {
+    return 'Activar — $cost por $days días';
+  }
+
+  @override
+  String serverTycoonNetProfitLastDays(int count) {
+    return 'Beneficio neto — últimos $count días';
+  }
+
+  @override
+  String serverTycoonPowerDrawLastDays(int count) {
+    return 'Consumo — últimos $count días';
+  }
+
+  @override
+  String get serverTycoonBestWorst => 'Mejor y peor';
+
+  @override
+  String get serverTycoonBestDay => 'Mejor día';
+
+  @override
+  String get serverTycoonWorstDay => 'Peor día';
+
+  @override
+  String serverTycoonDayAmount(int day, String amount) {
+    return 'Día $day · $amount';
+  }
+
+  @override
+  String get serverTycoonIncomeByService => 'Ingresos por servicio';
+
+  @override
+  String get serverTycoonLifetimeEarned => 'Total ganado';
+
+  @override
+  String get serverTycoonDaysRun => 'Días jugados';
+
+  @override
+  String get serverTycoonUptimeStreak => 'Racha de disponibilidad';
+
+  @override
+  String serverTycoonUptimeDays(int count) {
+    return '$count d';
+  }
+
+  @override
+  String get serverTycoonPeakBandwidth => 'Ancho de banda máximo';
+
+  @override
+  String get serverTycoonPeakPower => 'Potencia máxima';
+
+  @override
+  String get serverTycoonContractsDone => 'Contratos completados';
+
+  @override
+  String get serverTycoonResearchDone => 'Investigación completada';
+
+  @override
+  String get serverTycoonResearchRate => 'Velocidad de investigación';
+
+  @override
+  String serverTycoonResearchRateValue(String rate) {
+    return '$rate RP/día';
+  }
+
+  @override
+  String get serverTycoonRigs => 'Equipos';
+
+  @override
+  String get serverTycoonAwayRate => 'Tasa de ausencia';
+
+  @override
+  String get serverTycoonNotEnoughDays => 'Aún no hay suficientes días';
+
+  @override
+  String get serverTycoonWhileYouWereAway => 'Mientras estabas fuera';
+
+  @override
+  String serverTycoonAwayFor(String duration, int days, String rate) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days días simulados',
+      one: '1 día simulado',
+    );
+    return 'Ausente durante $duration — $_temp0 a un ritmo del $rate%.';
+  }
+
+  @override
+  String serverTycoonAwayCapped(int maxDays, int elapsed) {
+    return 'Limitado a $maxDays días — habían pasado $elapsed. Investiga la rama R&D Lab para ganar más mientras estás fuera.';
+  }
+
+  @override
+  String get serverTycoonRunningCosts => 'Costes de funcionamiento';
+
+  @override
+  String get serverTycoonResearchPoints => 'Puntos de investigación';
+
+  @override
+  String get serverTycoonWhatHappened => 'Lo que pasó';
+
+  @override
+  String get serverTycoonBackToWork => 'Volver al trabajo';
+
+  @override
+  String serverTycoonDurationDaysHours(int days, int hours) {
+    return '$days d $hours h';
+  }
+
+  @override
+  String serverTycoonDurationHoursMinutes(int hours, int minutes) {
+    return '$hours h $minutes min';
+  }
+
+  @override
+  String serverTycoonDurationMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get serverTycoonEccOk => 'ECC ok';
+
+  @override
+  String serverTycoonSpecRamSlots(int slots, String maxGb) {
+    return '$slots ranuras RAM, máx. $maxGb GB';
+  }
+
+  @override
+  String serverTycoonSpecSata(String sata, String m2) {
+    return '$sata SATA, $m2 M.2';
+  }
+
+  @override
+  String get serverTycoonSpecRegistered => 'registrada';
+
+  @override
+  String get serverTycoonSpecWaterLoop => 'circuito de agua';
+
+  @override
+  String get serverTycoonSpecCooling => 'refrigeración';
+
+  @override
+  String serverTycoonReqCpuSocket(String socket) {
+    return 'Esta placa necesita una CPU $socket';
+  }
+
+  @override
+  String serverTycoonReqBoardSocket(String cpu, String socket) {
+    return 'Tu $cpu necesita una placa $socket';
+  }
+
+  @override
+  String serverTycoonReqRam(
+    String type,
+    int used,
+    int slots,
+    String maxGb,
+    String ecc,
+  ) {
+    return 'Admite $type · $used/$slots ranuras usadas, máx. $maxGb GB$ecc';
+  }
+
+  @override
+  String get serverTycoonReqNoEcc => ', sin registrada/ECC';
+
+  @override
+  String serverTycoonReqPorts(int sata, int sataMax, int m2, int m2Max) {
+    return 'Puertos SATA $sata/$sataMax · ranuras M.2 $m2/$m2Max usadas';
+  }
+
+  @override
+  String serverTycoonReqPower(String watts) {
+    return 'Esta configuración consume hasta $watts W';
+  }
+
+  @override
+  String serverTycoonReqHeat(String cpu, String watts) {
+    return 'Tu $cpu disipa ${watts}W de calor';
+  }
+
+  @override
+  String serverTycoonRepoResearchCompleteLevel(String name, int level) {
+    return 'Investigación completada: $name (nivel $level)';
+  }
+
+  @override
+  String serverTycoonRepoResearchComplete(String name) {
+    return 'Investigación completada: $name';
+  }
+
+  @override
+  String get serverTycoonRepoUnknownResearch =>
+      'Proyecto de investigación desconocido';
+
+  @override
+  String get serverTycoonRepoAlreadyResearched => 'Ya investigado';
+
+  @override
+  String get serverTycoonRepoAlreadyQueued => 'Ya está en cola';
+
+  @override
+  String get serverTycoonRepoMaxLevel => 'Ya está en el nivel máximo';
+
+  @override
+  String serverTycoonRepoRequiresProjectFirst(String name) {
+    return 'Requiere primero $name';
+  }
+
+  @override
+  String serverTycoonRepoRequiresReputation(String reputation) {
+    return 'Requiere $reputation de reputación';
+  }
+
+  @override
+  String get serverTycoonRepoOneProjectAtATime =>
+      'Solo un proyecto a la vez: construye la rama del Laboratorio de I+D para más espacios en cola';
+
+  @override
+  String serverTycoonRepoResearchSlotsBusy(String slots) {
+    return 'Los $slots espacios de investigación están ocupados';
+  }
+
+  @override
+  String serverTycoonRepoNotEnoughMoneyNeeds(String cost) {
+    return 'No hay suficiente dinero (necesitas $cost)';
+  }
+
+  @override
+  String get serverTycoonRepoNotEnoughMoney => 'No hay suficiente dinero';
+
+  @override
+  String get serverTycoonRepoNotInProgress => 'Ese proyecto no está en curso';
+
+  @override
+  String get serverTycoonRepoUnknownBoost => 'Potenciador desconocido';
+
+  @override
+  String serverTycoonRepoBoostWoreOff(String name) {
+    return '$name ha terminado';
+  }
+
+  @override
+  String get serverTycoonRepoIncidentNotFound => 'Incidente no encontrado';
+
+  @override
+  String get serverTycoonRepoIncidentNotMitigable =>
+      'Este incidente no se puede mitigar';
+
+  @override
+  String get serverTycoonRepoIncidentNotCooled =>
+      'Este incidente no se puede enfriar';
+
+  @override
+  String get serverTycoonRepoCooldownsUsed =>
+      'El enfriamiento de emergencia ya se usó dos veces hoy';
+
+  @override
+  String get serverTycoonRepoIncidentNotRepairable =>
+      'Este incidente no se puede reparar';
+
+  @override
+  String get serverTycoonRepoNeedRouterFirst =>
+      'Primero necesitas al menos un router';
+
+  @override
+  String get serverTycoonRepoResearchRouters =>
+      'Investiga más tecnología de red para usar routers adicionales';
+
+  @override
+  String get serverTycoonRepoUnknownRig => 'Equipo desconocido';
+
+  @override
+  String get serverTycoonRepoUnknownRouter => 'Router desconocido';
+
+  @override
+  String get serverTycoonRepoUnknownService => 'Servicio desconocido';
+
+  @override
+  String get serverTycoonRepoUnknownNodeKind => 'Tipo de nodo desconocido';
+
+  @override
+  String get serverTycoonRepoUnknownServiceType =>
+      'Tipo de servicio desconocido';
+
+  @override
+  String serverTycoonRepoRequiresLicense(String license) {
+    return 'Requiere la licencia $license';
+  }
+
+  @override
+  String get serverTycoonRepoServiceInstanceNotFound =>
+      'Instancia de servicio no encontrada';
+
+  @override
+  String get serverTycoonRepoSameKindConnect =>
+      'Dos nodos del mismo tipo no se pueden conectar entre sí';
+
+  @override
+  String get serverTycoonRepoCannotConnect => 'Esos dos no se pueden conectar';
+
+  @override
+  String get serverTycoonRepoNothingToDisconnect => 'Nada que desconectar';
+
+  @override
+  String get serverTycoonRepoUnknownLicense => 'Licencia desconocida';
+
+  @override
+  String get serverTycoonRepoAlreadyOwned => 'Ya lo tienes';
+
+  @override
+  String serverTycoonRepoRequiresLicenseFirst(String license) {
+    return 'Requiere primero la licencia $license';
+  }
+
+  @override
+  String get serverTycoonRepoUnknownStaff => 'Miembro del personal desconocido';
+
+  @override
+  String get serverTycoonRepoAlreadyHired => 'Ya contratado';
+
+  @override
+  String serverTycoonRepoRequiresResearch(String research) {
+    return 'Requiere la investigación $research';
+  }
+
+  @override
+  String get serverTycoonRepoNotCurrentlyHired => 'No contratado actualmente';
+
+  @override
+  String get serverTycoonRepoOfferAccepted => 'Oferta ya aceptada';
+
+  @override
+  String get serverTycoonRepoOfferExpired => 'Esa oferta ha caducado';
+
+  @override
+  String serverTycoonRepoContractSlots(String slots) {
+    return 'Solo puedes llevar $slots contratos a la vez (investiga Sales Team para más)';
+  }
+
+  @override
+  String get serverTycoonRepoUnknownCategory =>
+      'Categoría de artículo desconocida';
+
+  @override
+  String get serverTycoonRepoUnknownItem => 'Artículo desconocido';
+
+  @override
+  String get serverTycoonRepoUnknownSlot => 'Ranura de componente desconocida';
+
+  @override
+  String serverTycoonRepoPartBroken(String name, String problems) {
+    return '$name está instalado, pero no funciona: $problems. Este equipo no generará ingresos hasta que se solucione.';
+  }
+
+  @override
+  String get serverTycoonRepoUnknownPlan => 'Plan desconocido';
+
+  @override
+  String get serverTycoonRepoUnknownRamStick => 'Módulo de RAM desconocido';
+
+  @override
+  String get serverTycoonRepoUnknownDrive => 'Unidad desconocida';
+
+  @override
+  String get serverTycoonRepoNoRamAtSlot =>
+      'No hay ningún módulo de RAM en esa ranura';
+
+  @override
+  String get serverTycoonRepoNoDriveAtSlot =>
+      'No hay ninguna unidad en esa ranura';
+
+  @override
+  String get serverTycoonRepoFixIncompatible =>
+      'Primero arregla las piezas incompatibles';
+
+  @override
+  String get serverTycoonRepoNothingHoldingBack => 'Nada limita este equipo';
+
+  @override
+  String get serverTycoonRepoNoAffordableUpgrade =>
+      'No hay ninguna mejora asequible para ese cuello de botella';
+
+  @override
+  String get serverTycoonRepoFastestPlan => 'Ya tienes el plan más rápido';
+
+  @override
+  String serverTycoonRepoCloned(String cost) {
+    return 'Clonado por $cost: instala servicios en él para empezar a ganar';
+  }
+
+  @override
+  String get serverTycoonRepoNothingToArrange => 'Nada que organizar';
+
+  @override
+  String serverTycoonRepoNeedNetWorth(String amount) {
+    return 'Necesitas $amount de patrimonio neto para escalar';
+  }
+
+  @override
+  String serverTycoonRepoContractCompleted(
+    String company,
+    String bonus,
+    String rep,
+  ) {
+    return 'Contrato de $company completado: +$bonus de bonificación, +$rep de reputación';
+  }
+
+  @override
+  String serverTycoonRepoContractFailed(
+    String company,
+    String capacity,
+    String rep,
+  ) {
+    return 'Contrato de $company FALLIDO (se necesitaba $capacity de capacidad servida): -$rep de reputación';
+  }
+
+  @override
+  String serverTycoonRepoMissionReward(String name, String cash, String rep) {
+    return '$name: +$cash, +$rep de reputación';
+  }
+
+  @override
+  String get sftpHostStorageAccessTitle =>
+      'Otros dispositivos aún no pueden ver tus archivos';
+
+  @override
+  String get sftpHostStorageAccessBody =>
+      'Android oculta las fotos y los archivos creados por otras apps hasta que luma tenga \"Acceso a todos los archivos\". Mientras tanto, esta carpeta se ve vacía desde el otro dispositivo.';
+
+  @override
+  String get sftpHostWaitingForSettings => 'Esperando a Ajustes…';
+
+  @override
+  String get sftpHostAllowFileAccess => 'Permitir el acceso a archivos';
+
+  @override
+  String sftpHostWantsToConnect(String name) {
+    return '$name quiere conectarse';
+  }
+
+  @override
+  String sftpHostApprovalDetail(String address) {
+    return 'Está en $address y ha dado la contraseña de emparejamiento correcta.';
+  }
+
+  @override
+  String get sftpHostAllow => 'Permitir';
+
+  @override
+  String get sftpHostRefuse => 'Rechazar';
+
+  @override
+  String get sftpHostNoDevicesConnected => 'No hay dispositivos conectados';
+
+  @override
+  String sftpHostDevicesConnected(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count dispositivos conectados',
+      one: '1 dispositivo conectado',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sftpHostClientTraffic(String address, String sent, String received) {
+    return '$address · enviado $sent · recibido $received';
+  }
+
+  @override
+  String get sftpHostDisconnect => 'Desconectar';
+
+  @override
+  String get sftpHostChooseFolderTitle => 'Elige la carpeta que compartir';
+
+  @override
+  String get sftpHostChooseFolderFirst =>
+      'Primero elige una carpeta para compartir.';
+
+  @override
+  String get sftpHostFolderGone => 'Esa carpeta ya no está.';
+
+  @override
+  String get sftpHostPickPort => 'Elige un puerto entre 1024 y 65535.';
+
+  @override
+  String sftpHostPasswordTooShort(String minLength) {
+    return 'Una contraseña de emparejamiento necesita al menos $minLength caracteres.';
+  }
+
+  @override
+  String sftpHostValueCopied(String what) {
+    return '$what copiado.';
+  }
+
+  @override
+  String get sftpHostFieldAddress => 'Dirección';
+
+  @override
+  String get sftpHostFieldPort => 'Puerto';
+
+  @override
+  String get sftpHostFieldPassword => 'Contraseña de emparejamiento';
+
+  @override
+  String get sftpHostPasswordRotated =>
+      'Nueva contraseña de emparejamiento. Los dispositivos ya conectados siguen conectados.';
+
+  @override
+  String sftpHostHostingFolder(String name) {
+    return 'Compartiendo $name';
+  }
+
+  @override
+  String get sftpHostAccessReadOnlyApproval =>
+      'Solo lectura · tú apruebas cada dispositivo';
+
+  @override
+  String get sftpHostAccessReadOnlyPassword => 'Solo lectura · solo contraseña';
+
+  @override
+  String get sftpHostAccessReadWriteApproval =>
+      'Lectura y escritura · tú apruebas cada dispositivo';
+
+  @override
+  String get sftpHostAccessReadWritePassword =>
+      'Lectura y escritura · solo contraseña';
+
+  @override
+  String get sftpHostPairingInstructions =>
+      'En el otro dispositivo, abre el plugin SFTP, añade un sitio de tipo \"dispositivo luma\" e introduce:';
+
+  @override
+  String get sftpHostNoNetwork => 'Sin conexión de red';
+
+  @override
+  String sftpHostOtherAddresses(String addresses) {
+    return 'Otras direcciones de este dispositivo: $addresses';
+  }
+
+  @override
+  String get sftpHostNewPassword => 'Nueva contraseña';
+
+  @override
+  String get sftpHostShow => 'Mostrar';
+
+  @override
+  String get sftpHostHide => 'Ocultar';
+
+  @override
+  String get sftpHostSetupTitle =>
+      'Deja que otro dispositivo se conecte a este';
+
+  @override
+  String get sftpHostSetupSubtitle =>
+      'Comparte una carpeta a través de tu red. El otro dispositivo la abre en su propia pestaña Servidores.';
+
+  @override
+  String get sftpHostFolderLabel => 'Carpeta para compartir';
+
+  @override
+  String get sftpHostNoFolderChosen => 'Aún no se ha elegido ninguna carpeta';
+
+  @override
+  String get sftpHostChoose => 'Elegir';
+
+  @override
+  String get sftpHostFolderNote =>
+      'Solo se comparte esta carpeta. Nada por encima de ella es accesible, y los enlaces que salen de ella se rechazan.';
+
+  @override
+  String get sftpHostAccessLabel => 'Lo que puede hacer el otro dispositivo';
+
+  @override
+  String get sftpHostAccessReadOnlyTab => 'Solo lectura';
+
+  @override
+  String get sftpHostAccessReadWriteTab => 'Lectura y escritura';
+
+  @override
+  String get sftpHostAccessReadOnlyHint =>
+      'Puede explorar y descargar. Nada en este dispositivo cambia.';
+
+  @override
+  String get sftpHostAccessReadWriteHint =>
+      'También puede subir, renombrar y eliminar dentro de la carpeta compartida.';
+
+  @override
+  String get sftpHostApprovalToggle =>
+      'Preguntarme antes de dejar entrar a un dispositivo';
+
+  @override
+  String get sftpHostApprovalToggleSubtitle =>
+      'Incluso con la contraseña correcta, tú apruebas cada uno.';
+
+  @override
+  String get sftpHostOwnPasswordToggle =>
+      'Elegir yo mismo la contraseña de emparejamiento';
+
+  @override
+  String get sftpHostOwnPasswordSubtitle =>
+      'Desactivado por defecto: luma genera una mucho más segura.';
+
+  @override
+  String sftpHostPasswordHint(String minLength) {
+    return 'Al menos $minLength caracteres';
+  }
+
+  @override
+  String get sftpHostPasswordTooShortWarn => 'Demasiado corta: se rechazará.';
+
+  @override
+  String get sftpHostPasswordWeak =>
+      'Débil. Cualquiera que llegue a este puerto podría adivinarla.';
+
+  @override
+  String get sftpHostPasswordFair => 'Aceptable. Una más larga sería mejor.';
+
+  @override
+  String get sftpHostPasswordStrong => 'Segura.';
+
+  @override
+  String get sftpHostStartHosting => 'Empezar a compartir';
+
+  @override
+  String get sftpHostEmptyClients =>
+      'Nadie está leyendo esta carpeta. Seguirá compartida hasta que pulses Detener o cierres luma.';
+
+  @override
+  String get sftpHostSecurityNote =>
+      'Los dos dispositivos acuerdan una clave a partir de la contraseña de emparejamiento y luego cifran todo lo que se envían entre sí. Los servidores de luma no intervienen y nunca ven la carpeta, la contraseña ni los archivos. Solo es accesible la carpeta que eliges. El uso compartido sigue mientras luma esté abierto; pulsa Detener cuando termines.';
+
+  @override
+  String get sftpHostNoAddress => 'Este dispositivo no tiene dirección.';
+
+  @override
+  String get sftpHostTypePassword =>
+      'Escribe la contraseña de emparejamiento que muestra ese dispositivo.';
+
+  @override
+  String sftpHostCouldNotReach(String host, String port, String detail) {
+    return 'No se pudo contactar con $host en el puerto $port. Comprueba que el otro dispositivo sigue mostrando su pantalla de emparejamiento y que ambos están en la misma red.\n$detail';
+  }
+
+  @override
+  String sftpHostConnectTimedOut(String host, String port) {
+    return 'Se agotó el tiempo al conectar con $host en el puerto $port.';
+  }
+
+  @override
+  String get sftpHostDeviceClosed => 'Ese dispositivo cerró la conexión.';
+
+  @override
+  String sftpHostCouldNotConnect(String detail) {
+    return 'No se pudo conectar con ese dispositivo.\n$detail';
+  }
+
+  @override
+  String get sftpHostExpectedAdmission =>
+      'Se esperaba primero el permiso de entrada.';
+
+  @override
+  String get sftpHostNotLetIn =>
+      'Ese dispositivo no ha permitido la entrada a este.';
+
+  @override
+  String get sftpHostDidNotAnswer =>
+      'Ese dispositivo no respondió a tiempo. Asegúrate de que sigue compartiendo.';
+
+  @override
+  String get sftpHostApprovalTimedOut =>
+      'Nadie permitió la entrada de este dispositivo a tiempo en el otro extremo. Pide que pulsen Permitir y vuelve a conectarte.';
+
+  @override
+  String get sftpHostRefusedRequest => 'Ese dispositivo rechazó la solicitud.';
+
+  @override
+  String get sftpHostTransferStopped =>
+      'La transferencia se detuvo inesperadamente.';
+
+  @override
+  String get sftpHostFolderUnreadable =>
+      'Ese dispositivo envió una carpeta que no pudimos leer.';
+
+  @override
+  String get sftpHostItemUnreadable => 'No se pudo leer ese elemento.';
+
+  @override
+  String sftpHostReadOnlyHere(String host) {
+    return '$host comparte esta carpeta en solo lectura, así que no se puede cambiar desde aquí.';
+  }
+
+  @override
+  String sftpHostSaveFailed(String detail) {
+    return 'No se pudo guardar el archivo aquí: $detail';
+  }
+
+  @override
+  String get sftpHostConnectionClosed =>
+      'La conexión con ese dispositivo está cerrada.';
+
+  @override
+  String get sftpHostConnectionWasClosed => 'La conexión se cerró.';
+
+  @override
+  String get sftpHostRecordTooShort =>
+      'Registro demasiado corto para ser auténtico.';
+
+  @override
+  String get sftpHostFrameFailedAuth =>
+      'Un fotograma no superó la comprobación de autenticidad; la conexión se cerró.';
+
+  @override
+  String get sftpHostOtherVersion =>
+      'El otro dispositivo usa una versión diferente.';
+
+  @override
+  String get sftpHostWrongPasswordAttempt =>
+      'Un dispositivo intentó conectarse con una contraseña de emparejamiento incorrecta.';
+
+  @override
+  String get sftpHostWrongPassword =>
+      'Esa contraseña de emparejamiento no es la que muestra este dispositivo.';
+
+  @override
+  String get sftpHostVersionMismatch =>
+      'Ese dispositivo usa una versión diferente de luma. Actualiza ambos a la misma versión e inténtalo de nuevo.';
+
+  @override
+  String get sftpHostRefusedConnection =>
+      'Ese dispositivo rechazó la conexión.';
+
+  @override
+  String get sftpHostCouldNotProve =>
+      'Ese dispositivo no pudo demostrar que es el que muestra esta contraseña de emparejamiento. No se le envió nada.';
+
+  @override
+  String get sftpHostPartSalt => 'sal';
+
+  @override
+  String get sftpHostPartKey => 'clave';
+
+  @override
+  String get sftpHostPartProof => 'prueba';
+
+  @override
+  String sftpHostHandshakeMissing(String part) {
+    return 'Falta el campo $part en el handshake.';
+  }
+
+  @override
+  String sftpHostHandshakeMalformed(String part) {
+    return 'El campo $part del handshake está mal formado.';
+  }
+
+  @override
+  String sftpHostHandshakeWrongSize(String part) {
+    return 'El campo $part del handshake tiene un tamaño incorrecto.';
+  }
+
+  @override
+  String get sftpHostUnnamedDevice => 'dispositivo luma';
+
+  @override
+  String get sftpHostSharedFolderName => 'Compartido';
+
+  @override
+  String get sftpHostEmptyFrame => 'Fotograma vacío.';
+
+  @override
+  String get sftpHostControlNotJson =>
+      'El fotograma de control no era JSON válido.';
+
+  @override
+  String get sftpHostControlNotObject =>
+      'El fotograma de control no era un objeto.';
+
+  @override
+  String get sftpHostChunkTruncated => 'Fotograma de datos truncado.';
+
+  @override
+  String sftpHostUnknownFrameKind(String kind) {
+    return 'Tipo de fotograma desconocido 0x$kind.';
+  }
+
+  @override
+  String sftpHostFrameTooLarge(String length) {
+    return 'El fotograma de $length bytes es mayor de lo que permite esta conexión.';
+  }
+
+  @override
+  String get sftpHostExpectedHandshake =>
+      'Se esperaba un mensaje de handshake.';
+
+  @override
+  String sftpServerPasswordTooShort(int count) {
+    return 'Una contraseña de emparejamiento necesita al menos $count caracteres.';
+  }
+
+  @override
+  String sftpServerListenerStopped(String error) {
+    return 'El receptor se detuvo: $error';
+  }
+
+  @override
+  String sftpServerPortInUse(int port) {
+    return 'El puerto $port ya está en uso en este dispositivo. Elige otro.';
+  }
+
+  @override
+  String sftpServerCouldNotListen(int port, String reason) {
+    return 'No se pudo escuchar en el puerto $port. $reason';
+  }
+
+  @override
+  String sftpServerCouldNotStart(String error) {
+    return 'No se pudo iniciar el uso compartido. $error';
+  }
+
+  @override
+  String get sftpServerConnecting => 'Conectando…';
+
+  @override
+  String get sftpThisDeviceTitle => 'Este dispositivo';
+
+  @override
+  String get sftpThisDeviceUnknown => 'Desconocido';
+
+  @override
+  String get sftpThisDeviceChooseFolderTitle =>
+      'Elige la carpeta que quieres compartir';
+
+  @override
+  String get sftpThisDevicePasswordRotated =>
+      'Nueva contraseña de emparejamiento. Los dispositivos ya conectados siguen conectados.';
+
+  @override
+  String sftpThisDeviceCopied(String what) {
+    return '$what copiado.';
+  }
+
+  @override
+  String get sftpThisDeviceFieldDevice => 'Dispositivo';
+
+  @override
+  String get sftpThisDeviceFieldDeviceName => 'Nombre del dispositivo';
+
+  @override
+  String get sftpThisDeviceFieldUser => 'Usuario';
+
+  @override
+  String get sftpThisDeviceFieldUserName => 'Nombre de usuario';
+
+  @override
+  String get sftpThisDeviceFieldAddress => 'Dirección';
+
+  @override
+  String get sftpThisDeviceFieldPort => 'Puerto';
+
+  @override
+  String get sftpThisDeviceFieldPassword => 'Contraseña de emparejamiento';
+
+  @override
+  String get sftpThisDeviceShow => 'Mostrar';
+
+  @override
+  String get sftpThisDeviceHide => 'Ocultar';
+
+  @override
+  String get sftpThisDeviceNoNetwork => 'Sin conexión de red';
+
+  @override
+  String sftpThisDeviceOtherAddresses(String addresses) {
+    return 'Otras direcciones de este dispositivo: $addresses';
+  }
+
+  @override
+  String get sftpThisDeviceCredentialsTitle =>
+      'Credenciales de este dispositivo';
+
+  @override
+  String get sftpThisDeviceCredentialsHelp =>
+      'En el otro dispositivo, abre el complemento SFTP, pulsa Nuevo sitio, elige \"dispositivo luma\" e introduce estos datos.';
+
+  @override
+  String get sftpThisDeviceUserNameNote =>
+      'El nombre de usuario sirve para distinguir dispositivos. luma empareja solo con la contraseña: esto no es un inicio de sesión SSH y no se expone nada de la cuenta de este dispositivo.';
+
+  @override
+  String get sftpThisDeviceNewPassword => 'Nueva contraseña';
+
+  @override
+  String get sftpThisDeviceStatusChooseTitle =>
+      'Elige una carpeta para compartir';
+
+  @override
+  String get sftpThisDeviceStatusChooseBody =>
+      'Nada es accesible hasta que elijas una. Solo se comparte esa carpeta, nada por encima de ella.';
+
+  @override
+  String get sftpThisDeviceStatusOpeningTitle => 'Abriendo este dispositivo…';
+
+  @override
+  String get sftpThisDeviceStatusOpeningBody => 'Configurando el receptor.';
+
+  @override
+  String get sftpThisDeviceStatusPausedTitle =>
+      'En pausa mientras luma está en segundo plano';
+
+  @override
+  String get sftpThisDeviceStatusPausedBody =>
+      'Se reanuda solo cuando vuelves a esta pantalla.';
+
+  @override
+  String get sftpThisDeviceStatusReachableTitle =>
+      'Otros dispositivos pueden acceder a este';
+
+  @override
+  String get sftpThisDeviceStatusReachableBody =>
+      'Solo mientras esta pantalla esté abierta.';
+
+  @override
+  String get sftpThisDeviceStatusUnreachableTitle => 'No accesible';
+
+  @override
+  String get sftpThisDeviceStatusFailedBody =>
+      'No se pudo iniciar el uso compartido.';
+
+  @override
+  String get sftpThisDeviceFolderLabel => 'Carpeta compartida';
+
+  @override
+  String get sftpThisDeviceNoFolder => 'Aún no se ha elegido ninguna carpeta';
+
+  @override
+  String get sftpThisDeviceChange => 'Cambiar';
+
+  @override
+  String get sftpThisDeviceTermsTitle =>
+      'Lo que puede hacer el otro dispositivo';
+
+  @override
+  String get sftpThisDeviceReadOnly => 'Solo lectura';
+
+  @override
+  String get sftpThisDeviceReadWrite => 'Lectura y escritura';
+
+  @override
+  String get sftpThisDeviceReadOnlyHelp =>
+      'Puede explorar y descargar. Nada de este dispositivo cambia.';
+
+  @override
+  String get sftpThisDeviceReadWriteHelp =>
+      'También puede subir, renombrar y eliminar dentro de la carpeta compartida.';
+
+  @override
+  String get sftpThisDeviceAskApproval =>
+      'Preguntarme antes de dejar entrar a un dispositivo';
+
+  @override
+  String get sftpThisDeviceAskApprovalSub =>
+      'Aunque la contraseña sea correcta, apruebas cada dispositivo.';
+
+  @override
+  String get sftpThisDeviceRestartNote =>
+      'Cambiar cualquiera de estas opciones reinicia el receptor, así que se desconecta todo lo que esté conectado ahora.';
+
+  @override
+  String get sftpThisDeviceEmptyClients =>
+      'Todavía nada está leyendo esta carpeta. Mantén esta pantalla abierta mientras el otro dispositivo se conecta.';
+
+  @override
+  String get sftpThisDeviceLifetimeNote =>
+      'Este dispositivo solo es accesible mientras esta pantalla esté abierta. Si vuelves atrás o envías luma al segundo plano, el receptor se cierra y todos los dispositivos conectados se desconectan en mitad de una transferencia. Usa la pestaña Host cuando una transferencia deba seguir mientras haces otra cosa. Los dos dispositivos acuerdan una clave a partir de la contraseña de emparejamiento y cifran todo entre ellos; los servidores de luma no intervienen y nunca ven la carpeta, la contraseña ni los archivos.';
+
+  @override
+  String get sftpHostKeyChangedTitle => 'La clave de este servidor ha cambiado';
+
+  @override
+  String get sftpHostKeyUnknownTitle => 'Clave de servidor desconocida';
+
+  @override
+  String sftpHostKeyChangedBody(String host) {
+    return 'Antes se confió en otra clave para $host. O bien el servidor se reconstruyó, o algo se hace pasar por él. No continúes a menos que sepas que el servidor cambió.';
+  }
+
+  @override
+  String sftpHostKeyUnknownBody(String host) {
+    return 'luma nunca se ha conectado antes a $host. Compara la huella digital con la del servidor y luego decide si confiar en ella.';
+  }
+
+  @override
+  String get sftpPreviouslyTrusted => 'Confiada anteriormente';
+
+  @override
+  String get sftpTrustNewKey => 'Confiar en la nueva clave';
+
+  @override
+  String get sftpTrustAndConnect => 'Confiar y conectar';
+
+  @override
+  String get sftpConnect => 'Conectar';
+
+  @override
+  String get sftpShow => 'Mostrar';
+
+  @override
+  String get sftpHide => 'Ocultar';
+
+  @override
+  String get sftpRememberForSite => 'Recordar para este sitio';
+
+  @override
+  String get sftpEncryptedLocalNote =>
+      'Cifrado en este dispositivo. Nunca se sube a ningún sitio.';
+
+  @override
+  String sftpConnectToDevice(String deviceName) {
+    return 'Conectar con $deviceName';
+  }
+
+  @override
+  String get sftpPortRangeError =>
+      'El puerto debe ser un número entre 1 y 65535.';
+
+  @override
+  String sftpPairingPasswordRequired(String deviceName) {
+    return 'Escribe la contraseña de emparejamiento que se muestra en $deviceName.';
+  }
+
+  @override
+  String sftpQuickConnectFound(String address) {
+    return 'Encontrado en esta red en $address. Escribe el puerto y la contraseña de emparejamiento que se muestran en la pestaña Host o en la pantalla Este dispositivo.';
+  }
+
+  @override
+  String get sftpPortLabel => 'Puerto';
+
+  @override
+  String get sftpPairingPasswordLabel => 'Contraseña de emparejamiento';
+
+  @override
+  String get sftpRememberDevicePassword =>
+      'Recordar la contraseña de este dispositivo';
+
+  @override
+  String sftpDeleteOneTitle(String name) {
+    return '¿Eliminar $name?';
+  }
+
+  @override
+  String sftpDeleteManyTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '¿Eliminar $count elementos?',
+      one: '¿Eliminar 1 elemento?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sftpDeleteRemoteWarning =>
+      'Esto los elimina en el servidor. Las carpetas se eliminan junto con todo lo que contienen, y no se puede deshacer.';
+
+  @override
+  String get sftpDeleteLocalWarning =>
+      'Esto los elimina en este dispositivo. No se puede deshacer.';
+
+  @override
+  String sftpPermissionsTitle(String name) {
+    return 'Permisos de $name';
+  }
+
+  @override
+  String get sftpPermissionsMode => 'Modo';
+
+  @override
+  String get sftpPermissionsHelper => 'Octal (755) o simbólico (rwxr-xr-x)';
+
+  @override
+  String get sftpPermissionsInvalid => 'Modo no válido.';
+
+  @override
+  String get sftpLocalAppStorage => 'Almacenamiento de la app';
+
+  @override
+  String get sftpLocalHome => 'Inicio';
+
+  @override
+  String sftpDropUploadTo(String name) {
+    return 'Subir a $name';
+  }
+
+  @override
+  String get sftpDropDownloadHere => 'Descargar aquí';
+
+  @override
+  String get sftpFolderEmpty => 'Esta carpeta está vacía.';
+
+  @override
+  String get sftpNothingToShow => 'Nada que mostrar.';
+
+  @override
+  String get sftpUpOneFolder => 'Subir una carpeta';
+
+  @override
+  String get sftpPlaces => 'Ubicaciones';
+
+  @override
+  String get sftpHomeFolder => 'Carpeta de inicio';
+
+  @override
+  String get sftpNewFolder => 'Nueva carpeta';
+
+  @override
+  String sftpSelectedOfCount(int selected, int count) {
+    return '$selected de $count seleccionados';
+  }
+
+  @override
+  String sftpItemCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count elementos',
+      one: '1 elemento',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sftpSelectEntry(String name) {
+    return 'Seleccionar $name';
+  }
+
+  @override
+  String sftpCouldNotFindStartFolder(String error) {
+    return 'No se pudo encontrar una carpeta por la que empezar. $error';
+  }
+
+  @override
+  String sftpCouldNotOpenFolder(String error) {
+    return 'No se pudo abrir esta carpeta. $error';
+  }
+
+  @override
+  String sftpCouldNotListFolder(String error) {
+    return 'No se pudo listar esta carpeta. $error';
+  }
+
+  @override
+  String sftpPairingPasswordFor(String name) {
+    return 'Contraseña de emparejamiento para $name';
+  }
+
+  @override
+  String sftpPasswordFor(String name) {
+    return 'Contraseña para $name';
+  }
+
+  @override
+  String sftpPassphraseFor(String name) {
+    return 'Frase de contraseña para $name';
+  }
+
+  @override
+  String get sftpTypeDevicePasswordHint =>
+      'Escribe la contraseña que se muestra en la pestaña Host de ese dispositivo.';
+
+  @override
+  String sftpSigningInAs(String username, String host) {
+    return 'Iniciando sesión como $username en $host.';
+  }
+
+  @override
+  String sftpWaitingForApproval(String host) {
+    return 'Esperando a que alguien en $host permita este dispositivo…';
+  }
+
+  @override
+  String get sftpConnectionClosed => 'La conexión con el servidor se cerró.';
+
+  @override
+  String sftpConnectionClosedWithReason(String reason) {
+    return 'La conexión se cerró: $reason';
+  }
+
+  @override
+  String get sftpNothingToUpload => 'Nada que subir.';
+
+  @override
+  String sftpQueuedForUpload(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count elementos en cola para subir.',
+      one: '1 elemento en cola para subir.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sftpNothingToDownload => 'Nada que descargar.';
+
+  @override
+  String sftpQueuedForDownload(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count elementos en cola para descargar.',
+      one: '1 elemento en cola para descargar.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sftpCouldNotOpenName(String name, String message) {
+    return 'No se pudo abrir $name. $message';
+  }
+
+  @override
+  String get sftpFolderNameLabel => 'Nombre de la carpeta';
+
+  @override
+  String get sftpCreate => 'Crear';
+
+  @override
+  String sftpCouldNotCreateFolder(String error) {
+    return 'No se pudo crear la carpeta. $error';
+  }
+
+  @override
+  String get sftpNewNameLabel => 'Nuevo nombre';
+
+  @override
+  String sftpCouldNotRename(String name, String error) {
+    return 'No se pudo renombrar $name. $error';
+  }
+
+  @override
+  String sftpCouldNotDeleteAll(String error) {
+    return 'No se pudo eliminar todo. $error';
+  }
+
+  @override
+  String sftpCouldNotChangePermissions(String error) {
+    return 'No se pudieron cambiar los permisos. $error';
+  }
+
+  @override
+  String sftpUploadLabel(String target) {
+    return 'Subir $target';
+  }
+
+  @override
+  String sftpDownloadLabel(String target) {
+    return 'Descargar $target';
+  }
+
+  @override
+  String sftpDeleteLabel(String target) {
+    return 'Eliminar $target';
+  }
+
+  @override
+  String get sftpPermissions => 'Permisos';
+
+  @override
+  String get sftpOpenSettingsSync =>
+      'Abre Ajustes → Sincronización y cuenta para configurar este dispositivo.';
+
+  @override
+  String get sftpAddToSharedFolder => 'Añadir a la carpeta compartida';
+
+  @override
+  String sftpNameInShare(String name) {
+    return '$name está en la carpeta compartida.';
+  }
+
+  @override
+  String sftpItemsInShare(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count elementos están en la carpeta compartida.',
+      one: '1 elemento está en la carpeta compartida.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sftpFolderAt(String path) {
+    return 'La carpeta está en $path';
+  }
+
+  @override
+  String get sftpShareDeleteWarning =>
+      'También desaparecerán de la carpeta compartida en tus otros dispositivos la próxima vez que se conecten.';
+
+  @override
+  String get sftpSiteManager => 'Administrador de sitios';
+
+  @override
+  String get sftpDisconnect => 'Desconectar';
+
+  @override
+  String get sftpHostThisDevice => 'Alojar este dispositivo';
+
+  @override
+  String get sftpMyDevices => 'Mis dispositivos';
+
+  @override
+  String get sftpServers => 'Servidores';
+
+  @override
+  String get sftpHost => 'Host';
+
+  @override
+  String get sftpSharingFolderNote =>
+      'Compartiendo una carpeta: cualquier dispositivo con la contraseña de emparejamiento puede conectarse.';
+
+  @override
+  String get sftpHostIdleNote =>
+      'Permite que otro dispositivo se conecte a este a través de tu red.';
+
+  @override
+  String get sftpDevicesNote =>
+      'Una carpeta, replicada en tus propios dispositivos a través de tu red.';
+
+  @override
+  String get sftpServersNote =>
+      'Conéctate a tu propio servidor: nada pasa por luma.';
+
+  @override
+  String sftpConnectedTo(String endpoint) {
+    return 'Conectado a $endpoint';
+  }
+
+  @override
+  String get sftpThisDevice => 'Este dispositivo';
+
+  @override
+  String get sftpSharedFolder => 'Carpeta compartida';
+
+  @override
+  String sftpShareItems(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Compartir $count elementos',
+      one: 'Compartir 1 elemento',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sftpUploadItems(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Subir $count elementos',
+      one: 'Subir 1 elemento',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sftpDownloadItems(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Descargar $count elementos',
+      one: 'Descargar 1 elemento',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sftpTabServer => 'Servidor';
+
+  @override
+  String get sftpTabQueue => 'Cola';
+
+  @override
+  String sftpQueueWithCount(int count) {
+    return 'Cola ($count)';
+  }
+
+  @override
+  String get sftpPutInShare =>
+      'Poner los archivos seleccionados en la carpeta compartida';
+
+  @override
+  String get sftpUploadSelected => 'Subir los archivos seleccionados';
+
+  @override
+  String get sftpDownloadSelected => 'Descargar los archivos seleccionados';
+
+  @override
+  String get sftpUpsellTitle => 'SFTP viene con Orbit y Nova';
+
+  @override
+  String get sftpUpsellBody =>
+      'Conéctate a tus propios servidores con un host, nombre de usuario, contraseña y puerto, navega por ambos lados a la vez y arrastra archivos de un lado a otro. La conexión va directamente desde este dispositivo a tu servidor; nada pasa por un servidor de luma.';
+
+  @override
+  String sftpUpgradeTo(String plan) {
+    return 'Actualizar a $plan';
+  }
+
+  @override
+  String get sftpQueueNothingQueued =>
+      'Nada en cola. Arrastra archivos entre los dos lados, o selecciona algunos y usa las flechas de transferencia.';
+
+  @override
+  String get sftpQueueTransferring => 'Transfiriendo';
+
+  @override
+  String get sftpQueueTitle => 'Cola de transferencia';
+
+  @override
+  String get sftpQueueRetryAll => 'Reintentar todo';
+
+  @override
+  String sftpQueueFilesLeft(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count archivos restantes',
+      one: '1 archivo restante',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sftpQueueFailedCount(int count) {
+    return '$count fallido(s)';
+  }
+
+  @override
+  String get sftpQueueIdle => 'Vacía';
+
+  @override
+  String get sftpQueueAllDone => 'Todo listo';
+
+  @override
+  String get sftpQueueWaiting => 'Esperando';
+
+  @override
+  String sftpQueueRunningDetail(String done, String total, String rate) {
+    return '$done de $total · $rate';
+  }
+
+  @override
+  String get sftpQueueStopped => 'Detenido';
+
+  @override
+  String get sftpQueueFailed => 'Fallido';
+
+  @override
+  String get sftpErrNoHostName => 'Este sitio no tiene nombre de host.';
+
+  @override
+  String sftpErrCouldNotReachHost(String host, String port, String reason) {
+    return 'No se pudo conectar con $host en el puerto $port.\n$reason';
+  }
+
+  @override
+  String sftpErrConnectTimedOut(String host, String port) {
+    return 'Se agotó el tiempo de conexión con $host en el puerto $port.';
+  }
+
+  @override
+  String get sftpErrHostKeyNotAccepted =>
+      'No se aceptó la clave del servidor, así que no se le envió nada.';
+
+  @override
+  String sftpErrNoSftpChannel(String error) {
+    return 'Sesión iniciada, pero el servidor no abrió un canal SFTP. Es posible que el subsistema SFTP de su servicio SSH esté desactivado.\n($error)';
+  }
+
+  @override
+  String get sftpErrKeyAuthNoFile =>
+      'Este sitio usa autenticación por clave, pero no se ha elegido ningún archivo de clave.';
+
+  @override
+  String sftpErrKeyNotFound(String path) {
+    return 'No se encontró la clave privada en $path';
+  }
+
+  @override
+  String sftpErrKeyReadFailed(String error) {
+    return 'No se pudo leer la clave privada.\n($error)';
+  }
+
+  @override
+  String get sftpErrKeyPassphraseRequired =>
+      'Esta clave privada está protegida con una frase de contraseña.';
+
+  @override
+  String get sftpErrPassphraseWrong =>
+      'Esa frase de contraseña no desbloquea la clave privada.';
+
+  @override
+  String sftpErrNotPrivateKey(String error) {
+    return 'Ese archivo no es una clave privada que luma pueda leer.\n($error)';
+  }
+
+  @override
+  String sftpErrKeyRejected(String username) {
+    return 'El servidor rechazó esa clave para $username.';
+  }
+
+  @override
+  String get sftpErrPasswordRejected =>
+      'El servidor rechazó ese nombre de usuario o contraseña.';
+
+  @override
+  String sftpErrSignInAborted(String message) {
+    return 'El servidor cerró la conexión durante el inicio de sesión.\n$message';
+  }
+
+  @override
+  String sftpErrCouldNotSignIn(String host, String error) {
+    return 'No se pudo iniciar sesión en $host.\n$error';
+  }
+
+  @override
+  String get sftpTransferCancelled => 'Transferencia cancelada';
+
+  @override
+  String get sftpSiteSnapshotInvalid => 'Copia de sitios SFTP no válida.';
+
+  @override
+  String get sftpNearbyTitle => 'En esta red';
+
+  @override
+  String get sftpNearbyEmpty =>
+      'Ningún dispositivo luma de esta red está alojando ahora mismo. Abre la pestaña Host o Este dispositivo en el otro y aparecerá aquí.';
+
+  @override
+  String sftpNearbyOtherVersion(String address) {
+    return '$address · usa una versión distinta de luma — actualiza ambos para conectar';
+  }
+
+  @override
+  String get sftpSiteNoServersTitle => 'Todavía no hay servidores';
+
+  @override
+  String get sftpSiteNoServersBody =>
+      'Un sitio es un servidor guardado: su nombre de host, usuario, contraseña y puerto. luma se conecta directamente a él desde este dispositivo. Para hacerlo al revés y dejar que otro dispositivo se conecte a este, abre Este dispositivo.';
+
+  @override
+  String get sftpSiteNew => 'Nuevo sitio';
+
+  @override
+  String get sftpSiteManagerTitle => 'Administrador de sitios';
+
+  @override
+  String get sftpSiteManagerSubtitle =>
+      'Tus servidores, guardados solo en este dispositivo.';
+
+  @override
+  String get sftpPrivacyNote =>
+      'Las conexiones van directamente desde este dispositivo a tu servidor. Nada pasa por un servidor de luma, y las contraseñas guardadas permanecen cifradas aquí: nunca se sincronizan.';
+
+  @override
+  String get sftpPasswordSavedTooltip =>
+      'Contraseña guardada, cifrada en este dispositivo';
+
+  @override
+  String get sftpEditSiteTooltip => 'Editar sitio';
+
+  @override
+  String get sftpRemoveSiteTooltip => 'Quitar sitio';
+
+  @override
+  String get sftpEditSiteTitle => 'Editar sitio';
+
+  @override
+  String get sftpChoosePrivateKey => 'Elige una clave privada';
+
+  @override
+  String get sftpErrHostRequired =>
+      'Se requiere un nombre de host o una dirección IP.';
+
+  @override
+  String get sftpErrUsernameRequired => 'Se requiere un nombre de usuario.';
+
+  @override
+  String get sftpErrKeyFileRequired =>
+      'Elige el archivo de clave privada con el que iniciar sesión.';
+
+  @override
+  String get sftpEndpointQuestion => 'Qué hay al otro lado';
+
+  @override
+  String get sftpTransportSshServer => 'Servidor SSH';
+
+  @override
+  String get sftpTransportLumaDevice => 'Dispositivo luma';
+
+  @override
+  String get sftpLumaDeviceHint =>
+      'Otro dispositivo con luma y el alojamiento activado. Lee su dirección, su puerto y su contraseña de emparejamiento en su pestaña Host.';
+
+  @override
+  String get sftpSshServerHint =>
+      'Cualquier servidor que hable SSH: un VPS, un NAS, una Pi.';
+
+  @override
+  String get sftpSiteNameHintLuma => 'Mi portátil';
+
+  @override
+  String get sftpSiteNameHintServer => 'Mi VPS';
+
+  @override
+  String get sftpSiteFieldHost => 'Host';
+
+  @override
+  String get sftpSiteHostHint => 'example.com o 203.0.113.10';
+
+  @override
+  String get sftpSignInWith => 'Iniciar sesión con';
+
+  @override
+  String get sftpSignInSshKey => 'Clave SSH';
+
+  @override
+  String get sftpPairingPasswordHelper =>
+      'El que se muestra ahora mismo en ese dispositivo.';
+
+  @override
+  String get sftpKeyPassphrase => 'Frase de contraseña de la clave';
+
+  @override
+  String get sftpKeyPassphraseHelper =>
+      'Déjalo vacío si la clave no tiene frase de contraseña.';
+
+  @override
+  String get sftpSaveDeviceSecret =>
+      'Guardar la contraseña de emparejamiento de este dispositivo';
+
+  @override
+  String get sftpSaveKeyPassphrase =>
+      'Guardar la frase de contraseña de este sitio';
+
+  @override
+  String get sftpSaveSitePassword => 'Guardar la contraseña de este sitio';
+
+  @override
+  String get sftpSaveDeviceSecretNote =>
+      'Cifrada en este dispositivo, pero el otro dispositivo la cambia cada vez que empieza a alojar.';
+
+  @override
+  String get sftpSaveSiteSecretNote =>
+      'Cifrada en este dispositivo. Desmárcalo y luma te lo pedirá cada vez que te conectes.';
+
+  @override
+  String get sftpOpenFolderOnConnect => 'Abrir esta carpeta al conectar';
+
+  @override
+  String get sftpLumaFolderHint => '/photos (opcional)';
+
+  @override
+  String get sftpSftpFolderHint => '/var/www (opcional)';
+
+  @override
+  String get sftpSaveSite => 'Guardar sitio';
+
+  @override
+  String get sftpNoKeyChosen => 'No se ha elegido ninguna clave privada';
+
+  @override
+  String sftpShareCouldNotAdd(String name, String error) {
+    return 'No se pudo añadir $name: $error';
+  }
+
+  @override
+  String get sftpShareOutOfStep =>
+      'La transferencia se desincronizó; volverá a empezar.';
+
+  @override
+  String get sftpShareMismatch =>
+      'La copia recibida no coincide con el original; se volverá a descargar.';
+
+  @override
+  String get sftpShareDeviceWentAway => 'El dispositivo se desconectó.';
+
+  @override
+  String sftpShareSummary(int count, String size) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count archivos',
+      one: '1 archivo',
+    );
+    return '$_temp0 · $size';
+  }
+
+  @override
+  String get sftpShareFolderTitle => 'Carpeta compartida';
+
+  @override
+  String sftpShareSelectedCount(int count) {
+    return '$count seleccionado(s)';
+  }
+
+  @override
+  String sftpShareSummaryOnEveryDevice(String summary) {
+    return '$summary · en cada dispositivo';
+  }
+
+  @override
+  String get sftpShareDeleteEverywhere => 'Eliminar en todas partes';
+
+  @override
+  String get sftpShareAddFiles => 'Añadir archivos';
+
+  @override
+  String get sftpShareOpenFolderHere => 'Abrir la carpeta en este dispositivo';
+
+  @override
+  String get sftpShareRescan => 'Volver a escanear';
+
+  @override
+  String get sftpShareDropToShare => 'Suelta para compartir';
+
+  @override
+  String get sftpShareNothingYet => 'Todavía no se ha compartido nada';
+
+  @override
+  String get sftpShareEmptyHint =>
+      'Arrastra archivos desde la izquierda, o usa +. Todo lo que hay aquí aparece en la misma carpeta de tus otros dispositivos, enviado directamente por tu red, nunca a través de un servidor de luma.';
+
+  @override
+  String get sftpShareOpen => 'Abrir';
+
+  @override
+  String get sftpShareLookingForDevices =>
+      'Buscando tus otros dispositivos en esta red. Abre luma en uno de ellos, con la misma cuenta.';
+
+  @override
+  String get sftpShareSyncOff =>
+      'La sincronización de dispositivos está desactivada. Actívala en Ajustes → Sincronización y cuenta para llegar a tus otros dispositivos.';
+
+  @override
+  String sftpShareFilesToGo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count archivos pendientes',
+      one: '1 archivo pendiente',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sftpShareUpToDate => 'Al día';
+
+  @override
+  String sftpShareWaitingForReturn(int count) {
+    return '$count esperando a que vuelva';
+  }
+
+  @override
+  String get sftpShareNotOnNetwork => 'No está en esta red';
+
+  @override
+  String get sftpShareFailed => 'Fallido';
+
+  @override
+  String sftpShareFromDevice(String device) {
+    return 'desde $device';
+  }
+
+  @override
+  String sftpShareToDevice(String device) {
+    return 'a $device';
+  }
+
+  @override
+  String get sftpShareSignInFirstTitle =>
+      'Inicia sesión primero en ambos dispositivos';
+
+  @override
+  String get sftpShareSignInFirstBody =>
+      'La carpeta compartida mueve archivos directamente entre dispositivos con la misma cuenta de luma, a través de tu propia red. Configura la sincronización de dispositivos en Ajustes → Sincronización y cuenta en cada dispositivo y luego vuelve aquí.';
+
+  @override
+  String get sftpShareOpenSettings => 'Abrir ajustes';
+
+  @override
+  String get sendToDevicesTitle => 'Enviar a tus dispositivos';
+
+  @override
+  String sendToDevicesItemCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count elementos',
+      one: '1 elemento',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sendToDevicesFolderLabel =>
+      'Carpeta dentro de la carpeta compartida';
+
+  @override
+  String get sendToDevicesFolderHint =>
+      'Déjalo vacío para colocarlos en la raíz';
+
+  @override
+  String sendToDevicesCopying(int done, int total) {
+    return 'Copiando $done de $total…';
+  }
+
+  @override
+  String get sendToDevicesNoneReadable =>
+      'No se pudo leer ninguno de estos en este dispositivo.';
+
+  @override
+  String sendToDevicesOnTheWay(int count, int deviceCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count archivos',
+      one: '1 archivo',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      deviceCount,
+      locale: localeName,
+      other: 'dispositivos',
+      one: 'dispositivo',
+    );
+    return '$_temp0 en camino a tus otros $_temp1.';
+  }
+
+  @override
+  String sendToDevicesQueued(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count archivos listos',
+      one: '1 archivo listo',
+    );
+    return '$_temp0 — se enviarán en cuanto haya otro dispositivo en esta red.';
+  }
+
+  @override
+  String get sendToDevicesNoPeers =>
+      'Ahora mismo no hay otro dispositivo en esta red. Lo que envíes espera en la carpeta compartida y se enviará en cuanto aparezca uno.';
+
+  @override
+  String get sendToDevicesSyncOff =>
+      'La sincronización de dispositivos está desactivada. Actívala en Ajustes → Sincronización y cuenta y tus otros dispositivos recibirán estos archivos.';
+
+  @override
+  String get sendToDevicesHere => 'aquí';
+
+  @override
+  String get sendToDevicesAway => 'ausente';
+
+  @override
+  String get sendToDevicesUnavailable =>
+      'La carpeta compartida no está en marcha en este dispositivo. Viene con Orbit y Nova y necesita la sincronización de dispositivos activada en Ajustes → Sincronización y cuenta, tanto en este dispositivo como en el que quieras que la reciba.';
+
+  @override
+  String get bingoExportSaveTitle => 'Guardar cartones BINGO como PDF';
+
+  @override
+  String bingoExportCardNumber(String number) {
+    return 'CARTÓN $number';
+  }
+
+  @override
+  String get bingoExportInstructions =>
+      'Marca cinco en línea, en horizontal, vertical o diagonal.';
+
+  @override
+  String get bingoExportFree => 'LIBRE';
+
+  @override
+  String get bingoExportFooter => 'JUEGOS PEQUEÑOS  /  BINGO';
+
+  @override
+  String get bingoExportEncodeFailed => 'No se pudo codificar el cartón BINGO.';
+
+  @override
+  String get cardGamesHandHighCard => 'Carta alta';
+
+  @override
+  String get cardGamesHandOnePair => 'Un par';
+
+  @override
+  String get cardGamesHandTwoPair => 'Dos pares';
+
+  @override
+  String get cardGamesHandThreeOfKind => 'Trío';
+
+  @override
+  String get cardGamesHandStraight => 'Escalera';
+
+  @override
+  String get cardGamesHandFlush => 'Color';
+
+  @override
+  String get cardGamesHandFullHouse => 'Full';
+
+  @override
+  String get cardGamesHandFourOfKind => 'Póquer';
+
+  @override
+  String get cardGamesHandStraightFlush => 'Escalera de color';
+
+  @override
+  String get cardGamesBjPushBlackjack => 'Empate: ambos tienen blackjack.';
+
+  @override
+  String get cardGamesBjPlayerBlackjack => '¡Blackjack! Ganas.';
+
+  @override
+  String get cardGamesBjDealerBlackjack => 'El crupier tiene blackjack.';
+
+  @override
+  String get cardGamesBjBust => 'Te pasaste — gana el crupier.';
+
+  @override
+  String get cardGamesBjPlayerWins => '¡Ganas esta mano!';
+
+  @override
+  String get cardGamesBjPushTie => 'Empate.';
+
+  @override
+  String get cardGamesBjDealerWins => 'Gana el crupier esta mano.';
+
+  @override
+  String cardGamesPokerPlayerWins(String yours, String theirs) {
+    return '¡Ganas! $yours vence a $theirs.';
+  }
+
+  @override
+  String cardGamesPokerDealerWins(String yours, String theirs) {
+    return 'Gana el crupier. $theirs vence a $yours.';
+  }
+
+  @override
+  String cardGamesPokerPush(String hand) {
+    return 'Empate — ambas manos tienen $hand.';
+  }
+
+  @override
+  String get cardGamesPatienceStart =>
+      'Roba una carta o toca una carta boca arriba para seleccionarla.';
+
+  @override
+  String get cardGamesPatienceDrawn =>
+      'Toca la carta robada y luego una columna o fundación.';
+
+  @override
+  String get cardGamesPatienceRecycled => 'Mazo reciclado. Roba de nuevo.';
+
+  @override
+  String get cardGamesPatienceChooseTarget => 'Elige una columna o fundación.';
+
+  @override
+  String get cardGamesPatienceChooseAnother =>
+      'Elige otra columna o mueve la carta superior a una fundación.';
+
+  @override
+  String get cardGamesPatienceChooseColumn => 'Elige una columna.';
+
+  @override
+  String get cardGamesPatienceOnlyKing =>
+      'Solo un rey puede empezar una columna vacía.';
+
+  @override
+  String get cardGamesPatienceBuildDown =>
+      'Construye en orden descendente, alternando rojo y negro.';
+
+  @override
+  String get cardGamesPatienceNiceMove =>
+      'Buen movimiento. Sigue construyendo las fundaciones.';
+
+  @override
+  String get cardGamesPatienceWon => '¡Has ganado Paciencia!';
+
+  @override
+  String get cardGamesPatienceMoved => 'Carta movida a una fundación.';
+
+  @override
+  String get cardGamesPatienceFoundationRule =>
+      'Las fundaciones empiezan con un as y se construyen por palo.';
+
+  @override
+  String get cardGamesTableTitle => 'La mesa de cartas';
+
+  @override
+  String get cardGamesAllGames => 'Todos los juegos';
+
+  @override
+  String get cardGamesBackToTable => 'Volver a la mesa de cartas';
+
+  @override
+  String get cardGamesHeader => 'JUEGOS PEQUEÑOS  /  JUEGOS DE CARTAS';
+
+  @override
+  String get cardGamesNewGame => 'Nueva partida';
+
+  @override
+  String get cardGamesDealer => 'CRUPIER';
+
+  @override
+  String get cardGamesYouSeat => 'TÚ • ASIENTO 1';
+
+  @override
+  String get cardGamesPullUpChair => 'SIÉNTATE';
+
+  @override
+  String get cardGamesWhatToPlay => '¿A qué vas a jugar?';
+
+  @override
+  String get cardGamesLobbyBlurb =>
+      'Una mesa tranquila, una baraja nueva y un asiento reservado para ti.';
+
+  @override
+  String get cardGamesPoker => 'Póquer';
+
+  @override
+  String get cardGamesPokerBlurb =>
+      'Guarda tus mejores cartas. Vence al crupier.';
+
+  @override
+  String get cardGamesFiveCardDraw => 'Robo de cinco cartas';
+
+  @override
+  String get cardGamesBlackjack => 'Blackjack';
+
+  @override
+  String get cardGamesBlackjackType => 'Consigue 21';
+
+  @override
+  String get cardGamesBlackjackBlurb =>
+      'Pide carta o plántate contra el crupier.';
+
+  @override
+  String get cardGamesPatience => 'Paciencia';
+
+  @override
+  String get cardGamesSolitaire => 'Solitario';
+
+  @override
+  String get cardGamesPatienceBlurb =>
+      'Construye las cuatro fundaciones por palo.';
+
+  @override
+  String get cardGamesDealerHand => 'MANO DEL CRUPIER';
+
+  @override
+  String get cardGamesYourHand => 'TU MANO';
+
+  @override
+  String cardGamesDealerTotal(int total) {
+    return 'Crupier: $total';
+  }
+
+  @override
+  String cardGamesDealerShowing(int total) {
+    return 'Crupier: $total + ?';
+  }
+
+  @override
+  String cardGamesYouTotal(int total) {
+    return 'Tú: $total';
+  }
+
+  @override
+  String get cardGamesHit => 'Pedir';
+
+  @override
+  String get cardGamesStand => 'Plantarse';
+
+  @override
+  String get cardGamesDealAgain => 'Repartir de nuevo';
+
+  @override
+  String get cardGamesBlackjackHint =>
+      'Acércate más a 21 que el crupier sin pasarte. Los ases valen 1 u 11.';
+
+  @override
+  String get cardGamesHold => 'MANTENER';
+
+  @override
+  String get cardGamesDrawCards => 'Robar cartas';
+
+  @override
+  String get cardGamesPokerHint =>
+      'Toca las cartas para quedártelas y luego roba una vez. El crupier también roba una vez. Gana la mejor mano de cinco cartas.';
+
+  @override
+  String get cardGamesPatienceSection => 'PACIENCIA • ROBAR UNA';
+
+  @override
+  String get cardGamesStock => 'Mazo';
+
+  @override
+  String get cardGamesWaste => 'Descarte';
+
+  @override
+  String cardGamesFoundation(String number) {
+    return 'F$number';
+  }
+
+  @override
+  String get cardGamesPatienceHint =>
+      'Mueve las cartas hacia abajo alternando colores. Las columnas vacías aceptan reyes. Construye las fundaciones del as al rey por palo.';
+
+  @override
+  String get smallGamesTitle => 'Juegos pequeños';
+
+  @override
+  String get smallGamesChooseGame => 'Elige un juego para jugar.';
+
+  @override
+  String get smallGamesBingoName => 'BINGO';
+
+  @override
+  String get smallGamesBingoDescription =>
+      'Saca números del bombo y crea cartones imprimibles.';
+
+  @override
+  String get smallGamesOpenBingo => 'Abrir BINGO';
+
+  @override
+  String get smallGamesCardGamesName => 'Juegos de cartas';
+
+  @override
+  String get smallGamesCardGamesDescription =>
+      'Siéntate a la mesa del casino para jugar al póker, al blackjack o al solitario.';
+
+  @override
+  String get smallGamesOpenCardGames => 'Abrir juegos de cartas';
+
+  @override
+  String get smallGamesAllGames => 'Todos los juegos';
+
+  @override
+  String smallGamesCalledCount(int count) {
+    return '$count / 75 cantados';
+  }
+
+  @override
+  String get smallGamesEnterQuantity => 'Introduce un número del 1 al 500.';
+
+  @override
+  String smallGamesSavedCards(int count, String path) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count cartones guardados en $path',
+      one: '1 cartón guardado en $path',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String smallGamesExportFailed(String error) {
+    return 'No se pudieron exportar los cartones: $error';
+  }
+
+  @override
+  String get smallGamesCageTitle => 'El bombo';
+
+  @override
+  String get smallGamesCageSubtitle =>
+      'Saca una bola para cantar el siguiente número.';
+
+  @override
+  String get smallGamesReady => 'LISTO';
+
+  @override
+  String get smallGamesDrawNextBall => 'Sacar la siguiente bola';
+
+  @override
+  String get smallGamesAllBallsDrawn => 'Todas las bolas sacadas';
+
+  @override
+  String get smallGamesNewGame => 'Nueva partida';
+
+  @override
+  String get smallGamesCalledNumbers => 'Números cantados';
+
+  @override
+  String get smallGamesCalledNumbersHint =>
+      'Cada bola cantada permanece resaltada.';
+
+  @override
+  String get smallGamesRecentDraws => 'Sorteos recientes';
+
+  @override
+  String get smallGamesNoNumbersYet =>
+      'Todavía no se ha cantado ningún número.';
+
+  @override
+  String get smallGamesExportTitle => 'Exportar cartones de BINGO';
+
+  @override
+  String get smallGamesExportDescription =>
+      'Crea un PDF imprimible con cartones únicos de 5×5, cuatro por página en disposición 2×2. La última página puede tener menos. Cada cartón tiene un centro libre.';
+
+  @override
+  String get smallGamesNumberOfCards => 'Número de cartones';
+
+  @override
+  String get smallGamesExportPdf => 'Exportar PDF';
+
+  @override
+  String get smartHomeRefreshLights => 'Actualizar luces';
+
+  @override
+  String get smartHomeSubtitle =>
+      'Controla las lámparas IKEA a través de tu hub DIRIGERA en esta red.';
+
+  @override
+  String get smartHomeIkeaLamp => 'Lámpara IKEA';
+
+  @override
+  String get smartHomeOffline => 'Sin conexión';
+
+  @override
+  String get smartHomeNoLampsFound => 'No se encontraron lámparas IKEA';
+
+  @override
+  String get smartHomeAddLampHint =>
+      'Añade una lámpara en la aplicación IKEA Home y después actualiza aquí.';
+
+  @override
+  String smartHomeLampsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count lámparas',
+      one: '1 lámpara',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get smartHomeConnectHub => 'Conectar un hub DIRIGERA';
+
+  @override
+  String get smartHomeSameNetworkHint =>
+      'Asegúrate de que este dispositivo y el hub estén en la misma red doméstica.';
+
+  @override
+  String get smartHomeLookingForHubs => 'Buscando hubs DIRIGERA…';
+
+  @override
+  String get smartHomeHubsFound => 'Hubs encontrados';
+
+  @override
+  String get smartHomeNoHubFound =>
+      'No se encontró ningún hub. Comprueba que DIRIGERA esté encendido y que este dispositivo esté en la misma red doméstica.';
+
+  @override
+  String get smartHomeFindMyHub => 'Buscar mi hub';
+
+  @override
+  String get smartHomeHideManualAddress => 'Ocultar dirección manual';
+
+  @override
+  String get smartHomeEnterIpManually =>
+      'Introducir la dirección IP manualmente';
+
+  @override
+  String get smartHomeHubIpAddress => 'Dirección IP del hub';
+
+  @override
+  String get smartHomeStartPairing => 'Iniciar emparejamiento';
+
+  @override
+  String get smartHomePressHubButton =>
+      'Pulsa el botón de acción en la parte inferior del hub DIRIGERA.';
+
+  @override
+  String get smartHomePressedButton => 'He pulsado el botón';
+
+  @override
+  String get smartHomePairingExpires =>
+      'Si el emparejamiento caduca, empieza de nuevo.';
+
+  @override
+  String get smartHomeStartAgain => 'Empezar de nuevo';
+
+  @override
+  String get smartHomeConnected => 'DIRIGERA conectado';
+
+  @override
+  String get smartHomeDisconnect => 'Desconectar';
+
+  @override
+  String get smartHomePresetsTitle => 'Preajustes';
+
+  @override
+  String get smartHomeNewPreset => 'Nuevo preajuste';
+
+  @override
+  String get smartHomePresetsEmpty =>
+      'Guarda un grupo de lámparas con su propio brillo y color, y enciéndelas aquí con un solo toque.';
+
+  @override
+  String get smartHomePresetsTapHint =>
+      'Toca un preajuste para encender sus lámparas.';
+
+  @override
+  String smartHomeEditPreset(String name) {
+    return 'Editar $name';
+  }
+
+  @override
+  String smartHomePresetApplied(String name) {
+    return '«$name» aplicado.';
+  }
+
+  @override
+  String get smartHomeNewPresetTitle => 'Nuevo preajuste';
+
+  @override
+  String get smartHomeEditPresetTitle => 'Editar preajuste';
+
+  @override
+  String get smartHomeDeletePresetTitle => '¿Eliminar preajuste?';
+
+  @override
+  String smartHomeDeletePresetBody(String name) {
+    return '«$name» se eliminará. Tus lámparas no cambiarán.';
+  }
+
+  @override
+  String get smartHomePresetNameLabel => 'Nombre del preajuste';
+
+  @override
+  String get smartHomePresetNameHint => 'Noche';
+
+  @override
+  String get smartHomeChooseLamps =>
+      'Elige las lámparas que enciende este preajuste.';
+
+  @override
+  String get smartHomeCouldNotSavePreset =>
+      'No se pudo guardar este preajuste.';
+
+  @override
+  String get smartHomeCouldNotDeletePreset =>
+      'No se pudo eliminar este preajuste.';
+
+  @override
+  String get smartHomeSavingPreset => 'Guardando…';
+
+  @override
+  String get smartHomeSavePreset => 'Guardar preajuste';
+
+  @override
+  String smartHomeBrightnessPercent(int percent) {
+    return 'Brillo $percent %';
+  }
+
+  @override
+  String smartHomeColorIntensityPercent(int percent) {
+    return 'Intensidad del color $percent %';
+  }
+
+  @override
+  String smartHomeWhiteTemperatureKelvin(int kelvin) {
+    return 'Temperatura de blanco $kelvin K';
+  }
+
+  @override
+  String get smartHomeNoColorSupport =>
+      'Esta lámpara no admite cambios de color.';
+
+  @override
+  String get smartHomeColorRed => 'Rojo';
+
+  @override
+  String get smartHomeColorOrange => 'Naranja';
+
+  @override
+  String get smartHomeColorGreen => 'Verde';
+
+  @override
+  String get smartHomeColorBlue => 'Azul';
+
+  @override
+  String get smartHomeColorPurple => 'Morado';
+
+  @override
+  String get smartHomeDefaultHubName => 'Hub DIRIGERA';
+
+  @override
+  String get smartHomeEnterHubAddress =>
+      'Introduce la dirección IPv4 privada del hub que aparece en tu router.';
+
+  @override
+  String get smartHomeNoPairingChallenge =>
+      'El hub no devolvió un desafío de emparejamiento.';
+
+  @override
+  String get smartHomeNoAccessToken => 'El hub no devolvió un token de acceso.';
+
+  @override
+  String get smartHomeInvalidDeviceList =>
+      'Lista de dispositivos del hub no válida.';
+
+  @override
+  String get smartHomeHubAddressMustBePrivate =>
+      'La dirección del hub debe ser una dirección IPv4 privada.';
+
+  @override
+  String get smartHomeInvalidPresetLamp =>
+      'Ajustes de lámpara del preajuste no válidos.';
+
+  @override
+  String get smartHomeLampFallbackName => 'lámpara IKEA';
+
+  @override
+  String get smartHomePresetsLoadFailed =>
+      'No se pudieron cargar los ajustes preestablecidos guardados de Smart Home.';
+
+  @override
+  String get smartHomeHubConnectionReadFailed =>
+      'No se pudo leer la conexión guardada del hub desde el almacenamiento seguro.';
+
+  @override
+  String get smartHomeDiscoverFailed =>
+      'No se pudo buscar un hub DIRIGERA en la red local. Comprueba el permiso de red local e inténtalo de nuevo, o introduce su dirección IP.';
+
+  @override
+  String get smartHomePresetNeedsNameAndLamp =>
+      'Pon un nombre al ajuste preestablecido y selecciona al menos una lámpara.';
+
+  @override
+  String get smartHomePresetUnsupportedSettings =>
+      'Una lámpara seleccionada tiene ajustes que no admite. Actualiza las lámparas e inténtalo de nuevo.';
+
+  @override
+  String smartHomePresetSaveFailed(String error) {
+    return 'No se pudo guardar el ajuste preestablecido. ($error)';
+  }
+
+  @override
+  String smartHomePresetDeleteFailed(String error) {
+    return 'No se pudo eliminar el ajuste preestablecido. ($error)';
+  }
+
+  @override
+  String get smartHomeInvalidSnapshot => 'Instantánea de Smart Home no válida.';
+
+  @override
+  String get smartHomeLampMissing => 'Lámpara no encontrada';
+
+  @override
+  String smartHomeLampSettingsChanged(String name) {
+    return '$name (ajustes modificados)';
+  }
+
+  @override
+  String get smartHomeStatusRefreshItem => 'actualización del estado';
+
+  @override
+  String smartHomePresetPartialApply(String name, String lamps) {
+    return 'El ajuste preestablecido \"$name\" no se pudo aplicar por completo: $lamps.';
+  }
+
+  @override
+  String get smartHomeHubNoResponse =>
+      'El hub DIRIGERA no respondió. Asegúrate de que este dispositivo y el hub estén en la misma red doméstica y busca el hub de nuevo. El Wi-Fi de invitados o una VPN pueden impedir la conexión.';
+
+  @override
+  String get smartHomeHubUnreachable =>
+      'No se pudo conectar con el hub DIRIGERA. Comprueba su conexión e inténtalo de nuevo.';
+
+  @override
+  String get spaceColonyLinuxSubtitle =>
+      'Space Colony requiere una WebView integrada, que todavía no es compatible con esta plataforma.';
+
+  @override
+  String get steamCs2CatalogUnreachable =>
+      'No se pudo conectar con el catálogo de objetos. Comprueba tu conexión e inténtalo de nuevo.';
+
+  @override
+  String steamCs2CatalogHttpError(int status) {
+    return 'El catálogo de objetos devolvió un error (HTTP $status).';
+  }
+
+  @override
+  String get steamCs2CatalogUnreadable =>
+      'El catálogo de objetos devolvió algo ilegible.';
+
+  @override
+  String get steamCs2MarketUnreachable =>
+      'No se pudo conectar con el Mercado de la Comunidad de Steam. Comprueba tu conexión e inténtalo de nuevo.';
+
+  @override
+  String get steamCs2MarketRateLimited =>
+      'El Mercado de la Comunidad de Steam está limitando este dispositivo. Espera unos minutos e inténtalo de nuevo.';
+
+  @override
+  String steamCs2MarketHttpError(int status) {
+    return 'El Mercado de la Comunidad de Steam no pudo poner precio a ese objeto (HTTP $status).';
+  }
+
+  @override
+  String get steamCs2MarketUnreadable =>
+      'El Mercado de la Comunidad de Steam devolvió una respuesta ilegible.';
+
+  @override
+  String steamCs2OfflineLoadFailed(String error) {
+    return 'No se pudo cargar el guardado de mercado sin conexión: $error';
+  }
+
+  @override
+  String steamCs2OfflineSaveFailed(String error) {
+    return 'No se pudo guardar el ajuste del mercado sin conexión: $error';
+  }
+
+  @override
+  String steamCs2OfflineSyncFailed(String error) {
+    return 'No se pudo sincronizar el guardado de mercado sin conexión: $error';
+  }
+
+  @override
+  String steamCs2CatalogUpdateFailed(String error) {
+    return 'No se pudo actualizar el catálogo de objetos: $error';
+  }
+
+  @override
+  String steamCs2CheckPriceFailed(String error) {
+    return 'No se pudo comprobar ese precio: $error';
+  }
+
+  @override
+  String get steamApiEnterIdOrUrl =>
+      'Introduce tu ID de Steam o la URL de tu perfil.';
+
+  @override
+  String get steamApiNotSteamIdOrUrl =>
+      'Eso no parece un ID de Steam ni una URL de perfil. Usa tu ID de 17 dígitos o el enlace completo a tu perfil.';
+
+  @override
+  String steamApiUnknownProfile(String vanity) {
+    return 'Steam no conoce ningún perfil llamado \"$vanity\". Comprueba el nombre o pega en su lugar tu ID de Steam de 17 dígitos.';
+  }
+
+  @override
+  String get steamApiNoGames =>
+      'Steam no devolvió ningún juego. Abre tus ajustes de privacidad de Steam, pon \"Detalles de juegos\" en Público e inténtalo de nuevo.';
+
+  @override
+  String get steamApiRejectedKey =>
+      'Steam rechazó la clave de API. Revísala en Conectar o genera una nueva en steamcommunity.com/dev/apikey.';
+
+  @override
+  String get steamApiRateLimited =>
+      'Steam está limitando este dispositivo. Espera unos minutos e inténtalo de nuevo.';
+
+  @override
+  String steamApiUnreachable(String task) {
+    String _temp0 = intl.Intl.selectLogic(task, {
+      'resolveProfile': 'encontrar ese nombre de perfil',
+      'readLibrary': 'leer tu biblioteca',
+      'readStorePage': 'leer esa página de la tienda',
+      'searchStore': 'buscar en la tienda',
+      'other': 'hacer eso',
+    });
+    return 'No se pudo conectar con Steam para $_temp0. Comprueba tu conexión e inténtalo de nuevo.';
+  }
+
+  @override
+  String steamApiHttpError(String task, int status) {
+    String _temp0 = intl.Intl.selectLogic(task, {
+      'resolveProfile': 'encontrar ese nombre de perfil',
+      'readLibrary': 'leer tu biblioteca',
+      'readStorePage': 'leer esa página de la tienda',
+      'searchStore': 'buscar en la tienda',
+      'other': 'hacer eso',
+    });
+    return 'Steam no pudo $_temp0 (HTTP $status).';
+  }
+
+  @override
+  String steamApiUnreadable(String task) {
+    String _temp0 = intl.Intl.selectLogic(task, {
+      'resolveProfile': 'encontrar ese nombre de perfil',
+      'readLibrary': 'leer tu biblioteca',
+      'readStorePage': 'leer esa página de la tienda',
+      'searchStore': 'buscar en la tienda',
+      'other': 'hacer eso',
+    });
+    return 'Steam devolvió una respuesta ilegible para $_temp0.';
+  }
+
+  @override
+  String get itadApiUnexpectedHistory =>
+      'IsThereAnyDeal devolvió un historial de precios inesperado.';
+
+  @override
+  String get itadApiNotConfigured =>
+      'El operador del servidor no ha configurado el historial de precios. Pídele que añada una clave de IsThereAnyDeal.';
+
+  @override
+  String get itadApiNeedsAccount =>
+      'Esto requiere una cuenta de luma con sesión iniciada. Inicia sesión en Ajustes → Sincronización y cuenta.';
+
+  @override
+  String get itadApiRateLimited =>
+      'Hay demasiadas solicitudes de historial de precios ahora mismo. Espera un poco e inténtalo de nuevo.';
+
+  @override
+  String itadApiUnreachable(String task) {
+    String _temp0 = intl.Intl.selectLogic(task, {
+      'lookupGame': 'buscar ese juego',
+      'priceHistory': 'leer ese historial de precios',
+      'readGame': 'leer ese juego',
+      'other': 'hacer eso',
+    });
+    return 'No se pudo conectar con el servidor de luma para $_temp0. Comprueba tu conexión e inténtalo de nuevo.';
+  }
+
+  @override
+  String itadApiHttpError(String task, int status) {
+    String _temp0 = intl.Intl.selectLogic(task, {
+      'lookupGame': 'buscar ese juego',
+      'priceHistory': 'leer ese historial de precios',
+      'readGame': 'leer ese juego',
+      'other': 'hacer eso',
+    });
+    return 'No se pudo $_temp0 (HTTP $status).';
+  }
+
+  @override
+  String get steamLibraryNeverPlayed => 'Nunca jugado';
+
+  @override
+  String steamLibraryMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String steamLibraryHours(String hours) {
+    return '$hours h';
+  }
+
+  @override
+  String get steamRangeFiveYears => 'los últimos cinco años';
+
+  @override
+  String get steamRangeYear => 'el último año';
+
+  @override
+  String get steamRangeSixMonths => 'los últimos seis meses';
+
+  @override
+  String get steamRangeMonth => 'el último mes';
+
+  @override
+  String get steamRangeWeek => 'la última semana';
+
+  @override
+  String get steamRangeDay => 'el último día';
+
+  @override
+  String get steamRepoEnterApiKey => 'Introduce tu clave de API web de Steam.';
+
+  @override
+  String steamRepoConnectFailed(String error) {
+    return 'No se pudo conectar con Steam: $error';
+  }
+
+  @override
+  String steamRepoRefreshFailed(String error) {
+    return 'No se pudo actualizar tu biblioteca: $error';
+  }
+
+  @override
+  String get cs2CalcTitle => 'Calculadora de venta de CS2';
+
+  @override
+  String get cs2CalcSubtitle =>
+      'Consulta lo que recibirías estimado en tu cartera de Steam tras las comisiones del mercado.';
+
+  @override
+  String get cs2CalcBuyerPays => 'Lo que paga el comprador';
+
+  @override
+  String get cs2CalcCurrency => 'Moneda';
+
+  @override
+  String get cs2CalcYouReceive => 'Recibes';
+
+  @override
+  String get cs2CalcSteamFee => 'Comisión de Steam (5 %)';
+
+  @override
+  String get cs2CalcGameFee => 'Comisión de CS2 (10 %)';
+
+  @override
+  String get cs2CalcDisclaimer =>
+      'Solo una estimación. Las comisiones se calculan por separado y se redondean a la baja al céntimo, con un mínimo de un céntimo cada una. Steam puede tratar otras monedas de forma diferente.';
+
+  @override
+  String get cs2MarketOfflineTitle => 'Seguir guardando sin conexión';
+
+  @override
+  String get cs2MarketOfflineSignIn =>
+      'Inicia sesión con una cuenta Orbit o Nova aprobada para activar esto.';
+
+  @override
+  String get cs2MarketOfflineLoading =>
+      'Cargando el seguimiento de mercado compartido…';
+
+  @override
+  String get cs2MarketOfflineSaving => 'Guardando tus anuncios seguidos…';
+
+  @override
+  String cs2MarketOfflineIntervalOff(int hours) {
+    String _temp0 = intl.Intl.pluralLogic(
+      hours,
+      locale: localeName,
+      other:
+          'El servidor comprueba las skins seguidas cada $hours horas una vez activado.',
+      one:
+          'El servidor comprueba las skins seguidas cada hora una vez activado.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cs2MarketOfflineScheduled =>
+      'Las comprobaciones programadas del servidor están activadas.';
+
+  @override
+  String cs2MarketOfflineNextCheck(int hours, String time) {
+    String _temp0 = intl.Intl.pluralLogic(
+      hours,
+      locale: localeName,
+      other: 'cada $hours horas',
+      one: 'cada hora',
+    );
+    return 'El servidor comprueba $_temp0 · próxima a las $time';
+  }
+
+  @override
+  String get cs2MarketSubtitleLoading => 'Cargando el catálogo de objetos…';
+
+  @override
+  String get cs2MarketSubtitleNotLoaded =>
+      'El catálogo de objetos aún no se ha cargado.';
+
+  @override
+  String cs2MarketSubtitleCatalogued(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count objetos catalogados.',
+      one: '1 objeto catalogado.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String cs2MarketSubtitleUpdatedDays(int count, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count objetos catalogados, actualizado hace $days d.',
+      one: '1 objeto catalogado, actualizado hace $days d.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String cs2MarketSubtitleUpdatedHours(int count, int hours) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count objetos catalogados, actualizado hace $hours h.',
+      one: '1 objeto catalogado, actualizado hace $hours h.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String cs2MarketSubtitleUpdatedJustNow(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count objetos catalogados, actualizado hace un momento.',
+      one: '1 objeto catalogado, actualizado hace un momento.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cs2MarketTrackedSettings => 'Ajustes de seguimiento';
+
+  @override
+  String get cs2MarketCountAsInvestments =>
+      'Contar el valor de CS2 como inversiones';
+
+  @override
+  String get cs2MarketCountAsInvestmentsHint =>
+      'Incluir los valores de armas seguidas en Finanzas y el panel.';
+
+  @override
+  String get cs2MarketRefreshCatalog => 'Actualizar catálogo';
+
+  @override
+  String get cs2MarketUpdating => 'Actualizando…';
+
+  @override
+  String get cs2MarketRefreshPrices => 'Actualizar precios';
+
+  @override
+  String get cs2MarketChecking => 'Comprobando…';
+
+  @override
+  String get cs2MarketBrowse => 'Explorar';
+
+  @override
+  String get cs2MarketTracked => 'Seguidos';
+
+  @override
+  String get cs2MarketSearchTracked =>
+      'Busca lo que sigues: nombre, arma, rareza';
+
+  @override
+  String get cs2MarketSearchAny =>
+      'Busca cualquier objeto de CS2: nombre, arma, rareza, caja';
+
+  @override
+  String cs2MarketCheckingProgress(int done, int total) {
+    return 'Comprobando precios — $done de $total';
+  }
+
+  @override
+  String get cs2MarketDismiss => 'Descartar';
+
+  @override
+  String get cs2MarketCatalogEmpty => 'El catálogo está vacío';
+
+  @override
+  String get cs2MarketCatalogEmptyHint =>
+      'Actualiza el catálogo para cargar todos los objetos de CS2.';
+
+  @override
+  String get cs2MarketKeepTyping => 'Sigue escribiendo';
+
+  @override
+  String get cs2MarketKeepTypingHint =>
+      'Una sola letra coincide con demasiados objetos del catálogo — unas cuantas más lo reducirán.';
+
+  @override
+  String cs2MarketNoMatch(String query) {
+    return 'Ningún objeto coincide con \"$query\"';
+  }
+
+  @override
+  String get cs2MarketNoMatchHint =>
+      'Prueba con un nombre de arma, una rareza como \"Covert\" o el nombre de una caja.';
+
+  @override
+  String cs2MarketTileLabelCase(String name, String rarity, String caseName) {
+    return '$name, $rarity. De la caja $caseName';
+  }
+
+  @override
+  String cs2MarketTileLabelNoCase(String name, String rarity) {
+    return '$name, $rarity. Sin caja';
+  }
+
+  @override
+  String cs2MarketTileLabelCasePinned(
+    String name,
+    String rarity,
+    String caseName,
+  ) {
+    return '$name, $rarity. De la caja $caseName. Fijado';
+  }
+
+  @override
+  String cs2MarketTileLabelNoCasePinned(String name, String rarity) {
+    return '$name, $rarity. Sin caja. Fijado';
+  }
+
+  @override
+  String get cs2MarketNoCase => 'Sin caja';
+
+  @override
+  String get cs2MarketPinToTop => 'Fijar arriba';
+
+  @override
+  String get cs2MarketUnpin => 'Quitar fijado';
+
+  @override
+  String get cs2TrackListing => 'Seguir este anuncio';
+
+  @override
+  String get cs2TrackAnotherCopy => 'Seguir otra copia';
+
+  @override
+  String get cs2ItemSubtitleAnotherCopy =>
+      'El precio desde el que medir la ganancia y la pérdida de esta copia.';
+
+  @override
+  String get cs2ItemSubtitleNewListing =>
+      'Elige el desgaste y el precio desde el que medir la ganancia y la pérdida.';
+
+  @override
+  String get cs2ItemSetStartingPrice => 'Establecer precio inicial';
+
+  @override
+  String get cs2ItemEditStartingPrice => 'Editar precio inicial';
+
+  @override
+  String get cs2ItemStartingPriceSubtitle =>
+      'El precio desde el que se mide la ganancia y la pérdida de esta copia.';
+
+  @override
+  String get cs2ItemNotFound => 'Objeto no encontrado';
+
+  @override
+  String get cs2ItemNotFoundHint =>
+      'Puede que haya desaparecido en la última actualización del catálogo — prueba a actualizarlo.';
+
+  @override
+  String get cs2ItemBackToMarket => 'Volver al mercado';
+
+  @override
+  String get cs2ItemWear => 'Desgaste';
+
+  @override
+  String get cs2ItemVariant => 'Variante';
+
+  @override
+  String get cs2ItemNormal => 'Normal';
+
+  @override
+  String get cs2ItemLowestListed => 'Precio más bajo';
+
+  @override
+  String get cs2ItemCouldNotCheck => 'No se pudo comprobar el precio';
+
+  @override
+  String get cs2ItemNotCheckedYet => 'Aún sin comprobar';
+
+  @override
+  String cs2ItemMedian(String price) {
+    return 'Mediana $price';
+  }
+
+  @override
+  String get cs2ItemCheckNow => 'Comprobar ahora';
+
+  @override
+  String get cs2ItemQuickCheckNotSaved =>
+      'Una comprobación rápida, no guardada: sigue este anuncio para conservar su historial de precios.';
+
+  @override
+  String get cs2ItemStatusNotChecked => 'Aún sin comprobar.';
+
+  @override
+  String get cs2ItemCheckedJustNow => 'Comprobado hace un momento.';
+
+  @override
+  String cs2ItemCheckedMinutes(int minutes) {
+    return 'Comprobado hace $minutes min.';
+  }
+
+  @override
+  String cs2ItemCheckedHours(int hours) {
+    return 'Comprobado hace $hours h.';
+  }
+
+  @override
+  String cs2ItemCheckedOn(String date) {
+    return 'Comprobado el $date.';
+  }
+
+  @override
+  String cs2ItemTrackedOn(String date) {
+    return 'Seguido desde el $date';
+  }
+
+  @override
+  String cs2ItemYourCopies(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Tus copias ($count)',
+      one: 'Tu copia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cs2ItemNoStartingPrice => 'No hay precio inicial';
+
+  @override
+  String get cs2ItemSetPrice => 'Establecer precio';
+
+  @override
+  String get cs2ItemClearPrice => 'Borrar precio';
+
+  @override
+  String get cs2ItemStopTrackingCopy => 'Dejar de seguir esta copia';
+
+  @override
+  String get cs2ItemFactWeapon => 'Arma';
+
+  @override
+  String get cs2ItemFactRarity => 'Rareza';
+
+  @override
+  String get cs2ItemFactCase => 'Caja';
+
+  @override
+  String get cs2ItemFactNoCase => 'Sin caja: objeto de colección o promocional';
+
+  @override
+  String get cs2ItemFactAvailable => 'Disponible para este acabado';
+
+  @override
+  String get cs2ItemFactSouvenir => 'Souvenir';
+
+  @override
+  String get cs2ItemOpenOnMarket => 'Abrir en el mercado de Steam';
+
+  @override
+  String get cs2ChartPriceHistory => 'Historial de precios';
+
+  @override
+  String get cs2ChartGainLoss => 'Ganancias y pérdidas';
+
+  @override
+  String get cs2ChartNoReadings => 'No hay lecturas de precio disponibles.';
+
+  @override
+  String cs2ChartGainLossUnchanged(String delta) {
+    return 'Sin cambios en $delta respecto al precio inicial en las lecturas mostradas.';
+  }
+
+  @override
+  String cs2ChartGainLossBetween(String low, String high) {
+    return 'Entre $low y $high respecto al precio inicial en las lecturas mostradas.';
+  }
+
+  @override
+  String get cs2ChartOneReading =>
+      'Solo una lectura por ahora: una tendencia necesita al menos dos.';
+
+  @override
+  String cs2ChartUnchangedAcrossCount(String delta, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count lecturas',
+      one: '1 lectura',
+    );
+    return 'Sin cambios en $delta en $_temp0.';
+  }
+
+  @override
+  String cs2ChartBetweenShown(String low, String high) {
+    return 'Entre $low y $high en las lecturas mostradas.';
+  }
+
+  @override
+  String cs2ChartUnchangedShown(String price) {
+    return 'Sin cambios en $price en las lecturas mostradas.';
+  }
+
+  @override
+  String get cs2ChartBest => 'Mejor';
+
+  @override
+  String get cs2ChartWorst => 'Peor';
+
+  @override
+  String get cs2ChartLowest => 'Mínimo';
+
+  @override
+  String get cs2ChartHighest => 'Máximo';
+
+  @override
+  String get cs2ChartNoHistory => 'Aún no hay historial';
+
+  @override
+  String get cs2ChartNoHistoryHint =>
+      'El mercado de Steam no publica historial propio: sigue este anuncio y luma empezará a crear uno desde aquí.';
+
+  @override
+  String get cs2ChartNoReadingsInRange => 'No hay lecturas en este rango';
+
+  @override
+  String get cs2ChartTryWiderRange =>
+      'Prueba con un rango más amplio o vuelve a comprobar el precio.';
+
+  @override
+  String get steamFreeToPlay => 'Gratis para jugar';
+
+  @override
+  String get steamFreeToPlaySemantics => 'Gratis para jugar.';
+
+  @override
+  String get steamPriceNotChecked => 'Aún no comprobado';
+
+  @override
+  String get steamPriceNotCheckedSemantics => 'Precio aún sin comprobar.';
+
+  @override
+  String get steamPriceChecking => 'Comprobando…';
+
+  @override
+  String steamPriceCosts(String price) {
+    return 'Cuesta $price.';
+  }
+
+  @override
+  String get steamTrackAGame => 'Seguir un juego';
+
+  @override
+  String get steamDismiss => 'Descartar';
+
+  @override
+  String get steamAccountSettingsTooltip => 'Ajustes de la cuenta de Steam';
+
+  @override
+  String get cs2StartPriceEnterValid => 'Introduce un precio válido.';
+
+  @override
+  String get cs2StartPriceGrade => 'Grado de desgaste';
+
+  @override
+  String get cs2StartPriceGradeHelper =>
+      'El desgaste y el precio se establecen juntos; no se pueden cambiar por separado una vez iniciado el seguimiento.';
+
+  @override
+  String get cs2StartPriceGradeFixedHelper =>
+      'Fijo: esta base corresponde exactamente a este anuncio.';
+
+  @override
+  String get cs2StartPriceStartingPrice => 'Precio inicial';
+
+  @override
+  String get cs2StartPriceStartingPriceHelper =>
+      'Lo que pagaste, o el precio desde el que medir ganancias y pérdidas; no se obtiene de Steam.';
+
+  @override
+  String get cs2TrackedEmptyTitle => 'Nada seguido todavía';
+
+  @override
+  String get cs2TrackedEmptySubtitle =>
+      'Sigue un artículo desde Explorar para vigilar su precio; aparecerá aquí junto con lo demás que sigues.';
+
+  @override
+  String cs2TrackedNoMatchTitle(String query) {
+    return 'Ningún artículo seguido coincide con \"$query\"';
+  }
+
+  @override
+  String get cs2TrackedNoMatchSubtitle =>
+      'Prueba con otro nombre de arma o rareza.';
+
+  @override
+  String get cs2TrackedTotalValue => 'Valor total';
+
+  @override
+  String cs2TrackedCopiesTracked(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count copias seguidas',
+      one: '1 copia seguida',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String cs2TrackedGainLossCoverage(int withStart, int total) {
+    return 'La ganancia/pérdida cubre $withStart de $total con precio inicial.';
+  }
+
+  @override
+  String get cs2NoWearVariants => 'Sin variantes de desgaste';
+
+  @override
+  String get cs2RangeAll => 'Todo';
+
+  @override
+  String get steamAccountTitle => 'Cuenta de Steam';
+
+  @override
+  String get steamAccountSubtitle =>
+      'Para que luma muestre los juegos que tienes.';
+
+  @override
+  String get steamAccountConnected => 'Conectado';
+
+  @override
+  String steamAccountConnectedWithKey(String maskedKey) {
+    return 'Conectado — $maskedKey';
+  }
+
+  @override
+  String get steamAccountApiKeyLabel => 'Clave de API web de Steam';
+
+  @override
+  String get steamAccountKeyHelperConnected =>
+      'Déjalo en blanco para conservar la clave guardada.';
+
+  @override
+  String get steamAccountKeyHelperNew =>
+      'Gratis y vinculada a tu propia cuenta.';
+
+  @override
+  String get steamAccountKeyHintReplace =>
+      'Introduce una clave nueva para reemplazarla';
+
+  @override
+  String get steamAccountHideKey => 'Ocultar clave';
+
+  @override
+  String get steamAccountShowKey => 'Mostrar clave';
+
+  @override
+  String get steamAccountGetKey => 'Obtener una clave de Steam';
+
+  @override
+  String get steamAccountIdLabel => 'ID de Steam o URL del perfil';
+
+  @override
+  String get steamAccountIdHelper =>
+      'Tu ID de 17 dígitos o un enlace como steamcommunity.com/id/tunombre.';
+
+  @override
+  String get steamAccountErrorNoKey => 'Pega tu clave de API web de Steam.';
+
+  @override
+  String get steamAccountErrorNoId =>
+      'Introduce tu ID de Steam o la URL de tu perfil.';
+
+  @override
+  String get steamAccountConnect => 'Conectar';
+
+  @override
+  String get steamAccountDisconnect => 'Desconectar';
+
+  @override
+  String get steamAccountEncryptedNote =>
+      'Tu clave se guarda cifrada en este dispositivo y solo se envía a Steam, nunca a un servidor de luma.';
+
+  @override
+  String get steamAccountPrivacyNote =>
+      'Steam solo devuelve tu biblioteca si «Detalles de juegos» está configurado como Público en tu configuración de privacidad.';
+
+  @override
+  String get steamAccountHistoryNote =>
+      'El historial de precios también requiere una cuenta de luma con sesión iniciada; se obtiene a través del servidor, así que no hace falta una clave aparte.';
+
+  @override
+  String get steamDetailNoLongerInLibraryTitle =>
+      'Ese juego ya no está en tu biblioteca';
+
+  @override
+  String get steamDetailNoLongerInLibrarySubtitle =>
+      'Actualiza tu biblioteca para ver qué ha cambiado.';
+
+  @override
+  String get steamDetailBackTooltip => 'Volver a tu biblioteca';
+
+  @override
+  String get steamDetailPriceNow => 'Precio actual';
+
+  @override
+  String get steamDetailCheckNow => 'Comprobar ahora';
+
+  @override
+  String steamDetailWasPrice(String price) {
+    return 'antes $price';
+  }
+
+  @override
+  String get steamDetailNeverPriced =>
+      'Este juego aún no tiene precio comprobado.';
+
+  @override
+  String get steamDetailCheckedJustNow => 'Comprobado hace un momento.';
+
+  @override
+  String steamDetailCheckedMinutes(int count) {
+    return 'Comprobado hace $count min.';
+  }
+
+  @override
+  String steamDetailCheckedHours(int count) {
+    return 'Comprobado hace $count h.';
+  }
+
+  @override
+  String steamDetailCheckedOn(String date) {
+    return 'Comprobado el $date.';
+  }
+
+  @override
+  String get steamDetailAboutTitle => 'Acerca de este juego';
+
+  @override
+  String get steamDetailTags => 'Etiquetas';
+
+  @override
+  String get steamDetailRequirementsTitle => 'Requisitos del sistema';
+
+  @override
+  String get steamDetailReadingStore => 'Leyendo la página de la tienda…';
+
+  @override
+  String get steamDetailNoPcRequirements =>
+      'Steam no indica requisitos de PC para este juego.';
+
+  @override
+  String get steamDetailReqMinimum => 'Mínimos';
+
+  @override
+  String get steamDetailReqRecommended => 'Recomendados';
+
+  @override
+  String get steamDetailDeveloper => 'Desarrollador';
+
+  @override
+  String get steamDetailPublisher => 'Editor';
+
+  @override
+  String get steamDetailReleased => 'Lanzamiento';
+
+  @override
+  String get steamDetailPlatforms => 'Plataformas';
+
+  @override
+  String get steamDetailYourPlaytime => 'Tu tiempo de juego';
+
+  @override
+  String get steamDetailPlaytimeNever => 'Nunca jugado';
+
+  @override
+  String steamDetailPlaytimeMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count minutos',
+      one: '1 minuto',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String steamDetailPlaytimeHours(String hours) {
+    return '$hours horas';
+  }
+
+  @override
+  String steamDetailPlaytimeHoursWhole(int count) {
+    return '$count horas';
+  }
+
+  @override
+  String get steamDetailOpenOnSteam => 'Abrir en Steam';
+
+  @override
+  String get steamDetailStopTracking => 'Dejar de seguir';
+
+  @override
+  String steamDetailStopTrackingTitle(String name) {
+    return '¿Dejar de seguir $name?';
+  }
+
+  @override
+  String get steamDetailStopTrackingOwned =>
+      'Esto lo quita de tus juegos seguidos y borra su historial de precios en este dispositivo. Sigue en tu biblioteca de Steam, así que al actualizarla más tarde volverá a añadirse.';
+
+  @override
+  String get steamDetailStopTrackingUnowned =>
+      'Esto lo quita de tus juegos seguidos y borra su historial de precios en este dispositivo.';
+
+  @override
+  String get steamChartTitle => 'Historial de precios';
+
+  @override
+  String get steamChartNoHistory => 'No hay historial de precios disponible.';
+
+  @override
+  String get steamChartRangeFiveYears => 'los últimos cinco años';
+
+  @override
+  String get steamChartRangeYear => 'el último año';
+
+  @override
+  String get steamChartRangeSixMonths => 'los últimos seis meses';
+
+  @override
+  String get steamChartRangeMonth => 'el último mes';
+
+  @override
+  String get steamChartRangeWeek => 'la última semana';
+
+  @override
+  String get steamChartRangeDay => 'el último día';
+
+  @override
+  String steamChartSummaryFlat(String range, String price) {
+    return 'Historial de precios de $range: sin cambios en $price.';
+  }
+
+  @override
+  String steamChartSummaryRange(String range, String low, String high) {
+    return 'Historial de precios de $range: entre $low y $high.';
+  }
+
+  @override
+  String steamChartUnchangedAcross(String price, String range) {
+    return 'Sin cambios en $price durante $range.';
+  }
+
+  @override
+  String get steamChartLowestInRange => 'Más bajo en el periodo';
+
+  @override
+  String get steamChartHighestInRange => 'Más alto en el periodo';
+
+  @override
+  String get steamChartAllTimeLow => 'Mínimo histórico';
+
+  @override
+  String steamChartAllTimeLowSince(String date) {
+    return 'Mínimo histórico ($date)';
+  }
+
+  @override
+  String get steamChartFromIsThereAnyDeal =>
+      'Historial de precios de Steam de IsThereAnyDeal.';
+
+  @override
+  String steamChartFromIsThereAnyDealFull(String range) {
+    return 'Historial de precios de Steam de IsThereAnyDeal, que cubre todo $range.';
+  }
+
+  @override
+  String steamChartShortHistory(String date, String range) {
+    return 'IsThereAnyDeal tiene este juego desde el $date, lo que es menos que $range.';
+  }
+
+  @override
+  String get steamChartSignInTitle =>
+      'Inicia sesión para ver el historial de precios';
+
+  @override
+  String get steamChartSignInBody =>
+      'Steam solo publica lo que cuesta un juego hoy. Una cuenta de luma con sesión iniciada consulta los años anteriores, sin clave extra que buscar o pegar.';
+
+  @override
+  String steamChartNoHistoryOver(String range) {
+    return 'Sin historial de precios de $range';
+  }
+
+  @override
+  String get steamChartNothingOnFile =>
+      'IsThereAnyDeal no tiene nada registrado para este juego.';
+
+  @override
+  String get steamSearchSubtitle =>
+      'Busca en la tienda de Steam; no necesitas cuenta.';
+
+  @override
+  String get steamSearchHint => 'Buscar un juego';
+
+  @override
+  String get steamSearchStartHint =>
+      'Busca un juego por su nombre para empezar a seguir su precio.';
+
+  @override
+  String steamSearchCouldNot(String error) {
+    return 'No se pudo buscar en Steam: $error';
+  }
+
+  @override
+  String steamSearchNoMatch(String query) {
+    return 'Ningún juego coincide con \"$query\".';
+  }
+
+  @override
+  String steamSearchAlreadyTracked(String name) {
+    return '$name, ya seguido';
+  }
+
+  @override
+  String steamSearchTapToTrack(String name) {
+    return '$name, toca para seguir';
+  }
+
+  @override
+  String get steamTrackerSortPlaytime => 'Tiempo de juego';
+
+  @override
+  String get steamTrackerTitle => 'Seguimiento de precios';
+
+  @override
+  String get steamTrackerSubtitleDisconnected =>
+      'Siguiendo precios: conecta una cuenta de Steam para añadir también tu biblioteca de golpe.';
+
+  @override
+  String get steamTrackerSubtitleNoSync =>
+      'Conectado. Actualiza la biblioteca para importarla.';
+
+  @override
+  String get steamTrackerSyncedJustNow =>
+      'Biblioteca sincronizada hace un momento.';
+
+  @override
+  String steamTrackerSyncedMinutes(int count) {
+    return 'Biblioteca sincronizada hace $count min.';
+  }
+
+  @override
+  String steamTrackerSyncedHours(int count) {
+    return 'Biblioteca sincronizada hace $count h.';
+  }
+
+  @override
+  String steamTrackerSyncedDays(int count) {
+    return 'Biblioteca sincronizada hace $count d.';
+  }
+
+  @override
+  String get steamTrackerRefreshLibrary => 'Actualizar biblioteca';
+
+  @override
+  String get steamTrackerRefreshPrices => 'Actualizar precios';
+
+  @override
+  String get steamTrackerSearchHint => 'Buscar juegos seguidos';
+
+  @override
+  String steamTrackerCheckingPrices(int done, int total) {
+    return 'Comprobando precios: $done de $total';
+  }
+
+  @override
+  String get steamTrackerEmptyTitle => 'Sigue tu primer juego';
+
+  @override
+  String get steamTrackerEmptySubtitle =>
+      'Busca un juego para empezar a vigilar su precio; no necesitas cuenta de Steam.';
+
+  @override
+  String steamTrackerNoMatchTitle(String query) {
+    return 'Ningún juego coincide con \"$query\"';
+  }
+
+  @override
+  String get steamTrackerNoMatchSubtitle =>
+      'Prueba con una búsqueda más corta.';
+
+  @override
+  String steamTrackerPlaytimeMinutes(int count) {
+    return '$count min';
+  }
+
+  @override
+  String steamTrackerPlaytimeHours(String hours) {
+    return '$hours h';
+  }
+
+  @override
+  String steamTrackerPlaytimeHoursWhole(int count) {
+    return '$count h';
+  }
+
+  @override
+  String get steamTrackerUnplayed => 'Sin jugar';
+
+  @override
+  String get subwayBuilderNotOnLinuxTitle => 'No disponible en Linux';
+
+  @override
+  String get subwayBuilderNotOnLinuxSubtitle =>
+      'Subway Builder requiere una WebView integrada, que todavía no es compatible con esta plataforma.';
+
+  @override
+  String get textLibraryClassroomSignIn =>
+      'Inicia sesión con una cuenta de luma aprobada para usar el aula.';
+
+  @override
+  String get textLibraryClassroomOffline =>
+      'No se pudo conectar con el servidor de luma. Comprueba tu conexión e inténtalo de nuevo.';
+
+  @override
+  String textLibraryClassroomFailed(int status) {
+    return 'El aula ha fallado (HTTP $status).';
+  }
+
+  @override
+  String get textLibraryClassroomMalformed =>
+      'El servidor envió una respuesta con formato incorrecto.';
+
+  @override
+  String get textLibraryClassroomUnknownRequest =>
+      'Solicitud del aula desconocida.';
+
+  @override
+  String get textLibraryDefaultSubjectName => 'Asignatura';
+
+  @override
+  String transportTrackerConnectionError(String error) {
+    return 'Error de conexión: $error';
+  }
+
+  @override
+  String transportTrackerCouldNotConnect(String error) {
+    return 'No se pudo conectar: $error';
+  }
+
+  @override
+  String transitArchivePartialUnsupported(int code) {
+    return 'El archivo de transporte no admite descargas parciales (HTTP $code).';
+  }
+
+  @override
+  String get transitArchiveSizeUnknown =>
+      'No se pudo determinar el tamaño del archivo.';
+
+  @override
+  String get transitArchiveIndexUnreadable =>
+      'El índice del archivo no se puede leer.';
+
+  @override
+  String get transitArchiveIndexUnreadableZip64 =>
+      'El índice del archivo no se puede leer (zip64).';
+
+  @override
+  String transitArchiveMemberMissing(String name) {
+    return '$name no está en el archivo.';
+  }
+
+  @override
+  String get transitRoutesEmpty => 'La lista de rutas llegó vacía.';
+
+  @override
+  String get transitStopsEmpty => 'La lista de paradas llegó vacía.';
+
+  @override
+  String get transitStopsMissingColumns =>
+      'A la lista de paradas le faltan columnas esperadas.';
+
+  @override
+  String transitFeedRateLimited(int minutes) {
+    return 'El canal de transporte está limitando este dispositivo. Pausa de $minutes min.';
+  }
+
+  @override
+  String transitFeedHttpError(int code) {
+    return 'El canal de transporte devolvió HTTP $code.';
+  }
+
+  @override
+  String transitFeedLoadFailed(String error) {
+    return 'No se pudo cargar el canal de transporte: $error';
+  }
+
+  @override
+  String get transitModeHighSpeed => 'Alta velocidad';
+
+  @override
+  String get transitModeTrain => 'Tren';
+
+  @override
+  String get transitModeMetro => 'Metro';
+
+  @override
+  String get transitModeTram => 'Tranvía';
+
+  @override
+  String get transitModeBus => 'Autobús';
+
+  @override
+  String get transitModeFerry => 'Ferri';
+
+  @override
+  String get transportPrefsInvalidSnapshot =>
+      'Instantánea del rastreador de transporte no válida.';
+
+  @override
+  String get transportTrackerLinuxSubtitle =>
+      'Transport Tracker requiere un WebView integrado, que todavía no es compatible con esta plataforma.';
+
+  @override
+  String get transportTrackerLive => 'En vivo';
+
+  @override
+  String get transportTrackerConnecting => 'Conectando…';
+
+  @override
+  String get transportTrackerStopped => 'Detenido';
+
+  @override
+  String get transportTrackerIdle => 'Inactivo';
+
+  @override
+  String get transportTrackerStopFeedTooltip => 'Detener el canal AIS en vivo';
+
+  @override
+  String get transportTrackerStartFeedTooltip =>
+      'Iniciar un canal AIS en vivo para la zona de la pantalla';
+
+  @override
+  String get transportTrackerWaitingForMapTooltip =>
+      'Esperando a que termine de cargar el mapa';
+
+  @override
+  String get transportTrackerStopTracking => 'Dejar de seguir';
+
+  @override
+  String get transportTrackerTrackView => 'Seguir esta vista';
+
+  @override
+  String get transportTrackerChooseLayersTooltip => 'Elegir qué seguir';
+
+  @override
+  String get transportTrackerApiKeySettingsTooltip =>
+      'Ajustes de la clave API de AISStream.io';
+
+  @override
+  String transportTrackerVesselsCount(int count) {
+    return 'Buques ($count)';
+  }
+
+  @override
+  String transportTrackerVesselsAndTransitCount(int vessels, int transit) {
+    return 'Buques ($vessels) · Transporte ($transit)';
+  }
+
+  @override
+  String get transportTrackerAddKeyToSeeShips =>
+      'Añade una clave API gratuita de AISStream.io para ver los barcos en vivo.';
+
+  @override
+  String get transportTrackerConnectedWaiting =>
+      'Conectado; esperando informes de posición. Las rutas marítimas concurridas se llenan en segundos; el mar abierto puede tardar más.';
+
+  @override
+  String transportTrackerNoVesselsYet(String label) {
+    return 'Aún no hay buques. Pulsa \"$label\" para iniciar el canal en vivo de la zona de la pantalla.';
+  }
+
+  @override
+  String get transportTrackerNoAisYet =>
+      'Aún no se han recibido mensajes AIS. Si sigue en cero, la clave puede haber sido rechazada o esta zona puede no tener tráfico con informes.';
+
+  @override
+  String transportTrackerAisMessagesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count mensajes AIS recibidos.',
+      one: '1 mensaje AIS recibido.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String transportTrackerMapLoadFailed(String error) {
+    return 'El mapa no se pudo cargar por completo: comprueba la conexión a internet de este dispositivo. ($error)';
+  }
+
+  @override
+  String get transportTrackerAddKeyPrompt => 'Añade tu clave API gratuita';
+
+  @override
+  String transportTrackerKnots(String value) {
+    return '$value nudos';
+  }
+
+  @override
+  String get transportTrackerBackToVessels => 'Volver a la lista de buques';
+
+  @override
+  String get transportTrackerCallSign => 'Indicativo de llamada';
+
+  @override
+  String get transportTrackerSpeed => 'Velocidad';
+
+  @override
+  String get transportTrackerCourse => 'Rumbo';
+
+  @override
+  String get transportTrackerHeading => 'Rumbo real';
+
+  @override
+  String get transportTrackerDestination => 'Destino';
+
+  @override
+  String get transportTrackerDraught => 'Calado';
+
+  @override
+  String get transportTrackerPosition => 'Posición';
+
+  @override
+  String get transportTrackerLastReport => 'Último informe';
+
+  @override
+  String transportTrackerMetres(String value) {
+    return '$value m';
+  }
+
+  @override
+  String transportTrackerKmh(String value) {
+    return '$value km/h';
+  }
+
+  @override
+  String get transportTrackerBackToList => 'Volver a la lista';
+
+  @override
+  String get transportTrackerLine => 'Línea';
+
+  @override
+  String get transportTrackerMode => 'Modo';
+
+  @override
+  String get transportTrackerVehicleNumber => 'Número de vehículo';
+
+  @override
+  String get transportTrackerOperator => 'Operador';
+
+  @override
+  String get transportTrackerLastUpdate => 'Última actualización';
+
+  @override
+  String get transportTrackerInterpolatedNote =>
+      'Estimado a partir del horario: los trenes no emiten su posición en los datos abiertos, así que se interpola entre estaciones.';
+
+  @override
+  String get transportTrackerDownloadingStops =>
+      'Descargando nombres de paradas (unos 1,4 MB, una sola vez)…';
+
+  @override
+  String transportTrackerStopNamesUnavailable(String error) {
+    return 'Nombres de paradas no disponibles: $error';
+  }
+
+  @override
+  String get transportTrackerNoPredictions =>
+      'No se publican previsiones de paradas para este viaje.';
+
+  @override
+  String get transportTrackerNoRemainingStops =>
+      'Este viaje no tiene paradas restantes.';
+
+  @override
+  String get transportTrackerNextStops => 'PRÓXIMAS PARADAS';
+
+  @override
+  String get transportTrackerUnknownStop => 'Parada desconocida';
+
+  @override
+  String transportTrackerCountdownSeconds(int count) {
+    return '$count s';
+  }
+
+  @override
+  String transportTrackerCountdownMinutes(int count) {
+    return '$count min';
+  }
+
+  @override
+  String transportTrackerCountdownHoursMinutes(int hours, String minutes) {
+    return '$hours h $minutes min';
+  }
+
+  @override
+  String transportTrackerSecondsAgo(int count) {
+    return 'hace $count s';
+  }
+
+  @override
+  String transportTrackerMinutesAgo(int count) {
+    return 'hace $count min';
+  }
+
+  @override
+  String transportTrackerHoursAgo(int count) {
+    return 'hace $count h';
+  }
+
+  @override
+  String get transportTrackerLayersTitle => 'Qué seguir';
+
+  @override
+  String get transportTrackerShips => 'Buques';
+
+  @override
+  String get transportTrackerShipsSubtitle =>
+      'Posiciones AIS de buques en vivo en todo el mundo. Necesitas tu propia clave gratuita de AISStream.io.';
+
+  @override
+  String get transportTrackerTransitTitle =>
+      'Transporte público — Países Bajos';
+
+  @override
+  String get transportTrackerTransitSubtitle =>
+      'Trenes, metros, tranvías, autobuses y ferris en vivo desde el canal de datos abiertos neerlandés. No necesitas clave.';
+
+  @override
+  String get transportTrackerModes => 'Modos';
+
+  @override
+  String get transportTrackerKeyDialogTitle => 'Clave API de AISStream.io';
+
+  @override
+  String get transportTrackerGetKeyHint =>
+      'Consigue una clave gratuita en aisstream.io: inicia sesión y copia tu clave API desde el panel.';
+
+  @override
+  String get transportTrackerKeyHintReplace =>
+      'Introduce una nueva clave para reemplazarla';
+
+  @override
+  String get transportTrackerKeyHintPaste => 'Pega tu clave API';
+
+  @override
+  String get transportTrackerShowKey => 'Mostrar clave';
+
+  @override
+  String get transportTrackerHideKey => 'Ocultar clave';
+
+  @override
+  String get transportTrackerKeyPrivacyNote =>
+      'Se guarda solo en este dispositivo, cifrada en reposo. Se envía directamente a aisstream.io durante el seguimiento, nunca a un servidor de luma.';
+
+  @override
+  String get vesselCategoryCargo => 'Carga';
+
+  @override
+  String get vesselCategoryTanker => 'Petrolero';
+
+  @override
+  String get vesselCategoryPassenger => 'Pasajeros';
+
+  @override
+  String get vesselCategoryFishing => 'Pesca';
+
+  @override
+  String get vesselCategoryHighSpeed => 'Embarcación de alta velocidad';
+
+  @override
+  String get vesselCategoryTug => 'Remolcador / servicio';
+
+  @override
+  String get vesselCategoryLawEnforcement => 'Fuerzas del orden';
+
+  @override
+  String get vesselCategorySearchAndRescue => 'Búsqueda y rescate';
+
+  @override
+  String get vesselCategoryPleasureCraft => 'Embarcación de recreo';
+
+  @override
+  String get vesselCategoryUnspecified => 'No especificado';
+
+  @override
+  String get vesselNavUnderWayEngine => 'En navegación (motor)';
+
+  @override
+  String get vesselNavAtAnchor => 'Fondeado';
+
+  @override
+  String get vesselNavNotUnderCommand => 'No gobernable';
+
+  @override
+  String get vesselNavRestrictedManoeuvrability =>
+      'Maniobrabilidad restringida';
+
+  @override
+  String get vesselNavConstrainedByDraught => 'Limitado por su calado';
+
+  @override
+  String get vesselNavMoored => 'Amarrado';
+
+  @override
+  String get vesselNavAground => 'Varado';
+
+  @override
+  String get vesselNavUnderWaySailing => 'En navegación (vela)';
+
+  @override
+  String get vesselNavAisSart => 'AIS-SART (baliza de socorro)';
+
+  @override
+  String vesselMmsiName(int mmsi) {
+    return 'MMSI $mmsi';
+  }
+
+  @override
+  String get usageRangeLast7Days => 'Última semana';
+
+  @override
+  String get usageRangeThisMonth => 'Este mes';
+
+  @override
+  String get usageRangeLast30Days => 'Último mes';
+
+  @override
+  String get usageRangeCustom => 'Personalizado…';
+
+  @override
+  String get usageWindowsOnlyTitle => 'Solo Windows';
+
+  @override
+  String get usageWindowsOnlySubtitle =>
+      'El seguimiento de uso lee la ventana en primer plano, algo que luma solo puede hacer en la aplicación de escritorio de Windows.';
+
+  @override
+  String get usageStatusPaused => 'En pausa';
+
+  @override
+  String get usageStatusIdle => 'Inactivo';
+
+  @override
+  String usageStatusTracking(String appName) {
+    return 'Siguiendo $appName';
+  }
+
+  @override
+  String get usageSummaryTotalTracked => 'Total registrado';
+
+  @override
+  String get usageSummaryAppsUsed => 'Apps usadas';
+
+  @override
+  String get usageSummaryTopApp => 'App principal';
+
+  @override
+  String get usageNeedWiderRange =>
+      'Elige un rango más amplio para ver el desglose diario';
+
+  @override
+  String get usageEmptyTitle => 'Aún no hay actividad';
+
+  @override
+  String get usageEmptySubtitle =>
+      'El uso aparecerá aquí cuando uses apps en este PC.';
+
+  @override
+  String get usageClearConfirmTitle => '¿Borrar todo el historial de uso?';
+
+  @override
+  String get usageClearConfirmBody =>
+      'Esto elimina todas las sesiones registradas y no se puede deshacer.';
+
+  @override
+  String get usageClearAllHistory => 'Borrar todo el historial';
+
+  @override
+  String get usagePauseTracking => 'Pausar el seguimiento';
+
+  @override
+  String usageSampleEvery(int seconds) {
+    return 'Muestrear cada $seconds s';
+  }
+
+  @override
+  String usageDurationSeconds(String seconds) {
+    return '${seconds}s';
+  }
+
+  @override
+  String usageDurationMinutes(String minutes) {
+    return '${minutes}m';
+  }
+
+  @override
+  String usageDurationHours(String hours) {
+    return '${hours}h';
+  }
+
+  @override
+  String usageDurationHoursMinutes(String hours, String minutes) {
+    return '${hours}h ${minutes}m';
+  }
+
+  @override
+  String get usageInvalidSnapshot => 'Instantánea de uso no válida.';
+
+  @override
+  String get whiteboardToolSelect => 'Seleccionar';
+
+  @override
+  String get whiteboardToolPan => 'Desplazar';
+
+  @override
+  String get whiteboardToolPen => 'Lápiz';
+
+  @override
+  String get whiteboardToolHighlighter => 'Marcador';
+
+  @override
+  String get whiteboardToolEraser => 'Borrador';
+
+  @override
+  String get whiteboardToolLine => 'Línea';
+
+  @override
+  String get whiteboardToolArrow => 'Flecha';
+
+  @override
+  String get whiteboardToolRectangle => 'Rectángulo';
+
+  @override
+  String get whiteboardToolEllipse => 'Elipse';
+
+  @override
+  String get whiteboardToolStickyNote => 'Nota adhesiva';
+
+  @override
+  String get whiteboardToolText => 'Texto';
+
+  @override
+  String get whiteboardInkGraphite => 'Grafito';
+
+  @override
+  String get whiteboardInkRed => 'Rojo';
+
+  @override
+  String get whiteboardInkOrange => 'Naranja';
+
+  @override
+  String get whiteboardInkGreen => 'Verde';
+
+  @override
+  String get whiteboardInkBlue => 'Azul';
+
+  @override
+  String get whiteboardInkPurple => 'Morado';
+
+  @override
+  String get whiteboardInkPink => 'Rosa';
+
+  @override
+  String get whiteboardWidthFine => 'Fino';
+
+  @override
+  String get whiteboardWidthMedium => 'Medio';
+
+  @override
+  String get whiteboardWidthBold => 'Grueso';
+
+  @override
+  String get whiteboardExportEmpty =>
+      'No hay nada en este tablero para exportar.';
+
+  @override
+  String get whiteboardExportEncodeFailed => 'No se pudo codificar la imagen.';
+
+  @override
+  String get whiteboardExportDialogTitle => 'Guardar imagen de la pizarra';
+
+  @override
+  String whiteboardToolTooltip(String label, String shortcut) {
+    return '$label ($shortcut)';
+  }
+
+  @override
+  String get whiteboardUndoTooltip => 'Deshacer (Ctrl+Z)';
+
+  @override
+  String get whiteboardRedoTooltip => 'Rehacer (Ctrl+Mayús+Z)';
+
+  @override
+  String get whiteboardDeleteSelectionTooltip => 'Eliminar selección (Supr)';
+
+  @override
+  String whiteboardInkSemantics(String name) {
+    return 'Tinta $name';
+  }
+
+  @override
+  String whiteboardStrokeTooltip(String name) {
+    return 'Grosor $name';
+  }
+
+  @override
+  String get whiteboardZoomOut => 'Alejar';
+
+  @override
+  String get whiteboardZoomIn => 'Acercar';
+
+  @override
+  String get whiteboardResetZoomTooltip => 'Restablecer zoom (Ctrl+0)';
+
+  @override
+  String get whiteboardShowGrid => 'Mostrar cuadrícula';
+
+  @override
+  String get whiteboardHideGrid => 'Ocultar cuadrícula';
+
+  @override
+  String get whiteboardExportPng => 'Exportar como PNG';
+
+  @override
+  String get whiteboardClearBoardTooltip => 'Borrar pizarra';
+
+  @override
+  String whiteboardItemCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count elementos',
+      one: '1 elemento',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get whiteboardBackTooltip => 'Volver a las pizarras (Esc)';
+
+  @override
+  String get whiteboardNewStickyNote => 'Nueva nota adhesiva';
+
+  @override
+  String get whiteboardNewText => 'Nuevo texto';
+
+  @override
+  String get whiteboardEditNote => 'Editar nota';
+
+  @override
+  String get whiteboardEditText => 'Editar texto';
+
+  @override
+  String get whiteboardTextLabel => 'Texto';
+
+  @override
+  String get whiteboardNewLineHint => 'Mayús+Intro para un salto de línea';
+
+  @override
+  String get whiteboardClearTitle => '¿Borrar la pizarra?';
+
+  @override
+  String whiteboardClearContent(int count, String title) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Se eliminarán los $count elementos de \"$title\". Puedes deshacerlo justo después.',
+      one:
+          'Se eliminará el único elemento de \"$title\". Puedes deshacerlo justo después.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String whiteboardExportFailed(String error) {
+    return 'No se pudo exportar la pizarra: $error';
+  }
+
+  @override
+  String get whiteboardNameHint => 'Pon nombre a una nueva pizarra';
+
+  @override
+  String get whiteboardEmptyTitle => 'Todavía no hay pizarras';
+
+  @override
+  String get whiteboardEmptySubtitle =>
+      'Ponle nombre arriba y empieza a dibujar. Lápiz, formas, flechas y notas adhesivas, y toda la pizarra se guarda a medida que avanzas.';
+
+  @override
+  String get whiteboardRenameTooltip => 'Renombrar pizarra';
+
+  @override
+  String get whiteboardDeleteBoardTooltip => 'Eliminar pizarra';
+
+  @override
+  String whiteboardDeleteBoardTitle(String title) {
+    return '¿Eliminar \"$title\"?';
+  }
+
+  @override
+  String whiteboardDeleteBoardContent(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Se eliminarán para siempre los $count elementos de esta pizarra. No se puede deshacer.',
+      one:
+          'Se eliminará para siempre el único elemento de esta pizarra. No se puede deshacer.',
+      zero: 'Esta pizarra está vacía. Se eliminará para siempre.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get speedTestTryAgain => 'Intentar de nuevo';
+
+  @override
+  String get speedTestStart => 'Iniciar prueba';
+
+  @override
+  String get speedTestTesting => 'Probando — espera, por favor…';
+
+  @override
+  String get speedTestFailed =>
+      'La prueba falló. Comprueba tu conexión e inténtalo de nuevo.';
+
+  @override
+  String get speedTestReady => 'Listo';
+
+  @override
+  String get speedTestPinging => 'Midiendo ping…';
+
+  @override
+  String get speedTestDownloading => 'Descargando';
+
+  @override
+  String get speedTestUploading => 'Subiendo';
+
+  @override
+  String get speedTestCheckingNetwork => 'Comprobando la red…';
+
+  @override
+  String get speedTestShowName => 'Mostrar nombre';
+
+  @override
+  String get speedTestShowDetails => 'Mostrar detalles';
+
+  @override
+  String get speedTestPing => 'Ping';
+
+  @override
+  String get speedTestClearHistoryTitle => '¿Borrar el historial?';
+
+  @override
+  String get speedTestClearHistoryContent =>
+      'Se eliminarán todos los resultados anteriores de las pruebas de velocidad.';
+
+  @override
+  String get speedTestClearAll => 'Borrar todo';
+
+  @override
+  String get speedTestNoTests => 'Todavía no hay pruebas';
+
+  @override
+  String get speedTestNoTestsSubtitle =>
+      'Haz tu primera prueba de velocidad para empezar a seguir tu conexión a lo largo del tiempo.';
+
+  @override
+  String get speedTestDownloadHistory => 'Velocidad de descarga (Mbps)';
+
+  @override
+  String get speedTestUploadHistory => 'Velocidad de subida (Mbps)';
+
+  @override
+  String get speedTestNetworkWifi => 'Wi-Fi';
+
+  @override
+  String speedTestNetworkWithName(String network, String name) {
+    return '$network · $name';
+  }
+
+  @override
+  String get speedTestNetworkEthernet => 'Ethernet';
+
+  @override
+  String get speedTestNetworkMobileData => 'Datos móviles';
+
+  @override
+  String speedTestNetworkMobileGeneration(String generation) {
+    return 'Datos móviles · $generation';
+  }
+
+  @override
+  String get speedTestNetworkVpn => 'VPN';
+
+  @override
+  String get speedTestNetworkOffline => 'Sin conexión';
+
+  @override
+  String get speedTestNetworkUnknown => 'Red desconocida';
+
+  @override
+  String get wifiSpeedTestInvalidSnapshot =>
+      'Instantánea de la prueba de velocidad no válida.';
+
+  @override
+  String get worthCounterInvalidSnapshot =>
+      'Instantánea del contador de valor no válida.';
+
+  @override
+  String get worthCounterAddProduct => 'Añadir producto';
+
+  @override
+  String get worthCounterNoProducts => 'Aún no hay productos';
+
+  @override
+  String get worthCounterEmptySubtitle =>
+      'Añade un producto con el valor de una unidad y cuéntalos con + y -. El valor total aparece abajo.';
+
+  @override
+  String get worthCounterDeleteProductTitle => '¿Eliminar producto?';
+
+  @override
+  String worthCounterDeleteProductBody(String name) {
+    return 'Esto elimina \"$name\" y su recuento del total.';
+  }
+
+  @override
+  String get worthCounterResetAllTitle => '¿Restablecer todos los recuentos?';
+
+  @override
+  String get worthCounterResetAllBody =>
+      'Todos los productos siguen en la lista, pero sus recuentos vuelven a cero.';
+
+  @override
+  String get worthCounterEditProduct => 'Editar producto';
+
+  @override
+  String get worthCounterResetCount => 'Restablecer recuento';
+
+  @override
+  String get worthCounterResetAll => 'Restablecer todo';
+
+  @override
+  String get worthCounterResetAllCounts => 'Restablecer todos los recuentos';
+
+  @override
+  String get worthCounterOneLess => 'Uno menos';
+
+  @override
+  String get worthCounterOneMore => 'Uno más';
+
+  @override
+  String worthCounterItemsCounted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count artículos contados',
+      one: '1 artículo contado',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String worthCounterPricePerItem(String price) {
+    return '$price cada uno';
+  }
+
+  @override
+  String get worthCounterNameRequired => 'Pon un nombre al producto.';
+
+  @override
+  String get worthCounterPriceInvalid =>
+      'Introduce el valor de una unidad, p. ej. 2,50.';
+
+  @override
+  String get worthCounterWorthPerItemLabel => 'Valor por unidad (€)';
+
+  @override
+  String get worthCounterNameHint => 'p. ej. Café';
+
+  @override
+  String get worthCounterPriceHint => 'p. ej. 2,00';
+
+  @override
+  String get financeSeedCategoryGroceries => 'Supermercado';
+
+  @override
+  String get financeSeedCategoryEatingOut => 'Comer fuera';
+
+  @override
+  String get financeSeedCategoryClothing => 'Ropa';
+
+  @override
+  String get financeSeedCategoryTransport => 'Transporte';
+
+  @override
+  String get financeSeedCategorySubscriptions => 'Suscripciones';
+
+  @override
+  String get financeSeedCategoryHousing => 'Vivienda';
+
+  @override
+  String get financeSeedCategoryUtilities => 'Servicios';
+
+  @override
+  String get financeSeedCategoryHealth => 'Salud y cuidados';
+
+  @override
+  String get financeSeedCategoryEntertainment => 'Ocio';
+
+  @override
+  String get financeSeedCategoryShopping => 'Compras';
+
+  @override
+  String get financeTabTransactions => 'Transacciones';
+
+  @override
+  String get financeTabPots => 'Huchas';
+
+  @override
+  String get financeTabRecurring => 'Recurrentes';
+
+  @override
+  String get financeTabDebts => 'Deudas';
+
+  @override
+  String get financeTabStocks => 'Acciones';
+
+  @override
+  String get financeTabReports => 'Informes';
+
+  @override
+  String get financeExistingTransaction => 'Transacción existente';
+
+  @override
+  String get financeImportMatchChanged =>
+      'Esta coincidencia ha cambiado. Revisa la entrada de nuevo.';
+
+  @override
+  String get financeManualAllocationNote => 'Asignación manual';
+
+  @override
+  String financeDividendNote(String ticker) {
+    return 'Dividendo $ticker';
+  }
+
+  @override
+  String financeDebtRepaymentNote(String name) {
+    return 'Pago: $name';
+  }
+
+  @override
+  String financeDebtRepaidToMeNote(String name) {
+    return 'Devuelto a mí: $name';
+  }
+
+  @override
+  String get financeDebtBalanceAdjustmentNote => 'Ajuste de saldo';
+
+  @override
+  String get financeAutoAllocationNote => 'Asignación automática';
+
+  @override
+  String get financeUnknownMerchant => 'Comercio desconocido';
+
+  @override
+  String get financeAllocationLabel => 'Asignación';
+
+  @override
+  String get financeTypeIncome => 'Ingreso';
+
+  @override
+  String get financeTypeExpense => 'Gasto';
+
+  @override
+  String get financeImportOr => 'o';
+
+  @override
+  String financeImportFileType(String type) {
+    return 'archivo $type';
+  }
+
+  @override
+  String get financeImportHintAbnAmro =>
+      'Descarga las transacciones como TXT (separado por tabulaciones).';
+
+  @override
+  String get financeImportHintRabobank =>
+      'Descarga el resumen de transacciones en CSV.';
+
+  @override
+  String get financeImportHintBunq =>
+      'Exporta un extracto de cuenta en EUR como CSV.';
+
+  @override
+  String get financeImportHintSns =>
+      'Descarga las transacciones de Mijn SNS en CSV.';
+
+  @override
+  String get financeImportHintKnab =>
+      'Usa Buscar y descargar para exportar en CSV.';
+
+  @override
+  String get financeMainPotName => 'Principal';
+
+  @override
+  String financeImportSelectStatementTitle(String bank) {
+    return 'Seleccionar extracto de $bank';
+  }
+
+  @override
+  String get financeImportNoTransactions =>
+      'No se han encontrado transacciones en el archivo seleccionado.';
+
+  @override
+  String financeImportReadFailed(String detail) {
+    return 'No se pudo leer el archivo: $detail';
+  }
+
+  @override
+  String get financeImportTitle => 'Importar datos';
+
+  @override
+  String get financeImportIntro =>
+      'Selecciona tu banco y un extracto exportado. Revisa las transacciones antes de añadirlas.';
+
+  @override
+  String financeImportWrongFileType(String fileType, String bank) {
+    return 'Selecciona una exportación $fileType de $bank.';
+  }
+
+  @override
+  String get financeImportIncompleteUtf16 => 'Extracto UTF-16 incompleto.';
+
+  @override
+  String get financeImportUnexpectedAfterQuote =>
+      'Texto inesperado tras un campo entre comillas.';
+
+  @override
+  String get financeImportUnclosedQuote => 'Comilla sin cerrar en el extracto.';
+
+  @override
+  String get financeReviewEntryTitle => 'Revisar entrada';
+
+  @override
+  String financeReviewSavedSkipped(int saved, int skipped) {
+    return '$saved guardadas · $skipped omitidas';
+  }
+
+  @override
+  String get financeReviewMerchant => 'Comercio';
+
+  @override
+  String get financeReviewCompany => 'Empresa';
+
+  @override
+  String financeReviewMatchSubtitle(String date, String status) {
+    return '$date · $status';
+  }
+
+  @override
+  String get financeReviewAlreadyRecorded => 'Ya registrada';
+
+  @override
+  String get financeReviewRecurringPayment => 'Pago recurrente';
+
+  @override
+  String get financeReviewPossibleMatches => 'Coincidencias posibles';
+
+  @override
+  String get financeReviewMatchHelp =>
+      'Selecciona el mismo pago para contarlo una sola vez. Las entradas existentes conservan su hucha y su categoría.';
+
+  @override
+  String get financeReviewPot => 'Hucha';
+
+  @override
+  String get financeReviewSkip => 'Omitir';
+
+  @override
+  String get financeReviewAddNext => 'Añadir y siguiente';
+
+  @override
+  String get financeReviewMatchNext => 'Vincular y siguiente';
+
+  @override
+  String get financeNoCategory => 'Sin categoría';
+
+  @override
+  String get financeReviewPickCompany => 'Elige una empresa (opcional)';
+
+  @override
+  String get financeReviewSearchCompanies => 'Buscar empresas';
+
+  @override
+  String get financeEntryAmountInvalid =>
+      'Introduce un importe válido mayor que cero.';
+
+  @override
+  String get financeEntryEdit => 'Editar movimiento';
+
+  @override
+  String get financeEntryNew => 'Nuevo movimiento';
+
+  @override
+  String get financeEntryAllocationToPot => 'Asignación a un bote';
+
+  @override
+  String get financeKindExpense => 'Gasto';
+
+  @override
+  String get financeKindIncome => 'Ingreso';
+
+  @override
+  String get financeCompany => 'Empresa';
+
+  @override
+  String get financePot => 'Bote';
+
+  @override
+  String get financeFromMainBalance => 'Desde el saldo principal';
+
+  @override
+  String get financeToMainBalance => 'Al saldo principal';
+
+  @override
+  String get financeNoteOptional => 'Nota (opcional)';
+
+  @override
+  String get financeNoteHint => 'p. ej. compra semanal';
+
+  @override
+  String get financeSaveChanges => 'Guardar cambios';
+
+  @override
+  String get financeAddEntry => 'Añadir movimiento';
+
+  @override
+  String get financeSearchCompanies => 'Buscar empresas';
+
+  @override
+  String get financePickCompany => 'Elige una empresa (opcional)';
+
+  @override
+  String get financePickDate => 'Elige una fecha';
+
+  @override
+  String get financeNoExpensesThisMonth => 'Sin gastos este mes';
+
+  @override
+  String get financeNetWorthComeBack =>
+      'Vuelve mañana para empezar a ver la evolución de tu patrimonio.';
+
+  @override
+  String get financeIncomeThisMonth => 'Ingresos de este mes';
+
+  @override
+  String get financeSpentThisMonth => 'Gastado este mes';
+
+  @override
+  String get financeCashFlowForecast => 'Previsión de flujo de caja';
+
+  @override
+  String get financeBudgets => 'Presupuestos';
+
+  @override
+  String get financeDashboard => 'Panel';
+
+  @override
+  String get financePots => 'Botes';
+
+  @override
+  String get financeOverviewNoPots =>
+      'Aún no hay botes: crea uno en la pestaña Botes y reparte tu dinero.';
+
+  @override
+  String get financeThisWeek => 'Esta semana';
+
+  @override
+  String get financeInvestments => 'Inversiones';
+
+  @override
+  String get financeUpcoming => 'Próximos';
+
+  @override
+  String get financeAddGraph => 'Añadir gráfico';
+
+  @override
+  String get financeGraphNetWorth => 'Patrimonio a lo largo del tiempo';
+
+  @override
+  String get financeGraphCategorySpending => 'Gastos por categoría';
+
+  @override
+  String get financeGraphIncomeVsExpense => 'Ingresos vs gastos';
+
+  @override
+  String get financeGraphUnknown => 'Gráfico desconocido';
+
+  @override
+  String get financeGraphLineChart => 'Gráfico de líneas';
+
+  @override
+  String get financeGraphPieChart => 'Gráfico circular';
+
+  @override
+  String get financeGraphBarChart => 'Gráfico de barras';
+
+  @override
+  String get financeGraphChart => 'Gráfico';
+
+  @override
+  String get financeNetWorth => 'Patrimonio';
+
+  @override
+  String get financeAvailable => 'Disponible';
+
+  @override
+  String get financeInPots => 'En botes';
+
+  @override
+  String get financeDebts => 'Deudas';
+
+  @override
+  String get financeOwedToYou => 'Te deben';
+
+  @override
+  String get financeYouOwe => 'Debes';
+
+  @override
+  String get financeNoSpendingThisWeek =>
+      'Aún no hay gastos registrados esta semana.';
+
+  @override
+  String get financeSpentThisWeek => 'Gastado esta semana';
+
+  @override
+  String get financeUncategorized => 'Sin clasificar';
+
+  @override
+  String get financePortfolioValue => 'Valor de la cartera';
+
+  @override
+  String get financeGainLoss => 'Ganancia / pérdida';
+
+  @override
+  String get financeCadenceWeekly => 'Semanal';
+
+  @override
+  String get financeCadenceMonthly => 'Mensual';
+
+  @override
+  String financeUpcomingNext(String cadence, String date) {
+    return '$cadence · próximo $date';
+  }
+
+  @override
+  String get financeUpcomingEmpty =>
+      'Aún no hay gastos o ingresos fijos: añádelos en la pestaña Recurrentes.';
+
+  @override
+  String get financeAddDebt => 'Añadir deuda';
+
+  @override
+  String get financeDebtsEmpty => 'No hay deudas registradas';
+
+  @override
+  String get financeDebtsEmptySubtitle =>
+      'Añade un préstamo estudiantil, una hipoteca o dinero que un amigo te debe para ver cuándo estará pagado.';
+
+  @override
+  String get financePaidOff => 'Pagado';
+
+  @override
+  String get financeFullyRepaid => 'Totalmente devuelto';
+
+  @override
+  String get financeRepaid => 'Devuelto';
+
+  @override
+  String get financeDebtsSetMonthlyPayment =>
+      'Define un pago mensual para ver cuándo estará pagado.';
+
+  @override
+  String financeDebtsDoesNotCoverInterest(String amount) {
+    return '$amount/mes no cubre los intereses.';
+  }
+
+  @override
+  String financeDebtsPayoffOutlook(
+    String verb,
+    String date,
+    int count,
+    String interest,
+  ) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pagos',
+      one: '1 pago',
+    );
+    return '$verb en $date · $_temp0$interest';
+  }
+
+  @override
+  String financeDebtsInterest(String amount) {
+    return '$amount de intereses';
+  }
+
+  @override
+  String financeDebtsProgressPaid(String percent, String outlook) {
+    return '$percent% pagado · $outlook';
+  }
+
+  @override
+  String financeDebtsProgressRepaid(String percent, String outlook) {
+    return '$percent% devuelto · $outlook';
+  }
+
+  @override
+  String financeDebtsOfTotal(String amount) {
+    return 'de $amount';
+  }
+
+  @override
+  String financeDebtsInterestRate(String rate) {
+    return '$rate % al año';
+  }
+
+  @override
+  String financeDebtsMonthlyAmount(String amount) {
+    return '$amount/mes';
+  }
+
+  @override
+  String get financeDebtsLogPayment => 'Registrar pago';
+
+  @override
+  String get financeDebtsLogRepayment => 'Registrar devolución';
+
+  @override
+  String get financeDebtsUpdateBalance => 'Actualizar saldo';
+
+  @override
+  String get financeDebtsPaymentHistory => 'Historial de pagos';
+
+  @override
+  String financeDebtsDeleteTitle(String name) {
+    return '¿Eliminar \"$name\"?';
+  }
+
+  @override
+  String get financeDebtsDeleteMessage =>
+      'También se borra su historial de pagos. Los pagos ya registrados en tus movimientos se mantienen.';
+
+  @override
+  String get financeEditDebt => 'Editar deuda';
+
+  @override
+  String get financeDebtsIOwe => 'Yo debo';
+
+  @override
+  String get financeDebtsOwedToMe => 'Me deben';
+
+  @override
+  String get financeDebtsNameHintOwe => 'p. ej. Préstamo estudiantil (DUO)';
+
+  @override
+  String get financeDebtsNameHintOwed => 'p. ej. Sam — entradas de concierto';
+
+  @override
+  String get financeDebtsOriginalAmount => 'Importe original';
+
+  @override
+  String get financeDebtsInterestOptional => 'Interés (opcional)';
+
+  @override
+  String get financeDebtsPerYear => '% / año';
+
+  @override
+  String get financeDebtsMonthlyPayment => 'Pago mensual';
+
+  @override
+  String get financeDebtsStarted => 'Inicio';
+
+  @override
+  String get financeDebtsNameAmountRequired =>
+      'Ponle un nombre y un importe superior a 0 €.';
+
+  @override
+  String get financeDebtsNumbersRequired =>
+      'El interés y el pago mensual deben ser números.';
+
+  @override
+  String financeDebtsPaymentOn(String name) {
+    return 'Pago de $name';
+  }
+
+  @override
+  String financeDebtsRepaymentFrom(String name) {
+    return 'Devolución de $name';
+  }
+
+  @override
+  String get financeDebtsLog => 'Registrar';
+
+  @override
+  String get financeDebtsAmountAboveZero =>
+      'Introduce un importe superior a 0 €.';
+
+  @override
+  String get financeDebtsBookExpense =>
+      'Registrarlo también como gasto de mi saldo principal';
+
+  @override
+  String get financeDebtsBookIncome =>
+      'Registrarlo también como ingreso en mi saldo principal';
+
+  @override
+  String get financeDebtsEnterBalance => 'Introduce el saldo como importe.';
+
+  @override
+  String get financeDebtsAdjustExplainer =>
+      'Escribe el saldo de tu último extracto. La diferencia se registra como un ajuste (intereses, comisiones) y no modifica tus movimientos.';
+
+  @override
+  String get financeDebtsCurrentBalance => 'Saldo actual';
+
+  @override
+  String financeDebtsHistoryTitle(String name) {
+    return '$name — historial';
+  }
+
+  @override
+  String get financeDebtsNoPayments => 'Aún no hay pagos registrados.';
+
+  @override
+  String get financeDebtsPaymentBooked => 'Pago (registrado)';
+
+  @override
+  String get financeDebtsPayment => 'Pago';
+
+  @override
+  String get financePlanningNoBudgets => 'Aún no hay presupuestos';
+
+  @override
+  String financePlanningSpentOfBudget(
+    String spent,
+    String budget,
+    String month,
+  ) {
+    return '$spent de $budget · $month';
+  }
+
+  @override
+  String get financePlanningSetBudgets => 'Definir presupuestos';
+
+  @override
+  String get financePlanningBudgetsHint =>
+      'Asigna un límite mensual a las categorías y mira lo cerca que estás.';
+
+  @override
+  String financePlanningOver(String amount) {
+    return '$amount de más';
+  }
+
+  @override
+  String financePlanningLeft(String amount) {
+    return '$amount restantes';
+  }
+
+  @override
+  String get financePlanningBudgetsTitle => 'Presupuestos mensuales';
+
+  @override
+  String get financePlanningBudgetsEditHint =>
+      'Deja una categoría vacía para no tener límite.';
+
+  @override
+  String get financePlanningNoLimit => 'Sin límite';
+
+  @override
+  String financePlanningNotAnAmount(String text, String name) {
+    return '\"$text\" para $name no es un importe.';
+  }
+
+  @override
+  String financeForecastAvailableIn(int days) {
+    return 'Disponible en $days días';
+  }
+
+  @override
+  String get financeForecast30Days => '30d';
+
+  @override
+  String get financeForecast90Days => '90d';
+
+  @override
+  String financeForecastBelowZero(
+    String date,
+    String lowest,
+    String lowestDate,
+  ) {
+    return 'Bajará de 0 € el $date — mínimo $lowest el $lowestDate.';
+  }
+
+  @override
+  String financeForecastLowest(String amount, String date) {
+    return 'Punto más bajo $amount el $date.';
+  }
+
+  @override
+  String get financeForecastNothingScheduled =>
+      'Nada programado: añade gastos e ingresos fijos en la pestaña Recurrentes.';
+
+  @override
+  String get financePlanningGoalReached => 'Meta alcanzada';
+
+  @override
+  String financePlanningGoalShortWasDue(String amount, String date) {
+    return 'Faltan $amount · vencía el $date';
+  }
+
+  @override
+  String financePlanningGoalMonthly(String amount, String month) {
+    return '$amount/mes hasta $month';
+  }
+
+  @override
+  String financePlanningGoalToGo(String amount) {
+    return 'Faltan $amount';
+  }
+
+  @override
+  String financePlanningGoalTarget(String amount) {
+    return 'Meta $amount';
+  }
+
+  @override
+  String financePlanningGoalPercent(String percent, String amount) {
+    return '$percent de $amount';
+  }
+
+  @override
+  String get financePotDetailEmpty => 'Aún no hay nada en este bote.';
+
+  @override
+  String get financePotDetailBalanceOverTime => 'Saldo a lo largo del tiempo';
+
+  @override
+  String get financePotDetailTransactions => 'Movimientos';
+
+  @override
+  String get financePotDetailSpendingByCategory => 'Gastos por categoría';
+
+  @override
+  String get financePotDetailUncategorized => 'Sin categoría';
+
+  @override
+  String get financePotDetailIncome => 'Ingreso';
+
+  @override
+  String get financePotDetailAllocation => 'Asignación';
+
+  @override
+  String financePotsAvailableToAllocate(String amount) {
+    return 'Disponible para asignar: $amount';
+  }
+
+  @override
+  String get financePotsNewPot => 'Nuevo bote';
+
+  @override
+  String get financePotsEmptyTitle => 'Aún no hay botes';
+
+  @override
+  String get financePotsEmptySubtitle =>
+      'Crea botes como \"Alquiler\", \"Compra\" o \"Vacaciones\" para repartir tu dinero.';
+
+  @override
+  String get financePotsAddMoney => 'Añadir dinero';
+
+  @override
+  String get financePotsBalance => 'Saldo';
+
+  @override
+  String financePotsDeleteTitle(String name) {
+    return '¿Eliminar \"$name\"?';
+  }
+
+  @override
+  String get financePotsDeleteBody =>
+      'Los movimientos asignados a este bote volverán a tu saldo principal.';
+
+  @override
+  String financePotsAddMoneyTitle(String name) {
+    return 'Añadir dinero a \"$name\"';
+  }
+
+  @override
+  String get financePotsGoalNotPositive =>
+      'La meta debe ser un importe superior a 0 €.';
+
+  @override
+  String get financePotsEditPot => 'Editar bote';
+
+  @override
+  String get financePotsNameHint => 'Nombre del bote (p. ej. Vacaciones)';
+
+  @override
+  String get financePotsColor => 'Color';
+
+  @override
+  String get financePotsIcon => 'Icono';
+
+  @override
+  String get financePotsSavingsGoal => 'Meta de ahorro (opcional)';
+
+  @override
+  String get financePotsNoGoal => 'Sin meta';
+
+  @override
+  String get financePotsReachBy => 'Alcanzarla antes del';
+
+  @override
+  String get financePotsAnyTime => 'En cualquier momento';
+
+  @override
+  String get financeRecurringApplyDue => 'Aplicar vencimientos ahora';
+
+  @override
+  String financeRecurringApplied(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Se aplicaron $count movimientos vencidos.',
+      one: 'Se aplicó 1 movimiento vencido.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get financeRecurringFixedHeader => 'Gastos e ingresos fijos';
+
+  @override
+  String get financeRecurringEmpty =>
+      'Añade cosas como el alquiler, Spotify o tu nómina.';
+
+  @override
+  String get financeRecurringAutoHeader => 'Distribución automática';
+
+  @override
+  String get financeRecurringCreatePotFirst => 'Crea primero un bote.';
+
+  @override
+  String get financeRecurringAutoHint =>
+      'Mueve automáticamente dinero de tu saldo principal a botes, semanal o mensualmente.';
+
+  @override
+  String get financeRecurringNoRules => 'Aún no hay reglas de distribución.';
+
+  @override
+  String financeRecurringBillsDueSoon(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count facturas vencen pronto',
+      one: '1 factura vence pronto',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get financeRecurringOverdue => 'Vencido';
+
+  @override
+  String get financeRecurringDueToday => 'Vence hoy';
+
+  @override
+  String get financeRecurringDueTomorrow => 'Vence mañana';
+
+  @override
+  String financeRecurringDueInDays(int days) {
+    return 'Vence en $days días';
+  }
+
+  @override
+  String get financeRecurringWeekly => 'Semanal';
+
+  @override
+  String get financeRecurringMonthly => 'Mensual';
+
+  @override
+  String financeRecurringRowSubtitle(String cadence, String date) {
+    return '$cadence · próxima el $date';
+  }
+
+  @override
+  String financeRecurringRowBillSubtitle(
+    String cadence,
+    int days,
+    String date,
+  ) {
+    return '$cadence · Factura, avisar $days días antes · próxima el $date';
+  }
+
+  @override
+  String financeRecurringToPot(String name) {
+    return 'A $name';
+  }
+
+  @override
+  String get financeRecurringPotFallback => 'bote';
+
+  @override
+  String get financeRecurringNewEntry => 'Nuevo movimiento recurrente';
+
+  @override
+  String get financeRecurringFixedCost => 'Gasto fijo';
+
+  @override
+  String get financeRecurringFixedIncome => 'Ingreso fijo';
+
+  @override
+  String get financeRecurringNameHint => 'p. ej. Spotify';
+
+  @override
+  String get financeRecurringRepeats => 'Repetición';
+
+  @override
+  String get financeRecurringFirstDue => 'Primera fecha de vencimiento';
+
+  @override
+  String get financeRecurringPotOptional => 'Bote (opcional)';
+
+  @override
+  String get financeRecurringFromMain => 'Desde el saldo principal';
+
+  @override
+  String get financeRecurringToMain => 'Al saldo principal';
+
+  @override
+  String get financeRecurringCategoryOptional => 'Categoría (opcional)';
+
+  @override
+  String get financeRecurringNoCategory => 'Sin categoría';
+
+  @override
+  String get financeRecurringTreatAsBill =>
+      'Tratar como factura/suscripción: mostrar en \"próximos vencimientos\"';
+
+  @override
+  String get financeRecurringRemindDays =>
+      'Avisarme estos días antes del vencimiento';
+
+  @override
+  String get financeRecurringEnterNameAndAmount =>
+      'Introduce un nombre y un importe válido.';
+
+  @override
+  String get financeRecurringInvalidReminder =>
+      'Introduce un número válido de días de aviso.';
+
+  @override
+  String get financeRecurringNewRule => 'Nueva regla de distribución';
+
+  @override
+  String get financeRecurringPot => 'Bote';
+
+  @override
+  String get financeRecurringAmountType => 'Tipo de importe';
+
+  @override
+  String get financeRecurringFixedEuro => 'Fijo €';
+
+  @override
+  String get financeRecurringPercentOfBalance => '% del saldo';
+
+  @override
+  String get financeRecurringAmountPerPeriod => 'Importe por período';
+
+  @override
+  String get financeRecurringPercent => 'Porcentaje';
+
+  @override
+  String get financeRecurringPercentHint => 'p. ej. 25';
+
+  @override
+  String get financeRecurringFirstRun => 'Fecha de la primera ejecución';
+
+  @override
+  String get financeRecurringEnterValidAmount => 'Introduce un importe válido.';
+
+  @override
+  String get financeRecurringPercentRange =>
+      'Introduce un porcentaje entre 0 y 100.';
+
+  @override
+  String get financeRecurringAddRule => 'Añadir regla';
+
+  @override
+  String financeSubsPossibleCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count posibles suscripciones',
+      one: '1 posible suscripción',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String financeSubsMonthlyEstimate(String amount) {
+    return '≈ $amount/mes';
+  }
+
+  @override
+  String get financeSubsExplainer =>
+      'Estos cargos se repiten periódicamente, pero aún no se registran.';
+
+  @override
+  String get financeSubsCadenceWeekly => 'Semanal';
+
+  @override
+  String get financeSubsCadenceMonthly => 'Mensual';
+
+  @override
+  String financeSubsRowDetail(
+    String cadence,
+    String amount,
+    String count,
+    String date,
+  ) {
+    return '$cadence · $amount · visto $count× · último $date';
+  }
+
+  @override
+  String get financeSubsNotSubscription => 'No es una suscripción';
+
+  @override
+  String financeSubsTrackedSnack(String name, String date) {
+    return '$name ahora es una factura; próximo vencimiento el $date.';
+  }
+
+  @override
+  String get financeSubsTrackAsBill => 'Registrar como factura';
+
+  @override
+  String get financeReportsNothingToExport =>
+      'No hay nada que exportar en este período.';
+
+  @override
+  String get financeReportsExportTitle => 'Exportar transacciones';
+
+  @override
+  String financeReportsExported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Se exportaron $count transacciones.',
+      one: 'Se exportó 1 transacción.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String financeReportsExportFailed(String error) {
+    return 'Error al exportar: $error';
+  }
+
+  @override
+  String get financeReportsExporting => 'Exportando…';
+
+  @override
+  String get financeReportsMonthTab => 'Mes';
+
+  @override
+  String get financeReportsYearTab => 'Año';
+
+  @override
+  String get financeReportsIncome => 'Ingresos';
+
+  @override
+  String get financeReportsSpent => 'Gastado';
+
+  @override
+  String get financeReportsNet => 'Neto';
+
+  @override
+  String get financeReportsSavingsRate => 'Tasa de ahorro';
+
+  @override
+  String get financeReportsSavingsRateNote =>
+      'Parte de los ingresos no gastada';
+
+  @override
+  String get financeReportsLastMonth => 'el mes pasado';
+
+  @override
+  String get financeReportsLastYear => 'el año pasado';
+
+  @override
+  String financeReportsVsPrevious(String delta, String period) {
+    return '$delta frente a $period';
+  }
+
+  @override
+  String get financeReportsSpendingByCategory => 'Gastos por categoría';
+
+  @override
+  String get financeReportsComparedMonth => 'Comparado con el mes anterior.';
+
+  @override
+  String get financeReportsComparedYear => 'Comparado con el año anterior.';
+
+  @override
+  String get financeReportsNoSpending => 'No hay gastos en este período.';
+
+  @override
+  String get financeReportsUncategorized => 'Sin categoría';
+
+  @override
+  String financeReportsPercentOfSpending(int percent) {
+    return '$percent % del gasto';
+  }
+
+  @override
+  String financeReportsOverBudget(String amount) {
+    return '$amount por encima del presupuesto';
+  }
+
+  @override
+  String financeReportsWithinBudget(String amount) {
+    return 'dentro del presupuesto de $amount';
+  }
+
+  @override
+  String get financeReportsTopMerchants => 'Principales comercios';
+
+  @override
+  String get financeReportsMonthByMonth => 'Mes a mes';
+
+  @override
+  String get financeReportsYearNotStarted => 'Este año aún no ha empezado.';
+
+  @override
+  String get financeReconTitle => 'Conciliación del extracto';
+
+  @override
+  String get financeReconEndBeforeStart =>
+      'La fecha de cierre debe ser igual o posterior a la fecha de inicio.';
+
+  @override
+  String get financeReconInvalidBalances =>
+      'Introduce saldos inicial y final válidos en euros.';
+
+  @override
+  String get financeReconIntro =>
+      'Introduce el saldo inicial justo antes de la fecha de inicio y el saldo final al final de la fecha de cierre. Luma incluye los ingresos y gastos de todos los botes; las asignaciones entre botes no cambian este saldo.';
+
+  @override
+  String get financeReconStartDate => 'Fecha de inicio';
+
+  @override
+  String get financeReconClosingDate => 'Fecha de cierre';
+
+  @override
+  String get financeReconOpeningBalance => 'Saldo inicial del extracto';
+
+  @override
+  String get financeReconClosingBalance => 'Saldo final del extracto';
+
+  @override
+  String get financeReconLoadEntries => 'Cargar movimientos del extracto';
+
+  @override
+  String get financeReconReplaceEntries =>
+      'Reemplazar movimientos del extracto';
+
+  @override
+  String get financeReconClearEntries => 'Borrar movimientos del extracto';
+
+  @override
+  String get financeReconOptionalHelp =>
+      'Opcional: lee un archivo de transacciones exportado para localizar movimientos. Introduce los saldos del extracto arriba; cargar un archivo no añade nada.';
+
+  @override
+  String financeReconEntriesLoaded(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count movimientos del extracto cargados.',
+      one: '1 movimiento del extracto cargado.',
+    );
+    return '$_temp0 Usa las fechas de todo el período del extracto de arriba.';
+  }
+
+  @override
+  String get financeReconReadMerchantsFailed =>
+      'No se pueden leer los comercios.';
+
+  @override
+  String get financeReconReadTransactionsFailed =>
+      'No se pueden leer las transacciones.';
+
+  @override
+  String get financeReconCompare => 'Comparar saldos';
+
+  @override
+  String financeReconCalculatedClosing(String amount) {
+    return 'Saldo final calculado: $amount';
+  }
+
+  @override
+  String financeReconStatementClosing(String amount) {
+    return 'Saldo final del extracto: $amount';
+  }
+
+  @override
+  String get financeReconMatch => 'Los saldos coinciden';
+
+  @override
+  String financeReconDifferenceLower(String amount) {
+    return 'Diferencia: $amount (Luma está más bajo)';
+  }
+
+  @override
+  String financeReconDifferenceHigher(String amount) {
+    return 'Diferencia: $amount (Luma está más alto)';
+  }
+
+  @override
+  String get financeReconCheckHint =>
+      'Revisa el saldo inicial, las fechas y los movimientos incluidos. Si registras varias cuentas bancarias, excluye abajo los movimientos de otras cuentas. Las sugerencias no demuestran que un movimiento sea incorrecto.';
+
+  @override
+  String financeReconClosingFromFile(String amount) {
+    return 'Cierre según los movimientos del archivo: $amount';
+  }
+
+  @override
+  String get financeReconFileDoesNotReach =>
+      'Los movimientos del archivo y el saldo inicial no llegan al saldo final del extracto. Comprueba que la exportación cubra todo el período.';
+
+  @override
+  String financeReconOutsidePeriod(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count movimientos del archivo están fuera del período seleccionado.',
+      one: '1 movimiento del archivo está fuera del período seleccionado.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String financeReconMatchedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count movimientos emparejados por fecha, sentido e importe. Las descripciones pueden diferir; las fechas de contabilización desplazadas aparecen sin pareja.',
+      one:
+          '1 movimiento emparejado por fecha, sentido e importe. Las descripciones pueden diferir; las fechas de contabilización desplazadas aparecen sin pareja.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String financeReconReviewPairs(int count) {
+    return 'Revisar pares con descripciones distintas ($count)';
+  }
+
+  @override
+  String financeReconLumaEntry(String note) {
+    return 'Luma: $note';
+  }
+
+  @override
+  String financeReconStatementSubtitle(String description, String details) {
+    return 'Extracto: $description\n$details';
+  }
+
+  @override
+  String financeReconPossiblyMissing(int count) {
+    return 'Posiblemente faltan en Luma ($count)';
+  }
+
+  @override
+  String get financeReconReviewMissing =>
+      'Revisar movimientos que faltan para importar';
+
+  @override
+  String financeReconNotPaired(int count) {
+    return 'Movimientos de Luma sin pareja en el extracto ($count)';
+  }
+
+  @override
+  String get financeReconNoUnmatched => 'No hay movimientos sin pareja.';
+
+  @override
+  String financeReconDuplicateTitle(int count, String note) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count movimientos: $note',
+      one: '1 movimiento: $note',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get financeReconSameDescription => 'Misma descripción';
+
+  @override
+  String financeReconDuplicateDetail(String date, String amount, String ids) {
+    return '$date · $amount cada uno · IDs $ids';
+  }
+
+  @override
+  String financeReconPossibleDuplicates(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Posibles duplicados ($count grupos)',
+      one: 'Posibles duplicados (1 grupo)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get financeReconRemovalExplains =>
+      'Movimientos cuya eliminación explicaría la diferencia';
+
+  @override
+  String get financeReconReviewIncluded =>
+      'Revisar movimientos de efectivo incluidos';
+
+  @override
+  String get financeReconNoCashEntries =>
+      'No hay movimientos de efectivo en este período.';
+
+  @override
+  String get financeReconIncludeAll => 'Volver a incluir todos los movimientos';
+
+  @override
+  String financeReconKindId(String kind, int id) {
+    return '$kind n.º $id';
+  }
+
+  @override
+  String get financeReconKindIncome => 'Ingreso';
+
+  @override
+  String get financeReconKindExpense => 'Gasto';
+
+  @override
+  String get financeReconKindAllocation => 'Asignación';
+
+  @override
+  String get financeReconMainPot => 'Principal';
+
+  @override
+  String get financeStocksNoChartDataAvailable =>
+      'No hay datos del gráfico disponibles.';
+
+  @override
+  String get financeStocksNoChartData => 'Sin datos del gráfico.';
+
+  @override
+  String get financeStocksPricesUpdated => 'Precios actualizados.';
+
+  @override
+  String financeStocksUpdatedWithFailures(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Actualizado, pero no se pudieron obtener $count tickers.',
+      one: 'Actualizado, pero no se pudo obtener 1 ticker.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String financeStocksPortfolio(String amount) {
+    return 'Cartera $amount';
+  }
+
+  @override
+  String get financeStocksUpdatingPrices => 'Actualizando precios…';
+
+  @override
+  String get financeStocksAtCostNoQuote =>
+      'Al precio de coste; aún no hay cotización en vivo';
+
+  @override
+  String financeStocksPricesAsOf(String stamp) {
+    return 'Precios a fecha de $stamp';
+  }
+
+  @override
+  String get financeStocksForeignNotConverted =>
+      'Algunos precios extranjeros aún no están convertidos a euros';
+
+  @override
+  String financeStocksDividendsButton(String amount) {
+    return 'Dividendos $amount';
+  }
+
+  @override
+  String get financeStocksRefreshing => 'Actualizando…';
+
+  @override
+  String get financeStocksAddHolding => 'Añadir posición';
+
+  @override
+  String get financeStocksNoHoldings => 'Aún no hay posiciones';
+
+  @override
+  String get financeStocksNoHoldingsHint =>
+      'Añade una acción como AAPL o ASML para seguir su precio.';
+
+  @override
+  String financeStocksRemoveTitle(String ticker) {
+    return '¿Eliminar $ticker?';
+  }
+
+  @override
+  String get financeStocksDividendsKept =>
+      'Su historial de dividendos se conserva.';
+
+  @override
+  String get financeStocksAllHoldings => 'Todas las posiciones';
+
+  @override
+  String financeStocksHoldingsCombined(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count posiciones combinadas',
+      one: '1 posición combinada',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get financeStocksShowAll => 'Mostrar todo';
+
+  @override
+  String financeStocksHoldingLine(String shares, String price, String details) {
+    return '$shares @ $price$details';
+  }
+
+  @override
+  String get financeStocksAtCost => '(coste)';
+
+  @override
+  String get financeStocksNoFxRate => 'sin tipo de cambio';
+
+  @override
+  String get financeStocksLogDividend => 'Registrar dividendo';
+
+  @override
+  String get financeStocksEnterHoldingFields =>
+      'Introduce un ticker, el número de acciones y el coste medio.';
+
+  @override
+  String get financeStocksTicker => 'Ticker';
+
+  @override
+  String get financeStocksTickerHint => 'p. ej. AAPL o ASML.NL';
+
+  @override
+  String get financeStocksNameOptional => 'Nombre (opcional)';
+
+  @override
+  String get financeStocksNameHint =>
+      'se rellena automáticamente si está vacío';
+
+  @override
+  String get financeStocksShares => 'Acciones';
+
+  @override
+  String get financeStocksSharesHint => 'p. ej. 10';
+
+  @override
+  String get financeStocksAvgCost =>
+      'Coste medio por acción, en la moneda propia de la acción';
+
+  @override
+  String get financeStocksEnterAmount => 'Introduce el importe recibido.';
+
+  @override
+  String financeStocksDividendFrom(String ticker) {
+    return 'Dividendo de $ticker';
+  }
+
+  @override
+  String get financeStocksLog => 'Registrar';
+
+  @override
+  String get financeStocksReceived =>
+      'Recibido (después de impuestos, en euros)';
+
+  @override
+  String get financeStocksPaidOn => 'Pagado el';
+
+  @override
+  String get financeStocksNoteOptional => 'Nota (opcional)';
+
+  @override
+  String get financeStocksAlsoIncome =>
+      'Añadirlo también a mi saldo principal como ingreso';
+
+  @override
+  String get financeStocksDividendsTitle => 'Dividendos';
+
+  @override
+  String financeStocksDividendTotals(String thisYear, String allTime) {
+    return '$thisYear este año · $allTime en total';
+  }
+
+  @override
+  String get financeStocksLogOneHint =>
+      'Registra uno desde el menú ⋮ de una posición.';
+
+  @override
+  String get financeTxnImportData => 'Importar datos';
+
+  @override
+  String get financeTxnAddEntry => 'Añadir movimiento';
+
+  @override
+  String get financeTxnEmptySubtitle =>
+      'Añade lo que gastas o ganas y aparecerá aquí.';
+
+  @override
+  String get financeTxnNoMatchTitle => 'No hay movimientos coincidentes';
+
+  @override
+  String get financeTxnNoMatchSubtitle =>
+      'Prueba con otra búsqueda o borra los filtros.';
+
+  @override
+  String get financeTxnClearFilters => 'Borrar filtros';
+
+  @override
+  String get financeTxnSearchHint => 'Buscar notas, empresas, categorías…';
+
+  @override
+  String get financeTxnReconcile => 'Conciliar extracto';
+
+  @override
+  String get financeTxnCategoryAll => 'Todas las categorías';
+
+  @override
+  String get financeTxnPotAll => 'Todos los botes';
+
+  @override
+  String get financeTxnPot => 'Bote';
+
+  @override
+  String get financeTxnAllTypes => 'Todos los tipos';
+
+  @override
+  String get financeTxnKindExpenses => 'Gastos';
+
+  @override
+  String get financeTxnKindIncome => 'Ingresos';
+
+  @override
+  String get financeTxnKindAllocations => 'Asignaciones';
+
+  @override
+  String get financeTxnExpenseTitle => 'Gasto';
+
+  @override
+  String get financeTxnAllocationTitle => 'Asignación';
+
+  @override
+  String financeTxnEntriesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count movimientos',
+      one: '1 movimiento',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get financeTxnSummaryIn => 'Entradas';
+
+  @override
+  String get financeTxnSummaryOut => 'Salidas';
+
+  @override
+  String get financeTxnSummaryNet => 'Neto';
+
+  @override
+  String get financeTxnDuplicate => 'Duplicar';
+
+  @override
+  String syncLabelHomeLayout(String family) {
+    return 'Diseño de inicio ($family)';
+  }
+
+  @override
+  String get syncLabelFamilyDesktop => 'escritorio';
+
+  @override
+  String get syncLabelFamilyPhone => 'teléfono';
+
+  @override
+  String get syncLabelAssistantMemory => 'Memoria del asistente';
+
+  @override
+  String get syncLabelAiUsage => 'Uso de IA (agentes, biblioteca y uso)';
+
+  @override
+  String get syncLabelQrCodes => 'Códigos QR';
+
+  @override
+  String get syncLabelMindMaps => 'Mapas mentales';
+
+  @override
+  String get syncLabelWhiteboards => 'Pizarras';
+
+  @override
+  String get syncLabelSteamTools => 'Herramientas de Steam';
+
+  @override
+  String get syncLabelServerTycoon => 'Server Tycoon';
+
+  @override
+  String get syncLabelSmartHomePresets => 'Preajustes de Smart Home';
+
+  @override
+  String get syncLabelAudioToolsEq => 'EQ de herramientas de audio';
+
+  @override
+  String get syncLabelSftpSites => 'Sitios SFTP';
+
+  @override
+  String get syncLabelMediaDownloaderHistory =>
+      'Historial del descargador de medios';
+
+  @override
+  String get splashDevBuild => 'Compilación de desarrollo';
+
+  @override
+  String get splashFreeEdition => 'Edición gratuita';
+
+  @override
+  String splashPlanEdition(String plan) {
+    return 'Edición $plan';
+  }
+
+  @override
+  String get p2pDebugLogEmpty => 'Todavía no hay registro de depuración.';
+
+  @override
+  String p2pDebugLogReadFailed(String error) {
+    return 'No se pudo leer el registro de depuración: $error';
+  }
+
+  @override
+  String p2pLinkConnectionError(String error) {
+    return 'Error de conexión: $error';
+  }
+
+  @override
+  String p2pLinkInvalidFrame(String error) {
+    return 'Trama no válida: $error';
+  }
+
+  @override
+  String get p2pLinkMalformedControl => 'Mensaje de control mal formado.';
+
+  @override
+  String get p2pLinkMalformedBlob => 'Encabezado de blob mal formado.';
+
+  @override
+  String get p2pLinkMalformedShareChunk =>
+      'Encabezado de fragmento compartido mal formado.';
+
+  @override
+  String get p2pLinkHandshakeNotSameAccount =>
+      'Falló el handshake: no es la misma cuenta.';
+
+  @override
+  String get p2pSetUpSyncFirst =>
+      'Configura primero la sincronización de dispositivos.';
+
+  @override
+  String get p2pAccountNotReady => 'La cuenta aún no está lista.';
+
+  @override
+  String p2pCouldNotStartDiscovery(String error) {
+    return 'No se pudo iniciar la búsqueda: $error';
+  }
+
+  @override
+  String p2pCouldNotResolvePeer(String name) {
+    return 'No se pudo localizar $name.';
+  }
+
+  @override
+  String p2pCouldNotConnectTo(String endpoint, String error) {
+    return 'No se pudo conectar a $endpoint ($error).';
+  }
+
+  @override
+  String get p2pUnknownDevice => 'Dispositivo desconocido';
+
+  @override
+  String get p2pDefaultDeviceName => 'dispositivo luma';
+
+  @override
+  String get securityRequiresHttps =>
+      'Las conexiones al servidor privado requieren HTTPS.';
+
+  @override
+  String get petAutoClickerBackToPet => 'Volver a la mascota';
+
+  @override
+  String get petAutoClickerIntervalTitle => 'INTERVALO';
+
+  @override
+  String get petAutoClickerClickTitle => 'CLIC';
+
+  @override
+  String get petAutoClickerLocationRepeatTitle => 'UBICACIÓN Y REPETICIÓN';
+
+  @override
+  String get petAutoClickerMilliseconds => 'Milisegundos';
+
+  @override
+  String get petAutoClickerDoubleClick => 'Doble clic';
+
+  @override
+  String get petAutoClickerCursor => 'Cursor';
+
+  @override
+  String get petAutoClickerFixed => 'Fijo';
+
+  @override
+  String get petAutoClickerNoPointSelected => 'Ningún punto seleccionado';
+
+  @override
+  String petAutoClickerMoveCursor(int seconds) {
+    return 'Mueve el cursor… $seconds';
+  }
+
+  @override
+  String get petAutoClickerPickPoint => 'Elegir punto';
+
+  @override
+  String get petAutoClickerStopAfterAmount =>
+      'Detener tras una cantidad establecida';
+
+  @override
+  String get petAutoClickerNumberOfClicks => 'Número de clics';
+
+  @override
+  String petAutoClickerClicksDone(String count) {
+    return '$count CLICS';
+  }
+
+  @override
+  String petAutoClickerReady(String hotKey) {
+    return 'LISTO · $hotKey';
+  }
+
+  @override
+  String get secretStoreVerificationFailed =>
+      'La verificación del almacenamiento seguro ha fallado.';
+
+  @override
+  String get secretStoreConflictingKeys =>
+      'Claves de cifrado en conflicto; la restauración requiere revisión.';
+
+  @override
+  String get secretStoreInvalidKey => 'Clave de cifrado guardada no válida.';
+
+  @override
+  String get devicesSetupTitle => 'Sincronizar directamente entre dispositivos';
+
+  @override
+  String get devicesSetupBody =>
+      'No se necesita servidor: solo un correo y una contraseña compartidos entre tus dispositivos, usados únicamente para reconocerse por Wi-Fi. ¿Ya tienes una cuenta de luma en la nube? Inicia sesión arriba y esto se activará automáticamente.';
+
+  @override
+  String get devicesErrorInvalidEmail =>
+      'Introduce una dirección de correo válida.';
+
+  @override
+  String get devicesErrorPasswordShort =>
+      'Usa al menos 10 caracteres: esta contraseña también protege tus datos cifrados.';
+
+  @override
+  String get devicesEnableTitle => 'Activar sincronización de dispositivos';
+
+  @override
+  String get devicesEnableBody =>
+      'Introduce el mismo correo y contraseña en cada dispositivo que quieras vincular: nunca salen de este dispositivo ni tocan un servidor. Solo demuestran que tus dispositivos son de la misma persona.';
+
+  @override
+  String get devicesPasswordWarning =>
+      'Si te equivocas al escribir la contraseña al vincular un segundo dispositivo, simplemente no se reconocerá como la misma cuenta: no hay ningún servidor con el que comprobarla ni restablecerla.';
+
+  @override
+  String devicesLocalOnly(String email) {
+    return 'Solo local — $email (sin copia de seguridad)';
+  }
+
+  @override
+  String get devicesTurnOff => 'Desactivar';
+
+  @override
+  String get devicesConnectedHeading => 'Conectados';
+
+  @override
+  String get devicesNoneConnected => 'Aún no hay dispositivos conectados.';
+
+  @override
+  String get devicesNearby => 'Cercanos';
+
+  @override
+  String get devicesTurnOnDiscovery =>
+      'Activa la detección para encontrar otros dispositivos en este Wi-Fi.';
+
+  @override
+  String get devicesSearching =>
+      'Buscando… aún no se han encontrado otros dispositivos.';
+
+  @override
+  String get devicesSameNetworkHint =>
+      'Ambos dispositivos deben estar en la misma red. ¿Usas datos móviles (5G/4G)? Usa un punto de acceso.';
+
+  @override
+  String get devicesHowHotspot => '¿Cómo?';
+
+  @override
+  String get devicesConnectManually => 'Conectar manualmente…';
+
+  @override
+  String get devicesAutoSync => 'Sincronización automática';
+
+  @override
+  String get devicesAutoSyncHint =>
+      'La sincronización automática envía los cambios a los dispositivos conectados en unos segundos. Si está desactivada, toca un dispositivo y elige «Sincronizar ahora».';
+
+  @override
+  String get devicesViewDebugLog => 'Ver registro de depuración';
+
+  @override
+  String get devicesThisDevice => 'Este dispositivo';
+
+  @override
+  String devicesIpHint(String addresses) {
+    return 'IP: $addresses: el otro dispositivo debe estar en la misma red para encontrar este.';
+  }
+
+  @override
+  String devicesListeningOnPort(String name, String port) {
+    return '$name · escuchando en el puerto $port';
+  }
+
+  @override
+  String get devicesSync => 'Sincronizar';
+
+  @override
+  String get devicesDisconnect => 'Desconectar';
+
+  @override
+  String get devicesConnect => 'Conectar';
+
+  @override
+  String get devicesHotspotTitle =>
+      '¿Sin Wi-Fi compartido? Usa un punto de acceso';
+
+  @override
+  String get devicesHotspotBody =>
+      'La detección solo encuentra dispositivos en la misma red. Si tu teléfono usa datos móviles en lugar de Wi-Fi, no hay red local donde encontrarse: activa en su lugar el punto de acceso del teléfono y haz que el otro dispositivo se conecte. Cuando ambos estén en esa red, todo funciona exactamente igual.';
+
+  @override
+  String get devicesHotspotStep1 =>
+      'En el teléfono: Ajustes → Red e Internet → Zona Wi-Fi y anclaje → activa la zona Wi-Fi.';
+
+  @override
+  String get devicesHotspotStep2 =>
+      'En el otro dispositivo: conéctate a la red Wi-Fi de esa zona como con cualquier otra.';
+
+  @override
+  String get devicesHotspotStep3 =>
+      'Vuelve aquí y activa la detección (o desactívala y vuelve a activarla) en ambos dispositivos.';
+
+  @override
+  String get devicesGotIt => 'Entendido';
+
+  @override
+  String get devicesDebugLogTitle => 'Registro de depuración P2P';
+
+  @override
+  String get devicesTurnOffTitle =>
+      '¿Desactivar la sincronización de dispositivos?';
+
+  @override
+  String get devicesTurnOffBody =>
+      'Esto desconecta todos los dispositivos vinculados y olvida la identidad de sincronización de este dispositivo. Puedes volver a configurarlo en cualquier momento con el mismo correo y contraseña.';
+
+  @override
+  String get devicesErrorHostPort =>
+      'Introduce un host y un puerto válido (1–65535).';
+
+  @override
+  String get devicesConnectManualTitle => 'Conectar manualmente';
+
+  @override
+  String get devicesManualBody =>
+      'Úsalo cuando la detección no vea el otro dispositivo, por ejemplo si un cortafuegos bloquea mDNS. Introduce la dirección que muestra en su pantalla de Dispositivos.';
+
+  @override
+  String get devicesHost => 'Host';
+
+  @override
+  String get devicesPort => 'Puerto';
+
+  @override
+  String get settingsAccentLavender => 'Lavanda';
+
+  @override
+  String get settingsAccentIndigo => 'Índigo';
+
+  @override
+  String get settingsAccentOcean => 'Océano';
+
+  @override
+  String get settingsAccentTeal => 'Verde azulado';
+
+  @override
+  String get settingsAccentForest => 'Bosque';
+
+  @override
+  String get settingsAccentAmber => 'Ámbar';
+
+  @override
+  String get settingsAccentCoral => 'Coral';
+
+  @override
+  String get settingsAccentRose => 'Rosa';
+
+  @override
+  String get settingsHomeScreenTitle => 'Tu pantalla de inicio';
+
+  @override
+  String get settingsHomeScreenSub =>
+      'Organiza y cambia el tamaño de los mosaicos, fija tus favoritos y elige lo que ves. Los diseños se sincronizan dentro del mismo formato de dispositivo.';
+
+  @override
+  String get settingsHomeScreenEdit => 'Editar pantalla de inicio';
+
+  @override
+  String get syncSettingsHeadline => 'Ten tus cosas en todos tus dispositivos';
+
+  @override
+  String get syncSettingsSignedOutBody =>
+      'Crea una cuenta para sincronizar funciones entre dispositivos, con Google, GitHub o un correo electrónico y contraseña. Todo se cifra en este dispositivo antes de salir; no se sincroniza nada hasta que lo actives función por función. También puedes prescindir del servidor por completo y vincular dispositivos a través de tu propia red.';
+
+  @override
+  String get syncSettingsSessionExpired =>
+      'Tu sesión en la nube ha caducado; vuelve a iniciar sesión.';
+
+  @override
+  String get syncSettingsSetUpAccount => 'Configurar cuenta';
+
+  @override
+  String get syncSettingsEnterCode => 'Introducir código';
+
+  @override
+  String syncSettingsPendingEmailCode(String email) {
+    return '$email está pendiente de aprobación. Introduce el código de 6 dígitos que te enviamos por correo electrónico para terminar de iniciar sesión. Hasta entonces, este dispositivo no contacta en absoluto con el servidor, y los complementos que lo necesitan permanecen desactivados.';
+  }
+
+  @override
+  String syncSettingsPendingApproval(String email) {
+    return '$email está esperando a que el operador del servidor la apruebe. Mientras tanto no hay nada que hacer; solo tienes que iniciar sesión cuando lo haga. Hasta entonces, este dispositivo no contacta en absoluto con el servidor, y los complementos que lo necesitan permanecen desactivados.';
+  }
+
+  @override
+  String get syncSettingsResendCode => 'Reenviar código';
+
+  @override
+  String get syncSettingsUseDifferentEmail => 'Usar otro correo electrónico';
+
+  @override
+  String get syncSettingsSyncedToCloud => 'Sincronizado con la nube';
+
+  @override
+  String syncSettingsSyncedToCloudWith(String providers) {
+    return 'Sincronizado con la nube — inicia sesión con $providers';
+  }
+
+  @override
+  String get syncSettingsProviderSeparator => ' o ';
+
+  @override
+  String get syncSettingsLocalOnly =>
+      'Solo local: se sincroniza directamente entre tus dispositivos, sin servidor';
+
+  @override
+  String get syncSettingsBackUpToServer =>
+      'Hacer copia de seguridad en un servidor…';
+
+  @override
+  String get syncSettingsWhatSyncs =>
+      'Lo que se sincroniza desde este dispositivo';
+
+  @override
+  String get syncSettingsWhatSyncsBody =>
+      'Todo está desactivado de forma predeterminada. Solo sale de este dispositivo lo que actives aquí, cifrado con tu contraseña antes de subirlo. Cuando actives por primera vez una función que ya tiene datos sincronizados, la copia del servidor sustituye a la de este dispositivo.';
+
+  @override
+  String get syncSettingsAutomaticTooltip =>
+      'Las preferencias, la memoria del asistente y los diseños de inicio de los dispositivos coincidentes siempre se sincronizan; esto no se puede desactivar.';
+
+  @override
+  String get syncSettingsAlwaysOn => 'Siempre activo';
+
+  @override
+  String syncSettingsPlanSyncsOn(String label, String plan) {
+    return '$label se sincroniza con el plan $plan y superiores.';
+  }
+
+  @override
+  String syncSettingsPlanBadge(String plan) {
+    return 'Plan $plan';
+  }
+
+  @override
+  String syncSettingsStopSyncingTitle(String label) {
+    return '¿Dejar de sincronizar $label?';
+  }
+
+  @override
+  String syncSettingsStopSyncingBody(String label) {
+    return 'Este dispositivo deja de subir $label. ¿También quieres borrar la copia guardada en el servidor? (Otros dispositivos que sigan sincronizando $label podrían volver a subirla.)';
+  }
+
+  @override
+  String get syncSettingsKeepOnServer => 'Conservar en el servidor';
+
+  @override
+  String get syncSettingsDeleteFromServer => 'Borrar del servidor';
+
+  @override
+  String syncSettingsPlanNeededTitle(String plan) {
+    return 'Se necesita el plan $plan';
+  }
+
+  @override
+  String syncSettingsPlanNeededBody(String label, String plan) {
+    return '$label se sincroniza con el servidor en el plan $plan y superiores. Sigue funcionando en este dispositivo de todas formas; solo la sincronización entre dispositivos requiere el plan.';
+  }
+
+  @override
+  String get syncSettingsSeePlans => 'Ver planes';
+
+  @override
+  String get syncSettingsLimitTitle => 'Límite de sincronización alcanzado';
+
+  @override
+  String syncSettingsLimitBody(int limit) {
+    String _temp0 = intl.Intl.pluralLogic(
+      limit,
+      locale: localeName,
+      other: '$limit funciones',
+      one: '1 función',
+    );
+    return 'Tu plan permite sincronizar hasta $_temp0 con el servidor a la vez. Desactiva una o mejora tu plan para sincronizar más.';
+  }
+
+  @override
+  String get syncSettingsUpgradePlan => 'Mejorar plan';
+
+  @override
+  String get syncSettingsStorage => 'Almacenamiento';
+
+  @override
+  String get syncSettingsSyncToSeeUsage => 'Sincroniza para ver el uso';
+
+  @override
+  String syncSettingsUsedOf(String used, String quota) {
+    return '$used de $quota usados';
+  }
+
+  @override
+  String get syncSettingsNothingSavedYet =>
+      'Aún no hay nada guardado en el servidor; activa algo abajo para hacer una copia de seguridad.';
+
+  @override
+  String get syncSettingsSyncing => 'Sincronizando…';
+
+  @override
+  String get syncSettingsSyncFailed => 'Error de sincronización.';
+
+  @override
+  String get syncSettingsNotSyncedYet => 'Aún no sincronizado.';
+
+  @override
+  String syncSettingsLastSynced(String time) {
+    return 'Última sincronización: $time';
+  }
+
+  @override
+  String get syncSettingsSyncNow => 'Sincronizar ahora';
+
+  @override
+  String get syncSettingsSyncAll => 'Sincronizar todo';
+
+  @override
+  String get syncSettingsChangePassword => 'Cambiar contraseña';
+
+  @override
+  String get syncSettingsCurrentPassword => 'Contraseña actual';
+
+  @override
+  String get syncSettingsNewPassword => 'Nueva contraseña';
+
+  @override
+  String get syncSettingsConfirmNewPassword => 'Confirmar nueva contraseña';
+
+  @override
+  String get syncSettingsPasswordReencryptNote =>
+      'Todos los datos sincronizados se volverán a cifrar con la nueva contraseña. Los demás dispositivos te pedirán que vuelvas a iniciar sesión.';
+
+  @override
+  String get syncSettingsPasswordTooShort => 'Usa al menos 10 caracteres.';
+
+  @override
+  String get syncSettingsPasswordMismatch =>
+      'Las nuevas contraseñas no coinciden.';
+
+  @override
+  String get syncSettingsDevicesSignedInTitle =>
+      'Dispositivos con sesión iniciada';
+
+  @override
+  String get syncSettingsDevicesSignedIn => 'Dispositivos con sesión iniciada…';
+
+  @override
+  String get syncSettingsAskDeleteData => 'Pedir que se borren mis datos…';
+
+  @override
+  String get syncSettingsDeleteAccount => 'Eliminar cuenta…';
+
+  @override
+  String get syncSettingsDataSyncsDirectly =>
+      'Estos datos se sincronizan directamente con los dispositivos vinculados; consulta Dispositivos abajo para conectar uno o desactivarlo.';
+
+  @override
+  String get syncSettingsRecoveryKeySetUp =>
+      'Clave de recuperación configurada: olvidar tu contraseña no te hará perder tus datos sincronizados.';
+
+  @override
+  String get syncSettingsRecoveryKeyMissing =>
+      'No hay clave de recuperación. Si olvidas tu contraseña, restablecerla borra tus datos sincronizados en el servidor.';
+
+  @override
+  String get syncSettingsManage => 'Gestionar…';
+
+  @override
+  String get syncSettingsSetUp => 'Configurar…';
+
+  @override
+  String get syncSettingsRecoveryKeyCopied => 'Clave de recuperación copiada.';
+
+  @override
+  String get syncSettingsRecoveryKeyWriteDown =>
+      'Anótala o guárdala en un gestor de contraseñas. luma no guarda una copia y no podrá volver a mostrarla.';
+
+  @override
+  String get syncSettingsRecoveryKeyFooter =>
+      'Si olvidas tu contraseña, introduce esta clave en la pantalla de restablecimiento y tus datos sincronizados se conservarán.';
+
+  @override
+  String get syncSettingsRecoveryKeySaved => 'Lo he guardado';
+
+  @override
+  String get syncSettingsRecoveryKeyTitle => 'Clave de recuperación';
+
+  @override
+  String get syncSettingsYourRecoveryKey => 'Tu clave de recuperación';
+
+  @override
+  String get syncSettingsRecoveryHasKeyBody =>
+      'Esta cuenta tiene una clave de recuperación. Si la perdiste, crea una nueva; la anterior dejará de funcionar en cuanto lo hagas.';
+
+  @override
+  String get syncSettingsRecoveryNoKeyBody =>
+      'Tus datos sincronizados se cifran con una clave derivada de tu contraseña, así que nadie, ni siquiera el servidor, puede leerlos. Esto también significa que una contraseña olvidada normalmente los borra.\n\nUna clave de recuperación es una segunda forma de entrar. Guárdala en un lugar seguro, y al restablecer la contraseña se conservarán todos tus datos sincronizados.';
+
+  @override
+  String get syncSettingsMakeNewKey => 'Crear una clave nueva';
+
+  @override
+  String get syncSettingsCreateRecoveryKey => 'Crear clave de recuperación';
+
+  @override
+  String get syncSettingsUnknownDevice => 'Dispositivo desconocido';
+
+  @override
+  String get syncSettingsThisDevice => 'Este dispositivo';
+
+  @override
+  String syncSettingsSignedInOn(String date) {
+    return 'Sesión iniciada el $date';
+  }
+
+  @override
+  String get syncSettingsCurrentSession => 'Actual';
+
+  @override
+  String get syncSettingsRevoke => 'Revocar';
+
+  @override
+  String get syncSettingsNoOtherSessions => 'No hay otras sesiones activas.';
+
+  @override
+  String get syncSettingsDeletionPending =>
+      'Se ha solicitado la eliminación de datos; esperando a que el operador del servidor decida.';
+
+  @override
+  String get syncSettingsDeletionDeclined =>
+      'El operador del servidor ha rechazado tu solicitud de eliminación de datos.';
+
+  @override
+  String syncSettingsDeletionSentNothingDeleted(String date) {
+    return 'Enviada el $date. Todavía no se ha borrado nada.';
+  }
+
+  @override
+  String syncSettingsDeletionDecided(String date) {
+    return 'Decidida el $date.';
+  }
+
+  @override
+  String syncSettingsDeletionDecidedWithNote(String date, String note) {
+    return 'Decidida el $date. Escribieron: “$note”';
+  }
+
+  @override
+  String get syncSettingsWithdraw => 'Retirar';
+
+  @override
+  String get syncSettingsDeletionWithdrawn =>
+      'Solicitud de eliminación retirada.';
+
+  @override
+  String get syncSettingsAskDeleteTitle => 'Pedir que se borren mis datos';
+
+  @override
+  String get syncSettingsDeletionPendingBody =>
+      'Ya tienes una solicitud pendiente de decisión. Retírala desde el panel de Sincronización y cuenta si quieres enviar otra.';
+
+  @override
+  String get syncSettingsDeletionRequestBody =>
+      'Esto envía una solicitud al operador del servidor para eliminar tu cuenta y todas las copias sincronizadas que guarda el servidor. No se borra nada hasta que la acepte, y los datos de tus dispositivos nunca se tocan.';
+
+  @override
+  String get syncSettingsWhyOptional => '¿Por qué? (opcional)';
+
+  @override
+  String get syncSettingsWhyHint => 'No tienes que dar un motivo.';
+
+  @override
+  String get syncSettingsSendRequest => 'Enviar solicitud';
+
+  @override
+  String get syncSettingsRequestSent =>
+      'Solicitud enviada al operador del servidor.';
+
+  @override
+  String get syncSettingsDeleteAccountTitle => '¿Eliminar cuenta?';
+
+  @override
+  String get syncSettingsDeleteAccountBody =>
+      'Esto elimina de forma permanente tu cuenta y todas las copias sincronizadas del servidor. Los datos de tus dispositivos no se tocan. Introduce tu contraseña para confirmar.';
+
+  @override
+  String get syncSettingsDeleteForever => 'Eliminar para siempre';
+
+  @override
+  String syncCollectionHomeLayout(Object family) {
+    return 'Diseño de inicio ($family)';
+  }
+
+  @override
+  String get syncCollectionSettings => 'Ajustes';
+
+  @override
+  String get syncCollectionAssistantMemory => 'Memoria del asistente';
+
+  @override
+  String get syncCollectionNotes => 'Notas';
+
+  @override
+  String get syncCollectionFinance => 'Finanzas';
+
+  @override
+  String get syncCollectionPasswords => 'Contraseñas';
+
+  @override
+  String get syncCollectionCalendar => 'Calendario';
+
+  @override
+  String get syncCollectionBulletinBoard => 'Tablón de anuncios';
+
+  @override
+  String get syncCollectionQrCodes => 'Códigos QR';
+
+  @override
+  String get syncCollectionCardWallet => 'Cartera de tarjetas';
+
+  @override
+  String get syncCollectionErrands => 'Recados';
+
+  @override
+  String get syncCollectionDataManagement => 'Gestión de datos';
+
+  @override
+  String get syncCollectionMoodJournal => 'Diario de ánimo';
+
+  @override
+  String get syncCollectionAiUsage => 'Uso de IA (agentes, biblioteca y uso)';
+
+  @override
+  String get syncCollectionSchool => 'Escuela';
+
+  @override
+  String get syncCollectionMindMaps => 'Mapas mentales';
+
+  @override
+  String get syncCollectionWhiteboards => 'Pizarras';
+
+  @override
+  String get syncCollectionTextLibrary => 'Biblioteca de textos';
+
+  @override
+  String get syncCollectionPriceTracker => 'Seguimiento de precios';
+
+  @override
+  String get syncCollectionWifiSpeedTest => 'Prueba de velocidad Wi-Fi';
+
+  @override
+  String get syncCollectionGroceries => 'Compra de alimentos';
+
+  @override
+  String get syncCollectionAirlineTycoon => 'Magnate aéreo';
+
+  @override
+  String get syncCollectionSteamTools => 'Herramientas de Steam';
+
+  @override
+  String get syncCollectionServerTycoon => 'Magnate del hosting de servidores';
+
+  @override
+  String get syncCollectionRecipeBook => 'Libro de recetas';
+
+  @override
+  String get syncCollectionMinecraftLauncher => 'Lanzador de Minecraft';
+
+  @override
+  String get syncCollectionUsage => 'Uso';
+
+  @override
+  String get syncCollectionFreeSketch => 'Boceto libre';
+
+  @override
+  String get syncCollectionSmartHomePresets => 'Ajustes de hogar inteligente';
+
+  @override
+  String get syncCollectionAudioToolsEq => 'Ecualizador de Audio Tools';
+
+  @override
+  String get syncCollectionAutoClicker => 'Autoclic';
+
+  @override
+  String get syncCollectionCalculator => 'Calculadora';
+
+  @override
+  String get syncCollectionWorthCounter => 'Contador de valor';
+
+  @override
+  String get syncCollectionNfcTagEditor => 'Editor de etiquetas NFC';
+
+  @override
+  String get syncCollectionSftpSites => 'Sitios SFTP';
+
+  @override
+  String get syncCollectionMediaDownloaderHistory =>
+      'Historial de descargas multimedia';
+
+  @override
+  String get syncCollectionTransportTracker => 'Seguimiento de transporte';
+
+  @override
+  String get syncSettingsDeletionReasonLabel => '¿Por qué? (opcional)';
+
+  @override
+  String get syncSettingsDeletionReasonHint => 'No tienes que dar un motivo.';
+
+  @override
+  String get sceneAirlineTycoonDismissAwayReport =>
+      'Cerrar informe de ausencia';
+
+  @override
+  String get sceneAirlineTycoonDismissMessage => 'Cerrar mensaje';
+
+  @override
+  String get sceneAirlineTycoonConfirmDemolition => 'Confirmar demolición';
+
+  @override
+  String get sceneAirlineTycoonEarlier => 'Antes';
+
+  @override
+  String get sceneAirlineTycoonDragOntoAStand => 'Arrastra a un puesto';
+
+  @override
+  String get sceneAirlineTycoonJetBridge => 'Pasarela de embarque';
+
+  @override
+  String get sceneAirlineTycoonCancelFlight => 'Cancelar vuelo';
+
+  @override
+  String get sceneAirlineTycoonLumaAirport => 'Aeropuerto Luma';
+
+  @override
+  String get sceneAirlineTycoonPreparingYourAirport =>
+      'Preparando tu aeropuerto…';
+
+  @override
+  String get sceneAirlineTycoonScenePreviewNoSave =>
+      'VISTA PREVIA · SIN GUARDAR';
+
+  @override
+  String get sceneAirlineTycoonAirport => 'Aeropuerto';
+
+  @override
+  String get sceneAirlineTycoonDay10000 => 'DÍA 1 · 00:00';
+
+  @override
+  String get sceneAirlineTycoonResumeAirportSpace =>
+      'Reanudar aeropuerto (Espacio)';
+
+  @override
+  String get sceneAirlineTycoonResumeAirport => 'Reanudar aeropuerto';
+
+  @override
+  String get sceneAirlineTycoonSimulationSpeed => 'Velocidad de simulación';
+
+  @override
+  String get sceneAirlineTycoonNormalSpeed1 => 'Velocidad normal (1)';
+
+  @override
+  String get sceneAirlineTycoonFast2 => 'Rápido (2)';
+
+  @override
+  String get sceneAirlineTycoonFastest3 => 'Máxima velocidad (3)';
+
+  @override
+  String get sceneAirlineTycoonViewMode => 'Modo de vista';
+
+  @override
+  String get sceneAirlineTycoonAirfieldRunwaysStandsAndBuildingsT =>
+      'Aeródromo: pistas, puestos y edificios (T)';
+
+  @override
+  String get sceneAirlineTycoonAirportModeZoomInOnTheTerminalAndFurnishIt =>
+      'Modo aeropuerto: acerca la terminal y amuebla sus salas (T)';
+
+  @override
+  String get sceneAirlineTycoonFitAirport => 'Mostrar todo el aeropuerto';
+
+  @override
+  String get sceneAirlineTycoonResetCamera => 'Restablecer cámara';
+
+  @override
+  String get sceneAirlineTycoonTerminalCutawayC =>
+      'Vista en corte de la terminal (C)';
+
+  @override
+  String get sceneAirlineTycoonTerminalCutaway =>
+      'Vista en corte de la terminal';
+
+  @override
+  String get sceneAirlineTycoonConstructionGridG =>
+      'Cuadrícula de construcción (G)';
+
+  @override
+  String get sceneAirlineTycoonConstructionGrid => 'Cuadrícula de construcción';
+
+  @override
+  String get sceneAirlineTycoonPerformanceStatsF3 =>
+      'Estadísticas de rendimiento (F3)';
+
+  @override
+  String get sceneAirlineTycoonPerformanceStats =>
+      'Estadísticas de rendimiento';
+
+  @override
+  String get sceneAirlineTycoonClosePanelEsc => 'Cerrar panel (Esc)';
+
+  @override
+  String get sceneAirlineTycoonClosePanel => 'Cerrar panel';
+
+  @override
+  String get sceneAirlineTycoonYourFirstDeparture => 'Tu primera salida';
+
+  @override
+  String get sceneAirlineTycoonSignARegionalAirlineOrOpenYourOwnRoute =>
+      'Contrata una aerolínea regional o abre tu propia ruta.';
+
+  @override
+  String get sceneAirlineTycoonCheckTheFlightSchedule =>
+      'Consulta el horario de vuelos.';
+
+  @override
+  String get sceneAirlineTycoonResumeYourAirportAndFollowTheTurnaround =>
+      'Reanuda tu aeropuerto y sigue la preparación del vuelo.';
+
+  @override
+  String get sceneAirlineTycoonMeetTheAirlines => 'Conoce las aerolíneas';
+
+  @override
+  String get sceneAirlineTycoonRotate90R => 'Girar 90° (R)';
+
+  @override
+  String get sceneAirlineTycoonCancelConstructionEsc =>
+      'Cancelar construcción (Esc)';
+
+  @override
+  String get sceneAirlineTycoonCancelConstruction => 'Cancelar construcción';
+
+  @override
+  String get sceneAirlineTycoonAirportPanels => 'Paneles del aeropuerto';
+
+  @override
+  String get sceneAirlineTycoonCloseEsc => 'Cerrar (Esc)';
+
+  @override
+  String get sceneAirlineTycoonCloseBuildingWindow =>
+      'Cerrar ventana del edificio';
+
+  @override
+  String get sceneAirlineTycoonBuildingSections => 'Secciones del edificio';
+
+  @override
+  String get sceneAirlineTycoonNorth => 'Norte';
+
+  @override
+  String get sceneAirlineTycoonN => 'N ↑';
+
+  @override
+  String get sceneTextLibraryBuildingYourLibrary =>
+      'Construyendo tu biblioteca…';
+
+  @override
+  String get sceneTextLibraryPreviousShelf => 'Estante anterior';
+
+  @override
+  String get sceneTextLibraryNextShelf => 'Estante siguiente';
+
+  @override
+  String get sceneTextLibraryForward => 'Adelante';
+
+  @override
+  String get sceneTextLibraryTurnLeft => 'Girar a la izquierda';
+
+  @override
+  String get sceneTextLibraryTurnRight => 'Girar a la derecha';
+
+  @override
+  String get sceneTextLibraryPreviousPage => 'Página anterior';
+
+  @override
+  String get sceneTextLibraryNextPage => 'Página siguiente';
+
+  @override
+  String syncServiceSyncLimitExceeded(Object limit) {
+    return 'Tu plan permite sincronizar hasta $limit funciones a la vez. Mejora tu plan para sincronizar más.';
+  }
+
+  @override
+  String syncServicePlanRequired(Object label, Object plan) {
+    return '$label se sincroniza con el plan $plan o superior.';
+  }
+
+  @override
+  String get syncOAuthSignInCancelled => 'Inicio de sesión cancelado.';
+
+  @override
+  String get syncOAuthBrowserTimeout =>
+      'Se agotó el tiempo de espera del navegador. Inténtalo de nuevo.';
+
+  @override
+  String get syncOAuthDidNotComplete => 'El inicio de sesión no se completó.';
+
+  @override
+  String get syncServiceApprovalNotPending =>
+      'No hay ninguna cuenta de este dispositivo pendiente de aprobación.';
+
+  @override
+  String get syncServiceEmailVerificationNotPending =>
+      'No hay ninguna verificación de correo pendiente en este dispositivo.';
+
+  @override
+  String get syncServiceRecoveryKeyIncomplete =>
+      'La clave de recuperación está incompleta. Son 8 grupos de 4 letras y números.';
+
+  @override
+  String get syncServiceNoRecoveryKey =>
+      'Esta cuenta no tiene clave de recuperación. Deja el campo vacío para restablecerla de todos modos; se borrarán las copias sincronizadas del servidor.';
+
+  @override
+  String get syncServiceRecoveryKeyMismatch =>
+      'Esa clave de recuperación no pertenece a esta cuenta. No se cambió nada.';
+
+  @override
+  String get syncServiceApprovedAccountRequired =>
+      'Inicia sesión primero con una cuenta aprobada.';
+
+  @override
+  String get syncServiceWrongDevicePassword =>
+      'La contraseña no es correcta para la identidad de sincronización existente de este dispositivo.';
+
+  @override
+  String get syncServicePasswordReencryptFailed =>
+      'La contraseña cambió, pero no se pudieron volver a cifrar algunos datos sincronizados. La clave anterior se conservó en el almacenamiento seguro de este dispositivo para recuperarlos. Conserva este dispositivo y sus datos.';
+
+  @override
+  String get syncCollectionInvalidSnapshot => 'Instantánea no válida.';
+
+  @override
+  String get syncCollectionSnapshotNewerVersion =>
+      'Esta instantánea procede de una versión más reciente de la aplicación. Actualiza primero la aplicación en este dispositivo.';
+
+  @override
+  String syncCollectionPasswordDecryptFailed(Object entryId) {
+    return 'No se pudo descifrar la entrada de contraseña $entryId para sincronizarla (datos dañados o archivo de clave cambiado).';
+  }
+
+  @override
+  String get syncCollectionTotpDecryptFailed =>
+      'No se pudo descifrar la entrada TOTP para sincronizarla.';
+
+  @override
+  String get syncCollectionSnapshotMissingPassword =>
+      'Falta la contraseña en la instantánea de la bóveda.';
+
+  @override
+  String get syncCollectionSnapshotUnreadableTotp =>
+      'El TOTP de la instantánea de la bóveda no se puede leer.';
+
+  @override
+  String get syncSnapshotCollectionMismatch =>
+      'La instantánea no corresponde a la colección.';
+
+  @override
+  String get securityUnsupportedEncryptedData =>
+      'Datos cifrados no compatibles.';
+
+  @override
+  String get securityInvalidEncryptionKeyLength =>
+      'La longitud de la clave de cifrado no es válida.';
+
+  @override
+  String get cs2MarketTitle => 'Mercado de CS2';
+
+  @override
+  String get aiDetectorVerdictGeneratedClaude => 'Generado por Claude';
+
+  @override
+  String get aiDetectorVerdictVeryLikelyHuman =>
+      'Muy probablemente escrito por una persona';
+
+  @override
+  String get aiDetectorVerdictLikelyHuman =>
+      'Probablemente escrito por una persona';
+
+  @override
+  String get aiDetectorVerdictMixed => 'Señales mixtas';
+
+  @override
+  String get aiDetectorVerdictLikelyAi => 'Probablemente generado por IA';
+
+  @override
+  String get aiDetectorVerdictVeryLikelyAi =>
+      'Muy probablemente generado por IA';
+
+  @override
+  String get aiDetectorHighlightEmDash => 'Raya';
+
+  @override
+  String get aiDetectorHighlightPassiveVoice => 'Voz pasiva';
+
+  @override
+  String get aiDetectorHighlightTransitionOpener => 'Inicio con conector';
+
+  @override
+  String get aiDetectorHighlightAiFavoritePhrase => 'Expresión típica de IA';
+
+  @override
+  String get aiDetectorHighlightAssistantBoilerplate =>
+      'Frase hecha de asistente';
+
+  @override
+  String get aiDetectorHighlightClaudeSignature => 'Firma de Claude';
+
+  @override
+  String get aiDetectorHighlightClaudeWatermark => 'Marca de agua de Claude';
+
+  @override
+  String get airportErrorUnknownZone => 'Zona desconocida.';
+
+  @override
+  String get airportErrorLargerFloor =>
+      'Arrastra sobre una zona de suelo mayor: al menos 2 m.';
+
+  @override
+  String get airportErrorNoPaintedZone => 'No hay ninguna zona pintada ahí.';
+
+  @override
+  String get airportErrorZoneInsideTerminal =>
+      'Define la zona dentro de la terminal.';
+
+  @override
+  String get airportErrorBuildingGone => 'Ese edificio ya no existe.';
+
+  @override
+  String get airportErrorHighestLevel => 'Ya está en el nivel máximo.';
+
+  @override
+  String get airportErrorUpgradeCash =>
+      'No hay suficiente dinero para esta mejora.';
+
+  @override
+  String get airportErrorUnknownBuilding => 'Edificio desconocido.';
+
+  @override
+  String get airportErrorBoundary =>
+      'Construye dentro de los límites del aeropuerto (±4 km).';
+
+  @override
+  String get airportErrorBeyondLand =>
+      'El edificio se sale del terreno del aeropuerto.';
+
+  @override
+  String get airportErrorUseTerminalZones =>
+      'Construye una terminal y divide su suelo en zonas.';
+
+  @override
+  String get airportErrorBridgeMainHall =>
+      'Para una pasarela, este puesto debe tocar la sala principal.';
+
+  @override
+  String get airportErrorConstructionCash =>
+      'No hay suficiente dinero para esta construcción.';
+
+  @override
+  String get airportErrorFinishOperations =>
+      'Cancela los vuelos próximos y termina las operaciones activas antes de cambiar la infraestructura.';
+
+  @override
+  String get airportErrorRemoveFurnishings =>
+      'Retira primero el mobiliario de la terminal.';
+
+  @override
+  String get airportErrorUnknownVehicle => 'Vehículo desconocido.';
+
+  @override
+  String get airportErrorVehicleCost =>
+      'Un vehículo de servicio cuesta 120.000 €.';
+
+  @override
+  String get airportErrorSelectDepot =>
+      'Selecciona un depósito para comprar vehículos de servicio.';
+
+  @override
+  String get airportErrorConnectDepot =>
+      'Conecta primero ese depósito a una vía de servicio.';
+
+  @override
+  String get airportErrorSelectConnectedDepot =>
+      'Selecciona un depósito conectado para comprar vehículos de servicio.';
+
+  @override
+  String get airportErrorOfferGone => 'Esta oferta ya no está disponible.';
+
+  @override
+  String get airportErrorContractFlying =>
+      'Esta aerolínea aún está cumpliendo su contrato actual.';
+
+  @override
+  String get airportErrorChooseStand => 'Elige un puesto para la aeronave.';
+
+  @override
+  String get airportErrorStandRunway =>
+      'Ese puesto no está conectado a una pista suficientemente larga.';
+
+  @override
+  String get airportErrorPlanAhead =>
+      'Planifica con al menos 30 minutos de antelación.';
+
+  @override
+  String get airportErrorUnknownFlight => 'Vuelo desconocido.';
+
+  @override
+  String get airportErrorMoveBeforeArrival =>
+      'Solo se pueden mover vuelos que aún no han llegado.';
+
+  @override
+  String get airportErrorAircraftBusy =>
+      'La aeronave está ocupada con otro vuelo en ese momento.';
+
+  @override
+  String get airportErrorUnscheduleBeforeArrival =>
+      'Solo se pueden retirar del horario vuelos que aún no han llegado.';
+
+  @override
+  String get airportErrorNoContract => 'No hay contrato activo.';
+
+  @override
+  String get airportErrorAllFlightsPlanned =>
+      'Todos los vuelos de este contrato están programados.';
+
+  @override
+  String get airportErrorChooseAircraftRoute =>
+      'Elige una aeronave disponible y una ruta activa.';
+
+  @override
+  String get airportErrorDepartureWindow =>
+      'Elige una salida entre 90 minutos y siete días a partir de ahora.';
+
+  @override
+  String get airportErrorMaintenance => 'Esta aeronave está en mantenimiento.';
+
+  @override
+  String get airportErrorUnknownDestination => 'Destino desconocido.';
+
+  @override
+  String get airportErrorBeyondRange =>
+      'Este destino está fuera del alcance de la aeronave.';
+
+  @override
+  String get airportErrorAircraftScheduled =>
+      'La aeronave ya está programada o aún está regresando de otro vuelo.';
+
+  @override
+  String get airportErrorNoFreeStand =>
+      'No hay ningún puesto compatible y conectado libre en este horario.';
+
+  @override
+  String get airportErrorFlightClosed => 'Ese vuelo ya está cerrado.';
+
+  @override
+  String get airportErrorFinishTurnaround =>
+      'Una preparación de vuelo activa debe terminar antes de retirarla.';
+
+  @override
+  String get airportErrorSaveVersion =>
+      'Versión de guardado del aeropuerto no compatible';
+
+  @override
+  String aiDetectorNeedsSentences(int count) {
+    return 'Se necesitan al menos $count frases para medirlo.';
+  }
+
+  @override
+  String aiDetectorNeedsWords(int count) {
+    return 'Se necesitan al menos $count palabras para medirlo.';
+  }
+
+  @override
+  String aiDetectorNeedsLines(int count) {
+    return 'Se necesitan al menos $count líneas para medirlo.';
+  }
+
+  @override
+  String aiDetectorNeedsParagraphs(int count) {
+    return 'Se necesitan al menos $count párrafos para medirlo.';
+  }
+
+  @override
+  String get aiDetectorTriggerBurstiness =>
+      'Variación de la longitud de las frases';
+
+  @override
+  String get aiDetectorTriggerBurstinessStrong =>
+      'Longitud de las frases muy uniforme';
+
+  @override
+  String get aiDetectorTriggerPhraseFound => 'Expresiones típicas de IA';
+
+  @override
+  String get aiDetectorTriggerPhraseNone => 'Sin expresiones típicas de IA';
+
+  @override
+  String get aiDetectorTriggerExtremesFound => 'No hay frases cortas ni largas';
+
+  @override
+  String get aiDetectorTriggerExtremesNone =>
+      'Las frases alcanzan ambos extremos';
+
+  @override
+  String get aiDetectorTriggerImpersonal => 'Estilo impersonal';
+
+  @override
+  String get aiDetectorTriggerPersonal => 'Estilo personal';
+
+  @override
+  String get aiDetectorTriggerChatFound => 'Formato de respuesta de chat';
+
+  @override
+  String get aiDetectorTriggerChatNone => 'Sin formato de respuesta de chat';
+
+  @override
+  String get aiDetectorTriggerContrastFound =>
+      'Construcciones de contraste correctivo';
+
+  @override
+  String get aiDetectorTriggerContrastNone =>
+      'Sin patrón de contraste correctivo';
+
+  @override
+  String get aiDetectorTriggerOpeners => 'Frases que comienzan con conectores';
+
+  @override
+  String get aiDetectorTriggerContractionsMissing => 'Faltan contracciones';
+
+  @override
+  String get aiDetectorTriggerContractionsNatural =>
+      'Uso natural de contracciones';
+
+  @override
+  String get aiDetectorTriggerEmDash => 'Uso excesivo de la raya';
+
+  @override
+  String get aiDetectorTriggerPassive => 'Densidad de voz pasiva';
+
+  @override
+  String get aiDetectorTriggerParagraphsUniform => 'Párrafos uniformes';
+
+  @override
+  String get aiDetectorTriggerParagraphsVaried => 'Párrafos variados';
+
+  @override
+  String get aiDetectorTriggerRepeatedOpeners => 'Inicios de frase repetidos';
+
+  @override
+  String get aiDetectorTriggerWatermarkFound =>
+      'Marca de agua de Claude detectada';
+
+  @override
+  String get aiDetectorTriggerClaudeSignature => 'Firma de Claude en el texto';
+
+  @override
+  String get aiDetectorTriggerAssistantBoilerplate =>
+      'Frase hecha de asistente';
+
+  @override
+  String get aiDetectorTriggerNoWatermark => 'No hay marca de agua de Claude';
+
+  @override
+  String aiDetectorWatermarkExplanation(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count caracteres invisibles',
+      one: 'un carácter invisible',
+    );
+    return 'El texto contiene $_temp0 que no ocupa espacio en pantalla, pero acompaña al texto al copiarlo y pegarlo. No se produce al escribir. luma interpreta esa carga oculta como la marca de agua de Claude; por eso el veredicto nombra a Claude en lugar de limitarse a «generado por IA».';
+  }
+
+  @override
+  String get aiDetectorSignatureExplanation =>
+      'El texto identifica a su autor: menciona Claude o Anthropic en un contexto de producto, no como el nombre de una persona. Esta atribución directa tiene prioridad sobre las estadísticas de estilo siguientes.';
+
+  @override
+  String get aiDetectorAssistantExplanation =>
+      'Las expresiones típicas de un asistente de chat indican que el texto procede de una conversación con un modelo. No identifican cuál, por lo que el veredicto no lo nombra y solo aumenta la puntuación.';
+
+  @override
+  String get aiDetectorNoWatermarkExplanation =>
+      'No se encontraron caracteres de marca de agua invisibles ni autorreferencias a Claude. Esto no garantiza un origen humano: muchos textos generados no llevan firma, por lo que aún se aplican las comprobaciones de estilo.';
+
+  @override
+  String get aiDetectorBurstinessExplanationHigh =>
+      'Las frases tienen longitudes muy parecidas. La escritura humana suele alternar frases cortas y largas; una longitud constante sugiere un generador que mantiene un ritmo uniforme.';
+
+  @override
+  String get aiDetectorBurstinessExplanationLow =>
+      'Las longitudes de las frases varían de forma natural, algo habitual en humanos y difícil de imitar para los modelos.';
+
+  @override
+  String get aiDetectorPhraseExplanationHigh =>
+      'Estas palabras y construcciones aparecen mucho más en textos generados por modelos que en la escritura humana cotidiana. Cada etiqueta siguiente es una coincidencia literal en tu texto.';
+
+  @override
+  String get aiDetectorPhraseExplanationLow =>
+      'No se encontraron las expresiones típicas de los modelos. Eso no favorece por sí solo al texto: muchos textos generados las evitan. Esta comprobación se abstiene en lugar de reducir la puntuación.';
+
+  @override
+  String get aiDetectorExtremesExplanationHigh =>
+      'Ninguna frase es realmente corta ni realmente larga. Las personas usan ambas sin pensarlo; un generador tiende a mantenerse en una franja intermedia segura.';
+
+  @override
+  String get aiDetectorExtremesExplanationLow =>
+      'El texto contiene frases breves y largas, como suele ocurrir en la escritura humana sin editar.';
+
+  @override
+  String get aiDetectorVoiceExplanationHigh =>
+      'Apenas aparecen «yo», «nosotros» o «tú», palabras informales o preguntas directas. Los modelos suelen usar este registro distante. La escritura humana formal también lo hace, por lo que pesa menos que las comprobaciones de ritmo.';
+
+  @override
+  String get aiDetectorVoiceExplanationLow =>
+      'El texto utiliza una voz personal, con pronombres y expresiones informales que los modelos rara vez emplean sin indicaciones.';
+
+  @override
+  String get aiDetectorFormattingExplanationHigh =>
+      'El texto tiene la estructura típica de una respuesta de chat: títulos, listas y etiquetas en negrita. Esa estructura se conserva cuando se pega en otro lugar.';
+
+  @override
+  String get aiDetectorFormattingExplanationLow =>
+      'El texto se presenta como prosa, no como una respuesta de chat formateada. Muchos textos generados también son prosa, así que esta señal solo cuenta cuando se activa.';
+
+  @override
+  String get aiDetectorContrastExplanationHigh =>
+      'Las frases que plantean una respuesta para refutarla —«no solo X, sino Y», «la verdadera pregunta es»— son un recurso retórico habitual en los modelos para parecer perspicaces.';
+
+  @override
+  String get aiDetectorContrastExplanationLow =>
+      'No se encontraron las construcciones de planteamiento y refutación habituales en los modelos. Su ausencia no demuestra nada por sí sola.';
+
+  @override
+  String aiDetectorOpenersExplanationHigh(int used, int total) {
+    return '$used de $total frases comienzan con un conector formal. Los textos de modelos abren secciones con «Moreover,» y «Furthermore,» mucho más que las personas.';
+  }
+
+  @override
+  String get aiDetectorOpenersExplanationLow =>
+      'Las frases no dependen de conectores formales para comenzar. Esto por sí solo no identifica a su autor.';
+
+  @override
+  String get aiDetectorContractionsExplanationHigh =>
+      'Apenas hay contracciones inglesas como «don’t» o «it’s». Los textos generados suelen usar el registro más rígido sin contracciones.';
+
+  @override
+  String get aiDetectorContractionsExplanationLow =>
+      'Las contracciones aparecen con una frecuencia natural en humanos.';
+
+  @override
+  String get aiDetectorDashExplanationHigh =>
+      'Las rayas largas aparecen mucho más que en la prosa humana habitual, un hábito conocido de los modelos.';
+
+  @override
+  String get aiDetectorDashExplanationLow =>
+      'El uso de rayas largas está dentro del rango normal.';
+
+  @override
+  String get aiDetectorDashExplanationNone =>
+      'No hay rayas largas; esto no demuestra nada en ningún sentido.';
+
+  @override
+  String get aiDetectorPassiveExplanationHigh =>
+      'El uso frecuente de voz pasiva, como «was designed to» o «is considered», oculta al agente de la acción; es habitual en textos generados.';
+
+  @override
+  String get aiDetectorPassiveExplanationLow =>
+      'La voz pasiva se mantiene en un nivel normal, algo que también ocurre en la mayoría de los textos generados.';
+
+  @override
+  String get aiDetectorParagraphExplanationHigh =>
+      'Todos los párrafos tienen tamaños muy parecidos, como si el contenido se repartiera por igual. Los borradores humanos alternan párrafos cortos y largos.';
+
+  @override
+  String get aiDetectorParagraphExplanationLow =>
+      'Los tamaños de los párrafos varían de forma natural.';
+
+  @override
+  String aiDetectorRepeatedOpenersExplanationHigh(String word, int count) {
+    return '«$word» inicia $count frases. Los autores humanos rara vez repiten tanto un mismo inicio; la generación por plantillas sí lo hace.';
+  }
+
+  @override
+  String get aiDetectorRepeatedOpenersExplanationLow =>
+      'Los inicios de las frases son variados, como en la mayoría de los textos de cualquier origen.';
+
+  @override
+  String get aiDetectorPhraseNoMatches => 'sin coincidencias';
+
+  @override
+  String get aiDetectorPhraseSoftMatch => 'débil';
+
+  @override
+  String aiDetectorPhraseMatchCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count coincidencias',
+      one: '1 coincidencia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiDetectorPhraseWeightedRate(String rate) {
+    return '$rate ponderadas por 1000 palabras';
+  }
+
+  @override
+  String get aiDetectorEvidenceNoHiddenSignature =>
+      'sin caracteres ocultos ni firma';
+
+  @override
+  String airportErrorNoUpgrade(String building) {
+    return '$building no tiene esa mejora.';
+  }
+
+  @override
+  String airportErrorPlaceInside(String hall) {
+    return 'Coloca esto completamente dentro de $hall.';
+  }
+
+  @override
+  String airportErrorOverlap(String building) {
+    return 'Esto se superpone con $building.';
+  }
+
+  @override
+  String airportErrorConnectedServiceFirst(String building) {
+    return 'Proporciona primero $building conectado.';
+  }
+
+  @override
+  String airportErrorNoHaulStand(String haul) {
+    return 'No hay un puesto conectado para $haul con una pista suficientemente larga.';
+  }
+
+  @override
+  String airportErrorStandAircraft(String building, String aircraft) {
+    return '$building no puede recibir al $aircraft.';
+  }
+
+  @override
+  String airportErrorHorizon(int days) {
+    return 'El horario solo abarca los próximos $days días.';
+  }
+
+  @override
+  String airportErrorCarrierSlot(String carrier, String slot) {
+    return '$carrier quiere que este vuelo comience en $slot.';
+  }
+
+  @override
+  String airportErrorStandBusy(String time) {
+    return 'Ese puesto está ocupado a las $time.';
+  }
+
+  @override
+  String airportErrorCarrierFlightsSlot(String carrier, String slot) {
+    return '$carrier quiere que sus vuelos comiencen en $slot.';
+  }
+
+  @override
+  String airportErrorStartDay(int day) {
+    return 'Esta serie debe comenzar como máximo el día $day.';
+  }
+
+  @override
+  String airportErrorCharterDay(int day) {
+    return 'Los vuelos chárter deben volar como máximo el día $day.';
+  }
+
+  @override
+  String airportErrorConnectedServiceRequired(String building) {
+    return 'Se necesita $building conectado.';
+  }
+
+  @override
+  String get airportArrivalHall => 'sala de entrada';
+
+  @override
+  String get airportDepartureHall => 'sala de salida';
+
+  @override
+  String get airportMainHall => 'sala principal';
+
+  @override
+  String get airportTerminal => 'terminal';
+
+  @override
+  String airportClock(int day, String time) {
+    return 'día $day $time';
+  }
+
+  @override
+  String get airportArrivalZoneHelp =>
+      'Esto va en la sala de entrada, donde los pasajeros entran, compran billetes, facturan y pasan el control. Define primero una zona de suelo como sala de entrada.';
+
+  @override
+  String get airportDepartureZoneHelp =>
+      'Esto va en la sala de salida, donde los pasajeros que llegan recogen su equipaje, pasan la aduana y salen. Define primero una zona de suelo como sala de salida.';
+
+  @override
+  String get airportMainInArrival =>
+      'Las tiendas, comida, asientos y puertas van en la sala principal. Este suelo es la sala de entrada y solo admite entrada, billetes, facturación y seguridad.';
+
+  @override
+  String get airportMainInDeparture =>
+      'Las tiendas, comida, asientos y puertas van en la sala principal. Este suelo es la sala de salida y solo admite recogida de equipaje, aduana y salida.';
+
+  @override
+  String get airportFacilityRunwayName => 'Pista · 1.800 m';
+
+  @override
+  String get airportFacilityRunwayDescription =>
+      'Pista regional. Conéctala a los puestos mediante calles de rodaje.';
+
+  @override
+  String get airportFacilityRunwayMediumName => 'Pista · 2.600 m';
+
+  @override
+  String get airportFacilityRunwayMediumDescription =>
+      'Admite aeronaves de fuselaje estrecho.';
+
+  @override
+  String get airportFacilityRunwayLongName => 'Pista · 3.400 m';
+
+  @override
+  String get airportFacilityRunwayLongDescription =>
+      'Admite aeronaves de fuselaje ancho de largo recorrido.';
+
+  @override
+  String get airportFacilityTaxiwayName => 'Calle de rodaje';
+
+  @override
+  String get airportFacilityTaxiwayDescription =>
+      'Conecta calles de rodaje contiguas entre una pista y un puesto.';
+
+  @override
+  String get airportFacilityStandRegionalName => 'Puesto regional';
+
+  @override
+  String get airportFacilityStandRegionalDescription =>
+      'Turbohélices y jets regionales de hasta 45 t. Necesita calle de rodaje, vía de servicio y puerta cercana.';
+
+  @override
+  String get airportFacilityStandName => 'Puesto remoto';
+
+  @override
+  String get airportFacilityStandDescription =>
+      'Cualquier aeronave. Los pasajeros van en autobús. Necesita calle de rodaje, vía de servicio y puerta cercana.';
+
+  @override
+  String get airportFacilityStandContactName => 'Puesto de contacto · pasarela';
+
+  @override
+  String get airportFacilityStandContactDescription =>
+      'Constrúyelo junto a la terminal. Los pasajeros embarcan a pie: sin autobús, más rápido y más satisfechos.';
+
+  @override
+  String get airportFacilityServiceRoadName => 'Vía de servicio';
+
+  @override
+  String get airportFacilityServiceRoadDescription =>
+      'Conecta depósitos y servicios con los puestos de las aeronaves.';
+
+  @override
+  String get airportFacilityTerminalName => 'Terminal';
+
+  @override
+  String get airportFacilityTerminalDescription =>
+      'Una sala para toda la terminal. Construye tantas salas contiguas como necesites y divide gratis el suelo en modo aeropuerto: entrada junto a la carretera, sala principal en el centro y salida para los pasajeros que llegan.';
+
+  @override
+  String get airportFacilityTerminalLandsideName => 'Sala de entrada';
+
+  @override
+  String get airportFacilityTerminalLandsideDescription =>
+      'La antigua sala de entrada independiente. Divide en zonas el suelo de una terminal.';
+
+  @override
+  String get airportFacilityTerminalReclaimName => 'Sala de salida';
+
+  @override
+  String get airportFacilityTerminalReclaimDescription =>
+      'La antigua sala de salida independiente. Divide en zonas el suelo de una terminal.';
+
+  @override
+  String get airportFacilityHangarName => 'Hangar de mantenimiento';
+
+  @override
+  String get airportFacilityHangarDescription =>
+      'Los hangares conectados reducen el coste de mantenimiento.';
+
+  @override
+  String get airportFacilityFuelDepotName => 'Depósito de combustible';
+
+  @override
+  String get airportFacilityFuelDepotDescription =>
+      'Suministro de combustible para los camiones de servicio en tierra.';
+
+  @override
+  String get airportFacilityBaggageName => 'Instalación de equipaje';
+
+  @override
+  String get airportFacilityBaggageDescription =>
+      'Gestión del equipaje para cada salida.';
+
+  @override
+  String get airportFacilityVehicleDepotName => 'Depósito de vehículos';
+
+  @override
+  String get airportFacilityVehicleDepotDescription =>
+      'Selecciona este depósito para comprar vehículos de servicio y conéctalo a una vía de servicio.';
+
+  @override
+  String get airportFacilityTowerName => 'Torre de control';
+
+  @override
+  String get airportFacilityTowerDescription =>
+      'Símbolo del aeropuerto y centro de control de vuelos.';
+
+  @override
+  String get airportFacilityEntranceName => 'Entrada';
+
+  @override
+  String get airportFacilityEntranceDescription =>
+      'La entrada desde la acera, en la sala de entrada.';
+
+  @override
+  String get airportFacilityCheckInName => 'Mostradores de facturación';
+
+  @override
+  String get airportFacilityCheckInDescription =>
+      'Procesa 8 pasajeros por minuto de juego.';
+
+  @override
+  String get airportFacilityInfoDeskName => 'Mostrador de información';
+
+  @override
+  String get airportFacilityInfoDeskDescription =>
+      'El personal responde preguntas y orienta a los pasajeros. Cada mostrador conectado mejora la satisfacción en toda la terminal.';
+
+  @override
+  String get airportFacilityCheckInCounterName =>
+      'Mostrador de facturación con personal';
+
+  @override
+  String get airportFacilityCheckInCounterDescription =>
+      'Dos agentes con entrega de equipaje: 10 pasajeros por minuto de juego. Cuenta como mostradores de facturación.';
+
+  @override
+  String get airportFacilityTicketMachineName => 'Máquina de billetes';
+
+  @override
+  String get airportFacilityTicketMachineDescription =>
+      'Facturación autónoma junto a los mostradores: 4 pasajeros por minuto de juego.';
+
+  @override
+  String get airportFacilitySecurityName => 'Carril de seguridad';
+
+  @override
+  String get airportFacilitySecurityDescription =>
+      'Control de pasaportes y equipaje entre la entrada y la sala principal: 6 pasajeros por minuto de juego. Obligatorio.';
+
+  @override
+  String get airportFacilityCustomsName => 'Aduana';
+
+  @override
+  String get airportFacilityCustomsDescription =>
+      'Los pasajeros que llegan pasan aquí la aduana: 6 por minuto de juego. Obligatorio.';
+
+  @override
+  String get airportFacilityCheckOutName => 'Salida de llegadas';
+
+  @override
+  String get airportFacilityCheckOutDescription =>
+      'La salida: los pasajeros que llegan salen por la puerta más cercana a la acera tras pasar por aquí. 10 por minuto de juego. Obligatorio.';
+
+  @override
+  String get airportFacilitySeatingName => 'Asientos';
+
+  @override
+  String get airportFacilitySeatingDescription =>
+      'Comodidad para los pasajeros que esperan.';
+
+  @override
+  String get airportFacilityToiletsName => 'Aseos';
+
+  @override
+  String get airportFacilityToiletsDescription =>
+      'Servicio esencial para los pasajeros.';
+
+  @override
+  String get airportFacilityBoardingGateName => 'Puerta de embarque';
+
+  @override
+  String get airportFacilityBoardingGateDescription =>
+      'Colócala a menos de 25 m de un puesto de aeronave.';
+
+  @override
+  String get airportFacilityCafeName => 'Cafetería';
+
+  @override
+  String get airportFacilityCafeDescription =>
+      'Satisfacción de los pasajeros e ingresos comerciales.';
+
+  @override
+  String get airportFacilityVendingMachineName => 'Máquina expendedora';
+
+  @override
+  String get airportFacilityVendingMachineDescription =>
+      'Aperitivos rápidos en lugar de la cafetería: 3 € por pasajero, un minuto cada uno.';
+
+  @override
+  String get airportFacilityPerfumeShopName => 'Perfumería';
+
+  @override
+  String get airportFacilityPerfumeShopDescription =>
+      'Pocos compradores, grandes compras: uno de cada cuatro pasajeros gasta 90 € aquí.';
+
+  @override
+  String get airportFacilityFlowerShopName => 'Floristería';
+
+  @override
+  String get airportFacilityFlowerShopDescription =>
+      'Ramos frescos tras el control: 16 € por pasajero, dos minutos cada uno.';
+
+  @override
+  String get airportFacilityFoodShopName =>
+      'Comida y bebida libre de impuestos';
+
+  @override
+  String get airportFacilityFoodShopDescription =>
+      'Aperitivos, dulces y bebidas frías tras el control: 20 € por pasajero, dos minutos y medio cada uno.';
+
+  @override
+  String get airportFacilityKioskName => 'Quiosco de prensa';
+
+  @override
+  String get airportFacilityKioskDescription =>
+      'Caja con personal para prensa y aperitivos tras el control: 9 € por pasajero, noventa segundos cada uno.';
+
+  @override
+  String get airportFacilityRestaurantName => 'Restaurante';
+
+  @override
+  String get airportFacilityRestaurantDescription =>
+      'Comida sentada en lugar de la cafetería: 26 € por pasajero, cinco minutos y una espera más agradable.';
+
+  @override
+  String get airportFacilityCoffeeToGoName => 'Café para llevar';
+
+  @override
+  String get airportFacilityCoffeeToGoDescription =>
+      'Una parada rápida para un espresso tras el control: 6 € por pasajero, noventa segundos cada uno.';
+
+  @override
+  String get airportFacilityFoodCartName => 'Carrito de comida';
+
+  @override
+  String get airportFacilityFoodCartDescription =>
+      'Un puesto económico para llevar en rincones pequeños: 4 € por pasajero, un minuto cada uno.';
+
+  @override
+  String get airportFacilityShopName => 'Tienda libre de impuestos';
+
+  @override
+  String get airportFacilityShopDescription =>
+      'Los pasajeros compran tras el control: 14 € de ingresos comerciales por persona.';
+
+  @override
+  String get airportFacilityClothingShopName => 'Boutique de moda';
+
+  @override
+  String get airportFacilityClothingShopDescription =>
+      'Ropa libre de impuestos tras el control: 18 € por pasajero, tres minutos cada uno.';
+
+  @override
+  String get airportFacilityLuxuryBoutiqueName => 'Boutique de lujo';
+
+  @override
+  String get airportFacilityLuxuryBoutiqueDescription =>
+      'Prendas de punto de lujo tras el control: 26 € por pasajero, cuatro minutos y una espera más tranquila.';
+
+  @override
+  String get airportFacilityLoungeName => 'Sala prémium';
+
+  @override
+  String get airportFacilityLoungeDescription =>
+      'Sala de espera que genera 20 € por pasajero y mejora su ánimo.';
+
+  @override
+  String get airportFacilityBaggageCarouselName => 'Cinta de equipaje';
+
+  @override
+  String airportFacilityBaggageCarouselDescription(int capacity) {
+    return 'Los pasajeros de contratos de media y larga distancia recogen aquí su equipaje. Hasta $capacity personas a la vez.';
+  }
+
+  @override
+  String get airportFacilityVipLoungeName => 'Sala y bar VIP';
+
+  @override
+  String get airportFacilityVipLoungeDescription =>
+      'Sala de primera clase: 35 € por pasajero y una espera mucho más agradable.';
+
+  @override
+  String get airportFacilityBinsName => 'Papeleras de reciclaje';
+
+  @override
+  String get airportFacilityBinsDescription =>
+      'Residuos, papel y botellas. Una terminal limpia mantiene satisfechos a los pasajeros: cada conjunto añade un 4% de limpieza, del 60% hasta el 100%.';
+
+  @override
+  String get airportFacilityArcadeName => 'Sala recreativa';
+
+  @override
+  String get airportFacilityArcadeDescription =>
+      'Máquinas recreativas, hockey de aire y una grúa: 12 € por pasajero y una gran mejora del ánimo durante la espera.';
+
+  @override
+  String get airportFacilityCasinoName => 'Casino';
+
+  @override
+  String get airportFacilityCasinoDescription =>
+      'Tragamonedas, ruleta y mesas de cartas: 40 € por pasajero y una gran mejora del ánimo durante la espera.';
+
+  @override
+  String get airportFacilityPlantName => 'Maceta de palmera';
+
+  @override
+  String get airportFacilityPlantDescription =>
+      'Decoración. Cada pieza en una terminal mejora un poco el ánimo.';
+
+  @override
+  String get airportFacilityFountainName => 'Fuente';
+
+  @override
+  String get airportFacilityFountainDescription =>
+      'Decoración central. Mejora el ánimo de los pasajeros.';
+
+  @override
+  String get airportFacilityInfoBoardName => 'Panel de información de vuelos';
+
+  @override
+  String get airportFacilityInfoBoardDescription =>
+      'Decoración. Los pasajeros encuentran su puerta con menos estrés.';
+
+  @override
+  String get airportFacilityInfoPanelName =>
+      'Pantalla de información de vuelos';
+
+  @override
+  String get airportFacilityInfoPanelDescription =>
+      'Una pequeña pantalla de salidas sobre un pedestal. Decoración más económica con el mismo efecto tranquilizador que un panel completo.';
+
+  @override
+  String get sceneAssetStudioAirformAssetStudio =>
+      'Airform Estudio de recursos';
+
+  @override
+  String get sceneAssetStudioAirform => 'Airform';
+
+  @override
+  String get sceneAssetStudioAssetStudio => 'Estudio de recursos';
+
+  @override
+  String get sceneAssetStudioSavedLocally => 'Guardado localmente';
+
+  @override
+  String get sceneAssetStudioQuickGuide => 'Guía rápida';
+
+  @override
+  String get sceneAssetStudioExportModel => 'Exportar modelo';
+
+  @override
+  String get sceneAssetStudioAirportAssets => 'RECURSOS DEL AEROPUERTO';
+
+  @override
+  String get sceneAssetStudioProcedural => 'Procedural';
+
+  @override
+  String get sceneAssetStudioTerminalCollectionAssets =>
+      'Recursos de la colección de terminales';
+
+  @override
+  String get sceneAssetStudioTerminalCollection => 'COLECCIÓN DE TERMINALES';
+
+  @override
+  String get sceneAssetStudioModelWorkspace => 'Espacio de trabajo del modelo';
+
+  @override
+  String get sceneAssetStudioWorkspaceView => 'Vista del espacio de trabajo';
+
+  @override
+  String get sceneAssetStudioSourceCode => 'Código fuente';
+
+  @override
+  String get sceneAssetStudioCameraView => 'Vista de cámara';
+
+  @override
+  String get sceneAssetStudioIsometric => 'Isométrica';
+
+  @override
+  String get sceneAssetStudioFrontView => 'Vista frontal';
+
+  @override
+  String get sceneAssetStudioRightView => 'Vista derecha';
+
+  @override
+  String get sceneAssetStudioBackView => 'Vista trasera';
+
+  @override
+  String get sceneAssetStudioTopView => 'Vista superior';
+
+  @override
+  String get sceneAssetStudioExpandViewport => 'Ampliar ventana gráfica';
+
+  @override
+  String get sceneAssetStudioLivePreview => 'VISTA PREVIA EN VIVO';
+
+  @override
+  String get sceneAssetStudio1Unit1Meter => '1 unidad = 1 metro';
+
+  @override
+  String get sceneAssetStudioResetToIsometricView =>
+      'Restablecer vista isométrica';
+
+  @override
+  String get sceneAssetStudioIsometricViewF => 'Vista isométrica (F)';
+
+  @override
+  String get sceneAssetStudioTop => 'ARRIBA';
+
+  @override
+  String get sceneAssetStudioFront => 'FRENTE';
+
+  @override
+  String get sceneAssetStudioRight => 'DERECHA';
+
+  @override
+  String get sceneAssetStudioYUp => 'Y ARRIBA';
+
+  @override
+  String get sceneAssetStudioViewportTools =>
+      'Herramientas de la ventana gráfica';
+
+  @override
+  String get sceneAssetStudioOrbitTool => 'Herramienta de órbita';
+
+  @override
+  String get sceneAssetStudioOrbitO => 'Órbita (O)';
+
+  @override
+  String get sceneAssetStudioPanTool => 'Herramienta de desplazamiento';
+
+  @override
+  String get sceneAssetStudioPanH => 'Desplazar (H)';
+
+  @override
+  String get sceneAssetStudioToggleFootprintDimensions =>
+      'Mostrar u ocultar dimensiones de la base';
+
+  @override
+  String get sceneAssetStudioFootprintBoundsB => 'Límites de la base (B)';
+
+  @override
+  String get sceneAssetStudioToggleGroundGrid =>
+      'Mostrar u ocultar cuadrícula del suelo';
+
+  @override
+  String get sceneAssetStudioGridG => 'Cuadrícula (G)';
+
+  @override
+  String get sceneAssetStudioYUpCoordinateSystem =>
+      'Sistema de coordenadas con Y hacia arriba';
+
+  @override
+  String get sceneAssetStudioDragToOrbit => 'Arrastra para orbitar';
+
+  @override
+  String get sceneAssetStudioScrollToZoom => 'Desplázate para acercar o alejar';
+
+  @override
+  String get sceneAssetStudioStartTurntable => 'Iniciar giro';
+
+  @override
+  String get sceneAssetStudioAutoOrbit => 'Órbita automática';
+
+  @override
+  String get sceneAssetStudioSavePreviewImage =>
+      'Guardar imagen de vista previa';
+
+  @override
+  String get sceneAssetStudioResetCameraF => 'Restablecer cámara (F)';
+
+  @override
+  String get sceneAssetStudioOnlyDonorHelpersNoTexturesFontsOrExternalA =>
+      'Solo ayudantes del donante. Sin texturas, fuentes ni recursos externos.';
+
+  @override
+  String get sceneAssetStudioViewWiring => 'Conexiones de la vista';
+
+  @override
+  String get sceneAssetStudioRenderStyle => 'Estilo de renderizado';
+
+  @override
+  String get sceneAssetStudioSolid => 'Sólido';
+
+  @override
+  String get sceneAssetStudioWireframe => 'Estructura alámbrica';
+
+  @override
+  String get sceneAssetStudioQuarterTurnRotation =>
+      'Rotación de un cuarto de vuelta';
+
+  @override
+  String get sceneAssetStudioJavascript => 'JavaScript';
+
+  @override
+  String get sceneAssetStudioStaticGeometryDonorHelpers =>
+      'Geometría estática / ayudantes del donante';
+
+  @override
+  String get sceneAssetStudioCopyFullSnippet => 'Copiar fragmento completo';
+
+  @override
+  String get sceneAssetStudioModelInspector => 'Inspector del modelo';
+
+  @override
+  String get sceneAssetStudioInspector => 'Inspector';
+
+  @override
+  String get sceneAssetStudioProperties => 'Propiedades';
+
+  @override
+  String get sceneAssetStudioChecks => 'Comprobaciones';
+
+  @override
+  String get sceneAssetStudioMeters => 'METROS';
+
+  @override
+  String get sceneAssetStudioWidth => 'Anchura';
+
+  @override
+  String get sceneAssetStudioWidthInMeters => 'Anchura en metros';
+
+  @override
+  String get sceneAssetStudioDepthInMeters => 'Profundidad en metros';
+
+  @override
+  String get sceneAssetStudioModelHeight => 'Altura del modelo';
+
+  @override
+  String get sceneAssetStudioColorPalette => 'Paleta de colores';
+
+  @override
+  String get sceneAssetStudioVertexColors => 'COLORES DE VÉRTICE';
+
+  @override
+  String get sceneAssetStudioModelColorPalette =>
+      'Paleta de colores del modelo';
+
+  @override
+  String get sceneAssetStudioCopyColorValue => 'Copiar valor del color';
+
+  @override
+  String get sceneAssetStudioSceneSettings => 'Ajustes de escena';
+
+  @override
+  String get sceneAssetStudioGroundGrid => 'Cuadrícula del suelo';
+
+  @override
+  String get sceneAssetStudioFootprintBounds => 'Límites de la base';
+
+  @override
+  String get sceneAssetStudioScreenEmission => 'Emisión de la pantalla';
+
+  @override
+  String get sceneAssetStudioBuiltToFitYourTerminal =>
+      'Diseñado para encajar en tu terminal.';
+
+  @override
+  String get sceneAssetStudioLowPolyAndMadeToFitYourWorld =>
+      'Low-poly y diseñado para tu mundo.';
+
+  @override
+  String get sceneAssetStudioGeometryChecks => 'Comprobaciones de geometría';
+
+  @override
+  String get sceneAssetStudioRealChecksOnYourLiveModel =>
+      'Comprobaciones reales en tu modelo actual.';
+
+  @override
+  String get sceneAssetStudioUsesPreviewHelpersConfirmWith =>
+      'Usa ayudantes de vista previa. Confírmalo con';
+
+  @override
+  String get sceneAssetStudioAirportmodelsBakeG => 'AirportModels.bake(g)';
+
+  @override
+  String get sceneAssetStudioInYourDonorBeforeShipping =>
+      'en tu donante antes de publicar.';
+
+  @override
+  String get sceneAssetStudioResetToDefaults =>
+      'Restablecer valores predeterminados';
+
+  @override
+  String get sceneAssetStudioRunChecksAgain =>
+      'Volver a ejecutar comprobaciones';
+
+  @override
+  String get sceneAssetStudioV10 => 'v1.0';
+
+  @override
+  String get sceneAssetStudioPreparingGeometry => 'Preparando geometría';
+
+  @override
+  String get sceneAssetStudioHelperCalls => 'llamadas a ayudantes';
+
+  @override
+  String get sceneAssetStudioTriangles => 'triángulos';
+
+  @override
+  String get sceneAssetStudioTextures => 'texturas';
+
+  @override
+  String get sceneAssetStudioThreeJs => 'THREE.JS';
+
+  @override
+  String get sceneAssetStudioWebgl => 'WEBGL';
+
+  @override
+  String get sceneAssetStudioDismissNotification => 'Descartar notificación';
+
+  @override
+  String get sceneAssetStudioCloseDialog => 'Cerrar diálogo';
+
+  @override
+  String get sceneAssetStudioExportSections => 'Exportar secciones';
+
+  @override
+  String get sceneAssetStudioModelFunction => 'Función del modelo';
+
+  @override
+  String get sceneAssetStudioJs => 'JS';
+
+  @override
+  String get sceneAssetStudioIntegration => 'Integración';
+
+  @override
+  String get sceneAssetStudioJsDart => 'JS + DART';
+
+  @override
+  String get sceneAssetStudioFindYourAngle => 'Encuentra tu ángulo';
+
+  @override
+  String get sceneAssetStudioDragToOrbitScrollToZoomOrHoldShiftWhileDra =>
+      'Arrastra para orbitar, desplázate para acercar o alejar, o mantén pulsada Mayús mientras arrastras para desplazarte. Usa el menú de vista para ver con precisión el frente, el lateral y la parte superior.';
+
+  @override
+  String get sceneAssetStudioMakeSureItFits => 'Comprueba que encaje';
+
+  @override
+  String get sceneAssetStudioAdjustTheFootprintInMetersOpenChecksToInsp =>
+      'Ajusta la base en metros. Abre Comprobaciones para revisar los límites, los atributos de color y el presupuesto de llamadas a ayudantes.';
+
+  @override
+  String get sceneAssetStudioGrid => 'Cuadrícula';
+
+  @override
+  String get sceneAssetStudioBounds => 'Límites';
+
+  @override
+  String get sceneAssetStudioGiveItAHome => 'Dale un lugar';
+
+  @override
+  String get sceneAssetStudioExportTheFunctionIntoYourExistingHelperSco =>
+      'Exporta la función a tu ámbito de ayudantes actual, añade la rama de instalaciones de JavaScript y registra la entrada del catálogo de Dart. Compílalo con tu donante antes de publicarlo.';
+
+  @override
+  String get sceneAssetStudioThePreviewAdapterUsesCenteredBoxesAndSizeS =>
+      'El adaptador de vista previa usa cajas centradas y mallas de luz con lados definidos por el tamaño. El modelo no tiene archivos externos, materiales ni asignaciones de geometría por fotograma. Los ajustes se guardan en este navegador.';
+
+  @override
+  String get sceneCityPlannerMetroplanStadsplanner =>
+      'MetroPlan — Planificador urbano';
+
+  @override
+  String get sceneCityPlannerMetroplan => 'MetroPlan';
+
+  @override
+  String get sceneCityPlanner1Jan1925 => '1 ene 1925';
+
+  @override
+  String get sceneCityPlannerPauze => 'Pausa';
+
+  @override
+  String get sceneCityPlannerNormaal => 'Normal';
+
+  @override
+  String get sceneCityPlannerSnel => 'Rápido';
+
+  @override
+  String get sceneCityPlannerZeerSnel => 'Muy rápido';
+
+  @override
+  String get sceneCityPlannerStadsfase => 'Fase de la ciudad';
+
+  @override
+  String get sceneCityPlannerFase1Dorp => 'Fase 1 · Pueblo';
+
+  @override
+  String get sceneCityPlannerDataWeergaveHeatmap =>
+      'Vista de datos (mapa de calor)';
+
+  @override
+  String get sceneCityPlannerOpslaanLaden => 'Guardar y cargar';
+
+  @override
+  String get sceneCityPlannerNieuweKaart => 'Nuevo mapa';
+
+  @override
+  String get sceneCityPlannerRechtermuisknop => 'Clic derecho';
+
+  @override
+  String get sceneCityPlannerSchuiven => 'desplazar ·';
+
+  @override
+  String get sceneCityPlannerScroll => 'desplazamiento';
+
+  @override
+  String get sceneCityPlannerZoomen => 'zoom ·';
+
+  @override
+  String get sceneCityPlannerGrid => 'cuadrícula ·';
+
+  @override
+  String get sceneCityPlannerSnappen => 'ajustar ·';
+
+  @override
+  String get sceneCityPlannerAlt => 'Alt';
+
+  @override
+  String get sceneCityPlannerVrijPlaatsen => 'colocación libre';
+
+  @override
+  String get sceneCityPlannerInspecteur => 'Inspector';
+
+  @override
+  String get sceneCityPlannerOnderzoek => 'Investigación';
+
+  @override
+  String get sceneCityPlannerFinanciN => 'Finanzas';
+
+  @override
+  String get sceneCityPlannerBeleid => 'Política';
+
+  @override
+  String get sceneCityPlannerOv => 'Transporte público';
+
+  @override
+  String get sceneCityPlannerStad => 'Ciudad';
+
+  @override
+  String get sceneCityPlannerGemiddeldeTevredenheid => 'Satisfacción media';
+
+  @override
+  String get sceneCityPlannerMaandelijksSaldo => 'Balance mensual';
+
+  @override
+  String get sceneCityPlannerWoningmarkt => 'Mercado inmobiliario';
+
+  @override
+  String get sceneCityPlannerVerkeersdrukte => 'Congestión del tráfico';
+
+  @override
+  String get sceneCityPlannerOnderwijsdekking => 'Cobertura educativa';
+
+  @override
+  String get sceneCityPlannerZorgdekking => 'Cobertura sanitaria';
+
+  @override
+  String get sceneCityPlannerMilieuLuchtkwaliteit =>
+      'Medio ambiente / calidad del aire';
+
+  @override
+  String get sceneCityPlannerElektriciteit => 'Electricidad';
+
+  @override
+  String get sceneCityPlannerDrinkwater => 'Agua potable';
+
+  @override
+  String get sceneCityPlannerVoedsel => 'Alimentos';
+
+  @override
+  String get sceneCityPlannerSluiten => 'Cerrar';
+
+  @override
+  String get sceneCityPlannerOpslaanAmpLaden => 'Guardar y cargar';
+
+  @override
+  String get sceneCityPlannerBergenBlokkerenDitTrac =>
+      'Las montañas bloquean esta ruta.';
+
+  @override
+  String get sceneCityPlannerRotondePastHierNiet => 'Aquí no cabe una rotonda.';
+
+  @override
+  String get sceneCityPlannerWegsegmentVerwijderd =>
+      'Tramo de carretera eliminado.';
+
+  @override
+  String get sceneCityPlannerHierKunJeNietBouwenWaterBergWegOfBezet =>
+      'No puedes construir aquí (agua, montaña, carretera u ocupado).';
+
+  @override
+  String get sceneCityPlannerDeVormMoetNAaneengeslotenGeheelZijn =>
+      'La forma debe ser una sola pieza conectada.';
+
+  @override
+  String get sceneCityPlannerLetOpDitGebouwHeeftNogGeenWegHetWerktPasAl =>
+      'Nota: este edificio aún no tiene carretera. Funcionará cuando haya una al lado.';
+
+  @override
+  String get sceneCityPlannerHaltesMoetenOpEenWegLiggen =>
+      'Las paradas deben estar en una carretera.';
+
+  @override
+  String get sceneCityPlannerOnvoldoendeGeldVoorDezeHalte =>
+      'No hay dinero suficiente para esta parada.';
+
+  @override
+  String get sceneCityPlannerEenLijnHeeftMinstens2HaltesNodig =>
+      'Una línea necesita al menos 2 paradas.';
+
+  @override
+  String get sceneCityPlannerSpelOpgeslagen => 'Partida guardada.';
+
+  @override
+  String get sceneCityPlannerOpslaanMislukt => 'Error al guardar:';
+
+  @override
+  String get sceneCityPlannerGeenOpgeslagenSpelGevonden =>
+      'No se encontró ninguna partida.';
+
+  @override
+  String get sceneCityPlannerSaveBestandBeschadigd =>
+      'El archivo guardado está dañado.';
+
+  @override
+  String get sceneCityPlannerDezeSaveKomtVanEenOudereVersieOfAndereKaar =>
+      'Esta partida es de una versión anterior o de otro tamaño de mapa y no se puede cargar.';
+
+  @override
+  String get sceneCityPlannerSpelGeladen => 'Partida cargada.';
+
+  @override
+  String get sceneCityPlannerSandboxEenLeegWitCanvasOnbeperktGeldAllesO =>
+      '¡Modo libre! Un lienzo blanco vacío: dinero ilimitado y todo desbloqueado. Construye la ciudad de tus sueños.';
+
+  @override
+  String get sceneCityPlannerNieuweKaartBeginMetEenWegHuizenEenAkkerEnE =>
+      '¡Mapa nuevo! Empieza con una carretera, casas, un campo y una bomba de agua.';
+
+  @override
+  String get sceneCityPlannerLijnVerwijderen => 'Eliminar línea';
+
+  @override
+  String get sceneCityPlannerSaveVerwijderen => 'Eliminar partida';
+
+  @override
+  String get sceneCityPlannerDezeSaveVerwijderen => '¿Eliminar esta partida?';
+
+  @override
+  String get sceneCityPlannerSleepVrijOverDeKaartDeEngineMaaktErAutomat =>
+      'Arrastra libremente por el mapa: el motor crea automáticamente una carretera fluida. Las carreteras que se cruzan se convierten en intersecciones.';
+
+  @override
+  String get sceneCityPlannerKlikOmEenRotondeTePlaatsenSluitErWegenOpAa =>
+      'Haz clic para colocar una rotonda y conecta carreteras.';
+
+  @override
+  String get sceneCityPlannerKlikHaltesOpWegenDubbelklikOfEnterOmDeLijn =>
+      'Haz clic en las paradas de las carreteras; haz doble clic o pulsa Intro para terminar la línea.';
+
+  @override
+  String get sceneCityPlannerOnvoldoendeGeld => 'No hay dinero suficiente.';
+
+  @override
+  String get sceneCityPlannerKlikOpEenGebouwOmHetTeInspecterenEnAanTePa =>
+      'Haz clic en un edificio para inspeccionarlo y modificarlo.';
+
+  @override
+  String get sceneCityPlannerTips => 'Consejos:';
+
+  @override
+  String get sceneCityPlannerTekenGebouwenInElkeVormDoorCellenTeSlepen =>
+      '· Dibuja edificios de cualquier forma arrastrando celdas.';
+
+  @override
+  String get sceneCityPlannerGebouwenHebbenEenWegNodigEnStroomWaterViaD =>
+      '· Los edificios necesitan una carretera, electricidad y agua a través de la red vial.';
+
+  @override
+  String get sceneCityPlannerGebruikDeHeatmapsAnalyseOfRechtsbovenOmPro =>
+      '· Usa los mapas de calor (Análisis o arriba a la derecha) para encontrar problemas.';
+
+  @override
+  String get sceneSpaceColonySol10800 => 'Sol 1 · 08:00';
+
+  @override
+  String get sceneSpaceColonyGettingStarted => 'Primeros pasos';
+
+  @override
+  String get sceneSpaceColonyDemolishMode => '🧨 Modo demolición';
+
+  @override
+  String get sceneSpaceColonyColony => 'Colonia';
+
+  @override
+  String get sceneSpaceColonyResearch => '🔬 Investigación';
+
+  @override
+  String get sceneSpaceColonySendRoverToRuins =>
+      '🛰️ Enviar rover a las ruinas';
+
+  @override
+  String get sceneSpaceColonySave => '💾 Guardar';
+
+  @override
+  String get sceneSpaceColonyLoad => '📂 Cargar';
+
+  @override
+  String get sceneSpaceColonyTutorial => '❓ Tutorial';
+
+  @override
+  String get sceneSpaceColonyDragWasdToPanScrollToZoomClickToBuildRight =>
+      'Arrastra / WASD para desplazarte · rueda para acercar · clic para construir · clic derecho para cancelar · pasa el cursor sobre las casillas para ver información · haz clic en un colono para ver sus estadísticas. Coloca plataformas mineras sobre mineral (naranja) o cristal (morado), extractores de agua sobre hielo (azul claro). Las ruinas antiguas (violeta polvoriento) se exploran con un rover desde un garaje de vehículos.';
+
+  @override
+  String get sceneSpaceColonyMinimap => 'Minimapa';
+
+  @override
+  String get sceneSpaceColonyColonists => 'Colonos';
+
+  @override
+  String get sceneSpaceColonyEventLog => 'Registro de eventos';
+
+  @override
+  String get sceneSpaceColonyWelcomeToSpaceColony =>
+      '🚀 Bienvenido a Space Colony';
+
+  @override
+  String get sceneSpaceColonyYouVeLandedWith3ColonistsALandingModuleASm =>
+      'Has aterrizado con 3 colonos, un módulo de aterrizaje, una batería pequeña, un panel solar y materiales básicos. Mantén a todos con vida y haz crecer una colonia autosuficiente.';
+
+  @override
+  String get sceneSpaceColonyBeforeAnythingElse => 'Antes que nada';
+
+  @override
+  String get sceneSpaceColonyPlaceTheseFiveBuildingsWithoutThemYourColo =>
+      ', coloca estos cinco edificios: sin ellos, tu colonia se quedará sin energía, aire o agua en uno o dos días:';
+
+  @override
+  String get sceneSpaceColonySolarPanel => 'Panel solar';
+
+  @override
+  String get sceneSpaceColonyPowerDuringTheDay =>
+      '— proporciona energía durante el día.';
+
+  @override
+  String get sceneSpaceColonyStoresPowerSoSystemsKeepRunningAtNight =>
+      '— almacena energía para que los sistemas funcionen por la noche.';
+
+  @override
+  String get sceneSpaceColonyOxygenGenerator => 'Generador de oxígeno';
+
+  @override
+  String get sceneSpaceColonyTurnsWaterIntoBreathableAir =>
+      '— convierte agua en aire respirable.';
+
+  @override
+  String get sceneSpaceColonyWaterExtractor => 'Extractor de agua';
+
+  @override
+  String get sceneSpaceColonyPlaceItOnAnIceFieldLightBlueTilesForAWater =>
+      '— colócalo sobre hielo (casillas azul claro) para obtener agua.';
+
+  @override
+  String get sceneSpaceColonyMiningRig => 'Plataforma minera';
+
+  @override
+  String get sceneSpaceColonyPlaceItOnAMetalDepositOrangeTilesSoYouCanK =>
+      '— colócala sobre un depósito de metal (naranja) para seguir construyendo.';
+
+  @override
+  String get sceneSpaceColonyWatchTheResourceBarAtTheTopAnythingShownIn =>
+      'Vigila la barra de recursos superior: lo que aparezca en rojo escasea. Los depósitos de mineral y cristal se agotan; explora para encontrar más. Haz clic en el nombre de un colono para ver sus estadísticas. Puedes volver a abrirlo con el botón ❓ Tutorial.';
+
+  @override
+  String get sceneSpaceColonyLetSGo => '¡Vamos!';
+
+  @override
+  String get sceneSpaceColonySciencePoints => 'Puntos de ciencia:';
+
+  @override
+  String get sceneSpaceColonyProducedByLaboratories =>
+      '(producidos por laboratorios)';
+
+  @override
+  String get sceneSpaceColonyColonyLost => 'COLONIA PERDIDA';
+
+  @override
+  String get sceneSpaceColonyAllColonistsHavePerished =>
+      'Todos los colonos han muerto.';
+
+  @override
+  String get sceneSpaceColonyNewColony => 'Nueva colonia';
+
+  @override
+  String get sceneSpaceColonyHungerOSleepHappyHealth =>
+      'hambre / O₂ / sueño / felicidad / salud';
+
+  @override
+  String get sceneSpaceColonyNextSkillUp => '· siguiente habilidad: %';
+
+  @override
+  String get sceneSpaceColonySkills => 'Habilidades';
+
+  @override
+  String get sceneSpaceColonyHp => 'HP /';
+
+  @override
+  String get sceneSubwayBuilderDayTimeWeekday =>
+      'Día · hora · día de la semana';
+
+  @override
+  String get sceneSubwayBuilderWeather => 'Clima';
+
+  @override
+  String get sceneSubwayBuilderTreasury => 'Tesorería';
+
+  @override
+  String get sceneSubwayBuilderDailyTransitRiders =>
+      'Viajeros diarios del transporte';
+
+  @override
+  String get sceneSubwayBuilderShareOfAllCommutesOnYourNetwork =>
+      'Porcentaje de desplazamientos en tu red';
+
+  @override
+  String get sceneSubwayBuilderPauseSpace => 'Pausa (Espacio)';
+
+  @override
+  String get sceneSubwayBuilder1RealSecond1InGameMinute =>
+      '1 segundo real = 1 minuto del juego';
+
+  @override
+  String get sceneSubwayBuilder6InGameMinutesSecond =>
+      '6 minutos de juego/segundo';
+
+  @override
+  String get sceneSubwayBuilder30InGameMinutesSecond =>
+      '30 minutos de juego/segundo';
+
+  @override
+  String get sceneSubwayBuilderTiltTheCameraFor3DBuildings =>
+      'Inclina la cámara para ver edificios 3D';
+
+  @override
+  String get sceneSubwayBuilder3D => '3D';
+
+  @override
+  String get sceneSubwayBuilderNetworkAnalysis => 'Análisis de red';
+
+  @override
+  String get sceneSubwayBuilderChangeLocation => 'Cambiar ubicación';
+
+  @override
+  String get sceneSubwayBuilderPlayTogetherCoOp => 'Jugar juntos (cooperativo)';
+
+  @override
+  String get sceneSubwayBuilderCoOp => 'Cooperativo';
+
+  @override
+  String get sceneSubwayBuilderToggleDarkLightTheme =>
+      'Cambiar tema claro / oscuro';
+
+  @override
+  String get sceneSubwayBuilderHowToPlay => 'Cómo jugar';
+
+  @override
+  String get sceneSubwayBuilderCloseMenu => 'Cerrar menú';
+
+  @override
+  String get sceneSubwayBuilderShortHopsFastTunnelsAnywhere =>
+      'Trayectos cortos, rápidos, túneles en cualquier lugar';
+
+  @override
+  String get sceneSubwayBuilderShortHopsCheapRunsOnStreets =>
+      'Trayectos cortos, baratos, por las calles';
+
+  @override
+  String get sceneSubwayBuilderAnyDistanceCheapestSlow =>
+      'Cualquier distancia, más barato, lento';
+
+  @override
+  String get sceneSubwayBuilderLongHopsOnRealStationsAndTracks =>
+      'Trayectos largos por estaciones y vías reales';
+
+  @override
+  String get sceneSubwayBuilderVeryLongHopsVeryFastFewStopsRealStationsAn =>
+      'Trayectos muy largos, muy rápidos, pocas paradas — estaciones y vías reales';
+
+  @override
+  String get sceneSubwayBuilderSelectPan => 'Seleccionar / desplazar';
+
+  @override
+  String get sceneSubwayBuilderDrawLine => 'Trazar línea';
+
+  @override
+  String get sceneSubwayBuilderBulldoze => 'Demoler';
+
+  @override
+  String get sceneSubwayBuilderFetchEveryOfficialRailwayStationCurrentlyO =>
+      'Cargar todas las estaciones ferroviarias oficiales visibles';
+
+  @override
+  String get sceneSubwayBuilderLoadStations => 'Cargar estaciones';
+
+  @override
+  String get sceneSubwayBuilderDataViews => 'Vistas de datos';
+
+  @override
+  String get sceneSubwayBuilderResidents => 'Residentes';
+
+  @override
+  String get sceneSubwayBuilderJobs => 'Empleos';
+
+  @override
+  String get sceneSubwayBuilderStopReach => 'Cobertura de paradas';
+
+  @override
+  String get sceneSubwayBuilderLineLoad => 'Carga de línea';
+
+  @override
+  String get sceneSubwayBuilderLines => 'Líneas';
+
+  @override
+  String get sceneSubwayBuilderNewLine => 'Nueva línea';
+
+  @override
+  String get sceneSubwayBuilderTakeLoan => 'Pedir préstamo';
+
+  @override
+  String get sceneSubwayBuilderRepay => 'Devolver';
+
+  @override
+  String get sceneSubwayBuilderRendering => 'Renderizado';
+
+  @override
+  String get sceneSubwayBuilder3DBuildings => 'Edificios 3D';
+
+  @override
+  String get sceneSubwayBuilder2DMode => 'Modo 2D';
+
+  @override
+  String get sceneSubwayBuilderRenderDistance => 'Distancia de renderizado';
+
+  @override
+  String get sceneSubwayBuilderLodDistance => 'Distancia LOD';
+
+  @override
+  String get sceneSubwayBuilderMenu => 'Menú';
+
+  @override
+  String get sceneSubwayBuilderToggle2DMode => 'Cambiar modo 2D';
+
+  @override
+  String get sceneSubwayBuilder2D => '2D';
+
+  @override
+  String get sceneSubwayBuilderSurveying => 'Explorando';
+
+  @override
+  String get sceneSubwayBuilderWelcomeBackTo => 'Te damos la bienvenida a';
+
+  @override
+  String get sceneSubwayBuilderStillSyncingWithTheHost =>
+      'Aún sincronizando con el anfitrión…';
+
+  @override
+  String get sceneSubwayBuilderClickOneOfTheTwoEndStationsOf =>
+      'Haz clic en una de las dos estaciones terminales de';
+
+  @override
+  String get sceneSubwayBuilderSurveyingTheRailCorridor =>
+      'Explorando el corredor ferroviario…';
+
+  @override
+  String get sceneSubwayBuilderAlreadyOnThisDraft => 'Ya está en este borrador';
+
+  @override
+  String get sceneSubwayBuilderTreasuryIsInTheRedConsiderALoanOrHigherFar =>
+      'La tesorería está en números rojos: considera pedir un préstamo o subir las tarifas';
+
+  @override
+  String get sceneSubwayBuilderCouldNotConnectToTheRoom =>
+      'No se pudo conectar a la sala:';
+
+  @override
+  String get sceneSubwayBuilderCouldNotReachTheCoOpServer =>
+      'No se pudo alcanzar el servidor cooperativo';
+
+  @override
+  String get sceneSubwayBuilderLostConnectionToTheRoomReconnecting =>
+      'Se perdió la conexión con la sala — reconectando…';
+
+  @override
+  String get sceneSubwayBuilderRunningTheClockForThisRoom =>
+      'Controlando el reloj de esta sala';
+
+  @override
+  String get sceneSubwayBuilderCouldNotJoinThatRoom =>
+      'No se pudo entrar en esa sala:';
+
+  @override
+  String get sceneSubwayBuilderTravellingTo => 'Viajando a';
+
+  @override
+  String get sceneSubwayBuilderJoinedRoom => 'Te uniste a la sala';
+
+  @override
+  String get sceneSubwayBuilderLoadACityFirst => 'Carga una ciudad primero';
+
+  @override
+  String get sceneSubwayBuilderCouldNotCreateARoom =>
+      'No se pudo crear una sala:';
+
+  @override
+  String get sceneSubwayBuilderRoom => 'Sala';
+
+  @override
+  String get sceneSubwayBuilderNoLinesYetPickAModePlaceStopsThenConnectTh =>
+      'Aún no hay líneas. Elige un modo, coloca paradas y conéctalas con la herramienta Línea.';
+
+  @override
+  String get sceneSubwayBuilderToggleOvernight22000500Service =>
+      'Activar servicio nocturno (22:00–05:00)';
+
+  @override
+  String get sceneSubwayBuilderToggleWeekendService =>
+      'Activar servicio de fin de semana';
+
+  @override
+  String get sceneSubwayBuilderRoomCode => 'Código de sala';
+
+  @override
+  String get sceneSubwayBuilderSearchAnyCityTownOrAddress =>
+      'Busca una ciudad, pueblo o dirección…';
+
+  @override
+  String get sceneSubwayBuilderTakeA => 'Tomar un';
+
+  @override
+  String get sceneSubwayBuilderLineDrawingCancelled =>
+      'Trazado de línea cancelado';
+
+  @override
+  String get sceneSubwayBuilderLeftTheCoOpRoom =>
+      'Saliste de la sala cooperativa';
+
+  @override
+  String get sceneSubwayBuilderInviteSent => 'Invitación enviada';
+
+  @override
+  String get sceneSubwayBuilderCouldNotSendInvite =>
+      'No se pudo enviar la invitación:';
+
+  @override
+  String get sceneSubwayBuilderEnterARoomCode => 'Introduce un código de sala';
+
+  @override
+  String get sceneSubwayBuilderTurnOff2DModeInSettingsToTiltTheCamera =>
+      'Desactiva el modo 2D en Ajustes para inclinar la cámara';
+
+  @override
+  String get sceneSubwayBuilderLoadingOfficialStationsInView =>
+      'Cargando estaciones oficiales visibles…';
+
+  @override
+  String get sceneSubwayBuilderStationLookupFailedTheMapDataServiceIsBusy =>
+      'Error al buscar estaciones — el servicio de mapas está ocupado, inténtalo de nuevo';
+
+  @override
+  String get sceneSubwayBuilderNoNewOfficialStationsFoundInView =>
+      'No se encontraron estaciones oficiales nuevas';
+
+  @override
+  String get sceneSubwayBuilderOnlyWhoeverIsRunningTheClockManagesTheTrea =>
+      'Solo quien controla el reloj administra la tesorería.';
+
+  @override
+  String aiDetectorHiddenCharacterEvidence(String name, int count) {
+    return '\"$name ×$count (oculto)\"';
+  }
+
+  @override
+  String aiDetectorSignatureEvidence(String name, int count) {
+    return '\"$name ×$count\"';
+  }
+
+  @override
+  String aiDetectorAssistantEvidence(String name, int count) {
+    return '\"$name ×$count\"';
+  }
+
+  @override
+  String get aiDetectorInvisibleSoftHyphen => 'guion discrecional';
+
+  @override
+  String get aiDetectorInvisibleGraphemeJoiner =>
+      'unión de grafemas combinados';
+
+  @override
+  String get aiDetectorInvisibleMongolianSeparator =>
+      'separador de vocales mongolas';
+
+  @override
+  String get aiDetectorInvisibleZeroWidthSpace => 'espacio de ancho cero';
+
+  @override
+  String get aiDetectorInvisibleZeroWidthNonJoiner => 'no unión de ancho cero';
+
+  @override
+  String get aiDetectorInvisibleZeroWidthJoiner => 'unión de ancho cero';
+
+  @override
+  String get aiDetectorInvisibleWordJoiner => 'unión de palabras';
+
+  @override
+  String get aiDetectorInvisibleFunctionApplication => 'aplicación de función';
+
+  @override
+  String get aiDetectorInvisibleTimes => 'multiplicación invisible';
+
+  @override
+  String get aiDetectorInvisibleSeparator => 'separador invisible';
+
+  @override
+  String get aiDetectorInvisiblePlus => 'suma invisible';
+
+  @override
+  String get aiDetectorInvisibleNoBreakSpace =>
+      'espacio no separable de ancho cero';
+
+  @override
+  String get aiDetectorInvisibleUnicodeTag => 'carácter de etiqueta Unicode';
+
+  @override
+  String get aiDetectorInvisibleVariationSelector => 'selector de variación';
+
+  @override
+  String get aiDetectorEvidenceClaudeAi => 'referencia a claude.ai';
+
+  @override
+  String get aiDetectorEvidenceAnthropic => 'Anthropic mencionado';
+
+  @override
+  String get aiDetectorEvidenceClaudeModel => 'identificador de modelo Claude';
+
+  @override
+  String get aiDetectorEvidenceClaudeSelfReference =>
+      'autorreferencia a Claude';
+
+  @override
+  String get aiDetectorEvidenceAsAnAi => 'aviso «As an AI»';
+
+  @override
+  String get aiDetectorEvidenceCapabilityDisclaimer => 'aviso de capacidades';
+
+  @override
+  String get aiDetectorEvidenceChatSignOff => 'despedida de chat';
+
+  @override
+  String get aiDetectorEvidenceContrastNotJust =>
+      'construcción «no solo X, sino Y»';
+
+  @override
+  String get aiDetectorEvidenceContrastNotAbout =>
+      'construcción «no es X; es Y»';
+
+  @override
+  String get aiDetectorEvidenceContrastIsntJust => 'construcción «no es solo»';
+
+  @override
+  String get aiDetectorEvidenceContrastStagedReveal => 'revelación preparada';
+
+  @override
+  String get aiDetectorEvidenceContrastThatsPoint => 'cierre «ese es el punto»';
+
+  @override
+  String get aiDetectorEvidenceContrastHeresThing => 'giro «la cuestión es»';
+
+  @override
+  String aiDetectorEvidenceSentenceRange(int min, int max) {
+    return 'las frases tienen entre $min y $max palabras';
+  }
+
+  @override
+  String aiDetectorEvidenceVariationIndex(String index) {
+    return 'índice de variación $index (bajo = uniforme)';
+  }
+
+  @override
+  String aiDetectorPhraseEvidence(String phrase, int count, String soft) {
+    String _temp0 = intl.Intl.selectLogic(soft, {
+      'true': ' (débil)',
+      'other': '',
+    });
+    return '«$phrase» ×$count$_temp0';
+  }
+
+  @override
+  String aiDetectorEvidenceShortSentences(int short, int total) {
+    return '$short de $total frases tienen menos de 6 palabras';
+  }
+
+  @override
+  String aiDetectorEvidenceLongSentences(int long, int total) {
+    return '$long de $total frases tienen más de 27 palabras';
+  }
+
+  @override
+  String aiDetectorEvidenceVoiceCounts(
+    int pronouns,
+    int informal,
+    int questions,
+  ) {
+    return '$pronouns pronombres personales, $informal palabras informales, $questions preguntas';
+  }
+
+  @override
+  String aiDetectorEvidenceVoiceRate(String rate) {
+    return '$rate por 1000 palabras (bajo = impersonal)';
+  }
+
+  @override
+  String aiDetectorEvidenceMarkdownHeadings(int count) {
+    return '$count títulos Markdown';
+  }
+
+  @override
+  String aiDetectorEvidenceBulletLines(int count) {
+    return '$count líneas con viñetas o números';
+  }
+
+  @override
+  String aiDetectorEvidenceBoldLeads(int count) {
+    return '$count inicios en negrita';
+  }
+
+  @override
+  String aiDetectorEvidenceLabelLines(int count) {
+    return '$count líneas «Etiqueta: texto»';
+  }
+
+  @override
+  String get aiDetectorEvidencePlainProse =>
+      'prosa normal, sin estructura de lista';
+
+  @override
+  String aiDetectorEvidenceScaffoldLines(int count, int total) {
+    return '$count de $total líneas son estructurales';
+  }
+
+  @override
+  String aiDetectorEvidenceContrast(String label, int count) {
+    return '$label ×$count';
+  }
+
+  @override
+  String get aiDetectorEvidenceNoneFound => 'ninguno encontrado';
+
+  @override
+  String aiDetectorEvidencePerThousand(String rate) {
+    return '$rate por 1000 palabras';
+  }
+
+  @override
+  String aiDetectorEvidenceOpener(String word, int count) {
+    return '$word ×$count al inicio de frase';
+  }
+
+  @override
+  String get aiDetectorEvidenceNoneUsed => 'ninguno usado';
+
+  @override
+  String aiDetectorEvidenceContractions(int count, int words) {
+    return '$count contracciones en $words palabras';
+  }
+
+  @override
+  String aiDetectorEvidenceEmDashes(int count, String rate) {
+    return '$count rayas largas ($rate por 1000 palabras)';
+  }
+
+  @override
+  String aiDetectorEvidencePassive(int count, String rate) {
+    return '$count construcciones pasivas ($rate por 100 palabras)';
+  }
+
+  @override
+  String aiDetectorEvidenceParagraphSizes(int count, String sizes) {
+    return '$count párrafos: $sizes';
+  }
+
+  @override
+  String aiDetectorEvidenceRepeatedOpener(String word, int count, int total) {
+    return '«$word» inicia $count de $total frases';
+  }
+
+  @override
+  String get aiDetectorRepeatedOpenersNotEnough =>
+      'No hay suficientes inicios distintivos para medir.';
+
+  @override
+  String aiDetectorHighlightPhraseNote(String phrase) {
+    return 'Expresión típica de un LLM: «$phrase»';
+  }
+
+  @override
+  String aiDetectorHighlightContrastNote(String label) {
+    return 'Contraste correctivo: $label';
+  }
+
+  @override
+  String aiDetectorHighlightSignatureNote(String label) {
+    return '$label';
+  }
+
+  @override
+  String aiDetectorHighlightAssistantNote(String label) {
+    return '$label';
+  }
+
+  @override
+  String get aiDetectorHighlightPassiveNote => 'Construcción pasiva';
+
+  @override
+  String aiDetectorHighlightOpenerNote(String word) {
+    return 'La frase comienza con «$word»';
+  }
+
+  @override
+  String get aiDetectorHighlightEmDashNote => 'Raya larga';
+
+  @override
+  String aiDetectorHighlightHiddenNote(String name) {
+    return '$name oculto dentro de esta palabra';
+  }
+
+  @override
+  String get mcLauncherJvmArgsHint =>
+      'Argumentos JVM opcionales, por ejemplo: -XX:+UseG1GC';
+
+  @override
+  String get airportUpgradeBoardingLanes => 'Vías de embarque';
+
+  @override
+  String get airportUpgradeBoardingLanesEffect =>
+      'Una vía más permite embarcar pasajeros simultáneamente.';
+
+  @override
+  String get airportUpgradeBoardingSpeed => 'Velocidad de embarque';
+
+  @override
+  String get airportUpgradeBoardingSpeedEffect =>
+      'Cada vía embarca 1,5 pasajeros más por minuto.';
+
+  @override
+  String get airportUpgradeSurfaceLighting => 'Superficie e iluminación';
+
+  @override
+  String get airportUpgradeSurfaceLightingEffect =>
+      'Los aterrizajes y despegues liberan la pista un 15% más rápido por nivel.';
+
+  @override
+  String get airportUpgradeAsphalt => 'Asfalto';
+
+  @override
+  String get airportUpgradeAsphaltStandsEffect =>
+      'La asistencia en tierra y el embarque son un 15% más rápidos por nivel.';
+
+  @override
+  String get airportUpgradeQuality => 'Calidad';
+
+  @override
+  String get airportUpgradeQualityEffect =>
+      'Cuenta como una decoración más por nivel.';
+
+  @override
+  String get airportUpgradeStockStaff => 'Existencias y personal';
+
+  @override
+  String get airportUpgradeStockStaffEffect =>
+      'Un 15% más de ventas y un servicio un 25% más rápido por nivel.';
+
+  @override
+  String get airportUpgradeComfort => 'Comodidad';
+
+  @override
+  String get airportUpgradeComfortEffect =>
+      '+1% de satisfacción y 15% más de ingresos por nivel.';
+
+  @override
+  String get airportUpgradeStaff => 'Personal';
+
+  @override
+  String get airportUpgradeInfoDeskEffect =>
+      'Cada nivel cuenta como otro mostrador atendido.';
+
+  @override
+  String get airportUpgradeStaffEffect =>
+      'Los pasajeros se procesan un 25% más rápido por nivel.';
+
+  @override
+  String get airportUpgradeAsphaltTaxiwayEffect =>
+      'Los aviones circulan por las calles de rodaje un 10% más rápido por nivel.';
+
+  @override
+  String get airportUpgradeComfortTerminalEffect =>
+      'Los pasajeros están un 1% más satisfechos por nivel, de media entre secciones.';
+
+  @override
+  String get airportUpgradeEquipment => 'Equipamiento';
+
+  @override
+  String get airportUpgradeEquipmentEffect =>
+      'Los servicios de tierra enviados desde aquí son un 20% más rápidos por nivel.';
+
+  @override
+  String get airportUpgradeRadar => 'Radar';
+
+  @override
+  String get airportUpgradeRadarEffect =>
+      'Las aproximaciones tardan un 10% menos por nivel.';
+
+  @override
+  String get airportUpgradeService => 'Servicio';
+
+  @override
+  String get airportUpgradeServiceEffect =>
+      'Cada nivel cuenta como otro conjunto de papeleras.';
+
+  @override
+  String get airportUpgradeBeltSpeed => 'Velocidad de la cinta';
+
+  @override
+  String get airportUpgradeBeltSpeedEffect =>
+      'Los pasajeros recogen su equipaje un 25% más rápido por nivel.';
+
+  @override
+  String get airportSlotEarlyMorning => 'Madrugada';
+
+  @override
+  String get airportSlotMorning => 'Mañana';
+
+  @override
+  String get airportSlotAfternoon => 'Tarde';
+
+  @override
+  String get airportSlotEvening => 'Noche';
+
+  @override
+  String get airportSlotAnyTime => 'En cualquier momento';
+
+  @override
+  String get airportHaulShort => 'Corto radio';
+
+  @override
+  String get airportHaulMedium => 'Medio radio';
+
+  @override
+  String get airportHaulLong => 'Largo radio';
+
+  @override
+  String get airportLedgerConstruction => 'Construcción';
+
+  @override
+  String get airportLedgerVehicles => 'Vehículos';
+
+  @override
+  String get airportLedgerPenalty => 'Penalización';
+
+  @override
+  String get airportLedgerUpkeep => 'Mantenimiento';
+
+  @override
+  String get airportLedgerService => 'Servicio';
+
+  @override
+  String get airportLedgerLease => 'Arrendamiento';
+
+  @override
+  String get airportLedgerHandling => 'Asistencia en tierra';
+
+  @override
+  String get airportLedgerRetail => 'Comercio';
+
+  @override
+  String get airportLedgerCargo => 'Carga';
+
+  @override
+  String get airportLedgerFuel => 'Combustible';
+
+  @override
+  String get airportLedgerCrew => 'Tripulación';
+
+  @override
+  String get airportLedgerLanding => 'Aterrizaje';
+
+  @override
+  String get airportLedgerMaintenance => 'Mantenimiento';
+
+  @override
+  String get airportLedgerTickets => 'Billetes';
+
+  @override
+  String get airportLedgerDay => 'Día';
+
+  @override
+  String get airportLedgerBoarded => 'Embarcados';
+
+  @override
+  String get airportLedgerDelay => 'Retraso';
+
+  @override
+  String get airportLedgerFee => 'Tarifa';
+
+  @override
+  String get airportLedgerNoTransactions =>
+      'Tus transacciones aparecerán aquí.';
+
+  @override
+  String get airportIssueCancelledByOperator => 'Cancelado por el operador';
+
+  @override
+  String get airportIssueContractCancelled => 'Contrato cancelado';
+
+  @override
+  String get airportIssueStandRemoved => 'Posición eliminada';
+
+  @override
+  String get airportIssueAirportAccessDisconnected =>
+      'El acceso al aeropuerto está desconectado';
+
+  @override
+  String get airportIssueAircraftUnavailable => 'Avión no disponible';
+
+  @override
+  String get airportIssueWaitingForStand => 'Esperando una posición';
+
+  @override
+  String get airportIssueWaitingForRunwayClearance =>
+      'Esperando autorización de pista';
+
+  @override
+  String get airportIssueWaitingForTaxiwayClearance =>
+      'Esperando autorización de calle de rodaje';
+
+  @override
+  String get airportIssueRequiredContractFacilityUnavailable =>
+      'No está disponible una instalación necesaria del contrato';
+
+  @override
+  String airportIssueTerminalNeeds(Object facility) {
+    return 'La terminal necesita $facility';
+  }
+
+  @override
+  String get airportIssueWaitingForGroundServices =>
+      'Esperando los servicios de tierra';
+
+  @override
+  String get airportIssuePassengersStillInTerminal =>
+      'Aún hay pasajeros en la terminal';
+
+  @override
+  String get airportIssueWaitingForPushbackTug =>
+      'Esperando el remolcador de retroceso';
+
+  @override
+  String airportLedgerDemolished(Object facility) {
+    return '$facility demolido';
+  }
+
+  @override
+  String airportLedgerPurchasedVehicle(Object vehicle) {
+    return 'Vehículo $vehicle comprado';
+  }
+
+  @override
+  String get airportLedgerInfrastructureUpkeep =>
+      'Mantenimiento de la infraestructura aeroportuaria';
+
+  @override
+  String get airportLedgerVehicleStaffingMaintenance =>
+      'Personal y mantenimiento de vehículos';
+
+  @override
+  String airportLedgerUnplannedFlights(Object carrier, Object count) {
+    return '$carrier: $count vuelos no programados';
+  }
+
+  @override
+  String airportLedgerLateIncompleteService(Object flightId) {
+    return 'Servicio tardío o incompleto $flightId';
+  }
+
+  @override
+  String airportLedgerGroundServices(Object flightId) {
+    return 'Servicios de tierra $flightId';
+  }
+
+  @override
+  String airportLedgerCargoFlight(Object flightId) {
+    return 'Carga $flightId';
+  }
+
+  @override
+  String airportLedgerFlightFuel(Object flightId) {
+    return 'Combustible del vuelo $flightId';
+  }
+
+  @override
+  String airportLedgerFlightCrew(Object flightId) {
+    return 'Tripulación del vuelo $flightId';
+  }
+
+  @override
+  String airportLedgerLandingFlight(Object flightId) {
+    return 'Aterrizaje $flightId';
+  }
+
+  @override
+  String airportLedgerFlightMaintenance(Object flightId) {
+    return 'Mantenimiento del vuelo $flightId';
+  }
+
+  @override
+  String airportLedgerHeavyCheck(Object registration) {
+    return 'Revisión general $registration';
+  }
+
+  @override
+  String airportLedgerLeaseAircraft(Object registration) {
+    return 'Arrendamiento $registration';
+  }
+
+  @override
+  String airportLedgerContractHandling(Object carrier, Object flightId) {
+    return '$carrier $flightId';
+  }
+
+  @override
+  String airportLedgerTicketFlight(
+    Object destination,
+    Object flightId,
+    Object returnSuffix,
+  ) {
+    return '$destination $flightId$returnSuffix';
+  }
+
+  @override
+  String airportLedgerUpgradeLevel(
+    Object facility,
+    Object attribute,
+    Object level,
+  ) {
+    return '$facility: nivel $level de $attribute';
+  }
+
+  @override
+  String get airportLedgerReturnSuffix => 'regreso';
+
+  @override
+  String airportLedgerBuiltFacility(Object facility) {
+    return '$facility construido';
+  }
+
+  @override
+  String airportLedgerFacilitySales(Object facility) {
+    return 'Ventas en $facility';
+  }
+
+  @override
+  String get airportVehicleFuel => 'Camión cisterna';
+
+  @override
+  String get airportVehicleBaggage => 'Tractor de equipaje';
+
+  @override
+  String get airportVehicleBus => 'Autobús de pasajeros';
+
+  @override
+  String get airportVehiclePushback => 'Remolcador de retroceso';
+
+  @override
+  String get syncCryptoCorruptedRecoveryEnvelope =>
+      'El sobre de recuperación está dañado.';
+
+  @override
+  String get syncCryptoCorruptedRecoveryKeyBox =>
+      'La caja de la clave de recuperación está dañada.';
+
+  @override
+  String get syncCryptoCorruptedSnapshot =>
+      'La instantánea de sincronización está dañada.';
+
+  @override
+  String get syncCryptoAuthenticationFailed =>
+      'No se pudieron autenticar los datos cifrados.';
+
+  @override
+  String get syncCryptoUnrecognizedEncryptedData =>
+      'No se reconoce el formato de los datos cifrados.';
+
+  @override
+  String get syncCryptoDifferentPassword =>
+      'No se pudo descifrar. Se cifró con una contraseña diferente.';
+
+  @override
+  String get syncStateInvalid => 'El estado de sincronización no es válido.';
+
+  @override
+  String get syncStateReadFailed =>
+      'No se pudo leer el estado de sincronización. Conserva el archivo para recuperarlo.';
+
+  @override
+  String get syncStateInvalidEncryptionKey =>
+      'La clave de cifrado de sincronización no es válida.';
+
+  @override
+  String get syncStateRestoreCredentials =>
+      'El estado de sincronización no es válido. Restaura las credenciales originales.';
+
+  @override
+  String get mcNbtExpectedCompound => 'Se esperaba una etiqueta compound raíz.';
+
+  @override
+  String mcNbtUnknownTag(Object type, Object position) {
+    return 'Tipo de etiqueta NBT desconocido $type en el byte $position.';
+  }
+
+  @override
+  String mcWorldNoLongerExists(Object folderName) {
+    return 'El mundo \"$folderName\" ya no existe.';
+  }
+
+  @override
+  String get aiUsageUnknownModel => 'Modelo desconocido';
+
+  @override
+  String sceneAirlineTycoonUpgradeAttributeToLevel(
+    String attribute,
+    String level,
+  ) {
+    return 'Mejora $attribute al nivel $level';
+  }
+
+  @override
+  String sceneAirlineTycoonCancelPenalty(String cost) {
+    return 'Cancelar: penalización de $cost';
+  }
+
+  @override
+  String sceneAirlineTycoonDemolishFacilityQuestion(String facility) {
+    return '¿Demoler $facility?';
+  }
+
+  @override
+  String sceneAirlineTycoonDemolishRefund(String refund) {
+    return 'Recibirás $refund. Esto no se puede deshacer.';
+  }
+
+  @override
+  String sceneAirlineTycoonCarrierStartsInSlot(String carrier, String slot) {
+    return '$carrier empieza en $slot';
+  }
+
+  @override
+  String sceneAssetStudioRotateToDegrees(String degrees) {
+    return 'Girar a $degrees grados';
+  }
+
+  @override
+  String sceneCityPlannerInsufficientFunds(String amount) {
+    return 'Dinero insuficiente: se necesitan $amount.';
+  }
+
+  @override
+  String sceneCityPlannerMustBuildByWater(String building) {
+    return '$building debe construirse junto al agua.';
+  }
+
+  @override
+  String sceneCityPlannerLinePausedDepot(String type) {
+    return 'Línea creada, pero pausada: construye primero un depósito de $type.';
+  }
+
+  @override
+  String sceneCityPlannerLineRuns(String line) {
+    return '¡$line está funcionando! Ajusta la frecuencia en el panel de transporte público.';
+  }
+
+  @override
+  String sceneSubwayWelcomeBack(String place, String day) {
+    return 'Bienvenido de nuevo a $place — día $day';
+  }
+
+  @override
+  String sceneSubwayDeleteLineQuestion(String line) {
+    return '¿Eliminar $line?';
+  }
+
+  @override
+  String sceneSubwayStationLeased(String station, String cost) {
+    return '$station alquilada · $cost';
+  }
+
+  @override
+  String sceneSubwayStationBuilt(String station, String cost) {
+    return '$station construida · $cost';
+  }
+
+  @override
+  String sceneSubwayLineRemoved(String line, String refund) {
+    return '$line eliminada · reembolso de $refund';
+  }
+
+  @override
+  String sceneSubwayLineExtended(String line, String station) {
+    return '$line ampliada hasta $station';
+  }
+
+  @override
+  String sceneSubwayStationModeStop(String station, String mode) {
+    return '$station es una parada de $mode; cambia de modo para conectarla';
+  }
+
+  @override
+  String sceneSubwaySelectLineEndpoint(String line) {
+    return 'Haz clic en una de las dos estaciones finales de $line';
+  }
+
+  @override
+  String sceneSubwayStationDemolished(String station, String refund) {
+    return '$station demolida · reembolso de $refund';
+  }
+
+  @override
+  String sceneSubwayRouteHopsMax(Object mode, Object maxKm) {
+    return '$mode: máximo $maxKm km entre paradas; añade una parada intermedia o usa el tren para distancias largas';
+  }
+
+  @override
+  String get sceneSubwayRouteNoRailConnection =>
+      'No existe una conexión ferroviaria entre estas estaciones';
+
+  @override
+  String get sceneSubwayRouteNoStreetRoute =>
+      'No hay una ruta por carretera entre estas paradas';
+
+  @override
+  String get sceneSubwayStationInOpenWater => 'Eso es agua abierta';
+
+  @override
+  String sceneSubwayPlaceModeStopsOnStreet(Object mode) {
+    return 'Coloca las paradas de $mode en una calle';
+  }
+
+  @override
+  String get sceneSubwayNotEnoughFunds => 'Fondos insuficientes';
+
+  @override
+  String sceneSubwayModeServicesRealRailStations(Object mode) {
+    return 'Los servicios de $mode solo paran en estaciones de tren reales; haz clic en una';
+  }
+
+  @override
+  String sceneSubwayModeServicesHighlightedRailStations(Object mode) {
+    return 'Los servicios de $mode solo paran en estaciones de tren reales; haz clic en una resaltada';
+  }
+
+  @override
+  String get sceneSubwayLineRequiresTwoStops =>
+      'Una línea necesita al menos dos paradas';
+
+  @override
+  String get sceneSubwayUnknownLineOrStation => 'Línea o parada desconocida';
+
+  @override
+  String get sceneSubwayStopDifferentMode =>
+      'Esa parada pertenece a otro modo de transporte';
+
+  @override
+  String get sceneSubwayStopAlreadyOnLine =>
+      'Esta parada ya está en esta línea';
+
+  @override
+  String get sceneSubwayUnknownStation => 'Estación desconocida';
+
+  @override
+  String get sceneSubwayUnknownLine => 'Línea desconocida';
+
+  @override
+  String sceneSubwayLineFleetLimit(Object maxVehicles) {
+    return 'La línea alcanzó su límite de vehículos ($maxVehicles)';
+  }
+
+  @override
+  String get sceneSubwayLineRequiresVehicle =>
+      'Una línea necesita al menos un vehículo';
+
+  @override
+  String get sceneSubwayNoOutstandingLoans => 'No hay préstamos pendientes';
+
+  @override
+  String sceneSubwayDraftStopsCost(Object count, Object distance, Object cost) {
+    return '$count paradas · $distance · $cost: pulsa Intro para construir o Esc para cancelar.';
+  }
+
+  @override
+  String sceneSubwayDraftStopsCostTunnel(
+    Object count,
+    Object distance,
+    Object cost,
+  ) {
+    return '$count paradas · $distance · $cost (incluye túneles submarinos): pulsa Intro para construir o Esc para cancelar.';
+  }
+
+  @override
+  String sceneSubwayLineOpened(Object line, Object cost) {
+    return 'Línea $line abierta — $cost, incluye dos vehículos';
+  }
+
+  @override
+  String sceneSubwayLineOpenedTunnel(Object line, Object cost) {
+    return 'Línea $line abierta — $cost, incluye dos vehículos y un túnel submarino';
+  }
+
+  @override
+  String get sceneSubwayOfficialStationLoadedOne =>
+      'Se ha cargado 1 estación oficial';
+
+  @override
+  String sceneSubwayOfficialStationsLoaded(Object count) {
+    return 'Se han cargado $count estaciones oficiales';
+  }
+
+  @override
+  String sceneSubwayJoinedRoomCode(Object code) {
+    return 'Te uniste a la sala $code';
+  }
+
+  @override
+  String sceneSubwayRoomCreatedReady(Object code) {
+    return 'Sala $code creada: empieza a construir';
+  }
+
+  @override
+  String sceneSubwayRoomCreatedShare(Object code) {
+    return 'Sala $code creada: comparte el código o invita a un contacto';
+  }
+
+  @override
+  String sceneSubwayCouldNotConnectRoom(Object error) {
+    return 'No se pudo conectar con la sala: $error';
+  }
+
+  @override
+  String sceneSubwayCouldNotJoinRoom(Object error) {
+    return 'No se pudo unir a esa sala: $error';
+  }
+
+  @override
+  String sceneSubwayCouldNotCreateRoom(Object error) {
+    return 'No se pudo crear la sala: $error';
+  }
+
+  @override
+  String sceneSubwayCouldNotSendInvite(Object error) {
+    return 'No se pudo enviar la invitación: $error';
+  }
+
+  @override
+  String sceneSubwayGrantAwarded(Object label, Object amount) {
+    return '$label: $amount para construir';
+  }
+
+  @override
+  String sceneSubwayLoanReceived(Object amount) {
+    return 'Préstamo de $amount recibido';
+  }
+
+  @override
+  String get sceneSubwayDeleteLineRefundDetails =>
+      'Recibirás el 25 % del coste de construcción y el valor de reventa de los vehículos.';
+
+  @override
+  String get sceneSubwayAchievementCommuterFavourite =>
+      'Favorito de los viajeros';
+
+  @override
+  String get sceneSubwayAchievementCommuterFavouriteSub =>
+      '1.000 viajeros diarios';
+
+  @override
+  String get sceneSubwayAchievementCityMover => 'Impulsor de la ciudad';
+
+  @override
+  String get sceneSubwayAchievementCityMoverSub => '25.000 viajeros diarios';
+
+  @override
+  String get sceneSubwayAchievementMetropolisMachine => 'Máquina metropolitana';
+
+  @override
+  String get sceneSubwayAchievementMetropolisMachineSub =>
+      '100.000 viajeros diarios';
+
+  @override
+  String get sceneSubwayAchievementNetworkEffect => 'Efecto de red';
+
+  @override
+  String get sceneSubwayAchievementNetworkEffectSub =>
+      '10 estaciones en servicio';
+
+  @override
+  String get sceneSubwayAchievementEveryCorner => 'En cada esquina';
+
+  @override
+  String get sceneSubwayAchievementEveryCornerSub =>
+      '40 estaciones en servicio';
+
+  @override
+  String get sceneSubwayAchievementGoingDistance => 'Recorriendo distancias';
+
+  @override
+  String get sceneSubwayAchievementGoingDistanceSub => '50 km de rutas';
+
+  @override
+  String get sceneSubwayAchievementSteelSpine => 'Columna de acero';
+
+  @override
+  String get sceneSubwayAchievementSteelSpineSub => '250 km de rutas';
+
+  @override
+  String get sceneSubwayAchievementFullSpectrum => 'Espectro completo';
+
+  @override
+  String get sceneSubwayAchievementFullSpectrumSub =>
+      'Los cinco modos en servicio';
+
+  @override
+  String get sceneSubwayAchievementUnderRiver => 'Bajo el río';
+
+  @override
+  String get sceneSubwayAchievementUnderRiverSub =>
+      'Un túnel bajo aguas abiertas';
+
+  @override
+  String get sceneSubwayAchievementIntercityExpress => 'Exprés interurbano';
+
+  @override
+  String get sceneSubwayAchievementIntercityExpressSub =>
+      'Dos estaciones reales separadas por más de 15 km en una línea';
+
+  @override
+  String get sceneSubwayAchievementAirportLink => 'Conexión con el aeropuerto';
+
+  @override
+  String get sceneSubwayAchievementAirportLinkSub =>
+      'Una estación de aeropuerto en la red';
+
+  @override
+  String get sceneSubwayAchievementRingLine => 'Línea circular';
+
+  @override
+  String get sceneSubwayAchievementRingLineSub =>
+      'Una línea que vuelve a su punto de partida';
+
+  @override
+  String get sceneSubwayAchievementBulletService =>
+      'Servicio de alta velocidad';
+
+  @override
+  String get sceneSubwayAchievementBulletServiceSub =>
+      'Una línea de alta velocidad en servicio';
+
+  @override
+  String get sceneSubwayAchievementCityNeverSleeps => 'La ciudad nunca duerme';
+
+  @override
+  String get sceneSubwayAchievementCityNeverSleepsSub =>
+      '10.000 viajeros con todas las líneas operativas toda la noche';
+
+  @override
+  String get sceneSubwayAchievementInTheBlack => 'En números negros';
+
+  @override
+  String get sceneSubwayAchievementInTheBlackSub =>
+      'Un día rentable con más de 5.000 viajeros';
+
+  @override
+  String get sceneSubwayMilestoneCityHall => 'El ayuntamiento se fija en ti';
+
+  @override
+  String get sceneSubwayMilestoneStateGrant =>
+      'Subvención estatal de transporte';
+
+  @override
+  String get sceneSubwayMilestoneFederalGrant =>
+      'Subvención federal de infraestructura';
+
+  @override
+  String get sceneSubwayMilestoneTransitCityAward =>
+      'Premio Ciudad del Transporte';
+
+  @override
+  String get sceneSubwayMilestoneWorldMetroFund =>
+      'Fondo de metro de clase mundial';
+
+  @override
+  String get sceneSubwayMilestoneTransitCapital =>
+      'Capital mundial del transporte';
+
+  @override
+  String get sceneSubwayLineColorRed => 'Rojo';
+
+  @override
+  String get sceneSubwayLineColorBlue => 'Azul';
+
+  @override
+  String get sceneSubwayLineColorGreen => 'Verde';
+
+  @override
+  String get sceneSubwayLineColorOrange => 'Naranja';
+
+  @override
+  String get sceneSubwayLineColorPurple => 'Morado';
+
+  @override
+  String get sceneSubwayLineColorYellow => 'Amarillo';
+
+  @override
+  String get sceneSubwayLineColorTeal => 'Verde azulado';
+
+  @override
+  String get sceneSubwayLineColorPink => 'Rosa';
+
+  @override
+  String get sceneSubwayLineColorLime => 'Lima';
+
+  @override
+  String get sceneSubwayLineColorIndigo => 'Índigo';
+
+  @override
+  String get sceneSubwayLineColorAmber => 'Ámbar';
+
+  @override
+  String get sceneSubwayLineColorCyan => 'Cian';
+
+  @override
+  String get sceneSubwayVehicleTrain => 'tren';
+
+  @override
+  String get sceneSubwayVehicleTram => 'tranvía';
+
+  @override
+  String get sceneSubwayVehicleBus => 'autobús';
+
+  @override
+  String sceneSubwayLinePanelModeSpeed(Object mode, Object speed) {
+    return 'Modo $mode · $speed km/h';
+  }
+
+  @override
+  String sceneSubwayLinePanelStopsLength(Object count, Object length) {
+    return 'Paradas $count · longitud $length';
+  }
+
+  @override
+  String sceneSubwayLinePanelFleetHeadway(
+    Object count,
+    Object vehicle,
+    Object headway,
+  ) {
+    return 'Flota: $count ${vehicle}s · intervalo $headway';
+  }
+
+  @override
+  String sceneSubwayLinePanelRidersRevenue(Object count, Object revenue) {
+    return 'Viajeros $count/día · ingresos $revenue/día';
+  }
+
+  @override
+  String sceneSubwayLinePanelPeakCrowding(Object percent) {
+    return 'Aforo máximo $percent%';
+  }
+
+  @override
+  String sceneSubwayLinePanelDelays(Object factor) {
+    return 'Retrasos ×$factor';
+  }
+
+  @override
+  String sceneSubwayLinePanelDisruption(Object label) {
+    return '$label: el servicio irá más lento hasta que termine';
+  }
+
+  @override
+  String get sceneSubwayLinePanelServiceWindow => 'Horario de servicio';
+
+  @override
+  String get sceneSubwayLinePanelNight => 'Noche';
+
+  @override
+  String get sceneSubwayLinePanelWeekend => 'Fin de semana';
+
+  @override
+  String get sceneSubwayLinePanelExtend => 'Ampliar';
+
+  @override
+  String get sceneSubwayStatsTransitShare => 'Cuota de transporte público';
+
+  @override
+  String get sceneSubwayStatsDailyRiders => 'Viajeros diarios';
+
+  @override
+  String get sceneSubwayStatsCoverage => 'Cobertura';
+
+  @override
+  String get sceneSubwayStatsResidentsNearStop =>
+      'residentes cerca de una parada';
+
+  @override
+  String get sceneSubwayStatsTransfers => 'Transbordos';
+
+  @override
+  String get sceneSubwayStatsAvgTransitTrip =>
+      'Viaje medio en transporte público';
+
+  @override
+  String get sceneSubwayStatsAvgCarTrip => 'Viaje medio en coche';
+
+  @override
+  String get sceneSubwayStatsRouteLength => 'Longitud de rutas';
+
+  @override
+  String get sceneSubwayStatsStops => 'Paradas';
+
+  @override
+  String get sceneSubwayStatsFleet => 'Flota';
+
+  @override
+  String get sceneSubwayStatsSpentToDate => 'Gasto hasta la fecha';
+
+  @override
+  String sceneSubwayStatsTransitLegend(Object percent) {
+    return 'Transporte público $percent%';
+  }
+
+  @override
+  String sceneSubwayStatsDrivingLegend(Object percent) {
+    return 'Coche $percent%';
+  }
+
+  @override
+  String get sceneSubwayStatsBoardingsByMode => 'Viajeros por modo';
+
+  @override
+  String get sceneSubwayStatsBusiestStops => 'Paradas más concurridas';
+
+  @override
+  String get sceneSubwayStatsPlayDaysForData =>
+      'Juega unos días para ver datos…';
+
+  @override
+  String get sceneSubwayCoopSignedOut =>
+      'Las salas cooperativas están vinculadas a tu cuenta de Luma para que funcionen las invitaciones y la membresía. Inicia sesión en los ajustes de cuenta de la app y vuelve aquí.';
+
+  @override
+  String sceneSubwayCoopRoomCodeTitle(Object code) {
+    return 'Cooperativo — sala $code';
+  }
+
+  @override
+  String get sceneSubwayCoopRoomCodeDescription =>
+      'Cualquiera con el código o una invitación puede unirse y construir en esta red contigo.';
+
+  @override
+  String get sceneSubwayCoopClockYou =>
+      'Ahora estás controlando el reloj de esta sala.';
+
+  @override
+  String get sceneSubwayCoopClockPeer =>
+      'Otro jugador controla el reloj; lo asumirás automáticamente si se va.';
+
+  @override
+  String get sceneSubwayCoopInviteContact => 'Invitar a un contacto del chat';
+
+  @override
+  String sceneSubwayCoopNoChatContacts(Object code) {
+    return 'Aún no hay contactos de chat: configura primero el plugin Chat o comparte directamente el código $code.';
+  }
+
+  @override
+  String get sceneSubwayCoopInviteInstruction =>
+      'Les envía un mensaje con el código de la sala; deberán pulsar Unirse.';
+
+  @override
+  String get sceneSubwayCoopLoadingContacts =>
+      'Cargando tus contactos del chat…';
+
+  @override
+  String get sceneSubwayCoopLoadingRooms => 'Cargando tus salas…';
+
+  @override
+  String get sceneSubwayCoopRoomsEmpty =>
+      'Construye en la misma red que tus amigos: invítalos por chat o comparte un código. Quien esté conectado mantiene el reloj; puedes salir y volver cuando quieras.';
+
+  @override
+  String get sceneSubwayCoopCreateRoom => 'Crear una sala';
+
+  @override
+  String get sceneSubwayCoopJoinByCode => '— o únete con un código —';
+
+  @override
+  String get sceneSubwayCoopJoinRoom => 'Unirse a la sala';
+
+  @override
+  String sceneSubwayCoopMemberCountOne(Object count) {
+    return '$count miembro';
+  }
+
+  @override
+  String sceneSubwayCoopMemberCountMany(Object count) {
+    return '$count miembros';
+  }
+
+  @override
+  String get sceneSubwayCoopRoomYours => 'tuya';
+
+  @override
+  String get sceneSubwayCoopOpenRoom => 'Abrir';
+
+  @override
+  String get sceneSubwayCoopNoRoom => 'Sin sala';
+
+  @override
+  String get sftpHostWindowsPermissionsUnsupported =>
+      'Este dispositivo no admite permisos POSIX.';
+
+  @override
+  String serverTycoonGeneratedPcRigName(Object id) {
+    return 'Equipo $id';
+  }
+
+  @override
+  String serverTycoonGeneratedServerRigName(Object id) {
+    return 'Servidor $id';
+  }
+
+  @override
+  String serverTycoonGeneratedRouterName(Object id) {
+    return 'Enrutador $id';
+  }
+
+  @override
+  String get sftpHostTooManyPairingFailures =>
+      'Se han probado demasiadas contraseñas de emparejamiento incorrectas desde este dispositivo. Espera unos minutos o muestra una nueva contraseña y úsala.';
+
+  @override
+  String sftpHostTooManyDevices(Object maxClients) {
+    return 'Este dispositivo ya tiene $maxClients dispositivos conectados. Desconecta uno e inténtalo de nuevo.';
+  }
+
+  @override
+  String get githubConnectTokenHint => 'ghp_… o github_pat_…';
+
+  @override
+  String get mcWorldModeSurvival => 'Supervivencia';
+
+  @override
+  String get mcWorldModeCreative => 'Creativo';
+
+  @override
+  String get mcWorldModeAdventure => 'Aventura';
+
+  @override
+  String get mcWorldModeSpectator => 'Espectador';
+
+  @override
+  String get sceneAirlineTycoonStageApproach => 'En aproximación';
+
+  @override
+  String get sceneAirlineTycoonStagePositioning => 'Remolcado a la posición';
+
+  @override
+  String get sceneAirlineTycoonStageToHangar => 'Remolcado al hangar';
+
+  @override
+  String get sceneAirlineTycoonStageLanding => 'Aterrizando';
+
+  @override
+  String get sceneAirlineTycoonStagePushback => 'Retrocediendo';
+
+  @override
+  String get sceneAirlineTycoonStageBoarding => 'Embarcando';
+
+  @override
+  String get sceneAirlineTycoonStageTaxiIn => 'Rodando a la posición';
+
+  @override
+  String get sceneAirlineTycoonStageTaxiOut => 'Rodando a la pista';
+
+  @override
+  String get sceneAirlineTycoonStageUnloading => 'Desembarcando pasajeros';
+
+  @override
+  String get sceneAirlineTycoonStageServicing => 'Servicios en tierra';
+
+  @override
+  String get sceneAirlineTycoonStageDeparting => 'Despegando';
+
+  @override
+  String get sceneAirlineTycoonStageRemote => 'En ruta';
+
+  @override
+  String get sceneAirlineTycoonStageAwaitingStand => 'Esperando una posición';
+
+  @override
+  String get sceneAirlineTycoonStageAwaitingAirport =>
+      'Esperando acceso al aeropuerto';
+
+  @override
+  String sceneAirlineTycoonStandName(Object code) {
+    return 'Posición $code';
+  }
+
+  @override
+  String get sceneAirlineTycoonUnassignedStand => 'Sin posición asignada';
+
+  @override
+  String sceneAirlineTycoonContractCharter(Object flights) {
+    return 'Chárter · $flights vuelo(s)';
+  }
+
+  @override
+  String sceneAirlineTycoonContractDaily(Object flights) {
+    return 'Diario · $flights días';
+  }
+
+  @override
+  String sceneSubwayMilestoneShareReached(Object grant, Object share) {
+    return '¡Se alcanzó un $share% de cuota de transporte — se otorgó una subvención de $grant!';
+  }
+
+  @override
+  String sceneSubwayAchievementBonus(Object grant, Object sub) {
+    return '$sub — bonificación de $grant';
+  }
+
+  @override
+  String sceneSubwayCrowdingGrantReduced(Object grant, Object label) {
+    return '$label — la congestión redujo la bonificación a $grant';
+  }
+
+  @override
+  String sceneSubwaySurgeGrant(Object grant, Object label) {
+    return '$label provocó un aumento: +$grant';
+  }
+
+  @override
+  String get cardWalletNameHintExample => 'Tarjeta de fidelidad Albert Heijn';
+
+  @override
+  String get sceneCityPlannerDataGras => 'Hierba';
+
+  @override
+  String get sceneCityPlannerDataBos => 'Bosque';
+
+  @override
+  String get sceneCityPlannerDataHeuvels => 'Colinas';
+
+  @override
+  String get sceneCityPlannerDataBergen => 'Montañas';
+
+  @override
+  String get sceneCityPlannerDataRivier => 'Río';
+
+  @override
+  String get sceneCityPlannerDataMeer => 'Lago';
+
+  @override
+  String get sceneCityPlannerDataKustwater => 'Agua costera';
+
+  @override
+  String get sceneCityPlannerDataZand => 'Arena';
+
+  @override
+  String get sceneCityPlannerDataLandbouwgrond => 'Tierras agrícolas';
+
+  @override
+  String get sceneCityPlannerDataKleineStraat => 'Calle pequeña';
+
+  @override
+  String get sceneCityPlannerDataNormaleWeg => 'Carretera normal';
+
+  @override
+  String get sceneCityPlannerDataHoofdweg => 'Carretera principal';
+
+  @override
+  String get sceneCityPlannerDataSnelweg => 'Autopista';
+
+  @override
+  String get sceneCityPlannerDataLeeg => 'Vacío';
+
+  @override
+  String get sceneCityPlannerDataWonen => 'Residencial';
+
+  @override
+  String get sceneCityPlannerDataLuxeWonen => 'Residencial de lujo';
+
+  @override
+  String get sceneCityPlannerDataStudentenwoningen =>
+      'Viviendas para estudiantes';
+
+  @override
+  String get sceneCityPlannerDataWinkel => 'Tienda';
+
+  @override
+  String get sceneCityPlannerDataRestaurant => 'Restaurante';
+
+  @override
+  String get sceneCityPlannerDataKantoor => 'Oficina';
+
+  @override
+  String get sceneCityPlannerDataIndustrie => 'Industria';
+
+  @override
+  String get sceneCityPlannerDataOpslag => 'Almacenamiento';
+
+  @override
+  String get sceneCityPlannerDataPubliekeFunctie => 'Servicios públicos';
+
+  @override
+  String get sceneCityPlannerDataHuis => 'Casa';
+
+  @override
+  String get sceneCityPlannerDataAppartement => 'Apartamento';
+
+  @override
+  String get sceneCityPlannerDataFlat => 'Bloque de apartamentos';
+
+  @override
+  String get sceneCityPlannerDataWoontoren => 'Torre residencial';
+
+  @override
+  String get sceneCityPlannerDataLuxeWoning => 'Vivienda de lujo';
+
+  @override
+  String get sceneCityPlannerDataStudentenwoning => 'Residencia de estudiantes';
+
+  @override
+  String get sceneCityPlannerDataSupermarkt => 'Supermercado';
+
+  @override
+  String get sceneCityPlannerDataWinkelcentrum => 'Centro comercial';
+
+  @override
+  String get sceneCityPlannerDataFabriek => 'Fábrica';
+
+  @override
+  String get sceneCityPlannerDataMagazijn => 'Almacén';
+
+  @override
+  String get sceneCityPlannerDataTechnologiebedrijf => 'Empresa tecnológica';
+
+  @override
+  String get sceneCityPlannerDataAkker => 'Campo de cultivo';
+
+  @override
+  String get sceneCityPlannerDataBoerderij => 'Granja';
+
+  @override
+  String get sceneCityPlannerDataKas => 'Invernadero';
+
+  @override
+  String get sceneCityPlannerDataVerticalFarm => 'Granja vertical';
+
+  @override
+  String get sceneCityPlannerDataVoedselfabriek => 'Fábrica de alimentos';
+
+  @override
+  String get sceneCityPlannerDataBasisschool => 'Escuela primaria';
+
+  @override
+  String get sceneCityPlannerDataMiddelbareSchool => 'Escuela secundaria';
+
+  @override
+  String get sceneCityPlannerDataUniversiteit => 'Universidad';
+
+  @override
+  String get sceneCityPlannerDataHuisartsenpost => 'Centro de salud';
+
+  @override
+  String get sceneCityPlannerDataZiekenhuis => 'Hospital';
+
+  @override
+  String get sceneCityPlannerDataPolitiebureau => 'Comisaría';
+
+  @override
+  String get sceneCityPlannerDataBrandweerkazerne => 'Parque de bomberos';
+
+  @override
+  String get sceneCityPlannerDataGemeentehuis => 'Ayuntamiento';
+
+  @override
+  String get sceneCityPlannerDataPark => 'Parque';
+
+  @override
+  String get sceneCityPlannerDataKolencentrale => 'Central de carbón';
+
+  @override
+  String get sceneCityPlannerDataGascentrale => 'Central de gas';
+
+  @override
+  String get sceneCityPlannerDataWindmolen => 'Aerogenerador';
+
+  @override
+  String get sceneCityPlannerDataZonnepark => 'Parque solar';
+
+  @override
+  String get sceneCityPlannerDataWaterkrachtcentrale =>
+      'Central hidroeléctrica';
+
+  @override
+  String get sceneCityPlannerDataKerncentrale => 'Central nuclear';
+
+  @override
+  String get sceneCityPlannerDataFusiereactor => 'Reactor de fusión';
+
+  @override
+  String get sceneCityPlannerDataBatterijopslag => 'Almacenamiento de baterías';
+
+  @override
+  String get sceneCityPlannerDataWaterpomp => 'Bomba de agua';
+
+  @override
+  String get sceneCityPlannerDataWaterzuivering =>
+      'Planta de tratamiento de agua';
+
+  @override
+  String get sceneCityPlannerDataRioolwaterzuivering =>
+      'Depuradora de aguas residuales';
+
+  @override
+  String get sceneCityPlannerDataVuilstortplaats => 'Vertedero';
+
+  @override
+  String get sceneCityPlannerDataRecyclingcentrum => 'Centro de reciclaje';
+
+  @override
+  String get sceneCityPlannerDataAfvalenergiecentrale =>
+      'Central de valorización energética';
+
+  @override
+  String get sceneCityPlannerDataParkeerterrein => 'Aparcamiento';
+
+  @override
+  String get sceneCityPlannerDataParkeergarage =>
+      'Aparcamiento de varias plantas';
+
+  @override
+  String get sceneCityPlannerDataBusdepot => 'Depósito de autobuses';
+
+  @override
+  String get sceneCityPlannerDataTramremise => 'Depósito de tranvías';
+
+  @override
+  String get sceneCityPlannerDataMetrodepot => 'Depósito de metro';
+
+  @override
+  String get sceneCityPlannerDataTreinstation => 'Estación de tren';
+
+  @override
+  String get sceneCityPlannerDataLuchthaven => 'Aeropuerto';
+
+  @override
+  String get sceneCityPlannerDataHaven => 'Puerto';
+
+  @override
+  String get sceneCityPlannerDataBuslijn => 'Línea de autobús';
+
+  @override
+  String get sceneCityPlannerDataTramlijn => 'Línea de tranvía';
+
+  @override
+  String get sceneCityPlannerDataMetrolijn => 'Línea de metro';
+
+  @override
+  String get sceneCityPlannerDataTreinlijn => 'Línea de tren';
+
+  @override
+  String get sceneCityPlannerDataDorp => 'Pueblo';
+
+  @override
+  String get sceneCityPlannerDataGemeente => 'Municipio';
+
+  @override
+  String get sceneCityPlannerDataStad => 'Ciudad';
+
+  @override
+  String get sceneCityPlannerDataMetropool => 'Metrópolis';
+
+  @override
+  String get sceneCityPlannerDataToekomststad => 'Ciudad del futuro';
+
+  @override
+  String get sceneCityPlannerDataVerkeerslichten => 'Semáforos';
+
+  @override
+  String get sceneCityPlannerData15WegcapaciteitOpKruispunten =>
+      '+15% de capacidad vial en cruces.';
+
+  @override
+  String get sceneCityPlannerDataRotondes => 'Rotondas';
+
+  @override
+  String get sceneCityPlannerData10DoorstromingOpAlleWegen =>
+      '+10% de fluidez en todas las carreteras.';
+
+  @override
+  String get sceneCityPlannerDataTramnetwerk => 'Red de tranvías';
+
+  @override
+  String get sceneCityPlannerDataOntgrendeltTramsEnTramremises =>
+      'Desbloquea tranvías y sus depósitos.';
+
+  @override
+  String get sceneCityPlannerDataSnelwegen => 'Autopistas';
+
+  @override
+  String get sceneCityPlannerDataOntgrendeltSnelwegen =>
+      'Desbloquea autopistas.';
+
+  @override
+  String get sceneCityPlannerDataParkeergarages =>
+      'Aparcamientos de varias plantas';
+
+  @override
+  String get sceneCityPlannerDataOntgrendeltMeerlaagsParkeren =>
+      'Desbloquea aparcamientos de varias plantas.';
+
+  @override
+  String get sceneCityPlannerDataMetro => 'Metro';
+
+  @override
+  String get sceneCityPlannerDataOntgrendeltMetrolijnen =>
+      'Desbloquea líneas de metro.';
+
+  @override
+  String get sceneCityPlannerDataSpoorwegen => 'Ferrocarriles';
+
+  @override
+  String get sceneCityPlannerDataOntgrendeltTreinenEnStations =>
+      'Desbloquea trenes y estaciones.';
+
+  @override
+  String get sceneCityPlannerDataLuchtvaart => 'Aviación';
+
+  @override
+  String get sceneCityPlannerDataOntgrendeltDeLuchthavenToerisme =>
+      'Desbloquea el aeropuerto (turismo).';
+
+  @override
+  String get sceneCityPlannerDataHavenlogistiek => 'Logística portuaria';
+
+  @override
+  String get sceneCityPlannerDataOntgrendeltDeHavenMaterialenToerisme =>
+      'Desbloquea el puerto (materiales + turismo).';
+
+  @override
+  String get sceneCityPlannerDataAiVerkeersbeheer =>
+      'Gestión del tráfico con IA';
+
+  @override
+  String get sceneCityPlannerData30Wegcapaciteit20Files =>
+      '+30% de capacidad vial, −20% de atascos.';
+
+  @override
+  String get sceneCityPlannerDataAutonomeVoertuigen => 'Vehículos autónomos';
+
+  @override
+  String get sceneCityPlannerData25ParkeerbehoefteSnellereReistijden =>
+      '−25% de demanda de aparcamiento, viajes más rápidos.';
+
+  @override
+  String get sceneCityPlannerDataModernBeton => 'Hormigón moderno';
+
+  @override
+  String get sceneCityPlannerData10Bouwkosten =>
+      '−10% de costes de construcción.';
+
+  @override
+  String get sceneCityPlannerDataPrefabBouw => 'Construcción prefabricada';
+
+  @override
+  String get sceneCityPlannerData15Bouwkosten =>
+      '−15% de costes de construcción.';
+
+  @override
+  String get sceneCityPlannerDataWolkenkrabbers => 'Rascacielos';
+
+  @override
+  String get sceneCityPlannerDataOntgrendeltWoontorensTot40Verdiepingen =>
+      'Desbloquea torres residenciales de hasta 40 plantas.';
+
+  @override
+  String get sceneCityPlannerDataSlimmeGebouwen => 'Edificios inteligentes';
+
+  @override
+  String get sceneCityPlannerData20EnergieEnWaterverbruikVanGebouwen =>
+      '−20% de consumo de energía y agua de los edificios.';
+
+  @override
+  String get sceneCityPlannerDataWindenergie => 'Energía eólica';
+
+  @override
+  String get sceneCityPlannerDataOntgrendeltWindmolens =>
+      'Desbloquea aerogeneradores.';
+
+  @override
+  String get sceneCityPlannerDataZonneEnergie => 'Energía solar';
+
+  @override
+  String get sceneCityPlannerDataOntgrendeltZonneparken =>
+      'Desbloquea parques solares.';
+
+  @override
+  String get sceneCityPlannerDataGascentrales => 'Centrales de gas';
+
+  @override
+  String get sceneCityPlannerDataOntgrendeltGascentralesSchonerDanKolen =>
+      'Desbloquea centrales de gas (más limpias que el carbón).';
+
+  @override
+  String get sceneCityPlannerDataWaterkracht => 'Energía hidroeléctrica';
+
+  @override
+  String get sceneCityPlannerDataOntgrendeltWaterkrachtcentralesAanWater =>
+      'Desbloquea centrales hidroeléctricas (junto al agua).';
+
+  @override
+  String get sceneCityPlannerDataEnergieopslag => 'Almacenamiento de energía';
+
+  @override
+  String
+  get sceneCityPlannerDataOntgrendeltBatterijenDemptSchommelingenVanWindZon =>
+      'Desbloquea baterías: reduce las fluctuaciones eólicas y solares.';
+
+  @override
+  String get sceneCityPlannerDataKernenergie => 'Energía nuclear';
+
+  @override
+  String get sceneCityPlannerDataOntgrendeltKerncentrales =>
+      'Desbloquea centrales nucleares.';
+
+  @override
+  String get sceneCityPlannerDataFusieEnergie => 'Energía de fusión';
+
+  @override
+  String get sceneCityPlannerDataOntgrendeltDeFusiereactor =>
+      'Desbloquea el reactor de fusión.';
+
+  @override
+  String get sceneCityPlannerDataOntgrendeltGroteDrinkwaterzuivering =>
+      'Desbloquea grandes plantas de tratamiento de agua potable.';
+
+  @override
+  String get sceneCityPlannerDataModernRiool => 'Alcantarillado moderno';
+
+  @override
+  String
+  get sceneCityPlannerDataOntgrendeltRioolwaterzuiveringMinderVervuiling =>
+      'Desbloquea depuradoras de aguas residuales (menos contaminación).';
+
+  @override
+  String get sceneCityPlannerDataRecycling => 'Reciclaje';
+
+  @override
+  String get sceneCityPlannerDataOntgrendeltHetRecyclingcentrum =>
+      'Desbloquea el centro de reciclaje.';
+
+  @override
+  String get sceneCityPlannerDataAfvalenergie => 'Energía de residuos';
+
+  @override
+  String get sceneCityPlannerDataOntgrendeltDeAfvalenergiecentrale =>
+      'Desbloquea la central de valorización energética.';
+
+  @override
+  String get sceneCityPlannerDataGroeneDaken => 'Tejados verdes';
+
+  @override
+  String get sceneCityPlannerData15VervuilingInWoongebieden =>
+      '−15% de contaminación en zonas residenciales.';
+
+  @override
+  String get sceneCityPlannerDataNatuurbeheer => 'Gestión de la naturaleza';
+
+  @override
+  String get sceneCityPlannerDataParkenEnBosWerken50Sterker =>
+      'Los parques y bosques son un 50% más eficaces.';
+
+  @override
+  String get sceneCityPlannerDataVerticalFarming => 'Agricultura vertical';
+
+  @override
+  String get sceneCityPlannerDataOntgrendeltVerticalFarmsInDeStad =>
+      'Desbloquea granjas verticales en la ciudad.';
+
+  @override
+  String get sceneCityPlannerDataBeterOnderwijs => 'Mejor educación';
+
+  @override
+  String get sceneCityPlannerData25SchoolcapaciteitEnKwaliteit =>
+      '+25% de capacidad y calidad escolar.';
+
+  @override
+  String get sceneCityPlannerDataModerneZorg => 'Sanidad moderna';
+
+  @override
+  String get sceneCityPlannerData25ZorgcapaciteitGezondereInwoners =>
+      '+25% de capacidad sanitaria, residentes más sanos.';
+
+  @override
+  String get sceneCityPlannerDataSocialeWoningbouw => 'Vivienda social';
+
+  @override
+  String get sceneCityPlannerDataGoedkoperWonenTevredenheidLageInkomens =>
+      'Viviendas más baratas: mayor satisfacción de rentas bajas.';
+
+  @override
+  String get sceneCityPlannerDataSubsidieZonnepanelen =>
+      'Subvención de paneles solares';
+
+  @override
+  String get sceneCityPlannerDataGebouwenWekkenZelfWatStroomOp8Netvraag =>
+      'Los edificios generan algo de electricidad (−8% de demanda de red).';
+
+  @override
+  String get sceneCityPlannerDataBelastingOpVervuiling =>
+      'Impuesto a la contaminación';
+
+  @override
+  String
+  get sceneCityPlannerDataExtraInkomsten10Industrieproductie15Vervuiling =>
+      'Más ingresos, −10% de producción industrial, −15% de contaminación.';
+
+  @override
+  String get sceneCityPlannerDataKernenergieVerbieden =>
+      'Prohibir la energía nuclear';
+
+  @override
+  String
+  get sceneCityPlannerDataKerncentralesWordenUitgeschakeldSommigeInwonersBlijAnderenNiet =>
+      'Las centrales nucleares se desactivan. Algunos residentes lo aprueban y otros no.';
+
+  @override
+  String get sceneCityPlannerDataLokaleLandbouwStimuleren =>
+      'Apoyar la agricultura local';
+
+  @override
+  String get sceneCityPlannerData25OpbrengstVanAkkersKassenEnBoerderijen =>
+      '+25% de rendimiento de campos, invernaderos y granjas.';
+
+  @override
+  String get sceneCityPlannerDataGoedkopeVoedselimport =>
+      'Importaciones baratas de alimentos';
+
+  @override
+  String
+  get sceneCityPlannerDataVoedseltekortenWordenGoedkoperOpgevangen40Importkosten =>
+      'Cubrir la escasez de alimentos cuesta menos (−40% de costes de importación).';
+
+  @override
+  String get sceneCityPlannerDataBenzinebelasting => 'Impuesto al combustible';
+
+  @override
+  String get sceneCityPlannerDataInkomsten10AutoverkeerKleineTevredenheid =>
+      'Ingresos, −10% de tráfico de coches, leve pérdida de satisfacción.';
+
+  @override
+  String get sceneCityPlannerDataElektrischRijdenStimuleren =>
+      'Fomentar vehículos eléctricos';
+
+  @override
+  String get sceneCityPlannerData30VerkeersvervuilingEnergievraag =>
+      '−30% de contaminación del tráfico, mayor demanda de energía.';
+
+  @override
+  String get sceneCityPlannerDataOvSubsidie =>
+      'Subvención al transporte público';
+
+  @override
+  String get sceneCityPlannerDataGratisErOV40OVGebruikMinderFiles =>
+      'Transporte público gratis o más barato: +40% de uso, menos atascos.';
+
+  @override
+  String get sceneCityPlannerDataGroeneGebouwenVerplicht =>
+      'Exigir edificios sostenibles';
+
+  @override
+  String get sceneCityPlannerData15Bouwkosten20EnergieverbruikNieuweGebouwen =>
+      '+15% de costes de construcción, −20% de consumo energético en edificios nuevos.';
+
+  @override
+  String get sceneCityPlannerDataGoedkopeWoningbouw => 'Vivienda asequible';
+
+  @override
+  String
+  get sceneCityPlannerDataTevredenheidEnSnellereMigratieBijWoningtekort =>
+      'Mayor satisfacción y migración más rápida durante la escasez de viviendas.';
+
+  @override
+  String get sceneCityPlannerDataKaartweergaveNormaal =>
+      'Vista del mapa: normal';
+
+  @override
+  String get sceneCityPlannerDataHeatmapVerkeersdrukte =>
+      'Mapa de calor: tráfico';
+
+  @override
+  String get sceneCityPlannerDataHeatmapGeluid => 'Mapa de calor: ruido';
+
+  @override
+  String get sceneCityPlannerDataHeatmapLuchtkwaliteit =>
+      'Mapa de calor: calidad del aire';
+
+  @override
+  String get sceneCityPlannerDataHeatmapGeluk => 'Mapa de calor: felicidad';
+
+  @override
+  String get sceneCityPlannerDataHeatmapGrondwaarde =>
+      'Mapa de calor: valor del suelo';
+
+  @override
+  String get sceneCityPlannerDataHeatmapOVBereikbaarheid =>
+      'Mapa de calor: acceso al transporte público';
+
+  @override
+  String get sceneCityPlannerDataHeatmapOnderwijs => 'Mapa de calor: educación';
+
+  @override
+  String get sceneCityPlannerDataHeatmapGezondheid => 'Mapa de calor: salud';
+
+  @override
+  String get sceneCityPlannerDataHeatmapVeiligheid =>
+      'Mapa de calor: seguridad';
+
+  @override
+  String get sceneCityPlannerDataHeatmapGroen => 'Mapa de calor: zonas verdes';
+
+  @override
+  String get sceneCityPlannerDataHeatmapEnergienet =>
+      'Mapa de calor: red eléctrica';
+
+  @override
+  String get sceneCityPlannerDataHeatmapWaternet =>
+      'Mapa de calor: red de agua';
+
+  @override
+  String get sceneCityPlannerDataEgaliserenGras => 'Nivelar terreno (→ hierba)';
+
+  @override
+  String get sceneCityPlannerDataMaaktBosHeuvelZandBouwrijp =>
+      'Prepara bosques, colinas y arena para construir.';
+
+  @override
+  String get sceneCityPlannerDataWaterGraven => 'Excavar agua';
+
+  @override
+  String get sceneCityPlannerDataGraaftEenMeerOfKanaal =>
+      'Excava un lago o canal.';
+
+  @override
+  String get sceneCityPlannerDataBosPlanten => 'Plantar bosque';
+
+  @override
+  String get sceneCityPlannerDataPlantBosMinderVervuilingMooierWonen =>
+      'Planta bosques: menos contaminación y viviendas más agradables.';
+
+  @override
+  String get sceneCityPlannerDataVruchtbareGrondVoorAkkers =>
+      'Tierra fértil para cultivos.';
+
+  @override
+  String get sceneSpaceColonyDataLandingModule => 'Module d’atterrissage';
+
+  @override
+  String
+  get sceneSpaceColonyDataYourStartingHomeGeneratesATrickleOfPowerAndSheltersColonists =>
+      'Votre premier abri. Produit un peu d’énergie et héberge les colons.';
+
+  @override
+  String get sceneSpaceColonyDataSolarPanel => 'Panneau solaire';
+
+  @override
+  String get sceneSpaceColonyData6PowerDuringTheDay =>
+      '+6 d’énergie pendant la journée.';
+
+  @override
+  String get sceneSpaceColonyDataWindTurbine => 'Éolienne';
+
+  @override
+  String get sceneSpaceColonyData4PowerDayAndNightBoostedDuringDustStorms =>
+      '+4 d’énergie, jour et nuit. Production accrue pendant les tempêtes de poussière.';
+
+  @override
+  String get sceneSpaceColonyDataBattery => 'Batterie';
+
+  @override
+  String get sceneSpaceColonyDataStores120PowerForTheNight =>
+      'Stocke 120 unités d’énergie pour la nuit.';
+
+  @override
+  String get sceneSpaceColonyDataGeothermalPlant => 'Centrale géothermique';
+
+  @override
+  String get sceneSpaceColonyData18PowerMustBeBuiltOnALavaZone =>
+      '+18 d’énergie. Doit être construite sur une zone de lave.';
+
+  @override
+  String get sceneSpaceColonyDataNuclearReactor => 'Réacteur nucléaire';
+
+  @override
+  String get sceneSpaceColonyData45PowerDayAndNight =>
+      '+45 d’énergie, jour et nuit.';
+
+  @override
+  String get sceneSpaceColonyDataOxygenGenerator => 'Générateur d’oxygène';
+
+  @override
+  String get sceneSpaceColonyDataElectrolysesWater6OHUsesPowerAndALittleWater =>
+      'Électrolyse l’eau : +6 O₂/h, consomme de l’énergie et un peu d’eau.';
+
+  @override
+  String get sceneSpaceColonyDataWaterExtractor => 'Extracteur d’eau';
+
+  @override
+  String get sceneSpaceColonyData5WaterHMustBeBuiltOnAnIceField =>
+      '+5 d’eau/h. Doit être construit sur un champ de glace.';
+
+  @override
+  String get sceneSpaceColonyDataWaterRecycler => 'Recycleur d’eau';
+
+  @override
+  String get sceneSpaceColonyData25WaterHAnywhereReclaimedFromWaste =>
+      '+2,5 d’eau/h récupérée à partir des déchets, où que ce soit.';
+
+  @override
+  String get sceneSpaceColonyDataGreenhouse => 'Serre';
+
+  @override
+  String
+  get sceneSpaceColonyData3FoodAnd1OPerHourUsesWaterFarmingSkillBoostsYield =>
+      '+3 nourriture et +1 O₂ par heure. Consomme de l’eau. La compétence agricole augmente le rendement.';
+
+  @override
+  String get sceneSpaceColonyDataHydroponicFarm => 'Ferme hydroponique';
+
+  @override
+  String get sceneSpaceColonyData7FoodHHighDensityFarming =>
+      '+7 de nourriture/h grâce à une culture intensive.';
+
+  @override
+  String get sceneSpaceColonyDataMiningRig => 'Installation minière';
+
+  @override
+  String
+  get sceneSpaceColonyData25MetalHMustBeOnAMetalDepositMiningSkillBoostsYield =>
+      '+2,5 métal/h. Doit être placée sur un gisement métallique. La compétence minière augmente le rendement.';
+
+  @override
+  String get sceneSpaceColonyDataCrystalExtractor => 'Extracteur de cristaux';
+
+  @override
+  String get sceneSpaceColonyData08AlienCrystalHMustBeOnACrystalDeposit =>
+      '+0,8 cristal extraterrestre/h. Doit être placé sur un gisement de cristaux.';
+
+  @override
+  String get sceneSpaceColonyDataGlassworks => 'Verrerie';
+
+  @override
+  String get sceneSpaceColonyDataSmeltsSand2GlassH =>
+      'Fait fondre du sable : +2 verre/h.';
+
+  @override
+  String get sceneSpaceColonyDataElectronicsFab => 'Usine électronique';
+
+  @override
+  String get sceneSpaceColonyData15ElectronicsHConsumes1MetalH =>
+      '+1,5 composants électroniques/h, consomme 1 métal/h.';
+
+  @override
+  String get sceneSpaceColonyDataLivingQuarters => 'Quartiers d’habitation';
+
+  @override
+  String get sceneSpaceColonyDataHouses3ColonistsAndLetsThemSleepComfortably =>
+      'Accueille 3 colons et leur offre un endroit confortable où dormir.';
+
+  @override
+  String get sceneSpaceColonyDataPark => 'Parc';
+
+  @override
+  String
+  get sceneSpaceColonyDataAGreenOasisAmongTheDustSlowlyBoostsColonistHappinessNoResearchRequired =>
+      'Une oasis de verdure dans la poussière. Améliore lentement le bonheur des colons. Aucune recherche requise.';
+
+  @override
+  String get sceneSpaceColonyDataLaboratory => 'Laboratoire';
+
+  @override
+  String get sceneSpaceColonyData15ScienceHScienceSkillBoostsOutput =>
+      '+1,5 science/h. La compétence scientifique augmente la production.';
+
+  @override
+  String get sceneSpaceColonyDataMedicalBay => 'Infirmerie';
+
+  @override
+  String get sceneSpaceColonyDataSlowlyHealsSickAndInjuredColonists =>
+      'Soigne progressivement les colons malades et blessés.';
+
+  @override
+  String get sceneSpaceColonyDataStorageDepot => 'Dépôt de stockage';
+
+  @override
+  String get sceneSpaceColonyData150CapacityForAllMaterials =>
+      '+150 de capacité pour toutes les ressources.';
+
+  @override
+  String get sceneSpaceColonyDataDroneBay => 'Hangar à drones';
+
+  @override
+  String get sceneSpaceColonyDataAutomation25OutputFromAllProducersStacks =>
+      'Automatisation : +25 % de production pour tous les producteurs (cumulable).';
+
+  @override
+  String get sceneSpaceColonyDataTradeBeacon => 'Balise commerciale';
+
+  @override
+  String
+  get sceneSpaceColonyDataEvery24hSells5CrystalToEarthFor20Metal10GlassAnd6Electronics =>
+      'Toutes les 24 h, vend 5 cristaux à la Terre contre 20 métaux, 10 verres et 6 composants électroniques.';
+
+  @override
+  String get sceneSpaceColonyDataVehicleGarage => 'Garage à véhicules';
+
+  @override
+  String
+  get sceneSpaceColonyDataUnlocksRoverDispatchSendARoverToExploreAnAncientRuinsTileForAOneTimeReward =>
+      'Débloque les sorties de rover : envoyez-en un explorer une case de ruines antiques pour une récompense unique.';
+
+  @override
+  String get sceneSpaceColonyDataObservatory => 'Observatoire';
+
+  @override
+  String
+  get sceneSpaceColonyData1ScienceHAndGivesEarlyWarningOfIncomingMeteorsHalvingTheDamageTheyDeal =>
+      '+1 science/h et avertit de l’arrivée des météores, réduisant de moitié les dégâts qu’ils infligent.';
+
+  @override
+  String get sceneSpaceColonyDataDefenseTurret => 'Tourelle de défense';
+
+  @override
+  String
+  get sceneSpaceColonyDataAutomaticallyShootsDownIncomingMeteorsBeforeTheyHit75InterceptChance =>
+      'Abat automatiquement les météores avant l’impact — 75 % de chances d’interception.';
+
+  @override
+  String get sceneSpaceColonyDataWindTurbines => 'Éoliennes';
+
+  @override
+  String get sceneSpaceColonyDataEnergy => 'Énergie';
+
+  @override
+  String get sceneSpaceColonyDataUnlocksWindPowerWorksAtNight =>
+      'Débloque l’énergie éolienne, qui fonctionne aussi la nuit.';
+
+  @override
+  String get sceneSpaceColonyDataGeothermalPower => 'Énergie géothermique';
+
+  @override
+  String get sceneSpaceColonyDataUnlocksGeothermalPlantsOnLavaZones =>
+      'Débloque les centrales géothermiques sur les zones de lave.';
+
+  @override
+  String get sceneSpaceColonyDataNuclearPower => 'Énergie nucléaire';
+
+  @override
+  String get sceneSpaceColonyDataUnlocksTheNuclearReactor =>
+      'Débloque le réacteur nucléaire.';
+
+  @override
+  String get sceneSpaceColonyDataHydroponics => 'Hydroponie';
+
+  @override
+  String get sceneSpaceColonyDataBiology => 'Biologie';
+
+  @override
+  String get sceneSpaceColonyDataUnlocksHighYieldHydroponicFarms =>
+      'Débloque les fermes hydroponiques à haut rendement.';
+
+  @override
+  String get sceneSpaceColonyDataWaterRecycling => 'Recyclage de l’eau';
+
+  @override
+  String get sceneSpaceColonyDataUnlocksWaterRecyclersNoIceNeeded =>
+      'Débloque les recycleurs d’eau (sans glace).';
+
+  @override
+  String get sceneSpaceColonyDataMedicine => 'Médecine';
+
+  @override
+  String get sceneSpaceColonyDataUnlocksTheMedicalBay =>
+      'Débloque l’infirmerie.';
+
+  @override
+  String get sceneSpaceColonyDataCrystalExtraction => 'Extraction de cristaux';
+
+  @override
+  String get sceneSpaceColonyDataEngineering => 'Ingénierie';
+
+  @override
+  String get sceneSpaceColonyDataUnlocksCrystalExtractors =>
+      'Débloque les extracteurs de cristaux.';
+
+  @override
+  String get sceneSpaceColonyDataImprovedBatteries => 'Batteries améliorées';
+
+  @override
+  String get sceneSpaceColonyDataBatteriesStore60Power =>
+      'Les batteries stockent +60 unités d’énergie.';
+
+  @override
+  String get sceneSpaceColonyDataRobotics => 'Robotique';
+
+  @override
+  String get sceneSpaceColonyDataUnlocksDroneBays25Production =>
+      'Débloque les hangars à drones (+25 % de production).';
+
+  @override
+  String get sceneSpaceColonyDataOrbitalTrade => 'Commerce orbital';
+
+  @override
+  String get sceneSpaceColonyDataSpace => 'Espace';
+
+  @override
+  String get sceneSpaceColonyDataUnlocksTheTradeBeacon =>
+      'Débloque la balise commerciale.';
+
+  @override
+  String get sceneSpaceColonyDataExplorationRovers => 'Rovers d’exploration';
+
+  @override
+  String
+  get sceneSpaceColonyDataUnlocksTheVehicleGarageAndObservatoryLettingYouExploreAncientRuins =>
+      'Débloque le garage à véhicules et l’observatoire, qui permettent d’explorer les ruines antiques.';
+
+  @override
+  String get sceneSpaceColonyDataAdvancedMining =>
+      'Exploitation minière avancée';
+
+  @override
+  String get sceneSpaceColonyData50OutputFromMiningRigsAndCrystalExtractors =>
+      '+50 % de rendement pour les installations minières et les extracteurs de cristaux.';
+
+  @override
+  String get sceneSpaceColonyDataDefenseSystems => 'Systèmes de défense';
+
+  @override
+  String
+  get sceneSpaceColonyDataUnlocksTheDefenseTurretWhichShootsDownIncomingMeteors =>
+      'Débloque la tourelle de défense, qui abat les météores.';
+
+  @override
+  String get sceneSpaceColonyDataTerraforming => 'Terraformage';
+
+  @override
+  String
+  get sceneSpaceColonyDataCapstoneTechYourColonyIsNowAdvancedEnoughToBeginTerraformingThePlanet =>
+      'Technologie finale : votre colonie est désormais assez avancée pour commencer la terraformation de la planète.';
+
+  @override
+  String sceneCityPlannerDrawBuildingShape(Object building, Object cost) {
+    return 'Arrastra celdas para dibujar la forma de tu $building. Coste: $cost por celda y planta.';
+  }
+
+  @override
+  String sceneCityPlannerAvailableFromPhase(Object name, Object phase) {
+    return 'Disponible desde la fase $phase ($name).';
+  }
+
+  @override
+  String sceneSubwayVehicleBuyTitle(Object cost, Object vehicle) {
+    return 'Comprar un $vehicle ($cost)';
+  }
+
+  @override
+  String sceneSubwayVehicleSellTitle(Object vehicle) {
+    return 'Vender un $vehicle';
+  }
+
+  @override
+  String get sceneCityPlannerMonthJanuary => 'ene';
+
+  @override
+  String get sceneCityPlannerMonthFebruary => 'feb';
+
+  @override
+  String get sceneCityPlannerMonthMarch => 'mar';
+
+  @override
+  String get sceneCityPlannerMonthApril => 'abr';
+
+  @override
+  String get sceneCityPlannerMonthMay => 'may';
+
+  @override
+  String get sceneCityPlannerMonthJune => 'jun';
+
+  @override
+  String get sceneCityPlannerMonthJuly => 'jul';
+
+  @override
+  String get sceneCityPlannerMonthAugust => 'ago';
+
+  @override
+  String get sceneCityPlannerMonthSeptember => 'sep';
+
+  @override
+  String get sceneCityPlannerMonthOctober => 'oct';
+
+  @override
+  String get sceneCityPlannerMonthNovember => 'nov';
+
+  @override
+  String get sceneCityPlannerMonthDecember => 'dic';
+
+  @override
+  String sceneCityPlannerSaveFailed(Object error) {
+    return 'No se pudo guardar: $error';
+  }
+
+  @override
+  String get schoolFormulaDefaultCategory => 'Personalizado';
+
+  @override
+  String get marketplaceLoadFailedDetail =>
+      'Comprueba tu conexión e inténtalo de nuevo.';
+
+  @override
+  String fileTreeErrorDetail(Object detail) {
+    return 'Error al analizar: $detail';
+  }
+
+  @override
+  String get sceneSpaceColonyStatusBroken =>
+      'AVERIADO — haz clic para reparar (2🔩)';
+
+  @override
+  String get sceneSpaceColonyStatusDepleted =>
+      'AGOTADO — el yacimiento se secó; demuele para recuperar la casilla';
+
+  @override
+  String get sceneSpaceColonyStatusOnline => 'en línea';
+
+  @override
+  String get sceneSpaceColonyStatusNoPowerInput => 'sin energía/entrada';
+
+  @override
+  String get sceneSpaceColonyColonistNeedsTitle =>
+      'hambre / O₂ / sueño / felicidad / salud';
+
+  @override
+  String sceneSpaceColonyClockFormat(Object sol, Object time) {
+    return 'Sol $sol · $time';
+  }
+
+  @override
+  String sceneSpaceColonyLogTimestamp(Object message, Object sol, Object time) {
+    return '[Sol $sol $time] $message';
+  }
+
+  @override
+  String sceneSpaceColonyCostLabel(Object resources) {
+    return 'Coste: $resources';
+  }
+
+  @override
+  String sceneSpaceColonyRequiresResearch(Object technology) {
+    return '(requiere investigación: $technology)';
+  }
+
+  @override
+  String get sceneSpaceColonyMeterHunger => 'Hambre';
+
+  @override
+  String get sceneSpaceColonyMeterOxygen => 'Oxígeno';
+
+  @override
+  String get sceneSpaceColonyMeterSleep => 'Sueño';
+
+  @override
+  String get sceneSpaceColonyMeterHappiness => 'Felicidad';
+
+  @override
+  String get sceneSpaceColonyMeterHealth => 'Salud';
+
+  @override
+  String sceneSpaceColonyPowerLabel(Object power) {
+    return 'Energía $power';
+  }
+
+  @override
+  String sceneCityPlannerNewsResearchCompleted(Object technology) {
+    return '🔬 Investigación completada: $technology';
+  }
+
+  @override
+  String sceneCityPlannerNewsPhaseGrowth(Object name, Object phase) {
+    return '🏙 La ciudad ha crecido a la fase $phase: ¡$name! Nuevos edificios desbloqueados.';
+  }
+
+  @override
+  String get sceneCityPlannerNewsBankruptcy =>
+      '💸 ¡La ciudad está al borde de la quiebra! Reduce gastos o sube los impuestos.';
+
+  @override
+  String get sceneCityPlannerNewsPowerOutage =>
+      '⚡ ¡Corte de energía! La red está sobrecargada: parte de la ciudad se ha quedado sin electricidad.';
+
+  @override
+  String get sceneCityPlannerNewsDrought =>
+      '🌵 ¡Sequía! La demanda de agua se acerca a la oferta. Construye más bombas o plantas de tratamiento.';
+
+  @override
+  String get sceneCityPlannerNewsCloudyWeek =>
+      '🌥 Una semana nublada: la energía eólica y solar produce menos.';
+
+  @override
+  String get sceneCityPlannerNewsFoodShortage =>
+      '🌾 Se avecina escasez de alimentos: las importaciones serán más caras este mes.';
+
+  @override
+  String sceneCityPlannerNewsRegionalGrant(Object amount) {
+    return '🎉 Subvención regional recibida: € $amount.';
+  }
+
+  @override
+  String get sceneCityPlannerNewsEconomicDownturn =>
+      '📉 Recesión económica: los impuestos empresariales recaudan un 20 % menos este mes.';
+
+  @override
+  String sceneCityPlannerNewsBuildingFire(Object building) {
+    return '🔥 ¡Incendio en $building! Sin bomberos cerca, el edificio queda destruido.';
+  }
+
+  @override
+  String get sceneSpaceColonyEventMeteorWarningNote =>
+      '(el observatorio suavizó el impacto)';
+
+  @override
+  String get sceneSpaceColonyEventLandingSuccess =>
+      'Aterrizaje correcto. El sol 1 comienza en un mundo inexplorado.';
+
+  @override
+  String get sceneSpaceColonyEventSurvivalTip =>
+      'Mantén el oxígeno, la comida y la energía por encima de cero para sobrevivir.';
+
+  @override
+  String get sceneSpaceColonyEventMoraleLow =>
+      '😠 La moral está peligrosamente baja; la producción se está resintiendo.';
+
+  @override
+  String sceneSpaceColonyEventDepositDepleted(
+    Object building,
+    Object resource,
+  ) {
+    return 'El yacimiento de $resource bajo tu $building se agotó; ahora está inactivo. Reubícalo o demuélelo.';
+  }
+
+  @override
+  String sceneSpaceColonyEventDepositExhausted(Object resource) {
+    return '⛏️ ¡Se agotó un yacimiento de $resource!';
+  }
+
+  @override
+  String sceneSpaceColonyEventRecoveredMedical(Object colonist) {
+    return '$colonist se recuperó en la enfermería.';
+  }
+
+  @override
+  String sceneSpaceColonyEventRecovered(Object colonist) {
+    return '$colonist se recuperó.';
+  }
+
+  @override
+  String sceneSpaceColonyEventSkillImproved(
+    Object colonist,
+    Object level,
+    Object skill,
+  ) {
+    return '$colonist mejoró $skill al nivel $level.';
+  }
+
+  @override
+  String sceneSpaceColonyEventColonistDied(Object colonist) {
+    return '$colonist ha muerto.';
+  }
+
+  @override
+  String sceneSpaceColonyEventNewColonist(Object name) {
+    return '¡Ha llegado de la Tierra una nueva persona colonizadora, $name!';
+  }
+
+  @override
+  String get sceneSpaceColonyEventTradeBeacon =>
+      'Baliza comercial: se vendieron 5 cristales → +20 metal, +10 vidrio, +6 componentes electrónicos.';
+
+  @override
+  String get sceneSpaceColonyEventDustStormPassed =>
+      'La tormenta de polvo ha pasado.';
+
+  @override
+  String get sceneSpaceColonyEventSolarFlareOver =>
+      'Fin de la llamarada solar; generación de energía restablecida.';
+
+  @override
+  String get sceneSpaceColonyAlertMoraleLow =>
+      '😠 La moral está peligrosamente baja; la producción se está resintiendo.';
+
+  @override
+  String get sceneSpaceColonyAlertDustStorm =>
+      '🌪️ ¡Tormenta de polvo! La producción solar se reduce a la mitad.';
+
+  @override
+  String get sceneSpaceColonyEventDustStorm =>
+      'Se acerca una tormenta de polvo. Los paneles solares rinden menos y las turbinas eólicas más.';
+
+  @override
+  String get sceneSpaceColonyAlertSolarFlare =>
+      '☀️ ¡Llamarada solar! Generación −80 %.';
+
+  @override
+  String get sceneSpaceColonyEventSolarFlare =>
+      '¡Llamarada solar detectada! Toda la generación de energía queda temporalmente paralizada.';
+
+  @override
+  String sceneSpaceColonyAlertBuildingBreakdown(Object building) {
+    return '🔧 ¡$building se averió!';
+  }
+
+  @override
+  String sceneSpaceColonyEventBuildingFailure(Object building) {
+    return '$building sufrió una avería. Haz clic para repararlo (2 de metal).';
+  }
+
+  @override
+  String sceneSpaceColonyAlertColonistIll(Object colonist) {
+    return '🤒 $colonist ha enfermado.';
+  }
+
+  @override
+  String sceneSpaceColonyEventColonistIll(Object colonist) {
+    return '$colonist contrajo un microbio alienígena. Una enfermería ayudaría.';
+  }
+
+  @override
+  String sceneSpaceColonyEventMeteorIntercepted(Object building) {
+    return 'La torreta defensiva derribó un meteorito antes de que alcanzara $building.';
+  }
+
+  @override
+  String get sceneSpaceColonyAlertMeteorIntercepted =>
+      '🛡️ ¡Meteorito interceptado!';
+
+  @override
+  String sceneSpaceColonyEventMeteorDestroyed(Object building) {
+    return '¡Un meteorito destruyó $building!';
+  }
+
+  @override
+  String sceneSpaceColonyAlertMeteorDestroyed(Object building) {
+    return '☄️ ¡El impacto de un meteorito destruyó $building!';
+  }
+
+  @override
+  String sceneSpaceColonyEventMeteorDamage(
+    Object building,
+    Object observatoryNote,
+  ) {
+    return 'La lluvia de meteoritos dañó $building$observatoryNote';
+  }
+
+  @override
+  String get sceneSpaceColonyAlertMeteorShower => '☄️ ¡Lluvia de meteoritos!';
+
+  @override
+  String sceneSpaceColonyEventScavengedMetal(Object amount) {
+    return 'Los chatarreros encontraron $amount de metal en restos de meteoritos antiguos.';
+  }
+
+  @override
+  String get sceneSpaceColonyAlertCannotBuild => 'No puedes construir aquí.';
+
+  @override
+  String get sceneSpaceColonyAlertNotEnoughMaterials =>
+      'No hay materiales suficientes.';
+
+  @override
+  String sceneSpaceColonyEventBuildingBuilt(Object building) {
+    return 'Se construyó $building.';
+  }
+
+  @override
+  String sceneSpaceColonyEventRoverData(Object science) {
+    return 'El rover recuperó datos antiguos: +$science de ciencia.';
+  }
+
+  @override
+  String sceneSpaceColonyAlertRoverData(Object science) {
+    return '🛰️ ¡El rover regresó con +$science de ciencia!';
+  }
+
+  @override
+  String sceneSpaceColonyEventRoverCrystal(Object amount) {
+    return 'El rover recuperó $amount de cristal alienígena de las ruinas.';
+  }
+
+  @override
+  String sceneSpaceColonyAlertRoverCrystal(Object amount) {
+    return '🛰️ ¡El rover recuperó $amount de cristal alienígena!';
+  }
+
+  @override
+  String sceneSpaceColonyEventRoverMaterials(Object glass, Object metal) {
+    return 'El rover recuperó $metal de metal y $glass de vidrio.';
+  }
+
+  @override
+  String get sceneSpaceColonyAlertRoverMaterials =>
+      '🛰️ ¡El rover recuperó materiales!';
+
+  @override
+  String sceneSpaceColonyEventRoverTech(Object technology) {
+    return 'El rover descubrió conocimientos antiguos: ¡$technology desbloqueada gratis!';
+  }
+
+  @override
+  String sceneSpaceColonyAlertRoverTech(Object technology) {
+    return '🛰️ Conocimiento tecnológico antiguo: ¡$technology desbloqueada!';
+  }
+
+  @override
+  String get sceneSpaceColonyEventRoverScience =>
+      'El rover recuperó +30 de ciencia de las ruinas.';
+
+  @override
+  String get sceneSpaceColonyAlertRoverScience =>
+      '🛰️ ¡El rover regresó con +30 de ciencia!';
+
+  @override
+  String get sceneSpaceColonyAlertRoverNeedsPower =>
+      'No hay suficiente energía (se necesitan 15) para enviar el rover.';
+
+  @override
+  String get sceneSpaceColonyAlertRoverChooseRuins =>
+      'Elige una casilla de Ruinas Antiguas (violeta polvoriento) para el rover.';
+
+  @override
+  String sceneSpaceColonyEventBuildingDemolished(Object building) {
+    return 'Se demolió $building.';
+  }
+
+  @override
+  String sceneSpaceColonyEventBuildingRepaired(Object building) {
+    return 'Se reparó $building.';
+  }
+
+  @override
+  String get sceneSpaceColonyAlertRepairNeedsMetal =>
+      'Se necesitan 2 de metal para reparar.';
+
+  @override
+  String get sceneSpaceColonyAlertSendRover =>
+      'Haz clic en una casilla de Ruinas Antiguas (violeta polvoriento) para enviar el rover.';
+
+  @override
+  String sceneSpaceColonyEventResearchComplete(Object technology) {
+    return 'Investigación completada: ¡$technology!';
+  }
+
+  @override
+  String get sceneSpaceColonyAlertTerraformUnlocked =>
+      '🌍 ¡Terraformación desbloqueada: el futuro de tu colonia está asegurado!';
+
+  @override
+  String get sceneSpaceColonyEventTerraformAchievement =>
+      'Logro: investigación de terraformación completada. Supervivencia a largo plazo asegurada.';
+
+  @override
+  String get sceneSpaceColonyEventGameSaved => 'Partida guardada.';
+
+  @override
+  String get sceneSpaceColonyEventGameLoaded => 'Partida cargada.';
+
+  @override
+  String get sceneSpaceColonyAlertNoSave =>
+      'No se encontró ninguna partida guardada.';
+
+  @override
+  String get sceneSubwayCouldNotReachCoopServer =>
+      'No se pudo contactar con el servidor cooperativo';
+
+  @override
+  String get sceneSubwayLostConnectionReconnecting =>
+      'Se perdió la conexión con la sala; reconectando…';
+
+  @override
+  String get sceneSubwayClockAuthorityRunning =>
+      'Ejecutando el reloj de esta sala';
+
+  @override
+  String sceneSubwayTravellingToPlace(Object place) {
+    return 'Viajando a $place…';
+  }
+
+  @override
+  String sceneSubwayJoinedRoom(Object code) {
+    return 'Te uniste a la sala $code';
+  }
+
+  @override
+  String sceneSubwayRoomCreatedStartBuilding(Object code) {
+    return 'Sala $code creada; empieza a construir';
+  }
+
+  @override
+  String get sceneSubwayLoadCityFirst => 'Carga una ciudad primero';
+
+  @override
+  String sceneSubwayRoomCreatedShareCode(Object code) {
+    return 'Sala $code creada; comparte el código o invita a un contacto';
+  }
+
+  @override
+  String sceneSubwayInviteChatMessage(Object code) {
+    return 'Únete a mi sala cooperativa de Subway Builder: abre Subway Builder, pulsa Co-op → Unirse e introduce el código $code.';
+  }
+
+  @override
+  String sceneSubwayFailedToSendInvite(Object error) {
+    return 'No se pudo enviar el mensaje de invitación: $error';
+  }
+
+  @override
+  String get sceneSubwayStillSyncing =>
+      'Aún se está sincronizando con el anfitrión…';
+
+  @override
+  String sceneSubwaySurveyingPlace(Object place) {
+    return 'Explorando $place… leyendo usos del suelo, agua y barrios de OpenStreetMap';
+  }
+
+  @override
+  String get sceneSubwayTracingStreets =>
+      'Trazando calles y vías… obteniendo datos ferroviarios reales';
+
+  @override
+  String get sceneSubwaySurveyingRailCorridor =>
+      'Explorando el corredor ferroviario…';
+
+  @override
+  String get sceneSubwayAlreadyOnDraft => 'Ya está en este borrador';
+
+  @override
+  String get sceneSubwayNativeBridgeTimedOut =>
+      'El puente nativo agotó el tiempo de espera';
+
+  @override
+  String get sceneSubwayNativeBridgeUnavailable =>
+      'El puente nativo no está disponible';
+
+  @override
+  String get schoolQuizSubjectRekenen => 'Matemáticas';
+
+  @override
+  String get schoolQuizSubjectTaalverzorging => 'Normativa lingüística';
+
+  @override
+  String get schoolQuizSubjectLezen => 'Comprensión lectora';
+
+  @override
+  String get schoolQuizSubjectEngels => 'Inglés';
+
+  @override
+  String get schoolQuizSubjectAardrijkskunde => 'Geografía';
+
+  @override
+  String get schoolQuizSubjectGeschiedenis => 'Historia';
+
+  @override
+  String get schoolQuizSubjectBiologie => 'Naturaleza y tecnología';
+
+  @override
+  String sceneSubwayUiClockDay(String day, String weekday) {
+    return 'Día $day · $weekday';
+  }
+
+  @override
+  String get sceneSubwayUiRushHour => 'hora punta';
+
+  @override
+  String get sceneSubwayUiNight => 'noche';
+
+  @override
+  String sceneSubwayUiSurfaceSlowdown(String factor) {
+    return '— transporte de superficie ralentizado ×$factor';
+  }
+
+  @override
+  String sceneSubwayUiAchievementSummary(String done, String total) {
+    return '$done / $total desbloqueados — datos reales de la red que has construido.';
+  }
+
+  @override
+  String sceneSubwayUiLoanOwed(String amount) {
+    return 'Deuda de $amount';
+  }
+
+  @override
+  String get sceneSubwayUiNoDebt => 'Sin deuda';
+
+  @override
+  String sceneSubwayUiFundingSubsidy(String amount) {
+    return 'Subvención operativa de $amount/día';
+  }
+
+  @override
+  String sceneSubwayUiLoanQuestion(String amount) {
+    return '¿Pedir un préstamo de $amount?';
+  }
+
+  @override
+  String get sceneSubwayUiLoanInterest =>
+      'El interés diario es del 0,06% del importe pendiente.';
+
+  @override
+  String sceneSubwayUiBoardings(String count) {
+    return 'Embarques $count/día';
+  }
+
+  @override
+  String get sceneSubwayUiSelectHint =>
+      'Haz clic en una parada o línea para inspeccionarla. Arrastra para desplazar, usa la rueda para ampliar y arrastra con el botón derecho para girar.';
+
+  @override
+  String sceneSubwayUiRailStationHint(String mode) {
+    return 'Solo las líneas $mode paran en estaciones reales, resaltadas en el mapa. Haz clic en una para alquilarla.';
+  }
+
+  @override
+  String get sceneSubwayUiMetroStationHint =>
+      'Haz clic en el mapa para excavar una estación de metro. Las zonas más densas cuestan más.';
+
+  @override
+  String sceneSubwayUiStreetStationHint(String mode) {
+    return 'Haz clic junto a una calle para colocar una parada de $mode; se ajustará a la vía.';
+  }
+
+  @override
+  String get sceneSubwayUiRailLineHint =>
+      'Haz clic en las estaciones reales en orden; la ruta sigue las vías existentes. Pulsa Intro para terminar o vuelve a hacer clic en la primera estación para cerrar el circuito.';
+
+  @override
+  String get sceneSubwayUiMetroLineHint =>
+      'Haz clic en las estaciones en orden para excavar túneles entre ellas. Pulsa Intro para terminar o vuelve a hacer clic en la primera estación para cerrar el circuito.';
+
+  @override
+  String get sceneSubwayUiStreetLineHint =>
+      'Haz clic en las paradas en orden; la ruta sigue las calles reales. Pulsa Intro para terminar o vuelve a hacer clic en la primera parada para cerrar el circuito.';
+
+  @override
+  String get sceneSubwayUiBulldozeHint =>
+      'Haz clic en una parada para demolerla (reembolso del 25 %). Haz clic en una línea para eliminarla entera.';
+
+  @override
+  String sceneSubwayUiExtendNextStop(String line) {
+    return 'Ampliando $line: haz clic en la siguiente parada. Pulsa Esc para detenerte.';
+  }
+
+  @override
+  String sceneSubwayUiExtendNewStop(String line) {
+    return 'Ampliando $line: haz clic en una parada de cualquiera de los extremos y después en la nueva parada.';
+  }
+
+  @override
+  String sceneSubwayUiDraftCost(String count, String distance, String cost) {
+    return '$count paradas · $distance · $cost: pulsa Intro para construir o Esc para cancelar.';
+  }
+
+  @override
+  String sceneSubwayUiDraftCostWater(
+    String count,
+    String distance,
+    String cost,
+  ) {
+    return '$count paradas · $distance · $cost (incluye túneles submarinos): pulsa Intro para construir o Esc para cancelar.';
+  }
+
+  @override
+  String get sceneSubwaySeasonSpring => 'Primavera';
+
+  @override
+  String get sceneSubwaySeasonSummer => 'Verano';
+
+  @override
+  String get sceneSubwaySeasonAutumn => 'Otoño';
+
+  @override
+  String get sceneSubwaySeasonWinter => 'Invierno';
+
+  @override
+  String get sceneSubwayWeatherClear => 'Despejado';
+
+  @override
+  String get sceneSubwayWeatherCloudy => 'Nublado';
+
+  @override
+  String get sceneSubwayWeatherRain => 'Lluvia';
+
+  @override
+  String get sceneSubwayWeatherStorm => 'Tormenta';
+
+  @override
+  String get sceneSubwayWeatherSnow => 'Nieve';
+
+  @override
+  String get sceneSubwayWeatherHeatwave => 'Ola de calor';
+
+  @override
+  String get sceneSubwayWeatherFog => 'Niebla';
+
+  @override
+  String get sceneSubwayDisruptionSignalFailure => 'Fallo de señalización';
+
+  @override
+  String get sceneSubwayDisruptionTrackFault => 'Fallo de vía';
+
+  @override
+  String get sceneSubwayDisruptionPowerOutage => 'Corte eléctrico';
+
+  @override
+  String get sceneSubwayDisruptionStaffShortage => 'Falta de personal';
+
+  @override
+  String get sceneSubwayDisruptionStalledVehicle => 'Vehículo detenido';
+
+  @override
+  String get sceneSubwayEventStadiumMatch => 'Partido en el estadio';
+
+  @override
+  String get sceneSubwayEventArenaConcert => 'Concierto en el pabellón';
+
+  @override
+  String get sceneSubwayEventStreetFestival => 'Festival callejero';
+
+  @override
+  String get sceneSubwayEventTradeConvention => 'Convención comercial';
+
+  @override
+  String get sceneSubwayEventNightMarket => 'Mercado nocturno';
+
+  @override
+  String get sceneSubwayEventMarathonFinish => 'Llegada del maratón';
+
+  @override
+  String get sceneSubwayEventFireworksShow =>
+      'Espectáculo de fuegos artificiales';
+
+  @override
+  String get sceneSubwayEventFootballDerby => 'Derbi de fútbol';
+
+  @override
+  String sceneSubwayWeatherNews(Object weather) {
+    return 'Tiempo: $weather';
+  }
+
+  @override
+  String sceneSubwayWeatherSlowedNews(Object weather) {
+    return 'Tiempo: $weather — el transporte en superficie va más lento';
+  }
+
+  @override
+  String sceneSubwayDisruptionNews(
+    Object disruption,
+    Object line,
+    Object hours,
+  ) {
+    return '⚠️ $disruption en $line: espera retrasos de ~$hours h';
+  }
+
+  @override
+  String sceneSubwayEventNews(Object event, Object station) {
+    return '🎪 $event cerca de $station esta noche: ¡se espera mucha afluencia!';
+  }
+
+  @override
+  String sceneSubwayEventDayReport(Object event, Object station) {
+    return '$event en $station';
+  }
+
+  @override
+  String get sceneSubwayUiRealStation => 'estación real';
+
+  @override
+  String get sceneSubwayUiNoLinesYet => 'todavía no hay líneas';
+
+  @override
+  String get sceneSubwayUiPlayTogether => 'Jugar juntos';
+
+  @override
+  String get sceneSubwayUiLeaveRoom => 'Salir de la sala';
+
+  @override
+  String get sceneSubwayUiYourRooms => 'Tus salas';
+
+  @override
+  String get sceneSubwayUiYourCities => 'Tus ciudades';
+
+  @override
+  String get sceneSubwayUiDeleteSave => 'eliminar partida guardada';
+
+  @override
+  String get sceneSubwayUiPlacePickerDescription =>
+      'Elige un lugar real de la Tierra y construye el transporte público que merece';
+
+  @override
+  String get sceneSubwayUiFeaturedCities => 'Ciudades destacadas';
+
+  @override
+  String get sceneSubwayUiBackToMap => 'Volver al mapa';
+
+  @override
+  String get sceneSubwayUiNoPlacesFound => 'No se encontraron lugares.';
+
+  @override
+  String sceneAirlineTycoonClockDay(Object day) {
+    return 'DÍA $day';
+  }
+
+  @override
+  String sceneAirlineTycoonMoveFacilityTitle(Object facility, Object rotation) {
+    return 'Mover $facility · $rotation°';
+  }
+
+  @override
+  String sceneAirlineTycoonPlaceFacilityTitle(
+    Object facility,
+    Object rotation,
+  ) {
+    return 'Colocar $facility · $rotation°';
+  }
+
+  @override
+  String sceneAirlineTycoonPlaceFacilityCostTitle(
+    Object facility,
+    Object cost,
+    Object rotation,
+  ) {
+    return 'Colocar $facility · $cost · $rotation°';
+  }
+
+  @override
+  String sceneAirlineTycoonConsecutiveDays(Object count) {
+    return '$count días seguidos';
+  }
+
+  @override
+  String get sceneAirlineTycoonPlacementInstruction =>
+      'Haz clic para colocar · Arrastra para mover · Arrastra con el botón derecho para girar';
+
+  @override
+  String sceneAirlineTycoonCashStatus(Object cash) {
+    return 'Efectivo $cash';
+  }
+
+  @override
+  String get sceneAirlineTycoonClickToConfirm => 'Haz clic para confirmar';
+
+  @override
+  String sceneAirlineTycoonSceneStartFailure(Object details) {
+    return 'No se pudo iniciar el aeropuerto 3D. $details Actualiza el controlador gráfico o Android System WebView y vuelve a abrir el aeropuerto.';
+  }
+
+  @override
+  String get sceneAirlineTycoonAirportMissingAsset =>
+      'Falta un recurso de escena incluido.';
+
+  @override
+  String get sceneAirlineTycoonAirportLabel => 'Aeropuerto';
+
+  @override
+  String get sceneAirlineTycoonZoneRubOut =>
+      'Arrastra sobre una zona para borrarla';
+
+  @override
+  String sceneAirlineTycoonZoneMarkType(Object zone) {
+    return 'Arrastra sobre el suelo de la terminal para marcarlo como $zone';
+  }
+
+  @override
+  String get sceneAirlineTycoonAirfieldLabel => 'Aeródromo';
+
+  @override
+  String get sceneAirlineTycoonDaytimeTitle => 'De día';
+
+  @override
+  String get sceneAirlineTycoonNightTitle =>
+      'Noche: las luces del aeropuerto están encendidas';
+
+  @override
+  String get sceneAirlineTycoonResumeTitle => 'Reanudar aeropuerto (Espacio)';
+
+  @override
+  String get sceneAirlineTycoonPauseTitle => 'Pausar aeropuerto (Espacio)';
+
+  @override
+  String get sceneAirlineTycoonResumeLabel => 'Reanudar aeropuerto';
+
+  @override
+  String get sceneAirlineTycoonPauseLabel => 'Pausar aeropuerto';
+
+  @override
+  String get sceneAirlineTycoonQualityHighTitle =>
+      'Calidad: alta (haz clic para priorizar el rendimiento)';
+
+  @override
+  String get sceneAirlineTycoonQualityPerformanceTitle =>
+      'Calidad: rendimiento (haz clic para cambiar a alta)';
+
+  @override
+  String get sceneAirlineTycoonReleaseToPlace => 'Suelta para colocar';
+
+  @override
+  String get sceneAirlineTycoonOpenPlanningLabel => 'Abrir planificación';
+
+  @override
+  String get sceneAirlineTycoonPanelBuild => 'Construcción';
+
+  @override
+  String get sceneAirlineTycoonPanelContracts => 'Contratos';
+
+  @override
+  String get sceneAirlineTycoonPanelPlanning => 'Planificación';
+
+  @override
+  String get sceneAirlineTycoonPanelFleet => 'Flota';
+
+  @override
+  String get sceneAirlineTycoonPanelRoutes => 'Rutas';
+
+  @override
+  String get sceneAirlineTycoonPanelSchedule => 'Horario';
+
+  @override
+  String get sceneAirlineTycoonPanelFinances => 'Finanzas';
+
+  @override
+  String sceneCityPlannerRidersPerDay(Object count) {
+    return '$count/día';
+  }
+
+  @override
+  String get sceneCityPlannerRidersLabel => 'Pasajeros';
+
+  @override
+  String get sceneCityPlannerActiveLabel => 'Activo';
+
+  @override
+  String get sceneCityPlannerPausedLabel => 'En pausa';
+
+  @override
+  String get sceneCityPlannerLowFrequency => 'Frecuencia baja';
+
+  @override
+  String get sceneCityPlannerNormalFrequency => 'Frecuencia normal';
+
+  @override
+  String get sceneCityPlannerHighFrequency => 'Frecuencia alta';
+
+  @override
+  String get sceneCityPlannerNoLines => 'Aún no hay líneas.';
+
+  @override
+  String sceneCityPlannerPhaseLabel(Object phase, Object name) {
+    return 'Fase $phase · $name';
+  }
+
+  @override
+  String get sceneAssetStudioSessionWorkspace =>
+      'Espacio de trabajo de la sesión';
+
+  @override
+  String get sceneAssetStudioDragToPan => 'Arrastra para desplazar';
+
+  @override
+  String get sceneAssetStudioPauseTurntable => 'Pausar plataforma giratoria';
+
+  @override
+  String get sceneAssetStudioFootprintTight => 'Dentro de la huella';
+
+  @override
+  String get sceneAssetStudioBoundsAllRotations =>
+      'Dentro de los límites en las 4 rotaciones';
+
+  @override
+  String get sceneAssetStudioGroundedAtZero => 'Apoyado en el suelo en y = 0';
+
+  @override
+  String get sceneAssetStudioNoGeometryBelowGround =>
+      'Sin geometría bajo el suelo';
+
+  @override
+  String get sceneAssetStudioWithinHeightLimit => 'Dentro del límite de altura';
+
+  @override
+  String get sceneAssetStudioVertexColorsOnly => 'Solo colores de vértices';
+
+  @override
+  String get sceneAssetStudioNoModelTexturesOrFonts =>
+      'Sin texturas de modelo ni archivos de fuentes';
+
+  @override
+  String get sceneAssetStudioLocalGeometryMergePassed =>
+      'Fusión local de geometría correcta';
+
+  @override
+  String get sceneAssetStudioStaticMeshesBakedTransforms =>
+      'Mallas estáticas con transformaciones integradas';
+
+  @override
+  String get sceneAssetStudioGeometryChecksPassed =>
+      'Comprobaciones de geometría correctas';
+
+  @override
+  String get sceneAssetStudioReviewGeometryChecks =>
+      'Revisar comprobaciones de geometría';
+
+  @override
+  String sceneAssetStudioHeightCheckDetail(String height, String maximum) {
+    return '$height m de un máximo de $maximum m';
+  }
+
+  @override
+  String sceneAssetStudioHelperCallBudget(String calls) {
+    return 'Dentro del límite de $calls llamadas de geometría';
+  }
+
+  @override
+  String get sceneAssetStudioInteractiveModelAria =>
+      'Modelo 3D interactivo. Arrastra para orbitar y desplázate para ampliar.';
+
+  @override
+  String get sceneAssetStudioClipboardUnavailable =>
+      'Portapapeles no disponible. Usa Descargar .js.';
+
+  @override
+  String get sceneAssetStudioModelFunctionCopied =>
+      'Función del modelo copiada';
+
+  @override
+  String get sceneAssetStudioWebglPreviewRequired =>
+      'Se necesita una vista previa WebGL para guardar una imagen.';
+
+  @override
+  String get sceneAssetStudioModelRestored =>
+      'Modelo restaurado a la especificación original';
+
+  @override
+  String get sceneAssetStudioLiveValidationWebglRequired =>
+      'La validación en directo requiere un navegador compatible con WebGL.';
+
+  @override
+  String get sceneAssetStudioAllGeometryChecksPassed =>
+      'Las 6 comprobaciones de geometría son correctas';
+
+  @override
+  String get sceneAssetStudioGeometryCheckNeedsAttention =>
+      'Una comprobación de geometría requiere atención';
+
+  @override
+  String sceneAssetStudioFileDownloaded(String filename) {
+    return '$filename descargado';
+  }
+
+  @override
+  String sceneAssetStudioLoadedAsset(String name) {
+    return '$name cargado';
+  }
+
+  @override
+  String sceneAssetStudioPreviewSaved(String filename) {
+    return 'Vista previa guardada como $filename';
+  }
+
+  @override
+  String get sceneAssetStudioCatalogJewelryStoreName => 'Joyería';
+
+  @override
+  String get sceneAssetStudioCatalogJewelryStoreDescription =>
+      'Boutique prémium del aeropuerto con joyas, relojes y accesorios de lujo.';
+
+  @override
+  String get sceneAssetStudioCatalogJewelryStoreKeywords =>
+      'Vitrinas doradas, bustos con collares reales, galería de relojes y mostrador de asesoramiento';
+
+  @override
+  String get sceneAssetStudioCategoryRetail => 'comercio';
+
+  @override
+  String get sceneAssetStudioCatalogOneWayCustomsName =>
+      'Aduana de un solo sentido';
+
+  @override
+  String get sceneAssetStudioCatalogOneWayCustomsDescription =>
+      'Control aduanero de un solo sentido para revisar a los pasajeros que llegan antes de continuar.';
+
+  @override
+  String get sceneAssetStudioCatalogOneWayCustomsKeywords =>
+      'Flechas direccionales en el suelo, pasillo acristalado, agente y puerta de control';
+
+  @override
+  String get sceneAssetStudioCategorySecurity => 'seguridad';
+
+  @override
+  String get sceneAssetStudioCatalogCoffeeToGoName => 'Café para llevar';
+
+  @override
+  String get sceneAssetStudioCatalogCoffeeToGoDescription =>
+      'Café para llevar, bebidas calientes y aperitivos para pasajeros en movimiento.';
+
+  @override
+  String get sceneAssetStudioCatalogCoffeeToGoKeywords =>
+      'Quiosco de tres paredes, máquina de espresso, barista y rótulo perpendicular';
+
+  @override
+  String get sceneAssetStudioCategoryFood => 'comida';
+
+  @override
+  String get sceneAssetStudioCatalogAirportArcadeName => 'Arcade';
+
+  @override
+  String get sceneAssetStudioCatalogAirportArcadeDescription =>
+      'Sala recreativa donde los pasajeros pueden jugar mientras esperan su vuelo.';
+
+  @override
+  String get sceneAssetStudioCatalogAirportArcadeKeywords =>
+      'Rótulo de neón, 5 máquinas retro, dos simuladores de carreras, hockey de aire y pista de baile';
+
+  @override
+  String get sceneAssetStudioCategoryEntertainment => 'ocio';
+
+  @override
+  String get sceneAssetStudioCatalogAirportCasinoName => 'Salón casino';
+
+  @override
+  String get sceneAssetStudioCatalogAirportCasinoDescription =>
+      'Elegante casino en zona de embarque con máquinas tragaperras, mesas de juego y bar de cócteles para escalas largas.';
+
+  @override
+  String get sceneAssetStudioCatalogAirportCasinoKeywords =>
+      'Columnas doradas, filas de tragaperras, mesas de cartas y bar de cócteles';
+
+  @override
+  String get sceneAssetStudioCatalogFlowerShopName => 'Floristería';
+
+  @override
+  String get sceneAssetStudioCatalogFlowerShopDescription =>
+      'Floristería del aeropuerto con flores frescas, ramos, plantas y pequeños regalos.';
+
+  @override
+  String get sceneAssetStudioCatalogFlowerShopKeywords =>
+      'Entrada con pérgola, pared floral, mesa de ramos y vitrina refrigerada';
+
+  @override
+  String get sceneAssetStudioCatalogCustomsCheckerName => 'Control de aduanas';
+
+  @override
+  String get sceneAssetStudioCatalogCustomsCheckerDescription =>
+      'Puesto de aduanas para inspeccionar a los pasajeros que llegan y su equipaje.';
+
+  @override
+  String get sceneAssetStudioCatalogCustomsCheckerKeywords =>
+      'Inspección por agente, mesa de equipaje, carril aduanero controlado';
+
+  @override
+  String get sceneAssetStudioCatalogFoodCartName => 'Carrito de comida';
+
+  @override
+  String get sceneAssetStudioCatalogFoodCartDescription =>
+      'Pequeño carrito atendido que vende comida rápida, aperitivos y bebidas.';
+
+  @override
+  String get sceneAssetStudioCatalogFoodCartKeywords =>
+      'Carrito con ruedas, vitrina de pastelería, toldo y estación de café';
+
+  @override
+  String get sceneAssetStudioCatalogFlightInfoPanelName =>
+      'Panel de información de vuelos';
+
+  @override
+  String get sceneAssetStudioCatalogFlightInfoPanelDescription =>
+      'Pantalla compacta de terminal con próximos vuelos y puertas.';
+
+  @override
+  String get sceneAssetStudioCatalogFlightInfoPanelKeywords =>
+      'Una pantalla vertical, pedestal fino, cinco filas de vuelos';
+
+  @override
+  String get sceneAssetStudioCategoryPassenger => 'pasajeros';
+
+  @override
+  String get sceneAssetStudioCatalogFlightInformationBoardName =>
+      'Panel de vuelos';
+
+  @override
+  String get sceneAssetStudioCatalogFlightInformationBoardDescription =>
+      'Muestra próximos vuelos, horas de salida, puertas y estado actual.';
+
+  @override
+  String get sceneAssetStudioCatalogFlightInformationBoardKeywords =>
+      'FIDS de doble cara, filas de vuelos, colores de estado, reloj doble';
+
+  @override
+  String get sceneAssetStudioCatalogTrashBinsName => 'Papeleras';
+
+  @override
+  String get sceneAssetStudioCatalogTrashBinsDescription =>
+      'Papeleras y contenedores de reciclaje para mantener limpia la terminal.';
+
+  @override
+  String get sceneAssetStudioCatalogTrashBinsKeywords =>
+      'Punto de tres fracciones, bocas diferenciadas, bandas de colores';
+
+  @override
+  String get sceneAssetStudioCategoryInterior => 'interior';
+
+  @override
+  String get sceneAssetStudioCatalogInformationDeskName =>
+      'Mostrador de información';
+
+  @override
+  String get sceneAssetStudioCatalogInformationDeskDescription =>
+      'Centro de información del aeropuerto con asistencia atendida y autoservicio.';
+
+  @override
+  String get sceneAssetStudioCatalogInformationDeskKeywords =>
+      'Dos puestos atendidos, dos empleados, pantalla de autoservicio separada';
+
+  @override
+  String get sceneAssetStudioCatalogAirportRestaurantName => 'Restaurante';
+
+  @override
+  String get sceneAssetStudioCatalogAirportRestaurantDescription =>
+      'Restaurante completo en el aeropuerto con servicio de mesa y platos recién preparados.';
+
+  @override
+  String get sceneAssetStudioCatalogAirportRestaurantKeywords =>
+      'Entrada con anfitrión, comedor variado, bar y cocina abierta';
+
+  @override
+  String get sceneAssetStudioCatalogPerfumeCornerShopName => 'Perfumería';
+
+  @override
+  String get sceneAssetStudioCatalogPerfumeCornerShopDescription =>
+      'Perfumes y fragancias de lujo libres de impuestos en una tienda de esquina prémium.';
+
+  @override
+  String get sceneAssetStudioCatalogPerfumeCornerShopKeywords =>
+      'Fachada esquinera en L, escaparates decorados, bandejas de prueba';
+
+  @override
+  String get sceneAssetStudioCatalogDutyFreeFoodDrinksName =>
+      'Tienda duty free de comida y bebidas';
+
+  @override
+  String get sceneAssetStudioCatalogDutyFreeFoodDrinksDescription =>
+      'Tienda duty free del aeropuerto con comida, aperitivos y bebidas.';
+
+  @override
+  String get sceneAssetStudioCatalogDutyFreeFoodDrinksKeywords =>
+      'Tienda abierta, pasillos surtidos, pared de bebidas refrigeradas';
+
+  @override
+  String get sceneAssetStudioCatalogCheckoutCounterName => 'Caja';
+
+  @override
+  String get sceneAssetStudioCatalogCheckoutCounterDescription =>
+      'Caja atendida donde los pasajeros pagan sus compras.';
+
+  @override
+  String get sceneAssetStudioCatalogCheckoutCounterKeywords =>
+      'Caja atendida, terminal de pago, zona de bolsas y cola corta';
+
+  @override
+  String get sceneAssetStudioCatalogCheckInCounterName =>
+      'Mostrador de facturación';
+
+  @override
+  String get sceneAssetStudioCatalogCheckInCounterDescription =>
+      'Mostrador atendido de aerolínea para pasajeros y equipaje facturado.';
+
+  @override
+  String get sceneAssetStudioCatalogCheckInCounterKeywords =>
+      'Mostrador atendido, cinta y báscula de equipaje, cola guiada';
+
+  @override
+  String get sceneAssetStudioCatalogVipLoungeName => 'Sala VIP';
+
+  @override
+  String get sceneAssetStudioCatalogVipLoungeDescription =>
+      'Sala VIP exclusiva de primera clase con asientos de lujo y refrigerios.';
+
+  @override
+  String get sceneAssetStudioCatalogVipLoungeKeywords =>
+      'Nogal ahumado, Chesterfield de terciopelo, bar de cócteles y pantalla de salidas';
+
+  @override
+  String get sceneAssetStudioCatalogCozyClothingName => 'Noir & Co. Atelier';
+
+  @override
+  String get sceneAssetStudioCatalogCozyClothingDescription =>
+      'Boutique de moda de lujo oscura y elegante para pasajeros de salida.';
+
+  @override
+  String get sceneAssetStudioCatalogCozyClothingKeywords =>
+      'Madera espresso, latón bruñido, salón de terciopelo';
+
+  @override
+  String get sceneAssetStudioCatalogDutyFreeClothingName => 'Ropa duty free';
+
+  @override
+  String get sceneAssetStudioCatalogDutyFreeClothingDescription =>
+      'Tienda de moda y ropa en el aeropuerto para pasajeros de salida.';
+
+  @override
+  String get sceneAssetStudioCatalogDutyFreeClothingKeywords =>
+      'Tienda abierta, percheros y maniquíes, caja';
+
+  @override
+  String get sceneAssetStudioCatalogBaggageCarouselName =>
+      'Carrusel de equipaje';
+
+  @override
+  String get sceneAssetStudioCatalogBaggageCarouselDescription =>
+      'Recoge el equipaje de los pasajeros que llegan en el carrusel.';
+
+  @override
+  String get sceneAssetStudioCatalogBaggageCarouselKeywords =>
+      'Cinta circular, borde metálico, poste de recogida';
+
+  @override
+  String get sceneAssetStudioCatalogWaitingSeatsName => 'Asientos de espera';
+
+  @override
+  String get sceneAssetStudioCatalogWaitingSeatsDescription =>
+      'Asientos para salas de espera y puertas de embarque del aeropuerto.';
+
+  @override
+  String get sceneAssetStudioCatalogWaitingSeatsKeywords =>
+      'Cuatro asientos, viga compartida, cinco reposabrazos';
+
+  @override
+  String get sceneAssetStudioCatalogVendingMachineName => 'Máquina expendedora';
+
+  @override
+  String get sceneAssetStudioCatalogVendingMachineDescription =>
+      'Aperitivos y bebidas para pasajeros.';
+
+  @override
+  String get sceneAssetStudioCatalogVendingMachineKeywords =>
+      'Expositor de cristal, tres estantes surtidos, columna de interfaz';
+
+  @override
+  String get sceneAssetStudioCatalogTicketMachineName => 'Máquina de billetes';
+
+  @override
+  String get sceneAssetStudioCatalogTicketMachineDescription =>
+      'Venta de billetes de autoservicio para la terminal.';
+
+  @override
+  String get sceneAssetStudioCatalogTicketMachineKeywords =>
+      'Pantalla inclinada, lector de tarjetas, ranura para recibos';
+
+  @override
+  String get sceneAssetStudioColorWarmIvory => 'Marfil cálido';
+
+  @override
+  String get sceneAssetStudioColorDarkLuxury => 'Lujo oscuro';
+
+  @override
+  String get sceneAssetStudioColorChampagneGold => 'Oro champán';
+
+  @override
+  String get sceneAssetStudioColorVelvetEmerald => 'Terciopelo esmeralda';
+
+  @override
+  String get sceneAssetStudioColorVelvetBurgundy => 'Terciopelo burdeos';
+
+  @override
+  String get sceneAssetStudioColorJewelryCoolLight => 'Luz fría para joyería';
+
+  @override
+  String get sceneAssetStudioColorBody => 'Cuerpo';
+
+  @override
+  String get sceneAssetStudioColorTealAccent => 'Acento verde azulado';
+
+  @override
+  String get sceneAssetStudioColorScreen => 'Pantalla';
+
+  @override
+  String get sceneAssetStudioColorEmission => 'Emisión';
+
+  @override
+  String get sceneAssetStudioColorBase => 'Base';
+
+  @override
+  String get sceneAssetStudioColorSafetyStrip => 'Franja de seguridad';
+
+  @override
+  String get sceneAssetStudioColorSmokedWalnut => 'Nogal ahumado';
+
+  @override
+  String get sceneAssetStudioColorAcousticCharcoal => 'Carbón acústico';
+
+  @override
+  String get sceneAssetStudioColorBurnishedBrass => 'Latón bruñido';
+
+  @override
+  String get sceneAssetStudioColorBordeauxVelvet => 'Terciopelo burdeos';
+
+  @override
+  String get sceneAssetStudioColorCognacLeather => 'Cuero coñac';
+
+  @override
+  String get sceneAssetStudioColorAmberDownlight => 'Luz descendente ámbar';
+
+  @override
+  String get sceneAssetStudioColorKioskIvory => 'Marfil de quiosco';
+
+  @override
+  String get sceneAssetStudioColorRoastWood => 'Madera tostada';
+
+  @override
+  String get sceneAssetStudioColorEspresso => 'Espresso';
+
+  @override
+  String get sceneAssetStudioColorBeanBrown => 'Marrón grano de café';
+
+  @override
+  String get sceneAssetStudioColorApronGreen => 'Verde delantal';
+
+  @override
+  String get sceneAssetStudioColorWarmLight => 'Luz cálida';
+
+  @override
+  String get sceneAssetStudioColorArcadeDark => 'Arcade oscuro';
+
+  @override
+  String get sceneAssetStudioColorNeonPurple => 'Morado neón';
+
+  @override
+  String get sceneAssetStudioColorLaserPink => 'Rosa láser';
+
+  @override
+  String get sceneAssetStudioColorCyberBlue => 'Azul cibernético';
+
+  @override
+  String get sceneAssetStudioColorNeonGlow => 'Brillo neón';
+
+  @override
+  String get sceneAssetStudioColorSpeedYellow => 'Amarillo velocidad';
+
+  @override
+  String get sceneAssetStudioColorCasinoCharcoal => 'Carbón casino';
+
+  @override
+  String get sceneAssetStudioColorDeepRed => 'Rojo intenso';
+
+  @override
+  String get sceneAssetStudioColorCasinoGold => 'Oro casino';
+
+  @override
+  String get sceneAssetStudioColorTableGreen => 'Verde mesa';
+
+  @override
+  String get sceneAssetStudioColorMidnightBlue => 'Azul medianoche';
+
+  @override
+  String get sceneAssetStudioColorWarmGlow => 'Resplandor cálido';
+
+  @override
+  String sceneAssetStudioColorCopied(String color) {
+    return 'Color $color copiado';
+  }
+
+  @override
+  String sceneAssetStudioSourceCodeAria(String filename) {
+    return 'Código fuente de $filename';
+  }
+
+  @override
+  String sceneAssetStudioCatalogFootprint(String width, String depth) {
+    return 'Huella del catálogo: $width x $depth m. El modelo acepta los parámetros w y d del modelo existente.';
+  }
 }

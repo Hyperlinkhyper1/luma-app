@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
 import 'texture_pack_types.dart';
 
 /// Fetches the vanilla client jar from Mojang's public CDN so the preview has
@@ -35,7 +36,7 @@ Future<File> _jarFileFor(String versionId) async {
       versionId.contains(':') ||
       versionId == '.' ||
       versionId == '..') {
-    throw TextureDownloadException('Mojang returned an unusable version id.');
+    throw TextureDownloadException(currentL.textureMojangBadVersionId);
   }
   final support = await getApplicationSupportDirectory();
   final sep = Platform.pathSeparator;
@@ -52,13 +53,11 @@ Future<Map<String, dynamic>> _getJson(String url) async {
     response =
         await http.get(Uri.parse(url)).timeout(const Duration(seconds: 20));
   } catch (_) {
-    throw TextureDownloadException(
-      'Could not reach Mojang. Check your connection and try again.',
-    );
+    throw TextureDownloadException(currentL.textureCouldNotReachMojang);
   }
   if (response.statusCode != 200) {
     throw TextureDownloadException(
-      'Mojang returned ${response.statusCode} for the version manifest.',
+      currentL.textureManifestStatus(response.statusCode),
     );
   }
   return jsonDecode(response.body) as Map<String, dynamic>;
@@ -78,23 +77,21 @@ Future<String> downloadVanillaTextures({
         total: total,
       ));
 
-  report('Asking Mojang which version is current…');
+  report(currentL.textureStageAskingVersion);
   final manifest = await _getJson(_manifestUrl);
   final latest = (manifest['latest'] as Map<String, dynamic>?)?['release'];
   if (latest is! String || latest.isEmpty) {
-    throw TextureDownloadException(
-      'Mojang\'s version manifest did not name a current release.',
-    );
+    throw TextureDownloadException(currentL.textureManifestNoRelease);
   }
 
   final versions = manifest['versions'];
   if (versions is! List) {
-    throw TextureDownloadException('Mojang\'s version manifest was malformed.');
+    throw TextureDownloadException(currentL.textureManifestMalformed);
   }
   final entry = versions.cast<Map<String, dynamic>>().firstWhere(
         (v) => v['id'] == latest,
         orElse: () => throw TextureDownloadException(
-          'Mojang\'s manifest has no entry for $latest.',
+          currentL.textureManifestNoEntry(latest),
         ),
       );
 
@@ -103,13 +100,13 @@ Future<String> downloadVanillaTextures({
   final detail = await _getJson(entry['url'] as String);
   final client = (detail['downloads'] as Map<String, dynamic>?)?['client'];
   if (client is! Map<String, dynamic>) {
-    throw TextureDownloadException('Version $latest has no client download.');
+    throw TextureDownloadException(currentL.textureVersionNoClient(latest));
   }
   final url = client['url'] as String?;
   final expectedSha1 = client['sha1'] as String? ?? '';
   final expectedSize = (client['size'] as num?)?.toInt() ?? 0;
   if (url == null) {
-    throw TextureDownloadException('Version $latest has no client download.');
+    throw TextureDownloadException(currentL.textureVersionNoClient(latest));
   }
 
   // A jar the launcher plugin (or an earlier run of this) already fetched is
@@ -117,11 +114,11 @@ Future<String> downloadVanillaTextures({
   // would be rude.
   if (await target.exists() &&
       (expectedSize == 0 || await target.length() == expectedSize)) {
-    report('Using the copy already downloaded.');
+    report(currentL.textureStageUsingCopy);
     return target.path;
   }
 
-  report('Downloading Minecraft $latest…', 0, expectedSize);
+  report(currentL.textureStageDownloading(latest), 0, expectedSize);
 
   final request = http.Request('GET', Uri.parse(url));
   final http.StreamedResponse response;
@@ -130,13 +127,11 @@ Future<String> downloadVanillaTextures({
         .send(request)
         .timeout(const Duration(seconds: 30));
   } catch (_) {
-    throw TextureDownloadException(
-      'Could not download the textures. Check your connection and try again.',
-    );
+    throw TextureDownloadException(currentL.textureDownloadFailed);
   }
   if (response.statusCode != 200) {
     throw TextureDownloadException(
-      'Mojang returned ${response.statusCode} for the client download.',
+      currentL.textureClientStatus(response.statusCode),
     );
   }
 
@@ -147,22 +142,20 @@ Future<String> downloadVanillaTextures({
   await for (final chunk in response.stream) {
     builder.add(chunk);
     received += chunk.length;
-    report('Downloading Minecraft $latest…', received, total);
+    report(currentL.textureStageDownloading(latest), received, total);
   }
   final bytes = builder.takeBytes();
 
   if (expectedSize > 0 && bytes.length != expectedSize) {
     throw TextureDownloadException(
-      'The download ended early — got ${bytes.length} of $expectedSize bytes.',
+      currentL.textureDownloadEndedEarly(bytes.length, expectedSize),
     );
   }
   if (expectedSha1.isNotEmpty) {
-    report('Verifying the download…', received, total);
+    report(currentL.textureStageVerifying, received, total);
     final actual = sha1.convert(bytes).toString();
     if (actual != expectedSha1) {
-      throw TextureDownloadException(
-        'The downloaded file did not match Mojang\'s checksum.',
-      );
+      throw TextureDownloadException(currentL.textureChecksumMismatch);
     }
   }
 
@@ -173,7 +166,7 @@ Future<String> downloadVanillaTextures({
   await partial.writeAsBytes(bytes, flush: true);
   await partial.rename(target.path);
 
-  report('Reading block textures…', received, total);
+  report(currentL.textureStageReading, received, total);
   return target.path;
 }
 

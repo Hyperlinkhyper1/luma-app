@@ -6,5 +6,27 @@
   "icon": "insights",
   "category": "Productivity",
   "details": "Usage runs quietly in the background while luma is open, even when this plugin page is closed or luma is minimized. Every few seconds it samples the visible, non-minimized window that is actually in the Windows foreground, logs the app and title, and writes a session to a local database when focus changes. Background and hidden windows are ignored.\n\nOpen the plugin to see a dashboard for any time range — today, yesterday, the last week, the last month, this month, or a custom interval. A pie chart shows your top apps by total time, a stacked bar chart shows daily breakdown, and a list shows every tracked app with minutes, share, and a small bar so you can scan it at a glance.\n\nEverything is stored locally with drift SQLite. You can pause tracking at any time, change the sample interval (2–10 seconds), and clear all stored history from a single confirmation prompt. No network calls, no telemetry — your usage data never leaves the device.",
-  "screenshots": []
+  "screenshots": [],
+  "i18n": {
+    "nl": {
+      "name": "Gebruik",
+      "description": "Waar gaat je dag naartoe? Zie welke apps je echt gebruikte en hoe lang, in eenvoudige grafieken.",
+      "details": "Gebruik draait stilletjes op de achtergrond zolang luma open is, ook als deze plugin-pagina gesloten is of luma geminimaliseerd. Elke paar seconden bemonstert het het zichtbare, niet-geminimaliseerde venster dat daadwerkelijk op de voorgrond van Windows staat, legt de app en titel vast en schrijft een sessie naar een lokale database zodra de focus verandert. Achtergrond- en verborgen vensters worden genegeerd.\n\nOpen de plugin om een dashboard te zien voor elke tijdsperiode — vandaag, gisteren, de afgelopen week, de afgelopen maand, deze maand of een aangepast interval. Een taartdiagram toont je top-apps op totale tijd, een gestapeld staafdiagram toont de dagelijkse verdeling, en een lijst toont elke gevolgde app met minuten, aandeel en een kleine balk, zodat je het in één oogopslag kunt scannen.\n\nAlles wordt lokaal opgeslagen met drift SQLite. Je kunt het bijhouden op elk moment pauzeren, het bemonsteringsinterval wijzigen (2–10 seconden) en alle opgeslagen geschiedenis wissen via één bevestigingsvraag. Geen netwerkverkeer, geen telemetrie — je gebruiksgegevens verlaten het apparaat nooit."
+    },
+    "fr": {
+      "name": "Utilisation",
+      "description": "Où passe votre journée ? Voyez quelles applications vous avez réellement utilisées et pendant combien de temps, dans des graphiques simples.",
+      "details": "Utilisation fonctionne discrètement en arrière-plan tant que luma est ouvert, même lorsque cette page du plugin est fermée ou que luma est réduit. Toutes les quelques secondes, il relève la fenêtre visible et non réduite qui est réellement au premier plan de Windows, enregistre l'application et le titre, puis écrit une session dans une base de données locale lorsque le focus change. Les fenêtres en arrière-plan ou masquées sont ignorées.\n\nOuvrez le plugin pour voir un tableau de bord pour n'importe quelle période — aujourd'hui, hier, la semaine dernière, le mois dernier, ce mois-ci ou un intervalle personnalisé. Un camembert affiche vos applications les plus utilisées par temps total, un histogramme empilé montre la répartition quotidienne, et une liste affiche chaque application suivie avec les minutes, la part et une petite barre pour un coup d'œil rapide.\n\nTout est stocké localement avec drift SQLite. Vous pouvez suspendre le suivi à tout moment, modifier l'intervalle d'échantillonnage (2 à 10 secondes) et effacer tout l'historique enregistré via une seule demande de confirmation. Aucun appel réseau, aucune télémétrie : vos données d'utilisation ne quittent jamais l'appareil."
+    },
+    "es": {
+      "name": "Uso",
+      "description": "¿A dónde se va tu día? Mira qué aplicaciones usaste de verdad y durante cuánto tiempo, en gráficos sencillos.",
+      "details": "Uso funciona discretamente en segundo plano mientras luma está abierto, incluso cuando esta página del plugin está cerrada o luma minimizado. Cada pocos segundos muestrea la ventana visible y no minimizada que realmente está en primer plano en Windows, registra la aplicación y el título, y escribe una sesión en una base de datos local cuando cambia el foco. Las ventanas en segundo plano u ocultas se ignoran.\n\nAbre el plugin para ver un panel de control de cualquier intervalo de tiempo: hoy, ayer, la última semana, el último mes, este mes o un rango personalizado. Un gráfico circular muestra tus aplicaciones principales por tiempo total, un gráfico de barras apiladas muestra el desglose diario, y una lista muestra cada aplicación registrada con minutos, porcentaje y una pequeña barra para verla de un vistazo.\n\nTodo se guarda localmente con drift SQLite. Puedes pausar el registro en cualquier momento, cambiar el intervalo de muestreo (2–10 segundos) y borrar todo el historial guardado desde una única confirmación. Sin llamadas de red ni telemetría: tus datos de uso nunca salen del dispositivo."
+    },
+    "zh": {
+      "name": "使用时长",
+      "description": "你的一天都去哪了？用简单的图表查看你实际使用过哪些应用，以及用了多长时间。",
+      "details": "只要 luma 处于打开状态，Usage 就会在后台默默运行，即使关闭了此插件页面或将 luma 最小化也是如此。每隔几秒，它会采样 Windows 当前前台、可见且未最小化的窗口，记录应用和标题，并在焦点切换时将会话写入本地数据库。后台窗口和隐藏窗口会被忽略。\n\n打开插件即可查看任意时间范围的仪表板——今天、昨天、过去一周、过去一个月、本月或自定义区间。饼图按总时长显示你使用最多的应用，堆叠柱状图显示每日细分，列表则列出每个被追踪应用的分钟数、占比和一个小进度条，便于一目了然。\n\n所有数据都使用 drift SQLite 本地存储。你可以随时暂停追踪、更改采样间隔（2–10 秒），并通过一次确认提示清除所有已存储的历史记录。没有网络请求，也没有遥测——你的使用数据永远不会离开设备。"
+    }
+  }
 }

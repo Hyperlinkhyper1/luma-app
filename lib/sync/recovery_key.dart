@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import '../l10n/current_l.dart';
 import 'sync_api.dart';
 import 'sync_crypto.dart';
 
@@ -94,7 +95,7 @@ class RecoveryKey {
   static Uint8List openEnvelope(Uint8List envelope, Uint8List recoveryKey) {
     final key = SyncCrypto.openRaw(envelope, _wrapKey(recoveryKey));
     if (key.length != 32) {
-      throw const SyncCryptoException('Corrupted recovery envelope.');
+      throw SyncCryptoException(currentL.syncCryptoCorruptedRecoveryEnvelope);
     }
     return key;
   }
@@ -104,7 +105,7 @@ class RecoveryKey {
   static Uint8List openKeyBox(Uint8List keyBox, Uint8List encryptionKey) {
     final key = SyncCrypto.openRaw(keyBox, _boxKey(encryptionKey));
     if (key.length != _byteLength) {
-      throw const SyncCryptoException('Corrupted recovery key box.');
+      throw SyncCryptoException(currentL.syncCryptoCorruptedRecoveryKeyBox);
     }
     return key;
   }

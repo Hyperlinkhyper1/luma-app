@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart' hide Barcode;
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'card_formats.dart';
 import 'card_wallet_nfc.dart';
@@ -42,6 +43,7 @@ class CardWalletPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final repo = CardWalletScope.of(context);
     final canManage = CardWalletPlatform.canManageCards;
 
@@ -52,7 +54,7 @@ class CardWalletPage extends StatelessWidget {
               onPressed: () => _showCardEditor(context, repo),
               backgroundColor: luma.accent,
               foregroundColor: luma.onAccent,
-              tooltip: 'Add card',
+              tooltip: t.cardWalletAddCard,
               child: const Icon(Icons.add_rounded, size: 28),
             )
           : null,
@@ -70,14 +72,13 @@ class CardWalletPage extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 48),
                     child: LumaEmptyState(
                       icon: Icons.wallet_rounded,
-                      title: 'No cards yet',
+                      title: t.cardWalletNoCardsTitle,
                       subtitle: canManage
-                          ? 'Add your first loyalty or membership card and it '
-                              'shows up here, ready to scan.'
+                          ? t.cardWalletNoCardsSubtitle
                           : CardWalletPlatform.readOnlyNotice,
                       action: canManage
                           ? LumaPrimaryButton(
-                              label: 'Add card',
+                              label: t.cardWalletAddCard,
                               icon: Icons.add_rounded,
                               onTap: () => _showCardEditor(context, repo),
                             )
@@ -157,6 +158,7 @@ class _CardTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final base = Color(card.color);
     final dark = _shade(base, -0.14);
+    final t = L.of(context);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
@@ -222,7 +224,7 @@ class _CardTile extends StatelessWidget {
                 ),
               ],
               const Spacer(),
-              _tilePreview(card),
+              _tilePreview(card, t),
             ],
           ),
         ),
@@ -230,7 +232,7 @@ class _CardTile extends StatelessWidget {
     );
   }
 
-  Widget _tilePreview(WalletCardRecord card) {
+  Widget _tilePreview(WalletCardRecord card, L t) {
     if (card.format.isNfc) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -244,7 +246,7 @@ class _CardTile extends StatelessWidget {
             const Icon(Icons.contactless_rounded, color: Colors.white, size: 16),
             const SizedBox(width: 6),
             Text(
-              'Tap to scan',
+              t.cardWalletTapToScan,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.95),
                 fontSize: 12,
@@ -312,6 +314,7 @@ void _showCardDetail(
     context: context,
     builder: (dialogContext) {
       final luma = dialogContext.luma;
+      final t = L.of(dialogContext);
       return Dialog(
         backgroundColor: luma.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -383,7 +386,7 @@ void _showCardDetail(
                 Row(
                   children: [
                     IconButton(
-                      tooltip: 'Delete',
+                      tooltip: t.commonDelete,
                       icon: Icon(Icons.delete_outline_rounded,
                           color: luma.textMuted),
                       onPressed: () async {
@@ -399,7 +402,7 @@ void _showCardDetail(
                     const Spacer(),
                     if (CardWalletPlatform.canManageCards) ...[
                       LumaGhostButton(
-                        label: 'Edit',
+                        label: t.commonEdit,
                         icon: Icons.edit_rounded,
                         onTap: () {
                           Navigator.of(dialogContext).pop();
@@ -409,7 +412,7 @@ void _showCardDetail(
                       const SizedBox(width: 10),
                     ],
                     LumaPrimaryButton(
-                      label: 'Done',
+                      label: t.commonDone,
                       onTap: () => Navigator.of(dialogContext).pop(),
                     ),
                   ],
@@ -431,6 +434,7 @@ class _BarcodePresent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final barcode = card.format.barcode;
     final is2d = card.format.is2d;
     return Column(
@@ -444,7 +448,7 @@ class _BarcodePresent extends StatelessWidget {
           ),
           child: Center(
             child: barcode == null || card.code.isEmpty
-                ? const Text('No code to show',
+                ? Text(t.cardWalletNoCodeToShow,
                     style: TextStyle(color: Colors.black54))
                 : SizedBox(
                     height: is2d ? 220 : 130,
@@ -462,7 +466,7 @@ class _BarcodePresent extends StatelessWidget {
                       ),
                       errorBuilder: (context, _) => Center(
                         child: Text(
-                          "This value isn't valid for ${card.format.label}.",
+                          t.cardWalletValueNotValidFor(card.format.label),
                           textAlign: TextAlign.center,
                           style: const TextStyle(color: Colors.black54),
                         ),
@@ -486,7 +490,7 @@ class _BarcodePresent extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             LumaGhostButton(
-              label: 'Copy',
+              label: t.commonCopy,
               icon: Icons.copy_rounded,
               onTap: () => _copy(context, card.code),
             ),
@@ -506,6 +510,7 @@ class _NfcPresent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -548,7 +553,7 @@ class _NfcPresent extends StatelessWidget {
             children: [
               Expanded(
                 child: SelectableText(
-                  card.code.isEmpty ? '(empty tag)' : card.code,
+                  card.code.isEmpty ? t.cardWalletEmptyTag : card.code,
                   style: TextStyle(
                     color: luma.textSecondary,
                     fontSize: 13,
@@ -558,7 +563,7 @@ class _NfcPresent extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               LumaGhostButton(
-                label: 'Copy',
+                label: t.commonCopy,
                 icon: Icons.copy_rounded,
                 onTap: () => _copy(context, card.code),
               ),
@@ -573,8 +578,7 @@ class _NfcPresent extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Tap-to-scan emulation runs on the luma mobile app. On this '
-                'device you can copy the tag data or scan the QR above.',
+                t.cardWalletEmulationNote,
                 style: TextStyle(color: luma.textMuted, fontSize: 12, height: 1.3),
               ),
             ),
@@ -624,7 +628,7 @@ class _NfcScanSheetState extends State<_NfcScanSheet> {
       if (mounted) {
         setState(() {
           _scanning = false;
-          _error = 'Something went wrong while scanning. ($e)';
+          _error = L.of(context).cardWalletScanUnexpectedError('$e');
         });
       }
     }
@@ -640,6 +644,7 @@ class _NfcScanSheetState extends State<_NfcScanSheet> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return SafeArea(
       top: false,
       child: Container(
@@ -664,8 +669,10 @@ class _NfcScanSheetState extends State<_NfcScanSheet> {
             const SizedBox(height: 22),
             Text(
               _error != null
-                  ? "Couldn't scan"
-                  : (_scanning ? 'Ready to scan' : 'Scan a tag'),
+                  ? t.cardWalletCouldntScan
+                  : (_scanning
+                      ? t.cardWalletReadyToScan
+                      : t.cardWalletScanATag),
               style: TextStyle(
                 color: luma.textPrimary,
                 fontSize: 17,
@@ -674,9 +681,7 @@ class _NfcScanSheetState extends State<_NfcScanSheet> {
             ),
             const SizedBox(height: 8),
             Text(
-              _error ??
-                  'Hold your card flat against the back of your phone and keep '
-                      'it still — larger cards take a second to read.',
+              _error ?? t.cardWalletHoldFlat,
               textAlign: TextAlign.center,
               style: TextStyle(color: luma.textMuted, fontSize: 13, height: 1.35),
             ),
@@ -685,7 +690,7 @@ class _NfcScanSheetState extends State<_NfcScanSheet> {
               children: [
                 Expanded(
                   child: LumaGhostButton(
-                    label: 'Cancel',
+                    label: t.commonCancel,
                     expand: true,
                     onTap: () => Navigator.of(context).pop(),
                   ),
@@ -694,7 +699,7 @@ class _NfcScanSheetState extends State<_NfcScanSheet> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: LumaPrimaryButton(
-                      label: 'Try again',
+                      label: t.commonTryAgain,
                       icon: Icons.refresh_rounded,
                       expand: true,
                       onTap: _start,
@@ -837,6 +842,7 @@ class _BarcodeCameraSheetState extends State<_BarcodeCameraSheet> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return SafeArea(
       top: false,
       child: Container(
@@ -861,7 +867,7 @@ class _BarcodeCameraSheetState extends State<_BarcodeCameraSheet> {
             ),
             const SizedBox(height: 18),
             Text(
-              'Scan a barcode',
+              t.cardWalletScanBarcodeTitle,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: luma.textPrimary,
@@ -871,7 +877,7 @@ class _BarcodeCameraSheetState extends State<_BarcodeCameraSheet> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Point the camera at the card’s barcode or QR code.',
+              t.cardWalletScanBarcodeHint,
               textAlign: TextAlign.center,
               style: TextStyle(color: luma.textMuted, fontSize: 13),
             ),
@@ -889,7 +895,7 @@ class _BarcodeCameraSheetState extends State<_BarcodeCameraSheet> {
             ),
             const SizedBox(height: 16),
             LumaGhostButton(
-              label: 'Cancel',
+              label: t.commonCancel,
               expand: true,
               onTap: () => Navigator.of(context).pop(),
             ),
@@ -1002,6 +1008,7 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
       _error = null;
     });
     final messenger = ScaffoldMessenger.of(context);
+    final t = L.of(context);
     final result = await showModalBottomSheet<NfcScanResult>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1014,7 +1021,11 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
     _code.text = result.payload;
     setState(() {});
     messenger.showSnackBar(
-      SnackBar(content: Text('Scanned tag (${result.source})')),
+      SnackBar(
+        content: Text(
+          t.cardWalletScannedTag(_nfcSourceLabel(t, result.source)),
+        ),
+      ),
     );
   }
 
@@ -1038,6 +1049,7 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
         ? picked.files.first.path
         : null;
     if (path == null || !mounted) return;
+    final t = L.of(context);
     setState(() {
       _scanning = true;
       _error = null;
@@ -1046,13 +1058,13 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
       final result = await CardWalletScanner.scanImage(path);
       if (!mounted) return;
       if (result == null) {
-        setState(() => _error = 'No barcode or QR code found in that image.');
+        setState(() => _error = t.cardWalletNoCodeInImage);
         return;
       }
       _applyScan(result);
     } catch (e) {
       if (mounted) {
-        setState(() => _error = 'Could not read that image. ($e)');
+        setState(() => _error = t.cardWalletImageReadFailed('$e'));
       }
     } finally {
       if (mounted) setState(() => _scanning = false);
@@ -1069,22 +1081,24 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
       if (result.format != null) _format = result.format!;
       _error = null;
     });
+    final t = L.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Scanned ${_format.label}')),
+      SnackBar(content: Text(t.cardWalletScannedFormat(_format.label))),
     );
   }
 
   Future<void> _save() async {
+    final t = L.of(context);
     final name = _name.text.trim();
     final code = _code.text.trim();
     if (name.isEmpty) {
-      setState(() => _error = 'Give the card a name.');
+      setState(() => _error = t.cardWalletNameRequired);
       return;
     }
     if (code.isEmpty) {
       setState(() => _error = _format.isNfc
-          ? 'Enter the NFC tag data.'
-          : 'Enter the card number / barcode value.');
+          ? t.cardWalletEnterNfcData
+          : t.cardWalletEnterCardNumber);
       return;
     }
     // Only reachable with a hand-picked format: detection never returns one
@@ -1092,8 +1106,7 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
     if (!_format.accepts(code)) {
       setState(() {
         _advancedOpen = true;
-        _error = "This value can't be encoded as ${_format.label}. "
-            'Pick another format, or turn detection back on.';
+        _error = t.cardWalletCantEncodeAs(_format.label);
       });
       return;
     }
@@ -1129,7 +1142,7 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
       if (mounted) {
         setState(() {
           _saving = false;
-          _error = 'Could not save the card. ($e)';
+          _error = t.cardWalletSaveFailed('$e');
         });
       }
     }
@@ -1139,6 +1152,7 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final editing = widget.existing != null;
+    final t = L.of(context);
     return Dialog(
       backgroundColor: luma.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -1151,7 +1165,7 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                editing ? 'Edit card' : 'Add card',
+                editing ? t.cardWalletEditCard : t.cardWalletAddCard,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 17,
@@ -1159,21 +1173,21 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
                 ),
               ),
               const SizedBox(height: 16),
-              _label(luma, 'Name'),
+              _label(luma, t.commonName),
               const SizedBox(height: 6),
               TextField(
                 controller: _name,
                 autofocus: !editing,
                 style: TextStyle(color: luma.textPrimary),
-                decoration: _dec(luma, hint: 'Albert Heijn Bonuskaart'),
+                decoration: _dec(luma, hint: t.cardWalletNameHintExample),
               ),
               const SizedBox(height: 14),
-              _label(luma, 'Category (optional)'),
+              _label(luma, t.cardWalletCategoryOptional),
               const SizedBox(height: 6),
               TextField(
                 controller: _category,
                 style: TextStyle(color: luma.textPrimary),
-                decoration: _dec(luma, hint: 'Loyalty, Membership, Transit…'),
+                decoration: _dec(luma, hint: t.cardWalletCategoryHint),
               ),
               const SizedBox(height: 14),
               Row(
@@ -1182,13 +1196,13 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
                     child: _label(
                       luma,
                       _format.isNfc
-                          ? 'NFC tag data'
-                          : 'Card number / barcode value',
+                          ? t.cardWalletNfcTagData
+                          : t.cardWalletCardNumberLabel,
                     ),
                   ),
                   if (_format.isNfc && CardWalletNfc.isSupported)
                     LumaGhostButton(
-                      label: 'Scan tag',
+                      label: t.cardWalletScanTag,
                       icon: Icons.contactless_rounded,
                       onTap: _scanning ? null : _scanNfc,
                     ),
@@ -1203,7 +1217,7 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
                     if (CardWalletScanner.cameraSupported)
                       Expanded(
                         child: LumaGhostButton(
-                          label: 'Scan',
+                          label: t.cardWalletScan,
                           icon: Icons.qr_code_scanner_rounded,
                           expand: true,
                           onTap: _scanning ? null : _scanCamera,
@@ -1215,7 +1229,7 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
                     if (CardWalletScanner.imageSupported)
                       Expanded(
                         child: LumaGhostButton(
-                          label: 'From image',
+                          label: t.cardWalletFromImage,
                           icon: Icons.image_outlined,
                           expand: true,
                           onTap: _scanning ? null : _scanImage,
@@ -1232,12 +1246,12 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
                 decoration: _dec(luma,
                     hint: _format.isNfc
                         ? (CardWalletNfc.isSupported
-                            ? 'Tap “Scan tag”, or paste it (text or hex)'
-                            : 'Paste the tag payload (text or hex)')
+                            ? t.cardWalletNfcHintScanOrPaste
+                            : t.cardWalletNfcHintPaste)
                         : ((CardWalletScanner.cameraSupported ||
                                 CardWalletScanner.imageSupported)
-                            ? 'Scan it in above, or type it — e.g. 2601234567890'
-                            : 'e.g. 2601234567890')),
+                            ? t.cardWalletCodeHintScan
+                            : t.cardWalletCodeHint)),
               ),
               const SizedBox(height: 10),
               _FormatStatus(
@@ -1249,20 +1263,20 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
               const SizedBox(height: 14),
               _CodePreview(format: _format, code: _code.text.trim()),
               const SizedBox(height: 16),
-              _label(luma, 'Color'),
+              _label(luma, t.commonColor),
               const SizedBox(height: 8),
               _ColorPicker(
                 selected: _color,
                 onSelect: (c) => setState(() => _color = c),
               ),
               const SizedBox(height: 14),
-              _label(luma, 'Notes (optional)'),
+              _label(luma, t.cardWalletNotesOptional),
               const SizedBox(height: 6),
               TextField(
                 controller: _notes,
                 style: TextStyle(color: luma.textPrimary),
                 maxLines: 2,
-                decoration: _dec(luma, hint: 'PIN, member since, anything handy'),
+                decoration: _dec(luma, hint: t.cardWalletNotesHint),
               ),
               const SizedBox(height: 18),
               _AdvancedSection(
@@ -1276,7 +1290,7 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
                       onChanged: _setAutoFormat,
                     ),
                     const SizedBox(height: 14),
-                    _label(luma, 'Format'),
+                    _label(luma, t.cardWalletFormat),
                     const SizedBox(height: 6),
                     _FormatDropdown(
                       value: _format,
@@ -1299,12 +1313,12 @@ class _CardEditorDialogState extends State<_CardEditorDialog> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   LumaGhostButton(
-                    label: 'Cancel',
+                    label: t.commonCancel,
                     onTap: () => Navigator.of(context).pop(),
                   ),
                   const SizedBox(width: 10),
                   LumaPrimaryButton(
-                    label: editing ? 'Save' : 'Add card',
+                    label: editing ? t.commonSave : t.cardWalletAddCard,
                     loading: _saving,
                     onTap: _save,
                   ),
@@ -1337,6 +1351,7 @@ class _FormatStatus extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final recognized = auto && (guess?.confident ?? false);
     final waiting = auto && guess == null;
     final icon = !auto
@@ -1345,13 +1360,13 @@ class _FormatStatus extends StatelessWidget {
     final color = recognized ? luma.success : luma.textMuted;
     final String text;
     if (!auto) {
-      text = '${format.label} · detection off';
+      text = t.cardWalletDetectionOff(format.label);
     } else if (waiting) {
-      text = 'Scan or type a code and luma picks the format';
+      text = t.cardWalletStatusWaiting;
     } else if (recognized) {
-      text = 'Recognized as ${format.label}';
+      text = t.cardWalletRecognizedAs(format.label);
     } else {
-      text = 'No standard match — using ${format.label}';
+      text = t.cardWalletNoStandardMatch(format.label);
     }
     return Row(
       children: [
@@ -1369,7 +1384,7 @@ class _FormatStatus extends StatelessWidget {
           child: GestureDetector(
             onTap: onOpenAdvanced,
             child: Text(
-              'Change',
+              t.cardWalletChange,
               style: TextStyle(
                 color: luma.accent,
                 fontSize: 12.5,
@@ -1399,6 +1414,7 @@ class _AdvancedSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       decoration: BoxDecoration(
         color: luma.background,
@@ -1419,7 +1435,7 @@ class _AdvancedSection extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Advanced',
+                      t.cardWalletAdvanced,
                       style: TextStyle(
                         color: luma.textSecondary,
                         fontSize: 13,
@@ -1459,6 +1475,7 @@ class _AutoDetectSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Row(
       children: [
         Expanded(
@@ -1466,12 +1483,12 @@ class _AutoDetectSwitch extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Detect the format automatically',
+                t.cardWalletAutoDetect,
                 style: TextStyle(color: luma.textPrimary, fontSize: 13.5),
               ),
               const SizedBox(height: 2),
               Text(
-                'luma reads the value and picks the matching symbology.',
+                t.cardWalletAutoDetectHint,
                 style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
             ],
@@ -1500,6 +1517,7 @@ class _CodePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     if (format.isNfc) {
       return Container(
         height: 72,
@@ -1514,7 +1532,7 @@ class _CodePreview extends StatelessWidget {
             const Icon(Icons.nfc_rounded, color: Colors.black54, size: 26),
             const SizedBox(height: 4),
             Text(
-              code.isEmpty ? 'NFC tag' : 'NFC tag ready',
+              code.isEmpty ? t.cardWalletFormatNfc : t.cardWalletNfcTagReady,
               style: const TextStyle(color: Colors.black54, fontSize: 12),
             ),
           ],
@@ -1532,8 +1550,8 @@ class _CodePreview extends StatelessWidget {
       ),
       child: Center(
         child: code.isEmpty
-            ? const Text('Preview appears here',
-                style: TextStyle(color: Colors.black38, fontSize: 12))
+            ? Text(t.cardWalletPreviewHere,
+                style: const TextStyle(color: Colors.black38, fontSize: 12))
             : BarcodeWidget(
                 barcode: barcode,
                 data: code,
@@ -1542,7 +1560,7 @@ class _CodePreview extends StatelessWidget {
                 backgroundColor: Colors.white,
                 style: const TextStyle(color: Colors.black, fontSize: 12),
                 errorBuilder: (context, _) => Text(
-                  "Not valid for ${format.label} yet",
+                  t.cardWalletNotValidYet(format.label),
                   style: const TextStyle(color: Colors.black38, fontSize: 12),
                 ),
               ),
@@ -1675,23 +1693,26 @@ InputDecoration _dec(LumaPalette luma, {String? hint}) {
 
 Future<bool> _confirmDelete(BuildContext context) async {
   final luma = context.luma;
+  final t = L.of(context);
   final result = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
       backgroundColor: luma.surface,
-      title: Text('Delete card?', style: TextStyle(color: luma.textPrimary)),
+      title: Text(t.cardWalletDeleteTitle,
+          style: TextStyle(color: luma.textPrimary)),
       content: Text(
-        'This removes the card from your wallet on this device.',
+        t.cardWalletDeleteBody,
         style: TextStyle(color: luma.textSecondary),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(false),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonCancel,
+              style: TextStyle(color: luma.textSecondary)),
         ),
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(true),
-          child: Text('Delete', style: TextStyle(color: luma.danger)),
+          child: Text(t.commonDelete, style: TextStyle(color: luma.danger)),
         ),
       ],
     ),
@@ -1702,9 +1723,16 @@ Future<bool> _confirmDelete(BuildContext context) async {
 void _copy(BuildContext context, String value) {
   Clipboard.setData(ClipboardData(text: value));
   ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('Copied to clipboard')),
+    SnackBar(content: Text(L.of(context).commonCopiedToClipboard)),
   );
 }
+
+String _nfcSourceLabel(L t, NfcScanSource source) => switch (source) {
+      NfcScanSource.mifareClassic => 'MIFARE Classic',
+      NfcScanSource.mifareUltralight => 'MIFARE Ultralight',
+      NfcScanSource.ndefRecord => t.cardWalletSourceNdef,
+      NfcScanSource.tagUid => t.cardWalletSourceTagUid,
+    };
 
 /// Shifts [c] lighter (positive [amount]) or darker (negative) in HSL space.
 Color _shade(Color c, double amount) {

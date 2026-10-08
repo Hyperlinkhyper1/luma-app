@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import '../../l10n/current_l.dart';
+
 /// Text handling shared by bank exports. A file has one delimiter; decimal
 /// commas must never be treated as extra columns in a semicolon export.
 class StatementText {
@@ -10,7 +12,7 @@ class StatementText {
         ((bytes[0] == 0xff && bytes[1] == 0xfe) ||
             (bytes[0] == 0xfe && bytes[1] == 0xff))) {
       if (bytes.length.isOdd) {
-        throw const FormatException('Incomplete UTF-16 statement.');
+        throw FormatException(currentL.financeImportIncompleteUtf16);
       }
       final littleEndian = bytes[0] == 0xff;
       return String.fromCharCodes([
@@ -114,13 +116,13 @@ class StatementText {
         quoted = true;
       } else if (closedQuote) {
         if (c.trim().isNotEmpty) {
-          throw const FormatException('Unexpected text after a quoted field.');
+          throw FormatException(currentL.financeImportUnexpectedAfterQuote);
         }
       } else {
         field.write(c);
       }
     }
-    if (quoted) throw const FormatException('Unclosed quote in statement.');
+    if (quoted) throw FormatException(currentL.financeImportUnclosedQuote);
     if (field.isNotEmpty || row.isNotEmpty || closedQuote) endRow();
     return result;
   }

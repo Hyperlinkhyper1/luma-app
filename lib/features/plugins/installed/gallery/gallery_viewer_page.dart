@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:open_file/open_file.dart';
 
+import '../../../../l10n/app_localizations.dart';
 import '../sftp/share/send_to_devices.dart';
 import 'gallery_details_panel.dart';
 import 'gallery_media.dart';
@@ -50,7 +51,11 @@ class _GalleryViewerPageState extends State<GalleryViewerPage> {
     final result = await OpenFile.open(path);
     if (result.type == ResultType.done || !mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Could not open the video: ${result.message}')),
+      SnackBar(
+        content: Text(
+          L.of(context).galleryViewerCouldNotOpenVideo(result.message),
+        ),
+      ),
     );
   }
 
@@ -68,6 +73,7 @@ class _GalleryViewerPageState extends State<GalleryViewerPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final repo = GalleryScope.of(context);
     final item = _itemAt(_index);
     // Below this the drawer would leave no room for the picture, so it
@@ -97,7 +103,10 @@ class _GalleryViewerPageState extends State<GalleryViewerPage> {
                 ),
                 _TopBar(
                   title: item.name,
-                  subtitle: '${_index + 1} of ${widget.items.length}',
+                  subtitle: t.galleryViewerPosition(
+                    _index + 1,
+                    widget.items.length,
+                  ),
                   onClose: () => Navigator.of(context).pop(),
                   onSend: () => showSendToDevices(
                     context,
@@ -107,8 +116,9 @@ class _GalleryViewerPageState extends State<GalleryViewerPage> {
                         resolvePath: () => _pathFor(repo, item),
                       ),
                     ],
-                    suggestedFolder:
-                        item.folderName.isEmpty ? 'Photos' : item.folderName,
+                    suggestedFolder: item.folderName.isEmpty
+                        ? t.galleryViewerDefaultFolder
+                        : item.folderName,
                   ),
                   detailsOpen: _detailsOpen,
                   onDetails: () {
@@ -199,6 +209,7 @@ class _PageState extends State<_Page> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final item = widget.item;
     final repository = widget.repository;
     final onPlay = widget.onPlay;
@@ -227,9 +238,9 @@ class _PageState extends State<_Page> {
         }
         final file = snapshot.data;
         if (file == null) {
-          return const Center(
+          return Center(
             child: Text(
-              'This file could not be opened.',
+              t.galleryViewerFileNotOpened,
               style: TextStyle(color: Colors.white70, fontSize: 13),
             ),
           );
@@ -251,9 +262,9 @@ class _PageState extends State<_Page> {
             child: Image.file(
               File(file),
               fit: BoxFit.contain,
-              errorBuilder: (context, error, stack) => const Center(
+              errorBuilder: (context, error, stack) => Center(
                 child: Text(
-                  'This image could not be decoded.',
+                  t.galleryViewerImageNotDecoded,
                   style: TextStyle(color: Colors.white70, fontSize: 13),
                 ),
               ),
@@ -276,6 +287,7 @@ class _CloudOnlyNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -284,8 +296,8 @@ class _CloudOnlyNotice extends StatelessWidget {
           children: [
             const Icon(Icons.cloud_outlined, color: Colors.white54, size: 44),
             const SizedBox(height: 16),
-            const Text(
-              'This one is only in the cloud',
+            Text(
+              t.galleryViewerCloudOnlyTitle,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
@@ -295,10 +307,12 @@ class _CloudOnlyNotice extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '${item.name} is stored online and isn\'t on this PC. Showing '
-              'it downloads it${item.sizeBytes == null ? '' : ' '
-                  '(${formatBytes(item.sizeBytes!)})'} and keeps it here '
-              'until your cloud app frees it up again.',
+              item.sizeBytes == null
+                  ? t.galleryViewerCloudOnlyBody(item.name)
+                  : t.galleryViewerCloudOnlyBodySized(
+                      item.name,
+                      formatBytes(item.sizeBytes!),
+                    ),
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white70, fontSize: 12.5),
             ),
@@ -306,7 +320,7 @@ class _CloudOnlyNotice extends StatelessWidget {
             FilledButton.icon(
               onPressed: onFetch,
               icon: const Icon(Icons.cloud_download_rounded, size: 18),
-              label: const Text('Download and show'),
+              label: Text(t.galleryViewerDownloadAndShow),
             ),
           ],
         ),
@@ -328,6 +342,7 @@ class _VideoPoster extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -354,7 +369,7 @@ class _VideoPoster extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                'Play ${formatDuration(item.duration)}',
+                t.galleryViewerPlay(formatDuration(item.duration)),
                 style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
             ],
@@ -384,6 +399,7 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return Positioned(
       top: 0,
       left: 0,
@@ -433,14 +449,16 @@ class _TopBar extends StatelessWidget {
               ),
             ),
             IconButton(
-              tooltip: 'Send to my devices',
+              tooltip: t.galleryViewerSendToDevices,
               onPressed: onSend,
               icon: const Icon(Icons.devices_rounded, color: Colors.white70),
             ),
             IconButton(
               // §1 aria-labels / §4 state-clarity: named, and the label says
               // which way the toggle will go.
-              tooltip: detailsOpen ? 'Hide details' : 'Show details',
+              tooltip: detailsOpen
+                  ? t.galleryViewerHideDetails
+                  : t.galleryViewerShowDetails,
               isSelected: detailsOpen,
               onPressed: onDetails,
               icon: Icon(

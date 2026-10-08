@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../l10n/current_l.dart';
+
 class ScrapedPrice {
   ScrapedPrice({required this.price, required this.currency});
   final double price;
@@ -29,7 +31,7 @@ class PriceScraper {
   Future<ScrapedPrice> fetch(String url) async {
     final uri = Uri.tryParse(url);
     if (uri == null || !uri.hasScheme) {
-      throw PriceScraperException('Invalid URL.');
+      throw PriceScraperException(currentL.priceScraperInvalidUrl);
     }
 
     final http.Response res;
@@ -38,13 +40,12 @@ class PriceScraper {
           .get(uri, headers: _headers)
           .timeout(_timeout);
     } catch (_) {
-      throw PriceScraperException(
-          'Could not reach the URL. Check your connection.');
+      throw PriceScraperException(currentL.priceScraperUnreachable);
     }
 
     if (res.statusCode != 200) {
       throw PriceScraperException(
-          'The page returned an error (${res.statusCode}).');
+          currentL.priceScraperHttpError(res.statusCode));
     }
 
     final html = res.body;
@@ -55,8 +56,7 @@ class PriceScraper {
         _tryRegex(html);
 
     if (result == null) {
-      throw PriceScraperException(
-          'Could not find a price on this page. The site may require JavaScript or block scraping.');
+      throw PriceScraperException(currentL.priceScraperNoPrice);
     }
 
     return result;

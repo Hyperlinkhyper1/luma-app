@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../leaderboard/vendor_logos.dart';
 import 'ai_benchmark.dart';
@@ -39,6 +40,7 @@ class _ModelBannerState extends State<ModelBanner> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final repo = AiBenchmarkScope.of(context);
     final vendor = pagodaVendorName(
       widget.benchmark.model,
@@ -164,7 +166,7 @@ class _ModelBannerState extends State<ModelBanner> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'by $vendor',
+                            t.aiTestsByVendor(vendor),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(

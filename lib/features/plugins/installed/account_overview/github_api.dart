@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../l10n/current_l.dart';
 import 'github_models.dart';
 
 /// Raised when GitHub answers with something the UI needs to explain rather
@@ -85,29 +86,31 @@ class GithubApi {
           : DateTime.fromMillisecondsSinceEpoch(int.parse(reset) * 1000);
       return GithubApiException(
         when == null
-            ? 'GitHub rate limit reached. Try again shortly.'
-            : 'GitHub rate limit reached. It resets at '
+            ? currentL.accountOverviewGithubRateLimited
+            : currentL.accountOverviewGithubRateLimitResets(
                 '${when.hour.toString().padLeft(2, '0')}:'
-                '${when.minute.toString().padLeft(2, '0')}.',
+                '${when.minute.toString().padLeft(2, '0')}',
+              ),
         statusCode: code,
       );
     }
     if (code == 401) {
       return GithubApiException(
-        'GitHub rejected the token. It may have expired or been revoked.',
+        currentL.accountOverviewGithubTokenRejected,
         statusCode: code,
       );
     }
     if (code == 403 || code == 404) {
       return GithubApiException(
         apiMessage ??
-            'GitHub refused ${uri.path}. The token is probably missing a scope.',
+            currentL.accountOverviewGithubRefused(uri.path),
         statusCode: code,
         scopeRelated: true,
       );
     }
     return GithubApiException(
-      apiMessage ?? 'GitHub returned HTTP $code for ${uri.path}.',
+      apiMessage ??
+          currentL.accountOverviewGithubHttpError('$code', uri.path),
       statusCode: code,
     );
   }
@@ -136,7 +139,7 @@ class GithubApi {
   Future<GithubProfile> fetchProfile(String token) async {
     final body = await _get(token, '/user');
     if (body is! Map<String, dynamic>) {
-      throw GithubApiException('GitHub returned an unexpected profile payload.');
+      throw GithubApiException(currentL.accountOverviewGithubUnexpectedProfile);
     }
     return GithubProfile.fromApi(body);
   }
@@ -246,14 +249,14 @@ query($login: String!) {
     }
     final body = jsonDecode(utf8.decode(response.bodyBytes));
     if (body is! Map<String, dynamic>) {
-      throw GithubApiException('GitHub returned an unexpected GraphQL payload.');
+      throw GithubApiException(currentL.accountOverviewGithubUnexpectedGraphql);
     }
     // GraphQL reports its own errors inside a 200.
     if (body['errors'] is List && (body['errors'] as List).isNotEmpty) {
       final first = (body['errors'] as List).first;
       final message = first is Map ? first['message']?.toString() : null;
       throw GithubApiException(
-        message ?? 'GitHub could not read your contribution graph.',
+        message ?? currentL.accountOverviewGithubContributionsFailed,
         scopeRelated: true,
       );
     }
@@ -524,7 +527,7 @@ query($login: String!) {
         },
       );
     } else {
-      failures.add('Actions minutes');
+      failures.add(currentL.accountOverviewBillingItemActionsMinutes);
     }
 
     final storage = await legacy('shared-storage');
@@ -537,7 +540,7 @@ query($login: String!) {
             (storage['days_left_in_billing_cycle'] as num?)?.toInt() ?? 0,
       );
     } else {
-      failures.add('shared storage');
+      failures.add(currentL.accountOverviewBillingItemSharedStorage);
     }
 
     final packages = await legacy('packages');
@@ -568,10 +571,10 @@ query($login: String!) {
             .toList();
         billing = billing.copyWith(available: true, usageItems: items);
       } else {
-        failures.add('Copilot usage');
+        failures.add(currentL.accountOverviewBillingItemCopilot);
       }
     } catch (_) {
-      failures.add('Copilot usage');
+      failures.add(currentL.accountOverviewBillingItemCopilot);
     }
 
     // Computed independently of the legacy/enhanced billing endpoints above
@@ -586,15 +589,14 @@ query($login: String!) {
 
     if (!billing.available) {
       return withStorage(GithubBilling.empty.copyWith(
-        unavailableReason: 'This token cannot read billing. A classic token '
-            'needs the "user" scope; a fine-grained token needs the '
-            '"Plan" permission (read-only).',
+        unavailableReason: currentL.accountOverviewGithubBillingNoAccess,
       ));
     }
     if (failures.isNotEmpty) {
       return withStorage(billing.copyWith(
-        unavailableReason: 'GitHub did not return ${failures.join(', ')} for '
-            'this account.',
+        unavailableReason: currentL.accountOverviewGithubBillingMissing(
+          failures.join(', '),
+        ),
       ));
     }
     return withStorage(billing);

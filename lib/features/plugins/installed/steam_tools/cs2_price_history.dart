@@ -1,3 +1,4 @@
+import '../../../../l10n/current_l.dart';
 import 'data/steam_database.dart';
 
 /// The windows the CS2 price chart can be shown over.
@@ -10,17 +11,22 @@ import 'data/steam_database.dart';
 /// on data that cannot be older than this device's own tracking would imply
 /// a record that does not exist.
 enum Cs2PriceRange {
-  day('1D', Duration(days: 1)),
-  week('1W', Duration(days: 7)),
-  month('1M', Duration(days: 30)),
-  all('All', null);
+  day(Duration(days: 1)),
+  week(Duration(days: 7)),
+  month(Duration(days: 30)),
+  all(null);
 
-  const Cs2PriceRange(this.label, this.span);
-
-  final String label;
+  const Cs2PriceRange(this.span);
 
   /// Null for [all] — there is no cutoff to compute.
   final Duration? span;
+
+  String get label => switch (this) {
+    Cs2PriceRange.day => '1D',
+    Cs2PriceRange.week => '1W',
+    Cs2PriceRange.month => '1M',
+    Cs2PriceRange.all => currentL.commonAll,
+  };
 
   DateTime? startFrom(DateTime now) =>
       span == null ? null : now.subtract(span!);

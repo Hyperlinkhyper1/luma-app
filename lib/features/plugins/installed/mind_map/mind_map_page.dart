@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'data/mind_map_database.dart';
 import 'mind_map_scope.dart';
@@ -75,26 +76,27 @@ class _MapLibraryState extends State<_MapLibrary> {
   }
 
   Future<void> _confirmDelete(MindMap map, int nodeCount) async {
+    final t = L.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('Delete "${map.title}"?'),
+        title: Text(t.mindMapDeleteMapTitle(map.title)),
         content: Text(
           nodeCount <= 1
-              ? 'This map is empty. It will be removed for good.'
-              : 'All $nodeCount nodes on this map will be removed for good.',
+              ? t.mindMapDeleteMapEmpty
+              : t.mindMapDeleteMapNodes(nodeCount),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
+            child: Text(t.commonCancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: context.luma.danger,
             ),
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Delete'),
+            child: Text(t.commonDelete),
           ),
         ],
       ),
@@ -107,6 +109,7 @@ class _MapLibraryState extends State<_MapLibrary> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final repository = MindMapScope.of(context);
     final narrow = MediaQuery.sizeOf(context).width < 760;
 
@@ -126,10 +129,10 @@ class _MapLibraryState extends State<_MapLibrary> {
                       Expanded(
                         child: TextField(
                           controller: _title,
-                          decoration: const InputDecoration(
-                            hintText: 'Name a new mind map',
+                          decoration: InputDecoration(
+                            hintText: t.mindMapNewMapHint,
                             isDense: true,
-                            prefixIcon: Icon(Icons.hub_rounded, size: 18),
+                            prefixIcon: const Icon(Icons.hub_rounded, size: 18),
                           ),
                           textInputAction: TextInputAction.done,
                           onSubmitted: (_) => _create(),
@@ -137,7 +140,7 @@ class _MapLibraryState extends State<_MapLibrary> {
                       ),
                       const SizedBox(width: 12),
                       LumaPrimaryButton(
-                        label: 'Create',
+                        label: t.commonCreate,
                         icon: Icons.add_rounded,
                         loading: _creating,
                         onTap: _create,
@@ -147,12 +150,10 @@ class _MapLibraryState extends State<_MapLibrary> {
                   const SizedBox(height: 16),
                   Expanded(
                     child: maps.isEmpty
-                        ? const LumaEmptyState(
+                        ? LumaEmptyState(
                             icon: Icons.hub_rounded,
-                            title: 'No mind maps yet',
-                            subtitle:
-                                'Name one above. You start on the centre idea and press '
-                                'Tab to branch out — no dragging required.',
+                            title: t.mindMapLibraryEmptyTitle,
+                            subtitle: t.mindMapLibraryEmptySubtitle,
                           )
                         : GridView.builder(
                             padding: const EdgeInsets.only(bottom: 24),
@@ -201,6 +202,7 @@ class _MapCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return LumaCard(
       child: InkWell(
@@ -226,7 +228,7 @@ class _MapCard extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Delete map',
+                    tooltip: t.mindMapDeleteMapTooltip,
                     iconSize: 18,
                     icon: Icon(Icons.delete_outline_rounded, color: luma.textMuted),
                     onPressed: onDelete,
@@ -239,12 +241,12 @@ class _MapCard extends StatelessWidget {
                   Icon(Icons.hub_rounded, size: 13, color: luma.textMuted),
                   const SizedBox(width: 5),
                   Text(
-                    '$nodeCount ${nodeCount == 1 ? 'node' : 'nodes'}',
+                    t.mindMapNodeCount(nodeCount),
                     style: TextStyle(color: luma.textMuted, fontSize: 11.5),
                   ),
                   const Spacer(),
                   Text(
-                    _relative(map.updatedAt),
+                    _relative(t, map.updatedAt),
                     style: TextStyle(color: luma.textMuted, fontSize: 11.5),
                   ),
                 ],
@@ -256,12 +258,12 @@ class _MapCard extends StatelessWidget {
     );
   }
 
-  static String _relative(DateTime when) {
+  static String _relative(L t, DateTime when) {
     final difference = DateTime.now().difference(when);
-    if (difference.inMinutes < 1) return 'just now';
-    if (difference.inHours < 1) return '${difference.inMinutes}m ago';
-    if (difference.inDays < 1) return '${difference.inHours}h ago';
-    if (difference.inDays < 30) return '${difference.inDays}d ago';
+    if (difference.inMinutes < 1) return t.commonJustNow;
+    if (difference.inHours < 1) return t.commonMinutesAgo(difference.inMinutes);
+    if (difference.inDays < 1) return t.commonHoursAgo(difference.inHours);
+    if (difference.inDays < 30) return t.commonDaysAgo(difference.inDays);
     return '${when.year}-${when.month.toString().padLeft(2, '0')}-'
         '${when.day.toString().padLeft(2, '0')}';
   }

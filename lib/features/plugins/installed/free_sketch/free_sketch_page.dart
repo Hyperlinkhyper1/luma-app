@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
+import '../../../../l10n/current_l.dart';
 import '../../../../theme/luma_theme.dart';
 import 'free_sketch_repository.dart';
 import 'free_sketch_scope.dart';
@@ -119,6 +121,7 @@ class _GalleryState extends State<_Gallery> {
   }
 
   Future<void> _create() async {
+    final t = L.of(context);
     final spec = await showDialog<_NewCanvas>(context: context, builder: (_) => const _NewCanvasDialog());
     if (spec == null || !mounted) return;
     final meta = await FreeSketchScope.of(context).create(
@@ -127,11 +130,13 @@ class _GalleryState extends State<_Gallery> {
       height: spec.height,
       background: spec.background,
       showBackground: spec.showBackground,
+      firstLayerName: t.freeSketchFirstLayerName,
     );
     widget.onOpen(meta.id);
   }
 
   Future<void> _importAsNew() async {
+    final t = L.of(context);
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: const ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif'],
@@ -161,25 +166,26 @@ class _GalleryState extends State<_Gallery> {
       widget.onOpen(meta.id);
     } on Object catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('That image could not be opened: $error')));
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(t.freeSketchImageCouldNotOpen('$error'))));
     }
   }
 
   Future<void> _rename(SketchSummary summary) async {
+    final t = L.of(context);
     final text = TextEditingController(text: summary.meta.title);
     final title = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Rename artwork'),
+        title: Text(t.freeSketchRenameArtwork),
         content: TextField(
           controller: text,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'Title'),
+          decoration: InputDecoration(labelText: t.commonTitle),
           onSubmitted: (v) => Navigator.pop(context, v),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, text.text), child: const Text('Rename')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(t.commonCancel)),
+          FilledButton(onPressed: () => Navigator.pop(context, text.text), child: Text(t.commonRename)),
         ],
       ),
     ).whenComplete(text.dispose);
@@ -189,21 +195,19 @@ class _GalleryState extends State<_Gallery> {
   }
 
   Future<void> _delete(SketchSummary summary) async {
+    final t = L.of(context);
     final luma = context.luma;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Delete "${summary.meta.title}"?'),
-        content: Text(
-          'All ${summary.meta.layers.length} layer${summary.meta.layers.length == 1 ? '' : 's'} '
-          'will be removed from this device for good. Export it first if you want to keep a copy.',
-        ),
+        title: Text(t.freeSketchDeleteConfirm(summary.meta.title)),
+        content: Text(t.freeSketchDeleteBody(summary.meta.layers.length)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t.commonCancel)),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: luma.danger),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
+            child: Text(t.commonDelete),
           ),
         ],
       ),
@@ -214,6 +218,7 @@ class _GalleryState extends State<_Gallery> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final narrow = MediaQuery.sizeOf(context).width < 760;
     return Padding(
@@ -228,26 +233,26 @@ class _GalleryState extends State<_Gallery> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Gallery',
+                      t.freeSketchGallery,
                       style: TextStyle(color: luma.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
                     ),
                     Text(
-                      'Every artwork is saved on this device as you paint.',
+                      t.freeSketchGallerySubtitle,
                       style: TextStyle(color: luma.textMuted, fontSize: 12.5),
                     ),
                   ],
                 ),
               ),
-              LumaGhostButton(label: narrow ? 'Import' : 'Import image', icon: Icons.image_outlined, onTap: _importAsNew),
+              LumaGhostButton(label: narrow ? t.commonImport : t.freeSketchImportImage, icon: Icons.image_outlined, onTap: _importAsNew),
               const SizedBox(width: 10),
-              LumaPrimaryButton(label: narrow ? 'New' : 'New artwork', icon: Icons.add_rounded, onTap: _create),
+              LumaPrimaryButton(label: narrow ? t.freeSketchNew : t.freeSketchNewArtwork, icon: Icons.add_rounded, onTap: _create),
             ],
           ),
           if (widget.error != null)
             Padding(
               padding: const EdgeInsets.only(top: 12),
               child: Text(
-                'That artwork could not be opened: ${widget.error}',
+                t.freeSketchArtworkCouldNotOpen('${widget.error}'),
                 style: TextStyle(color: luma.danger, fontSize: 12.5),
               ),
             ),
@@ -259,7 +264,7 @@ class _GalleryState extends State<_Gallery> {
                 if (snapshot.hasError) {
                   return LumaEmptyState(
                     icon: Icons.error_outline_rounded,
-                    title: 'The gallery could not be read',
+                    title: t.freeSketchCouldNotReadGallery,
                     subtitle: '${snapshot.error}',
                   );
                 }
@@ -270,11 +275,9 @@ class _GalleryState extends State<_Gallery> {
                 if (items.isEmpty) {
                   return LumaEmptyState(
                     icon: Icons.brush_rounded,
-                    title: 'Your gallery is empty',
-                    subtitle: 'Start a new artwork — pencils, inks, watercolours, markers, airbrushes and '
-                        'blenders, with layers, blend modes, symmetry and pressure. '
-                        'Export to PNG, JPEG, Photoshop or OpenRaster.',
-                    action: LumaPrimaryButton(label: 'New artwork', icon: Icons.add_rounded, onTap: _create),
+                    title: t.freeSketchGalleryEmpty,
+                    subtitle: t.freeSketchGalleryEmptyHint,
+                    action: LumaPrimaryButton(label: t.freeSketchNewArtwork, icon: Icons.add_rounded, onTap: _create),
                   );
                 }
                 return GridView.builder(
@@ -326,6 +329,7 @@ class _ArtworkCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final meta = summary.meta;
     final thumb = summary.thumbnail;
@@ -386,7 +390,7 @@ class _ArtworkCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${meta.width}×${meta.height} · ${meta.layers.length} layer${meta.layers.length == 1 ? '' : 's'} · ${_relative(meta.updated)}',
+                          t.freeSketchArtworkInfo('${meta.width}×${meta.height}', meta.layers.length, _relative(t, meta.updated)),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(color: luma.textMuted, fontSize: 11.5),
@@ -395,7 +399,7 @@ class _ArtworkCard extends StatelessWidget {
                     ),
                   ),
                   PopupMenuButton<String>(
-                    tooltip: 'Artwork actions',
+                    tooltip: t.freeSketchArtworkActions,
                     icon: Icon(Icons.more_vert_rounded, size: 18, color: luma.textMuted),
                     onSelected: (value) {
                       switch (value) {
@@ -407,10 +411,10 @@ class _ArtworkCard extends StatelessWidget {
                           onDelete();
                       }
                     },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'rename', child: Text('Rename')),
-                      PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
-                      PopupMenuItem(value: 'delete', child: Text('Delete')),
+                    itemBuilder: (_) => [
+                      PopupMenuItem(value: 'rename', child: Text(t.commonRename)),
+                      PopupMenuItem(value: 'duplicate', child: Text(t.freeSketchDuplicate)),
+                      PopupMenuItem(value: 'delete', child: Text(t.commonDelete)),
                     ],
                   ),
                 ],
@@ -422,12 +426,12 @@ class _ArtworkCard extends StatelessWidget {
     );
   }
 
-  static String _relative(DateTime when) {
+  static String _relative(L t, DateTime when) {
     final difference = DateTime.now().difference(when);
-    if (difference.inMinutes < 1) return 'just now';
-    if (difference.inHours < 1) return '${difference.inMinutes}m ago';
-    if (difference.inDays < 1) return '${difference.inHours}h ago';
-    if (difference.inDays < 30) return '${difference.inDays}d ago';
+    if (difference.inMinutes < 1) return t.commonJustNow;
+    if (difference.inHours < 1) return t.commonMinutesAgo(difference.inMinutes);
+    if (difference.inDays < 1) return t.commonHoursAgo(difference.inHours);
+    if (difference.inDays < 30) return t.commonDaysAgo(difference.inDays);
     return '${when.year}-${when.month.toString().padLeft(2, '0')}-${when.day.toString().padLeft(2, '0')}';
   }
 }
@@ -450,7 +454,7 @@ class _NewCanvasDialog extends StatefulWidget {
 }
 
 class _NewCanvasDialogState extends State<_NewCanvasDialog> {
-  final _title = TextEditingController(text: 'Untitled artwork');
+  final _title = TextEditingController(text: currentL.freeSketchUntitledArtwork);
   final _width = TextEditingController(text: '${CanvasPreset.all.first.width}');
   final _height = TextEditingController(text: '${CanvasPreset.all.first.height}');
   CanvasPreset? _preset = CanvasPreset.all.first;
@@ -492,13 +496,14 @@ class _NewCanvasDialogState extends State<_NewCanvasDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final w = _parse(_width);
     final h = _parse(_height);
     final valid = w != null && h != null && _title.text.trim().isNotEmpty;
     final megabytes = valid ? (w * h * 4 / (1024 * 1024)) : 0.0;
     return AlertDialog(
-      title: const Text('New artwork'),
+      title: Text(t.freeSketchNewArtwork),
       content: SizedBox(
         width: 460,
         child: SingleChildScrollView(
@@ -509,11 +514,11 @@ class _NewCanvasDialogState extends State<_NewCanvasDialog> {
               TextField(
                 controller: _title,
                 autofocus: true,
-                decoration: const InputDecoration(labelText: 'Title'),
+                decoration: InputDecoration(labelText: t.commonTitle),
                 onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 16),
-              Text('Canvas', style: TextStyle(color: luma.textSecondary, fontWeight: FontWeight.w600, fontSize: 12.5)),
+              Text(t.freeSketchCanvas, style: TextStyle(color: luma.textSecondary, fontWeight: FontWeight.w600, fontSize: 12.5)),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -535,24 +540,24 @@ class _NewCanvasDialogState extends State<_NewCanvasDialog> {
                       controller: _width,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: InputDecoration(labelText: 'Width (px)', errorText: w == null ? '64–4096' : null),
+                      decoration: InputDecoration(labelText: t.freeSketchWidthPx, errorText: w == null ? '64–4096' : null),
                       onChanged: (_) => setState(() => _preset = null),
                     ),
                   ),
-                  IconButton(tooltip: 'Swap width and height', onPressed: _swap, icon: const Icon(Icons.swap_horiz_rounded)),
+                  IconButton(tooltip: t.freeSketchSwapSize, onPressed: _swap, icon: const Icon(Icons.swap_horiz_rounded)),
                   Expanded(
                     child: TextField(
                       controller: _height,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: InputDecoration(labelText: 'Height (px)', errorText: h == null ? '64–4096' : null),
+                      decoration: InputDecoration(labelText: t.freeSketchHeightPx, errorText: h == null ? '64–4096' : null),
                       onChanged: (_) => setState(() => _preset = null),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
-              Text('Background', style: TextStyle(color: luma.textSecondary, fontWeight: FontWeight.w600, fontSize: 12.5)),
+              Text(t.freeSketchBackground, style: TextStyle(color: luma.textSecondary, fontWeight: FontWeight.w600, fontSize: 12.5)),
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -582,15 +587,14 @@ class _NewCanvasDialogState extends State<_NewCanvasDialog> {
                     selected: _transparent,
                     onSelected: (v) => setState(() => _transparent = v),
                     avatar: const Icon(Icons.grid_on_rounded, size: 16),
-                    label: const Text('Transparent'),
+                    label: Text(t.freeSketchTransparent),
                   ),
                 ],
               ),
               if (valid) ...[
                 const SizedBox(height: 14),
                 Text(
-                  '${megabytes.toStringAsFixed(1)} MB per layer · up to '
-                  '${SketchLimits.maxLayers(w, h)} layers',
+                  t.freeSketchCanvasMemory(megabytes.toStringAsFixed(1), SketchLimits.maxLayers(w, h)),
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
               ],
@@ -599,12 +603,12 @@ class _NewCanvasDialogState extends State<_NewCanvasDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(t.commonCancel)),
         FilledButton(
           onPressed: valid
               ? () => Navigator.pop(context, _NewCanvas(_title.text.trim(), w, h, _background, !_transparent))
               : null,
-          child: const Text('Create'),
+          child: Text(t.commonCreate),
         ),
       ],
     );

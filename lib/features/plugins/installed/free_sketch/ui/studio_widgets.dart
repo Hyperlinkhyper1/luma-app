@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 
 /// Floating panel chrome shared by the brush, colour and layer panels.
@@ -52,6 +53,7 @@ class PanelHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return SizedBox(
       height: 32,
       child: Row(
@@ -64,7 +66,7 @@ class PanelHeader extends StatelessWidget {
           ),
           ...trailing,
           if (onClose != null)
-            StudioIconButton(icon: Icons.close_rounded, tooltip: 'Close', size: 30, onTap: onClose),
+            StudioIconButton(icon: Icons.close_rounded, tooltip: t.commonClose, size: 30, onTap: onClose),
         ],
       ),
     );

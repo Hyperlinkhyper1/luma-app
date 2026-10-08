@@ -1,3 +1,5 @@
+import '../../l10n/current_l.dart';
+
 /// Outcome of attempting to persist a converted image.
 class SaveResult {
   const SaveResult({
@@ -16,5 +18,5 @@ class SaveResult {
   final String summary;
 
   factory SaveResult.cancelled() =>
-      const SaveResult(saved: false, summary: 'Save cancelled.');
+      SaveResult(saved: false, summary: currentL.converterSaveCancelled);
 }

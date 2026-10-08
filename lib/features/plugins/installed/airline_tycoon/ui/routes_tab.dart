@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../airline_game_state.dart';
 import '../airline_tycoon_repository.dart';
@@ -53,12 +54,13 @@ class _RoutesTabState extends State<RoutesTab> {
     final repo = widget.repository;
     final routes = repo.state.routes;
     final luma = context.luma;
+    final t = L.of(context);
 
     if (routes.isEmpty) {
       return LumaEmptyState(
         icon: Icons.route_rounded,
-        title: 'No routes yet',
-        subtitle: 'Tap an airport on the map to open your first route.',
+        title: t.airlineRoutesEmptyTitle,
+        subtitle: t.airlineRoutesEmptySubtitle,
       );
     }
 
@@ -70,8 +72,10 @@ class _RoutesTabState extends State<RoutesTab> {
             children: [
               Expanded(
                 child: Text(
-                  '${routes.length} route${routes.length == 1 ? '' : 's'} · '
-                  '${repo.hubEffects.activeGates} gate(s)',
+                  t.airlineRoutesSummary(
+                    routes.length,
+                    repo.hubEffects.activeGates,
+                  ),
                   style: TextStyle(color: luma.textSecondary, fontSize: 13),
                 ),
               ),
@@ -127,6 +131,7 @@ class _RoutesTabState extends State<RoutesTab> {
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
         final luma = sheetContext.luma;
+        final t = L.of(sheetContext);
         return _SheetShell(
           title: '${hub.iata} → ${airport.iata}',
           subtitle: airport.name,
@@ -135,15 +140,15 @@ class _RoutesTabState extends State<RoutesTab> {
               spacing: 20,
               runSpacing: 10,
               children: [
-                _Fact(label: 'Distance', value: fmtKm(distance)),
-                _Fact(label: 'Daily demand', value: '${demand.round()} pax'),
+                _Fact(label: t.airlineLabelDistance, value: fmtKm(distance)),
+                _Fact(label: t.airlineLabelDailyDemand, value: t.airlineRoutesPax('${demand.round()}')),
                 _Fact(
-                  label: 'Fair fare',
+                  label: t.airlineLabelFairFare,
                   value: fmtExactMoney(Economy.fairFareEur(distance).round()),
                 ),
                 _Fact(
-                  label: 'Runway there',
-                  value: '${fmtCount(airport.runwayM)} m',
+                  label: t.airlineLabelRunwayThere,
+                  value: t.airlineFactMetres(fmtCount(airport.runwayM)),
                 ),
               ],
             ),
@@ -152,20 +157,25 @@ class _RoutesTabState extends State<RoutesTab> {
               _Notice(
                 icon: Icons.warning_amber_rounded,
                 colour: luma.warning,
-                text: 'Nothing in the catalogue can fly this from your hub '
-                    'yet — you need a longer runway, or this sector is beyond '
-                    'every aircraft you could buy.',
+                text: t.airlineRoutesNoUsableAircraft,
               )
             else
               Text(
-                'Can be flown by: ${usable.take(4).map((m) => m.name).join(', ')}'
-                '${usable.length > 4 ? ' and ${usable.length - 4} more' : ''}.',
+                usable.length > 4
+                    ? t.airlineRoutesCanBeFlownByMore(
+                        usable.take(4).map((m) => m.name).join(', '),
+                        '${usable.length - 4}',
+                      )
+                    : t.airlineRoutesCanBeFlownBy(
+                        usable.take(4).map((m) => m.name).join(', '),
+                      ),
                 style: TextStyle(color: luma.textSecondary, fontSize: 12),
               ),
             const SizedBox(height: 16),
             LumaPrimaryButton(
-              label: 'Open route · '
-                  '${fmtMoney((45000 + 12 * distance).round())}',
+              label: t.airlineRoutesOpenRoute(
+                fmtMoney((45000 + 12 * distance).round()),
+              ),
               expand: true,
               onTap: () {
                 final result = repo.openRoute(airport.iata);
@@ -221,6 +231,7 @@ class _RouteCard extends StatelessWidget {
     final dest = repository.catalog?.byIata(route.destIata);
     final assigned = repository.state.aircraftOnRoute(route.id).length;
     final recent = route.profitHistory.isEmpty ? 0 : route.profitHistory.last;
+    final t = L.of(context);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -266,7 +277,7 @@ class _RouteCard extends StatelessWidget {
                   Icon(Icons.flight_rounded, size: 13, color: luma.textMuted),
                   const SizedBox(width: 4),
                   Text(
-                    assigned == 0 ? 'no aircraft' : '$assigned assigned',
+                    assigned == 0 ? t.airlineRoutesNoAircraft : t.airlineRoutesAssigned(assigned),
                     style: TextStyle(
                       color: assigned == 0 ? luma.warning : luma.textSecondary,
                       fontSize: 12,
@@ -318,6 +329,7 @@ class _RouteDetailSheetState extends State<_RouteDetailSheet> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final repo = widget.repository;
     final route = repo.state.routeById(widget.routeId);
     final hub = repo.hubAirport;
@@ -378,17 +390,17 @@ class _RouteDetailSheetState extends State<_RouteDetailSheet> {
           spacing: 20,
           runSpacing: 10,
           children: [
-            _Fact(label: 'Daily demand', value: '${demand.round()} pax'),
-            _Fact(label: 'Fair fare', value: fmtExactMoney(fair.round())),
-            _Fact(label: 'Aircraft', value: '${assigned.length}'),
-            if (model != null) _Fact(label: 'Type', value: model.name),
+            _Fact(label: t.airlineLabelDailyDemand, value: t.airlineRoutesPax('${demand.round()}')),
+            _Fact(label: t.airlineLabelFairFare, value: fmtExactMoney(fair.round())),
+            _Fact(label: t.airlineLabelAircraft, value: '${assigned.length}'),
+            if (model != null) _Fact(label: t.airlineLabelType, value: model.name),
           ],
         ),
         const SizedBox(height: 18),
         Row(
           children: [
             Text(
-              'Fare',
+              t.airlineRoutesFare,
               style: TextStyle(
                 color: luma.textPrimary,
                 fontWeight: FontWeight.w600,
@@ -418,7 +430,7 @@ class _RouteDetailSheetState extends State<_RouteDetailSheet> {
           children: [
             Expanded(
               child: _Meter(
-                label: 'Cabin filled',
+                label: t.airlineRoutesCabinFilled,
                 value: '${(loadFactor * 100).round()}%',
                 fraction: loadFactor,
               ),
@@ -429,15 +441,17 @@ class _RouteDetailSheetState extends State<_RouteDetailSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    model == null ? 'No aircraft assigned' : 'Projected today',
+                    model == null ? t.airlineRoutesNoAircraftAssigned : t.airlineRoutesProjectedToday,
                     style: TextStyle(fontSize: 11, color: luma.textMuted),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     model == null
-                        ? 'Assign one in Fleet'
-                        : '${fmtSignedMoney(projectedProfit)} · '
-                            '${fmtCount(dailyPax)} pax',
+                        ? t.airlineRoutesAssignInFleet
+                        : t.airlineRoutesProjection(
+                            fmtSignedMoney(projectedProfit),
+                            fmtCount(dailyPax),
+                          ),
                     style: TextStyle(
                       color: model == null
                           ? luma.warning
@@ -455,7 +469,7 @@ class _RouteDetailSheetState extends State<_RouteDetailSheet> {
         ),
         const SizedBox(height: 20),
         LumaGhostButton(
-          label: 'Close this route',
+          label: t.airlineRoutesCloseRoute,
           icon: Icons.close_rounded,
           expand: true,
           onTap: () {

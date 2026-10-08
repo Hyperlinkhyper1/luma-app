@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'sftp_paths.dart';
 
@@ -71,7 +72,7 @@ class SftpFilePane extends StatelessWidget {
     required this.onDropped,
     this.onSelectRange,
     this.subtitle,
-    this.emptyMessage = 'This folder is empty.',
+    this.emptyMessage,
     this.compact = false,
   });
 
@@ -118,7 +119,7 @@ class SftpFilePane extends StatelessWidget {
   onDropped;
 
   /// Shown in place of the list when there is nothing in the folder.
-  final String emptyMessage;
+  final String? emptyMessage;
 
   /// Drops the modified/permission columns for narrow layouts.
   final bool compact;
@@ -161,8 +162,13 @@ class SftpFilePane extends StatelessWidget {
   }
 
   Widget _buildBody(BuildContext context, LumaPalette luma) {
+    final t = L.of(context);
     final list = entries.isEmpty && !loading
-        ? _PaneEmpty(message: error == null ? emptyMessage : 'Nothing to show.')
+        ? _PaneEmpty(
+            message: error == null
+                ? emptyMessage ?? t.sftpFolderEmpty
+                : t.sftpNothingToShow,
+          )
         : _SelectionAnchor(
             path: path,
             builder: (context, anchor) => ListView.builder(
@@ -219,8 +225,8 @@ class SftpFilePane extends StatelessWidget {
                     child: Center(
                       child: Text(
                         side == PaneSide.remote
-                            ? 'Upload to ${RemotePath.basename(path)}'
-                            : 'Download to here',
+                            ? t.sftpDropUploadTo(RemotePath.basename(path))
+                            : t.sftpDropDownloadHere,
                         style: TextStyle(
                           color: luma.textPrimary,
                           fontWeight: FontWeight.w700,
@@ -298,6 +304,7 @@ class _PaneHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
@@ -343,24 +350,26 @@ class _PaneHeader extends StatelessWidget {
               ),
               _PaneAction(
                 icon: Icons.arrow_upward_rounded,
-                tooltip: 'Up one folder',
+                tooltip: t.sftpUpOneFolder,
                 onTap: canGoUp ? onUp : null,
               ),
               _PaneAction(
                 icon: side == PaneSide.local
                     ? Icons.folder_special_rounded
                     : Icons.home_rounded,
-                tooltip: side == PaneSide.local ? 'Places' : 'Home folder',
+                tooltip: side == PaneSide.local
+                    ? t.sftpPlaces
+                    : t.sftpHomeFolder,
                 onTap: onHome,
               ),
               _PaneAction(
                 icon: Icons.create_new_folder_rounded,
-                tooltip: 'New folder',
+                tooltip: t.sftpNewFolder,
                 onTap: onNewFolder,
               ),
               _PaneAction(
                 icon: Icons.refresh_rounded,
-                tooltip: 'Refresh',
+                tooltip: t.commonRefresh,
                 onTap: loading ? null : onRefresh,
               ),
             ],
@@ -462,6 +471,7 @@ class _PaneError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Container(
       width: double.infinity,
@@ -479,7 +489,7 @@ class _PaneError extends StatelessWidget {
           ),
           TextButton(
             onPressed: onRetry,
-            child: Text('Retry', style: TextStyle(color: luma.accent)),
+            child: Text(t.commonRetry, style: TextStyle(color: luma.accent)),
           ),
         ],
       ),
@@ -521,6 +531,7 @@ class _PaneFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -529,8 +540,8 @@ class _PaneFooter extends StatelessWidget {
       ),
       child: Text(
         selected > 0
-            ? '$selected of $count selected'
-            : '$count ${count == 1 ? 'item' : 'items'}',
+            ? t.sftpSelectedOfCount(selected, count)
+            : t.sftpItemCount(count),
         style: TextStyle(color: luma.textMuted, fontSize: 11),
       ),
     );
@@ -569,6 +580,7 @@ class _EntryRowState extends State<_EntryRow> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final entry = widget.entry;
 
@@ -689,7 +701,7 @@ class _EntryRowState extends State<_EntryRow> {
         count: widget.selectionForDrag.length,
         label: widget.selectionForDrag.length == 1
             ? entry.name
-            : '${widget.selectionForDrag.length} items',
+            : t.sftpItemCount(widget.selectionForDrag.length),
         luma: luma,
       ),
       childWhenDragging: Opacity(opacity: 0.4, child: row),
@@ -787,10 +799,11 @@ class _SelectBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Semantics(
       checked: selected,
-      label: 'Select $label',
+      label: t.sftpSelectEntry(label),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(6),

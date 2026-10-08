@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/app_localizations.dart';
+import '../../../../l10n/current_l.dart';
 import 'gallery_media.dart';
 
 /// Ids of the five categories that are always offered, in tab order. Folder
@@ -120,6 +122,7 @@ bool looksMachineNamed(String label) {
 /// noise. Ones with fewer than [minimumAlbumItems] pictures. And ones whose
 /// name no person chose (see [looksMachineNamed]).
 List<GalleryCategory> buildCategories(List<GalleryItem> items) {
+  final t = currentL;
   final all = _Bucket();
   final pictures = _Bucket();
   final videos = _Bucket();
@@ -153,7 +156,7 @@ List<GalleryCategory> buildCategories(List<GalleryItem> items) {
   final categories = <GalleryCategory>[
     GalleryCategory(
       id: GalleryCategoryIds.all,
-      label: 'All',
+      label: t.commonAll,
       icon: Icons.photo_library_rounded,
       count: all.count,
       cover: all.cover,
@@ -161,7 +164,7 @@ List<GalleryCategory> buildCategories(List<GalleryItem> items) {
     if (pictures.count > 0)
       GalleryCategory(
         id: GalleryCategoryIds.pictures,
-        label: 'Pictures',
+        label: t.galleryCategoryPictures,
         icon: Icons.photo_camera_rounded,
         count: pictures.count,
         cover: pictures.cover,
@@ -169,7 +172,7 @@ List<GalleryCategory> buildCategories(List<GalleryItem> items) {
     if (videos.count > 0)
       GalleryCategory(
         id: GalleryCategoryIds.videos,
-        label: 'Videos',
+        label: t.galleryCategoryVideos,
         icon: Icons.videocam_rounded,
         count: videos.count,
         cover: videos.cover,
@@ -177,7 +180,7 @@ List<GalleryCategory> buildCategories(List<GalleryItem> items) {
     if (screenshots.count > 0)
       GalleryCategory(
         id: GalleryCategoryIds.screenshots,
-        label: 'Screenshots',
+        label: t.galleryCategoryScreenshots,
         icon: Icons.crop_rounded,
         count: screenshots.count,
         cover: screenshots.cover,
@@ -185,7 +188,7 @@ List<GalleryCategory> buildCategories(List<GalleryItem> items) {
     if (gifs.count > 0)
       GalleryCategory(
         id: GalleryCategoryIds.gifs,
-        label: 'GIFs',
+        label: t.galleryCategoryGifs,
         icon: Icons.gif_box_rounded,
         count: gifs.count,
         cover: gifs.cover,
@@ -201,7 +204,7 @@ List<GalleryCategory> buildCategories(List<GalleryItem> items) {
       .map(
         (e) => GalleryCategory(
           id: '${GalleryCategoryIds.folderPrefix}${e.key}',
-          label: e.key,
+          label: galleryFolderName(t, e.key),
           icon: folderIcon(e.key),
           count: e.value.count,
           cover: e.value.cover,
@@ -362,17 +365,73 @@ class GalleryDateGroup {
   final List<GalleryItem> items;
 }
 
-const _months = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-
 String dateGroupLabel(DateTime day, DateTime now) {
+  final t = currentL;
   final today = DateTime(now.year, now.month, now.day);
   final diff = today.difference(day).inDays;
-  if (diff == 0) return 'Today';
-  if (diff == 1) return 'Yesterday';
-  final month = _months[day.month - 1];
-  if (day.year == now.year) return '$month ${day.day}';
-  return '$month ${day.day}, ${day.year}';
+  if (diff == 0) return t.commonToday;
+  if (diff == 1) return t.commonYesterday;
+  final month = galleryMonthLong(t, day.month);
+  if (day.year == now.year) return t.galleryDateMonthDay(month, day.day);
+  return t.galleryDateMonthDayYear(month, day.day, day.year);
 }
+
+/// The album or heading name for a folder. [folder] is the English label from
+/// [folderLabel]; the category id keeps that form so it never changes with the
+/// language, and only the shown name is translated.
+String galleryFolderName(L t, String folder) => switch (folder) {
+      'Downloads' => t.galleryFolderDownloads,
+      'Camera' => t.galleryFolderCamera,
+      'Other' => t.commonOther,
+      _ => folder,
+    };
+
+/// The full month name for a 1-based [month].
+String galleryMonthLong(L t, int month) => switch (month) {
+      1 => t.galleryMonthJanuary,
+      2 => t.galleryMonthFebruary,
+      3 => t.galleryMonthMarch,
+      4 => t.galleryMonthApril,
+      5 => t.galleryMonthMay,
+      6 => t.galleryMonthJune,
+      7 => t.galleryMonthJuly,
+      8 => t.galleryMonthAugust,
+      9 => t.galleryMonthSeptember,
+      10 => t.galleryMonthOctober,
+      11 => t.galleryMonthNovember,
+      _ => t.galleryMonthDecember,
+    };
+
+/// The abbreviated month name for a 1-based [month].
+String galleryMonthShort(L t, int month) => switch (month) {
+      1 => t.galleryMonthShortJan,
+      2 => t.galleryMonthShortFeb,
+      3 => t.galleryMonthShortMar,
+      4 => t.galleryMonthShortApr,
+      5 => t.galleryMonthShortMay,
+      6 => t.galleryMonthShortJun,
+      7 => t.galleryMonthShortJul,
+      8 => t.galleryMonthShortAug,
+      9 => t.galleryMonthShortSep,
+      10 => t.galleryMonthShortOct,
+      11 => t.galleryMonthShortNov,
+      _ => t.galleryMonthShortDec,
+    };
+
+/// The shown name of a smart-album bucket. [bucket] is the stored id that the
+/// ML Kit and ONNX paths write, so it stays English; only the name changes.
+String galleryBucketName(L t, String bucket) => switch (bucket) {
+      'Food' => t.galleryBucketFood,
+      'Pets' => t.galleryBucketPets,
+      'Animals' => t.galleryBucketAnimals,
+      'Nature' => t.galleryBucketNature,
+      'Ocean' => t.galleryBucketOcean,
+      'Sky' => t.galleryBucketSky,
+      'Night' => t.galleryBucketNight,
+      'Architecture' => t.galleryBucketArchitecture,
+      'Transport' => t.galleryBucketTransport,
+      'Documents' => t.galleryBucketDocuments,
+      'Celebrations' => t.galleryBucketCelebrations,
+      'Art' => t.galleryBucketArt,
+      _ => bucket,
+    };

@@ -15,6 +15,7 @@ library;
 
 import 'dart:convert';
 
+import '../../../../l10n/current_l.dart';
 import 'mc_models.dart';
 
 /// Extracts a member's submissions and profile counters from the page.
@@ -195,18 +196,18 @@ String? _slugFromPath(String? path) {
 /// PMC's `data-subkey` is plural and lowercase (`skins`, `mods`); this is the
 /// singular form the cards show.
 String _prettyKind(String? subkey) {
-  if (subkey == null || subkey.isEmpty) return 'submission';
+  if (subkey == null || subkey.isEmpty) return currentL.accountOverviewKindSubmission;
   final singular =
       subkey.endsWith('s') ? subkey.substring(0, subkey.length - 1) : subkey;
   return switch (singular) {
-    'mod' => 'mod',
-    'skin' => 'skin',
-    'project' => 'project',
-    'texture_pack' || 'texture-pack' => 'resource pack',
-    'data_pack' || 'data-pack' => 'data pack',
-    'blog' => 'blog',
-    'server' => 'server',
-    'collection' => 'collection',
+    'mod' => currentL.accountOverviewKindMod,
+    'skin' => currentL.accountOverviewKindSkin,
+    'project' => currentL.accountOverviewKindProject,
+    'texture_pack' || 'texture-pack' => currentL.accountOverviewKindResourcePack,
+    'data_pack' || 'data-pack' => currentL.accountOverviewKindDataPack,
+    'blog' => currentL.accountOverviewKindBlog,
+    'server' => currentL.accountOverviewKindServer,
+    'collection' => currentL.accountOverviewKindCollection,
     _ => singular.replaceAll('_', ' '),
   };
 }

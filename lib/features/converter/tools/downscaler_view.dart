@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/luma_theme.dart';
 import '../converter_widgets.dart';
 import '../downscaler_service.dart';
@@ -79,6 +80,7 @@ class _DownscalerViewState extends State<DownscalerView> {
   }
 
   Future<void> _pickFile() async {
+    final t = L.of(context);
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: const ['png', 'jpg', 'jpeg'],
@@ -88,7 +90,7 @@ class _DownscalerViewState extends State<DownscalerView> {
     final file = result.files.first;
     final bytes = file.bytes;
     if (bytes == null) {
-      setState(() => _error = 'Could not read the selected file.');
+      setState(() => _error = t.downscalerReadFailed);
       return;
     }
 
@@ -113,9 +115,7 @@ class _DownscalerViewState extends State<DownscalerView> {
     setState(() {
       _probing = false;
       _probe = probe;
-      _error = probe.decodable
-          ? null
-          : 'Could not read this image — it may be corrupt or unsupported.';
+      _error = probe.decodable ? null : t.downscalerDecodeFailed;
     });
     if (probe.decodable) _computeAllOptionEstimates();
   }
@@ -221,6 +221,7 @@ class _DownscalerViewState extends State<DownscalerView> {
   }
 
   Future<void> _computeCombined() async {
+    final t = L.of(context);
     final bytes = _bytes;
     if (bytes == null) return;
     final gen = _gen;
@@ -235,7 +236,7 @@ class _DownscalerViewState extends State<DownscalerView> {
       if (!mounted || gen != _gen) return;
       setState(() {
         _estimating = false;
-        _error = 'Could not estimate size: $e';
+        _error = t.downscalerEstimateFailed('$e');
       });
     }
   }
@@ -291,6 +292,7 @@ class _DownscalerViewState extends State<DownscalerView> {
   }
 
   Future<void> _apply({bool replace = false}) async {
+    final t = L.of(context);
     final bytes = _bytes;
     final name = _name;
     if (bytes == null || name == null) return;
@@ -323,7 +325,7 @@ class _DownscalerViewState extends State<DownscalerView> {
       if (!mounted) return;
       setState(() {
         _applying = false;
-        _error = 'Something went wrong: $e';
+        _error = t.commonErrorDetail('$e');
       });
     }
   }
@@ -347,18 +349,19 @@ class _DownscalerViewState extends State<DownscalerView> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return ToolScaffold(
       icon: Icons.compress_rounded,
-      title: 'Image downscaler',
-      subtitle: 'Shrink image file size with stackable optimizations',
+      title: t.downscalerTitle,
+      subtitle: t.downscalerSubtitle,
       onBack: widget.onBack,
       children: [
         if (_bytes == null)
           ConverterDropZone(
             onTap: _pickFile,
             icon: Icons.tune_rounded,
-            title: 'Tap to pick a picture',
-            subtitle: 'PNG or JPEG',
+            title: t.downscalerPickPrompt,
+            subtitle: t.downscalerPickFormats,
           )
         else
           ConverterFileCard(
@@ -414,7 +417,8 @@ class _DownscalerViewState extends State<DownscalerView> {
             color: luma.success,
             message: _result!.summary,
             trailing:
-                ConverterTextButton(label: 'Optimize another', onTap: _reset),
+                ConverterTextButton(
+                    label: t.downscalerOptimizeAnother, onTap: _reset),
           ),
         ],
       ],
@@ -430,12 +434,13 @@ class _OptionsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return ConverterCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Optimizations',
+            t.downscalerOptimizations,
             style: TextStyle(
               color: luma.textPrimary,
               fontSize: 15,
@@ -444,8 +449,7 @@ class _OptionsCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Stack any of these. Hover for details; chips show what each saves '
-            'on its own.',
+            t.downscalerOptimizationsHint,
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
           const SizedBox(height: 8),
@@ -467,7 +471,8 @@ class _OptionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final meta = _optionMeta[option]!;
+    final t = L.of(context);
+    final meta = _optionMeta(t, option);
     final enabled = view._enabledFor(option);
     final checked = view._isChecked(option) && enabled;
     final savings = enabled ? view._optionSize[option] : null;
@@ -541,10 +546,11 @@ class _OptionRow extends StatelessWidget {
   }
 
   Widget _slider(BuildContext context) {
+    final t = L.of(context);
     switch (option) {
       case DsOption.resize:
         return _LabeledSlider(
-          label: 'Scale',
+          label: t.downscalerScale,
           valueLabel: '${view._params.scalePercent}%',
           value: view._params.scalePercent.toDouble(),
           min: 10,
@@ -560,7 +566,7 @@ class _OptionRow extends StatelessWidget {
         return Column(
           children: [
             _LabeledSlider(
-              label: 'Colors',
+              label: t.downscalerColors,
               valueLabel: '${view._params.colors}',
               value: (idx < 0 ? DownscalerService.colorStops.length - 1 : idx)
                   .toDouble(),
@@ -574,7 +580,7 @@ class _OptionRow extends StatelessWidget {
               ),
             ),
             _MiniToggle(
-              label: 'Dithering',
+              label: t.downscalerDithering,
               value: view._params.dither,
               onChanged: (v) => view._onParamsChanged(
                 view._params.copyWith(dither: v),
@@ -586,10 +592,15 @@ class _OptionRow extends StatelessWidget {
       case DsOption.reduceBitDepth:
         final idx =
             DownscalerService.bitStops.indexOf(view._params.bitsPerChannel);
-        const labels = {8: '32-bit', 4: '16-bit', 2: '8-bit'};
+        final bitLabel = switch (view._params.bitsPerChannel) {
+          8 => t.downscalerBits32,
+          4 => t.downscalerBits16,
+          2 => t.downscalerBits8,
+          _ => '',
+        };
         return _LabeledSlider(
-          label: 'Depth',
-          valueLabel: labels[view._params.bitsPerChannel] ?? '',
+          label: t.downscalerDepth,
+          valueLabel: bitLabel,
           value: (idx < 0 ? 1 : idx).toDouble(),
           min: 0,
           max: (DownscalerService.bitStops.length - 1).toDouble(),
@@ -678,6 +689,7 @@ class _EstimateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final saved =
         estimatedSize == null ? null : originalSize - estimatedSize!;
     final pct = (saved == null || originalSize == 0)
@@ -692,7 +704,7 @@ class _EstimateCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _SizeColumn(
-                  label: 'Original',
+                  label: t.downscalerOriginal,
                   value: formatBytes(originalSize),
                   color: luma.textPrimary,
                 ),
@@ -701,7 +713,7 @@ class _EstimateCard extends StatelessWidget {
                   color: luma.textSecondary, size: 20),
               Expanded(
                 child: _SizeColumn(
-                  label: 'Estimated ($outputLabel)',
+                  label: t.downscalerEstimated(outputLabel),
                   value: !anySelected
                       ? '—'
                       : (estimating || estimatedSize == null
@@ -735,8 +747,10 @@ class _EstimateCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   Text(
                     pct > 0
-                        ? 'Saves ${pct.toStringAsFixed(0)}% (${formatBytes(saved!)})'
-                        : '${(-pct).toStringAsFixed(0)}% larger than the original',
+                        ? t.downscalerSavesPercent(
+                            pct.toStringAsFixed(0), formatBytes(saved!))
+                        : t.downscalerLargerPercent(
+                            (-pct).toStringAsFixed(0)),
                     style: TextStyle(
                       color: pct > 0 ? luma.success : luma.danger,
                       fontSize: 13,
@@ -749,7 +763,9 @@ class _EstimateCard extends StatelessWidget {
           ],
           const SizedBox(height: 16),
           ConverterPrimaryButton(
-            label: kIsWeb ? 'Optimize & download' : 'Optimize & save',
+            label: kIsWeb
+                ? t.downscalerOptimizeDownload
+                : t.downscalerOptimizeSave,
             icon: Icons.compress_rounded,
             loading: applying,
             onTap: onApply,
@@ -757,7 +773,7 @@ class _EstimateCard extends StatelessWidget {
           if (onReplace != null) ...[
             const SizedBox(height: 10),
             ConverterPrimaryButton(
-              label: 'Optimize & replace original',
+              label: t.downscalerOptimizeReplace,
               icon: Icons.swap_horiz_rounded,
               loading: false,
               onTap: applying ? null : onReplace,
@@ -767,7 +783,7 @@ class _EstimateCard extends StatelessWidget {
             const SizedBox(height: 8),
             Center(
               child: Text(
-                'Select at least one optimization',
+                t.downscalerSelectOne,
                 style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
             ),
@@ -948,48 +964,43 @@ class _OptionMeta {
   final String? disabledNote;
 }
 
-const _optionMeta = <DsOption, _OptionMeta>{
-  DsOption.resize: _OptionMeta(
-    'Resize resolution',
-    'Scale the pixel dimensions down. Fewer pixels is usually the single '
-        'biggest size saver.',
-  ),
-  DsOption.reduceColors: _OptionMeta(
-    'Reduce color depth',
-    'Map the image onto a small color palette (e.g. 64 or 16 colors). Great '
-        'for flat graphics and screenshots.',
-  ),
-  DsOption.reduceBitDepth: _OptionMeta(
-    'Reduce bit depth',
-    'Keep fewer bits per color channel (32 → 16 → 8-bit). Slightly banded but '
-        'compresses much better.',
-  ),
-  DsOption.stripMetadata: _OptionMeta(
-    'Strip metadata',
-    'Remove the embedded ICC profile, EXIF and text chunks. No visible change.',
-  ),
-  DsOption.removeAlpha: _OptionMeta(
-    'Remove alpha channel',
-    'Drop the transparency channel. Only offered when the image is fully '
-        'opaque, so it is lossless.',
-    'Unavailable — this image either has no alpha channel or uses real '
-        'transparency.',
-  ),
-  DsOption.trim: _OptionMeta(
-    'Trim transparent borders',
-    'Crop away fully transparent edges around the image.',
-    'Unavailable — no transparent border to trim.',
-  ),
-  DsOption.pngRecompress: _OptionMeta(
-    'PNG lossless re-compress',
-    'Re-encode the PNG at maximum compression. Safe, no visible change.',
-  ),
-  DsOption.toWebp: _OptionMeta(
-    'Convert to WebP',
-    'Encode the result as WebP, which is often much smaller than PNG.',
-    'Unavailable — WebP needs ffmpeg (desktop app only).',
-  ),
-};
+_OptionMeta _optionMeta(L t, DsOption option) => switch (option) {
+      DsOption.resize => _OptionMeta(
+          t.downscalerResizeTitle,
+          t.downscalerResizeDesc,
+        ),
+      DsOption.reduceColors => _OptionMeta(
+          t.downscalerColorDepthTitle,
+          t.downscalerColorDepthDesc,
+        ),
+      DsOption.reduceBitDepth => _OptionMeta(
+          t.downscalerBitDepthTitle,
+          t.downscalerBitDepthDesc,
+        ),
+      DsOption.stripMetadata => _OptionMeta(
+          t.downscalerStripMetadataTitle,
+          t.downscalerStripMetadataDesc,
+        ),
+      DsOption.removeAlpha => _OptionMeta(
+          t.downscalerRemoveAlphaTitle,
+          t.downscalerRemoveAlphaDesc,
+          t.downscalerRemoveAlphaDisabled,
+        ),
+      DsOption.trim => _OptionMeta(
+          t.downscalerTrimTitle,
+          t.downscalerTrimDesc,
+          t.downscalerTrimDisabled,
+        ),
+      DsOption.pngRecompress => _OptionMeta(
+          t.downscalerPngRecompressTitle,
+          t.downscalerPngRecompressDesc,
+        ),
+      DsOption.toWebp => _OptionMeta(
+          t.downscalerToWebpTitle,
+          t.downscalerToWebpDesc,
+          t.downscalerToWebpDisabled,
+        ),
+    };
 
 String _stripExtension(String name) {
   final dot = name.lastIndexOf('.');

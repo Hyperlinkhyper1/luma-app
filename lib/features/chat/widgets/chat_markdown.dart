@@ -366,7 +366,9 @@ class _CodeBlockState extends State<_CodeBlock> {
               children: [
                 Expanded(
                   child: Text(
-                    widget.language.isEmpty ? 'text' : widget.language,
+                    widget.language.isEmpty
+                        ? t.chatCodeLanguagePlainText
+                        : widget.language,
                     style: TextStyle(color: luma.textMuted, fontSize: 12),
                   ),
                 ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/current_l.dart';
 import 'ai_client.dart';
 import 'anthropic_client.dart';
 import 'google_client.dart';
@@ -14,14 +15,18 @@ enum AiProviderId { anthropic, openai, mistral, google, local }
 class AiProviderInfo {
   const AiProviderInfo({
     required this.id,
-    required this.displayName,
+    required this.name,
     required this.icon,
     required this.keyHint,
     required this.client,
   });
 
   final AiProviderId id;
-  final String displayName;
+
+  /// Read at the point of use so the label follows the language setting.
+  final String Function() name;
+
+  String get displayName => name();
   final IconData icon;
 
   /// Placeholder text for the API key field, e.g. "sk-ant-...".
@@ -39,35 +44,35 @@ class AiProviderInfo {
 final List<AiProviderInfo> kAiProviders = [
   AiProviderInfo(
     id: AiProviderId.anthropic,
-    displayName: 'Anthropic Claude',
+    name: () => 'Anthropic Claude',
     icon: Icons.smart_toy_rounded,
     keyHint: 'sk-ant-...',
     client: AnthropicClient(),
   ),
   AiProviderInfo(
     id: AiProviderId.openai,
-    displayName: 'OpenAI',
+    name: () => 'OpenAI',
     icon: Icons.psychology_rounded,
     keyHint: 'sk-...',
     client: OpenAiClient(),
   ),
   AiProviderInfo(
     id: AiProviderId.mistral,
-    displayName: 'Luma Support',
+    name: () => 'Luma Support',
     icon: Icons.support_agent_rounded,
     keyHint: 'API key...',
     client: MistralClient(),
   ),
   AiProviderInfo(
     id: AiProviderId.google,
-    displayName: 'Luma AI',
+    name: () => 'Luma AI',
     icon: Icons.nightlight_round,
     keyHint: 'AIza...',
     client: GoogleClient(),
   ),
   AiProviderInfo(
     id: AiProviderId.local,
-    displayName: 'Luma Assistant (on-device Qwen)',
+    name: () => currentL.chatProviderLocalName,
     icon: Icons.phone_android_rounded,
     keyHint: '',
     client: LocalQwenClient(),

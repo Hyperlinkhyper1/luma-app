@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/school_database.dart';
 import '../school_repository.dart';
@@ -67,8 +68,11 @@ class _SubjectDialogState extends State<_SubjectDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return AlertDialog(
-      title: Text(widget.existing == null ? 'Add subject' : 'Edit subject'),
+      title: Text(widget.existing == null
+          ? t.schoolSubjectAddTitle
+          : t.schoolSubjectEditTitle),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -77,12 +81,12 @@ class _SubjectDialogState extends State<_SubjectDialog> {
             TextField(
               controller: _nameController,
               autofocus: true,
-              decoration: const InputDecoration(labelText: 'Name'),
+              decoration: InputDecoration(labelText: t.commonName),
             ),
             TextField(
               controller: _creditsController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Credit hours'),
+              decoration: InputDecoration(labelText: t.schoolSubjectCreditHours),
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -117,10 +121,10 @@ class _SubjectDialogState extends State<_SubjectDialog> {
               await widget.repo.deleteSubject(widget.existing!.id);
               if (context.mounted) Navigator.pop(context);
             },
-            child: Text('Delete', style: TextStyle(color: luma.danger)),
+            child: Text(t.commonDelete, style: TextStyle(color: luma.danger)),
           ),
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-        FilledButton(onPressed: _save, child: const Text('Save')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(t.commonCancel)),
+        FilledButton(onPressed: _save, child: Text(t.commonSave)),
       ],
     );
   }

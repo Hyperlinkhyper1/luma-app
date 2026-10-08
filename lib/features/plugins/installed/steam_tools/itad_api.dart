@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../l10n/current_l.dart';
 import '../../../../sync/server_access.dart';
 
 /// Raised for every IsThereAnyDeal request that did not come back usable.
@@ -102,7 +103,7 @@ class ItadApi {
   Future<String?> lookupGameId(int steamAppId) async {
     final uri = Uri.parse('$_baseUrl/api/v1/steam/itad/lookup')
         .replace(queryParameters: {'appid': '$steamAppId'});
-    final body = await _get(uri, what: 'look that game up');
+    final body = await _get(uri, what: 'lookupGame');
     final json = jsonDecode(body);
     if (json is! Map) return null;
     if (json['found'] != true) return null;
@@ -125,12 +126,10 @@ class ItadApi {
   }) async {
     final uri = Uri.parse('$_baseUrl/api/v1/steam/itad/history')
         .replace(queryParameters: {'id': gameId, 'country': country});
-    final body = await _get(uri, what: 'read that price history');
+    final body = await _get(uri, what: 'priceHistory');
     final json = jsonDecode(body);
     if (json is! List) {
-      throw const ItadApiException(
-        'IsThereAnyDeal sent back an unexpected price history.',
-      );
+      throw ItadApiException(currentL.itadApiUnexpectedHistory);
     }
 
     final points = <ItadPricePoint>[];
@@ -170,7 +169,7 @@ class ItadApi {
     final uri = Uri.parse('$_baseUrl/api/v1/steam/itad/overview')
         .replace(queryParameters: {'country': country});
     final body =
-        await _post(uri, jsonEncode([gameId]), what: 'read that game');
+        await _post(uri, jsonEncode([gameId]), what: 'readGame');
     final json = jsonDecode(body);
     if (json is! Map) return null;
     final prices = json['prices'];
@@ -237,10 +236,7 @@ class ItadApi {
     } on ServerAccessDeniedException {
       rethrow;
     } catch (_) {
-      throw ItadApiException(
-        'Could not reach the luma server to $what. Check your connection '
-        'and try again.',
-      );
+      throw ItadApiException(currentL.itadApiUnreachable(what));
     }
     return _body(response, what);
   }
@@ -258,39 +254,30 @@ class ItadApi {
     } on ServerAccessDeniedException {
       rethrow;
     } catch (_) {
-      throw ItadApiException(
-        'Could not reach the luma server to $what. Check your connection '
-        'and try again.',
-      );
+      throw ItadApiException(currentL.itadApiUnreachable(what));
     }
     return _body(response, what);
   }
 
   String _body(http.Response response, String what) {
     if (response.statusCode == 404) {
-      throw const ItadApiException(
-        'The server operator has not set up price history. Ask them to add '
-        'an IsThereAnyDeal key.',
-        status: 404,
-      );
+      throw ItadApiException(currentL.itadApiNotConfigured, status: 404);
     }
     if (response.statusCode == 401 || response.statusCode == 403) {
       throw ItadApiException(
-        'This needs a signed-in luma account. Sign in under Settings → '
-        'Sync & account.',
+        currentL.itadApiNeedsAccount,
         status: response.statusCode,
       );
     }
     if (response.statusCode == 429) {
       throw ItadApiException(
-        'Too many price history requests right now. Wait a bit and try '
-        'again.',
+        currentL.itadApiRateLimited,
         status: response.statusCode,
       );
     }
     if (response.statusCode != 200) {
       throw ItadApiException(
-        'Could not $what (HTTP ${response.statusCode}).',
+        currentL.itadApiHttpError(what, response.statusCode),
         status: response.statusCode,
       );
     }

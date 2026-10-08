@@ -11,6 +11,7 @@ import '../../finance/logic/finance_logic.dart';
 import '../../finance/logic/money.dart';
 import '../../settings/settings_scope.dart';
 import '../notes/notes_repository.dart';
+import '../plugins/plugin_l10n.dart';
 import '../plugins/plugin_scope.dart';
 import '../plugins/installed/calculator/calc_expression.dart';
 import '../plugins/installed/errands/errands_scope.dart';
@@ -34,13 +35,11 @@ int _configMinutes(Map<String, dynamic> config) {
 class DashboardTileDefinition {
   const DashboardTileDefinition(
     this.kind,
-    this.title,
     this.icon,
     this.defaultWidth,
     this.defaultHeight,
   );
   final String kind;
-  final String title;
   final IconData icon;
   final int defaultWidth;
   final int defaultHeight;
@@ -67,133 +66,36 @@ class DashboardTileDefinition {
       'clock' => t.homeTileClockDate,
       'timer' => t.homeTileFocusTimer,
       'quick_links' => t.homeTileQuickActions,
-      _ => title,
+      _ => kind,
     };
   }
 }
 
 const dashboardTileDefinitions = [
-  DashboardTileDefinition(
-    'income',
-    'Came in this month',
-    Icons.south_west_rounded,
-    6,
-    2,
-  ),
-  DashboardTileDefinition(
-    'spending',
-    'Went out this month',
-    Icons.north_east_rounded,
-    6,
-    2,
-  ),
-  DashboardTileDefinition(
-    'pots',
-    'Set aside in pots',
-    Icons.savings_rounded,
-    6,
-    2,
-  ),
-  DashboardTileDefinition(
-    'investments',
-    'Investments',
-    Icons.trending_up_rounded,
-    6,
-    2,
-  ),
-  DashboardTileDefinition(
-    'shortcut',
-    'App shortcut',
-    Icons.arrow_outward_rounded,
-    3,
-    3,
-  ),
-  DashboardTileDefinition(
-    'recent_activity',
-    'Recent activity',
-    Icons.history_rounded,
-    12,
-    5,
-  ),
+  DashboardTileDefinition('income', Icons.south_west_rounded, 6, 2),
+  DashboardTileDefinition('spending', Icons.north_east_rounded, 6, 2),
+  DashboardTileDefinition('pots', Icons.savings_rounded, 6, 2),
+  DashboardTileDefinition('investments', Icons.trending_up_rounded, 6, 2),
+  DashboardTileDefinition('shortcut', Icons.arrow_outward_rounded, 3, 3),
+  DashboardTileDefinition('recent_activity', Icons.history_rounded, 12, 5),
   DashboardTileDefinition(
     'finance',
-    'Finance overview',
     Icons.account_balance_wallet_outlined,
     6,
     5,
   ),
-  DashboardTileDefinition(
-    'note',
-    'Pinned note',
-    Icons.sticky_note_2_outlined,
-    6,
-    5,
-  ),
-  DashboardTileDefinition(
-    'plugin',
-    'Plugin shortcut',
-    Icons.extension_outlined,
-    3,
-    3,
-  ),
-  DashboardTileDefinition(
-    'minecraft',
-    'Minecraft instance',
-    Icons.sports_esports_outlined,
-    4,
-    4,
-  ),
-  DashboardTileDefinition('errands', 'Errands', Icons.checklist_rounded, 4, 5),
-  DashboardTileDefinition(
-    'stocks',
-    'Stock chart',
-    Icons.show_chart_rounded,
-    6,
-    5,
-  ),
-  DashboardTileDefinition(
-    'github_graph',
-    'GitHub activity',
-    Icons.grid_on_rounded,
-    6,
-    4,
-  ),
-  DashboardTileDefinition(
-    'github_issues',
-    'GitHub issues',
-    Icons.adjust_rounded,
-    6,
-    5,
-  ),
-  DashboardTileDefinition(
-    'ai_usage',
-    'AI usage',
-    Icons.auto_awesome_outlined,
-    4,
-    4,
-  ),
-  DashboardTileDefinition(
-    'calculator',
-    'Calculator',
-    Icons.calculate_outlined,
-    4,
-    5,
-  ),
-  DashboardTileDefinition(
-    'clock',
-    'Clock & date',
-    Icons.schedule_rounded,
-    4,
-    3,
-  ),
-  DashboardTileDefinition('timer', 'Focus timer', Icons.timer_outlined, 4, 5),
-  DashboardTileDefinition(
-    'quick_links',
-    'Quick actions',
-    Icons.bolt_rounded,
-    4,
-    4,
-  ),
+  DashboardTileDefinition('note', Icons.sticky_note_2_outlined, 6, 5),
+  DashboardTileDefinition('plugin', Icons.extension_outlined, 3, 3),
+  DashboardTileDefinition('minecraft', Icons.sports_esports_outlined, 4, 4),
+  DashboardTileDefinition('errands', Icons.checklist_rounded, 4, 5),
+  DashboardTileDefinition('stocks', Icons.show_chart_rounded, 6, 5),
+  DashboardTileDefinition('github_graph', Icons.grid_on_rounded, 6, 4),
+  DashboardTileDefinition('github_issues', Icons.adjust_rounded, 6, 5),
+  DashboardTileDefinition('ai_usage', Icons.auto_awesome_outlined, 4, 4),
+  DashboardTileDefinition('calculator', Icons.calculate_outlined, 4, 5),
+  DashboardTileDefinition('clock', Icons.schedule_rounded, 4, 3),
+  DashboardTileDefinition('timer', Icons.timer_outlined, 4, 5),
+  DashboardTileDefinition('quick_links', Icons.bolt_rounded, 4, 4),
 ];
 
 Future<HomeTile?> configureDashboardTile(
@@ -201,31 +103,34 @@ Future<HomeTile?> configureDashboardTile(
   HomeTile tile,
 ) async {
   final config = Map<String, dynamic>.from(tile.config);
+  final t = L.of(context);
   if (tile.kind == 'shortcut') {
-    final destination = await _pick(context, 'Choose a shortcut', {
-      '5': 'Ask Assistant',
-      '2': 'Finance',
-      '1': 'File Converter',
-      '4': 'Notes',
-      '3': 'Passwords',
-      '6': 'Plugins',
-      '7': 'Settings',
+    final destination = await _pick(context, t.homeChooseShortcut, {
+      '5': t.homeAskAssistant,
+      '2': t.navFinance,
+      '1': t.navFileConverter,
+      '4': t.navNotes,
+      '3': t.homeShortcutPasswords,
+      '6': t.navPlugins,
+      '7': t.navSettings,
     }, '');
     if (destination == null) return null;
     config['destination'] = int.parse(destination);
   } else if (tile.kind == 'note') {
     final notes = NotesRepository.instance.notes;
-    final id = await _pick(context, 'Choose a note', {
-      for (final n in notes) n.id: n.title.isEmpty ? 'Untitled note' : n.title,
-    }, 'Create a note in Notes first.');
+    final id = await _pick(context, t.homeChooseNote, {
+      for (final n in notes)
+        n.id: n.title.isEmpty ? t.homeUntitledNote : n.title,
+    }, t.homeCreateNoteFirst);
     if (id == null) return null;
     config['noteId'] = id;
   } else if (tile.kind == 'plugin') {
     final plugins = await PluginScope.of(context).watchInstalled().first;
     if (!context.mounted) return null;
-    final id = await _pick(context, 'Choose a plugin', {
-      for (final p in plugins) p.pluginId: p.name,
-    }, 'Install a plugin from the marketplace first.');
+    final id = await _pick(context, t.homeChoosePlugin, {
+      for (final p in plugins)
+        p.pluginId: pluginDisplayName(t, p.pluginId, p.name),
+    }, t.homeInstallPluginFirst);
     if (id == null) return null;
     config['pluginId'] = id;
   } else if (tile.kind == 'minecraft') {
@@ -233,12 +138,9 @@ Future<HomeTile?> configureDashboardTile(
       context,
     ).watchInstances().first;
     if (!context.mounted) return null;
-    final id = await _pick(
-      context,
-      'Choose an instance',
-      {for (final i in instances) i.id: '${i.name} · ${i.versionId}'},
-      'Create an instance in Minecraft Launcher first.',
-    );
+    final id = await _pick(context, t.homeChooseInstance, {
+      for (final i in instances) i.id: '${i.name} · ${i.versionId}',
+    }, t.homeCreateInstanceFirst);
     if (id == null) return null;
     config['instanceId'] = id;
     final instance = instances.firstWhere((instance) => instance.id == id);
@@ -254,10 +156,10 @@ Future<HomeTile?> configureDashboardTile(
         ? 'minutes'
         : 'repository';
     final label = tile.kind == 'stocks'
-        ? 'Stock symbol (blank for all holdings)'
+        ? t.homeStockSymbolInput
         : tile.kind == 'timer'
-        ? 'Timer minutes (1–1440)'
-        : 'Repository: owner/name (blank for all)';
+        ? t.homeTimerMinutesInput
+        : t.homeRepositoryInput;
     final value = await _input(
       context,
       label,
@@ -318,11 +220,11 @@ Future<String?> _input(
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(L.of(context).commonCancel),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, input),
-          child: const Text('Save'),
+          child: Text(L.of(context).commonSave),
         ),
       ],
     ),
@@ -390,12 +292,12 @@ class DashboardTileContent extends StatelessWidget {
         spacing: 8,
         runSpacing: 8,
         children: [
-          for (final entry in const {
-            1: 'Convert files',
-            2: 'Finances',
-            3: 'Passwords',
-            5: 'Assistant',
-            NavRail.settingsIndex: 'Settings',
+          for (final entry in {
+            1: L.of(context).homeQuickConvertFiles,
+            2: L.of(context).homeQuickFinances,
+            3: L.of(context).homeShortcutPasswords,
+            5: L.of(context).navAssistant,
+            NavRail.settingsIndex: L.of(context).navSettings,
           }.entries)
             ActionChip(
               label: Text(entry.value),
@@ -403,7 +305,7 @@ class DashboardTileContent extends StatelessWidget {
             ),
         ],
       ),
-      _ => const Text('This tile is not available in this version.'),
+      _ => Text(L.of(context).homeTileUnavailable),
     };
     final pluginId = switch (tile.kind) {
       'minecraft' => 'minecraft-launcher',
@@ -418,14 +320,17 @@ class DashboardTileContent extends StatelessWidget {
       stream: PluginScope.of(context).watchInstalled(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return const Text('Could not load installed plugins.');
+          return Text(L.of(context).homeCouldNotLoadPlugins);
         }
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
         if (!snapshot.data!.any((p) => p.pluginId == pluginId)) {
+          final t = L.of(context);
           return Text(
-            'Install ${pluginId.replaceAll('_', ' ')} to use this tile.',
+            t.homeInstallPluginToUse(
+              pluginDisplayName(t, pluginId, pluginId.replaceAll('_', ' ')),
+            ),
           );
         }
         return child;
@@ -443,9 +348,7 @@ class _NoteTile extends StatelessWidget {
     builder: (context, _) {
       final matches = NotesRepository.instance.notes.where((n) => n.id == id);
       if (matches.isEmpty) {
-        return const Text(
-          'Choose a note using this tile’s settings. Notes must be synced separately to appear on another device.',
-        );
+        return Text(L.of(context).homeNoteTileEmpty);
       }
       final note = matches.first;
       final lines = note.content.split('\n');
@@ -453,10 +356,10 @@ class _NoteTile extends StatelessWidget {
         padding: EdgeInsets.zero,
         children: [
           Text(
-            note.title.isEmpty ? 'Untitled note' : note.title,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            note.title.isEmpty ? L.of(context).homeUntitledNote : note.title,
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 10),
           for (var i = 0; i < lines.length; i++) _noteLine(note, lines, i),
@@ -501,13 +404,15 @@ class _PluginTile extends StatelessWidget {
     builder: (context, snapshot) {
       final plugin = snapshot.data?.where((p) => p.pluginId == id).firstOrNull;
       if (plugin == null) {
-        return const Text('Choose an installed plugin in tile settings.');
+        return Text(L.of(context).homeChoosePluginInSettings);
       }
       return Center(
         child: FilledButton.tonalIcon(
           onPressed: () => onPlugin(plugin.pluginId),
           icon: const Icon(Icons.arrow_outward_rounded),
-          label: Text(plugin.name),
+          label: Text(
+            pluginDisplayName(L.of(context), plugin.pluginId, plugin.name),
+          ),
         ),
       );
     },
@@ -522,13 +427,15 @@ class _ErrandsTile extends StatelessWidget {
     return StreamBuilder<List<ErrandRecord>>(
       stream: repo.watchErrands(),
       builder: (context, snapshot) {
-        if (snapshot.hasError) return const Text('Could not load errands.');
+        if (snapshot.hasError) {
+          return Text(L.of(context).homeCouldNotLoadErrands);
+        }
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
         final errands = snapshot.data!;
         if (errands.isEmpty) {
-          return const Text('Add your recurring tasks in the Errands plugin.');
+          return Text(L.of(context).homeErrandsEmpty);
         }
         return ListView(
           padding: EdgeInsets.zero,
@@ -542,7 +449,7 @@ class _ErrandsTile extends StatelessWidget {
                 title: Text(e.name),
                 subtitle: Text(
                   e.isDueOn(DateTime.now())
-                      ? 'Due today'
+                      ? L.of(context).homeErrandDueToday
                       : '${e.nextDue.day}/${e.nextDue.month} · ${e.repeatLabel}',
                 ),
                 onChanged: (done) async {
@@ -556,7 +463,9 @@ class _ErrandsTile extends StatelessWidget {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Could not update errand: $error'),
+                          content: Text(
+                            L.of(context).homeErrandUpdateFailed('$error'),
+                          ),
                         ),
                       );
                     }
@@ -589,9 +498,7 @@ class _MinecraftTileState extends State<_MinecraftTile> {
       if (!mounted) return;
       if (account == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Add an account in Minecraft Launcher first.'),
-          ),
+          SnackBar(content: Text(L.of(context).homeMinecraftAddAccount)),
         );
         return;
       }
@@ -624,9 +531,9 @@ class _MinecraftTileState extends State<_MinecraftTile> {
     } catch (error) {
       if (launchId != null) await repo.recordLaunchEnd(launchId, exitCode: -1);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Launch failed: $error')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(L.of(context).homeLaunchFailed('$error'))),
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -654,9 +561,7 @@ class _MinecraftTileState extends State<_MinecraftTile> {
       }
       final selected = instance;
       if (selected == null) {
-        return const Text(
-          'Choose an instance available on this device in tile settings.',
-        );
+        return Text(L.of(context).homeChooseInstanceInSettings);
       }
       return ListenableBuilder(
         listenable: ActiveLaunchRegistry.instance,
@@ -668,9 +573,9 @@ class _MinecraftTileState extends State<_MinecraftTile> {
               children: [
                 Text(
                   selected.name,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 Text('${selected.versionId} · ${selected.loader}'),
                 const SizedBox(height: 12),
@@ -681,10 +586,10 @@ class _MinecraftTileState extends State<_MinecraftTile> {
                   ),
                   label: Text(
                     _busy
-                        ? 'Preparing…'
+                        ? L.of(context).homeMinecraftPreparing
                         : running
-                        ? 'Running'
-                        : 'Play now',
+                        ? L.of(context).homeMinecraftRunning
+                        : L.of(context).homeMinecraftPlayNow,
                   ),
                 ),
               ],
@@ -730,8 +635,8 @@ class _CalculatorTileState extends State<_CalculatorTile> {
       children: [
         TextField(
           controller: _input,
-          decoration: const InputDecoration(
-            hintText: 'e.g. (42 + 8) / 2',
+          decoration: InputDecoration(
+            hintText: L.of(context).homeCalcHint,
             isDense: true,
           ),
           onSubmitted: (_) => _calculate(),
@@ -802,7 +707,7 @@ class _CalculatorTileState extends State<_CalculatorTile> {
                 _input.clear();
                 setState(() => _result = '0');
               },
-              child: const Text('Clear'),
+              child: Text(L.of(context).commonClear),
             ),
             const Spacer(),
             FilledButton(onPressed: _calculate, child: const Text('=')),
@@ -978,8 +883,8 @@ class _TimerTileState extends State<_TimerTile> {
         ),
         Text(
           _runtime.remaining == 0
-              ? 'Time is up. Take a breath.'
-              : 'A little space to focus.',
+              ? L.of(context).homeTimeIsUp
+              : L.of(context).homeTimerHint,
         ),
         const SizedBox(height: 12),
         Wrap(
@@ -990,11 +895,15 @@ class _TimerTileState extends State<_TimerTile> {
               icon: Icon(
                 _runtime.deadline == null ? Icons.play_arrow : Icons.pause,
               ),
-              label: Text(_runtime.deadline == null ? 'Start' : 'Pause'),
+              label: Text(
+                _runtime.deadline == null
+                    ? L.of(context).commonStart
+                    : L.of(context).commonPause,
+              ),
             ),
             TextButton(
               onPressed: () => setState(() => _runtime.reset(widget.minutes)),
-              child: const Text('Reset'),
+              child: Text(L.of(context).commonReset),
             ),
           ],
         ),
@@ -1012,17 +921,20 @@ class _FinanceTile extends StatelessWidget {
     return StreamBuilder(
       stream: repo.watchTransactions(),
       builder: (context, snapshot) {
-        if (snapshot.hasError) return const Text('Could not load finances.');
+        if (snapshot.hasError) {
+          return Text(L.of(context).homeCouldNotLoadFinances);
+        }
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
         final balances = computeBalances(snapshot.data!);
+        final t = L.of(context);
         return SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'AVAILABLE BALANCE',
+                t.homeAvailableBalance,
                 style: TextStyle(
                   color: context.luma.textSecondary,
                   fontSize: 12,
@@ -1042,10 +954,14 @@ class _FinanceTile extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                'In pots  ${hide ? '••••••' : formatCents(balances.potsTotalCents)}',
+                t.homeInPotsAmount(
+                  hide ? '••••••' : formatCents(balances.potsTotalCents),
+                ),
               ),
               Text(
-                'Total cash  ${hide ? '••••••' : formatCents(balances.totalCents)}',
+                t.homeTotalCashAmount(
+                  hide ? '••••••' : formatCents(balances.totalCents),
+                ),
               ),
             ],
           ),

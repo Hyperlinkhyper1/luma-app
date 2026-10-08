@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 
 /// What the dialog hands back: the grade to track it as, and the cost basis
@@ -84,7 +85,7 @@ class _Cs2StartingPriceDialogState extends State<_Cs2StartingPriceDialog> {
     final raw = _priceController.text.trim().replaceAll(',', '.');
     final value = double.tryParse(raw);
     if (raw.isEmpty || value == null || value < 0) {
-      setState(() => _priceError = 'Enter a valid price.');
+      setState(() => _priceError = L.of(context).cs2StartPriceEnterValid);
       _priceFocus.requestFocus();
       return;
     }
@@ -97,6 +98,7 @@ class _Cs2StartingPriceDialogState extends State<_Cs2StartingPriceDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     return Dialog(
       backgroundColor: luma.surface,
@@ -146,9 +148,8 @@ class _Cs2StartingPriceDialogState extends State<_Cs2StartingPriceDialog> {
               if (widget.wearEditable && widget.wears.length > 1) ...[
                 const SizedBox(height: 20),
                 _Field(
-                  label: 'Grade',
-                  helper: 'Wear and price are set together — they can\'t be '
-                      'changed independently once tracking starts.',
+                  label: t.cs2StartPriceGrade,
+                  helper: t.cs2StartPriceGradeHelper,
                   child: LumaSegmentedTabs(
                     tabs: widget.wears,
                     selectedIndex: _wear == null
@@ -162,9 +163,8 @@ class _Cs2StartingPriceDialogState extends State<_Cs2StartingPriceDialog> {
               ] else if (!widget.wearEditable && widget.initialWear != null) ...[
                 const SizedBox(height: 16),
                 _Field(
-                  label: 'Grade',
-                  helper: 'Fixed — this baseline belongs to that exact '
-                      'listing.',
+                  label: t.cs2StartPriceGrade,
+                  helper: t.cs2StartPriceGradeFixedHelper,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 12),
@@ -182,9 +182,8 @@ class _Cs2StartingPriceDialogState extends State<_Cs2StartingPriceDialog> {
               ],
               const SizedBox(height: 18),
               _Field(
-                label: 'Starting price',
-                helper: 'What you paid, or the price to measure gain and '
-                    'loss from — not fetched from Steam.',
+                label: t.cs2StartPriceStartingPrice,
+                helper: t.cs2StartPriceStartingPriceHelper,
                 error: _priceError,
                 child: TextField(
                   controller: _priceController,
@@ -240,12 +239,12 @@ class _Cs2StartingPriceDialogState extends State<_Cs2StartingPriceDialog> {
                 runSpacing: 10,
                 children: [
                   LumaPrimaryButton(
-                    label: 'Save',
+                    label: t.commonSave,
                     icon: Icons.check_rounded,
                     onTap: _submit,
                   ),
                   LumaGhostButton(
-                    label: 'Cancel',
+                    label: t.commonCancel,
                     onTap: () => Navigator.of(context).pop(),
                   ),
                 ],

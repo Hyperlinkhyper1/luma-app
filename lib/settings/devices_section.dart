@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../app/widgets.dart';
+import '../l10n/app_localizations.dart';
 import '../p2p/peer_debug_log.dart';
 import '../p2p/peer_discovery.dart';
 import '../p2p/peer_sync_controller.dart';
@@ -44,6 +45,7 @@ class _SetupBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -54,7 +56,7 @@ class _SetupBody extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Sync directly between devices',
+                t.devicesSetupTitle,
                 style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 14,
@@ -62,10 +64,7 @@ class _SetupBody extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'No server needed — just an email + password shared between '
-                'your devices, used only to recognize each other over '
-                'Wi-Fi. Already have a luma cloud account? Sign in above '
-                'instead and this turns on automatically.',
+                t.devicesSetupBody,
                 style:
                     TextStyle(color: luma.textMuted, fontSize: 12, height: 1.5),
               ),
@@ -113,18 +112,17 @@ class _LocalAccountDialogState extends State<_LocalAccountDialog> {
   }
 
   Future<void> _submit() async {
+    final t = L.of(context);
     if (_email.text.trim().isEmpty || !_email.text.contains('@')) {
-      setState(() => _error = 'Enter a valid email address.');
+      setState(() => _error = t.devicesErrorInvalidEmail);
       return;
     }
     if (_password.text.length < 10) {
-      setState(() => _error =
-          'Use at least 10 characters — this password also protects your '
-          'encrypted data.');
+      setState(() => _error = t.devicesErrorPasswordShort);
       return;
     }
     if (_password.text != _confirm.text) {
-      setState(() => _error = 'Passwords do not match.');
+      setState(() => _error = t.loginPasswordsMismatch);
       return;
     }
     setState(() {
@@ -148,14 +146,15 @@ class _LocalAccountDialogState extends State<_LocalAccountDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return AlertDialog(
       backgroundColor: luma.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: luma.border),
       ),
-      title:
-          Text('Enable device sync', style: TextStyle(color: luma.textPrimary)),
+      title: Text(t.devicesEnableTitle,
+          style: TextStyle(color: luma.textPrimary)),
       content: SizedBox(
         width: lumaDialogWidth(context, 400),
         child: SingleChildScrollView(
@@ -164,9 +163,7 @@ class _LocalAccountDialogState extends State<_LocalAccountDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Enter the same email and password on every device you want '
-                'to pair — they never leave this device or touch a server. '
-                'They just prove your devices belong to the same person.',
+                t.devicesEnableBody,
                 style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
               const SizedBox(height: 14),
@@ -175,7 +172,7 @@ class _LocalAccountDialogState extends State<_LocalAccountDialog> {
                 enabled: !_busy,
                 keyboardType: TextInputType.emailAddress,
                 style: TextStyle(color: luma.textPrimary, fontSize: 14),
-                decoration: _fieldDecoration(context, 'Email'),
+                decoration: _fieldDecoration(context, t.commonEmail),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -183,7 +180,7 @@ class _LocalAccountDialogState extends State<_LocalAccountDialog> {
                 enabled: !_busy,
                 obscureText: true,
                 style: TextStyle(color: luma.textPrimary, fontSize: 14),
-                decoration: _fieldDecoration(context, 'Password'),
+                decoration: _fieldDecoration(context, t.commonPassword),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -191,14 +188,12 @@ class _LocalAccountDialogState extends State<_LocalAccountDialog> {
                 enabled: !_busy,
                 obscureText: true,
                 style: TextStyle(color: luma.textPrimary, fontSize: 14),
-                decoration: _fieldDecoration(context, 'Confirm password'),
+                decoration: _fieldDecoration(context, t.loginConfirmPassword),
                 onSubmitted: (_) => _submit(),
               ),
               const SizedBox(height: 12),
               Text(
-                'If you mistype the password while pairing a second device, '
-                'it just won\'t be recognized as the same account — there\'s '
-                'no server to check against or reset it with.',
+                t.devicesPasswordWarning,
                 style: TextStyle(
                     color: Colors.orange.shade400, fontSize: 12, height: 1.4),
               ),
@@ -215,10 +210,11 @@ class _LocalAccountDialogState extends State<_LocalAccountDialog> {
       actions: [
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonCancel,
+              style: TextStyle(color: luma.textSecondary)),
         ),
         LumaPrimaryButton(
-          label: 'Enable',
+          label: t.commonEnable,
           loading: _busy,
           onTap: _busy ? null : _submit,
         ),
@@ -237,6 +233,7 @@ class _SignedInBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -254,13 +251,13 @@ class _SignedInBody extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Local only — ${sync.email ?? ''} (not backed up anywhere)',
+                  t.devicesLocalOnly(sync.email ?? ''),
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
               ),
               TextButton(
                 onPressed: () => _confirmTurnOff(context, sync, peers),
-                child: Text('Turn off',
+                child: Text(t.devicesTurnOff,
                     style: TextStyle(color: Colors.red.shade400, fontSize: 12)),
               ),
             ],
@@ -269,14 +266,14 @@ class _SignedInBody extends StatelessWidget {
 
         // ---- Connected devices -------------------------------------------
         Divider(color: luma.border, height: 32),
-        Text('Connected',
+        Text(t.devicesConnectedHeading,
             style: TextStyle(
                 color: luma.textSecondary,
                 fontSize: 13,
                 fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         if (peers.connected.isEmpty)
-          Text('No devices connected yet.',
+          Text(t.devicesNoneConnected,
               style: TextStyle(color: luma.textMuted, fontSize: 12))
         else
           for (final p in peers.connected)
@@ -284,17 +281,17 @@ class _SignedInBody extends StatelessWidget {
 
         // ---- Nearby devices ----------------------------------------------
         Divider(color: luma.border, height: 32),
-        Text('Nearby',
+        Text(t.devicesNearby,
             style: TextStyle(
                 color: luma.textSecondary,
                 fontSize: 13,
                 fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         if (!peers.isRunning)
-          Text('Turn on discovery to find other devices on this Wi-Fi.',
+          Text(t.devicesTurnOnDiscovery,
               style: TextStyle(color: luma.textMuted, fontSize: 12))
         else if (peers.discovered.isEmpty)
-          Text('Searching… no other devices found yet.',
+          Text(t.devicesSearching,
               style: TextStyle(color: luma.textMuted, fontSize: 12))
         else
           for (final d in peers.discovered)
@@ -305,15 +302,14 @@ class _SignedInBody extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Both devices must be on the same network. On mobile '
-                  'data (5G/4G)? Use a hotspot instead.',
+                  t.devicesSameNetworkHint,
                   style: TextStyle(color: luma.textMuted, fontSize: 11),
                 ),
               ),
               TextButton(
                 onPressed: () => _showHotspotHelp(context),
-                child:
-                    Text('How?', style: TextStyle(color: luma.accent, fontSize: 11)),
+                child: Text(t.devicesHowHotspot,
+                    style: TextStyle(color: luma.accent, fontSize: 11)),
               ),
             ],
           ),
@@ -324,12 +320,12 @@ class _SignedInBody extends StatelessWidget {
         Row(
           children: [
             LumaGhostButton(
-              label: 'Connect manually…',
+              label: t.devicesConnectManually,
               icon: Icons.cable_rounded,
               onTap: () => _showManualConnect(context, peers),
             ),
             const Spacer(),
-            Text('Auto-sync',
+            Text(t.devicesAutoSync,
                 style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 14,
@@ -347,15 +343,14 @@ class _SignedInBody extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'Auto-sync pushes changes to connected devices within a couple of '
-          'seconds. Off, you tap a device and choose Sync now.',
+          t.devicesAutoSyncHint,
           style: TextStyle(color: luma.textMuted, fontSize: 12, height: 1.4),
         ),
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton(
             onPressed: () => _showDebugLog(context),
-            child: Text('View debug log',
+            child: Text(t.devicesViewDebugLog,
                 style: TextStyle(color: luma.textMuted, fontSize: 11)),
           ),
         ),
@@ -382,6 +377,7 @@ class _ThisDeviceHeaderState extends State<_ThisDeviceHeader> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final peers = widget.peers;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -398,7 +394,7 @@ class _ThisDeviceHeaderState extends State<_ThisDeviceHeader> {
                   onTap: () => setState(() => _expanded = !_expanded),
                   child: Row(
                     children: [
-                      Text('This device',
+                      Text(t.devicesThisDevice,
                           style: TextStyle(
                               color: luma.textPrimary,
                               fontSize: 14,
@@ -438,7 +434,9 @@ class _ThisDeviceHeaderState extends State<_ThisDeviceHeader> {
                     children: [
                       Text(
                         peers.isRunning && peers.listenPort != 0
-                            ? '${peers.state.deviceName} · listening on port ${peers.listenPort}'
+                            ? t.devicesListeningOnPort(
+                                peers.state.deviceName,
+                                '${peers.listenPort}')
                             : peers.state.deviceName,
                         style: TextStyle(color: luma.textMuted, fontSize: 12),
                       ),
@@ -451,8 +449,7 @@ class _ThisDeviceHeaderState extends State<_ThisDeviceHeader> {
                             return Padding(
                               padding: const EdgeInsets.only(top: 2),
                               child: Text(
-                                'IP: ${addrs.join(', ')} — the other device '
-                                'must be on the same network to find this one.',
+                                t.devicesIpHint(addrs.join(', ')),
                                 style: TextStyle(
                                     color: luma.textMuted, fontSize: 11),
                               ),
@@ -476,6 +473,7 @@ class _ConnectedRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final lastSeen =
         controller.state.lastSeenMs[peer.deviceId];
     return Padding(
@@ -507,13 +505,13 @@ class _ConnectedRow extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           LumaGhostButton(
-            label: 'Sync',
+            label: t.devicesSync,
             icon: Icons.sync_rounded,
             onTap: () => controller.syncNow(peer.deviceId),
           ),
           const SizedBox(width: 8),
           IconButton(
-            tooltip: 'Disconnect',
+            tooltip: t.devicesDisconnect,
             icon: Icon(Icons.link_off_rounded,
                 size: 18, color: luma.textSecondary),
             onPressed: () => controller.disconnect(peer.deviceId),
@@ -535,6 +533,7 @@ class _DiscoveredRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Padding(
       padding: const EdgeInsets.only(top: 6, bottom: 6),
       child: Row(
@@ -549,7 +548,7 @@ class _DiscoveredRow extends StatelessWidget {
                     fontWeight: FontWeight.w500)),
           ),
           LumaPrimaryButton(
-            label: 'Connect',
+            label: t.devicesConnect,
             icon: Icons.link_rounded,
             onTap: () => controller.connectToDiscovered(peer),
           ),
@@ -569,6 +568,7 @@ class _DiscoveredRow extends StatelessWidget {
 /// created by a router or a phone).
 void _showHotspotHelp(BuildContext context) {
   final luma = context.luma;
+  final t = L.of(context);
   showDialog<void>(
     context: context,
     builder: (dialogContext) => AlertDialog(
@@ -577,7 +577,7 @@ void _showHotspotHelp(BuildContext context) {
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: luma.border),
       ),
-      title: Text('No shared Wi-Fi? Use a hotspot',
+      title: Text(t.devicesHotspotTitle,
           style: TextStyle(color: luma.textPrimary)),
       content: SizedBox(
         width: lumaDialogWidth(dialogContext, 400),
@@ -586,33 +586,20 @@ void _showHotspotHelp(BuildContext context) {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Discovery only finds devices on the same network. If your '
-              'phone is on mobile data instead of Wi-Fi, there\'s no LAN to '
-              'find each other on — turn on the phone\'s own hotspot instead '
-              'and have the other device join it. Once both are on that one '
-              'network, everything here works exactly the same.',
+              t.devicesHotspotBody,
               style: TextStyle(color: luma.textSecondary, fontSize: 13, height: 1.5),
             ),
             const SizedBox(height: 14),
-            _HotspotStep(
-                number: '1',
-                text: 'On the phone: Settings → Network & internet → '
-                    'Hotspot & tethering → turn on Wi-Fi hotspot.'),
-            _HotspotStep(
-                number: '2',
-                text: 'On the other device: connect to that hotspot\'s '
-                    'Wi-Fi network like any other.'),
-            _HotspotStep(
-                number: '3',
-                text: 'Come back here and turn discovery on (or off and '
-                    'back on) on both devices.'),
+            _HotspotStep(number: '1', text: t.devicesHotspotStep1),
+            _HotspotStep(number: '2', text: t.devicesHotspotStep2),
+            _HotspotStep(number: '3', text: t.devicesHotspotStep3),
           ],
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
-          child: Text('Got it', style: TextStyle(color: luma.accent)),
+          child: Text(t.devicesGotIt, style: TextStyle(color: luma.accent)),
         ),
       ],
     ),
@@ -666,6 +653,7 @@ class _HotspotStep extends StatelessWidget {
 /// console.
 void _showDebugLog(BuildContext context) {
   final luma = context.luma;
+  final t = L.of(context);
   showDialog<void>(
     context: context,
     builder: (dialogContext) => AlertDialog(
@@ -674,7 +662,8 @@ void _showDebugLog(BuildContext context) {
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: luma.border),
       ),
-      title: Text('P2P debug log', style: TextStyle(color: luma.textPrimary)),
+      title: Text(t.devicesDebugLogTitle,
+          style: TextStyle(color: luma.textPrimary)),
       content: SizedBox(
         width: lumaDialogWidth(dialogContext, 520),
         height: 400,
@@ -703,18 +692,18 @@ void _showDebugLog(BuildContext context) {
             await clearP2pDebugLog();
             if (dialogContext.mounted) Navigator.of(dialogContext).pop();
           },
-          child: Text('Clear', style: TextStyle(color: Colors.red.shade400)),
+          child: Text(t.commonClear, style: TextStyle(color: Colors.red.shade400)),
         ),
         TextButton(
           onPressed: () async {
             final content = await readP2pDebugLog();
             await Clipboard.setData(ClipboardData(text: content));
           },
-          child: Text('Copy', style: TextStyle(color: luma.accent)),
+          child: Text(t.commonCopy, style: TextStyle(color: luma.accent)),
         ),
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
-          child: Text('Close', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonClose, style: TextStyle(color: luma.textSecondary)),
         ),
       ],
     ),
@@ -726,6 +715,7 @@ void _showDebugLog(BuildContext context) {
 Future<void> _confirmTurnOff(
     BuildContext context, SyncService sync, PeerSyncController peers) async {
   final luma = context.luma;
+  final t = L.of(context);
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
@@ -734,23 +724,21 @@ Future<void> _confirmTurnOff(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: luma.border),
       ),
-      title:
-          Text('Turn off device sync?', style: TextStyle(color: luma.textPrimary)),
+      title: Text(t.devicesTurnOffTitle,
+          style: TextStyle(color: luma.textPrimary)),
       content: Text(
-        'This disconnects every paired device and forgets this device\'s '
-        'sync identity. You can set it up again any time with the same '
-        'email and password.',
+        t.devicesTurnOffBody,
         style: TextStyle(color: luma.textSecondary, fontSize: 14),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
         ),
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child:
-              Text('Turn off', style: TextStyle(color: Colors.red.shade400)),
+          child: Text(t.devicesTurnOff,
+              style: TextStyle(color: Colors.red.shade400)),
         ),
       ],
     ),
@@ -806,10 +794,11 @@ class _ManualConnectDialogState extends State<_ManualConnectDialog> {
   }
 
   Future<void> _submit() async {
+    final t = L.of(context);
     final host = _host.text.trim();
     final port = int.tryParse(_port.text.trim());
     if (host.isEmpty || port == null || port <= 0 || port > 65535) {
-      setState(() => _error = 'Enter a host and a valid port (1–65535).');
+      setState(() => _error = t.devicesErrorHostPort);
       return;
     }
     if (!widget.peers.isRunning) {
@@ -828,13 +817,14 @@ class _ManualConnectDialogState extends State<_ManualConnectDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return AlertDialog(
       backgroundColor: luma.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: luma.border),
       ),
-      title: Text('Connect manually',
+      title: Text(t.devicesConnectManualTitle,
           style: TextStyle(color: luma.textPrimary)),
       content: SizedBox(
         width: lumaDialogWidth(context, 400),
@@ -843,9 +833,7 @@ class _ManualConnectDialogState extends State<_ManualConnectDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Use this when discovery can\'t see the other device — e.g. a '
-              'firewall is blocking mDNS. Enter the address it shows on its '
-              'Devices screen.',
+              t.devicesManualBody,
               style: TextStyle(color: luma.textMuted, fontSize: 12),
             ),
             const SizedBox(height: 14),
@@ -853,7 +841,7 @@ class _ManualConnectDialogState extends State<_ManualConnectDialog> {
               controller: _host,
               enabled: !_busy,
               style: TextStyle(color: luma.textPrimary, fontSize: 14),
-              decoration: _fieldDecoration(context, 'Host',
+              decoration: _fieldDecoration(context, t.devicesHost,
                   hint: '192.168.1.20'),
             ),
             const SizedBox(height: 12),
@@ -862,7 +850,7 @@ class _ManualConnectDialogState extends State<_ManualConnectDialog> {
               enabled: !_busy,
               keyboardType: TextInputType.number,
               style: TextStyle(color: luma.textPrimary, fontSize: 14),
-              decoration: _fieldDecoration(context, 'Port'),
+              decoration: _fieldDecoration(context, t.devicesPort),
             ),
             if (_error != null) ...[
               const SizedBox(height: 12),
@@ -875,10 +863,10 @@ class _ManualConnectDialogState extends State<_ManualConnectDialog> {
       actions: [
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
         ),
         LumaPrimaryButton(
-          label: 'Connect',
+          label: t.devicesConnect,
           loading: _busy,
           onTap: _busy ? null : _submit,
         ),

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../../l10n/current_l.dart';
 import '../../../../../sync/server_access.dart';
 import 'ai_benchmark.dart';
 
@@ -71,14 +72,16 @@ class AiBenchmarkApi {
     if (response.statusCode != 200) {
       throw AiBenchmarkApiException(
         response.statusCode,
-        'The server could not return the benchmark list '
-        '(HTTP ${response.statusCode}).',
+        currentL.aiBenchmarkServerFailed(
+          currentL.aiBenchmarkWhatList,
+          response.statusCode,
+        ),
       );
     }
 
     final decoded = jsonDecode(utf8.decode(response.bodyBytes));
     if (decoded is! Map<String, dynamic>) {
-      throw const AiBenchmarkApiException(200, 'Malformed benchmark response.');
+      throw AiBenchmarkApiException(200, currentL.aiBenchmarkMalformed);
     }
     return AiBenchmarkFetchResult(
       manifest: AiBenchmarkManifest.fromJson(decoded),
@@ -89,12 +92,12 @@ class AiBenchmarkApi {
   /// Downloads one scene's HTML. The caller verifies the bytes against the
   /// manifest's hash before trusting them.
   Future<Uint8List> fetchScene(String id) =>
-      _fetchBytes('scene', id, 'benchmark scene');
+      _fetchBytes('scene', id, currentL.aiBenchmarkWhatScene);
 
   /// Downloads one scene's PNG preview, or null when it has none (404).
   Future<Uint8List?> fetchPreview(String id) async {
     try {
-      return await _fetchBytes('preview', id, 'benchmark preview');
+      return await _fetchBytes('preview', id, currentL.aiBenchmarkWhatPreview);
     } on AiBenchmarkApiException catch (e) {
       if (e.status == 404) return null;
       rethrow;
@@ -104,7 +107,7 @@ class AiBenchmarkApi {
   /// Downloads generic tile artwork, e.g. `pagoda-preview.png`.
   Future<Uint8List?> fetchFallback(String file) async {
     try {
-      return await _fetchBytes('fallback', file, 'benchmark artwork');
+      return await _fetchBytes('fallback', file, currentL.aiBenchmarkWhatArtwork);
     } on AiBenchmarkApiException catch (e) {
       if (e.status == 404) return null;
       rethrow;
@@ -121,7 +124,7 @@ class AiBenchmarkApi {
     if (response.statusCode != 200) {
       throw AiBenchmarkApiException(
         response.statusCode,
-        'The server could not return the $what (HTTP ${response.statusCode}).',
+        currentL.aiBenchmarkServerFailed(what, response.statusCode),
       );
     }
     return response.bodyBytes;

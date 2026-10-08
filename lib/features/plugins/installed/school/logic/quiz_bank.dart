@@ -5,6 +5,8 @@ import 'quiz/iep_lezen.dart';
 
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
+import '../../../../../l10n/current_l.dart';
 import 'quiz/aardrijkskunde_extra.dart';
 import 'quiz/aardrijkskunde_questions.dart';
 import 'quiz/biologie_extra.dart';
@@ -139,20 +141,25 @@ double? parseQuizNumber(String raw) {
 class QuizSubject {
   QuizSubject({
     required this.id,
-    required this.name,
+    required this.nameOf,
     required this.icon,
     required this.color,
-    required this.blurb,
+    required this.blurbOf,
     required this.build,
   });
 
   final String id;
-  final String name;
+  final String Function(L t) nameOf;
+
+  String get name => nameOf(currentL);
   final IconData icon;
   final Color color;
 
+  /// Looks up the one-line description of what the subject covers.
+  final String Function(L t) blurbOf;
+
   /// One line describing what the subject covers, shown on the subject card.
-  final String blurb;
+  String get blurb => blurbOf(currentL);
 
   /// Assembles the pool. Called once, lazily, by [questions].
   final List<QuizQuestion> Function() build;
@@ -187,63 +194,63 @@ class QuizSubject {
 /// table or a hand-written entry — nothing else has to change.
 abstract final class QuizBank {
   /// Intended audience, not a calibrated reference-level assessment.
-  static const level = 'Groep 8 · oefenen voor IEP';
+  static String get level => currentL.schoolQuizLevel;
 
   static final List<QuizSubject> subjects = [
     QuizSubject(
       id: 'rekenen',
-      name: 'Rekenen',
+      nameOf: (t) => t.schoolQuizSubjectRekenen,
       icon: Icons.calculate_rounded,
       color: const Color(0xFF7C5AD9),
-      blurb: 'Getallen, verhoudingen, meten & meetkunde, verbanden',
+      blurbOf: (t) => t.schoolQuizBlurbRekenen,
       build: buildIepRekenen,
     ),
     QuizSubject(
       id: 'taalverzorging',
-      name: 'Taalverzorging',
+      nameOf: (t) => t.schoolQuizSubjectTaalverzorging,
       icon: Icons.spellcheck_rounded,
       color: const Color(0xFF2E9E7B),
-      blurb: 'Spelling, werkwoordspelling en leestekens',
+      blurbOf: (t) => t.schoolQuizBlurbTaalverzorging,
       build: buildIepTaal,
     ),
     QuizSubject(
       id: 'lezen',
-      name: 'Begrijpend lezen',
+      nameOf: (t) => t.schoolQuizSubjectLezen,
       icon: Icons.menu_book_rounded,
       color: const Color(0xFFD9843B),
-      blurb: 'Teksten begrijpen, samenvatten, woordbetekenis en opzoeken',
+      blurbOf: (t) => t.schoolQuizBlurbLezen,
       build: buildIepLezen,
     ),
     QuizSubject(
       id: 'engels',
-      name: 'Engels',
+      nameOf: (t) => t.schoolQuizSubjectEngels,
       icon: Icons.translate_rounded,
       color: const Color(0xFF3B7FD9),
-      blurb: 'Extra oefening · Engels voor bovenbouw en brugklas',
+      blurbOf: (t) => t.schoolQuizBlurbEngels,
       build: () => [...engelsQuestions, ...buildEngelsExtra()],
     ),
     QuizSubject(
       id: 'aardrijkskunde',
-      name: 'Aardrijkskunde',
+      nameOf: (t) => t.schoolQuizSubjectAardrijkskunde,
       icon: Icons.public_rounded,
       color: const Color(0xFF1FA5A5),
-      blurb: 'Extra oefening · Nederland, Europa, de wereld en het weer',
+      blurbOf: (t) => t.schoolQuizBlurbAardrijkskunde,
       build: () => [...aardrijkskundeQuestions, ...buildAardrijkskundeExtra()],
     ),
     QuizSubject(
       id: 'geschiedenis',
-      name: 'Geschiedenis',
+      nameOf: (t) => t.schoolQuizSubjectGeschiedenis,
       icon: Icons.history_edu_rounded,
       color: const Color(0xFFB4574B),
-      blurb: 'Extra oefening · De tien tijdvakken, van jagers tot nu',
+      blurbOf: (t) => t.schoolQuizBlurbGeschiedenis,
       build: () => [...geschiedenisQuestions, ...buildGeschiedenisExtra()],
     ),
     QuizSubject(
       id: 'biologie',
-      name: 'Natuur & techniek',
+      nameOf: (t) => t.schoolQuizSubjectBiologie,
       icon: Icons.science_rounded,
       color: const Color(0xFF5FA83C),
-      blurb: 'Extra oefening · Lichaam, natuur, energie en techniek',
+      blurbOf: (t) => t.schoolQuizBlurbBiologie,
       build: () => [...biologieQuestions, ...buildBiologieExtra()],
     ),
   ];

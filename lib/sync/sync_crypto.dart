@@ -6,6 +6,7 @@ import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 
+import '../l10n/current_l.dart';
 import '../security/authenticated_cipher.dart';
 
 /// Client-side snapshot encryption. New envelopes use AES-256-GCM; LS1
@@ -81,7 +82,7 @@ class SyncCrypto {
     try {
       return jsonDecode(utf8.decode(const GZipDecoder().decodeBytes(clear)));
     } catch (_) {
-      throw const SyncCryptoException('Corrupted snapshot.');
+      throw SyncCryptoException(currentL.syncCryptoCorruptedSnapshot);
     }
   }
 
@@ -119,16 +120,14 @@ class SyncCrypto {
           'luma-sync-v2',
         );
       } catch (_) {
-        throw const SyncCryptoException(
-          'Encrypted data failed authentication.',
-        );
+        throw SyncCryptoException(currentL.syncCryptoAuthenticationFailed);
       }
     }
     if (blob.length < _magic.length + _nonceLength + _macLength ||
         blob[0] != _magic[0] ||
         blob[1] != _magic[1] ||
         blob[2] != _magic[2]) {
-      throw const SyncCryptoException('Unrecognized encrypted data.');
+      throw SyncCryptoException(currentL.syncCryptoUnrecognizedEncryptedData);
     }
     final nonce = blob.sublist(_magic.length, _magic.length + _nonceLength);
     final cipher = blob.sublist(
@@ -139,9 +138,7 @@ class SyncCrypto {
 
     final macKey = hkdfExpand(key, _macInfo, 32);
     if (!_constantTimeEquals(mac, _mac(macKey, nonce, cipher))) {
-      throw const SyncCryptoException(
-        'Could not decrypt — it was encrypted with a different password.',
-      );
+      throw SyncCryptoException(currentL.syncCryptoDifferentPassword);
     }
     final cipherKey = hkdfExpand(key, _cipherInfo, 32);
     return _xorKeystream(cipher, cipherKey, nonce);

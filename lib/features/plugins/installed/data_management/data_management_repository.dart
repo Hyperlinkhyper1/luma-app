@@ -1,6 +1,7 @@
 ﻿import 'dart:convert';
 import 'package:drift/drift.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../storage/storage_guard.dart';
 import 'data/data_management_database.dart';
 
@@ -298,7 +299,7 @@ class DataManagementRepository {
   }
 
   Future<int> importDataset(Map<String, dynamic> data) async {
-    final name = data['name'] as String? ?? 'Imported';
+    final name = data['name'] as String? ?? currentL.dataMgmtImportedName;
     final columns = (data['columns'] as List? ?? []).map((c) => DataColumnDef.fromJson(c as Map<String, dynamic>)).toList();
     final tags = (data['tags'] as List? ?? []).map((t) => DataTagDef.fromJson(t as Map<String, dynamic>)).toList();
     final id = await createDataset(name);

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'data/usage_database.dart';
 import 'usage_repository.dart';
@@ -68,13 +69,13 @@ class _UsagePageState extends State<UsagePage> {
   @override
   Widget build(BuildContext context) {
     final repo = UsageScope.of(context);
+    final t = L.of(context);
 
     if (!repo.supported) {
-      return const LumaEmptyState(
+      return LumaEmptyState(
         icon: Icons.desktop_windows_outlined,
-        title: 'Windows only',
-        subtitle:
-            'Usage reads the foreground window, which luma can only do in the Windows desktop app.',
+        title: t.usageWindowsOnlyTitle,
+        subtitle: t.usageWindowsOnlySubtitle,
       );
     }
 
@@ -138,10 +139,13 @@ class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final current = repo.currentApp;
     final statusLabel = repo.paused
-        ? 'Paused'
-        : (current != null ? 'Tracking ${current.appName}' : 'Idle');
+        ? t.usageStatusPaused
+        : (current != null
+            ? t.usageStatusTracking(current.appName)
+            : t.usageStatusIdle);
     final statusColor =
         repo.paused ? luma.textMuted : (current != null ? luma.success : luma.textMuted);
 
@@ -150,7 +154,7 @@ class _TopBar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           LumaSegmentedTabs(
-            tabs: [for (final p in UsageRangePreset.values) p.label],
+            tabs: [for (final p in UsageRangePreset.values) p.label(t)],
             selectedIndex: preset.index,
             scrollable: true,
             onSelect: (i) => onSelectPreset(UsageRangePreset.values[i]),
@@ -180,7 +184,7 @@ class _TopBar extends StatelessWidget {
                 ),
               ),
               IconButton(
-                tooltip: 'Usage settings',
+                tooltip: t.aiUsageSettingsTitle,
                 icon: Icon(Icons.tune_rounded, color: luma.textSecondary),
                 onPressed: () => showDialog<void>(
                   context: context,
@@ -197,7 +201,7 @@ class _TopBar extends StatelessWidget {
       children: [
         Flexible(
           child: LumaSegmentedTabs(
-            tabs: [for (final p in UsageRangePreset.values) p.label],
+            tabs: [for (final p in UsageRangePreset.values) p.label(t)],
             selectedIndex: preset.index,
             onSelect: (i) => onSelectPreset(UsageRangePreset.values[i]),
           ),
@@ -234,7 +238,7 @@ class _TopBar extends StatelessWidget {
           ),
         ),
         IconButton(
-          tooltip: 'Usage settings',
+          tooltip: t.aiUsageSettingsTitle,
           icon: Icon(Icons.tune_rounded, color: luma.textSecondary),
           onPressed: () => showDialog<void>(
             context: context,
@@ -263,13 +267,14 @@ class _UsageBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final appTotals = aggregateByApp(sessions, start: start, end: end);
 
     if (appTotals.isEmpty) {
-      return const LumaEmptyState(
+      return LumaEmptyState(
         icon: Icons.insights_outlined,
-        title: 'No activity yet',
-        subtitle: 'Usage will show up here once you use apps on this PC.',
+        title: t.usageEmptyTitle,
+        subtitle: t.usageEmptySubtitle,
       );
     }
 
@@ -290,10 +295,14 @@ class _UsageBody extends StatelessWidget {
             runSpacing: 8,
             children: [
               _SummaryChip(
-                  label: 'Total tracked',
+                  label: t.usageSummaryTotalTracked,
                   value: formatUsageDuration(totalSeconds)),
-              _SummaryChip(label: 'Apps used', value: '${appTotals.length}'),
-              _SummaryChip(label: 'Top app', value: appTotals.first.appName),
+              _SummaryChip(
+                  label: t.usageSummaryAppsUsed,
+                  value: '${appTotals.length}'),
+              _SummaryChip(
+                  label: t.usageSummaryTopApp,
+                  value: appTotals.first.appName),
             ],
           ),
           const SizedBox(height: 16),
@@ -316,7 +325,7 @@ class _UsageBody extends StatelessWidget {
                   child: dayBuckets.length <= 1
                       ? Center(
                           child: Text(
-                            'Pick a wider range to see a daily breakdown',
+                            t.usageNeedWiderRange,
                             style: TextStyle(color: luma.textMuted, fontSize: 13),
                           ),
                         )
@@ -417,21 +426,21 @@ class _AppPieChart extends StatefulWidget {
 class _AppPieChartState extends State<_AppPieChart> {
   int? _touchedIndex;
 
-  List<(String label, int seconds, Color color)> _slices() {
+  List<(String label, int seconds, Color color)> _slices(L t) {
     final top = widget.appTotals.take(_kTopAppLimit).toList();
     final rest = widget.appTotals.skip(_kTopAppLimit);
     final otherSeconds = rest.fold<int>(0, (a, b) => a + b.seconds);
     return [
-      for (final t in top)
-        (t.appName, t.seconds, widget.colorByProcess[t.processName]!),
-      if (otherSeconds > 0) ('Other', otherSeconds, widget.otherColor),
+      for (final total in top)
+        (total.appName, total.seconds, widget.colorByProcess[total.processName]!),
+      if (otherSeconds > 0) (t.commonOther, otherSeconds, widget.otherColor),
     ];
   }
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final slices = _slices();
+    final slices = _slices(L.of(context));
 
     return Row(
       children: [
@@ -542,6 +551,7 @@ class _DailyBarChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final maxSeconds = dayBuckets
         .map((d) => d.totalSeconds)
         .fold<int>(0, (a, b) => a > b ? a : b);
@@ -586,7 +596,8 @@ class _DailyBarChart extends StatelessWidget {
               showTitles: true,
               reservedSize: 46,
               getTitlesWidget: (value, meta) => Text(
-                '${(value / 3600).toStringAsFixed(value >= 3600 ? 0 : 1)}h',
+                t.usageDurationHours(
+                    (value / 3600).toStringAsFixed(value >= 3600 ? 0 : 1)),
                 style: TextStyle(color: luma.textMuted, fontSize: 10),
               ),
             ),
@@ -718,6 +729,7 @@ class _UsageSettingsDialog extends StatelessWidget {
 
   Future<void> _confirmClear(BuildContext context) async {
     final luma = context.luma;
+    final t = L.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -726,20 +738,21 @@ class _UsageSettingsDialog extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(color: luma.border),
         ),
-        title: Text('Clear all usage history?',
+        title: Text(t.usageClearConfirmTitle,
             style: TextStyle(color: luma.textPrimary)),
         content: Text(
-          'This deletes every tracked session and cannot be undone.',
+          t.usageClearConfirmBody,
           style: TextStyle(color: luma.textSecondary, fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+            child: Text(t.commonCancel,
+                style: TextStyle(color: luma.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text('Clear', style: TextStyle(color: luma.danger)),
+            child: Text(t.commonClear, style: TextStyle(color: luma.danger)),
           ),
         ],
       ),
@@ -753,13 +766,15 @@ class _UsageSettingsDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return AlertDialog(
       backgroundColor: luma.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: luma.border),
       ),
-      title: Text('Usage settings', style: TextStyle(color: luma.textPrimary)),
+      title: Text(t.aiUsageSettingsTitle,
+          style: TextStyle(color: luma.textPrimary)),
       content: ListenableBuilder(
         listenable: repo,
         builder: (context, _) => SizedBox(
@@ -771,7 +786,7 @@ class _UsageSettingsDialog extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text('Pause tracking',
+                    child: Text(t.usagePauseTracking,
                         style: TextStyle(color: luma.textPrimary, fontSize: 14)),
                   ),
                   Switch(
@@ -783,7 +798,7 @@ class _UsageSettingsDialog extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Sample every ${repo.intervalSeconds}s',
+                t.usageSampleEvery(repo.intervalSeconds),
                 style: TextStyle(color: luma.textPrimary, fontSize: 14),
               ),
               Slider(
@@ -792,7 +807,7 @@ class _UsageSettingsDialog extends StatelessWidget {
                 max: kUsageMaxIntervalSeconds.toDouble(),
                 divisions: kUsageMaxIntervalSeconds - kUsageMinIntervalSeconds,
                 activeColor: luma.accent,
-                label: '${repo.intervalSeconds}s',
+                label: t.usageDurationSeconds('${repo.intervalSeconds}'),
                 onChanged: (v) => repo.setIntervalSeconds(v.round()),
               ),
               const SizedBox(height: 12),
@@ -801,7 +816,7 @@ class _UsageSettingsDialog extends StatelessWidget {
                 child: TextButton.icon(
                   onPressed: () => _confirmClear(context),
                   icon: Icon(Icons.delete_outline_rounded, color: luma.danger, size: 18),
-                  label: Text('Clear all history',
+                  label: Text(t.usageClearAllHistory,
                       style: TextStyle(color: luma.danger)),
                 ),
               ),
@@ -812,7 +827,7 @@ class _UsageSettingsDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('Done', style: TextStyle(color: luma.accent)),
+          child: Text(t.commonDone, style: TextStyle(color: luma.accent)),
         ),
       ],
     );

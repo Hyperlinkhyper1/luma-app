@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../../../../../l10n/current_l.dart';
 import '../device_health_models.dart';
 import 'powershell_runner.dart';
 
@@ -78,8 +79,8 @@ try {
     final gpuList = (map['gpus'] as List?) ?? const [];
     final gpus = gpuList.whereType<Map<String, dynamic>>().map((g) {
       return GpuInfo(
-        name: (g['Name'] as String?)?.trim() ?? 'Unknown GPU',
-        driverVersion: (g['DriverVersion'] as String?)?.trim() ?? 'Unknown',
+        name: (g['Name'] as String?)?.trim() ?? currentL.deviceHealthGpuUnknownName,
+        driverVersion: (g['DriverVersion'] as String?)?.trim() ?? currentL.commonUnknown,
         driverDate: parseCimDate(g['DriverDate']),
         vramBytes: (g['AdapterRAM'] as num?)?.toInt(),
       );
@@ -121,14 +122,17 @@ try {
     );
   }
 
-  static String? _batteryStatusLabel(int? code) => switch (code) {
-        1 => 'Discharging',
-        2 => 'On AC power',
-        3 => 'Fully charged',
-        4 => 'Low',
-        5 => 'Critical',
-        6 || 7 || 8 || 9 => 'Charging',
-        11 => 'Partially charged',
-        _ => null,
-      };
+  static String? _batteryStatusLabel(int? code) {
+    final t = currentL;
+    return switch (code) {
+      1 => t.deviceHealthBatteryDischarging,
+      2 => t.deviceHealthBatteryOnAc,
+      3 => t.deviceHealthBatteryFullyCharged,
+      4 => t.deviceHealthBatteryLow,
+      5 => t.deviceHealthBatteryCritical,
+      6 || 7 || 8 || 9 => t.deviceHealthBatteryCharging,
+      11 => t.deviceHealthBatteryPartiallyCharged,
+      _ => null,
+    };
+  }
 }

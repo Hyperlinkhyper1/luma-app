@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../../_shared/windows_webview.dart';
 import 'ai_benchmark.dart';
@@ -86,13 +87,14 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
 
   Widget _listView(BuildContext context, List<AiBenchmark> filtered) {
     final luma = context.luma;
+    final t = L.of(context);
     final repo = AiBenchmarkScope.of(context);
     return Scaffold(
       backgroundColor: luma.background,
       appBar: AppBar(
         backgroundColor: luma.background,
         elevation: 0,
-        title: const Text('Cathedral Test'),
+        title: Text(t.aiCathedralTitle),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -100,7 +102,7 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Benchmark Model',
+              t.aiCathedralHeading,
               style: TextStyle(
                 color: luma.textPrimary,
                 fontSize: 18,
@@ -109,8 +111,7 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
             ),
             const SizedBox(height: 12),
             Text(
-              'A cathedral modelled as a 3D .glb file, one per model. Orbit, '
-              'zoom and pan to inspect it.',
+              t.aiCathedralIntro,
               style: TextStyle(color: luma.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 20),
@@ -122,7 +123,7 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
             Row(
               children: [
                 Text(
-                  'Select a Model',
+                  t.aiBenchmarkSelectModel,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 14,
@@ -131,7 +132,7 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
                 ),
                 const Spacer(),
                 LumaSegmentedTabs(
-                  tabs: const ['List', 'Banners'],
+                  tabs: [t.aiBenchmarkViewList, t.aiBenchmarkViewBanners],
                   selectedIndex: _bannerView ? 1 : 0,
                   onSelect: (i) {
                     final banners = i == 1;
@@ -156,19 +157,20 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
             else if (filtered.isEmpty && _query.trim().isNotEmpty)
               LumaEmptyState(
                 icon: Icons.search_off_rounded,
-                title: 'No models match "${_query.trim()}"',
-                subtitle: 'Try a shorter search.',
+                title: t.aiBenchmarkNoMatch(_query.trim()),
+                subtitle: t.aiBenchmarkTryShorterSearch,
               )
             else if (filtered.isEmpty)
               LumaEmptyState(
                 icon: Icons.church_rounded,
-                title: 'No entries yet',
+                title: t.aiBenchmarkNoEntries,
                 subtitle: repo.canRefresh
-                    ? 'No cathedral models have been added yet.'
-                    : 'Models download from the luma server. Sign in to an '
-                        'approved account to fetch them.',
+                    ? t.aiCathedralEmptyNone
+                    : t.aiBenchmarkSignInToFetch,
                 action: LumaGhostButton(
-                  label: repo.refreshing ? 'Refreshing…' : 'Refresh',
+                  label: repo.refreshing
+                      ? t.accountOverviewRefreshing
+                      : t.commonRefresh,
                   icon: Icons.refresh_rounded,
                   onTap: repo.refreshing || !repo.canRefresh
                       ? null
@@ -200,6 +202,7 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
 
   Widget _sceneView(BuildContext context, AiBenchmark benchmark) {
     final luma = context.luma;
+    final t = L.of(context);
     final repo = AiBenchmarkScope.of(context);
     final back = IconButton(
       icon: const Icon(Icons.arrow_back_rounded),
@@ -212,16 +215,15 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
         appBar: AppBar(
           backgroundColor: luma.background,
           elevation: 0,
-          title: const Text('Cathedral Test'),
+          title: Text(t.aiCathedralTitle),
           leading: back,
         ),
-        body: const Padding(
-          padding: EdgeInsets.all(24),
+        body: Padding(
+          padding: const EdgeInsets.all(24),
           child: LumaEmptyState(
             icon: Icons.computer_rounded,
-            title: 'Not available on this platform',
-            subtitle: 'The Cathedral Test requires a Windows desktop. Mobile '
-                'and Linux support are coming soon.',
+            title: t.aiCathedralUnsupportedTitle,
+            subtitle: t.aiCathedralUnsupportedBody,
           ),
         ),
       );
@@ -232,7 +234,7 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
       appBar: AppBar(
         backgroundColor: luma.background,
         elevation: 0,
-        title: const Text('Cathedral Test'),
+        title: Text(t.aiCathedralTitle),
         leading: back,
       ),
       body: FutureBuilder<File>(
@@ -248,7 +250,7 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Downloading ${benchmark.model}…',
+                    t.aiBenchmarkDownloading(benchmark.model),
                     style: TextStyle(color: luma.textMuted, fontSize: 13),
                   ),
                 ],
@@ -260,12 +262,12 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
               padding: const EdgeInsets.all(24),
               child: LumaEmptyState(
                 icon: Icons.cloud_off_rounded,
-                title: 'Could not load ${benchmark.model}',
-                subtitle: '${snapshot.error ?? 'The download failed.'} '
-                    'Models are cached after the first download, so a retry '
-                    'is usually all it takes.',
+                title: t.aiBenchmarkCouldNotLoad(benchmark.model),
+                subtitle: t.aiBenchmarkLoadFailedDetail(
+                  snapshot.error?.toString() ?? t.aiBenchmarkDownloadFailed,
+                ),
                 action: LumaGhostButton(
-                  label: 'Retry',
+                  label: t.commonRetry,
                   icon: Icons.refresh_rounded,
                   onTap: () => setState(() {}),
                 ),

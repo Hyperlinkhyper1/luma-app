@@ -1,10 +1,23 @@
 // Auto-ported from Roblox Server Hosting Tycoon
 
-enum CoolingType { air, aio, customLoop, industrial }
+import '../../../../../l10n/current_l.dart';
+
+enum CoolingType {
+  air,
+  aio,
+  customLoop,
+  industrial;
+
+  String get label => switch (this) {
+        CoolingType.air => currentL.serverTycoonCoolingTypeAir,
+        CoolingType.aio => 'AIO',
+        CoolingType.customLoop => currentL.serverTycoonCoolingTypeCustomLoop,
+        CoolingType.industrial => currentL.serverTycoonCoolingTypeIndustrial,
+      };
+}
 
 class Cooler {
   final String id;
-  final String name;
   final CoolingType coolingType;
   final int coolingCapacityWatts;
   final int powerDrawWatts;
@@ -16,7 +29,6 @@ class Cooler {
 
   const Cooler({
     required this.id,
-    required this.name,
     required this.coolingType,
     required this.coolingCapacityWatts,
     required this.powerDrawWatts,
@@ -26,12 +38,33 @@ class Cooler {
     required this.leakChancePerDayIfNeglected,
     required this.price,
   });
+
+  String get name => switch (id) {
+        'STOCK_COOLER' => currentL.serverTycoonCoolerStockName,
+        'THERMALRIGHT_PEERLESS_ASSASSIN' => 'Thermalright Peerless Assassin 120',
+        'NOCTUA_NH_U12S' => 'Noctua NH-U12S',
+        'BEQUIET_DARK_ROCK_4' => 'be quiet! Dark Rock 4',
+        'NOCTUA_NH_D15' => 'Noctua NH-D15',
+        'BEQUIET_PURE_LOOP_280' => 'be quiet! Pure Loop 2 280mm AIO',
+        'CORSAIR_H150I_360' => 'Corsair iCUE H150i Elite 360mm AIO',
+        'CUSTOM_LOOP_DUAL_480' => currentL.serverTycoonCoolerCustomLoopName,
+        'SERVER_RACK_COOLING' => currentL.serverTycoonCoolerRackAirHandlerName,
+        'ARCTIC_FREEZER_36' => 'Arctic Freezer 36',
+        'DYNATRON_2U_SERVER' => 'Dynatron 2U Server Blower',
+        'SERVER_4U_ACTIVE' => currentL.serverTycoonCoolerActiveArrayName,
+        'REAR_DOOR_HEAT_EXCHANGER' => currentL.serverTycoonCoolerRearDoorName,
+        'IMMERSION_TANK' => currentL.serverTycoonCoolerImmersionName,
+        'INDUSTRIAL_CHILLER' => currentL.serverTycoonCoolerChillerName,
+        'CHEAP_ALUMINUM_HEATSINK' => currentL.serverTycoonCoolerNoNameHeatsinkName,
+        'NZXT_KRAKEN_Z73' => 'NZXT Kraken Z73 360mm AIO',
+        'SERVER_1U_PASSIVE' => currentL.serverTycoonCoolerPassive1UName,
+        _ => id,
+      };
 }
 
 final Map<String, Cooler> coolingById = {
   'STOCK_COOLER': const Cooler(
     id: 'STOCK_COOLER',
-    name: 'Stock CPU Cooler',
     coolingType: CoolingType.air,
     coolingCapacityWatts: 65,
     powerDrawWatts: 4,
@@ -43,7 +76,6 @@ final Map<String, Cooler> coolingById = {
   ),
   'THERMALRIGHT_PEERLESS_ASSASSIN': const Cooler(
     id: 'THERMALRIGHT_PEERLESS_ASSASSIN',
-    name: 'Thermalright Peerless Assassin 120',
     coolingType: CoolingType.air,
     coolingCapacityWatts: 180,
     powerDrawWatts: 6,
@@ -55,7 +87,6 @@ final Map<String, Cooler> coolingById = {
   ),
   'NOCTUA_NH_U12S': const Cooler(
     id: 'NOCTUA_NH_U12S',
-    name: 'Noctua NH-U12S',
     coolingType: CoolingType.air,
     coolingCapacityWatts: 165,
     powerDrawWatts: 5,
@@ -67,7 +98,6 @@ final Map<String, Cooler> coolingById = {
   ),
   'BEQUIET_DARK_ROCK_4': const Cooler(
     id: 'BEQUIET_DARK_ROCK_4',
-    name: 'be quiet! Dark Rock 4',
     coolingType: CoolingType.air,
     coolingCapacityWatts: 200,
     powerDrawWatts: 6,
@@ -79,7 +109,6 @@ final Map<String, Cooler> coolingById = {
   ),
   'NOCTUA_NH_D15': const Cooler(
     id: 'NOCTUA_NH_D15',
-    name: 'Noctua NH-D15',
     coolingType: CoolingType.air,
     coolingCapacityWatts: 250,
     powerDrawWatts: 8,
@@ -91,7 +120,6 @@ final Map<String, Cooler> coolingById = {
   ),
   'BEQUIET_PURE_LOOP_280': const Cooler(
     id: 'BEQUIET_PURE_LOOP_280',
-    name: 'be quiet! Pure Loop 2 280mm AIO',
     coolingType: CoolingType.aio,
     coolingCapacityWatts: 320,
     powerDrawWatts: 14,
@@ -103,7 +131,6 @@ final Map<String, Cooler> coolingById = {
   ),
   'CORSAIR_H150I_360': const Cooler(
     id: 'CORSAIR_H150I_360',
-    name: 'Corsair iCUE H150i Elite 360mm AIO',
     coolingType: CoolingType.aio,
     coolingCapacityWatts: 400,
     powerDrawWatts: 18,
@@ -115,7 +142,6 @@ final Map<String, Cooler> coolingById = {
   ),
   'CUSTOM_LOOP_DUAL_480': const Cooler(
     id: 'CUSTOM_LOOP_DUAL_480',
-    name: 'Custom Loop - Dual 480mm Radiator',
     coolingType: CoolingType.customLoop,
     coolingCapacityWatts: 900,
     powerDrawWatts: 35,
@@ -127,7 +153,6 @@ final Map<String, Cooler> coolingById = {
   ),
   'SERVER_RACK_COOLING': const Cooler(
     id: 'SERVER_RACK_COOLING',
-    name: 'Rack-Mount Precision Air Handler',
     coolingType: CoolingType.industrial,
     coolingCapacityWatts: 8000,
     powerDrawWatts: 1200,
@@ -139,7 +164,6 @@ final Map<String, Cooler> coolingById = {
   ),
   'ARCTIC_FREEZER_36': const Cooler(
     id: 'ARCTIC_FREEZER_36',
-    name: 'Arctic Freezer 36',
     coolingType: CoolingType.air,
     coolingCapacityWatts: 150,
     powerDrawWatts: 5,
@@ -151,7 +175,6 @@ final Map<String, Cooler> coolingById = {
   ),
   'DYNATRON_2U_SERVER': const Cooler(
     id: 'DYNATRON_2U_SERVER',
-    name: 'Dynatron 2U Server Blower',
     coolingType: CoolingType.air,
     coolingCapacityWatts: 300,
     powerDrawWatts: 12,
@@ -163,7 +186,6 @@ final Map<String, Cooler> coolingById = {
   ),
   'SERVER_4U_ACTIVE': const Cooler(
     id: 'SERVER_4U_ACTIVE',
-    name: '4U Active Heatsink Array',
     coolingType: CoolingType.air,
     coolingCapacityWatts: 500,
     powerDrawWatts: 20,
@@ -175,7 +197,6 @@ final Map<String, Cooler> coolingById = {
   ),
   'REAR_DOOR_HEAT_EXCHANGER': const Cooler(
     id: 'REAR_DOOR_HEAT_EXCHANGER',
-    name: 'Rear-Door Heat Exchanger',
     coolingType: CoolingType.industrial,
     coolingCapacityWatts: 20000,
     powerDrawWatts: 2600,
@@ -187,7 +208,6 @@ final Map<String, Cooler> coolingById = {
   ),
   'IMMERSION_TANK': const Cooler(
     id: 'IMMERSION_TANK',
-    name: 'Two-Phase Immersion Cooling Tank',
     coolingType: CoolingType.industrial,
     coolingCapacityWatts: 120000,
     powerDrawWatts: 6500,
@@ -199,7 +219,6 @@ final Map<String, Cooler> coolingById = {
   ),
   'INDUSTRIAL_CHILLER': const Cooler(
     id: 'INDUSTRIAL_CHILLER',
-    name: 'Industrial Datacenter Chiller Unit',
     coolingType: CoolingType.industrial,
     coolingCapacityWatts: 60000,
     powerDrawWatts: 9000,
@@ -211,7 +230,6 @@ final Map<String, Cooler> coolingById = {
   ),
   'CHEAP_ALUMINUM_HEATSINK': const Cooler(
     id: 'CHEAP_ALUMINUM_HEATSINK',
-    name: 'No-Name Aluminum Heatsink',
     coolingType: CoolingType.air,
     coolingCapacityWatts: 45,
     powerDrawWatts: 3,
@@ -223,7 +241,6 @@ final Map<String, Cooler> coolingById = {
   ),
   'NZXT_KRAKEN_Z73': const Cooler(
     id: 'NZXT_KRAKEN_Z73',
-    name: 'NZXT Kraken Z73 360mm AIO',
     coolingType: CoolingType.aio,
     coolingCapacityWatts: 380,
     powerDrawWatts: 16,
@@ -235,7 +252,6 @@ final Map<String, Cooler> coolingById = {
   ),
   'SERVER_1U_PASSIVE': const Cooler(
     id: 'SERVER_1U_PASSIVE',
-    name: '1U Passive Heatsink w/ Chassis Airflow',
     coolingType: CoolingType.air,
     coolingCapacityWatts: 180,
     powerDrawWatts: 6,

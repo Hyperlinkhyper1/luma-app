@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
 import 'clicker_engine.dart';
 
 /// Maximum random offset (ms) the user can configure. Keeps the input sane
@@ -176,7 +177,7 @@ class AutoClickerRepository extends ChangeNotifier {
 
   Future<void> importData(Object? data) async {
     if (data is! Map<String, dynamic>) {
-      throw const FormatException('Invalid auto clicker snapshot.');
+      throw FormatException(currentL.autoClickerInvalidSnapshot);
     }
     _intervalMs = (data['intervalMs'] as num?)?.toInt() ?? _intervalMs;
     _randomOffsetMs =
@@ -228,8 +229,7 @@ class AutoClickerRepository extends ChangeNotifier {
       _hotKeyError = null;
     } catch (_) {
       _hotKeyRegistered = false;
-      _hotKeyError =
-          'Could not register the global hotkey — another app may already be using it.';
+      _hotKeyError = currentL.autoClickerHotKeyRegisterFailed;
     }
     notifyListeners();
   }

@@ -7,14 +7,19 @@ import 'package:flutter/foundation.dart'
 import 'package:nfc_manager/nfc_manager.dart';
 import 'package:nfc_manager/platform_tags.dart';
 
+import '../../../../l10n/current_l.dart';
+
+/// Where the payload of a scanned tag came from: a memory dump, an NDEF record,
+/// or the tag UID alone.
+enum NfcScanSource { mifareClassic, mifareUltralight, ndefRecord, tagUid }
+
 /// What we managed to pull off a scanned tag: the value to store on the card
-/// plus a short label for where it came from (a memory dump, an NDEF record,
-/// or the tag UID).
+/// plus where it came from.
 class NfcScanResult {
   const NfcScanResult({required this.payload, required this.source});
 
   final String payload;
-  final String source;
+  final NfcScanSource source;
 }
 
 /// Thrown when a scan can't start, can't complete, or is refused for safety
@@ -66,15 +71,10 @@ class CardWalletNfc {
     Duration detectTimeout = const Duration(seconds: 30),
   }) async {
     if (!isSupported) {
-      throw const NfcScanException(
-        "NFC scanning isn't available on this device.",
-      );
+      throw NfcScanException(currentL.cardWalletNfcUnavailable);
     }
     if (!await isAvailable()) {
-      throw const NfcScanException(
-        'NFC is off or unsupported here. Turn it on in your device settings '
-        'and try again.',
-      );
+      throw NfcScanException(currentL.cardWalletNfcOff);
     }
 
     final completer = Completer<NfcScanResult>();
@@ -94,9 +94,7 @@ class CardWalletNfc {
           } catch (e) {
             if (!completer.isCompleted) {
               completer.completeError(
-                const NfcScanException(
-                  "Couldn't read that tag — it looks empty or unsupported.",
-                ),
+                NfcScanException(currentL.cardWalletNfcReadFailed),
               );
             }
           } finally {
@@ -107,16 +105,13 @@ class CardWalletNfc {
     } catch (e) {
       timer?.cancel();
       await stop();
-      throw NfcScanException('Could not start the NFC reader. ($e)');
+      throw NfcScanException(currentL.cardWalletNfcStartFailed('$e'));
     }
 
     timer = Timer(detectTimeout, () async {
       if (!completer.isCompleted) {
         completer.completeError(
-          const NfcScanException(
-            'No tag detected. Hold the card flat against the back of your '
-            'phone and try again.',
-          ),
+          NfcScanException(currentL.cardWalletNfcNoTag),
         );
         await stop();
       }
@@ -142,15 +137,11 @@ class CardWalletNfc {
     // bank / credit card. The user asked for this explicitly, and it keeps a
     // PAN from ever landing in the wallet.
     if (await _isPaymentCard(tag)) {
-      throw const NfcScanException(
-        "That looks like a bank or credit card — luma won't copy payment "
-        'cards for your security. Add a loyalty, hotel, transit or event '
-        'card instead.',
-      );
+      throw NfcScanException(currentL.cardWalletNfcPaymentCardRefused);
     }
 
     final sections = <String>[];
-    var source = 'tag UID';
+    var source = NfcScanSource.tagUid;
 
     // Header: friendly tech name + UID.
     final header = StringBuffer();
@@ -164,13 +155,13 @@ class CardWalletNfc {
     final classic = await _dumpMifareClassic(tag);
     if (classic != null) {
       sections.add(classic);
-      source = 'MIFARE Classic';
+      source = NfcScanSource.mifareClassic;
     } else {
       // MIFARE Ultralight / NTAG — wristbands (MSC), event and hotel tags.
       final ultralight = await _dumpMifareUltralight(tag);
       if (ultralight != null) {
         sections.add(ultralight);
-        source = 'MIFARE Ultralight';
+        source = NfcScanSource.mifareUltralight;
       }
     }
 
@@ -182,7 +173,7 @@ class CardWalletNfc {
         final decoded = _decodeNdef(message.records);
         if (decoded != null && decoded.trim().isNotEmpty) {
           sections.add('NDEF:\n${decoded.trim()}');
-          if (source == 'tag UID') source = 'NDEF record';
+          if (source == NfcScanSource.tagUid) source = NfcScanSource.ndefRecord;
         }
       }
     }
@@ -190,9 +181,7 @@ class CardWalletNfc {
     final payload =
         sections.where((s) => s.trim().isNotEmpty).join('\n\n').trim();
     if (payload.isEmpty) {
-      throw const NfcScanException(
-        "Couldn't read anything off that tag — it may be empty or locked.",
-      );
+      throw NfcScanException(currentL.cardWalletNfcEmptyTag);
     }
     return NfcScanResult(payload: payload, source: source);
   }

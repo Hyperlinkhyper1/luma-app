@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../../../l10n/current_l.dart';
+
 /// One reasoning-effort tier a model supports, and what that tier costs.
 ///
 /// A higher effort buys a higher [intelligenceIndex] but spends more
@@ -42,12 +44,12 @@ class AiEffortProfile {
   /// Title-cased for display: `xhigh` → `Xhigh` reads badly, so the known
   /// tiers get proper labels and anything new falls back to capitalising.
   String get label => switch (effort.toLowerCase()) {
-        'minimal' => 'Minimal',
-        'low' => 'Low',
-        'medium' => 'Medium',
-        'high' => 'High',
-        'xhigh' => 'Extra high',
-        'max' => 'Max',
+        'minimal' => currentL.aiLeaderboardEffortMinimal,
+        'low' => currentL.aiLeaderboardEffortLow,
+        'medium' => currentL.aiLeaderboardEffortMedium,
+        'high' => currentL.aiLeaderboardEffortHigh,
+        'xhigh' => currentL.aiLeaderboardEffortXhigh,
+        'max' => currentL.aiLeaderboardEffortMax,
         _ => effort.isEmpty
             ? effort
             : effort[0].toUpperCase() + effort.substring(1),

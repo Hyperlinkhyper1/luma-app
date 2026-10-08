@@ -1,0 +1,4 @@
+"NSLocalNetworkUsageDescription" = "Luma uses your local network to find your devices and DIRIGERA smart home hub.";
+"NFCReaderUsageDescription" = "Luma reads NFC tags so you can add and present tap-only cards in your Card Wallet.";
+"NSCameraUsageDescription" = "Luma uses the camera to scan a card's barcode or QR code into your Card Wallet.";
+"NSPhotoLibraryUsageDescription" = "Luma reads your photo library to show it in the Gallery plugin. Nothing is uploaded.";

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../account/plan.dart';
+import '../../l10n/current_l.dart';
 import 'providers/ai_client.dart';
 import 'providers/ai_modes.dart';
 import 'providers/ai_providers.dart';
@@ -204,7 +205,7 @@ class DeepResearch {
       }
     }
     if (findings.every((f) => f == null || f.isEmpty)) {
-      throw firstError ?? AiApiError('The research agents came back empty.');
+      throw firstError ?? AiApiError(currentL.assistantResearchAgentsEmpty);
     }
 
     report(writing: true);

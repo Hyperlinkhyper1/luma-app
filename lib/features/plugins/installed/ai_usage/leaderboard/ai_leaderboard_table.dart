@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import 'ai_catalog_repository.dart';
 import 'ai_catalog_scope.dart';
@@ -72,6 +73,7 @@ class _AiLeaderboardTableViewState extends State<AiLeaderboardTableView> {
   @override
   Widget build(BuildContext context) {
     final repo = AiCatalogScope.of(context);
+    final t = L.of(context);
 
     return ListenableBuilder(
       listenable: repo,
@@ -91,15 +93,14 @@ class _AiLeaderboardTableViewState extends State<AiLeaderboardTableView> {
             padding: const EdgeInsets.all(24),
             child: LumaEmptyState(
               icon: Icons.leaderboard_outlined,
-              title: 'No model data yet',
+              title: t.aiLeaderboardTableEmptyTitle,
               subtitle: repo.canRefresh
-                  ? 'The leaderboard could not be loaded. Try again, or ask '
-                      'the server operator to refresh the model catalogue.'
-                  : 'The leaderboard downloads from the luma server. Sign in '
-                      'to an approved account to fetch it — it stays cached '
-                      'for offline viewing afterwards.',
+                  ? t.aiLeaderboardTableLoadFailed
+                  : t.aiLeaderboardTableSignInHint,
               action: LumaGhostButton(
-                label: repo.refreshing ? 'Refreshing…' : 'Retry',
+                label: repo.refreshing
+                    ? t.aiLeaderboardTableRefreshing
+                    : t.commonRetry,
                 icon: Icons.refresh_rounded,
                 onTap: repo.refreshing
                     ? null
@@ -158,7 +159,7 @@ class _AiLeaderboardTableViewState extends State<AiLeaderboardTableView> {
                     child: rows.isEmpty
                         ? Center(
                             child: Text(
-                              'No model matches those filters.',
+                              t.aiLeaderboardTableNoMatch,
                               style: TextStyle(color: context.luma.textMuted),
                             ),
                           )
@@ -228,6 +229,7 @@ class _FilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     // Wrap, not Row: the controls flow onto a second line on a narrow window
     // rather than overflowing off the right edge.
     return LayoutBuilder(
@@ -249,7 +251,7 @@ class _FilterBar extends StatelessWidget {
             style: TextStyle(color: luma.textPrimary, fontSize: 13),
             decoration: InputDecoration(
               isDense: true,
-              hintText: 'Search models',
+              hintText: t.aiLeaderboardTableSearchHint,
               hintStyle: TextStyle(color: luma.textMuted, fontSize: 13),
               prefixIcon:
                   Icon(Icons.search_rounded, size: 18, color: luma.textMuted),
@@ -282,21 +284,24 @@ class _FilterBar extends StatelessWidget {
             value: openOnly,
             onChanged: onOpenOnly,
             icon: Icons.lock_open_rounded,
-            label: 'Open weights',
-            tooltip: 'Show only models whose weights you can download',
+            label: t.aiLeaderboardTableOpenWeights,
+            tooltip: t.aiLeaderboardTableOpenWeightsTooltip,
           ),
           _ToggleChip(
             value: detailed,
             onChanged: onDetailed,
             icon: Icons.tune_rounded,
-            label: 'Detailed',
-            tooltip: 'One row per model and reasoning effort, so each effort '
-                'level is ranked on its own scores',
+            label: t.aiLeaderboardTableDetailed,
+            tooltip: t.aiLeaderboardTableDetailedTooltip,
           ),
           Text(
             shown == total
-                ? '$total ${detailed ? "variants" : "models"}'
-                : '$shown of $total ${detailed ? "variants" : "models"}',
+                ? (detailed
+                    ? t.aiLeaderboardTableVariantsCount(total)
+                    : t.aiLeaderboardTableModelsCount(total))
+                : (detailed
+                    ? t.aiLeaderboardTableShownOfVariants(shown, total)
+                    : t.aiLeaderboardTableShownOfModels(shown, total)),
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
           // Refreshing is an operator action (the admin dashboard's
@@ -319,15 +324,18 @@ class _FreshnessLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final origin = switch (repo.source) {
-      AiCatalogSource.none => 'not loaded yet',
-      AiCatalogSource.cached => 'from your last sync',
-      AiCatalogSource.server => 'from the luma server',
+      AiCatalogSource.none => t.aiLeaderboardOriginNotLoaded,
+      AiCatalogSource.cached => t.aiLeaderboardOriginCached,
+      AiCatalogSource.server => t.aiLeaderboardOriginServer,
     };
     final at = repo.refreshedAt;
-    final text = at == null ? origin : '${relativeDay(at)} · $origin';
+    final text = at == null
+        ? origin
+        : t.aiLeaderboardFreshnessText(relativeDay(at), origin);
     return Tooltip(
-      message: repo.error ?? 'Model data $text',
+      message: repo.error ?? t.aiLeaderboardFreshnessTooltip(text),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -356,15 +364,17 @@ class _VendorMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final label = selected == null
-        ? 'All providers'
+        ? t.aiLeaderboardTableAllProviders
         : vendors.firstWhere((v) => v.key == selected).name;
     return PopupMenuButton<String?>(
-      tooltip: 'Filter by provider',
+      tooltip: t.aiLeaderboardTableFilterProvider,
       onSelected: (v) => onSelect(v == '' ? null : v),
       color: luma.surface,
       itemBuilder: (context) => [
-        const PopupMenuItem(value: '', child: Text('All providers')),
+        PopupMenuItem(
+            value: '', child: Text(t.aiLeaderboardTableAllProviders)),
         for (final v in vendors)
           PopupMenuItem(value: v.key, child: Text(v.name)),
       ],
@@ -479,8 +489,9 @@ class _SortMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return PopupMenuButton<AiLeaderboardColumn>(
-      tooltip: 'Sort by',
+      tooltip: t.aiLeaderboardTableSortBy,
       onSelected: onSort,
       color: luma.surface,
       itemBuilder: (context) => [
@@ -745,10 +756,9 @@ class _ModelCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final open = model.openWeights;
-    final licence = open
-        ? 'Open weights${model.licenseName == null ? "" : " · ${model.licenseName}"}'
-        : 'Proprietary — API access only';
+    final licence = _licenceText(t, model);
 
     return Material(
       color: luma.surface,
@@ -829,11 +839,16 @@ class _ModelCard extends StatelessWidget {
                 runSpacing: 6,
                 children: [
                   _CardScore(
-                      label: 'Intelligence', value: model.llmStatsIndex),
-                  _CardScore(label: 'Coding', value: model.codingIndex),
-                  _CardScore(label: 'Agent', value: model.agentIndex),
+                      label: t.aiLeaderboardDetailRatingIntelligence,
+                      value: model.llmStatsIndex),
                   _CardScore(
-                    label: 'Arena',
+                      label: t.aiLeaderboardDetailRatingCoding,
+                      value: model.codingIndex),
+                  _CardScore(
+                      label: t.aiLeaderboardDetailRatingAgent,
+                      value: model.agentIndex),
+                  _CardScore(
+                    label: t.aiLeaderboardTableArena,
                     value: model.codeArena,
                     tinted: false,
                     format: (v) => v.round().toString(),
@@ -844,11 +859,11 @@ class _ModelCard extends StatelessWidget {
               Text(
                 [
                   if (formatPrice(model.avgPricePerM) case final p?)
-                    '$p /M',
+                    t.aiLeaderboardCardPricePerM(p),
                   if (formatTokens(model.contextTokens) case final c?)
-                    '$c context',
+                    t.aiLeaderboardCardContext(c),
                   if (formatParams(model.parametersB) case final p?)
-                    '$p params',
+                    t.aiLeaderboardCardParams(p),
                 ].join('  ·  '),
                 style: TextStyle(
                   color: luma.textSecondary,
@@ -1026,6 +1041,7 @@ class _HeaderCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final active = sortBy == column;
     return SizedBox(
       width: width,
@@ -1035,9 +1051,10 @@ class _HeaderCell extends StatelessWidget {
         child: Semantics(
           // The sort state has to be announced, not just drawn as an arrow.
           label: active
-              ? '${column.label}, sorted '
-                  '${descending ? "descending" : "ascending"}'
-              : '${column.label}, not sorted',
+              ? (descending
+                  ? t.aiLeaderboardTableSortedDescending(column.label)
+                  : t.aiLeaderboardTableSortedAscending(column.label))
+              : t.aiLeaderboardTableNotSorted(column.label),
           button: true,
           child: InkWell(
             onTap: () => onSort(column),
@@ -1251,6 +1268,12 @@ class _NumberCell extends StatelessWidget {
   }
 }
 
+String _licenceText(L t, AiModel model) => !model.openWeights
+    ? t.aiLeaderboardDetailProprietary
+    : model.licenseName == null
+        ? t.aiLeaderboardDetailOpenWeights
+        : t.aiLeaderboardDetailOpenWeightsLicensed(model.licenseName!);
+
 /// Open padlock = the weights are downloadable. Icon plus a tooltip naming
 /// the licence, so the meaning never rests on the glyph alone.
 class _LicenseCell extends StatelessWidget {
@@ -1262,9 +1285,7 @@ class _LicenseCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final open = model.openWeights;
-    final label = open
-        ? 'Open weights${model.licenseName == null ? "" : " · ${model.licenseName}"}'
-        : 'Proprietary — API access only';
+    final label = _licenceText(L.of(context), model);
     return SizedBox(
       width: _wLicense,
       child: Center(

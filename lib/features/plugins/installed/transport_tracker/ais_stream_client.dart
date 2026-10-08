@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import '../../../../l10n/current_l.dart';
 import 'vessel.dart';
 
 /// A rectangular map viewport to subscribe AIS reports for.
@@ -85,7 +86,7 @@ class AisStreamClient {
       _sub = socket.listen(
         _onMessage,
         onError: (Object e) {
-          _errorController.add('Connection error: $e');
+          _errorController.add(currentL.transportTrackerConnectionError('$e'));
           _setState(AisConnectionState.error);
         },
         onDone: () {
@@ -98,7 +99,7 @@ class AisStreamClient {
       _setState(AisConnectionState.live);
     } catch (e) {
       _setState(AisConnectionState.error);
-      _errorController.add('Could not connect: $e');
+      _errorController.add(currentL.transportTrackerCouldNotConnect('$e'));
     }
   }
 
@@ -153,7 +154,9 @@ class AisStreamClient {
           } catch (_) {}
         },
         onError: (Object e) {
-          if (!completer.isCompleted) completer.complete('Connection error: $e');
+          if (!completer.isCompleted) {
+            completer.complete(currentL.transportTrackerConnectionError('$e'));
+          }
         },
       );
       return await completer.future.timeout(
@@ -161,7 +164,7 @@ class AisStreamClient {
         onTimeout: () => null,
       );
     } catch (e) {
-      return 'Could not connect: $e';
+      return currentL.transportTrackerCouldNotConnect('$e');
     } finally {
       await sub?.cancel();
       await socket?.close();

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../../l10n/app_localizations.dart';
+import '../../../../../l10n/current_l.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../github_models.dart';
 
@@ -46,9 +48,11 @@ String formatDecimal(double value, {int decimals = 1}) {
 }
 
 String formatMinutes(double minutes) {
-  if (minutes < 60) return '${formatDecimal(minutes)} min';
+  if (minutes < 60) {
+    return currentL.accountOverviewMinutesValue(formatDecimal(minutes));
+  }
   final hours = minutes / 60;
-  return '${formatDecimal(hours)} h';
+  return currentL.accountOverviewHoursValue(formatDecimal(hours));
 }
 
 String formatBytesFromKb(int kilobytes) {
@@ -59,41 +63,59 @@ String formatBytesFromKb(int kilobytes) {
 }
 
 String formatDuration(Duration d) {
-  if (d.inSeconds < 60) return '${d.inSeconds}s';
-  if (d.inMinutes < 60) return '${d.inMinutes}m ${d.inSeconds % 60}s';
-  return '${d.inHours}h ${d.inMinutes % 60}m';
+  if (d.inSeconds < 60) {
+    return currentL.accountOverviewDurationSeconds('${d.inSeconds}');
+  }
+  if (d.inMinutes < 60) {
+    return currentL.accountOverviewDurationMinutesSeconds(
+      '${d.inMinutes}',
+      '${d.inSeconds % 60}',
+    );
+  }
+  return currentL.accountOverviewDurationHoursMinutes(
+    '${d.inHours}',
+    '${d.inMinutes % 60}',
+  );
 }
 
 /// GitHub's "updated 3 days ago" phrasing.
 String formatRelative(DateTime? when) {
-  if (when == null) return 'unknown';
+  final t = currentL;
+  if (when == null) return t.accountOverviewTimeUnknown;
   final diff = DateTime.now().difference(when);
-  if (diff.isNegative) return 'just now';
-  if (diff.inMinutes < 1) return 'just now';
-  if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
-  if (diff.inHours < 24) {
-    return '${diff.inHours} hour${diff.inHours == 1 ? '' : 's'} ago';
-  }
-  if (diff.inDays < 30) {
-    return '${diff.inDays} day${diff.inDays == 1 ? '' : 's'} ago';
-  }
+  if (diff.isNegative) return t.accountOverviewJustNow;
+  if (diff.inMinutes < 1) return t.accountOverviewJustNow;
+  if (diff.inMinutes < 60) return t.commonMinutesAgo(diff.inMinutes);
+  if (diff.inHours < 24) return t.commonHoursAgo(diff.inHours);
+  if (diff.inDays < 30) return t.commonDaysAgo(diff.inDays);
   if (diff.inDays < 365) {
-    final months = (diff.inDays / 30).floor();
-    return '$months month${months == 1 ? '' : 's'} ago';
+    return t.accountOverviewMonthsAgo((diff.inDays / 30).floor());
   }
-  final years = (diff.inDays / 365).floor();
-  return '$years year${years == 1 ? '' : 's'} ago';
+  return t.accountOverviewYearsAgo((diff.inDays / 365).floor());
 }
 
-const _monthNames = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-];
+String _shortMonth(int month) {
+  final t = currentL;
+  return switch (month) {
+    1 => t.monthJan,
+    2 => t.monthFeb,
+    3 => t.monthMar,
+    4 => t.monthApr,
+    5 => t.monthMay,
+    6 => t.monthJun,
+    7 => t.monthJul,
+    8 => t.monthAug,
+    9 => t.monthSep,
+    10 => t.monthOct,
+    11 => t.monthNov,
+    _ => t.monthDec,
+  };
+}
 
 String formatDate(DateTime date) =>
-    '${date.day} ${_monthNames[date.month - 1]} ${date.year}';
+    '${date.day} ${_shortMonth(date.month)} ${date.year}';
 
-String monthLabel(int month) => _monthNames[month - 1];
+String monthLabel(int month) => _shortMonth(month);
 
 /// A stable colour per language, so Dart is the same shade on every screen
 /// and between sessions.
@@ -148,6 +170,7 @@ class AccountStatTile extends StatelessWidget {
     final luma = context.luma;
     final decor = context.lumaDecor;
     final color = tint ?? luma.accent;
+    final t = L.of(context);
 
     final content = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -202,7 +225,9 @@ class AccountStatTile extends StatelessWidget {
     );
 
     return Semantics(
-      label: '$label: $value${caption == null ? '' : '. $caption'}',
+      label: caption == null
+          ? t.accountOverviewStatSemantics(label, value)
+          : t.accountOverviewStatSemanticsCaption(label, value, caption!),
       button: onTap != null,
       child: Material(
         color: luma.surface,
@@ -259,6 +284,7 @@ class AccountMeter extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final format = formatter ?? formatDecimal;
+    final t = L.of(context);
     final ratio = (total == null || total! <= 0) ? null : (used / total!);
 
     // Approaching the cap is a warning, over it is a problem — and each
@@ -266,11 +292,15 @@ class AccountMeter extends StatelessWidget {
     final (Color barColor, IconData? statusIcon, String? statusText) =
         switch (ratio) {
       null => (luma.accent, null, null),
-      >= 1.0 => (luma.danger, Icons.error_outline_rounded, 'Allowance used up'),
+      >= 1.0 => (
+          luma.danger,
+          Icons.error_outline_rounded,
+          t.accountOverviewAllowanceUsedUp
+        ),
       >= 0.85 => (
           luma.warning,
           Icons.warning_amber_rounded,
-          'Nearly at your allowance'
+          t.accountOverviewNearAllowance
         ),
       _ => (luma.accent, null, null),
     };
@@ -331,7 +361,7 @@ class AccountMeter extends StatelessWidget {
                 // unit belonged only to the number in front of it.
                 total == null
                     ? unit
-                    : '$unit of ${format(total!)} $unit included',
+                    : t.accountOverviewAllowanceIncluded(unit, format(total!)),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: luma.textSecondary, fontSize: 12),
@@ -342,8 +372,13 @@ class AccountMeter extends StatelessWidget {
         const SizedBox(height: 10),
         if (ratio != null)
           Semantics(
-            label: '$label: ${format(used)} of ${format(total!)} $unit used, '
-                '$percentLabel',
+            label: t.accountOverviewMeterSemantics(
+              label,
+              format(used),
+              format(total!),
+              unit,
+              percentLabel!,
+            ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(999),
               child: Stack(
@@ -403,6 +438,7 @@ class _NoAllowanceHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
@@ -416,13 +452,13 @@ class _NoAllowanceHint extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'GitHub did not report an included allowance.',
+              t.accountOverviewNoIncludedAllowance,
               style: TextStyle(color: luma.textSecondary, fontSize: 11),
             ),
           ),
           if (onTap != null) ...[
             const SizedBox(width: 8),
-            AccountLinkButton(label: 'Set it', onTap: onTap!),
+            AccountLinkButton(label: t.accountOverviewSetAllowance, onTap: onTap!),
           ],
         ],
       ),
@@ -675,7 +711,7 @@ class GithubContributionGraph extends StatelessWidget {
     final days = contributions.days;
     if (days.isEmpty) {
       return Text(
-        'No contribution data yet.',
+        L.of(context).accountOverviewNoContributionData,
         style: TextStyle(color: luma.textMuted, fontSize: 12),
       );
     }
@@ -799,7 +835,16 @@ class _WeekdayLabels extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    const labels = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
+    final t = L.of(context);
+    final labels = [
+      '',
+      t.accountOverviewWeekdayMonShort,
+      '',
+      t.accountOverviewWeekdayWedShort,
+      '',
+      t.accountOverviewWeekdayFriShort,
+      '',
+    ];
     return SizedBox(
       width: 24,
       child: Column(
@@ -845,10 +890,10 @@ class _DayCell extends StatelessWidget {
             (level - 1) / 3,
           )!;
 
+    final t = L.of(context);
     final label = count == 0
-        ? 'No contributions on ${formatDate(day!.date)}'
-        : '$count contribution${count == 1 ? '' : 's'} on '
-            '${formatDate(day!.date)}';
+        ? t.accountOverviewNoContributionsOn(formatDate(day!.date))
+        : t.accountOverviewContributionsOn(count, formatDate(day!.date));
 
     return Tooltip(
       message: label,
@@ -888,10 +933,12 @@ class _Legend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        Text('Less', style: TextStyle(color: luma.textMuted, fontSize: 10)),
+        Text(t.accountOverviewLess,
+            style: TextStyle(color: luma.textMuted, fontSize: 10)),
         const SizedBox(width: 6),
         for (var level = 0; level < 5; level++) ...[
           Container(
@@ -911,7 +958,8 @@ class _Legend extends StatelessWidget {
           ),
         ],
         const SizedBox(width: 6),
-        Text('More', style: TextStyle(color: luma.textMuted, fontSize: 10)),
+        Text(t.commonMore,
+            style: TextStyle(color: luma.textMuted, fontSize: 10)),
       ],
     );
   }
@@ -967,7 +1015,7 @@ class AccountNotice extends StatelessWidget {
               onPressed: onDismiss,
               icon: const Icon(Icons.close_rounded, size: 16),
               color: luma.textMuted,
-              tooltip: 'Dismiss',
+              tooltip: L.of(context).audioToolsDismiss,
               constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
             ),
         ],

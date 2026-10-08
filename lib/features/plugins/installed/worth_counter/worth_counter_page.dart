@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'worth_counter_store.dart';
 
@@ -39,6 +40,7 @@ class _WorthCounterPageState extends State<WorthCounterPage> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     return ListenableBuilder(
       listenable: _store,
@@ -50,7 +52,7 @@ class _WorthCounterPageState extends State<WorthCounterPage> {
             onPressed: () => _showProductEditor(context, _store),
             backgroundColor: luma.accent,
             foregroundColor: luma.onAccent,
-            tooltip: 'Add product',
+            tooltip: t.worthCounterAddProduct,
             child: const Icon(Icons.add_rounded, size: 28),
           ),
           bottomNavigationBar: _TotalBar(
@@ -77,13 +79,10 @@ class _WorthCounterPageState extends State<WorthCounterPage> {
                               padding: const EdgeInsets.symmetric(vertical: 64),
                               child: LumaEmptyState(
                                 icon: Icons.calculate_rounded,
-                                title: 'No products yet',
-                                subtitle:
-                                    'Add a product with what one is worth, then '
-                                    'count them up with + and -. The total '
-                                    'value shows at the bottom.',
+                                title: t.worthCounterNoProducts,
+                                subtitle: t.worthCounterEmptySubtitle,
                                 action: LumaPrimaryButton(
-                                  label: 'Add product',
+                                  label: t.worthCounterAddProduct,
                                   icon: Icons.add_rounded,
                                   onTap: () =>
                                       _showProductEditor(context, _store),
@@ -124,26 +123,27 @@ class _WorthCounterPageState extends State<WorthCounterPage> {
 
   Future<void> _confirmDelete(BuildContext context, WorthProduct product) async {
     final luma = context.luma;
+    final t = L.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: luma.surface,
         title: Text(
-          'Delete product?',
+          t.worthCounterDeleteProductTitle,
           style: TextStyle(color: luma.textPrimary, fontSize: 16),
         ),
         content: Text(
-          'This removes "${product.name}" and its count from the tally.',
+          t.worthCounterDeleteProductBody(product.name),
           style: TextStyle(color: luma.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+            child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text('Delete', style: TextStyle(color: luma.danger)),
+            child: Text(t.commonDelete, style: TextStyle(color: luma.danger)),
           ),
         ],
       ),
@@ -155,26 +155,27 @@ class _WorthCounterPageState extends State<WorthCounterPage> {
 
   Future<void> _confirmResetAll(BuildContext context) async {
     final luma = context.luma;
+    final t = L.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: luma.surface,
         title: Text(
-          'Reset every count?',
+          t.worthCounterResetAllTitle,
           style: TextStyle(color: luma.textPrimary, fontSize: 16),
         ),
         content: Text(
-          'All products stay in the list, but their counts go back to zero.',
+          t.worthCounterResetAllBody,
           style: TextStyle(color: luma.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+            child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text('Reset', style: TextStyle(color: luma.accent)),
+            child: Text(t.commonReset, style: TextStyle(color: luma.accent)),
           ),
         ],
       ),
@@ -285,6 +286,7 @@ class _ProductRow extends StatelessWidget {
 
   Widget _titleBlock(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -301,7 +303,7 @@ class _ProductRow extends StatelessWidget {
         ),
         const SizedBox(height: 2),
         Text(
-          '€${product.price.toStringAsFixed(2)} each',
+          t.worthCounterPricePerItem('€${product.price.toStringAsFixed(2)}'),
           style: TextStyle(color: luma.textMuted, fontSize: 12.5),
         ),
       ],
@@ -310,12 +312,13 @@ class _ProductRow extends StatelessWidget {
 
   Widget _stepper(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         _StepButton(
           icon: Icons.remove_rounded,
-          tooltip: 'One less',
+          tooltip: t.worthCounterOneLess,
           enabled: product.count > 0,
           onTap: onDecrement,
         ),
@@ -334,7 +337,7 @@ class _ProductRow extends StatelessWidget {
         ),
         _StepButton(
           icon: Icons.add_rounded,
-          tooltip: 'One more',
+          tooltip: t.worthCounterOneMore,
           filled: true,
           onTap: onIncrement,
         ),
@@ -358,8 +361,9 @@ class _ProductRow extends StatelessWidget {
 
   Widget _menu(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return PopupMenuButton<String>(
-      tooltip: 'More',
+      tooltip: t.commonMore,
       color: luma.surface,
       icon: Icon(Icons.more_vert_rounded, color: luma.textMuted, size: 20),
       onSelected: (value) {
@@ -374,17 +378,17 @@ class _ProductRow extends StatelessWidget {
       itemBuilder: (context) => [
         PopupMenuItem(
           value: 'edit',
-          child: Text('Edit product',
+          child: Text(t.worthCounterEditProduct,
               style: TextStyle(color: luma.textPrimary, fontSize: 13.5)),
         ),
         PopupMenuItem(
           value: 'reset',
-          child: Text('Reset count',
+          child: Text(t.worthCounterResetCount,
               style: TextStyle(color: luma.textPrimary, fontSize: 13.5)),
         ),
         PopupMenuItem(
           value: 'delete',
-          child: Text('Delete',
+          child: Text(t.commonDelete,
               style: TextStyle(color: luma.danger, fontSize: 13.5)),
         ),
       ],
@@ -456,6 +460,7 @@ class _TotalBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 14, 24, 14),
       decoration: BoxDecoration(
@@ -475,7 +480,7 @@ class _TotalBar extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Total',
+                      t.commonTotal,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -486,9 +491,7 @@ class _TotalBar extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      itemCount == 1
-                          ? '1 item counted'
-                          : '$itemCount items counted',
+                      t.worthCounterItemsCounted(itemCount),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: luma.textMuted, fontSize: 12),
@@ -501,13 +504,13 @@ class _TotalBar extends StatelessWidget {
                 if (compact)
                   IconButton(
                     onPressed: onResetAll,
-                    tooltip: 'Reset all counts',
+                    tooltip: t.worthCounterResetAllCounts,
                     icon: Icon(Icons.restart_alt_rounded,
                         color: luma.textSecondary, size: 20),
                   )
                 else ...[
                   LumaGhostButton(
-                    label: 'Reset all',
+                    label: t.worthCounterResetAll,
                     icon: Icons.restart_alt_rounded,
                     onTap: onResetAll,
                   ),
@@ -582,14 +585,15 @@ class _ProductEditorDialogState extends State<_ProductEditorDialog> {
   }
 
   Future<void> _save() async {
+    final t = L.of(context);
     final name = _name.text.trim();
     final price = _parsePrice();
     if (name.isEmpty) {
-      setState(() => _error = 'Give the product a name.');
+      setState(() => _error = t.worthCounterNameRequired);
       return;
     }
     if (price == null) {
-      setState(() => _error = 'Enter what one is worth, e.g. 2.50.');
+      setState(() => _error = t.worthCounterPriceInvalid);
       return;
     }
     final existing = widget.existing;
@@ -604,10 +608,11 @@ class _ProductEditorDialogState extends State<_ProductEditorDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return AlertDialog(
       backgroundColor: luma.surface,
       title: Text(
-        widget.existing == null ? 'Add product' : 'Edit product',
+        widget.existing == null ? t.worthCounterAddProduct : t.worthCounterEditProduct,
         style: TextStyle(color: luma.textPrimary, fontSize: 16),
       ),
       content: SizedBox(
@@ -616,16 +621,16 @@ class _ProductEditorDialogState extends State<_ProductEditorDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _label(luma, 'Name'),
+            _label(luma, t.commonName),
             const SizedBox(height: 6),
             TextField(
               controller: _name,
               autofocus: true,
               style: TextStyle(color: luma.textPrimary),
-              decoration: _dec(luma, hint: 'e.g. Coffee'),
+              decoration: _dec(luma, hint: t.worthCounterNameHint),
             ),
             const SizedBox(height: 14),
-            _label(luma, 'Worth per item (€)'),
+            _label(luma, t.worthCounterWorthPerItemLabel),
             const SizedBox(height: 6),
             TextField(
               controller: _price,
@@ -634,11 +639,11 @@ class _ProductEditorDialogState extends State<_ProductEditorDialog> {
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
               ],
               style: TextStyle(color: luma.textPrimary),
-              decoration: _dec(luma, hint: 'e.g. 2.00'),
+              decoration: _dec(luma, hint: t.worthCounterPriceHint),
               onSubmitted: (_) => _save(),
             ),
             const SizedBox(height: 14),
-            _label(luma, 'Color'),
+            _label(luma, t.commonColor),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -677,12 +682,12 @@ class _ProductEditorDialogState extends State<_ProductEditorDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
         ),
         TextButton(
           onPressed: _save,
           child: Text(
-            widget.existing == null ? 'Add' : 'Save',
+            widget.existing == null ? t.commonAdd : t.commonSave,
             style: TextStyle(color: luma.accent),
           ),
         ),

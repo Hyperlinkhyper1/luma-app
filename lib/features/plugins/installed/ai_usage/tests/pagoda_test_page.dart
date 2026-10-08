@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../../_shared/windows_webview.dart';
 import '../leaderboard/ai_vendor_style.dart';
@@ -263,64 +264,56 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
     return ListenableBuilder(
       listenable: repo,
       builder: (context, _) {
+        final t = L.of(context);
         final benchmarks = [
           ...repo
               .benchmarksOfKind('pagoda')
               .where((b) => !_nativeModelIds.contains(b.id)),
-          const AiBenchmark(
+          AiBenchmark(
             id: 'pagoda_step5',
             kind: 'pagoda',
             model: 'Step 5',
-            description: 'StepFun Step 5 Preview voxel garden benchmark',
+            description: t.aiTestsPagodaDescStep5,
             sizeBytes: 0,
             sha256: '',
           ),
-          const AiBenchmark(
+          AiBenchmark(
             id: 'pagoda_gpt6_luna_low',
             kind: 'pagoda',
             model: 'GPT 6 Luna (Low)',
-            description: 'Independent voxel garden benchmark',
+            description: t.aiTestsPagodaDescIndependent,
             sizeBytes: 0,
             sha256: '',
           ),
-          const AiBenchmark(
+          AiBenchmark(
             id: 'pagoda_space_bunny_xhigh',
             kind: 'pagoda',
             model: 'Space Bunny (Xhigh)',
-            description:
-                'Independent voxel garden benchmark — flying island, '
-                'sky waterfalls and a five-storey pagoda',
+            description: t.aiTestsPagodaDescSpaceBunny,
             sizeBytes: 0,
             sha256: '',
           ),
-          const AiBenchmark(
+          AiBenchmark(
             id: 'pagoda_sonnet55_xhigh',
             kind: 'pagoda',
             model: 'Sonnet 5.5 (Xhigh)',
-            description:
-                'Sonnet 5.5 at extra-high reasoning effort — a '
-                'floating garden island with a waterfall and a five-storey '
-                'pagoda',
+            description: t.aiTestsPagodaDescSonnetXhigh,
             sizeBytes: 0,
             sha256: '',
           ),
-          const AiBenchmark(
+          AiBenchmark(
             id: 'pagoda_gpt_sol_61_xhigh',
             kind: 'pagoda',
             model: 'GPT 6.1 Sol (Xhigh)',
-            description:
-                'GPT 6.1 Sol at extra-high reasoning effort — '
-                'spring festival voxel garden with a five-storey pagoda',
+            description: t.aiTestsPagodaDescGptSolXhigh,
             sizeBytes: 0,
             sha256: '',
           ),
-          const AiBenchmark(
+          AiBenchmark(
             id: 'pagoda_gpt_sol_61_low',
             kind: 'pagoda',
             model: 'GPT 6.1 Sol (Low)',
-            description:
-                'GPT 6.1 Sol at low reasoning effort — '
-                'spring festival voxel garden with a five-storey pagoda',
+            description: t.aiTestsPagodaDescGptSolLow,
             sizeBytes: 0,
             sha256: '',
           ),
@@ -358,13 +351,14 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
 
   Widget _listView(BuildContext context, List<AiBenchmark> filtered) {
     final luma = context.luma;
+    final t = L.of(context);
     final repo = AiBenchmarkScope.of(context);
     return Scaffold(
       backgroundColor: luma.background,
       appBar: AppBar(
         backgroundColor: luma.background,
         elevation: 0,
-        title: const Text('Pagoda Test'),
+        title: Text(t.aiTestsPagodaTitle),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -372,7 +366,7 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Benchmark Scene',
+              t.aiTestsBenchmarkSceneHeading,
               style: TextStyle(
                 color: luma.textPrimary,
                 fontSize: 18,
@@ -381,9 +375,7 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Spring Festival at the Five-Story Pagoda — an interactive voxel '
-              'garden benchmark with procedural terrain, animated elements, and '
-              'dynamic lighting.',
+              t.aiTestsPagodaIntro,
               style: TextStyle(color: luma.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 20),
@@ -395,7 +387,7 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
             Row(
               children: [
                 Text(
-                  'Select a Model',
+                  t.aiTestsSelectModel,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 14,
@@ -404,7 +396,7 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
                 ),
                 const Spacer(),
                 LumaSegmentedTabs(
-                  tabs: const ['List', 'Banners'],
+                  tabs: [t.aiTestsListView, t.aiTestsBannersView],
                   selectedIndex: _bannerView ? 1 : 0,
                   onSelect: (i) {
                     final banners = i == 1;
@@ -429,20 +421,18 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
             else if (filtered.isEmpty && _query.trim().isNotEmpty)
               LumaEmptyState(
                 icon: Icons.search_off_rounded,
-                title: 'No models match "${_query.trim()}"',
-                subtitle: 'Try a shorter search.',
+                title: t.aiTestsNoModelsMatch(_query.trim()),
+                subtitle: t.aiTestsTryShorterSearch,
               )
             else if (filtered.isEmpty)
               LumaEmptyState(
                 icon: Icons.cloud_download_outlined,
-                title: 'No benchmarks yet',
+                title: t.aiTestsNoBenchmarksYet,
                 subtitle: repo.canRefresh
-                    ? 'The benchmark list could not be loaded. Try again, or '
-                          'ask the server operator to add scenes.'
-                    : 'Benchmarks download from the luma server. Sign in to '
-                          'an approved account to fetch them.',
+                    ? t.aiTestsBenchmarkListFailed
+                    : t.aiTestsBenchmarksSignInHint,
                 action: LumaGhostButton(
-                  label: repo.refreshing ? 'Refreshing…' : 'Retry',
+                  label: repo.refreshing ? t.aiTestsRefreshing : t.commonRetry,
                   icon: Icons.refresh_rounded,
                   onTap: repo.refreshing || !repo.canRefresh
                       ? null
@@ -474,6 +464,7 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
 
   Widget _sceneView(BuildContext context, AiBenchmark benchmark) {
     final luma = context.luma;
+    final t = L.of(context);
     final repo = AiBenchmarkScope.of(context);
 
     if (!Platform.isWindows) {
@@ -482,20 +473,18 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
         appBar: AppBar(
           backgroundColor: luma.background,
           elevation: 0,
-          title: const Text('Pagoda Test'),
+          title: Text(t.aiTestsPagodaTitle),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_rounded),
             onPressed: () => setState(() => _selectedId = null),
           ),
         ),
-        body: const Padding(
-          padding: EdgeInsets.all(24),
+        body: Padding(
+          padding: const EdgeInsets.all(24),
           child: LumaEmptyState(
             icon: Icons.computer_rounded,
-            title: 'Not available on this platform',
-            subtitle:
-                'The Pagoda Test requires a Windows desktop. '
-                'Mobile and Linux support are coming soon.',
+            title: t.aiTestsNotAvailableOnPlatform,
+            subtitle: t.aiTestsNeedsWindowsDesktop(t.aiTestsPagodaTitle),
           ),
         ),
       );
@@ -506,7 +495,7 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
       appBar: AppBar(
         backgroundColor: luma.background,
         elevation: 0,
-        title: const Text('Pagoda Test'),
+        title: Text(t.aiTestsPagodaTitle),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => setState(() => _selectedId = null),
@@ -534,7 +523,7 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Downloading ${benchmark.model}…',
+                          t.aiTestsDownloadingModel(benchmark.model),
                           style: TextStyle(color: luma.textMuted, fontSize: 13),
                         ),
                       ],
@@ -546,13 +535,12 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
                     padding: const EdgeInsets.all(24),
                     child: LumaEmptyState(
                       icon: Icons.cloud_off_rounded,
-                      title: 'Could not load ${benchmark.model}',
-                      subtitle:
-                          '${snapshot.error ?? 'The download failed.'} '
-                          'Scenes are cached after the first download, so a retry '
-                          'is usually all it takes.',
+                      title: t.aiTestsCouldNotLoadModel(benchmark.model),
+                      subtitle: t.aiTestsSceneLoadFailedBody(
+                        snapshot.error?.toString() ?? t.aiTestsDownloadFailed,
+                      ),
                       action: LumaGhostButton(
-                        label: 'Retry',
+                        label: t.commonRetry,
                         icon: Icons.refresh_rounded,
                         onTap: () => setState(() {}),
                       ),

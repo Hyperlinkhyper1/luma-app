@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import '../../../../../l10n/current_l.dart';
 import '../data/minecraft_launcher_database.dart';
 import '../minecraft_launcher_repository.dart';
 import 'download_manager.dart';
@@ -11,12 +12,20 @@ import 'safe_path.dart';
 /// aren't a distinct Modrinth `project_type` (they're normally distributed
 /// as regular mods or bundled in modpacks), so they're intentionally not a
 /// browse option here — the `McInstalledMods.kind` column still accepts
-/// `'datapack'` for anything installed by other means later.
+/// `'datapack'` for anything installed by other means later. Show
+/// [modrinthProjectTypeLabel] to the user.
 const modrinthProjectTypes = {
-  'mod': 'Mods',
-  'resourcepack': 'Resource Packs',
-  'shader': 'Shader Packs',
+  'mod': 'mod',
+  'resourcepack': 'resourcepack',
+  'shader': 'shader',
 };
+
+/// The display name of a [modrinthProjectTypes] key, in the app language.
+String modrinthProjectTypeLabel(String kind) => switch (kind) {
+      'resourcepack' => currentL.mcContentTypeResourcePacks,
+      'shader' => currentL.mcContentTypeShaderPacks,
+      _ => currentL.mcContentTypeMods,
+    };
 
 String contentFolderFor(String kind) => switch (kind) {
       'mod' => 'mods',
@@ -40,10 +49,7 @@ class ModInstaller {
   }) async {
     final file = version.primaryFile;
     if (file.url.isEmpty) {
-      throw ModrinthApiException(
-        '${project.title} can only be downloaded from its CurseForge page — '
-        'the author has turned off downloads in other launchers.',
-      );
+      throw ModrinthApiException(currentL.mcModCurseForgeOnly(project.title));
     }
     final destDir = await McPaths.instanceSubDir(instance.id, contentFolderFor(kind));
     // The filename comes from the catalogue's API response — treat it as
@@ -51,7 +57,7 @@ class ModInstaller {
     // service (or a spoofed response) to be well-behaved.
     final destPath = safeJoin(destDir.path, file.filename);
     if (destPath == null || file.filename.contains('/') || file.filename.contains('\\')) {
-      throw ModrinthApiException('Refusing to install "${file.filename}": unsafe file name.');
+      throw ModrinthApiException(currentL.mcModUnsafeFileName(file.filename));
     }
 
     await DownloadManager.instance.downloadAll([

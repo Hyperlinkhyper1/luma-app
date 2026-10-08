@@ -6,6 +6,7 @@ import '../account/plan.dart';
 import '../account/login_page.dart';
 import '../account/plan_selection_page.dart';
 import '../app/widgets.dart';
+import '../l10n/app_localizations.dart';
 import '../storage/storage_guard.dart';
 import 'settings_scope.dart';
 import '../sync/sync_api.dart';
@@ -52,11 +53,12 @@ class _SignedOutBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Keep your stuff on every device',
+          t.syncSettingsHeadline,
           style: TextStyle(
               color: luma.textPrimary,
               fontSize: 14,
@@ -64,17 +66,13 @@ class _SignedOutBody extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Set up an account to sync features between devices — with Google, '
-          'GitHub, or an email and password. Everything is encrypted on this '
-          'device before it leaves; nothing is synced until you turn it on '
-          'per feature. You can also skip the server entirely and pair '
-          'devices over your own network.',
+          t.syncSettingsSignedOutBody,
           style: TextStyle(color: luma.textMuted, fontSize: 12, height: 1.5),
         ),
         if (sync.requiresReauth) ...[
           const SizedBox(height: 10),
           Text(
-            'Your cloud session expired — please sign in again.',
+            t.syncSettingsSessionExpired,
             style: TextStyle(color: Colors.orange.shade400, fontSize: 12),
           ),
         ],
@@ -87,10 +85,10 @@ class _SignedOutBody extends StatelessWidget {
           alignment: Alignment.centerLeft,
           child: LumaPrimaryButton(
             label: sync.pendingApprovalEmail == null
-                ? 'Set up account'
+                ? t.syncSettingsSetUpAccount
                 : sync.pendingApprovalMode == ServerApprovalMode.email
-                    ? 'Enter code'
-                    : 'Sign in',
+                    ? t.syncSettingsEnterCode
+                    : t.commonSignIn,
             icon: Icons.person_add_rounded,
             onTap: () => showAccountSetupDialog(context, sync,
                 initialMode: sync.pendingApprovalEmail != null ? 0 : 1),
@@ -135,6 +133,7 @@ class _PendingApprovalNoticeState extends State<_PendingApprovalNotice> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final email = widget.sync.pendingApprovalEmail ?? '';
     final byEmail =
         widget.sync.pendingApprovalMode == ServerApprovalMode.email;
@@ -143,15 +142,8 @@ class _PendingApprovalNoticeState extends State<_PendingApprovalNotice> {
       children: [
         Text(
           byEmail
-              ? '$email is waiting to be approved. Enter the 6-digit code we '
-                  'emailed you to finish signing in. Until then this device '
-                  'does not contact the server at all, and the plugins that '
-                  'need it stay switched off.'
-              : '$email is waiting for the server operator to approve it. '
-                  'There is nothing to do in the meantime — just sign in once '
-                  'they have. Until then this device does not contact the '
-                  'server at all, and the plugins that need it stay switched '
-                  'off.',
+              ? t.syncSettingsPendingEmailCode(email)
+              : t.syncSettingsPendingApproval(email),
           style: TextStyle(
               color: Colors.orange.shade400, fontSize: 12, height: 1.5),
         ),
@@ -167,12 +159,12 @@ class _PendingApprovalNoticeState extends State<_PendingApprovalNotice> {
           children: [
             if (byEmail)
               LumaGhostButton(
-                label: _busy ? 'Sending…' : 'Resend code',
+                label: _busy ? t.loginSending : t.syncSettingsResendCode,
                 icon: Icons.mail_outline_rounded,
                 onTap: _busy ? null : _resend,
               ),
             LumaGhostButton(
-              label: 'Use a different email',
+              label: t.syncSettingsUseDifferentEmail,
               icon: Icons.close_rounded,
               onTap: () => widget.sync.cancelPendingApproval(),
             ),
@@ -193,18 +185,20 @@ class _SignedInBody extends StatelessWidget {
   /// pressed "Continue with Google" can see it is still wired up — and so
   /// someone who has only ever used a password knows the buttons would work
   /// for them too once the addresses match.
-  static String _cloudSubtitle(List<String>? linkedProviders) {
+  static String _cloudSubtitle(L t, List<String>? linkedProviders) {
     const names = {'google': 'Google', 'github': 'GitHub'};
     final linked = (linkedProviders ?? const [])
         .map((id) => names[id] ?? id)
         .toList();
-    if (linked.isEmpty) return 'Synced to the cloud';
-    return 'Synced to the cloud — sign in with ${linked.join(' or ')}';
+    if (linked.isEmpty) return t.syncSettingsSyncedToCloud;
+    return t.syncSettingsSyncedToCloudWith(
+        linked.join(t.syncSettingsProviderSeparator));
   }
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final account = sync.account;
     final cloud = sync.signedIn;
     return Column(
@@ -227,25 +221,24 @@ class _SignedInBody extends StatelessWidget {
                           fontWeight: FontWeight.w600)),
                   Text(
                     cloud
-                        ? _cloudSubtitle(account?.linkedProviders)
-                        : 'Local only — syncs directly between your devices, '
-                            'no server',
+                        ? _cloudSubtitle(t, account?.linkedProviders)
+                        : t.syncSettingsLocalOnly,
                     style: TextStyle(color: luma.textMuted, fontSize: 12),
                     overflow: TextOverflow.ellipsis,
                   ),
-                ],
+],
               ),
             ),
             const SizedBox(width: 12),
             if (cloud)
               LumaGhostButton(
-                label: 'Sign out',
+                label: t.commonSignOut,
                 icon: Icons.logout_rounded,
                 onTap: () => sync.signOut(),
               )
             else
               LumaGhostButton(
-                label: 'Back up to a server…',
+                label: t.syncSettingsBackUpToServer,
                 icon: Icons.cloud_upload_rounded,
                 onTap: () => showAccountSetupDialog(context, sync),
               ),
@@ -260,17 +253,14 @@ class _SignedInBody extends StatelessWidget {
 
         // ---- Per-feature toggles -------------------------------------------
         Divider(color: luma.border, height: 32),
-        Text('What syncs from this device',
+        Text(t.syncSettingsWhatSyncs,
             style: TextStyle(
                 color: luma.textSecondary,
                 fontSize: 13,
                 fontWeight: FontWeight.w600)),
         const SizedBox(height: 2),
         Text(
-          'Everything is off by default. Only what you switch on here leaves '
-          'this device — encrypted with your password before upload. When '
-          'you first enable a feature that already has synced data, the '
-          'server copy replaces this device\'s copy.',
+          t.syncSettingsWhatSyncsBody,
           style: TextStyle(color: luma.textMuted, fontSize: 12),
         ),
         const SizedBox(height: 8),
@@ -290,16 +280,14 @@ class _SignedInBody extends StatelessWidget {
                 ),
                 if (isAutomaticSyncCollection(collection.id))
                   Tooltip(
-                    message: 'Preferences, assistant memory and matching-device '
-                        'home layouts always sync — this '
-                        'can\'t be turned off.',
+                    message: t.syncSettingsAutomaticTooltip,
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.lock_rounded,
                             size: 14, color: luma.textMuted),
                         const SizedBox(width: 6),
-                        Text('Always on',
+                        Text(t.syncSettingsAlwaysOn,
                             style: TextStyle(
                                 color: luma.textMuted, fontSize: 12)),
                       ],
@@ -310,15 +298,17 @@ class _SignedInBody extends StatelessWidget {
                   // plan does not cover should explain itself rather than
                   // silently vanish from the list.
                   Tooltip(
-                    message: '${collection.label} syncs on the '
-                        '${planById(collection.minPlanId!).name} plan and above.',
+                    message: t.syncSettingsPlanSyncsOn(collection.label,
+                        planById(collection.minPlanId!).name),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.workspace_premium_rounded,
                             size: 14, color: luma.accent),
                         const SizedBox(width: 6),
-                        Text('${planById(collection.minPlanId!).name} plan',
+                        Text(
+                            t.syncSettingsPlanBadge(
+                                planById(collection.minPlanId!).name),
                             style:
                                 TextStyle(color: luma.accent, fontSize: 12)),
                       ],
@@ -344,7 +334,7 @@ class _SignedInBody extends StatelessWidget {
           Row(
             children: [
               LumaPrimaryButton(
-                label: 'Sync now',
+                label: t.syncSettingsSyncNow,
                 icon: Icons.sync_rounded,
                 loading: sync.status == SyncStatus.syncing,
                 onTap: sync.status == SyncStatus.syncing
@@ -354,7 +344,7 @@ class _SignedInBody extends StatelessWidget {
               const SizedBox(width: 14),
               if (SettingsScope.of(context).selectedPlanId == 'nova') ...[
                 LumaGhostButton(
-                  label: 'Sync all',
+                  label: t.syncSettingsSyncAll,
                   icon: Icons.cloud_sync_rounded,
                   onTap: sync.status == SyncStatus.syncing
                       ? null
@@ -373,7 +363,7 @@ class _SignedInBody extends StatelessWidget {
                   context: context,
                   builder: (_) => _ChangePasswordDialog(sync: sync),
                 ),
-                child: Text('Change password',
+                child: Text(t.syncSettingsChangePassword,
                     style: TextStyle(color: luma.textSecondary, fontSize: 13)),
               ),
               TextButton(
@@ -381,7 +371,7 @@ class _SignedInBody extends StatelessWidget {
                   context: context,
                   builder: (_) => _SessionsDialog(sync: sync),
                 ),
-                child: Text('Devices signed in…',
+                child: Text(t.syncSettingsDevicesSignedIn,
                     style: TextStyle(color: luma.textSecondary, fontSize: 13)),
               ),
               const Spacer(),
@@ -392,7 +382,7 @@ class _SignedInBody extends StatelessWidget {
                   context: context,
                   builder: (_) => _DataDeletionRequestDialog(sync: sync),
                 ),
-                child: Text('Ask to delete my data…',
+                child: Text(t.syncSettingsAskDeleteData,
                     style: TextStyle(color: luma.textSecondary, fontSize: 13)),
               ),
               TextButton(
@@ -400,7 +390,7 @@ class _SignedInBody extends StatelessWidget {
                   context: context,
                   builder: (_) => _DeleteAccountDialog(sync: sync),
                 ),
-                child: Text('Delete account…',
+                child: Text(t.syncSettingsDeleteAccount,
                     style:
                         TextStyle(color: Colors.red.shade400, fontSize: 13)),
               ),
@@ -411,8 +401,7 @@ class _SignedInBody extends StatelessWidget {
         ] else ...[
           const SizedBox(height: 4),
           Text(
-            'This data syncs directly with paired devices — see Devices '
-            'below to connect one and turn it off.',
+            t.syncSettingsDataSyncsDirectly,
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
         ],
@@ -438,34 +427,33 @@ class _SignedInBody extends StatelessWidget {
       context: context,
       builder: (context) {
         final luma = context.luma;
+        final t = L.of(context);
         return AlertDialog(
           backgroundColor: luma.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: BorderSide(color: luma.border),
           ),
-          title: Text('Stop syncing $label?',
+          title: Text(t.syncSettingsStopSyncingTitle(label),
               style: TextStyle(color: luma.textPrimary)),
           content: Text(
-            'This device stops uploading $label. Do you also want to delete '
-            'the copy stored on the server? (Other devices that still sync '
-            '$label may upload it again.)',
+            t.syncSettingsStopSyncingBody(label),
             style: TextStyle(color: luma.textSecondary, fontSize: 14),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel',
+              child: Text(t.commonCancel,
                   style: TextStyle(color: luma.textSecondary)),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child:
-                  Text('Keep on server', style: TextStyle(color: luma.accent)),
+              child: Text(t.syncSettingsKeepOnServer,
+                  style: TextStyle(color: luma.accent)),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: Text('Delete from server',
+              child: Text(t.syncSettingsDeleteFromServer,
                   style: TextStyle(color: Colors.red.shade400)),
             ),
           ],
@@ -482,6 +470,7 @@ class _SignedInBody extends StatelessWidget {
     String label,
   ) {
     final luma = context.luma;
+    final t = L.of(context);
     final plan = planById(requiredPlanId);
     return showDialog<void>(
       context: context,
@@ -491,21 +480,20 @@ class _SignedInBody extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(color: luma.border),
         ),
-        title: Text('${plan.name} plan needed',
+        title: Text(t.syncSettingsPlanNeededTitle(plan.name),
             style: TextStyle(color: luma.textPrimary)),
         content: Text(
-          '$label syncs to the server on the ${plan.name} plan and above. '
-          'It keeps working on this device either way — only syncing it '
-          'between devices needs the plan.',
+          t.syncSettingsPlanNeededBody(label, plan.name),
           style: TextStyle(color: luma.textSecondary, fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+            child: Text(t.commonCancel,
+                style: TextStyle(color: luma.textSecondary)),
           ),
           LumaPrimaryButton(
-            label: 'See plans',
+            label: t.syncSettingsSeePlans,
             onTap: () {
               Navigator.of(context).pop();
               Navigator.of(context).push(
@@ -522,6 +510,7 @@ class _SignedInBody extends StatelessWidget {
 
   Future<void> _showLimitReached(BuildContext context, int limit) {
     final luma = context.luma;
+    final t = L.of(context);
     return showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -530,21 +519,20 @@ class _SignedInBody extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(color: luma.border),
         ),
-        title:
-            Text('Sync limit reached', style: TextStyle(color: luma.textPrimary)),
+        title: Text(t.syncSettingsLimitTitle,
+            style: TextStyle(color: luma.textPrimary)),
         content: Text(
-          'Your plan allows syncing up to $limit feature${limit == 1 ? '' : 's'} '
-          'to the server at once. Turn one off, or upgrade your plan to sync '
-          'more.',
+          t.syncSettingsLimitBody(limit),
           style: TextStyle(color: luma.textSecondary, fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+            child: Text(t.commonCancel,
+                style: TextStyle(color: luma.textSecondary)),
           ),
           LumaPrimaryButton(
-            label: 'Upgrade plan',
+            label: t.syncSettingsUpgradePlan,
             onTap: () {
               Navigator.of(context).pop();
               Navigator.of(context).push(
@@ -604,6 +592,7 @@ class _StorageBarState extends State<_StorageBar> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final account = widget.account;
     final used = account?.usedBytes ?? 0;
     final quota = account?.quotaBytes ?? (10 * 1024 * 1024);
@@ -619,7 +608,7 @@ class _StorageBarState extends State<_StorageBar> {
           borderRadius: BorderRadius.circular(8),
           child: Row(
             children: [
-              Text('Storage',
+              Text(t.syncSettingsStorage,
                   style: TextStyle(
                       color: luma.textSecondary,
                       fontSize: 13,
@@ -627,9 +616,10 @@ class _StorageBarState extends State<_StorageBar> {
               const Spacer(),
               Text(
                 account == null
-                    ? 'Sync to see usage'
-                    : '${StorageGuardService.formatBytes(used)} of '
-                        '${StorageGuardService.formatBytes(quota)} used',
+                    ? t.syncSettingsSyncToSeeUsage
+                    : t.syncSettingsUsedOf(
+                        StorageGuardService.formatBytes(used),
+                        StorageGuardService.formatBytes(quota)),
                 style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
               if (account != null) ...[
@@ -659,8 +649,7 @@ class _StorageBarState extends State<_StorageBar> {
           const SizedBox(height: 12),
           if (breakdown.isEmpty)
             Text(
-              'Nothing saved on the server yet — turn something on below to '
-              'back it up.',
+              t.syncSettingsNothingSavedYet,
               style: TextStyle(color: luma.textMuted, fontSize: 12),
             )
           else
@@ -705,19 +694,20 @@ class _StatusText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final String text;
     Color color = luma.textMuted;
     switch (sync.status) {
       case SyncStatus.syncing:
-        text = 'Syncing…';
+        text = t.syncSettingsSyncing;
       case SyncStatus.error:
-        text = sync.lastError ?? 'Sync failed.';
+        text = sync.lastError ?? t.syncSettingsSyncFailed;
         color = Colors.red.shade400;
       case SyncStatus.idle:
         final at = sync.lastSyncAt;
         text = at == null
-            ? 'Not synced yet.'
-            : 'Last synced ${DateFormat('d MMM, HH:mm').format(at)}';
+            ? t.syncSettingsNotSyncedYet
+            : t.syncSettingsLastSynced(DateFormat('d MMM, HH:mm').format(at));
     }
     return Text(text,
         style: TextStyle(color: color, fontSize: 12),
@@ -773,12 +763,13 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
   }
 
   Future<void> _submit() async {
+    final t = L.of(context);
     if (_next.text.length < 10) {
-      setState(() => _error = 'Use at least 10 characters.');
+      setState(() => _error = t.syncSettingsPasswordTooShort);
       return;
     }
     if (_next.text != _confirm.text) {
-      setState(() => _error = 'New passwords do not match.');
+      setState(() => _error = t.syncSettingsPasswordMismatch);
       return;
     }
     setState(() {
@@ -804,14 +795,15 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return AlertDialog(
       backgroundColor: luma.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: luma.border),
       ),
-      title:
-          Text('Change password', style: TextStyle(color: luma.textPrimary)),
+      title: Text(t.syncSettingsChangePassword,
+          style: TextStyle(color: luma.textPrimary)),
       content: SizedBox(
         width: lumaDialogWidth(context, 400),
         child: Column(
@@ -823,7 +815,8 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
               enabled: !_busy,
               obscureText: true,
               style: TextStyle(color: luma.textPrimary, fontSize: 14),
-              decoration: _fieldDecoration(context, 'Current password'),
+              decoration:
+                  _fieldDecoration(context, t.syncSettingsCurrentPassword),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -831,7 +824,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
               enabled: !_busy,
               obscureText: true,
               style: TextStyle(color: luma.textPrimary, fontSize: 14),
-              decoration: _fieldDecoration(context, 'New password'),
+              decoration: _fieldDecoration(context, t.syncSettingsNewPassword),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -839,12 +832,12 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
               enabled: !_busy,
               obscureText: true,
               style: TextStyle(color: luma.textPrimary, fontSize: 14),
-              decoration: _fieldDecoration(context, 'Confirm new password'),
+              decoration:
+                  _fieldDecoration(context, t.syncSettingsConfirmNewPassword),
             ),
             const SizedBox(height: 12),
             Text(
-              'All synced data is re-encrypted with the new password. Other '
-              'devices will ask you to sign in again.',
+              t.syncSettingsPasswordReencryptNote,
               style: TextStyle(color: luma.textMuted, fontSize: 12),
             ),
             if (_error != null) ...[
@@ -858,10 +851,11 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
       actions: [
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonCancel,
+              style: TextStyle(color: luma.textSecondary)),
         ),
         LumaPrimaryButton(
-            label: 'Change password',
+            label: t.syncSettingsChangePassword,
             loading: _busy,
             onTap: _busy ? null : _submit),
       ],
@@ -879,6 +873,7 @@ class _RecoveryKeyRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final has = sync.hasRecoveryKey;
     final color = has ? luma.accent : luma.warning;
     return Container(
@@ -896,10 +891,8 @@ class _RecoveryKeyRow extends StatelessWidget {
           Expanded(
             child: Text(
               has
-                  ? 'Recovery key set up — forgetting your password will not '
-                      'cost you your synced data.'
-                  : 'No recovery key. If you forget your password, resetting '
-                      'it erases your synced data on the server.',
+                  ? t.syncSettingsRecoveryKeySetUp
+                  : t.syncSettingsRecoveryKeyMissing,
               style: TextStyle(color: luma.textSecondary, fontSize: 12),
             ),
           ),
@@ -908,7 +901,8 @@ class _RecoveryKeyRow extends StatelessWidget {
               context: context,
               builder: (_) => _RecoveryKeyDialog(sync: sync),
             ),
-            child: Text(has ? 'Manage…' : 'Set up…',
+            child: Text(
+                has ? t.syncSettingsManage : t.syncSettingsSetUp,
                 style: TextStyle(color: color, fontSize: 13)),
           ),
         ],
@@ -963,6 +957,7 @@ class _RecoveryKeyDialogState extends State<_RecoveryKeyDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final has = widget.sync.hasRecoveryKey;
     final key = _newKey;
     final body = TextStyle(color: luma.textSecondary, fontSize: 13, height: 1.4);
@@ -972,8 +967,7 @@ class _RecoveryKeyDialogState extends State<_RecoveryKeyDialog> {
     if (key != null) {
       content = [
         Text(
-          'Write this down or keep it in a password manager. luma does not '
-          'keep a copy and cannot show it again.',
+          t.syncSettingsRecoveryKeyWriteDown,
           style: body,
         ),
         const SizedBox(height: 14),
@@ -997,8 +991,7 @@ class _RecoveryKeyDialogState extends State<_RecoveryKeyDialog> {
         ),
         const SizedBox(height: 12),
         Text(
-          'If you forget your password, enter this key on the reset screen '
-          'and your synced data stays.',
+          t.syncSettingsRecoveryKeyFooter,
           style: TextStyle(color: luma.textMuted, fontSize: 12),
         ),
       ];
@@ -1008,14 +1001,15 @@ class _RecoveryKeyDialogState extends State<_RecoveryKeyDialog> {
             await Clipboard.setData(ClipboardData(text: key));
             if (context.mounted) {
               ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-                const SnackBar(content: Text('Recovery key copied.')),
+                SnackBar(content: Text(t.syncSettingsRecoveryKeyCopied)),
               );
             }
           },
-          child: Text('Copy', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonCopy,
+              style: TextStyle(color: luma.textSecondary)),
         ),
         LumaPrimaryButton(
-          label: 'I saved it',
+          label: t.syncSettingsRecoveryKeySaved,
           onTap: () => Navigator.of(context).pop(),
         ),
       ];
@@ -1023,13 +1017,8 @@ class _RecoveryKeyDialogState extends State<_RecoveryKeyDialog> {
       content = [
         Text(
           has
-              ? 'This account has a recovery key. If you lost it, make a new '
-                  'one — the old key stops working the moment you do.'
-              : 'Your synced data is encrypted with a key that comes from your '
-                  'password, so nobody — not even the server — can read it. '
-                  'That also means a forgotten password normally erases it.\n\n'
-                  'A recovery key is a second way in. Keep it somewhere safe, '
-                  'and a password reset keeps all your synced data.',
+              ? t.syncSettingsRecoveryHasKeyBody
+              : t.syncSettingsRecoveryNoKeyBody,
           style: body,
         ),
         if (_error != null) ...[
@@ -1042,15 +1031,18 @@ class _RecoveryKeyDialogState extends State<_RecoveryKeyDialog> {
         if (has)
           TextButton(
             onPressed: _busy ? null : _remove,
-            child: Text('Remove',
+            child: Text(t.commonRemove,
                 style: TextStyle(color: Colors.red.shade400)),
           ),
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonCancel,
+              style: TextStyle(color: luma.textSecondary)),
         ),
         LumaPrimaryButton(
-          label: has ? 'Make a new key' : 'Create recovery key',
+          label: has
+              ? t.syncSettingsMakeNewKey
+              : t.syncSettingsCreateRecoveryKey,
           loading: _busy,
           onTap: _busy ? null : _create,
         ),
@@ -1063,7 +1055,10 @@ class _RecoveryKeyDialogState extends State<_RecoveryKeyDialog> {
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: luma.border),
       ),
-      title: Text(key != null ? 'Your recovery key' : 'Recovery key',
+      title: Text(
+          key != null
+              ? t.syncSettingsYourRecoveryKey
+              : t.syncSettingsRecoveryKeyTitle,
           style: TextStyle(color: luma.textPrimary)),
       content: SizedBox(
         width: lumaDialogWidth(context, 420),
@@ -1126,14 +1121,15 @@ class _SessionsDialogState extends State<_SessionsDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return AlertDialog(
       backgroundColor: luma.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: luma.border),
       ),
-      title:
-          Text('Devices signed in', style: TextStyle(color: luma.textPrimary)),
+      title: Text(t.syncSettingsDevicesSignedInTitle,
+          style: TextStyle(color: luma.textPrimary)),
       content: SizedBox(
         width: lumaDialogWidth(context, 420),
         child: _buildBody(luma),
@@ -1141,13 +1137,15 @@ class _SessionsDialogState extends State<_SessionsDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('Close', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonClose,
+              style: TextStyle(color: luma.textSecondary)),
         ),
       ],
     );
   }
 
   Widget _buildBody(LumaPalette luma) {
+    final t = L.of(context);
     if (_error != null) {
       return Text(_error!,
           style: TextStyle(color: Colors.red.shade400, fontSize: 13));
@@ -1179,15 +1177,16 @@ class _SessionsDialogState extends State<_SessionsDialog> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(session.deviceLabel ?? 'Unknown device',
+                      Text(session.deviceLabel ?? t.syncSettingsUnknownDevice,
                           style: TextStyle(
                               color: luma.textPrimary,
                               fontSize: 14,
                               fontWeight: FontWeight.w500)),
                       Text(
                         session.isCurrent
-                            ? 'This device'
-                            : 'Signed in ${DateFormat('d MMM yyyy').format(session.createdAt)}',
+                            ? t.syncSettingsThisDevice
+                            : t.syncSettingsSignedInOn(DateFormat('d MMM yyyy')
+                                .format(session.createdAt)),
                         style:
                             TextStyle(color: luma.textMuted, fontSize: 12),
                       ),
@@ -1195,7 +1194,7 @@ class _SessionsDialogState extends State<_SessionsDialog> {
                   ),
                 ),
                 if (session.isCurrent)
-                  Text('Current',
+                  Text(t.syncSettingsCurrentSession,
                       style: TextStyle(color: luma.accent, fontSize: 12))
                 else if (_revoking.contains(session.id))
                   const SizedBox(
@@ -1205,7 +1204,7 @@ class _SessionsDialogState extends State<_SessionsDialog> {
                 else
                   TextButton(
                     onPressed: () => _revoke(session),
-                    child: Text('Revoke',
+                    child: Text(t.syncSettingsRevoke,
                         style: TextStyle(
                             color: Colors.red.shade400, fontSize: 13)),
                   ),
@@ -1213,7 +1212,7 @@ class _SessionsDialogState extends State<_SessionsDialog> {
             ),
           ),
         if (sessions.isEmpty)
-          Text('No other active sessions.',
+          Text(t.syncSettingsNoOtherSessions,
               style: TextStyle(color: luma.textMuted, fontSize: 13)),
       ],
     );
@@ -1283,24 +1282,29 @@ class _DeletionRequestStatus extends StatelessWidget {
                 children: [
                   Text(
                     pending
-                        ? 'Data deletion requested — waiting for the server '
-                            'operator to decide.'
-                        : 'The server operator declined your data-deletion '
-                            'request.',
+                        ? L.of(context).syncSettingsDeletionPending
+                        : L.of(context).syncSettingsDeletionDeclined,
                     style: TextStyle(
                         color: luma.textPrimary, fontSize: 13, height: 1.4),
                   ),
                   const SizedBox(height: 3),
                   Text(
                     pending
-                        ? 'Sent ${when.format(request.createdAt)}. Nothing has '
-                            'been deleted yet.'
-                        : [
-                            'Decided '
-                                '${when.format(request.decidedAt ?? request.createdAt)}.',
-                            if (request.adminNote != null)
-                              'They wrote: “${request.adminNote}”',
-                          ].join(' '),
+                        ? L.of(context).syncSettingsDeletionSentNothingDeleted(
+                            when.format(request.createdAt),
+                          )
+                        : request.adminNote == null
+                        ? L.of(context).syncSettingsDeletionDecided(
+                            when.format(
+                              request.decidedAt ?? request.createdAt,
+                            ),
+                          )
+                        : L.of(context).syncSettingsDeletionDecidedWithNote(
+                            when.format(
+                              request.decidedAt ?? request.createdAt,
+                            ),
+                            request.adminNote!,
+                          ),
                     style: TextStyle(
                         color: luma.textMuted, fontSize: 12, height: 1.45),
                   ),
@@ -1310,7 +1314,7 @@ class _DeletionRequestStatus extends StatelessWidget {
             if (pending)
               TextButton(
                 onPressed: () => _withdraw(context),
-                child: Text('Withdraw',
+                child: Text(L.of(context).syncSettingsWithdraw,
                     style:
                         TextStyle(color: luma.textSecondary, fontSize: 13)),
               ),
@@ -1324,8 +1328,9 @@ class _DeletionRequestStatus extends StatelessWidget {
     final messenger = ScaffoldMessenger.maybeOf(context);
     try {
       await sync.cancelDataDeletionRequest();
-      messenger?.showSnackBar(
-          const SnackBar(content: Text('Deletion request withdrawn.')));
+      messenger?.showSnackBar(SnackBar(
+        content: Text(L.of(context).syncSettingsDeletionWithdrawn),
+      ));
     } catch (e) {
       messenger?.showSnackBar(SnackBar(content: Text('$e')));
     }
@@ -1369,8 +1374,9 @@ class _DataDeletionRequestDialogState
       await widget.sync.requestDataDeletion(_reason.text.trim());
       if (mounted) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(
-            content: Text('Request sent to the server operator.')));
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(
+          content: Text(L.of(context).syncSettingsRequestSent),
+        ));
       }
     } catch (e) {
       if (mounted) {
@@ -1385,6 +1391,7 @@ class _DataDeletionRequestDialogState
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final pending = widget.sync.dataDeletionRequest?.isPending ?? false;
 
     return AlertDialog(
@@ -1393,7 +1400,7 @@ class _DataDeletionRequestDialogState
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: luma.border),
       ),
-      title: Text('Ask to delete my data',
+      title: Text(t.syncSettingsAskDeleteTitle,
           style: TextStyle(color: luma.textPrimary)),
       content: SizedBox(
         width: lumaDialogWidth(context, 420),
@@ -1403,13 +1410,8 @@ class _DataDeletionRequestDialogState
           children: [
             Text(
               pending
-                  ? 'You already have a request waiting for a decision. '
-                      'Withdraw it from the Sync & account panel if you want '
-                      'to send a different one.'
-                  : 'This sends a request to the server operator to delete '
-                      'your account and every synced snapshot the server '
-                      'holds. Nothing is deleted until they accept it, and '
-                      'the data on your devices is never touched.',
+                  ? t.syncSettingsDeletionPendingBody
+                  : t.syncSettingsDeletionRequestBody,
               style: TextStyle(
                   color: luma.textSecondary, fontSize: 14, height: 1.5),
             ),
@@ -1424,8 +1426,11 @@ class _DataDeletionRequestDialogState
                 maxLength: 2000,
                 textCapitalization: TextCapitalization.sentences,
                 style: TextStyle(color: luma.textPrimary, fontSize: 14),
-                decoration: _fieldDecoration(context, 'Why? (optional)',
-                    hint: "You don't have to give a reason."),
+                decoration: _fieldDecoration(
+                  context,
+                  t.syncSettingsDeletionReasonLabel,
+                  hint: t.syncSettingsDeletionReasonHint,
+                ),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 4),
@@ -1443,12 +1448,12 @@ class _DataDeletionRequestDialogState
       actions: [
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: Text(pending ? 'Close' : 'Cancel',
+          child: Text(pending ? t.commonClose : t.commonCancel,
               style: TextStyle(color: luma.textSecondary)),
         ),
         if (!pending)
           LumaPrimaryButton(
-            label: 'Send request',
+            label: t.syncSettingsSendRequest,
             loading: _busy,
             onTap: _busy ? null : _submit,
           ),
@@ -1497,13 +1502,14 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return AlertDialog(
       backgroundColor: luma.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: luma.border),
       ),
-      title: Text('Delete account?',
+      title: Text(t.syncSettingsDeleteAccountTitle,
           style: TextStyle(color: Colors.red.shade400)),
       content: SizedBox(
         width: lumaDialogWidth(context, 400),
@@ -1512,9 +1518,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'This permanently deletes your account and every synced '
-              'snapshot from the server. Data on your devices is not '
-              'touched. Enter your password to confirm.',
+              t.syncSettingsDeleteAccountBody,
               style: TextStyle(color: luma.textSecondary, fontSize: 14),
             ),
             const SizedBox(height: 14),
@@ -1523,7 +1527,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
               enabled: !_busy,
               obscureText: true,
               style: TextStyle(color: luma.textPrimary, fontSize: 14),
-              decoration: _fieldDecoration(context, 'Password'),
+              decoration: _fieldDecoration(context, t.commonPassword),
             ),
             if (_error != null) ...[
               const SizedBox(height: 12),
@@ -1536,7 +1540,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
       actions: [
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
         ),
         TextButton(
           onPressed: _busy ? null : _submit,
@@ -1546,7 +1550,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
                   height: 16,
                   child: CircularProgressIndicator(
                       strokeWidth: 2, color: Colors.red.shade400))
-              : Text('Delete forever',
+              : Text(t.syncSettingsDeleteForever,
                   style: TextStyle(color: Colors.red.shade400)),
         ),
       ],

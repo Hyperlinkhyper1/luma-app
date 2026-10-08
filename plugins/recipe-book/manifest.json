@@ -5,5 +5,23 @@
   "description": "Keep your favourite recipes with photos. Keep them to yourself, or share them so other luma cooks can try and rate them.",
   "icon": "restaurant_menu",
   "category": "Productivity",
-  "tags": ["Productivity", "Food", "Social", "Sync"]
+  "tags": ["Productivity", "Food", "Social", "Sync"],
+  "i18n": {
+    "nl": {
+      "name": "Receptenboek",
+      "description": "Bewaar je favoriete recepten met foto's. Hou ze voor jezelf, of deel ze zodat andere luma-koks ze kunnen proberen en beoordelen."
+    },
+    "fr": {
+      "name": "Livre de recettes",
+      "description": "Gardez vos recettes préférées avec leurs photos. Gardez-les pour vous ou partagez-les pour que d'autres cuisiniers luma puissent les essayer et les noter."
+    },
+    "es": {
+      "name": "Libro de recetas",
+      "description": "Guarda tus recetas favoritas con fotos. Guárdalas para ti o compártelas para que otros cocineros de luma las prueben y las valoren."
+    },
+    "zh": {
+      "name": "食谱本",
+      "description": "用照片保存你喜欢的食谱。可以只留给自己，也可以分享出去，让其他 luma 厨师试做并打分。"
+    }
+  }
 }

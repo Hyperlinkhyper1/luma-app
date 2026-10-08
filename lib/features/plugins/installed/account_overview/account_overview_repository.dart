@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/app_localizations.dart';
+import '../../../../l10n/current_l.dart';
 import 'github_api.dart';
 import 'github_credentials.dart';
 import 'github_models.dart';
@@ -11,17 +13,25 @@ import 'github_models.dart';
 /// Which part of a refresh is running, so the UI can say something more
 /// useful than "loading".
 enum GithubLoadStage {
-  idle('Idle'),
-  profile('Reading your profile'),
-  repos('Listing repositories'),
-  contributions('Counting contributions'),
-  downloads('Adding up release downloads'),
-  issues('Collecting issues and pull requests'),
-  actions('Fetching workflow runs'),
-  billing('Reading usage and allowances');
+  idle,
+  profile,
+  repos,
+  contributions,
+  downloads,
+  issues,
+  actions,
+  billing;
 
-  const GithubLoadStage(this.label);
-  final String label;
+  String label(L t) => switch (this) {
+    GithubLoadStage.idle => t.accountOverviewStageIdle,
+    GithubLoadStage.profile => t.accountOverviewStageProfile,
+    GithubLoadStage.repos => t.accountOverviewStageRepos,
+    GithubLoadStage.contributions => t.accountOverviewStageContributions,
+    GithubLoadStage.downloads => t.accountOverviewStageDownloads,
+    GithubLoadStage.issues => t.accountOverviewStageIssues,
+    GithubLoadStage.actions => t.accountOverviewStageActions,
+    GithubLoadStage.billing => t.accountOverviewStageBilling,
+  };
 }
 
 /// Owns the GitHub account state for the Account Overview plugin.
@@ -65,6 +75,12 @@ class AccountOverviewRepository extends ChangeNotifier {
   /// paints the parts that did work.
   final List<String> _warnings = [];
   List<String> get warnings => List.unmodifiable(_warnings);
+
+  /// The warning a single section raised, for surfaces (the home tiles) that
+  /// show one section on its own. Keyed by stage rather than matched on the
+  /// text, which follows the app language.
+  final Map<GithubLoadStage, String> _stageWarnings = {};
+  String? warningFor(GithubLoadStage stage) => _stageWarnings[stage];
 
   bool _disposed = false;
 
@@ -128,7 +144,7 @@ class AccountOverviewRepository extends ChangeNotifier {
   Future<void> connect(String token) async {
     final trimmed = token.trim();
     if (trimmed.isEmpty) {
-      throw GithubApiException('Paste a personal access token first.');
+      throw GithubApiException(currentL.accountOverviewPasteTokenFirst);
     }
 
     _error = null;
@@ -177,6 +193,7 @@ class AccountOverviewRepository extends ChangeNotifier {
     _snapshot = GithubSnapshot.empty;
     _error = null;
     _warnings.clear();
+    _stageWarnings.clear();
     _notify();
   }
 
@@ -239,6 +256,7 @@ class AccountOverviewRepository extends ChangeNotifier {
     _refreshing = true;
     _error = null;
     _warnings.clear();
+    _stageWarnings.clear();
     _stage = GithubLoadStage.profile;
     _notify();
 
@@ -259,7 +277,10 @@ class AccountOverviewRepository extends ChangeNotifier {
         contributions = await _api.fetchContributions(token, login);
         _publish(_snapshot.copyWith(contributions: contributions));
       } catch (e) {
-        _warn('Contribution graph unavailable: ${_describe(e)}');
+        _warn(
+          currentL.accountOverviewWarnContributions(_describe(e)),
+          stage: GithubLoadStage.contributions,
+        );
       }
 
       _setStage(GithubLoadStage.downloads);
@@ -267,7 +288,7 @@ class AccountOverviewRepository extends ChangeNotifier {
         repos = await _api.fetchDownloads(token, repos);
         _publish(_snapshot.copyWith(repos: repos));
       } catch (e) {
-        _warn('Release downloads unavailable: ${_describe(e)}');
+        _warn(currentL.accountOverviewWarnDownloads(_describe(e)));
       }
 
       _setStage(GithubLoadStage.issues);
@@ -276,7 +297,10 @@ class AccountOverviewRepository extends ChangeNotifier {
         final issues = await _api.fetchRecentIssues(token, login);
         _publish(_snapshot.copyWith(issueTotals: totals, issues: issues));
       } catch (e) {
-        _warn('Issues and pull requests unavailable: ${_describe(e)}');
+        _warn(
+          currentL.accountOverviewWarnIssues(_describe(e)),
+          stage: GithubLoadStage.issues,
+        );
       }
 
       _setStage(GithubLoadStage.actions);
@@ -284,7 +308,7 @@ class AccountOverviewRepository extends ChangeNotifier {
         final runs = await _api.fetchWorkflowRuns(token, repos);
         _publish(_snapshot.copyWith(runs: runs));
       } catch (e) {
-        _warn('Workflow runs unavailable: ${_describe(e)}');
+        _warn(currentL.accountOverviewWarnWorkflowRuns(_describe(e)));
       }
 
       _setStage(GithubLoadStage.billing);
@@ -292,7 +316,7 @@ class AccountOverviewRepository extends ChangeNotifier {
         final billing = await _api.fetchBilling(token, login, repos: repos);
         _publish(_snapshot.copyWith(billing: billing));
       } catch (e) {
-        _warn('Usage and allowances unavailable: ${_describe(e)}');
+        _warn(currentL.accountOverviewWarnBilling(_describe(e)));
       }
 
       _publish(_snapshot.copyWith(fetchedAt: DateTime.now()));
@@ -309,8 +333,9 @@ class AccountOverviewRepository extends ChangeNotifier {
   String _describe(Object error) =>
       error is GithubApiException ? error.message : error.toString();
 
-  void _warn(String message) {
+  void _warn(String message, {GithubLoadStage? stage}) {
     _warnings.add(message);
+    if (stage != null) _stageWarnings[stage] = message;
     _notify();
   }
 

@@ -7,6 +7,8 @@ import 'package:archive/archive.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
+
 /// Metadata about a YouTube video, as reported by yt-dlp's `-j` (dump-json).
 class YtVideoInfo {
   YtVideoInfo({
@@ -41,7 +43,7 @@ class YtVideoInfo {
     final list = heights.toList()..sort();
     return YtVideoInfo(
       id: json['id']?.toString() ?? '',
-      title: json['title']?.toString() ?? 'Untitled',
+      title: json['title']?.toString() ?? currentL.commonUntitled,
       thumbnail: json['thumbnail']?.toString(),
       durationSeconds: json['duration'] is num
           ? (json['duration'] as num).round()
@@ -95,7 +97,6 @@ class YtDlpException implements Exception {
   @override
   String toString() => message;
 }
-
 /// Downloads, locates, and drives the yt-dlp / ffmpeg binaries used by the
 /// Media Downloader plugin. Nothing is bundled with the app: on first use
 /// the current yt-dlp binary is pulled from its GitHub release and (on
@@ -152,9 +153,9 @@ class YtDlpManager {
     final ytDlpFile = File(await _ytDlpPath);
 
     if (!await ytDlpFile.exists()) {
-      onProgress(ToolSetupProgress('Downloading yt-dlp…', fraction: 0));
+      onProgress(ToolSetupProgress(currentL.mediaDlStatusDownloadingYtDlp, fraction: 0));
       await _downloadFile(_ytDlpUrl, ytDlpFile, (frac) {
-        onProgress(ToolSetupProgress('Downloading yt-dlp…', fraction: frac));
+        onProgress(ToolSetupProgress(currentL.mediaDlStatusDownloadingYtDlp, fraction: frac));
       });
       if (!_isWindows) {
         await Process.run('chmod', ['+x', await _ytDlpPath]);
@@ -164,11 +165,11 @@ class YtDlpManager {
     if (_isWindows) {
       final ffmpegFile = File(await _ffmpegPath);
       if (!await ffmpegFile.exists()) {
-        onProgress(ToolSetupProgress('Downloading ffmpeg…', fraction: 0));
+        onProgress(ToolSetupProgress(currentL.mediaDlStatusDownloadingFfmpeg, fraction: 0));
         final zipBytes = await _downloadBytes(_ffmpegZipUrl, (frac) {
-          onProgress(ToolSetupProgress('Downloading ffmpeg…', fraction: frac));
+          onProgress(ToolSetupProgress(currentL.mediaDlStatusDownloadingFfmpeg, fraction: frac));
         });
-        onProgress(ToolSetupProgress('Extracting ffmpeg…', fraction: null));
+        onProgress(ToolSetupProgress(currentL.mediaDlStatusExtractingFfmpeg, fraction: null));
         final archive = ZipDecoder().decodeBytes(zipBytes);
         ArchiveFile? ffmpegEntry;
         for (final entry in archive) {
@@ -178,34 +179,31 @@ class YtDlpManager {
           }
         }
         if (ffmpegEntry == null) {
-          throw YtDlpException('Could not find ffmpeg.exe inside the download.');
+          throw YtDlpException(currentL.mediaDlFfmpegNotInDownload);
         }
         await ffmpegFile.writeAsBytes(ffmpegEntry.content as List<int>);
       }
     } else {
       if (!await _ffmpegOnPath) {
-        throw YtDlpException(
-          'ffmpeg was not found on your PATH. Install it via your package '
-          'manager (e.g. sudo apt install ffmpeg) and try again.',
-        );
+        throw YtDlpException(currentL.mediaDlFfmpegNotOnPath);
       }
     }
 
-    onProgress(ToolSetupProgress('Ready', fraction: 1));
+    onProgress(ToolSetupProgress(currentL.mediaDlStatusReady, fraction: 1));
   }
 
   /// Re-downloads yt-dlp even if present, to pick up fixes for YouTube's
   /// frequent breakage. Does not touch ffmpeg.
   Future<void> updateYtDlp(void Function(ToolSetupProgress) onProgress) async {
     final file = File(await _ytDlpPath);
-    onProgress(ToolSetupProgress('Updating yt-dlp…', fraction: 0));
+    onProgress(ToolSetupProgress(currentL.mediaDlStatusUpdatingYtDlp, fraction: 0));
     await _downloadFile(_ytDlpUrl, file, (frac) {
-      onProgress(ToolSetupProgress('Updating yt-dlp…', fraction: frac));
+      onProgress(ToolSetupProgress(currentL.mediaDlStatusUpdatingYtDlp, fraction: frac));
     });
     if (!_isWindows) {
       await Process.run('chmod', ['+x', await _ytDlpPath]);
     }
-    onProgress(ToolSetupProgress('Ready', fraction: 1));
+    onProgress(ToolSetupProgress(currentL.mediaDlStatusReady, fraction: 1));
   }
 
   Future<void> _downloadFile(
@@ -221,8 +219,8 @@ class YtDlpManager {
       final req = http.Request('GET', Uri.parse(url));
       final res = await client.send(req);
       if (res.statusCode != 200) {
-        throw YtDlpException(
-            'Download failed (${res.statusCode}) for $url.');
+        throw YtDlpException(currentL.mediaDlHttpFailed(
+            '${res.statusCode}', url));
       }
       final total = res.contentLength ?? 0;
       var received = 0;
@@ -236,7 +234,7 @@ class YtDlpManager {
     } on YtDlpException {
       rethrow;
     } catch (_) {
-      throw YtDlpException('Could not reach $url. Check your connection.');
+      throw YtDlpException(currentL.mediaDlCouldNotReach(url));
     } finally {
       client.close();
     }
@@ -244,7 +242,7 @@ class YtDlpManager {
 
   Future<YtVideoInfo> fetchInfo(String url) async {
     if (!await toolsReady) {
-      throw YtDlpException('Tools are not set up yet.');
+      throw YtDlpException(currentL.mediaDlToolsNotReady);
     }
     final result = await Process.run(
       await _ytDlpPath,
@@ -259,12 +257,12 @@ class YtDlpManager {
         .split('\n')
         .firstWhere((l) => l.trim().isNotEmpty, orElse: () => '');
     if (line.isEmpty) {
-      throw YtDlpException('Could not read video info.');
+      throw YtDlpException(currentL.mediaDlCouldNotReadInfo);
     }
     try {
       return YtVideoInfo.fromJson(jsonDecode(line) as Map<String, dynamic>);
     } catch (_) {
-      throw YtDlpException('Could not parse video info.');
+      throw YtDlpException(currentL.mediaDlCouldNotParseInfo);
     }
   }
 
@@ -310,7 +308,7 @@ class YtDlpManager {
   }) async {
     try {
       if (!await toolsReady) {
-        throw YtDlpException('Tools are not set up yet.');
+        throw YtDlpException(currentL.mediaDlToolsNotReady);
       }
       final outputTemplate =
           '$outputDir${Platform.pathSeparator}%(title)s [%(id)s].%(ext)s';
@@ -461,7 +459,7 @@ class YtDlpManager {
         .toList();
     if (lines.isEmpty) {
       return stderr.trim().isEmpty
-          ? 'yt-dlp failed for an unknown reason.'
+          ? currentL.mediaDlYtDlpUnknownError
           : stderr.trim().split('\n').last;
     }
     return lines.first.replaceFirst('ERROR:', '').trim();

@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../storage/storage_guard.dart';
 import 'data/usage_database.dart';
 import 'usage_tracker.dart';
@@ -283,7 +284,7 @@ class UsageRepository extends ChangeNotifier {
   /// have it, the longer copy wins.
   Future<void> importData(Object? data) async {
     if (data is! List) {
-      throw const FormatException('Invalid usage snapshot.');
+      throw FormatException(currentL.usageInvalidSnapshot);
     }
     final existing = {
       for (final r in await _db.select(_db.usageSessions).get())

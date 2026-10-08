@@ -1,68 +1,80 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'nfc_record.dart';
 
-/// Icon, label and accent color for a record kind — shared by the record
-/// tile, the type picker in the editor sheet, and the compact preview line
-/// shown on template/history cards.
+/// Icon and accent color for a record kind — shared by the record tile, the
+/// type picker in the editor sheet, and the compact preview line shown on
+/// template/history cards. The displayed label comes from [nfcRecordKindLabel].
 class NfcRecordKindMeta {
-  const NfcRecordKindMeta(this.icon, this.label, this.color);
+  const NfcRecordKindMeta(this.icon, this.color);
   final IconData icon;
-  final String label;
   final Color color;
 }
 
 const Map<NfcRecordKind, NfcRecordKindMeta> nfcRecordKindMetas = {
-  NfcRecordKind.text: NfcRecordKindMeta(
-      Icons.notes_rounded, 'Text', Color(0xFF7C5AD9)),
-  NfcRecordKind.uri: NfcRecordKindMeta(
-      Icons.link_rounded, 'Link', Color(0xFF2F80ED)),
-  NfcRecordKind.phone: NfcRecordKindMeta(
-      Icons.call_rounded, 'Phone number', Color(0xFF12A372)),
-  NfcRecordKind.email: NfcRecordKindMeta(
-      Icons.email_rounded, 'Email', Color(0xFFF5A623)),
-  NfcRecordKind.wifi: NfcRecordKindMeta(
-      Icons.wifi_rounded, 'Wi-Fi details', Color(0xFF00B8A9)),
-  NfcRecordKind.contact: NfcRecordKindMeta(
-      Icons.contact_page_rounded, 'Contact card', Color(0xFFF25F9C)),
-  NfcRecordKind.appLaunch: NfcRecordKindMeta(
-      Icons.open_in_new_rounded, 'App shortcut', Color(0xFF9B51E0)),
-  NfcRecordKind.mime: NfcRecordKindMeta(
-      Icons.data_object_rounded, 'Custom data', Color(0xFF5D6470)),
-  NfcRecordKind.raw: NfcRecordKindMeta(
-      Icons.help_outline_rounded, 'Unrecognized record', Color(0xFF6F6981)),
+  NfcRecordKind.text: NfcRecordKindMeta(Icons.notes_rounded, Color(0xFF7C5AD9)),
+  NfcRecordKind.uri: NfcRecordKindMeta(Icons.link_rounded, Color(0xFF2F80ED)),
+  NfcRecordKind.phone: NfcRecordKindMeta(Icons.call_rounded, Color(0xFF12A372)),
+  NfcRecordKind.email: NfcRecordKindMeta(Icons.email_rounded, Color(0xFFF5A623)),
+  NfcRecordKind.wifi: NfcRecordKindMeta(Icons.wifi_rounded, Color(0xFF00B8A9)),
+  NfcRecordKind.contact:
+      NfcRecordKindMeta(Icons.contact_page_rounded, Color(0xFFF25F9C)),
+  NfcRecordKind.appLaunch:
+      NfcRecordKindMeta(Icons.open_in_new_rounded, Color(0xFF9B51E0)),
+  NfcRecordKind.mime: NfcRecordKindMeta(Icons.data_object_rounded, Color(0xFF5D6470)),
+  NfcRecordKind.raw:
+      NfcRecordKindMeta(Icons.help_outline_rounded, Color(0xFF6F6981)),
 };
 
 NfcRecordKindMeta nfcRecordKindMeta(NfcRecordKind kind) =>
     nfcRecordKindMetas[kind]!;
 
+String nfcRecordKindLabel(L t, NfcRecordKind kind) => switch (kind) {
+      NfcRecordKind.text => t.nfcRecordEditorTypeText,
+      NfcRecordKind.uri => t.nfcRecordEditorTypeLink,
+      NfcRecordKind.phone => t.nfcKindPhone,
+      NfcRecordKind.email => t.commonEmail,
+      NfcRecordKind.wifi => t.nfcKindWifi,
+      NfcRecordKind.contact => t.nfcKindContact,
+      NfcRecordKind.appLaunch => t.nfcKindAppLaunch,
+      NfcRecordKind.mime => t.nfcKindMime,
+      NfcRecordKind.raw => t.nfcKindRaw,
+    };
+
 /// A one-line, human-readable summary of a record's content for list rows.
-String nfcRecordSummary(EditableNdefRecord record) {
+String nfcRecordSummary(L t, EditableNdefRecord record) {
   final f = record.fields;
   switch (record.kind) {
     case NfcRecordKind.text:
-      return (f['text'] ?? '').isEmpty ? 'Empty' : f['text']!;
+      return (f['text'] ?? '').isEmpty ? t.nfcSummaryEmpty : f['text']!;
     case NfcRecordKind.uri:
-      return (f['uri'] ?? '').isEmpty ? 'No link set' : f['uri']!;
+      return (f['uri'] ?? '').isEmpty ? t.nfcSummaryNoLink : f['uri']!;
     case NfcRecordKind.phone:
-      return (f['number'] ?? '').isEmpty ? 'No number set' : f['number']!;
+      return (f['number'] ?? '').isEmpty ? t.nfcSummaryNoNumber : f['number']!;
     case NfcRecordKind.email:
-      return (f['address'] ?? '').isEmpty ? 'No address set' : f['address']!;
+      return (f['address'] ?? '').isEmpty
+          ? t.nfcSummaryNoAddress
+          : f['address']!;
     case NfcRecordKind.wifi:
       final ssid = f['ssid'] ?? '';
-      return ssid.isEmpty ? 'No network set' : '$ssid · ${f['security'] ?? 'WPA'}';
+      return ssid.isEmpty
+          ? t.nfcSummaryNoNetwork
+          : '$ssid · ${f['security'] ?? 'WPA'}';
     case NfcRecordKind.contact:
-      return (f['name'] ?? '').isEmpty ? 'No name set' : f['name']!;
+      return (f['name'] ?? '').isEmpty ? t.nfcSummaryNoName : f['name']!;
     case NfcRecordKind.appLaunch:
-      return (f['package'] ?? '').isEmpty ? 'No package set' : f['package']!;
+      return (f['package'] ?? '').isEmpty
+          ? t.nfcSummaryNoPackage
+          : f['package']!;
     case NfcRecordKind.mime:
       final mime = f['mimeType'] ?? '';
       return mime.isEmpty ? 'text/plain' : mime;
     case NfcRecordKind.raw:
       final bytes = ((record.rawPayloadHex?.length ?? 0) / 2).round();
-      return 'Kept as-is ($bytes bytes) — not editable';
+      return t.nfcSummaryRawBytes(bytes);
   }
 }
 
@@ -88,6 +100,7 @@ class NfcRecordTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final meta = nfcRecordKindMeta(record.kind);
     return LumaCard(
       padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
@@ -102,7 +115,7 @@ class NfcRecordTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  meta.label,
+                  nfcRecordKindLabel(t, record.kind),
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 14,
@@ -111,7 +124,7 @@ class NfcRecordTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  nfcRecordSummary(record),
+                  nfcRecordSummary(t, record),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: luma.textMuted, fontSize: 12.5),
@@ -120,7 +133,7 @@ class NfcRecordTile extends StatelessWidget {
             ),
           ),
           PopupMenuButton<String>(
-            tooltip: 'More',
+            tooltip: t.commonMore,
             color: luma.surface,
             icon: Icon(Icons.more_vert_rounded, color: luma.textMuted, size: 20),
             onSelected: (value) {
@@ -136,17 +149,17 @@ class NfcRecordTile extends StatelessWidget {
               if (onEdit != null)
                 PopupMenuItem(
                   value: 'edit',
-                  child: Text('Edit',
+                  child: Text(t.commonEdit,
                       style: TextStyle(color: luma.textPrimary, fontSize: 13.5)),
                 ),
               PopupMenuItem(
                 value: 'duplicate',
-                child: Text('Duplicate',
+                child: Text(t.nfcDuplicate,
                     style: TextStyle(color: luma.textPrimary, fontSize: 13.5)),
               ),
               PopupMenuItem(
                 value: 'delete',
-                child: Text('Delete',
+                child: Text(t.commonDelete,
                     style: TextStyle(color: luma.danger, fontSize: 13.5)),
               ),
             ],

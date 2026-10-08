@@ -1,3 +1,5 @@
+import '../../../../../l10n/current_l.dart';
+
 /// Builds a formatted citation string from a handful of raw source fields.
 /// Not a full bibliographic engine — covers the common fields students need
 /// for APA, MLA, and Chicago style across a few source types.
@@ -15,11 +17,11 @@ extension CitationStyleLabel on CitationStyle {
 
 extension SourceTypeLabel on SourceType {
   String get label => switch (this) {
-        SourceType.book => 'Book',
-        SourceType.website => 'Website',
-        SourceType.journalArticle => 'Journal article',
-        SourceType.newspaper => 'Newspaper article',
-        SourceType.video => 'Video',
+        SourceType.book => currentL.schoolCitationSourceBook,
+        SourceType.website => currentL.schoolCitationSourceWebsite,
+        SourceType.journalArticle => currentL.schoolCitationSourceJournalArticle,
+        SourceType.newspaper => currentL.schoolCitationSourceNewspaper,
+        SourceType.video => currentL.schoolCitationSourceVideo,
       };
 }
 

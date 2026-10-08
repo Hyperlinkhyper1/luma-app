@@ -1,5 +1,6 @@
 ﻿import 'package:drift/drift.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../storage/storage_guard.dart';
 import 'data/mind_map_database.dart';
 import 'io/mind_map_outline.dart';
@@ -245,10 +246,13 @@ class MindMapRepository {
     }
     await _touch(node.mapId);
     StorageGuard.instance.scheduleRefresh();
-    final label = node.label.trim().isEmpty ? 'node' : '"${node.label.trim()}"';
+    final name = node.label.trim();
+    final below = doomed.length - 1;
     return MindMapDeletion(
       rows: doomed,
-      description: doomed.length == 1 ? 'Deleted $label' : 'Deleted $label and ${doomed.length - 1} below it',
+      description: name.isEmpty
+          ? currentL.mindMapDeletedUnnamed(below)
+          : currentL.mindMapDeletedNamed(name, below),
     );
   }
 

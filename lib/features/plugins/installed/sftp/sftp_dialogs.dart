@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'sftp_paths.dart';
 import 'sftp_session.dart';
@@ -70,11 +71,12 @@ Future<bool> showHostKeyDialog(
   BuildContext context,
   SftpHostKeyPrompt prompt,
 ) async {
+  final t = L.of(context);
   final result = await _showLumaDialog<bool>(
     context,
     title: prompt.changed
-        ? 'This server\'s key has changed'
-        : 'Unknown server key',
+        ? t.sftpHostKeyChangedTitle
+        : t.sftpHostKeyUnknownTitle,
     icon: prompt.changed
         ? Icons.gpp_maybe_rounded
         : Icons.vpn_key_off_rounded,
@@ -87,13 +89,8 @@ Future<bool> showHostKeyDialog(
         children: [
           Text(
             prompt.changed
-                ? 'A different key was trusted for ${prompt.host} before. '
-                    'Either the server was rebuilt, or something is '
-                    'impersonating it. Do not continue unless you know the '
-                    'server changed.'
-                : 'luma has never connected to ${prompt.host} before. Check '
-                    'the fingerprint against the one on the server, then '
-                    'decide whether to trust it.',
+                ? t.sftpHostKeyChangedBody(prompt.host)
+                : t.sftpHostKeyUnknownBody(prompt.host),
             style: TextStyle(color: luma.textSecondary, fontSize: 13, height: 1.45),
           ),
           const SizedBox(height: 14),
@@ -104,7 +101,7 @@ Future<bool> showHostKeyDialog(
           if (prompt.previousFingerprint != null) ...[
             const SizedBox(height: 8),
             _FingerprintBox(
-              label: 'Previously trusted',
+              label: t.sftpPreviouslyTrusted,
               fingerprint: prompt.previousFingerprint!,
               danger: true,
             ),
@@ -113,10 +110,12 @@ Future<bool> showHostKeyDialog(
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              LumaGhostButton(label: 'Cancel', onTap: () => close(false)),
+              LumaGhostButton(label: t.commonCancel, onTap: () => close(false)),
               const SizedBox(width: 10),
               LumaPrimaryButton(
-                label: prompt.changed ? 'Trust the new key' : 'Trust and connect',
+                label: prompt.changed
+                    ? t.sftpTrustNewKey
+                    : t.sftpTrustAndConnect,
                 icon: Icons.verified_user_rounded,
                 onTap: () => close(true),
               ),
@@ -182,6 +181,7 @@ Future<SecretAnswer?> promptSecret(
   required bool offerSave,
   bool initialSave = false,
 }) {
+  final t = L.of(context);
   final controller = TextEditingController();
   var obscure = true;
   var save = initialSave;
@@ -210,9 +210,9 @@ Future<SecretAnswer?> promptSecret(
               onSubmitted: (_) => submit(),
               style: TextStyle(color: luma.textPrimary, fontSize: 14),
               decoration: InputDecoration(
-                labelText: 'Password',
+                labelText: t.commonPassword,
                 suffixIcon: IconButton(
-                  tooltip: obscure ? 'Show' : 'Hide',
+                  tooltip: obscure ? t.sftpShow : t.sftpHide,
                   icon: Icon(
                     obscure
                         ? Icons.visibility_rounded
@@ -227,8 +227,8 @@ Future<SecretAnswer?> promptSecret(
               const SizedBox(height: 6),
               _CheckRow(
                 value: save,
-                label: 'Remember it for this site',
-                subtitle: 'Encrypted on this device. Never uploaded anywhere.',
+                label: t.sftpRememberForSite,
+                subtitle: t.sftpEncryptedLocalNote,
                 onChanged: (value) => setState(() => save = value),
               ),
             ],
@@ -236,10 +236,10 @@ Future<SecretAnswer?> promptSecret(
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                LumaGhostButton(label: 'Cancel', onTap: () => close(null)),
+                LumaGhostButton(label: t.commonCancel, onTap: () => close(null)),
                 const SizedBox(width: 10),
                 LumaPrimaryButton(
-                  label: 'Connect',
+                  label: t.sftpConnect,
                   icon: Icons.link_rounded,
                   onTap: submit,
                 ),
@@ -264,6 +264,7 @@ Future<QuickConnectAnswer?> promptQuickConnect(
   required String address,
   required int port,
 }) {
+  final t = L.of(context);
   final portController = TextEditingController(text: '$port');
   final secretController = TextEditingController();
   var obscure = true;
@@ -272,7 +273,7 @@ Future<QuickConnectAnswer?> promptQuickConnect(
 
   return _showLumaDialog<QuickConnectAnswer>(
     context,
-    title: 'Connect to $deviceName',
+    title: t.sftpConnectToDevice(deviceName),
     icon: Icons.devices_rounded,
     body: (context, close) {
       final luma = context.luma;
@@ -281,12 +282,11 @@ Future<QuickConnectAnswer?> promptQuickConnect(
           void submit() {
             final typedPort = int.tryParse(portController.text.trim());
             if (typedPort == null || typedPort < 1 || typedPort > 65535) {
-              setState(() => error = 'Port must be a number between 1 and 65535.');
+              setState(() => error = t.sftpPortRangeError);
               return;
             }
             if (secretController.text.trim().isEmpty) {
-              setState(() => error = 'Type the pairing password shown on '
-                  '$deviceName.');
+              setState(() => error = t.sftpPairingPasswordRequired(deviceName));
               return;
             }
             close((port: typedPort, secret: secretController.text, save: save));
@@ -297,8 +297,7 @@ Future<QuickConnectAnswer?> promptQuickConnect(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Found on this network at $address. Type the port and pairing '
-                'password shown on its Host tab or This device screen.',
+                t.sftpQuickConnectFound(address),
                 style: TextStyle(color: luma.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 14),
@@ -307,7 +306,7 @@ Future<QuickConnectAnswer?> promptQuickConnect(
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 style: TextStyle(color: luma.textPrimary, fontSize: 14),
-                decoration: const InputDecoration(labelText: 'Port'),
+                decoration: InputDecoration(labelText: t.sftpPortLabel),
               ),
               const SizedBox(height: 10),
               TextField(
@@ -319,9 +318,9 @@ Future<QuickConnectAnswer?> promptQuickConnect(
                 onSubmitted: (_) => submit(),
                 style: TextStyle(color: luma.textPrimary, fontSize: 14),
                 decoration: InputDecoration(
-                  labelText: 'Pairing password',
+                  labelText: t.sftpPairingPasswordLabel,
                   suffixIcon: IconButton(
-                    tooltip: obscure ? 'Show' : 'Hide',
+                    tooltip: obscure ? t.sftpShow : t.sftpHide,
                     icon: Icon(
                       obscure
                           ? Icons.visibility_rounded
@@ -342,18 +341,18 @@ Future<QuickConnectAnswer?> promptQuickConnect(
               const SizedBox(height: 6),
               _CheckRow(
                 value: save,
-                label: 'Remember the password for this device',
-                subtitle: 'Encrypted on this device. Never uploaded anywhere.',
+                label: t.sftpRememberDevicePassword,
+                subtitle: t.sftpEncryptedLocalNote,
                 onChanged: (value) => setState(() => save = value),
               ),
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  LumaGhostButton(label: 'Cancel', onTap: () => close(null)),
+                  LumaGhostButton(label: t.commonCancel, onTap: () => close(null)),
                   const SizedBox(width: 10),
                   LumaPrimaryButton(
-                    label: 'Connect',
+                    label: t.sftpConnect,
                     icon: Icons.link_rounded,
                     onTap: submit,
                   ),
@@ -374,7 +373,7 @@ Future<String?> promptText(
   required String label,
   required IconData icon,
   String initial = '',
-  String confirmLabel = 'Save',
+  String? confirmLabel,
 }) {
   final controller = TextEditingController(text: initial)
     ..selection = TextSelection(
@@ -387,6 +386,7 @@ Future<String?> promptText(
     title: title,
     icon: icon,
     body: (context, close) {
+      final t = L.of(context);
       final luma = context.luma;
       void submit() {
         final value = controller.text.trim();
@@ -414,10 +414,10 @@ Future<String?> promptText(
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              LumaGhostButton(label: 'Cancel', onTap: () => close(null)),
+              LumaGhostButton(label: t.commonCancel, onTap: () => close(null)),
               const SizedBox(width: 10),
               LumaPrimaryButton(
-                label: confirmLabel,
+                label: confirmLabel ?? t.commonSave,
                 icon: Icons.check_rounded,
                 onTap: submit,
               ),
@@ -436,9 +436,12 @@ Future<bool> confirmDelete(
   required bool remote,
   String? extraWarning,
 }) async {
+  final t = L.of(context);
   final result = await _showLumaDialog<bool>(
     context,
-    title: names.length == 1 ? 'Delete ${names.first}?' : 'Delete ${names.length} items?',
+    title: names.length == 1
+        ? t.sftpDeleteOneTitle(names.first)
+        : t.sftpDeleteManyTitle(names.length),
     icon: Icons.delete_forever_rounded,
     iconColor: context.luma.danger,
     body: (context, close) {
@@ -448,10 +451,7 @@ Future<bool> confirmDelete(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            remote
-                ? 'This deletes them on the server. Folders go with everything '
-                    'inside them, and there is no undo.'
-                : 'This deletes them on this device. There is no undo.',
+            remote ? t.sftpDeleteRemoteWarning : t.sftpDeleteLocalWarning,
             style: TextStyle(color: luma.textSecondary, fontSize: 13, height: 1.45),
           ),
           if (extraWarning != null) ...[
@@ -488,10 +488,10 @@ Future<bool> confirmDelete(
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              LumaGhostButton(label: 'Cancel', onTap: () => close(false)),
+              LumaGhostButton(label: t.commonCancel, onTap: () => close(false)),
               const SizedBox(width: 10),
               LumaPrimaryButton(
-                label: 'Delete',
+                label: t.commonDelete,
                 icon: Icons.delete_outline_rounded,
                 onTap: () => close(true),
               ),
@@ -510,13 +510,14 @@ Future<int?> promptPermissions(
   required String name,
   int? current,
 }) {
+  final t = L.of(context);
   final controller = TextEditingController(
     text: current == null ? '644' : current.toRadixString(8).padLeft(3, '0'),
   );
 
   return _showLumaDialog<int>(
     context,
-    title: 'Permissions for $name',
+    title: t.sftpPermissionsTitle(name),
     icon: Icons.lock_outline_rounded,
     body: (context, close) {
       final luma = context.luma;
@@ -538,15 +539,15 @@ Future<int?> promptPermissions(
                 onChanged: (_) => setState(() {}),
                 onSubmitted: (_) => submit(),
                 style: TextStyle(color: luma.textPrimary, fontSize: 14),
-                decoration: const InputDecoration(
-                  labelText: 'Mode',
-                  helperText: 'Octal (755) or symbolic (rwxr-xr-x)',
+                decoration: InputDecoration(
+                  labelText: t.sftpPermissionsMode,
+                  helperText: t.sftpPermissionsHelper,
                 ),
               ),
               const SizedBox(height: 10),
               Text(
                 parsed == null
-                    ? 'Not a valid mode.'
+                    ? t.sftpPermissionsInvalid
                     : '${parsed.toRadixString(8).padLeft(3, '0')} · '
                         '${formatPermissions(parsed)}',
                 style: TextStyle(
@@ -559,10 +560,10 @@ Future<int?> promptPermissions(
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  LumaGhostButton(label: 'Cancel', onTap: () => close(null)),
+                  LumaGhostButton(label: t.commonCancel, onTap: () => close(null)),
                   const SizedBox(width: 10),
                   LumaPrimaryButton(
-                    label: 'Apply',
+                    label: t.commonApply,
                     icon: Icons.check_rounded,
                     onTap: parsed == null ? null : submit,
                   ),

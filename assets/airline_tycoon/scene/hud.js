@@ -3,6 +3,8 @@
 window.AirportHud = (() => {
   'use strict';
   const $ = id => document.getElementById(id);
+  const tr = source => window.LumaSceneI18n?.translate?.(source) ?? source;
+  const tf = (key, values = {}) => window.LumaSceneI18n?.format?.(key, values) ?? key;
   const icons = {
     play: '<path d="M7 5v14l11-7z"/>',
     pause: '<path d="M8 5v14M16 5v14"/>',
@@ -107,12 +109,14 @@ window.AirportHud = (() => {
     || friendly(kind);
   const modelName = id => S.world?.modelNames?.[id] || friendly(id);
   const modelClass = id => S.world?.modelClasses?.[id] || '';
-  const vehicleName = kind => ({fuel: 'Fuel truck', baggage: 'Baggage tug', bus: 'Passenger bus', pushback: 'Pushback tug'}[kind]) || friendly(kind);
-  const stageName = stage => ({approach: 'On approach', positioning: 'Towed to the stand', toHangar: 'Towed to the hangar', landing: 'Landing', pushback: 'Pushing back', boarding: 'Boarding', taxiIn: 'Taxiing to stand', taxiOut: 'Taxiing to runway', unloading: 'Unloading passengers', servicing: 'Ground services', departing: 'Taking off', remote: 'Flying the route', enRoute: 'Flying the route', awaitingStand: 'Waiting for a stand', awaitingAirport: 'Waiting for airport access'}[stage]) || friendly(stage);
+  const vehicleName = kind => sceneValue(({fuel: 'airportVehicleFuel', baggage: 'airportVehicleBaggage', bus: 'airportVehicleBus', pushback: 'airportVehiclePushback'}[kind])) || friendly(kind);
+  const sceneValue = key => window.LumaSceneI18n?.value?.(key) || '';
+  const sceneFormat = (key, args) => window.LumaSceneI18n?.format?.(key, args) || '';
+  const stageName = stage => { const key = ({approach: 'sceneAirlineTycoonStageApproach', positioning: 'sceneAirlineTycoonStagePositioning', toHangar: 'sceneAirlineTycoonStageToHangar', landing: 'sceneAirlineTycoonStageLanding', pushback: 'sceneAirlineTycoonStagePushback', boarding: 'sceneAirlineTycoonStageBoarding', taxiIn: 'sceneAirlineTycoonStageTaxiIn', taxiOut: 'sceneAirlineTycoonStageTaxiOut', unloading: 'sceneAirlineTycoonStageUnloading', servicing: 'sceneAirlineTycoonStageServicing', departing: 'sceneAirlineTycoonStageDeparting', remote: 'sceneAirlineTycoonStageRemote', enRoute: 'sceneAirlineTycoonStageRemote', awaitingStand: 'sceneAirlineTycoonStageAwaitingStand', awaitingAirport: 'sceneAirlineTycoonStageAwaitingAirport'}[stage]); return sceneValue(key) || friendly(stage); };
   const standKinds = new Set(['stand', 'standRegional', 'standContact']);
   const stands = () => list('facilities').filter(f => standKinds.has(f.kind));
   const standCode = f => `${f.kind === 'standRegional' ? 'R' : f.kind === 'standContact' ? 'A' : 'B'}${String(f.id || '').replace(/\D/g, '').slice(-2).padStart(2, '0')}`;
-  const standName = id => { const f = stands().find(s => s.id === id); return f ? `Stand ${standCode(f)}` : 'Unassigned stand'; };
+  const standName = id => { const f = stands().find(s => s.id === id); return f ? (sceneFormat('sceneAirlineTycoonStandName', {code: standCode(f)}) || `Stand ${standCode(f)}`) : (sceneValue('sceneAirlineTycoonUnassignedStand') || 'Unassigned stand'); };
   const standClass = f => f.kind === 'standRegional' ? 'SH' : 'ALL';
   const livery = carrier => `#${AirportSceneLogic.livery(carrier).main.toString(16).padStart(6, '0')}`;
   const compact = () => innerWidth < 820;
@@ -221,21 +225,21 @@ window.AirportHud = (() => {
   // ── Rendering ─────────────────────────────────────────────────────────
   function renderTop() {
     const w = S.world || {}, paused = w.paused !== false;
-    $('airline').textContent = `${w.hubIata || ''} / ${w.airlineName || 'Airport'}`;
+    $('airline').textContent = `${w.hubIata || ''} / ${w.airlineName || window.LumaSceneI18n?.value?.('sceneAirlineTycoonAirportLabel') || ''}`;
     $('money').textContent = money(w.cash);
     $('money').title = exactMoney(w.cash);
-    const hour = Math.floor((w.time || 0) / 60) % 24, clock = `DAY ${w.day ?? 1} · ${clockText(w.time || 0)}`;
+    const hour = Math.floor((w.time || 0) / 60) % 24, clock = tf('sceneAirlineTycoonClockDay', {day: w.day ?? 1}) + ` · ${clockText(w.time || 0)}`;
     const phase = hour >= 6 && hour < 20 ? 'sun' : 'moon';
     if ($('clock').dataset.text !== clock + phase) {
       $('clock').dataset.text = clock + phase;
       $('clock').innerHTML = `<svg class="phase ${phase}" viewBox="0 0 24 24" aria-hidden="true">${icons[phase]}</svg>${esc(clock)}`;
-      $('clock').title = phase === 'sun' ? 'Daytime' : 'Night: the airport lights are on';
+      $('clock').title = window.LumaSceneI18n.value(phase === 'sun' ? 'sceneAirlineTycoonDaytimeTitle' : 'sceneAirlineTycoonNightTitle');
     }
     const pause = $('pause');
     const icon = paused ? 'play' : 'pause';
     if (pause.dataset.icon !== icon) { pause.innerHTML = svg(icon); pause.dataset.icon = icon; }
-    pause.title = paused ? 'Resume airport (Space)' : 'Pause airport (Space)';
-    pause.setAttribute('aria-label', paused ? 'Resume airport' : 'Pause airport');
+    pause.title = window.LumaSceneI18n.value(paused ? 'sceneAirlineTycoonResumeTitle' : 'sceneAirlineTycoonPauseTitle');
+    pause.setAttribute('aria-label', window.LumaSceneI18n.value(paused ? 'sceneAirlineTycoonResumeLabel' : 'sceneAirlineTycoonPauseLabel'));
     for (const b of document.querySelectorAll('[data-speed]')) b.classList.toggle('on', Number(b.dataset.speed) === w.speed);
   }
   function renderViewbar() {
@@ -243,7 +247,7 @@ window.AirportHud = (() => {
       const name = b.dataset.toggle;
       const on = name === 'quality' ? S.quality === 'high' : name === 'cutaway' ? S.cutaway || S.airport : S[name];
       b.classList.toggle('on', !!on);
-      if (name === 'quality') b.title = S.quality === 'high' ? 'Quality: high (click for performance)' : 'Quality: performance (click for high)';
+      if (name === 'quality') b.title = window.LumaSceneI18n.value(S.quality === 'high' ? 'sceneAirlineTycoonQualityHighTitle' : 'sceneAirlineTycoonQualityPerformanceTitle');
     }
     for (const b of document.querySelectorAll('[data-mode]')) {
       const on = (b.dataset.mode === 'airport') === S.airport;
@@ -271,7 +275,12 @@ window.AirportHud = (() => {
     $('placement').classList.toggle('hidden', !S.tool);
     if (!S.tool) return;
     const cost = S.moveId ? '' : list('catalog').find(d => d.kind === S.tool)?.cost;
-    $('placement-title').textContent = `${S.moveId ? 'Move' : 'Place'} ${facilityName(S.tool)}${typeof cost === 'number' ? ` · ${money(cost)}` : ''} · ${S.rotation * 90}°`;
+    const facility = facilityName(S.tool), rotation = S.rotation * 90;
+    $('placement-title').textContent = S.moveId
+      ? tf('sceneAirlineTycoonMoveFacilityTitle', {facility, rotation})
+      : typeof cost === 'number'
+        ? tf('sceneAirlineTycoonPlaceFacilityCostTitle', {facility, cost: money(cost), rotation})
+        : tf('sceneAirlineTycoonPlaceFacilityTitle', {facility, rotation});
     $('onboard').classList.add('hidden');
   }
 
@@ -280,7 +289,7 @@ window.AirportHud = (() => {
     const panel = $('panel');
     panel.classList.toggle('hidden', !S.panel);
     if (!S.panel) { signatures.panel = null; return; }
-    $('panel-title').textContent = S.panel === 'Build' && S.airport ? 'Build · Airport' : S.panel;
+    $('panel-title').textContent = S.panel === 'Build' && S.airport ? `${window.LumaSceneI18n.value('sceneAirlineTycoonPanelBuild')} · ${window.LumaSceneI18n.value('sceneAirlineTycoonAirportLabel')}` : window.LumaSceneI18n.value(`sceneAirlineTycoonPanel${S.panel}`);
     const builders = {Build: buildPanel, Contracts: contractsPanel, Planning: planningPanel, Schedule: schedulePanel, Finances: financesPanel};
     const [signature, render, after] = builders[S.panel]();
     const key = `${S.panel}|${signature}`;
@@ -447,7 +456,7 @@ window.AirportHud = (() => {
           <div class="up-head"><span class="up-name">${esc(u.attribute)}</span><span class="up-levels">${u.level}${maxed ? '' : `<span class="arrow">→</span><span class="pos">${u.level + 1}</span>`}</span></div>
           <div class="up-bar" role="progressbar" aria-label="${esc(u.attribute)} level" aria-valuemin="1" aria-valuemax="${MAX_LEVEL}" aria-valuenow="${u.level}">${Array.from({length: MAX_LEVEL}, (_, i) => `<span class="${i < u.level ? 'on' : i === u.level && !maxed ? 'next' : ''}"></span>`).join('')}</div>
           <p class="up-effect">${esc(u.effect)}</p>
-          ${maxed ? `<div class="up-max">${svg('star')}Maximum level</div>` : `<button type="button" class="filled up-buy" data-manage="upgrade" data-attribute="${esc(u.id)}" ${affordable ? '' : 'disabled'} title="Upgrade ${esc(u.attribute.toLowerCase())} to level ${u.level + 1}">${svg('upgrade')}${esc(exactMoney(u.cost))}</button>`}
+          ${maxed ? `<div class="up-max">${svg('star')}Maximum level</div>` : `<button type="button" class="filled up-buy" data-manage="upgrade" data-attribute="${esc(u.id)}" ${affordable ? '' : 'disabled'} title="${esc(LumaSceneI18n.format('sceneAirlineTycoonUpgradeAttributeToLevel', {attribute: u.attribute.toLowerCase(), level: u.level + 1}))}">${svg('upgrade')}${esc(exactMoney(u.cost))}</button>`}
           ${!maxed && !affordable ? `<div class="sub neg" style="margin-top:6px">You need ${esc(money(u.cost - cash))} more cash.</div>` : ''}
         </div>`;
       }
@@ -456,13 +465,13 @@ window.AirportHud = (() => {
       for (const x of flights) {
         html += `<div class="flight-row" style="--livery:${livery(x.carrier)}"><span class="dot"></span><span class="grow"><b>${esc(x.carrier || 'Own flight')}</b> · ${esc(modelName(x.modelId))}<br><span class="sub">${esc(flightTime(x.arrival))}–${esc(clockText(x.departure || 0))} · ${esc(stageName(x.stage))}</span></span></div>`;
       }
-      html += `<div class="manage-actions"><button type="button" class="outline" data-open-plan="">${svg('Planning')}Open planning</button></div>`;
+      html += `<div class="manage-actions"><button type="button" class="outline" data-open-plan="">${svg('Planning')}${window.LumaSceneI18n.value('sceneAirlineTycoonOpenPlanningLabel')}</button></div>`;
     } else if (tab === 'vehicles') {
       html += depotShop(f);
     }
     html += '</div></div>';
     if (S.manage.confirm) {
-      html += `<div class="confirm" role="alertdialog" aria-label="Confirm demolition"><span class="grow"><b>Demolish ${esc(facilityName(f.kind))}?</b><br><span class="sub">You get ${esc(money(Math.round(invested(f, def) * .5)))} back. This cannot be undone.</span></span><button type="button" class="outline" data-manage="keep">Keep it</button><button type="button" class="filled danger" data-manage="demolishNow">${svg('trash')}Demolish</button></div>`;
+      html += `<div class="confirm" role="alertdialog" aria-label="Confirm demolition"><span class="grow"><b>${esc(LumaSceneI18n.format('sceneAirlineTycoonDemolishFacilityQuestion', {facility: facilityName(f.kind)}))}</b><br><span class="sub">${esc(LumaSceneI18n.format('sceneAirlineTycoonDemolishRefund', {refund: money(Math.round(invested(f, def) * .5))}))}</span></span><button type="button" class="outline" data-manage="keep">Keep it</button><button type="button" class="filled danger" data-manage="demolishNow">${svg('trash')}Demolish</button></div>`;
     }
     const body = $('manage-body'), scroll = body.scrollTop;
     body.innerHTML = html;
@@ -502,7 +511,7 @@ window.AirportHud = (() => {
   // Contracts: airline offers to sign; signed ones wait in Planning's holding bar.
   const rules = () => S.world?.rules || {slots: {EAM: [0, 360], AM: [360, 720], AN: [720, 1080], PM: [1080, 1440]}, haulMinutes: {SH: 180, MH: 240, LH: 360}, exitMinutes: 30, horizonDays: 14};
   const slotText = slot => { const w = rules().slots[slot]; return w ? `${slot} ${pad(w[0] / 60)}–${pad(w[1] / 60)}` : 'Any time'; };
-  const contractType = o => o.type === 'charter' ? `Charter · ${o.flights} flight${o.flights === 1 ? '' : 's'}` : `Daily · ${o.flights} days`;
+  const contractType = o => sceneFormat(o.type === 'charter' ? 'sceneAirlineTycoonContractCharter' : 'sceneAirlineTycoonContractDaily', {flights: o.flights}) || (o.type === 'charter' ? `Charter · ${o.flights} flight${o.flights === 1 ? '' : 's'}` : `Daily · ${o.flights} days`);
   function activeContracts() {
     return list('contracts').filter(c => !c.cancelled && ((c.remaining || 0) > 0 || (c.scheduled || 0) > 0 || list('flights').some(f => f.contractId === c.id && !['completed', 'cancelled'].includes(f.stage))));
   }
@@ -525,7 +534,7 @@ window.AirportHud = (() => {
           <div class="ct-box ct-refresh"><span class="ct-label">New offers in</span><b id="ct-refresh" class="num">–</b><div class="ct-track"><span id="ct-refresh-bar"></span></div></div>
           <div class="ct-box ct-stat"><span class="ct-label">Offers open</span><b class="num">${offers.length}</b></div>
           <div class="ct-box ct-stat"><span class="ct-label">Waiting to plan</span><b class="num${waiting.length ? ' warn' : ''}">${waiting.length}</b></div>
-          <button type="button" class="ct-plan" data-open-plan="">${svg('Planning')}<span>Planning</span></button>
+          <button type="button" class="ct-plan" data-open-plan="">${svg('Planning')}<span>${window.LumaSceneI18n.value('sceneAirlineTycoonPanelPlanning')}</span></button>
         </div>
         <div class="ct-tabs" role="tablist">${tab('offers', 'Airline offers', offers.length)}${tab('signed', 'Signed contracts', signed)}</div>
         <div class="ct-scroll">`;
@@ -560,7 +569,7 @@ window.AirportHud = (() => {
             <td class="craft">${svg('Fleet')}<span><b>${esc(modelName(o.modelId))}</b><span class="sub">${esc(haulName(o.haul))}</span></span></td>
             <td><b>${flown} / ${esc(o.flights)} flown</b><span class="sub">${esc(c.scheduled || 0)} planned${c.remaining ? ` · <span class="warn">${esc(c.remaining)} to plan by day ${esc(c.deadlineDay)}</span>` : ''}</span></td>
             <td><div class="sat"><span style="width:${sat}%;background:${sat >= 70 ? 'var(--success)' : sat >= 40 ? 'var(--warning)' : 'var(--danger)'}"></span></div><span class="sub num">${sat}%</span></td>
-            <td class="ct-actions">${c.remaining ? `<button type="button" class="filled" data-open-plan="${esc(c.id)}">Plan</button>` : ''}<button type="button" class="outline danger" data-cancel-contract="${esc(c.id)}" title="Cancel: ${esc(exactMoney(c.cancelCost || 0))} penalty">Cancel</button></td>
+            <td class="ct-actions">${c.remaining ? `<button type="button" class="filled" data-open-plan="${esc(c.id)}">Plan</button>` : ''}<button type="button" class="outline danger" data-cancel-contract="${esc(c.id)}" title="${esc(LumaSceneI18n.format('sceneAirlineTycoonCancelPenalty', {cost: exactMoney(c.cancelCost || 0)}))}">Cancel</button></td>
           </tr>`;
         }
         html += '</tbody></table>';
@@ -634,7 +643,7 @@ window.AirportHud = (() => {
     if (arrival < now + 30) return 'At least 30 min ahead';
     if (arrival > now + planDays() * 1440) return `Only ${planDays()} days ahead`;
     const c = drag.contract;
-    if (c && !slotOk(c.offer.slot, arrival)) return `${c.carrier} starts in ${slotText(c.offer.slot)}`;
+    if (c && !slotOk(c.offer.slot, arrival)) return LumaSceneI18n.format('sceneAirlineTycoonCarrierStartsInSlot', {carrier: c.carrier, slot: slotText(c.offer.slot)});
     const day = Math.floor(arrival / 1440) + 1;
     if (c && drag.kind === 'contract' && c.offer.type !== 'charter' && day > c.deadlineDay) return `Must start by day ${c.deadlineDay}`;
     if (c && drag.kind === 'contract' && c.offer.type === 'charter' && day > c.signedDay + c.offer.placementDays) return `Must fly by day ${c.signedDay + c.offer.placementDays}`;
@@ -784,11 +793,11 @@ window.AirportHud = (() => {
       const entries = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
       if (!entries.length) html += '<div class="empty">No transactions yet today.</div>';
       const peak = Math.max(1, ...entries.map(([, v]) => Math.abs(v)));
-      for (const [category, amount] of entries) html += `<div class="row bar-row"><span class="grow">${esc(friendly(category))}</span><span class="bar"><span class="${amount < 0 ? 'neg-bar' : 'pos-bar'}" style="width:${Math.abs(amount) / peak * 100}%"></span></span><span class="amount ${amount < 0 ? 'neg' : 'pos'}">${esc(money(amount))}</span></div>`;
+      for (const [category, amount] of entries) html += `<div class="row bar-row"><span class="grow">${esc(S.world?.ledgerCategoryLabels?.[category] || category)}</span><span class="bar"><span class="${amount < 0 ? 'neg-bar' : 'pos-bar'}" style="width:${Math.abs(amount) / peak * 100}%"></span></span><span class="amount ${amount < 0 ? 'neg' : 'pos'}">${esc(money(amount))}</span></div>`;
       html += '<div class="hint">Flights settle once on completion. Shops, lounges and the café earn as passengers walk past them.</div><div class="section">TRANSACTIONS</div>';
       if (!ledger.length) html += '<div class="empty">Your transactions will appear here.</div>';
       for (const e of ledger.slice(-150).reverse()) {
-        html += `<div class="row"><span class="grow"><span class="title">${esc(e.description)}</span><br><span class="sub">${esc(friendly(e.category))} · Day ${Math.floor((e.time || 0) / 1440) + 1}</span></span><span class="amount ${e.amount < 0 ? 'neg' : 'pos'}">${esc(money(e.amount))}</span></div>`;
+        html += `<div class="row"><span class="grow"><span class="title">${esc(e.description)}</span><br><span class="sub">${esc(e.categoryLabel || '')} · Day ${Math.floor((e.time || 0) / 1440) + 1}</span></span><span class="amount ${e.amount < 0 ? 'neg' : 'pos'}">${esc(money(e.amount))}</span></div>`;
       }
       return html;
     }];
@@ -867,7 +876,10 @@ window.AirportHud = (() => {
     ghost.style.width = `${drag.duration / 60 * HOUR - 2}px`;
     ghost.classList.toggle('bad', !!problem);
     const count = drag.kind === 'contract' && drag.contract.offer.type !== 'charter' ? drag.contract.remaining : 1;
-    ghost.innerHTML = `<span class="b-top"><b>${clockText(arrival)}–${clockText(arrival + drag.duration)}</b></span><span class="b-mid">${esc(problem || (count > 1 ? `${count} days in a row` : 'Release to place'))}</span>`;
+    const note = problem ? tr(problem) : count > 1
+      ? tf('sceneAirlineTycoonConsecutiveDays', {count})
+      : window.LumaSceneI18n.value('sceneAirlineTycoonReleaseToPlace');
+    ghost.innerHTML = `<span class="b-top"><b>${clockText(arrival)}–${clockText(arrival + drag.duration)}</b></span><span class="b-mid">${esc(note)}</span>`;
   }
   function endDrag(event) {
     const drag = S.plan.drag;
@@ -911,11 +923,17 @@ window.AirportHud = (() => {
   }
 
   // ── Events ────────────────────────────────────────────────────────────
-  function wire() {
-    for (const b of document.querySelectorAll('#dock [data-open]')) b.innerHTML = `${svg(b.dataset.open)}<span>${b.dataset.open}</span>`;
+  function renderChromeLabels() {
+    for (const b of document.querySelectorAll('#dock [data-open]')) b.innerHTML = `${svg(b.dataset.open)}<span>${esc(window.LumaSceneI18n.value(`sceneAirlineTycoonPanel${b.dataset.open}`))}</span>`;
     for (const b of document.querySelectorAll('[data-view]')) b.innerHTML = svg(b.dataset.view);
     for (const b of document.querySelectorAll('[data-toggle]')) b.innerHTML = svg(b.dataset.toggle);
-    for (const b of document.querySelectorAll('[data-mode]')) b.innerHTML = `${svg(b.dataset.mode === 'airport' ? 'interior' : 'Fleet')}<span>${b.dataset.mode === 'airport' ? 'Airport' : 'Airfield'}</span>`;
+    for (const b of document.querySelectorAll('[data-mode]')) {
+      const modeKey = b.dataset.mode === 'airport' ? 'sceneAirlineTycoonAirportLabel' : 'sceneAirlineTycoonAirfieldLabel';
+      b.innerHTML = `${svg(b.dataset.mode === 'airport' ? 'interior' : 'Fleet')}<span>${esc(window.LumaSceneI18n.value(modeKey))}</span>`;
+    }
+  }
+  function wire() {
+    renderChromeLabels();
     $('panel-close').innerHTML = svg('close');
     $('manage-close').innerHTML = svg('close');
     // A click on the dimmed backdrop, outside the window, closes it.
@@ -1026,6 +1044,14 @@ window.AirportHud = (() => {
     if (S.airport && !halls().length) exitAirport();
     renderTop(); renderPanel(); renderNotices(); renderTool(); renderManage();
   }
+  window.addEventListener('luma-locale-changed', () => {
+    renderChromeLabels();
+    renderTop();
+    renderViewbar();
+    renderTool();
+    renderPanel(true);
+    renderManage();
+  });
   function theme(palette) {
     const root = document.documentElement.style;
     for (const [name, value] of Object.entries(palette || {})) if (/^[a-z0-9-]+$/.test(name) && /^#[0-9a-f]{6,8}$/i.test(value)) root.setProperty(`--${name}`, value);

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../../l10n/current_l.dart';
 import 'forge_style_profile_merger.dart';
 import 'mc_paths.dart';
 import 'piston_meta_client.dart';
@@ -34,7 +35,7 @@ class NeoForgeInstaller {
         .get(Uri.parse('https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge'))
         .timeout(const Duration(seconds: 20));
     if (res.statusCode != 200) {
-      throw NeoForgeInstallerException('Could not reach the NeoForge version list.');
+      throw NeoForgeInstallerException(currentL.mcNeoForgeVersionListUnreachable);
     }
     final json = jsonDecode(res.body) as Map<String, dynamic>;
     final all = (json['versions'] as List).cast<String>();
@@ -58,10 +59,10 @@ class NeoForgeInstaller {
     final root = await McPaths.root();
     final before = await _listVersionDirs(root);
 
-    onStatus?.call('Downloading NeoForge installer…', null);
+    onStatus?.call(currentL.mcNeoForgeDownloadingInstaller, null);
     final installerJar = await _downloadInstaller(neoForgeVersion);
 
-    onStatus?.call('Running NeoForge installer…', null);
+    onStatus?.call(currentL.mcNeoForgeRunningInstaller, null);
     final javaExe = javawPath.toLowerCase().endsWith('javaw.exe')
         ? '${javawPath.substring(0, javawPath.length - 10)}java.exe'
         : javawPath;
@@ -72,7 +73,7 @@ class NeoForgeInstaller {
     );
     if (result.exitCode != 0) {
       throw NeoForgeInstallerException(
-        'The NeoForge installer failed:\n${result.stdout}\n${result.stderr}'.trim(),
+        currentL.mcNeoForgeInstallerFailed('${result.stdout}\n${result.stderr}'.trim()),
       );
     }
 
@@ -82,14 +83,13 @@ class NeoForgeInstaller {
         ? newDirs.first
         : after.where((d) => d.toLowerCase().contains('neoforge')).lastOrNull;
     if (versionId == null) {
-      throw NeoForgeInstallerException(
-          'The NeoForge installer ran but no new version profile was found.');
+      throw NeoForgeInstallerException(currentL.mcNeoForgeInstallerNoNewProfile);
     }
 
     final profileFile =
         File('${root.path}${Platform.pathSeparator}versions${Platform.pathSeparator}$versionId${Platform.pathSeparator}$versionId.json');
     if (!await profileFile.exists()) {
-      throw NeoForgeInstallerException('NeoForge installer did not produce $versionId.json.');
+      throw NeoForgeInstallerException(currentL.mcNeoForgeInstallerNoProfile(versionId));
     }
     final profile = jsonDecode(await profileFile.readAsString()) as Map<String, dynamic>;
     return mergeForgeStyleProfile(vanilla, profile);
@@ -103,7 +103,7 @@ class NeoForgeInstaller {
 
     final res = await http.get(Uri.parse(url)).timeout(const Duration(minutes: 3));
     if (res.statusCode != 200) {
-      throw NeoForgeInstallerException('Could not download the NeoForge $neoForgeVersion installer.');
+      throw NeoForgeInstallerException(currentL.mcNeoForgeInstallerDownloadFailed(neoForgeVersion));
     }
     await file.writeAsBytes(res.bodyBytes);
     return file;

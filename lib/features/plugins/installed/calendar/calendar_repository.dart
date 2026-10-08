@@ -1,6 +1,7 @@
 ﻿import 'package:drift/drift.dart';
 
 import '../../../../family/family_api.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../storage/storage_guard.dart';
 import 'data/calendar_database.dart';
 
@@ -8,12 +9,12 @@ import 'data/calendar_database.dart';
 enum Recurrence { none, daily, weekly, monthly, yearly }
 
 extension RecurrenceLabel on Recurrence {
-  String get label => switch (this) {
-        Recurrence.none => 'Does not repeat',
-        Recurrence.daily => 'Every day',
-        Recurrence.weekly => 'Every week',
-        Recurrence.monthly => 'Every month',
-        Recurrence.yearly => 'Every year',
+  String label(L t) => switch (this) {
+        Recurrence.none => t.calendarRepeatNone,
+        Recurrence.daily => t.calendarRepeatDaily,
+        Recurrence.weekly => t.calendarRepeatWeekly,
+        Recurrence.monthly => t.calendarRepeatMonthly,
+        Recurrence.yearly => t.calendarRepeatYearly,
       };
 
   static Recurrence parse(String raw) => Recurrence.values.firstWhere(

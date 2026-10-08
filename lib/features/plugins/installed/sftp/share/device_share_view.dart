@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../p2p/peer_sync_controller.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../sftp_file_pane.dart';
@@ -80,6 +81,7 @@ class DeviceSharePanel extends StatelessWidget {
   }
 
   Widget _header(BuildContext context, LumaPalette luma) {
+    final t = L.of(context);
     final selected = selection.length;
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
@@ -95,7 +97,7 @@ class DeviceSharePanel extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Shared folder',
+                  t.sftpShareFolderTitle,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 13,
@@ -104,8 +106,8 @@ class DeviceSharePanel extends StatelessWidget {
                 ),
                 Text(
                   selected > 0
-                      ? '$selected selected'
-                      : '${repository.summary} · on every device',
+                      ? t.sftpShareSelectedCount(selected)
+                      : t.sftpShareSummaryOnEveryDevice(repository.summary),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: luma.textMuted, fontSize: 11),
@@ -116,28 +118,28 @@ class DeviceSharePanel extends StatelessWidget {
           if (selected > 0)
             IconButton(
               onPressed: onDeleteSelected,
-              tooltip: 'Delete everywhere',
+              tooltip: t.sftpShareDeleteEverywhere,
               icon: const Icon(Icons.delete_outline_rounded, size: 18),
               color: luma.danger,
               constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
             ),
           IconButton(
             onPressed: onAddFiles,
-            tooltip: 'Add files',
+            tooltip: t.sftpShareAddFiles,
             icon: const Icon(Icons.add_rounded, size: 18),
             color: luma.textSecondary,
             constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
           ),
           IconButton(
             onPressed: onOpenFolder,
-            tooltip: 'Open the folder on this device',
+            tooltip: t.sftpShareOpenFolderHere,
             icon: const Icon(Icons.drive_folder_upload_rounded, size: 18),
             color: luma.textSecondary,
             constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
           ),
           IconButton(
             onPressed: repository.refresh,
-            tooltip: 'Rescan',
+            tooltip: t.sftpShareRescan,
             icon: const Icon(Icons.refresh_rounded, size: 18),
             color: luma.textSecondary,
             constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
@@ -148,6 +150,7 @@ class DeviceSharePanel extends StatelessWidget {
   }
 
   Widget _fileList(BuildContext context, LumaPalette luma, bool dropActive) {
+    final t = L.of(context);
     final files = repository.folder.files;
     if (files.isEmpty) {
       return Center(
@@ -165,7 +168,7 @@ class DeviceSharePanel extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                dropActive ? 'Drop to share' : 'Nothing shared yet',
+                dropActive ? t.sftpShareDropToShare : t.sftpShareNothingYet,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 14,
@@ -174,9 +177,7 @@ class DeviceSharePanel extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                'Drag files in from the left, or use +. Anything here shows '
-                'up in the same folder on your other devices — sent straight '
-                'over your network, never through a luma server.',
+                t.sftpShareEmptyHint,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: luma.textMuted,
@@ -239,6 +240,7 @@ class _SharedFileRowState extends State<_SharedFileRow> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovering = true),
@@ -284,7 +286,7 @@ class _SharedFileRowState extends State<_SharedFileRow> {
               ],
               IconButton(
                 onPressed: widget.onOpen,
-                tooltip: 'Open',
+                tooltip: t.sftpShareOpen,
                 icon: const Icon(Icons.open_in_new_rounded, size: 15),
                 color: luma.textMuted,
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -308,6 +310,7 @@ class _DeviceStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final peers = repository.peers;
 
     if (peers.isEmpty) {
@@ -331,10 +334,8 @@ class _DeviceStrip extends StatelessWidget {
             Expanded(
               child: Text(
                 peerSync.isRunning
-                    ? 'Looking for your other devices on this network. Open '
-                        'luma on one of them, signed in to the same account.'
-                    : 'Device sync is off. Turn it on in Settings → Sync & '
-                        'account to reach your other devices.',
+                    ? t.sftpShareLookingForDevices
+                    : t.sftpShareSyncOff,
                 style: TextStyle(
                   color: luma.textSecondary,
                   fontSize: 12,
@@ -370,6 +371,7 @@ class _DeviceChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final waiting = peer.pendingIn + peer.pendingOut;
     return Container(
       margin: const EdgeInsets.only(right: 8),
@@ -409,11 +411,11 @@ class _DeviceChip extends StatelessWidget {
                 peer.error ??
                     (peer.connected
                         ? (waiting > 0
-                            ? '$waiting ${waiting == 1 ? 'file' : 'files'} to go'
-                            : 'Up to date')
+                            ? t.sftpShareFilesToGo(waiting)
+                            : t.sftpShareUpToDate)
                         : (peer.pendingIn > 0
-                            ? '${peer.pendingIn} waiting for it to come back'
-                            : 'Not on this network')),
+                            ? t.sftpShareWaitingForReturn(peer.pendingIn)
+                            : t.sftpShareNotOnNetwork)),
                 style: TextStyle(
                   color: peer.error != null ? luma.danger : luma.textMuted,
                   fontSize: 11,
@@ -469,6 +471,7 @@ class _TransferRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final incoming = transfer.direction == ShareDirection.incoming;
     final failed = transfer.error != null;
     final color = failed
@@ -508,10 +511,10 @@ class _TransferRow extends StatelessWidget {
                     const SizedBox(width: 8),
                     Text(
                       failed
-                          ? 'Failed'
+                          ? t.sftpShareFailed
                           : (incoming
-                              ? 'from ${transfer.deviceName}'
-                              : 'to ${transfer.deviceName}'),
+                              ? t.sftpShareFromDevice(transfer.deviceName)
+                              : t.sftpShareToDevice(transfer.deviceName)),
                       style: TextStyle(
                         color: failed ? luma.danger : luma.textMuted,
                         fontSize: 11,
@@ -559,18 +562,15 @@ class DeviceShareUnavailable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return Padding(
       padding: const EdgeInsets.all(24),
       child: LumaEmptyState(
         icon: Icons.devices_rounded,
-        title: 'Sign in on both devices first',
-        subtitle:
-            'The shared folder moves files straight between devices signed '
-            'in to the same luma account, over your own network. Set up '
-            'device sync under Settings → Sync & account on each device, '
-            'then come back here.',
+        title: t.sftpShareSignInFirstTitle,
+        subtitle: t.sftpShareSignInFirstBody,
         action: LumaPrimaryButton(
-          label: 'Open settings',
+          label: t.sftpShareOpenSettings,
           icon: Icons.settings_rounded,
           onTap: onOpenSettings,
         ),

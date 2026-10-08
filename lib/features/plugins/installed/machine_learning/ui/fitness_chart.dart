@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../creature/evolution.dart';
 
@@ -22,10 +23,11 @@ class FitnessChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     if (history.isEmpty) {
       return Center(
         child: Text(
-          'Every generation will leave a mark here.',
+          t.mlChartEmpty,
           style: TextStyle(color: luma.textMuted, fontSize: 12),
         ),
       );
@@ -40,8 +42,10 @@ class FitnessChart extends StatelessWidget {
         }
 
         return Semantics(
-          label: 'Fitness over ${history.length} generations. '
-              'Best ${history.last.best.toStringAsFixed(1)} metres.',
+          label: t.mlChartSemantics(
+            history.length,
+            history.last.best.toStringAsFixed(1),
+          ),
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTapDown: (d) => scrub(d.localPosition),
@@ -52,6 +56,7 @@ class FitnessChart extends StatelessWidget {
                 history: history,
                 selected: selected,
                 luma: luma,
+                t: t,
               ),
             ),
           ),
@@ -66,11 +71,13 @@ class _FitnessPainter extends CustomPainter {
     required this.history,
     required this.selected,
     required this.luma,
+    required this.t,
   });
 
   final List<GenerationResult> history;
   final int selected;
   final LumaPalette luma;
+  final L t;
 
   static const leftGutter = 34.0;
   static const bottomGutter = 18.0;
@@ -185,7 +192,7 @@ class _FitnessPainter extends CustomPainter {
 
     label
       ..text = TextSpan(
-        text: 'metres',
+        text: t.mlMetresAxis,
         style: TextStyle(color: luma.textMuted, fontSize: 9),
       )
       ..layout();
@@ -201,7 +208,7 @@ class _FitnessPainter extends CustomPainter {
     }.entries) {
       label
         ..text = TextSpan(
-          text: 'gen ${entry.key + 1}',
+          text: t.mlChartGen('${entry.key + 1}'),
           style: TextStyle(
             color: luma.textMuted,
             fontSize: 9,
@@ -235,5 +242,6 @@ class _FitnessPainter extends CustomPainter {
   bool shouldRepaint(_FitnessPainter old) =>
       old.history.length != history.length ||
       old.selected != selected ||
-      old.luma != luma;
+      old.luma != luma ||
+      old.t != t;
 }

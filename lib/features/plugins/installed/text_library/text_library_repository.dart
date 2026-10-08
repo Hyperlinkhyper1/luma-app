@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:drift/drift.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../storage/storage_guard.dart';
 import 'data/text_library_database.dart';
 import 'text_library_models.dart';
@@ -138,7 +139,7 @@ class TextLibraryRepository {
         .into(_db.librarySubjects)
         .insert(
           LibrarySubjectsCompanion.insert(
-            name: _clean(name, fallback: 'Subject'),
+            name: _clean(name, fallback: currentL.textLibraryDefaultSubjectName),
             color: Value(
               (color ?? cycle[existing.length % cycle.length]).index,
             ),
@@ -152,7 +153,7 @@ class TextLibraryRepository {
   Future<void> renameSubject(int id, String name) =>
       (_db.update(_db.librarySubjects)..where((s) => s.id.equals(id))).write(
         LibrarySubjectsCompanion(
-          name: Value(_clean(name, fallback: 'Subject')),
+          name: Value(_clean(name, fallback: currentL.textLibraryDefaultSubjectName)),
         ),
       );
 
@@ -278,7 +279,7 @@ class TextLibraryRepository {
         .split('\n')
         .map((l) => l.trim())
         .firstWhere((l) => l.isNotEmpty, orElse: () => '');
-    if (firstLine.isEmpty) return 'Untitled';
+    if (firstLine.isEmpty) return currentL.commonUntitled;
     return firstLine.length <= 40 ? firstLine : firstLine.substring(0, 40);
   }
 

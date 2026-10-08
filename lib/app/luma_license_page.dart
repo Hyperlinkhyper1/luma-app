@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart' show LicenseParagraph, LicenseRegistry;
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
+
 /// Opens the app's license registry in a layout that keeps the detail pane
 /// below its toolbar on desktop.
 void showLumaLicensePage({
@@ -130,7 +132,7 @@ class _LumaLicensePageState extends State<_LumaLicensePage> {
                                 ),
                               const SizedBox(height: 20),
                               Text(
-                                'Powered by Flutter',
+                                L.of(context).licensePoweredByFlutter,
                                 style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             ],

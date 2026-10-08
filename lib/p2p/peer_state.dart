@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
 
+import '../l10n/current_l.dart';
+
 /// Persisted P2P state: a stable device id/name, the discovery+auto toggle,
 /// and the set of trusted peer device ids. Stored as plain JSON next to the
 /// other luma data files (no secrets live here).
@@ -124,6 +126,6 @@ class PeerSyncState {
   static String _platformLabel() {
     // Plain Dart — avoid importing dart:io Platform name strings directly so
     // the label is stable and readable.
-    return 'luma device';
+    return currentL.p2pDefaultDeviceName;
   }
 }

@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import 'ai_benchmark_repository.dart';
 import 'ai_benchmark_scope.dart';
@@ -75,6 +76,7 @@ class _TestsTabState extends State<TestsTab> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final repo = AiBenchmarkScope.of(context);
     return ListenableBuilder(
       listenable: repo,
@@ -84,7 +86,7 @@ class _TestsTabState extends State<TestsTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Tests',
+              t.aiUsageSectionTests,
               style: TextStyle(
                 color: luma.textPrimary,
                 fontSize: 18,
@@ -93,8 +95,7 @@ class _TestsTabState extends State<TestsTab> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Scratch space for experiments that are not ready to be a section '
-              'of their own.',
+              t.aiTestsBlurb,
               style: TextStyle(color: luma.textMuted, fontSize: 12.5),
             ),
             const SizedBox(height: 18),
@@ -126,98 +127,102 @@ class _TestsTabState extends State<TestsTab> {
     BuildContext context,
     AiBenchmarkRepository repo,
     double width,
-  ) =>
-      [
+  ) {
+    final t = L.of(context);
+    final openScreen = t.aiTestOpenScreen;
+    final newOpenScreen = t.aiTestNewOpenScreen;
+    return [
+      LumaHeroTile(
+        title: t.aiTestPagodaTitle,
+        subtitle: openScreen,
+        imageFile: _tileArt(repo, 'pagoda'),
+        artworkAboveBand: true,
+        fallbackIcon: Icons.temple_buddhist_rounded,
+        width: width,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const PagodaTestPage()),
+        ),
+      ),
+      LumaHeroTile(
+        title: t.aiTestEngineTitle,
+        subtitle: openScreen,
+        imageFile: _tileArt(repo, 'engine'),
+        artworkAboveBand: true,
+        fallbackIcon: Icons.precision_manufacturing_rounded,
+        width: width,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const EngineTestPage()),
+        ),
+      ),
+      LumaHeroTile(
+        title: t.aiTestPcTitle,
+        subtitle: openScreen,
+        imageFile: _tileArt(repo, 'pc'),
+        artworkAboveBand: true,
+        fallbackIcon: Icons.computer_rounded,
+        width: width,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const PcTestPage()),
+        ),
+      ),
+      LumaHeroTile(
+        title: t.aiTestCathedralTitle,
+        subtitle: newOpenScreen,
+        imageFile: _tileArt(repo, 'cathedral'),
+        artworkAboveBand: true,
+        fallbackIcon: Icons.church_rounded,
+        width: width,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const CathedralTestPage()),
+        ),
+      ),
+      LumaHeroTile(
+        title: t.aiTestKeyboardTitle,
+        subtitle: newOpenScreen,
+        imageFile: _tileArt(repo, 'keyboard'),
+        artworkAboveBand: true,
+        fallbackIcon: Icons.keyboard_rounded,
+        width: width,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const KeyboardTestPage()),
+        ),
+      ),
+      LumaHeroTile(
+        title: t.aiTestServerRackTitle,
+        subtitle: newOpenScreen,
+        imageFile: _tileArt(repo, 'server_rack'),
+        artworkAboveBand: true,
+        fallbackIcon: Icons.dns_rounded,
+        width: width,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const ServerRackTestPage()),
+        ),
+      ),
+      LumaHeroTile(
+        title: t.aiTestCruiseShipTitle,
+        subtitle: newOpenScreen,
+        imageFile: _tileArt(repo, 'cruise_ship'),
+        artworkAboveBand: true,
+        fallbackIcon: Icons.directions_boat_rounded,
+        width: width,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const CruiseShipTestPage()),
+        ),
+      ),
+      for (final test in sceneTestsOf(t))
         LumaHeroTile(
-          title: 'Pagoda Test',
-          subtitle: 'Open the test screen',
-          imageFile: _tileArt(repo, 'pagoda'),
+          title: test.title,
+          subtitle: newOpenScreen,
+          imageFile: _tileArt(repo, test.kind),
           artworkAboveBand: true,
-          fallbackIcon: Icons.temple_buddhist_rounded,
+          fallbackIcon: test.icon,
           width: width,
           onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const PagodaTestPage()),
-          ),
-        ),
-        LumaHeroTile(
-          title: 'Engine Test',
-          subtitle: 'Open the test screen',
-          imageFile: _tileArt(repo, 'engine'),
-          artworkAboveBand: true,
-          fallbackIcon: Icons.precision_manufacturing_rounded,
-          width: width,
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const EngineTestPage()),
-          ),
-        ),
-        LumaHeroTile(
-          title: 'PC Test',
-          subtitle: 'Open the test screen',
-          imageFile: _tileArt(repo, 'pc'),
-          artworkAboveBand: true,
-          fallbackIcon: Icons.computer_rounded,
-          width: width,
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const PcTestPage()),
-          ),
-        ),
-        LumaHeroTile(
-          title: 'Cathedral Test',
-          subtitle: 'New · Open the test screen',
-          imageFile: _tileArt(repo, 'cathedral'),
-          artworkAboveBand: true,
-          fallbackIcon: Icons.church_rounded,
-          width: width,
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const CathedralTestPage()),
-          ),
-        ),
-        LumaHeroTile(
-          title: 'Keyboard Test',
-          subtitle: 'New · Open the test screen',
-          imageFile: _tileArt(repo, 'keyboard'),
-          artworkAboveBand: true,
-          fallbackIcon: Icons.keyboard_rounded,
-          width: width,
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const KeyboardTestPage()),
-          ),
-        ),
-        LumaHeroTile(
-          title: 'Server Rack Test',
-          subtitle: 'New · Open the test screen',
-          imageFile: _tileArt(repo, 'server_rack'),
-          artworkAboveBand: true,
-          fallbackIcon: Icons.dns_rounded,
-          width: width,
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const ServerRackTestPage()),
-          ),
-        ),
-        LumaHeroTile(
-          title: 'Cruise Ship Test',
-          subtitle: 'New · Open the test screen',
-          imageFile: _tileArt(repo, 'cruise_ship'),
-          artworkAboveBand: true,
-          fallbackIcon: Icons.directions_boat_rounded,
-          width: width,
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const CruiseShipTestPage()),
-          ),
-        ),
-        for (final test in kSceneTests)
-          LumaHeroTile(
-            title: test.title,
-            subtitle: 'New · Open the test screen',
-            imageFile: _tileArt(repo, test.kind),
-            artworkAboveBand: true,
-            fallbackIcon: test.icon,
-            width: width,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => SceneTestPage(test: test),
-              ),
+            MaterialPageRoute<void>(
+              builder: (_) => SceneTestPage(test: test),
             ),
           ),
-      ];
+        ),
+    ];
+  }
 }

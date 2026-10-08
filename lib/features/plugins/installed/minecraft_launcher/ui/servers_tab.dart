@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import 'hover_sync_scroll.dart';
 
@@ -14,27 +15,27 @@ class ServersTab extends StatelessWidget {
 
   Future<void> _open(BuildContext context) async {
     final messenger = ScaffoldMessenger.maybeOf(context);
+    final couldNotOpen = L.of(context).mcLauncherCouldNotOpenBrowser;
     final opened = await launchUrl(
       Uri.parse(_kineticUrl),
       mode: LaunchMode.externalApplication,
     );
     if (!opened) {
-      messenger?.showSnackBar(
-        const SnackBar(content: Text('Could not open the browser.')),
-      );
+      messenger?.showSnackBar(SnackBar(content: Text(couldNotOpen)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     return HoverSyncScroll(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
         children: [
           Text(
-            'Servers',
+            t.mcLauncherServersTitle,
             style: TextStyle(
               color: luma.textPrimary,
               fontSize: 20,
@@ -43,7 +44,7 @@ class ServersTab extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Rent a Minecraft server to play your instances with friends.',
+            t.mcLauncherServersIntro,
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
           const SizedBox(height: 16),
@@ -63,16 +64,14 @@ class ServersTab extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Modpack and plugin support, 24/7 support and one-click '
-                  'installs. Signing up through this link supports luma at no '
-                  'extra cost to you.',
+                  t.mcLauncherKineticBody,
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
                 const SizedBox(height: 14),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: LumaPrimaryButton(
-                    label: 'Browse plans',
+                    label: t.mcLauncherBrowsePlans,
                     icon: Icons.open_in_new_rounded,
                     onTap: () => _open(context),
                   ),
@@ -104,6 +103,7 @@ class _KineticBannerState extends State<_KineticBanner> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovering = true),
@@ -142,7 +142,7 @@ class _KineticBannerState extends State<_KineticBanner> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'MINECRAFT SERVER HOSTING',
+                    t.mcLauncherServerHostingEyebrow,
                     style: TextStyle(
                       color: _lilac.withValues(alpha: 0.9),
                       fontSize: 11,
@@ -151,8 +151,8 @@ class _KineticBannerState extends State<_KineticBanner> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'QUALITY HOSTING,\nFOR LOW PRICES!',
+                  Text(
+                    t.mcLauncherServerHostingHeadline,
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -163,15 +163,15 @@ class _KineticBannerState extends State<_KineticBanner> {
                   ),
                 ],
               ),
-              const Wrap(
+              Wrap(
                 spacing: 10,
                 runSpacing: 10,
                 children: [
                   _Pill(
                     icon: Icons.support_agent_rounded,
-                    label: '24/7 support',
+                    label: t.mcLauncherPillSupport,
                   ),
-                  _Pill(icon: Icons.extension_rounded, label: 'Mod support'),
+                  _Pill(icon: Icons.extension_rounded, label: t.mcLauncherPillModSupport),
                 ],
               ),
               Column(
@@ -204,11 +204,11 @@ class _KineticBannerState extends State<_KineticBanner> {
                       borderRadius: BorderRadius.circular(999),
                       color: _hovering ? const Color(0xFF8F63FF) : _violet,
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'START TODAY!',
+                          t.mcLauncherStartToday,
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 12,

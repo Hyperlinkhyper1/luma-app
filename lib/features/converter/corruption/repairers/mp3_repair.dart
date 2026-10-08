@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import '../../../../l10n/current_l.dart';
 import '../binary_utils.dart';
 import '../repair_report.dart';
 
@@ -67,32 +68,23 @@ Uint8List repairMp3(Uint8List bytes, RepairLog log) {
         (data[9] & 0x7F);
     tagBytes = 10 + size;
     if (tagBytes > data.length) {
-      log.fixed(
-        'The ID3 tag claims ${formatSize(tagBytes)} but the file is smaller — '
-        'dropped the tag and kept the audio.',
-      );
+      log.fixed(currentL.repairMp3TagTooBig(formatSize(tagBytes)));
       tagBytes = 0;
       final firstFrame = _findFrameRun(data, 10);
       if (firstFrame >= 0) data = data.sublist(firstFrame);
     } else {
-      log.info('Kept the ${formatSize(tagBytes)} ID3 tag at the front.');
+      log.info(currentL.repairMp3TagKept(formatSize(tagBytes)));
     }
   }
 
   final start = _findFrameRun(data, tagBytes);
   if (start < 0) {
-    log.failed(
-      'No run of valid MPEG audio frames could be found anywhere in the file. '
-      'There is no audio left to salvage.',
-    );
+    log.failed(currentL.repairMp3NoFrames);
     return data;
   }
 
   if (start > tagBytes) {
-    log.fixed(
-      'Skipped ${formatSize(start - tagBytes)} of junk before the first real '
-      'audio frame.',
-    );
+    log.fixed(currentL.repairMp3JunkSkipped(formatSize(start - tagBytes)));
   }
 
   // Walk the frames from there to find where the audio stops making sense.
@@ -104,10 +96,7 @@ Uint8List repairMp3(Uint8List bytes, RepairLog log) {
     if (frame == null) {
       final resync = _findFrameRun(data, offset + 1, limit: 1 << 16);
       if (resync < 0) break;
-      log.warning(
-        'A damaged stretch at ${formatOffset(offset)} was skipped; playback '
-        'will glitch there.',
-      );
+      log.warning(currentL.repairMp3DamagedStretch(formatOffset(offset)));
       offset = resync;
       continue;
     }
@@ -117,10 +106,10 @@ Uint8List repairMp3(Uint8List bytes, RepairLog log) {
   }
 
   if (frames == 0) {
-    log.failed('The frames stop being readable immediately after the header.');
+    log.failed(currentL.repairMp3FramesStop);
     return data;
   }
-  log.info('$frames audio frames survived.');
+  log.info(currentL.repairMp3FramesSurvived(frames));
 
   final head = tagBytes > 0 && start >= tagBytes
       ? data.sublist(0, tagBytes)
@@ -128,10 +117,7 @@ Uint8List repairMp3(Uint8List bytes, RepairLog log) {
   final body = data.sublist(start, lastGood);
 
   if (lastGood < data.length) {
-    log.fixed(
-      'Cut ${formatSize(data.length - lastGood)} of unplayable bytes off the '
-      'end.',
-    );
+    log.fixed(currentL.repairMp3CutTail(formatSize(data.length - lastGood)));
   }
   if (head.isEmpty && start == 0 && lastGood == data.length) return data;
   return concatBytes([head, body]);

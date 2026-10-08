@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'recipe_models.dart';
 import 'recipe_book_controller.dart';
@@ -361,6 +362,7 @@ class RecipeCategoryTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final color = recipeCategoryColor(category, luma);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -369,7 +371,7 @@ class RecipeCategoryTag extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
-        category,
+        localizedRecipeCategory(t, category),
         style: TextStyle(
           color: color,
           fontSize: 11,

@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'ai_workbench_models.dart';
 import 'ai_workbench_repository.dart';
@@ -96,14 +97,14 @@ class _AiMarkdownLibraryTabState extends State<AiMarkdownLibraryTab> {
       _selectedId = selected?.id;
       _editingId = selected?.id;
     });
-    _toast('Markdown note saved');
+    _toast(L.of(context).aiLibrarySaved);
   }
 
   void _newNote() => _select(null);
 
   Future<void> _import() async {
     final picked = await FilePicker.pickFiles(
-      dialogTitle: 'Import Markdown note',
+      dialogTitle: L.of(context).aiLibraryImportTitle,
       type: FileType.custom,
       allowedExtensions: ['md', 'markdown', 'txt'],
       withData: true,
@@ -119,14 +120,13 @@ class _AiMarkdownLibraryTabState extends State<AiMarkdownLibraryTab> {
     _select(null);
     _titleController.text = file.name.replaceFirst(RegExp(r'\.[^.]+$'), '');
     _bodyController.text = body;
-    if (mounted)
-      _toast('Imported ${file.name} — save it to add it to the library');
+    if (mounted) _toast(L.of(context).aiLibraryImported(file.name));
   }
 
   Future<void> _export(AiMarkdownEntry entry) async {
     final fileName = '${_safeFileName(entry.title)}.md';
     final path = await FilePicker.saveFile(
-      dialogTitle: 'Export Markdown note',
+      dialogTitle: L.of(context).aiLibraryExportTitle,
       fileName: fileName,
       type: FileType.custom,
       allowedExtensions: ['md'],
@@ -136,7 +136,7 @@ class _AiMarkdownLibraryTabState extends State<AiMarkdownLibraryTab> {
     if (!Platform.isAndroid) {
       await File(path).writeAsString(entry.body, flush: true);
     }
-    if (mounted) _toast('Exported $fileName');
+    if (mounted) _toast(L.of(context).aiLibraryExported(fileName));
   }
 
   Future<void> _delete(
@@ -146,16 +146,16 @@ class _AiMarkdownLibraryTabState extends State<AiMarkdownLibraryTab> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Markdown note?'),
-        content: Text('"${entry.title}" will be removed from the library.'),
+        title: Text(L.of(context).aiLibraryDeleteTitle),
+        content: Text(L.of(context).aiLibraryDeleteBody(entry.title)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(L.of(context).commonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
+            child: Text(L.of(context).commonDelete),
           ),
         ],
       ),
@@ -277,25 +277,25 @@ class _LibraryHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Markdown Library',
+              L.of(context).aiLibraryHeader,
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 4),
             Text(
-              '$count ${count == 1 ? 'note' : 'notes'} · reusable context for your agents',
+              L.of(context).aiLibraryHeaderCount(count),
               style: TextStyle(color: context.luma.textSecondary),
             ),
           ],
         ),
       ),
       LumaGhostButton(
-        label: 'Import',
+        label: L.of(context).commonImport,
         icon: Icons.file_open_rounded,
         onTap: onImport,
       ),
       const SizedBox(width: 10),
       LumaPrimaryButton(
-        label: 'New note',
+        label: L.of(context).aiLibraryNewNote,
         icon: Icons.add_rounded,
         onTap: onNew,
       ),
@@ -317,6 +317,7 @@ class _LibraryList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     if (entries.isEmpty) {
       return LumaCard(
         padding: const EdgeInsets.all(18),
@@ -330,7 +331,7 @@ class _LibraryList extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'Your library is empty',
+              t.aiLibraryEmptyTitle,
               style: TextStyle(
                 color: context.luma.textPrimary,
                 fontWeight: FontWeight.w700,
@@ -338,13 +339,13 @@ class _LibraryList extends StatelessWidget {
             ),
             const SizedBox(height: 5),
             Text(
-              'Save prompts, project context, and checklists here.',
+              t.aiLibraryEmptyBody,
               textAlign: TextAlign.center,
               style: TextStyle(color: context.luma.textSecondary, fontSize: 12),
             ),
             const SizedBox(height: 14),
             LumaGhostButton(
-              label: 'Create note',
+              label: t.aiLibraryCreateNote,
               icon: Icons.add_rounded,
               onTap: onNew,
             ),
@@ -376,7 +377,9 @@ class _LibraryList extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
             subtitle: Text(
-              entry.tags.isEmpty ? 'Markdown note' : entry.tags.join(' · '),
+              entry.tags.isEmpty
+                  ? t.aiMarkdownNoteLabel
+                  : entry.tags.join(' · '),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -415,6 +418,7 @@ class _MarkdownEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return LumaCard(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
       child: Column(
@@ -424,18 +428,18 @@ class _MarkdownEditor extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  entry == null ? 'New Markdown note' : 'Edit note',
+                  entry == null ? t.aiLibraryNewEditorTitle : t.aiLibraryEditNote,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
               if (entry != null) ...[
                 IconButton(
-                  tooltip: 'Export .md',
+                  tooltip: t.aiLibraryExportMdTooltip,
                   onPressed: onExport,
                   icon: const Icon(Icons.download_rounded),
                 ),
                 IconButton(
-                  tooltip: 'Delete note',
+                  tooltip: t.aiLibraryDeleteNoteTooltip,
                   onPressed: onDelete,
                   icon: Icon(Icons.delete_outline_rounded, color: luma.danger),
                 ),
@@ -445,24 +449,24 @@ class _MarkdownEditor extends StatelessWidget {
           const SizedBox(height: 10),
           TextField(
             controller: titleController,
-            decoration: const InputDecoration(
-              labelText: 'Title',
-              hintText: 'Project conventions',
+            decoration: InputDecoration(
+              labelText: t.commonTitle,
+              hintText: t.aiLibraryTitleHint,
             ),
           ),
           const SizedBox(height: 10),
           TextField(
             controller: tagsController,
-            decoration: const InputDecoration(
-              labelText: 'Tags',
-              hintText: 'flutter, conventions, project',
+            decoration: InputDecoration(
+              labelText: t.aiLibraryFieldTags,
+              hintText: t.aiLibraryTagsHint,
             ),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
               Text(
-                'Content',
+                t.aiLibraryContent,
                 style: TextStyle(
                   color: luma.textSecondary,
                   fontWeight: FontWeight.w600,
@@ -470,9 +474,9 @@ class _MarkdownEditor extends StatelessWidget {
               ),
               const Spacer(),
               SegmentedButton<bool>(
-                segments: const [
-                  ButtonSegment(value: false, label: Text('Edit')),
-                  ButtonSegment(value: true, label: Text('Preview')),
+                segments: [
+                  ButtonSegment(value: false, label: Text(t.commonEdit)),
+                  ButtonSegment(value: true, label: Text(t.commonPreview)),
                 ],
                 selected: {preview},
                 onSelectionChanged: (value) => onPreviewChanged(value.first),
@@ -485,7 +489,7 @@ class _MarkdownEditor extends StatelessWidget {
                 ? SingleChildScrollView(
                     child: SelectableText(
                       bodyController.text.isEmpty
-                          ? 'Nothing written yet.'
+                          ? t.aiLibraryNothingWritten
                           : bodyController.text,
                       style: TextStyle(color: luma.textPrimary, height: 1.5),
                     ),
@@ -496,9 +500,8 @@ class _MarkdownEditor extends StatelessWidget {
                     maxLines: null,
                     minLines: null,
                     textAlignVertical: TextAlignVertical.top,
-                    decoration: const InputDecoration(
-                      hintText:
-                          '# Instructions\n\nWrite reusable context in Markdown…',
+                    decoration: InputDecoration(
+                      hintText: t.aiLibraryBodyHint,
                       alignLabelWithHint: true,
                     ),
                   ),
@@ -507,7 +510,7 @@ class _MarkdownEditor extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: LumaPrimaryButton(
-              label: saving ? 'Saving…' : 'Save note',
+              label: saving ? t.aiUsageSaving : t.aiLibrarySaveNote,
               icon: Icons.save_rounded,
               onTap: saving ? null : onSave,
             ),

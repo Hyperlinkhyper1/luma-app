@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'calc_expression.dart';
 import 'unit_conversion.dart';
@@ -57,6 +58,7 @@ class _UnitConverterDrawerState extends State<UnitConverterDrawer> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final value = _value;
     final converted =
         value == null ? null : convertUnits(value, _from, _to);
@@ -79,7 +81,7 @@ class _UnitConverterDrawerState extends State<UnitConverterDrawer> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Convert',
+                      t.navConvert,
                       style: TextStyle(
                         color: luma.textPrimary,
                         fontSize: 15,
@@ -88,7 +90,7 @@ class _UnitConverterDrawerState extends State<UnitConverterDrawer> {
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Close',
+                    tooltip: t.commonClose,
                     onPressed: () => Navigator.of(context).maybePop(),
                     icon: Icon(
                       Icons.close_rounded,
@@ -106,12 +108,12 @@ class _UnitConverterDrawerState extends State<UnitConverterDrawer> {
                   // Eleven categories wrap to a few rows, so they scroll with
                   // the rest rather than pinning that space for good.
                   LumaSegmentedTabs(
-                    tabs: [for (final c in unitCategories) c.name],
+                    tabs: [for (final c in unitCategories) c.displayName(t)],
                     selectedIndex: unitCategories.indexOf(_category),
                     onSelect: (index) => _selectCategory(unitCategories[index]),
                   ),
                   const SizedBox(height: 14),
-                  _fieldLabel(luma, 'From'),
+                  _fieldLabel(luma, t.calcConvertFrom),
                   const SizedBox(height: 6),
                   Row(
                     children: [
@@ -139,6 +141,7 @@ class _UnitConverterDrawerState extends State<UnitConverterDrawer> {
                       const SizedBox(width: 8),
                       _UnitDropdown(
                         units: _category.units,
+                        categoryId: _category.id,
                         selected: _from,
                         onChanged: (unit) => setState(() => _from = unit),
                       ),
@@ -148,7 +151,7 @@ class _UnitConverterDrawerState extends State<UnitConverterDrawer> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: IconButton(
-                      tooltip: 'Swap units',
+                      tooltip: t.calcConvertSwapUnits,
                       onPressed: _swap,
                       icon: Icon(
                         Icons.swap_vert_rounded,
@@ -157,7 +160,7 @@ class _UnitConverterDrawerState extends State<UnitConverterDrawer> {
                       ),
                     ),
                   ),
-                  _fieldLabel(luma, 'To'),
+                  _fieldLabel(luma, t.calcConvertTo),
                   const SizedBox(height: 6),
                   Row(
                     children: [
@@ -189,6 +192,7 @@ class _UnitConverterDrawerState extends State<UnitConverterDrawer> {
                       const SizedBox(width: 8),
                       _UnitDropdown(
                         units: _category.units,
+                        categoryId: _category.id,
                         selected: _to,
                         onChanged: (unit) => setState(() => _to = unit),
                       ),
@@ -196,7 +200,7 @@ class _UnitConverterDrawerState extends State<UnitConverterDrawer> {
                   ),
                   const SizedBox(height: 10),
                   LumaPrimaryButton(
-                    label: 'Use in calculator',
+                    label: t.calcConvertUseInCalculator,
                     icon: Icons.arrow_forward_rounded,
                     expand: true,
                     onTap: converted == null
@@ -207,11 +211,12 @@ class _UnitConverterDrawerState extends State<UnitConverterDrawer> {
                           },
                   ),
                   const SizedBox(height: 18),
-                  _fieldLabel(luma, 'Every unit'),
+                  _fieldLabel(luma, t.calcConvertEveryUnit),
                   const SizedBox(height: 4),
                   for (final unit in _category.units)
                     _AllUnitsRow(
                       unit: unit,
+                      categoryId: _category.id,
                       value: value == null
                           ? null
                           : convertUnits(value, _from, unit),
@@ -255,17 +260,20 @@ class _UnitConverterDrawerState extends State<UnitConverterDrawer> {
 class _UnitDropdown extends StatelessWidget {
   const _UnitDropdown({
     required this.units,
+    required this.categoryId,
     required this.selected,
     required this.onChanged,
   });
 
   final List<ConvertUnit> units;
+  final String categoryId;
   final ConvertUnit selected;
   final ValueChanged<ConvertUnit> onChanged;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       height: 48,
       width: 108,
@@ -317,7 +325,7 @@ class _UnitDropdown extends StatelessWidget {
               DropdownMenuItem<String>(
                 value: unit.id,
                 child: Text(
-                  '${unit.name} (${unit.symbol})',
+                  '${unit.displayName(t, categoryId)} (${unit.symbol})',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: luma.textPrimary, fontSize: 13),
@@ -334,17 +342,20 @@ class _UnitDropdown extends StatelessWidget {
 class _AllUnitsRow extends StatelessWidget {
   const _AllUnitsRow({
     required this.unit,
+    required this.categoryId,
     required this.value,
     required this.highlighted,
   });
 
   final ConvertUnit unit;
+  final String categoryId;
   final double? value;
   final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       margin: const EdgeInsets.only(top: 4),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -356,7 +367,7 @@ class _AllUnitsRow extends StatelessWidget {
         children: [
           Expanded(
             child: Text(
-              unit.name,
+              unit.displayName(t, categoryId),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(color: luma.textSecondary, fontSize: 12.5),

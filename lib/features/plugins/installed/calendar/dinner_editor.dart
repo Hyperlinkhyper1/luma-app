@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'calendar_repository.dart';
 
@@ -102,7 +103,7 @@ class _DinnerEditorDialogState extends State<_DinnerEditorDialog> {
   Future<void> _save() async {
     final title = _title.text.trim();
     if (title.isEmpty) {
-      setState(() => _error = 'Give the dinner a name.');
+      setState(() => _error = L.of(context).calendarDinnerNameRequired);
       return;
     }
     final ingredients = _ingredients
@@ -137,6 +138,7 @@ class _DinnerEditorDialogState extends State<_DinnerEditorDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Dialog(
       backgroundColor: luma.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -159,31 +161,31 @@ class _DinnerEditorDialogState extends State<_DinnerEditorDialog> {
                       children: [
                         Expanded(
                           child: _numberField(luma, _servings,
-                              hint: 'Servings',
+                              hint: t.calendarServings,
                               icon: Icons.people_alt_outlined),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: _numberField(luma, _minutes,
-                              hint: 'Minutes', icon: Icons.schedule_rounded),
+                              hint: t.calendarMinutes, icon: Icons.schedule_rounded),
                         ),
                       ],
                     ),
                     const SizedBox(height: 18),
-                    _label(luma, 'Ingredients'),
+                    _label(luma, t.calendarIngredients),
                     const SizedBox(height: 8),
                     _ingredientRows(luma),
                     const SizedBox(height: 6),
                     LumaGhostButton(
-                      label: 'Add ingredient',
+                      label: t.calendarAddIngredient,
                       icon: Icons.add_rounded,
                       onTap: _addIngredientRow,
                     ),
                     const SizedBox(height: 18),
-                    _label(luma, 'Instructions'),
+                    _label(luma, t.calendarInstructions),
                     const SizedBox(height: 8),
                     _plainField(luma, _instructions,
-                        hint: 'How to make it', maxLines: 5),
+                        hint: t.calendarInstructionsHint, maxLines: 5),
                     if (_error != null) ...[
                       const SizedBox(height: 12),
                       Text(_error!,
@@ -211,7 +213,7 @@ class _DinnerEditorDialogState extends State<_DinnerEditorDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _isEditing ? 'Edit dinner' : 'Set dinner',
+                  _isEditing ? L.of(context).calendarEditDinner : L.of(context).calendarSetDinner,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 17,
@@ -227,7 +229,7 @@ class _DinnerEditorDialogState extends State<_DinnerEditorDialog> {
           ),
           IconButton(
             icon: Icon(Icons.close_rounded, color: luma.textMuted, size: 20),
-            tooltip: 'Close',
+            tooltip: L.of(context).commonClose,
             onPressed: () => Navigator.of(context).pop(),
           ),
         ],
@@ -241,7 +243,7 @@ class _DinnerEditorDialogState extends State<_DinnerEditorDialog> {
       autofocus: !_isEditing,
       style: TextStyle(
           color: luma.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
-      decoration: _decoration(luma, hint: 'Dish name'),
+      decoration: _decoration(luma, hint: L.of(context).calendarDishNameHint),
       onSubmitted: (_) => _save(),
     );
   }
@@ -257,14 +259,14 @@ class _DinnerEditorDialogState extends State<_DinnerEditorDialog> {
                   controller: _ingredients[i],
                   style: TextStyle(color: luma.textPrimary, fontSize: 14),
                   decoration: _decoration(luma,
-                      hint: 'e.g. 2 chicken breasts',
+                      hint: L.of(context).calendarIngredientHint,
                       icon: Icons.circle_outlined),
                 ),
               ),
               const SizedBox(width: 6),
               IconButton(
                 icon: Icon(Icons.close_rounded, size: 16, color: luma.textMuted),
-                tooltip: 'Remove',
+                tooltip: L.of(context).commonRemove,
                 onPressed: () => _removeIngredientRow(i),
               ),
             ],
@@ -314,7 +316,7 @@ class _DinnerEditorDialogState extends State<_DinnerEditorDialog> {
         children: [
           if (_isEditing)
             Tooltip(
-              message: 'Remove dinner',
+              message: L.of(context).calendarRemoveDinner,
               child: IconButton(
                 icon: Icon(Icons.delete_outline_rounded, color: luma.danger),
                 onPressed: _delete,
@@ -322,12 +324,12 @@ class _DinnerEditorDialogState extends State<_DinnerEditorDialog> {
             ),
           const Spacer(),
           LumaGhostButton(
-            label: 'Cancel',
+            label: L.of(context).commonCancel,
             onTap: () => Navigator.of(context).pop(),
           ),
           const SizedBox(width: 10),
           LumaPrimaryButton(
-            label: _isEditing ? 'Save' : 'Set dinner',
+            label: _isEditing ? L.of(context).commonSave : L.of(context).calendarSetDinner,
             icon: Icons.check_rounded,
             loading: _saving,
             onTap: _save,
@@ -377,6 +379,7 @@ class _DinnerDetailDialogState extends State<_DinnerDetailDialog> {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final d = widget.dinner;
+    final t = L.of(context);
     return Dialog(
       backgroundColor: luma.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -398,14 +401,14 @@ class _DinnerDetailDialogState extends State<_DinnerDetailDialog> {
                       const SizedBox(height: 18),
                     ],
                     if (d.ingredients.isNotEmpty) ...[
-                      _label(luma, 'What you need'),
+                      _label(luma, t.calendarWhatYouNeed),
                       const SizedBox(height: 8),
                       _ingredientList(luma, d),
                       const SizedBox(height: 18),
                     ],
                     if (d.instructions != null &&
                         d.instructions!.isNotEmpty) ...[
-                      _label(luma, 'Instructions'),
+                      _label(luma, t.calendarInstructions),
                       const SizedBox(height: 8),
                       Text(
                         d.instructions!,
@@ -418,7 +421,7 @@ class _DinnerDetailDialogState extends State<_DinnerDetailDialog> {
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         child: Text(
-                          'No ingredients or instructions added yet.',
+                          t.calendarDinnerEmpty,
                           style: TextStyle(color: luma.textMuted, fontSize: 13),
                         ),
                       ),
@@ -474,7 +477,7 @@ class _DinnerDetailDialogState extends State<_DinnerDetailDialog> {
           ),
           IconButton(
             icon: Icon(Icons.close_rounded, color: luma.textMuted, size: 20),
-            tooltip: 'Close',
+            tooltip: L.of(context).commonClose,
             onPressed: () => Navigator.of(context).pop(),
           ),
         ],
@@ -490,12 +493,12 @@ class _DinnerDetailDialogState extends State<_DinnerDetailDialog> {
         if (d.servings != null)
           _MetaPill(
             icon: Icons.people_alt_outlined,
-            label: '${d.servings} serving${d.servings == 1 ? '' : 's'}',
+            label: L.of(context).calendarServingsCount(d.servings!),
           ),
         if (d.minutes != null)
           _MetaPill(
             icon: Icons.schedule_rounded,
-            label: '${d.minutes} min',
+            label: L.of(context).calendarMinutesShort(d.minutes!),
           ),
       ],
     );
@@ -534,7 +537,7 @@ class _DinnerDetailDialogState extends State<_DinnerDetailDialog> {
       child: Row(
         children: [
           Tooltip(
-            message: 'Remove dinner',
+            message: L.of(context).calendarRemoveDinner,
             child: IconButton(
               icon: Icon(Icons.delete_outline_rounded, color: luma.danger),
               onPressed: () async {
@@ -545,12 +548,12 @@ class _DinnerDetailDialogState extends State<_DinnerDetailDialog> {
           ),
           const Spacer(),
           LumaGhostButton(
-            label: 'Close',
+            label: L.of(context).commonClose,
             onTap: () => Navigator.of(context).pop(),
           ),
           const SizedBox(width: 10),
           LumaPrimaryButton(
-            label: 'Edit',
+            label: L.of(context).commonEdit,
             icon: Icons.edit_rounded,
             onTap: () {
               Navigator.of(context).pop();

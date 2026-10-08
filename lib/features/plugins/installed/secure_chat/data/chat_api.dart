@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../../l10n/current_l.dart';
 import '../../../../../sync/server_access.dart';
 
 /// A conversation the current user is part of, as seen from the server.
@@ -222,7 +223,7 @@ class ChatApi {
       response.statusCode,
       decoded?['error'] as String? ?? 'http_${response.statusCode}',
       decoded?['message'] as String? ??
-          'Server error (${response.statusCode}).',
+          currentL.secureChatServerError(response.statusCode),
     );
   }
 

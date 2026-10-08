@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../../../l10n/current_l.dart';
 import '../file_times.dart';
 import '../sftp_paths.dart';
 import 'host_crypto.dart';
@@ -124,9 +125,9 @@ class SftpHostServer extends ChangeNotifier {
   /// title, and the only part of the path that leaves this machine.
   String get rootName {
     final path = _directory?.path;
-    if (path == null) return 'Shared';
+    if (path == null) return currentL.sftpHostSharedFolderName;
     final parts = path.split(RegExp(r'[\\/]')).where((s) => s.isNotEmpty);
-    return parts.isEmpty ? 'Shared' : parts.last;
+    return parts.isEmpty ? currentL.sftpHostSharedFolderName : parts.last;
   }
 
   List<HostClient> get clients =>
@@ -190,8 +191,7 @@ class SftpHostServer extends ChangeNotifier {
     final secret = password ?? generatePairingPassword();
     if (secret.length < kMinPairingPasswordLength) {
       _status = HostStatus.failed;
-      _error = 'A pairing password needs at least '
-          '$kMinPairingPasswordLength characters.';
+      _error = currentL.sftpServerPasswordTooShort(kMinPairingPasswordLength);
       _notify();
       return;
     }
@@ -226,7 +226,7 @@ class SftpHostServer extends ChangeNotifier {
       socket.listen(
         _accept,
         onError: (Object e) {
-          _error = 'The listener stopped: $e';
+          _error = currentL.sftpServerListenerStopped('$e');
           _status = HostStatus.failed;
           _notify();
         },
@@ -235,11 +235,14 @@ class SftpHostServer extends ChangeNotifier {
     } on SocketException catch (e) {
       _status = HostStatus.failed;
       _error = e.osError?.errorCode == 10048 || e.osError?.errorCode == 98
-          ? 'Port $port is already in use on this device. Pick another one.'
-          : 'Could not listen on port $port. ${e.osError?.message ?? e.message}';
+          ? currentL.sftpServerPortInUse(port)
+          : currentL.sftpServerCouldNotListen(
+              port,
+              e.osError?.message ?? e.message,
+            );
     } catch (e) {
       _status = HostStatus.failed;
-      _error = 'Could not start hosting. $e';
+      _error = currentL.sftpServerCouldNotStart('$e');
     }
     _notify();
   }
@@ -312,17 +315,17 @@ class SftpHostServer extends ChangeNotifier {
       // easier for being told to stop.
       await _refuse(
         socket,
-        'Too many wrong pairing passwords came from this device, so that '
-        'device is ignoring it for a few minutes. Wait, or show a new '
-        'pairing password on it and use that.',
+        currentL.sftpHostTooManyPairingFailures,
+        code: 'pairing_lockout',
       );
       return;
     }
     if (_connections.length >= maxClients) {
       await _refuse(
         socket,
-        'That device already has $maxClients devices connected. Disconnect '
-        'one there and try again.',
+        currentL.sftpHostTooManyDevices(maxClients),
+        code: 'client_limit',
+        args: {'maxClients': maxClients},
       );
       return;
     }
@@ -358,9 +361,19 @@ class SftpHostServer extends ChangeNotifier {
   }
 
   /// Turns [socket] away with [message] in place of a hello, then closes it.
-  static Future<void> _refuse(Socket socket, String message) async {
+  static Future<void> _refuse(
+    Socket socket,
+    String message, {
+    required String code,
+    Map<String, Object?> args = const {},
+  }) async {
     try {
-      socket.add(frameBytes(encodeControlFrame({'ok': false, 'e': message})));
+      socket.add(frameBytes(encodeControlFrame({
+        'ok': false,
+        'e': message,
+        'ec': code,
+        'ea': args,
+      })));
       await socket.flush().timeout(const Duration(seconds: 2));
       await socket.close().timeout(const Duration(seconds: 2));
     } catch (_) {
@@ -439,7 +452,7 @@ class _HostConnection {
     required String address,
   }) : client = HostClient._(
           id: clientId,
-          deviceName: 'Connecting…',
+          deviceName: currentL.sftpServerConnecting,
           address: address,
           connectedAt: DateTime.now(),
         );
@@ -512,8 +525,8 @@ class _HostConnection {
             'i': 0,
             kAdmitKey: false,
             'e': _fatal == null
-                ? 'The other device did not allow this connection.'
-                : 'The connection closed while waiting to be allowed in.',
+                ? currentL.sftpHostNotLetIn
+                : currentL.sftpHostConnectionWasClosed,
           }));
           return;
         }
@@ -570,7 +583,7 @@ class _HostConnection {
     try {
       return Platform.localHostname;
     } catch (_) {
-      return 'A luma device';
+      return currentL.sftpHostUnnamedDevice;
     }
   }
 
@@ -611,7 +624,7 @@ class _HostConnection {
     final id = (message['i'] as num?)?.toInt() ?? 0;
     final op = HostOp.parse(message['op']?.toString());
     if (op == null) {
-      await _reply(hostError(id, 'This host does not support that request.'));
+      await _reply(hostError(id, currentL.sftpHostRefusedRequest, code: 'unsupported_request'));
       return;
     }
 
@@ -641,11 +654,11 @@ class _HostConnection {
           await _opWriteClose(id, message);
       }
     } on HostAccessDenied catch (e) {
-      await _reply(hostError(id, e.message));
+      await _reply(hostError(id, e.message, code: 'invalid_path'));
     } on FileSystemException catch (e) {
-      await _reply(hostError(id, _describeFileError(e)));
+      await _reply(hostError(id, _describeFileError(e), code: 'operation_failed', args: {'detail': e.osError?.message ?? ''}));
     } catch (e) {
-      await _reply(hostError(id, 'That did not work: $e'));
+      await _reply(hostError(id, currentL.sftpHostCouldNotConnect(e.toString()), code: 'operation_failed', args: {'detail': e.toString()}));
     }
   }
 
@@ -655,7 +668,7 @@ class _HostConnection {
     final path = await jail.resolve(_path(message, 'p'), mustExist: true);
     final directory = Directory(path);
     if (!await directory.exists()) {
-      await _reply(hostError(id, 'That folder is no longer there.'));
+      await _reply(hostError(id, currentL.sftpHostFolderGone, code: 'folder_missing'));
       return;
     }
     final entities = await directory.list(followLinks: false).toList();
@@ -683,10 +696,8 @@ class _HostConnection {
         !await HostStorageAccess.granted()) {
       await _reply(hostError(
         id,
-        'This folder may not be empty: luma on the other device is not '
-        'allowed to see files other apps made. On that device, allow "All '
-        'files access" for luma (the Host tab or This device screen has a '
-        'button for it), then refresh.',
+        currentL.sftpHostStorageAccessBody,
+        code: 'storage_access',
       ));
       return;
     }
@@ -741,7 +752,7 @@ class _HostConnection {
     final path = await jail.resolve(remote, mustExist: true);
     final stat = await FileStat.stat(path);
     if (stat.type == FileSystemEntityType.notFound) {
-      await _reply(hostError(id, 'That item is not there.'));
+      await _reply(hostError(id, currentL.sftpHostItemUnreadable, code: 'item_unreadable'));
       return;
     }
     await _reply(hostOk(id, {
@@ -797,14 +808,15 @@ class _HostConnection {
     if (Platform.isWindows) {
       await _reply(hostError(
         id,
-        'This device runs Windows, which has no POSIX permissions to set.',
+        currentL.sftpHostWindowsPermissionsUnsupported,
+        code: 'windows_permissions',
       ));
       return;
     }
     final path = await jail.resolve(_path(message, 'p'), mustExist: true);
     final mode = (message['m'] as num?)?.toInt();
     if (mode == null || mode < 0 || mode > 0x1ff) {
-      await _reply(hostError(id, 'That is not a permission value.'));
+      await _reply(hostError(id, currentL.sftpPermissionsInvalid, code: 'invalid_permissions'));
       return;
     }
     final result = await Process.run('chmod', [
@@ -812,7 +824,7 @@ class _HostConnection {
       path,
     ]);
     if (result.exitCode != 0) {
-      await _reply(hostError(id, 'The permissions could not be changed.'));
+      await _reply(hostError(id, currentL.sftpHostSaveFailed(''), code: 'permissions_failed', args: {'detail': ''}));
       return;
     }
     await _reply(hostOk(id));
@@ -822,14 +834,14 @@ class _HostConnection {
     final path = await jail.resolve(_path(message, 'p'), mustExist: true);
     final file = File(path);
     if (!await file.exists()) {
-      await _reply(hostError(id, 'That file is no longer there.'));
+      await _reply(hostError(id, currentL.sftpHostItemUnreadable, code: 'item_unreadable'));
       return;
     }
     final offset = (message['o'] as num?)?.toInt() ?? 0;
     final stat = await file.stat();
     final total = stat.size;
     if (offset < 0 || offset > total) {
-      await _reply(hostError(id, 'That file changed while it was being read.'));
+      await _reply(hostError(id, currentL.sftpHostItemUnreadable, code: 'item_unreadable'));
       return;
     }
 
@@ -881,7 +893,7 @@ class _HostConnection {
       }
     } catch (e) {
       if (!_closed) {
-        await _reply(hostEvent(id, kEventError, 'The file could not be read.'));
+        await _reply(hostEvent(id, kEventError, currentL.sftpHostItemUnreadable, 'item_unreadable'));
       }
       debugPrint('luma host: read failed: $e');
     } finally {
@@ -895,7 +907,7 @@ class _HostConnection {
     final path = await jail.resolve(_path(message, 'p'));
     final parent = File(path).parent;
     if (!await parent.exists()) {
-      await _reply(hostError(id, 'The folder for that file is not there.'));
+      await _reply(hostError(id, currentL.sftpHostFolderGone, code: 'folder_missing'));
       return;
     }
     final handle = await File(path).open(mode: FileMode.writeOnly);
@@ -916,14 +928,14 @@ class _HostConnection {
       await stream.handle.writeFrom(bytes);
       stream.written += bytes.length;
     } catch (e) {
-      stream.error = 'The file could not be written: $e';
+      stream.error = e.toString();
     }
   }
 
   Future<void> _opWriteClose(int id, Map<String, dynamic> message) async {
     final stream = _writes.remove(id);
     if (stream == null) {
-      await _reply(hostError(id, 'That upload was not open.'));
+      await _reply(hostError(id, currentL.sftpHostTransferStopped, code: 'transfer_stopped'));
       return;
     }
     try {
@@ -937,7 +949,7 @@ class _HostConnection {
       } catch (_) {
         // A half-written file left behind would look like a finished upload.
       }
-      await _reply(hostError(id, stream.error!));
+      await _reply(hostError(id, currentL.sftpHostSaveFailed(stream.error!), code: 'save_failed', args: {'detail': stream.error}));
       return;
     }
     // The uploading device sends the original's dates with the close; stamp
@@ -953,7 +965,8 @@ class _HostConnection {
     if (!_readOnly) return false;
     await _reply(hostError(
       id,
-      'This device is sharing its folder read-only.',
+      currentL.sftpHostAccessReadOnlyHint,
+      code: 'read_only',
     ));
     return true;
   }
@@ -961,7 +974,7 @@ class _HostConnection {
   String _path(Map<String, dynamic> message, String key) {
     final value = message[key];
     if (value is! String || value.isEmpty) {
-      throw const HostAccessDenied('That request had no path.');
+      throw HostAccessDenied(currentL.sftpHostRefusedRequest);
     }
     return value;
   }
@@ -969,8 +982,8 @@ class _HostConnection {
   static String _describeFileError(FileSystemException e) {
     final reason = e.osError?.message;
     return reason == null || reason.isEmpty
-        ? 'That did not work.'
-        : 'That did not work: $reason';
+        ? currentL.sftpHostCouldNotConnect('')
+        : currentL.sftpHostCouldNotConnect(reason);
   }
 
   // ------------------------------------------------------------- transport

@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../../l10n/current_l.dart';
+
 class MicrosoftAuthException implements Exception {
   MicrosoftAuthException(this.message);
   final String message;
@@ -69,9 +71,7 @@ class MicrosoftAuthClient {
 
   Future<DeviceCodeInfo> requestDeviceCode() async {
     if (!isConfigured) {
-      throw MicrosoftAuthException(
-        'Microsoft sign-in is not configured for this build.',
-      );
+      throw MicrosoftAuthException(currentL.mcMsAuthNotConfigured);
     }
     final res = await http.post(
       Uri.parse(
@@ -145,16 +145,16 @@ class MicrosoftAuthClient {
       }
       if (error == 'authorization_pending') continue;
       if (error == 'authorization_declined') {
-        throw MicrosoftAuthException('Sign-in was declined.');
+        throw MicrosoftAuthException(currentL.mcMsAuthDeclined);
       }
       if (error == 'expired_token') {
-        throw MicrosoftAuthException('The sign-in code expired. Try again.');
+        throw MicrosoftAuthException(currentL.mcMsAuthCodeExpired);
       }
       throw MicrosoftAuthException(
         json['error_description'] as String? ?? error,
       );
     }
-    throw MicrosoftAuthException('Timed out waiting for sign-in.');
+    throw MicrosoftAuthException(currentL.mcMsAuthTimedOut);
   }
 
   Future<MicrosoftAuthResult> _exchangeForMinecraft({
@@ -203,16 +203,12 @@ class MicrosoftAuthClient {
       final body = jsonDecode(xstsRes.body) as Map<String, dynamic>;
       final code = body['XErr'] as int?;
       if (code == 2148916233) {
-        throw MicrosoftAuthException(
-          'This Microsoft account has no Xbox profile. Create one at xbox.com and try again.',
-        );
+        throw MicrosoftAuthException(currentL.mcMsAuthNoXboxProfile);
       }
       if (code == 2148916238) {
-        throw MicrosoftAuthException(
-          'This account is under 18 and needs a family group to sign in to Xbox services.',
-        );
+        throw MicrosoftAuthException(currentL.mcMsAuthUnder18);
       }
-      throw MicrosoftAuthException('Xbox sign-in was rejected.');
+      throw MicrosoftAuthException(currentL.mcMsAuthXboxRejected);
     }
     final xsts = _decode(xstsRes);
     final xstsToken = xsts['Token'] as String;
@@ -235,9 +231,7 @@ class MicrosoftAuthClient {
       headers: {'Authorization': 'Bearer $mcAccessToken'},
     );
     if (profileRes.statusCode == 404) {
-      throw MicrosoftAuthException(
-        'This Microsoft account does not own Minecraft.',
-      );
+      throw MicrosoftAuthException(currentL.mcMsAuthNoMinecraft);
     }
     final profile = _decode(profileRes);
 
@@ -255,13 +249,13 @@ class MicrosoftAuthClient {
     try {
       json = jsonDecode(res.body) as Map<String, dynamic>;
     } catch (_) {
-      throw MicrosoftAuthException('Unexpected response (${res.statusCode}).');
+      throw MicrosoftAuthException(currentL.mcMsAuthUnexpectedResponse('${res.statusCode}'));
     }
     if (res.statusCode >= 400) {
       throw MicrosoftAuthException(
         json['error_description'] as String? ??
             json['Message'] as String? ??
-            'Request failed (${res.statusCode}).',
+            currentL.mcMsAuthRequestFailed('${res.statusCode}'),
       );
     }
     return json;

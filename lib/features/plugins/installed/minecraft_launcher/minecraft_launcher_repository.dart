@@ -2,6 +2,7 @@
 
 import 'package:drift/drift.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../storage/storage_guard.dart';
 import 'data/minecraft_launcher_database.dart';
 import 'logic/offline_account_helper.dart';
@@ -52,10 +53,7 @@ class MinecraftLauncherRepository {
   /// a way to skip proving ownership. Throws [StateError] otherwise.
   Future<int> addOfflineAccount(String username) async {
     if (!await hasVerifiedOwnership()) {
-      throw StateError(
-          'Sign in with a Microsoft account that owns Minecraft first â€” '
-          'offline profiles are for playing without a connection '
-          'afterwards, not instead of that.');
+      throw StateError(currentL.minecraftLauncherOfflineNeedsMicrosoft);
     }
     final id = await _db.into(_db.mcAccounts).insert(
           McAccountsCompanion.insert(

@@ -28,6 +28,8 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import '../../../../../l10n/current_l.dart';
+
 /// Bumped when a change would make two versions misunderstand each other.
 /// The host refuses a client that does not match.
 ///
@@ -226,7 +228,7 @@ class HostFrame {
 /// it should not have, and the connection is torn down.
 HostFrame decodeFrame(Uint8List body) {
   if (body.isEmpty) {
-    throw const HostProtocolException('Empty frame.');
+    throw HostProtocolException(currentL.sftpHostEmptyFrame);
   }
   final kind = HostFrameKind.fromId(body[0]);
   switch (kind) {
@@ -235,22 +237,24 @@ HostFrame decodeFrame(Uint8List body) {
       try {
         decoded = jsonDecode(utf8.decode(body.sublist(1)));
       } catch (_) {
-        throw const HostProtocolException('Control frame was not valid JSON.');
+        throw HostProtocolException(currentL.sftpHostControlNotJson);
       }
       if (decoded is! Map<String, dynamic>) {
-        throw const HostProtocolException('Control frame was not an object.');
+        throw HostProtocolException(currentL.sftpHostControlNotObject);
       }
       return HostFrame.control(decoded);
     case HostFrameKind.chunk:
       if (body.length < 5) {
-        throw const HostProtocolException('Truncated chunk frame.');
+        throw HostProtocolException(currentL.sftpHostChunkTruncated);
       }
       return HostFrame.chunk(
         _readUint32(body, 1),
         Uint8List.sublistView(body, 5),
       );
     case null:
-      throw HostProtocolException('Unknown frame kind 0x${body[0].toRadixString(16)}.');
+      throw HostProtocolException(
+        currentL.sftpHostUnknownFrameKind(body[0].toRadixString(16)),
+      );
   }
 }
 
@@ -269,13 +273,33 @@ Map<String, dynamic> hostOk(int id, [Map<String, dynamic> fields = const {}]) =>
 /// The failure reply to request [id]. [message] is shown to the person at the
 /// other end, so it says what happened without naming absolute paths on this
 /// machine.
-Map<String, dynamic> hostError(int id, String message) =>
-    {'i': id, 'ok': false, 'e': message};
+Map<String, dynamic> hostError(
+  int id,
+  String message, {
+  String? code,
+  Map<String, Object?> args = const {},
+}) => {
+  'i': id,
+  'ok': false,
+  'e': message,
+  if (code != null) 'ec': code,
+  if (code != null) 'ea': args,
+};
 
 /// A push that belongs to request [id] but is not its reply.
-Map<String, dynamic> hostEvent(int id, String event, [String? message]) =>
-    {'i': id, 'ev': event, 'e': ?message};
-
+Map<String, dynamic> hostEvent(
+  int id,
+  String event, [
+  String? message,
+  String? code,
+  Map<String, Object?> args = const {},
+]) => {
+  'i': id,
+  'ev': event,
+  'e': ?message,
+  if (code != null) 'ec': code,
+  if (code != null) 'ea': args,
+};
 void _writeUint32(Uint8List out, int offset, int value) {
   out[offset] = (value >> 24) & 0xff;
   out[offset + 1] = (value >> 16) & 0xff;
@@ -317,9 +341,7 @@ class HostFrameReader {
     while (_buffered >= 4) {
       final length = _peekLength();
       if (length > kMaxHostFrameBytes) {
-        throw HostProtocolException(
-          'Frame of $length bytes is larger than this connection allows.',
-        );
+        throw HostProtocolException(currentL.sftpHostFrameTooLarge('$length'));
       }
       if (_buffered - 4 < length) break;
       _take(4);

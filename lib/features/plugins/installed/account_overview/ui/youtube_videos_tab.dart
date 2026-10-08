@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../youtube_scope.dart';
 import 'account_shared.dart';
@@ -21,6 +22,7 @@ class _YoutubeVideosTabState extends State<YoutubeVideosTab> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final repository = YoutubeScope.of(context);
     final luma = context.luma;
     final videos = [...repository.snapshot.videos];
@@ -48,7 +50,7 @@ class _YoutubeVideosTabState extends State<YoutubeVideosTab> {
           child: Row(
             children: [
               Text(
-                '${videos.length} video${videos.length == 1 ? '' : 's'}',
+                t.youtubeVideosCount(videos.length),
                 style: TextStyle(color: luma.textSecondary, fontSize: 12.5),
               ),
               const Spacer(),
@@ -57,12 +59,12 @@ class _YoutubeVideosTabState extends State<YoutubeVideosTab> {
                 underline: const SizedBox.shrink(),
                 dropdownColor: luma.surface,
                 style: TextStyle(color: luma.textPrimary, fontSize: 12.5),
-                items: const [
-                  DropdownMenuItem(value: _VideoSort.newest, child: Text('Newest')),
+                items: [
+                  DropdownMenuItem(value: _VideoSort.newest, child: Text(t.youtubeSortNewest)),
                   DropdownMenuItem(
-                      value: _VideoSort.mostViewed, child: Text('Most viewed')),
+                      value: _VideoSort.mostViewed, child: Text(t.youtubeSortMostViewed)),
                   DropdownMenuItem(
-                      value: _VideoSort.mostLiked, child: Text('Most liked')),
+                      value: _VideoSort.mostLiked, child: Text(t.youtubeSortMostLiked)),
                 ],
                 onChanged: (value) => setState(() => _sort = value ?? _sort),
               ),
@@ -73,7 +75,7 @@ class _YoutubeVideosTabState extends State<YoutubeVideosTab> {
           child: videos.isEmpty
               ? Center(
                   child: Text(
-                    'No videos yet.',
+                    t.youtubeNoVideosYet,
                     style: TextStyle(color: luma.textMuted, fontSize: 12),
                   ),
                 )
@@ -81,7 +83,7 @@ class _YoutubeVideosTabState extends State<YoutubeVideosTab> {
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                   children: [
                     AccountPanel(
-                      title: 'Uploads',
+                      title: t.youtubeUploadsTitle,
                       icon: Icons.video_library_outlined,
                       padding: EdgeInsets.zero,
                       child: Column(

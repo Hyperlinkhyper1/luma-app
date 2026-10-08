@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../sync/sync_service.dart';
 import 'data/chat_api.dart';
 import 'data/chat_cache_store.dart';
@@ -308,12 +309,11 @@ class ChatRepository extends ChangeNotifier {
   Future<void> sendMessage(String conversationId, String text) async {
     final api = _requireApi();
     final identity = _identity;
-    if (identity == null) throw StateError('Chat encryption is not ready yet.');
+    if (identity == null) throw StateError(currentL.secureChatNotReady);
     final conv = conversation(conversationId);
     final peerKey = conv?.peerPublicKey;
     if (peerKey == null) {
-      throw StateError(
-          "This person hasn't set up chat encryption yet — try again later.");
+      throw StateError(currentL.secureChatPeerNoKey);
     }
 
     final blobForRecipient =
@@ -328,7 +328,7 @@ class ChatRepository extends ChangeNotifier {
 
   ChatApi _requireApi() {
     final api = _api;
-    if (api == null) throw StateError('Not signed in.');
+    if (api == null) throw StateError(currentL.secureChatNotSignedIn);
     return api;
   }
 }

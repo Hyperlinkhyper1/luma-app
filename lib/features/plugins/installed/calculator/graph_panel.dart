@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'calc_expression.dart';
 import 'calculator_store.dart';
@@ -219,6 +220,7 @@ class _GraphToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Row(
       children: [
         const SizedBox(width: 4),
@@ -233,7 +235,9 @@ class _GraphToolbar extends StatelessWidget {
           ),
         ),
         Tooltip(
-          message: degrees ? 'Switch to radians' : 'Switch to degrees',
+          message: degrees
+              ? t.calcSwitchToRadians
+              : t.calcSwitchToDegrees,
           child: InkWell(
             borderRadius: BorderRadius.circular(8),
             onTap: onToggleAngle,
@@ -253,17 +257,17 @@ class _GraphToolbar extends StatelessWidget {
         ),
         _ToolbarButton(
           icon: Icons.zoom_in_rounded,
-          tooltip: 'Zoom in',
+          tooltip: t.schemViewerZoomIn,
           onTap: onZoomIn,
         ),
         _ToolbarButton(
           icon: Icons.zoom_out_rounded,
-          tooltip: 'Zoom out',
+          tooltip: t.schemViewerZoomOut,
           onTap: onZoomOut,
         ),
         _ToolbarButton(
           icon: Icons.center_focus_strong_rounded,
-          tooltip: 'Reset view',
+          tooltip: t.calcResetView,
           onTap: onReset,
         ),
       ],
@@ -320,6 +324,7 @@ class _TraceReadout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final chips = <Widget>[];
     for (var i = 0; i < functions.length; i++) {
       final function = functions[i];
@@ -332,7 +337,7 @@ class _TraceReadout extends StatelessWidget {
           parsed.evaluate(x: x, ans: ans, degrees: degrees),
         );
       } on CalcException {
-        value = 'Undefined';
+        value = t.calcUndefined;
       }
       chips.add(
         Row(
@@ -387,7 +392,7 @@ class _TraceReadout extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Clear trace',
+            tooltip: t.calcClearTrace,
             visualDensity: VisualDensity.compact,
             icon: Icon(Icons.close_rounded, size: 16, color: luma.textMuted),
             onPressed: onClear,
@@ -408,6 +413,7 @@ class _FunctionList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final functions = store.functions;
     return LumaCard(
       padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
@@ -418,7 +424,7 @@ class _FunctionList extends StatelessWidget {
           Row(
             children: [
               Text(
-                'Functions',
+                t.calcFunctionsTitle,
                 style: TextStyle(
                   color: luma.textSecondary,
                   fontSize: 12.5,
@@ -430,7 +436,7 @@ class _FunctionList extends StatelessWidget {
                 onPressed: () => showFunctionEditor(context, store),
                 icon: Icon(Icons.add_rounded, size: 16, color: luma.accent),
                 label: Text(
-                  'Add',
+                  t.commonAdd,
                   style: TextStyle(
                     color: luma.accent,
                     fontSize: 12.5,
@@ -444,8 +450,7 @@ class _FunctionList extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(0, 4, 6, 4),
               child: Text(
-                'Nothing plotted yet. Type something with an x — like x^2 - 3 '
-                'or sin(x) — and press Plot.',
+                t.calcNothingPlotted,
                 style: TextStyle(color: luma.textMuted, fontSize: 12.5),
               ),
             )
@@ -476,6 +481,7 @@ class _FunctionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final valid = CalcExpression.tryParse(function.expression) != null;
     return InkWell(
       borderRadius: BorderRadius.circular(8),
@@ -485,7 +491,7 @@ class _FunctionRow extends StatelessWidget {
         child: Row(
           children: [
             IconButton(
-              tooltip: function.visible ? 'Hide' : 'Show',
+              tooltip: function.visible ? t.calcFunctionHide : t.calcFunctionShow,
               visualDensity: VisualDensity.compact,
               onPressed: () => store.toggleFunction(function.id),
               icon: Container(
@@ -522,7 +528,7 @@ class _FunctionRow extends StatelessWidget {
               ),
             ),
             IconButton(
-              tooltip: 'Remove',
+              tooltip: t.commonRemove,
               visualDensity: VisualDensity.compact,
               onPressed: () => store.removeFunction(function.id),
               icon: Icon(
@@ -588,7 +594,7 @@ class _FunctionDialogState extends State<_FunctionDialog> {
   void _save() {
     final text = _controller.text.trim();
     if (text.isEmpty) {
-      setState(() => _error = 'Type a function of x first.');
+      setState(() => _error = L.of(context).calcFunctionEmpty);
       return;
     }
     try {
@@ -600,7 +606,7 @@ class _FunctionDialogState extends State<_FunctionDialog> {
     final existing = widget.existing;
     if (existing == null) {
       if (widget.store.addFunction(text, _color) == null) {
-        setState(() => _error = 'Local storage is full, so this was not saved.');
+        setState(() => _error = L.of(context).calcStorageFullNotSaved);
         return;
       }
     } else {
@@ -612,10 +618,11 @@ class _FunctionDialogState extends State<_FunctionDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return AlertDialog(
       backgroundColor: luma.surface,
       title: Text(
-        widget.existing == null ? 'Plot a function' : 'Edit function',
+        widget.existing == null ? t.calcPlotFunctionTitle : t.calcEditFunctionTitle,
         style: TextStyle(color: luma.textPrimary, fontSize: 16),
       ),
       content: SizedBox(
@@ -669,7 +676,7 @@ class _FunctionDialogState extends State<_FunctionDialog> {
             ),
             const SizedBox(height: 14),
             Text(
-              'Colour',
+              t.calcFunctionColour,
               style: TextStyle(
                 color: luma.textSecondary,
                 fontSize: 12.5,
@@ -718,16 +725,16 @@ class _FunctionDialogState extends State<_FunctionDialog> {
               widget.store.removeFunction(widget.existing!.id);
               Navigator.of(context).pop();
             },
-            child: Text('Delete', style: TextStyle(color: luma.danger)),
+            child: Text(t.commonDelete, style: TextStyle(color: luma.danger)),
           ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
         ),
         TextButton(
           onPressed: _save,
           child: Text(
-            widget.existing == null ? 'Plot' : 'Save',
+            widget.existing == null ? t.calcPlot : t.commonSave,
             style: TextStyle(color: luma.accent),
           ),
         ),

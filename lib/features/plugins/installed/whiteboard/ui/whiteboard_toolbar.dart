@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../model/whiteboard_tool.dart';
 
@@ -47,6 +48,7 @@ class WhiteboardToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -65,7 +67,7 @@ class WhiteboardToolbar extends StatelessWidget {
           for (final option in WhiteboardTool.values)
             _ToolbarButton(
               icon: option.icon,
-              tooltip: '${option.label}  (${option.shortcut})',
+              tooltip: t.whiteboardToolTooltip(option.label, option.shortcut),
               selected: option == tool,
               onTap: () => onTool(option),
             ),
@@ -88,17 +90,17 @@ class WhiteboardToolbar extends StatelessWidget {
           _Divider(luma: luma),
           _ToolbarButton(
             icon: Icons.undo_rounded,
-            tooltip: 'Undo  (Ctrl+Z)',
+            tooltip: t.whiteboardUndoTooltip,
             onTap: canUndo ? onUndo : null,
           ),
           _ToolbarButton(
             icon: Icons.redo_rounded,
-            tooltip: 'Redo  (Ctrl+Shift+Z)',
+            tooltip: t.whiteboardRedoTooltip,
             onTap: canRedo ? onRedo : null,
           ),
           _ToolbarButton(
             icon: Icons.delete_outline_rounded,
-            tooltip: 'Delete selection  (Del)',
+            tooltip: t.whiteboardDeleteSelectionTooltip,
             onTap: hasSelection ? onDeleteSelection : null,
           ),
         ],
@@ -131,17 +133,18 @@ class WhiteboardViewBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Wrap(
       crossAxisAlignment: WrapCrossAlignment.center,
       spacing: 2,
       children: [
         _ToolbarButton(
           icon: Icons.remove_rounded,
-          tooltip: 'Zoom out',
+          tooltip: t.whiteboardZoomOut,
           onTap: () => onZoom(1 / 1.25),
         ),
         Tooltip(
-          message: 'Reset zoom  (Ctrl+0)',
+          message: t.whiteboardResetZoomTooltip,
           child: InkWell(
             onTap: onFit,
             borderRadius: BorderRadius.circular(8),
@@ -166,24 +169,24 @@ class WhiteboardViewBar extends StatelessWidget {
         ),
         _ToolbarButton(
           icon: Icons.add_rounded,
-          tooltip: 'Zoom in',
+          tooltip: t.whiteboardZoomIn,
           onTap: () => onZoom(1.25),
         ),
         _ToolbarButton(
           icon: Icons.grid_4x4_rounded,
-          tooltip: showGrid ? 'Hide grid' : 'Show grid',
+          tooltip: showGrid ? t.whiteboardHideGrid : t.whiteboardShowGrid,
           selected: showGrid,
           onTap: onToggleGrid,
         ),
         _Divider(luma: luma),
         _ToolbarButton(
           icon: Icons.image_outlined,
-          tooltip: 'Export as PNG',
+          tooltip: t.whiteboardExportPng,
           onTap: onExport,
         ),
         _ToolbarButton(
           icon: Icons.layers_clear_rounded,
-          tooltip: 'Clear board',
+          tooltip: t.whiteboardClearBoardTooltip,
           danger: true,
           onTap: onClear,
         ),
@@ -267,12 +270,13 @@ class _InkSwatch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Tooltip(
       message: name,
       child: Semantics(
         button: true,
         selected: selected,
-        label: '$name ink',
+        label: t.whiteboardInkSemantics(name),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(8),
@@ -326,12 +330,13 @@ class _WidthButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Tooltip(
-      message: '$name stroke',
+      message: t.whiteboardStrokeTooltip(name),
       child: Semantics(
         button: true,
         selected: selected,
-        label: '$name stroke',
+        label: t.whiteboardStrokeTooltip(name),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(8),

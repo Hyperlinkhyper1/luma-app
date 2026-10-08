@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/current_l.dart';
+
 /// Mode of a tracked public-transport vehicle.
 ///
 /// GTFS-realtime position feeds only carry a `route_id` that points into the
@@ -12,12 +14,12 @@ enum TransitMode { highSpeed, train, metro, tram, bus, ferry }
 
 extension TransitModeInfo on TransitMode {
   String get label => switch (this) {
-        TransitMode.highSpeed => 'High-speed',
-        TransitMode.train => 'Train',
-        TransitMode.metro => 'Metro',
-        TransitMode.tram => 'Tram',
-        TransitMode.bus => 'Bus',
-        TransitMode.ferry => 'Ferry',
+        TransitMode.highSpeed => currentL.transitModeHighSpeed,
+        TransitMode.train => currentL.transitModeTrain,
+        TransitMode.metro => currentL.transitModeMetro,
+        TransitMode.tram => currentL.transitModeTram,
+        TransitMode.bus => currentL.transitModeBus,
+        TransitMode.ferry => currentL.transitModeFerry,
       };
 
   Color get color => switch (this) {

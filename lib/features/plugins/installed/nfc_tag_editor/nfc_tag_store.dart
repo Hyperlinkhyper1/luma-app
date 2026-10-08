@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../storage/storage_guard.dart';
 import 'nfc_record.dart';
 
@@ -83,7 +84,7 @@ class NfcTagTemplate {
 
   factory NfcTagTemplate.fromJson(Map<String, dynamic> json) => NfcTagTemplate(
         id: json['id']?.toString() ?? newNfcRecordId(),
-        name: json['name']?.toString() ?? 'Template',
+        name: json['name']?.toString() ?? currentL.nfcTemplateDefaultName,
         createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
             DateTime.now(),
         records: ((json['records'] as List?) ?? const [])
@@ -210,7 +211,7 @@ class NfcTagStore extends ChangeNotifier {
 
   Future<void> importData(Object? data) async {
     if (data is! Map<String, dynamic>) {
-      throw const FormatException('Invalid NFC tag editor snapshot.');
+      throw FormatException(currentL.nfcSnapshotInvalid);
     }
     await _ready;
     _templates = ((data['templates'] as List?) ?? const [])

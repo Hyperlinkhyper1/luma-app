@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../logic/curseforge_api_client.dart';
 import '../logic/mc_paths.dart';
@@ -50,6 +51,7 @@ class _SettingsTabState extends State<SettingsTab> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     if (!_loaded) {
       return const Center(child: CircularProgressIndicator(strokeWidth: 2.4));
     }
@@ -59,7 +61,7 @@ class _SettingsTabState extends State<SettingsTab> {
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
         children: [
           Text(
-            'Settings',
+            t.commonSettings,
             style: TextStyle(
               color: luma.textPrimary,
               fontSize: 20,
@@ -72,7 +74,7 @@ class _SettingsTabState extends State<SettingsTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Java runtimes',
+                  t.mcLauncherJavaRuntimes,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 15,
@@ -81,13 +83,13 @@ class _SettingsTabState extends State<SettingsTab> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Downloaded automatically the first time an instance needs them.',
+                  t.mcLauncherRuntimesHint,
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
                 const SizedBox(height: 12),
                 if (_runtimeVersions.isEmpty)
                   Text(
-                    'None downloaded yet.',
+                    t.mcLauncherNoRuntimes,
                     style: TextStyle(color: luma.textMuted, fontSize: 13),
                   )
                 else
@@ -137,6 +139,7 @@ class _SettingsTabState extends State<SettingsTab> {
   }
 
   Widget _curseForgeCard(LumaPalette luma) {
+    final t = L.of(context);
     return LumaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,8 +155,8 @@ class _SettingsTabState extends State<SettingsTab> {
           const SizedBox(height: 4),
           Text(
             _hasCurseForgeKey
-                ? 'API key saved. Browse pages can search and install from CurseForge.'
-                : 'Add your own API key to browse and install CurseForge content.',
+                ? t.mcLauncherCurseForgeKeySaved
+                : t.mcLauncherCurseForgeKeyAdd,
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
           const SizedBox(height: 12),
@@ -162,13 +165,13 @@ class _SettingsTabState extends State<SettingsTab> {
             runSpacing: 8,
             children: [
               LumaPrimaryButton(
-                label: _hasCurseForgeKey ? 'Change API key' : 'Add API key',
+                label: _hasCurseForgeKey ? t.mcLauncherChangeApiKey : t.mcLauncherAddApiKey,
                 icon: Icons.key_rounded,
                 onTap: _editCurseForgeKey,
               ),
               if (_hasCurseForgeKey)
                 LumaGhostButton(
-                  label: 'Remove key',
+                  label: t.mcLauncherRemoveKey,
                   icon: Icons.delete_outline_rounded,
                   onTap: _removeCurseForgeKey,
                 ),

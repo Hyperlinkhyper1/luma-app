@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/luma_theme.dart';
 import '../converter_widgets.dart';
 import '../file_saver.dart';
@@ -38,7 +39,6 @@ class MediaToolConfig {
     required this.fileIcon,
     required this.inputExtensions,
     required this.targets,
-    required this.qualityLabels,
   });
 
   final IconData icon;
@@ -47,7 +47,6 @@ class MediaToolConfig {
   final IconData fileIcon;
   final List<String> inputExtensions;
   final List<MediaFormat> targets;
-  final List<String> qualityLabels;
 }
 
 /// Audio format converter: MP3 · OGG · FLAC · M4A · WAV · AAC.
@@ -56,77 +55,87 @@ class AudioConverterView extends StatelessWidget {
   final VoidCallback onBack;
 
   @override
-  Widget build(BuildContext context) => MediaConverterView(
-        onBack: onBack,
-        config: const MediaToolConfig(
-          icon: Icons.graphic_eq_rounded,
-          title: 'Audio converter',
-          subtitle: 'Convert between MP3, OGG, FLAC, M4A, WAV and AAC',
-          fileIcon: Icons.music_note_rounded,
-          inputExtensions: [
-            'mp3', 'ogg', 'flac', 'm4a', 'wav', 'aac', 'opus', 'wma', 'aiff',
-          ],
-          qualityLabels: ['Smaller', 'Balanced', 'High'],
-          targets: [
-            MediaFormat(
-              label: 'MP3',
-              extension: 'mp3',
-              mimeType: 'audio/mpeg',
-              qualityArgs: [
-                ['-c:a', 'libmp3lame', '-q:a', '5'],
-                ['-c:a', 'libmp3lame', '-q:a', '2'],
-                ['-c:a', 'libmp3lame', '-q:a', '0'],
-              ],
-            ),
-            MediaFormat(
-              label: 'OGG',
-              extension: 'ogg',
-              mimeType: 'audio/ogg',
-              qualityArgs: [
-                ['-c:a', 'libvorbis', '-q:a', '3'],
-                ['-c:a', 'libvorbis', '-q:a', '5'],
-                ['-c:a', 'libvorbis', '-q:a', '7'],
-              ],
-            ),
-            MediaFormat(
-              label: 'M4A',
-              extension: 'm4a',
-              mimeType: 'audio/mp4',
-              qualityArgs: [
-                ['-c:a', 'aac', '-b:a', '128k'],
-                ['-c:a', 'aac', '-b:a', '192k'],
-                ['-c:a', 'aac', '-b:a', '256k'],
-              ],
-            ),
-            MediaFormat(
-              label: 'AAC',
-              extension: 'aac',
-              mimeType: 'audio/aac',
-              qualityArgs: [
-                ['-c:a', 'aac', '-b:a', '128k'],
-                ['-c:a', 'aac', '-b:a', '192k'],
-                ['-c:a', 'aac', '-b:a', '256k'],
-              ],
-            ),
-            MediaFormat(
-              label: 'FLAC',
-              extension: 'flac',
-              mimeType: 'audio/flac',
-              qualityArgs: [
-                ['-c:a', 'flac'],
-              ],
-            ),
-            MediaFormat(
-              label: 'WAV',
-              extension: 'wav',
-              mimeType: 'audio/wav',
-              qualityArgs: [
-                ['-c:a', 'pcm_s16le'],
-              ],
-            ),
-          ],
-        ),
-      );
+  Widget build(BuildContext context) {
+    final t = L.of(context);
+    return MediaConverterView(
+      onBack: onBack,
+      config: MediaToolConfig(
+        icon: Icons.graphic_eq_rounded,
+        title: t.convMediaAudioTitle,
+        subtitle: t.convMediaAudioSubtitle,
+        fileIcon: Icons.music_note_rounded,
+        inputExtensions: [
+          'mp3',
+          'ogg',
+          'flac',
+          'm4a',
+          'wav',
+          'aac',
+          'opus',
+          'wma',
+          'aiff',
+        ],
+        targets: [
+          MediaFormat(
+            label: 'MP3',
+            extension: 'mp3',
+            mimeType: 'audio/mpeg',
+            qualityArgs: [
+              ['-c:a', 'libmp3lame', '-q:a', '5'],
+              ['-c:a', 'libmp3lame', '-q:a', '2'],
+              ['-c:a', 'libmp3lame', '-q:a', '0'],
+            ],
+          ),
+          MediaFormat(
+            label: 'OGG',
+            extension: 'ogg',
+            mimeType: 'audio/ogg',
+            qualityArgs: [
+              ['-c:a', 'libvorbis', '-q:a', '3'],
+              ['-c:a', 'libvorbis', '-q:a', '5'],
+              ['-c:a', 'libvorbis', '-q:a', '7'],
+            ],
+          ),
+          MediaFormat(
+            label: 'M4A',
+            extension: 'm4a',
+            mimeType: 'audio/mp4',
+            qualityArgs: [
+              ['-c:a', 'aac', '-b:a', '128k'],
+              ['-c:a', 'aac', '-b:a', '192k'],
+              ['-c:a', 'aac', '-b:a', '256k'],
+            ],
+          ),
+          MediaFormat(
+            label: 'AAC',
+            extension: 'aac',
+            mimeType: 'audio/aac',
+            qualityArgs: [
+              ['-c:a', 'aac', '-b:a', '128k'],
+              ['-c:a', 'aac', '-b:a', '192k'],
+              ['-c:a', 'aac', '-b:a', '256k'],
+            ],
+          ),
+          MediaFormat(
+            label: 'FLAC',
+            extension: 'flac',
+            mimeType: 'audio/flac',
+            qualityArgs: [
+              ['-c:a', 'flac'],
+            ],
+          ),
+          MediaFormat(
+            label: 'WAV',
+            extension: 'wav',
+            mimeType: 'audio/wav',
+            qualityArgs: [
+              ['-c:a', 'pcm_s16le'],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Video format converter: MP4 · MOV · WEBM · OGV · MPG · MPEG · M4V, plus M4A
@@ -136,91 +145,139 @@ class VideoConverterView extends StatelessWidget {
   final VoidCallback onBack;
 
   @override
-  Widget build(BuildContext context) => MediaConverterView(
-        onBack: onBack,
-        config: const MediaToolConfig(
-          icon: Icons.movie_outlined,
-          title: 'Video converter',
-          subtitle: 'Convert between MP4, MOV, WEBM, OGV, MPG, M4V (or to M4A)',
-          fileIcon: Icons.videocam_rounded,
-          inputExtensions: [
-            'mp4', 'mov', 'mkv', 'webm', 'ogv', 'mpg', 'mpeg', 'm4v', 'avi',
-            'flv', 'wmv',
-          ],
-          qualityLabels: ['Smaller', 'Balanced', 'High'],
-          targets: [
-            MediaFormat(
-              label: 'MP4',
-              extension: 'mp4',
-              mimeType: 'video/mp4',
-              qualityArgs: [
-                [..._h264, '-movflags', '+faststart'],
+  Widget build(BuildContext context) {
+    final t = L.of(context);
+    return MediaConverterView(
+      onBack: onBack,
+      config: MediaToolConfig(
+        icon: Icons.movie_outlined,
+        title: t.convMediaVideoTitle,
+        subtitle: t.convMediaVideoSubtitle,
+        fileIcon: Icons.videocam_rounded,
+        inputExtensions: [
+          'mp4',
+          'mov',
+          'mkv',
+          'webm',
+          'ogv',
+          'mpg',
+          'mpeg',
+          'm4v',
+          'avi',
+          'flv',
+          'wmv',
+        ],
+        targets: [
+          MediaFormat(
+            label: 'MP4',
+            extension: 'mp4',
+            mimeType: 'video/mp4',
+            qualityArgs: [
+              [..._h264, '-movflags', '+faststart'],
+            ],
+          ),
+          MediaFormat(
+            label: 'MOV',
+            extension: 'mov',
+            mimeType: 'video/quicktime',
+            qualityArgs: [_h264],
+          ),
+          MediaFormat(
+            label: 'M4V',
+            extension: 'm4v',
+            mimeType: 'video/x-m4v',
+            qualityArgs: [_h264],
+          ),
+          MediaFormat(
+            label: 'WEBM',
+            extension: 'webm',
+            mimeType: 'video/webm',
+            qualityArgs: [
+              [
+                '-c:v',
+                'libvpx-vp9',
+                '-b:v',
+                '0',
+                '-crf',
+                '32',
+                '-row-mt',
+                '1',
+                '-deadline',
+                'good',
+                '-c:a',
+                'libopus',
+                '-b:a',
+                '128k',
               ],
-            ),
-            MediaFormat(
-              label: 'MOV',
-              extension: 'mov',
-              mimeType: 'video/quicktime',
-              qualityArgs: [_h264],
-            ),
-            MediaFormat(
-              label: 'M4V',
-              extension: 'm4v',
-              mimeType: 'video/x-m4v',
-              qualityArgs: [_h264],
-            ),
-            MediaFormat(
-              label: 'WEBM',
-              extension: 'webm',
-              mimeType: 'video/webm',
-              qualityArgs: [
-                [
-                  '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '32',
-                  '-row-mt', '1', '-deadline', 'good',
-                  '-c:a', 'libopus', '-b:a', '128k',
-                ],
+            ],
+          ),
+          MediaFormat(
+            label: 'OGV',
+            extension: 'ogv',
+            mimeType: 'video/ogg',
+            qualityArgs: [
+              [
+                '-c:v',
+                'libtheora',
+                '-q:v',
+                '7',
+                '-c:a',
+                'libvorbis',
+                '-q:a',
+                '5',
               ],
-            ),
-            MediaFormat(
-              label: 'OGV',
-              extension: 'ogv',
-              mimeType: 'video/ogg',
-              qualityArgs: [
-                ['-c:v', 'libtheora', '-q:v', '7', '-c:a', 'libvorbis', '-q:a', '5'],
-              ],
-            ),
-            MediaFormat(
-              label: 'MPG',
-              extension: 'mpg',
-              mimeType: 'video/mpeg',
-              qualityArgs: [_mpeg2],
-            ),
-            MediaFormat(
-              label: 'MPEG',
-              extension: 'mpeg',
-              mimeType: 'video/mpeg',
-              qualityArgs: [_mpeg2],
-            ),
-            MediaFormat(
-              label: 'M4A',
-              extension: 'm4a',
-              mimeType: 'audio/mp4',
-              qualityArgs: [
-                ['-vn', '-c:a', 'aac', '-b:a', '192k'],
-              ],
-            ),
-          ],
-        ),
-      );
+            ],
+          ),
+          MediaFormat(
+            label: 'MPG',
+            extension: 'mpg',
+            mimeType: 'video/mpeg',
+            qualityArgs: [_mpeg2],
+          ),
+          MediaFormat(
+            label: 'MPEG',
+            extension: 'mpeg',
+            mimeType: 'video/mpeg',
+            qualityArgs: [_mpeg2],
+          ),
+          MediaFormat(
+            label: 'M4A',
+            extension: 'm4a',
+            mimeType: 'audio/mp4',
+            qualityArgs: [
+              ['-vn', '-c:a', 'aac', '-b:a', '192k'],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 const _h264 = [
-  '-c:v', 'libx264', '-crf', '23', '-preset', 'medium', '-pix_fmt', 'yuv420p',
-  '-c:a', 'aac', '-b:a', '192k',
+  '-c:v',
+  'libx264',
+  '-crf',
+  '23',
+  '-preset',
+  'medium',
+  '-pix_fmt',
+  'yuv420p',
+  '-c:a',
+  'aac',
+  '-b:a',
+  '192k',
 ];
 
 const _mpeg2 = [
-  '-c:v', 'mpeg2video', '-q:v', '5', '-c:a', 'mp2', '-b:a', '192k',
+  '-c:v',
+  'mpeg2video',
+  '-q:v',
+  '5',
+  '-c:a',
+  'mp2',
+  '-b:a',
+  '192k',
 ];
 
 /// Generic ffmpeg-backed format converter shared by audio and video.
@@ -267,6 +324,7 @@ class _MediaConverterViewState extends State<MediaConverterView> {
   }
 
   Future<void> _pickFile() async {
+    final t = L.of(context);
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: widget.config.inputExtensions,
@@ -275,8 +333,7 @@ class _MediaConverterViewState extends State<MediaConverterView> {
     final file = result.files.first;
     final path = file.path;
     if (path == null) {
-      setState(() => _error =
-          'Could not read the file path — conversion needs the desktop app.');
+      setState(() => _error = t.convMediaNoFilePath);
       return;
     }
     setState(() {
@@ -287,14 +344,16 @@ class _MediaConverterViewState extends State<MediaConverterView> {
       _result = null;
       _error = null;
       // Default target to the first format that differs from the source.
-      final idx = widget.config.targets
-          .indexWhere((f) => f.extension != _sourceExt);
+      final idx = widget.config.targets.indexWhere(
+        (f) => f.extension != _sourceExt,
+      );
       _target = idx < 0 ? 0 : idx;
       _quality = 1;
     });
   }
 
   Future<void> _convert() async {
+    final t = L.of(context);
     final path = _path;
     final name = _name;
     if (path == null || name == null) return;
@@ -334,7 +393,7 @@ class _MediaConverterViewState extends State<MediaConverterView> {
       if (!mounted) return;
       setState(() {
         _converting = false;
-        _error = 'Something went wrong while converting: $e';
+        _error = t.convMediaConvertFailed('$e');
       });
     }
   }
@@ -353,8 +412,14 @@ class _MediaConverterViewState extends State<MediaConverterView> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final config = widget.config;
     final ready = _ffmpegReady ?? false;
+    final qualityLabels = [
+      t.convMediaQualitySmaller,
+      t.convMediaQualityBalanced,
+      t.convMediaQualityHigh,
+    ];
 
     return ToolScaffold(
       icon: config.icon,
@@ -363,16 +428,14 @@ class _MediaConverterViewState extends State<MediaConverterView> {
       onBack: widget.onBack,
       children: [
         if (_ffmpegReady == false) ...[
-          FfmpegSetup(
-            onReady: () => setState(() => _ffmpegReady = true),
-          ),
+          FfmpegSetup(onReady: () => setState(() => _ffmpegReady = true)),
           const SizedBox(height: 16),
         ],
         if (_path == null)
           ConverterDropZone(
             onTap: _pickFile,
             icon: Icons.upload_file_rounded,
-            title: 'Tap to pick a file',
+            title: t.convTapToPickFile,
             subtitle: config.inputExtensions
                 .take(6)
                 .map((e) => e.toUpperCase())
@@ -399,11 +462,14 @@ class _MediaConverterViewState extends State<MediaConverterView> {
                   target: _format.label,
                 ),
                 const SizedBox(height: 20),
-                Text('Convert to',
-                    style: TextStyle(
-                        color: luma.textSecondary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500)),
+                Text(
+                  t.convMediaConvertTo,
+                  style: TextStyle(
+                    color: luma.textSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 const SizedBox(height: 10),
                 _TargetPicker(
                   targets: config.targets,
@@ -411,20 +477,23 @@ class _MediaConverterViewState extends State<MediaConverterView> {
                   onSelect: _converting
                       ? null
                       : (i) => setState(() {
-                            _target = i;
-                            _quality = 1;
-                          }),
+                          _target = i;
+                          _quality = 1;
+                        }),
                 ),
                 if (_format.hasQuality) ...[
                   const SizedBox(height: 18),
-                  Text('Quality',
-                      style: TextStyle(
-                          color: luma.textSecondary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500)),
+                  Text(
+                    t.convMediaQuality,
+                    style: TextStyle(
+                      color: luma.textSecondary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                   const SizedBox(height: 10),
                   _SegmentSelector(
-                    labels: config.qualityLabels,
+                    labels: qualityLabels,
                     selected: _quality,
                     onSelect: _converting
                         ? null
@@ -433,7 +502,7 @@ class _MediaConverterViewState extends State<MediaConverterView> {
                 ],
                 const SizedBox(height: 18),
                 ConverterPrimaryButton(
-                  label: 'Convert & save',
+                  label: t.convMediaConvertSave,
                   icon: Icons.bolt_rounded,
                   loading: _converting,
                   onTap: ready ? _convert : null,
@@ -456,8 +525,10 @@ class _MediaConverterViewState extends State<MediaConverterView> {
             icon: Icons.check_circle_outline_rounded,
             color: luma.success,
             message: _result!.summary,
-            trailing:
-                ConverterTextButton(label: 'Convert another', onTap: _reset),
+            trailing: ConverterTextButton(
+              label: t.convMediaConvertAnother,
+              onTap: _reset,
+            ),
           ),
         ],
       ],

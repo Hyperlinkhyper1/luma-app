@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/school_database.dart';
 import '../school_scope.dart';
@@ -16,6 +17,7 @@ class DashboardTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final repo = SchoolScope.of(context);
     final luma = context.luma;
+    final t = L.of(context);
     final today = DateTime.now();
 
     return StreamData<List<SchoolSubject>>(
@@ -49,19 +51,19 @@ class DashboardTab extends StatelessWidget {
                     Row(
                       children: [
                         _StatCard(
-                          label: 'Subjects',
+                          label: t.schoolSubjects,
                           value: '${subjects.length}',
                           icon: Icons.menu_book_rounded,
                         ),
                         const SizedBox(width: 12),
                         _StatCard(
-                          label: 'Due this week',
+                          label: t.schoolStatDueThisWeek,
                           value: '${dueSoon.length}',
                           icon: Icons.assignment_rounded,
                         ),
                         const SizedBox(width: 12),
                         _StatCard(
-                          label: 'Overdue',
+                          label: t.schoolStatOverdue,
                           value: '$overdue',
                           icon: Icons.warning_amber_rounded,
                           color: overdue > 0 ? luma.danger : null,
@@ -71,12 +73,12 @@ class DashboardTab extends StatelessWidget {
                     const SizedBox(height: 24),
                     Row(
                       children: [
-                        Text('Subjects',
+                        Text(t.schoolSubjects,
                             style: TextStyle(
                                 color: luma.textPrimary, fontSize: 16, fontWeight: FontWeight.w700)),
                         const Spacer(),
                         LumaGhostButton(
-                          label: 'Add subject',
+                          label: t.schoolAddSubject,
                           icon: Icons.add_rounded,
                           onTap: () => showSubjectDialog(context, repo),
                         ),
@@ -85,7 +87,7 @@ class DashboardTab extends StatelessWidget {
                     const SizedBox(height: 12),
                     if (subjects.isEmpty)
                       LumaCard(
-                        child: Text('No subjects yet. Add one to get started.',
+                        child: Text(t.schoolDashboardNoSubjects,
                             style: TextStyle(color: luma.textMuted)),
                       )
                     else
@@ -123,11 +125,11 @@ class DashboardTab extends StatelessWidget {
                         ],
                       ),
                     const SizedBox(height: 24),
-                    Text('Today', style: TextStyle(color: luma.textPrimary, fontSize: 16, fontWeight: FontWeight.w700)),
+                    Text(t.commonToday, style: TextStyle(color: luma.textPrimary, fontSize: 16, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 12),
                     if (todays.isEmpty)
                       LumaCard(
-                        child: Text('No classes scheduled today.',
+                        child: Text(t.schoolDashboardNoClasses,
                             style: TextStyle(color: luma.textMuted)),
                       )
                     else
@@ -145,11 +147,11 @@ class DashboardTab extends StatelessWidget {
                         ),
                       ),
                     const SizedBox(height: 24),
-                    Text('Due soon', style: TextStyle(color: luma.textPrimary, fontSize: 16, fontWeight: FontWeight.w700)),
+                    Text(t.schoolDashboardDueSoon, style: TextStyle(color: luma.textPrimary, fontSize: 16, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 12),
                     if (dueSoon.isEmpty)
                       LumaCard(
-                        child: Text('Nothing due in the next 7 days.',
+                        child: Text(t.schoolDashboardNothingDueSoon,
                             style: TextStyle(color: luma.textMuted)),
                       )
                     else
@@ -224,7 +226,7 @@ class _ClassRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(subject?.name ?? 'Class',
+              Text(subject?.name ?? L.of(context).schoolClassFallback,
                   style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w600)),
               if (entry.location != null && entry.location!.isNotEmpty)
                 Text(entry.location!, style: TextStyle(color: luma.textMuted, fontSize: 12)),

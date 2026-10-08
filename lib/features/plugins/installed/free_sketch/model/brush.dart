@@ -8,18 +8,28 @@
 /// draws the dabs. Neither knows any brush by name.
 library;
 
-enum BrushCategory {
-  sketching('Sketching'),
-  inking('Inking'),
-  painting('Painting'),
-  watercolor('Watercolor'),
-  markers('Markers'),
-  airbrush('Airbrush'),
-  texture('Texture & effects'),
-  blending('Blending');
+import '../../../../../l10n/current_l.dart';
 
-  const BrushCategory(this.label);
-  final String label;
+enum BrushCategory {
+  sketching,
+  inking,
+  painting,
+  watercolor,
+  markers,
+  airbrush,
+  texture,
+  blending;
+
+  String get label => switch (this) {
+        sketching => currentL.freeSketchCategorySketching,
+        inking => currentL.freeSketchCategoryInking,
+        painting => currentL.freeSketchCategoryPainting,
+        watercolor => currentL.freeSketchCategoryWatercolor,
+        markers => currentL.freeSketchCategoryMarkers,
+        airbrush => currentL.freeSketchCategoryAirbrush,
+        texture => currentL.freeSketchCategoryTexture,
+        blending => currentL.freeSketchCategoryBlending,
+      };
 }
 
 /// What a dab does to the pixels under it.
@@ -66,7 +76,19 @@ enum BrushAngleMode {
 /// Paper texture pressed through the stroke. Grain lives in canvas space, not
 /// in the tip, so going back over the same patch fills the same pits — which
 /// is what makes a pencil read as graphite on paper.
-enum BrushGrain { none, paper, canvas, rough }
+enum BrushGrain {
+  none,
+  paper,
+  canvas,
+  rough;
+
+  String get label => switch (this) {
+        none => currentL.freeSketchGrainNone,
+        paper => currentL.freeSketchGrainPaper,
+        canvas => currentL.freeSketchGrainCanvas,
+        rough => currentL.freeSketchGrainRough,
+      };
+}
 
 /// How a finished stroke combines with the layer it lands on.
 enum StrokeBlend {
@@ -82,44 +104,64 @@ enum StrokeBlend {
 /// One adjustable number on a brush — the settings panel is generated from
 /// this list, and saved per-brush overrides are keyed by [name].
 enum BrushParam {
-  size('Size', 1, 500, unit: 'px'),
-  opacity('Opacity', 0.01, 1, percent: true),
-  flow('Flow', 0.01, 1, percent: true),
-  hardness('Hardness', 0, 1, percent: true),
-  spacing('Spacing', 0.01, 2, percent: true),
-  streamline('StreamLine', 0, 1, percent: true),
-  sizePressure('Pressure → size', 0, 1, percent: true),
-  flowPressure('Pressure → opacity', 0, 1, percent: true),
-  taperStart('Taper start', 0, 3),
-  taperEnd('Taper end', 0, 3),
-  sizeJitter('Size jitter', 0, 1, percent: true),
-  angleJitter('Rotation jitter', 0, 1, percent: true),
-  scatter('Scatter', 0, 4, percent: true),
-  roundness('Roundness', 0.05, 1, percent: true),
-  angle('Angle', 0, 180, unit: '°'),
-  grainStrength('Grain', 0, 1, percent: true),
-  wetEdges('Wet edges', 0, 1, percent: true),
-  colorJitter('Colour jitter', 0, 1, percent: true),
-  strength('Strength', 0.05, 1, percent: true);
+  size(1, 500, unit: 'px'),
+  opacity(0.01, 1, percent: true),
+  flow(0.01, 1, percent: true),
+  hardness(0, 1, percent: true),
+  spacing(0.01, 2, percent: true),
+  streamline(0, 1, percent: true),
+  sizePressure(0, 1, percent: true),
+  flowPressure(0, 1, percent: true),
+  taperStart(0, 3),
+  taperEnd(0, 3),
+  sizeJitter(0, 1, percent: true),
+  angleJitter(0, 1, percent: true),
+  scatter(0, 4, percent: true),
+  roundness(0.05, 1, percent: true),
+  angle(0, 180, unit: '°'),
+  grainStrength(0, 1, percent: true),
+  wetEdges(0, 1, percent: true),
+  colorJitter(0, 1, percent: true),
+  strength(0.05, 1, percent: true);
 
   const BrushParam(
-    this.label,
     this.min,
     this.max, {
     this.percent = false,
     this.unit = '',
   });
 
-  final String label;
   final double min;
   final double max;
   final bool percent;
   final String unit;
 
+  String get label => switch (this) {
+        size => currentL.commonSize,
+        opacity => currentL.freeSketchParamOpacity,
+        flow => currentL.freeSketchParamFlow,
+        hardness => currentL.freeSketchParamHardness,
+        spacing => currentL.freeSketchParamSpacing,
+        streamline => currentL.freeSketchParamStreamline,
+        sizePressure => currentL.freeSketchParamSizePressure,
+        flowPressure => currentL.freeSketchParamFlowPressure,
+        taperStart => currentL.freeSketchParamTaperStart,
+        taperEnd => currentL.freeSketchParamTaperEnd,
+        sizeJitter => currentL.freeSketchParamSizeJitter,
+        angleJitter => currentL.freeSketchParamAngleJitter,
+        scatter => currentL.freeSketchParamScatter,
+        roundness => currentL.freeSketchParamRoundness,
+        angle => currentL.freeSketchParamAngle,
+        grainStrength => currentL.freeSketchParamGrain,
+        wetEdges => currentL.freeSketchParamWetEdges,
+        colorJitter => currentL.freeSketchParamColorJitter,
+        strength => currentL.freeSketchParamStrength,
+      };
+
   String format(double value) {
     if (percent) return '${(value * 100).round()}%';
     if (this == taperStart || this == taperEnd) {
-      return value == 0 ? 'Off' : value.toStringAsFixed(1);
+      return value == 0 ? currentL.commonOff : value.toStringAsFixed(1);
     }
     if (this == size) {
       return value < 10 ? '${value.toStringAsFixed(1)} $unit' : '${value.round()} $unit';
@@ -131,7 +173,6 @@ enum BrushParam {
 class BrushPreset {
   const BrushPreset({
     required this.id,
-    required this.name,
     required this.category,
     this.engine = BrushEngine.paint,
     this.tip = BrushTip.round,
@@ -163,7 +204,47 @@ class BrushPreset {
   });
 
   final String id;
-  final String name;
+
+  String get name => switch (id) {
+        'pencil_hb' => currentL.freeSketchBrushPencilHb,
+        'pencil_6b' => currentL.freeSketchBrushPencil6b,
+        'mechanical' => currentL.freeSketchBrushMechanical,
+        'charcoal' => currentL.freeSketchBrushCharcoal,
+        'pastel' => currentL.freeSketchBrushPastel,
+        'crayon' => currentL.freeSketchBrushCrayon,
+        'studio_pen' => currentL.freeSketchBrushStudioPen,
+        'fineliner' => currentL.freeSketchBrushFineliner,
+        'brush_pen' => currentL.freeSketchBrushBrushPen,
+        'calligraphy' => currentL.freeSketchBrushCalligraphy,
+        'technical' => currentL.freeSketchBrushTechnical,
+        'dry_ink' => currentL.freeSketchBrushDryInk,
+        'round_hard' => currentL.freeSketchBrushRoundHard,
+        'round_soft' => currentL.freeSketchBrushRoundSoft,
+        'oil' => currentL.freeSketchBrushOil,
+        'gouache' => currentL.freeSketchBrushGouache,
+        'flat_acrylic' => currentL.freeSketchBrushFlatAcrylic,
+        'palette_knife' => currentL.freeSketchBrushPaletteKnife,
+        'wc_wash' => currentL.freeSketchBrushWcWash,
+        'wc_round' => currentL.freeSketchBrushWcRound,
+        'wc_bleed' => currentL.freeSketchBrushWcBleed,
+        'wc_spatter' => currentL.freeSketchBrushWcSpatter,
+        'marker' => currentL.freeSketchBrushMarker,
+        'highlighter' => currentL.freeSketchBrushHighlighter,
+        'felt_tip' => currentL.freeSketchBrushFeltTip,
+        'airbrush' => currentL.freeSketchBrushAirbrush,
+        'fine_airbrush' => currentL.freeSketchBrushFineAirbrush,
+        'spray' => currentL.freeSketchBrushSpray,
+        'splatter' => currentL.freeSketchBrushSplatter,
+        'sparkle' => currentL.freeSketchBrushSparkle,
+        'glow' => currentL.freeSketchBrushGlow,
+        'foliage' => currentL.freeSketchBrushFoliage,
+        'stipple' => currentL.freeSketchBrushStipple,
+        'blend_soft' => currentL.freeSketchBrushBlendSoft,
+        'smudge' => currentL.freeSketchBrushSmudge,
+        'blend_bristle' => currentL.freeSketchBrushBlendBristle,
+        'blur' => currentL.freeSketchBrushBlur,
+        _ => id,
+      };
   final BrushCategory category;
   final BrushEngine engine;
   final BrushTip tip;
@@ -284,7 +365,6 @@ class BrushPreset {
     final v = value.clamp(param.min, param == BrushParam.size ? maxSize : param.max).toDouble();
     return BrushPreset(
       id: id,
-      name: name,
       category: category,
       engine: engine,
       tip: tip,
@@ -352,7 +432,6 @@ class BrushLibrary {
     // ------------------------------------------------------------ sketching
     BrushPreset(
       id: 'pencil_hb',
-      name: 'HB Pencil',
       category: BrushCategory.sketching,
       tip: BrushTip.pencil,
       size: 5,
@@ -371,7 +450,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'pencil_6b',
-      name: '6B Pencil',
       category: BrushCategory.sketching,
       tip: BrushTip.pencil,
       size: 10,
@@ -387,7 +465,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'mechanical',
-      name: 'Mechanical pencil',
       category: BrushCategory.sketching,
       size: 2.5,
       maxSize: 16,
@@ -403,7 +480,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'charcoal',
-      name: 'Charcoal',
       category: BrushCategory.sketching,
       tip: BrushTip.charcoal,
       size: 24,
@@ -420,7 +496,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'pastel',
-      name: 'Soft pastel',
       category: BrushCategory.sketching,
       tip: BrushTip.chalk,
       size: 32,
@@ -436,7 +511,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'crayon',
-      name: 'Wax crayon',
       category: BrushCategory.sketching,
       tip: BrushTip.crayon,
       size: 14,
@@ -454,7 +528,6 @@ class BrushLibrary {
     // --------------------------------------------------------------- inking
     BrushPreset(
       id: 'studio_pen',
-      name: 'Studio pen',
       category: BrushCategory.inking,
       size: 9,
       maxSize: 100,
@@ -468,7 +541,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'fineliner',
-      name: 'Fineliner',
       category: BrushCategory.inking,
       size: 3,
       maxSize: 30,
@@ -480,7 +552,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'brush_pen',
-      name: 'Brush pen',
       category: BrushCategory.inking,
       size: 16,
       maxSize: 120,
@@ -494,7 +565,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'calligraphy',
-      name: 'Calligraphy nib',
       category: BrushCategory.inking,
       size: 20,
       maxSize: 120,
@@ -508,7 +578,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'technical',
-      name: 'Technical pen',
       category: BrushCategory.inking,
       size: 2,
       maxSize: 24,
@@ -520,7 +589,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'dry_ink',
-      name: 'Dry ink',
       category: BrushCategory.inking,
       tip: BrushTip.ink,
       size: 12,
@@ -539,7 +607,6 @@ class BrushLibrary {
     // ------------------------------------------------------------- painting
     BrushPreset(
       id: 'round_hard',
-      name: 'Hard round',
       category: BrushCategory.painting,
       size: 26,
       maxSize: 500,
@@ -551,7 +618,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'round_soft',
-      name: 'Soft round',
       category: BrushCategory.painting,
       size: 90,
       maxSize: 500,
@@ -564,7 +630,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'oil',
-      name: 'Oil paint',
       category: BrushCategory.painting,
       tip: BrushTip.bristle,
       size: 40,
@@ -581,7 +646,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'gouache',
-      name: 'Gouache',
       category: BrushCategory.painting,
       size: 34,
       maxSize: 300,
@@ -597,7 +661,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'flat_acrylic',
-      name: 'Flat acrylic',
       category: BrushCategory.painting,
       tip: BrushTip.bristle,
       size: 56,
@@ -614,7 +677,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'palette_knife',
-      name: 'Palette knife',
       category: BrushCategory.painting,
       size: 60,
       maxSize: 300,
@@ -631,7 +693,6 @@ class BrushLibrary {
     // ----------------------------------------------------------- watercolor
     BrushPreset(
       id: 'wc_wash',
-      name: 'Watercolor wash',
       category: BrushCategory.watercolor,
       tip: BrushTip.watercolor,
       size: 80,
@@ -651,7 +712,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'wc_round',
-      name: 'Round watercolor',
       category: BrushCategory.watercolor,
       tip: BrushTip.watercolor,
       size: 28,
@@ -672,7 +732,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'wc_bleed',
-      name: 'Wet bleed',
       category: BrushCategory.watercolor,
       tip: BrushTip.watercolor,
       size: 60,
@@ -692,7 +751,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'wc_spatter',
-      name: 'Spatter',
       category: BrushCategory.watercolor,
       tip: BrushTip.splatter,
       size: 70,
@@ -712,7 +770,6 @@ class BrushLibrary {
     // -------------------------------------------------------------- markers
     BrushPreset(
       id: 'marker',
-      name: 'Alcohol marker',
       category: BrushCategory.markers,
       size: 20,
       maxSize: 120,
@@ -729,7 +786,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'highlighter',
-      name: 'Highlighter',
       category: BrushCategory.markers,
       size: 26,
       maxSize: 120,
@@ -745,7 +801,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'felt_tip',
-      name: 'Felt tip',
       category: BrushCategory.markers,
       size: 7,
       maxSize: 60,
@@ -762,7 +817,6 @@ class BrushLibrary {
     // ------------------------------------------------------------- airbrush
     BrushPreset(
       id: 'airbrush',
-      name: 'Airbrush',
       category: BrushCategory.airbrush,
       size: 140,
       maxSize: 500,
@@ -776,7 +830,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'fine_airbrush',
-      name: 'Fine airbrush',
       category: BrushCategory.airbrush,
       size: 24,
       maxSize: 200,
@@ -790,7 +843,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'spray',
-      name: 'Spray paint',
       category: BrushCategory.airbrush,
       tip: BrushTip.spray,
       size: 90,
@@ -807,7 +859,6 @@ class BrushLibrary {
     // -------------------------------------------------------------- texture
     BrushPreset(
       id: 'splatter',
-      name: 'Splatter',
       category: BrushCategory.texture,
       tip: BrushTip.splatter,
       size: 60,
@@ -822,7 +873,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'sparkle',
-      name: 'Sparkle',
       category: BrushCategory.texture,
       tip: BrushTip.sparkle,
       size: 36,
@@ -839,7 +889,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'glow',
-      name: 'Glow',
       category: BrushCategory.texture,
       size: 50,
       maxSize: 400,
@@ -853,7 +902,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'foliage',
-      name: 'Foliage',
       category: BrushCategory.texture,
       tip: BrushTip.leaf,
       size: 36,
@@ -869,7 +917,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'stipple',
-      name: 'Stipple',
       category: BrushCategory.texture,
       size: 5,
       maxSize: 40,
@@ -886,7 +933,6 @@ class BrushLibrary {
     // ------------------------------------------------------------- blending
     BrushPreset(
       id: 'blend_soft',
-      name: 'Soft blender',
       category: BrushCategory.blending,
       engine: BrushEngine.smudge,
       size: 50,
@@ -899,7 +945,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'smudge',
-      name: 'Smudge',
       category: BrushCategory.blending,
       engine: BrushEngine.smudge,
       size: 30,
@@ -912,7 +957,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'blend_bristle',
-      name: 'Bristle blender',
       category: BrushCategory.blending,
       engine: BrushEngine.smudge,
       tip: BrushTip.bristle,
@@ -926,7 +970,6 @@ class BrushLibrary {
     ),
     BrushPreset(
       id: 'blur',
-      name: 'Blur',
       category: BrushCategory.blending,
       engine: BrushEngine.blur,
       size: 70,

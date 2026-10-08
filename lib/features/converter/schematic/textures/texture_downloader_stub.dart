@@ -1,3 +1,4 @@
+import '../../../../l10n/current_l.dart';
 import 'texture_pack_types.dart';
 
 /// Web stub: there is nowhere to put a downloaded jar, so the preview stays on
@@ -6,8 +7,6 @@ import 'texture_pack_types.dart';
 Future<String> downloadVanillaTextures({
   void Function(TextureDownloadProgress)? onProgress,
 }) async =>
-    throw TextureDownloadException(
-      'Block textures can only be downloaded on desktop and Android.',
-    );
+    throw TextureDownloadException(currentL.textureDownloadUnsupported);
 
 const int kApproximateClientJarBytes = 0;

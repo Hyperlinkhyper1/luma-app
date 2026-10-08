@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
 import 'gtfs_archive.dart';
 import 'transit_vehicle.dart';
 
@@ -135,7 +136,7 @@ class GtfsRoutesCache {
     final csv = utf8.decode(bytes, allowMalformed: true);
     final routes = _parseCsv(csv);
     if (routes.isEmpty) {
-      throw GtfsArchiveException('The route list came back empty.');
+      throw GtfsArchiveException(currentL.transitRoutesEmpty);
     }
     final file = await _cacheFile(directory);
     await file.writeAsString(csv, flush: true);

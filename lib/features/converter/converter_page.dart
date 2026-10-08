@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../theme/luma_theme.dart';
 import 'converter_widgets.dart';
 import 'tools/audio_editor_view.dart';
@@ -72,6 +73,7 @@ class _ConverterHub extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
       child: Center(
@@ -81,11 +83,11 @@ class _ConverterHub extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Pick a tool to get started.',
+                t.converterHubPickTool,
                 style: TextStyle(color: luma.textSecondary, fontSize: 14),
               ),
               const SizedBox(height: 20),
-              ConverterToolGrid(tiles: _tiles(onOpen)),
+              ConverterToolGrid(tiles: _tiles(t, onOpen)),
             ],
           ),
         ),
@@ -93,68 +95,68 @@ class _ConverterHub extends StatelessWidget {
     );
   }
 
-  List<Widget> _tiles(ValueChanged<ConverterTool> onOpen) => [
+  List<Widget> _tiles(L t, ValueChanged<ConverterTool> onOpen) => [
         ConverterToolTile(
           icon: Icons.graphic_eq_rounded,
-          title: 'Audio converter',
+          title: t.converterHubAudioTitle,
           subtitle: 'MP3 · OGG · FLAC · M4A · WAV · AAC',
-          badge: 'AUDIO',
+          badge: t.converterBadgeAudio,
           onTap: () => onOpen(ConverterTool.audio),
         ),
         ConverterToolTile(
           icon: Icons.image_outlined,
-          title: 'Picture converter',
+          title: t.converterHubPictureTitle,
           subtitle: 'PNG · JPG · BMP · TIFF · SVG',
-          badge: 'IMAGE',
+          badge: t.converterBadgeImage,
           onTap: () => onOpen(ConverterTool.picture),
         ),
         ConverterToolTile(
           icon: Icons.movie_outlined,
-          title: 'Video converter',
+          title: t.converterHubVideoTitle,
           subtitle: 'MP4 · MOV · WEBM · OGV · MPG · M4V',
-          badge: 'VIDEO',
+          badge: t.converterBadgeVideo,
           onTap: () => onOpen(ConverterTool.video),
         ),
         ConverterToolTile(
           icon: Icons.compress_rounded,
-          title: 'Image downscaler',
-          subtitle: 'Make pictures smaller, your way',
-          badge: 'OPTIMIZE',
+          title: t.converterHubDownscalerTitle,
+          subtitle: t.converterHubDownscalerSubtitle,
+          badge: t.converterBadgeOptimize,
           onTap: () => onOpen(ConverterTool.downscaler),
         ),
         ConverterToolTile(
           icon: Icons.movie_filter_outlined,
-          title: 'Video downscaler',
-          subtitle: 'Make videos smaller',
-          badge: 'OPTIMIZE',
+          title: t.converterHubVideoDownscalerTitle,
+          subtitle: t.converterHubVideoDownscalerSubtitle,
+          badge: t.converterBadgeOptimize,
           onTap: () => onOpen(ConverterTool.videoDownscaler),
         ),
         ConverterToolTile(
           icon: Icons.photo_filter_outlined,
-          title: 'Image editor',
-          subtitle: 'Cut out white backgrounds',
-          badge: 'EDIT',
+          title: t.converterHubImageEditorTitle,
+          subtitle: t.converterHubImageEditorSubtitle,
+          badge: t.converterBadgeEdit,
           onTap: () => onOpen(ConverterTool.imageEditor),
         ),
         ConverterToolTile(
           icon: Icons.equalizer_rounded,
-          title: 'Audio editor',
-          subtitle: 'Snip and polish your sound',
-          badge: 'EDIT',
+          title: t.converterHubAudioEditorTitle,
+          subtitle: t.converterHubAudioEditorSubtitle,
+          badge: t.converterBadgeEdit,
           onTap: () => onOpen(ConverterTool.audioEditor),
         ),
         ConverterToolTile(
           icon: Icons.grid_view_rounded,
-          title: 'Collage maker',
-          subtitle: 'Stick photos together',
-          badge: 'CREATE',
+          title: t.converterHubCollageTitle,
+          subtitle: t.converterHubCollageSubtitle,
+          badge: t.converterBadgeCreate,
           onTap: () => onOpen(ConverterTool.collageMaker),
         ),
         ConverterToolTile(
           icon: Icons.category_outlined,
-          title: 'Other',
-          subtitle: 'Minecraft worlds & builds, file breaker & fixer',
-          badge: 'OTHER',
+          title: t.commonOther,
+          subtitle: t.converterHubOtherSubtitle,
+          badge: t.converterBadgeOther,
           onTap: () => onOpen(ConverterTool.other),
         ),
       ];

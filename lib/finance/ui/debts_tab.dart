@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 
 import '../../app/widgets.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/luma_theme.dart';
 import '../data/database.dart';
 import '../finance_repository.dart';
@@ -76,16 +77,20 @@ class _DebtsBody extends StatelessWidget {
               Wrap(
                 spacing: 16,
                 children: [
-                  _Total(label: 'You owe', cents: owe, color: luma.danger),
                   _Total(
-                    label: 'Owed to you',
+                    label: L.of(context).financeYouOwe,
+                    cents: owe,
+                    color: luma.danger,
+                  ),
+                  _Total(
+                    label: L.of(context).financeOwedToYou,
                     cents: owed,
                     color: luma.success,
                   ),
                 ],
               ),
               LumaPrimaryButton(
-                label: 'Add debt',
+                label: L.of(context).financeAddDebt,
                 icon: Icons.add_rounded,
                 onTap: () =>
                     showFinanceDialog<void>(context, _DebtEditor(repo: repo)),
@@ -97,9 +102,9 @@ class _DebtsBody extends StatelessWidget {
             child: debts.isEmpty
                 ? LumaEmptyState(
                     icon: Icons.handshake_rounded,
-                    title: 'No debts tracked',
+                    title: L.of(context).financeDebtsEmpty,
                     subtitle:
-                        'Add a student loan, a mortgage, or money a friend owes you to see when it\'s paid off.',
+                        L.of(context).financeDebtsEmptySubtitle,
                   )
                 : ListView.separated(
                     padding: const EdgeInsets.only(bottom: 40),
@@ -161,6 +166,7 @@ class _DebtCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final balance = debtBalanceCents(debt, payments);
     final owe = debt.direction == DebtDirection.owe;
     final settled = balance <= 0;
@@ -172,10 +178,10 @@ class _DebtCard extends StatelessWidget {
     final String outlook;
     Color outlookColor = luma.textMuted;
     if (settled) {
-      outlook = owe ? 'Paid off' : 'Fully repaid';
+      outlook = owe ? t.financePaidOff : t.financeFullyRepaid;
       outlookColor = luma.success;
     } else if (debt.monthlyPaymentCents <= 0) {
-      outlook = 'Set a monthly payment to see when it\'s paid off.';
+      outlook = t.financeDebtsSetMonthlyPayment;
     } else {
       final p = projectPayoff(
         balanceCents: balance,
@@ -184,15 +190,20 @@ class _DebtCard extends StatelessWidget {
         from: DateTime.now(),
       );
       if (p == null) {
-        outlook =
-            '${formatCents(debt.monthlyPaymentCents)}/month doesn\'t cover the interest.';
+        outlook = t.financeDebtsDoesNotCoverInterest(
+          formatCents(debt.monthlyPaymentCents),
+        );
         outlookColor = luma.danger;
       } else {
         final interest = p.totalInterestCents > 0
-            ? ' · ${formatCents(p.totalInterestCents)} interest'
+            ? ' · ${t.financeDebtsInterest(formatCents(p.totalInterestCents))}'
             : '';
-        outlook =
-            '${owe ? 'Paid off' : 'Repaid'} by ${monthYear(p.payoffDate)} · ${p.months} ${p.months == 1 ? 'payment' : 'payments'}$interest';
+        outlook = t.financeDebtsPayoffOutlook(
+          owe ? t.financePaidOff : t.financeRepaid,
+          monthYear(p.payoffDate),
+          p.months,
+          interest,
+        );
       }
     }
 
@@ -231,11 +242,15 @@ class _DebtCard extends StatelessWidget {
                     ),
                     Text(
                       [
-                        owe ? 'You owe' : 'Owed to you',
+                        owe ? t.financeYouOwe : t.financeOwedToYou,
                         if (debt.interestBps > 0)
-                          '${(debt.interestBps / 100).toStringAsFixed(2)}% a year',
+                          t.financeDebtsInterestRate(
+                            (debt.interestBps / 100).toStringAsFixed(2),
+                          ),
                         if (debt.monthlyPaymentCents > 0)
-                          '${formatCents(debt.monthlyPaymentCents)}/month',
+                          t.financeDebtsMonthlyAmount(
+                            formatCents(debt.monthlyPaymentCents),
+                          ),
                       ].join(' · '),
                       style: TextStyle(color: luma.textMuted, fontSize: 12),
                     ),
@@ -254,7 +269,7 @@ class _DebtCard extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'of ${formatCents(debt.principalCents)}',
+                    t.financeDebtsOfTotal(formatCents(debt.principalCents)),
                     style: TextStyle(color: luma.textMuted, fontSize: 11),
                   ),
                 ],
@@ -271,21 +286,26 @@ class _DebtCard extends StatelessWidget {
                   _item(
                     'pay',
                     Icons.payments_rounded,
-                    owe ? 'Log payment' : 'Log repayment',
+                    owe ? t.financeDebtsLogPayment : t.financeDebtsLogRepayment,
                     luma,
                   ),
-                  _item('adjust', Icons.tune_rounded, 'Update balance', luma),
+                  _item(
+                    'adjust',
+                    Icons.tune_rounded,
+                    t.financeDebtsUpdateBalance,
+                    luma,
+                  ),
                   _item(
                     'history',
                     Icons.history_rounded,
-                    'Payment history',
+                    t.financeDebtsPaymentHistory,
                     luma,
                   ),
-                  _item('edit', Icons.edit_rounded, 'Edit', luma),
+                  _item('edit', Icons.edit_rounded, t.financeEntryEdit, luma),
                   _item(
                     'delete',
                     Icons.delete_outline_rounded,
-                    'Delete',
+                    t.commonDelete,
                     luma,
                     danger: true,
                   ),
@@ -307,7 +327,15 @@ class _DebtCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '${(paidFraction * 100).floor()}% ${owe ? 'paid' : 'repaid'} · $outlook',
+            owe
+                ? t.financeDebtsProgressPaid(
+                    '${(paidFraction * 100).floor()}',
+                    outlook,
+                  )
+                : t.financeDebtsProgressRepaid(
+                    '${(paidFraction * 100).floor()}',
+                    outlook,
+                  ),
             style: TextStyle(color: outlookColor, fontSize: 12),
           ),
         ],
@@ -345,8 +373,8 @@ class _DebtCard extends StatelessWidget {
       case 'delete':
         final ok = await confirmFinanceDelete(
           context,
-          'Delete "${debt.name}"?',
-          'Its payment history goes too. Payments already booked in your transactions stay there.',
+          L.of(context).financeDebtsDeleteTitle(debt.name),
+          L.of(context).financeDebtsDeleteMessage,
         );
         if (ok) await repo.deleteDebt(debt.id);
     }
@@ -418,11 +446,11 @@ class _DebtEditorState extends State<_DebtEditor> {
     final monthlyText = _monthly.text.trim();
     final monthly = monthlyText.isEmpty ? 0 : parseToCents(monthlyText);
     if (name.isEmpty || principal == null || principal <= 0) {
-      setState(() => _error = 'Give it a name and an amount above €0.');
+      setState(() => _error = L.of(context).financeDebtsNameAmountRequired);
       return;
     }
     if (interest == null || interest < 0 || monthly == null || monthly < 0) {
-      setState(() => _error = 'Interest and monthly payment must be numbers.');
+      setState(() => _error = L.of(context).financeDebtsNumbersRequired);
       return;
     }
     final note = _note.text.trim().isEmpty ? null : _note.text.trim();
@@ -458,14 +486,15 @@ class _DebtEditorState extends State<_DebtEditor> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return FinanceDialogScaffold(
-      title: widget.debt == null ? 'Add debt' : 'Edit debt',
-      confirmLabel: widget.debt == null ? 'Add' : 'Save',
+      title: widget.debt == null ? t.financeAddDebt : t.financeEditDebt,
+      confirmLabel: widget.debt == null ? t.commonAdd : t.commonSave,
       onConfirm: _save,
       error: _error,
       children: [
         LumaSegmentedTabs(
-          tabs: const ['I owe', 'Owed to me'],
+          tabs: [t.financeDebtsIOwe, t.financeDebtsOwedToMe],
           selectedIndex: _direction == DebtDirection.owe ? 0 : 1,
           onSelect: (i) => setState(
             () => _direction = i == 0 ? DebtDirection.owe : DebtDirection.owed,
@@ -473,16 +502,16 @@ class _DebtEditorState extends State<_DebtEditor> {
         ),
         const SizedBox(height: 14),
         FinanceField(
-          label: 'Name',
+          label: L.of(context).commonName,
           controller: _name,
           autofocus: widget.debt == null,
           hint: _direction == DebtDirection.owe
-              ? 'e.g. Student loan (DUO)'
-              : 'e.g. Sam — concert tickets',
+              ? t.financeDebtsNameHintOwe
+              : t.financeDebtsNameHintOwed,
         ),
         const SizedBox(height: 12),
         FinanceField(
-          label: 'Original amount',
+          label: L.of(context).financeDebtsOriginalAmount,
           controller: _principal,
           hint: '0,00',
           prefix: '€ ',
@@ -494,17 +523,17 @@ class _DebtEditorState extends State<_DebtEditor> {
           children: [
             Expanded(
               child: FinanceField(
-                label: 'Interest (optional)',
+                label: L.of(context).financeDebtsInterestOptional,
                 controller: _interest,
                 hint: '0',
-                suffix: '% / year',
+                suffix: t.financeDebtsPerYear,
                 number: true,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: FinanceField(
-                label: 'Monthly payment',
+                label: L.of(context).financeDebtsMonthlyPayment,
                 controller: _monthly,
                 hint: '0,00',
                 prefix: '€ ',
@@ -515,12 +544,15 @@ class _DebtEditorState extends State<_DebtEditor> {
         ),
         const SizedBox(height: 12),
         FinanceDateField(
-          label: 'Started',
+          label: L.of(context).financeDebtsStarted,
           date: _start,
           onChanged: (d) => setState(() => _start = d),
         ),
         const SizedBox(height: 12),
-        FinanceField(label: 'Note (optional)', controller: _note),
+        FinanceField(
+          label: L.of(context).financeNoteOptional,
+          controller: _note,
+        ),
       ],
     );
   }
@@ -557,7 +589,7 @@ class _PaymentEditorState extends State<_PaymentEditor> {
   Future<void> _save() async {
     final cents = parseToCents(_amount.text);
     if (cents == null || cents <= 0) {
-      setState(() => _error = 'Enter an amount above €0.');
+      setState(() => _error = L.of(context).financeDebtsAmountAboveZero);
       return;
     }
     await widget.repo.addDebtPayment(
@@ -574,14 +606,14 @@ class _PaymentEditorState extends State<_PaymentEditor> {
     final owe = widget.debt.direction == DebtDirection.owe;
     return FinanceDialogScaffold(
       title: owe
-          ? 'Payment on ${widget.debt.name}'
-          : 'Repayment from ${widget.debt.name}',
-      confirmLabel: 'Log',
+          ? L.of(context).financeDebtsPaymentOn(widget.debt.name)
+          : L.of(context).financeDebtsRepaymentFrom(widget.debt.name),
+      confirmLabel: L.of(context).financeDebtsLog,
       onConfirm: _save,
       error: _error,
       children: [
         FinanceField(
-          label: 'Amount',
+          label: L.of(context).commonAmount,
           controller: _amount,
           autofocus: true,
           hint: '0,00',
@@ -590,7 +622,7 @@ class _PaymentEditorState extends State<_PaymentEditor> {
         ),
         const SizedBox(height: 12),
         FinanceDateField(
-          label: 'Date',
+          label: L.of(context).commonDate,
           date: _date,
           onChanged: (d) => setState(() => _date = d),
         ),
@@ -599,8 +631,8 @@ class _PaymentEditorState extends State<_PaymentEditor> {
           value: _book,
           onChanged: (v) => setState(() => _book = v),
           label: owe
-              ? 'Also book it as an expense from my main balance'
-              : 'Also book it as income to my main balance',
+              ? L.of(context).financeDebtsBookExpense
+              : L.of(context).financeDebtsBookIncome,
         ),
       ],
     );
@@ -636,7 +668,7 @@ class _AdjustEditorState extends State<_AdjustEditor> {
   Future<void> _save() async {
     final cents = parseToCents(_amount.text);
     if (cents == null || cents < 0) {
-      setState(() => _error = 'Enter the balance as an amount.');
+      setState(() => _error = L.of(context).financeDebtsEnterBalance);
       return;
     }
     await widget.repo.adjustDebtBalance(widget.debt, cents);
@@ -647,20 +679,18 @@ class _AdjustEditorState extends State<_AdjustEditor> {
   Widget build(BuildContext context) {
     final luma = context.luma;
     return FinanceDialogScaffold(
-      title: 'Update balance',
-      confirmLabel: 'Save',
+      title: L.of(context).financeDebtsUpdateBalance,
+      confirmLabel: L.of(context).commonSave,
       onConfirm: _save,
       error: _error,
       children: [
         Text(
-          'Type the balance from your latest statement. The difference is '
-          'recorded as an adjustment (interest, fees) and doesn\'t touch your '
-          'transactions.',
+          L.of(context).financeDebtsAdjustExplainer,
           style: TextStyle(color: luma.textMuted, fontSize: 13),
         ),
         const SizedBox(height: 12),
         FinanceField(
-          label: 'Current balance',
+          label: L.of(context).financeDebtsCurrentBalance,
           controller: _amount,
           autofocus: true,
           prefix: '€ ',
@@ -691,7 +721,7 @@ class _History extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            '${debt.name} — history',
+            L.of(context).financeDebtsHistoryTitle(debt.name),
             style: TextStyle(
               color: luma.textPrimary,
               fontSize: 18,
@@ -701,7 +731,7 @@ class _History extends StatelessWidget {
           const SizedBox(height: 12),
           if (payments.isEmpty)
             Text(
-              'No payments logged yet.',
+              L.of(context).financeDebtsNoPayments,
               style: TextStyle(color: luma.textMuted, fontSize: 13),
             )
           else
@@ -716,8 +746,8 @@ class _History extends StatelessWidget {
                       title: Text(
                         p.note ??
                             (p.transactionId != null
-                                ? 'Payment (booked)'
-                                : 'Payment'),
+                                ? L.of(context).financeDebtsPaymentBooked
+                                : L.of(context).financeDebtsPayment),
                         style: TextStyle(color: luma.textPrimary),
                       ),
                       subtitle: Text(
@@ -735,7 +765,7 @@ class _History extends StatelessWidget {
                             ),
                           ),
                           IconButton(
-                            tooltip: 'Delete',
+                            tooltip: L.of(context).commonDelete,
                             icon: Icon(
                               Icons.delete_outline_rounded,
                               size: 18,
@@ -756,7 +786,7 @@ class _History extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: LumaGhostButton(
-              label: 'Close',
+              label: L.of(context).commonClose,
               onTap: () => Navigator.pop(context),
             ),
           ),

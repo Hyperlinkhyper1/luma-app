@@ -6,6 +6,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
+import '../../../../../l10n/current_l.dart';
 import '../engine/adjustments.dart';
 import '../engine/brush_textures.dart';
 import '../engine/compositor.dart';
@@ -80,7 +81,7 @@ class StudioController extends ChangeNotifier {
         clipped: layerMeta.clipped,
       ));
     }
-    if (layers.isEmpty) layers.add(const SketchLayer(id: 1, name: 'Layer 1'));
+    if (layers.isEmpty) layers.add(SketchLayer(id: 1, name: currentL.freeSketchStudioDefaultLayerName(1)));
     final activeId = layers.any((l) => l.id == meta.activeLayerId) ? meta.activeLayerId! : layers.last.id;
     final document = SketchDocument(
       width: meta.width,
@@ -347,11 +348,11 @@ class StudioController extends ChangeNotifier {
 
   bool _editable(SketchLayer layer) {
     if (layer.locked) {
-      onMessage?.call('"${layer.name}" is locked.');
+      onMessage?.call(currentL.freeSketchLayerLocked(layer.name));
       return false;
     }
     if (!layer.visible) {
-      onMessage?.call('"${layer.name}" is hidden — show it to paint on it.');
+      onMessage?.call(currentL.freeSketchLayerHidden(layer.name));
       return false;
     }
     return true;
@@ -420,9 +421,9 @@ class StudioController extends ChangeNotifier {
     final image = stroke.commit();
     final label = switch (stroke.mode) {
       StrokeMode.paint => stroke.brush.name,
-      StrokeMode.erase => 'Erase',
-      StrokeMode.smudge => 'Smudge',
-      StrokeMode.blur => 'Blur',
+      StrokeMode.erase => currentL.freeSketchStrokeModeErase,
+      StrokeMode.smudge => currentL.freeSketchStrokeModeSmudge,
+      StrokeMode.blur => currentL.freeSketchStrokeModeBlur,
     };
     stroke.dispose();
     if (image == null) {
@@ -616,7 +617,7 @@ class StudioController extends ChangeNotifier {
     if (a == null || b == null || (a - b).distance < 2) return;
     final layer = state.active;
     final image = _record((canvas) => _paintGradient(canvas, layer, a, b, FilterQuality.low));
-    document.commit(state.replaceLayer(layer.copyWith(image: image)), 'Gradient');
+    document.commit(state.replaceLayer(layer.copyWith(image: image)), currentL.freeSketchUndoGradient);
     _remember(_color);
   }
 
@@ -691,23 +692,23 @@ class StudioController extends ChangeNotifier {
     } else {
       next = Path.combine(PathOperation.difference, existing, draft);
     }
-    document.commit(state.copyWith(selection: next), 'Select');
+    document.commit(state.copyWith(selection: next), currentL.freeSketchUndoSelect);
   }
 
   void selectAll() {
-    document.commit(state.copyWith(selection: Path()..addRect(bounds)), 'Select all');
+    document.commit(state.copyWith(selection: Path()..addRect(bounds)), currentL.freeSketchUndoSelectAll);
   }
 
   void deselect() {
     if (state.selection == null) return;
-    document.commit(state.copyWith(clearSelection: true), 'Deselect');
+    document.commit(state.copyWith(clearSelection: true), currentL.freeSketchDeselect);
   }
 
   void invertSelection() {
     final current = state.selection;
     final all = Path()..addRect(bounds);
     final next = current == null ? all : Path.combine(PathOperation.difference, all, current);
-    document.commit(state.copyWith(selection: next), 'Invert selection');
+    document.commit(state.copyWith(selection: next), currentL.freeSketchUndoInvertSelection);
   }
 
   // -------------------------------------------------------------- clipboard
@@ -718,7 +719,7 @@ class StudioController extends ChangeNotifier {
   void copy() {
     final image = state.active.image;
     if (image == null) {
-      onMessage?.call('Nothing to copy on this layer.');
+      onMessage?.call(currentL.freeSketchNothingToCopy);
       return;
     }
     final clip = state.selection;
@@ -737,21 +738,21 @@ class StudioController extends ChangeNotifier {
         flat.dispose();
       }
     }));
-    onMessage?.call(clip == null ? 'Layer copied.' : 'Selection copied.');
+    onMessage?.call(clip == null ? currentL.freeSketchLayerCopied : currentL.freeSketchSelectionCopied);
     notifyListeners();
   }
 
   void cut() {
     if (!_editable(state.active)) return;
     copy();
-    clearLayer(label: 'Cut');
+    clearLayer(label: currentL.freeSketchUndoCut);
   }
 
   void paste() {
     final clip = _clipboard;
     if (clip == null) return;
     final before = state.layers.length;
-    addLayer(name: 'Pasted', image: clip.clone());
+    addLayer(name: currentL.freeSketchLayerPasted, image: clip.clone());
     if (state.layers.length > before) _transformActive();
   }
 
@@ -774,7 +775,7 @@ class StudioController extends ChangeNotifier {
     final layer = state.active;
     final image = layer.image;
     if (image == null) {
-      onMessage?.call('This layer is empty — nothing to transform.');
+      onMessage?.call(currentL.freeSketchLayerEmptyTransform);
       _tool = SketchTool.brush;
       notifyListeners();
       return;
@@ -865,7 +866,7 @@ class StudioController extends ChangeNotifier {
     session.dispose();
     var next = state.replaceLayer(layer.copyWith(image: image));
     if (selection != null) next = next.copyWith(selection: selection);
-    document.commit(next, 'Transform');
+    document.commit(next, currentL.freeSketchUndoTransform);
   }
 
   /// Applies the transform and goes back to painting — the Apply button
@@ -896,7 +897,7 @@ class StudioController extends ChangeNotifier {
   bool beginAdjustment(AdjustmentKind kind) {
     final layer = state.active;
     if (layer.image == null) {
-      onMessage?.call('This layer is empty — nothing to adjust.');
+      onMessage?.call(currentL.freeSketchLayerEmptyAdjust);
       return false;
     }
     if (!_editable(layer)) return false;
@@ -951,11 +952,11 @@ class StudioController extends ChangeNotifier {
           canvas.drawImage(image, Offset.zero, Paint()..blendMode = BlendMode.srcIn);
         });
         image.dispose();
-        document.commit(state.replaceLayer(layer.copyWith(image: locked)), kind.label);
+        document.commit(state.replaceLayer(layer.copyWith(image: locked)), kind.label(currentL));
         return;
       }
     }
-    document.commit(state.replaceLayer(layer.copyWith(image: image)), kind.label);
+    document.commit(state.replaceLayer(layer.copyWith(image: image)), kind.label(currentL));
   }
 
   void cancelAdjustment() {
@@ -1006,10 +1007,10 @@ class StudioController extends ChangeNotifier {
         );
       });
       maskImage.dispose();
-      document.commit(state.replaceLayer(current.copyWith(image: image)), 'Fill');
+      document.commit(state.replaceLayer(current.copyWith(image: image)), currentL.freeSketchUndoFill);
       _remember(_color);
     } on Object catch (error) {
-      onMessage?.call('Fill failed: $error');
+      onMessage?.call(currentL.freeSketchFillFailed('$error'));
     } finally {
       source?.dispose();
       _busy = false;
@@ -1064,26 +1065,26 @@ class StudioController extends ChangeNotifier {
   String _nextLayerName() {
     var n = 1;
     final names = state.layers.map((l) => l.name).toSet();
-    while (names.contains('Layer $n')) {
+    while (names.contains(currentL.freeSketchStudioDefaultLayerName(n))) {
       n++;
     }
-    return 'Layer $n';
+    return currentL.freeSketchStudioDefaultLayerName(n);
   }
 
   void addLayer({String? name, ui.Image? image}) {
     if (state.layers.length >= maxLayers) {
       image?.dispose();
-      onMessage?.call('This canvas size allows up to $maxLayers layers.');
+      onMessage?.call(currentL.freeSketchLayerLimit(maxLayers));
       return;
     }
     final id = document.takeLayerId();
     final layers = [...state.layers]..insert(state.activeIndex + 1, SketchLayer(id: id, name: name ?? _nextLayerName(), image: image));
-    document.commit(state.copyWith(layers: layers, activeLayerId: id), 'New layer');
+    document.commit(state.copyWith(layers: layers, activeLayerId: id), currentL.freeSketchLayerNew);
   }
 
   void duplicateLayer([int? id]) {
     if (state.layers.length >= maxLayers) {
-      onMessage?.call('This canvas size allows up to $maxLayers layers.');
+      onMessage?.call(currentL.freeSketchLayerLimit(maxLayers));
       return;
     }
     final source = state.layerById(id ?? state.activeLayerId);
@@ -1092,7 +1093,7 @@ class StudioController extends ChangeNotifier {
     final copyId = document.takeLayerId();
     final copy = SketchLayer(
       id: copyId,
-      name: '${source.name} copy',
+      name: currentL.freeSketchLayerCopyName(source.name),
       image: source.image,
       opacity: source.opacity,
       blend: source.blend,
@@ -1101,7 +1102,7 @@ class StudioController extends ChangeNotifier {
       clipped: source.clipped,
     );
     final layers = [...state.layers]..insert(index + 1, copy);
-    document.commit(state.copyWith(layers: layers, activeLayerId: copyId), 'Duplicate layer');
+    document.commit(state.copyWith(layers: layers, activeLayerId: copyId), currentL.freeSketchUndoDuplicateLayer);
   }
 
   void deleteLayer([int? id]) {
@@ -1110,7 +1111,7 @@ class StudioController extends ChangeNotifier {
     if (state.layers.length == 1) {
       document.commit(
         state.copyWith(layers: [SketchLayer(id: target.id, name: target.name)]),
-        'Delete layer',
+        currentL.freeSketchLayerDelete,
       );
       return;
     }
@@ -1119,7 +1120,7 @@ class StudioController extends ChangeNotifier {
     final active = target.id == state.activeLayerId
         ? layers[math.min(index, layers.length - 1)].id
         : state.activeLayerId;
-    document.commit(state.copyWith(layers: layers, activeLayerId: active), 'Delete layer');
+    document.commit(state.copyWith(layers: layers, activeLayerId: active), currentL.freeSketchLayerDelete);
   }
 
   bool canMergeDown([int? id]) {
@@ -1136,7 +1137,7 @@ class StudioController extends ChangeNotifier {
     if (index <= 0) return;
     final below = state.layers[index - 1];
     if (below.locked) {
-      onMessage?.call('"${below.name}" is locked.');
+      onMessage?.call(currentL.freeSketchLayerLocked(below.name));
       return;
     }
     final image = _record((canvas) {
@@ -1159,15 +1160,15 @@ class StudioController extends ChangeNotifier {
     final layers = [...state.layers]
       ..removeAt(index)
       ..[index - 1] = below.copyWith(image: image);
-    document.commit(state.copyWith(layers: layers, activeLayerId: below.id), 'Merge down');
+    document.commit(state.copyWith(layers: layers, activeLayerId: below.id), currentL.freeSketchUndoMergeDown);
   }
 
   void flatten() {
     final image = SketchCompositor.flatten(state, width, height, includeBackground: false);
     final id = document.takeLayerId();
     document.commit(
-      state.copyWith(layers: [SketchLayer(id: id, name: 'Flattened', image: image)], activeLayerId: id),
-      'Flatten',
+      state.copyWith(layers: [SketchLayer(id: id, name: currentL.freeSketchLayerFlattened, image: image)], activeLayerId: id),
+      currentL.freeSketchUndoFlatten,
     );
   }
 
@@ -1176,7 +1177,7 @@ class StudioController extends ChangeNotifier {
     final layers = [...state.layers];
     final layer = layers.removeAt(fromIndex);
     layers.insert(toIndex.clamp(0, layers.length), layer);
-    document.commit(state.copyWith(layers: layers), 'Reorder layers');
+    document.commit(state.copyWith(layers: layers), currentL.freeSketchUndoReorderLayers);
   }
 
   void updateLayer(int id, SketchLayer Function(SketchLayer layer) change, String label) {
@@ -1197,23 +1198,24 @@ class StudioController extends ChangeNotifier {
   void commitOpacity() {
     final before = _opacityBefore;
     _opacityBefore = null;
-    if (before != null) document.commitFrom(before, 'Layer opacity');
+    if (before != null) document.commitFrom(before, currentL.freeSketchUndoLayerOpacity);
   }
 
   /// Clears the active layer, or only the selected part of it.
-  void clearLayer({String label = 'Clear'}) {
+  void clearLayer({String? label}) {
     final layer = state.active;
     if (!_editable(layer) || layer.image == null) return;
     final clip = state.selection;
+    final undo = label ?? currentL.commonClear;
     if (clip == null) {
-      document.commit(state.replaceLayer(layer.copyWith(clearImage: true)), label);
+      document.commit(state.replaceLayer(layer.copyWith(clearImage: true)), undo);
       return;
     }
     final image = _record((canvas) {
       canvas.drawImage(layer.image!, Offset.zero, Paint());
       canvas.drawPath(clip, Paint()..blendMode = BlendMode.clear);
     });
-    document.commit(state.replaceLayer(layer.copyWith(image: image)), label);
+    document.commit(state.replaceLayer(layer.copyWith(image: image)), undo);
   }
 
   /// Fills the active layer (or the selection) with the current colour.
@@ -1221,7 +1223,7 @@ class StudioController extends ChangeNotifier {
     final layer = state.active;
     if (!_editable(layer)) return;
     final image = _renderOnto(layer, (canvas) => canvas.drawRect(bounds, Paint()..color = _color));
-    document.commit(state.replaceLayer(layer.copyWith(image: image)), 'Fill layer');
+    document.commit(state.replaceLayer(layer.copyWith(image: image)), currentL.freeSketchUndoFillLayer);
   }
 
   // ------------------------------------------------------------------ canvas
@@ -1247,16 +1249,16 @@ class StudioController extends ChangeNotifier {
     ];
     document.commit(
       state.copyWith(layers: layers, selection: state.selection?.transform(m)),
-      horizontal ? 'Flip canvas horizontally' : 'Flip canvas vertically',
+      horizontal ? currentL.freeSketchCanvasFlipH : currentL.freeSketchCanvasFlipV,
     );
   }
 
   void setBackground(Color color) {
-    document.commit(state.copyWith(background: color.withValues(alpha: 1), showBackground: true), 'Background colour');
+    document.commit(state.copyWith(background: color.withValues(alpha: 1), showBackground: true), currentL.freeSketchBackgroundColour);
   }
 
   void toggleBackground() {
-    document.commit(state.copyWith(showBackground: !state.showBackground), 'Background');
+    document.commit(state.copyWith(showBackground: !state.showBackground), currentL.freeSketchBackground);
   }
 
   // ------------------------------------------------------------------ import
@@ -1268,7 +1270,7 @@ class StudioController extends ChangeNotifier {
       addLayer(name: name, image: image);
       if (state.layers.length > before) _transformActive();
     } on Object catch (error) {
-      onMessage?.call('That image could not be opened: $error');
+      onMessage?.call(currentL.freeSketchImageOpenFailed('$error'));
     }
   }
 
@@ -1495,7 +1497,7 @@ class StudioController extends ChangeNotifier {
         ..addEntries(snapshot.layers.map((l) => MapEntry(l.id, l.image)));
       _savedRevision = revision;
     } on Object catch (error) {
-      onMessage?.call('Could not save: $error');
+      onMessage?.call(currentL.freeSketchSaveFailed('$error'));
     } finally {
       for (final image in clones.values) {
         image?.dispose();

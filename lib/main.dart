@@ -14,6 +14,7 @@ import 'app/third_party_licenses.dart';
 import 'app/update/app_version.dart';
 import 'app/update/update_gate.dart';
 import 'app/window_controls.dart';
+import 'l10n/current_l.dart';
 import 'features/chat/data/chat_database.dart';
 import 'features/chat/data/chat_repository.dart';
 import 'features/chat/chat_scope.dart';
@@ -358,7 +359,8 @@ class _LumaAppState extends State<LumaApp> {
     collections: [
       JsonStoreSyncCollection(
         id: _homeRepository.collectionId,
-        label: 'Home layout (${_homeRepository.family})',
+        labelBuilder: () =>
+            currentL.syncCollectionHomeLayout(_homeRepository.family),
         icon: Icons.dashboard_customize_rounded,
         listenable: _homeRepository,
         exporter: _homeRepository.exportData,
@@ -369,7 +371,7 @@ class _LumaAppState extends State<LumaApp> {
       // paired device always picks up the same theme/preferences.
       JsonStoreSyncCollection(
         id: 'settings',
-        label: 'Settings',
+        labelBuilder: () => currentL.syncCollectionSettings,
         icon: Icons.tune_rounded,
         listenable: widget.settings,
         exporter: () async => widget.settings.exportData(),
@@ -380,7 +382,7 @@ class _LumaAppState extends State<LumaApp> {
       // counts toward the plan's server storage quota.
       JsonStoreSyncCollection(
         id: kAssistantMemoryCollectionId,
-        label: 'Assistant memory',
+        labelBuilder: () => currentL.syncCollectionAssistantMemory,
         icon: Icons.psychology_rounded,
         listenable: _assistantMemoryRepository,
         exporter: _assistantMemoryRepository.exportData,
@@ -388,7 +390,7 @@ class _LumaAppState extends State<LumaApp> {
       ),
       JsonStoreSyncCollection(
         id: 'notes',
-        label: 'Notes',
+        labelBuilder: () => currentL.syncCollectionNotes,
         icon: Icons.sticky_note_2_rounded,
         listenable: NotesRepository(),
         exporter: () => NotesRepository().exportData(),
@@ -396,7 +398,7 @@ class _LumaAppState extends State<LumaApp> {
       ),
       DriftSyncCollection(
         id: 'finance',
-        label: 'Finance',
+        labelBuilder: () => currentL.syncCollectionFinance,
         icon: Icons.account_balance_wallet_rounded,
         db: _db,
       ),
@@ -406,43 +408,43 @@ class _LumaAppState extends State<LumaApp> {
       ),
       DriftSyncCollection(
         id: 'calendar',
-        label: 'Calendar',
+        labelBuilder: () => currentL.syncCollectionCalendar,
         icon: Icons.calendar_month_rounded,
         db: _calendarDb,
       ),
       DriftSyncCollection(
         id: 'bulletin_board',
-        label: 'Bulletin board',
+        labelBuilder: () => currentL.syncCollectionBulletinBoard,
         icon: Icons.push_pin_rounded,
         db: _bulletinBoardDb,
       ),
       DriftSyncCollection(
         id: 'qr_codes',
-        label: 'QR codes',
+        labelBuilder: () => currentL.syncCollectionQrCodes,
         icon: Icons.qr_code_rounded,
         db: _qrCodeDb,
       ),
       DriftSyncCollection(
         id: 'card_wallet',
-        label: 'Card wallet',
+        labelBuilder: () => currentL.syncCollectionCardWallet,
         icon: Icons.wallet_rounded,
         db: _cardWalletDb,
       ),
       DriftSyncCollection(
         id: 'errands',
-        label: 'Errands',
+        labelBuilder: () => currentL.syncCollectionErrands,
         icon: Icons.checklist_rounded,
         db: _errandsDb,
       ),
       DriftSyncCollection(
         id: 'data_management',
-        label: 'Data management',
+        labelBuilder: () => currentL.syncCollectionDataManagement,
         icon: Icons.table_chart_rounded,
         db: _dataManagementDb,
       ),
       DriftSyncCollection(
         id: 'mood_journal',
-        label: 'Mood journal',
+        labelBuilder: () => currentL.syncCollectionMoodJournal,
         icon: Icons.mood_rounded,
         db: _moodJournalDb,
       ),
@@ -453,7 +455,7 @@ class _LumaAppState extends State<LumaApp> {
       // 10-second loop.
       JsonStoreSyncCollection(
         id: kAiUsageSyncCollectionId,
-        label: 'AI Usage (agents, library & usage)',
+        labelBuilder: () => currentL.syncCollectionAiUsage,
         icon: Icons.query_stats_rounded,
         listenable: _aiWorkbenchRepository,
         exporter: _aiWorkbenchRepository.exportData,
@@ -461,31 +463,31 @@ class _LumaAppState extends State<LumaApp> {
       ),
       DriftSyncCollection(
         id: 'school',
-        label: 'School',
+        labelBuilder: () => currentL.syncCollectionSchool,
         icon: Icons.school_rounded,
         db: _schoolDb,
       ),
       DriftSyncCollection(
         id: 'mind_map',
-        label: 'Mind maps',
+        labelBuilder: () => currentL.syncCollectionMindMaps,
         icon: Icons.hub_rounded,
         db: _mindMapDb,
       ),
       DriftSyncCollection(
         id: 'whiteboard',
-        label: 'Whiteboards',
+        labelBuilder: () => currentL.syncCollectionWhiteboards,
         icon: Icons.draw_rounded,
         db: _whiteboardDb,
       ),
       DriftSyncCollection(
         id: 'text_library',
-        label: 'Text library',
+        labelBuilder: () => currentL.syncCollectionTextLibrary,
         icon: Icons.menu_book_rounded,
         db: _textLibraryDb,
       ),
       JsonStoreSyncCollection(
         id: 'price_tracker',
-        label: 'Price tracker',
+        labelBuilder: () => currentL.syncCollectionPriceTracker,
         icon: Icons.trending_down_rounded,
         listenable: _priceTrackerRepository,
         exporter: () => _priceTrackerRepository.exportData(),
@@ -493,7 +495,7 @@ class _LumaAppState extends State<LumaApp> {
       ),
       JsonStoreSyncCollection(
         id: 'wifi_speed_test',
-        label: 'Wi-Fi speed test',
+        labelBuilder: () => currentL.syncCollectionWifiSpeedTest,
         icon: Icons.speed_rounded,
         listenable: _wifiSpeedTestRepository,
         exporter: () => _wifiSpeedTestRepository.exportData(),
@@ -501,7 +503,7 @@ class _LumaAppState extends State<LumaApp> {
       ),
       DriftSyncCollection(
         id: 'groceries',
-        label: 'Groceries',
+        labelBuilder: () => currentL.syncCollectionGroceries,
         icon: Icons.local_grocery_store_rounded,
         db: _groceriesDb,
       ),
@@ -511,7 +513,7 @@ class _LumaAppState extends State<LumaApp> {
         id: _airlineTycoonRepository.airportMode
             ? 'airline_tycoon_airport_v2'
             : 'airline_tycoon',
-        label: 'Airline Tycoon',
+        labelBuilder: () => currentL.syncCollectionAirlineTycoon,
         icon: Icons.flight_takeoff_rounded,
         minPlanId: 'orbit',
         listenable: _airlineTycoonRepository,
@@ -520,13 +522,13 @@ class _LumaAppState extends State<LumaApp> {
       ),
       DriftSyncCollection(
         id: 'steam_tools',
-        label: 'Steam Tools',
+        labelBuilder: () => currentL.syncCollectionSteamTools,
         icon: Icons.sports_esports_rounded,
         db: _steamDb,
       ),
       JsonStoreSyncCollection(
         id: 'server_tycoon',
-        label: 'Server Tycoon',
+        labelBuilder: () => currentL.syncCollectionServerTycoon,
         icon: Icons.dns_rounded,
         listenable: _serverTycoonRepository.syncRevision,
         exporter: _serverTycoonRepository.exportData,
@@ -534,7 +536,7 @@ class _LumaAppState extends State<LumaApp> {
       ),
       JsonStoreSyncCollection(
         id: 'recipe_book',
-        label: 'Recipe book',
+        labelBuilder: () => currentL.syncCollectionRecipeBook,
         icon: Icons.restaurant_menu_rounded,
         listenable: RecipeBookController.revision,
         exporter: () => _recipeBookController.exportData(),
@@ -544,7 +546,7 @@ class _LumaAppState extends State<LumaApp> {
       // two devices sharing one would keep signing each other out.
       DriftSyncCollection(
         id: 'minecraft_launcher',
-        label: 'Minecraft launcher',
+        labelBuilder: () => currentL.syncCollectionMinecraftLauncher,
         icon: Icons.videogame_asset_rounded,
         db: _minecraftDb,
         excludedTables: const {'mc_accounts'},
@@ -552,7 +554,7 @@ class _LumaAppState extends State<LumaApp> {
       // Merged rather than replaced, so each device's screen time adds up.
       JsonStoreSyncCollection(
         id: 'usage',
-        label: 'Usage',
+        labelBuilder: () => currentL.syncCollectionUsage,
         icon: Icons.timelapse_rounded,
         listenable: _usageRepository.syncRevision,
         exporter: _usageRepository.exportData,
@@ -560,7 +562,7 @@ class _LumaAppState extends State<LumaApp> {
       ),
       JsonStoreSyncCollection(
         id: 'free_sketch',
-        label: 'Free Sketch',
+        labelBuilder: () => currentL.syncCollectionFreeSketch,
         icon: Icons.brush_rounded,
         listenable: _freeSketchRepository,
         exporter: _freeSketchRepository.exportData,
@@ -568,7 +570,7 @@ class _LumaAppState extends State<LumaApp> {
       ),
       JsonStoreSyncCollection(
         id: 'smart_home',
-        label: 'Smart Home presets',
+        labelBuilder: () => currentL.syncCollectionSmartHomePresets,
         icon: Icons.lightbulb_rounded,
         listenable: _smartHomeRepository.syncRevision,
         exporter: _smartHomeRepository.exportData,
@@ -576,7 +578,7 @@ class _LumaAppState extends State<LumaApp> {
       ),
       JsonStoreSyncCollection(
         id: 'audio_tools',
-        label: 'Audio Tools EQ',
+        labelBuilder: () => currentL.syncCollectionAudioToolsEq,
         icon: Icons.graphic_eq_rounded,
         listenable: _audioToolsRepository.syncRevision,
         exporter: _audioToolsRepository.exportData,
@@ -584,7 +586,7 @@ class _LumaAppState extends State<LumaApp> {
       ),
       JsonStoreSyncCollection(
         id: 'auto_clicker',
-        label: 'Auto Clicker',
+        labelBuilder: () => currentL.syncCollectionAutoClicker,
         icon: Icons.ads_click_rounded,
         listenable: _autoClickerRepository.syncRevision,
         exporter: _autoClickerRepository.exportData,
@@ -592,7 +594,7 @@ class _LumaAppState extends State<LumaApp> {
       ),
       JsonStoreSyncCollection(
         id: 'calculator',
-        label: 'Calculator',
+        labelBuilder: () => currentL.syncCollectionCalculator,
         icon: Icons.calculate_rounded,
         listenable: CalculatorStore(),
         exporter: () => CalculatorStore().exportData(),
@@ -600,7 +602,7 @@ class _LumaAppState extends State<LumaApp> {
       ),
       JsonStoreSyncCollection(
         id: 'worth_counter',
-        label: 'Worth counter',
+        labelBuilder: () => currentL.syncCollectionWorthCounter,
         icon: Icons.exposure_plus_1_rounded,
         listenable: WorthCounterStore(),
         exporter: () => WorthCounterStore().exportData(),
@@ -608,7 +610,7 @@ class _LumaAppState extends State<LumaApp> {
       ),
       JsonStoreSyncCollection(
         id: 'nfc_tag_editor',
-        label: 'NFC tag editor',
+        labelBuilder: () => currentL.syncCollectionNfcTagEditor,
         icon: Icons.nfc_rounded,
         listenable: NfcTagStore(),
         exporter: () => NfcTagStore().exportData(),
@@ -616,7 +618,7 @@ class _LumaAppState extends State<LumaApp> {
       ),
       JsonStoreSyncCollection(
         id: 'sftp_sites',
-        label: 'SFTP sites',
+        labelBuilder: () => currentL.syncCollectionSftpSites,
         icon: Icons.lan_rounded,
         listenable: SftpSiteStore(),
         exporter: () => SftpSiteStore().exportData(),
@@ -624,7 +626,7 @@ class _LumaAppState extends State<LumaApp> {
       ),
       JsonStoreSyncCollection(
         id: 'media_downloader',
-        label: 'Media downloader history',
+        labelBuilder: () => currentL.syncCollectionMediaDownloaderHistory,
         icon: Icons.download_rounded,
         listenable: DownloadHistoryStore.revision,
         exporter: () => DownloadHistoryStore().exportData(),
@@ -632,7 +634,7 @@ class _LumaAppState extends State<LumaApp> {
       ),
       JsonStoreSyncCollection(
         id: 'transport_tracker',
-        label: 'Transport tracker',
+        labelBuilder: () => currentL.syncCollectionTransportTracker,
         icon: Icons.directions_transit_rounded,
         listenable: TransportPrefs.revision,
         exporter: TransportPrefs.exportData,
@@ -930,165 +932,170 @@ class _LumaAppState extends State<LumaApp> {
     return AssistantMemoryScope(
       repository: _assistantMemoryRepository,
       child: PetScope(
-      repository: _petRepository,
-      child: StorageGuardScope(
-        service: _storageGuard,
-        child: SyncScope(
-          service: _sync,
-          child: PeerSyncScope(
-            controller: _peerSync,
-            child: DeviceShareScope(
-              repository: _deviceShare,
-              child: CloudFilesScope(
-                controller: _cloudFiles,
-                child: FamilyScope(
-                  repository: _familyRepository,
-                  child: SecureChatScope(
-                    repository: _secureChatRepository,
-                    child: SettingsScope(
-                      controller: widget.settings,
-                      child: HomeScope(
-                        repository: _homeRepository,
-                        child: FinanceScope(
-                          repository: _repository,
-                          cs2Market: _cs2MarketRepository,
-                          child: PasswordScope(
-                            repository: _passwordRepository,
-                            child: PluginScope(
-                              repository: _pluginRepository,
-                              child: QrCodeScope(
-                                repository: _qrCodeRepository,
-                                child: CardWalletScope(
-                                  repository: _cardWalletRepository,
-                                  child: ErrandsScope(
-                                    repository: _errandsRepository,
-                                    child: ChatScope(
-                                      repository: _chatRepository,
-                                      child: BulletinBoardScope(
-                                        repository: _bulletinBoardRepository,
-                                        child: PriceTrackerScope(
-                                          repository: _priceTrackerRepository,
-                                          child: CalendarScope(
-                                            repository: _calendarRepository,
-                                            child: DataManagementScope(
-                                              repository:
-                                                  _dataManagementRepository,
-                                              child: ServerTycoonScope(
+        repository: _petRepository,
+        child: StorageGuardScope(
+          service: _storageGuard,
+          child: SyncScope(
+            service: _sync,
+            child: PeerSyncScope(
+              controller: _peerSync,
+              child: DeviceShareScope(
+                repository: _deviceShare,
+                child: CloudFilesScope(
+                  controller: _cloudFiles,
+                  child: FamilyScope(
+                    repository: _familyRepository,
+                    child: SecureChatScope(
+                      repository: _secureChatRepository,
+                      child: SettingsScope(
+                        controller: widget.settings,
+                        child: HomeScope(
+                          repository: _homeRepository,
+                          child: FinanceScope(
+                            repository: _repository,
+                            cs2Market: _cs2MarketRepository,
+                            child: PasswordScope(
+                              repository: _passwordRepository,
+                              child: PluginScope(
+                                repository: _pluginRepository,
+                                child: QrCodeScope(
+                                  repository: _qrCodeRepository,
+                                  child: CardWalletScope(
+                                    repository: _cardWalletRepository,
+                                    child: ErrandsScope(
+                                      repository: _errandsRepository,
+                                      child: ChatScope(
+                                        repository: _chatRepository,
+                                        child: BulletinBoardScope(
+                                          repository: _bulletinBoardRepository,
+                                          child: PriceTrackerScope(
+                                            repository: _priceTrackerRepository,
+                                            child: CalendarScope(
+                                              repository: _calendarRepository,
+                                              child: DataManagementScope(
                                                 repository:
-                                                    _serverTycoonRepository,
-                                                child: AirlineTycoonScope(
+                                                    _dataManagementRepository,
+                                                child: ServerTycoonScope(
                                                   repository:
-                                                      _airlineTycoonRepository,
-                                                  child: MoodJournalScope(
+                                                      _serverTycoonRepository,
+                                                  child: AirlineTycoonScope(
                                                     repository:
-                                                        _moodJournalRepository,
-                                                    child: AiCatalogScope(
+                                                        _airlineTycoonRepository,
+                                                    child: MoodJournalScope(
                                                       repository:
-                                                          _aiCatalogRepository,
-                                                      child: AiBenchmarkScope(
+                                                          _moodJournalRepository,
+                                                      child: AiCatalogScope(
                                                         repository:
-                                                            _aiBenchmarkRepository,
-                                                        child: SteamScope(
+                                                            _aiCatalogRepository,
+                                                        child: AiBenchmarkScope(
                                                           repository:
-                                                              _steamRepository,
-                                                          child: Cs2MarketScope(
+                                                              _aiBenchmarkRepository,
+                                                          child: SteamScope(
                                                             repository:
-                                                                _cs2MarketRepository,
-                                                            child: AiUsageScope(
+                                                                _steamRepository,
+                                                            child: Cs2MarketScope(
                                                               repository:
-                                                                  _aiUsageRepository,
-                                                              child: AiWorkbenchScope(
+                                                                  _cs2MarketRepository,
+                                                              child: AiUsageScope(
                                                                 repository:
-                                                                    _aiWorkbenchRepository,
-                                                                child: SchoolScope(
+                                                                    _aiUsageRepository,
+                                                                child: AiWorkbenchScope(
                                                                   repository:
-                                                                      _schoolRepository,
-                                                                  child: MindMapScope(
+                                                                      _aiWorkbenchRepository,
+                                                                  child: SchoolScope(
                                                                     repository:
-                                                                        _mindMapRepository,
-                                                                    child: AutoClickerScope(
+                                                                        _schoolRepository,
+                                                                    child: MindMapScope(
                                                                       repository:
-                                                                          _autoClickerRepository,
-                                                                      child: UsageScope(
+                                                                          _mindMapRepository,
+                                                                      child: AutoClickerScope(
                                                                         repository:
-                                                                            _usageRepository,
-                                                                        child: WifiSpeedTestScope(
+                                                                            _autoClickerRepository,
+                                                                        child: UsageScope(
                                                                           repository:
-                                                                              _wifiSpeedTestRepository,
-                                                                          child: GroceriesScope(
+                                                                              _usageRepository,
+                                                                          child: WifiSpeedTestScope(
                                                                             repository:
-                                                                                _groceriesRepository,
-                                                                            child: GroceriesApiScope(
-                                                                              api: _groceriesApi,
-                                                                              child: RecipeBookScope(
-                                                                                controller: _recipeBookController,
-                                                                                child: MinecraftLauncherScope(
-                                                                                  repository: _minecraftRepository,
-                                                                                  child: GalleryScope(
-                                                                                    repository: _galleryRepository,
-                                                                                    child: DeviceHealthScope(
-                                                                                      repository: _deviceHealthRepository,
-                                                                                      child: AccountOverviewScope(
-                                                                                        repository: _accountOverviewRepository,
-                                                                                        child: McContentScope(
-                                                                                          repository: _mcContentRepository,
-                                                                                          child: YoutubeScope(
-                                                                                            repository: _youtubeRepository,
-                                                                                            child: SpotifyScope(
-                                                                                              repository: _spotifyRepository,
-                                                                                              child: FreeSketchScope(
-                                                                                                repository: _freeSketchRepository,
-                                                                                                child: SmartHomeScope(
-                                                                                                  repository: _smartHomeRepository,
-                                                                                                  child: WhiteboardScope(
-                                                                                                    repository: _whiteboardRepository,
-                                                                                                    child: AudioToolsScope(
-                                                                                                      repository: _audioToolsRepository,
-                                                                                                      child: ListenableBuilder(
-                                                                                                        listenable: widget.settings,
-                                                                                                        builder:
-                                                                                                            (
-                                                                                                              context,
-                                                                                                              _,
-                                                                                                            ) {
-                                                                                                              final s = widget.settings;
-                                                                                                              return MaterialApp(
-                                                                                                                title: 'luma',
-                                                                                                                debugShowCheckedModeBanner: false,
-                                                                                                                theme: LumaTheme.from(
-                                                                                                                  Brightness.light,
-                                                                                                                  s.accentSeed,
-                                                                                                                  s.themeStyle,
-                                                                                                                ),
-                                                                                                                darkTheme: LumaTheme.from(
-                                                                                                                  Brightness.dark,
-                                                                                                                  s.accentSeed,
-                                                                                                                  s.themeStyle,
-                                                                                                                ),
-                                                                                                                themeMode: s.themeMode,
-                                                                                                                locale: localeForLanguage(
-                                                                                                                  s.appLanguage,
-                                                                                                                ),
-                                                                                                                supportedLocales: L.supportedLocales,
-                                                                                                                localizationsDelegates: [
-                                                                                                                  L.delegate,
-                                                                                                                  GlobalMaterialLocalizations.delegate,
-                                                                                                                  GlobalWidgetsLocalizations.delegate,
-                                                                                                                  GlobalCupertinoLocalizations.delegate,
-                                                                                                                ],
-                                                                                                                home: TextLibraryScope(
-                                                                                                                  repository: _textLibraryRepository,
-                                                                                                                  child: _BootGate(
-                                                                                                                    bootstrap: _bootstrap,
-                                                                                                                    accent: LumaTheme.accentFor(
-                                                                                                                      Brightness.dark,
-                                                                                                                      s.accentSeed,
-                                                                                                                      s.themeStyle,
+                                                                                _wifiSpeedTestRepository,
+                                                                            child: GroceriesScope(
+                                                                              repository: _groceriesRepository,
+                                                                              child: GroceriesApiScope(
+                                                                                api: _groceriesApi,
+                                                                                child: RecipeBookScope(
+                                                                                  controller: _recipeBookController,
+                                                                                  child: MinecraftLauncherScope(
+                                                                                    repository: _minecraftRepository,
+                                                                                    child: GalleryScope(
+                                                                                      repository: _galleryRepository,
+                                                                                      child: DeviceHealthScope(
+                                                                                        repository: _deviceHealthRepository,
+                                                                                        child: AccountOverviewScope(
+                                                                                          repository: _accountOverviewRepository,
+                                                                                          child: McContentScope(
+                                                                                            repository: _mcContentRepository,
+                                                                                            child: YoutubeScope(
+                                                                                              repository: _youtubeRepository,
+                                                                                              child: SpotifyScope(
+                                                                                                repository: _spotifyRepository,
+                                                                                                child: FreeSketchScope(
+                                                                                                  repository: _freeSketchRepository,
+                                                                                                  child: SmartHomeScope(
+                                                                                                    repository: _smartHomeRepository,
+                                                                                                    child: WhiteboardScope(
+                                                                                                      repository: _whiteboardRepository,
+                                                                                                      child: AudioToolsScope(
+                                                                                                        repository: _audioToolsRepository,
+                                                                                                        child: ListenableBuilder(
+                                                                                                          listenable: widget.settings,
+                                                                                                          builder:
+                                                                                                              (
+                                                                                                                context,
+                                                                                                                _,
+                                                                                                              ) {
+                                                                                                                final s = widget.settings;
+                                                                                                                setCurrentLocale(
+                                                                                                                  localeForLanguage(
+                                                                                                                    s.appLanguage,
+                                                                                                                  ),
+                                                                                                                );
+                                                                                                                return MaterialApp(
+                                                                                                                  title: 'luma',
+                                                                                                                  debugShowCheckedModeBanner: false,
+                                                                                                                  theme: LumaTheme.from(
+                                                                                                                    Brightness.light,
+                                                                                                                    s.accentSeed,
+                                                                                                                    s.themeStyle,
+                                                                                                                  ),
+                                                                                                                  darkTheme: LumaTheme.from(
+                                                                                                                    Brightness.dark,
+                                                                                                                    s.accentSeed,
+                                                                                                                    s.themeStyle,
+                                                                                                                  ),
+                                                                                                                  themeMode: s.themeMode,
+                                                                                                                  locale: localeForLanguage(
+                                                                                                                    s.appLanguage,
+                                                                                                                  ),
+                                                                                                                  supportedLocales: L.supportedLocales,
+                                                                                                                  localizationsDelegates: [
+                                                                                                                    L.delegate,
+                                                                                                                    GlobalMaterialLocalizations.delegate,
+                                                                                                                    GlobalWidgetsLocalizations.delegate,
+                                                                                                                    GlobalCupertinoLocalizations.delegate,
+                                                                                                                  ],
+                                                                                                                  home: TextLibraryScope(
+                                                                                                                    repository: _textLibraryRepository,
+                                                                                                                    child: _BootGate(
+                                                                                                                      bootstrap: _bootstrap,
+                                                                                                                      accent: LumaTheme.accentFor(
+                                                                                                                        Brightness.dark,
+                                                                                                                        s.accentSeed,
+                                                                                                                        s.themeStyle,
+                                                                                                                      ),
                                                                                                                     ),
                                                                                                                   ),
-                                                                                                                ),
-                                                                                                              );
-                                                                                                            },
+                                                                                                                );
+                                                                                                              },
+                                                                                                        ),
                                                                                                       ),
                                                                                                     ),
                                                                                                   ),
@@ -1138,7 +1145,7 @@ class _LumaAppState extends State<LumaApp> {
           ),
         ),
       ),
-    ));
+    );
   }
 }
 

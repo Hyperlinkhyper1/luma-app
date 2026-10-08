@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../l10n/current_l.dart';
 import 'spotify_models.dart';
 
 class SpotifyApiException implements Exception {
@@ -37,7 +38,7 @@ class SpotifyApi {
       detail = (body['error'] as Map?)?['message'] as String?;
     } catch (_) {}
     throw SpotifyApiException(
-      detail ?? 'Spotify returned HTTP ${response.statusCode}.',
+      detail ?? currentL.accountOverviewSpotifyHttpError('${response.statusCode}'),
       response.statusCode,
     );
   }

@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../storage/storage_guard.dart';
 import '../../../../sync/sync_service.dart';
 import 'data/recipe_api.dart';
@@ -188,7 +189,7 @@ class RecipeBookController extends ChangeNotifier {
     final local = localByPublicId(publicId);
     if (local != null) return unpublish(local.id);
     final api = _api;
-    if (api == null) return 'Sign in to manage published recipes.';
+    if (api == null) return currentL.recipeBookSignInToManage;
     try {
       await api.deleteRecipe(publicId);
       await refreshPublic();
@@ -405,7 +406,7 @@ class RecipeBookController extends ChangeNotifier {
 
   Future<void> importData(Object? data) async {
     if (data is! Map<String, dynamic>) {
-      throw const FormatException('Invalid recipe book snapshot.');
+      throw FormatException(currentL.recipeBookInvalidSnapshot);
     }
     await _load();
     final incoming = <LocalRecipe>[];
@@ -520,7 +521,7 @@ class RecipeBookController extends ChangeNotifier {
     bool makePublic = false,
   }) async {
     final idx = _local.indexWhere((r) => r.id == id);
-    if (idx == -1) return 'Recipe not found.';
+    if (idx == -1) return currentL.recipeBookNotFound;
     var recipe = _local[idx];
 
     Uint8List? processed;
@@ -591,11 +592,11 @@ class RecipeBookController extends ChangeNotifier {
   /// copy (it stays in Private, just no longer shared).
   Future<String?> unpublish(String id) async {
     final idx = _local.indexWhere((r) => r.id == id);
-    if (idx == -1) return 'Recipe not found.';
+    if (idx == -1) return currentL.recipeBookNotFound;
     final recipe = _local[idx];
     if (recipe.publicId == null) return null;
     final api = _api;
-    if (api == null) return 'Sign in to manage published recipes.';
+    if (api == null) return currentL.recipeBookSignInToManage;
     try {
       await api.deleteRecipe(recipe.publicId!);
     } on RecipeApiException catch (e) {
@@ -613,7 +614,7 @@ class RecipeBookController extends ChangeNotifier {
   Future<String?> _publish(LocalRecipe recipe, Uint8List? photoBytes) async {
     final api = _api;
     if (api == null) {
-      return 'Saved privately. Sign in under Settings â†’ Sync to publish it.';
+      return currentL.recipeBookSavedPrivately;
     }
     try {
       final published = await api.publish(
@@ -642,7 +643,7 @@ class RecipeBookController extends ChangeNotifier {
     } on RecipeApiException catch (e) {
       return e.message;
     } catch (e) {
-      return 'Could not publish: $e';
+      return currentL.recipeBookCouldNotPublish('$e');
     }
   }
 
@@ -673,7 +674,7 @@ class RecipeBookController extends ChangeNotifier {
     } on RecipeApiException catch (e) {
       return e.message;
     } catch (e) {
-      return 'Could not update the published copy: $e';
+      return currentL.recipeBookCouldNotUpdatePublished('$e');
     }
   }
 
@@ -696,7 +697,7 @@ class RecipeBookController extends ChangeNotifier {
     } on RecipeApiException catch (e) {
       _publicError = e.message;
     } catch (e) {
-      _publicError = 'Could not reach the server.';
+      _publicError = currentL.recipeBookCouldNotReachServer;
     } finally {
       _loadingPublic = false;
       notifyListeners();
@@ -748,7 +749,7 @@ class RecipeBookController extends ChangeNotifier {
     Uint8List? photoBytes,
   }) async {
     final api = _api;
-    if (api == null) return 'Sign in to review recipes.';
+    if (api == null) return currentL.recipeBookSignInToReview;
     try {
       var full = await api.putReview(recipeId, rating: rating, text: text);
       if (photoBytes != null) {
@@ -764,13 +765,13 @@ class RecipeBookController extends ChangeNotifier {
     } on RecipeApiException catch (e) {
       return e.message;
     } catch (e) {
-      return 'Could not post your review: $e';
+      return currentL.recipeBookCouldNotPostReview('$e');
     }
   }
 
   Future<String?> deleteMyReview(String recipeId) async {
     final api = _api;
-    if (api == null) return 'Sign in to manage reviews.';
+    if (api == null) return currentL.recipeBookSignInToManageReviews;
     try {
       final full = await api.deleteReview(recipeId);
       _replacePublic(full);

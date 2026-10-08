@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../security/secure_secret_store.dart';
 import 'spotify_api.dart';
 import 'spotify_models.dart';
@@ -101,7 +102,7 @@ class SpotifyRepository extends ChangeNotifier {
         );
       }
     } catch (e) {
-      _error = 'Could not read the saved Spotify connection: $e';
+      _error = currentL.accountOverviewSpotifyReadSavedFailed('$e');
     }
     _loaded = true;
     _notify();
@@ -111,14 +112,14 @@ class SpotifyRepository extends ChangeNotifier {
   Future<void> connect(String clientId) async {
     final id = clientId.trim();
     if (id.isEmpty) {
-      throw const SpotifyOAuthException('Enter your Spotify Client ID.');
+      throw SpotifyOAuthException(currentL.accountOverviewSpotifyEnterClientId);
     }
     final tokens = await _oauth.authorize(id);
     final profile = await _api.profile(tokens.accessToken);
     final refreshToken = tokens.refreshToken;
     if (refreshToken == null || refreshToken.isEmpty) {
-      throw const SpotifyOAuthException(
-        'Spotify did not return a refresh token.',
+      throw SpotifyOAuthException(
+        currentL.accountOverviewSpotifyNoRefreshToken,
       );
     }
     final credentials = SpotifyCredentials(
@@ -129,7 +130,7 @@ class SpotifyRepository extends ChangeNotifier {
       displayName:
           profile['display_name'] as String? ??
           profile['id'] as String? ??
-          'Spotify account',
+          currentL.accountOverviewSpotifyAccountDefault,
       accountId: profile['id'] as String?,
     );
     final oldAccountId = _credentials?.accountId;
@@ -188,7 +189,7 @@ class SpotifyRepository extends ChangeNotifier {
     final credentials = _credentials;
     final generation = _generation;
     if (credentials == null) {
-      throw const SpotifyOAuthException('Spotify is not connected.');
+      throw SpotifyOAuthException(currentL.accountOverviewSpotifyNotConnected);
     }
     if (!force && !credentials.expired) return credentials.accessToken;
     final tokens = await _oauth.refresh(
@@ -196,8 +197,8 @@ class SpotifyRepository extends ChangeNotifier {
       credentials.refreshToken,
     );
     if (generation != _generation || !identical(_credentials, credentials)) {
-      throw const SpotifyOAuthException(
-        'Spotify connection changed while refreshing.',
+      throw SpotifyOAuthException(
+        currentL.accountOverviewSpotifyConnectionChanged,
       );
     }
     final updated = SpotifyCredentials(
@@ -212,8 +213,8 @@ class SpotifyRepository extends ChangeNotifier {
       () => _secrets.write(_storageKey, jsonEncode(updated.toJson())),
     );
     if (generation != _generation) {
-      throw const SpotifyOAuthException(
-        'Spotify connection changed while refreshing.',
+      throw SpotifyOAuthException(
+        currentL.accountOverviewSpotifyConnectionChanged,
       );
     }
     _credentials = updated;
@@ -258,8 +259,8 @@ class SpotifyRepository extends ChangeNotifier {
           .map((play) => play.playedAt)
           .reduce((a, b) => a.isBefore(b) ? a : b);
       if (before != null && !oldest.isBefore(before)) {
-        throw const SpotifyApiException(
-          'Spotify recent-play pagination did not advance.',
+        throw SpotifyApiException(
+          currentL.accountOverviewSpotifyPaginationStalled,
           200,
         );
       }
@@ -270,7 +271,7 @@ class SpotifyRepository extends ChangeNotifier {
       if (!page.hasMore) {
         if (previous.lastPlayedAt != null) {
           _warnings.add(
-            'Spotify history does not reach the last counted play. Some plays may be missing.',
+            currentL.accountOverviewSpotifyHistoryGap,
           );
         }
         break;
@@ -310,7 +311,7 @@ class SpotifyRepository extends ChangeNotifier {
         try {
           await _loadListeningTotal(accountId);
         } catch (e) {
-          _warnings.add('Listening total: $e');
+          _warnings.add(currentL.accountOverviewSpotifyWarningListeningTotal('$e'));
         }
       }
       Future<T> optional<T>(
@@ -321,18 +322,18 @@ class SpotifyRepository extends ChangeNotifier {
         try {
           return await _withToken(read);
         } catch (e) {
-          _warnings.add('$label: $e');
+          _warnings.add(currentL.accountOverviewSpotifyWarningLabeled(label, '$e'));
           return fallback;
         }
       }
 
       final artists = await optional(
-        'Top artists',
+        currentL.accountOverviewSpotifyTopArtists,
         (token) => _api.top(token, 'artists', range),
         <SpotifyItem>[],
       );
       final tracks = await optional(
-        'Top tracks',
+        currentL.accountOverviewSpotifyTopTracks,
         (token) => _api.top(token, 'tracks', range),
         <SpotifyItem>[],
       );
@@ -344,19 +345,19 @@ class SpotifyRepository extends ChangeNotifier {
           try {
             await _countRecentPlays(accountId, page, generation);
           } catch (e) {
-            _warnings.add('Listening total: $e');
+            _warnings.add(currentL.accountOverviewSpotifyWarningListeningTotal('$e'));
           }
         }
       } catch (e) {
-        _warnings.add('Recent plays: $e');
+        _warnings.add(currentL.accountOverviewSpotifyWarningRecentPlays('$e'));
       }
       final saved = await optional<int?>(
-        'Saved tracks',
+        currentL.accountOverviewSpotifySavedTracks,
         (token) => _api.total(token, '/me/tracks'),
         null,
       );
       final playlists = await optional<int?>(
-        'Playlists',
+        currentL.accountOverviewSpotifyPlaylists,
         (token) => _api.total(token, '/me/playlists'),
         null,
       );
@@ -365,7 +366,7 @@ class SpotifyRepository extends ChangeNotifier {
         displayName:
             profile['display_name'] as String? ??
             profile['id'] as String? ??
-            'Spotify account',
+            currentL.accountOverviewSpotifyAccountDefault,
         profileUrl: (profile['external_urls'] as Map?)?['spotify'] as String?,
         followers: ((profile['followers'] as Map?)?['total'] as num?)?.toInt(),
         topArtists: artists,
@@ -377,7 +378,7 @@ class SpotifyRepository extends ChangeNotifier {
         timeRange: range,
       );
     } catch (e) {
-      if (generation == _generation) _error = 'Could not refresh Spotify: $e';
+      if (generation == _generation) _error = currentL.accountOverviewSpotifyRefreshFailed('$e');
     } finally {
       if (generation == _generation) {
         _loading = false;

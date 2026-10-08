@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
 import 'youtube_api.dart';
 import 'youtube_credentials.dart';
 import 'youtube_models.dart';
@@ -12,13 +13,17 @@ import 'youtube_oauth.dart';
 /// Which part of a refresh is running, so the UI can say something more
 /// useful than "loading".
 enum YoutubeLoadStage {
-  idle('Idle'),
-  channel('Reading your channel'),
-  videos('Listing recent videos'),
-  analytics('Fetching analytics');
+  idle,
+  channel,
+  videos,
+  analytics;
 
-  const YoutubeLoadStage(this.label);
-  final String label;
+  String get label => switch (this) {
+        YoutubeLoadStage.idle => currentL.accountOverviewStageIdle,
+        YoutubeLoadStage.channel => currentL.youtubeStageChannel,
+        YoutubeLoadStage.videos => currentL.youtubeStageVideos,
+        YoutubeLoadStage.analytics => currentL.youtubeStageAnalytics,
+      };
 }
 
 /// Owns the YouTube account state for the Account Overview plugin.
@@ -123,8 +128,7 @@ class YoutubeRepository extends ChangeNotifier {
     final id = clientId.trim();
     final secret = clientSecret.trim();
     if (id.isEmpty || secret.isEmpty) {
-      throw YoutubeOAuthException(
-          'Enter both the Client ID and Client Secret first.');
+      throw YoutubeOAuthException(currentL.youtubeEnterCredentialsFirst);
     }
 
     _error = null;
@@ -218,7 +222,7 @@ class YoutubeRepository extends ChangeNotifier {
   Future<String> _accessToken() async {
     final credentials = _credentials;
     if (credentials == null) {
-      throw YoutubeOAuthException('YouTube is not connected.');
+      throw YoutubeOAuthException(currentL.youtubeNotConnected);
     }
     if (!credentials.isExpired) return credentials.accessToken;
 
@@ -279,7 +283,7 @@ class YoutubeRepository extends ChangeNotifier {
           _publish(_snapshot.copyWith(videos: videos));
         }
       } catch (e) {
-        _warn('Recent videos unavailable: ${_describe(e)}');
+        _warn(currentL.youtubeWarnVideos(_describe(e)));
       }
 
       _setStage(YoutubeLoadStage.analytics);
@@ -291,7 +295,7 @@ class YoutubeRepository extends ChangeNotifier {
               YoutubeAnalyticsSnapshot(points: points, trafficSources: sources),
         ));
       } catch (e) {
-        _warn('Analytics unavailable: ${_describe(e)}');
+        _warn(currentL.youtubeWarnAnalytics(_describe(e)));
       }
 
       _publish(_snapshot.copyWith(fetchedAt: DateTime.now()));

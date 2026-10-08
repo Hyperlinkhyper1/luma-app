@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/minecraft_launcher_database.dart';
 import '../logic/microsoft_auth_client.dart';
@@ -23,6 +24,7 @@ class _AccountsTabState extends State<AccountsTab> {
   @override
   Widget build(BuildContext context) {
     final repository = MinecraftLauncherScope.of(context);
+    final t = L.of(context);
     return HoverSyncScroll(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
@@ -31,7 +33,7 @@ class _AccountsTabState extends State<AccountsTab> {
             children: [
               Expanded(
                 child: Text(
-                  'Accounts',
+                  t.minecraftLauncherTabAccounts,
                   style: TextStyle(
                     color: context.luma.textPrimary,
                     fontSize: 20,
@@ -40,13 +42,13 @@ class _AccountsTabState extends State<AccountsTab> {
                 ),
               ),
               LumaGhostButton(
-                label: 'Add offline account',
+                label: t.minecraftLauncherAddOfflineAccount,
                 icon: Icons.person_add_alt_rounded,
                 onTap: () => _addOfflineAccount(context, repository),
               ),
               const SizedBox(width: 10),
               LumaPrimaryButton(
-                label: 'Sign in with Microsoft',
+                label: t.minecraftLauncherSignInMicrosoft,
                 icon: Icons.window_rounded,
                 onTap: () => _signInMicrosoft(context, repository),
               ),
@@ -57,15 +59,12 @@ class _AccountsTabState extends State<AccountsTab> {
             stream: repository.watchAccounts(),
             builder: (context, accounts) {
               if (accounts.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.only(top: 60),
+                return Padding(
+                  padding: const EdgeInsets.only(top: 60),
                   child: LumaEmptyState(
                     icon: Icons.person_outline_rounded,
-                    title: 'No accounts yet',
-                    subtitle:
-                        'Sign in with a Microsoft account that owns '
-                        'Minecraft to get started. Once you have, you can add '
-                        'an offline profile for playing without a connection.',
+                    title: t.minecraftLauncherNoAccounts,
+                    subtitle: t.minecraftLauncherNoAccountsSubtitle,
                   ),
                 );
               }
@@ -92,25 +91,26 @@ class _AccountsTabState extends State<AccountsTab> {
     BuildContext context,
     MinecraftLauncherRepository repository,
   ) async {
+    final t = L.of(context);
     final controller = TextEditingController();
     final name = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add offline account'),
+        title: Text(t.minecraftLauncherAddOfflineAccount),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'Username'),
+          decoration: InputDecoration(labelText: t.commonUsername),
           onSubmitted: (v) => Navigator.pop(context, v),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(t.commonCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Add'),
+            child: Text(t.commonAdd),
           ),
         ],
       ),
@@ -130,21 +130,19 @@ class _AccountsTabState extends State<AccountsTab> {
     BuildContext context,
     MinecraftLauncherRepository repository,
   ) async {
+    final t = L.of(context);
     final client = MicrosoftAuthClient();
     if (!client.isConfigured) {
       if (!context.mounted) return;
       await showDialog<void>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Microsoft sign-in is unavailable'),
-          content: const Text(
-            'This build is missing Luma’s Microsoft app registration. '
-            'Do not accept a consent screen that says Prism Launcher.',
-          ),
+          title: Text(t.minecraftLauncherMicrosoftUnavailable),
+          content: Text(t.minecraftLauncherMicrosoftUnavailableBody),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('OK'),
+              child: Text(t.commonOk),
             ),
           ],
         ),
@@ -217,18 +215,16 @@ class _DeviceCodeDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return AlertDialog(
-      title: const Text('Sign in with Microsoft'),
+      title: Text(t.minecraftLauncherSignInMicrosoft),
       content: SizedBox(
         width: lumaDialogWidth(context, 380),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'The code is shown below. Enter it on the Microsoft page '
-              'that just opened:',
-            ),
+            Text(t.minecraftLauncherDeviceCodeInstructions),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -243,14 +239,14 @@ class _DeviceCodeDialog extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Copy code',
+                  tooltip: t.minecraftLauncherCopyCode,
                   onPressed: () async {
                     await Clipboard.setData(
                       ClipboardData(text: device.userCode),
                     );
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Code copied.')),
+                      SnackBar(content: Text(t.minecraftLauncherCodeCopied)),
                     );
                   },
                   icon: const Icon(Icons.copy_rounded),
@@ -258,16 +254,16 @@ class _DeviceCodeDialog extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            const Row(
+            Row(
               children: [
-                SizedBox(
+                const SizedBox(
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-                SizedBox(width: 10),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: Text('Waiting for you to finish in the browser…'),
+                  child: Text(t.minecraftLauncherWaitingForBrowser),
                 ),
               ],
             ),
@@ -278,12 +274,12 @@ class _DeviceCodeDialog extends StatelessWidget {
                 mode: LaunchMode.externalApplication,
               ),
               icon: const Icon(Icons.open_in_browser_rounded),
-              label: const Text('Open Microsoft sign-in'),
+              label: Text(t.minecraftLauncherOpenMicrosoftSignIn),
             ),
           ],
         ),
       ),
-      actions: [TextButton(onPressed: onCancel, child: const Text('Cancel'))],
+      actions: [TextButton(onPressed: onCancel, child: Text(t.commonCancel))],
     );
   }
 }
@@ -296,6 +292,7 @@ class _AccountCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return LumaCard(
       child: Row(
         children: [
@@ -320,8 +317,8 @@ class _AccountCard extends StatelessWidget {
                 ),
                 Text(
                   account.type == 'microsoft'
-                      ? 'Microsoft account'
-                      : 'Offline account',
+                      ? t.minecraftLauncherMicrosoftAccount
+                      : t.minecraftLauncherOfflineAccount,
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
               ],
@@ -335,7 +332,7 @@ class _AccountCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                'Active',
+                t.minecraftLauncherActive,
                 style: TextStyle(
                   color: luma.accent,
                   fontSize: 12,
@@ -346,7 +343,7 @@ class _AccountCard extends StatelessWidget {
           else
             TextButton(
               onPressed: () => repository.setActiveAccount(account.id),
-              child: const Text('Use this account'),
+              child: Text(t.minecraftLauncherUseAccount),
             ),
           IconButton(
             icon: Icon(Icons.delete_outline_rounded, color: luma.textMuted),

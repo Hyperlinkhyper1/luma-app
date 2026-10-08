@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../spotify_models.dart';
 import '../spotify_scope.dart';
@@ -15,6 +16,7 @@ class SpotifyTab extends StatelessWidget {
     final repository = SpotifyScope.of(context);
     final snapshot = repository.snapshot;
     final luma = context.luma;
+    final t = L.of(context);
     if (!repository.loaded) {
       return Center(child: CircularProgressIndicator(color: luma.accent));
     }
@@ -33,11 +35,10 @@ class SpotifyTab extends StatelessWidget {
                 ],
                 LumaEmptyState(
                   icon: Icons.music_note_rounded,
-                  title: 'Connect your Spotify account',
-                  subtitle:
-                      'See your top artists and tracks, recent plays, saved tracks, playlists, and profile stats.',
+                  title: t.spotifyEmptyTitle,
+                  subtitle: t.spotifyEmptySubtitle,
                   action: LumaPrimaryButton(
-                    label: 'Connect Spotify',
+                    label: t.spotifyConnectTitle,
                     icon: Icons.link_rounded,
                     onTap: () => showSpotifyConnectDialog(context),
                   ),
@@ -86,7 +87,7 @@ class SpotifyTab extends StatelessWidget {
             ),
             if (snapshot?.profileUrl case final url?)
               AccountLinkButton(
-                label: 'Profile',
+                label: t.accountTabProfile,
                 icon: Icons.open_in_new_rounded,
                 onTap: () => openExternal(url),
               ),
@@ -107,7 +108,7 @@ class SpotifyTab extends StatelessWidget {
                     width: width,
                     child: AccountStatTile(
                       icon: Icons.people_outline_rounded,
-                      label: 'Followers',
+                      label: t.spotifyStatFollowers,
                       value: snapshot.followers?.toString() ?? '—',
                     ),
                   ),
@@ -115,7 +116,7 @@ class SpotifyTab extends StatelessWidget {
                     width: width,
                     child: AccountStatTile(
                       icon: Icons.favorite_outline_rounded,
-                      label: 'Saved tracks',
+                      label: t.spotifyStatSavedTracks,
                       value: snapshot.savedTracks?.toString() ?? '—',
                     ),
                   ),
@@ -123,7 +124,7 @@ class SpotifyTab extends StatelessWidget {
                     width: width,
                     child: AccountStatTile(
                       icon: Icons.queue_music_rounded,
-                      label: 'Playlists',
+                      label: t.spotifyStatPlaylists,
                       value: snapshot.playlists?.toString() ?? '—',
                     ),
                   ),
@@ -131,11 +132,13 @@ class SpotifyTab extends StatelessWidget {
                     width: width,
                     child: AccountStatTile(
                       icon: Icons.timer_outlined,
-                      label: 'Tracked minutes',
-                      value: '${repository.listeningTotal.minutes} min',
+                      label: t.spotifyStatTrackedMinutes,
+                      value: t.spotifyMinutesShort(
+                          repository.listeningTotal.minutes),
                       caption: repository.listeningTotal.firstPlayedAt == null
-                          ? 'Waiting for recent plays'
-                          : 'From ${formatDate(repository.listeningTotal.firstPlayedAt!.toLocal())}',
+                          ? t.spotifyWaitingForPlays
+                          : t.spotifyFromDate(formatDate(
+                              repository.listeningTotal.firstPlayedAt!.toLocal())),
                     ),
                   ),
                 ],
@@ -144,12 +147,12 @@ class SpotifyTab extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Estimated from full track lengths in Spotify’s available recent plays. Refresh regularly to keep the total current.',
+            t.spotifyEstimateNote,
             style: TextStyle(color: luma.textMuted, fontSize: 11),
           ),
           const SizedBox(height: 22),
           Text(
-            'Your favorites',
+            t.spotifyFavoritesTitle,
             style: TextStyle(
               color: luma.textPrimary,
               fontSize: 17,
@@ -158,7 +161,7 @@ class SpotifyTab extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Spotify rankings for the selected period',
+            t.spotifyFavoritesSubtitle,
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
           const SizedBox(height: 10),
@@ -166,10 +169,10 @@ class SpotifyTab extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final (range, label) in const [
-                ('short_term', 'Last 4 weeks'),
-                ('medium_term', 'Last 6 months'),
-                ('long_term', 'Long term'),
+              for (final (range, label) in [
+                ('short_term', t.spotifyRangeShort),
+                ('medium_term', t.spotifyRangeMedium),
+                ('long_term', t.spotifyRangeLong),
               ])
                 ChoiceChip(
                   label: Text(label),
@@ -188,36 +191,36 @@ class SpotifyTab extends StatelessWidget {
             )
           else ...[
             _ItemPanel(
-              title: 'Top artists',
+              title: t.spotifyTopArtists,
               icon: Icons.person_outline_rounded,
               items: snapshot.topArtists,
-              empty: 'No top artists available for this period.',
+              empty: t.spotifyNoTopArtists,
             ),
             const SizedBox(height: 14),
             _ItemPanel(
-              title: 'Top tracks',
+              title: t.spotifyTopTracks,
               icon: Icons.multitrack_audio_rounded,
               items: snapshot.topTracks,
-              empty: 'No top tracks available for this period.',
+              empty: t.spotifyNoTopTracks,
             ),
           ],
           const SizedBox(height: 14),
           _ItemPanel(
-            title: 'Recently played',
+            title: t.spotifyRecentlyPlayed,
             icon: Icons.history_rounded,
             items: snapshot.recentTracks,
-            empty: 'No recent tracks available.',
+            empty: t.spotifyNoRecentTracks,
           ),
           const SizedBox(height: 18),
           Center(
             child: Text(
-              'Updated ${formatRelative(snapshot.fetchedAt)}',
+              t.spotifyUpdatedAgo(formatRelative(snapshot.fetchedAt)),
               style: TextStyle(color: luma.textMuted, fontSize: 11),
             ),
           ),
         ] else if (!repository.loading)
           Text(
-            'Refresh to load your Spotify stats.',
+            t.spotifyRefreshToLoad,
             style: TextStyle(color: luma.textSecondary),
           ),
       ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../mc_content_scope.dart';
 import '../mc_history.dart';
@@ -16,13 +17,22 @@ import 'pmc_webview_fetcher.dart';
 /// rather than a single endless scroll — a hundred projects and four charts
 /// on one page is a worse answer than three named views.
 enum _McView {
-  overview('Overview'),
-  projects('Projects'),
-  trends('Trends');
+  overview,
+  projects,
+  trends;
 
-  const _McView(this.label);
-  final String label;
+  String label(L t) => switch (this) {
+        _McView.overview => t.commonOverview,
+        _McView.projects => t.mcViewProjects,
+        _McView.trends => t.mcViewTrends,
+      };
 }
+
+String _platformStateLabel(L t, McPlatformState state) => switch (state) {
+      McPlatformState.notConfigured => t.mcStateNotSetUp,
+      McPlatformState.ok => t.mcStateConnected,
+      McPlatformState.failed => t.mcStateUnavailable,
+    };
 
 /// CurseForge, Modrinth and Planet Minecraft in one place.
 ///
@@ -126,6 +136,7 @@ class _McToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final repository = McContentScope.of(context);
 
     return Container(
@@ -138,7 +149,7 @@ class _McToolbar extends StatelessWidget {
         children: [
           Expanded(
             child: LumaSegmentedTabs(
-              tabs: [for (final v in _McView.values) v.label],
+              tabs: [for (final v in _McView.values) v.label(t)],
               selectedIndex: view.index,
               onSelect: (i) => onView(_McView.values[i]),
               scrollable: true,
@@ -146,14 +157,16 @@ class _McToolbar extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           IconButton(
-            tooltip: repository.refreshing ? 'Refreshing…' : 'Refresh',
+            tooltip: repository.refreshing
+                ? t.accountOverviewRefreshing
+                : t.commonRefresh,
             onPressed: repository.refreshing ? null : repository.unawaitedRefresh,
             icon: const Icon(Icons.refresh_rounded, size: 19),
             color: luma.textSecondary,
             constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
           ),
           IconButton(
-            tooltip: 'Platform settings',
+            tooltip: t.mcPlatformSettings,
             onPressed: () => showMcSetupDialog(context),
             icon: const Icon(Icons.settings_outlined, size: 18),
             color: luma.textSecondary,
@@ -173,6 +186,7 @@ class _McRefreshBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
       color: luma.accentSubtle,
@@ -187,8 +201,8 @@ class _McRefreshBar extends StatelessWidget {
           Expanded(
             child: Text(
               stage == null
-                  ? 'Refreshing…'
-                  : 'Reading ${stage!.label}…',
+                  ? t.accountOverviewRefreshing
+                  : t.mcReadingPlatform(stage!.label),
               style: TextStyle(
                 color: luma.textSecondary,
                 fontSize: 12,
@@ -198,7 +212,7 @@ class _McRefreshBar extends StatelessWidget {
           ),
           if (stage == McPlatform.planetMinecraft)
             Text(
-              'via embedded browser',
+              t.mcViaEmbeddedBrowser,
               style: TextStyle(color: luma.textMuted, fontSize: 11),
             ),
         ],
@@ -215,6 +229,7 @@ class _McOverviewView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final repository = McContentScope.of(context);
     final snapshot = repository.snapshot;
     final history = repository.history;
@@ -231,7 +246,7 @@ class _McOverviewView extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
       children: [
         Text(
-          'Combined library',
+          t.mcCombinedLibrary,
           style: TextStyle(
             color: luma.textPrimary,
             fontSize: 15,
@@ -240,7 +255,7 @@ class _McOverviewView extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'CurseForge and Modrinth, added together.',
+          t.mcCombinedLibrarySubtitle,
           style: TextStyle(color: luma.textMuted, fontSize: 11.5),
         ),
         const SizedBox(height: 14),
@@ -252,9 +267,9 @@ class _McOverviewView extends StatelessWidget {
         ],
         const SizedBox(height: 10),
         AccountPanel(
-          title: 'Downloads over time',
+          title: t.mcDownloadsOverTime,
           icon: Icons.show_chart_rounded,
-          subtitle: 'CurseForge and Modrinth combined',
+          subtitle: t.mcCurseforgeModrinthCombined,
           child: SizedBox(
             height: 200,
             child: McTrendChart(
@@ -279,36 +294,39 @@ class _CombinedStats extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final projects = snapshot.combinedProjects;
 
     final tiles = [
       AccountStatTile(
         icon: Icons.download_rounded,
-        label: 'Total downloads',
+        label: t.mcTotalDownloads,
         value: formatCompact(snapshot.combinedDownloads),
-        caption: 'across both platforms',
+        caption: t.mcAcrossBothPlatforms,
         tint: luma.accent,
       ),
       AccountStatTile(
         icon: Icons.trending_up_rounded,
-        label: 'Last 30 days',
+        label: t.mcLast30Days,
         value: gained30 > 0 ? '+${formatCompact(gained30)}' : '—',
-        caption: gained30 > 0 ? 'downloads gained' : 'still collecting',
+        caption: gained30 > 0 ? t.mcDownloadsGained : t.mcStillCollecting,
         tint: gained30 > 0 ? luma.success : null,
       ),
       AccountStatTile(
         icon: Icons.favorite_outline_rounded,
-        label: 'Followers',
+        label: t.mcMetricFollowers,
         value: formatCompact(snapshot.combinedFollowers),
-        caption: 'followers and thumbs-up',
+        caption: t.mcFollowersCaption,
         tint: luma.warning,
       ),
       AccountStatTile(
         icon: Icons.widgets_outlined,
-        label: 'Projects',
+        label: t.mcViewProjects,
         value: formatCount(projects.length),
-        caption: '${snapshot.resultFor(McPlatform.curseforge).projects.length} '
-            'CF · ${snapshot.resultFor(McPlatform.modrinth).projects.length} MR',
+        caption: t.mcProjectsSplit(
+          snapshot.resultFor(McPlatform.curseforge).projects.length,
+          snapshot.resultFor(McPlatform.modrinth).projects.length,
+        ),
       ),
     ];
 
@@ -339,6 +357,7 @@ class _PlatformCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final (icon, tone) = switch (result.state) {
       McPlatformState.ok => (Icons.check_circle_rounded, luma.success),
       McPlatformState.failed => (Icons.error_outline_rounded, luma.danger),
@@ -358,7 +377,7 @@ class _PlatformCard extends StatelessWidget {
           Icon(icon, size: 14, color: tone),
           const SizedBox(width: 6),
           Text(
-            result.state.label,
+            _platformStateLabel(t, result.state),
             style: TextStyle(
               color: tone,
               fontSize: 11.5,
@@ -376,21 +395,21 @@ class _PlatformCard extends StatelessWidget {
                 AccountMetaCount(
                   icon: Icons.download_outlined,
                   value: formatCount(result.downloads),
-                  semanticLabel: '${result.downloads} downloads',
+                  semanticLabel: t.mcSemDownloads(result.downloads),
                 ),
                 AccountMetaCount(
                   icon: Icons.favorite_outline_rounded,
                   value: formatCount(result.followers),
-                  semanticLabel: '${result.followers} followers',
+                  semanticLabel: t.mcSemFollowers(result.followers),
                 ),
                 AccountMetaCount(
                   icon: Icons.widgets_outlined,
-                  value: '${result.projects.length} projects',
-                  semanticLabel: '${result.projects.length} projects',
+                  value: t.mcProjectsCount(result.projects.length),
+                  semanticLabel: t.mcProjectsCount(result.projects.length),
                 ),
                 if (result.fetchedAt != null)
                   Text(
-                    'updated ${formatRelative(result.fetchedAt)}',
+                    t.mcUpdatedRelative(formatRelative(result.fetchedAt)),
                     style: TextStyle(color: luma.textMuted, fontSize: 11.5),
                   ),
               ],
@@ -399,7 +418,7 @@ class _PlatformCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    result.message ?? 'Nothing to show yet.',
+                    result.message ?? t.mcNothingToShowYet,
                     style: TextStyle(
                       color: luma.textSecondary,
                       fontSize: 12,
@@ -408,7 +427,7 @@ class _PlatformCard extends StatelessWidget {
                   ),
                 ),
                 AccountLinkButton(
-                  label: 'Set up',
+                  label: t.mcSetUp,
                   onTap: () => showMcSetupDialog(context),
                 ),
               ],
@@ -424,6 +443,7 @@ class _PmcSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final repository = McContentScope.of(context);
     final result = repository.snapshot.resultFor(McPlatform.planetMinecraft);
     final history = repository.history;
@@ -458,8 +478,7 @@ class _PmcSection extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'Kept separate — PMC counts views, and its skins, blogs '
-                    'and builds are not mods.',
+                    t.mcPmcKeptSeparate,
                     style: TextStyle(color: luma.textMuted, fontSize: 11.5),
                   ),
                 ],
@@ -474,10 +493,9 @@ class _PmcSection extends StatelessWidget {
                 ? Icons.error_outline_rounded
                 : Icons.info_outline_rounded,
             tone: result.state == McPlatformState.failed ? luma.danger : null,
-            message: result.message ??
-                'Add your Planet Minecraft username to include it.',
+            message: result.message ?? t.mcPmcAddUsername,
             action: AccountLinkButton(
-              label: 'Set up',
+              label: t.mcSetUp,
               onTap: () => showMcSetupDialog(context),
             ),
           )
@@ -488,15 +506,13 @@ class _PmcSection extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: AccountNotice(
-                message: 'Planet Minecraft rounds views and downloads above a '
-                    'thousand on listing pages ("1.1k"), so these totals are '
-                    'approximate. Diamonds and favourites are exact.',
+                message: t.mcPmcApproximate,
               ),
             ),
           AccountPanel(
-            title: 'Views and downloads over time',
+            title: t.mcPmcViewsDownloadsOverTime,
             icon: Icons.show_chart_rounded,
-            subtitle: 'Recorded by luma, one point per day',
+            subtitle: t.mcRecordedOnePointPerDay,
             child: SizedBox(
               height: 200,
               child: McTrendChart(
@@ -520,36 +536,37 @@ class _PmcStats extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final diamonds = result.projects.fold(0, (sum, p) => sum + p.followers);
     final favourites = result.projects.fold(0, (sum, p) => sum + p.favourites);
 
     final tiles = [
       AccountStatTile(
         icon: Icons.visibility_outlined,
-        label: 'Views',
+        label: t.mcMetricViews,
         value: formatCompact(result.views),
-        caption: result.approximate ? 'approximate' : 'across submissions',
+        caption: result.approximate ? t.mcApproximate : t.mcAcrossSubmissions,
         tint: luma.success,
       ),
       AccountStatTile(
         icon: Icons.download_rounded,
-        label: 'Downloads',
+        label: t.mcMetricDownloads,
         value: formatCompact(result.downloads),
-        caption: result.approximate ? 'approximate' : 'across submissions',
+        caption: result.approximate ? t.mcApproximate : t.mcAcrossSubmissions,
         tint: luma.accent,
       ),
       AccountStatTile(
         icon: Icons.diamond_outlined,
-        label: 'Diamonds',
+        label: t.mcDiamonds,
         value: formatCompact(diamonds),
-        caption: 'exact',
+        caption: t.mcExact,
         tint: luma.warning,
       ),
       AccountStatTile(
         icon: Icons.star_outline_rounded,
-        label: 'Favourites',
+        label: t.mcFavourites,
         value: formatCompact(favourites),
-        caption: '${result.projects.length} submissions',
+        caption: t.mcSubmissionsCount(result.projects.length),
       ),
     ];
 
@@ -596,6 +613,7 @@ class _McProjectsViewState extends State<_McProjectsView> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final snapshot = McContentScope.of(context).snapshot;
 
     final all = [
@@ -628,7 +646,7 @@ class _McProjectsViewState extends State<_McProjectsView> {
                   onChanged: (v) => setState(() => _query = v),
                   style: TextStyle(color: luma.textPrimary, fontSize: 13),
                   decoration: InputDecoration(
-                    hintText: 'Find a project',
+                    hintText: t.mcFindProject,
                     hintStyle: TextStyle(color: luma.textMuted, fontSize: 13),
                     prefixIcon: Icon(Icons.search_rounded,
                         size: 18, color: luma.textMuted),
@@ -652,7 +670,7 @@ class _McProjectsViewState extends State<_McProjectsView> {
                 alignment: Alignment.centerLeft,
                 child: LumaSegmentedTabs(
                   tabs: [
-                    'All',
+                    t.mcAll,
                     for (final p in McPlatform.values) p.label,
                   ],
                   selectedIndex:
@@ -671,11 +689,11 @@ class _McProjectsViewState extends State<_McProjectsView> {
               ? LumaEmptyState(
                   icon: Icons.widgets_outlined,
                   title: all.isEmpty
-                      ? 'No projects yet'
-                      : 'Nothing matches this filter',
+                      ? t.mcNoProjectsYet
+                      : t.mcNothingMatchesFilter,
                   subtitle: all.isEmpty
-                      ? 'Set up a platform and refresh to pull your projects in.'
-                      : 'Try a different platform or a shorter search.',
+                      ? t.mcSetUpToPullProjects
+                      : t.mcTryDifferentFilter,
                 )
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
@@ -700,6 +718,7 @@ class _ProjectCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final decor = context.lumaDecor;
+    final t = L.of(context);
 
     return Material(
       color: luma.surface,
@@ -742,7 +761,7 @@ class _ProjectCard extends StatelessWidget {
                           AccountBadge(label: project.kind!),
                         if (project.approximate)
                           AccountBadge(
-                            label: 'rounded',
+                            label: t.mcBadgeRounded,
                             color: luma.warning,
                             icon: Icons.info_outline_rounded,
                           ),
@@ -772,13 +791,13 @@ class _ProjectCard extends StatelessWidget {
                             icon: Icons.download_outlined,
                             value: formatCompact(project.downloads),
                             semanticLabel:
-                                '${project.downloads} downloads',
+                                t.mcSemDownloads(project.downloads),
                           ),
                         if (project.views > 0)
                           AccountMetaCount(
                             icon: Icons.visibility_outlined,
                             value: formatCompact(project.views),
-                            semanticLabel: '${project.views} views',
+                            semanticLabel: t.mcSemViews(project.views),
                           ),
                         if (project.followers > 0)
                           AccountMetaCount(
@@ -788,18 +807,19 @@ class _ProjectCard extends StatelessWidget {
                                 : Icons.favorite_outline_rounded,
                             value: formatCompact(project.followers),
                             semanticLabel:
-                                '${project.followers} followers',
+                                t.mcSemFollowers(project.followers),
                           ),
                         if (project.favourites > 0)
                           AccountMetaCount(
                             icon: Icons.star_outline_rounded,
                             value: formatCompact(project.favourites),
                             semanticLabel:
-                                '${project.favourites} favourites',
+                                t.mcFavouritesCount(project.favourites),
                           ),
                         if (project.updatedAt != null)
                           Text(
-                            'updated ${formatRelative(project.updatedAt)}',
+                            t.mcUpdatedRelative(
+                                formatRelative(project.updatedAt)),
                             style: TextStyle(
                               color: luma.textMuted,
                               fontSize: 11.5,
@@ -881,6 +901,7 @@ class _McTrendsViewState extends State<_McTrendsView> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final repository = McContentScope.of(context);
     final history = repository.history;
     final combinedKeys = [for (final p in McSnapshot.combinedPlatforms) p.id];
@@ -894,7 +915,7 @@ class _McTrendsViewState extends State<_McTrendsView> {
         Align(
           alignment: Alignment.centerLeft,
           child: LumaSegmentedTabs(
-            tabs: [for (final r in McRange.values) r.label],
+            tabs: [for (final r in McRange.values) r.label(t)],
             selectedIndex: _range.index,
             onSelect: (i) => setState(() => _range = McRange.values[i]),
             scrollable: true,
@@ -902,9 +923,9 @@ class _McTrendsViewState extends State<_McTrendsView> {
         ),
         const SizedBox(height: 16),
         AccountPanel(
-          title: 'Total downloads',
+          title: t.mcTotalDownloads,
           icon: Icons.show_chart_rounded,
-          subtitle: 'CurseForge and Modrinth combined',
+          subtitle: t.mcCurseforgeModrinthCombined,
           trailing: _HistoryAge(history: history, seriesKey: combinedKeys.first),
           child: SizedBox(
             height: 220,
@@ -913,9 +934,9 @@ class _McTrendsViewState extends State<_McTrendsView> {
         ),
         const SizedBox(height: 16),
         AccountPanel(
-          title: 'Downloads gained per day',
+          title: t.mcDownloadsGainedPerDay,
           icon: Icons.bar_chart_rounded,
-          subtitle: 'Hover a bar for the top projects that day',
+          subtitle: t.mcHoverBarTopProjects,
           child: SizedBox(
             height: 200,
             child: McDailyGainChart(
@@ -928,7 +949,7 @@ class _McTrendsViewState extends State<_McTrendsView> {
         const SizedBox(height: 16),
         for (final platform in McSnapshot.combinedPlatforms) ...[
           AccountPanel(
-            title: '${platform.label} downloads',
+            title: t.mcPlatformDownloads(platform.label),
             icon: Icons.timeline_rounded,
             child: SizedBox(
               height: 180,
@@ -957,9 +978,9 @@ class _McTrendsViewState extends State<_McTrendsView> {
         ),
         const SizedBox(height: 12),
         AccountPanel(
-          title: 'PMC views',
+          title: t.mcPmcViews,
           icon: Icons.visibility_outlined,
-          subtitle: 'Approximate — PMC rounds figures above a thousand',
+          subtitle: t.mcPmcApproximateSubtitle,
           child: SizedBox(
             height: 180,
             child: McTrendChart(
@@ -971,7 +992,7 @@ class _McTrendsViewState extends State<_McTrendsView> {
         ),
         const SizedBox(height: 16),
         AccountPanel(
-          title: 'PMC downloads',
+          title: t.mcPmcDownloads,
           icon: Icons.download_outlined,
           child: SizedBox(
             height: 180,
@@ -997,12 +1018,13 @@ class _HistoryAge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final first = history.firstDay(seriesKey);
     if (first == null) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: Text(
-        'since ${formatDate(first)}',
+        t.mcSinceDate(formatDate(first)),
         style: TextStyle(color: luma.textMuted, fontSize: 11),
       ),
     );
@@ -1017,6 +1039,7 @@ class _McSetupPrompt extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(28),
@@ -1027,12 +1050,10 @@ class _McSetupPrompt extends StatelessWidget {
             children: [
               LumaEmptyState(
                 icon: Icons.widgets_rounded,
-                title: 'Track your Minecraft content',
-                subtitle: 'Pull CurseForge, Modrinth and Planet Minecraft into '
-                    'one dashboard — downloads, followers, views and trends '
-                    'over time.',
+                title: t.mcSetupTitle,
+                subtitle: t.mcSetupSubtitle,
                 action: LumaPrimaryButton(
-                  label: 'Set up platforms',
+                  label: t.mcSetUpPlatforms,
                   icon: Icons.link_rounded,
                   onTap: () => showMcSetupDialog(context),
                 ),
@@ -1052,28 +1073,24 @@ class _McSetupPrompt extends StatelessWidget {
                       context,
                       icon: Icons.check_circle_outline_rounded,
                       tone: luma.success,
-                      title: 'Modrinth — username only',
-                      body: 'Totals are public. A token is optional and only '
-                          'unlocks real download history.',
+                      title: t.mcReqModrinthTitle,
+                      body: t.mcReqModrinthBody,
                     ),
                     const SizedBox(height: 12),
                     _requirement(
                       context,
                       icon: Icons.key_outlined,
                       tone: luma.warning,
-                      title: 'CurseForge — API key required',
-                      body: 'CurseForge serves nothing anonymously. Add a key '
-                          'plus either your numeric author id or individual '
-                          'project links.',
+                      title: t.mcReqCurseforgeTitle,
+                      body: t.mcReqCurseforgeBody,
                     ),
                     const SizedBox(height: 12),
                     _requirement(
                       context,
                       icon: Icons.public_rounded,
                       tone: luma.accent,
-                      title: 'Planet Minecraft — username only',
-                      body: 'PMC has no API, so luma reads your public profile '
-                          'in an embedded browser. Windows and Android only.',
+                      title: t.mcReqPmcTitle,
+                      body: t.mcReqPmcBody,
                     ),
                   ],
                 ),

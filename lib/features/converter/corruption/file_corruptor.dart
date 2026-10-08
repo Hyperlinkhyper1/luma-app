@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import '../../../l10n/current_l.dart';
 import 'binary_utils.dart';
 import 'corruption_recipe.dart';
 
@@ -14,28 +15,29 @@ enum DamageStyle {
 }
 
 extension DamageStyleInfo on DamageStyle {
-  String get label => switch (this) {
-    DamageStyle.bitRot => 'Bit rot',
-    DamageStyle.scramble => 'Scramble',
-    DamageStyle.shuffle => 'Block shuffle',
-    DamageStyle.headerSmash => 'Header smash',
-    DamageStyle.truncate => 'Truncate',
-    DamageStyle.junkInjection => 'Junk injection',
-  };
+  String get label {
+    final t = currentL;
+    return switch (this) {
+      DamageStyle.bitRot => t.converterDamageBitRotLabel,
+      DamageStyle.scramble => t.converterDamageScrambleLabel,
+      DamageStyle.shuffle => t.converterDamageShuffleLabel,
+      DamageStyle.headerSmash => t.converterDamageHeaderSmashLabel,
+      DamageStyle.truncate => t.converterDamageTruncateLabel,
+      DamageStyle.junkInjection => t.converterDamageJunkLabel,
+    };
+  }
 
-  String get description => switch (this) {
-    DamageStyle.bitRot =>
-      'Scattered single bytes flipped, the way failing storage does it.',
-    DamageStyle.scramble =>
-      'A whole region XORed into noise. Nothing can read it.',
-    DamageStyle.shuffle =>
-      'Chunks of the file swapped around. Structure survives, meaning does not.',
-    DamageStyle.headerSmash =>
-      'The first bytes wiped, so nothing can even tell what the file is.',
-    DamageStyle.truncate => 'The tail cut off, as if the copy never finished.',
-    DamageStyle.junkInjection =>
-      'Random bytes wedged in, shifting everything after them.',
-  };
+  String get description {
+    final t = currentL;
+    return switch (this) {
+      DamageStyle.bitRot => t.converterDamageBitRotDesc,
+      DamageStyle.scramble => t.converterDamageScrambleDesc,
+      DamageStyle.shuffle => t.converterDamageShuffleDesc,
+      DamageStyle.headerSmash => t.converterDamageHeaderSmashDesc,
+      DamageStyle.truncate => t.converterDamageTruncateDesc,
+      DamageStyle.junkInjection => t.converterDamageJunkDesc,
+    };
+  }
 
   /// Styles that permute or mask bytes without losing any. Without a recipe
   /// they are still not practically recoverable, but nothing was actually
@@ -48,12 +50,15 @@ extension DamageStyleInfo on DamageStyle {
 enum DamagePreset { light, medium, heavy, total }
 
 extension DamagePresetInfo on DamagePreset {
-  String get label => switch (this) {
-    DamagePreset.light => 'Light',
-    DamagePreset.medium => 'Medium',
-    DamagePreset.heavy => 'Heavy',
-    DamagePreset.total => 'Total',
-  };
+  String get label {
+    final t = currentL;
+    return switch (this) {
+      DamagePreset.light => t.converterPresetLight,
+      DamagePreset.medium => t.converterPresetMedium,
+      DamagePreset.heavy => t.converterPresetHeavy,
+      DamagePreset.total => t.converterPresetTotal,
+    };
+  }
 
   int get intensity => switch (this) {
     DamagePreset.light => 10,
@@ -62,12 +67,15 @@ extension DamagePresetInfo on DamagePreset {
     DamagePreset.total => 100,
   };
 
-  String get hint => switch (this) {
-    DamagePreset.light => 'Usually still opens, but looks wrong in places.',
-    DamagePreset.medium => 'Most readers will refuse to open it.',
-    DamagePreset.heavy => 'Thoroughly broken.',
-    DamagePreset.total => 'Nothing recognisable is left.',
-  };
+  String get hint {
+    final t = currentL;
+    return switch (this) {
+      DamagePreset.light => t.converterPresetLightHint,
+      DamagePreset.medium => t.converterPresetMediumHint,
+      DamagePreset.heavy => t.converterPresetHeavyHint,
+      DamagePreset.total => t.converterPresetTotalHint,
+    };
+  }
 }
 
 /// Everything the corruptor needs to know for one run.
@@ -127,12 +135,11 @@ class FileCorruptor {
   ) {
     if (original.length < minimumSize) {
       throw FormatException(
-        'That file is only ${original.length} bytes — too small to corrupt in '
-        'any interesting way.',
+        currentL.converterCorruptTooSmall(original.length),
       );
     }
     if (settings.styles.isEmpty) {
-      throw const FormatException('Pick at least one kind of damage.');
+      throw FormatException(currentL.converterCorruptPickStyle);
     }
 
     final planner = Prng(settings.seed ^ 0x5BD1E995);
@@ -148,7 +155,7 @@ class FileCorruptor {
       if (!settings.styles.contains(style)) continue;
       final op = _buildOp(style, bytes, intensity, planner, settings);
       if (op == null) {
-        notes.add('${style.label} was skipped — the file is too small for it.');
+        notes.add(currentL.converterCorruptStyleSkipped(style.label));
         continue;
       }
       ops.add(op);
@@ -156,25 +163,15 @@ class FileCorruptor {
     }
 
     if (ops.isEmpty) {
-      throw const FormatException(
-        'Nothing could be applied to a file this small.',
-      );
+      throw FormatException(currentL.converterCorruptNothingApplied);
     }
 
     if (!settings.recoverable) {
       final destroys = settings.styles.any((s) => s.destroysBytes);
       if (!destroys) {
-        notes.add(
-          'These damage styles rearrange and mask bytes rather than removing '
-          'them. Without the recipe nothing can read the file, but the data is '
-          'technically still in there. Add Header smash or Truncate if you '
-          'want bytes genuinely gone.',
-        );
+        notes.add(currentL.converterCorruptNoRecipeRearranged);
       } else {
-        notes.add(
-          'No recipe was written and bytes were destroyed. This cannot be '
-          'undone by anything, including luma.',
-        );
+        notes.add(currentL.converterCorruptNoRecipeDestroyed);
       }
     }
 

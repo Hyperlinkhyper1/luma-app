@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:nsd/nsd.dart';
 
+import '../../../../l10n/current_l.dart';
 import 'dirigera_api.dart';
 
 class DiscoveredDirigeraHub {
@@ -60,7 +61,7 @@ class NsdDirigeraDiscovery implements DirigeraDiscovery {
       hubs[address] = DiscoveredDirigeraHub(
         name: service.name?.trim().isNotEmpty == true
             ? service.name!.trim()
-            : 'DIRIGERA hub',
+            : currentL.smartHomeDefaultHubName,
         host: address,
       );
     }

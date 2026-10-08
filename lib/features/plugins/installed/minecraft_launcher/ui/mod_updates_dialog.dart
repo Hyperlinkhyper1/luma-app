@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/minecraft_launcher_database.dart';
 import '../logic/mod_installer.dart';
@@ -86,8 +87,9 @@ class _ModUpdatesDialogState extends State<_ModUpdatesDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return AlertDialog(
-      title: const Text('Updates & conflicts'),
+      title: Text(t.mcLauncherUpdatesTitle),
       content: SizedBox(
         width: lumaDialogWidth(context, 420),
         child: _loading
@@ -101,7 +103,7 @@ class _ModUpdatesDialogState extends State<_ModUpdatesDialog> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (_conflicts.isNotEmpty) ...[
-                      Text('Conflicts', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700)),
+                      Text(t.mcLauncherConflicts, style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 6),
                       for (final c in _conflicts)
                         Padding(
@@ -110,10 +112,10 @@ class _ModUpdatesDialogState extends State<_ModUpdatesDialog> {
                         ),
                       const SizedBox(height: 12),
                     ],
-                    Text('Updates', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700)),
+                    Text(t.mcLauncherUpdates, style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 6),
                     if (_updates.isEmpty)
-                      Text('Everything is up to date.', style: TextStyle(color: luma.textMuted, fontSize: 13))
+                      Text(t.mcLauncherUpToDate, style: TextStyle(color: luma.textMuted, fontSize: 13))
                     else
                       for (final u in _updates)
                         Padding(
@@ -128,7 +130,7 @@ class _ModUpdatesDialogState extends State<_ModUpdatesDialog> {
                               ),
                               TextButton(
                                 onPressed: _updating.contains(u.installed.id) ? null : () => _applyUpdate(u),
-                                child: Text(_updating.contains(u.installed.id) ? 'Updating…' : 'Update'),
+                                child: Text(_updating.contains(u.installed.id) ? t.mcLauncherUpdating : t.mcLauncherUpdate),
                               ),
                             ],
                           ),
@@ -138,7 +140,7 @@ class _ModUpdatesDialogState extends State<_ModUpdatesDialog> {
               ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(t.commonClose)),
       ],
     );
   }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../../sync/sync_scope.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../logic/mc_cloud_backup.dart';
 
 /// Lists this instance's cloud-backed worlds or screenshots (see
@@ -57,6 +58,7 @@ class _CloudBackupSectionState extends State<CloudBackupSection> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final sync = SyncScope.of(context);
     if (!sync.serverReady) return const SizedBox.shrink();
     if (_entries == null) {
@@ -69,8 +71,8 @@ class _CloudBackupSectionState extends State<CloudBackupSection> {
 
     return LumaCollapsibleSection(
       icon: Icons.cloud_done_rounded,
-      title: 'Cloud backups',
-      subtitle: '${_entries!.length} backed up',
+      title: t.minecraftLauncherCloudBackups,
+      subtitle: t.minecraftLauncherBackedUpCount(_entries!.length),
       child: Column(
         children: [
           for (final entry in _entries!)
@@ -85,7 +87,7 @@ class _CloudBackupSectionState extends State<CloudBackupSection> {
                   ),
                   TextButton(
                     onPressed: () => widget.onRestore(entry, McCloudBackup(SyncScope.of(context))),
-                    child: const Text('Restore'),
+                    child: Text(t.minecraftLauncherRestore),
                   ),
                   IconButton(
                     icon: Icon(Icons.delete_outline_rounded, color: luma.textMuted, size: 18),

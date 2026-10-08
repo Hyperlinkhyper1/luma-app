@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../settings/settings_scope.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/school_database.dart';
@@ -24,13 +25,14 @@ class _GpaTabState extends State<GpaTab> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           LumaSegmentedTabs(
-            tabs: const ['GPA', 'Grade calculator'],
+            tabs: [t.schoolTabGpa, t.schoolGpaGradeCalculator],
             selectedIndex: _section,
             onSelect: (i) => setState(() => _section = i),
           ),
@@ -53,6 +55,7 @@ class _GpaSection extends StatelessWidget {
     final luma = context.luma;
     final useAmerican = SettingsScope.of(context).useAmericanGpaScale;
     final maxScale = useAmerican ? 4.0 : 10.0;
+    final t = L.of(context);
     return StreamData<List<SchoolSubject>>(
       stream: repo.watchSubjects(),
       builder: (context, subjects) {
@@ -76,14 +79,14 @@ class _GpaSection extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(useAmerican ? 'Overall GPA' : 'Overall grade',
+                            Text(useAmerican ? t.schoolGpaOverallGpa : t.schoolGpaOverallGrade,
                                 style: TextStyle(color: luma.textMuted, fontSize: 12)),
                             Text(gpa?.toStringAsFixed(useAmerican ? 2 : 1) ?? '--',
                                 style: TextStyle(
                                     color: luma.textPrimary, fontSize: 32, fontWeight: FontWeight.w700)),
                             const SizedBox(height: 12),
                             LumaPrimaryButton(
-                              label: 'Add record',
+                              label: t.schoolGpaAddRecord,
                               icon: Icons.add_rounded,
                               expand: true,
                               onTap: () => subjects.isEmpty
@@ -95,7 +98,7 @@ class _GpaSection extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
                       if (records.length >= 2) ...[
-                        Text('Trend',
+                        Text(t.schoolGpaTrend,
                             style: TextStyle(
                                 color: luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 8),
@@ -147,10 +150,10 @@ class _GpaSection extends StatelessWidget {
                 Expanded(
                   flex: 5,
                   child: records.isEmpty
-                      ? const LumaEmptyState(
+                      ? LumaEmptyState(
                           icon: Icons.school_rounded,
-                          title: 'No GPA records yet',
-                          subtitle: 'Log a finished term\'s grade to start tracking your GPA.',
+                          title: t.schoolGpaNoRecords,
+                          subtitle: t.schoolGpaNoRecordsSub,
                         )
                       : ListView.separated(
                           itemCount: records.length,
@@ -164,13 +167,19 @@ class _GpaSection extends StatelessWidget {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(subjectById[r.subjectId]?.name ?? 'Subject',
+                                        Text(subjectById[r.subjectId]?.name ?? t.schoolSubject,
                                             style: TextStyle(
                                                 color: luma.textPrimary, fontWeight: FontWeight.w600)),
                                         Text(
                                           useAmerican
-                                              ? '${r.termName} · ${r.creditHours.toStringAsFixed(1)} credits · ${r.gradePoints.toStringAsFixed(2)} pts'
-                                              : '${r.termName} · ${r.creditHours.toStringAsFixed(1)} credits · ${r.gradePoints.toStringAsFixed(1)}',
+                                              ? t.schoolGpaRecordAmerican(
+                                                  r.termName,
+                                                  r.creditHours.toStringAsFixed(1),
+                                                  r.gradePoints.toStringAsFixed(2))
+                                              : t.schoolGpaRecordDutch(
+                                                  r.termName,
+                                                  r.creditHours.toStringAsFixed(1),
+                                                  r.gradePoints.toStringAsFixed(1)),
                                           style: TextStyle(color: luma.textMuted, fontSize: 12),
                                         ),
                                       ],
@@ -229,13 +238,14 @@ class _GpaRecordDialogState extends State<_GpaRecordDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final useAmerican = SettingsScope.of(context).useAmericanGpaScale;
     final grade = double.tryParse(_gradeController.text.trim());
     // American mode converts a percentage into 4.0-scale GPA points; the
     // Dutch scale (the default) is stored as-is, matching how it's reported.
     final points = grade == null ? null : (useAmerican ? percentTo4Point(grade) : grade);
     return AlertDialog(
-      title: const Text('Add GPA record'),
+      title: Text(t.schoolGpaAddRecordTitle),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -243,7 +253,7 @@ class _GpaRecordDialogState extends State<_GpaRecordDialog> {
           children: [
             DropdownButtonFormField<int>(
               initialValue: _subjectId,
-              decoration: const InputDecoration(labelText: 'Subject'),
+              decoration: InputDecoration(labelText: t.schoolSubject),
               items: [
                 for (final s in widget.subjects)
                   DropdownMenuItem(value: s.id, child: Text(s.name)),
@@ -252,28 +262,29 @@ class _GpaRecordDialogState extends State<_GpaRecordDialog> {
             ),
             TextField(
               controller: _termController,
-              decoration: const InputDecoration(labelText: 'Term (e.g. Fall 2026)'),
+              decoration: InputDecoration(labelText: t.schoolGpaTermLabel),
             ),
             TextField(
               controller: _creditsController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Credit hours'),
+              decoration: InputDecoration(labelText: t.schoolGpaCreditHours),
             ),
             TextField(
               controller: _gradeController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                labelText: useAmerican ? 'Final percentage grade' : 'Final grade (1-10)',
-                helperText:
-                    points == null || !useAmerican ? null : '= ${points.toStringAsFixed(2)} GPA points',
+                labelText: useAmerican ? t.schoolGpaFinalPercentage : t.schoolGpaFinalGrade,
+                helperText: points == null || !useAmerican
+                    ? null
+                    : t.schoolGpaPointsHelper(points.toStringAsFixed(2)),
               ),
             ),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(t.commonCancel)),
         FilledButton(
           onPressed: points == null || _termController.text.trim().isEmpty
               ? null
@@ -286,7 +297,7 @@ class _GpaRecordDialogState extends State<_GpaRecordDialog> {
                   );
                   if (context.mounted) Navigator.pop(context);
                 },
-          child: const Text('Add'),
+          child: Text(t.commonAdd),
         ),
       ],
     );
@@ -316,16 +327,17 @@ class _GradeCalculatorSectionState extends State<_GradeCalculatorSection> {
   Widget build(BuildContext context) {
     final repo = SchoolScope.of(context);
     final luma = context.luma;
+    final t = L.of(context);
     return StreamData<List<SchoolSubject>>(
       stream: repo.watchSubjects(),
       builder: (context, subjects) {
         if (subjects.isEmpty) {
           return LumaEmptyState(
             icon: Icons.calculate_rounded,
-            title: 'No subjects yet',
-            subtitle: 'Add a subject to start weighting its grade components.',
+            title: t.schoolGradeNoSubjects,
+            subtitle: t.schoolGradeNoSubjectsSub,
             action: LumaPrimaryButton(
-              label: 'Add subject',
+              label: t.schoolAddSubject,
               icon: Icons.add_rounded,
               onTap: () => showSubjectDialog(context, repo),
             ),
@@ -354,7 +366,7 @@ class _GradeCalculatorSectionState extends State<_GradeCalculatorSection> {
                     Expanded(
                       child: DropdownButtonFormField<int>(
                         initialValue: subjectId,
-                        decoration: const InputDecoration(labelText: 'Subject'),
+                        decoration: InputDecoration(labelText: t.schoolSubject),
                         items: [
                           for (final s in subjects) DropdownMenuItem(value: s.id, child: Text(s.name)),
                         ],
@@ -363,7 +375,7 @@ class _GradeCalculatorSectionState extends State<_GradeCalculatorSection> {
                     ),
                     const SizedBox(width: 12),
                     LumaPrimaryButton(
-                      label: 'Add component',
+                      label: t.schoolGradeAddComponent,
                       icon: Icons.add_rounded,
                       onTap: () => showDialog(
                         context: context,
@@ -380,7 +392,7 @@ class _GradeCalculatorSectionState extends State<_GradeCalculatorSection> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Current grade', style: TextStyle(color: luma.textMuted, fontSize: 12)),
+                            Text(t.schoolGradeCurrent, style: TextStyle(color: luma.textMuted, fontSize: 12)),
                             Text(
                               current.currentPercent == null
                                   ? '--'
@@ -388,7 +400,7 @@ class _GradeCalculatorSectionState extends State<_GradeCalculatorSection> {
                               style: TextStyle(
                                   color: luma.textPrimary, fontSize: 26, fontWeight: FontWeight.w700),
                             ),
-                            Text('${current.gradedWeightPercent.toStringAsFixed(0)}% of weight graded',
+                            Text(t.schoolGradeWeightGraded(current.gradedWeightPercent.toStringAsFixed(0)),
                                 style: TextStyle(color: luma.textMuted, fontSize: 11)),
                           ],
                         ),
@@ -400,7 +412,7 @@ class _GradeCalculatorSectionState extends State<_GradeCalculatorSection> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Target grade %', style: TextStyle(color: luma.textMuted, fontSize: 12)),
+                            Text(t.schoolGradeTarget, style: TextStyle(color: luma.textMuted, fontSize: 12)),
                             TextField(
                               controller: _targetController,
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -411,8 +423,8 @@ class _GradeCalculatorSectionState extends State<_GradeCalculatorSection> {
                             ),
                             Text(
                               needed == null
-                                  ? 'Add ungraded components to project'
-                                  : 'Need ${needed.toStringAsFixed(1)}% on the rest',
+                                  ? t.schoolGradeAddUngraded
+                                  : t.schoolGradeNeeded(needed.toStringAsFixed(1)),
                               style: TextStyle(color: luma.accent, fontSize: 11, fontWeight: FontWeight.w600),
                             ),
                           ],
@@ -424,10 +436,10 @@ class _GradeCalculatorSectionState extends State<_GradeCalculatorSection> {
                 const SizedBox(height: 16),
                 Expanded(
                   child: components.isEmpty
-                      ? const LumaEmptyState(
+                      ? LumaEmptyState(
                           icon: Icons.pie_chart_outline_rounded,
-                          title: 'No grade components yet',
-                          subtitle: 'Add weighted components like "Midterm" or "Final".',
+                          title: t.schoolGradeNoComponents,
+                          subtitle: t.schoolGradeNoComponentsSub,
                         )
                       : ListView.separated(
                           itemCount: components.length,
@@ -445,8 +457,13 @@ class _GradeCalculatorSectionState extends State<_GradeCalculatorSection> {
                                             style: TextStyle(
                                                 color: luma.textPrimary, fontWeight: FontWeight.w600)),
                                         Text(
-                                          '${c.weightPercent.toStringAsFixed(0)}% weight'
-                                          '${c.scoreEarned != null ? ' · ${c.scoreEarned!.toStringAsFixed(1)}/${c.scoreTotal.toStringAsFixed(0)}' : ' · not graded yet'}',
+                                          c.scoreEarned == null
+                                              ? t.schoolGradeComponentUngraded(
+                                                  c.weightPercent.toStringAsFixed(0))
+                                              : t.schoolGradeComponentScored(
+                                                  c.weightPercent.toStringAsFixed(0),
+                                                  c.scoreEarned!.toStringAsFixed(1),
+                                                  c.scoreTotal.toStringAsFixed(0)),
                                           style: TextStyle(color: luma.textMuted, fontSize: 12),
                                         ),
                                       ],
@@ -536,8 +553,9 @@ class _GradeComponentDialogState extends State<_GradeComponentDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return AlertDialog(
-      title: Text(widget.existing == null ? 'Add component' : 'Edit component'),
+      title: Text(widget.existing == null ? t.schoolGradeAddComponent : t.schoolGradeEditComponent),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -546,12 +564,12 @@ class _GradeComponentDialogState extends State<_GradeComponentDialog> {
             TextField(
               controller: _nameController,
               autofocus: true,
-              decoration: const InputDecoration(labelText: 'Name (e.g. Midterm)'),
+              decoration: InputDecoration(labelText: t.schoolGradeNameLabel),
             ),
             TextField(
               controller: _weightController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Weight (%)'),
+              decoration: InputDecoration(labelText: t.schoolGradeWeightLabel),
             ),
             Row(
               children: [
@@ -559,7 +577,7 @@ class _GradeComponentDialogState extends State<_GradeComponentDialog> {
                   child: TextField(
                     controller: _scoreEarnedController,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(labelText: 'Score earned (optional)'),
+                    decoration: InputDecoration(labelText: t.schoolGradeScoreEarned),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -567,7 +585,7 @@ class _GradeComponentDialogState extends State<_GradeComponentDialog> {
                   child: TextField(
                     controller: _scoreTotalController,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(labelText: 'Out of'),
+                    decoration: InputDecoration(labelText: t.schoolGradeOutOf),
                   ),
                 ),
               ],
@@ -576,8 +594,8 @@ class _GradeComponentDialogState extends State<_GradeComponentDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-        FilledButton(onPressed: _save, child: const Text('Save')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(t.commonCancel)),
+        FilledButton(onPressed: _save, child: Text(t.commonSave)),
       ],
     );
   }

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show compute, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/luma_theme.dart';
 import '../converter_widgets.dart';
 import '../file_saver.dart';
@@ -266,6 +267,7 @@ class _ImageEditorViewState extends State<ImageEditorView> {
   }
 
   Future<void> _pickFile() async {
+    final t = L.of(context);
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: const ['png', 'jpg', 'jpeg', 'bmp', 'tif', 'tiff'],
@@ -276,7 +278,7 @@ class _ImageEditorViewState extends State<ImageEditorView> {
     final file = result.files.first;
     final bytes = file.bytes;
     if (bytes == null) {
-      setState(() => _error = 'Could not read the selected file.');
+      setState(() => _error = t.convFileReadFailed);
       return;
     }
     _debounce?.cancel();
@@ -325,6 +327,7 @@ class _ImageEditorViewState extends State<ImageEditorView> {
     final bytes = _bytes;
     if (bytes == null) return;
 
+    final t = L.of(context);
     final request = ++_previewRequest;
     setState(() {
       _previewing = true;
@@ -339,28 +342,24 @@ class _ImageEditorViewState extends State<ImageEditorView> {
       if (!mounted || request != _previewRequest) return;
       setState(() {
         _previewing = false;
-        _previewBytes = processed;
-      });
-    } on FormatException catch (e) {
-      if (!mounted || request != _previewRequest) return;
-      setState(() {
-        _previewing = false;
-        _error = e.message;
+        if (processed == null) {
+          _error = t.convImgEditCantRead;
+        } else {
+          _previewBytes = processed;
+        }
       });
     } catch (e) {
       if (!mounted || request != _previewRequest) return;
       setState(() {
         _previewing = false;
-        _error = 'Something went wrong: $e';
+        _error = t.convImgEditUnexpectedError('$e');
       });
     }
   }
 
-  static Uint8List _processImage(_ProcessArgs args) {
+  static Uint8List? _processImage(_ProcessArgs args) {
     var image = img.decodeImage(args.bytes);
-    if (image == null) {
-      throw const FormatException('Could not read this image.');
-    }
+    if (image == null) return null;
     final ops = args.ops;
 
     final maxDim = args.maxDimension;
@@ -437,6 +436,7 @@ class _ImageEditorViewState extends State<ImageEditorView> {
   }
 
   Future<void> _save({bool replace = false}) async {
+    final t = L.of(context);
     final bytes = _bytes;
     final name = _name;
     if (bytes == null || name == null) return;
@@ -460,9 +460,20 @@ class _ImageEditorViewState extends State<ImageEditorView> {
         _processImage,
         _ProcessArgs(bytes, _ops, null, metadata),
       );
+      if (processed == null) {
+        if (!mounted) return;
+        setState(() {
+          _saving = false;
+          _error = t.convImgEditCantRead;
+        });
+        return;
+      }
       final save = replace
           ? await replaceOriginalFile(
-              bytes: processed, originalPath: path!, extension: 'png')
+              bytes: processed,
+              originalPath: path!,
+              extension: 'png',
+            )
           : await saveConvertedFile(
               bytes: processed,
               suggestedName: '${ImageConvert.stripExtension(name)}_edited.png',
@@ -474,17 +485,11 @@ class _ImageEditorViewState extends State<ImageEditorView> {
         _saving = false;
         _result = save;
       });
-    } on FormatException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _saving = false;
-        _error = e.message;
-      });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _error = 'Could not save: $e';
+        _error = t.convImgEditSaveFailed('$e');
       });
     }
   }
@@ -515,17 +520,18 @@ class _ImageEditorViewState extends State<ImageEditorView> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return ToolScaffold(
       icon: Icons.photo_filter_outlined,
-      title: 'Image editor',
-      subtitle: 'Rotate, adjust, filter, and remove backgrounds',
+      title: t.convImgEditTitle,
+      subtitle: t.convImgEditSubtitle,
       onBack: widget.onBack,
       children: [
         if (_bytes == null)
           ConverterDropZone(
             onTap: _pickFile,
             icon: Icons.add_photo_alternate_outlined,
-            title: 'Tap to pick a picture',
+            title: t.convImgEditPickTitle,
             subtitle: 'PNG · JPG · BMP · TIFF',
           )
         else ...[
@@ -559,7 +565,7 @@ class _ImageEditorViewState extends State<ImageEditorView> {
           const SizedBox(height: 20),
           if (_path != null) ...[
             ConverterPrimaryButton(
-              label: 'Save & replace original',
+              label: t.convImgEditSaveReplace,
               icon: Icons.swap_horiz_rounded,
               loading: false,
               onTap: _saving || (_ops.isIdentity && !_metadataDirty)
@@ -573,7 +579,9 @@ class _ImageEditorViewState extends State<ImageEditorView> {
               Expanded(
                 flex: 2,
                 child: ConverterPrimaryButton(
-                  label: kIsWeb ? 'Download PNG' : 'Save PNG',
+                  label: kIsWeb
+                      ? t.convImgEditDownloadPng
+                      : t.convImgEditSavePng,
                   icon: Icons.download_rounded,
                   loading: _saving,
                   onTap: _ops.isIdentity && !_metadataDirty ? null : _save,
@@ -582,7 +590,7 @@ class _ImageEditorViewState extends State<ImageEditorView> {
               const SizedBox(width: 12),
               Expanded(
                 child: ConverterPrimaryButton(
-                  label: 'Reset edits',
+                  label: t.convImgEditResetEdits,
                   icon: Icons.restart_alt_rounded,
                   loading: false,
                   onTap: _ops.isIdentity && !_metadataDirty
@@ -615,7 +623,10 @@ class _ImageEditorViewState extends State<ImageEditorView> {
             icon: Icons.check_circle_outline_rounded,
             color: luma.success,
             message: _result!.summary,
-            trailing: ConverterTextButton(label: 'Edit another', onTap: _reset),
+            trailing: ConverterTextButton(
+              label: t.convImgEditAnother,
+              onTap: _reset,
+            ),
           ),
         ],
       ],
@@ -742,15 +753,16 @@ class _TransformSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return _EditorSection(
-      title: 'Transform',
+      title: t.convImgEditTransform,
       child: Wrap(
         spacing: 10,
         runSpacing: 10,
         children: [
           _ToolChip(
             icon: Icons.rotate_90_degrees_ccw_rounded,
-            label: 'Rotate left',
+            label: t.convImgEditRotateLeft,
             onTap: () => onChanged(
               ops.copyWith(rotation: (ops.rotation + 270) % 360),
               immediate: true,
@@ -758,7 +770,7 @@ class _TransformSection extends StatelessWidget {
           ),
           _ToolChip(
             icon: Icons.rotate_90_degrees_cw_rounded,
-            label: 'Rotate right',
+            label: t.convImgEditRotateRight,
             onTap: () => onChanged(
               ops.copyWith(rotation: (ops.rotation + 90) % 360),
               immediate: true,
@@ -766,14 +778,14 @@ class _TransformSection extends StatelessWidget {
           ),
           _ToolChip(
             icon: Icons.swap_horiz_rounded,
-            label: 'Flip horizontal',
+            label: t.convImgEditFlipHorizontal,
             active: ops.flipH,
             onTap: () =>
                 onChanged(ops.copyWith(flipH: !ops.flipH), immediate: true),
           ),
           _ToolChip(
             icon: Icons.swap_vert_rounded,
-            label: 'Flip vertical',
+            label: t.convImgEditFlipVertical,
             active: ops.flipV,
             onTap: () =>
                 onChanged(ops.copyWith(flipV: !ops.flipV), immediate: true),
@@ -791,12 +803,13 @@ class _AdjustmentsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return _EditorSection(
-      title: 'Adjustments',
+      title: t.convImgEditAdjustments,
       child: Column(
         children: [
           _EditorSlider(
-            label: 'Brightness',
+            label: t.convImgEditBrightness,
             value: ops.brightness,
             min: 0.5,
             max: 1.5,
@@ -804,7 +817,7 @@ class _AdjustmentsSection extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           _EditorSlider(
-            label: 'Contrast',
+            label: t.convImgEditContrast,
             value: ops.contrast,
             min: 0.5,
             max: 1.5,
@@ -812,7 +825,7 @@ class _AdjustmentsSection extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           _EditorSlider(
-            label: 'Saturation',
+            label: t.convImgEditSaturation,
             value: ops.saturation,
             min: 0.0,
             max: 2.0,
@@ -829,17 +842,18 @@ class _FilterSection extends StatelessWidget {
   final _EditOps ops;
   final void Function(_EditOps ops, {bool immediate}) onChanged;
 
-  static const _labels = {
-    _EditorFilter.none: 'None',
-    _EditorFilter.grayscale: 'Grayscale',
-    _EditorFilter.sepia: 'Sepia',
-    _EditorFilter.invert: 'Invert',
+  static String _label(L t, _EditorFilter filter) => switch (filter) {
+    _EditorFilter.none => t.commonNone,
+    _EditorFilter.grayscale => t.convImgEditFilterGrayscale,
+    _EditorFilter.sepia => t.convImgEditFilterSepia,
+    _EditorFilter.invert => t.convImgEditFilterInvert,
   };
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return _EditorSection(
-      title: 'Filters',
+      title: t.convImgEditFilters,
       child: Wrap(
         spacing: 10,
         runSpacing: 10,
@@ -852,7 +866,7 @@ class _FilterSection extends StatelessWidget {
                 _EditorFilter.sepia => Icons.filter_vintage_rounded,
                 _EditorFilter.invert => Icons.invert_colors_rounded,
               },
-              label: _labels[filter]!,
+              label: _label(t, filter),
               active: ops.filter == filter,
               onTap: () =>
                   onChanged(ops.copyWith(filter: filter), immediate: true),
@@ -871,11 +885,10 @@ class _BackgroundSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return _EditorSection(
-      title: 'Background removal',
-      subtitle:
-          'Make white pixels transparent. Raise the tolerance to also '
-          'catch off-white pixels.',
+      title: t.convImgEditBgRemoval,
+      subtitle: t.convImgEditBgRemovalBody,
       trailing: Switch(
         value: ops.removeWhiteBg,
         activeThumbColor: luma.accent,
@@ -883,7 +896,7 @@ class _BackgroundSection extends StatelessWidget {
             onChanged(ops.copyWith(removeWhiteBg: v), immediate: true),
       ),
       child: _EditorSlider(
-        label: 'Tolerance',
+        label: t.convImgEditTolerance,
         value: ops.tolerance,
         min: 0.0,
         max: 0.3,
@@ -919,17 +932,17 @@ class _MetadataSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return _EditorSection(
-      title: 'Metadata',
+      title: t.convImgEditMetadata,
       subtitle: hasSourceMetadata
-          ? 'This image already has embedded metadata. Edit it below, or '
-                'remove it all.'
-          : 'Add a title, author, or copyright notice to the saved file.',
+          ? t.convImgEditMetaExisting
+          : t.convImgEditMetaNew,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Remove all',
+            t.convImgEditRemoveAllMeta,
             style: TextStyle(
               color: luma.textMuted,
               fontSize: 12,
@@ -946,21 +959,21 @@ class _MetadataSection extends StatelessWidget {
       child: Column(
         children: [
           _MetadataField(
-            label: 'Title',
+            label: t.commonTitle,
             controller: descriptionController,
             enabled: !stripAll,
             onChanged: onFieldChanged,
           ),
           const SizedBox(height: 10),
           _MetadataField(
-            label: 'Author',
+            label: t.convImgEditAuthor,
             controller: authorController,
             enabled: !stripAll,
             onChanged: onFieldChanged,
           ),
           const SizedBox(height: 10),
           _MetadataField(
-            label: 'Copyright',
+            label: t.convImgEditCopyright,
             controller: copyrightController,
             enabled: !stripAll,
             onChanged: onFieldChanged,
@@ -987,6 +1000,7 @@ class _MetadataField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -1011,7 +1025,7 @@ class _MetadataField extends StatelessWidget {
               isDense: true,
               filled: true,
               fillColor: luma.surfaceHover,
-              hintText: 'Not set',
+              hintText: t.convImgEditNotSet,
               hintStyle: TextStyle(color: luma.textMuted, fontSize: 13),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 12,

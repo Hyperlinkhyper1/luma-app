@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import 'account_shared.dart';
 
@@ -27,12 +28,13 @@ class YoutubeTrendChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     if (points.length < 2) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 28),
           child: Text(
-            'Not enough data yet.',
+            t.youtubeChartNotEnoughData,
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
         ),
@@ -54,9 +56,13 @@ class YoutubeTrendChart extends StatelessWidget {
     final maxY = high + pad;
 
     return Semantics(
-      label: '$valueLabel from ${formatDate(points.first.day)} to '
-          '${formatDate(points.last.day)}: '
-          '${formatCount(low)} up to ${formatCount(high)}',
+      label: t.youtubeChartSemantics(
+        valueLabel,
+        formatDate(points.first.day),
+        formatDate(points.last.day),
+        formatCount(low),
+        formatCount(high),
+      ),
       excludeSemantics: true,
       child: LineChart(
         duration:
@@ -137,8 +143,12 @@ class YoutubeTrendChart extends StatelessWidget {
               getTooltipItems: (spots) => [
                 for (final spot in spots)
                   LineTooltipItem(
-                    '${formatCount(spot.y)} ${valueLabel.toLowerCase()}\n'
-                    '${formatDate(DateTime.fromMillisecondsSinceEpoch(spot.x.toInt()))}',
+                    t.youtubeChartTooltip(
+                      formatCount(spot.y),
+                      valueLabel.toLowerCase(),
+                      formatDate(DateTime.fromMillisecondsSinceEpoch(
+                          spot.x.toInt())),
+                    ),
                     TextStyle(
                       color: luma.textPrimary,
                       fontSize: 12,

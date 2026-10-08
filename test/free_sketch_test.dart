@@ -38,7 +38,6 @@ BrushPreset _plain({
 }) =>
     BrushPreset(
       id: 'test',
-      name: 'Test',
       category: BrushCategory.painting,
       size: size,
       spacing: spacing,

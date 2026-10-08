@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../../l10n/current_l.dart';
 import 'loader_profile_merger.dart';
 import 'piston_meta_client.dart';
 
@@ -30,8 +31,7 @@ class FabricInstaller {
         .get(Uri.parse('https://meta.fabricmc.net/v2/versions/loader/$mcVersion'))
         .timeout(const Duration(seconds: 20));
     if (res.statusCode != 200) {
-      throw FabricInstallerException(
-          'No Fabric loader builds found for Minecraft $mcVersion.');
+      throw FabricInstallerException(currentL.mcFabricNoBuilds(mcVersion));
     }
     final list = jsonDecode(res.body) as List;
     return [
@@ -54,7 +54,7 @@ class FabricInstaller {
             'https://meta.fabricmc.net/v2/versions/loader/$mcVersion/$loaderVersion/profile/json'))
         .timeout(const Duration(seconds: 20));
     if (res.statusCode != 200) {
-      throw FabricInstallerException('Could not fetch the Fabric $loaderVersion profile.');
+      throw FabricInstallerException(currentL.mcFabricProfileFailed(loaderVersion));
     }
     return mergeLoaderProfile(vanilla, jsonDecode(res.body) as Map<String, dynamic>);
   }

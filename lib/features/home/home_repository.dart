@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../l10n/current_l.dart';
 import 'home_layout.dart';
 
 class HomeRepository extends ChangeNotifier {
@@ -47,16 +48,14 @@ class HomeRepository extends ChangeNotifier {
         _layout = _decode(jsonDecode(await file.readAsString()));
       }
     } catch (e) {
-      loadError = 'Your saved layout could not be loaded. $e';
+      loadError = currentL.homeLayoutLoadFailed('$e');
     }
     if (!_disposed) notifyListeners();
   }
 
   HomeLayout _decode(Object? raw) {
     if (raw is! Map || raw['version'] != 1 || raw['family'] != family) {
-      throw const FormatException(
-        'This home layout belongs to a different device format.',
-      );
+      throw FormatException(currentL.homeLayoutDifferentFormat);
     }
     return HomeLayout.fromJson(
       raw['layout'],

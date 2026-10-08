@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import '../../../../l10n/current_l.dart';
 import '../nbt.dart';
 import '../schematic_model.dart';
 import 'nbt_block_state.dart';
@@ -22,9 +23,7 @@ class Litematic {
   static Schematic read(NbtCompound root) {
     final regions = root.compound('Regions');
     if (regions == null || regions.values.isEmpty) {
-      throw const FormatException(
-        'This .litematic file contains no regions.',
-      );
+      throw FormatException(currentL.schematicLitematicNoRegions);
     }
 
     final parsed = <_Region>[];
@@ -35,9 +34,7 @@ class Litematic {
       if (region != null) parsed.add(region);
     }
     if (parsed.isEmpty) {
-      throw const FormatException(
-        'None of the regions in this .litematic file could be read.',
-      );
+      throw FormatException(currentL.schematicLitematicNoReadableRegions);
     }
 
     // Union the regions into one box in schematic-local coordinates.
@@ -96,8 +93,10 @@ class Litematic {
     final notes = <String>[];
     if (parsed.length > 1) {
       notes.add(
-        'The source had ${parsed.length} regions; they were merged into one '
-        '$width×$height×$length box.',
+        currentL.schematicLitematicMergedRegions(
+          parsed.length,
+          '$width×$height×$length',
+        ),
       );
     }
 

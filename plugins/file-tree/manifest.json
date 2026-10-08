@@ -6,5 +6,27 @@
   "icon": "account_tree",
   "category": "Utility",
   "details": "Point File Tree at a drive or folder and it walks the whole thing, rolling every file up into its parent directory so you can see at a glance what's actually eating your storage.\n\nResults are sorted largest-first with a size bar next to each entry, so the biggest offenders are always at the top — drill into any folder to keep narrowing it down.",
-  "screenshots": ["overview.png", "drilldown.png"]
+  "screenshots": ["overview.png", "drilldown.png"],
+  "i18n": {
+    "nl": {
+      "name": "Bestandsboom",
+      "description": "Benieuwd waar al je ruimte is gebleven? Dit toont het, met de grootste mappen bovenaan en handige balkjes erbij.",
+      "details": "Wijs Bestandsboom een schijf of map aan. Het doorloopt alles en telt elk bestand op bij de bovenliggende map, zodat je in één oogopslag ziet wat je opslag echt opvreet.\n\nDe resultaten zijn van groot naar klein gesorteerd, met naast elk item een groottebalk. Zo staan de grootste vreters altijd bovenaan. Open een map om steeds verder in te zoomen."
+    },
+    "fr": {
+      "name": "Arborescence des fichiers",
+      "description": "Vous vous demandez où est passé tout votre espace ? Cela vous montre les dossiers les plus gros en premier, avec de petites barres pratiques.",
+      "details": "Indiquez à Arborescence des fichiers un disque ou un dossier : l'outil parcourt l'ensemble et additionne chaque fichier dans son dossier parent, pour que vous voyiez d'un coup d'œil ce qui consomme vraiment votre stockage.\n\nLes résultats sont triés du plus grand au plus petit, avec une barre de taille à côté de chaque entrée. Les plus gros coupables restent donc toujours en haut. Ouvrez n'importe quel dossier pour affiner la recherche."
+    },
+    "es": {
+      "name": "Árbol de archivos",
+      "description": "¿Te preguntas dónde se ha ido todo el espacio? Esto te lo muestra, con las carpetas más grandes primero y unas barritas útiles.",
+      "details": "Indica a Árbol de archivos una unidad o carpeta y recorrerá todo, sumando cada archivo en su directorio padre para que veas de un vistazo qué es lo que realmente consume tu almacenamiento.\n\nLos resultados se ordenan de mayor a menor, con una barra de tamaño junto a cada entrada, así que los mayores consumidores siempre están arriba. Entra en cualquier carpeta para seguir acotando la búsqueda."
+    },
+    "zh": {
+      "name": "文件树",
+      "description": "想知道空间都去哪儿了？这里会按从大到小的顺序显示文件夹，并附带直观的小条形图。",
+      "details": "将文件树指向某个磁盘或文件夹，它会遍历整个目录，把每个文件的大小汇总到其父目录中，让你一眼看清到底是什么在占用存储空间。\n\n结果按从大到小排序，每一项旁边都有大小条形图，最占空间的项目始终排在最上面。点进任意文件夹即可继续缩小范围。"
+    }
+  }
 }

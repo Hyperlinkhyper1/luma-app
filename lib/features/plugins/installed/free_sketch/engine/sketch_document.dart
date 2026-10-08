@@ -4,6 +4,7 @@ import 'dart:ui' show Color, Path, Rect;
 
 import 'package:flutter/foundation.dart';
 
+import '../../../../../l10n/current_l.dart';
 import '../model/sketch_blend.dart';
 
 /// One layer. Immutable: every edit produces a new [SketchLayer], so a
@@ -51,18 +52,17 @@ class SketchLayer {
     bool? locked,
     bool? alphaLocked,
     bool? clipped,
-  }) =>
-      SketchLayer(
-        id: id,
-        name: name ?? this.name,
-        image: clearImage ? null : (image ?? this.image),
-        opacity: opacity ?? this.opacity,
-        blend: blend ?? this.blend,
-        visible: visible ?? this.visible,
-        locked: locked ?? this.locked,
-        alphaLocked: alphaLocked ?? this.alphaLocked,
-        clipped: clipped ?? this.clipped,
-      );
+  }) => SketchLayer(
+    id: id,
+    name: name ?? this.name,
+    image: clearImage ? null : (image ?? this.image),
+    opacity: opacity ?? this.opacity,
+    blend: blend ?? this.blend,
+    visible: visible ?? this.visible,
+    locked: locked ?? this.locked,
+    alphaLocked: alphaLocked ?? this.alphaLocked,
+    clipped: clipped ?? this.clipped,
+  );
 }
 
 /// The whole document at one moment — what undo steps back to.
@@ -108,20 +108,19 @@ class SketchSnapshot {
     bool? showBackground,
     Path? selection,
     bool clearSelection = false,
-  }) =>
-      SketchSnapshot(
-        layers: layers ?? this.layers,
-        activeLayerId: activeLayerId ?? this.activeLayerId,
-        background: background ?? this.background,
-        showBackground: showBackground ?? this.showBackground,
-        selection: clearSelection ? null : (selection ?? this.selection),
-      );
+  }) => SketchSnapshot(
+    layers: layers ?? this.layers,
+    activeLayerId: activeLayerId ?? this.activeLayerId,
+    background: background ?? this.background,
+    showBackground: showBackground ?? this.showBackground,
+    selection: clearSelection ? null : (selection ?? this.selection),
+  );
 
   SketchSnapshot replaceLayer(SketchLayer layer) => copyWith(
-        layers: [
-          for (final existing in layers) existing.id == layer.id ? layer : existing,
-        ],
-      );
+    layers: [
+      for (final existing in layers) existing.id == layer.id ? layer : existing,
+    ],
+  );
 
   Iterable<ui.Image> get images sync* {
     for (final layer in layers) {
@@ -161,8 +160,8 @@ class SketchDocument extends ChangeNotifier {
     int? memoryBudget,
     this.baker,
     this.onImageReplaced,
-  })  : _state = initial,
-        memoryBudget = memoryBudget ?? 900 * 1024 * 1024 {
+  }) : _state = initial,
+       memoryBudget = memoryBudget ?? 900 * 1024 * 1024 {
     _known.addAll(initial.images);
     // Loaded layers come straight from a decoder and reference nothing.
     _flat.addAll(initial.images);
@@ -175,16 +174,21 @@ class SketchDocument extends ChangeNotifier {
     required int width,
     required int height,
     Color background = const Color(0xFFFFFFFF),
-  }) =>
-      SketchDocument(
-        width: width,
-        height: height,
-        initial: SketchSnapshot(
-          layers: const [SketchLayer(id: 1, name: 'Layer 1')],
-          activeLayerId: 1,
-          background: background,
+    String? firstLayerName,
+  }) => SketchDocument(
+    width: width,
+    height: height,
+    initial: SketchSnapshot(
+      layers: [
+        SketchLayer(
+          id: 1,
+          name: firstLayerName ?? currentL.freeSketchLayerNumber(1),
         ),
-      );
+      ],
+      activeLayerId: 1,
+      background: background,
+    ),
+  );
 
   final int width;
   final int height;
@@ -306,21 +310,28 @@ class SketchDocument extends ChangeNotifier {
       return current;
     }
 
-    if (!snapshot.images.any((image) => _replaced[image] != null)) return snapshot;
-    return snapshot.copyWith(layers: [
-      for (final layer in snapshot.layers)
-        if (layer.image case final image? when _replaced[image] != null)
-          layer.copyWith(image: follow(image))
-        else
-          layer,
-    ]);
+    if (!snapshot.images.any((image) => _replaced[image] != null))
+      return snapshot;
+    return snapshot.copyWith(
+      layers: [
+        for (final layer in snapshot.layers)
+          if (layer.image case final image? when _replaced[image] != null)
+            layer.copyWith(image: follow(image))
+          else
+            layer,
+      ],
+    );
   }
 
   void _bakeNext() {
     final bake = baker;
     if (bake == null || _baking || _disposed) return;
     ui.Image? target;
-    for (final snapshot in [_state, for (final e in _redo.reversed) e.snapshot, for (final e in _undo.reversed) e.snapshot]) {
+    for (final snapshot in [
+      _state,
+      for (final e in _redo.reversed) e.snapshot,
+      for (final e in _undo.reversed) e.snapshot,
+    ]) {
       for (final image in snapshot.images) {
         if (!_flat.contains(image)) {
           target = image;
@@ -385,7 +396,8 @@ class SketchDocument extends ChangeNotifier {
     }
 
     while (_undo.isNotEmpty &&
-        (_undo.length + _redo.length > maxHistory || historyBytes() > memoryBudget)) {
+        (_undo.length + _redo.length > maxHistory ||
+            historyBytes() > memoryBudget)) {
       _undo.removeAt(0);
     }
 

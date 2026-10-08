@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/current_l.dart';
 import 'whiteboard_element.dart';
 
 /// What a pointer drag on the board does right now.
@@ -31,17 +32,17 @@ enum WhiteboardTool {
       };
 
   String get label => switch (this) {
-        WhiteboardTool.select => 'Select',
-        WhiteboardTool.pan => 'Pan',
-        WhiteboardTool.pen => 'Pen',
-        WhiteboardTool.highlighter => 'Highlighter',
-        WhiteboardTool.eraser => 'Eraser',
-        WhiteboardTool.line => 'Line',
-        WhiteboardTool.arrow => 'Arrow',
-        WhiteboardTool.rect => 'Rectangle',
-        WhiteboardTool.ellipse => 'Ellipse',
-        WhiteboardTool.note => 'Sticky note',
-        WhiteboardTool.text => 'Text',
+        WhiteboardTool.select => currentL.whiteboardToolSelect,
+        WhiteboardTool.pan => currentL.whiteboardToolPan,
+        WhiteboardTool.pen => currentL.whiteboardToolPen,
+        WhiteboardTool.highlighter => currentL.whiteboardToolHighlighter,
+        WhiteboardTool.eraser => currentL.whiteboardToolEraser,
+        WhiteboardTool.line => currentL.whiteboardToolLine,
+        WhiteboardTool.arrow => currentL.whiteboardToolArrow,
+        WhiteboardTool.rect => currentL.whiteboardToolRectangle,
+        WhiteboardTool.ellipse => currentL.whiteboardToolEllipse,
+        WhiteboardTool.note => currentL.whiteboardToolStickyNote,
+        WhiteboardTool.text => currentL.whiteboardToolText,
       };
 
   /// The single key that picks this tool, shown in its tooltip.
@@ -90,22 +91,22 @@ enum WhiteboardTool {
 /// light (see `whiteboardPaper`), so a stroke drawn in dark mode still reads
 /// after the user switches to light mode, and an exported PNG looks like what
 /// was on screen. Every entry clears 4.5:1 against both paper shades.
-const whiteboardInks = <({String name, int value})>[
-  (name: 'Graphite', value: 0xFF26222F),
-  (name: 'Red', value: 0xFFD23B3F),
-  (name: 'Orange', value: 0xFFD2690B),
-  (name: 'Green', value: 0xFF12875F),
-  (name: 'Blue', value: 0xFF2563DB),
-  (name: 'Purple', value: 0xFF6B45C4),
-  (name: 'Pink', value: 0xFFC4357F),
-];
+List<({String name, int value})> get whiteboardInks => [
+      (name: currentL.whiteboardInkGraphite, value: 0xFF26222F),
+      (name: currentL.whiteboardInkRed, value: 0xFFD23B3F),
+      (name: currentL.whiteboardInkOrange, value: 0xFFD2690B),
+      (name: currentL.whiteboardInkGreen, value: 0xFF12875F),
+      (name: currentL.whiteboardInkBlue, value: 0xFF2563DB),
+      (name: currentL.whiteboardInkPurple, value: 0xFF6B45C4),
+      (name: currentL.whiteboardInkPink, value: 0xFFC4357F),
+    ];
 
 /// Stroke widths offered in the toolbar, in board units.
-const whiteboardWidths = <({String name, double value})>[
-  (name: 'Fine', value: 2),
-  (name: 'Medium', value: 4),
-  (name: 'Bold', value: 8),
-];
+List<({String name, double value})> get whiteboardWidths => [
+      (name: currentL.whiteboardWidthFine, value: 2),
+      (name: currentL.whiteboardWidthMedium, value: 4),
+      (name: currentL.whiteboardWidthBold, value: 8),
+    ];
 
 /// The paper.
 ///

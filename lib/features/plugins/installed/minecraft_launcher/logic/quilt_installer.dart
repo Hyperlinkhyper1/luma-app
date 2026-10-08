@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../../l10n/current_l.dart';
 import 'loader_profile_merger.dart';
 import 'piston_meta_client.dart';
 
@@ -28,7 +29,7 @@ class QuiltInstaller {
         .get(Uri.parse('https://meta.quiltmc.org/v3/versions/loader/$mcVersion'))
         .timeout(const Duration(seconds: 20));
     if (res.statusCode != 200) {
-      throw QuiltInstallerException('No Quilt loader builds found for Minecraft $mcVersion.');
+      throw QuiltInstallerException(currentL.mcQuiltNoBuilds(mcVersion));
     }
     final list = jsonDecode(res.body) as List;
     return [
@@ -50,7 +51,7 @@ class QuiltInstaller {
             'https://meta.quiltmc.org/v3/versions/loader/$mcVersion/$loaderVersion/profile/json'))
         .timeout(const Duration(seconds: 20));
     if (res.statusCode != 200) {
-      throw QuiltInstallerException('Could not fetch the Quilt $loaderVersion profile.');
+      throw QuiltInstallerException(currentL.mcQuiltProfileFailed(loaderVersion));
     }
     return mergeLoaderProfile(vanilla, jsonDecode(res.body) as Map<String, dynamic>);
   }

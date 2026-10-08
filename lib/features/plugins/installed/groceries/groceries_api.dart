@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../sync/server_access.dart';
 
 /// A supermarket the search API knows about.
@@ -144,10 +145,10 @@ class GroceriesApi extends ChangeNotifier {
         : trimmed;
     final uri = Uri.tryParse(withoutSlash);
     if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
-      return 'Enter the full server address, e.g. https://groceries.example.com';
+      return currentL.groceriesApiEnterFullAddress;
     }
     if (uri.scheme == 'https') return null;
-    if (uri.scheme != 'http') return 'Only http(s) addresses are supported.';
+    if (uri.scheme != 'http') return currentL.groceriesApiOnlyHttp;
     final host = uri.host;
     final isPrivate =
         host == 'localhost' ||
@@ -158,8 +159,7 @@ class GroceriesApi extends ChangeNotifier {
         RegExp(r'^172\.(1[6-9]|2\d|3[01])\.').hasMatch(host);
     return isPrivate
         ? null
-        : 'Plain http is only allowed for local/home-network servers. '
-              'Use https:// for servers on the internet.';
+        : currentL.groceriesApiPlainHttp;
   }
 
   final http.Client _client;
@@ -223,7 +223,7 @@ class GroceriesApi extends ChangeNotifier {
           .timeout(const Duration(seconds: 12));
       if (response.statusCode != 200) {
         throw GroceriesApiException(
-          'The groceries server returned an error (${response.statusCode}).',
+          currentL.groceriesApiServerError('${response.statusCode}'),
         );
       }
       final body = jsonDecode(response.body) as Map<String, dynamic>;
@@ -232,24 +232,16 @@ class GroceriesApi extends ChangeNotifier {
       rethrow;
     } on ServerAccessDeniedException {
       throw GroceriesApiException(
-        'Product search needs an approved luma account. Create one under '
-        'Settings → Sync & account — your shopping list itself keeps '
-        'working offline.',
+        currentL.groceriesApiNeedsAccount(currentL.accountSyncTitle),
       );
     } on TimeoutException {
-      throw GroceriesApiException(
-        'The groceries server took too long to respond.',
-      );
+      throw GroceriesApiException(currentL.groceriesApiTimeout);
     } on SocketException {
-      throw GroceriesApiException(
-        'Could not reach the groceries server at $_baseUrl. Check the address in settings.',
-      );
+      throw GroceriesApiException(currentL.groceriesApiUnreachable(_baseUrl));
     } on FormatException {
-      throw GroceriesApiException(
-        'The groceries server sent back an unexpected response.',
-      );
+      throw GroceriesApiException(currentL.groceriesApiBadResponse);
     } catch (_) {
-      throw GroceriesApiException('Could not reach the groceries server.');
+      throw GroceriesApiException(currentL.groceriesApiCouldNotReach);
     }
   }
 

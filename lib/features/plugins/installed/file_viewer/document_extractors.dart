@@ -8,6 +8,15 @@ import 'package:xml/xml.dart';
 /// Pure-Dart extraction helpers for the File Viewer plugin. Every function is
 /// top-level and takes/returns sendable values so it can run via [compute].
 
+/// Identifiers carried as the message of the [FormatException]s thrown here.
+/// They run in a background isolate with no UI language, so the page maps each
+/// one to a localised sentence.
+abstract final class DocumentErrorCode {
+  static const notWordDocument = 'not-word-document';
+  static const noDocumentBody = 'no-document-body';
+  static const noWorksheets = 'no-worksheets';
+}
+
 // ---- PDF --------------------------------------------------------------------
 
 /// Extracts the text of every page of a PDF. Pages with no extractable text
@@ -84,8 +93,7 @@ List<DocxParagraph> extractDocxParagraphs(Uint8List bytes) {
 
   final entry = files['word/document.xml'];
   if (entry == null) {
-    throw const FormatException(
-        'This file does not look like a Word document.');
+    throw const FormatException(DocumentErrorCode.notWordDocument);
   }
 
   // Relationships map image ids used in the body to files under word/media/.
@@ -104,7 +112,7 @@ List<DocxParagraph> extractDocxParagraphs(Uint8List bytes) {
   final doc = XmlDocument.parse(utf8.decode(entry.content as List<int>));
   final body = doc.findAllElements('w:body').firstOrNull;
   if (body == null) {
-    throw const FormatException('Could not find the document body.');
+    throw const FormatException(DocumentErrorCode.noDocumentBody);
   }
 
   final paragraphs = <DocxParagraph>[];
@@ -220,7 +228,7 @@ List<List<String>> extractXlsxGrid(Uint8List bytes) {
       .toList()
     ..sort((a, b) => a.name.compareTo(b.name));
   if (sheetFiles.isEmpty) {
-    throw const FormatException('This workbook has no worksheets.');
+    throw const FormatException(DocumentErrorCode.noWorksheets);
   }
 
   final doc = XmlDocument.parse(content(sheetFiles.first));

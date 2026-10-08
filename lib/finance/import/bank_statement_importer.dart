@@ -1,3 +1,4 @@
+import '../../l10n/current_l.dart';
 import 'buut_parser.dart';
 import 'dutch_bank_parser.dart';
 import 'import_models.dart';
@@ -14,7 +15,7 @@ class BankStatementImporter {
     final extension = path.split('.').last.toLowerCase();
     if (!bank.allowedExtensions.contains(extension)) {
       throw FormatException(
-        'Select a ${bank.fileTypeLabel} export from ${bank.name}.',
+        currentL.financeImportWrongFileType(bank.fileTypeLabel, bank.name),
       );
     }
     return switch (bank.id) {

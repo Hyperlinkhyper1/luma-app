@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'account_overview_repository.dart';
 import 'account_overview_scope.dart';
@@ -47,79 +48,57 @@ enum AccountSection {
     service: AccountService.github,
     id: 'overview',
     icon: Icons.dashboard_outlined,
-    label: 'Overview',
-    blurb: 'Commits, stars, activity',
   ),
   repositories(
     service: AccountService.github,
     id: 'repositories',
     icon: Icons.folder_outlined,
-    label: 'Repositories',
-    blurb: 'Every repo you own',
   ),
   issues(
     service: AccountService.github,
     id: 'issues',
     icon: Icons.adjust_rounded,
-    label: 'Issues & PRs',
-    blurb: 'What is open on you',
   ),
   actions(
     service: AccountService.github,
     id: 'actions',
     icon: Icons.play_circle_outline_rounded,
-    label: 'Actions',
-    blurb: 'Workflow runs and health',
   ),
   usage(
     service: AccountService.github,
     id: 'usage',
     icon: Icons.data_usage_rounded,
-    label: 'Usage',
-    blurb: 'Copilot, storage, compute',
   ),
   mcContent(
     service: AccountService.minecraft,
     id: 'mc-content',
     icon: Icons.grid_view_rounded,
-    label: 'MC Content',
-    blurb: 'CurseForge, Modrinth, PMC',
   ),
   youtubeOverview(
     service: AccountService.youtube,
     id: 'youtube-overview',
     icon: Icons.dashboard_outlined,
-    label: 'Overview',
-    blurb: 'Subscribers, views, videos',
   ),
   youtubeVideos(
     service: AccountService.youtube,
     id: 'youtube-videos',
     icon: Icons.video_library_outlined,
-    label: 'Videos',
-    blurb: 'Every recent upload',
   ),
   youtubeAnalytics(
     service: AccountService.youtube,
     id: 'youtube-analytics',
     icon: Icons.insights_rounded,
-    label: 'Analytics',
-    blurb: 'Watch time, traffic, subscribers',
   ),
   spotifyStats(
     service: AccountService.spotify,
     id: 'spotify-stats',
     icon: Icons.insights_rounded,
-    label: 'Stats',
-    blurb: 'Top music, recent plays, library',
   );
 
   const AccountSection({
     required this.service,
     required this.id,
     required this.icon,
-    required this.label,
-    required this.blurb,
   });
 
   final AccountService service;
@@ -128,11 +107,34 @@ enum AccountSection {
   /// quietly break "view all".
   final String id;
   final IconData icon;
-  final String label;
+
+  String label(L t) => switch (this) {
+    AccountSection.overview => t.commonOverview,
+    AccountSection.repositories => t.accountOverviewSectionRepositories,
+    AccountSection.issues => t.accountOverviewSectionIssues,
+    AccountSection.actions => t.accountOverviewSectionActions,
+    AccountSection.usage => t.accountOverviewSectionUsage,
+    AccountSection.mcContent => t.accountOverviewSectionMcContent,
+    AccountSection.youtubeOverview => t.commonOverview,
+    AccountSection.youtubeVideos => t.accountOverviewSectionVideos,
+    AccountSection.youtubeAnalytics => t.accountOverviewSectionAnalytics,
+    AccountSection.spotifyStats => t.accountOverviewSectionStats,
+  };
 
   /// One-line description, shown under the label while the rail is expanded
   /// and inside the tooltip while it is collapsed.
-  final String blurb;
+  String blurb(L t) => switch (this) {
+    AccountSection.overview => t.accountOverviewBlurbOverview,
+    AccountSection.repositories => t.accountOverviewBlurbRepositories,
+    AccountSection.issues => t.accountOverviewBlurbIssues,
+    AccountSection.actions => t.accountOverviewBlurbActions,
+    AccountSection.usage => t.accountOverviewBlurbUsage,
+    AccountSection.mcContent => 'CurseForge, Modrinth, PMC',
+    AccountSection.youtubeOverview => t.accountOverviewBlurbYoutubeOverview,
+    AccountSection.youtubeVideos => t.accountOverviewBlurbYoutubeVideos,
+    AccountSection.youtubeAnalytics => t.accountOverviewBlurbYoutubeAnalytics,
+    AccountSection.spotifyStats => t.accountOverviewBlurbSpotifyStats,
+  };
 }
 
 /// The Account Overview plugin's frame: a collapsible service sidebar on the
@@ -201,6 +203,7 @@ class _AccountOverviewPageState extends State<AccountOverviewPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final repository = AccountOverviewScope.of(context);
 
@@ -221,7 +224,7 @@ class _AccountOverviewPageState extends State<AccountOverviewPage> {
                 child: LumaSegmentedTabs(
                   tabs: [
                     for (final section in AccountSection.values)
-                      '${section.service.label} · ${section.label}',
+                      '${section.service.label} · ${section.label(t)}',
                   ],
                   selectedIndex: _section.index,
                   scrollable: true,
@@ -447,6 +450,7 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final service = section.service;
 
@@ -492,7 +496,7 @@ class _SectionHeader extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  section.label,
+                  section.label(t),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -503,7 +507,7 @@ class _SectionHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  section.blurb,
+                  section.blurb(t),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: luma.textMuted, fontSize: 11.5),
@@ -538,14 +542,14 @@ class _SectionHeader extends StatelessWidget {
           if (hasActions) ...[
             const SizedBox(width: 4),
             IconButton(
-              tooltip: refreshing ? 'Refreshing…' : 'Refresh',
+              tooltip: refreshing ? t.accountOverviewRefreshing : t.commonRefresh,
               onPressed: onRefresh,
               icon: const Icon(Icons.refresh_rounded, size: 19),
               color: luma.textSecondary,
               constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
             ),
             IconButton(
-              tooltip: 'Account settings',
+              tooltip: t.accountOverviewAccountSettings,
               onPressed: onSettings,
               icon: const Icon(Icons.settings_outlined, size: 18),
               color: luma.textSecondary,
@@ -566,6 +570,7 @@ class _RefreshBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final repository = AccountOverviewScope.of(context);
     final stage = repository.stage;
@@ -586,7 +591,9 @@ class _RefreshBar extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              stage == GithubLoadStage.idle ? 'Refreshing…' : '${stage.label}…',
+              stage == GithubLoadStage.idle
+                  ? t.accountOverviewRefreshing
+                  : t.accountOverviewStageInProgress(stage.label(t)),
               style: TextStyle(
                 color: luma.textSecondary,
                 fontSize: 12,
@@ -595,7 +602,10 @@ class _RefreshBar extends StatelessWidget {
             ),
           ),
           Text(
-            'Step ${stage.index} of ${GithubLoadStage.values.length - 1}',
+            t.accountOverviewStepOf(
+              stage.index,
+              GithubLoadStage.values.length - 1,
+            ),
             style: TextStyle(
               color: luma.textMuted,
               fontSize: 11,
@@ -615,6 +625,7 @@ class _YoutubeRefreshBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final youtube = YoutubeScope.of(context);
     final stage = youtube.stage;
@@ -636,8 +647,8 @@ class _YoutubeRefreshBar extends StatelessWidget {
           Expanded(
             child: Text(
               stage == YoutubeLoadStage.idle
-                  ? 'Refreshing…'
-                  : '${stage.label}…',
+                  ? t.accountOverviewRefreshing
+                  : t.accountOverviewStageInProgress(stage.label),
               style: TextStyle(
                 color: luma.textSecondary,
                 fontSize: 12,
@@ -646,7 +657,10 @@ class _YoutubeRefreshBar extends StatelessWidget {
             ),
           ),
           Text(
-            'Step ${stage.index} of ${YoutubeLoadStage.values.length - 1}',
+            t.accountOverviewStepOf(
+              stage.index,
+              YoutubeLoadStage.values.length - 1,
+            ),
             style: TextStyle(
               color: luma.textMuted,
               fontSize: 11,
@@ -665,6 +679,7 @@ class _ConnectPrompt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Center(
       child: SingleChildScrollView(
@@ -676,13 +691,10 @@ class _ConnectPrompt extends StatelessWidget {
             children: [
               LumaEmptyState(
                 icon: Icons.hub_rounded,
-                title: 'Connect your GitHub account',
-                subtitle:
-                    'See your commits, stars, downloads, repositories, '
-                    'issues and workflow runs in one place — plus your '
-                    'Copilot, storage and compute allowances.',
+                title: t.accountOverviewConnectGithubTitle,
+                subtitle: t.accountOverviewConnectGithubSubtitle,
                 action: LumaPrimaryButton(
-                  label: 'Connect GitHub',
+                  label: t.accountOverviewConnectGithubButton,
                   icon: Icons.link_rounded,
                   onTap: () => showGithubConnectDialog(context),
                 ),
@@ -702,10 +714,7 @@ class _ConnectPrompt extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'luma stores your personal access token encrypted on '
-                        'this device and talks to api.github.com directly. '
-                        'Nothing about your GitHub account is sent to a luma '
-                        'server, and no account is needed to use this plugin.',
+                        t.accountOverviewGithubPrivacy,
                         style: TextStyle(
                           color: luma.textSecondary,
                           fontSize: 12,
@@ -730,6 +739,7 @@ class _YoutubeConnectPrompt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Center(
       child: SingleChildScrollView(
@@ -741,13 +751,10 @@ class _YoutubeConnectPrompt extends StatelessWidget {
             children: [
               LumaEmptyState(
                 icon: Icons.smart_display_rounded,
-                title: 'Connect your YouTube channel',
-                subtitle:
-                    'See your subscribers, views, recent uploads and '
-                    'deep analytics — watch time, traffic sources and '
-                    'subscriber trends — in one place.',
+                title: t.accountOverviewConnectYoutubeTitle,
+                subtitle: t.accountOverviewConnectYoutubeSubtitle,
                 action: LumaPrimaryButton(
-                  label: 'Connect YouTube',
+                  label: t.accountOverviewConnectYoutubeButton,
                   icon: Icons.link_rounded,
                   onTap: () => showYoutubeConnectDialog(context),
                 ),
@@ -767,11 +774,7 @@ class _YoutubeConnectPrompt extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        "luma stores your Google OAuth credentials encrypted "
-                        "on this device and talks to Google directly. "
-                        "Nothing about your account is sent to a luma "
-                        "server, and no luma account is needed to use this "
-                        "plugin.",
+                        t.accountOverviewYoutubePrivacy,
                         style: TextStyle(
                           color: luma.textSecondary,
                           fontSize: 12,
@@ -942,8 +945,11 @@ class _ServiceHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
-    final line = connected ? (subtitle ?? 'Connected') : 'Not set up';
+    final line = connected
+        ? (subtitle ?? t.accountOverviewConnected)
+        : t.accountOverviewNotSetUp;
 
     final content = Row(
       mainAxisAlignment: collapsed
@@ -1024,7 +1030,9 @@ class _ServiceHeading extends StatelessWidget {
     );
 
     return Tooltip(
-      message: collapsed ? '${service.label} — $line' : '',
+      message: collapsed
+          ? t.accountOverviewServiceTooltip(service.label, line)
+          : '',
       child: onTap == null
           ? padded
           : Material(
@@ -1033,7 +1041,7 @@ class _ServiceHeading extends StatelessWidget {
                 onTap: onTap,
                 hoverColor: luma.surfaceHover,
                 child: Semantics(
-                  label: '${service.label} section list',
+                  label: t.accountOverviewSectionListLabel(service.label),
                   button: true,
                   expanded: expanded,
                   child: padded,
@@ -1061,6 +1069,7 @@ class _RailItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final foreground = selected ? luma.textPrimary : luma.textSecondary;
 
@@ -1093,7 +1102,7 @@ class _RailItem extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  section.label,
+                  section.label(t),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -1103,7 +1112,7 @@ class _RailItem extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  section.blurb,
+                  section.blurb(t),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: luma.textMuted, fontSize: 11),
@@ -1130,10 +1139,15 @@ class _RailItem extends StatelessWidget {
             onTap: enabled ? onTap : null,
             hoverColor: luma.surfaceHover,
             child: Tooltip(
-              message: collapsed ? '${section.label} — ${section.blurb}' : '',
+              message: collapsed
+                  ? t.accountOverviewSectionTooltip(
+                      section.label(t),
+                      section.blurb(t),
+                    )
+                  : '',
               waitDuration: const Duration(milliseconds: 400),
               child: Semantics(
-                label: section.label,
+                label: section.label(t),
                 selected: selected,
                 enabled: enabled,
                 button: true,
@@ -1157,11 +1171,12 @@ class _MoreServicesHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     if (collapsed) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: Tooltip(
-          message: 'More services coming',
+          message: t.accountOverviewMoreServicesComing,
           child: Icon(
             Icons.more_horiz_rounded,
             size: 18,
@@ -1178,7 +1193,7 @@ class _MoreServicesHint extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'More services coming',
+              t.accountOverviewMoreServicesComing,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(color: luma.textMuted, fontSize: 11),
@@ -1199,7 +1214,10 @@ class _CollapseButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final label = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+    final t = L.of(context);
+    final label = collapsed
+        ? t.accountOverviewExpandSidebar
+        : t.accountOverviewCollapseSidebar;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
       child: Material(
@@ -1230,7 +1248,7 @@ class _CollapseButton extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Collapse',
+                          t.accountOverviewCollapse,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(color: luma.textMuted, fontSize: 12),

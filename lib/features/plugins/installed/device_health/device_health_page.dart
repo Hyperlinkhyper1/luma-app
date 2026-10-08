@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'device_health_models.dart';
 import 'device_health_repository.dart';
@@ -33,12 +34,12 @@ class _DeviceHealthPageState extends State<DeviceHealthPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     if (!DeviceHealthRepository.isSupported) {
-      return const LumaEmptyState(
+      return LumaEmptyState(
         icon: Icons.desktop_windows_rounded,
-        title: 'Device Health is Windows only',
-        subtitle: 'CPU, driver and Defender data come from Windows-only '
-            'APIs, so this plugin only runs there for now.',
+        title: t.deviceHealthWindowsOnlyTitle,
+        subtitle: t.deviceHealthWindowsOnlySubtitle,
       );
     }
 
@@ -101,6 +102,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return LumaCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -112,19 +114,21 @@ class _Header extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Device Health',
+                t.pluginNameDeviceHealth,
                 style: TextStyle(color: luma.textPrimary, fontSize: 20, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 6),
               Text(
                 score.checkedCategories == 0
-                    ? 'Reading system status…'
-                    : '${score.checkedCategories} of ${score.totalCategories} checks run',
+                    ? t.deviceHealthReadingStatus
+                    : t.deviceHealthChecksRun(score.checkedCategories, score.totalCategories),
                 style: TextStyle(color: luma.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 14),
               LumaPrimaryButton(
-                label: repo.checkingEverything ? 'Checking…' : 'Check everything',
+                label: repo.checkingEverything
+                    ? t.deviceHealthChecking
+                    : t.deviceHealthCheckEverything,
                 icon: Icons.health_and_safety_rounded,
                 loading: repo.checkingEverything,
                 onTap: repo.checkingEverything ? null : () => repo.checkEverything(),
@@ -154,6 +158,7 @@ class _IssuesBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return LumaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,7 +168,7 @@ class _IssuesBanner extends StatelessWidget {
               Icon(Icons.warning_amber_rounded, color: luma.warning, size: 18),
               const SizedBox(width: 8),
               Text(
-                'What needs attention',
+                t.deviceHealthWhatNeedsAttention,
                 style: TextStyle(color: luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
               ),
             ],

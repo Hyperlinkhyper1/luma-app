@@ -3,6 +3,8 @@
   'use strict';
   const SB = (window.SB = window.SB || {});
   const ui = SB.ui, game = SB.game, map3d = SB.map3d;
+  const tr = (key, values = {}) => window.LumaSceneI18n.format(key, values);
+  const escHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 
   const main = (SB.main = {});
 
@@ -11,22 +13,23 @@
   let mouseLL = null;
   let lastT = 0;
   let starting = false;
+  let loadingRenderer = null;
+  const renderLoading = (render) => { loadingRenderer = render; document.getElementById("loading-text").textContent = render(); };
 
   // ── Place lifecycle ──────────────────────────────────────────────────
   main.startPlace = function (place, fresh, onReady) {
     if (starting) return;
     starting = true;
     const loading = document.getElementById('loading');
-    document.getElementById('loading-text').textContent =
-      'Surveying ' + place.name + '… reading OpenStreetMap land use, water and neighbourhoods';
+    renderLoading(() => tr('sceneSubwaySurveyingPlace', {place: place.name}));
     loading.style.display = 'flex';
 
     SB.geo.setAnchor(place.lng, place.lat);
     map3d.surveyPlace(place, async (collected) => {
       try {
-        const setText = (t) => { document.getElementById('loading-text').textContent = t; };
+        const setText = (t) => renderLoading(typeof t === 'function' ? t : () => window.LumaSceneI18n.translate(t));
         const city = SB.demand.build(collected, place);
-        setText('Tracing streets and railways… fetching real rail data');
+        setText(() => tr('sceneSubwayTracingStreets'));
         try {
           await SB.net.build(collected, place, setText);
         } catch (e) { /* keep whatever networks were built */ }
@@ -43,7 +46,7 @@
         ui.updateAll();
         if (onReady) onReady();
         else if (!game.state.helpSeen) ui.showHelp();
-        else ui.toast('Welcome back to ' + place.name + ' — day ' + game.state.day);
+        else ui.toast(tr('sceneSubwayWelcomeBack', {place: place.name, day: game.state.day}));
       } finally {
         loading.style.display = 'none';
         starting = false;
@@ -86,7 +89,7 @@
     if (!game.state) return;
     if ((ui.tool === 'station' || ui.tool === 'line' || ui.tool === 'bulldoze') &&
         SB.mp && SB.mp.connected && !SB.mp.canBuild()) {
-      ui.toast('Still syncing with the host…', 'bad');
+      ui.toast(tr('sceneSubwayStillSyncing'), 'bad');
       return;
     }
     const station = map3d.stationAtPoint(e.point);
@@ -110,10 +113,10 @@
           mergeVisibleIntoNetworks(true);
           rs = map3d.railStationAtPoint(e.point);
         }
-        if (!rs) { ui.toast(SB.MODES[ui.mode].label + ' services only call at real railway stations — click a highlighted one', 'bad'); return; }
+        if (!rs) { ui.toast(tr('sceneSubwayModeServicesHighlightedRailStations', {mode: window.LumaSceneI18n.translate(SB.MODES[ui.mode].label)}), 'bad'); return; }
         const r = game.addTrainStation(rs, ui.mode);
         if (!r.ok) ui.toast(r.err, 'bad');
-        else if (!r.existing) ui.toast(r.station.name + ' leased · ' + SB.fmtMoney(r.cost));
+        else if (!r.existing) ui.toast(tr('sceneSubwayStationLeased', {station: r.station.name, cost: SB.fmtMoney(r.cost)}));
         ui.updateAll();
         return;
       }
@@ -125,7 +128,7 @@
         r = game.addStation(e.lngLat.lng, e.lngLat.lat, ui.mode);
       }
       if (!r.ok) ui.toast(r.err, 'bad');
-      else ui.toast(r.station.name + ' built · ' + SB.fmtMoney(r.cost));
+      else ui.toast(tr('sceneSubwayStationBuilt', {station: r.station.name, cost: SB.fmtMoney(r.cost)}));
       ui.updateAll();
       return;
     }
@@ -146,13 +149,13 @@
         if (rs) {
           const r = game.addTrainStation(rs, ui.mode);
           if (!r.ok) { ui.toast(r.err, 'bad'); return; }
-          if (!r.existing) ui.toast(r.station.name + ' leased · ' + SB.fmtMoney(r.cost));
+          if (!r.existing) ui.toast(tr('sceneSubwayStationLeased', {station: r.station.name, cost: SB.fmtMoney(r.cost)}));
           target = r.station;
         }
       }
       if (!target) return;
       if (!ui.draftLineId && target.mode !== ui.mode) {
-        ui.toast(target.name + ' is a ' + SB.MODES[target.mode].label.toLowerCase() + ' stop — switch mode to connect it', 'bad');
+        ui.toast(tr('sceneSubwayStationModeStop', {station: target.name, mode: window.LumaSceneI18n.translate(SB.MODES[target.mode].label)}), 'bad');
         return;
       }
       handleLineClick(target);
@@ -162,16 +165,16 @@
     if (ui.tool === 'bulldoze') {
       if (station) {
         const r = game.removeStation(station.id);
-        if (r.ok) ui.toast(station.name + ' demolished · ' + SB.fmtMoney(r.refund) + ' refunded');
+        if (r.ok) ui.toast(tr('sceneSubwayStationDemolished', {station: station.name, refund: SB.fmtMoney(r.refund)}));
         else ui.toast(r.err, 'bad');
         ui.updateAll();
         return;
       }
       const line = map3d.lineAtPoint(e.point);
       if (line) {
-        ui.confirm('Delete ' + line.name + '?', 'You get 25% of construction plus vehicle resale back.', () => {
+        ui.confirm(escHtml(tr('sceneSubwayDeleteLineQuestion', {line: ui.lineDisplayName(line)})), tr('sceneSubwayDeleteLineRefundDetails'), () => {
           const r = game.deleteLine(line.id);
-          if (r.ok) ui.toast(line.name + ' removed · ' + SB.fmtMoney(r.refund) + ' refunded');
+          if (r.ok) ui.toast(tr('sceneSubwayLineRemoved', {line: ui.lineDisplayName(line), refund: SB.fmtMoney(r.refund)}));
           ui.updateAll();
         });
       }
@@ -185,7 +188,7 @@
         if (!ui.draftIds.length) {
           const first = line.stationIds[0], last = line.stationIds[line.stationIds.length - 1];
           if (station.id !== first && station.id !== last) {
-            ui.toast('Click one of the two end stations of ' + line.name, 'bad');
+            ui.toast(tr('sceneSubwaySelectLineEndpoint', {line: ui.lineDisplayName(line)}), 'bad');
             return;
           }
           ui.draftIds = [station.id];
@@ -199,14 +202,14 @@
           const r = game.extendLine(line.id, station.id, atStart);
           if (!r.ok) { ui.toast(r.err, 'bad'); return; }
           ui.draftIds = [station.id];
-          ui.toast(line.name + ' extended to ' + station.name);
+          ui.toast(tr('sceneSubwayLineExtended', {line: ui.lineDisplayName(line), station: station.name}));
           ui.updateAll();
         };
         if (SB.isRailMode(ui.mode)) {
           // Fetch the real corridor track first so the extension follows it
           // (and only tunnels across whatever gap genuinely remains).
           const from = game.stationById(fromId);
-          ui.toast('Surveying the rail corridor…');
+          ui.toast(tr('sceneSubwaySurveyingRailCorridor'));
           SB.net.surveyRailCorridor([from, station].filter(Boolean)).finally(doExtend);
         } else {
           doExtend();
@@ -220,7 +223,7 @@
         finishDraft();
         return;
       }
-      if (ui.draftIds.includes(station.id)) { ui.toast('Already on this draft', 'bad'); return; }
+      if (ui.draftIds.includes(station.id)) { ui.toast(tr('sceneSubwayAlreadyOnDraft'), 'bad'); return; }
       ui.draftIds.push(station.id);
       ui.updateDraftHint();
       ui.updateAll();
@@ -234,14 +237,14 @@
     // possible before any remaining gap is bridged with a tunnel.
     if (SB.isRailMode(ui.mode) && !isRetry) {
       const stops = ui.draftIds.map((id) => game.stationById(id));
-      ui.toast('Surveying the rail corridor…');
+      ui.toast(tr('sceneSubwaySurveyingRailCorridor'));
       SB.net.surveyRailCorridor(stops.filter(Boolean)).finally(() => finishDraft(true));
       return;
     }
     const r = game.commitLine(ui.mode, ui.draftIds);
     if (!r.ok) { ui.toast(r.err, 'bad'); return; }
     const draft = game.draftCost(r.line.mode, r.line.stationIds);
-    let msg = r.line.name + ' opened — ' + SB.fmtMoney(r.cost) + ', 2 ' + SB.MODES[r.line.mode].vehicle + 's included';
+    let msg = tr('sceneSubwayLineOpened', {line: ui.lineDisplayName(r.line), cost: SB.fmtMoney(r.cost)});
     if (draft.waterM > 0) msg += ', includes underwater tunnelling';
     ui.toast(msg, 'good');
     ui.draftIds = [];
@@ -329,25 +332,35 @@
   main.renderDayEvents = function (events) {
     for (const ev of events) {
       if (ev.type === 'milestone') {
-        ui.banner('🎉 ' + ev.label, (ev.share * 100).toFixed(0) + '% transit share reached — ' + SB.fmtMoney(ev.grant) + ' grant awarded!');
+        ui.banner('🎉 ' + ui.milestoneLabel(ev.share), tr('sceneSubwayMilestoneShareReached', {share: (ev.share * 100).toFixed(0), grant: SB.fmtMoney(ev.grant)}));
       } else if (ev.type === 'achievement') {
-        ui.banner('🏆 ' + ev.label, ev.sub + ' — ' + SB.fmtMoney(ev.grant) + ' bonus');
+        ui.banner('🏆 ' + ui.achievementLabel(ev.id), tr('sceneSubwayAchievementBonus', {sub: ui.achievementLabel(ev.id, 'Sub'), grant: SB.fmtMoney(ev.grant)}));
       } else if (ev.type === 'event') {
         ui.toast(ev.crowded
-          ? '🎪 ' + ev.label + ' — crowding cut the surge payout to ' + SB.fmtMoney(ev.grant)
-          : '🎪 ' + ev.label + ' brought a surge: +' + SB.fmtMoney(ev.grant), ev.crowded ? 'bad' : 'good');
+          ? '🎪 ' + tr('sceneSubwayCrowdingGrantReduced', {label: tr('sceneSubwayEventDayReport', {event: window.LumaSceneI18n.translate(ev.eventName), station: ev.stationName}), grant: SB.fmtMoney(ev.grant)})
+          : '🎪 ' + tr('sceneSubwaySurgeGrant', {label: window.LumaSceneI18n.translate(ev.label), grant: SB.fmtMoney(ev.grant)}), ev.crowded ? 'bad' : 'good');
       } else if (ev.type === 'capital') {
-        ui.toast('🏛 ' + ev.label + ': ' + SB.fmtMoney(ev.grant) + ' to build with', 'good');
+        ui.toast('🏛 ' + tr('sceneSubwayGrantAwarded', {label: window.LumaSceneI18n.translate(ev.label), amount: SB.fmtMoney(ev.grant)}), 'good');
       }
     }
   };
 
-  SB.world.onNews = function (msg, kind) { ui.toast(msg, kind); };
+  SB.world.onNews = function (msg, kind) {
+    if (msg && typeof msg === 'object' && msg.key) {
+      const values = {...(msg.values || {})};
+      if (values.weather) values.weather = window.LumaSceneI18n.translate(values.weather);
+      if (values.disruption) values.disruption = window.LumaSceneI18n.translate(values.disruption);
+      if (values.event) values.event = window.LumaSceneI18n.translate(values.event);
+      ui.toast(tr(msg.key, values), kind);
+      return;
+    }
+    ui.toast(window.LumaSceneI18n.translate(msg), kind);
+  };
   SB.world.onDayEnd = function (report) {
     SB.sim.assign(); // crowding feedback converges day by day
     main.renderDayEvents(report.events);
     if (game.state.money < 0 && (game.state.money - report.net) >= 0) {
-      ui.toast('Treasury is in the red — consider a loan or higher fares', 'bad');
+      ui.toast(window.LumaSceneI18n.translate('Treasury is in the red — consider a loan or higher fares'), 'bad');
     }
     if (SB.mp) SB.mp.broadcastDayEvents(report.events);
     ui.updateAll();
@@ -442,6 +455,7 @@
       });
 
       game.onChange = () => ui.updateAll();
+  window.addEventListener('luma-locale-changed', () => { ui.updateAll(); if (loadingRenderer) renderLoading(loadingRenderer); });
 
       const saved = game.savedGames();
       const current = saved.find((s) => s.current);

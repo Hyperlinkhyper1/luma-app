@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 
+import '../l10n/current_l.dart';
 import '../sync/sync_service.dart';
 import 'peer_debug_log.dart';
 import 'peer_discovery.dart';
@@ -148,13 +149,13 @@ class PeerSyncController extends ChangeNotifier {
   Future<void> start() async {
     if (_running) return;
     if (!_sync.p2pReady) {
-      _lastError = 'Set up device sync first.';
+      _lastError = currentL.p2pSetUpSyncFirst;
       notifyListeners();
       return;
     }
     final token = _sync.peerHandshakeToken();
     if (token == null) {
-      _lastError = 'Account not ready.';
+      _lastError = currentL.p2pAccountNotReady;
       notifyListeners();
       return;
     }
@@ -174,7 +175,7 @@ class PeerSyncController extends ChangeNotifier {
         tokenPrefix: token.substring(0, 16),
       );
     } catch (e) {
-      _lastError = 'Could not start discovery: $e';
+      _lastError = currentL.p2pCouldNotStartDiscovery('$e');
     }
 
     _discoverySub ??= _discovery.peers.listen((peers) {
@@ -237,7 +238,7 @@ class PeerSyncController extends ChangeNotifier {
   /// Connect to a peer discovered via mDNS.
   Future<void> connectToDiscovered(DiscoveredPeer peer) async {
     if (peer.host.isEmpty || peer.port == 0) {
-      _lastError = 'Could not resolve ${peer.name}.';
+      _lastError = currentL.p2pCouldNotResolvePeer(peer.name);
       notifyListeners();
       return;
     }
@@ -256,7 +257,7 @@ class PeerSyncController extends ChangeNotifier {
           timeout: const Duration(seconds: 5));
     } catch (e) {
       if (!silent) {
-        _lastError = 'Could not connect to $host:$port ($e).';
+        _lastError = currentL.p2pCouldNotConnectTo('$host:$port', '$e');
         notifyListeners();
       }
       return;

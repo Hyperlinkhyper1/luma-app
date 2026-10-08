@@ -1,5 +1,6 @@
 ﻿import 'package:drift/drift.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../storage/storage_guard.dart';
 import 'data/errands_database.dart';
 
@@ -85,11 +86,12 @@ class ErrandRecord {
 
   /// Human label for the schedule ("Daily", "Every 2 weeks", "Every 10 days").
   String get repeatLabel {
+    final t = currentL;
     final n = repeatEvery;
     return switch (repeatUnit) {
-      RepeatUnit.days => n == 1 ? 'Daily' : 'Every $n days',
-      RepeatUnit.weeks => n == 1 ? 'Weekly' : 'Every $n weeks',
-      RepeatUnit.months => n == 1 ? 'Monthly' : 'Every $n months',
+      RepeatUnit.days => n == 1 ? t.errandsRepeatDaily : t.errandsRepeatEveryDays(n),
+      RepeatUnit.weeks => n == 1 ? t.errandsRepeatWeekly : t.errandsRepeatEveryWeeks(n),
+      RepeatUnit.months => n == 1 ? t.errandsRepeatMonthly : t.errandsRepeatEveryMonths(n),
     };
   }
 }

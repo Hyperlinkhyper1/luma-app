@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../../l10n/current_l.dart';
 import '../../../../../sync/server_access.dart';
 import 'ai_model.dart';
 
@@ -73,14 +74,16 @@ class AiCatalogApi {
     if (response.statusCode != 200) {
       throw AiCatalogApiException(
         response.statusCode,
-        'The server could not return the model leaderboard '
-        '(HTTP ${response.statusCode}).',
+        currentL.aiCatalogServerError('${response.statusCode}'),
       );
     }
 
     final decoded = jsonDecode(utf8.decode(response.bodyBytes));
     if (decoded is! Map<String, dynamic>) {
-      throw const AiCatalogApiException(200, 'Malformed leaderboard response.');
+      throw AiCatalogApiException(
+        200,
+        currentL.aiCatalogMalformedResponse,
+      );
     }
     return AiCatalogFetchResult(
       catalog: AiCatalog.fromJson(decoded),

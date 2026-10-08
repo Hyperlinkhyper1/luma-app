@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 
+import '../../../../l10n/current_l.dart';
 import 'smart_light.dart';
 
 class HubConnection {
@@ -60,9 +61,7 @@ class LocalDirigeraApi implements DirigeraApi {
   Future<HubPairingChallenge> beginPairing(String host) async {
     final address = InternetAddress.tryParse(host.trim());
     if (address == null || !isPrivateIpv4(address)) {
-      throw const FormatException(
-        'Enter the hub’s private IPv4 address from your router.',
-      );
+      throw FormatException(currentL.smartHomeEnterHubAddress);
     }
     final random = Random.secure();
     final verifier = base64UrlEncode(
@@ -86,9 +85,7 @@ class LocalDirigeraApi implements DirigeraApi {
     );
     final code = (result as Map)['code'] as String?;
     if (code == null || fingerprint == null) {
-      throw const FormatException(
-        'The hub did not return a pairing challenge.',
-      );
+      throw FormatException(currentL.smartHomeNoPairingChallenge);
     }
     return HubPairingChallenge(host.trim(), code, verifier, fingerprint!);
   }
@@ -109,7 +106,7 @@ class LocalDirigeraApi implements DirigeraApi {
     );
     final token = (result as Map)['access_token'] as String?;
     if (token == null || token.isEmpty) {
-      throw const FormatException('The hub did not return an access token.');
+      throw FormatException(currentL.smartHomeNoAccessToken);
     }
     return HubConnection(
       challenge.host,
@@ -170,9 +167,7 @@ class LocalDirigeraApi implements DirigeraApi {
     if (!isPrivateIpv4(
       InternetAddress.tryParse(host) ?? InternetAddress.anyIPv6,
     )) {
-      throw const FormatException(
-        'The hub address must be a private IPv4 address.',
-      );
+      throw FormatException(currentL.smartHomeHubAddressMustBePrivate);
     }
     final client = HttpClient(
       context: SecurityContext(withTrustedRoots: false),
@@ -226,7 +221,7 @@ class LocalDirigeraApi implements DirigeraApi {
 
 List<SmartLight> parseDirigeraLights(Object? result) {
   if (result is! List) {
-    throw const FormatException('Invalid hub device list.');
+    throw FormatException(currentL.smartHomeInvalidDeviceList);
   }
   return result
       .whereType<Map>()

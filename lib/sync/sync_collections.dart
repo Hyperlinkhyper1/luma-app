@@ -8,6 +8,7 @@ import 'package:flutter/material.dart' show IconData, Icons;
 import '../features/passwords/data/password_database.dart';
 import '../features/passwords/password_crypto.dart';
 import '../features/passwords/password_metadata.dart';
+import '../l10n/current_l.dart';
 
 /// One syncable unit of app data (a feature's storage). Adapters know how to
 /// snapshot their feature to a JSON-encodable object and how to restore it.
@@ -42,17 +43,23 @@ abstract class SyncCollection {
 class DriftSyncCollection extends SyncCollection {
   DriftSyncCollection({
     required this.id,
-    required this.label,
+    String? label,
+    String Function()? labelBuilder,
     required this.icon,
     required this.db,
     this.minPlanId,
     this.excludedTables = const {},
-  });
+  }) : _label = label,
+       _labelBuilder = labelBuilder {
+    assert((label != null) != (labelBuilder != null));
+  }
 
   @override
   final String id;
   @override
-  final String label;
+  String get label => _labelBuilder?.call() ?? _label!;
+  final String? _label;
+  final String Function()? _labelBuilder;
   @override
   final IconData icon;
   @override
@@ -105,18 +112,17 @@ class DriftSyncCollection extends SyncCollection {
   @override
   Future<void> import(Object? data) async {
     if (data is! Map<String, dynamic>) {
-      throw const FormatException('Invalid snapshot.');
+      throw FormatException(currentL.syncCollectionInvalidSnapshot);
     }
     final snapshotSchema = data['schemaVersion'] as int? ?? 0;
     if (snapshotSchema > db.schemaVersion) {
       throw StateError(
-        'This snapshot came from a newer app version. Update the app on '
-        'this device first.',
+        currentL.syncCollectionSnapshotNewerVersion,
       );
     }
     final tables = data['tables'];
     if (tables is! Map<String, dynamic>) {
-      throw const FormatException('Invalid snapshot.');
+      throw FormatException(currentL.syncCollectionInvalidSnapshot);
     }
 
     await db.transaction(() async {
@@ -183,7 +189,7 @@ class PasswordVaultSyncCollection extends DriftSyncCollection {
     required this.crypto,
   }) : super(
          id: 'passwords',
-         label: 'Passwords',
+         labelBuilder: () => currentL.syncCollectionPasswords,
          icon: Icons.password_rounded,
          db: db,
        );
@@ -206,8 +212,7 @@ class PasswordVaultSyncCollection extends DriftSyncCollection {
         // Never export an entry we can't decrypt: syncing '' in its place
         // would overwrite the real password on every other device.
         throw StateError(
-          'Could not decrypt password entry $entryId for sync '
-          '(corrupt data or changed key file).',
+          currentL.syncCollectionPasswordDecryptFailed(entryId),
         );
       }
       row['password_plain'] = plain;
@@ -219,7 +224,7 @@ class PasswordVaultSyncCollection extends DriftSyncCollection {
           ? crypto.decrypt(totpCipher, entryId: entryId, field: 'totp')
           : null;
       if (totpCipher != null && totpPlain == null) {
-        throw StateError('Could not decrypt TOTP entry for sync.');
+        throw StateError(currentL.syncCollectionTotpDecryptFailed);
       }
       row['totp_secret_plain'] = totpPlain;
     }
@@ -235,7 +240,7 @@ class PasswordVaultSyncCollection extends DriftSyncCollection {
       final entryId = row['id'] as int;
       final plain = row.remove('password_plain');
       if (plain is! String) {
-        throw const FormatException('Missing password in vault snapshot.');
+        throw FormatException(currentL.syncCollectionSnapshotMissingPassword);
       }
       row['password_cipher'] = crypto.encrypt(
         plain,
@@ -248,7 +253,7 @@ class PasswordVaultSyncCollection extends DriftSyncCollection {
       final totpPlain = row.remove('totp_secret_plain');
       if ((totpPlain != null && totpPlain is! String) ||
           (row['totp_secret_cipher'] != null && totpPlain == null)) {
-        throw const FormatException('Unreadable TOTP in vault snapshot.');
+        throw FormatException(currentL.syncCollectionSnapshotUnreadableTotp);
       }
       if (row.containsKey('totp_secret_cipher') || totpPlain != null) {
         row['totp_secret_cipher'] = totpPlain is String && totpPlain.isNotEmpty
@@ -265,20 +270,25 @@ class PasswordVaultSyncCollection extends DriftSyncCollection {
 class JsonStoreSyncCollection extends SyncCollection {
   JsonStoreSyncCollection({
     required this.id,
-    required this.label,
+    String? label,
+    String Function()? labelBuilder,
     required this.icon,
     required Listenable listenable,
     required this.exporter,
     required this.importer,
     this.minPlanId,
-  }) {
+  }) : _label = label,
+       _labelBuilder = labelBuilder {
+    assert((label != null) != (labelBuilder != null));
     listenable.addListener(_notify);
   }
 
   @override
   final String id;
   @override
-  final String label;
+  String get label => _labelBuilder?.call() ?? _label!;
+  final String? _label;
+  final String Function()? _labelBuilder;
   @override
   final IconData icon;
   @override

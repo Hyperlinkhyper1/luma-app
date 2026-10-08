@@ -5,6 +5,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../security/secure_secret_store.dart';
 import 'dirigera_api.dart';
 import 'dirigera_discovery.dart';
@@ -89,7 +90,7 @@ class SmartHomeRepository extends ChangeNotifier {
     try {
       _presets = await _presetStore.load();
     } catch (_) {
-      presetLoadError = 'Could not load saved Smart Home presets.';
+      presetLoadError = currentL.smartHomePresetsLoadFailed;
     }
     try {
       final saved = await _credentials.read();
@@ -100,7 +101,7 @@ class SmartHomeRepository extends ChangeNotifier {
         await refresh();
       }
     } catch (_) {
-      _error = 'Could not read the saved hub connection from secure storage.';
+      _error = currentL.smartHomeHubConnectionReadFailed;
     } finally {
       _error ??= presetLoadError;
       _loading = false;
@@ -134,9 +135,7 @@ class SmartHomeRepository extends ChangeNotifier {
     try {
       _discoveredHubs = await _discovery.findHubs();
     } catch (_) {
-      _error =
-          'Could not search the local network for a DIRIGERA hub. '
-          'Check local network permission, then try again or enter its IP address.';
+      _error = currentL.smartHomeDiscoverFailed;
     } finally {
       _discovering = false;
       notifyListeners();
@@ -240,7 +239,7 @@ class SmartHomeRepository extends ChangeNotifier {
     if (busy || !paired) return false;
     final trimmedName = name.trim();
     if (trimmedName.isEmpty || lights.isEmpty) {
-      _error = 'Give the preset a name and select at least one lamp.';
+      _error = currentL.smartHomePresetNeedsNameAndLamp;
       notifyListeners();
       return false;
     }
@@ -262,8 +261,7 @@ class SmartHomeRepository extends ChangeNotifier {
                   setting.saturation! < 0 ||
                   setting.saturation! > 1) ||
           (setting.hue == null) != (setting.saturation == null)) {
-        _error =
-            'A selected lamp has settings it does not support. Refresh the lamps and try again.';
+        _error = currentL.smartHomePresetUnsupportedSettings;
         notifyListeners();
         return false;
       }
@@ -291,7 +289,7 @@ class SmartHomeRepository extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (error) {
-      _error = 'Could not save the preset. ($error)';
+      _error = currentL.smartHomePresetSaveFailed('$error');
       notifyListeners();
       return false;
     }
@@ -309,7 +307,7 @@ class SmartHomeRepository extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (error) {
-      _error = 'Could not delete the preset. ($error)';
+      _error = currentL.smartHomePresetDeleteFailed('$error');
       notifyListeners();
       return false;
     }
@@ -323,7 +321,7 @@ class SmartHomeRepository extends ChangeNotifier {
 
   Future<void> importData(Object? data) async {
     if (data is! List) {
-      throw const FormatException('Invalid smart home snapshot.');
+      throw FormatException(currentL.smartHomeInvalidSnapshot);
     }
     await _ready;
     final next = [
@@ -350,7 +348,7 @@ class SmartHomeRepository extends ChangeNotifier {
       for (final setting in preset.lights) {
         final light = available[setting.lightId];
         if (light == null || !light.isReachable || !light.canToggle) {
-          failed.add(light?.name ?? 'Missing lamp');
+          failed.add(light?.name ?? currentL.smartHomeLampMissing);
           continue;
         }
         try {
@@ -370,7 +368,7 @@ class SmartHomeRepository extends ChangeNotifier {
           }
           if (setting.brightness != null && !light.canDim ||
               setting.hue != null && !light.canSetColor) {
-            failed.add('${light.name} (settings changed)');
+            failed.add(currentL.smartHomeLampSettingsChanged(light.name));
           }
         } catch (_) {
           failed.add(light.name);
@@ -379,11 +377,13 @@ class SmartHomeRepository extends ChangeNotifier {
       try {
         _lights = await _api.listLights(connection);
       } catch (_) {
-        failed.add('status refresh');
+        failed.add(currentL.smartHomeStatusRefreshItem);
       }
       if (failed.isNotEmpty) {
-        _error =
-            'Preset "${preset.name}" could not fully apply: ${failed.join(', ')}.';
+        _error = currentL.smartHomePresetPartialApply(
+          preset.name,
+          failed.join(', '),
+        );
       }
     } finally {
       _busy = false;
@@ -425,10 +425,8 @@ class SmartHomeRepository extends ChangeNotifier {
   String _message(Object error) {
     if (error is FormatException) return error.message;
     if (error is TimeoutException || error is SocketException) {
-      return 'The DIRIGERA hub did not respond. Make sure this device and the hub '
-          'are on the same home network, then find the hub again. Guest Wi-Fi '
-          'or a VPN can prevent a connection.';
+      return currentL.smartHomeHubNoResponse;
     }
-    return 'Could not reach the DIRIGERA hub. Check its connection and try again.';
+    return currentL.smartHomeHubUnreachable;
   }
 }

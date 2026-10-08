@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import '../../../../../l10n/current_l.dart';
 import '../data/minecraft_launcher_database.dart';
 import 'asset_resolver.dart';
 import 'download_manager.dart';
@@ -38,12 +39,12 @@ class InstanceLaunchOrchestrator {
     required McAccount account,
     required void Function(String status, double? fraction) onStatus,
   }) async {
-    onStatus('Checking for updates…', null);
+    onStatus(currentL.mcLaunchCheckingUpdates, null);
     final manifest = await PistonMetaClient.instance.fetchManifest();
     final entry = manifest.versions.where((v) => v.id == instance.versionId).firstOrNull;
     if (entry == null) {
       throw LaunchOrchestratorException(
-          'Minecraft ${instance.versionId} is no longer listed by Mojang.');
+          currentL.mcLaunchVersionNotListed(instance.versionId));
     }
     final vanillaDetail = await PistonMetaClient.instance.fetchVersionDetail(entry);
 
@@ -51,7 +52,7 @@ class InstanceLaunchOrchestrator {
     final assetsObjects = await McPaths.assetsObjects();
     final clientJarPath = await clientJarPathFor(vanillaDetail.id);
 
-    onStatus('Resolving base game files…', null);
+    onStatus(currentL.mcLaunchResolvingFiles, null);
     final vanillaLibraries = resolveLibraries(vanillaDetail);
     final assets = await AssetResolver.instance.resolveAssets(vanillaDetail);
 
@@ -71,15 +72,15 @@ class InstanceLaunchOrchestrator {
               '${assetsObjects.path}${Platform.pathSeparator}${asset.relativePath.replaceAll('/', Platform.pathSeparator)}',
           sha1: asset.hash,
           size: asset.size,
-          label: 'asset',
+          label: currentL.mcLaunchAssetLabel,
         ),
     ];
 
-    onStatus('Downloading game files…', 0);
+    onStatus(currentL.mcLaunchDownloadingGame, 0);
     await DownloadManager.instance.downloadAll(
       baseDownloadItems,
       onProgress: (p) => onStatus(
-        'Downloading game files (${p.filesDone}/${p.filesTotal})…',
+        currentL.mcLaunchDownloadingGameProgress('${p.filesDone}', '${p.filesTotal}'),
         p.fraction,
       ),
     );
@@ -95,9 +96,9 @@ class InstanceLaunchOrchestrator {
       final loaderVersion = instance.loaderVersion;
       if (loaderVersion == null || loaderVersion.isEmpty) {
         throw LaunchOrchestratorException(
-            'This instance has no ${instance.loader} version selected.');
+            currentL.mcLaunchNoLoaderVersion(_loaderDisplayName(instance.loader)));
       }
-      onStatus('Setting up ${_loaderDisplayName(instance.loader)}…', null);
+      onStatus(currentL.mcLaunchSettingUpLoader(_loaderDisplayName(instance.loader)), null);
       detail = await _mergeLoader(
         loader: instance.loader,
         mcVersion: instance.versionId,
@@ -114,19 +115,23 @@ class InstanceLaunchOrchestrator {
           if (!vanillaPaths.contains(lib.mavenPath)) _libraryDownloadItem(librariesDir, lib),
       ];
       if (extraItems.isNotEmpty) {
-        onStatus('Downloading ${_loaderDisplayName(instance.loader)} libraries…', 0);
+        final loaderName = _loaderDisplayName(instance.loader);
+        onStatus(currentL.mcLaunchDownloadingLoaderLibraries(loaderName), 0);
         await DownloadManager.instance.downloadAll(
           extraItems,
           onProgress: (p) => onStatus(
-            'Downloading ${_loaderDisplayName(instance.loader)} libraries '
-            '(${p.filesDone}/${p.filesTotal})…',
+            currentL.mcLaunchDownloadingLoaderLibrariesProgress(
+              loaderName,
+              '${p.filesDone}',
+              '${p.filesTotal}',
+            ),
             p.fraction,
           ),
         );
       }
     }
 
-    onStatus('Extracting natives…', null);
+    onStatus(currentL.mcLaunchExtractingNatives, null);
     final libraries = resolveLibraries(detail);
     final nativesDir = await NativeLibraryExtractor.extractAll(instance.id, libraries);
 
@@ -154,7 +159,7 @@ class InstanceLaunchOrchestrator {
 
     final args = buildLaunchCommand(detail, instance, ctx);
 
-    onStatus('Launching…', null);
+    onStatus(currentL.mcLaunchLaunching, null);
     return GameProcessManager.launch(
       instanceId: instance.id,
       javaPath: javaPath,
@@ -200,7 +205,7 @@ class InstanceLaunchOrchestrator {
           onStatus: onStatus,
         );
       default:
-        throw LaunchOrchestratorException('Unknown mod loader "$loader".');
+        throw LaunchOrchestratorException(currentL.mcLaunchUnknownLoader(loader));
     }
   }
 
@@ -211,7 +216,7 @@ class InstanceLaunchOrchestrator {
     final destPath = safeJoin(librariesDir.path, lib.mavenPath);
     if (destPath == null) {
       throw LaunchOrchestratorException(
-          'Refusing to download library with unsafe path "${lib.mavenPath}".');
+          currentL.mcLaunchUnsafeLibraryPath(lib.mavenPath));
     }
     return DownloadItem(
       url: lib.url,

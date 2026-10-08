@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import '../roblox_tools/mafia/mafia_role_counter_tab.dart';
 import '../steam_tools/ui/cs2_market_tab.dart';
@@ -38,56 +39,39 @@ enum GameToolsGame {
 /// The plugin's sections, in sidebar order, grouped by [game]. The enum's
 /// index is also the [IndexedStack] index in [GameToolsPage].
 enum GameToolsSection {
-  priceTracker(
-    game: GameToolsGame.steam,
-    icon: Icons.trending_down_rounded,
-    label: 'Price Tracker',
-    blurb: 'Your library, priced',
-  ),
-  cs2Market(
-    game: GameToolsGame.steam,
-    icon: Icons.diamond_outlined,
-    label: 'CS2 Market',
-    blurb: 'Skins, priced and charted',
-  ),
-  sellingCalculator(
-    game: GameToolsGame.steam,
-    icon: Icons.calculate_outlined,
-    label: 'Selling Calculator',
-    blurb: 'Estimate CS2 sale proceeds',
-  ),
-  mafia(
-    game: GameToolsGame.roblox,
-    icon: Icons.theater_comedy_rounded,
-    label: 'Mafia',
-    blurb: 'Role counting',
-  ),
-  minecraft(
-    game: GameToolsGame.minecraft,
-    icon: Icons.widgets_rounded,
-    label: 'Minecraft',
-    blurb: 'Coming soon',
-  );
+  priceTracker(game: GameToolsGame.steam, icon: Icons.trending_down_rounded),
+  cs2Market(game: GameToolsGame.steam, icon: Icons.diamond_outlined),
+  sellingCalculator(game: GameToolsGame.steam, icon: Icons.calculate_outlined),
+  mafia(game: GameToolsGame.roblox, icon: Icons.theater_comedy_rounded),
+  minecraft(game: GameToolsGame.minecraft, icon: Icons.widgets_rounded);
 
-  const GameToolsSection({
-    required this.game,
-    required this.icon,
-    required this.label,
-    required this.blurb,
-  });
+  const GameToolsSection({required this.game, required this.icon});
 
   final GameToolsGame game;
   final IconData icon;
-  final String label;
+
+  String label(L t) => switch (this) {
+    GameToolsSection.priceTracker => t.pluginNamePriceTracker,
+    GameToolsSection.cs2Market => t.gameToolsCs2MarketLabel,
+    GameToolsSection.sellingCalculator => t.gameToolsSellingCalculatorLabel,
+    GameToolsSection.mafia => 'Mafia',
+    GameToolsSection.minecraft => 'Minecraft',
+  };
 
   /// One-line description, shown under the label while the rail is expanded
   /// and inside the tooltip while it is collapsed.
-  final String blurb;
+  String blurb(L t) => switch (this) {
+    GameToolsSection.priceTracker => t.gameToolsPriceTrackerBlurb,
+    GameToolsSection.cs2Market => t.gameToolsCs2MarketBlurb,
+    GameToolsSection.sellingCalculator => t.gameToolsSellingCalculatorBlurb,
+    GameToolsSection.mafia => t.gameToolsMafiaBlurb,
+    GameToolsSection.minecraft => t.assistantAgentsComingSoon,
+  };
 
   /// The label a flat tab strip uses, where there is no heading to say which
   /// game a section belongs to.
-  String get flatLabel =>
-      game.collapsible ? '${game.label} · $label' : game.label;
+  String flatLabel(L t) =>
+      game.collapsible ? '${game.label} · ${label(t)}' : game.label;
 }
 
 /// The Game Tools plugin's frame: a collapsible game sidebar on the left and
@@ -141,6 +125,7 @@ class _GameToolsPageState extends State<GameToolsPage> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final body = IndexedStack(
       index: _section.index,
       children: [
@@ -169,7 +154,7 @@ class _GameToolsPageState extends State<GameToolsPage> {
             child: LumaSegmentedTabs(
               tabs: [
                 for (final section in GameToolsSection.values)
-                  section.flatLabel,
+                  section.flatLabel(t),
               ],
               selectedIndex: _section.index,
               scrollable: true,
@@ -207,12 +192,11 @@ class _ComingSoon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return LumaEmptyState(
       icon: game.icon,
-      title: '${game.label} tools are coming soon',
-      subtitle:
-          'This is where ${game.label} helpers will live. Nothing to set up '
-          'yet — they will show up here in a future update.',
+      title: t.gameToolsComingSoonTitle(game.label),
+      subtitle: t.gameToolsComingSoonSubtitle(game.label),
     );
   }
 }
@@ -330,12 +314,13 @@ class _GameHeading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final count = game.sections.length;
     final line = game.comingSoon
-        ? 'Coming soon'
+        ? t.assistantAgentsComingSoon
         : game.collapsible
-        ? '$count tools'
-        : game.sections.first.label;
+        ? t.gameToolsToolCount(count)
+        : game.sections.first.label(t);
 
     final content = Row(
       mainAxisAlignment: collapsed
@@ -459,6 +444,7 @@ class _RailItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final foreground = selected ? luma.textPrimary : luma.textSecondary;
 
     final row = Row(
@@ -490,7 +476,7 @@ class _RailItem extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  section.label,
+                  section.label(t),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -500,7 +486,7 @@ class _RailItem extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  section.blurb,
+                  section.blurb(t),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: luma.textMuted, fontSize: 11),
@@ -523,10 +509,12 @@ class _RailItem extends StatelessWidget {
           onTap: onTap,
           hoverColor: luma.surfaceHover,
           child: Tooltip(
-            message: collapsed ? '${section.label} — ${section.blurb}' : '',
+            message: collapsed
+                ? t.gameToolsSectionTooltip(section.label(t), section.blurb(t))
+                : '',
             waitDuration: const Duration(milliseconds: 400),
             child: Semantics(
-              label: section.label,
+              label: section.label(t),
               selected: selected,
               button: true,
               child: SizedBox(height: 48, child: row),
@@ -547,7 +535,10 @@ class _CollapseButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final label = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+    final t = L.of(context);
+    final label = collapsed
+        ? t.accountOverviewExpandSidebar
+        : t.accountOverviewCollapseSidebar;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
       child: Material(
@@ -578,7 +569,7 @@ class _CollapseButton extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Collapse',
+                          t.aiUsageSidebarCollapseShort,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(color: luma.textMuted, fontSize: 12),

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../../l10n/current_l.dart';
 import 'mc_paths.dart';
 
 class PistonMetaException implements Exception {
@@ -203,10 +204,10 @@ class PistonMetaClient {
     try {
       res = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 20));
     } catch (_) {
-      throw PistonMetaException('Could not reach $url. Check your connection.');
+      throw PistonMetaException(currentL.mcPistonUnreachable(url));
     }
     if (res.statusCode != 200) {
-      throw PistonMetaException('Request failed (${res.statusCode}) for $url.');
+      throw PistonMetaException(currentL.mcPistonRequestFailed('${res.statusCode}', url));
     }
     return jsonDecode(res.body) as Map<String, dynamic>;
   }

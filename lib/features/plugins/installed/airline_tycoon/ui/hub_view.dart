@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../airline_tycoon_repository.dart';
 import '../data/buildings.dart';
@@ -114,7 +115,7 @@ class _HubViewState extends State<HubView> {
     if (result.success || !mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(result.message ?? 'That did not work.'),
+        content: Text(result.message ?? L.of(context).airlineHubFailed),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 3),
       ),
@@ -217,6 +218,7 @@ class _HubViewState extends State<HubView> {
 
   Widget _buildPalette(LumaPalette luma, bool horizontal) {
     final repo = widget.repository;
+    final t = L.of(context);
     final tiles = <Widget>[
       for (final def in kBuildingCatalog)
         _PaletteTile(
@@ -236,7 +238,7 @@ class _HubViewState extends State<HubView> {
     final tools = <Widget>[
       _ToolButton(
         icon: Icons.rotate_90_degrees_cw_rounded,
-        label: 'Rotate',
+        label: t.airlineHubRotate,
         horizontal: horizontal,
         active: _rotation != 0,
         enabled: _placing != null && buildingDef(_placing!).rotatable,
@@ -244,7 +246,7 @@ class _HubViewState extends State<HubView> {
       ),
       _ToolButton(
         icon: Icons.delete_outline_rounded,
-        label: 'Demolish',
+        label: t.airlineHubDemolish,
         horizontal: horizontal,
         active: _demolishing,
         enabled: true,
@@ -324,6 +326,7 @@ class _PaletteTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final decor = context.lumaDecor;
+    final t = L.of(context);
     final label = Text(
       def.name,
       maxLines: 1,
@@ -370,12 +373,14 @@ class _PaletteTile extends StatelessWidget {
           );
 
     return Tooltip(
-      message: '${def.name} — ${def.blurb}',
+      message: t.airlineHubTileTooltip(def.name, def.blurb),
       child: Semantics(
         button: true,
         selected: selected,
-        label: '${def.name}, ${fmtExactMoney(def.costEur)}'
-            '${affordable ? '' : ', too expensive'}',
+        label: affordable
+            ? t.airlineHubTileSemantics(def.name, fmtExactMoney(def.costEur))
+            : t.airlineHubTileSemanticsTooExpensive(
+                def.name, fmtExactMoney(def.costEur)),
         child: InkWell(
           onTap: onTap,
           borderRadius: decor.cardBorderRadius,
@@ -487,6 +492,7 @@ class _CapacityStrip extends StatelessWidget {
     final luma = context.luma;
     final effects = repository.hubEffects;
     final used = repository.activeRouteCount;
+    final t = L.of(context);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -500,37 +506,37 @@ class _CapacityStrip extends StatelessWidget {
           children: [
             _Stat(
               icon: Icons.airline_seat_recline_normal_rounded,
-              label: 'Gates',
+              label: t.airlineHubGates,
               value: '$used / ${effects.activeGates}',
             ),
             if (effects.inactiveGates > 0)
               _Stat(
                 icon: Icons.warning_amber_rounded,
-                label: 'Not on a terminal',
+                label: t.airlineHubNotOnTerminal,
                 value: '${effects.inactiveGates}',
                 tone: luma.warning,
               ),
             _Stat(
               icon: Icons.straighten_rounded,
-              label: 'Runway',
+              label: t.airlineLabelRunway,
               value: effects.maxRunwayM == 0
-                  ? 'none'
-                  : '${fmtCount(effects.maxRunwayM)} m',
+                  ? t.airlineRunwayNone
+                  : t.airlineFactMetres(fmtCount(effects.maxRunwayM)),
             ),
             _Stat(
               icon: Icons.build_rounded,
-              label: 'Maintenance',
+              label: t.airlineLabelMaintenance,
               value: '${((1 - effects.maintenanceMultiplier) * 100).round()}%',
             ),
             _Stat(
               icon: Icons.local_gas_station_rounded,
-              label: 'Fuel',
+              label: t.airlineLabelFuel,
               value: '${((1 - effects.fuelMultiplier) * 100).round()}%',
             ),
             _Stat(
               icon: Icons.receipt_long_rounded,
-              label: 'Upkeep',
-              value: '${fmtMoney(effects.upkeepPerDayEur)}/day',
+              label: t.airlineLabelUpkeep,
+              value: t.airlineFactPerDay(fmtMoney(effects.upkeepPerDayEur)),
             ),
           ],
         ),

@@ -6,6 +6,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/luma_theme.dart';
 import '../converter_widgets.dart';
 import '../file_saver.dart';
@@ -46,6 +47,14 @@ const _eqPresets = <String, List<double>>{
   'Vocal': [-2, 0, 3, 3, -1],
   'Treble': [0, 0, 1, 3, 5],
 };
+
+String _eqPresetLabel(L t, String key) => switch (key) {
+      'Flat' => t.audioEditorPresetFlat,
+      'Bass boost' => t.audioEditorPresetBassBoost,
+      'Vocal' => t.audioEditorPresetVocal,
+      'Treble' => t.audioEditorPresetTreble,
+      _ => key,
+    };
 
 enum _PlaybackState { idle, rendering, playing, paused }
 
@@ -139,6 +148,7 @@ class _AudioEditorViewState extends State<AudioEditorView> {
   // ── File loading ──────────────────────────────────────────────────────
 
   Future<void> _pickFile() async {
+    final t = L.of(context);
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: const [
@@ -149,8 +159,7 @@ class _AudioEditorViewState extends State<AudioEditorView> {
     final file = result.files.first;
     final path = file.path;
     if (path == null) {
-      setState(() =>
-          _error = 'Could not read the file path — editing needs the desktop app.');
+      setState(() => _error = t.audioEditorNoFilePath);
       return;
     }
 
@@ -176,7 +185,7 @@ class _AudioEditorViewState extends State<AudioEditorView> {
     try {
       final info = await Ffmpeg.probeVideo(path);
       if (info.durationSec <= 0 || !info.hasAudio) {
-        throw const FfmpegException('Could not read this audio file.');
+        throw FfmpegException(t.audioEditorCannotRead);
       }
       // Decode to low-rate mono PCM to draw the waveform.
       final pcm = await Ffmpeg.transcodePath(
@@ -204,7 +213,7 @@ class _AudioEditorViewState extends State<AudioEditorView> {
       setState(() {
         _loadingFile = false;
         _path = null;
-        _error = 'Could not load this file: $e';
+        _error = t.audioEditorLoadFailed('$e');
       });
     }
   }
@@ -265,11 +274,10 @@ class _AudioEditorViewState extends State<AudioEditorView> {
 
   /// Builds the `-filter_complex` args implementing cuts (atrim + concat)
   /// followed by the EQ/effects chain. Empty when nothing is edited.
-  List<String> _buildFilterArgs() {
+  List<String> _buildFilterArgs(L t) {
     final kept = _keptIntervals();
     if (kept.isEmpty) {
-      throw const FfmpegException(
-          'Everything has been cut — remove a cut first.');
+      throw FfmpegException(t.audioEditorEverythingCut);
     }
 
     final effects = <String>[];
@@ -374,6 +382,7 @@ class _AudioEditorViewState extends State<AudioEditorView> {
   }
 
   Future<void> _renderAndPlay() async {
+    final t = L.of(context);
     final path = _path;
     if (path == null) return;
 
@@ -385,7 +394,7 @@ class _AudioEditorViewState extends State<AudioEditorView> {
     try {
       String playPath;
       if (_previewDirty || _previewPath == null) {
-        final args = _buildFilterArgs();
+        final args = _buildFilterArgs(t);
         if (args.isEmpty) {
           // Nothing edited: play the original file as-is.
           playPath = path;
@@ -400,8 +409,7 @@ class _AudioEditorViewState extends State<AudioEditorView> {
           _previewPath = null;
           final written = await writePreviewFile(bytes, 'wav');
           if (written == null) {
-            throw const FfmpegException(
-                'Preview playback is only available in the desktop app.');
+            throw FfmpegException(t.audioEditorPreviewDesktopOnly);
           }
           _previewPath = written;
           playPath = written;
@@ -427,7 +435,7 @@ class _AudioEditorViewState extends State<AudioEditorView> {
       if (!mounted) return;
       setState(() {
         _playback = _PlaybackState.idle;
-        _error = 'Could not play the preview: $e';
+        _error = t.audioEditorPreviewFailed('$e');
       });
     }
   }
@@ -435,6 +443,7 @@ class _AudioEditorViewState extends State<AudioEditorView> {
   // ── Export ────────────────────────────────────────────────────────────
 
   Future<void> _save() async {
+    final t = L.of(context);
     final path = _path;
     final name = _name;
     if (path == null || name == null) return;
@@ -450,7 +459,7 @@ class _AudioEditorViewState extends State<AudioEditorView> {
     try {
       final bytes = await Ffmpeg.transcodePath(
         inputPath: path,
-        args: [..._buildFilterArgs(), ...format.args],
+        args: [..._buildFilterArgs(t), ...format.args],
         outputExtension: format.extension,
       );
       final save = await saveConvertedFile(
@@ -474,7 +483,7 @@ class _AudioEditorViewState extends State<AudioEditorView> {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _error = 'Could not save: $e';
+        _error = t.audioEditorSaveFailed('$e');
       });
     }
   }
@@ -499,13 +508,14 @@ class _AudioEditorViewState extends State<AudioEditorView> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final ready = _ffmpegReady ?? false;
     final loaded = _path != null && _duration > 0 && !_loadingFile;
 
     return ToolScaffold(
       icon: Icons.equalizer_rounded,
-      title: 'Audio editor',
-      subtitle: 'Cut, equalize, and preview audio before exporting',
+      title: t.audioEditorTitle,
+      subtitle: t.audioEditorSubtitle,
       onBack: widget.onBack,
       children: [
         if (_ffmpegReady == false) ...[
@@ -516,7 +526,7 @@ class _AudioEditorViewState extends State<AudioEditorView> {
           ConverterDropZone(
             onTap: _pickFile,
             icon: Icons.library_music_outlined,
-            title: 'Tap to pick some audio',
+            title: t.audioEditorPickPrompt,
             subtitle: 'MP3 · OGG · FLAC · M4A · WAV · AAC',
           )
         else ...[
@@ -543,7 +553,7 @@ class _AudioEditorViewState extends State<AudioEditorView> {
                   ),
                   const SizedBox(width: 14),
                   Text(
-                    'Reading audio & building waveform…',
+                    t.audioEditorReadingWaveform,
                     style: TextStyle(color: luma.textSecondary, fontSize: 14),
                   ),
                 ],
@@ -577,7 +587,8 @@ class _AudioEditorViewState extends State<AudioEditorView> {
             icon: Icons.check_circle_outline_rounded,
             color: luma.success,
             message: _result!.summary,
-            trailing: ConverterTextButton(label: 'Edit another', onTap: _reset),
+            trailing: ConverterTextButton(
+                label: t.audioEditorEditAnother, onTap: _reset),
           ),
         ],
       ],
@@ -585,10 +596,10 @@ class _AudioEditorViewState extends State<AudioEditorView> {
   }
 
   Widget _buildTrimSection(LumaPalette luma) {
+    final t = L.of(context);
     return _EditorSection(
-      title: 'Cut & trim',
-      subtitle: 'Drag on the waveform to select a range, then cut it out or '
-          'keep only the selection.',
+      title: t.audioEditorCutTitle,
+      subtitle: t.audioEditorCutSubtitle,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -647,7 +658,8 @@ class _AudioEditorViewState extends State<AudioEditorView> {
           Row(
             children: [
               Text(
-                'Selection  ${_fmtTime(_selStart)} – ${_fmtTime(_selEnd)}',
+                t.audioEditorSelectionRange(
+                    _fmtTime(_selStart), _fmtTime(_selEnd)),
                 style: TextStyle(
                   color: luma.textSecondary,
                   fontSize: 13,
@@ -657,7 +669,8 @@ class _AudioEditorViewState extends State<AudioEditorView> {
               ),
               const Spacer(),
               Text(
-                'Output ${_fmtTime(_outputDuration)} of ${_fmtTime(_duration)}',
+                t.audioEditorOutputOfTotal(
+                    _fmtTime(_outputDuration), _fmtTime(_duration)),
                 style: TextStyle(
                   color: luma.textMuted,
                   fontSize: 13,
@@ -673,18 +686,18 @@ class _AudioEditorViewState extends State<AudioEditorView> {
             children: [
               _ToolChip(
                 icon: Icons.content_cut_rounded,
-                label: 'Cut selection out',
+                label: t.audioEditorCutSelection,
                 onTap: _cutSelection,
               ),
               _ToolChip(
                 icon: Icons.crop_rounded,
-                label: 'Keep only selection',
+                label: t.audioEditorKeepSelection,
                 onTap: _keepOnlySelection,
               ),
               if (_cuts.isNotEmpty)
                 _ToolChip(
                   icon: Icons.undo_rounded,
-                  label: 'Clear all cuts',
+                  label: t.audioEditorClearCuts,
                   onTap: () => _edit(_cuts.clear),
                 ),
             ],
@@ -728,6 +741,7 @@ class _AudioEditorViewState extends State<AudioEditorView> {
   }
 
   Widget _buildEqualizerSection(LumaPalette luma) {
+    final t = L.of(context);
     String? activePreset;
     for (final preset in _eqPresets.entries) {
       if (_listEquals(preset.value, _eqGains)) {
@@ -736,12 +750,12 @@ class _AudioEditorViewState extends State<AudioEditorView> {
       }
     }
     return _EditorSection(
-      title: 'Equalizer',
-      subtitle: 'Boost or cut each band by up to 12 dB.',
+      title: t.audioEditorEqualizerTitle,
+      subtitle: t.audioEditorEqualizerSubtitle,
       trailing: activePreset == 'Flat'
           ? null
           : ConverterTextButton(
-              label: 'Reset',
+              label: t.audioEditorReset,
               onTap: () =>
                   _edit(() => _eqGains = List.filled(_eqBands.length, 0.0)),
             ),
@@ -810,7 +824,7 @@ class _AudioEditorViewState extends State<AudioEditorView> {
               for (final preset in _eqPresets.entries)
                 _ToolChip(
                   icon: Icons.tune_rounded,
-                  label: preset.key,
+                  label: _eqPresetLabel(t, preset.key),
                   active: activePreset == preset.key,
                   onTap: () => _edit(() => _eqGains = [...preset.value]),
                 ),
@@ -822,12 +836,13 @@ class _AudioEditorViewState extends State<AudioEditorView> {
   }
 
   Widget _buildEffectsSection(LumaPalette luma) {
+    final t = L.of(context);
     return _EditorSection(
-      title: 'Effects',
+      title: t.audioEditorEffectsTitle,
       child: Column(
         children: [
           _EditorSlider(
-            label: 'Volume',
+            label: t.audioEditorVolume,
             value: _gainDb,
             min: -12,
             max: 12,
@@ -836,7 +851,7 @@ class _AudioEditorViewState extends State<AudioEditorView> {
           ),
           const SizedBox(height: 8),
           _EditorSlider(
-            label: 'Speed',
+            label: t.audioEditorSpeed,
             value: _tempo,
             min: 0.5,
             max: 2.0,
@@ -845,7 +860,7 @@ class _AudioEditorViewState extends State<AudioEditorView> {
           ),
           const SizedBox(height: 8),
           _EditorSlider(
-            label: 'Fade in',
+            label: t.audioEditorFadeIn,
             value: _fadeIn,
             min: 0,
             max: 10,
@@ -854,7 +869,7 @@ class _AudioEditorViewState extends State<AudioEditorView> {
           ),
           const SizedBox(height: 8),
           _EditorSlider(
-            label: 'Fade out',
+            label: t.audioEditorFadeOut,
             value: _fadeOut,
             min: 0,
             max: 10,
@@ -867,16 +882,17 @@ class _AudioEditorViewState extends State<AudioEditorView> {
   }
 
   Widget _buildPreviewSection(LumaPalette luma) {
+    final t = L.of(context);
     final playing = _playback == _PlaybackState.playing;
     final rendering = _playback == _PlaybackState.rendering;
     final total = _previewDuration.inMilliseconds;
     final progress =
         total <= 0 ? 0.0 : (_position.inMilliseconds / total).clamp(0.0, 1.0);
     return _EditorSection(
-      title: 'Preview',
+      title: t.commonPreview,
       subtitle: _previewDirty && _isEdited
-          ? 'Renders your edits, then plays the result.'
-          : 'Hear exactly what will be exported.',
+          ? t.audioEditorPreviewRenderHint
+          : t.audioEditorPreviewExactHint,
       child: Row(
         children: [
           _RoundIconButton(
@@ -921,8 +937,9 @@ class _AudioEditorViewState extends State<AudioEditorView> {
   }
 
   Widget _buildExportSection(LumaPalette luma, bool ready) {
+    final t = L.of(context);
     return _EditorSection(
-      title: 'Export',
+      title: t.commonExport,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -941,7 +958,7 @@ class _AudioEditorViewState extends State<AudioEditorView> {
           ),
           const SizedBox(height: 16),
           ConverterPrimaryButton(
-            label: 'Generate & save',
+            label: t.audioEditorGenerateSave,
             icon: Icons.download_rounded,
             loading: _saving,
             onTap: ready && _isEdited ? _save : null,
@@ -949,7 +966,7 @@ class _AudioEditorViewState extends State<AudioEditorView> {
           if (!_isEdited) ...[
             const SizedBox(height: 10),
             Text(
-              'Make an edit above to enable exporting.',
+              t.audioEditorMakeEditToExport,
               textAlign: TextAlign.center,
               style: TextStyle(color: luma.textMuted, fontSize: 12.5),
             ),

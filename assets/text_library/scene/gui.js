@@ -103,9 +103,9 @@
       return s;
     },
 
-    setStrings(strings) {
+    setStrings(strings, language) {
       Object.assign(gui.strings, strings || {});
-      document.documentElement.lang = navigator.language || 'en';
+      document.documentElement.lang = language || navigator.language || 'en';
       gui.relabel();
     },
 

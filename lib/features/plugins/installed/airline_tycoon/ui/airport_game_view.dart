@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
+import '../../../../../l10n/current_l.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../airline_tycoon_repository.dart';
 import '../data/aircraft.dart';
@@ -121,7 +123,7 @@ class _AirportGameViewState extends State<AirportGameView> {
         setState(() => _page = page);
         result = const ActionResult.ok();
       } else {
-        result = const ActionResult.failed('That panel does not exist.');
+        result = ActionResult.failed(currentL.airlineErrNoPanel);
       }
     } else if (action == 'retrySave') {
       unawaited(widget.repository.flushAirport());
@@ -129,7 +131,7 @@ class _AirportGameViewState extends State<AirportGameView> {
     } else if (action is String && _repositoryCommands.contains(action)) {
       result = widget.repository.airportCommand(action, message);
     } else {
-      result = const ActionResult.failed('Unknown airport command.');
+      result = ActionResult.failed(currentL.airlineErrUnknownCommand);
     }
     _send({
       'type': 'result',
@@ -178,6 +180,7 @@ class _AirportGameViewState extends State<AirportGameView> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final showingScene = _page == null;
     return Stack(
       children: [
@@ -218,12 +221,14 @@ class _AirportGameViewState extends State<AirportGameView> {
                           TextButton.icon(
                             onPressed: () => setState(() => _page = null),
                             icon: const Icon(Icons.arrow_back),
-                            label: const Text('Back to airport'),
+                            label: Text(t.airlineBackToAirport),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              _page!,
+                              _page == 'Fleet'
+                                  ? t.airlineTabFleet
+                                  : t.airlineTabRoutes,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 fontWeight: FontWeight.w800,
@@ -241,11 +246,9 @@ class _AirportGameViewState extends State<AirportGameView> {
                         ? FleetTab(repository: widget.repository)
                         : Column(
                             children: [
-                              const Padding(
-                                padding: EdgeInsets.all(12),
-                                child: Text(
-                                  'Route estimates assume full-day aircraft use. Airport earnings come from the flights you schedule.',
-                                ),
+                              Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Text(t.airlineRoutesEstimateNote),
                               ),
                               Expanded(
                                 child: RoutesTab(repository: widget.repository),

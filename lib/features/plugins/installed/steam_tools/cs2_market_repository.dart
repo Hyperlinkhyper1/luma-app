@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../storage/storage_guard.dart';
 import 'cs2_catalog_service.dart';
 import 'cs2_market_api.dart';
@@ -136,7 +137,7 @@ class Cs2MarketRepository extends ChangeNotifier {
       final snapshot = await fetch();
       if (snapshot != null) await _applyOfflineSnapshot(snapshot);
     } catch (error) {
-      _offlineError = 'Could not load offline market saving: $error';
+      _offlineError = currentL.steamCs2OfflineLoadFailed('$error');
     } finally {
       _offlineSnapshotLoaded = true;
       _offlineLoading = false;
@@ -161,7 +162,7 @@ class Cs2MarketRepository extends ChangeNotifier {
       final response = await push(snapshot);
       if (response != null) await _applyOfflineSnapshot(response);
     } catch (error) {
-      _offlineError = 'Could not save offline market setting: $error';
+      _offlineError = currentL.steamCs2OfflineSaveFailed('$error');
     } finally {
       _offlineSaving = false;
       notifyListeners();
@@ -334,7 +335,7 @@ class Cs2MarketRepository extends ChangeNotifier {
         }
       } while (_offlinePushQueued);
     } catch (error) {
-      _offlineError = 'Could not sync offline market saving: $error';
+      _offlineError = currentL.steamCs2OfflineSyncFailed('$error');
       notifyListeners();
     } finally {
       _offlinePushRunning = false;
@@ -384,7 +385,7 @@ class Cs2MarketRepository extends ChangeNotifier {
     } on Cs2CatalogException catch (e) {
       _catalogError = e.message;
     } catch (e) {
-      _catalogError = 'Could not update the item catalog: $e';
+      _catalogError = currentL.steamCs2CatalogUpdateFailed('$e');
     } finally {
       _catalogLoading = false;
       notifyListeners();
@@ -476,7 +477,7 @@ class Cs2MarketRepository extends ChangeNotifier {
       _error = e.message;
       return null;
     } catch (e) {
-      _error = 'Could not check that price: $e';
+      _error = currentL.steamCs2CheckPriceFailed('$e');
       return null;
     } finally {
       _fetchingPrice.remove(marketHashName);

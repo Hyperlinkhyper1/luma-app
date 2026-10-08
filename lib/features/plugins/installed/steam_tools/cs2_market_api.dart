@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../l10n/current_l.dart';
 import 'cs2_models.dart';
 
 /// Raised for every Community Market request that did not come back usable.
@@ -48,23 +49,18 @@ class Cs2MarketApi {
     try {
       response = await _client.get(uri).timeout(_timeout);
     } catch (e) {
-      throw const Cs2MarketApiException(
-        'Could not reach the Steam Community Market. Check your connection '
-        'and try again.',
-      );
+      throw Cs2MarketApiException(currentL.steamCs2MarketUnreachable);
     }
 
     if (response.statusCode == 429) {
       throw Cs2MarketApiException(
-        'The Steam Community Market is rate limiting this device. Wait a '
-        'few minutes and try again.',
+        currentL.steamCs2MarketRateLimited,
         status: 429,
       );
     }
     if (response.statusCode != 200) {
       throw Cs2MarketApiException(
-        'The Steam Community Market could not price that item '
-        '(HTTP ${response.statusCode}).',
+        currentL.steamCs2MarketHttpError(response.statusCode),
         status: response.statusCode,
       );
     }
@@ -75,9 +71,7 @@ class Cs2MarketApi {
       if (decoded is! Map) return null;
       body = decoded.cast<String, dynamic>();
     } catch (_) {
-      throw const Cs2MarketApiException(
-        'The Steam Community Market sent back an unreadable reply.',
-      );
+      throw Cs2MarketApiException(currentL.steamCs2MarketUnreadable);
     }
 
     return Cs2MarketPrice.fromJson(body);

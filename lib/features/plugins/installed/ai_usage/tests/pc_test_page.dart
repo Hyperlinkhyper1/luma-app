@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../../_shared/windows_webview.dart'
     show WindowsWebview, windowsAssetPath;
@@ -27,18 +28,18 @@ class PcTestPage extends StatefulWidget {
 }
 
 class _PcTestPageState extends State<PcTestPage> {
-  static const _bundledBenchmark = AiBenchmark(
-    id: 'pc_gpt61_sol_xhigh',
+  static const _bundledId = 'pc_gpt61_sol_xhigh';
+  static const _bundledAsset =
+      'assets/ai_usage/pc_tests/gpt61_sol_xhigh/index.html';
+
+  AiBenchmark _bundledBenchmark(L t) => AiBenchmark(
+    id: _bundledId,
     kind: 'pc',
     model: 'GPT 6.1 Sol (Xhigh)',
-    description:
-        'HELIX 01 — an ivory and aluminum showcase with a custom '
-        'liquid loop, hinged glass, exploded inspection and power/RGB controls.',
+    description: t.aiTestPcBundledDesc,
     sizeBytes: 0,
     sha256: '',
   );
-  static const _bundledAsset =
-      'assets/ai_usage/pc_tests/gpt61_sol_xhigh/index.html';
 
   String? _selectedId;
   bool _bannerView = false;
@@ -71,11 +72,12 @@ class _PcTestPageState extends State<PcTestPage> {
     return ListenableBuilder(
       listenable: repo,
       builder: (context, _) {
+        final bundled = _bundledBenchmark(L.of(context));
         final benchmarks = [
-          _bundledBenchmark,
+          bundled,
           ...repo
               .benchmarksOfKind('pc')
-              .where((entry) => entry.id != _bundledBenchmark.id),
+              .where((entry) => entry.id != bundled.id),
         ];
         final query = _query.trim().toLowerCase();
         final filtered = query.isEmpty
@@ -86,8 +88,8 @@ class _PcTestPageState extends State<PcTestPage> {
               ];
 
         if (_selectedId != null) {
-          if (_selectedId == _bundledBenchmark.id) {
-            return _sceneView(context, _bundledBenchmark);
+          if (_selectedId == bundled.id) {
+            return _sceneView(context, bundled);
           }
           final selected = repo.byId(_selectedId!);
           if (selected == null) {
@@ -106,13 +108,14 @@ class _PcTestPageState extends State<PcTestPage> {
 
   Widget _listView(BuildContext context, List<AiBenchmark> filtered) {
     final luma = context.luma;
+    final t = L.of(context);
     final repo = AiBenchmarkScope.of(context);
     return Scaffold(
       backgroundColor: luma.background,
       appBar: AppBar(
         backgroundColor: luma.background,
         elevation: 0,
-        title: const Text('PC Test'),
+        title: Text(t.aiTestPcTitle),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -120,7 +123,7 @@ class _PcTestPageState extends State<PcTestPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Benchmark Scene',
+              t.aiTestBenchmarkScene,
               style: TextStyle(
                 color: luma.textPrimary,
                 fontSize: 18,
@@ -129,8 +132,7 @@ class _PcTestPageState extends State<PcTestPage> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Explore interactive 3D gaming PC builds with power sequences, '
-              'RGB lighting and hardware controls.',
+              t.aiTestPcBlurb,
               style: TextStyle(color: luma.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 20),
@@ -142,7 +144,7 @@ class _PcTestPageState extends State<PcTestPage> {
             Row(
               children: [
                 Text(
-                  'Select a Model',
+                  t.aiTestSelectModel,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 14,
@@ -151,7 +153,7 @@ class _PcTestPageState extends State<PcTestPage> {
                 ),
                 const Spacer(),
                 LumaSegmentedTabs(
-                  tabs: const ['List', 'Banners'],
+                  tabs: [t.aiTestViewList, t.aiTestViewBanners],
                   selectedIndex: _bannerView ? 1 : 0,
                   onSelect: (i) {
                     final banners = i == 1;
@@ -176,20 +178,20 @@ class _PcTestPageState extends State<PcTestPage> {
             else if (filtered.isEmpty && _query.trim().isNotEmpty)
               LumaEmptyState(
                 icon: Icons.search_off_rounded,
-                title: 'No models match "${_query.trim()}"',
-                subtitle: 'Try a shorter search.',
+                title: t.aiTestNoMatch(_query.trim()),
+                subtitle: t.aiTestTrySearchShorter,
               )
             else if (filtered.isEmpty)
               LumaEmptyState(
                 icon: Icons.cloud_download_outlined,
-                title: 'No entries yet',
+                title: t.statsNoEntriesYet,
                 subtitle: repo.canRefresh
-                    ? 'The benchmark list could not be loaded. Try again, or '
-                          'ask the server operator to add scenes.'
-                    : 'Benchmarks download from the luma server. Sign in to '
-                          'an approved account to fetch them.',
+                    ? t.aiTestPcEmptyCanRefresh
+                    : t.aiTestEmptyNoAccount,
                 action: LumaGhostButton(
-                  label: repo.refreshing ? 'Refreshing…' : 'Retry',
+                  label: repo.refreshing
+                      ? t.accountOverviewRefreshing
+                      : t.commonRetry,
                   icon: Icons.refresh_rounded,
                   onTap: repo.refreshing || !repo.canRefresh
                       ? null
@@ -220,6 +222,7 @@ class _PcTestPageState extends State<PcTestPage> {
 
   Widget _sceneView(BuildContext context, AiBenchmark benchmark) {
     final luma = context.luma;
+    final t = L.of(context);
     final repo = AiBenchmarkScope.of(context);
 
     if (!Platform.isWindows) {
@@ -228,20 +231,18 @@ class _PcTestPageState extends State<PcTestPage> {
         appBar: AppBar(
           backgroundColor: luma.background,
           elevation: 0,
-          title: const Text('PC Test'),
+          title: Text(t.aiTestPcTitle),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_rounded),
             onPressed: () => setState(() => _selectedId = null),
           ),
         ),
-        body: const Padding(
-          padding: EdgeInsets.all(24),
+        body: Padding(
+          padding: const EdgeInsets.all(24),
           child: LumaEmptyState(
             icon: Icons.computer_rounded,
-            title: 'Not available on this platform',
-            subtitle:
-                'The PC Test requires a Windows desktop. Mobile and '
-                'Linux support are coming soon.',
+            title: t.aiTestNotAvailablePlatform,
+            subtitle: t.aiTestPcPlatformBody,
           ),
         ),
       );
@@ -252,13 +253,13 @@ class _PcTestPageState extends State<PcTestPage> {
       appBar: AppBar(
         backgroundColor: luma.background,
         elevation: 0,
-        title: const Text('PC Test'),
+        title: Text(t.aiTestPcTitle),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => setState(() => _selectedId = null),
         ),
       ),
-      body: benchmark.id == _bundledBenchmark.id
+      body: benchmark.id == _bundledId
           ? const _PcSceneWebview(assetPath: _bundledAsset)
           : FutureBuilder<File>(
               future: repo.sceneFile(benchmark.id),
@@ -275,7 +276,7 @@ class _PcTestPageState extends State<PcTestPage> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Downloading ${benchmark.model}…',
+                          t.aiTestDownloadingModel(benchmark.model),
                           style: TextStyle(color: luma.textMuted, fontSize: 13),
                         ),
                       ],
@@ -287,13 +288,12 @@ class _PcTestPageState extends State<PcTestPage> {
                     padding: const EdgeInsets.all(24),
                     child: LumaEmptyState(
                       icon: Icons.cloud_off_rounded,
-                      title: 'Could not load ${benchmark.model}',
-                      subtitle:
-                          '${snapshot.error ?? 'The download failed.'} '
-                          'Scenes are cached after the first download, so a retry '
-                          'is usually all it takes.',
+                      title: t.aiTestCouldNotLoadModel(benchmark.model),
+                      subtitle: t.aiTestLoadFailedBody(
+                        '${snapshot.error ?? t.aiTestDownloadFailed}',
+                      ),
                       action: LumaGhostButton(
-                        label: 'Retry',
+                        label: t.commonRetry,
                         icon: Icons.refresh_rounded,
                         onTap: () => setState(() {}),
                       ),

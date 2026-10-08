@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../settings/settings_scope.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../../../../chat/ai_key_store.dart';
@@ -88,6 +89,7 @@ class _MindMapAiSheetState extends State<MindMapAiSheet> {
   }
 
   Future<void> _request() async {
+    final t = L.of(context);
     setState(() {
       _loading = true;
       _error = null;
@@ -100,7 +102,7 @@ class _MindMapAiSheetState extends State<MindMapAiSheet> {
     final provider = aiProviderById(settings.aiProviderId);
 
     if (!settings.canSendAiMessage) {
-      _fail("You've used today's AI allowance — more tomorrow.", retryable: false);
+      _fail(t.mindMapAiAllowanceUsed, retryable: false);
       return;
     }
 
@@ -108,8 +110,11 @@ class _MindMapAiSheetState extends State<MindMapAiSheet> {
     final apiKey = await store.readKey(provider.id.name);
     if (apiKey == null || apiKey.isEmpty) {
       _fail(
-        'No API key saved for ${provider.displayName}. Add one under '
-        'Settings → AI Assistant to use this.',
+        t.mindMapAiNoKey(
+          provider.displayName,
+          t.commonSettings,
+          t.settingsAiAssistant,
+        ),
         retryable: false,
       );
       return;
@@ -140,7 +145,7 @@ class _MindMapAiSheetState extends State<MindMapAiSheet> {
       final parsed = _parse(result.text);
       if (!mounted) return;
       if (parsed.isEmpty) {
-        _fail('The model did not suggest anything usable. Try again.');
+        _fail(t.mindMapAiNoSuggestions);
         return;
       }
       setState(() {
@@ -223,6 +228,7 @@ class _MindMapAiSheetState extends State<MindMapAiSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Container(
       decoration: BoxDecoration(
@@ -241,7 +247,7 @@ class _MindMapAiSheetState extends State<MindMapAiSheet> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Expand "${widget.node.label}"',
+                  t.mindMapAiSheetTitle(widget.node.label),
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: luma.textPrimary,
@@ -251,7 +257,7 @@ class _MindMapAiSheetState extends State<MindMapAiSheet> {
                 ),
               ),
               IconButton(
-                tooltip: 'Close',
+                tooltip: t.commonClose,
                 icon: const Icon(Icons.close_rounded),
                 onPressed: () => Navigator.pop(context),
               ),
@@ -266,20 +272,20 @@ class _MindMapAiSheetState extends State<MindMapAiSheet> {
               if (_suggestions.isNotEmpty)
                 Expanded(
                   child: Text(
-                    '${_chosen.length} of ${_suggestions.length} selected',
+                    t.mindMapAiSelected(_chosen.length, _suggestions.length),
                     style: TextStyle(color: luma.textSecondary, fontSize: 12.5),
                   ),
                 ),
               if (!_loading && (_error == null || _errorIsRetryable))
                 LumaGhostButton(
-                  label: _suggestions.isEmpty ? 'Try again' : 'Suggest more',
+                  label: _suggestions.isEmpty ? t.commonTryAgain : t.mindMapSuggestMore,
                   icon: Icons.refresh_rounded,
                   onTap: _request,
                 ),
               if (_suggestions.isNotEmpty) ...[
                 const SizedBox(width: 10),
                 LumaPrimaryButton(
-                  label: 'Add ${_chosen.length}',
+                  label: t.mindMapAddCount(_chosen.length),
                   icon: Icons.add_rounded,
                   loading: _adding,
                   onTap: _chosen.isEmpty || _adding ? null : _add,

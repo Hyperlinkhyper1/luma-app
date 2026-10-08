@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import '../../l10n/current_l.dart';
 import 'save_result.dart';
 
 /// Fallback used when neither dart:io nor dart:js_interop is available.
@@ -10,7 +11,7 @@ Future<SaveResult> saveConvertedFile({
   required List<String> extensions,
   String? dialogTitle,
 }) {
-  throw UnsupportedError('Saving files is not supported on this platform.');
+  throw UnsupportedError(currentL.converterSaveUnsupported);
 }
 
 Future<SaveResult> replaceOriginalFile({
@@ -18,5 +19,5 @@ Future<SaveResult> replaceOriginalFile({
   required String originalPath,
   required String extension,
 }) {
-  throw UnsupportedError('Replacing files is not supported on this platform.');
+  throw UnsupportedError(currentL.converterReplaceUnsupported);
 }

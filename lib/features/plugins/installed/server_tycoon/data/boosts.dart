@@ -1,10 +1,10 @@
 // Timed, cash-bought multipliers. Each ticks down one day at rollover and is
 // dropped when it expires; effects of the same kind multiply together.
 
+import '../../../../../l10n/current_l.dart';
+
 class BoostDef {
   final String id;
-  final String name;
-  final String description;
   final int cost;
   final int durationDays;
 
@@ -31,8 +31,6 @@ class BoostDef {
 
   const BoostDef({
     required this.id,
-    required this.name,
-    required this.description,
     required this.cost,
     required this.durationDays,
     this.capacityMultiplier = 1.0,
@@ -43,13 +41,27 @@ class BoostDef {
     this.extraContractOffers = 0,
     this.incidentResistance = 0,
   });
+
+  String get name => switch (id) {
+        'OVERCLOCK' => currentL.serverTycoonBoostOverclockName,
+        'MARKETING_PUSH' => currentL.serverTycoonBoostMarketingPushName,
+        'COLD_SNAP' => currentL.serverTycoonBoostColdSnapName,
+        'SURGE_PRICING' => currentL.serverTycoonBoostSurgePricingName,
+        _ => id,
+      };
+
+  String get description => switch (id) {
+        'OVERCLOCK' => currentL.serverTycoonBoostOverclockDescription,
+        'MARKETING_PUSH' => currentL.serverTycoonBoostMarketingPushDescription,
+        'COLD_SNAP' => currentL.serverTycoonBoostColdSnapDescription,
+        'SURGE_PRICING' => currentL.serverTycoonBoostSurgePricingDescription,
+        _ => '',
+      };
 }
 
 final Map<String, BoostDef> boostDefsById = {
   'OVERCLOCK': const BoostDef(
     id: 'OVERCLOCK',
-    name: 'Overclock',
-    description: 'Push every rig 25% past spec. Costs you 30% more power and runs hotter.',
     cost: 450,
     durationDays: 3,
     capacityMultiplier: 1.25,
@@ -58,8 +70,6 @@ final Map<String, BoostDef> boostDefsById = {
   ),
   'MARKETING_PUSH': const BoostDef(
     id: 'MARKETING_PUSH',
-    name: 'Marketing Push',
-    description: 'An ad spend that brings in an extra contract offer a day and 15% better payouts.',
     cost: 700,
     durationDays: 5,
     contractPayoutMultiplier: 1.15,
@@ -67,8 +77,6 @@ final Map<String, BoostDef> boostDefsById = {
   ),
   'COLD_SNAP': const BoostDef(
     id: 'COLD_SNAP',
-    name: 'Cold Snap',
-    description: 'Rented portable chillers give 20% more cooling headroom and steadier hardware.',
     cost: 380,
     durationDays: 3,
     coolingMultiplier: 1.20,
@@ -76,8 +84,6 @@ final Map<String, BoostDef> boostDefsById = {
   ),
   'SURGE_PRICING': const BoostDef(
     id: 'SURGE_PRICING',
-    name: 'Surge Pricing',
-    description: 'Charge peak rates for two days: 35% more service income while it lasts.',
     cost: 900,
     durationDays: 2,
     incomeMultiplier: 1.35,

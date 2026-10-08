@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../storage/storage_guard.dart';
 
 class DownloadHistoryEntry {
@@ -99,7 +100,7 @@ class DownloadHistoryStore {
   /// device's history adds to this one rather than replacing it.
   Future<void> importData(Object? data) async {
     if (data is! List) {
-      throw const FormatException('Invalid download history snapshot.');
+      throw FormatException(currentL.mediaDlHistoryInvalidSnapshot);
     }
     final entries = await load();
     final known = entries.map((e) => e.filePath).toSet();

@@ -1,3 +1,4 @@
+import '../../../../../l10n/current_l.dart';
 import '../data/minecraft_launcher_database.dart';
 import 'content_api.dart';
 import 'modrinth_api_client.dart';
@@ -75,8 +76,10 @@ class ModUpdateChecker {
           conflicts.add(ModConflict(
             a: item,
             b: other,
-            reason:
-                '${item.projectName ?? item.fileName} is marked incompatible with ${other.projectName ?? other.fileName}.',
+            reason: currentL.mcModIncompatible(
+              item.projectName ?? item.fileName,
+              other.projectName ?? other.fileName,
+            ),
           ));
         }
       } catch (_) {

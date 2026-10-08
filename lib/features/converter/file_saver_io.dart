@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 
+import '../../l10n/current_l.dart';
 import 'save_result.dart';
 
 /// Desktop/mobile implementation: opens a native "Save As" dialog and writes
@@ -15,7 +16,7 @@ Future<SaveResult> saveConvertedFile({
   String? dialogTitle,
 }) async {
   final path = await FilePicker.saveFile(
-    dialogTitle: dialogTitle ?? 'Save converted image',
+    dialogTitle: dialogTitle ?? currentL.converterSaveDialogTitle,
     fileName: suggestedName,
     type: FileType.custom,
     allowedExtensions: extensions,
@@ -24,7 +25,11 @@ Future<SaveResult> saveConvertedFile({
 
   final file = File(path);
   await file.writeAsBytes(bytes, flush: true);
-  return SaveResult(saved: true, location: path, summary: 'Saved to $path');
+  return SaveResult(
+    saved: true,
+    location: path,
+    summary: currentL.converterSaved(path),
+  );
 }
 
 /// Overwrites the picked source file with [bytes]. When the output format
@@ -45,5 +50,7 @@ Future<SaveResult> replaceOriginalFile({
     if (await original.exists()) await original.delete();
   }
   return SaveResult(
-      saved: true, location: target, summary: 'Replaced original: $target');
+      saved: true,
+      location: target,
+      summary: currentL.converterReplacedOriginal(target));
 }

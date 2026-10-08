@@ -8,7 +8,25 @@
       "category": "Utility",
       "tags": ["Utility"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "QR-codegenerator",
+          "description": "Zet elke URL om in een scanbare QR-code. Elke code die je maakt, wordt lokaal opgeslagen zodat je hem later weer kunt openen."
+        },
+        "fr": {
+          "name": "Générateur de QR codes",
+          "description": "Transformez n'importe quelle URL en QR code scannable. Chaque code généré est enregistré localement afin que vous puissiez le rouvrir plus tard."
+        },
+        "es": {
+          "name": "Generador de códigos QR",
+          "description": "Convierte cualquier URL en un código QR escaneable. Cada código que generes se guarda en tu dispositivo para que puedas volver a abrirlo más adelante."
+        },
+        "zh": {
+          "name": "二维码生成器",
+          "description": "将任意网址转换为可扫描的二维码。你生成的每个二维码都会保存在本地，之后可以随时重新打开。"
+        }
+      }
     },
     {
       "id": "card-wallet",
@@ -18,7 +36,25 @@
       "category": "Utility",
       "tags": ["Utility", "Shopping"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Kaartportemonnee",
+          "description": "Bewaar je spaarpassen en lidmaatschapskaarten op één plek. Scan de streepjescode of QR-code van een kaart met je camera of een screenshot, en luma tekent hem opnieuw op het scherm om bij de kassa te scannen, of tik een NFC-kaart aan om de tag vast te leggen. Net als Stocard, maar dan binnen luma."
+        },
+        "fr": {
+          "name": "Portefeuille de cartes",
+          "description": "Gardez vos cartes de fidélité et d'adhésion au même endroit. Scannez le code-barres ou le QR code d'une carte avec votre appareil photo ou une capture d'écran, et luma le recrée à l'écran pour le scanner en caisse, ou approchez une carte NFC pour capturer sa puce. Comme Stocard, mais dans luma."
+        },
+        "es": {
+          "name": "Monedero de tarjetas",
+          "description": "Guarda tus tarjetas de fidelidad y de socio en un mismo lugar. Escanea el código de barras o QR de una tarjeta con la cámara o una captura de pantalla, y luma lo regenera en pantalla para escanearlo en caja; o acerca una tarjeta NFC para capturar su etiqueta. Como Stocard, pero dentro de luma."
+        },
+        "zh": {
+          "name": "卡包",
+          "description": "将你的会员卡和忠诚度卡集中存放在一处。用摄像头或截图扫描卡片的条形码或二维码，luma 会在屏幕上重新生成，方便在收银台扫描；也可以轻触 NFC 卡片来捕获其标签。与 Stocard 类似，但在 luma 内使用。"
+        }
+      }
     },
     {
       "id": "file-tree",
@@ -28,7 +64,25 @@
       "category": "Utility",
       "tags": ["Utility", "System"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Bestandsboom",
+          "description": "Scan een schijf of map en zie precies wat je ruimte opeist: elke map en elk bestand, opgeteld en van groot naar klein gesorteerd, met groottebalken. Net als WizTree, maar dan binnen luma."
+        },
+        "fr": {
+          "name": "Arborescence des fichiers",
+          "description": "Analysez un disque ou un dossier pour voir exactement ce qui occupe votre espace : chaque répertoire et chaque fichier, cumulés et triés du plus grand au plus petit, avec des barres de taille. Comme WizTree, mais intégré à luma."
+        },
+        "es": {
+          "name": "Árbol de archivos",
+          "description": "Escanea una unidad o carpeta y ve exactamente qué ocupa tu espacio: cada directorio y archivo sumado y ordenado de mayor a menor, con barras de tamaño. Como WizTree, pero dentro de luma."
+        },
+        "zh": {
+          "name": "文件树",
+          "description": "扫描磁盘或文件夹，精确查看什么在占用你的空间：每个目录和文件都会逐级汇总，并按从大到小排序，附带大小条形图。类似 WizTree，但集成在 luma 中。"
+        }
+      }
     },
     {
       "id": "file-viewer",
@@ -38,7 +92,25 @@
       "category": "Utility",
       "tags": ["Utility", "Documents"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Bestandsviewer",
+          "description": "Open documenten direct in luma: lees pdf's pagina voor pagina, bekijk Word-documenten en Excel-werkmappen, zoom in op afbeeldingen en svg's, en blader door elk tekst- of codebestand. Je hebt geen externe apps nodig."
+        },
+        "fr": {
+          "name": "Visionneuse de fichiers",
+          "description": "Ouvrez des documents directement dans luma : lisez les PDF page par page, affichez les documents Word et les classeurs Excel, zoomez sur les images et les SVG, et parcourez n'importe quel fichier texte ou code. Aucune application externe nécessaire."
+        },
+        "es": {
+          "name": "Visor de archivos",
+          "description": "Abre documentos directamente dentro de luma: lee los PDF página a página, visualiza documentos de Word y libros de Excel, amplía imágenes y SVG, y explora cualquier archivo de texto o código, sin necesidad de apps externas."
+        },
+        "zh": {
+          "name": "文件查看器",
+          "description": "直接在 luma 内打开文档：逐页阅读 PDF，查看 Word 文档和 Excel 工作簿，放大图片和 SVG，并浏览任意文本或代码文件，无需外部应用。"
+        }
+      }
     },
     {
       "id": "errand-manager",
@@ -48,7 +120,25 @@
       "category": "Productivity",
       "tags": ["Productivity"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Klusjesbeheer",
+          "description": "Maak van terugkerende klusjes één eenvoudige dagelijkse checklist. Stel klusjes in om dagelijks, wekelijks, maandelijks of om de paar dagen te herhalen, groepeer ze in je eigen categorieën en stel alles uit wat je vandaag niet redt."
+        },
+        "fr": {
+          "name": "Gestionnaire de corvées",
+          "description": "Transformez vos corvées récurrentes en une simple liste de tâches quotidienne. Programmez-les en répétition quotidienne, hebdomadaire, mensuelle ou tous les quelques jours, regroupez-les dans vos propres catégories et reportez celles que vous ne pouvez pas faire aujourd'hui."
+        },
+        "es": {
+          "name": "Gestor de recados",
+          "description": "Convierte las tareas recurrentes en una lista diaria sencilla. Configura los recados para que se repitan a diario, semanalmente, mensualmente o cada pocos días, agrúpalos en tus propias categorías y pospón lo que no llegues a hacer hoy."
+        },
+        "zh": {
+          "name": "琐事管理",
+          "description": "把反复出现的琐事变成一份简单的每日清单。可以设置每天、每周、每月或每隔几天重复一次，按你自己的分类归组，并把今天做不完的事推迟。"
+        }
+      }
     },
     {
       "id": "bulletin-board",
@@ -58,7 +148,25 @@
       "category": "Productivity",
       "tags": ["Productivity"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Prikbord",
+          "description": "Een vrij corkboard waarop je notities, snelle ideeën, afbeeldingen en checklists kunt prikken."
+        },
+        "fr": {
+          "name": "Panneau d'affichage",
+          "description": "Un panneau de liège sans contraintes où épingler des notes, des idées rapides, des images et des listes de contrôle."
+        },
+        "es": {
+          "name": "Tablón de anuncios",
+          "description": "Un tablón de corcho libre donde puedes fijar notas, ideas rápidas, imágenes y listas de tareas."
+        },
+        "zh": {
+          "name": "公告板",
+          "description": "自由的软木板，可以钉上便签、灵感速记、图片和待办清单。"
+        }
+      }
     },
     {
       "id": "price-tracker",
@@ -68,7 +176,25 @@
       "category": "Utility",
       "tags": ["Utility", "Shopping"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Prijsvolger",
+          "description": "Plak de URL van een product en luma controleert de prijs voor je. Elke controle wordt opgeslagen, zodat je een volledige prijsgeschiedenis als grafiek krijgt. Handig om aanbiedingen bij Amazon, bol.com en meer in de gaten te houden."
+        },
+        "fr": {
+          "name": "Suivi des prix",
+          "description": "Collez l'URL d'un produit et luma vérifie le prix à votre place. Chaque vérification est enregistrée pour vous offrir un graphique complet de l'historique des prix, idéal pour suivre les bonnes affaires sur Amazon, bol.com et d'autres sites."
+        },
+        "es": {
+          "name": "Seguidor de precios",
+          "description": "Pega la URL de un producto y luma comprueba el precio por ti. Cada comprobación se guarda para que tengas un gráfico completo del historial de precios, ideal para seguir ofertas en Amazon, bol.com y más."
+        },
+        "zh": {
+          "name": "价格追踪",
+          "description": "粘贴商品链接，luma 会为你检查价格。每次检查的结果都会保存下来，生成完整的价格历史曲线图，非常适合在亚马逊、bol.com 等平台上留意优惠。"
+        }
+      }
     },
     {
       "id": "calendar",
@@ -78,7 +204,25 @@
       "category": "Productivity",
       "tags": ["Productivity"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Agenda",
+          "description": "Plan je dagen met een volledige maandweergave en een lijst met aankomende afspraken. Voeg kleurgecodeerde gebeurtenissen toe met tijden, hele-dagschakelaars, locaties, notities, herinneringen en herhaalregels: dagelijks, wekelijks, maandelijks of jaarlijks. Alles is doorzoekbaar en lokaal opgeslagen."
+        },
+        "fr": {
+          "name": "Calendrier",
+          "description": "Organisez vos journées avec une vue mensuelle complète et une liste des prochains rendez-vous. Ajoutez des événements colorés avec horaires, option journée entière, lieux, notes, rappels et règles de répétition : quotidienne, hebdomadaire, mensuelle ou annuelle. Tout est consultable et stocké localement."
+        },
+        "es": {
+          "name": "Calendario",
+          "description": "Organiza tus días con una vista mensual completa y una lista de la agenda próxima. Añade eventos con colores, con hora, opción de todo el día, ubicación, notas, recordatorios y reglas de repetición: diaria, semanal, mensual o anual. Todo se puede buscar y se guarda en local."
+        },
+        "zh": {
+          "name": "日历",
+          "description": "使用完整的月视图和即将到来的日程列表规划每一天。可添加带颜色标记的事件，设置时间、全天事件、地点、备注、提醒以及重复规则：每天、每周、每月或每年。所有内容均可搜索，并存储在本地。"
+        }
+      }
     },
     {
       "id": "cloud-files",
@@ -89,7 +233,25 @@
       "tags": ["Utility", "Sync"],
       "free": true,
       "requiresAccount": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Cloudbestanden",
+          "description": "Upload bestanden naar je eigen synchronisatieserver en haal ze terug op elk apparaat. Alles wordt end-to-end versleuteld op je apparaat voordat het wordt geüpload; de server slaat alleen onleesbare gegevens op. Bestanden tellen mee voor de opslagquota van 3 GB van je account, zichtbaar als gebruiksbalk. Vereist inloggen onder Instellingen → Sync & account."
+        },
+        "fr": {
+          "name": "Fichiers cloud",
+          "description": "Envoyez vos fichiers vers votre propre serveur de synchronisation et retrouvez-les sur chaque appareil. Tout est chiffré de bout en bout sur votre appareil avant l'envoi : le serveur ne stocke jamais que des données illisibles. Les fichiers comptent dans le quota de stockage de 3 Go de votre compte, affiché sous forme de barre d'utilisation. Connexion requise dans Paramètres → Synchronisation et compte."
+        },
+        "es": {
+          "name": "Archivos en la nube",
+          "description": "Sube archivos a tu propio servidor de sincronización y descárgalos en cualquier dispositivo. Todo se cifra de extremo a extremo en tu dispositivo antes de subirlo: el servidor solo guarda datos ilegibles. Los archivos cuentan para la cuota de 3 GB de tu cuenta, que se muestra como barra de uso. Requiere iniciar sesión en Ajustes → Sincronización y cuenta."
+        },
+        "zh": {
+          "name": "云文件",
+          "description": "将文件上传到你自己的同步服务器，并在每台设备上取回。所有内容在上传前都会在你的设备上进行端到端加密，服务器只存储无法读取的数据。文件会计入账号的 3 GB 存储配额，并以用量条显示。需在「设置 → 同步与账号」中登录。"
+        }
+      }
     },
     {
       "id": "data-management",
@@ -99,7 +261,25 @@
       "category": "Productivity",
       "tags": ["Productivity", "Data"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Gegevensbeheer",
+          "description": "Maak eigen datasets, bewerk tabellen met getypte kolommen en bouw interactieve grafieken: staaf, lijn, vlak en taart. CSV importeren en exporteren kan ook."
+        },
+        "fr": {
+          "name": "Gestion de données",
+          "description": "Créez des jeux de données personnalisés, modifiez des tableaux avec des colonnes typées et réalisez des graphiques interactifs : barres, courbes, aires et camemberts. Import et export CSV inclus."
+        },
+        "es": {
+          "name": "Gestión de datos",
+          "description": "Crea conjuntos de datos personalizados, edita tablas con columnas tipadas y construye gráficos interactivos: de barras, de líneas, de áreas y circulares. También importa y exporta CSV."
+        },
+        "zh": {
+          "name": "数据管理",
+          "description": "创建自定义数据集，编辑带类型列的表格，并制作交互式图表，包括柱状图、折线图、面积图和饼图。还支持导入和导出 CSV。"
+        }
+      }
     },
     {
       "id": "server-tycoon",
@@ -109,7 +289,25 @@
       "category": "Games",
       "tags": ["Games", "Simulation"],
       "free": true,
-      "version": "1.1.0"
+      "version": "1.1.0",
+      "i18n": {
+        "nl": {
+          "name": "Serverhosting-tycoon",
+          "description": "Bouw een serverhostingimperium direct in luma. Koop servers en routers, stel ze samen met echte processors, moederborden, RAM en koeling, host diensten, neem contracten aan en beheer stroom en bandbreedte naarmate je dag na dag groeit. Nu met een telefoonvriendelijke weergave, offline verdiensten, een onderzoeksboom met zes takken, dagelijkse doelen en tijdelijke boosts."
+        },
+        "fr": {
+          "name": "Magnat de l'hébergement serveur",
+          "description": "Bâtissez un empire de l'hébergement serveur directement dans luma. Achetez des machines et des routeurs, configurez-les avec de vrais processeurs, cartes mères, RAM et refroidissement, hébergez des services, acceptez des contrats et gérez l'alimentation et la bande passante à mesure que vous grandissez, jour après jour. Désormais avec une mise en page adaptée au téléphone, des gains hors ligne, un arbre de recherche à six branches, des objectifs quotidiens et des boosts temporaires."
+        },
+        "es": {
+          "name": "Magnate del hosting de servidores",
+          "description": "Construye un imperio de hosting de servidores directamente dentro de luma. Compra equipos y routers, configúralos con CPUs, placas base, RAM y refrigeración reales, aloja servicios, acepta contratos y gestiona la energía y el ancho de banda a medida que creces día a día. Ahora con diseño adaptado al móvil, ganancias sin conexión, un árbol de investigación de seis ramas, objetivos diarios y potenciadores temporales."
+        },
+        "zh": {
+          "name": "服务器托管大亨",
+          "description": "直接在 luma 中打造你的服务器托管帝国。购买机架和路由器，用真实的 CPU、主板、内存和散热器进行配置，托管服务，接取合同，并随着业务一天天壮大而管理电力和带宽。现已支持手机友好的界面、离线收益、六条分支的研究树、每日目标和限时加速。"
+        }
+      }
     },
     {
       "id": "airline-tycoon",
@@ -119,7 +317,25 @@
       "category": "Games",
       "tags": ["Games", "Simulation"],
       "free": true,
-      "version": "2.0.0"
+      "version": "2.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Luchtvaartmagnaat",
+          "description": "Bouw en beheer een 3D-luchthaven op Windows en Android, contracteer bezoekende luchtvaartmaatschappijen en vlieg met je eigen vloot."
+        },
+        "fr": {
+          "name": "Magnat de l'aviation",
+          "description": "Construisez et exploitez un aéroport 3D sur Windows et Android, signez des compagnies aériennes en visite et pilotez votre propre flotte."
+        },
+        "es": {
+          "name": "Magnate aéreo",
+          "description": "Construye y gestiona un aeropuerto 3D en Windows y Android, firma con aerolíneas visitantes y opera tu propia flota."
+        },
+        "zh": {
+          "name": "航空大亨",
+          "description": "在 Windows 和 Android 上建造并经营一座 3D 机场，签约来访航空公司，并运营你自己的机队。"
+        }
+      }
     },
     {
       "id": "mood-journal",
@@ -129,7 +345,25 @@
       "category": "Productivity",
       "tags": ["Productivity", "Wellness"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Stemmingsdagboek",
+          "description": "Houd je dagelijkse stemming bij en schrijf een korte dagboeknotitie. Bekijk je emotionele patronen op een maandkalender met heatmap en ontdek trends in de loop van de tijd."
+        },
+        "fr": {
+          "name": "Journal d'humeur",
+          "description": "Suivez votre humeur au quotidien et rédigez une courte entrée de journal. Visualisez vos schémas émotionnels sur un calendrier mensuel en carte de chaleur et repérez les tendances au fil du temps."
+        },
+        "es": {
+          "name": "Diario de ánimo",
+          "description": "Registra tu estado de ánimo diario y escribe una breve entrada en el diario. Mira tus patrones emocionales en un calendario mensual de mapa de calor y detecta tendencias a lo largo del tiempo."
+        },
+        "zh": {
+          "name": "心情日记",
+          "description": "记录每天的心情，并写一小段日记。在月历热力图中查看你的情绪规律，发现随时间变化的趋势。"
+        }
+      }
     },
     {
       "id": "game-tools",
@@ -139,7 +373,25 @@
       "category": "Games",
       "tags": ["Games", "Utility", "Shopping"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Gamehulpmiddelen",
+          "description": "Hulpmiddelen voor de games die je speelt, geordend per game in een zijbalk waarin elke game uitklapt naar de eigen tools. Steam: Prijsvolger toont de echte prijsgeschiedenis van elke game die je bezit over 1D tot 5Y, afkomstig van IsThereAnyDeal, plus het all-time dieptepunt; CS2 Market geeft prijzen en grafieken van skins; Verkoopcalculator schat wat een CS2-verkoop je oplevert. Roblox: Mafia-rollen tellen toont precies welke rollen er bij jouw lobbygrootte spelen, afkomstig van de officiële wiki, en laat je elke claim afvinken tijdens de ronde. Minecraft-tools komen eraan. Je Steam-sleutel blijft versleuteld op dit apparaat en gaat alleen naar Steam."
+        },
+        "fr": {
+          "name": "Outils de jeux",
+          "description": "Des outils pour les jeux que vous pratiquez, organisés par jeu dans une barre latérale où chaque jeu se déploie vers ses propres outils. Steam : Suivi des prix affiche l'historique réel des prix de chaque jeu que vous possédez, de 1 jour à 5 ans, provenant d'IsThereAnyDeal, ainsi que le prix le plus bas de tous les temps ; CS2 Market affiche les prix et les graphiques des skins ; Calculateur de vente estime le gain net d'une vente CS2. Roblox : Comptage des rôles Mafia indique exactement les rôles en jeu selon la taille de votre salon, d'après le wiki officiel, et vous permet de cocher chaque affirmation pendant la partie. Les outils Minecraft arrivent bientôt. Votre clé Steam reste chiffrée sur cet appareil et n'est transmise qu'à Steam."
+        },
+        "es": {
+          "name": "Herramientas de juegos",
+          "description": "Utilidades para los juegos que juegas, organizadas por juego en una barra lateral donde cada juego se despliega en sus propias herramientas. Steam: Rastreador de precios muestra el historial real de precios de cada juego que tienes, de 1D a 5Y, obtenido de IsThereAnyDeal, además del mínimo histórico; CS2 Market muestra precios y gráficos de skins; Calculadora de venta estima cuánto te queda neto una venta en CS2. Roblox: Conteo de roles de la Mafia muestra exactamente qué roles hay en juego según el tamaño de tu lobby, con datos de la wiki oficial, y te deja marcar cada afirmación durante la partida. Las herramientas de Minecraft llegarán pronto. Tu clave de Steam se guarda cifrada en este dispositivo y solo se envía a Steam."
+        },
+        "zh": {
+          "name": "游戏工具",
+          "description": "为你玩的游戏提供辅助工具，在侧边栏中按游戏分类，每个游戏展开后对应其专属工具。Steam：价格追踪器可查看你拥有的每款游戏在 1 天到 5 年范围内的真实历史价格，数据来源于 IsThereAnyDeal，并显示历史最低价；CS2 市场可查看皮肤价格并生成图表；出售计算器可估算一次 CS2 出售的实际到手金额。Roblox：狼人杀角色统计会根据你的房间人数，准确显示本局会出现哪些角色，数据来自官方维基，并允许你在对局中逐一勾选每个说法。Minecraft 工具即将推出。你的 Steam 密钥会加密保存在本设备上，且只会发送给 Steam。"
+        }
+      }
     },
     {
       "id": "ai-usage",
@@ -149,7 +401,25 @@
       "category": "Productivity",
       "tags": ["Productivity", "Analytics", "AI"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "AI-gebruik",
+          "description": "Drie hulpmiddelen in één. Gebruik: een privédashboard voor je uitgaven aan Claude Code, Codex CLI, Antigravity, OpenCode en Freebuff, met tokenaantallen en kostenschattingen per dag en model, volledig gelezen uit je lokale sessielogs en nergens naartoe gestuurd. Ranglijst: elk groot model gerangschikt op redeneer-, codeer- en agentbeoordelingen, met contextvensters, prijzen en licenties naast elkaar. Open source: uitzoeken welke downloadbare modellen je eigen hardware echt kan draaien."
+        },
+        "fr": {
+          "name": "Utilisation de l'IA",
+          "description": "Trois outils en un. Utilisation : un tableau de bord privé pour vos dépenses liées à Claude Code, Codex CLI, Antigravity, OpenCode et Freebuff, avec nombre de tokens et estimations de coût par jour et par modèle, calculés uniquement à partir de vos journaux de session locaux, sans rien envoyer ailleurs. Classement : tous les grands modèles notés sur le raisonnement, le code et les agents, avec fenêtres de contexte, prix et licences côte à côte. Open source : déterminer quels modèles téléchargeables votre propre matériel peut réellement faire tourner."
+        },
+        "es": {
+          "name": "Uso de IA",
+          "description": "Tres herramientas en una. Uso: un panel privado para tu gasto en Claude Code, Codex CLI, Antigravity, OpenCode y Freebuff, con recuentos de tokens y estimaciones de coste por día y modelo, leídos únicamente de tus registros de sesión locales y que nunca se envían a ningún sitio. Clasificación: todos los modelos principales puntuados en razonamiento, programación y agentes, con ventanas de contexto, precios y licencias en paralelo. Código abierto: descubre qué modelos descargables puede ejecutar realmente tu hardware."
+        },
+        "zh": {
+          "name": "AI 用量",
+          "description": "三合一工具。用量：一个私密仪表盘，汇总你在 Claude Code、Codex CLI、Antigravity、OpenCode 和 Freebuff 上的开销，按日期和模型显示 token 数量与费用估算，数据完全读取自本地会话日志，绝不发送到任何地方。排行榜：所有主流模型在推理、编程和智能体评分上的排名，并列显示上下文窗口、价格和许可证。开源：找出你自己的硬件真正能运行哪些可下载模型。"
+        }
+      }
     },
     {
       "id": "ai-detector",
@@ -159,7 +429,25 @@
       "category": "Utility",
       "tags": ["Utility", "Writing"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "AI-detector",
+          "description": "Plak een tekst en krijg een oordeel of hij menselijk of door AI geschreven lijkt, puur met statistiek op je apparaat. Er wordt gescoord op variatie in zinslengte, buzzwoorddichtheid, overgangswoorden, het gebruik van samentrekkingen en meer. Daarna worden alle signalen die afgingen getoond, met de exacte zinnen die ze hebben geactiveerd. Als je bent ingelogd, bekijkt ook een AI-model de tekst en wijst aan waar en hoe hij als AI-gegenereerd overkomt; die stap stuurt de tekst naar de luma-server."
+        },
+        "fr": {
+          "name": "Détecteur d'IA",
+          "description": "Collez n'importe quel texte et obtenez un verdict : rédigé par un humain ou généré par une IA, grâce à de simples statistiques calculées sur votre appareil. Il évalue la variété de longueur des phrases, la densité de mots à la mode, l'usage des mots de transition, l'emploi des contractions, et plus encore, puis liste chaque signal déclenché ainsi que les expressions exactes qui l'ont provoqué. Connecté, un modèle d'IA examine aussi le texte et indique où et comment il paraît généré par une IA ; cette étape envoie le texte au serveur luma."
+        },
+        "es": {
+          "name": "Detector de IA",
+          "description": "Pega cualquier texto y obtén un veredicto sobre si parece escrito por una persona o generado por IA, usando solo estadística en tu dispositivo. Evalúa la variedad de longitud de las frases, la densidad de palabras de moda, el uso de palabras de transición, el de contracciones y más; después enumera cada señal que se activó y las frases exactas que la dispararon. Si has iniciado sesión, un modelo de IA también revisa el texto y señala dónde y cómo parece generado por IA; ese paso envía el texto al servidor de luma."
+        },
+        "zh": {
+          "name": "AI 检测器",
+          "description": "粘贴任意文本，即可获得它更像人工撰写还是 AI 生成的判定结果，全部依靠设备本地的统计计算完成。它会评估句子长度的变化、流行词汇的密度、过渡词的使用习惯、缩写的运用等多项指标，然后列出所有触发的信号，以及触发它们的具体词句。登录后，AI 模型还会审阅文本，指出哪些地方、以何种方式显得像 AI 生成的；这一步会把文本发送到 luma 服务器。"
+        }
+      }
     },
     {
       "id": "youtube-downloader",
@@ -169,7 +457,25 @@
       "category": "Utility",
       "tags": ["Utility", "Media"],
       "free": true,
-      "version": "1.1.1"
+      "version": "1.1.1",
+      "i18n": {
+        "nl": {
+          "name": "Mediadownloader",
+          "description": "Plak een YouTube-link en download de video of alleen het geluid, met volledige controle over resolutie, bitrate en uitvoerformaat. Plak een Spotify-tracklink en luma zoekt het bijbehorende geluid op YouTube en downloadt het, getagd met de juiste titel, artiest en albumhoes. Houdt een geschiedenis bij van alles wat je hebt gedownload."
+        },
+        "fr": {
+          "name": "Téléchargeur de médias",
+          "description": "Collez un lien YouTube et téléchargez la vidéo ou seulement l'audio, avec un contrôle total sur la résolution, le débit et le format de sortie. Collez un lien de piste Spotify et luma trouve et télécharge l'audio correspondant sur YouTube, avec le titre, l'artiste et la pochette réels. Conserve un historique de tous vos téléchargements."
+        },
+        "es": {
+          "name": "Descargador de medios",
+          "description": "Pega un enlace de YouTube y descarga el vídeo o solo el audio, con control total sobre la resolución, la tasa de bits y el formato de salida. Pega un enlace de una pista de Spotify y luma busca y descarga el audio correspondiente de YouTube, etiquetado con el título, el artista y la portada reales. Guarda un historial de todo lo que has descargado."
+        },
+        "zh": {
+          "name": "媒体下载器",
+          "description": "粘贴 YouTube 链接，即可下载视频或仅下载音频，并完全控制分辨率、比特率和输出格式。粘贴 Spotify 曲目链接，luma 会在 YouTube 上查找并下载对应音频，并附上真实的标题、艺术家和封面。保存所有下载内容的历史记录。"
+        }
+      }
     },
     {
       "id": "subway-builder",
@@ -179,7 +485,25 @@
       "category": "Games",
       "tags": ["Games", "Simulation"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Metrobouwer",
+          "description": "Een transitsimulator op de echte wereld: kies elke stad op aarde en bouw metro-, tram-, bus- en treinnetwerken op een live 3D OpenStreetMap-kaart. Treinen stoppen alleen bij echte stations en rijden op werkelijk bestaande sporen; bussen en trams rijden over echte straten. Een forensensimulatie op basis van echt landgebruik bepaalt rit voor rit of jouw netwerk de auto verslaat."
+        },
+        "fr": {
+          "name": "Bâtisseur de métro",
+          "description": "Un simulateur de transport sur le monde réel : choisissez n'importe quelle ville de la planète et construisez des réseaux de métro, tramway, bus et train sur une carte 3D OpenStreetMap en direct. Les trains ne desservent que de vraies gares et circulent sur des voies réellement existantes ; bus et tramways suivent de vraies rues. Une simulation de navetteurs basée sur l'occupation réelle des sols décide, trajet après trajet, si votre réseau bat la voiture."
+        },
+        "es": {
+          "name": "Constructor de metro",
+          "description": "Un simulador de transporte sobre el mundo real: elige cualquier ciudad de la Tierra y construye redes de metro, tranvía, autobús y tren sobre un mapa 3D en vivo de OpenStreetMap. Los trenes solo paran en estaciones reales y circulan por vías que existen de verdad; los autobuses y tranvías buscan rutas por calles reales. Una simulación de desplazamientos alimentada con usos del suelo reales decide, viaje a viaje, si tu red gana al coche."
+        },
+        "zh": {
+          "name": "地铁建造者",
+          "description": "基于真实世界的交通模拟器：选择地球上的任何城市，在实时 3D OpenStreetMap 地图上建造地铁、有轨电车、公交和火车网络。火车只停靠真实车站，并行驶在真实存在的轨道上；公交和电车沿真实街道寻路。以真实土地利用数据驱动的通勤模拟会逐次判断你的网络能否胜过汽车。"
+        }
+      }
     },
     {
       "id": "space-colony",
@@ -189,7 +513,25 @@
       "category": "Games",
       "tags": ["Games", "Simulation"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Ruimtekolonie",
+          "description": "Bouw en beheer een menselijke nederzetting op een onontdekte planeet. Houd stroom, zuurstof, water en voedsel in balans, onderzoek nieuwe technologie, automatiseer de productie en overleef willekeurige gebeurtenissen zoals meteorietregens en stofstormen."
+        },
+        "fr": {
+          "name": "Colonie spatiale",
+          "description": "Construisez et gérez une colonie humaine sur une planète inexplorée. Équilibrez énergie, oxygène, eau et nourriture, recherchez de nouvelles technologies, automatisez la production et survivez aux événements aléatoires comme les pluies de météorites et les tempêtes de poussière."
+        },
+        "es": {
+          "name": "Colonia espacial",
+          "description": "Construye y gestiona un asentamiento humano en un planeta inexplorado. Equilibra la energía, el oxígeno, el agua y la comida, investiga nuevas tecnologías, automatiza la producción y sobrevive a sucesos aleatorios como lluvias de meteoritos y tormentas de polvo."
+        },
+        "zh": {
+          "name": "太空殖民地",
+          "description": "在一颗未探索的星球上建立并管理人类定居点。平衡电力、氧气、水和食物，研究新技术，实现生产自动化，并应对流星雨和沙尘暴等随机事件。"
+        }
+      }
     },
     {
       "id": "city-planner",
@@ -199,7 +541,25 @@
       "category": "Games",
       "tags": ["Games", "Simulation"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Stadsplanner",
+          "description": "Een diepgaande 2D stadsplanning-simulator: begin als planner van een klein dorp en groei naar een metropool. Teken je eigen gebouwen vorm-voor-vorm, beheer verkeer, OV, energie, water, voedsel, onderwijs, zorg en belastingen, met heatmaps, een technologieboom en beleid."
+        },
+        "fr": {
+          "name": "Urbaniste",
+          "description": "Un simulateur d'urbanisme 2D approfondi : commencez comme planificateur d'un petit village et grandissez jusqu'à une métropole. Dessinez vos propres bâtiments forme par forme, gérez la circulation, les transports en commun, l'énergie, l'eau, l'alimentation, l'éducation, la santé et les impôts, avec cartes de chaleur, arbre technologique et politiques."
+        },
+        "es": {
+          "name": "Planificador urbano",
+          "description": "Un simulador de urbanismo 2D en profundidad: empieza como planificador de un pequeño pueblo y crece hasta convertirlo en una metrópolis. Dibuja tus propios edificios forma a forma, gestiona el tráfico, el transporte público, la energía, el agua, los alimentos, la educación, la sanidad y los impuestos, con mapas de calor, un árbol tecnológico y políticas."
+        },
+        "zh": {
+          "name": "城市规划师",
+          "description": "深度 2D 城市规划模拟器：从一个小村庄的规划者开始，逐步发展为大都市。逐格绘制你自己的建筑形状，管理交通、公共交通、能源、供水、食品、教育、医疗和税收，并配有热力图、科技树和政策系统。"
+        }
+      }
     },
     {
       "id": "audio-tools",
@@ -209,7 +569,25 @@
       "category": "Utility",
       "tags": ["Utility", "Audio"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Audiotools",
+          "description": "Een stemwijziger voor Windows. Stuur je microfoon door een negenbands equalizer met presets als Diep, Radio, Telefoon en Megafoon, en stuur het resultaat daarna naar een virtuele kabel, zodat Discord, OBS of elke game het als microfoon kan gebruiken."
+        },
+        "fr": {
+          "name": "Outils audio",
+          "description": "Un modificateur de voix pour Windows. Faites passer votre microphone dans un égaliseur à neuf bandes avec des préréglages comme Grave, Radio, Téléphone et Mégaphone, puis envoyez le résultat vers un câble virtuel pour que Discord, OBS ou n'importe quel jeu puisse le reconnaître comme microphone."
+        },
+        "es": {
+          "name": "Herramientas de audio",
+          "description": "Un cambiador de voz para Windows. Haz pasar tu micrófono por un ecualizador de nueve bandas con presets como Grave, Radio, Teléfono y Megáfono, y luego envía el resultado a un cable virtual para que Discord, OBS o cualquier juego lo use como micrófono."
+        },
+        "zh": {
+          "name": "音频工具",
+          "description": "适用于 Windows 的变声器。让麦克风经过九段均衡器处理，可选深沉、电台、电话和扩音器等预设，然后将结果发送到虚拟声卡，这样 Discord、OBS 或任何游戏都能把它识别为麦克风。"
+        }
+      }
     },
     {
       "id": "auto-clicker",
@@ -219,7 +597,25 @@
       "category": "Utility",
       "tags": ["Utility", "Automation"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Auto-clicker",
+          "description": "Automatiseer muisklikken met een ingesteld interval, met een globale sneltoets om overal te starten en stoppen. Klik op je cursor of een vaste plek, enkel of dubbel, met de linker-, middelste of rechter knop, en herhaal oneindig of een ingesteld aantal keer."
+        },
+        "fr": {
+          "name": "Autoclic",
+          "description": "Automatisez les clics de souris à intervalle régulier, avec un raccourci global pour démarrer et arrêter depuis n'importe où. Cliquez à l'emplacement du curseur ou à un point fixe, simple ou double, avec le bouton gauche, central ou droit, en boucle infinie ou un nombre de fois défini."
+        },
+        "es": {
+          "name": "Autoclicker",
+          "description": "Automatiza los clics del ratón a un intervalo fijo, con un atajo global para iniciarlos y detenerlos desde cualquier lugar. Haz clic en la posición del cursor o en un punto fijo, simple o doble, con el botón izquierdo, central o derecho, repetido sin fin o un número determinado de veces."
+        },
+        "zh": {
+          "name": "自动点击器",
+          "description": "以设定的时间间隔自动点击鼠标，并可通过全局快捷键在任何地方启动或停止。可以在光标位置或固定位置点击，支持单击或双击，左键、中键或右键，可以无限重复，也可以设定次数。"
+        }
+      }
     },
     {
       "id": "school",
@@ -229,7 +625,25 @@
       "category": "Productivity",
       "tags": ["Productivity", "Education"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "School",
+          "description": "Alles voor school op één plek: huiswerkplanner, flashcards met spaced repetition, een formulebibliotheek, een studietimer, een opdrachtentracker, GPA- en cijfercalculators, een bronnengenerator, een weekrooster en mindmaps."
+        },
+        "fr": {
+          "name": "École",
+          "description": "Tout pour l'école en un seul endroit : planificateur de devoirs, cartes mémoire à répétition espacée, bibliothèque de formules, minuteur d'étude, suivi des travaux, calculateurs de moyenne et de notes, générateur de citations, emploi du temps hebdomadaire et cartes mentales."
+        },
+        "es": {
+          "name": "Escuela",
+          "description": "Todo lo del colegio en un solo lugar: planificador de deberes, tarjetas de estudio con repetición espaciada, biblioteca de fórmulas, temporizador de estudio, seguimiento de tareas, calculadoras de notas y GPA, generador de citas, horario semanal y mapas mentales."
+        },
+        "zh": {
+          "name": "学校",
+          "description": "学习相关的一切都在一个地方：作业规划、带间隔重复功能的记忆卡片、公式库、学习计时器、作业跟踪、GPA 和成绩计算器、引文生成器、每周课表以及思维导图。"
+        }
+      }
     },
     {
       "id": "text-library",
@@ -239,7 +653,25 @@
       "category": "Productivity",
       "tags": ["Productivity", "Writing"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Tekstbibliotheek",
+          "description": "Onderwerpen vol teksten, notities en samenvattingen — of een gezellige Minecraft-bibliotheek waarin elk onderwerp een boekenkast is."
+        },
+        "fr": {
+          "name": "Bibliothèque de textes",
+          "description": "Des matières pleines de textes, de notes et de résumés — ou une bibliothèque Minecraft douillette où chaque matière est une bibliothèque."
+        },
+        "es": {
+          "name": "Biblioteca de textos",
+          "description": "Asignaturas llenas de textos, apuntes y resúmenes, o una acogedora biblioteca de Minecraft donde cada asignatura es una estantería."
+        },
+        "zh": {
+          "name": "文本图书馆",
+          "description": "充满文本、笔记和摘要的各个学科——或是一座温馨的 Minecraft 图书馆，每个学科都是一个书架。"
+        }
+      }
     },
     {
       "id": "usage",
@@ -249,7 +681,25 @@
       "category": "Productivity",
       "tags": ["Productivity", "Analytics"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Gebruik",
+          "description": "Zie precies hoe je je tijd op je pc besteedt. Houdt bij welke app er de hele dag op de voorgrond staat, zodat je later kunt terugkijken en ziet: '55 minuten in Chrome, 12 in Spotify'. Filter op dag, week of maand en bekijk het als taart- en staafdiagrammen."
+        },
+        "fr": {
+          "name": "Utilisation",
+          "description": "Voyez exactement comment vous passez votre temps sur votre PC. Suit l'application au premier plan tout au long de la journée afin que vous puissiez revenir en arrière et constater « 55 minutes dans Chrome, 12 dans Spotify ». Filtrez par jour, semaine ou mois et affichez le résultat sous forme de camemberts et de diagrammes en barres."
+        },
+        "es": {
+          "name": "Uso",
+          "description": "Mira exactamente cómo inviertes tu tiempo en el PC. Registra la aplicación en primer plano a lo largo del día para que puedas repasarlo y ver «55 minutos en Chrome, 12 en Spotify». Filtra por día, semana o mes y véalo en gráficos circulares y de barras."
+        },
+        "zh": {
+          "name": "使用时长",
+          "description": "精确查看你在电脑上如何度过时间。全天追踪前台运行的应用，方便你回顾并发现“Chrome 用了 55 分钟，Spotify 用了 12 分钟”。可按天、周或月筛选，并以饼图和柱状图查看。"
+        }
+      }
     },
     {
       "id": "wifi-speed-test",
@@ -259,7 +709,25 @@
       "category": "Utility",
       "tags": ["Utility", "Network"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Wi-Fi-snelheidstest",
+          "description": "Test de snelheid van je internetverbinding direct binnen luma. Meet downloadsnelheid, uploadsnelheid en latentie met een live snelheidsmeter. Elke test wordt opgeslagen, zodat je de kwaliteit van je verbinding in de loop van de tijd kunt volgen."
+        },
+        "fr": {
+          "name": "Test de débit Wi-Fi",
+          "description": "Testez la vitesse de votre connexion internet directement dans luma. Mesure le débit descendant, le débit montant et la latence avec un compteur de vitesse en direct. Chaque test est enregistré pour suivre la qualité de votre connexion dans le temps."
+        },
+        "es": {
+          "name": "Test de velocidad Wi-Fi",
+          "description": "Prueba la velocidad de tu conexión a internet directamente en luma. Mide la velocidad de descarga, la de subida y la latencia con un velocímetro en vivo. Cada prueba se guarda para que puedas seguir la calidad de tu conexión a lo largo del tiempo."
+        },
+        "zh": {
+          "name": "Wi-Fi 速度测试",
+          "description": "直接在 luma 内测试你的互联网连接速度。通过实时速度表测量下载速度、上传速度和延迟。每次测试都会保存，便于你长期追踪网络连接质量。"
+        }
+      }
     },
     {
       "id": "secure-chat",
@@ -270,7 +738,25 @@
       "tags": ["Social", "Sync"],
       "free": true,
       "requiresAccount": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Chat",
+          "description": "Nodig een andere Luma-gebruiker uit via e-mail en chat zodra die de uitnodiging accepteert. Elk bericht wordt end-to-end versleuteld op je apparaat voordat het wordt verzonden. De synchronisatieserver stuurt alleen versleutelde gegevens door die hij niet kan lezen. Vereist dat je aanmeldt onder Instellingen → Sync en account."
+        },
+        "fr": {
+          "name": "Chat",
+          "description": "Invitez un autre utilisateur de Luma par e-mail et discutez dès qu'il accepte. Chaque message est chiffré de bout en bout sur votre appareil avant d'être envoyé : le serveur de synchronisation ne fait que relayer des données chiffrées qu'il ne peut pas lire. Nécessite une connexion sous Paramètres → Synchronisation et compte."
+        },
+        "es": {
+          "name": "Chat",
+          "description": "Invita a otro usuario de Luma por correo electrónico y chatea en cuanto acepte. Cada mensaje se cifra de extremo a extremo en tu dispositivo antes de enviarse: el servidor de sincronización solo retransmite texto cifrado que no puede leer. Requiere iniciar sesión en Ajustes → Sincronización y cuenta."
+        },
+        "zh": {
+          "name": "聊天",
+          "description": "通过电子邮件邀请另一位 Luma 用户，对方接受后即可聊天。每条消息在发送前都会在你的设备上进行端到端加密，同步服务器只转发它无法读取的密文。需要在“设置 → 同步与账户”中登录。"
+        }
+      }
     },
     {
       "id": "groceries-list",
@@ -280,7 +766,25 @@
       "category": "Shopping",
       "tags": ["Shopping", "Nova"],
       "free": false,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Boodschappenlijst",
+          "description": "Zoek producten van Jumbo, Albert Heijn, Hoogvliet en Lidl naast elkaar, filter op winkel, sorteer op prijs en maak boodschappenlijsten die zichzelf verdelen per winkel en gangpad, met lopende totalen. Een Nova-exclusieve plugin."
+        },
+        "fr": {
+          "name": "Liste de courses",
+          "description": "Recherchez côte à côte les produits de Jumbo, Albert Heijn, Hoogvliet et Lidl, filtrez par magasin, triez par prix et créez des listes de courses qui se répartissent d'elles-mêmes par enseigne et par rayon, avec les totaux cumulés. Plugin réservé à Nova."
+        },
+        "es": {
+          "name": "Lista de la compra",
+          "description": "Busca productos de Jumbo, Albert Heijn, Hoogvliet y Lidl uno al lado del otro, filtra por tienda, ordena por precio y crea listas de la compra que se separan solas por supermercado y pasillo, con totales acumulados. Plugin exclusivo de Nova."
+        },
+        "zh": {
+          "name": "购物清单",
+          "description": "在同一界面中并排搜索 Jumbo、Albert Heijn、Hoogvliet 和 Lidl 的商品，可按商店筛选、按价格排序，并创建按超市和货架自动分组、带有实时合计的购物清单。Nova 专属插件。"
+        }
+      }
     },
     {
       "id": "sftp",
@@ -290,7 +794,25 @@
       "category": "Utility",
       "tags": ["Utility", "System", "Nova"],
       "free": false,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "SFTP",
+          "description": "Een SFTP-client met twee panelen voor je eigen servers, zoals FileZilla. Verbind met een host, gebruikersnaam, wachtwoord en poort — of met een SSH-sleutel — en blader naast elkaar door dit apparaat en de server, sleep bestanden over en houd de overdrachtswachtrij in de gaten. Er is ook een gedeelde map voor je eigen apparaten, en een Host-tabblad waarmee dit apparaat zich kan laten benaderen door elk ander luma-apparaat, met een adres, een poort en een koppelwachtwoord. Alles tussen hen is versleuteld en alleen de map die je kiest is bereikbaar. Niets — geen inloggegevens en geen enkele byte van een bestand — gaat via een luma-server. Een Nova-exclusieve plugin."
+        },
+        "fr": {
+          "name": "SFTP",
+          "description": "Un client SFTP à deux volets pour vos propres serveurs, à la manière de FileZilla. Connectez-vous avec un hôte, un nom d'utilisateur, un mot de passe et un port, ou avec une clé SSH, puis parcourez côte à côte cet appareil et le serveur, faites glisser des fichiers d'un côté à l'autre et suivez la file de transfert. Il offre aussi à vos appareils un dossier partagé, et un onglet Hôte qui transforme cet appareil en serveur auquel n'importe quel autre appareil luma peut se connecter avec une adresse, un port et un mot de passe d'appairage. Tout ce qui circule entre eux est chiffré, et seul le dossier choisi est accessible. Rien — ni identifiant, ni le moindre octet de fichier — ne transite par un serveur luma. Plugin exclusif à Nova."
+        },
+        "es": {
+          "name": "SFTP",
+          "description": "Un cliente SFTP de dos paneles para tus propios servidores, como FileZilla. Conéctate con un host, nombre de usuario, contraseña y puerto, o con una clave SSH, y explora este dispositivo y el servidor uno junto al otro, arrastra archivos de un lado a otro y sigue la cola de transferencias. También ofrece a tus dispositivos una carpeta compartida y una pestaña Host que convierte este dispositivo en uno al que cualquier otro dispositivo con luma puede conectarse con una dirección, un puerto y una contraseña de emparejamiento. Todo lo que circula entre ellos está cifrado, y solo es accesible la carpeta que elijas. Nada —ni credenciales ni un solo byte de archivo— pasa por un servidor de luma. Un plugin exclusivo de Nova."
+        },
+        "zh": {
+          "name": "SFTP",
+          "description": "一款类似 FileZilla 的双窗格 SFTP 客户端，用于连接你自己的服务器。使用主机、用户名、密码和端口，或使用 SSH 密钥连接，然后并排浏览本设备和服务器，拖放文件，并查看传输队列。它还为你自己的设备提供共享文件夹，以及一个“主机”标签页，可将本设备变成其他任何 luma 设备都能连接的服务器，只需地址、端口和配对密码。两者之间的所有数据都经过加密，并且只能访问你选择的文件夹。任何内容——无论是凭据还是一个字节的文件——都不会经过 luma 服务器。这是 Nova 专属插件。"
+        }
+      }
     },
     {
       "id": "minecraft-launcher",
@@ -300,7 +822,25 @@
       "category": "Games",
       "tags": ["Games", "Utility"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Minecraft-launcher",
+          "description": "Installeer en beheer Minecraft-instanties — Vanilla, Fabric, Forge, NeoForge en Quilt — met downloads van mods, resourcepacks en shaderpacks, Java-beheer en live launch-logs. Geïnspireerd door moderne launchers, gebouwd met het eigen ontwerp van luma."
+        },
+        "fr": {
+          "name": "Lanceur Minecraft",
+          "description": "Installez et gérez des instances Minecraft — Vanilla, Fabric, Forge, NeoForge et Quilt — avec téléchargement de mods, de packs de ressources et de shaders, gestion de Java et journaux de lancement en direct. Inspiré des lanceurs modernes, conçu avec le design propre à luma."
+        },
+        "es": {
+          "name": "Lanzador de Minecraft",
+          "description": "Instala y gestiona instancias de Minecraft: Vanilla, Fabric, Forge, NeoForge y Quilt, con descargas de mods, packs de recursos y packs de shaders, gestión de Java y registros de lanzamiento en vivo. Inspirado en los lanzadores modernos y creado con el diseño propio de luma."
+        },
+        "zh": {
+          "name": "Minecraft 启动器",
+          "description": "安装和管理 Minecraft 实例，支持 Vanilla、Fabric、Forge、NeoForge 和 Quilt，可下载模组、资源包和光影包，并提供 Java 管理和实时启动日志。受现代启动器启发，并采用 luma 自有设计打造。"
+        }
+      }
     },
     {
       "id": "recipe-book",
@@ -310,7 +850,25 @@
       "category": "Productivity",
       "tags": ["Productivity", "Food", "Social", "Sync"],
       "free": true,
-      "version": "1.1.0"
+      "version": "1.1.0",
+      "i18n": {
+        "nl": {
+          "name": "Receptenboek",
+          "description": "Een receptencollectie met veel foto's, verdeeld over drie tabbladen: Favorieten, Openbaar en Privé. Voeg ingrediënten, stap-voor-stap-instructies, bereidings- en kooktijden toe en pas het aantal porties direct aan. Houd recepten privé of publiceer ze in een gedeelde catalogus waar alle luma-gebruikers kunnen bladeren, foto's kunnen uploaden, met sterren kunnen beoordelen en reviews kunnen achterlaten. Openbare recepten worden via je account gesynchroniseerd."
+        },
+        "fr": {
+          "name": "Livre de recettes",
+          "description": "Une collection de recettes riche en photos, avec trois onglets : Favoris, Public et Privé. Ajoutez les ingrédients, les instructions étape par étape, les temps de préparation et de cuisson, et ajustez les portions à la volée. Gardez vos recettes privées ou publiez-les dans un catalogue partagé où tous les utilisateurs de luma peuvent parcourir, ajouter des photos, noter avec des étoiles et laisser des avis. Les recettes publiques se synchronisent via votre compte."
+        },
+        "es": {
+          "name": "Libro de recetas",
+          "description": "Una colección de recetas centrada en las fotos, con tres pestañas: Favoritas, Públicas y Privadas. Añade ingredientes, instrucciones paso a paso, tiempos de preparación y cocción, y ajusta las raciones sobre la marcha. Mantén las recetas en privado o publícalas en un catálogo compartido donde cualquier usuario de luma puede explorar, subir fotos, valorar con estrellas y dejar reseñas. Las recetas públicas se sincronizan a través de tu cuenta."
+        },
+        "zh": {
+          "name": "食谱本",
+          "description": "以照片为主的食谱收藏，分为三个标签页：收藏、公开和私密。可以添加食材、分步骤说明、备料和烹饪时间，并随时调整份量。食谱可以保持私密，也可以发布到共享目录，让所有 luma 用户浏览、上传照片、用星级评分并留下评论。公开食谱会通过你的账户同步。"
+        }
+      }
     },
     {
       "id": "calculator",
@@ -320,7 +878,25 @@
       "category": "Utility",
       "tags": ["Utility", "Education"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Rekenmachine",
+          "description": "Een alledaagse rekenmachine die verandert in een grafiekrekenmachine. De basismodus doet de dagelijkse sommen; Geavanceerd voegt een wetenschappelijk toetsenbord toe en tekent een willekeurig aantal functies van x op een verschuifbare, zoombare grafiek die je kunt aantikken om te traceren. De ☰-knop in de kop zet maten om: km naar mijl, °C naar °F, kg naar pond en meer."
+        },
+        "fr": {
+          "name": "Calculatrice",
+          "description": "Une calculatrice du quotidien qui se transforme en calculatrice graphique. Le mode Basique gère les calculs courants ; le mode Avancé ajoute un clavier scientifique et trace autant de fonctions de x que vous voulez sur un graphique déplaçable et zoomable, sur lequel vous pouvez toucher pour suivre une courbe. Le bouton ☰ de son en-tête convertit des mesures : km en miles, °C en °F, kg en livres, et plus encore."
+        },
+        "es": {
+          "name": "Calculadora",
+          "description": "Una calculadora cotidiana que se convierte en graficadora. El modo Básico resuelve las operaciones diarias; el Avanzado añade un teclado científico y dibuja cuantas funciones de x quieras en una gráfica desplazable y con zoom, en la que puedes tocar para trazar. El botón ☰ de su cabecera convierte medidas: km a millas, °C a °F, kg a libras y más."
+        },
+        "zh": {
+          "name": "计算器",
+          "description": "日常使用的计算器，同时也能变身为绘图计算器。基础模式可处理日常计算；高级模式增加科学键盘，并可在可平移、可缩放的图表上绘制任意数量的 x 函数，点击即可追踪曲线。标题栏中的 ☰ 按钮可进行单位换算：千米转英里、摄氏度转华氏度、千克转磅等等。"
+        }
+      }
     },
     {
       "id": "gallery",
@@ -330,7 +906,25 @@
       "category": "Utility",
       "tags": ["Utility", "Photos"],
       "free": true,
-      "version": "1.0.1"
+      "version": "1.0.1",
+      "i18n": {
+        "nl": {
+          "name": "Galerij",
+          "description": "Elke foto en video op dit apparaat, gesorteerd in tabbladen: foto's en video's van de camera, screenshots, GIF's en één tabblad per map, zoals WhatsApp, Downloads en alles wat er verder staat. Zie op een wereldkaart waar foto's zijn gemaakt, en laat op Nova on-device-modellen ze sorteren op wat erop staat."
+        },
+        "fr": {
+          "name": "Galerie",
+          "description": "Toutes les photos et vidéos de cet appareil, classées par onglets : images et vidéos de l'appareil photo, captures d'écran, GIF, et un onglet par dossier (WhatsApp, Téléchargements, et tout autre dossier). Visualisez où les photos ont été prises sur une carte du monde, et sur Nova, laissez des modèles embarqués les trier selon leur contenu."
+        },
+        "es": {
+          "name": "Galería",
+          "description": "Todas las fotos y vídeos de este dispositivo, ordenados en pestañas: imágenes y vídeos de la cámara, capturas de pantalla, GIF y una pestaña por cada carpeta, como WhatsApp, Descargas o cualquier otra que tengas. Mira dónde se tomaron las fotos en un mapa del mundo y, en Nova, deja que los modelos del dispositivo las clasifiquen según lo que aparece en ellas."
+        },
+        "zh": {
+          "name": "相册",
+          "description": "将本设备上的所有照片和视频分类到不同标签页：相机拍摄的照片和视频、截图、GIF，以及每个包含媒体的文件夹各一个标签页，例如 WhatsApp、下载以及你的其他文件夹。可在世界地图上查看照片的拍摄地点；在 Nova 版本中，还可以让设备端模型按照画面内容进行分类。"
+        }
+      }
     },
     {
       "id": "transport-tracker",
@@ -340,7 +934,25 @@
       "category": "Utility",
       "tags": ["Utility", "Travel"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Transporttracker",
+          "description": "Live scheepsvolgen op een echte kaart, zoals MarineTraffic of VesselFinder. Vrij pannen en zoomen; volg het huidige beeld om in de buurt varende schepen live te zien bijwerken met snelheid, koers, type en bestemming, gevoed door je eigen gratis AISStream.io-API-sleutel."
+        },
+        "fr": {
+          "name": "Suivi des transports",
+          "description": "Suivi en direct des navires sur une carte réelle, comme MarineTraffic ou VesselFinder. Déplacement et zoom libres ; suivez la vue actuelle pour voir les navires voisins se mettre à jour en direct avec vitesse, cap, type et destination, grâce à votre propre clé API AISStream.io gratuite."
+        },
+        "es": {
+          "name": "Rastreador de transporte",
+          "description": "Seguimiento en vivo de barcos sobre un mapa real, como MarineTraffic o VesselFinder. Desplázate y amplía libremente; sigue la vista actual para ver cómo se actualizan en directo los buques cercanos, con velocidad, rumbo, tipo y destino, gracias a tu propia clave gratuita de AISStream.io."
+        },
+        "zh": {
+          "name": "交通追踪器",
+          "description": "在真实地图上实时追踪船舶，类似 MarineTraffic 或 VesselFinder。可自由平移和缩放；追踪当前视图，即可实时查看附近船只的速度、航向、类型和目的地，数据来自你自己的免费 AISStream.io API 密钥。"
+        }
+      }
     },
     {
       "id": "nfc-tag-editor",
@@ -350,7 +962,25 @@
       "category": "Utility",
       "tags": ["Utility"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "NFC-tagbewerker",
+          "description": "Scan elke NFC-tag en herschrijf wat erop staat: gewone tekst, links, telefoonnummers, e-mailadressen, Wi-Fi-gegevens, contactkaarten en app-snelkoppelingen. Herschik, dupliceer of verwijder records, sla een set op als herbruikbaar sjabloon om een hele reeks stickers te beschrijven, vergrendel een tag permanent als alleen-lezen en bewaar een volledige geschiedenis van alles wat je hebt gescand of geschreven. Alleen Android."
+        },
+        "fr": {
+          "name": "Éditeur de tags NFC",
+          "description": "Scannez n'importe quel tag NFC et réécrivez son contenu : texte brut, liens, numéros de téléphone, e-mails, réseaux Wi-Fi, cartes de contact et raccourcis d'application. Réordonnez, dupliquez ou supprimez des enregistrements, enregistrez un ensemble comme modèle réutilisable pour écrire tout un lot d'autocollants, verrouillez définitivement un tag en lecture seule et conservez un historique complet de tout ce que vous avez scanné ou écrit. Android uniquement."
+        },
+        "es": {
+          "name": "Editor de etiquetas NFC",
+          "description": "Escanea cualquier etiqueta NFC y reescribe lo que contiene: texto simple, enlaces, números de teléfono, correo electrónico, datos de Wi-Fi, tarjetas de contacto y accesos directos a apps. Reordena, duplica o elimina registros, guarda un conjunto como plantilla reutilizable para escribir un lote entero de pegatinas, bloquea una etiqueta de forma permanente como solo lectura y conserva un historial completo de todo lo que hayas escaneado o escrito. Solo Android."
+        },
+        "zh": {
+          "name": "NFC 标签编辑器",
+          "description": "扫描任意 NFC 标签，并改写其中的内容：纯文本、链接、电话号码、电子邮件、Wi-Fi 信息、联系人名片和应用快捷方式。可以重新排序、复制或删除记录，将一组记录保存为可复用模板，用于批量写入整套贴纸；还可以将标签永久锁定为只读，并保留所有扫描或写入过的完整历史。仅支持 Android。"
+        }
+      }
     },
     {
       "id": "worth-counter",
@@ -360,7 +990,25 @@
       "category": "Utility",
       "tags": ["Utility", "Finance"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Waardeteller",
+          "description": "Een telteller die weet wat dingen waard zijn. Voeg een product toe met zijn prijs, tik op + en - terwijl je telt, en de onderste balk houdt een live totaal bij van alles wat geteld is."
+        },
+        "fr": {
+          "name": "Compteur de valeur",
+          "description": "Un compteur qui connaît la valeur des choses. Ajoutez un produit avec son prix, appuyez sur + et - pendant que vous comptez, et la barre du bas affiche en direct le total de tout ce qui a été compté."
+        },
+        "es": {
+          "name": "Contador de valor",
+          "description": "Un contador que sabe cuánto valen las cosas. Añade un producto con su precio, pulsa + y - mientras cuentas, y la barra inferior muestra en vivo el total de todo lo contado."
+        },
+        "zh": {
+          "name": "价值计数器",
+          "description": "一个知道物品价值的计数器。添加商品并输入价格，计数时点击 + 和 -，底部栏会实时显示所有已计数商品的总价值。"
+        }
+      }
     },
     {
       "id": "device-health",
@@ -370,7 +1018,25 @@
       "category": "Utility",
       "tags": ["Utility", "System"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Apparaatgezondheid",
+          "description": "Een dashboard voor de gezondheid van deze pc, in de stijl van Norton: CPU-, RAM- en GPU-gebruik, slijtage van de accu, achtergrondprocessen, verouderde apps en drivers, en de beschermingsstatus van Windows Defender. Controleer één onderdeel of alles in één keer, en werk verouderde apps met één klik bij. Alleen voor Windows. luma scant zelf nooit een bestand: de virusscan leest en start de eigen scan van Windows Defender, en driverupdates worden altijd overgelaten aan het officiële hulpprogramma van de leverancier."
+        },
+        "fr": {
+          "name": "Santé de l'appareil",
+          "description": "Un tableau de bord de santé pour ce PC, à la manière de Norton : utilisation du CPU, de la RAM et du GPU, usure de la batterie, processus en arrière-plan, applications et pilotes obsolètes, et état de protection de Windows Defender. Vérifiez un seul élément ou tout à la fois, et mettez à jour les applications obsolètes d'un clic. Windows uniquement. luma n'analyse jamais un fichier lui-même : la vérification antivirus lit et lance l'analyse propre à Windows Defender, et les mises à jour de pilotes sont toujours confiées à l'outil officiel du fabricant."
+        },
+        "es": {
+          "name": "Salud del dispositivo",
+          "description": "Un panel de salud para este PC, al estilo de Norton: uso de CPU, RAM y GPU, desgaste de la batería, procesos en segundo plano, apps y drivers desactualizados, y el estado de protección de Windows Defender. Revisa una cosa o todo a la vez, y actualiza las apps desactualizadas con un clic. Solo para Windows. luma nunca escanea un archivo por sí mismo: la comprobación de virus lee y activa el propio escaneo de Windows Defender, y las actualizaciones de drivers siempre se delegan a la herramienta oficial del fabricante."
+        },
+        "zh": {
+          "name": "设备健康",
+          "description": "为这台电脑提供类似 Norton 风格的健康仪表盘：CPU、内存和 GPU 使用率、电池损耗、后台进程、过时的应用和驱动程序，以及 Windows Defender 的防护状态。可以单独检查某一项，也可以一次检查全部，并能一键更新过时的应用。仅限 Windows。luma 从不自行扫描文件：病毒检查只是读取并触发 Windows Defender 自身的扫描，驱动程序更新则始终交由厂商的官方工具处理。"
+        }
+      }
     },
     {
       "id": "account-overview",
@@ -380,10 +1046,27 @@
       "category": "Productivity",
       "tags": ["Productivity", "Developer", "Minecraft"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Accountoverzicht",
+          "description": "Je ontwikkelaars- en makersaccounts in één dashboard, met één service per zijbalkitem. GitHub: elke commit, ster, fork en releasedownload in al je repositories, de issues en pull requests waarbij je betrokken bent, recente Actions-runs en hun slagingspercentage, plus gebruiksmeters voor Copilot, je opslagruimte en je workflow-rekentijd. MC Content: CurseForge en Modrinth samengevoegd in één bibliotheek met downloadtrends en grafieken, en Planet Minecraft onder een eigen kop met weergaven, downloads en diamonds. Elke sleutel wordt op dit apparaat versleuteld en gaat alleen naar het platform waar hij bij hoort, nooit naar een luma-server."
+        },
+        "fr": {
+          "name": "Aperçu du compte",
+          "description": "Vos comptes développeur et créateur réunis dans un seul tableau de bord, un service par entrée de la barre latérale. GitHub : chaque commit, étoile, fork et téléchargement de version dans vos dépôts, les tickets et pull requests auxquels vous participez, les dernières exécutions Actions et leur taux de réussite, ainsi que les compteurs d'utilisation de Copilot, de votre espace de stockage et de vos minutes de calcul pour les workflows. MC Content : CurseForge et Modrinth combinés en une seule bibliothèque avec tendances de téléchargements et graphiques, et Planet Minecraft sous son propre en-tête avec vues, téléchargements et diamants. Chaque clé est chiffrée sur cet appareil et n'est envoyée qu'à la plateforme à laquelle elle appartient, jamais à un serveur luma."
+        },
+        "es": {
+          "name": "Resumen de cuentas",
+          "description": "Tus cuentas de desarrollador y de creador en un único panel, con un servicio por entrada de la barra lateral. GitHub: cada commit, estrella, fork y descarga de versión en tus repositorios, las incidencias y pull requests en las que participas, las ejecuciones recientes de Actions y su tasa de éxito, además de medidores de uso de Copilot, tu cuota de almacenamiento y tus minutos de cómputo de workflows. MC Content: CurseForge y Modrinth combinados en una biblioteca con tendencias y gráficos de descargas, y Planet Minecraft bajo su propio encabezado con visualizaciones, descargas y diamantes. Cada clave se cifra en este dispositivo y solo se envía a la plataforma a la que pertenece, nunca a un servidor de luma."
+        },
+        "zh": {
+          "name": "账号概览",
+          "description": "在一个仪表盘中查看你的开发者和创作者账号，侧边栏每个条目对应一项服务。GitHub：你所有仓库中的每次提交、星标、复刻和发布版本下载，你参与的议题和拉取请求，最近的 Actions 运行及成功率，以及 Copilot、存储配额和工作流计算分钟数的用量仪表。MC Content：将 CurseForge 和 Modrinth 合并为一个资源库，附带下载趋势和图表；Planet Minecraft 单独列出，显示浏览量、下载量和钻石数。每个密钥都在本设备上加密，且只发送给其所属的平台，绝不会发送到 luma 服务器。"
+        }
+      }
     },
     {
-
       "id": "whiteboard",
       "name": "Whiteboard",
       "description": "An endless sheet to draw on. Pen, highlighter, shapes, arrows, sticky notes and text, with seven inks, one-key tool shortcuts and full undo. Erase whole strokes with a sweep, pan and zoom the sheet, and export any board as a PNG cropped to exactly what you drew.",
@@ -391,7 +1074,25 @@
       "category": "Productivity",
       "tags": ["Productivity", "Utility"],
       "free": true,
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Whiteboard",
+          "description": "Een eindeloos vel om op te tekenen. Pen, markeerstift, vormen, pijlen, plaknotities en tekst, met zeven inktkleuren, sneltoetsen voor elk gereedschap en volledig ongedaan maken. Wis hele streken met één veegbeweging, verschuif en zoom over het vel, en exporteer elk bord als PNG, bijgesneden tot precies wat je hebt getekend."
+        },
+        "fr": {
+          "name": "Tableau blanc",
+          "description": "Une feuille sans fin à dessiner. Stylo, surligneur, formes, flèches, post-it et texte, avec sept encres, des raccourcis d'outils à une touche et une annulation complète. Effacez des tracés entiers d'un geste, déplacez-vous et zoomez sur la feuille, et exportez n'importe quel tableau en PNG recadré exactement sur ce que vous avez dessiné."
+        },
+        "es": {
+          "name": "Pizarra",
+          "description": "Una hoja infinita para dibujar. Bolígrafo, marcador, formas, flechas, notas adhesivas y texto, con siete tintas, atajos de herramientas de una sola tecla y deshacer completo. Borra trazos completos con un barrido, desplázate y amplía la hoja, y exporta cualquier pizarra como PNG recortado exactamente a lo que has dibujado."
+        },
+        "zh": {
+          "name": "白板",
+          "description": "一块无限延展的画布。提供钢笔、荧光笔、形状、箭头、便利贴和文字，带七种墨水颜色、单键工具快捷键和完整撤销。扫过即可擦除整笔线条，可平移和缩放画布，并将任意白板导出为精确裁剪到所绘内容的 PNG。"
+        }
+      }
     }
   ]
 }

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
+import '../../../../l10n/current_l.dart';
 import '../../../../theme/luma_theme.dart';
 import 'download_history_store.dart';
 import 'yt_dlp_manager.dart';
@@ -94,7 +96,7 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
       if (mounted) setState(() => _setupError = e.message);
     } catch (_) {
       if (mounted) {
-        setState(() => _setupError = 'Could not set up yt-dlp / ffmpeg.');
+        setState(() => _setupError = currentL.mediaDlSetupFailed);
       }
     }
   }
@@ -115,7 +117,7 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
   Future<void> _fetch({bool retriedAfterUpdate = false}) async {
     final url = _urlController.text.trim();
     if (url.isEmpty) {
-      setState(() => _fetchError = 'Paste a YouTube link first.');
+      setState(() => _fetchError = currentL.mediaDlPasteLinkFirst);
       return;
     }
 
@@ -134,7 +136,9 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
       });
     } on YtDlpException catch (e) {
       if (!retriedAfterUpdate && _looksLikeStaleBinary(e.message)) {
-        if (mounted) setState(() => _fetchError = 'Updating yt-dlp…');
+        if (mounted) {
+          setState(() => _fetchError = currentL.mediaDlStatusUpdatingYtDlp);
+        }
         try {
           await _manager.updateYtDlp((_) {});
           if (mounted) return _fetch(retriedAfterUpdate: true);
@@ -144,7 +148,7 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
       }
       setState(() => _fetchError = e.message);
     } catch (_) {
-      setState(() => _fetchError = 'Could not read that link.');
+      setState(() => _fetchError = currentL.mediaDlCouldNotReadLink);
     } finally {
       if (mounted) setState(() => _fetching = false);
     }
@@ -157,7 +161,9 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
     } on YtDlpException catch (e) {
       if (mounted) setState(() => _fetchError = e.message);
     } catch (_) {
-      if (mounted) setState(() => _fetchError = 'Could not update yt-dlp.');
+      if (mounted) {
+        setState(() => _fetchError = currentL.mediaDlCouldNotUpdate);
+      }
     } finally {
       if (mounted) setState(() => _updatingYtDlp = false);
     }
@@ -165,7 +171,7 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
 
   Future<void> _chooseOutputDir() async {
     final path = await FilePicker.getDirectoryPath(
-      dialogTitle: 'Choose a download folder',
+      dialogTitle: currentL.mediaDlChooseFolderTitle,
     );
     if (path != null) setState(() => _outputDir = path);
   }
@@ -177,14 +183,14 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
     final url = _urlController.text.trim();
     if (url.isEmpty) return;
     if (outputDir == null) {
-      setState(() => _downloadError = 'Choose a download folder first.');
+      setState(() => _downloadError = currentL.mediaDlChooseFolderFirst);
       return;
     }
 
     setState(() {
       _downloading = true;
       _downloadError = null;
-      _progress = DownloadProgress(rawLine: 'Starting…');
+      _progress = DownloadProgress(rawLine: currentL.mediaDlStarting);
     });
 
     final handle = _manager.download(
@@ -224,7 +230,10 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
     } on YtDlpException catch (e) {
       if (!retriedAfterUpdate && _looksLikeStaleBinary(e.message)) {
         _activeDownload = null;
-        if (mounted) setState(() => _progress = DownloadProgress(rawLine: 'Updating yt-dlp…'));
+        if (mounted) {
+          setState(() => _progress =
+              DownloadProgress(rawLine: currentL.mediaDlStatusUpdatingYtDlp));
+        }
         try {
           await _manager.updateYtDlp((_) {});
           if (mounted) return _download(retriedAfterUpdate: true);
@@ -234,7 +243,9 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
       }
       if (mounted) setState(() => _downloadError = e.message);
     } catch (_) {
-      if (mounted) setState(() => _downloadError = 'Download failed.');
+      if (mounted) {
+        setState(() => _downloadError = currentL.mediaDlDownloadFailed);
+      }
     } finally {
       _activeDownload = null;
       if (mounted) {
@@ -267,6 +278,7 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
 
   Widget _buildSetup(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final frac = _setupProgress?.fraction;
     return Center(
       child: ConstrainedBox(
@@ -277,7 +289,7 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
             Icon(Icons.download_rounded, color: luma.accent, size: 40),
             const SizedBox(height: 16),
             Text(
-              'Setting up Media Downloader',
+              t.mediaDlSetupTitle,
               style: TextStyle(
                 color: luma.textPrimary,
                 fontSize: 16,
@@ -287,8 +299,7 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
             const SizedBox(height: 8),
             Text(
               _setupError ??
-                  (_setupProgress?.status ??
-                      'Fetching yt-dlp and ffmpeg — this only happens once.'),
+                  (_setupProgress?.status ?? t.mediaDlSetupBody),
               textAlign: TextAlign.center,
               style: TextStyle(color: luma.textMuted, fontSize: 13),
             ),
@@ -305,7 +316,7 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
               )
             else
               LumaPrimaryButton(
-                label: 'Try again',
+                label: t.commonTryAgain,
                 icon: Icons.refresh_rounded,
                 onTap: _setupTools,
               ),
@@ -317,6 +328,7 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
 
   Widget _buildReady(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
       child: Center(
@@ -333,7 +345,7 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
                       children: [
                         Expanded(
                           child: Text(
-                            'Download a video or song',
+                            t.mediaDlIntroTitle,
                             style: TextStyle(
                               color: luma.textPrimary,
                               fontSize: 16,
@@ -342,7 +354,9 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
                           ),
                         ),
                         LumaGhostButton(
-                          label: _updatingYtDlp ? 'Updating…' : 'Update yt-dlp',
+                          label: _updatingYtDlp
+                              ? t.mediaDlUpdating
+                              : t.mediaDlUpdateYtDlp,
                           icon: Icons.system_update_alt_rounded,
                           onTap: _updatingYtDlp ? null : _updateYtDlpManually,
                         ),
@@ -350,10 +364,7 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Paste a YouTube video link to get started. If '
-                      'downloads start failing with a 403 error, YouTube '
-                      'has likely changed something — try "Update yt-dlp" '
-                      'above.',
+                      t.mediaDlIntroBody(t.mediaDlUpdateYtDlp),
                       style: TextStyle(color: luma.textMuted, fontSize: 13),
                     ),
                     const SizedBox(height: 16),
@@ -365,13 +376,13 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
                             controller: _urlController,
                             style: TextStyle(color: luma.textPrimary),
                             decoration: _inputDecoration(luma,
-                                hint: 'YouTube video link…'),
+                                hint: t.mediaDlLinkHint),
                             onSubmitted: (_) => _fetch(),
                           ),
                         ),
                         const SizedBox(width: 12),
                         LumaPrimaryButton(
-                          label: 'Fetch',
+                          label: t.mediaDlFetch,
                           icon: Icons.search_rounded,
                           loading: _fetching,
                           onTap: _fetch,
@@ -387,15 +398,15 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
                       const SizedBox(height: 16),
                       _buildVideoCard(luma, _video!),
                       const SizedBox(height: 16),
-                      _buildOptions(luma),
+                      _buildOptions(luma, t),
                       const SizedBox(height: 16),
-                      _buildOutputRow(luma),
+                      _buildOutputRow(luma, t),
                       const SizedBox(height: 16),
                       if (_downloading)
-                        _buildDownloadProgress(luma)
+                        _buildDownloadProgress(luma, t)
                       else
                         LumaPrimaryButton(
-                          label: 'Download',
+                          label: t.commonDownload,
                           icon: Icons.download_rounded,
                           expand: true,
                           onTap: _download,
@@ -412,7 +423,7 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
               ),
               const SizedBox(height: 24),
               Text(
-                'History',
+                t.mediaDlHistory,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 14,
@@ -425,8 +436,8 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
                   padding: const EdgeInsets.symmetric(vertical: 24),
                   child: LumaEmptyState(
                     icon: Icons.download_rounded,
-                    title: 'Nothing downloaded yet',
-                    subtitle: 'Completed downloads show up here.',
+                    title: t.mediaDlHistoryEmpty,
+                    subtitle: t.mediaDlHistoryEmptyHint,
                   ),
                 )
               else
@@ -503,12 +514,12 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
     );
   }
 
-  Widget _buildOptions(LumaPalette luma) {
+  Widget _buildOptions(LumaPalette luma, L t) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         LumaSegmentedTabs(
-          tabs: const ['Video', 'Audio only'],
+          tabs: [t.mediaDlModeVideo, t.mediaDlModeAudioOnly],
           selectedIndex: _mode == DownloadMode.video ? 0 : 1,
           onSelect: (i) => setState(
               () => _mode = i == 0 ? DownloadMode.video : DownloadMode.audio),
@@ -517,7 +528,7 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
         if (_mode == DownloadMode.video) ...[
           _dropdownRow(
             luma,
-            label: 'Resolution',
+            label: t.mediaDlResolution,
             value: _videoHeight,
             items: _availableOrAllHeights(),
             labelFor: (h) => '${h}p',
@@ -526,16 +537,16 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
           const SizedBox(height: 10),
           _dropdownRow(
             luma,
-            label: 'Audio bitrate',
+            label: t.mediaDlAudioBitrate,
             value: _videoAudioBitrate,
             items: _bitrates,
-            labelFor: (b) => '$b kbps',
+            labelFor: (b) => t.mediaDlKbps(b),
             onChanged: (v) => setState(() => _videoAudioBitrate = v!),
           ),
         ] else ...[
           _dropdownRow(
             luma,
-            label: 'Format',
+            label: t.mediaDlFormat,
             value: _audioFormat,
             items: _audioFormats,
             labelFor: (f) => f.toUpperCase(),
@@ -544,10 +555,10 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
           const SizedBox(height: 10),
           _dropdownRow(
             luma,
-            label: 'Bitrate',
+            label: t.mediaDlBitrate,
             value: _audioBitrate,
             items: _bitrates,
-            labelFor: (b) => '$b kbps',
+            labelFor: (b) => t.mediaDlKbps(b),
             onChanged: (v) => setState(() => _audioBitrate = v!),
           ),
         ],
@@ -605,17 +616,17 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
     );
   }
 
-  Widget _buildOutputRow(LumaPalette luma) {
+  Widget _buildOutputRow(LumaPalette luma, L t) {
     return Row(
       children: [
         SizedBox(
           width: 110,
-          child: Text('Save to',
+          child: Text(t.mediaDlSaveTo,
               style: TextStyle(color: luma.textSecondary, fontSize: 13)),
         ),
         Expanded(
           child: Text(
-            _outputDir ?? 'Choose a folder…',
+            _outputDir ?? t.mediaDlChooseFolder,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(color: luma.textMuted, fontSize: 13),
@@ -623,7 +634,7 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
         ),
         const SizedBox(width: 8),
         LumaGhostButton(
-          label: 'Browse',
+          label: t.commonBrowse,
           icon: Icons.folder_open_rounded,
           onTap: _chooseOutputDir,
         ),
@@ -631,7 +642,7 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
     );
   }
 
-  Widget _buildDownloadProgress(LumaPalette luma) {
+  Widget _buildDownloadProgress(LumaPalette luma, L t) {
     final p = _progress;
     final percent = p?.percent;
     return Column(
@@ -654,13 +665,13 @@ class _MediaDownloaderPageState extends State<MediaDownloaderPage> {
                 percent != null
                     ? '${percent.toStringAsFixed(1)}%'
                         '${p?.speed != null ? ' · ${p!.speed}' : ''}'
-                        '${p?.eta != null ? ' · ETA ${p!.eta}' : ''}'
-                    : (p?.rawLine ?? 'Working…'),
+                        '${p?.eta != null ? ' · ${t.mediaDlEta(p!.eta!)}' : ''}'
+                    : (p?.rawLine ?? t.mediaDlWorking),
                 style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
             ),
             LumaGhostButton(
-              label: 'Cancel',
+              label: t.commonCancel,
               icon: Icons.close_rounded,
               onTap: _cancelDownload,
             ),
@@ -696,6 +707,9 @@ class _HistoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
+    final modeLabel =
+        entry.mode == 'Video' ? t.mediaDlModeVideo : t.mediaDlModeAudio;
     return LumaCard(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
@@ -724,7 +738,7 @@ class _HistoryCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${entry.mode} · ${entry.detail}',
+                  '$modeLabel · ${entry.detail}',
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
               ],
@@ -733,13 +747,13 @@ class _HistoryCard extends StatelessWidget {
           IconButton(
             icon: Icon(Icons.folder_open_rounded,
                 color: luma.textMuted, size: 20),
-            tooltip: 'Open folder',
+            tooltip: t.mediaDlOpenFolder,
             onPressed: onOpen,
           ),
           IconButton(
             icon: Icon(Icons.delete_outline_rounded,
                 color: luma.textMuted, size: 20),
-            tooltip: 'Remove from history',
+            tooltip: t.mediaDlRemoveFromHistory,
             onPressed: onDelete,
           ),
         ],

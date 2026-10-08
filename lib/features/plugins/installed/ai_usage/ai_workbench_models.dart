@@ -1,3 +1,5 @@
+import '../../../../l10n/current_l.dart';
+
 /// A reusable Markdown note in the AI Workbench library.
 class AiMarkdownEntry {
   AiMarkdownEntry({
@@ -13,7 +15,7 @@ class AiMarkdownEntry {
     final now = DateTime.now();
     return AiMarkdownEntry(
       id: json['id']?.toString() ?? now.microsecondsSinceEpoch.toString(),
-      title: json['title']?.toString() ?? 'Untitled note',
+      title: json['title']?.toString() ?? currentL.aiUsageUntitledNote,
       body: json['body']?.toString() ?? '',
       tags: [
         for (final tag in (json['tags'] as List<dynamic>?) ?? const [])
@@ -59,7 +61,7 @@ class AiAgentDefinition {
     final now = DateTime.now();
     return AiAgentDefinition(
       id: json['id']?.toString() ?? now.microsecondsSinceEpoch.toString(),
-      name: json['name']?.toString() ?? 'Untitled agent',
+      name: json['name']?.toString() ?? currentL.aiUsageUntitledAgent,
       description: json['description']?.toString() ?? '',
       instructions: json['instructions']?.toString() ?? '',
       outputFormat: json['outputFormat']?.toString() ?? '',

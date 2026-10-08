@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import '../../../l10n/current_l.dart';
 import 'binary_utils.dart';
 
 /// The repairer that knows how to work on a given family of files.
@@ -9,7 +10,7 @@ enum RepairFamily { png, jpeg, gif, bmp, zip, pdf, riff, mp3, mp4, generic }
 /// it.
 class FileSignature {
   const FileSignature({
-    required this.label,
+    required this.englishLabel,
     required this.extension,
     required this.magic,
     this.offset = 0,
@@ -17,7 +18,11 @@ class FileSignature {
     this.extras = const <String>[],
   });
 
-  final String label;
+  final String englishLabel;
+
+  /// The name shown to the user, in the language picked in settings.
+  String get label => _localisedSignatureLabel(englishLabel);
+
   final String extension;
   final List<int> magic;
 
@@ -42,6 +47,53 @@ class FileSignature {
       matchesAt(bytes, base + offset, magic);
 }
 
+String _localisedSignatureLabel(String english) {
+  final t = currentL;
+  return switch (english) {
+    'PNG image' => t.converterSigPngImage,
+    'JPEG image' => t.converterSigJpegImage,
+    'GIF image' => t.converterSigGifImage,
+    'BMP image' => t.converterSigBmpImage,
+    'TIFF image' => t.converterSigTiffImage,
+    'WebP image' => t.converterSigWebpImage,
+    'Windows icon' => t.converterSigWindowsIcon,
+    'Photoshop document' => t.converterSigPhotoshopDocument,
+    'AVIF/HEIC image' => t.converterSigAvifHeicImage,
+    'PDF document' => t.converterSigPdfDocument,
+    'Rich text document' => t.converterSigRichTextDocument,
+    'Legacy Office document' => t.converterSigLegacyOfficeDocument,
+    'ZIP archive' => t.converterSigZipArchive,
+    'Empty ZIP archive' => t.converterSigEmptyZipArchive,
+    'RAR archive' => t.converterSigRarArchive,
+    '7-Zip archive' => t.converterSig7ZipArchive,
+    'GZip archive' => t.converterSigGzipArchive,
+    'BZip2 archive' => t.converterSigBzip2Archive,
+    'XZ archive' => t.converterSigXzArchive,
+    'Zstandard archive' => t.converterSigZstdArchive,
+    'TAR archive' => t.converterSigTarArchive,
+    'WAV audio' => t.converterSigWavAudio,
+    'AVI video' => t.converterSigAviVideo,
+    'MP3 audio' => t.converterSigMp3Audio,
+    'MP4 video' => t.converterSigMp4Video,
+    'FLAC audio' => t.converterSigFlacAudio,
+    'Ogg media' => t.converterSigOggMedia,
+    'Matroska video' => t.converterSigMatroskaVideo,
+    'MIDI file' => t.converterSigMidiFile,
+    'Windows executable' => t.converterSigWindowsExecutable,
+    'ELF binary' => t.converterSigElfBinary,
+    'SQLite database' => t.converterSigSqliteDatabase,
+    'WebAssembly module' => t.converterSigWebAssemblyModule,
+    'Java class' => t.converterSigJavaClass,
+    'TrueType font' => t.converterSigTrueTypeFont,
+    'OpenType font' => t.converterSigOpenTypeFont,
+    'WOFF font' => t.converterSigWoffFont,
+    'WOFF2 font' => t.converterSigWoff2Font,
+    'Minecraft NBT (gzip)' => t.converterSigMinecraftNbt,
+    'luma recovery recipe' => t.converterSigLumaRecipe,
+    _ => english,
+  };
+}
+
 /// The signature table.
 ///
 /// It is deliberately long: the fixer can only give useful advice about a file
@@ -53,62 +105,62 @@ class FileSignatures {
   static const List<FileSignature> all = [
     // Images
     FileSignature(
-      label: 'PNG image',
+      englishLabel: 'PNG image',
       extension: 'png',
       magic: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A],
       family: RepairFamily.png,
     ),
     FileSignature(
-      label: 'JPEG image',
+      englishLabel: 'JPEG image',
       extension: 'jpg',
       magic: [0xFF, 0xD8, 0xFF],
       family: RepairFamily.jpeg,
       extras: ['jpeg', 'jpe', 'jfif'],
     ),
     FileSignature(
-      label: 'GIF image',
+      englishLabel: 'GIF image',
       extension: 'gif',
       magic: [0x47, 0x49, 0x46, 0x38],
       family: RepairFamily.gif,
     ),
     FileSignature(
-      label: 'BMP image',
+      englishLabel: 'BMP image',
       extension: 'bmp',
       magic: [0x42, 0x4D],
       family: RepairFamily.bmp,
       extras: ['dib'],
     ),
     FileSignature(
-      label: 'TIFF image',
+      englishLabel: 'TIFF image',
       extension: 'tiff',
       magic: [0x49, 0x49, 0x2A, 0x00],
       extras: ['tif'],
     ),
     FileSignature(
-      label: 'TIFF image',
+      englishLabel: 'TIFF image',
       extension: 'tiff',
       magic: [0x4D, 0x4D, 0x00, 0x2A],
       extras: ['tif'],
     ),
     FileSignature(
-      label: 'WebP image',
+      englishLabel: 'WebP image',
       extension: 'webp',
       magic: [0x57, 0x45, 0x42, 0x50],
       offset: 8,
       family: RepairFamily.riff,
     ),
     FileSignature(
-      label: 'Windows icon',
+      englishLabel: 'Windows icon',
       extension: 'ico',
       magic: [0x00, 0x00, 0x01, 0x00],
     ),
     FileSignature(
-      label: 'Photoshop document',
+      englishLabel: 'Photoshop document',
       extension: 'psd',
       magic: [0x38, 0x42, 0x50, 0x53],
     ),
     FileSignature(
-      label: 'AVIF/HEIC image',
+      englishLabel: 'AVIF/HEIC image',
       extension: 'avif',
       magic: [0x66, 0x74, 0x79, 0x70],
       offset: 4,
@@ -118,18 +170,18 @@ class FileSignatures {
 
     // Documents
     FileSignature(
-      label: 'PDF document',
+      englishLabel: 'PDF document',
       extension: 'pdf',
       magic: [0x25, 0x50, 0x44, 0x46, 0x2D],
       family: RepairFamily.pdf,
     ),
     FileSignature(
-      label: 'Rich text document',
+      englishLabel: 'Rich text document',
       extension: 'rtf',
       magic: [0x7B, 0x5C, 0x72, 0x74, 0x66],
     ),
     FileSignature(
-      label: 'Legacy Office document',
+      englishLabel: 'Legacy Office document',
       extension: 'doc',
       magic: [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1],
       extras: ['xls', 'ppt', 'msi'],
@@ -137,7 +189,7 @@ class FileSignatures {
 
     // Archives and the ZIP-based office formats
     FileSignature(
-      label: 'ZIP archive',
+      englishLabel: 'ZIP archive',
       extension: 'zip',
       magic: [0x50, 0x4B, 0x03, 0x04],
       family: RepairFamily.zip,
@@ -157,44 +209,44 @@ class FileSignatures {
       ],
     ),
     FileSignature(
-      label: 'Empty ZIP archive',
+      englishLabel: 'Empty ZIP archive',
       extension: 'zip',
       magic: [0x50, 0x4B, 0x05, 0x06],
       family: RepairFamily.zip,
     ),
     FileSignature(
-      label: 'RAR archive',
+      englishLabel: 'RAR archive',
       extension: 'rar',
       magic: [0x52, 0x61, 0x72, 0x21, 0x1A, 0x07],
     ),
     FileSignature(
-      label: '7-Zip archive',
+      englishLabel: '7-Zip archive',
       extension: '7z',
       magic: [0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C],
     ),
     FileSignature(
-      label: 'GZip archive',
+      englishLabel: 'GZip archive',
       extension: 'gz',
       magic: [0x1F, 0x8B],
       extras: ['tgz'],
     ),
     FileSignature(
-      label: 'BZip2 archive',
+      englishLabel: 'BZip2 archive',
       extension: 'bz2',
       magic: [0x42, 0x5A, 0x68],
     ),
     FileSignature(
-      label: 'XZ archive',
+      englishLabel: 'XZ archive',
       extension: 'xz',
       magic: [0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00],
     ),
     FileSignature(
-      label: 'Zstandard archive',
+      englishLabel: 'Zstandard archive',
       extension: 'zst',
       magic: [0x28, 0xB5, 0x2F, 0xFD],
     ),
     FileSignature(
-      label: 'TAR archive',
+      englishLabel: 'TAR archive',
       extension: 'tar',
       magic: [0x75, 0x73, 0x74, 0x61, 0x72],
       offset: 257,
@@ -202,27 +254,27 @@ class FileSignatures {
 
     // Audio and video
     FileSignature(
-      label: 'WAV audio',
+      englishLabel: 'WAV audio',
       extension: 'wav',
       magic: [0x57, 0x41, 0x56, 0x45],
       offset: 8,
       family: RepairFamily.riff,
     ),
     FileSignature(
-      label: 'AVI video',
+      englishLabel: 'AVI video',
       extension: 'avi',
       magic: [0x41, 0x56, 0x49, 0x20],
       offset: 8,
       family: RepairFamily.riff,
     ),
     FileSignature(
-      label: 'MP3 audio',
+      englishLabel: 'MP3 audio',
       extension: 'mp3',
       magic: [0x49, 0x44, 0x33],
       family: RepairFamily.mp3,
     ),
     FileSignature(
-      label: 'MP4 video',
+      englishLabel: 'MP4 video',
       extension: 'mp4',
       magic: [0x66, 0x74, 0x79, 0x70],
       offset: 4,
@@ -230,85 +282,85 @@ class FileSignatures {
       extras: ['m4a', 'm4v', 'mov', '3gp'],
     ),
     FileSignature(
-      label: 'FLAC audio',
+      englishLabel: 'FLAC audio',
       extension: 'flac',
       magic: [0x66, 0x4C, 0x61, 0x43],
     ),
     FileSignature(
-      label: 'Ogg media',
+      englishLabel: 'Ogg media',
       extension: 'ogg',
       magic: [0x4F, 0x67, 0x67, 0x53],
       extras: ['oga', 'ogv', 'opus'],
     ),
     FileSignature(
-      label: 'Matroska video',
+      englishLabel: 'Matroska video',
       extension: 'mkv',
       magic: [0x1A, 0x45, 0xDF, 0xA3],
       extras: ['webm', 'mka'],
     ),
     FileSignature(
-      label: 'MIDI file',
+      englishLabel: 'MIDI file',
       extension: 'mid',
       magic: [0x4D, 0x54, 0x68, 0x64],
     ),
 
     // Executables, data and the rest
     FileSignature(
-      label: 'Windows executable',
+      englishLabel: 'Windows executable',
       extension: 'exe',
       magic: [0x4D, 0x5A],
       extras: ['dll', 'sys'],
     ),
     FileSignature(
-      label: 'ELF binary',
+      englishLabel: 'ELF binary',
       extension: 'elf',
       magic: [0x7F, 0x45, 0x4C, 0x46],
       extras: ['so'],
     ),
     FileSignature(
-      label: 'SQLite database',
+      englishLabel: 'SQLite database',
       extension: 'db',
       magic: [0x53, 0x51, 0x4C, 0x69, 0x74, 0x65, 0x20, 0x66],
       extras: ['sqlite', 'sqlite3'],
     ),
     FileSignature(
-      label: 'WebAssembly module',
+      englishLabel: 'WebAssembly module',
       extension: 'wasm',
       magic: [0x00, 0x61, 0x73, 0x6D],
     ),
     FileSignature(
-      label: 'Java class',
+      englishLabel: 'Java class',
       extension: 'class',
       magic: [0xCA, 0xFE, 0xBA, 0xBE],
     ),
     FileSignature(
-      label: 'TrueType font',
+      englishLabel: 'TrueType font',
       extension: 'ttf',
       magic: [0x00, 0x01, 0x00, 0x00, 0x00],
     ),
     FileSignature(
-      label: 'OpenType font',
+      englishLabel: 'OpenType font',
       extension: 'otf',
       magic: [0x4F, 0x54, 0x54, 0x4F],
     ),
     FileSignature(
-      label: 'WOFF font',
+      englishLabel: 'WOFF font',
       extension: 'woff',
       magic: [0x77, 0x4F, 0x46, 0x46],
     ),
     FileSignature(
-      label: 'WOFF2 font',
+      englishLabel: 'WOFF2 font',
       extension: 'woff2',
       magic: [0x77, 0x4F, 0x46, 0x32],
     ),
     FileSignature(
-      label: 'Minecraft NBT (gzip)',
+      englishLabel: 'Minecraft NBT (gzip)',
       extension: 'nbt',
       magic: [0x1F, 0x8B, 0x08],
       extras: ['schem', 'litematic', 'schematic'],
     ),
     FileSignature(
-      label: 'luma recovery recipe',
+      englishLabel: 'luma recovery recipe',
       extension: 'lumafix',
       magic: [0x7B, 0x0A, 0x20, 0x20, 0x22, 0x6C, 0x75, 0x6D, 0x61, 0x66],
     ),

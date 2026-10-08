@@ -6,5 +6,27 @@
   "icon": "rocket_launch",
   "category": "Games",
   "details": "Land on a procedurally generated planet with 3 colonists, a small battery, a solar panel and basic materials. Expand your base tile by tile: solar, wind, geothermal and nuclear power; oxygen generators, water extractors and recyclers; greenhouses and hydroponic farms; mining and crystal rigs; labs, medical bays and living quarters.\n\nColonists have five skills (engineering, science, farming, medicine, mining) that grow with experience and boost matching production, plus five needs (hunger, oxygen, sleep, happiness, health) you need to keep balanced.\n\nUnlock a 10-tech research tree across Energy, Biology, Engineering, Robotics and Space, automate production with drone bays, and trade surplus crystal with Earth via an orbital trade beacon. Watch out for dust storms, solar flares, meteor strikes, equipment breakdowns and colonist illness — pause or fast-forward time (1x/2x/4x) as needed.",
-  "screenshots": []
+  "screenshots": [],
+  "i18n": {
+    "nl": {
+      "name": "Ruimtekolonie",
+      "description": "Start een klein stadje op een verre planeet. Hou de lichten aan, verbouw voedsel, zorg voor lucht en water, en hou stand als er meteorieten komen.",
+      "details": "Land op een procedureel gegenereerde planeet met 3 kolonisten, een kleine batterij, een zonnepaneel en basismaterialen. Breid je basis uit tegel voor tegel: zonne-, wind-, geothermische en kernenergie; zuurstofgeneratoren, waterwinners en recyclers; kassen en hydroponische boerderijen; mijn- en kristalinstallaties; laboratoria, medische posten en verblijven.\n\nKolonisten hebben vijf vaardigheden (techniek, wetenschap, landbouw, geneeskunde, mijnbouw) die groeien met ervaring en de bijbehorende productie verhogen, plus vijf behoeften (honger, zuurstof, slaap, geluk, gezondheid) die je in evenwicht moet houden.\n\nOntgrendel een technologieboom van 10 technieken verdeeld over Energie, Biologie, Techniek, Robotica en Ruimte, automatiseer de productie met dronehangars en verhandel overschot aan kristallen met de Aarde via een orbitale handelsbaken. Let op stofstormen, zonnevlammen, meteorietinslagen, storingen aan apparatuur en ziekte bij kolonisten — pauzeer of versnel de tijd (1x/2x/4x) naar behoefte."
+    },
+    "fr": {
+      "name": "Colonie spatiale",
+      "description": "Fondez une petite ville sur une planète lointaine. Gardez la lumière allumée, cultivez de la nourriture, veillez sur l'air et l'eau, et tenez bon quand les météorites arrivent.",
+      "details": "Atterrissez sur une planète générée procéduralement avec 3 colons, une petite batterie, un panneau solaire et des matériaux de base. Étendez votre base case par case : énergie solaire, éolienne, géothermique et nucléaire ; générateurs d'oxygène, extracteurs d'eau et recycleurs ; serres et fermes hydroponiques ; installations minières et de cristaux ; laboratoires, infirmeries et logements.\n\nLes colons ont cinq compétences (ingénierie, science, agriculture, médecine, minage) qui progressent avec l'expérience et renforcent la production correspondante, ainsi que cinq besoins (faim, oxygène, sommeil, bonheur, santé) à maintenir en équilibre.\n\nDébloquez un arbre de recherche de 10 technologies réparti entre Énergie, Biologie, Ingénierie, Robotique et Espace, automatisez la production avec des baies de drones et échangez vos surplus de cristaux avec la Terre grâce à une balise de commerce orbitale. Surveillez les tempêtes de poussière, les éruptions solaires, les impacts de météorites, les pannes d'équipement et les maladies des colons — mettez le temps en pause ou accélérez-le (1x/2x/4x) selon vos besoins."
+    },
+    "es": {
+      "name": "Colonia espacial",
+      "description": "Funda un pequeño pueblo en un planeta lejano. Mantén las luces encendidas, cultiva comida, cuida el aire y el agua, y aguanta cuando lleguen los meteoritos.",
+      "details": "Aterriza en un planeta generado de forma procedural con 3 colonos, una pequeña batería, un panel solar y materiales básicos. Amplía tu base casilla a casilla: energía solar, eólica, geotérmica y nuclear; generadores de oxígeno, extractores de agua y recicladores; invernaderos y granjas hidropónicas; minas y equipos de cristal; laboratorios, bahías médicas y zonas de vivienda.\n\nLos colonos tienen cinco habilidades (ingeniería, ciencia, agricultura, medicina, minería) que crecen con la experiencia y potencian la producción correspondiente, además de cinco necesidades (hambre, oxígeno, sueño, felicidad, salud) que debes mantener equilibradas.\n\nDesbloquea un árbol tecnológico de 10 tecnologías en Energía, Biología, Ingeniería, Robótica y Espacio, automatiza la producción con bahías de drones e intercambia el excedente de cristal con la Tierra mediante una baliza de comercio orbital. Ojo con las tormentas de polvo, las llamaradas solares, los impactos de meteoritos, las averías del equipo y las enfermedades de los colonos: pausa o acelera el tiempo (1x/2x/4x) según lo necesites."
+    },
+    "zh": {
+      "name": "太空殖民地",
+      "description": "在遥远的星球上建立一座小镇。保持供电，种植食物，照看空气和水，并在流星来袭时坚持住。",
+      "details": "降落在一颗程序生成的星球上，开局有 3 名殖民者、一块小型电池、一块太阳能板和基础材料。逐格扩建你的基地：太阳能、风能、地热能和核能发电；制氧机、水提取器和循环装置；温室和水培农场；采矿和晶体设备；实验室、医疗舱和生活区。\n\n殖民者有五项技能（工程、科学、农业、医学、采矿），会随经验成长并提升对应的生产效率，另有五项需求（饥饿、氧气、睡眠、幸福感、健康）需要你保持平衡。\n\n解锁横跨能源、生物、工程、机器人和太空的 10 项科技研究树，用无人机舱实现生产自动化，并通过轨道贸易信标与地球交易多余的晶体。注意沙尘暴、太阳耀斑、流星撞击、设备故障和殖民者生病——可根据需要暂停或加速时间（1x/2x/4x）。"
+    }
+  }
 }

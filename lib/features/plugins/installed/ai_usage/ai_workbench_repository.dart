@@ -4,37 +4,29 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
 import 'ai_workbench_models.dart';
 
 /// The coding agents an [AiAgentDefinition] can be installed into, each with
 /// its own on-disk format and project location.
 enum AiAgentTarget {
-  codex(
-    label: 'Codex',
-    fileLabel: 'SKILL.md',
-    projectDirectory: ['.agents', 'skills'],
-  ),
-  claudeCode(
-    label: 'Claude Code',
-    fileLabel: 'subagent',
-    projectDirectory: ['.claude', 'agents'],
-  ),
-  opencode(
-    label: 'opencode',
-    fileLabel: 'agent',
-    projectDirectory: ['.opencode', 'agents'],
-  );
+  codex(label: 'Codex', projectDirectory: ['.agents', 'skills']),
+  claudeCode(label: 'Claude Code', projectDirectory: ['.claude', 'agents']),
+  opencode(label: 'opencode', projectDirectory: ['.opencode', 'agents']);
 
   const AiAgentTarget({
     required this.label,
-    required this.fileLabel,
     required this.projectDirectory,
   });
 
   final String label;
 
   /// What the exported file is called in that tool's own docs.
-  final String fileLabel;
+  String get fileLabel => switch (this) {
+    AiAgentTarget.codex => 'SKILL.md',
+    AiAgentTarget.claudeCode => currentL.aiAgentTargetFileSubagent,
+    AiAgentTarget.opencode => currentL.aiAgentTargetFileAgent,
+  };
 
   /// Where the tool looks for project-level definitions, relative to the
   /// project root. Codex skills get a folder per skill; Claude Code and
@@ -167,7 +159,7 @@ class AiWorkbenchRepository extends ChangeNotifier {
         : _markdownEntries.where((entry) => entry.id == id).firstOrNull;
     final entry = AiMarkdownEntry(
       id: id ?? now.microsecondsSinceEpoch.toString(),
-      title: title.trim().isEmpty ? 'Untitled note' : title.trim(),
+      title: title.trim().isEmpty ? currentL.aiUsageUntitledNote : title.trim(),
       body: body,
       tags: tags,
       createdAt: old?.createdAt ?? now,
@@ -201,7 +193,7 @@ class AiWorkbenchRepository extends ChangeNotifier {
     final now = DateTime.now();
     final agent = AiAgentDefinition(
       id: id ?? now.microsecondsSinceEpoch.toString(),
-      name: name.trim().isEmpty ? 'Untitled agent' : name.trim(),
+      name: name.trim().isEmpty ? currentL.aiUsageUntitledAgent : name.trim(),
       description: description.trim(),
       instructions: instructions.trim(),
       outputFormat: outputFormat.trim(),

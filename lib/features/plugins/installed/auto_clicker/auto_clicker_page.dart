@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'auto_clicker_repository.dart';
 import 'auto_clicker_scope.dart';
@@ -98,9 +99,10 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
       context: context,
       builder: (dialogContext) {
         final luma = dialogContext.luma;
+        final t = L.of(dialogContext);
         return AlertDialog(
           backgroundColor: luma.surface,
-          title: Text('Press a new hotkey',
+          title: Text(t.autoClickerPressNewHotkey,
               style: TextStyle(color: luma.textPrimary, fontSize: 16)),
           content: SizedBox(
             width: lumaDialogWidth(dialogContext, 260),
@@ -112,11 +114,11 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
+              child: Text(t.commonCancel),
             ),
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Save'),
+              child: Text(t.commonSave),
             ),
           ],
         );
@@ -131,13 +133,13 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final repo = AutoClickerScope.of(context);
+    final t = L.of(context);
 
     if (!repo.supported) {
-      return const LumaEmptyState(
+      return LumaEmptyState(
         icon: Icons.desktop_windows_outlined,
-        title: 'Windows only',
-        subtitle:
-            'Auto Clicker simulates real mouse clicks, which luma can only do in the Windows desktop app.',
+        title: t.audioToolsWindowsOnly,
+        subtitle: t.autoClickerWindowsOnlyBody,
       );
     }
 
@@ -184,6 +186,7 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
   }
 
   Widget _statusCard(LumaPalette luma, AutoClickerRepository repo) {
+    final t = L.of(context);
     final running = repo.isRunning;
     final blocked = !repo.clickAtCursor && repo.fixedPoint == null;
     return LumaCard(
@@ -202,7 +205,7 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      running ? 'Clicking…' : 'Stopped',
+                      running ? t.autoClickerClicking : t.autoClickerStopped,
                       style: TextStyle(
                         color: luma.textPrimary,
                         fontSize: 16,
@@ -212,8 +215,8 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
                     const SizedBox(height: 2),
                     Text(
                       running
-                          ? '${repo.clicksDone} click${repo.clicksDone == 1 ? '' : 's'} so far'
-                          : 'Start it, or press ${repo.hotKey.debugName} from anywhere',
+                          ? t.autoClickerClicksSoFar(repo.clicksDone)
+                          : t.autoClickerStartHint(repo.hotKey.debugName),
                       style: TextStyle(color: luma.textMuted, fontSize: 13),
                     ),
                   ],
@@ -224,19 +227,19 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
           const SizedBox(height: 16),
           running
               ? LumaGhostButton(
-                  label: 'Stop clicking',
+                  label: t.autoClickerStopClicking,
                   icon: Icons.stop_rounded,
                   onTap: repo.stop,
                 )
               : LumaPrimaryButton(
-                  label: 'Start clicking',
+                  label: t.autoClickerStartClicking,
                   icon: Icons.play_arrow_rounded,
                   onTap: blocked ? null : repo.start,
                 ),
           if (!running && blocked) ...[
             const SizedBox(height: 10),
             Text(
-              'Pick a fixed location below before starting.',
+              t.autoClickerPickFixedFirst,
               style: TextStyle(color: luma.textMuted, fontSize: 12),
             ),
           ],
@@ -261,41 +264,53 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
   }
 
   Widget _intervalCard(LumaPalette luma, AutoClickerRepository repo) {
+    final t = L.of(context);
     final offset = repo.randomOffsetMs;
     final lowerBound = repo.intervalMs > offset ? repo.intervalMs - offset : 1;
     final help = offset == 0
-        ? 'Adds ± randomness to each click delay. Leave 0 for exact timing.'
-        : 'Each click fires between $lowerBound and ${repo.intervalMs + offset} ms (clamped to ≥ 1 ms).';
+        ? t.autoClickerRandomHelpExact
+        : t.autoClickerRandomHelpRange(
+            '$lowerBound',
+            '${repo.intervalMs + offset}',
+          );
     return LumaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _sectionLabel(luma, 'Click every'),
+          _sectionLabel(luma, t.autoClickerClickEvery),
           Row(
             children: [
               Expanded(
                 child: _intervalField(luma,
-                    controller: _hoursCtrl, label: 'Hours', repo: repo),
+                    controller: _hoursCtrl,
+                    label: t.autoClickerHours,
+                    repo: repo),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: _intervalField(luma,
-                    controller: _minutesCtrl, label: 'Minutes', repo: repo),
+                    controller: _minutesCtrl,
+                    label: t.autoClickerMinutes,
+                    repo: repo),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: _intervalField(luma,
-                    controller: _secondsCtrl, label: 'Seconds', repo: repo),
+                    controller: _secondsCtrl,
+                    label: t.autoClickerSeconds,
+                    repo: repo),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: _intervalField(luma,
-                    controller: _millisCtrl, label: 'Millis', repo: repo),
+                    controller: _millisCtrl,
+                    label: t.autoClickerMillis,
+                    repo: repo),
               ),
             ],
           ),
           const SizedBox(height: 18),
-          _sectionLabel(luma, 'Random offset'),
+          _sectionLabel(luma, t.autoClickerRandomOffset),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -313,7 +328,7 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
                 ),
               ),
               const SizedBox(width: 10),
-              Text('milliseconds',
+              Text(t.autoClickerMilliseconds,
                   style: TextStyle(color: luma.textSecondary, fontSize: 13)),
             ],
           ),
@@ -352,20 +367,21 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
   }
 
   Widget _clickCard(LumaPalette luma, AutoClickerRepository repo) {
+    final t = L.of(context);
     return LumaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _sectionLabel(luma, 'Mouse button'),
+          _sectionLabel(luma, t.autoClickerMouseButton),
           LumaSegmentedTabs(
-            tabs: const ['Left', 'Middle', 'Right'],
+            tabs: [t.autoClickerLeft, t.autoClickerMiddle, t.autoClickerRight],
             selectedIndex: ClickButton.values.indexOf(repo.button),
             onSelect: (i) => repo.setButton(ClickButton.values[i]),
           ),
           const SizedBox(height: 18),
-          _sectionLabel(luma, 'Click type'),
+          _sectionLabel(luma, t.autoClickerClickType),
           LumaSegmentedTabs(
-            tabs: const ['Single', 'Double'],
+            tabs: [t.autoClickerSingle, t.autoClickerDouble],
             selectedIndex: repo.doubleClick ? 1 : 0,
             onSelect: (i) => repo.setDoubleClick(i == 1),
           ),
@@ -375,14 +391,15 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
   }
 
   Widget _locationCard(LumaPalette luma, AutoClickerRepository repo) {
+    final t = L.of(context);
     final fixed = repo.fixedPoint;
     return LumaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _sectionLabel(luma, 'Click location'),
+          _sectionLabel(luma, t.autoClickerClickLocation),
           LumaSegmentedTabs(
-            tabs: const ['Current cursor', 'Fixed position'],
+            tabs: [t.autoClickerCurrentCursor, t.autoClickerFixedPosition],
             selectedIndex: repo.clickAtCursor ? 0 : 1,
             onSelect: (i) => repo.setClickAtCursor(i == 0),
           ),
@@ -393,16 +410,21 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
                 Expanded(
                   child: Text(
                     _pickCountdown > 0
-                        ? 'Hold your cursor over the target… $_pickCountdown'
+                        ? t.autoClickerHoldCursor(_pickCountdown)
                         : (fixed != null
-                            ? 'Target: ${fixed.x}, ${fixed.y}'
-                            : 'No position set yet'),
+                            ? t.autoClickerTarget(
+                                '${fixed.x}',
+                                '${fixed.y}',
+                              )
+                            : t.autoClickerNoPositionYet),
                     style: TextStyle(color: luma.textSecondary, fontSize: 13),
                   ),
                 ),
                 const SizedBox(width: 12),
                 LumaGhostButton(
-                  label: _pickCountdown > 0 ? 'Picking…' : 'Pick location',
+                  label: _pickCountdown > 0
+                      ? t.autoClickerPicking
+                      : t.autoClickerPickLocation,
                   icon: Icons.center_focus_strong_rounded,
                   onTap: _pickCountdown > 0 ? null : () => _pickLocation(repo),
                 ),
@@ -415,13 +437,14 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
   }
 
   Widget _repeatCard(LumaPalette luma, AutoClickerRepository repo) {
+    final t = L.of(context);
     return LumaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _sectionLabel(luma, 'Repeat'),
+          _sectionLabel(luma, t.autoClickerRepeat),
           LumaSegmentedTabs(
-            tabs: const ['Until stopped', 'Set amount'],
+            tabs: [t.autoClickerUntilStopped, t.autoClickerSetAmount],
             selectedIndex: repo.repeatMode == ClickRepeatMode.count ? 1 : 0,
             onSelect: (i) => repo.setRepeatMode(
               i == 1 ? ClickRepeatMode.count : ClickRepeatMode.untilStopped,
@@ -445,7 +468,7 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Text('clicks total',
+                Text(t.autoClickerClicksTotal,
                     style: TextStyle(color: luma.textSecondary, fontSize: 13)),
               ],
             ),
@@ -456,6 +479,7 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
   }
 
   Widget _hotKeyCard(LumaPalette luma, AutoClickerRepository repo) {
+    final t = L.of(context);
     return LumaCard(
       child: Row(
         children: [
@@ -463,13 +487,13 @@ class _AutoClickerPageState extends State<AutoClickerPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _sectionLabel(luma, 'Start/stop hotkey'),
+                _sectionLabel(luma, t.autoClickerHotkeyLabel),
                 HotKeyVirtualView(hotKey: repo.hotKey),
               ],
             ),
           ),
           LumaGhostButton(
-            label: 'Change',
+            label: t.autoClickerChange,
             icon: Icons.keyboard_rounded,
             onTap: () => _rebindHotKey(repo),
           ),

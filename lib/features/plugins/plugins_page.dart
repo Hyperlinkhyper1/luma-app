@@ -7,6 +7,7 @@ import '../../l10n/app_localizations.dart';
 import '../../theme/luma_theme.dart';
 import 'plugin_catalog_service.dart';
 import 'plugin_icons.dart';
+import 'plugin_l10n.dart';
 import 'plugin_repository.dart';
 import 'plugin_scope.dart';
 
@@ -48,14 +49,24 @@ class _PluginsPageState extends State<PluginsPage> {
     super.dispose();
   }
 
-  List<PluginCatalogEntry> _applyFilters(List<PluginCatalogEntry> plugins) {
+  List<PluginCatalogEntry> _applyFilters(
+    L t,
+    List<PluginCatalogEntry> plugins,
+  ) {
+    final lang = t.localeName;
     var result = plugins.where((entry) {
       if (_query.isNotEmpty) {
         final q = _query.toLowerCase();
         final matches =
             entry.name.toLowerCase().contains(q) ||
+            entry.nameIn(lang).toLowerCase().contains(q) ||
             entry.description.toLowerCase().contains(q) ||
-            entry.tags.any((t) => t.toLowerCase().contains(q));
+            entry.descriptionIn(lang).toLowerCase().contains(q) ||
+            entry.tags.any(
+              (tag) =>
+                  tag.toLowerCase().contains(q) ||
+                  pluginTagLabel(t, tag).toLowerCase().contains(q),
+            );
         if (!matches) return false;
       }
       if (_selectedTags.isNotEmpty &&
@@ -71,9 +82,9 @@ class _PluginsPageState extends State<PluginsPage> {
       case _SortMode.relevance:
         break;
       case _SortMode.nameAsc:
-        result.sort((a, b) => a.name.compareTo(b.name));
+        result.sort((a, b) => a.nameIn(lang).compareTo(b.nameIn(lang)));
       case _SortMode.nameDesc:
-        result.sort((a, b) => b.name.compareTo(a.name));
+        result.sort((a, b) => b.nameIn(lang).compareTo(a.nameIn(lang)));
     }
     return result;
   }
@@ -81,6 +92,7 @@ class _PluginsPageState extends State<PluginsPage> {
   @override
   Widget build(BuildContext context) {
     final repo = PluginScope.of(context);
+    final t = L.of(context);
 
     return StreamBuilder<List<InstalledPluginRecord>>(
       stream: repo.watchInstalled(),
@@ -105,10 +117,10 @@ class _PluginsPageState extends State<PluginsPage> {
             if (snap.hasError) {
               return LumaEmptyState(
                 icon: Icons.cloud_off_rounded,
-                title: "The plugin list wouldn't load",
-                subtitle: '${snap.error}',
+                title: t.marketplaceLoadFailed,
+                subtitle: t.marketplaceLoadFailedDetail,
                 action: LumaGhostButton(
-                  label: 'Retry',
+                  label: t.commonRetry,
                   icon: Icons.refresh_rounded,
                   onTap: () =>
                       setState(() => _catalog = _service.fetchCatalog()),
@@ -117,9 +129,9 @@ class _PluginsPageState extends State<PluginsPage> {
             }
             final allPlugins = snap.data ?? const [];
             if (allPlugins.isEmpty) {
-              return const LumaEmptyState(
+              return LumaEmptyState(
                 icon: Icons.extension_rounded,
-                title: 'No plugins available yet',
+                title: t.marketplaceEmpty,
               );
             }
 
@@ -127,7 +139,7 @@ class _PluginsPageState extends State<PluginsPage> {
               for (final p in allPlugins) ...p.tags,
             }.toList()..sort();
 
-            final plugins = _applyFilters(allPlugins);
+            final plugins = _applyFilters(t, allPlugins);
             final detailEntry = _detailEntry;
 
             return AnimatedSwitcher(
@@ -163,6 +175,7 @@ class _PluginsPageState extends State<PluginsPage> {
     required Map<String, InstalledPluginRecord> installedById,
     required PluginRepository repo,
   }) {
+    final t = L.of(context);
     // A single scrollable (instead of a pinned header Column next to a
     // separately-scrolling ListView) so the search/filter controls scroll
     // away with the tiles rather than clipping them behind a static bar.
@@ -194,7 +207,7 @@ class _PluginsPageState extends State<PluginsPage> {
                       onChanged: (v) => setState(() => _priceFilter = v),
                     ),
                     Text(
-                      '${plugins.length} plugin${plugins.length == 1 ? '' : 's'}',
+                      t.marketplaceCount(plugins.length),
                       style: TextStyle(
                         color: context.luma.textMuted,
                         fontSize: 12.5,
@@ -217,7 +230,7 @@ class _PluginsPageState extends State<PluginsPage> {
                       final chips = [
                         for (final tag in allTags)
                           _TagFilterChip(
-                            label: tag,
+                            label: pluginTagLabel(t, tag),
                             selected: _selectedTags.contains(tag),
                             onTap: () => setState(() {
                               if (!_selectedTags.remove(tag)) {
@@ -246,11 +259,11 @@ class _PluginsPageState extends State<PluginsPage> {
           ),
         ),
         if (plugins.isEmpty)
-          const SliverFillRemaining(
+          SliverFillRemaining(
             hasScrollBody: false,
             child: LumaEmptyState(
               icon: Icons.search_off_rounded,
-              title: 'Nothing matches those filters',
+              title: t.marketplaceNoMatches,
             ),
           )
         else
@@ -305,7 +318,7 @@ class _SearchField extends StatelessWidget {
               decoration: InputDecoration(
                 isDense: true,
                 border: InputBorder.none,
-                hintText: 'Look for a plugin...',
+                hintText: L.of(context).marketplaceSearchHint,
                 hintStyle: TextStyle(color: luma.textMuted, fontSize: 14),
               ),
             ),
@@ -330,15 +343,16 @@ class _SortDropdown extends StatelessWidget {
   final _SortMode value;
   final ValueChanged<_SortMode> onChanged;
 
-  static const _labels = {
-    _SortMode.relevance: 'Relevance',
-    _SortMode.nameAsc: 'Name (A-Z)',
-    _SortMode.nameDesc: 'Name (Z-A)',
+  static String _label(L t, _SortMode mode) => switch (mode) {
+    _SortMode.relevance => t.marketplaceSortRelevance,
+    _SortMode.nameAsc => t.marketplaceSortNameAsc,
+    _SortMode.nameDesc => t.marketplaceSortNameDesc,
   };
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       height: 38,
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -364,10 +378,10 @@ class _SortDropdown extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
           items: [
-            for (final entry in _labels.entries)
+            for (final mode in _SortMode.values)
               DropdownMenuItem(
-                value: entry.key,
-                child: Text('Sort by: ${entry.value}'),
+                value: mode,
+                child: Text(t.marketplaceSortBy(_label(t, mode))),
               ),
           ],
           onChanged: (v) {
@@ -385,15 +399,15 @@ class _PriceFilterPills extends StatelessWidget {
   final _PriceFilter value;
   final ValueChanged<_PriceFilter> onChanged;
 
-  static const _options = [
-    (_PriceFilter.all, 'All'),
-    (_PriceFilter.free, 'Free'),
-    (_PriceFilter.paid, 'Paid'),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
+    final options = [
+      (_PriceFilter.all, t.commonAll),
+      (_PriceFilter.free, t.pluginTagFree),
+      (_PriceFilter.paid, t.pluginTagPaid),
+    ];
     return Container(
       height: 38,
       padding: const EdgeInsets.all(3),
@@ -405,7 +419,7 @@ class _PriceFilterPills extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          for (final (mode, label) in _options)
+          for (final (mode, label) in options)
             GestureDetector(
               onTap: () => onChanged(mode),
               child: AnimatedContainer(
@@ -532,9 +546,10 @@ class _PluginTileState extends State<_PluginTile> {
     final installed = record != null;
     final hasUpdate =
         installed && AppVersion.compare(entry.version, record.version) > 0;
+    final t = L.of(context);
 
     final openButton = LumaGhostButton(
-      label: 'Open',
+      label: t.commonOpen,
       icon: Icons.open_in_new_rounded,
       onTap: widget.onOpen,
     );
@@ -556,7 +571,7 @@ class _PluginTileState extends State<_PluginTile> {
         : null;
 
     final deleteButton = Tooltip(
-      message: 'Remove plugin',
+      message: t.marketplaceRemovePlugin,
       child: IconButton(
         icon: Icon(
           Icons.delete_outline_rounded,
@@ -613,7 +628,7 @@ class _PluginTileState extends State<_PluginTile> {
                           runSpacing: 6,
                           children: [
                             Text(
-                              entry.name,
+                              entry.nameIn(t.localeName),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -623,22 +638,25 @@ class _PluginTileState extends State<_PluginTile> {
                               ),
                             ),
                             for (final tag in entry.tags)
-                              _CategoryChip(label: tag, luma: luma),
+                              _CategoryChip(
+                                label: pluginTagLabel(t, tag),
+                                luma: luma,
+                              ),
                             if (!entry.free)
-                              _CategoryChip(label: 'Paid', luma: luma),
+                              _CategoryChip(label: t.pluginTagPaid, luma: luma),
                             if (entry.requiresAccount)
                               _CategoryChip(
-                                  label: 'Account required', luma: luma),
+                                  label: t.commonAccountRequired, luma: luma),
                             if (hasUpdate)
                               _CategoryChip(
-                                label: 'Update available',
+                                label: t.marketplaceUpdateAvailable,
                                 luma: luma,
                               ),
                           ],
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          entry.description,
+                          entry.descriptionIn(t.localeName),
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -817,7 +835,10 @@ class _PluginActionButtonState extends State<_PluginActionButton>
             size: 18,
           ),
           const SizedBox(width: 8),
-          Text(isUpdate ? 'Update' : 'Download', style: textStyle),
+          Text(
+            isUpdate ? L.of(context).commonUpdate : L.of(context).commonDownload,
+            style: textStyle,
+          ),
         ],
       ),
       _ActionPhase.busy => Row(
@@ -832,7 +853,12 @@ class _PluginActionButtonState extends State<_PluginActionButton>
           else
             _DownloadingIcon(loop: _loop, color: luma.onAccent),
           const SizedBox(width: 8),
-          Text(isUpdate ? 'Updating…' : 'Downloading…', style: textStyle),
+          Text(
+            isUpdate
+                ? L.of(context).marketplaceUpdating
+                : L.of(context).marketplaceDownloading,
+            style: textStyle,
+          ),
         ],
       ),
       _ActionPhase.done => Row(
@@ -841,7 +867,12 @@ class _PluginActionButtonState extends State<_PluginActionButton>
         children: [
           Icon(Icons.check_circle_rounded, color: luma.onAccent, size: 18),
           const SizedBox(width: 8),
-          Text(isUpdate ? 'Updated' : 'Installed', style: textStyle),
+          Text(
+            isUpdate
+                ? L.of(context).marketplaceUpdated
+                : L.of(context).marketplaceInstalled,
+            style: textStyle,
+          ),
         ],
       ),
     };
@@ -1015,6 +1046,7 @@ class _PluginDetailViewState extends State<_PluginDetailView> {
     final installed = record != null;
     final hasUpdate =
         installed && AppVersion.compare(entry.version, record.version) > 0;
+    final t = L.of(context);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
@@ -1038,7 +1070,7 @@ class _PluginDetailViewState extends State<_PluginDetailView> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        'Back',
+                        t.commonBack,
                         style: TextStyle(color: luma.textMuted, fontSize: 13),
                       ),
                     ],
@@ -1050,7 +1082,7 @@ class _PluginDetailViewState extends State<_PluginDetailView> {
                 builder: (context, constraints) {
                   final narrow = constraints.maxWidth < 420;
                   final openOnly = LumaGhostButton(
-                    label: 'Open',
+                    label: t.commonOpen,
                     icon: Icons.open_in_new_rounded,
                     onTap: widget.onOpen,
                   );
@@ -1108,7 +1140,7 @@ class _PluginDetailViewState extends State<_PluginDetailView> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              entry.name,
+                              entry.nameIn(t.localeName),
                               style: TextStyle(
                                 color: luma.textPrimary,
                                 fontSize: narrow ? 20 : 24,
@@ -1121,12 +1153,19 @@ class _PluginDetailViewState extends State<_PluginDetailView> {
                               runSpacing: 8,
                               children: [
                                 for (final tag in entry.tags)
-                                  _CategoryChip(label: tag, luma: luma),
+                                  _CategoryChip(
+                                    label: pluginTagLabel(t, tag),
+                                    luma: luma,
+                                  ),
                                 if (!entry.free)
-                                  _CategoryChip(label: 'Paid', luma: luma),
+                                  _CategoryChip(
+                                    label: t.pluginTagPaid,
+                                    luma: luma,
+                                  ),
                                 if (entry.requiresAccount)
                                   _CategoryChip(
-                                      label: 'Account required', luma: luma),
+                                      label: t.commonAccountRequired,
+                                      luma: luma),
                                 _CategoryChip(
                                   label: hasUpdate
                                       ? 'v${record.version} → v${entry.version}'
@@ -1168,7 +1207,8 @@ class _PluginDetailViewState extends State<_PluginDetailView> {
               FutureBuilder<PluginManifest>(
                 future: _manifest,
                 builder: (context, snap) {
-                  final details = snap.data?.details ?? entry.description;
+                  final details = snap.data?.detailsIn(t.localeName) ??
+                      entry.descriptionIn(t.localeName);
                   final screenshots =
                       snap.data?.screenshots ?? const <String>[];
                   final paragraphs = details
@@ -1180,7 +1220,7 @@ class _PluginDetailViewState extends State<_PluginDetailView> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'About',
+                        t.marketplaceAbout,
                         style: TextStyle(
                           color: luma.textPrimary,
                           fontSize: 15,
@@ -1214,7 +1254,7 @@ class _PluginDetailViewState extends State<_PluginDetailView> {
                       if (screenshots.isNotEmpty) ...[
                         const SizedBox(height: 20),
                         Text(
-                          'Screenshots',
+                          t.marketplaceScreenshots,
                           style: TextStyle(
                             color: luma.textPrimary,
                             fontSize: 15,

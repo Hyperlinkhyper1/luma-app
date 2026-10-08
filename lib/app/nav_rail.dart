@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../account/plan.dart';
 import '../features/plugins/plugin_icons.dart';
+import '../features/plugins/plugin_l10n.dart';
 import '../features/plugins/plugin_repository.dart';
 import '../l10n/app_localizations.dart';
 import '../settings/settings_scope.dart';
@@ -238,7 +239,7 @@ class _NavRailState extends State<NavRail> {
       id: id,
       destination: NavDestination(
         icon: pluginIconFor(plugin.icon),
-        label: plugin.name,
+        label: pluginDisplayName(L.of(context), plugin.pluginId, plugin.name),
       ),
       selected: widget.selectedPluginId == pluginId,
       onTap: () => widget.onSelectPlugin(pluginId),

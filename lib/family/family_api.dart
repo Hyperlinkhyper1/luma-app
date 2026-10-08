@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../l10n/current_l.dart';
 import '../sync/server_access.dart';
 
 /// A member of a family, as seen from the server.
@@ -491,7 +492,7 @@ class FamilyApi {
       response.statusCode,
       decoded?['error'] as String? ?? 'http_${response.statusCode}',
       decoded?['message'] as String? ??
-          'Server error (${response.statusCode}).',
+          currentL.familyApiServerError('${response.statusCode}'),
     );
   }
 

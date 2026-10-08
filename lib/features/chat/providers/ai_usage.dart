@@ -1,3 +1,4 @@
+import '../../../l10n/current_l.dart';
 import 'ai_modes.dart';
 import 'ai_providers.dart';
 
@@ -6,12 +7,14 @@ import 'ai_providers.dart';
 /// have different capabilities (unlike Anthropic/OpenAI, which are each a
 /// single model here).
 class ModelUsageEntry {
-  const ModelUsageEntry(this.key, this.label);
+  const ModelUsageEntry(this.key, this._label);
 
   /// Matches what [modelUsageKeyFor] produces, and what's stored in
   /// `SettingsController.modelUsage`.
   final String key;
-  final String label;
+  final String Function() _label;
+
+  String get label => _label();
 
   String labelFor(Map<String, String> modeVersions) {
     if (!key.startsWith('google:')) return label;
@@ -20,13 +23,13 @@ class ModelUsageEntry {
   }
 }
 
-const List<ModelUsageEntry> kModelUsageEntries = [
-  ModelUsageEntry('google:normal', 'Luma Aurora 1.0'),
-  ModelUsageEntry('google:smarter', 'Luma Nebula 1.0'),
-  ModelUsageEntry('google:smartest', 'Luma Pulsar 1.0'),
-  ModelUsageEntry('local', 'Luma Assistant (on-device Qwen)'),
-  ModelUsageEntry('anthropic', 'Anthropic Claude'),
-  ModelUsageEntry('openai', 'OpenAI'),
+final List<ModelUsageEntry> kModelUsageEntries = [
+  ModelUsageEntry('google:normal', () => 'Luma Aurora 1.0'),
+  ModelUsageEntry('google:smarter', () => 'Luma Nebula 1.0'),
+  ModelUsageEntry('google:smartest', () => 'Luma Pulsar 1.0'),
+  ModelUsageEntry('local', () => currentL.chatProviderLocalName),
+  ModelUsageEntry('anthropic', () => 'Anthropic Claude'),
+  ModelUsageEntry('openai', () => 'OpenAI'),
 ];
 
 /// The usage-tracking key for whichever model [providerId] (+ [mode], for

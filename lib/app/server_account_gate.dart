@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../settings/sync_section.dart';
 import '../sync/sync_api.dart';
 import '../sync/sync_scope.dart';
@@ -60,6 +61,7 @@ class _ServerAccountRequiredState extends State<ServerAccountRequired> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final sync = SyncScope.of(context);
 
     return ListenableBuilder(
@@ -91,22 +93,11 @@ class _ServerAccountRequiredState extends State<ServerAccountRequired> {
                 Text(
                   pending != null
                       ? byEmail
-                          ? 'Your account ($pending) still needs a thumbs-up. '
-                              'Enter the 6-digit code we emailed you '
-                              'to finish signing in — until then we leave the '
-                              'server completely alone.'
-                          : 'Your account ($pending) is waiting on the '
-                              'server owner to say yes. Nothing for you to do '
-                              'in the meantime — just sign in once they '
-                              'have; until then we leave the server '
-                              'completely alone.'
+                          ? t.serverGatePendingEmail(pending)
+                          : t.serverGatePendingApproval(pending)
                       : expired
-                          ? 'This account lost its thumbs-up. Once it '
-                              'is approved again, sign in and this turns '
-                              'back on.'
-                          : '${widget.description} Make an account under '
-                              'Settings → Sync & account, tap the link in '
-                              'the email you get, then sign in.',
+                          ? t.serverGateExpired
+                          : t.serverGateSetupHint(widget.description),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                       color: luma.textMuted, fontSize: 13, height: 1.5),
@@ -127,15 +118,15 @@ class _ServerAccountRequiredState extends State<ServerAccountRequired> {
                   children: [
                     LumaPrimaryButton(
                       label: pending != null
-                          ? (byEmail ? 'Enter code' : 'Sign in')
-                          : 'Set up account',
+                          ? (byEmail ? t.serverGateEnterCode : t.commonSignIn)
+                          : t.serverGateSetUpAccount,
                       icon: Icons.person_add_rounded,
                       onTap: () => showAccountSetupDialog(context, sync,
                           initialMode: pending != null ? 0 : 1),
                     ),
                     if (pending != null && byEmail)
                       LumaGhostButton(
-                        label: _resending ? 'Sending…' : 'Resend code',
+                        label: _resending ? t.loginSending : t.loginResendCode,
                         icon: Icons.mail_outline_rounded,
                         onTap: _resending ? null : () => _resend(sync),
                       ),

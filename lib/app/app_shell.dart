@@ -61,6 +61,7 @@ import '../features/plugins/installed/worth_counter/worth_counter_page.dart';
 import '../features/plugins/installed/media_downloader/media_downloader_page.dart';
 import '../features/plugins/installed/recipe_book/recipe_book_page.dart';
 import '../features/plugins/plugin_icons.dart';
+import '../features/plugins/plugin_l10n.dart';
 import '../features/plugins/plugin_repository.dart';
 import '../features/plugins/plugin_scope.dart';
 import '../features/plugins/plugins_page.dart';
@@ -130,6 +131,7 @@ class _AppShellState extends State<AppShell> {
   PetRepository? _petRepository;
   AutoClickerRepository? _autoClickerRepository;
   WindowController? _petWindow;
+  String? _lastPetLocaleName;
   bool _petWindowVisible = false;
   List<PetTarget> _latestPetTargets = const [];
   bool _openingPetWindow = false;
@@ -396,6 +398,7 @@ class _AppShellState extends State<AppShell> {
   ];
 
   ShellTabItem _tabItem(
+    L t,
     ShellTab tab,
     List<InstalledPluginRecord> installed,
     List<String> titles,
@@ -418,7 +421,9 @@ class _AppShellState extends State<AppShell> {
     ];
     return ShellTabItem(
       id: tab.id,
-      title: plugin?.name ?? titles[index],
+      title: plugin == null
+          ? titles[index]
+          : pluginDisplayName(t, plugin.pluginId, plugin.name),
       icon: plugin == null ? icons[index] : pluginIconFor(plugin.icon),
     );
   }
@@ -519,6 +524,19 @@ class _AppShellState extends State<AppShell> {
       builder: (context, snapshot) {
         final installed = snapshot.data ?? const <InstalledPluginRecord>[];
         _latestPetTargets = _petTargets(t, installed);
+        final petLocaleName = Localizations.localeOf(context).languageCode;
+        final localeChanged =
+            _lastPetLocaleName != null && _lastPetLocaleName != petLocaleName;
+        _lastPetLocaleName = petLocaleName;
+        final petWindow = _petWindow;
+        if (localeChanged && _petWindowVisible && petWindow != null) {
+          unawaited(
+            petWindow.invokeMethod<void>(
+              petWindowMethodRefresh,
+              _petWindowSnapshot(pet),
+            ),
+          );
+        }
         if (PluginHomeWidgets.supported && snapshot.hasData) {
           unawaited(
             PluginHomeWidgets.instance.sync(
@@ -550,7 +568,9 @@ class _AppShellState extends State<AppShell> {
         final activeTab = showingPlugin
             ? tabs.indexWhere((tab) => tab.id == _tabs.active.id)
             : -1;
-        final title = showingPlugin ? activePlugin.name : titles[index];
+        final title = showingPlugin
+            ? pluginDisplayName(t, activePlugin.pluginId, activePlugin.name)
+            : titles[index];
         final isPhone = shellSize.width < _phoneBreakpoint;
         // A phone-sized device in *either* orientation. Landscape widens the
         // window past the width breakpoint, so immersive plugins use the
@@ -647,6 +667,7 @@ class _AppShellState extends State<AppShell> {
                     tabs: [
                       for (final tab in tabs)
                         _tabItem(
+                          t,
                           tab,
                           installed,
                           titles,
@@ -804,7 +825,7 @@ class _AppShellState extends State<AppShell> {
       for (final plugin in installed)
         PetTarget(
           id: 'plugin:${plugin.pluginId}',
-          label: plugin.name,
+          label: pluginDisplayName(t, plugin.pluginId, plugin.name),
           icon: pluginIconFor(plugin.icon),
           iconName: plugin.icon,
           kind: PetTargetKind.plugin,
@@ -820,34 +841,39 @@ class _AppShellState extends State<AppShell> {
     StartScreen.finance => 2,
   };
 
-  /// Plugins that do nothing at all without the server, mapped to the copy
-  /// shown in their place until this device has an approved account. Kept
-  /// compiled in rather than read from the fetched registry — the registry's
-  /// own `requiresAccount` flag only drives the marketplace badge, and a
-  /// gate must not depend on a file downloaded at runtime.
-  static const serverOnlyPlugins =
-      <String, ({String title, String description, IconData icon})>{
-        'cloud-files': (
-          title: 'Cloud Files needs an approved account',
-          description:
-              'Cloud Files keeps your files on the luma server, '
-              'locked on this device first.',
-          icon: Icons.cloud_off_rounded,
-        ),
-        'secure-chat': (
-          title: 'Chat needs an approved account',
-          description:
-              'Chat passes locked messages between '
-              'accounts through the luma server.',
-          icon: Icons.lock_outline_rounded,
-        ),
-      };
+  /// Plugins that do nothing at all without the server; each shows
+  /// [_serverGate]'s copy in its place until this device has an approved
+  /// account. Kept compiled in rather than read from the fetched registry —
+  /// the registry's own `requiresAccount` flag only drives the marketplace
+  /// badge, and a gate must not depend on a file downloaded at runtime.
+  static const serverOnlyPlugins = {'cloud-files', 'secure-chat'};
+
+  /// The localised copy for a [serverOnlyPlugins] entry, or null for plugins
+  /// that work without the server.
+  static ({String title, String description, IconData icon})? _serverGate(
+    String pluginId,
+    L t,
+  ) => switch (pluginId) {
+    'cloud-files' => (
+      title: t.serverGateCloudFilesTitle,
+      description: t.serverGateCloudFilesDescription,
+      icon: Icons.cloud_off_rounded,
+    ),
+    'secure-chat' => (
+      title: t.serverGateChatTitle,
+      description: t.serverGateChatDescription,
+      icon: Icons.lock_outline_rounded,
+    ),
+    _ => null,
+  };
 
   /// Resolves a plugin id to its page, wrapping the server-only ones in a
   /// [ServerAccountGate] so they stay inert until an account is approved.
   static Widget _pluginPageFor(String pluginId, L t) {
     final page = _pluginBodyFor(pluginId, t);
-    final gate = serverOnlyPlugins[pluginId];
+    final gate = serverOnlyPlugins.contains(pluginId)
+        ? _serverGate(pluginId, t)
+        : null;
     if (gate == null) return page;
     return ServerAccountGate(
       title: gate.title,

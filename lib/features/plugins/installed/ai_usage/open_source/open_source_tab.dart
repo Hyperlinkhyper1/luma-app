@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../leaderboard/ai_catalog_scope.dart';
 import '../leaderboard/ai_leaderboard_format.dart';
@@ -54,6 +55,7 @@ class _OpenSourceTabState extends State<OpenSourceTab> {
     return ListenableBuilder(
       listenable: repo,
       builder: (context, _) {
+        final t = L.of(context);
         if (repo.loading) {
           return const Center(
             child: SizedBox(
@@ -66,14 +68,12 @@ class _OpenSourceTabState extends State<OpenSourceTab> {
 
         final models = _runnable(repo.catalog.models);
         if (models.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.all(24),
+          return Padding(
+            padding: const EdgeInsets.all(24),
             child: LumaEmptyState(
               icon: Icons.memory_outlined,
-              title: 'No open-weight models yet',
-              subtitle: 'This calculator sizes models whose weights you can '
-                  'download. None in the current catalogue have a known '
-                  'parameter count — refresh the leaderboard and try again.',
+              title: t.aiOsEmptyTitle,
+              subtitle: t.aiOsEmptySubtitle,
             ),
           );
         }
@@ -104,7 +104,7 @@ class _OpenSourceTabState extends State<OpenSourceTab> {
             _EstimateCard(model: model, estimate: estimate),
             const SizedBox(height: 16),
             Text(
-              'WHAT CAN RUN IT',
+              t.aiOsWhatCanRunIt,
               style: TextStyle(
                 color: luma.textMuted,
                 fontSize: 11,
@@ -126,10 +126,7 @@ class _OpenSourceTabState extends State<OpenSourceTab> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Weight memory is exact arithmetic. The context cost is '
-              'estimated from the parameter count — the catalogue does not '
-              'carry each model’s layer count or attention shape, so a model '
-              'with an unusual design will differ. Leave headroom.',
+              t.aiOsFootnote,
               style: TextStyle(color: luma.textMuted, fontSize: 11.5, height: 1.5),
             ),
           ],
@@ -165,12 +162,13 @@ class _Controls extends StatelessWidget {
   @override
   Widget build(BuildContext buildContext) {
     final luma = buildContext.luma;
+    final t = L.of(buildContext);
     return LumaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _Field(
-            label: 'Model',
+            label: t.aiOsFieldModel,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
@@ -207,8 +205,8 @@ class _Controls extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           _Field(
-            label: 'Quantization',
-            help: quantization.blurb,
+            label: t.aiOsFieldQuantization,
+            help: quantization.blurb(t),
             child: Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -224,7 +222,7 @@ class _Controls extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           _Field(
-            label: 'Context',
+            label: t.aiOsFieldContext,
             child: Wrap(
               spacing: 6,
               runSpacing: 6,
@@ -236,11 +234,10 @@ class _Controls extends StatelessWidget {
                     onTap: () => onContext(c),
                   ),
                 _Chip(
-                  label: '8-bit KV',
+                  label: t.aiOsKv8bit,
                   selected: kv8bit,
                   onTap: () => onKv8bit(!kv8bit),
-                  tooltip: 'Store the context cache at 8 bits instead of 16 — '
-                      'roughly halves what the context costs.',
+                  tooltip: t.aiOsKv8bitTooltip,
                 ),
               ],
             ),
@@ -339,9 +336,10 @@ class _QuantizationChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final fill = (quantization.bitsPerWeight / 16).clamp(0.0, 1.0);
     return Tooltip(
-      message: quantization.blurb,
+      message: quantization.blurb(t),
       child: Material(
         color: selected ? luma.accentSubtle : luma.background,
         borderRadius: BorderRadius.circular(10),
@@ -387,7 +385,7 @@ class _QuantizationChip extends StatelessWidget {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  '${quantization.bitsPerWeight.toStringAsFixed(1)} bit',
+                  t.aiOsBitsPerWeight(quantization.bitsPerWeight.toStringAsFixed(1)),
                   style: TextStyle(color: luma.textMuted, fontSize: 10.5),
                 ),
               ],
@@ -497,6 +495,7 @@ class _EstimateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return LumaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -516,7 +515,7 @@ class _EstimateCard extends StatelessWidget {
               const SizedBox(width: 5),
               Padding(
                 padding: const EdgeInsets.only(bottom: 3),
-                child: Text('GB of memory',
+                child: Text(t.aiOsGbOfMemory,
                     style: TextStyle(color: luma.textSecondary, fontSize: 14)),
               ),
               const Spacer(),
@@ -556,10 +555,11 @@ class _Breakdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final parts = <(String, double, Color)>[
-      ('Weights', estimate.weightsGb, luma.accent),
-      ('Context cache', estimate.kvCacheGb, const Color(0xFF6EE7B7)),
-      ('Runtime', estimate.overheadGb, const Color(0xFFFDE68A)),
+      (t.aiOsPartWeights, estimate.weightsGb, luma.accent),
+      (t.aiOsPartContextCache, estimate.kvCacheGb, const Color(0xFF6EE7B7)),
+      (t.aiOsPartRuntime, estimate.overheadGb, const Color(0xFFFDE68A)),
     ];
     final total = estimate.totalGb;
 
@@ -628,12 +628,15 @@ class _HardwareRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final (label, color, icon) = switch (verdict) {
-      FitVerdict.comfortable => ('Runs well', luma.success, Icons.check_circle_rounded),
-      FitVerdict.tight => ('Tight fit', const Color(0xFFFDE68A), Icons.warning_amber_rounded),
+      FitVerdict.comfortable =>
+        (t.aiOsVerdictRunsWell, luma.success, Icons.check_circle_rounded),
+      FitVerdict.tight =>
+        (t.aiOsVerdictTightFit, const Color(0xFFFDE68A), Icons.warning_amber_rounded),
       FitVerdict.spills =>
-        ('Spills to RAM', const Color(0xFFFCA5A5), Icons.swap_vert_rounded),
-      FitVerdict.wontRun => ('Won’t run', luma.textMuted, Icons.block_rounded),
+        (t.aiOsVerdictSpills, const Color(0xFFFCA5A5), Icons.swap_vert_rounded),
+      FitVerdict.wontRun => (t.aiOsVerdictWontRun, luma.textMuted, Icons.block_rounded),
     };
 
     return Padding(
@@ -663,9 +666,8 @@ class _HardwareRow extends StatelessWidget {
           const Spacer(),
           if (hardware.unified)
             Tooltip(
-              message: 'Shared CPU/GPU memory — this is the share a model can '
-                  'actually claim, not the machine’s total.',
-              child: Text('unified',
+              message: t.aiOsUnifiedTooltip,
+              child: Text(t.aiOsUnified,
                   style: TextStyle(color: luma.textMuted, fontSize: 11)),
             ),
         ],

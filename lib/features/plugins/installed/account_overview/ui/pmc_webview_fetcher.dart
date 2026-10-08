@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:webview_windows/webview_windows.dart' as win;
 
+import '../../../../../l10n/current_l.dart';
 import '../../_shared/windows_webview.dart';
 import '../pmc_extract.dart';
 
@@ -120,7 +121,7 @@ class _PmcWebViewFetcherState extends State<PmcWebViewFetcher> {
   Future<List<PmcPage>> _fetchPages(String member, int maxPages) async {
     final exec = _exec;
     if (exec == null) {
-      throw StateError('The embedded browser is not ready yet.');
+      throw StateError(currentL.pmcBrowserNotReady);
     }
 
     final pages = <PmcPage>[];
@@ -131,10 +132,7 @@ class _PmcWebViewFetcherState extends State<PmcWebViewFetcher> {
         // A page that never resolved is the end of what can be trusted, not
         // a reason to throw away the pages that did.
         if (pages.isEmpty) {
-          throw StateError(
-            'Planet Minecraft did not finish loading. Cloudflare may be '
-            'challenging this device.',
-          );
+          throw StateError(currentL.pmcDidNotFinishLoading);
         }
         break;
       }

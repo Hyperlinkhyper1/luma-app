@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../l10n/current_l.dart';
 import 'app_version.dart';
 
 /// A newer release found on GitHub, ready to be applied.
@@ -301,7 +302,7 @@ class UpdateService {
       }
       return installerPath;
     } catch (e, st) {
-      lastError = 'Download failed. Check the network and update source.';
+      lastError = currentL.updateDownloadFailed;
       await _logError('downloadInstaller', e, st);
       return null;
     }
@@ -323,9 +324,8 @@ class UpdateService {
         );
         if (result.type != ResultType.done) {
           lastError = result.type == ResultType.permissionDenied
-              ? 'Android blocked the install — allow "Install unknown apps" '
-                    'for luma in system settings, then try again.'
-              : 'Could not open the installer: ${result.message}';
+              ? currentL.updateAndroidBlocked
+              : currentL.updateOpenInstallerFailed(result.message);
           await _logError('launchInstaller', lastError!);
         }
         return result.type == ResultType.done;
@@ -364,7 +364,7 @@ class UpdateService {
       ], mode: ProcessStartMode.detached);
       return true;
     } catch (e, st) {
-      lastError = 'Could not start the installer: $e';
+      lastError = currentL.updateStartInstallerFailed('$e');
       await _logError('launchInstaller', e, st);
       return false;
     }
@@ -382,7 +382,7 @@ class UpdateService {
   ) async {
     final res = await _installerResponse(Uri.parse(url));
     if (res.statusCode != 200) {
-      lastError = 'Server returned HTTP ${res.statusCode} for the installer.';
+      lastError = currentL.updateServerHttpError('${res.statusCode}');
       await _logError('download', 'HTTP ${res.statusCode} for $url');
       return false;
     }

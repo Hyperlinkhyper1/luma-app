@@ -7,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 
+import '../../../../l10n/current_l.dart';
 import 'bingo_card.dart';
 
 class BingoCardExport {
@@ -51,7 +52,7 @@ class BingoCardExport {
       }
       final bytes = Uint8List.fromList(await document.save());
       final path = await FilePicker.saveFile(
-        dialogTitle: 'Save BINGO cards as PDF',
+        dialogTitle: currentL.bingoExportSaveTitle,
         fileName: 'bingo-cards-$count.pdf',
         type: FileType.custom,
         allowedExtensions: const ['pdf'],
@@ -70,6 +71,7 @@ class BingoCardExport {
   static Future<Uint8List> render(BingoCard card, int number) async {
     const width = 900.0;
     const height = 1060.0;
+    final t = currentL;
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     canvas.drawColor(Colors.white, BlendMode.src);
@@ -89,7 +91,7 @@ class BingoCardExport {
     );
     _text(
       canvas,
-      'CARD ${number.toString().padLeft(3, '0')}',
+      t.bingoExportCardNumber(number.toString().padLeft(3, '0')),
       450,
       195,
       28,
@@ -98,7 +100,7 @@ class BingoCardExport {
     );
     _text(
       canvas,
-      'Mark five across, down or diagonally.',
+      t.bingoExportInstructions,
       450,
       241,
       23,
@@ -133,7 +135,7 @@ class BingoCardExport {
         );
         _text(
           canvas,
-          isFree ? 'FREE' : '${card.columns[column][row]}',
+          isFree ? t.bingoExportFree : '${card.columns[column][row]}',
           x + cell / 2,
           y + 56,
           isFree ? 27 : 48,
@@ -156,7 +158,7 @@ class BingoCardExport {
     }
     _text(
       canvas,
-      'SMALL GAMES  /  BINGO',
+      t.bingoExportFooter,
       450,
       1002,
       20,
@@ -168,7 +170,7 @@ class BingoCardExport {
     picture.dispose();
     try {
       final data = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (data == null) throw StateError('Could not encode BINGO card.');
+      if (data == null) throw StateError(t.bingoExportEncodeFailed);
       return data.buffer.asUint8List();
     } finally {
       image.dispose();

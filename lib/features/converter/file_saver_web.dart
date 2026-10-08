@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:web/web.dart' as web;
 
+import '../../l10n/current_l.dart';
 import 'save_result.dart';
 
 /// Web implementation: wraps the bytes in a Blob and triggers a browser
@@ -28,7 +29,7 @@ Future<SaveResult> saveConvertedFile({
   anchor.remove();
   web.URL.revokeObjectURL(url);
 
-  return SaveResult(saved: true, summary: 'Downloaded $suggestedName');
+  return SaveResult(saved: true, summary: currentL.converterDownloaded(suggestedName));
 }
 
 Future<SaveResult> replaceOriginalFile({
@@ -36,5 +37,5 @@ Future<SaveResult> replaceOriginalFile({
   required String originalPath,
   required String extension,
 }) {
-  throw UnsupportedError('Replacing files is not supported on the web.');
+  throw UnsupportedError(currentL.converterReplaceUnsupportedWeb);
 }

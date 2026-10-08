@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/luma_theme.dart';
 import '../converter_widgets.dart';
 import 'file_corruptor_view.dart';
@@ -54,51 +55,48 @@ class _OtherHub extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return ToolScaffold(
       icon: Icons.category_outlined,
-      title: 'Other',
-      subtitle: 'Odd jobs that fit nowhere else',
+      title: t.commonOther,
+      subtitle: t.convOtherSubtitle,
       onBack: onBack,
       children: [
         ConverterToolGrid(
           tiles: [
             ConverterToolTile(
               icon: Icons.public_rounded,
-              title: 'Minecraft world converter',
-              subtitle: 'Java ↔ Bedrock · versions, entities, players & stats',
+              title: t.convOtherMinecraftWorld,
+              subtitle: t.convOtherMinecraftWorldSub,
               badge: 'MINECRAFT',
               onTap: () => onOpen(OtherTool.minecraftWorld),
             ),
             ConverterToolTile(
               icon: Icons.view_in_ar_outlined,
-              title: 'Minecraft schematics',
+              title: t.convOtherMinecraftSchematics,
               subtitle: 'SCHEM · LITEMATIC · SCHEMATIC · NBT · MCSTRUCTURE',
               badge: 'MINECRAFT',
               onTap: () => onOpen(OtherTool.minecraftSchematic),
             ),
             ConverterToolTile(
               icon: Icons.broken_image_outlined,
-              title: 'File corruptor',
-              subtitle: 'Break a file on purpose — fix it later, or not',
-              badge: 'DAMAGE',
+              title: t.convOtherCorruptor,
+              subtitle: t.convOtherCorruptorSub,
+              badge: t.convOtherBadgeDamage,
               onTap: () => onOpen(OtherTool.fileCorruptor),
             ),
             ConverterToolTile(
               icon: Icons.healing_outlined,
-              title: 'File fixer',
-              subtitle: 'Unbreak a file, or patch up a broken one',
-              badge: 'REPAIR',
+              title: t.convOtherFixer,
+              subtitle: t.convOtherFixerSub,
+              badge: t.convOtherBadgeRepair,
               onTap: () => onOpen(OtherTool.fileFixer),
             ),
           ],
         ),
         const SizedBox(height: 16),
         Text(
-          'The schematic tool converts any of the five block formats into any '
-          'other and shows the build in 3D before you save it. The corruptor '
-          'and fixer are a pair: corrupt with a recipe and the fixer rebuilds '
-          'the original byte for byte, or point the fixer at any damaged file '
-          'and it rebuilds what structure it can.',
+          t.convOtherFooter,
           style: TextStyle(color: luma.textMuted, fontSize: 12.5),
         ),
       ],

@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 
+import '../../l10n/current_l.dart';
+
 /// The optimization knobs the downscaler exposes. Every field is a primitive so
 /// the whole object can be shipped to a background isolate via [compute].
 @immutable
@@ -134,8 +136,14 @@ class DownscalerService {
 
   /// Runs the pipeline and returns PNG bytes (the lossless intermediate). WebP
   /// output is produced by the caller by re-encoding these bytes with ffmpeg.
-  static Future<Uint8List> renderPng(Uint8List bytes, DownscaleParams params) =>
-      compute(_render, _RenderRequest(bytes, params));
+  static Future<Uint8List> renderPng(
+    Uint8List bytes,
+    DownscaleParams params,
+  ) async {
+    final out = await compute(_render, _RenderRequest(bytes, params));
+    if (out == null) throw FormatException(currentL.downscalerCouldNotRead);
+    return out;
+  }
 }
 
 ImageProbe _probe(Uint8List bytes) {
@@ -182,12 +190,10 @@ bool _hasTransparentBorder(img.Image image) {
   return false;
 }
 
-Uint8List _render(_RenderRequest req) {
+Uint8List? _render(_RenderRequest req) {
   final p = req.params;
   var image = img.decodeImage(req.bytes);
-  if (image == null) {
-    throw const FormatException('Could not read this image.');
-  }
+  if (image == null) return null;
 
   // 1. Trim transparent borders (at full resolution for accuracy).
   if (p.trim && image.hasAlpha) {

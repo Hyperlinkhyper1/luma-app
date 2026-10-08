@@ -7,5 +7,27 @@
   "category": "Utility",
   "tags": ["Utility", "Finance"],
   "details": "Worth Counter is a clicker that counts money, not just numbers. Tap the + button in the bottom right to add a product — give it a name, say what one is worth in euros, and pick a colour so it stands out in the list.\n\nEvery product gets its own row with a big - and + either side of its count. Count a €2.00 product twenty times and its row shows €40.00; the bar pinned along the bottom adds every row together into one running total, so you always see what the whole count is worth.\n\nMade a mistake? Edit a product's name or price at any time, reset a single row's count, or reset every count at once while keeping the products themselves. Everything is stored locally and is still there next time you open the plugin.",
-  "screenshots": []
+  "screenshots": [],
+  "i18n": {
+    "nl": {
+      "name": "Waardeteller",
+      "description": "Voorraad aan het tellen? Voeg toe wat het waard is, tik op + en - terwijl je telt, en zie het totaal onderaan groeien.",
+      "details": "Worth Counter is een klikteller die geld telt, niet alleen getallen. Tik op de +-knop rechtsonder om een product toe te voegen — geef het een naam, vertel wat één stuk in euro's waard is en kies een kleur zodat het in de lijst opvalt.\n\nElk product krijgt een eigen rij met een grote - en + aan weerszijden van de telling. Tel twintig keer een product van €2,00 en de rij toont €40,00; de balk onderaan telt alle rijen samen tot één lopend totaal, zodat je altijd ziet wat de hele telling waard is.\n\nIets fout gedaan? Bewerk op elk moment de naam of prijs van een product, zet de telling van één rij terug op nul, of zet alle tellingen tegelijk terug op nul terwijl de producten zelf behouden blijven. Alles wordt lokaal opgeslagen en is er nog als je de plugin de volgende keer opent."
+    },
+    "fr": {
+      "name": "Compteur de valeur",
+      "description": "Vous comptez du stock ? Indiquez sa valeur, appuyez sur + et - en comptant, et voyez le total grimper en bas de l'écran.",
+      "details": "Worth Counter est un compteur qui compte de l'argent, pas seulement des nombres. Appuyez sur le bouton + en bas à droite pour ajouter un produit : donnez-lui un nom, indiquez sa valeur unitaire en euros et choisissez une couleur pour qu'il se distingue dans la liste.\n\nChaque produit dispose de sa propre ligne, avec un grand - et un + de part et d'autre de son compteur. Comptez vingt fois un produit à 2,00 € et sa ligne affiche 40,00 € ; la barre fixée en bas additionne toutes les lignes en un total cumulé, pour que vous voyiez toujours la valeur de l'ensemble du comptage.\n\nUne erreur ? Modifiez à tout moment le nom ou le prix d'un produit, remettez à zéro le compteur d'une seule ligne, ou remettez à zéro tous les compteurs à la fois tout en conservant les produits eux-mêmes. Tout est stocké localement et reste disponible à la prochaine ouverture du plugin."
+    },
+    "es": {
+      "name": "Contador de valor",
+      "description": "¿Contando existencias? Añade lo que valen, pulsa + y - mientras cuentas y mira cómo crece el total en la parte inferior.",
+      "details": "Worth Counter es un contador que cuenta dinero, no solo números. Pulsa el botón + de la esquina inferior derecha para añadir un producto: ponle un nombre, indica cuánto vale una unidad en euros y elige un color para que destaque en la lista.\n\nCada producto tiene su propia fila con un gran - y un + a cada lado de su cuenta. Cuenta veinte veces un producto de 2,00 € y su fila mostrará 40,00 €; la barra fijada abajo suma todas las filas en un total acumulado, así siempre ves cuánto vale el conteo completo.\n\n¿Te equivocaste? Edita en cualquier momento el nombre o el precio de un producto, reinicia el contador de una sola fila, o reinicia todos los contadores a la vez manteniendo los productos. Todo se guarda localmente y sigue ahí la próxima vez que abras el plugin."
+    },
+    "zh": {
+      "name": "价值计数器",
+      "description": "在盘点库存吗？添加每件商品的价值，计数时点击 + 和 -，并在底部看到总额不断增长。",
+      "details": "Worth Counter 是一个计算金钱而非仅仅数字的点击计数器。点击右下角的 + 按钮添加商品——输入名称、以欧元为单位填写单价，并选择一种颜色，使其在列表中更醒目。\n\n每件商品都有独立的一行，计数两侧各有一个大号 - 和 +。如果一件 2.00 € 的商品计了二十次，该行会显示 40.00 €；底部固定的栏会将所有行相加成一个实时总额，让你随时知道整个计数的价值。\n\n输错了？随时可以编辑商品的名称或价格，重置单行计数，或一次性重置所有计数同时保留商品本身。所有数据都保存在本地，下次打开插件时依然存在。"
+    }
+  }
 }

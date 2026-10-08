@@ -1,9 +1,14 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:webview_windows/webview_windows.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
+import '../_shared/scene_localization_bridge.dart';
+import '../_shared/scene_localizations.dart';
 import '../_shared/windows_webview.dart';
 
 /// City Planner (MetroPlan) is a self-contained HTML5/canvas simulation
@@ -19,17 +24,59 @@ class CityPlannerPage extends StatefulWidget {
 
 class _CityPlannerPageState extends State<CityPlannerPage> {
   InAppWebViewController? _controller;
+  WebviewController? _windowsController;
   bool _loading = true;
+  String? _locale;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locale = Localizations.localeOf(context).languageCode;
+    if (_locale != locale) {
+      _locale = locale;
+      if (!_loading) unawaited(_pushLocale());
+    }
+  }
+
+  Future<void> _pushLocale() async {
+    final t = L.of(context);
+    final locale = Localizations.localeOf(context).languageCode;
+    final strings = {
+      ...sceneKeyStrings(t, 'city_planner'),
+      ...sceneDynamicStrings(t, 'city_planner'),
+    };
+    final sourceStrings = sceneSourceStrings(t, 'city_planner');
+    if (Platform.isWindows) {
+      await SceneLocalizationBridge.sendWindows(
+        _windowsController,
+        language: locale,
+        strings: strings,
+        sourceStrings: sourceStrings,
+      );
+    } else {
+      await SceneLocalizationBridge.sendAndroid(
+        _controller,
+        language: locale,
+        strings: strings,
+        sourceStrings: sourceStrings,
+      );
+    }
+  }
+
+  void _loaded() {
+    unawaited(_pushLocale());
+    if (mounted) setState(() => _loading = false);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     if (Platform.isLinux) {
-      return const Center(
+      return Center(
         child: LumaEmptyState(
           icon: Icons.videogame_asset_off_outlined,
-          title: 'Not available on Linux',
-          subtitle: 'City Planner requires an embedded WebView that is '
-              'not yet supported on this platform.',
+          title: t.cityPlannerLinuxTitle,
+          subtitle: t.cityPlannerLinuxSubtitle,
         ),
       );
     }
@@ -41,9 +88,8 @@ class _CityPlannerPageState extends State<CityPlannerPage> {
                   fileUrl: Uri.file(
                     windowsAssetPath('assets/city_planner/index.html'),
                   ).toString(),
-                  onLoaded: () {
-                    if (mounted) setState(() => _loading = false);
-                  },
+                  onController: (controller) => _windowsController = controller,
+                  onLoaded: _loaded,
                 )
               : InAppWebView(
                   initialFile: 'assets/city_planner/index.html',
@@ -54,9 +100,7 @@ class _CityPlannerPageState extends State<CityPlannerPage> {
                     disableVerticalScroll: false,
                   ),
                   onWebViewCreated: (controller) => _controller = controller,
-                  onLoadStop: (controller, url) {
-                    if (mounted) setState(() => _loading = false);
-                  },
+                  onLoadStop: (controller, url) => _loaded(),
                 ),
         ),
         if (_loading) const Center(child: CircularProgressIndicator()),

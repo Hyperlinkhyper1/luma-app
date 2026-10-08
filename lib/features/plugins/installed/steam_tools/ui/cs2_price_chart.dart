@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../cs2_price_history.dart';
 import '../data/steam_database.dart';
@@ -88,6 +89,7 @@ class _Cs2PriceHistoryCardState extends State<Cs2PriceHistoryCard> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final series = buildCs2PriceSeries(
       widget.points,
       _range,
@@ -109,7 +111,7 @@ class _Cs2PriceHistoryCardState extends State<Cs2PriceHistoryCard> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Price history',
+                  t.cs2ChartPriceHistory,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 15,
@@ -122,7 +124,7 @@ class _Cs2PriceHistoryCardState extends State<Cs2PriceHistoryCard> {
           if (startingPriceCents != null) ...[
             const SizedBox(height: 12),
             LumaSegmentedTabs(
-              tabs: const ['Price', 'Gain & Loss'],
+              tabs: [t.commonPrice, t.cs2ChartGainLoss],
               selectedIndex: _gainLoss ? 1 : 0,
               onSelect: (i) => setState(() => _gainLoss = i == 1),
             ),
@@ -178,6 +180,7 @@ class _PriceChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
 
     final samples = series.samples;
@@ -192,7 +195,7 @@ class _PriceChart extends StatelessWidget {
     final maxY = high + pad;
 
     return Semantics(
-      label: _chartSummary(series),
+      label: _chartSummary(series, t),
       excludeSemantics: true,
       child: LineChart(
         duration:
@@ -355,6 +358,7 @@ class _GainLossChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
 
     final samples = series.samples;
@@ -378,7 +382,7 @@ class _GainLossChart extends StatelessWidget {
     final lineColor = gain ? luma.success : luma.danger;
 
     return Semantics(
-      label: _gainLossSummary(series),
+      label: _gainLossSummary(series, t),
       excludeSemantics: true,
       child: LineChart(
         duration:
@@ -530,17 +534,19 @@ class _GainLossChart extends StatelessWidget {
       };
 }
 
-String _gainLossSummary(Cs2GainLossSeries series) {
+String _gainLossSummary(Cs2GainLossSeries series, L t) {
   final low = series.lowestDeltaCents;
   final high = series.highestDeltaCents;
-  if (low == null || high == null) return 'No price readings available.';
+  if (low == null || high == null) return t.cs2ChartNoReadings;
   if (low == high) {
-    return 'Unchanged at ${_formatDelta(low, series.currency)} against the '
-        'starting price across the readings shown.';
+    return t.cs2ChartGainLossUnchanged(
+      _formatDelta(low, series.currency),
+    );
   }
-  return 'Between ${_formatDelta(low, series.currency)} and '
-      '${_formatDelta(high, series.currency)} against the starting price '
-      'across the readings shown.';
+  return t.cs2ChartGainLossBetween(
+    _formatDelta(low, series.currency),
+    _formatDelta(high, series.currency),
+  );
 }
 
 class _SingleGainLossReading extends StatelessWidget {
@@ -551,6 +557,7 @@ class _SingleGainLossReading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final delta = series.samples.first.deltaCents;
     final color = delta == 0
         ? luma.textSecondary
@@ -574,7 +581,7 @@ class _SingleGainLossReading extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'One reading so far — a trend needs at least two.',
+            t.cs2ChartOneReading,
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
         ],
@@ -591,14 +598,17 @@ class _GainLossSeriesSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final low = series.lowestDeltaCents;
     final high = series.highestDeltaCents;
     if (low == null || high == null) return const SizedBox.shrink();
 
     if (low == high) {
       return Text(
-        'Unchanged at ${_formatDelta(low, series.currency)} across '
-        '${series.samples.length} readings.',
+        t.cs2ChartUnchangedAcrossCount(
+          _formatDelta(low, series.currency),
+          series.samples.length,
+        ),
         style: TextStyle(color: luma.textSecondary, fontSize: 12),
       );
     }
@@ -608,12 +618,12 @@ class _GainLossSeriesSummary extends StatelessWidget {
       runSpacing: 12,
       children: [
         _Stat(
-          label: 'Best',
+          label: t.cs2ChartBest,
           value: _formatDelta(high, series.currency),
           color: high >= 0 ? luma.success : luma.danger,
         ),
         _Stat(
-          label: 'Worst',
+          label: t.cs2ChartWorst,
           value: _formatDelta(low, series.currency),
           color: low >= 0 ? luma.success : luma.danger,
         ),
@@ -622,16 +632,19 @@ class _GainLossSeriesSummary extends StatelessWidget {
   }
 }
 
-String _chartSummary(Cs2PriceSeries series) {
+String _chartSummary(Cs2PriceSeries series, L t) {
   final low = series.lowestCents;
   final high = series.highestCents;
-  if (low == null || high == null) return 'No price readings available.';
+  if (low == null || high == null) return t.cs2ChartNoReadings;
   if (series.isFlat) {
-    return 'Unchanged at ${formatSteamPrice(low, series.currency)} across '
-        'the readings shown.';
+    return t.cs2ChartUnchangedShown(
+      formatSteamPrice(low, series.currency),
+    );
   }
-  return 'Between ${formatSteamPrice(low, series.currency)} and '
-      '${formatSteamPrice(high, series.currency)} across the readings shown.';
+  return t.cs2ChartBetweenShown(
+    formatSteamPrice(low, series.currency),
+    formatSteamPrice(high, series.currency),
+  );
 }
 
 class _SeriesSummary extends StatelessWidget {
@@ -642,14 +655,17 @@ class _SeriesSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final low = series.lowestCents;
     final high = series.highestCents;
     if (low == null || high == null) return const SizedBox.shrink();
 
     if (series.isFlat) {
       return Text(
-        'Unchanged at ${formatSteamPrice(low, series.currency)} across '
-        '${series.samples.length} readings.',
+        t.cs2ChartUnchangedAcrossCount(
+          formatSteamPrice(low, series.currency),
+          series.samples.length,
+        ),
         style: TextStyle(color: luma.textSecondary, fontSize: 12),
       );
     }
@@ -659,12 +675,12 @@ class _SeriesSummary extends StatelessWidget {
       runSpacing: 12,
       children: [
         _Stat(
-          label: 'Lowest',
+          label: t.cs2ChartLowest,
           value: formatSteamPrice(low, series.currency),
           color: luma.success,
         ),
         _Stat(
-          label: 'Highest',
+          label: t.cs2ChartHighest,
           value: formatSteamPrice(high, series.currency),
           color: luma.textPrimary,
         ),
@@ -715,6 +731,7 @@ class _NotTracked extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -724,7 +741,7 @@ class _NotTracked extends StatelessWidget {
             Icon(Icons.timeline_rounded, size: 26, color: luma.textMuted),
             const SizedBox(height: 10),
             Text(
-              'No history yet',
+              t.cs2ChartNoHistory,
               style: TextStyle(
                 color: luma.textSecondary,
                 fontSize: 13,
@@ -733,8 +750,7 @@ class _NotTracked extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              "Steam's market publishes no history of its own — track this "
-              'listing and luma starts building one from here.',
+            t.cs2ChartNoHistoryHint,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: luma.textMuted,
@@ -745,7 +761,7 @@ class _NotTracked extends StatelessWidget {
             if (onTrack != null) ...[
               const SizedBox(height: 14),
               LumaPrimaryButton(
-                label: 'Track this listing',
+                label: t.cs2TrackListing,
                 icon: Icons.star_rounded,
                 onTap: onTrack,
               ),
@@ -765,6 +781,7 @@ class _SingleReading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final cents = series.samples.first.priceCents;
     return Center(
       child: Column(
@@ -783,7 +800,7 @@ class _SingleReading extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'One reading so far — a trend needs at least two.',
+            t.cs2ChartOneReading,
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
         ],
@@ -797,6 +814,7 @@ class _ChartEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Center(
       child: Column(
@@ -805,7 +823,7 @@ class _ChartEmpty extends StatelessWidget {
           Icon(Icons.timeline_rounded, size: 26, color: luma.textMuted),
           const SizedBox(height: 10),
           Text(
-            'No readings in this range',
+        t.cs2ChartNoReadingsInRange,
             style: TextStyle(
               color: luma.textSecondary,
               fontSize: 13,
@@ -814,7 +832,7 @@ class _ChartEmpty extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Try a wider range, or check the price again.',
+        t.cs2ChartTryWiderRange,
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
         ],

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../account/plan.dart';
 import '../../../../account/plan_selection_page.dart';
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../settings/settings_scope.dart';
 import '../../../../theme/luma_theme.dart';
 import 'grocery_list_detail_page.dart';
@@ -40,19 +41,17 @@ class _GroceriesPageState extends State<GroceriesPage> {
   @override
   Widget build(BuildContext context) {
     final settings = SettingsScope.of(context);
+    final t = L.of(context);
 
     if (!planAtLeast(settings.selectedPlanId, 'orbit')) {
       return Padding(
         padding: const EdgeInsets.all(24),
         child: LumaEmptyState(
           icon: Icons.auto_awesome_rounded,
-          title: 'Groceries List comes with Orbit and Nova',
-          subtitle:
-              'Search Jumbo, Albert Heijn, Hoogvliet and Lidl prices side by side, '
-              'and build shopping lists that split themselves by store '
-              'and aisle with running totals — included free with Orbit and Nova.',
+          title: t.groceriesGateTitle,
+          subtitle: t.groceriesGateSubtitle,
           action: LumaPrimaryButton(
-            label: 'Upgrade to ${planById('orbit').name}',
+            label: t.groceriesUpgradeTo(planById('orbit').name),
             icon: Icons.auto_awesome_rounded,
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const PlanSelectionPage()),
@@ -89,6 +88,7 @@ class _GroceriesOverview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final repo = GroceriesScope.of(context);
 
     return SingleChildScrollView(
@@ -103,7 +103,7 @@ class _GroceriesOverview extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      'Groceries',
+                      t.groceriesTitle,
                       style: TextStyle(
                         color: luma.textPrimary,
                         fontSize: 22,
@@ -112,7 +112,7 @@ class _GroceriesOverview extends StatelessWidget {
                     ),
                   ),
                   LumaPrimaryButton(
-                    label: 'New list',
+                    label: t.groceriesNewList,
                     icon: Icons.add_rounded,
                     onTap: () => _createList(context, repo),
                   ),
@@ -120,8 +120,7 @@ class _GroceriesOverview extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Search products across Jumbo, Albert Heijn, Hoogvliet and Lidl, and '
-                'build shopping lists split by store.',
+                t.groceriesOverviewSubtitle,
                 style: TextStyle(color: luma.textMuted, fontSize: 13),
               ),
               const SizedBox(height: 20),
@@ -133,11 +132,10 @@ class _GroceriesOverview extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 40),
                       child: LumaEmptyState(
                         icon: Icons.local_grocery_store_rounded,
-                        title: 'No lists yet',
-                        subtitle:
-                            'Create a list, then search products to add to it.',
+                        title: t.groceriesNoListsTitle,
+                        subtitle: t.groceriesNoListsSubtitle,
                         action: LumaPrimaryButton(
-                          label: 'Create your first list',
+                          label: t.groceriesCreateFirstList,
                           icon: Icons.add_rounded,
                           onTap: () => _createList(context, repo),
                         ),
@@ -174,7 +172,10 @@ class _GroceriesOverview extends StatelessWidget {
   }
 
   Future<void> _createList(BuildContext context, GroceriesRepository repo) async {
-    final name = await _promptForName(context, title: 'New list');
+    final name = await _promptForName(
+      context,
+      title: L.of(context).groceriesNewList,
+    );
     if (name == null || name.trim().isEmpty) return;
     final id = await repo.createList(name.trim());
     if (!context.mounted) return;
@@ -192,6 +193,7 @@ class _ListCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
@@ -228,11 +230,16 @@ class _ListCard extends StatelessWidget {
                       }
                     },
                     itemBuilder: (context) => [
-                      _menuItem('rename', Icons.edit_rounded, 'Rename', luma),
+                      _menuItem(
+                        'rename',
+                        Icons.edit_rounded,
+                        t.commonRename,
+                        luma,
+                      ),
                       _menuItem(
                         'delete',
                         Icons.delete_outline_rounded,
-                        'Delete',
+                        t.commonDelete,
                         luma,
                         danger: true,
                       ),
@@ -242,7 +249,7 @@ class _ListCard extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                '${list.itemCount} item${list.itemCount == 1 ? '' : 's'}',
+                t.groceriesItemCount(list.itemCount),
                 style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
               const SizedBox(height: 2),
@@ -262,32 +269,36 @@ class _ListCard extends StatelessWidget {
   }
 
   Future<void> _rename(BuildContext context) async {
-    final name =
-        await _promptForName(context, title: 'Rename list', initial: list.name);
+    final name = await _promptForName(
+      context,
+      title: L.of(context).groceriesRenameList,
+      initial: list.name,
+    );
     if (name == null || name.trim().isEmpty) return;
     await repo.renameList(list.id, name.trim());
   }
 
   Future<void> _confirmDelete(BuildContext context) async {
     final luma = context.luma;
+    final t = L.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: luma.surface,
-        title: Text('Delete "${list.name}"?',
+        title: Text(t.groceriesDeleteListTitle(list.name),
             style: TextStyle(color: luma.textPrimary)),
         content: Text(
-          'This removes the list and everything on it. This can\'t be undone.',
+          t.groceriesDeleteListBody,
           style: TextStyle(color: luma.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+            child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text('Delete', style: TextStyle(color: luma.danger)),
+            child: Text(t.commonDelete, style: TextStyle(color: luma.danger)),
           ),
         ],
       ),
@@ -315,6 +326,7 @@ Future<String?> _promptForName(BuildContext context,
     {required String title, String? initial}) {
   final controller = TextEditingController(text: initial);
   final luma = context.luma;
+  final t = L.of(context);
   return showDialog<String>(
     context: context,
     builder: (_) => AlertDialog(
@@ -326,7 +338,7 @@ Future<String?> _promptForName(BuildContext context,
         style: TextStyle(color: luma.textPrimary),
         decoration: InputDecoration(
           isDense: true,
-          hintText: 'List name',
+          hintText: t.groceriesListNameHint,
           hintStyle: TextStyle(color: luma.textMuted),
           filled: true,
           fillColor: luma.background,
@@ -346,11 +358,11 @@ Future<String?> _promptForName(BuildContext context,
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
         ),
         TextButton(
           onPressed: () => Navigator.pop(context, controller.text),
-          child: Text('Save', style: TextStyle(color: luma.accent)),
+          child: Text(t.commonSave, style: TextStyle(color: luma.accent)),
         ),
       ],
     ),

@@ -3,6 +3,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
+
 /// An IntelliJ-style startup splash with a luma (lunar) theme: a deep night-sky
 /// window with a star field, a glowing crescent moon, and the wordmark.
 ///
@@ -15,8 +17,8 @@ class SplashScreen extends StatefulWidget {
     required this.bootstrap,
     required this.onDone,
     this.accent = const Color(0xFFB49DF5),
-    this.version = 'Dev build',
-    this.edition = 'Free edition',
+    required this.version,
+    required this.edition,
   });
 
   /// Real startup work the splash is covering. The splash will not dismiss
@@ -87,6 +89,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return FadeTransition(
       opacity: _fade,
       child: RepaintBoundary(
@@ -156,7 +159,7 @@ class _SplashScreenState extends State<SplashScreen>
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'The utility app',
+                          t.splashTagline,
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.45),
                             fontSize: 12,
@@ -173,7 +176,7 @@ class _SplashScreenState extends State<SplashScreen>
                     right: (w - statusWidth) / 2,
                     bottom: math.max(48, h * 0.12),
                     child: Text(
-                      'Starting luma',
+                      t.splashStarting,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.7),

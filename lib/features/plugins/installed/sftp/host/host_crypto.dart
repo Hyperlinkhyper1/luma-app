@@ -8,6 +8,8 @@ import 'package:cryptography/cryptography.dart';
 
 import 'host_cipher_pool.dart';
 import 'host_protocol.dart';
+import 'host_error_localizer.dart';
+import '../../../../../l10n/current_l.dart';
 
 /// The security layer under the hosting protocol.
 ///
@@ -208,15 +210,13 @@ class HostSecureChannel {
   /// the counter and replay traffic.
   Future<Uint8List> open(Uint8List record) async {
     if (record.length < HostCipherPool.macLength) {
-      throw const HostProtocolException('Record too short to be authentic.');
+      throw HostProtocolException(currentL.sftpHostRecordTooShort);
     }
     final nonce = _nonce(_receiveNoncePrefix, _receiveCounter++);
     try {
       return await HostCipherPool.instance.open(_receiveKey, nonce, record);
     } catch (_) {
-      throw const HostProtocolException(
-        'A frame failed its authenticity check; the connection was closed.',
-      );
+      throw HostProtocolException(currentL.sftpHostFrameFailedAuth);
     }
   }
 
@@ -270,10 +270,10 @@ class HostHello {
     final epk = _decodeFixed(json['epk'], HostCrypto.publicKeyLength, 'key');
     return HostHello(
       version: (json['v'] as num?)?.toInt() ?? 0,
-      hostName: json['host']?.toString() ?? 'luma device',
+      hostName: json['host']?.toString() ?? currentL.sftpHostUnnamedDevice,
       salt: salt,
       publicKey: epk,
-      rootName: json['root']?.toString() ?? 'Shared',
+      rootName: json['root']?.toString() ?? currentL.sftpHostSharedFolderName,
       readOnly: json['ro'] == true,
     );
   }
@@ -306,7 +306,7 @@ class HostHandshake {
         'e': 'That device runs a different version of luma. Update both to '
             'the same version and try again.',
       });
-      throw const HostAuthException('The other device speaks a different version.');
+      throw HostAuthException(currentL.sftpHostOtherVersion);
     }
 
     final clientPublic =
@@ -330,8 +330,8 @@ class HostHandshake {
         'e': 'That pairing password is not the one this device is showing.',
         'auth': true,
       });
-      throw const HostAuthException(
-        'A device tried to connect with the wrong pairing password.',
+      throw HostAuthException(
+        currentL.sftpHostWrongPasswordAttempt,
         isAuthFailure: true,
       );
     }
@@ -362,15 +362,12 @@ class HostHandshake {
     // passwords from here, or already full — says so in place of a hello.
     if (helloJson['ok'] == false) {
       throw HostAuthException(
-        helloJson['e']?.toString() ?? 'That device refused the connection.',
+        localizeHostWireError(helloJson, fallback: currentL.sftpHostRefusedConnection),
       );
     }
     final hello = HostHello.fromJson(helloJson);
     if (hello.version != kHostProtocolVersion) {
-      throw const HostAuthException(
-        'That device runs a different version of luma. Update both to the '
-        'same version and try again.',
-      );
+      throw HostAuthException(currentL.sftpHostVersionMismatch);
     }
 
     final keyPair = await HostCrypto._x25519.newKeyPair();
@@ -395,9 +392,12 @@ class HostHandshake {
 
     final verdict = await readControl();
     if (verdict['ok'] != true) {
+      final authFailure = verdict['auth'] == true;
       throw HostAuthException(
-        verdict['e']?.toString() ?? 'That device refused the connection.',
-        isAuthFailure: verdict['auth'] == true,
+        authFailure
+            ? currentL.sftpHostWrongPassword
+            : localizeHostWireError(verdict, fallback: currentL.sftpHostRefusedConnection),
+        isAuthFailure: authFailure,
       );
     }
 
@@ -406,10 +406,7 @@ class HostHandshake {
     if (!_constantTimeEquals(serverProof, keys.serverProof)) {
       // The host could not prove it holds the password, so it is not the
       // device whose screen the user read the password off.
-      throw const HostAuthException(
-        'That device could not prove it is the one showing this pairing '
-        'password. Nothing was sent to it.',
-      );
+      throw HostAuthException(currentL.sftpHostCouldNotProve);
     }
 
     return (
@@ -581,22 +578,34 @@ String _sanitizeName(String? raw) {
   final cleaned = (raw ?? '')
       .replaceAll(RegExp(r'[\x00-\x1f\x7f]'), '')
       .trim();
-  if (cleaned.isEmpty) return 'A luma device';
+  if (cleaned.isEmpty) return currentL.sftpHostUnnamedDevice;
   return cleaned.length <= 40 ? cleaned : cleaned.substring(0, 40);
 }
 
+String _partName(String what) => switch (what) {
+      'salt' => currentL.sftpHostPartSalt,
+      'key' => currentL.sftpHostPartKey,
+      _ => currentL.sftpHostPartProof,
+    };
+
 Uint8List _decodeFixed(Object? value, int length, String what) {
   if (value is! String) {
-    throw HostProtocolException('The handshake was missing its $what.');
+    throw HostProtocolException(
+      currentL.sftpHostHandshakeMissing(_partName(what)),
+    );
   }
   final Uint8List bytes;
   try {
     bytes = base64Decode(value);
   } catch (_) {
-    throw HostProtocolException('The handshake $what was malformed.');
+    throw HostProtocolException(
+      currentL.sftpHostHandshakeMalformed(_partName(what)),
+    );
   }
   if (bytes.length != length) {
-    throw HostProtocolException('The handshake $what was the wrong size.');
+    throw HostProtocolException(
+      currentL.sftpHostHandshakeWrongSize(_partName(what)),
+    );
   }
   return bytes;
 }

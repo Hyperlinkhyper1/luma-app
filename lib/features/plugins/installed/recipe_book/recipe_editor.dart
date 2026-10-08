@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'recipe_models.dart';
 import 'recipe_book_controller.dart';
@@ -122,8 +123,8 @@ class _RecipeEditorScreenState extends State<_RecipeEditorScreen> {
     // requirement is visible rather than validating an off-screen field.
     if (_titleCtrl.text.trim().isEmpty) {
       setState(() => _section = 0);
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please give your recipe a title.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(L.of(context).recipeTitleRequired)));
       return;
     }
     setState(() => _saving = true);
@@ -187,6 +188,7 @@ class _RecipeEditorScreenState extends State<_RecipeEditorScreen> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Scaffold(
       backgroundColor: luma.background,
       appBar: AppBar(
@@ -195,7 +197,7 @@ class _RecipeEditorScreenState extends State<_RecipeEditorScreen> {
         titleSpacing: 0,
         iconTheme: IconThemeData(color: luma.textSecondary),
         title: Text(
-          _isEdit ? 'Edit recipe' : 'New recipe',
+          _isEdit ? t.recipeEditTitle : t.recipeNewTitle,
           style: TextStyle(
             color: luma.textPrimary,
             fontSize: 18,
@@ -216,7 +218,11 @@ class _RecipeEditorScreenState extends State<_RecipeEditorScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
                     child: LumaSegmentedTabs(
-                      tabs: const ['Details', 'Ingredients', 'Steps'],
+                      tabs: [
+                        t.commonDetails,
+                        t.recipeIngredients,
+                        t.recipeStepsTab,
+                      ],
                       selectedIndex: _section,
                       onSelect: (i) => setState(() => _section = i),
                     ),
@@ -235,7 +241,7 @@ class _RecipeEditorScreenState extends State<_RecipeEditorScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
                     child: LumaPrimaryButton(
-                      label: _isEdit ? 'Save changes' : 'Add recipe',
+                      label: _isEdit ? t.recipeSaveChanges : t.recipeAddRecipe,
                       icon: _isEdit ? Icons.check_rounded : Icons.add_rounded,
                       loading: _saving,
                       expand: true,
@@ -254,25 +260,26 @@ class _RecipeEditorScreenState extends State<_RecipeEditorScreen> {
   // ---- Sections -----------------------------------------------------------
 
   Widget _detailsSection(LumaPalette luma) {
+    final t = L.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _compactPhoto(luma),
         const SizedBox(height: 16),
-        const RecipeFieldLabel('Title'),
+        RecipeFieldLabel(t.commonTitle),
         const SizedBox(height: 6),
         RecipeTextField(
           controller: _titleCtrl,
-          hint: 'e.g. Spaghetti Carbonara',
+          hint: t.recipeTitleHint,
           validator: (v) =>
-              (v == null || v.trim().isEmpty) ? 'Required' : null,
+              (v == null || v.trim().isEmpty) ? t.commonRequired : null,
         ),
         const SizedBox(height: 14),
-        const RecipeFieldLabel('Description (optional)'),
+        RecipeFieldLabel(t.recipeDescriptionLabel),
         const SizedBox(height: 6),
         RecipeTextField(
           controller: _descCtrl,
-          hint: 'A short note about this recipe…',
+          hint: t.recipeDescriptionHint,
           maxLines: 2,
         ),
         const SizedBox(height: 14),
@@ -282,7 +289,7 @@ class _RecipeEditorScreenState extends State<_RecipeEditorScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const RecipeFieldLabel('Category'),
+                  RecipeFieldLabel(t.recipeCategoryField),
                   const SizedBox(height: 6),
                   _categoryDropdown(luma),
                 ],
@@ -293,7 +300,7 @@ class _RecipeEditorScreenState extends State<_RecipeEditorScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const RecipeFieldLabel('Servings'),
+                  RecipeFieldLabel(t.recipeServingsLabel),
                   const SizedBox(height: 6),
                   RecipeTextField(
                     controller: _servingsCtrl,
@@ -313,7 +320,7 @@ class _RecipeEditorScreenState extends State<_RecipeEditorScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const RecipeFieldLabel('Prep time (min)'),
+                  RecipeFieldLabel(t.recipePrepTimeLabel),
                   const SizedBox(height: 6),
                   RecipeTextField(
                     controller: _prepCtrl,
@@ -329,7 +336,7 @@ class _RecipeEditorScreenState extends State<_RecipeEditorScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const RecipeFieldLabel('Cook time (min)'),
+                  RecipeFieldLabel(t.recipeCookTimeLabel),
                   const SizedBox(height: 6),
                   RecipeTextField(
                     controller: _cookCtrl,
@@ -349,10 +356,12 @@ class _RecipeEditorScreenState extends State<_RecipeEditorScreen> {
   }
 
   Widget _ingredientsSection(LumaPalette luma) {
+    final t = L.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _sectionHeader(luma, 'Ingredients', Icons.format_list_bulleted_rounded),
+        _sectionHeader(
+            luma, t.recipeIngredients, Icons.format_list_bulleted_rounded),
         const SizedBox(height: 12),
         ..._ingredients.asMap().entries.map(
               (e) => _IngredientRowEditor(
@@ -365,17 +374,19 @@ class _RecipeEditorScreenState extends State<_RecipeEditorScreen> {
               ),
             ),
         const SizedBox(height: 6),
-        _addRowButton(luma, 'Add ingredient',
+        _addRowButton(luma, t.recipeAddIngredient,
             () => setState(() => _ingredients.add(_IngredientField.empty()))),
       ],
     );
   }
 
   Widget _stepsSection(LumaPalette luma) {
+    final t = L.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _sectionHeader(luma, 'Instructions', Icons.format_list_numbered_rounded),
+        _sectionHeader(
+            luma, t.recipeInstructions, Icons.format_list_numbered_rounded),
         const SizedBox(height: 12),
         ..._stepCtrls.asMap().entries.map(
               (e) => _StepRowEditor(
@@ -387,13 +398,14 @@ class _RecipeEditorScreenState extends State<_RecipeEditorScreen> {
               ),
             ),
         const SizedBox(height: 6),
-        _addRowButton(luma, 'Add step',
+        _addRowButton(luma, t.recipeAddStep,
             () => setState(() => _stepCtrls.add(TextEditingController()))),
       ],
     );
   }
 
   Widget _compactPhoto(LumaPalette luma) {
+    final t = L.of(context);
     final hasNew = _pickedPhoto != null;
     final hasExisting =
         !_removePhoto && !hasNew && (widget.existing?.photoPath != null);
@@ -427,16 +439,19 @@ class _RecipeEditorScreenState extends State<_RecipeEditorScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const RecipeFieldLabel('Photo (optional)'),
+              RecipeFieldLabel(t.recipePhotoOptional),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  _photoChip(luma, Icons.image_outlined,
-                      showsPhoto ? 'Replace' : 'Choose photo', _pickPhoto),
+                  _photoChip(
+                      luma,
+                      Icons.image_outlined,
+                      showsPhoto ? t.recipeReplacePhoto : t.recipeChoosePhoto,
+                      _pickPhoto),
                   if (showsPhoto)
-                    _photoChip(luma, Icons.delete_outline_rounded, 'Remove', () {
+                    _photoChip(luma, Icons.delete_outline_rounded, t.commonRemove, () {
                       setState(() {
                         _pickedPhoto = null;
                         _removePhoto = true;
@@ -482,6 +497,7 @@ class _RecipeEditorScreenState extends State<_RecipeEditorScreen> {
   }
 
   Widget _publicToggle(LumaPalette luma) {
+    final t = L.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -497,7 +513,7 @@ class _RecipeEditorScreenState extends State<_RecipeEditorScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Share to Public',
+                Text(t.recipeShareToPublic,
                     style: TextStyle(
                         color: luma.textPrimary,
                         fontSize: 14,
@@ -505,8 +521,8 @@ class _RecipeEditorScreenState extends State<_RecipeEditorScreen> {
                 const SizedBox(height: 2),
                 Text(
                   widget.controller.serverReady
-                      ? 'Publish so other luma users can find, rate and review it.'
-                      : 'Sign in under Settings → Sync to publish recipes.',
+                      ? t.recipeShareToPublicHint
+                      : t.recipeSignInToPublish,
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
               ],
@@ -526,6 +542,7 @@ class _RecipeEditorScreenState extends State<_RecipeEditorScreen> {
   }
 
   Widget _categoryDropdown(LumaPalette luma) {
+    final t = L.of(context);
     return Container(
       height: 44,
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -544,7 +561,7 @@ class _RecipeEditorScreenState extends State<_RecipeEditorScreen> {
           items: kRecipeCategories
               .map((c) => DropdownMenuItem(
                     value: c,
-                    child: Text(c,
+                    child: Text(localizedRecipeCategory(t, c),
                         style:
                             TextStyle(color: luma.textPrimary, fontSize: 14)),
                   ))
@@ -618,14 +635,15 @@ class _IngredientRowEditor extends StatelessWidget {
         children: [
           Expanded(
             flex: 5,
-            child: RecipeTextField(controller: field.name, hint: 'Ingredient'),
+            child: RecipeTextField(
+                controller: field.name, hint: L.of(context).recipeIngredientHint),
           ),
           const SizedBox(width: 8),
           Expanded(
             flex: 2,
             child: RecipeTextField(
               controller: field.amount,
-              hint: 'Amt',
+              hint: L.of(context).recipeAmountHint,
               inputType: const TextInputType.numberWithOptions(decimal: true),
             ),
           ),
@@ -674,7 +692,7 @@ class _UnitDropdown extends StatelessWidget {
           items: kRecipeUnits
               .map((u) => DropdownMenuItem(
                     value: u,
-                    child: Text(u.isEmpty ? 'Unit' : u,
+                    child: Text(localizedRecipeUnit(L.of(context), u),
                         style: TextStyle(
                             color: u.isEmpty ? luma.textMuted : luma.textPrimary,
                             fontSize: 13)),
@@ -727,7 +745,7 @@ class _StepRowEditor extends StatelessWidget {
           Expanded(
             child: RecipeTextField(
               controller: controller,
-              hint: 'Describe this step…',
+              hint: L.of(context).recipeStepHint,
               maxLines: 2,
             ),
           ),

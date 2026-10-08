@@ -501,6 +501,13 @@ class Api {
   /// never lock anyone out.
   final RateLimiter _loginFailLimiter;
 
+  /// Per-account limit on joining a subway room with a code that does not
+  /// exist. Holding a code is all it takes to join and read a room's state,
+  /// so wrong guesses have to run out long before a 6-character code could
+  /// be found by trying.
+  final RateLimiter _roomJoinFailLimiter =
+      RateLimiter(maxRequests: 10, window: const Duration(minutes: 10));
+
   /// Budgets for the buckets whose requests spend an operator-held upstream
   /// key (AI providers, SearXNG, IsThereAnyDeal), on top of the per-IP
   /// limiter [_limiterFor] picks. Per-IP alone doesn't protect the key: a
@@ -863,6 +870,13 @@ class Api {
           // get converted into a 500.
           rethrow;
         } on FormatException {
+          return errorResponse(400, 'bad_request', 'Malformed request.');
+        } on TypeError catch (e, st) {
+          // Almost always a JSON field of the wrong type (`"color": "null"`
+          // where a number belongs, `null` inside a list of ids) hitting an
+          // `as` cast. That is the caller's mistake, not a server fault —
+          // but it is still logged in case it is a real bug.
+          stderr.writeln('[luma] type error (answered 400): $e\n$st');
           return errorResponse(400, 'bad_request', 'Malformed request.');
         } catch (e, st) {
           stderr.writeln('[luma] unhandled error: $e\n$st');
@@ -5602,10 +5616,16 @@ class Api {
   /// for someone who was actually given the code.
   Future<Response> _joinSubwayRoom(Request request, StoredUser user) async {
     final code = (request.params['code'] ?? '').toUpperCase();
+    if (_roomJoinFailLimiter.isLimited(user.id)) {
+      return errorResponse(429, 'rate_limited',
+          'Too many wrong room codes. Try again later.');
+    }
     return store.lock.synchronized(() async {
       final room = subwayStore.roomsByCode[code];
-      if (room == null)
+      if (room == null) {
+        _roomJoinFailLimiter.allow(user.id);
         return errorResponse(404, 'not_found', 'Room not found.');
+      }
       if (room.memberIds.add(user.id)) {
         room.updatedAtMs = _nowMs;
         await subwayStore.saveRooms();
@@ -5632,8 +5652,13 @@ class Api {
     if (raw.length > _maxSubwayStateBytes) {
       return errorResponse(413, 'too_large', 'Room state too large.');
     }
+    // Shape-validate without needing to understand it. A bare `null` (or any
+    // non-object) would parse fine but replace the room with nothing, so
+    // every member's next join would load an empty world.
     try {
-      jsonDecode(raw); // shape-validate without needing to understand it
+      if (jsonDecode(raw) is! Map) {
+        return errorResponse(400, 'bad_request', 'Malformed state.');
+      }
     } on FormatException {
       return errorResponse(400, 'bad_request', 'Malformed state.');
     }
@@ -6166,7 +6191,10 @@ class Api {
     final event = familyStore.sharedEventsByFamilyId[familyId]?[eventId];
     if (event == null)
       return errorResponse(404, 'not_found', 'Event not found.');
-    if (event.authorUserId != user.id && family.ownerUserId != user.id) {
+    // Authorship alone is not enough: someone who wrote an event and then
+    // left (or was removed from) the family keeps no write access to it.
+    if (!familyStore.isMember(familyId, user.id) ||
+        (event.authorUserId != user.id && family.ownerUserId != user.id)) {
       return errorResponse(403, 'forbidden',
           'Only the author or family owner can edit this event.');
     }
@@ -6214,7 +6242,8 @@ class Api {
     final event = familyStore.sharedEventsByFamilyId[familyId]?[eventId];
     if (event == null)
       return errorResponse(404, 'not_found', 'Event not found.');
-    if (event.authorUserId != user.id && family.ownerUserId != user.id) {
+    if (!familyStore.isMember(familyId, user.id) ||
+        (event.authorUserId != user.id && family.ownerUserId != user.id)) {
       return errorResponse(403, 'forbidden',
           'Only the author or family owner can delete this event.');
     }
@@ -6323,7 +6352,12 @@ class Api {
 
   Response _getChatKey(Request request, StoredUser user) {
     final userId = request.params['userId']!;
-    final key = chatStore.publicKeyByUserId[userId];
+    // Only your own key or a chat partner's: anyone else gets the same 404
+    // as an account with no key, so this cannot be used to probe user ids.
+    final key = userId == user.id ||
+            chatStore.conversationBetween(user.id, userId) != null
+        ? chatStore.publicKeyByUserId[userId]
+        : null;
     if (key == null)
       return errorResponse(404, 'not_found', 'No public key for that user.');
     return jsonResponse(200, {'userId': userId, 'publicKey': key});
@@ -10675,7 +10709,8 @@ syncToolbar();
     final recipientOptions = messageRecipients.map((u) {
       final safe = _htmlEscape(u.email);
       return '<label class="msg-user" data-email="${_htmlEscape(u.email.toLowerCase())}">'
-          '<input type="checkbox" name="email" value="$safe"> $safe</label>';
+          '<input type="checkbox" name="email" value="$safe">'
+          '<span>$safe</span></label>';
     }).join();
     final sentMessageRows = sentMessages.map((m) {
       final to = m.audience == AdminMessage.audienceAll
@@ -10699,31 +10734,41 @@ syncToolbar();
           '</tr>';
     }).join();
     final messagesPanel = '<div class="tab-panel" id="panel-messages">'
-        '<div class="card">'
+        '<div class="card msg-compose">'
         '<h2>Send a message</h2>'
-        '<div class="maint-desc">Shows up in the app\'s inbox (top-right) '
-        'for the people you pick, with an unread badge.</div>'
-        '<form method="post" action="/admin/messages/send" id="msgForm">'
-        '<div style="display:flex;flex-direction:column;gap:10px;max-width:640px">'
-        '<input type="text" name="title" maxlength="120" required '
-        'placeholder="Title">'
-        '<textarea name="body" maxlength="4000" rows="5" required '
-        'placeholder="Message" style="resize:vertical"></textarea>'
-        '<div style="display:flex;gap:16px;align-items:center">'
-        '<label><input type="radio" name="audience" value="all" checked> '
-        'All users</label>'
-        '<label><input type="radio" name="audience" value="selected"> '
-        'Selected users</label>'
-        '</div>'
-        '<div id="msgPicker" style="display:none">'
-        '<input type="text" id="msgSearch" placeholder="Filter by email" '
-        'style="margin-bottom:8px">'
-        '<div class="msg-users" style="max-height:220px;overflow:auto;'
-        'display:flex;flex-direction:column;gap:4px">'
+        '<p class="msg-help">Shows up in the app\'s inbox (top-right) '
+        'for the people you pick, with an unread badge.</p>'
+        '<form method="post" action="/admin/messages/send" id="msgForm" '
+        'class="msg-form">'
+        '<div class="msg-field">'
+        '<div class="msg-field-head"><label for="msgTitle">Title</label>'
+        '<span id="msgTitleHint" class="msg-limit">Up to 120 characters</span></div>'
+        '<input class="msg-input" type="text" id="msgTitle" name="title" '
+        'maxlength="120" required aria-describedby="msgTitleHint" '
+        'placeholder="Give your message a clear title"></div>'
+        '<div class="msg-field">'
+        '<div class="msg-field-head"><label for="msgBody">Message</label>'
+        '<span id="msgBodyHint" class="msg-limit">Up to 4,000 characters</span></div>'
+        '<textarea class="msg-input msg-body" id="msgBody" name="body" '
+        'maxlength="4000" rows="7" required aria-describedby="msgBodyHint" '
+        'placeholder="Write the message your users will receive"></textarea></div>'
+        '<fieldset class="msg-audience"><legend>Recipients</legend>'
+        '<div class="msg-options">'
+        '<label class="msg-option"><input type="radio" name="audience" '
+        'value="all" checked><span>All users</span></label>'
+        '<label class="msg-option"><input type="radio" name="audience" '
+        'value="selected"><span>Selected users</span></label>'
+        '</div></fieldset>'
+        '<div id="msgPicker" class="msg-picker" style="display:none">'
+        '<label class="msg-picker-label" for="msgSearch">Choose recipients</label>'
+        '<input class="msg-input msg-search" type="text" id="msgSearch" '
+        'placeholder="Filter by email">'
+        '<div class="msg-users">'
         '${recipientOptions.isEmpty ? '<span class="muted">No accounts yet.</span>' : recipientOptions}'
         '</div></div>'
-        '<div><button type="submit" class="btn btn-primary">Send</button></div>'
-        '</div></form>'
+        '<div class="msg-footer"><button type="submit" '
+        'class="btn btn-primary msg-send">Send message</button></div>'
+        '</form>'
         '</div>'
         '<div class="card table-card"><h2>Sent</h2>'
         '<table><thead><tr><th>Sent</th><th>Message</th><th>To</th>'
@@ -12202,6 +12247,37 @@ h2{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
 .inbox-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0}
 .inbox-actions input[type=text]{flex:1 1 220px;min-width:180px;background:#1a1530;color:#ece8f7;border:1px solid #2d2645;border-radius:9px;padding:7px 12px;font-size:13px;font-family:inherit;outline:none}
 .inbox-actions input[type=text]:focus{border-color:#8a7ee0}
+.msg-compose h2{margin:0 0 6px;font-size:18px;font-weight:650;letter-spacing:-.015em;text-transform:none;color:#ece8f7}
+.msg-help{margin:0 0 24px;color:#aaa3c4;font-size:13px;line-height:1.6;max-width:76ch}
+.msg-form{display:flex;flex-direction:column;gap:20px;max-width:920px;margin:0}
+.msg-field{min-width:0}
+.msg-field-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:4px 12px;margin-bottom:8px}
+.msg-field-head label,.msg-audience legend,.msg-picker-label{color:#d9d3eb;font-size:13px;font-weight:600}
+.msg-limit{color:#9b94b3;font-size:12px}
+.msg-input{display:block;width:100%;min-width:0;background:#110e1c;color:#ece8f7;border:1px solid #39314d;border-radius:10px;padding:12px 14px;font:inherit;font-size:14px;line-height:1.6;transition:border-color .15s,box-shadow .15s}
+.msg-input::placeholder{color:#9188a9;opacity:1}
+.msg-input:hover{border-color:#554b70}
+.msg-input:focus{outline:none;border-color:#a89bf0;box-shadow:0 0 0 3px rgba(168,155,240,.16)}
+.msg-body{min-height:190px;resize:vertical}
+.msg-audience{border:0;padding:0;margin:0;min-width:0}
+.msg-audience legend{padding:0;margin-bottom:9px}
+.msg-options{display:flex;flex-wrap:wrap;gap:8px}
+.msg-option{display:inline-flex;align-items:center;gap:9px;min-height:42px;padding:9px 14px;border:1px solid #342b48;border-radius:9px;background:#171226;color:#bdb5d3;font-size:13px;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.msg-option:hover{border-color:#554b70;color:#ece8f7}
+.msg-option:has(input:checked){border-color:#7668bc;background:#241c3c;color:#ece8f7}
+.msg-option input,.msg-user input{margin:0;accent-color:#a89bf0;flex:none;width:15px;height:15px}
+.msg-option:focus-within,.msg-user:focus-within{outline:2px solid #a89bf0;outline-offset:2px}
+.msg-picker{background:#110e1c;border:1px solid #30283f;border-radius:11px;padding:16px;margin-top:-8px}
+.msg-picker-label{display:block;margin-bottom:9px}
+.msg-search{background:#191426;padding:9px 12px;margin-bottom:10px}
+.msg-users{display:flex;flex-direction:column;gap:4px;max-height:220px;overflow:auto;padding:3px}
+.msg-user{display:flex;align-items:flex-start;gap:10px;padding:8px 9px;border-radius:7px;color:#c5bed9;cursor:pointer;font-size:13px}
+.msg-user input{margin-top:3px}
+.msg-user span{min-width:0;overflow-wrap:anywhere}
+.msg-user:hover,.msg-user:has(input:checked){background:#211a33;color:#ece8f7}
+.msg-footer{border-top:1px solid #2b233d;padding-top:18px}
+.msg-footer .msg-send{min-height:42px;padding:10px 18px}
+@media(max-width:640px){.card.msg-compose{padding:18px 16px}.msg-help{margin-bottom:20px}.msg-form{gap:18px}.msg-input{padding:11px 12px}.msg-picker{padding:12px}.msg-limit{font-size:11px}}
 .empty{color:#8d86a8;font-size:13px;padding:10px 0}
 .card{background:#151122;border:1px solid #241e36;border-radius:14px;padding:20px 22px;margin-bottom:18px}
 .card.table-card{padding:14px 16px;overflow-x:auto}

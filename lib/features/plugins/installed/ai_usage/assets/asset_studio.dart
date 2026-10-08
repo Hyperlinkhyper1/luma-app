@@ -96,11 +96,12 @@ Future<String> buildAssetStudioHtml(
     bundle.loadString('$_dir/studio.html'),
     bundle.loadString('$_dir/studio.css'),
     bundle.loadString('$_dir/studio.js'),
+    bundle.loadString('assets/airline_tycoon/scene/luma_scene_i18n.js'),
     bundle.loadString(_three, cache: false),
     for (final entry in catalog)
       bundle.loadString('$_dir/models/${(entry as Map)['functionName']}.js'),
   ]);
-  final [template, css, studio, three, ...models] = results;
+  final [template, css, studio, lumaI18n, three, ...models] = results;
 
   final config = jsonEncode({
     'asset': assetId,
@@ -109,6 +110,7 @@ Future<String> buildAssetStudioHtml(
     'catalog': catalog,
   }).replaceAll('</', r'<\/');
   final scripts = StringBuffer()
+    ..writeln('<script>${_script(lumaI18n)}</script>')
     ..writeln('<script>${_script(three)}</script>');
   for (var i = 0; i < catalog.length; i++) {
     final id = (catalog[i] as Map)['id'];
@@ -121,7 +123,10 @@ Future<String> buildAssetStudioHtml(
     ..writeln('<script>window.STUDIO = $config;</script>')
     ..writeln('<script>${_script(studio)}</script>');
 
-  return template
+  final hostedTemplate = embed
+      ? template.replaceFirst('<html lang="en">', '<html lang="en" data-luma-hosted="true">')
+      : template;
+  return hostedTemplate
       .replaceFirst('<!-- @style -->', '<style>\n$css</style>')
       .replaceFirst('<!-- @scripts -->', scripts.toString());
 }

@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../l10n/current_l.dart';
 import 'youtube_models.dart';
 
 /// Raised when Google answers with something the UI needs to explain rather
@@ -64,22 +65,19 @@ class YoutubeApi {
 
     if (response.statusCode == 401) {
       return YoutubeApiException(
-        message ?? 'Google rejected the access token.',
+        message ?? currentL.youtubeApiRejectedToken,
         statusCode: 401,
         needsReauth: true,
       );
     }
     if (response.statusCode == 403) {
       return YoutubeApiException(
-        message ??
-            'Google refused the request. The channel may not have analytics '
-                'available yet, or the API may need enabling in your Google '
-                'Cloud project.',
+        message ?? currentL.youtubeApiForbidden,
         statusCode: 403,
       );
     }
     return YoutubeApiException(
-      message ?? 'Google returned HTTP ${response.statusCode}.',
+      message ?? currentL.youtubeApiHttpStatus('${response.statusCode}'),
       statusCode: response.statusCode,
     );
   }
@@ -93,7 +91,7 @@ class YoutubeApi {
     final body = await _get(accessToken, uri) as Map<String, dynamic>;
     final items = body['items'] as List<dynamic>? ?? const [];
     if (items.isEmpty) {
-      throw YoutubeApiException('This Google account has no YouTube channel.');
+      throw YoutubeApiException(currentL.youtubeApiNoChannel);
     }
     return YoutubeChannelSnapshot.fromApi(items.first as Map<String, dynamic>);
   }

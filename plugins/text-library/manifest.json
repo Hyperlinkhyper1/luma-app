@@ -4,5 +4,23 @@
   "version": "1.0.0",
   "description": "Subjects full of texts, notes and summaries — or a cosy Minecraft library where every subject is a bookcase.",
   "icon": "auto_stories",
-  "category": "Productivity"
+  "category": "Productivity",
+  "i18n": {
+    "nl": {
+      "name": "Tekstbibliotheek",
+      "description": "Onderwerpen vol teksten, notities en samenvattingen — of een gezellige Minecraft-bibliotheek waarin elk onderwerp een boekenkast is."
+    },
+    "fr": {
+      "name": "Bibliothèque de textes",
+      "description": "Des matières pleines de textes, de notes et de résumés — ou une bibliothèque Minecraft douillette où chaque matière est une bibliothèque."
+    },
+    "es": {
+      "name": "Biblioteca de textos",
+      "description": "Asignaturas llenas de textos, apuntes y resúmenes, o una acogedora biblioteca de Minecraft donde cada asignatura es una estantería."
+    },
+    "zh": {
+      "name": "文本图书馆",
+      "description": "充满文本、笔记和摘要的各个学科——或是一座温馨的 Minecraft 图书馆，每个学科都是一个书架。"
+    }
+  }
 }

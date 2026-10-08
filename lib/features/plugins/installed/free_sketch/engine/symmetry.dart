@@ -1,17 +1,23 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import '../../../../../l10n/app_localizations.dart';
 import 'stroke_engine.dart';
 
 enum SymmetryMode {
-  off('Off'),
-  vertical('Vertical'),
-  horizontal('Horizontal'),
-  quadrant('Quadrant'),
-  radial('Radial');
+  off,
+  vertical,
+  horizontal,
+  quadrant,
+  radial;
 
-  const SymmetryMode(this.label);
-  final String label;
+  String label(L t) => switch (this) {
+        SymmetryMode.off => t.freeSketchSymmetryOff,
+        SymmetryMode.vertical => t.freeSketchSymmetryVertical,
+        SymmetryMode.horizontal => t.freeSketchSymmetryHorizontal,
+        SymmetryMode.quadrant => t.freeSketchSymmetryQuadrant,
+        SymmetryMode.radial => t.freeSketchSymmetryRadial,
+      };
 }
 
 /// Drawing guide that repeats every dab across mirror lines or around a

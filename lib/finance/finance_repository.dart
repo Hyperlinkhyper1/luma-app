@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 
+import '../l10n/current_l.dart';
 import '../storage/storage_guard.dart';
 import 'data/database.dart';
 import 'logic/finance_logic.dart';
@@ -16,7 +17,8 @@ class FinanceImportMatch {
   final RecurringRule? rule;
   final DateTime date;
 
-  String get name => transaction?.note ?? rule?.name ?? 'Existing transaction';
+  String get name =>
+      transaction?.note ?? rule?.name ?? currentL.financeExistingTransaction;
 }
 
 /// Application-facing API over the drift database: reactive reads, commands,
@@ -199,7 +201,7 @@ class FinanceRepository {
             m.date == match.date,
       );
       if (!valid) {
-        throw StateError('This match changed. Review the entry again.');
+        throw StateError(currentL.financeImportMatchChanged);
       }
       if (match.transaction != null) return match.transaction!.id;
     }
@@ -346,7 +348,7 @@ class FinanceRepository {
       amountCents: amountCents,
       date: DateTime.now(),
       potId: potId,
-      note: note ?? 'Manual allocation',
+      note: note ?? currentL.financeManualAllocationNote,
     );
   }
 
@@ -428,7 +430,7 @@ class FinanceRepository {
         kind: TxnKind.income,
         amountCents: amountCents,
         date: date,
-        note: 'Dividend ${holding.ticker}',
+        note: currentL.financeDividendNote(holding.ticker),
       );
     }
     final id = await db
@@ -490,7 +492,9 @@ class FinanceRepository {
         kind: owe ? TxnKind.expense : TxnKind.income,
         amountCents: amountCents,
         date: date,
-        note: owe ? 'Repayment: ${debt.name}' : 'Repaid to me: ${debt.name}',
+        note: owe
+            ? currentL.financeDebtRepaymentNote(debt.name)
+            : currentL.financeDebtRepaidToMeNote(debt.name),
       );
     }
     final id = await db
@@ -520,7 +524,7 @@ class FinanceRepository {
       debt: debt,
       amountCents: current - targetCents,
       date: DateTime.now(),
-      note: 'Balance adjustment',
+      note: currentL.financeDebtBalanceAdjustmentNote,
       bookInLedger: false,
     );
   }
@@ -739,7 +743,7 @@ class FinanceRepository {
                 amountCents: amount,
                 date: date,
                 potId: Value(a.potId),
-                note: const Value('Auto-allocation'),
+                note: Value(currentL.financeAutoAllocationNote),
               ),
             );
         StorageGuard.instance.scheduleRefresh();

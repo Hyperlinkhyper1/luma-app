@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../app/update/app_version.dart';
 import '../../../../app/update/update_service.dart';
+import '../../../../l10n/current_l.dart';
 import 'device_health_models.dart';
 import 'services/battery_report_service.dart';
 import 'services/bloatware_catalog.dart';
@@ -91,7 +92,7 @@ class DeviceHealthRepository extends ChangeNotifier {
     final now = DateTime.now();
 
     if (snapshot == null) {
-      const err = 'Could not read system status.';
+      final err = currentL.deviceHealthErrReadStatus;
       systemUsage = systemUsage.copyWith(loading: false, error: err);
       gpus = gpus.copyWith(loading: false, error: err);
       battery = battery.copyWith(loading: false, error: err);
@@ -103,7 +104,7 @@ class DeviceHealthRepository extends ChangeNotifier {
     systemUsage = HealthCategoryState(
       data: snapshot.usage,
       checkedAt: now,
-      error: snapshot.usage == null ? 'CPU/RAM reading unavailable.' : null,
+      error: snapshot.usage == null ? currentL.deviceHealthErrCpuRamUnavailable : null,
     );
     gpus = HealthCategoryState(data: snapshot.gpus, checkedAt: now);
 
@@ -123,8 +124,7 @@ class DeviceHealthRepository extends ChangeNotifier {
       data: snapshot.defender,
       checkedAt: now,
       error: snapshot.defender == null
-          ? "Couldn't read Windows Defender's status — another antivirus "
-              'may be active, or the Defender service is disabled.'
+          ? currentL.deviceHealthErrDefenderUnavailable
           : null,
     );
     notifyListeners();
@@ -136,7 +136,7 @@ class DeviceHealthRepository extends ChangeNotifier {
     _bloatware ??= await BloatwareCatalog.load();
     final list = await _processes.list(bloatware: _bloatware);
     processes = list == null
-        ? processes.copyWith(loading: false, error: 'Could not list processes.')
+        ? processes.copyWith(loading: false, error: currentL.deviceHealthErrListProcesses)
         : HealthCategoryState(data: list, checkedAt: DateTime.now());
     notifyListeners();
   }
@@ -166,7 +166,7 @@ class DeviceHealthRepository extends ChangeNotifier {
     appUpdates = list == null
         ? appUpdates.copyWith(
             loading: false,
-            error: 'winget is not available on this system.',
+            error: currentL.deviceHealthErrWingetMissing,
           )
         : HealthCategoryState(data: list, checkedAt: DateTime.now());
     notifyListeners();
@@ -180,7 +180,7 @@ class DeviceHealthRepository extends ChangeNotifier {
       info: info,
       state: state,
       message: state == AppUpdateJobState.needsElevationOrManual
-          ? 'Needs a manual update — winget could not finish silently.'
+          ? currentL.deviceHealthNeedsManualUpdate
           : null,
     );
     notifyListeners();
@@ -260,13 +260,13 @@ class DeviceHealthRepository extends ChangeNotifier {
       checked++;
       if (usage.ramUsedPercent > 90) {
         score -= 8;
-        issues.add('RAM usage is very high (${usage.ramUsedPercent.round()}%).');
+        issues.add(currentL.deviceHealthIssueRamHigh(usage.ramUsedPercent.round()));
       } else if (usage.ramUsedPercent > 75) {
         score -= 4;
       }
       if (usage.cpuPercent > 90) {
         score -= 5;
-        issues.add('CPU usage is very high (${usage.cpuPercent.round()}%).');
+        issues.add(currentL.deviceHealthIssueCpuHigh(usage.cpuPercent.round()));
       }
     }
 
@@ -276,11 +276,10 @@ class DeviceHealthRepository extends ChangeNotifier {
       final wear = batt.wearPercent;
       if (wear != null && wear > 35) {
         score -= 15;
-        issues.add('Battery health is significantly degraded '
-            '(${wear.round()}% capacity lost).');
+        issues.add(currentL.deviceHealthIssueBatteryDegraded(wear.round()));
       } else if (wear != null && wear > 20) {
         score -= 8;
-        issues.add('Battery health is fading (${wear.round()}% capacity lost).');
+        issues.add(currentL.deviceHealthIssueBatteryFading(wear.round()));
       }
     } else if (battery.checkedAt != null && batt != null && !batt.present) {
       // A desktop with no battery is neither good nor bad — don't count it
@@ -295,17 +294,17 @@ class DeviceHealthRepository extends ChangeNotifier {
         // Weighted hard enough that this alone always drops the status to
         // "Poor" — protection being off must never read as merely a warning.
         score -= 45;
-        issues.add('Windows Defender protection is off.');
+        issues.add(currentL.deviceHealthIssueDefenderOff);
       } else {
         final sig = def.signatureLastUpdated;
         if (sig == null || now.difference(sig) > _staleSignatureAfter) {
           score -= 10;
-          issues.add('Antivirus definitions are out of date.');
+          issues.add(currentL.deviceHealthIssueDefinitionsOld);
         }
         final scan = def.lastScan;
         if (scan == null || now.difference(scan) > _staleScanAfter) {
           score -= 10;
-          issues.add('No virus scan in the last 30 days.');
+          issues.add(currentL.deviceHealthIssueNoScan);
         }
       }
     }
@@ -316,8 +315,7 @@ class DeviceHealthRepository extends ChangeNotifier {
       final flagged = procs.where((p) => p.bloatware != null).length;
       if (flagged > 0) {
         score -= flagged * 2 > 10 ? 10 : flagged * 2;
-        issues.add('$flagged background app${flagged == 1 ? '' : 's'} commonly '
-            'flagged as unnecessary.');
+        issues.add(currentL.deviceHealthIssueBloatware(flagged));
       }
     }
 
@@ -328,7 +326,7 @@ class DeviceHealthRepository extends ChangeNotifier {
       if (lumaUpdateChecked && lumaUpdate != null) count += 1;
       if (count > 0) {
         score -= count * 3 > 15 ? 15 : count * 3;
-        issues.add('$count app update${count == 1 ? '' : 's'} available.');
+        issues.add(currentL.deviceHealthIssueAppUpdates(count));
       }
     }
 

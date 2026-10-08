@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../app/widgets.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/luma_theme.dart';
 import '../data/database.dart';
 import '../finance_scope.dart';
@@ -46,9 +47,10 @@ class _ReportsTabState extends State<ReportsTab> {
     List<Pot> pots,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
+    final t = L.of(context);
     if (report.transactions.isEmpty) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Nothing to export in this period.')),
+        SnackBar(content: Text(t.financeReportsNothingToExport)),
       );
       return;
     }
@@ -68,7 +70,7 @@ class _ReportsTabState extends State<ReportsTab> {
       // guessing the system code page.
       final bytes = utf8.encode('﻿$csv');
       final path = await FilePicker.saveFile(
-        dialogTitle: 'Export transactions',
+        dialogTitle: t.financeReportsExportTitle,
         fileName: 'luma-finance-$stamp.csv',
         type: FileType.custom,
         allowedExtensions: const ['csv'],
@@ -77,14 +79,14 @@ class _ReportsTabState extends State<ReportsTab> {
       if (path != null) {
         messenger.showSnackBar(
           SnackBar(
-            content: Text(
-              'Exported ${report.transactions.length} transactions.',
-            ),
+            content: Text(t.financeReportsExported(report.transactions.length)),
           ),
         );
       }
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Export failed: $e')));
+      messenger.showSnackBar(
+        SnackBar(content: Text(t.financeReportsExportFailed('$e'))),
+      );
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
@@ -125,7 +127,10 @@ class _ReportsTabState extends State<ReportsTab> {
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             LumaSegmentedTabs(
-                              tabs: const ['Month', 'Year'],
+                              tabs: [
+                                L.of(context).financeReportsMonthTab,
+                                L.of(context).financeReportsYearTab,
+                              ],
                               selectedIndex: _period.span == ReportSpan.month
                                   ? 0
                                   : 1,
@@ -135,7 +140,7 @@ class _ReportsTabState extends State<ReportsTab> {
                             ),
                             const SizedBox(width: 8),
                             IconButton(
-                              tooltip: 'Previous',
+                              tooltip: L.of(context).commonPrevious,
                               icon: Icon(
                                 Icons.chevron_left_rounded,
                                 color: luma.textSecondary,
@@ -151,7 +156,7 @@ class _ReportsTabState extends State<ReportsTab> {
                               ),
                             ),
                             IconButton(
-                              tooltip: 'Next',
+                              tooltip: L.of(context).commonNext,
                               icon: Icon(
                                 Icons.chevron_right_rounded,
                                 color: isCurrent
@@ -166,7 +171,9 @@ class _ReportsTabState extends State<ReportsTab> {
                           ],
                         ),
                         LumaGhostButton(
-                          label: _exporting ? 'Exporting…' : 'Export CSV',
+                          label: _exporting
+                              ? L.of(context).financeReportsExporting
+                              : L.of(context).dataMgmtExportCsv,
                           icon: Icons.download_rounded,
                           onTap: _exporting
                               ? null
@@ -217,8 +224,8 @@ class _Summary extends StatelessWidget {
     final prev = report.previousExpenseCents;
     final spendDelta = report.expenseCents - prev;
     final previousName = report.period.span == ReportSpan.month
-        ? 'last month'
-        : 'last year';
+        ? L.of(context).financeReportsLastMonth
+        : L.of(context).financeReportsLastYear;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -230,35 +237,40 @@ class _Summary extends StatelessWidget {
           children: [
             _Stat(
               width: width,
-              label: 'Income',
+              label: L.of(context).financeReportsIncome,
               value: formatCents(report.incomeCents),
               color: luma.success,
             ),
             _Stat(
               width: width,
-              label: 'Spent',
+              label: L.of(context).financeReportsSpent,
               value: formatCents(report.expenseCents),
               color: luma.danger,
               footnote: prev == 0
                   ? null
-                  : '${formatSignedCents(spendDelta)} vs $previousName',
+                  : L
+                        .of(context)
+                        .financeReportsVsPrevious(
+                          formatSignedCents(spendDelta),
+                          previousName,
+                        ),
             ),
             _Stat(
               width: width,
-              label: 'Net',
+              label: L.of(context).financeReportsNet,
               value: formatSignedCents(report.netCents),
               color: report.netCents >= 0 ? luma.success : luma.danger,
             ),
             _Stat(
               width: width,
-              label: 'Savings rate',
+              label: L.of(context).financeReportsSavingsRate,
               value: rate == null ? '—' : '${(rate * 100).round()}%',
               color: rate == null
                   ? luma.textPrimary
                   : rate >= 0
                   ? luma.success
                   : luma.danger,
-              footnote: 'Share of income not spent',
+              footnote: L.of(context).financeReportsSavingsRateNote,
             ),
           ],
         );
@@ -346,7 +358,7 @@ class _CategoryBreakdown extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Spending by category',
+            L.of(context).financeReportsSpendingByCategory,
             style: TextStyle(
               color: luma.textSecondary,
               fontSize: 13,
@@ -355,13 +367,15 @@ class _CategoryBreakdown extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Compared with ${isMonth ? 'the month' : 'the year'} before.',
+            isMonth
+                ? L.of(context).financeReportsComparedMonth
+                : L.of(context).financeReportsComparedYear,
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
           const SizedBox(height: 14),
           if (rows.isEmpty)
             Text(
-              'No spending in this period.',
+              L.of(context).financeReportsNoSpending,
               style: TextStyle(color: luma.textMuted, fontSize: 13),
             )
           else
@@ -407,11 +421,13 @@ class _CategoryRow extends StatelessWidget {
     final share = totalCents <= 0 ? 0.0 : cents / totalCents;
     final budget = budgetCents;
     final details = [
-      '${(share * 100).round()}% of spending',
+      L.of(context).financeReportsPercentOfSpending((share * 100).round()),
       if (budget != null && budget > 0)
         cents > budget
-            ? '${formatCents(cents - budget)} over budget'
-            : 'within ${formatCents(budget)} budget',
+            ? L
+                  .of(context)
+                  .financeReportsOverBudget(formatCents(cents - budget))
+            : L.of(context).financeReportsWithinBudget(formatCents(budget)),
     ].join(' · ');
 
     return Column(
@@ -429,7 +445,7 @@ class _CategoryRow extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                category?.name ?? 'Uncategorized',
+                category?.name ?? L.of(context).financeReportsUncategorized,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: luma.textPrimary, fontSize: 13),
@@ -508,7 +524,7 @@ class _TopMerchants extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Top merchants',
+            L.of(context).financeReportsTopMerchants,
             style: TextStyle(
               color: luma.textSecondary,
               fontSize: 13,
@@ -595,7 +611,7 @@ class _MonthByMonth extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Month by month',
+            L.of(context).financeReportsMonthByMonth,
             style: TextStyle(
               color: luma.textSecondary,
               fontSize: 13,
@@ -605,7 +621,7 @@ class _MonthByMonth extends StatelessWidget {
           const SizedBox(height: 10),
           if (months.isEmpty)
             Text(
-              'This year hasn\'t started yet.',
+              L.of(context).financeReportsYearNotStarted,
               style: TextStyle(color: luma.textMuted, fontSize: 13),
             ),
           for (final r in months)

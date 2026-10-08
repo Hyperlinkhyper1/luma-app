@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../l10n/current_l.dart';
+
 /// The sync collection the assistant's memory, profile and chat preferences
 /// travel in. It is automatic (see `isAutomaticSyncCollection`): on for
 /// every plan, including Core, and never counted against the plan's
@@ -302,7 +304,7 @@ class AssistantMemoryRepository extends ChangeNotifier {
     final entry = AssistantMemoryEntry(
       id: id ?? DateTime.now().microsecondsSinceEpoch.toString(),
       section: section,
-      title: title.trim().isEmpty ? 'Untitled' : title.trim(),
+      title: title.trim().isEmpty ? currentL.commonUntitled : title.trim(),
       description: description.trim(),
       body: body.trim(),
       updatedAt: DateTime.now(),

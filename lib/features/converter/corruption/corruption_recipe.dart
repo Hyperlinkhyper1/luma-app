@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 
+import '../../../l10n/current_l.dart';
 import 'binary_utils.dart';
 
 /// The sidecar a recoverable corruption writes next to the damaged file.
@@ -47,7 +48,7 @@ abstract class DamageOp {
       case 'insert':
         return InsertOp.fromJson(json);
       default:
-        throw FormatException('Unknown damage step "$type".');
+        throw FormatException(currentL.converterRecipeUnknownStep(type.toString()));
     }
   }
 }
@@ -56,7 +57,7 @@ int _int(Map<String, Object?> json, String key) {
   final value = json[key];
   if (value is int) return value;
   if (value is num) return value.toInt();
-  throw FormatException('Recipe step is missing "$key".');
+  throw FormatException(currentL.converterRecipeMissingField(key));
 }
 
 /// Flips scattered individual bytes — classic bit rot.
@@ -115,8 +116,7 @@ class FlipOp extends DamageOp {
 
   @override
   String describe() =>
-      'Flipped $count byte${count == 1 ? '' : 's'} across '
-      '${formatOffsetRange(start, length)}';
+      currentL.converterOpFlipped(count, formatOffsetRange(start, length));
 }
 
 /// XORs a whole region with a keystream — the bytes are still all there, but
@@ -164,7 +164,7 @@ class XorOp extends DamageOp {
 
   @override
   String describe() =>
-      'Scrambled ${formatOffsetRange(start, length)} with a keystream';
+      currentL.converterOpScrambled(formatOffsetRange(start, length));
 }
 
 /// Shuffles fixed-size blocks within a region.
@@ -236,9 +236,11 @@ class ShuffleOp extends DamageOp {
   }
 
   @override
-  String describe() =>
-      'Shuffled $blocks blocks of ${formatSize(blockSize)} from '
-      '${formatOffset(start)}';
+  String describe() => currentL.converterOpShuffled(
+    blocks,
+    formatSize(blockSize),
+    formatOffset(start),
+  );
 }
 
 /// Overwrites a region with zeroes. Recoverable only when the original bytes
@@ -287,19 +289,19 @@ class ZeroOp extends DamageOp {
   Uint8List undo(Uint8List bytes) {
     final original = data;
     if (original == null) {
-      throw StateError('This step wiped bytes that were never recorded.');
+      throw StateError(currentL.converterRecipeWipedUnrecorded);
     }
     final out = Uint8List.fromList(bytes);
     final end = start + original.length;
     if (end > out.length) {
-      throw StateError('The file is shorter than the recipe expects.');
+      throw StateError(currentL.converterRecipeShorter);
     }
     out.setRange(start, end, original);
     return out;
   }
 
   @override
-  String describe() => 'Wiped ${formatOffsetRange(start, length)}';
+  String describe() => currentL.converterOpWiped(formatOffsetRange(start, length));
 }
 
 /// Cuts the tail off. Recoverable only when the tail was kept.
@@ -338,13 +340,13 @@ class TruncateOp extends DamageOp {
   Uint8List undo(Uint8List bytes) {
     final rest = tail;
     if (rest == null) {
-      throw StateError('This step cut off bytes that were never recorded.');
+      throw StateError(currentL.converterRecipeCutUnrecorded);
     }
     return concatBytes([bytes, rest]);
   }
 
   @override
-  String describe() => 'Cut the file off at ${formatOffset(at)}';
+  String describe() => currentL.converterOpCutOff(formatOffset(at));
 }
 
 /// Injects junk bytes, shifting everything after them. Always reversible: the
@@ -396,8 +398,10 @@ class InsertOp extends DamageOp {
   }
 
   @override
-  String describe() =>
-      'Injected ${formatSize(length)} of junk at ${formatOffset(at)}';
+  String describe() => currentL.converterOpInjected(
+    formatSize(length),
+    formatOffset(at),
+  );
 }
 
 /// The `.lumafix` sidecar: everything the fixer needs to walk a corrupted file
@@ -449,25 +453,24 @@ class CorruptionRecipe {
     try {
       decoded = jsonDecode(utf8.decode(bytes));
     } catch (_) {
-      throw const FormatException('That is not a readable .lumafix recipe.');
+      throw FormatException(currentL.converterRecipeNotReadable);
     }
     if (decoded is! Map) {
-      throw const FormatException('That is not a readable .lumafix recipe.');
+      throw FormatException(currentL.converterRecipeNotReadable);
     }
     final json = Map<String, Object?>.from(decoded);
     final version = json['lumafix'];
     if (version is! int) {
-      throw const FormatException('That file is not a luma recovery recipe.');
+      throw FormatException(currentL.converterRecipeNotLuma);
     }
     if (version > formatVersion) {
       throw FormatException(
-        'This recipe was written by a newer version of luma (format $version). '
-        'Update the app to use it.',
+        currentL.converterRecipeNewerVersion(version),
       );
     }
     final rawOps = json['ops'];
     if (rawOps is! List) {
-      throw const FormatException('The recipe has no steps to undo.');
+      throw FormatException(currentL.converterRecipeNoSteps);
     }
     return CorruptionRecipe(
       originalName: json['originalName'] as String? ?? 'restored.bin',

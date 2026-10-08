@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'data/whiteboard_database.dart';
 import 'ui/whiteboard_canvas.dart';
@@ -75,25 +76,26 @@ class _BoardShelfState extends State<_BoardShelf> {
   }
 
   Future<void> _rename(Board board) async {
+    final t = L.of(context);
     final controller = TextEditingController(text: board.title);
     final title = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Rename board'),
+        title: Text(t.whiteboardRenameTooltip),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'Name'),
+          decoration: InputDecoration(labelText: t.commonName),
           onSubmitted: (value) => Navigator.pop(dialogContext, value),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text(t.commonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, controller.text),
-            child: const Text('Rename'),
+            child: Text(t.commonRename),
           ),
         ],
       ),
@@ -103,27 +105,24 @@ class _BoardShelfState extends State<_BoardShelf> {
   }
 
   Future<void> _confirmDelete(Board board, int count) async {
+    final t = L.of(context);
+    final danger = context.luma.danger;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('Delete "${board.title}"?'),
-        content: Text(
-          count == 0
-              ? 'This board is empty. It will be removed for good.'
-              : 'All $count things drawn on this board will be removed for '
-                  'good. This cannot be undone.',
-        ),
+        title: Text(t.whiteboardDeleteBoardTitle(board.title)),
+        content: Text(t.whiteboardDeleteBoardContent(count)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
+            child: Text(t.commonCancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: context.luma.danger,
+              backgroundColor: danger,
             ),
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Delete'),
+            child: Text(t.commonDelete),
           ),
         ],
       ),
@@ -135,6 +134,7 @@ class _BoardShelfState extends State<_BoardShelf> {
   @override
   Widget build(BuildContext context) {
     final repository = WhiteboardScope.of(context);
+    final t = L.of(context);
     final narrow = MediaQuery.sizeOf(context).width < 760;
 
     return StreamData<List<Board>>(
@@ -158,8 +158,8 @@ class _BoardShelfState extends State<_BoardShelf> {
                       Expanded(
                         child: TextField(
                           controller: _title,
-                          decoration: const InputDecoration(
-                            hintText: 'Name a new whiteboard',
+                          decoration: InputDecoration(
+                            hintText: t.whiteboardNameHint,
                             isDense: true,
                             prefixIcon: Icon(Icons.draw_rounded, size: 18),
                           ),
@@ -169,7 +169,7 @@ class _BoardShelfState extends State<_BoardShelf> {
                       ),
                       const SizedBox(width: 12),
                       LumaPrimaryButton(
-                        label: 'Create',
+                        label: t.commonCreate,
                         icon: Icons.add_rounded,
                         loading: _creating,
                         onTap: _create,
@@ -179,13 +179,10 @@ class _BoardShelfState extends State<_BoardShelf> {
                   const SizedBox(height: 16),
                   Expanded(
                     child: boards.isEmpty
-                        ? const LumaEmptyState(
+                        ? LumaEmptyState(
                             icon: Icons.draw_rounded,
-                            title: 'No whiteboards yet',
-                            subtitle:
-                                'Name one above and start drawing. Pen, shapes, '
-                                'arrows and sticky notes, with the whole board '
-                                'saved as you go.',
+                            title: t.whiteboardEmptyTitle,
+                            subtitle: t.whiteboardEmptySubtitle,
                           )
                         : GridView.builder(
                             padding: const EdgeInsets.only(bottom: 24),
@@ -240,6 +237,7 @@ class _BoardCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return LumaCard(
       child: InkWell(
         onTap: onOpen,
@@ -264,13 +262,13 @@ class _BoardCard extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Rename board',
+                    tooltip: t.whiteboardRenameTooltip,
                     iconSize: 18,
                     icon: Icon(Icons.edit_outlined, color: luma.textMuted),
                     onPressed: onRename,
                   ),
                   IconButton(
-                    tooltip: 'Delete board',
+                    tooltip: t.whiteboardDeleteBoardTooltip,
                     iconSize: 18,
                     icon: Icon(
                       Icons.delete_outline_rounded,
@@ -286,12 +284,12 @@ class _BoardCard extends StatelessWidget {
                   Icon(Icons.draw_rounded, size: 13, color: luma.textMuted),
                   const SizedBox(width: 5),
                   Text(
-                    count == 1 ? '1 item' : '$count items',
+                    t.whiteboardItemCount(count),
                     style: TextStyle(color: luma.textMuted, fontSize: 11.5),
                   ),
                   const Spacer(),
                   Text(
-                    _relative(board.updatedAt),
+                    _relative(t, board.updatedAt),
                     style: TextStyle(color: luma.textMuted, fontSize: 11.5),
                   ),
                 ],
@@ -303,12 +301,12 @@ class _BoardCard extends StatelessWidget {
     );
   }
 
-  static String _relative(DateTime when) {
+  static String _relative(L t, DateTime when) {
     final difference = DateTime.now().difference(when);
-    if (difference.inMinutes < 1) return 'just now';
-    if (difference.inHours < 1) return '${difference.inMinutes}m ago';
-    if (difference.inDays < 1) return '${difference.inHours}h ago';
-    if (difference.inDays < 30) return '${difference.inDays}d ago';
+    if (difference.inMinutes < 1) return t.commonJustNow;
+    if (difference.inHours < 1) return t.commonMinutesAgo(difference.inMinutes);
+    if (difference.inDays < 1) return t.commonHoursAgo(difference.inHours);
+    if (difference.inDays < 30) return t.commonDaysAgo(difference.inDays);
     return '${when.year}-${when.month.toString().padLeft(2, '0')}-'
         '${when.day.toString().padLeft(2, '0')}';
   }

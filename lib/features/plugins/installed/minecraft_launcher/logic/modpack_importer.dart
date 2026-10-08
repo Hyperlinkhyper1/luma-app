@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:archive/archive_io.dart';
 
+import '../../../../../l10n/current_l.dart';
 import '../minecraft_launcher_repository.dart';
 import 'download_manager.dart';
 import 'mc_paths.dart';
@@ -27,18 +28,18 @@ class ModpackImporter {
     required File mrpackFile,
     void Function(String status, double? fraction)? onStatus,
   }) async {
-    onStatus?.call('Reading modpack…', null);
+    onStatus?.call(currentL.mcModpackReading, null);
     final archive = ZipDecoder().decodeBytes(await mrpackFile.readAsBytes());
     final indexEntry = archive.files.where((f) => f.name == 'modrinth.index.json').firstOrNull;
     if (indexEntry == null) {
-      throw ModpackImportException('Not a valid .mrpack file (missing modrinth.index.json).');
+      throw ModpackImportException(currentL.mcModpackNotValid);
     }
     final index = jsonDecode(utf8.decode(indexEntry.content as List<int>)) as Map<String, dynamic>;
 
     final dependencies = (index['dependencies'] as Map<String, dynamic>?) ?? const {};
     final mcVersion = dependencies['minecraft'] as String?;
     if (mcVersion == null) {
-      throw ModpackImportException('This modpack does not declare a Minecraft version.');
+      throw ModpackImportException(currentL.mcModpackNoMinecraftVersion);
     }
 
     var loader = 'vanilla';
@@ -60,7 +61,7 @@ class ModpackImporter {
       }
     }
 
-    final name = index['name'] as String? ?? 'Imported modpack';
+    final name = index['name'] as String? ?? currentL.mcModpackDefaultName;
     final instanceId = await repository.createInstance(
       name: name,
       versionId: mcVersion,
@@ -93,17 +94,17 @@ class ModpackImporter {
     }
 
     if (downloadItems.isNotEmpty) {
-      onStatus?.call('Downloading modpack files…', 0);
+      onStatus?.call(currentL.mcModpackDownloadingFiles, 0);
       await DownloadManager.instance.downloadAll(
         downloadItems,
         onProgress: (p) => onStatus?.call(
-          'Downloading modpack files (${p.filesDone}/${p.filesTotal})…',
+          currentL.mcModpackDownloadingFilesProgress('${p.filesDone}', '${p.filesTotal}'),
           p.fraction,
         ),
       );
     }
 
-    onStatus?.call('Extracting overrides…', null);
+    onStatus?.call(currentL.mcModpackExtractingOverrides, null);
     const overridePrefixes = ['overrides/', 'client-overrides/'];
     for (final entry in archive.files) {
       if (!entry.isFile) continue;
@@ -122,7 +123,7 @@ class ModpackImporter {
       await outFile.writeAsBytes(entry.content as List<int>);
     }
 
-    onStatus?.call('Recording installed content…', null);
+    onStatus?.call(currentL.mcModpackRecording, null);
     for (final (relPath, sha1) in toRecord) {
       final segments = relPath.split('/');
       final kind = _kindForFolder(segments.first);
@@ -135,7 +136,7 @@ class ModpackImporter {
       );
     }
 
-    onStatus?.call('Done', 1);
+    onStatus?.call(currentL.mcModpackDone, 1);
     return instanceId;
   }
 

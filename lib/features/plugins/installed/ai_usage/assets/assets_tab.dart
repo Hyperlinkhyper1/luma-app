@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import 'asset_studio.dart';
 import 'asset_studio_view.dart';
@@ -42,7 +43,7 @@ class _AssetsTabState extends State<AssetsTab> {
         if (snapshot.hasError) {
           return LumaEmptyState(
             icon: Icons.warning_amber_rounded,
-            title: 'Could not load the assets',
+            title: L.of(context).aiUsageAssetsLoadFailed,
             subtitle: '${snapshot.error}',
           );
         }
@@ -78,7 +79,14 @@ class _AssetsTabState extends State<AssetsTab> {
       _ => (icon: Icons.chair_outlined, tint: const Color(0xFF6B8F5E)),
     };
 
-String _categoryLabel(String c) => c[0].toUpperCase() + c.substring(1);
+String _categoryLabel(L t, String c) => switch (c) {
+  'retail' => t.aiUsageAssetsCategoryRetail,
+  'food' => t.aiUsageAssetsCategoryFood,
+  'entertainment' => t.aiUsageAssetsCategoryEntertainment,
+  'security' => t.aiUsageAssetsCategorySecurity,
+  'passenger' => t.aiUsageAssetsCategoryPassenger,
+  _ => c[0].toUpperCase() + c.substring(1),
+};
 
 class _AssetGallery extends StatefulWidget {
   const _AssetGallery({required this.assets, required this.onOpen});
@@ -124,6 +132,7 @@ class _AssetGalleryState extends State<_AssetGallery> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final categories = _categories;
     final visible = _visible;
     final phone = context.isPhoneWidth;
@@ -136,7 +145,7 @@ class _AssetGalleryState extends State<_AssetGallery> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Assets',
+                  t.aiUsageSectionAssets,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 22,
@@ -145,9 +154,7 @@ class _AssetGalleryState extends State<_AssetGallery> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${widget.assets.length} procedural models from the airport '
-                  'game. Open one to inspect it in 3D, or download it as an '
-                  'HTML file.',
+                  t.aiUsageAssetsIntro(widget.assets.length),
                   style: TextStyle(color: luma.textMuted, fontSize: 13),
                 ),
                 const SizedBox(height: 18),
@@ -155,13 +162,13 @@ class _AssetGalleryState extends State<_AssetGallery> {
                   controller: _search,
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
-                    hintText: 'Search models',
+                    hintText: t.aiUsageAssetsSearchHint,
                     prefixIcon: const Icon(Icons.search_rounded, size: 20),
                     isDense: true,
                     suffixIcon: _search.text.isEmpty
                         ? null
                         : IconButton(
-                            tooltip: 'Clear search',
+                            tooltip: t.aiUsageAssetsClearSearch,
                             icon: const Icon(Icons.close_rounded, size: 18),
                             onPressed: () => setState(_search.clear),
                           ),
@@ -173,14 +180,14 @@ class _AssetGalleryState extends State<_AssetGallery> {
                   runSpacing: 8,
                   children: [
                     _CategoryChip(
-                      label: 'All',
+                      label: t.aiUsageAssetsCategoryAll,
                       count: widget.assets.length,
                       selected: _category == 'all',
                       onTap: () => setState(() => _category = 'all'),
                     ),
                     for (final c in categories)
                       _CategoryChip(
-                        label: _categoryLabel(c),
+                        label: _categoryLabel(t, c),
                         count: widget.assets.where((a) => a.category == c).length,
                         selected: _category == c,
                         onTap: () => setState(() => _category = c),
@@ -193,12 +200,12 @@ class _AssetGalleryState extends State<_AssetGallery> {
           ),
         ),
         if (visible.isEmpty)
-          const SliverFillRemaining(
+          SliverFillRemaining(
             hasScrollBody: false,
             child: LumaEmptyState(
               icon: Icons.search_off_rounded,
-              title: 'No models match',
-              subtitle: 'Try another name or clear the filter.',
+              title: t.aiUsageAssetsNoMatch,
+              subtitle: t.aiUsageAssetsNoMatchHint,
             ),
           )
         else
@@ -284,11 +291,12 @@ class _AssetCardState extends State<_AssetCard> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final a = widget.asset;
     final style = _categoryStyle(a.category);
     return Semantics(
       button: true,
-      label: 'Open ${a.name}',
+      label: t.aiUsageAssetOpenLabel(a.name),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         onEnter: (_) => setState(() => _hover = true),
@@ -375,7 +383,7 @@ class _AssetCardState extends State<_AssetCard> {
                               const SizedBox(width: 8),
                               Flexible(
                                 child: Text(
-                                  _categoryLabel(a.category),
+                                  _categoryLabel(t, a.category),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.end,
@@ -506,9 +514,11 @@ class _AssetDetailState extends State<_AssetDetail> {
         widget.asset.htmlFileName,
         Uint8List.fromList(utf8.encode(html)),
       );
-      if (mounted && path != null) _flash('Saved ${widget.asset.htmlFileName}');
+      if (mounted && path != null) {
+        _flash(L.of(context).aiUsageAssetSaved(widget.asset.htmlFileName));
+      }
     } catch (e) {
-      if (mounted) _flash('Could not save: $e');
+      if (mounted) _flash(L.of(context).aiUsageAssetSaveFailed('$e'));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -517,6 +527,7 @@ class _AssetDetailState extends State<_AssetDetail> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final a = widget.asset;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -526,7 +537,7 @@ class _AssetDetailState extends State<_AssetDetail> {
           child: Row(
             children: [
               IconButton(
-                tooltip: 'Back to assets',
+                tooltip: t.aiUsageAssetBackTooltip,
                 onPressed: widget.onBack,
                 icon: const Icon(Icons.arrow_back_rounded),
               ),
@@ -548,7 +559,7 @@ class _AssetDetailState extends State<_AssetDetail> {
                     ),
                     Text(
                       _status ??
-                          '${_categoryLabel(a.category)} · ${a.collectionCode} · ${a.footprint}',
+                          '${_categoryLabel(t, a.category)} · ${a.collectionCode} · ${a.footprint}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -561,9 +572,11 @@ class _AssetDetailState extends State<_AssetDetail> {
               ),
               const SizedBox(width: 12),
               Tooltip(
-                message: 'A single HTML file that opens this model offline in any browser',
+                message: t.aiUsageAssetDownloadHtmlTooltip,
                 child: LumaPrimaryButton(
-                  label: context.isPhoneWidth ? 'HTML' : 'Download HTML',
+                  label: context.isPhoneWidth
+                      ? 'HTML'
+                      : t.aiUsageAssetDownloadHtml,
                   icon: Icons.download_rounded,
                   loading: _saving,
                   onTap: _saving ? null : _download,

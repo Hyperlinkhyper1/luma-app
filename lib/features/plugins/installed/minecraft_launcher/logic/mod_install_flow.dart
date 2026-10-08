@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../data/minecraft_launcher_database.dart';
 import '../minecraft_launcher_repository.dart';
 import 'mod_dependency_resolver.dart';
@@ -68,6 +69,7 @@ class ModInstallFlow {
     required String kind,
   }) async {
     final messenger = ScaffoldMessenger.of(context);
+    final t = L.of(context);
     try {
       final alreadyInstalled =
           await installedProjectIds(repository, instance.id);
@@ -101,9 +103,14 @@ class ModInstallFlow {
         );
       }
 
-      final extra = deps.isEmpty ? '' : ' + ${deps.length} dependencies';
       messenger.showSnackBar(
-        SnackBar(content: Text('Installed ${project.title}$extra into ${instance.name}.')),
+        SnackBar(
+          content: Text(
+            deps.isEmpty
+                ? t.mcModInstalledInto(project.title, instance.name)
+                : t.mcModInstalledWithDeps(project.title, deps.length, instance.name),
+          ),
+        ),
       );
       return true;
     } catch (e) {
@@ -122,6 +129,7 @@ class ModInstallFlow {
     required String kind,
   }) async {
     final messenger = ScaffoldMessenger.of(context);
+    final t = L.of(context);
     final ModrinthProject project;
     final ModrinthVersion? version;
     try {
@@ -139,8 +147,9 @@ class ModInstallFlow {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            'No build of this for ${instance.versionId}'
-            '${instance.loader == 'vanilla' ? '' : ' on ${instance.loader}'}.',
+            instance.loader == 'vanilla'
+                ? t.mcModNoBuildVanilla(instance.versionId)
+                : t.mcModNoBuildForLoader(instance.versionId, instance.loader),
           ),
         ),
       );
@@ -162,25 +171,32 @@ class ModInstallFlow {
     ModrinthProject project,
     List<ResolvedDependency> deps,
   ) {
+    final t = L.of(context);
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Install required dependencies?'),
+        title: Text(t.mcModDepsPromptTitle),
         content: SizedBox(
           width: lumaDialogWidth(context, 360),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('${project.title} needs these to work:'),
+              Text(t.mcModNeedsDeps(project.title)),
               const SizedBox(height: 8),
               for (final d in deps) Text('• ${d.project.title}'),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Install all')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(t.commonCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(t.mcModInstallAll),
+          ),
         ],
       ),
     );

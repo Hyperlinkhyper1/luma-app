@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'ai_usage_format.dart';
 import 'ai_usage_repository.dart';
@@ -105,6 +106,7 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
   @override
   Widget build(BuildContext context) {
     final repo = AiUsageScope.of(context);
+    final t = L.of(context);
 
     return ListenableBuilder(
       listenable: repo,
@@ -126,10 +128,10 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
             padding: const EdgeInsets.all(24),
             child: LumaEmptyState(
               icon: Icons.smart_toy_outlined,
-              title: 'No local AI usage logs found',
-              subtitle: _kNoLogsSubtitle,
+              title: t.aiUsageNoLogsTitle,
+              subtitle: t.aiUsageNoLogsSubtitle,
               action: LumaGhostButton(
-                label: repo.scanning ? 'Scanning…' : 'Rescan',
+                label: repo.scanning ? t.homeAiUsageScanning : t.aiUsageRescan,
                 icon: Icons.refresh_rounded,
                 onTap: repo.scanning ? null : repo.rescan,
               ),
@@ -191,17 +193,6 @@ String _sourceLabel(AiUsageSource source) => switch (source) {
       AiUsageSource.freebuff => 'Freebuff',
       AiUsageSource.luma => 'Luma',
     };
-
-/// Shown when not one of the five tools has left anything on this device,
-/// and luma's own AI hasn't been used here yet either.
-const String _kNoLogsSubtitle =
-    'AI Usage reads session logs from Claude Code (~/.claude/projects), '
-    'Codex CLI (~/.codex/sessions), Antigravity (~/.gemini/antigravity), '
-    'OpenCode (~/.local/share/opencode), and Freebuff '
-    '(~/.config/freebuff-desktop/projects) on this device, and logs every '
-    "call luma's own Assistant makes. Nothing leaves "
-    'it unless you turn on AI Usage sync in Settings, which also adds up '
-    'your other devices. Use one of these tools here, then rescan.';
 
 // ─── View settings: sorting + company grouping ─────────────────────────────
 
@@ -266,12 +257,13 @@ class _AiUsageSettingsDialogState extends State<_AiUsageSettingsDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return AlertDialog(
       title: Row(
         children: [
           Icon(Icons.settings_rounded, color: luma.accent, size: 20),
           const SizedBox(width: 10),
-          const Text('Usage settings'),
+          Text(t.aiUsageSettingsTitle),
         ],
       ),
       content: SizedBox(
@@ -282,8 +274,8 @@ class _AiUsageSettingsDialogState extends State<_AiUsageSettingsDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _SettingsToggleRow(
-                title: 'Combine models by company',
-                subtitle: 'Group every model from one company into a single row',
+                title: t.aiUsageCombineByCompany,
+                subtitle: t.aiUsageCombineByCompanyHint,
                 value: _combineByCompany,
                 onChanged: (v) => setState(() => _combineByCompany = v),
               ),
@@ -298,7 +290,7 @@ class _AiUsageSettingsDialogState extends State<_AiUsageSettingsDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Sorting',
+                          t.aiUsageSorting,
                           style: TextStyle(
                             color: luma.textPrimary,
                             fontSize: 16,
@@ -306,7 +298,7 @@ class _AiUsageSettingsDialogState extends State<_AiUsageSettingsDialog> {
                           ),
                         ),
                         Text(
-                          'What each table and chart orders by',
+                          t.aiUsageSortingHint,
                           style: TextStyle(color: luma.textMuted, fontSize: 12),
                         ),
                       ],
@@ -316,19 +308,19 @@ class _AiUsageSettingsDialogState extends State<_AiUsageSettingsDialog> {
               ),
               const SizedBox(height: 12),
               _SortDropdown(
-                label: 'Models (pie + table)',
+                label: t.aiUsageSortModels,
                 value: _modelSort,
                 onChanged: (v) => setState(() => _modelSort = v),
               ),
               const SizedBox(height: 8),
               _SortDropdown(
-                label: 'Top projects',
+                label: t.aiUsageSortProjects,
                 value: _projectSort,
                 onChanged: (v) => setState(() => _projectSort = v),
               ),
               const SizedBox(height: 8),
               _SortDropdown(
-                label: 'Providers (OpenCode)',
+                label: t.aiUsageSortProviders,
                 value: _providerSort,
                 onChanged: (v) => setState(() => _providerSort = v),
               ),
@@ -337,14 +329,14 @@ class _AiUsageSettingsDialogState extends State<_AiUsageSettingsDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: _reset, child: const Text('Reset')),
+        TextButton(onPressed: _reset, child: Text(t.commonReset)),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(t.commonCancel),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(_current()),
-          child: const Text('Done'),
+          child: Text(t.commonDone),
         ),
       ],
     );
@@ -445,31 +437,35 @@ class _TopBar extends StatelessWidget {
   final ValueChanged<AiUsageRangePreset> onSelectPreset;
   final VoidCallback onOpenSettings;
 
-  String _statusLabel() {
-    if (repo.scanning) return 'Scanning…';
+  String _statusLabel(L t) {
+    if (repo.scanning) return t.homeAiUsageScanning;
     final at = repo.lastScanAt;
     if (at == null) return '';
-    final devices = repo.remoteDevices.length;
-    final synced = devices == 0
+    final synced = repo.remoteDevices.isEmpty
         ? ''
-        : ' · incl. $devices other ${devices == 1 ? 'device' : 'devices'}';
+        : t.aiUsageStatusSyncedDevices(repo.remoteDevices.length);
+    final time = DateFormat('h:mm a', t.localeName).format(at);
     if (repo.lastTurnsAdded == 0) {
-      return 'Up to date · ${DateFormat('h:mm a').format(at)}$synced';
+      return t.aiUsageStatusUpToDate(time, synced);
     }
-    return '${repo.lastTurnsAdded} new turns · ${DateFormat('h:mm a').format(at)}$synced';
+    return t.aiUsageStatusNewTurns(repo.lastTurnsAdded, time, synced);
   }
 
-  String _devicesTooltip() => [
-    'Usage summed across your devices:',
-    'This device',
+  String _devicesTooltip(L t) => [
+    t.aiUsageDevicesTooltipHeader,
+    t.aiUsageThisDevice,
     for (final d in repo.remoteDevices)
-      '${d.name} · ${d.turnCount} turns · synced '
-          '${DateFormat('MMM d, h:mm a').format(d.uploadedAt.toLocal())}',
+      t.aiUsageDeviceLine(
+        d.name,
+        d.turnCount,
+        DateFormat('MMM d, h:mm a', t.localeName).format(d.uploadedAt.toLocal()),
+      ),
   ].join('\n');
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     if (context.isPhoneWidth) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -484,9 +480,9 @@ class _TopBar extends StatelessWidget {
             children: [
               Expanded(
                 child: Tooltip(
-                  message: repo.remoteDevices.isEmpty ? '' : _devicesTooltip(),
+                  message: repo.remoteDevices.isEmpty ? '' : _devicesTooltip(t),
                   child: Text(
-                    _statusLabel(),
+                    _statusLabel(t),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: luma.textMuted, fontSize: 12),
@@ -494,7 +490,7 @@ class _TopBar extends StatelessWidget {
                 ),
               ),
               IconButton(
-                tooltip: 'Rescan local AI usage logs',
+                tooltip: t.aiUsageRescanTooltip,
                 icon: repo.scanning
                     ? const SizedBox(
                         width: 18,
@@ -505,7 +501,7 @@ class _TopBar extends StatelessWidget {
                 onPressed: repo.scanning ? null : repo.rescan,
               ),
               IconButton(
-                tooltip: 'Usage display settings',
+                tooltip: t.aiUsageDisplaySettingsTooltip,
                 icon: Icon(Icons.settings_rounded, color: luma.textSecondary),
                 onPressed: onOpenSettings,
               ),
@@ -527,9 +523,9 @@ class _TopBar extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Tooltip(
-            message: repo.remoteDevices.isEmpty ? '' : _devicesTooltip(),
+            message: repo.remoteDevices.isEmpty ? '' : _devicesTooltip(t),
             child: Text(
-              _statusLabel(),
+              _statusLabel(t),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(color: luma.textMuted, fontSize: 12),
@@ -537,7 +533,7 @@ class _TopBar extends StatelessWidget {
           ),
         ),
         IconButton(
-          tooltip: 'Rescan local AI usage logs',
+          tooltip: t.aiUsageRescanTooltip,
           icon: repo.scanning
               ? SizedBox(
                   width: 18,
@@ -551,7 +547,7 @@ class _TopBar extends StatelessWidget {
           onPressed: repo.scanning ? null : repo.rescan,
         ),
         IconButton(
-          tooltip: 'Usage display settings',
+          tooltip: t.aiUsageDisplaySettingsTooltip,
           icon: Icon(Icons.settings_rounded, color: luma.textSecondary),
           onPressed: onOpenSettings,
         ),
@@ -580,12 +576,13 @@ class _SourceFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return LumaSegmentedTabs(
-      tabs: const [
-        'All',
+      tabs: [
+        t.commonAll,
         'Claude Code',
         'Codex CLI',
-        'Antigravity (est.)',
+        t.aiUsageSourceAntigravityEst,
         'OpenCode',
         'Freebuff',
         'Luma',
@@ -626,6 +623,7 @@ class _AiUsageBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     // Antigravity turns whose model couldn't be detected are real usage
     // (still counted in the stat tiles and daily/project charts below) but
     // aren't worth a dedicated, uninformative "Unknown model" row here.
@@ -641,10 +639,10 @@ class _AiUsageBody extends StatelessWidget {
     if (modelTotals.isEmpty) {
       return LumaEmptyState(
         icon: Icons.smart_toy_outlined,
-        title: 'No usage recorded in this range',
+        title: t.aiUsageNoUsageTitle,
         subtitle: selectedSource == null
-            ? 'Try a wider range, or use one of the supported tools and rescan.'
-            : 'Try a wider range, or use ${_sourceLabel(selectedSource!)} and rescan.',
+            ? t.aiUsageNoUsageSubtitle
+            : t.aiUsageNoUsageSourceSubtitle(_sourceLabel(selectedSource!)),
       );
     }
 
@@ -675,35 +673,27 @@ class _AiUsageBody extends StatelessWidget {
             runSpacing: 8,
             children: [
               _SummaryChip(
-                label: 'Total tokens',
+                label: t.aiUsageTotalTokens,
                 value: formatTokens(summary.totalTokens),
-                tooltip: 'New tokens only: input + output + first-time cache writes. '
-                    "Doesn't include cache reads (see that tile) — a long session re-reads "
-                    "the same growing context on nearly every turn, which would otherwise "
-                    'count the same conversation over and over.',
+                tooltip: t.aiUsageTotalTokensTooltip,
               ),
               if (summary.cacheReadTokens > 0)
                 _SummaryChip(
-                  label: 'Cache reads',
+                  label: t.aiUsageCacheReads,
                   value: formatTokens(summary.cacheReadTokens),
-                  tooltip: 'Cached context re-read across all turns in range — real and '
-                      'billed, but at a steep discount, and not counted in "Total tokens" '
-                      'since it\'s re-use of content rather than new content.',
+                  tooltip: t.aiUsageCacheReadsTooltip,
                 ),
               _SummaryChip(
-                label: 'Est. cost',
+                label: t.aiUsageEstCost,
                 value: summary.hasUnbillable
                     ? '${formatCost(summary.cost)}*'
                     : formatCost(summary.cost),
-                tooltip: 'Estimated cost at API rates, including cache reads/writes at '
-                    'their discounted rate — so this reflects more usage than "Total '
-                    'tokens" shows on its own. Subscription plans (Max/Pro) bill '
-                    'differently than this per-token estimate.',
+                tooltip: t.aiUsageEstCostTooltip,
               ),
-              _SummaryChip(label: 'Turns', value: '${summary.turnCount}'),
-              _SummaryChip(label: 'Sessions', value: '${summary.sessionCount}'),
+              _SummaryChip(label: t.aiUsageTurns, value: '${summary.turnCount}'),
+              _SummaryChip(label: t.aiUsageSessions, value: '${summary.sessionCount}'),
               _SummaryChip(
-                label: combineByCompany ? 'Top company' : 'Top model',
+                label: combineByCompany ? t.aiUsageTopCompany : t.aiUsageTopModel,
                 value: combineByCompany
                     ? companyTotals.first.company
                     : displayName(modelTotals.first.source, modelTotals.first.model),
@@ -713,7 +703,7 @@ class _AiUsageBody extends StatelessWidget {
           if (summary.hasUnbillable) ...[
             const SizedBox(height: 6),
             Text(
-              '* excludes usage from models outside their provider\'s known pricing',
+              t.aiUsageUnbillableNote,
               style: TextStyle(color: luma.textMuted, fontSize: 11),
             ),
           ],
@@ -731,11 +721,7 @@ class _AiUsageBody extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Antigravity numbers are estimated from message length — it '
-                      "doesn't record real token usage locally. They're not exact "
-                      "like Claude Code/Codex CLI. Cost (marked ~) only shows for "
-                      'recognized Gemini/Claude models, and is a rougher estimate '
-                      'than the other two sources.',
+                      t.aiUsageAntigravityNote,
                       style: TextStyle(color: luma.textSecondary, fontSize: 11.5),
                     ),
                   ),
@@ -777,7 +763,7 @@ class _AiUsageBody extends StatelessWidget {
                   child: dayBuckets.length <= 1
                       ? Center(
                           child: Text(
-                            'Pick a wider range to see a daily breakdown',
+                            t.aiUsagePickWiderRange,
                             style: TextStyle(color: luma.textMuted, fontSize: 13),
                           ),
                         )
@@ -851,7 +837,7 @@ class _AiUsageBody extends StatelessWidget {
                     height: 140,
                     child: Center(
                       child: Text(
-                        'Switch to "All" to see your yearly contribution heatmap',
+                        t.aiUsageSwitchToAllHeatmap,
                         style: TextStyle(color: luma.textMuted, fontSize: 13),
                       ),
                     ),
@@ -880,16 +866,17 @@ class _ModelTableTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Row(
       children: [
         Text(
-          grouped ? 'Companies' : 'Models',
+          grouped ? t.aiUsageCompanies : t.aiUsageModels,
           style: TextStyle(
               color: luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
         ),
         const Spacer(),
         Text(
-          'Sorted by ${sort.label.toLowerCase()}',
+          t.aiUsageSortedBy(sort.label.toLowerCase()),
           style: TextStyle(color: luma.textMuted, fontSize: 11),
         ),
       ],
@@ -931,10 +918,10 @@ class _SummaryChip extends StatelessWidget {
 
 // ─── Highlights: longest/priciest session, longest active-day streak ───────
 
-String _formatDuration(Duration d) {
-  if (d.inDays > 0) return '${d.inDays}d ${d.inHours % 24}h';
-  if (d.inHours > 0) return '${d.inHours}h ${d.inMinutes % 60}m';
-  return '${d.inMinutes}m';
+String _formatDuration(L t, Duration d) {
+  if (d.inDays > 0) return t.aiUsageDurationDaysHours(d.inDays, d.inHours % 24);
+  if (d.inHours > 0) return t.aiUsageDurationHoursMinutes(d.inHours, d.inMinutes % 60);
+  return t.aiUsageDurationMinutes(d.inMinutes);
 }
 
 class _HighlightsSection extends StatelessWidget {
@@ -944,6 +931,7 @@ class _HighlightsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final sessions = aggregateBySession(turns);
     if (sessions.isEmpty) return const SizedBox.shrink();
 
@@ -954,33 +942,33 @@ class _HighlightsSection extends StatelessWidget {
       if (priciest == null || s.cost > priciest.cost) priciest = s;
     }
     final streak = longestActiveDayStreak(turns);
-    final dateFmt = DateFormat('MMM d');
+    final dateFmt = DateFormat('MMM d', t.localeName);
 
     final cards = <_HighlightCard>[
       if (longest != null)
         _HighlightCard(
           icon: Icons.timer_outlined,
           color: _kInputColor,
-          label: 'Longest session',
-          value: _formatDuration(longest.duration),
+          label: t.aiUsageLongestSession,
+          value: _formatDuration(t, longest.duration),
           caption:
-              '${longest.project ?? kUnknownProject} · ${dateFmt.format(longest.start.toLocal())}',
+              '${longest.project ?? t.aiUsageUnknownProject} · ${dateFmt.format(longest.start.toLocal())}',
         ),
       if (priciest != null && priciest.cost > 0)
         _HighlightCard(
           icon: Icons.payments_outlined,
           color: _kOutputColor,
-          label: 'Priciest session',
+          label: t.aiUsagePriciestSession,
           value: formatCost(priciest.cost),
-          caption: '${priciest.project ?? kUnknownProject} · '
+          caption: '${priciest.project ?? t.aiUsageUnknownProject} · '
               '${dateFmt.format(priciest.start.toLocal())}',
         ),
       if (streak.days > 1)
         _HighlightCard(
           icon: Icons.local_fire_department_rounded,
           color: _kCacheReadColor,
-          label: 'Longest streak',
-          value: '${streak.days} days',
+          label: t.aiUsageLongestStreak,
+          value: t.aiUsageStreakDays(streak.days),
           caption: '${dateFmt.format(streak.start!)} – ${dateFmt.format(streak.end!)}',
         ),
     ];
@@ -1079,7 +1067,7 @@ class _ModelPieChart extends StatefulWidget {
 class _ModelPieChartState extends State<_ModelPieChart> {
   int? _touchedIndex;
 
-  List<(String label, int tokens, Color color)> _slices() {
+  List<(String label, int tokens, Color color)> _slices(L t) {
     final top = widget.modelTotals.take(_kTopModelLimit).toList();
     final rest = widget.modelTotals.skip(_kTopModelLimit);
     final otherTokens = rest.fold<int>(0, (a, t) => a + t.totalTokens);
@@ -1090,14 +1078,15 @@ class _ModelPieChartState extends State<_ModelPieChart> {
           t.totalTokens,
           widget.colorByModel[(t.source, t.model)]!,
         ),
-      if (otherTokens > 0) ('Other', otherTokens, _kOtherColor),
+      if (otherTokens > 0) (t.aiUsageOther, otherTokens, _kOtherColor),
     ];
   }
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final slices = _slices();
+    final t = L.of(context);
+    final slices = _slices(t);
     final total = slices.fold<int>(0, (a, s) => a + s.$2);
 
     return Row(
@@ -1203,7 +1192,7 @@ class _CompanyPieChart extends StatefulWidget {
 class _CompanyPieChartState extends State<_CompanyPieChart> {
   int? _touchedIndex;
 
-  List<(String label, int tokens, Color color)> _slices() {
+  List<(String label, int tokens, Color color)> _slices(L t) {
     final top = widget.companyTotals.take(_kTopModelLimit).toList();
     final rest = widget.companyTotals.skip(_kTopModelLimit);
     final otherTokens = rest.fold<int>(0, (a, t) => a + t.totalTokens);
@@ -1214,14 +1203,15 @@ class _CompanyPieChartState extends State<_CompanyPieChart> {
           t.totalTokens,
           widget.colorByCompany[t.company]!,
         ),
-      if (otherTokens > 0) ('Other', otherTokens, _kOtherColor),
+      if (otherTokens > 0) (t.aiUsageOther, otherTokens, _kOtherColor),
     ];
   }
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final slices = _slices();
+    final t = L.of(context);
+    final slices = _slices(t);
     final total = slices.fold<int>(0, (a, s) => a + s.$2);
 
     return Row(
@@ -1324,6 +1314,7 @@ class _DailyBarChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final maxStack = dayBuckets.map(_stackTotal).fold<int>(0, (a, b) => a > b ? a : b);
     final topY = maxStack == 0 ? 1000.0 : maxStack * 1.15;
 
@@ -1342,12 +1333,14 @@ class _DailyBarChart extends StatelessWidget {
                   getTooltipItem: (group, groupIndex, rod, rodIndex) {
                     final d = dayBuckets[groupIndex];
                     return BarTooltipItem(
-                      '${DateFormat('MMM d').format(d.day)}\n'
-                      'Input: ${formatTokens(d.inputTokens)}\n'
-                      'Output: ${formatTokens(d.outputTokens)}\n'
-                      'Cache read: ${formatTokens(d.cacheReadTokens)}\n'
-                      'Cache write: ${formatTokens(d.cacheCreationTokens)}\n'
-                      '${formatCost(d.cost)}',
+                      t.aiUsageTooltipDay(
+                        DateFormat('MMM d', t.localeName).format(d.day),
+                        formatTokens(d.inputTokens),
+                        formatTokens(d.outputTokens),
+                        formatTokens(d.cacheReadTokens),
+                        formatTokens(d.cacheCreationTokens),
+                        formatCost(d.cost),
+                      ),
                       TextStyle(color: luma.textPrimary, fontSize: 12),
                     );
                   },
@@ -1367,7 +1360,7 @@ class _DailyBarChart extends StatelessWidget {
                       return Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
-                          DateFormat('M/d').format(dayBuckets[idx].day),
+                          DateFormat('M/d', t.localeName).format(dayBuckets[idx].day),
                           style: TextStyle(color: luma.textMuted, fontSize: 10),
                         ),
                       );
@@ -1442,6 +1435,7 @@ class _UsageCategoryLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     Widget dot(Color color, String label) => Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1458,10 +1452,10 @@ class _UsageCategoryLegend extends StatelessWidget {
       spacing: 14,
       runSpacing: 6,
       children: [
-        dot(_kInputColor, 'Input'),
-        dot(_kOutputColor, 'Output'),
-        dot(_kCacheReadColor, 'Cache read'),
-        dot(_kCacheCreationColor, 'Cache write'),
+        dot(_kInputColor, t.aiUsageInput),
+        dot(_kOutputColor, t.aiUsageOutput),
+        dot(_kCacheReadColor, t.aiUsageCacheReads),
+        dot(_kCacheCreationColor, t.aiUsageCacheWrite),
       ],
     );
   }
@@ -1508,10 +1502,10 @@ _AnthropicPeakWindow _anthropicPeakHourWindow() {
   );
 }
 
-String _formatFractionalHour(double hour) {
+String _formatFractionalHour(double hour, String localeName) {
   final totalMinutes = (hour * 60).round() % (24 * 60);
   final dt = DateTime(2000, 1, 1, totalMinutes ~/ 60, totalMinutes % 60);
-  return DateFormat(totalMinutes % 60 == 0 ? 'ha' : 'h:mma').format(dt).toLowerCase();
+  return DateFormat(totalMinutes % 60 == 0 ? 'ha' : 'h:mma', localeName).format(dt).toLowerCase();
 }
 
 class _HourlyDistributionChart extends StatelessWidget {
@@ -1519,12 +1513,13 @@ class _HourlyDistributionChart extends StatelessWidget {
 
   final List<AiHourlyUsageBucket> hourly;
 
-  static String _formatHour(int hour) =>
-      DateFormat('ha').format(DateTime(2000, 1, 1, hour)).toLowerCase();
+  static String _formatHour(int hour, String localeName) =>
+      DateFormat('ha', localeName).format(DateTime(2000, 1, 1, hour)).toLowerCase();
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final maxTokens = hourly.fold<double>(0, (a, b) => b.avgTokens > a ? b.avgTokens : a);
     final topY = maxTokens <= 0 ? 1.0 : maxTokens * 1.2;
     final anthropicPeak = _anthropicPeakHourWindow();
@@ -1535,18 +1530,18 @@ class _HourlyDistributionChart extends StatelessWidget {
         Row(
           children: [
             Text(
-              'Average Hourly Distribution',
+              t.aiUsageAvgHourly,
               style: TextStyle(
                   color: luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
             ),
             const SizedBox(width: 10),
             Tooltip(
-              message: 'Anthropic published this window for Claude Code in March 2026; the '
-                  'rate-limit reduction itself was lifted for Pro/Max on May 6, 2026, but the '
-                  'hours are still commonly referenced.',
+              message: t.aiUsageAnthropicPeakTooltip,
               child: Text(
-                'Anthropic peak: ${_formatFractionalHour(anthropicPeak.localStart)}–'
-                '${_formatFractionalHour(anthropicPeak.localEnd)}',
+                t.aiUsageAnthropicPeak(
+                  _formatFractionalHour(anthropicPeak.localStart, t.localeName),
+                  _formatFractionalHour(anthropicPeak.localEnd, t.localeName),
+                ),
                 style: TextStyle(color: luma.accent, fontSize: 12, fontWeight: FontWeight.w600),
               ),
             ),
@@ -1554,8 +1549,7 @@ class _HourlyDistributionChart extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Tokens per hour, averaged across the days in this range — local time. '
-          'Highlighted bars fall in the window above (weekdays 5–11am PT).',
+          t.aiUsageHourlyHint,
           style: TextStyle(color: luma.textMuted, fontSize: 11),
         ),
         const SizedBox(height: 10),
@@ -1569,8 +1563,11 @@ class _HourlyDistributionChart extends StatelessWidget {
                   getTooltipItem: (group, groupIndex, rod, rodIndex) {
                     final b = hourly[groupIndex];
                     return BarTooltipItem(
-                      '${_formatHour(b.hour)}\n${formatTokens(b.avgTokens.round())} tokens/day avg\n'
-                      '${b.avgTurns.toStringAsFixed(1)} turns/day avg',
+                      t.aiUsageHourlyTooltip(
+                        _formatHour(b.hour, t.localeName),
+                        formatTokens(b.avgTokens.round()),
+                        b.avgTurns.toStringAsFixed(1),
+                      ),
                       TextStyle(color: luma.textPrimary, fontSize: 12),
                     );
                   },
@@ -1590,7 +1587,7 @@ class _HourlyDistributionChart extends StatelessWidget {
                       return Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
-                          _formatHour(hour),
+                          _formatHour(hour, t.localeName),
                           style: TextStyle(color: luma.textMuted, fontSize: 10),
                         ),
                       );
@@ -1657,10 +1654,11 @@ class _ProjectBreakdownSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     if (projects.isEmpty) {
-      return const LumaEmptyState(
+      return LumaEmptyState(
         icon: Icons.folder_open_outlined,
-        title: 'No project data in this range',
+        title: t.aiUsageNoProjectData,
       );
     }
 
@@ -1673,7 +1671,7 @@ class _ProjectBreakdownSection extends StatelessWidget {
         Row(
           children: [
             Text(
-              'Top Projects by ${sort.label}',
+              t.aiUsageTopProjectsBy(sort.label),
               style: TextStyle(
                   color: luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
             ),
@@ -1687,7 +1685,7 @@ class _ProjectBreakdownSection extends StatelessWidget {
                   decoration: BoxDecoration(color: _kProjectInputColor, shape: BoxShape.circle),
                 ),
                 const SizedBox(width: 5),
-                Text('Input', style: TextStyle(color: luma.textSecondary, fontSize: 11)),
+                Text(t.aiUsageInput, style: TextStyle(color: luma.textSecondary, fontSize: 11)),
                 const SizedBox(width: 12),
                 Container(
                   width: 9,
@@ -1695,15 +1693,14 @@ class _ProjectBreakdownSection extends StatelessWidget {
                   decoration: BoxDecoration(color: _kProjectOutputColor, shape: BoxShape.circle),
                 ),
                 const SizedBox(width: 5),
-                Text('Output', style: TextStyle(color: luma.textSecondary, fontSize: 11)),
+                Text(t.aiUsageOutput, style: TextStyle(color: luma.textSecondary, fontSize: 11)),
               ],
             ),
           ],
         ),
         const SizedBox(height: 4),
         Text(
-          "Claude Code, Codex CLI and OpenCode only — Antigravity has no "
-          'reliable project source, grouped as "Unknown project" instead.',
+          t.aiUsageProjectSourceNote,
           style: TextStyle(color: luma.textMuted, fontSize: 11),
         ),
         const SizedBox(height: 12),
@@ -1725,14 +1722,18 @@ class _ProjectBarRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final fraction = maxTokens == 0 ? 0.0 : total.totalTokens / maxTokens;
     final inputFraction =
         total.totalTokens == 0 ? 0.0 : total.inputTokens / total.totalTokens;
 
     return Tooltip(
-      message: 'Input: ${formatTokens(total.inputTokens)} · '
-          'Output: ${formatTokens(total.outputTokens)}\n'
-          '${total.turnCount} turns · ${total.sessionCount} sessions',
+      message: t.aiUsageProjectTooltip(
+        formatTokens(total.inputTokens),
+        formatTokens(total.outputTokens),
+        total.turnCount,
+        total.sessionCount,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1811,10 +1812,11 @@ class _OpencodeProviderSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     if (providers.isEmpty) {
-      return const LumaEmptyState(
+      return LumaEmptyState(
         icon: Icons.hub_outlined,
-        title: 'No provider data in this range',
+        title: t.aiUsageNoProviderData,
       );
     }
 
@@ -1825,19 +1827,13 @@ class _OpencodeProviderSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Providers by ${sort.label}',
+          t.aiUsageProvidersBy(sort.label),
           style: TextStyle(
               color: luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 4),
         Text(
-          'Which provider each OpenCode turn was routed to. Every provider '
-          'is priced as if reached with a normal paid API key — including '
-          "OpenCode's own \"free\" models and any provider this app hasn't "
-          'been specifically taught, both at an estimated rate rather than '
-          'taken at face value or shown as n/a. A provider that genuinely '
-          "runs on your own hardware (Ollama, llama.cpp, ...) still shows a "
-          r'real $0.00.',
+          t.aiUsageProvidersHint,
           style: TextStyle(color: luma.textMuted, fontSize: 11),
         ),
         const SizedBox(height: 12),
@@ -1868,14 +1864,18 @@ class _ProviderBarRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final fraction = maxTokens == 0 ? 0.0 : total.totalTokens / maxTokens;
-    final models = total.modelCount == 1 ? '1 model' : '${total.modelCount} models';
+    final models = t.aiUsageModelCount(total.modelCount);
 
     return Tooltip(
-      message: 'Input: ${formatTokens(total.inputTokens)} · '
-          'Output: ${formatTokens(total.outputTokens)}\n'
-          'Cache reads: ${formatTokens(total.cacheReadTokens)}\n'
-          '${total.turnCount} turns · $models',
+      message: t.aiUsageProviderTooltip(
+        formatTokens(total.inputTokens),
+        formatTokens(total.outputTokens),
+        formatTokens(total.cacheReadTokens),
+        total.turnCount,
+        models,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1904,7 +1904,7 @@ class _ProviderBarRow extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                total.billable ? formatCost(total.cost) : 'n/a',
+                total.billable ? formatCost(total.cost) : t.aiUsageNotApplicable,
                 style: TextStyle(
                   color: total.billable ? luma.success : luma.textMuted,
                   fontSize: 11.5,
@@ -1947,6 +1947,7 @@ class _ModelTableHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final labelStyle = TextStyle(
       color: luma.textMuted,
       fontSize: 11,
@@ -1964,34 +1965,28 @@ class _ModelTableHeader extends StatelessWidget {
       children: [
         const SizedBox(width: 20), // lines up with the color-dot + gap in each row below
         header(
-          grouped ? 'Company' : 'Model',
-          grouped
-              ? 'Which company built the models used'
-              : 'Which model was used, and which local tool it came from',
+          grouped ? t.aiUsageCompany : t.aiUsageModel,
+          grouped ? t.aiUsageCompanyHeaderTip : t.aiUsageModelHeaderTip,
           flex: 2,
         ),
         const SizedBox(width: 12),
         header(
-          'Turns',
-          'How many separate AI responses (API calls) were made with this model',
+          t.aiUsageTurns,
+          t.aiUsageTurnsHeaderTip,
           width: 48,
           align: TextAlign.right,
         ),
         const SizedBox(width: 12),
         header(
-          'Tokens',
-          'New tokens only: input + output + first-time cache writes. Excludes cache '
-              'reads (repeated re-use of prior context) — see the Cache reads stat tile '
-              'above for that figure.',
+          t.aiUsageTokens,
+          t.aiUsageTokensHeaderTip,
           width: 72,
           align: TextAlign.right,
         ),
         const SizedBox(width: 12),
         header(
-          'Cost',
-          'USD cost reported by the provider for Luma calls when available; '
-              'otherwise an estimate at the model or vendor API rate. '
-              '"n/a" means no cost could be resolved.',
+          t.aiUsageCost,
+          t.aiUsageCostHeaderTip,
           width: 72,
           align: TextAlign.right,
         ),
@@ -2011,6 +2006,7 @@ class _ModelListRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Row(
       children: [
         Container(
@@ -2056,7 +2052,7 @@ class _ModelListRow extends StatelessWidget {
                 ? (total.source == AiUsageSource.antigravity
                     ? '~${formatCost(total.cost)}'
                     : formatCost(total.cost))
-                : 'n/a',
+                : t.aiUsageNotApplicable,
             textAlign: TextAlign.right,
             style: TextStyle(
               color: total.billable ? luma.success : luma.textMuted,
@@ -2079,8 +2075,8 @@ class _CompanyListRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final modelsLabel =
-        total.modelCount == 1 ? '1 model' : '${total.modelCount} models';
+    final t = L.of(context);
+    final modelsLabel = t.aiUsageModelCount(total.modelCount);
     return Row(
       children: [
         Container(
@@ -2138,7 +2134,7 @@ class _CompanyListRow extends StatelessWidget {
                 ? (total.estimated
                     ? '~${formatCost(total.cost)}'
                     : formatCost(total.cost))
-                : 'n/a',
+                : t.aiUsageNotApplicable,
             textAlign: TextAlign.right,
             style: TextStyle(
               color: total.billable ? luma.success : luma.textMuted,
@@ -2167,9 +2163,9 @@ class _ContributionHeatmap extends StatelessWidget {
   /// label when it's the first column containing that month's 1st-7th —
   /// i.e. roughly one label per month, placed on whichever column that
   /// month actually begins in.
-  static String? _monthLabelFor(DateTime gridStart, int week) {
+  static String? _monthLabelFor(DateTime gridStart, int week, String localeName) {
     final date = gridStart.add(Duration(days: week * 7));
-    return date.day <= 7 ? DateFormat('MMM').format(date) : null;
+    return date.day <= 7 ? DateFormat('MMM', localeName).format(date) : null;
   }
 
   static int _levelFor(int tokens, int maxTokens) {
@@ -2192,10 +2188,11 @@ class _ContributionHeatmap extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     if (dayBuckets.isEmpty) {
-      return const LumaEmptyState(
+      return LumaEmptyState(
         icon: Icons.calendar_month_outlined,
-        title: 'No usage recorded yet',
+        title: t.aiUsageNoUsageYet,
       );
     }
 
@@ -2214,10 +2211,14 @@ class _ContributionHeatmap extends StatelessWidget {
       }
       final bucket = byDay[date];
       final tokens = bucket?.totalTokens ?? 0;
+      final dateLabel = DateFormat('MMM d, yyyy', t.localeName).format(date);
       final message = tokens > 0
-          ? '${DateFormat('MMM d, yyyy').format(date)}\n'
-              '${formatTokens(tokens)} tokens · ${formatCost(bucket!.cost)}'
-          : '${DateFormat('MMM d, yyyy').format(date)}\nNo usage';
+          ? t.aiUsageHeatmapCellTooltip(
+              dateLabel,
+              formatTokens(tokens),
+              formatCost(bucket!.cost),
+            )
+          : t.aiUsageHeatmapEmptyTooltip(dateLabel);
       return Tooltip(
         message: message,
         child: Container(
@@ -2235,12 +2236,12 @@ class _ContributionHeatmap extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Contribution Heatmap',
+          t.aiUsageHeatmapTitle,
           style: TextStyle(color: luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 4),
         Text(
-          'Daily token intensity over the last year — hover a day for details',
+          t.aiUsageHeatmapHint,
           style: TextStyle(color: luma.textMuted, fontSize: 11),
         ),
         const SizedBox(height: 12),
@@ -2259,7 +2260,7 @@ class _ContributionHeatmap extends StatelessWidget {
                     child: Stack(
                       children: [
                         for (var w = 0; w < weekCount; w++)
-                          if (_monthLabelFor(gridStart, w) case final label?)
+                          if (_monthLabelFor(gridStart, w, t.localeName) case final label?)
                             Positioned(
                               left: w * _colStep,
                               child: Text(
@@ -2304,7 +2305,7 @@ class _ContributionHeatmap extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Text('Less', style: TextStyle(color: luma.textMuted, fontSize: 11)),
+            Text(t.aiUsageLess, style: TextStyle(color: luma.textMuted, fontSize: 11)),
             for (var level = 0; level <= 4; level++)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 3),
@@ -2317,7 +2318,7 @@ class _ContributionHeatmap extends StatelessWidget {
                   ),
                 ),
               ),
-            Text('More', style: TextStyle(color: luma.textMuted, fontSize: 11)),
+            Text(t.commonMore, style: TextStyle(color: luma.textMuted, fontSize: 11)),
           ],
         ),
       ],

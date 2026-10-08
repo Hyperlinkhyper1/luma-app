@@ -4,5 +4,23 @@
   "version": "1.0.0",
   "description": "Track local AI usage, keep a Markdown context library, build reusable specialists for Luma and Codex, and compare models. Nothing leaves your laptop unless you choose a provider.",
   "icon": "query_stats",
-  "category": "Productivity"
+  "category": "Productivity",
+  "i18n": {
+    "nl": {
+      "name": "AI-gebruik",
+      "description": "Houd lokaal AI-gebruik bij, bewaar een Markdown-contextbibliotheek, bouw herbruikbare specialisten voor Luma en Codex, en vergelijk modellen. Er verlaat niets je laptop tenzij je een provider kiest."
+    },
+    "fr": {
+      "name": "Utilisation de l'IA",
+      "description": "Suivez votre utilisation locale de l'IA, tenez une bibliothèque de contexte en Markdown, créez des spécialistes réutilisables pour Luma et Codex, et comparez les modèles. Rien ne quitte votre ordinateur portable sauf si vous choisissez un fournisseur."
+    },
+    "es": {
+      "name": "Uso de IA",
+      "description": "Registra el uso local de IA, mantén una biblioteca de contexto en Markdown, crea especialistas reutilizables para Luma y Codex, y compara modelos. Nada sale de tu portátil a menos que elijas un proveedor."
+    },
+    "zh": {
+      "name": "AI 用量",
+      "description": "追踪本地 AI 用量，维护 Markdown 上下文库，为 Luma 和 Codex 创建可复用的专家，并对比各类模型。除非你选择某个服务商，否则任何内容都不会离开你的笔记本电脑。"
+    }
+  }
 }

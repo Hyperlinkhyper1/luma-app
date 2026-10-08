@@ -3,6 +3,8 @@
 
 import 'dart:math' as math;
 
+import '../../../../../l10n/current_l.dart';
+
 enum MissionMetric {
   /// Net profit banked in a single day.
   dailyNetProfit,
@@ -31,8 +33,6 @@ enum MissionMetric {
 
 class MissionDef {
   final String id;
-  final String name;
-  final String description;
   final MissionMetric metric;
   final double baseTarget;
 
@@ -46,8 +46,6 @@ class MissionDef {
 
   const MissionDef({
     required this.id,
-    required this.name,
-    required this.description,
     required this.metric,
     required this.baseTarget,
     this.targetGrowth = 1.0,
@@ -55,6 +53,32 @@ class MissionDef {
     required this.repReward,
     this.minDay = 0,
   });
+
+  String get name => switch (id) {
+        'PROFITABLE_DAY' => currentL.serverTycoonMissionProfitableDay,
+        'BIG_DAY' => currentL.serverTycoonMissionBigDay,
+        'EXPAND_SERVICES' => currentL.serverTycoonMissionExpandServices,
+        'GO_SHOPPING' => currentL.serverTycoonMissionGoShopping,
+        'CLOSE_A_CONTRACT' => currentL.serverTycoonMissionCloseAContract,
+        'FIREFIGHTER' => currentL.serverTycoonMissionFirefighter,
+        'LAB_WORK' => currentL.serverTycoonMissionLabWork,
+        'PUSH_TRAFFIC' => currentL.serverTycoonMissionPushTraffic,
+        'CLEAN_RUN' => currentL.serverTycoonMissionCleanRun,
+        _ => id,
+      };
+
+  String get description => switch (id) {
+        'PROFITABLE_DAY' => currentL.serverTycoonMissionProfitableDayDesc,
+        'BIG_DAY' => currentL.serverTycoonMissionBigDayDesc,
+        'EXPAND_SERVICES' => currentL.serverTycoonMissionExpandServicesDesc,
+        'GO_SHOPPING' => currentL.serverTycoonMissionGoShoppingDesc,
+        'CLOSE_A_CONTRACT' => currentL.serverTycoonMissionCloseAContractDesc,
+        'FIREFIGHTER' => currentL.serverTycoonMissionFirefighterDesc,
+        'LAB_WORK' => currentL.serverTycoonMissionLabWorkDesc,
+        'PUSH_TRAFFIC' => currentL.serverTycoonMissionPushTrafficDesc,
+        'CLEAN_RUN' => currentL.serverTycoonMissionCleanRunDesc,
+        _ => '',
+      };
 
   /// Targets and rewards both scale with account age so a day-90 objective is
   /// still worth doing, rounded to something readable.
@@ -74,8 +98,6 @@ class MissionDef {
 final Map<String, MissionDef> missionDefsById = {
   'PROFITABLE_DAY': const MissionDef(
     id: 'PROFITABLE_DAY',
-    name: 'In the Black',
-    description: 'Bank a net profit today.',
     metric: MissionMetric.dailyNetProfit,
     baseTarget: 40,
     targetGrowth: 1.8,
@@ -84,8 +106,6 @@ final Map<String, MissionDef> missionDefsById = {
   ),
   'BIG_DAY': const MissionDef(
     id: 'BIG_DAY',
-    name: 'Payday',
-    description: 'Bank a serious net profit in a single day.',
     metric: MissionMetric.dailyNetProfit,
     baseTarget: 250,
     targetGrowth: 2.0,
@@ -95,8 +115,6 @@ final Map<String, MissionDef> missionDefsById = {
   ),
   'EXPAND_SERVICES': const MissionDef(
     id: 'EXPAND_SERVICES',
-    name: 'Spin It Up',
-    description: 'Install 2 new services today.',
     metric: MissionMetric.servicesInstalled,
     baseTarget: 2,
     baseCashReward: 200,
@@ -104,8 +122,6 @@ final Map<String, MissionDef> missionDefsById = {
   ),
   'GO_SHOPPING': const MissionDef(
     id: 'GO_SHOPPING',
-    name: 'Parts Run',
-    description: 'Buy 3 components today.',
     metric: MissionMetric.componentsBought,
     baseTarget: 3,
     baseCashReward: 180,
@@ -113,8 +129,6 @@ final Map<String, MissionDef> missionDefsById = {
   ),
   'CLOSE_A_CONTRACT': const MissionDef(
     id: 'CLOSE_A_CONTRACT',
-    name: 'Delivered',
-    description: 'Complete a company contract today.',
     metric: MissionMetric.contractsCompleted,
     baseTarget: 1,
     baseCashReward: 500,
@@ -123,8 +137,6 @@ final Map<String, MissionDef> missionDefsById = {
   ),
   'FIREFIGHTER': const MissionDef(
     id: 'FIREFIGHTER',
-    name: 'Firefighter',
-    description: 'Resolve 2 incidents today.',
     metric: MissionMetric.incidentsResolved,
     baseTarget: 2,
     baseCashReward: 300,
@@ -133,8 +145,6 @@ final Map<String, MissionDef> missionDefsById = {
   ),
   'LAB_WORK': const MissionDef(
     id: 'LAB_WORK',
-    name: 'Lab Work',
-    description: 'Finish a research project today.',
     metric: MissionMetric.researchCompleted,
     baseTarget: 1,
     baseCashReward: 450,
@@ -143,8 +153,6 @@ final Map<String, MissionDef> missionDefsById = {
   ),
   'PUSH_TRAFFIC': const MissionDef(
     id: 'PUSH_TRAFFIC',
-    name: 'Traffic Spike',
-    description: 'Serve a sustained load of traffic today.',
     metric: MissionMetric.bandwidthServed,
     baseTarget: 60,
     targetGrowth: 1.9,
@@ -154,8 +162,6 @@ final Map<String, MissionDef> missionDefsById = {
   ),
   'CLEAN_RUN': const MissionDef(
     id: 'CLEAN_RUN',
-    name: 'Clean Run',
-    description: 'Get through the day with nothing overloaded.',
     metric: MissionMetric.cleanDay,
     baseTarget: 1,
     baseCashReward: 220,

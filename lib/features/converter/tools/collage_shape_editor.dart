@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/luma_theme.dart';
 import '../converter_widgets.dart';
 
@@ -207,10 +208,11 @@ class _CollageShapeEditorState extends State<CollageShapeEditor> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return ToolScaffold(
       icon: Icons.crop_rounded,
-      title: 'Design your layout',
-      subtitle: 'Add, drag and resize frames to build your own shape',
+      title: t.collageShapeTitle,
+      subtitle: t.collageShapeSubtitle,
       onBack: widget.onCancel,
       children: [
         _EditorToolbar(
@@ -235,7 +237,7 @@ class _CollageShapeEditorState extends State<CollageShapeEditor> {
                   Icon(Icons.crop_free_rounded, color: luma.accent, size: 18),
                   const SizedBox(width: 8),
                   Text(
-                    'Layout',
+                    t.collageShapeLayout,
                     style: TextStyle(
                       color: luma.textPrimary,
                       fontSize: 14,
@@ -244,7 +246,7 @@ class _CollageShapeEditorState extends State<CollageShapeEditor> {
                   ),
                   const Spacer(),
                   Text(
-                    '${_slots.length} frame${_slots.length == 1 ? '' : 's'}',
+                    t.collageShapeFrameCount(_slots.length),
                     style: TextStyle(color: luma.textMuted, fontSize: 12),
                   ),
                 ],
@@ -286,7 +288,7 @@ class _CollageShapeEditorState extends State<CollageShapeEditor> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Name',
+                t.collageShapeName,
                 style: TextStyle(
                   color: luma.textSecondary,
                   fontSize: 12.5,
@@ -299,7 +301,7 @@ class _CollageShapeEditorState extends State<CollageShapeEditor> {
                 onChanged: (_) => setState(() {}),
                 style: TextStyle(color: luma.textPrimary, fontSize: 14),
                 decoration: InputDecoration(
-                  hintText: 'e.g. My layout',
+                  hintText: t.collageShapeNameHint,
                   hintStyle: TextStyle(color: luma.textMuted),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -322,7 +324,7 @@ class _CollageShapeEditorState extends State<CollageShapeEditor> {
             Expanded(
               flex: 2,
               child: ConverterPrimaryButton(
-                label: 'Save shape',
+                label: t.collageShapeSave,
                 icon: Icons.check_rounded,
                 loading: false,
                 onTap: _canSave ? _save : null,
@@ -331,7 +333,7 @@ class _CollageShapeEditorState extends State<CollageShapeEditor> {
             const SizedBox(width: 12),
             Expanded(
               child: ConverterPrimaryButton(
-                label: 'Cancel',
+                label: t.commonCancel,
                 icon: Icons.close_rounded,
                 loading: false,
                 onTap: widget.onCancel,
@@ -443,6 +445,7 @@ class _EditorToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return ConverterCard(
       padding: const EdgeInsets.all(12),
       child: Wrap(
@@ -452,28 +455,28 @@ class _EditorToolbar extends StatelessWidget {
         children: [
           _ToolbarButton(
             icon: Icons.add_box_rounded,
-            label: 'Add frame',
+            label: t.collageShapeAddFrame,
             onTap: onAdd,
           ),
           _ToolbarButton(
             icon: Icons.vertical_split_rounded,
-            label: 'Split ↔',
+            label: t.collageShapeSplitHorizontal,
             onTap: canModify ? onSplitH : null,
           ),
           _ToolbarButton(
             icon: Icons.horizontal_split_rounded,
-            label: 'Split ↕',
+            label: t.collageShapeSplitVertical,
             onTap: canModify ? onSplitV : null,
           ),
           _ToolbarButton(
             icon: Icons.delete_outline_rounded,
-            label: 'Delete',
+            label: t.collageShapeDelete,
             danger: true,
             onTap: canModify ? onDelete : null,
           ),
           _ToolbarButton(
             icon: Icons.layers_clear_rounded,
-            label: 'Clear all',
+            label: t.collageShapeClearAll,
             danger: true,
             onTap: canClear ? onClear : null,
           ),
@@ -494,7 +497,7 @@ class _EditorToolbar extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    'Snap to grid',
+                    t.collageShapeSnap,
                     style: TextStyle(
                       color: snap ? luma.accent : luma.textMuted,
                       fontSize: 12.5,
@@ -623,6 +626,7 @@ class _EmptyEditorHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -630,11 +634,11 @@ class _EmptyEditorHint extends StatelessWidget {
           Icon(Icons.crop_free_rounded, color: luma.textMuted, size: 32),
           const SizedBox(height: 10),
           Text(
-            'Tap "Add frame" to start building your shape',
+            t.collageShapeEmptyHint,
             style: TextStyle(color: luma.textMuted, fontSize: 13),
           ),
           const SizedBox(height: 14),
-          ConverterTextButton(label: 'Add frame', onTap: onAdd),
+          ConverterTextButton(label: t.collageShapeAddFrame, onTap: onAdd),
         ],
       ),
     );

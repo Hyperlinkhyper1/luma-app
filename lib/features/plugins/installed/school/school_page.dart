@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import 'ui/assignments_tab.dart';
 import 'ui/citations_tab.dart';
 import 'ui/dashboard_tab.dart';
@@ -24,27 +25,28 @@ class SchoolPage extends StatefulWidget {
 class _SchoolPageState extends State<SchoolPage> {
   int _tab = 0;
 
-  static const _tabs = [
-    'Dashboard',
-    'Timetable',
-    'Assignments',
-    'Flashcards',
-    'Toetsen',
-    'Formulas',
-    'Study timer',
-    'GPA',
-    'Citations',
-  ];
+  List<String> _tabs(L t) => [
+        t.schoolTabDashboard,
+        t.schoolTabTimetable,
+        t.schoolTabAssignments,
+        t.schoolTabFlashcards,
+        t.schoolTabPracticeTests,
+        t.schoolTabFormulas,
+        t.schoolTabStudyTimer,
+        t.schoolTabGpa,
+        t.schoolTabCitations,
+      ];
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
           child: LumaSegmentedTabs(
-            tabs: _tabs,
+            tabs: _tabs(t),
             selectedIndex: _tab,
             onSelect: (i) => setState(() => _tab = i),
             scrollable: true,

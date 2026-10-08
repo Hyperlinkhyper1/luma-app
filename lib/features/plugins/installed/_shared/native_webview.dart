@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
+
 /// A real WebView2 window laid over this widget's rectangle (Windows only).
 ///
 /// Unlike `webview_windows`, which screen-captures WebView2 into a Flutter
@@ -128,7 +130,7 @@ class _NativeWebviewState extends State<NativeWebview> {
       return;
     } on MissingPluginException {
       if (mounted) {
-        widget.onError?.call('This build has no native webview host.');
+        widget.onError?.call(currentL.nativeWebviewNoHost);
       }
       return;
     }

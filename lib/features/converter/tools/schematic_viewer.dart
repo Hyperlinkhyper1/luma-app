@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/luma_theme.dart';
 import '../converter_widgets.dart';
 import '../schematic/block_colors.dart';
@@ -159,6 +160,7 @@ class _SchematicViewerState extends State<SchematicViewer> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final schematic = widget.schematic;
 
     if (_geometry.isEmpty) {
@@ -170,7 +172,7 @@ class _SchematicViewerState extends State<SchematicViewer> {
               Icon(Icons.deblur_rounded, color: luma.textMuted, size: 32),
               const SizedBox(height: 12),
               Text(
-                'Nothing to show — this build is all air.',
+                t.schemViewerEmpty,
                 style: TextStyle(color: luma.textSecondary, fontSize: 13),
               ),
             ],
@@ -211,11 +213,11 @@ class _SchematicViewerState extends State<SchematicViewer> {
               child: MouseRegion(
                 cursor: SystemMouseCursors.grab,
                 child: Semantics(
-                  label:
-                      '3D preview of the build, ${schematic.width} by '
-                      '${schematic.height} by ${schematic.length} blocks. '
-                      'Drag to rotate, or use the rotate and zoom buttons '
-                      'below.',
+                  label: t.schemViewerSemantics(
+                    schematic.width,
+                    schematic.height,
+                    schematic.length,
+                  ),
                   child: RepaintBoundary(
                     child: CustomPaint(
                       painter: _VoxelPainter(
@@ -239,6 +241,7 @@ class _SchematicViewerState extends State<SchematicViewer> {
         ),
         const SizedBox(height: 12),
         _ViewerControls(
+          t: t,
           layers: _layers,
           maxLayer: _geometry.height,
           sourceHeight: schematic.height,
@@ -251,6 +254,7 @@ class _SchematicViewerState extends State<SchematicViewer> {
         ),
         const SizedBox(height: 10),
         _TextureStatus(
+          t: t,
           atlas: _atlas,
           loading: _loadingTextures,
           download: _download,
@@ -267,9 +271,7 @@ class _SchematicViewerState extends State<SchematicViewer> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'This build is too large to draw block-for-block, so the '
-                  'preview is simplified ${_geometry.stride}× — the converted '
-                  'file keeps every block.',
+                  t.schemViewerSimplified(_geometry.stride),
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
               ),
@@ -289,6 +291,7 @@ class _SchematicViewerState extends State<SchematicViewer> {
 /// apology for it.
 class _TextureStatus extends StatelessWidget {
   const _TextureStatus({
+    required this.t,
     required this.atlas,
     required this.loading,
     required this.download,
@@ -297,6 +300,7 @@ class _TextureStatus extends StatelessWidget {
     required this.onDownload,
   });
 
+  final L t;
   final BlockAtlas? atlas;
   final bool loading;
   final TextureDownloadProgress? download;
@@ -326,19 +330,23 @@ class _TextureStatus extends StatelessWidget {
         ),
       );
       if (progress == null) {
-        message = 'Reading block textures…';
+        message = t.textureStageReading;
       } else if (progress.total > 0) {
-        message = '${progress.stage} '
-            '${_megabytes(progress.received)} of '
-            '${_megabytes(progress.total)}';
+        message = t.schemViewerDownloadProgress(
+          progress.stage,
+          _megabytes(progress.received),
+          _megabytes(progress.total),
+        );
       } else {
         message = progress.stage;
       }
     } else if (loaded != null) {
       leading = Icon(Icons.check_circle_outline_rounded,
           size: 15, color: luma.success);
-      message = 'Textures from ${loaded.label} '
-          '(${loaded.textureCount} blocks)';
+      message = t.schemViewerTexturesFrom(
+        loaded.label,
+        loaded.textureCount,
+      );
     } else {
       leading =
           Icon(Icons.palette_outlined, size: 15, color: luma.textMuted);
@@ -346,10 +354,10 @@ class _TextureStatus extends StatelessWidget {
       // feature that reaches out to the network, and it should be the user's
       // decision rather than something that quietly happens to them.
       message = failure == null
-          ? 'Flat colours — no Minecraft found. Download the textures from '
-              'Mojang (~${_megabytes(kApproximateClientJarBytes)}) or use '
-              'your own copy.'
-          : '$failure Showing flat block colours.';
+          ? t.schemViewerFlatColours(
+              _megabytes(kApproximateClientJarBytes),
+            )
+          : t.schemViewerFailureFallback(failure!);
     }
 
     return Row(
@@ -366,13 +374,15 @@ class _TextureStatus extends StatelessWidget {
         if (!loading) ...[
           if (loaded == null) ...[
             ConverterTextButton(
-              label: 'Download textures',
+              label: t.schemViewerDownloadTextures,
               onTap: onDownload,
             ),
             const SizedBox(width: 4),
           ],
           ConverterTextButton(
-            label: loaded == null ? 'Use my install' : 'Change',
+            label: loaded == null
+                ? t.schemViewerUseInstall
+                : t.converterChange,
             onTap: onPick,
           ),
         ],
@@ -406,6 +416,7 @@ class _ViewerShell extends StatelessWidget {
 
 class _ViewerControls extends StatelessWidget {
   const _ViewerControls({
+    required this.t,
     required this.layers,
     required this.maxLayer,
     required this.sourceHeight,
@@ -417,6 +428,7 @@ class _ViewerControls extends StatelessWidget {
     required this.onReset,
   });
 
+  final L t;
   final RangeValues layers;
   final int maxLayer;
   final int sourceHeight;
@@ -442,7 +454,7 @@ class _ViewerControls extends StatelessWidget {
         Row(
           children: [
             Text(
-              'Layers',
+              t.schemViewerLayers,
               style: TextStyle(
                 color: luma.textSecondary,
                 fontSize: 13,
@@ -451,7 +463,7 @@ class _ViewerControls extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Text(
-              'Y $from–$to',
+              t.schemViewerLayerRange(from, to),
               style: TextStyle(
                 color: luma.textPrimary,
                 fontSize: 13,
@@ -462,27 +474,27 @@ class _ViewerControls extends StatelessWidget {
             const Spacer(),
             _ViewerIconButton(
               icon: Icons.rotate_left_rounded,
-              tooltip: 'Rotate left',
+              tooltip: t.convImgEditRotateLeft,
               onTap: onRotateLeft,
             ),
             _ViewerIconButton(
               icon: Icons.rotate_right_rounded,
-              tooltip: 'Rotate right',
+              tooltip: t.convImgEditRotateRight,
               onTap: onRotateRight,
             ),
             _ViewerIconButton(
               icon: Icons.zoom_out_rounded,
-              tooltip: 'Zoom out',
+              tooltip: t.schemViewerZoomOut,
               onTap: onZoomOut,
             ),
             _ViewerIconButton(
               icon: Icons.zoom_in_rounded,
-              tooltip: 'Zoom in',
+              tooltip: t.schemViewerZoomIn,
               onTap: onZoomIn,
             ),
             _ViewerIconButton(
               icon: Icons.restart_alt_rounded,
-              tooltip: 'Reset the view',
+              tooltip: t.schemViewerResetView,
               onTap: onReset,
             ),
           ],

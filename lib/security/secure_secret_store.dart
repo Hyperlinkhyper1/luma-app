@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../l10n/current_l.dart';
+
 /// OS-protected credential storage. An unavailable keyring is an error;
 /// callers must never fall back to writing plaintext secrets.
 ///
@@ -75,7 +77,7 @@ class SecureSecretStore {
     if (await read(name) == value) return;
     await _storage.write(key: 'luma.$name', value: value);
     if (await read(name) != value) {
-      throw StateError('Secure storage verification failed.');
+      throw StateError(currentL.secretStoreVerificationFailed);
     }
     await _backUp();
   }
@@ -105,9 +107,7 @@ class SecureSecretStore {
             ? (await legacyFile.readAsString()).trim()
             : null;
         if (saved != null && legacy != null && saved != legacy) {
-          throw StateError(
-            'Conflicting encryption keys; restore requires review.',
-          );
+          throw StateError(currentL.secretStoreConflictingKeys);
         }
         var encoded = saved ?? legacy;
         if (encoded == null) {
@@ -117,7 +117,7 @@ class SecureSecretStore {
         }
         final key = base64Decode(encoded);
         if (key.length != 32) {
-          throw const FormatException('Invalid stored encryption key.');
+          throw FormatException(currentL.secretStoreInvalidKey);
         }
         await write(name, encoded);
         if (legacy != null) await legacyFile.delete();

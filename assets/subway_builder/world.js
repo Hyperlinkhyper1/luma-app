@@ -163,8 +163,10 @@
     w.weather = { kind, until: w.clock + (4 + Math.random() * 10) * 60 };
     if (kind !== prev) SB.game.networkDirty = true; // ride times changed
     if (kind !== prev && kind !== 'clear' && kind !== 'cloudy' && world.onNews) {
-      world.onNews(WEATHER[kind].emoji + ' ' + WEATHER[kind].label +
-        (WEATHER[kind].surface > 1.2 ? ' — surface transit is slowed' : ''));
+      world.onNews({
+        key: WEATHER[kind].surface > 1.2 ? 'sceneSubwayWeatherSlowedNews' : 'sceneSubwayWeatherNews',
+        values: { weather: WEATHER[kind].label },
+      });
     }
   }
 
@@ -219,8 +221,10 @@
         });
         SB.game.networkDirty = true;
         if (world.onNews) {
-          world.onNews('⚠️ ' + kind.label + ' on ' + line.name + ' — expect delays for ~' +
-            Math.round(hours) + 'h', 'bad');
+          world.onNews({
+            key: 'sceneSubwayDisruptionNews',
+            values: { disruption: kind.label, line: line.name, hours: Math.round(hours) },
+          }, 'bad');
         }
       }
     }
@@ -270,7 +274,10 @@
         e.announced = true;
         const s = SB.game.stationById(e.sid);
         if (s && world.onNews) {
-          world.onNews('🎪 ' + e.name + ' near ' + s.name + ' tonight — expect a crowd surge!');
+          world.onNews({
+            key: 'sceneSubwayEventNews',
+            values: { event: e.name, station: s.name },
+          });
         }
       }
     }

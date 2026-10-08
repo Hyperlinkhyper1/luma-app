@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../device_health_models.dart';
 import '../device_health_scope.dart';
@@ -13,6 +14,7 @@ class CpuRamCard extends StatelessWidget {
     final repo = DeviceHealthScope.of(context);
     final state = repo.systemUsage;
     final usage = state.data;
+    final t = L.of(context);
     final status = usage == null
         ? null
         : (usage.cpuPercent > 90 || usage.ramUsedPercent > 90)
@@ -23,14 +25,14 @@ class CpuRamCard extends StatelessWidget {
 
     return CategoryCard(
       icon: Icons.memory_rounded,
-      title: 'CPU & RAM',
+      title: t.deviceHealthCardCpuRamTitle,
       status: status,
       loading: state.loading,
       error: state.error,
       onCheck: () => repo.refreshAmbient(),
       child: usage == null
           ? Text(
-              'Not checked yet.',
+              t.deviceHealthCardNotCheckedYet,
               style: TextStyle(color: context.luma.textMuted, fontSize: 13),
             )
           : Column(

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../../account/plan.dart';
 import '../../../../account/plan_selection_page.dart';
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../settings/settings_scope.dart';
 import '../sftp/share/send_to_devices.dart';
 import '../../../../theme/luma_theme.dart';
@@ -182,7 +183,7 @@ class _GalleryPageState extends State<GalleryPage> {
 
   Future<void> _addFolder(GalleryRepository repo) async {
     final path = await FilePicker.getDirectoryPath(
-      dialogTitle: 'Add a folder to the gallery',
+      dialogTitle: L.of(context).galleryPageAddFolderDialogTitle,
     );
     if (path == null) return;
     await repo.addFolder(path);
@@ -200,7 +201,7 @@ class _GalleryPageState extends State<GalleryPage> {
     if (!repo.supportsScanRoot) return;
     final picked = repo.supportsCustomFolders
         ? await FilePicker.getDirectoryPath(
-            dialogTitle: 'Scan only this folder',
+            dialogTitle: L.of(context).galleryPageScanOneFolderDialogTitle,
           )
         : await _pickKnownFolder(repo);
     if (picked == null || !mounted) return;
@@ -215,11 +216,10 @@ class _GalleryPageState extends State<GalleryPage> {
       for (final folder in repo.knownFolders)
         if (folder.trim().isNotEmpty) folder,
     ];
+    final t = L.of(context);
     if (folders.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No folders found yet — let the first scan finish.'),
-        ),
+        SnackBar(content: Text(t.galleryPageNoFoldersYet)),
       );
       return null;
     }
@@ -230,7 +230,7 @@ class _GalleryPageState extends State<GalleryPage> {
       builder: (context) {
         final luma = context.luma;
         return AlertDialog(
-          title: const Text('Scan one folder'),
+          title: Text(t.galleryPageScanOneFolder),
           content: SizedBox(
             width: double.maxFinite,
             height: 420,
@@ -240,8 +240,7 @@ class _GalleryPageState extends State<GalleryPage> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Text(
-                    'Everything inside the folder you pick is included, '
-                    'sub-folders and all. Nothing else is looked at.',
+                    t.galleryPageScanOneFolderBody,
                     style: TextStyle(color: luma.textSecondary, fontSize: 12),
                   ),
                 ),
@@ -255,7 +254,7 @@ class _GalleryPageState extends State<GalleryPage> {
                             Icons.photo_library_outlined,
                             color: luma.textSecondary,
                           ),
-                          title: const Text('The whole library'),
+                          title: Text(t.galleryPageWholeLibrary),
                           selected: current == null,
                           onTap: () => Navigator.of(context).pop(''),
                         );
@@ -280,7 +279,7 @@ class _GalleryPageState extends State<GalleryPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(t.commonCancel),
             ),
           ],
         );
@@ -297,26 +296,27 @@ class _GalleryPageState extends State<GalleryPage> {
   }
 
   Future<void> _renamePerson(GalleryRepository repo, PersonCluster person) async {
+    final t = L.of(context);
     final controller = TextEditingController(text: person.name ?? '');
     final name = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Name for ${person.displayName}'),
+        title: Text(t.galleryPageRenamePersonTitle(person.displayName)),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(hintText: 'e.g. Mum, Alex…'),
+          decoration: InputDecoration(hintText: t.galleryPageRenameHint),
           onSubmitted: (value) => Navigator.of(context).pop(value),
         ),
         // §1 escape-routes: a clear way out besides the name itself.
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: Text(t.commonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(controller.text),
-            child: const Text('Save'),
+            child: Text(t.commonSave),
           ),
         ],
       ),
@@ -348,12 +348,13 @@ class _GalleryPageState extends State<GalleryPage> {
     bool isNova,
   ) {
     final luma = context.luma;
+    final t = L.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _Header(
-          title: 'Gallery',
+          title: t.pluginNameGallery,
           subtitle: _librarySubtitle(repo),
           repository: repo,
           onAddFolder:
@@ -380,9 +381,11 @@ class _GalleryPageState extends State<GalleryPage> {
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             child: _ProgressNote(
               label: repo.analysisTotal > 0
-                  ? 'Sorting photos into People and Categories — '
-                      '${repo.analysedCount} of ${repo.analysisTotal}'
-                  : 'Sorting photos into People and Categories…',
+                  ? t.galleryPageSortingProgress(
+                      repo.analysedCount,
+                      repo.analysisTotal,
+                    )
+                  : t.galleryPageSortingStarting,
             ),
           ),
         Expanded(child: _albumsBody(context, repo, isNova, luma)),
@@ -396,14 +399,15 @@ class _GalleryPageState extends State<GalleryPage> {
     bool isNova,
     LumaPalette luma,
   ) {
+    final t = L.of(context);
     switch (repo.status) {
       case GalleryStatus.idle:
       case GalleryStatus.askingAccess:
       case GalleryStatus.scanning:
         return _Busy(
           label: repo.status == GalleryStatus.askingAccess
-              ? 'Waiting for permission…'
-              : 'Finding your photos and videos…',
+              ? t.galleryPageWaitingPermission
+              : t.galleryPageFindingPhotos,
           progress: repo.status == GalleryStatus.scanning
               ? repo.scanProgress
               : null,
@@ -426,14 +430,16 @@ class _GalleryPageState extends State<GalleryPage> {
           child: LumaEmptyState(
             icon: Icons.photo_library_outlined,
             title: repo.scanError != null
-                ? 'The library could not be read'
-                : 'No photos or videos yet',
+                ? t.galleryPageLibraryUnreadable
+                : t.galleryPageNoMediaYet,
             subtitle: repo.scanError ??
                 (repo.scanRoot != null
-                    ? 'Nothing in ${repo.scanRoot}. The gallery is only '
-                        'scanning that folder.'
-                    : 'Anything you shoot or download shows up here.'),
-            action: LumaGhostButton(label: 'Rescan', onTap: repo.refresh),
+                    ? t.galleryPageNothingInRoot(repo.scanRoot!)
+                    : t.galleryPageAnythingShowsHere),
+            action: LumaGhostButton(
+              label: t.galleryPageRescan,
+              onTap: repo.refresh,
+            ),
           ),
         );
 
@@ -462,7 +468,7 @@ class _GalleryPageState extends State<GalleryPage> {
         return _cardGrid(
           sections: [
             _CardSection(
-              title: 'Albums',
+              title: t.galleryPageSectionAlbums,
               first: true,
               cards: [
                 for (final category in fixed)
@@ -479,7 +485,7 @@ class _GalleryPageState extends State<GalleryPage> {
             ),
             if (folders.isNotEmpty)
               _CardSection(
-                title: 'More albums',
+                title: t.galleryPageSectionMoreAlbums,
                 cards: [
                   for (final category in folders)
                     GalleryAlbumCard(
@@ -494,18 +500,17 @@ class _GalleryPageState extends State<GalleryPage> {
                 ],
               ),
             _CardSection(
-              title: 'Smart albums',
+              title: t.galleryPageSectionSmartAlbums,
               cards: [
                 // Memories needs no model and costs nothing to compute, so
                 // unlike People and Categories it isn't gated behind Nova.
                 GalleryAlbumCard(
-                  label: 'Memories',
+                  label: t.galleryPageMemories,
                   icon: Icons.auto_awesome_motion_rounded,
                   count: memories.length,
                   subtitle: memories.isEmpty
-                      ? 'None yet'
-                      : '${memories.length} '
-                          '${memories.length == 1 ? 'trip' : 'trips'}',
+                      ? t.galleryPageNoneYet
+                      : t.galleryPageTripCount(memories.length),
                   cover: memories.isEmpty ? null : memories.first.cover,
                   covers: memories.isEmpty
                       ? const []
@@ -515,13 +520,12 @@ class _GalleryPageState extends State<GalleryPage> {
                 ),
                 if (isNova) ...[
                   GalleryAlbumCard(
-                    label: 'People',
+                    label: t.galleryPagePeople,
                     icon: Icons.people_alt_rounded,
                     count: people.length,
                     subtitle: people.isEmpty
-                        ? 'None found yet'
-                        : '${people.length} '
-                            '${people.length == 1 ? 'person' : 'people'}',
+                        ? t.galleryPageNoneFoundYet
+                        : t.galleryPagePersonCount(people.length),
                     cover: people.isEmpty
                         ? null
                         : repo.coverForPerson(people.first),
@@ -530,12 +534,12 @@ class _GalleryPageState extends State<GalleryPage> {
                     onTap: () => setState(() => _open = _peopleId),
                   ),
                   GalleryAlbumCard(
-                    label: 'Categories',
+                    label: t.galleryPageCategories,
                     icon: Icons.category_rounded,
                     count: smartCats.length,
                     subtitle: smartCats.isEmpty
-                        ? 'None found yet'
-                        : '${smartCats.length} categories',
+                        ? t.galleryPageNoneFoundYet
+                        : t.galleryPageCategoryCount(smartCats.length),
                     cover:
                         smartCats.isEmpty || smartCats.first.items.isEmpty
                             ? null
@@ -546,10 +550,10 @@ class _GalleryPageState extends State<GalleryPage> {
                   ),
                 ] else
                   GalleryAlbumCard(
-                    label: 'People & Categories',
+                    label: t.galleryPagePeopleAndCategories,
                     icon: Icons.auto_awesome_rounded,
                     count: 0,
-                    subtitle: 'Included with Nova',
+                    subtitle: t.galleryPageIncludedWithNova,
                     badge: 'Nova',
                     spotlight: true,
                     repository: repo,
@@ -647,24 +651,24 @@ class _GalleryPageState extends State<GalleryPage> {
   /// The "1 204 of 5 309" line under the scan bar, or null before the scan
   /// has anything to report.
   String? _scanDetail(GalleryRepository repo) {
+    final t = L.of(context);
     final total = repo.scanTotal;
     if (total != null && total > 0) {
-      return '${repo.scannedCount} of $total';
+      return t.galleryPageScanCountOf(repo.scannedCount, total);
     }
     if (repo.scannedCount == 0) return null;
-    final noun = repo.scannedCount == 1 ? 'item' : 'items';
-    return '${repo.scannedCount} $noun found';
+    return t.galleryPageItemsFound(repo.scannedCount);
   }
 
   String? _librarySubtitle(GalleryRepository repo) {
+    final t = L.of(context);
     if (repo.status == GalleryStatus.scanning) {
-      return _scanDetail(repo) ?? 'Reading your library…';
+      return _scanDetail(repo) ?? t.galleryPageReadingLibrary;
     }
     if (repo.status != GalleryStatus.ready) return null;
     final count = repo.items.length;
-    final noun = count == 1 ? 'item' : 'items';
-    if (repo.isLocating) return '$count $noun · reading locations';
-    return '$count $noun';
+    if (repo.isLocating) return t.galleryPageItemCountReadingLocations(count);
+    return t.galleryItemCount(count);
   }
 
   // ------------------------------------------------------------ routing
@@ -675,10 +679,11 @@ class _GalleryPageState extends State<GalleryPage> {
     bool isNova,
     String id,
   ) {
+    final t = L.of(context);
     if (id == _smartTeaserId) {
       return _screen(
-        title: 'People & Categories',
-        subtitle: 'Included with Nova',
+        title: t.galleryPagePeopleAndCategories,
+        subtitle: t.galleryPageIncludedWithNova,
         onBack: () => setState(() => _open = null),
         repo: repo,
         child: _SmartUpsell(repo: repo),
@@ -698,7 +703,7 @@ class _GalleryPageState extends State<GalleryPage> {
       }
       return _screen(
         title: person.displayName,
-        subtitle: '${person.count} items',
+        subtitle: t.galleryItemCount(person.count),
         onBack: () => setState(() => _open = _peopleId),
         repo: repo,
         selectable: true,
@@ -720,7 +725,7 @@ class _GalleryPageState extends State<GalleryPage> {
       }
       return _screen(
         title: memory.label,
-        subtitle: '${memory.count} items',
+        subtitle: t.galleryItemCount(memory.count),
         onBack: () => setState(() => _open = _memoriesId),
         repo: repo,
         // Already oldest-first — a trip is relived from its start, unlike
@@ -734,8 +739,8 @@ class _GalleryPageState extends State<GalleryPage> {
       final groupId = id.substring(_smartPrefix.length);
       final group = repo.smartGroups().where((g) => g.id == groupId).firstOrNull;
       return _screen(
-        title: group?.label ?? 'Category',
-        subtitle: group == null ? null : '${group.count} items',
+        title: group?.labelFor(t) ?? t.galleryPageCategoryFallback,
+        subtitle: group == null ? null : t.galleryItemCount(group.count),
         onBack: () => setState(() => _open = _categoriesId),
         repo: repo,
         selectable: true,
@@ -755,7 +760,7 @@ class _GalleryPageState extends State<GalleryPage> {
     final items = _itemsFor(repo, id, () => itemsInCategory(category, repo.items));
     return _screen(
       title: category.label,
-      subtitle: items.length == 1 ? '1 item' : '${items.length} items',
+      subtitle: t.galleryItemCount(items.length),
       onBack: () => setState(() => _open = null),
       repo: repo,
       selectable: true,
@@ -796,12 +801,11 @@ class _GalleryPageState extends State<GalleryPage> {
   // ------------------------------------------------------------- people
 
   Widget _peopleIndexScreen(BuildContext context, GalleryRepository repo) {
+    final t = L.of(context);
     final people = repo.peopleClusters();
     return _screen(
-      title: 'People',
-      subtitle: people.isEmpty
-          ? null
-          : '${people.length} ${people.length == 1 ? 'person' : 'people'}',
+      title: t.galleryPagePeople,
+      subtitle: people.isEmpty ? null : t.galleryPagePersonCount(people.length),
       onBack: () => setState(() => _open = null),
       repo: repo,
       child: people.isEmpty
@@ -809,12 +813,10 @@ class _GalleryPageState extends State<GalleryPage> {
               padding: const EdgeInsets.all(24),
               child: LumaEmptyState(
                 icon: Icons.people_outline_rounded,
-                title: 'No one recognised yet',
+                title: t.galleryPageNoOneRecognised,
                 subtitle: repo.isAnalysing
-                    ? 'Still sorting the library — people appear here once a '
-                        'face has turned up in a few photos.'
-                    : 'Sort the library from the albums screen and people who '
-                        'appear in a few photos together will show up here.',
+                    ? t.galleryPagePeopleStillSorting
+                    : t.galleryPagePeopleSortHint,
               ),
             )
           : _cardGrid(
@@ -843,23 +845,20 @@ class _GalleryPageState extends State<GalleryPage> {
   // ---------------------------------------------------------- memories
 
   Widget _memoriesIndexScreen(BuildContext context, GalleryRepository repo) {
+    final t = L.of(context);
     final memories = repo.memories();
     return _screen(
-      title: 'Memories',
-      subtitle: memories.isEmpty
-          ? null
-          : '${memories.length} ${memories.length == 1 ? 'trip' : 'trips'}',
+      title: t.galleryPageMemories,
+      subtitle: memories.isEmpty ? null : t.galleryPageTripCount(memories.length),
       onBack: () => setState(() => _open = null),
       repo: repo,
       child: memories.isEmpty
-          ? const Padding(
-              padding: EdgeInsets.all(24),
+          ? Padding(
+              padding: const EdgeInsets.all(24),
               child: LumaEmptyState(
                 icon: Icons.auto_awesome_motion_outlined,
-                title: 'No trips yet',
-                subtitle: 'A run of photos over a few busy days — a weekend '
-                    'away, a holiday — shows up here on its own. Nothing to '
-                    'set up, and it works without Nova.',
+                title: t.galleryPageNoTripsYet,
+                subtitle: t.galleryPageNoTripsBody,
               ),
             )
           : _cardGrid(
@@ -891,11 +890,12 @@ class _GalleryPageState extends State<GalleryPage> {
   // -------------------------------------------------------- categories
 
   Widget _categoriesIndexScreen(BuildContext context, GalleryRepository repo) {
+    final t = L.of(context);
     final groups =
         repo.smartGroups().where((g) => g.id != 'people').toList();
     return _screen(
-      title: 'Categories',
-      subtitle: groups.isEmpty ? null : '${groups.length} categories',
+      title: t.galleryPageCategories,
+      subtitle: groups.isEmpty ? null : t.galleryPageCategoryCount(groups.length),
       onBack: () => setState(() => _open = null),
       repo: repo,
       child: groups.isEmpty
@@ -903,11 +903,10 @@ class _GalleryPageState extends State<GalleryPage> {
               padding: const EdgeInsets.all(24),
               child: LumaEmptyState(
                 icon: Icons.category_outlined,
-                title: 'Nothing sorted yet',
+                title: t.galleryPageNothingSortedYet,
                 subtitle: repo.isAnalysing
-                    ? 'Still looking through the library.'
-                    : 'Sort the library from the albums screen to fill '
-                        'these in.',
+                    ? t.galleryPageStillLooking
+                    : t.galleryPageSortToFill,
               ),
             )
           : _cardGrid(
@@ -919,7 +918,7 @@ class _GalleryPageState extends State<GalleryPage> {
                     for (final group in groups)
                       GalleryAlbumCard(
                         key: ValueKey(group.id),
-                        label: group.label,
+                        label: group.labelFor(t),
                         icon: group.icon,
                         count: group.count,
                         cover:
@@ -982,6 +981,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     // Always reachable: the coordinates aren't read until the map is opened,
     // so "no pins yet" is the normal state on a first visit rather than a
     // reason to disable the button.
@@ -993,7 +993,7 @@ class _Header extends StatelessWidget {
         children: [
           if (onBack != null)
             IconButton(
-              tooltip: 'Back',
+              tooltip: t.commonBack,
               onPressed: onBack,
               icon: Icon(Icons.arrow_back_rounded, color: luma.textSecondary),
             ),
@@ -1023,13 +1023,13 @@ class _Header extends StatelessWidget {
           ),
           if (onSelect != null)
             IconButton(
-              tooltip: 'Select photos to send',
+              tooltip: t.galleryPageSelectToSend,
               onPressed: onSelect,
               icon: Icon(Icons.checklist_rounded, color: luma.textSecondary),
             ),
           if (onAddFolder != null)
             IconButton(
-              tooltip: 'Add a folder',
+              tooltip: t.galleryPageAddFolder,
               onPressed: onAddFolder,
               icon: Icon(
                 Icons.create_new_folder_rounded,
@@ -1038,7 +1038,7 @@ class _Header extends StatelessWidget {
             ),
           if (onChooseScanRoot != null)
             IconButton(
-              tooltip: 'Scan one folder only',
+              tooltip: t.galleryPageScanOneFolderOnly,
               onPressed: onChooseScanRoot,
               icon: Icon(
                 Icons.folder_special_rounded,
@@ -1048,7 +1048,7 @@ class _Header extends StatelessWidget {
               ),
             ),
           IconButton(
-            tooltip: 'Photo map',
+            tooltip: t.galleryPagePhotoMap,
             onPressed: canMap
                 ? () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
@@ -1062,7 +1062,7 @@ class _Header extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Rescan',
+            tooltip: t.galleryPageRescan,
             onPressed: repository.status == GalleryStatus.scanning
                 ? null
                 : repository.refresh,
@@ -1103,6 +1103,7 @@ class _PersonCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -1154,7 +1155,7 @@ class _PersonCard extends StatelessWidget {
         ),
         const SizedBox(height: 1),
         Text(
-          person.count == 1 ? '1 item' : '${person.count} items',
+          t.galleryItemCount(person.count),
           textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -1268,12 +1269,13 @@ class _GridState extends State<_Grid> {
     final onOpen = widget.onOpen;
 
     if (items.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(24),
+      final t = L.of(context);
+      return Padding(
+        padding: const EdgeInsets.all(24),
         child: LumaEmptyState(
           icon: Icons.filter_none_rounded,
-          title: 'Nothing in this album',
-          subtitle: 'Photos land here as soon as there are any.',
+          title: t.galleryPageNothingInAlbum,
+          subtitle: t.galleryPageLandHere,
         ),
       );
     }
@@ -1377,6 +1379,7 @@ class _SelectionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return SafeArea(
       top: false,
       child: Padding(
@@ -1400,8 +1403,8 @@ class _SelectionBar extends StatelessWidget {
               Expanded(
                 child: Text(
                   count == 0
-                      ? 'Tap photos to pick them'
-                      : '$count selected',
+                      ? t.galleryPageTapToPick
+                      : t.galleryPageSelectedCount(count),
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 13,
@@ -1411,16 +1414,16 @@ class _SelectionBar extends StatelessWidget {
               ),
               TextButton(
                 onPressed: onSelectAll,
-                child: const Text('All'),
+                child: Text(t.commonAll),
               ),
               const SizedBox(width: 4),
               LumaPrimaryButton(
-                label: 'Send',
+                label: t.commonSend,
                 icon: Icons.devices_rounded,
                 onTap: onSend,
               ),
               IconButton(
-                tooltip: 'Cancel',
+                tooltip: t.commonCancel,
                 onPressed: onCancel,
                 icon: Icon(Icons.close_rounded, color: luma.textSecondary),
               ),
@@ -1539,42 +1542,40 @@ class _NoAccess extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return Padding(
       padding: const EdgeInsets.all(24),
       child: LumaEmptyState(
         icon: Icons.no_photography_rounded,
         title: repo.scanRoot != null
-            ? 'That folder is not there any more'
+            ? t.galleryPageFolderGone
             : repo.supportsCustomFolders
-                ? 'No picture folders found'
-                : 'Gallery needs access to your photos',
+                ? t.galleryPageNoPictureFolders
+                : t.galleryPageNeedsAccess,
         subtitle: repo.scanRoot != null
-            ? 'The gallery is only scanning ${repo.scanRoot}, and that folder '
-                'can no longer be read.'
+            ? t.galleryPageScanRootUnreadable(repo.scanRoot!)
             : repo.supportsCustomFolders
-                ? 'Nothing was found in Pictures, Videos or Downloads. Point '
-                    'the gallery at a folder and it will scan that instead.'
-                : 'Photos and videos stay on this device — the gallery only '
-                    'reads them to show them here.',
+                ? t.galleryPageNothingFoundPoint
+                : t.galleryPageStaysOnDevice,
         action: onScanEverything != null
             ? Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   LumaPrimaryButton(
-                    label: 'Scan everything',
+                    label: t.galleryPageScanEverything,
                     icon: Icons.photo_library_rounded,
                     onTap: onScanEverything!,
                   ),
                   const SizedBox(width: 8),
                   LumaGhostButton(
-                    label: 'Pick another folder',
+                    label: t.galleryPagePickAnotherFolder,
                     onTap: onAddFolder,
                   ),
                 ],
               )
             : repo.supportsCustomFolders
                 ? LumaPrimaryButton(
-                    label: 'Add a folder',
+                    label: t.galleryPageAddFolder,
                     icon: Icons.create_new_folder_rounded,
                     onTap: onAddFolder,
                   )
@@ -1582,13 +1583,13 @@ class _NoAccess extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   LumaPrimaryButton(
-                    label: 'Allow access',
+                    label: t.galleryPageAllowAccess,
                     icon: Icons.lock_open_rounded,
                     onTap: () => repo.initialise(force: true),
                   ),
                   const SizedBox(width: 8),
                   LumaGhostButton(
-                    label: 'Open settings',
+                    label: t.galleryPageOpenSettings,
                     onTap: repo.openSystemSettings,
                   ),
                 ],
@@ -1615,6 +1616,7 @@ class _ScanRootNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
       decoration: BoxDecoration(
@@ -1630,7 +1632,7 @@ class _ScanRootNote extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Only scanning $root and everything in it.',
+                  t.galleryPageOnlyScanningRoot(root),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: luma.textSecondary, fontSize: 12),
@@ -1646,8 +1648,8 @@ class _ScanRootNote extends StatelessWidget {
             spacing: 6,
             runSpacing: 6,
             children: [
-              LumaGhostButton(label: 'Change', onTap: onChange),
-              LumaGhostButton(label: 'Scan everything', onTap: onClear),
+              LumaGhostButton(label: t.galleryPageChange, onTap: onChange),
+              LumaGhostButton(label: t.galleryPageScanEverything, onTap: onClear),
             ],
           ),
         ],
@@ -1665,6 +1667,7 @@ class _LimitedAccessNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
       decoration: BoxDecoration(
@@ -1678,11 +1681,11 @@ class _LimitedAccessNote extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Only the photos you picked are shared with luma.',
+              t.galleryPageLimitedAccess,
               style: TextStyle(color: luma.textSecondary, fontSize: 12),
             ),
           ),
-          LumaGhostButton(label: 'Select more', onTap: onSelectMore),
+          LumaGhostButton(label: t.galleryPageSelectMore, onTap: onSelectMore),
         ],
       ),
     );
@@ -1734,6 +1737,7 @@ class _SmartPrompt extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final pending = repo.pendingAnalysis;
 
     if (repo.isAnalysing) {
@@ -1744,14 +1748,17 @@ class _SmartPrompt extends StatelessWidget {
             Expanded(
               child: _ProgressNote(
                 label: repo.analysisStatus ??
-                    'Sorting photos — ${repo.analysedCount} of $total',
+                    t.galleryPageSortingPhotosProgress(
+                      repo.analysedCount,
+                      total,
+                    ),
                 progress: repo.analysisStatus != null
                     ? repo.analysisProgress
                     : (total == 0 ? null : repo.analysedCount / total),
               ),
             ),
             const SizedBox(width: 12),
-            LumaGhostButton(label: 'Stop', onTap: repo.stopAnalysing),
+            LumaGhostButton(label: t.commonStop, onTap: repo.stopAnalysing),
           ],
         ),
       );
@@ -1759,7 +1766,7 @@ class _SmartPrompt extends StatelessWidget {
     if (repo.isLocating) {
       return LumaCard(
         child: _ProgressNote(
-          label: 'Reading photo details — ${repo.pendingDetails} to go',
+          label: t.galleryPageReadingDetails(repo.pendingDetails),
         ),
       );
     }
@@ -1785,7 +1792,7 @@ class _SmartPrompt extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'People and Categories are up to date',
+                    t.galleryPageUpToDate,
                     style: TextStyle(
                       color: luma.textPrimary,
                       fontSize: 14,
@@ -1795,18 +1802,15 @@ class _SmartPrompt extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     skipped == 0
-                        ? 'Looked at $examined photos.'
-                        : 'Looked at $examined photos. $skipped were skipped '
-                            'because they are only in the cloud, or in a '
-                            'format that can\'t be read here — make them '
-                            'available offline and look again.',
+                        ? t.galleryPageLookedAt(examined)
+                        : t.galleryPageLookedAtSkipped(examined, skipped),
                     style: TextStyle(color: luma.textSecondary, fontSize: 12),
                   ),
                 ],
               ),
             ),
             const SizedBox(width: 12),
-            LumaGhostButton(label: 'Look again', onTap: repo.reanalyseAll),
+            LumaGhostButton(label: t.galleryPageLookAgain, onTap: repo.reanalyseAll),
           ],
         ),
       );
@@ -1819,16 +1823,9 @@ class _SmartPrompt extends StatelessWidget {
             // phone, which has ML Kit for labels but nothing for matching
             // faces across photos.
             ? repo.usesOnnxAnalysis
-                ? '$pending photos to look at. This downloads about '
-                    '$megabytes MB of models once (recognition and face '
-                    'matching); after that everything happens on this PC, '
-                    'offline — no photo is uploaded.'
-                : '$pending photos to look at. This downloads a small '
-                    '(~$megabytes MB) face-matching model once, so photos of '
-                    'the same person can be grouped — offline, and nothing '
-                    'is uploaded.'
-            : '$pending photos still to look at. Runs on this device, '
-                'offline, and picks up where it left off.');
+                ? t.galleryPageSmartDownloadDesktop(pending, megabytes)
+                : t.galleryPageSmartDownloadPhone(pending, megabytes)
+            : t.galleryPageSmartRemaining(pending));
 
     return LumaCard(
       child: Row(
@@ -1845,7 +1842,7 @@ class _SmartPrompt extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'People and Categories',
+                  t.galleryPagePeopleAndCategories,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 14,
@@ -1863,10 +1860,10 @@ class _SmartPrompt extends StatelessWidget {
           const SizedBox(width: 12),
           LumaPrimaryButton(
             label: repo.analysisError != null
-                ? 'Try again'
+                ? t.galleryPageTryAgain
                 : repo.smartModelsNeedDownload
-                    ? 'Get the models'
-                    : 'Sort them',
+                    ? t.galleryPageGetModels
+                    : t.galleryPageSortThem,
             icon: repo.smartModelsNeedDownload
                 ? Icons.download_rounded
                 : Icons.auto_awesome_rounded,
@@ -1887,21 +1884,17 @@ class _SmartUpsell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return Padding(
       padding: const EdgeInsets.all(24),
       child: LumaEmptyState(
         icon: Icons.auto_awesome_rounded,
-        title: 'People and Categories are a Nova extra',
+        title: t.galleryPageSmartUpsellTitle,
         subtitle: repo.smartModelsAvailable
-            ? 'Nova groups your photos by who is in them and what is '
-                'actually in the picture — food, pets, ocean, and more — '
-                'using models that run on this device, offline. Nothing is '
-                'uploaded.'
-            : 'Nova groups your photos by what is in them. The full set of '
-                'categories needs the phone build\'s models; this device '
-                'still gets Panoramas and Places for free.',
+            ? t.galleryPageSmartUpsellBodyModels
+            : t.galleryPageSmartUpsellBodyPhone,
         action: LumaPrimaryButton(
-          label: 'Upgrade to ${planById('nova').name}',
+          label: t.galleryPageUpgradeTo(planById('nova').name),
           icon: Icons.auto_awesome_rounded,
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const PlanSelectionPage()),

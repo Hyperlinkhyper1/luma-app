@@ -6,5 +6,27 @@
   "icon": "description",
   "category": "Utility",
   "details": "File Viewer turns luma into a quick reading pane for almost anything on your disk. Pick a file and it renders right there — no waiting for a heavy external app to start.\n\nPDFs open page by page with selectable text and simple previous/next navigation. Word documents (.docx) are rendered with their headings, bold text, bullet lists and tables intact. Excel workbooks (.xlsx) show up as a scrollable grid with the header row highlighted.\n\nImages (PNG, JPG, GIF, WebP, BMP) and SVGs get a zoomable, pannable canvas with a transparency checkerboard. Plain text and code files — from .txt and .md to .dart, .py and .json — display in a clean monospace view.\n\nAnything the viewer can't render can still be launched in its default app with one click via Open externally.",
-  "screenshots": []
+  "screenshots": [],
+  "i18n": {
+    "nl": {
+      "name": "Bestandsviewer",
+      "description": "Open het bestand gewoon. pdf's, Word, Excel, foto's, code: het toont alles, zonder andere apps.",
+      "details": "Bestandsviewer maakt van luma een snel leesvenster voor vrijwel alles op je schijf. Kies een bestand en het wordt meteen weergegeven, zonder te wachten tot een zware externe app opstart.\n\npdf's openen pagina voor pagina, met selecteerbare tekst en eenvoudige navigatie naar vorige en volgende pagina. Word-documenten (.docx) worden weergegeven met koppen, vetgedrukte tekst, opsommingen en tabellen intact. Excel-werkmappen (.xlsx) verschijnen als een scrollbaar raster met een gemarkeerde kopregel.\n\nAfbeeldingen (PNG, JPG, GIF, WebP, BMP) en svg's krijgen een zoombaar, verschuifbaar canvas met een transparantieraster. Platte tekst- en codebestanden, van .txt en .md tot .dart, .py en .json, worden getoond in een overzichtelijke monospace-weergave.\n\nWat de viewer niet kan weergeven, kun je met één klik openen in de standaardapp via Extern openen."
+    },
+    "fr": {
+      "name": "Visionneuse de fichiers",
+      "description": "Ouvrez simplement le fichier. PDF, Word, Excel, images, code : il affiche tout, sans autre application.",
+      "details": "La Visionneuse de fichiers transforme luma en panneau de lecture rapide pour presque tout ce qui se trouve sur votre disque. Choisissez un fichier : il s'affiche aussitôt, sans attendre le démarrage d'une lourde application externe.\n\nLes PDF s'ouvrent page par page, avec un texte sélectionnable et une navigation simple précédent/suivant. Les documents Word (.docx) sont rendus avec leurs titres, leur gras, leurs listes à puces et leurs tableaux intacts. Les classeurs Excel (.xlsx) apparaissent sous forme de grille défilante avec la ligne d'en-tête mise en évidence.\n\nLes images (PNG, JPG, GIF, WebP, BMP) et les SVG bénéficient d'un canevas zoomable et déplaçable, sur fond de damier de transparence. Les fichiers texte et code, des .txt et .md aux .dart, .py et .json, s'affichent dans une vue monospace claire.\n\nCe que la visionneuse ne peut pas afficher peut tout de même être ouvert dans son application par défaut en un clic, via Ouvrir à l'extérieur."
+    },
+    "es": {
+      "name": "Visor de archivos",
+      "description": "Simplemente abre el archivo. PDF, Word, Excel, imágenes, código: lo muestra todo, sin necesidad de otras apps.",
+      "details": "Visor de archivos convierte luma en un panel de lectura rápido para casi cualquier cosa de tu disco. Elige un archivo y se muestra al instante, sin esperar a que arranque una aplicación externa pesada.\n\nLos PDF se abren página a página, con texto seleccionable y navegación sencilla de anterior/siguiente. Los documentos de Word (.docx) se muestran con sus títulos, negritas, listas con viñetas y tablas intactos. Los libros de Excel (.xlsx) aparecen como una cuadrícula desplazable con la fila de encabezado resaltada.\n\nLas imágenes (PNG, JPG, GIF, WebP, BMP) y los SVG tienen un lienzo con zoom y desplazamiento, con un fondo de cuadros para mostrar la transparencia. Los archivos de texto plano y de código, desde .txt y .md hasta .dart, .py y .json, se muestran en una vista monoespaciada limpia.\n\nLo que el visor no pueda mostrar se puede abrir en su aplicación predeterminada con un clic mediante Abrir externamente."
+    },
+    "zh": {
+      "name": "文件查看器",
+      "description": "直接打开文件即可。PDF、Word、Excel、图片、代码，都能显示，无需其他应用。",
+      "details": "文件查看器把 luma 变成适用于磁盘上几乎所有文件的快速阅读窗格。选中一个文件即可直接渲染显示，无需等待大型外部应用启动。\n\nPDF 会逐页打开，文字可选中，并提供简单的上一页和下一页导航。Word 文档（.docx）会完整保留标题、粗体文字、项目符号列表和表格。Excel 工作簿（.xlsx）显示为可滚动的网格，并突出显示标题行。\n\n图片（PNG、JPG、GIF、WebP、BMP）和 SVG 支持缩放和平移，背景带有透明度棋盘格。纯文本和代码文件（从 .txt、.md 到 .dart、.py、.json）则以清晰的等宽字体视图显示。\n\n查看器无法渲染的文件，仍可通过“用外部程序打开”一键交给其默认应用打开。"
+    }
+  }
 }

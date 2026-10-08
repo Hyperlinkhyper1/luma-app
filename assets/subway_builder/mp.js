@@ -24,6 +24,8 @@
 (function () {
   'use strict';
   const SB = (window.SB = window.SB || {});
+  const tr = (key, values = {}) => window.LumaSceneI18n.format(key, values);
+  const value = (key) => window.LumaSceneI18n.value(key);
 
   // ── Native bridge: the WebView's one connection back to the Flutter app.
   // Two backends: flutter_inappwebview's built-in callHandler (everywhere
@@ -62,14 +64,14 @@
           pending.set(id, { resolve, reject });
           window.chrome.webview.postMessage(JSON.stringify({ id, name, args }));
           setTimeout(() => {
-            if (pending.has(id)) { pending.delete(id); reject(new Error('Native bridge timed out')); }
+            if (pending.has(id)) { pending.delete(id); reject(new Error(tr('sceneSubwayNativeBridgeTimedOut'))); }
           }, 8000);
         });
       }
       if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
         return window.flutter_inappwebview.callHandler('luma_bridge', name, args);
       }
-      return Promise.reject(new Error('Native bridge not available'));
+      return Promise.reject(new Error(tr('sceneSubwayNativeBridgeUnavailable')));
     };
   })();
 
@@ -150,9 +152,9 @@
   };
 
   mp.sendInviteMessage = async function (conversationId, code) {
-    const text = 'Join my Subway Builder co-op room — open Subway Builder, tap Co-op → Join, and enter code ' + code + '.';
+    const text = tr('sceneSubwayInviteChatMessage', {code});
     const r = await native.call('sendChatMessage', conversationId, text);
-    if (!r || !r.ok) throw new Error((r && r.error) || 'Failed to send the invite message');
+    if (!r || !r.ok) throw new Error(tr('sceneSubwayFailedToSendInvite', {error:(r && r.error) || ''}));
   };
 
   // ── Snapshot helpers ─────────────────────────────────────────────────
@@ -230,13 +232,13 @@
       const r = await api('POST', '/subway/rooms/' + mp.roomCode + '/ticket');
       ticket = r.ticket;
     } catch (e) {
-      SB.ui.toast('Could not connect to the room: ' + e.message, 'bad');
+      SB.ui.toast(tr('sceneSubwayCouldNotConnectRoom', {error:e.message}), 'bad');
       return;
     }
     try {
       ws = new WebSocket(wsUrl(mp.serverUrl, mp.roomCode, ticket));
     } catch (e) {
-      SB.ui.toast('Could not reach the co-op server', 'bad');
+      SB.ui.toast(value('sceneSubwayCouldNotReachCoopServer'), 'bad');
       return;
     }
     ws.onopen = () => { mp.connected = true; startClockClaimLoop(); SB.ui.updateAll(); };
@@ -246,7 +248,7 @@
       mp.connected = false;
       stopClockClaimLoop();
       if (wasConnected && mp.roomCode) {
-        SB.ui.toast('Lost connection to the room — reconnecting…', 'bad');
+        SB.ui.toast(value('sceneSubwayLostConnectionReconnecting'), 'bad');
         setTimeout(() => { if (mp.roomCode) connectSocket(); }, 3000);
       }
       SB.ui.updateAll();
@@ -333,7 +335,7 @@
       const r = await api('POST', '/subway/rooms/' + mp.roomCode + '/clock/claim');
       const was = mp.isClockAuthority;
       mp.isClockAuthority = !!r.granted;
-      if (mp.isClockAuthority && !was) SB.ui.toast('Running the clock for this room', 'good');
+      if (mp.isClockAuthority && !was) SB.ui.toast(value('sceneSubwayClockAuthorityRunning'), 'good');
     } catch (e) {
       mp.isClockAuthority = false;
     }
@@ -346,7 +348,7 @@
     try {
       r = await api('POST', '/subway/rooms/' + code + '/join');
     } catch (e) {
-      SB.ui.toast('Could not join that room: ' + e.message, 'bad');
+      SB.ui.toast(tr('sceneSubwayCouldNotJoinRoom', {error:e.message}), 'bad');
       return false;
     }
     mp.roomCode = code;
@@ -357,12 +359,12 @@
     if (r.state) {
       const place = r.state.place;
       if (place && (!SB.game.place || SB.game.place.id !== place.id)) {
-        SB.ui.toast('Travelling to ' + place.name + '…');
+        SB.ui.toast(tr('sceneSubwayTravellingToPlace', {place:place.name}));
         SB.main.startPlace(place, true, () => {
           applyNetwork(r.state.stations, r.state.lines);
           applyEcon(r.state.econ);
           mp.ready = true;
-          SB.ui.toast('Joined room ' + code, 'good');
+          SB.ui.toast(tr('sceneSubwayJoinedRoom', {code}), 'good');
           finish();
         });
         return true;
@@ -371,18 +373,18 @@
       applyEcon(r.state.econ);
     }
     mp.ready = true;
-    SB.ui.toast(r.state ? 'Joined room ' + code : 'Room ' + code + ' created — start building', 'good');
+    SB.ui.toast(r.state ? tr('sceneSubwayJoinedRoom', {code}) : tr('sceneSubwayRoomCreatedStartBuilding', {code}), 'good');
     finish();
     return true;
   };
 
   mp.createAndJoin = async function () {
-    if (!SB.game.state) { SB.ui.toast('Load a city first', 'bad'); return null; }
+    if (!SB.game.state) { SB.ui.toast(value('sceneSubwayLoadCityFirst'), 'bad'); return null; }
     let code;
     try {
       code = await mp.createRoom();
     } catch (e) {
-      SB.ui.toast('Could not create a room: ' + e.message, 'bad');
+      SB.ui.toast(tr('sceneSubwayCouldNotCreateRoom', {error:e.message}), 'bad');
       return null;
     }
     // A fresh room has no state yet — seed it from whatever's loaded now.
@@ -391,7 +393,7 @@
     mp.ready = true;
     connectSocket();
     pushStateNow();
-    SB.ui.toast('Room ' + code + ' created — share the code or invite a contact', 'good');
+    SB.ui.toast(tr('sceneSubwayRoomCreatedShareCode', {code}), 'good');
     return code;
   };
 

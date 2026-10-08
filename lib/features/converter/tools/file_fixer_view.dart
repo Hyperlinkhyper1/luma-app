@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/luma_theme.dart';
 import '../converter_widgets.dart';
 import '../corruption/corruption_recipe.dart';
@@ -36,13 +37,14 @@ class _FileFixerViewState extends State<FileFixerView> {
   SaveResult? _save;
 
   Future<void> _pickFile() async {
+    final t = L.of(context);
     final picked = await FilePicker.pickFiles(withData: true);
     if (picked == null || picked.files.isEmpty) return;
 
     final file = picked.files.first;
     final bytes = file.bytes;
     if (bytes == null) {
-      setState(() => _error = 'Could not read the selected file.');
+      setState(() => _error = t.convFileReadFailed);
       return;
     }
     setState(() {
@@ -55,6 +57,7 @@ class _FileFixerViewState extends State<FileFixerView> {
   }
 
   Future<void> _pickRecipe() async {
+    final t = L.of(context);
     final picked = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: const [kRecipeExtension],
@@ -65,7 +68,7 @@ class _FileFixerViewState extends State<FileFixerView> {
     final file = picked.files.first;
     final bytes = file.bytes;
     if (bytes == null) {
-      setState(() => _error = 'Could not read the recipe.');
+      setState(() => _error = t.convFixRecipeReadFailed);
       return;
     }
     try {
@@ -96,6 +99,7 @@ class _FileFixerViewState extends State<FileFixerView> {
   }
 
   Future<void> _fix() async {
+    final t = L.of(context);
     final bytes = _bytes;
     final name = _name;
     if (bytes == null || name == null) return;
@@ -134,7 +138,7 @@ class _FileFixerViewState extends State<FileFixerView> {
       if (!mounted) return;
       setState(() {
         _working = false;
-        _error = 'Something went wrong while repairing that file: $e';
+        _error = t.convFixUnexpectedError('$e');
       });
     }
   }
@@ -171,22 +175,23 @@ class _FileFixerViewState extends State<FileFixerView> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final bytes = _bytes;
     final recipe = _recipe;
     final result = _result;
 
     return ToolScaffold(
       icon: Icons.healing_outlined,
-      title: 'File fixer',
-      subtitle: 'Undo what the corruptor did, or patch up a broken file',
+      title: t.convOtherFixer,
+      subtitle: t.convFixerSubtitle,
       onBack: widget.onBack,
       children: [
         if (bytes == null)
           ConverterDropZone(
             onTap: _pickFile,
             icon: Icons.healing_outlined,
-            title: 'Tap to pick the damaged file',
-            subtitle: 'Images · archives · documents · audio · video',
+            title: t.convFixPickTitle,
+            subtitle: t.convFixPickSubtitle,
           )
         else
           ConverterFileCard(
@@ -215,8 +220,8 @@ class _FileFixerViewState extends State<FileFixerView> {
                     Expanded(
                       child: Text(
                         recipe == null
-                            ? 'Best-effort repair'
-                            : 'Exact restore from recipe',
+                            ? t.convFixBestEffort
+                            : t.convFixExactRestore,
                         style: TextStyle(
                           color: luma.textPrimary,
                           fontSize: 13.5,
@@ -225,21 +230,21 @@ class _FileFixerViewState extends State<FileFixerView> {
                       ),
                     ),
                     if (recipe != null)
-                      ConverterTextButton(label: 'Remove', onTap: _clearRecipe),
+                      ConverterTextButton(
+                        label: t.commonRemove,
+                        onTap: _clearRecipe,
+                      ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Text(
                   recipe == null
-                      ? 'No recipe loaded, so luma will work out what the file '
-                            'is and rebuild whatever structure it can. Headers, '
-                            'checksums and indexes can come back; bytes that were '
-                            'overwritten cannot.'
-                      : 'Recorded ${_recipeAge(recipe)} for '
-                            '"${recipe.originalName}" in '
-                            '${recipe.ops.length} step'
-                            '${recipe.ops.length == 1 ? '' : 's'}. The original '
-                            'comes back byte for byte.',
+                      ? t.convFixNoRecipeBody
+                      : t.convFixRecipeInfo(
+                          _recipeAge(t, recipe),
+                          recipe.originalName,
+                          recipe.ops.length,
+                        ),
                   style: TextStyle(color: luma.textMuted, fontSize: 12.5),
                 ),
                 if (recipe == null) ...[
@@ -247,7 +252,7 @@ class _FileFixerViewState extends State<FileFixerView> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: ConverterTextButton(
-                      label: 'Load a .lumafix recipe',
+                      label: t.convFixLoadRecipe,
                       onTap: _pickRecipe,
                     ),
                   ),
@@ -261,8 +266,8 @@ class _FileFixerViewState extends State<FileFixerView> {
                 const SizedBox(height: 16),
                 ConverterPrimaryButton(
                   label: recipe == null
-                      ? 'Analyse & repair'
-                      : 'Restore original',
+                      ? t.convFixAnalyseRepair
+                      : t.convFixRestoreOriginal,
                   icon: Icons.build_rounded,
                   loading: _working,
                   onTap: _fix,
@@ -286,7 +291,7 @@ class _FileFixerViewState extends State<FileFixerView> {
           _RepairReportCard(result: result, originalSize: bytes?.length ?? 0),
           const SizedBox(height: 16),
           ConverterPrimaryButton(
-            label: kIsWeb ? 'Download repaired file' : 'Save repaired file',
+            label: kIsWeb ? t.convFixDownloadRepaired : t.convFixSaveRepaired,
             loading: false,
             icon: Icons.download_rounded,
             onTap: _saveFixed,
@@ -299,19 +304,24 @@ class _FileFixerViewState extends State<FileFixerView> {
             icon: Icons.check_circle_outline_rounded,
             color: luma.success,
             message: _save!.summary,
-            trailing: ConverterTextButton(label: 'Fix another', onTap: _reset),
+            trailing: ConverterTextButton(
+              label: t.convFixAnother,
+              onTap: _reset,
+            ),
           ),
         ],
       ],
     );
   }
 
-  static String _recipeAge(CorruptionRecipe recipe) {
+  static String _recipeAge(L t, CorruptionRecipe recipe) {
     final difference = DateTime.now().difference(recipe.createdAt);
-    if (difference.inMinutes < 1) return 'just now';
-    if (difference.inHours < 1) return '${difference.inMinutes} min ago';
-    if (difference.inDays < 1) return '${difference.inHours} h ago';
-    return '${difference.inDays} day${difference.inDays == 1 ? '' : 's'} ago';
+    if (difference.inMinutes < 1) return t.convFixAgeJustNow;
+    if (difference.inHours < 1) {
+      return t.convFixAgeMinutes(difference.inMinutes);
+    }
+    if (difference.inDays < 1) return t.convFixAgeHours(difference.inHours);
+    return t.convFixAgeDays(difference.inDays);
   }
 }
 
@@ -325,6 +335,7 @@ class _RepairReportCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final headlineColor = result.restoredExactly
         ? luma.success
         : result.notes.any((n) => n.severity == RepairSeverity.failed)
@@ -350,11 +361,10 @@ class _RepairReportCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   result.restoredExactly
-                      ? 'Restored exactly'
+                      ? t.convFixRestoredExactly
                       : result.changed
-                      ? '${result.fixCount} repair'
-                            '${result.fixCount == 1 ? '' : 's'} applied'
-                      : 'Nothing to repair',
+                      ? t.convFixRepairsApplied(result.fixCount)
+                      : t.convFixNothingToRepair,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 13.5,
@@ -367,8 +377,10 @@ class _RepairReportCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '${formatBytes(originalSize)} in · '
-            '${formatBytes(result.bytes.length)} out',
+            t.convFixSizeInOut(
+              formatBytes(originalSize),
+              formatBytes(result.bytes.length),
+            ),
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
           const SizedBox(height: 14),
@@ -402,9 +414,7 @@ class _RepairReportCard extends StatelessWidget {
           if (result.hasWarnings && !result.restoredExactly) ...[
             const SizedBox(height: 4),
             Text(
-              'A structural repair puts the container back together. It cannot '
-              'invent content that was overwritten — check the result before '
-              'you rely on it.',
+              t.convFixStructuralWarning,
               style: TextStyle(color: luma.textMuted, fontSize: 12),
             ),
           ],

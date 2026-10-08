@@ -1,20 +1,26 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../account_overview_scope.dart';
 import '../github_models.dart';
 import 'account_shared.dart';
 
 enum _IssueFilter {
-  all('Everything'),
-  openIssues('Open issues'),
-  openPrs('Open PRs'),
-  merged('Merged'),
-  closed('Closed');
+  all,
+  openIssues,
+  openPrs,
+  merged,
+  closed;
 
-  const _IssueFilter(this.label);
-  final String label;
+  String label(L t) => switch (this) {
+        _IssueFilter.all => t.githubIssuesFilterAll,
+        _IssueFilter.openIssues => t.githubOpenIssues,
+        _IssueFilter.openPrs => t.githubOpenPrs,
+        _IssueFilter.merged => t.githubIssuesFilterMerged,
+        _IssueFilter.closed => t.githubIssuesFilterClosed,
+      };
 }
 
 /// Issues and pull requests involving the account, with the totals up top.
@@ -39,6 +45,7 @@ class _GithubIssuesTabState extends State<GithubIssuesTab> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final snapshot = AccountOverviewScope.of(context).snapshot;
     final totals = snapshot.issueTotals;
@@ -58,29 +65,29 @@ class _GithubIssuesTabState extends State<GithubIssuesTab> {
               final tiles = [
                 AccountStatTile(
                   icon: Icons.adjust_rounded,
-                  label: 'Open issues',
+                  label: t.githubOpenIssues,
                   value: formatCount(totals.openIssues),
-                  caption: 'you opened',
+                  caption: t.githubCaptionYouOpened,
                   tint: luma.success,
                 ),
                 AccountStatTile(
                   icon: Icons.task_alt_rounded,
-                  label: 'Closed issues',
+                  label: t.githubClosedIssues,
                   value: formatCount(totals.closedIssues),
-                  caption: 'you opened',
+                  caption: t.githubCaptionYouOpened,
                 ),
                 AccountStatTile(
                   icon: Icons.merge_type_rounded,
-                  label: 'Open PRs',
+                  label: t.githubOpenPrs,
                   value: formatCount(totals.openPrs),
-                  caption: 'awaiting review',
+                  caption: t.githubCaptionAwaitingReview,
                   tint: luma.success,
                 ),
                 AccountStatTile(
                   icon: Icons.merge_rounded,
-                  label: 'Merged PRs',
+                  label: t.githubMergedPrs,
                   value: formatCount(totals.mergedPrs),
-                  caption: 'all time',
+                  caption: t.githubCaptionAllTime,
                   tint: luma.accent,
                 ),
               ];
@@ -100,7 +107,7 @@ class _GithubIssuesTabState extends State<GithubIssuesTab> {
           child: Align(
             alignment: Alignment.centerLeft,
             child: LumaSegmentedTabs(
-              tabs: [for (final f in _IssueFilter.values) f.label],
+              tabs: [for (final f in _IssueFilter.values) f.label(t)],
               selectedIndex: _filter.index,
               onSelect: (index) =>
                   setState(() => _filter = _IssueFilter.values[index]),
@@ -110,17 +117,16 @@ class _GithubIssuesTabState extends State<GithubIssuesTab> {
         ),
         Expanded(
           child: snapshot.issues.isEmpty
-              ? const LumaEmptyState(
+              ? LumaEmptyState(
                   icon: Icons.inbox_outlined,
-                  title: 'Nothing to show yet',
-                  subtitle: 'Issues and pull requests you are involved in '
-                      'appear here after a refresh.',
+                  title: t.githubIssuesEmptyTitle,
+                  subtitle: t.githubIssuesEmptySubtitle,
                 )
               : visible.isEmpty
                   ? LumaEmptyState(
                       icon: Icons.filter_alt_off_outlined,
-                      title: 'No ${_filter.label.toLowerCase()}',
-                      subtitle: 'Pick another filter to see the rest.',
+                      title: t.githubIssuesNothingInFilter(_filter.label(t)),
+                      subtitle: t.githubIssuesPickAnotherFilter,
                     )
                   : ListView.builder(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
@@ -144,30 +150,32 @@ class _IssueRow extends StatelessWidget {
   /// GitHub's four states, each with its own glyph so the colour is never
   /// doing the work alone.
   (IconData, Color, String) _visual(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     if (issue.isPullRequest) {
       if (issue.merged) {
-        return (Icons.merge_rounded, luma.accent, 'Merged pull request');
+        return (Icons.merge_rounded, luma.accent, t.githubStatusMergedPr);
       }
       if (!issue.isOpen) {
-        return (Icons.block_rounded, luma.danger, 'Closed pull request');
+        return (Icons.block_rounded, luma.danger, t.githubStatusClosedPr);
       }
       if (issue.isDraft) {
         return (
           Icons.merge_type_rounded,
           luma.textMuted,
-          'Draft pull request'
+          t.githubStatusDraftPr
         );
       }
-      return (Icons.merge_type_rounded, luma.success, 'Open pull request');
+      return (Icons.merge_type_rounded, luma.success, t.githubStatusOpenPr);
     }
     return issue.isOpen
-        ? (Icons.adjust_rounded, luma.success, 'Open issue')
-        : (Icons.task_alt_rounded, luma.accent, 'Closed issue');
+        ? (Icons.adjust_rounded, luma.success, t.githubStatusOpenIssue)
+        : (Icons.task_alt_rounded, luma.accent, t.githubStatusClosedIssue);
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final decor = context.lumaDecor;
     final (icon, color, statusLabel) = _visual(context);
@@ -215,8 +223,11 @@ class _IssueRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 5),
                     Text(
-                      '${issue.repo} #${issue.number}  ·  '
-                      'updated ${formatRelative(issue.updatedAt)}',
+                      t.githubIssueRowMeta(
+                        issue.repo,
+                        '${issue.number}',
+                        formatRelative(issue.updatedAt),
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: luma.textMuted, fontSize: 11.5),
@@ -229,7 +240,7 @@ class _IssueRow extends StatelessWidget {
                 AccountMetaCount(
                   icon: Icons.mode_comment_outlined,
                   value: formatCount(issue.comments),
-                  semanticLabel: '${issue.comments} comments',
+                  semanticLabel: t.githubIssueCommentsSemantic(issue.comments),
                 ),
               ],
             ],

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../app/widgets.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/luma_theme.dart';
 import '../data/database.dart';
 import '../finance_scope.dart';
@@ -124,6 +126,7 @@ class _OverviewBodyState extends State<_OverviewBody> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final balances = computeBalances(widget.txns);
 
     final now = DateTime.now();
@@ -158,7 +161,7 @@ class _OverviewBodyState extends State<_OverviewBody> {
             children: [
               Expanded(
                 child: _StatCard(
-                  label: 'Income this month',
+                  label: t.financeIncomeThisMonth,
                   amountCents: monthIncome,
                   color: luma.success,
                   icon: Icons.south_west_rounded,
@@ -167,7 +170,7 @@ class _OverviewBodyState extends State<_OverviewBody> {
               const SizedBox(width: 16),
               Expanded(
                 child: _StatCard(
-                  label: 'Spent this month',
+                  label: t.financeSpentThisMonth,
                   amountCents: monthExpense,
                   color: luma.danger,
                   icon: Icons.north_east_rounded,
@@ -176,7 +179,7 @@ class _OverviewBodyState extends State<_OverviewBody> {
             ],
           ),
           const SizedBox(height: 24),
-          _SectionTitle('Cash-flow forecast'),
+          _SectionTitle(t.financeCashFlowForecast),
           const SizedBox(height: 12),
           CashFlowForecastCard(
             mainCents: balances.mainCents,
@@ -185,7 +188,7 @@ class _OverviewBodyState extends State<_OverviewBody> {
             now: now,
           ),
           const SizedBox(height: 24),
-          _SectionTitle('Budgets'),
+          _SectionTitle(t.financeBudgets),
           const SizedBox(height: 12),
           BudgetsCard(
             repo: FinanceScope.of(context),
@@ -196,14 +199,14 @@ class _OverviewBodyState extends State<_OverviewBody> {
           const SizedBox(height: 24),
           Row(
             children: [
-              Expanded(child: _SectionTitle('Dashboard')),
+              Expanded(child: _SectionTitle(t.financeDashboard)),
               TextButton.icon(
                 onPressed: () => setState(() => _isEditing = !_isEditing),
                 icon: Icon(
                   _isEditing ? Icons.check_rounded : Icons.edit_rounded,
                   size: 16,
                 ),
-                label: Text(_isEditing ? 'Done' : 'Edit'),
+                label: Text(_isEditing ? t.commonDone : t.commonEdit),
                 style: TextButton.styleFrom(
                   foregroundColor: luma.textSecondary,
                   padding: const EdgeInsets.symmetric(
@@ -225,12 +228,10 @@ class _OverviewBodyState extends State<_OverviewBody> {
             isEditing: _isEditing,
           ),
           const SizedBox(height: 24),
-          _SectionTitle('Pots'),
+          _SectionTitle(t.financePots),
           const SizedBox(height: 12),
           if (widget.pots.isEmpty)
-            _MutedHint(
-              'No pots yet — make one in the Pots tab and split your money up.',
-            )
+            _MutedHint(t.financeOverviewNoPots)
           else
             Wrap(
               spacing: 12,
@@ -245,7 +246,7 @@ class _OverviewBodyState extends State<_OverviewBody> {
               ],
             ),
           const SizedBox(height: 24),
-          _SectionTitle('This week'),
+          _SectionTitle(t.financeThisWeek),
           const SizedBox(height: 12),
           _WeeklyReview(
             txns: widget.txns,
@@ -254,12 +255,12 @@ class _OverviewBodyState extends State<_OverviewBody> {
           ),
           if (widget.holdings.isNotEmpty) ...[
             const SizedBox(height: 24),
-            _SectionTitle('Investments'),
+            _SectionTitle(t.financeInvestments),
             const SizedBox(height: 12),
             _InvestmentsSummary(holdings: widget.holdings),
           ],
           const SizedBox(height: 24),
-          _SectionTitle('Upcoming'),
+          _SectionTitle(t.financeUpcoming),
           const SizedBox(height: 12),
           _UpcomingRecurring(recurring: widget.recurring),
         ],
@@ -287,6 +288,7 @@ class _DashboardGraphs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     if (graphs.isEmpty && !isEditing) {
       return const SizedBox();
     }
@@ -310,8 +312,8 @@ class _DashboardGraphs extends StatelessWidget {
               final g = graphs[index];
               return ListTile(
                 key: ValueKey(g.id),
-                title: Text(_titleFor(g)),
-                subtitle: Text(_subtitleFor(g)),
+                title: Text(_titleFor(g, t)),
+                subtitle: Text(_subtitleFor(g, t)),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete_outline, color: Colors.red),
                   onPressed: () =>
@@ -324,11 +326,11 @@ class _DashboardGraphs extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: () => _showAddGraphDialog(context),
             icon: const Icon(Icons.add),
-            label: const Text('Add Graph'),
+            label: Text(t.financeAddGraph),
           ),
         ] else ...[
           for (final g in graphs) ...[
-            _GraphCard(title: _titleFor(g), child: _buildGraph(g)),
+            _GraphCard(title: _titleFor(g, t), child: _buildGraph(g)),
             const SizedBox(height: 16),
           ],
         ],
@@ -336,18 +338,22 @@ class _DashboardGraphs extends StatelessWidget {
     );
   }
 
-  String _titleFor(OverviewGraph g) {
-    if (g.dataSource == 'net_worth') return 'Net Worth Over Time';
-    if (g.dataSource == 'category_spending') return 'Spending by Category';
-    if (g.dataSource == 'income_vs_expense') return 'Income vs Expense';
-    return 'Unknown Graph';
+  String _titleFor(OverviewGraph g, L t) {
+    if (g.dataSource == 'net_worth') return t.financeGraphNetWorth;
+    if (g.dataSource == 'category_spending') {
+      return t.financeGraphCategorySpending;
+    }
+    if (g.dataSource == 'income_vs_expense') {
+      return t.financeGraphIncomeVsExpense;
+    }
+    return t.financeGraphUnknown;
   }
 
-  String _subtitleFor(OverviewGraph g) {
-    if (g.graphType == 'line') return 'Line Chart';
-    if (g.graphType == 'pie') return 'Pie Chart';
-    if (g.graphType == 'bar') return 'Bar Chart';
-    return 'Chart';
+  String _subtitleFor(OverviewGraph g, L t) {
+    if (g.graphType == 'line') return t.financeGraphLineChart;
+    if (g.graphType == 'pie') return t.financeGraphPieChart;
+    if (g.graphType == 'bar') return t.financeGraphBarChart;
+    return t.financeGraphChart;
   }
 
   Widget _buildGraph(OverviewGraph g) {
@@ -362,15 +368,16 @@ class _DashboardGraphs extends StatelessWidget {
   }
 
   void _showAddGraphDialog(BuildContext context) {
+    final t = L.of(context);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add Graph'),
+        title: Text(t.financeAddGraph),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              title: const Text('Net Worth Over Time'),
+              title: Text(t.financeGraphNetWorth),
               onTap: () {
                 FinanceScope.of(
                   context,
@@ -379,7 +386,7 @@ class _DashboardGraphs extends StatelessWidget {
               },
             ),
             ListTile(
-              title: const Text('Spending by Category'),
+              title: Text(t.financeGraphCategorySpending),
               onTap: () {
                 FinanceScope.of(context).addOverviewGraph(
                   graphType: 'pie',
@@ -389,7 +396,7 @@ class _DashboardGraphs extends StatelessWidget {
               },
             ),
             ListTile(
-              title: const Text('Income vs Expense'),
+              title: Text(t.financeGraphIncomeVsExpense),
               onTap: () {
                 FinanceScope.of(context).addOverviewGraph(
                   graphType: 'bar',
@@ -449,6 +456,7 @@ class _HeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -467,7 +475,7 @@ class _HeroCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Net worth',
+            t.financeNetWorth,
             style: TextStyle(color: luma.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 6),
@@ -483,15 +491,15 @@ class _HeroCard extends StatelessWidget {
           const SizedBox(height: 18),
           Row(
             children: [
-              _HeroStat(label: 'Available', cents: availableCents),
+              _HeroStat(label: t.financeAvailable, cents: availableCents),
               _HeroDivider(),
-              _HeroStat(label: 'In pots', cents: potsCents),
+              _HeroStat(label: t.financeInPots, cents: potsCents),
               _HeroDivider(),
-              _HeroStat(label: 'Investments', cents: investmentsCents),
+              _HeroStat(label: t.financeInvestments, cents: investmentsCents),
               if (debtsCents != 0) ...[
                 _HeroDivider(),
                 _HeroStat(
-                  label: debtsCents < 0 ? 'Debts' : 'Owed to you',
+                  label: debtsCents < 0 ? t.financeDebts : t.financeOwedToYou,
                   cents: debtsCents,
                 ),
               ],
@@ -703,7 +711,9 @@ class _WeeklyReview extends StatelessWidget {
     }
 
     if (total == 0) {
-      return LumaCard(child: _MutedHint('No spending recorded yet this week.'));
+      return LumaCard(
+        child: _MutedHint(L.of(context).financeNoSpendingThisWeek),
+      );
     }
 
     final entries = byCategory.entries.toList()
@@ -719,7 +729,7 @@ class _WeeklyReview extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Spent this week',
+                  L.of(context).financeSpentThisWeek,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: luma.textSecondary, fontSize: 13),
@@ -766,7 +776,7 @@ class _ReviewRow extends StatelessWidget {
     final color = category != null
         ? Color(category!.colorValue)
         : luma.textMuted;
-    final name = category?.name ?? 'Uncategorized';
+    final name = category?.name ?? L.of(context).financeUncategorized;
     final icon = category != null
         ? materialIcon(category!.iconCodepoint)
         : Icons.help_outline_rounded;
@@ -835,7 +845,7 @@ class _InvestmentsSummary extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Portfolio value',
+                  L.of(context).financePortfolioValue,
                   style: TextStyle(color: luma.textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 4),
@@ -854,7 +864,7 @@ class _InvestmentsSummary extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                'Gain / loss',
+                L.of(context).financeGainLoss,
                 style: TextStyle(color: luma.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 4),
@@ -886,11 +896,7 @@ class _UpcomingRecurring extends StatelessWidget {
     final upcoming = active.take(4).toList();
 
     if (upcoming.isEmpty) {
-      return LumaCard(
-        child: _MutedHint(
-          'No fixed costs or income yet — add them in the Recurring tab.',
-        ),
-      );
+      return LumaCard(child: _MutedHint(L.of(context).financeUpcomingEmpty));
     }
 
     return LumaCard(
@@ -936,7 +942,14 @@ class _UpcomingRow extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                '${rule.cadence == Cadence.weekly ? 'Weekly' : 'Monthly'} · next ${_shortDate(rule.nextDue)}',
+                L
+                    .of(context)
+                    .financeUpcomingNext(
+                      rule.cadence == Cadence.weekly
+                          ? L.of(context).financeCadenceWeekly
+                          : L.of(context).financeCadenceMonthly,
+                      _shortDate(rule.nextDue),
+                    ),
                 style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
             ],
@@ -973,20 +986,4 @@ class _MutedHint extends StatelessWidget {
       Text(text, style: TextStyle(color: context.luma.textMuted, fontSize: 13));
 }
 
-String _shortDate(DateTime d) {
-  const months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-  return '${d.day} ${months[d.month - 1]}';
-}
+String _shortDate(DateTime d) => DateFormat('d MMM').format(d);

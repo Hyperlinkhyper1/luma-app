@@ -2,10 +2,13 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 
+import '../../../../../l10n/current_l.dart';
+
 Future<String?> saveQuizPdf(Uint8List bytes) async {
+  final title = currentL.schoolPracticeTestSaveTitle;
   if (Platform.isAndroid || Platform.isIOS) {
     final path = await FilePicker.saveFile(
-      dialogTitle: 'Oefentoets opslaan als PDF',
+      dialogTitle: title,
       fileName: 'oefentoets.pdf',
       type: FileType.custom,
       allowedExtensions: ['pdf'],
@@ -14,7 +17,7 @@ Future<String?> saveQuizPdf(Uint8List bytes) async {
     return path;
   }
   final picked = await FilePicker.saveFile(
-    dialogTitle: 'Oefentoets opslaan als PDF',
+    dialogTitle: title,
     fileName: 'oefentoets.pdf',
     type: FileType.custom,
     allowedExtensions: ['pdf'],

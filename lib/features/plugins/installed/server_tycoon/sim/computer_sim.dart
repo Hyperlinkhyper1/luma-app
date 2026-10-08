@@ -3,6 +3,7 @@
 
 import 'dart:math' as math;
 
+import '../../../../../l10n/current_l.dart';
 import '../data/game_data.dart';
 
 class Build {
@@ -137,8 +138,10 @@ bool gradeFits(String slot, String itemId, RigKind rigKind) {
     void checkGrade(String slot, String itemId) {
       if (!gradeFits(slot, itemId, rigKind)) {
         final grade = getComponentGrade(slot, itemId);
-        final rig = rigKind == RigKind.server ? 'server' : 'PC';
-        errors.add('${partName(slot, itemId)} is ${grade.name} hardware and does not fit a $rig rig');
+        final t = currentL;
+        final gradeWord = grade == ComponentGrade.server ? t.serverTycoonGradeServer : t.serverTycoonGradePc;
+        final rigWord = rigKind == RigKind.server ? t.serverTycoonGradeServer : t.serverTycoonGradePc;
+        errors.add(t.serverTycoonBuildPartGradeMismatch(partName(slot, itemId), gradeWord, rigWord));
       }
     }
     checkGrade('cpu', build.cpuId);
@@ -153,43 +156,52 @@ bool gradeFits(String slot, String itemId, RigKind rigKind) {
   final mobo = motherboardsById[build.motherboardId];
   final psu = psusById[build.psuId];
 
-  if (cpu == null) errors.add('Unknown CPU: ${build.cpuId}');
-  if (mobo == null) errors.add('Unknown motherboard: ${build.motherboardId}');
+  final t = currentL;
+  if (cpu == null) errors.add(t.serverTycoonBuildUnknownCpu(build.cpuId));
+  if (mobo == null) errors.add(t.serverTycoonBuildUnknownMotherboard(build.motherboardId));
   if (cpu != null && mobo != null && cpu.socket != mobo.socket) {
-    errors.add('${cpu.name} is socket ${cpu.socket.name.toUpperCase()}, '
-        '${mobo.name} needs ${mobo.socket.name.toUpperCase()}');
+    errors.add(t.serverTycoonBuildSocketMismatch(
+      cpu.name,
+      cpu.socket.name.toUpperCase(),
+      mobo.name,
+      mobo.socket.name.toUpperCase(),
+    ));
   }
 
   if (mobo != null) {
     if (build.ramIds.length > mobo.ramSlots) {
-      errors.add('${mobo.name} only has ${mobo.ramSlots} RAM slots, ${build.ramIds.length} sticks installed');
+      errors.add(t.serverTycoonBuildRamSlotsExceeded(mobo.name, mobo.ramSlots, build.ramIds.length));
     }
 
     var totalRAM = 0;
     for (final ramId in build.ramIds) {
       final stick = ramById[ramId];
       if (stick == null) {
-        errors.add('Unknown RAM stick: $ramId');
+        errors.add(t.serverTycoonBuildUnknownRam(ramId));
         continue;
       }
       if (stick.ramType != mobo.ramType) {
-        errors.add('${stick.name} is ${stick.ramType.name.toUpperCase()}, '
-            '${mobo.name} requires ${mobo.ramType.name.toUpperCase()}');
+        errors.add(t.serverTycoonBuildRamTypeMismatch(
+          stick.name,
+          stick.ramType.name.toUpperCase(),
+          mobo.name,
+          mobo.ramType.name.toUpperCase(),
+        ));
       }
       if (stick.registered && !mobo.supportsECC) {
-        errors.add('${mobo.name} does not support registered/ECC memory (${stick.name})');
+        errors.add(t.serverTycoonBuildEccUnsupported(mobo.name, stick.name));
       }
       totalRAM += stick.capacityGB;
     }
     if (totalRAM > mobo.maxRAMGB) {
-      errors.add('${mobo.name} supports up to ${mobo.maxRAMGB}GB RAM, ${totalRAM}GB installed');
+      errors.add(t.serverTycoonBuildRamCapExceeded(mobo.name, mobo.maxRAMGB, totalRAM));
     }
 
     var sataUsed = 0, m2Used = 0;
     for (final driveId in build.storageIds) {
       final drive = storageById[driveId];
       if (drive == null) {
-        errors.add('Unknown drive: $driveId');
+        errors.add(t.serverTycoonBuildUnknownDrive(driveId));
         continue;
       }
       if (drive.interfaceType == StorageInterface.nvme) {
@@ -199,17 +211,17 @@ bool gradeFits(String slot, String itemId, RigKind rigKind) {
       }
     }
     if (sataUsed > mobo.sataPorts) {
-      errors.add('${mobo.name} only has ${mobo.sataPorts} SATA ports, $sataUsed drives need one');
+      errors.add(t.serverTycoonBuildSataExceeded(mobo.name, mobo.sataPorts, sataUsed));
     }
     if (m2Used > mobo.m2Slots) {
-      errors.add('${mobo.name} only has ${mobo.m2Slots} M.2 slots, $m2Used NVMe drives installed');
+      errors.add(t.serverTycoonBuildM2Exceeded(mobo.name, mobo.m2Slots, m2Used));
     }
   }
 
   if (cpu != null && psu != null) {
     final maxDraw = getMaxPowerDrawWatts(build);
     if (maxDraw > psu.wattage) {
-      errors.add('Estimated max draw ${maxDraw}W exceeds ${psu.name}\'s ${psu.wattage}W rating');
+      errors.add(t.serverTycoonBuildPowerExceeded(maxDraw, psu.name, psu.wattage));
     }
   }
 
@@ -234,7 +246,7 @@ String partName(String slot, String itemId) {
     'cooling' => coolingById[itemId]?.name,
     'nic' => nicsById[itemId]?.name,
     'ram' => ramById[itemId]?.name,
-    'storage' => storageById[itemId]?.name,
+    'storage' => storageById[itemId]?.name(currentL),
     _ => null,
   };
   return name ?? itemId;

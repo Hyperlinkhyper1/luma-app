@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:image/image.dart' as img;
 
+import '../../../../../l10n/current_l.dart';
 import '../../../../converter/file_saver.dart';
 import '../engine/compositor.dart';
 import '../engine/sketch_document.dart';
@@ -11,17 +12,23 @@ import 'ora_writer.dart';
 import 'psd_writer.dart';
 
 enum SketchExportFormat {
-  png('PNG', 'png', 'image/png', 'Flattened, keeps transparency'),
-  jpeg('JPEG', 'jpg', 'image/jpeg', 'Flattened, smallest file'),
-  psd('Photoshop', 'psd', 'image/vnd.adobe.photoshop', 'Every layer, blend mode and mask'),
-  ora('OpenRaster', 'ora', 'image/openraster', 'Layers for Krita, GIMP and MyPaint');
+  png('PNG', 'png', 'image/png'),
+  jpeg('JPEG', 'jpg', 'image/jpeg'),
+  psd('Photoshop', 'psd', 'image/vnd.adobe.photoshop'),
+  ora('OpenRaster', 'ora', 'image/openraster');
 
-  const SketchExportFormat(this.label, this.extension, this.mimeType, this.note);
+  const SketchExportFormat(this.label, this.extension, this.mimeType);
 
   final String label;
   final String extension;
   final String mimeType;
-  final String note;
+
+  String get note => switch (this) {
+        png => currentL.freeSketchExportPngNote,
+        jpeg => currentL.freeSketchExportJpegNote,
+        psd => currentL.freeSketchExportPsdNote,
+        ora => currentL.freeSketchExportOraNote,
+      };
 
   bool get layered => this == psd || this == ora;
 }
@@ -106,7 +113,7 @@ class SketchExporter {
         fill[i + 2] = b;
         fill[i + 3] = 255;
       }
-      layers.add(PsdLayerData(name: 'Background', rgba: fill));
+      layers.add(PsdLayerData(name: currentL.freeSketchBackground, rgba: fill));
     }
     for (final layer in state.layers) {
       final image = layer.image;
@@ -138,7 +145,7 @@ class SketchExporter {
     if (state.showBackground) {
       final bg = _solid(width, height, state.background);
       try {
-        layers.add(OraLayerData(name: 'Background', png: await pngOf(bg)));
+        layers.add(OraLayerData(name: currentL.freeSketchBackground, png: await pngOf(bg)));
       } finally {
         bg.dispose();
       }
@@ -188,13 +195,13 @@ class SketchExporter {
 
   static Future<Uint8List> pngOf(ui.Image image) async {
     final data = await image.toByteData(format: ui.ImageByteFormat.png);
-    if (data == null) throw StateError('The image could not be encoded.');
+    if (data == null) throw StateError(currentL.freeSketchEncodeFailed);
     return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
   }
 
   static Future<Uint8List> rgbaOf(ui.Image image) async {
     final data = await image.toByteData(format: ui.ImageByteFormat.rawStraightRgba);
-    if (data == null) throw StateError('The image pixels could not be read.');
+    if (data == null) throw StateError(currentL.freeSketchPixelsReadFailed);
     return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
   }
 
@@ -213,7 +220,7 @@ class SketchExporter {
       suggestedName: '${fileNameFor(title)}.${format.extension}',
       mimeType: format.mimeType,
       extensions: [format.extension],
-      dialogTitle: 'Export ${format.label}',
+      dialogTitle: currentL.freeSketchExportDialogTitle(format.label),
     );
     return result.saved ? result.summary : null;
   }

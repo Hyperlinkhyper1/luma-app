@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../../l10n/current_l.dart';
+
 class ModrinthApiException implements Exception {
   ModrinthApiException(this.message);
   final String message;
@@ -10,14 +12,24 @@ class ModrinthApiException implements Exception {
 }
 
 /// Sort orders Modrinth's search accepts, in the order its own site shows
-/// them. The key goes straight into the `index` query parameter.
+/// them. The key goes straight into the `index` query parameter; show
+/// [modrinthSortLabel] to the user.
 const modrinthSortIndexes = {
-  'relevance': 'Relevance',
-  'downloads': 'Downloads',
-  'follows': 'Follows',
-  'newest': 'Newest',
-  'updated': 'Recently updated',
+  'relevance': 'relevance',
+  'downloads': 'downloads',
+  'follows': 'follows',
+  'newest': 'newest',
+  'updated': 'updated',
 };
+
+/// The display name of a [modrinthSortIndexes] key, in the app language.
+String modrinthSortLabel(String index) => switch (index) {
+      'downloads' => currentL.mcSortDownloads,
+      'follows' => currentL.mcSortFollows,
+      'newest' => currentL.mcSortNewest,
+      'updated' => currentL.mcSortRecentlyUpdated,
+      _ => currentL.mcSortRelevance,
+    };
 
 class ModrinthSearchHit {
   ModrinthSearchHit({
@@ -69,7 +81,7 @@ class ModrinthSearchHit {
   factory ModrinthSearchHit.fromJson(Map<String, dynamic> json) => ModrinthSearchHit(
         projectId: json['project_id'] as String,
         slug: json['slug'] as String? ?? json['project_id'] as String,
-        title: json['title'] as String? ?? 'Untitled',
+        title: json['title'] as String? ?? currentL.commonUntitled,
         description: json['description'] as String? ?? '',
         iconUrl: _nonEmpty(json['icon_url'] as String?),
         downloads: (json['downloads'] as num?)?.toInt() ?? 0,
@@ -432,10 +444,10 @@ class ModrinthApiClient {
     try {
       res = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 20));
     } catch (_) {
-      throw ModrinthApiException('Could not reach Modrinth. Check your connection.');
+      throw ModrinthApiException(currentL.mcModrinthUnreachable);
     }
     if (res.statusCode != 200) {
-      throw ModrinthApiException('Modrinth request failed (${res.statusCode}).');
+      throw ModrinthApiException(currentL.mcModrinthRequestFailed('${res.statusCode}'));
     }
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
@@ -445,10 +457,10 @@ class ModrinthApiClient {
     try {
       res = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 20));
     } catch (_) {
-      throw ModrinthApiException('Could not reach Modrinth. Check your connection.');
+      throw ModrinthApiException(currentL.mcModrinthUnreachable);
     }
     if (res.statusCode != 200) {
-      throw ModrinthApiException('Modrinth request failed (${res.statusCode}).');
+      throw ModrinthApiException(currentL.mcModrinthRequestFailed('${res.statusCode}'));
     }
     return jsonDecode(res.body) as List<dynamic>;
   }

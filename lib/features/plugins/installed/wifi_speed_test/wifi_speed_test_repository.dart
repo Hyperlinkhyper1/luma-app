@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../storage/storage_guard.dart';
 import 'network_details.dart';
 
@@ -124,7 +125,7 @@ class WifiSpeedTestRepository extends ChangeNotifier {
 
   Future<void> importData(Object? data) async {
     if (data is! List) {
-      throw const FormatException('Invalid speed test snapshot.');
+      throw FormatException(currentL.wifiSpeedTestInvalidSnapshot);
     }
     _results = data
         .map((e) => SpeedTestResult.fromJson(e as Map<String, dynamic>))

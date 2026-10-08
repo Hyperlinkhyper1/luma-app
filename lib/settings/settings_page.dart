@@ -44,11 +44,10 @@ class SettingsPage extends StatelessWidget {
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(Icons.dashboard_customize_rounded,
                       color: luma.accent),
-                  title: const Text('Your home screen'),
-                  subtitle: const Text('Arrange and resize tiles, pin your favorites, '
-                      'and choose what you see. Layouts sync within the same device format.'),
+                  title: Text(t.settingsHomeScreenTitle),
+                  subtitle: Text(t.settingsHomeScreenSub),
                   trailing: IconButton(
-                    tooltip: 'Edit home screen',
+                    tooltip: t.settingsHomeScreenEdit,
                     onPressed: onEditHome,
                     icon: const Icon(Icons.edit_rounded),
                   ),
@@ -555,7 +554,7 @@ class _AccentPicker extends StatelessWidget {
                     // The default preset (null seed) renders with the live
                     // accent.
                     color: kAccentPresets[i].seed ?? luma.accent,
-                    label: kAccentPresets[i].name,
+                    label: kAccentPresets[i].label(t),
                     selected: settings.accentIndex == i,
                     onTap: () => settings.setAccentIndex(i),
                   ),

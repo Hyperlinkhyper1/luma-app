@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:path_provider/path_provider.dart';
 
+import '../l10n/current_l.dart';
 import '../security/secure_secret_store.dart';
 import 'sync_api.dart';
 
@@ -151,15 +152,13 @@ class SyncStateStore {
       if (await file.exists()) {
         final decoded = jsonDecode(await file.readAsString());
         if (decoded is! Map<String, dynamic>) {
-          throw const FormatException('Invalid sync state.');
+          throw FormatException(currentL.syncStateInvalid);
         }
         data = decoded;
       }
     } catch (_) {
       if (file != null) {
-        throw StateError(
-          'Sync state could not be read. Preserve it for recovery.',
-        );
+        throw StateError(currentL.syncStateReadFailed);
       }
       file = null;
     }
@@ -192,7 +191,7 @@ class SyncStateStore {
       if (enc is String) {
         store.encryptionKey = Uint8List.fromList(base64Decode(enc));
         if (store.encryptionKey!.length != 32) {
-          throw const FormatException('Invalid sync encryption key.');
+          throw FormatException(currentL.syncStateInvalidEncryptionKey);
         }
       }
       final salt = data['kdfSalt'];
@@ -233,7 +232,7 @@ class SyncStateStore {
         }
       }
     } catch (_) {
-      throw StateError('Invalid sync state. Restore the original credentials.');
+      throw StateError(currentL.syncStateRestoreCredentials);
     }
     if (file != null &&
         (serverUrlMigrated ||

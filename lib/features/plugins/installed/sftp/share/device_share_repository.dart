@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../../../l10n/current_l.dart';
 import '../../../../../p2p/peer_protocol.dart';
 import '../../../../../p2p/peer_share.dart';
 import 'share_index.dart';
@@ -187,7 +188,7 @@ class DeviceShareRepository extends ChangeNotifier implements PeerShareDelegate 
         await folder.importFile(source, subdirectory: subdirectory);
       } catch (e) {
         final name = source.path.split(Platform.pathSeparator).last;
-        _lastError = 'Could not add $name: $e';
+        _lastError = currentL.sftpShareCouldNotAdd(name, '$e');
       }
       onProgress?.call(++done, sources.length);
     }
@@ -213,7 +214,7 @@ class DeviceShareRepository extends ChangeNotifier implements PeerShareDelegate 
         await folder.importFile(entity, subdirectory: subdirectory);
       }
     } catch (e) {
-      _lastError = 'Could not add $rootName: $e';
+      _lastError = currentL.sftpShareCouldNotAdd(rootName, '$e');
     }
     broadcastIndex();
     _notify();
@@ -476,7 +477,7 @@ class DeviceShareRepository extends ChangeNotifier implements PeerShareDelegate 
       await _closeIncomingHandle(deviceId);
       await staged.delete().catchError((_) => staged);
       _stagedFor.remove(path);
-      _failIncoming(deviceId, 'Transfer got out of step; it will start again.');
+      _failIncoming(deviceId, currentL.sftpShareOutOfStep);
       return;
     }
 
@@ -491,11 +492,7 @@ class DeviceShareRepository extends ChangeNotifier implements PeerShareDelegate 
     if (header.hash.isNotEmpty && actualHash != header.hash) {
       await staged.delete().catchError((_) => staged);
       _stagedFor.remove(path);
-      _failIncoming(
-        deviceId,
-        'The copy that arrived did not match the original; it will be '
-        'fetched again.',
-      );
+      _failIncoming(deviceId, currentL.sftpShareMismatch);
       return;
     }
 
@@ -635,7 +632,7 @@ class DeviceShareRepository extends ChangeNotifier implements PeerShareDelegate 
 
       while (offset < total) {
         if (_disposed || !_channels.containsKey(deviceId)) {
-          throw const FileSystemException('The device went away.');
+          throw FileSystemException(currentL.sftpShareDeviceWentAway);
         }
         final take = (total - offset) < kShareChunkBytes
             ? total - offset
@@ -680,7 +677,7 @@ class DeviceShareRepository extends ChangeNotifier implements PeerShareDelegate 
   String get summary {
     final count = folder.files.length;
     final size = folder.totalBytes;
-    return '$count ${count == 1 ? 'file' : 'files'} · ${_formatBytes(size)}';
+    return currentL.sftpShareSummary(count, _formatBytes(size));
   }
 
   static String _formatBytes(int bytes) {

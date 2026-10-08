@@ -1,31 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'recipe_book_controller.dart';
 import 'recipe_models.dart';
 import 'recipe_widgets.dart';
 
-const _kWeekdayNames = [
-  '', // 1-based
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-  'Sunday',
-];
+/// 2024-01-01 is a Monday, so day N of January 2024 has ISO weekday N.
+DateTime _dayOfWeek(int weekday) => DateTime(2024, 1, weekday);
 
-const _kMonthsShort = [
-  '', // 1-based
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-];
+String _weekdayName(int weekday, String locale) => DateFormat.EEEE(locale).format(_dayOfWeek(weekday));
 
-String _weekdayShort(int weekday) => _kWeekdayNames[weekday].substring(0, 3);
+String _weekdayShort(int weekday, String locale) => DateFormat.E(locale).format(_dayOfWeek(weekday));
 
-String _formatDate(DateTime d) => '${d.day} ${_kMonthsShort[d.month]}';
+String _formatDate(DateTime d, String locale) => DateFormat('d MMM', locale).format(d);
 
 bool _isSameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
@@ -47,6 +37,7 @@ class _RecipePlannerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Scaffold(
       backgroundColor: luma.background,
       appBar: AppBar(
@@ -54,7 +45,7 @@ class _RecipePlannerScreen extends StatelessWidget {
         elevation: 0,
         titleSpacing: 0,
         iconTheme: IconThemeData(color: luma.textSecondary),
-        title: Text('Meal planner',
+        title: Text(t.recipePlannerTitle,
             style: TextStyle(
                 color: luma.textPrimary,
                 fontSize: 18,
@@ -120,6 +111,7 @@ class _RecipePlannerViewState extends State<RecipePlannerView> {
       animation: _controller,
       builder: (context, _) {
         final luma = context.luma;
+        final t = L.of(context);
         final now = DateTime.now();
         final today = DateTime(now.year, now.month, now.day);
         final weekEnd =
@@ -129,9 +121,9 @@ class _RecipePlannerViewState extends State<RecipePlannerView> {
         return ListView(
           padding: const EdgeInsets.only(bottom: 32),
           children: [
-            _weekNav(luma, weekEnd, showsToday),
+            _weekNav(t, luma, weekEnd, showsToday),
             const SizedBox(height: 10),
-            _weekStartRow(luma),
+            _weekStartRow(t, luma),
             const SizedBox(height: 14),
             for (var i = 0; i < 7; i++)
               _DayCard(
@@ -149,7 +141,7 @@ class _RecipePlannerViewState extends State<RecipePlannerView> {
     );
   }
 
-  Widget _weekNav(LumaPalette luma, DateTime weekEnd, bool showsToday) {
+  Widget _weekNav(L t, LumaPalette luma, DateTime weekEnd, bool showsToday) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
       decoration: BoxDecoration(
@@ -163,19 +155,19 @@ class _RecipePlannerViewState extends State<RecipePlannerView> {
           Expanded(
             child: Column(
               children: [
-                Text(_rangeLabel(_weekStart, weekEnd),
+                Text(_rangeLabel(_weekStart, weekEnd, t.localeName),
                     style: TextStyle(
                         color: luma.textPrimary,
                         fontSize: 15,
                         fontWeight: FontWeight.w800)),
                 const SizedBox(height: 2),
                 showsToday
-                    ? Text('This week',
+                    ? Text(t.recipeThisWeek,
                         style:
                             TextStyle(color: luma.textMuted, fontSize: 12))
                     : GestureDetector(
                         onTap: _goToThisWeek,
-                        child: Text('Jump to this week',
+                        child: Text(t.recipeJumpToThisWeek,
                             style: TextStyle(
                                 color: luma.accent,
                                 fontSize: 12,
@@ -209,7 +201,7 @@ class _RecipePlannerViewState extends State<RecipePlannerView> {
     );
   }
 
-  Widget _weekStartRow(LumaPalette luma) {
+  Widget _weekStartRow(L t, LumaPalette luma) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
@@ -222,7 +214,7 @@ class _RecipePlannerViewState extends State<RecipePlannerView> {
           Icon(Icons.first_page_rounded, size: 18, color: luma.textSecondary),
           const SizedBox(width: 10),
           Expanded(
-            child: Text('Week starts on',
+            child: Text(t.recipeWeekStartsOn,
                 style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 14,
@@ -246,7 +238,7 @@ class _RecipePlannerViewState extends State<RecipePlannerView> {
                   for (var d = 1; d <= 7; d++)
                     DropdownMenuItem(
                       value: d,
-                      child: Text(_kWeekdayNames[d],
+                      child: Text(_weekdayName(d, t.localeName),
                           style: TextStyle(
                               color: luma.textPrimary, fontSize: 13)),
                     ),
@@ -266,11 +258,11 @@ class _RecipePlannerViewState extends State<RecipePlannerView> {
   }
 }
 
-String _rangeLabel(DateTime start, DateTime end) {
+String _rangeLabel(DateTime start, DateTime end, String locale) {
   if (start.month == end.month) {
-    return '${start.day} – ${end.day} ${_kMonthsShort[end.month]}';
+    return '${start.day} – ${_formatDate(end, locale)}';
   }
-  return '${_formatDate(start)} – ${_formatDate(end)}';
+  return '${_formatDate(start, locale)} – ${_formatDate(end, locale)}';
 }
 
 class _DayCard extends StatelessWidget {
@@ -288,6 +280,7 @@ class _DayCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final meals = controller.plannedForDate(date);
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -310,7 +303,7 @@ class _DayCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(11),
                 ),
                 child: Center(
-                  child: Text(_weekdayShort(weekday),
+                  child: Text(_weekdayShort(weekday, t.localeName),
                       style: TextStyle(
                           color: luma.accent,
                           fontSize: 12,
@@ -324,7 +317,7 @@ class _DayCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text(_kWeekdayNames[weekday],
+                        Text(_weekdayName(weekday, t.localeName),
                             style: TextStyle(
                                 color: luma.textPrimary,
                                 fontSize: 15,
@@ -338,7 +331,7 @@ class _DayCard extends StatelessWidget {
                               color: luma.accentSubtle,
                               borderRadius: BorderRadius.circular(7),
                             ),
-                            child: Text('Today',
+                            child: Text(t.commonToday,
                                 style: TextStyle(
                                     color: luma.accent,
                                     fontSize: 10,
@@ -348,13 +341,13 @@ class _DayCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 2),
-                    Text(_formatDate(date),
+                    Text(_formatDate(date, t.localeName),
                         style:
                             TextStyle(color: luma.textMuted, fontSize: 12)),
                   ],
                 ),
               ),
-              _addButton(context),
+              _addButton(context, L.of(context)),
             ],
           ),
           if (meals.isNotEmpty) ...[
@@ -366,7 +359,7 @@ class _DayCard extends StatelessWidget {
                 )),
           ] else ...[
             const SizedBox(height: 10),
-            Text('Nothing planned yet.',
+            Text(t.recipeNothingPlanned,
                 style: TextStyle(color: luma.textMuted, fontSize: 12)),
           ],
         ],
@@ -374,7 +367,7 @@ class _DayCard extends StatelessWidget {
     );
   }
 
-  Widget _addButton(BuildContext context) {
+  Widget _addButton(BuildContext context, L t) {
     final luma = context.luma;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -399,7 +392,7 @@ class _DayCard extends StatelessWidget {
             children: [
               Icon(Icons.add_rounded, size: 16, color: luma.accent),
               const SizedBox(width: 4),
-              Text('Add',
+              Text(t.commonAdd,
                   style: TextStyle(
                       color: luma.accent,
                       fontSize: 13,
@@ -425,6 +418,7 @@ class _MealRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(8),
@@ -465,7 +459,11 @@ class _MealRow extends StatelessWidget {
                         fontSize: 13,
                         fontWeight: FontWeight.w600)),
                 const SizedBox(height: 2),
-                Text(meal.isLocal ? meal.category : '${meal.category} · public',
+                Text(
+                    meal.isLocal
+                        ? localizedRecipeCategory(t, meal.category)
+                        : t.recipeCategoryPublic(
+                            localizedRecipeCategory(t, meal.category)),
                     style: TextStyle(color: luma.textMuted, fontSize: 11)),
               ],
             ),
@@ -529,6 +527,7 @@ class _RecipePickerDialogState extends State<_RecipePickerDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final controller = widget.controller;
     final locals =
         controller.privateRecipes.where((r) => _matches(r.title)).toList();
@@ -550,7 +549,7 @@ class _RecipePickerDialogState extends State<_RecipePickerDialog> {
               padding: const EdgeInsets.fromLTRB(20, 20, 12, 0),
               child: Row(
                 children: [
-                  Text('Add a recipe',
+                  Text(t.recipeAddARecipe,
                       style: TextStyle(
                           color: luma.textPrimary,
                           fontSize: 17,
@@ -567,10 +566,10 @@ class _RecipePickerDialogState extends State<_RecipePickerDialog> {
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
               child: Column(
                 children: [
-                  _searchBar(luma),
+                  _searchBar(t, luma),
                   const SizedBox(height: 10),
                   LumaSegmentedTabs(
-                    tabs: const ['My recipes', 'Public'],
+                    tabs: [t.recipeTabMyRecipes, t.recipeTabPublic],
                     selectedIndex: _tab,
                     onSelect: (i) => setState(() => _tab = i),
                   ),
@@ -584,7 +583,7 @@ class _RecipePickerDialogState extends State<_RecipePickerDialog> {
                       locals.length,
                       (i) => _row(
                         title: locals[i].title,
-                        category: locals[i].category,
+                        category: localizedRecipeCategory(t, locals[i].category),
                         thumb: LocalRecipeImage(
                             path: locals[i].photoPath,
                             category: locals[i].category,
@@ -593,15 +592,15 @@ class _RecipePickerDialogState extends State<_RecipePickerDialog> {
                             context, _PickResult(local: locals[i])),
                       ),
                       emptyText: controller.privateRecipes.isEmpty
-                          ? 'You have no recipes yet.'
-                          : 'No matches.',
+                          ? t.recipeNoRecipesYet
+                          : t.recipeNoMatches,
                     )
                   : _list(
                       luma,
                       publics.length,
                       (i) => _row(
                         title: publics[i].title,
-                        category: publics[i].category,
+                        category: localizedRecipeCategory(t, publics[i].category),
                         thumb: RemoteRecipeImage(
                             controller: controller,
                             photoId: publics[i].photoId,
@@ -611,10 +610,10 @@ class _RecipePickerDialogState extends State<_RecipePickerDialog> {
                             context, _PickResult(public: publics[i])),
                       ),
                       emptyText: !controller.serverReady
-                          ? 'Sign in to browse public recipes.'
+                          ? t.recipeSignInToBrowse
                           : (controller.publicRecipes.isEmpty
-                              ? 'No public recipes yet.'
-                              : 'No matches.'),
+                              ? t.recipeNoPublicRecipesYet
+                              : t.recipeNoMatches),
                     ),
             ),
           ],
@@ -623,7 +622,7 @@ class _RecipePickerDialogState extends State<_RecipePickerDialog> {
     );
   }
 
-  Widget _searchBar(LumaPalette luma) {
+  Widget _searchBar(L t, LumaPalette luma) {
     return Container(
       height: 42,
       decoration: BoxDecoration(
@@ -642,7 +641,7 @@ class _RecipePickerDialogState extends State<_RecipePickerDialog> {
               onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
               style: TextStyle(color: luma.textPrimary, fontSize: 14),
               decoration: InputDecoration(
-                hintText: 'Search recipes…',
+                hintText: t.recipeSearchHint,
                 hintStyle: TextStyle(color: luma.textMuted, fontSize: 14),
                 border: InputBorder.none,
                 isDense: true,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../account_overview_scope.dart';
 import '../github_models.dart';
@@ -8,26 +9,36 @@ import 'account_shared.dart';
 
 /// How the repository list is ordered.
 enum _RepoSort {
-  updated('Recently pushed'),
-  stars('Stars'),
-  downloads('Downloads'),
-  name('Name'),
-  size('Size');
+  updated,
+  stars,
+  downloads,
+  name,
+  size;
 
-  const _RepoSort(this.label);
-  final String label;
+  String label(L t) => switch (this) {
+        _RepoSort.updated => t.githubRepoSortRecentlyPushed,
+        _RepoSort.stars => t.githubRepoSortStars,
+        _RepoSort.downloads => t.githubDownloads,
+        _RepoSort.name => t.commonName,
+        _RepoSort.size => t.commonSize,
+      };
 }
 
 /// Which repositories are in view.
 enum _RepoFilter {
-  all('All'),
-  sources('Sources'),
-  forks('Forks'),
-  private('Private'),
-  archived('Archived');
+  all,
+  sources,
+  forks,
+  private,
+  archived;
 
-  const _RepoFilter(this.label);
-  final String label;
+  String label(L t) => switch (this) {
+        _RepoFilter.all => t.commonAll,
+        _RepoFilter.sources => t.githubRepoFilterSources,
+        _RepoFilter.forks => t.githubForks,
+        _RepoFilter.private => t.githubPrivate,
+        _RepoFilter.archived => t.githubArchived,
+      };
 }
 
 /// Every repository the account owns, as GitHub's own repository list reads:
@@ -87,6 +98,7 @@ class _GithubRepositoriesTabState extends State<GithubRepositoriesTab> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final snapshot = AccountOverviewScope.of(context).snapshot;
     final visible = _visible(snapshot.repos);
@@ -104,19 +116,18 @@ class _GithubRepositoriesTabState extends State<GithubRepositoriesTab> {
         ),
         Expanded(
           child: snapshot.repos.isEmpty
-              ? const LumaEmptyState(
+              ? LumaEmptyState(
                   icon: Icons.folder_off_outlined,
-                  title: 'No repositories',
-                  subtitle: 'Refresh once your account has repositories, or '
-                      'widen the token scope to include private ones.',
+                  title: t.githubReposEmptyTitle,
+                  subtitle: t.githubReposEmptySubtitle,
                 )
               : visible.isEmpty
                   ? LumaEmptyState(
                       icon: Icons.search_off_rounded,
                       title: _query.isEmpty
-                          ? 'Nothing matches this filter'
-                          : 'No repositories match "$_query"',
-                      subtitle: 'Try a different filter or a shorter search.',
+                          ? t.githubReposNothingMatches
+                          : t.githubReposNoMatch(_query),
+                      subtitle: t.githubReposTryDifferent,
                     )
                   : ListView.builder(
                       padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
@@ -137,7 +148,7 @@ class _GithubRepositoriesTabState extends State<GithubRepositoriesTab> {
             child: Row(
               children: [
                 Text(
-                  '${visible.length} of ${snapshot.repos.length} repositories',
+                  t.githubReposCountOf(visible.length, snapshot.repos.length),
                   style: TextStyle(color: luma.textMuted, fontSize: 11.5),
                 ),
                 const Spacer(),
@@ -145,7 +156,7 @@ class _GithubRepositoriesTabState extends State<GithubRepositoriesTab> {
                   icon: Icons.star_rounded,
                   value: formatCount(
                       visible.fold(0, (sum, r) => sum + r.stars)),
-                  semanticLabel: 'Stars in view',
+                  semanticLabel: t.githubReposStarsInView,
                   color: luma.warning,
                 ),
                 const SizedBox(width: 14),
@@ -153,7 +164,7 @@ class _GithubRepositoriesTabState extends State<GithubRepositoriesTab> {
                   icon: Icons.download_rounded,
                   value: formatCount(
                       visible.fold(0, (sum, r) => sum + r.downloads)),
-                  semanticLabel: 'Downloads in view',
+                  semanticLabel: t.githubReposDownloadsInView,
                   color: luma.success,
                 ),
                 const SizedBox(width: 14),
@@ -161,7 +172,7 @@ class _GithubRepositoriesTabState extends State<GithubRepositoriesTab> {
                   icon: Icons.sd_storage_outlined,
                   value: formatBytesFromKb(
                       visible.fold(0, (sum, r) => sum + r.sizeKb)),
-                  semanticLabel: 'Size in view',
+                  semanticLabel: t.githubReposSizeInView,
                 ),
               ],
             ),
@@ -190,6 +201,7 @@ class _Toolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
@@ -205,7 +217,7 @@ class _Toolbar extends StatelessWidget {
                     onChanged: onQuery,
                     style: TextStyle(color: luma.textPrimary, fontSize: 13),
                     decoration: InputDecoration(
-                      hintText: 'Find a repository',
+                      hintText: t.githubRepoSearchHint,
                       hintStyle:
                           TextStyle(color: luma.textMuted, fontSize: 13),
                       prefixIcon:
@@ -234,7 +246,7 @@ class _Toolbar extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: LumaSegmentedTabs(
-              tabs: [for (final f in _RepoFilter.values) f.label],
+              tabs: [for (final f in _RepoFilter.values) f.label(t)],
               selectedIndex: filter.index,
               onSelect: (index) => onFilter(_RepoFilter.values[index]),
               scrollable: true,
@@ -254,9 +266,10 @@ class _SortMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return PopupMenuButton<_RepoSort>(
-      tooltip: 'Sort repositories',
+      tooltip: t.githubRepoSortTooltip,
       initialValue: sort,
       color: luma.surface,
       onSelected: onSort,
@@ -275,7 +288,7 @@ class _SortMenu extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  option.label,
+                  option.label(t),
                   style: TextStyle(color: luma.textPrimary, fontSize: 13),
                 ),
               ],
@@ -295,7 +308,7 @@ class _SortMenu extends StatelessWidget {
             Icon(Icons.swap_vert_rounded, size: 16, color: luma.textSecondary),
             const SizedBox(width: 8),
             Text(
-              sort.label,
+              sort.label(t),
               style: TextStyle(color: luma.textSecondary, fontSize: 12.5),
             ),
           ],
@@ -312,6 +325,7 @@ class _RepoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final decor = context.lumaDecor;
 
@@ -349,19 +363,19 @@ class _RepoCard extends StatelessWidget {
                           ),
                         ),
                         AccountBadge(
-                          label: repo.isPrivate ? 'Private' : 'Public',
+                          label: repo.isPrivate ? t.githubPrivate : t.githubPublic,
                           icon: repo.isPrivate
                               ? Icons.lock_outline_rounded
                               : Icons.public_rounded,
                         ),
                         if (repo.isFork)
-                          const AccountBadge(
-                            label: 'Fork',
+                          AccountBadge(
+                            label: t.githubFork,
                             icon: Icons.call_split_rounded,
                           ),
                         if (repo.isArchived)
                           AccountBadge(
-                            label: 'Archived',
+                            label: t.githubArchived,
                             icon: Icons.inventory_2_outlined,
                             color: luma.warning,
                             filled: true,
@@ -418,33 +432,35 @@ class _RepoCard extends StatelessWidget {
                   AccountMetaCount(
                     icon: Icons.star_outline_rounded,
                     value: formatCompact(repo.stars),
-                    semanticLabel: '${repo.stars} stars',
+                    semanticLabel: t.githubStarsCount('${repo.stars}'),
                   ),
                   AccountMetaCount(
                     icon: Icons.call_split_rounded,
                     value: formatCompact(repo.forks),
-                    semanticLabel: '${repo.forks} forks',
+                    semanticLabel: t.githubForksCount('${repo.forks}'),
                   ),
                   AccountMetaCount(
                     icon: Icons.adjust_rounded,
                     value: formatCompact(repo.openIssues),
-                    semanticLabel: '${repo.openIssues} open issues and pull '
-                        'requests',
+                    semanticLabel:
+                        t.githubOpenIssuesAndPrsCount('${repo.openIssues}'),
                   ),
                   if (repo.downloads > 0)
                     AccountMetaCount(
                       icon: Icons.download_outlined,
                       value: formatCompact(repo.downloads),
-                      semanticLabel: '${repo.downloads} release downloads',
+                      semanticLabel:
+                          t.githubReleaseDownloadsCount('${repo.downloads}'),
                       color: luma.success,
                     ),
                   AccountMetaCount(
                     icon: Icons.sd_storage_outlined,
                     value: formatBytesFromKb(repo.sizeKb),
-                    semanticLabel: 'Size ${formatBytesFromKb(repo.sizeKb)}',
+                    semanticLabel: t.githubSizeSemantic(
+                        formatBytesFromKb(repo.sizeKb)),
                   ),
                   Text(
-                    'Updated ${formatRelative(repo.pushedAt)}',
+                    t.githubUpdated(formatRelative(repo.pushedAt)),
                     style: TextStyle(color: luma.textMuted, fontSize: 11.5),
                   ),
                 ],

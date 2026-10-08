@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../account_overview_scope.dart';
 import '../github_models.dart';
@@ -16,6 +17,7 @@ class GithubOverviewTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final repository = AccountOverviewScope.of(context);
     final snapshot = repository.snapshot;
     final profile = snapshot.profile;
@@ -29,12 +31,12 @@ class GithubOverviewTab extends StatelessWidget {
         _StatGrid(snapshot: snapshot, onOpenSection: onOpenSection),
         const SizedBox(height: 18),
         AccountPanel(
-          title: 'Contributions',
+          title: t.githubContributions,
           icon: Icons.grid_view_rounded,
           subtitle: snapshot.contributions.calendarTotal > 0
-              ? '${formatCount(snapshot.contributions.calendarTotal)} in the '
-                  'last year'
-              : 'The last year of activity',
+              ? t.githubContributionsInLastYear(
+                  formatCount(snapshot.contributions.calendarTotal))
+              : t.githubContributionsYearActivity,
           trailing: _ContributionSummary(
             contributions: snapshot.contributions,
           ),
@@ -82,8 +84,8 @@ class GithubOverviewTab extends StatelessWidget {
         Center(
           child: Text(
             snapshot.fetchedAt.millisecondsSinceEpoch == 0
-                ? 'Not refreshed yet'
-                : 'Updated ${formatRelative(snapshot.fetchedAt)}',
+                ? t.githubNotRefreshedYet
+                : t.githubUpdated(formatRelative(snapshot.fetchedAt)),
             style: TextStyle(color: luma.textMuted, fontSize: 11),
           ),
         ),
@@ -99,6 +101,7 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final decor = context.lumaDecor;
 
@@ -153,32 +156,32 @@ class _ProfileHeader extends StatelessWidget {
                 children: [
                   AccountMetaCount(
                     icon: Icons.people_outline_rounded,
-                    value: '${formatCount(profile.followers)} followers',
-                    semanticLabel: '${profile.followers} followers',
+                    value: t.githubFollowers(formatCount(profile.followers)),
+                    semanticLabel: t.githubFollowers('${profile.followers}'),
                   ),
                   AccountMetaCount(
                     icon: Icons.person_add_alt_outlined,
-                    value: '${formatCount(profile.following)} following',
-                    semanticLabel: '${profile.following} following',
+                    value: t.githubFollowing(formatCount(profile.following)),
+                    semanticLabel: t.githubFollowing('${profile.following}'),
                   ),
                   if (profile.company != null && profile.company!.isNotEmpty)
                     AccountMetaCount(
                       icon: Icons.business_outlined,
                       value: profile.company!,
-                      semanticLabel: 'Company ${profile.company}',
+                      semanticLabel: t.githubCompanySemantic(profile.company!),
                     ),
                   if (profile.location != null && profile.location!.isNotEmpty)
                     AccountMetaCount(
                       icon: Icons.place_outlined,
                       value: profile.location!,
-                      semanticLabel: 'Location ${profile.location}',
+                      semanticLabel: t.githubLocationSemantic(profile.location!),
                     ),
                   if (profile.createdAt != null)
                     AccountMetaCount(
                       icon: Icons.cake_outlined,
-                      value: 'Joined ${formatDate(profile.createdAt!)}',
+                      value: t.githubJoined(formatDate(profile.createdAt!)),
                       semanticLabel:
-                          'Joined ${formatDate(profile.createdAt!)}',
+                          t.githubJoined(formatDate(profile.createdAt!)),
                     ),
                 ],
               ),
@@ -200,7 +203,7 @@ class _ProfileHeader extends StatelessWidget {
                   ),
                 ),
               AccountLinkButton(
-                label: 'Profile',
+                label: t.githubProfile,
                 icon: Icons.open_in_new_rounded,
                 onTap: () => openExternal(profile.htmlUrl),
               ),
@@ -244,6 +247,7 @@ class _Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final fallback = Container(
       width: 74,
@@ -266,7 +270,7 @@ class _Avatar extends StatelessWidget {
     if (url.isEmpty) return fallback;
 
     return Semantics(
-      label: '$login avatar',
+      label: t.githubAvatarSemantic(login),
       image: true,
       child: ClipOval(
         child: Image.network(
@@ -290,6 +294,7 @@ class _ContributionSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     if (contributions.days.isEmpty) return const SizedBox.shrink();
     return Wrap(
@@ -297,15 +302,16 @@ class _ContributionSummary extends StatelessWidget {
       children: [
         AccountMetaCount(
           icon: Icons.local_fire_department_outlined,
-          value: '${contributions.currentStreak}d streak',
-          semanticLabel:
-              'Current streak ${contributions.currentStreak} days',
+          value: t.githubStreakCurrent('${contributions.currentStreak}'),
+          semanticLabel: t.githubCurrentStreakSemantic(
+              contributions.currentStreak),
           color: contributions.currentStreak > 0 ? luma.warning : null,
         ),
         AccountMetaCount(
           icon: Icons.emoji_events_outlined,
-          value: '${contributions.longestStreak}d best',
-          semanticLabel: 'Longest streak ${contributions.longestStreak} days',
+          value: t.githubStreakBest('${contributions.longestStreak}'),
+          semanticLabel:
+              t.githubLongestStreakSemantic(contributions.longestStreak),
         ),
       ],
     );
@@ -322,6 +328,7 @@ class _StatGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final contributions = snapshot.contributions;
     final totals = snapshot.issueTotals;
@@ -329,64 +336,64 @@ class _StatGrid extends StatelessWidget {
     final tiles = <Widget>[
       AccountStatTile(
         icon: Icons.commit_rounded,
-        label: 'Commits',
+        label: t.githubCommits,
         value: formatCompact(contributions.totalCommits),
         caption: contributions.restricted > 0
-            ? '+${formatCount(contributions.restricted)} private'
-            : 'in the last year',
+            ? t.githubPrivateCountPlus(formatCount(contributions.restricted))
+            : t.githubInLastYear,
       ),
       AccountStatTile(
         icon: Icons.star_outline_rounded,
-        label: 'Stars earned',
+        label: t.githubStarsEarned,
         value: formatCompact(snapshot.totalStars),
-        caption: 'across ${snapshot.repos.length} repos',
+        caption: t.githubAcrossRepos(snapshot.repos.length),
         tint: luma.warning,
         onTap: () => onOpenSection('repositories'),
       ),
       AccountStatTile(
         icon: Icons.folder_outlined,
-        label: 'Repositories',
+        label: t.githubRepositories,
         value: formatCount(snapshot.repos.length),
         caption: snapshot.profile == null
             ? null
-            : '${snapshot.profile!.privateRepos} private',
+            : t.githubPrivateCount('${snapshot.profile!.privateRepos}'),
         onTap: () => onOpenSection('repositories'),
       ),
       AccountStatTile(
         icon: Icons.download_outlined,
-        label: 'Downloads',
+        label: t.githubDownloads,
         value: formatCompact(snapshot.totalDownloads),
-        caption: 'release assets',
+        caption: t.githubReleaseAssets,
         tint: luma.success,
         onTap: () => onOpenSection('repositories'),
       ),
       AccountStatTile(
         icon: Icons.adjust_rounded,
-        label: 'Open issues',
+        label: t.githubOpenIssues,
         value: formatCount(totals.openIssues),
-        caption: '${formatCount(totals.closedIssues)} closed',
+        caption: t.githubClosedCount(formatCount(totals.closedIssues)),
         onTap: () => onOpenSection('issues'),
       ),
       AccountStatTile(
         icon: Icons.merge_rounded,
-        label: 'Merged PRs',
+        label: t.githubMergedPrs,
         value: formatCount(totals.mergedPrs),
-        caption: '${formatCount(totals.openPrs)} open',
+        caption: t.githubOpenCount(formatCount(totals.openPrs)),
         tint: luma.accent,
         onTap: () => onOpenSection('issues'),
       ),
       AccountStatTile(
         icon: Icons.call_split_rounded,
-        label: 'Forks',
+        label: t.githubForks,
         value: formatCompact(snapshot.totalForks),
-        caption: 'of your repos',
+        caption: t.githubOfYourRepos,
         onTap: () => onOpenSection('repositories'),
       ),
       AccountStatTile(
         icon: Icons.play_circle_outline_rounded,
-        label: 'Workflow runs',
+        label: t.githubWorkflowRuns,
         value: formatCount(snapshot.runs.length),
-        caption: 'recent',
+        caption: t.githubRecent,
         onTap: () => onOpenSection('actions'),
       ),
     ];
@@ -419,23 +426,24 @@ class _TopRepositories extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final top = [...repos]..sort((a, b) => b.stars.compareTo(a.stars));
     final visible = top.take(6).toList();
 
     return AccountPanel(
-      title: 'Top repositories',
+      title: t.githubTopRepositories,
       icon: Icons.star_outline_rounded,
-      subtitle: 'By stars',
+      subtitle: t.githubByStars,
       trailing: repos.length > 6
-          ? AccountLinkButton(label: 'View all', onTap: onViewAll)
+          ? AccountLinkButton(label: t.githubViewAll, onTap: onViewAll)
           : null,
       padding: EdgeInsets.zero,
       child: visible.isEmpty
           ? Padding(
               padding: const EdgeInsets.all(20),
               child: Text(
-                'No repositories yet.',
+                t.githubNoRepositoriesYet,
                 style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
             )
@@ -460,6 +468,7 @@ class _CompactRepoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Material(
       color: Colors.transparent,
@@ -521,7 +530,7 @@ class _CompactRepoRow extends StatelessWidget {
               AccountMetaCount(
                 icon: Icons.star_rounded,
                 value: formatCompact(repo.stars),
-                semanticLabel: '${repo.stars} stars',
+                semanticLabel: t.githubStarsCount('${repo.stars}'),
                 color: luma.warning,
               ),
             ],
@@ -543,6 +552,7 @@ class _LanguageBreakdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final entries = counts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
@@ -550,12 +560,12 @@ class _LanguageBreakdown extends StatelessWidget {
     final visible = entries.take(6).toList();
 
     return AccountPanel(
-      title: 'Languages',
+      title: t.githubLanguages,
       icon: Icons.code_rounded,
-      subtitle: 'By repository count',
+      subtitle: t.githubByRepoCount,
       child: total == 0
           ? Text(
-              'No languages detected yet.',
+              t.githubNoLanguagesYet,
               style: TextStyle(color: luma.textMuted, fontSize: 12),
             )
           : Column(
@@ -636,21 +646,21 @@ class _RecentRuns extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final visible = runs.take(5).toList();
     return AccountPanel(
-      title: 'Latest workflow runs',
+      title: t.githubLatestRuns,
       icon: Icons.play_circle_outline_rounded,
       trailing: runs.isEmpty
           ? null
-          : AccountLinkButton(label: 'View all', onTap: onViewAll),
+          : AccountLinkButton(label: t.githubViewAll, onTap: onViewAll),
       padding: EdgeInsets.zero,
       child: visible.isEmpty
           ? Padding(
               padding: const EdgeInsets.all(20),
               child: Text(
-                'No workflow runs found in your most recently pushed '
-                'repositories.',
+                t.githubNoRunsFound,
                 style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
             )
@@ -747,15 +757,32 @@ class GithubRunRow extends StatelessWidget {
 /// overview and the Actions tab cannot drift apart.
 (IconData, Color, String) runStatusVisual(
     BuildContext context, GithubWorkflowRun run) {
+  final t = L.of(context);
   final luma = context.luma;
   if (run.isRunning) {
-    return (Icons.circle_outlined, luma.warning, 'In progress');
+    return (Icons.circle_outlined, luma.warning, t.githubRunStatusInProgress);
   }
   return switch (run.conclusion) {
-    'success' => (Icons.check_circle_rounded, luma.success, 'Succeeded'),
-    'failure' || 'timed_out' => (Icons.cancel_rounded, luma.danger, 'Failed'),
-    'cancelled' => (Icons.do_not_disturb_on_rounded, luma.textMuted, 'Cancelled'),
-    'skipped' => (Icons.remove_circle_outline_rounded, luma.textMuted, 'Skipped'),
-    _ => (Icons.help_outline_rounded, luma.textMuted, 'Unknown'),
+    'success' => (
+        Icons.check_circle_rounded,
+        luma.success,
+        t.githubRunStatusSucceeded
+      ),
+    'failure' || 'timed_out' => (
+        Icons.cancel_rounded,
+        luma.danger,
+        t.githubRunStatusFailed
+      ),
+    'cancelled' => (
+        Icons.do_not_disturb_on_rounded,
+        luma.textMuted,
+        t.githubRunStatusCancelled
+      ),
+    'skipped' => (
+        Icons.remove_circle_outline_rounded,
+        luma.textMuted,
+        t.githubRunStatusSkipped
+      ),
+    _ => (Icons.help_outline_rounded, luma.textMuted, t.githubRunStatusUnknown),
   };
 }

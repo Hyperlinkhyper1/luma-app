@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/school_database.dart';
 import '../school_repository.dart';
@@ -28,6 +29,7 @@ class _FormulasTabState extends State<FormulasTab> {
   Widget build(BuildContext context) {
     final repo = SchoolScope.of(context);
     final luma = context.luma;
+    final t = L.of(context);
     return StreamData<List<Formula>>(
       stream: repo.watchFormulas(),
       builder: (context, formulas) {
@@ -51,16 +53,16 @@ class _FormulasTabState extends State<FormulasTab> {
                     child: TextField(
                       controller: _search,
                       onChanged: (_) => setState(() {}),
-                      decoration: const InputDecoration(
-                        prefixIcon: Icon(Icons.search_rounded),
-                        hintText: 'Search formulas',
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        hintText: t.schoolFormulasSearchHint,
                         isDense: true,
                       ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   LumaPrimaryButton(
-                    label: 'Add formula',
+                    label: t.schoolFormulasAdd,
                     icon: Icons.add_rounded,
                     onTap: () => _openEditor(context, repo),
                   ),
@@ -72,13 +74,13 @@ class _FormulasTabState extends State<FormulasTab> {
                   spacing: 8,
                   children: [
                     ChoiceChip(
-                      label: const Text('All'),
+                      label: Text(t.commonAll),
                       selected: _category == null,
                       onSelected: (_) => setState(() => _category = null),
                     ),
                     for (final c in categories)
                       ChoiceChip(
-                        label: Text(c),
+                        label: Text(c == 'Custom' ? t.schoolFormulaDefaultCategory : c),
                         selected: _category == c,
                         onSelected: (_) => setState(() => _category = c),
                       ),
@@ -88,10 +90,10 @@ class _FormulasTabState extends State<FormulasTab> {
               const SizedBox(height: 16),
               Expanded(
                 child: filtered.isEmpty
-                    ? const LumaEmptyState(
+                    ? LumaEmptyState(
                         icon: Icons.functions_rounded,
-                        title: 'No formulas yet',
-                        subtitle: 'Add your own formulas to build a personal reference library.',
+                        title: t.schoolFormulasEmpty,
+                        subtitle: t.schoolFormulasEmptySub,
                       )
                     : ListView.separated(
                         itemCount: filtered.length,
@@ -122,7 +124,7 @@ class _FormulasTabState extends State<FormulasTab> {
                                                 color: luma.accentSubtle,
                                                 borderRadius: BorderRadius.circular(8),
                                               ),
-                                              child: Text(f.category,
+                                              child: Text(f.category == 'Custom' ? t.schoolFormulaDefaultCategory : f.category,
                                                   style: TextStyle(
                                                       color: luma.accent, fontSize: 11)),
                                             ),
@@ -183,7 +185,7 @@ class _FormulaDialogState extends State<_FormulaDialog> {
   late final _expressionController =
       TextEditingController(text: widget.existing?.expression ?? '');
   late final _categoryController =
-      TextEditingController(text: widget.existing?.category ?? 'Custom');
+      TextEditingController(text: widget.existing?.category ?? '');
   late final _descriptionController =
       TextEditingController(text: widget.existing?.description ?? '');
 
@@ -200,9 +202,11 @@ class _FormulaDialogState extends State<_FormulaDialog> {
     final name = _nameController.text.trim();
     final expression = _expressionController.text.trim();
     if (name.isEmpty || expression.isEmpty) return;
-    final category = _categoryController.text.trim().isEmpty
+    final enteredCategory = _categoryController.text.trim();
+    final category = enteredCategory.isEmpty ||
+            enteredCategory == L.of(context).schoolFormulaDefaultCategory
         ? 'Custom'
-        : _categoryController.text.trim();
+        : enteredCategory;
     final description = _descriptionController.text.trim();
     if (widget.existing == null) {
       await widget.repo.createFormula(
@@ -225,8 +229,9 @@ class _FormulaDialogState extends State<_FormulaDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return AlertDialog(
-      title: Text(widget.existing == null ? 'Add formula' : 'Edit formula'),
+      title: Text(widget.existing == null ? t.schoolFormulasAdd : t.schoolFormulasEdit),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -235,27 +240,30 @@ class _FormulaDialogState extends State<_FormulaDialog> {
             TextField(
               controller: _nameController,
               autofocus: true,
-              decoration: const InputDecoration(labelText: 'Name'),
+              decoration: InputDecoration(labelText: t.commonName),
             ),
             TextField(
               controller: _expressionController,
-              decoration: const InputDecoration(labelText: 'Expression'),
+              decoration: InputDecoration(labelText: t.schoolFormulaExpression),
             ),
             TextField(
               controller: _categoryController,
-              decoration: const InputDecoration(labelText: 'Category'),
+              decoration: InputDecoration(
+                  labelText: t.commonCategory,
+                  hintText: t.schoolFormulaDefaultCategory,
+                ),
             ),
             TextField(
               controller: _descriptionController,
-              decoration: const InputDecoration(labelText: 'Description (optional)'),
+              decoration: InputDecoration(labelText: t.schoolFormulaDescriptionOptional),
               maxLines: 2,
             ),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-        FilledButton(onPressed: _save, child: const Text('Save')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(t.commonCancel)),
+        FilledButton(onPressed: _save, child: Text(t.commonSave)),
       ],
     );
   }

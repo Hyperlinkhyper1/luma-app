@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../../l10n/current_l.dart';
 import 'gallery_cache.dart';
 import 'gallery_categories.dart';
 import 'gallery_file_editor.dart';
@@ -392,8 +393,8 @@ class GalleryRepository extends ChangeNotifier {
     if (!started || _disposed) {
       _set(() {
         _analysing = false;
-        _analysisError = _analyser.lastError ??
-            'The smart album models could not be started.';
+        _analysisError =
+            _analyser.lastError ?? currentL.galleryRepoModelsNotStarted;
       });
       return;
     }
@@ -610,9 +611,7 @@ class GalleryRepository extends ChangeNotifier {
     DateTime? newTakenAt,
   }) async {
     if (!canEditFiles) {
-      return const GalleryEditResult.failure(
-        'Files can only be renamed in the desktop app.',
-      );
+      return GalleryEditResult.failure(currentL.galleryRepoRenameDesktopOnly);
     }
     final result = await GalleryFileEditor.apply(
       item,

@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../sync/sync_api.dart';
 import '../../../../sync/sync_crypto.dart';
 import '../../../../sync/sync_service.dart';
@@ -141,7 +142,7 @@ class CloudFilesController extends ChangeNotifier {
       _loaded = true;
     } on SyncApiException catch (e) {
       _error = e.isUnauthorized
-          ? 'Your session expired — sign in again under Settings → Sync.'
+          ? currentL.cloudFilesSessionExpired
           : e.message;
     } catch (e) {
       _error = _friendly(e);
@@ -158,10 +159,10 @@ class CloudFilesController extends ChangeNotifier {
   /// chunk so no orphaned data lingers on the server.
   Future<void> upload(String path, String displayName) async {
     if (!_sync.serverReady) {
-      throw const CloudFilesException('Sign in under Settings → Sync first.');
+      throw CloudFilesException(currentL.cloudFilesSignInFirst);
     }
     if (busy) {
-      throw const CloudFilesException('Another transfer is already running.');
+      throw CloudFilesException(currentL.cloudFilesBusy);
     }
 
     final file = File(path);
@@ -170,9 +171,8 @@ class CloudFilesController extends ChangeNotifier {
     // Fail fast if it clearly won't fit (the server enforces this too).
     final acct = _sync.account;
     if (acct != null && acct.usedBytes + size > acct.quotaBytes) {
-      throw CloudFilesException(
-          'Not enough space: "$displayName" needs ${formatBytes(size)} but '
-          'only ${formatBytes(freeBytes)} is free.');
+      throw CloudFilesException(currentL.cloudFilesNotEnoughSpace(
+          displayName, formatBytes(size), formatBytes(freeBytes)));
     }
 
     final id = _randomId();
@@ -210,7 +210,7 @@ class CloudFilesController extends ChangeNotifier {
     } on SyncApiException catch (e) {
       await _rollback(uploaded);
       throw CloudFilesException(e.code == 'quota_exceeded'
-          ? 'The server is out of space for your account.'
+          ? currentL.cloudFilesServerFull
           : e.message);
     } catch (e) {
       await _rollback(uploaded);
@@ -232,10 +232,10 @@ class CloudFilesController extends ChangeNotifier {
   /// disk so memory stays bounded even for large files.
   Future<void> download(CloudFile file, String savePath) async {
     if (!_sync.serverReady) {
-      throw const CloudFilesException('Sign in under Settings → Sync first.');
+      throw CloudFilesException(currentL.cloudFilesSignInFirst);
     }
     if (busy) {
-      throw const CloudFilesException('Another transfer is already running.');
+      throw CloudFilesException(currentL.cloudFilesBusy);
     }
 
     _transfer = CloudTransferKind.downloading;
@@ -250,8 +250,7 @@ class CloudFilesController extends ChangeNotifier {
       for (var i = 0; i < file.chunks; i++) {
         final bytes = await _sync.getObject(_chunkName(file.id, i));
         if (bytes == null) {
-          throw const CloudFilesException(
-              'Part of this file is missing on the server.');
+          throw CloudFilesException(currentL.cloudFilesPartMissing);
         }
         await out.writeFrom(bytes);
         written += bytes.length;
@@ -330,8 +329,7 @@ class CloudFilesController extends ChangeNotifier {
         rethrow;
       }
     }
-    throw const CloudFilesException(
-        'Could not update the file list — please try again.');
+    throw CloudFilesException(currentL.cloudFilesIndexConflict);
   }
 
   Future<void> _rollback(List<String> collections) async {
@@ -354,11 +352,14 @@ class CloudFilesController extends ChangeNotifier {
 
   /// Human-readable byte size (e.g. "2.4 MB").
   static String formatBytes(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    if (bytes < 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    final l = currentL;
+    if (bytes < 1024) return l.cloudFilesSizeB('$bytes');
+    if (bytes < 1024 * 1024) {
+      return l.cloudFilesSizeKb((bytes / 1024).toStringAsFixed(1));
     }
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
+    if (bytes < 1024 * 1024 * 1024) {
+      return l.cloudFilesSizeMb((bytes / (1024 * 1024)).toStringAsFixed(1));
+    }
+    return l.cloudFilesSizeGb((bytes / (1024 * 1024 * 1024)).toStringAsFixed(2));
   }
 }

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
+import '../../../l10n/current_l.dart';
 import '../../../sync/server_access.dart';
 import 'ai_client.dart';
 
@@ -59,7 +60,7 @@ class LumaImageClient {
     } on ServerAccessDeniedException catch (e) {
       throw AiAuthError(e.message);
     } catch (e) {
-      throw AiNetworkError("Couldn't reach Luma AI — check your connection.");
+      throw AiNetworkError(currentL.aiClientNoConnection('Luma AI'));
     } finally {
       if (httpClient == null) client.close();
     }
@@ -74,21 +75,21 @@ class LumaImageClient {
         : json?['message'] as String?;
 
     if (res.statusCode == 429) {
-      throw AiRateLimitError(message ?? 'Too many requests — try again shortly.');
+      throw AiRateLimitError(message ?? currentL.aiClientRateLimited);
     }
     if (res.statusCode == 401) {
-      throw AiAuthError(message ?? 'Sign in again to use Luma AI.');
+      throw AiAuthError(message ?? currentL.aiClientLumaSignIn);
     }
     if (res.statusCode != 200 || json == null || json['image'] is! String) {
       throw AiApiError(
-        message ?? 'Luma AI could not draw that (${res.statusCode}).',
+        message ?? currentL.aiClientLumaImageFailed(res.statusCode),
       );
     }
     final Uint8List bytes;
     try {
       bytes = base64Decode(json['image'] as String);
     } on FormatException {
-      throw AiApiError('Luma AI sent back a broken picture.');
+      throw AiApiError(currentL.aiClientLumaBrokenImage);
     }
     final text = json['text'];
     return LumaImage(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../device_health_scope.dart';
 import 'category_card.dart';
@@ -20,16 +21,17 @@ class GpuAndDriverCard extends StatelessWidget {
     final state = repo.gpus;
     final gpus = state.data;
     final luma = context.luma;
+    final t = L.of(context);
     final dateFormat = DateFormat.yMMMd();
 
     return CategoryCard(
       icon: Icons.videogame_asset_rounded,
-      title: 'GPU & Drivers',
+      title: t.deviceHealthCardGpuTitle,
       loading: state.loading,
       error: state.error,
       onCheck: () => repo.refreshAmbient(),
       child: gpus == null
-          ? Text('Not checked yet.', style: TextStyle(color: luma.textMuted, fontSize: 13))
+          ? Text(t.deviceHealthCardNotCheckedYet, style: TextStyle(color: luma.textMuted, fontSize: 13))
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -37,8 +39,10 @@ class GpuAndDriverCard extends StatelessWidget {
                   Text(gpu.name, style: TextStyle(color: luma.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
                   Text(
-                    'Driver ${gpu.driverVersion}'
-                    '${gpu.driverDate != null ? ' · ${dateFormat.format(gpu.driverDate!)}' : ''}',
+                    gpu.driverDate != null
+                        ? t.deviceHealthCardDriverVersionDate(
+                            gpu.driverVersion, dateFormat.format(gpu.driverDate!))
+                        : t.deviceHealthCardDriverVersion(gpu.driverVersion),
                     style: TextStyle(color: luma.textSecondary, fontSize: 13),
                   ),
                   const SizedBox(height: 10),
@@ -48,14 +52,14 @@ class GpuAndDriverCard extends StatelessWidget {
                     children: [
                       LumaGhostButton(
                         label: gpu.vendor == 'Unknown'
-                            ? 'Open Windows Update'
-                            : 'Open ${gpu.vendor} update tool',
+                            ? t.deviceHealthCardOpenWindowsUpdate
+                            : t.deviceHealthCardOpenVendorTool(gpu.vendor),
                         icon: Icons.open_in_new_rounded,
                         onTap: () => repo.openDriverTool(gpu.vendor),
                       ),
                       if (gpu.vendor != 'Unknown')
                         LumaGhostButton(
-                          label: 'Open Windows Update',
+                          label: t.deviceHealthCardOpenWindowsUpdate,
                           icon: Icons.system_update_rounded,
                           onTap: () => repo.openWindowsUpdate(),
                         ),
@@ -65,9 +69,7 @@ class GpuAndDriverCard extends StatelessWidget {
                 ],
                 const SizedBox(height: 4),
                 Text(
-                  "Windows doesn't expose a way to check driver freshness "
-                  'directly — these open the tool that actually knows. '
-                  "Nothing is installed automatically.",
+                  t.deviceHealthCardGpuDisclaimer,
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
               ],

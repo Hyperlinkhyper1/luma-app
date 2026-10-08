@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../storage/storage_guard.dart';
 import 'sftp_crypto.dart';
 import 'sftp_site.dart';
@@ -188,7 +189,7 @@ class SftpSiteStore extends ChangeNotifier {
   Future<void> importData(Object? data) async {
     final list = data is Map ? data['sites'] : null;
     if (list is! List) {
-      throw const FormatException('Invalid SFTP sites snapshot.');
+      throw FormatException(currentL.sftpSiteSnapshotInvalid);
     }
     await _ready;
     final crypto = await _getCrypto();

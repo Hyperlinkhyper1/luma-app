@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../mc_content_scope.dart';
 import '../mc_credentials.dart';
@@ -94,6 +95,7 @@ class _McSetupDialogState extends State<_McSetupDialog> {
   /// Saves the typed key first, so a project can be resolved on the very
   /// first visit rather than needing two trips through the dialog.
   Future<void> _trackProject() async {
+    final t = L.of(context);
     final repository = McContentScope.of(context);
     final input = _curseProject.text.trim();
     if (input.isEmpty) return;
@@ -111,7 +113,7 @@ class _McSetupDialogState extends State<_McSetupDialog> {
       if (!mounted) return;
       setState(() {
         _curseProject.clear();
-        _trackNotice = 'Now tracking ${project.name}.';
+        _trackNotice = t.mcSetupNowTracking(project.name);
       });
     } catch (e) {
       if (mounted) setState(() => _trackError = e.toString());
@@ -124,11 +126,12 @@ class _McSetupDialogState extends State<_McSetupDialog> {
   /// user sees the real HTTP status and body instead of the generic
   /// "rejected" message a normal fetch collapses everything into.
   Future<void> _testCurseKey() async {
+    final t = L.of(context);
     final key = _clean(_curseKey);
     if (key == null) {
       setState(() {
         _testOk = false;
-        _testResult = 'Enter a key first.';
+        _testResult = t.mcSetupEnterKeyFirst;
       });
       return;
     }
@@ -144,7 +147,7 @@ class _McSetupDialogState extends State<_McSetupDialog> {
       setState(() {
         _testOk = result.ok;
         _testResult = result.ok
-            ? 'Key works — CurseForge answered HTTP 200.'
+            ? t.mcSetupKeyWorks
             : 'HTTP ${result.statusCode}: ${_trimBody(result.body)}';
       });
     } catch (e) {
@@ -165,6 +168,7 @@ class _McSetupDialogState extends State<_McSetupDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final repository = McContentScope.of(context);
     final tracked = repository.credentials.curseforgeProjectIds;
 
@@ -182,7 +186,7 @@ class _McSetupDialogState extends State<_McSetupDialog> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Minecraft platforms',
+              t.mcSetupPlatformsTitle,
               style: TextStyle(
                 color: luma.textPrimary,
                 fontSize: 17,
@@ -201,26 +205,25 @@ class _McSetupDialogState extends State<_McSetupDialog> {
             children: [
               _PlatformHeader(
                 platform: McPlatform.modrinth,
-                note: 'Public — a username is all it takes.',
+                note: t.mcSetupModrinthNote,
                 tone: luma.success,
               ),
               _field(
                 controller: _modrinthUser,
-                label: 'Modrinth username',
-                hint: 'e.g. jellysquid3',
+                label: t.mcSetupModrinthUsername,
+                hint: t.mcSetupModrinthUsernameHint,
               ),
               _field(
                 controller: _modrinthToken,
-                label: 'Access token (optional)',
+                label: t.mcSetupModrinthToken,
                 hint: 'mrp_…',
                 obscure: true,
-                helper: 'Only needed for real download history. Without it, '
-                    'luma grows the graph itself from daily snapshots.',
+                helper: t.mcSetupModrinthTokenHelper,
               ),
               Align(
                 alignment: Alignment.centerLeft,
                 child: AccountLinkButton(
-                  label: 'Modrinth token settings',
+                  label: t.mcSetupModrinthTokenLink,
                   icon: Icons.open_in_new_rounded,
                   onTap: () =>
                       openExternal('https://modrinth.com/settings/pats'),
@@ -229,20 +232,19 @@ class _McSetupDialogState extends State<_McSetupDialog> {
               const SizedBox(height: 18),
               _PlatformHeader(
                 platform: McPlatform.curseforge,
-                note: 'Needs an API key — CurseForge serves nothing without '
-                    'one.',
+                note: t.mcSetupCurseNote,
                 tone: luma.warning,
               ),
               _field(
                 controller: _curseKey,
-                label: 'CurseForge API key',
-                hint: 'x-api-key from the Studios console',
+                label: t.mcSetupCurseKey,
+                hint: t.mcSetupCurseKeyHint,
                 obscure: true,
               ),
               Row(
                 children: [
                   AccountLinkButton(
-                    label: 'CurseForge API keys',
+                    label: t.mcSetupCurseKeysLink,
                     icon: Icons.open_in_new_rounded,
                     onTap: () => openExternal(
                         'https://console.curseforge.com/#/api-keys'),
@@ -251,7 +253,7 @@ class _McSetupDialogState extends State<_McSetupDialog> {
                   SizedBox(
                     height: 30,
                     child: LumaGhostButton(
-                      label: _testBusy ? 'Testing…' : 'Test key',
+                      label: _testBusy ? t.mcSetupTestingKey : t.mcSetupTestKey,
                       icon: Icons.wifi_tethering_rounded,
                       onTap: _busy || _testBusy ? null : _testCurseKey,
                     ),
@@ -273,11 +275,9 @@ class _McSetupDialogState extends State<_McSetupDialog> {
               const SizedBox(height: 10),
               _field(
                 controller: _curseAuthor,
-                label: 'Author id (optional)',
-                hint: 'numeric id, e.g. 123456',
-                helper: 'CurseForge filters by numeric id and offers no '
-                    'username lookup. Leave it blank and track projects '
-                    'individually instead.',
+                label: t.mcSetupAuthorId,
+                hint: t.mcSetupAuthorIdHint,
+                helper: t.mcSetupAuthorIdHelper,
               ),
               const SizedBox(height: 10),
               _TrackProjectField(
@@ -306,7 +306,7 @@ class _McSetupDialogState extends State<_McSetupDialog> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: AccountLinkButton(
-                  label: 'CurseForge console',
+                  label: t.mcSetupCurseConsole,
                   icon: Icons.open_in_new_rounded,
                   onTap: () => openExternal('https://console.curseforge.com/'),
                 ),
@@ -314,28 +314,24 @@ class _McSetupDialogState extends State<_McSetupDialog> {
               const SizedBox(height: 18),
               _PlatformHeader(
                 platform: McPlatform.planetMinecraft,
-                note: 'No API — read from your public profile in an embedded '
-                    'browser.',
+                note: t.mcSetupPmcNote,
                 tone: luma.accent,
               ),
               _field(
                 controller: _pmcUser,
-                label: 'Planet Minecraft username',
-                hint: 'e.g. cyprezz',
+                label: t.mcSetupPmcUsername,
+                hint: t.mcSetupPmcUsernameHint,
               ),
               if (!PmcWebViewFetcher.isSupported)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: AccountNotice(
-                    message: 'This platform has no embedded browser engine, so '
-                        'Planet Minecraft cannot be read here. Windows and '
-                        'Android can.',
+                    message: t.mcSetupPmcUnsupported,
                   ),
                 ),
               const SizedBox(height: 8),
               Text(
-                'Every key is encrypted on this device and sent only to the '
-                'platform it belongs to. None of it reaches a luma server.',
+                t.mcSetupPrivacy,
                 style: TextStyle(
                   color: luma.textMuted,
                   fontSize: 11,
@@ -360,16 +356,16 @@ class _McSetupDialogState extends State<_McSetupDialog> {
                     if (context.mounted) Navigator.of(context).pop();
                   },
             style: TextButton.styleFrom(foregroundColor: luma.danger),
-            child: const Text('Disconnect all'),
+            child: Text(t.mcSetupDisconnectAll),
           ),
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
           style: TextButton.styleFrom(foregroundColor: luma.textSecondary),
-          child: const Text('Cancel'),
+          child: Text(t.commonCancel),
         ),
         const SizedBox(width: 6),
         LumaPrimaryButton(
-          label: 'Save',
+          label: t.commonSave,
           loading: _busy,
           onTap: _busy ? null : _save,
         ),
@@ -379,31 +375,29 @@ class _McSetupDialogState extends State<_McSetupDialog> {
 
   Future<bool> _confirmDisconnect(BuildContext context) async {
     final luma = context.luma;
+    final t = L.of(context);
     final result = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: luma.surface,
         title: Text(
-          'Disconnect every platform?',
+          t.mcSetupDisconnectTitle,
           style: TextStyle(color: luma.textPrimary, fontSize: 16),
         ),
         content: Text(
-          'The stored keys, the cached numbers and the download history luma '
-          'has been recording are all deleted from this device. The history '
-          'cannot be re-fetched — CurseForge and Planet Minecraft publish no '
-          'past data.',
+          t.mcSetupDisconnectBody,
           style: TextStyle(color: luma.textSecondary, fontSize: 13, height: 1.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
             style: TextButton.styleFrom(foregroundColor: luma.textSecondary),
-            child: const Text('Keep it'),
+            child: Text(t.accountOverviewKeepIt),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: TextButton.styleFrom(foregroundColor: luma.danger),
-            child: const Text('Disconnect'),
+            child: Text(t.accountOverviewDisconnect),
           ),
         ],
       ),
@@ -539,11 +533,12 @@ class _TrackProjectField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Track a single project',
+          t.mcSetupTrackTitle,
           style: TextStyle(
             color: luma.textPrimary,
             fontSize: 12.5,
@@ -560,7 +555,7 @@ class _TrackProjectField extends StatelessWidget {
                 onSubmitted: (_) => onTrack(),
                 style: TextStyle(color: luma.textPrimary, fontSize: 13),
                 decoration: InputDecoration(
-                  hintText: 'Paste a CurseForge project URL or slug',
+                  hintText: t.mcSetupTrackHint,
                   hintStyle: TextStyle(color: luma.textMuted, fontSize: 12.5),
                   errorText: error,
                   errorMaxLines: 3,
@@ -584,7 +579,7 @@ class _TrackProjectField extends StatelessWidget {
             SizedBox(
               height: 46,
               child: LumaGhostButton(
-                label: 'Track',
+                label: t.mcSetupTrack,
                 icon: Icons.add_rounded,
                 onTap: busy ? null : onTrack,
               ),
@@ -620,6 +615,7 @@ class _TrackedChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       padding: const EdgeInsets.only(left: 10),
       decoration: BoxDecoration(
@@ -641,7 +637,7 @@ class _TrackedChip extends StatelessWidget {
             onPressed: onRemove,
             icon: const Icon(Icons.close_rounded, size: 13),
             color: luma.accent,
-            tooltip: 'Stop tracking #$id',
+            tooltip: t.mcSetupStopTracking(id),
             visualDensity: VisualDensity.compact,
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
           ),

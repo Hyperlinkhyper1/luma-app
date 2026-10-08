@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import '../../../../../l10n/current_l.dart';
+
 import '../airline_game_state.dart';
 import '../data/aircraft.dart';
 import '../data/airport_catalog.dart';
@@ -22,22 +24,124 @@ List<Json> _objects(Object? value) => value is List
 class AirportFacilityDef {
   const AirportFacilityDef(
     this.kind,
-    this.name,
     this.width,
     this.depth,
     this.height,
-    this.cost,
-    this.blurb, {
+    this.cost, {
     this.interior = false,
     required this.category,
     this.maxMtowTonnes,
     this.hidden = false,
   });
   final String kind;
-  final String name;
+  String get name => switch (kind) {
+    'runway' => currentL.airportFacilityRunwayName,
+    'runwayMedium' => currentL.airportFacilityRunwayMediumName,
+    'runwayLong' => currentL.airportFacilityRunwayLongName,
+    'taxiway' => currentL.airportFacilityTaxiwayName,
+    'standRegional' => currentL.airportFacilityStandRegionalName,
+    'stand' => currentL.airportFacilityStandName,
+    'standContact' => currentL.airportFacilityStandContactName,
+    'serviceRoad' => currentL.airportFacilityServiceRoadName,
+    'terminal' => currentL.airportFacilityTerminalName,
+    'terminalLandside' => currentL.airportFacilityTerminalLandsideName,
+    'terminalReclaim' => currentL.airportFacilityTerminalReclaimName,
+    'hangar' => currentL.airportFacilityHangarName,
+    'fuelDepot' => currentL.airportFacilityFuelDepotName,
+    'baggage' => currentL.airportFacilityBaggageName,
+    'vehicleDepot' => currentL.airportFacilityVehicleDepotName,
+    'tower' => currentL.airportFacilityTowerName,
+    'entrance' => currentL.airportFacilityEntranceName,
+    'checkIn' => currentL.airportFacilityCheckInName,
+    'infoDesk' => currentL.airportFacilityInfoDeskName,
+    'checkInCounter' => currentL.airportFacilityCheckInCounterName,
+    'ticketMachine' => currentL.airportFacilityTicketMachineName,
+    'security' => currentL.airportFacilitySecurityName,
+    'customs' => currentL.airportFacilityCustomsName,
+    'checkOut' => currentL.airportFacilityCheckOutName,
+    'seating' => currentL.airportFacilitySeatingName,
+    'toilets' => currentL.airportFacilityToiletsName,
+    'boardingGate' => currentL.airportFacilityBoardingGateName,
+    'cafe' => currentL.airportFacilityCafeName,
+    'vendingMachine' => currentL.airportFacilityVendingMachineName,
+    'perfumeShop' => currentL.airportFacilityPerfumeShopName,
+    'flowerShop' => currentL.airportFacilityFlowerShopName,
+    'foodShop' => currentL.airportFacilityFoodShopName,
+    'kiosk' => currentL.airportFacilityKioskName,
+    'restaurant' => currentL.airportFacilityRestaurantName,
+    'coffeeToGo' => currentL.airportFacilityCoffeeToGoName,
+    'foodCart' => currentL.airportFacilityFoodCartName,
+    'shop' => currentL.airportFacilityShopName,
+    'clothingShop' => currentL.airportFacilityClothingShopName,
+    'luxuryBoutique' => currentL.airportFacilityLuxuryBoutiqueName,
+    'lounge' => currentL.airportFacilityLoungeName,
+    'baggageCarousel' => currentL.airportFacilityBaggageCarouselName,
+    'vipLounge' => currentL.airportFacilityVipLoungeName,
+    'bins' => currentL.airportFacilityBinsName,
+    'arcade' => currentL.airportFacilityArcadeName,
+    'casino' => currentL.airportFacilityCasinoName,
+    'plant' => currentL.airportFacilityPlantName,
+    'fountain' => currentL.airportFacilityFountainName,
+    'infoBoard' => currentL.airportFacilityInfoBoardName,
+    'infoPanel' => currentL.airportFacilityInfoPanelName,
+    _ => kind,
+  };
   final double width, depth, height;
   final int cost;
-  final String blurb;
+  String get blurb => switch (kind) {
+    'runway' => currentL.airportFacilityRunwayDescription,
+    'runwayMedium' => currentL.airportFacilityRunwayMediumDescription,
+    'runwayLong' => currentL.airportFacilityRunwayLongDescription,
+    'taxiway' => currentL.airportFacilityTaxiwayDescription,
+    'standRegional' => currentL.airportFacilityStandRegionalDescription,
+    'stand' => currentL.airportFacilityStandDescription,
+    'standContact' => currentL.airportFacilityStandContactDescription,
+    'serviceRoad' => currentL.airportFacilityServiceRoadDescription,
+    'terminal' => currentL.airportFacilityTerminalDescription,
+    'terminalLandside' => currentL.airportFacilityTerminalLandsideDescription,
+    'terminalReclaim' => currentL.airportFacilityTerminalReclaimDescription,
+    'hangar' => currentL.airportFacilityHangarDescription,
+    'fuelDepot' => currentL.airportFacilityFuelDepotDescription,
+    'baggage' => currentL.airportFacilityBaggageDescription,
+    'vehicleDepot' => currentL.airportFacilityVehicleDepotDescription,
+    'tower' => currentL.airportFacilityTowerDescription,
+    'entrance' => currentL.airportFacilityEntranceDescription,
+    'checkIn' => currentL.airportFacilityCheckInDescription,
+    'infoDesk' => currentL.airportFacilityInfoDeskDescription,
+    'checkInCounter' => currentL.airportFacilityCheckInCounterDescription,
+    'ticketMachine' => currentL.airportFacilityTicketMachineDescription,
+    'security' => currentL.airportFacilitySecurityDescription,
+    'customs' => currentL.airportFacilityCustomsDescription,
+    'checkOut' => currentL.airportFacilityCheckOutDescription,
+    'seating' => currentL.airportFacilitySeatingDescription,
+    'toilets' => currentL.airportFacilityToiletsDescription,
+    'boardingGate' => currentL.airportFacilityBoardingGateDescription,
+    'cafe' => currentL.airportFacilityCafeDescription,
+    'vendingMachine' => currentL.airportFacilityVendingMachineDescription,
+    'perfumeShop' => currentL.airportFacilityPerfumeShopDescription,
+    'flowerShop' => currentL.airportFacilityFlowerShopDescription,
+    'foodShop' => currentL.airportFacilityFoodShopDescription,
+    'kiosk' => currentL.airportFacilityKioskDescription,
+    'restaurant' => currentL.airportFacilityRestaurantDescription,
+    'coffeeToGo' => currentL.airportFacilityCoffeeToGoDescription,
+    'foodCart' => currentL.airportFacilityFoodCartDescription,
+    'shop' => currentL.airportFacilityShopDescription,
+    'clothingShop' => currentL.airportFacilityClothingShopDescription,
+    'luxuryBoutique' => currentL.airportFacilityLuxuryBoutiqueDescription,
+    'lounge' => currentL.airportFacilityLoungeDescription,
+    'baggageCarousel' => currentL.airportFacilityBaggageCarouselDescription(
+      carouselCapacity,
+    ),
+    'vipLounge' => currentL.airportFacilityVipLoungeDescription,
+    'bins' => currentL.airportFacilityBinsDescription,
+    'arcade' => currentL.airportFacilityArcadeDescription,
+    'casino' => currentL.airportFacilityCasinoDescription,
+    'plant' => currentL.airportFacilityPlantDescription,
+    'fountain' => currentL.airportFacilityFountainDescription,
+    'infoBoard' => currentL.airportFacilityInfoBoardDescription,
+    'infoPanel' => currentL.airportFacilityInfoPanelDescription,
+    _ => '',
+  };
   final bool interior;
 
   /// Build-menu group: airfield, apron, services, terminal, interior, shops
@@ -192,18 +296,12 @@ String? zoneRefusalFor(String kind, String zone) {
   final wants = hallZoneOf(kind);
   if (wants == 'any' || wants == zone) return null;
   return switch (wants) {
-    'arrival' =>
-      'This goes in the arrival hall, where passengers come in, buy a '
-          'ticket, check in and go through security. Zone a piece of floor '
-          'as the arrival hall first.',
-    'departure' =>
-      'This goes in the departure hall, where arriving passengers collect '
-          'their bags, clear customs and leave. Zone a piece of floor as the '
-          'departure hall first.',
+    'arrival' => currentL.airportArrivalZoneHelp,
+    'departure' => currentL.airportDepartureZoneHelp,
     _ =>
-      'Shops, food, seating and gates go in the main hall. This floor is '
-          'zoned as the ${zone == 'arrival' ? 'arrival' : 'departure'} hall, '
-          'which only takes ${zone == 'arrival' ? 'the entrance, tickets, check-in and security' : 'baggage reclaim, customs and check-out'}.',
+      zone == 'arrival'
+          ? currentL.airportMainInArrival
+          : currentL.airportMainInDeparture,
   };
 }
 
@@ -248,16 +346,16 @@ typedef FacilityUpgrade = ({String id, String attribute, String effect});
 /// the main one. Empty means the kind cannot be upgraded.
 List<FacilityUpgrade> facilityUpgrades(String kind) {
   if (kind == 'boardingGate') {
-    return const [
+    return [
       (
         id: 'lanes',
-        attribute: 'Boarding lanes',
-        effect: 'One more lane of passengers boards at the same time.',
+        attribute: currentL.airportUpgradeBoardingLanes,
+        effect: currentL.airportUpgradeBoardingLanesEffect,
       ),
       (
         id: 'speed',
-        attribute: 'Boarding speed',
-        effect: 'Each lane boards 1.5 more passengers per minute.',
+        attribute: currentL.airportUpgradeBoardingSpeed,
+        effect: currentL.airportUpgradeBoardingSpeedEffect,
       ),
     ];
   }
@@ -274,66 +372,66 @@ FacilityUpgrade? facilityUpgrade(String kind) =>
 ({String attribute, String effect})? _singleUpgrade(String kind) {
   if (kind.startsWith('runway')) {
     return (
-      attribute: 'Surface & lighting',
-      effect: 'Landings and take-offs clear the runway 15% faster per level.',
+      attribute: currentL.airportUpgradeSurfaceLighting,
+      effect: currentL.airportUpgradeSurfaceLightingEffect,
     );
   }
   if (standKinds.contains(kind)) {
     return (
-      attribute: 'Asphalt',
-      effect: 'Ground handling and boarding are 15% faster per level.',
+      attribute: currentL.airportUpgradeAsphalt,
+      effect: currentL.airportUpgradeAsphaltStandsEffect,
     );
   }
   if (decorKinds.contains(kind)) {
     return (
-      attribute: 'Quality',
-      effect: 'Counts as one more decoration per level.',
+      attribute: currentL.airportUpgradeQuality,
+      effect: currentL.airportUpgradeQualityEffect,
     );
   }
   if (_retailKinds.contains(kind)) {
     return (
-      attribute: 'Stock & staff',
-      effect: '15% more sales and 25% quicker service per level.',
+      attribute: currentL.airportUpgradeStockStaff,
+      effect: currentL.airportUpgradeStockStaffEffect,
     );
   }
   if (_waitingKinds.contains(kind)) {
     return (
-      attribute: 'Comfort',
-      effect: '+1% satisfaction and 15% more income per level.',
+      attribute: currentL.airportUpgradeComfort,
+      effect: currentL.airportUpgradeComfortEffect,
     );
   }
   if (_staffedKinds.contains(kind)) {
     return (
-      attribute: 'Staff',
+      attribute: currentL.airportUpgradeStaff,
       effect: kind == 'infoDesk'
-          ? 'Each level counts as another staffed desk.'
-          : 'Passengers are processed 25% faster per level.',
+          ? currentL.airportUpgradeInfoDeskEffect
+          : currentL.airportUpgradeStaffEffect,
     );
   }
   return switch (kind) {
     'taxiway' => (
-      attribute: 'Asphalt',
-      effect: 'Aircraft taxi 10% faster per level.',
+      attribute: currentL.airportUpgradeAsphalt,
+      effect: currentL.airportUpgradeAsphaltTaxiwayEffect,
     ),
     'terminal' || 'terminalLandside' || 'terminalReclaim' => (
-      attribute: 'Comfort',
-      effect: 'Passengers are 1% happier per level, averaged over sections.',
+      attribute: currentL.airportUpgradeComfort,
+      effect: currentL.airportUpgradeComfortTerminalEffect,
     ),
     'fuelDepot' || 'baggage' || 'vehicleDepot' => (
-      attribute: 'Equipment',
-      effect: 'Ground services dispatched from here are 20% faster per level.',
+      attribute: currentL.airportUpgradeEquipment,
+      effect: currentL.airportUpgradeEquipmentEffect,
     ),
     'tower' => (
-      attribute: 'Radar',
-      effect: 'Approaches take 10% less time per level.',
+      attribute: currentL.airportUpgradeRadar,
+      effect: currentL.airportUpgradeRadarEffect,
     ),
     'bins' => (
-      attribute: 'Service',
-      effect: 'Each level counts as another set of bins.',
+      attribute: currentL.airportUpgradeService,
+      effect: currentL.airportUpgradeServiceEffect,
     ),
     'baggageCarousel' => (
-      attribute: 'Belt speed',
-      effect: 'Passengers collect their bags 25% faster per level.',
+      attribute: currentL.airportUpgradeBeltSpeed,
+      effect: currentL.airportUpgradeBeltSpeedEffect,
     ),
     _ => null,
   };
@@ -378,547 +476,338 @@ int upgradeCostAt(AirportFacilityDef def, int level) =>
     math.max(1000, (def.cost * .4 * level / 1000).round() * 1000);
 
 const airportFacilities = <AirportFacilityDef>[
-  AirportFacilityDef(
-    'runway',
-    'Runway · 1,800 m',
-    45,
-    1800,
-    .15,
-    6000000,
-    'Regional runway. Connect it to stands with taxiways.',
-    category: 'airfield',
-  ),
+  AirportFacilityDef('runway', 45, 1800, .15, 6000000, category: 'airfield'),
   AirportFacilityDef(
     'runwayMedium',
-    'Runway · 2,600 m',
     45,
     2600,
     .15,
     13000000,
-    'Supports narrowbody aircraft.',
     category: 'airfield',
   ),
   AirportFacilityDef(
     'runwayLong',
-    'Runway · 3,400 m',
     60,
     3400,
     .15,
     24000000,
-    'Supports long-haul widebodies.',
     category: 'airfield',
   ),
-  AirportFacilityDef(
-    'taxiway',
-    'Taxiway',
-    20,
-    100,
-    .1,
-    60000,
-    'Connect touching taxiways between a runway and a stand.',
-    category: 'airfield',
-  ),
+  AirportFacilityDef('taxiway', 20, 100, .1, 60000, category: 'airfield'),
   AirportFacilityDef(
     'standRegional',
-    'Regional stand',
     40,
     45,
     .12,
     550000,
-    'Turboprops and regional jets up to 45 t. Needs taxiway, service road and a nearby boarding gate.',
     category: 'apron',
     maxMtowTonnes: 45,
   ),
-  AirportFacilityDef(
-    'stand',
-    'Remote stand',
-    60,
-    65,
-    .12,
-    1200000,
-    'Any aircraft. Passengers ride a bus. Needs taxiway, service road and a nearby boarding gate.',
-    category: 'apron',
-  ),
-  AirportFacilityDef(
-    'standContact',
-    'Contact stand · jet bridge',
-    60,
-    65,
-    .12,
-    2600000,
-    'Build against a terminal. Passengers walk on board: no bus, faster boarding, happier travellers.',
-    category: 'apron',
-  ),
-  AirportFacilityDef(
-    'serviceRoad',
-    'Service road',
-    10,
-    100,
-    .08,
-    20000,
-    'Connect vehicle depots and services to aircraft stands.',
-    category: 'apron',
-  ),
-  AirportFacilityDef(
-    'terminal',
-    'Terminal',
-    120,
-    60,
-    12,
-    4000000,
-    'One hall for the whole terminal. Build as many as you need side by '
-        'side, then zone the floor for free in airport mode: arrival on the '
-        'road side, main hall in the middle, departure for arriving '
-        'passengers.',
-    category: 'terminal',
-  ),
+  AirportFacilityDef('stand', 60, 65, .12, 1200000, category: 'apron'),
+  AirportFacilityDef('standContact', 60, 65, .12, 2600000, category: 'apron'),
+  AirportFacilityDef('serviceRoad', 10, 100, .08, 20000, category: 'apron'),
+  AirportFacilityDef('terminal', 120, 60, 12, 4000000, category: 'terminal'),
   AirportFacilityDef(
     'terminalLandside',
-    'Arrival hall',
     60,
     40,
     12,
     2000000,
-    'The old separate arrival hall. Zone a terminal floor instead.',
     category: 'terminal',
     hidden: true,
   ),
   AirportFacilityDef(
     'terminalReclaim',
-    'Departure hall',
     60,
     40,
     12,
     2000000,
-    'The old separate departure hall. Zone a terminal floor instead.',
     category: 'terminal',
     hidden: true,
   ),
-  AirportFacilityDef(
-    'hangar',
-    'Maintenance hangar',
-    60,
-    60,
-    22,
-    3000000,
-    'Connected hangars reduce aircraft maintenance costs.',
-    category: 'services',
-  ),
-  AirportFacilityDef(
-    'fuelDepot',
-    'Fuel depot',
-    30,
-    30,
-    10,
-    2000000,
-    'Fuel supply for ground-service trucks.',
-    category: 'services',
-  ),
-  AirportFacilityDef(
-    'baggage',
-    'Baggage facility',
-    30,
-    20,
-    8,
-    800000,
-    'Baggage handling for every departure.',
-    category: 'services',
-  ),
-  AirportFacilityDef(
-    'vehicleDepot',
-    'Vehicle depot',
-    30,
-    30,
-    9,
-    500000,
-    'Select this depot to buy service vehicles; connect it to a service road.',
-    category: 'services',
-  ),
-  AirportFacilityDef(
-    'tower',
-    'Control tower',
-    15,
-    15,
-    38,
-    1500000,
-    'Airport landmark and flight control centre.',
-    category: 'services',
-  ),
+  AirportFacilityDef('hangar', 60, 60, 22, 3000000, category: 'services'),
+  AirportFacilityDef('fuelDepot', 30, 30, 10, 2000000, category: 'services'),
+  AirportFacilityDef('baggage', 30, 20, 8, 800000, category: 'services'),
+  AirportFacilityDef('vehicleDepot', 30, 30, 9, 500000, category: 'services'),
+  AirportFacilityDef('tower', 15, 15, 38, 1500000, category: 'services'),
   AirportFacilityDef(
     'entrance',
-    'Entrance',
     6,
     4,
     3,
     15000,
-    'The way in from the kerb, in the arrival hall.',
     interior: true,
     category: 'interior',
   ),
   AirportFacilityDef(
     'checkIn',
-    'Check-in desks',
     8,
     4,
     2,
     45000,
-    'Process 8 passengers per game minute.',
     interior: true,
     category: 'interior',
   ),
   AirportFacilityDef(
     'infoDesk',
-    'Information desk',
     5,
     4,
     3,
     90000,
-    'Staff who answer questions and point the way: every connected desk '
-        'lifts passenger satisfaction across the terminal.',
     interior: true,
     category: 'interior',
   ),
   AirportFacilityDef(
     'checkInCounter',
-    'Staffed check-in counter',
     6,
     5,
     3,
     70000,
-    'Two agents with a bag drop: 10 passengers per game minute. Counts as '
-        'check-in desks.',
     interior: true,
     category: 'interior',
   ),
   AirportFacilityDef(
     'ticketMachine',
-    'Ticket machine',
     1,
     1,
     2,
     12000,
-    'Self check-in beside the desks: 4 passengers per game minute.',
     interior: true,
     category: 'interior',
   ),
   AirportFacilityDef(
     'security',
-    'Security lane',
     8,
     6,
     3,
     90000,
-    'Passport and bag checks between the arrival hall and the main hall: '
-        '6 passengers per game minute. Required.',
     interior: true,
     category: 'interior',
   ),
   AirportFacilityDef(
     'customs',
-    'Customs',
     8,
     6,
     3,
     70000,
-    'Arriving passengers clear customs here, 6 per game minute. Required.',
     interior: true,
     category: 'interior',
   ),
   AirportFacilityDef(
     'checkOut',
-    'Arrivals check-out',
     8,
     4,
     2,
     40000,
-    'The way out: arriving passengers check out here and leave through the '
-        'nearest door to the kerb, 10 per game minute. Required.',
     interior: true,
     category: 'interior',
   ),
   AirportFacilityDef(
     'seating',
-    'Seating',
     8,
     4,
     1,
     12000,
-    'Comfort for waiting passengers.',
     interior: true,
     category: 'interior',
   ),
   AirportFacilityDef(
     'toilets',
-    'Toilets',
     10,
     8,
     3,
     50000,
-    'Essential passenger amenity.',
     interior: true,
     category: 'interior',
   ),
   AirportFacilityDef(
     'boardingGate',
-    'Boarding gate',
     8,
     4,
     3,
     120000,
-    'Place within 25 m of an aircraft stand.',
     interior: true,
     category: 'interior',
   ),
   AirportFacilityDef(
     'cafe',
-    'Café',
     12,
     8,
     3,
     85000,
-    'Passenger satisfaction and retail income.',
     interior: true,
     category: 'shops',
   ),
   AirportFacilityDef(
     'vendingMachine',
-    'Vending machine',
     1,
     1,
     2,
     9000,
-    'Quick snacks instead of the café: €3 per passenger, one minute each.',
     interior: true,
     category: 'shops',
   ),
   AirportFacilityDef(
     'perfumeShop',
-    'Perfume boutique',
     8,
     7,
     3,
     260000,
-    'Few buyers, large baskets: one passenger in four spends €90 here.',
     interior: true,
     category: 'shops',
   ),
   AirportFacilityDef(
     'flowerShop',
-    'Flower shop',
     6,
     5,
     3,
     150000,
-    'Fresh bouquets after security: €16 per passenger, two minutes each.',
     interior: true,
     category: 'shops',
   ),
   AirportFacilityDef(
     'foodShop',
-    'Duty-free food & drink',
     10,
     8,
     3,
     230000,
-    'Snacks, sweets and a chilled drinks wall after security: €20 per '
-        'passenger, two and a half minutes each.',
     interior: true,
     category: 'shops',
   ),
   AirportFacilityDef(
     'kiosk',
-    'Newsstand kiosk',
     5,
     4,
     3,
     55000,
-    'A staffed till for papers and snacks after security: €9 per passenger, '
-        'ninety seconds each.',
     interior: true,
     category: 'shops',
   ),
   AirportFacilityDef(
     'restaurant',
-    'Restaurant',
     14,
     10,
     3,
     380000,
-    'Sit-down dining instead of the café: €26 per passenger, five minutes, '
-        'and a happier wait.',
     interior: true,
     category: 'shops',
   ),
   AirportFacilityDef(
     'coffeeToGo',
-    'Coffee to-go',
     4,
     3,
     3,
     75000,
-    'A quick espresso stop after security: €6 per passenger, ninety seconds '
-        'each.',
     interior: true,
     category: 'shops',
   ),
   AirportFacilityDef(
     'foodCart',
-    'Food cart',
     3,
     2,
     3,
     40000,
-    'A cheap grab-and-go stall for tight corners: €4 per passenger, one '
-        'minute each.',
     interior: true,
     category: 'shops',
   ),
   AirportFacilityDef(
     'shop',
-    'Duty-free shop',
     12,
     8,
     3,
     160000,
-    'Passengers browse after security: €14 retail income each.',
     interior: true,
     category: 'shops',
   ),
   AirportFacilityDef(
     'clothingShop',
-    'Fashion boutique',
     8,
     6,
     3,
     190000,
-    'Duty-free clothing after security: €18 per passenger, three minutes each.',
     interior: true,
     category: 'shops',
   ),
   AirportFacilityDef(
     'luxuryBoutique',
-    'Luxury boutique',
     8,
     6,
     3,
     320000,
-    'Premium knitwear after security: €26 per passenger, four minutes each, '
-        'and a calmer wait.',
     interior: true,
     category: 'shops',
   ),
   AirportFacilityDef(
     'lounge',
-    'Premium lounge',
     14,
     10,
     3,
     240000,
-    'Waiting area that earns €20 per passenger and lifts their mood.',
     interior: true,
     category: 'shops',
   ),
   AirportFacilityDef(
     'baggageCarousel',
-    'Baggage carousel',
     10,
     5,
     3,
     65000,
-    'Arrivals of medium and long-haul contracts collect their bags here. '
-        'Up to $carouselCapacity people at once.',
     interior: true,
     category: 'interior',
   ),
   AirportFacilityDef(
     'vipLounge',
-    'VIP lounge & bar',
     8,
     6,
     3,
     420000,
-    'First-class waiting area: €35 per passenger and a much happier wait.',
     interior: true,
     category: 'shops',
   ),
-  AirportFacilityDef(
-    'bins',
-    'Recycling bins',
-    2,
-    1,
-    2,
-    2500,
-    'Waste, paper and bottles. A clean terminal keeps passengers happy: each '
-        'set adds 4% cleanliness, from 60% up to 100%.',
-    interior: true,
-    category: 'decor',
-  ),
+  AirportFacilityDef('bins', 2, 1, 2, 2500, interior: true, category: 'decor'),
   AirportFacilityDef(
     'arcade',
-    'Arcade',
     10,
     8,
     3,
     340000,
-    'Cabinets, air hockey and a claw machine: €12 per passenger, and a big '
-        'mood boost for the wait.',
     interior: true,
     category: 'shops',
   ),
   AirportFacilityDef(
     'casino',
-    'Casino',
     12,
     10,
     3,
     650000,
-    'Slots, roulette and card tables: €40 per passenger, and a strong mood '
-        'boost for the wait.',
     interior: true,
     category: 'shops',
   ),
-  AirportFacilityDef(
-    'plant',
-    'Palm planter',
-    2,
-    2,
-    3,
-    3000,
-    'Decor. Every piece in a terminal lifts passenger mood a little.',
-    interior: true,
-    category: 'decor',
-  ),
+  AirportFacilityDef('plant', 2, 2, 3, 3000, interior: true, category: 'decor'),
   AirportFacilityDef(
     'fountain',
-    'Fountain',
     6,
     6,
     2,
     40000,
-    'Decor centrepiece. Lifts passenger mood.',
     interior: true,
     category: 'decor',
   ),
   AirportFacilityDef(
     'infoBoard',
-    'Flight information board',
     4,
     2,
     3,
     18000,
-    'Decor. Passengers find their gate with less stress.',
     interior: true,
     category: 'decor',
   ),
   AirportFacilityDef(
     'infoPanel',
-    'Flight info screen',
     1,
     1,
     3,
     6000,
-    'A small pedestal departures screen. Cheaper decor with the same '
-        'stress-easing effect as a full board.',
     interior: true,
     category: 'decor',
   ),
@@ -1074,7 +963,8 @@ class AirportFlight {
     'returning': returning,
     'returnSettled': returnSettled,
     'returnAt': returnAt,
-    'issue': issue,
+    'issue': _flightIssueLabel(issue),
+    'issueRaw': issue,
     'serviced': serviced,
     'path': path,
     'ease': ease,
@@ -1106,7 +996,7 @@ class AirportFlight {
     f.returning = j['returning'] == true;
     f.returnSettled = j['returnSettled'] == true;
     f.returnAt = _number(j, 'returnAt');
-    f.issue = j['issue'] as String?;
+    f.issue = j['issueRaw'] as String? ?? j['issue'] as String?;
     f.serviced = (j['serviced'] as List? ?? []).cast<String>().toList();
     f.path = (j['path'] as List? ?? [])
         .map((p) => (p as List).map((n) => (n as num).toDouble()).toList())
@@ -1215,6 +1105,250 @@ class AirportPassengerGroup {
 
 /// Authoritative airport simulation. Time is measured in game minutes.
 /// All mutations enter through repository commands; rendering only reads it.
+String _ledgerCategoryLabel(String? category) => switch (category) {
+  'construction' => currentL.airportLedgerConstruction,
+  'vehicles' => currentL.airportLedgerVehicles,
+  'penalty' => currentL.airportLedgerPenalty,
+  'upkeep' => currentL.airportLedgerUpkeep,
+  'service' => currentL.airportLedgerService,
+  'lease' => currentL.airportLedgerLease,
+  'handling' => currentL.airportLedgerHandling,
+  'retail' => currentL.airportLedgerRetail,
+  'cargo' => currentL.airportLedgerCargo,
+  'fuel' => currentL.airportLedgerFuel,
+  'crew' => currentL.airportLedgerCrew,
+  'landing' => currentL.airportLedgerLanding,
+  'maintenance' => currentL.airportLedgerMaintenance,
+  'tickets' => currentL.airportLedgerTickets,
+  _ => category ?? '',
+};
+
+String _legacyTerminalNeedsLabel(String issue) {
+  final value = issue
+      .substring('The terminal needs '.length)
+      .trim()
+      .toLowerCase();
+  const legacyNames = {
+    'entrance': 'entrance',
+    'check-in desks': 'checkIn',
+    'security lane': 'security',
+    'boarding gate': 'boardingGate',
+    'customs': 'customs',
+  };
+  final kind = legacyNames[value];
+  return currentL.airportIssueTerminalNeeds(
+    kind == null ? value : facilityDef(kind).name.toLowerCase(),
+  );
+}
+
+String _flightIssueLabel(String? issue) {
+  if (issue == null || issue.isEmpty) return '';
+  return switch (issue) {
+    'Cancelled by operator' => currentL.airportIssueCancelledByOperator,
+    'Contract cancelled' => currentL.airportIssueContractCancelled,
+    'Stand removed' => currentL.airportIssueStandRemoved,
+    'Airport access is disconnected' =>
+      currentL.airportIssueAirportAccessDisconnected,
+    'Aircraft unavailable' => currentL.airportIssueAircraftUnavailable,
+    'Waiting for stand' => currentL.airportIssueWaitingForStand,
+    'Waiting for runway clearance' =>
+      currentL.airportIssueWaitingForRunwayClearance,
+    'Waiting for taxiway clearance' =>
+      currentL.airportIssueWaitingForTaxiwayClearance,
+    'A required contract facility is unavailable' =>
+      currentL.airportIssueRequiredContractFacilityUnavailable,
+    'Waiting for ground services' =>
+      currentL.airportIssueWaitingForGroundServices,
+    'Passengers are still in the terminal' =>
+      currentL.airportIssuePassengersStillInTerminal,
+    'Waiting for pushback tug' => currentL.airportIssueWaitingForPushbackTug,
+    _ when issue.startsWith('terminalNeeds:') =>
+      currentL.airportIssueTerminalNeeds(
+        facilityDef(
+          issue.substring('terminalNeeds:'.length),
+        ).name.toLowerCase(),
+      ),
+    _ when issue.startsWith('The terminal needs ') => _legacyTerminalNeedsLabel(
+      issue,
+    ),
+    _ => issue,
+  };
+}
+
+String _ledgerDescription(Json entry) {
+  final description =
+      entry['descriptionRaw'] as String? ??
+      entry['description'] as String? ??
+      '';
+  final facilityKind = entry['facilityKind'] as String?;
+  if (facilityKind != null) {
+    final name = facilityDef(facilityKind).name;
+    if (entry['facilityAction'] == 'retail') {
+      return currentL.airportLedgerFacilitySales(name);
+    }
+    switch (entry['facilityAction']) {
+      case 'built':
+        return currentL.airportLedgerBuiltFacility(name);
+      case 'demolished':
+        return currentL.airportLedgerDemolished(name);
+      case 'upgrade':
+        final upgradeId = entry['upgradeId'] as String?;
+        final upgrade = facilityUpgrades(
+          facilityKind,
+        ).where((item) => item.id == upgradeId).firstOrNull;
+        if (upgrade != null) {
+          return currentL.airportLedgerUpgradeLevel(
+            name,
+            upgrade.attribute,
+            entry['level'] as int? ?? 1,
+          );
+        }
+    }
+  }
+  final legacyRetailKind = switch (description) {
+    'Food cart sales' => 'foodCart',
+    'Coffee to-go sales' => 'coffeeToGo',
+    'Restaurant covers' => 'restaurant',
+    'Terminal café' => 'cafe',
+    'Vending machines' => 'vendingMachine',
+    'Flower shop sales' => 'flowerShop',
+    'Perfume sales' => 'perfumeShop',
+    'Duty-free food & drink sales' => 'foodShop',
+    'Newsstand sales' => 'kiosk',
+    'Luxury boutique sales' => 'luxuryBoutique',
+    'Fashion boutique sales' => 'clothingShop',
+    'Duty-free sales' => 'shop',
+    'Casino wagers' => 'casino',
+    'Arcade tokens' => 'arcade',
+    'VIP lounge access' => 'vipLounge',
+    'Lounge access' => 'lounge',
+    _ => null,
+  };
+  if (legacyRetailKind != null) {
+    return currentL.airportLedgerFacilitySales(
+      facilityDef(legacyRetailKind).name,
+    );
+  }
+  if (description.startsWith('Demolished ')) {
+    return currentL.airportLedgerDemolished(
+      description.substring('Demolished '.length),
+    );
+  }
+  if (description.startsWith('Purchased ') &&
+      description.endsWith(' vehicle')) {
+    final kind = description.substring(
+      'Purchased '.length,
+      description.length - ' vehicle'.length,
+    );
+    final vehicle = switch (kind) {
+      'fuel' => currentL.airportVehicleFuel,
+      'baggage' => currentL.airportVehicleBaggage,
+      'bus' => currentL.airportVehicleBus,
+      'pushback' => currentL.airportVehiclePushback,
+      _ => kind,
+    };
+    return currentL.airportLedgerPurchasedVehicle(vehicle);
+  }
+  if (description == 'Airport infrastructure upkeep') {
+    return currentL.airportLedgerInfrastructureUpkeep;
+  }
+  if (description == 'Vehicle staffing and maintenance') {
+    return currentL.airportLedgerVehicleStaffingMaintenance;
+  }
+  if (description.startsWith('Late or incomplete service ')) {
+    return currentL.airportLedgerLateIncompleteService(
+      description.substring('Late or incomplete service '.length),
+    );
+  }
+  final unplanned = RegExp(
+    r'^(.+): (\d+) unplanned flights$',
+  ).firstMatch(description);
+  if (unplanned != null) {
+    return currentL.airportLedgerUnplannedFlights(
+      unplanned.group(1)!,
+      unplanned.group(2)!,
+    );
+  }
+  final neverPlanned = RegExp(
+    r'^(.+): (\d+) flights never planned$',
+  ).firstMatch(description);
+  if (neverPlanned != null) {
+    return currentL.airportLedgerUnplannedFlights(
+      neverPlanned.group(1)!,
+      neverPlanned.group(2)!,
+    );
+  }
+  final cancellation = RegExp(
+    r'^(.+): (Cancelled by operator|Contract cancelled)$',
+  ).firstMatch(description);
+  if (cancellation != null) {
+    return cancellation.group(1)! +
+        ': ' +
+        _flightIssueLabel(cancellation.group(2));
+  }
+  final handling = RegExp(r'^(.+) (f\d+)$').firstMatch(description);
+  if (handling != null) {
+    return currentL.airportLedgerContractHandling(
+      handling.group(1)!,
+      handling.group(2)!,
+    );
+  }
+  final ticket = RegExp(
+    r'^([A-Z]{3}) (f\d+)( return)?$',
+  ).firstMatch(description);
+  if (ticket != null) {
+    final suffix = ticket.group(3) == null
+        ? ''
+        : ' ' + currentL.airportLedgerReturnSuffix;
+    return currentL.airportLedgerTicketFlight(
+      ticket.group(1)!,
+      ticket.group(2)!,
+      suffix,
+    );
+  }
+  if (description.startsWith('Ground services ')) {
+    return currentL.airportLedgerGroundServices(
+      description.substring('Ground services '.length),
+    );
+  }
+  if (description.startsWith('Cargo ')) {
+    return currentL.airportLedgerCargoFlight(
+      description.substring('Cargo '.length),
+    );
+  }
+  if (description.startsWith('Flight fuel ')) {
+    return currentL.airportLedgerFlightFuel(
+      description.substring('Flight fuel '.length),
+    );
+  }
+  if (description.startsWith('Flight crew ')) {
+    return currentL.airportLedgerFlightCrew(
+      description.substring('Flight crew '.length),
+    );
+  }
+  if (description.startsWith('Landing ')) {
+    return currentL.airportLedgerLandingFlight(
+      description.substring('Landing '.length),
+    );
+  }
+  if (description.startsWith('Flight maintenance ')) {
+    return currentL.airportLedgerFlightMaintenance(
+      description.substring('Flight maintenance '.length),
+    );
+  }
+  if (description.startsWith('Heavy check ')) {
+    return currentL.airportLedgerHeavyCheck(
+      description.substring('Heavy check '.length),
+    );
+  }
+  if (description.startsWith('Lease ')) {
+    return currentL.airportLedgerLeaseAircraft(
+      description.substring('Lease '.length),
+    );
+  }
+  return description;
+}
+
 class AirportWorld {
   double time = 360;
   bool paused = true;
@@ -1280,7 +1414,8 @@ class AirportWorld {
     double width,
     double depth,
   ) {
-    if (zone != 'none' && !hallZones.contains(zone)) return 'Unknown zone.';
+    if (zone != 'none' && !hallZones.contains(zone))
+      return currentL.airportErrorUnknownZone;
     final rect = AirportZone(
       id: 'tmp',
       zone: zone,
@@ -1290,11 +1425,11 @@ class AirportWorld {
       depth: depth.roundToDouble(),
     );
     if (rect.width < 2 || rect.depth < 2) {
-      return 'Drag over a larger piece of floor: 2 m at least.';
+      return currentL.airportErrorLargerFloor;
     }
     if (zone == 'none') {
       final hit = zones.where(rect.overlaps).toList();
-      if (hit.isEmpty) return 'No zone painted there.';
+      if (hit.isEmpty) return currentL.airportErrorNoPaintedZone;
       zones.removeWhere(hit.contains);
       return null;
     }
@@ -1305,7 +1440,7 @@ class AirportWorld {
       [rect.x + rect.width, rect.y + rect.depth],
     ]) {
       if (!halls.any((h) => h.contains(corner[0], corner[1]))) {
-        return 'Zone the floor inside the terminal.';
+        return currentL.airportErrorZoneInsideTerminal;
       }
     }
     zones.removeWhere(rect.covers);
@@ -1370,20 +1505,25 @@ class AirportWorld {
 
   String? upgrade(AirlineGameState airline, String id, {String? attribute}) {
     final f = facility(id);
-    if (f == null) return 'That building no longer exists.';
+    if (f == null) return currentL.airportErrorBuildingGone;
     final u = attribute == null || attribute.isEmpty
         ? facilityUpgrade(f.kind)
         : facilityUpgrades(f.kind).where((u) => u.id == attribute).firstOrNull;
-    if (u == null) return '${facilityDef(f.kind).name} has no such upgrade.';
+    if (u == null)
+      return currentL.airportErrorNoUpgrade(facilityDef(f.kind).name);
     final cost = upgradeCost(f, u.id);
-    if (cost == null) return 'Already at the highest level.';
-    if (airline.cashEur < cost) return 'Not enough cash for this upgrade.';
+    if (cost == null) return currentL.airportErrorHighestLevel;
+    if (airline.cashEur < cost) return currentL.airportErrorUpgradeCash;
     f.levels[u.id] = f.levelOf(u.id) + 1;
     _book(
       airline,
       'construction',
       -cost,
       '${facilityDef(f.kind).name}: ${u.attribute.toLowerCase()} level ${f.levelOf(u.id)}',
+      facilityKind: f.kind,
+      facilityAction: 'upgrade',
+      upgradeId: u.id,
+      level: f.levelOf(u.id),
     );
     return null;
   }
@@ -1698,11 +1838,7 @@ class AirportWorld {
     if (stand.kind == 'standContact') return const [];
     final exit = boardingDoor(stand);
     if (exit == null) return const [];
-    return [
-      exit.door,
-      exit.kerb,
-      standPoint(stand, _stopBack(stand) + 6, 9),
-    ];
+    return [exit.door, exit.kerb, standPoint(stand, _stopBack(stand) + 6, 9)];
   }
 
   /// The walk between a gate and the aircraft door: through the jet bridge on
@@ -1952,14 +2088,23 @@ class AirportWorld {
     AirlineGameState airline,
     String category,
     int amount,
-    String description,
-  ) {
+    String description, {
+    String? facilityKind,
+    String? facilityAction,
+    String? upgradeId,
+    int? level,
+  }) {
     airline.cashEur += amount;
     ledger.add({
       'time': time,
       'category': category,
       'amount': amount,
       'description': description,
+      'descriptionRaw': description,
+      if (facilityKind != null) 'facilityKind': facilityKind,
+      if (facilityAction != null) 'facilityAction': facilityAction,
+      if (upgradeId != null) 'upgradeId': upgradeId,
+      if (level != null) 'level': level,
     });
     if (ledger.length > 2000) ledger.removeRange(0, ledger.length - 2000);
   }
@@ -1982,15 +2127,15 @@ class AirportWorld {
     String? moving,
   }) {
     if (!airportFacilities.any((d) => d.kind == kind)) {
-      return 'Unknown building.';
+      return currentL.airportErrorUnknownBuilding;
     }
     if (!x.isFinite || !y.isFinite || x.abs() > 4000 || y.abs() > 4000) {
-      return 'Build inside the airport boundary (±4 km).';
+      return currentL.airportErrorBoundary;
     }
     // Anything can be moved, even while it is in use: aircraft, vehicles and
     // passengers carry on from wherever it now stands.
     final old = facility(moving);
-    if (moving != null && old == null) return 'That building no longer exists.';
+    if (moving != null && old == null) return currentL.airportErrorBuildingGone;
     final def = facilityDef(kind),
         step = facilityDef(kind).interior ? 1.0 : 5.0;
     final candidate = AirportFacility(
@@ -2008,19 +2153,19 @@ class AirportWorld {
     );
     if (candidate.x + candidate.width > 4000 ||
         candidate.y + candidate.depth > 4000) {
-      return 'The building extends beyond airport land.';
+      return currentL.airportErrorBeyondLand;
     }
     if (def.hidden) {
-      return 'Build a terminal and zone its floor instead.';
+      return currentL.airportErrorUseTerminalZones;
     }
     if (def.interior && _terminal(candidate) == null) {
       final hall = switch (hallZoneOf(kind)) {
-        'arrival' => 'arrival hall',
-        'departure' => 'departure hall',
-        'main' => 'main hall',
-        _ => 'terminal',
+        'arrival' => currentL.airportArrivalHall,
+        'departure' => currentL.airportDepartureHall,
+        'main' => currentL.airportMainHall,
+        _ => currentL.airportTerminal,
       };
-      return 'Place this completely inside the $hall.';
+      return currentL.airportErrorPlaceInside(hall);
     }
     if (def.interior) {
       final hall = _terminal(candidate)!;
@@ -2032,14 +2177,14 @@ class AirportWorld {
     }
     if (kind == 'standContact' &&
         !ofKind('terminal').any((t) => t.gap(candidate) <= 1)) {
-      return 'A jet bridge needs this stand to touch the main hall.';
+      return currentL.airportErrorBridgeMainHall;
     }
     for (final b in facilities) {
       if (b.id == old?.id) continue;
       if (candidate.overlaps(b) &&
           !(def.interior && b.hall) &&
           !(hallKinds.contains(kind) && b.interior)) {
-        return 'This overlaps ${facilityDef(b.kind).name}.';
+        return currentL.airportErrorOverlap(facilityDef(b.kind).name);
       }
     }
     final furnishings = old?.hall == true
@@ -2048,7 +2193,7 @@ class AirportWorld {
               .toList()
         : const <AirportFacility>[];
     final cost = old == null ? def.cost : 0;
-    if (airline.cashEur < cost) return 'Not enough cash for this construction.';
+    if (airline.cashEur < cost) return currentL.airportErrorConstructionCash;
     if (old != null) facilities.remove(old);
     // A terminal section takes its furnishings along, turned with it.
     for (final b in furnishings) {
@@ -2065,7 +2210,16 @@ class AirportWorld {
         depth: candidate.depth,
       )..levels.addAll(old?.levels ?? const {}),
     );
-    if (cost > 0) _book(airline, 'construction', -cost, def.name);
+    if (cost > 0) {
+      _book(
+        airline,
+        'construction',
+        -cost,
+        def.name,
+        facilityKind: kind,
+        facilityAction: 'built',
+      );
+    }
     resolveConnections();
     return null;
   }
@@ -2139,13 +2293,13 @@ class AirportWorld {
 
   String? demolish(AirlineGameState airline, String id) {
     final f = facility(id);
-    if (f == null) return 'That building no longer exists.';
+    if (f == null) return currentL.airportErrorBuildingGone;
     if (protected(f)) {
-      return 'Cancel imminent flights and finish active operations before changing airport infrastructure.';
+      return currentL.airportErrorFinishOperations;
     }
     if (f.hall &&
         facilities.any((b) => b.interior && _terminal(b)?.id == f.id)) {
-      return 'Remove the terminal furnishings first.';
+      return currentL.airportErrorRemoveFurnishings;
     }
     facilities.remove(f);
     resolveConnections();
@@ -2161,28 +2315,30 @@ class AirportWorld {
       'construction',
       (invested * .5).round(),
       'Demolished ${def.name}',
+      facilityKind: f.kind,
+      facilityAction: 'demolished',
     );
     return null;
   }
 
   String? buyVehicle(AirlineGameState airline, String kind, {String? depotId}) {
     if (!['fuel', 'baggage', 'bus', 'pushback'].contains(kind)) {
-      return 'Unknown vehicle.';
+      return currentL.airportErrorUnknownVehicle;
     }
-    if (airline.cashEur < 120000) return 'A service vehicle costs €120,000.';
+    if (airline.cashEur < 120000) return currentL.airportErrorVehicleCost;
     AirportFacility? home;
     if (depotId != null && depotId.isNotEmpty) {
       home = facility(depotId);
       if (home == null || home.kind != 'vehicleDepot') {
-        return 'Select a vehicle depot to buy service vehicles.';
+        return currentL.airportErrorSelectDepot;
       }
       if (!home.connected) {
-        return 'Connect that vehicle depot to a service road first.';
+        return currentL.airportErrorConnectDepot;
       }
     } else {
       final depots = ofKind('vehicleDepot').where((d) => d.connected).toList();
       if (depots.isEmpty) {
-        return 'Select a connected vehicle depot to buy service vehicles.';
+        return currentL.airportErrorSelectConnectedDepot;
       }
       home = depots.first;
     }
@@ -2204,7 +2360,9 @@ class AirportWorld {
   String? _requirements(AirportOffer offer) {
     for (final kind in [...offer.requiredServices, ...terminalEssentials]) {
       if (!hasService(kind)) {
-        return 'Provide a connected ${facilityDef(kind).name.toLowerCase()} first.';
+        return currentL.airportErrorConnectedServiceFirst(
+          facilityDef(kind).name,
+        );
       }
     }
     if (!stands.any(
@@ -2213,7 +2371,7 @@ class AirportWorld {
           standAccepts(s, offer.model) &&
           _runway(s, offer.model) != null,
     )) {
-      return 'No connected ${offer.haul} stand with a long enough runway.';
+      return currentL.airportErrorNoHaulStand(offer.haul);
     }
     return null;
   }
@@ -2242,9 +2400,9 @@ class AirportWorld {
 
   String? contractBlocker(String offerId) {
     final o = offer(offerId);
-    if (o == null) return 'This offer is no longer available.';
+    if (o == null) return currentL.airportErrorOfferGone;
     if (contracts.any((c) => c.offerId == offerId && _contractOpen(c))) {
-      return 'This airline is still flying its current contract.';
+      return currentL.airportErrorContractFlying;
     }
     return _requirements(o);
   }
@@ -2297,7 +2455,10 @@ class AirportWorld {
 
   String _clock(double minutes) {
     final m = minutes.round();
-    return 'day ${m ~/ 1440 + 1} ${(m ~/ 60 % 24).toString().padLeft(2, '0')}:${(m % 60).toString().padLeft(2, '0')}';
+    return currentL.airportClock(
+      m ~/ 1440 + 1,
+      '${(m ~/ 60 % 24).toString().padLeft(2, '0')}:${(m % 60).toString().padLeft(2, '0')}',
+    );
   }
 
   String? _placementProblem(
@@ -2306,19 +2467,22 @@ class AirportWorld {
     double arrival,
   ) {
     if (stand == null || !standKinds.contains(stand.kind)) {
-      return 'Choose an aircraft stand.';
+      return currentL.airportErrorChooseStand;
     }
     if (!standAccepts(stand, model)) {
-      return '${facilityDef(stand.kind).name} cannot take the ${model.name}.';
+      return currentL.airportErrorStandAircraft(
+        facilityDef(stand.kind).name,
+        model.name,
+      );
     }
     if (!stand.connected || _runway(stand, model) == null) {
-      return 'That stand is not connected to a long enough runway.';
+      return currentL.airportErrorStandRunway;
     }
     if (!arrival.isFinite || arrival < time + 30) {
-      return 'Plan at least 30 minutes ahead.';
+      return currentL.airportErrorPlanAhead;
     }
     if (arrival > time + planningHorizonDays * 1440) {
-      return 'The timetable only reaches $planningHorizonDays days ahead.';
+      return currentL.airportErrorHorizon(planningHorizonDays);
     }
     return null;
   }
@@ -2326,10 +2490,10 @@ class AirportWorld {
   /// Moves a flight that has not arrived yet to another stand or time.
   String? moveFlight(String flightId, String standId, double arrival) {
     final found = flights.where((f) => f.id == flightId);
-    if (found.isEmpty) return 'Unknown flight.';
+    if (found.isEmpty) return currentL.airportErrorUnknownFlight;
     final f = found.first;
     if (f.stage != 'scheduled') {
-      return 'Only flights that have not arrived yet can be moved.';
+      return currentL.airportErrorMoveBeforeArrival;
     }
     arrival = (arrival / 5).round() * 5.0;
     final stand = facility(standId), model = aircraftModelById(f.modelId)!;
@@ -2338,7 +2502,10 @@ class AirportWorld {
     if (problem != null) return problem;
     final c = contract(f.contractId);
     if (c != null && !slotAllows(c.offer.slot, arrival)) {
-      return '${c.carrier} wants this flight to start in ${slotLabel(c.offer.slot)}.';
+      return currentL.airportErrorCarrierSlot(
+        c.carrier,
+        slotLabel(c.offer.slot),
+      );
     }
     final shift = arrival - f.arrival;
     final departure = f.departure + shift;
@@ -2352,7 +2519,7 @@ class AirportWorld {
               arrival < math.max(o.returnAt + 40, o.departure + 60) &&
               math.max(returnAt + 40, departure + 60) > o.arrival,
         )) {
-      return 'The aircraft is busy with another flight at that time.';
+      return currentL.airportErrorAircraftBusy;
     }
     if (_availableStand(
           arrival,
@@ -2363,7 +2530,7 @@ class AirportWorld {
           ignoreFlightId: f.id,
         ) ==
         null) {
-      return 'That stand is busy at ${_clock(arrival)}.';
+      return currentL.airportErrorStandBusy(_clock(arrival));
     }
     final moved = AirportFlight(
       id: f.id,
@@ -2384,7 +2551,7 @@ class AirportWorld {
 
   String? reassignFlight(String flightId, String standId) {
     final found = flights.where((f) => f.id == flightId);
-    if (found.isEmpty) return 'Unknown flight.';
+    if (found.isEmpty) return currentL.airportErrorUnknownFlight;
     return moveFlight(flightId, standId, found.first.arrival);
   }
 
@@ -2392,10 +2559,10 @@ class AirportWorld {
   /// holding bar to be placed again; the player's own flight is dropped.
   String? unscheduleFlight(String flightId) {
     final found = flights.where((f) => f.id == flightId);
-    if (found.isEmpty) return 'Unknown flight.';
+    if (found.isEmpty) return currentL.airportErrorUnknownFlight;
     final f = found.first;
     if (f.stage != 'scheduled') {
-      return 'Only flights that have not arrived yet can be unscheduled.';
+      return currentL.airportErrorUnscheduleBeforeArrival;
     }
     flights.remove(f);
     final c = contract(f.contractId);
@@ -2418,22 +2585,27 @@ class AirportWorld {
   /// its remaining daily flights at [arrival], a charter places one.
   String? placeContract(String contractId, String standId, double arrival) {
     final c = contract(contractId);
-    if (c == null || c.cancelled) return 'No active contract.';
-    if (c.remaining <= 0) return 'Every flight of this contract is planned.';
+    if (c == null || c.cancelled) return currentL.airportErrorNoContract;
+    if (c.remaining <= 0) return currentL.airportErrorAllFlightsPlanned;
     arrival = (arrival / 5).round() * 5.0;
     final stand = facility(standId), model = c.offer.model;
     final problem = _placementProblem(stand, model, arrival);
     if (problem != null) return problem;
     if (!slotAllows(c.offer.slot, arrival)) {
-      return '${c.carrier} wants its flights to start in ${slotLabel(c.offer.slot)}.';
+      return currentL.airportErrorCarrierFlightsSlot(
+        c.carrier,
+        slotLabel(c.offer.slot),
+      );
     }
     final count = c.offer.isRegular ? c.remaining : 1;
     final firstDay = arrival ~/ 1440 + 1;
     if (c.offer.isRegular && firstDay > c.deadlineDay) {
-      return 'This series has to start by day ${c.deadlineDay}.';
+      return currentL.airportErrorStartDay(c.deadlineDay);
     }
     if (!c.offer.isRegular && firstDay > c.signedDay + c.offer.placementDays) {
-      return 'Charter flights have to fly by day ${c.signedDay + c.offer.placementDays}.';
+      return currentL.airportErrorCharterDay(
+        c.signedDay + c.offer.placementDays,
+      );
     }
     final requirement = _requirements(c.offer);
     if (requirement != null) return requirement;
@@ -2443,7 +2615,7 @@ class AirportWorld {
       final dep = a + c.offer.standMinutes - slotExitMinutes;
       if (_availableStand(a, dep, model, standId: stand!.id, extra: planned) ==
           null) {
-        return 'That stand is busy at ${_clock(a)}.';
+        return currentL.airportErrorStandBusy(_clock(a));
       }
       planned.add(
         AirportFlight(
@@ -2480,7 +2652,7 @@ class AirportWorld {
   /// Signs an offer. Its flights wait in the holding bar until placed.
   String? acceptContract(AirlineGameState airline, String offerId) {
     final o = offer(offerId);
-    if (o == null) return 'This offer is no longer available.';
+    if (o == null) return currentL.airportErrorOfferGone;
     final problem = contractBlocker(offerId);
     if (problem != null) return problem;
     if (o.expiresDay != null) signedOffers.add(o.id);
@@ -2498,21 +2670,22 @@ class AirportWorld {
   }) {
     final a = airline.aircraftById(aircraftId), r = airline.routeById(routeId);
     if (a == null || r == null || !r.active) {
-      return 'Choose an available aircraft and active route.';
+      return currentL.airportErrorChooseAircraftRoute;
     }
     if (!departure.isFinite ||
         departure < time + 90 ||
         departure > time + 7 * 1440) {
-      return 'Choose a departure between 90 minutes and seven days from now.';
+      return currentL.airportErrorDepartureWindow;
     }
-    if (a.isGrounded(airline.day)) return 'This aircraft is in maintenance.';
+    if (a.isGrounded(airline.day)) return currentL.airportErrorMaintenance;
     final model = aircraftModelById(a.modelId)!;
     final home = catalog.byIata(airline.hubIata),
         dest = catalog.byIata(r.destIata);
-    if (home == null || dest == null) return 'Unknown destination.';
+    if (home == null || dest == null)
+      return currentL.airportErrorUnknownDestination;
     final distance = home.distanceToKm(dest);
     if (distance > model.rangeKm) {
-      return 'This destination is beyond the aircraft range.';
+      return currentL.airportErrorBeyondRange;
     }
     final roundTrip = Geo.blockHours(distance, model.cruiseKmh) * 120 + 60;
     if (flights.any(
@@ -2526,7 +2699,7 @@ class AirportWorld {
               ) &&
           departure + roundTrip > f.arrival,
     )) {
-      return 'The aircraft is already scheduled or still returning from another flight.';
+      return currentL.airportErrorAircraftScheduled;
     }
     final stand = _availableStand(
       departure - 80,
@@ -2536,11 +2709,13 @@ class AirportWorld {
       returnAt: departure + roundTrip,
     );
     if (stand == null) {
-      return 'No compatible connected stand is free in this time slot.';
+      return currentL.airportErrorNoFreeStand;
     }
     for (final kind in [...terminalEssentials, 'fuelDepot', 'baggage']) {
       if (!hasService(kind)) {
-        return 'A connected ${facilityDef(kind).name} is required.';
+        return currentL.airportErrorConnectedServiceRequired(
+          facilityDef(kind).name,
+        );
       }
     }
     a.routeId = routeId;
@@ -2581,11 +2756,11 @@ class AirportWorld {
 
   String? cancelFlight(AirlineGameState airline, String id) {
     final found = flights.where((f) => f.id == id);
-    if (found.isEmpty) return 'Unknown flight.';
+    if (found.isEmpty) return currentL.airportErrorUnknownFlight;
     final f = found.first;
-    if (f.finished) return 'That flight is already closed.';
+    if (f.finished) return currentL.airportErrorFlightClosed;
     if (f.stage != 'scheduled') {
-      return 'An active turnaround must finish before it can be removed.';
+      return currentL.airportErrorFinishTurnaround;
     }
     _cancel(f, airline, 'Cancelled by operator');
     return null;
@@ -2593,7 +2768,7 @@ class AirportWorld {
 
   String? cancelContract(AirlineGameState airline, String id) {
     final c = contract(id);
-    if (c == null || !_contractOpen(c)) return 'No active contract.';
+    if (c == null || !_contractOpen(c)) return currentL.airportErrorNoContract;
     final unplaced = c.remaining;
     c.cancelled = true;
     for (final f in flights.where(
@@ -2935,11 +3110,7 @@ class AirportWorld {
         }
         final missing = terminalEssentials.where((k) => !hasService(k));
         if (missing.isNotEmpty) {
-          _wait(
-            f,
-            'The terminal needs ${facilityDef(missing.first).name.toLowerCase()}',
-            airline,
-          );
+          _wait(f, 'terminalNeeds:${missing.first}', airline);
           return;
         }
         final contact = stand.kind == 'standContact';
@@ -3919,7 +4090,28 @@ class AirportWorld {
     'contracts': contracts.map((c) => c.toJson()).toList(),
     'vehicles': vehicles.map((v) => v.toJson()).toList(),
     'passengers': passengers.map((p) => p.toJson()).toList(),
-    'ledger': ledger,
+    'ledgerCategoryLabels': {
+      for (final category in [
+        'construction',
+        'vehicles',
+        'penalty',
+        'upkeep',
+        'service',
+        'lease',
+        'handling',
+        'retail',
+        'cargo',
+        'fuel',
+        'crew',
+        'landing',
+        'maintenance',
+        'tickets',
+      ])
+        category: _ledgerCategoryLabel(category),
+    },
+    'ledger': ledger
+        .map((entry) => {...entry, 'description': _ledgerDescription(entry)})
+        .toList(),
     'reservations': reservations,
     'queues': queues,
     'signedOffers': signedOffers.toList(),
@@ -3927,7 +4119,7 @@ class AirportWorld {
 
   factory AirportWorld.fromJson(Json j) {
     if (j['version'] != 2) {
-      throw const FormatException('Unsupported airport save version');
+      throw FormatException(currentL.airportErrorSaveVersion);
     }
     final w = AirportWorld();
     w.time = _number(j, 'time', 360);
@@ -3945,7 +4137,14 @@ class AirportWorld {
     w.passengers.addAll(
       _objects(j['passengers']).map(AirportPassengerGroup.fromJson),
     );
-    w.ledger.addAll(_objects(j['ledger']));
+    w.ledger.addAll(
+      _objects(j['ledger']).map(
+        (entry) => {
+          ...entry,
+          'description': entry['descriptionRaw'] ?? entry['description'],
+        },
+      ),
+    );
     w.reservations.addAll(
       Map<String, String>.from(j['reservations'] as Map? ?? {}),
     );

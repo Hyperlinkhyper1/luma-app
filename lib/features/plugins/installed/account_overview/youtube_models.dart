@@ -5,6 +5,8 @@
 /// re-running a fresh round of Data API and Analytics API calls.
 library;
 
+import '../../../../l10n/current_l.dart';
+
 /// The signed-in channel's identity and headline counts.
 class YoutubeChannelSnapshot {
   const YoutubeChannelSnapshot({
@@ -222,22 +224,22 @@ class YoutubeTrafficSource {
   /// A human label for the raw API enum — Google's own dashboard uses the
   /// same names, so this list mirrors those rather than inventing new ones.
   String get label => switch (type) {
-        'ADVERTISING' => 'Advertising',
-        'ANNOTATION' => 'Annotations',
-        'CAMPAIGN_CARD' => 'Campaign cards',
-        'END_SCREEN' => 'End screens',
-        'EXT_URL' => 'External sites',
-        'NO_LINK_EMBEDDED' => 'Embedded player',
-        'NO_LINK_OTHER' => 'Direct or unknown',
-        'NOTIFICATION' => 'Notifications',
-        'PLAYLIST' => 'Playlists',
-        'PROMOTED' => 'Promoted content',
-        'RELATED_VIDEO' => 'Suggested videos',
-        'SUBSCRIBER' => 'Subscription feed',
-        'YT_CHANNEL' => 'Channel page',
-        'YT_OTHER_PAGE' => 'Other YouTube pages',
-        'YT_SEARCH' => 'YouTube search',
-        'SHORTS' => 'Shorts feed',
+        'ADVERTISING' => currentL.youtubeTrafficAdvertising,
+        'ANNOTATION' => currentL.youtubeTrafficAnnotations,
+        'CAMPAIGN_CARD' => currentL.youtubeTrafficCampaignCards,
+        'END_SCREEN' => currentL.youtubeTrafficEndScreens,
+        'EXT_URL' => currentL.youtubeTrafficExternalSites,
+        'NO_LINK_EMBEDDED' => currentL.youtubeTrafficEmbeddedPlayer,
+        'NO_LINK_OTHER' => currentL.youtubeTrafficDirectOrUnknown,
+        'NOTIFICATION' => currentL.youtubeTrafficNotifications,
+        'PLAYLIST' => currentL.youtubeTrafficPlaylists,
+        'PROMOTED' => currentL.youtubeTrafficPromoted,
+        'RELATED_VIDEO' => currentL.youtubeTrafficSuggestedVideos,
+        'SUBSCRIBER' => currentL.youtubeTrafficSubscriptionFeed,
+        'YT_CHANNEL' => currentL.youtubeTrafficChannelPage,
+        'YT_OTHER_PAGE' => currentL.youtubeTrafficOtherPages,
+        'YT_SEARCH' => currentL.youtubeTrafficYoutubeSearch,
+        'SHORTS' => currentL.youtubeTrafficShortsFeed,
         _ => type,
       };
 

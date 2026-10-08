@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../steam_price_history.dart' show formatSteamPrice;
 
@@ -26,6 +27,7 @@ class _Cs2SellingCalculatorTabState extends State<Cs2SellingCalculatorTab> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final buyerPays = _parseCents(_controller.text);
     final result = buyerPays == null || buyerPays <= 0
@@ -41,7 +43,7 @@ class _Cs2SellingCalculatorTabState extends State<Cs2SellingCalculatorTab> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'CS2 Selling Calculator',
+                t.cs2CalcTitle,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 22,
@@ -50,7 +52,7 @@ class _Cs2SellingCalculatorTabState extends State<Cs2SellingCalculatorTab> {
               ),
               const SizedBox(height: 6),
               Text(
-                'See your estimated Steam Wallet proceeds after the market fees.',
+                t.cs2CalcSubtitle,
                 style: TextStyle(color: luma.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 22),
@@ -69,7 +71,7 @@ class _Cs2SellingCalculatorTabState extends State<Cs2SellingCalculatorTab> {
                       onChanged: (_) => setState(() {}),
                       style: TextStyle(color: luma.textPrimary, fontSize: 15),
                       decoration: InputDecoration(
-                        labelText: 'Buyer pays',
+                        labelText: t.cs2CalcBuyerPays,
                         hintText: '0.00',
                         prefixText: _currencySymbol(_currency),
                         filled: true,
@@ -86,14 +88,14 @@ class _Cs2SellingCalculatorTabState extends State<Cs2SellingCalculatorTab> {
                     child: DropdownButtonFormField<String>(
                       initialValue: _currency,
                       decoration: InputDecoration(
-                        labelText: 'Currency',
+                        labelText: t.cs2CalcCurrency,
                         filled: true,
                         fillColor: luma.surface,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      items: const [
+                      items: [
                         DropdownMenuItem(value: 'USD', child: Text('USD')),
                         DropdownMenuItem(value: 'EUR', child: Text('EUR')),
                         DropdownMenuItem(value: 'GBP', child: Text('GBP')),
@@ -118,7 +120,7 @@ class _Cs2SellingCalculatorTabState extends State<Cs2SellingCalculatorTab> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'You receive',
+                        t.cs2CalcYouReceive,
                         style: TextStyle(color: luma.textSecondary, fontSize: 13),
                       ),
                       const SizedBox(height: 4),
@@ -133,13 +135,13 @@ class _Cs2SellingCalculatorTabState extends State<Cs2SellingCalculatorTab> {
                       ),
                       const SizedBox(height: 14),
                       _FeeRow(
-                        label: 'Steam fee (5%)',
+                        label: L.of(context).cs2CalcSteamFee,
                         value: payout.steamFeeCents,
                         currency: _currency,
                       ),
                       const SizedBox(height: 7),
                       _FeeRow(
-                        label: 'CS2 fee (10%)',
+                        label: L.of(context).cs2CalcGameFee,
                         value: payout.gameFeeCents,
                         currency: _currency,
                       ),
@@ -149,7 +151,7 @@ class _Cs2SellingCalculatorTabState extends State<Cs2SellingCalculatorTab> {
               ],
               const SizedBox(height: 14),
               Text(
-                'Estimate only. Fees are calculated separately and rounded down to cents, with a minimum of one cent each. Steam may handle other currencies differently.',
+                t.cs2CalcDisclaimer,
                 style: TextStyle(color: luma.textMuted, fontSize: 11.5, height: 1.4),
               ),
             ],

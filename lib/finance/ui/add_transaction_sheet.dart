@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/widgets.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/luma_theme.dart';
 import '../data/database.dart';
 import '../finance_repository.dart';
@@ -110,7 +111,7 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
   Future<void> _save() async {
     final cents = parseToCents(_amountController.text);
     if (cents == null || cents <= 0) {
-      setState(() => _error = 'Enter a valid amount greater than zero.');
+      setState(() => _error = L.of(context).financeEntryAmountInvalid);
       return;
     }
     setState(() {
@@ -150,6 +151,7 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final isExpense = _kind == TxnKind.expense;
 
     return SingleChildScrollView(
@@ -164,7 +166,7 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            _isEditing ? 'Edit entry' : 'New entry',
+            _isEditing ? t.financeEntryEdit : t.financeEntryNew,
             style: TextStyle(
               color: luma.textPrimary,
               fontSize: 18,
@@ -174,18 +176,18 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
           const SizedBox(height: 16),
           if (_kind == TxnKind.allocation)
             Text(
-              'Allocation to a pot',
+              t.financeEntryAllocationToPot,
               style: TextStyle(color: luma.textSecondary, fontSize: 13),
             )
           else
             LumaSegmentedTabs(
-              tabs: const ['Expense', 'Income'],
+              tabs: [t.financeKindExpense, t.financeKindIncome],
               selectedIndex: isExpense ? 0 : 1,
               onSelect: (i) => setState(
                   () => _kind = i == 0 ? TxnKind.expense : TxnKind.income),
             ),
           const SizedBox(height: 16),
-          _FieldLabel('Amount'),
+          _FieldLabel(t.commonAmount),
           TextField(
             controller: _amountController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -195,21 +197,21 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
             onSubmitted: (_) => _save(),
           ),
           const SizedBox(height: 14),
-          _FieldLabel('Date'),
+          _FieldLabel(t.commonDate),
           _DateField(
             date: _date,
             onChanged: (d) => setState(() => _date = d),
           ),
           if (isExpense) ...[
             const SizedBox(height: 14),
-            _FieldLabel('Company'),
+            _FieldLabel(t.financeCompany),
             _MerchantField(
               merchants: widget.merchants,
               selected: _merchant,
               onPicked: _onMerchantPicked,
             ),
             const SizedBox(height: 14),
-            _FieldLabel('Category'),
+            _FieldLabel(t.commonCategory),
             _CategoryDropdown(
               categories: widget.categories,
               value: _categoryId,
@@ -217,19 +219,19 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
             ),
           ],
           const SizedBox(height: 14),
-          _FieldLabel('Pot'),
+          _FieldLabel(t.financePot),
           _PotDropdown(
             pots: widget.pots,
             value: _potId,
-            hintNull: isExpense ? 'From main balance' : 'To main balance',
+            hintNull: isExpense ? t.financeFromMainBalance : t.financeToMainBalance,
             onChanged: (v) => setState(() => _potId = v),
           ),
           const SizedBox(height: 14),
-          _FieldLabel('Note (optional)'),
+          _FieldLabel(t.financeNoteOptional),
           TextField(
             controller: _noteController,
             style: TextStyle(color: luma.textPrimary),
-            decoration: _inputDecoration(luma, hint: 'e.g. weekly groceries'),
+            decoration: _inputDecoration(luma, hint: t.financeNoteHint),
           ),
           if (_error != null) ...[
             const SizedBox(height: 12),
@@ -240,12 +242,12 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               LumaGhostButton(
-                label: 'Cancel',
+                label: t.commonCancel,
                 onTap: () => Navigator.of(context).pop(),
               ),
               const SizedBox(width: 10),
               LumaPrimaryButton(
-                label: _isEditing ? 'Save changes' : 'Add entry',
+                label: _isEditing ? t.financeSaveChanges : t.financeAddEntry,
                 icon: Icons.check_rounded,
                 loading: _saving,
                 onTap: _save,
@@ -349,6 +351,7 @@ class _MerchantField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return InkWell(
       borderRadius: BorderRadius.circular(10),
       onTap: () async {
@@ -371,7 +374,7 @@ class _MerchantField extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                selected?.name ?? 'Pick a company (optional)',
+                selected?.name ?? t.financePickCompany,
                 style: TextStyle(
                   color: selected == null ? luma.textMuted : luma.textPrimary,
                 ),
@@ -405,6 +408,7 @@ class _MerchantSearchDialogState extends State<_MerchantSearchDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final filtered = widget.merchants
         .where((m) => m.name.toLowerCase().contains(_query.toLowerCase()))
         .toList();
@@ -421,7 +425,7 @@ class _MerchantSearchDialogState extends State<_MerchantSearchDialog> {
               TextField(
                 autofocus: true,
                 style: TextStyle(color: luma.textPrimary),
-                decoration: _inputDecoration(luma, hint: 'Search companies'),
+                decoration: _inputDecoration(luma, hint: t.financeSearchCompanies),
                 onChanged: (v) => setState(() => _query = v),
               ),
               const SizedBox(height: 12),
@@ -461,6 +465,7 @@ class _CategoryDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -473,12 +478,12 @@ class _CategoryDropdown extends StatelessWidget {
           isExpanded: true,
           value: value,
           dropdownColor: luma.surface,
-          hint: Text('No category',
+          hint: Text(t.financeNoCategory,
               style: TextStyle(color: luma.textMuted, fontSize: 14)),
           items: [
             DropdownMenuItem<int?>(
               value: null,
-              child: Text('No category',
+              child: Text(t.financeNoCategory,
                   style: TextStyle(color: luma.textMuted)),
             ),
             for (final c in categories)
@@ -506,7 +511,7 @@ class _PotDropdown extends StatelessWidget {
     required this.pots,
     required this.value,
     required this.onChanged,
-    this.hintNull = 'From main balance',
+    required this.hintNull,
   });
   final List<Pot> pots;
   final int? value;

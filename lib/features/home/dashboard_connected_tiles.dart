@@ -6,8 +6,10 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../finance/data/database.dart';
+import '../../l10n/app_localizations.dart';
 import '../../finance/finance_scope.dart';
 import '../../finance/stock_service.dart';
+import '../plugins/installed/account_overview/account_overview_repository.dart';
 import '../plugins/installed/account_overview/account_overview_scope.dart';
 import '../plugins/installed/account_overview/ui/github_connect_dialog.dart';
 import '../plugins/installed/ai_usage/ai_usage_scope.dart';
@@ -37,17 +39,16 @@ class _DashboardGithubTileState extends State<DashboardGithubTile> {
     final repo = context
         .dependOnInheritedWidgetOfExactType<AccountOverviewScope>()
         ?.notifier;
-    if (repo == null) return const Text('GitHub is unavailable.');
+    final t = L.of(context);
+    if (repo == null) return Text(t.homeGithubUnavailable);
     if (!repo.loaded) return const Center(child: CircularProgressIndicator());
     if (!repo.connected) {
       return ListView(
         children: [
-          const Text(
-            'Connect GitHub to see your activity and private repositories. Your token stays on this device.',
-          ),
+          Text(t.homeGithubConnectHint),
           TextButton(
             onPressed: () => showGithubConnectDialog(context),
-            child: const Text('Connect GitHub'),
+            child: Text(t.homeGithubConnect),
           ),
         ],
       );
@@ -71,13 +72,13 @@ class _DashboardGithubTileState extends State<DashboardGithubTile> {
             Expanded(
               child: Text(
                 widget.issues
-                    ? 'Recent issues'
-                    : '${data.contributions.calendarTotal} contributions',
+                    ? t.homeGithubRecentIssues
+                    : t.homeGithubContributions(data.contributions.calendarTotal),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
             IconButton(
-              tooltip: 'Refresh GitHub',
+              tooltip: t.homeGithubRefresh,
               onPressed: repo.refreshing ? null : repo.unawaitedRefresh,
               icon: const Icon(Icons.refresh, size: 18),
             ),
@@ -89,14 +90,16 @@ class _DashboardGithubTileState extends State<DashboardGithubTile> {
             repo.error!,
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
-        ...repo.warnings
-            .where(
-              (w) => w.startsWith(widget.issues ? 'Issues' : 'Contribution'),
+        if (repo.warningFor(
+              widget.issues
+                  ? GithubLoadStage.issues
+                  : GithubLoadStage.contributions,
             )
-            .map((w) => Text(w)),
+            case final warning?)
+          Text(warning),
         if (widget.issues) ...[
           if (issues.isEmpty)
-            const Text('No recent issues in the connected account snapshot.'),
+            Text(t.homeGithubNoIssues),
           for (final issue in issues)
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -124,7 +127,7 @@ class _DashboardGithubTileState extends State<DashboardGithubTile> {
                   );
                   if (!opened && context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Could not open GitHub.')),
+                      SnackBar(content: Text(t.homeGithubOpenFailed)),
                     );
                   }
                 }
@@ -132,7 +135,7 @@ class _DashboardGithubTileState extends State<DashboardGithubTile> {
             ),
         ] else ...[
           if (days.isEmpty)
-            const Text('Contribution history is not available yet.'),
+            Text(t.homeGithubNoHistory),
           if (days.isNotEmpty)
             LayoutBuilder(
               builder: (context, constraints) {
@@ -176,11 +179,12 @@ class _DashboardGithubTileState extends State<DashboardGithubTile> {
             ),
           const SizedBox(height: 10),
           Text(
-            '${data.contributions.totalCommits} commits · ${data.contributions.totalPullRequests} pull requests',
+            t.homeGithubCommitsAndPrs(
+              data.contributions.totalCommits,
+              data.contributions.totalPullRequests,
+            ),
           ),
-          const Text(
-            'Past year · includes private activity allowed by your token',
-          ),
+          Text(t.homeGithubPastYear),
         ],
       ],
     );
@@ -213,21 +217,20 @@ class _DashboardStocksTileState extends State<DashboardStocksTile> {
         children: [_StockSeries(key: ValueKey(symbol), symbol: symbol)],
       );
     }
-    if (_holdings == null) return const Text('Finance is unavailable.');
+    final t = L.of(context);
+    if (_holdings == null) return Text(t.homeStocksFinanceUnavailable);
     return StreamBuilder<List<Holding>>(
       stream: _holdings,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return const Text('Could not load your holdings.');
+          return Text(t.homeStocksLoadFailed);
         }
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
         final symbols = snapshot.data!.map((h) => h.ticker).toSet().toList();
         if (symbols.isEmpty) {
-          return const Text(
-            'Add holdings in Finance, or choose a ticker in this tile’s settings.',
-          );
+          return Text(t.homeStocksAddHoldings);
         }
         return ListView(
           children: [
@@ -259,6 +262,7 @@ class _StockSeriesState extends State<_StockSeries> {
   Widget build(BuildContext context) => FutureBuilder<List<PricePoint>>(
     future: _future,
     builder: (context, snapshot) {
+      final t = L.of(context);
       final points = snapshot.data ?? const <PricePoint>[];
       final delta = points.length > 1 && points.first.priceCents != 0
           ? (points.last.priceCents / points.first.priceCents - 1) * 100
@@ -283,7 +287,7 @@ class _StockSeriesState extends State<_StockSeries> {
                   style: TextStyle(color: color),
                 ),
               IconButton(
-                tooltip: 'Refresh prices',
+                tooltip: t.homeStocksRefreshPrices,
                 onPressed: () => setState(() {
                   _future = StockService.fetchHistory(
                     widget.symbol,
@@ -297,7 +301,7 @@ class _StockSeriesState extends State<_StockSeries> {
           if (snapshot.connectionState != ConnectionState.done)
             const LinearProgressIndicator()
           else if (points.length < 2)
-            const Text('Price history unavailable. Try refreshing.')
+            Text(t.homeStocksHistoryUnavailable)
           else
             SizedBox(
               height: 74,
@@ -379,7 +383,8 @@ class _DashboardAiUsageTileState extends State<DashboardAiUsageTile> {
     final repo = context
         .dependOnInheritedWidgetOfExactType<AiUsageScope>()
         ?.notifier;
-    if (repo == null) return const Text('AI usage is unavailable.');
+    final t = L.of(context);
+    if (repo == null) return Text(t.homeAiUsageUnavailable);
     return StreamBuilder<List<AiUsageTurn>>(
       stream: _turns,
       builder: (context, snapshot) {
@@ -401,14 +406,11 @@ class _DashboardAiUsageTileState extends State<DashboardAiUsageTile> {
               NumberFormat.compact().format(tokens),
               style: Theme.of(context).textTheme.headlineMedium,
             ),
-            const Text('new tokens · last 7 days'),
+            Text(t.homeAiUsageNewTokens),
             const SizedBox(height: 8),
-            Text('${turns.length} turns across local AI tools'),
-            if (snapshot.hasError) const Text('Could not read usage records.'),
-            if (turns.isEmpty)
-              const Text(
-                'Scan this device to import supported AI session logs.',
-              ),
+            Text(t.homeAiUsageTurns(turns.length)),
+            if (snapshot.hasError) Text(t.homeAiUsageReadFailed),
+            if (turns.isEmpty) Text(t.homeAiUsageScanHint),
             if (_error != null) Text(_error!),
             TextButton.icon(
               onPressed: repo.scanning
@@ -419,14 +421,16 @@ class _DashboardAiUsageTileState extends State<DashboardAiUsageTile> {
                         if (mounted) setState(() => _error = null);
                       } catch (_) {
                         if (mounted) {
-                          setState(() => _error = 'Scan failed. Try again.');
+                          setState(() => _error = t.homeAiUsageScanFailed);
                         }
                       }
                     },
               icon: const Icon(Icons.refresh, size: 16),
-              label: Text(repo.scanning ? 'Scanning…' : 'Scan usage'),
+              label: Text(
+                repo.scanning ? t.homeAiUsageScanning : t.homeAiUsageScan,
+              ),
             ),
-            const Text('Local session records; excludes cached input replays.'),
+            Text(t.homeAiUsageLocalNote),
           ],
         );
       },

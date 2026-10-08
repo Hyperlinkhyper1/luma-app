@@ -6,5 +6,27 @@
   "icon": "table_chart",
   "category": "Productivity",
   "details": "Build your own tables from scratch: text, number, and date columns, tag any row with a name and color, then chart the result.\n\nCharts support bar, line, area, pie, and donut, grouped by any column or by tag, aggregated as sum/average/count/min/max, and filtered by date range — handy for something like tracking income sources and seeing which one earned the most over the last month. CSV import and export round it out.",
-  "screenshots": ["table-editor.png", "chart.png"]
+  "screenshots": ["table-editor.png", "chart.png"],
+  "i18n": {
+    "nl": {
+      "name": "Gegevensbeheer",
+      "description": "Maak je eigen kleine tabellen en zet ze om in grafieken. Heb je een CSV-bestand, neem het dan mee.",
+      "details": "Bouw je eigen tabellen vanaf nul: tekst-, getal- en datumkolommen. Geef elke rij een naam en kleur als label en maak daarna een grafiek van het resultaat.\n\nGrafieken ondersteunen staaf, lijn, vlak, taart en donut. Je groepeert op elke kolom of op label, aggregeert als som, gemiddelde, aantal, minimum of maximum en filtert op datumbereik. Handig voor bijvoorbeeld het bijhouden van inkomstenbronnen, zodat je ziet welke de afgelopen maand het meeste opleverde. CSV-import en -export maken het geheel compleet."
+    },
+    "fr": {
+      "name": "Gestion de données",
+      "description": "Créez vos propres petits tableaux et transformez-les en graphiques. Vous avez un CSV ? Importez-le.",
+      "details": "Construisez vos tableaux de zéro : colonnes de texte, de nombres et de dates. Donnez à chaque ligne un nom et une couleur comme étiquette, puis tracez le résultat sous forme de graphique.\n\nLes graphiques prennent en charge les barres, les courbes, les aires, les camemberts et les anneaux. Regroupez-les par n'importe quelle colonne ou par étiquette, agrégez-les en somme, moyenne, nombre, minimum ou maximum, et filtrez-les par plage de dates. Pratique pour suivre vos sources de revenus et voir laquelle a rapporté le plus au cours du dernier mois. L'import et l'export CSV complètent le tout."
+    },
+    "es": {
+      "name": "Gestión de datos",
+      "description": "Crea tus propias tablitas y conviértelas en gráficos. Si tienes un CSV, tráelo.",
+      "details": "Crea tus propias tablas desde cero: columnas de texto, número y fecha. Etiqueta cualquier fila con un nombre y un color, y luego haz un gráfico con el resultado.\n\nLos gráficos admiten barras, líneas, áreas, circulares y de anillo, agrupados por cualquier columna o por etiqueta, agregados como suma, promedio, recuento, mínimo o máximo, y filtrados por rango de fechas. Ideal, por ejemplo, para llevar el control de tus fuentes de ingresos y ver cuál te dio más dinero el último mes. La importación y exportación de CSV completan la herramienta."
+    },
+    "zh": {
+      "name": "数据管理",
+      "description": "制作你自己的小表格，并把它们变成图表。手头有 CSV 文件的话，直接导入就行。",
+      "details": "从零开始搭建你自己的表格：文本、数字和日期列均可。可以用名称和颜色给任意一行打标签，然后将结果做成图表。\n\n图表支持柱状图、折线图、面积图、饼图和环形图，可按任意列或标签分组，按求和、平均值、计数、最小值或最大值汇总，并可按日期范围筛选。比如用来记录收入来源，查看上个月哪一项收入最多，就很方便。另外还支持 CSV 的导入和导出。"
+    }
+  }
 }

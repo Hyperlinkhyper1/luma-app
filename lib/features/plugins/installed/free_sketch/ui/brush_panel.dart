@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../model/brush.dart';
 import '../model/sketch_tool.dart';
@@ -31,6 +32,7 @@ class _BrushPanelState extends State<BrushPanel> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return ListenableBuilder(
       listenable: c,
       builder: (context, _) {
@@ -42,23 +44,25 @@ class _BrushPanelState extends State<BrushPanel> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               PanelHeader(
-                title: c.brushTool == SketchTool.brush ? 'Brushes' : '${c.brushTool.label} brushes',
+                title: c.brushTool == SketchTool.brush
+                    ? t.freeSketchBrushesTitle
+                    : t.freeSketchBrushesForTool(c.brushTool.label),
                 onClose: widget.onClose,
               ),
               const SizedBox(height: 6),
               SegmentedButton<bool>(
                 showSelectedIcon: false,
                 style: const ButtonStyle(visualDensity: VisualDensity.compact),
-                segments: const [
-                  ButtonSegment(value: false, label: Text('Library'), icon: Icon(Icons.brush_rounded, size: 16)),
-                  ButtonSegment(value: true, label: Text('Settings'), icon: Icon(Icons.tune_rounded, size: 16)),
+                segments: [
+                  ButtonSegment(value: false, label: Text(t.freeSketchBrushLibrary), icon: const Icon(Icons.brush_rounded, size: 16)),
+                  ButtonSegment(value: true, label: Text(t.freeSketchBrushSettings), icon: const Icon(Icons.tune_rounded, size: 16)),
                 ],
                 selected: {_settings},
                 onSelectionChanged: (s) => setState(() => _settings = s.first),
               ),
               const SizedBox(height: 10),
               Flexible(
-                child: _settings ? _settingsView(brush, luma) : _library(brush, luma),
+                child: _settings ? _settingsView(brush, luma, t) : _library(brush, luma, t),
               ),
             ],
           ),
@@ -67,7 +71,7 @@ class _BrushPanelState extends State<BrushPanel> {
     );
   }
 
-  Widget _library(BrushPreset current, LumaPalette luma) {
+  Widget _library(BrushPreset current, LumaPalette luma, L t) {
     final brushes = BrushLibrary.inCategory(_category);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -126,7 +130,7 @@ class _BrushPanelState extends State<BrushPanel> {
                             ),
                             if (c.hasOverrides(preset.id))
                               Tooltip(
-                                message: 'Customised',
+                                message: t.freeSketchBrushCustomised,
                                 child: Icon(Icons.tune_rounded, size: 13, color: luma.textMuted),
                               ),
                           ],
@@ -149,7 +153,7 @@ class _BrushPanelState extends State<BrushPanel> {
     );
   }
 
-  Widget _settingsView(BrushPreset brush, LumaPalette luma) {
+  Widget _settingsView(BrushPreset brush, LumaPalette luma, L t) {
     final base = BrushLibrary.byId(brush.id);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -165,7 +169,7 @@ class _BrushPanelState extends State<BrushPanel> {
             TextButton.icon(
               onPressed: c.hasOverrides(brush.id) ? c.resetBrush : null,
               icon: const Icon(Icons.restart_alt_rounded, size: 16),
-              label: const Text('Reset'),
+              label: Text(t.commonReset),
             ),
           ],
         ),
@@ -189,7 +193,7 @@ class _BrushPanelState extends State<BrushPanel> {
                 _paramSlider(param, brush, base),
               const SizedBox(height: 4),
               Text(
-                _describe(brush),
+                _describe(brush, t),
                 style: TextStyle(color: luma.textMuted, fontSize: 11, height: 1.35),
               ),
             ],
@@ -227,20 +231,27 @@ class _BrushPanelState extends State<BrushPanel> {
     );
   }
 
-  static String _describe(BrushPreset brush) {
-    final parts = <String>[
-      switch (brush.engine) {
-        BrushEngine.paint => 'Paints',
-        BrushEngine.smudge => 'Smudges the colour under it',
-        BrushEngine.blur => 'Blurs what is under it',
-      },
-      if (brush.strokeBlend == StrokeBlend.multiply) 'glazes like a marker — overlaps darken',
-      if (brush.strokeBlend == StrokeBlend.glow) 'adds light',
-      if (brush.grain != BrushGrain.none) 'with ${brush.grain.name} grain',
-      if (brush.airbrush) 'builds up while you hold still',
+  static String _describe(BrushPreset brush, L t) {
+    final traits = <String>[
+      if (brush.strokeBlend == StrokeBlend.multiply) t.freeSketchTraitGlazes,
+      if (brush.strokeBlend == StrokeBlend.glow) t.freeSketchTraitAddsLight,
+      if (brush.grain != BrushGrain.none) t.freeSketchTraitGrain(brush.grain.label),
+      if (brush.airbrush) t.freeSketchTraitBuildsUp,
     ];
-    return '${parts.join(', ')}. Pressure changes '
-        '${brush.sizePressure > 0 && brush.flowPressure > 0 ? 'size and opacity' : brush.sizePressure > 0 ? 'size' : brush.flowPressure > 0 ? 'opacity' : 'nothing'}.';
+    final engine = switch (brush.engine) {
+      BrushEngine.paint => t.freeSketchEnginePaints,
+      BrushEngine.smudge => t.freeSketchEngineSmudges,
+      BrushEngine.blur => t.freeSketchEngineBlurs,
+    };
+    final pressure = brush.sizePressure > 0 && brush.flowPressure > 0
+        ? t.freeSketchPressureSizeAndOpacity
+        : brush.sizePressure > 0
+            ? t.freeSketchPressureSize
+            : brush.flowPressure > 0
+                ? t.freeSketchPressureOpacity
+                : t.freeSketchPressureNothing;
+    final traitText = [for (final trait in traits) '${t.freeSketchListSeparator}$trait'].join();
+    return t.freeSketchBrushDescription(engine, traitText, pressure);
   }
 }
 

@@ -1,3 +1,5 @@
+import '../../../../l10n/current_l.dart';
+
 /// Which mouse button a click should use.
 enum ClickButton { left, middle, right }
 
@@ -25,7 +27,7 @@ class ClickerEngine {
     ClickPoint? at,
   }) {
     throw UnsupportedError(
-      'Auto Clicker is only available in the desktop app.',
+      currentL.autoClickerWindowsOnlyBody,
     );
   }
 }

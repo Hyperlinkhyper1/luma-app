@@ -488,6 +488,14 @@ with a `.bak` recovery copy. Airport sync uses the separate
 `airline_tycoon_airport_v2` collection and refuses cross-version imports.
 The legacy file and collection are not modified by airport mode.
 
+Airport saves live in the application support directory. On first load,
+an existing Documents save (or its recovery copy) is copied there without
+changing its offline timestamp; the Documents files are left intact and
+are never written again. Unchanged checkpoints do not rewrite either file.
+The live clock runs only while an Airline Tycoon page is visible and the
+app is resumed. Hidden or closed tabs use offline catch-up when reopened,
+without changing the player's pause setting.
+
 ## Validation
 
 Run the airport simulation, repository and UI tests together with the

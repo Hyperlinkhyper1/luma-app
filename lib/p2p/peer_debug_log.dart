@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
 
+import '../l10n/current_l.dart';
+
 /// A small rotating debug log for diagnosing P2P connection issues on builds
 /// with no visible console (an installed/release build, or an IDE run
 /// without an attached terminal). Lives at `luma_p2p_debug.log` next to
@@ -62,11 +64,11 @@ void logP2pDebug(String line) {
 Future<String> readP2pDebugLog() async {
   try {
     final file = await _file();
-    if (file == null || !await file.exists()) return 'No debug log yet.';
+    if (file == null || !await file.exists()) return currentL.p2pDebugLogEmpty;
     final content = await file.readAsString();
-    return content.trim().isEmpty ? 'No debug log yet.' : content;
+    return content.trim().isEmpty ? currentL.p2pDebugLogEmpty : content;
   } catch (e) {
-    return 'Could not read debug log: $e';
+    return currentL.p2pDebugLogReadFailed('$e');
   }
 }
 

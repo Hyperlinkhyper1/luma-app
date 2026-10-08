@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
 import 'package:cryptography/dart.dart';
 
+import '../l10n/current_l.dart';
+
 /// Versioned AES-256-GCM envelopes. The caller supplies a domain-specific key
 /// and context identifying the object. Unknown versions fail closed.
 class AuthenticatedCipher {
@@ -32,7 +34,7 @@ class AuthenticatedCipher {
         envelope[0] != _header[0] ||
         envelope[1] != _header[1] ||
         envelope[2] != _header[2]) {
-      throw const FormatException('Unsupported encrypted data.');
+      throw FormatException(currentL.securityUnsupportedEncryptedData);
     }
     final box = SecretBox(
       envelope.sublist(15, envelope.length - 16),
@@ -50,7 +52,7 @@ class AuthenticatedCipher {
 
   static void _validateKey(List<int> key) {
     if (key.length != 32) {
-      throw const FormatException('Invalid encryption key length.');
+      throw FormatException(currentL.securityInvalidEncryptionKeyLength);
     }
   }
 }

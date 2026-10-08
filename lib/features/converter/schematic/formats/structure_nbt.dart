@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import '../../../../l10n/current_l.dart';
 import '../nbt.dart';
 import '../schematic_model.dart';
 import 'nbt_block_state.dart';
@@ -20,9 +21,7 @@ class StructureNbt {
   static Schematic read(NbtCompound root) {
     final size = root.list('size');
     if (size == null || size.items.length < 3) {
-      throw const FormatException(
-        'This .nbt file has no size tag, so it is not a structure file.',
-      );
+      throw FormatException(currentL.schematicStructureNoSize);
     }
     int axis(int i) => switch (size.items[i]) {
           NbtInt(:final value) => value,
@@ -46,7 +45,7 @@ class StructureNbt {
       }
     }
     if (paletteTag == null) {
-      throw const FormatException('This structure file has no palette.');
+      throw FormatException(currentL.schematicStructureNoPalette);
     }
 
     final builder = PaletteBuilder();
@@ -84,10 +83,7 @@ class StructureNbt {
 
     final notes = <String>[];
     if (outOfBounds > 0) {
-      notes.add(
-        '$outOfBounds ${outOfBounds == 1 ? 'block sat' : 'blocks sat'} outside '
-        'the declared size and were skipped.',
-      );
+      notes.add(currentL.schematicStructureOutOfBounds(outOfBounds));
     }
 
     return Schematic(
@@ -114,11 +110,12 @@ class StructureNbt {
   static ({Uint8List bytes, List<String> notes}) write(Schematic schematic) {
     if (schematic.volume > maxWritableVolume) {
       throw FormatException(
-        'This build is ${schematic.width}×${schematic.height}×'
-        '${schematic.length}. A vanilla structure file stores every position '
-        'separately, so one that size would be unusably large — and a '
-        'structure block only loads $structureBlockLimit blocks per side. '
-        'Convert to .litematic or .schem instead.',
+        currentL.schematicStructureTooLarge(
+          schematic.width,
+          schematic.height,
+          schematic.length,
+          structureBlockLimit,
+        ),
       );
     }
 
@@ -163,9 +160,12 @@ class StructureNbt {
         .reduce((a, b) => a > b ? a : b);
     if (longest > structureBlockLimit) {
       notes.add(
-        'This build is ${schematic.width}×${schematic.height}×'
-        '${schematic.length}, past the $structureBlockLimit-block limit a '
-        'structure block can load. It will need splitting up in-game.',
+        currentL.schematicStructureTooLong(
+          schematic.width,
+          schematic.height,
+          schematic.length,
+          structureBlockLimit,
+        ),
       );
     }
 

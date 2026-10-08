@@ -6,5 +6,27 @@
   "icon": "sports_esports",
   "category": "Games",
   "details": "A clean, fast Minecraft launcher inside luma. Create instances for any release or snapshot, pick a mod loader, and let luma handle downloading the game files, libraries, assets and the right Java runtime automatically.\n\nSign in with an offline (cracked-style) profile with zero setup, or link a Microsoft account for online-mode play. Every instance gets its own mods, resource packs, shader packs, saves and screenshots folder, plus a live log view while the game is running and full control over memory, JVM arguments, resolution and Java path.\n\nMod loader installers and in-app mod/resource pack browsing are on the roadmap — this first release focuses on getting a rock-solid Vanilla launch experience right.",
-  "screenshots": []
+  "screenshots": [],
+  "i18n": {
+    "nl": {
+      "name": "Minecraft-launcher",
+      "description": "Speel Minecraft op je eigen manier. Stel Vanilla, Fabric, Forge en co in, voeg mods en packs toe en druk op play.",
+      "details": "Een strakke, snelle Minecraft-launcher binnen luma. Maak instanties voor elke release of snapshot, kies een mod-loader en laat luma automatisch de spelbestanden, bibliotheken, assets en de juiste Java-runtime downloaden.\n\nMeld je aan met een offline (cracked-achtig) profiel zonder enige installatie, of koppel een Microsoft-account voor online spelen. Elke instantie krijgt een eigen map voor mods, resourcepacks, shaderpacks, werelden en screenshots, plus een live logweergave terwijl het spel draait en volledige controle over geheugen, JVM-argumenten, resolutie en het Java-pad.\n\nInstallers voor mod-loaders en het bladeren door mods en resourcepacks in de app staan op de planning. Deze eerste release richt zich op een rotsvaste Vanilla-ervaring."
+    },
+    "fr": {
+      "name": "Lanceur Minecraft",
+      "description": "Jouez à Minecraft à votre façon. Configurez Vanilla, Fabric, Forge et autres, ajoutez des mods et des packs, et lancez la partie.",
+      "details": "Un lanceur Minecraft propre et rapide intégré à luma. Créez des instances pour n'importe quelle version ou snapshot, choisissez un chargeur de mods, et laissez luma se charger automatiquement du téléchargement des fichiers du jeu, des bibliothèques, des assets et du bon environnement Java.\n\nConnectez-vous avec un profil hors ligne (type « cracked ») sans aucune configuration, ou liez un compte Microsoft pour jouer en mode en ligne. Chaque instance dispose de ses propres dossiers de mods, de packs de ressources, de shaders, de sauvegardes et de captures d'écran, ainsi que d'une vue des journaux en direct pendant le jeu et d'un contrôle complet de la mémoire, des arguments JVM, de la résolution et du chemin Java.\n\nLes installeurs de chargeurs de mods et la navigation dans les mods et packs depuis l'application sont prévus à la feuille de route. Cette première version se concentre sur un lancement Vanilla irréprochable."
+    },
+    "es": {
+      "name": "Lanzador de Minecraft",
+      "description": "Juega a Minecraft a tu manera. Configura Vanilla, Fabric, Forge y compañía, añade mods y packs, y dale a jugar.",
+      "details": "Un lanzador de Minecraft limpio y rápido dentro de luma. Crea instancias para cualquier versión o snapshot, elige un cargador de mods y deja que luma se encargue de descargar automáticamente los archivos del juego, las librerías, los assets y el entorno de Java adecuado.\n\nInicia sesión con un perfil sin conexión (estilo cracked) sin ninguna configuración, o vincula una cuenta de Microsoft para jugar en línea. Cada instancia tiene sus propias carpetas de mods, packs de recursos, packs de shaders, mundos y capturas de pantalla, además de una vista de registros en vivo mientras el juego se ejecuta y control total sobre la memoria, los argumentos de la JVM, la resolución y la ruta de Java.\n\nLos instaladores de cargadores de mods y la exploración de mods y packs de recursos desde la app están en la hoja de ruta. Esta primera versión se centra en que el lanzamiento de Vanilla funcione a la perfección."
+    },
+    "zh": {
+      "name": "Minecraft 启动器",
+      "description": "按你喜欢的方式玩 Minecraft。设置 Vanilla、Fabric、Forge 等版本，添加模组和资源包，然后开始游戏。",
+      "details": "luma 内一款简洁快速的 Minecraft 启动器。为任意正式版或快照版本创建实例，选择模组加载器，luma 会自动下载游戏文件、库文件、资源以及合适的 Java 运行环境。\n\n无需任何设置，即可使用离线（盗版风格）配置文件登录，也可以绑定微软账户进行正版在线游戏。每个实例都拥有独立的模组、资源包、光影包、存档和截图文件夹，游戏运行时可查看实时日志，并可完全控制内存、JVM 参数、分辨率和 Java 路径。\n\n模组加载器安装程序以及应用内的模组和资源包浏览功能已列入路线图。第一个版本的重点是把 Vanilla 原版启动体验做到稳定可靠。"
+    }
+  }
 }

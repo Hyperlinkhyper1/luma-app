@@ -4,5 +4,23 @@
   "version": "1.0.0",
   "description": "Helpers for the games you play, one per sidebar entry. Steam: price history, the CS2 market and a selling calculator. Roblox: Mafia role counting. Minecraft is coming soon.",
   "icon": "sports_esports",
-  "category": "Games"
+  "category": "Games",
+  "i18n": {
+    "nl": {
+      "name": "Gamehulpmiddelen",
+      "description": "Hulpmiddelen voor de games die je speelt, één per item in de zijbalk. Steam: prijsgeschiedenis, de CS2-markt en een verkoopcalculator. Roblox: Mafia-rollen tellen. Minecraft komt eraan."
+    },
+    "fr": {
+      "name": "Outils de jeux",
+      "description": "Des outils pour les jeux que vous pratiquez, un par entrée de la barre latérale. Steam : historique des prix, marché CS2 et calculateur de vente. Roblox : comptage des rôles Mafia. Minecraft arrive bientôt."
+    },
+    "es": {
+      "name": "Herramientas de juegos",
+      "description": "Utilidades para los juegos que juegas, una por cada entrada de la barra lateral. Steam: historial de precios, el mercado de CS2 y una calculadora de venta. Roblox: conteo de roles de la Mafia. Minecraft llegará pronto."
+    },
+    "zh": {
+      "name": "游戏工具",
+      "description": "为你玩的游戏提供辅助工具，侧边栏每项对应一款游戏。Steam：价格历史、CS2 市场和出售计算器。Roblox：狼人杀角色统计。Minecraft 即将推出。"
+    }
+  }
 }

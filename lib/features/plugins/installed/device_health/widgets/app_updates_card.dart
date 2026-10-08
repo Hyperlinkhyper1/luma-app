@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
 import '../../../../../app/update/app_version.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../device_health_models.dart';
 import '../device_health_repository.dart';
@@ -20,22 +21,23 @@ class AppUpdatesCard extends StatelessWidget {
     final state = repo.appUpdates;
     final list = state.data;
     final luma = context.luma;
+    final t = L.of(context);
     final checked = state.checkedAt != null && repo.lumaUpdateChecked;
     final totalOutdated = (list?.length ?? 0) + (repo.lumaUpdate != null ? 1 : 0);
 
     return CategoryCard(
       icon: Icons.system_update_alt_rounded,
-      title: 'App Updates',
+      title: t.deviceHealthCardAppUpdatesTitle,
       status: checked
           ? (totalOutdated == 0 ? HealthStatus.good : HealthStatus.warning)
           : null,
       loading: state.loading || repo.lumaUpdateLoading,
       error: state.error,
       onCheck: () => repo.refreshAppUpdates(),
-      checkLabel: checked ? 'Rescan' : 'Scan for updates',
+      checkLabel: checked ? t.deviceHealthCardRescan : t.deviceHealthCardScanForUpdates,
       child: !checked
           ? Text(
-              'Not scanned yet — checks winget and luma for available updates.',
+              t.deviceHealthCardAppUpdatesNotScanned,
               style: TextStyle(color: luma.textMuted, fontSize: 13),
             )
           : Column(
@@ -43,7 +45,7 @@ class AppUpdatesCard extends StatelessWidget {
               children: [
                 if (totalOutdated > 1) ...[
                   LumaPrimaryButton(
-                    label: 'Update all ($totalOutdated)',
+                    label: t.deviceHealthCardUpdateAll(totalOutdated),
                     icon: Icons.upgrade_rounded,
                     onTap: () => repo.updateAllApps(),
                   ),
@@ -74,7 +76,7 @@ class AppUpdatesCard extends StatelessWidget {
                   ],
                 if (totalOutdated == 0)
                   Text(
-                    'Everything luma checked is up to date.',
+                    t.deviceHealthCardAppsUpToDate,
                     style: TextStyle(color: luma.textSecondary, fontSize: 13),
                   ),
               ],
@@ -103,6 +105,7 @@ class _AppRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final state = job?.state ?? AppUpdateJobState.idle;
 
     return Padding(
@@ -117,14 +120,14 @@ class _AppRow extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   '$current → $available'
-                  '${sourceLabel != null ? ' · $sourceLabel, may prompt' : ''}',
+                  '${sourceLabel != null ? ' · ${t.deviceHealthCardUpdateSourceMayPrompt(sourceLabel!)}' : ''}',
                   style: TextStyle(color: luma.textSecondary, fontSize: 12),
                 ),
                 if (state == AppUpdateJobState.needsElevationOrManual || state == AppUpdateJobState.failed)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
-                      job?.message ?? "Couldn't update automatically — try updating it yourself.",
+                      job?.message ?? t.deviceHealthCardUpdateFailedHint,
                       style: TextStyle(color: luma.danger, fontSize: 11),
                     ),
                   ),
@@ -147,12 +150,13 @@ class _ActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return switch (state) {
       AppUpdateJobState.running => const SizedBox(
           width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2),
         ),
       AppUpdateJobState.done => Icon(Icons.check_circle_rounded, color: luma.success, size: 22),
-      _ => LumaGhostButton(label: 'Update', onTap: onUpdate),
+      _ => LumaGhostButton(label: t.commonUpdate, onTap: onUpdate),
     };
   }
 }

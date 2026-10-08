@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import '../../../../l10n/current_l.dart';
 import '../binary_utils.dart';
 import '../repair_report.dart';
 
@@ -16,12 +17,12 @@ Uint8List repairPng(Uint8List bytes, RepairLog log) {
   if (!matchesAt(data, 0, _pngMagic)) {
     final out = Uint8List.fromList(data);
     if (out.length < 8) {
-      log.failed('The file is too short to be a PNG at all.');
+      log.failed(currentL.repairPngTooShort);
       return data;
     }
     out.setRange(0, 8, _pngMagic);
     data = out;
-    log.fixed('Rewrote the 8-byte PNG signature.');
+    log.fixed(currentL.repairPngSignatureRewritten);
   }
 
   final chunks = <_PngChunk>[];
@@ -35,16 +36,13 @@ Uint8List repairPng(Uint8List bytes, RepairLog log) {
     final type = String.fromCharCodes(data, offset + 4, offset + 8);
 
     if (!_isChunkType(type)) {
-      log.warning(
-        'Unreadable chunk name at ${formatOffset(offset)} — stopping the walk there.',
-      );
+      log.warning(currentL.repairPngUnreadableChunk(formatOffset(offset)));
       truncatedAt = offset;
       break;
     }
     if (length < 0 || offset + 12 + length > data.length) {
       log.warning(
-        'The "$type" chunk at ${formatOffset(offset)} claims $length bytes but the '
-        'file ends first.',
+        currentL.repairPngChunkPastEnd(type, formatOffset(offset), length),
       );
       truncatedAt = offset;
       break;
@@ -73,10 +71,7 @@ Uint8List repairPng(Uint8List bytes, RepairLog log) {
   }
 
   if (!sawIhdr) {
-    log.failed(
-      'No IHDR header chunk survived, so the image size and colour type are '
-      'gone. Nothing can rebuild those.',
-    );
+    log.failed(currentL.repairPngNoIhdr);
   }
 
   final out = Uint8List.fromList(data);
@@ -87,34 +82,27 @@ Uint8List repairPng(Uint8List bytes, RepairLog log) {
     repairedCrcs++;
   }
   if (repairedCrcs > 0) {
-    log.fixed(
-      'Recomputed $repairedCrcs bad chunk checksum'
-      '${repairedCrcs == 1 ? '' : 's'} — the pixel data behind them may still '
-      'be wrong, but readers will stop rejecting the file outright.',
-    );
+    log.fixed(currentL.repairPngCrcRecomputed(repairedCrcs));
   }
 
   final keep = truncatedAt >= 0 ? truncatedAt : offset;
 
   if (truncatedAt >= 0) {
     final lost = data.length - truncatedAt;
-    log.fixed(
-      'Cut the file at the last chunk that parsed and dropped '
-      '${formatSize(lost)} of unusable tail.',
-    );
+    log.fixed(currentL.repairPngCutAtLastChunk(formatSize(lost)));
   } else if (sawIend && offset < data.length) {
     log.fixed(
-      'Trimmed ${formatSize(data.length - offset)} of junk sitting after IEND.',
+      currentL.repairPngJunkAfterIend(formatSize(data.length - offset)),
     );
   }
 
   final body = out.sublist(0, keep);
   if (sawIend && truncatedAt < 0) {
-    if (chunks.isEmpty) log.warning('The file has no chunks left.');
+    if (chunks.isEmpty) log.warning(currentL.repairPngNoChunks);
     return body;
   }
 
-  log.fixed('Appended the missing IEND end-of-image chunk.');
+  log.fixed(currentL.repairPngIendAppended);
   return concatBytes([body, _iendChunk()]);
 }
 

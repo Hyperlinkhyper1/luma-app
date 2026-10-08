@@ -3,6 +3,7 @@ import 'dart:math' show max;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'data_management_repository.dart';
 
@@ -25,37 +26,52 @@ DateTime? parseFlexibleDate(String raw) {
 
 /// How the y-values inside one group get collapsed to a single number.
 enum ChartAggregation {
-  sum('Sum'),
-  average('Average'),
-  count('Count'),
-  min('Min'),
-  maxAgg('Max');
+  sum,
+  average,
+  count,
+  min,
+  maxAgg;
 
-  const ChartAggregation(this.label);
-  final String label;
+  String label(L t) => switch (this) {
+        ChartAggregation.sum => t.dataChartAggSum,
+        ChartAggregation.average => t.dataChartAverage,
+        ChartAggregation.count => t.dataChartAggCount,
+        ChartAggregation.min => t.dataChartAggMin,
+        ChartAggregation.maxAgg => t.dataChartAggMax,
+      };
 }
 
 /// Quick time-range presets applied against the chosen date column.
 enum ChartDateRange {
-  all('All time'),
-  last7('Last 7 days'),
-  last30('Last 30 days'),
-  last90('Last 90 days'),
-  thisMonth('This month'),
-  thisYear('This year'),
-  custom('Custom…');
+  all,
+  last7,
+  last30,
+  last90,
+  thisMonth,
+  thisYear,
+  custom;
 
-  const ChartDateRange(this.label);
-  final String label;
+  String label(L t) => switch (this) {
+        ChartDateRange.all => t.dataChartRangeAll,
+        ChartDateRange.last7 => t.dataChartRangeLast7,
+        ChartDateRange.last30 => t.dataChartRangeLast30,
+        ChartDateRange.last90 => t.dataChartRangeLast90,
+        ChartDateRange.thisMonth => t.dataChartRangeThisMonth,
+        ChartDateRange.thisYear => t.dataChartRangeThisYear,
+        ChartDateRange.custom => t.dataChartRangeCustom,
+      };
 }
 
 enum ChartSort {
-  valueDesc('Value ↓'),
-  valueAsc('Value ↑'),
-  labelAsc('Label A-Z');
+  valueDesc,
+  valueAsc,
+  labelAsc;
 
-  const ChartSort(this.label);
-  final String label;
+  String label(L t) => switch (this) {
+        ChartSort.valueDesc => t.dataChartSortValueDesc,
+        ChartSort.valueAsc => t.dataChartSortValueAsc,
+        ChartSort.labelAsc => t.dataChartSortLabelAsc,
+      };
 }
 
 /// Renders interactive charts from a dataset's rows and columns, with
@@ -88,14 +104,6 @@ class _ChartViewerState extends State<ChartViewer> {
   int? _dateColumnIndex;
   ChartDateRange _dateRange = ChartDateRange.all;
   DateTimeRange? _customRange;
-
-  static const _chartTypes = [
-    ('bar', 'Bar', Icons.bar_chart_rounded),
-    ('line', 'Line', Icons.show_chart_rounded),
-    ('area', 'Area', Icons.area_chart_rounded),
-    ('pie', 'Pie', Icons.pie_chart_rounded),
-    ('donut', 'Donut', Icons.donut_large_rounded),
-  ];
 
   List<int> get _numericColumnIndexes => [
         for (var i = 0; i < widget.dataset.columns.length; i++)
@@ -142,6 +150,14 @@ class _ChartViewerState extends State<ChartViewer> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
+    final chartTypes = [
+      ('bar', t.dataChartTypeBar, Icons.bar_chart_rounded),
+      ('line', t.dataChartTypeLine, Icons.show_chart_rounded),
+      ('area', t.dataChartTypeArea, Icons.area_chart_rounded),
+      ('pie', t.dataChartTypePie, Icons.pie_chart_rounded),
+      ('donut', t.dataChartTypeDonut, Icons.donut_large_rounded),
+    ];
     final numericCols = _numericColumnIndexes;
     final needsValueColumn = _aggregation != ChartAggregation.count;
 
@@ -154,7 +170,8 @@ class _ChartViewerState extends State<ChartViewer> {
             Icon(Icons.insert_chart_outlined, color: luma.textMuted, size: 48),
             const SizedBox(height: 12),
             Text(
-              'Add a numeric column to chart values,\nor switch aggregation to "Count".',
+              t.dataChartNeedsNumeric(
+                  ChartAggregation.count.label(t)),
               textAlign: TextAlign.center,
               style: TextStyle(color: luma.textMuted, fontSize: 14),
             ),
@@ -174,7 +191,7 @@ class _ChartViewerState extends State<ChartViewer> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final (type, label, icon) in _chartTypes)
+              for (final (type, label, icon) in chartTypes)
                 _ChartTypeChip(
                   label: label,
                   icon: icon,
@@ -190,27 +207,27 @@ class _ChartViewerState extends State<ChartViewer> {
             runSpacing: 12,
             children: [
               _OptionDropdown<int>(
-                label: 'Group by',
+                label: t.dataChartGroupBy,
                 value: _groupByIndex,
                 options: [
                   if (widget.dataset.tags.isNotEmpty)
-                    (kGroupByTags, 'Tags'),
+                    (kGroupByTags, t.dataChartGroupTags),
                   for (var i = 0; i < widget.dataset.columns.length; i++)
                     (i, widget.dataset.columns[i].name),
                 ],
                 onChanged: (v) => setState(() => _groupByIndex = v),
               ),
               _OptionDropdown<ChartAggregation>(
-                label: 'Aggregation',
+                label: t.dataChartAggregation,
                 value: _aggregation,
                 options: [
-                  for (final a in ChartAggregation.values) (a, a.label),
+                  for (final a in ChartAggregation.values) (a, a.label(t)),
                 ],
                 onChanged: (v) => setState(() => _aggregation = v),
               ),
               if (needsValueColumn)
                 _OptionDropdown<int>(
-                  label: 'Value',
+                  label: t.dataChartValue,
                   value: numericCols.contains(_yColumnIndex)
                       ? _yColumnIndex
                       : numericCols.first,
@@ -221,25 +238,25 @@ class _ChartViewerState extends State<ChartViewer> {
                   onChanged: (v) => setState(() => _yColumnIndex = v),
                 ),
               _OptionDropdown<ChartSort>(
-                label: 'Sort',
+                label: t.commonSort,
                 value: _sort,
-                options: [for (final s in ChartSort.values) (s, s.label)],
+                options: [for (final s in ChartSort.values) (s, s.label(t))],
                 onChanged: (v) => setState(() => _sort = v),
               ),
               _OptionDropdown<int>(
-                label: 'Show',
+                label: t.dataChartShow,
                 value: _topN,
-                options: const [
-                  (0, 'All'),
-                  (5, 'Top 5'),
-                  (10, 'Top 10'),
-                  (20, 'Top 20'),
+                options: [
+                  (0, t.commonAll),
+                  (5, t.dataChartTopN(5)),
+                  (10, t.dataChartTopN(10)),
+                  (20, t.dataChartTopN(20)),
                 ],
                 onChanged: (v) => setState(() => _topN = v),
               ),
               if (_dateColumnIndexes.isNotEmpty) ...[
                 _OptionDropdown<int>(
-                  label: 'Date column',
+                  label: t.dataChartDateColumn,
                   value: _dateColumnIndex ?? _dateColumnIndexes.first,
                   options: [
                     for (final i in _dateColumnIndexes)
@@ -248,10 +265,10 @@ class _ChartViewerState extends State<ChartViewer> {
                   onChanged: (v) => setState(() => _dateColumnIndex = v),
                 ),
                 _OptionDropdown<ChartDateRange>(
-                  label: 'Period',
+                  label: t.dataChartPeriod,
                   value: _dateRange,
                   options: [
-                    for (final r in ChartDateRange.values) (r, r.label),
+                    for (final r in ChartDateRange.values) (r, r.label(t)),
                   ],
                   onChanged: (v) async {
                     if (v == ChartDateRange.custom) {
@@ -280,7 +297,7 @@ class _ChartViewerState extends State<ChartViewer> {
             SizedBox(
               height: 220,
               child: Center(
-                child: Text('No data matches the current filters',
+                child: Text(t.dataChartNoMatch,
                     style: TextStyle(color: luma.textMuted)),
               ),
             )
@@ -291,19 +308,19 @@ class _ChartViewerState extends State<ChartViewer> {
               runSpacing: 8,
               children: [
                 _SummaryChip(
-                    label: 'Total', value: _fmt(total), luma: luma),
+                    label: t.commonTotal, value: _fmt(total), luma: luma),
                 _SummaryChip(
-                    label: 'Groups',
+                    label: t.dataChartSummaryGroups,
                     value: '${chartData.length}',
                     luma: luma),
                 _SummaryChip(
-                    label: 'Top',
+                    label: t.dataChartSummaryTop,
                     value: chartData
                         .reduce((a, b) => a.value >= b.value ? a : b)
                         .label,
                     luma: luma),
                 _SummaryChip(
-                    label: 'Average',
+                    label: t.dataChartAverage,
                     value: _fmt(total / chartData.length),
                     luma: luma),
               ],
@@ -321,7 +338,7 @@ class _ChartViewerState extends State<ChartViewer> {
                       type: _chartType,
                       data: chartData,
                       luma: luma,
-                      title: _chartTitle(),
+                      title: _chartTitle(t),
                     ),
             ),
           ],
@@ -329,15 +346,15 @@ class _ChartViewerState extends State<ChartViewer> {
     );
   }
 
-  String _chartTitle() {
-    final agg = _aggregation.label;
+  String _chartTitle(L t) {
+    final agg = _aggregation.label(t);
     final value = _aggregation == ChartAggregation.count
-        ? 'rows'
+        ? t.dataChartRowsWord
         : widget.dataset.columns[_yColumnIndex].name;
     final group = _groupByIndex == kGroupByTags
-        ? 'tag'
+        ? t.dataChartTagWord
         : widget.dataset.columns[_groupByIndex].name;
-    return '$agg of $value by $group';
+    return t.dataChartTitle(agg, value, group);
   }
 
   static String _fmt(double v) =>
@@ -378,6 +395,7 @@ class _ChartViewerState extends State<ChartViewer> {
     }
 
     // 2. Group
+    final t = L.of(context);
     final groups = <String, List<double>>{};
     final colors = <String, Color?>{};
     double yOf(DataRowRecord row) =>
@@ -385,7 +403,7 @@ class _ChartViewerState extends State<ChartViewer> {
 
     if (_groupByIndex == kGroupByTags) {
       for (final row in rows) {
-        final tags = row.tags.isEmpty ? const ['Untagged'] : row.tags;
+        final tags = row.tags.isEmpty ? [t.dataChartUntagged] : row.tags;
         for (final tag in tags) {
           groups.putIfAbsent(tag, () => []).add(yOf(row));
           colors[tag] ??= widget.dataset.tagByName(tag) != null
@@ -396,7 +414,7 @@ class _ChartViewerState extends State<ChartViewer> {
     } else {
       for (final row in rows) {
         final key = row.valueAt(_groupByIndex).trim();
-        final label = key.isEmpty ? '(empty)' : key;
+        final label = key.isEmpty ? t.dataChartEmptyGroup : key;
         groups.putIfAbsent(label, () => []).add(yOf(row));
       }
     }
@@ -428,7 +446,7 @@ class _ChartViewerState extends State<ChartViewer> {
       final rest = points.skip(_topN);
       final otherTotal = rest.fold<double>(0, (a, p) => a + p.value);
       if (otherTotal != 0) {
-        kept.add(ChartPoint(label: 'Other', value: otherTotal));
+        kept.add(ChartPoint(label: t.commonOther, value: otherTotal));
       }
       points = kept;
     }

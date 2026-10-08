@@ -1,21 +1,29 @@
 import 'package:flutter/material.dart';
 
-/// A category to seed on first launch.
+import '../../l10n/current_l.dart';
+
+/// A category to seed on first launch. [key] is the stable English id that
+/// merchants reference; [name] is the label shown in the user's language.
 class SeedCategory {
-  const SeedCategory(this.name, this.colorValue, this.iconCodepoint);
-  final String name;
+  const SeedCategory(this.key, this.colorValue, this.iconCodepoint);
+  final String key;
   final int colorValue;
   final int iconCodepoint;
+
+  String get name => seedCategoryName(key);
 }
 
-/// A merchant to seed, linked to a category by name.
+/// A merchant to seed, linked to a category by its stable key.
 class SeedMerchant {
-  const SeedMerchant(this.name, this.categoryName);
+  const SeedMerchant(this.name, this.categoryKey);
   final String name;
-  final String categoryName;
+  final String categoryKey;
+
+  String get categoryName => seedCategoryName(categoryKey);
 }
 
-// Category names are referenced by merchants, so keep them stable.
+// Category keys are referenced by merchants and import suggestions, so they
+// stay English; only the displayed names are translated.
 const _groceries = 'Groceries';
 const _eatingOut = 'Eating out';
 const _clothing = 'Clothing';
@@ -27,6 +35,27 @@ const _health = 'Health & care';
 const _entertainment = 'Entertainment';
 const _shopping = 'Shopping';
 const _other = 'Other';
+
+/// The localised label of a seeded category [key], or null for any other name.
+String? seedCategoryLabel(String key) {
+  final t = currentL;
+  return switch (key) {
+    _groceries => t.financeSeedCategoryGroceries,
+    _eatingOut => t.financeSeedCategoryEatingOut,
+    _clothing => t.financeSeedCategoryClothing,
+    _transport => t.financeSeedCategoryTransport,
+    _subscriptions => t.financeSeedCategorySubscriptions,
+    _housing => t.financeSeedCategoryHousing,
+    _utilities => t.financeSeedCategoryUtilities,
+    _health => t.financeSeedCategoryHealth,
+    _entertainment => t.financeSeedCategoryEntertainment,
+    _shopping => t.financeSeedCategoryShopping,
+    _other => t.commonOther,
+    _ => null,
+  };
+}
+
+String seedCategoryName(String key) => seedCategoryLabel(key) ?? key;
 
 final List<SeedCategory> seedCategories = [
   SeedCategory(_groceries, Colors.green.toARGB32(), Icons.shopping_cart_rounded.codePoint),

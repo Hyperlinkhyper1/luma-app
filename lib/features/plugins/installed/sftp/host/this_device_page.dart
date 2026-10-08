@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
+import '../../../../../l10n/current_l.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../sftp_dialogs.dart';
 import 'host_cards.dart';
@@ -186,7 +188,7 @@ class _SftpThisDevicePageState extends State<SftpThisDevicePage>
 
   Future<void> _chooseDirectory() async {
     final picked = await FilePicker.getDirectoryPath(
-      dialogTitle: 'Choose the folder to share',
+      dialogTitle: L.of(context).sftpThisDeviceChooseFolderTitle,
     );
     if (picked == null || !mounted) return;
     setState(() => _directory = Directory(picked));
@@ -211,12 +213,13 @@ class _SftpThisDevicePageState extends State<SftpThisDevicePage>
       _password = _server.password;
       _revealed = false;
     });
-    _announce('New pairing password. Devices already connected stay connected.');
+    _announce(L.of(context).sftpThisDevicePasswordRotated);
   }
 
   Future<void> _copy(String value, String what) async {
     await Clipboard.setData(ClipboardData(text: value));
-    _announce('$what copied.');
+    if (!mounted) return;
+    _announce(L.of(context).sftpThisDeviceCopied(what));
   }
 
   void _announce(String message) {
@@ -233,9 +236,9 @@ class _SftpThisDevicePageState extends State<SftpThisDevicePage>
     try {
       return Platform.environment['USERNAME'] ??
           Platform.environment['USER'] ??
-          'Unknown';
+          currentL.sftpThisDeviceUnknown;
     } catch (_) {
-      return 'Unknown';
+      return currentL.sftpThisDeviceUnknown;
     }
   }
 
@@ -243,19 +246,20 @@ class _SftpThisDevicePageState extends State<SftpThisDevicePage>
     try {
       return Platform.localHostname;
     } catch (_) {
-      return 'This device';
+      return currentL.sftpThisDeviceTitle;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Scaffold(
       backgroundColor: luma.background,
       appBar: AppBar(
         backgroundColor: luma.background,
         surfaceTintColor: Colors.transparent,
-        title: const Text('This device'),
+        title: Text(t.sftpThisDeviceTitle),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
@@ -306,9 +310,7 @@ class _SftpThisDevicePageState extends State<SftpThisDevicePage>
                 const SizedBox(height: 12),
                 HostClientsCard(
                   server: _server,
-                  emptyMessage:
-                      'Nothing is reading this folder yet. Keep this screen '
-                      'open while the other device connects.',
+                  emptyMessage: t.sftpThisDeviceEmptyClients,
                 ),
                 const SizedBox(height: 12),
                 const _LifetimeNote(),
@@ -342,6 +344,7 @@ class _StatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final (Color dot, String title, String subtitle) = switch ((
       running,
       busy,
@@ -350,29 +353,28 @@ class _StatusCard extends StatelessWidget {
     )) {
       (_, _, _, true) => (
           luma.textMuted,
-          'Choose a folder to share',
-          'Nothing is reachable until you pick one. Only that folder is '
-              'served — nothing above it.',
+          t.sftpThisDeviceStatusChooseTitle,
+          t.sftpThisDeviceStatusChooseBody,
         ),
       (_, true, _, _) => (
           luma.textMuted,
-          'Opening this device…',
-          'Setting up the listener.',
+          t.sftpThisDeviceStatusOpeningTitle,
+          t.sftpThisDeviceStatusOpeningBody,
         ),
       (_, _, true, _) => (
           luma.accent,
-          'Paused while luma is in the background',
-          'It starts again by itself when you come back to this screen.',
+          t.sftpThisDeviceStatusPausedTitle,
+          t.sftpThisDeviceStatusPausedBody,
         ),
       (true, _, _, _) => (
           luma.success,
-          'Other devices can reach this one',
-          'Only while this screen is open.',
+          t.sftpThisDeviceStatusReachableTitle,
+          t.sftpThisDeviceStatusReachableBody,
         ),
       _ => (
           luma.danger,
-          'Not reachable',
-          error ?? 'Hosting could not start.',
+          t.sftpThisDeviceStatusUnreachableTitle,
+          error ?? t.sftpThisDeviceStatusFailedBody,
         ),
     };
 
@@ -411,7 +413,7 @@ class _StatusCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Folder being shared',
+            t.sftpThisDeviceFolderLabel,
             style: TextStyle(
               color: luma.textSecondary,
               fontSize: 12,
@@ -432,7 +434,7 @@ class _StatusCard extends StatelessWidget {
                     border: Border.all(color: luma.border),
                   ),
                   child: Text(
-                    directory?.path ?? 'No folder chosen yet',
+                    directory?.path ?? t.sftpThisDeviceNoFolder,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -445,7 +447,7 @@ class _StatusCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               LumaGhostButton(
-                label: 'Change',
+                label: t.sftpThisDeviceChange,
                 icon: Icons.folder_open_rounded,
                 onTap: () => unawaited(onChooseDirectory()),
               ),
@@ -490,13 +492,14 @@ class _CredentialsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final address = addresses.isEmpty ? null : addresses.first;
     return LumaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Credentials for this device',
+            t.sftpThisDeviceCredentialsTitle,
             style: TextStyle(
               color: luma.textPrimary,
               fontSize: 16,
@@ -505,8 +508,7 @@ class _CredentialsCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'On the other device open the SFTP plugin, press New site, pick '
-            '"luma device", and enter these.',
+            t.sftpThisDeviceCredentialsHelp,
             style: TextStyle(
               color: luma.textSecondary,
               fontSize: 12.5,
@@ -515,48 +517,53 @@ class _CredentialsCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           HostCopyRow(
-            label: 'Device',
+            label: t.sftpThisDeviceFieldDevice,
             value: deviceName,
-            onCopy: () => onCopy(deviceName, 'Device name'),
+            onCopy: () => onCopy(deviceName, t.sftpThisDeviceFieldDeviceName),
           ),
           const SizedBox(height: 10),
           HostCopyRow(
-            label: 'User',
+            label: t.sftpThisDeviceFieldUser,
             value: userName,
-            onCopy: () => onCopy(userName, 'User name'),
+            onCopy: () => onCopy(userName, t.sftpThisDeviceFieldUserName),
           ),
           const SizedBox(height: 10),
           HostCopyRow(
-            label: 'Address',
-            value: address ?? 'No network connection',
+            label: t.sftpThisDeviceFieldAddress,
+            value: address ?? t.sftpThisDeviceNoNetwork,
             monospace: true,
             enabled: address != null,
-            onCopy: address == null ? null : () => onCopy(address, 'Address'),
+            onCopy: address == null
+                ? null
+                : () => onCopy(address, t.sftpThisDeviceFieldAddress),
           ),
           if (addresses.length > 1) ...[
             const SizedBox(height: 4),
             Text(
-              'Other addresses on this device: ${addresses.skip(1).join(', ')}',
+              t.sftpThisDeviceOtherAddresses(addresses.skip(1).join(', ')),
               style: TextStyle(color: luma.textMuted, fontSize: 11),
             ),
           ],
           const SizedBox(height: 10),
           HostCopyRow(
-            label: 'Port',
+            label: t.sftpThisDeviceFieldPort,
             value: live ? '$port' : '—',
             monospace: true,
             enabled: live,
-            onCopy: live ? () => onCopy('$port', 'Port') : null,
+            onCopy: live
+                ? () => onCopy('$port', t.sftpThisDeviceFieldPort)
+                : null,
           ),
           const SizedBox(height: 10),
           HostCopyRow(
-            label: 'Pairing password',
+            label: t.sftpThisDeviceFieldPassword,
             value: revealed ? password : '••••-••••-••••-••••-••••',
             monospace: true,
             trailing: IconButton(
               onPressed: onToggleReveal,
               iconSize: 18,
-              tooltip: revealed ? 'Hide' : 'Show',
+              tooltip:
+                  revealed ? t.sftpThisDeviceHide : t.sftpThisDeviceShow,
               icon: Icon(
                 revealed
                     ? Icons.visibility_off_rounded
@@ -564,13 +571,11 @@ class _CredentialsCard extends StatelessWidget {
                 color: luma.textSecondary,
               ),
             ),
-            onCopy: () => onCopy(password, 'Pairing password'),
+            onCopy: () => onCopy(password, t.sftpThisDeviceFieldPassword),
           ),
           const SizedBox(height: 6),
           Text(
-            'The user name is here to tell devices apart. luma pairs on the '
-            'password alone — this is not an SSH login, and nothing on this '
-            'device\'s account is exposed by it.',
+            t.sftpThisDeviceUserNameNote,
             style: TextStyle(
               color: luma.textMuted,
               fontSize: 11.5,
@@ -581,7 +586,7 @@ class _CredentialsCard extends StatelessWidget {
           Row(
             children: [
               LumaGhostButton(
-                label: 'New password',
+                label: t.sftpThisDeviceNewPassword,
                 icon: Icons.autorenew_rounded,
                 onTap: onRotate,
               ),
@@ -610,12 +615,13 @@ class _TermsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return LumaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'What the other device may do',
+            t.sftpThisDeviceTermsTitle,
             style: TextStyle(
               color: luma.textPrimary,
               fontSize: 14,
@@ -624,7 +630,7 @@ class _TermsCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           LumaSegmentedTabs(
-            tabs: const ['Read only', 'Read and write'],
+            tabs: [t.sftpThisDeviceReadOnly, t.sftpThisDeviceReadWrite],
             selectedIndex: access == HostAccess.readOnly ? 0 : 1,
             onSelect: (index) => onAccessChanged(
               index == 0 ? HostAccess.readOnly : HostAccess.readWrite,
@@ -633,9 +639,8 @@ class _TermsCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             access == HostAccess.readOnly
-                ? 'It can browse and download. Nothing on this device changes.'
-                : 'It can also upload, rename and delete inside the shared '
-                    'folder.',
+                ? t.sftpThisDeviceReadOnlyHelp
+                : t.sftpThisDeviceReadWriteHelp,
             style: TextStyle(
               color: luma.textMuted,
               fontSize: 11.5,
@@ -645,14 +650,13 @@ class _TermsCard extends StatelessWidget {
           const SizedBox(height: 14),
           SftpCheckRow(
             value: requireApproval,
-            label: 'Ask me before letting a device in',
-            subtitle: 'Even with the right password, you approve each one.',
+            label: t.sftpThisDeviceAskApproval,
+            subtitle: t.sftpThisDeviceAskApprovalSub,
             onChanged: onApprovalChanged,
           ),
           const SizedBox(height: 8),
           Text(
-            'Changing either of these restarts the listener, so anything '
-            'connected right now is dropped.',
+            t.sftpThisDeviceRestartNote,
             style: TextStyle(
               color: luma.textMuted,
               fontSize: 11.5,
@@ -672,6 +676,7 @@ class _LifetimeNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -686,14 +691,7 @@ class _LifetimeNote extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'This device is only reachable while this screen is open. Go '
-              'back, or send luma to the background, and the listener closes '
-              'and every connected device is dropped mid-transfer. Use the '
-              'Host tab instead when a transfer needs to keep running while '
-              'you do something else. The two devices agree on a key from the '
-              'pairing password and encrypt everything between them; luma\'s '
-              'servers are not involved and never see the folder, the '
-              'password or the files.',
+              t.sftpThisDeviceLifetimeNote,
               style: TextStyle(
                 color: luma.textSecondary,
                 fontSize: 11.5,

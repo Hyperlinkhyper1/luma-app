@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 
+import '../../../../l10n/current_l.dart';
+
 enum NetworkKind { wifi, cellular, ethernet, vpn, offline, unknown }
 
 NetworkKind networkKindFromId(String? id) {
@@ -28,24 +30,28 @@ String networkLabel({
   String? name,
   String? generation,
 }) {
-  final hasName = name != null && name.isNotEmpty;
-  final hasGeneration = generation != null && generation.isNotEmpty;
+  final t = currentL;
+
+  String withName(String network) => name == null || name.isEmpty
+      ? network
+      : t.speedTestNetworkWithName(network, name);
 
   switch (kind) {
     case NetworkKind.wifi:
-      return hasName ? 'Wi-Fi · $name' : 'Wi-Fi';
+      return withName(t.speedTestNetworkWifi);
     case NetworkKind.cellular:
-      final network =
-          hasGeneration ? 'Mobile data · $generation' : 'Mobile data';
-      return hasName ? '$network · $name' : network;
+      final network = generation == null || generation.isEmpty
+          ? t.speedTestNetworkMobileData
+          : t.speedTestNetworkMobileGeneration(generation);
+      return withName(network);
     case NetworkKind.ethernet:
-      return hasName ? 'Ethernet · $name' : 'Ethernet';
+      return withName(t.speedTestNetworkEthernet);
     case NetworkKind.vpn:
-      return 'VPN';
+      return t.speedTestNetworkVpn;
     case NetworkKind.offline:
-      return 'No connection';
+      return t.speedTestNetworkOffline;
     case NetworkKind.unknown:
-      return hasName ? name : 'Unknown network';
+      return name == null || name.isEmpty ? t.speedTestNetworkUnknown : name;
   }
 }
 

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../l10n/current_l.dart';
 import '../../../../sync/server_access.dart';
 
 /// One passage the server's reviewer model flagged.
@@ -142,12 +143,9 @@ class AiReviewApi {
           )
           .timeout(_timeout);
     } on ServerAccessDeniedException {
-      throw const AiReviewException(
-          'Sign in to an approved luma account to use the deep check.');
+      throw AiReviewException(currentL.aiReviewSignInRequired);
     } catch (_) {
-      throw const AiReviewException(
-          'Could not reach the luma server. Check your connection and try '
-          'again.');
+      throw AiReviewException(currentL.aiReviewUnreachable);
     }
     Object? decoded;
     try {
@@ -156,13 +154,14 @@ class AiReviewApi {
       decoded = null;
     }
     if (response.statusCode != 200) {
-      final message = decoded is Map ? decoded['message'] : null;
-      throw AiReviewException(message is String && message.isNotEmpty
-          ? message
-          : 'The deep check failed (HTTP ${response.statusCode}).');
+      // Server-side error text may use the host's language; show the local
+      // status message so this page follows the recipient's Settings locale.
+      throw AiReviewException(
+        currentL.aiReviewFailedStatus(response.statusCode),
+      );
     }
     if (decoded is! Map<String, dynamic>) {
-      throw const AiReviewException('The server sent a malformed review.');
+      throw AiReviewException(currentL.aiReviewMalformed);
     }
     return AiReview.fromJson(decoded);
   }

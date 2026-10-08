@@ -1,0 +1,4 @@
+"NSLocalNetworkUsageDescription" = "Luma usa tu red local para encontrar tus dispositivos y el hub de hogar inteligente DIRIGERA.";
+"NFCReaderUsageDescription" = "Luma lee etiquetas NFC para que puedas añadir y presentar tarjetas sin contacto en tu Cartera.";
+"NSCameraUsageDescription" = "Luma usa la cámara para escanear el código de barras o QR de una tarjeta y añadirlo a tu Cartera.";
+"NSPhotoLibraryUsageDescription" = "Luma lee tu fototeca para mostrarla en el plugin Galería. No se sube nada.";

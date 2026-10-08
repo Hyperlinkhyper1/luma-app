@@ -36,8 +36,9 @@ class HomeClassicMetric extends StatelessWidget {
     final repo = context
         .dependOnInheritedWidgetOfExactType<FinanceScope>()
         ?.repository;
+    final t = L.of(context);
     if (repo == null) {
-      return const Text('Connect your finances to see this summary.');
+      return Text(t.homeConnectFinancesSummary);
     }
     final hide =
         context
@@ -63,23 +64,33 @@ class HomeClassicMetric extends StatelessWidget {
       return StreamBuilder<List<Holding>>(
         stream: repo.watchHoldings(),
         builder: (context, snapshot) => StreamBuilder<int>(
-        stream: Cs2MarketScope.maybeOf(context)?.watchTrackedPortfolioCents() ?? Stream<int>.value(0),
-        builder: (context, cs2Value) {
-          if (snapshot.hasError) {
-            return const Text('Could not load investments.');
-          }
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final cs2 = (context.dependOnInheritedWidgetOfExactType<SettingsScope>()?.notifier?.includeCs2InInvestments ?? true) ? (cs2Value.data ?? 0) : 0;
-          return amount(portfolioEurCents(snapshot.data!) + cs2);
-        },
-      ));
+          stream:
+              Cs2MarketScope.maybeOf(context)?.watchTrackedPortfolioCents() ??
+              Stream<int>.value(0),
+          builder: (context, cs2Value) {
+            if (snapshot.hasError) {
+              return Text(t.homeCouldNotLoadInvestments);
+            }
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final cs2 =
+                (context
+                        .dependOnInheritedWidgetOfExactType<SettingsScope>()
+                        ?.notifier
+                        ?.includeCs2InInvestments ??
+                    true)
+                ? (cs2Value.data ?? 0)
+                : 0;
+            return amount(portfolioEurCents(snapshot.data!) + cs2);
+          },
+        ),
+      );
     }
     return StreamBuilder<List<FinanceTransaction>>(
       stream: repo.watchTransactions(),
       builder: (context, snapshot) {
-        if (snapshot.hasError) return const Text('Could not load finances.');
+        if (snapshot.hasError) return Text(t.homeCouldNotLoadFinances);
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -150,12 +161,12 @@ class HomeClassicMetric extends StatelessWidget {
   }
 
   String _label(BuildContext context) {
-    final t = Localizations.of<L>(context, L);
+    final t = L.of(context);
     return switch (kind) {
-      'income' => t?.homeIncomeMonth ?? 'Came in this month',
-      'spending' => t?.homeSpentMonth ?? 'Went out this month',
-      'investments' => t?.homeInvestments ?? 'Investments',
-      _ => t?.homeInPots ?? 'Set aside in pots',
+      'income' => t.homeIncomeMonth,
+      'spending' => t.homeSpentMonth,
+      'investments' => t.homeInvestments,
+      _ => t.homeInPots,
     };
   }
 }
@@ -183,23 +194,25 @@ class HomeClassicShortcut extends StatelessWidget {
     3: Icons.lock_rounded,
     6: Icons.extension_rounded,
   };
-  static const labels = {
-    5: 'Ask Assistant',
-    2: 'Finance',
-    1: 'File Converter',
-    7: 'Settings',
-    4: 'Notes',
-    3: 'Passwords',
-    6: 'Plugins',
+  static String? _labelFor(L t, int destination) => switch (destination) {
+    5 => t.homeAskAssistant,
+    2 => t.navFinance,
+    1 => t.navFileConverter,
+    7 => t.navSettings,
+    4 => t.navNotes,
+    3 => t.homeShortcutPasswords,
+    6 => t.navPlugins,
+    _ => null,
   };
-  static const subtitles = {
-    5: 'Have a chat, ask anything',
-    2: 'Your money, pots & stocks',
-    1: 'Change up images & files',
-    7: 'Colours, theme & stuff',
-    4: 'Your ideas, close at hand',
-    3: 'Keep your secrets safe',
-    6: 'Discover your next little helper',
+
+  static String _subtitleFor(L t, int destination) => switch (destination) {
+    2 => t.homeShortcutFinanceSubtitle,
+    1 => t.homeShortcutConverterSubtitle,
+    7 => t.homeShortcutSettingsSubtitle,
+    4 => t.homeShortcutNotesSubtitle,
+    3 => t.homeShortcutPasswordsSubtitle,
+    6 => t.homeShortcutPluginsSubtitle,
+    _ => t.homeShortcutAssistantSubtitle,
   };
 
   @override
@@ -207,8 +220,9 @@ class HomeClassicShortcut extends StatelessWidget {
     color: Colors.transparent,
     child: InkWell(
       borderRadius: context.lumaDecor.cardBorderRadius,
-      onTap: () =>
-          onNavigate(labels.containsKey(destination) ? destination : 5),
+      onTap: () => onNavigate(
+        _labelFor(L.of(context), destination) != null ? destination : 5,
+      ),
       child: Padding(
         padding: editing ? EdgeInsets.zero : const EdgeInsets.all(16),
         child: FilledTileBody(
@@ -224,7 +238,8 @@ class HomeClassicShortcut extends StatelessWidget {
                 const SizedBox(height: 14),
               ],
               Text(
-                labels[destination] ?? 'Ask Assistant',
+                _labelFor(L.of(context), destination) ??
+                    L.of(context).homeAskAssistant,
                 style: TextStyle(
                   color: context.luma.textPrimary,
                   fontSize: 15,
@@ -234,7 +249,7 @@ class HomeClassicShortcut extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                subtitles[destination] ?? subtitles[5]!,
+                _subtitleFor(L.of(context), destination),
                 style: TextStyle(color: context.luma.textMuted, fontSize: 12),
               ),
             ],
@@ -253,7 +268,7 @@ class HomeRecentActivity extends StatelessWidget {
         .dependOnInheritedWidgetOfExactType<FinanceScope>()
         ?.repository;
     if (repo == null) {
-      return const Text('Your recent transactions will appear here.');
+      return Text(L.of(context).homeRecentTransactionsEmpty);
     }
     final hide =
         context
@@ -265,7 +280,7 @@ class HomeRecentActivity extends StatelessWidget {
       stream: repo.watchTransactions(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return const Text('Could not load recent activity.');
+          return Text(L.of(context).homeCouldNotLoadRecentActivity);
         }
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
@@ -284,7 +299,7 @@ class HomeRecentActivity extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Nothing here yet. Your next chapter starts with your first transaction.',
+                  L.of(context).homeNothingRecentYet,
                   textAlign: TextAlign.center,
                   style: TextStyle(color: context.luma.textSecondary),
                 ),
@@ -331,9 +346,11 @@ class HomeRecentActivity extends StatelessWidget {
                         t.note?.isNotEmpty == true
                             ? t.note!
                             : switch (t.kind) {
-                                TxnKind.income => 'Income',
-                                TxnKind.expense => 'Expense',
-                                TxnKind.allocation => 'Set aside in pots',
+                                TxnKind.income =>
+                                  L.of(context).homeActivityIncome,
+                                TxnKind.expense =>
+                                  L.of(context).homeActivityExpense,
+                                TxnKind.allocation => L.of(context).homeInPots,
                               },
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import '../../../../l10n/current_l.dart';
 import '../binary_utils.dart';
 import '../repair_report.dart';
 
@@ -24,11 +25,11 @@ Uint8List repairPdf(Uint8List bytes, RepairLog log) {
 
   final headerAt = text.indexOf('%PDF-');
   if (headerAt < 0) {
-    log.fixed('Rewrote the missing "%PDF-1.7" header.');
+    log.fixed(currentL.repairPdfHeaderAdded);
     data = concatBytes([latin1.encode('%PDF-1.7\n'), data]);
     text = latin1.decode(data, allowInvalid: true);
   } else if (headerAt > 0) {
-    log.fixed('Dropped ${formatSize(headerAt)} of junk before the PDF header.');
+    log.fixed(currentL.repairPdfJunkDropped(formatSize(headerAt)));
     data = data.sublist(headerAt);
     text = latin1.decode(data, allowInvalid: true);
   }
@@ -43,30 +44,21 @@ Uint8List repairPdf(Uint8List bytes, RepairLog log) {
   }
 
   if (offsets.isEmpty) {
-    log.failed(
-      'No PDF objects were found at all. There is no document structure left '
-      'to index.',
-    );
+    log.failed(currentL.repairPdfNoObjects);
     return data;
   }
 
-  log.info('Found ${offsets.length} objects still intact.');
+  log.info(currentL.repairPdfObjectsIntact(offsets.length));
 
   if (text.contains('/Encrypt')) {
-    log.warning(
-      'The document is encrypted. The index can be rebuilt, but a reader will '
-      'still ask for the password it was protected with.',
-    );
+    log.warning(currentL.repairPdfEncrypted);
   }
 
   final root = _findRoot(text, offsets);
   if (root == null) {
-    log.failed(
-      'No document catalog (/Type /Catalog) survived, so nothing points at the '
-      'page tree. Readers will open the file and find no pages.',
-    );
+    log.failed(currentL.repairPdfNoCatalog);
   } else {
-    log.info('Document catalog is object $root.');
+    log.info(currentL.repairPdfCatalogFound(root));
   }
 
   final hadStartxref = text.contains('startxref');
@@ -95,16 +87,12 @@ Uint8List repairPdf(Uint8List bytes, RepairLog log) {
   buffer.write(' >>\nstartxref\n$xrefOffset\n%%EOF\n');
 
   if (free > 0) {
-    log.warning(
-      '$free object slot${free == 1 ? ' was' : 's were'} empty and had to be '
-      'marked free. Whatever those held is gone.',
-    );
+    log.warning(currentL.repairPdfFreeSlots(free));
   }
   log.fixed(
     hadStartxref
-        ? 'Rebuilt the cross-reference table and appended a fresh trailer.'
-        : 'Built a cross-reference table and trailer from scratch — the file '
-              'had neither.',
+        ? currentL.repairPdfXrefRebuilt
+        : currentL.repairPdfXrefFromScratch,
   );
 
   return concatBytes([data, latin1.encode(buffer.toString())]);

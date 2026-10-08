@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../storage/storage_guard.dart';
 
 /// One finished sum: what was typed and what it came to.
@@ -249,7 +250,7 @@ class CalculatorStore extends ChangeNotifier {
 
   Future<void> importData(Object? data) async {
     if (data is! Map<String, dynamic>) {
-      throw const FormatException('Invalid calculator snapshot.');
+      throw FormatException(currentL.calcInvalidSnapshot);
     }
     await _ready;
     _apply(data);

@@ -8,6 +8,48 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test(
+    'stale remote metadata uses bundled translations and keeps remote updates',
+    () async {
+      final service = PluginCatalogService(
+        get: (uri) async => http.Response(
+          jsonEncode(
+            uri.path.endsWith('registry.json')
+                ? {
+                    'plugins': [
+                      {
+                        'id': 'calculator',
+                        'name': 'Calculator',
+                        'description': 'Old English description',
+                        'icon': 'calculate',
+                        'category': 'Utility',
+                        'i18n': {
+                          'nl': {'name': 'Updated Dutch name'},
+                        },
+                      },
+                    ],
+                  }
+                : {'name': 'Calculator', 'details': 'Old English details'},
+          ),
+          200,
+        ),
+      );
+      final entry = (await service.fetchCatalog()).singleWhere(
+        (entry) => entry.id == 'calculator',
+      );
+      expect(entry.nameIn('nl'), 'Updated Dutch name');
+      for (final locale in ['nl', 'es', 'fr', 'zh']) {
+        expect(entry.descriptionIn(locale), isNot('Old English description'));
+        expect(entry.nameIn(locale), isNotEmpty);
+      }
+      final manifest = await service.fetchManifest('calculator');
+      for (final locale in ['nl', 'es', 'fr', 'zh']) {
+        expect(manifest.detailsIn(locale), isNot('Old English details'));
+        expect(manifest.detailsIn(locale), isNotEmpty);
+      }
+    },
+  );
+
+  test(
     'Smart Home appears when the published catalog has not caught up',
     () async {
       final service = PluginCatalogService(

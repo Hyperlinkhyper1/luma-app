@@ -10,6 +10,7 @@ import 'package:window_manager/window_manager.dart';
 import '../app/window_controls.dart';
 import '../features/plugins/plugin_icons.dart';
 import '../l10n/app_localizations.dart';
+import '../l10n/current_l.dart';
 import '../theme/luma_theme.dart';
 import 'luma_pet_panel.dart';
 import 'pet_repository.dart';
@@ -22,6 +23,10 @@ Future<void> runPetWindow(
   WindowController controller,
   Map<String, dynamic> arguments,
 ) async {
+  final localeName = arguments['locale'] as String?;
+  setCurrentLocale(
+    localeName == null || localeName.isEmpty ? null : Locale(localeName),
+  );
   final snapshot = ValueNotifier<(int, Map<String, dynamic>)>((0, arguments));
   await controller.setWindowMethodHandler((call) async {
     switch (call.method) {
@@ -34,6 +39,11 @@ Future<void> runPetWindow(
         try {
           await windowManager.focus();
         } catch (_) {}
+      case petWindowMethodRefresh:
+        snapshot.value = (
+          snapshot.value.$1 + 1,
+          Map<String, dynamic>.from(call.arguments as Map),
+        );
       default:
         throw MissingPluginException('Unknown pet window method ${call.method}');
     }
@@ -62,14 +72,14 @@ Future<void> _setUpPetWindow() async {
   await windowManager.ensureInitialized();
   await windowManager.setPreventClose(true);
 
-  const options = WindowOptions(
+  final options = WindowOptions(
     size: kPetPanelSize,
     minimumSize: kPetPanelSize,
     maximumSize: kPetPanelSize,
     center: true,
     alwaysOnTop: true,
     skipTaskbar: true,
-    title: 'luma pet',
+    title: currentL.petSettingsTitle,
     titleBarStyle: TitleBarStyle.hidden,
     windowButtonVisibility: false,
   );
@@ -150,6 +160,7 @@ class _PetWindowAppState extends State<_PetWindowApp> with WindowListener {
     final locale = localeName == null || localeName.isEmpty
         ? null
         : Locale(localeName);
+    setCurrentLocale(locale);
     final targets = _targets(widget.arguments['targets']);
     final initialAuto = Map<String, dynamic>.from(
       widget.arguments['autoClicker'] as Map? ?? const {},
@@ -158,7 +169,7 @@ class _PetWindowAppState extends State<_PetWindowApp> with WindowListener {
     return PetScope(
       repository: _pet,
       child: MaterialApp(
-        title: 'luma pet',
+        title: L.of(context).petSettingsTitle,
         debugShowCheckedModeBanner: false,
         theme: LumaTheme.from(
           brightness,
@@ -346,6 +357,7 @@ class _PetAutoClickerPanelState extends State<PetAutoClickerPanel> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final running = _state['isRunning'] == true;
     final clickAtCursor = _state['clickAtCursor'] != false;
     final repeatCount = _state['repeatMode'] == 'count';
@@ -371,14 +383,14 @@ class _PetAutoClickerPanelState extends State<PetAutoClickerPanel> {
                     onPressed: widget.onBack,
                     icon: const Icon(Icons.arrow_back_rounded),
                     color: luma.textSecondary,
-                    tooltip: 'Back to pet',
+                    tooltip: t.petAutoClickerBackToPet,
                   ),
                   const SizedBox(width: 4),
                   Icon(Icons.ads_click_rounded, color: luma.accent),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Auto Clicker',
+                      t.pluginNameAutoClicker,
                       style: TextStyle(
                         color: luma.textPrimary,
                         fontWeight: FontWeight.w700,
@@ -390,7 +402,7 @@ class _PetAutoClickerPanelState extends State<PetAutoClickerPanel> {
                     onPressed: () => PetScope.read(context).close(),
                     icon: const Icon(Icons.close_rounded, size: 19),
                     color: luma.textMuted,
-                    tooltip: 'Close',
+                    tooltip: t.commonClose,
                   ),
                 ],
               ),
@@ -400,11 +412,11 @@ class _PetAutoClickerPanelState extends State<PetAutoClickerPanel> {
             child: ListView(
               padding: const EdgeInsets.all(14),
               children: [
-                _statusCard(luma, running, canStart),
+                _statusCard(t, luma, running, canStart),
                 const SizedBox(height: 12),
                 _card(
                   luma,
-                  title: 'INTERVAL',
+                  title: t.petAutoClickerIntervalTitle,
                   child: Row(
                     children: [
                       Expanded(
@@ -414,7 +426,10 @@ class _PetAutoClickerPanelState extends State<PetAutoClickerPanel> {
                           inputFormatters: [
                             FilteringTextInputFormatter.digitsOnly,
                           ],
-                          decoration: _input(luma, 'Milliseconds'),
+                          decoration: _input(
+                            luma,
+                            t.petAutoClickerMilliseconds,
+                          ),
                           onSubmitted: (value) =>
                               _command('setInterval', int.tryParse(value) ?? 1),
                         ),
@@ -427,7 +442,7 @@ class _PetAutoClickerPanelState extends State<PetAutoClickerPanel> {
                                 'setInterval',
                                 int.tryParse(_interval.text) ?? 1,
                               ),
-                        child: const Text('Apply'),
+                        child: Text(t.commonApply),
                       ),
                     ],
                   ),
@@ -435,14 +450,23 @@ class _PetAutoClickerPanelState extends State<PetAutoClickerPanel> {
                 const SizedBox(height: 12),
                 _card(
                   luma,
-                  title: 'CLICK',
+                  title: t.petAutoClickerClickTitle,
                   child: Column(
                     children: [
                       SegmentedButton<String>(
-                        segments: const [
-                          ButtonSegment(value: 'left', label: Text('Left')),
-                          ButtonSegment(value: 'middle', label: Text('Middle')),
-                          ButtonSegment(value: 'right', label: Text('Right')),
+                        segments: [
+                          ButtonSegment(
+                            value: 'left',
+                            label: Text(t.autoClickerLeft),
+                          ),
+                          ButtonSegment(
+                            value: 'middle',
+                            label: Text(t.autoClickerMiddle),
+                          ),
+                          ButtonSegment(
+                            value: 'right',
+                            label: Text(t.autoClickerRight),
+                          ),
                         ],
                         selected: {button},
                         onSelectionChanged: (v) =>
@@ -451,7 +475,7 @@ class _PetAutoClickerPanelState extends State<PetAutoClickerPanel> {
                       SwitchListTile(
                         dense: true,
                         contentPadding: EdgeInsets.zero,
-                        title: const Text('Double click'),
+                        title: Text(t.petAutoClickerDoubleClick),
                         value: _state['doubleClick'] == true,
                         onChanged: (v) => _command('setDoubleClick', v),
                       ),
@@ -461,13 +485,19 @@ class _PetAutoClickerPanelState extends State<PetAutoClickerPanel> {
                 const SizedBox(height: 12),
                 _card(
                   luma,
-                  title: 'LOCATION & REPEAT',
+                  title: t.petAutoClickerLocationRepeatTitle,
                   child: Column(
                     children: [
                       SegmentedButton<bool>(
-                        segments: const [
-                          ButtonSegment(value: true, label: Text('Cursor')),
-                          ButtonSegment(value: false, label: Text('Fixed')),
+                        segments: [
+                          ButtonSegment(
+                            value: true,
+                            label: Text(t.petAutoClickerCursor),
+                          ),
+                          ButtonSegment(
+                            value: false,
+                            label: Text(t.petAutoClickerFixed),
+                          ),
                         ],
                         selected: {clickAtCursor},
                         onSelectionChanged: (v) =>
@@ -481,7 +511,7 @@ class _PetAutoClickerPanelState extends State<PetAutoClickerPanel> {
                               Expanded(
                                 child: Text(
                                   _state['fixedX'] == null
-                                      ? 'No point selected'
+                                      ? t.petAutoClickerNoPointSelected
                                       : '${_state['fixedX']}, ${_state['fixedY']}',
                                   style: TextStyle(color: luma.textMuted),
                                 ),
@@ -493,8 +523,10 @@ class _PetAutoClickerPanelState extends State<PetAutoClickerPanel> {
                                 icon: const Icon(Icons.my_location_rounded),
                                 label: Text(
                                   _captureCountdown > 0
-                                      ? 'Move cursor… $_captureCountdown'
-                                      : 'Pick point',
+                                      ? t.petAutoClickerMoveCursor(
+                                          _captureCountdown,
+                                        )
+                                      : t.petAutoClickerPickPoint,
                                 ),
                               ),
                             ],
@@ -503,7 +535,7 @@ class _PetAutoClickerPanelState extends State<PetAutoClickerPanel> {
                       SwitchListTile(
                         dense: true,
                         contentPadding: EdgeInsets.zero,
-                        title: const Text('Stop after a set amount'),
+                        title: Text(t.petAutoClickerStopAfterAmount),
                         value: repeatCount,
                         onChanged: (v) => _command(
                           'setRepeatMode',
@@ -517,7 +549,10 @@ class _PetAutoClickerPanelState extends State<PetAutoClickerPanel> {
                           inputFormatters: [
                             FilteringTextInputFormatter.digitsOnly,
                           ],
-                          decoration: _input(luma, 'Number of clicks'),
+                          decoration: _input(
+                            luma,
+                            t.petAutoClickerNumberOfClicks,
+                          ),
                           onSubmitted: (value) => _command(
                             'setRepeatCount',
                             int.tryParse(value) ?? 1,
@@ -534,11 +569,16 @@ class _PetAutoClickerPanelState extends State<PetAutoClickerPanel> {
     );
   }
 
-  Widget _statusCard(LumaPalette luma, bool running, bool canStart) => _card(
+  Widget _statusCard(
+    L t,
+    LumaPalette luma,
+    bool running,
+    bool canStart,
+  ) => _card(
     luma,
     title: running
-        ? '${_state['clicksDone'] ?? 0} CLICKS'
-        : 'READY · ${_state['hotKey'] ?? 'F6'}',
+        ? t.petAutoClickerClicksDone(_state['clicksDone'] ?? 0)
+        : t.petAutoClickerReady(_state['hotKey'] ?? 'F6'),
     child: SizedBox(
       height: 44,
       child: FilledButton.icon(
@@ -550,7 +590,9 @@ class _PetAutoClickerPanelState extends State<PetAutoClickerPanel> {
             ? null
             : () => _command('toggle'),
         icon: Icon(running ? Icons.stop_rounded : Icons.play_arrow_rounded),
-        label: Text(running ? 'Stop clicking' : 'Start clicking'),
+        label: Text(
+          running ? t.autoClickerStopClicking : t.autoClickerStartClicking,
+        ),
       ),
     ),
   );

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../theme/luma_theme.dart';
 import '../data/database.dart';
 import '../logic/money.dart';
+import 'finance_form.dart';
 import 'lookups.dart';
 
 /// Opens a dialog showing every transaction for [pot], plus a category
@@ -52,6 +54,7 @@ class _PotDetailView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final catById = {for (final c in categories) c.id: c};
     final merchantById = {for (final m in merchants) m.id: m};
 
@@ -120,7 +123,7 @@ class _PotDetailView extends StatelessWidget {
             child: potTxns.isEmpty
                 ? Center(
                     child: Text(
-                      'Nothing in this pot yet.',
+                      t.financePotDetailEmpty,
                       style: TextStyle(color: luma.textMuted),
                     ),
                   )
@@ -133,7 +136,7 @@ class _PotDetailView extends StatelessWidget {
                         _CategoryBreakdown(txns: potTxns, catById: catById),
                         const SizedBox(height: 20),
                         Text(
-                          'Transactions',
+                          t.financePotDetailTransactions,
                           style: TextStyle(
                             color: luma.textPrimary,
                             fontSize: 14,
@@ -166,6 +169,7 @@ class _BalanceOverTimeChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     // Oldest -> newest, running balance after each entry.
     final chronological = txns.toList()..sort((a, b) => a.date.compareTo(b.date));
@@ -190,7 +194,7 @@ class _BalanceOverTimeChart extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Balance over time',
+          Text(t.financePotDetailBalanceOverTime,
               style: TextStyle(
                   color: luma.textSecondary,
                   fontSize: 12,
@@ -284,6 +288,7 @@ class _CategoryBreakdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     final byCategory = <int?, int>{};
     var total = 0;
@@ -314,7 +319,7 @@ class _CategoryBreakdown extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Spending by category',
+              Text(t.financePotDetailSpendingByCategory,
                   style: TextStyle(
                       color: luma.textSecondary,
                       fontSize: 12,
@@ -358,7 +363,7 @@ class _CategoryBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final color = category != null ? Color(category!.colorValue) : luma.textMuted;
-    final name = category?.name ?? 'Uncategorized';
+    final name = category?.name ?? L.of(context).financePotDetailUncategorized;
     final icon =
         category != null ? materialIcon(category!.iconCodepoint) : Icons.help_outline_rounded;
 
@@ -405,6 +410,7 @@ class _PotTxnRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     late final IconData icon;
     late final Color color;
@@ -414,15 +420,15 @@ class _PotTxnRow extends StatelessWidget {
       case TxnKind.income:
         icon = Icons.south_west_rounded;
         color = luma.success;
-        title = txn.note ?? 'Income';
+        title = txn.note ?? t.financePotDetailIncome;
       case TxnKind.allocation:
         icon = Icons.savings_rounded;
         color = luma.accent;
-        title = txn.note ?? 'Allocation';
+        title = txn.note ?? t.financePotDetailAllocation;
       case TxnKind.expense:
         icon = category != null ? materialIcon(category!.iconCodepoint) : Icons.shopping_bag_rounded;
         color = category != null ? Color(category!.colorValue) : luma.textMuted;
-        title = merchant?.name ?? category?.name ?? txn.note ?? 'Expense';
+        title = merchant?.name ?? category?.name ?? txn.note ?? t.financeTxnExpenseTitle;
     }
 
     final amountColor = switch (txn.kind) {
@@ -462,7 +468,7 @@ class _PotTxnRow extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            _shortDate(txn.date),
+            shortDate(txn.date),
             style: TextStyle(color: luma.textMuted, fontSize: 11),
           ),
           const SizedBox(width: 10),
@@ -474,12 +480,4 @@ class _PotTxnRow extends StatelessWidget {
       ),
     );
   }
-}
-
-String _shortDate(DateTime d) {
-  const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
-  return '${d.day} ${months[d.month - 1]}';
 }

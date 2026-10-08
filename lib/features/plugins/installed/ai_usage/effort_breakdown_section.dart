@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/app_localizations.dart';
+import '../../../../l10n/current_l.dart';
 import '../../../../theme/luma_theme.dart';
 import 'ai_usage_format.dart';
 import 'ai_usage_source.dart';
@@ -11,13 +13,13 @@ import 'ai_usage_stats.dart';
 /// first place (see `effortFromLog`), it becomes null and reads as
 /// "Unspecified".
 String effortLabel(AiEffort? effort) => switch (effort) {
-      null => 'Unspecified',
-      AiEffort.minimal => 'Minimal',
-      AiEffort.low => 'Low',
-      AiEffort.medium => 'Medium',
-      AiEffort.high => 'High',
-      AiEffort.xhigh => 'Extra high',
-      AiEffort.max => 'Max',
+      null => currentL.aiUsageEffortUnspecified,
+      AiEffort.minimal => currentL.aiUsageEffortMinimal,
+      AiEffort.low => currentL.aiUsageEffortLow,
+      AiEffort.medium => currentL.aiUsageEffortMedium,
+      AiEffort.high => currentL.aiUsageEffortHigh,
+      AiEffort.xhigh => currentL.aiUsageEffortExtraHigh,
+      AiEffort.max => currentL.aiUsageEffortMax,
     };
 
 /// Claude-only: every model actually used, broken down by the reasoning-effort
@@ -40,6 +42,7 @@ class EffortBreakdownSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final byModel = <String, List<ModelEffortUsageTotal>>{};
     for (final t in tiers) {
       byModel.putIfAbsent(t.model, () => []).add(t);
@@ -67,7 +70,7 @@ class EffortBreakdownSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Claude Effort Breakdown',
+          t.aiUsageEffortBreakdownTitle,
           style: TextStyle(
               color: luma.textPrimary,
               fontSize: 14,
@@ -75,7 +78,7 @@ class EffortBreakdownSection extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'How hard each Claude model was asked to think, by turns and tokens spent.',
+          t.aiUsageEffortBreakdownBlurb,
           style: TextStyle(color: luma.textMuted, fontSize: 11),
         ),
         const SizedBox(height: 12),
@@ -128,6 +131,7 @@ class _EffortTierRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final fraction = maxTokens == 0 ? 0.0 : tier.totalTokens / maxTokens;
     return Padding(
       padding: const EdgeInsets.only(left: 12),
@@ -143,7 +147,7 @@ class _EffortTierRow extends StatelessWidget {
                 ),
               ),
               Text(
-                '${tier.turnCount} turns',
+                t.aiUsageEffortTurns(tier.turnCount),
                 style: TextStyle(color: luma.textMuted, fontSize: 11.5),
               ),
               const SizedBox(width: 10),

@@ -1,3 +1,4 @@
+import '../../../../../l10n/current_l.dart';
 import 'ai_model.dart';
 
 /// A sortable leaderboard column.
@@ -6,60 +7,50 @@ import 'ai_model.dart';
 /// upstreams, and a column header that doesn't say what it measures invites
 /// people to compare numbers that aren't comparable.
 enum AiLeaderboardColumn {
-  rank(label: 'RANK', help: 'Position in the current sort'),
-  name(
-    label: 'MODEL',
-    help: 'Model name and the provider that serves it',
-    defaultDescending: false,
-  ),
-  llmStats(
-    label: 'INTELLIGENCE',
-    help: "Artificial Analysis' Intelligence Index — the composite across "
-        'every benchmark it runs, at the model\'s best reasoning effort',
-  ),
-  coding(
-    label: 'CODING',
-    help: 'Code generation and repair benchmarks',
-  ),
-  agent(
-    label: 'AGENT',
-    help: 'Long-horizon tool use and multi-step task benchmarks',
-  ),
-  codeArena(
-    label: 'CODE ARENA',
-    help: 'Head-to-head Elo from human preference on coding tasks',
-  ),
-  params(
-    label: 'PARAMS',
-    help: 'Total parameter count, in billions — only known for open-weight '
-        'models',
-  ),
-  context(
-    label: 'CONTEXT',
-    help: 'Largest prompt the model accepts, in tokens',
-  ),
-  price(
-    label: r'PRICE $/M',
-    help: 'Input and output price averaged, in USD per million tokens',
-    defaultDescending: false,
-  ),
-  license(
-    label: 'LICENSE',
-    help: 'Open padlock means the weights are downloadable',
-  );
+  rank(),
+  name(defaultDescending: false),
+  llmStats(),
+  coding(),
+  agent(),
+  codeArena(),
+  params(),
+  context(),
+  price(defaultDescending: false),
+  license();
 
-  const AiLeaderboardColumn({
-    required this.label,
-    required this.help,
-    this.defaultDescending = true,
-  });
-
-  final String label;
-  final String help;
+  const AiLeaderboardColumn({this.defaultDescending = true});
 
   /// Which way this column sorts the first time it is clicked. Ratings want
   /// best-first; names and prices want smallest-first.
   final bool defaultDescending;
+
+  String get label => switch (this) {
+        AiLeaderboardColumn.rank => currentL.aiLeaderboardColumnRank,
+        AiLeaderboardColumn.name => currentL.aiLeaderboardColumnName,
+        AiLeaderboardColumn.llmStats => currentL.aiLeaderboardColumnIntelligence,
+        AiLeaderboardColumn.coding => currentL.aiLeaderboardColumnCoding,
+        AiLeaderboardColumn.agent => currentL.aiLeaderboardColumnAgent,
+        AiLeaderboardColumn.codeArena => 'CODE ARENA',
+        AiLeaderboardColumn.params => currentL.aiLeaderboardColumnParams,
+        AiLeaderboardColumn.context => currentL.aiLeaderboardColumnContext,
+        AiLeaderboardColumn.price => currentL.aiLeaderboardColumnPrice,
+        AiLeaderboardColumn.license => currentL.aiLeaderboardColumnLicense,
+      };
+
+  String get help => switch (this) {
+        AiLeaderboardColumn.rank => currentL.aiLeaderboardColumnRankHelp,
+        AiLeaderboardColumn.name => currentL.aiLeaderboardColumnNameHelp,
+        AiLeaderboardColumn.llmStats =>
+          currentL.aiLeaderboardColumnIntelligenceHelp,
+        AiLeaderboardColumn.coding => currentL.aiLeaderboardColumnCodingHelp,
+        AiLeaderboardColumn.agent => currentL.aiLeaderboardColumnAgentHelp,
+        AiLeaderboardColumn.codeArena =>
+          currentL.aiLeaderboardColumnCodeArenaHelp,
+        AiLeaderboardColumn.params => currentL.aiLeaderboardColumnParamsHelp,
+        AiLeaderboardColumn.context => currentL.aiLeaderboardColumnContextHelp,
+        AiLeaderboardColumn.price => currentL.aiLeaderboardColumnPriceHelp,
+        AiLeaderboardColumn.license => currentL.aiLeaderboardColumnLicenseHelp,
+      };
 }
 
 /// Applies the search box, the provider menu and the open-weights toggle, then

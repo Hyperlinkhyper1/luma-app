@@ -2,11 +2,13 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 
 import '../../app/widgets.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/luma_theme.dart';
 import '../data/database.dart';
 import '../finance_repository.dart';
 import '../finance_scope.dart';
 import '../logic/money.dart';
+import 'finance_form.dart';
 import 'lookups.dart';
 import 'subscription_suggestions.dart';
 
@@ -61,6 +63,7 @@ class _RecurringBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final potById = {for (final p in pots) p.id: p};
 
     return SingleChildScrollView(
@@ -71,13 +74,13 @@ class _RecurringBody extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: LumaGhostButton(
-              label: 'Apply due now',
+              label: t.financeRecurringApplyDue,
               icon: Icons.play_arrow_rounded,
               onTap: () async {
                 final n = await repo.applyDue(DateTime.now());
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Applied $n due entries.')),
+                    SnackBar(content: Text(t.financeRecurringApplied(n))),
                   );
                 }
               },
@@ -95,9 +98,9 @@ class _RecurringBody extends StatelessWidget {
             spacing: 12,
             runSpacing: 8,
             children: [
-              _SectionHeader('Fixed costs & income'),
+              _SectionHeader(t.financeRecurringFixedHeader),
               LumaPrimaryButton(
-                label: 'Add',
+                label: t.commonAdd,
                 icon: Icons.add_rounded,
                 onTap: () =>
                     _openRecurringEditor(context, repo, pots, categories),
@@ -108,7 +111,7 @@ class _RecurringBody extends StatelessWidget {
           if (rules.isEmpty)
             LumaCard(
               child: Text(
-                'Add things like rent, Spotify, or your paycheck.',
+                t.financeRecurringEmpty,
                 style: TextStyle(color: luma.textMuted, fontSize: 13),
               ),
             )
@@ -129,13 +132,13 @@ class _RecurringBody extends StatelessWidget {
             spacing: 12,
             runSpacing: 8,
             children: [
-              _SectionHeader('Automatic distribution'),
+              _SectionHeader(t.financeRecurringAutoHeader),
               LumaPrimaryButton(
-                label: 'Add',
+                label: t.commonAdd,
                 icon: Icons.add_rounded,
                 onTap: pots.isEmpty
                     ? () => ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Create a pot first.')),
+                        SnackBar(content: Text(t.financeRecurringCreatePotFirst)),
                       )
                     : () => _openAllocationEditor(context, repo, pots),
               ),
@@ -143,14 +146,14 @@ class _RecurringBody extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Automatically move money from your main balance into pots, weekly or monthly.',
+            t.financeRecurringAutoHint,
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
           const SizedBox(height: 12),
           if (allocations.isEmpty)
             LumaCard(
               child: Text(
-                'No distribution rules yet.',
+                t.financeRecurringNoRules,
                 style: TextStyle(color: luma.textMuted, fontSize: 13),
               ),
             )
@@ -182,6 +185,7 @@ class _BillsDueSoonCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -201,9 +205,7 @@ class _BillsDueSoonCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                bills.length == 1
-                    ? '1 bill due soon'
-                    : '${bills.length} bills due soon',
+                t.financeRecurringBillsDueSoon(bills.length),
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 14,
@@ -225,7 +227,7 @@ class _BillsDueSoonCard extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    _dueLabel(bill.nextDue),
+                    _dueLabel(t, bill.nextDue),
                     style: TextStyle(
                       color: luma.danger,
                       fontSize: 12,
@@ -241,17 +243,17 @@ class _BillsDueSoonCard extends StatelessWidget {
   }
 }
 
-String _dueLabel(DateTime due) {
+String _dueLabel(L t, DateTime due) {
   final today = DateTime.now();
   final days = DateTime(
     due.year,
     due.month,
     due.day,
   ).difference(DateTime(today.year, today.month, today.day)).inDays;
-  if (days < 0) return 'Overdue';
-  if (days == 0) return 'Due today';
-  if (days == 1) return 'Due tomorrow';
-  return 'Due in $days days';
+  if (days < 0) return t.financeRecurringOverdue;
+  if (days == 0) return t.financeRecurringDueToday;
+  if (days == 1) return t.financeRecurringDueTomorrow;
+  return t.financeRecurringDueInDays(days);
 }
 
 class _RecurringRow extends StatelessWidget {
@@ -262,8 +264,13 @@ class _RecurringRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final isIncome = rule.kind == TxnKind.income;
     final color = isIncome ? luma.success : luma.danger;
+    final cadence = rule.cadence == Cadence.weekly
+        ? t.financeRecurringWeekly
+        : t.financeRecurringMonthly;
+    final nextDate = shortDate(rule.nextDue);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
@@ -292,9 +299,13 @@ class _RecurringRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${rule.cadence == Cadence.weekly ? 'Weekly' : 'Monthly'}'
-                  '${rule.isBill ? ' · Bill, remind ${rule.reminderDaysBefore}d before' : ''}'
-                  ' · next ${_shortDate(rule.nextDue)}',
+                  rule.isBill
+                      ? t.financeRecurringRowBillSubtitle(
+                          cadence,
+                          rule.reminderDaysBefore,
+                          nextDate,
+                        )
+                      : t.financeRecurringRowSubtitle(cadence, nextDate),
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
               ],
@@ -331,9 +342,13 @@ class _AllocationRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final amountText = rule.mode == AllocMode.fixed
         ? formatCents(rule.valueCents)
         : '${(rule.percentBps / 100).toStringAsFixed(rule.percentBps % 100 == 0 ? 0 : 1)}%';
+    final cadence = rule.cadence == Cadence.weekly
+        ? t.financeRecurringWeekly
+        : t.financeRecurringMonthly;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
@@ -356,7 +371,9 @@ class _AllocationRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'To ${pot?.name ?? 'pot'}',
+                  t.financeRecurringToPot(
+                    pot?.name ?? t.financeRecurringPotFallback,
+                  ),
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontWeight: FontWeight.w600,
@@ -364,7 +381,7 @@ class _AllocationRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${rule.cadence == Cadence.weekly ? 'Weekly' : 'Monthly'} · next ${_shortDate(rule.nextDue)}',
+                  t.financeRecurringRowSubtitle(cadence, shortDate(rule.nextDue)),
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
               ],
@@ -458,10 +475,11 @@ class _RecurringEditorState extends State<_RecurringEditor> {
   }
 
   Future<void> _save() async {
+    final t = L.of(context);
     final name = _name.text.trim();
     final cents = parseToCents(_amount.text);
     if (name.isEmpty || cents == null || cents <= 0) {
-      setState(() => _error = 'Enter a name and a valid amount.');
+      setState(() => _error = t.financeRecurringEnterNameAndAmount);
       return;
     }
     final isBill = _kind == TxnKind.expense && _isBill;
@@ -469,7 +487,7 @@ class _RecurringEditorState extends State<_RecurringEditor> {
     if (isBill) {
       final parsed = int.tryParse(_reminderDays.text.trim());
       if (parsed == null || parsed < 0) {
-        setState(() => _error = 'Enter a valid number of reminder days.');
+        setState(() => _error = t.financeRecurringInvalidReminder);
         return;
       }
       reminderDays = parsed;
@@ -493,6 +511,7 @@ class _RecurringEditorState extends State<_RecurringEditor> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final isExpense = _kind == TxnKind.expense;
     return Padding(
       padding: const EdgeInsets.all(22),
@@ -501,7 +520,7 @@ class _RecurringEditorState extends State<_RecurringEditor> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'New recurring entry',
+            t.financeRecurringNewEntry,
             style: TextStyle(
               color: luma.textPrimary,
               fontSize: 18,
@@ -510,49 +529,51 @@ class _RecurringEditorState extends State<_RecurringEditor> {
           ),
           const SizedBox(height: 16),
           LumaSegmentedTabs(
-            tabs: const ['Fixed cost', 'Fixed income'],
+            tabs: [t.financeRecurringFixedCost, t.financeRecurringFixedIncome],
             selectedIndex: isExpense ? 0 : 1,
             onSelect: (i) => setState(
               () => _kind = i == 0 ? TxnKind.expense : TxnKind.income,
             ),
           ),
           const SizedBox(height: 16),
-          _editorField(luma, 'Name', _name, hint: 'e.g. Spotify'),
+          _editorField(luma, t.commonName, _name, hint: t.financeRecurringNameHint),
           const SizedBox(height: 12),
           _editorField(
             luma,
-            'Amount',
+            t.commonAmount,
             _amount,
             hint: '0,00',
             prefix: '€ ',
             number: true,
           ),
           const SizedBox(height: 12),
-          _label(luma, 'Repeats'),
+          _label(luma, t.financeRecurringRepeats),
           _CadenceToggle(
             cadence: _cadence,
             onChanged: (c) => setState(() => _cadence = c),
           ),
           const SizedBox(height: 12),
-          _label(luma, 'First due date'),
+          _label(luma, t.financeRecurringFirstDue),
           _DateRow(
             date: _firstDue,
             onChanged: (d) => setState(() => _firstDue = d),
           ),
           const SizedBox(height: 12),
-          _label(luma, 'Pot (optional)'),
+          _label(luma, t.financeRecurringPotOptional),
           _SimpleDropdown<int?>(
             value: _potId,
-            hintNull: isExpense ? 'From main balance' : 'To main balance',
+            hintNull: isExpense
+                ? t.financeRecurringFromMain
+                : t.financeRecurringToMain,
             items: {for (final p in widget.pots) p.id: p.name},
             onChanged: (v) => setState(() => _potId = v),
           ),
           if (isExpense) ...[
             const SizedBox(height: 12),
-            _label(luma, 'Category (optional)'),
+            _label(luma, t.financeRecurringCategoryOptional),
             _SimpleDropdown<int?>(
               value: _categoryId,
-              hintNull: 'No category',
+              hintNull: t.financeRecurringNoCategory,
               items: {for (final c in widget.categories) c.id: c.name},
               onChanged: (v) => setState(() => _categoryId = v),
             ),
@@ -571,7 +592,7 @@ class _RecurringEditorState extends State<_RecurringEditor> {
                     ),
                     Expanded(
                       child: Text(
-                        'Treat as a bill/subscription — show it in "due soon"',
+                        t.financeRecurringTreatAsBill,
                         style: TextStyle(
                           color: luma.textSecondary,
                           fontSize: 13,
@@ -586,7 +607,7 @@ class _RecurringEditorState extends State<_RecurringEditor> {
               const SizedBox(height: 8),
               _editorField(
                 luma,
-                'Remind me this many days before it\'s due',
+                t.financeRecurringRemindDays,
                 _reminderDays,
                 hint: '7',
                 number: true,
@@ -598,7 +619,7 @@ class _RecurringEditorState extends State<_RecurringEditor> {
             Text(_error!, style: TextStyle(color: luma.danger, fontSize: 13)),
           ],
           const SizedBox(height: 20),
-          _editorActions(context, _save, 'Add'),
+          _editorActions(context, _save, t.commonAdd),
         ],
       ),
     );
@@ -647,19 +668,20 @@ class _AllocationEditorState extends State<_AllocationEditor> {
   }
 
   Future<void> _save() async {
+    final t = L.of(context);
     int valueCents = 0;
     int percentBps = 0;
     if (_mode == AllocMode.fixed) {
       final cents = parseToCents(_value.text);
       if (cents == null || cents <= 0) {
-        setState(() => _error = 'Enter a valid amount.');
+        setState(() => _error = t.financeRecurringEnterValidAmount);
         return;
       }
       valueCents = cents;
     } else {
       final pct = double.tryParse(_value.text.replaceAll(',', '.'));
       if (pct == null || pct <= 0 || pct > 100) {
-        setState(() => _error = 'Enter a percentage between 0 and 100.');
+        setState(() => _error = t.financeRecurringPercentRange);
         return;
       }
       percentBps = (pct * 100).round();
@@ -680,6 +702,7 @@ class _AllocationEditorState extends State<_AllocationEditor> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Padding(
       padding: const EdgeInsets.all(22),
       child: Column(
@@ -687,7 +710,7 @@ class _AllocationEditorState extends State<_AllocationEditor> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'New distribution rule',
+            t.financeRecurringNewRule,
             style: TextStyle(
               color: luma.textPrimary,
               fontSize: 18,
@@ -695,16 +718,16 @@ class _AllocationEditorState extends State<_AllocationEditor> {
             ),
           ),
           const SizedBox(height: 16),
-          _label(luma, 'Pot'),
+          _label(luma, t.financeRecurringPot),
           _SimpleDropdown<int>(
             value: _potId,
             items: {for (final p in widget.pots) p.id: p.name},
             onChanged: (v) => setState(() => _potId = v as int),
           ),
           const SizedBox(height: 12),
-          _label(luma, 'Amount type'),
+          _label(luma, t.financeRecurringAmountType),
           LumaSegmentedTabs(
-            tabs: const ['Fixed €', '% of balance'],
+            tabs: [t.financeRecurringFixedEuro, t.financeRecurringPercentOfBalance],
             selectedIndex: _mode == AllocMode.fixed ? 0 : 1,
             onSelect: (i) => setState(
               () => _mode = i == 0 ? AllocMode.fixed : AllocMode.percent,
@@ -713,20 +736,22 @@ class _AllocationEditorState extends State<_AllocationEditor> {
           const SizedBox(height: 12),
           _editorField(
             luma,
-            _mode == AllocMode.fixed ? 'Amount per period' : 'Percent',
+            _mode == AllocMode.fixed
+                ? t.financeRecurringAmountPerPeriod
+                : t.financeRecurringPercent,
             _value,
-            hint: _mode == AllocMode.fixed ? '0,00' : 'e.g. 25',
+            hint: _mode == AllocMode.fixed ? '0,00' : t.financeRecurringPercentHint,
             prefix: _mode == AllocMode.fixed ? '€ ' : null,
             number: true,
           ),
           const SizedBox(height: 12),
-          _label(luma, 'Repeats'),
+          _label(luma, t.financeRecurringRepeats),
           _CadenceToggle(
             cadence: _cadence,
             onChanged: (c) => setState(() => _cadence = c),
           ),
           const SizedBox(height: 12),
-          _label(luma, 'First run date'),
+          _label(luma, t.financeRecurringFirstRun),
           _DateRow(
             date: _firstDue,
             onChanged: (d) => setState(() => _firstDue = d),
@@ -736,7 +761,7 @@ class _AllocationEditorState extends State<_AllocationEditor> {
             Text(_error!, style: TextStyle(color: luma.danger, fontSize: 13)),
           ],
           const SizedBox(height: 20),
-          _editorActions(context, _save, 'Add rule'),
+          _editorActions(context, _save, t.financeRecurringAddRule),
         ],
       ),
     );
@@ -805,7 +830,10 @@ Widget _editorActions(BuildContext context, VoidCallback onSave, String label) {
   return Row(
     mainAxisAlignment: MainAxisAlignment.end,
     children: [
-      LumaGhostButton(label: 'Cancel', onTap: () => Navigator.pop(context)),
+      LumaGhostButton(
+        label: L.of(context).commonCancel,
+        onTap: () => Navigator.pop(context),
+      ),
       const SizedBox(width: 10),
       LumaPrimaryButton(label: label, icon: Icons.check_rounded, onTap: onSave),
     ],
@@ -819,8 +847,9 @@ class _CadenceToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return LumaSegmentedTabs(
-      tabs: const ['Weekly', 'Monthly'],
+      tabs: [t.financeRecurringWeekly, t.financeRecurringMonthly],
       selectedIndex: cadence == Cadence.weekly ? 0 : 1,
       onSelect: (i) => onChanged(i == 0 ? Cadence.weekly : Cadence.monthly),
     );
@@ -861,7 +890,7 @@ class _DateRow extends StatelessWidget {
               color: luma.textSecondary,
             ),
             const SizedBox(width: 10),
-            Text(_shortDate(date), style: TextStyle(color: luma.textPrimary)),
+            Text(shortDate(date), style: TextStyle(color: luma.textPrimary)),
           ],
         ),
       ),
@@ -916,22 +945,4 @@ class _SimpleDropdown<T> extends StatelessWidget {
       ),
     );
   }
-}
-
-String _shortDate(DateTime d) {
-  const months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-  return '${d.day} ${months[d.month - 1]}';
 }

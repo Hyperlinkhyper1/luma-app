@@ -5,6 +5,8 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
+
 /// One person the clustering has found — not identified, just grouped: a
 /// running average of every face fingerprint assigned to it, a count, and
 /// whatever name the user has given it.
@@ -37,7 +39,7 @@ class PersonCluster {
 
   String get displayName => (name != null && name!.trim().isNotEmpty)
       ? name!.trim()
-      : 'Person $id';
+      : currentL.galleryPersonDefaultName(id);
 
   PersonCluster copyWith({
     List<double>? centroid,

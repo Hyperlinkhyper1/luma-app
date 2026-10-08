@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'network_details.dart';
 import 'speed_test_engine.dart';
@@ -157,6 +158,7 @@ class _GaugeSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     return LumaCard(
       child: Column(
@@ -175,7 +177,7 @@ class _GaugeSection extends StatelessWidget {
                   ),
                   size: const Size(240, 240),
                 ),
-                _gaugeCenter(luma),
+                _gaugeCenter(luma, t),
               ],
             ),
           ),
@@ -189,23 +191,23 @@ class _GaugeSection extends StatelessWidget {
           const SizedBox(height: 16),
           if (!testing)
             LumaPrimaryButton(
-              label: error ? 'Try Again' : 'Start Test',
+              label: error ? t.speedTestTryAgain : t.speedTestStart,
               icon: Icons.speed_rounded,
               onTap: onStart,
               expand: true,
             )
           else
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
               child: Text(
-                'Testing — please wait…',
-                style: TextStyle(fontSize: 13),
+                t.speedTestTesting,
+                style: const TextStyle(fontSize: 13),
               ),
             ),
           if (error) ...[
             const SizedBox(height: 10),
             Text(
-              'Test failed. Check your connection and try again.',
+              t.speedTestFailed,
               style: TextStyle(color: luma.danger, fontSize: 13),
               textAlign: TextAlign.center,
             ),
@@ -238,7 +240,7 @@ class _GaugeSection extends StatelessWidget {
     }
   }
 
-  Widget _gaugeCenter(LumaPalette luma) {
+  Widget _gaugeCenter(LumaPalette luma, L t) {
     if (progress == null) {
       return Column(
         mainAxisSize: MainAxisSize.min,
@@ -246,7 +248,7 @@ class _GaugeSection extends StatelessWidget {
           Icon(Icons.speed_rounded, size: 40, color: luma.textMuted),
           const SizedBox(height: 8),
           Text(
-            'Ready',
+            t.speedTestReady,
             style: TextStyle(
               color: luma.textMuted,
               fontSize: 15,
@@ -272,7 +274,7 @@ class _GaugeSection extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'Pinging…',
+              t.speedTestPinging,
               style: TextStyle(
                 color: luma.textMuted,
                 fontSize: 13,
@@ -305,8 +307,8 @@ class _GaugeSection extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               progress!.phase == SpeedTestPhase.download
-                  ? 'Downloading'
-                  : 'Uploading',
+                  ? t.speedTestDownloading
+                  : t.speedTestUploading,
               style: TextStyle(
                 color: _gaugeColor(luma),
                 fontSize: 12,
@@ -322,7 +324,7 @@ class _GaugeSection extends StatelessWidget {
             Icon(Icons.check_circle_rounded, size: 36, color: luma.success),
             const SizedBox(height: 8),
             Text(
-              'Done',
+              t.commonDone,
               style: TextStyle(
                 color: luma.textPrimary,
                 fontSize: 16,
@@ -344,6 +346,7 @@ class _NetworkChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final details = network;
 
     final color = switch (details?.kind) {
@@ -375,7 +378,7 @@ class _NetworkChip extends StatelessWidget {
                 const SizedBox(width: 7),
                 Flexible(
                   child: Text(
-                    details?.label ?? 'Checking network…',
+                    details?.label ?? t.speedTestCheckingNetwork,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -399,7 +402,9 @@ class _NetworkChip extends StatelessWidget {
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
             child: Text(
-              details.kind == NetworkKind.wifi ? 'Show name' : 'Show details',
+              details.kind == NetworkKind.wifi
+                  ? t.speedTestShowName
+                  : t.speedTestShowDetails,
               style: TextStyle(
                 color: luma.accent,
                 fontSize: 12,
@@ -421,10 +426,11 @@ class _PhaseDots extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final phases = [
-      ('Ping', SpeedTestPhase.latency),
-      ('Download', SpeedTestPhase.download),
-      ('Upload', SpeedTestPhase.upload),
+      (t.speedTestPing, SpeedTestPhase.latency),
+      (t.commonDownload, SpeedTestPhase.download),
+      (t.commonUpload, SpeedTestPhase.upload),
     ];
 
     final currentPhase = progress?.phase;
@@ -499,6 +505,7 @@ class _ResultRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final ping = progress?.latencyMs;
     final down = progress?.downloadMbps;
     final up = progress?.uploadMbps;
@@ -508,7 +515,7 @@ class _ResultRow extends StatelessWidget {
         Expanded(
           child: _ResultCard(
             icon: Icons.signal_cellular_alt_rounded,
-            label: 'Ping',
+            label: t.speedTestPing,
             value: ping != null ? '$ping ms' : '—',
             color: luma.textSecondary,
             luma: luma,
@@ -518,7 +525,7 @@ class _ResultRow extends StatelessWidget {
         Expanded(
           child: _ResultCard(
             icon: Icons.download_rounded,
-            label: 'Download',
+            label: t.commonDownload,
             value: down != null ? '${down.toStringAsFixed(1)} Mbps' : '—',
             color: luma.accent,
             luma: luma,
@@ -528,7 +535,7 @@ class _ResultRow extends StatelessWidget {
         Expanded(
           child: _ResultCard(
             icon: Icons.upload_rounded,
-            label: 'Upload',
+            label: t.commonUpload,
             value: up != null ? '${up.toStringAsFixed(1)} Mbps' : '—',
             color: luma.success,
             luma: luma,
@@ -598,6 +605,7 @@ class _HistorySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -605,7 +613,7 @@ class _HistorySection extends StatelessWidget {
         Row(
           children: [
             Text(
-              'History',
+              t.commonHistory,
               style: TextStyle(
                 color: luma.textPrimary,
                 fontSize: 14,
@@ -620,7 +628,7 @@ class _HistorySection extends StatelessWidget {
                 return TextButton(
                   onPressed: () => _confirmClear(context),
                   child: Text(
-                    'Clear all',
+                    t.speedTestClearAll,
                     style: TextStyle(
                       color: luma.danger,
                       fontSize: 12,
@@ -642,9 +650,8 @@ class _HistorySection extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: LumaEmptyState(
                   icon: Icons.history_rounded,
-                  title: 'No tests yet',
-                  subtitle:
-                      'Run your first speed test to start tracking your connection over time.',
+                  title: t.speedTestNoTests,
+                  subtitle: t.speedTestNoTestsSubtitle,
                 ),
               );
             }
@@ -662,7 +669,7 @@ class _HistorySection extends StatelessWidget {
                       _HistoryLabel(
                         luma: luma,
                         color: luma.accent,
-                        label: 'Download speed (Mbps)',
+                        label: t.speedTestDownloadHistory,
                       ),
                       const SizedBox(height: 8),
                       SizedBox(
@@ -680,7 +687,7 @@ class _HistorySection extends StatelessWidget {
                       _HistoryLabel(
                         luma: luma,
                         color: luma.success,
-                        label: 'Upload speed (Mbps)',
+                        label: t.speedTestUploadHistory,
                       ),
                       const SizedBox(height: 8),
                       SizedBox(
@@ -712,17 +719,18 @@ class _HistorySection extends StatelessWidget {
 
   void _confirmClear(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: luma.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Clear history?'),
-        content: const Text('All past speed test results will be deleted.'),
+        title: Text(t.speedTestClearHistoryTitle),
+        content: Text(t.speedTestClearHistoryContent),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel',
+            child: Text(t.commonCancel,
                 style: TextStyle(color: luma.textSecondary)),
           ),
           TextButton(
@@ -730,7 +738,7 @@ class _HistorySection extends StatelessWidget {
               repo.clearHistory();
               Navigator.pop(context);
             },
-            child: Text('Clear',
+            child: Text(t.commonClear,
                 style: TextStyle(
                     color: luma.danger, fontWeight: FontWeight.w700)),
           ),
@@ -787,6 +795,7 @@ class _HistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return LumaCard(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
@@ -860,7 +869,7 @@ class _HistoryCard extends StatelessWidget {
             icon: Icon(Icons.delete_outline_rounded,
                 color: luma.textMuted, size: 18),
             onPressed: onDelete,
-            tooltip: 'Delete',
+            tooltip: t.commonDelete,
           ),
         ],
       ),

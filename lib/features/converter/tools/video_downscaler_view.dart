@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/luma_theme.dart';
 import '../converter_widgets.dart';
 import '../file_saver.dart';
@@ -85,8 +86,7 @@ class _VideoDownscalerViewState extends State<VideoDownscalerView> {
     final file = result.files.first;
     final path = file.path;
     if (path == null) {
-      setState(() => _error =
-          'Could not read the file path — video downscaling needs the desktop app.');
+      setState(() => _error = L.of(context).vidDownNoPath);
       return;
     }
 
@@ -109,10 +109,7 @@ class _VideoDownscalerViewState extends State<VideoDownscalerView> {
     setState(() {
       _probing = false;
       _info = info;
-      _error = info.ok
-          ? null
-          : 'Could not read this video — it may be unsupported or ffmpeg is '
-              'missing.';
+      _error = info.ok ? null : L.of(context).vidDownProbeFailed;
     });
   }
 
@@ -213,7 +210,7 @@ class _VideoDownscalerViewState extends State<VideoDownscalerView> {
       if (!mounted || gen != _gen) return;
       setState(() {
         _estimating = false;
-        _error = 'Could not estimate size: $e';
+        _error = L.of(context).vidDownEstimateFailed('$e');
       });
     }
   }
@@ -251,7 +248,7 @@ class _VideoDownscalerViewState extends State<VideoDownscalerView> {
       if (!mounted) return;
       setState(() {
         _applying = false;
-        _error = 'Something went wrong: $e';
+        _error = L.of(context).commonErrorDetail('$e');
       });
     }
   }
@@ -273,11 +270,12 @@ class _VideoDownscalerViewState extends State<VideoDownscalerView> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final info = _info;
     return ToolScaffold(
       icon: Icons.movie_filter_outlined,
-      title: 'Video downscaler',
-      subtitle: 'Compress & shrink video with stackable optimizations',
+      title: t.converterHubVideoDownscalerTitle,
+      subtitle: t.vidDownSubtitle,
       onBack: widget.onBack,
       children: [
         if (!kIsWeb && !_ffmpegReady) ...[
@@ -290,7 +288,7 @@ class _VideoDownscalerViewState extends State<VideoDownscalerView> {
           ConverterDropZone(
             onTap: _pickFile,
             icon: Icons.video_settings_rounded,
-            title: 'Tap to pick a video',
+            title: t.vidDownPickPrompt,
             subtitle: 'MP4 · MOV · MKV · WEBM · AVI',
           )
         else
@@ -325,6 +323,7 @@ class _VideoDownscalerViewState extends State<VideoDownscalerView> {
             applying: _applying,
             outputLabel: _params.outputExtension.toUpperCase(),
             onApply: _params.anySelected ? _apply : null,
+            t: t,
           ),
         ],
         if (_error != null) ...[
@@ -341,8 +340,8 @@ class _VideoDownscalerViewState extends State<VideoDownscalerView> {
             icon: Icons.check_circle_outline_rounded,
             color: luma.success,
             message: _result!.summary,
-            trailing:
-                ConverterTextButton(label: 'Shrink another', onTap: _reset),
+            trailing: ConverterTextButton(
+                label: t.vidDownShrinkAnother, onTap: _reset),
           ),
         ],
       ],
@@ -357,12 +356,13 @@ class _VideoOptionsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return ConverterCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Optimizations',
+            t.downscalerOptimizations,
             style: TextStyle(
               color: luma.textPrimary,
               fontSize: 15,
@@ -371,7 +371,7 @@ class _VideoOptionsCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Stack any of these. Hover any option for details.',
+            t.vidDownOptimizationsHint,
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
           const SizedBox(height: 8),
@@ -393,7 +393,8 @@ class _VideoOptionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final meta = _videoMeta[option]!;
+    final t = L.of(context);
+    final meta = _metaFor(t, option);
     final enabled = view._enabledFor(option);
     final checked = view._isChecked(option) && enabled;
     final subtitle =
@@ -456,10 +457,11 @@ class _VideoOptionRow extends StatelessWidget {
 
   Widget _control(BuildContext context) {
     final p = view._params;
+    final t = L.of(context);
     switch (option) {
       case VdOption.resize:
         return _ChoiceRow(
-          label: 'Max height',
+          label: t.vidDownMaxHeight,
           options: [
             for (final h in VideoDownscalerService.heightStops) '${h}p',
           ],
@@ -475,7 +477,7 @@ class _VideoOptionRow extends StatelessWidget {
         );
       case VdOption.fps:
         return _ChoiceRow(
-          label: 'Frame rate',
+          label: t.vidDownFrameRate,
           options: [
             for (final f in VideoDownscalerService.fpsStops) '$f fps',
           ],
@@ -486,7 +488,7 @@ class _VideoOptionRow extends StatelessWidget {
         );
       case VdOption.reduceAudio:
         return _ChoiceRow(
-          label: 'Audio',
+          label: t.vidDownAudio,
           options: [
             for (final a in VideoDownscalerService.audioStops) '$a kbps',
           ],
@@ -510,6 +512,7 @@ class _VideoEstimateCard extends StatelessWidget {
     required this.applying,
     required this.outputLabel,
     required this.onApply,
+    required this.t,
   });
 
   final int originalSize;
@@ -519,6 +522,7 @@ class _VideoEstimateCard extends StatelessWidget {
   final bool applying;
   final String outputLabel;
   final VoidCallback? onApply;
+  final L t;
 
   @override
   Widget build(BuildContext context) {
@@ -537,7 +541,7 @@ class _VideoEstimateCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _SizeColumn(
-                  label: 'Original',
+                  label: t.downscalerOriginal,
                   value: formatBytes(originalSize),
                   color: luma.textPrimary,
                 ),
@@ -546,7 +550,7 @@ class _VideoEstimateCard extends StatelessWidget {
                   color: luma.textSecondary, size: 20),
               Expanded(
                 child: _SizeColumn(
-                  label: 'Estimated ($outputLabel)',
+                  label: t.downscalerEstimated(outputLabel),
                   value: !anySelected
                       ? '—'
                       : (estimating || estimatedSize == null
@@ -580,8 +584,11 @@ class _VideoEstimateCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   Text(
                     pct > 0
-                        ? '≈ ${pct.toStringAsFixed(0)}% smaller (saves ${formatBytes(saved!)})'
-                        : '≈ ${(-pct).toStringAsFixed(0)}% larger than the original',
+                        ? t.vidDownSmaller(
+                            pct.toStringAsFixed(0),
+                            formatBytes(saved!),
+                          )
+                        : t.vidDownLarger((-pct).toStringAsFixed(0)),
                     style: TextStyle(
                       color: pct > 0 ? luma.success : luma.danger,
                       fontSize: 13,
@@ -595,14 +602,13 @@ class _VideoEstimateCard extends StatelessWidget {
           if (anySelected) ...[
             const SizedBox(height: 8),
             Text(
-              'Estimated from a ${_sampleSeconds.toStringAsFixed(0)}s sample — '
-              'the final size may vary.',
+              t.vidDownSampleNote(_sampleSeconds.toStringAsFixed(0)),
               style: TextStyle(color: luma.textMuted, fontSize: 11),
             ),
           ],
           const SizedBox(height: 16),
           ConverterPrimaryButton(
-            label: kIsWeb ? 'Shrink & download' : 'Shrink & save',
+            label: kIsWeb ? t.vidDownShrinkDownload : t.vidDownShrinkSave,
             icon: Icons.compress_rounded,
             loading: applying,
             onTap: onApply,
@@ -611,7 +617,7 @@ class _VideoEstimateCard extends StatelessWidget {
             const SizedBox(height: 8),
             Center(
               child: Text(
-                'Select at least one optimization',
+                t.downscalerSelectOne,
                 style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
             ),
@@ -789,16 +795,17 @@ class _CrfSlider extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     // 18 = high quality / larger, 32 = small / lower quality.
+    final t = L.of(context);
     final word = crf <= 22
-        ? 'High quality'
-        : (crf <= 27 ? 'Balanced' : 'Smallest');
+        ? t.vidDownCrfHigh
+        : (crf <= 27 ? t.convMediaQualityBalanced : t.vidDownCrfSmallest);
     return Padding(
       padding: const EdgeInsets.only(left: 34, top: 6),
       child: Row(
         children: [
           SizedBox(
             width: 78,
-            child: Text('Quality',
+            child: Text(t.convMediaQuality,
                 style: TextStyle(color: luma.textSecondary, fontSize: 12)),
           ),
           Expanded(
@@ -813,7 +820,7 @@ class _CrfSlider extends StatelessWidget {
           SizedBox(
             width: 96,
             child: Text(
-              '$word · CRF $crf',
+              t.vidDownCrfLabel(word, crf),
               textAlign: TextAlign.end,
               style: TextStyle(
                 color: luma.textPrimary,
@@ -835,47 +842,42 @@ class _VideoMeta {
   final String? disabledNote;
 }
 
-const _videoMeta = <VdOption, _VideoMeta>{
-  VdOption.resize: _VideoMeta(
-    'Resize resolution',
-    'Cap the frame height (e.g. 1080p → 720p), keeping aspect ratio. The '
-        'biggest size saver for high-resolution video.',
-  ),
-  VdOption.quality: _VideoMeta(
-    'Quality (CRF)',
-    'The main compression dial. Lower keeps more detail; higher makes a much '
-        'smaller file.',
-  ),
-  VdOption.fps: _VideoMeta(
-    'Frame rate cap',
-    'Limit frames per second (e.g. 60 → 30). Invisible for most footage and '
-        'cuts size noticeably.',
-  ),
-  VdOption.h265: _VideoMeta(
-    'Re-encode to H.265',
-    'Use the newer HEVC codec — roughly 40–50% smaller than H.264 at the same '
-        'quality, but slower to encode and less compatible with old players.',
-  ),
-  VdOption.reduceAudio: _VideoMeta(
-    'Reduce audio bitrate',
-    'Re-encode the soundtrack at a lower bitrate (e.g. 96 kbps).',
-    'Unavailable — this video has no audio track.',
-  ),
-  VdOption.removeAudio: _VideoMeta(
-    'Remove audio track',
-    'Drop audio entirely — ideal for screen recordings and silent clips.',
-    'Unavailable — this video has no audio track.',
-  ),
-  VdOption.stripMetadata: _VideoMeta(
-    'Strip metadata',
-    'Remove embedded metadata and chapter markers. No visible change.',
-  ),
-  VdOption.webm: _VideoMeta(
-    'Convert to WebM (VP9)',
-    'Re-encode to the VP9/WebM codec — often smaller than H.264 and great for '
-        'the web. Slower to encode; outputs a .webm file.',
-  ),
-};
+_VideoMeta _metaFor(L t, VdOption option) => switch (option) {
+      VdOption.resize => _VideoMeta(
+          t.vidDownResizeTitle,
+          t.vidDownResizeBody,
+        ),
+      VdOption.quality => _VideoMeta(
+          t.vidDownQualityTitle,
+          t.vidDownQualityBody,
+        ),
+      VdOption.fps => _VideoMeta(
+          t.vidDownFpsTitle,
+          t.vidDownFpsBody,
+        ),
+      VdOption.h265 => _VideoMeta(
+          t.vidDownH265Title,
+          t.vidDownH265Body,
+        ),
+      VdOption.reduceAudio => _VideoMeta(
+          t.vidDownAudioBitrateTitle,
+          t.vidDownAudioBitrateBody,
+          t.vidDownNoAudio,
+        ),
+      VdOption.removeAudio => _VideoMeta(
+          t.vidDownRemoveAudioTitle,
+          t.vidDownRemoveAudioBody,
+          t.vidDownNoAudio,
+        ),
+      VdOption.stripMetadata => _VideoMeta(
+          t.vidDownStripTitle,
+          t.vidDownStripBody,
+        ),
+      VdOption.webm => _VideoMeta(
+          t.vidDownWebmTitle,
+          t.vidDownWebmBody,
+        ),
+    };
 
 String _stripExtension(String name) {
   final dot = name.lastIndexOf('.');

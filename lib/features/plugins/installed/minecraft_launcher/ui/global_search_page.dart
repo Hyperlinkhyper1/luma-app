@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/minecraft_launcher_database.dart';
 import '../logic/modrinth_api_client.dart';
@@ -79,6 +80,7 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
   Widget build(BuildContext context) {
     final repository = MinecraftLauncherScope.of(context);
     final luma = context.luma;
+    final t = L.of(context);
     return Scaffold(
       backgroundColor: luma.background,
       appBar: AppBar(
@@ -87,8 +89,8 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
         title: TextField(
           controller: _controller,
           autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Search instances and mods…',
+          decoration: InputDecoration(
+            hintText: t.minecraftLauncherSearchHint,
             border: InputBorder.none,
           ),
           onChanged: _onChanged,
@@ -108,7 +110,7 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Instances', style: TextStyle(color: luma.textSecondary, fontWeight: FontWeight.w700)),
+                  Text(t.minecraftLauncherInstances, style: TextStyle(color: luma.textSecondary, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 8),
                   for (final instance in instances)
                     Padding(
@@ -144,7 +146,7 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
             },
           ),
           if (_query.isNotEmpty) ...[
-            Text('Mods', style: TextStyle(color: luma.textSecondary, fontWeight: FontWeight.w700)),
+            Text(t.minecraftLauncherMods, style: TextStyle(color: luma.textSecondary, fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             if (_searchingMods)
               const Padding(
@@ -152,7 +154,7 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
                 child: Center(child: CircularProgressIndicator(strokeWidth: 2.4)),
               )
             else if (_modHits.isEmpty)
-              Text('No mods found.', style: TextStyle(color: luma.textMuted, fontSize: 13))
+              Text(t.minecraftLauncherNoModsFound, style: TextStyle(color: luma.textMuted, fontSize: 13))
             else
               for (final hit in _modHits)
                 Padding(

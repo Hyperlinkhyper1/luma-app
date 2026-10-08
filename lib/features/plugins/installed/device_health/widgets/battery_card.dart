@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../device_health_models.dart';
 import '../device_health_scope.dart';
@@ -14,6 +15,7 @@ class BatteryCard extends StatelessWidget {
     final state = repo.battery;
     final info = state.data;
     final luma = context.luma;
+    final t = L.of(context);
 
     HealthStatus? status;
     if (info != null && info.present) {
@@ -31,16 +33,16 @@ class BatteryCard extends StatelessWidget {
 
     return CategoryCard(
       icon: Icons.battery_std_rounded,
-      title: 'Battery',
+      title: t.deviceHealthCardBatteryTitle,
       status: status,
       loading: state.loading,
       error: state.error,
       onCheck: () => repo.refreshAmbient(),
       child: info == null
-          ? Text('Not checked yet.', style: TextStyle(color: luma.textMuted, fontSize: 13))
+          ? Text(t.deviceHealthCardNotCheckedYet, style: TextStyle(color: luma.textMuted, fontSize: 13))
           : !info.present
               ? Text(
-                  'No battery detected — this looks like a desktop.',
+                  t.deviceHealthCardNoBattery,
                   style: TextStyle(color: luma.textMuted, fontSize: 13),
                 )
               : Column(
@@ -54,8 +56,8 @@ class BatteryCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       info.wearPercent != null
-                          ? 'Battery health: ${(100 - info.wearPercent!).round()}% of design capacity remains.'
-                          : "This battery doesn't report design/full-charge capacity, so wear can't be estimated.",
+                          ? t.deviceHealthCardBatteryHealth((100 - info.wearPercent!).round())
+                          : t.deviceHealthCardBatteryNoWearData,
                       style: TextStyle(color: luma.textSecondary, fontSize: 13),
                     ),
                   ],

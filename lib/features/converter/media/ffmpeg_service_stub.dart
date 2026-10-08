@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import '../../../l10n/current_l.dart';
+
 /// Raised when ffmpeg is missing or a transcode fails.
 class FfmpegException implements Exception {
   const FfmpegException(this.message);
@@ -54,9 +56,7 @@ class Ffmpeg {
     required String outputExtension,
     required List<String> args,
   }) {
-    throw const FfmpegException(
-      'Audio and video conversion is only available in the desktop app.',
-    );
+    throw FfmpegException(currentL.ffmpegAudioVideoDesktopOnly);
   }
 
   static Future<VideoInfo> probeVideo(String inputPath) async =>
@@ -69,9 +69,7 @@ class Ffmpeg {
     required double startSeconds,
     required double sampleSeconds,
   }) {
-    throw const FfmpegException(
-      'Video conversion is only available in the desktop app.',
-    );
+    throw FfmpegException(currentL.ffmpegVideoDesktopOnly);
   }
 
   static Future<Uint8List> transcodePath({
@@ -79,8 +77,6 @@ class Ffmpeg {
     required List<String> args,
     required String outputExtension,
   }) {
-    throw const FfmpegException(
-      'Video conversion is only available in the desktop app.',
-    );
+    throw FfmpegException(currentL.ffmpegVideoDesktopOnly);
   }
 }

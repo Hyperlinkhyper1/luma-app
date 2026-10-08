@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 
+import '../../../l10n/current_l.dart';
+
 /// A hand-rolled NBT (Named Binary Tag) codec covering both the big-endian
 /// Java flavour and the little-endian Bedrock flavour, in both directions.
 ///
@@ -178,7 +180,7 @@ class NamedTag {
 
   NbtCompound get asCompound => tag is NbtCompound
       ? tag as NbtCompound
-      : throw const FormatException('The NBT root is not a compound tag.');
+      : throw FormatException(currentL.schematicNbtNotCompoundRoot);
 }
 
 /// How an NBT document was framed on disk, so a re-write can match it.
@@ -244,9 +246,7 @@ class _NbtReader {
   NamedTag readRoot() {
     final type = _u8();
     if (type != 10) {
-      throw const FormatException(
-        'This does not look like an NBT file: the root is not a compound tag.',
-      );
+      throw FormatException(currentL.schematicNbtNotNbt);
     }
     final name = _string();
     return NamedTag(name, _compoundBody());
@@ -315,7 +315,7 @@ class _NbtReader {
         }
         return NbtLongArray(longs);
       default:
-        throw FormatException('Unknown NBT tag type $type at byte $_pos.');
+        throw FormatException(currentL.schematicNbtUnknownTag(type, _pos));
     }
   }
 
@@ -323,10 +323,7 @@ class _NbtReader {
   /// list before the read fails, so sanity-check it against what is left.
   void _guardLength(int len, int elementBytes) {
     if (len < 0 || _pos + len * elementBytes > _data.lengthInBytes) {
-      throw FormatException(
-        'The file is truncated or not valid NBT (bad length $len at byte '
-        '$_pos).',
-      );
+      throw FormatException(currentL.schematicNbtTruncated(len, _pos));
     }
   }
 

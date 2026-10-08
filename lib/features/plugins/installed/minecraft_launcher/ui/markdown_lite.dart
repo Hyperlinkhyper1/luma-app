@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 
 /// A small Markdown renderer for Modrinth project descriptions.
@@ -29,7 +30,7 @@ class MarkdownLite extends StatelessWidget {
     final blocks = _parse(_normalise(source));
     if (blocks.isEmpty) {
       return Text(
-        'This project has no description.',
+        L.of(context).mcLauncherNoDescription,
         style: TextStyle(color: luma.textMuted, fontSize: 13),
       );
     }

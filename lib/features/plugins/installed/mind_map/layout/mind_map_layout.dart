@@ -1,5 +1,7 @@
 import 'dart:ui';
 
+import '../../../../../l10n/app_localizations.dart';
+
 /// Which way a map's branches grow away from the root.
 enum MindMapDirection {
   /// Classic mind map: everything flows to the right of the root.
@@ -13,10 +15,10 @@ enum MindMapDirection {
 }
 
 extension MindMapDirectionLabel on MindMapDirection {
-  String get label => switch (this) {
-        MindMapDirection.right => 'Right',
-        MindMapDirection.both => 'Both sides',
-        MindMapDirection.down => 'Downward',
+  String label(L t) => switch (this) {
+        MindMapDirection.right => t.mindMapDirectionRight,
+        MindMapDirection.both => t.mindMapDirectionBoth,
+        MindMapDirection.down => t.mindMapDirectionDown,
       };
 }
 

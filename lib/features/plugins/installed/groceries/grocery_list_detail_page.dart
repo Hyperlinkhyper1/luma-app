@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'groceries_repository.dart';
 import 'groceries_scope.dart';
@@ -23,6 +24,7 @@ class GroceryListDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final repo = GroceriesScope.of(context);
 
     return Column(
@@ -33,14 +35,14 @@ class GroceryListDetailPage extends StatelessWidget {
             children: [
               IconButton(
                 icon: Icon(Icons.arrow_back_rounded, color: luma.textPrimary),
-                tooltip: 'Back to lists',
+                tooltip: t.groceriesBackToLists,
                 onPressed: onBack,
               ),
               Expanded(
                 child: StreamData<String?>(
                   stream: repo.watchListName(listId),
                   builder: (context, name) => Text(
-                    name ?? 'List',
+                    name ?? t.groceriesListFallbackTitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -53,7 +55,7 @@ class GroceryListDetailPage extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               LumaPrimaryButton(
-                label: 'Add products',
+                label: t.groceriesAddProducts,
                 icon: Icons.search_rounded,
                 onTap: onOpenSearch,
               ),
@@ -68,11 +70,10 @@ class GroceryListDetailPage extends StatelessWidget {
                 return Center(
                   child: LumaEmptyState(
                     icon: Icons.shopping_basket_outlined,
-                    title: 'No items yet',
-                    subtitle:
-                        'Search products to add them to this list.',
+                    title: t.groceriesNoItemsTitle,
+                    subtitle: t.groceriesNoItemsSubtitle,
                     action: LumaPrimaryButton(
-                      label: 'Add products',
+                      label: t.groceriesAddProducts,
                       icon: Icons.search_rounded,
                       onTap: onOpenSearch,
                     ),
@@ -95,7 +96,7 @@ class GroceryListDetailPage extends StatelessWidget {
                     child: Row(
                       children: [
                         Text(
-                          'Total',
+                          t.commonTotal,
                           style: TextStyle(
                             color: luma.textPrimary,
                             fontSize: 15,
@@ -146,12 +147,12 @@ List<_MarketGroup> _groupByMarket(List<GroceryListItemRecord> items) {
 }
 
 Map<String, List<GroceryListItemRecord>> _groupByCategory(
-    List<GroceryListItemRecord> items) {
+    List<GroceryListItemRecord> items, String otherLabel) {
   final map = <String, List<GroceryListItemRecord>>{};
   for (final item in items) {
     final key = (item.category != null && item.category!.trim().isNotEmpty)
         ? item.category!.trim()
-        : 'Other';
+        : otherLabel;
     map.putIfAbsent(key, () => []).add(item);
   }
   return map;
@@ -166,8 +167,9 @@ class _MarketSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final color = colorForMarket(group.marketSlug, luma);
-    final categories = _groupByCategory(group.items);
+    final categories = _groupByCategory(group.items, t.commonOther);
     final categoryKeys = categories.keys.toList()..sort();
 
     return LumaCard(
@@ -193,7 +195,7 @@ class _MarketSection extends StatelessWidget {
                 ),
               ),
               Text(
-                '${group.items.length} item${group.items.length == 1 ? '' : 's'}',
+                t.groceriesItemCount(group.items.length),
                 style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
               const SizedBox(width: 10),
@@ -239,6 +241,7 @@ class _ItemRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -297,7 +300,7 @@ class _ItemRow extends StatelessWidget {
         ),
         IconButton(
           icon: Icon(Icons.close_rounded, size: 18, color: luma.textMuted),
-          tooltip: 'Remove',
+          tooltip: t.commonRemove,
           onPressed: () => repo.removeItem(item),
         ),
       ],

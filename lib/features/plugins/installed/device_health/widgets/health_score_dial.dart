@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../device_health_models.dart';
 import 'status_pill.dart';
@@ -18,6 +19,7 @@ class HealthScoreDial extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final color = statusColor(context, score.status);
     final known = score.checkedCategories > 0;
     return SizedBox(
@@ -44,7 +46,7 @@ class HealthScoreDial extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                known ? statusLabel(score.status) : 'Not checked',
+                known ? statusLabel(t, score.status) : t.deviceHealthStatusNotChecked,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,

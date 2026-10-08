@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../family/family_repository.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/luma_theme.dart';
 
 /// Prompts for an email address and sends a family invite. Returns true if
@@ -38,7 +39,7 @@ class _FamilyInviteDialogState extends State<_FamilyInviteDialog> {
   Future<void> _submit() async {
     final email = _controller.text.trim();
     if (email.isEmpty || !email.contains('@')) {
-      setState(() => _error = 'Enter a valid email address.');
+      setState(() => _error = L.of(context).familyInviteInvalidEmail);
       return;
     }
     setState(() {
@@ -60,11 +61,12 @@ class _FamilyInviteDialogState extends State<_FamilyInviteDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return AlertDialog(
       backgroundColor: luma.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text(
-        'Invite by email',
+        t.familyInviteTitle,
         style: TextStyle(
             color: luma.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
       ),
@@ -73,8 +75,7 @@ class _FamilyInviteDialogState extends State<_FamilyInviteDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'They\'ll see the invite in their inbox (top-right icon) the '
-            'next time they open Luma.',
+            t.familyInviteInfo,
             style: TextStyle(color: luma.textMuted, fontSize: 13, height: 1.4),
           ),
           const SizedBox(height: 16),
@@ -113,7 +114,8 @@ class _FamilyInviteDialogState extends State<_FamilyInviteDialog> {
       actions: [
         TextButton(
           onPressed: _sending ? null : () => Navigator.of(context).pop(false),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonCancel,
+              style: TextStyle(color: luma.textSecondary)),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
@@ -128,7 +130,7 @@ class _FamilyInviteDialogState extends State<_FamilyInviteDialog> {
                   child: CircularProgressIndicator(
                       strokeWidth: 2, color: luma.onAccent),
                 )
-              : const Text('Send invite'),
+              : Text(t.familyInviteSend),
         ),
       ],
     );

@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../settings/settings_scope.dart';
 import '../../theme/luma_theme.dart';
 import 'world_map_data.dart';
@@ -56,6 +56,7 @@ class _FullscreenMapPageState extends State<FullscreenMapPage> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final settings = SettingsScope.of(context);
 
     return Scaffold(
@@ -95,7 +96,7 @@ class _FullscreenMapPageState extends State<FullscreenMapPage> {
                       children: [
                         _OverlayButton(
                           icon: Icons.close_rounded,
-                          tooltip: 'Close',
+                          tooltip: t.commonClose,
                           onTap: () => Navigator.of(context).pop(),
                         ),
                         const SizedBox(width: 10),
@@ -106,7 +107,7 @@ class _FullscreenMapPageState extends State<FullscreenMapPage> {
                         const Spacer(),
                         _OverlayButton(
                           icon: Icons.restart_alt_rounded,
-                          tooltip: 'Reset zoom',
+                          tooltip: t.travelResetZoom,
                           onTap: () => _view.value = Matrix4.identity(),
                         ),
                       ],
@@ -163,6 +164,7 @@ class _CountPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
@@ -171,7 +173,7 @@ class _CountPill extends StatelessWidget {
         border: Border.all(color: luma.border),
       ),
       child: Text(
-        '$visited of $total visited',
+        t.travelFullscreenCount(visited, total),
         style: TextStyle(
           color: luma.textSecondary,
           fontSize: 12,

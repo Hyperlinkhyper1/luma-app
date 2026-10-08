@@ -1,12 +1,12 @@
 // Hireable staff — daily salary, passive management-layer bonuses.
 
+import '../../../../../l10n/app_localizations.dart';
+
 enum StaffRole { sysadmin, electrician, salesRep }
 
 class StaffDef {
   final String id;
   final StaffRole role;
-  final String name;
-  final String description;
   final double dailySalary;
   final double effectMagnitude;
   final int minReputation;
@@ -17,8 +17,6 @@ class StaffDef {
   const StaffDef({
     required this.id,
     required this.role,
-    required this.name,
-    required this.description,
     required this.dailySalary,
     required this.effectMagnitude,
     required this.minReputation,
@@ -26,14 +24,32 @@ class StaffDef {
     this.requiresResearch,
     required this.cost,
   });
+
+  String name(L t) => switch (id) {
+        'SYSADMIN' => t.serverTycoonStaffSysadminName,
+        'ELECTRICIAN' => t.serverTycoonStaffElectricianName,
+        'SALES_REP' => t.serverTycoonStaffSalesRepName,
+        'SYSADMIN_SENIOR' => t.serverTycoonStaffSysadminSeniorName,
+        'ELECTRICIAN_MASTER' => t.serverTycoonStaffElectricianMasterName,
+        'SALES_DIRECTOR' => t.serverTycoonStaffSalesDirectorName,
+        _ => id,
+      };
+
+  String description(L t) => switch (id) {
+        'SYSADMIN' => t.serverTycoonStaffSysadminDesc,
+        'ELECTRICIAN' => t.serverTycoonStaffElectricianDesc,
+        'SALES_REP' => t.serverTycoonStaffSalesRepDesc,
+        'SYSADMIN_SENIOR' => t.serverTycoonStaffSysadminSeniorDesc,
+        'ELECTRICIAN_MASTER' => t.serverTycoonStaffElectricianMasterDesc,
+        'SALES_DIRECTOR' => t.serverTycoonStaffSalesDirectorDesc,
+        _ => id,
+      };
 }
 
 final Map<String, StaffDef> staffDefsById = {
   'SYSADMIN': const StaffDef(
     id: 'SYSADMIN',
     role: StaffRole.sysadmin,
-    name: 'Jordan the Sysadmin',
-    description: 'Quietly resolves minor incidents (overheating, cooling leaks, DDoS) before they cost you anything.',
     dailySalary: 40,
     effectMagnitude: 0.5,
     minReputation: 0,
@@ -42,8 +58,6 @@ final Map<String, StaffDef> staffDefsById = {
   'ELECTRICIAN': const StaffDef(
     id: 'ELECTRICIAN',
     role: StaffRole.electrician,
-    name: 'Sam the Electrician',
-    description: 'Keeps your wiring and PDUs efficient, shaving an extra 8% off your electricity bill.',
     dailySalary: 35,
     effectMagnitude: 0.08,
     minReputation: 5,
@@ -52,8 +66,6 @@ final Map<String, StaffDef> staffDefsById = {
   'SALES_REP': const StaffDef(
     id: 'SALES_REP',
     role: StaffRole.salesRep,
-    name: 'Casey the Sales Rep',
-    description: 'Drums up an extra contract offer each day and negotiates better payouts.',
     dailySalary: 50,
     effectMagnitude: 0.15,
     minReputation: 10,
@@ -62,8 +74,6 @@ final Map<String, StaffDef> staffDefsById = {
   'SYSADMIN_SENIOR': const StaffDef(
     id: 'SYSADMIN_SENIOR',
     role: StaffRole.sysadmin,
-    name: 'Riley the Senior Sysadmin',
-    description: 'A seasoned ops veteran who resolves incidents with near-certainty. Stacks with Jordan.',
     dailySalary: 90,
     effectMagnitude: 0.4,
     minReputation: 20,
@@ -73,8 +83,6 @@ final Map<String, StaffDef> staffDefsById = {
   'ELECTRICIAN_MASTER': const StaffDef(
     id: 'ELECTRICIAN_MASTER',
     role: StaffRole.electrician,
-    name: 'Drew the Master Electrician',
-    description: 'A licensed industrial electrician who cuts another 12% off your power bill. Stacks with Sam.',
     dailySalary: 80,
     effectMagnitude: 0.12,
     minReputation: 20,
@@ -84,8 +92,6 @@ final Map<String, StaffDef> staffDefsById = {
   'SALES_DIRECTOR': const StaffDef(
     id: 'SALES_DIRECTOR',
     role: StaffRole.salesRep,
-    name: 'Morgan the Sales Director',
-    description: 'A well-connected director who brings another daily offer and negotiates even harder. Stacks with Casey.',
     dailySalary: 120,
     effectMagnitude: 0.20,
     minReputation: 30,

@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
+
 /// Full-screen "installing an update" experience, styled after the app's
 /// night-sky splash so an update feels like part of the same brand moment
 /// rather than a generic system dialog.
@@ -88,12 +90,6 @@ class _UpdatingScreenState extends State<UpdatingScreen>
   // when handing over from the time creep to real byte progress.
   double _shownFloor = 0;
 
-  static const _stages = <_Stage>[
-    _Stage(0.00, 'Downloading update'),
-    _Stage(0.45, 'Verifying files'),
-    _Stage(0.80, 'Preparing installer'),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -165,17 +161,17 @@ class _UpdatingScreenState extends State<UpdatingScreen>
     return _shownFloor;
   }
 
-  String get _status {
-    if (_finishing) return 'Restarting luma';
-    var line = _stages.first.label;
-    for (final s in _stages) {
-      if (_timeline.value >= s.at) line = s.label;
-    }
-    return line;
+  String _status(L t) {
+    if (_finishing) return t.updateRestarting;
+    final value = _timeline.value;
+    if (value >= 0.80) return t.updateStagePreparing;
+    if (value >= 0.45) return t.updateStageVerifying;
+    return t.updateStageDownloading;
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return Material(
       color: const Color(0xFF0B0A14),
       child: LayoutBuilder(
@@ -219,8 +215,8 @@ class _UpdatingScreenState extends State<UpdatingScreen>
                       ),
                     ),
                     const SizedBox(height: 32),
-                    const Text(
-                      'Updating luma',
+                    Text(
+                      t.updateTitle,
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 26,
@@ -249,7 +245,7 @@ class _UpdatingScreenState extends State<UpdatingScreen>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          _status,
+                          _status(t),
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.7),
                             fontSize: 12.5,
@@ -272,7 +268,7 @@ class _UpdatingScreenState extends State<UpdatingScreen>
                     _ProgressBar(value: _displayProgress, accent: widget.accent),
                     const SizedBox(height: 20),
                     Text(
-                      'Don\'t close luma — it will relaunch on its own.',
+                      t.updateDontClose,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.35),
@@ -463,10 +459,4 @@ class _UpdateRingPainter extends CustomPainter {
   @override
   bool shouldRepaint(_UpdateRingPainter oldDelegate) =>
       oldDelegate.t != t || oldDelegate.settled != settled;
-}
-
-class _Stage {
-  const _Stage(this.at, this.label);
-  final double at;
-  final String label;
 }

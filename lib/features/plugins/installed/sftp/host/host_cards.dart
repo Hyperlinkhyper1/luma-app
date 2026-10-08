@@ -9,6 +9,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../sftp_paths.dart';
 import 'host_server.dart';
@@ -78,6 +79,7 @@ class _HostStorageAccessCardState extends State<HostStorageAccessCard>
         !HostStorageAccess.isSharedStoragePath(directory)) {
       return const SizedBox.shrink();
     }
+    final t = L.of(context);
     final luma = context.luma;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -97,7 +99,7 @@ class _HostStorageAccessCardState extends State<HostStorageAccessCard>
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Other devices can\'t see your files yet',
+                    t.sftpHostStorageAccessTitle,
                     style: TextStyle(
                       color: luma.textPrimary,
                       fontSize: 14,
@@ -109,14 +111,14 @@ class _HostStorageAccessCardState extends State<HostStorageAccessCard>
             ),
             const SizedBox(height: 4),
             Text(
-              'Android hides photos and files made by other apps until luma '
-              'has "All files access". Until then this folder looks empty '
-              'from the other device.',
+              t.sftpHostStorageAccessBody,
               style: TextStyle(color: luma.textSecondary, fontSize: 12),
             ),
             const SizedBox(height: 12),
             LumaPrimaryButton(
-              label: _asking ? 'Waiting for Settings…' : 'Allow file access',
+              label: _asking
+                  ? t.sftpHostWaitingForSettings
+                  : t.sftpHostAllowFileAccess,
               icon: Icons.lock_open_rounded,
               onTap: _asking ? null : () => unawaited(_request()),
             ),
@@ -152,6 +154,7 @@ class HostCopyRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Row(
       children: [
@@ -194,7 +197,7 @@ class HostCopyRow extends StatelessWidget {
         IconButton(
           onPressed: onCopy == null ? null : () => unawaited(onCopy!()),
           iconSize: 18,
-          tooltip: 'Copy',
+          tooltip: t.commonCopy,
           icon: Icon(Icons.copy_rounded, color: luma.textSecondary),
         ),
       ],
@@ -217,6 +220,7 @@ class HostApprovalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Container(
       padding: const EdgeInsets.all(16),
@@ -238,7 +242,7 @@ class HostApprovalCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '${client.deviceName} wants to connect',
+                  t.sftpHostWantsToConnect(client.deviceName),
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 14,
@@ -250,20 +254,20 @@ class HostApprovalCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'It is at ${client.address} and gave the right pairing password.',
+            t.sftpHostApprovalDetail(client.address),
             style: TextStyle(color: luma.textSecondary, fontSize: 12),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
               LumaPrimaryButton(
-                label: 'Allow',
+                label: t.sftpHostAllow,
                 icon: Icons.check_rounded,
                 onTap: onAllow,
               ),
               const SizedBox(width: 8),
               LumaGhostButton(
-                label: 'Refuse',
+                label: t.sftpHostRefuse,
                 icon: Icons.close_rounded,
                 onTap: onRefuse,
               ),
@@ -291,6 +295,7 @@ class HostClientsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final clients = server.clients.where((c) => !c.awaitingApproval).toList();
     return LumaCard(
@@ -299,9 +304,8 @@ class HostClientsCard extends StatelessWidget {
         children: [
           Text(
             clients.isEmpty
-                ? 'No devices connected'
-                : '${clients.length} device'
-                    '${clients.length == 1 ? '' : 's'} connected',
+                ? t.sftpHostNoDevicesConnected
+                : t.sftpHostDevicesConnected(clients.length),
             style: TextStyle(
               color: luma.textPrimary,
               fontSize: 14,
@@ -345,9 +349,11 @@ class HostClientsCard extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '${client.address} · '
-                            'sent ${formatFileSize(client.bytesSent)} · '
-                            'received ${formatFileSize(client.bytesReceived)}',
+                            t.sftpHostClientTraffic(
+                              client.address,
+                              formatFileSize(client.bytesSent),
+                              formatFileSize(client.bytesReceived),
+                            ),
                             style: TextStyle(
                               color: luma.textMuted,
                               fontSize: 11,
@@ -357,7 +363,7 @@ class HostClientsCard extends StatelessWidget {
                       ),
                     ),
                     LumaGhostButton(
-                      label: 'Disconnect',
+                      label: t.sftpHostDisconnect,
                       icon: Icons.link_off_rounded,
                       onTap: () =>
                           unawaited(server.disconnectClient(client.id)),

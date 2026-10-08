@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../creature/creature_model.dart';
 import '../creature/creature_physics.dart';
@@ -125,8 +126,8 @@ class _CreatureLabTabState extends State<CreatureLabTab>
     return index < 0 ? _generationCaps.length - 1 : index;
   }
 
-  static String _generationCapLabel(int? limit) =>
-      limit == null ? 'never' : '$limit';
+  static String _generationCapLabel(L t, int? limit) =>
+      limit == null ? t.mlStopNever : '$limit';
 
   /// Any change to the drawing is a different animal, so the search starts
   /// over from noise rather than carrying a gait bred for another body.
@@ -277,6 +278,7 @@ class _CreatureLabTabState extends State<CreatureLabTab>
 
   Widget _drawPanel() {
     final luma = context.luma;
+    final t = L.of(context);
     final shape = _shape;
     return LumaCard(
       padding: const EdgeInsets.all(16),
@@ -285,10 +287,10 @@ class _CreatureLabTabState extends State<CreatureLabTab>
         children: [
           _PanelHeader(
             step: '1',
-            title: 'Draw your creature',
+            title: t.mlStepDrawCreature,
             trailing: shape == null
-                ? (_strokes.isEmpty ? null : 'too small')
-                : 'skeleton found',
+                ? (_strokes.isEmpty ? null : t.mlTooSmall)
+                : t.mlSkeletonFound,
             trailingColor: shape == null ? luma.warning : luma.success,
           ),
           const SizedBox(height: 12),
@@ -305,7 +307,7 @@ class _CreatureLabTabState extends State<CreatureLabTab>
             children: [
               Expanded(
                 child: LumaGhostButton(
-                  label: 'Undo',
+                  label: t.commonUndo,
                   icon: Icons.undo_rounded,
                   onTap: _strokes.isEmpty ? null : _undo,
                 ),
@@ -313,7 +315,7 @@ class _CreatureLabTabState extends State<CreatureLabTab>
               const SizedBox(width: 8),
               Expanded(
                 child: LumaGhostButton(
-                  label: 'Clear',
+                  label: t.commonClear,
                   icon: Icons.delete_outline_rounded,
                   onTap: _strokes.isEmpty ? null : _clear,
                 ),
@@ -322,7 +324,7 @@ class _CreatureLabTabState extends State<CreatureLabTab>
           ),
           const SizedBox(height: 12),
           Text(
-            'START FROM AN EXAMPLE',
+            t.mlStartFromExample,
             style: TextStyle(
               color: luma.textMuted,
               fontSize: 10,
@@ -337,7 +339,7 @@ class _CreatureLabTabState extends State<CreatureLabTab>
             children: [
               for (final preset in CreaturePreset.all)
                 _PresetChip(
-                  label: preset.name,
+                  label: preset.label(t),
                   onTap: () => _usePreset(preset),
                 ),
             ],
@@ -346,24 +348,21 @@ class _CreatureLabTabState extends State<CreatureLabTab>
           Row(
             children: [
               Expanded(
-                child: _Stat(label: 'Bodies', value: '${shape?.boneCount ?? 0}'),
+                child: _Stat(label: t.mlBodies, value: '${shape?.boneCount ?? 0}'),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _Stat(label: 'Joints', value: '${shape?.jointCount ?? 0}'),
+                child: _Stat(label: t.mlJoints, value: '${shape?.jointCount ?? 0}'),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _Stat(label: 'Genes', value: '${shape?.geneCount ?? 0}'),
+                child: _Stat(label: t.mlGenes, value: '${shape?.geneCount ?? 0}'),
               ),
             ],
           ),
           const SizedBox(height: 12),
           Text(
-            'Strokes are given a thickness and joined where they touch, then '
-            'thinned to a centre line: lavender capsules are the bones, green '
-            'dots the joints, amber the head. Redrawing starts the search '
-            'again from scratch.',
+            t.mlDrawHelp,
             style: TextStyle(
               color: luma.textMuted,
               fontSize: 11.5,
@@ -381,6 +380,7 @@ class _CreatureLabTabState extends State<CreatureLabTab>
   /// leave the viewport nothing.
   Widget _walkPanel({double? viewportHeight}) {
     final luma = context.luma;
+    final t = L.of(context);
     final shape = _shape;
     final sim = _sim;
     final skin = _skin;
@@ -417,10 +417,10 @@ class _CreatureLabTabState extends State<CreatureLabTab>
         children: [
           _PanelHeader(
             step: '2',
-            title: 'The walk to 50 metres',
+            title: t.mlWalkTitle,
             trailing: session == null
                 ? null
-                : 'generation ${_watching + 1} of ${session.generation}',
+                : t.mlGenerationOf('${_watching + 1}', '${session.generation}'),
             trailingColor: luma.textSecondary,
           ),
           const SizedBox(height: 10),
@@ -439,6 +439,7 @@ class _CreatureLabTabState extends State<CreatureLabTab>
 
   Widget _controls(EvolutionSession session) {
     final luma = context.luma;
+    final t = L.of(context);
     final best = session.bestEver;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -451,7 +452,9 @@ class _CreatureLabTabState extends State<CreatureLabTab>
             SizedBox(
               width: 168,
               child: LumaPrimaryButton(
-                label: session.running ? 'Pause evolution' : 'Resume evolution',
+                label: session.running
+                    ? t.mlPauseEvolution
+                    : t.mlResumeEvolution,
                 icon: session.running
                     ? Icons.pause_rounded
                     : Icons.play_arrow_rounded,
@@ -463,7 +466,7 @@ class _CreatureLabTabState extends State<CreatureLabTab>
             SizedBox(
               width: 120,
               child: LumaGhostButton(
-                label: 'Restart',
+                label: t.mlRestart,
                 icon: Icons.restart_alt_rounded,
                 onTap: _rebuild,
               ),
@@ -481,7 +484,7 @@ class _CreatureLabTabState extends State<CreatureLabTab>
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             _SliderControl(
-              label: 'Replay speed',
+              label: t.mlReplaySpeed,
               readout: '${_speed.round()}x',
               value: _speed,
               min: 1,
@@ -490,7 +493,7 @@ class _CreatureLabTabState extends State<CreatureLabTab>
               onChanged: (v) => setState(() => _speed = v),
             ),
             _SliderControl(
-              label: 'Workers',
+              label: t.mlWorkers,
               readout: '${session.workerCount}',
               value: session.workerCount.toDouble(),
               min: 1,
@@ -500,8 +503,8 @@ class _CreatureLabTabState extends State<CreatureLabTab>
                   setState(() => session.workerCount = v.round()),
             ),
             _SliderControl(
-              label: 'Stop after',
-              readout: _generationCapLabel(session.generationLimit),
+              label: t.mlStopAfter,
+              readout: _generationCapLabel(t, session.generationLimit),
               value: _capIndexOf(session.generationLimit).toDouble(),
               min: 0,
               max: (_generationCaps.length - 1).toDouble(),
@@ -515,7 +518,7 @@ class _CreatureLabTabState extends State<CreatureLabTab>
         const SizedBox(height: 6),
         _WatchGenerationRow(
           label: Text(
-            'Watch generation',
+            t.mlWatchGeneration,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(color: luma.textSecondary, fontSize: 12),
           ),
@@ -545,11 +548,10 @@ class _CreatureLabTabState extends State<CreatureLabTab>
             spacing: 14,
             runSpacing: 4,
             children: [
-              Text('Generation ${session.generation}'),
+              Text(t.mlGenerationNumber('${session.generation}')),
               if (session.stoppedAtLimit)
                 Text(
-                  'stopped at ${session.generationLimit} — '
-                  'move "stop after" up to carry on',
+                  t.mlStoppedAtLimit('${session.generationLimit}'),
                   style: TextStyle(
                     color: luma.warning,
                     fontSize: 11.5,
@@ -558,19 +560,27 @@ class _CreatureLabTabState extends State<CreatureLabTab>
                 ),
               if (best != null)
                 Text(
-                  'best ${best.champion.distance.toStringAsFixed(1)} m '
-                  '(gen ${best.index + 1})',
+                  t.mlBestDistance(
+                    best.champion.distance.toStringAsFixed(1),
+                    '${best.index + 1}',
+                  ),
                   style: TextStyle(
                     color: luma.textSecondary,
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-              Text('${session.generationsPerSecond.toStringAsFixed(1)} gen/s'),
-              Text('${session.workerCount} workers'),
+              Text(
+                t.mlGenPerSecond(
+                  session.generationsPerSecond.toStringAsFixed(1),
+                ),
+              ),
+              Text(t.mlWorkerCount(session.workerCount)),
               if (best != null && best.champion.finished)
                 Text(
-                  'reached 50 m in ${best.champion.finishSeconds.toStringAsFixed(1)} s',
+                  t.mlReachedGoal(
+                    best.champion.finishSeconds.toStringAsFixed(1),
+                  ),
                   style: TextStyle(
                     color: luma.success,
                     fontSize: 11.5,
@@ -586,6 +596,7 @@ class _CreatureLabTabState extends State<CreatureLabTab>
 
   Widget _chartPanel({double? chartHeight}) {
     final luma = context.luma;
+    final t = L.of(context);
     final session = _session;
     final chart = FitnessChart(
       history: session?.history ?? const [],
@@ -604,14 +615,14 @@ class _CreatureLabTabState extends State<CreatureLabTab>
               Expanded(
                 child: _PanelHeader(
                   step: '3',
-                  title: 'Fitness over generations',
+                  title: t.mlFitnessTitle,
                 ),
               ),
-              _LegendKey(color: luma.accent, label: 'Best', dashed: false),
+              _LegendKey(color: luma.accent, label: t.mlLegendBest, dashed: false),
               const SizedBox(width: 10),
               _LegendKey(
                 color: luma.textSecondary,
-                label: 'Average',
+                label: t.dataChartAverage,
                 dashed: true,
               ),
             ],
@@ -623,9 +634,7 @@ class _CreatureLabTabState extends State<CreatureLabTab>
             SizedBox(height: chartHeight, child: chart),
           const SizedBox(height: 6),
           Text(
-            session == null
-                ? 'Draw a creature to start the search.'
-                : 'Tap the graph to watch any generation walk again.',
+            session == null ? t.mlChartHintDraw : t.mlChartHintTap,
             style: TextStyle(color: luma.textMuted, fontSize: 11.5),
           ),
         ],
@@ -819,6 +828,7 @@ class _EmptyViewport extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return DecoratedBox(
       decoration: BoxDecoration(
         color: luma.background,
@@ -838,7 +848,7 @@ class _EmptyViewport extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                'Nothing to walk yet',
+                t.mlEmptyWalkTitle,
                 style: TextStyle(
                   color: luma.textSecondary,
                   fontSize: 13,
@@ -847,7 +857,7 @@ class _EmptyViewport extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Draw a body on the left and the search starts on its own.',
+                t.mlEmptyWalkBody,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
@@ -866,6 +876,7 @@ class _WalkHud extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final numbers = TextStyle(
       color: luma.textPrimary,
       fontSize: 16,
@@ -891,18 +902,9 @@ class _WalkHud extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('DISTANCE', style: captions),
-              Text('${sim.distance.toStringAsFixed(2)} m', style: numbers),
-            ],
-          ),
-          const SizedBox(width: 18),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('TIME', style: captions),
+              Text(t.mlHudDistance, style: captions),
               Text(
-                '${sim.time.toStringAsFixed(1)} / '
-                '${sim.config.seconds.toStringAsFixed(0)} s',
+                t.mlMetres(sim.distance.toStringAsFixed(2)),
                 style: numbers,
               ),
             ],
@@ -911,9 +913,23 @@ class _WalkHud extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('HEAD DOWN', style: captions),
+              Text(t.mlHudTime, style: captions),
               Text(
-                '${sim.headDownSeconds.toStringAsFixed(1)} s',
+                t.mlHudTimeValue(
+                  sim.time.toStringAsFixed(1),
+                  sim.config.seconds.toStringAsFixed(0),
+                ),
+                style: numbers,
+              ),
+            ],
+          ),
+          const SizedBox(width: 18),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(t.mlHudHeadDown, style: captions),
+              Text(
+                t.mlSeconds(sim.headDownSeconds.toStringAsFixed(1)),
                 style: numbers.copyWith(
                   color: sim.headDownSeconds > 0.05
                       ? luma.warning
@@ -1002,7 +1018,7 @@ class _SkinToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _CheckRow(
-      label: 'Show drawing',
+      label: L.of(context).mlShowDrawing,
       value: value,
       onChanged: onChanged,
     );
@@ -1017,7 +1033,7 @@ class _FollowToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _CheckRow(
-      label: 'Follow latest',
+      label: L.of(context).mlFollowLatest,
       value: value,
       onChanged: onChanged,
     );

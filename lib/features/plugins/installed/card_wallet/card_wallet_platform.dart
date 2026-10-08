@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 
+import '../../../../l10n/current_l.dart';
+
 /// Where a wallet card may be captured. Adding a card means holding it to a
 /// camera or an NFC reader, and only the phone builds have either, so Windows,
 /// macOS and Linux keep the wallet read-only: cards are made on the phone and
@@ -15,7 +17,5 @@ class CardWalletPlatform {
           defaultTargetPlatform == TargetPlatform.iOS);
 
   /// Shown wherever the desktop hides an editing affordance.
-  static const String readOnlyNotice =
-      'Cards are added on your phone, where the camera and NFC reader are. '
-      'Turn on Card wallet sync and they show up here to view and present.';
+  static String get readOnlyNotice => currentL.cardWalletReadOnlyNotice;
 }

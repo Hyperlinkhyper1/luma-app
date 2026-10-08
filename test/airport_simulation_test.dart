@@ -6,6 +6,7 @@ import 'package:luma/features/plugins/installed/airline_tycoon/airline_game_stat
 import 'package:luma/features/plugins/installed/airline_tycoon/data/aircraft.dart';
 import 'package:luma/features/plugins/installed/airline_tycoon/data/airport_catalog.dart';
 import 'package:luma/features/plugins/installed/airline_tycoon/sim/airport_world.dart';
+import 'package:luma/features/plugins/installed/airline_tycoon/sim/airport_contracts.dart';
 
 /// The starter airport's floor zoned as [zone].
 AirportZone zoned(AirportWorld world, String zone) =>
@@ -1089,21 +1090,42 @@ void main() {
         world.build(airline, 'checkIn', main.x + 100, main.y + 20, 0),
         contains('arrival hall'),
       );
-      expect(world.build(airline, 'shop', main.x + 100, main.y + 20, 0), isNull);
+      expect(
+        world.build(airline, 'shop', main.x + 100, main.y + 20, 0),
+        isNull,
+      );
     });
 
     test('zones are painted over, rubbed out and saved', () {
       world.zones.clear();
       final main = world.ofKind('terminal').first;
-      expect(world.paintZone('departure', 500, 500, 20, 20), contains('inside'));
-      expect(world.paintZone('arrival', main.x + 10, main.y + 10, 1, 40), contains('larger'));
-      expect(world.paintZone('sideways', main.x + 10, main.y + 10, 20, 20), contains('Unknown'));
-      expect(world.paintZone('arrival', main.x + 10, main.y + 10, 40, 40), isNull);
+      expect(
+        world.paintZone('departure', 500, 500, 20, 20),
+        contains('inside'),
+      );
+      expect(
+        world.paintZone('arrival', main.x + 10, main.y + 10, 1, 40),
+        contains('larger'),
+      );
+      expect(
+        world.paintZone('sideways', main.x + 10, main.y + 10, 20, 20),
+        contains('Unknown'),
+      );
+      expect(
+        world.paintZone('arrival', main.x + 10, main.y + 10, 40, 40),
+        isNull,
+      );
       // A later zone wins where they overlap, and covers the one under it.
-      expect(world.paintZone('departure', main.x + 10, main.y + 10, 40, 40), isNull);
+      expect(
+        world.paintZone('departure', main.x + 10, main.y + 10, 40, 40),
+        isNull,
+      );
       expect(world.zones, hasLength(1));
       expect(world.zoneAt(main.x + 20, main.y + 20), 'departure');
-      expect(world.paintZone('arrival', main.x + 20, main.y + 20, 10, 10), isNull);
+      expect(
+        world.paintZone('arrival', main.x + 20, main.y + 20, 10, 10),
+        isNull,
+      );
       expect(world.zoneAt(main.x + 25, main.y + 25), 'arrival');
       expect(world.zoneAt(main.x + 15, main.y + 15), 'departure');
       final reloaded = AirportWorld.fromJson(
@@ -1113,7 +1135,10 @@ void main() {
       expect(reloaded.zoneAt(main.x + 25, main.y + 25), 'arrival');
       expect(world.paintZone('none', main.x + 5, main.y + 5, 60, 60), isNull);
       expect(world.zones, isEmpty);
-      expect(world.paintZone('none', main.x + 5, main.y + 5, 60, 60), contains('No zone'));
+      expect(
+        world.paintZone('none', main.x + 5, main.y + 5, 60, 60),
+        contains('No zone'),
+      );
     });
   });
 
@@ -1121,9 +1146,9 @@ void main() {
     test('the walk leaves through a door and follows the walkway', () {
       final stand = world.stands.first;
       final door = world.boardingDoor(stand)!;
-      final hall = world.ofKind('terminal').firstWhere(
-        (t) => t.contains(door.door[0] + 1, door.door[1]),
-      );
+      final hall = world
+          .ofKind('terminal')
+          .firstWhere((t) => t.contains(door.door[0] + 1, door.door[1]));
       // On the wall of the gate's hall, facing the stand, with the apron
       // point just outside it.
       expect(door.door[0], hall.x);
@@ -1140,7 +1165,10 @@ void main() {
           if (p.stage != 'walkingOnBoard') continue;
           walked = true;
           // Out through the door, along the walkway, then up to the door.
-          expect(p.path.any((q) => q[0] == door.door[0] && q[1] == door.door[1]), isTrue);
+          expect(
+            p.path.any((q) => q[0] == door.door[0] && q[1] == door.door[1]),
+            isTrue,
+          );
           expect(p.path.last[2], greaterThan(0), reason: 'up into the cabin');
         }
       }
@@ -1149,30 +1177,33 @@ void main() {
   });
 
   group('taxi lines join up', () {
-    test('a short connector runs the way it is used, not the way it is shaped', () {
-      airline.cashEur = 50000000;
-      final stand = world.stands.first;
-      final stub = world
-          .ofKind('taxiway')
-          .firstWhere((t) => t.gap(stand) < .01 && t.width < 60);
-      // The stub is wider than it is deep, but traffic runs across it.
-      expect(world.flowAxis(stub), 'x');
-      expect(world.standLane(stand), stub.cy);
-      // A square connector takes its direction from what it touches.
-      final square = AirportFacility(
-        id: 'square',
-        kind: 'taxiway',
-        x: stub.x,
-        y: stub.y + 40,
-        width: 30,
-        depth: 30,
-      );
-      world.facilities.add(square);
-      expect(world.flowAxis(square), 'x');
-      // A long taxiway still runs down its length.
-      final long = world.ofKind('taxiway').firstWhere((t) => t.depth > 500);
-      expect(world.flowAxis(long), 'z');
-    });
+    test(
+      'a short connector runs the way it is used, not the way it is shaped',
+      () {
+        airline.cashEur = 50000000;
+        final stand = world.stands.first;
+        final stub = world
+            .ofKind('taxiway')
+            .firstWhere((t) => t.gap(stand) < .01 && t.width < 60);
+        // The stub is wider than it is deep, but traffic runs across it.
+        expect(world.flowAxis(stub), 'x');
+        expect(world.standLane(stand), stub.cy);
+        // A square connector takes its direction from what it touches.
+        final square = AirportFacility(
+          id: 'square',
+          kind: 'taxiway',
+          x: stub.x,
+          y: stub.y + 40,
+          width: 30,
+          depth: 30,
+        );
+        world.facilities.add(square);
+        expect(world.flowAxis(square), 'x');
+        // A long taxiway still runs down its length.
+        final long = world.ofKind('taxiway').firstWhere((t) => t.depth > 500);
+        expect(world.flowAxis(long), 'z');
+      },
+    );
   });
 
   group('three halls like the original game', () {
@@ -1242,7 +1273,10 @@ void main() {
       }
       final checkOut = world.ofKind('checkOut').single;
       final exit = world.entranceDoor(checkOut)!;
-      expect(exit.door[0], hallOf(world, checkOut).x + hallOf(world, checkOut).width);
+      expect(
+        exit.door[0],
+        hallOf(world, checkOut).x + hallOf(world, checkOut).width,
+      );
       expect(departure.contains(exit.door[0] - 1, exit.door[1]), isTrue);
       signAndPlace(world, airline, 'coastal');
       final kerbs = <String>{};
@@ -1377,7 +1411,7 @@ void main() {
       final stands = world.stands;
       expect(
         world.placeContract(c.id, stands.first.id, 780),
-        contains('AM (06:00–12:00)'),
+        contains(slotLabel('AM')),
       );
       expect(
         world.placeContract(c.id, stands.first.id, 200),

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../l10n/current_l.dart';
 import '../../../sync/server_access.dart';
 import 'ai_client.dart';
 
@@ -89,7 +90,7 @@ class OpenAiCompatibleClient implements AiClient {
       if (toolCalls.isEmpty) {
         final text = (message['content'] as String?)?.trim() ?? '';
         return AiChatResult(
-          text: text.isEmpty ? "I couldn't come up with a reply for that." : text,
+          text: text.isEmpty ? currentL.aiClientNoReply : text,
           metadataJson: metadataJson,
           usage: usage,
         );
@@ -98,7 +99,7 @@ class OpenAiCompatibleClient implements AiClient {
       hops++;
       if (hops > _maxToolHops) {
         return AiChatResult(
-          text: "I couldn't finish that — too many tool steps.",
+          text: currentL.aiClientTooManySteps,
           metadataJson: metadataJson,
           usage: usage,
         );
@@ -190,28 +191,26 @@ class OpenAiCompatibleClient implements AiClient {
       throw AiAuthError(e.message);
     } catch (e) {
       throw AiNetworkError(
-        "Couldn't reach $providerLabel — check your connection.\n($e)",
+        currentL.aiClientUnreachable(providerLabel, '$e'),
       );
     } finally {
       client.close();
     }
 
     if (res.statusCode == 401) {
-      throw AiAuthError(
-        '$providerLabel rejected the API key. Check it in Settings.',
-      );
+      throw AiAuthError(currentL.aiClientKeyRejected(providerLabel));
     }
     if (res.statusCode == 429) {
       // Surface the server's own wording when it explains the limit (e.g.
       // the sync server's usage budgets) instead of a generic message.
       throw AiRateLimitError(
-        _messageFromBody(res.body) ?? 'Too many requests — try again shortly.',
+        _messageFromBody(res.body) ?? currentL.aiClientRateLimited,
       );
     }
     if (res.statusCode != 200) {
       throw AiApiError(
         _messageFromBody(res.body) ??
-            '$providerLabel returned an error (${res.statusCode}).',
+            currentL.aiClientApiError(providerLabel, res.statusCode),
       );
     }
 

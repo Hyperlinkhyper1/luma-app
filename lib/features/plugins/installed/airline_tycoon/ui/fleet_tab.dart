@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../airline_game_state.dart';
 import '../airline_tycoon_repository.dart';
@@ -18,6 +19,7 @@ class FleetTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = repository.state;
+    final t = L.of(context);
 
     return Column(
       children: [
@@ -27,9 +29,7 @@ class FleetTab extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  state.fleet.isEmpty
-                      ? 'No aircraft'
-                      : '${state.fleet.length} aircraft',
+                  t.airlineFleetCount(state.fleet.length),
                   style: TextStyle(
                     color: context.luma.textSecondary,
                     fontSize: 13,
@@ -37,7 +37,7 @@ class FleetTab extends StatelessWidget {
                 ),
               ),
               LumaPrimaryButton(
-                label: 'Acquire',
+                label: t.airlineFleetAcquire,
                 icon: Icons.add_rounded,
                 onTap: () => _openMarket(context),
               ),
@@ -48,10 +48,10 @@ class FleetTab extends StatelessWidget {
           child: state.fleet.isEmpty
               ? LumaEmptyState(
                   icon: Icons.flight_rounded,
-                  title: 'Your hangar is empty',
-                  subtitle: 'Buy or lease an aircraft to start flying.',
+                  title: t.airlineFleetEmptyTitle,
+                  subtitle: t.airlineFleetEmptySubtitle,
                   action: LumaPrimaryButton(
-                    label: 'Browse aircraft',
+                    label: t.airlineFleetBrowse,
                     onTap: () => _openMarket(context),
                   ),
                 )
@@ -93,6 +93,7 @@ class _AircraftCard extends StatelessWidget {
 
     final route = state.routeById(aircraft.routeId);
     final grounded = aircraft.isGrounded(state.day);
+    final t = L.of(context);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -121,8 +122,11 @@ class _AircraftCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '${aircraft.registration} · ${model.maker}'
-                        '${aircraft.leased ? ' · leased' : ''}',
+                        aircraft.leased
+                            ? t.airlineFleetDetailLeased(
+                                aircraft.registration, model.maker)
+                            : t.airlineFleetDetail(
+                                aircraft.registration, model.maker),
                         style:
                             TextStyle(color: luma.textSecondary, fontSize: 12),
                       ),
@@ -133,7 +137,7 @@ class _AircraftCard extends StatelessWidget {
                   _Chip(
                     // Says it in words, not only in colour.
                     label:
-                        'In check · ${aircraft.groundedUntilDay - state.day}d',
+                        t.airlineFleetInCheck('${aircraft.groundedUntilDay - state.day}'),
                     colour: luma.warning,
                     icon: Icons.build_rounded,
                   ),
@@ -146,20 +150,20 @@ class _AircraftCard extends StatelessWidget {
               spacing: 16,
               runSpacing: 6,
               children: [
-                _Fact(label: 'Seats', value: '${model.seats}'),
-                _Fact(label: 'Range', value: fmtKm(model.rangeKm.toDouble())),
+                _Fact(label: t.airlineLabelSeats, value: '${model.seats}'),
+                _Fact(label: t.airlineLabelRange, value: fmtKm(model.rangeKm.toDouble())),
                 _Fact(
-                  label: 'Hours',
+                  label: t.airlineLabelHours,
                   value: aircraft.blockHours.toStringAsFixed(0),
                 ),
                 if (aircraft.leased)
                   _Fact(
-                    label: 'Lease',
-                    value: '${fmtMoney(model.leasePerDayEur)}/day',
+                    label: t.airlineLabelLease,
+                    value: t.airlineFactPerDay(fmtMoney(model.leasePerDayEur)),
                   )
                 else
                   _Fact(
-                    label: 'Resale',
+                    label: t.airlineLabelResale,
                     value: fmtMoney(model.resaleValueEur(aircraft.blockHours)),
                   ),
               ],
@@ -176,7 +180,7 @@ class _AircraftCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 LumaGhostButton(
-                  label: aircraft.leased ? 'Return' : 'Sell',
+                  label: aircraft.leased ? t.airlineFleetReturn : t.airlineFleetSell,
                   onTap: () => _confirmRelease(context, model),
                 ),
               ],
@@ -188,30 +192,34 @@ class _AircraftCard extends StatelessWidget {
   }
 
   void _confirmRelease(BuildContext context, AircraftModel model) {
+    final t = L.of(context);
     final leased = aircraft.leased;
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(leased ? 'Return this aircraft?' : 'Sell this aircraft?'),
+        title: Text(
+          leased ? t.airlineFleetReturnTitle : t.airlineFleetSellTitle,
+        ),
         content: Text(
           leased
-              ? '${aircraft.registration} goes back to the lessor. The daily '
-                  'payment stops.'
-              : '${aircraft.registration} sells for '
-                  '${fmtExactMoney(model.resaleValueEur(aircraft.blockHours))}, '
-                  'well under the ${fmtExactMoney(model.priceEur)} it cost.',
+              ? t.airlineFleetReturnBody(aircraft.registration)
+              : t.airlineFleetSellBody(
+                  aircraft.registration,
+                  fmtExactMoney(model.resaleValueEur(aircraft.blockHours)),
+                  fmtExactMoney(model.priceEur),
+                ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Keep it'),
+            child: Text(t.airlineFleetKeepIt),
           ),
           TextButton(
             onPressed: () {
               repository.releaseAircraft(aircraft.id);
               Navigator.of(dialogContext).pop();
             },
-            child: Text(leased ? 'Return' : 'Sell'),
+            child: Text(leased ? t.airlineFleetReturn : t.airlineFleetSell),
           ),
         ],
       ),
@@ -236,10 +244,11 @@ class _RoutePicker extends StatelessWidget {
     final decor = context.lumaDecor;
     final state = repository.state;
     final catalog = repository.catalog;
+    final t = L.of(context);
 
     if (state.routes.isEmpty) {
       return Text(
-        'Open a route first',
+        t.airlineFleetOpenRouteFirst,
         style: TextStyle(color: luma.textMuted, fontSize: 12),
       );
     }
@@ -257,14 +266,14 @@ class _RoutePicker extends StatelessWidget {
           value: currentRoute,
           isExpanded: true,
           hint: Text(
-            'Unassigned',
+            t.airlineFleetUnassigned,
             style: TextStyle(color: luma.textMuted, fontSize: 13),
           ),
           dropdownColor: luma.surface,
           style: TextStyle(color: luma.textPrimary, fontSize: 13),
           items: [
-            const DropdownMenuItem<String?>(
-              child: Text('Unassigned'),
+            DropdownMenuItem<String?>(
+              child: Text(t.airlineFleetUnassigned),
             ),
             for (final route in state.routes)
               DropdownMenuItem<String?>(
@@ -301,6 +310,7 @@ class _MarketSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final effects = repository.hubEffects;
+    final t = L.of(context);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.8,
@@ -330,7 +340,7 @@ class _MarketSheet extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      'Aircraft market',
+                      t.airlineMarketTitle,
                       style: TextStyle(
                         color: luma.textPrimary,
                         fontSize: 17,
@@ -385,6 +395,7 @@ class _MarketRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final canBuy = repository.state.cashEur >= model.priceEur;
+    final t = L.of(context);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -419,13 +430,13 @@ class _MarketRow extends StatelessWidget {
               spacing: 16,
               runSpacing: 6,
               children: [
-                _Fact(label: 'Seats', value: '${model.seats}'),
-                _Fact(label: 'Range', value: fmtKm(model.rangeKm.toDouble())),
-                _Fact(label: 'Cruise', value: '${model.cruiseKmh.round()} km/h'),
-                _Fact(label: 'Runway', value: '${fmtCount(model.minRunwayM)} m'),
+                _Fact(label: t.airlineLabelSeats, value: '${model.seats}'),
+                _Fact(label: t.airlineLabelRange, value: fmtKm(model.rangeKm.toDouble())),
+                _Fact(label: t.airlineLabelCruise, value: t.airlineFactKmh('${model.cruiseKmh.round()}')),
+                _Fact(label: t.airlineLabelRunway, value: t.airlineFactMetres(fmtCount(model.minRunwayM))),
                 _Fact(
-                  label: 'Lease',
-                  value: '${fmtMoney(model.leasePerDayEur)}/day',
+                  label: t.airlineLabelLease,
+                  value: t.airlineFactPerDay(fmtMoney(model.leasePerDayEur)),
                 ),
               ],
             ),
@@ -438,9 +449,12 @@ class _MarketRow extends StatelessWidget {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      'Needs ${fmtCount(model.minRunwayM)} m of runway; your '
-                      'longest is ${hubRunway == 0 ? 'none' : '${fmtCount(hubRunway)} m'}. '
-                      'You can still buy it and build up to it.',
+                      t.airlineMarketNeedsRunway(
+                        t.airlineFactMetres(fmtCount(model.minRunwayM)),
+                        hubRunway == 0
+                            ? t.airlineRunwayNone
+                            : t.airlineFactMetres(fmtCount(hubRunway)),
+                      ),
                       style:
                           TextStyle(color: luma.warning, fontSize: 12),
                     ),
@@ -453,7 +467,7 @@ class _MarketRow extends StatelessWidget {
               children: [
                 Expanded(
                   child: LumaGhostButton(
-                    label: 'Lease',
+                    label: t.airlineMarketLease,
                     expand: true,
                     onTap: () => _acquire(context, lease: true),
                   ),
@@ -461,7 +475,7 @@ class _MarketRow extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: LumaPrimaryButton(
-                    label: 'Buy',
+                    label: t.airlineMarketBuy,
                     expand: true,
                     onTap: canBuy ? () => _acquire(context, lease: false) : null,
                   ),
@@ -475,13 +489,14 @@ class _MarketRow extends StatelessWidget {
   }
 
   void _acquire(BuildContext context, {required bool lease}) {
+    final t = L.of(context);
     final result = repository.acquireAircraft(model, lease: lease);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           result.success
-              ? '${model.name} joined the fleet.'
+              ? t.airlineMarketJoinedFleet(model.name)
               : result.message!,
         ),
         behavior: SnackBarBehavior.floating,

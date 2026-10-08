@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../../l10n/current_l.dart';
 import '../../../../../sync/server_access.dart';
 import '../../../../../sync/sync_service.dart';
 import 'ai_benchmark.dart';
@@ -273,7 +274,7 @@ class AiBenchmarkRepository extends ChangeNotifier {
   Future<File> _loadScene(String id, String extension) async {
     final benchmark = byId(id);
     if (benchmark == null) {
-      throw StateError('Unknown benchmark "$id".');
+      throw StateError(currentL.aiBenchmarkUnknownId(id));
     }
     final root = await _cacheRoot();
     final file = File('${root.path}/scenes/$id.$extension');
@@ -282,8 +283,7 @@ class AiBenchmarkRepository extends ChangeNotifier {
     final sync = _sync;
     final baseUrl = sync?.serverUrl;
     if (sync == null || !sync.serverReady || baseUrl == null) {
-      throw StateError(
-          'Sign in to an approved luma account to download this benchmark.');
+      throw StateError(currentL.aiBenchmarkSignInToDownload);
     }
     final api = _apiFactory(baseUrl, sync.authToken);
     try {
@@ -293,8 +293,8 @@ class AiBenchmarkRepository extends ChangeNotifier {
         // Usually the roster is older than the scene (repaired or re-uploaded
         // since), so fetch a fresh one for the retry.
         await refreshFromServer(force: true);
-        throw const AiBenchmarkApiException(
-            200, 'The downloaded scene failed its integrity check.');
+        throw AiBenchmarkApiException(
+            200, currentL.aiBenchmarkIntegrityFailed);
       }
       await file.parent.create(recursive: true);
       await file.writeAsBytes(bytes, flush: true);

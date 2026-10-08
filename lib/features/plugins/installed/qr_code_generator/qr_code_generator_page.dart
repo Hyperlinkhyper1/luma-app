@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'qr_code_repository.dart';
 import 'qr_code_scope.dart';
@@ -31,7 +32,7 @@ class _QrCodeGeneratorPageState extends State<QrCodeGeneratorPage> {
   Future<void> _generate(QrCodeRepository repo) async {
     final url = _controller.text.trim();
     if (url.isEmpty) {
-      setState(() => _error = 'Enter a URL.');
+      setState(() => _error = L.of(context).qrEnterUrl);
       return;
     }
     setState(() {
@@ -45,6 +46,7 @@ class _QrCodeGeneratorPageState extends State<QrCodeGeneratorPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final repo = QrCodeScope.of(context);
 
@@ -61,7 +63,7 @@ class _QrCodeGeneratorPageState extends State<QrCodeGeneratorPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'Generate a QR code',
+                      t.qrGenerateTitle,
                       style: TextStyle(
                         color: luma.textPrimary,
                         fontSize: 16,
@@ -70,7 +72,7 @@ class _QrCodeGeneratorPageState extends State<QrCodeGeneratorPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Paste a URL and turn it into a scannable QR code.',
+                      t.qrGenerateSubtitle,
                       style: TextStyle(color: luma.textMuted, fontSize: 13),
                     ),
                     const SizedBox(height: 16),
@@ -89,7 +91,7 @@ class _QrCodeGeneratorPageState extends State<QrCodeGeneratorPage> {
                         ),
                         const SizedBox(width: 12),
                         LumaPrimaryButton(
-                          label: 'Generate',
+                          label: t.qrGenerate,
                           icon: Icons.qr_code_2_rounded,
                           loading: _saving,
                           onTap: () => _generate(repo),
@@ -106,7 +108,7 @@ class _QrCodeGeneratorPageState extends State<QrCodeGeneratorPage> {
               ),
               const SizedBox(height: 24),
               Text(
-                'History',
+                t.commonHistory,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 14,
@@ -122,9 +124,8 @@ class _QrCodeGeneratorPageState extends State<QrCodeGeneratorPage> {
                       padding: const EdgeInsets.symmetric(vertical: 24),
                       child: LumaEmptyState(
                         icon: Icons.qr_code_2_rounded,
-                        title: 'No QR codes yet',
-                        subtitle:
-                            'Codes you generate are saved here so you can reopen them anytime.',
+                        title: t.qrEmptyTitle,
+                        subtitle: t.qrEmptySubtitle,
                       ),
                     );
                   }
@@ -154,6 +155,7 @@ class _QrHistoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -203,7 +205,7 @@ class _QrHistoryTile extends StatelessWidget {
               IconButton(
                 icon: Icon(Icons.delete_outline_rounded,
                     color: luma.textMuted, size: 20),
-                tooltip: 'Delete',
+                tooltip: t.commonDelete,
                 onPressed: onDelete,
               ),
             ],
@@ -215,6 +217,7 @@ class _QrHistoryTile extends StatelessWidget {
 }
 
 void _showQrDetail(BuildContext context, QrCodeRecord record) {
+  final t = L.of(context);
   showDialog<void>(
     context: context,
     builder: (_) => Dialog(
@@ -250,7 +253,7 @@ void _showQrDetail(BuildContext context, QrCodeRecord record) {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   LumaGhostButton(
-                    label: 'Copy URL',
+                    label: t.qrCopyUrl,
                     icon: Icons.copy_rounded,
                     onTap: () {
                       Clipboard.setData(ClipboardData(text: record.url));
@@ -259,7 +262,7 @@ void _showQrDetail(BuildContext context, QrCodeRecord record) {
                   ),
                   const SizedBox(width: 10),
                   LumaPrimaryButton(
-                    label: 'Close',
+                    label: t.commonClose,
                     onTap: () => Navigator.of(context).pop(),
                   ),
                 ],

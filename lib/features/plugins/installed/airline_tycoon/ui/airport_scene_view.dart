@@ -5,7 +5,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
+import '../../../../../l10n/app_localizations.dart';
+import '../../../../../l10n/current_l.dart';
 import '../../_shared/native_webview.dart';
+import '../../_shared/scene_localization_bridge.dart';
+import '../../_shared/scene_localizations.dart';
 import '../../_shared/windows_webview.dart' show windowsAssetPath;
 
 /// The airport page: the 3D scene plus its in-page controls.
@@ -48,6 +52,7 @@ class AirportSceneViewState extends State<AirportSceneView>
   bool _tickerEnabled = true;
   bool _foreground = true;
   String? _error;
+  String? _locale;
   int _generation = 0;
   static const _asset = 'assets/airline_tycoon/scene/index.html';
 
@@ -66,8 +71,8 @@ class AirportSceneViewState extends State<AirportSceneView>
       if (mounted && !_ready) {
         setState(
           () => _error = Platform.isWindows
-              ? 'The airport did not start. Check that the Microsoft Edge WebView2 Runtime is installed, then retry.'
-              : 'The airport did not start. Update Android System WebView, then retry.',
+              ? currentL.airlineSceneStartFailedWindows
+              : currentL.airlineSceneStartFailedAndroid,
         );
       }
     });
@@ -76,6 +81,11 @@ class AirportSceneViewState extends State<AirportSceneView>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final locale = Localizations.localeOf(context).languageCode;
+    if (_locale != locale) {
+      _locale = locale;
+      if (_ready) unawaited(_pushLocale());
+    }
     final enabled = TickerMode.valuesOf(context).enabled;
     if (enabled != _tickerEnabled) {
       _tickerEnabled = enabled;
@@ -115,6 +125,36 @@ class AirportSceneViewState extends State<AirportSceneView>
 
   void _sendTheme() => send({'type': 'theme', 'palette': widget.palette});
 
+  Future<void> _pushLocale() async {
+    final t = L.of(context);
+    final language = Localizations.localeOf(context).languageCode;
+    final strings = {
+      ...sceneKeyStrings(t, 'airline_tycoon/scene'),
+      ...sceneDynamicStrings(t, 'airline_tycoon/scene'),
+    };
+    final sourceStrings = sceneSourceStrings(t, 'airline_tycoon/scene');
+    if (Platform.isWindows) {
+      await SceneLocalizationBridge.sendNative(
+        _windows,
+        language: language,
+        strings: strings,
+        sourceStrings: sourceStrings,
+      );
+    } else {
+      await SceneLocalizationBridge.sendAndroid(
+        _android,
+        language: language,
+        strings: strings,
+        sourceStrings: sourceStrings,
+      );
+    }
+    // The scene snapshot also carries localized facility labels, issues and
+    // service descriptions; refresh it after the static string map arrives.
+    if (_ready && _showing) {
+      send({'type': 'snapshot', 'world': widget.snapshot()});
+    }
+  }
+
   void send(Map<String, Object?> message) {
     if (!_ready) return;
     final json = jsonEncode(message);
@@ -132,8 +172,7 @@ class AirportSceneViewState extends State<AirportSceneView>
       delivery.catchError((Object _) {
         if (mounted) {
           setState(
-            () =>
-                _error = 'Airport connection interrupted. Retry to reconnect.',
+            () => _error = currentL.airlineSceneConnectionLost,
           );
         }
       }),
@@ -153,10 +192,11 @@ class AirportSceneViewState extends State<AirportSceneView>
           _error = null;
         });
         _sendTheme();
+        unawaited(_pushLocale());
         _updateVisibility();
         widget.onMessage(message);
       } else if (message['type'] == 'error') {
-        _fail('${message['message'] ?? 'WebGL could not initialize.'}');
+        _fail('${message['message'] ?? currentL.airlineSceneWebglFailed}');
       } else {
         widget.onMessage(message);
       }
@@ -217,9 +257,7 @@ class AirportSceneViewState extends State<AirportSceneView>
                 },
                 onReceivedError: (_, request, error) {
                   if (request.isForMainFrame == true) {
-                    _fail(
-                      'Could not load the bundled airport: ${error.description}',
-                    );
+                    _fail(currentL.airlineSceneLoadFailed(error.description));
                   }
                 },
               ),
@@ -243,7 +281,7 @@ class AirportSceneViewState extends State<AirportSceneView>
                       FilledButton.icon(
                         onPressed: _retry,
                         icon: const Icon(Icons.refresh),
-                        label: const Text('Reload airport'),
+                        label: Text(L.of(context).airlineReloadAirport),
                       ),
                     ],
                   ),

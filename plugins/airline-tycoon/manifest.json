@@ -5,10 +5,29 @@
   "description": "Build and operate a 3D airport on Windows and Android, sign visiting airlines, and fly your own fleet.",
   "icon": "flight",
   "category": "Games",
-  "tags": [
-    "Games",
-    "Simulation"
-  ],
+  "tags": ["Games", "Simulation"],
   "details": "Run an airport and an airline together. On Windows and Android, explore a fully rotatable 3D airport, build terminal interiors, connect stands and taxiways, and follow aircraft and ground vehicles through simulated operations.\n\nSign seven-day contracts with visiting airlines or schedule your own aircraft on routes to real destinations. Aircraft compete for runway and stand access. Finite service vehicles and passenger queues affect boarding, delays, handling income and penalties.\n\nBuild check-in desks, security, seating, toilets and cafes. Purchase aircraft or lease them, choose fares, and follow the transaction ledger as flights trade.\n\nThe airport starts paused with a furnished regional field and a turboprop. One game day takes 24 minutes at 1x; 4x and 12x speeds are available. Running airports catch up while away, capped at 12 game days. Paused airports stay paused.\n\nThe new airport uses a separate versioned save, preserving previous airline saves. Other platforms retain the original airline game. All 3D assets are bundled for offline play.",
-  "screenshots": []
+  "screenshots": [],
+  "i18n": {
+    "nl": {
+      "name": "Luchtvaartmagnaat",
+      "description": "Bouw en beheer een 3D-luchthaven op Windows en Android, contracteer bezoekende luchtvaartmaatschappijen en vlieg met je eigen vloot.",
+      "details": "Beheer een luchthaven en een luchtvaartmaatschappij tegelijk. Op Windows en Android verken je een volledig draaibare 3D-luchthaven, bouw je terminalinterieurs, verbind je standplaatsen en taxibanen, en volg je vliegtuigen en grondvoertuigen tijdens gesimuleerde operaties.\n\nSluit zevendaagse contracten met bezoekende luchtvaartmaatschappijen of plan je eigen vliegtuigen op routes naar echte bestemmingen. Vliegtuigen concurreren om toegang tot baan en standplaats. Beperkte servicevoertuigen en wachtrijen van passagiers beïnvloeden instappen, vertragingen, afhandelingsinkomsten en boetes.\n\nBouw incheckbalies, beveiliging, zitplaatsen, toiletten en cafés. Koop vliegtuigen of leas ze, kies tarieven en volg het transactieboek terwijl vluchten handel drijven.\n\nDe luchthaven begint gepauzeerd met een gemeubileerd regionaal veld en een turboprop. Eén speldag duurt 24 minuten bij 1x; snelheden van 4x en 12x zijn beschikbaar. Draaiende luchthavens lopen bij terwijl je weg bent, tot maximaal 12 speldagen. Gepauzeerde luchthavens blijven gepauzeerd.\n\nDe nieuwe luchthaven gebruikt een apart, geversioneerd opslagbestand, zodat eerdere luchtvaartmaatschappij-opslagen behouden blijven. Andere platforms behouden het oorspronkelijke luchtvaartspel. Alle 3D-assets zijn meegeleverd voor offline spelen."
+    },
+    "fr": {
+      "name": "Magnat de l'aviation",
+      "description": "Construisez et exploitez un aéroport 3D sur Windows et Android, signez des compagnies aériennes en visite et pilotez votre propre flotte.",
+      "details": "Dirigez un aéroport et une compagnie aérienne en même temps. Sur Windows et Android, explorez un aéroport 3D entièrement orientable, construisez les intérieurs des terminaux, reliez les postes de stationnement et les voies de circulation, et suivez avions et véhicules au sol au fil des opérations simulées.\n\nSignez des contrats de sept jours avec des compagnies aériennes en visite ou programmez vos propres appareils sur des routes vers de vraies destinations. Les avions se disputent l'accès aux pistes et aux postes de stationnement. Un nombre limité de véhicules de service et les files de passagers influencent l'embarquement, les retards, les revenus de manutention et les pénalités.\n\nInstallez des comptoirs d'enregistrement, des contrôles de sécurité, des sièges, des toilettes et des cafés. Achetez des avions ou louez-les, choisissez les tarifs et suivez le journal des transactions pendant que les vols s'échangent.\n\nL'aéroport démarre en pause avec un petit terrain régional meublé et un turbopropulseur. Une journée de jeu dure 24 minutes à la vitesse 1x ; les vitesses 4x et 12x sont disponibles. Les aéroports en activité rattrapent leur retard pendant votre absence, dans la limite de 12 journées de jeu. Les aéroports en pause restent en pause.\n\nLe nouvel aéroport utilise une sauvegarde distincte et versionnée, qui préserve les anciennes sauvegardes de compagnies. Les autres plateformes conservent le jeu de compagnie d'origine. Tous les assets 3D sont inclus pour jouer hors ligne."
+    },
+    "es": {
+      "name": "Magnate aéreo",
+      "description": "Construye y gestiona un aeropuerto 3D en Windows y Android, firma con aerolíneas visitantes y opera tu propia flota.",
+      "details": "Gestiona un aeropuerto y una aerolínea a la vez. En Windows y Android, explora un aeropuerto 3D totalmente rotable, construye los interiores de las terminales, conecta las posiciones de estacionamiento y las calles de rodaje, y sigue aviones y vehículos terrestres durante las operaciones simuladas.\n\nFirma contratos de siete días con aerolíneas visitantes o programa tus propios aviones en rutas a destinos reales. Los aviones compiten por el acceso a pista y posiciones. Los vehículos de servicio limitados y las colas de pasajeros afectan al embarque, los retrasos, los ingresos por handling y las sanciones.\n\nConstruye mostradores de facturación, seguridad, asientos, aseos y cafeterías. Compra aviones o alquílalos, elige las tarifas y sigue el libro de transacciones mientras los vuelos operan.\n\nEl aeropuerto empieza en pausa con un aeródromo regional amueblado y un turbohélice. Un día de juego dura 24 minutos a velocidad 1x; hay velocidades 4x y 12x. Los aeropuertos en marcha se ponen al día mientras estás fuera, con un máximo de 12 días de juego. Los aeropuertos en pausa siguen en pausa.\n\nEl nuevo aeropuerto usa un guardado versionado independiente, para conservar los guardados de aerolínea anteriores. El resto de plataformas conserva el juego de aerolínea original. Todos los recursos 3D vienen incluidos para jugar sin conexión."
+    },
+    "zh": {
+      "name": "航空大亨",
+      "description": "在 Windows 和 Android 上建造并经营一座 3D 机场，签约来访航空公司，并运营你自己的机队。",
+      "details": "同时经营机场和航空公司。在 Windows 和 Android 上，你可以全方位旋转浏览 3D 机场，搭建航站楼内部，连接机位和滑行道，并在模拟运营中跟踪飞机和地面车辆。\n\n与来访航空公司签订七天合同，或将自己的飞机安排到通往真实目的地的航线上。飞机会争夺跑道和机位使用权。数量有限的服务车辆和排队的乘客会影响登机、延误、地面服务收入和罚款。\n\n建造值机柜台、安检、座椅、洗手间和咖啡厅。购买或租赁飞机，选择票价，并在航班交易进行时查看交易账本。\n\n机场开始时处于暂停状态，附带一座布置好的支线机场和一架涡桨飞机。一个游戏日在 1 倍速下耗时 24 分钟，另有 4 倍和 12 倍速可选。运行中的机场在你离开期间会追赶进度，最多追赶 12 个游戏日。暂停的机场保持暂停。\n\n新机场使用单独的版本化存档，不影响之前的航空公司存档。其他平台保留原始航空公司游戏。所有 3D 资源均已内置，可离线游玩。"
+    }
+  }
 }

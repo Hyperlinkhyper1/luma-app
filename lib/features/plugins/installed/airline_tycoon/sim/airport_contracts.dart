@@ -1,3 +1,4 @@
+import '../../../../../l10n/current_l.dart';
 import '../data/aircraft.dart';
 
 /// Start windows an airline accepts, in minutes of the day. `ALL` is any time.
@@ -32,12 +33,28 @@ bool slotAllows(String slot, double arrival) {
   return minute >= window.$1 && minute < window.$2;
 }
 
-String slotLabel(String slot) {
+/// [anyTime] overrides the localized "any time" wording; saved data passes
+/// the English text so the persisted value never depends on the language.
+String slotLabel(String slot, {String? anyTime}) {
   final window = airportSlots[slot];
-  if (window == null) return 'any time';
+  if (window == null) return anyTime ?? currentL.airportSlotAnyTime;
+  final name = switch (slot) {
+    'EAM' => currentL.airportSlotEarlyMorning,
+    'AM' => currentL.airportSlotMorning,
+    'AN' => currentL.airportSlotAfternoon,
+    'PM' => currentL.airportSlotEvening,
+    _ => slot,
+  };
   String hh(int m) => '${(m ~/ 60).toString().padLeft(2, '0')}:00';
-  return '$slot (${hh(window.$1)}–${hh(window.$2)})';
+  return '$name (${hh(window.$1)}–${hh(window.$2)})';
 }
+
+String haulLabel(String haul) => switch (haul) {
+  'SH' => currentL.airportHaulShort,
+  'MH' => currentL.airportHaulMedium,
+  'LH' => currentL.airportHaulLong,
+  _ => haul,
+};
 
 class AirportAirline {
   const AirportAirline(this.name, this.fleet, this.slots, this.services);
@@ -143,6 +160,7 @@ class AirportOffer {
     'requiredServices': requiredServices,
     'expiresDay': expiresDay,
     'haul': haul,
+    'haulLabel': haulLabel(haul),
     'standMinutes': standMinutes,
     'placementDays': placementDays,
     'runwayM': model.minRunwayM,

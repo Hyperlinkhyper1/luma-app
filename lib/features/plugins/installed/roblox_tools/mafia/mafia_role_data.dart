@@ -1,14 +1,26 @@
+import '../../../../../l10n/app_localizations.dart';
+
 /// Which faction a Mafia role belongs to, and the faction's win condition —
 /// shown as a subtitle wherever roles are grouped by faction.
 enum MafiaFaction {
-  town('Town', 'Wins by eliminating the Mafia'),
-  neutral('Neutral', 'Has its own win condition'),
-  mafia('Mafia', 'Wins at numerical parity with the Town'),
-  veil('Veil', 'Wins by reaching 100% corruption');
+  town,
+  neutral,
+  mafia,
+  veil;
 
-  const MafiaFaction(this.label, this.winCondition);
-  final String label;
-  final String winCondition;
+  String label(L t) => switch (this) {
+        MafiaFaction.town => t.mafiaFactionTown,
+        MafiaFaction.neutral => t.mafiaFactionNeutral,
+        MafiaFaction.mafia => t.mafiaFactionMafia,
+        MafiaFaction.veil => t.mafiaFactionVeil,
+      };
+
+  String winCondition(L t) => switch (this) {
+        MafiaFaction.town => t.mafiaFactionTownWin,
+        MafiaFaction.neutral => t.mafiaFactionNeutralWin,
+        MafiaFaction.mafia => t.mafiaFactionMafiaWin,
+        MafiaFaction.veil => t.mafiaFactionVeilWin,
+      };
 }
 
 class MafiaRole {

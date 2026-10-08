@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/luma_theme.dart';
 import 'plan.dart';
 
@@ -26,7 +27,7 @@ class _PlanCodeDialogState extends State<_PlanCodeDialog> {
   void _submit() {
     final code = _controller.text.trim();
     if (code.isEmpty) {
-      setState(() => _error = 'Enter an access code.');
+      setState(() => _error = L.of(context).planCodeEnterCode);
       return;
     }
     Navigator.of(context).pop(code);
@@ -41,11 +42,12 @@ class _PlanCodeDialogState extends State<_PlanCodeDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return AlertDialog(
       backgroundColor: luma.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text(
-        'Unlock ${widget.plan.name}',
+        t.planCodeUnlockTitle(widget.plan.name),
         style: TextStyle(
             color: luma.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
       ),
@@ -54,8 +56,7 @@ class _PlanCodeDialogState extends State<_PlanCodeDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Enter your access code. It unlocks ${widget.plan.name} for '
-            '30 days, then you\'re moved back to Core automatically.',
+            t.planCodeBody(widget.plan.name),
             style: TextStyle(color: luma.textMuted, fontSize: 13, height: 1.4),
           ),
           const SizedBox(height: 16),
@@ -64,7 +65,7 @@ class _PlanCodeDialogState extends State<_PlanCodeDialog> {
             autofocus: true,
             style: TextStyle(color: luma.textPrimary, fontSize: 14),
             decoration: InputDecoration(
-              hintText: 'Access code',
+              hintText: t.planCodeHint,
               hintStyle: TextStyle(color: luma.textMuted),
               errorText: _error,
               errorStyle: TextStyle(color: luma.danger),
@@ -92,7 +93,7 @@ class _PlanCodeDialogState extends State<_PlanCodeDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
@@ -100,7 +101,7 @@ class _PlanCodeDialogState extends State<_PlanCodeDialog> {
             foregroundColor: luma.surface,
           ),
           onPressed: _submit,
-          child: const Text('Unlock'),
+          child: Text(t.planCodeUnlockButton),
         ),
       ],
     );

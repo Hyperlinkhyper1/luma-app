@@ -5,6 +5,8 @@
 /// staring at a spinner while a dozen API calls run again.
 library;
 
+import '../../../../l10n/current_l.dart';
+
 /// The signed-in account.
 class GithubProfile {
   const GithubProfile({
@@ -479,7 +481,7 @@ class GithubWorkflowRun {
 
   factory GithubWorkflowRun.fromApi(Map<String, dynamic> j, String repo) =>
       GithubWorkflowRun(
-        name: j['name'] as String? ?? j['display_title'] as String? ?? 'Workflow',
+        name: j['name'] as String? ?? j['display_title'] as String? ?? currentL.accountOverviewGithubWorkflowDefault,
         repo: repo,
         status: j['status'] as String? ?? 'completed',
         conclusion: j['conclusion'] as String?,
@@ -542,7 +544,7 @@ class GithubUsageItem {
   /// became AI credits; `quantity` gained `gross`/`net` variants), so every
   /// field is read leniently and a missing one is a zero, never a throw.
   factory GithubUsageItem.fromApi(Map<String, dynamic> j) => GithubUsageItem(
-        product: j['product'] as String? ?? 'Unknown',
+        product: j['product'] as String? ?? currentL.commonUnknown,
         sku: j['sku'] as String? ?? '',
         unitType: j['unitType'] as String? ?? '',
         quantity: (j['netQuantity'] as num?)?.toDouble() ??
@@ -674,7 +676,7 @@ class GithubBilling {
       if (item.unitType.isNotEmpty) return item.unitType;
       if (item.sku.isNotEmpty) return item.sku;
     }
-    return 'requests';
+    return currentL.accountOverviewCopilotUnitDefault;
   }
 
   double get totalSpend => usageItems.fold(0.0, (sum, i) => sum + i.netAmount);

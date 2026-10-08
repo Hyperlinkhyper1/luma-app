@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import '../../../../l10n/current_l.dart';
 import '../binary_utils.dart';
 import '../repair_report.dart';
 
@@ -10,7 +11,7 @@ import '../repair_report.dart';
 /// file does not have. Correcting those two numbers is usually the whole fix.
 Uint8List repairRiff(Uint8List bytes, RepairLog log) {
   if (bytes.length < 12) {
-    log.failed('A RIFF file needs at least a 12-byte header; this has fewer.');
+    log.failed(currentL.repairRiffTooShort);
     return bytes;
   }
 
@@ -18,7 +19,7 @@ Uint8List repairRiff(Uint8List bytes, RepairLog log) {
 
   if (!matchesAt(data, 0, asciiBytes('RIFF'))) {
     data.setRange(0, 4, asciiBytes('RIFF'));
-    log.fixed('Rewrote the "RIFF" magic bytes.');
+    log.fixed(currentL.repairRiffMagicRewritten);
   }
 
   var form = String.fromCharCodes(data, 8, 12);
@@ -31,14 +32,11 @@ Uint8List repairRiff(Uint8List bytes, RepairLog log) {
     } else if (indexOfBytes(data, asciiBytes('VP8'), 12, 4096) >= 0) {
       form = 'WEBP';
     } else {
-      log.failed(
-        'The RIFF form type is unreadable and no known chunk names survive, so '
-        'there is no telling what this file was.',
-      );
+      log.failed(currentL.repairRiffUnreadableForm);
       return data;
     }
     data.setRange(8, 12, asciiBytes(form));
-    log.fixed('Restored the form type to "$form".');
+    log.fixed(currentL.repairRiffFormRestored(form));
   }
 
   final declaredRiffSize = readU32le(data, 4);
@@ -46,8 +44,7 @@ Uint8List repairRiff(Uint8List bytes, RepairLog log) {
   if (declaredRiffSize != actualRiffSize) {
     writeU32le(data, 4, actualRiffSize);
     log.fixed(
-      'Corrected the RIFF length field from $declaredRiffSize to '
-      '$actualRiffSize.',
+      currentL.repairRiffLengthCorrected(declaredRiffSize, actualRiffSize),
     );
   }
 
@@ -58,9 +55,7 @@ Uint8List repairRiff(Uint8List bytes, RepairLog log) {
   while (offset + 8 <= data.length) {
     final id = String.fromCharCodes(data, offset, offset + 4);
     if (!_isChunkId(id)) {
-      log.warning(
-        'Unreadable chunk name at ${formatOffset(offset)} — stopping there.',
-      );
+      log.warning(currentL.repairRiffUnreadableChunk(formatOffset(offset)));
       break;
     }
     final size = readU32le(data, offset + 4);
@@ -71,8 +66,11 @@ Uint8List repairRiff(Uint8List bytes, RepairLog log) {
       final available = data.length - offset - 8;
       writeU32le(data, offset + 4, available);
       log.fixed(
-        'The "$id" chunk claimed ${formatSize(size)} but only '
-        '${formatSize(available)} is present — shortened it to match.',
+        currentL.repairRiffChunkClamped(
+          id,
+          formatSize(size),
+          formatSize(available),
+        ),
       );
       lastChunkStart = offset;
       // The clamped chunk now runs to the end of the file, so there is no
@@ -86,18 +84,13 @@ Uint8List repairRiff(Uint8List bytes, RepairLog log) {
   }
 
   if (form == 'WAVE' && !sawFmt) {
-    log.failed(
-      'The "fmt " chunk is gone, so the sample rate, channel count and bit '
-      'depth are unknown. Nothing can guess those from the samples alone.',
-    );
+    log.failed(currentL.repairRiffNoFmt);
   }
 
   if (lastChunkStart >= 0 && offset < data.length && offset > 12) {
     final trailing = data.length - offset;
     if (trailing > 0 && trailing < data.length) {
-      log.fixed(
-        'Trimmed ${formatSize(trailing)} of bytes past the last valid chunk.',
-      );
+      log.fixed(currentL.repairRiffTrailingTrimmed(formatSize(trailing)));
       final trimmed = data.sublist(0, offset);
       writeU32le(trimmed, 4, trimmed.length - 8);
       return trimmed;

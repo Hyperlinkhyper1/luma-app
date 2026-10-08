@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
 import 'mc_api.dart';
 import 'mc_credentials.dart';
 import 'mc_history.dart';
@@ -160,17 +161,17 @@ class McContentRepository extends ChangeNotifier {
   Future<McProject> trackCurseforgeProject(String input) async {
     final apiKey = _credentials.curseforgeApiKey;
     if (apiKey == null || apiKey.isEmpty) {
-      throw McApiException('Add your CurseForge API key first.');
+      throw McApiException(currentL.accountOverviewCurseforgeNeedKey);
     }
     final slug = CurseForgeApi.slugFromInput(input);
     if (slug == null) {
       throw McApiException(
-        'That does not look like a CurseForge project URL or slug.',
+        currentL.accountOverviewCurseforgeBadSlug,
       );
     }
     final project = await _curseforge.findBySlug(apiKey, slug);
     if (project == null) {
-      throw McApiException('CurseForge has no project called "$slug".');
+      throw McApiException(currentL.accountOverviewCurseforgeNoProject(slug));
     }
     if (_credentials.curseforgeProjectIds.contains(project.id)) {
       return project;
@@ -265,11 +266,11 @@ class McContentRepository extends ChangeNotifier {
         state: McPlatformState.notConfigured,
         message: switch (platform) {
           McPlatform.curseforge => _credentials.curseforgeNeedsTarget
-              ? 'Add your CurseForge author id, or track projects individually.'
-              : 'Add a CurseForge API key to include it.',
-          McPlatform.modrinth => 'Add your Modrinth username to include it.',
+              ? currentL.accountOverviewCurseforgeNeedAuthor
+              : currentL.accountOverviewCurseforgeNeedKeyToInclude,
+          McPlatform.modrinth => currentL.accountOverviewModrinthNeedUsername,
           McPlatform.planetMinecraft =>
-            'Add your Planet Minecraft username to include it.',
+            currentL.accountOverviewPmcNeedUsername,
         },
       );
     }
@@ -332,7 +333,7 @@ class McContentRepository extends ChangeNotifier {
       state: McPlatformState.ok,
       creator: McCreator(
         platform: McPlatform.curseforge,
-        handle: authorId ?? 'tracked projects',
+        handle: authorId ?? currentL.accountOverviewCurseforgeTrackedProjects,
         url: authorId == null
             ? null
             : 'https://www.curseforge.com/members/$authorId/projects',
@@ -347,8 +348,7 @@ class McContentRepository extends ChangeNotifier {
     final fetcher = _pmcFetcher;
     if (fetcher == null) {
       throw McApiException(
-        'Planet Minecraft needs an embedded browser, which is not available '
-        'on this platform.',
+        currentL.accountOverviewPmcNeedsBrowser,
       );
     }
 

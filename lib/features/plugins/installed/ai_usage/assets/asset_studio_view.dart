@@ -9,7 +9,11 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
+import '../../../../../l10n/current_l.dart';
 import '../../_shared/native_webview.dart';
+import '../../_shared/scene_localization_bridge.dart';
+import '../../_shared/scene_localizations.dart';
 import 'asset_studio.dart';
 
 /// Asks where to save [bytes] and writes them there. Returns the path, or
@@ -17,7 +21,7 @@ import 'asset_studio.dart';
 Future<String?> saveStudioFile(String name, Uint8List bytes) async {
   final dot = name.lastIndexOf('.');
   final path = await FilePicker.saveFile(
-    dialogTitle: 'Save $name',
+    dialogTitle: currentL.aiUsageAssetSaveDialogTitle(name),
     fileName: name,
     type: dot > 0 ? FileType.custom : FileType.any,
     allowedExtensions: dot > 0 ? [name.substring(dot + 1)] : null,
@@ -57,12 +61,17 @@ class _AssetStudioViewState extends State<AssetStudioView> {
   String? _fileUrl;
   String? _error;
   String? _theme;
+  String? _locale;
 
   static bool get _supported => Platform.isWindows || Platform.isAndroid;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final locale = L.of(context).localeName;
+    final localeChanged = locale != _locale;
+    _locale = locale;
+    if (localeChanged && _html != null) _pushLocale();
     final theme = Theme.of(context).brightness == Brightness.dark
         ? 'dark'
         : 'light';
@@ -77,6 +86,18 @@ class _AssetStudioViewState extends State<AssetStudioView> {
       _send({'type': 'theme', 'theme': theme});
       setState(() {});
     }
+  }
+
+  void _pushLocale() {
+    final t = L.of(context);
+    _send(SceneLocalizationBridge.payload(
+      language: _locale ?? t.localeName,
+      strings: {
+        ...sceneKeyStrings(t, 'asset_studio'),
+        ...sceneDynamicStrings(t, 'asset_studio'),
+      },
+      sourceStrings: sceneSourceStrings(t, 'asset_studio'),
+    ));
   }
 
   void _send(Map<String, Object?> message) {
@@ -115,7 +136,11 @@ class _AssetStudioViewState extends State<AssetStudioView> {
         _fileUrl = fileUrl;
       });
     } catch (e) {
-      if (mounted) setState(() => _error = 'Could not prepare the studio: $e');
+      if (mounted) {
+        setState(
+          () => _error = L.of(context).aiUsageAssetStudioPrepareFailed('$e'),
+        );
+      }
     }
   }
 
@@ -124,6 +149,9 @@ class _AssetStudioViewState extends State<AssetStudioView> {
       final value = raw is String ? jsonDecode(raw) : raw;
       if (value is! Map) return;
       switch (value['type']) {
+        case 'ready':
+          _pushLocale();
+          return;
         case 'save':
           final dataUrl = '${value['dataUrl'] ?? ''}';
           final comma = dataUrl.indexOf(',');
@@ -142,19 +170,18 @@ class _AssetStudioViewState extends State<AssetStudioView> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     if (!_supported) {
-      return const LumaEmptyState(
+      return LumaEmptyState(
         icon: Icons.view_in_ar_rounded,
-        title: 'The 3D studio runs on Windows and Android',
-        subtitle:
-            'Download the HTML to open this model in any browser — it works '
-            'offline.',
+        title: t.aiUsageAssetStudioUnsupported,
+        subtitle: t.aiUsageAssetStudioUnsupportedHint,
       );
     }
     if (_error != null) {
       return LumaEmptyState(
         icon: Icons.warning_amber_rounded,
-        title: 'Studio unavailable',
+        title: t.aiUsageAssetStudioUnavailable,
         subtitle: _error,
       );
     }
@@ -176,6 +203,7 @@ class _AssetStudioViewState extends State<AssetStudioView> {
         onCreated: (controller) {
           _windows = controller;
           _send({'type': 'theme', 'theme': _theme});
+          _pushLocale();
         },
         onError: (message) {
           if (mounted) setState(() => _error = message);
@@ -198,6 +226,7 @@ class _AssetStudioViewState extends State<AssetStudioView> {
           },
         );
       },
+      onLoadStop: (_, __) => _pushLocale(),
     );
   }
 }

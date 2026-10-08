@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/minecraft_launcher_database.dart';
 import '../logic/mod_install_flow.dart';
@@ -196,11 +197,12 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Scaffold(
       backgroundColor: luma.background,
       appBar: AppBar(
         backgroundColor: luma.background,
-        title: Text('Browse for ${widget.instance.name}'),
+        title: Text(t.minecraftLauncherBrowseFor(widget.instance.name)),
         elevation: 0,
       ),
       body: Column(
@@ -220,6 +222,7 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
   // ── Controls ──────────────────────────────────────────────────────────
 
   Widget _controls(LumaPalette luma) {
+    final t = L.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -231,7 +234,7 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
             _sourceToggle(luma),
             const SizedBox(width: 4),
             for (final entry in modrinthProjectTypes.entries)
-              _kindChip(luma, entry.key, entry.value),
+              _kindChip(luma, entry.key, modrinthProjectTypeLabel(entry.key)),
           ],
         ),
         const SizedBox(height: 12),
@@ -240,7 +243,7 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
             final field = TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Search ${modrinthProjectTypes[_kind]!.toLowerCase()}…',
+                hintText: t.minecraftLauncherSearchKindHint(modrinthProjectTypeLabel(_kind).toLowerCase()),
                 prefixIcon: const Icon(Icons.search_rounded),
                 suffixIcon: _searchController.text.isEmpty
                     ? null
@@ -385,7 +388,7 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
                   children: [
                     Icon(Icons.sort_rounded, size: 15, color: luma.textMuted),
                     const SizedBox(width: 8),
-                    Text(entry.value),
+                    Text(modrinthSortLabel(entry.key)),
                   ],
                 ),
               ),
@@ -403,6 +406,7 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
   /// Says out loud what the result list is already filtered to, so an empty
   /// list reads as "nothing fits this instance" rather than "search broken".
   Widget _contextLine(LumaPalette luma) {
+    final t = L.of(context);
     final loader = widget.instance.loader;
     return Row(
       children: [
@@ -410,8 +414,12 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
         const SizedBox(width: 6),
         Expanded(
           child: Text(
-            'Compatible with ${widget.instance.versionId}'
-            '${loader == 'vanilla' ? '' : ' · ${prettyTag(loader)}'}',
+            loader == 'vanilla'
+                ? t.minecraftLauncherCompatibleWith(widget.instance.versionId)
+                : t.minecraftLauncherCompatibleWithLoader(
+                    widget.instance.versionId,
+                    prettyTag(loader),
+                  ),
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
         ),
@@ -419,7 +427,10 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
           Text(
             _totalHits == 0
                 ? ''
-                : '${formatCompactCount(_totalHits)} result${_totalHits == 1 ? '' : 's'}',
+                : t.minecraftLauncherResultCount(
+                    _totalHits,
+                    formatCompactCount(_totalHits),
+                  ),
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
       ],
@@ -429,15 +440,15 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
   // ── Results ───────────────────────────────────────────────────────────
 
   Widget _buildResults(LumaPalette luma) {
+    final t = L.of(context);
     if (_loading) return const Center(child: CircularProgressIndicator(strokeWidth: 2.4));
     if (_needsKey) {
       return LumaEmptyState(
         icon: Icons.key_rounded,
-        title: 'CurseForge needs an API key',
-        subtitle: 'Add your own free key once and CurseForge mods, '
-            'resource packs and shaders show up here.',
+        title: t.minecraftLauncherCurseForgeNeedsKey,
+        subtitle: t.minecraftLauncherCurseForgeNeedsKeySubtitle,
         action: LumaPrimaryButton(
-          label: 'Add API key',
+          label: t.minecraftLauncherAddApiKey,
           icon: Icons.key_rounded,
           onTap: _addCurseForgeKey,
         ),
@@ -447,11 +458,11 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
       return Center(
         child: LumaEmptyState(
           icon: Icons.cloud_off_rounded,
-          title: 'Search failed',
+          title: t.minecraftLauncherSearchFailed,
           subtitle: _error,
           action: _source == ContentSource.curseforge
               ? LumaGhostButton(
-                  label: 'Change API key',
+                  label: t.minecraftLauncherChangeApiKey,
                   icon: Icons.key_rounded,
                   onTap: _addCurseForgeKey,
                 )
@@ -460,10 +471,10 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
       );
     }
     if (_hits.isEmpty) {
-      return const LumaEmptyState(
+      return LumaEmptyState(
         icon: Icons.search_off_rounded,
-        title: 'No results',
-        subtitle: 'Try a different search, sort, or content type.',
+        title: t.minecraftLauncherNoResults,
+        subtitle: t.minecraftLauncherNoResultsSubtitle,
       );
     }
     return HoverSyncScroll(
@@ -481,7 +492,7 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
             onInstall: () => _quickInstall(hit),
             installed: _installedProjectIds.contains(hit.projectId),
             installing: _installing.contains(hit.projectId),
-            installTooltip: 'Install into ${widget.instance.name}',
+            installTooltip: t.minecraftLauncherInstallInto(widget.instance.name),
           );
         },
       ),
@@ -489,6 +500,7 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
   }
 
   Widget _footer(LumaPalette luma) {
+    final t = L.of(context);
     if (_loadingMore) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 20),
@@ -500,7 +512,7 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
         padding: const EdgeInsets.symmetric(vertical: 20),
         child: Center(
           child: Text(
-            'That is everything.',
+            t.minecraftLauncherEndOfResults,
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
         ),
@@ -509,7 +521,7 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Center(
-        child: LumaGhostButton(label: 'Load more', onTap: _loadMore),
+        child: LumaGhostButton(label: t.minecraftLauncherLoadMore, onTap: _loadMore),
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import 'ai_catalog_scope.dart';
 import 'ai_leaderboard_format.dart';
@@ -43,6 +44,7 @@ class _AiLeaderboardInsightsViewState
   Widget build(BuildContext context) {
     final repo = AiCatalogScope.of(context);
     final luma = context.luma;
+    final t = L.of(context);
 
     return ListenableBuilder(
       listenable: repo,
@@ -58,12 +60,12 @@ class _AiLeaderboardInsightsViewState
         }
         final catalog = repo.catalog;
         if (catalog.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.all(24),
+          return Padding(
+            padding: const EdgeInsets.all(24),
             child: LumaEmptyState(
               icon: Icons.insights_outlined,
-              title: 'No model data yet',
-              subtitle: 'Insights need the model catalogue to build from.',
+              title: t.aiLeaderboardGraphEmptyTitle,
+              subtitle: t.aiLeaderboardInsightsEmptySubtitle,
             ),
           );
         }
@@ -72,28 +74,32 @@ class _AiLeaderboardInsightsViewState
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           children: [
             _SectionHeader(
-              eyebrow: 'EFFICIENCY',
-              title: 'Price vs Performance',
+              eyebrow: t.aiLeaderboardInsightsEyebrowEfficiency,
+              title: t.aiLeaderboardInsightsPriceVsPerformance,
               trailing: _FrontierMetricPicker(
                 value: _frontierMetric,
                 onChanged: (m) => setState(() => _frontierMetric = m),
               ),
             ),
             Text(
-              'Blended cost (8:1 input/output) against ${_frontierMetric.label}. '
-              'Models on the line are pareto-efficient — nothing else is both '
-              'cheaper and at least as good.',
+              t.aiLeaderboardInsightsFrontierBlurb(_frontierMetric.label),
               style: TextStyle(color: luma.textMuted, fontSize: 12.5, height: 1.4),
             ),
             const SizedBox(height: 12),
             _FrontierChart(models: catalog.models, scoreMetric: _frontierMetric),
             const SizedBox(height: 28),
-            const _SectionHeader(eyebrow: 'BEST BY TASK', title: 'Category Leaders'),
+            _SectionHeader(
+              eyebrow: t.aiLeaderboardInsightsEyebrowBestByTask,
+              title: t.aiLeaderboardInsightsCategoryLeaders,
+            ),
             const SizedBox(height: 12),
             _BestByTask(models: catalog.models),
             const SizedBox(height: 28),
             if (catalog.news.isNotEmpty) ...[
-              const _SectionHeader(eyebrow: 'RESEARCH', title: 'Latest News'),
+              _SectionHeader(
+                eyebrow: t.aiLeaderboardInsightsEyebrowResearch,
+                title: t.aiLeaderboardInsightsLatestNews,
+              ),
               const SizedBox(height: 12),
               _NewsList(items: catalog.news),
             ],
@@ -170,8 +176,9 @@ class _FrontierMetricPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return PopupMenuButton<AiMetric>(
-      tooltip: 'Score axis',
+      tooltip: t.aiLeaderboardInsightsScoreAxis,
       color: luma.surface,
       onSelected: onChanged,
       itemBuilder: (context) => [
@@ -208,6 +215,7 @@ class _FrontierChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final all = [
       for (final m in models)
         if (AiMetric.blendedPrice.valueOf(m) case final cost?)
@@ -222,7 +230,7 @@ class _FrontierChart extends StatelessWidget {
           height: 200,
           child: Center(
             child: Text(
-              'Not enough priced models rate ${scoreMetric.label} yet.',
+              t.aiLeaderboardInsightsNotEnoughPriced(scoreMetric.label),
               style: TextStyle(color: luma.textMuted),
             ),
           ),
@@ -263,7 +271,7 @@ class _FrontierChart extends StatelessWidget {
               topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               bottomTitles: AxisTitles(
-                axisNameWidget: Text('Blended cost \$/1M tokens (8:1 input/output)',
+                axisNameWidget: Text(t.aiLeaderboardInsightsBlendedCostAxis,
                     style: TextStyle(color: luma.textMuted, fontSize: 11)),
                 sideTitles: SideTitles(
                   showTitles: true,
@@ -329,20 +337,31 @@ class _FrontierChart extends StatelessWidget {
 
 // ─── Best by task ───────────────────────────────────────────────────────────
 
+enum _TaskKind { reasoning, coding, agents, fastest, cheapest, largest }
+
 class _TaskSpec {
-  const _TaskSpec(this.label, this.metric, this.icon);
-  final String label;
+  const _TaskSpec(this.kind, this.metric, this.icon);
+  final _TaskKind kind;
   final AiMetric metric;
   final IconData icon;
+
+  String label(L t) => switch (kind) {
+        _TaskKind.reasoning => t.aiLeaderboardInsightsTaskReasoning,
+        _TaskKind.coding => t.aiLeaderboardInsightsTaskCoding,
+        _TaskKind.agents => t.aiLeaderboardInsightsTaskAgents,
+        _TaskKind.fastest => t.aiLeaderboardInsightsTaskFastest,
+        _TaskKind.cheapest => t.aiLeaderboardInsightsTaskCheapest,
+        _TaskKind.largest => t.aiLeaderboardInsightsTaskLargest,
+      };
 }
 
 const List<_TaskSpec> _kTasks = [
-  _TaskSpec('Best for reasoning', AiMetric.reasoning, Icons.psychology_outlined),
-  _TaskSpec('Best for coding', AiMetric.coding, Icons.code_rounded),
-  _TaskSpec('Best for agents', AiMetric.agent, Icons.smart_toy_outlined),
-  _TaskSpec('Fastest', AiMetric.speed, Icons.bolt_rounded),
-  _TaskSpec('Cheapest frontier', AiMetric.blendedPrice, Icons.savings_outlined),
-  _TaskSpec('Largest context', AiMetric.context, Icons.unfold_more_rounded),
+  _TaskSpec(_TaskKind.reasoning, AiMetric.reasoning, Icons.psychology_outlined),
+  _TaskSpec(_TaskKind.coding, AiMetric.coding, Icons.code_rounded),
+  _TaskSpec(_TaskKind.agents, AiMetric.agent, Icons.smart_toy_outlined),
+  _TaskSpec(_TaskKind.fastest, AiMetric.speed, Icons.bolt_rounded),
+  _TaskSpec(_TaskKind.cheapest, AiMetric.blendedPrice, Icons.savings_outlined),
+  _TaskSpec(_TaskKind.largest, AiMetric.context, Icons.unfold_more_rounded),
 ];
 
 class _BestByTask extends StatelessWidget {
@@ -384,6 +403,7 @@ class _TaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final value = model == null ? null : task.metric.valueOf(model!);
     return LumaCard(
       child: InkWell(
@@ -409,7 +429,7 @@ class _TaskCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(task.label,
+                  Text(task.label(t),
                       style: TextStyle(color: luma.textMuted, fontSize: 11)),
                   Text(
                     model?.name ?? '–',
@@ -720,6 +740,7 @@ class _FreshPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
@@ -727,7 +748,7 @@ class _FreshPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(context.lumaDecor.pillRadius),
       ),
       child: Text(
-        'NEW',
+        t.aiLeaderboardInsightsNewBadge,
         style: TextStyle(
           color: _inkOn(brand),
           fontSize: 10,

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../l10n/current_l.dart';
 import '../../settings/settings_controller.dart';
 import '../../sync/sync_service.dart';
 import '../plugins/installed/ai_usage/ai_usage_repository.dart';
@@ -200,7 +201,7 @@ class ChatController extends ChangeNotifier {
       await _repository.addMessage(
         conversationId,
         'error',
-        'No ${provider.displayName} API key saved yet — add one in Settings.',
+        currentL.assistantNoApiKeyYet(provider.displayName),
       );
       return;
     }
@@ -293,7 +294,7 @@ class ChatController extends ChangeNotifier {
       await _repository.addMessage(
         conversationId,
         'error',
-        'Something went wrong: $e',
+        currentL.commonErrorDetail('$e'),
       );
     } finally {
       _sending = false;
@@ -313,7 +314,7 @@ class ChatController extends ChangeNotifier {
       await _repository.addMessage(
         conversationId,
         'error',
-        'Picture mode needs this device signed in to an approved luma account.',
+        currentL.assistantPictureNeedsAccount,
       );
       return;
     }
@@ -354,7 +355,7 @@ class ChatController extends ChangeNotifier {
       await _repository.addMessage(
         conversationId,
         'error',
-        'Something went wrong: $e',
+        currentL.commonErrorDetail('$e'),
       );
     } finally {
       _sending = false;

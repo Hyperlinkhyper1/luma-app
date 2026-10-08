@@ -7,7 +7,10 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:webview_windows/webview_windows.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../sync/sync_scope.dart';
+import '../_shared/scene_localization_bridge.dart';
+import '../_shared/scene_localizations.dart';
 import '../_shared/windows_webview.dart';
 import '../secure_chat/secure_chat_scope.dart';
 
@@ -33,8 +36,48 @@ class SubwayBuilderPage extends StatefulWidget {
 
 class _SubwayBuilderPageState extends State<SubwayBuilderPage> {
   InAppWebViewController? _inAppController;
+  WebviewController? _windowsController;
   StreamSubscription? _windowsMsgSub;
   bool _loading = true;
+  String? _locale;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locale = Localizations.localeOf(context).languageCode;
+    if (_locale != locale) {
+      _locale = locale;
+      if (!_loading) unawaited(_pushLocale());
+    }
+  }
+
+  Future<void> _pushLocale() async {
+    final t = L.of(context);
+    final locale = Localizations.localeOf(context).languageCode;
+    await SceneLocalizationBridge.sendWindows(
+      Platform.isWindows ? _windowsController : null,
+      language: locale,
+      strings: {
+        ...sceneKeyStrings(t, 'subway_builder'),
+        ...sceneDynamicStrings(t, 'subway_builder'),
+      },
+      sourceStrings: sceneSourceStrings(t, 'subway_builder'),
+    );
+    await SceneLocalizationBridge.sendAndroid(
+      Platform.isWindows ? null : _inAppController,
+      language: locale,
+      strings: {
+        ...sceneKeyStrings(t, 'subway_builder'),
+        ...sceneDynamicStrings(t, 'subway_builder'),
+      },
+      sourceStrings: sceneSourceStrings(t, 'subway_builder'),
+    );
+  }
+
+  void _loaded() {
+    unawaited(_pushLocale());
+    if (mounted) setState(() => _loading = false);
+  }
 
   // ---- Bridge call handlers (shared by both WebView backends) -----------
 
@@ -101,6 +144,7 @@ class _SubwayBuilderPageState extends State<SubwayBuilderPage> {
   // here to match what flutter_inappwebview's addJavaScriptHandler gives
   // for free on the other platforms.
   void _onWindowsController(WebviewController controller) {
+    _windowsController = controller;
     _windowsMsgSub = controller.webMessage.listen((raw) async {
       Map<String, dynamic> msg;
       try {
@@ -125,12 +169,12 @@ class _SubwayBuilderPageState extends State<SubwayBuilderPage> {
   @override
   Widget build(BuildContext context) {
     if (Platform.isLinux) {
-      return const Center(
+      final t = L.of(context);
+      return Center(
         child: LumaEmptyState(
           icon: Icons.videogame_asset_off_outlined,
-          title: 'Not available on Linux',
-          subtitle: 'Subway Builder requires an embedded WebView that is '
-              'not yet supported on this platform.',
+          title: t.subwayBuilderNotOnLinuxTitle,
+          subtitle: t.subwayBuilderNotOnLinuxSubtitle,
         ),
       );
     }
@@ -143,9 +187,7 @@ class _SubwayBuilderPageState extends State<SubwayBuilderPage> {
                     windowsAssetPath('assets/subway_builder/index.html'),
                   ).toString(),
                   onController: _onWindowsController,
-                  onLoaded: () {
-                    if (mounted) setState(() => _loading = false);
-                  },
+                  onLoaded: _loaded,
                 )
               : InAppWebView(
                   initialFile: 'assets/subway_builder/index.html',
@@ -167,9 +209,7 @@ class _SubwayBuilderPageState extends State<SubwayBuilderPage> {
                       },
                     );
                   },
-                  onLoadStop: (controller, url) {
-                    if (mounted) setState(() => _loading = false);
-                  },
+                  onLoadStop: (controller, url) => _loaded(),
                 ),
         ),
         if (_loading) const Center(child: CircularProgressIndicator()),

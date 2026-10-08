@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../logic/fabric_installer.dart';
 import '../logic/forge_installer.dart';
@@ -86,6 +87,7 @@ class _CreateInstanceWizardState extends State<CreateInstanceWizard> {
   }
 
   Future<void> _loadLoaderVersions() async {
+    final t = L.of(context);
     final mcVersion = _selected?.id;
     if (mcVersion == null || _loader == 'vanilla') return;
     setState(() {
@@ -120,7 +122,7 @@ class _CreateInstanceWizardState extends State<CreateInstanceWizard> {
         _selectedLoaderVersion = versions.isEmpty ? null : versions.first;
         _loadingLoaderVersions = false;
         if (versions.isEmpty) {
-          _loaderVersionError = 'No ${_loaderDisplayName(_loader)} builds found for $mcVersion.';
+          _loaderVersionError = t.minecraftLauncherNoLoaderBuilds(_loaderDisplayName(_loader), mcVersion);
         }
       });
     } catch (e) {
@@ -156,20 +158,21 @@ class _CreateInstanceWizardState extends State<CreateInstanceWizard> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Scaffold(
       backgroundColor: luma.background,
       appBar: AppBar(
         backgroundColor: luma.background,
-        title: const Text('New instance'),
+        title: Text(t.minecraftLauncherNewInstance),
         elevation: 0,
       ),
       body: _error != null
           ? Center(
               child: LumaEmptyState(
                 icon: Icons.cloud_off_rounded,
-                title: 'Could not load Minecraft versions',
+                title: t.minecraftLauncherCouldNotLoadVersions,
                 subtitle: _error,
-                action: LumaGhostButton(label: 'Retry', onTap: () {
+                action: LumaGhostButton(label: t.commonRetry, onTap: () {
                   setState(() => _error = null);
                   _load();
                 }),
@@ -182,6 +185,7 @@ class _CreateInstanceWizardState extends State<CreateInstanceWizard> {
   }
 
   Widget _buildForm(LumaPalette luma) {
+    final t = L.of(context);
     final canCreate = _selected != null &&
         _nameController.text.trim().isNotEmpty &&
         (_loader == 'vanilla' || _selectedLoaderVersion != null);
@@ -191,16 +195,16 @@ class _CreateInstanceWizardState extends State<CreateInstanceWizard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Name', style: TextStyle(color: luma.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+          Text(t.commonName, style: TextStyle(color: luma.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
-          TextField(controller: _nameController, decoration: const InputDecoration(hintText: 'Instance name')),
+          TextField(controller: _nameController, decoration: InputDecoration(hintText: t.minecraftLauncherInstanceNameHint)),
           const SizedBox(height: 20),
-          Text('Mod loader', style: TextStyle(color: luma.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+          Text(t.minecraftLauncherModLoader, style: TextStyle(color: luma.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
           Wrap(
             spacing: 8,
             children: [
-              _LoaderChip(label: 'Vanilla', selected: _loader == 'vanilla', onTap: () => _selectLoader('vanilla')),
+              _LoaderChip(label: t.minecraftLauncherLoaderVanilla, selected: _loader == 'vanilla', onTap: () => _selectLoader('vanilla')),
               for (final l in const ['Fabric', 'Forge', 'NeoForge', 'Quilt'])
                 _LoaderChip(
                   label: l,
@@ -211,7 +215,7 @@ class _CreateInstanceWizardState extends State<CreateInstanceWizard> {
           ),
           if (_loader != 'vanilla') ...[
             const SizedBox(height: 14),
-            Text('${_loaderDisplayName(_loader)} version',
+            Text(t.minecraftLauncherLoaderVersion(_loaderDisplayName(_loader)),
                 style: TextStyle(color: luma.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
             if (_loadingLoaderVersions)
@@ -233,9 +237,9 @@ class _CreateInstanceWizardState extends State<CreateInstanceWizard> {
           const SizedBox(height: 20),
           Row(
             children: [
-              Text('Version', style: TextStyle(color: luma.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+              Text(t.minecraftLauncherVersion, style: TextStyle(color: luma.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
               const Spacer(),
-              Text('Show snapshots', style: TextStyle(color: luma.textMuted, fontSize: 12)),
+              Text(t.minecraftLauncherShowSnapshots, style: TextStyle(color: luma.textMuted, fontSize: 12)),
               Switch(
                 value: _showSnapshots,
                 onChanged: (v) => setState(() => _showSnapshots = v),
@@ -244,7 +248,7 @@ class _CreateInstanceWizardState extends State<CreateInstanceWizard> {
           ),
           TextField(
             controller: _searchController,
-            decoration: const InputDecoration(hintText: 'Search versions…', prefixIcon: Icon(Icons.search_rounded)),
+            decoration: InputDecoration(hintText: t.minecraftLauncherSearchVersionsHint, prefixIcon: const Icon(Icons.search_rounded)),
             onChanged: (v) => setState(() => _search = v),
           ),
           const SizedBox(height: 10),
@@ -262,7 +266,7 @@ class _CreateInstanceWizardState extends State<CreateInstanceWizard> {
                       selected: selected,
                       selectedTileColor: luma.accentSubtle,
                       title: Text(v.id, style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w600)),
-                      subtitle: Text(v.type, style: TextStyle(color: luma.textMuted, fontSize: 12)),
+                      subtitle: Text(_versionTypeLabel(t, v.type), style: TextStyle(color: luma.textMuted, fontSize: 12)),
                       onTap: () => setState(() {
                         _selected = v;
                         if (_nameController.text.isEmpty ||
@@ -281,7 +285,7 @@ class _CreateInstanceWizardState extends State<CreateInstanceWizard> {
           Align(
             alignment: Alignment.centerRight,
             child: LumaPrimaryButton(
-              label: 'Create',
+              label: t.commonCreate,
               icon: Icons.add_rounded,
               loading: _creating,
               onTap: canCreate ? _create : null,
@@ -292,6 +296,14 @@ class _CreateInstanceWizardState extends State<CreateInstanceWizard> {
     );
   }
 }
+
+String _versionTypeLabel(L t, String type) => switch (type) {
+      'release' => t.minecraftLauncherVersionTypeRelease,
+      'snapshot' => t.minecraftLauncherVersionTypeSnapshot,
+      'old_beta' => t.minecraftLauncherVersionTypeOldBeta,
+      'old_alpha' => t.minecraftLauncherVersionTypeOldAlpha,
+      _ => type,
+    };
 
 String _loaderDisplayName(String loader) => switch (loader) {
       'fabric' => 'Fabric',

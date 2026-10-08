@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/app_localizations.dart';
 import 'card_games_logic.dart';
 
 const _felt = Color(0xFF0A6946);
@@ -26,6 +27,8 @@ class _CardGamesPageState extends State<CardGamesPage> {
   late final _blackjack = BlackjackGame();
   late final _patience = PatienceGame();
 
+  L get t => L.of(context);
+
   void _open(_TableGame game) => setState(() => _game = game);
 
   void _newGame() => setState(() {
@@ -44,10 +47,10 @@ class _CardGamesPageState extends State<CardGamesPage> {
   @override
   Widget build(BuildContext context) {
     final title = switch (_game) {
-      _TableGame.poker => 'Five-card draw',
-      _TableGame.blackjack => 'Blackjack',
-      _TableGame.patience => 'Patience',
-      null => 'The card table',
+      _TableGame.poker => t.cardGamesFiveCardDraw,
+      _TableGame.blackjack => t.cardGamesBlackjack,
+      _TableGame.patience => t.cardGamesPatience,
+      null => t.cardGamesTableTitle,
     };
     return Container(
       decoration: const BoxDecoration(
@@ -69,8 +72,8 @@ class _CardGamesPageState extends State<CardGamesPage> {
                   children: [
                     IconButton(
                       tooltip: _game == null
-                          ? 'All games'
-                          : 'Back to card table',
+                          ? t.cardGamesAllGames
+                          : t.cardGamesBackToTable,
                       onPressed: _game == null
                           ? widget.onBack
                           : () => setState(() => _game = null),
@@ -83,7 +86,7 @@ class _CardGamesPageState extends State<CardGamesPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'SMALL GAMES  /  CARD GAMES',
+                            t.cardGamesHeader,
                             style: TextStyle(
                               color: _gold.withValues(alpha: .9),
                               fontSize: 10,
@@ -107,7 +110,7 @@ class _CardGamesPageState extends State<CardGamesPage> {
                         onPressed: _newGame,
                         style: TextButton.styleFrom(foregroundColor: _gold),
                         icon: const Icon(Icons.refresh_rounded, size: 18),
-                        label: const Text('New game'),
+                        label: Text(t.cardGamesNewGame),
                       ),
                   ],
                 ),
@@ -185,9 +188,9 @@ class _CardGamesPageState extends State<CardGamesPage> {
         child: const Icon(Icons.person_rounded, color: _gold, size: 30),
       ),
       const SizedBox(height: 3),
-      const Text(
-        'DEALER',
-        style: TextStyle(
+      Text(
+        t.cardGamesDealer,
+        style: const TextStyle(
           color: _cream,
           fontSize: 10,
           letterSpacing: 2,
@@ -204,9 +207,9 @@ class _CardGamesPageState extends State<CardGamesPage> {
         height: 86,
         child: CustomPaint(painter: _PlayerPainter()),
       ),
-      const Text(
-        'YOU • SEAT 1',
-        style: TextStyle(
+      Text(
+        t.cardGamesYouSeat,
+        style: const TextStyle(
           color: _cream,
           fontSize: 11,
           letterSpacing: 1.7,
@@ -219,8 +222,8 @@ class _CardGamesPageState extends State<CardGamesPage> {
   Widget _lobby() => Column(
     children: [
       const SizedBox(height: 18),
-      const Text(
-        'PULL UP A CHAIR',
+      Text(
+        t.cardGamesPullUpChair,
         textAlign: TextAlign.center,
         style: TextStyle(
           color: _gold,
@@ -230,8 +233,8 @@ class _CardGamesPageState extends State<CardGamesPage> {
         ),
       ),
       const SizedBox(height: 7),
-      const Text(
-        'What will you play?',
+      Text(
+        t.cardGamesWhatToPlay,
         textAlign: TextAlign.center,
         style: TextStyle(
           color: _cream,
@@ -240,8 +243,8 @@ class _CardGamesPageState extends State<CardGamesPage> {
         ),
       ),
       const SizedBox(height: 7),
-      const Text(
-        'A quiet table, a fresh deck, and a seat reserved for you.',
+      Text(
+        t.cardGamesLobbyBlurb,
         textAlign: TextAlign.center,
         style: TextStyle(color: Color(0xFFD1E8DA), fontSize: 13),
       ),
@@ -259,25 +262,25 @@ class _CardGamesPageState extends State<CardGamesPage> {
                 width,
                 _TableGame.poker,
                 '♠',
-                'Poker',
-                'Five-card draw',
-                'Hold your best cards. Beat the dealer.',
+                t.cardGamesPoker,
+                t.cardGamesFiveCardDraw,
+                t.cardGamesPokerBlurb,
               ),
               _choice(
                 width,
                 _TableGame.blackjack,
                 '♥',
-                'Blackjack',
-                'Make 21',
-                'Hit or stand against the dealer.',
+                t.cardGamesBlackjack,
+                t.cardGamesBlackjackType,
+                t.cardGamesBlackjackBlurb,
               ),
               _choice(
                 width,
                 _TableGame.patience,
                 '♣',
-                'Patience',
-                'Solitaire',
-                'Build all four foundations by suit.',
+                t.cardGamesPatience,
+                t.cardGamesSolitaire,
+                t.cardGamesPatienceBlurb,
               ),
             ],
           );
@@ -395,23 +398,25 @@ class _CardGamesPageState extends State<CardGamesPage> {
   Widget _blackjackBoard() => Column(
     children: [
       const SizedBox(height: 8),
-      _sectionLabel('DEALER HAND'),
+      _sectionLabel(t.cardGamesDealerHand),
       const SizedBox(height: 8),
       _cardRow(_blackjack.dealer, hideFrom: _blackjack.finished ? null : 1),
       const SizedBox(height: 8),
       _status(
         _blackjack.finished
-            ? 'Dealer: ${_blackjack.dealerTotal}'
-            : 'Dealer: ${blackjackTotal([_blackjack.dealer.first])} + ?',
+            ? t.cardGamesDealerTotal(_blackjack.dealerTotal)
+            : t.cardGamesDealerShowing(
+                blackjackTotal([_blackjack.dealer.first]),
+              ),
       ),
       const SizedBox(height: 28),
       const _FeltRule(),
       const SizedBox(height: 22),
-      _sectionLabel('YOUR HAND'),
+      _sectionLabel(t.cardGamesYourHand),
       const SizedBox(height: 8),
       _cardRow(_blackjack.player),
       const SizedBox(height: 8),
-      _status('You: ${_blackjack.playerTotal}'),
+      _status(t.cardGamesYouTotal(_blackjack.playerTotal)),
       const SizedBox(height: 18),
       if (_blackjack.finished) _result(_blackjack.result),
       const SizedBox(height: 12),
@@ -421,31 +426,33 @@ class _CardGamesPageState extends State<CardGamesPage> {
         runSpacing: 10,
         children: [
           if (!_blackjack.finished) ...[
-            _action('Hit', Icons.add_rounded, () => setState(_blackjack.hit)),
             _action(
-              'Stand',
+              t.cardGamesHit,
+              Icons.add_rounded,
+              () => setState(_blackjack.hit),
+            ),
+            _action(
+              t.cardGamesStand,
               Icons.pan_tool_alt_rounded,
               () => setState(_blackjack.stand),
             ),
           ] else
             _action(
-              'Deal again',
+              t.cardGamesDealAgain,
               Icons.refresh_rounded,
               () => setState(_blackjack.newRound),
             ),
         ],
       ),
       const SizedBox(height: 12),
-      _hint(
-        'Get closer to 21 than the dealer without going over. Aces count as 1 or 11.',
-      ),
+      _hint(t.cardGamesBlackjackHint),
     ],
   );
 
   Widget _pokerBoard() => Column(
     children: [
       const SizedBox(height: 8),
-      _sectionLabel('DEALER HAND'),
+      _sectionLabel(t.cardGamesDealerHand),
       const SizedBox(height: 8),
       _cardRow(_poker.dealer, hideFrom: _poker.finished ? null : 0),
       if (_poker.finished) ...[
@@ -455,7 +462,7 @@ class _CardGamesPageState extends State<CardGamesPage> {
       const SizedBox(height: 25),
       const _FeltRule(),
       const SizedBox(height: 20),
-      _sectionLabel('YOUR HAND'),
+      _sectionLabel(t.cardGamesYourHand),
       const SizedBox(height: 8),
       LayoutBuilder(
         builder: (context, constraints) {
@@ -482,7 +489,7 @@ class _CardGamesPageState extends State<CardGamesPage> {
                     const SizedBox(height: 4),
                     Text(
                       _poker.held.contains(i) && !_poker.finished
-                          ? 'HOLD'
+                          ? t.cardGamesHold
                           : ' ',
                       style: const TextStyle(
                         color: _gold,
@@ -501,21 +508,19 @@ class _CardGamesPageState extends State<CardGamesPage> {
       if (_poker.finished) _result(_poker.result),
       const SizedBox(height: 12),
       _action(
-        _poker.finished ? 'Deal again' : 'Draw cards',
+        _poker.finished ? t.cardGamesDealAgain : t.cardGamesDrawCards,
         _poker.finished ? Icons.refresh_rounded : Icons.style_rounded,
         () => setState(_poker.finished ? _poker.newRound : _poker.draw),
       ),
       const SizedBox(height: 12),
-      _hint(
-        'Tap cards to hold them, then draw once. The dealer also draws once. Best five-card hand wins.',
-      ),
+      _hint(t.cardGamesPokerHint),
     ],
   );
 
   Widget _patienceBoard() => Column(
     children: [
       const SizedBox(height: 8),
-      _sectionLabel('PATIENCE • DRAW ONE'),
+      _sectionLabel(t.cardGamesPatienceSection),
       const SizedBox(height: 9),
       SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -523,6 +528,7 @@ class _CardGamesPageState extends State<CardGamesPage> {
           children: [
             _pileButton(
               'Stock',
+              t.cardGamesStock,
               _patience.stock.isNotEmpty
                   ? const _PlayingCardView(faceDown: true, width: 54)
                   : const _EmptyCard(label: '↻'),
@@ -531,6 +537,7 @@ class _CardGamesPageState extends State<CardGamesPage> {
             const SizedBox(width: 6),
             _pileButton(
               'Waste',
+              t.cardGamesWaste,
               _patience.waste.isEmpty
                   ? const _EmptyCard(label: '—')
                   : _PlayingCardView(
@@ -544,6 +551,7 @@ class _CardGamesPageState extends State<CardGamesPage> {
             for (var i = 0; i < 4; i++) ...[
               _pileButton(
                 'F${i + 1}',
+                t.cardGamesFoundation('${i + 1}'),
                 _patience.foundations[i].isEmpty
                     ? const _EmptyCard(label: 'A')
                     : _PlayingCardView(
@@ -579,15 +587,18 @@ class _CardGamesPageState extends State<CardGamesPage> {
       const SizedBox(height: 12),
       _status(_patience.message),
       const SizedBox(height: 8),
-      _hint(
-        'Move cards down in alternating colors. Empty columns take kings. Build foundations from ace to king by suit.',
-      ),
+      _hint(t.cardGamesPatienceHint),
     ],
   );
 
-  Widget _pileButton(String label, Widget card, VoidCallback onTap) => Column(
+  Widget _pileButton(
+    String id,
+    String label,
+    Widget card,
+    VoidCallback onTap,
+  ) => Column(
     children: [
-      InkWell(key: ValueKey('patience_$label'), onTap: onTap, child: card),
+      InkWell(key: ValueKey('patience_$id'), onTap: onTap, child: card),
       const SizedBox(height: 4),
       Text(
         label.toUpperCase(),

@@ -1,11 +1,21 @@
+import 'dart:ui' show Locale;
+
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/current_l.dart';
 import 'world_versions.dart';
 
-enum WorldEdition {
-  java('Java Edition'),
-  bedrock('Bedrock Edition');
+/// Messages for code running in an isolate, which does not share the picked
+/// language, so the caller passes the language code in.
+L worldMessagesFor(String languageCode) => lookupL(Locale(languageCode));
 
-  const WorldEdition(this.label);
-  final String label;
+enum WorldEdition {
+  java,
+  bedrock;
+
+  String get label => switch (this) {
+    WorldEdition.java => currentL.worldEditionJava,
+    WorldEdition.bedrock => currentL.worldEditionBedrock,
+  };
 }
 
 String normalizeWorldSourcePath(String path) {
@@ -92,7 +102,7 @@ class WorldEntityRecord {
         .map((n) => (n as num).toDouble())
         .toList();
     if (position.length != 3 || position.any((n) => !n.isFinite)) {
-      throw const FormatException('Invalid entity position in world audit.');
+      throw FormatException(currentL.worldConvInvalidEntityPosition);
     }
     return WorldEntityRecord(
       json['type'] as String,
@@ -191,7 +201,12 @@ class WorldCensus {
 }
 
 /// Reject entities absent from the destination's release schema.
-void verifyWorldEntityTarget(WorldCensus source, WorldTarget target) {
+void verifyWorldEntityTarget(
+  WorldCensus source,
+  WorldTarget target, [
+  L? messages,
+]) {
+  final t = messages ?? currentL;
   final targetParts = target.version.split('.').map(int.parse).toList();
   for (final entity in source.entities) {
     final type = entity.canonicalType.replaceFirst('@hive', '');
@@ -271,8 +286,11 @@ void verifyWorldEntityTarget(WorldCensus source, WorldTarget target) {
       if (targetParts[i] > parts[i]) break;
       if (targetParts[i] < parts[i]) {
         throw FormatException(
-          '${target.label} cannot represent ${entity.type}. '
-          'Choose $minimum or newer, or exclude entities.',
+          t.worldConvEntityUnrepresentable(
+            target.label,
+            entity.type,
+            minimum,
+          ),
         );
       }
     }
@@ -283,35 +301,30 @@ void verifyWorldEntityTarget(WorldCensus source, WorldTarget target) {
 void verifyWorldConversion(
   WorldCensus source,
   WorldCensus output,
-  WorldConversionOptions options,
-) {
+  WorldConversionOptions options, [
+  L? messages,
+]) {
+  final t = messages ?? currentL;
   if (output.edition != options.target.edition ||
       output.version.toString() != options.target.savedVersion.toString()) {
-    throw const FormatException(
-      'The saved world has the wrong target version.',
-    );
+    throw FormatException(t.worldConvWrongTargetVersion);
   }
   if (options.players && source.remotePlayers != 0) {
-    throw const FormatException(
-      'Additional players need Java UUID / Bedrock XUID mappings. '
-      'Player conversion currently supports single-player worlds.',
-    );
+    throw FormatException(t.worldConvAdditionalPlayers);
   }
   if (options.players && source.localPlayer && !output.localPlayer) {
-    throw const FormatException('The local player was not transferred.');
+    throw FormatException(t.worldConvLocalPlayerMissing);
   }
   if (!options.players && (output.localPlayer || output.remotePlayers != 0)) {
-    throw const FormatException(
-      'Excluded player records remain in the output.',
-    );
+    throw FormatException(t.worldConvPlayersRemain);
   }
   if (!options.entities) {
     if (output.entities.isNotEmpty) {
-      throw const FormatException('Excluded entities remain in the output.');
+      throw FormatException(t.worldConvEntitiesRemain);
     }
     return;
   }
-  verifyWorldEntityTarget(output, options.target);
+  verifyWorldEntityTarget(output, options.target, t);
   String bucket(WorldEntityRecord e, int x, int y, int z) =>
       '${e.matchType}:${e.dimension}:$x:$y:$z';
   final remaining = <String, List<WorldEntityRecord>>{};
@@ -367,10 +380,7 @@ void verifyWorldConversion(
     final detail = missing.entries
         .map((e) => '${e.value} × ${e.key}')
         .join(', ');
-    throw FormatException(
-      'Entity transfer failed verification: $detail. '
-      'The converted world was not saved. Your source is unchanged.',
-    );
+    throw FormatException(t.worldConvEntityVerificationFailed(detail));
   }
 }
 

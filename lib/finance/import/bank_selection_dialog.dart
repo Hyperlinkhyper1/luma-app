@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/widgets.dart';
+import '../../l10n/app_localizations.dart';
 import '../data/database.dart';
 import '../finance_repository.dart';
 import '../../theme/luma_theme.dart';
@@ -32,7 +33,7 @@ Future<void> showImportFlow(
   var availablePots = pots;
   if (availablePots.isEmpty) {
     await repo.createPot(
-      name: 'Main',
+      name: L.of(context).financeMainPotName,
       colorValue: 0xFF7C5AD9,
       iconCodepoint: Icons.savings_rounded.codePoint,
     );
@@ -94,6 +95,7 @@ class _BankSelectionBodyState extends State<_BankSelectionBody> {
   String? _error;
 
   Future<void> _pickFile(SupportedBank bank) async {
+    final t = L.of(context);
     setState(() {
       _picking = true;
       _error = null;
@@ -103,7 +105,7 @@ class _BankSelectionBodyState extends State<_BankSelectionBody> {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: bank.allowedExtensions,
-        dialogTitle: 'Select ${bank.name} statement',
+        dialogTitle: t.financeImportSelectStatementTitle(bank.name),
       );
 
       if (result == null || result.files.single.path == null) {
@@ -119,7 +121,7 @@ class _BankSelectionBodyState extends State<_BankSelectionBody> {
       if (entries.isEmpty) {
         setState(() {
           _picking = false;
-          _error = 'No transactions found in the selected file.';
+          _error = t.financeImportNoTransactions;
         });
         return;
       }
@@ -132,8 +134,9 @@ class _BankSelectionBodyState extends State<_BankSelectionBody> {
       if (!mounted) return;
       setState(() {
         _picking = false;
-        _error =
-            'Failed to read file: ${e.toString().replaceAll('Exception: ', '')}';
+        _error = t.financeImportReadFailed(
+          e.toString().replaceAll('Exception: ', ''),
+        );
       });
     }
   }
@@ -141,6 +144,7 @@ class _BankSelectionBodyState extends State<_BankSelectionBody> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     return Padding(
       padding: const EdgeInsets.all(22),
@@ -149,7 +153,7 @@ class _BankSelectionBodyState extends State<_BankSelectionBody> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Import data',
+            t.financeImportTitle,
             style: TextStyle(
               color: luma.textPrimary,
               fontSize: 18,
@@ -158,7 +162,7 @@ class _BankSelectionBodyState extends State<_BankSelectionBody> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Select your bank and an exported statement. Review transactions before adding them.',
+            t.financeImportIntro,
             style: TextStyle(color: luma.textMuted, fontSize: 13),
           ),
           const SizedBox(height: 20),
@@ -199,7 +203,7 @@ class _BankSelectionBodyState extends State<_BankSelectionBody> {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               LumaGhostButton(
-                label: 'Cancel',
+                label: t.commonCancel,
                 onTap: () => Navigator.of(context).pop(),
               ),
             ],
@@ -218,6 +222,7 @@ class _BankTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return MouseRegion(
       cursor: onTap != null
           ? SystemMouseCursors.click
@@ -248,7 +253,7 @@ class _BankTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${bank.fileTypeLabel} file',
+                      t.financeImportFileType(bank.fileTypeLabel),
                       style: TextStyle(color: luma.textMuted, fontSize: 12),
                     ),
                     if (bank.exportHint != null) ...[

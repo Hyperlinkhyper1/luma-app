@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/luma_theme.dart';
 import '../converter_widgets.dart';
 import '../world/world_conversion.dart';
@@ -32,7 +33,7 @@ class _WorldConverterViewState extends State<WorldConverterView> {
 
   Future<void> _pickWorld() async {
     final path = await FilePicker.getDirectoryPath(
-      dialogTitle: 'Select the world folder containing level.dat',
+      dialogTitle: L.of(context).worldConvPickFolderTitle,
     );
     if (path == null || !mounted) return;
     await _loadWorld(path);
@@ -40,7 +41,7 @@ class _WorldConverterViewState extends State<WorldConverterView> {
 
   Future<void> _pickArchive() async {
     final files = await FilePicker.pickFiles(
-      dialogTitle: 'Select an exported Minecraft world',
+      dialogTitle: L.of(context).worldConvPickArchiveTitle,
       type: FileType.custom,
       allowedExtensions: ['mcworld', 'zip'],
     );
@@ -65,7 +66,7 @@ class _WorldConverterViewState extends State<WorldConverterView> {
       _error = null;
       _result = null;
       _busy = true;
-      _progress = 'Reading the world…';
+      _progress = L.of(context).worldConvReading;
     });
     try {
       final census = await _service.inspect(path);
@@ -90,7 +91,7 @@ class _WorldConverterViewState extends State<WorldConverterView> {
 
   Future<void> _pickOutput() async {
     final path = await FilePicker.getDirectoryPath(
-      dialogTitle: 'Choose where to save the converted world',
+      dialogTitle: L.of(context).worldConvPickOutputTitle,
     );
     if (path != null && mounted) {
       setState(() {
@@ -146,18 +147,19 @@ class _WorldConverterViewState extends State<WorldConverterView> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final census = _census;
     return ToolScaffold(
       icon: Icons.public_rounded,
-      title: 'Minecraft world converter',
-      subtitle: 'Java ↔ Bedrock · terrain, entities and player data',
+      title: t.convOtherMinecraftWorld,
+      subtitle: t.worldConvSubtitle,
       onBack: _busy ? () {} : widget.onBack,
       children: [
         if (!_service.supported)
           ConverterBanner(
             icon: Icons.info_outline,
             color: luma.accent,
-            message: 'World conversion is available on Windows and Linux.',
+            message: t.worldConvPlatformUnsupported,
           )
         else ...[
           ConverterCard(
@@ -165,28 +167,28 @@ class _WorldConverterViewState extends State<WorldConverterView> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Close this world in Minecraft before converting. Choose its folder or an exported .mcworld / .zip file, or paste its path below. The original stays unchanged.',
+                  t.worldConvIntro,
                   style: TextStyle(color: luma.textSecondary),
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: _busy ? null : _pickWorld,
                   icon: const Icon(Icons.folder_open),
-                  label: const Text('Choose world folder'),
+                  label: Text(t.worldConvChooseFolder),
                 ),
                 const SizedBox(height: 8),
                 OutlinedButton.icon(
                   onPressed: _busy ? null : _pickArchive,
                   icon: const Icon(Icons.file_open_outlined),
-                  label: const Text('Choose .mcworld file'),
+                  label: Text(t.worldConvChooseArchive),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _sourcePath,
                   enabled: !_busy,
-                  decoration: const InputDecoration(
-                    labelText: 'World folder or .mcworld / .zip path',
-                    hintText: 'Paste a path here',
+                  decoration: InputDecoration(
+                    labelText: t.worldConvPathLabel,
+                    hintText: t.worldConvPathHint,
                   ),
                   onChanged: (_) => setState(() {
                     _census = null;
@@ -200,7 +202,7 @@ class _WorldConverterViewState extends State<WorldConverterView> {
                 OutlinedButton.icon(
                   onPressed: _busy ? null : () => _loadWorld(_sourcePath.text),
                   icon: const Icon(Icons.download_outlined),
-                  label: const Text('Load world'),
+                  label: Text(t.worldConvLoad),
                 ),
                 if (census != null) ...[
                   const SizedBox(height: 12),
@@ -210,7 +212,12 @@ class _WorldConverterViewState extends State<WorldConverterView> {
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   Text(
-                    '${census.edition.label} · ${census.entities.length} entities · ${census.localPlayer ? 1 : 0} local player · ${census.remotePlayers} additional players',
+                    t.worldConvCensusLine(
+                      census.edition.label,
+                      census.entities.length,
+                      census.localPlayer ? 1 : 0,
+                      census.remotePlayers,
+                    ),
                   ),
                   for (final warning in census.warnings)
                     Padding(
@@ -233,7 +240,7 @@ class _WorldConverterViewState extends State<WorldConverterView> {
                   key: ValueKey(_target.edition),
                   initialValue: _target.edition,
                   isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Convert to'),
+                  decoration: InputDecoration(labelText: t.convMediaConvertTo),
                   items: WorldEdition.values
                       .map(
                         (e) => DropdownMenuItem(value: e, child: Text(e.label)),
@@ -257,8 +264,8 @@ class _WorldConverterViewState extends State<WorldConverterView> {
                   key: ValueKey(_target),
                   initialValue: _target,
                   isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Target Minecraft version',
+                  decoration: InputDecoration(
+                    labelText: t.worldConvTargetVersion,
                   ),
                   items: WorldTarget.supported
                       .where((t) => t.edition == _target.edition)
@@ -282,7 +289,7 @@ class _WorldConverterViewState extends State<WorldConverterView> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Java 1.8.8–26.3 and Bedrock 1.12–1.26.60 release formats. Targets before Java 1.13 or Bedrock 1.18.30 require excluding entities and players. Incompatible selected records cause an error. Custom dimensions are refused.',
+                  t.worldConvVersionNote,
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
                 const SizedBox(height: 12),
@@ -292,10 +299,8 @@ class _WorldConverterViewState extends State<WorldConverterView> {
                     children: [
                       SwitchListTile.adaptive(
                         contentPadding: EdgeInsets.zero,
-                        title: const Text('Convert entities'),
-                        subtitle: const Text(
-                          'Mobs, pets, villagers, vehicles and passengers. Every source entity must match a saved output record or conversion fails. Projectiles still in mid-air are listed, not carried over.',
-                        ),
+                        title: Text(t.worldConvEntitiesTitle),
+                        subtitle: Text(t.worldConvEntitiesBody),
                         value: _entities,
                         onChanged: _busy
                             ? null
@@ -306,11 +311,11 @@ class _WorldConverterViewState extends State<WorldConverterView> {
                       ),
                       SwitchListTile.adaptive(
                         contentPadding: EdgeInsets.zero,
-                        title: const Text('Convert players'),
+                        title: Text(t.worldConvPlayersTitle),
                         subtitle: Text(
                           census != null && census.remotePlayers > 0
-                              ? 'This world has ${census.remotePlayers} additional player records. Turn off Convert players to convert terrain and entities. Moving these players requires account mappings.'
-                              : 'Single-player inventory, equipment and position. Additional players require account mappings and cause an error when selected.',
+                              ? t.worldConvPlayersMultiple(census.remotePlayers)
+                              : t.worldConvPlayersSingle,
                         ),
                         value: _players,
                         onChanged: _busy
@@ -322,10 +327,8 @@ class _WorldConverterViewState extends State<WorldConverterView> {
                       ),
                       SwitchListTile.adaptive(
                         contentPadding: EdgeInsets.zero,
-                        title: const Text('Preserve statistics'),
-                        subtitle: const Text(
-                          'Java stats are archived for conversion back to Java. Bedrock has no compatible per-world stats format.',
-                        ),
+                        title: Text(t.worldConvStatsTitle),
+                        subtitle: Text(t.worldConvStatsBody),
                         value: _statistics,
                         onChanged: _busy
                             ? null
@@ -341,20 +344,20 @@ class _WorldConverterViewState extends State<WorldConverterView> {
                 OutlinedButton.icon(
                   onPressed: _busy ? null : _pickOutput,
                   icon: const Icon(Icons.create_new_folder_outlined),
-                  label: const Text('Choose output location'),
+                  label: Text(t.worldConvChooseOutput),
                 ),
                 if (_outputParent != null)
                   Text(_outputParent!, style: TextStyle(color: luma.textMuted)),
                 if (census != null && census.edition == _target.edition) ...[
                   const SizedBox(height: 8),
                   Text(
-                    'This world is already ${census.edition.label}. Choose the other edition to convert it.',
+                    t.worldConvAlreadyEdition(census.edition.label),
                     style: TextStyle(color: luma.textSecondary),
                   ),
                 ],
                 const SizedBox(height: 16),
                 ConverterPrimaryButton(
-                  label: 'Convert & verify world',
+                  label: t.worldConvConvertVerify,
                   icon: Icons.swap_horiz_rounded,
                   loading: _busy,
                   onTap:
@@ -385,8 +388,13 @@ class _WorldConverterViewState extends State<WorldConverterView> {
           ConverterBanner(
             icon: Icons.check_circle_outline,
             color: luma.success,
-            message:
-                'Saved to ${result.path}\n${_entities ? '${result.entityCount} entity records verified.' : 'Entities excluded.'}\n${result.notes.join('\n')}',
+            message: [
+              t.worldConvSaved(result.path),
+              _entities
+                  ? t.worldConvEntitiesVerified(result.entityCount)
+                  : t.worldConvEntitiesExcluded,
+              ...result.notes,
+            ].join('\n'),
           ),
         ],
       ],

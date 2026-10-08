@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart' show sha256, Hmac;
 import 'package:flutter/foundation.dart';
 
 import '../account/plan.dart';
+import '../l10n/current_l.dart';
 import '../security/secure_secret_store.dart';
 import 'recovery_key.dart';
 import 'server_access.dart';
@@ -22,9 +23,7 @@ class SyncLimitExceededException implements Exception {
   final int limit;
 
   @override
-  String toString() =>
-      'Your plan allows syncing up to $limit feature${limit == 1 ? '' : 's'} '
-      'at once. Upgrade your plan to sync more.';
+  String toString() => currentL.syncServiceSyncLimitExceeded(limit);
 }
 
 /// Thrown by [SyncService.enableCollection] when the collection itself is
@@ -37,8 +36,10 @@ class SyncPlanRequiredException implements Exception {
   final String label;
 
   @override
-  String toString() =>
-      '$label syncs on the ${planById(requiredPlanId).name} plan and above.';
+  String toString() => currentL.syncServicePlanRequired(
+    label,
+    planById(requiredPlanId).name,
+  );
 }
 
 /// Orchestrates account state and synchronization.
@@ -507,18 +508,18 @@ class SyncService extends ChangeNotifier {
     final deadline = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(deadline)) {
       if (handle._cancelled) {
-        return const OAuthPollResult(
+        return OAuthPollResult(
           status: 'error',
-          message: 'Sign-in cancelled.',
+          message: currentL.syncOAuthSignInCancelled,
         );
       }
       final result = await handle.api.oauthPoll(handle.ticket);
       if (!result.isPending) return result;
       await Future<void>.delayed(interval);
     }
-    return const OAuthPollResult(
+    return OAuthPollResult(
       status: 'error',
-      message: 'Timed out waiting for the browser. Please try again.',
+      message: currentL.syncOAuthBrowserTimeout,
     );
   }
 
@@ -541,7 +542,7 @@ class SyncService extends ChangeNotifier {
       throw SyncApiException(
         0,
         'oauth_not_ready',
-        'That sign-in did not complete.',
+        currentL.syncOAuthDidNotComplete,
       );
     }
     final s = _state ?? (_state = await SyncStateStore.load());
@@ -644,7 +645,7 @@ class SyncService extends ChangeNotifier {
     final s = _state;
     final pending = s?.pendingApprovalEmail;
     if (s == null || pending == null) {
-      throw StateError('No account is waiting for approval on this device.');
+      throw StateError(currentL.syncServiceApprovalNotPending);
     }
     final api = SyncApi(s.serverUrl ?? kDefaultSyncServerUrl);
     try {
@@ -696,7 +697,7 @@ class SyncService extends ChangeNotifier {
     if (s == null ||
         pending == null ||
         pendingApprovalMode != ServerApprovalMode.email) {
-      throw StateError('No email verification is pending on this device.');
+      throw StateError(currentL.syncServiceEmailVerificationNotPending);
     }
     final api = SyncApi(s.serverUrl ?? kDefaultSyncServerUrl);
     try {
@@ -749,8 +750,7 @@ class SyncService extends ChangeNotifier {
       recoveryBytes = RecoveryKey.parse(typedRecovery);
       if (recoveryBytes == null) {
         throw StateError(
-          'That recovery key is not complete. It is 8 groups of 4 letters '
-          'and digits.',
+          currentL.syncServiceRecoveryKeyIncomplete,
         );
       }
     }
@@ -764,16 +764,14 @@ class SyncService extends ChangeNotifier {
         );
         if (envelope == null) {
           throw StateError(
-            'This account has no recovery key. Leave the field empty to '
-            'reset anyway — the synced copies on the server are erased.',
+            currentL.syncServiceNoRecoveryKey,
           );
         }
         try {
           oldKey = RecoveryKey.openEnvelope(envelope, recoveryBytes);
         } on SyncCryptoException {
           throw StateError(
-            'That recovery key does not belong to this account. Nothing was '
-            'changed.',
+            currentL.syncServiceRecoveryKeyMismatch,
           );
         }
       }
@@ -857,7 +855,7 @@ class SyncService extends ChangeNotifier {
     final s = _state;
     final api = _api;
     if (s == null || api == null || !s.serverReady) {
-      throw StateError('Not signed in with an approved account.');
+      throw StateError(currentL.syncServiceApprovedAccountRequired);
     }
     final key = RecoveryKey.generate();
     final pair = RecoveryKey.seal(
@@ -876,7 +874,7 @@ class SyncService extends ChangeNotifier {
     final s = _state;
     final api = _api;
     if (s == null || api == null || !s.serverReady) {
-      throw StateError('Not signed in with an approved account.');
+      throw StateError(currentL.syncServiceApprovedAccountRequired);
     }
     await api.setRecovery();
     await _refreshAccount();
@@ -949,8 +947,7 @@ class SyncService extends ChangeNotifier {
 
     if (isLocalOnly && s.localVerifier != null && s.localVerifier != verifier) {
       throw StateError(
-        'Wrong password for this device\'s existing '
-        'device-sync identity.',
+        currentL.syncServiceWrongDevicePassword,
       );
     }
 
@@ -989,7 +986,7 @@ class SyncService extends ChangeNotifier {
     final s = _state;
     final api = _api;
     if (s == null || api == null || !s.serverReady) {
-      throw StateError('Not signed in with an approved account.');
+      throw StateError(currentL.syncServiceApprovedAccountRequired);
     }
 
     final currentKeys = await SyncCrypto.deriveKeys(
@@ -1037,7 +1034,7 @@ class SyncService extends ChangeNotifier {
     final s = _state;
     final api = _api;
     if (s == null || api == null || !s.serverReady) {
-      throw StateError('Not signed in with an approved account.');
+      throw StateError(currentL.syncServiceApprovedAccountRequired);
     }
 
     final newSalt = SyncCrypto.randomBytes(16);
@@ -1094,9 +1091,7 @@ class SyncService extends ChangeNotifier {
     );
     if (failed) {
       throw StateError(
-        'Password changed, but some synced data could not be '
-        're-encrypted. The old key was retained in this device\'s secure '
-        'storage for recovery. Keep this device and its data.',
+        currentL.syncServicePasswordReencryptFailed,
       );
     }
   }
@@ -1189,7 +1184,7 @@ class SyncService extends ChangeNotifier {
   Future<List<RemoteSession>> listSessions() async {
     final api = _api;
     if (api == null || !serverReady) {
-      throw StateError('Not signed in with an approved account.');
+      throw StateError(currentL.syncServiceApprovedAccountRequired);
     }
     return api.listSessions();
   }
@@ -1200,7 +1195,7 @@ class SyncService extends ChangeNotifier {
   Future<void> revokeSession(String id) async {
     final api = _api;
     if (api == null || !serverReady) {
-      throw StateError('Not signed in with an approved account.');
+      throw StateError(currentL.syncServiceApprovedAccountRequired);
     }
     await api.revokeSession(id);
   }
@@ -1231,7 +1226,7 @@ class SyncService extends ChangeNotifier {
     final s = _state;
     final api = _api;
     if (s == null || api == null || !s.serverReady) {
-      throw StateError('Not signed in with an approved account.');
+      throw StateError(currentL.syncServiceApprovedAccountRequired);
     }
     final keys = await SyncCrypto.deriveKeys(
       password: password,
@@ -1268,7 +1263,7 @@ class SyncService extends ChangeNotifier {
   Future<void> requestDataDeletion(String reason) async {
     final api = _api;
     if (api == null || !serverReady) {
-      throw StateError('Not signed in with an approved account.');
+      throw StateError(currentL.syncServiceApprovedAccountRequired);
     }
     await api.requestDeletion(reason);
     await _refreshAccount();
@@ -1279,7 +1274,7 @@ class SyncService extends ChangeNotifier {
   Future<void> cancelDataDeletionRequest() async {
     final api = _api;
     if (api == null || !serverReady) {
-      throw StateError('Not signed in with an approved account.');
+      throw StateError(currentL.syncServiceApprovedAccountRequired);
     }
     await api.cancelDeletionRequest();
     await _refreshAccount();
@@ -1407,7 +1402,7 @@ class SyncService extends ChangeNotifier {
   }) async {
     final api = _api, s = _state;
     if (api == null || s == null || !s.serverReady) {
-      throw StateError('Not signed in with an approved account.');
+      throw StateError(currentL.syncServiceApprovedAccountRequired);
     }
     final sealed = await SyncCrypto.sealBytes(bytes, s.encryptionKey!);
     return api.putBlob(
@@ -1422,7 +1417,7 @@ class SyncService extends ChangeNotifier {
   Future<Uint8List?> getObject(String collection) async {
     final api = _api, s = _state;
     if (api == null || s == null || !s.serverReady) {
-      throw StateError('Not signed in with an approved account.');
+      throw StateError(currentL.syncServiceApprovedAccountRequired);
     }
     final blob = await api.getBlob(collection);
     if (blob == null) return null;
@@ -1435,7 +1430,7 @@ class SyncService extends ChangeNotifier {
   ) async {
     final api = _api, s = _state;
     if (api == null || s == null || !s.serverReady) {
-      throw StateError('Not signed in with an approved account.');
+      throw StateError(currentL.syncServiceApprovedAccountRequired);
     }
     final blob = await api.getBlob(collection);
     if (blob == null) return null;
@@ -1453,7 +1448,7 @@ class SyncService extends ChangeNotifier {
   }) async {
     final api = _api, s = _state;
     if (api == null || s == null || !s.serverReady) {
-      throw StateError('Not signed in with an approved account.');
+      throw StateError(currentL.syncServiceApprovedAccountRequired);
     }
     final sealed = await SyncCrypto.sealPayload(payload, s.encryptionKey!);
     return api.putBlob(
@@ -1468,7 +1463,7 @@ class SyncService extends ChangeNotifier {
   Future<void> deleteObject(String collection) async {
     final api = _api, s = _state;
     if (api == null || s == null || !s.serverReady) {
-      throw StateError('Not signed in with an approved account.');
+      throw StateError(currentL.syncServiceApprovedAccountRequired);
     }
     await api.deleteBlob(collection);
   }
@@ -1737,7 +1732,7 @@ class SyncService extends ChangeNotifier {
         payload['collection'] != collection.id) {
       // Binding the collection name inside the ciphertext prevents a
       // (compromised) server from swapping snapshots between collections.
-      throw const SyncCryptoException('Snapshot does not match collection.');
+      throw SyncCryptoException(currentL.syncSnapshotCollectionMismatch);
     }
 
     _importing = true;
@@ -1872,7 +1867,7 @@ class SyncService extends ChangeNotifier {
         payload['collection'] != collection.id) {
       // Same collection-binding check as cloud sync: a malicious peer can't
       // swap a blob from another collection in.
-      throw const SyncCryptoException('Snapshot does not match collection.');
+      throw SyncCryptoException(currentL.syncSnapshotCollectionMismatch);
     }
 
     // Newest-edit-wins, mirroring `_syncCollection`.

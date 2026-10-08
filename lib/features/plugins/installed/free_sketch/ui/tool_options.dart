@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../model/sketch_tool.dart';
 import 'studio_controller.dart';
@@ -40,6 +41,7 @@ class ToolOptionsBar extends StatelessWidget {
   List<Widget> _options(BuildContext context) {
     final c = controller;
     final luma = context.luma;
+    final t = L.of(context);
     Widget label(String text) => Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6),
           child: Text(text, style: TextStyle(color: luma.textMuted, fontSize: 12)),
@@ -47,10 +49,10 @@ class ToolOptionsBar extends StatelessWidget {
     Widget gap() => Container(width: 1, height: 22, margin: const EdgeInsets.symmetric(horizontal: 6), color: luma.border);
     Widget icon(IconData i, String tip, VoidCallback? onTap, {bool selected = false}) =>
         StudioIconButton(icon: i, tooltip: tip, onTap: onTap, selected: selected, size: 34);
-    Widget text(String t, VoidCallback? onTap) => TextButton(
+    Widget text(String s, VoidCallback? onTap) => TextButton(
           onPressed: onTap,
           style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 10)),
-          child: Text(t, style: const TextStyle(fontSize: 12.5)),
+          child: Text(s, style: const TextStyle(fontSize: 12.5)),
         );
     Widget toggle(String a, String b, bool first, ValueChanged<bool> onChanged) => SegmentedButton<bool>(
           showSelectedIcon: false,
@@ -76,17 +78,17 @@ class ToolOptionsBar extends StatelessWidget {
           if (c.symmetry.enabled) ...[
             gap(),
             Icon(Icons.flip_rounded, size: 16, color: luma.accent),
-            label(c.symmetry.mode.label),
+            label(c.symmetry.mode.label(t)),
           ],
           if (c.state.selection != null) ...[
             gap(),
-            label('Painting inside selection'),
-            text('Deselect', c.deselect),
+            label(t.freeSketchToolPaintInSelection),
+            text(t.freeSketchDeselect, c.deselect),
           ],
         ];
       case SketchTool.fill:
         return [
-          label('Tolerance'),
+          label(t.freeSketchFillTolerance),
           SizedBox(
             width: 130,
             child: Slider(
@@ -99,34 +101,34 @@ class ToolOptionsBar extends StatelessWidget {
           ),
           label('${(c.fillTolerance * 100).round()}%'),
           gap(),
-          toggle('All layers', 'This layer', c.fillAllLayers, (v) {
+          toggle(t.freeSketchAllLayers, t.freeSketchThisLayer, c.fillAllLayers, (v) {
             c.fillAllLayers = v;
             c.touch();
           }),
           gap(),
-          label('Grow'),
-          icon(Icons.remove_rounded, 'Shrink fill edge', c.fillGrow > 0 ? () {
+          label(t.freeSketchFillGrow),
+          icon(Icons.remove_rounded, t.freeSketchFillShrinkTip, c.fillGrow > 0 ? () {
             c.fillGrow--;
             c.touch();
           } : null),
           label('${c.fillGrow} px'),
-          icon(Icons.add_rounded, 'Grow fill edge under line art', c.fillGrow < 6 ? () {
+          icon(Icons.add_rounded, t.freeSketchFillGrowTip, c.fillGrow < 6 ? () {
             c.fillGrow++;
             c.touch();
           } : null),
         ];
       case SketchTool.gradient:
         return [
-          toggle('Linear', 'Radial', c.gradientKind == GradientKind.linear, (v) {
+          toggle(t.freeSketchGradientLinear, t.freeSketchGradientRadial, c.gradientKind == GradientKind.linear, (v) {
             c.gradientKind = v ? GradientKind.linear : GradientKind.radial;
             c.touch();
           }),
           gap(),
-          toggle('To transparent', 'To secondary', !c.gradientToSecondary, (v) {
+          toggle(t.freeSketchGradientToTransparent, t.freeSketchGradientToSecondary, !c.gradientToSecondary, (v) {
             c.gradientToSecondary = !v;
             c.touch();
           }),
-          label('Drag across the canvas'),
+          label(t.freeSketchGradientDragHint),
         ];
       case SketchTool.shape:
         return [
@@ -136,22 +138,22 @@ class ToolOptionsBar extends StatelessWidget {
               c.touch();
             }, selected: c.shapeKind == kind),
           if (c.shapeKind == ShapeKind.polygon) ...[
-            icon(Icons.remove_rounded, 'Fewer sides', c.polygonSides > 3 ? () {
+            icon(Icons.remove_rounded, t.freeSketchPolygonFewerSides, c.polygonSides > 3 ? () {
               c.polygonSides--;
               c.touch();
             } : null),
-            label('${c.polygonSides} sides'),
-            icon(Icons.add_rounded, 'More sides', c.polygonSides < 12 ? () {
+            label(t.freeSketchPolygonSides(c.polygonSides)),
+            icon(Icons.add_rounded, t.freeSketchPolygonMoreSides, c.polygonSides < 12 ? () {
               c.polygonSides++;
               c.touch();
             } : null),
           ],
           gap(),
-          toggle('Stroke', 'Fill', !c.shapeFill, (v) {
+          toggle(t.freeSketchShapeStroke, t.freeSketchShapeFill, !c.shapeFill, (v) {
             c.shapeFill = !v;
             c.touch();
           }),
-          label('Shift keeps it straight/square'),
+          label(t.freeSketchShapeShiftHint),
         ];
       case SketchTool.select:
         return [
@@ -162,65 +164,70 @@ class ToolOptionsBar extends StatelessWidget {
             }, selected: c.selectionShape == shape),
           gap(),
           for (final combine in SelectionCombine.values)
-            icon(combine.icon, '${combine.label} selection', () {
+            icon(combine.icon, t.freeSketchSelectionCombineTip(combine.label), () {
               c.selectionCombine = combine;
               c.touch();
             }, selected: c.selectionCombine == combine),
           gap(),
-          text('All', c.selectAll),
-          text('Invert', c.invertSelection),
-          text('Deselect', c.state.selection == null ? null : c.deselect),
+          text(t.freeSketchSelectAll, c.selectAll),
+          text(t.freeSketchSelectInvert, c.invertSelection),
+          text(t.freeSketchDeselect, c.state.selection == null ? null : c.deselect),
           gap(),
-          icon(Icons.content_copy_rounded, 'Copy (Ctrl+C)', c.copy),
-          icon(Icons.content_cut_rounded, 'Cut (Ctrl+X)', c.cut),
-          icon(Icons.content_paste_rounded, 'Paste as new layer (Ctrl+V)', c.hasClipboard ? c.paste : null),
-          icon(Icons.delete_outline_rounded, 'Clear selection (Delete)', c.state.selection == null ? null : c.clearLayer),
+          icon(Icons.content_copy_rounded, t.freeSketchCopyShortcut, c.copy),
+          icon(Icons.content_cut_rounded, t.freeSketchCutShortcut, c.cut),
+          icon(Icons.content_paste_rounded, t.freeSketchPasteAsNewLayerShortcut, c.hasClipboard ? c.paste : null),
+          icon(Icons.delete_outline_rounded, t.freeSketchClearSelectionShortcut, c.state.selection == null ? null : c.clearLayer),
         ];
       case SketchTool.transform:
-        final t = c.transform;
-        if (t == null) return [label('Select a layer with something on it')];
+        final tf = c.transform;
+        if (tf == null) return [label(t.freeSketchTransformSelectLayerHint)];
         return [
-          icon(Icons.flip_rounded, 'Flip horizontally', () {
-            t.flipX = !t.flipX;
+          icon(Icons.flip_rounded, t.freeSketchTransformFlipH, () {
+            tf.flipX = !tf.flipX;
             c.transformChanged();
           }),
           RotatedBox(
             quarterTurns: 1,
-            child: icon(Icons.flip_rounded, 'Flip vertically', () {
-              t.flipY = !t.flipY;
+            child: icon(Icons.flip_rounded, t.freeSketchTransformFlipV, () {
+              tf.flipY = !tf.flipY;
               c.transformChanged();
             }),
           ),
-          icon(Icons.rotate_90_degrees_cw_rounded, 'Rotate 90°', () {
-            t.rotation += math.pi / 2;
+          icon(Icons.rotate_90_degrees_cw_rounded, t.freeSketchTransformRotate90, () {
+            tf.rotation += math.pi / 2;
             c.transformChanged();
           }),
-          icon(Icons.aspect_ratio_rounded, c.uniformScale ? 'Uniform scale (Shift for free)' : 'Free scale (Shift for uniform)', () {
-            c.uniformScale = !c.uniformScale;
-            c.touch();
-          }, selected: c.uniformScale),
-          text('Reset', () {
-            t.reset();
+          icon(
+            Icons.aspect_ratio_rounded,
+            c.uniformScale ? t.freeSketchTransformUniformScale : t.freeSketchTransformFreeScale,
+            () {
+              c.uniformScale = !c.uniformScale;
+              c.touch();
+            },
+            selected: c.uniformScale,
+          ),
+          text(t.commonReset, () {
+            tf.reset();
             c.transformChanged();
           }),
           gap(),
-          label('${(t.scaleX.abs() * 100).round()}% × ${(t.scaleY.abs() * 100).round()}%'),
-          label('${(t.rotation * 180 / math.pi).round() % 360}°'),
+          label('${(tf.scaleX.abs() * 100).round()}% × ${(tf.scaleY.abs() * 100).round()}%'),
+          label('${(tf.rotation * 180 / math.pi).round() % 360}°'),
           gap(),
-          text('Cancel', c.cancelTransform),
+          text(t.commonCancel, c.cancelTransform),
           FilledButton(
             onPressed: c.finishTransform,
             style: FilledButton.styleFrom(visualDensity: VisualDensity.compact),
-            child: const Text('Apply'),
+            child: Text(t.commonApply),
           ),
         ];
       case SketchTool.eyedropper:
         return [
-          toggle('All layers', 'This layer', c.eyedropperAllLayers, (v) {
+          toggle(t.freeSketchAllLayers, t.freeSketchThisLayer, c.eyedropperAllLayers, (v) {
             c.eyedropperAllLayers = v;
             c.touch();
           }),
-          label('Tip: hold Alt with any tool to pick a colour'),
+          label(t.freeSketchEyedropperTip),
         ];
     }
   }

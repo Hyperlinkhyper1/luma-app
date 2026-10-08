@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 
 /// The File Tree plugin: point it at a drive or folder and it scans every file
@@ -61,7 +62,7 @@ class _FileTreePageState extends State<FileTreePage> {
 
   Future<void> _pickAndScan() async {
     final dir = await FilePicker.getDirectoryPath(
-      dialogTitle: 'Choose a folder or drive to scan',
+      dialogTitle: L.of(context).fileTreePickFolderTitle,
     );
     if (dir == null) return;
     await _scan(dir);
@@ -88,7 +89,7 @@ class _FileTreePageState extends State<FileTreePage> {
       if (mounted) {
         setState(() {
           _scanning = false;
-          _error = '$e';
+          _error = L.of(context).fileTreeErrorDetail('$e');
         });
       }
       return;
@@ -116,7 +117,7 @@ class _FileTreePageState extends State<FileTreePage> {
         _cleanupScan();
       } else if (msg is _ScanError) {
         setState(() {
-          _error = msg.message;
+          _error = L.of(context).fileTreeErrorDetail(msg.message);
           _scanning = false;
         });
         _cleanupScan();
@@ -189,23 +190,23 @@ class _FileTreePageState extends State<FileTreePage> {
   }
 
   Widget _body() {
+    final t = L.of(context);
     final root = _root;
     if (root == null) {
       if (_scanning) {
         return const _ScanningPlaceholder();
       }
-      return const LumaEmptyState(
+      return LumaEmptyState(
         icon: Icons.account_tree_rounded,
-        title: 'Nothing scanned yet',
-        subtitle:
-            'Pick a drive or folder above and luma will map out what\'s using the space.',
+        title: t.fileTreeNothingScanned,
+        subtitle: t.fileTreeNothingScannedHint,
       );
     }
     if (root.totalSize == 0) {
-      return const LumaEmptyState(
+      return LumaEmptyState(
         icon: Icons.folder_off_rounded,
-        title: 'This folder is empty',
-        subtitle: 'No files were found, or they couldn\'t be read.',
+        title: t.fileTreeFolderEmpty,
+        subtitle: t.fileTreeFolderEmptyHint,
       );
     }
     if (_detailed) {
@@ -248,6 +249,7 @@ class _ScanBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return LumaCard(
       child: Column(
@@ -262,7 +264,7 @@ class _ScanBar extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Disk usage',
+                      t.fileTreeDiskUsage,
                       style: TextStyle(
                         color: luma.textPrimary,
                         fontSize: 16,
@@ -272,7 +274,7 @@ class _ScanBar extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       root == null
-                          ? 'See exactly what\'s filling up your drive.'
+                          ? t.fileTreeDiskUsageHint
                           : root!.path,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -284,14 +286,14 @@ class _ScanBar extends StatelessWidget {
               const SizedBox(width: 12),
               if (root != null) ...[
                 LumaGhostButton(
-                  label: 'Rescan',
+                  label: t.fileTreeRescan,
                   icon: Icons.refresh_rounded,
                   onTap: scanning ? null : () => onScanPath(root!.path),
                 ),
                 const SizedBox(width: 8),
               ],
               LumaPrimaryButton(
-                label: 'Choose folder',
+                label: t.commonChooseFolder,
                 icon: Icons.create_new_folder_rounded,
                 loading: scanning,
                 onTap: scanning ? null : onPick,
@@ -309,11 +311,11 @@ class _ScanBar extends StatelessWidget {
             const SizedBox(height: 14),
             Row(
               children: [
-                _Stat(label: 'Total size', value: _formatBytes(root!.totalSize)),
+                _Stat(label: t.fileTreeTotalSize, value: _formatBytes(root!.totalSize)),
                 const SizedBox(width: 28),
-                _Stat(label: 'Files', value: _formatCount(root!.fileCount)),
+                _Stat(label: t.fileTreeFiles, value: _formatCount(root!.fileCount)),
                 const SizedBox(width: 28),
-                _Stat(label: 'Folders', value: _formatCount(root!.dirCount)),
+                _Stat(label: t.fileTreeFolders, value: _formatCount(root!.dirCount)),
                 const Spacer(),
                 _ViewToggle(detailed: detailed, onSetView: onSetView),
               ],
@@ -333,6 +335,7 @@ class _ViewToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Container(
       padding: const EdgeInsets.all(3),
@@ -344,14 +347,14 @@ class _ViewToggle extends StatelessWidget {
       child: Row(
         children: [
           _ViewToggleButton(
-            label: 'List',
+            label: t.fileTreeList,
             icon: Icons.format_list_bulleted_rounded,
             selected: !detailed,
             onTap: () => onSetView(false),
           ),
           const SizedBox(width: 3),
           _ViewToggleButton(
-            label: 'Detailed',
+            label: t.fileTreeDetailed,
             icon: Icons.grid_view_rounded,
             selected: detailed,
             onTap: () => onSetView(true),
@@ -419,6 +422,7 @@ class _DriveRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     if (drives.isEmpty) return const SizedBox.shrink();
     return Wrap(
@@ -426,7 +430,7 @@ class _DriveRow extends StatelessWidget {
       runSpacing: 8,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Text('Drives',
+        Text(t.fileTreeDrives,
             style: TextStyle(
                 color: luma.textMuted,
                 fontSize: 12,
@@ -506,6 +510,7 @@ class _ScanningPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Center(
       child: Column(
@@ -513,13 +518,13 @@ class _ScanningPlaceholder extends StatelessWidget {
         children: [
           Icon(Icons.bedtime_rounded, size: 34, color: luma.accent),
           const SizedBox(height: 14),
-          Text('Mapping your files…',
+          Text(t.fileTreeMapping,
               style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 15,
                   fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
-          Text('Progress is shown at the bottom.',
+          Text(t.fileTreeProgressAtBottom,
               style: TextStyle(color: luma.textMuted, fontSize: 13)),
         ],
       ),
@@ -550,6 +555,7 @@ class _ScanProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final indexing = phase == 0 || total <= 0;
     final fraction = indexing ? null : (scanned / total).clamp(0.0, 1.0);
@@ -568,7 +574,7 @@ class _ScanProgressBar extends StatelessWidget {
           Row(
             children: [
               Text(
-                indexing ? 'Indexing files…' : 'Measuring sizes…',
+                indexing ? t.fileTreeIndexing : t.fileTreeMeasuring,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 13.5,
@@ -578,8 +584,8 @@ class _ScanProgressBar extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 indexing
-                    ? '${_formatCount(scanned)} items found'
-                    : '${_formatCount(scanned)} / ${_formatCount(total)} items',
+                    ? t.fileTreeItemsFound(scanned)
+                    : t.fileTreeItemsProgress(_formatCount(scanned), _formatCount(total)),
                 style: TextStyle(
                   color: luma.textSecondary,
                   fontSize: 12.5,
@@ -588,7 +594,7 @@ class _ScanProgressBar extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                '${_formatBytes(bytes)} scanned',
+                t.fileTreeBytesScanned(_formatBytes(bytes)),
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 13,
@@ -598,7 +604,7 @@ class _ScanProgressBar extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               IconButton(
-                tooltip: 'Cancel scan',
+                tooltip: t.fileTreeCancelScan,
                 visualDensity: VisualDensity.compact,
                 icon: Icon(Icons.close_rounded, size: 18, color: luma.textMuted),
                 onPressed: onCancel,
@@ -818,6 +824,7 @@ class _TreeTileState extends State<_TreeTile> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final node = widget.row.node;
     final isDir = node.isDir;
     final hasChildren = node.children.isNotEmpty;
@@ -860,7 +867,7 @@ class _TreeTileState extends State<_TreeTile> {
               Expanded(
                 flex: 5,
                 child: Text(
-                  node.name,
+                  node.labelFor(t),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -938,6 +945,7 @@ class _TreemapView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final node = crumbs.last;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -948,7 +956,7 @@ class _TreemapView extends StatelessWidget {
           child: LumaCard(
             padding: const EdgeInsets.all(6),
             child: node.children.isEmpty
-                ? const Center(child: Text('No files to map in this folder.'))
+                ? Center(child: Text(t.fileTreeNoFilesHere))
                 : ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: _TreemapNode(node: node, depth: 0, onDrill: onDrill),
@@ -968,13 +976,14 @@ List<FileNode> _tileChildren(FileNode node) {
   final head = ch.sublist(0, 79);
   final restSize = ch.sublist(79).fold<int>(0, (s, c) => s + c.totalSize);
   head.add(FileNode(
-    name: '(${ch.length - 79} smaller items)',
+    name: '',
     path: '${node.path}::more',
     isDir: false,
     totalSize: restSize,
     fileCount: 0,
     dirCount: 0,
     children: const [],
+    hiddenItems: ch.length - 79,
   ));
   return head;
 }
@@ -1156,8 +1165,9 @@ class _LeafTileState extends State<_LeafTile> {
     final node = widget.node;
     final onFill = _onColor(widget.color);
 
+    final t = L.of(context);
     return Tooltip(
-      message: '${node.name}\n${_formatBytes(node.totalSize)}',
+      message: '${node.labelFor(t)}\n${_formatBytes(node.totalSize)}',
       waitDuration: const Duration(milliseconds: 400),
       child: MouseRegion(
         cursor: widget.onTap == null
@@ -1201,7 +1211,7 @@ class _LeafTileState extends State<_LeafTile> {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              node.name,
+                              node.labelFor(t),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -1255,6 +1265,7 @@ class _FolderHeaderState extends State<_FolderHeader> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final onColor = widget.onColor;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -1274,7 +1285,7 @@ class _FolderHeaderState extends State<_FolderHeader> {
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
-                  widget.node.name,
+                  widget.node.labelFor(t),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -1412,6 +1423,7 @@ class FileNode {
     required this.fileCount,
     required this.dirCount,
     required this.children,
+    this.hiddenItems = 0,
   });
 
   final String name;
@@ -1421,6 +1433,12 @@ class FileNode {
   final int fileCount;
   final int dirCount;
   final List<FileNode> children;
+
+  /// Non-zero on the aggregate tile that folds in the long tail of a folder's
+  /// smaller children; it is the number of items folded in.
+  final int hiddenItems;
+
+  String labelFor(L t) => hiddenItems > 0 ? t.fileTreeOtherItems(hiddenItems) : name;
 }
 
 class _ScanArgs {
@@ -1584,13 +1602,14 @@ List<FileNode> _capChildren(List<FileNode> sorted, String parentPath) {
   final rest = sorted.sublist(_maxChildrenPerDir - 1);
   final restSize = rest.fold<int>(0, (s, c) => s + c.totalSize);
   head.add(FileNode(
-    name: '(${rest.length} more items)',
+    name: '',
     path: '$parentPath::more',
     isDir: false,
     totalSize: restSize,
     fileCount: 0,
     dirCount: 0,
     children: const [],
+    hiddenItems: rest.length,
   ));
   return head;
 }

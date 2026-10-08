@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'smart_home_preset.dart';
 import 'smart_home_repository.dart';
@@ -26,12 +27,17 @@ class SmartHomePresetsSection extends StatelessWidget {
     if (!context.mounted || repository.error != null) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text('“${preset.name}” applied.')));
+    ).showSnackBar(
+      SnackBar(
+        content: Text(L.of(context).smartHomePresetApplied(preset.name)),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final palette = context.luma;
+    final t = L.of(context);
     return LumaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -42,7 +48,7 @@ class SmartHomePresetsSection extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Presets',
+                  t.smartHomePresetsTitle,
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
@@ -51,19 +57,19 @@ class SmartHomePresetsSection extends StatelessWidget {
                     ? null
                     : () => _edit(context),
                 icon: const Icon(Icons.add_rounded),
-                label: const Text('New preset'),
+                label: Text(t.smartHomeNewPreset),
               ),
             ],
           ),
           const SizedBox(height: 8),
           if (repository.presets.isEmpty)
             Text(
-              'Save a group of lamps with its own brightness and color, then turn them on here with one tap.',
+              t.smartHomePresetsEmpty,
               style: TextStyle(color: palette.textSecondary),
             )
           else ...[
             Text(
-              'Tap a preset to turn on its lamps.',
+              t.smartHomePresetsTapHint,
               style: TextStyle(color: palette.textSecondary),
             ),
             const SizedBox(height: 14),
@@ -91,7 +97,7 @@ class SmartHomePresetsSection extends StatelessWidget {
                         label: Text(preset.name),
                       ),
                       IconButton(
-                        tooltip: 'Edit ${preset.name}',
+                        tooltip: t.smartHomeEditPreset(preset.name),
                         onPressed: repository.busy
                             ? null
                             : () => _edit(context, preset),
@@ -199,7 +205,8 @@ class _PresetEditorDialogState extends State<_PresetEditorDialog> {
     } else {
       setState(() {
         _saving = false;
-        _error = widget.repository.error ?? 'Could not save this preset.';
+        _error =
+            widget.repository.error ?? L.of(context).smartHomeCouldNotSavePreset;
       });
     }
   }
@@ -210,18 +217,16 @@ class _PresetEditorDialogState extends State<_PresetEditorDialog> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete preset?'),
-        content: Text(
-          '“${preset.name}” will be removed. Your lamps will not change.',
-        ),
+        title: Text(L.of(context).smartHomeDeletePresetTitle),
+        content: Text(L.of(context).smartHomeDeletePresetBody(preset.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(L.of(context).commonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
+            child: Text(L.of(context).commonDelete),
           ),
         ],
       ),
@@ -235,7 +240,9 @@ class _PresetEditorDialogState extends State<_PresetEditorDialog> {
     } else {
       setState(() {
         _saving = false;
-        _error = widget.repository.error ?? 'Could not delete this preset.';
+        _error =
+            widget.repository.error ??
+            L.of(context).smartHomeCouldNotDeletePreset;
       });
     }
   }
@@ -246,8 +253,13 @@ class _PresetEditorDialogState extends State<_PresetEditorDialog> {
         .where((light) => light.canToggle)
         .toList();
     final palette = context.luma;
+    final t = L.of(context);
     return AlertDialog(
-      title: Text(widget.preset == null ? 'New preset' : 'Edit preset'),
+      title: Text(
+        widget.preset == null
+            ? t.smartHomeNewPresetTitle
+            : t.smartHomeEditPresetTitle,
+      ),
       content: SizedBox(
         width: 560,
         height: math.min(MediaQuery.sizeOf(context).height * 0.62, 600),
@@ -260,14 +272,14 @@ class _PresetEditorDialogState extends State<_PresetEditorDialog> {
                 maxLength: 60,
                 autofocus: true,
                 onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'Preset name',
-                  hintText: 'Evening',
+                decoration: InputDecoration(
+                  labelText: t.smartHomePresetNameLabel,
+                  hintText: t.smartHomePresetNameHint,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                'Choose the lamps this preset turns on.',
+                t.smartHomeChooseLamps,
                 style: TextStyle(color: palette.textSecondary),
               ),
               const SizedBox(height: 8),
@@ -284,17 +296,19 @@ class _PresetEditorDialogState extends State<_PresetEditorDialog> {
         if (widget.preset != null)
           TextButton(
             onPressed: _saving ? null : _delete,
-            child: Text('Delete', style: TextStyle(color: palette.danger)),
+            child: Text(t.commonDelete, style: TextStyle(color: palette.danger)),
           ),
         TextButton(
           onPressed: _saving ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(t.commonCancel),
         ),
         FilledButton(
           onPressed: _saving || _name.text.trim().isEmpty || _selected.isEmpty
               ? null
               : _save,
-          child: Text(_saving ? 'Saving…' : 'Save preset'),
+          child: Text(
+            _saving ? t.smartHomeSavingPreset : t.smartHomeSavePreset,
+          ),
         ),
       ],
     );
@@ -303,6 +317,7 @@ class _PresetEditorDialogState extends State<_PresetEditorDialog> {
   Widget _lightEditor(SmartLight light) {
     final setting = _selected[light.id];
     final palette = context.luma;
+    final t = L.of(context);
     final hue = setting?.hue ?? 30;
     final saturation = setting?.saturation ?? 1;
     return Card(
@@ -314,7 +329,7 @@ class _PresetEditorDialogState extends State<_PresetEditorDialog> {
             value: setting != null,
             title: Text(light.name),
             subtitle: Text(
-              light.isReachable ? (light.room ?? 'IKEA lamp') : 'Offline',
+              light.isReachable ? (light.room ?? t.smartHomeIkeaLamp) : t.smartHomeOffline,
             ),
             onChanged: _saving
                 ? null
@@ -330,7 +345,9 @@ class _PresetEditorDialogState extends State<_PresetEditorDialog> {
             if (light.canDim) ...[
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text('Brightness  ${setting.brightness ?? 100}%'),
+                child: Text(
+                  t.smartHomeBrightnessPercent(setting.brightness ?? 100),
+                ),
               ),
               Slider(
                 min: 1,
@@ -346,7 +363,7 @@ class _PresetEditorDialogState extends State<_PresetEditorDialog> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    const Text('Color'),
+                    Text(t.commonColor),
                     const SizedBox(width: 10),
                     CircleAvatar(
                       radius: 11,
@@ -375,7 +392,9 @@ class _PresetEditorDialogState extends State<_PresetEditorDialog> {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text('Color intensity  ${(saturation * 100).round()}%'),
+                child: Text(
+                  t.smartHomeColorIntensityPercent((saturation * 100).round()),
+                ),
               ),
               Slider(
                 min: 0,
@@ -389,7 +408,7 @@ class _PresetEditorDialogState extends State<_PresetEditorDialog> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                 child: Text(
-                  'This lamp does not support color changes.',
+                  t.smartHomeNoColorSupport,
                   style: TextStyle(color: palette.textSecondary),
                 ),
               ),

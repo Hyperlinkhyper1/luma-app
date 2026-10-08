@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart';
 
+import '../../../../l10n/current_l.dart';
 import 'host/host_client.dart';
 import 'sftp_known_hosts.dart';
 import 'file_times.dart';
@@ -103,7 +104,7 @@ class TransferCancelled implements Exception {
   const TransferCancelled();
 
   @override
-  String toString() => 'Transfer cancelled';
+  String toString() => currentL.sftpTransferCancelled;
 }
 
 /// The slice of a connection the transfer queue needs. Keeping it separate
@@ -306,7 +307,7 @@ class SshSftpSession extends SftpSession {
   }) async {
     final host = site.host.trim();
     if (host.isEmpty) {
-      throw SftpConnectionException('This site has no host name.');
+      throw SftpConnectionException(currentL.sftpErrNoHostName);
     }
 
     List<SSHKeyPair>? identities;
@@ -319,12 +320,15 @@ class SshSftpSession extends SftpSession {
       socket = await SSHSocket.connect(host, site.port, timeout: timeout);
     } on SocketException catch (e) {
       throw SftpConnectionException(
-        'Could not reach $host on port ${site.port}.\n'
-        '${e.osError?.message ?? e.message}',
+        currentL.sftpErrCouldNotReachHost(
+          host,
+          '${site.port}',
+          e.osError?.message ?? e.message,
+        ),
       );
     } on TimeoutException {
       throw SftpConnectionException(
-        'Timed out connecting to $host on port ${site.port}.',
+        currentL.sftpErrConnectTimedOut(host, '${site.port}'),
       );
     }
 
@@ -367,9 +371,7 @@ class SshSftpSession extends SftpSession {
     } catch (e) {
       client.close();
       if (hostKeyRejected) {
-        throw SftpHostKeyRejected(
-          "The server's key was not accepted, so nothing was sent to it.",
-        );
+        throw SftpHostKeyRejected(currentL.sftpErrHostKeyNotAccepted);
       }
       throw SftpConnectionException(
         _describeAuthError(e, site),
@@ -383,8 +385,7 @@ class SshSftpSession extends SftpSession {
     } catch (e) {
       client.close();
       throw SftpConnectionException(
-        'Signed in, but the server would not open an SFTP channel. Its SSH '
-        'service may have the SFTP subsystem disabled.\n($e)',
+        currentL.sftpErrNoSftpChannel('$e'),
       );
     }
 
@@ -404,26 +405,24 @@ class SshSftpSession extends SftpSession {
   ) async {
     final path = site.keyPath?.trim();
     if (path == null || path.isEmpty) {
-      throw SftpConnectionException(
-        'This site is set to key authentication but no key file is chosen.',
-      );
+      throw SftpConnectionException(currentL.sftpErrKeyAuthNoFile);
     }
     final file = File(path);
     if (!await file.exists()) {
-      throw SftpConnectionException('Private key not found at $path');
+      throw SftpConnectionException(currentL.sftpErrKeyNotFound(path));
     }
 
     final String pem;
     try {
       pem = await file.readAsString();
     } catch (e) {
-      throw SftpConnectionException('Could not read the private key.\n($e)');
+      throw SftpConnectionException(currentL.sftpErrKeyReadFailed('$e'));
     }
 
     final encrypted = SSHKeyPair.isEncryptedPem(pem);
     if (encrypted && (passphrase == null || passphrase.isEmpty)) {
       throw SftpConnectionException(
-        'This private key is passphrase-protected.',
+        currentL.sftpErrKeyPassphraseRequired,
         isAuthFailure: true,
       );
     }
@@ -433,8 +432,8 @@ class SshSftpSession extends SftpSession {
     } catch (e) {
       throw SftpConnectionException(
         encrypted
-            ? 'That passphrase does not unlock the private key.'
-            : 'That file is not a private key luma can read.\n($e)',
+            ? currentL.sftpErrPassphraseWrong
+            : currentL.sftpErrNotPrivateKey('$e'),
         isAuthFailure: encrypted,
       );
     }
@@ -443,14 +442,13 @@ class SshSftpSession extends SftpSession {
   static String _describeAuthError(Object error, SftpSite site) {
     if (error is SSHAuthFailError) {
       return site.authMode == SftpAuthMode.key
-          ? 'The server rejected that key for ${site.username}.'
-          : 'The server rejected that username or password.';
+          ? currentL.sftpErrKeyRejected(site.username)
+          : currentL.sftpErrPasswordRejected;
     }
     if (error is SSHAuthAbortError) {
-      return 'The server closed the connection during sign-in.\n'
-          '${error.message}';
+      return currentL.sftpErrSignInAborted(error.message);
     }
-    return 'Could not sign in to ${site.host}.\n$error';
+    return currentL.sftpErrCouldNotSignIn(site.host, '$error');
   }
 
   /// Lists [path], directories first then files, each A to Z. '.' and '..'

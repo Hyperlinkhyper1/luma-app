@@ -1,10 +1,12 @@
 // Auto-ported from Roblox Server Hosting Tycoon
 
+
+import '../../../../../l10n/current_l.dart';
+
 enum EfficiencyRating { white, bronze, silver, gold, platinum, titanium }
 
 class PSU {
   final String id;
-  final String name;
   final int wattage;
   final EfficiencyRating efficiencyRating;
   final double efficiencyPercent;
@@ -12,18 +14,33 @@ class PSU {
 
   const PSU({
     required this.id,
-    required this.name,
     required this.wattage,
     required this.efficiencyRating,
     required this.efficiencyPercent,
     required this.price,
   });
+
+  String get name => switch (id) {
+        'CORSAIR_VS350' => 'Corsair VS350',
+        'SEASONIC_FOCUS_GX550' => 'Seasonic Focus GX-550',
+        'CORSAIR_RM750X' => 'Corsair RM750x',
+        'BEQUIET_STRAIGHT_POWER_1000' => 'be quiet! Straight Power 11 1000W',
+        'SUPER_FLOWER_LEADEX_1600' => 'Super Flower Leadex Titanium 1600W',
+        'SEASONIC_PRIME_2200' => 'Seasonic Prime TX-2200',
+        'SERVER_PSU_2000_REDUNDANT' => currentL.serverTycoonPsuRedundant2000,
+        'EVGA_600_BR' => 'EVGA 600 BR',
+        'SERVER_PSU_3000_TITANIUM' => currentL.serverTycoonPsuRedundant3000Titanium,
+        'HYPERSCALE_PSU_5000' => currentL.serverTycoonPsuHyperscale5000,
+        'GENERIC_300W' => currentL.serverTycoonPsuGeneric300,
+        'CORSAIR_SF750' => 'Corsair SF750 Platinum (SFX)',
+        'SERVER_PSU_1200_REDUNDANT' => currentL.serverTycoonPsuRedundant1200,
+        _ => id,
+      };
 }
 
 final Map<String, PSU> psusById = {
   'CORSAIR_VS350': const PSU(
     id: 'CORSAIR_VS350',
-    name: 'Corsair VS350',
     wattage: 350,
     efficiencyRating: EfficiencyRating.white,
     efficiencyPercent: 0.70,
@@ -31,7 +48,6 @@ final Map<String, PSU> psusById = {
   ),
   'SEASONIC_FOCUS_GX550': const PSU(
     id: 'SEASONIC_FOCUS_GX550',
-    name: 'Seasonic Focus GX-550',
     wattage: 550,
     efficiencyRating: EfficiencyRating.gold,
     efficiencyPercent: 0.90,
@@ -39,7 +55,6 @@ final Map<String, PSU> psusById = {
   ),
   'CORSAIR_RM750X': const PSU(
     id: 'CORSAIR_RM750X',
-    name: 'Corsair RM750x',
     wattage: 750,
     efficiencyRating: EfficiencyRating.gold,
     efficiencyPercent: 0.90,
@@ -47,7 +62,6 @@ final Map<String, PSU> psusById = {
   ),
   'BEQUIET_STRAIGHT_POWER_1000': const PSU(
     id: 'BEQUIET_STRAIGHT_POWER_1000',
-    name: 'be quiet! Straight Power 11 1000W',
     wattage: 1000,
     efficiencyRating: EfficiencyRating.platinum,
     efficiencyPercent: 0.93,
@@ -55,7 +69,6 @@ final Map<String, PSU> psusById = {
   ),
   'SUPER_FLOWER_LEADEX_1600': const PSU(
     id: 'SUPER_FLOWER_LEADEX_1600',
-    name: 'Super Flower Leadex Titanium 1600W',
     wattage: 1600,
     efficiencyRating: EfficiencyRating.titanium,
     efficiencyPercent: 0.96,
@@ -63,7 +76,6 @@ final Map<String, PSU> psusById = {
   ),
   'SEASONIC_PRIME_2200': const PSU(
     id: 'SEASONIC_PRIME_2200',
-    name: 'Seasonic Prime TX-2200',
     wattage: 2200,
     efficiencyRating: EfficiencyRating.titanium,
     efficiencyPercent: 0.96,
@@ -71,7 +83,6 @@ final Map<String, PSU> psusById = {
   ),
   'SERVER_PSU_2000_REDUNDANT': const PSU(
     id: 'SERVER_PSU_2000_REDUNDANT',
-    name: 'Redundant Server PSU 2000W (dual)',
     wattage: 2000,
     efficiencyRating: EfficiencyRating.platinum,
     efficiencyPercent: 0.94,
@@ -79,7 +90,6 @@ final Map<String, PSU> psusById = {
   ),
   'EVGA_600_BR': const PSU(
     id: 'EVGA_600_BR',
-    name: 'EVGA 600 BR',
     wattage: 600,
     efficiencyRating: EfficiencyRating.bronze,
     efficiencyPercent: 0.85,
@@ -87,7 +97,6 @@ final Map<String, PSU> psusById = {
   ),
   'SERVER_PSU_3000_TITANIUM': const PSU(
     id: 'SERVER_PSU_3000_TITANIUM',
-    name: 'Redundant Server PSU 3000W Titanium (dual)',
     wattage: 3000,
     efficiencyRating: EfficiencyRating.titanium,
     efficiencyPercent: 0.96,
@@ -95,7 +104,6 @@ final Map<String, PSU> psusById = {
   ),
   'HYPERSCALE_PSU_5000': const PSU(
     id: 'HYPERSCALE_PSU_5000',
-    name: 'Hyperscale Rack Bus PSU 5000W (N+1)',
     wattage: 5000,
     efficiencyRating: EfficiencyRating.titanium,
     efficiencyPercent: 0.97,
@@ -103,7 +111,6 @@ final Map<String, PSU> psusById = {
   ),
   'GENERIC_300W': const PSU(
     id: 'GENERIC_300W',
-    name: 'Generic OEM 300W',
     wattage: 300,
     efficiencyRating: EfficiencyRating.white,
     efficiencyPercent: 0.65,
@@ -111,7 +118,6 @@ final Map<String, PSU> psusById = {
   ),
   'CORSAIR_SF750': const PSU(
     id: 'CORSAIR_SF750',
-    name: 'Corsair SF750 Platinum (SFX)',
     wattage: 750,
     efficiencyRating: EfficiencyRating.platinum,
     efficiencyPercent: 0.93,
@@ -119,7 +125,6 @@ final Map<String, PSU> psusById = {
   ),
   'SERVER_PSU_1200_REDUNDANT': const PSU(
     id: 'SERVER_PSU_1200_REDUNDANT',
-    name: 'Redundant Server PSU 1200W (dual)',
     wattage: 1200,
     efficiencyRating: EfficiencyRating.gold,
     efficiencyPercent: 0.92,

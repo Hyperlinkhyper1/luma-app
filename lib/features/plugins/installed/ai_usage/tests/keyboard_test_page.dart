@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../../_shared/windows_webview.dart';
 import 'ai_benchmark.dart';
@@ -83,13 +84,14 @@ class _KeyboardTestPageState extends State<KeyboardTestPage> {
 
   Widget _listView(BuildContext context, List<AiBenchmark> filtered) {
     final luma = context.luma;
+    final t = L.of(context);
     final repo = AiBenchmarkScope.of(context);
     return Scaffold(
       backgroundColor: luma.background,
       appBar: AppBar(
         backgroundColor: luma.background,
         elevation: 0,
-        title: const Text('Keyboard Test'),
+        title: Text(t.aiTestsKeyboardTitle),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -97,7 +99,7 @@ class _KeyboardTestPageState extends State<KeyboardTestPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Benchmark Model',
+              t.aiTestsBenchmarkModelHeading,
               style: TextStyle(
                 color: luma.textPrimary,
                 fontSize: 18,
@@ -106,7 +108,7 @@ class _KeyboardTestPageState extends State<KeyboardTestPage> {
             ),
             const SizedBox(height: 12),
             Text(
-              'A keyboard built as an interactive scene, one per model.',
+              t.aiTestsKeyboardIntro,
               style: TextStyle(color: luma.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 20),
@@ -118,7 +120,7 @@ class _KeyboardTestPageState extends State<KeyboardTestPage> {
             Row(
               children: [
                 Text(
-                  'Select a Model',
+                  t.aiTestsSelectModel,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 14,
@@ -127,7 +129,7 @@ class _KeyboardTestPageState extends State<KeyboardTestPage> {
                 ),
                 const Spacer(),
                 LumaSegmentedTabs(
-                  tabs: const ['List', 'Banners'],
+                  tabs: [t.aiTestsListView, t.aiTestsBannersView],
                   selectedIndex: _bannerView ? 1 : 0,
                   onSelect: (i) {
                     final banners = i == 1;
@@ -152,19 +154,18 @@ class _KeyboardTestPageState extends State<KeyboardTestPage> {
             else if (filtered.isEmpty && _query.trim().isNotEmpty)
               LumaEmptyState(
                 icon: Icons.search_off_rounded,
-                title: 'No models match "${_query.trim()}"',
-                subtitle: 'Try a shorter search.',
+                title: t.aiTestsNoModelsMatch(_query.trim()),
+                subtitle: t.aiTestsTryShorterSearch,
               )
             else if (filtered.isEmpty)
               LumaEmptyState(
                 icon: Icons.keyboard_rounded,
-                title: 'No entries yet',
+                title: t.aiTestsKeyboardNoEntries,
                 subtitle: repo.canRefresh
-                    ? 'No keyboard scenes have been added yet.'
-                    : 'Scenes download from the luma server. Sign in to an '
-                        'approved account to fetch them.',
+                    ? t.aiTestsKeyboardNoScenes
+                    : t.aiTestsScenesSignInHint,
                 action: LumaGhostButton(
-                  label: repo.refreshing ? 'Refreshing…' : 'Refresh',
+                  label: repo.refreshing ? t.aiTestsRefreshing : t.commonRefresh,
                   icon: Icons.refresh_rounded,
                   onTap: repo.refreshing || !repo.canRefresh
                       ? null
@@ -196,6 +197,7 @@ class _KeyboardTestPageState extends State<KeyboardTestPage> {
 
   Widget _sceneView(BuildContext context, AiBenchmark benchmark) {
     final luma = context.luma;
+    final t = L.of(context);
     final repo = AiBenchmarkScope.of(context);
     final back = IconButton(
       icon: const Icon(Icons.arrow_back_rounded),
@@ -208,16 +210,15 @@ class _KeyboardTestPageState extends State<KeyboardTestPage> {
         appBar: AppBar(
           backgroundColor: luma.background,
           elevation: 0,
-          title: const Text('Keyboard Test'),
+          title: Text(t.aiTestsKeyboardTitle),
           leading: back,
         ),
-        body: const Padding(
-          padding: EdgeInsets.all(24),
+        body: Padding(
+          padding: const EdgeInsets.all(24),
           child: LumaEmptyState(
             icon: Icons.computer_rounded,
-            title: 'Not available on this platform',
-            subtitle: 'The Keyboard Test requires a Windows desktop. Mobile '
-                'and Linux support are coming soon.',
+            title: t.aiTestsNotAvailableOnPlatform,
+            subtitle: t.aiTestsNeedsWindowsDesktop(t.aiTestsKeyboardTitle),
           ),
         ),
       );
@@ -228,7 +229,7 @@ class _KeyboardTestPageState extends State<KeyboardTestPage> {
       appBar: AppBar(
         backgroundColor: luma.background,
         elevation: 0,
-        title: const Text('Keyboard Test'),
+        title: Text(t.aiTestsKeyboardTitle),
         leading: back,
       ),
       body: FutureBuilder<File>(
@@ -244,7 +245,7 @@ class _KeyboardTestPageState extends State<KeyboardTestPage> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Downloading ${benchmark.model}…',
+                    t.aiTestsDownloadingModel(benchmark.model),
                     style: TextStyle(color: luma.textMuted, fontSize: 13),
                   ),
                 ],
@@ -256,12 +257,12 @@ class _KeyboardTestPageState extends State<KeyboardTestPage> {
               padding: const EdgeInsets.all(24),
               child: LumaEmptyState(
                 icon: Icons.cloud_off_rounded,
-                title: 'Could not load ${benchmark.model}',
-                subtitle: '${snapshot.error ?? 'The download failed.'} '
-                    'Scenes are cached after the first download, so a retry '
-                    'is usually all it takes.',
+                title: t.aiTestsCouldNotLoadModel(benchmark.model),
+                subtitle: t.aiTestsSceneLoadFailedBody(
+                  snapshot.error?.toString() ?? t.aiTestsDownloadFailed,
+                ),
                 action: LumaGhostButton(
-                  label: 'Retry',
+                  label: t.commonRetry,
                   icon: Icons.refresh_rounded,
                   onTap: () => setState(() {}),
                 ),

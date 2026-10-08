@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../cs2_market_repository.dart';
 import '../cs2_price_history.dart';
@@ -41,6 +42,7 @@ class Cs2TrackedBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     return StreamBuilder<List<Cs2MarketEntry>>(
       stream: repository.watchAllEntries(),
@@ -76,10 +78,8 @@ class Cs2TrackedBody extends StatelessWidget {
             if (allRows.isEmpty) {
               return LumaEmptyState(
                 icon: Icons.star_border_rounded,
-                title: 'Nothing tracked yet',
-                subtitle: 'Track a listing from Browse to start watching its '
-                    'price — it shows up here, alongside everything else you '
-                    'track.',
+                title: t.cs2TrackedEmptyTitle,
+                subtitle: t.cs2TrackedEmptySubtitle,
               );
             }
 
@@ -108,8 +108,8 @@ class Cs2TrackedBody extends StatelessWidget {
                     if (rows.isEmpty)
                       LumaEmptyState(
                         icon: Icons.search_off_rounded,
-                        title: 'No tracked items match "$query"',
-                        subtitle: 'Try a different weapon name or rarity.',
+                        title: t.cs2TrackedNoMatchTitle(query),
+                        subtitle: t.cs2TrackedNoMatchSubtitle,
                       )
                     else
                       _TrackedGrid(rows: rows),
@@ -143,6 +143,7 @@ class _PortfolioCardState extends State<_PortfolioCard> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final series = buildCs2PortfolioSeries(
       widget.allPoints,
       [for (final r in widget.rows) r.entry],
@@ -176,7 +177,7 @@ class _PortfolioCardState extends State<_PortfolioCard> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Total value',
+                  t.cs2TrackedTotalValue,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 15,
@@ -206,8 +207,7 @@ class _PortfolioCardState extends State<_PortfolioCard> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${widget.rows.length} cop'
-                      '${widget.rows.length == 1 ? 'y' : 'ies'} tracked',
+                      t.cs2TrackedCopiesTracked(widget.rows.length),
                       style: TextStyle(color: luma.textMuted, fontSize: 12),
                     ),
                   ],
@@ -224,14 +224,17 @@ class _PortfolioCardState extends State<_PortfolioCard> {
           if (withStart.isNotEmpty && withStart.length < widget.rows.length) ...[
             const SizedBox(height: 6),
             Text(
-              'Gain/loss covers the ${withStart.length} of '
-              '${widget.rows.length} with a starting price set.',
+              t.cs2TrackedGainLossCoverage(
+                  withStart.length, widget.rows.length),
               style: TextStyle(color: luma.textMuted, fontSize: 11),
             ),
           ],
           const SizedBox(height: 16),
           LumaSegmentedTabs(
-            tabs: [for (final r in Cs2PriceRange.values) r.label],
+            tabs: [
+              for (final r in Cs2PriceRange.values)
+                r == Cs2PriceRange.all ? t.cs2RangeAll : r.label,
+            ],
             selectedIndex: _range.index,
             onSelect: (i) => setState(() => _range = Cs2PriceRange.values[i]),
           ),
@@ -282,6 +285,7 @@ class _TrackedTile extends StatelessWidget {
     final entry = row.entry;
     final priceCents = item.lastLowestCents ?? item.lastMedianCents;
     final starting = entry.startingPriceCents;
+    final t = L.of(context);
 
     return Material(
       color: luma.surface,
@@ -298,8 +302,8 @@ class _TrackedTile extends StatelessWidget {
           ),
         ),
         child: Semantics(
-          label: '${item.displayName}, ${_variantLabel(item)}, '
-              '${priceCents == null ? 'not checked yet' : formatSteamPrice(priceCents, item.currency)}',
+          label: '${item.displayName}, ${_variantLabel(t, item)}, '
+              '${priceCents == null ? t.steamPriceNotChecked : formatSteamPrice(priceCents, item.currency)}',
           button: true,
           excludeSemantics: true,
           child: Container(
@@ -338,7 +342,7 @@ class _TrackedTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        _variantLabel(item),
+                        _variantLabel(t, item),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(color: luma.textMuted, fontSize: 11),
@@ -350,7 +354,7 @@ class _TrackedTile extends StatelessWidget {
                           Expanded(
                             child: Text(
                               priceCents == null
-                                  ? 'Not checked yet'
+                                  ? t.steamPriceNotChecked
                                   : formatSteamPrice(priceCents, item.currency),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -383,11 +387,11 @@ class _TrackedTile extends StatelessWidget {
     );
   }
 
-  static String _variantLabel(Cs2MarketItem item) {
+  static String _variantLabel(L t, Cs2MarketItem item) {
     final parts = <String>[
       if (item.wear != null) item.wear!,
       if (item.statTrak) 'StatTrak™',
     ];
-    return parts.isEmpty ? 'No wear variants' : parts.join(' · ');
+    return parts.isEmpty ? t.cs2NoWearVariants : parts.join(' · ');
   }
 }

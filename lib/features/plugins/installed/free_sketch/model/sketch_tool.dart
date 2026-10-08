@@ -1,21 +1,34 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/current_l.dart';
+
 enum SketchTool {
-  brush('Brush', Icons.brush_rounded, 'B'),
-  eraser('Eraser', Icons.auto_fix_normal_rounded, 'E'),
-  smudge('Smudge', Icons.gesture_rounded, 'S'),
-  fill('Fill', Icons.format_color_fill_rounded, 'G'),
-  gradient('Gradient', Icons.gradient_rounded, 'D'),
-  shape('Shapes', Icons.category_rounded, 'U'),
-  select('Selection', Icons.highlight_alt_rounded, 'L'),
-  transform('Transform', Icons.open_with_rounded, 'V'),
-  eyedropper('Eyedropper', Icons.colorize_rounded, 'I');
+  brush(Icons.brush_rounded, 'B'),
+  eraser(Icons.auto_fix_normal_rounded, 'E'),
+  smudge(Icons.gesture_rounded, 'S'),
+  fill(Icons.format_color_fill_rounded, 'G'),
+  gradient(Icons.gradient_rounded, 'D'),
+  shape(Icons.category_rounded, 'U'),
+  select(Icons.highlight_alt_rounded, 'L'),
+  transform(Icons.open_with_rounded, 'V'),
+  eyedropper(Icons.colorize_rounded, 'I');
 
-  const SketchTool(this.label, this.icon, this.shortcut);
+  const SketchTool(this.icon, this.shortcut);
 
-  final String label;
   final IconData icon;
   final String shortcut;
+
+  String get label => switch (this) {
+        brush => currentL.freeSketchToolBrush,
+        eraser => currentL.freeSketchToolEraser,
+        smudge => currentL.freeSketchToolSmudge,
+        fill => currentL.freeSketchToolFill,
+        gradient => currentL.freeSketchToolGradient,
+        shape => currentL.freeSketchToolShapes,
+        select => currentL.freeSketchToolSelection,
+        transform => currentL.freeSketchToolTransform,
+        eyedropper => currentL.freeSketchToolEyedropper,
+      };
 
   /// Tools that paint with a brush from the library, each remembering its
   /// own brush — erasing with a soft round while painting with a pencil is
@@ -26,34 +39,50 @@ enum SketchTool {
 }
 
 enum ShapeKind {
-  line('Line', Icons.horizontal_rule_rounded),
-  rectangle('Rectangle', Icons.crop_square_rounded),
-  ellipse('Ellipse', Icons.circle_outlined),
-  polygon('Polygon', Icons.pentagon_outlined);
+  line(Icons.horizontal_rule_rounded),
+  rectangle(Icons.crop_square_rounded),
+  ellipse(Icons.circle_outlined),
+  polygon(Icons.pentagon_outlined);
 
-  const ShapeKind(this.label, this.icon);
-  final String label;
+  const ShapeKind(this.icon);
   final IconData icon;
+
+  String get label => switch (this) {
+        line => currentL.freeSketchShapeLine,
+        rectangle => currentL.freeSketchShapeRectangle,
+        ellipse => currentL.freeSketchShapeEllipse,
+        polygon => currentL.freeSketchShapePolygon,
+      };
 }
 
 enum SelectionShape {
-  lasso('Lasso', Icons.gesture_rounded),
-  rectangle('Rectangle', Icons.crop_square_rounded),
-  ellipse('Ellipse', Icons.circle_outlined);
+  lasso(Icons.gesture_rounded),
+  rectangle(Icons.crop_square_rounded),
+  ellipse(Icons.circle_outlined);
 
-  const SelectionShape(this.label, this.icon);
-  final String label;
+  const SelectionShape(this.icon);
   final IconData icon;
+
+  String get label => switch (this) {
+        lasso => currentL.freeSketchSelectionLasso,
+        rectangle => currentL.freeSketchShapeRectangle,
+        ellipse => currentL.freeSketchShapeEllipse,
+      };
 }
 
 enum SelectionCombine {
-  replace('New', Icons.crop_free_rounded),
-  add('Add', Icons.add_box_outlined),
-  subtract('Subtract', Icons.indeterminate_check_box_outlined);
+  replace(Icons.crop_free_rounded),
+  add(Icons.add_box_outlined),
+  subtract(Icons.indeterminate_check_box_outlined);
 
-  const SelectionCombine(this.label, this.icon);
-  final String label;
+  const SelectionCombine(this.icon);
   final IconData icon;
+
+  String get label => switch (this) {
+        replace => currentL.freeSketchSelectionCombineNew,
+        add => currentL.freeSketchSelectionCombineAdd,
+        subtract => currentL.freeSketchSelectionCombineSubtract,
+      };
 }
 
 enum GradientKind { linear, radial }

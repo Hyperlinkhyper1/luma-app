@@ -6,5 +6,27 @@
   "icon": "local_grocery_store",
   "category": "Shopping",
   "details": "Search products across Jumbo, Albert Heijn, Hoogvliet and Lidl from one search bar — filter results down to a single store or sort by price, high to low or low to high. Each result shows a picture, name, price, and which market it's from.\n\nAdd anything you find to a shopping list with one tap. As you add items, the list automatically groups itself by supermarket and then by aisle/category, showing a running subtotal per store and a grand total for the whole list. Keep as many separate lists as you want — a weekly shop, a dinner party, whatever.\n\nGroceries List is included free with the Nova plan.",
-  "screenshots": []
+  "screenshots": [],
+  "i18n": {
+    "nl": {
+      "name": "Boodschappenlijst",
+      "description": "Zoek boodschappen bij Jumbo, AH, Lidl en de rest naast elkaar. Lijsten die zichzelf sorteren op winkel en gangpad. Alleen Nova.",
+      "details": "Zoek producten bij Jumbo, Albert Heijn, Hoogvliet en Lidl via één zoekbalk. Filter de resultaten op één winkel of sorteer op prijs, van hoog naar laag of van laag naar hoog. Elk resultaat toont een afbeelding, de naam, de prijs en de winkel waar het vandaan komt.\n\nVoeg alles wat je vindt met één tik aan een boodschappenlijst toe. Terwijl je items toevoegt, groepeert de lijst zichzelf automatisch per supermarkt en vervolgens per gangpad of categorie, met per winkel een lopend subtotaal en een eindtotaal voor de hele lijst. Maak zoveel aparte lijsten als je wilt: een weekboodschap, een etentje, wat je maar wilt.\n\nBoodschappenlijst is gratis inbegrepen bij het Nova-abonnement."
+    },
+    "fr": {
+      "name": "Liste de courses",
+      "description": "Comparez les prix de Jumbo, AH, Lidl et des autres côte à côte. Des listes qui se trient toutes seules par magasin et par rayon. Nova uniquement.",
+      "details": "Recherchez des produits chez Jumbo, Albert Heijn, Hoogvliet et Lidl depuis une seule barre de recherche : filtrez les résultats sur un seul magasin ou triez-les par prix, du plus cher au moins cher ou inversement. Chaque résultat affiche une image, un nom, un prix et l'enseigne d'origine.\n\nAjoutez en un geste ce que vous trouvez à une liste de courses. À mesure que vous ajoutez des articles, la liste se regroupe automatiquement par supermarché, puis par rayon ou catégorie, avec un sous-total cumulé par magasin et un total général pour l'ensemble de la liste. Vous pouvez tenir autant de listes distinctes que vous le souhaitez : les courses de la semaine, un dîner entre amis, peu importe.\n\nListe de courses est incluse gratuitement dans l'abonnement Nova."
+    },
+    "es": {
+      "name": "Lista de la compra",
+      "description": "Compara los precios de Jumbo, AH, Lidl y el resto, uno al lado del otro. Listas que se ordenan solas por tienda y pasillo. Solo Nova.",
+      "details": "Busca productos en Jumbo, Albert Heijn, Hoogvliet y Lidl desde una única barra de búsqueda. Filtra los resultados a una sola tienda u ordénalos por precio, de mayor a menor o de menor a mayor. Cada resultado muestra una imagen, el nombre, el precio y de qué supermercado es.\n\nAñade lo que encuentres a una lista de la compra con un toque. Según añades artículos, la lista se agrupa sola por supermercado y después por pasillo o categoría, con un subtotal acumulado por tienda y un total general de toda la lista. Puedes tener tantas listas separadas como quieras: la compra semanal, una cena con amigos, lo que sea.\n\nLista de la compra está incluida gratis con el plan Nova."
+    },
+    "zh": {
+      "name": "购物清单",
+      "description": "并排比较 Jumbo、AH、Lidl 等超市的商品价格。清单会按超市和货架自动排序。仅限 Nova。",
+      "details": "通过一个搜索栏即可搜索 Jumbo、Albert Heijn、Hoogvliet 和 Lidl 的商品。你可以将结果筛选为单一超市，也可以按价格从高到低或从低到高排序。每个结果都会显示图片、名称、价格以及所属超市。\n\n只需轻点一下，就能把找到的任何商品添加到购物清单中。随着添加商品，清单会自动先按超市分组，再按货架或分类分组，并显示每家店的小计以及整个清单的总计。你可以创建任意数量的独立清单，比如每周采购、一次晚宴，或其他任何用途。\n\n购物清单已包含在 Nova 套餐中，无需额外付费。"
+    }
+  }
 }

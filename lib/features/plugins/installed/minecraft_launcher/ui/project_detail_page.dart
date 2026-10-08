@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/minecraft_launcher_database.dart';
 import '../logic/mod_install_flow.dart';
@@ -110,7 +111,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
     if (!mounted) return null;
     if (instances.isEmpty) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Create an instance first.')));
+          .showSnackBar(SnackBar(content: Text(L.of(context).mcLauncherCreateInstanceFirst)));
       return null;
     }
     final picked = await pickInstance(
@@ -130,7 +131,6 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
     final picked = await pickInstance(
       context,
       instances,
-      title: 'Install into which instance?',
       projectTitle: _project?.title,
     );
     if (picked == null) return;
@@ -162,14 +162,11 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
     if (instance == null || !mounted) return;
     final version = ModInstallFlow.bestVersion(_versions);
     if (version == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'No build of this for ${instance.versionId}'
-            '${instance.loader == 'vanilla' ? '' : ' on ${instance.loader}'}.',
-          ),
-        ),
-      );
+      final t = L.of(context);
+      final message = instance.loader == 'vanilla'
+          ? t.mcLauncherNoBuildFor(instance.versionId)
+          : t.mcLauncherNoBuildForLoader(instance.versionId, instance.loader);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
       return;
     }
     await _install(version);
@@ -184,17 +181,18 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final project = _project;
     return Scaffold(
       backgroundColor: luma.background,
       appBar: AppBar(
         backgroundColor: luma.background,
-        title: Text(project?.title ?? 'Loading…'),
+        title: Text(project?.title ?? t.commonLoading),
         elevation: 0,
         actions: [
           if (project != null)
             IconButton(
-              tooltip: 'Open on ${ContentSource.ofId(project.id).label}',
+              tooltip: t.mcLauncherOpenOn(ContentSource.ofId(project.id).label),
               icon: const Icon(Icons.open_in_new_rounded),
               onPressed: () => _open(
                 ContentApi.projectPageUrl(project),
@@ -206,7 +204,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
           ? Center(
               child: LumaEmptyState(
                 icon: Icons.cloud_off_rounded,
-                title: 'Could not load this project',
+                title: t.mcLauncherCouldNotLoadProject,
                 subtitle: _error,
               ),
             )
@@ -217,6 +215,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
   }
 
   Widget _buildBody(LumaPalette luma, ModrinthProject project) {
+    final t = L.of(context);
     final gallery = project.orderedGallery;
     return HoverSyncScroll(
       child: ListView(
@@ -225,7 +224,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
           _header(luma, project),
           if (gallery.isNotEmpty) ...[
             const SizedBox(height: 20),
-            _sectionLabel(luma, 'Gallery', '${gallery.length} image${gallery.length == 1 ? '' : 's'}'),
+            _sectionLabel(luma, t.mcLauncherGallery, t.mcLauncherImageCount(gallery.length)),
             const SizedBox(height: 10),
             _galleryStrip(luma, gallery),
           ],
@@ -242,6 +241,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
   // ── Header ────────────────────────────────────────────────────────────
 
   Widget _header(LumaPalette luma, ModrinthProject project) {
+    final t = L.of(context);
     final accent = modrinthAccentOf(project.color) ?? luma.accent;
     final owner = _members
         .firstWhere(
@@ -282,7 +282,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                     if (owner.isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(
-                        'by $owner',
+                        t.mcLauncherByAuthor(owner),
                         style: TextStyle(color: luma.textMuted, fontSize: 13),
                       ),
                     ],
@@ -303,19 +303,19 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                         ModrinthStat(
                           icon: Icons.download_rounded,
                           value: formatCompactCount(project.downloads),
-                          label: 'downloads',
+                          label: t.mcLauncherStatDownloads,
                           emphasis: true,
                         ),
                         ModrinthStat(
                           icon: Icons.favorite_rounded,
                           value: formatCompactCount(project.followers),
-                          label: 'followers',
+                          label: t.mcLauncherStatFollowers,
                         ),
                         if (project.updated != null)
                           ModrinthStat(
                             icon: Icons.update_rounded,
-                            value: relativeTime(project.updated),
-                            label: 'updated',
+                            value: relativeTime(t, project.updated),
+                            label: t.mcLauncherStatUpdated,
                           ),
                         if (project.licenseName != null)
                           ModrinthStat(
@@ -350,6 +350,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
   }
 
   Widget _actionRow(LumaPalette luma, ModrinthProject project) {
+    final t = L.of(context);
     final target = _target;
     final busy = _installing.isNotEmpty;
     final best = ModInstallFlow.bestVersion(_versions);
@@ -363,19 +364,19 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
       children: [
         ModrinthInstallButton(
           compact: false,
-          label: target == null ? 'Install into…' : 'Install',
+          label: target == null ? t.mcLauncherInstallInto : t.commonInstall,
           installed: alreadyInstalled,
           busy: busy,
           tooltip: target == null
-              ? 'Pick an instance to install into'
-              : 'Install the newest compatible build into ${target.name}',
+              ? t.mcLauncherPickInstanceTooltip
+              : t.mcLauncherInstallNewestInto(target.name),
           onInstall: _installBest,
         ),
         _targetChip(luma, target),
         for (final link in <(IconData, String, String?)>[
-          (Icons.code_rounded, 'Source', project.sourceUrl),
-          (Icons.bug_report_rounded, 'Issues', project.issuesUrl),
-          (Icons.menu_book_rounded, 'Wiki', project.wikiUrl),
+          (Icons.code_rounded, t.mcLauncherLinkSource, project.sourceUrl),
+          (Icons.bug_report_rounded, t.mcLauncherLinkIssues, project.issuesUrl),
+          (Icons.menu_book_rounded, t.mcLauncherLinkWiki, project.wikiUrl),
           (Icons.forum_rounded, 'Discord', project.discordUrl),
         ])
           if (link.$3 != null)
@@ -387,6 +388,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
   /// The install target, shown as a chip so it is obvious where a click
   /// will put the files — and swappable in one tap.
   Widget _targetChip(LumaPalette luma, McInstance? target) {
+    final t = L.of(context);
     return InkWell(
       onTap: _changeTarget,
       borderRadius: BorderRadius.circular(context.lumaDecor.pillRadius),
@@ -405,7 +407,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
             const SizedBox(width: 8),
             Text(
               target == null
-                  ? 'Choose instance'
+                  ? t.mcLauncherChooseInstance
                   : '${target.name} · ${target.versionId}',
               style: TextStyle(
                 color: luma.textSecondary,
@@ -475,6 +477,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
   // ── Description / Versions ────────────────────────────────────────────
 
   Widget _switcher(LumaPalette luma) {
+    final t = L.of(context);
     Widget tab(String label, bool selected, VoidCallback onTap) {
       return InkWell(
         onTap: onTap,
@@ -501,10 +504,10 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
 
     return Row(
       children: [
-        tab('Description', !_showVersions, () => setState(() => _showVersions = false)),
+        tab(t.commonDescription, !_showVersions, () => setState(() => _showVersions = false)),
         const SizedBox(width: 8),
         tab(
-          _versions.isEmpty ? 'Versions' : 'Versions (${_versions.length})',
+          _versions.isEmpty ? t.mcLauncherTabVersions : t.mcLauncherVersionsCount(_versions.length),
           _showVersions,
           () => setState(() => _showVersions = true),
         ),
@@ -537,6 +540,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
   }
 
   Widget _versionList(LumaPalette luma) {
+    final t = L.of(context);
     final target = _target;
     if (target == null) {
       return LumaCard(
@@ -544,12 +548,12 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
           children: [
             Expanded(
               child: Text(
-                'Pick an instance to see which builds fit it.',
+                t.mcLauncherPickInstanceToSee,
                 style: TextStyle(color: luma.textSecondary, fontSize: 13),
               ),
             ),
             LumaPrimaryButton(
-              label: 'Choose instance',
+              label: t.mcLauncherChooseInstance,
               icon: Icons.videogame_asset_rounded,
               onTap: _changeTarget,
             ),
@@ -558,10 +562,12 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
       );
     }
     if (_versions.isEmpty) {
+      final message = target.loader == 'vanilla'
+          ? t.mcLauncherNoBuildWorksWith(target.versionId)
+          : t.mcLauncherNoBuildWorksWithLoader(target.versionId, prettyTag(target.loader));
       return LumaCard(
         child: Text(
-          'No build of this works with ${target.versionId}'
-          '${target.loader == 'vanilla' ? '' : ' on ${prettyTag(target.loader)}'}.',
+          message,
           style: TextStyle(color: luma.textSecondary, fontSize: 13),
         ),
       );
@@ -578,6 +584,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
   }
 
   Widget _versionCard(LumaPalette luma, ModrinthVersion version) {
+    final t = L.of(context);
     final channelColor = switch (version.versionType) {
       'release' => luma.success,
       'beta' => luma.warning,
@@ -636,7 +643,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                     ),
                     ModrinthStat(
                       icon: Icons.schedule_rounded,
-                      value: relativeTime(version.datePublished),
+                      value: relativeTime(t, version.datePublished),
                     ),
                     if (version.files.isNotEmpty)
                       ModrinthStat(
@@ -796,7 +803,7 @@ class _GalleryViewerPageState extends State<GalleryViewerPage> {
         foregroundColor: Colors.white,
         elevation: 0,
         title: Text(
-          current.title ?? 'Image ${_index + 1} of ${widget.images.length}',
+          current.title ?? L.of(context).mcLauncherImageIndex(_index + 1, widget.images.length),
           style: const TextStyle(fontSize: 15),
         ),
       ),

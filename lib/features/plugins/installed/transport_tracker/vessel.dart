@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/current_l.dart';
+
 /// Broad grouping of the numeric AIS "ship type" code (ITU-R M.1371), used
 /// to color and label markers the way MarineTraffic/VesselFinder do.
 enum VesselCategory {
@@ -18,17 +20,17 @@ enum VesselCategory {
 
 extension VesselCategoryInfo on VesselCategory {
   String get label => switch (this) {
-        VesselCategory.cargo => 'Cargo',
-        VesselCategory.tanker => 'Tanker',
-        VesselCategory.passenger => 'Passenger',
-        VesselCategory.fishing => 'Fishing',
-        VesselCategory.highSpeed => 'High-speed craft',
-        VesselCategory.tug => 'Tug / service',
-        VesselCategory.lawEnforcement => 'Law enforcement',
-        VesselCategory.searchAndRescue => 'Search & rescue',
-        VesselCategory.pleasureCraft => 'Pleasure craft',
-        VesselCategory.other => 'Other',
-        VesselCategory.unspecified => 'Unspecified',
+        VesselCategory.cargo => currentL.vesselCategoryCargo,
+        VesselCategory.tanker => currentL.vesselCategoryTanker,
+        VesselCategory.passenger => currentL.vesselCategoryPassenger,
+        VesselCategory.fishing => currentL.vesselCategoryFishing,
+        VesselCategory.highSpeed => currentL.vesselCategoryHighSpeed,
+        VesselCategory.tug => currentL.vesselCategoryTug,
+        VesselCategory.lawEnforcement => currentL.vesselCategoryLawEnforcement,
+        VesselCategory.searchAndRescue => currentL.vesselCategorySearchAndRescue,
+        VesselCategory.pleasureCraft => currentL.vesselCategoryPleasureCraft,
+        VesselCategory.other => currentL.commonOther,
+        VesselCategory.unspecified => currentL.vesselCategoryUnspecified,
       };
 
   Color get color => switch (this) {
@@ -71,17 +73,17 @@ VesselCategory vesselCategoryForShipType(int? type) {
 
 /// Human-readable label for the AIS "navigational status" code (0-15).
 String navStatusLabel(int? code) => switch (code) {
-      0 => 'Under way (engine)',
-      1 => 'At anchor',
-      2 => 'Not under command',
-      3 => 'Restricted manoeuvrability',
-      4 => 'Constrained by draught',
-      5 => 'Moored',
-      6 => 'Aground',
-      7 => 'Fishing',
-      8 => 'Under way (sailing)',
-      14 => 'AIS-SART (distress beacon)',
-      _ => 'Unknown',
+      0 => currentL.vesselNavUnderWayEngine,
+      1 => currentL.vesselNavAtAnchor,
+      2 => currentL.vesselNavNotUnderCommand,
+      3 => currentL.vesselNavRestrictedManoeuvrability,
+      4 => currentL.vesselNavConstrainedByDraught,
+      5 => currentL.vesselNavMoored,
+      6 => currentL.vesselNavAground,
+      7 => currentL.vesselCategoryFishing,
+      8 => currentL.vesselNavUnderWaySailing,
+      14 => currentL.vesselNavAisSart,
+      _ => currentL.commonUnknown,
     };
 
 /// One live-tracked vessel, built by folding [VesselPatch]es (position
@@ -132,7 +134,7 @@ class Vessel {
 
   String get displayName {
     final n = name?.trim();
-    return (n != null && n.isNotEmpty) ? n : 'MMSI $mmsi';
+    return (n != null && n.isNotEmpty) ? n : currentL.vesselMmsiName(mmsi);
   }
 
   /// Best available pointing direction for the marker: true heading when

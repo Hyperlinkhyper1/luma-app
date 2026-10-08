@@ -1,3 +1,5 @@
+import '../../../../../l10n/current_l.dart';
+
 /// What a building is made of, as far as the renderer cares. Kept as a
 /// semantic enum rather than a `Color` so the hub can follow the app's light,
 /// dark and Coffee themes instead of carrying its own hardcoded palette.
@@ -19,8 +21,6 @@ enum BuildingKind {
 class BuildingDef {
   const BuildingDef({
     required this.kind,
-    required this.name,
-    required this.blurb,
     required this.width,
     required this.depth,
     required this.levels,
@@ -32,8 +32,35 @@ class BuildingDef {
   });
 
   final BuildingKind kind;
-  final String name;
-  final String blurb;
+
+  /// Display name and one-line description in the language picked in
+  /// settings. Keyed on [kind], so only the label changes and nothing
+  /// translated is ever persisted.
+  String get name => switch (kind) {
+    BuildingKind.apron => currentL.airlineBuildingApronName,
+    BuildingKind.gate => currentL.airlineBuildingGateName,
+    BuildingKind.terminal => currentL.airlineBuildingTerminalName,
+    BuildingKind.runwayShort => currentL.airlineBuildingRunwayShortName,
+    BuildingKind.runwayMedium => currentL.airlineBuildingRunwayMediumName,
+    BuildingKind.runwayLong => currentL.airlineBuildingRunwayLongName,
+    BuildingKind.hangar => currentL.airlineBuildingHangarName,
+    BuildingKind.fuelDepot => currentL.airlineBuildingFuelDepotName,
+    BuildingKind.cargo => currentL.airlineBuildingCargoName,
+    BuildingKind.lounge => currentL.airlineBuildingLoungeName,
+  };
+
+  String get blurb => switch (kind) {
+    BuildingKind.apron => currentL.airlineBuildingApronBlurb,
+    BuildingKind.gate => currentL.airlineBuildingGateBlurb,
+    BuildingKind.terminal => currentL.airlineBuildingTerminalBlurb,
+    BuildingKind.runwayShort => currentL.airlineBuildingRunwayShortBlurb,
+    BuildingKind.runwayMedium => currentL.airlineBuildingRunwayMediumBlurb,
+    BuildingKind.runwayLong => currentL.airlineBuildingRunwayLongBlurb,
+    BuildingKind.hangar => currentL.airlineBuildingHangarBlurb,
+    BuildingKind.fuelDepot => currentL.airlineBuildingFuelDepotBlurb,
+    BuildingKind.cargo => currentL.airlineBuildingCargoBlurb,
+    BuildingKind.lounge => currentL.airlineBuildingLoungeBlurb,
+  };
 
   /// Footprint in tiles, before rotation.
   final int width;
@@ -62,9 +89,6 @@ class BuildingDef {
 const List<BuildingDef> kBuildingCatalog = [
   BuildingDef(
     kind: BuildingKind.apron,
-    name: 'Apron',
-    blurb: 'Paved parking and taxi surface. Hangars and fuel depots work '
-        'better next to one.',
     width: 1,
     depth: 1,
     levels: 0.06,
@@ -74,8 +98,6 @@ const List<BuildingDef> kBuildingCatalog = [
   ),
   BuildingDef(
     kind: BuildingKind.gate,
-    name: 'Gate',
-    blurb: 'One stand for one route. Only works when it touches a terminal.',
     width: 1,
     depth: 1,
     levels: 0.9,
@@ -85,8 +107,6 @@ const List<BuildingDef> kBuildingCatalog = [
   ),
   BuildingDef(
     kind: BuildingKind.terminal,
-    name: 'Terminal',
-    blurb: 'Passenger building. Gates must touch one to be usable.',
     width: 2,
     depth: 2,
     levels: 2.6,
@@ -96,8 +116,6 @@ const List<BuildingDef> kBuildingCatalog = [
   ),
   BuildingDef(
     kind: BuildingKind.runwayShort,
-    name: 'Short runway',
-    blurb: '1,800 m. Turboprops and small regional jets only.',
     width: 1,
     depth: 5,
     levels: 0.1,
@@ -109,8 +127,6 @@ const List<BuildingDef> kBuildingCatalog = [
   ),
   BuildingDef(
     kind: BuildingKind.runwayMedium,
-    name: 'Medium runway',
-    blurb: '2,600 m. Opens up narrowbodies and the smaller widebodies.',
     width: 1,
     depth: 7,
     levels: 0.1,
@@ -122,8 +138,6 @@ const List<BuildingDef> kBuildingCatalog = [
   ),
   BuildingDef(
     kind: BuildingKind.runwayLong,
-    name: 'Long runway',
-    blurb: '3,400 m. Everything up to the A380 can use it.',
     width: 1,
     depth: 9,
     levels: 0.1,
@@ -135,8 +149,6 @@ const List<BuildingDef> kBuildingCatalog = [
   ),
   BuildingDef(
     kind: BuildingKind.hangar,
-    name: 'Hangar',
-    blurb: 'Cuts maintenance. Worth more when it opens onto an apron.',
     width: 2,
     depth: 2,
     levels: 1.7,
@@ -146,8 +158,6 @@ const List<BuildingDef> kBuildingCatalog = [
   ),
   BuildingDef(
     kind: BuildingKind.fuelDepot,
-    name: 'Fuel depot',
-    blurb: 'Buys fuel in bulk. Worth more when it opens onto an apron.',
     width: 1,
     depth: 1,
     levels: 1.2,
@@ -157,8 +167,6 @@ const List<BuildingDef> kBuildingCatalog = [
   ),
   BuildingDef(
     kind: BuildingKind.cargo,
-    name: 'Cargo terminal',
-    blurb: 'Sells the hold space under the cabin on every flight.',
     width: 2,
     depth: 2,
     levels: 1.5,
@@ -168,8 +176,6 @@ const List<BuildingDef> kBuildingCatalog = [
   ),
   BuildingDef(
     kind: BuildingKind.lounge,
-    name: 'Lounge',
-    blurb: 'Premium fares on long-haul. Must touch a terminal.',
     width: 1,
     depth: 1,
     levels: 1.1,

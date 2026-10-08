@@ -1,10 +1,11 @@
 // Auto-ported from Roblox Server Hosting Tycoon
 
+import '../../../../../l10n/current_l.dart';
+
 enum InternetTier { home, business, dedicated, colocation }
 
 class InternetPlan {
   final String id;
-  final String name;
   final InternetTier tier;
   final int downMbps;
   final int upMbps;
@@ -13,19 +14,34 @@ class InternetPlan {
 
   const InternetPlan({
     required this.id,
-    required this.name,
     required this.tier,
     required this.downMbps,
     required this.upMbps,
     required this.monthlyPrice,
     required this.maxLatencyMs,
   });
+
+  String get name => switch (id) {
+        'HOME_25' => currentL.serverTycoonPlanHome('25 Mbps'),
+        'HOME_100' => currentL.serverTycoonPlanHome('100 Mbps'),
+        'HOME_500' => currentL.serverTycoonPlanHome('500 Mbps'),
+        'HOME_1000' => currentL.serverTycoonPlanHome('1 Gbps'),
+        'BUSINESS_1G' => currentL.serverTycoonPlanBusiness('1 Gbps'),
+        'BUSINESS_2G' => currentL.serverTycoonPlanBusiness('2 Gbps'),
+        'BUSINESS_5G' => currentL.serverTycoonPlanBusiness('5 Gbps'),
+        'BUSINESS_10G' => currentL.serverTycoonPlanBusiness('10 Gbps'),
+        'DEDICATED_10G' => currentL.serverTycoonPlanDedicated('10 Gbps'),
+        'DEDICATED_25G' => currentL.serverTycoonPlanDedicated('25 Gbps'),
+        'DEDICATED_40G' => currentL.serverTycoonPlanDedicated('40 Gbps'),
+        'DEDICATED_100G' => currentL.serverTycoonPlanDedicated('100 Gbps'),
+        'COLOCATION_400G' => currentL.serverTycoonPlanColocation('400 Gbps'),
+        _ => id,
+      };
 }
 
 final Map<String, InternetPlan> internetPlansById = {
   'HOME_25': const InternetPlan(
     id: 'HOME_25',
-    name: 'Home Internet - 25 Mbps',
     tier: InternetTier.home,
     downMbps: 25,
     upMbps: 5,
@@ -34,7 +50,6 @@ final Map<String, InternetPlan> internetPlansById = {
   ),
   'HOME_100': const InternetPlan(
     id: 'HOME_100',
-    name: 'Home Internet - 100 Mbps',
     tier: InternetTier.home,
     downMbps: 100,
     upMbps: 20,
@@ -43,7 +58,6 @@ final Map<String, InternetPlan> internetPlansById = {
   ),
   'HOME_500': const InternetPlan(
     id: 'HOME_500',
-    name: 'Home Internet - 500 Mbps',
     tier: InternetTier.home,
     downMbps: 500,
     upMbps: 50,
@@ -52,7 +66,6 @@ final Map<String, InternetPlan> internetPlansById = {
   ),
   'HOME_1000': const InternetPlan(
     id: 'HOME_1000',
-    name: 'Home Internet - 1 Gbps',
     tier: InternetTier.home,
     downMbps: 1000,
     upMbps: 100,
@@ -61,7 +74,6 @@ final Map<String, InternetPlan> internetPlansById = {
   ),
   'BUSINESS_1G': const InternetPlan(
     id: 'BUSINESS_1G',
-    name: 'Business Fiber - 1 Gbps',
     tier: InternetTier.business,
     downMbps: 1000,
     upMbps: 1000,
@@ -70,7 +82,6 @@ final Map<String, InternetPlan> internetPlansById = {
   ),
   'BUSINESS_2G': const InternetPlan(
     id: 'BUSINESS_2G',
-    name: 'Business Fiber - 2 Gbps',
     tier: InternetTier.business,
     downMbps: 2000,
     upMbps: 2000,
@@ -79,7 +90,6 @@ final Map<String, InternetPlan> internetPlansById = {
   ),
   'BUSINESS_5G': const InternetPlan(
     id: 'BUSINESS_5G',
-    name: 'Business Fiber - 5 Gbps',
     tier: InternetTier.business,
     downMbps: 5000,
     upMbps: 5000,
@@ -88,7 +98,6 @@ final Map<String, InternetPlan> internetPlansById = {
   ),
   'BUSINESS_10G': const InternetPlan(
     id: 'BUSINESS_10G',
-    name: 'Business Fiber - 10 Gbps',
     tier: InternetTier.business,
     downMbps: 10000,
     upMbps: 10000,
@@ -97,7 +106,6 @@ final Map<String, InternetPlan> internetPlansById = {
   ),
   'DEDICATED_10G': const InternetPlan(
     id: 'DEDICATED_10G',
-    name: 'Dedicated Fiber - 10 Gbps',
     tier: InternetTier.dedicated,
     downMbps: 10000,
     upMbps: 10000,
@@ -106,7 +114,6 @@ final Map<String, InternetPlan> internetPlansById = {
   ),
   'DEDICATED_25G': const InternetPlan(
     id: 'DEDICATED_25G',
-    name: 'Dedicated Fiber - 25 Gbps',
     tier: InternetTier.dedicated,
     downMbps: 25000,
     upMbps: 25000,
@@ -115,7 +122,6 @@ final Map<String, InternetPlan> internetPlansById = {
   ),
   'DEDICATED_40G': const InternetPlan(
     id: 'DEDICATED_40G',
-    name: 'Dedicated Fiber - 40 Gbps',
     tier: InternetTier.dedicated,
     downMbps: 40000,
     upMbps: 40000,
@@ -124,7 +130,6 @@ final Map<String, InternetPlan> internetPlansById = {
   ),
   'DEDICATED_100G': const InternetPlan(
     id: 'DEDICATED_100G',
-    name: 'Dedicated Fiber - 100 Gbps',
     tier: InternetTier.dedicated,
     downMbps: 100000,
     upMbps: 100000,
@@ -133,7 +138,6 @@ final Map<String, InternetPlan> internetPlansById = {
   ),
   'COLOCATION_400G': const InternetPlan(
     id: 'COLOCATION_400G',
-    name: 'Colocation Uplink - 400 Gbps',
     tier: InternetTier.colocation,
     downMbps: 400000,
     upMbps: 400000,

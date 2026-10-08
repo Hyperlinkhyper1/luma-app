@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../theme/luma_theme.dart';
 import 'notes_repository.dart';
 
@@ -213,6 +214,7 @@ class _NotesList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final column = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -221,7 +223,7 @@ class _NotesList extends StatelessWidget {
           child: Row(
             children: [
               Text(
-                'Notes',
+                t.commonNotes,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 15,
@@ -231,7 +233,7 @@ class _NotesList extends StatelessWidget {
               const Spacer(),
               _IconBtn(
                 icon: Icons.add_rounded,
-                tooltip: 'New note',
+                tooltip: t.notesNewNoteTooltip,
                 onTap: onNew,
               ),
             ],
@@ -242,7 +244,7 @@ class _NotesList extends StatelessWidget {
           child: notes.isEmpty
               ? Center(
                   child: Text(
-                    'No notes yet',
+                    t.notesNoNotesYet,
                     style: TextStyle(color: luma.textMuted, fontSize: 13),
                   ),
                 )
@@ -293,7 +295,8 @@ class _NoteListTileState extends State<_NoteListTile> {
     final note = widget.note;
     final selected = widget.selected;
 
-    final title = note.title.isEmpty ? 'Untitled' : note.title;
+    final t = L.of(context);
+    final title = note.title.isEmpty ? t.commonUntitled : note.title;
     final preview = note.content.replaceAll('\n', ' ');
 
     return MouseRegion(
@@ -342,7 +345,7 @@ class _NoteListTileState extends State<_NoteListTile> {
               if (_hovering || selected)
                 _IconBtn(
                   icon: Icons.delete_outline_rounded,
-                  tooltip: 'Delete',
+                  tooltip: t.commonDelete,
                   size: 16,
                   onTap: widget.onDelete,
                 ),
@@ -388,6 +391,7 @@ class _NoteEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     return Padding(
       padding: const EdgeInsets.all(28),
@@ -399,7 +403,7 @@ class _NoteEditor extends StatelessWidget {
               if (onBack != null) ...[
                 _IconBtn(
                   icon: Icons.arrow_back_rounded,
-                  tooltip: 'Back to notes',
+                  tooltip: t.notesBackTooltip,
                   onTap: onBack!,
                 ),
                 const SizedBox(width: 8),
@@ -415,13 +419,13 @@ class _NoteEditor extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                         ),
                         decoration: InputDecoration(
-                          hintText: 'Title',
+                          hintText: t.commonTitle,
                           hintStyle: TextStyle(color: luma.textMuted),
                           border: InputBorder.none,
                         ),
                       )
                     : Text(
-                        note.title.isEmpty ? 'Untitled' : note.title,
+                        note.title.isEmpty ? t.commonUntitled : note.title,
                         style: TextStyle(
                           color: luma.textPrimary,
                           fontSize: 22,
@@ -433,20 +437,20 @@ class _NoteEditor extends StatelessWidget {
               if (editing) ...[
                 _IconBtn(
                   icon: Icons.checklist_rounded,
-                  tooltip: 'Add checklist item',
+                  tooltip: t.notesAddChecklistTooltip,
                   onTap: onInsertChecklistItem,
                 ),
                 const SizedBox(width: 4),
-                _TextBtn(label: 'Cancel', onTap: onCancel),
+                _TextBtn(label: t.commonCancel, onTap: onCancel),
                 const SizedBox(width: 8),
-                _TextBtn(label: 'Save', accent: true, onTap: onSave),
+                _TextBtn(label: t.commonSave, accent: true, onTap: onSave),
               ] else
-                _TextBtn(label: 'Edit', onTap: onEdit),
+                _TextBtn(label: t.commonEdit, onTap: onEdit),
             ],
           ),
           const SizedBox(height: 6),
           Text(
-            _formatDate(note.updatedAt),
+            _formatDate(t, note.updatedAt),
             style: TextStyle(color: luma.textMuted, fontSize: 11.5),
           ),
           const SizedBox(height: 16),
@@ -460,7 +464,7 @@ class _NoteEditor extends StatelessWidget {
                       height: 1.6,
                     ),
                     decoration: InputDecoration(
-                      hintText: 'Jot something down…',
+                      hintText: t.notesJotHint,
                       hintStyle: TextStyle(color: luma.textMuted),
                       border: InputBorder.none,
                     ),
@@ -471,7 +475,7 @@ class _NoteEditor extends StatelessWidget {
                 : SingleChildScrollView(
                     child: note.content.isEmpty
                         ? Text(
-                            'Tap Edit to add content.',
+                            t.notesTapEditToAdd,
                             style: TextStyle(
                               color: luma.textMuted,
                               fontSize: 14.5,
@@ -489,13 +493,13 @@ class _NoteEditor extends StatelessWidget {
     );
   }
 
-  static String _formatDate(DateTime dt) {
+  static String _formatDate(L t, DateTime dt) {
     final now = DateTime.now();
     final diff = now.difference(dt);
-    if (diff.inSeconds < 60) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    if (diff.inSeconds < 60) return t.commonJustNow;
+    if (diff.inMinutes < 60) return t.commonMinutesAgo(diff.inMinutes);
+    if (diff.inHours < 24) return t.commonHoursAgo(diff.inHours);
+    if (diff.inDays < 7) return t.commonDaysAgo(diff.inDays);
     return '${dt.day}/${dt.month}/${dt.year}';
   }
 }
@@ -592,6 +596,7 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -599,7 +604,7 @@ class _EmptyState extends StatelessWidget {
           Icon(Icons.sticky_note_2_outlined, size: 48, color: luma.textMuted),
           const SizedBox(height: 16),
           Text(
-            'No note selected',
+            t.notesNoneSelected,
             style: TextStyle(
               color: luma.textSecondary,
               fontSize: 15,
@@ -608,11 +613,11 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Create a new note to get started.',
+            t.notesCreateToStart,
             style: TextStyle(color: luma.textMuted, fontSize: 13),
           ),
           const SizedBox(height: 20),
-          _TextBtn(label: '+ New Note', accent: true, onTap: onNew),
+          _TextBtn(label: t.notesNewNoteButton, accent: true, onTap: onNew),
         ],
       ),
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../app/widgets.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/luma_theme.dart';
 
 /// Opens [child] in the standard finance editor dialog shell.
@@ -82,7 +83,7 @@ class FinanceDialogScaffold extends StatelessWidget {
               ?leading,
               const Spacer(),
               LumaGhostButton(
-                label: 'Cancel',
+                label: L.of(context).commonCancel,
                 onTap: () => Navigator.pop(context),
               ),
               const SizedBox(width: 10),
@@ -201,7 +202,7 @@ class FinanceDateField extends StatelessWidget {
     required this.label,
     required this.date,
     required this.onChanged,
-    this.placeholder = 'Pick a date',
+    this.placeholder,
     this.onClear,
     this.firstDate,
   });
@@ -209,7 +210,7 @@ class FinanceDateField extends StatelessWidget {
   final String label;
   final DateTime? date;
   final ValueChanged<DateTime> onChanged;
-  final String placeholder;
+  final String? placeholder;
   final VoidCallback? onClear;
   final DateTime? firstDate;
 
@@ -245,7 +246,9 @@ class FinanceDateField extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    date == null ? placeholder : longDate(date!),
+                    date == null
+                        ? placeholder ?? L.of(context).financePickDate
+                        : longDate(date!),
                     style: TextStyle(
                       color: date == null ? luma.textMuted : luma.textPrimary,
                     ),
@@ -323,11 +326,17 @@ Future<bool> confirmFinanceDelete(
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(dialogContext, false),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(
+            L.of(context).commonCancel,
+            style: TextStyle(color: luma.textSecondary),
+          ),
         ),
         TextButton(
           onPressed: () => Navigator.pop(dialogContext, true),
-          child: Text('Delete', style: TextStyle(color: luma.danger)),
+          child: Text(
+            L.of(context).commonDelete,
+            style: TextStyle(color: luma.danger),
+          ),
         ),
       ],
     ),

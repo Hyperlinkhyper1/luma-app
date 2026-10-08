@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'price_scraper.dart';
 import 'price_tracker_repository.dart';
@@ -35,9 +36,10 @@ class _PriceTrackerPageState extends State<PriceTrackerPage> {
   }
 
   Future<void> _add(PriceTrackerRepository repo) async {
+    final t = L.of(context);
     final url = _urlController.text.trim();
     if (url.isEmpty) {
-      setState(() => _error = 'Enter a product URL.');
+      setState(() => _error = t.priceTrackerEnterUrl);
       return;
     }
     final name = _nameController.text.trim();
@@ -57,13 +59,14 @@ class _PriceTrackerPageState extends State<PriceTrackerPage> {
     } on PriceScraperException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (_) {
-      if (mounted) setState(() => _error = 'Could not check the price.');
+      if (mounted) setState(() => _error = t.priceTrackerCheckFailed);
     }
 
     if (mounted) setState(() => _adding = false);
   }
 
   Future<void> _checkNow(PriceTrackerRepository repo, TrackedItem item) async {
+    final t = L.of(context);
     setState(() => _checking.add(item.id));
     try {
       final scraped = await _scraper.fetch(item.url);
@@ -71,13 +74,14 @@ class _PriceTrackerPageState extends State<PriceTrackerPage> {
     } on PriceScraperException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (_) {
-      if (mounted) setState(() => _error = 'Could not check the price.');
+      if (mounted) setState(() => _error = t.priceTrackerCheckFailed);
     }
     if (mounted) setState(() => _checking.remove(item.id));
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final repo = PriceTrackerScope.of(context);
 
@@ -94,7 +98,7 @@ class _PriceTrackerPageState extends State<PriceTrackerPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'Track a product',
+                      t.priceTrackerTrackTitle,
                       style: TextStyle(
                         color: luma.textPrimary,
                         fontSize: 16,
@@ -103,7 +107,7 @@ class _PriceTrackerPageState extends State<PriceTrackerPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Paste a product URL and luma checks the price for you.',
+                      t.priceTrackerTrackSubtitle,
                       style: TextStyle(color: luma.textMuted, fontSize: 13),
                     ),
                     const SizedBox(height: 16),
@@ -111,7 +115,7 @@ class _PriceTrackerPageState extends State<PriceTrackerPage> {
                       controller: _nameController,
                       style: TextStyle(color: luma.textPrimary),
                       decoration: _inputDecoration(luma,
-                          hint: 'Name (optional)'),
+                          hint: t.priceTrackerNameHint),
                     ),
                     const SizedBox(height: 10),
                     Row(
@@ -128,7 +132,7 @@ class _PriceTrackerPageState extends State<PriceTrackerPage> {
                         ),
                         const SizedBox(width: 12),
                         LumaPrimaryButton(
-                          label: 'Track',
+                          label: t.priceTrackerTrack,
                           icon: Icons.add_rounded,
                           loading: _adding,
                           onTap: () => _add(repo),
@@ -145,7 +149,7 @@ class _PriceTrackerPageState extends State<PriceTrackerPage> {
               ),
               const SizedBox(height: 24),
               Text(
-                'Tracked items',
+                t.priceTrackerTrackedItems,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 14,
@@ -162,9 +166,8 @@ class _PriceTrackerPageState extends State<PriceTrackerPage> {
                       padding: const EdgeInsets.symmetric(vertical: 24),
                       child: LumaEmptyState(
                         icon: Icons.show_chart_rounded,
-                        title: 'Nothing tracked yet',
-                        subtitle:
-                            'Products you track are saved here with a price-history graph.',
+                        title: t.priceTrackerEmptyTitle,
+                        subtitle: t.priceTrackerEmptySubtitle,
                       ),
                     );
                   }
@@ -206,6 +209,7 @@ class _TrackedItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final latest = item.latestPrice;
     final previous = item.previousPrice;
@@ -278,13 +282,13 @@ class _TrackedItemCard extends StatelessWidget {
                       )
                     : Icon(Icons.refresh_rounded,
                         color: luma.textMuted, size: 20),
-                tooltip: 'Check price now',
+                tooltip: t.priceTrackerCheckNow,
                 onPressed: checking ? null : onCheckNow,
               ),
               IconButton(
                 icon: Icon(Icons.delete_outline_rounded,
                     color: luma.textMuted, size: 20),
-                tooltip: 'Delete',
+                tooltip: t.commonDelete,
                 onPressed: onDelete,
               ),
             ],

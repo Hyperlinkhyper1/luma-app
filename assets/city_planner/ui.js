@@ -3,6 +3,9 @@
 // ─────────────────────────────────────────────────────────────
 "use strict";
 
+const tr = source => window.LumaSceneI18n?.translate?.(source) ?? source;
+const tf = (key, values, fallback) => window.LumaSceneI18n?.format?.(key, values) ?? fallback;
+
 const UI = {
   selected: null,       // geselecteerd gebouw
   tab: "inspect",
@@ -16,8 +19,20 @@ const el = (tag, cls, html) => {
   if (html !== undefined) e.innerHTML = html;
   return e;
 };
-const fmtGeld = v => "€ " + Math.round(v).toLocaleString("nl-NL");
-const fmtNum = v => Math.round(v).toLocaleString("nl-NL");
+function cityNewsText(n){
+  if(n.key)return window.LumaSceneI18n?.format?.(n.key,n.args||{})||tr(n.msg||"");
+  const m=n.msg||"";
+  let match;
+  if((match=m.match(/^🔬 Onderzoek voltooid: (.+)$/)))return window.LumaSceneI18n?.format?.("sceneCityPlannerNewsResearchCompleted",{technology:tr(match[1])})||tr(m);
+  if((match=m.match(/^🏙 Je stad is gegroeid naar fase (\d+): (.+)! Nieuwe gebouwen ontgrendeld\.$/)))return window.LumaSceneI18n?.format?.("sceneCityPlannerNewsPhaseGrowth",{phase:match[1],name:tr(match[2])})||tr(m);
+  if((match=m.match(/^🎉 Regionale subsidie ontvangen: € (.+)\.$/)))return window.LumaSceneI18n?.format?.("sceneCityPlannerNewsRegionalGrant",{amount:match[1]})||tr(m);
+  if((match=m.match(/^🔥 Brand in (.+)! Zonder brandweer in de buurt is het pand verwoest\.$/)))return window.LumaSceneI18n?.format?.("sceneCityPlannerNewsBuildingFire",{building:match[1]})||tr(m);
+  return tr(m);
+}
+
+const numberLocale = () => ({en:"en-US",nl:"nl-NL",es:"es-ES",fr:"fr-FR",zh:"zh-CN"}[window.LumaSceneI18n?.language] || undefined);
+const fmtGeld = v => "€ " + Math.round(v).toLocaleString(numberLocale());
+const fmtNum = v => Math.round(v).toLocaleString(numberLocale());
 // inline SVG-icoon uit de sprite in index.html
 const icon = (name, cls = "ic") => `<svg class="${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 
@@ -108,7 +123,7 @@ UI.buildTools = function () {
   const ov = cat("Openbaar vervoer", "bus", false);
   for (const [k, tt] of Object.entries(TRANSIT_TYPES)) {
     const locked = tt.fase > G.fase || (tt.tech && !G.techs[tt.tech]);
-    toolBtn(ov, tt.naam + " tekenen", {
+    toolBtn(ov, tr(tt.naam) + " tekenen", {
       key: "transit" + k, kleur: tt.kleur, prijs: tt.kostenHalte, locked,
       lockLabel: tt.tech && !G.techs[tt.tech] ? "tech" : `fase ${tt.fase}`,
       onpick: () => { UI.setTool({ kind: "transit", type: k }); UI.toast("Klik haltes op wegen; dubbelklik of Enter om de lijn af te ronden.", ""); },
@@ -135,15 +150,15 @@ UI.buildTools = function () {
     for (const [key, def] of Object.entries(BUILDINGS)) {
       if (def.cat !== catKey) continue;
       const locked = def.fase > G.fase || (def.tech && !G.techs[def.tech]);
-      toolBtn(body, def.naam, {
+      toolBtn(body, tr(def.naam), {
         key: "bld" + key, kleur: def.kleur, prijs: def.kosten * buildCostFactor(), locked,
         lockLabel: def.tech && !G.techs[def.tech] ? "tech" : `fase ${def.fase}`,
         lockMsg: def.tech && !G.techs[def.tech]
           ? `Vereist onderzoek: ${(TECHS.find(t => t.id === def.tech) || {}).naam || def.tech}`
-          : `Beschikbaar vanaf fase ${def.fase} (${PHASES[def.fase].naam}).`,
+          : tf("sceneCityPlannerAvailableFromPhase", {phase:def.fase,name:tr(PHASES[def.fase].naam)}, `Beschikbaar vanaf fase ${def.fase} (${tr(PHASES[def.fase].naam)}).`),
         onpick: () => {
           UI.setTool({ kind: "building", type: key });
-          UI.toast(`Teken de vorm van je ${def.naam.toLowerCase()} door cellen te slepen. Kosten: ${fmtGeld(def.kosten * buildCostFactor())} per cel per verdieping.`, "");
+          UI.toast(tf("sceneCityPlannerDrawBuildingShape", {building:tr(def.naam.toLowerCase()),cost:fmtGeld(def.kosten * buildCostFactor())}, `Teken de vorm van je ${tr(def.naam).toLowerCase()} door cellen te slepen. Kosten: ${fmtGeld(def.kosten * buildCostFactor())} per cel per verdieping.`), "");
         },
       });
     }
@@ -152,7 +167,7 @@ UI.buildTools = function () {
   // Analyse
   const ana = cat("Analyse", "chart", false);
   for (const hm of HEATMAPS) {
-    toolBtn(ana, hm.naam.replace("Heatmap: ", "").replace("Kaartweergave: ", ""), {
+    toolBtn(ana, tr(hm.naam).replace("Heatmap: ", "").replace("Kaartweergave: ", ""), {
       key: "hm" + hm.id,
       onpick: () => { heatmapMode = hm.id; $("#heatmapsel").value = hm.id; },
     });
@@ -221,7 +236,7 @@ UI.renderInspector = function (body) {
   nameInput.type = "text"; nameInput.value = b.naam;
   nameInput.onchange = () => { b.naam = nameInput.value; };
   card.append(nameInput);
-  card.append(el("div", "muted", `${def.naam} · gebouwd in ${b.jaar} · ${b.cells.length} cellen · ${b.floors.length} verdieping(en)`));
+  card.append(el("div", "muted", `${tr(def.naam)} · gebouwd in ${b.jaar} · ${b.cells.length} cellen · ${b.floors.length} verdieping(en)`));
   body.append(card);
 
   const info = el("div", "card");
@@ -252,7 +267,7 @@ UI.renderInspector = function (body) {
     row.append(el("span", "fnum", "V" + (k + 1)));
     const sel = el("select");
     for (const u of allowedUses) {
-      const o = el("option", "", FLOOR_USES[u].naam);
+      const o = el("option", "", tr(FLOOR_USES[u].naam));
       o.value = u;
       if (f.use === u) o.selected = true;
       sel.append(o);
@@ -316,13 +331,13 @@ UI.renderResearch = function (body) {
   // fase-progressie
   const next = PHASES[G.fase + 1];
   const ph = el("div", "card");
-  ph.append(el("div", "", `<b>Fase ${G.fase}: ${PHASES[G.fase].naam}</b>`));
+  ph.append(el("div", "", `<b>Fase ${G.fase}: ${tr(PHASES[G.fase].naam)}</b>`));
   if (next) {
-    ph.append(el("div", "muted", `Volgende: ${next.naam} — vereist ${fmtNum(next.popEis)} inwoners en ${fmtNum(next.rp || 0)} onderzoekspunten`));
+    ph.append(el("div", "muted", `Volgende: ${tr(next.naam)} — vereist ${fmtNum(next.popEis)} inwoners en ${fmtNum(next.rp || 0)} onderzoekspunten`));
     const bar = el("div", "bar"); const fill = el("div");
     fill.style.width = Math.min(100, G.pop / next.popEis * 100) + "%";
     bar.append(fill); ph.append(bar);
-    const btn = el("button", "", `Groei naar ${next.naam}`);
+    const btn = el("button", "", `Groei naar ${tr(next.naam)}`);
     btn.disabled = !canAdvancePhase();
     btn.style.cssText = "width:100%;margin-top:6px";
     btn.onclick = () => { advancePhase(); };
@@ -340,8 +355,8 @@ UI.renderResearch = function (body) {
       const done = !!G.techs[t.id];
       const avail = canResearch(t);
       const n = el("div", "techn " + (done ? "done" : avail ? "avail" : ""));
-      n.append(el("div", "tname", (done ? "✔ " : "") + t.naam + ` <span class="muted">(${t.kosten} ${icon("flask")})</span>`));
-      n.append(el("div", "tdesc", t.desc + (t.req ? ` Vereist: ${t.req.map(r => (TECHS.find(x => x.id === r) || {}).naam).join(", ")}.` : "") + (t.fase > G.fase ? ` [fase ${t.fase}]` : "")));
+      n.append(el("div", "tname", (done ? "✔ " : "") + tr(t.naam) + ` <span class="muted">(${t.kosten} ${icon("flask")})</span>`));
+      n.append(el("div", "tdesc", tr(t.desc) + (t.req ? ` Vereist: ${t.req.map(r => tr((TECHS.find(x => x.id === r) || {}).naam || r)).join(", ")}.` : "") + (t.fase > G.fase ? ` [fase ${t.fase}]` : "")));
       if (!done && avail) {
         const btn = el("button", "", "Onderzoeken");
         btn.disabled = G.rp < t.kosten;
@@ -412,7 +427,7 @@ UI.renderPolicy = function (body) {
     const row = el("div", "polrow");
     const locked = p.fase > G.fase;
     const left = el("div");
-    left.append(el("div", "", `<b>${p.naam}</b> <span class="muted">${p.kosten > 0 ? fmtGeld(p.kosten * 30) + "/mnd" : p.kosten < 0 ? "+" + fmtGeld(-p.kosten * 30) + "/mnd" : ""}</span>`));
+    left.append(el("div", "", `<b>${tr(p.naam)}</b> <span class="muted">${p.kosten > 0 ? fmtGeld(p.kosten * 30) + "/mnd" : p.kosten < 0 ? "+" + fmtGeld(-p.kosten * 30) + "/mnd" : ""}</span>`));
     left.append(el("div", "muted", p.desc + (locked ? ` [vanaf fase ${p.fase}]` : "")));
     const btn = el("button", "", G.policies[p.id] ? "Actief" : "Uit");
     if (G.policies[p.id]) btn.classList.add("active");
@@ -438,26 +453,26 @@ UI.renderTransit = function (body) {
     const tt = TRANSIT_TYPES[l.type];
     const c = el("div", "card");
     c.append(el("div", "", `<span class="sw" style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${tt.kleur}"></span> <b>${l.naam}</b> <span class="muted">(${tt.naam.toLowerCase()}, ${l.stops.length} haltes)</span>`));
-    c.append(el("div", "kv", `<span class="k">Reizigers</span><span class="v">${fmtNum(l.ridership || 0)}/dag</span>`));
+    c.append(el("div", "kv", `<span class="k">${tf("sceneCityPlannerRidersLabel", {}, "Reizigers")}</span><span class="v">${tf("sceneCityPlannerRidersPerDay", {count: fmtNum(l.ridership || 0)}, `${fmtNum(l.ridership || 0)}/dag`)}</span>`));
     const row = el("div", "row");
     const freq = el("select");
     for (const [v, lbl] of [[1, "Lage frequentie"], [2, "Normale frequentie"], [3, "Hoge frequentie"]]) {
-      const o = el("option", "", lbl); o.value = v;
+      const o = el("option", "", tr(lbl)); o.value = v;
       if (l.freq === v) o.selected = true;
       freq.append(o);
     }
     freq.onchange = () => { l.freq = +freq.value; };
-    const act = el("button", "", l.actief ? "Actief" : "Gepauzeerd");
+    const act = el("button", "", tf(l.actief ? "sceneCityPlannerActiveLabel" : "sceneCityPlannerPausedLabel"));
     if (l.actief) act.classList.add("active");
     act.onclick = () => { l.actief = !l.actief; UI.refreshRight(); };
     const del = el("button", "", icon("trash"));
-    del.title = "Lijn verwijderen";
+    del.title = tr("Lijn verwijderen");
     del.onclick = () => { G.transitLines = G.transitLines.filter(x => x !== l); UI.refreshRight(); };
     row.append(freq, act, del);
     c.append(row);
     body.append(c);
   }
-  if (!G.transitLines.length) body.append(el("div", "muted", "Nog geen lijnen."));
+  if (!G.transitLines.length) body.append(el("div", "muted", tf("sceneCityPlannerNoLines")));
 };
 
 // ── Stad / statistieken ─────────────────────────────────────
@@ -496,15 +511,15 @@ UI.renderStats = function (body) {
 
   const c4 = el("div", "card");
   c4.append(el("h3", "", "Nieuws"));
-  for (const n of G.news.slice(0, 12)) c4.append(el("div", "muted", `<b>${n.t}</b> — ${n.msg}`));
+  for (const n of G.news.slice(0, 12)) c4.append(el("div", "muted", `<b>${n.t}</b> — ${cityNewsText(n)}`));
   if (!G.news.length) c4.append(el("div", "muted", "Nog geen nieuws."));
   body.append(c4);
 };
 
 // ── Bovenbalk & statuschips ─────────────────────────────────
-const MAANDEN = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
+const MAANDEN = () => ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map(m => window.LumaSceneI18n?.value?.(`sceneCityPlannerMonth${m}`) || m.slice(0, 3));
 UI.refreshTop = function () {
-  $("#ui-date").textContent = `${G.day} ${MAANDEN[G.month - 1]} ${G.year}`;
+  $("#ui-date").textContent = `${G.day} ${MAANDEN()[G.month - 1]} ${G.year}`;
   $("#ui-money").textContent = sandbox() ? "∞" : fmtGeld(G.money);
   $("#ui-money").style.color = !sandbox() && G.money < 0 ? "var(--bad)" : "";
   const s = G.lastBudget.saldo;
@@ -512,7 +527,7 @@ UI.refreshTop = function () {
   $("#ui-cashflow").style.color = s >= 0 ? "var(--good)" : "var(--bad)";
   $("#ui-pop").textContent = fmtNum(G.pop);
   $("#ui-rp").textContent = fmtNum(G.rp);
-  $("#ui-phase").textContent = sandbox() ? "Sandbox" : `Fase ${G.fase} · ${PHASES[G.fase].naam}`;
+  $("#ui-phase").textContent = sandbox() ? tr("Sandbox") : tf("sceneCityPlannerPhaseLabel", {phase: G.fase, name: tr(PHASES[G.fase].naam)});
 };
 
 UI.refreshChips = function () {
@@ -544,10 +559,10 @@ UI.refreshChips = function () {
   chip("#chip-food", Math.min(1, f.ratio), Math.round(Math.min(1.2, f.ratio) * 100) + "%");
 };
 
-UI.setNews = function (msg) { $("#news").textContent = msg; };
+UI.setNews = function (msg) { $("#news").textContent = tr(msg); };
 
 UI.toast = function (msg, kind = "") {
-  const t = el("div", "toast " + kind, msg);
+  const t = el("div", "toast " + kind, tr(msg));
   $("#toasts").append(t);
   setTimeout(() => t.remove(), 5200);
 };
@@ -562,7 +577,7 @@ UI.updateTooltip = function (px, py) {
     const b = G.buildings[G.bld[i] - 1];
     if (b) {
       const def = BUILDINGS[b.type];
-      html = `<b>${b.naam}</b><br>${def.naam} · ${b.floors.length} verd.`;
+      html = `<b>${b.naam}</b><br>${tr(def.naam)} · ${b.floors.length} verd.`;
       if (b.capBew) html += `<br>${b.bezet}/${b.capBew} bewoners · ${Math.round(b.happy)}% tevreden`;
       if (b.capBanen) html += `<br>${b.werkers}/${b.capBanen} banen`;
       if (!b.powered) html += `<br><span style="color:var(--bad)">${icon("zap")} geen stroom</span>`;
@@ -572,10 +587,10 @@ UI.updateTooltip = function (px, py) {
   } else if (G.road[i] > 0) {
     const rd = ROADS[G.road[i]];
     const cong = G.traffic[i] / (rd.cap * roadCapFactor());
-    html = `<b>${rd.naam}</b><br>${Math.round(G.traffic[i])} voertuigen/dag · drukte ${Math.round(cong * 100)}%`;
+    html = `<b>${tr(rd.naam)}</b><br>${Math.round(G.traffic[i])} voertuigen/dag · drukte ${Math.round(cong * 100)}%`;
   } else {
     const td = TERRAIN_DEF[G.terrain[i]];
-    html = `<b>${td.naam}</b><br>Grondwaarde: ${Math.round(G.landValue[i] * 100)} · Vruchtbaarheid: ${Math.round(G.fert[i] * 100)}%`;
+    html = `<b>${tr(td.naam)}</b><br>Grondwaarde: ${Math.round(G.landValue[i] * 100)} · Vruchtbaarheid: ${Math.round(G.fert[i] * 100)}%`;
     if (G.pollution[i] > 0.5) html += `<br>Vervuiling: ${G.pollution[i].toFixed(1)}`;
   }
   if (!html) { tip.style.display = "none"; return; }
@@ -616,18 +631,18 @@ UI.showSaveScreen = function () {
       }
       const row = el("div", "row");
       if (slot !== "auto") {
-        const sv = el("button", "", icon("save") + " Opslaan");
+        const sv = el("button", "", icon("save") + " " + tr("Opslaan"));
         sv.onclick = () => { if (saveGame(slot, false)) UI.showSaveScreen(); };
         row.append(sv);
       }
-      const ld = el("button", "", icon("folder") + " Laden");
+      const ld = el("button", "", icon("folder") + " " + tr("Laden"));
       ld.disabled = !meta;
       ld.onclick = () => { if (loadGame(slot)) { Cars.pool.length = 0; UI.selected = null; UI.hideModal(); } };
       row.append(ld);
       const del = el("button", "", icon("trash"));
-      del.title = "Save verwijderen";
+      del.title = tr("Save verwijderen");
       del.disabled = !meta;
-      del.onclick = () => { if (confirm("Deze save verwijderen?")) { deleteSave(slot); UI.showSaveScreen(); } };
+      del.onclick = () => { if (confirm(tr("Deze save verwijderen?"))) { deleteSave(slot); UI.showSaveScreen(); } };
       row.append(del);
       c.append(row);
       body.append(c);
@@ -677,7 +692,15 @@ UI.showStartScreen = function () {
 // heatmap-dropdown
 const hmsel = $("#heatmapsel");
 for (const hm of HEATMAPS) {
-  const o = el("option", "", hm.naam); o.value = hm.id;
+  const o = el("option", "", tr(hm.naam)); o.value = hm.id;
   hmsel.append(o);
 }
 hmsel.onchange = () => { heatmapMode = hmsel.value; };
+
+window.addEventListener("luma-locale-changed", () => {
+  UI.refreshTools();
+  UI.refreshTop();
+  UI.refreshRight();
+  UI.refreshChips();
+  if (G.news?.length) UI.setNews(cityNewsText(G.news[0]));
+});

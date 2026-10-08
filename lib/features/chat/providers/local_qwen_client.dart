@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:llm_llamacpp/llm_llamacpp.dart';
 
+import '../../../l10n/current_l.dart';
 import '../local_model_store.dart';
 import 'ai_client.dart';
 
@@ -245,7 +246,7 @@ class LocalQwenClient implements AiClient {
     final path = await _modelPath();
     if (path == null) {
       throw AiApiError(
-        'Download ${LocalModelStore.modelDisplayName} in Assistant settings before using the on-device model.',
+        currentL.aiLocalModelMissing(LocalModelStore.modelDisplayName),
       );
     }
 
@@ -295,9 +296,7 @@ class LocalQwenClient implements AiClient {
       }
       final text = stripThinking(reply);
       return AiChatResult(
-        text: text.isNotEmpty
-            ? text
-            : "I couldn't come up with a reply for that.",
+        text: text.isNotEmpty ? text : currentL.aiClientNoReply,
         metadataJson: metadataJson,
         usage: AiTokenUsage(
           model: '${LocalModelStore.modelDisplayName} (on-device)',
@@ -308,7 +307,7 @@ class LocalQwenClient implements AiClient {
     } on AiError {
       rethrow;
     } catch (error) {
-      throw AiApiError('The on-device model could not answer: $error');
+      throw AiApiError(currentL.aiLocalModelFailed('$error'));
     }
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app/widgets.dart';
+import '../l10n/app_localizations.dart';
 import '../sync/sync_service.dart';
 import '../theme/luma_theme.dart';
 
@@ -67,15 +68,17 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
   }
 
   String? _validateNext() {
-    if (_next.text.isEmpty) return 'Choose a new password.';
+    final t = L.of(context);
+    if (_next.text.isEmpty) return t.passwordResetChooseNew;
     if (_next.text.length < _minLength) {
-      return 'Use at least $_minLength characters.';
+      return t.passwordResetMinLengthError(_minLength);
     }
     return null;
   }
 
-  String? _validateConfirm() =>
-      _confirm.text == _next.text ? null : 'The two passwords do not match.';
+  String? _validateConfirm() => _confirm.text == _next.text
+      ? null
+      : L.of(context).passwordResetMismatch;
 
   Future<void> _submit() async {
     final nextError = _validateNext();
@@ -112,6 +115,7 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final email = widget.sync.email;
 
     return Material(
@@ -134,7 +138,7 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Choose a new password',
+                            t.passwordResetTitle,
                             style: TextStyle(
                               color: luma.textPrimary,
                               fontSize: 18,
@@ -147,18 +151,14 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
                     const SizedBox(height: 14),
                     Text(
                       email == null
-                          ? 'The server operator reset this account\'s '
-                              'password, so the old one no longer works.'
-                          : 'The server operator reset the password for '
-                              '$email, so the old one no longer works.',
+                          ? t.passwordResetBodyNoEmail
+                          : t.passwordResetBodyWithEmail(email),
                       style: TextStyle(
                           color: luma.textSecondary, fontSize: 14, height: 1.5),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Set a new one here and luma re-encrypts your synced '
-                      'data under it, so nothing is lost. Your other devices '
-                      'will ask for the new password the next time they sync.',
+                      t.passwordResetSyncNote,
                       style: TextStyle(
                           color: luma.textMuted, fontSize: 13, height: 1.5),
                     ),
@@ -166,8 +166,8 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
                     _PasswordField(
                       controller: _next,
                       focusNode: _nextFocus,
-                      label: 'New password',
-                      helper: 'At least $_minLength characters.',
+                      label: t.passwordResetNewPassword,
+                      helper: t.passwordResetMinHelper(_minLength),
                       error: _nextError,
                       obscure: _obscure,
                       enabled: !_busy,
@@ -180,7 +180,7 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
                     _PasswordField(
                       controller: _confirm,
                       focusNode: _confirmFocus,
-                      label: 'Repeat new password',
+                      label: t.passwordResetRepeatPassword,
                       error: _confirmError,
                       obscure: _obscure,
                       enabled: !_busy,
@@ -224,7 +224,7 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
                     ],
                     const SizedBox(height: 22),
                     LumaPrimaryButton(
-                      label: 'Set new password',
+                      label: t.passwordResetSubmit,
                       icon: Icons.check_rounded,
                       expand: true,
                       loading: _busy,
@@ -232,8 +232,7 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
                     ),
                     const SizedBox(height: 14),
                     Text(
-                      'Everything else in luma stays locked until this is '
-                      'done. Your local data on this device is untouched.',
+                      t.passwordResetLockedNote,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                           color: luma.textMuted, fontSize: 12, height: 1.45),
@@ -280,6 +279,7 @@ class _PasswordField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final borderColor = error != null ? luma.danger : luma.border;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -322,7 +322,9 @@ class _PasswordField extends StatelessWidget {
                 size: 18,
                 color: luma.textMuted,
               ),
-              tooltip: obscure ? 'Show password' : 'Hide password',
+              tooltip: obscure
+                  ? t.passwordResetShowPassword
+                  : t.passwordResetHidePassword,
             ),
           ),
         ),

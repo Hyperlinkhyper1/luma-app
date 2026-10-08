@@ -2,6 +2,8 @@
 /// matter which of the three platforms it came from.
 library;
 
+import '../../../../l10n/app_localizations.dart';
+
 /// The platforms MC Content pulls together.
 enum McPlatform {
   curseforge('CurseForge', 'curseforge'),
@@ -167,12 +169,15 @@ class McCreator {
 /// legitimately has no projects are three different things, and the UI says
 /// which — an empty grid with no explanation is the worst of the three.
 enum McPlatformState {
-  notConfigured('Not set up'),
-  ok('Connected'),
-  failed('Unavailable');
+  notConfigured,
+  ok,
+  failed;
 
-  const McPlatformState(this.label);
-  final String label;
+  String label(L t) => switch (this) {
+        McPlatformState.notConfigured => t.accountOverviewNotSetUp,
+        McPlatformState.ok => t.accountOverviewConnected,
+        McPlatformState.failed => t.homeUnavailable,
+      };
 }
 
 /// The result of asking one platform for everything it has.

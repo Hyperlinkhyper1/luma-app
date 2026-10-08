@@ -4,5 +4,23 @@
   "version": "1.0.0",
   "description": "How was today, really? Jot it down and spot patterns over time.",
   "icon": "mood",
-  "category": "Productivity"
+  "category": "Productivity",
+  "i18n": {
+    "nl": {
+      "name": "Stemmingsdagboek",
+      "description": "Hoe was vandaag echt? Schrijf het op en ontdek patronen in de loop van de tijd."
+    },
+    "fr": {
+      "name": "Journal d'humeur",
+      "description": "Comment s'est passée la journée, vraiment ? Notez-le et repérez les schémas au fil du temps."
+    },
+    "es": {
+      "name": "Diario de ánimo",
+      "description": "¿Qué tal fue hoy, de verdad? Anótalo y descubre patrones con el tiempo."
+    },
+    "zh": {
+      "name": "心情日记",
+      "description": "今天到底过得怎么样？记下来，看看时间长了有什么规律。"
+    }
+  }
 }

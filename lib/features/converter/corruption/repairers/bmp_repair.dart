@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import '../../../../l10n/current_l.dart';
 import '../binary_utils.dart';
 import '../repair_report.dart';
 
@@ -10,7 +11,7 @@ import '../repair_report.dart';
 /// formats where a wiped header can be genuinely rebuilt rather than guessed.
 Uint8List repairBmp(Uint8List bytes, RepairLog log) {
   if (bytes.length < 30) {
-    log.failed('A BMP needs at least a 14-byte file header and a DIB header.');
+    log.failed(currentL.repairBmpTooShort);
     return bytes;
   }
 
@@ -18,23 +19,18 @@ Uint8List repairBmp(Uint8List bytes, RepairLog log) {
 
   if (!matchesAt(data, 0, asciiBytes('BM'))) {
     data.setRange(0, 2, asciiBytes('BM'));
-    log.fixed('Rewrote the "BM" magic bytes.');
+    log.fixed(currentL.repairBmpMagicRewritten);
   }
 
   final declaredSize = readU32le(data, 2);
   if (declaredSize != data.length) {
     writeU32le(data, 2, data.length);
-    log.fixed(
-      'Corrected the file-size field from $declaredSize to ${data.length}.',
-    );
+    log.fixed(currentL.repairBmpSizeCorrected(declaredSize, data.length));
   }
 
   final dibSize = readU32le(data, 14);
   if (!const [12, 40, 52, 56, 64, 108, 124].contains(dibSize)) {
-    log.failed(
-      'The DIB header size reads $dibSize, which is not a known BMP header '
-      'layout. Width, height and bit depth are unrecoverable.',
-    );
+    log.failed(currentL.repairBmpDibUnknown(dibSize));
     return data;
   }
 
@@ -59,12 +55,11 @@ Uint8List repairBmp(Uint8List bytes, RepairLog log) {
 
   if (width <= 0 || height <= 0 || bitsPerPixel == 0) {
     log.failed(
-      'The DIB header reads $width×$height at $bitsPerPixel bpp, which '
-      'cannot be right. Those numbers are stored nowhere else.',
+      currentL.repairBmpDimensionsImpossible(width, height, bitsPerPixel),
     );
     return data;
   }
-  log.info('Image: $width×$height at $bitsPerPixel bpp.');
+  log.info(currentL.repairBmpImageInfo(width, height, bitsPerPixel));
 
   if (paletteEntries == 0 && bitsPerPixel <= 8) {
     paletteEntries = 1 << bitsPerPixel;
@@ -75,8 +70,7 @@ Uint8List repairBmp(Uint8List bytes, RepairLog log) {
   if (declaredOffset != expectedOffset) {
     writeU32le(data, 10, expectedOffset);
     log.fixed(
-      'Recalculated the pixel-data offset as $expectedOffset (it read '
-      '$declaredOffset).',
+      currentL.repairBmpOffsetRecalculated(expectedOffset, declaredOffset),
     );
   }
 
@@ -85,20 +79,14 @@ Uint8List repairBmp(Uint8List bytes, RepairLog log) {
   final needed = expectedOffset + rowBytes * height;
   if (needed > data.length) {
     final missing = needed - data.length;
-    log.fixed(
-      'Padded ${formatSize(missing)} of missing pixel rows with black so the '
-      'image opens; the bottom of the picture is lost.',
-    );
+    log.fixed(currentL.repairBmpPadded(formatSize(missing)));
     final padded = Uint8List(needed);
     padded.setRange(0, data.length, data);
     writeU32le(padded, 2, padded.length);
     return padded;
   }
   if (needed < data.length) {
-    log.fixed(
-      'Trimmed ${formatSize(data.length - needed)} of bytes past the end of '
-      'the pixel data.',
-    );
+    log.fixed(currentL.repairBmpTrimmed(formatSize(data.length - needed)));
     final trimmed = data.sublist(0, needed);
     writeU32le(trimmed, 2, trimmed.length);
     return trimmed;

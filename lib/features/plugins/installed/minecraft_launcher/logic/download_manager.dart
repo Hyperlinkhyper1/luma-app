@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 
+import '../../../../../l10n/current_l.dart';
+
 /// One file to fetch: [sha1] is optional (some Mojang metadata omits it) but
 /// strongly preferred — without it we can only fall back to a size check to
 /// decide whether an existing file is already valid.
@@ -101,7 +103,7 @@ class DownloadManager {
 
     if (errors.isNotEmpty) {
       throw DownloadManagerException(
-        'Failed to download ${errors.length} file(s):\n${errors.take(5).join('\n')}',
+        currentL.mcDownloadBatchFailed(errors.length, errors.take(5).join('\n')),
       );
     }
   }
@@ -119,13 +121,15 @@ class DownloadManager {
         res = await http.get(Uri.parse(item.url)).timeout(const Duration(minutes: 5));
       } catch (_) {
         if (attempt == 1) {
-          throw DownloadManagerException('Could not reach ${item.url}.');
+          throw DownloadManagerException(currentL.mcDownloadCouldNotReach(item.url));
         }
         continue;
       }
       if (res.statusCode != 200) {
         if (attempt == 1) {
-          throw DownloadManagerException('HTTP ${res.statusCode} for ${item.url}.');
+          throw DownloadManagerException(
+            currentL.mcDownloadHttpError('${res.statusCode}', item.url),
+          );
         }
         continue;
       }
@@ -133,7 +137,9 @@ class DownloadManager {
         final actual = sha1.convert(res.bodyBytes).toString();
         if (actual != item.sha1) {
           if (attempt == 1) {
-            throw DownloadManagerException('Checksum mismatch for ${item.destPath}.');
+            throw DownloadManagerException(
+              currentL.mcDownloadChecksumMismatch(item.destPath),
+            );
           }
           continue;
         }
@@ -141,7 +147,7 @@ class DownloadManager {
       await file.writeAsBytes(res.bodyBytes);
       return res.bodyBytes.length;
     }
-    throw DownloadManagerException('Failed to download ${item.url}.');
+    throw DownloadManagerException(currentL.mcDownloadFailed(item.url));
   }
 
   Future<bool> _isValid(File file, DownloadItem item) async {

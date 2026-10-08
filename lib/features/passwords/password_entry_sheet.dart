@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:image/image.dart' as img;
 
 import '../../app/widgets.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/luma_theme.dart';
 import 'breach_check.dart';
 import 'password_repository.dart';
@@ -80,20 +81,21 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
   }
 
   Future<void> _save() async {
+    final t = L.of(context);
     final service = _service.text.trim();
     final email = _email.text.trim();
     final password = _password.text;
 
     if (service.isEmpty) {
-      setState(() => _error = 'Enter the service name.');
+      setState(() => _error = t.passwordsErrorEnterService);
       return;
     }
     if (email.isEmpty) {
-      setState(() => _error = 'Enter the email.');
+      setState(() => _error = t.passwordsErrorEnterEmail);
       return;
     }
     if (password.isEmpty) {
-      setState(() => _error = 'Enter the password.');
+      setState(() => _error = t.passwordsErrorEnterPassword);
       return;
     }
     if (!_breachAcknowledged && (_breachChecker?.isCommon(password) ?? false)) {
@@ -104,9 +106,7 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
     }
     final totpSecret = _totpSecret.text.trim();
     if (totpSecret.isNotEmpty && Totp.currentCode(totpSecret) == null) {
-      setState(() => _error =
-          'That doesn\'t look like a valid 2FA secret (should be base32, '
-          'e.g. JBSWY3DPEHPK3PXP).');
+      setState(() => _error = t.passwordsErrorInvalidTotp);
       return;
     }
 
@@ -136,6 +136,7 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
 
   Future<bool> _confirmBreachedPassword() async {
     final luma = context.luma;
+    final t = L.of(context);
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -144,22 +145,20 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(color: luma.border),
         ),
-        title: Text('Weak password', style: TextStyle(color: luma.textPrimary)),
+        title: Text(t.passwordsWeakTitle, style: TextStyle(color: luma.textPrimary)),
         content: Text(
-          'This password is on a list of extremely common or previously '
-          'breached passwords. Anyone with that list could guess it. Use '
-          'the generate button for a strong one, or save it anyway.',
+          t.passwordsWeakBody,
           style: TextStyle(color: luma.textSecondary, fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+            child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             child:
-                Text('Save anyway', style: TextStyle(color: luma.danger)),
+                Text(t.passwordsSaveAnyway, style: TextStyle(color: luma.danger)),
           ),
         ],
       ),
@@ -193,6 +192,7 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
   }
 
   Future<void> _pickIconImage() async {
+    final t = L.of(context);
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
@@ -214,13 +214,14 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
         }
       }
     } catch (e) {
-      setState(() => _error = 'Failed to pick image: $e');
+      setState(() => _error = t.passwordsErrorPickImage('$e'));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Padding(
       padding: const EdgeInsets.all(22),
       child: SingleChildScrollView(
@@ -229,7 +230,7 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              _isEditing ? 'Edit credential' : 'New credential',
+              _isEditing ? t.passwordsEditCredential : t.passwordsNewCredential,
               style: TextStyle(
                 color: luma.textPrimary,
                 fontSize: 18,
@@ -237,27 +238,27 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
               ),
             ),
             const SizedBox(height: 16),
-            _FieldLabel('Service *'),
+            _FieldLabel(t.passwordsFieldService),
             TextField(
               controller: _service,
               autofocus: true,
               style: TextStyle(color: luma.textPrimary),
-              decoration: pwInputDecoration(luma, hint: 'e.g. Netflix'),
+              decoration: pwInputDecoration(luma, hint: t.passwordsHintService),
             ),
             const SizedBox(height: 14),
-            _FieldLabel('Icon (Optional)'),
+            _FieldLabel(t.passwordsFieldIconOptional),
             Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _icon,
                     style: TextStyle(color: luma.textPrimary),
-                    decoration: pwInputDecoration(luma, hint: 'e.g. 🍿'),
+                    decoration: pwInputDecoration(luma, hint: t.passwordsHintIcon),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Tooltip(
-                  message: 'Upload PNG',
+                  message: t.passwordsUploadPng,
                   child: IconButton(
                     icon: Icon(Icons.image_rounded, color: luma.textSecondary),
                     onPressed: _pickIconImage,
@@ -266,7 +267,7 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
               ],
             ),
             const SizedBox(height: 14),
-            _FieldLabel('Email *'),
+            _FieldLabel(t.passwordsFieldEmail),
             TextField(
               controller: _email,
               keyboardType: TextInputType.emailAddress,
@@ -274,19 +275,19 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
               decoration: pwInputDecoration(luma, hint: 'name@example.com'),
             ),
             const SizedBox(height: 14),
-            _FieldLabel('Password *'),
+            _FieldLabel(t.passwordsFieldPassword),
             TextField(
               controller: _password,
               obscureText: _obscure,
               style: TextStyle(color: luma.textPrimary),
               decoration: pwInputDecoration(
                 luma,
-                hint: 'Password',
+                hint: t.commonPassword,
                 suffix: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Tooltip(
-                      message: 'Generate random password',
+                      message: t.passwordsGenerateTooltip,
                       child: IconButton(
                         icon: Icon(
                           Icons.autorenew_rounded,
@@ -304,7 +305,7 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
                         size: 18,
                         color: luma.textSecondary,
                       ),
-                      tooltip: _obscure ? 'Show' : 'Hide',
+                      tooltip: _obscure ? t.passwordsShow : t.passwordsHide,
                       onPressed: () => setState(() => _obscure = !_obscure),
                     ),
                   ],
@@ -318,22 +319,22 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
               onSubmitted: (_) => _save(),
             ),
             const SizedBox(height: 14),
-            _FieldLabel('Username (optional)'),
+            _FieldLabel(t.passwordsFieldUsername),
             TextField(
               controller: _username,
               style: TextStyle(color: luma.textPrimary),
-              decoration: pwInputDecoration(luma, hint: 'e.g. ayden31'),
+              decoration: pwInputDecoration(luma, hint: t.passwordsHintUsername),
             ),
             const SizedBox(height: 14),
-            _FieldLabel('Phone number (optional)'),
+            _FieldLabel(t.passwordsFieldPhone),
             TextField(
               controller: _phone,
               keyboardType: TextInputType.phone,
               style: TextStyle(color: luma.textPrimary),
-              decoration: pwInputDecoration(luma, hint: 'e.g. +31 6 1234 5678'),
+              decoration: pwInputDecoration(luma, hint: t.passwordsHintPhone),
             ),
             const SizedBox(height: 14),
-            _FieldLabel('Info (optional)'),
+            _FieldLabel(t.passwordsFieldInfo),
             TextField(
               controller: _info,
               maxLines: 3,
@@ -341,18 +342,18 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
               style: TextStyle(color: luma.textPrimary),
               decoration: pwInputDecoration(
                 luma,
-                hint: 'Security question, recovery codes, notes…',
+                hint: t.passwordsHintInfo,
               ),
             ),
             const SizedBox(height: 14),
-            _FieldLabel('2FA secret (optional)'),
+            _FieldLabel(t.passwordsFieldTotp),
             TextField(
               controller: _totpSecret,
               style: TextStyle(
                   color: luma.textPrimary, fontFamily: 'monospace'),
               decoration: pwInputDecoration(
                 luma,
-                hint: 'Base32 key from the "manual setup" QR fallback',
+                hint: t.passwordsHintTotp,
               ),
             ),
             if (_error != null) ...[
@@ -364,12 +365,12 @@ class _PasswordEntryFormState extends State<_PasswordEntryForm> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 LumaGhostButton(
-                  label: 'Cancel',
+                  label: t.commonCancel,
                   onTap: () => Navigator.of(context).pop(),
                 ),
                 const SizedBox(width: 10),
                 LumaPrimaryButton(
-                  label: _isEditing ? 'Save changes' : 'Add credential',
+                  label: _isEditing ? t.passwordsSaveChanges : t.passwordsAddCredential,
                   icon: Icons.check_rounded,
                   loading: _saving,
                   onTap: _save,

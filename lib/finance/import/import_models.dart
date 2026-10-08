@@ -1,3 +1,5 @@
+import '../../l10n/current_l.dart';
+
 /// A parsed transaction entry from a bank statement, before it is mapped to
 /// the app's [FinanceTransaction] schema.
 class ParsedBankEntry {
@@ -22,7 +24,8 @@ class ParsedBankEntry {
   final String? categorySuggestion;
 
   /// Human-readable summary of the transaction type.
-  String get typeLabel => isIncome ? 'Income' : 'Expense';
+  String get typeLabel =>
+      isIncome ? currentL.financeTypeIncome : currentL.financeTypeExpense;
 
   ParsedBankEntry copyWith({
     DateTime? date,
@@ -54,7 +57,6 @@ class SupportedBank {
     required this.name,
     required this.allowedExtensions,
     required this.icon,
-    this.exportHint,
   });
 
   final String id;
@@ -64,10 +66,21 @@ class SupportedBank {
   /// The first entry is treated as the primary one for display.
   final List<String> allowedExtensions;
   final String icon; // emoji or simple identifier
-  final String? exportHint;
 
   /// Human-readable description of the accepted file types, e.g. ".xlsx or .csv".
-  String get fileTypeLabel => allowedExtensions.map((e) => '.$e').join(' or ');
+  String get fileTypeLabel => allowedExtensions
+      .map((e) => '.$e')
+      .join(' ${currentL.financeImportOr} ');
+
+  /// How to get the export from the bank, shown under the bank's name.
+  String? get exportHint => switch (id) {
+    'abn_amro' => currentL.financeImportHintAbnAmro,
+    'rabobank' => currentL.financeImportHintRabobank,
+    'bunq' => currentL.financeImportHintBunq,
+    'sns' => currentL.financeImportHintSns,
+    'knab' => currentL.financeImportHintKnab,
+    _ => null,
+  };
 }
 
 const supportedBanks = [
@@ -88,34 +101,29 @@ const supportedBanks = [
     name: 'ABN AMRO',
     allowedExtensions: ['tab', 'txt'],
     icon: '🏦',
-    exportHint: 'Download transactions as TXT (tab-separated).',
   ),
   SupportedBank(
     id: 'rabobank',
     name: 'Rabobank',
     allowedExtensions: ['csv'],
     icon: '🏦',
-    exportHint: 'Download the CSV transaction overview.',
   ),
   SupportedBank(
     id: 'bunq',
     name: 'bunq',
     allowedExtensions: ['csv'],
     icon: '🌈',
-    exportHint: 'Export a EUR account statement as CSV.',
   ),
   SupportedBank(
     id: 'sns',
     name: 'SNS',
     allowedExtensions: ['csv'],
     icon: '🏦',
-    exportHint: 'Download transactions from Mijn SNS as CSV.',
   ),
   SupportedBank(
     id: 'knab',
     name: 'Knab',
     allowedExtensions: ['csv'],
     icon: '🏦',
-    exportHint: 'Use Search and download to export CSV.',
   ),
 ];

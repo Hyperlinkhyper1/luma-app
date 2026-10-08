@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../device_health_models.dart';
 
@@ -13,11 +14,11 @@ Color statusColor(BuildContext context, HealthStatus status) {
   };
 }
 
-String statusLabel(HealthStatus status) => switch (status) {
-      HealthStatus.good => 'Good',
-      HealthStatus.warning => 'Needs attention',
-      HealthStatus.bad => 'Poor',
-      HealthStatus.unknown => 'Not checked',
+String statusLabel(L t, HealthStatus status) => switch (status) {
+      HealthStatus.good => t.deviceHealthStatusGood,
+      HealthStatus.warning => t.deviceHealthStatusWarning,
+      HealthStatus.bad => t.deviceHealthStatusBad,
+      HealthStatus.unknown => t.deviceHealthStatusNotChecked,
     };
 
 /// Small rounded status badge used across every category card.
@@ -37,7 +38,7 @@ class StatusPill extends StatelessWidget {
         borderRadius: context.lumaDecor.pillBorderRadius,
       ),
       child: Text(
-        label ?? statusLabel(status),
+        label ?? statusLabel(L.of(context), status),
         style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700),
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../device_health_models.dart';
 import 'status_pill.dart';
@@ -18,7 +19,7 @@ class CategoryCard extends StatelessWidget {
     this.loading = false,
     this.error,
     this.onCheck,
-    this.checkLabel = 'Check',
+    this.checkLabel,
   });
 
   final IconData icon;
@@ -28,11 +29,12 @@ class CategoryCard extends StatelessWidget {
   final bool loading;
   final String? error;
   final VoidCallback? onCheck;
-  final String checkLabel;
+  final String? checkLabel;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return LumaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -64,7 +66,7 @@ class CategoryCard extends StatelessWidget {
                 IconButton(
                   onPressed: onCheck,
                   icon: const Icon(Icons.refresh_rounded, size: 18),
-                  tooltip: checkLabel,
+                  tooltip: checkLabel ?? t.deviceHealthCardCheck,
                   visualDensity: VisualDensity.compact,
                   color: luma.textSecondary,
                 ),

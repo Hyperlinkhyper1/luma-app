@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../../_shared/native_webview.dart';
 import '../../_shared/windows_webview.dart' show windowsAssetPath;
@@ -17,41 +18,36 @@ import 'model_search_field.dart';
 import 'pagoda_test_page.dart' show ModelButton;
 import 'test_view_prefs.dart';
 
-const cruiseShipBenchmark = AiBenchmark(
-  id: 'cruise_ship_gpt6_astra_ultra',
-  kind: 'cruise_ship',
-  model: 'GPT 6 Astra (Ultra)',
-  vendor: 'openai',
-  description:
-      'MSC Virtuosa at sea: walk the exterior decks and Deck 7 '
-      'lifeboat promenade, with a day/night cycle, weather and tender views.',
-  sizeBytes: 0,
-  sha256: '',
-);
+AiBenchmark cruiseShipBenchmark(L t) => AiBenchmark(
+      id: 'cruise_ship_gpt6_astra_ultra',
+      kind: 'cruise_ship',
+      model: 'GPT 6 Astra (Ultra)',
+      vendor: 'openai',
+      description: t.aiCruiseGptDescription,
+      sizeBytes: 0,
+      sha256: '',
+    );
 
 const cruiseShipAsset =
     'server/benchmarks/scenes/cruise_ship_gpt6_astra_ultra/index.html';
 
-const cruiseShipOpusBenchmark = AiBenchmark(
-  id: 'cruise_ship_opus55_ultracode',
-  kind: 'cruise_ship',
-  model: 'Opus 5.5 (Ultracode)',
-  vendor: 'anthropic',
-  description:
-      'MSC Virtuosa at true scale on a WebGPU sea: walk the outside decks '
-      'and the Deck 7 lifeboat promenade, ride a tender at sea level, fly a '
-      'drone or moor in port, with a day/night cycle, volumetric clouds, '
-      'rain, fog and thunderstorms.',
-  sizeBytes: 0,
-  sha256: '',
-);
+AiBenchmark cruiseShipOpusBenchmark(L t) => AiBenchmark(
+      id: 'cruise_ship_opus55_ultracode',
+      kind: 'cruise_ship',
+      model: 'Opus 5.5 (Ultracode)',
+      vendor: 'anthropic',
+      description: t.aiCruiseOpusDescription,
+      sizeBytes: 0,
+      sha256: '',
+    );
 
 const cruiseShipOpusAsset =
     'assets/ai_usage/cruise_ship_tests/opus_5_5_ultracode.html';
 
 /// Contestants bundled with the app, so they work with no server. A server
 /// entry with the same id replaces its fallback.
-const _bundledCruiseShips = [cruiseShipBenchmark, cruiseShipOpusBenchmark];
+List<AiBenchmark> _bundledCruiseShips(L t) =>
+    [cruiseShipBenchmark(t), cruiseShipOpusBenchmark(t)];
 
 const _bundledCruiseScenes = {
   'cruise_ship_gpt6_astra_ultra': cruiseShipAsset,
@@ -113,6 +109,7 @@ class _CruiseShipTestPageState extends State<CruiseShipTestPage> {
     AiBenchmark benchmark,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
+    final t = L.of(context);
     var opened = false;
     try {
       final path = await _cruiseScenePath(repository, benchmark);
@@ -125,7 +122,7 @@ class _CruiseShipTestPageState extends State<CruiseShipTestPage> {
     }
     if (!opened && mounted) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Could not open a browser.')),
+        SnackBar(content: Text(t.aiBenchmarkCouldNotOpenBrowser)),
       );
     }
   }
@@ -134,12 +131,13 @@ class _CruiseShipTestPageState extends State<CruiseShipTestPage> {
   Widget build(BuildContext context) {
     final repo = AiBenchmarkScope.of(context);
     final luma = context.luma;
+    final t = L.of(context);
     return ListenableBuilder(
       listenable: repo,
       builder: (context, _) {
         final serverEntries = repo.benchmarksOfKind('cruise_ship');
         final benchmarks = [
-          for (final fallback in _bundledCruiseShips)
+          for (final fallback in _bundledCruiseShips(t))
             if (!serverEntries.any((entry) => entry.id == fallback.id))
               fallback,
           ...serverEntries,
@@ -155,11 +153,11 @@ class _CruiseShipTestPageState extends State<CruiseShipTestPage> {
           backgroundColor: luma.background,
           appBar: AppBar(
             backgroundColor: luma.background,
-            title: const Text('Cruise Ship Test'),
+            title: Text(t.aiCruiseTitle),
             leading: selected == null
                 ? null
                 : IconButton(
-                    tooltip: 'Back to models',
+                    tooltip: t.aiBenchmarkBackToModels,
                     icon: const Icon(Icons.arrow_back_rounded),
                     onPressed: () => setState(() => _selectedId = null),
                   ),
@@ -169,7 +167,7 @@ class _CruiseShipTestPageState extends State<CruiseShipTestPage> {
                   padding: const EdgeInsets.only(right: 12),
                   child: TextButton.icon(
                     icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                    label: const Text('Open in browser'),
+                    label: Text(t.aiBenchmarkOpenInBrowser),
                     onPressed: () => _openInBrowser(repo, selected),
                   ),
                 ),
@@ -191,8 +189,7 @@ class _CruiseShipTestPageState extends State<CruiseShipTestPage> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Explore an empty cruise ship at human scale, from '
-                        'the lifeboat promenade to the open upper decks.',
+                        t.aiCruiseIntro,
                         style: TextStyle(
                           color: luma.textSecondary,
                           fontSize: 13,
@@ -210,7 +207,7 @@ class _CruiseShipTestPageState extends State<CruiseShipTestPage> {
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
-                            'Select a Model',
+                            t.aiBenchmarkSelectModel,
                             style: TextStyle(
                               color: luma.textPrimary,
                               fontSize: 14,
@@ -218,7 +215,7 @@ class _CruiseShipTestPageState extends State<CruiseShipTestPage> {
                             ),
                           ),
                           LumaSegmentedTabs(
-                            tabs: const ['List', 'Banners'],
+                            tabs: [t.aiBenchmarkViewList, t.aiBenchmarkViewBanners],
                             selectedIndex: _bannerView ? 1 : 0,
                             onSelect: (index) {
                               final banners = index == 1;
@@ -235,8 +232,8 @@ class _CruiseShipTestPageState extends State<CruiseShipTestPage> {
                       if (filtered.isEmpty)
                         LumaEmptyState(
                           icon: Icons.search_off_rounded,
-                          title: 'No models match "${_query.trim()}"',
-                          subtitle: 'Try a shorter search.',
+                          title: t.aiBenchmarkNoMatch(_query.trim()),
+                          subtitle: t.aiBenchmarkTryShorterSearch,
                         )
                       else if (_bannerView)
                         ModelBannerGrid(
@@ -260,14 +257,12 @@ class _CruiseShipTestPageState extends State<CruiseShipTestPage> {
                   ),
                 )
               : !Platform.isWindows
-              ? const Padding(
+              ? Padding(
                   padding: EdgeInsets.all(24),
                   child: LumaEmptyState(
                     icon: Icons.desktop_windows_rounded,
-                    title: 'Windows desktop required',
-                    subtitle:
-                        'Cruise Ship Test uses keyboard and mouse '
-                        'controls in the Windows desktop app.',
+                    title: t.aiCruiseWindowsOnlyTitle,
+                    subtitle: t.aiCruiseWindowsOnlyBody,
                   ),
                 )
               : _CruiseSceneLoader(
@@ -302,28 +297,31 @@ class _CruiseSceneLoaderState extends State<_CruiseSceneLoader> {
       _cruiseScenePath(widget.repository, widget.benchmark);
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<String>(
-    future: _path,
-    builder: (context, snapshot) {
-      if (snapshot.hasError) {
-        return LumaEmptyState(
-          icon: Icons.cloud_off_rounded,
-          title: 'Could not load this cruise ship',
-          subtitle: snapshot.error.toString(),
-          action: LumaGhostButton(
-            label: 'Retry',
-            icon: Icons.refresh_rounded,
-            onTap: () => setState(() => _path = _load()),
-          ),
-        );
-      }
-      final path = snapshot.data;
-      if (path == null) {
-        return const Center(child: CircularProgressIndicator());
-      }
-      return _CruiseSceneWebview(key: ValueKey(path), path: path);
-    },
-  );
+  Widget build(BuildContext context) {
+    final t = L.of(context);
+    return FutureBuilder<String>(
+      future: _path,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return LumaEmptyState(
+            icon: Icons.cloud_off_rounded,
+            title: t.aiCruiseCouldNotLoad,
+            subtitle: snapshot.error.toString(),
+            action: LumaGhostButton(
+              label: t.commonRetry,
+              icon: Icons.refresh_rounded,
+              onTap: () => setState(() => _path = _load()),
+            ),
+          );
+        }
+        final path = snapshot.data;
+        if (path == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        return _CruiseSceneWebview(key: ValueKey(path), path: path);
+      },
+    );
+  }
 }
 
 class _CruiseSceneWebview extends StatefulWidget {
@@ -350,7 +348,7 @@ class _CruiseSceneWebviewState extends State<_CruiseSceneWebview> {
   void _startTimeout() {
     _timeout = Timer(const Duration(seconds: 45), () {
       if (!mounted || _ready) return;
-      setState(() => _error = 'The ship did not finish loading. Try again.');
+      setState(() => _error = L.of(context).aiCruiseTimeout);
     });
   }
 
@@ -375,7 +373,7 @@ class _CruiseSceneWebviewState extends State<_CruiseSceneWebview> {
         _ready = false;
         _error = message['message'] is String
             ? message['message'] as String
-            : 'The cruise ship renderer could not start.';
+            : L.of(context).aiCruiseRendererFailed;
       });
     }
   }
@@ -399,6 +397,7 @@ class _CruiseSceneWebviewState extends State<_CruiseSceneWebview> {
   @override
   Widget build(BuildContext context) {
     final attempt = _attempt;
+    final t = L.of(context);
     return Stack(
       children: [
         Positioned.fill(
@@ -427,10 +426,10 @@ class _CruiseSceneWebviewState extends State<_CruiseSceneWebview> {
               child: Center(
                 child: LumaEmptyState(
                   icon: Icons.directions_boat_rounded,
-                  title: 'Could not start the cruise ship',
+                  title: t.aiCruiseCouldNotStart,
                   subtitle: _error!,
                   action: LumaGhostButton(
-                    label: 'Retry',
+                    label: t.commonRetry,
                     icon: Icons.refresh_rounded,
                     onTap: _retry,
                   ),

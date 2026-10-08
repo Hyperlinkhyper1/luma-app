@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../l10n/current_l.dart';
 import '../sync/sync_service.dart';
 import 'family_api.dart';
 import 'family_cache_store.dart';
@@ -15,9 +16,7 @@ class FamilyLimitExceededException implements Exception {
   final int limit;
 
   @override
-  String toString() =>
-      'This family plan allows up to $limit member${limit == 1 ? '' : 's'}. '
-      'Upgrade the owner\'s plan to add more.';
+  String toString() => currentL.familyLimitExceeded(limit);
 }
 
 /// Orchestrates the client side of the Families feature: talks to the
@@ -191,7 +190,7 @@ class FamilyRepository extends ChangeNotifier {
   Future<void> inviteMember(String email) async {
     final api = _requireApi();
     final fam = family;
-    if (fam == null) throw StateError('Not in a family.');
+    if (fam == null) throw StateError(currentL.familyNotInFamily);
     try {
       await api.inviteMember(fam.id, email);
     } on FamilyApiException catch (e) {
@@ -244,7 +243,7 @@ class FamilyRepository extends ChangeNotifier {
   Future<void> removeMember(String userId) async {
     final api = _requireApi();
     final fam = family;
-    if (fam == null) throw StateError('Not in a family.');
+    if (fam == null) throw StateError(currentL.familyNotInFamily);
     await api.removeMember(fam.id, userId);
     await refresh();
   }
@@ -252,14 +251,14 @@ class FamilyRepository extends ChangeNotifier {
   /// Removes the current (non-owner) user from their family.
   Future<void> leaveFamily() async {
     final me = myUserId;
-    if (me == null) throw StateError('Not in a family.');
+    if (me == null) throw StateError(currentL.familyNotInFamily);
     await removeMember(me);
   }
 
   Future<void> deleteFamily() async {
     final api = _requireApi();
     final fam = family;
-    if (fam == null) throw StateError('Not in a family.');
+    if (fam == null) throw StateError(currentL.familyNotInFamily);
     await api.deleteFamily(fam.id);
     _cache!.familyJson = null;
     _cache!.eventsJson = const [];
@@ -283,7 +282,7 @@ class FamilyRepository extends ChangeNotifier {
   }) async {
     final api = _requireApi();
     final fam = family;
-    if (fam == null) throw StateError('Not in a family.');
+    if (fam == null) throw StateError(currentL.familyNotInFamily);
     await api.addSharedEvent(
       fam.id,
       title: title,
@@ -319,7 +318,7 @@ class FamilyRepository extends ChangeNotifier {
   }) async {
     final api = _requireApi();
     final fam = family;
-    if (fam == null) throw StateError('Not in a family.');
+    if (fam == null) throw StateError(currentL.familyNotInFamily);
     await api.updateSharedEvent(
       fam.id,
       eventId,
@@ -342,14 +341,14 @@ class FamilyRepository extends ChangeNotifier {
   Future<void> deleteSharedEvent(String eventId) async {
     final api = _requireApi();
     final fam = family;
-    if (fam == null) throw StateError('Not in a family.');
+    if (fam == null) throw StateError(currentL.familyNotInFamily);
     await api.deleteSharedEvent(fam.id, eventId);
     await refresh();
   }
 
   FamilyApi _requireApi() {
     final api = _api;
-    if (api == null) throw StateError('Not signed in.');
+    if (api == null) throw StateError(currentL.familyNotSignedIn);
     return api;
   }
 }

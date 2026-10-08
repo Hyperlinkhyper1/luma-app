@@ -1,3 +1,5 @@
+import '../l10n/current_l.dart';
+
 /// A displayable plan tier. The selected plan's [storageMb] is the server-side
 /// sync storage quota this plan grants — how much of the user's synced data
 /// the luma server will hold for this account, enforced server-side (see
@@ -9,12 +11,9 @@ class Plan {
     required this.id,
     required this.name,
     required this.shortName,
-    required this.priceLabel,
-    required this.blurb,
     required this.storageMb,
     required this.maxSyncCollections,
     required this.maxFamilyMembers,
-    required this.features,
   });
 
   final String id;
@@ -22,8 +21,6 @@ class Plan {
 
   /// Short label for tight spaces (nav rail badge, phone "More" sheet row).
   final String shortName;
-  final String priceLabel;
-  final String blurb;
 
   /// Server-side sync storage quota, in megabytes, this plan grants — how
   /// much of what's actually synced to the luma server counts against the
@@ -41,7 +38,51 @@ class Plan {
   /// which must stay in sync with this).
   final int maxFamilyMembers;
 
-  final List<String> features;
+  String get priceLabel => switch (id) {
+        'orbit' => currentL.planPriceOrbit,
+        'nova' => currentL.planPriceNova,
+        _ => currentL.planPriceFree,
+      };
+
+  String get blurb => switch (id) {
+        'orbit' => currentL.planOrbitBlurb,
+        'nova' => currentL.planNovaBlurb,
+        _ => currentL.planCoreBlurb,
+      };
+
+  List<String> get features {
+    final t = currentL;
+    return switch (id) {
+      'orbit' => [
+          t.planFeatureSyncUpTo(maxSyncCollections ?? 0),
+          t.planFeatureOrbitAirline,
+          t.planFeatureOrbitCs2,
+          t.planFeatureOrbitSftp,
+          t.planFeatureOrbitGroceries,
+          t.planFeatureOrbitCoffee,
+          t.planFeatureFamilyRoom(maxFamilyMembers),
+          t.planFeatureAiOrbit,
+          t.planFeatureStorage(storageMb),
+        ],
+      'nova' => [
+          t.planFeatureNovaEverythingSync,
+          t.planFeatureNovaAssistant,
+          t.planFeatureNovaGallery,
+          t.planFeatureNovaClassroom,
+          t.planFeatureNovaEverythingOrbit,
+          t.planFeatureFamilyRoom(maxFamilyMembers),
+          t.planFeatureAiNova,
+          t.planFeatureStorage(storageMb),
+        ],
+      _ => [
+          t.planFeatureSyncUpTo(maxSyncCollections ?? 0),
+          t.planFeatureEveryPlugin,
+          t.planFeatureFamilyRoom(maxFamilyMembers),
+          t.planFeatureAiCoreExchange,
+          t.planFeatureStorage(storageMb),
+        ],
+    };
+  }
 
   /// Whether picking this plan requires redeeming an access code (see
   /// [SettingsController.redeemPlanCode]). False for the free default plan.
@@ -53,59 +94,25 @@ const kPlans = <Plan>[
     id: 'core',
     name: 'Core',
     shortName: 'Core',
-    priceLabel: 'Free',
-    blurb: 'All the basics, right on your device.',
     storageMb: 5,
     maxSyncCollections: 3,
     maxFamilyMembers: 4,
-    features: [
-      'Keep up to 3 features in sync across your devices, end-to-end encrypted',
-      'Every plugin works on your device, free',
-      'Room for 4 in your family',
-      'AI Detector reviews: exchange 10% of your weekly AI limit each',
-      '5 MB of sync storage',
-    ],
   ),
   Plan(
     id: 'orbit',
     name: 'Orbit',
     shortName: 'Orbit',
-    priceLabel: '\$3 / month',
-    blurb: 'More synced features, SFTP, Groceries List and the Coffee theme.',
     storageMb: 15,
     maxSyncCollections: 5,
     maxFamilyMembers: 6,
-    features: [
-      'Keep up to 5 features in sync across your devices, end-to-end encrypted',
-      'Carry your Airline Tycoon airline between devices',
-      'CS2 market prices in Steam Tools',
-      'SFTP client and shared folder between your devices',
-      'Groceries List with prices from Jumbo, Albert Heijn, Hoogvliet and Lidl',
-      'The Coffee theme',
-      'Room for 6 in your family',
-      '10 AI Detector reviews a week, then 4% of your weekly AI limit each',
-      '15 MB of sync storage',
-    ],
   ),
   Plan(
     id: 'nova',
     name: 'Nova',
     shortName: 'Nova',
-    priceLabel: '\$6 / month',
-    blurb: 'Everything in sync on every device, plus the premium tools.',
     storageMb: 30,
     maxSyncCollections: null,
     maxFamilyMembers: 12,
-    features: [
-      'Keep everything in sync across all your devices, end-to-end encrypted',
-      'Assistant plan mode, deep research and picture creation',
-      'Gallery People and Categories',
-      'Classroom tutor in the Text Library hall',
-      'Everything in Orbit, including the Coffee theme',
-      'Room for 12 in your family',
-      '30 AI Detector reviews a week, then 2% of your weekly AI limit each',
-      '30 MB of sync storage',
-    ],
   ),
 ];
 

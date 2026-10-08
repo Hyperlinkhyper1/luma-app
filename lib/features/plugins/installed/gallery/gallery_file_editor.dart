@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import '../../../../l10n/current_l.dart';
 import 'gallery_media.dart';
 
 /// What the details panel is allowed to change about a file, and the checks
@@ -26,25 +27,23 @@ class GalleryFileEditor {
   /// Why [name] can't be used, or null if it can. The message is shown under
   /// the field, so it says what is wrong *and* what to do about it.
   static String? validateName(String name, {required String originalName}) {
+    final t = currentL;
     final trimmed = name.trim();
-    if (trimmed.isEmpty) return 'A file needs a name.';
-    if (trimmed.length > 250) return 'That name is too long — keep it under 250 characters.';
+    if (trimmed.isEmpty) return t.galleryEditNameEmpty;
+    if (trimmed.length > 250) return t.galleryEditNameTooLong;
     if (_illegal.hasMatch(trimmed)) {
-      return r'A file name can’t contain \ / : * ? " < > |';
+      return t.galleryEditNameIllegal(r'\ / : * ? " < > |');
     }
-    if (trimmed.startsWith('.')) {
-      return 'A name starting with a dot would hide the file.';
-    }
+    if (trimmed.startsWith('.')) return t.galleryEditNameDot;
     if (trimmed.endsWith('.') || trimmed.endsWith(' ')) {
-      return 'Names can’t end with a dot or a space.';
+      return t.galleryEditNameTrailing;
     }
     final stem = trimmed.split('.').first.toLowerCase();
     if (_reservedNames.contains(stem)) {
-      return '“$stem” is a name Windows reserves. Pick another.';
+      return t.galleryEditNameReserved(stem);
     }
     if (extensionOf(trimmed) != extensionOf(originalName)) {
-      return 'Keep the .${extensionOf(originalName)} ending — changing it '
-          'stops the file opening.';
+      return t.galleryEditKeepExtension(extensionOf(originalName));
     }
     return null;
   }
@@ -59,11 +58,12 @@ class GalleryFileEditor {
   /// Why [taken] can't be used, or null. A date in the future is almost
   /// always a typo, and one before photography existed certainly is.
   static String? validateDate(DateTime taken, {DateTime? now}) {
+    final t = currentL;
     final today = now ?? DateTime.now();
     if (taken.isAfter(today.add(const Duration(days: 1)))) {
-      return 'That is in the future.';
+      return t.galleryEditDateFuture;
     }
-    if (taken.year < 1826) return 'Photography is not that old.';
+    if (taken.year < 1826) return t.galleryEditDateTooOld;
     return null;
   }
 
@@ -82,7 +82,7 @@ class GalleryFileEditor {
     final path = item.path ?? item.id;
     final file = File(path);
     if (!file.existsSync()) {
-      return const GalleryEditResult.failure('That file is no longer there.');
+      return GalleryEditResult.failure(currentL.galleryEditFileGone);
     }
 
     var updated = item;
@@ -99,15 +99,15 @@ class GalleryFileEditor {
       final target = '$directory$separator$trimmed';
 
       if (File(target).existsSync()) {
-        return const GalleryEditResult.failure(
-          'A file with that name is already in this folder.',
-        );
+        return GalleryEditResult.failure(currentL.galleryEditNameTaken);
       }
       try {
         await file.rename(target);
       } on FileSystemException catch (error) {
         return GalleryEditResult.failure(
-          'Windows would not rename it: ${error.osError?.message ?? error.message}',
+          currentL.galleryEditRenameFailed(
+            error.osError?.message ?? error.message,
+          ),
         );
       }
       currentPath = target;
@@ -122,8 +122,9 @@ class GalleryFileEditor {
         updated = updated.withFile(takenAt: newTakenAt);
       } on FileSystemException catch (error) {
         return GalleryEditResult.failure(
-          'The date could not be written: '
-          '${error.osError?.message ?? error.message}',
+          currentL.galleryEditDateFailed(
+            error.osError?.message ?? error.message,
+          ),
         );
       }
     }

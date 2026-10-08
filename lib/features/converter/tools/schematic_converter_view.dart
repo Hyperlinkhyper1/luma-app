@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/luma_theme.dart';
 import '../converter_widgets.dart';
 import '../file_saver.dart';
@@ -43,9 +44,11 @@ class _SchematicConverterViewState extends State<SchematicConverterView> {
     if (picked == null || picked.files.isEmpty) return;
 
     final file = picked.files.first;
+    if (!mounted) return;
+    final t = L.of(context);
     final bytes = file.bytes;
     if (bytes == null) {
-      setState(() => _error = 'Could not read the selected file.');
+      setState(() => _error = t.convFileReadFailed);
       return;
     }
 
@@ -85,7 +88,7 @@ class _SchematicConverterViewState extends State<SchematicConverterView> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'Something went wrong while reading that file: $e';
+        _error = t.schemConvReadFailed('$e');
       });
     }
   }
@@ -126,7 +129,7 @@ class _SchematicConverterViewState extends State<SchematicConverterView> {
       if (!mounted) return;
       setState(() {
         _converting = false;
-        _error = 'Something went wrong while converting: $e';
+        _error = L.of(context).convMediaConvertFailed('$e');
       });
     }
   }
@@ -145,20 +148,20 @@ class _SchematicConverterViewState extends State<SchematicConverterView> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final schematic = _schematic;
 
     return ToolScaffold(
       icon: Icons.view_in_ar_outlined,
-      title: 'Minecraft schematics',
-      subtitle: 'Convert between schem, litematic, schematic, nbt and '
-          'mcstructure',
+      title: t.schemConvTitle,
+      subtitle: t.schemConvSubtitle,
       onBack: widget.onBack,
       children: [
         if (schematic == null && !_loading)
           ConverterDropZone(
             onTap: _pickFile,
             icon: Icons.view_in_ar_outlined,
-            title: 'Tap to pick a build',
+            title: t.schemConvPickPrompt,
             subtitle: 'SCHEM · LITEMATIC · SCHEMATIC · NBT · MCSTRUCTURE',
           )
         else
@@ -187,7 +190,7 @@ class _SchematicConverterViewState extends State<SchematicConverterView> {
                 ),
                 const SizedBox(width: 14),
                 Text(
-                  'Reading the build…',
+                  t.schemConvReading,
                   style: TextStyle(color: luma.textSecondary, fontSize: 14),
                 ),
               ],
@@ -197,7 +200,7 @@ class _SchematicConverterViewState extends State<SchematicConverterView> {
 
         if (schematic != null) ...[
           const SizedBox(height: 16),
-          _BuildSummary(schematic: schematic),
+          _BuildSummary(schematic: schematic, t: t),
           const SizedBox(height: 16),
           ConverterCard(
             child: Column(
@@ -209,7 +212,7 @@ class _SchematicConverterViewState extends State<SchematicConverterView> {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'Convert to',
+                  t.convMediaConvertTo,
                   style: TextStyle(
                     color: luma.textSecondary,
                     fontSize: 13,
@@ -239,14 +242,15 @@ class _SchematicConverterViewState extends State<SchematicConverterView> {
                 if (_target.isBedrock) ...[
                   const SizedBox(height: 6),
                   Text(
-                    'Bedrock uses different block ids and states from Java, so '
-                    'this direction is a best-effort translation.',
+                    t.schemConvBedrockNote,
                     style: TextStyle(color: luma.textMuted, fontSize: 12.5),
                   ),
                 ],
                 const SizedBox(height: 16),
                 ConverterPrimaryButton(
-                  label: kIsWeb ? 'Convert & download' : 'Convert & save',
+                  label: kIsWeb
+                      ? t.schemConvConvertDownload
+                      : t.convMediaConvertSave,
                   icon: Icons.bolt_rounded,
                   loading: _converting,
                   onTap: _convert,
@@ -271,21 +275,22 @@ class _SchematicConverterViewState extends State<SchematicConverterView> {
             icon: Icons.check_circle_outline_rounded,
             color: luma.success,
             message: _result!.summary,
-            trailing:
-                ConverterTextButton(label: 'Convert another', onTap: _reset),
+            trailing: ConverterTextButton(
+                label: t.convMediaConvertAnother, onTap: _reset),
           ),
         ],
 
         if (schematic != null) ...[
           if (schematic.notes.isNotEmpty || _exportNotes.isNotEmpty) ...[
             const SizedBox(height: 16),
-            _NotesCard(notes: [...schematic.notes, ..._exportNotes]),
+            _NotesCard(
+                notes: [...schematic.notes, ..._exportNotes], t: t),
           ],
           const SizedBox(height: 24),
           _SectionHeading(
             icon: Icons.threed_rotation_rounded,
-            title: '3D preview',
-            hint: 'Drag to orbit · scroll to zoom',
+            title: t.schemConvPreview3d,
+            hint: t.schemConvPreviewHint,
           ),
           const SizedBox(height: 12),
           SchematicViewer(
@@ -297,11 +302,11 @@ class _SchematicConverterViewState extends State<SchematicConverterView> {
           const SizedBox(height: 24),
           _SectionHeading(
             icon: Icons.grid_view_rounded,
-            title: 'Materials',
-            hint: '${schematic.blockCount} blocks',
+            title: t.schemConvMaterials,
+            hint: t.schemConvBlockCount(schematic.blockCount),
           ),
           const SizedBox(height: 12),
-          _MaterialList(schematic: schematic),
+          _MaterialList(schematic: schematic, t: t),
         ],
       ],
     );
@@ -310,8 +315,9 @@ class _SchematicConverterViewState extends State<SchematicConverterView> {
 
 /// Dimensions, block count and palette size for the opened build.
 class _BuildSummary extends StatelessWidget {
-  const _BuildSummary({required this.schematic});
+  const _BuildSummary({required this.schematic, required this.t});
   final Schematic schematic;
+  final L t;
 
   @override
   Widget build(BuildContext context) {
@@ -321,12 +327,15 @@ class _BuildSummary extends StatelessWidget {
         builder: (context, constraints) {
           final stats = <(String, String)>[
             (
-              'Size',
+              t.commonSize,
               '${schematic.width} × ${schematic.height} × ${schematic.length}',
             ),
-            ('Blocks', _thousands(schematic.blockCount)),
-            ('Volume', _thousands(schematic.volume)),
-            ('Block types', _thousands(schematic.palette.length - 1)),
+            (t.schemConvStatBlocks, _thousands(schematic.blockCount)),
+            (t.schemConvStatVolume, _thousands(schematic.volume)),
+            (
+              t.schemConvStatBlockTypes,
+              _thousands(schematic.palette.length - 1),
+            ),
           ];
           final columns = constraints.maxWidth >= 460 ? 4 : 2;
           return Wrap(
@@ -373,8 +382,9 @@ class _BuildSummary extends StatelessWidget {
 
 /// Anything the conversion had to approximate, listed rather than hidden.
 class _NotesCard extends StatelessWidget {
-  const _NotesCard({required this.notes});
+  const _NotesCard({required this.notes, required this.t});
   final List<String> notes;
+  final L t;
 
   @override
   Widget build(BuildContext context) {
@@ -394,7 +404,7 @@ class _NotesCard extends StatelessWidget {
               Icon(Icons.info_outline_rounded, size: 18, color: luma.accent),
               const SizedBox(width: 10),
               Text(
-                'Worth knowing',
+                t.schemConvWorthKnowing,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 13.5,
@@ -443,8 +453,9 @@ class _NotesCard extends StatelessWidget {
 /// The build's block tally, most-used first — the shopping list you would take
 /// into the world to build it.
 class _MaterialList extends StatefulWidget {
-  const _MaterialList({required this.schematic});
+  const _MaterialList({required this.schematic, required this.t});
   final Schematic schematic;
+  final L t;
 
   @override
   State<_MaterialList> createState() => _MaterialListState();
@@ -461,7 +472,7 @@ class _MaterialListState extends State<_MaterialList> {
     if (materials.isEmpty) {
       return ConverterCard(
         child: Text(
-          'This build has no blocks in it.',
+          widget.t.schemConvNoBlocks,
           style: TextStyle(color: luma.textSecondary, fontSize: 13),
         ),
       );
@@ -518,8 +529,8 @@ class _MaterialListState extends State<_MaterialList> {
               alignment: Alignment.centerLeft,
               child: ConverterTextButton(
                 label: _expanded
-                    ? 'Show fewer'
-                    : 'Show all ${materials.length} block types',
+                    ? widget.t.schemConvShowFewer
+                    : widget.t.schemConvShowAll(materials.length),
                 onTap: () => setState(() => _expanded = !_expanded),
               ),
             ),

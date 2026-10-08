@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../account_overview_scope.dart';
 import '../github_models.dart';
@@ -8,13 +9,17 @@ import 'github_overview_tab.dart' show GithubRunRow;
 import 'account_shared.dart';
 
 enum _RunFilter {
-  all('All runs'),
-  failed('Failed'),
-  running('In progress'),
-  succeeded('Succeeded');
+  all,
+  failed,
+  running,
+  succeeded;
 
-  const _RunFilter(this.label);
-  final String label;
+  String label(L t) => switch (this) {
+        _RunFilter.all => t.accountOverviewRunFilterAll,
+        _RunFilter.failed => t.accountOverviewFailed,
+        _RunFilter.running => t.accountOverviewRunFilterInProgress,
+        _RunFilter.succeeded => t.accountOverviewRunFilterSucceeded,
+      };
 }
 
 /// Recent Actions runs across the account's active repositories, with a
@@ -33,6 +38,7 @@ class _GithubActionsTabState extends State<GithubActionsTab> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final snapshot = AccountOverviewScope.of(context).snapshot;
     final runs = snapshot.runs;
 
@@ -67,7 +73,7 @@ class _GithubActionsTabState extends State<GithubActionsTab> {
             children: [
               Expanded(
                 child: LumaSegmentedTabs(
-                  tabs: [for (final f in _RunFilter.values) f.label],
+                  tabs: [for (final f in _RunFilter.values) f.label(t)],
                   selectedIndex: _filter.index,
                   onSelect: (index) =>
                       setState(() => _filter = _RunFilter.values[index]),
@@ -85,19 +91,16 @@ class _GithubActionsTabState extends State<GithubActionsTab> {
         ),
         Expanded(
           child: runs.isEmpty
-              ? const LumaEmptyState(
+              ? LumaEmptyState(
                   icon: Icons.play_disabled_outlined,
-                  title: 'No workflow runs',
-                  subtitle: 'luma checks your twelve most recently pushed '
-                      'repositories. Runs appear here once one of them has '
-                      'CI history.',
+                  title: t.accountOverviewNoWorkflowRuns,
+                  subtitle: t.accountOverviewNoWorkflowRunsSub,
                 )
               : visible.isEmpty
                   ? LumaEmptyState(
                       icon: Icons.filter_alt_off_outlined,
-                      title: 'No runs match',
-                      subtitle: 'Clear the filter to see all '
-                          '${runs.length} runs.',
+                      title: t.accountOverviewNoRunsMatch,
+                      subtitle: t.accountOverviewNoRunsMatchSub(runs.length),
                     )
                   : Container(
                       margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -131,6 +134,7 @@ class _RunSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final failed = runs.where((r) => r.failed).length;
     final running = runs.where((r) => r.isRunning).length;
 
@@ -152,13 +156,13 @@ class _RunSummary extends StatelessWidget {
         final tiles = [
           AccountStatTile(
             icon: Icons.percent_rounded,
-            label: 'Success rate',
+            label: t.accountOverviewSuccessRate,
             value: successRate == null
                 ? '—'
                 : '${(successRate! * 100).round()}%',
             caption: successRate == null
-                ? 'no completed runs'
-                : 'of recent completed runs',
+                ? t.accountOverviewNoCompletedRuns
+                : t.accountOverviewOfRecentCompletedRuns,
             tint: successRate == null
                 ? null
                 : successRate! >= 0.9
@@ -169,24 +173,26 @@ class _RunSummary extends StatelessWidget {
           ),
           AccountStatTile(
             icon: Icons.play_circle_outline_rounded,
-            label: 'Runs seen',
+            label: t.accountOverviewRunsSeen,
             value: formatCount(runs.length),
-            caption: 'most recent first',
+            caption: t.accountOverviewMostRecentFirst,
           ),
           AccountStatTile(
             icon: Icons.cancel_outlined,
-            label: 'Failed',
+            label: t.accountOverviewFailed,
             value: formatCount(failed),
-            caption: running > 0 ? '$running in progress' : 'in this window',
+            caption: running > 0
+                ? t.accountOverviewRunsInProgress(running)
+                : t.accountOverviewInThisWindow,
             tint: failed > 0 ? luma.danger : null,
           ),
           AccountStatTile(
             icon: Icons.timer_outlined,
-            label: 'Average duration',
+            label: t.accountOverviewAverageDuration,
             value: averageSeconds == null
                 ? '—'
                 : formatDuration(Duration(seconds: averageSeconds)),
-            caption: 'per completed run',
+            caption: t.accountOverviewPerCompletedRun,
           ),
         ];
         return Wrap(
@@ -215,14 +221,15 @@ class _RepoMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     if (repos.isEmpty) return const SizedBox.shrink();
 
     return PopupMenuButton<String?>(
-      tooltip: 'Filter by repository',
+      tooltip: t.accountOverviewFilterByRepository,
       color: luma.surface,
       onSelected: (value) => onSelect(value == '' ? null : value),
       itemBuilder: (context) => [
-        const PopupMenuItem(value: '', child: Text('All repositories')),
+        PopupMenuItem(value: '', child: Text(t.accountOverviewAllRepositories)),
         for (final repo in repos)
           PopupMenuItem(
             value: repo,
@@ -251,7 +258,7 @@ class _RepoMenu extends StatelessWidget {
             Flexible(
               child: Text(
                 selected == null
-                    ? 'All repositories'
+                    ? t.accountOverviewAllRepositories
                     : selected!.split('/').last,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

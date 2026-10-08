@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:path_provider/path_provider.dart';
 
+import '../../../l10n/current_l.dart';
+
 /// Raised when ffmpeg is missing or a transcode fails.
 class FfmpegException implements Exception {
   const FfmpegException(this.message);
@@ -129,10 +131,7 @@ class Ffmpeg {
   }) async {
     final exe = await resolve();
     if (exe == null) {
-      throw const FfmpegException(
-        'ffmpeg was not found. Place ffmpeg(.exe) next to the app or on your '
-        'system PATH, then try again.',
-      );
+      throw FfmpegException(currentL.ffmpegNotFound);
     }
 
     final sep = Platform.pathSeparator;
@@ -158,8 +157,8 @@ class Ffmpeg {
         final stderr = (result.stderr ?? '').toString().trim();
         throw FfmpegException(
           stderr.isEmpty
-              ? 'ffmpeg failed (exit code ${result.exitCode}).'
-              : 'ffmpeg failed: ${_firstLine(stderr)}',
+              ? currentL.ffmpegFailedExitCode(result.exitCode)
+              : currentL.ffmpegFailedWithDetail(_firstLine(stderr)),
         );
       }
       return await outFile.readAsBytes();
@@ -223,7 +222,7 @@ class Ffmpeg {
   }) async {
     final exe = await resolve();
     if (exe == null) {
-      throw const FfmpegException('ffmpeg was not found.');
+      throw FfmpegException(currentL.ffmpegNotFoundShort);
     }
     final sep = Platform.pathSeparator;
     final dir = await Directory.systemTemp.createTemp('luma_vsample_');
@@ -248,8 +247,8 @@ class Ffmpeg {
         final stderr = (result.stderr ?? '').toString().trim();
         throw FfmpegException(
           stderr.isEmpty
-              ? 'ffmpeg failed (exit code ${result.exitCode}).'
-              : 'ffmpeg failed: ${_firstLine(stderr)}',
+              ? currentL.ffmpegFailedExitCode(result.exitCode)
+              : currentL.ffmpegFailedWithDetail(_firstLine(stderr)),
         );
       }
       return await outFile.length();
@@ -269,10 +268,7 @@ class Ffmpeg {
   }) async {
     final exe = await resolve();
     if (exe == null) {
-      throw const FfmpegException(
-        'ffmpeg was not found. Place ffmpeg(.exe) next to the app or on your '
-        'system PATH, then try again.',
-      );
+      throw FfmpegException(currentL.ffmpegNotFound);
     }
     final sep = Platform.pathSeparator;
     final dir = await Directory.systemTemp.createTemp('luma_vconv_');
@@ -293,8 +289,8 @@ class Ffmpeg {
         final stderr = (result.stderr ?? '').toString().trim();
         throw FfmpegException(
           stderr.isEmpty
-              ? 'ffmpeg failed (exit code ${result.exitCode}).'
-              : 'ffmpeg failed: ${_firstLine(stderr)}',
+              ? currentL.ffmpegFailedExitCode(result.exitCode)
+              : currentL.ffmpegFailedWithDetail(_firstLine(stderr)),
         );
       }
       return await outFile.readAsBytes();

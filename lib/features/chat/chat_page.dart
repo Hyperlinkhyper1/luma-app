@@ -152,15 +152,14 @@ class _NoAccountState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return Center(
       child: LumaEmptyState(
         icon: Icons.person_add_rounded,
-        title: 'Create an account to continue',
-        subtitle:
-            'Set up a luma account — just an email and password, no server '
-            'required — before chatting with the assistant.',
+        title: t.assistantNeedsAccountTitle,
+        subtitle: t.assistantNeedsAccountBody,
         action: LumaPrimaryButton(
-          label: 'Set up account',
+          label: t.assistantSetUpAccount,
           icon: Icons.person_add_rounded,
           onTap: () => showAccountSetupDialog(context, syncService),
         ),
@@ -1359,6 +1358,7 @@ Future<void> _showConversationMenu(
 
 void _renameConversation(BuildContext context, ChatConversationRecord c) {
   final luma = context.luma;
+  final t = L.of(context);
   final repo = ChatScope.of(context);
   final controller = TextEditingController(text: c.title);
   showDialog<void>(
@@ -1370,7 +1370,7 @@ void _renameConversation(BuildContext context, ChatConversationRecord c) {
         side: BorderSide(color: luma.border),
       ),
       title: Text(
-        'Rename conversation',
+        t.assistantRenameTitle,
         style: TextStyle(color: luma.textPrimary),
       ),
       content: TextField(
@@ -1407,7 +1407,7 @@ void _renameConversation(BuildContext context, ChatConversationRecord c) {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
         ),
         TextButton(
           onPressed: () {
@@ -1415,7 +1415,7 @@ void _renameConversation(BuildContext context, ChatConversationRecord c) {
             if (trimmed.isNotEmpty) repo.renameConversation(c.id, trimmed);
             Navigator.of(dialogContext).pop();
           },
-          child: Text('Save', style: TextStyle(color: luma.accent)),
+          child: Text(t.commonSave, style: TextStyle(color: luma.accent)),
         ),
       ],
     ),
@@ -1429,6 +1429,7 @@ void _confirmDelete(
   required ValueChanged<int?> onSelect,
 }) {
   final luma = context.luma;
+  final t = L.of(context);
   final repo = ChatScope.of(context);
   showDialog<void>(
     context: context,
@@ -1439,17 +1440,17 @@ void _confirmDelete(
         side: BorderSide(color: luma.border),
       ),
       title: Text(
-        'Delete "${c.title}"?',
+        t.assistantDeleteTitle(c.title),
         style: TextStyle(color: luma.textPrimary),
       ),
       content: Text(
-        'This removes the conversation and its messages.',
+        t.assistantDeleteBody,
         style: TextStyle(color: luma.textSecondary),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
         ),
         TextButton(
           onPressed: () {
@@ -1457,7 +1458,7 @@ void _confirmDelete(
             if (c.id == activeConversationId) onSelect(null);
             Navigator.of(dialogContext).pop();
           },
-          child: Text('Delete', style: TextStyle(color: luma.danger)),
+          child: Text(t.commonDelete, style: TextStyle(color: luma.danger)),
         ),
       ],
     ),
@@ -1814,6 +1815,7 @@ class _ModelSelectorState extends State<_ModelSelector> {
     await _refreshVersions();
     if (!mounted) return;
     final luma = context.luma;
+    final t = L.of(context);
     final button = context.findRenderObject()! as RenderBox;
     final overlay =
         Overlay.of(context).context.findRenderObject()! as RenderBox;
@@ -1842,8 +1844,8 @@ class _ModelSelectorState extends State<_ModelSelector> {
       );
       final count = settings.modelUsage[usageKey] ?? 0;
       final usageLabel = count == 0
-          ? 'Unused'
-          : '$count msg${count == 1 ? '' : 's'}';
+          ? t.assistantModelUnused
+          : t.assistantModelMessageCount(count);
       return PopupMenuItem<_ModelChoice>(
         value: choice,
         height: 40,
@@ -1900,10 +1902,10 @@ class _ModelSelectorState extends State<_ModelSelector> {
         side: BorderSide(color: luma.border),
       ),
       items: [
-        header('Models'),
+        header(t.assistantModelsHeader),
         ..._lumaModelsFor(settings, modeVersions).map(item),
         const PopupMenuDivider(height: 10),
-        header('API key'),
+        header(t.assistantApiKeyHeader),
         ..._apiKeyModels.map(item),
       ],
     );
@@ -1959,7 +1961,7 @@ class _LoadError extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: LumaEmptyState(
           icon: Icons.error_outline_rounded,
-          title: "The assistant wouldn't wake up",
+          title: L.of(context).assistantWouldntWakeUp,
           subtitle: '$error',
         ),
       ),
@@ -1982,6 +1984,7 @@ class _NoKeyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     if (localModel) {
       final store = LocalModelStore.instance;
       return Center(
@@ -1989,17 +1992,23 @@ class _NoKeyState extends StatelessWidget {
           listenable: store,
           builder: (context, _) => LumaEmptyState(
             icon: Icons.smart_toy_rounded,
-            title: 'Download Luma Assistant',
+            title: t.assistantDownloadTitle,
             subtitle: !LocalModelStore.supported
-                ? 'The on-device model is not available on this platform.'
+                ? t.assistantDownloadUnsupported
                 : store.isDownloading
-                ? 'Downloading ${LocalModelStore.modelDisplayName} (${LocalModelStore.modelSizeLabel})…'
-                : 'Download ${LocalModelStore.modelDisplayName} (${LocalModelStore.modelSizeLabel}) to start chatting. It runs on this device.',
+                ? t.assistantDownloadingModel(
+                    LocalModelStore.modelDisplayName,
+                    LocalModelStore.modelSizeLabel,
+                  )
+                : t.assistantDownloadPrompt(
+                    LocalModelStore.modelDisplayName,
+                    LocalModelStore.modelSizeLabel,
+                  ),
             action: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (!LocalModelStore.supported) ...[
-                  const Text('Choose another model from the selector below.'),
+                  Text(t.assistantChooseAnotherModel),
                 ] else if (store.isDownloading) ...[
                   SizedBox(
                     width: 280,
@@ -2008,12 +2017,12 @@ class _NoKeyState extends StatelessWidget {
                   const SizedBox(height: 10),
                   Text(
                     store.progress == null
-                        ? 'Downloading model…'
+                        ? t.assistantDownloadingModelShort
                         : '${(store.progress! * 100).toStringAsFixed(0)}%',
                   ),
                 ] else
                   LumaPrimaryButton(
-                    label: 'Download model',
+                    label: t.assistantDownloadModel,
                     icon: Icons.download_rounded,
                     onTap: () async {
                       await store.download();
@@ -2023,7 +2032,7 @@ class _NoKeyState extends StatelessWidget {
                 if (store.error != null) ...[
                   const SizedBox(height: 10),
                   Text(
-                    'Download failed: ${store.error}',
+                    t.assistantDownloadFailed('${store.error}'),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -2038,10 +2047,8 @@ class _NoKeyState extends StatelessWidget {
     return Center(
       child: LumaEmptyState(
         icon: Icons.smart_toy_rounded,
-        title: 'This model isn\'t available yet',
-        subtitle:
-            'Add your own API key in Settings to use it — stored locally on '
-            'this device only — or switch to another model below.',
+        title: t.assistantModelUnavailableTitle,
+        subtitle: t.assistantModelUnavailableBody,
         action: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -2049,13 +2056,13 @@ class _NoKeyState extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 LumaPrimaryButton(
-                  label: 'Open Settings',
+                  label: t.assistantOpenSettings,
                   icon: Icons.settings_rounded,
                   onTap: onOpenSettings,
                 ),
                 const SizedBox(width: 10),
                 LumaGhostButton(
-                  label: 'I added a key',
+                  label: t.assistantIAddedKey,
                   icon: Icons.refresh_rounded,
                   onTap: onRecheck,
                 ),

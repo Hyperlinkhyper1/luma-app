@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
 import 'cs2_models.dart';
 
 /// Raised when the item catalog can't be read from the network or the disk
@@ -75,14 +76,11 @@ class Cs2CatalogService {
     try {
       response = await _client.get(Uri.parse(_datasetUrl)).timeout(_timeout);
     } catch (e) {
-      throw const Cs2CatalogException(
-        'Could not reach the item catalog. Check your connection and try '
-        'again.',
-      );
+      throw Cs2CatalogException(currentL.steamCs2CatalogUnreachable);
     }
     if (response.statusCode != 200) {
       throw Cs2CatalogException(
-        'The item catalog returned an error (HTTP ${response.statusCode}).',
+        currentL.steamCs2CatalogHttpError(response.statusCode),
       );
     }
 
@@ -90,9 +88,7 @@ class Cs2CatalogService {
     try {
       decoded = jsonDecode(response.body) as List;
     } catch (_) {
-      throw const Cs2CatalogException(
-        'The item catalog sent back something unreadable.',
-      );
+      throw Cs2CatalogException(currentL.steamCs2CatalogUnreadable);
     }
 
     final items = <Cs2SkinDef>[

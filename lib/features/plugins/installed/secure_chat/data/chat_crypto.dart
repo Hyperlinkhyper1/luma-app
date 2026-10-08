@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
 
+import '../../../../../l10n/current_l.dart';
+
 /// End-to-end encryption for the Chat plugin: an anonymous "sealed box"
 /// scheme built from well-known primitives (X25519 for key agreement,
 /// HKDF-SHA256 to derive a symmetric key, AES-256-GCM to seal the message),
@@ -70,11 +72,11 @@ class ChatCrypto {
     try {
       blob = base64Decode(blobBase64);
     } catch (_) {
-      throw const ChatCryptoException('Corrupted message.');
+      throw ChatCryptoException(currentL.secureChatCouldNotDecrypt);
     }
     const pubLen = 32, nonceLen = 12, macLen = 16;
     if (blob.length < pubLen + nonceLen + macLen) {
-      throw const ChatCryptoException('Corrupted message.');
+      throw ChatCryptoException(currentL.secureChatCouldNotDecrypt);
     }
     final ephemeralPublicBytes = blob.sublist(0, pubLen);
     final nonce = blob.sublist(pubLen, pubLen + nonceLen);
@@ -96,8 +98,7 @@ class ChatCrypto {
       );
       return utf8.decode(clear);
     } catch (_) {
-      throw const ChatCryptoException(
-          'Could not decrypt — this message was not sealed for you.');
+      throw ChatCryptoException(currentL.secureChatCouldNotDecrypt);
     }
   }
 

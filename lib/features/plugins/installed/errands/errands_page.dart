@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'errands_repository.dart';
 import 'errands_scope.dart';
@@ -50,6 +52,8 @@ class _ErrandsBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final repo = ErrandsScope.of(context);
+    final t = L.of(context);
+    final locale = Localizations.localeOf(context).languageCode;
     final today = DateTime.now();
 
     final doneToday =
@@ -73,6 +77,7 @@ class _ErrandsBody extends StatelessWidget {
             children: [
               _HeaderCard(
                 today: today,
+                locale: locale,
                 done: doneToday.length,
                 total: totalToday,
                 onAdd: () => _showErrandEditor(context, repo, categories),
@@ -85,13 +90,10 @@ class _ErrandsBody extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 32),
                   child: LumaEmptyState(
                     icon: Icons.checklist_rounded,
-                    title: 'No errands yet',
-                    subtitle:
-                        'Add a recurring errand — daily, weekly, monthly or '
-                        'every few days — and it shows up on your checklist '
-                        'the day it\'s due.',
+                    title: t.errandsEmptyTitle,
+                    subtitle: t.errandsEmptySubtitle,
                     action: LumaPrimaryButton(
-                      label: 'Add errand',
+                      label: t.errandsAddErrand,
                       icon: Icons.add_rounded,
                       onTap: () => _showErrandEditor(context, repo, categories),
                     ),
@@ -107,7 +109,7 @@ class _ErrandsBody extends StatelessWidget {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'All done for today — nice work.',
+                            t.errandsAllDoneToday,
                             style: TextStyle(
                               color: luma.textPrimary,
                               fontSize: 14,
@@ -127,8 +129,7 @@ class _ErrandsBody extends StatelessWidget {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'Nothing due today. Your next errands are listed '
-                            'under Coming up.',
+                            t.errandsNothingDueToday,
                             style: TextStyle(
                                 color: luma.textSecondary, fontSize: 13.5),
                           ),
@@ -140,7 +141,7 @@ class _ErrandsBody extends StatelessWidget {
                 if (doneToday.isNotEmpty) ...[
                   const SizedBox(height: 20),
                   _SectionHeader(
-                    label: 'Done today',
+                    label: t.errandsDoneToday,
                     count: doneToday.length,
                   ),
                   const SizedBox(height: 8),
@@ -162,7 +163,8 @@ class _ErrandsBody extends StatelessWidget {
                 ],
                 if (upcoming.isNotEmpty) ...[
                   const SizedBox(height: 20),
-                  _SectionHeader(label: 'Coming up', count: upcoming.length),
+                  _SectionHeader(
+                      label: t.errandsComingUp, count: upcoming.length),
                   const SizedBox(height: 8),
                   LumaCard(
                     child: Column(
@@ -197,6 +199,7 @@ class _ErrandsBody extends StatelessWidget {
     List<ErrandRecord> dueToday,
   ) {
     if (dueToday.isEmpty) return const [];
+    final t = L.of(context);
     final byCategory = <int?, List<ErrandRecord>>{};
     for (final e in dueToday) {
       byCategory.putIfAbsent(e.categoryId, () => []).add(e);
@@ -238,7 +241,7 @@ class _ErrandsBody extends StatelessWidget {
           ...entry.value,
     ];
     if (uncategorized.isNotEmpty) {
-      addSection('Other', null, uncategorized);
+      addSection(t.commonOther, null, uncategorized);
     }
     return sections;
   }
@@ -248,6 +251,7 @@ class _ErrandsBody extends StatelessWidget {
 class _HeaderCard extends StatelessWidget {
   const _HeaderCard({
     required this.today,
+    required this.locale,
     required this.done,
     required this.total,
     required this.onAdd,
@@ -255,6 +259,7 @@ class _HeaderCard extends StatelessWidget {
   });
 
   final DateTime today;
+  final String locale;
   final int done;
   final int total;
   final VoidCallback onAdd;
@@ -263,13 +268,14 @@ class _HeaderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final progress = total == 0 ? 0.0 : done / total;
 
     final titleBlock = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Today\'s errands',
+          t.errandsTodayTitle,
           style: TextStyle(
             color: luma.textPrimary,
             fontSize: 16,
@@ -278,18 +284,18 @@ class _HeaderCard extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          _formatFullDate(today),
+          _formatFullDate(today, locale),
           style: TextStyle(color: luma.textMuted, fontSize: 13),
         ),
       ],
     );
     final categoriesBtn = LumaGhostButton(
-      label: 'Categories',
+      label: t.errandsCategories,
       icon: Icons.category_rounded,
       onTap: onManageCategories,
     );
     final addBtn = LumaPrimaryButton(
-      label: 'Add errand',
+      label: t.errandsAddErrand,
       icon: Icons.add_rounded,
       onTap: onAdd,
     );
@@ -348,7 +354,7 @@ class _HeaderCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  '$done of $total done',
+                  t.errandsDoneOfTotal(done, total),
                   style: TextStyle(
                     color: luma.textSecondary,
                     fontSize: 12.5,
@@ -430,12 +436,14 @@ class _ErrandRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
+    final locale = Localizations.localeOf(context).languageCode;
     final today = DateTime.now();
     final overdue = errand.overdueDays(today);
 
     final subtitleParts = <String>[
       errand.repeatLabel,
-      if (upcoming) _formatDueIn(errand.nextDue, today),
+      if (upcoming) _formatDueIn(t, locale, errand.nextDue, today),
       if (upcoming) _categoryName() ?? '',
     ]..removeWhere((s) => s.isEmpty);
 
@@ -484,7 +492,7 @@ class _ErrandRow extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  overdue == 1 ? '1 day late' : '$overdue days late',
+                  t.errandsDaysLate(overdue),
                   style: TextStyle(
                     color: luma.danger,
                     fontSize: 11.5,
@@ -553,8 +561,9 @@ class _SnoozeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return PopupMenuButton<int>(
-      tooltip: 'Delay',
+      tooltip: t.errandsDelay,
       icon: Icon(Icons.snooze_rounded, size: 18, color: luma.textMuted),
       color: luma.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -567,12 +576,12 @@ class _SnoozeButton extends StatelessWidget {
         }
       },
       itemBuilder: (context) => [
-        for (final (days, label) in const [
-          (1, 'Tomorrow'),
-          (2, 'In 2 days'),
-          (3, 'In 3 days'),
-          (7, 'In a week'),
-          (-1, 'Custom…'),
+        for (final (days, label) in [
+          (1, t.commonTomorrow),
+          (2, t.errandsInDays(2)),
+          (3, t.errandsInDays(3)),
+          (7, t.errandsInAWeek),
+          (-1, t.errandsCustom),
         ])
           PopupMenuItem(
             value: days,
@@ -587,30 +596,32 @@ class _SnoozeButton extends StatelessWidget {
 
 Future<int?> _askCustomDays(BuildContext context) {
   final luma = context.luma;
+  final t = L.of(context);
   final controller = TextEditingController();
   return showDialog<int>(
     context: context,
     builder: (ctx) => AlertDialog(
       backgroundColor: luma.surface,
-      title: Text('Delay by how many days?',
+      title: Text(t.errandsDelayByDaysTitle,
           style: TextStyle(color: luma.textPrimary, fontSize: 16)),
       content: TextField(
         controller: controller,
         autofocus: true,
         keyboardType: TextInputType.number,
         style: TextStyle(color: luma.textPrimary),
-        decoration: _dec(luma, hint: 'e.g. 5'),
+        decoration: _dec(luma, hint: t.errandsCustomDaysHint),
         onSubmitted: (v) => Navigator.of(ctx).pop(int.tryParse(v.trim())),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonCancel,
+              style: TextStyle(color: luma.textSecondary)),
         ),
         TextButton(
           onPressed: () =>
               Navigator.of(ctx).pop(int.tryParse(controller.text.trim())),
-          child: Text('Delay', style: TextStyle(color: luma.accent)),
+          child: Text(t.errandsDelay, style: TextStyle(color: luma.accent)),
         ),
       ],
     ),
@@ -716,14 +727,15 @@ class _ErrandEditorDialogState extends State<_ErrandEditorDialog> {
   }
 
   Future<void> _save() async {
+    final t = L.of(context);
     final name = _name.text.trim();
     if (name.isEmpty) {
-      setState(() => _error = 'Give the errand a name.');
+      setState(() => _error = t.errandsNameRequired);
       return;
     }
     final schedule = _schedule();
     if (schedule == null) {
-      setState(() => _error = 'Enter a repeat interval between 1 and 365 days.');
+      setState(() => _error = t.errandsIntervalInvalid);
       return;
     }
     setState(() {
@@ -757,7 +769,7 @@ class _ErrandEditorDialogState extends State<_ErrandEditorDialog> {
       if (mounted) {
         setState(() {
           _saving = false;
-          _error = 'Could not save the errand. ($e)';
+          _error = t.errandsSaveFailed('$e');
         });
       }
     }
@@ -783,6 +795,8 @@ class _ErrandEditorDialogState extends State<_ErrandEditorDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
+    final locale = Localizations.localeOf(context).languageCode;
     final editing = widget.existing != null;
     return Dialog(
       backgroundColor: luma.surface,
@@ -796,7 +810,7 @@ class _ErrandEditorDialogState extends State<_ErrandEditorDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                editing ? 'Edit errand' : 'Add errand',
+                editing ? t.errandsEditTitle : t.errandsAddErrand,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 17,
@@ -804,26 +818,26 @@ class _ErrandEditorDialogState extends State<_ErrandEditorDialog> {
                 ),
               ),
               const SizedBox(height: 16),
-              _label(luma, 'Name'),
+              _label(luma, t.commonName),
               const SizedBox(height: 6),
               TextField(
                 controller: _name,
                 autofocus: !editing,
                 style: TextStyle(color: luma.textPrimary),
-                decoration: _dec(luma, hint: 'Water the plants'),
+                decoration: _dec(luma, hint: t.errandsNameHint),
               ),
               const SizedBox(height: 14),
-              _label(luma, 'Repeats'),
+              _label(luma, t.errandsRepeats),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  for (final (choice, label) in const [
-                    (_RepeatChoice.daily, 'Daily'),
-                    (_RepeatChoice.weekly, 'Weekly'),
-                    (_RepeatChoice.monthly, 'Monthly'),
-                    (_RepeatChoice.custom, 'Custom'),
+                  for (final (choice, label) in [
+                    (_RepeatChoice.daily, t.errandsRepeatDaily),
+                    (_RepeatChoice.weekly, t.errandsRepeatWeekly),
+                    (_RepeatChoice.monthly, t.errandsRepeatMonthly),
+                    (_RepeatChoice.custom, t.errandsRepeatCustom),
                   ])
                     _ChoiceChip(
                       label: label,
@@ -839,7 +853,7 @@ class _ErrandEditorDialogState extends State<_ErrandEditorDialog> {
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    Text('Every',
+                    Text(t.errandsEvery,
                         style:
                             TextStyle(color: luma.textSecondary, fontSize: 13)),
                     const SizedBox(width: 10),
@@ -854,14 +868,14 @@ class _ErrandEditorDialogState extends State<_ErrandEditorDialog> {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    Text('days',
+                    Text(t.errandsDays,
                         style:
                             TextStyle(color: luma.textSecondary, fontSize: 13)),
                   ],
                 ),
               ],
               const SizedBox(height: 14),
-              _label(luma, 'Category'),
+              _label(luma, t.commonCategory),
               const SizedBox(height: 6),
               _CategoryDropdown(
                 categories: widget.categories,
@@ -869,7 +883,7 @@ class _ErrandEditorDialogState extends State<_ErrandEditorDialog> {
                 onChanged: (id) => setState(() => _categoryId = id),
               ),
               const SizedBox(height: 14),
-              _label(luma, editing ? 'Next due' : 'First due'),
+              _label(luma, editing ? t.errandsNextDue : t.errandsFirstDue),
               const SizedBox(height: 6),
               InkWell(
                 onTap: _pickFirstDue,
@@ -888,7 +902,7 @@ class _ErrandEditorDialogState extends State<_ErrandEditorDialog> {
                           size: 16, color: luma.textSecondary),
                       const SizedBox(width: 10),
                       Text(
-                        _formatFullDate(_firstDue),
+                        _formatFullDate(_firstDue, locale),
                         style:
                             TextStyle(color: luma.textPrimary, fontSize: 14),
                       ),
@@ -897,14 +911,13 @@ class _ErrandEditorDialogState extends State<_ErrandEditorDialog> {
                 ),
               ),
               const SizedBox(height: 14),
-              _label(luma, 'Notes (optional)'),
+              _label(luma, t.errandsNotesOptional),
               const SizedBox(height: 6),
               TextField(
                 controller: _notes,
                 style: TextStyle(color: luma.textPrimary),
                 maxLines: 2,
-                decoration:
-                    _dec(luma, hint: 'Which plants, which store, anything handy'),
+                decoration: _dec(luma, hint: t.errandsNotesHint),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 12),
@@ -916,19 +929,19 @@ class _ErrandEditorDialogState extends State<_ErrandEditorDialog> {
                 children: [
                   if (editing)
                     IconButton(
-                      tooltip: 'Delete',
+                      tooltip: t.commonDelete,
                       icon: Icon(Icons.delete_outline_rounded,
                           color: luma.textMuted),
                       onPressed: _delete,
                     ),
                   const Spacer(),
                   LumaGhostButton(
-                    label: 'Cancel',
+                    label: t.commonCancel,
                     onTap: () => Navigator.of(context).pop(),
                   ),
                   const SizedBox(width: 10),
                   LumaPrimaryButton(
-                    label: editing ? 'Save' : 'Add errand',
+                    label: editing ? t.commonSave : t.errandsAddErrand,
                     loading: _saving,
                     onTap: _save,
                   ),
@@ -999,6 +1012,7 @@ class _CategoryDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -1019,7 +1033,7 @@ class _CategoryDropdown extends StatelessWidget {
           items: [
             DropdownMenuItem(
               value: -1,
-              child: Text('No category',
+              child: Text(t.errandsNoCategory,
                   style: TextStyle(color: luma.textMuted)),
             ),
             for (final c in categories)
@@ -1066,6 +1080,7 @@ class _CategoryManagerDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Dialog(
       backgroundColor: luma.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -1078,7 +1093,7 @@ class _CategoryManagerDialog extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Categories',
+                t.errandsCategories,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 17,
@@ -1087,8 +1102,7 @@ class _CategoryManagerDialog extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Group your checklist however you like — Household, Health, '
-                'Admin… Deleting a category keeps its errands.',
+                t.errandsCategoriesHelp,
                 style: TextStyle(color: luma.textMuted, fontSize: 12.5),
               ),
               const SizedBox(height: 16),
@@ -1101,7 +1115,7 @@ class _CategoryManagerDialog extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         child: Text(
-                          'No categories yet.',
+                          t.errandsNoCategoriesYet,
                           textAlign: TextAlign.center,
                           style:
                               TextStyle(color: luma.textMuted, fontSize: 13),
@@ -1129,7 +1143,7 @@ class _CategoryManagerDialog extends StatelessWidget {
                               ),
                             ),
                             IconButton(
-                              tooltip: 'Edit',
+                              tooltip: t.commonEdit,
                               icon: Icon(Icons.edit_rounded,
                                   size: 16, color: luma.textMuted),
                               onPressed: () =>
@@ -1137,7 +1151,7 @@ class _CategoryManagerDialog extends StatelessWidget {
                                       existing: c),
                             ),
                             IconButton(
-                              tooltip: 'Delete',
+                              tooltip: t.commonDelete,
                               icon: Icon(Icons.delete_outline_rounded,
                                   size: 16, color: luma.textMuted),
                               onPressed: () async {
@@ -1156,13 +1170,13 @@ class _CategoryManagerDialog extends StatelessWidget {
               Row(
                 children: [
                   LumaGhostButton(
-                    label: 'New category',
+                    label: t.errandsNewCategory,
                     icon: Icons.add_rounded,
                     onTap: () => _showCategoryEditor(context, repo),
                   ),
                   const Spacer(),
                   LumaPrimaryButton(
-                    label: 'Done',
+                    label: t.commonDone,
                     onTap: () => Navigator.of(context).pop(),
                   ),
                 ],
@@ -1216,7 +1230,7 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
   Future<void> _save() async {
     final name = _name.text.trim();
     if (name.isEmpty) {
-      setState(() => _error = 'Give the category a name.');
+      setState(() => _error = L.of(context).errandsCategoryNameRequired);
       return;
     }
     if (widget.existing == null) {
@@ -1231,6 +1245,7 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final editing = widget.existing != null;
     return Dialog(
       backgroundColor: luma.surface,
@@ -1244,7 +1259,7 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                editing ? 'Edit category' : 'New category',
+                editing ? t.errandsEditCategoryTitle : t.errandsNewCategory,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 17,
@@ -1252,17 +1267,17 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
                 ),
               ),
               const SizedBox(height: 16),
-              _label(luma, 'Name'),
+              _label(luma, t.commonName),
               const SizedBox(height: 6),
               TextField(
                 controller: _name,
                 autofocus: true,
                 style: TextStyle(color: luma.textPrimary),
-                decoration: _dec(luma, hint: 'Household'),
+                decoration: _dec(luma, hint: t.errandsCategoryNameHint),
                 onSubmitted: (_) => _save(),
               ),
               const SizedBox(height: 14),
-              _label(luma, 'Color'),
+              _label(luma, t.commonColor),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 10,
@@ -1305,12 +1320,12 @@ class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   LumaGhostButton(
-                    label: 'Cancel',
+                    label: t.commonCancel,
                     onTap: () => Navigator.of(context).pop(),
                   ),
                   const SizedBox(width: 10),
                   LumaPrimaryButton(
-                    label: editing ? 'Save' : 'Add',
+                    label: editing ? t.commonSave : t.commonAdd,
                     onTap: _save,
                   ),
                 ],
@@ -1353,24 +1368,26 @@ InputDecoration _dec(LumaPalette luma, {String? hint}) {
 
 Future<bool> _confirmDelete(BuildContext context) async {
   final luma = context.luma;
+  final t = L.of(context);
   final result = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
       backgroundColor: luma.surface,
       title:
-          Text('Delete errand?', style: TextStyle(color: luma.textPrimary)),
+          Text(t.errandsDeleteTitle, style: TextStyle(color: luma.textPrimary)),
       content: Text(
-        'This removes the errand and its schedule from this device.',
+        t.errandsDeleteBody,
         style: TextStyle(color: luma.textSecondary),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(false),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonCancel,
+              style: TextStyle(color: luma.textSecondary)),
         ),
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(true),
-          child: Text('Delete', style: TextStyle(color: luma.danger)),
+          child: Text(t.commonDelete, style: TextStyle(color: luma.danger)),
         ),
       ],
     ),
@@ -1380,24 +1397,26 @@ Future<bool> _confirmDelete(BuildContext context) async {
 
 Future<bool> _confirmDeleteCategory(BuildContext context) async {
   final luma = context.luma;
+  final t = L.of(context);
   final result = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
       backgroundColor: luma.surface,
-      title: Text('Delete category?',
+      title: Text(t.errandsDeleteCategoryTitle,
           style: TextStyle(color: luma.textPrimary)),
       content: Text(
-        'Errands in this category are kept and become uncategorized.',
+        t.errandsDeleteCategoryBody,
         style: TextStyle(color: luma.textSecondary),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(false),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonCancel,
+              style: TextStyle(color: luma.textSecondary)),
         ),
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(true),
-          child: Text('Delete', style: TextStyle(color: luma.danger)),
+          child: Text(t.commonDelete, style: TextStyle(color: luma.danger)),
         ),
       ],
     ),
@@ -1405,19 +1424,13 @@ Future<bool> _confirmDeleteCategory(BuildContext context) async {
   return result ?? false;
 }
 
-const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const _months = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
+String _formatFullDate(DateTime d, String locale) =>
+    DateFormat.yMMMMEEEEd(locale).format(d);
 
-String _formatFullDate(DateTime d) =>
-    '${_weekdays[d.weekday - 1]}, ${d.day} ${_months[d.month - 1]} ${d.year}';
-
-/// "Due tomorrow", "Due in 3 days", or "Due Mon, 3 August" further out.
-String _formatDueIn(DateTime due, DateTime today) {
+/// "Due tomorrow", "Due in 3 days", or "Due Mon, Aug 3" further out.
+String _formatDueIn(L t, String locale, DateTime due, DateTime today) {
   final days = dateOnly(due).difference(dateOnly(today)).inDays;
-  if (days <= 1) return 'Due tomorrow';
-  if (days <= 14) return 'Due in $days days';
-  return 'Due ${_weekdays[due.weekday - 1]}, ${due.day} ${_months[due.month - 1]}';
+  if (days <= 1) return t.errandsDueTomorrow;
+  if (days <= 14) return t.errandsDueInDays(days);
+  return t.errandsDueOn(DateFormat.MMMEd(locale).format(due));
 }

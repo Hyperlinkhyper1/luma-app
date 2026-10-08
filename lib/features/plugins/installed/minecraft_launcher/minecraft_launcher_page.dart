@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import 'ui/accounts_tab.dart';
 import 'ui/global_search_page.dart';
 import 'ui/library_tab.dart';
@@ -21,16 +22,15 @@ class MinecraftLauncherPage extends StatefulWidget {
 class _MinecraftLauncherPageState extends State<MinecraftLauncherPage> {
   int _tab = 0;
 
-  static const _tabs = ['Library', 'Accounts', 'Servers', 'Settings'];
-
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     if (!Platform.isWindows) {
-      return const Center(
+      return Center(
         child: LumaEmptyState(
           icon: Icons.videogame_asset_off_outlined,
-          title: 'Not available on this platform',
-          subtitle: 'Minecraft Launcher currently only supports Windows.',
+          title: t.minecraftLauncherNotWindowsTitle,
+          subtitle: t.minecraftLauncherNotWindowsSubtitle,
         ),
       );
     }
@@ -44,13 +44,18 @@ class _MinecraftLauncherPageState extends State<MinecraftLauncherPage> {
             children: [
               Expanded(
                 child: LumaSegmentedTabs(
-                  tabs: _tabs,
+                  tabs: [
+                    t.minecraftLauncherTabLibrary,
+                    t.minecraftLauncherTabAccounts,
+                    t.minecraftLauncherTabServers,
+                    t.minecraftLauncherTabSettings,
+                  ],
                   selectedIndex: _tab,
                   onSelect: (i) => setState(() => _tab = i),
                 ),
               ),
               IconButton(
-                tooltip: 'Search',
+                tooltip: t.commonSearch,
                 icon: const Icon(Icons.search_rounded),
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const GlobalSearchPage()),

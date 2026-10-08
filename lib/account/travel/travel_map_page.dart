@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/widgets.dart';
+import '../../l10n/app_localizations.dart';
 import '../../settings/settings_controller.dart';
 import '../../settings/settings_scope.dart';
 import '../../theme/luma_theme.dart';
@@ -60,6 +61,7 @@ class _TravelMapPageState extends State<TravelMapPage> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final settings = SettingsScope.of(context);
 
     return Scaffold(
@@ -67,15 +69,15 @@ class _TravelMapPageState extends State<TravelMapPage> {
       appBar: AppBar(
         backgroundColor: luma.background,
         surfaceTintColor: Colors.transparent,
-        title: const Text('Travel map'),
+        title: Text(t.travelMapTitle),
         actions: [
           IconButton(
-            tooltip: 'Reset zoom',
+            tooltip: t.travelResetZoom,
             icon: const Icon(Icons.restart_alt_rounded),
             onPressed: () => _view.value = Matrix4.identity(),
           ),
           IconButton(
-            tooltip: 'Fullscreen',
+            tooltip: t.travelFullscreen,
             icon: const Icon(Icons.fullscreen_rounded),
             onPressed: _loaded == null ? null : () => _openFullscreen(_loaded!),
           ),
@@ -89,7 +91,7 @@ class _TravelMapPageState extends State<TravelMapPage> {
             return Center(
               child: LumaEmptyState(
                 icon: Icons.public_off_rounded,
-                title: 'The map could not be loaded',
+                title: t.travelMapLoadFailed,
                 subtitle: '${snapshot.error}',
               ),
             );
@@ -190,22 +192,21 @@ class _TravelMapPageState extends State<TravelMapPage> {
 
   Future<void> _confirmClear(SettingsController settings) async {
     final luma = context.luma;
+    final t = L.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: luma.surface,
-        title: const Text('Clear the map?'),
-        content: const Text(
-          'Every country you\'ve marked as visited will be unmarked.',
-        ),
+        title: Text(t.travelClearTitle),
+        content: Text(t.travelClearBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(t.commonCancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Clear', style: TextStyle(color: luma.danger)),
+            child: Text(t.commonClear, style: TextStyle(color: luma.danger)),
           ),
         ],
       ),
@@ -213,6 +214,17 @@ class _TravelMapPageState extends State<TravelMapPage> {
     if (confirmed == true) settings.setVisitedCountries(const []);
   }
 }
+
+String _regionLabel(L t, String region) => switch (region) {
+      'Africa' => t.travelRegionAfrica,
+      'Asia' => t.travelRegionAsia,
+      'Europe' => t.travelRegionEurope,
+      'North America' => t.travelRegionNorthAmerica,
+      'Oceania' => t.travelRegionOceania,
+      'South America' => t.travelRegionSouthAmerica,
+      'Other' => t.travelRegionOther,
+      _ => region,
+    };
 
 // ---- Summary --------------------------------------------------------------
 
@@ -225,6 +237,7 @@ class _Summary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final total = map.countries.length;
     final percent = total == 0 ? 0.0 : visited.length / total;
 
@@ -263,8 +276,10 @@ class _Summary extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 5),
                 child: Text(
-                  'of $total countries · ${(percent * 100).toStringAsFixed(0)}% '
-                  'of the world',
+                  t.travelSummaryOfTotal(
+                    total,
+                    (percent * 100).toStringAsFixed(0),
+                  ),
                   style: TextStyle(color: luma.textSecondary, fontSize: 13),
                 ),
               ),
@@ -335,6 +350,7 @@ class _RegionPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final active = visited > 0;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
@@ -346,7 +362,7 @@ class _RegionPill extends StatelessWidget {
         ),
       ),
       child: Text(
-        '$region $visited/$total',
+        t.travelRegionPill(_regionLabel(t, region), visited, total),
         style: TextStyle(
           color: active ? luma.textPrimary : luma.textMuted,
           fontSize: 12,
@@ -377,6 +393,7 @@ class _MapPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return LumaCard(
       padding: const EdgeInsets.all(8),
       child: Column(
@@ -395,7 +412,7 @@ class _MapPanel extends StatelessWidget {
                 bottom: 8,
                 child: _MapAction(
                   icon: Icons.fullscreen_rounded,
-                  tooltip: 'Open fullscreen',
+                  tooltip: t.travelOpenFullscreen,
                   onTap: onFullscreen,
                 ),
               ),
@@ -410,8 +427,7 @@ class _MapPanel extends StatelessWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'Tap a country to mark it visited, tap it again to remove '
-                    'it. Pinch to zoom, or open the map fullscreen.',
+                    t.travelMapHint,
                     style: TextStyle(color: luma.textMuted, fontSize: 12),
                   ),
                 ),
@@ -481,6 +497,7 @@ class _CountryList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final query = search.trim().toLowerCase();
     final matches = query.isEmpty
         ? map.countries
@@ -499,7 +516,9 @@ class _CountryList extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  visited.isEmpty ? 'Countries' : 'Countries · ${visited.length}',
+                  visited.isEmpty
+                      ? t.travelCountriesTitle
+                      : t.travelCountriesCount(visited.length),
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 14,
@@ -516,7 +535,7 @@ class _CountryList extends StatelessWidget {
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   child: Text(
-                    'Clear all',
+                    t.travelClearAll,
                     style: TextStyle(color: luma.textMuted, fontSize: 12),
                   ),
                 ),
@@ -529,7 +548,7 @@ class _CountryList extends StatelessWidget {
             style: TextStyle(color: luma.textPrimary, fontSize: 13),
             decoration: InputDecoration(
               isDense: true,
-              hintText: 'Search a country',
+              hintText: t.travelSearchCountry,
               hintStyle: TextStyle(color: luma.textMuted, fontSize: 13),
               prefixIcon: Icon(Icons.search_rounded, size: 18,
                   color: luma.textMuted),
@@ -560,7 +579,7 @@ class _CountryList extends StatelessWidget {
             child: matches.isEmpty
                 ? Center(
                     child: Text(
-                      'No country matches "$search".',
+                      t.travelNoCountryMatch(search),
                       style: TextStyle(color: luma.textMuted, fontSize: 12),
                     ),
                   )
@@ -649,6 +668,7 @@ class _CountryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
@@ -685,7 +705,7 @@ class _CountryRow extends StatelessWidget {
               ),
             ),
             Text(
-              country.region,
+              _regionLabel(t, country.region),
               style: TextStyle(color: luma.textMuted, fontSize: 11),
             ),
           ],

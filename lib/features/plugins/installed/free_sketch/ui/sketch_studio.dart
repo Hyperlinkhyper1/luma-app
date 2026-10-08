@@ -5,6 +5,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../../l10n/app_localizations.dart';
+import '../../../../../l10n/current_l.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../engine/adjustments.dart';
 import '../engine/symmetry.dart';
@@ -191,20 +193,21 @@ class _SketchStudioState extends State<SketchStudio> {
   // ----------------------------------------------------------------- actions
 
   Future<void> _rename() async {
+    final t = L.of(context);
     final text = TextEditingController(text: c.title);
     final title = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Rename artwork'),
+        title: Text(t.freeSketchRenameArtwork),
         content: TextField(
           controller: text,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'Title'),
+          decoration: InputDecoration(labelText: t.commonTitle),
           onSubmitted: (v) => Navigator.pop(context, v),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, text.text), child: const Text('Rename')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(t.commonCancel)),
+          FilledButton(onPressed: () => Navigator.pop(context, text.text), child: Text(t.commonRename)),
         ],
       ),
     ).whenComplete(text.dispose);
@@ -225,7 +228,7 @@ class _SketchStudioState extends State<SketchStudio> {
       );
       if (result != null) _toast(result);
     } on Object catch (error) {
-      _toast('Export failed: $error');
+      _toast(currentL.freeSketchExportFailed('$error'));
     } finally {
       if (mounted) setState(() => _exporting = false);
       _focus.requestFocus();
@@ -255,6 +258,7 @@ class _SketchStudioState extends State<SketchStudio> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final narrow = MediaQuery.sizeOf(context).width < 720;
     final layersExpanded = _layersExpanded ?? !narrow;
     return Focus(
@@ -265,7 +269,7 @@ class _SketchStudioState extends State<SketchStudio> {
         color: luma.background,
         child: Column(
           children: [
-            if (!_hideUi) _topBar(luma, narrow),
+            if (!_hideUi) _topBar(luma, narrow, t),
             Expanded(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -363,7 +367,7 @@ class _SketchStudioState extends State<SketchStudio> {
                                           children: [
                                             const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
                                             const SizedBox(width: 10),
-                                            Text(_exporting ? 'Exporting…' : 'Filling…', style: TextStyle(color: luma.textPrimary)),
+                                            Text(_exporting ? t.freeSketchExporting : t.freeSketchFilling, style: TextStyle(color: luma.textPrimary)),
                                           ],
                                         ),
                                       ),
@@ -378,7 +382,7 @@ class _SketchStudioState extends State<SketchStudio> {
                             right: 8,
                             child: StudioIconButton(
                               icon: Icons.fullscreen_exit_rounded,
-                              tooltip: 'Show interface (Tab)',
+                              tooltip: t.freeSketchShowInterfaceTip,
                               onTap: () => setState(() => _hideUi = false),
                             ),
                           ),
@@ -411,7 +415,7 @@ class _SketchStudioState extends State<SketchStudio> {
     );
   }
 
-  Widget _topBar(LumaPalette luma, bool narrow) {
+  Widget _topBar(LumaPalette luma, bool narrow, L t) {
     return Container(
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -427,7 +431,7 @@ class _SketchStudioState extends State<SketchStudio> {
             children: [
               StudioIconButton(
                 icon: Icons.arrow_back_rounded,
-                tooltip: 'Back to gallery',
+                tooltip: t.freeSketchBackToGallery,
                 onTap: () => unawaited(widget.onClose()),
               ),
               const SizedBox(width: 4),
@@ -448,7 +452,7 @@ class _SketchStudioState extends State<SketchStudio> {
                           style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700, fontSize: 13.5),
                         ),
                         Text(
-                          '${c.width} × ${c.height} · ${c.saving ? 'Saving…' : c.dirty ? 'Edited' : 'Saved'}',
+                          '${c.width} × ${c.height} · ${c.saving ? t.freeSketchSaving : c.dirty ? t.freeSketchEdited : t.commonSaved}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(color: luma.textMuted, fontSize: 11),
@@ -461,7 +465,7 @@ class _SketchStudioState extends State<SketchStudio> {
               if (!narrow) ...[
                 const SizedBox(width: 8),
                 Tooltip(
-                  message: 'Fit to screen (Ctrl+0)',
+                  message: t.freeSketchFitToScreenShortcut,
                   child: ActionChip(
                     label: Text('${(c.view.zoom * 100).round()}%'),
                     visualDensity: VisualDensity.compact,
@@ -473,25 +477,25 @@ class _SketchStudioState extends State<SketchStudio> {
               if (c.view.rotation != 0)
                 StudioIconButton(
                   icon: Icons.screen_rotation_alt_rounded,
-                  tooltip: 'Reset rotation (${(c.view.rotation * 180 / math.pi).round()}°)',
+                  tooltip: t.freeSketchResetRotationTip('${(c.view.rotation * 180 / math.pi).round()}'),
                   onTap: c.view.resetRotation,
                 ),
               if (c.view.mirrored)
                 StudioIconButton(
                   icon: Icons.flip_rounded,
-                  tooltip: 'View is mirrored — tap to unflip (H)',
+                  tooltip: t.freeSketchViewMirroredTip,
                   selected: true,
                   onTap: c.view.toggleMirror,
                 ),
               const Spacer(),
               StudioIconButton(
                 icon: Icons.undo_rounded,
-                tooltip: document.undoLabel == null ? 'Undo (Ctrl+Z)' : 'Undo ${document.undoLabel} (Ctrl+Z)',
+                tooltip: document.undoLabel == null ? t.freeSketchUndoTip : t.freeSketchUndoLabelTip('${document.undoLabel}'),
                 onTap: document.canUndo || c.transform != null ? c.undo : null,
               ),
               StudioIconButton(
                 icon: Icons.redo_rounded,
-                tooltip: document.redoLabel == null ? 'Redo (Ctrl+Shift+Z)' : 'Redo ${document.redoLabel}',
+                tooltip: document.redoLabel == null ? t.freeSketchRedoTip : t.freeSketchRedoLabelTip('${document.redoLabel}'),
                 onTap: document.canRedo ? c.redo : null,
               ),
               if (!narrow) ...[
@@ -503,14 +507,14 @@ class _SketchStudioState extends State<SketchStudio> {
                 _exportMenu(),
                 StudioIconButton(
                   icon: Icons.tune_rounded,
-                  tooltip: 'Pen & input settings',
+                  tooltip: t.freeSketchPenSettings,
                   selected: _panel == _Panel.settings,
                   onTap: () => _togglePanel(_Panel.settings),
                 ),
               ] else ...[
                 StudioIconButton(
                   icon: Icons.layers_rounded,
-                  tooltip: 'Layers',
+                  tooltip: t.freeSketchLayersTitle,
                   selected: _layersExpanded ?? false,
                   onTap: () => setState(() => _layersExpanded = !(_layersExpanded ?? false)),
                 ),
@@ -549,9 +553,10 @@ class _SketchStudioState extends State<SketchStudio> {
 
   Widget _symmetryMenu() {
     final s = c.symmetry;
+    final t = L.of(context);
     return _menu<String>(
       icon: Icons.flip_rounded,
-      tooltip: 'Symmetry',
+      tooltip: t.freeSketchSymmetryTip,
       selected: s.enabled,
       onSelected: (value) {
         if (value.startsWith('mode:')) {
@@ -567,15 +572,15 @@ class _SketchStudioState extends State<SketchStudio> {
       },
       items: () => [
         for (final mode in SymmetryMode.values)
-          CheckedPopupMenuItem(value: 'mode:${mode.name}', checked: s.mode == mode, child: Text(mode.label)),
+          CheckedPopupMenuItem(value: 'mode:${mode.name}', checked: s.mode == mode, child: Text(mode.label(t))),
         const PopupMenuDivider(),
         for (final n in const [3, 4, 6, 8, 12, 16])
           CheckedPopupMenuItem(
             value: 'segments:$n',
             checked: s.mode == SymmetryMode.radial && s.segments == n,
-            child: Text('Radial × $n'),
+            child: Text(t.freeSketchRadialSegments(n)),
           ),
-        CheckedPopupMenuItem(value: 'mirror', checked: s.mirrorRadial, child: const Text('Mirror radial copies')),
+        CheckedPopupMenuItem(value: 'mirror', checked: s.mirrorRadial, child: Text(t.freeSketchMirrorRadialCopies)),
       ],
     );
   }
@@ -584,9 +589,10 @@ class _SketchStudioState extends State<SketchStudio> {
   /// a phone has room for about five icons next to the title.
   Widget _phoneMenu() {
     final s = c.symmetry;
+    final t = L.of(context);
     return _menu<String>(
       icon: Icons.more_vert_rounded,
-      tooltip: 'More',
+      tooltip: t.commonMore,
       onSelected: (value) {
         final (group, name) = switch (value.split(':')) {
           [final g, final n] => (g, n),
@@ -624,39 +630,41 @@ class _SketchStudioState extends State<SketchStudio> {
         }
       },
       items: () => [
-        const PopupMenuItem(value: 'view:fit', child: Text('Fit to screen')),
-        CheckedPopupMenuItem(value: 'view:mirror', checked: c.view.mirrored, child: const Text('Mirror view')),
-        const PopupMenuItem(value: 'view:rotation', child: Text('Reset rotation')),
+        PopupMenuItem(value: 'view:fit', child: Text(t.freeSketchFitToScreen)),
+        CheckedPopupMenuItem(value: 'view:mirror', checked: c.view.mirrored, child: Text(t.freeSketchMirrorView)),
+        PopupMenuItem(value: 'view:rotation', child: Text(t.freeSketchResetRotation)),
         const PopupMenuDivider(),
         for (final mode in SymmetryMode.values)
           CheckedPopupMenuItem(
             value: 'sym:${mode.name}',
             checked: s.mode == mode,
-            child: Text('Symmetry: ${mode.label}'),
+            child: Text(t.freeSketchSymmetryMode(mode.label(t))),
           ),
         const PopupMenuDivider(),
-        for (final kind in AdjustmentKind.values) PopupMenuItem(value: 'adj:${kind.name}', child: Text(kind.label)),
+        for (final kind in AdjustmentKind.values) PopupMenuItem(value: 'adj:${kind.name}', child: Text(kind.label(t))),
         const PopupMenuDivider(),
-        const PopupMenuItem(value: 'canvas:import', child: Text('Import image as layer…')),
-        const PopupMenuItem(value: 'canvas:flipH', child: Text('Flip canvas horizontally')),
-        const PopupMenuItem(value: 'canvas:flipV', child: Text('Flip canvas vertically')),
+        PopupMenuItem(value: 'canvas:import', child: Text(t.freeSketchImportImageAsLayer)),
+        PopupMenuItem(value: 'canvas:flipH', child: Text(t.freeSketchCanvasFlipH)),
+        PopupMenuItem(value: 'canvas:flipV', child: Text(t.freeSketchCanvasFlipV)),
         CheckedPopupMenuItem(
           value: 'canvas:background',
           checked: !c.state.showBackground,
-          child: const Text('Transparent background'),
+          child: Text(t.freeSketchBackgroundTransparentTip),
         ),
         const PopupMenuDivider(),
         for (final format in SketchExportFormat.values)
-          PopupMenuItem(value: 'export:${format.name}', child: Text('Export ${format.label} (.${format.extension})')),
+          PopupMenuItem(value: 'export:${format.name}', child: Text(t.freeSketchExportFormatLabel(format.label, format.extension))),
         const PopupMenuDivider(),
-        const PopupMenuItem(value: 'settings', child: Text('Pen & input settings')),
+        PopupMenuItem(value: 'settings', child: Text(t.freeSketchPenSettings)),
       ],
     );
   }
 
-  Widget _viewMenu() => _menu<String>(
+  Widget _viewMenu() {
+    final t = L.of(context);
+    return _menu<String>(
         icon: Icons.visibility_outlined,
-        tooltip: 'View',
+        tooltip: t.freeSketchViewMenu,
         onSelected: (value) {
           switch (value) {
             case 'fit':
@@ -672,26 +680,27 @@ class _SketchStudioState extends State<SketchStudio> {
           }
         },
         items: () => [
-          const PopupMenuItem(value: 'fit', child: Text('Fit to screen   Ctrl+0')),
-          const PopupMenuItem(value: 'actual', child: Text('Actual pixels   Ctrl+1')),
-          CheckedPopupMenuItem(value: 'mirror', checked: c.view.mirrored, child: const Text('Mirror view   H')),
-          const PopupMenuItem(value: 'rotation', child: Text('Reset rotation')),
-          const PopupMenuItem(value: 'hide', child: Text('Hide interface   Tab')),
+          PopupMenuItem(value: 'fit', child: Text(t.freeSketchViewFitMenu)),
+          PopupMenuItem(value: 'actual', child: Text(t.freeSketchViewActualMenu)),
+          CheckedPopupMenuItem(value: 'mirror', checked: c.view.mirrored, child: Text(t.freeSketchViewMirrorMenu)),
+          PopupMenuItem(value: 'rotation', child: Text(t.freeSketchResetRotation)),
+          PopupMenuItem(value: 'hide', child: Text(t.freeSketchViewHideMenu)),
         ],
       );
+  }
 
   Widget _adjustMenu() => _menu<AdjustmentKind>(
         icon: Icons.auto_fix_high_rounded,
-        tooltip: 'Adjustments',
+        tooltip: L.of(context).freeSketchAdjustmentsTip,
         onSelected: _adjust,
         items: () => [
-          for (final kind in AdjustmentKind.values) PopupMenuItem(value: kind, child: Text(kind.label)),
+          for (final kind in AdjustmentKind.values) PopupMenuItem(value: kind, child: Text(kind.label(L.of(context)))),
         ],
       );
 
   Widget _canvasMenu() => _menu<String>(
         icon: Icons.crop_rounded,
-        tooltip: 'Canvas',
+        tooltip: L.of(context).freeSketchCanvasMenu,
         onSelected: (value) {
           switch (value) {
             case 'import':
@@ -705,21 +714,21 @@ class _SketchStudioState extends State<SketchStudio> {
           }
         },
         items: () => [
-          const PopupMenuItem(value: 'import', child: Text('Import image as layer…')),
+          PopupMenuItem(value: 'import', child: Text(L.of(context).freeSketchImportImageAsLayer)),
           const PopupMenuDivider(),
-          const PopupMenuItem(value: 'flipH', child: Text('Flip canvas horizontally')),
-          const PopupMenuItem(value: 'flipV', child: Text('Flip canvas vertically')),
+          PopupMenuItem(value: 'flipH', child: Text(L.of(context).freeSketchCanvasFlipH)),
+          PopupMenuItem(value: 'flipV', child: Text(L.of(context).freeSketchCanvasFlipV)),
           CheckedPopupMenuItem(
             value: 'background',
             checked: !c.state.showBackground,
-            child: const Text('Transparent background'),
+            child: Text(L.of(context).freeSketchBackgroundTransparentTip),
           ),
         ],
       );
 
   Widget _exportMenu() => _menu<SketchExportFormat>(
         icon: Icons.ios_share_rounded,
-        tooltip: 'Export',
+        tooltip: L.of(context).commonExport,
         onSelected: (format) => unawaited(_export(format)),
         items: () => [
           for (final format in SketchExportFormat.values)
@@ -747,6 +756,7 @@ class _ToolRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       width: 60,
       decoration: BoxDecoration(
@@ -770,7 +780,7 @@ class _ToolRail extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(vertical: 1),
                         child: StudioIconButton(
                           icon: tool.icon,
-                          tooltip: tool.usesBrush && tool == c.tool ? '${tool.tooltip} — tap again for brushes' : tool.tooltip,
+                          tooltip: tool.usesBrush && tool == c.tool ? t.freeSketchToolTapAgainBrushes(tool.tooltip) : tool.tooltip,
                           selected: c.tool == tool,
                           size: 42,
                           onTap: () => onTool(tool),
@@ -778,7 +788,7 @@ class _ToolRail extends StatelessWidget {
                       ),
                     Divider(color: luma.border, height: 14, indent: 12, endIndent: 12),
                     Tooltip(
-                      message: 'Colour',
+                      message: t.freeSketchColourTitle,
                       child: GestureDetector(
                         onTap: onColor,
                         child: SizedBox(
@@ -807,7 +817,7 @@ class _ToolRail extends StatelessWidget {
                     if (c.tool.usesBrush) ...[
                       const SizedBox(height: 12),
                       VerticalSlider(
-                        label: 'Brush size',
+                        label: t.freeSketchBrushSize,
                         value: brush.size,
                         min: 1,
                         max: brush.maxSize,
@@ -823,7 +833,7 @@ class _ToolRail extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       VerticalSlider(
-                        label: 'Opacity',
+                        label: t.freeSketchLayerOpacity,
                         value: brush.opacity,
                         min: 0.01,
                         max: 1,
@@ -854,16 +864,17 @@ class _AdjustmentPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = controller;
+    final t = L.of(context);
     return StudioPanel(
       width: 300,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          PanelHeader(title: kind.label),
+          PanelHeader(title: kind.label(t)),
           for (final p in kind.params)
             LabeledSlider(
-              label: p.label,
+              label: p.label(t),
               value: c.adjustValues[p.key] ?? p.initial,
               min: p.min,
               max: p.max,
@@ -879,12 +890,12 @@ class _AdjustmentPanel extends StatelessWidget {
                     c.setAdjustValue(p.key, p.initial);
                   }
                 },
-                child: const Text('Reset'),
+                child: Text(t.commonReset),
               ),
               const Spacer(),
-              TextButton(onPressed: c.cancelAdjustment, child: const Text('Cancel')),
+              TextButton(onPressed: c.cancelAdjustment, child: Text(t.commonCancel)),
               const SizedBox(width: 6),
-              FilledButton(onPressed: c.applyAdjustment, child: const Text('Apply')),
+              FilledButton(onPressed: c.applyAdjustment, child: Text(t.commonApply)),
             ],
           ),
         ],
@@ -902,6 +913,7 @@ class _SettingsPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return ListenableBuilder(
       listenable: controller,
       builder: (context, _) {
@@ -912,9 +924,9 @@ class _SettingsPanel extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              PanelHeader(title: 'Pen & input', onClose: onClose),
+              PanelHeader(title: t.freeSketchPenInput, onClose: onClose),
               const SizedBox(height: 6),
-              Text('Pressure curve', style: TextStyle(color: luma.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+              Text(t.freeSketchPressureCurve, style: TextStyle(color: luma.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
               SizedBox(
                 height: 90,
@@ -924,10 +936,10 @@ class _SettingsPanel extends StatelessWidget {
               ),
               LabeledSlider(
                 label: c.pressureGamma < 0.95
-                    ? 'Soft — light touch goes further'
+                    ? t.freeSketchPressureSoft
                     : c.pressureGamma > 1.05
-                        ? 'Firm — press harder for full strength'
-                        : 'Linear',
+                        ? t.freeSketchPressureFirm
+                        : t.freeSketchPressureLinear,
                 value: -math.log(c.pressureGamma) / math.ln2,
                 min: -2,
                 max: 2,
@@ -940,14 +952,12 @@ class _SettingsPanel extends StatelessWidget {
                 dense: true,
                 value: c.stylusOnly,
                 onChanged: (v) => c.stylusOnly = v,
-                title: const Text('Draw with pen only'),
-                subtitle: const Text('Once a stylus is used, fingers pan and zoom instead of painting — palm rejection.'),
+                title: Text(t.freeSketchDrawPenOnly),
+                subtitle: Text(t.freeSketchPalmRejectionHint),
               ),
               const SizedBox(height: 6),
               Text(
-                'Shortcuts: B brush · E eraser · S smudge · G fill · D gradient · U shapes · L select · V transform · '
-                'I eyedropper · [ ] size · X swap colours · H mirror view · Space-drag pan · R-drag rotate · '
-                'Alt-click pick colour · Shift-click straight line · two-finger tap undo · three-finger tap redo.',
+                t.freeSketchShortcutsHelp,
                 style: TextStyle(color: luma.textMuted, fontSize: 11, height: 1.4),
               ),
             ],

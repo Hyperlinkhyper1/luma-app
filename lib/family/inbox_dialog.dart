@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app/widgets.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/luma_theme.dart';
 import 'family_api.dart';
 import 'family_repository.dart';
@@ -60,6 +61,7 @@ class _InboxDialogState extends State<_InboxDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Dialog(
       backgroundColor: luma.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
@@ -84,14 +86,13 @@ class _InboxDialogState extends State<_InboxDialog> {
                     final invites = widget.familyRepo.pendingInvites;
                     final messages = widget.familyRepo.messages;
                     if (invites.isEmpty && messages.isEmpty) {
-                      return const Center(
+                      return Center(
                         child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
+                          padding: const EdgeInsets.symmetric(vertical: 24),
                           child: LumaEmptyState(
                             icon: Icons.inbox_rounded,
-                            title: 'Nothing here yet',
-                            subtitle:
-                                'Messages from luma and family invites will show up here.',
+                            title: t.commonNothingHereYet,
+                            subtitle: t.familyInboxEmptySubtitle,
                           ),
                         ),
                       );
@@ -130,8 +131,8 @@ class _InboxDialogState extends State<_InboxDialog> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child:
-                      Text('Close', style: TextStyle(color: luma.textSecondary)),
+                  child: Text(t.commonClose,
+                      style: TextStyle(color: luma.textSecondary)),
                 ),
               ),
             ],
@@ -149,6 +150,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return ListenableBuilder(
       listenable: familyRepo,
       builder: (context, _) {
@@ -170,20 +172,20 @@ class _Header extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Inbox',
+                  Text(t.familyInboxTitle,
                       style: TextStyle(
                           color: luma.textPrimary,
                           fontSize: 18,
                           fontWeight: FontWeight.w700)),
                   if (count > 0)
-                    Text('$count pending invite${count == 1 ? '' : 's'}',
+                    Text(t.familyInboxPendingInvites(count),
                         style: TextStyle(
                             color: luma.textMuted, fontSize: 12)),
                 ],
               ),
             ),
             IconButton(
-              tooltip: 'Close',
+              tooltip: t.commonClose,
               icon: Icon(Icons.close_rounded,
                   size: 20, color: luma.textSecondary),
               onPressed: () => Navigator.of(context).pop(),
@@ -204,6 +206,7 @@ class _MessageCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final sent = DateTime.fromMillisecondsSinceEpoch(message.createdAtMs);
     return Container(
       padding: const EdgeInsets.all(16),
@@ -238,7 +241,7 @@ class _MessageCard extends StatelessWidget {
                               fontWeight: FontWeight.w700)),
                     ),
                     if (fresh)
-                      Text('New',
+                      Text(t.familyInboxNew,
                           style: TextStyle(
                               color: luma.accent,
                               fontSize: 11.5,
@@ -252,7 +255,7 @@ class _MessageCard extends StatelessWidget {
                 const SizedBox(height: 10),
                 _MetaItem(
                   icon: Icons.schedule_rounded,
-                  label: 'From luma · ${_formatDate(sent)}',
+                  label: t.familyInboxFromLuma(_formatDate(sent)),
                 ),
               ],
             ),
@@ -283,6 +286,7 @@ class _InviteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final created = DateTime.fromMillisecondsSinceEpoch(invite.createdAtMs);
     final expires = DateTime.fromMillisecondsSinceEpoch(invite.expiresAtMs);
     return Container(
@@ -321,7 +325,7 @@ class _InviteCard extends StatelessWidget {
                         size: 14, color: luma.textMuted),
                     const SizedBox(width: 4),
                     Flexible(
-                      child: Text('Invited by ${invite.inviterEmail}',
+                      child: Text(t.familyInboxInvitedBy(invite.inviterEmail),
                           style: TextStyle(
                               color: luma.textMuted, fontSize: 12.5),
                           overflow: TextOverflow.ellipsis),
@@ -335,11 +339,11 @@ class _InviteCard extends StatelessWidget {
                   children: [
                     _MetaItem(
                       icon: Icons.schedule_rounded,
-                      label: 'Sent ${_formatDate(created)}',
+                      label: t.familyInboxSentOn(_formatDate(created)),
                     ),
                     _MetaItem(
                       icon: Icons.event_busy_rounded,
-                      label: 'Expires ${_formatDate(expires)}',
+                      label: t.familyInboxExpiresOn(_formatDate(expires)),
                     ),
                   ],
                 ),
@@ -347,14 +351,14 @@ class _InviteCard extends StatelessWidget {
                 Row(
                   children: [
                     LumaPrimaryButton(
-                      label: 'Accept',
+                      label: t.familyInboxAccept,
                       icon: Icons.check_rounded,
                       loading: busy,
                       onTap: busy ? null : onAccept,
                     ),
                     const SizedBox(width: 8),
                     LumaGhostButton(
-                      label: 'Decline',
+                      label: t.familyInboxDecline,
                       onTap: busy ? null : onDecline,
                     ),
                   ],

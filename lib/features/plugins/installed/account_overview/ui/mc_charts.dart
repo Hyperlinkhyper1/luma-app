@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../mc_history.dart';
 import '../mc_models.dart';
@@ -10,15 +11,22 @@ import 'account_shared.dart';
 
 /// How far back a trend chart looks.
 enum McRange {
-  week('7D', 7),
-  month('30D', 30),
-  quarter('90D', 90),
-  year('1Y', 365),
-  all('All', 100000);
+  week(7),
+  month(30),
+  quarter(90),
+  year(365),
+  all(100000);
 
-  const McRange(this.label, this.days);
-  final String label;
+  const McRange(this.days);
   final int days;
+
+  String label(L t) => switch (this) {
+        McRange.week => '7D',
+        McRange.month => '30D',
+        McRange.quarter => '90D',
+        McRange.year => '1Y',
+        McRange.all => t.mcAll,
+      };
 }
 
 List<McDailyPoint> _within(List<McDailyPoint> points, McRange range) {
@@ -54,6 +62,7 @@ class McTrendChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final visible = _within(points, range);
 
     if (visible.length < 2) {
@@ -76,9 +85,13 @@ class McTrendChart extends StatelessWidget {
     final maxY = high + pad;
 
     return Semantics(
-      label: '${metric.label} from ${formatDate(visible.first.day)} to '
-          '${formatDate(visible.last.day)}: '
-          '${formatCount(low)} up to ${formatCount(high)}',
+      label: t.mcChartSemantics(
+        metric.label(t),
+        formatDate(visible.first.day),
+        formatDate(visible.last.day),
+        formatCount(low),
+        formatCount(high),
+      ),
       excludeSemantics: true,
       child: LineChart(
         duration:
@@ -159,7 +172,7 @@ class McTrendChart extends StatelessWidget {
               getTooltipItems: (spots) => [
                 for (final spot in spots)
                   LineTooltipItem(
-                    '${formatCount(spot.y)} ${metric.label.toLowerCase()}\n'
+                    '${t.mcChartValueWithMetric(formatCount(spot.y), metric.label(t).toLowerCase())}\n'
                     '${formatDate(DateTime.fromMillisecondsSinceEpoch(spot.x.toInt()))}',
                     TextStyle(
                       color: luma.textPrimary,
@@ -207,17 +220,20 @@ class McTrendChart extends StatelessWidget {
 
 /// Which number a chart is drawing.
 enum McMetric {
-  downloads('Downloads'),
-  followers('Followers'),
-  views('Views');
-
-  const McMetric(this.label);
-  final String label;
+  downloads,
+  followers,
+  views;
 
   int read(McDailyPoint point) => switch (this) {
         McMetric.downloads => point.downloads,
         McMetric.followers => point.followers,
         McMetric.views => point.views,
+      };
+
+  String label(L t) => switch (this) {
+        McMetric.downloads => t.mcMetricDownloads,
+        McMetric.followers => t.mcMetricFollowers,
+        McMetric.views => t.mcMetricViews,
       };
 
   Color color(BuildContext context) {
@@ -280,6 +296,7 @@ class McDailyGainChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final visible = _deltasWithin(deltas, range);
 
     if (visible.isEmpty) return _CollectingState(pointCount: visible.length);
@@ -291,8 +308,7 @@ class McDailyGainChart extends StatelessWidget {
     final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
 
     return Semantics(
-      label: 'Daily gain over ${visible.length} days, '
-          'peaking at ${formatCount(maxY)}',
+      label: t.mcGainSemantics(visible.length, formatCount(maxY)),
       excludeSemantics: true,
       child: BarChart(
         duration:
@@ -369,7 +385,7 @@ class McDailyGainChart extends StatelessWidget {
                 final topProjects = (projectBreakdown[day] ?? const [])
                     .take(5);
                 return BarTooltipItem(
-                  '+${formatCount(rod.toY)} downloads\n${formatDate(day)}',
+                  '${t.mcGainTooltip(formatCount(rod.toY))}\n${formatDate(day)}',
                   TextStyle(
                     color: luma.textPrimary,
                     fontSize: 12,
@@ -429,6 +445,7 @@ class _CollectingState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
@@ -438,9 +455,7 @@ class _CollectingState extends StatelessWidget {
             Icon(Icons.timeline_rounded, size: 26, color: luma.textMuted),
             const SizedBox(height: 10),
             Text(
-              pointCount == 0
-                  ? 'No history yet'
-                  : 'One day recorded so far',
+              pointCount == 0 ? t.mcChartNoHistory : t.mcChartOneDay,
               style: TextStyle(
                 color: luma.textSecondary,
                 fontSize: 13,
@@ -449,9 +464,7 @@ class _CollectingState extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'These platforms publish a running total and no history, so '
-              'luma records one point per day. The line appears once there '
-              'are two.',
+              t.mcChartCollecting,
               textAlign: TextAlign.center,
               style:
                   TextStyle(color: luma.textMuted, fontSize: 11.5, height: 1.5),

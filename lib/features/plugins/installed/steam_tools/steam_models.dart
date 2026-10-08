@@ -1,3 +1,4 @@
+import '../../../../l10n/current_l.dart';
 import 'steam_requirements.dart';
 
 /// Steam's image CDN. Every capsule below is addressable from the app id
@@ -62,7 +63,7 @@ class SteamLibraryGame {
 
   /// "12.5 h" / "40 min" / "Never played".
   String get playtimeLabel {
-    if (playtimeMinutes <= 0) return 'Never played';
+    if (playtimeMinutes <= 0) return currentL.steamLibraryNeverPlayed;
     if (playtimeMinutes < 60) return '$playtimeMinutes min';
     final hours = playtimeMinutes / 60;
     if (hours < 10) return '${hours.toStringAsFixed(1)} h';

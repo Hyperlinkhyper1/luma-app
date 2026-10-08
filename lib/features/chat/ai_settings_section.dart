@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/widgets.dart';
 import '../../l10n/app_localizations.dart';
+import '../../l10n/current_l.dart';
 import '../../settings/settings_controller.dart';
 import '../../settings/settings_scope.dart';
 import '../../sync/sync_scope.dart';
@@ -40,8 +41,7 @@ class AiSettingsSection extends StatelessWidget {
             const _LocalModelBody()
           else if (settings.aiProviderId == AiProviderId.local.name)
             Text(
-              'The on-device model is not available on iOS. Pick another '
-              'model above.',
+              L.of(context).aiSettingsLocalNotAvailableIos,
               style: TextStyle(color: context.luma.textMuted, fontSize: 12),
             )
           else
@@ -78,13 +78,7 @@ class _RetentionNotice extends StatelessWidget {
           const SizedBox(width: 9),
           Expanded(
             child: Text(
-              'Hosted model Zero Data Retention must be enabled on the '
-              'provider account behind the API key, including a shared server '
-              'key. Luma cannot switch or verify that account setting. OpenAI '
-              'requests disable response storage, but that does not replace '
-              'provider approval. Mistral uses its stateless chat endpoint. '
-              'On-device Qwen sends no prompts to a model provider; Luma still '
-              'saves chat history on this device.',
+              L.of(context).aiSettingsRetentionNotice,
               style: TextStyle(
                 color: luma.textMuted,
                 fontSize: 11.5,
@@ -133,6 +127,7 @@ class _LocalModelBodyState extends State<_LocalModelBody> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return ListenableBuilder(
       listenable: _store,
       builder: (context, _) => LumaCard(
@@ -144,7 +139,7 @@ class _LocalModelBodyState extends State<_LocalModelBody> {
                 Icon(Icons.phone_android_rounded, size: 17, color: luma.accent),
                 const SizedBox(width: 8),
                 Text(
-                  'Luma Assistant · ${LocalModelStore.modelDisplayName} on-device',
+                  t.aiSettingsLocalModelTitle(LocalModelStore.modelDisplayName),
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 13,
@@ -155,7 +150,7 @@ class _LocalModelBodyState extends State<_LocalModelBody> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Download the ${LocalModelStore.modelSizeLabel} model once to use the Assistant offline. Prompts run on this device; online actions such as plugin downloads and market prices still need internet. Qwen is provided under Apache-2.0.',
+              t.aiSettingsLocalModelBlurb(LocalModelStore.modelSizeLabel),
               style: TextStyle(
                 color: luma.textMuted,
                 fontSize: 11.5,
@@ -168,14 +163,16 @@ class _LocalModelBodyState extends State<_LocalModelBody> {
               const SizedBox(height: 5),
               Text(
                 _store.progress == null
-                    ? 'Downloading model…'
-                    : 'Downloading model… ${(_store.progress! * 100).toStringAsFixed(0)}%',
+                    ? t.aiSettingsDownloadingModel
+                    : t.aiSettingsDownloadingModelPercent(
+                        (_store.progress! * 100).toStringAsFixed(0),
+                      ),
                 style: TextStyle(color: luma.textMuted, fontSize: 11),
               ),
             ] else if (_store.error != null) ...[
               const SizedBox(height: 10),
               Text(
-                'Download failed: ${_store.error}',
+                t.aiSettingsDownloadFailed('${_store.error}'),
                 style: TextStyle(color: luma.danger, fontSize: 11.5),
               ),
             ],
@@ -191,14 +188,14 @@ class _LocalModelBodyState extends State<_LocalModelBody> {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      'Model downloaded and ready',
+                      t.aiSettingsModelReady,
                       style: TextStyle(color: luma.textPrimary, fontSize: 12),
                     ),
                   ),
                   TextButton.icon(
                     onPressed: _remove,
                     icon: const Icon(Icons.delete_outline_rounded, size: 16),
-                    label: const Text('Remove'),
+                    label: Text(t.commonRemove),
                   ),
                 ],
               )
@@ -206,7 +203,7 @@ class _LocalModelBodyState extends State<_LocalModelBody> {
               FilledButton.icon(
                 onPressed: _store.isDownloading ? null : _download,
                 icon: const Icon(Icons.download_rounded, size: 18),
-                label: const Text('Download model'),
+                label: Text(t.aiSettingsDownloadModel),
               ),
           ],
         ),
@@ -244,6 +241,7 @@ class _ModelUsageSectionState extends State<_ModelUsageSection> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     final rows =
         kModelUsageEntries
@@ -264,7 +262,7 @@ class _ModelUsageSectionState extends State<_ModelUsageSection> {
               Icon(Icons.bar_chart_rounded, size: 16, color: luma.accent),
               const SizedBox(width: 8),
               Text(
-                'Model usage',
+                t.aiSettingsModelUsage,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 13,
@@ -275,7 +273,7 @@ class _ModelUsageSectionState extends State<_ModelUsageSection> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Successful messages sent with each model on this device.',
+            t.aiSettingsModelUsageSubtitle,
             style: TextStyle(
               color: luma.textMuted,
               fontSize: 11.5,
@@ -285,7 +283,7 @@ class _ModelUsageSectionState extends State<_ModelUsageSection> {
           const SizedBox(height: 14),
           if (rows.isEmpty)
             Text(
-              'No messages sent yet.',
+              t.aiSettingsNoMessagesYet,
               style: TextStyle(color: luma.textMuted, fontSize: 12),
             )
           else
@@ -325,7 +323,7 @@ class _UsageRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final messages = '$count message${count == 1 ? '' : 's'}';
+    final messages = L.of(context).assistantUsageMessageCount(count);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -514,7 +512,7 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
       _savedMasked = _mask(value);
       _fromServer = false;
     });
-    _showSnack('API key saved.');
+    _showSnack(currentL.aiSettingsKeySaved);
   }
 
   Future<void> _testConnection() async {
@@ -538,7 +536,7 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
       }
     }
     if (key == null || key.isEmpty) {
-      _showSnack('Enter an API key first.');
+      _showSnack(currentL.aiSettingsEnterKeyFirst);
       return;
     }
     setState(() => _testing = true);
@@ -561,11 +559,11 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
           feature: 'Key test',
         );
       }
-      _showSnack('Connection works.');
+      _showSnack(currentL.aiSettingsConnectionWorks);
     } on AiError catch (e) {
       _showSnack(e.message);
     } catch (e) {
-      _showSnack('Could not verify the key: $e');
+      _showSnack(currentL.aiSettingsCouldNotVerifyKey('$e'));
     } finally {
       if (mounted) setState(() => _testing = false);
     }
@@ -573,6 +571,7 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
 
   Future<void> _clear() async {
     final luma = context.luma;
+    final t = L.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -582,22 +581,21 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
           side: BorderSide(color: luma.border),
         ),
         title: Text(
-          'Remove API key?',
+          t.aiSettingsRemoveKeyTitle,
           style: TextStyle(color: luma.textPrimary),
         ),
         content: Text(
-          'You won\'t be able to chat with ${_provider.displayName} until '
-          'you add another key.',
+          t.aiSettingsRemoveKeyBody(_provider.displayName),
           style: TextStyle(color: luma.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+            child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text('Remove', style: TextStyle(color: luma.danger)),
+            child: Text(t.commonRemove, style: TextStyle(color: luma.danger)),
           ),
         ],
       ),
@@ -610,7 +608,7 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
       _savedMasked = null;
       _fromServer = false;
     });
-    _showSnack('API key removed.');
+    _showSnack(currentL.aiSettingsKeyRemoved);
   }
 
   void _showSnack(String message) {
@@ -623,6 +621,7 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return FutureBuilder<void>(
       future: _load,
       builder: (context, _) => LumaCard(
@@ -651,7 +650,7 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
                   Icon(Icons.cloud_done_rounded, size: 16, color: luma.accent),
                   const SizedBox(width: 8),
                   Text(
-                    'Shared key available from your sync server',
+                    t.aiSettingsSharedKeyAvailable,
                     style: TextStyle(
                       color: luma.textPrimary,
                       fontSize: 13,
@@ -669,9 +668,9 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
               decoration: InputDecoration(
                 isDense: true,
                 hintText: _savedMasked != null
-                    ? 'Enter a new key to replace it'
+                    ? t.aiSettingsHintReplaceKey
                     : _fromServer
-                    ? 'Enter your own key to override the shared one'
+                    ? t.aiSettingsHintOverrideSharedKey
                     : _provider.keyHint,
                 hintStyle: TextStyle(color: luma.textMuted),
                 filled: true,
@@ -709,19 +708,19 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
               runSpacing: 10,
               children: [
                 LumaPrimaryButton(
-                  label: 'Save',
+                  label: t.commonSave,
                   icon: Icons.save_rounded,
                   loading: _saving,
                   onTap: _save,
                 ),
                 LumaGhostButton(
-                  label: 'Test connection',
+                  label: t.aiSettingsTestConnection,
                   icon: Icons.wifi_tethering_rounded,
                   onTap: _testing ? null : _testConnection,
                 ),
                 if (_savedMasked != null)
                   LumaGhostButton(
-                    label: 'Remove key',
+                    label: t.aiSettingsRemoveKey,
                     icon: Icons.delete_outline_rounded,
                     onTap: _clear,
                   ),
@@ -730,15 +729,8 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
             const SizedBox(height: 12),
             Text(
               _fromServer
-                  ? 'Your sync server\'s admin has configured a shared '
-                        '${_provider.displayName} key, so you don\'t need one — '
-                        'chats are relayed through your sync server, which '
-                        'holds the key; it\'s never sent to this device. Enter '
-                        'your own key above to bypass the server and talk to '
-                        '${_provider.displayName} directly instead.'
-                  : 'Stored locally on this device only, encrypted at rest. '
-                        'Sent directly to ${_provider.displayName} when you '
-                        'chat — never to any luma server.',
+                  ? t.aiSettingsSharedKeyExplanation(_provider.displayName)
+                  : t.aiSettingsLocalKeyExplanation(_provider.displayName),
               style: TextStyle(
                 color: luma.textMuted,
                 fontSize: 11.5,

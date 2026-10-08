@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../airline_game_state.dart';
 import 'money.dart';
@@ -20,6 +21,7 @@ class AwayReportSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final profitable = report.netProfitEur >= 0;
 
     return SafeArea(
@@ -62,7 +64,7 @@ class AwayReportSheet extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'While you were away',
+                        t.airlineAwayTitle,
                         style: TextStyle(
                           color: luma.textPrimary,
                           fontSize: 17,
@@ -70,9 +72,10 @@ class AwayReportSheet extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '${fmtDuration(report.awayFor)} away · '
-                        '${report.daysSimulated} day'
-                        '${report.daysSimulated == 1 ? '' : 's'} flown',
+                        t.airlineAwayDuration(
+                          fmtDuration(report.awayFor),
+                          report.daysSimulated,
+                        ),
                         style: TextStyle(
                           color: luma.textSecondary,
                           fontSize: 12,
@@ -94,7 +97,7 @@ class AwayReportSheet extends StatelessWidget {
               ),
             ),
             Text(
-              profitable ? 'earned' : 'lost',
+              profitable ? t.airlineAwayEarned : t.airlineAwayLost,
               style: TextStyle(color: luma.textMuted, fontSize: 12),
             ),
             const SizedBox(height: 16),
@@ -102,14 +105,20 @@ class AwayReportSheet extends StatelessWidget {
               spacing: 24,
               runSpacing: 10,
               children: [
-                _Stat(label: 'Income', value: fmtMoney(report.incomeEur)),
-                _Stat(label: 'Costs', value: fmtMoney(report.costEur)),
                 _Stat(
-                  label: 'Passengers',
+                  label: t.airlineAwayIncome,
+                  value: fmtMoney(report.incomeEur),
+                ),
+                _Stat(
+                  label: t.airlineAwayCosts,
+                  value: fmtMoney(report.costEur),
+                ),
+                _Stat(
+                  label: t.airlineAwayPassengers,
                   value: fmtCount(report.passengers),
                 ),
                 _Stat(
-                  label: 'Offline rate',
+                  label: t.airlineAwayOfflineRate,
                   value: '${(report.rate * 100).round()}%',
                 ),
               ],
@@ -124,9 +133,10 @@ class AwayReportSheet extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      '${report.daysElapsed} days went by, but an absence pays '
-                      'for at most ${AirlineGameState.maxOfflineDays}. The rest '
-                      'were not flown.',
+                      t.airlineAwayCapped(
+                        report.daysElapsed,
+                        AirlineGameState.maxOfflineDays,
+                      ),
                       style: TextStyle(color: luma.warning, fontSize: 12),
                     ),
                   ),
@@ -164,7 +174,7 @@ class AwayReportSheet extends StatelessWidget {
             // Pinned outside the scroll view so the way out of the sheet is
             // always on screen, however long the report runs.
             LumaPrimaryButton(
-              label: 'Back to work',
+              label: t.airlineBackToWork,
               expand: true,
               onTap: onDismiss,
             ),

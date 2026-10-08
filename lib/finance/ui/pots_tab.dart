@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/widgets.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/luma_theme.dart';
 import '../data/database.dart';
 import '../finance_repository.dart';
@@ -61,6 +62,7 @@ class PotsTab extends StatelessWidget {
             stream: repo.watchTransactions(),
             builder: (context, txns) {
               final balances = computeBalances(txns);
+              final t = L.of(context);
               return Padding(
                 padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
                 child: Column(
@@ -73,14 +75,16 @@ class PotsTab extends StatelessWidget {
                       runSpacing: 8,
                       children: [
                         Text(
-                          'Available to allocate: ${formatCents(balances.mainCents)}',
+                          t.financePotsAvailableToAllocate(
+                            formatCents(balances.mainCents),
+                          ),
                           style: TextStyle(
                             color: context.luma.textSecondary,
                             fontSize: 13,
                           ),
                         ),
                         LumaPrimaryButton(
-                          label: 'New pot',
+                          label: t.financePotsNewPot,
                           icon: Icons.add_rounded,
                           onTap: () => _openEditor(context, repo),
                         ),
@@ -91,9 +95,8 @@ class PotsTab extends StatelessWidget {
                       child: pots.isEmpty
                           ? LumaEmptyState(
                               icon: Icons.savings_rounded,
-                              title: 'No pots yet',
-                              subtitle:
-                                  'Create pots like "Rent", "Groceries" or "Holiday" to divide your money.',
+                              title: t.financePotsEmptyTitle,
+                              subtitle: t.financePotsEmptySubtitle,
                             )
                           : ListView(
                               children: [
@@ -153,6 +156,7 @@ class _PotCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
@@ -210,12 +214,17 @@ class _PotCard extends StatelessWidget {
                       }
                     },
                     itemBuilder: (context) => [
-                      _menuItem('add', Icons.add_rounded, 'Add money', luma),
-                      _menuItem('edit', Icons.edit_rounded, 'Edit', luma),
+                      _menuItem(
+                        'add',
+                        Icons.add_rounded,
+                        t.financePotsAddMoney,
+                        luma,
+                      ),
+                      _menuItem('edit', Icons.edit_rounded, t.commonEdit, luma),
                       _menuItem(
                         'delete',
                         Icons.delete_outline_rounded,
-                        'Delete',
+                        t.commonDelete,
                         luma,
                         danger: true,
                       ),
@@ -225,7 +234,7 @@ class _PotCard extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'Balance',
+                t.financePotsBalance,
                 style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
               const SizedBox(height: 2),
@@ -279,26 +288,30 @@ Future<void> _confirmDelete(
   Pot pot,
 ) async {
   final luma = context.luma;
+  final t = L.of(context);
   final ok = await showDialog<bool>(
     context: context,
     builder: (_) => AlertDialog(
       backgroundColor: luma.surface,
       title: Text(
-        'Delete "${pot.name}"?',
+        t.financePotsDeleteTitle(pot.name),
         style: TextStyle(color: luma.textPrimary),
       ),
       content: Text(
-        'Entries assigned to this pot will move back to your main balance.',
+        t.financePotsDeleteBody,
         style: TextStyle(color: luma.textSecondary),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(
+            t.commonCancel,
+            style: TextStyle(color: luma.textSecondary),
+          ),
         ),
         TextButton(
           onPressed: () => Navigator.pop(context, true),
-          child: Text('Delete', style: TextStyle(color: luma.danger)),
+          child: Text(t.commonDelete, style: TextStyle(color: luma.danger)),
         ),
       ],
     ),
@@ -313,12 +326,13 @@ Future<void> _openAddMoney(
 ) {
   final controller = TextEditingController();
   final luma = context.luma;
+  final t = L.of(context);
   return showDialog<void>(
     context: context,
     builder: (dialogContext) => AlertDialog(
       backgroundColor: luma.surface,
       title: Text(
-        'Add money to "${pot.name}"',
+        t.financePotsAddMoneyTitle(pot.name),
         style: TextStyle(color: luma.textPrimary, fontSize: 17),
       ),
       content: TextField(
@@ -336,7 +350,10 @@ Future<void> _openAddMoney(
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(dialogContext),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(
+            t.commonCancel,
+            style: TextStyle(color: luma.textSecondary),
+          ),
         ),
         TextButton(
           onPressed: () async {
@@ -346,7 +363,7 @@ Future<void> _openAddMoney(
             }
             if (dialogContext.mounted) Navigator.pop(dialogContext);
           },
-          child: Text('Add', style: TextStyle(color: luma.accent)),
+          child: Text(t.commonAdd, style: TextStyle(color: luma.accent)),
         ),
       ],
     ),
@@ -409,7 +426,7 @@ class _PotEditorState extends State<_PotEditor> {
     final goalText = _goal.text.trim();
     final goal = goalText.isEmpty ? null : parseToCents(goalText);
     if (goalText.isNotEmpty && (goal == null || goal <= 0)) {
-      setState(() => _error = 'The goal has to be an amount above €0.');
+      setState(() => _error = L.of(context).financePotsGoalNotPositive);
       return;
     }
     final int potId;
@@ -436,6 +453,7 @@ class _PotEditorState extends State<_PotEditor> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return SingleChildScrollView(
       padding: const EdgeInsets.all(22),
       child: Column(
@@ -443,7 +461,7 @@ class _PotEditorState extends State<_PotEditor> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            widget.pot == null ? 'New pot' : 'Edit pot',
+            widget.pot == null ? t.financePotsNewPot : t.financePotsEditPot,
             style: TextStyle(
               color: luma.textPrimary,
               fontSize: 18,
@@ -456,7 +474,7 @@ class _PotEditorState extends State<_PotEditor> {
             autofocus: true,
             style: TextStyle(color: luma.textPrimary),
             decoration: InputDecoration(
-              hintText: 'Pot name (e.g. Holiday)',
+              hintText: t.financePotsNameHint,
               hintStyle: TextStyle(color: luma.textMuted),
               filled: true,
               fillColor: luma.background,
@@ -472,7 +490,7 @@ class _PotEditorState extends State<_PotEditor> {
           ),
           const SizedBox(height: 18),
           Text(
-            'Color',
+            t.financePotsColor,
             style: TextStyle(color: luma.textSecondary, fontSize: 12),
           ),
           const SizedBox(height: 8),
@@ -502,7 +520,7 @@ class _PotEditorState extends State<_PotEditor> {
           ),
           const SizedBox(height: 18),
           Text(
-            'Icon',
+            t.financePotsIcon,
             style: TextStyle(color: luma.textSecondary, fontSize: 12),
           ),
           const SizedBox(height: 8),
@@ -538,9 +556,9 @@ class _PotEditorState extends State<_PotEditor> {
             children: [
               Expanded(
                 child: FinanceField(
-                  label: 'Savings goal (optional)',
+                  label: t.financePotsSavingsGoal,
                   controller: _goal,
-                  hint: 'No goal',
+                  hint: t.financePotsNoGoal,
                   prefix: '€ ',
                   number: true,
                 ),
@@ -548,9 +566,9 @@ class _PotEditorState extends State<_PotEditor> {
               const SizedBox(width: 12),
               Expanded(
                 child: FinanceDateField(
-                  label: 'Reach it by',
+                  label: t.financePotsReachBy,
                   date: _goalDate,
-                  placeholder: 'Any time',
+                  placeholder: t.financePotsAnyTime,
                   onChanged: (d) => setState(() => _goalDate = d),
                   onClear: () => setState(() => _goalDate = null),
                 ),
@@ -566,12 +584,12 @@ class _PotEditorState extends State<_PotEditor> {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               LumaGhostButton(
-                label: 'Cancel',
+                label: t.commonCancel,
                 onTap: () => Navigator.pop(context),
               ),
               const SizedBox(width: 10),
               LumaPrimaryButton(
-                label: widget.pot == null ? 'Create' : 'Save',
+                label: widget.pot == null ? t.commonCreate : t.commonSave,
                 icon: Icons.check_rounded,
                 onTap: _save,
               ),

@@ -5,5 +5,23 @@
   "description": "Chat with another luma person. Locked on your device before it is sent, so only you two can read it. Sign in under Settings, Sync and account, to start.",
   "icon": "chat",
   "category": "Social",
-  "requiresAccount": true
+  "requiresAccount": true,
+  "i18n": {
+    "nl": {
+      "name": "Chat",
+      "description": "Chat met een andere luma-gebruiker. Wordt op je apparaat vergrendeld voordat het verzonden wordt, zodat alleen jullie twee het kunnen lezen. Meld je aan onder Instellingen, Sync en account, om te beginnen."
+    },
+    "fr": {
+      "name": "Chat",
+      "description": "Discutez avec une autre personne utilisant luma. Verrouillé sur votre appareil avant l'envoi, pour que vous soyez les seuls à pouvoir le lire. Connectez-vous dans Paramètres, Synchronisation et compte, pour commencer."
+    },
+    "es": {
+      "name": "Chat",
+      "description": "Chatea con otra persona de luma. Se cifra en tu dispositivo antes de enviarse, así que solo vosotros dos podéis leerlo. Inicia sesión en Ajustes, Sincronización y cuenta, para empezar."
+    },
+    "zh": {
+      "name": "聊天",
+      "description": "与另一位 luma 用户聊天。消息在发送前已在你的设备上加密锁定，只有你们两人能看到内容。在“设置”、“同步与账户”中登录即可开始。"
+    }
+  }
 }

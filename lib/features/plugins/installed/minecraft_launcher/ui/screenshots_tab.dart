@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../sync/sync_scope.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/minecraft_launcher_database.dart';
@@ -49,6 +50,7 @@ class _ScreenshotsSectionState extends State<ScreenshotsSection> {
     if (_files == null) {
       return const Center(child: CircularProgressIndicator(strokeWidth: 2.4));
     }
+    final t = L.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -70,12 +72,12 @@ class _ScreenshotsSectionState extends State<ScreenshotsSection> {
         ),
         const SizedBox(height: 12),
         if (_files!.isEmpty)
-          const Padding(
-            padding: EdgeInsets.only(top: 40),
+          Padding(
+            padding: const EdgeInsets.only(top: 40),
             child: LumaEmptyState(
               icon: Icons.image_outlined,
-              title: 'No screenshots yet',
-              subtitle: 'Screenshots you take in-game (F2) will show up here.',
+              title: t.mcLauncherNoScreenshots,
+              subtitle: t.mcLauncherNoScreenshotsSubtitle,
             ),
           )
         else
@@ -109,6 +111,7 @@ class _ScreenshotTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: Stack(
@@ -124,12 +127,12 @@ class _ScreenshotTile extends StatelessWidget {
               child: PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert_rounded, size: 18),
                 onSelected: (action) => _handleAction(context, action),
-                itemBuilder: (context) => const [
-                  PopupMenuItem(value: 'open', child: Text('Open')),
-                  PopupMenuItem(value: 'reveal', child: Text('Reveal in folder')),
-                  PopupMenuItem(value: 'copy', child: Text('Copy path')),
-                  PopupMenuItem(value: 'cloud', child: Text('Backup to cloud')),
-                  PopupMenuItem(value: 'delete', child: Text('Delete')),
+                itemBuilder: (context) => [
+                  PopupMenuItem(value: 'open', child: Text(t.commonOpen)),
+                  PopupMenuItem(value: 'reveal', child: Text(t.mcLauncherRevealInFolder)),
+                  PopupMenuItem(value: 'copy', child: Text(t.mcLauncherCopyPath)),
+                  PopupMenuItem(value: 'cloud', child: Text(t.mcLauncherBackupToCloud)),
+                  PopupMenuItem(value: 'delete', child: Text(t.commonDelete)),
                 ],
               ),
             ),
@@ -159,7 +162,7 @@ class _ScreenshotTile extends StatelessWidget {
           );
           if (!context.mounted) return;
           ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text('Backed up "$label" to the cloud.')));
+              .showSnackBar(SnackBar(content: Text(L.of(context).mcLauncherBackedUpToCloud(label))));
         } catch (e) {
           if (!context.mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));

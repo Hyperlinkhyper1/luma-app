@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import '../../../../../l10n/current_l.dart';
 import 'mc_paths.dart';
 
 class GameProcessException implements Exception {
@@ -51,7 +52,7 @@ class GameProcessManager {
       process = await Process.start(javaPath, args, workingDirectory: workingDirectory);
     } catch (e) {
       await logSink.close();
-      throw GameProcessException('Could not start Java: $e');
+      throw GameProcessException(currentL.mcGameCouldNotStartJava('$e'));
     }
 
     final controller = StreamController<String>.broadcast();

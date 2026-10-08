@@ -1,0 +1,4 @@
+"NSLocalNetworkUsageDescription" = "Luma gebruikt je lokale netwerk om je apparaten en DIRIGERA-smarthomehub te vinden.";
+"NFCReaderUsageDescription" = "Luma leest NFC-tags zodat je contactloze kaarten aan je Kaartenmap kunt toevoegen en tonen.";
+"NSCameraUsageDescription" = "Luma gebruikt de camera om de streepjescode of QR-code van een kaart aan je Kaartenmap toe te voegen.";
+"NSPhotoLibraryUsageDescription" = "Luma leest je fotobibliotheek om foto’s in de Galerij-plugin te tonen. Er wordt niets geüpload.";

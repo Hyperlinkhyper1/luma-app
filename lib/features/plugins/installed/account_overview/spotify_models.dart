@@ -1,3 +1,5 @@
+import '../../../../l10n/current_l.dart';
+
 class SpotifyItem {
   const SpotifyItem({
     required this.name,
@@ -12,7 +14,7 @@ class SpotifyItem {
   final String? url;
 
   factory SpotifyItem.artist(Map<String, dynamic> json) => SpotifyItem(
-    name: json['name'] as String? ?? 'Unknown artist',
+    name: json['name'] as String? ?? currentL.accountOverviewSpotifyUnknownArtist,
     subtitle:
         (json['genres'] as List?)?.cast<String>().take(2).join(' · ') ?? '',
     imageUrl: _firstImage(json['images']),
@@ -20,7 +22,7 @@ class SpotifyItem {
   );
 
   factory SpotifyItem.track(Map<String, dynamic> json) => SpotifyItem(
-    name: json['name'] as String? ?? 'Unknown track',
+    name: json['name'] as String? ?? currentL.accountOverviewSpotifyUnknownTrack,
     subtitle: (json['artists'] as List? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map((artist) => artist['name'] as String? ?? '')

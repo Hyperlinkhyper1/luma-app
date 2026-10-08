@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/mind_map_database.dart';
 import '../io/mind_map_export.dart';
@@ -187,13 +188,14 @@ class _MindMapCanvasState extends State<MindMapCanvas> {
       if (_editingId == id) _editingId = null;
     });
     final messenger = ScaffoldMessenger.of(context);
+    final t = L.of(context);
     messenger.clearSnackBars();
     messenger.showSnackBar(
       SnackBar(
         content: Text(deletion.description),
         duration: const Duration(seconds: 6),
         action: SnackBarAction(
-          label: 'Undo',
+          label: t.commonUndo,
           onPressed: () => widget.repository.restore(deletion),
         ),
       ),
@@ -488,7 +490,7 @@ class _MindMapCanvasState extends State<MindMapCanvas> {
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
         ..showSnackBar(
-          const SnackBar(content: Text('A node cannot be moved inside itself.')),
+          SnackBar(content: Text(L.of(context).mindMapCannotMoveIntoSelf)),
         );
     }
   }
@@ -561,7 +563,7 @@ class _MindMapCanvasState extends State<MindMapCanvas> {
       if (mounted) {
         ScaffoldMessenger.of(context)
           ..clearSnackBars()
-          ..showSnackBar(SnackBar(content: Text('Export failed: $error')));
+          ..showSnackBar(SnackBar(content: Text(L.of(context).mindMapExportFailed('$error'))));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -590,47 +592,48 @@ class _MindMapCanvasState extends State<MindMapCanvas> {
       Offset.zero & overlay.size,
     );
     final hasChildren = (model.childrenOf[id] ?? const []).isNotEmpty;
+    final t = L.of(context);
 
     showMenu<_NodeAction>(
       context: context,
       position: position,
       items: [
-        const PopupMenuItem(
+        PopupMenuItem(
           value: _NodeAction.addChild,
-          child: _MenuRow(icon: Icons.subdirectory_arrow_right_rounded, label: 'Add child', hint: 'Tab'),
+          child: _MenuRow(icon: Icons.subdirectory_arrow_right_rounded, label: t.mindMapMenuAddChild, hint: 'Tab'),
         ),
         if (node.parentId != null)
-          const PopupMenuItem(
+          PopupMenuItem(
             value: _NodeAction.addSibling,
-            child: _MenuRow(icon: Icons.add_rounded, label: 'Add sibling', hint: 'Enter'),
+            child: _MenuRow(icon: Icons.add_rounded, label: t.mindMapMenuAddSibling, hint: 'Enter'),
           ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: _NodeAction.rename,
-          child: _MenuRow(icon: Icons.edit_rounded, label: 'Rename', hint: 'F2'),
+          child: _MenuRow(icon: Icons.edit_rounded, label: t.commonRename, hint: 'F2'),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: _NodeAction.details,
-          child: _MenuRow(icon: Icons.notes_rounded, label: 'Note, link & colour'),
+          child: _MenuRow(icon: Icons.notes_rounded, label: t.mindMapMenuDetails),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: _NodeAction.ai,
-          child: _MenuRow(icon: Icons.auto_awesome_rounded, label: 'Expand with AI'),
+          child: _MenuRow(icon: Icons.auto_awesome_rounded, label: t.mindMapMenuExpandAi),
         ),
         if (hasChildren)
           PopupMenuItem(
             value: _NodeAction.collapse,
             child: _MenuRow(
               icon: node.collapsed ? Icons.unfold_more_rounded : Icons.unfold_less_rounded,
-              label: node.collapsed ? 'Expand branch' : 'Collapse branch',
+              label: node.collapsed ? t.mindMapMenuExpandBranch : t.mindMapMenuCollapseBranch,
               hint: 'Space',
             ),
           ),
         const PopupMenuDivider(),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: _NodeAction.delete,
           child: _MenuRow(
             icon: Icons.delete_outline_rounded,
-            label: 'Delete branch',
+            label: t.mindMapMenuDeleteBranch,
             hint: 'Del',
             danger: true,
           ),
@@ -795,13 +798,14 @@ class _MindMapCanvasState extends State<MindMapCanvas> {
     final rect = model.positions[node.id];
     if (rect == null) return const SizedBox.shrink();
     final descendants = model.descendantCount(node.id);
+    final t = L.of(context);
 
     return Positioned(
       left: rect.left,
       top: rect.top,
       child: Semantics(
         selected: _selectedId == node.id,
-        label: node.label.trim().isEmpty ? 'Empty node' : node.label,
+        label: node.label.trim().isEmpty ? t.mindMapEmptyNodeLabel : node.label,
         child: MouseRegion(
           cursor: SystemMouseCursors.click,
           child: GestureDetector(
@@ -849,25 +853,26 @@ class _MindMapCanvasState extends State<MindMapCanvas> {
   }
 
   Future<void> _renameMap(BuildContext context) async {
+    final t = L.of(context);
     final controller = TextEditingController(text: widget.map.title);
     final title = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Rename map'),
+        title: Text(t.mindMapRenameMap),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'Title'),
+          decoration: InputDecoration(labelText: t.commonTitle),
           onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text(t.commonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
-            child: const Text('Save'),
+            child: Text(t.commonSave),
           ),
         ],
       ),
@@ -1068,6 +1073,7 @@ class _Toolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Padding(
       padding: EdgeInsets.fromLTRB(narrow ? 12 : 24, 8, narrow ? 12 : 24, 12),
@@ -1077,13 +1083,13 @@ class _Toolbar extends StatelessWidget {
           Row(
             children: [
               IconButton(
-                tooltip: 'All maps',
+                tooltip: t.mindMapAllMaps,
                 icon: const Icon(Icons.arrow_back_rounded),
                 onPressed: onClose,
               ),
               Flexible(
                 child: Tooltip(
-                  message: 'Rename map',
+                  message: t.mindMapRenameMap,
                   child: InkWell(
                     onTap: onRename,
                     borderRadius: BorderRadius.circular(8),
@@ -1105,13 +1111,13 @@ class _Toolbar extends StatelessWidget {
               if (!narrow) ...[
                 const SizedBox(width: 8),
                 Text(
-                  '$nodeCount ${nodeCount == 1 ? 'node' : 'nodes'}',
+                  t.mindMapNodeCount(nodeCount),
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
               ],
               const Spacer(),
               IconButton(
-                tooltip: 'Layout: ${direction.label}',
+                tooltip: t.mindMapLayoutTooltip(direction.label(t)),
                 icon: Icon(switch (direction) {
                   MindMapDirection.right => Icons.chevron_right_rounded,
                   MindMapDirection.both => Icons.unfold_more_rounded,
@@ -1120,17 +1126,17 @@ class _Toolbar extends StatelessWidget {
                 onPressed: onCycleDirection,
               ),
               IconButton(
-                tooltip: 'Fit to screen (Ctrl+0)',
+                tooltip: t.mindMapFitToScreenShortcut,
                 icon: const Icon(Icons.fit_screen_rounded),
                 onPressed: onFit,
               ),
               IconButton(
-                tooltip: 'Paste an outline',
+                tooltip: t.mindMapPasteOutline,
                 icon: const Icon(Icons.content_paste_go_rounded),
                 onPressed: onImport,
               ),
               PopupMenuButton<MindMapExportFormat>(
-                tooltip: 'Export',
+                tooltip: t.commonExport,
                 enabled: !busy,
                 icon: busy
                     ? const SizedBox(
@@ -1140,18 +1146,18 @@ class _Toolbar extends StatelessWidget {
                       )
                     : const Icon(Icons.ios_share_rounded),
                 onSelected: onExport,
-                itemBuilder: (_) => const [
+                itemBuilder: (_) => [
                   PopupMenuItem(
                     value: MindMapExportFormat.png,
-                    child: _MenuRow(icon: Icons.image_rounded, label: 'Image (PNG)'),
+                    child: _MenuRow(icon: Icons.image_rounded, label: t.mindMapExportMenuPng),
                   ),
                   PopupMenuItem(
                     value: MindMapExportFormat.markdown,
-                    child: _MenuRow(icon: Icons.notes_rounded, label: 'Outline (Markdown)'),
+                    child: _MenuRow(icon: Icons.notes_rounded, label: t.mindMapExportMenuMarkdown),
                   ),
                   PopupMenuItem(
                     value: MindMapExportFormat.opml,
-                    child: _MenuRow(icon: Icons.account_tree_rounded, label: 'Outline (OPML)'),
+                    child: _MenuRow(icon: Icons.account_tree_rounded, label: t.mindMapExportMenuOpml),
                   ),
                 ],
               ),
@@ -1176,21 +1182,22 @@ class _ShortcutHints extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return DefaultTextStyle(
       style: TextStyle(color: luma.textMuted, fontSize: 11.5),
       child: Wrap(
         spacing: 14,
         runSpacing: 4,
-        children: const [
-          _Hint(keys: 'Tab', action: 'child'),
-          _Hint(keys: 'Enter', action: 'sibling'),
-          _Hint(keys: 'F2', action: 'rename'),
-          _Hint(keys: 'Space', action: 'fold'),
-          _Hint(keys: 'Arrows', action: 'move around'),
-          _Hint(keys: 'Alt+Arrows', action: 'reorder'),
-          _Hint(keys: 'Del', action: 'delete'),
-          _Hint(keys: 'Drag', action: 're-parent'),
+        children: [
+          _Hint(keys: 'Tab', action: t.mindMapHintChild),
+          _Hint(keys: 'Enter', action: t.mindMapHintSibling),
+          _Hint(keys: 'F2', action: t.mindMapHintRename),
+          _Hint(keys: 'Space', action: t.mindMapHintFold),
+          _Hint(keys: t.mindMapHintArrows, action: t.mindMapHintMoveAround),
+          _Hint(keys: t.mindMapHintAltArrows, action: t.mindMapHintReorder),
+          _Hint(keys: 'Del', action: t.mindMapHintDelete),
+          _Hint(keys: t.mindMapHintDrag, action: t.mindMapHintReparent),
         ],
       ),
     );
@@ -1251,6 +1258,7 @@ class _TouchActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return SafeArea(
       top: false,
@@ -1267,19 +1275,19 @@ class _TouchActionBar extends StatelessWidget {
           children: [
             _TouchAction(
               icon: Icons.subdirectory_arrow_right_rounded,
-              label: 'Child',
+              label: t.mindMapTouchChild,
               onTap: onAddChild,
             ),
             _TouchAction(
               icon: Icons.add_rounded,
-              label: 'Sibling',
+              label: t.mindMapTouchSibling,
               onTap: canAddSibling ? onAddSibling : null,
             ),
-            _TouchAction(icon: Icons.edit_rounded, label: 'Rename', onTap: onRename),
-            _TouchAction(icon: Icons.notes_rounded, label: 'Details', onTap: onDetails),
+            _TouchAction(icon: Icons.edit_rounded, label: t.commonRename, onTap: onRename),
+            _TouchAction(icon: Icons.notes_rounded, label: t.commonDetails, onTap: onDetails),
             _TouchAction(
               icon: Icons.delete_outline_rounded,
-              label: 'Delete',
+              label: t.commonDelete,
               onTap: onDelete,
               danger: true,
             ),
@@ -1350,6 +1358,7 @@ class _ZoomControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Container(
       decoration: BoxDecoration(
@@ -1361,19 +1370,19 @@ class _ZoomControls extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-            tooltip: 'Zoom in',
+            tooltip: t.schemViewerZoomIn,
             iconSize: 18,
             icon: const Icon(Icons.add_rounded),
             onPressed: onZoomIn,
           ),
           IconButton(
-            tooltip: 'Zoom out',
+            tooltip: t.schemViewerZoomOut,
             iconSize: 18,
             icon: const Icon(Icons.remove_rounded),
             onPressed: onZoomOut,
           ),
           IconButton(
-            tooltip: 'Fit to screen',
+            tooltip: t.mindMapFitToScreen,
             iconSize: 18,
             icon: const Icon(Icons.fit_screen_rounded),
             onPressed: onFit,
@@ -1392,6 +1401,7 @@ class _FirstBranchHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Padding(
       // The hint floats over the canvas, so it has to stay clear of the zoom
@@ -1411,9 +1421,7 @@ class _FirstBranchHint extends StatelessWidget {
             const SizedBox(width: 8),
             Flexible(
               child: Text(
-                narrow
-                    ? 'Tap the centre node, then Child'
-                    : 'Select the centre node and press Tab to add your first branch',
+                narrow ? t.mindMapFirstBranchHintNarrow : t.mindMapFirstBranchHint,
                 style: TextStyle(color: luma.textSecondary, fontSize: 12.5),
               ),
             ),

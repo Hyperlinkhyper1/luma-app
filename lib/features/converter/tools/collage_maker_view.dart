@@ -1,16 +1,15 @@
 import 'dart:async';
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show compute, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/luma_theme.dart';
 import '../converter_widgets.dart';
 import '../file_saver.dart';
-import '../image_convert.dart';
 import 'collage_shape_editor.dart';
 import 'collage_templates_store.dart';
 
@@ -44,6 +43,33 @@ class CollageTemplate {
 
   int get slotCount => slots.length;
   bool get isCustom => id != null;
+}
+
+/// Display name for a template: built-in names are localised, custom ones are user-typed.
+String collageTemplateLabel(L t, CollageTemplate tpl) {
+  if (tpl.isCustom) return tpl.name;
+  return switch (tpl.name) {
+    '2 Horizontal' => t.collageMakerTplTwoHorizontal,
+    '2 Vertical' => t.collageMakerTplTwoVertical,
+    '3 Column' => t.collageMakerTplThreeColumn,
+    '2×2 Grid' => t.collageMakerTplTwoByTwo,
+    'L-Shape' => t.collageMakerTplLShape,
+    'Hero + Strip' => t.collageMakerTplHeroStrip,
+    '3×3 Grid' => t.collageMakerTplThreeByThree,
+    'Mosaic' => t.collageMakerTplMosaic,
+    'Panorama' => t.collageMakerTplPanorama,
+    'Cross' => t.collageMakerTplCross,
+    '3 Row' => t.collageMakerTplThreeRow,
+    '4 Column' => t.collageMakerTplFourColumn,
+    'Right L-Shape' => t.collageMakerTplRightLShape,
+    'Strip + Hero' => t.collageMakerTplStripHero,
+    'Sidebar' => t.collageMakerTplSidebar,
+    'Filmstrip' => t.collageMakerTplFilmstrip,
+    'Frame' => t.collageMakerTplFrame,
+    'Windowpane' => t.collageMakerTplWindowpane,
+    'Cascade' => t.collageMakerTplCascade,
+    _ => tpl.name,
+  };
 }
 
 /// All built-in templates. Rects use (left, top, right, bottom) in 0..1 space.
@@ -289,14 +315,20 @@ enum _CanvasRatio {
 // ---------------------------------------------------------------------------
 
 enum _BgColor {
-  white('White', Colors.white),
-  black('Black', Colors.black),
-  transparent('Transparent', Colors.transparent),
-  dark('Dark', Color(0xFF1E1B28));
+  white(Colors.white),
+  black(Colors.black),
+  transparent(Colors.transparent),
+  dark(Color(0xFF1E1B28));
 
-  const _BgColor(this.label, this.value);
-  final String label;
+  const _BgColor(this.value);
   final Color value;
+
+  String label(L t) => switch (this) {
+        _BgColor.white => t.collageMakerBgWhite,
+        _BgColor.black => t.collageMakerBgBlack,
+        _BgColor.transparent => t.collageMakerBgTransparent,
+        _BgColor.dark => t.collageMakerBgDark,
+      };
 }
 
 // ---------------------------------------------------------------------------
@@ -480,6 +512,7 @@ class _CollageMakerViewState extends State<CollageMakerView> {
       _slotAssignments.isNotEmpty && _photos.isNotEmpty && !_exporting;
 
   Future<void> _export() async {
+    final t = L.of(context);
     setState(() {
       _exporting = true;
       _error = null;
@@ -516,7 +549,7 @@ class _CollageMakerViewState extends State<CollageMakerView> {
       if (!mounted) return;
       setState(() {
         _exporting = false;
-        _error = 'Export failed: $e';
+        _error = t.collageMakerExportFailed('$e');
       });
     }
   }
@@ -597,6 +630,7 @@ class _CollageMakerViewState extends State<CollageMakerView> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     if (_editingShape) {
       return CollageShapeEditor(
@@ -610,8 +644,8 @@ class _CollageMakerViewState extends State<CollageMakerView> {
 
     return ToolScaffold(
       icon: Icons.grid_view_rounded,
-      title: 'Collage maker',
-      subtitle: 'Create photo collages with templates',
+      title: t.collageMakerTitle,
+      subtitle: t.collageMakerSubtitle,
       onBack: widget.onBack,
       children: [
         // -- Photo import zone / photo bar
@@ -619,7 +653,7 @@ class _CollageMakerViewState extends State<CollageMakerView> {
           ConverterDropZone(
             onTap: _importPhotos,
             icon: Icons.add_photo_alternate_outlined,
-            title: 'Import photos to get started',
+            title: t.collageMakerImportPrompt,
             subtitle: 'PNG · JPG · BMP · TIFF · WEBP',
           )
         else ...[
@@ -674,7 +708,9 @@ class _CollageMakerViewState extends State<CollageMakerView> {
               Expanded(
                 flex: 2,
                 child: ConverterPrimaryButton(
-                  label: kIsWeb ? 'Download PNG' : 'Export PNG',
+                  label: kIsWeb
+                      ? t.collageMakerDownloadPng
+                      : t.collageMakerExportPng,
                   icon: Icons.download_rounded,
                   loading: _exporting,
                   onTap: _canExport ? _export : null,
@@ -683,7 +719,7 @@ class _CollageMakerViewState extends State<CollageMakerView> {
               const SizedBox(width: 12),
               Expanded(
                 child: ConverterPrimaryButton(
-                  label: 'Reset',
+                  label: t.collageMakerReset,
                   icon: Icons.restart_alt_rounded,
                   loading: false,
                   onTap: _reset,
@@ -708,7 +744,8 @@ class _CollageMakerViewState extends State<CollageMakerView> {
             icon: Icons.check_circle_outline_rounded,
             color: luma.success,
             message: _result!.summary,
-            trailing: ConverterTextButton(label: 'New collage', onTap: _reset),
+            trailing: ConverterTextButton(
+                label: t.collageMakerNewCollage, onTap: _reset),
           ),
         ],
       ],
@@ -733,6 +770,7 @@ class _PhotoBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return ConverterCard(
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -744,7 +782,7 @@ class _PhotoBar extends StatelessWidget {
                   color: luma.accent, size: 18),
               const SizedBox(width: 8),
               Text(
-                'Imported photos',
+                t.collageMakerImportedPhotos,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 14,
@@ -753,7 +791,7 @@ class _PhotoBar extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                '${photos.length} photo${photos.length == 1 ? '' : 's'}',
+                t.collageMakerPhotoCount(photos.length),
                 style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
             ],
@@ -893,6 +931,7 @@ class _AddMoreButtonState extends State<_AddMoreButton> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovering = true),
@@ -916,7 +955,7 @@ class _AddMoreButtonState extends State<_AddMoreButton> {
               Icon(Icons.add_rounded, color: luma.accent, size: 22),
               const SizedBox(height: 2),
               Text(
-                'Add',
+                t.commonAdd,
                 style: TextStyle(
                   color: luma.accent,
                   fontSize: 11,
@@ -954,6 +993,7 @@ class _TemplatePicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return ConverterCard(
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -965,7 +1005,7 @@ class _TemplatePicker extends StatelessWidget {
                   color: luma.accent, size: 18),
               const SizedBox(width: 8),
               Text(
-                'Choose a layout',
+                t.collageMakerChooseLayout,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 14,
@@ -1027,6 +1067,7 @@ class _TemplateThumbState extends State<_TemplateThumb> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final active = widget.active;
     final showActions =
         _hovering && (widget.onEdit != null || widget.onDelete != null);
@@ -1068,7 +1109,7 @@ class _TemplateThumbState extends State<_TemplateThumb> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    widget.template.name,
+                    collageTemplateLabel(t, widget.template),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -1153,6 +1194,7 @@ class _NewShapeTileState extends State<_NewShapeTile> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovering = true),
@@ -1177,7 +1219,7 @@ class _NewShapeTileState extends State<_NewShapeTile> {
                   color: luma.accent, size: 26),
               const SizedBox(height: 6),
               Text(
-                'New shape',
+                t.collageMakerNewShape,
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -1255,6 +1297,7 @@ class _CollageCanvas extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return ConverterCard(
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -1266,7 +1309,7 @@ class _CollageCanvas extends StatelessWidget {
                   color: luma.accent, size: 18),
               const SizedBox(width: 8),
               Text(
-                'Canvas',
+                t.collageMakerCanvas,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 14,
@@ -1275,7 +1318,8 @@ class _CollageCanvas extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                '${template.slotCount} slots · ${slotAssignments.length} filled',
+                t.collageMakerSlotsFilled(
+                    template.slotCount, slotAssignments.length),
                 style: TextStyle(color: luma.textMuted, fontSize: 12),
               ),
             ],
@@ -1295,9 +1339,9 @@ class _CollageCanvas extends StatelessWidget {
                 child: bgColor == Colors.transparent
                     ? CustomPaint(
                         painter: _CheckerboardPainter(),
-                        child: _buildSlots(luma),
+                        child: _buildSlots(luma, t),
                       )
-                    : _buildSlots(luma),
+                    : _buildSlots(luma, t),
               ),
             ),
           ),
@@ -1306,7 +1350,7 @@ class _CollageCanvas extends StatelessWidget {
     );
   }
 
-  Widget _buildSlots(LumaPalette luma) {
+  Widget _buildSlots(LumaPalette luma, L t) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
@@ -1314,15 +1358,15 @@ class _CollageCanvas extends StatelessWidget {
         return Stack(
           children: [
             for (int i = 0; i < template.slots.length; i++)
-              _buildSlot(i, template.slots[i], w, h, luma),
+              _buildSlot(i, template.slots[i], w, h, luma, t),
           ],
         );
       },
     );
   }
 
-  Widget _buildSlot(
-      int i, CollageSlot slot, double canvasW, double canvasH, LumaPalette luma) {
+  Widget _buildSlot(int i, CollageSlot slot, double canvasW, double canvasH,
+      LumaPalette luma, L t) {
     final r = slot.rect;
     final left = r.left * canvasW + gap;
     final top = r.top * canvasH + gap;
@@ -1396,7 +1440,9 @@ class _CollageCanvas extends StatelessWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              isHoveredOver ? 'Drop here' : 'Drag photo',
+                              isHoveredOver
+                                  ? t.collageMakerDropHere
+                                  : t.collageMakerDragPhoto,
                               style: TextStyle(
                                 color: isHoveredOver
                                     ? luma.accent
@@ -1444,6 +1490,7 @@ class _SettingsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return ConverterCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1453,7 +1500,7 @@ class _SettingsSection extends StatelessWidget {
               Icon(Icons.tune_rounded, color: luma.accent, size: 18),
               const SizedBox(width: 8),
               Text(
-                'Settings',
+                t.collageMakerSettings,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 14,
@@ -1466,7 +1513,7 @@ class _SettingsSection extends StatelessWidget {
 
           // Aspect ratio
           _SettingRow(
-            label: 'Aspect ratio',
+            label: t.collageMakerAspectRatio,
             child: Wrap(
               spacing: 6,
               runSpacing: 6,
@@ -1484,14 +1531,14 @@ class _SettingsSection extends StatelessWidget {
 
           // Background color
           _SettingRow(
-            label: 'Background',
+            label: t.collageMakerBackground,
             child: Wrap(
               spacing: 6,
               runSpacing: 6,
               children: [
                 for (final bg in _BgColor.values)
                   _OptionChip(
-                    label: bg.label,
+                    label: bg.label(t),
                     active: bgColor == bg,
                     onTap: () => onBgColorChanged(bg),
                   ),
@@ -1502,7 +1549,7 @@ class _SettingsSection extends StatelessWidget {
 
           // Gap slider
           _SettingSlider(
-            label: 'Gap',
+            label: t.collageMakerGap,
             value: gap,
             min: 0,
             max: 24,
@@ -1513,7 +1560,7 @@ class _SettingsSection extends StatelessWidget {
 
           // Border radius slider
           _SettingSlider(
-            label: 'Radius',
+            label: t.collageMakerRadius,
             value: borderRadius,
             min: 0,
             max: 32,

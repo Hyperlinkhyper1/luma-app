@@ -6,5 +6,27 @@
   "icon": "ads_click",
   "category": "Utility",
   "details": "Set a click interval down to the millisecond, pick left, middle or right mouse button and single or double clicks, then choose where to click: wherever your cursor currently sits, or a fixed point you capture with the on-screen picker. Repeat forever or for an exact number of clicks.\n\nAdd a random ± offset to the interval — with a 50 ms base and 30 ms offset each click fires somewhere between 20 and 80 ms — useful for games and apps that detect robotic timing.\n\nA global hotkey (F6 by default, rebindable) starts and stops clicking even while another window has focus, so you can automate clicks in a game or app without switching back to luma.",
-  "screenshots": []
+  "screenshots": [],
+  "i18n": {
+    "nl": {
+      "name": "Auto-clicker",
+      "description": "Klikken zat? Laat dit het voor je doen. Kies waar, hoe snel en welke muisknop.",
+      "details": "Stel een kliksinterval in tot op de milliseconde, kies de linker-, middelste of rechter muisknop en enkel- of dubbelklikken, en kies dan waar je klikt: waar je cursor nu staat, of een vast punt dat je vastlegt met de kiezer op het scherm. Herhaal oneindig of voor een exact aantal klikken.\n\nVoeg een willekeurige ± afwijking toe aan het interval. Met een basis van 50 ms en een afwijking van 30 ms valt elke klik ergens tussen 20 en 80 ms, handig voor games en apps die robotachtige timing herkennen.\n\nEen globale sneltoets (standaard F6, aan te passen) start en stopt het klikken ook als een ander venster focus heeft, zodat je klikken in een game of app kunt automatiseren zonder terug te schakelen naar luma."
+    },
+    "fr": {
+      "name": "Autoclic",
+      "description": "Marre de cliquer ? Laissez-le cliquer pour vous. Choisissez l'emplacement, la vitesse et le bouton de la souris.",
+      "details": "Réglez un intervalle entre les clics jusqu'à la milliseconde, choisissez le bouton gauche, central ou droit et les clics simples ou doubles, puis indiquez où cliquer : là où se trouve votre curseur, ou un point fixe que vous capturez avec le sélecteur à l'écran. Répétez indéfiniment ou un nombre exact de fois.\n\nAjoutez une variation aléatoire ± à l'intervalle : avec une base de 50 ms et une variation de 30 ms, chaque clic se produit entre 20 et 80 ms. Utile pour les jeux et applications qui détectent un rythme trop régulier.\n\nUn raccourci global (F6 par défaut, modifiable) démarre et arrête les clics même lorsqu'une autre fenêtre a le focus, pour automatiser des clics dans un jeu ou une application sans revenir à luma."
+    },
+    "es": {
+      "name": "Autoclicker",
+      "description": "¿Cansado de hacer clic? Deja que lo haga por ti. Elige dónde, a qué velocidad y con qué botón del ratón.",
+      "details": "Define un intervalo entre clics de hasta milisegundos, elige el botón izquierdo, central o derecho y clic simple o doble, y después decide dónde hacer clic: donde esté el cursor en ese momento, o un punto fijo que captures con el selector en pantalla. Repite sin fin o un número exacto de clics.\n\nAñade un desfase aleatorio ± al intervalo: con una base de 50 ms y un desfase de 30 ms, cada clic se produce entre 20 y 80 ms. Es útil para juegos y apps que detectan ritmos robóticos.\n\nUn atajo global (F6 por defecto, configurable) inicia y detiene los clics incluso cuando otra ventana tiene el foco, así puedes automatizar clics en un juego o app sin volver a luma."
+    },
+    "zh": {
+      "name": "自动点击器",
+      "description": "厌倦了不停点击？让它替你点。选择位置、速度和鼠标按键即可。",
+      "details": "将点击间隔精确到毫秒，选择左键、中键或右键，以及单击或双击，然后选择点击位置：当前光标所在处，或使用屏幕取点器捕获的固定位置。可以无限重复，也可以精确设定点击次数。\n\n可以为间隔添加随机 ± 偏移。例如基础间隔 50 毫秒、偏移 30 毫秒时，每次点击会在 20 到 80 毫秒之间随机发生，适合用于检测机械化节奏的游戏和应用。\n\n全局快捷键（默认 F6，可重新设置）即使其他窗口处于焦点状态也能开始和停止点击，这样你无需切回 luma 就能在游戏或应用中自动点击。"
+    }
+  }
 }

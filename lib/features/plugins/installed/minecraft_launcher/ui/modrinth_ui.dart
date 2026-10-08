@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/minecraft_launcher_database.dart';
 import '../logic/modrinth_api_client.dart';
@@ -21,22 +22,26 @@ String formatFileSize(int bytes) {
   return '$bytes B';
 }
 
-String relativeTime(DateTime? time) {
+String relativeTime(L t, DateTime? time) {
   if (time == null) return '';
   final diff = DateTime.now().difference(time);
-  if (diff.inDays >= 365) {
-    final years = diff.inDays ~/ 365;
-    return '$years year${years == 1 ? '' : 's'} ago';
-  }
-  if (diff.inDays >= 30) {
-    final months = diff.inDays ~/ 30;
-    return '$months month${months == 1 ? '' : 's'} ago';
-  }
-  if (diff.inDays >= 1) return '${diff.inDays} day${diff.inDays == 1 ? '' : 's'} ago';
-  if (diff.inHours >= 1) return '${diff.inHours}h ago';
-  if (diff.inMinutes >= 1) return '${diff.inMinutes}m ago';
-  return 'just now';
+  if (diff.inDays >= 365) return t.mcLauncherYearsAgo(diff.inDays ~/ 365);
+  if (diff.inDays >= 30) return t.mcLauncherMonthsAgo(diff.inDays ~/ 30);
+  if (diff.inDays >= 1) return t.mcLauncherDaysAgo(diff.inDays);
+  if (diff.inHours >= 1) return t.mcLauncherHoursAgo(diff.inHours);
+  if (diff.inMinutes >= 1) return t.mcLauncherMinutesAgo(diff.inMinutes);
+  return t.commonJustNow;
 }
+
+/// The display name for a Modrinth/CurseForge content kind (`mod`, `shader`…).
+/// Unknown kinds fall through as the raw id so nothing is hidden.
+String contentKindLabel(L t, String kind) => switch (kind) {
+      'mod' => t.mcLauncherKindMods,
+      'resourcepack' => t.mcLauncherKindResourcePacks,
+      'shader' => t.mcLauncherKindShaderPacks,
+      'datapack' => t.mcLauncherKindDatapacks,
+      _ => kind,
+    };
 
 /// `worldgen` → `Worldgen`, `game-mechanics` → `Game mechanics`.
 String prettyTag(String raw) {
@@ -250,7 +255,7 @@ class ModrinthInstallButton extends StatefulWidget {
     this.installed = false,
     this.busy = false,
     this.compact = true,
-    this.label = 'Install',
+    this.label,
     this.tooltip,
   });
 
@@ -258,7 +263,7 @@ class ModrinthInstallButton extends StatefulWidget {
   final bool installed;
   final bool busy;
   final bool compact;
-  final String label;
+  final String? label;
   final String? tooltip;
 
   @override
@@ -272,6 +277,8 @@ class _ModrinthInstallButtonState extends State<ModrinthInstallButton> {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final decor = context.lumaDecor;
+    final t = L.of(context);
+    final label = widget.label ?? t.commonInstall;
     final installed = widget.installed;
     final enabled = widget.onInstall != null && !widget.busy && !installed;
 
@@ -315,7 +322,7 @@ class _ModrinthInstallButtonState extends State<ModrinthInstallButton> {
           if (!widget.compact) ...[
             const SizedBox(width: 8),
             Text(
-              installed ? 'Installed' : widget.label,
+              installed ? t.mcLauncherInstalled : label,
               style: TextStyle(
                 color: foreground,
                 fontSize: 14,
@@ -328,7 +335,7 @@ class _ModrinthInstallButtonState extends State<ModrinthInstallButton> {
     );
 
     return Tooltip(
-      message: widget.tooltip ?? (installed ? 'Already installed' : widget.label),
+      message: widget.tooltip ?? (installed ? t.mcLauncherAlreadyInstalled : label),
       waitDuration: const Duration(milliseconds: 400),
       child: MouseRegion(
         cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
@@ -499,7 +506,7 @@ class _ModrinthProjectTileState extends State<ModrinthProjectTile> {
           const SizedBox(width: 8),
           Flexible(
             child: Text(
-              'by ${hit.author}',
+              L.of(context).mcLauncherByAuthor(hit.author!),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(color: luma.textMuted, fontSize: 12),
@@ -541,7 +548,7 @@ class _ModrinthProjectTileState extends State<ModrinthProjectTile> {
           const SizedBox(width: 14),
           Flexible(
             child: Text(
-              'Updated ${relativeTime(hit.dateModified)}',
+              L.of(context).mcLauncherUpdatedAgo(relativeTime(L.of(context), hit.dateModified)),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(color: luma.textMuted, fontSize: 12),
@@ -561,12 +568,13 @@ class _ModrinthProjectTileState extends State<ModrinthProjectTile> {
 Future<McInstance?> pickInstance(
   BuildContext context,
   List<McInstance> instances, {
-  String title = 'Install into which instance?',
+  String? title,
   String? projectTitle,
 }) async {
   if (instances.isEmpty) return null;
   if (instances.length == 1) return instances.first;
   final luma = context.luma;
+  final t = L.of(context);
   return showModalBottomSheet<McInstance>(
     context: context,
     backgroundColor: luma.surface,
@@ -584,7 +592,7 @@ Future<McInstance?> pickInstance(
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 4),
               child: Text(
-                title,
+                title ?? t.mcLauncherPickInstanceTitle,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 17,

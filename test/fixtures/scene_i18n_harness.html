@@ -1,0 +1,18 @@
+<!doctype html><html data-luma-hosted="true"><head><meta charset="utf-8"><script src="../../assets/airline_tycoon/scene/luma_scene_i18n.js"></script></head><body><div id="source">Airport</div><span id="keyed" data-luma-text="demo">Airport</span><div id="user" contenteditable="true">Airport</div><div id="saved" data-luma-user-content title="Airport">Airport</div><button id="attribute" title="Airport">!</button><pre id="result">running</pre><script>
+(async () => {
+const checks=[]; const pause=()=>new Promise(resolve=>setTimeout(resolve,20));
+let mutations=0; const observer=new MutationObserver(records=>mutations+=records.length); observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true});
+const maps=[['en','Airport','Close'],['nl','Luchthaven','Sluiten'],['es','Aeropuerto','Cerrar'],['zh','机场','关闭'],['fr','Aéroport','Fermer']];
+for(const [language,airport,close] of maps){
+window.LumaSceneI18n.set({language,strings:{demo:airport,formatted:airport+' {place}'},sourceStrings:{Airport:airport,Close:close}}); await pause();
+for(const id of ['source','keyed']) {if(document.getElementById(id).textContent!==airport)throw Error(id+' stale at '+language);}
+if(document.getElementById('attribute').title!==airport)throw Error('attribute stale '+language);
+if(document.getElementById('user').textContent!=='Airport')throw Error('user text translated');
+if(window.LumaSceneI18n.format('formatted',{place:'Amsterdam'})!==airport+' Amsterdam')throw Error('parameterized translation '+language);if(document.getElementById('saved').textContent!=='Airport'||document.getElementById('saved').title!=='Airport')throw Error('saved user content translated');checks.push(language);const before=mutations;await pause();if(mutations!==before)throw Error('observer keeps mutating '+language);
+}
+const added=document.createElement('span');added.textContent='Airport';document.body.append(added);await pause();if(added.textContent!=='Aéroport')throw Error('new node untranslated');
+document.getElementById('attribute').title='Close';await pause();if(document.getElementById('attribute').title!=='Fermer')throw Error('updated attribute stale');
+window.LumaSceneI18n.set({language:'nl',strings:{demo:'Luchthaven'},sourceStrings:{Airport:'Luchthaven',Close:'Sluiten'}});await pause();if(added.textContent!=='Luchthaven')throw Error('dynamic node stale');
+observer.disconnect();document.getElementById('result').textContent=JSON.stringify({passed:true,locales:checks,mutations});
+})().catch(error=>{document.getElementById('result').textContent=JSON.stringify({passed:false,error:String(error)})});
+</script></body></html>

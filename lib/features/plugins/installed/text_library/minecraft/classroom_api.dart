@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../../l10n/current_l.dart';
 import '../../../../../sync/server_access.dart';
 
 /// Why the classroom couldn't do something, with the server's code
@@ -77,14 +78,13 @@ class ClassroomApi {
                   : _client.post(uri, headers: headers, body: jsonEncode(body)))
               .timeout(timeout);
     } on ServerAccessDeniedException {
-      throw const ClassroomException(
-        'Sign in to an approved luma account to use the classroom.',
+      throw ClassroomException(
+        currentL.textLibraryClassroomSignIn,
         code: 'signin',
       );
     } catch (_) {
-      throw const ClassroomException(
-        'Could not reach the luma server. Check your connection and try '
-        'again.',
+      throw ClassroomException(
+        currentL.textLibraryClassroomOffline,
         code: 'offline',
       );
     }
@@ -100,12 +100,12 @@ class ClassroomApi {
       throw ClassroomException(
         message is String && message.isNotEmpty
             ? message
-            : 'The classroom failed (HTTP ${response.statusCode}).',
+            : currentL.textLibraryClassroomFailed(response.statusCode),
         code: code is String ? code : null,
       );
     }
     if (decoded is! Map<String, dynamic>) {
-      throw const ClassroomException('The server sent a malformed answer.');
+      throw ClassroomException(currentL.textLibraryClassroomMalformed);
     }
     return decoded;
   }

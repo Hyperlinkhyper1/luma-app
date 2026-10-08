@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app/widgets.dart';
+import '../l10n/app_localizations.dart';
 import '../settings/settings_controller.dart';
 import '../settings/settings_scope.dart';
 import '../sync/sync_scope.dart';
@@ -23,6 +24,7 @@ class PlanSelectionPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Scaffold(
       backgroundColor: luma.background,
       body: Stack(
@@ -63,7 +65,7 @@ class PlanSelectionPage extends StatelessWidget {
                       IconButton(
                         icon: Icon(Icons.arrow_back_rounded,
                             color: luma.textPrimary),
-                        tooltip: 'Back to account',
+                        tooltip: t.planSelectionBackTooltip,
                         onPressed: () => Navigator.of(context).pop(),
                       ),
                     ],
@@ -86,7 +88,7 @@ class PlanSelectionPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Choose your plan',
+                        t.planSelectionTitle,
                         style: TextStyle(
                           color: luma.textPrimary,
                           fontSize: 26,
@@ -96,7 +98,7 @@ class PlanSelectionPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Select the plan that works best for you.',
+                        t.planSelectionSubtitle,
                         style: TextStyle(color: luma.textMuted, fontSize: 13),
                         textAlign: TextAlign.center,
                       ),
@@ -199,7 +201,8 @@ class _PlanGrid extends StatelessWidget {
     if (!context.mounted) return;
     if (granted == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('That access code is invalid.')),
+        SnackBar(
+            content: Text(L.of(context).planSelectionInvalidCode)),
       );
       return;
     }
@@ -238,8 +241,7 @@ class _AiCreditsSectionState extends State<_AiCreditsSection> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Buying credits isn\'t open yet — ${pack.tokensLabel} tokens for '
-          '${pack.priceLabel} will be available once payments are set up.',
+          L.of(context).planCreditsNotOpen(pack.tokensLabel, pack.priceLabel),
         ),
       ),
     );
@@ -248,6 +250,7 @@ class _AiCreditsSectionState extends State<_AiCreditsSection> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final balance = _balance;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -255,7 +258,7 @@ class _AiCreditsSectionState extends State<_AiCreditsSection> {
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 6),
           child: Text(
-            'ONE-TIME AI CREDITS',
+            t.planCreditsHeader,
             style: TextStyle(
               color: luma.textMuted,
               fontSize: 11,
@@ -268,10 +271,8 @@ class _AiCreditsSectionState extends State<_AiCreditsSection> {
           padding: const EdgeInsets.only(left: 4, bottom: 14),
           child: Text(
             balance != null && balance > 0
-                ? 'Extra tokens for when your plan\'s AI limit runs out. '
-                    'You have ${_tokens(balance)} left. They never expire.'
-                : 'Extra tokens for when your plan\'s AI limit runs out. '
-                    'They never expire.',
+                ? t.planCreditsBodyWithBalance(_tokens(t, balance))
+                : t.planCreditsBody,
             style: TextStyle(color: luma.textMuted, fontSize: 12.5),
           ),
         ),
@@ -287,7 +288,7 @@ class _AiCreditsSectionState extends State<_AiCreditsSection> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        '${pack.tokensLabel} tokens',
+                        t.planCreditsPackTokens(pack.tokensLabel),
                         style: TextStyle(
                           color: luma.textPrimary,
                           fontSize: 16,
@@ -296,7 +297,7 @@ class _AiCreditsSectionState extends State<_AiCreditsSection> {
                       ),
                       const SizedBox(height: 12),
                       LumaPrimaryButton(
-                        label: '${pack.priceLabel} · Buy',
+                        label: t.planCreditsBuy(pack.priceLabel),
                         icon: Icons.bolt_rounded,
                         onTap: () => _buy(pack),
                       ),
@@ -310,9 +311,10 @@ class _AiCreditsSectionState extends State<_AiCreditsSection> {
     );
   }
 
-  static String _tokens(int n) => n >= 1000000
-      ? '${(n / 1000000).toStringAsFixed(n % 1000000 == 0 ? 0 : 2)}M tokens'
-      : '${(n / 1000).round()}K tokens';
+  static String _tokens(L t, int n) => n >= 1000000
+      ? t.planTokenAmountMillions(
+          (n / 1000000).toStringAsFixed(n % 1000000 == 0 ? 0 : 2))
+      : t.planTokenAmountThousands('${(n / 1000).round()}');
 }
 
 // ---------------------------------------------------------------------------
@@ -341,6 +343,7 @@ class _PlanCardState extends State<_PlanCard> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final plan = widget.plan;
     final selected = widget.selected;
     final icon = _planIcons[plan.id] ?? Icons.star_rounded;
@@ -423,7 +426,7 @@ class _PlanCardState extends State<_PlanCard> {
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
-                              'Current',
+                              t.planCurrentBadge,
                               style: TextStyle(
                                 color: luma.onAccent,
                                 fontSize: 11,
@@ -467,8 +470,7 @@ class _PlanCardState extends State<_PlanCard> {
                     if (widget.expiresAt != null) ...[
                       const SizedBox(height: 8),
                       Text(
-                        'Reverts to Core in ${_daysLeft(widget.expiresAt!)} '
-                        'day${_daysLeft(widget.expiresAt!) == 1 ? '' : 's'}',
+                        t.planRevertsToCore(_daysLeft(widget.expiresAt!)),
                         style: TextStyle(
                           color: luma.accent,
                           fontSize: 12,
@@ -494,7 +496,7 @@ class _PlanCardState extends State<_PlanCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'WHAT YOU GET',
+                        t.planWhatYouGet,
                         style: TextStyle(
                           color: luma.textMuted,
                           fontSize: 10,
@@ -559,7 +561,7 @@ class _PlanCardState extends State<_PlanCard> {
                                 size: 16, color: luma.accent),
                             const SizedBox(width: 8),
                             Text(
-                              'Your current plan',
+                              t.planYourCurrentPlan,
                               style: TextStyle(
                                 color: luma.accent,
                                 fontSize: 14,
@@ -570,7 +572,7 @@ class _PlanCardState extends State<_PlanCard> {
                         ),
                       )
                     : LumaPrimaryButton(
-                        label: 'Select ${plan.name}',
+                        label: t.planSelectPlan(plan.name),
                         onTap: widget.onTap,
                         expand: true,
                       ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
+import '../../../../l10n/current_l.dart';
 import '../../../../theme/luma_theme.dart';
 import 'ai_usage_page.dart';
 import 'ai_agent_builder_tab.dart';
@@ -12,54 +14,39 @@ import 'tests/tests_tab.dart';
 
 /// The plugin's sections, in sidebar order.
 enum AiUsageSection {
-  usage(
-    icon: Icons.query_stats_rounded,
-    label: 'AI Usage',
-    blurb: 'Your own token spend',
-  ),
-  leaderboard(
-    icon: Icons.leaderboard_rounded,
-    label: 'Leaderboard',
-    blurb: 'Every model, ranked',
-  ),
-  openSource(
-    icon: Icons.memory_rounded,
-    label: 'Open Source',
-    blurb: 'What your hardware can run',
-  ),
-  library(
-    icon: Icons.menu_book_rounded,
-    label: 'Library',
-    blurb: 'Reusable Markdown context',
-  ),
-  agents(
-    icon: Icons.smart_toy_rounded,
-    label: 'Agents',
-    blurb: 'Codex, Claude Code & opencode',
-  ),
-  tests(
-    icon: Icons.science_rounded,
-    label: 'Tests',
-    blurb: 'Experiments in progress',
-  ),
-  assets(
-    icon: Icons.inventory_2_rounded,
-    label: 'Assets',
-    blurb: 'Free to use',
-  );
+  usage(icon: Icons.query_stats_rounded),
+  leaderboard(icon: Icons.leaderboard_rounded),
+  openSource(icon: Icons.memory_rounded),
+  library(icon: Icons.menu_book_rounded),
+  agents(icon: Icons.smart_toy_rounded),
+  tests(icon: Icons.science_rounded),
+  assets(icon: Icons.inventory_2_rounded);
 
-  const AiUsageSection({
-    required this.icon,
-    required this.label,
-    required this.blurb,
-  });
+  const AiUsageSection({required this.icon});
 
   final IconData icon;
-  final String label;
+
+  String get label => switch (this) {
+    AiUsageSection.usage => currentL.aiUsageSectionUsage,
+    AiUsageSection.leaderboard => currentL.aiUsageSectionLeaderboard,
+    AiUsageSection.openSource => currentL.aiUsageSectionOpenSource,
+    AiUsageSection.library => currentL.aiUsageSectionLibrary,
+    AiUsageSection.agents => currentL.aiUsageSectionAgents,
+    AiUsageSection.tests => currentL.aiUsageSectionTests,
+    AiUsageSection.assets => currentL.aiUsageSectionAssets,
+  };
 
   /// One-line description, shown under the label while the rail is expanded
   /// and as the tooltip while it is collapsed.
-  final String blurb;
+  String get blurb => switch (this) {
+    AiUsageSection.usage => currentL.aiUsageSectionUsageBlurb,
+    AiUsageSection.leaderboard => currentL.aiUsageSectionLeaderboardBlurb,
+    AiUsageSection.openSource => currentL.aiUsageSectionOpenSourceBlurb,
+    AiUsageSection.library => currentL.aiUsageSectionLibraryBlurb,
+    AiUsageSection.agents => currentL.aiUsageSectionAgentsBlurb,
+    AiUsageSection.tests => currentL.aiUsageSectionTestsBlurb,
+    AiUsageSection.assets => currentL.aiUsageSectionAssetsBlurb,
+  };
 }
 
 /// The AI Usage plugin's frame: a collapsible sidebar on the left and the
@@ -207,6 +194,7 @@ class _RailItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final foreground = selected ? luma.textPrimary : luma.textSecondary;
 
     final row = Row(
@@ -271,7 +259,9 @@ class _RailItem extends StatelessWidget {
           onTap: onTap,
           hoverColor: luma.surfaceHover,
           child: Tooltip(
-            message: collapsed ? '${section.label} — ${section.blurb}' : '',
+            message: collapsed
+                ? t.aiUsageSectionTooltip(section.label, section.blurb)
+                : '',
             waitDuration: const Duration(milliseconds: 400),
             child: Semantics(
               label: section.label,
@@ -295,7 +285,10 @@ class _CollapseButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final label = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+    final t = L.of(context);
+    final label = collapsed
+        ? t.aiUsageSidebarExpand
+        : t.aiUsageSidebarCollapse;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
       child: Material(
@@ -326,7 +319,7 @@ class _CollapseButton extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Collapse',
+                          t.aiUsageSidebarCollapseShort,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(color: luma.textMuted, fontSize: 12),

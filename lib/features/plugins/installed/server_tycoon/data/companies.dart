@@ -1,9 +1,10 @@
 // Auto-ported from Roblox Server Hosting Tycoon
 
+import '../../../../../l10n/current_l.dart';
+
 class Company {
   final String id;
   final String name;
-  final String blurb;
   final int minReputation;
   final List<String> serviceTypeIds;
   final double payoutMultiplier;
@@ -15,7 +16,6 @@ class Company {
   const Company({
     required this.id,
     required this.name,
-    required this.blurb,
     required this.minReputation,
     required this.serviceTypeIds,
     required this.payoutMultiplier,
@@ -24,13 +24,34 @@ class Company {
     required this.capacityMin,
     required this.capacityMax,
   });
+
+  String get blurb => switch (id) {
+        'BLOXBURG_BAKERY' => currentL.serverTycoonCompanyBakeryBlurb,
+        'PIXEL_PALS' => currentL.serverTycoonCompanyPixelPalsBlurb,
+        'STREAMFORGE' => currentL.serverTycoonCompanyStreamForgeBlurb,
+        'NIMBUS_SOFT' => currentL.serverTycoonCompanyNimbusSoftBlurb,
+        'DATAVAULT' => currentL.serverTycoonCompanyDataVaultBlurb,
+        'CRAFTED_REALMS' => currentL.serverTycoonCompanyCraftedRealmsBlurb,
+        'QUANTUM_QUARRY' => currentL.serverTycoonCompanyQuantumQuarryBlurb,
+        'AEGIS_SECURE' => currentL.serverTycoonCompanyAegisSecureBlurb,
+        'GLOBEX_MEDIA' => currentL.serverTycoonCompanyGlobexMediaBlurb,
+        'HELIOS_AI' => currentL.serverTycoonCompanyHeliosAiBlurb,
+        'OMNICORP' => currentL.serverTycoonCompanyOmniCorpBlurb,
+        'DOCKER_HARBOR' => currentL.serverTycoonCompanyDockerHarborBlurb,
+        'CODEFORGE_DEVOPS' => currentL.serverTycoonCompanyCodeForgeDevOpsBlurb,
+        'MEGACAST_NETWORK' => currentL.serverTycoonCompanyMegacastNetworkBlurb,
+        'STREAMVERSE' => currentL.serverTycoonCompanyStreamVerseBlurb,
+        'NEXUS_CONTAINERS' => currentL.serverTycoonCompanyNexusContainersBlurb,
+        'OMNIBUILD_COLLECTIVE' => currentL.serverTycoonCompanyOmnibuildCollectiveBlurb,
+        'TITAN_CLOUD_SYSTEMS' => currentL.serverTycoonCompanyTitanCloudBlurb,
+        _ => '',
+      };
 }
 
 final Map<String, Company> companiesById = {
   'BLOXBURG_BAKERY': const Company(
     id: 'BLOXBURG_BAKERY',
     name: 'Bloxburg Bakery',
-    blurb: 'A family bakery that just wants its menu online without the site falling over.',
     minReputation: 0,
     serviceTypeIds: ['STATIC_WEBSITE'],
     payoutMultiplier: 1.4,
@@ -42,7 +63,6 @@ final Map<String, Company> companiesById = {
   'PIXEL_PALS': const Company(
     id: 'PIXEL_PALS',
     name: 'Pixel Pals Studio',
-    blurb: 'Indie game studio needing bot hosting for their community Discord.',
     minReputation: 0,
     serviceTypeIds: ['DISCORD_BOT', 'MONITORING_SERVER'],
     payoutMultiplier: 1.5,
@@ -54,7 +74,6 @@ final Map<String, Company> companiesById = {
   'STREAMFORGE': const Company(
     id: 'STREAMFORGE',
     name: 'StreamForge Collective',
-    blurb: 'A streamer collective that needs rock-solid voice servers for podcast night.',
     minReputation: 5,
     serviceTypeIds: ['VOICE_SERVER'],
     payoutMultiplier: 1.6,
@@ -66,7 +85,6 @@ final Map<String, Company> companiesById = {
   'NIMBUS_SOFT': const Company(
     id: 'NIMBUS_SOFT',
     name: 'NimbusSoft',
-    blurb: 'A SaaS startup outsourcing their staging API environment to you.',
     minReputation: 10,
     serviceTypeIds: ['DYNAMIC_WEBSITE_API'],
     payoutMultiplier: 1.7,
@@ -78,7 +96,6 @@ final Map<String, Company> companiesById = {
   'DATAVAULT': const Company(
     id: 'DATAVAULT',
     name: 'DataVault Inc.',
-    blurb: 'Backup resellers hunting for cheap-but-reliable cloud storage capacity.',
     minReputation: 10,
     serviceTypeIds: ['CLOUD_STORAGE'],
     payoutMultiplier: 1.6,
@@ -90,7 +107,6 @@ final Map<String, Company> companiesById = {
   'CRAFTED_REALMS': const Company(
     id: 'CRAFTED_REALMS',
     name: 'Crafted Realms Network',
-    blurb: 'A Minecraft community network renting overflow player slots.',
     minReputation: 15,
     serviceTypeIds: ['MINECRAFT_SERVER', 'GENERIC_GAME_SERVER'],
     payoutMultiplier: 1.8,
@@ -102,7 +118,6 @@ final Map<String, Company> companiesById = {
   'QUANTUM_QUARRY': const Company(
     id: 'QUANTUM_QUARRY',
     name: 'Quantum Quarry Analytics',
-    blurb: 'Data analytics firm that wants managed databases without the ops team.',
     minReputation: 20,
     serviceTypeIds: ['DATABASE_HOSTING'],
     payoutMultiplier: 1.8,
@@ -114,7 +129,6 @@ final Map<String, Company> companiesById = {
   'AEGIS_SECURE': const Company(
     id: 'AEGIS_SECURE',
     name: 'Aegis Secure',
-    blurb: 'Privacy company reselling VPN endpoints under their own brand.',
     minReputation: 25,
     serviceTypeIds: ['VPN_PROVIDER'],
     payoutMultiplier: 1.9,
@@ -126,7 +140,6 @@ final Map<String, Company> companiesById = {
   'GLOBEX_MEDIA': const Company(
     id: 'GLOBEX_MEDIA',
     name: 'Globex Media Group',
-    blurb: 'A media conglomerate that needs CDN edge capacity near its viewers.',
     minReputation: 35,
     serviceTypeIds: ['CDN_EDGE'],
     payoutMultiplier: 2.0,
@@ -138,7 +151,6 @@ final Map<String, Company> companiesById = {
   'HELIOS_AI': const Company(
     id: 'HELIOS_AI',
     name: 'Helios AI Labs',
-    blurb: 'AI lab renting inference capacity while their own cluster is on backorder.',
     minReputation: 50,
     serviceTypeIds: ['AI_INFERENCE'],
     payoutMultiplier: 2.2,
@@ -150,7 +162,6 @@ final Map<String, Company> companiesById = {
   'OMNICORP': const Company(
     id: 'OMNICORP',
     name: 'OmniCorp Global',
-    blurb: 'Enterprise giant. Demanding, but the checks clear and they never bounce.',
     minReputation: 65,
     serviceTypeIds: ['DATABASE_HOSTING', 'CLOUD_STORAGE', 'DYNAMIC_WEBSITE_API', 'CDN_EDGE'],
     payoutMultiplier: 2.5,
@@ -162,7 +173,6 @@ final Map<String, Company> companiesById = {
   'DOCKER_HARBOR': const Company(
     id: 'DOCKER_HARBOR',
     name: 'Docker Harbor Logistics',
-    blurb: 'A container-native startup that needs orchestration capacity while they build their own cluster.',
     minReputation: 15,
     serviceTypeIds: ['CONTAINER_HOSTING'],
     payoutMultiplier: 1.7,
@@ -174,7 +184,6 @@ final Map<String, Company> companiesById = {
   'CODEFORGE_DEVOPS': const Company(
     id: 'CODEFORGE_DEVOPS',
     name: 'CodeForge DevOps',
-    blurb: 'A dev tools company outsourcing their CI/CD build farm and staging APIs.',
     minReputation: 15,
     serviceTypeIds: ['CI_CD_RUNNER', 'DYNAMIC_WEBSITE_API'],
     payoutMultiplier: 1.8,
@@ -186,7 +195,6 @@ final Map<String, Company> companiesById = {
   'MEGACAST_NETWORK': const Company(
     id: 'MEGACAST_NETWORK',
     name: 'MegaCast Network',
-    blurb: 'A podcast network needing low-latency voice and stream relay capacity for live events.',
     minReputation: 20,
     serviceTypeIds: ['STREAMING_RELAY', 'VOICE_SERVER'],
     payoutMultiplier: 1.9,
@@ -198,7 +206,6 @@ final Map<String, Company> companiesById = {
   'STREAMVERSE': const Company(
     id: 'STREAMVERSE',
     name: 'StreamVerse Media',
-    blurb: 'A streaming platform that needs edge CDN capacity and relay nodes for viewer spikes.',
     minReputation: 25,
     serviceTypeIds: ['STREAMING_RELAY', 'CDN_EDGE'],
     payoutMultiplier: 2.1,
@@ -210,7 +217,6 @@ final Map<String, Company> companiesById = {
   'NEXUS_CONTAINERS': const Company(
     id: 'NEXUS_CONTAINERS',
     name: 'Nexus Container Solutions',
-    blurb: 'Enterprise container platform renting both orchestration and backing storage capacity.',
     minReputation: 30,
     serviceTypeIds: ['CONTAINER_HOSTING', 'CLOUD_STORAGE'],
     payoutMultiplier: 2.2,
@@ -222,7 +228,6 @@ final Map<String, Company> companiesById = {
   'OMNIBUILD_COLLECTIVE': const Company(
     id: 'OMNIBUILD_COLLECTIVE',
     name: 'Omnibuild Collective',
-    blurb: 'A conglomerate of indie studios needing CI/CD runners, game servers, and monitoring.',
     minReputation: 35,
     serviceTypeIds: ['CI_CD_RUNNER', 'GENERIC_GAME_SERVER', 'MONITORING_SERVER'],
     payoutMultiplier: 2.3,
@@ -234,7 +239,6 @@ final Map<String, Company> companiesById = {
   'TITAN_CLOUD_SYSTEMS': const Company(
     id: 'TITAN_CLOUD_SYSTEMS',
     name: 'Titan Cloud Systems',
-    blurb: 'A hyperscale cloud provider leasing container, database, and AI capacity during expansion.',
     minReputation: 55,
     serviceTypeIds: ['CONTAINER_HOSTING', 'DATABASE_HOSTING', 'AI_INFERENCE'],
     payoutMultiplier: 2.6,

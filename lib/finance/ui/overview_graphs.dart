@@ -1,7 +1,9 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
-import '../../../theme/luma_theme.dart';
+import '../../l10n/app_localizations.dart';
+import '../../theme/luma_theme.dart';
 import '../data/database.dart';
 
 class CategorySpendingChart extends StatelessWidget {
@@ -31,7 +33,7 @@ class CategorySpendingChart extends StatelessWidget {
     }
 
     if (total == 0) {
-      return const _EmptyGraph(message: 'No expenses this month');
+      return _EmptyGraph(message: L.of(context).financeNoExpensesThisMonth);
     }
 
     final catById = {for (final c in categories) c.id: c};
@@ -142,19 +144,9 @@ class IncomeVsExpenseChart extends StatelessWidget {
                     return const SizedBox();
                   }
                   final month = months[index];
-                  const m = [
-                    'J',
-                    'F',
-                    'M',
-                    'A',
-                    'M',
-                    'J',
-                    'J',
-                    'A',
-                    'S',
-                    'O',
-                    'N',
-                    'D',
+                  final m = [
+                    for (var month = 1; month <= 12; month++)
+                      DateFormat('MMMMM').format(DateTime(2026, month)),
                   ];
                   return Padding(
                     padding: const EdgeInsets.only(top: 8),
@@ -227,9 +219,7 @@ class NetWorthChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     if (snapshots.length < 2) {
-      return const _EmptyGraph(
-        message: 'Come back tomorrow to start seeing your net worth trend.',
-      );
+      return _EmptyGraph(message: L.of(context).financeNetWorthComeBack);
     }
 
     final points = [

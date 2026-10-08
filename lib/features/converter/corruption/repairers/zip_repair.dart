@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../binary_utils.dart';
 import '../repair_report.dart';
 
@@ -42,8 +43,10 @@ Uint8List repairZip(
     if (at < 0) break;
     if (at > offset) {
       log.warning(
-        'Skipped ${formatSize(at - offset)} of unreadable bytes before the '
-        'entry at ${formatOffset(at)}.',
+        currentL.repairZipSkipped(
+          formatSize(at - offset),
+          formatOffset(at),
+        ),
       );
     }
 
@@ -58,32 +61,20 @@ Uint8List repairZip(
   }
 
   if (entries.isEmpty) {
-    log.failed(
-      'No recoverable entries were found — every local file header is gone, so '
-      'there is nothing left to rebuild the archive from.',
-    );
+    log.failed(currentL.repairZipNoEntries);
     return bytes;
   }
 
   if (skipped > 0) {
-    log.warning(
-      '$skipped entr${skipped == 1 ? 'y was' : 'ies were'} damaged beyond use '
-      'and left out of the rebuilt archive.',
-    );
+    log.warning(currentL.repairZipDamagedEntries(skipped));
   }
 
   final hadCentral = indexOfBytes(bytes, _centralSig) >= 0;
   final hadEocd = lastIndexOfBytes(bytes, _eocdSig) >= 0;
   if (!hadCentral || !hadEocd) {
-    log.fixed(
-      'Rebuilt the missing central directory from ${entries.length} local '
-      'file header${entries.length == 1 ? '' : 's'}.',
-    );
+    log.fixed(currentL.repairZipCentralRebuilt(entries.length));
   } else {
-    log.fixed(
-      'Rewrote the central directory and end-of-archive record around '
-      '${entries.length} recovered entr${entries.length == 1 ? 'y' : 'ies'}.',
-    );
+    log.fixed(currentL.repairZipCentralRewritten(entries.length));
   }
 
   _checkOfficeMembers(entries, extension, log);
@@ -164,14 +155,11 @@ _ZipEntry? _readEntry(Uint8List bytes, int at, RepairLog log) {
   } else if (method == 8) {
     content = _inflatePartial(raw);
     if (content.isEmpty && raw.isNotEmpty) {
-      log.warning('"$name" could not be decompressed at all — dropped.');
+      log.warning(currentL.repairZipUndecompressable(name));
       return null;
     }
   } else {
-    log.warning(
-      '"$name" uses compression method $method, which luma cannot decompress. '
-      'It was copied through untouched.',
-    );
+    log.warning(currentL.repairZipUnsupportedMethod(name, method));
     return _ZipEntry(
       name: name,
       method: method,
@@ -186,10 +174,7 @@ _ZipEntry? _readEntry(Uint8List bytes, int at, RepairLog log) {
 
   final actualCrc = Crc32.compute(content);
   if (storedCrc != 0 && actualCrc != storedCrc) {
-    log.warning(
-      '"$name" does not match its checksum — the contents came out damaged, '
-      'but the entry was kept so you can see what is left of it.',
-    );
+    log.warning(currentL.repairZipChecksumMismatch(name));
   }
 
   final deflated = method == 8
@@ -283,13 +268,10 @@ void _checkOfficeMembers(
   final names = entries.map((entry) => entry.name).toSet();
   final missing = required.where((name) => !names.contains(name)).toList();
   if (missing.isEmpty) {
-    log.info(
-      'All the parts a .$extension needs are present, so it should open.',
-    );
+    log.info(currentL.repairZipOfficeComplete(extension));
   } else {
     log.failed(
-      'The .$extension is still missing ${missing.join(', ')}. Those parts '
-      'carry the document itself, and nothing can regenerate them.',
+      currentL.repairZipOfficeMissing(extension, missing.join(', ')),
     );
   }
 }

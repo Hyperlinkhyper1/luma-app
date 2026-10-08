@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:photo_manager/photo_manager.dart';
 
+import '../../../../l10n/current_l.dart';
 import 'gallery_media.dart';
 import 'gallery_source.dart';
 
@@ -111,7 +112,7 @@ class MediaStoreGallerySource extends GallerySource {
   GalleryItem _toItem(AssetEntity asset) {
     final name = (asset.title ?? '').isNotEmpty
         ? asset.title!
-        : 'Item ${asset.id}';
+        : currentL.galleryMediaItemDefaultName(asset.id);
     // MediaStore's create date is 0 for the odd file that never had one; the
     // modified date is always there, and a wrong-but-plausible date sorts
     // better than 1970.

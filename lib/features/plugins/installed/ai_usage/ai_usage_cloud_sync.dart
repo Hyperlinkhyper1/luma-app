@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:drift/drift.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../sync/sync_service.dart';
 import 'ai_usage_source.dart';
 import 'data/ai_usage_database.dart';
@@ -332,7 +333,7 @@ class AiUsageCloudSync {
       if (host.isNotEmpty && host != 'localhost') return host;
     } catch (_) {}
     final os = Platform.operatingSystem;
-    return '${os[0].toUpperCase()}${os.substring(1)} device';
+    return currentL.aiUsageSyncOsDevice('${os[0].toUpperCase()}${os.substring(1)}');
   }
 }
 
@@ -464,7 +465,7 @@ class AiUsageDeviceUpload {
     }
     return AiUsageDeviceUpload(
       deviceId: deviceId,
-      deviceName: json['deviceName']?.toString() ?? 'Another device',
+      deviceName: json['deviceName']?.toString() ?? currentL.aiUsageSyncAnotherDevice,
       uploadedAt: DateTime.fromMillisecondsSinceEpoch(
         json['uploadedAtMs'] as int? ?? 0,
       ),

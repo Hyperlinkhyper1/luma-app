@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../youtube_models.dart';
 import '../youtube_scope.dart';
@@ -17,6 +18,7 @@ class YoutubeAnalyticsTab extends StatelessWidget {
     final repository = YoutubeScope.of(context);
     final analytics = repository.snapshot.analytics;
     final luma = context.luma;
+    final t = L.of(context);
 
     if (analytics.points.isEmpty) {
       return Center(
@@ -24,8 +26,8 @@ class YoutubeAnalyticsTab extends StatelessWidget {
           padding: const EdgeInsets.all(28),
           child: Text(
             repository.refreshing
-                ? 'Loading analytics…'
-                : 'No analytics yet. Refresh to fetch the last 90 days.',
+                ? t.youtubeAnalyticsLoading
+                : t.youtubeAnalyticsEmpty,
             textAlign: TextAlign.center,
             style: TextStyle(color: luma.textMuted, fontSize: 13),
           ),
@@ -39,23 +41,23 @@ class YoutubeAnalyticsTab extends StatelessWidget {
         _SummaryGrid(analytics: analytics),
         const SizedBox(height: 18),
         AccountPanel(
-          title: 'Views',
+          title: t.youtubeMetricViews,
           icon: Icons.visibility_outlined,
-          subtitle: 'Last 90 days',
+          subtitle: t.youtubeLast90Days,
           child: SizedBox(
             height: 200,
             child: YoutubeTrendChart(
               points: [for (final p in analytics.points) (day: p.day, value: p.views)],
               color: luma.accent,
-              valueLabel: 'views',
+              valueLabel: t.youtubeUnitViews,
             ),
           ),
         ),
         const SizedBox(height: 18),
         AccountPanel(
-          title: 'Watch time',
+          title: t.youtubeMetricWatchTime,
           icon: Icons.timer_outlined,
-          subtitle: 'Minutes watched, last 90 days',
+          subtitle: t.youtubeWatchTimeSubtitle,
           child: SizedBox(
             height: 200,
             child: YoutubeTrendChart(
@@ -64,7 +66,7 @@ class YoutubeAnalyticsTab extends StatelessWidget {
                   (day: p.day, value: p.estimatedMinutesWatched),
               ],
               color: luma.success,
-              valueLabel: 'minutes',
+              valueLabel: t.youtubeUnitMinutes,
             ),
           ),
         ),
@@ -83,22 +85,23 @@ class _SummaryGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final tiles = <Widget>[
       AccountStatTile(
         icon: Icons.visibility_outlined,
-        label: 'Views',
+        label: t.youtubeMetricViews,
         value: formatCompact(analytics.totalViews),
-        caption: 'last 90 days',
+        caption: t.youtubeLast90DaysCaption,
       ),
       AccountStatTile(
         icon: Icons.timer_outlined,
-        label: 'Watch time',
+        label: t.youtubeMetricWatchTime,
         value: formatMinutes(analytics.totalMinutesWatched.toDouble()),
         tint: luma.success,
       ),
       AccountStatTile(
         icon: Icons.schedule_rounded,
-        label: 'Avg. view duration',
+        label: t.youtubeAvgViewDuration,
         value: formatDuration(
             Duration(seconds: analytics.averageViewDurationSeconds.round())),
       ),
@@ -106,7 +109,7 @@ class _SummaryGrid extends StatelessWidget {
         icon: analytics.netSubscribers >= 0
             ? Icons.trending_up_rounded
             : Icons.trending_down_rounded,
-        label: 'Net subscribers',
+        label: t.youtubeNetSubscribers,
         value: '${analytics.netSubscribers >= 0 ? '+' : ''}'
             '${formatCount(analytics.netSubscribers)}',
         tint: luma.accent,
@@ -139,16 +142,17 @@ class _TrafficSourcesPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final total = sources.fold(0, (sum, s) => sum + s.views);
     final visible = sources.take(8).toList();
 
     return AccountPanel(
-      title: 'Traffic sources',
+      title: t.youtubeTrafficSources,
       icon: Icons.route_outlined,
-      subtitle: 'Where views came from, last 90 days',
+      subtitle: t.youtubeTrafficSourcesSubtitle,
       child: total == 0
           ? Text(
-              'No traffic data yet.',
+              t.youtubeNoTrafficData,
               style: TextStyle(color: luma.textMuted, fontSize: 12),
             )
           : Column(

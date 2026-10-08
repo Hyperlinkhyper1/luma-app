@@ -6,5 +6,27 @@
   "icon": "school",
   "category": "Productivity",
   "details": "A single hub for schoolwork. Track homework and assignments by due date and subject, build a weekly class timetable, and log study sessions with a per-subject timer and time-by-subject chart.\n\nFlashcard decks use SM-2 spaced repetition (Again/Hard/Good/Easy) so review scheduling adapts to what you actually remember. The formula library is fully user-editable — add your own categorized formulas as a personal reference.\n\nThe GPA tab tracks term-by-term grade points and shows a trend line, plus a \"what do I need\" calculator that tells you the score required on remaining, weighted grade components to hit a target grade. Round it out with an APA/MLA/Chicago citation generator. Mind maps now live in their own Mind Map plugin, and any you already made were moved across automatically.",
-  "screenshots": []
+  "screenshots": [],
+  "i18n": {
+    "nl": {
+      "name": "School",
+      "description": "Al je schoolspullen op één plek. Huiswerk, flashcards, timers, cijfers, roosters: alles erbij.",
+      "details": "Een centrale plek voor schoolwerk. Houd huiswerk en opdrachten bij op inleverdatum en vak, stel een wekelijks lesrooster samen en registreer studiesessies met een timer per vak en een grafiek van de tijd per vak.\n\nFlashcardsets gebruiken SM-2-spaced repetition (Opnieuw/Moeilijk/Goed/Makkelijk), zodat de herhaalplanning zich aanpast aan wat je echt onthoudt. De formulebibliotheek is volledig aan te passen: voeg je eigen gecategoriseerde formules toe als persoonlijk naslagwerk.\n\nHet GPA-tabblad houdt de cijferpunten per periode bij en toont een trendlijn, plus een calculator “wat heb ik nodig” die aangeeft welk cijfer je nog moet halen op de resterende gewogen onderdelen om een doelcijfer te bereiken. Daarnaast is er een APA/MLA/Chicago-bronnengenerator. Mindmaps staan nu in hun eigen plugin Mindmap, en de mindmaps die je al had gemaakt zijn automatisch overgezet."
+    },
+    "fr": {
+      "name": "École",
+      "description": "Tout ce qui concerne l'école au même endroit. Devoirs, cartes mémoire, minuteurs, notes, emplois du temps : tout y est.",
+      "details": "Un centre unique pour le travail scolaire. Suivez les devoirs et les travaux par date limite et par matière, construisez un emploi du temps hebdomadaire des cours, et enregistrez vos sessions d'étude avec un minuteur par matière et un graphique du temps passé par matière.\n\nLes paquets de cartes utilisent la répétition espacée SM-2 (Encore/Difficile/Bien/Facile), si bien que la planification des révisions s'adapte à ce que vous retenez réellement. La bibliothèque de formules est entièrement modifiable : ajoutez vos propres formules classées par catégorie comme référence personnelle.\n\nL'onglet Moyenne suit les points de moyenne trimestre par trimestre et affiche une courbe de tendance, ainsi qu'un calculateur « que me faut-il ? » qui indique la note nécessaire sur les composantes pondérées restantes pour atteindre un objectif. Pour finir, un générateur de citations APA, MLA et Chicago. Les cartes mentales sont désormais dans leur propre plugin Carte mentale, et celles que vous aviez déjà créées ont été transférées automatiquement."
+    },
+    "es": {
+      "name": "Escuela",
+      "description": "Todas tus cosas del colegio en un solo sitio. Deberes, tarjetas, temporizadores, notas, horarios: todo.",
+      "details": "Un centro único para el trabajo escolar. Haz seguimiento de los deberes y las tareas por fecha de entrega y asignatura, crea un horario semanal de clases y registra las sesiones de estudio con un temporizador por asignatura y un gráfico del tiempo dedicado a cada una.\n\nLos mazos de tarjetas usan la repetición espaciada SM-2 (Otra vez/Difícil/Bien/Fácil), así que la programación de repasos se adapta a lo que realmente recuerdas. La biblioteca de fórmulas es totalmente editable: añade tus propias fórmulas clasificadas como referencia personal.\n\nLa pestaña de GPA registra los puntos de calificación trimestre a trimestre y muestra una línea de tendencia, además de una calculadora de «¿qué necesito?» que indica la nota necesaria en los componentes ponderados que quedan para alcanzar una calificación objetivo. Para completarlo, un generador de citas APA/MLA/Chicago. Los mapas mentales ahora están en su propio plugin Mapa mental, y los que ya hubieras creado se trasladaron automáticamente."
+    },
+    "zh": {
+      "name": "学校",
+      "description": "你的所有学习资料都在这里。作业、记忆卡片、计时器、成绩、课表，一应俱全。",
+      "details": "学习的一站式中心。按截止日期和科目跟踪作业与任务，制作每周课表，并使用按科目计时的学习计时器记录学习时长，还能查看各科目的学习时间图表。\n\n记忆卡组采用 SM-2 间隔重复算法（重来/困难/良好/简单），复习安排会根据你真正记住的内容自动调整。公式库完全可以自行编辑，你可以添加自己的分类公式，作为个人参考资料。\n\nGPA 标签页会按学期记录绩点并显示趋势线，还有一个“我需要多少分”计算器，可以告诉你在剩余的加权成绩项目中需要拿到多少分才能达到目标等级。此外还有 APA、MLA 和 Chicago 引文生成器。思维导图现已移至独立的“思维导图”插件中，你之前制作的导图已自动迁移过去。"
+    }
+  }
 }

@@ -1,3 +1,5 @@
+import '../../../../l10n/current_l.dart';
+
 class SmartLight {
   const SmartLight({
     required this.id,
@@ -47,7 +49,7 @@ class SmartLight {
     return SmartLight(
       id: json['id'] as String,
       name: name == null || name.trim().isEmpty
-          ? (attributes['model'] as String? ?? 'IKEA lamp')
+          ? (attributes['model'] as String? ?? currentL.smartHomeLampFallbackName)
           : name,
       room: room?['name'] as String?,
       isOn: attributes['isOn'] == true,

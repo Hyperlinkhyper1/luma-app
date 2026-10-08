@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import '../../../../l10n/current_l.dart';
 import '../bedrock_blocks.dart';
 import '../nbt.dart';
 import '../schematic_model.dart';
@@ -21,9 +22,7 @@ class Mcstructure {
   static Schematic read(NbtCompound root) {
     final size = root.list('size');
     if (size == null || size.items.length < 3) {
-      throw const FormatException(
-        'This .mcstructure file has no size tag.',
-      );
+      throw FormatException(currentL.schematicMcstructureNoSize);
     }
     int axis(int i) => switch (size.items[i]) {
           NbtInt(:final value) => value,
@@ -39,9 +38,7 @@ class Mcstructure {
     final structure = root.compound('structure');
     final indices = structure?.list('block_indices');
     if (structure == null || indices == null || indices.items.isEmpty) {
-      throw const FormatException(
-        'This .mcstructure file has no block indices.',
-      );
+      throw FormatException(currentL.schematicMcstructureNoIndices);
     }
 
     final bedrockPalette = structure
@@ -49,9 +46,7 @@ class Mcstructure {
         ?.compound('default')
         ?.list('block_palette');
     if (bedrockPalette == null) {
-      throw const FormatException(
-        'This .mcstructure file has no block palette.',
-      );
+      throw FormatException(currentL.schematicMcstructureNoPalette);
     }
 
     // Translate the Bedrock palette into Java states once, up front.
@@ -125,11 +120,9 @@ class Mcstructure {
     }
 
     final notes = <String>[
-      'Bedrock and Java do not share a block vocabulary, so this conversion '
-          'is approximate.',
+      currentL.schematicBedrockApproximate,
       if (approximate > 0)
-        '$approximate palette ${approximate == 1 ? 'entry' : 'entries'} had '
-            'properties Java has no equivalent for.',
+        currentL.schematicBedrockReadApproximate(approximate),
     ];
 
     return Schematic(
@@ -165,11 +158,9 @@ class Mcstructure {
   static ({Uint8List bytes, List<String> notes}) write(Schematic schematic) {
     if (schematic.volume > maxWritableVolume) {
       throw FormatException(
-        'This build is ${schematic.width}×${schematic.height}×'
-        '${schematic.length}. A Bedrock structure stores every position in two '
-        'index lists, so one that size would be unusably large — and Bedrock '
-        'only loads 64 blocks per side. Convert to .litematic or .schem '
-        'instead.',
+        currentL.schematicMcstructureTooLarge(
+          '${schematic.width}×${schematic.height}×${schematic.length}',
+        ),
       );
     }
 
@@ -255,14 +246,10 @@ class Mcstructure {
       ]);
 
     final notes = <String>[
-      'Bedrock and Java do not share a block vocabulary, so this conversion '
-          'is approximate.',
+      currentL.schematicBedrockApproximate,
       if (approximate > 0)
-        '$approximate palette ${approximate == 1 ? 'entry' : 'entries'} lost '
-            'a property Bedrock has no equivalent for.',
-      if (total > 64 * 64 * 64)
-        'Bedrock structure blocks load at most 64×64×64 at a time, so this '
-            'build will need splitting up in-game.',
+        currentL.schematicBedrockWriteApproximate(approximate),
+      if (total > 64 * 64 * 64) currentL.schematicMcstructureSplitNeeded,
     ];
 
     return (

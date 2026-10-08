@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../cs2_market_api.dart';
 import '../cs2_market_scope.dart';
@@ -133,10 +134,12 @@ class _Cs2ItemDetailPageState extends State<Cs2ItemDetailPage> {
     final skin = _skin!;
     final result = await showCs2StartingPriceDialog(
       context,
-      title: hasEntries ? 'Track another copy' : 'Track this listing',
+      title: hasEntries
+          ? L.of(context).cs2TrackAnotherCopy
+          : L.of(context).cs2TrackListing,
       subtitle: hasEntries
-          ? 'The price to measure this copy\'s gain and loss from.'
-          : 'Pick the grade, and the price to measure gain and loss from.',
+          ? L.of(context).cs2ItemSubtitleAnotherCopy
+          : L.of(context).cs2ItemSubtitleNewListing,
       wears: skin.wears,
       wear: _wear,
       wearEditable: !hasEntries && skin.wears.length > 1,
@@ -166,9 +169,9 @@ class _Cs2ItemDetailPageState extends State<Cs2ItemDetailPage> {
     final result = await showCs2StartingPriceDialog(
       context,
       title: entry.startingPriceCents == null
-          ? 'Set starting price'
-          : 'Edit starting price',
-      subtitle: 'The price this copy\'s gain and loss is measured from.',
+          ? L.of(context).cs2ItemSetStartingPrice
+          : L.of(context).cs2ItemEditStartingPrice,
+      subtitle: L.of(context).cs2ItemStartingPriceSubtitle,
       wears: const [],
       wear: _wear,
       wearEditable: false,
@@ -185,6 +188,7 @@ class _Cs2ItemDetailPageState extends State<Cs2ItemDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final skin = _skin;
 
@@ -196,9 +200,8 @@ class _Cs2ItemDetailPageState extends State<Cs2ItemDetailPage> {
             Center(
               child: LumaEmptyState(
                 icon: Icons.search_off_rounded,
-                title: 'Item not found',
-                subtitle: 'It may have dropped out of the last catalog '
-                    'update — try refreshing the catalog.',
+                title: t.cs2ItemNotFound,
+                subtitle: t.cs2ItemNotFoundHint,
               ),
             ),
             const _BackButton(),
@@ -494,7 +497,7 @@ class _BackButton extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: IconButton(
           onPressed: () => Navigator.of(context).maybePop(),
-          tooltip: 'Back to the market',
+          tooltip: L.of(context).cs2ItemBackToMarket,
           icon: Icon(Icons.arrow_back_rounded, color: luma.textPrimary),
           constraints: const BoxConstraints.tightFor(width: 44, height: 44),
         ),
@@ -528,7 +531,7 @@ class _VariantCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (onWearChanged != null) ...[
-            Text('Wear',
+            Text(L.of(context).cs2ItemWear,
                 style: TextStyle(color: luma.textMuted, fontSize: 12)),
             const SizedBox(height: 8),
             LumaSegmentedTabs(
@@ -541,7 +544,7 @@ class _VariantCard extends StatelessWidget {
           if (onWearChanged != null && onStatTrakChanged != null)
             const SizedBox(height: 16),
           if (onStatTrakChanged != null) ...[
-            Text('Variant',
+            Text(L.of(context).cs2ItemVariant,
                 style: TextStyle(color: luma.textMuted, fontSize: 12)),
             const SizedBox(height: 8),
             LumaSegmentedTabs(
@@ -581,6 +584,7 @@ class _PriceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final price = lowestCents ?? medianCents;
 
@@ -596,17 +600,17 @@ class _PriceCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('Lowest listed',
+                    Text(L.of(context).cs2ItemLowestListed,
                         style:
                             TextStyle(color: luma.textMuted, fontSize: 12)),
                     const SizedBox(height: 6),
                     if (price == null)
                       Text(
                         loading
-                            ? 'Checking…'
+                            ? t.steamPriceChecking
                             : error != null
-                                ? 'Could not check price'
-                                : 'Not checked yet',
+                                ? t.cs2ItemCouldNotCheck
+                                : t.cs2ItemNotCheckedYet,
                         style: TextStyle(
                           color: luma.textSecondary,
                           fontSize: 20,
@@ -626,7 +630,7 @@ class _PriceCard extends StatelessWidget {
                     if (medianCents != null && lowestCents != null) ...[
                       const SizedBox(height: 4),
                       Text(
-                        'Median ${formatSteamPrice(medianCents!, currency)}',
+                        '${t.cs2ItemMedian} ${formatSteamPrice(medianCents!, currency)}',
                         style:
                             TextStyle(color: luma.textMuted, fontSize: 12),
                       ),
@@ -636,7 +640,7 @@ class _PriceCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               LumaGhostButton(
-                label: 'Check now',
+                label: L.of(context).cs2ItemCheckNow,
                 icon: Icons.refresh_rounded,
                 onTap: loading ? null : onCheckNow,
               ),
@@ -649,7 +653,7 @@ class _PriceCard extends StatelessWidget {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  _statusLine(fetchedAt, tracked, error),
+                  _statusLine(fetchedAt, tracked, error, L.of(context)),
                   style: TextStyle(color: luma.textMuted, fontSize: 11.5),
                 ),
               ),
@@ -657,7 +661,9 @@ class _PriceCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           LumaPrimaryButton(
-            label: tracked ? 'Track another copy' : 'Track this listing',
+            label: tracked
+                ? L.of(context).cs2TrackAnotherCopy
+                : L.of(context).cs2TrackListing,
             icon: tracked ? Icons.add_rounded : Icons.star_border_rounded,
             onTap: onTrack,
           ),
@@ -666,18 +672,17 @@ class _PriceCard extends StatelessWidget {
     );
   }
 
-  static String _statusLine(DateTime? at, bool tracked, String? error) {
+  static String _statusLine(DateTime? at, bool tracked, String? error, L t) {
     if (error != null) return error;
     if (!tracked) {
-      return 'A quick check, not saved — track this listing to keep a '
-          'history of its price.';
+      return t.cs2ItemQuickCheckNotSaved;
     }
-    if (at == null) return 'Not checked yet.';
+    if (at == null) return t.cs2ItemStatusNotChecked;
     final ago = DateTime.now().difference(at);
-    if (ago.inMinutes < 1) return 'Checked just now.';
-    if (ago.inHours < 1) return 'Checked ${ago.inMinutes} min ago.';
-    if (ago.inDays < 1) return 'Checked ${ago.inHours} h ago.';
-    return 'Checked on ${DateFormat.yMMMd().format(at)}.';
+    if (ago.inMinutes < 1) return t.cs2ItemCheckedJustNow;
+    if (ago.inHours < 1) return t.cs2ItemCheckedMinutes(ago.inMinutes);
+    if (ago.inDays < 1) return t.cs2ItemCheckedHours(ago.inHours);
+    return t.cs2ItemCheckedOn(DateFormat.yMMMd().format(at));
   }
 }
 
@@ -707,6 +712,7 @@ class _EntriesCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     return LumaCard(
       child: Column(
@@ -718,9 +724,7 @@ class _EntriesCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  entries.length == 1
-                      ? 'Your copy'
-                      : 'Your copies (${entries.length})',
+                  t.cs2ItemYourCopies(entries.length),
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 15,
@@ -748,7 +752,7 @@ class _EntriesCard extends StatelessWidget {
           ],
           const SizedBox(height: 12),
           LumaGhostButton(
-            label: 'Track another copy',
+            label: L.of(context).cs2TrackAnotherCopy,
             icon: Icons.add_rounded,
             onTap: onAddAnother,
           ),
@@ -778,6 +782,7 @@ class _EntryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final starting = entry.startingPriceCents;
 
     return Column(
@@ -793,7 +798,7 @@ class _EntryRow extends StatelessWidget {
                 children: [
                   Text(
                     starting == null
-                        ? 'No starting price set'
+                        ? t.cs2ItemNoStartingPrice
                         : formatSteamPrice(starting, currency),
                     style: TextStyle(
                       color: starting == null
@@ -806,7 +811,9 @@ class _EntryRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    'Tracked ${DateFormat.yMMMd().format(entry.trackedAt)}',
+                    t.cs2ItemTrackedOn(
+                      DateFormat.yMMMd().format(entry.trackedAt),
+                    ),
                     style: TextStyle(color: luma.textMuted, fontSize: 11.5),
                   ),
                 ],
@@ -826,18 +833,20 @@ class _EntryRow extends StatelessWidget {
           runSpacing: 8,
           children: [
             LumaGhostButton(
-              label: starting == null ? 'Set price' : 'Edit',
+              label: starting == null
+                  ? t.cs2ItemSetPrice
+                  : t.cs2ItemEditStartingPrice,
               icon: Icons.edit_rounded,
               onTap: onEdit,
             ),
             if (starting != null)
               LumaGhostButton(
-                label: 'Clear price',
+                label: L.of(context).cs2ItemClearPrice,
                 icon: Icons.close_rounded,
                 onTap: onClear,
               ),
             LumaGhostButton(
-              label: 'Stop tracking this copy',
+              label: L.of(context).cs2ItemStopTrackingCopy,
               icon: Icons.delete_outline_rounded,
               onTap: onRemove,
             ),
@@ -857,12 +866,13 @@ class _FactsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final facts = <(String, String)>[
-      ('Weapon', skin.weaponName),
-      ('Rarity', skin.rarityName),
-      ('Case', skin.caseName ?? 'No case — collection or promo item'),
-      if (skin.stattrak) ('StatTrak™', 'Available for this finish'),
-      if (skin.souvenir) ('Souvenir', 'Available for this finish'),
+      (t.cs2ItemFactWeapon, skin.weaponName),
+      (t.cs2ItemFactRarity, skin.rarityName),
+      (t.cs2ItemFactCase, skin.caseName ?? t.cs2ItemFactNoCase),
+      if (skin.stattrak) ('StatTrak™', t.cs2ItemFactAvailable),
+      if (skin.souvenir) (t.cs2ItemFactSouvenir, t.cs2ItemFactAvailable),
     ];
 
     return LumaCard(
@@ -874,7 +884,7 @@ class _FactsCard extends StatelessWidget {
               Icon(Icons.info_outline_rounded, size: 18, color: luma.accent),
               const SizedBox(width: 8),
               Text(
-                'Details',
+                t.commonDetails,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 15,
@@ -913,7 +923,7 @@ class _FactsCard extends StatelessWidget {
             ),
           const SizedBox(height: 4),
           LumaGhostButton(
-            label: 'Open on Steam Market',
+            label: L.of(context).cs2ItemOpenOnMarket,
             icon: Icons.open_in_new_rounded,
             onTap: () => launchUrl(
               Uri.parse(

@@ -2,6 +2,8 @@ import 'dart:typed_data';
 
 import 'package:image/image.dart' as img;
 
+import '../../l10n/current_l.dart';
+
 /// Image formats the picture converter understands. SVG is decode-only (it is
 /// rasterized to a raster target); it is never an encode target.
 enum PictureFormat {
@@ -99,9 +101,7 @@ class ImageConvert {
   }) {
     final image = img.decodeImage(bytes);
     if (image == null) {
-      throw const FormatException(
-        'Could not read this image — it may be corrupt or unsupported.',
-      );
+      throw FormatException(currentL.converterImageCouldNotRead);
     }
     return encode(image, target, jpgQuality: jpgQuality);
   }

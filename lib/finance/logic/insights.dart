@@ -1,3 +1,4 @@
+import '../../l10n/current_l.dart';
 import '../data/database.dart';
 import 'finance_logic.dart';
 
@@ -119,7 +120,7 @@ List<SubscriptionCandidate> detectSubscriptions({
       SubscriptionCandidate(
         key: key,
         name: merchantId != null
-            ? merchantNames[merchantId] ?? 'Unknown merchant'
+            ? merchantNames[merchantId] ?? currentL.financeUnknownMerchant
             : last.note!.trim(),
         amountCents: last.amountCents,
         cadence: cadence,

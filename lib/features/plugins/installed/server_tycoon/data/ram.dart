@@ -1,10 +1,10 @@
 // Auto-ported from Roblox Server Hosting Tycoon
 
 import 'motherboards.dart';
+import '../../../../../l10n/current_l.dart';
 
 class RAMStick {
   final String id;
-  final String name;
   final RAMType ramType;
   final int capacityGB;
   final int speedMHz;
@@ -14,7 +14,6 @@ class RAMStick {
 
   const RAMStick({
     required this.id,
-    required this.name,
     required this.ramType,
     required this.capacityGB,
     required this.speedMHz,
@@ -22,12 +21,35 @@ class RAMStick {
     required this.registered,
     required this.price,
   });
+
+  String get name => switch (id) {
+        'DDR3_8GB' => currentL.serverTycoonRamGenericDdr3Gb8,
+        'DDR3_16GB' => 'Kingston DDR3 16GB 1866MHz',
+        'DDR4_8GB' => 'Corsair Vengeance DDR4 8GB 3200MHz',
+        'DDR4_16GB' => 'Corsair Vengeance DDR4 16GB 3200MHz',
+        'DDR4_32GB' => 'G.Skill Ripjaws DDR4 32GB 3600MHz',
+        'DDR4_32GB_ECC' => 'Samsung DDR4 32GB ECC 2933MHz',
+        'DDR4_64GB_RDIMM' => 'Micron DDR4 64GB ECC RDIMM 2933MHz',
+        'DDR5_32GB' => 'Corsair Dominator DDR5 32GB 6000MHz',
+        'DDR5_64GB' => 'G.Skill Trident Z5 DDR5 64GB 6000MHz',
+        'DDR5_128GB_RDIMM' => 'SK Hynix DDR5 128GB ECC RDIMM 4800MHz',
+        'DDR3_8GB_ECC' => 'Hynix DDR3 8GB ECC 1600MHz',
+        'DDR4_16GB_ECC' => 'Kingston DDR4 16GB ECC 3200MHz',
+        'DDR4_32GB_RDIMM2' => 'Samsung DDR4 32GB ECC RDIMM 3200MHz',
+        'DDR4_128GB_LRDIMM' => 'Micron DDR4 128GB ECC LRDIMM 2933MHz',
+        'DDR5_48GB' => 'Corsair Vengeance DDR5 48GB 5600MHz',
+        'DDR5_96GB_RDIMM' => 'Samsung DDR5 96GB ECC RDIMM 5600MHz',
+        'DDR5_256GB_RDIMM' => 'Micron DDR5 256GB ECC RDIMM 4800MHz',
+        'DDR3_4GB' => currentL.serverTycoonRamGenericDdr3Gb4,
+        'DDR5_16GB' => 'Kingston Fury DDR5 16GB 5200MHz',
+        'DDR5_32GB_ECC' => 'Crucial DDR5 32GB ECC UDIMM 4800MHz',
+        _ => id,
+      };
 }
 
 final Map<String, RAMStick> ramById = {
   'DDR3_8GB': const RAMStick(
     id: 'DDR3_8GB',
-    name: 'Generic DDR3 8GB 1600MHz',
     ramType: RAMType.ddr3,
     capacityGB: 8,
     speedMHz: 1600,
@@ -37,7 +59,6 @@ final Map<String, RAMStick> ramById = {
   ),
   'DDR3_16GB': const RAMStick(
     id: 'DDR3_16GB',
-    name: 'Kingston DDR3 16GB 1866MHz',
     ramType: RAMType.ddr3,
     capacityGB: 16,
     speedMHz: 1866,
@@ -47,7 +68,6 @@ final Map<String, RAMStick> ramById = {
   ),
   'DDR4_8GB': const RAMStick(
     id: 'DDR4_8GB',
-    name: 'Corsair Vengeance DDR4 8GB 3200MHz',
     ramType: RAMType.ddr4,
     capacityGB: 8,
     speedMHz: 3200,
@@ -57,7 +77,6 @@ final Map<String, RAMStick> ramById = {
   ),
   'DDR4_16GB': const RAMStick(
     id: 'DDR4_16GB',
-    name: 'Corsair Vengeance DDR4 16GB 3200MHz',
     ramType: RAMType.ddr4,
     capacityGB: 16,
     speedMHz: 3200,
@@ -67,7 +86,6 @@ final Map<String, RAMStick> ramById = {
   ),
   'DDR4_32GB': const RAMStick(
     id: 'DDR4_32GB',
-    name: 'G.Skill Ripjaws DDR4 32GB 3600MHz',
     ramType: RAMType.ddr4,
     capacityGB: 32,
     speedMHz: 3600,
@@ -77,7 +95,6 @@ final Map<String, RAMStick> ramById = {
   ),
   'DDR4_32GB_ECC': const RAMStick(
     id: 'DDR4_32GB_ECC',
-    name: 'Samsung DDR4 32GB ECC 2933MHz',
     ramType: RAMType.ddr4,
     capacityGB: 32,
     speedMHz: 2933,
@@ -87,7 +104,6 @@ final Map<String, RAMStick> ramById = {
   ),
   'DDR4_64GB_RDIMM': const RAMStick(
     id: 'DDR4_64GB_RDIMM',
-    name: 'Micron DDR4 64GB ECC RDIMM 2933MHz',
     ramType: RAMType.ddr4,
     capacityGB: 64,
     speedMHz: 2933,
@@ -97,7 +113,6 @@ final Map<String, RAMStick> ramById = {
   ),
   'DDR5_32GB': const RAMStick(
     id: 'DDR5_32GB',
-    name: 'Corsair Dominator DDR5 32GB 6000MHz',
     ramType: RAMType.ddr5,
     capacityGB: 32,
     speedMHz: 6000,
@@ -107,7 +122,6 @@ final Map<String, RAMStick> ramById = {
   ),
   'DDR5_64GB': const RAMStick(
     id: 'DDR5_64GB',
-    name: 'G.Skill Trident Z5 DDR5 64GB 6000MHz',
     ramType: RAMType.ddr5,
     capacityGB: 64,
     speedMHz: 6000,
@@ -117,7 +131,6 @@ final Map<String, RAMStick> ramById = {
   ),
   'DDR5_128GB_RDIMM': const RAMStick(
     id: 'DDR5_128GB_RDIMM',
-    name: 'SK Hynix DDR5 128GB ECC RDIMM 4800MHz',
     ramType: RAMType.ddr5,
     capacityGB: 128,
     speedMHz: 4800,
@@ -127,7 +140,6 @@ final Map<String, RAMStick> ramById = {
   ),
   'DDR3_8GB_ECC': const RAMStick(
     id: 'DDR3_8GB_ECC',
-    name: 'Hynix DDR3 8GB ECC 1600MHz',
     ramType: RAMType.ddr3,
     capacityGB: 8,
     speedMHz: 1600,
@@ -137,7 +149,6 @@ final Map<String, RAMStick> ramById = {
   ),
   'DDR4_16GB_ECC': const RAMStick(
     id: 'DDR4_16GB_ECC',
-    name: 'Kingston DDR4 16GB ECC 3200MHz',
     ramType: RAMType.ddr4,
     capacityGB: 16,
     speedMHz: 3200,
@@ -147,7 +158,6 @@ final Map<String, RAMStick> ramById = {
   ),
   'DDR4_32GB_RDIMM2': const RAMStick(
     id: 'DDR4_32GB_RDIMM2',
-    name: 'Samsung DDR4 32GB ECC RDIMM 3200MHz',
     ramType: RAMType.ddr4,
     capacityGB: 32,
     speedMHz: 3200,
@@ -157,7 +167,6 @@ final Map<String, RAMStick> ramById = {
   ),
   'DDR4_128GB_LRDIMM': const RAMStick(
     id: 'DDR4_128GB_LRDIMM',
-    name: 'Micron DDR4 128GB ECC LRDIMM 2933MHz',
     ramType: RAMType.ddr4,
     capacityGB: 128,
     speedMHz: 2933,
@@ -167,7 +176,6 @@ final Map<String, RAMStick> ramById = {
   ),
   'DDR5_48GB': const RAMStick(
     id: 'DDR5_48GB',
-    name: 'Corsair Vengeance DDR5 48GB 5600MHz',
     ramType: RAMType.ddr5,
     capacityGB: 48,
     speedMHz: 5600,
@@ -177,7 +185,6 @@ final Map<String, RAMStick> ramById = {
   ),
   'DDR5_96GB_RDIMM': const RAMStick(
     id: 'DDR5_96GB_RDIMM',
-    name: 'Samsung DDR5 96GB ECC RDIMM 5600MHz',
     ramType: RAMType.ddr5,
     capacityGB: 96,
     speedMHz: 5600,
@@ -187,7 +194,6 @@ final Map<String, RAMStick> ramById = {
   ),
   'DDR5_256GB_RDIMM': const RAMStick(
     id: 'DDR5_256GB_RDIMM',
-    name: 'Micron DDR5 256GB ECC RDIMM 4800MHz',
     ramType: RAMType.ddr5,
     capacityGB: 256,
     speedMHz: 4800,
@@ -197,7 +203,6 @@ final Map<String, RAMStick> ramById = {
   ),
   'DDR3_4GB': const RAMStick(
     id: 'DDR3_4GB',
-    name: 'Generic DDR3 4GB 1333MHz',
     ramType: RAMType.ddr3,
     capacityGB: 4,
     speedMHz: 1333,
@@ -207,7 +212,6 @@ final Map<String, RAMStick> ramById = {
   ),
   'DDR5_16GB': const RAMStick(
     id: 'DDR5_16GB',
-    name: 'Kingston Fury DDR5 16GB 5200MHz',
     ramType: RAMType.ddr5,
     capacityGB: 16,
     speedMHz: 5200,
@@ -217,7 +221,6 @@ final Map<String, RAMStick> ramById = {
   ),
   'DDR5_32GB_ECC': const RAMStick(
     id: 'DDR5_32GB_ECC',
-    name: 'Crucial DDR5 32GB ECC UDIMM 4800MHz',
     ramType: RAMType.ddr5,
     capacityGB: 32,
     speedMHz: 4800,

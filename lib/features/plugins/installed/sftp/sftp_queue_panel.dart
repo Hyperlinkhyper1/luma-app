@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'sftp_paths.dart';
 import 'sftp_transfer_queue.dart';
@@ -29,6 +30,7 @@ class SftpQueuePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return AnimatedBuilder(
       animation: queue,
       builder: (context, _) {
@@ -47,7 +49,7 @@ class SftpQueuePanel extends StatelessWidget {
               if (expanded || !showHeader)
                 Flexible(
                   child: items.isEmpty
-                      ? _empty(luma)
+                      ? _empty(luma, t)
                       : ListView.builder(
                           shrinkWrap: showHeader,
                           padding: const EdgeInsets.symmetric(vertical: 4),
@@ -66,12 +68,11 @@ class SftpQueuePanel extends StatelessWidget {
     );
   }
 
-  Widget _empty(LumaPalette luma) => Padding(
+  Widget _empty(LumaPalette luma, L t) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
         child: Center(
           child: Text(
-            'Nothing queued. Drag files between the two sides, or select some '
-            'and use the transfer arrows.',
+            t.sftpQueueNothingQueued,
             textAlign: TextAlign.center,
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
@@ -82,6 +83,7 @@ class SftpQueuePanel extends StatelessWidget {
     final pending = queue.pendingCount;
     final failed = queue.failedCount;
     final progress = queue.overallProgress;
+    final t = L.of(context);
 
     return InkWell(
       onTap: onToggleExpanded,
@@ -105,7 +107,7 @@ class SftpQueuePanel extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Text(
-              pending > 0 ? 'Transferring' : 'Transfer queue',
+              pending > 0 ? t.sftpQueueTransferring : t.sftpQueueTitle,
               style: TextStyle(
                 color: luma.textPrimary,
                 fontSize: 13,
@@ -129,7 +131,7 @@ class SftpQueuePanel extends StatelessWidget {
               const Spacer(),
             const SizedBox(width: 10),
             Text(
-              _statusLabel(pending, failed),
+              _statusLabel(t, pending, failed),
               style: TextStyle(
                 color: failed > 0 ? luma.danger : luma.textSecondary,
                 fontSize: 12,
@@ -138,18 +140,18 @@ class SftpQueuePanel extends StatelessWidget {
             if (failed > 0)
               TextButton(
                 onPressed: queue.retryFailed,
-                child: Text('Retry all', style: TextStyle(color: luma.accent)),
+                child: Text(t.sftpQueueRetryAll, style: TextStyle(color: luma.accent)),
               ),
             if (pending > 0)
               TextButton(
                 onPressed: queue.cancelAll,
-                child: Text('Stop', style: TextStyle(color: luma.danger)),
+                child: Text(t.commonStop, style: TextStyle(color: luma.danger)),
               ),
             if (queue.hasFinished && pending == 0)
               TextButton(
                 onPressed: queue.clearFinished,
                 child: Text(
-                  'Clear',
+                  t.commonClear,
                   style: TextStyle(color: luma.textSecondary),
                 ),
               ),
@@ -166,13 +168,11 @@ class SftpQueuePanel extends StatelessWidget {
     );
   }
 
-  String _statusLabel(int pending, int failed) {
-    if (pending > 0) {
-      return '$pending ${pending == 1 ? 'file' : 'files'} left';
-    }
-    if (failed > 0) return '$failed failed';
-    if (queue.isEmpty) return 'Empty';
-    return 'All done';
+  String _statusLabel(L t, int pending, int failed) {
+    if (pending > 0) return t.sftpQueueFilesLeft(pending);
+    if (failed > 0) return t.sftpQueueFailedCount(failed);
+    if (queue.isEmpty) return t.sftpQueueIdle;
+    return t.sftpQueueAllDone;
   }
 }
 
@@ -190,6 +190,7 @@ class _TransferRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final upload = item.direction == TransferDirection.upload;
     final color = switch (item.state) {
       TransferState.done => luma.success,
@@ -228,7 +229,7 @@ class _TransferRow extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      _detail(item),
+                      _detail(t, item),
                       style: TextStyle(
                         color: item.state == TransferState.failed
                             ? luma.danger
@@ -267,7 +268,7 @@ class _TransferRow extends StatelessWidget {
               item.state == TransferState.cancelled)
             IconButton(
               onPressed: onRetry,
-              tooltip: 'Retry',
+              tooltip: t.commonRetry,
               icon: const Icon(Icons.refresh_rounded, size: 17),
               color: luma.textSecondary,
               constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
@@ -276,7 +277,7 @@ class _TransferRow extends StatelessWidget {
           else if (!item.isFinished)
             IconButton(
               onPressed: onCancel,
-              tooltip: 'Stop',
+              tooltip: t.commonStop,
               icon: const Icon(Icons.close_rounded, size: 17),
               color: luma.textSecondary,
               constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
@@ -293,13 +294,15 @@ class _TransferRow extends StatelessWidget {
     );
   }
 
-  static String _detail(TransferItem item) => switch (item.state) {
-        TransferState.queued => 'Waiting',
-        TransferState.running =>
-          '${formatFileSize(item.transferredBytes)} of '
-              '${formatFileSize(item.totalBytes)} · ${item.rateLabel}',
+  static String _detail(L t, TransferItem item) => switch (item.state) {
+        TransferState.queued => t.sftpQueueWaiting,
+        TransferState.running => t.sftpQueueRunningDetail(
+            formatFileSize(item.transferredBytes),
+            formatFileSize(item.totalBytes),
+            item.rateLabel,
+          ),
         TransferState.done => formatFileSize(item.totalBytes),
-        TransferState.cancelled => 'Stopped',
-        TransferState.failed => 'Failed',
+        TransferState.cancelled => t.sftpQueueStopped,
+        TransferState.failed => t.sftpQueueFailed,
       };
 }

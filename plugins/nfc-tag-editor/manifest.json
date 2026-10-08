@@ -4,5 +4,23 @@
   "version": "1.0.0",
   "description": "Read those little NFC stickers and write your own. Links, Wi-Fi, contact cards - save a set and write a whole batch. Android only.",
   "icon": "nfc",
-  "category": "Utility"
+  "category": "Utility",
+  "i18n": {
+    "nl": {
+      "name": "NFC-tagbewerker",
+      "description": "Lees die kleine NFC-stickers en schrijf je eigen. Links, Wi-Fi, contactkaarten: sla een set op en schrijf een hele reeks. Alleen Android."
+    },
+    "fr": {
+      "name": "Éditeur de tags NFC",
+      "description": "Lisez ces petits autocollants NFC et écrivez les vôtres. Liens, Wi-Fi, cartes de contact : enregistrez un ensemble et écrivez tout un lot. Android uniquement."
+    },
+    "es": {
+      "name": "Editor de etiquetas NFC",
+      "description": "Lee esas pegatinas NFC y escribe las tuyas. Enlaces, Wi-Fi, tarjetas de contacto: guarda un conjunto y escribe un lote entero. Solo Android."
+    },
+    "zh": {
+      "name": "NFC 标签编辑器",
+      "description": "读取那些小巧的 NFC 贴纸，并写入你自己的内容。链接、Wi-Fi、联系人名片：保存一组内容，然后批量写入。仅支持 Android。"
+    }
+  }
 }

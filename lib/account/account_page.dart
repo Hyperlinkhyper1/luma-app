@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../app/widgets.dart';
 import '../family/family_scope.dart';
+import '../l10n/app_localizations.dart';
 import '../settings/devices_section.dart';
 import '../settings/settings_controller.dart';
 import '../settings/settings_scope.dart';
@@ -32,6 +33,7 @@ class _AccountPageState extends State<AccountPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
       child: Center(
@@ -43,7 +45,7 @@ class _AccountPageState extends State<AccountPage> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: LumaSegmentedTabs(
-                  tabs: const ['Profile', 'Stats'],
+                  tabs: [t.accountTabProfile, t.accountTabStats],
                   selectedIndex: _tab,
                   onSelect: (index) => setState(() => _tab = index),
                 ),
@@ -63,14 +65,15 @@ class _ProfileTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // ---- Profile ------------------------------------------------
         _SectionHeader(
           icon: Icons.person_rounded,
-          title: 'Profile',
-          subtitle: 'How you look on this device.',
+          title: t.accountTabProfile,
+          subtitle: t.accountProfileSubtitle,
         ),
         const SizedBox(height: 12),
         const _ProfileSection(),
@@ -80,9 +83,8 @@ class _ProfileTab extends StatelessWidget {
         // ---- Sync & account (collapsible) ----------------------------
         LumaCollapsibleSection(
           icon: Icons.cloud_sync_rounded,
-          title: 'Sync & account',
-          subtitle:
-              'Your stuff on every device, plus devices linked to this one.',
+          title: t.accountSyncTitle,
+          subtitle: t.accountSyncSubtitle,
           child: const Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -98,8 +100,8 @@ class _ProfileTab extends StatelessWidget {
         // ---- Storage --------------------------------------------------
         _SectionHeader(
           icon: Icons.storage_rounded,
-          title: 'Storage',
-          subtitle: 'How much room luma takes up here.',
+          title: t.accountStorageTitle,
+          subtitle: t.accountStorageSubtitle,
         ),
         const SizedBox(height: 12),
         const LocalStorageCard(),
@@ -109,8 +111,8 @@ class _ProfileTab extends StatelessWidget {
         // ---- Plan -------------------------------------------------------
         _SectionHeader(
           icon: Icons.workspace_premium_rounded,
-          title: 'Plan',
-          subtitle: 'What you picked and what is in it.',
+          title: t.accountPlanTitle,
+          subtitle: t.accountPlanSubtitle,
         ),
         const SizedBox(height: 12),
         const _PlanSummary(),
@@ -120,8 +122,8 @@ class _ProfileTab extends StatelessWidget {
         // ---- Family -------------------------------------------------------
         _SectionHeader(
           icon: Icons.diversity_3_rounded,
-          title: 'Family',
-          subtitle: 'Share your calendar with your people.',
+          title: t.familyTitle,
+          subtitle: t.accountFamilySubtitle,
         ),
         const SizedBox(height: 12),
         const _FamilySummary(),
@@ -139,6 +141,7 @@ class _ProfileSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final settings = SettingsScope.of(context);
     final luma = context.luma;
+    final t = L.of(context);
     return ListenableBuilder(
       listenable: settings,
       builder: (context, _) {
@@ -168,7 +171,7 @@ class _ProfileSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Profile picture',
+                  t.accountProfilePicture,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 14,
@@ -177,13 +180,13 @@ class _ProfileSection extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Only on this device — nobody else sees it.',
+                  t.accountProfilePictureNote,
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
               ],
             ),
             actionBuilder: (expand) => LumaGhostButton(
-              label: hasImage ? 'Change photo' : 'Choose photo',
+              label: hasImage ? t.accountChangePhoto : t.accountChoosePhoto,
               icon: Icons.image_rounded,
               expand: expand,
               onTap: () => _pickAvatar(settings),
@@ -218,6 +221,7 @@ class _LocalStorageCardState extends State<LocalStorageCard> {
   Widget build(BuildContext context) {
     final guard = StorageGuardScope.of(context);
     final luma = context.luma;
+    final t = L.of(context);
     return ListenableBuilder(
       listenable: guard,
       builder: (context, _) {
@@ -226,7 +230,7 @@ class _LocalStorageCardState extends State<LocalStorageCard> {
         return Semantics(
           button: true,
           expanded: _expanded,
-          label: 'Local storage',
+          label: t.accountLocalStorage,
           child: MouseRegion(
             cursor: SystemMouseCursors.click,
             onEnter: (_) => setState(() => _hovering = true),
@@ -297,15 +301,16 @@ class _StorageHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final summary = Text(
-      '${StorageGuardService.formatBytes(used)} used locally',
+      t.accountUsedLocally(StorageGuardService.formatBytes(used)),
       style: TextStyle(color: luma.textMuted, fontSize: 12),
       textAlign: TextAlign.end,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );
     final title = Text(
-      'Local storage',
+      t.accountLocalStorage,
       style: TextStyle(
         color: luma.textSecondary,
         fontSize: 13,
@@ -358,11 +363,12 @@ class _StorageBreakdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "What's using space?",
+          t.accountWhatUsingSpace,
           style: TextStyle(
             color: luma.textSecondary,
             fontSize: 13,
@@ -372,7 +378,7 @@ class _StorageBreakdown extends StatelessWidget {
         const SizedBox(height: 10),
         if (categories.isEmpty)
           Text(
-            'Nothing counted yet.',
+            t.accountNothingCounted,
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           )
         else
@@ -443,6 +449,7 @@ class _PlanSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final settings = SettingsScope.of(context);
     final luma = context.luma;
+    final t = L.of(context);
     return ListenableBuilder(
       listenable: settings,
       builder: (context, _) {
@@ -489,7 +496,7 @@ class _PlanSummary extends StatelessWidget {
                   ],
                 ),
                 actionBuilder: (expand) => LumaGhostButton(
-                  label: 'Change plan',
+                  label: t.accountChangePlan,
                   icon: Icons.swap_horiz_rounded,
                   expand: expand,
                   onTap: () => Navigator.of(context).push(
@@ -556,6 +563,7 @@ class _FamilySummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final familyRepo = FamilyScope.of(context);
     final luma = context.luma;
+    final t = L.of(context);
     return ListenableBuilder(
       listenable: familyRepo,
       builder: (context, _) {
@@ -580,7 +588,7 @@ class _FamilySummary extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'No family yet',
+                    t.accountNoFamilyYet,
                     style: TextStyle(
                       color: luma.textPrimary,
                       fontSize: 14,
@@ -589,13 +597,13 @@ class _FamilySummary extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Start one to share your calendar.',
+                    t.accountStartFamilyHint,
                     style: TextStyle(color: luma.textMuted, fontSize: 12),
                   ),
                 ],
               ),
               actionBuilder: (expand) => LumaPrimaryButton(
-                label: 'Create a family',
+                label: t.accountCreateFamily,
                 icon: Icons.add_rounded,
                 expand: expand,
                 onTap: () => Navigator.of(
@@ -633,13 +641,16 @@ class _FamilySummary extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${family.slotsUsed} of ${family.slotLimit ?? '∞'} slots used',
+                  t.familySlotsUsed(
+                    family.slotsUsed.toString(),
+                    family.slotLimit?.toString() ?? '∞',
+                  ),
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
               ],
             ),
             actionBuilder: (expand) => LumaGhostButton(
-              label: 'Manage family',
+              label: t.accountManageFamily,
               icon: Icons.arrow_forward_rounded,
               expand: expand,
               onTap: () => Navigator.of(

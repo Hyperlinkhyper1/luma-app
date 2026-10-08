@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/school_database.dart';
 import '../logic/citation_formatter.dart';
@@ -72,6 +73,7 @@ class _CitationsTabState extends State<CitationsTab> {
   Widget build(BuildContext context) {
     final repo = SchoolScope.of(context);
     final luma = context.luma;
+    final t = L.of(context);
     final preview = formatCitation(_style, _sourceType, _fields);
 
     return Padding(
@@ -86,7 +88,7 @@ class _CitationsTabState extends State<CitationsTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('New citation',
+                    Text(t.schoolCitationsNew,
                         style: TextStyle(
                             color: luma.textPrimary, fontSize: 15, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 12),
@@ -96,7 +98,7 @@ class _CitationsTabState extends State<CitationsTab> {
                           child: DropdownButtonFormField<CitationStyle>(
                             initialValue: _style,
                             isExpanded: true,
-                            decoration: const InputDecoration(labelText: 'Style'),
+                            decoration: InputDecoration(labelText: t.schoolCitationStyle),
                             items: [
                               for (final s in CitationStyle.values)
                                 DropdownMenuItem(value: s, child: Text(s.label)),
@@ -109,7 +111,7 @@ class _CitationsTabState extends State<CitationsTab> {
                           child: DropdownButtonFormField<SourceType>(
                             initialValue: _sourceType,
                             isExpanded: true,
-                            decoration: const InputDecoration(labelText: 'Source type'),
+                            decoration: InputDecoration(labelText: t.schoolCitationSourceType),
                             items: [
                               for (final t in SourceType.values)
                                 DropdownMenuItem(value: t, child: Text(t.label)),
@@ -119,32 +121,35 @@ class _CitationsTabState extends State<CitationsTab> {
                         ),
                       ],
                     ),
-                    _field(_author, 'Author (Last, First)'),
-                    _field(_title, 'Title'),
+                    _field(_author, t.schoolCitationAuthor),
+                    _field(_title, t.commonTitle),
                     Row(
                       children: [
-                        Expanded(child: _field(_year, 'Year')),
+                        Expanded(child: _field(_year, t.schoolCitationYear)),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: _field(_container,
-                              _sourceType == SourceType.book ? 'Publisher' : 'Website / journal name'),
+                          child: _field(
+                              _container,
+                              _sourceType == SourceType.book
+                                  ? t.schoolCitationPublisher
+                                  : t.schoolCitationContainer),
                         ),
                       ],
                     ),
                     if (_sourceType == SourceType.journalArticle)
                       Row(
                         children: [
-                          Expanded(child: _field(_volume, 'Volume')),
+                          Expanded(child: _field(_volume, t.schoolCitationVolume)),
                           const SizedBox(width: 12),
-                          Expanded(child: _field(_issue, 'Issue')),
+                          Expanded(child: _field(_issue, t.schoolCitationIssue)),
                           const SizedBox(width: 12),
-                          Expanded(child: _field(_pages, 'Pages')),
+                          Expanded(child: _field(_pages, t.schoolCitationPages)),
                         ],
                       ),
-                    if (_sourceType == SourceType.book) _field(_city, 'City'),
+                    if (_sourceType == SourceType.book) _field(_city, t.schoolCitationCity),
                     if (_sourceType == SourceType.website) ...[
                       _field(_url, 'URL'),
-                      _field(_accessDate, 'Access date'),
+                      _field(_accessDate, t.schoolCitationAccessDate),
                     ],
                     const SizedBox(height: 16),
                     Container(
@@ -156,7 +161,7 @@ class _CitationsTabState extends State<CitationsTab> {
                         border: Border.all(color: luma.border),
                       ),
                       child: SelectableText(
-                        preview.isEmpty ? 'Preview will appear here.' : preview,
+                        preview.isEmpty ? t.schoolCitationPreviewEmpty : preview,
                         style: TextStyle(color: luma.textPrimary, fontSize: 13),
                       ),
                     ),
@@ -167,14 +172,14 @@ class _CitationsTabState extends State<CitationsTab> {
                       runSpacing: 10,
                       children: [
                         LumaGhostButton(
-                          label: 'Copy',
+                          label: t.commonCopy,
                           icon: Icons.copy_rounded,
                           onTap: preview.isEmpty
                               ? null
                               : () => Clipboard.setData(ClipboardData(text: preview)),
                         ),
                         LumaPrimaryButton(
-                          label: 'Save citation',
+                          label: t.schoolCitationSave,
                           icon: Icons.check_rounded,
                           onTap: preview.isEmpty ? null : _generate,
                         ),
@@ -192,9 +197,9 @@ class _CitationsTabState extends State<CitationsTab> {
               stream: repo.watchCitations(),
               builder: (context, citations) {
                 if (citations.isEmpty) {
-                  return const LumaEmptyState(
+                  return LumaEmptyState(
                     icon: Icons.format_quote_rounded,
-                    title: 'No saved citations yet',
+                    title: t.schoolCitationsEmpty,
                   );
                 }
                 return ListView.separated(

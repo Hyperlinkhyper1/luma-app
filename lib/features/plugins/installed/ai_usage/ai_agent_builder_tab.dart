@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'ai_workbench_models.dart';
 import 'ai_workbench_repository.dart';
@@ -97,7 +98,7 @@ class _AiAgentBuilderTabState extends State<AiAgentBuilderTab> {
       _selectedId = selected?.id ?? repo.agents.firstOrNull?.id;
       _editingId = _selectedId;
     });
-    _toast('Agent saved');
+    _toast(L.of(context).aiAgentSaved);
   }
 
   Future<void> _delete(
@@ -107,16 +108,16 @@ class _AiAgentBuilderTabState extends State<AiAgentBuilderTab> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete agent?'),
-        content: Text('"${agent.name}" will be removed from Luma.'),
+        title: Text(L.of(context).aiAgentDeleteTitle),
+        content: Text(L.of(context).aiAgentDeleteBody(agent.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(L.of(context).commonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
+            child: Text(L.of(context).commonDelete),
           ),
         ],
       ),
@@ -131,7 +132,7 @@ class _AiAgentBuilderTabState extends State<AiAgentBuilderTab> {
     AiAgentDefinition agent,
   ) async {
     await Clipboard.setData(ClipboardData(text: repo.codexPrompt(agent)));
-    if (mounted) _toast('Prompt copied — paste it into ${_target.label}');
+    if (mounted) _toast(L.of(context).aiAgentPromptCopied(_target.label));
   }
 
   Future<void> _exportAgent(
@@ -141,7 +142,10 @@ class _AiAgentBuilderTabState extends State<AiAgentBuilderTab> {
     final target = _target;
     final contents = repo.agentFileFor(agent, target);
     final path = await FilePicker.saveFile(
-      dialogTitle: 'Export ${target.label} ${target.fileLabel}',
+      dialogTitle: L.of(context).aiAgentExportDialogTitle(
+        target.label,
+        target.fileLabel,
+      ),
       fileName: AiWorkbenchRepository.exportFileNameFor(agent, target),
       type: FileType.custom,
       allowedExtensions: ['md'],
@@ -151,7 +155,11 @@ class _AiAgentBuilderTabState extends State<AiAgentBuilderTab> {
     if (!Platform.isAndroid) {
       await File(path).writeAsString(contents, flush: true);
     }
-    if (mounted) _toast('Exported ${target.label} ${target.fileLabel}');
+    if (mounted) {
+      _toast(
+        L.of(context).aiAgentExported(target.label, target.fileLabel),
+      );
+    }
   }
 
   Future<void> _installAgent(
@@ -160,7 +168,7 @@ class _AiAgentBuilderTabState extends State<AiAgentBuilderTab> {
   ) async {
     final target = _target;
     final project = await FilePicker.getDirectoryPath(
-      dialogTitle: 'Choose the ${target.label} project folder',
+      dialogTitle: L.of(context).aiAgentChooseProjectFolder(target.label),
     );
     if (project == null) return;
     final relative = AiWorkbenchRepository.projectPathFor(agent, target);
@@ -169,16 +177,18 @@ class _AiAgentBuilderTabState extends State<AiAgentBuilderTab> {
       final replace = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text('Replace existing ${target.fileLabel}?'),
-          content: Text('${relative.join('/')} already exists in this project.'),
+          title: Text(L.of(context).aiAgentReplaceTitle(target.fileLabel)),
+          content: Text(
+            L.of(context).aiAgentReplaceBody(relative.join('/')),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
+              child: Text(L.of(context).commonCancel),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Replace'),
+              child: Text(L.of(context).aiAgentReplace),
             ),
           ],
         ),
@@ -186,7 +196,7 @@ class _AiAgentBuilderTabState extends State<AiAgentBuilderTab> {
       if (replace != true) return;
     }
     final written = await repo.installAgent(agent, project, target);
-    if (mounted) _toast('Installed at $written');
+    if (mounted) _toast(L.of(context).aiAgentInstalledAt(written));
   }
 
   void _toast(String message) {
@@ -303,19 +313,19 @@ class _AgentHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Agent Builder',
+              L.of(context).aiAgentHeader,
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 4),
             Text(
-              '$count ${count == 1 ? 'agent' : 'agents'} · reusable specialists for Codex, Claude Code and opencode',
+              L.of(context).aiAgentHeaderCount(count),
               style: TextStyle(color: context.luma.textSecondary),
             ),
           ],
         ),
       ),
       LumaPrimaryButton(
-        label: 'New agent',
+        label: L.of(context).aiAgentNew,
         icon: Icons.add_rounded,
         onTap: onNew,
       ),
@@ -337,6 +347,7 @@ class _AgentList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     if (agents.isEmpty) {
       return LumaCard(
         padding: const EdgeInsets.all(18),
@@ -350,7 +361,7 @@ class _AgentList extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'No agents yet',
+              t.aiAgentEmptyTitle,
               style: TextStyle(
                 color: context.luma.textPrimary,
                 fontWeight: FontWeight.w700,
@@ -358,13 +369,13 @@ class _AgentList extends StatelessWidget {
             ),
             const SizedBox(height: 5),
             Text(
-              'Give a repeatable job its own specialist.',
+              t.aiAgentEmptyBody,
               textAlign: TextAlign.center,
               style: TextStyle(color: context.luma.textSecondary, fontSize: 12),
             ),
             const SizedBox(height: 14),
             LumaGhostButton(
-              label: 'Create agent',
+              label: t.aiAgentCreate,
               icon: Icons.add_rounded,
               onTap: onNew,
             ),
@@ -397,7 +408,7 @@ class _AgentList extends StatelessWidget {
             ),
             subtitle: Text(
               agent.description.isEmpty
-                  ? 'Specialist agent'
+                  ? t.aiAgentSpecialistSubtitle
                   : agent.description,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -454,6 +465,7 @@ class _AgentEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return LumaCard(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
       child: Column(
@@ -463,13 +475,13 @@ class _AgentEditor extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  agent == null ? 'New agent' : 'Edit agent',
+                  agent == null ? t.aiAgentNew : t.aiAgentEdit,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
               if (agent != null)
                 IconButton(
-                  tooltip: 'Delete agent',
+                  tooltip: t.aiAgentDeleteTooltip,
                   onPressed: onDelete,
                   icon: Icon(Icons.delete_outline_rounded, color: luma.danger),
                 ),
@@ -483,22 +495,22 @@ class _AgentEditor extends StatelessWidget {
                 children: [
                   TextField(
                     controller: nameController,
-                    decoration: _decoration('Name', 'Flutter code reviewer'),
+                    decoration: _decoration(t.commonName, t.aiAgentNameHint),
                   ),
                   const SizedBox(height: 10),
                   TextField(
                     controller: descriptionController,
                     decoration: _decoration(
-                      'Short description',
-                      'What this specialist is for',
+                      t.aiAgentFieldDescription,
+                      t.aiAgentDescriptionHint,
                     ),
                   ),
                   const SizedBox(height: 10),
                   TextField(
                     controller: modelController,
                     decoration: _decoration(
-                      'Preferred model (optional)',
-                      'sonnet for Claude Code, anthropic/claude-sonnet-5 for opencode',
+                      t.aiAgentFieldModel,
+                      t.aiAgentModelHint,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -507,8 +519,8 @@ class _AgentEditor extends StatelessWidget {
                     minLines: 6,
                     maxLines: 10,
                     decoration: _decoration(
-                      'Instructions',
-                      'You are a specialist…\n\nDescribe the job, boundaries, and reasoning approach.',
+                      t.aiAgentFieldInstructions,
+                      t.aiAgentInstructionsHint,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -517,13 +529,13 @@ class _AgentEditor extends StatelessWidget {
                     minLines: 3,
                     maxLines: 6,
                     decoration: _decoration(
-                      'Output format (optional)',
-                      'Findings grouped by severity, with file and line references',
+                      t.aiAgentFieldOutput,
+                      t.aiAgentOutputHint,
                     ),
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Library context',
+                    t.aiAgentLibraryContext,
                     style: TextStyle(
                       color: luma.textPrimary,
                       fontWeight: FontWeight.w700,
@@ -531,13 +543,13 @@ class _AgentEditor extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Selected notes are embedded when you copy or export this agent.',
+                    t.aiAgentLibraryContextHelp,
                     style: TextStyle(color: luma.textSecondary, fontSize: 12),
                   ),
                   const SizedBox(height: 6),
                   if (libraryEntries.isEmpty)
                     Text(
-                      'Create Markdown notes in the Library tab first.',
+                      t.aiAgentLibraryEmpty,
                       style: TextStyle(color: luma.textMuted, fontSize: 12),
                     )
                   else ...[
@@ -549,7 +561,7 @@ class _AgentEditor extends StatelessWidget {
                         title: Text(entry.title),
                         subtitle: Text(
                           entry.tags.isEmpty
-                              ? 'Markdown note'
+                              ? t.aiMarkdownNoteLabel
                               : entry.tags.join(' · '),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -567,7 +579,7 @@ class _AgentEditor extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  'Use with',
+                  t.aiAgentUseWith,
                   style: TextStyle(color: luma.textSecondary, fontSize: 12),
                 ),
                 const SizedBox(width: 10),
@@ -575,7 +587,9 @@ class _AgentEditor extends StatelessWidget {
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: LumaSegmentedTabs(
-                      tabs: [for (final t in AiAgentTarget.values) t.label],
+                      tabs: [
+                        for (final option in AiAgentTarget.values) option.label,
+                      ],
                       selectedIndex: target.index,
                       onSelect: (i) =>
                           onTargetChanged(AiAgentTarget.values[i]),
@@ -593,24 +607,24 @@ class _AgentEditor extends StatelessWidget {
             children: [
               if (agent != null)
                 LumaGhostButton(
-                  label: 'Copy prompt',
+                  label: t.aiAgentCopyPrompt,
                   icon: Icons.copy_rounded,
                   onTap: onCopyPrompt,
                 ),
               if (agent != null)
                 LumaGhostButton(
-                  label: 'Export ${target.fileLabel}',
+                  label: t.aiAgentExportFile(target.fileLabel),
                   icon: Icons.download_rounded,
                   onTap: onExport,
                 ),
               if (agent != null)
                 LumaGhostButton(
-                  label: 'Install for ${target.label}',
+                  label: t.aiAgentInstallFor(target.label),
                   icon: Icons.integration_instructions_rounded,
                   onTap: onInstall,
                 ),
               LumaPrimaryButton(
-                label: saving ? 'Saving…' : 'Save agent',
+                label: saving ? t.aiUsageSaving : t.aiAgentSave,
                 icon: Icons.save_rounded,
                 onTap: saving ? null : onSave,
               ),

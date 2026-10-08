@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../../l10n/current_l.dart';
 import '../../../../../sync/server_access.dart';
 
 import '../recipe_models.dart';
@@ -157,8 +158,8 @@ class RecipeApi {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return response.bodyBytes;
     }
-    throw RecipeApiException(
-        response.statusCode, 'http_${response.statusCode}', 'Could not load photo.');
+    throw RecipeApiException(response.statusCode,
+        'http_${response.statusCode}', currentL.recipeBookCouldNotLoadPhoto);
   }
 
   Future<Map<String, dynamic>> _postJson(
@@ -188,7 +189,8 @@ class RecipeApi {
     throw RecipeApiException(
       response.statusCode,
       decoded?['error'] as String? ?? 'http_${response.statusCode}',
-      decoded?['message'] as String? ?? 'Server error (${response.statusCode}).',
+      decoded?['message'] as String? ??
+          currentL.recipeBookServerError(response.statusCode),
     );
   }
 

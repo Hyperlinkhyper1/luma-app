@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../sync/sync_scope.dart';
 import '../../../../theme/luma_theme.dart';
 import 'chat_repository.dart';
@@ -10,6 +11,12 @@ import 'secure_chat_scope.dart';
 import 'widgets/chat_invite_dialog.dart';
 
 const _wideBreakpoint = 760.0;
+
+String _errorText(Object e) => switch (e) {
+      ChatApiException() => e.message,
+      StateError() => e.message,
+      _ => e.toString(),
+    };
 
 /// The Chat plugin: invite another Luma user by email, they accept from
 /// their own Invites list, and every message after that is end-to-end
@@ -40,6 +47,7 @@ class _SecureChatPageState extends State<SecureChatPage> {
     return ListenableBuilder(
       listenable: Listenable.merge([sync, chat]),
       builder: (context, _) {
+        final t = L.of(context);
         if (!sync.serverReady) return const _SignedOut();
         final conversations = chat.conversations;
         if (_selectedConversationId != null &&
@@ -52,10 +60,10 @@ class _SecureChatPageState extends State<SecureChatPage> {
           onSelect: (id) => setState(() => _selectedConversationId = id),
         );
         final thread = _selectedConversationId == null
-            ? const LumaEmptyState(
+            ? LumaEmptyState(
                 icon: Icons.lock_rounded,
-                title: 'End-to-end encrypted chat',
-                subtitle: 'Pick a conversation, or invite someone new by email.',
+                title: t.secureChatTitle,
+                subtitle: t.secureChatPickOrInvite,
               )
             : _ChatThread(
                 chat: chat,
@@ -78,7 +86,7 @@ class _SecureChatPageState extends State<SecureChatPage> {
                               onPressed: () =>
                                   setState(() => _selectedConversationId = null),
                               icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                              label: const Text('Chats'),
+                              label: Text(t.secureChatBack),
                             ),
                           ),
                         ),
@@ -107,13 +115,14 @@ class _SignedOut extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Padding(
       padding: const EdgeInsets.only(top: 80),
       child: Column(
         children: [
           LumaIconBadge(icon: Icons.lock_outline_rounded, color: luma.accent, size: 64),
           const SizedBox(height: 20),
-          Text('Chat needs sync',
+          Text(t.secureChatNeedsSyncTitle,
               style: TextStyle(
                   color: luma.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
@@ -122,9 +131,7 @@ class _SignedOut extends StatelessWidget {
             // shrink to the screen rather than run off both edges of it.
             constraints: const BoxConstraints(maxWidth: 420),
             child: Text(
-              'Sign in under Settings → Sync & account to invite people and '
-              'chat. Messages are end-to-end encrypted on this device — the '
-              'server only ever relays ciphertext.',
+              t.secureChatNeedsSyncBody,
               textAlign: TextAlign.center,
               style: TextStyle(color: luma.textMuted, fontSize: 13, height: 1.5),
             ),
@@ -149,6 +156,7 @@ class _ConversationList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final invites = chat.pendingInvites;
     final conversations = chat.conversations;
     return Column(
@@ -159,21 +167,21 @@ class _ConversationList extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: Text('Chat',
+                child: Text(t.secureChatHeading,
                     style: TextStyle(
                         color: luma.textPrimary,
                         fontSize: 18,
                         fontWeight: FontWeight.w700)),
               ),
               IconButton(
-                tooltip: 'New chat',
+                tooltip: t.secureChatNewChat,
                 icon: Icon(Icons.person_add_alt_1_rounded, color: luma.accent),
                 onPressed: () async {
                   final sent =
                       await showChatInviteDialog(context, chatRepo: chat);
                   if (sent && context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Invite sent.')),
+                      SnackBar(content: Text(t.secureChatInviteSent)),
                     );
                   }
                 },
@@ -194,8 +202,8 @@ class _ConversationList extends StatelessWidget {
                   padding: const EdgeInsets.all(24),
                   child: LumaEmptyState(
                     icon: Icons.chat_bubble_outline_rounded,
-                    title: 'No chats yet',
-                    subtitle: 'Invite someone with their email and say hi.',
+                    title: t.secureChatNoChatsYet,
+                    subtitle: t.secureChatNoChatsHint,
                   ),
                 )
               : ListView.builder(
@@ -217,10 +225,10 @@ class _ConversationList extends StatelessWidget {
                           style: TextStyle(color: luma.textPrimary, fontSize: 14)),
                       subtitle: Text(
                         !c.peerReady
-                            ? 'Waiting for them to set up encryption…'
+                            ? t.secureChatWaitingForEncryption
                             : (c.lastMessage?.text.isNotEmpty ?? false)
                                 ? c.lastMessage!.text
-                                : 'No messages yet',
+                                : t.secureChatNoMessagesYet,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(color: luma.textMuted, fontSize: 12),
@@ -244,6 +252,7 @@ class _InvitesSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
       padding: const EdgeInsets.all(12),
@@ -254,7 +263,7 @@ class _InvitesSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Invites', style: TextStyle(color: luma.textPrimary, fontSize: 13, fontWeight: FontWeight.w700)),
+          Text(t.secureChatInvites, style: TextStyle(color: luma.textPrimary, fontSize: 13, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           for (final invite in invites)
             Padding(
@@ -263,20 +272,20 @@ class _InvitesSection extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      '${invite.inviterEmail} wants to chat',
+                      t.secureChatWantsToChat(invite.inviterEmail),
                       style: TextStyle(color: luma.textPrimary, fontSize: 12.5),
                     ),
                   ),
                   IconButton(
                     visualDensity: VisualDensity.compact,
                     icon: Icon(Icons.check_circle_rounded, color: luma.success, size: 20),
-                    tooltip: 'Accept',
+                    tooltip: t.familyInboxAccept,
                     onPressed: () => _respond(context, invite.id, accept: true),
                   ),
                   IconButton(
                     visualDensity: VisualDensity.compact,
                     icon: Icon(Icons.cancel_rounded, color: luma.danger, size: 20),
-                    tooltip: 'Decline',
+                    tooltip: t.familyInboxDecline,
                     onPressed: () => _respond(context, invite.id, accept: false),
                   ),
                 ],
@@ -298,7 +307,7 @@ class _InvitesSection extends StatelessWidget {
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e is ChatApiException ? e.message : '$e')),
+        SnackBar(content: Text(_errorText(e))),
       );
     }
   }
@@ -335,7 +344,7 @@ class _ChatThreadState extends State<_ChatThread> {
       _controller.clear();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_errorText(e))));
       }
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -345,6 +354,7 @@ class _ChatThreadState extends State<_ChatThread> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final conv = widget.chat.conversation(widget.conversationId);
     if (conv == null) return const SizedBox.shrink();
 
@@ -368,8 +378,8 @@ class _ChatThreadState extends State<_ChatThread> {
           child: conv.messages.isEmpty
               ? LumaEmptyState(
                   icon: Icons.chat_bubble_outline_rounded,
-                  title: 'Say hello',
-                  subtitle: 'Messages here are end-to-end encrypted.',
+                  title: t.secureChatSayHello,
+                  subtitle: t.secureChatMessagesEncrypted,
                 )
               : ListView.builder(
                   controller: _scrollController,
@@ -386,8 +396,7 @@ class _ChatThreadState extends State<_ChatThread> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: Text(
-              "${conv.peerEmail} hasn't set up chat encryption on a device yet — "
-              "you'll be able to message them once they do.",
+              t.secureChatPeerNotReady(conv.peerEmail),
               style: TextStyle(color: luma.textMuted, fontSize: 12),
             ),
           ),
@@ -403,7 +412,7 @@ class _ChatThreadState extends State<_ChatThread> {
                   maxLines: 5,
                   style: TextStyle(color: luma.textPrimary, fontSize: 14),
                   decoration: InputDecoration(
-                    hintText: 'Message…',
+                    hintText: t.secureChatMessageHint,
                     hintStyle: TextStyle(color: luma.textMuted),
                     filled: true,
                     fillColor: luma.surfaceHover,
@@ -445,6 +454,7 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final time = DateFormat.Hm().format(
         DateTime.fromMillisecondsSinceEpoch(message.createdAtMs));
     return Align(
@@ -462,7 +472,7 @@ class _MessageBubble extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              message.failedToDecrypt ? 'Could not decrypt this message.' : message.text,
+              message.failedToDecrypt ? t.secureChatCouldNotDecrypt : message.text,
               style: TextStyle(
                 color: message.mine ? luma.onAccent : luma.textPrimary,
                 fontSize: 14,

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../logic/quiz_bank.dart';
 import 'quiz_pdf_options.dart';
@@ -153,6 +154,7 @@ class _SetupViewState extends State<_SetupView> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final selected = _selected;
     final maxForSubject = selected?.questions.length ?? 0;
 
@@ -177,7 +179,7 @@ class _SetupViewState extends State<_SetupView> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Oefentoetsen',
+                        t.schoolTestsTitle,
                         style: TextStyle(
                           color: luma.textPrimary,
                           fontSize: 16,
@@ -186,12 +188,10 @@ class _SetupViewState extends State<_SetupView> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${QuizBank.level}. '
-                        'Eigen oefenvragen in de vraagvormen van IEP, geen officiële IEP-toets. '
-                        'Voor de doorstroomtoets oefen je rekenen, lezen en '
-                        'taalverzorging. De andere vakken zijn extra oefening. '
-                        'Je oefenscore is geen toetsadvies of niveaubepaling. '
-                        '${QuizBank.totalQuestions} vragen in de bank.',
+                        t.schoolTestsIntro(
+                          QuizBank.level,
+                          QuizBank.totalQuestions,
+                        ),
                         style: TextStyle(
                           color: luma.textSecondary,
                           fontSize: 12,
@@ -211,7 +211,7 @@ class _SetupViewState extends State<_SetupView> {
           ),
           const SizedBox(height: 20),
           Text(
-            'Kies een vak',
+            t.schoolTestsChooseSubject,
             style: TextStyle(
               color: luma.textPrimary,
               fontSize: 13,
@@ -237,8 +237,8 @@ class _SetupViewState extends State<_SetupView> {
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       child: Text(
                         group.first.isDoorstroom
-                            ? 'Oefenen voor IEP'
-                            : 'Andere vakken · extra oefening',
+                            ? t.schoolTestsGroupPractice
+                            : t.schoolSubjectGroupOther,
                         style: TextStyle(
                           color: luma.textPrimary,
                           fontSize: 13,
@@ -272,7 +272,7 @@ class _SetupViewState extends State<_SetupView> {
           ),
           const SizedBox(height: 22),
           Text(
-            'Hoeveel vragen?',
+            t.schoolTestsHowMany,
             style: TextStyle(
               color: luma.textPrimary,
               fontSize: 13,
@@ -286,7 +286,7 @@ class _SetupViewState extends State<_SetupView> {
             children: [
               for (final n in QuizBank.lengths)
                 _LengthChip(
-                  label: '$n vragen',
+                  label: t.schoolQuestionCount(n),
                   selected: _length == n,
                   enabled: selected == null || maxForSubject >= n,
                   onTap: () => setState(() => _length = n),
@@ -300,7 +300,7 @@ class _SetupViewState extends State<_SetupView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Wat je krijgt',
+                    t.schoolTestsWhatYouGet,
                     style: TextStyle(
                       color: luma.textPrimary,
                       fontSize: 13,
@@ -309,10 +309,7 @@ class _SetupViewState extends State<_SetupView> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'De vragen worden gelijkmatig over de onderdelen verdeeld, '
-                    'zodat je verschillende vaardigheden oefent. Lees de opdracht goed: '
-                    'soms kies je een antwoord, soms vul je iets in. '
-                    'Je ziet de uitleg pas na het nakijken.',
+                    t.schoolTestsWhatYouGetBody,
                     style: TextStyle(color: luma.textSecondary, fontSize: 12),
                   ),
                   const SizedBox(height: 12),
@@ -334,8 +331,8 @@ class _SetupViewState extends State<_SetupView> {
               Flexible(
                 child: LumaPrimaryButton(
                   label: selected == null
-                      ? 'Kies eerst een vak'
-                      : 'Start toets ${selected.name.toLowerCase()}',
+                      ? t.schoolTestsChooseFirst
+                      : t.schoolTestsStartTest(selected.name.toLowerCase()),
                   icon: Icons.play_arrow_rounded,
                   onTap: selected == null
                       ? null
@@ -370,6 +367,7 @@ class _PdfExportBannerState extends State<_PdfExportBanner> {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final decor = context.lumaDecor;
+    final t = L.of(context);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovering = true),
@@ -400,7 +398,7 @@ class _PdfExportBannerState extends State<_PdfExportBanner> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Oefentoets als PDF',
+                      t.schoolPdfAsPdf,
                       style: TextStyle(
                         color: luma.textPrimary,
                         fontSize: 13.5,
@@ -409,8 +407,7 @@ class _PdfExportBannerState extends State<_PdfExportBanner> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Stel een afdrukbare toets samen met eigen vakken en '
-                      'aantallen.',
+                      t.schoolTestsPdfBannerSub,
                       style: TextStyle(
                         color: luma.textSecondary,
                         fontSize: 11.5,
@@ -454,6 +451,7 @@ class _SubjectCardState extends State<_SubjectCard> {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final decor = context.lumaDecor;
+    final t = L.of(context);
     final s = widget.subject;
     final active = widget.selected;
     return MouseRegion(
@@ -518,7 +516,7 @@ class _SubjectCardState extends State<_SubjectCard> {
                     ),
                     const Spacer(),
                     Text(
-                      '${s.questions.length} vragen · ${s.topics.length} onderdelen',
+                      t.schoolTestsSubjectMeta(s.questions.length, s.topics.length),
                       style: TextStyle(color: luma.textMuted, fontSize: 11),
                     ),
                   ],
@@ -673,6 +671,7 @@ class _RunnerViewState extends State<_RunnerView> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final subject = widget.subject;
     final questions = widget.questions;
     final answers = widget.answers;
@@ -701,8 +700,11 @@ class _RunnerViewState extends State<_RunnerView> {
     // header shrinks to the one line that still matters — which question you
     // are on — and the rest steps aside until the keyboard does.
     final typing = narrow && _answerFocus.hasFocus;
-    final counter =
-        'Vraag ${index + 1} van ${questions.length} · $answered beantwoord';
+    final counter = t.schoolTestsProgress(
+      index + 1,
+      questions.length,
+      answered,
+    );
 
     return Padding(
       padding: narrow
@@ -727,7 +729,7 @@ class _RunnerViewState extends State<_RunnerView> {
                   GestureDetector(
                     onTap: widget.onAbort,
                     child: Text(
-                      'Stoppen',
+                      t.commonStop,
                       style: TextStyle(color: luma.textMuted, fontSize: 11.5),
                     ),
                   ),
@@ -774,14 +776,14 @@ class _RunnerViewState extends State<_RunnerView> {
                 if (narrow)
                   IconButton(
                     onPressed: widget.onAbort,
-                    tooltip: 'Stoppen',
+                    tooltip: t.commonStop,
                     visualDensity: VisualDensity.compact,
                     icon: Icon(Icons.close_rounded,
                         size: 20, color: luma.textMuted),
                   )
                 else
                   LumaGhostButton(
-                    label: 'Stoppen',
+                    label: t.commonStop,
                     icon: Icons.close_rounded,
                     onTap: widget.onAbort,
                   ),
@@ -872,11 +874,11 @@ class _RunnerViewState extends State<_RunnerView> {
                                 : TextInputType.text,
                             decoration: InputDecoration(
                               helperMaxLines: 3,
-                              labelText: 'Jouw antwoord',
+                              labelText: t.schoolTestsYourAnswer,
                               suffixText: q.unit,
                               helperText: q.input == QuizInput.number
-                                  ? 'Vul alleen het getal in. Gebruik een komma voor decimalen.'
-                                  : 'Vul alleen het gevraagde woord of de ontbrekende letters in.',
+                                  ? t.schoolTestsHelperNumber
+                                  : t.schoolTestsHelperWord,
                             ),
                           ),
                         for (var i = 0; i < q.options.length; i++) ...[
@@ -917,20 +919,20 @@ class _RunnerViewState extends State<_RunnerView> {
             key: const ValueKey('runner-nav'),
             children: [
               LumaGhostButton(
-                label: 'Vorige',
+                label: t.commonPrevious,
                 icon: Icons.chevron_left_rounded,
                 onTap: index == 0 ? null : () => onGoTo(index - 1),
               ),
               const Spacer(),
               if (!isLast)
                 LumaPrimaryButton(
-                  label: 'Volgende',
+                  label: t.commonNext,
                   icon: Icons.chevron_right_rounded,
                   onTap: () => onGoTo(index + 1),
                 )
               else
                 LumaPrimaryButton(
-                  label: 'Nakijken',
+                  label: t.schoolTestsCheck,
                   icon: Icons.done_all_rounded,
                   onTap: onFinish,
                 ),
@@ -943,7 +945,7 @@ class _RunnerViewState extends State<_RunnerView> {
               child: TextButton(
                 onPressed: onFinish,
                 child: Text(
-                  'Nu al nakijken',
+                  t.schoolTestsCheckNow,
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
               ),
@@ -1222,6 +1224,7 @@ class _ReviewViewState extends State<_ReviewView> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final r = widget.result;
     final tone = r.subject.color;
 
@@ -1269,7 +1272,7 @@ class _ReviewViewState extends State<_ReviewView> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '${r.correct} van ${r.questions.length} goed',
+                            t.schoolTestsCorrectOf(r.correct, r.questions.length),
                             style: TextStyle(
                               color: luma.textPrimary,
                               fontSize: 18,
@@ -1278,9 +1281,12 @@ class _ReviewViewState extends State<_ReviewView> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${r.subject.name} · ${_formatDuration(r.duration)}'
-                            ' · ${_perQuestion(r)} per vraag'
-                            '${r.skipped > 0 ? ' · ${r.skipped} overgeslagen' : ''}',
+                            t.schoolTestsResultMeta(
+                              r.subject.name,
+                              _formatDuration(t, r.duration),
+                              _perQuestion(t, r),
+                              r.skipped,
+                            ),
                             style: TextStyle(
                               color: luma.textSecondary,
                               fontSize: 12.5,
@@ -1293,7 +1299,7 @@ class _ReviewViewState extends State<_ReviewView> {
                 ),
                 const SizedBox(height: 18),
                 Text(
-                  'Per onderdeel',
+                  t.schoolTestsPerTopic,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 12.5,
@@ -1314,19 +1320,19 @@ class _ReviewViewState extends State<_ReviewView> {
             ),
           ),
           const SizedBox(height: 16),
-          // Wrap, not Row: the two labels are Dutch and long, and on a narrow
+          // Wrap, not Row: the two labels are long, and on a narrow
           // phone they would run off the right edge side by side.
           Wrap(
             spacing: 10,
             runSpacing: 10,
             children: [
               LumaPrimaryButton(
-                label: 'Nieuwe toets',
+                label: t.schoolTestsNewTest,
                 icon: Icons.refresh_rounded,
                 onTap: widget.onRetry,
               ),
               LumaGhostButton(
-                label: 'Ander vak',
+                label: t.schoolTestsOtherSubject,
                 icon: Icons.grid_view_rounded,
                 onTap: widget.onPickOther,
               ),
@@ -1337,7 +1343,7 @@ class _ReviewViewState extends State<_ReviewView> {
             children: [
               Expanded(
                 child: Text(
-                  'Antwoorden',
+                  t.schoolTestsAnswers,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 13,
@@ -1346,7 +1352,9 @@ class _ReviewViewState extends State<_ReviewView> {
                 ),
               ),
               _LengthChip(
-                label: _onlyMistakes ? 'Alleen fouten' : 'Alle vragen',
+                label: _onlyMistakes
+                    ? t.schoolTestsOnlyMistakes
+                    : t.schoolTestsAllQuestions,
                 selected: _onlyMistakes,
                 enabled: true,
                 onTap: () => setState(() => _onlyMistakes = !_onlyMistakes),
@@ -1355,16 +1363,17 @@ class _ReviewViewState extends State<_ReviewView> {
           ),
           const SizedBox(height: 12),
           if (indices.isEmpty)
-            const LumaEmptyState(
+            LumaEmptyState(
               icon: Icons.emoji_events_rounded,
-              title: 'Alles goed',
-              subtitle: 'Geen fouten om terug te kijken.',
+              title: t.schoolTestsAllCorrect,
+              subtitle: t.schoolTestsNoMistakes,
             )
           else
             for (final i in indices) ...[
               _ReviewCard(
                 number: i + 1,
                 question: r.questions[i],
+                t: t,
                 given: r.isAnswered(i) ? r.givenAnswer(i) : null,
                 selected: r.questions[i].input == QuizInput.multiple
                     ? (r.multipleAnswers[i] ?? {})
@@ -1441,6 +1450,7 @@ class _ReviewCard extends StatelessWidget {
   const _ReviewCard({
     required this.number,
     required this.question,
+    required this.t,
     required this.given,
     required this.selected,
     required this.correct,
@@ -1449,6 +1459,7 @@ class _ReviewCard extends StatelessWidget {
 
   final int number;
   final QuizQuestion question;
+  final L t;
   final String? given;
   final Set<int> selected;
   final bool correct;
@@ -1481,7 +1492,7 @@ class _ReviewCard extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Text(
-                'Vraag $number',
+                t.schoolTestsQuestionNumber(number),
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 12.5,
@@ -1553,10 +1564,10 @@ class _ReviewCard extends StatelessWidget {
               children: [
                 Text(
                   given == null
-                      ? 'Je hebt deze vraag overgeslagen.'
+                      ? t.schoolTestsSkippedThis
                       : correct
-                      ? 'Goed beantwoord.'
-                      : 'Jouw antwoord: ${given!}',
+                      ? t.schoolTestsAnsweredCorrectly
+                      : t.schoolTestsYourAnswerValue(given!),
                   style: TextStyle(
                     color: luma.textSecondary,
                     fontSize: 12,
@@ -1565,7 +1576,9 @@ class _ReviewCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Goede antwoord: ${question.answer}${question.unit == null ? '' : ' ${question.unit}'}',
+                  t.schoolTestsCorrectAnswerValue(
+                    '${question.answer}${question.unit == null ? '' : ' ${question.unit}'}',
+                  ),
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 12.5,
@@ -1667,17 +1680,17 @@ String _formatClock(Duration d) {
 }
 
 /// Average time spent per question, for the line under the mark.
-String _perQuestion(QuizResult r) {
-  if (r.questions.isEmpty) return '0 sec';
+String _perQuestion(L t, QuizResult r) {
+  if (r.questions.isEmpty) return t.schoolTestsDurationSec(0);
   final seconds = (r.duration.inSeconds / r.questions.length).round();
   return seconds >= 60
-      ? '${seconds ~/ 60} min ${seconds % 60} sec'
-      : '$seconds sec';
+      ? t.schoolTestsDurationMinSec(seconds ~/ 60, seconds % 60)
+      : t.schoolTestsDurationSec(seconds);
 }
 
-String _formatDuration(Duration d) {
+String _formatDuration(L t, Duration d) {
   final minutes = d.inMinutes;
   final seconds = d.inSeconds % 60;
-  if (minutes == 0) return '$seconds sec';
-  return '$minutes min $seconds sec';
+  if (minutes == 0) return t.schoolTestsDurationSec(seconds);
+  return t.schoolTestsDurationMinSec(minutes, seconds);
 }

@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../theme/luma_theme.dart';
 
 /// Formats a byte count into a short human-readable string.
@@ -251,6 +252,7 @@ class ConverterFileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return ConverterCard(
       child: Row(
         children: [
@@ -305,7 +307,7 @@ class ConverterFileCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          ConverterTextButton(label: 'Change', onTap: onChange),
+          ConverterTextButton(label: t.converterChange, onTap: onChange),
         ],
       ),
     );

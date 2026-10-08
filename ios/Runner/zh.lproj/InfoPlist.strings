@@ -1,0 +1,4 @@
+"NSLocalNetworkUsageDescription" = "Luma 使用本地网络查找你的设备和 DIRIGERA 智能家居中枢。";
+"NFCReaderUsageDescription" = "Luma 会读取 NFC 标签，以便你在卡包中添加和出示免接触卡片。";
+"NSCameraUsageDescription" = "Luma 使用相机扫描卡片的条形码或二维码，并将其添加到卡包。";
+"NSPhotoLibraryUsageDescription" = "Luma 会读取照片图库，以便在图库插件中显示照片。不会上传任何内容。";

@@ -3,13 +3,30 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../../l10n/current_l.dart';
+
+/// What a model is for, shown to the user when it is being fetched.
+enum GalleryModelPurpose {
+  labelling,
+  faceDetection,
+  faceRecognition;
+
+  String get label => switch (this) {
+        GalleryModelPurpose.labelling => currentL.galleryModelPurposeLabelling,
+        GalleryModelPurpose.faceDetection =>
+          currentL.galleryModelPurposeFaceDetection,
+        GalleryModelPurpose.faceRecognition =>
+          currentL.galleryModelPurposeFaceRecognition,
+      };
+}
+
 /// One of the two models the desktop analyser runs.
 class GalleryModel {
   const GalleryModel({
     required this.fileName,
     required this.url,
     required this.approximateBytes,
-    required this.description,
+    required this.purpose,
   });
 
   final String fileName;
@@ -19,7 +36,7 @@ class GalleryModel {
   /// from the response.
   final int approximateBytes;
 
-  final String description;
+  final GalleryModelPurpose purpose;
 }
 
 /// Where the gallery's on-device models come from.
@@ -51,7 +68,7 @@ class GalleryModelStore {
     url: 'https://huggingface.co/onnxmodelzoo/mobilenetv2-12/resolve/main/'
         'mobilenetv2-12.onnx',
     approximateBytes: 14 * 1024 * 1024,
-    description: 'image labelling',
+    purpose: GalleryModelPurpose.labelling,
   );
 
   /// UltraFace RFB-320, MIT, same mirror. Finds faces; like ML Kit it does
@@ -61,7 +78,7 @@ class GalleryModelStore {
     url: 'https://huggingface.co/onnxmodelzoo/version-RFB-320/resolve/main/'
         'version-RFB-320.onnx',
     approximateBytes: 1280 * 1024,
-    description: 'face detection',
+    purpose: GalleryModelPurpose.faceDetection,
   );
 
   /// SFace, Apache-2.0, from OpenCV's own model zoo — the block-quantised
@@ -73,7 +90,7 @@ class GalleryModelStore {
     url: 'https://huggingface.co/opencv/face_recognition_sface/resolve/main/'
         'face_recognition_sface_2021dec_int8bq.onnx',
     approximateBytes: 11 * 1024 * 1024,
-    description: 'face recognition',
+    purpose: GalleryModelPurpose.faceRecognition,
   );
 
   /// Desktop-only: what [GalleryOnnxAnalyser] needs for labels and detection.
@@ -126,13 +143,13 @@ class GalleryModelStore {
       final file = File(await pathFor(model));
       if (file.existsSync() && await file.length() > 0) continue;
 
-      final label = 'Downloading the ${model.description} model';
+      final label = currentL.galleryModelDownloading(model.purpose.label);
       onProgress?.call(label, i / models.length);
       await _download(model, file, (fraction) {
         onProgress?.call(label, (i + fraction) / models.length);
       });
     }
-    onProgress?.call('Ready', 1);
+    onProgress?.call(currentL.galleryModelReady, 1);
   }
 
   Future<void> _download(
@@ -150,8 +167,10 @@ class GalleryModelStore {
       final response = await client.send(request);
       if (response.statusCode != 200) {
         throw GalleryModelException(
-          'The ${model.description} model could not be downloaded '
-          '(HTTP ${response.statusCode}).',
+          currentL.galleryModelHttpError(
+            model.purpose.label,
+            response.statusCode,
+          ),
         );
       }
 
@@ -169,7 +188,7 @@ class GalleryModelStore {
 
       if (await partial.length() <= 0) {
         throw GalleryModelException(
-          'The ${model.description} model downloaded as an empty file.',
+          currentL.galleryModelEmptyFile(model.purpose.label),
         );
       }
       if (target.existsSync()) await target.delete();
@@ -178,7 +197,7 @@ class GalleryModelStore {
       rethrow;
     } catch (error) {
       throw GalleryModelException(
-        'The ${model.description} model could not be downloaded: $error',
+        currentL.galleryModelDownloadFailed(model.purpose.label, '$error'),
       );
     } finally {
       await sink?.close();

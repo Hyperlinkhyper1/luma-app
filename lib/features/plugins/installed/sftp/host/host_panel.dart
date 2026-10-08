@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../sftp_dialogs.dart';
 import 'host_cards.dart';
@@ -101,26 +102,27 @@ class _SftpHostPanelState extends State<SftpHostPanel> {
 
   Future<void> _chooseDirectory() async {
     final picked = await FilePicker.getDirectoryPath(
-      dialogTitle: 'Choose the folder to share',
+      dialogTitle: L.of(context).sftpHostChooseFolderTitle,
     );
     if (picked == null || !mounted) return;
     setState(() => _directory = Directory(picked));
   }
 
   Future<void> _start() async {
+    final t = L.of(context);
     final directory = _directory;
     if (directory == null) {
-      widget.onAnnounce('Choose a folder to share first.');
+      widget.onAnnounce(t.sftpHostChooseFolderFirst);
       return;
     }
     if (!await directory.exists()) {
-      widget.onAnnounce('That folder is no longer there.');
+      widget.onAnnounce(t.sftpHostFolderGone);
       return;
     }
 
     final port = int.tryParse(_portController.text.trim());
     if (port == null || port < 1024 || port > 65535) {
-      widget.onAnnounce('Pick a port between 1024 and 65535.');
+      widget.onAnnounce(t.sftpHostPickPort);
       return;
     }
 
@@ -129,8 +131,7 @@ class _SftpHostPanelState extends State<SftpHostPanel> {
       password = _passwordController.text;
       if (password.length < kMinPairingPasswordLength) {
         widget.onAnnounce(
-          'A pairing password needs at least '
-          '$kMinPairingPasswordLength characters.',
+          t.sftpHostPasswordTooShort('$kMinPairingPasswordLength'),
         );
         return;
       }
@@ -158,12 +159,14 @@ class _SftpHostPanelState extends State<SftpHostPanel> {
   }
 
   Future<void> _copy(String value, String what) async {
+    final t = L.of(context);
     await Clipboard.setData(ClipboardData(text: value));
-    widget.onAnnounce('$what copied.');
+    widget.onAnnounce(t.sftpHostValueCopied(what));
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final server = widget.server;
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
@@ -187,10 +190,7 @@ class _SftpHostPanelState extends State<SftpHostPanel> {
                   onCopy: _copy,
                   onRotate: () {
                     server.rotatePassword();
-                    widget.onAnnounce(
-                      'New pairing password. Devices already connected stay '
-                      'connected.',
-                    );
+                    widget.onAnnounce(t.sftpHostPasswordRotated);
                   },
                   onStop: _stop,
                   compact: widget.compact,
@@ -207,9 +207,7 @@ class _SftpHostPanelState extends State<SftpHostPanel> {
                 ],
                 HostClientsCard(
                   server: server,
-                  emptyMessage:
-                      'Nothing is reading this folder. It stays shared until '
-                      'you press Stop or close luma.',
+                  emptyMessage: t.sftpHostEmptyClients,
                 ),
               ] else
                 _SetupCard(
@@ -273,6 +271,7 @@ class _SetupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return LumaCard(
       child: Column(
@@ -290,7 +289,7 @@ class _SetupCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Let another device connect to this one',
+                      t.sftpHostSetupTitle,
                       style: TextStyle(
                         color: luma.textPrimary,
                         fontSize: 16,
@@ -299,8 +298,7 @@ class _SetupCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Share one folder over your network. The other device '
-                      'opens it in its own Servers tab.',
+                      t.sftpHostSetupSubtitle,
                       style: TextStyle(
                         color: luma.textSecondary,
                         fontSize: 12,
@@ -313,7 +311,7 @@ class _SetupCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
-          _Label('Folder to share'),
+          _Label(t.sftpHostFolderLabel),
           const SizedBox(height: 6),
           Row(
             children: [
@@ -328,7 +326,7 @@ class _SetupCard extends StatelessWidget {
                     border: Border.all(color: luma.border),
                   ),
                   child: Text(
-                    directory?.path ?? 'No folder chosen yet',
+                    directory?.path ?? t.sftpHostNoFolderChosen,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -342,7 +340,7 @@ class _SetupCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               LumaGhostButton(
-                label: 'Choose',
+                label: t.sftpHostChoose,
                 icon: Icons.folder_open_rounded,
                 onTap: onChooseDirectory,
               ),
@@ -350,15 +348,14 @@ class _SetupCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Only this folder is served. Nothing above it is reachable, and '
-            'links pointing out of it are refused.',
+            t.sftpHostFolderNote,
             style: TextStyle(color: luma.textMuted, fontSize: 11.5, height: 1.4),
           ),
           const SizedBox(height: 18),
-          _Label('What the other device may do'),
+          _Label(t.sftpHostAccessLabel),
           const SizedBox(height: 6),
           LumaSegmentedTabs(
-            tabs: const ['Read only', 'Read and write'],
+            tabs: [t.sftpHostAccessReadOnlyTab, t.sftpHostAccessReadWriteTab],
             selectedIndex: access == HostAccess.readOnly ? 0 : 1,
             onSelect: (index) => onAccessChanged(
               index == 0 ? HostAccess.readOnly : HostAccess.readWrite,
@@ -367,23 +364,22 @@ class _SetupCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             access == HostAccess.readOnly
-                ? 'It can browse and download. Nothing on this device changes.'
-                : 'It can also upload, rename and delete inside the shared '
-                    'folder.',
+                ? t.sftpHostAccessReadOnlyHint
+                : t.sftpHostAccessReadWriteHint,
             style: TextStyle(color: luma.textMuted, fontSize: 11.5, height: 1.4),
           ),
           const SizedBox(height: 16),
           SftpCheckRow(
             value: requireApproval,
-            label: 'Ask me before letting a device in',
-            subtitle: 'Even with the right password, you approve each one.',
+            label: t.sftpHostApprovalToggle,
+            subtitle: t.sftpHostApprovalToggleSubtitle,
             onChanged: onApprovalChanged,
           ),
           const SizedBox(height: 4),
           SftpCheckRow(
             value: ownPassword,
-            label: 'Choose the pairing password myself',
-            subtitle: 'Off by default — luma generates a much stronger one.',
+            label: t.sftpHostOwnPasswordToggle,
+            subtitle: t.sftpHostOwnPasswordSubtitle,
             onChanged: onOwnPasswordChanged,
           ),
           if (ownPassword) ...[
@@ -391,7 +387,7 @@ class _SetupCard extends StatelessWidget {
             _PasswordField(controller: passwordController),
           ],
           const SizedBox(height: 16),
-          _Label('Port'),
+          _Label(t.sftpHostFieldPort),
           const SizedBox(height: 6),
           SizedBox(
             width: 140,
@@ -434,7 +430,7 @@ class _SetupCard extends StatelessWidget {
           ],
           const SizedBox(height: 18),
           LumaPrimaryButton(
-            label: 'Start hosting',
+            label: t.sftpHostStartHosting,
             icon: Icons.wifi_tethering_rounded,
             expand: true,
             loading: starting,
@@ -470,6 +466,7 @@ class _PairingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final address = addresses.isEmpty ? null : addresses.first;
     return LumaCard(
@@ -489,7 +486,7 @@ class _PairingCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Hosting ${server.rootName}',
+                  t.sftpHostHostingFolder(server.rootName),
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 16,
@@ -498,7 +495,7 @@ class _PairingCard extends StatelessWidget {
                 ),
               ),
               LumaGhostButton(
-                label: 'Stop',
+                label: t.commonStop,
                 icon: Icons.stop_rounded,
                 onTap: () => unawaited(onStop()),
               ),
@@ -507,14 +504,17 @@ class _PairingCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             server.access == HostAccess.readOnly
-                ? 'Read only · ${server.requireApproval ? 'you approve each device' : 'password only'}'
-                : 'Read and write · ${server.requireApproval ? 'you approve each device' : 'password only'}',
+                ? (server.requireApproval
+                    ? t.sftpHostAccessReadOnlyApproval
+                    : t.sftpHostAccessReadOnlyPassword)
+                : (server.requireApproval
+                    ? t.sftpHostAccessReadWriteApproval
+                    : t.sftpHostAccessReadWritePassword),
             style: TextStyle(color: luma.textSecondary, fontSize: 12),
           ),
           const SizedBox(height: 18),
           Text(
-            'On the other device, open the SFTP plugin, add a site of type '
-            '"luma device", and enter:',
+            t.sftpHostPairingInstructions,
             style: TextStyle(
               color: luma.textSecondary,
               fontSize: 12.5,
@@ -523,35 +523,37 @@ class _PairingCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           HostCopyRow(
-            label: 'Address',
-            value: address ?? 'No network connection',
+            label: t.sftpHostFieldAddress,
+            value: address ?? t.sftpHostNoNetwork,
             monospace: true,
             enabled: address != null,
-            onCopy: address == null ? null : () => onCopy(address, 'Address'),
+            onCopy: address == null
+                ? null
+                : () => onCopy(address, t.sftpHostFieldAddress),
           ),
           if (addresses.length > 1) ...[
             const SizedBox(height: 4),
             Text(
-              'Other addresses on this device: ${addresses.skip(1).join(', ')}',
+              t.sftpHostOtherAddresses(addresses.skip(1).join(', ')),
               style: TextStyle(color: luma.textMuted, fontSize: 11),
             ),
           ],
           const SizedBox(height: 10),
           HostCopyRow(
-            label: 'Port',
+            label: t.sftpHostFieldPort,
             value: '${server.port}',
             monospace: true,
-            onCopy: () => onCopy('${server.port}', 'Port'),
+            onCopy: () => onCopy('${server.port}', t.sftpHostFieldPort),
           ),
           const SizedBox(height: 10),
           HostCopyRow(
-            label: 'Pairing password',
+            label: t.sftpHostFieldPassword,
             value: revealed ? server.password : '••••-••••-••••-••••-••••',
             monospace: true,
             trailing: IconButton(
               onPressed: onToggleReveal,
               iconSize: 18,
-              tooltip: revealed ? 'Hide' : 'Show',
+              tooltip: revealed ? t.sftpHostHide : t.sftpHostShow,
               icon: Icon(
                 revealed
                     ? Icons.visibility_off_rounded
@@ -559,13 +561,13 @@ class _PairingCard extends StatelessWidget {
                 color: luma.textSecondary,
               ),
             ),
-            onCopy: () => onCopy(server.password, 'Pairing password'),
+            onCopy: () => onCopy(server.password, t.sftpHostFieldPassword),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
               LumaGhostButton(
-                label: 'New password',
+                label: t.sftpHostNewPassword,
                 icon: Icons.autorenew_rounded,
                 onTap: onRotate,
               ),
@@ -583,6 +585,7 @@ class _SecurityNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Container(
       padding: const EdgeInsets.all(14),
@@ -598,11 +601,7 @@ class _SecurityNote extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'The two devices agree on a key from the pairing password, then '
-              'encrypt everything between them. luma\'s servers are not '
-              'involved and never see the folder, the password or the files. '
-              'Only the folder you pick is reachable. Hosting keeps running '
-              'while luma is open — press Stop when you are done.',
+              t.sftpHostSecurityNote,
               style: TextStyle(
                 color: luma.textSecondary,
                 fontSize: 11.5,
@@ -628,6 +627,7 @@ class _PasswordField extends StatefulWidget {
 class _PasswordFieldState extends State<_PasswordField> {
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final strength = describePasswordStrength(widget.controller.text);
     return Column(
@@ -639,7 +639,7 @@ class _PasswordFieldState extends State<_PasswordField> {
           style: TextStyle(color: luma.textPrimary, fontSize: 13),
           decoration: InputDecoration(
             isDense: true,
-            hintText: 'At least $kMinPairingPasswordLength characters',
+            hintText: t.sftpHostPasswordHint('$kMinPairingPasswordLength'),
             hintStyle: TextStyle(color: luma.textMuted, fontSize: 12.5),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -659,12 +659,10 @@ class _PasswordFieldState extends State<_PasswordField> {
           const SizedBox(height: 6),
           Text(
             switch (strength) {
-              PasswordStrength.tooShort =>
-                'Too short — this will be refused.',
-              PasswordStrength.weak =>
-                'Weak. Anyone who can reach this port could work it out.',
-              PasswordStrength.fair => 'Fair. A longer one would be better.',
-              PasswordStrength.strong => 'Strong.',
+              PasswordStrength.tooShort => t.sftpHostPasswordTooShortWarn,
+              PasswordStrength.weak => t.sftpHostPasswordWeak,
+              PasswordStrength.fair => t.sftpHostPasswordFair,
+              PasswordStrength.strong => t.sftpHostPasswordStrong,
             },
             style: TextStyle(
               color: switch (strength) {

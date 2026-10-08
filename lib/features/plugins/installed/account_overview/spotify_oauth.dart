@@ -7,6 +7,8 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../l10n/current_l.dart';
+
 class SpotifyOAuthException implements Exception {
   const SpotifyOAuthException(this.message);
   final String message;
@@ -59,8 +61,8 @@ class SpotifyOAuth {
       await _openBrowser(uri);
       final request = await server.first.timeout(
         const Duration(minutes: 5),
-        onTimeout: () => throw const SpotifyOAuthException(
-          'Timed out waiting for Spotify. Try connecting again.',
+        onTimeout: () => throw SpotifyOAuthException(
+          currentL.accountOverviewSpotifyOAuthTimedOut,
         ),
       );
       final params = request.uri.queryParameters;
@@ -72,15 +74,17 @@ class SpotifyOAuth {
       request.response
         ..headers.contentType = ContentType.html
         ..write(
-          '<!doctype html><title>luma</title><p>${valid ? 'Spotify connected. Return to luma.' : 'Spotify connection failed. Return to luma.'}</p>',
+          '<!doctype html><title>luma</title><p>${valid ? currentL.accountOverviewSpotifyConnectedPage : currentL.accountOverviewSpotifyFailedPage}</p>',
         );
       await request.response.close();
       if (params['error'] != null) {
-        throw SpotifyOAuthException('Spotify declined: ${params['error']}');
+        throw SpotifyOAuthException(
+          currentL.accountOverviewSpotifyDeclined('${params['error']}'),
+        );
       }
       if (!valid) {
-        throw const SpotifyOAuthException(
-          'Spotify sign-in response was invalid.',
+        throw SpotifyOAuthException(
+          currentL.accountOverviewSpotifyInvalidResponse,
         );
       }
       return _token({
@@ -112,20 +116,20 @@ class SpotifyOAuth {
           jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     } catch (_) {
       throw SpotifyOAuthException(
-        'Spotify returned HTTP ${response.statusCode}.',
+        currentL.accountOverviewSpotifyHttpError('${response.statusCode}'),
       );
     }
     if (response.statusCode != 200) {
       throw SpotifyOAuthException(
         json['error_description'] as String? ??
             json['error'] as String? ??
-            'Spotify returned HTTP ${response.statusCode}.',
+            currentL.accountOverviewSpotifyHttpError('${response.statusCode}'),
       );
     }
     final access = json['access_token'] as String?;
     if (access == null || access.isEmpty) {
-      throw const SpotifyOAuthException(
-        'Spotify did not return an access token.',
+      throw SpotifyOAuthException(
+        currentL.accountOverviewSpotifyNoAccessToken,
       );
     }
     return SpotifyTokens(
@@ -139,8 +143,8 @@ class SpotifyOAuth {
 
   static Future<void> _openExternal(Uri uri) async {
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      throw const SpotifyOAuthException(
-        'Could not open the Spotify sign-in page.',
+      throw SpotifyOAuthException(
+        currentL.accountOverviewSpotifyCouldNotOpenPage,
       );
     }
   }

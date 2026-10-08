@@ -6,5 +6,27 @@
   "icon": "show_chart",
   "category": "Utility",
   "details": "Paste a product page URL and Price Tracker checks the listed price, saving every check to build a history graph over time.\n\nUse it to catch a deal before it disappears, or just to confirm a \"sale\" price is actually lower than what the item has cost in the past.",
-  "screenshots": ["tracker.png", "history-graph.png"]
+  "screenshots": ["tracker.png", "history-graph.png"],
+  "i18n": {
+    "nl": {
+      "name": "Prijsvolger",
+      "description": "Plak een link en wij houden de prijs voor je in de gaten. Handig als je wacht op een deal bij Amazon of bol.",
+      "details": "Plak de URL van een productpagina en Prijsvolger controleert de vermelde prijs. Elke controle wordt opgeslagen, zodat er na verloop van tijd een geschiedenisgrafiek ontstaat.\n\nGebruik het om een koopje te pakken voordat het verdwijnt, of gewoon om te controleren of een “actieprijs” echt lager is dan wat het artikel in het verleden heeft gekost."
+    },
+    "fr": {
+      "name": "Suivi des prix",
+      "description": "Collez un lien et nous surveillerons le prix pour vous. Pratique quand vous attendez une bonne affaire sur Amazon ou bol.",
+      "details": "Collez l'URL d'une page produit et Suivi des prix vérifie le prix affiché, en enregistrant chaque contrôle pour construire un graphique d'historique au fil du temps.\n\nUtilisez-le pour saisir une bonne affaire avant qu'elle ne disparaisse, ou simplement pour vérifier qu'une « promotion » est bien moins chère que ce que l'article coûtait auparavant."
+    },
+    "es": {
+      "name": "Seguidor de precios",
+      "description": "Pega un enlace y vigilaremos el precio por ti. Útil cuando esperas una oferta en Amazon o bol.",
+      "details": "Pega la URL de una página de producto y Seguidor de precios comprueba el precio indicado, guardando cada comprobación para crear un gráfico del historial a lo largo del tiempo.\n\nÚsalo para cazar una oferta antes de que desaparezca, o simplemente para confirmar que un precio “rebajado” es realmente más bajo de lo que el artículo costaba antes."
+    },
+    "zh": {
+      "name": "价格追踪",
+      "description": "粘贴链接，我们会替你盯着价格。等待亚马逊或 bol 上的优惠时特别好用。",
+      "details": "粘贴商品页面的 URL，价格追踪会检查页面上标示的价格，并保存每一次检查的结果，随着时间推移生成历史曲线图。\n\n可以用来抢在优惠消失前下手，也可以用来确认“促销价”是否真的比这件商品过去的售价更低。"
+    }
+  }
 }

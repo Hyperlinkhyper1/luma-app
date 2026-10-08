@@ -540,7 +540,7 @@ function doResearch(t) {
   if (!canResearch(t) || G.rp < t.kosten) return false;
   G.rp -= t.kosten;
   G.techs[t.id] = true;
-  addNews(`🔬 Onderzoek voltooid: ${t.naam}`, "good");
+  addNews(LumaSceneI18n.format("sceneCityPlannerNewsResearchCompleted",{technology:window.LumaSceneI18n.translate(t.naam)}), "good", "sceneCityPlannerNewsResearchCompleted", {technology:t.naam});
   UI.refreshTools(); UI.refreshRight();
   return true;
 }
@@ -554,7 +554,7 @@ function advancePhase() {
   const next = PHASES[G.fase + 1];
   G.rp -= (next.rp || 0);
   G.fase++;
-  addNews(`🏙 Je stad is gegroeid naar fase ${G.fase}: ${next.naam}! Nieuwe gebouwen ontgrendeld.`, "good");
+  addNews(LumaSceneI18n.format("sceneCityPlannerNewsPhaseGrowth",{phase:G.fase,name:window.LumaSceneI18n.translate(next.naam)}), "good", "sceneCityPlannerNewsPhaseGrowth", {phase:G.fase,name:next.naam});
   UI.refreshTools(); UI.refreshRight(); UI.refreshTop();
 }
 
@@ -619,7 +619,7 @@ function simMonth() {
   G.stats.materiaal = { prod: matProd, balans: matProd - G.pop * 0.004 };
 
   if (G.money < -50000 && !G.gameOver && !sandbox()) {
-    addNews("💸 De stad is failliet aan het gaan! Verlaag uitgaven of verhoog belastingen.", "bad");
+    addNews(LumaSceneI18n.value("sceneCityPlannerNewsBankruptcy"), "bad", "sceneCityPlannerNewsBankruptcy", {});
   }
   UI.refreshRight();
 }
@@ -630,41 +630,41 @@ function maybeEvent() {
   const e = G.stats.energie, w = G.stats.water;
   const events = [];
   if (e && e.vraag > e.aanbod * 0.95) events.push(() => {
-    addNews("⚡ Stroomstoring! Het net is overbelast — delen van de stad zitten zonder stroom.", "bad");
+    addNews(LumaSceneI18n.value("sceneCityPlannerNewsPowerOutage"), "bad", "sceneCityPlannerNewsPowerOutage", {});
   });
   if (w && w.vraag > w.aanbod * 0.9) events.push(() => {
     G.weerFactor = Math.max(0.35, G.weerFactor - 0.2);
-    addNews("🌵 Droogte! De watervraag nadert het aanbod. Bouw extra pompen of zuiveringen.", "warn");
+    addNews(LumaSceneI18n.value("sceneCityPlannerNewsDrought"), "warn", "sceneCityPlannerNewsDrought", {});
   });
   events.push(() => {
     G.weerFactor = Math.max(0.35, G.weerFactor - 0.25);
-    addNews("🌥 Een week grijs weer: wind- en zonne-energie leveren minder op.", "warn");
+    addNews(LumaSceneI18n.value("sceneCityPlannerNewsCloudyWeek"), "warn", "sceneCityPlannerNewsCloudyWeek", {});
   });
   if (G.stats.voedsel && G.stats.voedsel.ratio < 0.95) events.push(() => {
-    addNews("🌾 Voedseltekort dreigt: de import wordt duurder deze maand.", "warn");
+    addNews(LumaSceneI18n.value("sceneCityPlannerNewsFoodShortage"), "warn", "sceneCityPlannerNewsFoodShortage", {});
     G.money -= 40 + G.pop * 0.05;
   });
   events.push(() => {
     const amt = Math.round(G.pop * 0.4 + 60);
     G.money += amt;
-    addNews(`🎉 Regionale subsidie ontvangen: € ${amt.toLocaleString("nl-NL")}.`, "good");
+    addNews(LumaSceneI18n.format("sceneCityPlannerNewsRegionalGrant",{amount:amt.toLocaleString(({en:"en-US",nl:"nl-NL",es:"es-ES",fr:"fr-FR",zh:"zh-CN"}[window.LumaSceneI18n?.language] || undefined))}), "good", "sceneCityPlannerNewsRegionalGrant", {amount:amt.toLocaleString()});
   });
   if (G.pop > 2000) events.push(() => {
-    addNews("📉 Economische dip: bedrijfsbelasting levert deze maand 20% minder op.", "warn");
+    addNews(LumaSceneI18n.value("sceneCityPlannerNewsEconomicDownturn"), "warn", "sceneCityPlannerNewsEconomicDownturn", {});
     G.money -= G.pop * 0.03;
   });
   // brand als er geen brandweer dekking is
   const homes = G.buildings.filter(b => b && b.capBew > 0 && G.svcSafety[b.cells[0]] < 0.15);
   if (homes.length > 3 && RNG() < 0.35) events.push(() => {
     const b = homes[(RNG() * homes.length) | 0];
-    addNews(`🔥 Brand in ${b.naam}! Zonder brandweer in de buurt is het pand verwoest.`, "bad");
+    addNews(LumaSceneI18n.format("sceneCityPlannerNewsBuildingFire",{building:window.LumaSceneI18n.translate(b.naam)}), "bad", "sceneCityPlannerNewsBuildingFire", {building:b.naam});
     removeBuilding(b);
   });
   if (events.length) events[(RNG() * events.length) | 0]();
 }
 
-function addNews(msg, kind = "") {
-  G.news.unshift({ msg, kind, t: `${G.day}-${G.month}-${G.year}` });
+function addNews(msg, kind = "", key = null, args = null) {
+  G.news.unshift({ msg, kind, key, args, t: `${G.day}-${G.month}-${G.year}` });
   if (G.news.length > 40) G.news.pop();
   UI.toast(msg, kind);
   UI.setNews(msg);

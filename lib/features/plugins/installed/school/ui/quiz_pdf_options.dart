@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:open_file/open_file.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../logic/quiz_bank.dart';
 import '../logic/quiz_export.dart';
@@ -19,7 +20,8 @@ class QuizPdfOptions extends StatefulWidget {
 class _QuizPdfOptionsState extends State<QuizPdfOptions> {
   final _selected = {'rekenen', 'taalverzorging', 'lezen'};
   final _counts = {for (final s in QuizBank.subjects) s.id: '10'};
-  final _title = TextEditingController(text: 'Oefentoets groep 8');
+  final _title = TextEditingController();
+  bool _titleSeeded = false;
   String _total = '30';
   bool _custom = false;
   bool _mixed = false;
@@ -30,45 +32,54 @@ class _QuizPdfOptionsState extends State<QuizPdfOptions> {
   String? _error;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_titleSeeded) return;
+    _titleSeeded = true;
+    _title.text = L.of(context).schoolPdfDefaultTitle;
+  }
+
+  @override
   void dispose() {
     _title.dispose();
     super.dispose();
   }
 
-  Map<String, int> allocation() {
+  Map<String, int> allocation(L t) {
     final subjects = QuizBank.subjects
         .where((s) => _selected.contains(s.id))
         .toList();
     if (!_custom) {
       return distributeQuizQuestions(subjects, int.tryParse(_total) ?? 0);
     }
-    if (subjects.isEmpty) throw ArgumentError('Kies minstens één vak.');
+    if (subjects.isEmpty) throw ArgumentError(t.schoolPdfPickOneSubject);
     final counts = <String, int>{};
     for (final s in subjects) {
       final n = int.tryParse(_counts[s.id] ?? '') ?? 0;
       if (n < 1 || n > s.questions.length) {
         throw ArgumentError(
-          'Kies voor ${s.name} tussen 1 en ${s.questions.length} vragen.',
+          t.schoolPdfCountRange(s.name, s.questions.length),
         );
       }
       counts[s.id] = n;
     }
     if (counts.values.fold(0, (sum, n) => sum + n) > maxQuizExportQuestions) {
       throw ArgumentError(
-        'Kies maximaal $maxQuizExportQuestions vragen per PDF.',
+        t.schoolPdfMaxQuestions(maxQuizExportQuestions),
       );
     }
     return counts;
   }
 
   Future<void> exportPdf() async {
+    final t = L.of(context);
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
       final request = prepareQuizExport(
-        counts: allocation(),
+        counts: allocation(t),
         title: _title.text,
         mixed: _mixed,
         answers: _answers,
@@ -82,12 +93,12 @@ class _QuizPdfOptionsState extends State<QuizPdfOptions> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            path == null ? 'Opslaan geannuleerd.' : 'PDF opgeslagen: $path',
+            path == null ? t.schoolPdfSaveCancelled : t.schoolPdfSaved(path),
           ),
           action: path == null
               ? null
               : SnackBarAction(
-                  label: 'Openen',
+                  label: t.commonOpen,
                   onPressed: () => OpenFile.open(path),
                 ),
         ),
@@ -98,7 +109,7 @@ class _QuizPdfOptionsState extends State<QuizPdfOptions> {
         setState(
           () => _error = error is ArgumentError
               ? '${error.message}'
-              : 'De PDF kon niet worden opgeslagen. Probeer het opnieuw.',
+              : t.schoolPdfSaveFailed,
         );
       }
     } finally {
@@ -110,10 +121,11 @@ class _QuizPdfOptionsState extends State<QuizPdfOptions> {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final decor = context.lumaDecor;
+    final t = L.of(context);
     Map<String, int>? counts;
     String? validation;
     try {
-      counts = allocation();
+      counts = allocation(t);
     } on ArgumentError catch (e) {
       validation = '${e.message}';
     }
@@ -122,7 +134,7 @@ class _QuizPdfOptionsState extends State<QuizPdfOptions> {
     return PopScope(
       canPop: !_busy,
       child: Scaffold(
-        appBar: AppBar(title: const Text('Oefentoets als PDF')),
+        appBar: AppBar(title: Text(t.schoolPdfAsPdf)),
         body: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 720),
@@ -146,7 +158,7 @@ class _QuizPdfOptionsState extends State<QuizPdfOptions> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Stel je oefentoets samen',
+                                t.schoolPdfTitle,
                                 style: TextStyle(
                                   color: luma.textPrimary,
                                   fontSize: 16,
@@ -155,9 +167,7 @@ class _QuizPdfOptionsState extends State<QuizPdfOptions> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Kies één of meer vakken. De PDF bevat een '
-                                'nieuwe selectie zonder dubbele vragen, op '
-                                'A4-formaat.',
+                                t.schoolPdfIntro,
                                 style: TextStyle(
                                   color: luma.textSecondary,
                                   fontSize: 12,
@@ -174,7 +184,7 @@ class _QuizPdfOptionsState extends State<QuizPdfOptions> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const _SectionLabel('Titel & indeling'),
+                        _SectionLabel(t.schoolPdfSectionLayout),
                         const SizedBox(height: 12),
                         TextField(
                           controller: _title,
@@ -183,7 +193,7 @@ class _QuizPdfOptionsState extends State<QuizPdfOptions> {
                           style: TextStyle(color: luma.textPrimary),
                           decoration: _pdfFieldDecoration(
                             luma,
-                            label: 'Titel op de PDF',
+                            label: t.schoolPdfTitleField,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -192,14 +202,14 @@ class _QuizPdfOptionsState extends State<QuizPdfOptions> {
                           runSpacing: 8,
                           children: [
                             _PillChoice(
-                              label: 'Totaal verdelen',
+                              label: t.schoolPdfSpreadTotal,
                               selected: !_custom,
                               onTap: _busy
                                   ? null
                                   : () => setState(() => _custom = false),
                             ),
                             _PillChoice(
-                              label: 'Aantal per vak',
+                              label: t.schoolPdfCountPerSubject,
                               selected: _custom,
                               onTap: _busy
                                   ? null
@@ -217,9 +227,8 @@ class _QuizPdfOptionsState extends State<QuizPdfOptions> {
                             style: TextStyle(color: luma.textPrimary),
                             decoration: _pdfFieldDecoration(
                               luma,
-                              label: 'Totaal aantal vragen',
-                              hint:
-                                  'Maximaal 500; zo gelijk mogelijk verdeeld.',
+                              label: t.schoolPdfTotalQuestions,
+                              hint: t.schoolPdfTotalHint(maxQuizExportQuestions),
                             ),
                             onChanged: (value) =>
                                 setState(() => _total = value),
@@ -239,8 +248,8 @@ class _QuizPdfOptionsState extends State<QuizPdfOptions> {
                         children: [
                           _SectionLabel(
                             group.first.isDoorstroom
-                                ? 'Doorstroomtoets'
-                                : 'Andere vakken · extra oefening',
+                                ? t.schoolPdfGroupDoorstroom
+                                : t.schoolSubjectGroupOther,
                           ),
                           const SizedBox(height: 6),
                           for (var i = 0; i < group.length; i++) ...[
@@ -279,21 +288,21 @@ class _QuizPdfOptionsState extends State<QuizPdfOptions> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const _SectionLabel('Volgorde'),
+                        _SectionLabel(t.schoolPdfOrder),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
                           children: [
                             _PillChoice(
-                              label: 'Per vak',
+                              label: t.schoolPdfOrderPerSubject,
                               selected: !_mixed,
                               onTap: _busy
                                   ? null
                                   : () => setState(() => _mixed = false),
                             ),
                             _PillChoice(
-                              label: 'Gemengd',
+                              label: t.schoolPdfOrderMixed,
                               selected: _mixed,
                               onTap: _busy
                                   ? null
@@ -303,9 +312,7 @@ class _QuizPdfOptionsState extends State<QuizPdfOptions> {
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          'Vragen bij dezelfde leestekst blijven bij elkaar. '
-                          'Bij "Per vak" begint ieder volgend vak op een '
-                          'nieuwe pagina.',
+                          t.schoolPdfOrderHelp,
                           style: TextStyle(
                             color: luma.textSecondary,
                             fontSize: 12,
@@ -313,7 +320,7 @@ class _QuizPdfOptionsState extends State<QuizPdfOptions> {
                         ),
                         Divider(color: luma.border, height: 28),
                         _ToggleRow(
-                          title: 'Extra schrijfruimte',
+                          title: t.schoolPdfExtraWritingSpace,
                           value: _writing,
                           onChanged: _busy
                               ? null
@@ -321,9 +328,8 @@ class _QuizPdfOptionsState extends State<QuizPdfOptions> {
                         ),
                         Divider(color: luma.border, height: 24),
                         _ToggleRow(
-                          title: 'Antwoordblad toevoegen',
-                          subtitle:
-                              'Begint op een nieuwe pagina achter de opgaven.',
+                          title: t.schoolPdfAddAnswerSheet,
+                          subtitle: t.schoolPdfAnswerSheetHelp,
                           value: _answers,
                           onChanged: _busy
                               ? null
@@ -332,7 +338,7 @@ class _QuizPdfOptionsState extends State<QuizPdfOptions> {
                         if (_answers) ...[
                           Divider(color: luma.border, height: 24),
                           _ToggleRow(
-                            title: 'Uitleg bij de antwoorden',
+                            title: t.schoolPdfExplanations,
                             value: _explanations,
                             onChanged: _busy
                                 ? null
@@ -363,8 +369,13 @@ class _QuizPdfOptionsState extends State<QuizPdfOptions> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              '$total vragen · ${counts.length} vakken · '
-                              '${_mixed ? 'gemengd' : 'per vak'}',
+                              t.schoolPdfSummary(
+                                total,
+                                counts.length,
+                                _mixed
+                                    ? t.schoolPdfOrderMixed
+                                    : t.schoolPdfOrderPerSubject,
+                              ),
                               style: TextStyle(
                                 color: luma.accent,
                                 fontSize: 12.5,
@@ -435,7 +446,9 @@ class _QuizPdfOptionsState extends State<QuizPdfOptions> {
                             ),
                           )
                         : const Icon(Icons.picture_as_pdf),
-                    label: Text(_busy ? 'PDF maken…' : 'PDF maken en opslaan'),
+                    label: Text(
+                      _busy ? t.schoolPdfMaking : t.schoolPdfMakeAndSave,
+                    ),
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -617,6 +630,7 @@ class _SubjectRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final onBadge = subject.color.computeLuminance() > 0.55
         ? const Color(0xFF1A1526)
         : Colors.white;
@@ -652,8 +666,12 @@ class _SubjectRow extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${subject.questions.length} beschikbaar'
-                          '${countInPdf == null ? '' : ' · $countInPdf in de PDF'}',
+                          countInPdf == null
+                              ? t.schoolPdfAvailable(subject.questions.length)
+                              : t.schoolPdfAvailableInPdf(
+                                  subject.questions.length,
+                                  countInPdf!,
+                                ),
                           style: TextStyle(
                             color: luma.textMuted,
                             fontSize: 11.5,
@@ -698,7 +716,7 @@ class _SubjectRow extends StatelessWidget {
                 style: TextStyle(color: luma.textPrimary, fontSize: 13),
                 decoration: _pdfFieldDecoration(
                   luma,
-                  label: 'Aantal vragen ${subject.name}',
+                  label: t.schoolPdfCountLabel(subject.name),
                 ),
                 onChanged: onCountChanged,
               ),

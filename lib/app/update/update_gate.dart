@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../theme/luma_theme.dart';
 import 'app_version.dart';
 import 'update_service.dart';
@@ -24,7 +25,7 @@ Future<void> checkAndPromptForUpdate(
   if (!AppVersion.isReleaseBuild) {
     if (announceIfUpToDate && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No updates on test builds — this one is handmade.')),
+        SnackBar(content: Text(L.of(context).updateNoTestBuilds)),
       );
     }
     return;
@@ -33,10 +34,11 @@ Future<void> checkAndPromptForUpdate(
   final service = UpdateService();
   final info = await service.checkForUpdate();
   if (!context.mounted) return;
+  final t = L.of(context);
   if (info == null) {
     if (announceIfUpToDate) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('You are all caught up (${AppVersion.current}). Nice.')),
+        SnackBar(content: Text(t.updateUpToDate(AppVersion.current))),
       );
     }
     return;
@@ -48,12 +50,7 @@ Future<void> checkAndPromptForUpdate(
   if (!info.assetReady) {
     if (announceIfUpToDate) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'luma ${info.version} is out, but the download is still '
-            'getting ready. Give it a few minutes and try again.',
-          ),
-        ),
+        SnackBar(content: Text(t.updateDownloadNotReady(info.version))),
       );
     }
     return;
@@ -63,21 +60,18 @@ Future<void> checkAndPromptForUpdate(
     context: context,
     barrierDismissible: true,
     builder: (ctx) => AlertDialog(
-      title: Text('There is a new luma — ${info.version}'),
+      title: Text(t.updateNewVersionTitle(info.version)),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 460, maxHeight: 380),
         child: SingleChildScrollView(
           child: info.notes.isEmpty
-              ? Text(
-                  'A fresh luma is ready to install.\n\n'
-                  'You have ${AppVersion.current}.',
-                )
+              ? Text(t.updateReadyBody(AppVersion.current))
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      "You have ${AppVersion.current}. Here is what is new in ${info.version}:",
+                      t.updateWhatsNew(AppVersion.current, info.version),
                       style: TextStyle(
                         fontSize: 12.5,
                         color: Theme.of(ctx).textTheme.bodySmall?.color,
@@ -92,11 +86,11 @@ Future<void> checkAndPromptForUpdate(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(false),
-          child: const Text('Later'),
+          child: Text(t.updateLater),
         ),
         FilledButton(
           onPressed: () => Navigator.of(ctx).pop(true),
-          child: const Text('Install it'),
+          child: Text(t.updateInstallIt),
         ),
       ],
     ),
@@ -227,7 +221,7 @@ Future<void> _runInstall(
   if (context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(service.lastError ?? 'Update failed. Please try again later.'),
+        content: Text(service.lastError ?? L.of(context).updateFailedGeneric),
         duration: const Duration(seconds: 6),
       ),
     );

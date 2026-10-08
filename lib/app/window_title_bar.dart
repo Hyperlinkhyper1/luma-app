@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme/luma_theme.dart';
 import 'window_controls.dart';
 
@@ -72,6 +73,7 @@ class _WindowTitleBarState extends State<WindowTitleBar> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final compact = MediaQuery.sizeOf(context).width < 400;
 
     final content = Row(
@@ -146,7 +148,7 @@ class _WindowTitleBarState extends State<WindowTitleBar> {
             if (widget.showWindowControls) ...[
               _CaptionButton(
                 icon: Icons.remove_rounded,
-                tooltip: 'Minimize',
+                tooltip: t.titleBarMinimize,
                 onPressed: windowMinimize,
               ),
               _CaptionButton(
@@ -154,12 +156,12 @@ class _WindowTitleBarState extends State<WindowTitleBar> {
                     ? Icons.filter_none_rounded
                     : Icons.crop_square_rounded,
                 iconSize: _maximized ? 13 : 15,
-                tooltip: _maximized ? 'Restore' : 'Maximize',
+                tooltip: _maximized ? t.titleBarRestore : t.titleBarMaximize,
                 onPressed: windowToggleMaximize,
               ),
               _CaptionButton(
                 icon: Icons.close_rounded,
-                tooltip: 'Close',
+                tooltip: t.commonClose,
                 danger: true,
                 onPressed: windowClose,
               ),

@@ -1,0 +1,4 @@
+"NSLocalNetworkUsageDescription" = "Luma utilise votre réseau local pour trouver vos appareils et votre hub domotique DIRIGERA.";
+"NFCReaderUsageDescription" = "Luma lit les tags NFC pour ajouter et présenter des cartes sans contact dans votre portefeuille.";
+"NSCameraUsageDescription" = "Luma utilise l’appareil photo pour scanner le code-barres ou le QR code d’une carte dans votre portefeuille.";
+"NSPhotoLibraryUsageDescription" = "Luma lit votre photothèque pour afficher son contenu dans le plugin Galerie. Rien n’est envoyé.";

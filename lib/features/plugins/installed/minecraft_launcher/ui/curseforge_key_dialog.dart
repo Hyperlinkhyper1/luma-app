@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../logic/curseforge_api_client.dart';
 
@@ -46,8 +47,9 @@ class _CurseForgeKeyDialogState extends State<_CurseForgeKeyDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return AlertDialog(
-      title: const Text('CurseForge API key'),
+      title: Text(t.minecraftLauncherCurseForgeKeyTitle),
       content: SizedBox(
         width: lumaDialogWidth(context, 420),
         child: Column(
@@ -55,10 +57,7 @@ class _CurseForgeKeyDialogState extends State<_CurseForgeKeyDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'CurseForge only answers apps that send an API key. Create a '
-              'free one in the CurseForge for Studios console and paste it '
-              'here. It is stored encrypted on this device, shared with '
-              'Account Overview, and only ever sent to CurseForge.',
+              t.minecraftLauncherCurseForgeKeyBody(t.pluginNameAccountOverview),
               style: TextStyle(color: luma.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 8),
@@ -68,7 +67,7 @@ class _CurseForgeKeyDialogState extends State<_CurseForgeKeyDialog> {
                 mode: LaunchMode.externalApplication,
               ),
               icon: const Icon(Icons.open_in_new_rounded, size: 16),
-              label: const Text('Open the CurseForge console'),
+              label: Text(t.minecraftLauncherCurseForgeOpenConsole),
             ),
             const SizedBox(height: 8),
             TextField(
@@ -76,7 +75,7 @@ class _CurseForgeKeyDialogState extends State<_CurseForgeKeyDialog> {
               obscureText: _obscure,
               autofocus: true,
               decoration: InputDecoration(
-                hintText: 'Paste your API key',
+                hintText: t.minecraftLauncherCurseForgePasteKeyHint,
                 suffixIcon: IconButton(
                   icon: Icon(_obscure ? Icons.visibility_rounded : Icons.visibility_off_rounded),
                   onPressed: () => setState(() => _obscure = !_obscure),
@@ -89,10 +88,10 @@ class _CurseForgeKeyDialogState extends State<_CurseForgeKeyDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t.commonCancel)),
         TextButton(
           onPressed: _saving || _controller.text.trim().isEmpty ? null : _save,
-          child: const Text('Save'),
+          child: Text(t.commonSave),
         ),
       ],
     );

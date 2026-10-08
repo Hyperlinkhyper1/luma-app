@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/luma_theme.dart';
 import '../converter_widgets.dart';
 import '../corruption/binary_utils.dart';
@@ -40,13 +41,14 @@ class _FileCorruptorViewState extends State<FileCorruptorView> {
   static int _freshSeed() => math.Random().nextInt(0x7FFFFFFF) | 1;
 
   Future<void> _pickFile() async {
+    final t = L.of(context);
     final picked = await FilePicker.pickFiles(withData: true);
     if (picked == null || picked.files.isEmpty) return;
 
     final file = picked.files.first;
     final bytes = file.bytes;
     if (bytes == null) {
-      setState(() => _error = 'Could not read the selected file.');
+      setState(() => _error = t.convFileReadFailed);
       return;
     }
     setState(() {
@@ -60,6 +62,7 @@ class _FileCorruptorViewState extends State<FileCorruptorView> {
   }
 
   Future<void> _corrupt() async {
+    final t = L.of(context);
     final bytes = _bytes;
     final name = _name;
     if (bytes == null || name == null) return;
@@ -102,7 +105,7 @@ class _FileCorruptorViewState extends State<FileCorruptorView> {
       if (!mounted) return;
       setState(() {
         _working = false;
-        _error = 'Something went wrong while corrupting that file: $e';
+        _error = t.convCorruptUnexpectedError('$e');
       });
     }
   }
@@ -160,21 +163,22 @@ class _FileCorruptorViewState extends State<FileCorruptorView> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final bytes = _bytes;
     final result = _result;
 
     return ToolScaffold(
       icon: Icons.broken_image_outlined,
-      title: 'File corruptor',
-      subtitle: 'Break a file on purpose, and keep the key to unbreak it',
+      title: t.convOtherCorruptor,
+      subtitle: t.convCorruptorSubtitle,
       onBack: widget.onBack,
       children: [
         if (bytes == null)
           ConverterDropZone(
             onTap: _pickFile,
             icon: Icons.bolt_rounded,
-            title: 'Tap to pick a file',
-            subtitle: 'Any file at all — the original is never touched',
+            title: t.convTapToPickFile,
+            subtitle: t.convCorruptPickSubtitle,
           )
         else
           ConverterFileCard(
@@ -190,7 +194,10 @@ class _FileCorruptorViewState extends State<FileCorruptorView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _Heading(label: 'Damage', hint: 'Pick one or more'),
+                _Heading(
+                  label: t.convCorruptDamageLabel,
+                  hint: t.convCorruptPickMany,
+                ),
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
@@ -233,7 +240,7 @@ class _FileCorruptorViewState extends State<FileCorruptorView> {
                       ),
                     ),
                 const SizedBox(height: 14),
-                _Heading(label: 'How hard', hint: _preset.hint),
+                _Heading(label: t.convCorruptHowHard, hint: _preset.hint),
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
@@ -262,19 +269,19 @@ class _FileCorruptorViewState extends State<FileCorruptorView> {
                     Icon(Icons.tag_rounded, size: 16, color: luma.textMuted),
                     const SizedBox(width: 8),
                     Text(
-                      'Seed $_seed',
+                      t.convCorruptSeed('$_seed'),
                       style: TextStyle(color: luma.textMuted, fontSize: 12.5),
                     ),
                     const Spacer(),
                     ConverterTextButton(
-                      label: 'New seed',
+                      label: t.convCorruptNewSeed,
                       onTap: () => setState(() => _seed = _freshSeed()),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 ConverterPrimaryButton(
-                  label: 'Corrupt file',
+                  label: t.convCorruptButton,
                   icon: Icons.bolt_rounded,
                   loading: _working,
                   onTap: _styles.isEmpty ? null : _corrupt,
@@ -289,9 +296,7 @@ class _FileCorruptorViewState extends State<FileCorruptorView> {
           ConverterBanner(
             icon: Icons.warning_amber_rounded,
             color: luma.danger,
-            message:
-                'No recovery recipe will be written. Nothing — including '
-                'luma — will be able to undo this.',
+            message: t.convCorruptNoRecipeWarning,
           ),
         ],
 
@@ -314,8 +319,8 @@ class _FileCorruptorViewState extends State<FileCorruptorView> {
               children: [
                 ConverterPrimaryButton(
                   label: kIsWeb
-                      ? 'Download corrupted file'
-                      : 'Save corrupted file',
+                      ? t.convCorruptDownloadCorrupted
+                      : t.convCorruptSaveCorrupted,
                   loading: false,
                   icon: Icons.download_rounded,
                   onTap: _saveCorrupted,
@@ -323,15 +328,14 @@ class _FileCorruptorViewState extends State<FileCorruptorView> {
                 if (result.recoverable) ...[
                   const SizedBox(height: 10),
                   Text(
-                    'Keep the recipe somewhere safe — it is the only thing that '
-                    'can undo this.',
+                    t.convCorruptKeepRecipe,
                     style: TextStyle(color: luma.textMuted, fontSize: 12.5),
                   ),
                   const SizedBox(height: 10),
                   ConverterPrimaryButton(
                     label: kIsWeb
-                        ? 'Download .lumafix recipe'
-                        : 'Save .lumafix recipe',
+                        ? t.convCorruptDownloadRecipe
+                        : t.convCorruptSaveRecipe,
                     loading: false,
                     icon: Icons.vpn_key_outlined,
                     onTap: _saveRecipe,
@@ -357,7 +361,7 @@ class _FileCorruptorViewState extends State<FileCorruptorView> {
           Align(
             alignment: Alignment.centerLeft,
             child: ConverterTextButton(
-              label: 'Corrupt another file',
+              label: t.convCorruptAnother,
               onTap: _reset,
             ),
           ),
@@ -377,6 +381,7 @@ class _DamageReport extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final delta = result.bytes.length - originalSize;
     return ConverterCard(
       child: Column(
@@ -393,7 +398,9 @@ class _DamageReport extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Text(
-                result.recoverable ? 'Recoverable' : 'Permanent',
+                result.recoverable
+                    ? t.convCorruptRecoverable
+                    : t.convCorruptPermanent,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 13.5,
@@ -452,6 +459,7 @@ class _RecoverableSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Row(
       children: [
         Expanded(
@@ -459,7 +467,7 @@ class _RecoverableSwitch extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Write a recovery recipe',
+                t.convCorruptRecipeTitle,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 13.5,
@@ -468,10 +476,7 @@ class _RecoverableSwitch extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                value
-                    ? 'A .lumafix file records every edit, so the fixer can '
-                          'rebuild the original exactly.'
-                    : 'Nothing is recorded. The damage is permanent.',
+                value ? t.convCorruptRecipeOn : t.convCorruptRecipeOff,
                 style: TextStyle(color: luma.textMuted, fontSize: 12.5),
               ),
             ],

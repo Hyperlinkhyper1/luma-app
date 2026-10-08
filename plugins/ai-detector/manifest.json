@@ -4,5 +4,23 @@
   "version": "1.0.0",
   "description": "Paste some text, see if it reads like a person wrote it or not. On-device maths, plus an AI model review (when signed in) that shows where and how it reads AI-generated.",
   "icon": "fact_check",
-  "category": "Utility"
+  "category": "Utility",
+  "i18n": {
+    "nl": {
+      "name": "AI-detector",
+      "description": "Plak wat tekst en zie of het geschreven lijkt door een mens of niet. Berekeningen op je apparaat, plus een AI-modelbeoordeling (als je bent ingelogd) die laat zien waar en hoe het als AI-gegenereerd overkomt."
+    },
+    "fr": {
+      "name": "Détecteur d'IA",
+      "description": "Collez du texte et voyez s'il semble écrit par une personne ou non. Calculs sur l'appareil, plus une analyse par un modèle d'IA (si vous êtes connecté) qui montre où et comment il paraît généré par une IA."
+    },
+    "es": {
+      "name": "Detector de IA",
+      "description": "Pega un texto y mira si parece escrito por una persona o no. Cálculos en el dispositivo, más una revisión por un modelo de IA (si has iniciado sesión) que muestra dónde y cómo parece generado por IA."
+    },
+    "zh": {
+      "name": "AI 检测器",
+      "description": "粘贴一些文字，看看它像不像人写的。本地数学计算，外加登录后的 AI 模型审阅，指出哪里、以何种方式显得像 AI 生成。"
+    }
+  }
 }

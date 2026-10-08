@@ -5,6 +5,7 @@ import 'dart:io' show Platform;
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../storage/storage_guard.dart';
 import '../../../../sync/server_access.dart';
 import '../../../../sync/sync_service.dart';
@@ -128,7 +129,7 @@ class SteamRepository extends ChangeNotifier {
     try {
       final key = apiKey.trim();
       if (key.isEmpty) {
-        throw const SteamApiException('Enter your Steam Web API key.');
+        throw SteamApiException(currentL.steamRepoEnterApiKey);
       }
       final steamId = await _api.resolveSteamId(steamIdOrUrl, apiKey: key);
       final games = await _api.ownedGames(apiKey: key, steamId: steamId);
@@ -144,7 +145,7 @@ class SteamRepository extends ChangeNotifier {
       _error = e.message;
       return false;
     } catch (e) {
-      _error = 'Could not connect to Steam: $e';
+      _error = currentL.steamRepoConnectFailed(e.toString());
       return false;
     } finally {
       _connecting = false;
@@ -182,7 +183,7 @@ class SteamRepository extends ChangeNotifier {
     } on SteamApiException catch (e) {
       _error = e.message;
     } catch (e) {
-      _error = 'Could not refresh your library: $e';
+      _error = currentL.steamRepoRefreshFailed(e.toString());
     } finally {
       _syncing = false;
       notifyListeners();

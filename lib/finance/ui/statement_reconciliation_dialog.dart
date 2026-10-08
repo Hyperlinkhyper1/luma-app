@@ -1,3 +1,4 @@
+import '../../l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 import '../../theme/luma_theme.dart';
@@ -40,7 +41,13 @@ class _StatementReconciliationDialogState
   List<ParsedBankEntry>? _entries;
   final _excluded = <int>{};
   bool _checked = false;
-  String? _error;
+  bool? _invalidDates;
+
+  String? get _error => switch (_invalidDates) {
+    true => L.of(context).financeReconEndBeforeStart,
+    false => L.of(context).financeReconInvalidBalances,
+    null => null,
+  };
 
   @override
   void initState() {
@@ -57,7 +64,7 @@ class _StatementReconciliationDialogState
   void _invalidate() {
     setState(() {
       _checked = false;
-      _error = null;
+      _invalidDates = null;
     });
   }
 
@@ -79,10 +86,10 @@ class _StatementReconciliationDialogState
 
   void _compare() {
     setState(() {
-      _error = _end.isBefore(_start)
-          ? 'The closing date must be on or after the start date.'
+      _invalidDates = _end.isBefore(_start)
+          ? true
           : _balance(_opening.text) == null || _balance(_closing.text) == null
-          ? 'Enter valid opening and closing balances in euros.'
+          ? false
           : null;
       _checked = _error == null;
     });
@@ -94,7 +101,7 @@ class _StatementReconciliationDialogState
     setState(() {
       _entries = entries;
       _checked = false;
-      _error = null;
+      _invalidDates = null;
     });
   }
 
@@ -122,7 +129,7 @@ class _StatementReconciliationDialogState
     if (!mounted) return;
     if (pots.isEmpty) {
       await repo.createPot(
-        name: 'Main',
+        name: L.of(context).financeReconMainPot,
         colorValue: 0xFF7C5AD9,
         iconCodepoint: Icons.savings_rounded.codePoint,
       );
@@ -155,7 +162,7 @@ class _StatementReconciliationDialogState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Statement reconciliation',
+            L.of(context).financeReconTitle,
             style: TextStyle(
               color: luma.textPrimary,
               fontSize: 18,
@@ -169,15 +176,12 @@ class _StatementReconciliationDialogState
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Enter the opening balance immediately before the start date '
-                    'and the closing balance at the end of the closing date. '
-                    'Luma includes income and expenses across all pots; '
-                    'allocations between pots do not change this balance.',
+                    L.of(context).financeReconIntro,
                     style: TextStyle(color: luma.textSecondary),
                   ),
                   const SizedBox(height: 12),
                   FinanceDateField(
-                    label: 'Start date',
+                    label: L.of(context).financeReconStartDate,
                     date: _start,
                     onChanged: (date) {
                       _start = date;
@@ -186,7 +190,7 @@ class _StatementReconciliationDialogState
                   ),
                   const SizedBox(height: 12),
                   FinanceDateField(
-                    label: 'Closing date',
+                    label: L.of(context).financeReconClosingDate,
                     date: _end,
                     onChanged: (date) {
                       _end = date;
@@ -195,14 +199,14 @@ class _StatementReconciliationDialogState
                   ),
                   const SizedBox(height: 12),
                   FinanceField(
-                    label: 'Statement opening balance',
+                    label: L.of(context).financeReconOpeningBalance,
                     controller: _opening,
                     prefix: '€ ',
                     number: true,
                   ),
                   const SizedBox(height: 12),
                   FinanceField(
-                    label: 'Statement closing balance',
+                    label: L.of(context).financeReconClosingBalance,
                     controller: _closing,
                     prefix: '€ ',
                     number: true,
@@ -217,8 +221,8 @@ class _StatementReconciliationDialogState
                         icon: const Icon(Icons.upload_file_rounded),
                         label: Text(
                           _entries == null
-                              ? 'Load statement entries'
-                              : 'Replace statement entries',
+                              ? L.of(context).financeReconLoadEntries
+                              : L.of(context).financeReconReplaceEntries,
                         ),
                       ),
                       if (_entries != null)
@@ -229,16 +233,16 @@ class _StatementReconciliationDialogState
                               _checked = false;
                             });
                           },
-                          child: const Text('Clear statement entries'),
+                          child: Text(L.of(context).financeReconClearEntries),
                         ),
                     ],
                   ),
                   Text(
                     _entries == null
-                        ? 'Optional: read an exported transaction file to locate entries. '
-                              'Enter the statement balances above; loading a file adds nothing.'
-                        : '${_entries!.length} statement entries loaded. '
-                              'Use the dates of the full statement period above.',
+                        ? L.of(context).financeReconOptionalHelp
+                        : L
+                              .of(context)
+                              .financeReconEntriesLoaded(_entries!.length),
                     style: TextStyle(color: luma.textMuted, fontSize: 12),
                   ),
                   if (_error != null)
@@ -254,23 +258,25 @@ class _StatementReconciliationDialogState
                       stream: _merchants,
                       builder: (context, merchants) {
                         if (merchants.hasError) {
-                          return const Text('Unable to read merchants.');
+                          return Text(
+                            L.of(context).financeReconReadMerchantsFailed,
+                          );
                         }
                         if (!merchants.hasData) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
+                          return Center(child: CircularProgressIndicator());
                         }
                         return StreamBuilder<List<FinanceTransaction>>(
                           stream: _transactions,
                           builder: (context, snapshot) {
                             if (snapshot.hasError) {
-                              return const Text('Unable to read transactions.');
+                              return Text(
+                                L
+                                    .of(context)
+                                    .financeReconReadTransactionsFailed,
+                              );
                             }
                             if (!snapshot.hasData) {
-                              return const Center(
-                                child: CircularProgressIndicator(),
-                              );
+                              return Center(child: CircularProgressIndicator());
                             }
                             final result = reconcileStatement(
                               transactions: snapshot.data!,
@@ -301,11 +307,11 @@ class _StatementReconciliationDialogState
             children: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Close'),
+                child: Text(L.of(context).commonClose),
               ),
               FilledButton(
                 onPressed: _compare,
-                child: const Text('Compare balances'),
+                child: Text(L.of(context).financeReconCompare),
               ),
             ],
           ),
@@ -326,20 +332,37 @@ class _StatementReconciliationDialogState
       children: [
         const SizedBox(height: 16),
         Text(
-          'Calculated closing balance: ${formatCents(result.calculatedClosingCents)}',
+          L
+              .of(context)
+              .financeReconCalculatedClosing(
+                formatCents(result.calculatedClosingCents),
+              ),
           style: TextStyle(
             color: luma.textPrimary,
             fontWeight: FontWeight.w700,
           ),
         ),
         Text(
-          'Statement closing balance: ${formatCents(_balance(_closing.text)!)}',
+          L
+              .of(context)
+              .financeReconStatementClosing(
+                formatCents(_balance(_closing.text)!),
+              ),
         ),
         Text(
           difference == 0
-              ? 'Balances match'
-              : 'Difference: ${formatSignedCents(difference)} '
-                    '(Luma is ${difference > 0 ? 'lower' : 'higher'})',
+              ? L.of(context).financeReconMatch
+              : (difference > 0
+                    ? L
+                          .of(context)
+                          .financeReconDifferenceLower(
+                            formatSignedCents(difference),
+                          )
+                    : L
+                          .of(context)
+                          .financeReconDifferenceHigher(
+                            formatSignedCents(difference),
+                          )),
           style: TextStyle(
             color: difference == 0 ? luma.success : luma.danger,
             fontWeight: FontWeight.w700,
@@ -347,46 +370,59 @@ class _StatementReconciliationDialogState
         ),
         const SizedBox(height: 8),
         Text(
-          'Check the opening balance, dates and included entries. '
-          'If you track multiple bank accounts, exclude movements belonging '
-          'to other accounts below. Suggestions do not prove an entry is wrong.',
+          L.of(context).financeReconCheckHint,
           style: TextStyle(color: luma.textMuted, fontSize: 12),
         ),
         if (result.statementCalculatedClosingCents != null) ...[
           const SizedBox(height: 8),
           Text(
-            'Closing from file entries: '
-            '${formatCents(result.statementCalculatedClosingCents!)}',
+            L
+                .of(context)
+                .financeReconClosingFromFile(
+                  formatCents(result.statementCalculatedClosingCents!),
+                ),
           ),
           if (result.statementCalculatedClosingCents != _balance(_closing.text))
             Text(
-              'The file entries and opening balance do not reach the statement '
-              'closing balance. Check that the export covers the whole period.',
+              L.of(context).financeReconFileDoesNotReach,
               style: TextStyle(color: luma.danger),
             ),
           if (result.statementOutsidePeriodCount > 0)
             Text(
-              '${result.statementOutsidePeriodCount} file entries are outside the selected period.',
+              L
+                  .of(context)
+                  .financeReconOutsidePeriod(
+                    result.statementOutsidePeriodCount,
+                  ),
             ),
-          Text(
-            '${result.matchedCount} entries paired by date, direction and amount. '
-            'Descriptions may differ; shifted booking dates appear as unmatched.',
-          ),
+          Text(L.of(context).financeReconMatchedCount(result.matchedCount)),
           if (result.amountOnlyMatches.isNotEmpty)
             _entryList(
-              'Review pairs with different descriptions (${result.amountOnlyMatches.length})',
+              L
+                  .of(context)
+                  .financeReconReviewPairs(result.amountOnlyMatches.length),
               result.amountOnlyMatches.length,
               (i) {
                 final pair = result.amountOnlyMatches.entries.elementAt(i);
                 return ListTile(
                   dense: true,
-                  title: Text('Luma: ${pair.key.note ?? '#${pair.key.id}'}'),
+                  title: Text(
+                    L
+                        .of(context)
+                        .financeReconLumaEntry(
+                          pair.key.note ?? '#${pair.key.id}',
+                        ),
+                  ),
                   subtitle: Text(
-                    'Statement: ${pair.value.description}\n'
-                    '${longDate(pair.key.date)} · ${formatCents(pair.key.amountCents)}',
+                    L
+                        .of(context)
+                        .financeReconStatementSubtitle(
+                          pair.value.description,
+                          '${longDate(pair.key.date)} · ${formatCents(pair.key.amountCents)}',
+                        ),
                   ),
                   trailing: IconButton(
-                    tooltip: 'Edit entry',
+                    tooltip: L.of(context).moodJournalEditEntry,
                     icon: const Icon(Icons.edit_rounded),
                     onPressed: () => _edit(pair.key),
                   ),
@@ -396,10 +432,12 @@ class _StatementReconciliationDialogState
           if (result.missingEntries.isEmpty &&
               result.extraEntries.isEmpty &&
               result.amountOnlyMatches.isEmpty)
-            const Text('No unmatched entries.'),
+            Text(L.of(context).financeReconNoUnmatched),
           if (result.missingEntries.isNotEmpty) ...[
             _entryList(
-              'Possibly missing from Luma (${result.missingEntries.length})',
+              L
+                  .of(context)
+                  .financeReconPossiblyMissing(result.missingEntries.length),
               result.missingEntries.length,
               (i) {
                 final e = result.missingEntries[i];
@@ -419,65 +457,83 @@ class _StatementReconciliationDialogState
               alignment: Alignment.centerLeft,
               child: TextButton(
                 onPressed: () => _reviewMissing(result.missingEntries),
-                child: const Text('Review missing entries for import'),
+                child: Text(L.of(context).financeReconReviewMissing),
               ),
             ),
           ],
           if (result.extraEntries.isNotEmpty)
             _entryList(
-              'Luma entries not paired with statement (${result.extraEntries.length})',
+              L.of(context).financeReconNotPaired(result.extraEntries.length),
               result.extraEntries.length,
               (i) => _transaction(result.extraEntries[i]),
             ),
         ],
         if (result.possibleDuplicates.isNotEmpty)
           _entryList(
-            'Possible duplicates (${result.possibleDuplicates.length} groups)',
+            L
+                .of(context)
+                .financeReconPossibleDuplicates(
+                  result.possibleDuplicates.length,
+                ),
             result.possibleDuplicates.length,
             (i) {
               final group = result.possibleDuplicates[i];
               return ListTile(
                 dense: true,
                 title: Text(
-                  '${group.length} entries: ${group.first.note ?? 'Same description'}',
+                  L
+                      .of(context)
+                      .financeReconDuplicateTitle(
+                        group.length,
+                        group.first.note ??
+                            L.of(context).financeReconSameDescription,
+                      ),
                 ),
                 subtitle: Text(
-                  '${longDate(group.first.date)} · '
-                  '${formatSignedCents(reconciliationDelta(group.first))} each · '
-                  'IDs ${group.map((t) => t.id).join(', ')}',
+                  L
+                      .of(context)
+                      .financeReconDuplicateDetail(
+                        longDate(group.first.date),
+                        formatSignedCents(reconciliationDelta(group.first)),
+                        group.map((t) => t.id).join(', '),
+                      ),
                 ),
               );
             },
           ),
         if (result.amountCandidates.isNotEmpty)
           _entryList(
-            'Entries whose removal would explain the difference',
+            L.of(context).financeReconRemovalExplains,
             result.amountCandidates.length,
             (i) => _transaction(result.amountCandidates[i]),
           ),
-        _entryList('Review included cash entries', periodEntries.length, (i) {
-          final t = periodEntries[i];
-          return CheckboxListTile(
-            dense: true,
-            value: !_excluded.contains(t.id),
-            onChanged: (included) => setState(() {
-              if (included == true) {
-                _excluded.remove(t.id);
-              } else {
-                _excluded.add(t.id);
-              }
-            }),
-            title: Text(t.note ?? '${t.kind.name} #${t.id}'),
-            subtitle: Text(
-              '#${t.id} · ${longDate(t.date)} · '
-              '${formatSignedCents(reconciliationDelta(t))}',
-            ),
-          );
-        }),
+        _entryList(
+          L.of(context).financeReconReviewIncluded,
+          periodEntries.length,
+          (i) {
+            final t = periodEntries[i];
+            return CheckboxListTile(
+              dense: true,
+              value: !_excluded.contains(t.id),
+              onChanged: (included) => setState(() {
+                if (included == true) {
+                  _excluded.remove(t.id);
+                } else {
+                  _excluded.add(t.id);
+                }
+              }),
+              title: Text(t.note ?? '${t.kind.name} #${t.id}'),
+              subtitle: Text(
+                '#${t.id} · ${longDate(t.date)} · '
+                '${formatSignedCents(reconciliationDelta(t))}',
+              ),
+            );
+          },
+        ),
         if (_excluded.isNotEmpty)
           TextButton(
             onPressed: () => setState(_excluded.clear),
-            child: const Text('Include all entries again'),
+            child: Text(L.of(context).financeReconIncludeAll),
           ),
       ],
     );
@@ -498,7 +554,7 @@ class _StatementReconciliationDialogState
       '${formatSignedCents(reconciliationDelta(t))}',
     ),
     trailing: IconButton(
-      tooltip: 'Edit entry',
+      tooltip: L.of(context).moodJournalEditEntry,
       icon: const Icon(Icons.edit_rounded),
       onPressed: () => _edit(t),
     ),
@@ -511,7 +567,7 @@ class _StatementReconciliationDialogState
           SizedBox(
             height: count == 0 ? 48 : 220,
             child: count == 0
-                ? const Center(child: Text('No cash entries in this period.'))
+                ? Center(child: Text(L.of(context).financeReconNoCashEntries))
                 : ListView.builder(
                     itemCount: count,
                     itemBuilder: (context, i) => builder(i),

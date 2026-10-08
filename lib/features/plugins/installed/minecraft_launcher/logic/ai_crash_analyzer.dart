@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import '../../../../../features/chat/ai_key_store.dart';
 import '../../../../../features/chat/providers/ai_client.dart';
 import '../../../../../features/chat/providers/ai_providers.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../ai_usage/ai_usage_scope.dart';
 import '../../../../../settings/settings_scope.dart';
 
@@ -29,19 +30,18 @@ Future<bool> isAiAvailable(BuildContext context) async {
 /// provider for a one-off diagnosis — a single-turn `AiClient.chat()` call
 /// (the same primitive the full chat UI is built on), not a conversation.
 Future<String> analyzeCrashLog(BuildContext context, String logTail) async {
+  final t = L.of(context);
   final settings = SettingsScope.of(context);
   final aiUsage = AiUsageScope.maybeOf(context);
   if (!settings.canSendAiMessage) {
-    throw AiCrashAnalyzerException("You've hit today's AI usage limit — try again tomorrow.");
+    throw AiCrashAnalyzerException(t.mcCrashAiUsageLimit);
   }
 
   final provider = aiProviderById(settings.aiProviderId);
   final store = await AiKeyStore.load();
   final apiKey = await store.readKey(provider.id.name);
   if (apiKey == null || apiKey.isEmpty) {
-    throw AiCrashAnalyzerException(
-      'No API key set for ${provider.displayName}. Add one under Settings → AI Assistant.',
-    );
+    throw AiCrashAnalyzerException(t.mcCrashAiNoKey(provider.displayName));
   }
 
   try {

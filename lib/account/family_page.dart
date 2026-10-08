@@ -4,6 +4,7 @@ import '../app/widgets.dart';
 import '../family/family_api.dart';
 import '../family/family_repository.dart';
 import '../family/family_scope.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/luma_theme.dart';
 import 'family_invite_dialog.dart';
 
@@ -26,6 +27,7 @@ class _FamilyPageState extends State<FamilyPage> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final familyRepo = FamilyScope.of(context);
     return Scaffold(
       backgroundColor: luma.background,
@@ -38,12 +40,12 @@ class _FamilyPageState extends State<FamilyPage> {
                 children: [
                   IconButton(
                     icon: Icon(Icons.arrow_back_rounded, color: luma.textPrimary),
-                    tooltip: 'Back to account',
+                    tooltip: t.familyBackToAccount,
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    'Family',
+                    t.familyTitle,
                     style: TextStyle(
                       color: luma.textPrimary,
                       fontSize: 18,
@@ -113,7 +115,7 @@ class _EmptyFamilyState extends State<_EmptyFamily> {
   Future<void> _create() async {
     final name = _name.text.trim();
     if (name.isEmpty) {
-      setState(() => _error = 'Enter a family name.');
+      setState(() => _error = L.of(context).familyEnterName);
       return;
     }
     widget.onBusy(true);
@@ -130,6 +132,7 @@ class _EmptyFamilyState extends State<_EmptyFamily> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return LumaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -149,13 +152,13 @@ class _EmptyFamilyState extends State<_EmptyFamily> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Start a family',
+                    Text(t.familyStartTitle,
                         style: TextStyle(
                             color: luma.textPrimary,
                             fontSize: 16,
                             fontWeight: FontWeight.w700)),
                     const SizedBox(height: 2),
-                    Text('Invite your people and plan things together.',
+                    Text(t.familyStartSubtitle,
                         style: TextStyle(color: luma.textMuted, fontSize: 12)),
                   ],
                 ),
@@ -167,7 +170,7 @@ class _EmptyFamilyState extends State<_EmptyFamily> {
             controller: _name,
             style: TextStyle(color: luma.textPrimary, fontSize: 14),
             decoration: InputDecoration(
-              labelText: 'Family name',
+              labelText: t.familyNameLabel,
               labelStyle: TextStyle(color: luma.textMuted),
               errorText: _error,
               enabledBorder: OutlineInputBorder(
@@ -183,7 +186,7 @@ class _EmptyFamilyState extends State<_EmptyFamily> {
           ),
           const SizedBox(height: 16),
           LumaPrimaryButton(
-            label: 'Create family',
+            label: t.familyCreate,
             icon: Icons.add_rounded,
             loading: widget.busy,
             expand: true,
@@ -211,6 +214,7 @@ class _FamilyDetail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final family = familyRepo.family!;
     final isOwner = familyRepo.isOwner;
     final myUserId = familyRepo.myUserId;
@@ -250,7 +254,9 @@ class _FamilyDetail extends StatelessWidget {
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700)),
                         const SizedBox(height: 2),
-                        Text('$used of ${limit ?? '∞'} slots used',
+                        Text(
+                            t.familySlotsUsed(
+                                used.toString(), limit?.toString() ?? '∞'),
                             style:
                                 TextStyle(color: luma.textMuted, fontSize: 12)),
                       ],
@@ -276,7 +282,7 @@ class _FamilyDetail extends StatelessWidget {
         const SizedBox(height: 24),
 
         // ---- Members -------------------------------------------------------
-        Text('Members',
+        Text(t.familyMembers,
             style: TextStyle(
                 color: luma.textPrimary, fontSize: 15, fontWeight: FontWeight.w700)),
         const SizedBox(height: 10),
@@ -304,14 +310,14 @@ class _FamilyDetail extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text('Pending invites',
+                child: Text(t.familyPendingInvites,
                     style: TextStyle(
                         color: luma.textPrimary,
                         fontSize: 15,
                         fontWeight: FontWeight.w700)),
               ),
               LumaGhostButton(
-                label: 'Invite by email',
+                label: t.familyInviteTitle,
                 icon: Icons.person_add_alt_1_rounded,
                 onTap: busy ? null : () => _invite(context),
               ),
@@ -320,7 +326,7 @@ class _FamilyDetail extends StatelessWidget {
           const SizedBox(height: 10),
           if (family.pendingInvites.isEmpty)
             LumaCard(
-              child: Text('No invites waiting.',
+              child: Text(t.familyNoInvites,
                   style: TextStyle(color: luma.textMuted, fontSize: 13)),
             )
           else
@@ -342,13 +348,13 @@ class _FamilyDetail extends StatelessWidget {
         // ---- Danger zone -----------------------------------------------------
         if (isOwner)
           LumaGhostButton(
-            label: 'Delete family',
+            label: t.familyDeleteFamily,
             icon: Icons.delete_outline_rounded,
             onTap: busy ? null : () => _deleteFamily(context),
           )
         else
           LumaGhostButton(
-            label: 'Leave family',
+            label: t.familyLeaveFamily,
             icon: Icons.logout_rounded,
             onTap: busy ? null : () => _leaveFamily(context),
           ),
@@ -361,10 +367,11 @@ class _FamilyDetail extends StatelessWidget {
   }
 
   Future<void> _removeMember(BuildContext context, String userId) async {
+    final t = L.of(context);
     final confirmed = await _confirm(context,
-        title: 'Remove member?',
-        message: 'They will lose access to shared events immediately.',
-        confirmLabel: 'Remove');
+        title: t.familyRemoveMemberTitle,
+        message: t.familyRemoveMemberBody,
+        confirmLabel: t.commonRemove);
     if (!confirmed) return;
     onBusy(true);
     try {
@@ -377,10 +384,11 @@ class _FamilyDetail extends StatelessWidget {
   }
 
   Future<void> _leaveFamily(BuildContext context) async {
+    final t = L.of(context);
     final confirmed = await _confirm(context,
-        title: 'Leave family?',
-        message: 'You will lose access to shared events.',
-        confirmLabel: 'Leave');
+        title: t.familyLeaveTitle,
+        message: t.familyLeaveBody,
+        confirmLabel: t.familyLeaveConfirm);
     if (!confirmed) return;
     onBusy(true);
     try {
@@ -393,11 +401,11 @@ class _FamilyDetail extends StatelessWidget {
   }
 
   Future<void> _deleteFamily(BuildContext context) async {
+    final t = L.of(context);
     final confirmed = await _confirm(context,
-        title: 'Delete family?',
-        message:
-            'This removes every member and every shared event. This cannot be undone.',
-        confirmLabel: 'Delete');
+        title: t.familyDeleteTitle,
+        message: t.familyDeleteBody,
+        confirmLabel: t.commonDelete);
     if (!confirmed) return;
     onBusy(true);
     try {
@@ -435,7 +443,8 @@ class _FamilyDetail extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+            child: Text(L.of(context).commonCancel,
+                style: TextStyle(color: luma.textSecondary)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -470,7 +479,10 @@ class _MemberRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final roleLabel = member.isOwner ? 'Owner' : (isSelf ? 'You' : 'Member');
+    final t = L.of(context);
+    final roleLabel = member.isOwner
+        ? t.familyRoleOwner
+        : (isSelf ? t.familyRoleYou : t.familyRoleMember);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
@@ -508,7 +520,7 @@ class _MemberRow extends StatelessWidget {
           if (isOwner && !member.isOwner) ...[
             const SizedBox(width: 8),
             IconButton(
-              tooltip: 'Remove',
+              tooltip: t.commonRemove,
               icon: Icon(Icons.close_rounded, size: 18, color: luma.textMuted),
               onPressed: busy ? null : onRemove,
             ),
@@ -537,7 +549,7 @@ class _PendingInviteRow extends StatelessWidget {
                 style: TextStyle(color: luma.textPrimary, fontSize: 13),
                 overflow: TextOverflow.ellipsis),
           ),
-          Text('Pending',
+          Text(L.of(context).familyPending,
               style: TextStyle(
                   color: luma.textMuted, fontSize: 11, fontWeight: FontWeight.w600)),
         ],

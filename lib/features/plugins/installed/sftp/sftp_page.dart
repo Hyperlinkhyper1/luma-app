@@ -8,6 +8,7 @@ import 'package:open_file/open_file.dart';
 import '../../../../account/plan.dart';
 import '../../../../account/plan_selection_page.dart';
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../p2p/peer_sync_scope.dart';
 import '../../../../settings/settings_scope.dart';
 import '../../../../theme/luma_theme.dart';
@@ -135,8 +136,8 @@ class _SftpPageState extends State<SftpPage> {
       path = await LocalBrowser.defaultDirectory();
     } catch (e) {
       if (!mounted) return;
-      setState(() => _localError = 'Could not find a folder to start in. '
-          '${_describe(e)}');
+      setState(() => _localError =
+          L.of(context).sftpCouldNotFindStartFolder(_describe(e)));
       return;
     }
     if (!mounted) return;
@@ -175,7 +176,7 @@ class _SftpPageState extends State<SftpPage> {
       if (!mounted) return;
       setState(() {
         _localLoading = false;
-        _localError = 'Could not open this folder. ${_describe(e)}';
+        _localError = L.of(context).sftpCouldNotOpenFolder(_describe(e));
       });
     }
   }
@@ -213,7 +214,7 @@ class _SftpPageState extends State<SftpPage> {
       if (!mounted) return;
       setState(() {
         _remoteLoading = false;
-        _remoteError = 'Could not list this folder. ${_describe(e)}';
+        _remoteError = L.of(context).sftpCouldNotListFolder(_describe(e));
       });
     }
   }
@@ -255,6 +256,7 @@ class _SftpPageState extends State<SftpPage> {
       _connectionStatus = null;
     });
 
+    final t = L.of(context);
     var secret = initialSecret ?? await _store.secretFor(site);
     var promptedSave = initialSave ?? site.saveSecret;
 
@@ -265,11 +267,11 @@ class _SftpPageState extends State<SftpPage> {
       final answer = await promptSecret(
         context,
         title: site.isLumaHost
-            ? 'Pairing password for ${site.displayName}'
-            : 'Password for ${site.displayName}',
+            ? t.sftpPairingPasswordFor(site.displayName)
+            : t.sftpPasswordFor(site.displayName),
         message: site.isLumaHost
-            ? 'Type the password shown on that device\'s Host tab.'
-            : 'Signing in as ${site.username} on ${site.host}.',
+            ? t.sftpTypeDevicePasswordHint
+            : t.sftpSigningInAs(site.username, site.host),
         offerSave: true,
         initialSave: site.saveSecret,
       );
@@ -293,8 +295,7 @@ class _SftpPageState extends State<SftpPage> {
           onWaitingForApproval: (hostName) {
             if (!mounted) return;
             setState(() {
-              _connectionStatus =
-                  'Waiting for someone on $hostName to allow this device…';
+              _connectionStatus = t.sftpWaitingForApproval(hostName);
             });
           },
         );
@@ -313,10 +314,10 @@ class _SftpPageState extends State<SftpPage> {
         final answer = await promptSecret(
           context,
           title: site.isLumaHost
-              ? 'Pairing password for ${site.displayName}'
+              ? t.sftpPairingPasswordFor(site.displayName)
               : site.authMode == SftpAuthMode.key
-                  ? 'Passphrase for ${site.displayName}'
-                  : 'Password for ${site.displayName}',
+                  ? t.sftpPassphraseFor(site.displayName)
+                  : t.sftpPasswordFor(site.displayName),
           message: e.message,
           offerSave: true,
           initialSave: promptedSave,
@@ -439,6 +440,7 @@ class _SftpPageState extends State<SftpPage> {
 
   void _onDropped(SftpSession session) {
     if (!mounted || !identical(_session, session)) return;
+    final t = L.of(context);
     _queue.bind(null);
     final reason = session.closeReason;
     setState(() {
@@ -446,8 +448,8 @@ class _SftpPageState extends State<SftpPage> {
       _remoteEntries = const [];
       _remoteSelection.clear();
       _connectionError = reason == null || reason.isEmpty
-          ? 'The connection to the server closed.'
-          : 'The connection closed: $reason';
+          ? t.sftpConnectionClosed
+          : t.sftpConnectionClosedWithReason(reason);
       _phoneTab = 0;
     });
   }
@@ -488,6 +490,7 @@ class _SftpPageState extends State<SftpPage> {
     String remoteDirectory,
   ) async {
     if (_session == null || entries.isEmpty) return;
+    final t = L.of(context);
     var queued = 0;
     for (final entry in entries) {
       if (entry.isDirectory) {
@@ -516,7 +519,9 @@ class _SftpPageState extends State<SftpPage> {
       _localSelection.clear();
       if (queued > 0) _queueExpanded = true;
     });
-    _announce(queued == 0 ? 'Nothing to upload.' : 'Queued $queued for upload.');
+    _announce(
+      queued == 0 ? t.sftpNothingToUpload : t.sftpQueuedForUpload(queued),
+    );
   }
 
   Future<void> _downloadEntries(
@@ -525,6 +530,7 @@ class _SftpPageState extends State<SftpPage> {
   ) async {
     final session = _session;
     if (session == null || entries.isEmpty) return;
+    final t = L.of(context);
     var queued = 0;
     for (final entry in entries) {
       if (entry.isDirectory) {
@@ -559,7 +565,7 @@ class _SftpPageState extends State<SftpPage> {
       if (queued > 0) _queueExpanded = true;
     });
     _announce(
-      queued == 0 ? 'Nothing to download.' : 'Queued $queued for download.',
+      queued == 0 ? t.sftpNothingToDownload : t.sftpQueuedForDownload(queued),
     );
   }
 
@@ -584,9 +590,10 @@ class _SftpPageState extends State<SftpPage> {
       _navigateLocal(entry.path);
       return;
     }
+    final t = L.of(context);
     final result = await OpenFile.open(entry.path);
     if (result.type != ResultType.done && mounted) {
-      _announce('Could not open ${entry.name}. ${result.message}');
+      _announce(t.sftpCouldNotOpenName(entry.name, result.message));
     }
   }
 
@@ -618,12 +625,13 @@ class _SftpPageState extends State<SftpPage> {
   }
 
   Future<void> _newFolder(PaneSide side) async {
+    final t = L.of(context);
     final name = await promptText(
       context,
-      title: 'New folder',
-      label: 'Folder name',
+      title: t.sftpNewFolder,
+      label: t.sftpFolderNameLabel,
       icon: Icons.create_new_folder_rounded,
-      confirmLabel: 'Create',
+      confirmLabel: t.sftpCreate,
     );
     if (name == null || !mounted) return;
     try {
@@ -635,15 +643,16 @@ class _SftpPageState extends State<SftpPage> {
         await _loadRemote();
       }
     } catch (e) {
-      _announce('Could not create the folder. ${_describe(e)}');
+      _announce(t.sftpCouldNotCreateFolder(_describe(e)));
     }
   }
 
   Future<void> _rename(PaneSide side, PaneEntry entry) async {
+    final t = L.of(context);
     final name = await promptText(
       context,
-      title: 'Rename',
-      label: 'New name',
+      title: t.commonRename,
+      label: t.sftpNewNameLabel,
       icon: Icons.drive_file_rename_outline_rounded,
       initial: entry.name,
     );
@@ -662,12 +671,13 @@ class _SftpPageState extends State<SftpPage> {
         await _loadRemote();
       }
     } catch (e) {
-      _announce('Could not rename ${entry.name}. ${_describe(e)}');
+      _announce(t.sftpCouldNotRename(entry.name, _describe(e)));
     }
   }
 
   Future<void> _delete(PaneSide side, List<PaneEntry> entries) async {
     if (entries.isEmpty) return;
+    final t = L.of(context);
     final confirmed = await confirmDelete(
       context,
       names: entries.map((e) => e.name).toList(),
@@ -693,7 +703,7 @@ class _SftpPageState extends State<SftpPage> {
         }
       }
     } catch (e) {
-      _announce('Could not delete everything. ${_describe(e)}');
+      _announce(t.sftpCouldNotDeleteAll(_describe(e)));
     }
     if (side == PaneSide.local) {
       setState(_localSelection.clear);
@@ -707,6 +717,7 @@ class _SftpPageState extends State<SftpPage> {
   Future<void> _changePermissions(PaneEntry entry) async {
     final session = _session;
     if (session == null) return;
+    final t = L.of(context);
     final current = parsePermissions(entry.permissions ?? '');
     final mode = await promptPermissions(
       context,
@@ -718,7 +729,7 @@ class _SftpPageState extends State<SftpPage> {
       await session.chmod(entry.path, mode);
       await _loadRemote();
     } catch (e) {
-      _announce('Could not change permissions. ${_describe(e)}');
+      _announce(t.sftpCouldNotChangePermissions(_describe(e)));
     }
   }
 
@@ -727,6 +738,7 @@ class _SftpPageState extends State<SftpPage> {
     PaneEntry entry,
     Offset position,
   ) async {
+    final t = L.of(context);
     final luma = context.luma;
     final selection = _selected(side);
     final targets = selection.any((e) => e.path == entry.path)
@@ -765,8 +777,8 @@ class _SftpPageState extends State<SftpPage> {
               const SizedBox(width: 10),
               Text(
                 local
-                    ? 'Upload ${_countLabel(targets)}'
-                    : 'Download ${_countLabel(targets)}',
+                    ? t.sftpUploadLabel(_countLabel(t, targets))
+                    : t.sftpDownloadLabel(_countLabel(t, targets)),
                 style: style(),
               ),
             ],
@@ -780,7 +792,7 @@ class _SftpPageState extends State<SftpPage> {
                 Icon(Icons.open_in_new_rounded,
                     size: 16, color: luma.textSecondary),
                 const SizedBox(width: 10),
-                Text('Open', style: style()),
+                Text(t.commonOpen, style: style()),
               ],
             ),
           ),
@@ -792,7 +804,7 @@ class _SftpPageState extends State<SftpPage> {
                 Icon(Icons.drive_file_rename_outline_rounded,
                     size: 16, color: luma.textSecondary),
                 const SizedBox(width: 10),
-                Text('Rename', style: style()),
+                Text(t.commonRename, style: style()),
               ],
             ),
           ),
@@ -804,7 +816,7 @@ class _SftpPageState extends State<SftpPage> {
                 Icon(Icons.lock_outline_rounded,
                     size: 16, color: luma.textSecondary),
                 const SizedBox(width: 10),
-                Text('Permissions', style: style()),
+                Text(t.sftpPermissions, style: style()),
               ],
             ),
           ),
@@ -814,7 +826,10 @@ class _SftpPageState extends State<SftpPage> {
             children: [
               Icon(Icons.delete_outline_rounded, size: 16, color: luma.danger),
               const SizedBox(width: 10),
-              Text('Delete ${_countLabel(targets)}', style: style(luma.danger)),
+              Text(
+                t.sftpDeleteLabel(_countLabel(t, targets)),
+                style: style(luma.danger),
+              ),
             ],
           ),
         ),
@@ -843,6 +858,7 @@ class _SftpPageState extends State<SftpPage> {
   Future<void> _showPlaces() async {
     final roots = await LocalBrowser.roots();
     if (!mounted || roots.isEmpty) return;
+    final t = L.of(context);
     final luma = context.luma;
     final choice = await showModalBottomSheet<String>(
       context: context,
@@ -862,7 +878,7 @@ class _SftpPageState extends State<SftpPage> {
                       size: 18, color: luma.accent),
                   const SizedBox(width: 10),
                   Text(
-                    'Places',
+                    t.sftpPlaces,
                     style: TextStyle(
                       color: luma.textPrimary,
                       fontSize: 15,
@@ -900,7 +916,7 @@ class _SftpPageState extends State<SftpPage> {
     if (repository == null) return;
     final result = await FilePicker.pickFiles(
       allowMultiple: true,
-      dialogTitle: 'Add to the shared folder',
+      dialogTitle: L.of(context).sftpAddToSharedFolder,
     );
     final paths = result?.files
         .map((f) => f.path)
@@ -926,10 +942,11 @@ class _SftpPageState extends State<SftpPage> {
     }
     if (!mounted) return;
     setState(_localSelection.clear);
+    final t = L.of(context);
     _announce(
       entries.length == 1
-          ? '${entries.first.name} is in the shared folder.'
-          : '${entries.length} items are in the shared folder.',
+          ? t.sftpNameInShare(entries.first.name)
+          : t.sftpItemsInShare(entries.length),
     );
   }
 
@@ -938,7 +955,7 @@ class _SftpPageState extends State<SftpPage> {
     if (repository == null) return;
     final result = await OpenFile.open(repository.folder.root.path);
     if (result.type != ResultType.done && mounted) {
-      _announce('The folder is at ${repository.folder.root.path}');
+      _announce(L.of(context).sftpFolderAt(repository.folder.root.path));
     }
   }
 
@@ -947,7 +964,7 @@ class _SftpPageState extends State<SftpPage> {
     if (repository == null) return;
     final result = await OpenFile.open(repository.folder.fileFor(path).path);
     if (result.type != ResultType.done && mounted) {
-      _announce('Could not open $path. ${result.message}');
+      _announce(L.of(context).sftpCouldNotOpenName(path, result.message));
     }
   }
 
@@ -959,9 +976,7 @@ class _SftpPageState extends State<SftpPage> {
       context,
       names: paths,
       remote: false,
-      extraWarning:
-          'They will also disappear from the shared folder on your other '
-          'devices the next time they connect.',
+      extraWarning: L.of(context).sftpShareDeleteWarning,
     );
     if (!confirmed || !mounted) return;
     await repository.deleteFiles(paths);
@@ -1017,8 +1032,8 @@ class _SftpPageState extends State<SftpPage> {
     );
   }
 
-  static String _countLabel(List<PaneEntry> entries) =>
-      entries.length == 1 ? entries.first.name : '${entries.length} items';
+  static String _countLabel(L t, List<PaneEntry> entries) =>
+      entries.length == 1 ? entries.first.name : t.sftpItemCount(entries.length);
 
   static String _describe(Object error) {
     if (error is FileSystemException) {
@@ -1088,12 +1103,12 @@ class _SftpPageState extends State<SftpPage> {
     final repository = DeviceShareScope.of(context);
     if (repository == null) {
       return DeviceShareUnavailable(
-        onOpenSettings: () => _announce(
-          'Open Settings → Sync & account to set this device up.',
-        ),
+        onOpenSettings: () =>
+            _announce(L.of(context).sftpOpenSettingsSync),
       );
     }
     final peerSync = PeerSyncScope.of(context);
+    final t = L.of(context);
 
     final panel = DeviceSharePanel(
       repository: repository,
@@ -1132,7 +1147,7 @@ class _SftpPageState extends State<SftpPage> {
       child: Column(
         children: [
           LumaSegmentedTabs(
-            tabs: const ['This device', 'Shared folder'],
+            tabs: [t.sftpThisDevice, t.sftpSharedFolder],
             selectedIndex: _phoneShareTab,
             onSelect: (index) => setState(() => _phoneShareTab = index),
           ),
@@ -1141,8 +1156,7 @@ class _SftpPageState extends State<SftpPage> {
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: LumaPrimaryButton(
-                label: 'Share ${_localSelection.length} '
-                    '${_localSelection.length == 1 ? 'item' : 'items'}',
+                label: t.sftpShareItems(_localSelection.length),
                 icon: Icons.folder_shared_rounded,
                 expand: true,
                 onTap: () => _shareEntries(_selected(PaneSide.local)),
@@ -1194,6 +1208,7 @@ class _SftpPageState extends State<SftpPage> {
   }
 
   Widget _buildNarrow(SftpSession session) {
+    final t = L.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
       child: Column(
@@ -1204,9 +1219,9 @@ class _SftpPageState extends State<SftpPage> {
               final pending = _queue.pendingCount;
               return LumaSegmentedTabs(
                 tabs: [
-                  'This device',
-                  'Server',
-                  pending > 0 ? 'Queue ($pending)' : 'Queue',
+                  t.sftpThisDevice,
+                  t.sftpTabServer,
+                  pending > 0 ? t.sftpQueueWithCount(pending) : t.sftpTabQueue,
                 ],
                 selectedIndex: _phoneTab,
                 onSelect: (index) => setState(() => _phoneTab = index),
@@ -1244,7 +1259,7 @@ class _SftpPageState extends State<SftpPage> {
 
   Widget _localPane({required bool compact}) => SftpFilePane(
         side: PaneSide.local,
-        title: 'This device',
+        title: L.of(context).sftpThisDevice,
         subtitle: _localPath,
         path: _localPath,
         crumbs: _localPath.isEmpty ? const [] : LocalBrowser.crumbs(_localPath),
@@ -1337,6 +1352,7 @@ class _ConnectionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final site = session?.site;
     final devices = mode == 1;
@@ -1363,9 +1379,9 @@ class _ConnectionBar extends StatelessWidget {
               children: [
                 Text(
                   host
-                      ? 'Host this device'
+                      ? t.sftpHostThisDevice
                       : devices
-                          ? 'My devices'
+                          ? t.sftpMyDevices
                           : (site == null ? 'SFTP' : site.displayName),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -1378,17 +1394,13 @@ class _ConnectionBar extends StatelessWidget {
                 Text(
                   host
                       ? (hosting
-                          ? 'Sharing a folder — any device with the pairing '
-                              'password can connect.'
-                          : 'Let another device connect to this one over your '
-                              'network.')
+                          ? t.sftpSharingFolderNote
+                          : t.sftpHostIdleNote)
                       : devices
-                          ? 'One folder, mirrored across your own devices over '
-                              'your network.'
+                          ? t.sftpDevicesNote
                           : (site == null
-                              ? 'Connect to your own server — nothing routes '
-                                  'through luma.'
-                              : 'Connected to ${site.endpointLabel}'),
+                              ? t.sftpServersNote
+                              : t.sftpConnectedTo(site.endpointLabel)),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: luma.textSecondary, fontSize: 12),
@@ -1398,20 +1410,20 @@ class _ConnectionBar extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           LumaSegmentedTabs(
-            tabs: const ['Servers', 'My devices', 'Host'],
+            tabs: [t.sftpServers, t.sftpMyDevices, t.sftpHost],
             selectedIndex: mode,
             onSelect: onModeChanged,
           ),
           const SizedBox(width: 8),
           if (!devices && !host && session != null) ...[
             LumaGhostButton(
-              label: 'Site Manager',
+              label: t.sftpSiteManager,
               icon: Icons.storage_rounded,
               onTap: onManageSites,
             ),
             const SizedBox(width: 8),
             LumaGhostButton(
-              label: 'Disconnect',
+              label: t.sftpDisconnect,
               icon: Icons.link_off_rounded,
               onTap: onDisconnect,
             ),
@@ -1440,7 +1452,7 @@ class _ShareArrow extends StatelessWidget {
         children: [
           _ArrowButton(
             icon: Icons.arrow_forward_rounded,
-            tooltip: 'Put the selected files in the shared folder',
+            tooltip: L.of(context).sftpPutInShare,
             enabled: enabled,
             onTap: onTap,
             luma: luma,
@@ -1476,7 +1488,7 @@ class _TransferArrows extends StatelessWidget {
         children: [
           _ArrowButton(
             icon: Icons.arrow_forward_rounded,
-            tooltip: 'Upload the selected files',
+            tooltip: L.of(context).sftpUploadSelected,
             enabled: canUpload,
             onTap: onUpload,
             luma: luma,
@@ -1484,7 +1496,7 @@ class _TransferArrows extends StatelessWidget {
           const SizedBox(height: 10),
           _ArrowButton(
             icon: Icons.arrow_back_rounded,
-            tooltip: 'Download the selected files',
+            tooltip: L.of(context).sftpDownloadSelected,
             enabled: canDownload,
             onTap: onDownload,
             luma: luma,
@@ -1558,12 +1570,13 @@ class _MobileTransferBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (count == 0) return const SizedBox.shrink();
+    final t = L.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: LumaPrimaryButton(
         label: uploading
-            ? 'Upload $count ${count == 1 ? 'item' : 'items'}'
-            : 'Download $count ${count == 1 ? 'item' : 'items'}',
+            ? t.sftpUploadItems(count)
+            : t.sftpDownloadItems(count),
         icon: uploading ? Icons.north_rounded : Icons.south_rounded,
         expand: true,
         onTap: onTransfer,
@@ -1578,18 +1591,15 @@ class _PlanUpsell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return Padding(
       padding: const EdgeInsets.all(24),
       child: LumaEmptyState(
         icon: Icons.auto_awesome_rounded,
-        title: 'SFTP comes with Orbit and Nova',
-        subtitle:
-            'Connect to your own servers with a host, username, password and '
-            'port, browse both sides at once, and drag files across. The '
-            'connection goes straight from this device to your server — '
-            'nothing passes through a luma server.',
+        title: t.sftpUpsellTitle,
+        subtitle: t.sftpUpsellBody,
         action: LumaPrimaryButton(
-          label: 'Upgrade to ${planById('orbit').name}',
+          label: t.sftpUpgradeTo(planById('orbit').name),
           icon: Icons.auto_awesome_rounded,
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const PlanSelectionPage()),

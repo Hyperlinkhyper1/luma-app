@@ -2,6 +2,8 @@
 /// model pages, so the same value never appears two ways on one screen.
 library;
 
+import '../../../../../l10n/current_l.dart';
+
 /// A context window as people talk about it: `1048576` → `1.0M`, `128000` →
 /// `128K`. Null for an unknown window, which the table shows as "–".
 String? formatTokens(int? tokens) {
@@ -56,10 +58,10 @@ String formatExactTokens(int tokens) {
 /// for catalogue freshness — hours, then days, then a date.
 String relativeDay(DateTime when) {
   final delta = DateTime.now().difference(when);
-  if (delta.inMinutes < 1) return 'just now';
-  if (delta.inMinutes < 60) return '${delta.inMinutes}m ago';
-  if (delta.inHours < 24) return '${delta.inHours}h ago';
-  if (delta.inDays < 30) return '${delta.inDays}d ago';
+  if (delta.inMinutes < 1) return currentL.commonJustNow;
+  if (delta.inMinutes < 60) return currentL.commonMinutesAgo(delta.inMinutes);
+  if (delta.inHours < 24) return currentL.commonHoursAgo(delta.inHours);
+  if (delta.inDays < 30) return currentL.commonDaysAgo(delta.inDays);
   return '${when.year}-${_two(when.month)}-${_two(when.day)}';
 }
 

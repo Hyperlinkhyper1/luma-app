@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../account_overview_scope.dart';
 import '../github_models.dart';
@@ -19,6 +20,7 @@ class GithubUsageTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final repository = AccountOverviewScope.of(context);
     final billing = repository.snapshot.billing;
     final credentials = repository.credentials;
@@ -60,9 +62,9 @@ class GithubUsageTab extends StatelessWidget {
           AccountNotice(
             icon: Icons.lock_outline_rounded,
             message: billing.unavailableReason ??
-                'Billing data is not available for this token.',
+                t.ghUsageBillingUnavailable,
             action: AccountLinkButton(
-              label: 'Reconnect',
+              label: t.ghUsageReconnect,
               onTap: () => showGithubConnectDialog(context),
             ),
           )
@@ -78,29 +80,29 @@ class GithubUsageTab extends StatelessWidget {
               AccountPanel(
                 title: 'GitHub Copilot',
                 icon: Icons.auto_awesome_outlined,
-                subtitle: 'This billing period',
+                subtitle: t.ghUsageThisPeriod,
                 child: AccountMeter(
-                  label: 'Copilot usage',
+                  label: t.ghUsageCopilotUsage,
                   icon: Icons.smart_toy_outlined,
                   used: copilotUsed,
                   total: copilotTotal,
                   unit: billing.copilotUnit,
                   onSetAllowance: () => showGithubAllowanceDialog(context),
                   caption: billing.copilotSpend > 0
-                      ? 'Billed beyond the included allowance: '
-                          '\$${billing.copilotSpend.toStringAsFixed(2)}'
-                      : 'Nothing billed beyond the included allowance.',
+                      ? t.ghUsageCopilotSpend(
+                          '\$${billing.copilotSpend.toStringAsFixed(2)}')
+                      : t.ghUsageNoCopilotSpend,
                 ),
               ),
               AccountPanel(
-                title: 'Storage',
+                title: t.ghUsageStorage,
                 icon: Icons.sd_storage_outlined,
-                subtitle: 'Live Actions artifacts, private repos only',
+                subtitle: t.ghUsageStorageSubtitle,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     AccountMeter(
-                      label: 'Shared storage',
+                      label: t.ghUsageSharedStorage,
                       icon: Icons.folder_zip_outlined,
                       used: storageUsed,
                       total: storageTotal,
@@ -108,20 +110,17 @@ class GithubUsageTab extends StatelessWidget {
                       onSetAllowance: () => showGithubAllowanceDialog(context),
                       formatter: (v) => formatDecimal(v, decimals: 2),
                       caption: storagePartial
-                          ? 'Counted the ${billing.privateStorageReposCounted} '
-                              'most recently active of your '
-                              '${billing.privateStorageReposTotal} private '
-                              'repositories. Public repositories are never '
-                              'metered, so they are left out entirely.'
-                          : 'Summed directly from every private repository\'s '
-                              'Actions artifacts — GitHub has no API for '
-                              'Packages storage, so that is not included.',
+                          ? t.ghUsageStoragePartial(
+                              billing.privateStorageReposCounted,
+                              billing.privateStorageReposTotal,
+                            )
+                          : t.ghUsageStorageSummed,
                     ),
                     if (billing.bandwidthGbIncluded > 0 ||
                         billing.bandwidthGbUsed > 0) ...[
                       const SizedBox(height: 20),
                       AccountMeter(
-                        label: 'Packages bandwidth',
+                        label: t.ghUsagePackagesBandwidth,
                         icon: Icons.swap_vert_rounded,
                         used: billing.bandwidthGbUsed,
                         total: billing.bandwidthGbIncluded > 0
@@ -135,22 +134,22 @@ class GithubUsageTab extends StatelessWidget {
                 ),
               ),
               AccountPanel(
-                title: 'Workflow compute',
+                title: t.ghUsageWorkflowCompute,
                 icon: Icons.memory_rounded,
-                subtitle: 'GitHub Actions minutes',
+                subtitle: t.ghUsageActionsSubtitle,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     AccountMeter(
-                      label: 'Actions minutes',
+                      label: t.ghUsageActionsMinutes,
                       icon: Icons.timer_outlined,
                       used: minutesUsed,
                       total: minutesTotal,
-                      unit: 'minutes',
+                      unit: t.ghUsageUnitMinutes,
                       onSetAllowance: () => showGithubAllowanceDialog(context),
                       caption: billing.paidMinutesUsed > 0
-                          ? '${formatDecimal(billing.paidMinutesUsed)} minutes '
-                              'billed beyond the allowance.'
+                          ? t.ghUsageMinutesBilled(
+                              formatDecimal(billing.paidMinutesUsed))
                           : null,
                     ),
                     if (billing.minutesBreakdown.isNotEmpty) ...[
@@ -188,7 +187,7 @@ class GithubUsageTab extends StatelessWidget {
         const SizedBox(height: 16),
         Center(
           child: AccountLinkButton(
-            label: 'Adjust your allowances',
+            label: t.ghUsageAdjustAllowances,
             icon: Icons.tune_rounded,
             onTap: () => showGithubAllowanceDialog(context),
           ),
@@ -198,9 +197,7 @@ class GithubUsageTab extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
-              'GitHub reports consumption but not always the allowance that '
-              'goes with it. Meters without a bar are waiting on a figure '
-              'from your billing page.',
+              t.ghUsageFootnote,
               textAlign: TextAlign.center,
               style:
                   TextStyle(color: luma.textMuted, fontSize: 11, height: 1.5),
@@ -220,6 +217,7 @@ class _BillingCycleStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final columns = (constraints.maxWidth / 200).floor().clamp(2, 3);
@@ -229,24 +227,24 @@ class _BillingCycleStrip extends StatelessWidget {
         final tiles = [
           AccountStatTile(
             icon: Icons.event_available_outlined,
-            label: 'Days left in cycle',
+            label: t.ghUsageDaysLeft,
             value: billing.daysLeftInCycle > 0
                 ? formatCount(billing.daysLeftInCycle)
                 : '—',
-            caption: 'until the meters reset',
+            caption: t.ghUsageUntilReset,
           ),
           AccountStatTile(
             icon: Icons.receipt_long_outlined,
-            label: 'Billed this period',
+            label: t.ghUsageBilledThisPeriod,
             value: '\$${billing.totalSpend.toStringAsFixed(2)}',
-            caption: 'beyond included allowances',
+            caption: t.ghUsageBeyondIncluded,
             tint: billing.totalSpend > 0 ? luma.warning : luma.success,
           ),
           AccountStatTile(
             icon: Icons.list_alt_rounded,
-            label: 'Usage lines',
+            label: t.ghUsageUsageLines,
             value: formatCount(billing.usageItems.length),
-            caption: 'products with activity',
+            caption: t.ghUsageProductsWithActivity,
           ),
         ];
         return Wrap(
@@ -271,6 +269,7 @@ class _RunnerBreakdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final entries = breakdown.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     final max = entries.first.value;
@@ -279,7 +278,7 @@ class _RunnerBreakdown extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'By runner',
+          t.ghUsageByRunner,
           style: TextStyle(
             color: luma.textSecondary,
             fontSize: 11.5,
@@ -364,14 +363,15 @@ class _UsageBreakdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     if (billing.usageItems.isEmpty) {
       return AccountPanel(
-        title: 'Usage breakdown',
+        title: t.ghUsageBreakdownTitle,
         icon: Icons.table_rows_outlined,
         child: Text(
           billing.available
-              ? 'No billable usage reported for this period.'
-              : 'Connect a token that can read billing to see the breakdown.',
+              ? t.ghUsageNoBillable
+              : t.ghUsageConnectForBreakdown,
           style: TextStyle(color: luma.textMuted, fontSize: 12),
         ),
       );
@@ -394,9 +394,9 @@ class _UsageBreakdown extends StatelessWidget {
       ..sort((a, b) => b.value.amount.compareTo(a.value.amount));
 
     return AccountPanel(
-      title: 'Usage breakdown',
+      title: t.ghUsageBreakdownTitle,
       icon: Icons.table_rows_outlined,
-      subtitle: 'Totalled by product for this billing period',
+      subtitle: t.ghUsageBreakdownSubtitle,
       padding: EdgeInsets.zero,
       child: Column(
         children: [
@@ -410,7 +410,7 @@ class _UsageBreakdown extends StatelessWidget {
                 Expanded(
                   flex: 3,
                   child: Text(
-                    'Product',
+                    t.ghUsageColProduct,
                     style: TextStyle(
                       color: luma.textMuted,
                       fontSize: 11,
@@ -421,7 +421,7 @@ class _UsageBreakdown extends StatelessWidget {
                 Expanded(
                   flex: 2,
                   child: Text(
-                    'Quantity',
+                    t.ghUsageColQuantity,
                     textAlign: TextAlign.right,
                     style: TextStyle(
                       color: luma.textMuted,
@@ -432,7 +432,7 @@ class _UsageBreakdown extends StatelessWidget {
                 ),
                 Expanded(
                   child: Text(
-                    'Billed',
+                    t.ghUsageColBilled,
                     textAlign: TextAlign.right,
                     style: TextStyle(
                       color: luma.textMuted,

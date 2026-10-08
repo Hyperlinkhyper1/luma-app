@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/mind_map_database.dart';
 import 'mind_map_style.dart';
@@ -52,6 +53,7 @@ class MindMapNodeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final style = MindMapStyle.labelStyle(isRoot: _isRoot);
 
@@ -114,7 +116,7 @@ class MindMapNodeCard extends StatelessWidget {
                         focusedBorder: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         contentPadding: EdgeInsets.zero,
-                        hintText: 'New idea',
+                        hintText: t.mindMapNewIdea,
                         hintStyle: style.copyWith(
                           color: textColor.withValues(alpha: 0.45),
                         ),
@@ -122,7 +124,7 @@ class MindMapNodeCard extends StatelessWidget {
                       onEditingComplete: onEditingComplete,
                     )
                   : Text(
-                      node.label.trim().isEmpty ? 'New idea' : node.label,
+                      node.label.trim().isEmpty ? t.mindMapNewIdea : node.label,
                       style: style.copyWith(
                         color: node.label.trim().isEmpty
                             ? textColor.withValues(alpha: 0.45)
@@ -189,13 +191,13 @@ class _CollapsePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final plural = count == 1 ? 'node' : 'nodes';
+    final t = L.of(context);
     return Semantics(
       button: true,
       expanded: !collapsed,
-      label: collapsed ? 'Expand $count hidden $plural' : 'Collapse $count $plural',
+      label: collapsed ? t.mindMapExpandHidden(count) : t.mindMapCollapseNodes(count),
       child: Tooltip(
-        message: collapsed ? 'Show $count hidden' : 'Hide $count',
+        message: collapsed ? t.mindMapShowHidden(count) : t.mindMapHideCount(count),
         child: MouseRegion(
           cursor: SystemMouseCursors.click,
           child: GestureDetector(

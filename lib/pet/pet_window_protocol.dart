@@ -17,3 +17,4 @@ const String petMethodDismiss = 'dismiss';
 const String petMethodAutoClicker = 'autoClicker';
 
 const String petWindowMethodShow = 'window_show';
+const String petWindowMethodRefresh = 'window_refresh';

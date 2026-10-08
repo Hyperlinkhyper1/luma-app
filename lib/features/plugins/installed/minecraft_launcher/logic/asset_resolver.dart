@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../../l10n/current_l.dart';
 import 'mc_paths.dart';
 import 'piston_meta_client.dart';
 
@@ -46,10 +47,10 @@ class AssetResolver {
             .get(Uri.parse(detail.assetIndexUrl))
             .timeout(const Duration(seconds: 30));
       } catch (_) {
-        throw AssetResolverException('Could not download the asset index.');
+        throw AssetResolverException(currentL.mcAssetIndexDownloadFailed);
       }
       if (res.statusCode != 200) {
-        throw AssetResolverException('Asset index request failed (${res.statusCode}).');
+        throw AssetResolverException(currentL.mcAssetIndexRequestFailed('${res.statusCode}'));
       }
       json = jsonDecode(res.body) as Map<String, dynamic>;
       await file.writeAsString(res.body);

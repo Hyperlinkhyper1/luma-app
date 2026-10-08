@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import 'package:intl/intl.dart';
+
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/school_database.dart';
 import '../school_repository.dart';
@@ -23,6 +26,7 @@ class _StudyTimerTabState extends State<StudyTimerTab> {
   Widget build(BuildContext context) {
     final repo = SchoolScope.of(context);
     final luma = context.luma;
+    final t = L.of(context);
     return StreamData<List<SchoolSubject>>(
       stream: repo.watchSubjects(),
       builder: (context, subjects) {
@@ -60,13 +64,13 @@ class _StudyTimerTabState extends State<StudyTimerTab> {
                                 ),
                         ),
                         const SizedBox(height: 20),
-                        Text('Time by subject',
+                        Text(t.schoolStudyTimeBySubject,
                             style: TextStyle(
                                 color: luma.textPrimary, fontSize: 15, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 12),
                         if (totalEntries.isEmpty)
                           LumaCard(
-                              child: Text('No study sessions logged yet.',
+                              child: Text(t.schoolStudyNoSessionsLogged,
                                   style: TextStyle(color: luma.textMuted)))
                         else
                           LumaCard(
@@ -94,7 +98,7 @@ class _StudyTimerTabState extends State<StudyTimerTab> {
                                           }
                                           final subjectId = totalEntries[i].key;
                                           final label = subjectId == null
-                                              ? 'None'
+                                              ? t.commonNone
                                               : (subjectById[subjectId]?.name ?? '?');
                                           return Padding(
                                             padding: const EdgeInsets.only(top: 6),
@@ -137,7 +141,7 @@ class _StudyTimerTabState extends State<StudyTimerTab> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Recent sessions',
+                        Text(t.schoolStudyRecentSessions,
                             style: TextStyle(
                                 color: luma.textPrimary, fontSize: 15, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 12),
@@ -146,9 +150,9 @@ class _StudyTimerTabState extends State<StudyTimerTab> {
                             final completed =
                                 sessions.where((s) => s.endTime != null).toList();
                             if (completed.isEmpty) {
-                              return const LumaEmptyState(
+                              return LumaEmptyState(
                                 icon: Icons.timer_outlined,
-                                title: 'No completed sessions',
+                                title: t.schoolStudyNoCompletedSessions,
                               );
                             }
                             return ListView.separated(
@@ -165,14 +169,18 @@ class _StudyTimerTabState extends State<StudyTimerTab> {
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
                                                 Text(
-                                                  subjectById[s.subjectId]?.name ?? 'No subject',
+                                                  subjectById[s.subjectId]?.name ??
+                                                      t.schoolStudyNoSubject,
                                                   style: TextStyle(
                                                       color: luma.textPrimary,
                                                       fontWeight: FontWeight.w600,
                                                       fontSize: 13),
                                                 ),
                                                 Text(
-                                                  '${s.startTime.month}/${s.startTime.day} · ${s.durationMinutes} min',
+                                                  t.schoolStudySessionMeta(
+                                                    DateFormat.Md().format(s.startTime),
+                                                    s.durationMinutes,
+                                                  ),
                                                   style:
                                                       TextStyle(color: luma.textMuted, fontSize: 11),
                                                 ),
@@ -219,18 +227,19 @@ class _StartFormState extends State<_StartForm> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Start studying',
+        Text(t.schoolStudyStartStudying,
             style: TextStyle(color: luma.textPrimary, fontSize: 15, fontWeight: FontWeight.w700)),
         const SizedBox(height: 12),
         if (widget.subjects.isNotEmpty)
           DropdownButtonFormField<int?>(
             initialValue: _subjectId,
-            decoration: const InputDecoration(labelText: 'Subject (optional)'),
+            decoration: InputDecoration(labelText: t.schoolStudySubjectOptional),
             items: [
-              const DropdownMenuItem(value: null, child: Text('None')),
+              DropdownMenuItem(value: null, child: Text(t.commonNone)),
               for (final s in widget.subjects)
                 DropdownMenuItem(value: s.id, child: Text(s.name)),
             ],
@@ -238,7 +247,7 @@ class _StartFormState extends State<_StartForm> {
           ),
         const SizedBox(height: 12),
         LumaPrimaryButton(
-          label: 'Start timer',
+          label: t.schoolStudyStartTimer,
           icon: Icons.play_arrow_rounded,
           expand: true,
           onTap: () => widget.repo.startSession(subjectId: _subjectId),
@@ -282,6 +291,7 @@ class _ActiveTimerState extends State<_ActiveTimer> {
     final session = widget.session;
     final subject = widget.subject;
     final onStop = widget.onStop;
+    final t = L.of(context);
     final elapsed = DateTime.now().difference(session.startTime);
     final h = elapsed.inHours.toString().padLeft(2, '0');
     final m = (elapsed.inMinutes % 60).toString().padLeft(2, '0');
@@ -289,7 +299,7 @@ class _ActiveTimerState extends State<_ActiveTimer> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(subject?.name ?? 'Studying',
+        Text(subject?.name ?? t.schoolStudyStudying,
             style: TextStyle(color: luma.textSecondary, fontSize: 13)),
         const SizedBox(height: 8),
         Text('$h:$m:$s',
@@ -300,7 +310,7 @@ class _ActiveTimerState extends State<_ActiveTimer> {
                 fontFeatures: const [FontFeature.tabularFigures()])),
         const SizedBox(height: 12),
         LumaPrimaryButton(
-          label: 'Stop',
+          label: t.commonStop,
           icon: Icons.stop_rounded,
           expand: true,
           onTap: onStop,

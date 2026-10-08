@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../settings/sync_section.dart';
 import '../../../../../sync/sync_scope.dart';
 import '../../../../../sync/sync_service.dart';
@@ -66,6 +67,7 @@ class _SteamGameDetailPageState extends State<SteamGameDetailPage> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final repository = SteamScope.of(context);
 
     return Scaffold(
@@ -89,8 +91,8 @@ class _SteamGameDetailPageState extends State<SteamGameDetailPage> {
                         )
                       : LumaEmptyState(
                           icon: Icons.videogame_asset_off_rounded,
-                          title: 'That game is no longer in your library',
-                          subtitle: 'Refresh your library to see what changed.',
+                          title: t.steamDetailNoLongerInLibraryTitle,
+                          subtitle: t.steamDetailNoLongerInLibrarySubtitle,
                         ),
                 ),
                 const _BackButton(),
@@ -348,7 +350,7 @@ class _BackButton extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: IconButton(
           onPressed: () => Navigator.of(context).maybePop(),
-          tooltip: 'Back to your library',
+          tooltip: L.of(context).steamDetailBackTooltip,
           icon: Icon(Icons.arrow_back_rounded, color: luma.textPrimary),
           // 44pt minimum, whatever the icon size works out to.
           constraints: const BoxConstraints.tightFor(width: 44, height: 44),
@@ -368,6 +370,7 @@ class _PriceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final fetching = repository.isFetchingDetails(game.appId);
     final currency = game.currency ?? 'USD';
     final price = game.lastPriceCents;
@@ -387,13 +390,13 @@ class _PriceCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Price now',
+                      t.steamDetailPriceNow,
                       style: TextStyle(color: luma.textMuted, fontSize: 12),
                     ),
                     const SizedBox(height: 6),
                     if (game.isFree)
                       Text(
-                        'Free to play',
+                        t.steamFreeToPlay,
                         style: TextStyle(
                           color: luma.success,
                           fontSize: 28,
@@ -402,7 +405,9 @@ class _PriceCard extends StatelessWidget {
                       )
                     else if (price == null)
                       Text(
-                        fetching ? 'Checking…' : 'Not checked yet',
+                        fetching
+                            ? t.steamPriceChecking
+                            : t.steamPriceNotChecked,
                         style: TextStyle(
                           color: luma.textSecondary,
                           fontSize: 22,
@@ -431,7 +436,8 @@ class _PriceCard extends StatelessWidget {
                               initial > price) ...[
                             _DiscountPill(percent: discount),
                             Text(
-                              'was ${formatSteamPrice(initial, currency)}',
+                              t.steamDetailWasPrice(
+                                  formatSteamPrice(initial, currency)),
                               style: TextStyle(
                                 color: luma.textMuted,
                                 fontSize: 13,
@@ -449,7 +455,7 @@ class _PriceCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               LumaGhostButton(
-                label: 'Check now',
+                label: t.steamDetailCheckNow,
                 icon: Icons.refresh_rounded,
                 onTap: fetching
                     ? null
@@ -464,7 +470,7 @@ class _PriceCard extends StatelessWidget {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  _lastChecked(game.detailsFetchedAt),
+                  _lastChecked(t, game.detailsFetchedAt),
                   style: TextStyle(color: luma.textMuted, fontSize: 11.5),
                 ),
               ),
@@ -475,13 +481,13 @@ class _PriceCard extends StatelessWidget {
     );
   }
 
-  static String _lastChecked(DateTime? at) {
-    if (at == null) return 'This game has not been priced yet.';
+  static String _lastChecked(L t, DateTime? at) {
+    if (at == null) return t.steamDetailNeverPriced;
     final ago = DateTime.now().difference(at);
-    if (ago.inMinutes < 1) return 'Checked just now.';
-    if (ago.inHours < 1) return 'Checked ${ago.inMinutes} min ago.';
-    if (ago.inDays < 1) return 'Checked ${ago.inHours} h ago.';
-    return 'Checked on ${DateFormat.yMMMd().format(at)}.';
+    if (ago.inMinutes < 1) return t.steamDetailCheckedJustNow;
+    if (ago.inHours < 1) return t.steamDetailCheckedMinutes(ago.inMinutes);
+    if (ago.inDays < 1) return t.steamDetailCheckedHours(ago.inHours);
+    return t.steamDetailCheckedOn(DateFormat.yMMMd().format(at));
   }
 }
 
@@ -524,7 +530,10 @@ class _AboutCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _CardTitle(icon: Icons.notes_rounded, label: 'About this game'),
+          _CardTitle(
+            icon: Icons.notes_rounded,
+            label: L.of(context).steamDetailAboutTitle,
+          ),
           const SizedBox(height: 10),
           Text(
             text,
@@ -552,7 +561,10 @@ class _TagsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _CardTitle(icon: Icons.sell_rounded, label: 'Tags'),
+          _CardTitle(
+            icon: Icons.sell_rounded,
+            label: L.of(context).steamDetailTags,
+          ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
@@ -596,6 +608,7 @@ class _RequirementsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     if (requirements.isEmpty) {
       return LumaCard(
@@ -604,13 +617,13 @@ class _RequirementsCard extends StatelessWidget {
           children: [
             _CardTitle(
               icon: Icons.memory_rounded,
-              label: 'System requirements',
+              label: t.steamDetailRequirementsTitle,
             ),
             const SizedBox(height: 10),
             Text(
               loading
-                  ? 'Reading the store page…'
-                  : 'Steam lists no PC requirements for this game.',
+                  ? t.steamDetailReadingStore
+                  : t.steamDetailNoPcRequirements,
               style: TextStyle(color: luma.textMuted, fontSize: 12.5),
             ),
           ],
@@ -620,10 +633,13 @@ class _RequirementsCard extends StatelessWidget {
 
     final blocks = <Widget>[
       if (requirements.minimum.isNotEmpty)
-        _RequirementBlock(title: 'Minimum', lines: requirements.minimum),
+        _RequirementBlock(
+          title: t.steamDetailReqMinimum,
+          lines: requirements.minimum,
+        ),
       if (requirements.recommended.isNotEmpty)
         _RequirementBlock(
-          title: 'Recommended',
+          title: t.steamDetailReqRecommended,
           lines: requirements.recommended,
         ),
     ];
@@ -632,7 +648,10 @@ class _RequirementsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _CardTitle(icon: Icons.memory_rounded, label: 'System requirements'),
+          _CardTitle(
+            icon: Icons.memory_rounded,
+            label: t.steamDetailRequirementsTitle,
+          ),
           const SizedBox(height: 14),
           if (wide && blocks.length == 2)
             Row(
@@ -730,6 +749,7 @@ class _FactsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     final platforms = <String>[
       if (game.onWindows) 'Windows',
@@ -739,23 +759,28 @@ class _FactsCard extends StatelessWidget {
 
     final facts = <(String, String)>[
       if (game.developers?.isNotEmpty ?? false)
-        ('Developer', game.developers!),
+        (t.steamDetailDeveloper, game.developers!),
       if (game.publishers?.isNotEmpty ?? false)
-        ('Publisher', game.publishers!),
+        (t.steamDetailPublisher, game.publishers!),
       if (game.releaseDate?.isNotEmpty ?? false)
-        ('Released', game.releaseDate!),
+        (t.steamDetailReleased, game.releaseDate!),
       if (game.metacritic != null) ('Metacritic', '${game.metacritic}/100'),
-      if (platforms.isNotEmpty) ('Platforms', platforms.join(', ')),
+      if (platforms.isNotEmpty)
+        (t.steamDetailPlatforms, platforms.join(', ')),
       // Only meaningful for a game the Steam library sync actually
       // confirmed is owned — a searched-and-tracked game has no playtime.
-      if (game.owned) ('Your playtime', _playtime(game.playtimeMinutes)),
+      if (game.owned)
+        (t.steamDetailYourPlaytime, _playtime(t, game.playtimeMinutes)),
     ];
 
     return LumaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _CardTitle(icon: Icons.info_outline_rounded, label: 'Details'),
+          _CardTitle(
+            icon: Icons.info_outline_rounded,
+            label: t.commonDetails,
+          ),
           const SizedBox(height: 12),
           for (final (label, value) in facts)
             Padding(
@@ -790,7 +815,7 @@ class _FactsCard extends StatelessWidget {
             runSpacing: 10,
             children: [
               LumaGhostButton(
-                label: 'Open on Steam',
+                label: t.steamDetailOpenOnSteam,
                 icon: Icons.open_in_new_rounded,
                 onTap: () => launchUrl(
                   Uri.parse(
@@ -799,7 +824,7 @@ class _FactsCard extends StatelessWidget {
                 ),
               ),
               LumaGhostButton(
-                label: 'Stop tracking',
+                label: t.steamDetailStopTracking,
                 icon: Icons.delete_outline_rounded,
                 onTap: () => _confirmUntrack(context, game),
               ),
@@ -810,12 +835,14 @@ class _FactsCard extends StatelessWidget {
     );
   }
 
-  static String _playtime(int minutes) {
-    if (minutes <= 0) return 'Never played';
-    if (minutes < 60) return '$minutes minutes';
+  static String _playtime(L t, int minutes) {
+    if (minutes <= 0) return t.steamDetailPlaytimeNever;
+    if (minutes < 60) return t.steamDetailPlaytimeMinutes(minutes);
     final hours = minutes / 60;
-    if (hours < 10) return '${hours.toStringAsFixed(1)} hours';
-    return '${hours.round()} hours';
+    if (hours < 10) {
+      return t.steamDetailPlaytimeHours(hours.toStringAsFixed(1));
+    }
+    return t.steamDetailPlaytimeHoursWhole(hours.round());
   }
 
   static Future<void> _confirmUntrack(
@@ -823,31 +850,29 @@ class _FactsCard extends StatelessWidget {
     SteamGame game,
   ) async {
     final luma = context.luma;
+    final t = L.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: luma.surface,
-        title: Text('Stop tracking ${game.name}?',
+        title: Text(t.steamDetailStopTrackingTitle(game.name),
             style: TextStyle(color: luma.textPrimary)),
         content: Text(
           game.owned
-              ? 'This removes it from your tracked games and deletes its '
-                  'price history on this device. It is still in your Steam '
-                  'library, so refreshing the library later will add it '
-                  'back.'
-              : 'This removes it from your tracked games and deletes its '
-                  'price history on this device.',
+              ? t.steamDetailStopTrackingOwned
+              : t.steamDetailStopTrackingUnowned,
           style: TextStyle(color: luma.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
             child:
-                Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+                Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text('Stop tracking', style: TextStyle(color: luma.danger)),
+            child: Text(t.steamDetailStopTracking,
+                style: TextStyle(color: luma.danger)),
           ),
         ],
       ),

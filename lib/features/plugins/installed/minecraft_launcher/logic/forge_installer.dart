@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../../l10n/current_l.dart';
 import 'forge_style_profile_merger.dart';
 import 'mc_paths.dart';
 import 'piston_meta_client.dart';
@@ -35,7 +36,7 @@ class ForgeInstaller {
         .get(Uri.parse('https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json'))
         .timeout(const Duration(seconds: 20));
     if (res.statusCode != 200) {
-      throw ForgeInstallerException('Could not reach the Forge version list.');
+      throw ForgeInstallerException(currentL.mcForgeVersionListUnreachable);
     }
     final json = jsonDecode(res.body) as Map<String, dynamic>;
     return (json['promos'] as Map<String, dynamic>).map((k, v) => MapEntry(k, v as String));
@@ -57,10 +58,10 @@ class ForgeInstaller {
     final root = await McPaths.root();
     final before = await _listVersionDirs(root);
 
-    onStatus?.call('Downloading Forge installer…', null);
+    onStatus?.call(currentL.mcForgeDownloadingInstaller, null);
     final installerJar = await _downloadInstaller(mcVersion, forgeVersion);
 
-    onStatus?.call('Running Forge installer…', null);
+    onStatus?.call(currentL.mcForgeRunningInstaller, null);
     final javaExe = javawPath.toLowerCase().endsWith('javaw.exe')
         ? '${javawPath.substring(0, javawPath.length - 10)}java.exe'
         : javawPath;
@@ -71,7 +72,7 @@ class ForgeInstaller {
     );
     if (result.exitCode != 0) {
       throw ForgeInstallerException(
-        'The Forge installer failed:\n${result.stdout}\n${result.stderr}'.trim(),
+        currentL.mcForgeInstallerFailed('${result.stdout}\n${result.stderr}'.trim()),
       );
     }
 
@@ -81,14 +82,13 @@ class ForgeInstaller {
         ? newDirs.first
         : after.where((d) => d.toLowerCase().contains('forge')).lastOrNull;
     if (versionId == null) {
-      throw ForgeInstallerException(
-          'The Forge installer ran but no new version profile was found.');
+      throw ForgeInstallerException(currentL.mcForgeInstallerNoNewProfile);
     }
 
     final profileFile =
         File('${root.path}${Platform.pathSeparator}versions${Platform.pathSeparator}$versionId${Platform.pathSeparator}$versionId.json');
     if (!await profileFile.exists()) {
-      throw ForgeInstallerException('Forge installer did not produce $versionId.json.');
+      throw ForgeInstallerException(currentL.mcForgeInstallerNoProfile(versionId));
     }
     final profile = jsonDecode(await profileFile.readAsString()) as Map<String, dynamic>;
     return mergeForgeStyleProfile(vanilla, profile);
@@ -103,7 +103,7 @@ class ForgeInstaller {
 
     final res = await http.get(Uri.parse(url)).timeout(const Duration(minutes: 3));
     if (res.statusCode != 200) {
-      throw ForgeInstallerException('Could not download the Forge $forgeVersion installer.');
+      throw ForgeInstallerException(currentL.mcForgeInstallerDownloadFailed(forgeVersion));
     }
     await file.writeAsBytes(res.bodyBytes);
     return file;

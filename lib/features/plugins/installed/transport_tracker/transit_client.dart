@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../l10n/current_l.dart';
 import 'gtfs_realtime.dart';
 import 'gtfs_routes.dart';
 import 'gtfs_stops.dart';
@@ -186,14 +187,14 @@ class TransitClient {
           ? const Duration(minutes: 1)
           : Duration(seconds: (_backoff.inSeconds * 2).clamp(60, _maxBackoff.inSeconds));
       _blockedUntil = DateTime.now().add(_backoff);
-      _errorController.add(
-          'The transit feed is rate-limiting this device. Pausing for '
-          '${_backoff.inMinutes} min.');
+      _errorController
+          .add(currentL.transitFeedRateLimited(_backoff.inMinutes));
       return null;
     }
 
     if (response.statusCode != 200) {
-      _errorController.add('Transit feed returned HTTP ${response.statusCode}.');
+      _errorController
+          .add(currentL.transitFeedHttpError(response.statusCode));
       return null;
     }
 
@@ -269,7 +270,7 @@ class TransitClient {
       }
     } catch (e) {
       _setState(TransitConnectionState.error);
-      _errorController.add('Could not load the transit feed: $e');
+      _errorController.add(currentL.transitFeedLoadFailed('$e'));
     } finally {
       _fetching = false;
     }

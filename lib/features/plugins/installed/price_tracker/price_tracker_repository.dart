@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../l10n/current_l.dart';
 import '../../../../storage/storage_guard.dart';
 
 class PriceSnapshot {
@@ -138,7 +139,7 @@ class PriceTrackerRepository extends ChangeNotifier {
   /// Replaces all tracked items with a previously exported snapshot.
   Future<void> importData(Object? data) async {
     if (data is! List) {
-      throw const FormatException('Invalid price tracker snapshot.');
+      throw FormatException(currentL.priceTrackerInvalidSnapshot);
     }
     _items = data
         .map((e) => TrackedItem.fromJson(e as Map<String, dynamic>))

@@ -1,34 +1,44 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import '../../../../../l10n/app_localizations.dart';
+
 /// Layer adjustments. Each is a colour matrix or an image filter, so a live
 /// preview is a single filtered draw of the layer and applying it is the same
 /// draw rasterised once.
 enum AdjustmentKind {
-  hueSaturation('Hue / saturation', [
-    AdjustmentParam('hue', 'Hue', -180, 180, 0, unit: '°'),
-    AdjustmentParam('saturation', 'Saturation', -100, 100, 0, unit: '%'),
-    AdjustmentParam('lightness', 'Lightness', -100, 100, 0, unit: '%'),
+  hueSaturation([
+    AdjustmentParam('hue', -180, 180, 0, unit: '°'),
+    AdjustmentParam('saturation', -100, 100, 0, unit: '%'),
+    AdjustmentParam('lightness', -100, 100, 0, unit: '%'),
   ]),
-  brightnessContrast('Brightness / contrast', [
-    AdjustmentParam('brightness', 'Brightness', -100, 100, 0, unit: '%'),
-    AdjustmentParam('contrast', 'Contrast', -100, 100, 0, unit: '%'),
+  brightnessContrast([
+    AdjustmentParam('brightness', -100, 100, 0, unit: '%'),
+    AdjustmentParam('contrast', -100, 100, 0, unit: '%'),
   ]),
-  colorBalance('Color balance', [
-    AdjustmentParam('red', 'Cyan ↔ Red', -100, 100, 0),
-    AdjustmentParam('green', 'Magenta ↔ Green', -100, 100, 0),
-    AdjustmentParam('blue', 'Yellow ↔ Blue', -100, 100, 0),
+  colorBalance([
+    AdjustmentParam('red', -100, 100, 0),
+    AdjustmentParam('green', -100, 100, 0),
+    AdjustmentParam('blue', -100, 100, 0),
   ]),
-  blur('Gaussian blur', [
-    AdjustmentParam('radius', 'Radius', 0, 60, 4, unit: ' px'),
+  blur([
+    AdjustmentParam('radius', 0, 60, 4, unit: ' px'),
   ]),
-  invert('Invert', []),
-  desaturate('Black & white', []);
+  invert([]),
+  desaturate([]);
 
-  const AdjustmentKind(this.label, this.params);
+  const AdjustmentKind(this.params);
 
-  final String label;
   final List<AdjustmentParam> params;
+
+  String label(L t) => switch (this) {
+        AdjustmentKind.hueSaturation => t.freeSketchAdjHueSaturation,
+        AdjustmentKind.brightnessContrast => t.freeSketchAdjBrightnessContrast,
+        AdjustmentKind.colorBalance => t.freeSketchAdjColorBalance,
+        AdjustmentKind.blur => t.freeSketchAdjBlur,
+        AdjustmentKind.invert => t.freeSketchAdjInvert,
+        AdjustmentKind.desaturate => t.freeSketchAdjDesaturate,
+      };
 
   Map<String, double> get defaults => {for (final p in params) p.key: p.initial};
 
@@ -121,12 +131,23 @@ enum AdjustmentKind {
 }
 
 class AdjustmentParam {
-  const AdjustmentParam(this.key, this.label, this.min, this.max, this.initial, {this.unit = ''});
+  const AdjustmentParam(this.key, this.min, this.max, this.initial, {this.unit = ''});
 
   final String key;
-  final String label;
   final double min;
   final double max;
   final double initial;
   final String unit;
+
+  String label(L t) => switch (key) {
+        'hue' => t.freeSketchAdjParamHue,
+        'saturation' => t.freeSketchAdjParamSaturation,
+        'lightness' => t.freeSketchAdjParamLightness,
+        'brightness' => t.freeSketchAdjParamBrightness,
+        'contrast' => t.freeSketchAdjParamContrast,
+        'red' => t.freeSketchAdjParamCyanRed,
+        'green' => t.freeSketchAdjParamMagentaGreen,
+        'blue' => t.freeSketchAdjParamYellowBlue,
+        _ => t.freeSketchAdjParamRadius,
+      };
 }

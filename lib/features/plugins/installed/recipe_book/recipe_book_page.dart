@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'recipe_detail.dart';
 import 'recipe_editor.dart';
@@ -11,6 +12,7 @@ import 'recipe_planner.dart';
 import 'recipe_widgets.dart';
 
 const _kFilterCategories = ['All', ...kRecipeCategories];
+
 
 class RecipeBookPage extends StatefulWidget {
   const RecipeBookPage({super.key});
@@ -35,6 +37,7 @@ class _RecipeBookPageState extends State<RecipeBookPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final controller = RecipeBookScope.of(context);
     final luma = context.luma;
 
@@ -55,7 +58,7 @@ class _RecipeBookPageState extends State<RecipeBookPage> {
                       Padding(
                         padding: const EdgeInsets.only(right: 8),
                         child: _CategoryChip(
-                          label: cat,
+                          label: cat == 'All' ? t.commonAll : localizedRecipeCategory(t, cat),
                           selected: _category == cat,
                           color: cat == 'All'
                               ? luma.accent
@@ -70,7 +73,7 @@ class _RecipeBookPageState extends State<RecipeBookPage> {
               Expanded(
                 child: AnimatedBuilder(
                   animation: controller,
-                  builder: (context, _) => _tabBody(controller, luma),
+                  builder: (context, _) => _tabBody(context, controller, luma),
                 ),
               ),
             ],
@@ -102,10 +105,13 @@ class _RecipeBookPageState extends State<RecipeBookPage> {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
+        final t = L.of(context);
         final tabs = [
-          'Favourites${controller.favouriteCount > 0 ? ' (${controller.favouriteCount})' : ''}',
-          'Public',
-          'Private',
+          controller.favouriteCount > 0
+              ? t.recipeBookTabFavouritesCount(controller.favouriteCount)
+              : t.recipeBookTabFavourites,
+          t.recipeBookTabPublic,
+          t.recipeBookTabPrivate,
         ];
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -136,16 +142,18 @@ class _RecipeBookPageState extends State<RecipeBookPage> {
     );
   }
 
-  Widget _tabBody(RecipeBookController controller, LumaPalette luma) =>
+  Widget _tabBody(BuildContext context, RecipeBookController controller,
+          LumaPalette luma) =>
       switch (_tab) {
-        0 => _favouritesTab(controller),
-        1 => _publicTab(controller, luma),
-        _ => _privateTab(controller),
+        0 => _favouritesTab(context, controller),
+        1 => _publicTab(context, controller, luma),
+        _ => _privateTab(context, controller),
       };
 
   // ---- Private -------------------------------------------------------------
 
-  Widget _privateTab(RecipeBookController controller) {
+  Widget _privateTab(BuildContext context, RecipeBookController controller) {
+    final t = L.of(context);
     final recipes = controller.privateRecipes
         .where((r) => _matches(r.title, r.description, r.category,
             r.ingredients.map((i) => i.name).toList()))
@@ -154,11 +162,11 @@ class _RecipeBookPageState extends State<RecipeBookPage> {
       return LumaEmptyState(
         icon: Icons.restaurant_menu_rounded,
         title: controller.privateRecipes.isEmpty
-            ? 'No recipes yet'
-            : 'No recipes found',
+            ? t.recipeBookNoRecipesYet
+            : t.recipeBookNoRecipesFound,
         subtitle: controller.privateRecipes.isEmpty
-            ? 'Tap the + button to add your first recipe.'
-            : 'Try a different search or category.',
+            ? t.recipeBookAddFirstHint
+            : t.recipeBookTryOtherSearch,
       );
     }
     return _grid(recipes.length, (i) => _privateCard(controller, recipes[i]));
@@ -166,14 +174,14 @@ class _RecipeBookPageState extends State<RecipeBookPage> {
 
   // ---- Public --------------------------------------------------------------
 
-  Widget _publicTab(RecipeBookController controller, LumaPalette luma) {
+  Widget _publicTab(
+      BuildContext context, RecipeBookController controller, LumaPalette luma) {
+    final t = L.of(context);
     if (!controller.serverReady) {
-      return const LumaEmptyState(
+      return LumaEmptyState(
         icon: Icons.cloud_off_rounded,
-        title: 'Sign in to browse public recipes',
-        subtitle:
-            'Public recipes are shared through your sync account. Sign in under '
-            'Settings → Sync & account to browse, publish, rate and review.',
+        title: t.recipeBookSignInToBrowseTitle,
+        subtitle: t.recipeBookSignInToBrowseSubtitle,
       );
     }
     if (controller.loadingPublic && controller.publicRecipes.isEmpty) {
@@ -185,7 +193,7 @@ class _RecipeBookPageState extends State<RecipeBookPage> {
     if (controller.publicError != null && controller.publicRecipes.isEmpty) {
       return LumaEmptyState(
         icon: Icons.wifi_off_rounded,
-        title: "Couldn't load public recipes",
+        title: t.recipeBookCouldNotLoadPublic,
         subtitle: controller.publicError,
       );
     }
@@ -197,11 +205,11 @@ class _RecipeBookPageState extends State<RecipeBookPage> {
       return LumaEmptyState(
         icon: Icons.public_rounded,
         title: controller.publicRecipes.isEmpty
-            ? 'No public recipes yet'
-            : 'No recipes found',
+            ? t.recipeBookNoPublicYet
+            : t.recipeBookNoRecipesFound,
         subtitle: controller.publicRecipes.isEmpty
-            ? 'Publish one of your recipes to get the catalogue started.'
-            : 'Try a different search or category.',
+            ? t.recipeBookPublishFirstHint
+            : t.recipeBookTryOtherSearch,
       );
     }
     return _grid(recipes.length, (i) => _publicCard(controller, recipes[i]));
@@ -209,7 +217,8 @@ class _RecipeBookPageState extends State<RecipeBookPage> {
 
   // ---- Favourites ----------------------------------------------------------
 
-  Widget _favouritesTab(RecipeBookController controller) {
+  Widget _favouritesTab(BuildContext context, RecipeBookController controller) {
+    final t = L.of(context);
     final favs = controller.favouriteRecipes.where((r) {
       if (r is LocalRecipe) {
         return _matches(r.title, r.description, r.category,
@@ -222,10 +231,10 @@ class _RecipeBookPageState extends State<RecipeBookPage> {
       return false;
     }).toList();
     if (favs.isEmpty) {
-      return const LumaEmptyState(
+      return LumaEmptyState(
         icon: Icons.favorite_border_rounded,
-        title: 'No favourites yet',
-        subtitle: 'Tap the heart on any recipe — private or public — to keep it here.',
+        title: t.recipeBookNoFavouritesYet,
+        subtitle: t.recipeBookFavouritesHint,
       );
     }
     return _grid(favs.length, (i) {
@@ -257,7 +266,7 @@ class _RecipeBookPageState extends State<RecipeBookPage> {
   }
 
   Widget _privateCard(RecipeBookController controller, LocalRecipe recipe) {
-    final timeStr = formatRecipeTime(recipe.totalMinutes);
+    final timeStr = formatRecipeTime(recipe.totalMinutes, L.of(context));
     return _RecipeCardFrame(
       image: LocalRecipeImage(path: recipe.photoPath, category: recipe.category),
       category: recipe.category,
@@ -293,7 +302,7 @@ class _RecipeBookPageState extends State<RecipeBookPage> {
 
   Widget _publishedBadge() {
     return Builder(builder: (context) {
-      final luma = context.luma;
+      final t = L.of(context);
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
@@ -305,7 +314,7 @@ class _RecipeBookPageState extends State<RecipeBookPage> {
           children: [
             const Icon(Icons.public_rounded, size: 11, color: Colors.white),
             const SizedBox(width: 4),
-            Text('Public',
+            Text(t.recipeBookTabPublic,
                 style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.95),
                     fontSize: 10,
@@ -445,13 +454,16 @@ class _PublicMeta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Row(
       children: [
         RecipeStars(rating: recipe.ratingAvg, size: 13),
         const SizedBox(width: 5),
         Text(
-          recipe.ratingCount == 0 ? 'New' : recipe.ratingAvg.toStringAsFixed(1),
+          recipe.ratingCount == 0
+              ? t.recipeBookNew
+              : recipe.ratingAvg.toStringAsFixed(1),
           style: TextStyle(
               color: luma.textSecondary,
               fontSize: 12,
@@ -462,7 +474,7 @@ class _PublicMeta extends StatelessWidget {
         const SizedBox(width: 3),
         Flexible(
           child: Text(
-            recipe.mine ? 'You' : recipe.authorName,
+            recipe.mine ? t.recipeBookYou : recipe.authorName,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(color: luma.textMuted, fontSize: 11),
@@ -494,6 +506,7 @@ class _SearchBarState extends State<_SearchBar> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return Container(
       height: 44,
@@ -513,7 +526,7 @@ class _SearchBarState extends State<_SearchBar> {
               onChanged: widget.onChanged,
               style: TextStyle(color: luma.textPrimary, fontSize: 14),
               decoration: InputDecoration(
-                hintText: 'Search recipes…',
+                hintText: t.recipeBookSearchHint,
                 hintStyle: TextStyle(color: luma.textMuted, fontSize: 14),
                 border: InputBorder.none,
                 isDense: true,
@@ -643,6 +656,7 @@ class _PlannerButtonState extends State<_PlannerButton> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -671,7 +685,7 @@ class _PlannerButtonState extends State<_PlannerButton> {
             children: [
               Icon(Icons.event_note_rounded, color: luma.accent, size: 22),
               const SizedBox(width: 10),
-              Text('Planner',
+              Text(t.recipeBookPlanner,
                   style: TextStyle(
                       color: luma.textPrimary,
                       fontSize: 14,

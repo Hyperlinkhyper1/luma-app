@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
+import '../../../../../l10n/current_l.dart';
 import '../../../../converter/file_saver.dart';
 import '../data/mind_map_database.dart';
 import '../mind_map_repository.dart';
@@ -52,18 +53,18 @@ class MindMapExport {
   static Future<String?> _savePng(GlobalKey boundaryKey, String name) async {
     final object = boundaryKey.currentContext?.findRenderObject();
     if (object is! RenderRepaintBoundary) {
-      throw StateError('The canvas is not ready to be captured.');
+      throw StateError(currentL.mindMapExportCanvasNotReady);
     }
     final image = await object.toImage(pixelRatio: 2);
     try {
       final data = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (data == null) throw StateError('The image could not be encoded.');
+      if (data == null) throw StateError(currentL.mindMapExportEncodeFailed);
       final result = await saveConvertedFile(
         bytes: data.buffer.asUint8List(),
         suggestedName: '$name.png',
         mimeType: 'image/png',
         extensions: const ['png'],
-        dialogTitle: 'Save mind map image',
+        dialogTitle: currentL.mindMapExportSaveImageTitle,
       );
       return result.saved ? result.summary : null;
     } finally {
@@ -86,7 +87,7 @@ class MindMapExport {
       suggestedName: name,
       mimeType: mimeType,
       extensions: [extension],
-      dialogTitle: 'Save mind map outline',
+      dialogTitle: currentL.mindMapExportSaveOutlineTitle,
     );
     return result.saved ? result.summary : null;
   }

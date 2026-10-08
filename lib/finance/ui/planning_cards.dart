@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/widgets.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/luma_theme.dart';
 import '../data/database.dart';
 import '../finance_repository.dart';
@@ -29,6 +30,7 @@ class BudgetsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final usage = budgetUsage(categories: categories, txns: txns, month: now);
     final totalBudget = usage.fold<int>(0, (s, u) => s + u.budgetCents);
     final totalSpent = usage.fold<int>(0, (s, u) => s + u.spentCents);
@@ -42,8 +44,12 @@ class BudgetsCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   usage.isEmpty
-                      ? 'No budgets yet'
-                      : '${formatCents(totalSpent)} of ${formatCents(totalBudget)} · ${monthYear(now)}',
+                      ? t.financePlanningNoBudgets
+                      : t.financePlanningSpentOfBudget(
+                          formatCents(totalSpent),
+                          formatCents(totalBudget),
+                          monthYear(now),
+                        ),
                   style: TextStyle(color: luma.textSecondary, fontSize: 13),
                 ),
               ),
@@ -54,7 +60,9 @@ class BudgetsCard extends StatelessWidget {
                   maxWidth: 480,
                 ),
                 icon: const Icon(Icons.tune_rounded, size: 16),
-                label: Text(usage.isEmpty ? 'Set budgets' : 'Edit'),
+                label: Text(
+                  usage.isEmpty ? t.financePlanningSetBudgets : t.commonEdit,
+                ),
                 style: TextButton.styleFrom(
                   foregroundColor: luma.accent,
                   padding: const EdgeInsets.symmetric(
@@ -68,7 +76,7 @@ class BudgetsCard extends StatelessWidget {
           ),
           if (usage.isEmpty)
             Text(
-              'Give categories a monthly limit and see how close you are.',
+              t.financePlanningBudgetsHint,
               style: TextStyle(color: luma.textMuted, fontSize: 13),
             )
           else ...[
@@ -91,6 +99,7 @@ class _BudgetRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final c = usage.category;
     final barColor = usage.isOver
         ? luma.danger
@@ -98,8 +107,8 @@ class _BudgetRow extends StatelessWidget {
         ? luma.warning
         : Color(c.colorValue);
     final status = usage.isOver
-        ? '${formatCents(-usage.remainingCents)} over'
-        : '${formatCents(usage.remainingCents)} left';
+        ? t.financePlanningOver(formatCents(-usage.remainingCents))
+        : t.financePlanningLeft(formatCents(usage.remainingCents));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -194,7 +203,9 @@ class _BudgetEditorState extends State<_BudgetEditor> {
       final cents = parseToCents(text);
       if (cents == null || cents < 0) {
         final name = widget.categories.firstWhere((c) => c.id == e.key).name;
-        setState(() => _error = '"$text" for $name isn\'t an amount.');
+        setState(
+          () => _error = L.of(context).financePlanningNotAnAmount(text, name),
+        );
         return;
       }
       budgets[e.key] = cents;
@@ -206,14 +217,15 @@ class _BudgetEditorState extends State<_BudgetEditor> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return FinanceDialogScaffold(
-      title: 'Monthly budgets',
-      confirmLabel: 'Save',
+      title: t.financePlanningBudgetsTitle,
+      confirmLabel: t.commonSave,
       onConfirm: _save,
       error: _error,
       children: [
         Text(
-          'Leave a category empty for no limit.',
+          t.financePlanningBudgetsEditHint,
           style: TextStyle(color: luma.textMuted, fontSize: 13),
         ),
         const SizedBox(height: 12),
@@ -246,7 +258,7 @@ class _BudgetEditorState extends State<_BudgetEditor> {
                     style: TextStyle(color: luma.textPrimary),
                     decoration: financeInputDecoration(
                       luma,
-                      hint: 'No limit',
+                      hint: t.financePlanningNoLimit,
                       prefix: '€ ',
                     ),
                   ),
@@ -285,6 +297,7 @@ class _CashFlowForecastCardState extends State<CashFlowForecastCard> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final f = forecastMainBalance(
       startCents: widget.mainCents,
       now: widget.now,
@@ -307,7 +320,7 @@ class _CashFlowForecastCardState extends State<CashFlowForecastCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Available in $_days days',
+                      t.financeForecastAvailableIn(_days),
                       style: TextStyle(color: luma.textSecondary, fontSize: 13),
                     ),
                     const SizedBox(height: 4),
@@ -339,7 +352,7 @@ class _CashFlowForecastCardState extends State<CashFlowForecastCard> {
                 ),
               ),
               LumaSegmentedTabs(
-                tabs: const ['30d', '90d'],
+                tabs: [t.financeForecast30Days, t.financeForecast90Days],
                 selectedIndex: _days == 30 ? 0 : 1,
                 onSelect: (i) => setState(() => _days = i == 0 ? 30 : 90),
               ),
@@ -352,12 +365,18 @@ class _CashFlowForecastCardState extends State<CashFlowForecastCard> {
             _Notice(
               icon: Icons.warning_amber_rounded,
               color: luma.danger,
-              text:
-                  'Heading below €0 on ${shortDate(negative)} — lowest ${formatCents(f.lowestCents)} on ${shortDate(f.lowestDate)}.',
+              text: t.financeForecastBelowZero(
+                shortDate(negative),
+                formatCents(f.lowestCents),
+                shortDate(f.lowestDate),
+              ),
             )
           else
             Text(
-              'Lowest point ${formatCents(f.lowestCents)} on ${shortDate(f.lowestDate)}.',
+              t.financeForecastLowest(
+                formatCents(f.lowestCents),
+                shortDate(f.lowestDate),
+              ),
               style: TextStyle(color: luma.textMuted, fontSize: 12),
             ),
           if (upcoming.isNotEmpty) ...[
@@ -401,7 +420,7 @@ class _CashFlowForecastCardState extends State<CashFlowForecastCard> {
           ] else ...[
             const SizedBox(height: 4),
             Text(
-              'Nothing scheduled — add fixed costs and income in the Recurring tab.',
+              t.financeForecastNothingScheduled,
               style: TextStyle(color: luma.textMuted, fontSize: 12),
             ),
           ],
@@ -533,22 +552,27 @@ class PotGoalBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final p = progress;
     final pct = '${(p.fraction * 100).floor()}%';
     final String detail;
     Color detailColor = luma.textMuted;
     if (p.reached) {
-      detail = 'Goal reached';
+      detail = t.financePlanningGoalReached;
       detailColor = luma.success;
     } else if (p.isOverdue(now)) {
-      detail =
-          '${formatCents(p.remainingCents)} short · was due ${shortDate(p.goalDate!)}';
+      detail = t.financePlanningGoalShortWasDue(
+        formatCents(p.remainingCents),
+        shortDate(p.goalDate!),
+      );
       detailColor = luma.danger;
     } else if (p.monthlyNeededCents != null) {
-      detail =
-          '${formatCents(p.monthlyNeededCents!)}/month until ${monthYear(p.goalDate!)}';
+      detail = t.financePlanningGoalMonthly(
+        formatCents(p.monthlyNeededCents!),
+        monthYear(p.goalDate!),
+      );
     } else {
-      detail = '${formatCents(p.remainingCents)} to go';
+      detail = t.financePlanningGoalToGo(formatCents(p.remainingCents));
     }
 
     return Column(
@@ -559,7 +583,7 @@ class PotGoalBar extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Goal ${formatCents(p.goalCents)}',
+                  t.financePlanningGoalTarget(formatCents(p.goalCents)),
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
               ),
@@ -587,7 +611,12 @@ class PotGoalBar extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          compact ? '$pct of ${formatCents(p.goalCents)}' : detail,
+          compact
+              ? t.financePlanningGoalPercent(
+                  pct,
+                  formatCents(p.goalCents),
+                )
+              : detail,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(

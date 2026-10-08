@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../spotify_scope.dart';
 import 'account_shared.dart';
@@ -48,11 +49,14 @@ class _SpotifyConnectDialogState extends State<_SpotifyConnectDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final repository = SpotifyScope.of(context);
     return AlertDialog(
       backgroundColor: luma.surface,
       title: Text(
-        repository.connected ? 'Spotify account settings' : 'Connect Spotify',
+        repository.connected
+            ? t.spotifyAccountSettingsTitle
+            : t.spotifyConnectTitle,
         style: TextStyle(color: luma.textPrimary, fontSize: 17),
       ),
       content: ConstrainedBox(
@@ -66,18 +70,18 @@ class _SpotifyConnectDialogState extends State<_SpotifyConnectDialog> {
                 AccountNotice(
                   icon: Icons.check_circle_outline_rounded,
                   tone: luma.success,
-                  message:
-                      'Connected as ${repository.credentials!.displayName}.',
+                  message: t.spotifyConnectedAs(
+                      repository.credentials!.displayName),
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Disconnecting removes the stored listening total from this device.',
+                  t.spotifyDisconnectNote,
                   style: TextStyle(color: luma.textMuted, fontSize: 11),
                 ),
                 const SizedBox(height: 12),
               ],
               Text(
-                'Spotify Client ID',
+                t.spotifyClientIdLabel,
                 style: TextStyle(color: luma.textPrimary),
               ),
               const SizedBox(height: 8),
@@ -85,8 +89,8 @@ class _SpotifyConnectDialogState extends State<_SpotifyConnectDialog> {
                 controller: _id,
                 enabled: !_busy,
                 style: TextStyle(color: luma.textPrimary),
-                decoration: const InputDecoration(
-                  hintText: 'Paste your Client ID',
+                decoration: InputDecoration(
+                  hintText: t.spotifyClientIdHint,
                 ),
               ),
               if (_error != null) ...[
@@ -98,7 +102,7 @@ class _SpotifyConnectDialogState extends State<_SpotifyConnectDialog> {
               ],
               const SizedBox(height: 18),
               Text(
-                'One-time setup',
+                t.accountOverviewOneTimeSetup,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontWeight: FontWeight.w700,
@@ -106,11 +110,7 @@ class _SpotifyConnectDialogState extends State<_SpotifyConnectDialog> {
               ),
               const SizedBox(height: 8),
               Text(
-                '1. Create an app in the Spotify Developer Dashboard (Web API).\n'
-                '2. Add http://127.0.0.1/callback as its redirect URI. '
-                'Spotify allows luma to use a dynamic port for this loopback address.\n'
-                '3. Copy the app Client ID here, then sign in through your browser. '
-                'A development-mode app requires Spotify Premium.',
+                t.spotifySetupSteps,
                 style: TextStyle(
                   color: luma.textSecondary,
                   fontSize: 12,
@@ -118,14 +118,14 @@ class _SpotifyConnectDialogState extends State<_SpotifyConnectDialog> {
                 ),
               ),
               AccountLinkButton(
-                label: 'Open Spotify Developer Dashboard',
+                label: t.spotifyOpenDashboard,
                 icon: Icons.open_in_new_rounded,
                 onTap: () =>
                     openExternal('https://developer.spotify.com/dashboard'),
               ),
               const SizedBox(height: 8),
               Text(
-                'Tokens stay in this device’s secure storage. luma reads your Spotify data directly.',
+                t.spotifyTokensNote,
                 style: TextStyle(color: luma.textMuted, fontSize: 11),
               ),
             ],
@@ -148,14 +148,14 @@ class _SpotifyConnectDialogState extends State<_SpotifyConnectDialog> {
                     }
                   },
             style: TextButton.styleFrom(foregroundColor: luma.danger),
-            child: const Text('Disconnect'),
+            child: Text(t.accountOverviewDisconnect),
           ),
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(t.commonCancel),
         ),
         LumaPrimaryButton(
-          label: repository.connected ? 'Reconnect' : 'Sign in with Spotify',
+          label: repository.connected ? t.spotifyReconnect : t.spotifySignIn,
           icon: Icons.login_rounded,
           loading: _busy,
           onTap: _busy ? null : _connect,

@@ -190,7 +190,7 @@ function finishRoad() {
     cost += rd.kosten * (isWater(ter) ? 3 : ter === TERRAIN.HEUVEL ? 1.5 : 1);
   }
   if (blocked > tiles.size * 0.4) { UI.toast("Bergen blokkeren dit tracé.", "warn"); return; }
-  if (!canPay(cost)) { UI.toast(`Onvoldoende geld: ${fmtGeld(cost)} nodig.`, "bad"); return; }
+  if (!canPay(cost)) { UI.toast(LumaSceneI18n.format('sceneCityPlannerInsufficientFunds', {amount: fmtGeld(cost)}), "bad"); return; }
   pay(cost);
   G.roadPaths.push(path);
   applyPathToGrid(path);
@@ -214,7 +214,7 @@ function placeRoundabout(wx, wy, type) {
     if (G.road[i] > 0 && G.roadCover[i] > 0) continue;
     cost += rd.kosten * (isWater(G.terrain[i]) ? 3 : 1);
   }
-  if (!canPay(cost)) { UI.toast(`Onvoldoende geld: ${fmtGeld(cost)} nodig.`, "bad"); return; }
+  if (!canPay(cost)) { UI.toast(LumaSceneI18n.format('sceneCityPlannerInsufficientFunds', {amount: fmtGeld(cost)}), "bad"); return; }
   pay(cost);
   G.roadPaths.push(path);
   applyPathToGrid(path);
@@ -300,10 +300,10 @@ function placeBuilding(type, cells, ox = 0, oy = 0) {
   }
   if (comp.length !== ok.length) { UI.toast("De vorm moet één aaneengesloten geheel zijn.", "warn"); return; }
   if (def.waterNodig && !comp.some(i => nearWater(i, 3))) {
-    UI.toast(`${def.naam} moet aan het water gebouwd worden.`, "warn"); return;
+    UI.toast(LumaSceneI18n.format('sceneCityPlannerMustBuildByWater', {building: def.naam}), "warn"); return;
   }
   const cost = def.kosten * comp.length * def.verd * buildCostFactor();
-  if (!canPay(cost)) { UI.toast(`Onvoldoende geld: ${fmtGeld(cost)} nodig.`, "bad"); return; }
+  if (!canPay(cost)) { UI.toast(LumaSceneI18n.format('sceneCityPlannerInsufficientFunds', {amount: fmtGeld(cost)}), "bad"); return; }
   if (!comp.some(i => adjacentRoad(i) >= 0)) {
     UI.toast("Let op: dit gebouw heeft (nog) geen weg. Het werkt pas als er een weg naast ligt.", "warn");
   }
@@ -340,8 +340,8 @@ function finishTransitLine() {
     stops: d.stops, freq: 2, ridership: 0, actief: hasDepot,
   };
   G.transitLines.push(line);
-  if (!hasDepot) UI.toast(`Lijn aangemaakt maar gepauzeerd: bouw eerst een ${d.type}-depot.`, "warn");
-  else UI.toast(`${line.naam} rijdt! Beheer frequentie via het OV-paneel.`, "good");
+  if (!hasDepot) UI.toast(LumaSceneI18n.format('sceneCityPlannerLinePausedDepot', {type: d.type}), "warn");
+  else UI.toast(LumaSceneI18n.format('sceneCityPlannerLineRuns', {line: line.naam}), "good");
   UI.refreshRight();
 }
 
@@ -406,7 +406,7 @@ function saveGame(slot = "auto", silent = false) {
     if (!silent) UI.toast("Spel opgeslagen.", "good");
     return true;
   } catch (e) {
-    UI.toast("Opslaan mislukt: " + e.message, "bad");
+    UI.toast(LumaSceneI18n.format("sceneCityPlannerSaveFailed", {error:e.message}), "bad");
     return false;
   }
 }

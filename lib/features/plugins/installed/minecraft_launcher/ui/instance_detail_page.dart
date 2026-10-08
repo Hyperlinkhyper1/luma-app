@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/minecraft_launcher_database.dart';
 import '../logic/active_launch_registry.dart';
@@ -20,6 +21,7 @@ import 'browse_content_tab.dart';
 import 'download_progress_sheet.dart';
 import 'hover_sync_scroll.dart';
 import 'mod_updates_dialog.dart';
+import 'modrinth_ui.dart';
 import 'screenshots_tab.dart';
 import 'worlds_tab.dart';
 
@@ -38,13 +40,14 @@ class _InstanceDetailPageState extends State<InstanceDetailPage> {
   Widget build(BuildContext context) {
     final repository = MinecraftLauncherScope.of(context);
     final luma = context.luma;
+    final t = L.of(context);
     return Scaffold(
       backgroundColor: luma.background,
       body: StreamData<McInstance?>(
         stream: repository.watchInstance(widget.instanceId),
         builder: (context, instance) {
           if (instance == null) {
-            return const Center(child: Text('Instance not found'));
+            return Center(child: Text(t.mcLauncherInstanceNotFound));
           }
           return HoverSyncScroll(
             child: CustomScrollView(
@@ -55,12 +58,12 @@ class _InstanceDetailPageState extends State<InstanceDetailPage> {
                   title: Text(instance.name),
                   actions: [
                     IconButton(
-                      tooltip: 'Export as modpack',
+                      tooltip: t.mcLauncherExportModpack,
                       icon: const Icon(Icons.ios_share_rounded),
                       onPressed: () => _exportModpack(context, repository, instance),
                     ),
                     IconButton(
-                      tooltip: 'Delete instance',
+                      tooltip: t.mcLauncherDeleteInstance,
                       icon: const Icon(Icons.delete_outline_rounded),
                       onPressed: () => _confirmDelete(context, repository, instance),
                     ),
@@ -73,13 +76,13 @@ class _InstanceDetailPageState extends State<InstanceDetailPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         LumaSegmentedTabs(
-                          tabs: const [
-                            'Overview',
-                            'Content',
-                            'Worlds',
-                            'Screenshots',
-                            'Logs',
-                            'Settings',
+                          tabs: [
+                            t.commonOverview,
+                            t.mcLauncherTabContent,
+                            t.mcLauncherTabWorlds,
+                            t.mcLauncherTabScreenshots,
+                            t.mcLauncherTabLogs,
+                            t.commonSettings,
                           ],
                           selectedIndex: _tab,
                           onSelect: (i) => setState(() => _tab = i),
@@ -110,8 +113,9 @@ class _InstanceDetailPageState extends State<InstanceDetailPage> {
     MinecraftLauncherRepository repository,
     McInstance instance,
   ) async {
+    final t = L.of(context);
     final path = await FilePicker.saveFile(
-      dialogTitle: 'Export modpack',
+      dialogTitle: t.mcLauncherExportModpackTitle,
       fileName: '${instance.name}.mrpack',
       type: FileType.custom,
       allowedExtensions: ['mrpack'],
@@ -120,7 +124,7 @@ class _InstanceDetailPageState extends State<InstanceDetailPage> {
     try {
       await ModpackExporter.exportInstance(repository: repository, instance: instance, destPath: path);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Exported to $path')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.mcLauncherExportedTo(path))));
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
@@ -132,16 +136,15 @@ class _InstanceDetailPageState extends State<InstanceDetailPage> {
     MinecraftLauncherRepository repository,
     McInstance instance,
   ) async {
+    final t = L.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Delete "${instance.name}"?'),
-        content: const Text('This removes the instance from your library. '
-            'World saves and other files stay on disk unless you delete them '
-            'manually from the instance folder.'),
+        title: Text(t.mcLauncherDeleteInstanceTitle(instance.name)),
+        content: Text(t.mcLauncherDeleteInstanceBody),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t.commonCancel)),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: Text(t.commonDelete)),
         ],
       ),
     );
@@ -158,11 +161,11 @@ class _OverviewSection extends StatelessWidget {
   final MinecraftLauncherRepository repository;
 
   Future<void> _play(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final addAccountFirst = L.of(context).mcLauncherAddAccountFirst;
     final account = await repository.watchActiveAccount().first;
     if (account == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add an account under the Accounts tab first.')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(addAccountFirst)));
       return;
     }
     int? launchId;
@@ -186,6 +189,7 @@ class _OverviewSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final hours = instance.totalPlayTimeSeconds ~/ 3600;
     final minutes = (instance.totalPlayTimeSeconds % 3600) ~/ 60;
     return LumaCard(
@@ -202,17 +206,17 @@ class _OverviewSection extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   instance.lastPlayedAt == null
-                      ? 'Never played'
-                      : 'Last played ${instance.lastPlayedAt}',
+                      ? t.mcLauncherNeverPlayed
+                      : t.mcLauncherLastPlayed('${instance.lastPlayedAt}'),
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
                 Text(
-                  'Total playtime: ${hours}h ${minutes}m',
+                  t.mcLauncherTotalPlaytime(hours, minutes),
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
                 const SizedBox(height: 12),
                 LumaGhostButton(
-                  label: 'Open folder',
+                  label: t.mcLauncherOpenFolder,
                   icon: Icons.folder_open_rounded,
                   onTap: () async {
                     final dir = await McPaths.instanceDir(instance.id);
@@ -227,7 +231,7 @@ class _OverviewSection extends StatelessWidget {
             builder: (context, _) {
               final running = ActiveLaunchRegistry.instance.isRunning(instance.id);
               return LumaPrimaryButton(
-                label: running ? 'Stop' : 'Play',
+                label: running ? t.commonStop : t.mcLauncherPlay,
                 icon: running ? Icons.stop_rounded : Icons.play_arrow_rounded,
                 onTap: running
                     ? () => ActiveLaunchRegistry.instance.handleFor(instance.id)?.kill()
@@ -249,6 +253,7 @@ class _ContentSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -256,13 +261,13 @@ class _ContentSection extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             LumaGhostButton(
-              label: 'Check updates',
+              label: t.mcLauncherCheckUpdates,
               icon: Icons.system_update_alt_rounded,
               onTap: () => showModUpdatesDialog(context, instance: instance, repository: repository),
             ),
             const SizedBox(width: 10),
             LumaPrimaryButton(
-              label: 'Browse',
+              label: t.commonBrowse,
               icon: Icons.travel_explore_rounded,
               onTap: () => Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => BrowseContentPage(instance: instance, repository: repository),
@@ -275,12 +280,12 @@ class _ContentSection extends StatelessWidget {
           stream: repository.watchInstalledContent(instance.id),
           builder: (context, content) {
             if (content.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.only(top: 40),
+              return Padding(
+                padding: const EdgeInsets.only(top: 40),
                 child: LumaEmptyState(
                   icon: Icons.extension_off_rounded,
-                  title: 'Nothing installed yet',
-                  subtitle: 'Browse Modrinth or CurseForge for mods, resource packs and shader packs.',
+                  title: t.mcLauncherNothingInstalled,
+                  subtitle: t.mcLauncherNothingInstalledSubtitle,
                 ),
               );
             }
@@ -300,7 +305,7 @@ class _ContentSection extends StatelessWidget {
                               children: [
                                 Text(item.projectName ?? item.fileName,
                                     style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w600)),
-                                Text(modrinthProjectTypes[item.kind] ?? item.kind,
+                                Text(contentKindLabel(t, item.kind),
                                     style: TextStyle(color: luma.textMuted, fontSize: 12)),
                               ],
                             ),
@@ -414,9 +419,9 @@ class _AnalyzeWithAiButtonState extends State<_AnalyzeWithAiButton> {
       await showDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('AI analysis'),
+          title: Text(L.of(context).mcLauncherAiAnalysis),
           content: SizedBox(width: lumaDialogWidth(context, 420), child: SingleChildScrollView(child: Text(answer))),
-          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
+          actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text(L.of(context).commonClose))],
         ),
       );
     } catch (e) {
@@ -429,8 +434,9 @@ class _AnalyzeWithAiButtonState extends State<_AnalyzeWithAiButton> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return LumaGhostButton(
-      label: _loading ? 'Analyzing…' : 'Analyze with AI',
+      label: _loading ? t.mcLauncherAnalyzing : t.mcLauncherAnalyzeWithAi,
       icon: Icons.auto_awesome_rounded,
       onTap: widget.logTail.trim().isEmpty || _loading ? () {} : _analyze,
     );
@@ -466,6 +472,7 @@ class _LiveLogState extends State<_LiveLog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -484,7 +491,7 @@ class _LiveLogState extends State<_LiveLog> {
           ),
           child: _lines.isEmpty
               ? Center(
-                  child: Text('Waiting for output…', style: TextStyle(color: luma.textMuted)),
+                  child: Text(t.mcLauncherWaitingForOutput, style: TextStyle(color: luma.textMuted)),
                 )
               : ListView.builder(
                   itemCount: _lines.length,
@@ -542,12 +549,13 @@ class _PastLogState extends State<_PastLog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     if (!_loaded) return const Center(child: CircularProgressIndicator(strokeWidth: 2.4));
     if (_content == null) {
-      return const LumaEmptyState(
+      return LumaEmptyState(
         icon: Icons.terminal_rounded,
-        title: 'Not running',
-        subtitle: 'Launch the instance to see live output here.',
+        title: t.mcLauncherNotRunning,
+        subtitle: t.mcLauncherNotRunningSubtitle,
       );
     }
     final lines = _content!.split('\n');
@@ -623,6 +631,7 @@ class _SettingsSectionState extends State<_SettingsSection> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -638,10 +647,10 @@ class _SettingsSectionState extends State<_SettingsSection> {
                 LumaIconBadge(icon: Icons.videogame_asset_rounded, color: luma.accent, size: 48),
               const SizedBox(width: 14),
               Expanded(
-                child: Text('Instance icon',
+                child: Text(t.mcLauncherInstanceIcon,
                     style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700)),
               ),
-              LumaGhostButton(label: 'Change', icon: Icons.image_outlined, onTap: _pickIcon),
+              LumaGhostButton(label: t.converterChange, icon: Icons.image_outlined, onTap: _pickIcon),
             ],
           ),
         ),
@@ -650,9 +659,9 @@ class _SettingsSectionState extends State<_SettingsSection> {
           child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Memory', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700)),
+          Text(t.mcLauncherMemory, style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700)),
           Text(
-            'Min ${_minMemory.round()} MB · Max ${_maxMemory.round()} MB',
+            t.mcLauncherMemoryRange(_minMemory.round(), _maxMemory.round()),
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
           RangeSlider(
@@ -668,19 +677,19 @@ class _SettingsSectionState extends State<_SettingsSection> {
             onChangeEnd: (_) => _save(),
           ),
           const SizedBox(height: 12),
-          Text('Java executable override', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700)),
+          Text(t.mcLauncherJavaOverride, style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
           TextField(
             controller: _javaPathController,
-            decoration: const InputDecoration(hintText: 'Leave blank to auto-manage'),
+            decoration: InputDecoration(hintText: t.mcLauncherJavaOverrideHint),
             onChanged: (_) => _save(),
           ),
           const SizedBox(height: 12),
-          Text('Extra JVM arguments', style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700)),
+          Text(t.mcLauncherJvmArgs, style: TextStyle(color: luma.textPrimary, fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
           TextField(
             controller: _jvmArgsController,
-            decoration: const InputDecoration(hintText: 'e.g. -XX:+UseG1GC'),
+            decoration: InputDecoration(hintText: t.mcLauncherJvmArgsHint),
             onChanged: (_) => _save(),
           ),
         ],

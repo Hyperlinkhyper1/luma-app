@@ -5,6 +5,7 @@ import 'package:archive/archive.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+import '../../../l10n/current_l.dart';
 import 'ffmpeg_service.dart';
 
 /// Raised when the in-app ffmpeg install fails or isn't supported.
@@ -50,10 +51,7 @@ class FfmpegInstaller {
     required void Function(double? progress) onProgress,
   }) async {
     if (!supported) {
-      throw const FfmpegInstallException(
-        'Automatic install is only available on Windows. Please add '
-        'ffmpeg to your PATH manually.',
-      );
+      throw FfmpegInstallException(currentL.ffmpegInstallDesktopOnly);
     }
 
     final client = http.Client();
@@ -62,8 +60,7 @@ class FfmpegInstaller {
           await client.send(http.Request('GET', Uri.parse(_windowsUrl)));
       if (response.statusCode != 200) {
         throw FfmpegInstallException(
-          'Download failed (HTTP ${response.statusCode}). Check your '
-          'connection and try again.',
+          currentL.ffmpegDownloadFailed(response.statusCode),
         );
       }
 
@@ -90,9 +87,7 @@ class FfmpegInstaller {
         }
       }
       if (exe == null) {
-        throw const FfmpegInstallException(
-          'The downloaded archive did not contain ffmpeg.exe.',
-        );
+        throw FfmpegInstallException(currentL.ffmpegArchiveMissingExe);
       }
 
       final path = await binaryPath();
@@ -103,7 +98,7 @@ class FfmpegInstaller {
     } on FfmpegInstallException {
       rethrow;
     } catch (e) {
-      throw FfmpegInstallException('Install failed: $e');
+      throw FfmpegInstallException(currentL.ffmpegInstallFailed('$e'));
     } finally {
       client.close();
     }

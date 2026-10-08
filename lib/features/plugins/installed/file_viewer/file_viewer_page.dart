@@ -11,6 +11,7 @@ import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import '../../../converter/converter_widgets.dart';
 import '../_shared/windows_webview.dart';
@@ -25,6 +26,13 @@ const _textExts = {
   'toml', 'properties', 'dart', 'js', 'ts', 'html', 'css', 'py', 'java',
   'c', 'cpp', 'h', 'cs', 'sh', 'bat', 'ps1', 'sql', 'gradle', 'env',
 };
+
+String _extractorErrorText(L t, String message) => switch (message) {
+      DocumentErrorCode.notWordDocument => t.fileViewerNotWordDocument,
+      DocumentErrorCode.noDocumentBody => t.fileViewerNoDocumentBody,
+      DocumentErrorCode.noWorksheets => t.fileViewerNoWorksheets,
+      _ => message,
+    };
 
 _FileKind _kindFor(String name) {
   final dot = name.lastIndexOf('.');
@@ -72,13 +80,14 @@ class _FileViewerPageState extends State<FileViewerPage> {
   int _request = 0;
 
   Future<void> _pickFile() async {
+    final t = L.of(context);
     final result = await FilePicker.pickFiles(withData: true);
     if (result == null || result.files.isEmpty) return;
 
     final file = result.files.first;
     final bytes = file.bytes;
     if (bytes == null) {
-      setState(() => _error = 'Could not read the selected file.');
+      setState(() => _error = t.fileViewerCouldNotReadFile);
       return;
     }
 
@@ -152,13 +161,13 @@ class _FileViewerPageState extends State<FileViewerPage> {
       if (!mounted || request != _request) return;
       setState(() {
         _loading = false;
-        _error = e.message;
+        _error = _extractorErrorText(t, e.message);
       });
     } catch (e) {
       if (!mounted || request != _request) return;
       setState(() {
         _loading = false;
-        _error = 'Could not open this file: $e';
+        _error = t.fileViewerCouldNotOpen('$e');
       });
     }
   }
@@ -175,17 +184,19 @@ class _FileViewerPageState extends State<FileViewerPage> {
   }
 
   Future<void> _openExternally() async {
+    final t = L.of(context);
     final path = _path;
     if (path == null) return;
     final result = await OpenFile.open(path);
     if (!mounted) return;
     if (result.type != ResultType.done) {
-      setState(() => _error = 'Could not open externally: ${result.message}');
+      setState(() => _error = t.fileViewerOpenExternallyFailed(result.message));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
@@ -199,8 +210,8 @@ class _FileViewerPageState extends State<FileViewerPage> {
                 ConverterDropZone(
                   onTap: _pickFile,
                   icon: Icons.file_open_outlined,
-                  title: 'Tap to pick a file',
-                  subtitle: 'PDF · DOCX · XLSX · images · SVG · text & code',
+                  title: t.fileViewerTapToPick,
+                  subtitle: t.fileViewerFormatsHint,
                 )
               else ...[
                 Row(
@@ -210,7 +221,7 @@ class _FileViewerPageState extends State<FileViewerPage> {
                       child: ConverterFileCard(
                         name: _name!,
                         icon: _iconFor(_kind),
-                        badge: FormatChip(label: _extensionLabel(_name!)),
+                        badge: FormatChip(label: _extensionLabel(_name!, t)),
                         meta: formatBytes(_size),
                         onChange: _pickFile,
                       ),
@@ -218,7 +229,7 @@ class _FileViewerPageState extends State<FileViewerPage> {
                     if (_path != null) ...[
                       const SizedBox(width: 12),
                       LumaGhostButton(
-                        label: 'Open externally',
+                        label: t.fileViewerOpenExternally,
                         icon: Icons.open_in_new_rounded,
                         onTap: _openExternally,
                       ),
@@ -256,6 +267,7 @@ class _FileViewerPageState extends State<FileViewerPage> {
   }
 
   Widget _buildViewer() {
+    final t = L.of(context);
     switch (_kind) {
       case _FileKind.image:
         return _ImageViewer(bytes: _bytes!);
@@ -289,10 +301,10 @@ class _FileViewerPageState extends State<FileViewerPage> {
             padding: const EdgeInsets.symmetric(vertical: 28),
             child: LumaEmptyState(
               icon: Icons.visibility_off_outlined,
-              title: 'No preview for this file type',
+              title: t.fileViewerNoPreview,
               subtitle: _path != null
-                  ? 'Use "Open externally" to view it in its default app.'
-                  : 'This file type can\'t be previewed here.',
+                  ? t.fileViewerOpenExternallyHint
+                  : t.fileViewerCannotPreview,
             ),
           ),
         );
@@ -309,9 +321,9 @@ class _FileViewerPageState extends State<FileViewerPage> {
         _FileKind.unsupported => Icons.insert_drive_file_outlined,
       };
 
-  static String _extensionLabel(String name) {
+  static String _extensionLabel(String name, L t) {
     final dot = name.lastIndexOf('.');
-    return dot < 0 ? 'FILE' : name.substring(dot + 1).toUpperCase();
+    return dot < 0 ? t.fileViewerUnknownExtension : name.substring(dot + 1).toUpperCase();
   }
 }
 
@@ -469,6 +481,7 @@ class _PdfViewer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final text = pages.isEmpty ? '' : pages[page];
     return LumaCard(
@@ -486,7 +499,7 @@ class _PdfViewer extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
-                  'Page ${page + 1} of ${pages.length}',
+                  t.fileViewerPageOf(page + 1, pages.length),
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 13.5,
@@ -507,10 +520,8 @@ class _PdfViewer extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 28),
               child: LumaEmptyState(
                 icon: Icons.image_not_supported_outlined,
-                title: 'No text on this page',
-                subtitle:
-                    'This page has no extractable text — it may be a scan '
-                    'or an image.',
+                title: t.fileViewerNoPageText,
+                subtitle: t.fileViewerNoPageTextHint,
               ),
             )
           else
@@ -572,6 +583,7 @@ class _DocxViewer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     if (paragraphs
         .every((p) => p.text.trim().isEmpty && p.images.isEmpty)) {
@@ -580,7 +592,7 @@ class _DocxViewer extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 28),
           child: LumaEmptyState(
             icon: Icons.article_outlined,
-            title: 'This document has no readable text',
+            title: t.fileViewerNoReadableText,
           ),
         ),
       );
@@ -665,6 +677,7 @@ class _XlsxViewer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     if (grid.isEmpty) {
       return LumaCard(
@@ -672,7 +685,7 @@ class _XlsxViewer extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 28),
           child: LumaEmptyState(
             icon: Icons.grid_on_outlined,
-            title: 'This worksheet is empty',
+            title: t.fileViewerEmptyWorksheet,
           ),
         ),
       );
@@ -734,7 +747,7 @@ class _XlsxViewer extends StatelessWidget {
           if (grid.length > _maxRows) ...[
             const SizedBox(height: 10),
             Text(
-              'Showing the first $_maxRows of ${grid.length} rows.',
+              t.fileViewerShowingRows(_maxRows, grid.length),
               textAlign: TextAlign.center,
               style: TextStyle(color: luma.textMuted, fontSize: 12.5),
             ),
@@ -754,6 +767,7 @@ class _TextViewer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final truncated = text.length > _maxChars;
     final shown = truncated ? text.substring(0, _maxChars) : text;
@@ -773,7 +787,7 @@ class _TextViewer extends StatelessWidget {
           if (truncated) ...[
             const SizedBox(height: 12),
             Text(
-              'Large file — showing the first 500 KB.',
+              t.fileViewerLargeFile,
               textAlign: TextAlign.center,
               style: TextStyle(color: luma.textMuted, fontSize: 12.5),
             ),

@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 
+import '../../../../l10n/current_l.dart';
+import 'gallery_categories.dart';
 import 'gallery_media.dart';
 
 /// A run of photos taken close together over more than a single sitting — a
@@ -103,18 +105,20 @@ List<GalleryMemory> buildMemories(
   return memories.reversed.toList();
 }
 
-const _months = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-];
-
 String _formatRange(DateTime start, DateTime end) {
+  final t = currentL;
   final sameYear = start.year == end.year;
   final sameMonth = sameYear && start.month == end.month;
+  final startMonth = galleryMonthShort(t, start.month);
   final startStr = sameMonth
       ? '${start.day}'
-      : '${start.day} ${_months[start.month - 1]}'
-          '${sameYear ? '' : ' ${start.year}'}';
-  final endStr = '${end.day} ${_months[end.month - 1]} ${end.year}';
-  return '$startStr – $endStr';
+      : sameYear
+          ? t.galleryDayMonth(startMonth, start.day)
+          : t.galleryDayMonthYear(startMonth, start.day, start.year);
+  final endStr = t.galleryDayMonthYear(
+    galleryMonthShort(t, end.month),
+    end.day,
+    end.year,
+  );
+  return t.galleryMemoryRange(startStr, endStr);
 }

@@ -14,10 +14,19 @@ Future<Uint8List> renderQuizPdf(QuizExport export) async {
   }
 }
 
+String _fill(String template, Map<String, String> values) {
+  var out = template;
+  for (final entry in values.entries) {
+    out = out.replaceAll('{${entry.key}}', entry.value);
+  }
+  return out;
+}
+
 class _QuizPdfWriter {
   _QuizPdfWriter(this.export) {
     document.pageSettings.size = PdfPageSize.a4;
     document.pageSettings.margins.all = 44;
+    section = export.labels.questions;
   }
   final QuizExport export;
   final document = PdfDocument();
@@ -37,7 +46,7 @@ class _QuizPdfWriter {
   double y = 0;
   double get width => page.getClientSize().width;
   double get bottom => page.getClientSize().height - 30;
-  String section = 'Opgaven';
+  late String section;
 
   String clean(String value) => value
       .replaceAll('−', '-')
@@ -56,7 +65,7 @@ class _QuizPdfWriter {
   void newPage() {
     page = document.pages.add();
     page.graphics.drawString(
-      'LUMA SCHOOL  |  $section',
+      _fill(export.labels.runningHeader, {'section': section}),
       small,
       bounds: Rect.fromLTWH(0, 0, width, 15),
     );
@@ -186,8 +195,16 @@ class _QuizPdfWriter {
   }
 
   void question(QuizQuestion q, int number, String subject, int? passage) {
-    final label =
-        'Vraag $number - $subject${passage == null ? '' : ' - Tekst $passage'}';
+    final label = passage == null
+        ? _fill(export.labels.questionTitle, {
+            'number': '$number',
+            'subject': subject,
+          })
+        : _fill(export.labels.questionTitlePassage, {
+            'number': '$number',
+            'subject': subject,
+            'passage': '$passage',
+          });
     var height = textHeight(label, face: bold) + textHeight(q.prompt) + 16;
     for (final option in q.options) {
       height += textHeight(option, indent: 24);
@@ -203,7 +220,7 @@ class _QuizPdfWriter {
     if (q.isOpen) {
       ensure(export.writingSpace ? 60 : 32);
       text(
-        'Antwoord: .....................................${q.unit == null ? '' : ' ${q.unit}'}',
+        '${export.labels.answerBlank}${q.unit == null ? '' : ' ${q.unit}'}',
       );
       if (export.writingSpace) {
         page.graphics.drawLine(
@@ -232,17 +249,11 @@ class _QuizPdfWriter {
   void build() {
     newPage();
     text(export.title, face: heading);
+    text(export.subtitle);
+    text(export.labels.nameDate);
+    text(export.labels.instructions);
     text(
-      '${export.count} vragen | ${export.mixed ? 'Vakken gemengd' : 'Per vak'}',
-    );
-    text(
-      'Naam: ........................................  Datum: ........................',
-    );
-    text(
-      'Lees elke opdracht goed. Kruis het antwoord aan of vul het gevraagde antwoord in. Bij meerdere antwoorden staat in de opdracht hoeveel je er kiest.',
-    );
-    text(
-      'Eigen oefenmateriaal. Geen officiële IEP-toets of schooladvies.',
+      export.labels.disclaimer,
       face: small,
       after: 16,
     );
@@ -260,7 +271,10 @@ class _QuizPdfWriter {
       if (passage != null) {
         passageNumber++;
         ensure(110);
-        text('Tekst $passageNumber', face: bold);
+        text(
+          _fill(export.labels.passageHeading, {'number': '$passageNumber'}),
+          face: bold,
+        );
         text(passage, after: 16);
       }
       for (final q in block.questions) {
@@ -273,10 +287,10 @@ class _QuizPdfWriter {
       }
     }
     if (export.answers) {
-      section = 'Antwoordblad';
+      section = export.labels.answerSheet;
       newPage();
-      text('Antwoorden', face: heading);
-      text('Voor het nakijken. Houd dit antwoordblad apart van de opgaven.');
+      text(export.labels.answers, face: heading);
+      text(export.labels.answersNote);
       number = 0;
       for (final block in export.blocks) {
         for (final q in block.questions) {
@@ -302,7 +316,10 @@ class _QuizPdfWriter {
     for (var i = 0; i < document.pages.count; i++) {
       final p = document.pages[i];
       p.graphics.drawString(
-        'Pagina ${i + 1} van ${document.pages.count}',
+        _fill(export.labels.pageOf, {
+          'page': '${i + 1}',
+          'total': '${document.pages.count}',
+        }),
         small,
         bounds: Rect.fromLTWH(0, p.getClientSize().height - 15, width, 15),
         format: PdfStringFormat(alignment: PdfTextAlignment.right),

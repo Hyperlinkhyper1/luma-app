@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'cloud_files_controller.dart';
 import 'cloud_files_scope.dart';
@@ -54,6 +55,7 @@ class _SignedOut extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Padding(
       padding: const EdgeInsets.only(top: 80),
       child: Column(
@@ -61,7 +63,7 @@ class _SignedOut extends StatelessWidget {
           LumaIconBadge(
               icon: Icons.cloud_off_rounded, color: luma.accent, size: 64),
           const SizedBox(height: 20),
-          Text('Cloud Files needs sync',
+          Text(t.cloudFilesSignedOutTitle,
               style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 18,
@@ -72,9 +74,7 @@ class _SignedOut extends StatelessWidget {
             // shrink to the screen rather than run off both edges of it.
             constraints: const BoxConstraints(maxWidth: 420),
             child: Text(
-              'Sign in to your sync server under Settings → Sync & account, '
-              'then come back here to upload files. Files are encrypted on '
-              'this device before upload — the server can never read them.',
+              t.cloudFilesSignedOutBody,
               textAlign: TextAlign.center,
               style: TextStyle(color: luma.textMuted, fontSize: 13, height: 1.5),
             ),
@@ -105,14 +105,15 @@ class _Body extends StatelessWidget {
   }
 
   Future<void> _download(BuildContext context, CloudFile file) async {
+    final t = L.of(context);
     final path = await FilePicker.saveFile(
-      dialogTitle: 'Save ${file.name}',
+      dialogTitle: t.cloudFilesSaveDialogTitle(file.name),
       fileName: file.name,
     );
     if (path == null) return;
     try {
       await controller.download(file, path);
-      if (context.mounted) _snack(context, 'Saved ${file.name}');
+      if (context.mounted) _snack(context, t.cloudFilesSaved(file.name));
     } catch (e) {
       if (context.mounted) _snack(context, e.toString());
     }
@@ -120,6 +121,7 @@ class _Body extends StatelessWidget {
 
   Future<void> _confirmDelete(BuildContext context, CloudFile file) async {
     final luma = context.luma;
+    final t = L.of(context);
     final yes = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -128,20 +130,23 @@ class _Body extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(color: luma.border),
         ),
-        title: Text('Delete file?', style: TextStyle(color: luma.textPrimary)),
+        title: Text(t.cloudFilesDeleteTitle,
+            style: TextStyle(color: luma.textPrimary)),
         content: Text(
-          'Remove "${file.name}" from the server? This frees up '
-          '${CloudFilesController.formatBytes(file.size)} and cannot be undone.',
+          t.cloudFilesDeleteBody(file.name,
+              CloudFilesController.formatBytes(file.size)),
           style: TextStyle(color: luma.textSecondary, fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+            child: Text(t.commonCancel,
+                style: TextStyle(color: luma.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Delete', style: TextStyle(color: Colors.red.shade400)),
+            child: Text(t.commonDelete,
+                style: TextStyle(color: Colors.red.shade400)),
           ),
         ],
       ),
@@ -162,6 +167,7 @@ class _Body extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -179,13 +185,13 @@ class _Body extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Cloud Files',
+                        Text(t.pluginNameCloudFiles,
                             style: TextStyle(
                                 color: luma.textPrimary,
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700)),
                         Text(
-                          'Encrypted files on your server, on every device.',
+                          t.cloudFilesHeaderSubtitle,
                           style: TextStyle(
                               color: luma.textMuted, fontSize: 12),
                         ),
@@ -194,7 +200,7 @@ class _Body extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                   LumaPrimaryButton(
-                    label: 'Upload',
+                    label: t.commonUpload,
                     icon: Icons.upload_rounded,
                     onTap: controller.busy
                         ? null
@@ -233,8 +239,8 @@ class _Body extends StatelessWidget {
             padding: const EdgeInsets.only(top: 40),
             child: LumaEmptyState(
               icon: Icons.folder_open_rounded,
-              title: 'No files yet',
-              subtitle: 'Drop one in to keep it safe everywhere.',
+              title: t.cloudFilesEmptyTitle,
+              subtitle: t.cloudFilesEmptySubtitle,
             ),
           )
         else
@@ -266,6 +272,7 @@ class _StorageBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final used = controller.usedBytes;
     final quota = controller.quotaBytes;
     final fraction = quota == 0 ? 0.0 : (used / quota).clamp(0.0, 1.0);
@@ -274,15 +281,17 @@ class _StorageBar extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text('Storage used',
+            Text(t.cloudFilesStorageUsed,
                 style: TextStyle(
                     color: luma.textSecondary,
                     fontSize: 13,
                     fontWeight: FontWeight.w600)),
             const Spacer(),
             Text(
-              '${CloudFilesController.formatBytes(used)} of '
-              '${CloudFilesController.formatBytes(quota)}',
+              t.cloudFilesStorageOf(
+                CloudFilesController.formatBytes(used),
+                CloudFilesController.formatBytes(quota),
+              ),
               style: TextStyle(color: luma.textMuted, fontSize: 12),
             ),
           ],
@@ -299,7 +308,9 @@ class _StorageBar extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        Text('${CloudFilesController.formatBytes(controller.freeBytes)} free',
+        Text(
+            t.cloudFilesFreeSpace(
+                CloudFilesController.formatBytes(controller.freeBytes)),
             style: TextStyle(color: luma.textMuted, fontSize: 11)),
       ],
     );
@@ -313,10 +324,12 @@ class _TransferRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final verb = controller.transfer == CloudTransferKind.uploading
-        ? 'Uploading'
-        : 'Downloading';
+    final t = L.of(context);
     final pct = (controller.progress * 100).clamp(0, 100).toStringAsFixed(0);
+    final name = controller.transferName ?? '';
+    final progressText = controller.transfer == CloudTransferKind.uploading
+        ? t.cloudFilesUploadingProgress(name, pct)
+        : t.cloudFilesDownloadingProgress(name, pct);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -330,7 +343,7 @@ class _TransferRow extends StatelessWidget {
                 color: luma.accent),
             const SizedBox(width: 8),
             Expanded(
-              child: Text('$verb ${controller.transferName ?? ''}… $pct%',
+              child: Text(progressText,
                   style: TextStyle(color: luma.textSecondary, fontSize: 12),
                   overflow: TextOverflow.ellipsis),
             ),
@@ -367,6 +380,7 @@ class _FileRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
@@ -394,12 +408,12 @@ class _FileRow extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Download',
+            tooltip: t.commonDownload,
             onPressed: enabled ? onDownload : null,
             icon: Icon(Icons.download_rounded, color: luma.textSecondary),
           ),
           IconButton(
-            tooltip: 'Delete',
+            tooltip: t.commonDelete,
             onPressed: enabled ? onDelete : null,
             icon: Icon(Icons.delete_outline_rounded, color: luma.textSecondary),
           ),

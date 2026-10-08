@@ -7,5 +7,27 @@
   "category": "Games",
   "tags": ["Games", "BINGO", "Card Games"],
   "free": true,
-  "details": "Choose BINGO to draw numbers and export printable cards in a four-per-page PDF. Or enter Card Games, take a seat at a green casino table, and play five-card draw Poker against the dealer, Blackjack, or Klondike Patience."
+  "details": "Choose BINGO to draw numbers and export printable cards in a four-per-page PDF. Or enter Card Games, take a seat at a green casino table, and play five-card draw Poker against the dealer, Blackjack, or Klondike Patience.",
+  "i18n": {
+    "nl": {
+      "name": "Kleine spellen",
+      "description": "Speel BINGO, poker, blackjack en patience.",
+      "details": "Kies BINGO om nummers te trekken en afdrukbare kaarten te exporteren als pdf met vier per pagina. Of ga naar Kaartspellen, neem plaats aan een groene casinotafel en speel five-card draw-poker tegen de dealer, blackjack of Klondike-patience."
+    },
+    "fr": {
+      "name": "Petits jeux",
+      "description": "Jouez au BINGO, au poker, au blackjack et à la patience.",
+      "details": "Choisissez BINGO pour tirer des numéros et exporter des cartes imprimables au format PDF, quatre par page. Ou entrez dans Jeux de cartes, prenez place à une table de casino verte et jouez au poker five-card draw contre le croupier, au blackjack ou à la patience Klondike."
+    },
+    "es": {
+      "name": "Juegos pequeños",
+      "description": "Juega al BINGO, al póker, al blackjack y a la paciencia.",
+      "details": "Elige BINGO para sacar números y exportar cartones imprimibles en PDF, cuatro por página. O entra en Juegos de cartas, siéntate en una mesa de casino verde y juega al póker five-card draw contra el crupier, al blackjack o a la paciencia Klondike."
+    },
+    "zh": {
+      "name": "小游戏",
+      "description": "玩 BINGO、扑克、二十一点和接龙。",
+      "details": "选择 BINGO 抽取号码，并导出每页四张的可打印 PDF 卡片。或者进入纸牌游戏，在绿色赌场牌桌落座，与庄家玩五张牌抽换扑克、二十一点，或克朗代克接龙。"
+    }
+  }
 }

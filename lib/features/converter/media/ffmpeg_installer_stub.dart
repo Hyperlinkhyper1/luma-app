@@ -1,3 +1,5 @@
+import '../../../l10n/current_l.dart';
+
 /// Raised when the in-app ffmpeg install fails or isn't supported.
 class FfmpegInstallException implements Exception {
   const FfmpegInstallException(this.message);
@@ -18,8 +20,6 @@ class FfmpegInstaller {
   static Future<void> install({
     required void Function(double? progress) onProgress,
   }) {
-    throw const FfmpegInstallException(
-      'Installing ffmpeg is only available in the desktop app.',
-    );
+    throw FfmpegInstallException(currentL.ffmpegStubDesktopOnly);
   }
 }

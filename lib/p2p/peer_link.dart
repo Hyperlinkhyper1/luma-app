@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show debugPrint;
 
+import '../l10n/current_l.dart';
 import 'peer_debug_log.dart';
 import 'peer_protocol.dart';
 import 'peer_share.dart';
@@ -71,7 +72,7 @@ class PeerLink implements PeerShareChannel {
       _onData,
       onError: (Object e) {
         logP2pDebug('PeerLink: connection error: $e');
-        _fail('Connection error: $e');
+        _fail(currentL.p2pLinkConnectionError('$e'));
       },
       onDone: () {
         logP2pDebug('PeerLink: connection closed by peer '
@@ -255,7 +256,7 @@ class PeerLink implements PeerShareChannel {
             'state=$_state, peer=${peer?.deviceId ?? "pre-handshake"})';
         debugPrint(msg);
         logP2pDebug(msg);
-        _fail('Invalid frame: $e');
+        _fail(currentL.p2pLinkInvalidFrame('$e'));
         return;
       }
       if (frame == null) {
@@ -363,13 +364,13 @@ class PeerLink implements PeerShareChannel {
       decoded = jsonDecode(utf8.decode(payload));
     } catch (e) {
       _debugDumpMalformed(payload, e);
-      _fail('Malformed control message.');
+      _fail(currentL.p2pLinkMalformedControl);
       return;
     }
     final j = decoded is Map<String, dynamic> ? decoded : null;
     if (j == null) {
       _debugDumpMalformed(payload, 'decoded to ${decoded.runtimeType}, not a Map');
-      _fail('Malformed control message.');
+      _fail(currentL.p2pLinkMalformedControl);
       return;
     }
     final type = j['type'] as String?;
@@ -387,7 +388,7 @@ class PeerLink implements PeerShareChannel {
         final len = j['length'] as int?;
         final savedAt = j['savedAtMs'] as int? ?? 0;
         if (c == null || len == null || len <= 0 || len > kMaxFrameBytes) {
-          _fail('Malformed blob header.');
+          _fail(currentL.p2pLinkMalformedBlob);
           return;
         }
         _blobCollection = c;
@@ -419,7 +420,7 @@ class PeerLink implements PeerShareChannel {
       case 'share-chunk':
         final header = SharedChunkHeader.fromJson(j);
         if (header == null) {
-          _fail('Malformed share chunk header.');
+          _fail(currentL.p2pLinkMalformedShareChunk);
           return;
         }
         if (header.length == 0) {
@@ -451,7 +452,7 @@ class PeerLink implements PeerShareChannel {
         '(${hello.collections.length} collections advertised)');
     if (hello.token != expectedToken) {
       logP2pDebug('PeerLink: token mismatch from ${hello.deviceId}');
-      _fail('Handshake failed: not the same account.');
+      _fail(currentL.p2pLinkHandshakeNotSameAccount);
       return;
     }
     peer = hello;

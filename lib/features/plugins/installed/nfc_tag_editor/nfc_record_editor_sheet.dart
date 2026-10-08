@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'nfc_record.dart';
 
@@ -30,15 +31,15 @@ const _editableKinds = [
   NfcRecordKind.mime,
 ];
 
-const _kindLabels = {
-  NfcRecordKind.text: 'Text',
-  NfcRecordKind.uri: 'Link',
-  NfcRecordKind.phone: 'Phone',
-  NfcRecordKind.email: 'Email',
-  NfcRecordKind.wifi: 'Wi-Fi',
-  NfcRecordKind.contact: 'Contact',
-  NfcRecordKind.appLaunch: 'App',
-  NfcRecordKind.mime: 'Custom',
+final _kindLabels = <NfcRecordKind, String Function(L t)>{
+  NfcRecordKind.text: (t) => t.nfcRecordEditorTypeText,
+  NfcRecordKind.uri: (t) => t.nfcRecordEditorTypeLink,
+  NfcRecordKind.phone: (t) => t.nfcRecordEditorTypePhone,
+  NfcRecordKind.email: (t) => t.commonEmail,
+  NfcRecordKind.wifi: (t) => t.nfcRecordEditorTypeWifi,
+  NfcRecordKind.contact: (t) => t.nfcRecordEditorTypeContact,
+  NfcRecordKind.appLaunch: (t) => t.nfcRecordEditorTypeApp,
+  NfcRecordKind.mime: (t) => t.nfcRecordEditorTypeCustom,
 };
 
 const _allFieldKeys = [
@@ -77,38 +78,39 @@ class _NfcRecordEditorDialogState extends State<_NfcRecordEditorDialog> {
   void _fail(String message) => setState(() => _error = message);
 
   void _save() {
+    final t = L.of(context);
     final fields = <String, String>{};
     switch (_kind) {
       case NfcRecordKind.text:
-        if (_text('text').isEmpty) return _fail('Enter some text.');
+        if (_text('text').isEmpty) return _fail(t.nfcRecordEditorErrorText);
         fields['text'] = _text('text');
         fields['lang'] = _text('lang').isEmpty ? 'en' : _text('lang');
         break;
       case NfcRecordKind.uri:
         final uri = _text('uri');
         if (uri.isEmpty || Uri.tryParse(uri) == null) {
-          return _fail('Enter a valid link.');
+          return _fail(t.nfcRecordEditorErrorLink);
         }
         fields['uri'] = uri;
         break;
       case NfcRecordKind.phone:
-        if (_text('number').isEmpty) return _fail('Enter a phone number.');
+        if (_text('number').isEmpty) return _fail(t.nfcRecordEditorErrorPhone);
         fields['number'] = _text('number');
         break;
       case NfcRecordKind.email:
-        if (_text('address').isEmpty) return _fail('Enter an email address.');
+        if (_text('address').isEmpty) return _fail(t.nfcRecordEditorErrorEmail);
         fields['address'] = _text('address');
         fields['subject'] = _text('subject');
         fields['body'] = _text('body');
         break;
       case NfcRecordKind.wifi:
-        if (_text('ssid').isEmpty) return _fail('Enter the network name.');
+        if (_text('ssid').isEmpty) return _fail(t.nfcRecordEditorErrorNetwork);
         fields['ssid'] = _text('ssid');
         fields['password'] = _text('password');
         fields['security'] = _security;
         break;
       case NfcRecordKind.contact:
-        if (_text('name').isEmpty) return _fail('Enter a name.');
+        if (_text('name').isEmpty) return _fail(t.nfcRecordEditorErrorName);
         fields['name'] = _text('name');
         fields['phone'] = _text('phone');
         fields['email'] = _text('email');
@@ -116,13 +118,13 @@ class _NfcRecordEditorDialogState extends State<_NfcRecordEditorDialog> {
         break;
       case NfcRecordKind.appLaunch:
         if (_text('package').isEmpty) {
-          return _fail('Enter a package name, e.g. com.example.app.');
+          return _fail(t.nfcRecordEditorErrorPackage);
         }
         fields['package'] = _text('package');
         break;
       case NfcRecordKind.mime:
         if (_text('mimeType').isEmpty) {
-          return _fail('Enter a MIME type, e.g. text/plain.');
+          return _fail(t.nfcRecordEditorErrorMime);
         }
         fields['mimeType'] = _text('mimeType');
         fields['text'] = _text('text');
@@ -142,10 +144,13 @@ class _NfcRecordEditorDialogState extends State<_NfcRecordEditorDialog> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return AlertDialog(
       backgroundColor: luma.surface,
       title: Text(
-        widget.existing == null ? 'Add record' : 'Edit record',
+        widget.existing == null
+            ? t.nfcRecordEditorAddTitle
+            : t.nfcRecordEditorEditTitle,
         style: TextStyle(color: luma.textPrimary, fontSize: 16),
       ),
       content: SizedBox(
@@ -156,7 +161,7 @@ class _NfcRecordEditorDialogState extends State<_NfcRecordEditorDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (widget.existing == null) ...[
-                _label(luma, 'Type'),
+                _label(luma, t.commonType),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 6,
@@ -164,7 +169,7 @@ class _NfcRecordEditorDialogState extends State<_NfcRecordEditorDialog> {
                   children: [
                     for (final kind in _editableKinds)
                       _KindChip(
-                        label: _kindLabels[kind]!,
+                        label: _kindLabels[kind]!(t),
                         selected: _kind == kind,
                         onTap: () => setState(() => _kind = kind),
                       ),
@@ -184,12 +189,12 @@ class _NfcRecordEditorDialogState extends State<_NfcRecordEditorDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+          child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
         ),
         TextButton(
           onPressed: _save,
           child: Text(
-            widget.existing == null ? 'Add' : 'Save',
+            widget.existing == null ? t.commonAdd : t.commonSave,
             style: TextStyle(color: luma.accent),
           ),
         ),
@@ -198,44 +203,49 @@ class _NfcRecordEditorDialogState extends State<_NfcRecordEditorDialog> {
   }
 
   List<Widget> _fieldsFor(LumaPalette luma, NfcRecordKind kind) {
+    final t = L.of(context);
     switch (kind) {
       case NfcRecordKind.text:
         return [
-          _field(luma, 'Text', 'text',
-              hint: 'Whatever this tag should say', maxLines: 3),
+          _field(luma, t.nfcRecordEditorTypeText, 'text',
+              hint: t.nfcRecordEditorTextHint, maxLines: 3),
           const SizedBox(height: 12),
-          _field(luma, 'Language code', 'lang', hint: 'en'),
+          _field(luma, t.nfcRecordEditorLanguageCode, 'lang', hint: 'en'),
         ];
       case NfcRecordKind.uri:
-        return [_field(luma, 'Link', 'uri', hint: 'https://example.com')];
+        return [
+          _field(luma, t.nfcRecordEditorTypeLink, 'uri',
+              hint: 'https://example.com'),
+        ];
       case NfcRecordKind.phone:
         return [
-          _field(luma, 'Phone number', 'number',
+          _field(luma, t.nfcRecordEditorPhoneNumber, 'number',
               hint: '+1 555 0100', keyboardType: TextInputType.phone),
         ];
       case NfcRecordKind.email:
         return [
-          _field(luma, 'Address', 'address',
+          _field(luma, t.nfcRecordEditorAddress, 'address',
               hint: 'name@example.com', keyboardType: TextInputType.emailAddress),
           const SizedBox(height: 12),
-          _field(luma, 'Subject (optional)', 'subject'),
+          _field(luma, t.nfcRecordEditorSubjectOptional, 'subject'),
           const SizedBox(height: 12),
-          _field(luma, 'Body (optional)', 'body', maxLines: 3),
+          _field(luma, t.nfcRecordEditorBodyOptional, 'body', maxLines: 3),
         ];
       case NfcRecordKind.wifi:
         return [
-          _field(luma, 'Network name (SSID)', 'ssid'),
+          _field(luma, t.nfcRecordEditorNetworkName, 'ssid'),
           const SizedBox(height: 12),
-          _field(luma, 'Password', 'password', obscure: _security != 'nopass'),
+          _field(luma, t.commonPassword, 'password',
+              obscure: _security != 'nopass'),
           const SizedBox(height: 12),
-          _label(luma, 'Security'),
+          _label(luma, t.nfcRecordEditorSecurity),
           const SizedBox(height: 6),
           Wrap(
             spacing: 6,
             children: [
               for (final s in const ['WPA', 'WEP', 'nopass'])
                 _KindChip(
-                  label: s == 'nopass' ? 'Open' : s,
+                  label: s == 'nopass' ? t.nfcRecordEditorSecurityOpen : s,
                   selected: _security == s,
                   onTap: () => setState(() => _security = s),
                 ),
@@ -243,38 +253,38 @@ class _NfcRecordEditorDialogState extends State<_NfcRecordEditorDialog> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Written as a text record most phones can read when they tap the '
-            "tag — it won't auto-join every device the way a router's own "
-            'Wi-Fi QR code sometimes does.',
+            t.nfcRecordEditorWifiNote,
             style: TextStyle(color: luma.textMuted, fontSize: 11.5, height: 1.3),
           ),
         ];
       case NfcRecordKind.contact:
         return [
-          _field(luma, 'Name', 'name'),
+          _field(luma, t.commonName, 'name'),
           const SizedBox(height: 12),
-          _field(luma, 'Phone (optional)', 'phone', keyboardType: TextInputType.phone),
+          _field(luma, t.nfcRecordEditorPhoneOptional, 'phone',
+              keyboardType: TextInputType.phone),
           const SizedBox(height: 12),
-          _field(luma, 'Email (optional)', 'email', keyboardType: TextInputType.emailAddress),
+          _field(luma, t.nfcRecordEditorEmailOptional, 'email',
+              keyboardType: TextInputType.emailAddress),
           const SizedBox(height: 12),
-          _field(luma, 'Organization (optional)', 'org'),
+          _field(luma, t.nfcRecordEditorOrganizationOptional, 'org'),
         ];
       case NfcRecordKind.appLaunch:
         return [
-          _field(luma, 'Package name', 'package', hint: 'com.example.app'),
+          _field(luma, t.nfcRecordEditorPackageName, 'package',
+              hint: 'com.example.app'),
           const SizedBox(height: 8),
           Text(
-            'Find this under Settings → Apps → (the app) → Advanced → App '
-            'details, on the phone that has it installed. Android offers to '
-            'open or install this app when it reads the tag.',
+            t.nfcRecordEditorAppHint,
             style: TextStyle(color: luma.textMuted, fontSize: 11.5, height: 1.3),
           ),
         ];
       case NfcRecordKind.mime:
         return [
-          _field(luma, 'MIME type', 'mimeType', hint: 'text/plain'),
+          _field(luma, t.nfcRecordEditorMimeType, 'mimeType',
+              hint: 'text/plain'),
           const SizedBox(height: 12),
-          _field(luma, 'Content', 'text', maxLines: 3),
+          _field(luma, t.nfcRecordEditorContent, 'text', maxLines: 3),
         ];
       case NfcRecordKind.raw:
         return const [];

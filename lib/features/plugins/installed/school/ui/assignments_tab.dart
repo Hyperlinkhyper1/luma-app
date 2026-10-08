@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/school_database.dart';
 import '../school_repository.dart';
 import '../school_scope.dart';
 import 'subject_dialog.dart';
 
-const _priorityLabels = ['Low', 'Medium', 'High'];
+List<String> _priorityLabels(L t) => [t.schoolPriorityLow, t.schoolPriorityMedium, t.schoolPriorityHigh];
 
 /// Homework / assignment tracker: a due-dated task list per subject, with
 /// priority, completion, and an optional grade once it's returned.
@@ -24,6 +25,7 @@ class _AssignmentsTabState extends State<AssignmentsTab> {
   @override
   Widget build(BuildContext context) {
     final repo = SchoolScope.of(context);
+    final t = L.of(context);
     return StreamData<List<SchoolSubject>>(
       stream: repo.watchSubjects(),
       builder: (context, subjects) {
@@ -44,13 +46,13 @@ class _AssignmentsTabState extends State<AssignmentsTab> {
                   Row(
                     children: [
                       FilterChip(
-                        label: const Text('Show completed'),
+                        label: Text(t.schoolAssignmentsShowCompleted),
                         selected: _showCompleted,
                         onSelected: (v) => setState(() => _showCompleted = v),
                       ),
                       const Spacer(),
                       LumaPrimaryButton(
-                        label: 'Add assignment',
+                        label: t.schoolAssignmentsAdd,
                         icon: Icons.add_rounded,
                         onTap: () => subjects.isEmpty
                             ? showSubjectDialog(context, repo)
@@ -61,10 +63,10 @@ class _AssignmentsTabState extends State<AssignmentsTab> {
                   const SizedBox(height: 16),
                   Expanded(
                     child: sorted.isEmpty
-                        ? const LumaEmptyState(
+                        ? LumaEmptyState(
                             icon: Icons.assignment_turned_in_rounded,
-                            title: 'No assignments',
-                            subtitle: 'Add homework or a tracked assignment to see it here.',
+                            title: t.schoolAssignmentsEmpty,
+                            subtitle: t.schoolAssignmentsEmptySub,
                           )
                         : ListView.separated(
                             itemCount: sorted.length,
@@ -123,6 +125,7 @@ class _AssignmentTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final priorityColor = switch (assignment.priority) {
       2 => luma.danger,
       1 => const Color(0xFFFFB020),
@@ -150,7 +153,8 @@ class _AssignmentTile extends StatelessWidget {
                 Text(
                   [
                     if (subject != null) subject!.name,
-                    'Due ${assignment.dueDate.month}/${assignment.dueDate.day}/${assignment.dueDate.year}',
+                    t.schoolAssignmentDue(
+                        '${assignment.dueDate.month}/${assignment.dueDate.day}/${assignment.dueDate.year}'),
                     if (assignment.gradeEarned != null && assignment.gradeTotal != null)
                       '${assignment.gradeEarned!.toStringAsFixed(1)}/${assignment.gradeTotal!.toStringAsFixed(0)}',
                   ].join(' · '),
@@ -226,8 +230,9 @@ class _AssignmentDialogState extends State<_AssignmentDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     return AlertDialog(
-      title: Text(widget.existing == null ? 'Add assignment' : 'Edit assignment'),
+      title: Text(widget.existing == null ? t.schoolAssignmentsAdd : t.schoolAssignmentsEdit),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -236,14 +241,14 @@ class _AssignmentDialogState extends State<_AssignmentDialog> {
             TextField(
               controller: _titleController,
               autofocus: true,
-              decoration: const InputDecoration(labelText: 'Title'),
+              decoration: InputDecoration(labelText: t.commonTitle),
             ),
             if (widget.subjects.isNotEmpty)
               DropdownButtonFormField<int?>(
                 initialValue: _subjectId,
-                decoration: const InputDecoration(labelText: 'Subject (optional)'),
+                decoration: InputDecoration(labelText: t.schoolSubjectOptional),
                 items: [
-                  const DropdownMenuItem(value: null, child: Text('None')),
+                  DropdownMenuItem(value: null, child: Text(t.commonNone)),
                   for (final s in widget.subjects)
                     DropdownMenuItem(value: s.id, child: Text(s.name)),
                 ],
@@ -260,29 +265,30 @@ class _AssignmentDialogState extends State<_AssignmentDialog> {
                 );
                 if (d != null) setState(() => _dueDate = d);
               },
-              child: Text('Due ${_dueDate.month}/${_dueDate.day}/${_dueDate.year}'),
+              child: Text(t.schoolAssignmentDue(
+                  '${_dueDate.month}/${_dueDate.day}/${_dueDate.year}')),
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<int>(
               initialValue: _priority,
-              decoration: const InputDecoration(labelText: 'Priority'),
+              decoration: InputDecoration(labelText: t.schoolPriority),
               items: [
-                for (var i = 0; i < _priorityLabels.length; i++)
-                  DropdownMenuItem(value: i, child: Text(_priorityLabels[i])),
+                for (var i = 0; i < _priorityLabels(t).length; i++)
+                  DropdownMenuItem(value: i, child: Text(_priorityLabels(t)[i])),
               ],
               onChanged: (v) => setState(() => _priority = v!),
             ),
             TextField(
               controller: _notesController,
-              decoration: const InputDecoration(labelText: 'Notes (optional)'),
+              decoration: InputDecoration(labelText: t.cardWalletNotesOptional),
               maxLines: 2,
             ),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-        FilledButton(onPressed: _save, child: const Text('Save')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(t.commonCancel)),
+        FilledButton(onPressed: _save, child: Text(t.commonSave)),
       ],
     );
   }

@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:llm_llamacpp/llm_llamacpp.dart';
 import 'package:crypto/crypto.dart';
 
+import '../../l10n/current_l.dart';
 import 'providers/local_qwen_client.dart';
 
 /// Manages the optional, device-local Assistant model.
@@ -86,7 +87,7 @@ class LocalModelStore extends ChangeNotifier {
     final digest = await sha256.bind(file.openRead()).first;
     if (digest.toString() != _file.sha256) {
       await file.delete();
-      _error = 'The model file was incomplete or damaged. Download it again.';
+      _error = currentL.assistantModelDamaged;
       notifyListeners();
       return null;
     }
@@ -125,7 +126,7 @@ class LocalModelStore extends ChangeNotifier {
       }
       _modelPathCheck = null;
       if (await modelPath() == null) {
-        throw StateError('The model download did not produce a valid file.');
+        throw StateError(currentL.assistantModelDownloadInvalid);
       }
       await _deleteOtherModels();
     } catch (error) {

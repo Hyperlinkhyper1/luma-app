@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
 import '../../../../../account/plan.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../settings/settings_scope.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../../../../../sync/sync_scope.dart';
@@ -160,6 +161,7 @@ class _OfflineSavingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final settings = SettingsScope.of(context);
     if (!planAtLeast(settings.selectedPlanId, 'orbit')) {
       return const SizedBox.shrink();
@@ -185,7 +187,7 @@ class _OfflineSavingCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Keep saving while offline',
+                      t.cs2MarketOfflineTitle,
                       style: TextStyle(
                         color: context.luma.textPrimary,
                         fontSize: 13,
@@ -194,7 +196,7 @@ class _OfflineSavingCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      _description(repository, sync.serverReady),
+                      _description(repository, sync.serverReady, t),
                       style: TextStyle(
                         color: context.luma.textMuted,
                         fontSize: 11,
@@ -231,21 +233,30 @@ class _OfflineSavingCard extends StatelessWidget {
     );
   }
 
-  static String _description(Cs2MarketRepository repository, bool serverReady) {
+  static String _description(
+    Cs2MarketRepository repository,
+    bool serverReady,
+    L t,
+  ) {
     if (!serverReady)
-      return 'Sign in to an approved Orbit or Nova account to enable this.';
-    if (repository.offlineLoading) return 'Loading the shared market tracker…';
-    if (repository.offlineSaving) return 'Saving your tracked listings…';
+      return t.cs2MarketOfflineSignIn;
+    if (repository.offlineLoading) return t.cs2MarketOfflineLoading;
+    if (repository.offlineSaving) return t.cs2MarketOfflineSaving;
     if (!repository.offlineTrackingEnabled) {
-      return 'The server checks tracked skins every ${repository.offlineIntervalHours == 1 ? 'hour' : '6 hours'} once enabled.';
+      return t.cs2MarketOfflineIntervalOff(
+        repository.offlineIntervalHours,
+      );
     }
     final next = repository.offlineNextCheckAt;
     if (next == null) {
-      return 'Scheduled server checks are enabled.';
+      return t.cs2MarketOfflineScheduled;
     }
     final local = next.toLocal();
     final minute = local.minute.toString().padLeft(2, '0');
-    return 'Server checks every ${repository.offlineIntervalHours} hour${repository.offlineIntervalHours == 1 ? '' : 's'} · next at ${local.hour}:$minute';
+    return t.cs2MarketOfflineNextCheck(
+      repository.offlineIntervalHours,
+      '${local.hour}:$minute',
+    );
   }
 }
 
@@ -264,6 +275,7 @@ class _Toolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = L.of(context);
     final luma = context.luma;
     final repository = Cs2MarketScope.of(context);
 
@@ -283,7 +295,7 @@ class _Toolbar extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'CS2 Market',
+                      t.cs2MarketTitle,
                       style: TextStyle(
                         color: luma.textPrimary,
                         fontSize: 17,
@@ -294,7 +306,7 @@ class _Toolbar extends StatelessWidget {
                     ListenableBuilder(
                       listenable: repository,
                       builder: (context, _) => Text(
-                        _subtitle(repository),
+                        _subtitle(repository, t),
                         style: TextStyle(color: luma.textMuted, fontSize: 11.5),
                       ),
                     ),
@@ -306,8 +318,8 @@ class _Toolbar extends StatelessWidget {
                 listenable: repository,
                 builder: (context, _) => LumaGhostButton(
                   label: repository.catalogLoading
-                      ? 'Updating…'
-                      : 'Refresh catalog',
+                      ? t.cs2MarketUpdating
+                      : t.cs2MarketRefreshCatalog,
                   icon: Icons.sync_rounded,
                   onTap: repository.catalogLoading
                       ? null
@@ -319,8 +331,8 @@ class _Toolbar extends StatelessWidget {
                 listenable: repository,
                 builder: (context, _) => LumaGhostButton(
                   label: repository.refreshingPrices
-                      ? 'Checking…'
-                      : 'Refresh prices',
+                      ? t.cs2MarketChecking
+                      : t.cs2MarketRefreshPrices,
                   icon: Icons.price_change_rounded,
                   onTap: repository.refreshingPrices
                       ? null
@@ -334,7 +346,7 @@ class _Toolbar extends StatelessWidget {
             children: [
               Expanded(
                 child: LumaSegmentedTabs(
-                  tabs: const ['Browse', 'Tracked'],
+                  tabs: [t.cs2MarketBrowse, t.cs2MarketTracked],
                   selectedIndex: view.index,
                   onSelect: (i) => onViewChanged(_Cs2MarketView.values[i]),
                 ),
@@ -342,7 +354,7 @@ class _Toolbar extends StatelessWidget {
               if (view == _Cs2MarketView.tracked) ...[
                 const SizedBox(width: 8),
                 IconButton(
-                  tooltip: 'Tracked settings',
+                  tooltip: t.cs2MarketTrackedSettings,
                   onPressed: () => _showTrackedSettings(context),
                   icon: const Icon(Icons.settings_rounded),
                 ),
@@ -359,8 +371,8 @@ class _Toolbar extends StatelessWidget {
               decoration: InputDecoration(
                 isDense: true,
                 hintText: view == _Cs2MarketView.tracked
-                    ? 'Search what you track — name, weapon, rarity'
-                    : 'Search any CS2 item — name, weapon, rarity, case',
+                    ? t.cs2MarketSearchTracked
+                    : t.cs2MarketSearchAny,
                 hintStyle: TextStyle(color: luma.textMuted, fontSize: 13),
                 prefixIcon: Icon(
                   Icons.search_rounded,
@@ -390,21 +402,18 @@ class _Toolbar extends StatelessWidget {
     );
   }
 
-  static String _subtitle(Cs2MarketRepository repository) {
+  static String _subtitle(Cs2MarketRepository repository, L t) {
     if (repository.catalogLoading && repository.catalogSize == 0) {
-      return 'Loading the item catalog…';
+      return t.cs2MarketSubtitleLoading;
     }
     final count = repository.catalogSize;
-    if (count == 0) return 'Item catalog not loaded yet.';
+    if (count == 0) return t.cs2MarketSubtitleNotLoaded;
     final at = repository.catalogFetchedAt;
-    if (at == null) return '$count items catalogued.';
+    if (at == null) return t.cs2MarketSubtitleCatalogued(count);
     final ago = DateTime.now().difference(at);
-    final freshness = ago.inDays >= 1
-        ? 'updated ${ago.inDays}d ago'
-        : ago.inHours >= 1
-        ? 'updated ${ago.inHours}h ago'
-        : 'updated just now';
-    return '$count items catalogued, $freshness.';
+    if (ago.inDays >= 1) return t.cs2MarketSubtitleUpdatedDays(count, ago.inDays);
+    if (ago.inHours >= 1) return t.cs2MarketSubtitleUpdatedHours(count, ago.inHours);
+    return t.cs2MarketSubtitleUpdatedJustNow(count);
   }
 
   void _showTrackedSettings(BuildContext context) {
@@ -412,18 +421,18 @@ class _Toolbar extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Tracked settings'),
+        title: Text(L.of(dialogContext).cs2MarketTrackedSettings),
         content: ListenableBuilder(
           listenable: settings,
           builder: (context, _) => SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Count CS2 value as investments'),
-            subtitle: const Text('Include tracked weapon values in Finance and the dashboard.'),
+            title: Text(L.of(dialogContext).cs2MarketCountAsInvestments),
+            subtitle: Text(L.of(dialogContext).cs2MarketCountAsInvestmentsHint),
             value: settings.includeCs2InInvestments,
             onChanged: settings.setIncludeCs2InInvestments,
           ),
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Done'))],
+        actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(L.of(dialogContext).commonDone))],
       ),
     );
   }
@@ -437,6 +446,7 @@ class _PriceRefreshBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final total = repository.priceTotal;
     final done = repository.priceChecked;
     final progress = total == 0 ? 0.0 : done / total;
@@ -452,7 +462,7 @@ class _PriceRefreshBar extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Checking prices — $done of $total',
+                  t.cs2MarketCheckingProgress(done, total),
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 12,
@@ -475,7 +485,7 @@ class _PriceRefreshBar extends StatelessWidget {
           ),
           const SizedBox(width: 14),
           LumaGhostButton(
-            label: 'Stop',
+            label: L.of(context).commonStop,
             icon: Icons.stop_rounded,
             onTap: repository.cancelPriceRefresh,
           ),
@@ -512,7 +522,7 @@ class _InlineError extends StatelessWidget {
             IconButton(
               onPressed: onDismiss,
               icon: Icon(Icons.close_rounded, size: 16, color: luma.textMuted),
-              tooltip: 'Dismiss',
+              tooltip: L.of(context).cs2MarketDismiss,
             ),
           ],
         ),
@@ -545,8 +555,8 @@ class _BrowseBody extends StatelessWidget {
     if (repository.catalog.isEmpty) {
       return LumaEmptyState(
         icon: Icons.diamond_outlined,
-        title: 'Catalog is empty',
-        subtitle: 'Refresh the catalog to load every CS2 item.',
+        title: L.of(context).cs2MarketCatalogEmpty,
+        subtitle: L.of(context).cs2MarketCatalogEmptyHint,
       );
     }
     return StreamBuilder<Set<String>>(
@@ -575,10 +585,8 @@ class _ShortQueryHint extends StatelessWidget {
   Widget build(BuildContext context) {
     return LumaEmptyState(
       icon: Icons.keyboard_rounded,
-      title: 'Keep typing',
-      subtitle:
-          'One letter matches too much of the catalog to be useful — '
-          'a couple more will narrow it down.',
+      title: L.of(context).cs2MarketKeepTyping,
+      subtitle: L.of(context).cs2MarketKeepTypingHint,
     );
   }
 }
@@ -597,7 +605,7 @@ class _SearchBody extends StatelessWidget {
     if (results.isEmpty) {
       return LumaEmptyState(
         icon: Icons.search_off_rounded,
-        title: 'No items match "$query"',
+        title: L.of(context).cs2MarketNoMatch(query),
         subtitle:
             'Try a weapon name, a rarity like "Covert", or a case '
             'name.',
@@ -659,6 +667,7 @@ class _CatalogTileState extends State<_CatalogTile> {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final decor = context.lumaDecor;
+    final t = L.of(context);
     final skin = widget.skin;
     final pinned = widget.pinned;
     final radius = BorderRadius.circular(decor.cardRadius);
@@ -681,10 +690,16 @@ class _CatalogTileState extends State<_CatalogTile> {
             ),
             onLongPress: () => _showPinMenu(context, null, skin, pinned),
             child: Semantics(
-              label:
-                  '${skin.name}, ${skin.rarityName}. '
-                  '${skin.caseName == null ? 'No case' : 'From ${skin.caseName}'}'
-                  '${pinned ? '. Pinned' : ''}',
+            label: skin.caseName == null
+                ? pinned
+                    ? t.cs2MarketTileLabelNoCasePinned(
+                        skin.name, skin.rarityName)
+                    : t.cs2MarketTileLabelNoCase(skin.name, skin.rarityName)
+                : pinned
+                    ? t.cs2MarketTileLabelCasePinned(
+                        skin.name, skin.rarityName, skin.caseName!)
+                    : t.cs2MarketTileLabelCase(
+                        skin.name, skin.rarityName, skin.caseName!),
               button: true,
               excludeSemantics: true,
               child: Container(
@@ -747,7 +762,7 @@ class _CatalogTileState extends State<_CatalogTile> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            skin.caseName ?? 'No case',
+                            skin.caseName ?? t.cs2MarketNoCase,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -797,7 +812,10 @@ Future<void> _showPinMenu(
       side: BorderSide(color: luma.border),
     ),
     items: [
-      PopupMenuItem(value: 'pin', child: Text(pinned ? 'Unpin' : 'Pin to top')),
+      PopupMenuItem(
+        value: 'pin',
+        child: Text(pinned ? L.of(context).cs2MarketUnpin : L.of(context).cs2MarketPinToTop),
+      ),
     ],
   );
   if (action == 'pin' && context.mounted) {

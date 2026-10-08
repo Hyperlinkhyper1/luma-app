@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/steam_database.dart';
 import '../steam_models.dart';
@@ -12,12 +13,15 @@ import 'steam_game_search_dialog.dart';
 
 /// How the tracked-games grid is ordered.
 enum _LibrarySort {
-  name('A–Z'),
-  playtime('Playtime'),
-  price('Price');
+  name,
+  playtime,
+  price;
 
-  const _LibrarySort(this.label);
-  final String label;
+  String label(L t) => switch (this) {
+        _LibrarySort.name => t.commonName,
+        _LibrarySort.playtime => t.steamTrackerSortPlaytime,
+        _LibrarySort.price => t.commonPrice,
+      };
 }
 
 /// The Price Tracker: every game being tracked, and a way into each one's
@@ -60,6 +64,7 @@ class _SteamPriceTrackerTabState extends State<SteamPriceTrackerTab> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final repository = SteamScope.of(context);
 
     if (!repository.loaded) {
@@ -95,11 +100,10 @@ class _SteamPriceTrackerTabState extends State<SteamPriceTrackerTab> {
               if (games.isEmpty) {
                 return LumaEmptyState(
                   icon: Icons.videogame_asset_off_rounded,
-                  title: 'Track your first game',
-                  subtitle: "Search for a game to start watching its price "
-                      "— no Steam account needed.",
+                  title: t.steamTrackerEmptyTitle,
+                  subtitle: t.steamTrackerEmptySubtitle,
                   action: LumaPrimaryButton(
-                    label: 'Track a game',
+                    label: t.steamTrackAGame,
                     icon: Icons.search_rounded,
                     onTap: () => showSteamGameSearchDialog(context),
                   ),
@@ -108,8 +112,8 @@ class _SteamPriceTrackerTabState extends State<SteamPriceTrackerTab> {
               if (visible.isEmpty) {
                 return LumaEmptyState(
                   icon: Icons.search_off_rounded,
-                  title: 'No games match "$_query"',
-                  subtitle: 'Try a shorter search.',
+                  title: t.steamTrackerNoMatchTitle(_query),
+                  subtitle: t.steamTrackerNoMatchSubtitle,
                 );
               }
               return _GameGrid(games: visible);
@@ -171,6 +175,7 @@ class _Toolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final repository = SteamScope.of(context);
 
     return Container(
@@ -189,7 +194,7 @@ class _Toolbar extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Price Tracker',
+                      t.steamTrackerTitle,
                       style: TextStyle(
                         color: luma.textPrimary,
                         fontSize: 17,
@@ -198,7 +203,7 @@ class _Toolbar extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      _subtitle(connected, repository.lastSyncAt),
+                      _subtitle(t, connected, repository.lastSyncAt),
                       style: TextStyle(color: luma.textMuted, fontSize: 11.5),
                     ),
                   ],
@@ -207,7 +212,7 @@ class _Toolbar extends StatelessWidget {
               const SizedBox(width: 12),
               if (connected) ...[
                 LumaGhostButton(
-                  label: 'Refresh library',
+                  label: t.steamTrackerRefreshLibrary,
                   icon: Icons.sync_rounded,
                   onTap:
                       repository.syncing ? null : repository.refreshLibrary,
@@ -216,8 +221,8 @@ class _Toolbar extends StatelessWidget {
               ],
               LumaGhostButton(
                 label: repository.refreshingPrices
-                    ? 'Checking…'
-                    : 'Refresh prices',
+                    ? t.steamPriceChecking
+                    : t.steamTrackerRefreshPrices,
                 icon: Icons.price_change_rounded,
                 onTap: repository.refreshingPrices
                     ? null
@@ -225,7 +230,7 @@ class _Toolbar extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               LumaPrimaryButton(
-                label: 'Track a game',
+                label: t.steamTrackAGame,
                 icon: Icons.search_rounded,
                 onTap: () => showSteamGameSearchDialog(context),
               ),
@@ -247,7 +252,7 @@ class _Toolbar extends StatelessWidget {
                     style: TextStyle(color: luma.textPrimary, fontSize: 13),
                     decoration: InputDecoration(
                       isDense: true,
-                      hintText: 'Search tracked games',
+                      hintText: t.steamTrackerSearchHint,
                       hintStyle:
                           TextStyle(color: luma.textMuted, fontSize: 13),
                       prefixIcon: Icon(Icons.search_rounded,
@@ -273,7 +278,7 @@ class _Toolbar extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               LumaSegmentedTabs(
-                tabs: [for (final s in _LibrarySort.values) s.label],
+                tabs: [for (final s in _LibrarySort.values) s.label(t)],
                 selectedIndex: sort.index,
                 onSelect: (i) => onSort(_LibrarySort.values[i]),
               ),
@@ -284,17 +289,14 @@ class _Toolbar extends StatelessWidget {
     );
   }
 
-  static String _subtitle(bool connected, DateTime? lastSyncAt) {
-    if (!connected) {
-      return 'Tracking prices — connect a Steam account to bulk-add your '
-          'library too.';
-    }
-    if (lastSyncAt == null) return 'Connected. Refresh library to import it.';
+  static String _subtitle(L t, bool connected, DateTime? lastSyncAt) {
+    if (!connected) return t.steamTrackerSubtitleDisconnected;
+    if (lastSyncAt == null) return t.steamTrackerSubtitleNoSync;
     final ago = DateTime.now().difference(lastSyncAt);
-    if (ago.inMinutes < 1) return 'Library synced just now.';
-    if (ago.inHours < 1) return 'Library synced ${ago.inMinutes} min ago.';
-    if (ago.inDays < 1) return 'Library synced ${ago.inHours} h ago.';
-    return 'Library synced ${ago.inDays} d ago.';
+    if (ago.inMinutes < 1) return t.steamTrackerSyncedJustNow;
+    if (ago.inHours < 1) return t.steamTrackerSyncedMinutes(ago.inMinutes);
+    if (ago.inDays < 1) return t.steamTrackerSyncedHours(ago.inHours);
+    return t.steamTrackerSyncedDays(ago.inDays);
   }
 }
 
@@ -310,6 +312,7 @@ class _SettingsButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Material(
       color: luma.surface,
       shape: RoundedRectangleBorder(
@@ -321,9 +324,9 @@ class _SettingsButton extends StatelessWidget {
         onTap: onTap,
         hoverColor: luma.surfaceHover,
         child: Tooltip(
-          message: 'Steam account settings',
+          message: t.steamAccountSettingsTooltip,
           child: Semantics(
-            label: 'Steam account settings',
+            label: t.steamAccountSettingsTooltip,
             button: true,
             child: SizedBox(
               width: 44,
@@ -348,6 +351,7 @@ class _PriceRefreshBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final repository = SteamScope.of(context);
     final total = repository.priceTotal;
     final done = repository.priceChecked;
@@ -364,7 +368,7 @@ class _PriceRefreshBar extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Checking prices — $done of $total',
+                  t.steamTrackerCheckingPrices(done, total),
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 12,
@@ -387,7 +391,7 @@ class _PriceRefreshBar extends StatelessWidget {
           ),
           const SizedBox(width: 14),
           LumaGhostButton(
-            label: 'Stop',
+            label: t.commonStop,
             icon: Icons.stop_rounded,
             onTap: repository.cancelPriceRefresh,
           ),
@@ -406,6 +410,7 @@ class _InlineError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     return Semantics(
       liveRegion: true,
       child: Container(
@@ -424,7 +429,7 @@ class _InlineError extends StatelessWidget {
             IconButton(
               onPressed: onDismiss,
               icon: Icon(Icons.close_rounded, size: 16, color: luma.textMuted),
-              tooltip: 'Dismiss',
+              tooltip: t.steamDismiss,
             ),
           ],
         ),
@@ -471,6 +476,7 @@ class _GameTileState extends State<_GameTile> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
     final decor = context.lumaDecor;
     final game = widget.game;
     final radius = BorderRadius.circular(decor.cardRadius);
@@ -489,7 +495,7 @@ class _GameTileState extends State<_GameTile> {
             ),
           ),
           child: Semantics(
-            label: '${game.name}. ${_priceSemantics(game)}',
+            label: '${game.name}. ${_priceSemantics(t, game)}',
             button: true,
             excludeSemantics: true,
             child: Container(
@@ -535,7 +541,7 @@ class _GameTileState extends State<_GameTile> {
                             // game would wrongly imply it was ever owned.
                             if (game.owned)
                               Text(
-                                _playtimeLabel(game.playtimeMinutes),
+                                _playtimeLabel(t, game.playtimeMinutes),
                                 style: TextStyle(
                                   color: luma.textMuted,
                                   fontSize: 11,
@@ -555,11 +561,11 @@ class _GameTileState extends State<_GameTile> {
     );
   }
 
-  static String _priceSemantics(SteamGame game) {
-    if (game.isFree) return 'Free to play.';
+  static String _priceSemantics(L t, SteamGame game) {
+    if (game.isFree) return t.steamFreeToPlaySemantics;
     final price = game.lastPriceCents;
-    if (price == null) return 'Price not checked yet.';
-    return 'Costs ${formatSteamPrice(price, game.currency ?? 'USD')}.';
+    if (price == null) return t.steamPriceNotCheckedSemantics;
+    return t.steamPriceCosts(formatSteamPrice(price, game.currency ?? 'USD'));
   }
 }
 
@@ -571,10 +577,11 @@ class _TilePrice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final t = L.of(context);
 
     if (game.isFree) {
       return Text(
-        'Free to play',
+        t.steamFreeToPlay,
         style: TextStyle(
           color: luma.success,
           fontSize: 12.5,
@@ -586,7 +593,7 @@ class _TilePrice extends StatelessWidget {
     final price = game.lastPriceCents;
     if (price == null) {
       return Text(
-        'Not checked yet',
+        t.steamPriceNotChecked,
         style: TextStyle(color: luma.textMuted, fontSize: 12),
       );
     }
@@ -678,10 +685,10 @@ class _Capsule extends StatelessWidget {
   }
 }
 
-String _playtimeLabel(int minutes) {
-  if (minutes <= 0) return 'Unplayed';
-  if (minutes < 60) return '$minutes min';
+String _playtimeLabel(L t, int minutes) {
+  if (minutes <= 0) return t.steamTrackerUnplayed;
+  if (minutes < 60) return t.steamTrackerPlaytimeMinutes(minutes);
   final hours = minutes / 60;
-  if (hours < 10) return '${hours.toStringAsFixed(1)} h';
-  return '${hours.round()} h';
+  if (hours < 10) return t.steamTrackerPlaytimeHours(hours.toStringAsFixed(1));
+  return t.steamTrackerPlaytimeHoursWhole(hours.round());
 }
