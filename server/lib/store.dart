@@ -396,6 +396,63 @@ class DeletionRequest {
       );
 }
 
+/// A message the operator wrote in the admin dashboard's Messages tab, shown
+/// in the app's inbox. Either [audienceAll] (every account that existed when
+/// it was sent) or [audienceSelected] (only [recipientUserIds]).
+class AdminMessage {
+  AdminMessage({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.audience,
+    required this.createdAtMs,
+    List<String>? recipientUserIds,
+    Set<String>? readByUserIds,
+  })  : recipientUserIds = recipientUserIds ?? [],
+        readByUserIds = readByUserIds ?? {};
+
+  static const audienceAll = 'all';
+  static const audienceSelected = 'selected';
+
+  final String id;
+  final String title;
+  final String body;
+  final String audience;
+  final int createdAtMs;
+
+  /// Meaningful only for [audienceSelected].
+  final List<String> recipientUserIds;
+  final Set<String> readByUserIds;
+
+  /// Whether [user] should see this message. A broadcast does not reach
+  /// accounts created after it was sent.
+  bool isFor(StoredUser user) => audience == audienceAll
+      ? user.createdAtMs <= createdAtMs
+      : recipientUserIds.contains(user.id);
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'body': body,
+        'audience': audience,
+        'createdAtMs': createdAtMs,
+        'recipientUserIds': recipientUserIds,
+        'readByUserIds': readByUserIds.toList(),
+      };
+
+  factory AdminMessage.fromJson(Map<String, dynamic> j) => AdminMessage(
+        id: j['id'] as String,
+        title: j['title'] as String? ?? '',
+        body: j['body'] as String? ?? '',
+        audience: j['audience'] as String? ?? audienceAll,
+        createdAtMs: j['createdAtMs'] as int,
+        recipientUserIds:
+            (j['recipientUserIds'] as List? ?? const []).cast<String>().toList(),
+        readByUserIds:
+            (j['readByUserIds'] as List? ?? const []).cast<String>().toSet(),
+      );
+}
+
 /// One blocked client address. Every request from it is refused before it
 /// reaches a route — except the admin dashboard, which stays reachable on
 /// purpose so an operator who bans their own address can undo it.
@@ -473,6 +530,10 @@ class Store {
   /// request per account (see Api._requestAccountDeletion).
   final Map<String, DeletionRequest> deletionRequestsById = {};
 
+  /// Admin dashboard's "Messages" tab — what the operator sent to users'
+  /// in-app inboxes, keyed by message id.
+  final Map<String, AdminMessage> adminMessagesById = {};
+
   /// Blocked client addresses, keyed by address. Checked on every request by
   /// Api's ban middleware, so this is a plain map lookup on the hot path.
   final Map<String, BannedIp> bansByIp = {};
@@ -492,6 +553,7 @@ class Store {
   String get _activityFile => '$rootPath/activity.json';
   String get _pluginDownloadsFile => '$rootPath/plugin_downloads.json';
   String get _deletionRequestsFile => '$rootPath/deletion_requests.json';
+  String get _adminMessagesFile => '$rootPath/admin_messages.json';
   String get _ipBansFile => '$rootPath/ip_bans.json';
   String get _secretFile => '$rootPath/secret.key';
 
@@ -574,6 +636,12 @@ class Store {
     for (final r in deletionRequests) {
       final req = DeletionRequest.fromJson(r as Map<String, dynamic>);
       store.deletionRequestsById[req.id] = req;
+    }
+
+    final adminMessages = await _readJsonList(store._adminMessagesFile);
+    for (final m in adminMessages) {
+      final msg = AdminMessage.fromJson(m as Map<String, dynamic>);
+      store.adminMessagesById[msg.id] = msg;
     }
 
     final ipBans = await _readJsonList(store._ipBansFile);
@@ -684,6 +752,14 @@ class Store {
       _deletionRequestsFile,
       jsonEncode(deletionRequestsById.values.map((r) => r.toJson()).toList()));
 
+  Future<void> saveAdminMessages() => atomicWriteString(_adminMessagesFile,
+      jsonEncode(adminMessagesById.values.map((m) => m.toJson()).toList()));
+
+  /// Messages [user] should see, newest first.
+  List<AdminMessage> adminMessagesFor(StoredUser user) =>
+      adminMessagesById.values.where((m) => m.isFor(user)).toList()
+        ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
+
   Future<void> saveIpBans() => atomicWriteString(
       _ipBansFile, jsonEncode(bansByIp.values.map((b) => b.toJson()).toList()));
 
@@ -770,6 +846,13 @@ class Store {
       requestsChanged = true;
     }
     if (requestsChanged) await saveDeletionRequests();
+
+    var messagesChanged = false;
+    for (final m in adminMessagesById.values) {
+      messagesChanged |= m.recipientUserIds.remove(userId);
+      messagesChanged |= m.readByUserIds.remove(userId);
+    }
+    if (messagesChanged) await saveAdminMessages();
   }
 
   // ---- Queries -----------------------------------------------------------

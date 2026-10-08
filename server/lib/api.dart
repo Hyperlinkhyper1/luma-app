@@ -29,6 +29,7 @@ import 'chat_store.dart';
 import 'classroom.dart';
 import 'cs2_offline_store.dart';
 import 'deploy_console.dart';
+import 'power_console.dart';
 import 'update_check.dart';
 import 'family_store.dart';
 import 'mail.dart';
@@ -604,6 +605,9 @@ class Api {
           _requireAuth(_declineFamilyInvite))
       ..post('/api/v1/family/<id>/members/<userId>/remove',
           _requireAuth(_removeFamilyMember))
+      ..get('/api/v1/messages', _requireAuth(_listMyMessages))
+      ..post('/api/v1/messages/<messageId>/read',
+          _requireAuth(_markMessageRead))
       ..post('/api/v1/family/<id>/delete', _requireAuth(_deleteFamily))
       ..post('/api/v1/family/<id>/events', _requireAuth(_addSharedEvent))
       ..get('/api/v1/family/<id>/events', _requireAuth(_listSharedEvents))
@@ -681,6 +685,9 @@ class Api {
       ..post('/admin/ip-ban', _requireAdmin(_adminBanIp))
       ..post('/admin/ip-unban', _requireAdmin(_adminUnbanIp))
       ..get('/admin/ip-bans', _requireAdmin(_adminIpBans))
+      ..get('/admin/messages', _requireAdmin(_adminMessages))
+      ..post('/admin/messages/send', _requireAdmin(_adminSendMessage))
+      ..post('/admin/messages/delete', _requireAdmin(_adminDeleteMessage))
       ..get('/admin/deletion-requests', _requireAdmin(_adminDeletionRequests))
       ..post('/admin/deletion-requests/decide',
           _requireAdmin(_adminDecideDeletionRequest))
@@ -771,6 +778,10 @@ class Api {
           _requireAdmin(_updateCheck.checkStatus))
       ..post('/admin/system/reboot',
           _requireAdmin(_updateCheck.requestReboot))
+      ..get('/admin/power/status', _requireAdmin(_power.status))
+      ..post('/admin/power/start', _requireAdmin(_power.start))
+      ..post('/admin/power/restart', _requireAdmin(_power.restart))
+      ..post('/admin/power/shutdown', _requireAdmin(_power.shutdown))
       ..get('/admin/system/reboot/status',
           _requireAdmin(_updateCheck.rebootStatus))
       ..get('/admin/website',_requireAdmin(_adminWebsiteIndex))
@@ -801,6 +812,7 @@ class Api {
         .addMiddleware(_recover)
         .addMiddleware(_cors)
         .addMiddleware(_ipBan)
+        .addMiddleware(_lumaOff)
         .addMiddleware(_rateLimit)
         .addHandler(router.call);
   }
@@ -824,6 +836,19 @@ class Api {
               403, 'ip_banned', 'This address is blocked by the operator.');
         }
         return inner(request);
+      };
+
+  /// While luma is shut down from the dashboard (see [PowerConsole]), every
+  /// request outside `/admin` gets a 503. `/health` stays answerable so the
+  /// host can still tell the process is alive.
+  Handler _lumaOff(Handler inner) => (request) async {
+        if (!_power.lumaStopped) return inner(request);
+        final path = request.url.path;
+        if (path == 'admin' || path.startsWith('admin/') || path == 'health') {
+          return inner(request);
+        }
+        return errorResponse(503, 'service_stopped',
+            'luma is shut down by the operator. Try again later.');
       };
 
   /// Turns unexpected exceptions into a clean 500 without leaking internals.
@@ -5925,6 +5950,36 @@ class Api {
     });
   }
 
+  Map<String, dynamic> _messageJson(AdminMessage m, StoredUser user) => {
+        'id': m.id,
+        'title': m.title,
+        'body': m.body,
+        'createdAtMs': m.createdAtMs,
+        'read': m.readByUserIds.contains(user.id),
+      };
+
+  /// What the operator sent to this account from the dashboard's Messages
+  /// tab, newest first — feeds the app's inbox.
+  Response _listMyMessages(Request request, StoredUser user) {
+    final messages = store.adminMessagesFor(user).take(100);
+    return jsonResponse(
+        200, {'messages': messages.map((m) => _messageJson(m, user)).toList()});
+  }
+
+  Future<Response> _markMessageRead(Request request, StoredUser user) async {
+    final id = request.params['messageId']!;
+    return store.lock.synchronized(() async {
+      final message = store.adminMessagesById[id];
+      if (message == null || !message.isFor(user)) {
+        return errorResponse(404, 'not_found', 'No such message.');
+      }
+      if (message.readByUserIds.add(user.id)) {
+        await store.saveAdminMessages();
+      }
+      return jsonResponse(200, {'ok': true});
+    });
+  }
+
   Future<Response> _acceptFamilyInvite(Request request, StoredUser user) async {
     final inviteId = request.params['inviteId']!;
     return store.lock.synchronized(() async {
@@ -7140,6 +7195,123 @@ class Api {
     });
   }
 
+  /// Every message sent from the Messages tab, newest first — the JSON for
+  /// script/API callers.
+  Response _adminMessages(Request request) {
+    final messages = store.adminMessagesById.values.toList()
+      ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
+    return jsonResponse(200, {
+      'messages': messages
+          .map((m) => {
+                ...m.toJson(),
+                'readCount': m.readByUserIds.length,
+              })
+          .toList(),
+    });
+  }
+
+  /// Sends a message to every account (`audience=all`) or to the accounts in
+  /// `emails` (`audience=selected`; comma, space or newline separated, plus
+  /// any number of repeated `email` fields from the dashboard's checkboxes).
+  Future<Response> _adminSendMessage(Request request) async {
+    final raw = await request.readAsString();
+    final fields = <String, List<String>>{};
+    try {
+      Uri(query: raw).queryParametersAll.forEach((k, v) => fields[k] = v);
+    } catch (_) {}
+    String field(String name) => (fields[name]?.first ?? '').trim();
+
+    final title = field('title');
+    final body = field('body');
+    final audience = field('audience');
+    if (title.isEmpty || body.isEmpty) {
+      return errorResponse(400, 'bad_request', 'title and body are required.');
+    }
+    if (title.length > 120) {
+      return errorResponse(
+          400, 'title_too_long', 'Keep the title under 120 characters.');
+    }
+    if (body.length > 4000) {
+      return errorResponse(
+          400, 'body_too_long', 'Keep the message under 4000 characters.');
+    }
+    if (audience != AdminMessage.audienceAll &&
+        audience != AdminMessage.audienceSelected) {
+      return errorResponse(
+          400, 'bad_audience', "audience must be 'all' or 'selected'.");
+    }
+
+    return store.lock.synchronized(() async {
+      final recipients = <String>[];
+      if (audience == AdminMessage.audienceSelected) {
+        final emails = <String>{
+          for (final chunk in [
+            ...?fields['email'],
+            ...?fields['emails'],
+          ])
+            ...chunk
+                .split(RegExp(r'[,;\s]+'))
+                .map((e) => e.trim().toLowerCase())
+                .where((e) => e.isNotEmpty),
+        };
+        if (emails.isEmpty) {
+          return errorResponse(
+              400, 'no_recipients', 'Pick at least one recipient.');
+        }
+        final unknown = <String>[];
+        for (final email in emails) {
+          final userId = store.userIdByEmail[email];
+          if (userId == null || !store.usersById.containsKey(userId)) {
+            unknown.add(email);
+          } else {
+            recipients.add(userId);
+          }
+        }
+        if (unknown.isNotEmpty) {
+          return errorResponse(404, 'not_found',
+              'No account with: ${unknown.join(', ')}.');
+        }
+      }
+      final id = base64Url.encode(randomBytes(12));
+      final message = AdminMessage(
+        id: id,
+        title: title,
+        body: body,
+        audience: audience,
+        createdAtMs: DateTime.now().millisecondsSinceEpoch,
+        recipientUserIds: recipients,
+      );
+      store.adminMessagesById[id] = message;
+      await store.saveAdminMessages();
+      await store.logActivity(
+          'admin_message',
+          audience == AdminMessage.audienceAll
+              ? 'A message was sent to all users'
+              : 'A message was sent to ${recipients.length} '
+                  'user${recipients.length == 1 ? '' : 's'}');
+      return _adminFormResponse(request, '/admin',
+          json: {'ok': true, 'id': id}, fragment: 'messages');
+    });
+  }
+
+  Future<Response> _adminDeleteMessage(Request request) async {
+    Map<String, String> form = const {};
+    try {
+      form = Uri.splitQueryString(await request.readAsString());
+    } catch (_) {}
+    final id = form['id']?.trim();
+    if (id == null || id.isEmpty) {
+      return errorResponse(400, 'bad_request', 'id is required.');
+    }
+    return store.lock.synchronized(() async {
+      if (store.adminMessagesById.remove(id) == null) {
+        return errorResponse(404, 'not_found', 'No such message.');
+      }
+      await store.saveAdminMessages();
+      return _adminFormResponse(request, '/admin', fragment: 'messages');
+    });
+  }
+
   /// Reads the single `email` field the Users tab's little forms POST,
   /// normalised the same way sign-in normalises it. Null when absent.
   Future<String?> _adminFormEmail(Request request) async {
@@ -7386,6 +7558,13 @@ class Api {
   late final UpdateCheckConsole _updateCheck = UpdateCheckConsole(
     dataDir: config.dataDir,
     repoPathConfigured: config.repoPathConfigured,
+    startedAt: _startedAt,
+  );
+
+  /// The header's Start / Restart / Shut down buttons; see power_console.dart.
+  late final PowerConsole _power = PowerConsole(
+    dataDir: config.dataDir,
+    repoPath: config.repoPath,
     startedAt: _startedAt,
   );
 
@@ -10486,6 +10665,88 @@ syncToolbar();
           '</tr>';
     }).join();
 
+    // ---- Messages: operator -> in-app inbox ---------------------------------
+    final sentMessages = store.adminMessagesById.values.toList()
+      ..sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
+    final messageRecipients = store.usersById.values.toList()
+      ..sort((a, b) => a.email.compareTo(b.email));
+    final recipientOptions = messageRecipients.map((u) {
+      final safe = _htmlEscape(u.email);
+      return '<label class="msg-user" data-email="${_htmlEscape(u.email.toLowerCase())}">'
+          '<input type="checkbox" name="email" value="$safe"> $safe</label>';
+    }).join();
+    final sentMessageRows = sentMessages.map((m) {
+      final to = m.audience == AdminMessage.audienceAll
+          ? 'All users'
+          : '${m.recipientUserIds.length} selected';
+      final reach = m.audience == AdminMessage.audienceAll
+          ? messageRecipients.where((u) => m.isFor(u)).length
+          : m.recipientUserIds.length;
+      return '<tr>'
+          '<td>${fmtDate(m.createdAtMs)}</td>'
+          '<td>${_htmlEscape(m.title)}'
+          '<div class="muted" style="white-space:pre-wrap;max-width:60ch">'
+          '${_htmlEscape(m.body)}</div></td>'
+          '<td>$to</td>'
+          '<td>${m.readByUserIds.length} / $reach</td>'
+          '<td><form method="post" action="/admin/messages/delete" style="margin:0">'
+          '<input type="hidden" name="id" value="${_htmlEscape(m.id)}">'
+          '<button type="submit" class="btn btn-ghost btn-sm" '
+          'onclick="return confirm(\'Delete this message? It disappears from every inbox.\')">'
+          'Delete</button></form></td>'
+          '</tr>';
+    }).join();
+    final messagesPanel = '<div class="tab-panel" id="panel-messages">'
+        '<div class="card">'
+        '<h2>Send a message</h2>'
+        '<div class="maint-desc">Shows up in the app\'s inbox (top-right) '
+        'for the people you pick, with an unread badge.</div>'
+        '<form method="post" action="/admin/messages/send" id="msgForm">'
+        '<div style="display:flex;flex-direction:column;gap:10px;max-width:640px">'
+        '<input type="text" name="title" maxlength="120" required '
+        'placeholder="Title">'
+        '<textarea name="body" maxlength="4000" rows="5" required '
+        'placeholder="Message" style="resize:vertical"></textarea>'
+        '<div style="display:flex;gap:16px;align-items:center">'
+        '<label><input type="radio" name="audience" value="all" checked> '
+        'All users</label>'
+        '<label><input type="radio" name="audience" value="selected"> '
+        'Selected users</label>'
+        '</div>'
+        '<div id="msgPicker" style="display:none">'
+        '<input type="text" id="msgSearch" placeholder="Filter by email" '
+        'style="margin-bottom:8px">'
+        '<div class="msg-users" style="max-height:220px;overflow:auto;'
+        'display:flex;flex-direction:column;gap:4px">'
+        '${recipientOptions.isEmpty ? '<span class="muted">No accounts yet.</span>' : recipientOptions}'
+        '</div></div>'
+        '<div><button type="submit" class="btn btn-primary">Send</button></div>'
+        '</div></form>'
+        '</div>'
+        '<div class="card table-card"><h2>Sent</h2>'
+        '<table><thead><tr><th>Sent</th><th>Message</th><th>To</th>'
+        '<th>Read</th><th></th></tr></thead>'
+        '<tbody>${sentMessageRows.isEmpty ? '<tr><td colspan="5" class="muted">Nothing sent yet.</td></tr>' : sentMessageRows}</tbody></table>'
+        '</div>'
+        '<script>(function(){'
+        'var f=document.getElementById("msgForm");'
+        'var p=document.getElementById("msgPicker");'
+        'var s=document.getElementById("msgSearch");'
+        'function sync(){var sel=f.audience.value==="selected";'
+        'p.style.display=sel?"block":"none";}'
+        'f.addEventListener("change",sync);sync();'
+        's.addEventListener("input",function(){var q=s.value.trim().toLowerCase();'
+        'p.querySelectorAll(".msg-user").forEach(function(l){'
+        'l.style.display=l.dataset.email.indexOf(q)>=0?"":"none";});});'
+        'f.addEventListener("submit",function(e){'
+        'if(f.audience.value==="selected"&&'
+        '!f.querySelector("input[name=email]:checked")){'
+        'e.preventDefault();alert("Pick at least one recipient.");return;}'
+        'if(f.audience.value==="all"&&'
+        '!confirm("Send this to every user?")){e.preventDefault();}});'
+        '})();</script>'
+        '</div>';
+
     final pluginStats = store.pluginDownloadsById.values.toList()
       ..sort((a, b) => b.count.compareTo(a.count));
     final pluginDownloadsTotal =
@@ -10502,16 +10763,18 @@ syncToolbar();
     final body = '<!doctype html><html><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         '<title>luma admin</title>'
-        '<style>$_adminCss$_bannersCss$_bmCss$_adminPolishCss$_bgCss</style>'
+        '<style>$_adminCss$_bannersCss$_bmCss$_adminPolishCss$_bgCss${PowerConsole.css}</style>'
         '</head><body class="no-js"><div class="wrap admin-wrap">'
         '<header class="top"><h1>luma<span class="dot">.</span> admin</h1>'
         '<span class="sub">server console</span>'
-        '<div style="margin-left:auto;display:flex;gap:8px;align-items:center">'
+        '<div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">'
+        '${PowerConsole.headerButtonsHtml}'
         '<a href="/admin/website" class="btn btn-ghost btn-sm">Website</a>'
         '<form method="post" action="/admin/logout" style="margin:0">'
         '<button type="submit" class="btn btn-ghost btn-sm">Sign out</button>'
         '</form>'
         '</div></header>'
+        '${PowerConsole.dialogHtml}'
         '<div class="stats">'
         '<div class="stat"><div class="n">${stats['totalAccounts']}</div><div class="l">Total accounts</div></div>'
         '<div class="stat"><div class="n">${stats['activeAccounts']}</div><div class="l">Active</div></div>'
@@ -10526,6 +10789,7 @@ syncToolbar();
         '<button class="tab-btn" data-tab="inbox">Inbox'
         '${pendingDeletions.isEmpty ? '' : '<span class="tab-count">${pendingDeletions.length}</span>'}'
         '</button>'
+        '<button class="tab-btn" data-tab="messages">Messages</button>'
         '<button class="tab-btn" data-tab="products">Products</button>'
         '<button class="tab-btn" data-tab="activity">Activity</button>'
         '<button class="tab-btn" data-tab="plugins">Plugins</button>'
@@ -10560,6 +10824,7 @@ syncToolbar();
         '<tbody>${decidedDeletionRows.isEmpty ? '<tr><td colspan="5" class="muted">No decisions yet.</td></tr>' : decidedDeletionRows}</tbody></table>'
         '</div>'
         '</div>'
+        '$messagesPanel'
         '<div class="tab-panel" id="panel-products">'
         '<div class="card">'
         '<h2>Grant a plan</h2>'
@@ -10826,6 +11091,7 @@ syncToolbar();
         '<script>${DeployConsole.deployScript}</script>'
         '<script>${UpdateCheckConsole.updateCheckScript}</script>'
         '<script>${UpdateCheckConsole.rebootScript}</script>'
+        '<script>${PowerConsole.script}</script>'
         '</body></html>';
 
     return Response(200,
@@ -12845,6 +13111,7 @@ window.lumaAskReason = function (form, message) {
     users: document.getElementById('panel-users'),
     usage: document.getElementById('panel-usage'),
     inbox: document.getElementById('panel-inbox'),
+    messages: document.getElementById('panel-messages'),
     products: document.getElementById('panel-products'),
     activity: document.getElementById('panel-activity'),
     plugins: document.getElementById('panel-plugins'),
