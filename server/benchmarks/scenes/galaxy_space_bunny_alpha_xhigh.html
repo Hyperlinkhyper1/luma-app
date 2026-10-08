@@ -1075,6 +1075,12 @@ function animate() {
   warp = isManualRoute ? 0 : smooth(.245,.315,t)*(1-smooth(.405,.465,t));
   starMaterial.uniforms.uTime.value = elapsed * .52;
   accretionMaterial.uniforms.uTime.value = visualTime;
+  if (departureSystem.userData.star) {
+    departureSystem.userData.star.userData.halo.material.uniforms.uTime.value = visualTime;
+  }
+  if (arrivalSystem.userData.star) {
+    arrivalSystem.userData.star.userData.halo.material.uniforms.uTime.value = visualTime;
+  }
   warpTunnel.position.copy(ship.position);
   warpTunnel.quaternion.copy(ship.quaternion);
   warpTunnel.visible = warp > .015;
