@@ -2,25 +2,25 @@
   "id": "game-tools",
   "name": "Game Tools",
   "version": "1.0.0",
-  "description": "Helpers for the games you play, one per sidebar entry. Steam: price history, the CS2 market and a selling calculator. Roblox: Mafia role counting. Minecraft is coming soon.",
+  "description": "Helpers for the games you play, one per sidebar entry. Steam: price history, the CS2 market and a selling calculator. Roblox: Mafia role counting. Minecraft: 29 tools for players, admins and developers — enchant optimizer, shape and map art generators, guides, and command and datapack generators.",
   "icon": "sports_esports",
   "category": "Games",
   "i18n": {
     "nl": {
       "name": "Gamehulpmiddelen",
-      "description": "Hulpmiddelen voor de games die je speelt, één per item in de zijbalk. Steam: prijsgeschiedenis, de CS2-markt en een verkoopcalculator. Roblox: Mafia-rollen tellen. Minecraft komt eraan."
+      "description": "Hulpmiddelen voor de games die je speelt, één per item in de zijbalk. Steam: prijsgeschiedenis, de CS2-markt en een verkoopcalculator. Roblox: Mafia-rollen tellen. Minecraft: 29 tools voor spelers, beheerders en ontwikkelaars — betoveringsoptimalisatie, vorm- en kaartkunstgenerators, gidsen, en commando- en datapackgenerators."
     },
     "fr": {
       "name": "Outils de jeux",
-      "description": "Des outils pour les jeux que vous pratiquez, un par entrée de la barre latérale. Steam : historique des prix, marché CS2 et calculateur de vente. Roblox : comptage des rôles Mafia. Minecraft arrive bientôt."
+      "description": "Des outils pour les jeux que vous pratiquez, un par entrée de la barre latérale. Steam : historique des prix, marché CS2 et calculateur de vente. Roblox : comptage des rôles Mafia. Minecraft : 29 outils pour joueurs, admins et développeurs — optimiseur d'enchantements, générateurs de formes et de map art, guides, et générateurs de commandes et de datapacks."
     },
     "es": {
       "name": "Herramientas de juegos",
-      "description": "Utilidades para los juegos que juegas, una por cada entrada de la barra lateral. Steam: historial de precios, el mercado de CS2 y una calculadora de venta. Roblox: conteo de roles de la Mafia. Minecraft llegará pronto."
+      "description": "Utilidades para los juegos que juegas, una por cada entrada de la barra lateral. Steam: historial de precios, el mercado de CS2 y una calculadora de venta. Roblox: conteo de roles de la Mafia. Minecraft: 29 herramientas para jugadores, admins y desarrolladores: optimizador de encantamientos, generadores de formas y map art, guías, y generadores de comandos y datapacks."
     },
     "zh": {
       "name": "游戏工具",
-      "description": "为你玩的游戏提供辅助工具，侧边栏每项对应一款游戏。Steam：价格历史、CS2 市场和出售计算器。Roblox：狼人杀角色统计。Minecraft 即将推出。"
+      "description": "为你玩的游戏提供辅助工具，侧边栏每项对应一款游戏。Steam：价格历史、CS2 市场和出售计算器。Roblox：狼人杀角色统计。Minecraft：面向玩家、管理员和开发者的 29 款工具——附魔优化器、形状与地图画生成器、指南，以及命令与数据包生成器。"
     }
   }
 }

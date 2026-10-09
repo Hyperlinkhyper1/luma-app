@@ -33431,4 +33431,3093 @@ class LZh extends L {
   String sceneAssetStudioCatalogFootprint(String width, String depth) {
     return '目录占地尺寸：$width x $depth米。模型接受现有模型的w和d参数。';
   }
+
+  @override
+  String get gameToolsMinecraftBlurb => '建造、管理与数据包';
+
+  @override
+  String mcToolsKicker(String version) {
+    return 'Minecraft Java $version';
+  }
+
+  @override
+  String get mcToolsHeadline => '为建造者和创作者打造的 Minecraft 工具';
+
+  @override
+  String get mcToolsSubtitle => '规划建筑、设计装备、管理服务器、编写数据包。一切都在本设备上运行。';
+
+  @override
+  String get mcToolsSearchHint => '搜索工具';
+
+  @override
+  String get mcToolsAudiencePlayers => '玩家';
+
+  @override
+  String get mcToolsAudiencePlayersBlurb => '建造、合成与查询';
+
+  @override
+  String get mcToolsAudienceAdmins => '管理员';
+
+  @override
+  String get mcToolsAudienceAdminsBlurb => '世界、聊天与命令';
+
+  @override
+  String get mcToolsAudienceDevelopers => '开发者';
+
+  @override
+  String get mcToolsAudienceDevelopersBlurb => '素材与数据包文件';
+
+  @override
+  String get mcToolsGroupBuild => '建造与设计';
+
+  @override
+  String get mcToolsGroupGear => '装备与合成';
+
+  @override
+  String get mcToolsGroupGuides => '指南';
+
+  @override
+  String get mcToolsGroupWorlds => '世界';
+
+  @override
+  String get mcToolsGroupChat => '聊天与文本';
+
+  @override
+  String get mcToolsGroupGameplay => '命令与玩法';
+
+  @override
+  String get mcToolsGroupAssets => '素材';
+
+  @override
+  String get mcToolsGroupDatapacks => '数据包生成器';
+
+  @override
+  String mcToolsSearchResults(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个工具',
+      zero: '没有匹配的工具',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mcToolsNoMatchBody => '换个词试试——每个工具都能按名称或用途搜索到。';
+
+  @override
+  String get mcToolsDisclaimer =>
+      '非 Minecraft 官方产品。未经 Mojang 或 Microsoft 认可，亦与其无关。';
+
+  @override
+  String mcToolsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个工具',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mcToolEnchantOptimizer => '附魔优化器';
+
+  @override
+  String get mcToolEnchantOptimizerBlurb => '找出最省经验的铁砧附魔顺序。';
+
+  @override
+  String get mcToolShapeGenerator => '形状生成器';
+
+  @override
+  String get mcToolShapeGeneratorBlurb => '圆、拱、球、穹顶与圆柱，逐块规划。';
+
+  @override
+  String get mcToolSkinEditor => '皮肤编辑器';
+
+  @override
+  String get mcToolSkinEditorBlurb => '在实时 3D 模型上绘制皮肤并保存 PNG。';
+
+  @override
+  String get mcToolSchematicOrganizer => '原理图整理器';
+
+  @override
+  String get mcToolSchematicOrganizerBlurb => '预览、收藏、分组和重命名整个文件夹的原理图。';
+
+  @override
+  String get mcToolVillagerGuide => '村民交易';
+
+  @override
+  String get mcToolVillagerGuideBlurb => '所有交易、价格、等级及出现概率。';
+
+  @override
+  String get mcToolOreGuide => '矿石分布';
+
+  @override
+  String get mcToolOreGuideBlurb => '来自游戏文件的矿石曲线与每种矿石的最佳 Y 层。';
+
+  @override
+  String get mcToolPotionGuide => '药水指南';
+
+  @override
+  String get mcToolPotionGuideBlurb => '配方、材料、持续时间与升级路线。';
+
+  @override
+  String get mcToolSulfurCubeGuide => '硫磺立方指南';
+
+  @override
+  String get mcToolSulfurCubeGuideBlurb => '硫磺立方吞下每种方块后会怎样。';
+
+  @override
+  String get mcToolBeaconGuide => '信标指南';
+
+  @override
+  String get mcToolBeaconGuideBlurb => '金字塔规模、各层级范围及每种效果的作用。';
+
+  @override
+  String get mcToolShieldMaker => '盾牌制作器';
+
+  @override
+  String get mcToolShieldMakerBlurb => '在盾牌上叠加旗帜图案并获取命令。';
+
+  @override
+  String get mcToolFireworkMaker => '烟花制作器';
+
+  @override
+  String get mcToolFireworkMakerBlurb => '逐个设计烟花之星，附配方与命令。';
+
+  @override
+  String get mcToolBannerMaker => '旗帜制作器';
+
+  @override
+  String get mcToolBannerMakerBlurb => '叠加最多 16 层图案，获取织布机步骤与命令。';
+
+  @override
+  String get mcToolBuildPlanner => '建筑规划器';
+
+  @override
+  String get mcToolBuildPlannerBlurb => '以 3D 打开原理图，逐层浏览并获取材料清单。';
+
+  @override
+  String get mcToolMapArtGenerator => '地图画生成器';
+
+  @override
+  String get mcToolMapArtGeneratorBlurb => '把任意图片变成可建造的地图画。';
+
+  @override
+  String get mcToolRoofGenerator => '屋顶设计器';
+
+  @override
+  String get mcToolRoofGeneratorBlurb => '人字顶、四坡顶、复折顶等，导出为原理图。';
+
+  @override
+  String get mcToolArmorDesigner => '盔甲纹饰与染色';
+
+  @override
+  String get mcToolArmorDesignerBlurb => '预览纹饰与皮革颜色，并找出染料配比。';
+
+  @override
+  String get mcToolFlatPreset => '超平坦世界生成器';
+
+  @override
+  String get mcToolFlatPresetBlurb => '堆叠超平坦图层并获取预设。';
+
+  @override
+  String get mcToolCustomWorld => '自定义世界预设';
+
+  @override
+  String get mcToolCustomWorldBlurb => '以数据包调整海平面、地形方块与生物群系。';
+
+  @override
+  String get mcToolColorCodes => '颜色代码';
+
+  @override
+  String get mcToolColorCodesBlurb => '所有 § 颜色与格式代码，附实时预览。';
+
+  @override
+  String get mcToolTitleGenerator => '标题生成器';
+
+  @override
+  String get mcToolTitleGeneratorBlurb => '标题、副标题与动作栏，含时间设置。';
+
+  @override
+  String get mcToolTellrawGenerator => 'Tellraw 生成器';
+
+  @override
+  String get mcToolTellrawGeneratorBlurb => '带悬停与点击动作的富文本聊天消息。';
+
+  @override
+  String get mcToolMotdGenerator => 'MOTD 生成器';
+
+  @override
+  String get mcToolMotdGeneratorBlurb => '设计服务器列表消息并预览。';
+
+  @override
+  String get mcToolLootTables => '战利品表';
+
+  @override
+  String get mcToolLootTablesBlurb => '以 JSON 构建箱子、生物与方块战利品表。';
+
+  @override
+  String get mcToolCustomPotions => '自定义药水';
+
+  @override
+  String get mcToolCustomPotionsBlurb => '任意效果的药水、喷溅药水与药箭。';
+
+  @override
+  String get mcToolCommandGenerator => '命令生成器';
+
+  @override
+  String get mcToolCommandGeneratorBlurb =>
+      'give、summon、effect、teleport 等命令，自动帮你填好。';
+
+  @override
+  String get mcToolAssetLibrary => '素材库';
+
+  @override
+  String get mcToolAssetLibraryBlurb => '来自你自己游戏的所有方块、物品、生物材质与音效。';
+
+  @override
+  String get mcToolRecipeGenerator => '配方生成器';
+
+  @override
+  String get mcToolRecipeGeneratorBlurb => '合成、熔炼、切石与锻造配方。';
+
+  @override
+  String get mcToolEnchantmentGenerator => '附魔生成器';
+
+  @override
+  String get mcToolEnchantmentGeneratorBlurb => '编写自定义的数据驱动附魔。';
+
+  @override
+  String get mcToolAdvancementGenerator => '进度生成器';
+
+  @override
+  String get mcToolAdvancementGeneratorBlurb => '构建带条件、显示与奖励的进度。';
+
+  @override
+  String get mcCopiedToClipboard => '已复制到剪贴板';
+
+  @override
+  String mcCouldNotSave(String error) {
+    return '无法保存：$error';
+  }
+
+  @override
+  String get mcAllTools => '所有工具';
+
+  @override
+  String get mcBackToTools => '返回所有 Minecraft 工具';
+
+  @override
+  String get mcOutput => '输出';
+
+  @override
+  String get mcSave => '保存';
+
+  @override
+  String get mcCopy => '复制';
+
+  @override
+  String get mcSearchIds => '搜索 ID…';
+
+  @override
+  String get mcStatBlocks => '方块';
+
+  @override
+  String get mcStatFootprint => '占地';
+
+  @override
+  String get mcStatTall => '高';
+
+  @override
+  String get mcExport => '导出';
+
+  @override
+  String mcSaveExtension(String extension) {
+    return '保存为 .$extension';
+  }
+
+  @override
+  String get mcMaterials => '材料';
+
+  @override
+  String get mcCopyList => '复制清单';
+
+  @override
+  String get mcMaterialListCopied => '已复制材料清单';
+
+  @override
+  String get mcShowFewer => '收起';
+
+  @override
+  String mcShowAllCount(int count) {
+    return '显示全部 $count 项';
+  }
+
+  @override
+  String get mcSpanAddPart => '添加带样式的片段';
+
+  @override
+  String get mcSpanText => '文本';
+
+  @override
+  String get mcSpanMore => ' 更多';
+
+  @override
+  String get mcBold => '粗体';
+
+  @override
+  String get mcItalic => '斜体';
+
+  @override
+  String get mcUnderlined => '下划线';
+
+  @override
+  String get mcStrikethrough => '删除线';
+
+  @override
+  String get mcObfuscated => '乱码';
+
+  @override
+  String get mcRemovePart => '移除片段';
+
+  @override
+  String get mcOnClickNothing => '点击：无操作';
+
+  @override
+  String get mcClickOpenUrl => '打开网址';
+
+  @override
+  String get mcClickRunCommand => '执行命令';
+
+  @override
+  String get mcClickSuggestCommand => '建议命令';
+
+  @override
+  String get mcClickCopy => '复制到剪贴板';
+
+  @override
+  String get mcClickChangePage => '翻页（书本）';
+
+  @override
+  String get mcClickNothing => '无';
+
+  @override
+  String get mcHintPageNumber => '页码';
+
+  @override
+  String get mcHintTextToCopy => '要复制的文本';
+
+  @override
+  String get mcHintHoverText => '悬停文本（可选）';
+
+  @override
+  String get mcTextColour => '文本颜色';
+
+  @override
+  String get mcHexColour => '十六进制颜色';
+
+  @override
+  String get mcDefault => '默认';
+
+  @override
+  String get mcUseHex => '使用十六进制';
+
+  @override
+  String get mcTagFiles => '文件';
+
+  @override
+  String get mcTagExport => '导出';
+
+  @override
+  String get mcTagPaint => '绘制';
+
+  @override
+  String get mcTagPopular => '热门';
+
+  @override
+  String get mcTagDesign => '设计';
+
+  @override
+  String get mcTagGuide => '指南';
+
+  @override
+  String get mcTagNew => '新';
+
+  @override
+  String get mcTagWorld => '世界';
+
+  @override
+  String get mcTagDatapack => '数据包';
+
+  @override
+  String get mcTagText => '文本';
+
+  @override
+  String get mcTagCommand => '命令';
+
+  @override
+  String get mcTagServer => '服务器';
+
+  @override
+  String get mcTagBrowse => '浏览';
+
+  @override
+  String get mcEnchItemSword => '剑';
+
+  @override
+  String get mcEnchItemSpear => '矛';
+
+  @override
+  String get mcEnchItemAxe => '斧';
+
+  @override
+  String get mcEnchItemMace => '重锤';
+
+  @override
+  String get mcEnchItemTrident => '三叉戟';
+
+  @override
+  String get mcEnchItemBow => '弓';
+
+  @override
+  String get mcEnchItemCrossbow => '弩';
+
+  @override
+  String get mcEnchItemPickaxe => '镐';
+
+  @override
+  String get mcEnchItemShovel => '锹';
+
+  @override
+  String get mcEnchItemHoe => '锄';
+
+  @override
+  String get mcEnchItemHelmet => '头盔';
+
+  @override
+  String get mcEnchItemChestplate => '胸甲';
+
+  @override
+  String get mcEnchItemLeggings => '护腿';
+
+  @override
+  String get mcEnchItemBoots => '靴子';
+
+  @override
+  String get mcEnchItemElytra => '鞘翅';
+
+  @override
+  String get mcEnchItemFishingRod => '钓鱼竿';
+
+  @override
+  String get mcEnchItemShield => '盾牌';
+
+  @override
+  String get mcEnchItemShears => '剪刀';
+
+  @override
+  String get mcEnchItemFlintAndSteel => '打火石';
+
+  @override
+  String get mcEnchItemBrush => '刷子';
+
+  @override
+  String get mcEnchItemCarrotOnAStick => '胡萝卜钓竿';
+
+  @override
+  String get mcEnchItemBookMerge => '书（合并）';
+
+  @override
+  String get mcEnchNeedTwo => '至少选择两个附魔才能合并成一本书。';
+
+  @override
+  String get mcEnchTooExpensive =>
+      '在生存模式下，每种顺序都会出现“过于昂贵！”。请去掉一个附魔、换一件新物品，或关闭生存限制。';
+
+  @override
+  String get mcEnchItem => '物品';
+
+  @override
+  String get mcEnchEnchantments => '附魔';
+
+  @override
+  String get mcEnchMaxAll => '全部最高';
+
+  @override
+  String get mcEnchAnvilSettings => '铁砧设置';
+
+  @override
+  String get mcEnchPriorUses => '该物品已使用铁砧的次数';
+
+  @override
+  String get mcEnchSurvivalLimit => '生存限制';
+
+  @override
+  String get mcEnchSurvivalLimitDetail => '超过 39 级的步骤会“过于昂贵！”';
+
+  @override
+  String mcEnchConflicts(String other) {
+    return '与 $other 冲突——点按以替换';
+  }
+
+  @override
+  String get mcEnchNoOrder => '没有可行的顺序';
+
+  @override
+  String get mcEnchPickSome => '选择一些附魔';
+
+  @override
+  String get mcEnchPickSomeBody => '选择一件物品和想要的等级。程序会尝试所有可能的铁砧顺序，并逐步列出最省经验的方案。';
+
+  @override
+  String get mcEnchLevelsTotal => '总等级';
+
+  @override
+  String mcEnchAnvilUses(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '次铁砧操作',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mcEnchMostExpensive => '最贵的一步';
+
+  @override
+  String get mcEnchXpPoints => '经验值';
+
+  @override
+  String get mcEnchSteps => '步骤';
+
+  @override
+  String mcEnchFootnote(int penalty, int cost) {
+    return '该物品最终的累积惩罚为 $penalty，因此下次使用铁砧时，在附魔费用之前就要 $cost 级。费用依照 Java 版 26.3 规则：每个被牺牲的附魔花费“等级 × 附魔书倍率”，两侧的累积惩罚各加 2ⁿ−1。';
+  }
+
+  @override
+  String mcEnchLevelsShort(int levels) {
+    return '$levels 级';
+  }
+
+  @override
+  String mcEnchBook(String enchantments) {
+    return '附魔书（$enchantments）';
+  }
+
+  @override
+  String get mcShapeCircle => '圆形';
+
+  @override
+  String get mcShapeArch => '拱与曲线';
+
+  @override
+  String get mcShape3d => '3D 形状';
+
+  @override
+  String get mcShapeRound => '圆拱';
+
+  @override
+  String get mcShapePointed => '尖拱（哥特式）';
+
+  @override
+  String get mcShapeParabolic => '抛物线拱';
+
+  @override
+  String get mcShapeSegmental => '弓形拱';
+
+  @override
+  String get mcShapeSphere => '球体';
+
+  @override
+  String get mcShapeDome => '穹顶';
+
+  @override
+  String get mcShapeCylinder => '圆柱';
+
+  @override
+  String get mcShapeCone => '圆锥';
+
+  @override
+  String get mcShapePyramid => '金字塔';
+
+  @override
+  String get mcShapeTorus => '圆环';
+
+  @override
+  String get mcShapeSize => '尺寸';
+
+  @override
+  String get mcShapeSpan => '跨度';
+
+  @override
+  String get mcShapeWidth => '宽度';
+
+  @override
+  String get mcShapePerfectCircle => '正圆';
+
+  @override
+  String get mcShapeSameSize => '各轴尺寸相同';
+
+  @override
+  String get mcShapeRise => '拱高';
+
+  @override
+  String get mcShapeLength => '长度';
+
+  @override
+  String get mcShapeHeight => '高度';
+
+  @override
+  String get mcShapeDepth => '深度';
+
+  @override
+  String get mcShapeTube => '管半径';
+
+  @override
+  String get mcShapeArchDepth => '深度（嵌入墙内的方块数）';
+
+  @override
+  String get mcShapeStyle => '样式';
+
+  @override
+  String get mcShapeFilled => '实心';
+
+  @override
+  String get mcShapeHollow => '空心';
+
+  @override
+  String get mcShapeHollowDetail => '只有外壳——方块少得多';
+
+  @override
+  String get mcShapeWall => '墙厚';
+
+  @override
+  String get mcShapeThick => '粗轮廓';
+
+  @override
+  String get mcShapeThickDetail => '没有斜向缝隙——生物无法穿过';
+
+  @override
+  String get mcShapeBlock => '方块';
+
+  @override
+  String mcShapeLayerOf(int layer, int count) {
+    return '第 $layer 层，共 $count 层';
+  }
+
+  @override
+  String get mcShapePlan => '平面图';
+
+  @override
+  String get mcShapeLayer => '层';
+
+  @override
+  String get mcShapeGhost => '灰点是下一层，用来对齐每一层。';
+
+  @override
+  String mcShapeRuns(String runs) {
+    return '从最上排开始的段长：$runs。其余四分之一镜像照做即可。';
+  }
+
+  @override
+  String get mcVillNovice => '新手';
+
+  @override
+  String get mcVillApprentice => '学徒';
+
+  @override
+  String get mcVillJourneyman => '老手';
+
+  @override
+  String get mcVillExpert => '专家';
+
+  @override
+  String get mcVillMaster => '大师';
+
+  @override
+  String get mcVillSearch => '哪个村民交易……（例如 mending、glass、emerald）';
+
+  @override
+  String get mcVillTraderBody => '偶尔出现在玩家附近，从不补货。每次到访都从下面的列表中随机抽取交易。';
+
+  @override
+  String mcVillBody(String workstation) {
+    return '工作站点：$workstation。每个等级都会解锁新交易，从该等级的交易池中随机抽取。';
+  }
+
+  @override
+  String mcVillPicks(int picks, int total) {
+    return '$total 选 $picks';
+  }
+
+  @override
+  String mcVillLevelTitle(int level, String name) {
+    return '等级 $level · $name';
+  }
+
+  @override
+  String mcVillLevelXp(int xp) {
+    return '（$xp 经验）';
+  }
+
+  @override
+  String get mcVillNoTrades => '没有村民交易这个';
+
+  @override
+  String get mcVillNoTradesBody => '试试 “book”、“glass” 或 “diamond” 这样的物品 ID。';
+
+  @override
+  String mcVillUses(int count) {
+    return '$count 次';
+  }
+
+  @override
+  String mcVillXp(int xp) {
+    return '$xp 经验';
+  }
+
+  @override
+  String mcVillNoteEnchant(String min, String max) {
+    return '以 $min–$max 级附魔';
+  }
+
+  @override
+  String get mcVillNoteRandomEnchant => '随机附魔';
+
+  @override
+  String mcVillNoteMap(String place) {
+    return '指向最近的 $place 的地图';
+  }
+
+  @override
+  String get mcVillNoteExplorer => '探险家地图';
+
+  @override
+  String get mcVillNoteDyes => '随机染色';
+
+  @override
+  String get mcVillNoteStew => '随机炖菜效果';
+
+  @override
+  String get mcVillNoteRandomPotion => '随机药水效果';
+
+  @override
+  String mcVillNotePotion(String potion) {
+    return '药水：$potion';
+  }
+
+  @override
+  String get mcVillNoteTreasure => '宝藏附魔价格翻倍';
+
+  @override
+  String mcVillNoteVariants(String variants) {
+    return '仅限 $variants 村民';
+  }
+
+  @override
+  String get mcVillNotePrice => '价格随附魔等级变化';
+
+  @override
+  String get mcOreTipCoal =>
+      '海平面以上随处可见；山地还有一条一直延伸到建筑上限的矿带。Y 136 以下接触空气的煤有一半会被跳过，所以地下洞穴里看到的更少。';
+
+  @override
+  String get mcOreTipIron =>
+      '两条矿带：一条较小，峰值在 Y 16；一条巨大的山地矿带，峰值接近 Y 232；另外 Y 72 以下有零散小矿脉。';
+
+  @override
+  String get mcOreTipCopper => '峰值在 Y 48。溶洞在同样高度还会生成第二批更大的矿脉。';
+
+  @override
+  String get mcOreTipGold =>
+      '峰值在 Y −16，最底部还有额外的小矿脉。恶地每个区块再增加 50 次生成尝试，范围 Y 32 到 Y 256。';
+
+  @override
+  String get mcOreTipRedstone => '集中在世界底部。在基岩上方挖矿——大约 Y −58。';
+
+  @override
+  String get mcOreTipLapis =>
+      '一条在 Y 0 处达到峰值的窄矿带，以及从 Y −64 到 64 的“埋藏”分布，永远不会出现在洞壁上。';
+
+  @override
+  String get mcOreTipDiamond =>
+      '越深越好，直到基岩。大多数接触空气的钻石会被丢弃，所以在 Y −58 开支道挖矿，而不是探索洞穴。';
+
+  @override
+  String get mcOreTipEmerald => '只在山地生物群系中以单个方块出现，峰值接近 Y 232。';
+
+  @override
+  String get mcOreTipQuartz => '在下界 Y 10 到 117 之间均匀分布；玄武岩三角洲的矿脉多一倍。';
+
+  @override
+  String get mcOreTipNetherGold => '在 Y 10 到 117 之间均匀分布；玄武岩三角洲数量翻倍。';
+
+  @override
+  String get mcOreTipDebris =>
+      '主要位于 Y 8 到 24 之间，峰值在 Y 16。它从不暴露在空气中——用条带挖矿，或用床、TNT 快速清理。';
+
+  @override
+  String get mcOreBestLevel => '最佳挖矿高度';
+
+  @override
+  String get mcOreRange => '可能出现的范围';
+
+  @override
+  String get mcOreAttempts => '每区块矿脉尝试次数';
+
+  @override
+  String get mcOreLargest => '最大矿脉规模';
+
+  @override
+  String mcOreDistribution(String ore) {
+    return '$ore 的分布';
+  }
+
+  @override
+  String get mcOreBiomeBonus => '生物群系加成';
+
+  @override
+  String get mcOreTips => '提示';
+
+  @override
+  String get mcOrePlacements => '生成规则';
+
+  @override
+  String get mcOreAllOverworld => '主世界全部矿石';
+
+  @override
+  String get mcOreNether => '下界';
+
+  @override
+  String mcOreTriangle(int y) {
+    return '三角分布，峰值 Y $y';
+  }
+
+  @override
+  String get mcOreEven => '均匀分布';
+
+  @override
+  String mcOrePerChunk(int count) {
+    return '每区块 $count 次';
+  }
+
+  @override
+  String mcOreOneIn(int count) {
+    return '每 $count 个区块 1 次';
+  }
+
+  @override
+  String mcOrePlacementLine(
+    int min,
+    int max,
+    String shape,
+    String attempts,
+    int size,
+  ) {
+    return 'Y $min 到 $max，$shape · $attempts · 规模 $size';
+  }
+
+  @override
+  String mcOreAirSkip(int percent) {
+    return '贴近空气时跳过 $percent%';
+  }
+
+  @override
+  String mcOrePeak(int y) {
+    return '峰值 Y $y';
+  }
+
+  @override
+  String get mcPotionDescSwiftness => '速度 I 使行走速度提高 20%（速度 II：40%）。';
+
+  @override
+  String get mcPotionDescLeaping => '跳得更高，摔落伤害更少。';
+
+  @override
+  String get mcPotionDescStrength => '每级近战伤害 +3。';
+
+  @override
+  String get mcPotionDescHealing => '恢复 4 点生命（II 级为 8 点）。会伤害亡灵生物。';
+
+  @override
+  String get mcPotionDescRegeneration => '每 2.5 秒恢复一颗心（II 级为 1.2 秒）。';
+
+  @override
+  String get mcPotionDescPoison => '持续扣血直到剩半颗心；不会致死。';
+
+  @override
+  String get mcPotionDescFireResistance => '免疫火焰、熔岩和岩浆块。';
+
+  @override
+  String get mcPotionDescWaterBreathing => '持续期间可在水下呼吸。';
+
+  @override
+  String get mcPotionDescNightVision => '在黑暗中视物，水下也看得清。';
+
+  @override
+  String get mcPotionDescSlowFalling => '缓慢下落，不受摔落伤害。';
+
+  @override
+  String get mcPotionDescTurtleMaster => '缓慢 IV 与抗性提升 III（加强版为 VI 与 IV）。';
+
+  @override
+  String get mcPotionDescWindCharged => '死亡时释放一阵风爆。';
+
+  @override
+  String get mcPotionDescWeaving => '死亡时生成蜘蛛网；在蜘蛛网中移动更快。';
+
+  @override
+  String get mcPotionDescOozing => '死亡时释放两只中型史莱姆。';
+
+  @override
+  String get mcPotionDescInfested => '受伤时有几率放出蠹虫。';
+
+  @override
+  String get mcPotionDescSlowness => '缓慢 I 使速度降低 15%（IV：60%）。';
+
+  @override
+  String get mcPotionDescHarming => '造成 6 点伤害（II 级 12 点）。会治疗亡灵生物。';
+
+  @override
+  String get mcPotionDescInvisibility => '生物不再注意你，除非你穿着盔甲。';
+
+  @override
+  String get mcPotionDescWeakness => '近战伤害 −4。治愈僵尸村民时需要。';
+
+  @override
+  String get mcPotionSearch => '搜索药水或材料';
+
+  @override
+  String get mcPotionExtended => '延长版';
+
+  @override
+  String get mcPotionRedstone => '+ 红石粉';
+
+  @override
+  String get mcPotionLevel2 => 'II 级';
+
+  @override
+  String get mcPotionGlowstone => '+ 萤石粉';
+
+  @override
+  String get mcPotionBeneficial => '有益';
+
+  @override
+  String get mcPotionHarmful => '有害';
+
+  @override
+  String mcPotionEffect(String effect) {
+    return '效果：$effect';
+  }
+
+  @override
+  String get mcPotionBrewing => '酿造路线';
+
+  @override
+  String get mcPotionDurations => '持续时间';
+
+  @override
+  String get mcPotionDrinkSplash => '饮用 / 喷溅';
+
+  @override
+  String get mcPotionLingering => '滞留';
+
+  @override
+  String get mcPotionArrow => '箭';
+
+  @override
+  String get mcPotionInstant => '瞬间';
+
+  @override
+  String get mcPotionVariants => '变体';
+
+  @override
+  String get mcPotionSplash => '喷溅型：加入火药酿造。持续时间相同；溅到的所有生物都会受影响。';
+
+  @override
+  String get mcPotionLingeringNote => '滞留型：用龙息酿造喷溅药水。会产生持续四分之一时长的药水云。';
+
+  @override
+  String get mcPotionArrows => '药箭：在工作台中把 8 支箭围在一瓶滞留药水周围。持续时间为八分之一。';
+
+  @override
+  String mcPotionCorrupts(String potion) {
+    return '发酵蛛眼会把它变成 $potion——点按打开。';
+  }
+
+  @override
+  String get mcPotionFuel => '酿造台每 20 次酿造消耗一份烈焰粉，一次最多放三瓶。';
+
+  @override
+  String get mcCubeRegular => '普通';
+
+  @override
+  String get mcCubeRegularBlocks => '混凝土粉末、泥土与软方块';
+
+  @override
+  String get mcCubeBouncy => '弹跳';
+
+  @override
+  String get mcCubeBouncyBlocks => '原木、木板与竹子';
+
+  @override
+  String get mcCubeSlowBouncy => '慢速弹跳';
+
+  @override
+  String get mcCubeSlowBouncyBlocks => '石头、矿石与陶瓦';
+
+  @override
+  String get mcCubeSlowFlat => '慢速扁平';
+
+  @override
+  String get mcCubeSlowFlatBlocks => '金属矿石与金属块';
+
+  @override
+  String get mcCubeFastFlat => '快速扁平';
+
+  @override
+  String get mcCubeFastFlatBlocks => '苔藓、珊瑚、南瓜与海绵';
+
+  @override
+  String get mcCubeLight => '轻盈';
+
+  @override
+  String get mcCubeLightBlocks => '羊毛';
+
+  @override
+  String get mcCubeFastSliding => '快速滑行';
+
+  @override
+  String get mcCubeFastSlidingBlocks => '冰与雪';
+
+  @override
+  String get mcCubeSlowSliding => '慢速滑行';
+
+  @override
+  String get mcCubeSlowSlidingBlocks => '蘑菇方块与疣块';
+
+  @override
+  String get mcCubeHighResistance => '高抗性';
+
+  @override
+  String get mcCubeHighResistanceBlocks => '灵魂沙与灵魂土';
+
+  @override
+  String get mcCubeSticky => '黏性';
+
+  @override
+  String get mcCubeStickyBlocks => '蜜脾';
+
+  @override
+  String get mcCubeExplosive => '爆炸';
+
+  @override
+  String get mcCubeExplosiveBlocks => 'TNT';
+
+  @override
+  String get mcCubeHot => '炽热';
+
+  @override
+  String get mcCubeHotBlocks => '岩浆';
+
+  @override
+  String get mcCubeDmgArrow => '箭';
+
+  @override
+  String get mcCubeDmgCactus => '仙人掌';
+
+  @override
+  String get mcCubeDmgDryOut => '脱水';
+
+  @override
+  String get mcCubeDmgFall => '摔落伤害';
+
+  @override
+  String get mcCubeDmgFallingAnvil => '下落的铁砧';
+
+  @override
+  String get mcCubeDmgFallingBlock => '下落的方块';
+
+  @override
+  String get mcCubeDmgFallingStalactite => '下落的钟乳石';
+
+  @override
+  String get mcCubeDmgFreeze => '冰冻';
+
+  @override
+  String get mcCubeDmgMaceSmash => '重锤猛击';
+
+  @override
+  String get mcCubeDmgHotFloor => '岩浆地面';
+
+  @override
+  String get mcCubeDmgMobAttack => '生物近战';
+
+  @override
+  String get mcCubeDmgMobAttackNoAggro => '生物近战（不仇恨）';
+
+  @override
+  String get mcCubeDmgMobProjectile => '生物弹射物';
+
+  @override
+  String get mcCubeDmgPlayerAttack => '玩家近战';
+
+  @override
+  String get mcCubeDmgSpear => '矛';
+
+  @override
+  String get mcCubeDmgSpit => '羊驼唾沫';
+
+  @override
+  String get mcCubeDmgStalagmite => '石笋';
+
+  @override
+  String get mcCubeDmgSting => '蜜蜂蜇刺';
+
+  @override
+  String get mcCubeDmgSulfurCubeHot => '另一个立方的高温';
+
+  @override
+  String get mcCubeDmgSweetBerryBush => '甜浆果丛';
+
+  @override
+  String get mcCubeDmgThrown => '投掷物';
+
+  @override
+  String get mcCubeDmgTrident => '三叉戟';
+
+  @override
+  String get mcCubeDmgWindCharge => '风弹';
+
+  @override
+  String get mcCubeVeryEasyShove => '非常容易推动';
+
+  @override
+  String get mcCubeShovesEasily => '容易推动';
+
+  @override
+  String get mcCubeResists => '不易推动';
+
+  @override
+  String get mcCubeHardToBudge => '几乎推不动';
+
+  @override
+  String get mcCubeSuperBouncy => '超级弹跳';
+
+  @override
+  String get mcCubeBouncyDesc => '有弹性';
+
+  @override
+  String get mcCubeLittleBouncy => '略有弹性';
+
+  @override
+  String get mcCubeBarely => '几乎不弹';
+
+  @override
+  String get mcCubeNoBounce => '不弹跳';
+
+  @override
+  String get mcCubeSticks => '原地粘住';
+
+  @override
+  String get mcCubeGrippy => '抓地力强';
+
+  @override
+  String get mcCubeSlidesBit => '略微打滑';
+
+  @override
+  String get mcCubeSlidesIce => '像在冰上一样滑';
+
+  @override
+  String get mcCubeFloaty => '飘浮缓慢';
+
+  @override
+  String get mcCubeDamps => '很快减速';
+
+  @override
+  String get mcCubeHolds => '保持惯性';
+
+  @override
+  String get mcCubeKeepsFlying => '一直飞行';
+
+  @override
+  String get mcCubeEatsTitle => '如果我的立方吞下……会怎样';
+
+  @override
+  String mcCubeSearchHint(int count) {
+    return '搜索全部 $count 种可吞下的方块';
+  }
+
+  @override
+  String get mcCubeNotSwallowable => '立方不会吞下它——只会吞下十二种行为中列出的方块。';
+
+  @override
+  String get mcCubeMeet => '认识硫磺立方';
+
+  @override
+  String get mcCubeSpawnsIn => '生成于';
+
+  @override
+  String get mcCubeSpawnsInValue => '硫磺洞穴';
+
+  @override
+  String get mcCubeHealth => '生命值';
+
+  @override
+  String get mcCubeHealthValue => '成体 8 · 幼体 4';
+
+  @override
+  String get mcCubeOnDeath => '死亡时';
+
+  @override
+  String get mcCubeOnDeathValue => '成体立方分裂成 2 只幼体';
+
+  @override
+  String get mcCubeExperience => '经验';
+
+  @override
+  String get mcCubeExperienceValue => '1 到 2';
+
+  @override
+  String get mcCubeFood => '幼体食物';
+
+  @override
+  String get mcCubeFoodValue => '黏液球能让幼体长大和繁殖';
+
+  @override
+  String get mcCubeHome => '带回家';
+
+  @override
+  String get mcCubeHomeValue => '用桶把整个立方装走';
+
+  @override
+  String get mcCubeChange => '更换方块';
+
+  @override
+  String get mcCubeChangeValue => '剪刀能把方块弹出（5 秒后才能再吞）';
+
+  @override
+  String get mcCubeTempt => '引诱范围';
+
+  @override
+  String get mcCubeTemptValue => '8 格';
+
+  @override
+  String get mcCubeShrugs => '持有方块时，它不会受到……';
+
+  @override
+  String get mcCubeShrugsNote =>
+      '它还能在水下呼吸、不会被冻住。爆炸仍然有效——即使正在吞方块，TNT 也能炸掉它——而且每次被免疫的攻击仍会把它击退。';
+
+  @override
+  String get mcCubeHow => '吞咽机制';
+
+  @override
+  String get mcCubeHowBody =>
+      '只有成体立方会吞方块：拿着可吞方块右键它、让它走过掉落的方块，或用发射器喂它。方块会放进它的身体栏位；再喂一个就会替换并切换行为。持有方块时它不再四处游荡，而是被玩家和生物推来推去，击退距离取决于它的抗性。';
+
+  @override
+  String get mcCubeExplodes => '会爆炸';
+
+  @override
+  String get mcCubeBurns => '会灼烧';
+
+  @override
+  String get mcCubeFloats => '会漂浮';
+
+  @override
+  String get mcCubeSinks => '会下沉';
+
+  @override
+  String mcCubeBehaviour(String name) {
+    return '$name行为';
+  }
+
+  @override
+  String mcCubeBlockCount(int count) {
+    return '$count 种方块';
+  }
+
+  @override
+  String get mcCubeMobility => '机动性';
+
+  @override
+  String mcCubeKbRes(String value) {
+    return '击退抗性 $value';
+  }
+
+  @override
+  String get mcCubeBounce => '弹跳';
+
+  @override
+  String mcCubeBounciness(String value) {
+    return '弹性 +$value';
+  }
+
+  @override
+  String get mcCubeGrip => '抓地';
+
+  @override
+  String mcCubeFriction(String value) {
+    return '摩擦 $value';
+  }
+
+  @override
+  String get mcCubeAirDrag => '空气阻力';
+
+  @override
+  String mcCubeAirDragValue(String value) {
+    return '空气阻力 $value';
+  }
+
+  @override
+  String get mcCubeKnockback => '击退';
+
+  @override
+  String get mcCubeKnockbackDetail => '水平 · 垂直';
+
+  @override
+  String get mcCubePush => '推动';
+
+  @override
+  String mcCubePushValue(String seconds) {
+    return '每 $seconds 秒';
+  }
+
+  @override
+  String get mcCubePushDetail => '推动生效的频率';
+
+  @override
+  String get mcCubeExplosion => '爆炸';
+
+  @override
+  String mcCubePower(String power) {
+    return '威力 $power';
+  }
+
+  @override
+  String mcCubeFuse(String seconds) {
+    return '引信 $seconds 秒';
+  }
+
+  @override
+  String get mcCubeSetsFire => '会引火';
+
+  @override
+  String get mcCubeNoFire => '不引火';
+
+  @override
+  String get mcCubeContact => '接触';
+
+  @override
+  String mcCubeBurnDamage(String amount) {
+    return '$amount 点灼烧伤害';
+  }
+
+  @override
+  String get mcCubeWhenTouched => '触碰时';
+
+  @override
+  String get mcCubeWater => '水中';
+
+  @override
+  String get mcCubeBuoyant => '有浮力';
+
+  @override
+  String get mcCubeNotBuoyant => '无浮力';
+
+  @override
+  String get mcBeaconSpeed => '移动速度提高 20%（II 级 40%）。';
+
+  @override
+  String get mcBeaconHaste => '挖掘和攻击更快。';
+
+  @override
+  String get mcBeaconResistance => '受到的伤害减少 20%（II 级 40%）。';
+
+  @override
+  String get mcBeaconJump => '跳得更高，落地更轻。';
+
+  @override
+  String get mcBeaconStrength => '近战伤害 +3（II 级 +6）。';
+
+  @override
+  String get mcBeaconRegen => '次要效果：缓慢回血。';
+
+  @override
+  String get mcBeaconTier => '金字塔层级';
+
+  @override
+  String mcBeaconTierN(int tier) {
+    return '$tier 级';
+  }
+
+  @override
+  String get mcBeaconBuildFrom => '建造材料';
+
+  @override
+  String get mcBeaconLayers => '层';
+
+  @override
+  String mcBeaconLayerN(int layer) {
+    return '第 $layer 层';
+  }
+
+  @override
+  String mcBeaconBlocksOf(String mineral) {
+    return '$mineral块';
+  }
+
+  @override
+  String get mcBeaconRange => '格范围';
+
+  @override
+  String get mcBeaconEffectLength => '效果时长';
+
+  @override
+  String mcBeaconEffectsAt(int tier) {
+    return '$tier 级可用效果';
+  }
+
+  @override
+  String get mcBeaconUnlocked => '已解锁';
+
+  @override
+  String get mcBeaconHow => '工作原理';
+
+  @override
+  String mcBeaconHowBody(int range, int seconds, String mineral) {
+    return '范围是信标周围 $range 格（10 + 每级 10），向下延伸 $range 格并一直到天空。效果每 4 秒重新施加一次，持续 $seconds 秒，所以离开后还会短暂保留。完整的 4 级金字塔会解锁第二种能力：生命恢复，或主效果的 II 级。用一个铁锭、金锭、绿宝石、钻石或下界合金锭支付。光柱需要能直接看到天空；在上面放染色玻璃可以改变颜色。金字塔中混用不同矿物块完全可以——上面只是按 $mineral 计算。';
+  }
+
+  @override
+  String get mcCommand => '命令';
+
+  @override
+  String get mcCommands => '命令';
+
+  @override
+  String get mcGiveTo => '给予';
+
+  @override
+  String get mcCancel => '取消';
+
+  @override
+  String get mcBannerRandomize => '随机';
+
+  @override
+  String get mcBannerBase => '底色';
+
+  @override
+  String get mcBannerAdd => '添加图案';
+
+  @override
+  String get mcBannerDye => '染料';
+
+  @override
+  String mcBannerLoomLimit(int limit) {
+    return '织布机最多 $limit 层。更多图层只能通过命令实现。';
+  }
+
+  @override
+  String get mcBannerLayers => '图层';
+
+  @override
+  String get mcBannerEmpty => '在左侧选择图案，叠加到这里。';
+
+  @override
+  String get mcBannerSteps => '织布机步骤';
+
+  @override
+  String mcBannerCraft(String banner, String wool) {
+    return '合成 $banner：6 个 $wool 放在木棍上方。';
+  }
+
+  @override
+  String get mcBannerShieldStep => '然后把做好的旗帜和盾牌放进合成格合成。';
+
+  @override
+  String mcBannerLoomStep(String inputs, String pattern) {
+    return '织布机：旗帜 + $inputs → $pattern';
+  }
+
+  @override
+  String mcBannerNeeds(String pattern, String item) {
+    return '$pattern——需要 $item';
+  }
+
+  @override
+  String get mcBannerChangeColour => '更改颜色';
+
+  @override
+  String get mcBannerRemoveLayer => '移除图层';
+
+  @override
+  String get mcFwSmallBall => '小型球状';
+
+  @override
+  String get mcFwLargeBall => '大型球状';
+
+  @override
+  String get mcFwStar => '星形';
+
+  @override
+  String get mcFwCreeper => '苦力怕状';
+
+  @override
+  String get mcFwBurst => '爆裂状';
+
+  @override
+  String get mcFwRocket => '火箭';
+
+  @override
+  String get mcFwFlight => '飞行时间（火药）';
+
+  @override
+  String get mcFwCount => '火箭数量';
+
+  @override
+  String get mcFwStars => '烟火之星';
+
+  @override
+  String get mcFwAddStar => '添加烟火之星';
+
+  @override
+  String get mcFwNoStars => '没有烟火之星：火箭只会飞行——适合鞘翅加速。';
+
+  @override
+  String mcFwStarN(int number) {
+    return '烟火之星 $number';
+  }
+
+  @override
+  String mcFwFadeN(int number) {
+    return '渐变 $number';
+  }
+
+  @override
+  String get mcFwShape => '形状';
+
+  @override
+  String mcFwColours(int count) {
+    return '颜色（$count/8）';
+  }
+
+  @override
+  String mcFwFade(int count) {
+    return '渐变为（$count/8）';
+  }
+
+  @override
+  String get mcFwTrail => '拖尾';
+
+  @override
+  String get mcFwTrailDetail => '加入一颗钻石';
+
+  @override
+  String get mcFwTwinkle => '闪烁';
+
+  @override
+  String get mcFwTwinkleDetail => '加入萤石粉';
+
+  @override
+  String get mcFwCrafting => '合成';
+
+  @override
+  String get mcFwRocketX3 => '火箭 ×3';
+
+  @override
+  String get mcArmorPiece => '部位';
+
+  @override
+  String get mcArmorApplyAll => '应用到全部';
+
+  @override
+  String get mcArmorWear => '穿戴此部位';
+
+  @override
+  String get mcArmorMaterial => '材质';
+
+  @override
+  String get mcArmorTrim => '纹饰';
+
+  @override
+  String get mcArmorNone => '无';
+
+  @override
+  String mcArmorFoundIn(String place) {
+    return '模板来源：$place';
+  }
+
+  @override
+  String get mcArmorTrimMaterial => '纹饰材料';
+
+  @override
+  String get mcArmorLeather => '皮革颜色';
+
+  @override
+  String get mcArmorSearching => '正在搜索 73.5 万种配比……';
+
+  @override
+  String get mcArmorFindMix => '找出这个颜色的染料配比';
+
+  @override
+  String get mcArmorMixYourself => '或者自己混合染料（一次合成，最多 8 个）：';
+
+  @override
+  String get mcArmorRemoveDye => '移除最后一个染料';
+
+  @override
+  String get mcArmorSmithing => '锻造';
+
+  @override
+  String mcArmorSmithStep(
+    String template,
+    String armor,
+    String material,
+    String piece,
+  ) {
+    return '$template + $armor + $material → 带纹饰的$piece';
+  }
+
+  @override
+  String get mcArmorCopyTemplate => '在合成格中用 7 颗钻石和对应方块复制模板。';
+
+  @override
+  String get mcArmorNoPieces => '# 未选择部位';
+
+  @override
+  String get mcArmorIndistinguishable => '几乎一样';
+
+  @override
+  String get mcArmorVeryClose => '非常接近';
+
+  @override
+  String get mcArmorClose => '接近';
+
+  @override
+  String get mcArmorNearest => '最接近的可能';
+
+  @override
+  String get mcArmorUse => '使用';
+
+  @override
+  String get mcTrimSentry => '掠夺者前哨站';
+
+  @override
+  String get mcTrimDune => '沙漠神殿';
+
+  @override
+  String get mcTrimCoast => '沉船';
+
+  @override
+  String get mcTrimWild => '丛林神庙';
+
+  @override
+  String get mcTrimTide => '远古守卫者（海底神殿）';
+
+  @override
+  String get mcTrimWard => '远古城市';
+
+  @override
+  String get mcTrimSilence => '远古城市（稀有）';
+
+  @override
+  String get mcTrimVex => '林地府邸';
+
+  @override
+  String get mcTrimEye => '要塞';
+
+  @override
+  String get mcTrimSnout => '堡垒遗迹';
+
+  @override
+  String get mcTrimRib => '下界要塞';
+
+  @override
+  String get mcTrimSpire => '末地城';
+
+  @override
+  String get mcTrimTrail => '古迹废墟（可疑的沙砾）';
+
+  @override
+  String get mcTrimFlow => '试炼密室（不祥宝库）';
+
+  @override
+  String get mcTrimBolt => '试炼密室（宝库）';
+
+  @override
+  String get mcPlanOpen => '打开原理图';
+
+  @override
+  String get mcPlanOpenAnother => '打开另一个';
+
+  @override
+  String get mcPlanOpenTitle => '打开一个建筑来规划';
+
+  @override
+  String get mcPlanUnreadable => '无法读取该文件';
+
+  @override
+  String get mcPlanFormats =>
+      '支持 Litematica（.litematic）、Sponge（.schem）、Axiom（.bp）、MCEdit（.schematic）、结构方块（.nbt）和基岩版（.mcstructure）。';
+
+  @override
+  String get mcPlanFile => '文件';
+
+  @override
+  String get mcPlanSize => '尺寸（宽×高×长）';
+
+  @override
+  String get mcPlanBlockTypes => '方块种类';
+
+  @override
+  String get mcPlanLayerMaterials => '本层材料';
+
+  @override
+  String get mcPlanShopping => '采购清单';
+
+  @override
+  String get mcPlanShoppingCopied => '已复制采购清单';
+
+  @override
+  String get mcPlanCsv => '保存为 CSV';
+
+  @override
+  String get mcPlanLayerOnly => '仅当前层';
+
+  @override
+  String mcPlanGathered(int total, int done, int count) {
+    return '$total 个方块 · 已收集 $done/$count';
+  }
+
+  @override
+  String get mcOrgUnreadable => '无法读取';
+
+  @override
+  String get mcOrgTooLarge => '太大，无法预览';
+
+  @override
+  String get mcOrgSortName => '名称';
+
+  @override
+  String get mcOrgSortNewest => '最新';
+
+  @override
+  String get mcOrgSortLargest => '文件最大';
+
+  @override
+  String get mcOrgSortBlocks => '方块最多';
+
+  @override
+  String get mcOrgChooseFolderTitle => '选择原理图文件夹';
+
+  @override
+  String mcOrgFolderError(String error) {
+    return '无法读取该文件夹：$error';
+  }
+
+  @override
+  String get mcOrgRenameTitle => '重命名原理图';
+
+  @override
+  String get mcOrgRename => '重命名';
+
+  @override
+  String mcOrgExists(String name) {
+    return '已存在名为 $name 的文件。';
+  }
+
+  @override
+  String mcOrgRenameError(String error) {
+    return '无法重命名：$error';
+  }
+
+  @override
+  String get mcOrgGroup => '分组';
+
+  @override
+  String get mcOrgGroupHint => '例如：房屋、农场、红石';
+
+  @override
+  String get mcOrgNoGroup => '不分组';
+
+  @override
+  String mcOrgReadError(String name, String error) {
+    return '无法读取 $name：$error';
+  }
+
+  @override
+  String get mcOrgChooseFolder => '选择文件夹';
+
+  @override
+  String get mcOrgChangeFolder => '更换文件夹';
+
+  @override
+  String get mcOrgRescan => '重新扫描';
+
+  @override
+  String get mcOrgPointTitle => '指向你的原理图';
+
+  @override
+  String get mcOrgPointBody =>
+      '选择存放原理图的文件夹——Litematica 的 “schematics” 文件夹、WorldEdit 的或任何其他文件夹。文件就地读取；只有重命名会修改磁盘内容。';
+
+  @override
+  String get mcOrgSearch => '按名称搜索';
+
+  @override
+  String mcOrgSortBy(String order) {
+    return '排序：$order';
+  }
+
+  @override
+  String get mcOrgSubfolders => '子文件夹';
+
+  @override
+  String mcOrgAll(int count) {
+    return '全部（$count）';
+  }
+
+  @override
+  String get mcOrgFavourites => '★ 收藏';
+
+  @override
+  String get mcOrgEmpty => '此文件夹中没有原理图';
+
+  @override
+  String get mcOrgNothing => '没有匹配项';
+
+  @override
+  String mcOrgLookingFor(String extensions) {
+    return '正在查找 $extensions 文件。';
+  }
+
+  @override
+  String get mcOrgUnfavourite => '取消收藏';
+
+  @override
+  String get mcOrgFavourite => '收藏';
+
+  @override
+  String mcOrgBlocks(int count) {
+    return '$count 个方块';
+  }
+
+  @override
+  String get mcOrgMore => '更多';
+
+  @override
+  String get mcOrgPreview => '预览';
+
+  @override
+  String get mcOrgRenameMenu => '重命名…';
+
+  @override
+  String get mcOrgGroupMenu => '分组…';
+
+  @override
+  String get mcMapCrop => '裁剪填满';
+
+  @override
+  String get mcMapContain => '完整放入';
+
+  @override
+  String get mcMapStretch => '拉伸';
+
+  @override
+  String get mcMapPaletteAll => '全部颜色';
+
+  @override
+  String get mcMapPaletteSurvival => '适合生存';
+
+  @override
+  String get mcMapPaletteConcrete => '混凝土与陶瓦';
+
+  @override
+  String get mcMapPaletteGreys => '灰度';
+
+  @override
+  String get mcMapDitherNone => '无';
+
+  @override
+  String get mcMapDitherFs => 'Floyd–Steinberg';
+
+  @override
+  String get mcMapDitherOrdered => '有序（Bayer）';
+
+  @override
+  String get mcMapNotImage => '该文件不是 luma 能读取的图片。';
+
+  @override
+  String mcMapCouldNotConvert(String error) {
+    return '无法转换：$error';
+  }
+
+  @override
+  String get mcMapChooseImage => '选择图片';
+
+  @override
+  String get mcMapChangeImage => '更换图片';
+
+  @override
+  String get mcMapSize => '地图数量';
+
+  @override
+  String get mcMapAcross => '横向';
+
+  @override
+  String get mcMapDown => '纵向';
+
+  @override
+  String mcMapBlocksSize(int width, int height) {
+    return '$width × $height 格';
+  }
+
+  @override
+  String get mcMapStaircase => '阶梯式（3 种明暗）';
+
+  @override
+  String get mcMapStaircaseDetail => '颜色更多，但每列会上下起伏';
+
+  @override
+  String get mcMapDithering => '抖动';
+
+  @override
+  String mcMapBlocksToUse(int count) {
+    return '可用方块（$count）';
+  }
+
+  @override
+  String get mcMapChooseTitle => '选择一张图片';
+
+  @override
+  String get mcMapChooseBody =>
+      '任意 PNG 或 JPG。图片会被切成 128 格的地图，匹配到地图能显示的颜色，再变成可粘贴或逐块建造的原理图。';
+
+  @override
+  String get mcMapPreview => '在地图上的效果';
+
+  @override
+  String get mcMapSavePng => '保存 PNG';
+
+  @override
+  String get mcMapTallest => '最高的一列';
+
+  @override
+  String get mcMapShow3d => '以 3D 显示';
+
+  @override
+  String get mcMapBuildNote =>
+      '从北向南建造，把圆石那一排放在北边——它决定第一行的明暗。每张地图覆盖与地图网格对齐的 128 × 128 区域。';
+
+  @override
+  String get mcRoofGable => '人字顶';
+
+  @override
+  String get mcRoofSteepGable => '陡人字顶';
+
+  @override
+  String get mcRoofGentleGable => '缓人字顶（台阶）';
+
+  @override
+  String get mcRoofGambrel => '复折顶（谷仓）';
+
+  @override
+  String get mcRoofHip => '四坡顶';
+
+  @override
+  String get mcRoofGentleHip => '缓四坡顶（台阶）';
+
+  @override
+  String get mcRoofMansard => '孟莎顶';
+
+  @override
+  String get mcRoofShed => '单坡顶';
+
+  @override
+  String get mcRoofAFrame => 'A 字形';
+
+  @override
+  String get mcRoofFootprint => '占地';
+
+  @override
+  String get mcRoofWidthX => '宽度（X）';
+
+  @override
+  String get mcRoofDepthZ => '深度（Z）';
+
+  @override
+  String get mcRoofOverhang => '出檐';
+
+  @override
+  String get mcRoofSizeNote => '宽度和深度是墙体外沿尺寸；出檐会加在每一边。';
+
+  @override
+  String get mcRoofRoof => '屋顶';
+
+  @override
+  String get mcRoofRidge => '屋脊盖';
+
+  @override
+  String get mcRoofRidgeDetail => '沿屋脊铺台阶';
+
+  @override
+  String get mcRoofFillGables => '填充山墙';
+
+  @override
+  String get mcRoofStairs => '楼梯';
+
+  @override
+  String get mcRoofSlabs => '台阶';
+
+  @override
+  String get mcSkinPencil => '铅笔';
+
+  @override
+  String get mcSkinEraser => '橡皮擦';
+
+  @override
+  String get mcSkinFill => '填充';
+
+  @override
+  String get mcSkinPicker => '取色';
+
+  @override
+  String get mcSkinNotSkin => '该 PNG 不是 64×64 或 64×32 的皮肤。';
+
+  @override
+  String get mcSkinLoadTitle => '加载玩家皮肤';
+
+  @override
+  String get mcSkinLoadBody => '通过 Mojang 公共档案服务查找该用户名并下载其当前皮肤。';
+
+  @override
+  String get mcSkinUsername => '用户名';
+
+  @override
+  String get mcSkinLoad => '加载';
+
+  @override
+  String get mcSkinUnsupported => '该皮肤的格式 luma 无法编辑。';
+
+  @override
+  String mcSkinLoadError(String error) {
+    return '无法加载该皮肤（$error）。';
+  }
+
+  @override
+  String get mcSkinUndo => '撤销';
+
+  @override
+  String get mcSkinRedo => '重做';
+
+  @override
+  String get mcSkinPaintOuter => '绘制外层';
+
+  @override
+  String get mcSkinShowOuter => '显示外层';
+
+  @override
+  String get mcSkinSlim => '纤细手臂';
+
+  @override
+  String get mcSkinColour => '颜色';
+
+  @override
+  String get mcSkinRecent => '最近使用';
+
+  @override
+  String get mcSkinLightness => '亮度';
+
+  @override
+  String get mcSkinModel => '3D 模型';
+
+  @override
+  String get mcSkinResetView => '重置视角';
+
+  @override
+  String get mcSkinTurn => '旋转';
+
+  @override
+  String get mcSkinTexture => '贴图';
+
+  @override
+  String get mcSkinOpenPng => '打开 PNG';
+
+  @override
+  String get mcSkinFromUser => '通过用户名';
+
+  @override
+  String get mcSkinHelp =>
+      '按住鼠标右键拖动（或使用“旋转”滑块）来转动模型；左键绘制。“绘制外层”会在帽子、外套、袖子和裤子那一层上绘制，而不是基础层。';
+
+  @override
+  String mcVersionAndNewer(String version) {
+    return '$version 及更新版本';
+  }
+
+  @override
+  String get mcSaveDatapack => '保存为数据包';
+
+  @override
+  String get mcSaveDatapackShort => '保存数据包';
+
+  @override
+  String get mcSendTo => '发送给';
+
+  @override
+  String get mcShowTo => '显示给';
+
+  @override
+  String get mcAdd => '添加';
+
+  @override
+  String get mcRemove => '移除';
+
+  @override
+  String get mcFlatStart => '从预设开始';
+
+  @override
+  String get mcFlatLayers => '图层（从上到下）';
+
+  @override
+  String mcFlatTotal(int count) {
+    return '$count 格';
+  }
+
+  @override
+  String get mcFlatRemoveLayer => '移除图层';
+
+  @override
+  String get mcFlatAddLayer => '在顶部添加图层';
+
+  @override
+  String get mcFlatWorld => '世界';
+
+  @override
+  String get mcFlatBiome => '生物群系';
+
+  @override
+  String get mcFlatDecorations => '装饰（树木、草……）';
+
+  @override
+  String get mcFlatLakes => '湖泊';
+
+  @override
+  String get mcFlatStructures => '结构';
+
+  @override
+  String get mcFlatCrossSection => '剖面';
+
+  @override
+  String get mcFlatPresetString => '预设字符串';
+
+  @override
+  String get mcFlatPresetNote => '创建世界 → 世界类型：超平坦 → 自定义 → 预设，然后把它粘贴到输入框中。';
+
+  @override
+  String get mcFlatServerNote => '仅在服务器创建新世界时读取。';
+
+  @override
+  String get mcFlatPresetName => '数据包预设名称';
+
+  @override
+  String get mcFlatDatapackNote =>
+      '保存会生成一个数据包压缩包，把它作为世界类型添加到“创建世界”界面（通过“数据包”拖入）。';
+
+  @override
+  String mcFlatDatapackDesc(String name) {
+    return '用 luma 制作的超平坦预设“$name”';
+  }
+
+  @override
+  String get mcWorldNormalTerrain => '普通';
+
+  @override
+  String get mcWorldAmplified => '放大化';
+
+  @override
+  String get mcWorldLargeBiomes => '巨型生物群系';
+
+  @override
+  String get mcWorldEveryBiome => '全部生物群系';
+
+  @override
+  String get mcWorldOneBiome => '单一生物群系';
+
+  @override
+  String get mcWorldCheckerboard => '棋盘格';
+
+  @override
+  String get mcWorldHeightStandard => '标准（Y −64 到 319）';
+
+  @override
+  String get mcWorldHeightTall => '加高（Y −64 到 447）';
+
+  @override
+  String get mcWorldHeightDeep => '加深（Y −128 到 319）';
+
+  @override
+  String get mcWorldHeightShort => '矮（Y 0 到 255）';
+
+  @override
+  String mcWorldDatapackDesc(String name) {
+    return '用 luma 制作的自定义世界“$name”';
+  }
+
+  @override
+  String get mcWorldPreset => '预设';
+
+  @override
+  String get mcWorldTerrain => '地形';
+
+  @override
+  String get mcWorldSeaLevel => '海平面';
+
+  @override
+  String get mcWorldBuildHeight => '建筑高度';
+
+  @override
+  String get mcWorldTerrainBlock => '地形方块';
+
+  @override
+  String get mcWorldFluid => '海洋与湖泊的流体';
+
+  @override
+  String get mcWorldAnimals => '生成世界时的动物';
+
+  @override
+  String get mcWorldBiomes => '生物群系';
+
+  @override
+  String get mcWorldSquare => '方格大小';
+
+  @override
+  String mcWorldSquareBlocks(int count) {
+    return '$count 格';
+  }
+
+  @override
+  String get mcWorldUsing => '使用方法';
+
+  @override
+  String mcWorldUsingBody(String name, String version) {
+    return '单人：创建世界 → 数据包，拖入压缩包，然后在世界类型中选择“luma:$name”。服务器：在世界生成前把压缩包放进 world/datapacks，并在 server.properties 中设置 level-type=luma\\:$name。为 Minecraft $version 制作；地形和噪声路由指向游戏自带的密度函数，所以只有你在这里改动的部分与原版不同。';
+  }
+
+  @override
+  String get mcColorTry => '试一试';
+
+  @override
+  String get mcColorHelp =>
+      '输入 & 代码，或用 &#RRGGBB 表示十六进制颜色（需要服务器有聊天插件；原版聊天只认识 16 种颜色）。';
+
+  @override
+  String get mcColorSection => '分节符（§）——告示牌、书、MOTD';
+
+  @override
+  String get mcColorAmpersand => '& 代码——插件';
+
+  @override
+  String get mcColorMiniMessage => 'MiniMessage——Paper / Adventure';
+
+  @override
+  String get mcColorJson => 'JSON 文本组件——tellraw、标题';
+
+  @override
+  String get mcColorCodes => '颜色代码';
+
+  @override
+  String get mcColorName => '名称';
+
+  @override
+  String get mcColorCode => '代码';
+
+  @override
+  String get mcColorSectionCol => '分节符';
+
+  @override
+  String get mcColorHex => '十六进制';
+
+  @override
+  String get mcColorFormatting => '格式代码';
+
+  @override
+  String get mcColorObfuscatedDetail => '乱码——不断变化';
+
+  @override
+  String get mcColorReset => '重置——恢复为普通白色';
+
+  @override
+  String get mcColorOrderNote => '颜色代码会清除它前面的格式，所以先写颜色：&c&l，而不是 &l&c。';
+
+  @override
+  String mcColorCopied(String code) {
+    return '已复制 $code';
+  }
+
+  @override
+  String get mcTitleTitle => '标题';
+
+  @override
+  String get mcTitleSubtitle => '副标题';
+
+  @override
+  String get mcTitleActionbar => '动作栏';
+
+  @override
+  String get mcTitleTiming => '时间';
+
+  @override
+  String get mcTitleFadeIn => '淡入';
+
+  @override
+  String get mcTitleStay => '停留';
+
+  @override
+  String get mcTitleFadeOut => '淡出';
+
+  @override
+  String mcTitleTicks(int ticks, String seconds) {
+    return '$ticks 刻 · $seconds 秒';
+  }
+
+  @override
+  String get mcTitlePlay => '播放预览';
+
+  @override
+  String get mcTitleOrder => '请按此顺序执行：时间和副标题会保留到标题发送时。';
+
+  @override
+  String get mcTellMessage => '消息';
+
+  @override
+  String get mcTellHoverHelp => '把鼠标悬停在预览中的某部分上即可看到悬停文本。';
+
+  @override
+  String get mcTellPretty => '格式化 JSON';
+
+  @override
+  String get mcTellComponent => '文本组件';
+
+  @override
+  String get mcTellNote =>
+      '使用 26.x 的组件字段名（click_event、hover_event），1.21.5 及更新版本需要这种写法。';
+
+  @override
+  String get mcMotdLines => '行';
+
+  @override
+  String get mcMotdTooLong => '超过约 45 个字符的行会在服务器列表中被截断。';
+
+  @override
+  String get mcMotdServerName => '列表中的服务器名称';
+
+  @override
+  String get mcMotdPlayers => '玩家';
+
+  @override
+  String get mcMotdOf => '/';
+
+  @override
+  String get mcMotdEscapeNote => '§ 以及所有非 ASCII 字符在这里都必须写成 \\u 转义。';
+
+  @override
+  String get mcMotdRaw => '带 § 代码的原始文本（Bukkit、Paper、BungeeCord 配置）';
+
+  @override
+  String get mcMotdMiniMessage => 'MiniMessage（Velocity、Paper 插件）';
+
+  @override
+  String get mcLootTable => '战利品表';
+
+  @override
+  String get mcLootVersion => '游戏版本';
+
+  @override
+  String get mcLootUsedFor => '用途';
+
+  @override
+  String get mcLootPath => '数据包内路径';
+
+  @override
+  String mcLootPool(int number) {
+    return '随机池 $number';
+  }
+
+  @override
+  String get mcLootRemovePool => '移除随机池';
+
+  @override
+  String get mcLootAddPool => '添加随机池';
+
+  @override
+  String get mcLootDatapackDesc => '用 luma 制作的战利品表';
+
+  @override
+  String mcLootUse(String give, String setblock) {
+    return '用 $give 使用，或让箱子指向它：$setblock';
+  }
+
+  @override
+  String get mcLootRolls => '抽取次数';
+
+  @override
+  String get mcLootTo => '到';
+
+  @override
+  String get mcLootPlayerKill => '仅在被玩家击杀时';
+
+  @override
+  String get mcLootAddEntry => '添加条目';
+
+  @override
+  String get mcLootNothing => '无（空抽取）';
+
+  @override
+  String get mcLootRemoveEntry => '移除条目';
+
+  @override
+  String get mcLootWeight => '权重';
+
+  @override
+  String get mcLootCount => '数量';
+
+  @override
+  String get mcLootEmpty => '空';
+
+  @override
+  String get mcLootRandomEnchant => '随机附魔';
+
+  @override
+  String get mcLootEnchantLevels => '按等级附魔';
+
+  @override
+  String get mcLootLooting => '抢夺加成';
+
+  @override
+  String get mcLootSmelt => '着火时熔炼';
+
+  @override
+  String get mcLootDecay => '爆炸损耗';
+
+  @override
+  String get mcLootLevels => '等级';
+
+  @override
+  String get mcLootCustomName => '自定义名称（可选）';
+
+  @override
+  String get mcLootChance => '掉落概率';
+
+  @override
+  String get mcPotItem => '物品';
+
+  @override
+  String get mcPotCustomName => '自定义名称';
+
+  @override
+  String get mcPotCustomColour => '自定义颜色';
+
+  @override
+  String get mcPotEffects => '效果';
+
+  @override
+  String get mcPotRemoveEffect => '移除效果';
+
+  @override
+  String get mcPotDuration => '持续时间';
+
+  @override
+  String get mcPotInfinite => '无限';
+
+  @override
+  String get mcPotParticles => '粒子';
+
+  @override
+  String get mcPotIcon => '图标';
+
+  @override
+  String get mcPotAmbient => '环境';
+
+  @override
+  String get mcPotNoEffects => '没有效果——它会是一瓶有颜色的水。';
+
+  @override
+  String get mcPotDurationNote => '提示中的时长是饮用药水的；滞留药水云持续四分之一，药箭持续八分之一。';
+
+  @override
+  String get mcCmdItem => '物品';
+
+  @override
+  String get mcCmdCount => '数量';
+
+  @override
+  String get mcCmdCustomName => '自定义名称';
+
+  @override
+  String get mcCmdEnchantments => '附魔';
+
+  @override
+  String get mcCmdAddEnchantment => '添加附魔';
+
+  @override
+  String get mcCmdLore => '描述行';
+
+  @override
+  String get mcCmdRemoveLine => '移除此行';
+
+  @override
+  String get mcCmdAddLore => '添加描述行';
+
+  @override
+  String get mcCmdUnbreakable => '无法破坏';
+
+  @override
+  String get mcCmdGlint => '始终附魔光效';
+
+  @override
+  String get mcCmdEntity => '实体';
+
+  @override
+  String get mcCmdPosition => '位置';
+
+  @override
+  String get mcCmdName => '名称';
+
+  @override
+  String get mcCmdOptional => '可选';
+
+  @override
+  String get mcCmdNameVisible => '名称始终可见';
+
+  @override
+  String get mcCmdNoAi => '无 AI';
+
+  @override
+  String get mcCmdSilent => '静音';
+
+  @override
+  String get mcCmdInvulnerable => '无敌';
+
+  @override
+  String get mcCmdGlowing => '发光';
+
+  @override
+  String get mcCmdPersistent => '永不消失';
+
+  @override
+  String get mcCmdNoGravity => '无重力';
+
+  @override
+  String get mcCmdBaby => '幼年（僵尸）';
+
+  @override
+  String get mcCmdClear => '清除';
+
+  @override
+  String get mcCmdGive => '给予';
+
+  @override
+  String get mcCmdEffect => '效果';
+
+  @override
+  String get mcCmdLevel => '等级';
+
+  @override
+  String get mcCmdSeconds => '秒';
+
+  @override
+  String get mcCmdHideParticles => '隐藏粒子';
+
+  @override
+  String get mcCmdYaw => '朝向（偏航）';
+
+  @override
+  String get mcCmdPitch => '朝向（俯仰）';
+
+  @override
+  String get mcCmdYawHint => '可选，例如 90';
+
+  @override
+  String get mcCmdPitchHint => '可选，例如 0';
+
+  @override
+  String get mcCmdCoordsHelp => '用 ~ 表示相对坐标，用 ^ 表示局部坐标。';
+
+  @override
+  String get mcCmdOneBlock => '单个方块';
+
+  @override
+  String get mcCmdArea => '区域';
+
+  @override
+  String get mcCmdBlock => '方块';
+
+  @override
+  String get mcCmdAt => '位置';
+
+  @override
+  String get mcCmdFrom => '从';
+
+  @override
+  String get mcCmdTo => '到';
+
+  @override
+  String get mcCmdFillLimit => '每条 /fill 命令最多 32768 个方块。';
+
+  @override
+  String get mcCmdRule => '规则';
+
+  @override
+  String get mcCmdValue => '值';
+
+  @override
+  String get mcCmdNumber => '数字';
+
+  @override
+  String get mcCmdRuleNote => '26.x 的游戏规则使用 snake_case 形式的 ID。';
+
+  @override
+  String get mcCmdSet => '设为';
+
+  @override
+  String get mcCmdAddXp => '增加';
+
+  @override
+  String get mcCmdLevels => '等级';
+
+  @override
+  String get mcCmdPoints => '点数';
+
+  @override
+  String get mcCmdAmount => '数量';
+
+  @override
+  String mcCmdXpNote(int points, int level) {
+    return '从零升到 $level 级需要 $points 点经验。';
+  }
+
+  @override
+  String get mcCmdTime => '时间';
+
+  @override
+  String get mcCmdWeather => '天气';
+
+  @override
+  String get mcCmdWeatherLasts => '天气持续';
+
+  @override
+  String get mcCmdRandom => '随机';
+
+  @override
+  String get mcCmdTarget => '目标';
+
+  @override
+  String get mcCmdPlayerName => '或玩家名';
+
+  @override
+  String mcCmdLength(int length) {
+    return '超过 256 个字符的命令需要用命令方块——聊天栏会截断。当前命令有 $length 个字符。';
+  }
+
+  @override
+  String get mcAdvObtain => '拥有物品';
+
+  @override
+  String get mcAdvEat => '吃或喝';
+
+  @override
+  String get mcAdvPlace => '放置方块';
+
+  @override
+  String get mcAdvKill => '击杀生物';
+
+  @override
+  String get mcAdvTravel => '进入维度';
+
+  @override
+  String get mcAdvCraft => '合成配方';
+
+  @override
+  String get mcAdvManual => '仅通过命令';
+
+  @override
+  String get mcAdvAdvancement => '进度';
+
+  @override
+  String get mcAdvFileName => '文件名';
+
+  @override
+  String get mcAdvTitle => '标题';
+
+  @override
+  String get mcAdvDescription => '描述';
+
+  @override
+  String get mcAdvIcon => '图标';
+
+  @override
+  String get mcAdvFrame => '边框';
+
+  @override
+  String get mcAdvRoot => '新标签页的根';
+
+  @override
+  String get mcAdvBackground => '背景贴图';
+
+  @override
+  String get mcAdvParent => '父进度';
+
+  @override
+  String get mcAdvToast => '显示弹窗提示';
+
+  @override
+  String get mcAdvChat => '在聊天中公告';
+
+  @override
+  String get mcAdvHidden => '达成前隐藏';
+
+  @override
+  String get mcAdvCriteria => '条件';
+
+  @override
+  String get mcAdvAnyOne => '任意一个';
+
+  @override
+  String get mcAdvAllOf => '全部';
+
+  @override
+  String get mcAdvRewards => '奖励';
+
+  @override
+  String get mcAdvXp => '经验值';
+
+  @override
+  String get mcAdvRecipeHint => '解锁配方（ID，可选）';
+
+  @override
+  String get mcAdvLootHint => '给予战利品表（ID，可选）';
+
+  @override
+  String get mcAdvFunctionHint => '运行函数（ID，可选）';
+
+  @override
+  String get mcAdvChallenge => '挑战完成！';
+
+  @override
+  String get mcAdvGoal => '目标达成！';
+
+  @override
+  String get mcAdvMade => '达成进度！';
+
+  @override
+  String get mcAdvDatapackDesc => '用 luma 制作的进度';
+
+  @override
+  String mcAdvGrant(String command) {
+    return '用 $command 授予或测试。';
+  }
+
+  @override
+  String mcAssetReadError(String source, String error) {
+    return '无法读取 $source：$error';
+  }
+
+  @override
+  String get mcAssetAsking => '正在向 Mojang 查询最新版本……';
+
+  @override
+  String mcAssetDownloadFailed(String error) {
+    return '下载失败：$error';
+  }
+
+  @override
+  String get mcAssetNoCopy => '未找到 Minecraft';
+
+  @override
+  String mcAssetNoCopyBody(int megabytes) {
+    return 'luma 不附带任何游戏素材。请指定一个客户端 jar 或资源包，或让它从 Mojang 公共服务器下载原版客户端（约 $megabytes MB，保存在本设备上，并与 Minecraft 启动器插件共享）。';
+  }
+
+  @override
+  String get mcAssetChooseJar => '选择 jar 或资源包';
+
+  @override
+  String get mcAssetDownload => '从 Mojang 下载';
+
+  @override
+  String get mcAssetOtherFile => '其他文件';
+
+  @override
+  String mcAssetSounds(int count) {
+    return '音效（$count）';
+  }
+
+  @override
+  String mcAssetImages(int count) {
+    return '图片（$count）';
+  }
+
+  @override
+  String get mcAssetSearch => '搜索所有素材';
+
+  @override
+  String get mcAssetFirst600 => '仅显示前 600 个——搜索以缩小范围。';
+
+  @override
+  String get mcAssetNoSounds => '此版本没有音效';
+
+  @override
+  String get mcAssetNoSoundsBody =>
+      '音效来自启动器的素材库，只有在游戏至少启动过一次后才会存在。资源包或下载的 jar 只有图片。';
+
+  @override
+  String get mcAssetPlay => '播放';
+
+  @override
+  String get mcAssetCannotPlay => '此设备无法在这里播放 .ogg——请保存后用播放器打开。';
+
+  @override
+  String get mcAssetSaveOgg => '保存 .ogg';
+
+  @override
+  String get mcAssetNotice => '素材 © Mojang。它们从你自己的文件中读取，仅供参考，不属于 luma。';
+
+  @override
+  String get mcAssetClose => '关闭';
+
+  @override
+  String get mcAssetCopyId => '复制 ID';
+
+  @override
+  String get mcEnchGenDamage => '额外伤害';
+
+  @override
+  String get mcEnchGenProtection => '伤害保护';
+
+  @override
+  String get mcEnchGenAttribute => '属性加成';
+
+  @override
+  String get mcEnchGenMobEffect => '对目标施加效果';
+
+  @override
+  String get mcEnchGenIgnite => '点燃目标';
+
+  @override
+  String get mcEnchGenKnockback => '额外击退';
+
+  @override
+  String get mcEnchGenExperience => '更多生物经验';
+
+  @override
+  String get mcEnchGenPierce => '破甲';
+
+  @override
+  String get mcEnchGenTitle => '附魔';
+
+  @override
+  String get mcEnchGenName => '名称';
+
+  @override
+  String get mcEnchGenGoesOn => '可用于';
+
+  @override
+  String get mcEnchGenTable => '附魔台提供于';
+
+  @override
+  String get mcEnchGenSame => '同上';
+
+  @override
+  String get mcEnchGenExclusive => '不能与之共存';
+
+  @override
+  String get mcEnchGenAnything => '无限制';
+
+  @override
+  String mcEnchGenSetName(String set) {
+    return '$set 类附魔';
+  }
+
+  @override
+  String get mcEnchGenSlots => '生效栏位';
+
+  @override
+  String get mcEnchGenLevels => '等级与花费';
+
+  @override
+  String get mcEnchGenMaxLevel => '最高等级';
+
+  @override
+  String get mcEnchGenWeight => '稀有度权重（1 稀有 – 10 常见）';
+
+  @override
+  String get mcEnchGenAnvil => '铁砧花费';
+
+  @override
+  String get mcEnchGenMin => '最低附魔等级';
+
+  @override
+  String get mcEnchGenPerLevel => '……每级增加';
+
+  @override
+  String get mcEnchGenMax => '最高附魔等级';
+
+  @override
+  String get mcEnchGenEffects => '效果';
+
+  @override
+  String get mcEnchGenAddEffect => '添加效果';
+
+  @override
+  String get mcEnchGenNoEffects => '没有效果——能附魔，但不起作用。';
+
+  @override
+  String mcEnchGenDatapackDesc(String name) {
+    return '用 luma 制作的附魔“$name”';
+  }
+
+  @override
+  String mcEnchGenNote(String command) {
+    return '数据包还会把它加入附魔台和随机战利品标签，让它在生存模式中出现。用 $command 试试。';
+  }
+
+  @override
+  String get mcEnchGenUnitDamage => '伤害';
+
+  @override
+  String get mcEnchGenUnitProtection => '保护点数';
+
+  @override
+  String get mcEnchGenUnitSeconds => '秒';
+
+  @override
+  String get mcEnchGenUnitKnockback => '击退';
+
+  @override
+  String get mcEnchGenUnitPierce => '× 忽略 10% 护甲';
+
+  @override
+  String get mcEnchGenRemoveEffect => '移除效果';
+
+  @override
+  String get mcEnchGenOpAdd => '加';
+
+  @override
+  String get mcEnchGenOpBase => '× 基础值';
+
+  @override
+  String get mcEnchGenOpTotal => '× 总值';
+
+  @override
+  String get mcEnchGenEffectLevel => '效果等级';
+
+  @override
+  String mcEnchGenAtLevel1(String unit) {
+    return 'I 级时（$unit）';
+  }
+
+  @override
+  String get mcEnchGenEachLevel => '之后每级';
+
+  @override
+  String get mcEnchGenDirect => '仅直接命中';
+
+  @override
+  String get mcEnchGenDirectDetail => '不包括荆棘或弹射物';
+
+  @override
+  String get mcRecShaped => '有序合成';
+
+  @override
+  String get mcRecShapeless => '无序合成';
+
+  @override
+  String get mcRecFurnace => '熔炉';
+
+  @override
+  String get mcRecBlast => '高炉';
+
+  @override
+  String get mcRecSmoker => '烟熏炉';
+
+  @override
+  String get mcRecCampfire => '营火';
+
+  @override
+  String get mcRecStonecutter => '切石机';
+
+  @override
+  String get mcRecSmithing => '锻造台';
+
+  @override
+  String mcRecEmptySlot(String item) {
+    return '空——点击放入 $item';
+  }
+
+  @override
+  String mcRecFilledSlot(String item) {
+    return '$item——再次点击或右键清除';
+  }
+
+  @override
+  String get mcRecIdOrTag => '物品 ID 或 #标签';
+
+  @override
+  String get mcRecId => '物品 ID';
+
+  @override
+  String get mcRecStation => '工作站';
+
+  @override
+  String get mcRecIngredients => '材料';
+
+  @override
+  String get mcRecBrush => '画笔——点击格子放置';
+
+  @override
+  String get mcRecClear => '清空网格';
+
+  @override
+  String get mcRecFill => '填满网格';
+
+  @override
+  String get mcRecTemplate => '模板';
+
+  @override
+  String get mcRecBase => '基础物品';
+
+  @override
+  String get mcRecAddition => '附加材料';
+
+  @override
+  String get mcRecInput => '输入';
+
+  @override
+  String get mcRecXp => '经验';
+
+  @override
+  String get mcRecTime => '烹饪时间';
+
+  @override
+  String get mcRecResult => '产物';
+
+  @override
+  String get mcRecTab => '配方书分类';
+
+  @override
+  String get mcRecGroup => '分组（可选——合并配方书条目）';
+
+  @override
+  String get mcRecDatapackDesc => '用 luma 制作的配方';
+
+  @override
+  String mcRecNote(String command) {
+    return '材料可以是物品 ID 或物品标签（#minecraft:planks）。自定义配方立即可用；要在配方书中显示，请运行 $command。';
+  }
 }

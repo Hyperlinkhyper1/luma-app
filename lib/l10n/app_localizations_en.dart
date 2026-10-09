@@ -35063,4 +35063,3179 @@ class LEn extends L {
   String sceneAssetStudioCatalogFootprint(String width, String depth) {
     return 'Catalog footprint: $width x $depth m. The model accepts your donor\'s w and d parameters.';
   }
+
+  @override
+  String get gameToolsMinecraftBlurb => 'Builders, admins & datapacks';
+
+  @override
+  String mcToolsKicker(String version) {
+    return 'Minecraft Java $version';
+  }
+
+  @override
+  String get mcToolsHeadline => 'Minecraft tools for builders and creators';
+
+  @override
+  String get mcToolsSubtitle =>
+      'Plan builds, design gear, run your server and write datapacks. Everything runs on this device.';
+
+  @override
+  String get mcToolsSearchHint => 'Search tools';
+
+  @override
+  String get mcToolsAudiencePlayers => 'Players';
+
+  @override
+  String get mcToolsAudiencePlayersBlurb => 'Build, craft and look things up';
+
+  @override
+  String get mcToolsAudienceAdmins => 'Admins';
+
+  @override
+  String get mcToolsAudienceAdminsBlurb => 'Worlds, chat and commands';
+
+  @override
+  String get mcToolsAudienceDevelopers => 'Developers';
+
+  @override
+  String get mcToolsAudienceDevelopersBlurb => 'Assets and datapack files';
+
+  @override
+  String get mcToolsGroupBuild => 'Build & design';
+
+  @override
+  String get mcToolsGroupGear => 'Gear & crafting';
+
+  @override
+  String get mcToolsGroupGuides => 'Guides';
+
+  @override
+  String get mcToolsGroupWorlds => 'Worlds';
+
+  @override
+  String get mcToolsGroupChat => 'Chat & text';
+
+  @override
+  String get mcToolsGroupGameplay => 'Commands & gameplay';
+
+  @override
+  String get mcToolsGroupAssets => 'Assets';
+
+  @override
+  String get mcToolsGroupDatapacks => 'Datapack generators';
+
+  @override
+  String mcToolsSearchResults(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tools',
+      one: '1 tool',
+      zero: 'No tools match',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mcToolsNoMatchBody =>
+      'Try another word — every tool can be found by its name or by what it does.';
+
+  @override
+  String get mcToolsDisclaimer =>
+      'Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.';
+
+  @override
+  String mcToolsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tools',
+      one: '1 tool',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mcToolEnchantOptimizer => 'Enchant Optimizer';
+
+  @override
+  String get mcToolEnchantOptimizerBlurb =>
+      'Find the cheapest anvil order for your enchantments.';
+
+  @override
+  String get mcToolShapeGenerator => 'Shape Generator';
+
+  @override
+  String get mcToolShapeGeneratorBlurb =>
+      'Circles, arches, spheres, domes and cylinders, block by block.';
+
+  @override
+  String get mcToolSkinEditor => 'Skin Editor';
+
+  @override
+  String get mcToolSkinEditorBlurb =>
+      'Paint a skin on a live 3D model and save the PNG.';
+
+  @override
+  String get mcToolSchematicOrganizer => 'Schematic Organizer';
+
+  @override
+  String get mcToolSchematicOrganizerBlurb =>
+      'Preview, favourite, group and rename a folder of schematics.';
+
+  @override
+  String get mcToolVillagerGuide => 'Villager Trades';
+
+  @override
+  String get mcToolVillagerGuideBlurb =>
+      'Every trade, price, level and how likely it is to show up.';
+
+  @override
+  String get mcToolOreGuide => 'Ore Distribution';
+
+  @override
+  String get mcToolOreGuideBlurb =>
+      'Ore curves from the game files and the best Y level for each.';
+
+  @override
+  String get mcToolPotionGuide => 'Potion Guide';
+
+  @override
+  String get mcToolPotionGuideBlurb =>
+      'Recipes, ingredients, durations and upgrade paths.';
+
+  @override
+  String get mcToolSulfurCubeGuide => 'Sulfur Cube Guide';
+
+  @override
+  String get mcToolSulfurCubeGuideBlurb =>
+      'What a sulfur cube does with every block you feed it.';
+
+  @override
+  String get mcToolBeaconGuide => 'Beacon Guide';
+
+  @override
+  String get mcToolBeaconGuideBlurb =>
+      'Pyramid sizes, range by tier and what each effect does.';
+
+  @override
+  String get mcToolShieldMaker => 'Shield Maker';
+
+  @override
+  String get mcToolShieldMakerBlurb =>
+      'Layer banner patterns on a shield and get the command.';
+
+  @override
+  String get mcToolFireworkMaker => 'Firework Maker';
+
+  @override
+  String get mcToolFireworkMakerBlurb =>
+      'Design rockets star by star, with recipe and command.';
+
+  @override
+  String get mcToolBannerMaker => 'Banner Maker';
+
+  @override
+  String get mcToolBannerMakerBlurb =>
+      'Stack up to 16 patterns and get loom steps and a command.';
+
+  @override
+  String get mcToolBuildPlanner => 'Build Planner';
+
+  @override
+  String get mcToolBuildPlannerBlurb =>
+      'Open a schematic in 3D, walk it layer by layer, get the materials.';
+
+  @override
+  String get mcToolMapArtGenerator => 'Map Art Generator';
+
+  @override
+  String get mcToolMapArtGeneratorBlurb =>
+      'Turn any image into buildable map art.';
+
+  @override
+  String get mcToolRoofGenerator => 'Roof Designer';
+
+  @override
+  String get mcToolRoofGeneratorBlurb =>
+      'Gable, hip, gambrel and more, exported as a schematic.';
+
+  @override
+  String get mcToolArmorDesigner => 'Armor Trims & Dyes';
+
+  @override
+  String get mcToolArmorDesignerBlurb =>
+      'Preview trims and leather colours, and find the dye mix.';
+
+  @override
+  String get mcToolFlatPreset => 'Flat World Generator';
+
+  @override
+  String get mcToolFlatPresetBlurb =>
+      'Stack superflat layers and get the preset.';
+
+  @override
+  String get mcToolCustomWorld => 'Custom World Preset';
+
+  @override
+  String get mcToolCustomWorldBlurb =>
+      'Tweak sea level, terrain blocks and biomes as a datapack.';
+
+  @override
+  String get mcToolColorCodes => 'Color Codes';
+
+  @override
+  String get mcToolColorCodesBlurb =>
+      'Every § colour and format code, with a live preview.';
+
+  @override
+  String get mcToolTitleGenerator => 'Title Generator';
+
+  @override
+  String get mcToolTitleGeneratorBlurb =>
+      'Titles, subtitles and action bars with timings.';
+
+  @override
+  String get mcToolTellrawGenerator => 'Tellraw Generator';
+
+  @override
+  String get mcToolTellrawGeneratorBlurb =>
+      'Rich chat messages with hover and click actions.';
+
+  @override
+  String get mcToolMotdGenerator => 'MOTD Generator';
+
+  @override
+  String get mcToolMotdGeneratorBlurb =>
+      'Design your server-list message and preview it.';
+
+  @override
+  String get mcToolLootTables => 'Loot Tables';
+
+  @override
+  String get mcToolLootTablesBlurb =>
+      'Build chest, mob and block loot tables as JSON.';
+
+  @override
+  String get mcToolCustomPotions => 'Custom Potions';
+
+  @override
+  String get mcToolCustomPotionsBlurb =>
+      'Potions, splash and arrows with any effects.';
+
+  @override
+  String get mcToolCommandGenerator => 'Command Generator';
+
+  @override
+  String get mcToolCommandGeneratorBlurb =>
+      'Give, summon, effect, teleport and more, filled in for you.';
+
+  @override
+  String get mcToolAssetLibrary => 'Asset Library';
+
+  @override
+  String get mcToolAssetLibraryBlurb =>
+      'Every block, item and mob texture and sound from your own game.';
+
+  @override
+  String get mcToolRecipeGenerator => 'Recipe Generator';
+
+  @override
+  String get mcToolRecipeGeneratorBlurb =>
+      'Crafting, smelting, stonecutting and smithing recipes.';
+
+  @override
+  String get mcToolEnchantmentGenerator => 'Enchantment Generator';
+
+  @override
+  String get mcToolEnchantmentGeneratorBlurb =>
+      'Write custom data-driven enchantments.';
+
+  @override
+  String get mcToolAdvancementGenerator => 'Advancement Generator';
+
+  @override
+  String get mcToolAdvancementGeneratorBlurb =>
+      'Build advancements with criteria, display and rewards.';
+
+  @override
+  String get mcCopiedToClipboard => 'Copied to clipboard';
+
+  @override
+  String mcCouldNotSave(String error) {
+    return 'Could not save: $error';
+  }
+
+  @override
+  String get mcAllTools => 'All tools';
+
+  @override
+  String get mcBackToTools => 'Back to all Minecraft tools';
+
+  @override
+  String get mcOutput => 'Output';
+
+  @override
+  String get mcSave => 'Save';
+
+  @override
+  String get mcCopy => 'Copy';
+
+  @override
+  String get mcSearchIds => 'Search ids…';
+
+  @override
+  String get mcStatBlocks => 'blocks';
+
+  @override
+  String get mcStatFootprint => 'footprint';
+
+  @override
+  String get mcStatTall => 'tall';
+
+  @override
+  String get mcExport => 'Export';
+
+  @override
+  String mcSaveExtension(String extension) {
+    return 'Save .$extension';
+  }
+
+  @override
+  String get mcMaterials => 'Materials';
+
+  @override
+  String get mcCopyList => 'Copy list';
+
+  @override
+  String get mcMaterialListCopied => 'Material list copied';
+
+  @override
+  String get mcShowFewer => 'Show fewer';
+
+  @override
+  String mcShowAllCount(int count) {
+    return 'Show all $count';
+  }
+
+  @override
+  String get mcSpanAddPart => 'Add a styled part';
+
+  @override
+  String get mcSpanText => 'Text';
+
+  @override
+  String get mcSpanMore => ' more';
+
+  @override
+  String get mcBold => 'Bold';
+
+  @override
+  String get mcItalic => 'Italic';
+
+  @override
+  String get mcUnderlined => 'Underlined';
+
+  @override
+  String get mcStrikethrough => 'Strikethrough';
+
+  @override
+  String get mcObfuscated => 'Obfuscated';
+
+  @override
+  String get mcRemovePart => 'Remove part';
+
+  @override
+  String get mcOnClickNothing => 'On click: nothing';
+
+  @override
+  String get mcClickOpenUrl => 'Open URL';
+
+  @override
+  String get mcClickRunCommand => 'Run command';
+
+  @override
+  String get mcClickSuggestCommand => 'Suggest command';
+
+  @override
+  String get mcClickCopy => 'Copy to clipboard';
+
+  @override
+  String get mcClickChangePage => 'Change page (books)';
+
+  @override
+  String get mcClickNothing => 'Nothing';
+
+  @override
+  String get mcHintPageNumber => 'Page number';
+
+  @override
+  String get mcHintTextToCopy => 'Text to copy';
+
+  @override
+  String get mcHintHoverText => 'Hover text (optional)';
+
+  @override
+  String get mcTextColour => 'Text colour';
+
+  @override
+  String get mcHexColour => 'Hex colour';
+
+  @override
+  String get mcDefault => 'Default';
+
+  @override
+  String get mcUseHex => 'Use hex';
+
+  @override
+  String get mcTagFiles => 'Files';
+
+  @override
+  String get mcTagExport => 'Export';
+
+  @override
+  String get mcTagPaint => 'Paint';
+
+  @override
+  String get mcTagPopular => 'Popular';
+
+  @override
+  String get mcTagDesign => 'Design';
+
+  @override
+  String get mcTagGuide => 'Guide';
+
+  @override
+  String get mcTagNew => 'New';
+
+  @override
+  String get mcTagWorld => 'World';
+
+  @override
+  String get mcTagDatapack => 'Datapack';
+
+  @override
+  String get mcTagText => 'Text';
+
+  @override
+  String get mcTagCommand => 'Command';
+
+  @override
+  String get mcTagServer => 'Server';
+
+  @override
+  String get mcTagBrowse => 'Browse';
+
+  @override
+  String get mcEnchItemSword => 'Sword';
+
+  @override
+  String get mcEnchItemSpear => 'Spear';
+
+  @override
+  String get mcEnchItemAxe => 'Axe';
+
+  @override
+  String get mcEnchItemMace => 'Mace';
+
+  @override
+  String get mcEnchItemTrident => 'Trident';
+
+  @override
+  String get mcEnchItemBow => 'Bow';
+
+  @override
+  String get mcEnchItemCrossbow => 'Crossbow';
+
+  @override
+  String get mcEnchItemPickaxe => 'Pickaxe';
+
+  @override
+  String get mcEnchItemShovel => 'Shovel';
+
+  @override
+  String get mcEnchItemHoe => 'Hoe';
+
+  @override
+  String get mcEnchItemHelmet => 'Helmet';
+
+  @override
+  String get mcEnchItemChestplate => 'Chestplate';
+
+  @override
+  String get mcEnchItemLeggings => 'Leggings';
+
+  @override
+  String get mcEnchItemBoots => 'Boots';
+
+  @override
+  String get mcEnchItemElytra => 'Elytra';
+
+  @override
+  String get mcEnchItemFishingRod => 'Fishing Rod';
+
+  @override
+  String get mcEnchItemShield => 'Shield';
+
+  @override
+  String get mcEnchItemShears => 'Shears';
+
+  @override
+  String get mcEnchItemFlintAndSteel => 'Flint and Steel';
+
+  @override
+  String get mcEnchItemBrush => 'Brush';
+
+  @override
+  String get mcEnchItemCarrotOnAStick => 'Carrot on a Stick';
+
+  @override
+  String get mcEnchItemBookMerge => 'Book (merge)';
+
+  @override
+  String get mcEnchNeedTwo =>
+      'Pick at least two enchantments to merge into one book.';
+
+  @override
+  String get mcEnchTooExpensive =>
+      'Every order hits \"Too Expensive!\" in survival. Drop an enchantment, start from a fresh item, or turn off the survival limit.';
+
+  @override
+  String get mcEnchItem => 'Item';
+
+  @override
+  String get mcEnchEnchantments => 'Enchantments';
+
+  @override
+  String get mcEnchMaxAll => 'Max all';
+
+  @override
+  String get mcEnchAnvilSettings => 'Anvil settings';
+
+  @override
+  String get mcEnchPriorUses => 'Times the item has already been in an anvil';
+
+  @override
+  String get mcEnchSurvivalLimit => 'Survival limit';
+
+  @override
+  String get mcEnchSurvivalLimitDetail =>
+      'Steps above 39 levels are \"Too Expensive!\"';
+
+  @override
+  String mcEnchConflicts(String other) {
+    return 'Conflicts with $other — tap to swap';
+  }
+
+  @override
+  String get mcEnchNoOrder => 'No order works';
+
+  @override
+  String get mcEnchPickSome => 'Pick some enchantments';
+
+  @override
+  String get mcEnchPickSomeBody =>
+      'Choose an item and the levels you want. Every possible anvil order is tried and the cheapest one is laid out step by step.';
+
+  @override
+  String get mcEnchLevelsTotal => 'levels in total';
+
+  @override
+  String mcEnchAnvilUses(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'anvil uses',
+      one: 'anvil use',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mcEnchMostExpensive => 'most expensive step';
+
+  @override
+  String get mcEnchXpPoints => 'experience points';
+
+  @override
+  String get mcEnchSteps => 'Steps';
+
+  @override
+  String mcEnchFootnote(int penalty, int cost) {
+    return 'The item ends with a prior-work penalty of $penalty, so the next anvil use on it starts at $cost levels before enchantments. Costs follow Java Edition 26.3: each sacrificed enchantment costs its level times its book multiplier, plus 2ⁿ−1 for each side\'s prior work.';
+  }
+
+  @override
+  String mcEnchLevelsShort(int levels) {
+    return '$levels lvl';
+  }
+
+  @override
+  String mcEnchBook(String enchantments) {
+    return 'Book ($enchantments)';
+  }
+
+  @override
+  String get mcShapeCircle => 'Circle';
+
+  @override
+  String get mcShapeArch => 'Arch & curve';
+
+  @override
+  String get mcShape3d => '3D shape';
+
+  @override
+  String get mcShapeRound => 'Round';
+
+  @override
+  String get mcShapePointed => 'Pointed (gothic)';
+
+  @override
+  String get mcShapeParabolic => 'Parabolic';
+
+  @override
+  String get mcShapeSegmental => 'Segmental';
+
+  @override
+  String get mcShapeSphere => 'Sphere';
+
+  @override
+  String get mcShapeDome => 'Dome';
+
+  @override
+  String get mcShapeCylinder => 'Cylinder';
+
+  @override
+  String get mcShapeCone => 'Cone';
+
+  @override
+  String get mcShapePyramid => 'Pyramid';
+
+  @override
+  String get mcShapeTorus => 'Torus';
+
+  @override
+  String get mcShapeSize => 'Size';
+
+  @override
+  String get mcShapeSpan => 'Span';
+
+  @override
+  String get mcShapeWidth => 'Width';
+
+  @override
+  String get mcShapePerfectCircle => 'Perfect circle';
+
+  @override
+  String get mcShapeSameSize => 'Same size on every axis';
+
+  @override
+  String get mcShapeRise => 'Rise';
+
+  @override
+  String get mcShapeLength => 'Length';
+
+  @override
+  String get mcShapeHeight => 'Height';
+
+  @override
+  String get mcShapeDepth => 'Depth';
+
+  @override
+  String get mcShapeTube => 'Tube radius';
+
+  @override
+  String get mcShapeArchDepth => 'Depth (blocks into the wall)';
+
+  @override
+  String get mcShapeStyle => 'Style';
+
+  @override
+  String get mcShapeFilled => 'Filled';
+
+  @override
+  String get mcShapeHollow => 'Hollow';
+
+  @override
+  String get mcShapeHollowDetail => 'Only the shell — far fewer blocks';
+
+  @override
+  String get mcShapeWall => 'Wall thickness';
+
+  @override
+  String get mcShapeThick => 'Thick outline';
+
+  @override
+  String get mcShapeThickDetail =>
+      'No diagonal gaps — mobs cannot slip through';
+
+  @override
+  String get mcShapeBlock => 'Block';
+
+  @override
+  String mcShapeLayerOf(int layer, int count) {
+    return 'Layer $layer of $count';
+  }
+
+  @override
+  String get mcShapePlan => 'Plan';
+
+  @override
+  String get mcShapeLayer => 'Layer';
+
+  @override
+  String get mcShapeGhost =>
+      'Grey dots are the layer below, to line each layer up.';
+
+  @override
+  String mcShapeRuns(String runs) {
+    return 'Run lengths from the top row out: $runs. Mirror them for the other quarters.';
+  }
+
+  @override
+  String get mcVillNovice => 'Novice';
+
+  @override
+  String get mcVillApprentice => 'Apprentice';
+
+  @override
+  String get mcVillJourneyman => 'Journeyman';
+
+  @override
+  String get mcVillExpert => 'Expert';
+
+  @override
+  String get mcVillMaster => 'Master';
+
+  @override
+  String get mcVillSearch =>
+      'Which villager trades… (e.g. mending, glass, emerald)';
+
+  @override
+  String get mcVillTraderBody =>
+      'Spawns near players now and then and never restocks. Each visit rolls its offers from the lists below.';
+
+  @override
+  String mcVillBody(String workstation) {
+    return 'Workstation: $workstation. Each level unlocks new offers, picked at random from that level\'s pool.';
+  }
+
+  @override
+  String mcVillPicks(int picks, int total) {
+    return '$picks of $total';
+  }
+
+  @override
+  String mcVillLevelTitle(int level, String name) {
+    return 'Level $level · $name';
+  }
+
+  @override
+  String mcVillLevelXp(int xp) {
+    return '($xp XP)';
+  }
+
+  @override
+  String get mcVillNoTrades => 'No villager trades that';
+
+  @override
+  String get mcVillNoTradesBody =>
+      'Try an item id like \"book\", \"glass\" or \"diamond\".';
+
+  @override
+  String mcVillUses(int count) {
+    return '$count uses';
+  }
+
+  @override
+  String mcVillXp(int xp) {
+    return '$xp xp';
+  }
+
+  @override
+  String mcVillNoteEnchant(String min, String max) {
+    return 'Enchanted at level $min–$max';
+  }
+
+  @override
+  String get mcVillNoteRandomEnchant => 'Random enchantment';
+
+  @override
+  String mcVillNoteMap(String place) {
+    return 'Map to the nearest $place';
+  }
+
+  @override
+  String get mcVillNoteExplorer => 'Explorer map';
+
+  @override
+  String get mcVillNoteDyes => 'Random dye colours';
+
+  @override
+  String get mcVillNoteStew => 'Random stew effect';
+
+  @override
+  String get mcVillNoteRandomPotion => 'Random potion effect';
+
+  @override
+  String mcVillNotePotion(String potion) {
+    return 'Potion of $potion';
+  }
+
+  @override
+  String get mcVillNoteTreasure => 'Treasure enchantments cost double';
+
+  @override
+  String mcVillNoteVariants(String variants) {
+    return 'Only from $variants villagers';
+  }
+
+  @override
+  String get mcVillNotePrice => 'Price scales with the enchantment level';
+
+  @override
+  String get mcOreTipCoal =>
+      'Common everywhere above sea level; mountains carry a second band all the way to the build limit. Half the coal touching air below Y 136 is skipped, so caves under the surface show less of it.';
+
+  @override
+  String get mcOreTipIron =>
+      'Two bands: a small one peaking at Y 16 and a huge mountain band peaking near Y 232, plus scattered small veins below Y 72.';
+
+  @override
+  String get mcOreTipCopper =>
+      'Peaks at Y 48. Dripstone caves roll a second, larger set of veins over the same heights.';
+
+  @override
+  String get mcOreTipGold =>
+      'Peaks at Y −16 with extra small veins at the very bottom. Badlands add fifty more attempts a chunk from Y 32 up to Y 256.';
+
+  @override
+  String get mcOreTipRedstone =>
+      'Concentrated at the bottom of the world. Mine just above the bedrock ceiling — around Y −58.';
+
+  @override
+  String get mcOreTipLapis =>
+      'A narrow band peaking at Y 0, and a \"buried\" spread from Y −64 to 64 that never shows on a cave wall.';
+
+  @override
+  String get mcOreTipDiamond =>
+      'The deeper the better, down to the bedrock. Most diamond touching air is thrown away, so branch-mine at Y −58 instead of exploring caves.';
+
+  @override
+  String get mcOreTipEmerald =>
+      'Only in mountain biomes, as single blocks, peaking near Y 232.';
+
+  @override
+  String get mcOreTipQuartz =>
+      'Evenly spread from Y 10 to 117 across the Nether; basalt deltas roll twice as many veins.';
+
+  @override
+  String get mcOreTipNetherGold =>
+      'Evenly spread from Y 10 to 117; basalt deltas double it.';
+
+  @override
+  String get mcOreTipDebris =>
+      'Mostly between Y 8 and 24, peaking at Y 16. It never generates exposed to air — strip-mine, or use beds or TNT to clear fast.';
+
+  @override
+  String get mcOreBestLevel => 'best level to mine';
+
+  @override
+  String get mcOreRange => 'where it can appear';
+
+  @override
+  String get mcOreAttempts => 'vein attempts per chunk';
+
+  @override
+  String get mcOreLargest => 'largest vein size';
+
+  @override
+  String mcOreDistribution(String ore) {
+    return 'Distribution of $ore';
+  }
+
+  @override
+  String get mcOreBiomeBonus => 'Biome bonus';
+
+  @override
+  String get mcOreTips => 'Tips';
+
+  @override
+  String get mcOrePlacements => 'Placements';
+
+  @override
+  String get mcOreAllOverworld => 'All overworld ores';
+
+  @override
+  String get mcOreNether => 'Nether';
+
+  @override
+  String mcOreTriangle(int y) {
+    return 'triangle peaking at Y $y';
+  }
+
+  @override
+  String get mcOreEven => 'even spread';
+
+  @override
+  String mcOrePerChunk(int count) {
+    return '$count per chunk';
+  }
+
+  @override
+  String mcOreOneIn(int count) {
+    return '1 in $count chunks';
+  }
+
+  @override
+  String mcOrePlacementLine(
+    int min,
+    int max,
+    String shape,
+    String attempts,
+    int size,
+  ) {
+    return 'Y $min to $max, $shape · $attempts · size $size';
+  }
+
+  @override
+  String mcOreAirSkip(int percent) {
+    return '$percent% skipped next to air';
+  }
+
+  @override
+  String mcOrePeak(int y) {
+    return 'Peak Y $y';
+  }
+
+  @override
+  String get mcPotionDescSwiftness =>
+      'Speed I raises walking speed by 20% (Speed II: 40%).';
+
+  @override
+  String get mcPotionDescLeaping => 'Jump higher and take less fall damage.';
+
+  @override
+  String get mcPotionDescStrength => '+3 melee damage per level.';
+
+  @override
+  String get mcPotionDescHealing =>
+      'Restores 4 health (8 at level II). Hurts undead mobs.';
+
+  @override
+  String get mcPotionDescRegeneration =>
+      'Heals one heart every 2.5 seconds (1.2 s at level II).';
+
+  @override
+  String get mcPotionDescPoison =>
+      'Drains health down to half a heart; never kills.';
+
+  @override
+  String get mcPotionDescFireResistance =>
+      'Immune to fire, lava and magma blocks.';
+
+  @override
+  String get mcPotionDescWaterBreathing =>
+      'Breathe underwater for the whole duration.';
+
+  @override
+  String get mcPotionDescNightVision =>
+      'See in the dark and clearly underwater.';
+
+  @override
+  String get mcPotionDescSlowFalling => 'Fall gently and take no fall damage.';
+
+  @override
+  String get mcPotionDescTurtleMaster =>
+      'Slowness IV and Resistance III (VI and IV when strong).';
+
+  @override
+  String get mcPotionDescWindCharged => 'Release a wind burst on death.';
+
+  @override
+  String get mcPotionDescWeaving =>
+      'Spawn cobwebs on death; move faster through cobwebs.';
+
+  @override
+  String get mcPotionDescOozing => 'Release two medium slimes on death.';
+
+  @override
+  String get mcPotionDescInfested => 'Chance to release silverfish when hurt.';
+
+  @override
+  String get mcPotionDescSlowness => 'Slowness I cuts speed by 15% (IV: 60%).';
+
+  @override
+  String get mcPotionDescHarming =>
+      '6 damage (12 at level II). Heals undead mobs.';
+
+  @override
+  String get mcPotionDescInvisibility =>
+      'Mobs stop noticing you unless you wear armour.';
+
+  @override
+  String get mcPotionDescWeakness =>
+      '−4 melee damage. Needed to cure zombie villagers.';
+
+  @override
+  String get mcPotionSearch => 'Search potion or ingredient';
+
+  @override
+  String get mcPotionExtended => 'Extended';
+
+  @override
+  String get mcPotionRedstone => '+ Redstone Dust';
+
+  @override
+  String get mcPotionLevel2 => 'Level II';
+
+  @override
+  String get mcPotionGlowstone => '+ Glowstone Dust';
+
+  @override
+  String get mcPotionBeneficial => 'Beneficial';
+
+  @override
+  String get mcPotionHarmful => 'Harmful';
+
+  @override
+  String mcPotionEffect(String effect) {
+    return 'Effect: $effect';
+  }
+
+  @override
+  String get mcPotionBrewing => 'Brewing path';
+
+  @override
+  String get mcPotionDurations => 'Durations';
+
+  @override
+  String get mcPotionDrinkSplash => 'Drink / Splash';
+
+  @override
+  String get mcPotionLingering => 'Lingering';
+
+  @override
+  String get mcPotionArrow => 'Arrow';
+
+  @override
+  String get mcPotionInstant => 'Instant';
+
+  @override
+  String get mcPotionVariants => 'Variants';
+
+  @override
+  String get mcPotionSplash =>
+      'Splash: brew with Gunpowder. Same duration; hits everyone in the splash.';
+
+  @override
+  String get mcPotionLingeringNote =>
+      'Lingering: brew a splash potion with Dragon\'s Breath. A cloud for a quarter of the time.';
+
+  @override
+  String get mcPotionArrows =>
+      'Tipped arrows: 8 arrows around a lingering potion in a crafting table. An eighth of the time.';
+
+  @override
+  String mcPotionCorrupts(String potion) {
+    return 'Fermented Spider Eye turns this into $potion — tap to open.';
+  }
+
+  @override
+  String get mcPotionFuel =>
+      'Brewing stands burn one Blaze Powder per 20 brews and take up to three bottles at once.';
+
+  @override
+  String get mcCubeRegular => 'Regular';
+
+  @override
+  String get mcCubeRegularBlocks => 'Concrete powder, dirt & soft blocks';
+
+  @override
+  String get mcCubeBouncy => 'Bouncy';
+
+  @override
+  String get mcCubeBouncyBlocks => 'Logs, planks & bamboo';
+
+  @override
+  String get mcCubeSlowBouncy => 'Slow Bouncy';
+
+  @override
+  String get mcCubeSlowBouncyBlocks => 'Stone, ores & terracotta';
+
+  @override
+  String get mcCubeSlowFlat => 'Slow Flat';
+
+  @override
+  String get mcCubeSlowFlatBlocks => 'Metal ores & metal blocks';
+
+  @override
+  String get mcCubeFastFlat => 'Fast Flat';
+
+  @override
+  String get mcCubeFastFlatBlocks => 'Moss, coral, pumpkins & sponges';
+
+  @override
+  String get mcCubeLight => 'Light';
+
+  @override
+  String get mcCubeLightBlocks => 'Wool';
+
+  @override
+  String get mcCubeFastSliding => 'Fast Sliding';
+
+  @override
+  String get mcCubeFastSlidingBlocks => 'Ice & snow';
+
+  @override
+  String get mcCubeSlowSliding => 'Slow Sliding';
+
+  @override
+  String get mcCubeSlowSlidingBlocks => 'Mushroom & wart blocks';
+
+  @override
+  String get mcCubeHighResistance => 'High Resistance';
+
+  @override
+  String get mcCubeHighResistanceBlocks => 'Soul sand & soul soil';
+
+  @override
+  String get mcCubeSticky => 'Sticky';
+
+  @override
+  String get mcCubeStickyBlocks => 'Honeycomb';
+
+  @override
+  String get mcCubeExplosive => 'Explosive';
+
+  @override
+  String get mcCubeExplosiveBlocks => 'TNT';
+
+  @override
+  String get mcCubeHot => 'Hot';
+
+  @override
+  String get mcCubeHotBlocks => 'Magma';
+
+  @override
+  String get mcCubeDmgArrow => 'Arrows';
+
+  @override
+  String get mcCubeDmgCactus => 'Cactus';
+
+  @override
+  String get mcCubeDmgDryOut => 'Drying out';
+
+  @override
+  String get mcCubeDmgFall => 'Fall damage';
+
+  @override
+  String get mcCubeDmgFallingAnvil => 'Falling anvils';
+
+  @override
+  String get mcCubeDmgFallingBlock => 'Falling blocks';
+
+  @override
+  String get mcCubeDmgFallingStalactite => 'Falling stalactites';
+
+  @override
+  String get mcCubeDmgFreeze => 'Freezing';
+
+  @override
+  String get mcCubeDmgMaceSmash => 'Mace smash';
+
+  @override
+  String get mcCubeDmgHotFloor => 'Magma floors';
+
+  @override
+  String get mcCubeDmgMobAttack => 'Mob melee';
+
+  @override
+  String get mcCubeDmgMobAttackNoAggro => 'Mob melee (no aggro)';
+
+  @override
+  String get mcCubeDmgMobProjectile => 'Mob projectiles';
+
+  @override
+  String get mcCubeDmgPlayerAttack => 'Player melee';
+
+  @override
+  String get mcCubeDmgSpear => 'Spears';
+
+  @override
+  String get mcCubeDmgSpit => 'Llama spit';
+
+  @override
+  String get mcCubeDmgStalagmite => 'Stalagmites';
+
+  @override
+  String get mcCubeDmgSting => 'Bee stings';
+
+  @override
+  String get mcCubeDmgSulfurCubeHot => 'Another cube\'s heat';
+
+  @override
+  String get mcCubeDmgSweetBerryBush => 'Sweet berry bushes';
+
+  @override
+  String get mcCubeDmgThrown => 'Thrown items';
+
+  @override
+  String get mcCubeDmgTrident => 'Tridents';
+
+  @override
+  String get mcCubeDmgWindCharge => 'Wind charges';
+
+  @override
+  String get mcCubeVeryEasyShove => 'Very easy to shove';
+
+  @override
+  String get mcCubeShovesEasily => 'Shoves easily';
+
+  @override
+  String get mcCubeResists => 'Resists shoving';
+
+  @override
+  String get mcCubeHardToBudge => 'Very hard to budge';
+
+  @override
+  String get mcCubeSuperBouncy => 'Super bouncy';
+
+  @override
+  String get mcCubeBouncyDesc => 'Bouncy';
+
+  @override
+  String get mcCubeLittleBouncy => 'A little bouncy';
+
+  @override
+  String get mcCubeBarely => 'Barely bounces';
+
+  @override
+  String get mcCubeNoBounce => 'No bounce';
+
+  @override
+  String get mcCubeSticks => 'Sticks in place';
+
+  @override
+  String get mcCubeGrippy => 'Grippy';
+
+  @override
+  String get mcCubeSlidesBit => 'Slides a bit';
+
+  @override
+  String get mcCubeSlidesIce => 'Slides like ice';
+
+  @override
+  String get mcCubeFloaty => 'Floaty & slow';
+
+  @override
+  String get mcCubeDamps => 'Damps quickly';
+
+  @override
+  String get mcCubeHolds => 'Holds momentum';
+
+  @override
+  String get mcCubeKeepsFlying => 'Keeps flying';
+
+  @override
+  String get mcCubeEatsTitle => 'What happens if my cube eats…';
+
+  @override
+  String mcCubeSearchHint(int count) {
+    return 'Search any of the $count swallowable blocks';
+  }
+
+  @override
+  String get mcCubeNotSwallowable =>
+      'A cube will not swallow that — only the blocks listed under the twelve behaviours.';
+
+  @override
+  String get mcCubeMeet => 'Meet the cube';
+
+  @override
+  String get mcCubeSpawnsIn => 'Spawns in';
+
+  @override
+  String get mcCubeSpawnsInValue => 'Sulfur Caves';
+
+  @override
+  String get mcCubeHealth => 'Health';
+
+  @override
+  String get mcCubeHealthValue => '8 full-size · 4 baby';
+
+  @override
+  String get mcCubeOnDeath => 'On death';
+
+  @override
+  String get mcCubeOnDeathValue => 'A full cube splits into 2 babies';
+
+  @override
+  String get mcCubeExperience => 'Experience';
+
+  @override
+  String get mcCubeExperienceValue => '1 to 2';
+
+  @override
+  String get mcCubeFood => 'Baby food';
+
+  @override
+  String get mcCubeFoodValue => 'Slime Balls make babies grow and breed';
+
+  @override
+  String get mcCubeHome => 'Take it home';
+
+  @override
+  String get mcCubeHomeValue => 'Scoop the whole cube with a bucket';
+
+  @override
+  String get mcCubeChange => 'Change its block';
+
+  @override
+  String get mcCubeChangeValue =>
+      'Shears pop the block out (5 s before it can swallow again)';
+
+  @override
+  String get mcCubeTempt => 'Tempt range';
+
+  @override
+  String get mcCubeTemptValue => '8 blocks';
+
+  @override
+  String get mcCubeShrugs => 'While it holds a block it shrugs off…';
+
+  @override
+  String get mcCubeShrugsNote =>
+      'It also breathes underwater and cannot freeze. Explosions still hurt — TNT pops a cube even mid-swallow — and every shrugged-off hit still knocks it around.';
+
+  @override
+  String get mcCubeHow => 'How swallowing works';
+
+  @override
+  String get mcCubeHowBody =>
+      'Only full-size cubes swallow blocks: right-click one with a swallowable block, let it walk over a dropped one, or have a dispenser feed it. The block sits in its body slot; feeding another swaps it out and switches the behaviour. While it holds a block the cube stops wandering and is pushed around by players and mobs instead, with knockback scaled by its resistance.';
+
+  @override
+  String get mcCubeExplodes => 'Explodes';
+
+  @override
+  String get mcCubeBurns => 'Burns';
+
+  @override
+  String get mcCubeFloats => 'Floats';
+
+  @override
+  String get mcCubeSinks => 'Sinks';
+
+  @override
+  String mcCubeBehaviour(String name) {
+    return '$name behaviour';
+  }
+
+  @override
+  String mcCubeBlockCount(int count) {
+    return '$count blocks';
+  }
+
+  @override
+  String get mcCubeMobility => 'Mobility';
+
+  @override
+  String mcCubeKbRes(String value) {
+    return 'knockback resistance $value';
+  }
+
+  @override
+  String get mcCubeBounce => 'Bounce';
+
+  @override
+  String mcCubeBounciness(String value) {
+    return 'bounciness +$value';
+  }
+
+  @override
+  String get mcCubeGrip => 'Grip';
+
+  @override
+  String mcCubeFriction(String value) {
+    return 'friction $value';
+  }
+
+  @override
+  String get mcCubeAirDrag => 'Air drag';
+
+  @override
+  String mcCubeAirDragValue(String value) {
+    return 'air drag $value';
+  }
+
+  @override
+  String get mcCubeKnockback => 'Knockback';
+
+  @override
+  String get mcCubeKnockbackDetail => 'horizontal · vertical';
+
+  @override
+  String get mcCubePush => 'Push';
+
+  @override
+  String mcCubePushValue(String seconds) {
+    return 'every $seconds s';
+  }
+
+  @override
+  String get mcCubePushDetail => 'how often a shove lands';
+
+  @override
+  String get mcCubeExplosion => 'Explosion';
+
+  @override
+  String mcCubePower(String power) {
+    return 'Power $power';
+  }
+
+  @override
+  String mcCubeFuse(String seconds) {
+    return '$seconds s fuse';
+  }
+
+  @override
+  String get mcCubeSetsFire => 'sets fire';
+
+  @override
+  String get mcCubeNoFire => 'no fire';
+
+  @override
+  String get mcCubeContact => 'Contact';
+
+  @override
+  String mcCubeBurnDamage(String amount) {
+    return '$amount burn damage';
+  }
+
+  @override
+  String get mcCubeWhenTouched => 'when touched';
+
+  @override
+  String get mcCubeWater => 'Water';
+
+  @override
+  String get mcCubeBuoyant => 'buoyant';
+
+  @override
+  String get mcCubeNotBuoyant => 'not buoyant';
+
+  @override
+  String get mcBeaconSpeed => 'Move 20% faster (40% at II).';
+
+  @override
+  String get mcBeaconHaste => 'Mine and attack faster.';
+
+  @override
+  String get mcBeaconResistance => 'Take 20% less damage (40% at II).';
+
+  @override
+  String get mcBeaconJump => 'Jump higher and fall softer.';
+
+  @override
+  String get mcBeaconStrength => '+3 melee damage (+6 at II).';
+
+  @override
+  String get mcBeaconRegen => 'Secondary power: slow healing.';
+
+  @override
+  String get mcBeaconTier => 'Pyramid tier';
+
+  @override
+  String mcBeaconTierN(int tier) {
+    return 'Tier $tier';
+  }
+
+  @override
+  String get mcBeaconBuildFrom => 'Build it from';
+
+  @override
+  String get mcBeaconLayers => 'Layers';
+
+  @override
+  String mcBeaconLayerN(int layer) {
+    return 'Layer $layer';
+  }
+
+  @override
+  String mcBeaconBlocksOf(String mineral) {
+    return 'blocks of $mineral';
+  }
+
+  @override
+  String get mcBeaconRange => 'block range';
+
+  @override
+  String get mcBeaconEffectLength => 'effect length';
+
+  @override
+  String mcBeaconEffectsAt(int tier) {
+    return 'Effects at tier $tier';
+  }
+
+  @override
+  String get mcBeaconUnlocked => 'Unlocked';
+
+  @override
+  String get mcBeaconHow => 'How it works';
+
+  @override
+  String mcBeaconHowBody(int range, int seconds, String mineral) {
+    return 'Range is $range blocks around the beacon (10 + 10 per tier) and reaches $range blocks below it and up to the sky. Effects are re-applied every 4 seconds and last $seconds seconds, so they linger briefly after you leave. A full tier-4 pyramid unlocks a second power: Regeneration, or level II of the primary. Pay with one iron ingot, gold ingot, emerald, diamond or netherite ingot. The beam needs a clear view of the sky; stained glass on top tints it. Mixing mineral blocks in the pyramid is fine — $mineral is just the one counted above.';
+  }
+
+  @override
+  String get mcCommand => 'Command';
+
+  @override
+  String get mcCommands => 'Commands';
+
+  @override
+  String get mcGiveTo => 'Give to';
+
+  @override
+  String get mcCancel => 'Cancel';
+
+  @override
+  String get mcBannerRandomize => 'Randomize';
+
+  @override
+  String get mcBannerBase => 'Base colour';
+
+  @override
+  String get mcBannerAdd => 'Add a pattern';
+
+  @override
+  String get mcBannerDye => 'Dye';
+
+  @override
+  String mcBannerLoomLimit(int limit) {
+    return 'A loom stops at $limit layers. Layers beyond that only exist through commands.';
+  }
+
+  @override
+  String get mcBannerLayers => 'Layers';
+
+  @override
+  String get mcBannerEmpty => 'Pick patterns on the left to stack them here.';
+
+  @override
+  String get mcBannerSteps => 'Loom steps';
+
+  @override
+  String mcBannerCraft(String banner, String wool) {
+    return 'Craft the $banner: 6 $wool over a Stick.';
+  }
+
+  @override
+  String get mcBannerShieldStep =>
+      'Then combine the finished banner with a Shield in a crafting grid.';
+
+  @override
+  String mcBannerLoomStep(String inputs, String pattern) {
+    return 'Loom: banner + $inputs → $pattern';
+  }
+
+  @override
+  String mcBannerNeeds(String pattern, String item) {
+    return '$pattern — needs $item';
+  }
+
+  @override
+  String get mcBannerChangeColour => 'Change colour';
+
+  @override
+  String get mcBannerRemoveLayer => 'Remove layer';
+
+  @override
+  String get mcFwSmallBall => 'Small ball';
+
+  @override
+  String get mcFwLargeBall => 'Large ball';
+
+  @override
+  String get mcFwStar => 'Star';
+
+  @override
+  String get mcFwCreeper => 'Creeper';
+
+  @override
+  String get mcFwBurst => 'Burst';
+
+  @override
+  String get mcFwRocket => 'Rocket';
+
+  @override
+  String get mcFwFlight => 'Flight duration (gunpowder)';
+
+  @override
+  String get mcFwCount => 'How many rockets';
+
+  @override
+  String get mcFwStars => 'Stars';
+
+  @override
+  String get mcFwAddStar => 'Add star';
+
+  @override
+  String get mcFwNoStars =>
+      'No stars: the rocket just flies — handy for elytra boosts.';
+
+  @override
+  String mcFwStarN(int number) {
+    return 'Star $number';
+  }
+
+  @override
+  String mcFwFadeN(int number) {
+    return 'Fade $number';
+  }
+
+  @override
+  String get mcFwShape => 'Shape';
+
+  @override
+  String mcFwColours(int count) {
+    return 'Colours ($count/8)';
+  }
+
+  @override
+  String mcFwFade(int count) {
+    return 'Fade to ($count/8)';
+  }
+
+  @override
+  String get mcFwTrail => 'Trail';
+
+  @override
+  String get mcFwTrailDetail => 'Adds a Diamond';
+
+  @override
+  String get mcFwTwinkle => 'Twinkle';
+
+  @override
+  String get mcFwTwinkleDetail => 'Adds Glowstone Dust';
+
+  @override
+  String get mcFwCrafting => 'Crafting';
+
+  @override
+  String get mcFwRocketX3 => 'Rocket ×3';
+
+  @override
+  String get mcArmorPiece => 'Piece';
+
+  @override
+  String get mcArmorApplyAll => 'Apply to all';
+
+  @override
+  String get mcArmorWear => 'Wear this piece';
+
+  @override
+  String get mcArmorMaterial => 'Material';
+
+  @override
+  String get mcArmorTrim => 'Trim';
+
+  @override
+  String get mcArmorNone => 'None';
+
+  @override
+  String mcArmorFoundIn(String place) {
+    return 'Template found in: $place';
+  }
+
+  @override
+  String get mcArmorTrimMaterial => 'Trim material';
+
+  @override
+  String get mcArmorLeather => 'Leather colour';
+
+  @override
+  String get mcArmorSearching => 'Searching 735,000 mixes…';
+
+  @override
+  String get mcArmorFindMix => 'Find the dye mix for this colour';
+
+  @override
+  String get mcArmorMixYourself =>
+      'Or mix dyes yourself (one crafting, up to 8):';
+
+  @override
+  String get mcArmorRemoveDye => 'Remove last dye';
+
+  @override
+  String get mcArmorSmithing => 'Smithing';
+
+  @override
+  String mcArmorSmithStep(
+    String template,
+    String armor,
+    String material,
+    String piece,
+  ) {
+    return '$template + $armor + $material → trimmed $piece';
+  }
+
+  @override
+  String get mcArmorCopyTemplate =>
+      'Copy a template with 7 Diamonds and the block it is made of in a crafting grid.';
+
+  @override
+  String get mcArmorNoPieces => '# No pieces selected';
+
+  @override
+  String get mcArmorIndistinguishable => 'Indistinguishable';
+
+  @override
+  String get mcArmorVeryClose => 'Very close';
+
+  @override
+  String get mcArmorClose => 'Close';
+
+  @override
+  String get mcArmorNearest => 'Nearest possible';
+
+  @override
+  String get mcArmorUse => 'Use';
+
+  @override
+  String get mcTrimSentry => 'Pillager outposts';
+
+  @override
+  String get mcTrimDune => 'Desert pyramids';
+
+  @override
+  String get mcTrimCoast => 'Shipwrecks';
+
+  @override
+  String get mcTrimWild => 'Jungle temples';
+
+  @override
+  String get mcTrimTide => 'Elder guardians (ocean monuments)';
+
+  @override
+  String get mcTrimWard => 'Ancient cities';
+
+  @override
+  String get mcTrimSilence => 'Ancient cities (rare)';
+
+  @override
+  String get mcTrimVex => 'Woodland mansions';
+
+  @override
+  String get mcTrimEye => 'Strongholds';
+
+  @override
+  String get mcTrimSnout => 'Bastion remnants';
+
+  @override
+  String get mcTrimRib => 'Nether fortresses';
+
+  @override
+  String get mcTrimSpire => 'End cities';
+
+  @override
+  String get mcTrimTrail => 'Trail ruins (suspicious gravel)';
+
+  @override
+  String get mcTrimFlow => 'Trial chambers (ominous vaults)';
+
+  @override
+  String get mcTrimBolt => 'Trial chambers (vaults)';
+
+  @override
+  String get mcPlanOpen => 'Open schematic';
+
+  @override
+  String get mcPlanOpenAnother => 'Open another';
+
+  @override
+  String get mcPlanOpenTitle => 'Open a build to plan it';
+
+  @override
+  String get mcPlanUnreadable => 'That file could not be read';
+
+  @override
+  String get mcPlanFormats =>
+      'Litematica (.litematic), Sponge (.schem), Axiom (.bp), MCEdit (.schematic), structure blocks (.nbt) and Bedrock (.mcstructure) all work.';
+
+  @override
+  String get mcPlanFile => 'file';
+
+  @override
+  String get mcPlanSize => 'size (W×H×L)';
+
+  @override
+  String get mcPlanBlockTypes => 'block types';
+
+  @override
+  String get mcPlanLayerMaterials => 'Materials on this layer';
+
+  @override
+  String get mcPlanShopping => 'Shopping list';
+
+  @override
+  String get mcPlanShoppingCopied => 'Shopping list copied';
+
+  @override
+  String get mcPlanCsv => 'Save as CSV';
+
+  @override
+  String get mcPlanLayerOnly => 'Only the current layer';
+
+  @override
+  String mcPlanGathered(int total, int done, int count) {
+    return '$total blocks · $done/$count gathered';
+  }
+
+  @override
+  String get mcOrgUnreadable => 'Unreadable';
+
+  @override
+  String get mcOrgTooLarge => 'Too large to preview';
+
+  @override
+  String get mcOrgSortName => 'Name';
+
+  @override
+  String get mcOrgSortNewest => 'Newest';
+
+  @override
+  String get mcOrgSortLargest => 'Largest file';
+
+  @override
+  String get mcOrgSortBlocks => 'Most blocks';
+
+  @override
+  String get mcOrgChooseFolderTitle => 'Choose a schematics folder';
+
+  @override
+  String mcOrgFolderError(String error) {
+    return 'Could not read that folder: $error';
+  }
+
+  @override
+  String get mcOrgRenameTitle => 'Rename schematic';
+
+  @override
+  String get mcOrgRename => 'Rename';
+
+  @override
+  String mcOrgExists(String name) {
+    return 'A file called $name already exists.';
+  }
+
+  @override
+  String mcOrgRenameError(String error) {
+    return 'Could not rename: $error';
+  }
+
+  @override
+  String get mcOrgGroup => 'Group';
+
+  @override
+  String get mcOrgGroupHint => 'e.g. Houses, Farms, Redstone';
+
+  @override
+  String get mcOrgNoGroup => 'No group';
+
+  @override
+  String mcOrgReadError(String name, String error) {
+    return 'Could not read $name: $error';
+  }
+
+  @override
+  String get mcOrgChooseFolder => 'Choose folder';
+
+  @override
+  String get mcOrgChangeFolder => 'Change folder';
+
+  @override
+  String get mcOrgRescan => 'Rescan';
+
+  @override
+  String get mcOrgPointTitle => 'Point it at your schematics';
+
+  @override
+  String get mcOrgPointBody =>
+      'Pick the folder your schematics live in — Litematica\'s \"schematics\" folder, WorldEdit\'s, or any other. Files are read in place; only renames change anything on disk.';
+
+  @override
+  String get mcOrgSearch => 'Search by name';
+
+  @override
+  String mcOrgSortBy(String order) {
+    return 'Sort: $order';
+  }
+
+  @override
+  String get mcOrgSubfolders => 'Subfolders';
+
+  @override
+  String mcOrgAll(int count) {
+    return 'All ($count)';
+  }
+
+  @override
+  String get mcOrgFavourites => '★ Favourites';
+
+  @override
+  String get mcOrgEmpty => 'No schematics in this folder';
+
+  @override
+  String get mcOrgNothing => 'Nothing matches';
+
+  @override
+  String mcOrgLookingFor(String extensions) {
+    return 'Looking for $extensions files.';
+  }
+
+  @override
+  String get mcOrgUnfavourite => 'Unfavourite';
+
+  @override
+  String get mcOrgFavourite => 'Favourite';
+
+  @override
+  String mcOrgBlocks(int count) {
+    return '$count blocks';
+  }
+
+  @override
+  String get mcOrgMore => 'More';
+
+  @override
+  String get mcOrgPreview => 'Preview';
+
+  @override
+  String get mcOrgRenameMenu => 'Rename…';
+
+  @override
+  String get mcOrgGroupMenu => 'Group…';
+
+  @override
+  String get mcMapCrop => 'Crop to fill';
+
+  @override
+  String get mcMapContain => 'Fit inside';
+
+  @override
+  String get mcMapStretch => 'Stretch';
+
+  @override
+  String get mcMapPaletteAll => 'Every colour';
+
+  @override
+  String get mcMapPaletteSurvival => 'Survival friendly';
+
+  @override
+  String get mcMapPaletteConcrete => 'Concrete & terracotta';
+
+  @override
+  String get mcMapPaletteGreys => 'Greyscale';
+
+  @override
+  String get mcMapDitherNone => 'None';
+
+  @override
+  String get mcMapDitherFs => 'Floyd–Steinberg';
+
+  @override
+  String get mcMapDitherOrdered => 'Ordered (Bayer)';
+
+  @override
+  String get mcMapNotImage => 'That file is not an image luma can read.';
+
+  @override
+  String mcMapCouldNotConvert(String error) {
+    return 'Could not convert: $error';
+  }
+
+  @override
+  String get mcMapChooseImage => 'Choose image';
+
+  @override
+  String get mcMapChangeImage => 'Change image';
+
+  @override
+  String get mcMapSize => 'Size in maps';
+
+  @override
+  String get mcMapAcross => 'Across';
+
+  @override
+  String get mcMapDown => 'Down';
+
+  @override
+  String mcMapBlocksSize(int width, int height) {
+    return '$width × $height blocks';
+  }
+
+  @override
+  String get mcMapStaircase => 'Staircase (3 shades)';
+
+  @override
+  String get mcMapStaircaseDetail =>
+      'More colours, but each column climbs up and down';
+
+  @override
+  String get mcMapDithering => 'Dithering';
+
+  @override
+  String mcMapBlocksToUse(int count) {
+    return 'Blocks to use ($count)';
+  }
+
+  @override
+  String get mcMapChooseTitle => 'Choose a picture';
+
+  @override
+  String get mcMapChooseBody =>
+      'Any PNG or JPG. It is cut into 128-block maps, matched to the colours a map can show, and turned into a schematic you can paste or build block by block.';
+
+  @override
+  String get mcMapPreview => 'How it will look on a map';
+
+  @override
+  String get mcMapSavePng => 'Save PNG';
+
+  @override
+  String get mcMapTallest => 'tallest column';
+
+  @override
+  String get mcMapShow3d => 'Show in 3D';
+
+  @override
+  String get mcMapBuildNote =>
+      'Build it facing north to south, with the cobblestone row on the north edge — that row is what shades the first line. Each map covers a 128 × 128 area aligned to the map grid.';
+
+  @override
+  String get mcRoofGable => 'Gable';
+
+  @override
+  String get mcRoofSteepGable => 'Steep gable';
+
+  @override
+  String get mcRoofGentleGable => 'Low gable (slabs)';
+
+  @override
+  String get mcRoofGambrel => 'Gambrel (barn)';
+
+  @override
+  String get mcRoofHip => 'Hip';
+
+  @override
+  String get mcRoofGentleHip => 'Low hip (slabs)';
+
+  @override
+  String get mcRoofMansard => 'Mansard';
+
+  @override
+  String get mcRoofShed => 'Shed';
+
+  @override
+  String get mcRoofAFrame => 'A-frame';
+
+  @override
+  String get mcRoofFootprint => 'Footprint';
+
+  @override
+  String get mcRoofWidthX => 'Width (X)';
+
+  @override
+  String get mcRoofDepthZ => 'Depth (Z)';
+
+  @override
+  String get mcRoofOverhang => 'Overhang';
+
+  @override
+  String get mcRoofSizeNote =>
+      'Width and depth are the walls\' outside size; the overhang is added on every side.';
+
+  @override
+  String get mcRoofRoof => 'Roof';
+
+  @override
+  String get mcRoofRidge => 'Ridge cap';
+
+  @override
+  String get mcRoofRidgeDetail => 'Slabs along the very top';
+
+  @override
+  String get mcRoofFillGables => 'Fill the gable ends';
+
+  @override
+  String get mcRoofStairs => 'stairs';
+
+  @override
+  String get mcRoofSlabs => 'slabs';
+
+  @override
+  String get mcSkinPencil => 'Pencil';
+
+  @override
+  String get mcSkinEraser => 'Eraser';
+
+  @override
+  String get mcSkinFill => 'Fill';
+
+  @override
+  String get mcSkinPicker => 'Pick colour';
+
+  @override
+  String get mcSkinNotSkin => 'That PNG is not a 64×64 or 64×32 skin.';
+
+  @override
+  String get mcSkinLoadTitle => 'Load a player\'s skin';
+
+  @override
+  String get mcSkinLoadBody =>
+      'Looks the username up with Mojang\'s public profile service and downloads their current skin.';
+
+  @override
+  String get mcSkinUsername => 'Username';
+
+  @override
+  String get mcSkinLoad => 'Load';
+
+  @override
+  String get mcSkinUnsupported => 'That skin is in a format luma cannot edit.';
+
+  @override
+  String mcSkinLoadError(String error) {
+    return 'Could not load that skin ($error).';
+  }
+
+  @override
+  String get mcSkinUndo => 'Undo';
+
+  @override
+  String get mcSkinRedo => 'Redo';
+
+  @override
+  String get mcSkinPaintOuter => 'Paint outer layer';
+
+  @override
+  String get mcSkinShowOuter => 'Show outer layer';
+
+  @override
+  String get mcSkinSlim => 'Slim arms';
+
+  @override
+  String get mcSkinColour => 'Colour';
+
+  @override
+  String get mcSkinRecent => 'Recent';
+
+  @override
+  String get mcSkinLightness => 'Lightness';
+
+  @override
+  String get mcSkinModel => '3D model';
+
+  @override
+  String get mcSkinResetView => 'Reset view';
+
+  @override
+  String get mcSkinTurn => 'Turn';
+
+  @override
+  String get mcSkinTexture => 'Texture';
+
+  @override
+  String get mcSkinOpenPng => 'Open PNG';
+
+  @override
+  String get mcSkinFromUser => 'From username';
+
+  @override
+  String get mcSkinHelp =>
+      'Drag with the right mouse button (or use the Turn slider) to rotate the model; left-click paints. \"Paint outer layer\" paints the hat, jacket, sleeves and trousers layer instead of the base.';
+
+  @override
+  String mcVersionAndNewer(String version) {
+    return '$version and newer';
+  }
+
+  @override
+  String get mcSaveDatapack => 'Save as datapack';
+
+  @override
+  String get mcSaveDatapackShort => 'Save datapack';
+
+  @override
+  String get mcSendTo => 'Send to';
+
+  @override
+  String get mcShowTo => 'Show to';
+
+  @override
+  String get mcAdd => 'Add';
+
+  @override
+  String get mcRemove => 'Remove';
+
+  @override
+  String get mcFlatStart => 'Start from a preset';
+
+  @override
+  String get mcFlatLayers => 'Layers (top first)';
+
+  @override
+  String mcFlatTotal(int count) {
+    return '$count blocks';
+  }
+
+  @override
+  String get mcFlatRemoveLayer => 'Remove layer';
+
+  @override
+  String get mcFlatAddLayer => 'Add layer on top';
+
+  @override
+  String get mcFlatWorld => 'World';
+
+  @override
+  String get mcFlatBiome => 'Biome';
+
+  @override
+  String get mcFlatDecorations => 'Decorations (trees, grass…)';
+
+  @override
+  String get mcFlatLakes => 'Lakes';
+
+  @override
+  String get mcFlatStructures => 'Structures';
+
+  @override
+  String get mcFlatCrossSection => 'Cross-section';
+
+  @override
+  String get mcFlatPresetString => 'Preset string';
+
+  @override
+  String get mcFlatPresetNote =>
+      'Create World → World type: Superflat → Customize → Presets, then paste this into the box.';
+
+  @override
+  String get mcFlatServerNote =>
+      'Only read when the server creates a new world.';
+
+  @override
+  String get mcFlatPresetName => 'Datapack preset name';
+
+  @override
+  String get mcFlatDatapackNote =>
+      'Save makes a datapack zip that adds this as a world type on the Create World screen (drop it in with \"Data Packs\").';
+
+  @override
+  String mcFlatDatapackDesc(String name) {
+    return 'Superflat preset \"$name\" made with luma';
+  }
+
+  @override
+  String get mcWorldNormalTerrain => 'Normal';
+
+  @override
+  String get mcWorldAmplified => 'Amplified';
+
+  @override
+  String get mcWorldLargeBiomes => 'Large biomes';
+
+  @override
+  String get mcWorldEveryBiome => 'Every biome';
+
+  @override
+  String get mcWorldOneBiome => 'One biome';
+
+  @override
+  String get mcWorldCheckerboard => 'Checkerboard';
+
+  @override
+  String get mcWorldHeightStandard => 'Standard (Y −64 to 319)';
+
+  @override
+  String get mcWorldHeightTall => 'Tall (Y −64 to 447)';
+
+  @override
+  String get mcWorldHeightDeep => 'Deep (Y −128 to 319)';
+
+  @override
+  String get mcWorldHeightShort => 'Short (Y 0 to 255)';
+
+  @override
+  String mcWorldDatapackDesc(String name) {
+    return 'Custom world \"$name\" made with luma';
+  }
+
+  @override
+  String get mcWorldPreset => 'Preset';
+
+  @override
+  String get mcWorldTerrain => 'Terrain';
+
+  @override
+  String get mcWorldSeaLevel => 'Sea level';
+
+  @override
+  String get mcWorldBuildHeight => 'Build height';
+
+  @override
+  String get mcWorldTerrainBlock => 'Terrain block';
+
+  @override
+  String get mcWorldFluid => 'Oceans and lakes of';
+
+  @override
+  String get mcWorldAnimals => 'Animals at world generation';
+
+  @override
+  String get mcWorldBiomes => 'Biomes';
+
+  @override
+  String get mcWorldSquare => 'Square size';
+
+  @override
+  String mcWorldSquareBlocks(int count) {
+    return '$count blocks';
+  }
+
+  @override
+  String get mcWorldUsing => 'Using it';
+
+  @override
+  String mcWorldUsingBody(String name, String version) {
+    return 'Singleplayer: Create World → Data Packs, drop the zip in, then pick \"luma:$name\" under World Type. Servers: put the zip in world/datapacks before the world exists and set level-type=luma\\:$name in server.properties. Made for Minecraft $version; terrain and the noise router point at the game\'s own density functions, so only what you change here differs from vanilla.';
+  }
+
+  @override
+  String get mcColorTry => 'Try it';
+
+  @override
+  String get mcColorHelp =>
+      'Type & codes, or &#RRGGBB for hex colours (servers with a chat plugin; vanilla chat only knows the 16 colours).';
+
+  @override
+  String get mcColorSection => 'Section signs (§) — signs, books, MOTD';
+
+  @override
+  String get mcColorAmpersand => 'Ampersand codes (&) — plugins';
+
+  @override
+  String get mcColorMiniMessage => 'MiniMessage — Paper / Adventure';
+
+  @override
+  String get mcColorJson => 'JSON text component — tellraw, titles';
+
+  @override
+  String get mcColorCodes => 'Colour codes';
+
+  @override
+  String get mcColorName => 'Name';
+
+  @override
+  String get mcColorCode => 'Code';
+
+  @override
+  String get mcColorSectionCol => 'Section';
+
+  @override
+  String get mcColorHex => 'Hex';
+
+  @override
+  String get mcColorFormatting => 'Formatting codes';
+
+  @override
+  String get mcColorObfuscatedDetail => 'Obfuscated — scrambles constantly';
+
+  @override
+  String get mcColorReset => 'Reset — back to plain white';
+
+  @override
+  String get mcColorOrderNote =>
+      'A colour code resets any formatting before it, so put the colour first: &c&l, not &l&c.';
+
+  @override
+  String mcColorCopied(String code) {
+    return '$code copied';
+  }
+
+  @override
+  String get mcTitleTitle => 'Title';
+
+  @override
+  String get mcTitleSubtitle => 'Subtitle';
+
+  @override
+  String get mcTitleActionbar => 'Action bar';
+
+  @override
+  String get mcTitleTiming => 'Timing';
+
+  @override
+  String get mcTitleFadeIn => 'Fade in';
+
+  @override
+  String get mcTitleStay => 'Stay';
+
+  @override
+  String get mcTitleFadeOut => 'Fade out';
+
+  @override
+  String mcTitleTicks(int ticks, String seconds) {
+    return '$ticks ticks · $seconds s';
+  }
+
+  @override
+  String get mcTitlePlay => 'Play preview';
+
+  @override
+  String get mcTitleOrder =>
+      'Run them in this order: the times and the subtitle are held until the title is sent.';
+
+  @override
+  String get mcTellMessage => 'Message';
+
+  @override
+  String get mcTellHoverHelp =>
+      'Hover a part in the preview to see its hover text.';
+
+  @override
+  String get mcTellPretty => 'Pretty-print the JSON';
+
+  @override
+  String get mcTellComponent => 'Text component';
+
+  @override
+  String get mcTellNote =>
+      'Uses the 26.x component field names (click_event, hover_event), which 1.21.5 and newer expect.';
+
+  @override
+  String get mcMotdLines => 'Lines';
+
+  @override
+  String get mcMotdTooLong =>
+      'Lines over about 45 characters get cut off in the server list.';
+
+  @override
+  String get mcMotdServerName => 'Server name in the list';
+
+  @override
+  String get mcMotdPlayers => 'Players';
+
+  @override
+  String get mcMotdOf => 'of';
+
+  @override
+  String get mcMotdEscapeNote =>
+      '§ and anything beyond plain ASCII must be written as \\u escapes here.';
+
+  @override
+  String get mcMotdRaw =>
+      'Raw text with § codes (Bukkit, Paper, BungeeCord configs)';
+
+  @override
+  String get mcMotdMiniMessage => 'MiniMessage (Velocity, Paper plugins)';
+
+  @override
+  String get mcLootTable => 'Table';
+
+  @override
+  String get mcLootVersion => 'Game version';
+
+  @override
+  String get mcLootUsedFor => 'Used for';
+
+  @override
+  String get mcLootPath => 'Path inside the datapack';
+
+  @override
+  String mcLootPool(int number) {
+    return 'Pool $number';
+  }
+
+  @override
+  String get mcLootRemovePool => 'Remove pool';
+
+  @override
+  String get mcLootAddPool => 'Add pool';
+
+  @override
+  String get mcLootDatapackDesc => 'Loot table made with luma';
+
+  @override
+  String mcLootUse(String give, String setblock) {
+    return 'Use it with $give, or point a chest at it: $setblock';
+  }
+
+  @override
+  String get mcLootRolls => 'Rolls';
+
+  @override
+  String get mcLootTo => 'to';
+
+  @override
+  String get mcLootPlayerKill => 'Only when killed by a player';
+
+  @override
+  String get mcLootAddEntry => 'Add entry';
+
+  @override
+  String get mcLootNothing => 'Nothing (empty roll)';
+
+  @override
+  String get mcLootRemoveEntry => 'Remove entry';
+
+  @override
+  String get mcLootWeight => 'Weight';
+
+  @override
+  String get mcLootCount => 'Count';
+
+  @override
+  String get mcLootEmpty => 'Empty';
+
+  @override
+  String get mcLootRandomEnchant => 'Random enchant';
+
+  @override
+  String get mcLootEnchantLevels => 'Enchant with levels';
+
+  @override
+  String get mcLootLooting => 'Looting bonus';
+
+  @override
+  String get mcLootSmelt => 'Smelt if on fire';
+
+  @override
+  String get mcLootDecay => 'Explosion decay';
+
+  @override
+  String get mcLootLevels => 'Levels';
+
+  @override
+  String get mcLootCustomName => 'Custom name (optional)';
+
+  @override
+  String get mcLootChance => 'Chance to drop at all';
+
+  @override
+  String get mcPotItem => 'Item';
+
+  @override
+  String get mcPotCustomName => 'Custom name';
+
+  @override
+  String get mcPotCustomColour => 'Custom colour';
+
+  @override
+  String get mcPotEffects => 'Effects';
+
+  @override
+  String get mcPotRemoveEffect => 'Remove effect';
+
+  @override
+  String get mcPotDuration => 'Duration';
+
+  @override
+  String get mcPotInfinite => 'Infinite';
+
+  @override
+  String get mcPotParticles => 'Particles';
+
+  @override
+  String get mcPotIcon => 'Icon';
+
+  @override
+  String get mcPotAmbient => 'Ambient';
+
+  @override
+  String get mcPotNoEffects =>
+      'No effects — it will be a coloured water bottle.';
+
+  @override
+  String get mcPotDurationNote =>
+      'Tooltip durations shown are for the drinkable potion; lingering clouds last a quarter as long and tipped arrows an eighth.';
+
+  @override
+  String get mcCmdItem => 'Item';
+
+  @override
+  String get mcCmdCount => 'Count';
+
+  @override
+  String get mcCmdCustomName => 'Custom name';
+
+  @override
+  String get mcCmdEnchantments => 'Enchantments';
+
+  @override
+  String get mcCmdAddEnchantment => 'Add enchantment';
+
+  @override
+  String get mcCmdLore => 'Lore lines';
+
+  @override
+  String get mcCmdRemoveLine => 'Remove line';
+
+  @override
+  String get mcCmdAddLore => 'Add lore line';
+
+  @override
+  String get mcCmdUnbreakable => 'Unbreakable';
+
+  @override
+  String get mcCmdGlint => 'Always glint';
+
+  @override
+  String get mcCmdEntity => 'Entity';
+
+  @override
+  String get mcCmdPosition => 'Position';
+
+  @override
+  String get mcCmdName => 'Name';
+
+  @override
+  String get mcCmdOptional => 'Optional';
+
+  @override
+  String get mcCmdNameVisible => 'Name always visible';
+
+  @override
+  String get mcCmdNoAi => 'No AI';
+
+  @override
+  String get mcCmdSilent => 'Silent';
+
+  @override
+  String get mcCmdInvulnerable => 'Invulnerable';
+
+  @override
+  String get mcCmdGlowing => 'Glowing';
+
+  @override
+  String get mcCmdPersistent => 'Never despawns';
+
+  @override
+  String get mcCmdNoGravity => 'No gravity';
+
+  @override
+  String get mcCmdBaby => 'Baby (zombies)';
+
+  @override
+  String get mcCmdClear => 'Clear';
+
+  @override
+  String get mcCmdGive => 'Give';
+
+  @override
+  String get mcCmdEffect => 'Effect';
+
+  @override
+  String get mcCmdLevel => 'Level';
+
+  @override
+  String get mcCmdSeconds => 'Seconds';
+
+  @override
+  String get mcCmdHideParticles => 'Hide particles';
+
+  @override
+  String get mcCmdYaw => 'Facing yaw';
+
+  @override
+  String get mcCmdPitch => 'Facing pitch';
+
+  @override
+  String get mcCmdYawHint => 'optional, e.g. 90';
+
+  @override
+  String get mcCmdPitchHint => 'optional, e.g. 0';
+
+  @override
+  String get mcCmdCoordsHelp =>
+      'Use ~ for relative and ^ for local coordinates.';
+
+  @override
+  String get mcCmdOneBlock => 'One block';
+
+  @override
+  String get mcCmdArea => 'Area';
+
+  @override
+  String get mcCmdBlock => 'Block';
+
+  @override
+  String get mcCmdAt => 'At';
+
+  @override
+  String get mcCmdFrom => 'From';
+
+  @override
+  String get mcCmdTo => 'To';
+
+  @override
+  String get mcCmdFillLimit => '/fill is limited to 32,768 blocks per command.';
+
+  @override
+  String get mcCmdRule => 'Rule';
+
+  @override
+  String get mcCmdValue => 'Value';
+
+  @override
+  String get mcCmdNumber => 'number';
+
+  @override
+  String get mcCmdRuleNote => '26.x game rules use their snake_case ids.';
+
+  @override
+  String get mcCmdSet => 'Set';
+
+  @override
+  String get mcCmdAddXp => 'Add';
+
+  @override
+  String get mcCmdLevels => 'Levels';
+
+  @override
+  String get mcCmdPoints => 'Points';
+
+  @override
+  String get mcCmdAmount => 'Amount';
+
+  @override
+  String mcCmdXpNote(int points, int level) {
+    return '$points points to reach level $level from zero.';
+  }
+
+  @override
+  String get mcCmdTime => 'Time';
+
+  @override
+  String get mcCmdWeather => 'Weather';
+
+  @override
+  String get mcCmdWeatherLasts => 'Weather lasts';
+
+  @override
+  String get mcCmdRandom => 'Random';
+
+  @override
+  String get mcCmdTarget => 'Target';
+
+  @override
+  String get mcCmdPlayerName => 'or a player name';
+
+  @override
+  String mcCmdLength(int length) {
+    return 'Commands longer than 256 characters need a command block — chat cuts them off. This one is $length characters.';
+  }
+
+  @override
+  String get mcAdvObtain => 'Has an item';
+
+  @override
+  String get mcAdvEat => 'Eats or drinks';
+
+  @override
+  String get mcAdvPlace => 'Places a block';
+
+  @override
+  String get mcAdvKill => 'Kills a mob';
+
+  @override
+  String get mcAdvTravel => 'Enters a dimension';
+
+  @override
+  String get mcAdvCraft => 'Crafts a recipe';
+
+  @override
+  String get mcAdvManual => 'Only by command';
+
+  @override
+  String get mcAdvAdvancement => 'Advancement';
+
+  @override
+  String get mcAdvFileName => 'File name';
+
+  @override
+  String get mcAdvTitle => 'Title';
+
+  @override
+  String get mcAdvDescription => 'Description';
+
+  @override
+  String get mcAdvIcon => 'Icon';
+
+  @override
+  String get mcAdvFrame => 'Frame';
+
+  @override
+  String get mcAdvRoot => 'Root of a new tab';
+
+  @override
+  String get mcAdvBackground => 'Background texture';
+
+  @override
+  String get mcAdvParent => 'Parent';
+
+  @override
+  String get mcAdvToast => 'Show a toast';
+
+  @override
+  String get mcAdvChat => 'Announce in chat';
+
+  @override
+  String get mcAdvHidden => 'Hidden until earned';
+
+  @override
+  String get mcAdvCriteria => 'Criteria';
+
+  @override
+  String get mcAdvAnyOne => 'Any one of them';
+
+  @override
+  String get mcAdvAllOf => 'All of them';
+
+  @override
+  String get mcAdvRewards => 'Rewards';
+
+  @override
+  String get mcAdvXp => 'Experience points';
+
+  @override
+  String get mcAdvRecipeHint => 'Unlock a recipe (id, optional)';
+
+  @override
+  String get mcAdvLootHint => 'Give a loot table (id, optional)';
+
+  @override
+  String get mcAdvFunctionHint => 'Run a function (id, optional)';
+
+  @override
+  String get mcAdvChallenge => 'Challenge Complete!';
+
+  @override
+  String get mcAdvGoal => 'Goal Reached!';
+
+  @override
+  String get mcAdvMade => 'Advancement Made!';
+
+  @override
+  String get mcAdvDatapackDesc => 'Advancement made with luma';
+
+  @override
+  String mcAdvGrant(String command) {
+    return 'Grant or test it with $command.';
+  }
+
+  @override
+  String mcAssetReadError(String source, String error) {
+    return 'Could not read $source: $error';
+  }
+
+  @override
+  String get mcAssetAsking => 'Asking Mojang for the latest release…';
+
+  @override
+  String mcAssetDownloadFailed(String error) {
+    return 'Download failed: $error';
+  }
+
+  @override
+  String get mcAssetNoCopy => 'No copy of Minecraft found';
+
+  @override
+  String mcAssetNoCopyBody(int megabytes) {
+    return 'luma bundles no game assets. Point it at a client jar or a resource pack, or let it fetch the vanilla client from Mojang\'s public servers (about $megabytes MB, kept on this device and shared with the Minecraft launcher plugin).';
+  }
+
+  @override
+  String get mcAssetChooseJar => 'Choose a jar or pack';
+
+  @override
+  String get mcAssetDownload => 'Download from Mojang';
+
+  @override
+  String get mcAssetOtherFile => 'Other file';
+
+  @override
+  String mcAssetSounds(int count) {
+    return 'Sounds ($count)';
+  }
+
+  @override
+  String mcAssetImages(int count) {
+    return 'Images ($count)';
+  }
+
+  @override
+  String get mcAssetSearch => 'Search every asset';
+
+  @override
+  String get mcAssetFirst600 =>
+      'Showing the first 600 — search to narrow it down.';
+
+  @override
+  String get mcAssetNoSounds => 'No sounds for this copy';
+
+  @override
+  String get mcAssetNoSoundsBody =>
+      'Sounds come from the launcher\'s asset store, which only exists once the game has been launched at least once. A resource pack or a downloaded jar has images only.';
+
+  @override
+  String get mcAssetPlay => 'Play';
+
+  @override
+  String get mcAssetCannotPlay =>
+      'This device cannot play .ogg here — save it and open it in a player.';
+
+  @override
+  String get mcAssetSaveOgg => 'Save .ogg';
+
+  @override
+  String get mcAssetNotice =>
+      'Assets © Mojang. They are read from your own files for reference and are not part of luma.';
+
+  @override
+  String get mcAssetClose => 'Close';
+
+  @override
+  String get mcAssetCopyId => 'Copy id';
+
+  @override
+  String get mcEnchGenDamage => 'Extra damage';
+
+  @override
+  String get mcEnchGenProtection => 'Damage protection';
+
+  @override
+  String get mcEnchGenAttribute => 'Attribute bonus';
+
+  @override
+  String get mcEnchGenMobEffect => 'Effect on the target';
+
+  @override
+  String get mcEnchGenIgnite => 'Set the target on fire';
+
+  @override
+  String get mcEnchGenKnockback => 'Extra knockback';
+
+  @override
+  String get mcEnchGenExperience => 'More mob experience';
+
+  @override
+  String get mcEnchGenPierce => 'Armour piercing';
+
+  @override
+  String get mcEnchGenTitle => 'Enchantment';
+
+  @override
+  String get mcEnchGenName => 'Name';
+
+  @override
+  String get mcEnchGenGoesOn => 'Can go on';
+
+  @override
+  String get mcEnchGenTable => 'Offered by the enchanting table on';
+
+  @override
+  String get mcEnchGenSame => 'Same as above';
+
+  @override
+  String get mcEnchGenExclusive => 'Cannot be combined with';
+
+  @override
+  String get mcEnchGenAnything => 'Anything goes';
+
+  @override
+  String mcEnchGenSetName(String set) {
+    return '$set enchantments';
+  }
+
+  @override
+  String get mcEnchGenSlots => 'Active in slots';
+
+  @override
+  String get mcEnchGenLevels => 'Levels & costs';
+
+  @override
+  String get mcEnchGenMaxLevel => 'Max level';
+
+  @override
+  String get mcEnchGenWeight => 'Rarity weight (1 rare – 10 common)';
+
+  @override
+  String get mcEnchGenAnvil => 'Anvil cost';
+
+  @override
+  String get mcEnchGenMin => 'Min enchanting level';
+
+  @override
+  String get mcEnchGenPerLevel => '… plus per level';
+
+  @override
+  String get mcEnchGenMax => 'Max enchanting level';
+
+  @override
+  String get mcEnchGenEffects => 'Effects';
+
+  @override
+  String get mcEnchGenAddEffect => 'Add effect';
+
+  @override
+  String get mcEnchGenNoEffects =>
+      'No effects — it will enchant, but do nothing.';
+
+  @override
+  String mcEnchGenDatapackDesc(String name) {
+    return 'Enchantment \"$name\" made with luma';
+  }
+
+  @override
+  String mcEnchGenNote(String command) {
+    return 'The datapack also adds it to the enchanting table and random loot tags, so it shows up in survival. Try it with $command.';
+  }
+
+  @override
+  String get mcEnchGenUnitDamage => 'damage';
+
+  @override
+  String get mcEnchGenUnitProtection => 'protection points';
+
+  @override
+  String get mcEnchGenUnitSeconds => 'seconds';
+
+  @override
+  String get mcEnchGenUnitKnockback => 'knockback';
+
+  @override
+  String get mcEnchGenUnitPierce => '× 10% armour ignored';
+
+  @override
+  String get mcEnchGenRemoveEffect => 'Remove effect';
+
+  @override
+  String get mcEnchGenOpAdd => 'Add';
+
+  @override
+  String get mcEnchGenOpBase => '× base';
+
+  @override
+  String get mcEnchGenOpTotal => '× total';
+
+  @override
+  String get mcEnchGenEffectLevel => 'Effect level';
+
+  @override
+  String mcEnchGenAtLevel1(String unit) {
+    return 'At level I ($unit)';
+  }
+
+  @override
+  String get mcEnchGenEachLevel => 'Each level after';
+
+  @override
+  String get mcEnchGenDirect => 'Only on direct hits';
+
+  @override
+  String get mcEnchGenDirectDetail => 'Not from thorns or projectiles';
+
+  @override
+  String get mcRecShaped => 'Shaped crafting';
+
+  @override
+  String get mcRecShapeless => 'Shapeless crafting';
+
+  @override
+  String get mcRecFurnace => 'Furnace';
+
+  @override
+  String get mcRecBlast => 'Blast furnace';
+
+  @override
+  String get mcRecSmoker => 'Smoker';
+
+  @override
+  String get mcRecCampfire => 'Campfire';
+
+  @override
+  String get mcRecStonecutter => 'Stonecutter';
+
+  @override
+  String get mcRecSmithing => 'Smithing table';
+
+  @override
+  String mcRecEmptySlot(String item) {
+    return 'Empty — click to place $item';
+  }
+
+  @override
+  String mcRecFilledSlot(String item) {
+    return '$item — click again or right-click to clear';
+  }
+
+  @override
+  String get mcRecIdOrTag => 'item id, or #tag';
+
+  @override
+  String get mcRecId => 'item id';
+
+  @override
+  String get mcRecStation => 'Station';
+
+  @override
+  String get mcRecIngredients => 'Ingredients';
+
+  @override
+  String get mcRecBrush => 'Brush — click slots to place it';
+
+  @override
+  String get mcRecClear => 'Clear grid';
+
+  @override
+  String get mcRecFill => 'Fill grid';
+
+  @override
+  String get mcRecTemplate => 'Template';
+
+  @override
+  String get mcRecBase => 'Base item';
+
+  @override
+  String get mcRecAddition => 'Addition';
+
+  @override
+  String get mcRecInput => 'Input';
+
+  @override
+  String get mcRecXp => 'Experience';
+
+  @override
+  String get mcRecTime => 'Cooking time';
+
+  @override
+  String get mcRecResult => 'Result';
+
+  @override
+  String get mcRecTab => 'Recipe book tab';
+
+  @override
+  String get mcRecGroup => 'Group (optional — merges recipe book entries)';
+
+  @override
+  String get mcRecDatapackDesc => 'Recipe made with luma';
+
+  @override
+  String mcRecNote(String command) {
+    return 'Ingredients can be an item id or an item tag (#minecraft:planks). Custom recipes craft straight away; to list one in the recipe book run $command.';
+  }
 }

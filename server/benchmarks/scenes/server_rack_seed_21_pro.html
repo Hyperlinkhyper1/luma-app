@@ -1426,10 +1426,10 @@ function buildRearCabling() {
     const def = srv.userData.def;
     const srvRearZ = srv.position.z + CHASSIS_D/2;
     const psuCount = def.psus;
-    for (let i = 0; i < psuCount; i++) {
-      const psuX = (CHASSIS_W/2) - def.psus * 0.036 - i*0.072 - 0.01;
+    for (let j = 0; j < psuCount; j++) {
+      const psuX = (CHASSIS_W/2) - def.psus * 0.036 - j*0.072 - 0.01;
       const start = new THREE.Vector3(srv.position.x + psuX, srv.position.y, srvRearZ - 0.005);
-      const pduSide = i % 2 === 0 ? -0.06 : 0.06;
+      const pduSide = j % 2 === 0 ? -0.06 : 0.06;
       const end = new THREE.Vector3(RACK_W/2 - 0.03, srv.position.y, INNER_D/2 - 0.05 + pduSide);
       const cable = buildCable(start, end, M.cableBlack, 0.0025, 4);
       cableGroup.add(cable);

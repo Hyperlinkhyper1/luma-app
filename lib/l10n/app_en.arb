@@ -21816,5 +21816,1705 @@
         "type": "String"
       }
     }
+  },
+  "gameToolsMinecraftBlurb": "Builders, admins & datapacks",
+  "mcToolsKicker": "Minecraft Java {version}",
+  "@mcToolsKicker": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "mcToolsHeadline": "Minecraft tools for builders and creators",
+  "mcToolsSubtitle": "Plan builds, design gear, run your server and write datapacks. Everything runs on this device.",
+  "mcToolsSearchHint": "Search tools",
+  "mcToolsAudiencePlayers": "Players",
+  "mcToolsAudiencePlayersBlurb": "Build, craft and look things up",
+  "mcToolsAudienceAdmins": "Admins",
+  "mcToolsAudienceAdminsBlurb": "Worlds, chat and commands",
+  "mcToolsAudienceDevelopers": "Developers",
+  "mcToolsAudienceDevelopersBlurb": "Assets and datapack files",
+  "mcToolsGroupBuild": "Build & design",
+  "mcToolsGroupGear": "Gear & crafting",
+  "mcToolsGroupGuides": "Guides",
+  "mcToolsGroupWorlds": "Worlds",
+  "mcToolsGroupChat": "Chat & text",
+  "mcToolsGroupGameplay": "Commands & gameplay",
+  "mcToolsGroupAssets": "Assets",
+  "mcToolsGroupDatapacks": "Datapack generators",
+  "mcToolsSearchResults": "{count, plural, =0{No tools match} =1{1 tool} other{{count} tools}}",
+  "@mcToolsSearchResults": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcToolsNoMatchBody": "Try another word — every tool can be found by its name or by what it does.",
+  "mcToolsDisclaimer": "Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.",
+  "mcToolsCount": "{count, plural, =1{1 tool} other{{count} tools}}",
+  "@mcToolsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcToolEnchantOptimizer": "Enchant Optimizer",
+  "mcToolEnchantOptimizerBlurb": "Find the cheapest anvil order for your enchantments.",
+  "mcToolShapeGenerator": "Shape Generator",
+  "mcToolShapeGeneratorBlurb": "Circles, arches, spheres, domes and cylinders, block by block.",
+  "mcToolSkinEditor": "Skin Editor",
+  "mcToolSkinEditorBlurb": "Paint a skin on a live 3D model and save the PNG.",
+  "mcToolSchematicOrganizer": "Schematic Organizer",
+  "mcToolSchematicOrganizerBlurb": "Preview, favourite, group and rename a folder of schematics.",
+  "mcToolVillagerGuide": "Villager Trades",
+  "mcToolVillagerGuideBlurb": "Every trade, price, level and how likely it is to show up.",
+  "mcToolOreGuide": "Ore Distribution",
+  "mcToolOreGuideBlurb": "Ore curves from the game files and the best Y level for each.",
+  "mcToolPotionGuide": "Potion Guide",
+  "mcToolPotionGuideBlurb": "Recipes, ingredients, durations and upgrade paths.",
+  "mcToolSulfurCubeGuide": "Sulfur Cube Guide",
+  "mcToolSulfurCubeGuideBlurb": "What a sulfur cube does with every block you feed it.",
+  "mcToolBeaconGuide": "Beacon Guide",
+  "mcToolBeaconGuideBlurb": "Pyramid sizes, range by tier and what each effect does.",
+  "mcToolShieldMaker": "Shield Maker",
+  "mcToolShieldMakerBlurb": "Layer banner patterns on a shield and get the command.",
+  "mcToolFireworkMaker": "Firework Maker",
+  "mcToolFireworkMakerBlurb": "Design rockets star by star, with recipe and command.",
+  "mcToolBannerMaker": "Banner Maker",
+  "mcToolBannerMakerBlurb": "Stack up to 16 patterns and get loom steps and a command.",
+  "mcToolBuildPlanner": "Build Planner",
+  "mcToolBuildPlannerBlurb": "Open a schematic in 3D, walk it layer by layer, get the materials.",
+  "mcToolMapArtGenerator": "Map Art Generator",
+  "mcToolMapArtGeneratorBlurb": "Turn any image into buildable map art.",
+  "mcToolRoofGenerator": "Roof Designer",
+  "mcToolRoofGeneratorBlurb": "Gable, hip, gambrel and more, exported as a schematic.",
+  "mcToolArmorDesigner": "Armor Trims & Dyes",
+  "mcToolArmorDesignerBlurb": "Preview trims and leather colours, and find the dye mix.",
+  "mcToolFlatPreset": "Flat World Generator",
+  "mcToolFlatPresetBlurb": "Stack superflat layers and get the preset.",
+  "mcToolCustomWorld": "Custom World Preset",
+  "mcToolCustomWorldBlurb": "Tweak sea level, terrain blocks and biomes as a datapack.",
+  "mcToolColorCodes": "Color Codes",
+  "mcToolColorCodesBlurb": "Every § colour and format code, with a live preview.",
+  "mcToolTitleGenerator": "Title Generator",
+  "mcToolTitleGeneratorBlurb": "Titles, subtitles and action bars with timings.",
+  "mcToolTellrawGenerator": "Tellraw Generator",
+  "mcToolTellrawGeneratorBlurb": "Rich chat messages with hover and click actions.",
+  "mcToolMotdGenerator": "MOTD Generator",
+  "mcToolMotdGeneratorBlurb": "Design your server-list message and preview it.",
+  "mcToolLootTables": "Loot Tables",
+  "mcToolLootTablesBlurb": "Build chest, mob and block loot tables as JSON.",
+  "mcToolCustomPotions": "Custom Potions",
+  "mcToolCustomPotionsBlurb": "Potions, splash and arrows with any effects.",
+  "mcToolCommandGenerator": "Command Generator",
+  "mcToolCommandGeneratorBlurb": "Give, summon, effect, teleport and more, filled in for you.",
+  "mcToolAssetLibrary": "Asset Library",
+  "mcToolAssetLibraryBlurb": "Every block, item and mob texture and sound from your own game.",
+  "mcToolRecipeGenerator": "Recipe Generator",
+  "mcToolRecipeGeneratorBlurb": "Crafting, smelting, stonecutting and smithing recipes.",
+  "mcToolEnchantmentGenerator": "Enchantment Generator",
+  "mcToolEnchantmentGeneratorBlurb": "Write custom data-driven enchantments.",
+  "mcToolAdvancementGenerator": "Advancement Generator",
+  "mcToolAdvancementGeneratorBlurb": "Build advancements with criteria, display and rewards.",
+  "mcCopiedToClipboard": "Copied to clipboard",
+  "mcCouldNotSave": "Could not save: {error}",
+  "@mcCouldNotSave": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "mcAllTools": "All tools",
+  "mcBackToTools": "Back to all Minecraft tools",
+  "mcOutput": "Output",
+  "mcSave": "Save",
+  "mcCopy": "Copy",
+  "mcSearchIds": "Search ids…",
+  "mcStatBlocks": "blocks",
+  "mcStatFootprint": "footprint",
+  "mcStatTall": "tall",
+  "mcExport": "Export",
+  "mcSaveExtension": "Save .{extension}",
+  "@mcSaveExtension": {
+    "placeholders": {
+      "extension": {
+        "type": "String"
+      }
+    }
+  },
+  "mcMaterials": "Materials",
+  "mcCopyList": "Copy list",
+  "mcMaterialListCopied": "Material list copied",
+  "mcShowFewer": "Show fewer",
+  "mcShowAllCount": "Show all {count}",
+  "@mcShowAllCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcSpanAddPart": "Add a styled part",
+  "mcSpanText": "Text",
+  "mcSpanMore": " more",
+  "mcBold": "Bold",
+  "mcItalic": "Italic",
+  "mcUnderlined": "Underlined",
+  "mcStrikethrough": "Strikethrough",
+  "mcObfuscated": "Obfuscated",
+  "mcRemovePart": "Remove part",
+  "mcOnClickNothing": "On click: nothing",
+  "mcClickOpenUrl": "Open URL",
+  "mcClickRunCommand": "Run command",
+  "mcClickSuggestCommand": "Suggest command",
+  "mcClickCopy": "Copy to clipboard",
+  "mcClickChangePage": "Change page (books)",
+  "mcClickNothing": "Nothing",
+  "mcHintPageNumber": "Page number",
+  "mcHintTextToCopy": "Text to copy",
+  "mcHintHoverText": "Hover text (optional)",
+  "mcTextColour": "Text colour",
+  "mcHexColour": "Hex colour",
+  "mcDefault": "Default",
+  "mcUseHex": "Use hex",
+  "mcTagFiles": "Files",
+  "mcTagExport": "Export",
+  "mcTagPaint": "Paint",
+  "mcTagPopular": "Popular",
+  "mcTagDesign": "Design",
+  "mcTagGuide": "Guide",
+  "mcTagNew": "New",
+  "mcTagWorld": "World",
+  "mcTagDatapack": "Datapack",
+  "mcTagText": "Text",
+  "mcTagCommand": "Command",
+  "mcTagServer": "Server",
+  "mcTagBrowse": "Browse",
+  "mcEnchItemSword": "Sword",
+  "mcEnchItemSpear": "Spear",
+  "mcEnchItemAxe": "Axe",
+  "mcEnchItemMace": "Mace",
+  "mcEnchItemTrident": "Trident",
+  "mcEnchItemBow": "Bow",
+  "mcEnchItemCrossbow": "Crossbow",
+  "mcEnchItemPickaxe": "Pickaxe",
+  "mcEnchItemShovel": "Shovel",
+  "mcEnchItemHoe": "Hoe",
+  "mcEnchItemHelmet": "Helmet",
+  "mcEnchItemChestplate": "Chestplate",
+  "mcEnchItemLeggings": "Leggings",
+  "mcEnchItemBoots": "Boots",
+  "mcEnchItemElytra": "Elytra",
+  "mcEnchItemFishingRod": "Fishing Rod",
+  "mcEnchItemShield": "Shield",
+  "mcEnchItemShears": "Shears",
+  "mcEnchItemFlintAndSteel": "Flint and Steel",
+  "mcEnchItemBrush": "Brush",
+  "mcEnchItemCarrotOnAStick": "Carrot on a Stick",
+  "mcEnchItemBookMerge": "Book (merge)",
+  "mcEnchNeedTwo": "Pick at least two enchantments to merge into one book.",
+  "mcEnchTooExpensive": "Every order hits \"Too Expensive!\" in survival. Drop an enchantment, start from a fresh item, or turn off the survival limit.",
+  "mcEnchItem": "Item",
+  "mcEnchEnchantments": "Enchantments",
+  "mcEnchMaxAll": "Max all",
+  "mcEnchAnvilSettings": "Anvil settings",
+  "mcEnchPriorUses": "Times the item has already been in an anvil",
+  "mcEnchSurvivalLimit": "Survival limit",
+  "mcEnchSurvivalLimitDetail": "Steps above 39 levels are \"Too Expensive!\"",
+  "mcEnchConflicts": "Conflicts with {other} — tap to swap",
+  "@mcEnchConflicts": {
+    "placeholders": {
+      "other": {
+        "type": "String"
+      }
+    }
+  },
+  "mcEnchNoOrder": "No order works",
+  "mcEnchPickSome": "Pick some enchantments",
+  "mcEnchPickSomeBody": "Choose an item and the levels you want. Every possible anvil order is tried and the cheapest one is laid out step by step.",
+  "mcEnchLevelsTotal": "levels in total",
+  "mcEnchAnvilUses": "{count, plural, =1{anvil use} other{anvil uses}}",
+  "@mcEnchAnvilUses": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcEnchMostExpensive": "most expensive step",
+  "mcEnchXpPoints": "experience points",
+  "mcEnchSteps": "Steps",
+  "mcEnchFootnote": "The item ends with a prior-work penalty of {penalty}, so the next anvil use on it starts at {cost} levels before enchantments. Costs follow Java Edition 26.3: each sacrificed enchantment costs its level times its book multiplier, plus 2ⁿ−1 for each side's prior work.",
+  "@mcEnchFootnote": {
+    "placeholders": {
+      "penalty": {
+        "type": "int"
+      },
+      "cost": {
+        "type": "int"
+      }
+    }
+  },
+  "mcEnchLevelsShort": "{levels} lvl",
+  "@mcEnchLevelsShort": {
+    "placeholders": {
+      "levels": {
+        "type": "int"
+      }
+    }
+  },
+  "mcEnchBook": "Book ({enchantments})",
+  "@mcEnchBook": {
+    "placeholders": {
+      "enchantments": {
+        "type": "String"
+      }
+    }
+  },
+  "mcShapeCircle": "Circle",
+  "mcShapeArch": "Arch & curve",
+  "mcShape3d": "3D shape",
+  "mcShapeRound": "Round",
+  "mcShapePointed": "Pointed (gothic)",
+  "mcShapeParabolic": "Parabolic",
+  "mcShapeSegmental": "Segmental",
+  "mcShapeSphere": "Sphere",
+  "mcShapeDome": "Dome",
+  "mcShapeCylinder": "Cylinder",
+  "mcShapeCone": "Cone",
+  "mcShapePyramid": "Pyramid",
+  "mcShapeTorus": "Torus",
+  "mcShapeSize": "Size",
+  "mcShapeSpan": "Span",
+  "mcShapeWidth": "Width",
+  "mcShapePerfectCircle": "Perfect circle",
+  "mcShapeSameSize": "Same size on every axis",
+  "mcShapeRise": "Rise",
+  "mcShapeLength": "Length",
+  "mcShapeHeight": "Height",
+  "mcShapeDepth": "Depth",
+  "mcShapeTube": "Tube radius",
+  "mcShapeArchDepth": "Depth (blocks into the wall)",
+  "mcShapeStyle": "Style",
+  "mcShapeFilled": "Filled",
+  "mcShapeHollow": "Hollow",
+  "mcShapeHollowDetail": "Only the shell — far fewer blocks",
+  "mcShapeWall": "Wall thickness",
+  "mcShapeThick": "Thick outline",
+  "mcShapeThickDetail": "No diagonal gaps — mobs cannot slip through",
+  "mcShapeBlock": "Block",
+  "mcShapeLayerOf": "Layer {layer} of {count}",
+  "@mcShapeLayerOf": {
+    "placeholders": {
+      "layer": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcShapePlan": "Plan",
+  "mcShapeLayer": "Layer",
+  "mcShapeGhost": "Grey dots are the layer below, to line each layer up.",
+  "mcShapeRuns": "Run lengths from the top row out: {runs}. Mirror them for the other quarters.",
+  "@mcShapeRuns": {
+    "placeholders": {
+      "runs": {
+        "type": "String"
+      }
+    }
+  },
+  "mcVillNovice": "Novice",
+  "mcVillApprentice": "Apprentice",
+  "mcVillJourneyman": "Journeyman",
+  "mcVillExpert": "Expert",
+  "mcVillMaster": "Master",
+  "mcVillSearch": "Which villager trades… (e.g. mending, glass, emerald)",
+  "mcVillTraderBody": "Spawns near players now and then and never restocks. Each visit rolls its offers from the lists below.",
+  "mcVillBody": "Workstation: {workstation}. Each level unlocks new offers, picked at random from that level's pool.",
+  "@mcVillBody": {
+    "placeholders": {
+      "workstation": {
+        "type": "String"
+      }
+    }
+  },
+  "mcVillPicks": "{picks} of {total}",
+  "@mcVillPicks": {
+    "placeholders": {
+      "picks": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "mcVillLevelTitle": "Level {level} · {name}",
+  "@mcVillLevelTitle": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "mcVillLevelXp": "({xp} XP)",
+  "@mcVillLevelXp": {
+    "placeholders": {
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "mcVillNoTrades": "No villager trades that",
+  "mcVillNoTradesBody": "Try an item id like \"book\", \"glass\" or \"diamond\".",
+  "mcVillUses": "{count} uses",
+  "@mcVillUses": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcVillXp": "{xp} xp",
+  "@mcVillXp": {
+    "placeholders": {
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "mcVillNoteEnchant": "Enchanted at level {min}–{max}",
+  "@mcVillNoteEnchant": {
+    "placeholders": {
+      "min": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "mcVillNoteRandomEnchant": "Random enchantment",
+  "mcVillNoteMap": "Map to the nearest {place}",
+  "@mcVillNoteMap": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "mcVillNoteExplorer": "Explorer map",
+  "mcVillNoteDyes": "Random dye colours",
+  "mcVillNoteStew": "Random stew effect",
+  "mcVillNoteRandomPotion": "Random potion effect",
+  "mcVillNotePotion": "Potion of {potion}",
+  "@mcVillNotePotion": {
+    "placeholders": {
+      "potion": {
+        "type": "String"
+      }
+    }
+  },
+  "mcVillNoteTreasure": "Treasure enchantments cost double",
+  "mcVillNoteVariants": "Only from {variants} villagers",
+  "@mcVillNoteVariants": {
+    "placeholders": {
+      "variants": {
+        "type": "String"
+      }
+    }
+  },
+  "mcVillNotePrice": "Price scales with the enchantment level",
+  "mcOreTipCoal": "Common everywhere above sea level; mountains carry a second band all the way to the build limit. Half the coal touching air below Y 136 is skipped, so caves under the surface show less of it.",
+  "mcOreTipIron": "Two bands: a small one peaking at Y 16 and a huge mountain band peaking near Y 232, plus scattered small veins below Y 72.",
+  "mcOreTipCopper": "Peaks at Y 48. Dripstone caves roll a second, larger set of veins over the same heights.",
+  "mcOreTipGold": "Peaks at Y −16 with extra small veins at the very bottom. Badlands add fifty more attempts a chunk from Y 32 up to Y 256.",
+  "mcOreTipRedstone": "Concentrated at the bottom of the world. Mine just above the bedrock ceiling — around Y −58.",
+  "mcOreTipLapis": "A narrow band peaking at Y 0, and a \"buried\" spread from Y −64 to 64 that never shows on a cave wall.",
+  "mcOreTipDiamond": "The deeper the better, down to the bedrock. Most diamond touching air is thrown away, so branch-mine at Y −58 instead of exploring caves.",
+  "mcOreTipEmerald": "Only in mountain biomes, as single blocks, peaking near Y 232.",
+  "mcOreTipQuartz": "Evenly spread from Y 10 to 117 across the Nether; basalt deltas roll twice as many veins.",
+  "mcOreTipNetherGold": "Evenly spread from Y 10 to 117; basalt deltas double it.",
+  "mcOreTipDebris": "Mostly between Y 8 and 24, peaking at Y 16. It never generates exposed to air — strip-mine, or use beds or TNT to clear fast.",
+  "mcOreBestLevel": "best level to mine",
+  "mcOreRange": "where it can appear",
+  "mcOreAttempts": "vein attempts per chunk",
+  "mcOreLargest": "largest vein size",
+  "mcOreDistribution": "Distribution of {ore}",
+  "@mcOreDistribution": {
+    "placeholders": {
+      "ore": {
+        "type": "String"
+      }
+    }
+  },
+  "mcOreBiomeBonus": "Biome bonus",
+  "mcOreTips": "Tips",
+  "mcOrePlacements": "Placements",
+  "mcOreAllOverworld": "All overworld ores",
+  "mcOreNether": "Nether",
+  "mcOreTriangle": "triangle peaking at Y {y}",
+  "@mcOreTriangle": {
+    "placeholders": {
+      "y": {
+        "type": "int"
+      }
+    }
+  },
+  "mcOreEven": "even spread",
+  "mcOrePerChunk": "{count} per chunk",
+  "@mcOrePerChunk": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcOreOneIn": "1 in {count} chunks",
+  "@mcOreOneIn": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcOrePlacementLine": "Y {min} to {max}, {shape} · {attempts} · size {size}",
+  "@mcOrePlacementLine": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      },
+      "shape": {
+        "type": "String"
+      },
+      "attempts": {
+        "type": "String"
+      },
+      "size": {
+        "type": "int"
+      }
+    }
+  },
+  "mcOreAirSkip": "{percent}% skipped next to air",
+  "@mcOreAirSkip": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "mcOrePeak": "Peak Y {y}",
+  "@mcOrePeak": {
+    "placeholders": {
+      "y": {
+        "type": "int"
+      }
+    }
+  },
+  "mcPotionDescSwiftness": "Speed I raises walking speed by 20% (Speed II: 40%).",
+  "mcPotionDescLeaping": "Jump higher and take less fall damage.",
+  "mcPotionDescStrength": "+3 melee damage per level.",
+  "mcPotionDescHealing": "Restores 4 health (8 at level II). Hurts undead mobs.",
+  "mcPotionDescRegeneration": "Heals one heart every 2.5 seconds (1.2 s at level II).",
+  "mcPotionDescPoison": "Drains health down to half a heart; never kills.",
+  "mcPotionDescFireResistance": "Immune to fire, lava and magma blocks.",
+  "mcPotionDescWaterBreathing": "Breathe underwater for the whole duration.",
+  "mcPotionDescNightVision": "See in the dark and clearly underwater.",
+  "mcPotionDescSlowFalling": "Fall gently and take no fall damage.",
+  "mcPotionDescTurtleMaster": "Slowness IV and Resistance III (VI and IV when strong).",
+  "mcPotionDescWindCharged": "Release a wind burst on death.",
+  "mcPotionDescWeaving": "Spawn cobwebs on death; move faster through cobwebs.",
+  "mcPotionDescOozing": "Release two medium slimes on death.",
+  "mcPotionDescInfested": "Chance to release silverfish when hurt.",
+  "mcPotionDescSlowness": "Slowness I cuts speed by 15% (IV: 60%).",
+  "mcPotionDescHarming": "6 damage (12 at level II). Heals undead mobs.",
+  "mcPotionDescInvisibility": "Mobs stop noticing you unless you wear armour.",
+  "mcPotionDescWeakness": "−4 melee damage. Needed to cure zombie villagers.",
+  "mcPotionSearch": "Search potion or ingredient",
+  "mcPotionExtended": "Extended",
+  "mcPotionRedstone": "+ Redstone Dust",
+  "mcPotionLevel2": "Level II",
+  "mcPotionGlowstone": "+ Glowstone Dust",
+  "mcPotionBeneficial": "Beneficial",
+  "mcPotionHarmful": "Harmful",
+  "mcPotionEffect": "Effect: {effect}",
+  "@mcPotionEffect": {
+    "placeholders": {
+      "effect": {
+        "type": "String"
+      }
+    }
+  },
+  "mcPotionBrewing": "Brewing path",
+  "mcPotionDurations": "Durations",
+  "mcPotionDrinkSplash": "Drink / Splash",
+  "mcPotionLingering": "Lingering",
+  "mcPotionArrow": "Arrow",
+  "mcPotionInstant": "Instant",
+  "mcPotionVariants": "Variants",
+  "mcPotionSplash": "Splash: brew with Gunpowder. Same duration; hits everyone in the splash.",
+  "mcPotionLingeringNote": "Lingering: brew a splash potion with Dragon's Breath. A cloud for a quarter of the time.",
+  "mcPotionArrows": "Tipped arrows: 8 arrows around a lingering potion in a crafting table. An eighth of the time.",
+  "mcPotionCorrupts": "Fermented Spider Eye turns this into {potion} — tap to open.",
+  "@mcPotionCorrupts": {
+    "placeholders": {
+      "potion": {
+        "type": "String"
+      }
+    }
+  },
+  "mcPotionFuel": "Brewing stands burn one Blaze Powder per 20 brews and take up to three bottles at once.",
+  "mcCubeRegular": "Regular",
+  "mcCubeRegularBlocks": "Concrete powder, dirt & soft blocks",
+  "mcCubeBouncy": "Bouncy",
+  "mcCubeBouncyBlocks": "Logs, planks & bamboo",
+  "mcCubeSlowBouncy": "Slow Bouncy",
+  "mcCubeSlowBouncyBlocks": "Stone, ores & terracotta",
+  "mcCubeSlowFlat": "Slow Flat",
+  "mcCubeSlowFlatBlocks": "Metal ores & metal blocks",
+  "mcCubeFastFlat": "Fast Flat",
+  "mcCubeFastFlatBlocks": "Moss, coral, pumpkins & sponges",
+  "mcCubeLight": "Light",
+  "mcCubeLightBlocks": "Wool",
+  "mcCubeFastSliding": "Fast Sliding",
+  "mcCubeFastSlidingBlocks": "Ice & snow",
+  "mcCubeSlowSliding": "Slow Sliding",
+  "mcCubeSlowSlidingBlocks": "Mushroom & wart blocks",
+  "mcCubeHighResistance": "High Resistance",
+  "mcCubeHighResistanceBlocks": "Soul sand & soul soil",
+  "mcCubeSticky": "Sticky",
+  "mcCubeStickyBlocks": "Honeycomb",
+  "mcCubeExplosive": "Explosive",
+  "mcCubeExplosiveBlocks": "TNT",
+  "mcCubeHot": "Hot",
+  "mcCubeHotBlocks": "Magma",
+  "mcCubeDmgArrow": "Arrows",
+  "mcCubeDmgCactus": "Cactus",
+  "mcCubeDmgDryOut": "Drying out",
+  "mcCubeDmgFall": "Fall damage",
+  "mcCubeDmgFallingAnvil": "Falling anvils",
+  "mcCubeDmgFallingBlock": "Falling blocks",
+  "mcCubeDmgFallingStalactite": "Falling stalactites",
+  "mcCubeDmgFreeze": "Freezing",
+  "mcCubeDmgMaceSmash": "Mace smash",
+  "mcCubeDmgHotFloor": "Magma floors",
+  "mcCubeDmgMobAttack": "Mob melee",
+  "mcCubeDmgMobAttackNoAggro": "Mob melee (no aggro)",
+  "mcCubeDmgMobProjectile": "Mob projectiles",
+  "mcCubeDmgPlayerAttack": "Player melee",
+  "mcCubeDmgSpear": "Spears",
+  "mcCubeDmgSpit": "Llama spit",
+  "mcCubeDmgStalagmite": "Stalagmites",
+  "mcCubeDmgSting": "Bee stings",
+  "mcCubeDmgSulfurCubeHot": "Another cube's heat",
+  "mcCubeDmgSweetBerryBush": "Sweet berry bushes",
+  "mcCubeDmgThrown": "Thrown items",
+  "mcCubeDmgTrident": "Tridents",
+  "mcCubeDmgWindCharge": "Wind charges",
+  "mcCubeVeryEasyShove": "Very easy to shove",
+  "mcCubeShovesEasily": "Shoves easily",
+  "mcCubeResists": "Resists shoving",
+  "mcCubeHardToBudge": "Very hard to budge",
+  "mcCubeSuperBouncy": "Super bouncy",
+  "mcCubeBouncyDesc": "Bouncy",
+  "mcCubeLittleBouncy": "A little bouncy",
+  "mcCubeBarely": "Barely bounces",
+  "mcCubeNoBounce": "No bounce",
+  "mcCubeSticks": "Sticks in place",
+  "mcCubeGrippy": "Grippy",
+  "mcCubeSlidesBit": "Slides a bit",
+  "mcCubeSlidesIce": "Slides like ice",
+  "mcCubeFloaty": "Floaty & slow",
+  "mcCubeDamps": "Damps quickly",
+  "mcCubeHolds": "Holds momentum",
+  "mcCubeKeepsFlying": "Keeps flying",
+  "mcCubeEatsTitle": "What happens if my cube eats…",
+  "mcCubeSearchHint": "Search any of the {count} swallowable blocks",
+  "@mcCubeSearchHint": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcCubeNotSwallowable": "A cube will not swallow that — only the blocks listed under the twelve behaviours.",
+  "mcCubeMeet": "Meet the cube",
+  "mcCubeSpawnsIn": "Spawns in",
+  "mcCubeSpawnsInValue": "Sulfur Caves",
+  "mcCubeHealth": "Health",
+  "mcCubeHealthValue": "8 full-size · 4 baby",
+  "mcCubeOnDeath": "On death",
+  "mcCubeOnDeathValue": "A full cube splits into 2 babies",
+  "mcCubeExperience": "Experience",
+  "mcCubeExperienceValue": "1 to 2",
+  "mcCubeFood": "Baby food",
+  "mcCubeFoodValue": "Slime Balls make babies grow and breed",
+  "mcCubeHome": "Take it home",
+  "mcCubeHomeValue": "Scoop the whole cube with a bucket",
+  "mcCubeChange": "Change its block",
+  "mcCubeChangeValue": "Shears pop the block out (5 s before it can swallow again)",
+  "mcCubeTempt": "Tempt range",
+  "mcCubeTemptValue": "8 blocks",
+  "mcCubeShrugs": "While it holds a block it shrugs off…",
+  "mcCubeShrugsNote": "It also breathes underwater and cannot freeze. Explosions still hurt — TNT pops a cube even mid-swallow — and every shrugged-off hit still knocks it around.",
+  "mcCubeHow": "How swallowing works",
+  "mcCubeHowBody": "Only full-size cubes swallow blocks: right-click one with a swallowable block, let it walk over a dropped one, or have a dispenser feed it. The block sits in its body slot; feeding another swaps it out and switches the behaviour. While it holds a block the cube stops wandering and is pushed around by players and mobs instead, with knockback scaled by its resistance.",
+  "mcCubeExplodes": "Explodes",
+  "mcCubeBurns": "Burns",
+  "mcCubeFloats": "Floats",
+  "mcCubeSinks": "Sinks",
+  "mcCubeBehaviour": "{name} behaviour",
+  "@mcCubeBehaviour": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "mcCubeBlockCount": "{count} blocks",
+  "@mcCubeBlockCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcCubeMobility": "Mobility",
+  "mcCubeKbRes": "knockback resistance {value}",
+  "@mcCubeKbRes": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "mcCubeBounce": "Bounce",
+  "mcCubeBounciness": "bounciness +{value}",
+  "@mcCubeBounciness": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "mcCubeGrip": "Grip",
+  "mcCubeFriction": "friction {value}",
+  "@mcCubeFriction": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "mcCubeAirDrag": "Air drag",
+  "mcCubeAirDragValue": "air drag {value}",
+  "@mcCubeAirDragValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "mcCubeKnockback": "Knockback",
+  "mcCubeKnockbackDetail": "horizontal · vertical",
+  "mcCubePush": "Push",
+  "mcCubePushValue": "every {seconds} s",
+  "@mcCubePushValue": {
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "mcCubePushDetail": "how often a shove lands",
+  "mcCubeExplosion": "Explosion",
+  "mcCubePower": "Power {power}",
+  "@mcCubePower": {
+    "placeholders": {
+      "power": {
+        "type": "String"
+      }
+    }
+  },
+  "mcCubeFuse": "{seconds} s fuse",
+  "@mcCubeFuse": {
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "mcCubeSetsFire": "sets fire",
+  "mcCubeNoFire": "no fire",
+  "mcCubeContact": "Contact",
+  "mcCubeBurnDamage": "{amount} burn damage",
+  "@mcCubeBurnDamage": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "mcCubeWhenTouched": "when touched",
+  "mcCubeWater": "Water",
+  "mcCubeBuoyant": "buoyant",
+  "mcCubeNotBuoyant": "not buoyant",
+  "mcBeaconSpeed": "Move 20% faster (40% at II).",
+  "mcBeaconHaste": "Mine and attack faster.",
+  "mcBeaconResistance": "Take 20% less damage (40% at II).",
+  "mcBeaconJump": "Jump higher and fall softer.",
+  "mcBeaconStrength": "+3 melee damage (+6 at II).",
+  "mcBeaconRegen": "Secondary power: slow healing.",
+  "mcBeaconTier": "Pyramid tier",
+  "mcBeaconTierN": "Tier {tier}",
+  "@mcBeaconTierN": {
+    "placeholders": {
+      "tier": {
+        "type": "int"
+      }
+    }
+  },
+  "mcBeaconBuildFrom": "Build it from",
+  "mcBeaconLayers": "Layers",
+  "mcBeaconLayerN": "Layer {layer}",
+  "@mcBeaconLayerN": {
+    "placeholders": {
+      "layer": {
+        "type": "int"
+      }
+    }
+  },
+  "mcBeaconBlocksOf": "blocks of {mineral}",
+  "@mcBeaconBlocksOf": {
+    "placeholders": {
+      "mineral": {
+        "type": "String"
+      }
+    }
+  },
+  "mcBeaconRange": "block range",
+  "mcBeaconEffectLength": "effect length",
+  "mcBeaconEffectsAt": "Effects at tier {tier}",
+  "@mcBeaconEffectsAt": {
+    "placeholders": {
+      "tier": {
+        "type": "int"
+      }
+    }
+  },
+  "mcBeaconUnlocked": "Unlocked",
+  "mcBeaconHow": "How it works",
+  "mcBeaconHowBody": "Range is {range} blocks around the beacon (10 + 10 per tier) and reaches {range} blocks below it and up to the sky. Effects are re-applied every 4 seconds and last {seconds} seconds, so they linger briefly after you leave. A full tier-4 pyramid unlocks a second power: Regeneration, or level II of the primary. Pay with one iron ingot, gold ingot, emerald, diamond or netherite ingot. The beam needs a clear view of the sky; stained glass on top tints it. Mixing mineral blocks in the pyramid is fine — {mineral} is just the one counted above.",
+  "@mcBeaconHowBody": {
+    "placeholders": {
+      "range": {
+        "type": "int"
+      },
+      "seconds": {
+        "type": "int"
+      },
+      "mineral": {
+        "type": "String"
+      }
+    }
+  },
+  "mcCommand": "Command",
+  "mcCommands": "Commands",
+  "mcGiveTo": "Give to",
+  "mcCancel": "Cancel",
+  "mcBannerRandomize": "Randomize",
+  "mcBannerBase": "Base colour",
+  "mcBannerAdd": "Add a pattern",
+  "mcBannerDye": "Dye",
+  "mcBannerLoomLimit": "A loom stops at {limit} layers. Layers beyond that only exist through commands.",
+  "@mcBannerLoomLimit": {
+    "placeholders": {
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "mcBannerLayers": "Layers",
+  "mcBannerEmpty": "Pick patterns on the left to stack them here.",
+  "mcBannerSteps": "Loom steps",
+  "mcBannerCraft": "Craft the {banner}: 6 {wool} over a Stick.",
+  "@mcBannerCraft": {
+    "placeholders": {
+      "banner": {
+        "type": "String"
+      },
+      "wool": {
+        "type": "String"
+      }
+    }
+  },
+  "mcBannerShieldStep": "Then combine the finished banner with a Shield in a crafting grid.",
+  "mcBannerLoomStep": "Loom: banner + {inputs} → {pattern}",
+  "@mcBannerLoomStep": {
+    "placeholders": {
+      "inputs": {
+        "type": "String"
+      },
+      "pattern": {
+        "type": "String"
+      }
+    }
+  },
+  "mcBannerNeeds": "{pattern} — needs {item}",
+  "@mcBannerNeeds": {
+    "placeholders": {
+      "pattern": {
+        "type": "String"
+      },
+      "item": {
+        "type": "String"
+      }
+    }
+  },
+  "mcBannerChangeColour": "Change colour",
+  "mcBannerRemoveLayer": "Remove layer",
+  "mcFwSmallBall": "Small ball",
+  "mcFwLargeBall": "Large ball",
+  "mcFwStar": "Star",
+  "mcFwCreeper": "Creeper",
+  "mcFwBurst": "Burst",
+  "mcFwRocket": "Rocket",
+  "mcFwFlight": "Flight duration (gunpowder)",
+  "mcFwCount": "How many rockets",
+  "mcFwStars": "Stars",
+  "mcFwAddStar": "Add star",
+  "mcFwNoStars": "No stars: the rocket just flies — handy for elytra boosts.",
+  "mcFwStarN": "Star {number}",
+  "@mcFwStarN": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "mcFwFadeN": "Fade {number}",
+  "@mcFwFadeN": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "mcFwShape": "Shape",
+  "mcFwColours": "Colours ({count}/8)",
+  "@mcFwColours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcFwFade": "Fade to ({count}/8)",
+  "@mcFwFade": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcFwTrail": "Trail",
+  "mcFwTrailDetail": "Adds a Diamond",
+  "mcFwTwinkle": "Twinkle",
+  "mcFwTwinkleDetail": "Adds Glowstone Dust",
+  "mcFwCrafting": "Crafting",
+  "mcFwRocketX3": "Rocket ×3",
+  "mcArmorPiece": "Piece",
+  "mcArmorApplyAll": "Apply to all",
+  "mcArmorWear": "Wear this piece",
+  "mcArmorMaterial": "Material",
+  "mcArmorTrim": "Trim",
+  "mcArmorNone": "None",
+  "mcArmorFoundIn": "Template found in: {place}",
+  "@mcArmorFoundIn": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "mcArmorTrimMaterial": "Trim material",
+  "mcArmorLeather": "Leather colour",
+  "mcArmorSearching": "Searching 735,000 mixes…",
+  "mcArmorFindMix": "Find the dye mix for this colour",
+  "mcArmorMixYourself": "Or mix dyes yourself (one crafting, up to 8):",
+  "mcArmorRemoveDye": "Remove last dye",
+  "mcArmorSmithing": "Smithing",
+  "mcArmorSmithStep": "{template} + {armor} + {material} → trimmed {piece}",
+  "@mcArmorSmithStep": {
+    "placeholders": {
+      "template": {
+        "type": "String"
+      },
+      "armor": {
+        "type": "String"
+      },
+      "material": {
+        "type": "String"
+      },
+      "piece": {
+        "type": "String"
+      }
+    }
+  },
+  "mcArmorCopyTemplate": "Copy a template with 7 Diamonds and the block it is made of in a crafting grid.",
+  "mcArmorNoPieces": "# No pieces selected",
+  "mcArmorIndistinguishable": "Indistinguishable",
+  "mcArmorVeryClose": "Very close",
+  "mcArmorClose": "Close",
+  "mcArmorNearest": "Nearest possible",
+  "mcArmorUse": "Use",
+  "mcTrimSentry": "Pillager outposts",
+  "mcTrimDune": "Desert pyramids",
+  "mcTrimCoast": "Shipwrecks",
+  "mcTrimWild": "Jungle temples",
+  "mcTrimTide": "Elder guardians (ocean monuments)",
+  "mcTrimWard": "Ancient cities",
+  "mcTrimSilence": "Ancient cities (rare)",
+  "mcTrimVex": "Woodland mansions",
+  "mcTrimEye": "Strongholds",
+  "mcTrimSnout": "Bastion remnants",
+  "mcTrimRib": "Nether fortresses",
+  "mcTrimSpire": "End cities",
+  "mcTrimTrail": "Trail ruins (suspicious gravel)",
+  "mcTrimFlow": "Trial chambers (ominous vaults)",
+  "mcTrimBolt": "Trial chambers (vaults)",
+  "mcPlanOpen": "Open schematic",
+  "mcPlanOpenAnother": "Open another",
+  "mcPlanOpenTitle": "Open a build to plan it",
+  "mcPlanUnreadable": "That file could not be read",
+  "mcPlanFormats": "Litematica (.litematic), Sponge (.schem), Axiom (.bp), MCEdit (.schematic), structure blocks (.nbt) and Bedrock (.mcstructure) all work.",
+  "mcPlanFile": "file",
+  "mcPlanSize": "size (W×H×L)",
+  "mcPlanBlockTypes": "block types",
+  "mcPlanLayerMaterials": "Materials on this layer",
+  "mcPlanShopping": "Shopping list",
+  "mcPlanShoppingCopied": "Shopping list copied",
+  "mcPlanCsv": "Save as CSV",
+  "mcPlanLayerOnly": "Only the current layer",
+  "mcPlanGathered": "{total} blocks · {done}/{count} gathered",
+  "@mcPlanGathered": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "done": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcOrgUnreadable": "Unreadable",
+  "mcOrgTooLarge": "Too large to preview",
+  "mcOrgSortName": "Name",
+  "mcOrgSortNewest": "Newest",
+  "mcOrgSortLargest": "Largest file",
+  "mcOrgSortBlocks": "Most blocks",
+  "mcOrgChooseFolderTitle": "Choose a schematics folder",
+  "mcOrgFolderError": "Could not read that folder: {error}",
+  "@mcOrgFolderError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "mcOrgRenameTitle": "Rename schematic",
+  "mcOrgRename": "Rename",
+  "mcOrgExists": "A file called {name} already exists.",
+  "@mcOrgExists": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "mcOrgRenameError": "Could not rename: {error}",
+  "@mcOrgRenameError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "mcOrgGroup": "Group",
+  "mcOrgGroupHint": "e.g. Houses, Farms, Redstone",
+  "mcOrgNoGroup": "No group",
+  "mcOrgReadError": "Could not read {name}: {error}",
+  "@mcOrgReadError": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "mcOrgChooseFolder": "Choose folder",
+  "mcOrgChangeFolder": "Change folder",
+  "mcOrgRescan": "Rescan",
+  "mcOrgPointTitle": "Point it at your schematics",
+  "mcOrgPointBody": "Pick the folder your schematics live in — Litematica's \"schematics\" folder, WorldEdit's, or any other. Files are read in place; only renames change anything on disk.",
+  "mcOrgSearch": "Search by name",
+  "mcOrgSortBy": "Sort: {order}",
+  "@mcOrgSortBy": {
+    "placeholders": {
+      "order": {
+        "type": "String"
+      }
+    }
+  },
+  "mcOrgSubfolders": "Subfolders",
+  "mcOrgAll": "All ({count})",
+  "@mcOrgAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcOrgFavourites": "★ Favourites",
+  "mcOrgEmpty": "No schematics in this folder",
+  "mcOrgNothing": "Nothing matches",
+  "mcOrgLookingFor": "Looking for {extensions} files.",
+  "@mcOrgLookingFor": {
+    "placeholders": {
+      "extensions": {
+        "type": "String"
+      }
+    }
+  },
+  "mcOrgUnfavourite": "Unfavourite",
+  "mcOrgFavourite": "Favourite",
+  "mcOrgBlocks": "{count} blocks",
+  "@mcOrgBlocks": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcOrgMore": "More",
+  "mcOrgPreview": "Preview",
+  "mcOrgRenameMenu": "Rename…",
+  "mcOrgGroupMenu": "Group…",
+  "mcMapCrop": "Crop to fill",
+  "mcMapContain": "Fit inside",
+  "mcMapStretch": "Stretch",
+  "mcMapPaletteAll": "Every colour",
+  "mcMapPaletteSurvival": "Survival friendly",
+  "mcMapPaletteConcrete": "Concrete & terracotta",
+  "mcMapPaletteGreys": "Greyscale",
+  "mcMapDitherNone": "None",
+  "mcMapDitherFs": "Floyd–Steinberg",
+  "mcMapDitherOrdered": "Ordered (Bayer)",
+  "mcMapNotImage": "That file is not an image luma can read.",
+  "mcMapCouldNotConvert": "Could not convert: {error}",
+  "@mcMapCouldNotConvert": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "mcMapChooseImage": "Choose image",
+  "mcMapChangeImage": "Change image",
+  "mcMapSize": "Size in maps",
+  "mcMapAcross": "Across",
+  "mcMapDown": "Down",
+  "mcMapBlocksSize": "{width} × {height} blocks",
+  "@mcMapBlocksSize": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      }
+    }
+  },
+  "mcMapStaircase": "Staircase (3 shades)",
+  "mcMapStaircaseDetail": "More colours, but each column climbs up and down",
+  "mcMapDithering": "Dithering",
+  "mcMapBlocksToUse": "Blocks to use ({count})",
+  "@mcMapBlocksToUse": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcMapChooseTitle": "Choose a picture",
+  "mcMapChooseBody": "Any PNG or JPG. It is cut into 128-block maps, matched to the colours a map can show, and turned into a schematic you can paste or build block by block.",
+  "mcMapPreview": "How it will look on a map",
+  "mcMapSavePng": "Save PNG",
+  "mcMapTallest": "tallest column",
+  "mcMapShow3d": "Show in 3D",
+  "mcMapBuildNote": "Build it facing north to south, with the cobblestone row on the north edge — that row is what shades the first line. Each map covers a 128 × 128 area aligned to the map grid.",
+  "mcRoofGable": "Gable",
+  "mcRoofSteepGable": "Steep gable",
+  "mcRoofGentleGable": "Low gable (slabs)",
+  "mcRoofGambrel": "Gambrel (barn)",
+  "mcRoofHip": "Hip",
+  "mcRoofGentleHip": "Low hip (slabs)",
+  "mcRoofMansard": "Mansard",
+  "mcRoofShed": "Shed",
+  "mcRoofAFrame": "A-frame",
+  "mcRoofFootprint": "Footprint",
+  "mcRoofWidthX": "Width (X)",
+  "mcRoofDepthZ": "Depth (Z)",
+  "mcRoofOverhang": "Overhang",
+  "mcRoofSizeNote": "Width and depth are the walls' outside size; the overhang is added on every side.",
+  "mcRoofRoof": "Roof",
+  "mcRoofRidge": "Ridge cap",
+  "mcRoofRidgeDetail": "Slabs along the very top",
+  "mcRoofFillGables": "Fill the gable ends",
+  "mcRoofStairs": "stairs",
+  "mcRoofSlabs": "slabs",
+  "mcSkinPencil": "Pencil",
+  "mcSkinEraser": "Eraser",
+  "mcSkinFill": "Fill",
+  "mcSkinPicker": "Pick colour",
+  "mcSkinNotSkin": "That PNG is not a 64×64 or 64×32 skin.",
+  "mcSkinLoadTitle": "Load a player's skin",
+  "mcSkinLoadBody": "Looks the username up with Mojang's public profile service and downloads their current skin.",
+  "mcSkinUsername": "Username",
+  "mcSkinLoad": "Load",
+  "mcSkinUnsupported": "That skin is in a format luma cannot edit.",
+  "mcSkinLoadError": "Could not load that skin ({error}).",
+  "@mcSkinLoadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "mcSkinUndo": "Undo",
+  "mcSkinRedo": "Redo",
+  "mcSkinPaintOuter": "Paint outer layer",
+  "mcSkinShowOuter": "Show outer layer",
+  "mcSkinSlim": "Slim arms",
+  "mcSkinColour": "Colour",
+  "mcSkinRecent": "Recent",
+  "mcSkinLightness": "Lightness",
+  "mcSkinModel": "3D model",
+  "mcSkinResetView": "Reset view",
+  "mcSkinTurn": "Turn",
+  "mcSkinTexture": "Texture",
+  "mcSkinOpenPng": "Open PNG",
+  "mcSkinFromUser": "From username",
+  "mcSkinHelp": "Drag with the right mouse button (or use the Turn slider) to rotate the model; left-click paints. \"Paint outer layer\" paints the hat, jacket, sleeves and trousers layer instead of the base.",
+  "mcVersionAndNewer": "{version} and newer",
+  "@mcVersionAndNewer": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "mcSaveDatapack": "Save as datapack",
+  "mcSaveDatapackShort": "Save datapack",
+  "mcSendTo": "Send to",
+  "mcShowTo": "Show to",
+  "mcAdd": "Add",
+  "mcRemove": "Remove",
+  "mcFlatStart": "Start from a preset",
+  "mcFlatLayers": "Layers (top first)",
+  "mcFlatTotal": "{count} blocks",
+  "@mcFlatTotal": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcFlatRemoveLayer": "Remove layer",
+  "mcFlatAddLayer": "Add layer on top",
+  "mcFlatWorld": "World",
+  "mcFlatBiome": "Biome",
+  "mcFlatDecorations": "Decorations (trees, grass…)",
+  "mcFlatLakes": "Lakes",
+  "mcFlatStructures": "Structures",
+  "mcFlatCrossSection": "Cross-section",
+  "mcFlatPresetString": "Preset string",
+  "mcFlatPresetNote": "Create World → World type: Superflat → Customize → Presets, then paste this into the box.",
+  "mcFlatServerNote": "Only read when the server creates a new world.",
+  "mcFlatPresetName": "Datapack preset name",
+  "mcFlatDatapackNote": "Save makes a datapack zip that adds this as a world type on the Create World screen (drop it in with \"Data Packs\").",
+  "mcFlatDatapackDesc": "Superflat preset \"{name}\" made with luma",
+  "@mcFlatDatapackDesc": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "mcWorldNormalTerrain": "Normal",
+  "mcWorldAmplified": "Amplified",
+  "mcWorldLargeBiomes": "Large biomes",
+  "mcWorldEveryBiome": "Every biome",
+  "mcWorldOneBiome": "One biome",
+  "mcWorldCheckerboard": "Checkerboard",
+  "mcWorldHeightStandard": "Standard (Y −64 to 319)",
+  "mcWorldHeightTall": "Tall (Y −64 to 447)",
+  "mcWorldHeightDeep": "Deep (Y −128 to 319)",
+  "mcWorldHeightShort": "Short (Y 0 to 255)",
+  "mcWorldDatapackDesc": "Custom world \"{name}\" made with luma",
+  "@mcWorldDatapackDesc": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "mcWorldPreset": "Preset",
+  "mcWorldTerrain": "Terrain",
+  "mcWorldSeaLevel": "Sea level",
+  "mcWorldBuildHeight": "Build height",
+  "mcWorldTerrainBlock": "Terrain block",
+  "mcWorldFluid": "Oceans and lakes of",
+  "mcWorldAnimals": "Animals at world generation",
+  "mcWorldBiomes": "Biomes",
+  "mcWorldSquare": "Square size",
+  "mcWorldSquareBlocks": "{count} blocks",
+  "@mcWorldSquareBlocks": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcWorldUsing": "Using it",
+  "mcWorldUsingBody": "Singleplayer: Create World → Data Packs, drop the zip in, then pick \"luma:{name}\" under World Type. Servers: put the zip in world/datapacks before the world exists and set level-type=luma\\:{name} in server.properties. Made for Minecraft {version}; terrain and the noise router point at the game's own density functions, so only what you change here differs from vanilla.",
+  "@mcWorldUsingBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "mcColorTry": "Try it",
+  "mcColorHelp": "Type & codes, or &#RRGGBB for hex colours (servers with a chat plugin; vanilla chat only knows the 16 colours).",
+  "mcColorSection": "Section signs (§) — signs, books, MOTD",
+  "mcColorAmpersand": "Ampersand codes (&) — plugins",
+  "mcColorMiniMessage": "MiniMessage — Paper / Adventure",
+  "mcColorJson": "JSON text component — tellraw, titles",
+  "mcColorCodes": "Colour codes",
+  "mcColorName": "Name",
+  "mcColorCode": "Code",
+  "mcColorSectionCol": "Section",
+  "mcColorHex": "Hex",
+  "mcColorFormatting": "Formatting codes",
+  "mcColorObfuscatedDetail": "Obfuscated — scrambles constantly",
+  "mcColorReset": "Reset — back to plain white",
+  "mcColorOrderNote": "A colour code resets any formatting before it, so put the colour first: &c&l, not &l&c.",
+  "mcColorCopied": "{code} copied",
+  "@mcColorCopied": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "mcTitleTitle": "Title",
+  "mcTitleSubtitle": "Subtitle",
+  "mcTitleActionbar": "Action bar",
+  "mcTitleTiming": "Timing",
+  "mcTitleFadeIn": "Fade in",
+  "mcTitleStay": "Stay",
+  "mcTitleFadeOut": "Fade out",
+  "mcTitleTicks": "{ticks} ticks · {seconds} s",
+  "@mcTitleTicks": {
+    "placeholders": {
+      "ticks": {
+        "type": "int"
+      },
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "mcTitlePlay": "Play preview",
+  "mcTitleOrder": "Run them in this order: the times and the subtitle are held until the title is sent.",
+  "mcTellMessage": "Message",
+  "mcTellHoverHelp": "Hover a part in the preview to see its hover text.",
+  "mcTellPretty": "Pretty-print the JSON",
+  "mcTellComponent": "Text component",
+  "mcTellNote": "Uses the 26.x component field names (click_event, hover_event), which 1.21.5 and newer expect.",
+  "mcMotdLines": "Lines",
+  "mcMotdTooLong": "Lines over about 45 characters get cut off in the server list.",
+  "mcMotdServerName": "Server name in the list",
+  "mcMotdPlayers": "Players",
+  "mcMotdOf": "of",
+  "mcMotdEscapeNote": "§ and anything beyond plain ASCII must be written as \\u escapes here.",
+  "mcMotdRaw": "Raw text with § codes (Bukkit, Paper, BungeeCord configs)",
+  "mcMotdMiniMessage": "MiniMessage (Velocity, Paper plugins)",
+  "mcLootTable": "Table",
+  "mcLootVersion": "Game version",
+  "mcLootUsedFor": "Used for",
+  "mcLootPath": "Path inside the datapack",
+  "mcLootPool": "Pool {number}",
+  "@mcLootPool": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "mcLootRemovePool": "Remove pool",
+  "mcLootAddPool": "Add pool",
+  "mcLootDatapackDesc": "Loot table made with luma",
+  "mcLootUse": "Use it with {give}, or point a chest at it: {setblock}",
+  "@mcLootUse": {
+    "placeholders": {
+      "give": {
+        "type": "String"
+      },
+      "setblock": {
+        "type": "String"
+      }
+    }
+  },
+  "mcLootRolls": "Rolls",
+  "mcLootTo": "to",
+  "mcLootPlayerKill": "Only when killed by a player",
+  "mcLootAddEntry": "Add entry",
+  "mcLootNothing": "Nothing (empty roll)",
+  "mcLootRemoveEntry": "Remove entry",
+  "mcLootWeight": "Weight",
+  "mcLootCount": "Count",
+  "mcLootEmpty": "Empty",
+  "mcLootRandomEnchant": "Random enchant",
+  "mcLootEnchantLevels": "Enchant with levels",
+  "mcLootLooting": "Looting bonus",
+  "mcLootSmelt": "Smelt if on fire",
+  "mcLootDecay": "Explosion decay",
+  "mcLootLevels": "Levels",
+  "mcLootCustomName": "Custom name (optional)",
+  "mcLootChance": "Chance to drop at all",
+  "mcPotItem": "Item",
+  "mcPotCustomName": "Custom name",
+  "mcPotCustomColour": "Custom colour",
+  "mcPotEffects": "Effects",
+  "mcPotRemoveEffect": "Remove effect",
+  "mcPotDuration": "Duration",
+  "mcPotInfinite": "Infinite",
+  "mcPotParticles": "Particles",
+  "mcPotIcon": "Icon",
+  "mcPotAmbient": "Ambient",
+  "mcPotNoEffects": "No effects — it will be a coloured water bottle.",
+  "mcPotDurationNote": "Tooltip durations shown are for the drinkable potion; lingering clouds last a quarter as long and tipped arrows an eighth.",
+  "mcCmdItem": "Item",
+  "mcCmdCount": "Count",
+  "mcCmdCustomName": "Custom name",
+  "mcCmdEnchantments": "Enchantments",
+  "mcCmdAddEnchantment": "Add enchantment",
+  "mcCmdLore": "Lore lines",
+  "mcCmdRemoveLine": "Remove line",
+  "mcCmdAddLore": "Add lore line",
+  "mcCmdUnbreakable": "Unbreakable",
+  "mcCmdGlint": "Always glint",
+  "mcCmdEntity": "Entity",
+  "mcCmdPosition": "Position",
+  "mcCmdName": "Name",
+  "mcCmdOptional": "Optional",
+  "mcCmdNameVisible": "Name always visible",
+  "mcCmdNoAi": "No AI",
+  "mcCmdSilent": "Silent",
+  "mcCmdInvulnerable": "Invulnerable",
+  "mcCmdGlowing": "Glowing",
+  "mcCmdPersistent": "Never despawns",
+  "mcCmdNoGravity": "No gravity",
+  "mcCmdBaby": "Baby (zombies)",
+  "mcCmdClear": "Clear",
+  "mcCmdGive": "Give",
+  "mcCmdEffect": "Effect",
+  "mcCmdLevel": "Level",
+  "mcCmdSeconds": "Seconds",
+  "mcCmdHideParticles": "Hide particles",
+  "mcCmdYaw": "Facing yaw",
+  "mcCmdPitch": "Facing pitch",
+  "mcCmdYawHint": "optional, e.g. 90",
+  "mcCmdPitchHint": "optional, e.g. 0",
+  "mcCmdCoordsHelp": "Use ~ for relative and ^ for local coordinates.",
+  "mcCmdOneBlock": "One block",
+  "mcCmdArea": "Area",
+  "mcCmdBlock": "Block",
+  "mcCmdAt": "At",
+  "mcCmdFrom": "From",
+  "mcCmdTo": "To",
+  "mcCmdFillLimit": "/fill is limited to 32,768 blocks per command.",
+  "mcCmdRule": "Rule",
+  "mcCmdValue": "Value",
+  "mcCmdNumber": "number",
+  "mcCmdRuleNote": "26.x game rules use their snake_case ids.",
+  "mcCmdSet": "Set",
+  "mcCmdAddXp": "Add",
+  "mcCmdLevels": "Levels",
+  "mcCmdPoints": "Points",
+  "mcCmdAmount": "Amount",
+  "mcCmdXpNote": "{points} points to reach level {level} from zero.",
+  "@mcCmdXpNote": {
+    "placeholders": {
+      "points": {
+        "type": "int"
+      },
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "mcCmdTime": "Time",
+  "mcCmdWeather": "Weather",
+  "mcCmdWeatherLasts": "Weather lasts",
+  "mcCmdRandom": "Random",
+  "mcCmdTarget": "Target",
+  "mcCmdPlayerName": "or a player name",
+  "mcCmdLength": "Commands longer than 256 characters need a command block — chat cuts them off. This one is {length} characters.",
+  "@mcCmdLength": {
+    "placeholders": {
+      "length": {
+        "type": "int"
+      }
+    }
+  },
+  "mcAdvObtain": "Has an item",
+  "mcAdvEat": "Eats or drinks",
+  "mcAdvPlace": "Places a block",
+  "mcAdvKill": "Kills a mob",
+  "mcAdvTravel": "Enters a dimension",
+  "mcAdvCraft": "Crafts a recipe",
+  "mcAdvManual": "Only by command",
+  "mcAdvAdvancement": "Advancement",
+  "mcAdvFileName": "File name",
+  "mcAdvTitle": "Title",
+  "mcAdvDescription": "Description",
+  "mcAdvIcon": "Icon",
+  "mcAdvFrame": "Frame",
+  "mcAdvRoot": "Root of a new tab",
+  "mcAdvBackground": "Background texture",
+  "mcAdvParent": "Parent",
+  "mcAdvToast": "Show a toast",
+  "mcAdvChat": "Announce in chat",
+  "mcAdvHidden": "Hidden until earned",
+  "mcAdvCriteria": "Criteria",
+  "mcAdvAnyOne": "Any one of them",
+  "mcAdvAllOf": "All of them",
+  "mcAdvRewards": "Rewards",
+  "mcAdvXp": "Experience points",
+  "mcAdvRecipeHint": "Unlock a recipe (id, optional)",
+  "mcAdvLootHint": "Give a loot table (id, optional)",
+  "mcAdvFunctionHint": "Run a function (id, optional)",
+  "mcAdvChallenge": "Challenge Complete!",
+  "mcAdvGoal": "Goal Reached!",
+  "mcAdvMade": "Advancement Made!",
+  "mcAdvDatapackDesc": "Advancement made with luma",
+  "mcAdvGrant": "Grant or test it with {command}.",
+  "@mcAdvGrant": {
+    "placeholders": {
+      "command": {
+        "type": "String"
+      }
+    }
+  },
+  "mcAssetReadError": "Could not read {source}: {error}",
+  "@mcAssetReadError": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "mcAssetAsking": "Asking Mojang for the latest release…",
+  "mcAssetDownloadFailed": "Download failed: {error}",
+  "@mcAssetDownloadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "mcAssetNoCopy": "No copy of Minecraft found",
+  "mcAssetNoCopyBody": "luma bundles no game assets. Point it at a client jar or a resource pack, or let it fetch the vanilla client from Mojang's public servers (about {megabytes} MB, kept on this device and shared with the Minecraft launcher plugin).",
+  "@mcAssetNoCopyBody": {
+    "placeholders": {
+      "megabytes": {
+        "type": "int"
+      }
+    }
+  },
+  "mcAssetChooseJar": "Choose a jar or pack",
+  "mcAssetDownload": "Download from Mojang",
+  "mcAssetOtherFile": "Other file",
+  "mcAssetSounds": "Sounds ({count})",
+  "@mcAssetSounds": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcAssetImages": "Images ({count})",
+  "@mcAssetImages": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcAssetSearch": "Search every asset",
+  "mcAssetFirst600": "Showing the first 600 — search to narrow it down.",
+  "mcAssetNoSounds": "No sounds for this copy",
+  "mcAssetNoSoundsBody": "Sounds come from the launcher's asset store, which only exists once the game has been launched at least once. A resource pack or a downloaded jar has images only.",
+  "mcAssetPlay": "Play",
+  "mcAssetCannotPlay": "This device cannot play .ogg here — save it and open it in a player.",
+  "mcAssetSaveOgg": "Save .ogg",
+  "mcAssetNotice": "Assets © Mojang. They are read from your own files for reference and are not part of luma.",
+  "mcAssetClose": "Close",
+  "mcAssetCopyId": "Copy id",
+  "mcEnchGenDamage": "Extra damage",
+  "mcEnchGenProtection": "Damage protection",
+  "mcEnchGenAttribute": "Attribute bonus",
+  "mcEnchGenMobEffect": "Effect on the target",
+  "mcEnchGenIgnite": "Set the target on fire",
+  "mcEnchGenKnockback": "Extra knockback",
+  "mcEnchGenExperience": "More mob experience",
+  "mcEnchGenPierce": "Armour piercing",
+  "mcEnchGenTitle": "Enchantment",
+  "mcEnchGenName": "Name",
+  "mcEnchGenGoesOn": "Can go on",
+  "mcEnchGenTable": "Offered by the enchanting table on",
+  "mcEnchGenSame": "Same as above",
+  "mcEnchGenExclusive": "Cannot be combined with",
+  "mcEnchGenAnything": "Anything goes",
+  "mcEnchGenSetName": "{set} enchantments",
+  "@mcEnchGenSetName": {
+    "placeholders": {
+      "set": {
+        "type": "String"
+      }
+    }
+  },
+  "mcEnchGenSlots": "Active in slots",
+  "mcEnchGenLevels": "Levels & costs",
+  "mcEnchGenMaxLevel": "Max level",
+  "mcEnchGenWeight": "Rarity weight (1 rare – 10 common)",
+  "mcEnchGenAnvil": "Anvil cost",
+  "mcEnchGenMin": "Min enchanting level",
+  "mcEnchGenPerLevel": "… plus per level",
+  "mcEnchGenMax": "Max enchanting level",
+  "mcEnchGenEffects": "Effects",
+  "mcEnchGenAddEffect": "Add effect",
+  "mcEnchGenNoEffects": "No effects — it will enchant, but do nothing.",
+  "mcEnchGenDatapackDesc": "Enchantment \"{name}\" made with luma",
+  "@mcEnchGenDatapackDesc": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "mcEnchGenNote": "The datapack also adds it to the enchanting table and random loot tags, so it shows up in survival. Try it with {command}.",
+  "@mcEnchGenNote": {
+    "placeholders": {
+      "command": {
+        "type": "String"
+      }
+    }
+  },
+  "mcEnchGenUnitDamage": "damage",
+  "mcEnchGenUnitProtection": "protection points",
+  "mcEnchGenUnitSeconds": "seconds",
+  "mcEnchGenUnitKnockback": "knockback",
+  "mcEnchGenUnitPierce": "× 10% armour ignored",
+  "mcEnchGenRemoveEffect": "Remove effect",
+  "mcEnchGenOpAdd": "Add",
+  "mcEnchGenOpBase": "× base",
+  "mcEnchGenOpTotal": "× total",
+  "mcEnchGenEffectLevel": "Effect level",
+  "mcEnchGenAtLevel1": "At level I ({unit})",
+  "@mcEnchGenAtLevel1": {
+    "placeholders": {
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "mcEnchGenEachLevel": "Each level after",
+  "mcEnchGenDirect": "Only on direct hits",
+  "mcEnchGenDirectDetail": "Not from thorns or projectiles",
+  "mcRecShaped": "Shaped crafting",
+  "mcRecShapeless": "Shapeless crafting",
+  "mcRecFurnace": "Furnace",
+  "mcRecBlast": "Blast furnace",
+  "mcRecSmoker": "Smoker",
+  "mcRecCampfire": "Campfire",
+  "mcRecStonecutter": "Stonecutter",
+  "mcRecSmithing": "Smithing table",
+  "mcRecEmptySlot": "Empty — click to place {item}",
+  "@mcRecEmptySlot": {
+    "placeholders": {
+      "item": {
+        "type": "String"
+      }
+    }
+  },
+  "mcRecFilledSlot": "{item} — click again or right-click to clear",
+  "@mcRecFilledSlot": {
+    "placeholders": {
+      "item": {
+        "type": "String"
+      }
+    }
+  },
+  "mcRecIdOrTag": "item id, or #tag",
+  "mcRecId": "item id",
+  "mcRecStation": "Station",
+  "mcRecIngredients": "Ingredients",
+  "mcRecBrush": "Brush — click slots to place it",
+  "mcRecClear": "Clear grid",
+  "mcRecFill": "Fill grid",
+  "mcRecTemplate": "Template",
+  "mcRecBase": "Base item",
+  "mcRecAddition": "Addition",
+  "mcRecInput": "Input",
+  "mcRecXp": "Experience",
+  "mcRecTime": "Cooking time",
+  "mcRecResult": "Result",
+  "mcRecTab": "Recipe book tab",
+  "mcRecGroup": "Group (optional — merges recipe book entries)",
+  "mcRecDatapackDesc": "Recipe made with luma",
+  "mcRecNote": "Ingredients can be an item id or an item tag (#minecraft:planks). Custom recipes craft straight away; to list one in the recipe book run {command}.",
+  "@mcRecNote": {
+    "placeholders": {
+      "command": {
+        "type": "String"
+      }
+    }
   }
 }

@@ -57019,6 +57019,5717 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Catalog footprint: {width} x {depth} m. The model accepts your donor\'s w and d parameters.'**
   String sceneAssetStudioCatalogFootprint(String width, String depth);
+
+  /// No description provided for @gameToolsMinecraftBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Builders, admins & datapacks'**
+  String get gameToolsMinecraftBlurb;
+
+  /// No description provided for @mcToolsKicker.
+  ///
+  /// In en, this message translates to:
+  /// **'Minecraft Java {version}'**
+  String mcToolsKicker(String version);
+
+  /// No description provided for @mcToolsHeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'Minecraft tools for builders and creators'**
+  String get mcToolsHeadline;
+
+  /// No description provided for @mcToolsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan builds, design gear, run your server and write datapacks. Everything runs on this device.'**
+  String get mcToolsSubtitle;
+
+  /// No description provided for @mcToolsSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search tools'**
+  String get mcToolsSearchHint;
+
+  /// No description provided for @mcToolsAudiencePlayers.
+  ///
+  /// In en, this message translates to:
+  /// **'Players'**
+  String get mcToolsAudiencePlayers;
+
+  /// No description provided for @mcToolsAudiencePlayersBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Build, craft and look things up'**
+  String get mcToolsAudiencePlayersBlurb;
+
+  /// No description provided for @mcToolsAudienceAdmins.
+  ///
+  /// In en, this message translates to:
+  /// **'Admins'**
+  String get mcToolsAudienceAdmins;
+
+  /// No description provided for @mcToolsAudienceAdminsBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Worlds, chat and commands'**
+  String get mcToolsAudienceAdminsBlurb;
+
+  /// No description provided for @mcToolsAudienceDevelopers.
+  ///
+  /// In en, this message translates to:
+  /// **'Developers'**
+  String get mcToolsAudienceDevelopers;
+
+  /// No description provided for @mcToolsAudienceDevelopersBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Assets and datapack files'**
+  String get mcToolsAudienceDevelopersBlurb;
+
+  /// No description provided for @mcToolsGroupBuild.
+  ///
+  /// In en, this message translates to:
+  /// **'Build & design'**
+  String get mcToolsGroupBuild;
+
+  /// No description provided for @mcToolsGroupGear.
+  ///
+  /// In en, this message translates to:
+  /// **'Gear & crafting'**
+  String get mcToolsGroupGear;
+
+  /// No description provided for @mcToolsGroupGuides.
+  ///
+  /// In en, this message translates to:
+  /// **'Guides'**
+  String get mcToolsGroupGuides;
+
+  /// No description provided for @mcToolsGroupWorlds.
+  ///
+  /// In en, this message translates to:
+  /// **'Worlds'**
+  String get mcToolsGroupWorlds;
+
+  /// No description provided for @mcToolsGroupChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat & text'**
+  String get mcToolsGroupChat;
+
+  /// No description provided for @mcToolsGroupGameplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands & gameplay'**
+  String get mcToolsGroupGameplay;
+
+  /// No description provided for @mcToolsGroupAssets.
+  ///
+  /// In en, this message translates to:
+  /// **'Assets'**
+  String get mcToolsGroupAssets;
+
+  /// No description provided for @mcToolsGroupDatapacks.
+  ///
+  /// In en, this message translates to:
+  /// **'Datapack generators'**
+  String get mcToolsGroupDatapacks;
+
+  /// No description provided for @mcToolsSearchResults.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No tools match} =1{1 tool} other{{count} tools}}'**
+  String mcToolsSearchResults(int count);
+
+  /// No description provided for @mcToolsNoMatchBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Try another word — every tool can be found by its name or by what it does.'**
+  String get mcToolsNoMatchBody;
+
+  /// No description provided for @mcToolsDisclaimer.
+  ///
+  /// In en, this message translates to:
+  /// **'Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.'**
+  String get mcToolsDisclaimer;
+
+  /// No description provided for @mcToolsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 tool} other{{count} tools}}'**
+  String mcToolsCount(int count);
+
+  /// No description provided for @mcToolEnchantOptimizer.
+  ///
+  /// In en, this message translates to:
+  /// **'Enchant Optimizer'**
+  String get mcToolEnchantOptimizer;
+
+  /// No description provided for @mcToolEnchantOptimizerBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Find the cheapest anvil order for your enchantments.'**
+  String get mcToolEnchantOptimizerBlurb;
+
+  /// No description provided for @mcToolShapeGenerator.
+  ///
+  /// In en, this message translates to:
+  /// **'Shape Generator'**
+  String get mcToolShapeGenerator;
+
+  /// No description provided for @mcToolShapeGeneratorBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Circles, arches, spheres, domes and cylinders, block by block.'**
+  String get mcToolShapeGeneratorBlurb;
+
+  /// No description provided for @mcToolSkinEditor.
+  ///
+  /// In en, this message translates to:
+  /// **'Skin Editor'**
+  String get mcToolSkinEditor;
+
+  /// No description provided for @mcToolSkinEditorBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Paint a skin on a live 3D model and save the PNG.'**
+  String get mcToolSkinEditorBlurb;
+
+  /// No description provided for @mcToolSchematicOrganizer.
+  ///
+  /// In en, this message translates to:
+  /// **'Schematic Organizer'**
+  String get mcToolSchematicOrganizer;
+
+  /// No description provided for @mcToolSchematicOrganizerBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview, favourite, group and rename a folder of schematics.'**
+  String get mcToolSchematicOrganizerBlurb;
+
+  /// No description provided for @mcToolVillagerGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Villager Trades'**
+  String get mcToolVillagerGuide;
+
+  /// No description provided for @mcToolVillagerGuideBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Every trade, price, level and how likely it is to show up.'**
+  String get mcToolVillagerGuideBlurb;
+
+  /// No description provided for @mcToolOreGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Ore Distribution'**
+  String get mcToolOreGuide;
+
+  /// No description provided for @mcToolOreGuideBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Ore curves from the game files and the best Y level for each.'**
+  String get mcToolOreGuideBlurb;
+
+  /// No description provided for @mcToolPotionGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Potion Guide'**
+  String get mcToolPotionGuide;
+
+  /// No description provided for @mcToolPotionGuideBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipes, ingredients, durations and upgrade paths.'**
+  String get mcToolPotionGuideBlurb;
+
+  /// No description provided for @mcToolSulfurCubeGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Sulfur Cube Guide'**
+  String get mcToolSulfurCubeGuide;
+
+  /// No description provided for @mcToolSulfurCubeGuideBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'What a sulfur cube does with every block you feed it.'**
+  String get mcToolSulfurCubeGuideBlurb;
+
+  /// No description provided for @mcToolBeaconGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Beacon Guide'**
+  String get mcToolBeaconGuide;
+
+  /// No description provided for @mcToolBeaconGuideBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Pyramid sizes, range by tier and what each effect does.'**
+  String get mcToolBeaconGuideBlurb;
+
+  /// No description provided for @mcToolShieldMaker.
+  ///
+  /// In en, this message translates to:
+  /// **'Shield Maker'**
+  String get mcToolShieldMaker;
+
+  /// No description provided for @mcToolShieldMakerBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Layer banner patterns on a shield and get the command.'**
+  String get mcToolShieldMakerBlurb;
+
+  /// No description provided for @mcToolFireworkMaker.
+  ///
+  /// In en, this message translates to:
+  /// **'Firework Maker'**
+  String get mcToolFireworkMaker;
+
+  /// No description provided for @mcToolFireworkMakerBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Design rockets star by star, with recipe and command.'**
+  String get mcToolFireworkMakerBlurb;
+
+  /// No description provided for @mcToolBannerMaker.
+  ///
+  /// In en, this message translates to:
+  /// **'Banner Maker'**
+  String get mcToolBannerMaker;
+
+  /// No description provided for @mcToolBannerMakerBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Stack up to 16 patterns and get loom steps and a command.'**
+  String get mcToolBannerMakerBlurb;
+
+  /// No description provided for @mcToolBuildPlanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Build Planner'**
+  String get mcToolBuildPlanner;
+
+  /// No description provided for @mcToolBuildPlannerBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a schematic in 3D, walk it layer by layer, get the materials.'**
+  String get mcToolBuildPlannerBlurb;
+
+  /// No description provided for @mcToolMapArtGenerator.
+  ///
+  /// In en, this message translates to:
+  /// **'Map Art Generator'**
+  String get mcToolMapArtGenerator;
+
+  /// No description provided for @mcToolMapArtGeneratorBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn any image into buildable map art.'**
+  String get mcToolMapArtGeneratorBlurb;
+
+  /// No description provided for @mcToolRoofGenerator.
+  ///
+  /// In en, this message translates to:
+  /// **'Roof Designer'**
+  String get mcToolRoofGenerator;
+
+  /// No description provided for @mcToolRoofGeneratorBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Gable, hip, gambrel and more, exported as a schematic.'**
+  String get mcToolRoofGeneratorBlurb;
+
+  /// No description provided for @mcToolArmorDesigner.
+  ///
+  /// In en, this message translates to:
+  /// **'Armor Trims & Dyes'**
+  String get mcToolArmorDesigner;
+
+  /// No description provided for @mcToolArmorDesignerBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview trims and leather colours, and find the dye mix.'**
+  String get mcToolArmorDesignerBlurb;
+
+  /// No description provided for @mcToolFlatPreset.
+  ///
+  /// In en, this message translates to:
+  /// **'Flat World Generator'**
+  String get mcToolFlatPreset;
+
+  /// No description provided for @mcToolFlatPresetBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Stack superflat layers and get the preset.'**
+  String get mcToolFlatPresetBlurb;
+
+  /// No description provided for @mcToolCustomWorld.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom World Preset'**
+  String get mcToolCustomWorld;
+
+  /// No description provided for @mcToolCustomWorldBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Tweak sea level, terrain blocks and biomes as a datapack.'**
+  String get mcToolCustomWorldBlurb;
+
+  /// No description provided for @mcToolColorCodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Color Codes'**
+  String get mcToolColorCodes;
+
+  /// No description provided for @mcToolColorCodesBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Every § colour and format code, with a live preview.'**
+  String get mcToolColorCodesBlurb;
+
+  /// No description provided for @mcToolTitleGenerator.
+  ///
+  /// In en, this message translates to:
+  /// **'Title Generator'**
+  String get mcToolTitleGenerator;
+
+  /// No description provided for @mcToolTitleGeneratorBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Titles, subtitles and action bars with timings.'**
+  String get mcToolTitleGeneratorBlurb;
+
+  /// No description provided for @mcToolTellrawGenerator.
+  ///
+  /// In en, this message translates to:
+  /// **'Tellraw Generator'**
+  String get mcToolTellrawGenerator;
+
+  /// No description provided for @mcToolTellrawGeneratorBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Rich chat messages with hover and click actions.'**
+  String get mcToolTellrawGeneratorBlurb;
+
+  /// No description provided for @mcToolMotdGenerator.
+  ///
+  /// In en, this message translates to:
+  /// **'MOTD Generator'**
+  String get mcToolMotdGenerator;
+
+  /// No description provided for @mcToolMotdGeneratorBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Design your server-list message and preview it.'**
+  String get mcToolMotdGeneratorBlurb;
+
+  /// No description provided for @mcToolLootTables.
+  ///
+  /// In en, this message translates to:
+  /// **'Loot Tables'**
+  String get mcToolLootTables;
+
+  /// No description provided for @mcToolLootTablesBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Build chest, mob and block loot tables as JSON.'**
+  String get mcToolLootTablesBlurb;
+
+  /// No description provided for @mcToolCustomPotions.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom Potions'**
+  String get mcToolCustomPotions;
+
+  /// No description provided for @mcToolCustomPotionsBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Potions, splash and arrows with any effects.'**
+  String get mcToolCustomPotionsBlurb;
+
+  /// No description provided for @mcToolCommandGenerator.
+  ///
+  /// In en, this message translates to:
+  /// **'Command Generator'**
+  String get mcToolCommandGenerator;
+
+  /// No description provided for @mcToolCommandGeneratorBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Give, summon, effect, teleport and more, filled in for you.'**
+  String get mcToolCommandGeneratorBlurb;
+
+  /// No description provided for @mcToolAssetLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Asset Library'**
+  String get mcToolAssetLibrary;
+
+  /// No description provided for @mcToolAssetLibraryBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Every block, item and mob texture and sound from your own game.'**
+  String get mcToolAssetLibraryBlurb;
+
+  /// No description provided for @mcToolRecipeGenerator.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipe Generator'**
+  String get mcToolRecipeGenerator;
+
+  /// No description provided for @mcToolRecipeGeneratorBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Crafting, smelting, stonecutting and smithing recipes.'**
+  String get mcToolRecipeGeneratorBlurb;
+
+  /// No description provided for @mcToolEnchantmentGenerator.
+  ///
+  /// In en, this message translates to:
+  /// **'Enchantment Generator'**
+  String get mcToolEnchantmentGenerator;
+
+  /// No description provided for @mcToolEnchantmentGeneratorBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Write custom data-driven enchantments.'**
+  String get mcToolEnchantmentGeneratorBlurb;
+
+  /// No description provided for @mcToolAdvancementGenerator.
+  ///
+  /// In en, this message translates to:
+  /// **'Advancement Generator'**
+  String get mcToolAdvancementGenerator;
+
+  /// No description provided for @mcToolAdvancementGeneratorBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Build advancements with criteria, display and rewards.'**
+  String get mcToolAdvancementGeneratorBlurb;
+
+  /// No description provided for @mcCopiedToClipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied to clipboard'**
+  String get mcCopiedToClipboard;
+
+  /// No description provided for @mcCouldNotSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save: {error}'**
+  String mcCouldNotSave(String error);
+
+  /// No description provided for @mcAllTools.
+  ///
+  /// In en, this message translates to:
+  /// **'All tools'**
+  String get mcAllTools;
+
+  /// No description provided for @mcBackToTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to all Minecraft tools'**
+  String get mcBackToTools;
+
+  /// No description provided for @mcOutput.
+  ///
+  /// In en, this message translates to:
+  /// **'Output'**
+  String get mcOutput;
+
+  /// No description provided for @mcSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get mcSave;
+
+  /// No description provided for @mcCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get mcCopy;
+
+  /// No description provided for @mcSearchIds.
+  ///
+  /// In en, this message translates to:
+  /// **'Search ids…'**
+  String get mcSearchIds;
+
+  /// No description provided for @mcStatBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'blocks'**
+  String get mcStatBlocks;
+
+  /// No description provided for @mcStatFootprint.
+  ///
+  /// In en, this message translates to:
+  /// **'footprint'**
+  String get mcStatFootprint;
+
+  /// No description provided for @mcStatTall.
+  ///
+  /// In en, this message translates to:
+  /// **'tall'**
+  String get mcStatTall;
+
+  /// No description provided for @mcExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get mcExport;
+
+  /// No description provided for @mcSaveExtension.
+  ///
+  /// In en, this message translates to:
+  /// **'Save .{extension}'**
+  String mcSaveExtension(String extension);
+
+  /// No description provided for @mcMaterials.
+  ///
+  /// In en, this message translates to:
+  /// **'Materials'**
+  String get mcMaterials;
+
+  /// No description provided for @mcCopyList.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy list'**
+  String get mcCopyList;
+
+  /// No description provided for @mcMaterialListCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Material list copied'**
+  String get mcMaterialListCopied;
+
+  /// No description provided for @mcShowFewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Show fewer'**
+  String get mcShowFewer;
+
+  /// No description provided for @mcShowAllCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all {count}'**
+  String mcShowAllCount(int count);
+
+  /// No description provided for @mcSpanAddPart.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a styled part'**
+  String get mcSpanAddPart;
+
+  /// No description provided for @mcSpanText.
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get mcSpanText;
+
+  /// No description provided for @mcSpanMore.
+  ///
+  /// In en, this message translates to:
+  /// **' more'**
+  String get mcSpanMore;
+
+  /// No description provided for @mcBold.
+  ///
+  /// In en, this message translates to:
+  /// **'Bold'**
+  String get mcBold;
+
+  /// No description provided for @mcItalic.
+  ///
+  /// In en, this message translates to:
+  /// **'Italic'**
+  String get mcItalic;
+
+  /// No description provided for @mcUnderlined.
+  ///
+  /// In en, this message translates to:
+  /// **'Underlined'**
+  String get mcUnderlined;
+
+  /// No description provided for @mcStrikethrough.
+  ///
+  /// In en, this message translates to:
+  /// **'Strikethrough'**
+  String get mcStrikethrough;
+
+  /// No description provided for @mcObfuscated.
+  ///
+  /// In en, this message translates to:
+  /// **'Obfuscated'**
+  String get mcObfuscated;
+
+  /// No description provided for @mcRemovePart.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove part'**
+  String get mcRemovePart;
+
+  /// No description provided for @mcOnClickNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'On click: nothing'**
+  String get mcOnClickNothing;
+
+  /// No description provided for @mcClickOpenUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Open URL'**
+  String get mcClickOpenUrl;
+
+  /// No description provided for @mcClickRunCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Run command'**
+  String get mcClickRunCommand;
+
+  /// No description provided for @mcClickSuggestCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest command'**
+  String get mcClickSuggestCommand;
+
+  /// No description provided for @mcClickCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy to clipboard'**
+  String get mcClickCopy;
+
+  /// No description provided for @mcClickChangePage.
+  ///
+  /// In en, this message translates to:
+  /// **'Change page (books)'**
+  String get mcClickChangePage;
+
+  /// No description provided for @mcClickNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing'**
+  String get mcClickNothing;
+
+  /// No description provided for @mcHintPageNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Page number'**
+  String get mcHintPageNumber;
+
+  /// No description provided for @mcHintTextToCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Text to copy'**
+  String get mcHintTextToCopy;
+
+  /// No description provided for @mcHintHoverText.
+  ///
+  /// In en, this message translates to:
+  /// **'Hover text (optional)'**
+  String get mcHintHoverText;
+
+  /// No description provided for @mcTextColour.
+  ///
+  /// In en, this message translates to:
+  /// **'Text colour'**
+  String get mcTextColour;
+
+  /// No description provided for @mcHexColour.
+  ///
+  /// In en, this message translates to:
+  /// **'Hex colour'**
+  String get mcHexColour;
+
+  /// No description provided for @mcDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get mcDefault;
+
+  /// No description provided for @mcUseHex.
+  ///
+  /// In en, this message translates to:
+  /// **'Use hex'**
+  String get mcUseHex;
+
+  /// No description provided for @mcTagFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Files'**
+  String get mcTagFiles;
+
+  /// No description provided for @mcTagExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get mcTagExport;
+
+  /// No description provided for @mcTagPaint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paint'**
+  String get mcTagPaint;
+
+  /// No description provided for @mcTagPopular.
+  ///
+  /// In en, this message translates to:
+  /// **'Popular'**
+  String get mcTagPopular;
+
+  /// No description provided for @mcTagDesign.
+  ///
+  /// In en, this message translates to:
+  /// **'Design'**
+  String get mcTagDesign;
+
+  /// No description provided for @mcTagGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Guide'**
+  String get mcTagGuide;
+
+  /// No description provided for @mcTagNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get mcTagNew;
+
+  /// No description provided for @mcTagWorld.
+  ///
+  /// In en, this message translates to:
+  /// **'World'**
+  String get mcTagWorld;
+
+  /// No description provided for @mcTagDatapack.
+  ///
+  /// In en, this message translates to:
+  /// **'Datapack'**
+  String get mcTagDatapack;
+
+  /// No description provided for @mcTagText.
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get mcTagText;
+
+  /// No description provided for @mcTagCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Command'**
+  String get mcTagCommand;
+
+  /// No description provided for @mcTagServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Server'**
+  String get mcTagServer;
+
+  /// No description provided for @mcTagBrowse.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse'**
+  String get mcTagBrowse;
+
+  /// No description provided for @mcEnchItemSword.
+  ///
+  /// In en, this message translates to:
+  /// **'Sword'**
+  String get mcEnchItemSword;
+
+  /// No description provided for @mcEnchItemSpear.
+  ///
+  /// In en, this message translates to:
+  /// **'Spear'**
+  String get mcEnchItemSpear;
+
+  /// No description provided for @mcEnchItemAxe.
+  ///
+  /// In en, this message translates to:
+  /// **'Axe'**
+  String get mcEnchItemAxe;
+
+  /// No description provided for @mcEnchItemMace.
+  ///
+  /// In en, this message translates to:
+  /// **'Mace'**
+  String get mcEnchItemMace;
+
+  /// No description provided for @mcEnchItemTrident.
+  ///
+  /// In en, this message translates to:
+  /// **'Trident'**
+  String get mcEnchItemTrident;
+
+  /// No description provided for @mcEnchItemBow.
+  ///
+  /// In en, this message translates to:
+  /// **'Bow'**
+  String get mcEnchItemBow;
+
+  /// No description provided for @mcEnchItemCrossbow.
+  ///
+  /// In en, this message translates to:
+  /// **'Crossbow'**
+  String get mcEnchItemCrossbow;
+
+  /// No description provided for @mcEnchItemPickaxe.
+  ///
+  /// In en, this message translates to:
+  /// **'Pickaxe'**
+  String get mcEnchItemPickaxe;
+
+  /// No description provided for @mcEnchItemShovel.
+  ///
+  /// In en, this message translates to:
+  /// **'Shovel'**
+  String get mcEnchItemShovel;
+
+  /// No description provided for @mcEnchItemHoe.
+  ///
+  /// In en, this message translates to:
+  /// **'Hoe'**
+  String get mcEnchItemHoe;
+
+  /// No description provided for @mcEnchItemHelmet.
+  ///
+  /// In en, this message translates to:
+  /// **'Helmet'**
+  String get mcEnchItemHelmet;
+
+  /// No description provided for @mcEnchItemChestplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Chestplate'**
+  String get mcEnchItemChestplate;
+
+  /// No description provided for @mcEnchItemLeggings.
+  ///
+  /// In en, this message translates to:
+  /// **'Leggings'**
+  String get mcEnchItemLeggings;
+
+  /// No description provided for @mcEnchItemBoots.
+  ///
+  /// In en, this message translates to:
+  /// **'Boots'**
+  String get mcEnchItemBoots;
+
+  /// No description provided for @mcEnchItemElytra.
+  ///
+  /// In en, this message translates to:
+  /// **'Elytra'**
+  String get mcEnchItemElytra;
+
+  /// No description provided for @mcEnchItemFishingRod.
+  ///
+  /// In en, this message translates to:
+  /// **'Fishing Rod'**
+  String get mcEnchItemFishingRod;
+
+  /// No description provided for @mcEnchItemShield.
+  ///
+  /// In en, this message translates to:
+  /// **'Shield'**
+  String get mcEnchItemShield;
+
+  /// No description provided for @mcEnchItemShears.
+  ///
+  /// In en, this message translates to:
+  /// **'Shears'**
+  String get mcEnchItemShears;
+
+  /// No description provided for @mcEnchItemFlintAndSteel.
+  ///
+  /// In en, this message translates to:
+  /// **'Flint and Steel'**
+  String get mcEnchItemFlintAndSteel;
+
+  /// No description provided for @mcEnchItemBrush.
+  ///
+  /// In en, this message translates to:
+  /// **'Brush'**
+  String get mcEnchItemBrush;
+
+  /// No description provided for @mcEnchItemCarrotOnAStick.
+  ///
+  /// In en, this message translates to:
+  /// **'Carrot on a Stick'**
+  String get mcEnchItemCarrotOnAStick;
+
+  /// No description provided for @mcEnchItemBookMerge.
+  ///
+  /// In en, this message translates to:
+  /// **'Book (merge)'**
+  String get mcEnchItemBookMerge;
+
+  /// No description provided for @mcEnchNeedTwo.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick at least two enchantments to merge into one book.'**
+  String get mcEnchNeedTwo;
+
+  /// No description provided for @mcEnchTooExpensive.
+  ///
+  /// In en, this message translates to:
+  /// **'Every order hits \"Too Expensive!\" in survival. Drop an enchantment, start from a fresh item, or turn off the survival limit.'**
+  String get mcEnchTooExpensive;
+
+  /// No description provided for @mcEnchItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Item'**
+  String get mcEnchItem;
+
+  /// No description provided for @mcEnchEnchantments.
+  ///
+  /// In en, this message translates to:
+  /// **'Enchantments'**
+  String get mcEnchEnchantments;
+
+  /// No description provided for @mcEnchMaxAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Max all'**
+  String get mcEnchMaxAll;
+
+  /// No description provided for @mcEnchAnvilSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Anvil settings'**
+  String get mcEnchAnvilSettings;
+
+  /// No description provided for @mcEnchPriorUses.
+  ///
+  /// In en, this message translates to:
+  /// **'Times the item has already been in an anvil'**
+  String get mcEnchPriorUses;
+
+  /// No description provided for @mcEnchSurvivalLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Survival limit'**
+  String get mcEnchSurvivalLimit;
+
+  /// No description provided for @mcEnchSurvivalLimitDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Steps above 39 levels are \"Too Expensive!\"'**
+  String get mcEnchSurvivalLimitDetail;
+
+  /// No description provided for @mcEnchConflicts.
+  ///
+  /// In en, this message translates to:
+  /// **'Conflicts with {other} — tap to swap'**
+  String mcEnchConflicts(String other);
+
+  /// No description provided for @mcEnchNoOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'No order works'**
+  String get mcEnchNoOrder;
+
+  /// No description provided for @mcEnchPickSome.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick some enchantments'**
+  String get mcEnchPickSome;
+
+  /// No description provided for @mcEnchPickSomeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an item and the levels you want. Every possible anvil order is tried and the cheapest one is laid out step by step.'**
+  String get mcEnchPickSomeBody;
+
+  /// No description provided for @mcEnchLevelsTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'levels in total'**
+  String get mcEnchLevelsTotal;
+
+  /// No description provided for @mcEnchAnvilUses.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{anvil use} other{anvil uses}}'**
+  String mcEnchAnvilUses(int count);
+
+  /// No description provided for @mcEnchMostExpensive.
+  ///
+  /// In en, this message translates to:
+  /// **'most expensive step'**
+  String get mcEnchMostExpensive;
+
+  /// No description provided for @mcEnchXpPoints.
+  ///
+  /// In en, this message translates to:
+  /// **'experience points'**
+  String get mcEnchXpPoints;
+
+  /// No description provided for @mcEnchSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'Steps'**
+  String get mcEnchSteps;
+
+  /// No description provided for @mcEnchFootnote.
+  ///
+  /// In en, this message translates to:
+  /// **'The item ends with a prior-work penalty of {penalty}, so the next anvil use on it starts at {cost} levels before enchantments. Costs follow Java Edition 26.3: each sacrificed enchantment costs its level times its book multiplier, plus 2ⁿ−1 for each side\'s prior work.'**
+  String mcEnchFootnote(int penalty, int cost);
+
+  /// No description provided for @mcEnchLevelsShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{levels} lvl'**
+  String mcEnchLevelsShort(int levels);
+
+  /// No description provided for @mcEnchBook.
+  ///
+  /// In en, this message translates to:
+  /// **'Book ({enchantments})'**
+  String mcEnchBook(String enchantments);
+
+  /// No description provided for @mcShapeCircle.
+  ///
+  /// In en, this message translates to:
+  /// **'Circle'**
+  String get mcShapeCircle;
+
+  /// No description provided for @mcShapeArch.
+  ///
+  /// In en, this message translates to:
+  /// **'Arch & curve'**
+  String get mcShapeArch;
+
+  /// No description provided for @mcShape3d.
+  ///
+  /// In en, this message translates to:
+  /// **'3D shape'**
+  String get mcShape3d;
+
+  /// No description provided for @mcShapeRound.
+  ///
+  /// In en, this message translates to:
+  /// **'Round'**
+  String get mcShapeRound;
+
+  /// No description provided for @mcShapePointed.
+  ///
+  /// In en, this message translates to:
+  /// **'Pointed (gothic)'**
+  String get mcShapePointed;
+
+  /// No description provided for @mcShapeParabolic.
+  ///
+  /// In en, this message translates to:
+  /// **'Parabolic'**
+  String get mcShapeParabolic;
+
+  /// No description provided for @mcShapeSegmental.
+  ///
+  /// In en, this message translates to:
+  /// **'Segmental'**
+  String get mcShapeSegmental;
+
+  /// No description provided for @mcShapeSphere.
+  ///
+  /// In en, this message translates to:
+  /// **'Sphere'**
+  String get mcShapeSphere;
+
+  /// No description provided for @mcShapeDome.
+  ///
+  /// In en, this message translates to:
+  /// **'Dome'**
+  String get mcShapeDome;
+
+  /// No description provided for @mcShapeCylinder.
+  ///
+  /// In en, this message translates to:
+  /// **'Cylinder'**
+  String get mcShapeCylinder;
+
+  /// No description provided for @mcShapeCone.
+  ///
+  /// In en, this message translates to:
+  /// **'Cone'**
+  String get mcShapeCone;
+
+  /// No description provided for @mcShapePyramid.
+  ///
+  /// In en, this message translates to:
+  /// **'Pyramid'**
+  String get mcShapePyramid;
+
+  /// No description provided for @mcShapeTorus.
+  ///
+  /// In en, this message translates to:
+  /// **'Torus'**
+  String get mcShapeTorus;
+
+  /// No description provided for @mcShapeSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Size'**
+  String get mcShapeSize;
+
+  /// No description provided for @mcShapeSpan.
+  ///
+  /// In en, this message translates to:
+  /// **'Span'**
+  String get mcShapeSpan;
+
+  /// No description provided for @mcShapeWidth.
+  ///
+  /// In en, this message translates to:
+  /// **'Width'**
+  String get mcShapeWidth;
+
+  /// No description provided for @mcShapePerfectCircle.
+  ///
+  /// In en, this message translates to:
+  /// **'Perfect circle'**
+  String get mcShapePerfectCircle;
+
+  /// No description provided for @mcShapeSameSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Same size on every axis'**
+  String get mcShapeSameSize;
+
+  /// No description provided for @mcShapeRise.
+  ///
+  /// In en, this message translates to:
+  /// **'Rise'**
+  String get mcShapeRise;
+
+  /// No description provided for @mcShapeLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Length'**
+  String get mcShapeLength;
+
+  /// No description provided for @mcShapeHeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Height'**
+  String get mcShapeHeight;
+
+  /// No description provided for @mcShapeDepth.
+  ///
+  /// In en, this message translates to:
+  /// **'Depth'**
+  String get mcShapeDepth;
+
+  /// No description provided for @mcShapeTube.
+  ///
+  /// In en, this message translates to:
+  /// **'Tube radius'**
+  String get mcShapeTube;
+
+  /// No description provided for @mcShapeArchDepth.
+  ///
+  /// In en, this message translates to:
+  /// **'Depth (blocks into the wall)'**
+  String get mcShapeArchDepth;
+
+  /// No description provided for @mcShapeStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Style'**
+  String get mcShapeStyle;
+
+  /// No description provided for @mcShapeFilled.
+  ///
+  /// In en, this message translates to:
+  /// **'Filled'**
+  String get mcShapeFilled;
+
+  /// No description provided for @mcShapeHollow.
+  ///
+  /// In en, this message translates to:
+  /// **'Hollow'**
+  String get mcShapeHollow;
+
+  /// No description provided for @mcShapeHollowDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the shell — far fewer blocks'**
+  String get mcShapeHollowDetail;
+
+  /// No description provided for @mcShapeWall.
+  ///
+  /// In en, this message translates to:
+  /// **'Wall thickness'**
+  String get mcShapeWall;
+
+  /// No description provided for @mcShapeThick.
+  ///
+  /// In en, this message translates to:
+  /// **'Thick outline'**
+  String get mcShapeThick;
+
+  /// No description provided for @mcShapeThickDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'No diagonal gaps — mobs cannot slip through'**
+  String get mcShapeThickDetail;
+
+  /// No description provided for @mcShapeBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Block'**
+  String get mcShapeBlock;
+
+  /// No description provided for @mcShapeLayerOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Layer {layer} of {count}'**
+  String mcShapeLayerOf(int layer, int count);
+
+  /// No description provided for @mcShapePlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan'**
+  String get mcShapePlan;
+
+  /// No description provided for @mcShapeLayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Layer'**
+  String get mcShapeLayer;
+
+  /// No description provided for @mcShapeGhost.
+  ///
+  /// In en, this message translates to:
+  /// **'Grey dots are the layer below, to line each layer up.'**
+  String get mcShapeGhost;
+
+  /// No description provided for @mcShapeRuns.
+  ///
+  /// In en, this message translates to:
+  /// **'Run lengths from the top row out: {runs}. Mirror them for the other quarters.'**
+  String mcShapeRuns(String runs);
+
+  /// No description provided for @mcVillNovice.
+  ///
+  /// In en, this message translates to:
+  /// **'Novice'**
+  String get mcVillNovice;
+
+  /// No description provided for @mcVillApprentice.
+  ///
+  /// In en, this message translates to:
+  /// **'Apprentice'**
+  String get mcVillApprentice;
+
+  /// No description provided for @mcVillJourneyman.
+  ///
+  /// In en, this message translates to:
+  /// **'Journeyman'**
+  String get mcVillJourneyman;
+
+  /// No description provided for @mcVillExpert.
+  ///
+  /// In en, this message translates to:
+  /// **'Expert'**
+  String get mcVillExpert;
+
+  /// No description provided for @mcVillMaster.
+  ///
+  /// In en, this message translates to:
+  /// **'Master'**
+  String get mcVillMaster;
+
+  /// No description provided for @mcVillSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Which villager trades… (e.g. mending, glass, emerald)'**
+  String get mcVillSearch;
+
+  /// No description provided for @mcVillTraderBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Spawns near players now and then and never restocks. Each visit rolls its offers from the lists below.'**
+  String get mcVillTraderBody;
+
+  /// No description provided for @mcVillBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Workstation: {workstation}. Each level unlocks new offers, picked at random from that level\'s pool.'**
+  String mcVillBody(String workstation);
+
+  /// No description provided for @mcVillPicks.
+  ///
+  /// In en, this message translates to:
+  /// **'{picks} of {total}'**
+  String mcVillPicks(int picks, int total);
+
+  /// No description provided for @mcVillLevelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Level {level} · {name}'**
+  String mcVillLevelTitle(int level, String name);
+
+  /// No description provided for @mcVillLevelXp.
+  ///
+  /// In en, this message translates to:
+  /// **'({xp} XP)'**
+  String mcVillLevelXp(int xp);
+
+  /// No description provided for @mcVillNoTrades.
+  ///
+  /// In en, this message translates to:
+  /// **'No villager trades that'**
+  String get mcVillNoTrades;
+
+  /// No description provided for @mcVillNoTradesBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Try an item id like \"book\", \"glass\" or \"diamond\".'**
+  String get mcVillNoTradesBody;
+
+  /// No description provided for @mcVillUses.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} uses'**
+  String mcVillUses(int count);
+
+  /// No description provided for @mcVillXp.
+  ///
+  /// In en, this message translates to:
+  /// **'{xp} xp'**
+  String mcVillXp(int xp);
+
+  /// No description provided for @mcVillNoteEnchant.
+  ///
+  /// In en, this message translates to:
+  /// **'Enchanted at level {min}–{max}'**
+  String mcVillNoteEnchant(String min, String max);
+
+  /// No description provided for @mcVillNoteRandomEnchant.
+  ///
+  /// In en, this message translates to:
+  /// **'Random enchantment'**
+  String get mcVillNoteRandomEnchant;
+
+  /// No description provided for @mcVillNoteMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Map to the nearest {place}'**
+  String mcVillNoteMap(String place);
+
+  /// No description provided for @mcVillNoteExplorer.
+  ///
+  /// In en, this message translates to:
+  /// **'Explorer map'**
+  String get mcVillNoteExplorer;
+
+  /// No description provided for @mcVillNoteDyes.
+  ///
+  /// In en, this message translates to:
+  /// **'Random dye colours'**
+  String get mcVillNoteDyes;
+
+  /// No description provided for @mcVillNoteStew.
+  ///
+  /// In en, this message translates to:
+  /// **'Random stew effect'**
+  String get mcVillNoteStew;
+
+  /// No description provided for @mcVillNoteRandomPotion.
+  ///
+  /// In en, this message translates to:
+  /// **'Random potion effect'**
+  String get mcVillNoteRandomPotion;
+
+  /// No description provided for @mcVillNotePotion.
+  ///
+  /// In en, this message translates to:
+  /// **'Potion of {potion}'**
+  String mcVillNotePotion(String potion);
+
+  /// No description provided for @mcVillNoteTreasure.
+  ///
+  /// In en, this message translates to:
+  /// **'Treasure enchantments cost double'**
+  String get mcVillNoteTreasure;
+
+  /// No description provided for @mcVillNoteVariants.
+  ///
+  /// In en, this message translates to:
+  /// **'Only from {variants} villagers'**
+  String mcVillNoteVariants(String variants);
+
+  /// No description provided for @mcVillNotePrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Price scales with the enchantment level'**
+  String get mcVillNotePrice;
+
+  /// No description provided for @mcOreTipCoal.
+  ///
+  /// In en, this message translates to:
+  /// **'Common everywhere above sea level; mountains carry a second band all the way to the build limit. Half the coal touching air below Y 136 is skipped, so caves under the surface show less of it.'**
+  String get mcOreTipCoal;
+
+  /// No description provided for @mcOreTipIron.
+  ///
+  /// In en, this message translates to:
+  /// **'Two bands: a small one peaking at Y 16 and a huge mountain band peaking near Y 232, plus scattered small veins below Y 72.'**
+  String get mcOreTipIron;
+
+  /// No description provided for @mcOreTipCopper.
+  ///
+  /// In en, this message translates to:
+  /// **'Peaks at Y 48. Dripstone caves roll a second, larger set of veins over the same heights.'**
+  String get mcOreTipCopper;
+
+  /// No description provided for @mcOreTipGold.
+  ///
+  /// In en, this message translates to:
+  /// **'Peaks at Y −16 with extra small veins at the very bottom. Badlands add fifty more attempts a chunk from Y 32 up to Y 256.'**
+  String get mcOreTipGold;
+
+  /// No description provided for @mcOreTipRedstone.
+  ///
+  /// In en, this message translates to:
+  /// **'Concentrated at the bottom of the world. Mine just above the bedrock ceiling — around Y −58.'**
+  String get mcOreTipRedstone;
+
+  /// No description provided for @mcOreTipLapis.
+  ///
+  /// In en, this message translates to:
+  /// **'A narrow band peaking at Y 0, and a \"buried\" spread from Y −64 to 64 that never shows on a cave wall.'**
+  String get mcOreTipLapis;
+
+  /// No description provided for @mcOreTipDiamond.
+  ///
+  /// In en, this message translates to:
+  /// **'The deeper the better, down to the bedrock. Most diamond touching air is thrown away, so branch-mine at Y −58 instead of exploring caves.'**
+  String get mcOreTipDiamond;
+
+  /// No description provided for @mcOreTipEmerald.
+  ///
+  /// In en, this message translates to:
+  /// **'Only in mountain biomes, as single blocks, peaking near Y 232.'**
+  String get mcOreTipEmerald;
+
+  /// No description provided for @mcOreTipQuartz.
+  ///
+  /// In en, this message translates to:
+  /// **'Evenly spread from Y 10 to 117 across the Nether; basalt deltas roll twice as many veins.'**
+  String get mcOreTipQuartz;
+
+  /// No description provided for @mcOreTipNetherGold.
+  ///
+  /// In en, this message translates to:
+  /// **'Evenly spread from Y 10 to 117; basalt deltas double it.'**
+  String get mcOreTipNetherGold;
+
+  /// No description provided for @mcOreTipDebris.
+  ///
+  /// In en, this message translates to:
+  /// **'Mostly between Y 8 and 24, peaking at Y 16. It never generates exposed to air — strip-mine, or use beds or TNT to clear fast.'**
+  String get mcOreTipDebris;
+
+  /// No description provided for @mcOreBestLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'best level to mine'**
+  String get mcOreBestLevel;
+
+  /// No description provided for @mcOreRange.
+  ///
+  /// In en, this message translates to:
+  /// **'where it can appear'**
+  String get mcOreRange;
+
+  /// No description provided for @mcOreAttempts.
+  ///
+  /// In en, this message translates to:
+  /// **'vein attempts per chunk'**
+  String get mcOreAttempts;
+
+  /// No description provided for @mcOreLargest.
+  ///
+  /// In en, this message translates to:
+  /// **'largest vein size'**
+  String get mcOreLargest;
+
+  /// No description provided for @mcOreDistribution.
+  ///
+  /// In en, this message translates to:
+  /// **'Distribution of {ore}'**
+  String mcOreDistribution(String ore);
+
+  /// No description provided for @mcOreBiomeBonus.
+  ///
+  /// In en, this message translates to:
+  /// **'Biome bonus'**
+  String get mcOreBiomeBonus;
+
+  /// No description provided for @mcOreTips.
+  ///
+  /// In en, this message translates to:
+  /// **'Tips'**
+  String get mcOreTips;
+
+  /// No description provided for @mcOrePlacements.
+  ///
+  /// In en, this message translates to:
+  /// **'Placements'**
+  String get mcOrePlacements;
+
+  /// No description provided for @mcOreAllOverworld.
+  ///
+  /// In en, this message translates to:
+  /// **'All overworld ores'**
+  String get mcOreAllOverworld;
+
+  /// No description provided for @mcOreNether.
+  ///
+  /// In en, this message translates to:
+  /// **'Nether'**
+  String get mcOreNether;
+
+  /// No description provided for @mcOreTriangle.
+  ///
+  /// In en, this message translates to:
+  /// **'triangle peaking at Y {y}'**
+  String mcOreTriangle(int y);
+
+  /// No description provided for @mcOreEven.
+  ///
+  /// In en, this message translates to:
+  /// **'even spread'**
+  String get mcOreEven;
+
+  /// No description provided for @mcOrePerChunk.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} per chunk'**
+  String mcOrePerChunk(int count);
+
+  /// No description provided for @mcOreOneIn.
+  ///
+  /// In en, this message translates to:
+  /// **'1 in {count} chunks'**
+  String mcOreOneIn(int count);
+
+  /// No description provided for @mcOrePlacementLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Y {min} to {max}, {shape} · {attempts} · size {size}'**
+  String mcOrePlacementLine(
+    int min,
+    int max,
+    String shape,
+    String attempts,
+    int size,
+  );
+
+  /// No description provided for @mcOreAirSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% skipped next to air'**
+  String mcOreAirSkip(int percent);
+
+  /// No description provided for @mcOrePeak.
+  ///
+  /// In en, this message translates to:
+  /// **'Peak Y {y}'**
+  String mcOrePeak(int y);
+
+  /// No description provided for @mcPotionDescSwiftness.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed I raises walking speed by 20% (Speed II: 40%).'**
+  String get mcPotionDescSwiftness;
+
+  /// No description provided for @mcPotionDescLeaping.
+  ///
+  /// In en, this message translates to:
+  /// **'Jump higher and take less fall damage.'**
+  String get mcPotionDescLeaping;
+
+  /// No description provided for @mcPotionDescStrength.
+  ///
+  /// In en, this message translates to:
+  /// **'+3 melee damage per level.'**
+  String get mcPotionDescStrength;
+
+  /// No description provided for @mcPotionDescHealing.
+  ///
+  /// In en, this message translates to:
+  /// **'Restores 4 health (8 at level II). Hurts undead mobs.'**
+  String get mcPotionDescHealing;
+
+  /// No description provided for @mcPotionDescRegeneration.
+  ///
+  /// In en, this message translates to:
+  /// **'Heals one heart every 2.5 seconds (1.2 s at level II).'**
+  String get mcPotionDescRegeneration;
+
+  /// No description provided for @mcPotionDescPoison.
+  ///
+  /// In en, this message translates to:
+  /// **'Drains health down to half a heart; never kills.'**
+  String get mcPotionDescPoison;
+
+  /// No description provided for @mcPotionDescFireResistance.
+  ///
+  /// In en, this message translates to:
+  /// **'Immune to fire, lava and magma blocks.'**
+  String get mcPotionDescFireResistance;
+
+  /// No description provided for @mcPotionDescWaterBreathing.
+  ///
+  /// In en, this message translates to:
+  /// **'Breathe underwater for the whole duration.'**
+  String get mcPotionDescWaterBreathing;
+
+  /// No description provided for @mcPotionDescNightVision.
+  ///
+  /// In en, this message translates to:
+  /// **'See in the dark and clearly underwater.'**
+  String get mcPotionDescNightVision;
+
+  /// No description provided for @mcPotionDescSlowFalling.
+  ///
+  /// In en, this message translates to:
+  /// **'Fall gently and take no fall damage.'**
+  String get mcPotionDescSlowFalling;
+
+  /// No description provided for @mcPotionDescTurtleMaster.
+  ///
+  /// In en, this message translates to:
+  /// **'Slowness IV and Resistance III (VI and IV when strong).'**
+  String get mcPotionDescTurtleMaster;
+
+  /// No description provided for @mcPotionDescWindCharged.
+  ///
+  /// In en, this message translates to:
+  /// **'Release a wind burst on death.'**
+  String get mcPotionDescWindCharged;
+
+  /// No description provided for @mcPotionDescWeaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Spawn cobwebs on death; move faster through cobwebs.'**
+  String get mcPotionDescWeaving;
+
+  /// No description provided for @mcPotionDescOozing.
+  ///
+  /// In en, this message translates to:
+  /// **'Release two medium slimes on death.'**
+  String get mcPotionDescOozing;
+
+  /// No description provided for @mcPotionDescInfested.
+  ///
+  /// In en, this message translates to:
+  /// **'Chance to release silverfish when hurt.'**
+  String get mcPotionDescInfested;
+
+  /// No description provided for @mcPotionDescSlowness.
+  ///
+  /// In en, this message translates to:
+  /// **'Slowness I cuts speed by 15% (IV: 60%).'**
+  String get mcPotionDescSlowness;
+
+  /// No description provided for @mcPotionDescHarming.
+  ///
+  /// In en, this message translates to:
+  /// **'6 damage (12 at level II). Heals undead mobs.'**
+  String get mcPotionDescHarming;
+
+  /// No description provided for @mcPotionDescInvisibility.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobs stop noticing you unless you wear armour.'**
+  String get mcPotionDescInvisibility;
+
+  /// No description provided for @mcPotionDescWeakness.
+  ///
+  /// In en, this message translates to:
+  /// **'−4 melee damage. Needed to cure zombie villagers.'**
+  String get mcPotionDescWeakness;
+
+  /// No description provided for @mcPotionSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search potion or ingredient'**
+  String get mcPotionSearch;
+
+  /// No description provided for @mcPotionExtended.
+  ///
+  /// In en, this message translates to:
+  /// **'Extended'**
+  String get mcPotionExtended;
+
+  /// No description provided for @mcPotionRedstone.
+  ///
+  /// In en, this message translates to:
+  /// **'+ Redstone Dust'**
+  String get mcPotionRedstone;
+
+  /// No description provided for @mcPotionLevel2.
+  ///
+  /// In en, this message translates to:
+  /// **'Level II'**
+  String get mcPotionLevel2;
+
+  /// No description provided for @mcPotionGlowstone.
+  ///
+  /// In en, this message translates to:
+  /// **'+ Glowstone Dust'**
+  String get mcPotionGlowstone;
+
+  /// No description provided for @mcPotionBeneficial.
+  ///
+  /// In en, this message translates to:
+  /// **'Beneficial'**
+  String get mcPotionBeneficial;
+
+  /// No description provided for @mcPotionHarmful.
+  ///
+  /// In en, this message translates to:
+  /// **'Harmful'**
+  String get mcPotionHarmful;
+
+  /// No description provided for @mcPotionEffect.
+  ///
+  /// In en, this message translates to:
+  /// **'Effect: {effect}'**
+  String mcPotionEffect(String effect);
+
+  /// No description provided for @mcPotionBrewing.
+  ///
+  /// In en, this message translates to:
+  /// **'Brewing path'**
+  String get mcPotionBrewing;
+
+  /// No description provided for @mcPotionDurations.
+  ///
+  /// In en, this message translates to:
+  /// **'Durations'**
+  String get mcPotionDurations;
+
+  /// No description provided for @mcPotionDrinkSplash.
+  ///
+  /// In en, this message translates to:
+  /// **'Drink / Splash'**
+  String get mcPotionDrinkSplash;
+
+  /// No description provided for @mcPotionLingering.
+  ///
+  /// In en, this message translates to:
+  /// **'Lingering'**
+  String get mcPotionLingering;
+
+  /// No description provided for @mcPotionArrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrow'**
+  String get mcPotionArrow;
+
+  /// No description provided for @mcPotionInstant.
+  ///
+  /// In en, this message translates to:
+  /// **'Instant'**
+  String get mcPotionInstant;
+
+  /// No description provided for @mcPotionVariants.
+  ///
+  /// In en, this message translates to:
+  /// **'Variants'**
+  String get mcPotionVariants;
+
+  /// No description provided for @mcPotionSplash.
+  ///
+  /// In en, this message translates to:
+  /// **'Splash: brew with Gunpowder. Same duration; hits everyone in the splash.'**
+  String get mcPotionSplash;
+
+  /// No description provided for @mcPotionLingeringNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Lingering: brew a splash potion with Dragon\'s Breath. A cloud for a quarter of the time.'**
+  String get mcPotionLingeringNote;
+
+  /// No description provided for @mcPotionArrows.
+  ///
+  /// In en, this message translates to:
+  /// **'Tipped arrows: 8 arrows around a lingering potion in a crafting table. An eighth of the time.'**
+  String get mcPotionArrows;
+
+  /// No description provided for @mcPotionCorrupts.
+  ///
+  /// In en, this message translates to:
+  /// **'Fermented Spider Eye turns this into {potion} — tap to open.'**
+  String mcPotionCorrupts(String potion);
+
+  /// No description provided for @mcPotionFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Brewing stands burn one Blaze Powder per 20 brews and take up to three bottles at once.'**
+  String get mcPotionFuel;
+
+  /// No description provided for @mcCubeRegular.
+  ///
+  /// In en, this message translates to:
+  /// **'Regular'**
+  String get mcCubeRegular;
+
+  /// No description provided for @mcCubeRegularBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Concrete powder, dirt & soft blocks'**
+  String get mcCubeRegularBlocks;
+
+  /// No description provided for @mcCubeBouncy.
+  ///
+  /// In en, this message translates to:
+  /// **'Bouncy'**
+  String get mcCubeBouncy;
+
+  /// No description provided for @mcCubeBouncyBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Logs, planks & bamboo'**
+  String get mcCubeBouncyBlocks;
+
+  /// No description provided for @mcCubeSlowBouncy.
+  ///
+  /// In en, this message translates to:
+  /// **'Slow Bouncy'**
+  String get mcCubeSlowBouncy;
+
+  /// No description provided for @mcCubeSlowBouncyBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Stone, ores & terracotta'**
+  String get mcCubeSlowBouncyBlocks;
+
+  /// No description provided for @mcCubeSlowFlat.
+  ///
+  /// In en, this message translates to:
+  /// **'Slow Flat'**
+  String get mcCubeSlowFlat;
+
+  /// No description provided for @mcCubeSlowFlatBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Metal ores & metal blocks'**
+  String get mcCubeSlowFlatBlocks;
+
+  /// No description provided for @mcCubeFastFlat.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast Flat'**
+  String get mcCubeFastFlat;
+
+  /// No description provided for @mcCubeFastFlatBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Moss, coral, pumpkins & sponges'**
+  String get mcCubeFastFlatBlocks;
+
+  /// No description provided for @mcCubeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get mcCubeLight;
+
+  /// No description provided for @mcCubeLightBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Wool'**
+  String get mcCubeLightBlocks;
+
+  /// No description provided for @mcCubeFastSliding.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast Sliding'**
+  String get mcCubeFastSliding;
+
+  /// No description provided for @mcCubeFastSlidingBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Ice & snow'**
+  String get mcCubeFastSlidingBlocks;
+
+  /// No description provided for @mcCubeSlowSliding.
+  ///
+  /// In en, this message translates to:
+  /// **'Slow Sliding'**
+  String get mcCubeSlowSliding;
+
+  /// No description provided for @mcCubeSlowSlidingBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Mushroom & wart blocks'**
+  String get mcCubeSlowSlidingBlocks;
+
+  /// No description provided for @mcCubeHighResistance.
+  ///
+  /// In en, this message translates to:
+  /// **'High Resistance'**
+  String get mcCubeHighResistance;
+
+  /// No description provided for @mcCubeHighResistanceBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Soul sand & soul soil'**
+  String get mcCubeHighResistanceBlocks;
+
+  /// No description provided for @mcCubeSticky.
+  ///
+  /// In en, this message translates to:
+  /// **'Sticky'**
+  String get mcCubeSticky;
+
+  /// No description provided for @mcCubeStickyBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Honeycomb'**
+  String get mcCubeStickyBlocks;
+
+  /// No description provided for @mcCubeExplosive.
+  ///
+  /// In en, this message translates to:
+  /// **'Explosive'**
+  String get mcCubeExplosive;
+
+  /// No description provided for @mcCubeExplosiveBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'TNT'**
+  String get mcCubeExplosiveBlocks;
+
+  /// No description provided for @mcCubeHot.
+  ///
+  /// In en, this message translates to:
+  /// **'Hot'**
+  String get mcCubeHot;
+
+  /// No description provided for @mcCubeHotBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Magma'**
+  String get mcCubeHotBlocks;
+
+  /// No description provided for @mcCubeDmgArrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrows'**
+  String get mcCubeDmgArrow;
+
+  /// No description provided for @mcCubeDmgCactus.
+  ///
+  /// In en, this message translates to:
+  /// **'Cactus'**
+  String get mcCubeDmgCactus;
+
+  /// No description provided for @mcCubeDmgDryOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Drying out'**
+  String get mcCubeDmgDryOut;
+
+  /// No description provided for @mcCubeDmgFall.
+  ///
+  /// In en, this message translates to:
+  /// **'Fall damage'**
+  String get mcCubeDmgFall;
+
+  /// No description provided for @mcCubeDmgFallingAnvil.
+  ///
+  /// In en, this message translates to:
+  /// **'Falling anvils'**
+  String get mcCubeDmgFallingAnvil;
+
+  /// No description provided for @mcCubeDmgFallingBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Falling blocks'**
+  String get mcCubeDmgFallingBlock;
+
+  /// No description provided for @mcCubeDmgFallingStalactite.
+  ///
+  /// In en, this message translates to:
+  /// **'Falling stalactites'**
+  String get mcCubeDmgFallingStalactite;
+
+  /// No description provided for @mcCubeDmgFreeze.
+  ///
+  /// In en, this message translates to:
+  /// **'Freezing'**
+  String get mcCubeDmgFreeze;
+
+  /// No description provided for @mcCubeDmgMaceSmash.
+  ///
+  /// In en, this message translates to:
+  /// **'Mace smash'**
+  String get mcCubeDmgMaceSmash;
+
+  /// No description provided for @mcCubeDmgHotFloor.
+  ///
+  /// In en, this message translates to:
+  /// **'Magma floors'**
+  String get mcCubeDmgHotFloor;
+
+  /// No description provided for @mcCubeDmgMobAttack.
+  ///
+  /// In en, this message translates to:
+  /// **'Mob melee'**
+  String get mcCubeDmgMobAttack;
+
+  /// No description provided for @mcCubeDmgMobAttackNoAggro.
+  ///
+  /// In en, this message translates to:
+  /// **'Mob melee (no aggro)'**
+  String get mcCubeDmgMobAttackNoAggro;
+
+  /// No description provided for @mcCubeDmgMobProjectile.
+  ///
+  /// In en, this message translates to:
+  /// **'Mob projectiles'**
+  String get mcCubeDmgMobProjectile;
+
+  /// No description provided for @mcCubeDmgPlayerAttack.
+  ///
+  /// In en, this message translates to:
+  /// **'Player melee'**
+  String get mcCubeDmgPlayerAttack;
+
+  /// No description provided for @mcCubeDmgSpear.
+  ///
+  /// In en, this message translates to:
+  /// **'Spears'**
+  String get mcCubeDmgSpear;
+
+  /// No description provided for @mcCubeDmgSpit.
+  ///
+  /// In en, this message translates to:
+  /// **'Llama spit'**
+  String get mcCubeDmgSpit;
+
+  /// No description provided for @mcCubeDmgStalagmite.
+  ///
+  /// In en, this message translates to:
+  /// **'Stalagmites'**
+  String get mcCubeDmgStalagmite;
+
+  /// No description provided for @mcCubeDmgSting.
+  ///
+  /// In en, this message translates to:
+  /// **'Bee stings'**
+  String get mcCubeDmgSting;
+
+  /// No description provided for @mcCubeDmgSulfurCubeHot.
+  ///
+  /// In en, this message translates to:
+  /// **'Another cube\'s heat'**
+  String get mcCubeDmgSulfurCubeHot;
+
+  /// No description provided for @mcCubeDmgSweetBerryBush.
+  ///
+  /// In en, this message translates to:
+  /// **'Sweet berry bushes'**
+  String get mcCubeDmgSweetBerryBush;
+
+  /// No description provided for @mcCubeDmgThrown.
+  ///
+  /// In en, this message translates to:
+  /// **'Thrown items'**
+  String get mcCubeDmgThrown;
+
+  /// No description provided for @mcCubeDmgTrident.
+  ///
+  /// In en, this message translates to:
+  /// **'Tridents'**
+  String get mcCubeDmgTrident;
+
+  /// No description provided for @mcCubeDmgWindCharge.
+  ///
+  /// In en, this message translates to:
+  /// **'Wind charges'**
+  String get mcCubeDmgWindCharge;
+
+  /// No description provided for @mcCubeVeryEasyShove.
+  ///
+  /// In en, this message translates to:
+  /// **'Very easy to shove'**
+  String get mcCubeVeryEasyShove;
+
+  /// No description provided for @mcCubeShovesEasily.
+  ///
+  /// In en, this message translates to:
+  /// **'Shoves easily'**
+  String get mcCubeShovesEasily;
+
+  /// No description provided for @mcCubeResists.
+  ///
+  /// In en, this message translates to:
+  /// **'Resists shoving'**
+  String get mcCubeResists;
+
+  /// No description provided for @mcCubeHardToBudge.
+  ///
+  /// In en, this message translates to:
+  /// **'Very hard to budge'**
+  String get mcCubeHardToBudge;
+
+  /// No description provided for @mcCubeSuperBouncy.
+  ///
+  /// In en, this message translates to:
+  /// **'Super bouncy'**
+  String get mcCubeSuperBouncy;
+
+  /// No description provided for @mcCubeBouncyDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Bouncy'**
+  String get mcCubeBouncyDesc;
+
+  /// No description provided for @mcCubeLittleBouncy.
+  ///
+  /// In en, this message translates to:
+  /// **'A little bouncy'**
+  String get mcCubeLittleBouncy;
+
+  /// No description provided for @mcCubeBarely.
+  ///
+  /// In en, this message translates to:
+  /// **'Barely bounces'**
+  String get mcCubeBarely;
+
+  /// No description provided for @mcCubeNoBounce.
+  ///
+  /// In en, this message translates to:
+  /// **'No bounce'**
+  String get mcCubeNoBounce;
+
+  /// No description provided for @mcCubeSticks.
+  ///
+  /// In en, this message translates to:
+  /// **'Sticks in place'**
+  String get mcCubeSticks;
+
+  /// No description provided for @mcCubeGrippy.
+  ///
+  /// In en, this message translates to:
+  /// **'Grippy'**
+  String get mcCubeGrippy;
+
+  /// No description provided for @mcCubeSlidesBit.
+  ///
+  /// In en, this message translates to:
+  /// **'Slides a bit'**
+  String get mcCubeSlidesBit;
+
+  /// No description provided for @mcCubeSlidesIce.
+  ///
+  /// In en, this message translates to:
+  /// **'Slides like ice'**
+  String get mcCubeSlidesIce;
+
+  /// No description provided for @mcCubeFloaty.
+  ///
+  /// In en, this message translates to:
+  /// **'Floaty & slow'**
+  String get mcCubeFloaty;
+
+  /// No description provided for @mcCubeDamps.
+  ///
+  /// In en, this message translates to:
+  /// **'Damps quickly'**
+  String get mcCubeDamps;
+
+  /// No description provided for @mcCubeHolds.
+  ///
+  /// In en, this message translates to:
+  /// **'Holds momentum'**
+  String get mcCubeHolds;
+
+  /// No description provided for @mcCubeKeepsFlying.
+  ///
+  /// In en, this message translates to:
+  /// **'Keeps flying'**
+  String get mcCubeKeepsFlying;
+
+  /// No description provided for @mcCubeEatsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What happens if my cube eats…'**
+  String get mcCubeEatsTitle;
+
+  /// No description provided for @mcCubeSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search any of the {count} swallowable blocks'**
+  String mcCubeSearchHint(int count);
+
+  /// No description provided for @mcCubeNotSwallowable.
+  ///
+  /// In en, this message translates to:
+  /// **'A cube will not swallow that — only the blocks listed under the twelve behaviours.'**
+  String get mcCubeNotSwallowable;
+
+  /// No description provided for @mcCubeMeet.
+  ///
+  /// In en, this message translates to:
+  /// **'Meet the cube'**
+  String get mcCubeMeet;
+
+  /// No description provided for @mcCubeSpawnsIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Spawns in'**
+  String get mcCubeSpawnsIn;
+
+  /// No description provided for @mcCubeSpawnsInValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Sulfur Caves'**
+  String get mcCubeSpawnsInValue;
+
+  /// No description provided for @mcCubeHealth.
+  ///
+  /// In en, this message translates to:
+  /// **'Health'**
+  String get mcCubeHealth;
+
+  /// No description provided for @mcCubeHealthValue.
+  ///
+  /// In en, this message translates to:
+  /// **'8 full-size · 4 baby'**
+  String get mcCubeHealthValue;
+
+  /// No description provided for @mcCubeOnDeath.
+  ///
+  /// In en, this message translates to:
+  /// **'On death'**
+  String get mcCubeOnDeath;
+
+  /// No description provided for @mcCubeOnDeathValue.
+  ///
+  /// In en, this message translates to:
+  /// **'A full cube splits into 2 babies'**
+  String get mcCubeOnDeathValue;
+
+  /// No description provided for @mcCubeExperience.
+  ///
+  /// In en, this message translates to:
+  /// **'Experience'**
+  String get mcCubeExperience;
+
+  /// No description provided for @mcCubeExperienceValue.
+  ///
+  /// In en, this message translates to:
+  /// **'1 to 2'**
+  String get mcCubeExperienceValue;
+
+  /// No description provided for @mcCubeFood.
+  ///
+  /// In en, this message translates to:
+  /// **'Baby food'**
+  String get mcCubeFood;
+
+  /// No description provided for @mcCubeFoodValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Slime Balls make babies grow and breed'**
+  String get mcCubeFoodValue;
+
+  /// No description provided for @mcCubeHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Take it home'**
+  String get mcCubeHome;
+
+  /// No description provided for @mcCubeHomeValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoop the whole cube with a bucket'**
+  String get mcCubeHomeValue;
+
+  /// No description provided for @mcCubeChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change its block'**
+  String get mcCubeChange;
+
+  /// No description provided for @mcCubeChangeValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Shears pop the block out (5 s before it can swallow again)'**
+  String get mcCubeChangeValue;
+
+  /// No description provided for @mcCubeTempt.
+  ///
+  /// In en, this message translates to:
+  /// **'Tempt range'**
+  String get mcCubeTempt;
+
+  /// No description provided for @mcCubeTemptValue.
+  ///
+  /// In en, this message translates to:
+  /// **'8 blocks'**
+  String get mcCubeTemptValue;
+
+  /// No description provided for @mcCubeShrugs.
+  ///
+  /// In en, this message translates to:
+  /// **'While it holds a block it shrugs off…'**
+  String get mcCubeShrugs;
+
+  /// No description provided for @mcCubeShrugsNote.
+  ///
+  /// In en, this message translates to:
+  /// **'It also breathes underwater and cannot freeze. Explosions still hurt — TNT pops a cube even mid-swallow — and every shrugged-off hit still knocks it around.'**
+  String get mcCubeShrugsNote;
+
+  /// No description provided for @mcCubeHow.
+  ///
+  /// In en, this message translates to:
+  /// **'How swallowing works'**
+  String get mcCubeHow;
+
+  /// No description provided for @mcCubeHowBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Only full-size cubes swallow blocks: right-click one with a swallowable block, let it walk over a dropped one, or have a dispenser feed it. The block sits in its body slot; feeding another swaps it out and switches the behaviour. While it holds a block the cube stops wandering and is pushed around by players and mobs instead, with knockback scaled by its resistance.'**
+  String get mcCubeHowBody;
+
+  /// No description provided for @mcCubeExplodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Explodes'**
+  String get mcCubeExplodes;
+
+  /// No description provided for @mcCubeBurns.
+  ///
+  /// In en, this message translates to:
+  /// **'Burns'**
+  String get mcCubeBurns;
+
+  /// No description provided for @mcCubeFloats.
+  ///
+  /// In en, this message translates to:
+  /// **'Floats'**
+  String get mcCubeFloats;
+
+  /// No description provided for @mcCubeSinks.
+  ///
+  /// In en, this message translates to:
+  /// **'Sinks'**
+  String get mcCubeSinks;
+
+  /// No description provided for @mcCubeBehaviour.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} behaviour'**
+  String mcCubeBehaviour(String name);
+
+  /// No description provided for @mcCubeBlockCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} blocks'**
+  String mcCubeBlockCount(int count);
+
+  /// No description provided for @mcCubeMobility.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobility'**
+  String get mcCubeMobility;
+
+  /// No description provided for @mcCubeKbRes.
+  ///
+  /// In en, this message translates to:
+  /// **'knockback resistance {value}'**
+  String mcCubeKbRes(String value);
+
+  /// No description provided for @mcCubeBounce.
+  ///
+  /// In en, this message translates to:
+  /// **'Bounce'**
+  String get mcCubeBounce;
+
+  /// No description provided for @mcCubeBounciness.
+  ///
+  /// In en, this message translates to:
+  /// **'bounciness +{value}'**
+  String mcCubeBounciness(String value);
+
+  /// No description provided for @mcCubeGrip.
+  ///
+  /// In en, this message translates to:
+  /// **'Grip'**
+  String get mcCubeGrip;
+
+  /// No description provided for @mcCubeFriction.
+  ///
+  /// In en, this message translates to:
+  /// **'friction {value}'**
+  String mcCubeFriction(String value);
+
+  /// No description provided for @mcCubeAirDrag.
+  ///
+  /// In en, this message translates to:
+  /// **'Air drag'**
+  String get mcCubeAirDrag;
+
+  /// No description provided for @mcCubeAirDragValue.
+  ///
+  /// In en, this message translates to:
+  /// **'air drag {value}'**
+  String mcCubeAirDragValue(String value);
+
+  /// No description provided for @mcCubeKnockback.
+  ///
+  /// In en, this message translates to:
+  /// **'Knockback'**
+  String get mcCubeKnockback;
+
+  /// No description provided for @mcCubeKnockbackDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'horizontal · vertical'**
+  String get mcCubeKnockbackDetail;
+
+  /// No description provided for @mcCubePush.
+  ///
+  /// In en, this message translates to:
+  /// **'Push'**
+  String get mcCubePush;
+
+  /// No description provided for @mcCubePushValue.
+  ///
+  /// In en, this message translates to:
+  /// **'every {seconds} s'**
+  String mcCubePushValue(String seconds);
+
+  /// No description provided for @mcCubePushDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'how often a shove lands'**
+  String get mcCubePushDetail;
+
+  /// No description provided for @mcCubeExplosion.
+  ///
+  /// In en, this message translates to:
+  /// **'Explosion'**
+  String get mcCubeExplosion;
+
+  /// No description provided for @mcCubePower.
+  ///
+  /// In en, this message translates to:
+  /// **'Power {power}'**
+  String mcCubePower(String power);
+
+  /// No description provided for @mcCubeFuse.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds} s fuse'**
+  String mcCubeFuse(String seconds);
+
+  /// No description provided for @mcCubeSetsFire.
+  ///
+  /// In en, this message translates to:
+  /// **'sets fire'**
+  String get mcCubeSetsFire;
+
+  /// No description provided for @mcCubeNoFire.
+  ///
+  /// In en, this message translates to:
+  /// **'no fire'**
+  String get mcCubeNoFire;
+
+  /// No description provided for @mcCubeContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact'**
+  String get mcCubeContact;
+
+  /// No description provided for @mcCubeBurnDamage.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} burn damage'**
+  String mcCubeBurnDamage(String amount);
+
+  /// No description provided for @mcCubeWhenTouched.
+  ///
+  /// In en, this message translates to:
+  /// **'when touched'**
+  String get mcCubeWhenTouched;
+
+  /// No description provided for @mcCubeWater.
+  ///
+  /// In en, this message translates to:
+  /// **'Water'**
+  String get mcCubeWater;
+
+  /// No description provided for @mcCubeBuoyant.
+  ///
+  /// In en, this message translates to:
+  /// **'buoyant'**
+  String get mcCubeBuoyant;
+
+  /// No description provided for @mcCubeNotBuoyant.
+  ///
+  /// In en, this message translates to:
+  /// **'not buoyant'**
+  String get mcCubeNotBuoyant;
+
+  /// No description provided for @mcBeaconSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Move 20% faster (40% at II).'**
+  String get mcBeaconSpeed;
+
+  /// No description provided for @mcBeaconHaste.
+  ///
+  /// In en, this message translates to:
+  /// **'Mine and attack faster.'**
+  String get mcBeaconHaste;
+
+  /// No description provided for @mcBeaconResistance.
+  ///
+  /// In en, this message translates to:
+  /// **'Take 20% less damage (40% at II).'**
+  String get mcBeaconResistance;
+
+  /// No description provided for @mcBeaconJump.
+  ///
+  /// In en, this message translates to:
+  /// **'Jump higher and fall softer.'**
+  String get mcBeaconJump;
+
+  /// No description provided for @mcBeaconStrength.
+  ///
+  /// In en, this message translates to:
+  /// **'+3 melee damage (+6 at II).'**
+  String get mcBeaconStrength;
+
+  /// No description provided for @mcBeaconRegen.
+  ///
+  /// In en, this message translates to:
+  /// **'Secondary power: slow healing.'**
+  String get mcBeaconRegen;
+
+  /// No description provided for @mcBeaconTier.
+  ///
+  /// In en, this message translates to:
+  /// **'Pyramid tier'**
+  String get mcBeaconTier;
+
+  /// No description provided for @mcBeaconTierN.
+  ///
+  /// In en, this message translates to:
+  /// **'Tier {tier}'**
+  String mcBeaconTierN(int tier);
+
+  /// No description provided for @mcBeaconBuildFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Build it from'**
+  String get mcBeaconBuildFrom;
+
+  /// No description provided for @mcBeaconLayers.
+  ///
+  /// In en, this message translates to:
+  /// **'Layers'**
+  String get mcBeaconLayers;
+
+  /// No description provided for @mcBeaconLayerN.
+  ///
+  /// In en, this message translates to:
+  /// **'Layer {layer}'**
+  String mcBeaconLayerN(int layer);
+
+  /// No description provided for @mcBeaconBlocksOf.
+  ///
+  /// In en, this message translates to:
+  /// **'blocks of {mineral}'**
+  String mcBeaconBlocksOf(String mineral);
+
+  /// No description provided for @mcBeaconRange.
+  ///
+  /// In en, this message translates to:
+  /// **'block range'**
+  String get mcBeaconRange;
+
+  /// No description provided for @mcBeaconEffectLength.
+  ///
+  /// In en, this message translates to:
+  /// **'effect length'**
+  String get mcBeaconEffectLength;
+
+  /// No description provided for @mcBeaconEffectsAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Effects at tier {tier}'**
+  String mcBeaconEffectsAt(int tier);
+
+  /// No description provided for @mcBeaconUnlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked'**
+  String get mcBeaconUnlocked;
+
+  /// No description provided for @mcBeaconHow.
+  ///
+  /// In en, this message translates to:
+  /// **'How it works'**
+  String get mcBeaconHow;
+
+  /// No description provided for @mcBeaconHowBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Range is {range} blocks around the beacon (10 + 10 per tier) and reaches {range} blocks below it and up to the sky. Effects are re-applied every 4 seconds and last {seconds} seconds, so they linger briefly after you leave. A full tier-4 pyramid unlocks a second power: Regeneration, or level II of the primary. Pay with one iron ingot, gold ingot, emerald, diamond or netherite ingot. The beam needs a clear view of the sky; stained glass on top tints it. Mixing mineral blocks in the pyramid is fine — {mineral} is just the one counted above.'**
+  String mcBeaconHowBody(int range, int seconds, String mineral);
+
+  /// No description provided for @mcCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Command'**
+  String get mcCommand;
+
+  /// No description provided for @mcCommands.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands'**
+  String get mcCommands;
+
+  /// No description provided for @mcGiveTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Give to'**
+  String get mcGiveTo;
+
+  /// No description provided for @mcCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get mcCancel;
+
+  /// No description provided for @mcBannerRandomize.
+  ///
+  /// In en, this message translates to:
+  /// **'Randomize'**
+  String get mcBannerRandomize;
+
+  /// No description provided for @mcBannerBase.
+  ///
+  /// In en, this message translates to:
+  /// **'Base colour'**
+  String get mcBannerBase;
+
+  /// No description provided for @mcBannerAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a pattern'**
+  String get mcBannerAdd;
+
+  /// No description provided for @mcBannerDye.
+  ///
+  /// In en, this message translates to:
+  /// **'Dye'**
+  String get mcBannerDye;
+
+  /// No description provided for @mcBannerLoomLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'A loom stops at {limit} layers. Layers beyond that only exist through commands.'**
+  String mcBannerLoomLimit(int limit);
+
+  /// No description provided for @mcBannerLayers.
+  ///
+  /// In en, this message translates to:
+  /// **'Layers'**
+  String get mcBannerLayers;
+
+  /// No description provided for @mcBannerEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick patterns on the left to stack them here.'**
+  String get mcBannerEmpty;
+
+  /// No description provided for @mcBannerSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'Loom steps'**
+  String get mcBannerSteps;
+
+  /// No description provided for @mcBannerCraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Craft the {banner}: 6 {wool} over a Stick.'**
+  String mcBannerCraft(String banner, String wool);
+
+  /// No description provided for @mcBannerShieldStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Then combine the finished banner with a Shield in a crafting grid.'**
+  String get mcBannerShieldStep;
+
+  /// No description provided for @mcBannerLoomStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Loom: banner + {inputs} → {pattern}'**
+  String mcBannerLoomStep(String inputs, String pattern);
+
+  /// No description provided for @mcBannerNeeds.
+  ///
+  /// In en, this message translates to:
+  /// **'{pattern} — needs {item}'**
+  String mcBannerNeeds(String pattern, String item);
+
+  /// No description provided for @mcBannerChangeColour.
+  ///
+  /// In en, this message translates to:
+  /// **'Change colour'**
+  String get mcBannerChangeColour;
+
+  /// No description provided for @mcBannerRemoveLayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove layer'**
+  String get mcBannerRemoveLayer;
+
+  /// No description provided for @mcFwSmallBall.
+  ///
+  /// In en, this message translates to:
+  /// **'Small ball'**
+  String get mcFwSmallBall;
+
+  /// No description provided for @mcFwLargeBall.
+  ///
+  /// In en, this message translates to:
+  /// **'Large ball'**
+  String get mcFwLargeBall;
+
+  /// No description provided for @mcFwStar.
+  ///
+  /// In en, this message translates to:
+  /// **'Star'**
+  String get mcFwStar;
+
+  /// No description provided for @mcFwCreeper.
+  ///
+  /// In en, this message translates to:
+  /// **'Creeper'**
+  String get mcFwCreeper;
+
+  /// No description provided for @mcFwBurst.
+  ///
+  /// In en, this message translates to:
+  /// **'Burst'**
+  String get mcFwBurst;
+
+  /// No description provided for @mcFwRocket.
+  ///
+  /// In en, this message translates to:
+  /// **'Rocket'**
+  String get mcFwRocket;
+
+  /// No description provided for @mcFwFlight.
+  ///
+  /// In en, this message translates to:
+  /// **'Flight duration (gunpowder)'**
+  String get mcFwFlight;
+
+  /// No description provided for @mcFwCount.
+  ///
+  /// In en, this message translates to:
+  /// **'How many rockets'**
+  String get mcFwCount;
+
+  /// No description provided for @mcFwStars.
+  ///
+  /// In en, this message translates to:
+  /// **'Stars'**
+  String get mcFwStars;
+
+  /// No description provided for @mcFwAddStar.
+  ///
+  /// In en, this message translates to:
+  /// **'Add star'**
+  String get mcFwAddStar;
+
+  /// No description provided for @mcFwNoStars.
+  ///
+  /// In en, this message translates to:
+  /// **'No stars: the rocket just flies — handy for elytra boosts.'**
+  String get mcFwNoStars;
+
+  /// No description provided for @mcFwStarN.
+  ///
+  /// In en, this message translates to:
+  /// **'Star {number}'**
+  String mcFwStarN(int number);
+
+  /// No description provided for @mcFwFadeN.
+  ///
+  /// In en, this message translates to:
+  /// **'Fade {number}'**
+  String mcFwFadeN(int number);
+
+  /// No description provided for @mcFwShape.
+  ///
+  /// In en, this message translates to:
+  /// **'Shape'**
+  String get mcFwShape;
+
+  /// No description provided for @mcFwColours.
+  ///
+  /// In en, this message translates to:
+  /// **'Colours ({count}/8)'**
+  String mcFwColours(int count);
+
+  /// No description provided for @mcFwFade.
+  ///
+  /// In en, this message translates to:
+  /// **'Fade to ({count}/8)'**
+  String mcFwFade(int count);
+
+  /// No description provided for @mcFwTrail.
+  ///
+  /// In en, this message translates to:
+  /// **'Trail'**
+  String get mcFwTrail;
+
+  /// No description provided for @mcFwTrailDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Adds a Diamond'**
+  String get mcFwTrailDetail;
+
+  /// No description provided for @mcFwTwinkle.
+  ///
+  /// In en, this message translates to:
+  /// **'Twinkle'**
+  String get mcFwTwinkle;
+
+  /// No description provided for @mcFwTwinkleDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Adds Glowstone Dust'**
+  String get mcFwTwinkleDetail;
+
+  /// No description provided for @mcFwCrafting.
+  ///
+  /// In en, this message translates to:
+  /// **'Crafting'**
+  String get mcFwCrafting;
+
+  /// No description provided for @mcFwRocketX3.
+  ///
+  /// In en, this message translates to:
+  /// **'Rocket ×3'**
+  String get mcFwRocketX3;
+
+  /// No description provided for @mcArmorPiece.
+  ///
+  /// In en, this message translates to:
+  /// **'Piece'**
+  String get mcArmorPiece;
+
+  /// No description provided for @mcArmorApplyAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply to all'**
+  String get mcArmorApplyAll;
+
+  /// No description provided for @mcArmorWear.
+  ///
+  /// In en, this message translates to:
+  /// **'Wear this piece'**
+  String get mcArmorWear;
+
+  /// No description provided for @mcArmorMaterial.
+  ///
+  /// In en, this message translates to:
+  /// **'Material'**
+  String get mcArmorMaterial;
+
+  /// No description provided for @mcArmorTrim.
+  ///
+  /// In en, this message translates to:
+  /// **'Trim'**
+  String get mcArmorTrim;
+
+  /// No description provided for @mcArmorNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get mcArmorNone;
+
+  /// No description provided for @mcArmorFoundIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Template found in: {place}'**
+  String mcArmorFoundIn(String place);
+
+  /// No description provided for @mcArmorTrimMaterial.
+  ///
+  /// In en, this message translates to:
+  /// **'Trim material'**
+  String get mcArmorTrimMaterial;
+
+  /// No description provided for @mcArmorLeather.
+  ///
+  /// In en, this message translates to:
+  /// **'Leather colour'**
+  String get mcArmorLeather;
+
+  /// No description provided for @mcArmorSearching.
+  ///
+  /// In en, this message translates to:
+  /// **'Searching 735,000 mixes…'**
+  String get mcArmorSearching;
+
+  /// No description provided for @mcArmorFindMix.
+  ///
+  /// In en, this message translates to:
+  /// **'Find the dye mix for this colour'**
+  String get mcArmorFindMix;
+
+  /// No description provided for @mcArmorMixYourself.
+  ///
+  /// In en, this message translates to:
+  /// **'Or mix dyes yourself (one crafting, up to 8):'**
+  String get mcArmorMixYourself;
+
+  /// No description provided for @mcArmorRemoveDye.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove last dye'**
+  String get mcArmorRemoveDye;
+
+  /// No description provided for @mcArmorSmithing.
+  ///
+  /// In en, this message translates to:
+  /// **'Smithing'**
+  String get mcArmorSmithing;
+
+  /// No description provided for @mcArmorSmithStep.
+  ///
+  /// In en, this message translates to:
+  /// **'{template} + {armor} + {material} → trimmed {piece}'**
+  String mcArmorSmithStep(
+    String template,
+    String armor,
+    String material,
+    String piece,
+  );
+
+  /// No description provided for @mcArmorCopyTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy a template with 7 Diamonds and the block it is made of in a crafting grid.'**
+  String get mcArmorCopyTemplate;
+
+  /// No description provided for @mcArmorNoPieces.
+  ///
+  /// In en, this message translates to:
+  /// **'# No pieces selected'**
+  String get mcArmorNoPieces;
+
+  /// No description provided for @mcArmorIndistinguishable.
+  ///
+  /// In en, this message translates to:
+  /// **'Indistinguishable'**
+  String get mcArmorIndistinguishable;
+
+  /// No description provided for @mcArmorVeryClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Very close'**
+  String get mcArmorVeryClose;
+
+  /// No description provided for @mcArmorClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get mcArmorClose;
+
+  /// No description provided for @mcArmorNearest.
+  ///
+  /// In en, this message translates to:
+  /// **'Nearest possible'**
+  String get mcArmorNearest;
+
+  /// No description provided for @mcArmorUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use'**
+  String get mcArmorUse;
+
+  /// No description provided for @mcTrimSentry.
+  ///
+  /// In en, this message translates to:
+  /// **'Pillager outposts'**
+  String get mcTrimSentry;
+
+  /// No description provided for @mcTrimDune.
+  ///
+  /// In en, this message translates to:
+  /// **'Desert pyramids'**
+  String get mcTrimDune;
+
+  /// No description provided for @mcTrimCoast.
+  ///
+  /// In en, this message translates to:
+  /// **'Shipwrecks'**
+  String get mcTrimCoast;
+
+  /// No description provided for @mcTrimWild.
+  ///
+  /// In en, this message translates to:
+  /// **'Jungle temples'**
+  String get mcTrimWild;
+
+  /// No description provided for @mcTrimTide.
+  ///
+  /// In en, this message translates to:
+  /// **'Elder guardians (ocean monuments)'**
+  String get mcTrimTide;
+
+  /// No description provided for @mcTrimWard.
+  ///
+  /// In en, this message translates to:
+  /// **'Ancient cities'**
+  String get mcTrimWard;
+
+  /// No description provided for @mcTrimSilence.
+  ///
+  /// In en, this message translates to:
+  /// **'Ancient cities (rare)'**
+  String get mcTrimSilence;
+
+  /// No description provided for @mcTrimVex.
+  ///
+  /// In en, this message translates to:
+  /// **'Woodland mansions'**
+  String get mcTrimVex;
+
+  /// No description provided for @mcTrimEye.
+  ///
+  /// In en, this message translates to:
+  /// **'Strongholds'**
+  String get mcTrimEye;
+
+  /// No description provided for @mcTrimSnout.
+  ///
+  /// In en, this message translates to:
+  /// **'Bastion remnants'**
+  String get mcTrimSnout;
+
+  /// No description provided for @mcTrimRib.
+  ///
+  /// In en, this message translates to:
+  /// **'Nether fortresses'**
+  String get mcTrimRib;
+
+  /// No description provided for @mcTrimSpire.
+  ///
+  /// In en, this message translates to:
+  /// **'End cities'**
+  String get mcTrimSpire;
+
+  /// No description provided for @mcTrimTrail.
+  ///
+  /// In en, this message translates to:
+  /// **'Trail ruins (suspicious gravel)'**
+  String get mcTrimTrail;
+
+  /// No description provided for @mcTrimFlow.
+  ///
+  /// In en, this message translates to:
+  /// **'Trial chambers (ominous vaults)'**
+  String get mcTrimFlow;
+
+  /// No description provided for @mcTrimBolt.
+  ///
+  /// In en, this message translates to:
+  /// **'Trial chambers (vaults)'**
+  String get mcTrimBolt;
+
+  /// No description provided for @mcPlanOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open schematic'**
+  String get mcPlanOpen;
+
+  /// No description provided for @mcPlanOpenAnother.
+  ///
+  /// In en, this message translates to:
+  /// **'Open another'**
+  String get mcPlanOpenAnother;
+
+  /// No description provided for @mcPlanOpenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a build to plan it'**
+  String get mcPlanOpenTitle;
+
+  /// No description provided for @mcPlanUnreadable.
+  ///
+  /// In en, this message translates to:
+  /// **'That file could not be read'**
+  String get mcPlanUnreadable;
+
+  /// No description provided for @mcPlanFormats.
+  ///
+  /// In en, this message translates to:
+  /// **'Litematica (.litematic), Sponge (.schem), Axiom (.bp), MCEdit (.schematic), structure blocks (.nbt) and Bedrock (.mcstructure) all work.'**
+  String get mcPlanFormats;
+
+  /// No description provided for @mcPlanFile.
+  ///
+  /// In en, this message translates to:
+  /// **'file'**
+  String get mcPlanFile;
+
+  /// No description provided for @mcPlanSize.
+  ///
+  /// In en, this message translates to:
+  /// **'size (W×H×L)'**
+  String get mcPlanSize;
+
+  /// No description provided for @mcPlanBlockTypes.
+  ///
+  /// In en, this message translates to:
+  /// **'block types'**
+  String get mcPlanBlockTypes;
+
+  /// No description provided for @mcPlanLayerMaterials.
+  ///
+  /// In en, this message translates to:
+  /// **'Materials on this layer'**
+  String get mcPlanLayerMaterials;
+
+  /// No description provided for @mcPlanShopping.
+  ///
+  /// In en, this message translates to:
+  /// **'Shopping list'**
+  String get mcPlanShopping;
+
+  /// No description provided for @mcPlanShoppingCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Shopping list copied'**
+  String get mcPlanShoppingCopied;
+
+  /// No description provided for @mcPlanCsv.
+  ///
+  /// In en, this message translates to:
+  /// **'Save as CSV'**
+  String get mcPlanCsv;
+
+  /// No description provided for @mcPlanLayerOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the current layer'**
+  String get mcPlanLayerOnly;
+
+  /// No description provided for @mcPlanGathered.
+  ///
+  /// In en, this message translates to:
+  /// **'{total} blocks · {done}/{count} gathered'**
+  String mcPlanGathered(int total, int done, int count);
+
+  /// No description provided for @mcOrgUnreadable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unreadable'**
+  String get mcOrgUnreadable;
+
+  /// No description provided for @mcOrgTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Too large to preview'**
+  String get mcOrgTooLarge;
+
+  /// No description provided for @mcOrgSortName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get mcOrgSortName;
+
+  /// No description provided for @mcOrgSortNewest.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest'**
+  String get mcOrgSortNewest;
+
+  /// No description provided for @mcOrgSortLargest.
+  ///
+  /// In en, this message translates to:
+  /// **'Largest file'**
+  String get mcOrgSortLargest;
+
+  /// No description provided for @mcOrgSortBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Most blocks'**
+  String get mcOrgSortBlocks;
+
+  /// No description provided for @mcOrgChooseFolderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a schematics folder'**
+  String get mcOrgChooseFolderTitle;
+
+  /// No description provided for @mcOrgFolderError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read that folder: {error}'**
+  String mcOrgFolderError(String error);
+
+  /// No description provided for @mcOrgRenameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename schematic'**
+  String get mcOrgRenameTitle;
+
+  /// No description provided for @mcOrgRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get mcOrgRename;
+
+  /// No description provided for @mcOrgExists.
+  ///
+  /// In en, this message translates to:
+  /// **'A file called {name} already exists.'**
+  String mcOrgExists(String name);
+
+  /// No description provided for @mcOrgRenameError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not rename: {error}'**
+  String mcOrgRenameError(String error);
+
+  /// No description provided for @mcOrgGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Group'**
+  String get mcOrgGroup;
+
+  /// No description provided for @mcOrgGroupHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Houses, Farms, Redstone'**
+  String get mcOrgGroupHint;
+
+  /// No description provided for @mcOrgNoGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'No group'**
+  String get mcOrgNoGroup;
+
+  /// No description provided for @mcOrgReadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read {name}: {error}'**
+  String mcOrgReadError(String name, String error);
+
+  /// No description provided for @mcOrgChooseFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose folder'**
+  String get mcOrgChooseFolder;
+
+  /// No description provided for @mcOrgChangeFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Change folder'**
+  String get mcOrgChangeFolder;
+
+  /// No description provided for @mcOrgRescan.
+  ///
+  /// In en, this message translates to:
+  /// **'Rescan'**
+  String get mcOrgRescan;
+
+  /// No description provided for @mcOrgPointTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Point it at your schematics'**
+  String get mcOrgPointTitle;
+
+  /// No description provided for @mcOrgPointBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the folder your schematics live in — Litematica\'s \"schematics\" folder, WorldEdit\'s, or any other. Files are read in place; only renames change anything on disk.'**
+  String get mcOrgPointBody;
+
+  /// No description provided for @mcOrgSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by name'**
+  String get mcOrgSearch;
+
+  /// No description provided for @mcOrgSortBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort: {order}'**
+  String mcOrgSortBy(String order);
+
+  /// No description provided for @mcOrgSubfolders.
+  ///
+  /// In en, this message translates to:
+  /// **'Subfolders'**
+  String get mcOrgSubfolders;
+
+  /// No description provided for @mcOrgAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All ({count})'**
+  String mcOrgAll(int count);
+
+  /// No description provided for @mcOrgFavourites.
+  ///
+  /// In en, this message translates to:
+  /// **'★ Favourites'**
+  String get mcOrgFavourites;
+
+  /// No description provided for @mcOrgEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No schematics in this folder'**
+  String get mcOrgEmpty;
+
+  /// No description provided for @mcOrgNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing matches'**
+  String get mcOrgNothing;
+
+  /// No description provided for @mcOrgLookingFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Looking for {extensions} files.'**
+  String mcOrgLookingFor(String extensions);
+
+  /// No description provided for @mcOrgUnfavourite.
+  ///
+  /// In en, this message translates to:
+  /// **'Unfavourite'**
+  String get mcOrgUnfavourite;
+
+  /// No description provided for @mcOrgFavourite.
+  ///
+  /// In en, this message translates to:
+  /// **'Favourite'**
+  String get mcOrgFavourite;
+
+  /// No description provided for @mcOrgBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} blocks'**
+  String mcOrgBlocks(int count);
+
+  /// No description provided for @mcOrgMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get mcOrgMore;
+
+  /// No description provided for @mcOrgPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get mcOrgPreview;
+
+  /// No description provided for @mcOrgRenameMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename…'**
+  String get mcOrgRenameMenu;
+
+  /// No description provided for @mcOrgGroupMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Group…'**
+  String get mcOrgGroupMenu;
+
+  /// No description provided for @mcMapCrop.
+  ///
+  /// In en, this message translates to:
+  /// **'Crop to fill'**
+  String get mcMapCrop;
+
+  /// No description provided for @mcMapContain.
+  ///
+  /// In en, this message translates to:
+  /// **'Fit inside'**
+  String get mcMapContain;
+
+  /// No description provided for @mcMapStretch.
+  ///
+  /// In en, this message translates to:
+  /// **'Stretch'**
+  String get mcMapStretch;
+
+  /// No description provided for @mcMapPaletteAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Every colour'**
+  String get mcMapPaletteAll;
+
+  /// No description provided for @mcMapPaletteSurvival.
+  ///
+  /// In en, this message translates to:
+  /// **'Survival friendly'**
+  String get mcMapPaletteSurvival;
+
+  /// No description provided for @mcMapPaletteConcrete.
+  ///
+  /// In en, this message translates to:
+  /// **'Concrete & terracotta'**
+  String get mcMapPaletteConcrete;
+
+  /// No description provided for @mcMapPaletteGreys.
+  ///
+  /// In en, this message translates to:
+  /// **'Greyscale'**
+  String get mcMapPaletteGreys;
+
+  /// No description provided for @mcMapDitherNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get mcMapDitherNone;
+
+  /// No description provided for @mcMapDitherFs.
+  ///
+  /// In en, this message translates to:
+  /// **'Floyd–Steinberg'**
+  String get mcMapDitherFs;
+
+  /// No description provided for @mcMapDitherOrdered.
+  ///
+  /// In en, this message translates to:
+  /// **'Ordered (Bayer)'**
+  String get mcMapDitherOrdered;
+
+  /// No description provided for @mcMapNotImage.
+  ///
+  /// In en, this message translates to:
+  /// **'That file is not an image luma can read.'**
+  String get mcMapNotImage;
+
+  /// No description provided for @mcMapCouldNotConvert.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not convert: {error}'**
+  String mcMapCouldNotConvert(String error);
+
+  /// No description provided for @mcMapChooseImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose image'**
+  String get mcMapChooseImage;
+
+  /// No description provided for @mcMapChangeImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Change image'**
+  String get mcMapChangeImage;
+
+  /// No description provided for @mcMapSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Size in maps'**
+  String get mcMapSize;
+
+  /// No description provided for @mcMapAcross.
+  ///
+  /// In en, this message translates to:
+  /// **'Across'**
+  String get mcMapAcross;
+
+  /// No description provided for @mcMapDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Down'**
+  String get mcMapDown;
+
+  /// No description provided for @mcMapBlocksSize.
+  ///
+  /// In en, this message translates to:
+  /// **'{width} × {height} blocks'**
+  String mcMapBlocksSize(int width, int height);
+
+  /// No description provided for @mcMapStaircase.
+  ///
+  /// In en, this message translates to:
+  /// **'Staircase (3 shades)'**
+  String get mcMapStaircase;
+
+  /// No description provided for @mcMapStaircaseDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'More colours, but each column climbs up and down'**
+  String get mcMapStaircaseDetail;
+
+  /// No description provided for @mcMapDithering.
+  ///
+  /// In en, this message translates to:
+  /// **'Dithering'**
+  String get mcMapDithering;
+
+  /// No description provided for @mcMapBlocksToUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocks to use ({count})'**
+  String mcMapBlocksToUse(int count);
+
+  /// No description provided for @mcMapChooseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a picture'**
+  String get mcMapChooseTitle;
+
+  /// No description provided for @mcMapChooseBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Any PNG or JPG. It is cut into 128-block maps, matched to the colours a map can show, and turned into a schematic you can paste or build block by block.'**
+  String get mcMapChooseBody;
+
+  /// No description provided for @mcMapPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'How it will look on a map'**
+  String get mcMapPreview;
+
+  /// No description provided for @mcMapSavePng.
+  ///
+  /// In en, this message translates to:
+  /// **'Save PNG'**
+  String get mcMapSavePng;
+
+  /// No description provided for @mcMapTallest.
+  ///
+  /// In en, this message translates to:
+  /// **'tallest column'**
+  String get mcMapTallest;
+
+  /// No description provided for @mcMapShow3d.
+  ///
+  /// In en, this message translates to:
+  /// **'Show in 3D'**
+  String get mcMapShow3d;
+
+  /// No description provided for @mcMapBuildNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Build it facing north to south, with the cobblestone row on the north edge — that row is what shades the first line. Each map covers a 128 × 128 area aligned to the map grid.'**
+  String get mcMapBuildNote;
+
+  /// No description provided for @mcRoofGable.
+  ///
+  /// In en, this message translates to:
+  /// **'Gable'**
+  String get mcRoofGable;
+
+  /// No description provided for @mcRoofSteepGable.
+  ///
+  /// In en, this message translates to:
+  /// **'Steep gable'**
+  String get mcRoofSteepGable;
+
+  /// No description provided for @mcRoofGentleGable.
+  ///
+  /// In en, this message translates to:
+  /// **'Low gable (slabs)'**
+  String get mcRoofGentleGable;
+
+  /// No description provided for @mcRoofGambrel.
+  ///
+  /// In en, this message translates to:
+  /// **'Gambrel (barn)'**
+  String get mcRoofGambrel;
+
+  /// No description provided for @mcRoofHip.
+  ///
+  /// In en, this message translates to:
+  /// **'Hip'**
+  String get mcRoofHip;
+
+  /// No description provided for @mcRoofGentleHip.
+  ///
+  /// In en, this message translates to:
+  /// **'Low hip (slabs)'**
+  String get mcRoofGentleHip;
+
+  /// No description provided for @mcRoofMansard.
+  ///
+  /// In en, this message translates to:
+  /// **'Mansard'**
+  String get mcRoofMansard;
+
+  /// No description provided for @mcRoofShed.
+  ///
+  /// In en, this message translates to:
+  /// **'Shed'**
+  String get mcRoofShed;
+
+  /// No description provided for @mcRoofAFrame.
+  ///
+  /// In en, this message translates to:
+  /// **'A-frame'**
+  String get mcRoofAFrame;
+
+  /// No description provided for @mcRoofFootprint.
+  ///
+  /// In en, this message translates to:
+  /// **'Footprint'**
+  String get mcRoofFootprint;
+
+  /// No description provided for @mcRoofWidthX.
+  ///
+  /// In en, this message translates to:
+  /// **'Width (X)'**
+  String get mcRoofWidthX;
+
+  /// No description provided for @mcRoofDepthZ.
+  ///
+  /// In en, this message translates to:
+  /// **'Depth (Z)'**
+  String get mcRoofDepthZ;
+
+  /// No description provided for @mcRoofOverhang.
+  ///
+  /// In en, this message translates to:
+  /// **'Overhang'**
+  String get mcRoofOverhang;
+
+  /// No description provided for @mcRoofSizeNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Width and depth are the walls\' outside size; the overhang is added on every side.'**
+  String get mcRoofSizeNote;
+
+  /// No description provided for @mcRoofRoof.
+  ///
+  /// In en, this message translates to:
+  /// **'Roof'**
+  String get mcRoofRoof;
+
+  /// No description provided for @mcRoofRidge.
+  ///
+  /// In en, this message translates to:
+  /// **'Ridge cap'**
+  String get mcRoofRidge;
+
+  /// No description provided for @mcRoofRidgeDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Slabs along the very top'**
+  String get mcRoofRidgeDetail;
+
+  /// No description provided for @mcRoofFillGables.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill the gable ends'**
+  String get mcRoofFillGables;
+
+  /// No description provided for @mcRoofStairs.
+  ///
+  /// In en, this message translates to:
+  /// **'stairs'**
+  String get mcRoofStairs;
+
+  /// No description provided for @mcRoofSlabs.
+  ///
+  /// In en, this message translates to:
+  /// **'slabs'**
+  String get mcRoofSlabs;
+
+  /// No description provided for @mcSkinPencil.
+  ///
+  /// In en, this message translates to:
+  /// **'Pencil'**
+  String get mcSkinPencil;
+
+  /// No description provided for @mcSkinEraser.
+  ///
+  /// In en, this message translates to:
+  /// **'Eraser'**
+  String get mcSkinEraser;
+
+  /// No description provided for @mcSkinFill.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill'**
+  String get mcSkinFill;
+
+  /// No description provided for @mcSkinPicker.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick colour'**
+  String get mcSkinPicker;
+
+  /// No description provided for @mcSkinNotSkin.
+  ///
+  /// In en, this message translates to:
+  /// **'That PNG is not a 64×64 or 64×32 skin.'**
+  String get mcSkinNotSkin;
+
+  /// No description provided for @mcSkinLoadTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Load a player\'s skin'**
+  String get mcSkinLoadTitle;
+
+  /// No description provided for @mcSkinLoadBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Looks the username up with Mojang\'s public profile service and downloads their current skin.'**
+  String get mcSkinLoadBody;
+
+  /// No description provided for @mcSkinUsername.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get mcSkinUsername;
+
+  /// No description provided for @mcSkinLoad.
+  ///
+  /// In en, this message translates to:
+  /// **'Load'**
+  String get mcSkinLoad;
+
+  /// No description provided for @mcSkinUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'That skin is in a format luma cannot edit.'**
+  String get mcSkinUnsupported;
+
+  /// No description provided for @mcSkinLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load that skin ({error}).'**
+  String mcSkinLoadError(String error);
+
+  /// No description provided for @mcSkinUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get mcSkinUndo;
+
+  /// No description provided for @mcSkinRedo.
+  ///
+  /// In en, this message translates to:
+  /// **'Redo'**
+  String get mcSkinRedo;
+
+  /// No description provided for @mcSkinPaintOuter.
+  ///
+  /// In en, this message translates to:
+  /// **'Paint outer layer'**
+  String get mcSkinPaintOuter;
+
+  /// No description provided for @mcSkinShowOuter.
+  ///
+  /// In en, this message translates to:
+  /// **'Show outer layer'**
+  String get mcSkinShowOuter;
+
+  /// No description provided for @mcSkinSlim.
+  ///
+  /// In en, this message translates to:
+  /// **'Slim arms'**
+  String get mcSkinSlim;
+
+  /// No description provided for @mcSkinColour.
+  ///
+  /// In en, this message translates to:
+  /// **'Colour'**
+  String get mcSkinColour;
+
+  /// No description provided for @mcSkinRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get mcSkinRecent;
+
+  /// No description provided for @mcSkinLightness.
+  ///
+  /// In en, this message translates to:
+  /// **'Lightness'**
+  String get mcSkinLightness;
+
+  /// No description provided for @mcSkinModel.
+  ///
+  /// In en, this message translates to:
+  /// **'3D model'**
+  String get mcSkinModel;
+
+  /// No description provided for @mcSkinResetView.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset view'**
+  String get mcSkinResetView;
+
+  /// No description provided for @mcSkinTurn.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn'**
+  String get mcSkinTurn;
+
+  /// No description provided for @mcSkinTexture.
+  ///
+  /// In en, this message translates to:
+  /// **'Texture'**
+  String get mcSkinTexture;
+
+  /// No description provided for @mcSkinOpenPng.
+  ///
+  /// In en, this message translates to:
+  /// **'Open PNG'**
+  String get mcSkinOpenPng;
+
+  /// No description provided for @mcSkinFromUser.
+  ///
+  /// In en, this message translates to:
+  /// **'From username'**
+  String get mcSkinFromUser;
+
+  /// No description provided for @mcSkinHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag with the right mouse button (or use the Turn slider) to rotate the model; left-click paints. \"Paint outer layer\" paints the hat, jacket, sleeves and trousers layer instead of the base.'**
+  String get mcSkinHelp;
+
+  /// No description provided for @mcVersionAndNewer.
+  ///
+  /// In en, this message translates to:
+  /// **'{version} and newer'**
+  String mcVersionAndNewer(String version);
+
+  /// No description provided for @mcSaveDatapack.
+  ///
+  /// In en, this message translates to:
+  /// **'Save as datapack'**
+  String get mcSaveDatapack;
+
+  /// No description provided for @mcSaveDatapackShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Save datapack'**
+  String get mcSaveDatapackShort;
+
+  /// No description provided for @mcSendTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to'**
+  String get mcSendTo;
+
+  /// No description provided for @mcShowTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Show to'**
+  String get mcShowTo;
+
+  /// No description provided for @mcAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get mcAdd;
+
+  /// No description provided for @mcRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get mcRemove;
+
+  /// No description provided for @mcFlatStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start from a preset'**
+  String get mcFlatStart;
+
+  /// No description provided for @mcFlatLayers.
+  ///
+  /// In en, this message translates to:
+  /// **'Layers (top first)'**
+  String get mcFlatLayers;
+
+  /// No description provided for @mcFlatTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} blocks'**
+  String mcFlatTotal(int count);
+
+  /// No description provided for @mcFlatRemoveLayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove layer'**
+  String get mcFlatRemoveLayer;
+
+  /// No description provided for @mcFlatAddLayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Add layer on top'**
+  String get mcFlatAddLayer;
+
+  /// No description provided for @mcFlatWorld.
+  ///
+  /// In en, this message translates to:
+  /// **'World'**
+  String get mcFlatWorld;
+
+  /// No description provided for @mcFlatBiome.
+  ///
+  /// In en, this message translates to:
+  /// **'Biome'**
+  String get mcFlatBiome;
+
+  /// No description provided for @mcFlatDecorations.
+  ///
+  /// In en, this message translates to:
+  /// **'Decorations (trees, grass…)'**
+  String get mcFlatDecorations;
+
+  /// No description provided for @mcFlatLakes.
+  ///
+  /// In en, this message translates to:
+  /// **'Lakes'**
+  String get mcFlatLakes;
+
+  /// No description provided for @mcFlatStructures.
+  ///
+  /// In en, this message translates to:
+  /// **'Structures'**
+  String get mcFlatStructures;
+
+  /// No description provided for @mcFlatCrossSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Cross-section'**
+  String get mcFlatCrossSection;
+
+  /// No description provided for @mcFlatPresetString.
+  ///
+  /// In en, this message translates to:
+  /// **'Preset string'**
+  String get mcFlatPresetString;
+
+  /// No description provided for @mcFlatPresetNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Create World → World type: Superflat → Customize → Presets, then paste this into the box.'**
+  String get mcFlatPresetNote;
+
+  /// No description provided for @mcFlatServerNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Only read when the server creates a new world.'**
+  String get mcFlatServerNote;
+
+  /// No description provided for @mcFlatPresetName.
+  ///
+  /// In en, this message translates to:
+  /// **'Datapack preset name'**
+  String get mcFlatPresetName;
+
+  /// No description provided for @mcFlatDatapackNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Save makes a datapack zip that adds this as a world type on the Create World screen (drop it in with \"Data Packs\").'**
+  String get mcFlatDatapackNote;
+
+  /// No description provided for @mcFlatDatapackDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Superflat preset \"{name}\" made with luma'**
+  String mcFlatDatapackDesc(String name);
+
+  /// No description provided for @mcWorldNormalTerrain.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal'**
+  String get mcWorldNormalTerrain;
+
+  /// No description provided for @mcWorldAmplified.
+  ///
+  /// In en, this message translates to:
+  /// **'Amplified'**
+  String get mcWorldAmplified;
+
+  /// No description provided for @mcWorldLargeBiomes.
+  ///
+  /// In en, this message translates to:
+  /// **'Large biomes'**
+  String get mcWorldLargeBiomes;
+
+  /// No description provided for @mcWorldEveryBiome.
+  ///
+  /// In en, this message translates to:
+  /// **'Every biome'**
+  String get mcWorldEveryBiome;
+
+  /// No description provided for @mcWorldOneBiome.
+  ///
+  /// In en, this message translates to:
+  /// **'One biome'**
+  String get mcWorldOneBiome;
+
+  /// No description provided for @mcWorldCheckerboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkerboard'**
+  String get mcWorldCheckerboard;
+
+  /// No description provided for @mcWorldHeightStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard (Y −64 to 319)'**
+  String get mcWorldHeightStandard;
+
+  /// No description provided for @mcWorldHeightTall.
+  ///
+  /// In en, this message translates to:
+  /// **'Tall (Y −64 to 447)'**
+  String get mcWorldHeightTall;
+
+  /// No description provided for @mcWorldHeightDeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Deep (Y −128 to 319)'**
+  String get mcWorldHeightDeep;
+
+  /// No description provided for @mcWorldHeightShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Short (Y 0 to 255)'**
+  String get mcWorldHeightShort;
+
+  /// No description provided for @mcWorldDatapackDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom world \"{name}\" made with luma'**
+  String mcWorldDatapackDesc(String name);
+
+  /// No description provided for @mcWorldPreset.
+  ///
+  /// In en, this message translates to:
+  /// **'Preset'**
+  String get mcWorldPreset;
+
+  /// No description provided for @mcWorldTerrain.
+  ///
+  /// In en, this message translates to:
+  /// **'Terrain'**
+  String get mcWorldTerrain;
+
+  /// No description provided for @mcWorldSeaLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sea level'**
+  String get mcWorldSeaLevel;
+
+  /// No description provided for @mcWorldBuildHeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Build height'**
+  String get mcWorldBuildHeight;
+
+  /// No description provided for @mcWorldTerrainBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Terrain block'**
+  String get mcWorldTerrainBlock;
+
+  /// No description provided for @mcWorldFluid.
+  ///
+  /// In en, this message translates to:
+  /// **'Oceans and lakes of'**
+  String get mcWorldFluid;
+
+  /// No description provided for @mcWorldAnimals.
+  ///
+  /// In en, this message translates to:
+  /// **'Animals at world generation'**
+  String get mcWorldAnimals;
+
+  /// No description provided for @mcWorldBiomes.
+  ///
+  /// In en, this message translates to:
+  /// **'Biomes'**
+  String get mcWorldBiomes;
+
+  /// No description provided for @mcWorldSquare.
+  ///
+  /// In en, this message translates to:
+  /// **'Square size'**
+  String get mcWorldSquare;
+
+  /// No description provided for @mcWorldSquareBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} blocks'**
+  String mcWorldSquareBlocks(int count);
+
+  /// No description provided for @mcWorldUsing.
+  ///
+  /// In en, this message translates to:
+  /// **'Using it'**
+  String get mcWorldUsing;
+
+  /// No description provided for @mcWorldUsingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Singleplayer: Create World → Data Packs, drop the zip in, then pick \"luma:{name}\" under World Type. Servers: put the zip in world/datapacks before the world exists and set level-type=luma\\:{name} in server.properties. Made for Minecraft {version}; terrain and the noise router point at the game\'s own density functions, so only what you change here differs from vanilla.'**
+  String mcWorldUsingBody(String name, String version);
+
+  /// No description provided for @mcColorTry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try it'**
+  String get mcColorTry;
+
+  /// No description provided for @mcColorHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Type & codes, or &#RRGGBB for hex colours (servers with a chat plugin; vanilla chat only knows the 16 colours).'**
+  String get mcColorHelp;
+
+  /// No description provided for @mcColorSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Section signs (§) — signs, books, MOTD'**
+  String get mcColorSection;
+
+  /// No description provided for @mcColorAmpersand.
+  ///
+  /// In en, this message translates to:
+  /// **'Ampersand codes (&) — plugins'**
+  String get mcColorAmpersand;
+
+  /// No description provided for @mcColorMiniMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'MiniMessage — Paper / Adventure'**
+  String get mcColorMiniMessage;
+
+  /// No description provided for @mcColorJson.
+  ///
+  /// In en, this message translates to:
+  /// **'JSON text component — tellraw, titles'**
+  String get mcColorJson;
+
+  /// No description provided for @mcColorCodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Colour codes'**
+  String get mcColorCodes;
+
+  /// No description provided for @mcColorName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get mcColorName;
+
+  /// No description provided for @mcColorCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Code'**
+  String get mcColorCode;
+
+  /// No description provided for @mcColorSectionCol.
+  ///
+  /// In en, this message translates to:
+  /// **'Section'**
+  String get mcColorSectionCol;
+
+  /// No description provided for @mcColorHex.
+  ///
+  /// In en, this message translates to:
+  /// **'Hex'**
+  String get mcColorHex;
+
+  /// No description provided for @mcColorFormatting.
+  ///
+  /// In en, this message translates to:
+  /// **'Formatting codes'**
+  String get mcColorFormatting;
+
+  /// No description provided for @mcColorObfuscatedDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Obfuscated — scrambles constantly'**
+  String get mcColorObfuscatedDetail;
+
+  /// No description provided for @mcColorReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset — back to plain white'**
+  String get mcColorReset;
+
+  /// No description provided for @mcColorOrderNote.
+  ///
+  /// In en, this message translates to:
+  /// **'A colour code resets any formatting before it, so put the colour first: &c&l, not &l&c.'**
+  String get mcColorOrderNote;
+
+  /// No description provided for @mcColorCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'{code} copied'**
+  String mcColorCopied(String code);
+
+  /// No description provided for @mcTitleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get mcTitleTitle;
+
+  /// No description provided for @mcTitleSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitle'**
+  String get mcTitleSubtitle;
+
+  /// No description provided for @mcTitleActionbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Action bar'**
+  String get mcTitleActionbar;
+
+  /// No description provided for @mcTitleTiming.
+  ///
+  /// In en, this message translates to:
+  /// **'Timing'**
+  String get mcTitleTiming;
+
+  /// No description provided for @mcTitleFadeIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Fade in'**
+  String get mcTitleFadeIn;
+
+  /// No description provided for @mcTitleStay.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay'**
+  String get mcTitleStay;
+
+  /// No description provided for @mcTitleFadeOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Fade out'**
+  String get mcTitleFadeOut;
+
+  /// No description provided for @mcTitleTicks.
+  ///
+  /// In en, this message translates to:
+  /// **'{ticks} ticks · {seconds} s'**
+  String mcTitleTicks(int ticks, String seconds);
+
+  /// No description provided for @mcTitlePlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Play preview'**
+  String get mcTitlePlay;
+
+  /// No description provided for @mcTitleOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Run them in this order: the times and the subtitle are held until the title is sent.'**
+  String get mcTitleOrder;
+
+  /// No description provided for @mcTellMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get mcTellMessage;
+
+  /// No description provided for @mcTellHoverHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Hover a part in the preview to see its hover text.'**
+  String get mcTellHoverHelp;
+
+  /// No description provided for @mcTellPretty.
+  ///
+  /// In en, this message translates to:
+  /// **'Pretty-print the JSON'**
+  String get mcTellPretty;
+
+  /// No description provided for @mcTellComponent.
+  ///
+  /// In en, this message translates to:
+  /// **'Text component'**
+  String get mcTellComponent;
+
+  /// No description provided for @mcTellNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses the 26.x component field names (click_event, hover_event), which 1.21.5 and newer expect.'**
+  String get mcTellNote;
+
+  /// No description provided for @mcMotdLines.
+  ///
+  /// In en, this message translates to:
+  /// **'Lines'**
+  String get mcMotdLines;
+
+  /// No description provided for @mcMotdTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Lines over about 45 characters get cut off in the server list.'**
+  String get mcMotdTooLong;
+
+  /// No description provided for @mcMotdServerName.
+  ///
+  /// In en, this message translates to:
+  /// **'Server name in the list'**
+  String get mcMotdServerName;
+
+  /// No description provided for @mcMotdPlayers.
+  ///
+  /// In en, this message translates to:
+  /// **'Players'**
+  String get mcMotdPlayers;
+
+  /// No description provided for @mcMotdOf.
+  ///
+  /// In en, this message translates to:
+  /// **'of'**
+  String get mcMotdOf;
+
+  /// No description provided for @mcMotdEscapeNote.
+  ///
+  /// In en, this message translates to:
+  /// **'§ and anything beyond plain ASCII must be written as \\u escapes here.'**
+  String get mcMotdEscapeNote;
+
+  /// No description provided for @mcMotdRaw.
+  ///
+  /// In en, this message translates to:
+  /// **'Raw text with § codes (Bukkit, Paper, BungeeCord configs)'**
+  String get mcMotdRaw;
+
+  /// No description provided for @mcMotdMiniMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'MiniMessage (Velocity, Paper plugins)'**
+  String get mcMotdMiniMessage;
+
+  /// No description provided for @mcLootTable.
+  ///
+  /// In en, this message translates to:
+  /// **'Table'**
+  String get mcLootTable;
+
+  /// No description provided for @mcLootVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Game version'**
+  String get mcLootVersion;
+
+  /// No description provided for @mcLootUsedFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Used for'**
+  String get mcLootUsedFor;
+
+  /// No description provided for @mcLootPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Path inside the datapack'**
+  String get mcLootPath;
+
+  /// No description provided for @mcLootPool.
+  ///
+  /// In en, this message translates to:
+  /// **'Pool {number}'**
+  String mcLootPool(int number);
+
+  /// No description provided for @mcLootRemovePool.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove pool'**
+  String get mcLootRemovePool;
+
+  /// No description provided for @mcLootAddPool.
+  ///
+  /// In en, this message translates to:
+  /// **'Add pool'**
+  String get mcLootAddPool;
+
+  /// No description provided for @mcLootDatapackDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Loot table made with luma'**
+  String get mcLootDatapackDesc;
+
+  /// No description provided for @mcLootUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use it with {give}, or point a chest at it: {setblock}'**
+  String mcLootUse(String give, String setblock);
+
+  /// No description provided for @mcLootRolls.
+  ///
+  /// In en, this message translates to:
+  /// **'Rolls'**
+  String get mcLootRolls;
+
+  /// No description provided for @mcLootTo.
+  ///
+  /// In en, this message translates to:
+  /// **'to'**
+  String get mcLootTo;
+
+  /// No description provided for @mcLootPlayerKill.
+  ///
+  /// In en, this message translates to:
+  /// **'Only when killed by a player'**
+  String get mcLootPlayerKill;
+
+  /// No description provided for @mcLootAddEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Add entry'**
+  String get mcLootAddEntry;
+
+  /// No description provided for @mcLootNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing (empty roll)'**
+  String get mcLootNothing;
+
+  /// No description provided for @mcLootRemoveEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove entry'**
+  String get mcLootRemoveEntry;
+
+  /// No description provided for @mcLootWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight'**
+  String get mcLootWeight;
+
+  /// No description provided for @mcLootCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Count'**
+  String get mcLootCount;
+
+  /// No description provided for @mcLootEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty'**
+  String get mcLootEmpty;
+
+  /// No description provided for @mcLootRandomEnchant.
+  ///
+  /// In en, this message translates to:
+  /// **'Random enchant'**
+  String get mcLootRandomEnchant;
+
+  /// No description provided for @mcLootEnchantLevels.
+  ///
+  /// In en, this message translates to:
+  /// **'Enchant with levels'**
+  String get mcLootEnchantLevels;
+
+  /// No description provided for @mcLootLooting.
+  ///
+  /// In en, this message translates to:
+  /// **'Looting bonus'**
+  String get mcLootLooting;
+
+  /// No description provided for @mcLootSmelt.
+  ///
+  /// In en, this message translates to:
+  /// **'Smelt if on fire'**
+  String get mcLootSmelt;
+
+  /// No description provided for @mcLootDecay.
+  ///
+  /// In en, this message translates to:
+  /// **'Explosion decay'**
+  String get mcLootDecay;
+
+  /// No description provided for @mcLootLevels.
+  ///
+  /// In en, this message translates to:
+  /// **'Levels'**
+  String get mcLootLevels;
+
+  /// No description provided for @mcLootCustomName.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom name (optional)'**
+  String get mcLootCustomName;
+
+  /// No description provided for @mcLootChance.
+  ///
+  /// In en, this message translates to:
+  /// **'Chance to drop at all'**
+  String get mcLootChance;
+
+  /// No description provided for @mcPotItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Item'**
+  String get mcPotItem;
+
+  /// No description provided for @mcPotCustomName.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom name'**
+  String get mcPotCustomName;
+
+  /// No description provided for @mcPotCustomColour.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom colour'**
+  String get mcPotCustomColour;
+
+  /// No description provided for @mcPotEffects.
+  ///
+  /// In en, this message translates to:
+  /// **'Effects'**
+  String get mcPotEffects;
+
+  /// No description provided for @mcPotRemoveEffect.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove effect'**
+  String get mcPotRemoveEffect;
+
+  /// No description provided for @mcPotDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get mcPotDuration;
+
+  /// No description provided for @mcPotInfinite.
+  ///
+  /// In en, this message translates to:
+  /// **'Infinite'**
+  String get mcPotInfinite;
+
+  /// No description provided for @mcPotParticles.
+  ///
+  /// In en, this message translates to:
+  /// **'Particles'**
+  String get mcPotParticles;
+
+  /// No description provided for @mcPotIcon.
+  ///
+  /// In en, this message translates to:
+  /// **'Icon'**
+  String get mcPotIcon;
+
+  /// No description provided for @mcPotAmbient.
+  ///
+  /// In en, this message translates to:
+  /// **'Ambient'**
+  String get mcPotAmbient;
+
+  /// No description provided for @mcPotNoEffects.
+  ///
+  /// In en, this message translates to:
+  /// **'No effects — it will be a coloured water bottle.'**
+  String get mcPotNoEffects;
+
+  /// No description provided for @mcPotDurationNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Tooltip durations shown are for the drinkable potion; lingering clouds last a quarter as long and tipped arrows an eighth.'**
+  String get mcPotDurationNote;
+
+  /// No description provided for @mcCmdItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Item'**
+  String get mcCmdItem;
+
+  /// No description provided for @mcCmdCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Count'**
+  String get mcCmdCount;
+
+  /// No description provided for @mcCmdCustomName.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom name'**
+  String get mcCmdCustomName;
+
+  /// No description provided for @mcCmdEnchantments.
+  ///
+  /// In en, this message translates to:
+  /// **'Enchantments'**
+  String get mcCmdEnchantments;
+
+  /// No description provided for @mcCmdAddEnchantment.
+  ///
+  /// In en, this message translates to:
+  /// **'Add enchantment'**
+  String get mcCmdAddEnchantment;
+
+  /// No description provided for @mcCmdLore.
+  ///
+  /// In en, this message translates to:
+  /// **'Lore lines'**
+  String get mcCmdLore;
+
+  /// No description provided for @mcCmdRemoveLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove line'**
+  String get mcCmdRemoveLine;
+
+  /// No description provided for @mcCmdAddLore.
+  ///
+  /// In en, this message translates to:
+  /// **'Add lore line'**
+  String get mcCmdAddLore;
+
+  /// No description provided for @mcCmdUnbreakable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unbreakable'**
+  String get mcCmdUnbreakable;
+
+  /// No description provided for @mcCmdGlint.
+  ///
+  /// In en, this message translates to:
+  /// **'Always glint'**
+  String get mcCmdGlint;
+
+  /// No description provided for @mcCmdEntity.
+  ///
+  /// In en, this message translates to:
+  /// **'Entity'**
+  String get mcCmdEntity;
+
+  /// No description provided for @mcCmdPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'Position'**
+  String get mcCmdPosition;
+
+  /// No description provided for @mcCmdName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get mcCmdName;
+
+  /// No description provided for @mcCmdOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional'**
+  String get mcCmdOptional;
+
+  /// No description provided for @mcCmdNameVisible.
+  ///
+  /// In en, this message translates to:
+  /// **'Name always visible'**
+  String get mcCmdNameVisible;
+
+  /// No description provided for @mcCmdNoAi.
+  ///
+  /// In en, this message translates to:
+  /// **'No AI'**
+  String get mcCmdNoAi;
+
+  /// No description provided for @mcCmdSilent.
+  ///
+  /// In en, this message translates to:
+  /// **'Silent'**
+  String get mcCmdSilent;
+
+  /// No description provided for @mcCmdInvulnerable.
+  ///
+  /// In en, this message translates to:
+  /// **'Invulnerable'**
+  String get mcCmdInvulnerable;
+
+  /// No description provided for @mcCmdGlowing.
+  ///
+  /// In en, this message translates to:
+  /// **'Glowing'**
+  String get mcCmdGlowing;
+
+  /// No description provided for @mcCmdPersistent.
+  ///
+  /// In en, this message translates to:
+  /// **'Never despawns'**
+  String get mcCmdPersistent;
+
+  /// No description provided for @mcCmdNoGravity.
+  ///
+  /// In en, this message translates to:
+  /// **'No gravity'**
+  String get mcCmdNoGravity;
+
+  /// No description provided for @mcCmdBaby.
+  ///
+  /// In en, this message translates to:
+  /// **'Baby (zombies)'**
+  String get mcCmdBaby;
+
+  /// No description provided for @mcCmdClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get mcCmdClear;
+
+  /// No description provided for @mcCmdGive.
+  ///
+  /// In en, this message translates to:
+  /// **'Give'**
+  String get mcCmdGive;
+
+  /// No description provided for @mcCmdEffect.
+  ///
+  /// In en, this message translates to:
+  /// **'Effect'**
+  String get mcCmdEffect;
+
+  /// No description provided for @mcCmdLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Level'**
+  String get mcCmdLevel;
+
+  /// No description provided for @mcCmdSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'Seconds'**
+  String get mcCmdSeconds;
+
+  /// No description provided for @mcCmdHideParticles.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide particles'**
+  String get mcCmdHideParticles;
+
+  /// No description provided for @mcCmdYaw.
+  ///
+  /// In en, this message translates to:
+  /// **'Facing yaw'**
+  String get mcCmdYaw;
+
+  /// No description provided for @mcCmdPitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Facing pitch'**
+  String get mcCmdPitch;
+
+  /// No description provided for @mcCmdYawHint.
+  ///
+  /// In en, this message translates to:
+  /// **'optional, e.g. 90'**
+  String get mcCmdYawHint;
+
+  /// No description provided for @mcCmdPitchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'optional, e.g. 0'**
+  String get mcCmdPitchHint;
+
+  /// No description provided for @mcCmdCoordsHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Use ~ for relative and ^ for local coordinates.'**
+  String get mcCmdCoordsHelp;
+
+  /// No description provided for @mcCmdOneBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'One block'**
+  String get mcCmdOneBlock;
+
+  /// No description provided for @mcCmdArea.
+  ///
+  /// In en, this message translates to:
+  /// **'Area'**
+  String get mcCmdArea;
+
+  /// No description provided for @mcCmdBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Block'**
+  String get mcCmdBlock;
+
+  /// No description provided for @mcCmdAt.
+  ///
+  /// In en, this message translates to:
+  /// **'At'**
+  String get mcCmdAt;
+
+  /// No description provided for @mcCmdFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get mcCmdFrom;
+
+  /// No description provided for @mcCmdTo.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get mcCmdTo;
+
+  /// No description provided for @mcCmdFillLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'/fill is limited to 32,768 blocks per command.'**
+  String get mcCmdFillLimit;
+
+  /// No description provided for @mcCmdRule.
+  ///
+  /// In en, this message translates to:
+  /// **'Rule'**
+  String get mcCmdRule;
+
+  /// No description provided for @mcCmdValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Value'**
+  String get mcCmdValue;
+
+  /// No description provided for @mcCmdNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'number'**
+  String get mcCmdNumber;
+
+  /// No description provided for @mcCmdRuleNote.
+  ///
+  /// In en, this message translates to:
+  /// **'26.x game rules use their snake_case ids.'**
+  String get mcCmdRuleNote;
+
+  /// No description provided for @mcCmdSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Set'**
+  String get mcCmdSet;
+
+  /// No description provided for @mcCmdAddXp.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get mcCmdAddXp;
+
+  /// No description provided for @mcCmdLevels.
+  ///
+  /// In en, this message translates to:
+  /// **'Levels'**
+  String get mcCmdLevels;
+
+  /// No description provided for @mcCmdPoints.
+  ///
+  /// In en, this message translates to:
+  /// **'Points'**
+  String get mcCmdPoints;
+
+  /// No description provided for @mcCmdAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get mcCmdAmount;
+
+  /// No description provided for @mcCmdXpNote.
+  ///
+  /// In en, this message translates to:
+  /// **'{points} points to reach level {level} from zero.'**
+  String mcCmdXpNote(int points, int level);
+
+  /// No description provided for @mcCmdTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get mcCmdTime;
+
+  /// No description provided for @mcCmdWeather.
+  ///
+  /// In en, this message translates to:
+  /// **'Weather'**
+  String get mcCmdWeather;
+
+  /// No description provided for @mcCmdWeatherLasts.
+  ///
+  /// In en, this message translates to:
+  /// **'Weather lasts'**
+  String get mcCmdWeatherLasts;
+
+  /// No description provided for @mcCmdRandom.
+  ///
+  /// In en, this message translates to:
+  /// **'Random'**
+  String get mcCmdRandom;
+
+  /// No description provided for @mcCmdTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Target'**
+  String get mcCmdTarget;
+
+  /// No description provided for @mcCmdPlayerName.
+  ///
+  /// In en, this message translates to:
+  /// **'or a player name'**
+  String get mcCmdPlayerName;
+
+  /// No description provided for @mcCmdLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands longer than 256 characters need a command block — chat cuts them off. This one is {length} characters.'**
+  String mcCmdLength(int length);
+
+  /// No description provided for @mcAdvObtain.
+  ///
+  /// In en, this message translates to:
+  /// **'Has an item'**
+  String get mcAdvObtain;
+
+  /// No description provided for @mcAdvEat.
+  ///
+  /// In en, this message translates to:
+  /// **'Eats or drinks'**
+  String get mcAdvEat;
+
+  /// No description provided for @mcAdvPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Places a block'**
+  String get mcAdvPlace;
+
+  /// No description provided for @mcAdvKill.
+  ///
+  /// In en, this message translates to:
+  /// **'Kills a mob'**
+  String get mcAdvKill;
+
+  /// No description provided for @mcAdvTravel.
+  ///
+  /// In en, this message translates to:
+  /// **'Enters a dimension'**
+  String get mcAdvTravel;
+
+  /// No description provided for @mcAdvCraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Crafts a recipe'**
+  String get mcAdvCraft;
+
+  /// No description provided for @mcAdvManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Only by command'**
+  String get mcAdvManual;
+
+  /// No description provided for @mcAdvAdvancement.
+  ///
+  /// In en, this message translates to:
+  /// **'Advancement'**
+  String get mcAdvAdvancement;
+
+  /// No description provided for @mcAdvFileName.
+  ///
+  /// In en, this message translates to:
+  /// **'File name'**
+  String get mcAdvFileName;
+
+  /// No description provided for @mcAdvTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get mcAdvTitle;
+
+  /// No description provided for @mcAdvDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get mcAdvDescription;
+
+  /// No description provided for @mcAdvIcon.
+  ///
+  /// In en, this message translates to:
+  /// **'Icon'**
+  String get mcAdvIcon;
+
+  /// No description provided for @mcAdvFrame.
+  ///
+  /// In en, this message translates to:
+  /// **'Frame'**
+  String get mcAdvFrame;
+
+  /// No description provided for @mcAdvRoot.
+  ///
+  /// In en, this message translates to:
+  /// **'Root of a new tab'**
+  String get mcAdvRoot;
+
+  /// No description provided for @mcAdvBackground.
+  ///
+  /// In en, this message translates to:
+  /// **'Background texture'**
+  String get mcAdvBackground;
+
+  /// No description provided for @mcAdvParent.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent'**
+  String get mcAdvParent;
+
+  /// No description provided for @mcAdvToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Show a toast'**
+  String get mcAdvToast;
+
+  /// No description provided for @mcAdvChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Announce in chat'**
+  String get mcAdvChat;
+
+  /// No description provided for @mcAdvHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden until earned'**
+  String get mcAdvHidden;
+
+  /// No description provided for @mcAdvCriteria.
+  ///
+  /// In en, this message translates to:
+  /// **'Criteria'**
+  String get mcAdvCriteria;
+
+  /// No description provided for @mcAdvAnyOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Any one of them'**
+  String get mcAdvAnyOne;
+
+  /// No description provided for @mcAdvAllOf.
+  ///
+  /// In en, this message translates to:
+  /// **'All of them'**
+  String get mcAdvAllOf;
+
+  /// No description provided for @mcAdvRewards.
+  ///
+  /// In en, this message translates to:
+  /// **'Rewards'**
+  String get mcAdvRewards;
+
+  /// No description provided for @mcAdvXp.
+  ///
+  /// In en, this message translates to:
+  /// **'Experience points'**
+  String get mcAdvXp;
+
+  /// No description provided for @mcAdvRecipeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock a recipe (id, optional)'**
+  String get mcAdvRecipeHint;
+
+  /// No description provided for @mcAdvLootHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Give a loot table (id, optional)'**
+  String get mcAdvLootHint;
+
+  /// No description provided for @mcAdvFunctionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Run a function (id, optional)'**
+  String get mcAdvFunctionHint;
+
+  /// No description provided for @mcAdvChallenge.
+  ///
+  /// In en, this message translates to:
+  /// **'Challenge Complete!'**
+  String get mcAdvChallenge;
+
+  /// No description provided for @mcAdvGoal.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal Reached!'**
+  String get mcAdvGoal;
+
+  /// No description provided for @mcAdvMade.
+  ///
+  /// In en, this message translates to:
+  /// **'Advancement Made!'**
+  String get mcAdvMade;
+
+  /// No description provided for @mcAdvDatapackDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Advancement made with luma'**
+  String get mcAdvDatapackDesc;
+
+  /// No description provided for @mcAdvGrant.
+  ///
+  /// In en, this message translates to:
+  /// **'Grant or test it with {command}.'**
+  String mcAdvGrant(String command);
+
+  /// No description provided for @mcAssetReadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read {source}: {error}'**
+  String mcAssetReadError(String source, String error);
+
+  /// No description provided for @mcAssetAsking.
+  ///
+  /// In en, this message translates to:
+  /// **'Asking Mojang for the latest release…'**
+  String get mcAssetAsking;
+
+  /// No description provided for @mcAssetDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Download failed: {error}'**
+  String mcAssetDownloadFailed(String error);
+
+  /// No description provided for @mcAssetNoCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'No copy of Minecraft found'**
+  String get mcAssetNoCopy;
+
+  /// No description provided for @mcAssetNoCopyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'luma bundles no game assets. Point it at a client jar or a resource pack, or let it fetch the vanilla client from Mojang\'s public servers (about {megabytes} MB, kept on this device and shared with the Minecraft launcher plugin).'**
+  String mcAssetNoCopyBody(int megabytes);
+
+  /// No description provided for @mcAssetChooseJar.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a jar or pack'**
+  String get mcAssetChooseJar;
+
+  /// No description provided for @mcAssetDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download from Mojang'**
+  String get mcAssetDownload;
+
+  /// No description provided for @mcAssetOtherFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Other file'**
+  String get mcAssetOtherFile;
+
+  /// No description provided for @mcAssetSounds.
+  ///
+  /// In en, this message translates to:
+  /// **'Sounds ({count})'**
+  String mcAssetSounds(int count);
+
+  /// No description provided for @mcAssetImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Images ({count})'**
+  String mcAssetImages(int count);
+
+  /// No description provided for @mcAssetSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search every asset'**
+  String get mcAssetSearch;
+
+  /// No description provided for @mcAssetFirst600.
+  ///
+  /// In en, this message translates to:
+  /// **'Showing the first 600 — search to narrow it down.'**
+  String get mcAssetFirst600;
+
+  /// No description provided for @mcAssetNoSounds.
+  ///
+  /// In en, this message translates to:
+  /// **'No sounds for this copy'**
+  String get mcAssetNoSounds;
+
+  /// No description provided for @mcAssetNoSoundsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Sounds come from the launcher\'s asset store, which only exists once the game has been launched at least once. A resource pack or a downloaded jar has images only.'**
+  String get mcAssetNoSoundsBody;
+
+  /// No description provided for @mcAssetPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Play'**
+  String get mcAssetPlay;
+
+  /// No description provided for @mcAssetCannotPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'This device cannot play .ogg here — save it and open it in a player.'**
+  String get mcAssetCannotPlay;
+
+  /// No description provided for @mcAssetSaveOgg.
+  ///
+  /// In en, this message translates to:
+  /// **'Save .ogg'**
+  String get mcAssetSaveOgg;
+
+  /// No description provided for @mcAssetNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Assets © Mojang. They are read from your own files for reference and are not part of luma.'**
+  String get mcAssetNotice;
+
+  /// No description provided for @mcAssetClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get mcAssetClose;
+
+  /// No description provided for @mcAssetCopyId.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy id'**
+  String get mcAssetCopyId;
+
+  /// No description provided for @mcEnchGenDamage.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra damage'**
+  String get mcEnchGenDamage;
+
+  /// No description provided for @mcEnchGenProtection.
+  ///
+  /// In en, this message translates to:
+  /// **'Damage protection'**
+  String get mcEnchGenProtection;
+
+  /// No description provided for @mcEnchGenAttribute.
+  ///
+  /// In en, this message translates to:
+  /// **'Attribute bonus'**
+  String get mcEnchGenAttribute;
+
+  /// No description provided for @mcEnchGenMobEffect.
+  ///
+  /// In en, this message translates to:
+  /// **'Effect on the target'**
+  String get mcEnchGenMobEffect;
+
+  /// No description provided for @mcEnchGenIgnite.
+  ///
+  /// In en, this message translates to:
+  /// **'Set the target on fire'**
+  String get mcEnchGenIgnite;
+
+  /// No description provided for @mcEnchGenKnockback.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra knockback'**
+  String get mcEnchGenKnockback;
+
+  /// No description provided for @mcEnchGenExperience.
+  ///
+  /// In en, this message translates to:
+  /// **'More mob experience'**
+  String get mcEnchGenExperience;
+
+  /// No description provided for @mcEnchGenPierce.
+  ///
+  /// In en, this message translates to:
+  /// **'Armour piercing'**
+  String get mcEnchGenPierce;
+
+  /// No description provided for @mcEnchGenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enchantment'**
+  String get mcEnchGenTitle;
+
+  /// No description provided for @mcEnchGenName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get mcEnchGenName;
+
+  /// No description provided for @mcEnchGenGoesOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Can go on'**
+  String get mcEnchGenGoesOn;
+
+  /// No description provided for @mcEnchGenTable.
+  ///
+  /// In en, this message translates to:
+  /// **'Offered by the enchanting table on'**
+  String get mcEnchGenTable;
+
+  /// No description provided for @mcEnchGenSame.
+  ///
+  /// In en, this message translates to:
+  /// **'Same as above'**
+  String get mcEnchGenSame;
+
+  /// No description provided for @mcEnchGenExclusive.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot be combined with'**
+  String get mcEnchGenExclusive;
+
+  /// No description provided for @mcEnchGenAnything.
+  ///
+  /// In en, this message translates to:
+  /// **'Anything goes'**
+  String get mcEnchGenAnything;
+
+  /// No description provided for @mcEnchGenSetName.
+  ///
+  /// In en, this message translates to:
+  /// **'{set} enchantments'**
+  String mcEnchGenSetName(String set);
+
+  /// No description provided for @mcEnchGenSlots.
+  ///
+  /// In en, this message translates to:
+  /// **'Active in slots'**
+  String get mcEnchGenSlots;
+
+  /// No description provided for @mcEnchGenLevels.
+  ///
+  /// In en, this message translates to:
+  /// **'Levels & costs'**
+  String get mcEnchGenLevels;
+
+  /// No description provided for @mcEnchGenMaxLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Max level'**
+  String get mcEnchGenMaxLevel;
+
+  /// No description provided for @mcEnchGenWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Rarity weight (1 rare – 10 common)'**
+  String get mcEnchGenWeight;
+
+  /// No description provided for @mcEnchGenAnvil.
+  ///
+  /// In en, this message translates to:
+  /// **'Anvil cost'**
+  String get mcEnchGenAnvil;
+
+  /// No description provided for @mcEnchGenMin.
+  ///
+  /// In en, this message translates to:
+  /// **'Min enchanting level'**
+  String get mcEnchGenMin;
+
+  /// No description provided for @mcEnchGenPerLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'… plus per level'**
+  String get mcEnchGenPerLevel;
+
+  /// No description provided for @mcEnchGenMax.
+  ///
+  /// In en, this message translates to:
+  /// **'Max enchanting level'**
+  String get mcEnchGenMax;
+
+  /// No description provided for @mcEnchGenEffects.
+  ///
+  /// In en, this message translates to:
+  /// **'Effects'**
+  String get mcEnchGenEffects;
+
+  /// No description provided for @mcEnchGenAddEffect.
+  ///
+  /// In en, this message translates to:
+  /// **'Add effect'**
+  String get mcEnchGenAddEffect;
+
+  /// No description provided for @mcEnchGenNoEffects.
+  ///
+  /// In en, this message translates to:
+  /// **'No effects — it will enchant, but do nothing.'**
+  String get mcEnchGenNoEffects;
+
+  /// No description provided for @mcEnchGenDatapackDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Enchantment \"{name}\" made with luma'**
+  String mcEnchGenDatapackDesc(String name);
+
+  /// No description provided for @mcEnchGenNote.
+  ///
+  /// In en, this message translates to:
+  /// **'The datapack also adds it to the enchanting table and random loot tags, so it shows up in survival. Try it with {command}.'**
+  String mcEnchGenNote(String command);
+
+  /// No description provided for @mcEnchGenUnitDamage.
+  ///
+  /// In en, this message translates to:
+  /// **'damage'**
+  String get mcEnchGenUnitDamage;
+
+  /// No description provided for @mcEnchGenUnitProtection.
+  ///
+  /// In en, this message translates to:
+  /// **'protection points'**
+  String get mcEnchGenUnitProtection;
+
+  /// No description provided for @mcEnchGenUnitSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'seconds'**
+  String get mcEnchGenUnitSeconds;
+
+  /// No description provided for @mcEnchGenUnitKnockback.
+  ///
+  /// In en, this message translates to:
+  /// **'knockback'**
+  String get mcEnchGenUnitKnockback;
+
+  /// No description provided for @mcEnchGenUnitPierce.
+  ///
+  /// In en, this message translates to:
+  /// **'× 10% armour ignored'**
+  String get mcEnchGenUnitPierce;
+
+  /// No description provided for @mcEnchGenRemoveEffect.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove effect'**
+  String get mcEnchGenRemoveEffect;
+
+  /// No description provided for @mcEnchGenOpAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get mcEnchGenOpAdd;
+
+  /// No description provided for @mcEnchGenOpBase.
+  ///
+  /// In en, this message translates to:
+  /// **'× base'**
+  String get mcEnchGenOpBase;
+
+  /// No description provided for @mcEnchGenOpTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'× total'**
+  String get mcEnchGenOpTotal;
+
+  /// No description provided for @mcEnchGenEffectLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Effect level'**
+  String get mcEnchGenEffectLevel;
+
+  /// No description provided for @mcEnchGenAtLevel1.
+  ///
+  /// In en, this message translates to:
+  /// **'At level I ({unit})'**
+  String mcEnchGenAtLevel1(String unit);
+
+  /// No description provided for @mcEnchGenEachLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Each level after'**
+  String get mcEnchGenEachLevel;
+
+  /// No description provided for @mcEnchGenDirect.
+  ///
+  /// In en, this message translates to:
+  /// **'Only on direct hits'**
+  String get mcEnchGenDirect;
+
+  /// No description provided for @mcEnchGenDirectDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Not from thorns or projectiles'**
+  String get mcEnchGenDirectDetail;
+
+  /// No description provided for @mcRecShaped.
+  ///
+  /// In en, this message translates to:
+  /// **'Shaped crafting'**
+  String get mcRecShaped;
+
+  /// No description provided for @mcRecShapeless.
+  ///
+  /// In en, this message translates to:
+  /// **'Shapeless crafting'**
+  String get mcRecShapeless;
+
+  /// No description provided for @mcRecFurnace.
+  ///
+  /// In en, this message translates to:
+  /// **'Furnace'**
+  String get mcRecFurnace;
+
+  /// No description provided for @mcRecBlast.
+  ///
+  /// In en, this message translates to:
+  /// **'Blast furnace'**
+  String get mcRecBlast;
+
+  /// No description provided for @mcRecSmoker.
+  ///
+  /// In en, this message translates to:
+  /// **'Smoker'**
+  String get mcRecSmoker;
+
+  /// No description provided for @mcRecCampfire.
+  ///
+  /// In en, this message translates to:
+  /// **'Campfire'**
+  String get mcRecCampfire;
+
+  /// No description provided for @mcRecStonecutter.
+  ///
+  /// In en, this message translates to:
+  /// **'Stonecutter'**
+  String get mcRecStonecutter;
+
+  /// No description provided for @mcRecSmithing.
+  ///
+  /// In en, this message translates to:
+  /// **'Smithing table'**
+  String get mcRecSmithing;
+
+  /// No description provided for @mcRecEmptySlot.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty — click to place {item}'**
+  String mcRecEmptySlot(String item);
+
+  /// No description provided for @mcRecFilledSlot.
+  ///
+  /// In en, this message translates to:
+  /// **'{item} — click again or right-click to clear'**
+  String mcRecFilledSlot(String item);
+
+  /// No description provided for @mcRecIdOrTag.
+  ///
+  /// In en, this message translates to:
+  /// **'item id, or #tag'**
+  String get mcRecIdOrTag;
+
+  /// No description provided for @mcRecId.
+  ///
+  /// In en, this message translates to:
+  /// **'item id'**
+  String get mcRecId;
+
+  /// No description provided for @mcRecStation.
+  ///
+  /// In en, this message translates to:
+  /// **'Station'**
+  String get mcRecStation;
+
+  /// No description provided for @mcRecIngredients.
+  ///
+  /// In en, this message translates to:
+  /// **'Ingredients'**
+  String get mcRecIngredients;
+
+  /// No description provided for @mcRecBrush.
+  ///
+  /// In en, this message translates to:
+  /// **'Brush — click slots to place it'**
+  String get mcRecBrush;
+
+  /// No description provided for @mcRecClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear grid'**
+  String get mcRecClear;
+
+  /// No description provided for @mcRecFill.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill grid'**
+  String get mcRecFill;
+
+  /// No description provided for @mcRecTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Template'**
+  String get mcRecTemplate;
+
+  /// No description provided for @mcRecBase.
+  ///
+  /// In en, this message translates to:
+  /// **'Base item'**
+  String get mcRecBase;
+
+  /// No description provided for @mcRecAddition.
+  ///
+  /// In en, this message translates to:
+  /// **'Addition'**
+  String get mcRecAddition;
+
+  /// No description provided for @mcRecInput.
+  ///
+  /// In en, this message translates to:
+  /// **'Input'**
+  String get mcRecInput;
+
+  /// No description provided for @mcRecXp.
+  ///
+  /// In en, this message translates to:
+  /// **'Experience'**
+  String get mcRecXp;
+
+  /// No description provided for @mcRecTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Cooking time'**
+  String get mcRecTime;
+
+  /// No description provided for @mcRecResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Result'**
+  String get mcRecResult;
+
+  /// No description provided for @mcRecTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipe book tab'**
+  String get mcRecTab;
+
+  /// No description provided for @mcRecGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Group (optional — merges recipe book entries)'**
+  String get mcRecGroup;
+
+  /// No description provided for @mcRecDatapackDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipe made with luma'**
+  String get mcRecDatapackDesc;
+
+  /// No description provided for @mcRecNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Ingredients can be an item id or an item tag (#minecraft:planks). Custom recipes craft straight away; to list one in the recipe book run {command}.'**
+  String mcRecNote(String command);
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

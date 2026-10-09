@@ -4,6 +4,7 @@ import 'package:luma/app/widgets.dart';
 import 'package:luma/app/window_title_bar.dart';
 import 'package:luma/features/converter/converter_widgets.dart';
 import 'package:luma/features/plugins/installed/game_tools/game_tools_page.dart';
+import 'package:luma/l10n/app_localizations.dart';
 import 'package:luma/theme/luma_theme.dart';
 
 void main() {
@@ -15,6 +16,8 @@ void main() {
 
   Widget app(Widget child) => MaterialApp(
         theme: LumaTheme.dark,
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         home: Scaffold(body: child),
       );
 

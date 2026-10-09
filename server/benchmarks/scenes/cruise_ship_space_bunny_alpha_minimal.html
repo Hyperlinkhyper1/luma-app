@@ -53,8 +53,12 @@
 <div id="mobile"><button id="left">◀</button><button id="forward">▲</button><button id="right">▶</button><button id="back">▼</button></div>
 <div id="welcome"><div id="card"><h1>VIRTUOSA</h1><h2>AN ATLANTIC WALK</h2><p>Step aboard a fully procedural interpretation of MSC Virtuosa. Explore the open promenade beside the lifeboats, climb to the pool deck, or walk toward the panoramic bow.</p><div class="keys"><span>W A S D — walk</span><span>MOUSE / DRAG — look</span><span>SHIFT — run</span><span>E — change weather</span></div><button id="enter">BOARD THE SHIP</button></div></div>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-<script>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 (function(){
 'use strict';
 const scene=new THREE.Scene();
