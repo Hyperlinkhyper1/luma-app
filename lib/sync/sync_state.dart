@@ -8,14 +8,15 @@ import '../l10n/current_l.dart';
 import '../security/secure_secret_store.dart';
 import 'sync_api.dart';
 
-/// Preferences, the current device's dashboard and the assistant's memory
+/// Preferences, the current device's dashboard, account connections and the assistant's memory
 /// are automatic collections: always on, on every plan, and not counted
 /// against the plan's collection limit.
 bool isAutomaticSyncCollection(String id) =>
     id == 'settings' ||
     id == 'home_desktop' ||
     id == 'home_phone' ||
-    id == 'assistant_memory';
+    id == 'assistant_memory' ||
+    id == 'account_connections';
 
 /// Local sync bookkeeping for one collection.
 class CollectionSyncState {

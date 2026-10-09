@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -89,13 +90,43 @@ class AccountOverviewRepository extends ChangeNotifier {
   Future<File> _cache() async {
     if (_cacheFile != null) return _cacheFile!;
     final dir = await getApplicationSupportDirectory();
-    return _cacheFile =
-        File('${dir.path}${Platform.pathSeparator}luma_github_snapshot.json');
+    return _cacheFile = File(
+      '${dir.path}${Platform.pathSeparator}luma_github_snapshot.json',
+    );
   }
 
   /// Reads the token and the cached snapshot, then refreshes if the cache is
   /// stale. Safe to call from every `didChangeDependencies`.
-  Future<void> load() async {
+  Future<Map<String, dynamic>?> exportConnection() async {
+    final store = await GithubCredentialStore.load();
+    return (await store.read())?.toJson();
+  }
+
+  Future<void> importConnection(Map<String, dynamic>? data) async {
+    final credential = data == null ? null : GithubCredentials.fromJson(data);
+    await load();
+    await _connectionBusy?.future;
+    final store = await GithubCredentialStore.load();
+    if (data == null) {
+      await store.clear();
+    } else {
+      await store.save(credential!);
+    }
+    _credentials = credential;
+    _snapshot = GithubSnapshot.empty;
+    _error = null;
+    _warnings.clear();
+    await _persist();
+    _notify();
+    if (connected) unawaitedRefresh();
+  }
+
+  Future<void>? _loadTask;
+  Completer<void>? _connectionBusy;
+
+  Future<void> load() => _loadTask ??= _load();
+
+  Future<void> _load() async {
     if (_loadStarted) return;
     _loadStarted = true;
 
@@ -111,8 +142,9 @@ class AccountOverviewRepository extends ChangeNotifier {
       if (await file.exists()) {
         final raw = await file.readAsString();
         if (raw.trim().isNotEmpty) {
-          _snapshot =
-              GithubSnapshot.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+          _snapshot = GithubSnapshot.fromJson(
+            jsonDecode(raw) as Map<String, dynamic>,
+          );
         }
       }
     } catch (_) {
@@ -149,14 +181,17 @@ class AccountOverviewRepository extends ChangeNotifier {
 
     _error = null;
     _refreshing = true;
+    _connectionBusy = Completer<void>();
     _stage = GithubLoadStage.profile;
     _notify();
 
     try {
       final profile = await _api.fetchProfile(trimmed);
       final store = await GithubCredentialStore.load();
-      final credentials =
-          GithubCredentials(token: trimmed, login: profile.login);
+      final credentials = GithubCredentials(
+        token: trimmed,
+        login: profile.login,
+      );
       await store.save(credentials);
       _credentials = credentials;
       _snapshot = GithubSnapshot(
@@ -172,6 +207,8 @@ class AccountOverviewRepository extends ChangeNotifier {
       _notify();
     } finally {
       _refreshing = false;
+      _connectionBusy?.complete();
+      _connectionBusy = null;
       _stage = GithubLoadStage.idle;
       _notify();
     }
@@ -233,7 +270,8 @@ class AccountOverviewRepository extends ChangeNotifier {
   /// app calls this.
   @visibleForTesting
   void seedForTest(GithubSnapshot snapshot, {GithubCredentials? credentials}) {
-    _credentials = credentials ??
+    _credentials =
+        credentials ??
         const GithubCredentials(token: 'test-token', login: 'octo');
     _snapshot = snapshot;
     _loadStarted = true;
@@ -254,6 +292,7 @@ class AccountOverviewRepository extends ChangeNotifier {
     if (credentials == null || _refreshing) return;
 
     _refreshing = true;
+    _connectionBusy = Completer<void>();
     _error = null;
     _warnings.clear();
     _stageWarnings.clear();
@@ -325,6 +364,8 @@ class AccountOverviewRepository extends ChangeNotifier {
       _error = _describe(e);
     } finally {
       _refreshing = false;
+      _connectionBusy?.complete();
+      _connectionBusy = null;
       _stage = GithubLoadStage.idle;
       _notify();
     }
@@ -381,15 +422,14 @@ extension on GithubSnapshot {
     List<GithubWorkflowRun>? runs,
     GithubBilling? billing,
     DateTime? fetchedAt,
-  }) =>
-      GithubSnapshot(
-        profile: profile ?? this.profile,
-        repos: repos ?? this.repos,
-        contributions: contributions ?? this.contributions,
-        issues: issues ?? this.issues,
-        issueTotals: issueTotals ?? this.issueTotals,
-        runs: runs ?? this.runs,
-        billing: billing ?? this.billing,
-        fetchedAt: fetchedAt ?? this.fetchedAt,
-      );
+  }) => GithubSnapshot(
+    profile: profile ?? this.profile,
+    repos: repos ?? this.repos,
+    contributions: contributions ?? this.contributions,
+    issues: issues ?? this.issues,
+    issueTotals: issueTotals ?? this.issueTotals,
+    runs: runs ?? this.runs,
+    billing: billing ?? this.billing,
+    fetchedAt: fetchedAt ?? this.fetchedAt,
+  );
 }

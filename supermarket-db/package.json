@@ -8,6 +8,7 @@
     "node": ">=18"
   },
   "scripts": {
+    "test": "node --test test/*.test.js",
     "migrate": "node src/database/migrate.js",
     "seed": "node src/database/seed.js",
     "sync": "node bin/sync.js",

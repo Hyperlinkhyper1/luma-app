@@ -1,3 +1,4 @@
+import 'package:luma/l10n/app_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:nsd/nsd.dart';
@@ -172,6 +173,8 @@ void main() {
         repository: repo,
         child: MaterialApp(
           theme: LumaTheme.from(Brightness.light),
+          localizationsDelegates: L.localizationsDelegates,
+          supportedLocales: L.supportedLocales,
           home: const Scaffold(body: SmartHomePage()),
         ),
       ),
@@ -480,6 +483,8 @@ void main() {
         repository: repo,
         child: MaterialApp(
           theme: LumaTheme.from(Brightness.light),
+          localizationsDelegates: L.localizationsDelegates,
+          supportedLocales: L.supportedLocales,
           home: const Scaffold(body: SmartHomePage()),
         ),
       ),

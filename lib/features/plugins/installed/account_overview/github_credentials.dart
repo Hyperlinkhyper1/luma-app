@@ -48,6 +48,23 @@ class GithubCredentials {
   /// Included Actions compute, in minutes.
   final double? minutesAllowance;
 
+  Map<String, dynamic> toJson() => {
+    'token': token,
+    'login': login,
+    'copilotAllowance': copilotAllowance,
+    'storageAllowanceGb': storageAllowanceGb,
+    'minutesAllowance': minutesAllowance,
+  };
+
+  factory GithubCredentials.fromJson(Map<String, dynamic> j) =>
+      GithubCredentials(
+        token: j['token'] as String,
+        login: j['login'] as String,
+        copilotAllowance: (j['copilotAllowance'] as num?)?.toDouble(),
+        storageAllowanceGb: (j['storageAllowanceGb'] as num?)?.toDouble(),
+        minutesAllowance: (j['minutesAllowance'] as num?)?.toDouble(),
+      );
+
   bool get isComplete => token.isNotEmpty && login.isNotEmpty;
 
   /// The token with everything but its last four characters masked, so the

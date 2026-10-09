@@ -44,7 +44,8 @@ class McCredentials {
 
   bool get hasCurseforge =>
       (curseforgeApiKey ?? '').isNotEmpty &&
-      ((curseforgeAuthorId ?? '').isNotEmpty || curseforgeProjectIds.isNotEmpty);
+      ((curseforgeAuthorId ?? '').isNotEmpty ||
+          curseforgeProjectIds.isNotEmpty);
 
   bool get hasModrinth => (modrinthUsername ?? '').isNotEmpty;
 
@@ -69,40 +70,39 @@ class McCredentials {
     String? modrinthUsername,
     String? modrinthToken,
     String? pmcUsername,
-  }) =>
-      McCredentials(
-        curseforgeApiKey: curseforgeApiKey ?? this.curseforgeApiKey,
-        curseforgeAuthorId: curseforgeAuthorId ?? this.curseforgeAuthorId,
-        curseforgeProjectIds: curseforgeProjectIds ?? this.curseforgeProjectIds,
-        modrinthUsername: modrinthUsername ?? this.modrinthUsername,
-        modrinthToken: modrinthToken ?? this.modrinthToken,
-        pmcUsername: pmcUsername ?? this.pmcUsername,
-      );
+  }) => McCredentials(
+    curseforgeApiKey: curseforgeApiKey ?? this.curseforgeApiKey,
+    curseforgeAuthorId: curseforgeAuthorId ?? this.curseforgeAuthorId,
+    curseforgeProjectIds: curseforgeProjectIds ?? this.curseforgeProjectIds,
+    modrinthUsername: modrinthUsername ?? this.modrinthUsername,
+    modrinthToken: modrinthToken ?? this.modrinthToken,
+    pmcUsername: pmcUsername ?? this.pmcUsername,
+  );
 
   Map<String, dynamic> toJson() => {
-        if ((curseforgeApiKey ?? '').isNotEmpty)
-          'curseforgeApiKey': curseforgeApiKey,
-        if ((curseforgeAuthorId ?? '').isNotEmpty)
-          'curseforgeAuthorId': curseforgeAuthorId,
-        if (curseforgeProjectIds.isNotEmpty)
-          'curseforgeProjectIds': curseforgeProjectIds,
-        if ((modrinthUsername ?? '').isNotEmpty)
-          'modrinthUsername': modrinthUsername,
-        if ((modrinthToken ?? '').isNotEmpty) 'modrinthToken': modrinthToken,
-        if ((pmcUsername ?? '').isNotEmpty) 'pmcUsername': pmcUsername,
-      };
+    if ((curseforgeApiKey ?? '').isNotEmpty)
+      'curseforgeApiKey': curseforgeApiKey,
+    if ((curseforgeAuthorId ?? '').isNotEmpty)
+      'curseforgeAuthorId': curseforgeAuthorId,
+    if (curseforgeProjectIds.isNotEmpty)
+      'curseforgeProjectIds': curseforgeProjectIds,
+    if ((modrinthUsername ?? '').isNotEmpty)
+      'modrinthUsername': modrinthUsername,
+    if ((modrinthToken ?? '').isNotEmpty) 'modrinthToken': modrinthToken,
+    if ((pmcUsername ?? '').isNotEmpty) 'pmcUsername': pmcUsername,
+  };
 
   factory McCredentials.fromJson(Map<String, dynamic> j) => McCredentials(
-        curseforgeApiKey: j['curseforgeApiKey'] as String?,
-        curseforgeAuthorId: j['curseforgeAuthorId'] as String?,
-        curseforgeProjectIds: [
-          for (final id in (j['curseforgeProjectIds'] as List<dynamic>? ?? []))
-            id.toString(),
-        ],
-        modrinthUsername: j['modrinthUsername'] as String?,
-        modrinthToken: j['modrinthToken'] as String?,
-        pmcUsername: j['pmcUsername'] as String?,
-      );
+    curseforgeApiKey: j['curseforgeApiKey'] as String?,
+    curseforgeAuthorId: j['curseforgeAuthorId'] as String?,
+    curseforgeProjectIds: [
+      for (final id in (j['curseforgeProjectIds'] as List<dynamic>? ?? []))
+        id.toString(),
+    ],
+    modrinthUsername: j['modrinthUsername'] as String?,
+    modrinthToken: j['modrinthToken'] as String?,
+    pmcUsername: j['pmcUsername'] as String?,
+  );
 }
 
 /// Stores the MC Content credentials locally, encrypted at rest.
@@ -110,7 +110,7 @@ class McCredentials {
 /// Same encrypt-then-MAC HMAC-SHA256 stream cipher as the GitHub and Steam
 /// key stores, with its own key file. The CurseForge key and Modrinth token
 /// are the user's own revocable credentials and go only to their respective
-/// APIs — never to a luma server.
+/// APIs. Device sync carries them only inside an end-to-end encrypted blob.
 class McCredentialStore {
   McCredentialStore._(this._key, this._dirPath);
 
@@ -139,7 +139,8 @@ class McCredentialStore {
     return _instance = McCredentialStore._(key, dir.path);
   }
 
-  File get _dataFile => File('$_dirPath${Platform.pathSeparator}$_dataFileName');
+  File get _dataFile =>
+      File('$_dirPath${Platform.pathSeparator}$_dataFileName');
 
   Future<McCredentials?> read() async {
     final file = _dataFile;
@@ -223,7 +224,8 @@ class McCredentialStore {
   static Uint8List _randomBytes(int length) {
     final rng = Random.secure();
     return Uint8List.fromList(
-        List<int>.generate(length, (_) => rng.nextInt(256)));
+      List<int>.generate(length, (_) => rng.nextInt(256)),
+    );
   }
 
   static bool _constantTimeEquals(List<int> a, List<int> b) {

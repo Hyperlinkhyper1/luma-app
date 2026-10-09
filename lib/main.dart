@@ -44,6 +44,7 @@ import 'features/plugins/installed/steam_tools/cs2_market_repository.dart';
 import 'features/plugins/installed/steam_tools/cs2_market_scope.dart';
 import 'features/plugins/installed/device_health/device_health_repository.dart';
 import 'features/plugins/installed/device_health/device_health_scope.dart';
+import 'features/plugins/installed/account_overview/account_connections_sync.dart';
 import 'features/plugins/installed/account_overview/account_overview_repository.dart';
 import 'features/plugins/installed/account_overview/account_overview_scope.dart';
 import 'features/plugins/installed/account_overview/mc_content_repository.dart';
@@ -340,6 +341,34 @@ class _LumaAppState extends State<LumaApp> {
   // per-platform keys, so a revoked Google grant can't take either down.
   late final YoutubeRepository _youtubeRepository = YoutubeRepository();
   late final SpotifyRepository _spotifyRepository = SpotifyRepository();
+  late final AccountConnectionsSync _accountConnections =
+      AccountConnectionsSync(
+        endpoints: {
+          'github': AccountConnectionEndpoint(
+            changes: _accountOverviewRepository,
+            read: _accountOverviewRepository.exportConnection,
+            write: _accountOverviewRepository.importConnection,
+          ),
+          'youtube': AccountConnectionEndpoint(
+            changes: _youtubeRepository,
+            read: _youtubeRepository.exportConnection,
+            write: _youtubeRepository.importConnection,
+          ),
+          for (final platform in ['curseforge', 'modrinth', 'planet_minecraft'])
+            platform: AccountConnectionEndpoint(
+              changes: _mcContentRepository,
+              read: () =>
+                  _mcContentRepository.exportPlatformConnection(platform),
+              write: (data) =>
+                  _mcContentRepository.importPlatformConnection(platform, data),
+            ),
+          'spotify': AccountConnectionEndpoint(
+            changes: _spotifyRepository,
+            read: _spotifyRepository.exportConnection,
+            write: _spotifyRepository.importConnection,
+          ),
+        },
+      );
   late final FreeSketchRepository _freeSketchRepository =
       FreeSketchRepository();
   late final SmartHomeRepository _smartHomeRepository = SmartHomeRepository();
@@ -559,6 +588,15 @@ class _LumaAppState extends State<LumaApp> {
         listenable: _usageRepository.syncRevision,
         exporter: _usageRepository.exportData,
         importer: _usageRepository.importData,
+      ),
+      JsonStoreSyncCollection(
+        id: AccountConnectionsSync.collectionId,
+        mergeOnImport: true,
+        labelBuilder: () => currentL.pluginNameAccountOverview,
+        icon: Icons.link_rounded,
+        listenable: _accountConnections,
+        exporter: _accountConnections.exportData,
+        importer: _accountConnections.importData,
       ),
       JsonStoreSyncCollection(
         id: 'free_sketch',
@@ -894,6 +932,7 @@ class _LumaAppState extends State<LumaApp> {
     _recipeBookDb.close();
     _galleryRepository.dispose();
     _deviceHealthRepository.dispose();
+    _accountConnections.dispose();
     _accountOverviewRepository.dispose();
     _mcContentRepository.dispose();
     _youtubeRepository.dispose();

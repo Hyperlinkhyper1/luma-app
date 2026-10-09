@@ -171,6 +171,12 @@ flutter:
     - assets/asset_studio/
     - assets/asset_studio/models/
     - assets/asset_studio/thumbs/
+    # Minecraft tool screenshots, one set per background; rendered by
+    # test/mc_tool_screenshots_test.dart.
+    - assets/mc_tools/shots/light/
+    - assets/mc_tools/shots/dark/
+    - assets/mc_tools/shots/coffee_light/
+    - assets/mc_tools/shots/coffee_dark/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

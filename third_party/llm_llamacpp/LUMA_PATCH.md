@@ -46,6 +46,11 @@ A copy of [llm_llamacpp 0.7.0](https://pub.dev/packages/llm_llamacpp)
   GPU backend, and the Android arm64 bundle ships `libggml-vulkan.so`, which
   the loader registers — so a phone that asked for the CPU ran Vulkan anyway,
   and a mobile driver fault killed the app on its first prompt.
+- A request with `nGpuLayers > 0` on a build that can offload loads the
+  model with `LLAMA_LOAD_MODE_NONE` instead of memory-mapping it
+  (`src/inference_isolate_handler.dart`). llama.cpp can't unmap the
+  offloaded parts of a mapping on Windows, so the whole 2.7 GB desktop
+  model stayed in the app's working set next to its copy in VRAM.
 - A `qwenXml` tool-call format (`src/tool_calls/`) for Qwen3.5, whose
   template wants `<tool_call><function=fn><parameter=a>…` rather than
   Hermes JSON. Upstream matched it as Hermes on the `<tool_call>` tag, so

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/chat/local_model_store.dart';
 import 'package:luma/features/chat/web_search_client.dart';
@@ -89,6 +90,8 @@ void main() {
       'Qwen3.5-0.8B-Q8_0.gguf',
       'Qwen3.5-0.8B-Q4_0.gguf',
       'Qwen3.5-2B-Q4_K_M.gguf.download',
+      'Qwen3.5-4B-Q4_K_M.gguf.verified',
+      'Qwen3.5-0.8B-Q4_0.gguf.verified',
       'notes.txt',
     ]) {
       await File('${dir.path}${Platform.pathSeparator}$name').writeAsString('x');
@@ -97,6 +100,64 @@ void main() {
     await LocalModelStore.deleteOtherModels(dir, 'Qwen3.5-4B-Q4_K_M.gguf');
 
     final left = dir.listSync().map((e) => e.uri.pathSegments.last).toSet();
-    expect(left, {'Qwen3.5-4B-Q4_K_M.gguf', 'notes.txt'});
+    expect(left, {
+      'Qwen3.5-4B-Q4_K_M.gguf',
+      'Qwen3.5-4B-Q4_K_M.gguf.verified',
+      'notes.txt',
+    });
+  });
+
+  group('verify', () {
+    const wrongDigest =
+        '0f6b1ee6f2ac4a0b9b4b5b1b2a5f2f7e0a1d4e5c3b2a19080706050403020100';
+    late Directory dir;
+    late File model;
+    late String modelSha;
+
+    setUp(() async {
+      dir = await Directory.systemTemp.createTemp('luma_verify_');
+      model = File('${dir.path}${Platform.pathSeparator}model.gguf');
+      await model.writeAsString('model');
+      modelSha = sha256.convert(await model.readAsBytes()).toString();
+    });
+    tearDown(() => dir.delete(recursive: true));
+
+    test('hashes once, then trusts the stamp while the file is unchanged',
+        () async {
+      expect(
+        await LocalModelStore.verify(model, bytes: 5, expectedSha256: modelSha),
+        isTrue,
+      );
+      expect(await File('${model.path}.verified').exists(), isTrue);
+
+      // Same size and modified time but different bytes: a second hash
+      // would reject it, so passing proves the stamp was used.
+      final modified = await model.lastModified();
+      await model.writeAsString('MODEL');
+      await model.setLastModified(modified);
+      expect(
+        await LocalModelStore.verify(model, bytes: 5, expectedSha256: modelSha),
+        isTrue,
+      );
+    });
+
+    test('re-hashes a file whose modified time changed', () async {
+      await LocalModelStore.verify(model, bytes: 5, expectedSha256: modelSha);
+      await model.writeAsString('MODEL');
+      await model.setLastModified(DateTime(2020));
+      expect(
+        await LocalModelStore.verify(model, bytes: 5, expectedSha256: modelSha),
+        isFalse,
+      );
+      expect(await File('${model.path}.verified').exists(), isFalse);
+    });
+
+    test('rejects a file with the wrong digest', () async {
+      expect(
+        await LocalModelStore.verify(model, bytes: 5, expectedSha256: wrongDigest),
+        isFalse,
+      );
+      expect(await File('${model.path}.verified').exists(), isFalse);
+    });
   });
 }

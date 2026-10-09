@@ -39,9 +39,10 @@ class _SmartHomePageState extends State<SmartHomePage> {
     final t = L.of(context);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 48),
-      child: Center(
+      child: Align(
+        alignment: Alignment.topLeft,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 850),
+          constraints: const BoxConstraints(maxWidth: 1440),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -434,12 +435,7 @@ class _LightCardState extends State<_LightCard> {
                   30,
                   enabled,
                 ),
-                _colorButton(
-                  t.smartHomeColorGreen,
-                  Colors.green,
-                  120,
-                  enabled,
-                ),
+                _colorButton(t.smartHomeColorGreen, Colors.green, 120, enabled),
                 _colorButton(t.smartHomeColorBlue, Colors.blue, 240, enabled),
                 _colorButton(
                   t.smartHomeColorPurple,

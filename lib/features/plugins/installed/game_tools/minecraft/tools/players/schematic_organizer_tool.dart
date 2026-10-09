@@ -47,6 +47,11 @@ class _Summary {
 const _unreadable = '\u0000unreadable';
 const _tooLarge = '\u0000tooLarge';
 
+/// Top-level so the isolate closure captures only the file's bytes and name,
+/// not the State whose methods would otherwise share its scope.
+Future<_Summary> _summarizeInIsolate(Uint8List bytes, String name) =>
+    Isolate.run(() => _summarize(bytes, name));
+
 _Summary _summarize(Uint8List bytes, String name) {
   try {
     final s = SchematicService.load(bytes, name);
@@ -247,7 +252,7 @@ class _SchematicOrganizerToolState extends State<SchematicOrganizerTool> {
     }
     final bytes = await entry.file.readAsBytes();
     final name = entry.name;
-    final summary = await Isolate.run(() => _summarize(bytes, name));
+    final summary = await _summarizeInIsolate(bytes, name);
     ui.Image? image;
     final thumb = summary.thumb;
     if (thumb != null) {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -19,11 +20,11 @@ enum YoutubeLoadStage {
   analytics;
 
   String get label => switch (this) {
-        YoutubeLoadStage.idle => currentL.accountOverviewStageIdle,
-        YoutubeLoadStage.channel => currentL.youtubeStageChannel,
-        YoutubeLoadStage.videos => currentL.youtubeStageVideos,
-        YoutubeLoadStage.analytics => currentL.youtubeStageAnalytics,
-      };
+    YoutubeLoadStage.idle => currentL.accountOverviewStageIdle,
+    YoutubeLoadStage.channel => currentL.youtubeStageChannel,
+    YoutubeLoadStage.videos => currentL.youtubeStageVideos,
+    YoutubeLoadStage.analytics => currentL.youtubeStageAnalytics,
+  };
 }
 
 /// Owns the YouTube account state for the Account Overview plugin.
@@ -34,8 +35,8 @@ enum YoutubeLoadStage {
 /// of GitHub's PAT and Minecraft's per-platform keys.
 class YoutubeRepository extends ChangeNotifier {
   YoutubeRepository({YoutubeApi? api, YoutubeOAuth? oauth})
-      : _api = api ?? YoutubeApi(),
-        _oauth = oauth ?? YoutubeOAuth();
+    : _api = api ?? YoutubeApi(),
+      _oauth = oauth ?? YoutubeOAuth();
 
   final YoutubeApi _api;
   final YoutubeOAuth _oauth;
@@ -77,12 +78,42 @@ class YoutubeRepository extends ChangeNotifier {
     if (_cacheFile != null) return _cacheFile!;
     final dir = await getApplicationSupportDirectory();
     return _cacheFile = File(
-        '${dir.path}${Platform.pathSeparator}luma_youtube_snapshot.json');
+      '${dir.path}${Platform.pathSeparator}luma_youtube_snapshot.json',
+    );
   }
 
   /// Reads the stored credentials and the cached snapshot, then refreshes if
   /// the cache is stale. Safe to call from every `didChangeDependencies`.
-  Future<void> load() async {
+  Future<Map<String, dynamic>?> exportConnection() async {
+    final store = await YoutubeCredentialStore.load();
+    return (await store.read())?.toJson();
+  }
+
+  Future<void> importConnection(Map<String, dynamic>? data) async {
+    final credential = data == null ? null : YoutubeCredentials.fromJson(data);
+    await load();
+    await _connectionBusy?.future;
+    final store = await YoutubeCredentialStore.load();
+    if (data == null) {
+      await store.clear();
+    } else {
+      await store.save(credential!);
+    }
+    _credentials = credential;
+    _snapshot = YoutubeSnapshot.empty;
+    _error = null;
+    _warnings.clear();
+    await _persist();
+    _notify();
+    if (connected) unawaitedRefresh();
+  }
+
+  Future<void>? _loadTask;
+  Completer<void>? _connectionBusy;
+
+  Future<void> load() => _loadTask ??= _load();
+
+  Future<void> _load() async {
     if (_loadStarted) return;
     _loadStarted = true;
 
@@ -98,8 +129,9 @@ class YoutubeRepository extends ChangeNotifier {
       if (await file.exists()) {
         final raw = await file.readAsString();
         if (raw.trim().isNotEmpty) {
-          _snapshot =
-              YoutubeSnapshot.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+          _snapshot = YoutubeSnapshot.fromJson(
+            jsonDecode(raw) as Map<String, dynamic>,
+          );
         }
       }
     } catch (_) {
@@ -133,6 +165,7 @@ class YoutubeRepository extends ChangeNotifier {
 
     _error = null;
     _refreshing = true;
+    _connectionBusy = Completer<void>();
     _stage = YoutubeLoadStage.channel;
     _notify();
 
@@ -162,6 +195,8 @@ class YoutubeRepository extends ChangeNotifier {
       _notify();
     } finally {
       _refreshing = false;
+      _connectionBusy?.complete();
+      _connectionBusy = null;
       _stage = YoutubeLoadStage.idle;
       _notify();
     }
@@ -199,8 +234,12 @@ class YoutubeRepository extends ChangeNotifier {
   /// this — it exists for widget tests, the same as
   /// `AccountOverviewRepository.seedForTest`.
   @visibleForTesting
-  void seedForTest(YoutubeSnapshot snapshot, {YoutubeCredentials? credentials}) {
-    _credentials = credentials ??
+  void seedForTest(
+    YoutubeSnapshot snapshot, {
+    YoutubeCredentials? credentials,
+  }) {
+    _credentials =
+        credentials ??
         YoutubeCredentials(
           clientId: 'test-client',
           clientSecret: 'test-secret',
@@ -265,6 +304,7 @@ class YoutubeRepository extends ChangeNotifier {
     if (credentials == null || _refreshing) return;
 
     _refreshing = true;
+    _connectionBusy = Completer<void>();
     _error = null;
     _warnings.clear();
     _stage = YoutubeLoadStage.channel;
@@ -278,8 +318,9 @@ class YoutubeRepository extends ChangeNotifier {
       try {
         final uploadsId = channel.uploadsPlaylistId;
         if (uploadsId != null) {
-          final videos =
-              await _withToken((token) => _api.fetchRecentVideos(token, uploadsId));
+          final videos = await _withToken(
+            (token) => _api.fetchRecentVideos(token, uploadsId),
+          );
           _publish(_snapshot.copyWith(videos: videos));
         }
       } catch (e) {
@@ -290,10 +331,14 @@ class YoutubeRepository extends ChangeNotifier {
       try {
         final points = await _withToken(_api.fetchAnalyticsTimeSeries);
         final sources = await _withToken(_api.fetchTrafficSources);
-        _publish(_snapshot.copyWith(
-          analytics:
-              YoutubeAnalyticsSnapshot(points: points, trafficSources: sources),
-        ));
+        _publish(
+          _snapshot.copyWith(
+            analytics: YoutubeAnalyticsSnapshot(
+              points: points,
+              trafficSources: sources,
+            ),
+          ),
+        );
       } catch (e) {
         _warn(currentL.youtubeWarnAnalytics(_describe(e)));
       }
@@ -304,16 +349,18 @@ class YoutubeRepository extends ChangeNotifier {
       _error = _describe(e);
     } finally {
       _refreshing = false;
+      _connectionBusy?.complete();
+      _connectionBusy = null;
       _stage = YoutubeLoadStage.idle;
       _notify();
     }
   }
 
   String _describe(Object error) => switch (error) {
-        YoutubeApiException() => error.message,
-        YoutubeOAuthException() => error.message,
-        _ => error.toString(),
-      };
+    YoutubeApiException() => error.message,
+    YoutubeOAuthException() => error.message,
+    _ => error.toString(),
+  };
 
   void _warn(String message) {
     _warnings.add(message);
@@ -359,11 +406,10 @@ extension on YoutubeSnapshot {
     List<YoutubeVideoStat>? videos,
     YoutubeAnalyticsSnapshot? analytics,
     DateTime? fetchedAt,
-  }) =>
-      YoutubeSnapshot(
-        channel: channel ?? this.channel,
-        videos: videos ?? this.videos,
-        analytics: analytics ?? this.analytics,
-        fetchedAt: fetchedAt ?? this.fetchedAt,
-      );
+  }) => YoutubeSnapshot(
+    channel: channel ?? this.channel,
+    videos: videos ?? this.videos,
+    analytics: analytics ?? this.analytics,
+    fetchedAt: fetchedAt ?? this.fetchedAt,
+  );
 }

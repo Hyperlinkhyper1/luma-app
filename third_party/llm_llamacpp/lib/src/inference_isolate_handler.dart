@@ -29,13 +29,22 @@ void _handleInferenceRequest(
 
       // luma patch: with no layers offloaded, llama.cpp still hands large
       // prompt batches to any registered GPU (op offload), so a bundled
-      // Vulkan backend runs anyway — and a bad mobile driver aborts the
+      // Vulkan backend runs anyway â€” and a bad mobile driver aborts the
       // process. An empty device list keeps the model entirely on the CPU.
       ffi.Pointer<ffi.Pointer<ggml_backend_device>>? noDevices;
       if (request.nGpuLayers == 0) {
         noDevices = calloc<ffi.Pointer<ggml_backend_device>>();
         noDevices.value = ffi.nullptr;
         modelParams.devices = noDevices;
+      }
+
+      // luma patch: when the layers go to a GPU, read the weights straight
+      // into its buffers instead of memory-mapping the file. Windows can't
+      // unmap the offloaded parts of a mapping, so the whole file (2.7 GB
+      // for the desktop Assistant model) stayed in the app's RAM next to
+      // its copy in VRAM.
+      if (request.nGpuLayers > 0 && bindings.llama_supports_gpu_offload()) {
+        modelParams.load_mode = llama_load_mode.LLAMA_LOAD_MODE_NONE;
       }
 
       final modelPathPtr = request.modelPath.toNativeUtf8();
@@ -187,7 +196,7 @@ void _handleInferenceRequest(
         prompt = request.prompt;
       }
 
-      // luma patch: open the assistant turn with an empty think block — the
+      // luma patch: open the assistant turn with an empty think block â€” the
       // same thing Qwen's Jinja template emits for `enable_thinking=false`,
       // which llama_chat_apply_template (not a Jinja interpreter) can't pass.
       // Without it Qwen3.5 spends part of every reply's budget reasoning.
@@ -203,7 +212,7 @@ void _handleInferenceRequest(
       // variants, etc.), the fallback chatml formatter drops the BOS. The
       // tokenizer's `add_bos_token` flag is also frequently false on such
       // models, because the template is supposed to handle BOS itself. Net
-      // result: no BOS token in the prompt → model behaves like a base model
+      // result: no BOS token in the prompt â†’ model behaves like a base model
       // and never produces an EOS. Detect this and prepend the BOS id by hand.
       final usingChatTemplate =
           request.messages != null && request.messages!.isNotEmpty;

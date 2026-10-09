@@ -28,6 +28,7 @@ class ChatInputBar extends StatefulWidget {
     this.minLines = 1,
     this.attachments,
     this.hasAttachments = false,
+    this.onStartTyping,
   });
 
   final ValueChanged<String> onSend;
@@ -55,6 +56,10 @@ class ChatInputBar extends StatefulWidget {
   final int minLines;
   final Widget? attachments;
   final bool hasAttachments;
+
+  /// Called each time the field goes from empty to holding text, e.g. to
+  /// load a local model while the message is still being written.
+  final VoidCallback? onStartTyping;
 
   @override
   State<ChatInputBar> createState() => _ChatInputBarState();
@@ -99,7 +104,9 @@ class _ChatInputBarState extends State<ChatInputBar> {
 
   void _onTextChanged() {
     final hasText = _controller.text.trim().isNotEmpty;
-    if (hasText != _hasText) setState(() => _hasText = hasText);
+    if (hasText == _hasText) return;
+    setState(() => _hasText = hasText);
+    if (hasText) widget.onStartTyping?.call();
   }
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
@@ -209,7 +216,14 @@ class _ChatInputBarState extends State<ChatInputBar> {
                         child: widget.leading,
                       ),
                     ),
-                    Flexible(flex: 2, child: widget.modelSelector),
+                    Flexible(
+                      flex: 2,
+                      fit: FlexFit.tight,
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: widget.modelSelector,
+                      ),
+                    ),
                     const SizedBox(width: 6),
                     _SendButton(
                       enabled: _canSend,

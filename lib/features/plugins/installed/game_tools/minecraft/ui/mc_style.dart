@@ -669,7 +669,10 @@ class _CodeAction extends StatelessWidget {
         foregroundColor: const Color(0xFFCBD2F2),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         minimumSize: const Size(0, 30),
-        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
       ),
       icon: Icon(icon, size: 15),
       label: Text(label),
@@ -787,8 +790,13 @@ class McButton extends StatelessWidget {
       shape: WidgetStatePropertyAll(
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
-      textStyle: const WidgetStatePropertyAll(
-        TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+      // From the theme rather than a bare TextStyle, so the label keeps the
+      // platform's typeface and its CJK fallbacks.
+      textStyle: WidgetStatePropertyAll(
+        Theme.of(context).textTheme.labelLarge?.copyWith(
+          fontSize: 13.5,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
     if (primary) {
@@ -1211,7 +1219,10 @@ class McDropdown<T> extends StatelessWidget {
           dropdownColor: luma.surface,
           borderRadius: BorderRadius.circular(10),
           icon: Icon(Icons.expand_more_rounded, color: luma.textMuted, size: 18),
-          style: TextStyle(color: luma.textPrimary, fontSize: 13.5),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: luma.textPrimary,
+            fontSize: 13.5,
+          ),
           items: [
             for (final v in values)
               DropdownMenuItem<T>(

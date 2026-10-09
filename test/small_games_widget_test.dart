@@ -1,3 +1,4 @@
+import 'package:luma/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/plugins/installed/small_games/small_games_page.dart';
@@ -8,6 +9,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: LumaTheme.light,
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         home: const Scaffold(body: SmallGamesPage()),
       ),
     );
@@ -35,6 +38,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: LumaTheme.light,
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         home: const Scaffold(body: SmallGamesPage()),
       ),
     );

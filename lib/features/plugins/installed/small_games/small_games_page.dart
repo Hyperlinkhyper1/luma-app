@@ -34,9 +34,10 @@ class _SmallGamesPageState extends State<SmallGamesPage> {
     final t = L.of(context);
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
-      child: Center(
+      child: Align(
+        alignment: Alignment.topLeft,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 900),
+          constraints: const BoxConstraints(maxWidth: 1440),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -78,9 +79,7 @@ class _SmallGamesPageState extends State<SmallGamesPage> {
                           const SizedBox(height: 4),
                           Text(
                             t.smallGamesBingoDescription,
-                            style: TextStyle(
-                              color: context.luma.textSecondary,
-                            ),
+                            style: TextStyle(color: context.luma.textSecondary),
                           ),
                         ],
                       ),
@@ -123,9 +122,7 @@ class _SmallGamesPageState extends State<SmallGamesPage> {
                           const SizedBox(height: 4),
                           Text(
                             t.smallGamesCardGamesDescription,
-                            style: TextStyle(
-                              color: context.luma.textSecondary,
-                            ),
+                            style: TextStyle(color: context.luma.textSecondary),
                           ),
                         ],
                       ),
@@ -264,7 +261,10 @@ class _BingoPageState extends State<BingoPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(t.smallGamesCageTitle, style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            t.smallGamesCageTitle,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 4),
           Text(
             t.smallGamesCageSubtitle,
@@ -292,7 +292,9 @@ class _BingoPageState extends State<BingoPage> {
             child: Column(
               children: [
                 Text(
-                  _draw.latest == null ? t.smallGamesReady : _letter(_draw.latest!),
+                  _draw.latest == null
+                      ? t.smallGamesReady
+                      : _letter(_draw.latest!),
                   style: TextStyle(
                     color: palette.textSecondary,
                     fontWeight: FontWeight.w800,
@@ -342,7 +344,9 @@ class _BingoPageState extends State<BingoPage> {
           ),
           const SizedBox(height: 8),
           TextButton.icon(
-            onPressed: _draw.called.isEmpty ? null : () => setState(_draw.reset),
+            onPressed: _draw.called.isEmpty
+                ? null
+                : () => setState(_draw.reset),
             icon: const Icon(Icons.restart_alt_rounded),
             label: Text(t.smallGamesNewGame),
           ),
@@ -393,7 +397,8 @@ class _BingoPageState extends State<BingoPage> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                   fontSize: 13,
-                                  color: _draw.called.contains(row * 15 + col + 1)
+                                  color:
+                                      _draw.called.contains(row * 15 + col + 1)
                                       ? palette.onAccent
                                       : palette.textSecondary,
                                 ),

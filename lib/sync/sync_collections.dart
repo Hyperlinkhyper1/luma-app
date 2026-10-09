@@ -27,6 +27,10 @@ abstract class SyncCollection {
   /// is the gate. Defaults to null so existing collections are unaffected.
   String? get minPlanId => null;
 
+  /// Whether import merges independent records rather than replacing a
+  /// snapshot. The sync engine must pull before pushing concurrent edits.
+  bool get mergeOnImport => false;
+
   /// Fires whenever the underlying data changes (drives auto-sync).
   Stream<void> get changes;
 
@@ -71,8 +75,8 @@ class DriftSyncCollection extends SyncCollection {
   /// (for example login tokens that only one device may hold at a time).
   final Set<String> excludedTables;
 
-  Iterable<TableInfo> get _syncedTables => db.allTables
-      .where((t) => !excludedTables.contains(t.actualTableName));
+  Iterable<TableInfo> get _syncedTables =>
+      db.allTables.where((t) => !excludedTables.contains(t.actualTableName));
 
   @override
   Stream<void> get changes =>
@@ -116,9 +120,7 @@ class DriftSyncCollection extends SyncCollection {
     }
     final snapshotSchema = data['schemaVersion'] as int? ?? 0;
     if (snapshotSchema > db.schemaVersion) {
-      throw StateError(
-        currentL.syncCollectionSnapshotNewerVersion,
-      );
+      throw StateError(currentL.syncCollectionSnapshotNewerVersion);
     }
     final tables = data['tables'];
     if (tables is! Map<String, dynamic>) {
@@ -211,9 +213,7 @@ class PasswordVaultSyncCollection extends DriftSyncCollection {
       if (plain == null) {
         // Never export an entry we can't decrypt: syncing '' in its place
         // would overwrite the real password on every other device.
-        throw StateError(
-          currentL.syncCollectionPasswordDecryptFailed(entryId),
-        );
+        throw StateError(currentL.syncCollectionPasswordDecryptFailed(entryId));
       }
       row['password_plain'] = plain;
       // The TOTP secret is encrypted with this device's local key too — it
@@ -277,6 +277,7 @@ class JsonStoreSyncCollection extends SyncCollection {
     required this.exporter,
     required this.importer,
     this.minPlanId,
+    this.mergeOnImport = false,
   }) : _label = label,
        _labelBuilder = labelBuilder {
     assert((label != null) != (labelBuilder != null));
@@ -293,6 +294,9 @@ class JsonStoreSyncCollection extends SyncCollection {
   final IconData icon;
   @override
   final String? minPlanId;
+
+  @override
+  final bool mergeOnImport;
 
   final Future<Object?> Function() exporter;
   final Future<void> Function(Object? data) importer;

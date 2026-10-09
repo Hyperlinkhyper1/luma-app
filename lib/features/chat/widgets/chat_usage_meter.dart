@@ -77,7 +77,10 @@ class ChatUsageMeter extends StatelessWidget {
       context: context,
       position: position,
       color: luma.surface,
-      constraints: const BoxConstraints(minWidth: 320, maxWidth: 340),
+      constraints: BoxConstraints(
+        minWidth: math.min(320, overlay.size.width - 32),
+        maxWidth: math.min(380, overlay.size.width - 32),
+      ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: BorderSide(color: luma.border),
@@ -224,16 +227,6 @@ class _UsagePanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          _Row(
-            label: t.assistantContextWindow,
-            detail:
-                '${compactTokens(used)} / ${compactTokens(contextWindow)} '
-                '($percent%)',
-            muted: true,
-          ),
-          const SizedBox(height: 8),
-          _Bar(fraction: contextFraction, color: luma.accent),
-          divider(),
           Text(
             limitsTitle,
             style: TextStyle(color: luma.textMuted, fontSize: 13),
@@ -259,15 +252,39 @@ class _UsagePanel extends StatelessWidget {
             ),
           ],
           divider(),
-          _Row(
-            label: t.assistantLastReply,
-            detail: lastReply == null
-                ? t.assistantNoRepliesYet
-                : t.assistantTokensInOut(
-                    compactTokens(lastReply!.inputTokens),
-                    compactTokens(lastReply!.outputTokens),
-                  ),
-            muted: true,
+          ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: const EdgeInsets.only(bottom: 12),
+            dense: true,
+            title: Text(
+              t.assistantContextWindow,
+              style: TextStyle(color: luma.textSecondary, fontSize: 13),
+            ),
+            subtitle: Text(
+              '$percent%',
+              style: TextStyle(color: luma.textMuted, fontSize: 12),
+            ),
+            children: [
+              _Row(
+                label: t.assistantContextWindow,
+                detail:
+                    '${compactTokens(used)} / ${compactTokens(contextWindow)} ($percent%)',
+                muted: true,
+              ),
+              const SizedBox(height: 8),
+              _Bar(fraction: contextFraction, color: luma.accent),
+              const SizedBox(height: 16),
+              _Row(
+                label: t.assistantLastReply,
+                detail: lastReply == null
+                    ? t.assistantNoRepliesYet
+                    : t.assistantTokensInOut(
+                        compactTokens(lastReply!.inputTokens),
+                        compactTokens(lastReply!.outputTokens),
+                      ),
+                muted: true,
+              ),
+            ],
           ),
           if (onOpenBreakdown != null) ...[
             divider(),
@@ -316,19 +333,18 @@ class _Row extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: muted ? luma.textSecondary : luma.textPrimary,
-              fontSize: 13.5,
-              fontWeight: muted ? FontWeight.w400 : FontWeight.w500,
-            ),
+        Text(
+          label,
+          style: TextStyle(
+            color: muted ? luma.textSecondary : luma.textPrimary,
+            fontSize: 13.5,
+            fontWeight: muted ? FontWeight.w400 : FontWeight.w500,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(height: 4),
         Text(detail, style: TextStyle(color: luma.textSecondary, fontSize: 13)),
       ],
     );

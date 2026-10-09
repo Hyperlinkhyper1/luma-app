@@ -89,17 +89,20 @@ class _WifiSpeedTestPageState extends State<WifiSpeedTestPage> {
       }
 
       if (mounted && downloadMbps != null && uploadMbps != null) {
-        await repo.add(SpeedTestResult(
-          id: DateTime.now().microsecondsSinceEpoch.toString(),
-          testedAt: DateTime.now(),
-          downloadMbps: downloadMbps,
-          uploadMbps: uploadMbps,
-          latencyMs: latencyMs,
-          networkKind:
-              network.kind == NetworkKind.unknown ? null : network.kind.name,
-          networkName: network.name,
-          networkGeneration: network.generation,
-        ));
+        await repo.add(
+          SpeedTestResult(
+            id: DateTime.now().microsecondsSinceEpoch.toString(),
+            testedAt: DateTime.now(),
+            downloadMbps: downloadMbps,
+            uploadMbps: uploadMbps,
+            latencyMs: latencyMs,
+            networkKind: network.kind == NetworkKind.unknown
+                ? null
+                : network.kind.name,
+            networkName: network.name,
+            networkGeneration: network.generation,
+          ),
+        );
       }
     } catch (_) {
       if (mounted) setState(() => _error = true);
@@ -114,23 +117,36 @@ class _WifiSpeedTestPageState extends State<WifiSpeedTestPage> {
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
-      child: Center(
+      child: Align(
+        alignment: Alignment.topLeft,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _GaugeSection(
+          constraints: const BoxConstraints(maxWidth: 1440),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final gauge = _GaugeSection(
                 progress: _progress,
                 network: _network,
                 testing: _testing,
                 error: _error,
                 onStart: () => _startTest(repo),
                 onAllowNetworkDetails: _allowNetworkDetails,
-              ),
-              const SizedBox(height: 32),
-              _HistorySection(repo: repo),
-            ],
+              );
+              final history = _HistorySection(repo: repo);
+              if (constraints.maxWidth >= 1100) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: gauge),
+                    const SizedBox(width: 28),
+                    Expanded(child: history),
+                  ],
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [gauge, const SizedBox(height: 32), history],
+              );
+            },
           ),
         ),
       ),
@@ -184,10 +200,7 @@ class _GaugeSection extends StatelessWidget {
           const SizedBox(height: 16),
           _PhaseDots(progress: progress),
           const SizedBox(height: 16),
-          _NetworkChip(
-            network: network,
-            onAllowDetails: onAllowNetworkDetails,
-          ),
+          _NetworkChip(network: network, onAllowDetails: onAllowNetworkDetails),
           const SizedBox(height: 16),
           if (!testing)
             LumaPrimaryButton(
@@ -436,26 +449,21 @@ class _PhaseDots extends StatelessWidget {
     final currentPhase = progress?.phase;
     final done = progress?.phase == SpeedTestPhase.done;
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 24,
+      runSpacing: 8,
       children: [
-        for (var i = 0; i < phases.length; i++) ...[
+        for (var i = 0; i < phases.length; i++)
           _phaseDot(
             luma,
             label: phases[i].$1,
             active: !done && currentPhase == phases[i].$2,
-            completed: done ||
+            completed:
+                done ||
                 (currentPhase != null &&
                     currentPhase.index > phases[i].$2.index),
           ),
-          if (i < phases.length - 1) ...[
-            Container(
-              width: 24,
-              height: 2,
-              color: luma.border,
-            ),
-          ],
-        ],
       ],
     );
   }
@@ -469,8 +477,8 @@ class _PhaseDots extends StatelessWidget {
     final color = completed
         ? luma.success
         : active
-            ? luma.accent
-            : luma.textMuted;
+        ? luma.accent
+        : luma.textMuted;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -478,10 +486,7 @@ class _PhaseDots extends StatelessWidget {
         Container(
           width: 10,
           height: 10,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
         Text(
@@ -706,7 +711,11 @@ class _HistorySection extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 for (final r in results.reversed) ...[
-                  _HistoryCard(result: r, luma: luma, onDelete: () => repo.delete(r.id)),
+                  _HistoryCard(
+                    result: r,
+                    luma: luma,
+                    onDelete: () => repo.delete(r.id),
+                  ),
                   const SizedBox(height: 8),
                 ],
               ],
@@ -730,17 +739,20 @@ class _HistorySection extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(t.commonCancel,
-                style: TextStyle(color: luma.textSecondary)),
+            child: Text(
+              t.commonCancel,
+              style: TextStyle(color: luma.textSecondary),
+            ),
           ),
           TextButton(
             onPressed: () {
               repo.clearHistory();
               Navigator.pop(context);
             },
-            child: Text(t.commonClear,
-                style: TextStyle(
-                    color: luma.danger, fontWeight: FontWeight.w700)),
+            child: Text(
+              t.commonClear,
+              style: TextStyle(color: luma.danger, fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),
@@ -866,8 +878,11 @@ class _HistoryCard extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: Icon(Icons.delete_outline_rounded,
-                color: luma.textMuted, size: 18),
+            icon: Icon(
+              Icons.delete_outline_rounded,
+              color: luma.textMuted,
+              size: 18,
+            ),
             onPressed: onDelete,
             tooltip: t.commonDelete,
           ),

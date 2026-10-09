@@ -36,10 +36,8 @@ class SyncPlanRequiredException implements Exception {
   final String label;
 
   @override
-  String toString() => currentL.syncServicePlanRequired(
-    label,
-    planById(requiredPlanId).name,
-  );
+  String toString() =>
+      currentL.syncServicePlanRequired(label, planById(requiredPlanId).name);
 }
 
 /// Orchestrates account state and synchronization.
@@ -749,9 +747,7 @@ class SyncService extends ChangeNotifier {
     if (typedRecovery.isNotEmpty) {
       recoveryBytes = RecoveryKey.parse(typedRecovery);
       if (recoveryBytes == null) {
-        throw StateError(
-          currentL.syncServiceRecoveryKeyIncomplete,
-        );
+        throw StateError(currentL.syncServiceRecoveryKeyIncomplete);
       }
     }
     final api = SyncApi(serverUrl);
@@ -763,16 +759,12 @@ class SyncService extends ChangeNotifier {
           code: code,
         );
         if (envelope == null) {
-          throw StateError(
-            currentL.syncServiceNoRecoveryKey,
-          );
+          throw StateError(currentL.syncServiceNoRecoveryKey);
         }
         try {
           oldKey = RecoveryKey.openEnvelope(envelope, recoveryBytes);
         } on SyncCryptoException {
-          throw StateError(
-            currentL.syncServiceRecoveryKeyMismatch,
-          );
+          throw StateError(currentL.syncServiceRecoveryKeyMismatch);
         }
       }
 
@@ -946,9 +938,7 @@ class SyncService extends ChangeNotifier {
     );
 
     if (isLocalOnly && s.localVerifier != null && s.localVerifier != verifier) {
-      throw StateError(
-        currentL.syncServiceWrongDevicePassword,
-      );
+      throw StateError(currentL.syncServiceWrongDevicePassword);
     }
 
     s
@@ -1090,9 +1080,7 @@ class SyncService extends ChangeNotifier {
       newKey: newKeys.encryptionKey,
     );
     if (failed) {
-      throw StateError(
-        currentL.syncServicePasswordReencryptFailed,
-      );
+      throw StateError(currentL.syncServicePasswordReencryptFailed);
     }
   }
 
@@ -1623,6 +1611,26 @@ class SyncService extends ChangeNotifier {
     final encoded = jsonEncode(exported);
     final hash = sha256.convert(utf8.encode(encoded)).toString();
 
+    if (collection.mergeOnImport && meta != null) {
+      if (st.lastSyncedVersion == meta.version && st.lastSyncedHash == hash) {
+        return;
+      }
+      await _pull(collection, meta);
+      final merged = await collection.export();
+      final mergedHash = sha256
+          .convert(utf8.encode(jsonEncode(merged)))
+          .toString();
+      if (mergedHash != st.lastSyncedHash) {
+        await _push(
+          collection,
+          merged,
+          mergedHash,
+          baseVersion: st.lastSyncedVersion!,
+        );
+      }
+      return;
+    }
+
     // First time this device links a collection that already exists on the
     // server: the server copy wins. Without this, a fresh install's default
     // (seed) data would count as the "newest edit" and overwrite real data.
@@ -1688,6 +1696,23 @@ class SyncService extends ChangeNotifier {
       st.lastSyncedHash = hash;
     } on SyncApiException catch (e) {
       if (!e.isConflict || isRetry) rethrow;
+      if (collection.mergeOnImport) {
+        final blob = await _api!.getBlob(collection.id);
+        if (blob == null) rethrow;
+        await _importBlob(collection, blob);
+        final merged = await collection.export();
+        final mergedHash = sha256
+            .convert(utf8.encode(jsonEncode(merged)))
+            .toString();
+        await _push(
+          collection,
+          merged,
+          mergedHash,
+          baseVersion: blob.version,
+          isRetry: true,
+        );
+        return;
+      }
       // Someone uploaded in between: re-resolve newest-wins once.
       final conflictVersion = e.extra?['version'] as int? ?? 0;
       final conflictSavedAt = DateTime.fromMillisecondsSinceEpoch(
@@ -1746,10 +1771,18 @@ class SyncService extends ChangeNotifier {
     // Hash the state as imported so it doesn't read as a fresh local edit.
     final reExported = await collection.export();
     st.lastSyncedHash = sha256
-        .convert(utf8.encode(jsonEncode(reExported)))
+        .convert(
+          utf8.encode(
+            jsonEncode(collection.mergeOnImport ? payload['data'] : reExported),
+          ),
+        )
         .toString();
     st.lastSyncedVersion = blob.version;
-    st.localChangedAt = null;
+    st.localChangedAt =
+        collection.mergeOnImport &&
+            jsonEncode(reExported) != jsonEncode(payload['data'])
+        ? DateTime.now()
+        : null;
   }
 
   Future<void> _refreshAccount() async {
@@ -1873,12 +1906,17 @@ class SyncService extends ChangeNotifier {
     // Newest-edit-wins, mirroring `_syncCollection`.
     final localAt = st.localChangedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
     final peerAt = DateTime.fromMillisecondsSinceEpoch(peerSavedAtMs);
-    if (!peerAt.isAfter(localAt) && st.lastSyncedHash != null) {
+    if (!collection.mergeOnImport &&
+        !peerAt.isAfter(localAt) &&
+        st.lastSyncedHash != null) {
       // We are at least as new as the peer â€” decline to avoid clobbering a
       // local edit that hasn't propagated yet.
       return false;
     }
 
+    final beforeImport = collection.mergeOnImport
+        ? jsonEncode(await collection.export())
+        : null;
     _importing = true;
     try {
       await collection.import(payload['data']);
@@ -1889,11 +1927,16 @@ class SyncService extends ChangeNotifier {
     }
 
     // Record as a local edit so it fans out to the cloud and other peers.
-    st.localChangedAt = DateTime.now();
     final reExported = await collection.export();
-    st.lastSyncedHash = sha256
-        .convert(utf8.encode(jsonEncode(reExported)))
-        .toString();
+    if (collection.mergeOnImport && jsonEncode(reExported) == beforeImport) {
+      return false;
+    }
+    st.localChangedAt = DateTime.now();
+    if (!collection.mergeOnImport) {
+      st.lastSyncedHash = sha256
+          .convert(utf8.encode(jsonEncode(reExported)))
+          .toString();
+    }
     await s.save();
     notifyListeners();
     return true;
@@ -1995,8 +2038,9 @@ class AiServerStatus {
     return AiServerStatus(
       creditBalance: intOf(credits['balance']),
       imageInputModes: {
-        if (json['imageInputModes'] is Map) for (final entry in (json['imageInputModes'] as Map).entries)
-          entry.key.toString(): entry.value == true,
+        if (json['imageInputModes'] is Map)
+          for (final entry in (json['imageInputModes'] as Map).entries)
+            entry.key.toString(): entry.value == true,
       },
       pictureConfigured: picture['configured'] == true,
       pictureWeeklyPct: picture['weeklyPct'] is num

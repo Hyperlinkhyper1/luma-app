@@ -38,6 +38,7 @@ class _PluginsPageState extends State<PluginsPage> {
   _SortMode _sort = _SortMode.relevance;
   _PriceFilter _priceFilter = _PriceFilter.all;
   final Set<String> _selectedTags = {};
+  bool _showTags = false;
 
   // Non-null while the detail page for a plugin is open, taking priority
   // over the marketplace list.
@@ -218,41 +219,65 @@ class _PluginsPageState extends State<PluginsPage> {
                 ),
                 if (allTags.isNotEmpty) ...[
                   const SizedBox(height: 10),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      // A full Wrap of every category tag can run to 5-6
-                      // rows on a phone-width screen, burying the actual
-                      // plugin list below the fold. Below this width, show
-                      // the tags as a single horizontally-scrolling row
-                      // instead so filters stay reachable without the
-                      // clutter.
-                      final compact = constraints.maxWidth < 640;
-                      final chips = [
-                        for (final tag in allTags)
-                          _TagFilterChip(
-                            label: pluginTagLabel(t, tag),
-                            selected: _selectedTags.contains(tag),
-                            onTap: () => setState(() {
-                              if (!_selectedTags.remove(tag)) {
-                                _selectedTags.add(tag);
-                              }
-                            }),
-                          ),
-                      ];
-                      if (!compact) {
-                        return Wrap(spacing: 8, runSpacing: 8, children: chips);
-                      }
-                      return SizedBox(
-                        height: 36,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: chips.length,
-                          separatorBuilder: (_, _) => const SizedBox(width: 8),
-                          itemBuilder: (context, i) => chips[i],
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () => setState(() => _showTags = !_showTags),
+                        icon: Icon(_showTags ? Icons.expand_less : Icons.tune),
+                        label: Text(t.galleryPageCategories),
+                      ),
+                      for (final tag in _selectedTags)
+                        InputChip(
+                          label: Text(pluginTagLabel(t, tag)),
+                          onDeleted: () =>
+                              setState(() => _selectedTags.remove(tag)),
                         ),
-                      );
-                    },
+                    ],
                   ),
+                  if (_showTags)
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        // A full Wrap of every category tag can run to 5-6
+                        // rows on a phone-width screen, burying the actual
+                        // plugin list below the fold. Below this width, show
+                        // the tags as a single horizontally-scrolling row
+                        // instead so filters stay reachable without the
+                        // clutter.
+                        final compact = constraints.maxWidth < 640;
+                        final chips = [
+                          for (final tag in allTags)
+                            _TagFilterChip(
+                              label: pluginTagLabel(t, tag),
+                              selected: _selectedTags.contains(tag),
+                              onTap: () => setState(() {
+                                if (!_selectedTags.remove(tag)) {
+                                  _selectedTags.add(tag);
+                                }
+                              }),
+                            ),
+                        ];
+                        if (!compact) {
+                          return Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: chips,
+                          );
+                        }
+                        return SizedBox(
+                          height: 36,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: chips.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(width: 8),
+                            itemBuilder: (context, i) => chips[i],
+                          ),
+                        );
+                      },
+                    ),
                 ],
               ],
             ),
@@ -637,7 +662,7 @@ class _PluginTileState extends State<_PluginTile> {
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            for (final tag in entry.tags)
+                            for (final tag in entry.tags.take(2))
                               _CategoryChip(
                                 label: pluginTagLabel(t, tag),
                                 luma: luma,
@@ -646,7 +671,9 @@ class _PluginTileState extends State<_PluginTile> {
                               _CategoryChip(label: t.pluginTagPaid, luma: luma),
                             if (entry.requiresAccount)
                               _CategoryChip(
-                                  label: t.commonAccountRequired, luma: luma),
+                                label: t.commonAccountRequired,
+                                luma: luma,
+                              ),
                             if (hasUpdate)
                               _CategoryChip(
                                 label: t.marketplaceUpdateAvailable,
@@ -836,7 +863,9 @@ class _PluginActionButtonState extends State<_PluginActionButton>
           ),
           const SizedBox(width: 8),
           Text(
-            isUpdate ? L.of(context).commonUpdate : L.of(context).commonDownload,
+            isUpdate
+                ? L.of(context).commonUpdate
+                : L.of(context).commonDownload,
             style: textStyle,
           ),
         ],
@@ -1030,8 +1059,7 @@ class _PluginDetailViewState extends State<_PluginDetailView> {
 
   Future<void> _addToHomeScreen() async {
     final widgets = PluginHomeWidgets.instance;
-    final pinned =
-        await widgets.canPin() && await widgets.pin(widget.entry.id);
+    final pinned = await widgets.canPin() && await widgets.pin(widget.entry.id);
     if (pinned || !mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(L.of(context).pluginAddToHomeScreenUnsupported)),
@@ -1164,8 +1192,9 @@ class _PluginDetailViewState extends State<_PluginDetailView> {
                                   ),
                                 if (entry.requiresAccount)
                                   _CategoryChip(
-                                      label: t.commonAccountRequired,
-                                      luma: luma),
+                                    label: t.commonAccountRequired,
+                                    luma: luma,
+                                  ),
                                 _CategoryChip(
                                   label: hasUpdate
                                       ? 'v${record.version} → v${entry.version}'
@@ -1207,7 +1236,8 @@ class _PluginDetailViewState extends State<_PluginDetailView> {
               FutureBuilder<PluginManifest>(
                 future: _manifest,
                 builder: (context, snap) {
-                  final details = snap.data?.detailsIn(t.localeName) ??
+                  final details =
+                      snap.data?.detailsIn(t.localeName) ??
                       entry.descriptionIn(t.localeName);
                   final screenshots =
                       snap.data?.screenshots ?? const <String>[];

@@ -37,6 +37,27 @@ class YoutubeCredentials {
   final String? channelId;
   final String? channelTitle;
 
+  Map<String, dynamic> toJson() => {
+    'clientId': clientId,
+    'clientSecret': clientSecret,
+    'accessToken': accessToken,
+    'refreshToken': refreshToken,
+    'expiresAt': expiresAt.toIso8601String(),
+    'channelId': channelId,
+    'channelTitle': channelTitle,
+  };
+
+  factory YoutubeCredentials.fromJson(Map<String, dynamic> j) =>
+      YoutubeCredentials(
+        clientId: j['clientId'] as String,
+        clientSecret: j['clientSecret'] as String,
+        accessToken: j['accessToken'] as String,
+        refreshToken: j['refreshToken'] as String,
+        expiresAt: DateTime.parse(j['expiresAt'] as String),
+        channelId: j['channelId'] as String?,
+        channelTitle: j['channelTitle'] as String?,
+      );
+
   bool get isComplete =>
       clientId.isNotEmpty &&
       clientSecret.isNotEmpty &&

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
@@ -84,8 +85,7 @@ class LocalModelStore extends ChangeNotifier {
       await file.delete();
       return null;
     }
-    final digest = await sha256.bind(file.openRead()).first;
-    if (digest.toString() != _file.sha256) {
+    if (!await verify(file, bytes: _file.bytes, expectedSha256: _file.sha256)) {
       await file.delete();
       _error = currentL.assistantModelDamaged;
       notifyListeners();
@@ -93,6 +93,43 @@ class LocalModelStore extends ChangeNotifier {
     }
     return path;
   }
+
+  /// Hashing the 2.7 GB desktop model takes ~10 s, which the Assistant used
+  /// to spend on every app start before it could open. So the hash runs
+  /// once, on a background isolate, and a `.verified` stamp beside the
+  /// model records the digest with the file's size and modified time; later
+  /// checks only compare that stamp with the file's stat.
+  @visibleForTesting
+  static Future<bool> verify(
+    File file, {
+    required int bytes,
+    required String expectedSha256,
+  }) async {
+    final stat = await file.stat();
+    final stamp =
+        '$expectedSha256 $bytes ${stat.modified.millisecondsSinceEpoch}';
+    final marker = File('${file.path}$_verifiedSuffix');
+    try {
+      if (await marker.readAsString() == stamp) return true;
+    } catch (_) {}
+    final path = file.path;
+    final digest = await Isolate.run(() => _sha256Of(path));
+    if (digest != expectedSha256) {
+      if (await marker.exists()) await marker.delete();
+      return false;
+    }
+    try {
+      await marker.writeAsString(stamp);
+    } catch (error) {
+      debugPrint('Could not record the model check: $error');
+    }
+    return true;
+  }
+
+  static const _verifiedSuffix = '.verified';
+
+  static Future<String> _sha256Of(String path) async =>
+      (await sha256.bind(File(path).openRead()).first).toString();
 
   Future<bool> get isInstalled async => supported && await modelPath() != null;
 
@@ -155,7 +192,10 @@ class LocalModelStore extends ChangeNotifier {
       if (entry is! File) continue;
       final name = entry.uri.pathSegments.last;
       if (name == keep) continue;
-      if (!name.endsWith('.gguf') && !name.endsWith('.gguf.download')) {
+      if (name == '$keep$_verifiedSuffix') continue;
+      if (!name.endsWith('.gguf') &&
+          !name.endsWith('.gguf.download') &&
+          !name.endsWith('.gguf$_verifiedSuffix')) {
         continue;
       }
       try {
@@ -175,7 +215,11 @@ class LocalModelStore extends ChangeNotifier {
   Future<void> remove() async {
     await LocalQwenClient.release();
     final path = await modelPath();
-    if (path != null) await File(path).delete();
+    if (path != null) {
+      await File(path).delete();
+      final marker = File('$path$_verifiedSuffix');
+      if (await marker.exists()) await marker.delete();
+    }
     await _deleteOtherModels();
     _modelPathCheck = null;
     notifyListeners();

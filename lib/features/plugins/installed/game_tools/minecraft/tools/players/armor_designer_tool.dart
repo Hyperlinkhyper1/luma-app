@@ -93,6 +93,11 @@ class _Slot {
 
 /// Armor trims and leather dyes: preview a set, find the dye mix for a
 /// colour, and get the commands and smithing steps.
+/// Top-level so the isolate closure captures only [target]: one made inside
+/// the State's method would share a scope that holds the State itself.
+Future<McDyeMatch> _bestDyeMixInIsolate(int target) =>
+    Isolate.run(() => mcBestDyeMix(target));
+
 class ArmorDesignerTool extends StatefulWidget {
   const ArmorDesignerTool({super.key, required this.host});
 
@@ -115,7 +120,7 @@ class _ArmorDesignerToolState extends State<ArmorDesignerTool> {
   Future<void> _findMix() async {
     setState(() => _searching = true);
     final target = mcRgbInt(_leather);
-    final match = await Isolate.run(() => mcBestDyeMix(target));
+    final match = await _bestDyeMixInIsolate(target);
     if (!mounted) return;
     setState(() {
       _searching = false;

@@ -25,6 +25,32 @@ Widget _host(Widget child) => MaterialApp(
 );
 
 void main() {
+  testWidgets('desktop composer keeps model picker and send on the far right', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      _host(
+        ChatInputBar(
+          onSend: (_) {},
+          sending: false,
+          enabled: true,
+          caption: '',
+          leading: const Icon(Icons.add),
+          modelSelector: const Text('Model'),
+        ),
+      ),
+    );
+    final send = tester.getRect(find.byIcon(Icons.arrow_upward_rounded));
+    final picker = tester.getRect(find.text('Model'));
+    expect(send.right, greaterThan(1160));
+    expect(send.left - picker.right, lessThan(50));
+    expect(tester.getTopLeft(find.byIcon(Icons.add)).dx, lessThan(40));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('composer sends on Enter and keeps Shift+Enter as a newline', (
     tester,
   ) async {
@@ -94,20 +120,54 @@ void main() {
     tester,
   ) async {
     final sent = <String>[];
-    await tester.pumpWidget(_host(ChatInputBar(
-      onSend: sent.add,
-      sending: false,
-      enabled: true,
-      caption: '',
-      modelSelector: const SizedBox(),
-    )));
+    await tester.pumpWidget(
+      _host(
+        ChatInputBar(
+          onSend: sent.add,
+          sending: false,
+          enabled: true,
+          caption: '',
+          modelSelector: const SizedBox(),
+        ),
+      ),
+    );
     await tester.enterText(find.byType(TextField), 'send with button');
     await tester.pump();
     await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
     await tester.pump();
     expect(sent, ['send with button']);
-    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text,
-        isEmpty);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      isEmpty,
+    );
+  });
+
+  testWidgets('composer reports when the user starts a new message', (
+    tester,
+  ) async {
+    var started = 0;
+    await tester.pumpWidget(
+      _host(
+        ChatInputBar(
+          onSend: (_) {},
+          onStartTyping: () => started++,
+          sending: false,
+          enabled: true,
+          caption: '',
+          modelSelector: const SizedBox(),
+        ),
+      ),
+    );
+    expect(started, 0);
+
+    await tester.enterText(find.byType(TextField), 'h');
+    await tester.enterText(find.byType(TextField), 'hi');
+    expect(started, 1);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), 'next');
+    expect(started, 2);
   });
 
   testWidgets('blocked composer shows the out-of-messages hint', (
@@ -266,9 +326,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Context window'), findsOneWidget);
-    expect(find.text('1.0k / 8.2k (13%)'), findsOneWidget);
+    expect(find.text('1.0k / 8.2k (13%)'), findsNothing);
     expect(find.text('Usage limits · Luma AI'), findsOneWidget);
     expect(find.text('5-hour limit'), findsOneWidget);
+    expect(find.text('1.0k in · 24 out'), findsNothing);
+    await tester.tap(find.text('Context window'));
+    await tester.pumpAndSettle();
+    expect(find.text('1.0k / 8.2k (13%)'), findsOneWidget);
     expect(find.text('1.0k in · 24 out'), findsOneWidget);
 
     await tester.tap(find.text('See detailed breakdown'));

@@ -45,6 +45,7 @@ import 'widgets/chat_moon.dart';
 import 'widgets/chat_usage_meter.dart';
 import 'widgets/compose_mode_menu.dart';
 import 'widgets/assistant_projects_view.dart';
+import 'widgets/assistant_sidebar_transition.dart';
 import 'widgets/assistant_artifacts_view.dart';
 
 const _wideBreakpoint = 760.0;
@@ -211,11 +212,13 @@ class _ChatBodyState extends State<_ChatBody> {
   /// key is saved locally on this device, or (for Luma Support/Mistral and
   /// Luma AI/Google) the sync server has an operator-configured key that
   /// chats will be proxied through — see [ChatController].
+  ///
+  /// The on-device model isn't loaded here: it holds ~3 GB once loaded, so
+  /// the composer warms it up when the user starts typing instead of on
+  /// every visit to the page.
   Future<bool> _checkKeyAvailable() async {
     if (_providerId == AiProviderId.local.name) {
-      final installed = await LocalModelStore.instance.isInstalled;
-      if (installed) widget.controller.warmUpLocalModel();
-      return installed;
+      return LocalModelStore.instance.isInstalled;
     }
     if (await widget.keyStore.readKey(_providerId) != null) return true;
     if (_providerId == AiProviderId.mistral.name) {
@@ -616,26 +619,17 @@ class _ChatLayoutState extends State<_ChatLayout> {
               ? Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    AnimatedSize(
-                      duration: const Duration(milliseconds: 180),
-                      curve: Curves.easeOutCubic,
-                      alignment: Alignment.centerLeft,
-                      child: _sidebarOpen
-                          ? SizedBox(
-                              width: 264,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: context.luma.rail,
-                                  border: Border(
-                                    right: BorderSide(
-                                      color: context.luma.border,
-                                    ),
-                                  ),
-                                ),
-                                child: sidebar,
-                              ),
-                            )
-                          : const SizedBox(width: 0),
+                    AssistantSidebarTransition(
+                      open: _sidebarOpen,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: context.luma.rail,
+                          border: Border(
+                            right: BorderSide(color: context.luma.border),
+                          ),
+                        ),
+                        child: sidebar,
+                      ),
                     ),
                     Expanded(child: main),
                   ],
@@ -1951,6 +1945,7 @@ class _ChatComposerState extends State<_ChatComposer> {
     );
     final composeMode = widget.composeMode;
     return ChatInputBar(
+      onStartTyping: widget.controller.warmUpLocalModel,
       sending: widget.controller.isSending,
       enabled: !_blocked,
       caption: '',

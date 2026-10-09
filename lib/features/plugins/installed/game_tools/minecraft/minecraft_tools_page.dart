@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
@@ -36,7 +34,10 @@ import 'tools/players/shape_generator_tool.dart';
 import 'tools/players/skin_editor_tool.dart';
 import 'tools/players/sulfur_cube_tool.dart';
 import 'tools/players/villager_guide_tool.dart';
+import 'ui/mc_showcase.dart';
 import 'ui/mc_style.dart';
+
+export 'ui/mc_showcase.dart' show McToolCard;
 
 /// Game Tools → Minecraft: a hub of tools in the Pugtools mould, split into
 /// three sub-tabs by who they are for, each opening its own screen.
@@ -66,21 +67,41 @@ class _MinecraftToolsPageState extends State<MinecraftToolsPage> {
   @override
   Widget build(BuildContext context) {
     final open = _open;
+    final Widget child;
     if (open != null) {
       final host = McToolHost(
         tool: open,
         onBack: () => setState(() => _open = null),
       );
-      return KeyedSubtree(key: ValueKey(open), child: buildMcTool(host));
-    }
-    return PageStorage(
-      bucket: _bucket,
-      child: _Hub(
+      child = KeyedSubtree(key: ValueKey(open), child: buildMcTool(host));
+    } else {
+      child = _Hub(
+        key: const ValueKey('hub'),
         audience: _audience,
         search: _search,
         onAudience: (a) => setState(() => _audience = a),
         onSearch: () => setState(() {}),
         onOpen: (tool) => setState(() => _open = tool),
+      );
+    }
+    // Opening a tool zooms it up out of the hub; going back settles the hub
+    // into place again.
+    return PageStorage(
+      bucket: _bucket,
+      child: AnimatedSwitcher(
+        duration: McMotion.reduced(context) ? Duration.zero : McMotion.medium,
+        reverseDuration:
+            McMotion.reduced(context) ? Duration.zero : McMotion.fast,
+        switchInCurve: McMotion.enter,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: ScaleTransition(
+            scale: Tween(begin: 0.985, end: 1.0).animate(animation),
+            child: child,
+          ),
+        ),
+        child: child,
       ),
     );
   }
@@ -119,8 +140,14 @@ Widget buildMcTool(McToolHost host) => switch (host.tool) {
   McTool.advancementGenerator => AdvancementTool(host: host),
 };
 
+/// The stagger between cards rising into a grid, capped so a long list
+/// does not keep the user waiting for its last row.
+Duration _stagger(int index) =>
+    Duration(milliseconds: 40 * (index < 10 ? index : 10));
+
 class _Hub extends StatelessWidget {
   const _Hub({
+    super.key,
     required this.audience,
     required this.search,
     required this.onAudience,
@@ -139,7 +166,7 @@ class _Hub extends StatelessWidget {
     final t = L.of(context);
     final luma = context.luma;
     final phone = context.isPhoneWidth;
-    final pad = phone ? 14.0 : 32.0;
+    final pad = phone ? 16.0 : 40.0;
     final query = search.text.trim();
     final results = query.isEmpty
         ? const <McTool>[]
@@ -147,20 +174,38 @@ class _Hub extends StatelessWidget {
             for (final tool in McTool.values)
               if (tool.matches(t, query)) tool,
           ];
+    final minTile = phone ? 260.0 : 270.0;
 
+    Widget section(Widget child) => SliverToBoxAdapter(
+      child: Center(
+        child: ConstrainedBox(
+          // Pugtools keeps its page to a column; past this, cards only get
+          // wider, not better.
+          constraints: const BoxConstraints(maxWidth: 1320),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: pad),
+            // Full width, so a narrow child (the hero) lines up on the left
+            // edge with everything else instead of being centred.
+            child: SizedBox(width: double.infinity, child: child),
+          ),
+        ),
+      ),
+    );
+
+    var cardIndex = 0;
     return McBackdrop(
       child: CustomScrollView(
         key: const PageStorageKey('mc-tools-hub'),
         slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(pad, phone ? 16 : 30, pad, 0),
+          section(
+            Padding(
+              padding: EdgeInsets.only(top: phone ? 20 : 40),
               child: _Hero(phone: phone),
             ),
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(pad, 22, pad, 6),
+          section(
+            Padding(
+              padding: const EdgeInsets.only(top: 24, bottom: 4),
               child: _AudienceBar(
                 selected: query.isEmpty ? audience : null,
                 onSelect: (a) {
@@ -173,9 +218,9 @@ class _Hub extends StatelessWidget {
             ),
           ),
           if (query.isNotEmpty)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(pad, 18, pad, 0),
+            section(
+              Padding(
+                padding: const EdgeInsets.only(top: 22),
                 child: results.isEmpty
                     ? McHint(
                         icon: Icons.search_off_rounded,
@@ -186,15 +231,20 @@ class _Hub extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           McHeading(t.mcToolsSearchResults(results.length)),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 16),
                           McGrid(
-                            minTileWidth: phone ? 260 : 250,
+                            minTileWidth: minTile,
+                            spacing: 20,
                             children: [
-                              for (final tool in results)
-                                McToolCard(
-                                  tool: tool,
-                                  onTap: () => onOpen(tool),
-                                  showAudience: true,
+                              for (final (i, tool) in results.indexed)
+                                McReveal(
+                                  key: ValueKey('search-${tool.name}'),
+                                  delay: _stagger(i),
+                                  child: McToolCard(
+                                    tool: tool,
+                                    onTap: () => onOpen(tool),
+                                    showAudience: true,
+                                  ),
                                 ),
                             ],
                           ),
@@ -202,17 +252,36 @@ class _Hub extends StatelessWidget {
                       ),
               ),
             )
-          else
+          else ...[
+            section(
+              Padding(
+                padding: EdgeInsets.only(top: phone ? 22 : 30),
+                child: McReveal(
+                  key: ValueKey('spot-${audience.name}'),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      McHeading(
+                        audience.blurb(t),
+                        size: phone ? 24 : 34,
+                      ),
+                      const SizedBox(height: 18),
+                      McSpotlight(tools: audience.tools, onOpen: onOpen),
+                    ],
+                  ),
+                ),
+              ),
+            ),
             for (final group in audience.groups)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(pad, 26, pad, 0),
+              section(
+                Padding(
+                  padding: EdgeInsets.only(top: phone ? 34 : 52),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       McHeading(
                         group.label(t),
-                        size: phone ? 20 : 24,
+                        size: phone ? 22 : 28,
                         trailing: Text(
                           t.mcToolsCount(group.tools.length),
                           style: TextStyle(
@@ -222,21 +291,30 @@ class _Hub extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
                       McGrid(
-                        minTileWidth: phone ? 260 : 250,
+                        minTileWidth: minTile,
+                        spacing: 20,
                         children: [
                           for (final tool in group.tools)
-                            McToolCard(tool: tool, onTap: () => onOpen(tool)),
+                            McReveal(
+                              key: ValueKey('card-${tool.name}'),
+                              delay: _stagger(cardIndex++),
+                              child: McToolCard(
+                                tool: tool,
+                                onTap: () => onOpen(tool),
+                              ),
+                            ),
                         ],
                       ),
                     ],
                   ),
                 ),
               ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(pad, 34, pad, 30),
+          ],
+          section(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 48, 0, 32),
               child: Text(
                 t.mcToolsDisclaimer,
                 textAlign: TextAlign.center,
@@ -259,81 +337,126 @@ class _Hero extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = L.of(context);
     final luma = context.luma;
-    final text = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: luma.surface,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: luma.border),
+    return McReveal(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: luma.surface,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: luma.border),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const _Pulse(),
+                const SizedBox(width: 8),
+                Text(
+                  t.mcToolsKicker(kMcDataVersion),
+                  style: TextStyle(
+                    color: luma.textSecondary,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
+            ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+          const SizedBox(height: 16),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 820),
+            child: Text(
+              t.mcToolsHeadline,
+              style: TextStyle(
+                color: luma.textPrimary,
+                fontSize: phone ? 32 : 52,
+                fontWeight: FontWeight.w900,
+                letterSpacing: phone ? -0.8 : -1.6,
+                height: 1.05,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Text(
+              t.mcToolsSubtitle,
+              style: TextStyle(
+                color: luma.textSecondary,
+                fontSize: phone ? 14.5 : 16.5,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The live dot on the version pill: a soft ring that breathes outwards.
+class _Pulse extends StatefulWidget {
+  const _Pulse();
+
+  @override
+  State<_Pulse> createState() => _PulseState();
+}
+
+class _PulseState extends State<_Pulse> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (McMotion.reduced(context)) {
+      _controller.stop();
+    } else if (!_controller.isAnimating) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = McHue.green.color;
+    return SizedBox(
+      width: 14,
+      height: 14,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          final v = Curves.easeOut.transform(_controller.value);
+          return Stack(
+            alignment: Alignment.center,
             children: [
               Container(
-                width: 7,
-                height: 7,
+                width: 7 + 7 * v,
+                height: 7 + 7 * v,
                 decoration: BoxDecoration(
-                  color: McHue.green.color,
+                  color: color.withValues(alpha: 0.35 * (1 - v)),
                   shape: BoxShape.circle,
                 ),
               ),
-              const SizedBox(width: 7),
-              Text(
-                t.mcToolsKicker(kMcDataVersion),
-                style: TextStyle(
-                  color: luma.textSecondary,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.2,
-                ),
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
               ),
             ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        McHeading(t.mcToolsHeadline, size: phone ? 26 : 36),
-        const SizedBox(height: 8),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
-          child: Text(
-            t.mcToolsSubtitle,
-            style: TextStyle(
-              color: luma.textSecondary,
-              fontSize: phone ? 13.5 : 15,
-              height: 1.45,
-            ),
-          ),
-        ),
-      ],
-    );
-    if (phone) return text;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(child: text),
-        const SizedBox(width: 24),
-        SizedBox(
-          width: 220,
-          height: 150,
-          child: CustomPaint(
-            painter: _CubeClusterPainter(
-              colors: [
-                McHue.green.color,
-                McHue.indigo.color,
-                McHue.amber.color,
-                McHue.sky.color,
-                McHue.violet.color,
-                McHue.rose.color,
-              ],
-              seed: 7,
-              count: 9,
-            ),
-          ),
-        ),
-      ],
+          );
+        },
+      ),
     );
   }
 }
@@ -355,37 +478,8 @@ class _AudienceBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = L.of(context);
     final luma = context.luma;
-    Widget tabs({bool compact = false}) => Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: luma.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: luma.border),
-      ),
-      child: Row(
-        mainAxisSize: compact ? MainAxisSize.max : MainAxisSize.min,
-        children: [
-          for (final a in McAudience.values)
-            if (compact)
-              Expanded(
-                child: _AudienceTab(
-                  audience: a,
-                  selected: a == selected,
-                  compact: true,
-                  onTap: () => onSelect(a),
-                ),
-              )
-            else
-              _AudienceTab(
-                audience: a,
-                selected: a == selected,
-                onTap: () => onSelect(a),
-              ),
-        ],
-      ),
-    );
     final field = SizedBox(
-      width: context.isPhoneWidth ? double.infinity : 260,
+      width: context.isPhoneWidth ? double.infinity : 280,
       child: TextField(
         controller: search,
         onChanged: (_) => onSearch(),
@@ -414,7 +508,7 @@ class _AudienceBar extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              tabs(compact: true),
+              _AudienceTabs(selected: selected, onSelect: onSelect, compact: true),
               const SizedBox(height: 10),
               field,
             ],
@@ -425,7 +519,7 @@ class _AudienceBar extends StatelessWidget {
             Flexible(
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                child: tabs(),
+                child: _AudienceTabs(selected: selected, onSelect: onSelect),
               ),
             ),
             const SizedBox(width: 16),
@@ -434,6 +528,92 @@ class _AudienceBar extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// A segmented control whose highlight slides between the sub-tabs. The
+/// tabs share one width so the highlight only has to move, never resize.
+class _AudienceTabs extends StatelessWidget {
+  const _AudienceTabs({
+    required this.selected,
+    required this.onSelect,
+    this.compact = false,
+  });
+
+  final McAudience? selected;
+  final ValueChanged<McAudience> onSelect;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final count = McAudience.values.length;
+    final index = selected?.index;
+    final row = Row(
+      mainAxisSize: compact ? MainAxisSize.max : MainAxisSize.min,
+      children: [
+        for (final a in McAudience.values)
+          Expanded(
+            child: _AudienceTab(
+              audience: a,
+              selected: a == selected,
+              compact: compact,
+              onTap: () => onSelect(a),
+            ),
+          ),
+      ],
+    );
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: luma.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: luma.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: AnimatedOpacity(
+              duration: McMotion.fast,
+              opacity: index == null ? 0 : 1,
+              child: AnimatedAlign(
+                duration: McMotion.reduced(context) ? Duration.zero : McMotion.medium,
+                curve: Curves.easeOutBack,
+                alignment: Alignment(
+                  count == 1 ? 0 : -1 + 2 * (index ?? 0) / (count - 1),
+                  0,
+                ),
+                child: FractionallySizedBox(
+                  widthFactor: 1 / count,
+                  heightFactor: 1,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: luma.accent,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: luma.accent.withValues(alpha: 0.35),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (compact) row else IntrinsicWidth(child: row),
+        ],
+      ),
     );
   }
 }
@@ -458,6 +638,7 @@ class _AudienceTab extends StatelessWidget {
     final t = L.of(context);
     final luma = context.luma;
     final count = audience.tools.length;
+    final fg = selected ? luma.onAccent : luma.textPrimary;
     return Tooltip(
       message: audience.blurb(t),
       waitDuration: const Duration(milliseconds: 500),
@@ -466,353 +647,65 @@ class _AudienceTab extends StatelessWidget {
         selected: selected,
         label: '${audience.label(t)}, ${t.mcToolsCount(count)}',
         child: Material(
-          color: selected ? luma.accent : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
+          type: MaterialType.transparency,
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(10),
-            hoverColor: luma.surfaceHover,
+            hoverColor: selected ? Colors.transparent : luma.surfaceHover,
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 14, vertical: 9),
+              padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 16, vertical: 10),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    audience.icon,
-                    size: 17,
-                    color: selected ? luma.onAccent : luma.textSecondary,
+                  TweenAnimationBuilder<Color?>(
+                    tween: ColorTween(end: selected ? luma.onAccent : luma.textSecondary),
+                    duration: McMotion.fast,
+                    builder: (context, color, _) =>
+                        Icon(audience.icon, size: 17, color: color),
                   ),
                   const SizedBox(width: 8),
                   Flexible(
-                    child: Text(
-                      audience.label(t),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: selected ? luma.onAccent : luma.textPrimary,
+                    child: AnimatedDefaultTextStyle(
+                      duration: McMotion.fast,
+                      style: DefaultTextStyle.of(context).style.copyWith(
+                        color: fg,
                         fontSize: 13.5,
                         fontWeight: FontWeight.w700,
+                      ),
+                      child: Text(
+                        audience.label(t),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),
                   if (!compact) const SizedBox(width: 8),
-                  if (!compact) Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 1,
-                    ),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? luma.onAccent.withValues(alpha: 0.18)
-                          : luma.surfaceHover,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      '$count',
-                      style: TextStyle(
-                        color: selected ? luma.onAccent : luma.textSecondary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
+                  if (!compact)
+                    AnimatedContainer(
+                      duration: McMotion.fast,
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? luma.onAccent.withValues(alpha: 0.18)
+                            : luma.surfaceHover,
+                        borderRadius: BorderRadius.circular(999),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// One tool on the hub: a picture on top, the name in bold and a line of
-/// what it does — the card Pugtools lists every tool with.
-class McToolCard extends StatefulWidget {
-  const McToolCard({
-    super.key,
-    required this.tool,
-    required this.onTap,
-    this.showAudience = false,
-  });
-
-  final McTool tool;
-  final VoidCallback onTap;
-  final bool showAudience;
-
-  @override
-  State<McToolCard> createState() => _McToolCardState();
-}
-
-class _McToolCardState extends State<McToolCard> {
-  bool _hover = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = L.of(context);
-    final luma = context.luma;
-    final tool = widget.tool;
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    return Semantics(
-      button: true,
-      label: '${tool.title(t)}. ${tool.blurb(t)}',
-      excludeSemantics: true,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => _hover = true),
-        onExit: (_) => setState(() => _hover = false),
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            curve: Curves.easeOutCubic,
-            transform: Matrix4.translationValues(0, _hover ? -3 : 0, 0),
-            decoration: BoxDecoration(
-              color: luma.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: _hover
-                    ? tool.hue.color.withValues(alpha: 0.6)
-                    : luma.border,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: (_hover ? tool.hue.color : Colors.black).withValues(
-                    alpha: _hover ? 0.16 : (dark ? 0.12 : 0.04),
-                  ),
-                  blurRadius: _hover ? 22 : 12,
-                  offset: Offset(0, _hover ? 8 : 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(9),
-                    child: AspectRatio(
-                      aspectRatio: 16 / 8.5,
-                      child: _CardArt(tool: tool, hover: _hover),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              tool.title(t),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: luma.textPrimary,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.2,
-                              ),
-                            ),
-                          ),
-                          AnimatedOpacity(
-                            duration: const Duration(milliseconds: 160),
-                            opacity: _hover ? 1 : 0,
-                            child: Icon(
-                              Icons.arrow_forward_rounded,
-                              size: 16,
-                              color: tool.hue.color,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        tool.blurb(t),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                      child: Text(
+                        '$count',
                         style: TextStyle(
-                          color: luma.textSecondary,
-                          fontSize: 12.5,
-                          height: 1.4,
+                          color: selected ? luma.onAccent : luma.textSecondary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                      if (widget.showAudience) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          tool.group.audience.label(t),
-                          style: TextStyle(
-                            color: luma.textMuted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
+                    ),
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
   }
-}
-
-/// The picture on a tool card: a soft wash in the tool's hue, a scatter of
-/// little blocks and the tool's icon on a raised tile.
-class _CardArt extends StatelessWidget {
-  const _CardArt({required this.tool, required this.hover});
-
-  final McTool tool;
-  final bool hover;
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final hue = tool.hue.color;
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color.lerp(luma.surface, hue, dark ? 0.16 : 0.10)!,
-                Color.lerp(luma.surface, hue, dark ? 0.32 : 0.24)!,
-              ],
-            ),
-          ),
-        ),
-        CustomPaint(
-          painter: _CubeClusterPainter(
-            colors: [hue, Color.lerp(hue, Colors.white, 0.35)!],
-            seed: tool.index * 31 + 3,
-            count: 6,
-            opacity: dark ? 0.55 : 0.7,
-            scatter: true,
-          ),
-        ),
-        Positioned(
-          left: 12,
-          top: 10,
-          child: McTag(tool.tagLabel(L.of(context)), hue: tool.hue),
-        ),
-        Center(
-          child: AnimatedScale(
-            duration: const Duration(milliseconds: 180),
-            scale: hover ? 1.08 : 1,
-            child: Container(
-              width: 58,
-              height: 58,
-              decoration: BoxDecoration(
-                color: dark ? luma.surface : Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: hue.withValues(alpha: 0.30),
-                    blurRadius: 18,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Icon(tool.icon, color: hue, size: 30),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Draws little isometric blocks: a cluster for the hero, or a loose scatter
-/// behind a card's icon.
-class _CubeClusterPainter extends CustomPainter {
-  _CubeClusterPainter({
-    required this.colors,
-    required this.seed,
-    required this.count,
-    this.opacity = 1,
-    this.scatter = false,
-  });
-
-  final List<Color> colors;
-  final int seed;
-  final int count;
-  final double opacity;
-  final bool scatter;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rnd = math.Random(seed);
-    final cubes = <(Offset, double, Color)>[];
-    if (scatter) {
-      for (var i = 0; i < count; i++) {
-        final s = 9 + rnd.nextDouble() * 12;
-        // Keep the middle clear for the icon tile.
-        var x = rnd.nextDouble() * size.width;
-        if ((x - size.width / 2).abs() < 50) x += x < size.width / 2 ? -60 : 60;
-        var y = 10 + rnd.nextDouble() * (size.height - 20);
-        // Keep the top-left corner clear for the card's tag.
-        if (x < 110 && y < 44) y += 44;
-        cubes.add((Offset(x, y), s, colors[i % colors.length]));
-      }
-    } else {
-      final s = size.height / 7;
-      final origin = Offset(size.width / 2, size.height * 0.30);
-      const layout = [
-        (0, 0, 0), (1, 0, 0), (0, 1, 0), (1, 1, 0), (2, 0, 0),
-        (0, 0, 1), (1, 0, 1), (0, 1, 1), (0, 0, 2),
-      ];
-      for (var i = 0; i < math.min(count, layout.length); i++) {
-        final (gx, gz, gy) = layout[i];
-        final p = origin +
-            Offset((gx - gz) * s * 0.87, (gx + gz) * s * 0.5 - gy * s);
-        cubes.add((p, s, colors[(i + seed) % colors.length]));
-      }
-      cubes.sort((a, b) => a.$1.dy.compareTo(b.$1.dy));
-    }
-    for (final (p, s, c) in cubes) {
-      _cube(canvas, p, s, c);
-    }
-  }
-
-  void _cube(Canvas canvas, Offset top, double s, Color color) {
-    final w = s * 0.87;
-    final h = s * 0.5;
-    final topFace = Path()
-      ..moveTo(top.dx, top.dy)
-      ..lineTo(top.dx + w, top.dy + h)
-      ..lineTo(top.dx, top.dy + 2 * h)
-      ..lineTo(top.dx - w, top.dy + h)
-      ..close();
-    final left = Path()
-      ..moveTo(top.dx - w, top.dy + h)
-      ..lineTo(top.dx, top.dy + 2 * h)
-      ..lineTo(top.dx, top.dy + 2 * h + s)
-      ..lineTo(top.dx - w, top.dy + h + s)
-      ..close();
-    final right = Path()
-      ..moveTo(top.dx + w, top.dy + h)
-      ..lineTo(top.dx, top.dy + 2 * h)
-      ..lineTo(top.dx, top.dy + 2 * h + s)
-      ..lineTo(top.dx + w, top.dy + h + s)
-      ..close();
-    Paint fill(Color c) => Paint()..color = c.withValues(alpha: opacity);
-    canvas.drawPath(topFace, fill(Color.lerp(color, Colors.white, 0.25)!));
-    canvas.drawPath(left, fill(color));
-    canvas.drawPath(right, fill(Color.lerp(color, Colors.black, 0.22)!));
-  }
-
-  @override
-  bool shouldRepaint(_CubeClusterPainter old) =>
-      old.seed != seed || old.colors != colors || old.opacity != opacity;
 }

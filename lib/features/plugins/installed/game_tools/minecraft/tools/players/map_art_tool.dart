@@ -139,12 +139,43 @@ _Prepared _prepare(Uint8List bytes, int mapsX, int mapsY, _Fit fit) {
   return _Prepared(Uint8List.fromList(rgba.getBytes(order: img.ChannelOrder.rgba)), tw, th);
 }
 
+/// Converts off the UI thread. A top-level function on purpose: a closure
+/// built inside the State's methods shares their captured scope, which holds
+/// the State itself, and Isolate.run would try to send the whole widget tree.
+Future<(McMapArtResult, Schematic)> _convertInIsolate(
+  Uint8List source,
+  int mapsX,
+  int mapsY,
+  _Fit fit,
+  List<int> colors,
+  bool staircase,
+  McDither dither,
+) => Isolate.run(() {
+  final prepared = _prepare(source, mapsX, mapsY, fit);
+  final r = mcConvertMapArt(
+    McMapArtJob(
+      pixels: prepared.pixels,
+      width: prepared.width,
+      height: prepared.height,
+      colors: colors,
+      staircase: staircase,
+      dither: dither,
+    ),
+  );
+  return (r, _buildMapSchematic(r, staircase));
+});
+
 /// Turns a picture into map art: matched to the map palette, dithered,
 /// flat or staircased, and exported as a schematic to build.
 class MapArtTool extends StatefulWidget {
-  const MapArtTool({super.key, required this.host});
+  const MapArtTool({super.key, required this.host, this.initialImage, this.initialName});
 
   final McToolHost host;
+
+  /// Opens already converting this picture, for tests and the hub's
+  /// screenshots.
+  final Uint8List? initialImage;
+  final String? initialName;
 
   @override
   State<MapArtTool> createState() => _MapArtToolState();
@@ -167,6 +198,19 @@ class _MapArtToolState extends State<MapArtTool> {
   bool _show3d = false;
   int _token = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    final image = widget.initialImage;
+    if (image != null) {
+      _source = image;
+      _name = widget.initialName ?? _name;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _run();
+      });
+    }
+  }
+
   Future<void> _pick() async {
     final picked = await FilePicker.pickFiles(type: FileType.image, withData: true);
     final file = picked?.files.firstOrNull;
@@ -185,20 +229,15 @@ class _MapArtToolState extends State<MapArtTool> {
       final mapsX = _mapsX, mapsY = _mapsY, fit = _fit;
       final colors = _enabled.toList()..sort();
       final staircase = _staircase, dither = _dither;
-      final (result, schematic) = await Isolate.run(() {
-        final prepared = _prepare(source, mapsX, mapsY, fit);
-        final r = mcConvertMapArt(
-          McMapArtJob(
-            pixels: prepared.pixels,
-            width: prepared.width,
-            height: prepared.height,
-            colors: colors,
-            staircase: staircase,
-            dither: dither,
-          ),
-        );
-        return (r, _buildMapSchematic(r, staircase));
-      });
+      final (result, schematic) = await _convertInIsolate(
+        source,
+        mapsX,
+        mapsY,
+        fit,
+        colors,
+        staircase,
+        dither,
+      );
       final completer = Completer<ui.Image>();
       ui.decodeImageFromPixels(
         result.preview,

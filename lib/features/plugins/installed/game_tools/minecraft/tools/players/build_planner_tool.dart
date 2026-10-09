@@ -227,21 +227,26 @@ class _BuildPlannerToolState extends State<BuildPlannerTool> {
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
                 for (final m in materials)
-                  CheckboxListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    controlAffinity: ListTileControlAffinity.leading,
-                    value: _gathered.contains(m.state.name),
-                    onChanged: (v) => setState(() {
-                      if (v == true) {
-                        _gathered.add(m.state.name);
-                      } else {
-                        _gathered.remove(m.state.name);
-                      }
-                    }),
-                    title: Opacity(
-                      opacity: _gathered.contains(m.state.name) ? 0.45 : 1,
-                      child: McMaterialRow(material: m),
+                  // The panel paints its own surface; give the tile a
+                  // Material of its own so its ink shows on top of it.
+                  Material(
+                    type: MaterialType.transparency,
+                    child: CheckboxListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      value: _gathered.contains(m.state.name),
+                      onChanged: (v) => setState(() {
+                        if (v == true) {
+                          _gathered.add(m.state.name);
+                        } else {
+                          _gathered.remove(m.state.name);
+                        }
+                      }),
+                      title: Opacity(
+                        opacity: _gathered.contains(m.state.name) ? 0.45 : 1,
+                        child: McMaterialRow(material: m),
+                      ),
                     ),
                   ),
               ],

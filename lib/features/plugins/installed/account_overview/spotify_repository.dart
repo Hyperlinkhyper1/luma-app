@@ -92,7 +92,36 @@ class SpotifyRepository extends ChangeNotifier {
     return next;
   }
 
-  Future<void> load() async {
+  Future<Map<String, dynamic>?> exportConnection() async {
+    await _storageQueue;
+    final raw = await _secrets.read(_storageKey);
+    return raw == null ? null : jsonDecode(raw) as Map<String, dynamic>;
+  }
+
+  Future<void> importConnection(Map<String, dynamic>? data) async {
+    final credential = data == null ? null : SpotifyCredentials.fromJson(data);
+    await load();
+    _generation++;
+    await _store(
+      () => data == null
+          ? _secrets.delete(_storageKey)
+          : _secrets.write(_storageKey, jsonEncode(credential!.toJson())),
+    );
+    _credentials = credential;
+    _snapshot = null;
+    _listeningAccountId = null;
+    _listeningTotal = SpotifyListeningTotal.empty;
+    _loading = false;
+    _error = null;
+    _warnings.clear();
+    _notify();
+    if (connected) unawaitedRefresh();
+  }
+
+  Future<void>? _loadTask;
+  Future<void> load() => _loadTask ??= _load();
+
+  Future<void> _load() async {
     if (_loaded) return;
     try {
       final raw = await _secrets.read(_storageKey);
@@ -270,9 +299,7 @@ class SpotifyRepository extends ChangeNotifier {
       }
       if (!page.hasMore) {
         if (previous.lastPlayedAt != null) {
-          _warnings.add(
-            currentL.accountOverviewSpotifyHistoryGap,
-          );
+          _warnings.add(currentL.accountOverviewSpotifyHistoryGap);
         }
         break;
       }
@@ -311,7 +338,9 @@ class SpotifyRepository extends ChangeNotifier {
         try {
           await _loadListeningTotal(accountId);
         } catch (e) {
-          _warnings.add(currentL.accountOverviewSpotifyWarningListeningTotal('$e'));
+          _warnings.add(
+            currentL.accountOverviewSpotifyWarningListeningTotal('$e'),
+          );
         }
       }
       Future<T> optional<T>(
@@ -322,7 +351,9 @@ class SpotifyRepository extends ChangeNotifier {
         try {
           return await _withToken(read);
         } catch (e) {
-          _warnings.add(currentL.accountOverviewSpotifyWarningLabeled(label, '$e'));
+          _warnings.add(
+            currentL.accountOverviewSpotifyWarningLabeled(label, '$e'),
+          );
           return fallback;
         }
       }
@@ -345,7 +376,9 @@ class SpotifyRepository extends ChangeNotifier {
           try {
             await _countRecentPlays(accountId, page, generation);
           } catch (e) {
-            _warnings.add(currentL.accountOverviewSpotifyWarningListeningTotal('$e'));
+            _warnings.add(
+              currentL.accountOverviewSpotifyWarningListeningTotal('$e'),
+            );
           }
         }
       } catch (e) {
@@ -378,7 +411,9 @@ class SpotifyRepository extends ChangeNotifier {
         timeRange: range,
       );
     } catch (e) {
-      if (generation == _generation) _error = currentL.accountOverviewSpotifyRefreshFailed('$e');
+      if (generation == _generation) {
+        _error = currentL.accountOverviewSpotifyRefreshFailed('$e');
+      }
     } finally {
       if (generation == _generation) {
         _loading = false;

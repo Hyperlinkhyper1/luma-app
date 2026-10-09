@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -15,10 +16,8 @@ import 'pmc_extract.dart';
 ///
 /// Supplied by the UI (see `PmcWebViewFetcher`) because only a widget can own
 /// a browser engine; the repository just awaits it like any other request.
-typedef PmcPageFetcher = Future<List<PmcPage>> Function(
-  String member, {
-  int maxPages,
-});
+typedef PmcPageFetcher =
+    Future<List<PmcPage>> Function(String member, {int maxPages});
 
 /// Owns the MC Content state: the three platforms, their combined library,
 /// and the locally-grown download history behind the trend graphs.
@@ -29,8 +28,8 @@ typedef PmcPageFetcher = Future<List<PmcPage>> Function(
 /// price tracker and CS2 market apart.
 class McContentRepository extends ChangeNotifier {
   McContentRepository({ModrinthApi? modrinth, CurseForgeApi? curseforge})
-      : _modrinth = modrinth ?? ModrinthApi(),
-        _curseforge = curseforge ?? CurseForgeApi();
+    : _modrinth = modrinth ?? ModrinthApi(),
+      _curseforge = curseforge ?? CurseForgeApi();
 
   final ModrinthApi _modrinth;
   final CurseForgeApi _curseforge;
@@ -73,8 +72,9 @@ class McContentRepository extends ChangeNotifier {
   Future<File> _cache() async {
     if (_cacheFile != null) return _cacheFile!;
     final dir = await getApplicationSupportDirectory();
-    return _cacheFile =
-        File('${dir.path}${Platform.pathSeparator}luma_mc_snapshot.json');
+    return _cacheFile = File(
+      '${dir.path}${Platform.pathSeparator}luma_mc_snapshot.json',
+    );
   }
 
   /// Registers (or clears) the browser-backed PMC fetcher.
@@ -83,7 +83,86 @@ class McContentRepository extends ChangeNotifier {
     _notify();
   }
 
-  Future<void> load() async {
+  Future<Map<String, dynamic>?> exportConnection() async {
+    final store = await McCredentialStore.load();
+    return (await store.read())?.toJson();
+  }
+
+  static const _connectionFields = {
+    'curseforge': [
+      'curseforgeApiKey',
+      'curseforgeAuthorId',
+      'curseforgeProjectIds',
+    ],
+    'modrinth': ['modrinthUsername', 'modrinthToken'],
+    'planet_minecraft': ['pmcUsername'],
+  };
+
+  Future<Map<String, dynamic>?> exportPlatformConnection(
+    String platform,
+  ) async {
+    final all = await exportConnection();
+    final data = <String, dynamic>{
+      for (final field in _connectionFields[platform]!)
+        if (all?.containsKey(field) ?? false) field: all![field],
+    };
+    return data.isEmpty ? null : data;
+  }
+
+  Future<void> importPlatformConnection(
+    String platform,
+    Map<String, dynamic>? data,
+  ) async {
+    final merged = await exportConnection() ?? <String, dynamic>{};
+    for (final field in _connectionFields[platform]!) {
+      merged.remove(field);
+      if (data?.containsKey(field) ?? false) merged[field] = data![field];
+    }
+    await importConnection(merged.isEmpty ? null : merged);
+  }
+
+  Future<void> importConnection(Map<String, dynamic>? data) async {
+    final credential = data == null
+        ? const McCredentials()
+        : McCredentials.fromJson(data);
+    await load();
+    await _connectionBusy?.future;
+    final store = await McCredentialStore.load();
+    if (data == null) {
+      await store.clear();
+    } else {
+      await store.save(credential);
+    }
+    final previous = _credentials;
+    _credentials = credential;
+    _snapshot = McSnapshot.empty;
+    _error = null;
+    for (final platform in McPlatform.values) {
+      Object? identity(McCredentials c) => switch (platform) {
+        McPlatform.curseforge => (
+          c.curseforgeAuthorId,
+          c.curseforgeProjectIds.join(','),
+        ),
+        McPlatform.modrinth => c.modrinthUsername,
+        McPlatform.planetMinecraft => c.pmcUsername,
+      };
+      if (identity(previous) != identity(credential)) {
+        _history.forget(platform.id);
+        _history.forgetWithPrefix('project:${platform.id}:');
+      }
+    }
+    await _history.persist();
+    await _persist();
+    _notify();
+    if (configured) unawaitedRefresh();
+  }
+
+  Future<void>? _loadTask;
+  Completer<void>? _connectionBusy;
+
+  Future<void> load() => _loadTask ??= _load();
+
+  Future<void> _load() async {
     if (_loadStarted) return;
     _loadStarted = true;
 
@@ -101,8 +180,9 @@ class McContentRepository extends ChangeNotifier {
       if (await file.exists()) {
         final raw = await file.readAsString();
         if (raw.trim().isNotEmpty) {
-          _snapshot =
-              McSnapshot.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+          _snapshot = McSnapshot.fromJson(
+            jsonDecode(raw) as Map<String, dynamic>,
+          );
         }
       }
     } catch (_) {
@@ -137,10 +217,12 @@ class McContentRepository extends ChangeNotifier {
           !_configuredFor(credentials, platform)) {
         _history.forget(platform.id);
         _history.forgetWithPrefix('project:${platform.id}:');
-        _snapshot = _snapshot.withResult(McPlatformResult(
-          platform: platform,
-          state: McPlatformState.notConfigured,
-        ));
+        _snapshot = _snapshot.withResult(
+          McPlatformResult(
+            platform: platform,
+            state: McPlatformState.notConfigured,
+          ),
+        );
       }
     }
     await _history.persist();
@@ -165,9 +247,7 @@ class McContentRepository extends ChangeNotifier {
     }
     final slug = CurseForgeApi.slugFromInput(input);
     if (slug == null) {
-      throw McApiException(
-        currentL.accountOverviewCurseforgeBadSlug,
-      );
+      throw McApiException(currentL.accountOverviewCurseforgeBadSlug);
     }
     final project = await _curseforge.findBySlug(apiKey, slug);
     if (project == null) {
@@ -176,9 +256,14 @@ class McContentRepository extends ChangeNotifier {
     if (_credentials.curseforgeProjectIds.contains(project.id)) {
       return project;
     }
-    await saveCredentials(_credentials.copyWith(
-      curseforgeProjectIds: [..._credentials.curseforgeProjectIds, project.id],
-    ));
+    await saveCredentials(
+      _credentials.copyWith(
+        curseforgeProjectIds: [
+          ..._credentials.curseforgeProjectIds,
+          project.id,
+        ],
+      ),
+    );
     return project;
   }
 
@@ -188,12 +273,14 @@ class McContentRepository extends ChangeNotifier {
   Future<void> untrackCurseforgeProject(String id) async {
     if (!_credentials.curseforgeProjectIds.contains(id)) return;
     _history.forget('project:${McPlatform.curseforge.id}:$id');
-    await saveCredentials(_credentials.copyWith(
-      curseforgeProjectIds: [
-        for (final existing in _credentials.curseforgeProjectIds)
-          if (existing != id) existing,
-      ],
-    ));
+    await saveCredentials(
+      _credentials.copyWith(
+        curseforgeProjectIds: [
+          for (final existing in _credentials.curseforgeProjectIds)
+            if (existing != id) existing,
+        ],
+      ),
+    );
   }
 
   Future<void> disconnect() async {
@@ -232,6 +319,7 @@ class McContentRepository extends ChangeNotifier {
   Future<void> refresh() async {
     if (_refreshing) return;
     _refreshing = true;
+    _connectionBusy = Completer<void>();
     _error = null;
     _notify();
 
@@ -254,6 +342,8 @@ class McContentRepository extends ChangeNotifier {
       _error = e.toString();
     } finally {
       _refreshing = false;
+      _connectionBusy?.complete();
+      _connectionBusy = null;
       _stage = null;
       _notify();
     }
@@ -265,12 +355,12 @@ class McContentRepository extends ChangeNotifier {
         platform: platform,
         state: McPlatformState.notConfigured,
         message: switch (platform) {
-          McPlatform.curseforge => _credentials.curseforgeNeedsTarget
-              ? currentL.accountOverviewCurseforgeNeedAuthor
-              : currentL.accountOverviewCurseforgeNeedKeyToInclude,
+          McPlatform.curseforge =>
+            _credentials.curseforgeNeedsTarget
+                ? currentL.accountOverviewCurseforgeNeedAuthor
+                : currentL.accountOverviewCurseforgeNeedKeyToInclude,
           McPlatform.modrinth => currentL.accountOverviewModrinthNeedUsername,
-          McPlatform.planetMinecraft =>
-            currentL.accountOverviewPmcNeedUsername,
+          McPlatform.planetMinecraft => currentL.accountOverviewPmcNeedUsername,
         },
       );
     }
@@ -317,13 +407,10 @@ class McContentRepository extends ChangeNotifier {
     }
     if (_credentials.curseforgeProjectIds.isNotEmpty) {
       final seen = projects.map((p) => p.id).toSet();
-      final extra = await _curseforge.fetchProjectsByIds(
-        apiKey,
-        [
-          for (final id in _credentials.curseforgeProjectIds)
-            if (!seen.contains(id)) id,
-        ],
-      );
+      final extra = await _curseforge.fetchProjectsByIds(apiKey, [
+        for (final id in _credentials.curseforgeProjectIds)
+          if (!seen.contains(id)) id,
+      ]);
       projects.addAll(extra);
     }
     projects.sort((a, b) => b.downloads.compareTo(a.downloads));
@@ -347,9 +434,7 @@ class McContentRepository extends ChangeNotifier {
     final member = _credentials.pmcUsername!;
     final fetcher = _pmcFetcher;
     if (fetcher == null) {
-      throw McApiException(
-        currentL.accountOverviewPmcNeedsBrowser,
-      );
+      throw McApiException(currentL.accountOverviewPmcNeedsBrowser);
     }
 
     final pages = await fetcher(member, maxPages: 4);
