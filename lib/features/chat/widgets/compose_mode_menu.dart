@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/luma_theme.dart';
 import '../assistant_compose_mode.dart';
+import '../assistant_files.dart';
 
 /// Which + menu entries can be picked right now.
 class ComposeModeAvailability {
@@ -42,20 +43,41 @@ class ComposeModeButton extends StatelessWidget {
     required this.mode,
     required this.onChanged,
     required this.availability,
+    this.filesAllowed = true,
+    this.modesAllowed = true,
+    this.artifactType,
+    this.onArtifactTypeChanged,
+    this.onUpload,
   });
 
   final AssistantComposeMode mode;
   final ValueChanged<AssistantComposeMode> onChanged;
   final Future<ComposeModeAvailability> Function() availability;
+  final bool filesAllowed;
+  final bool modesAllowed;
+  final String? artifactType;
+  final ValueChanged<String?>? onArtifactTypeChanged;
+  final VoidCallback? onUpload;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _PlusButton(
-          onTap: (buttonContext) => _openMenu(buttonContext),
-        ),
+        _PlusButton(onTap: (buttonContext) => _openMenu(buttonContext)),
+        if (artifactType != null)
+          Flexible(
+            child: Tooltip(
+              message: '${assistantArtifactTypes[artifactType]} artifact',
+              child: TextButton(
+                onPressed: () => onArtifactTypeChanged?.call(null),
+                child: Text(
+                  '.$artifactType ×',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ),
         if (mode != AssistantComposeMode.chat) ...[
           const SizedBox(width: 6),
           Flexible(
@@ -88,7 +110,7 @@ class ComposeModeButton extends StatelessWidget {
     final available = await availability();
     if (!buttonContext.mounted) return;
 
-    PopupMenuItem<AssistantComposeMode> item(
+    PopupMenuItem<Object> item(
       AssistantComposeMode value,
       String hint, {
       bool enabled = true,
@@ -99,7 +121,7 @@ class ComposeModeButton extends StatelessWidget {
           : selected
           ? luma.accent
           : luma.textPrimary;
-      return PopupMenuItem<AssistantComposeMode>(
+      return PopupMenuItem<Object>(
         value: value,
         enabled: enabled,
         height: 40,
@@ -107,12 +129,14 @@ class ComposeModeButton extends StatelessWidget {
           children: [
             Icon(composeModeIcon(value), size: 18, color: color),
             const SizedBox(width: 12),
-            Text(
-              composeModeLabel(t, value),
-              style: TextStyle(
-                color: color,
-                fontSize: 13.5,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            Flexible(
+              child: Text(
+                composeModeLabel(t, value),
+                style: TextStyle(
+                  color: color,
+                  fontSize: 13.5,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
               ),
             ),
             const SizedBox(width: 10),
@@ -135,17 +159,20 @@ class ComposeModeButton extends StatelessWidget {
       );
     }
 
-    final picked = await showMenu<AssistantComposeMode>(
+    final picked = await showMenu<Object>(
       context: buttonContext,
       position: position,
-      constraints: const BoxConstraints(minWidth: 320, maxWidth: 440),
+      constraints: BoxConstraints(
+        minWidth: (overlay.size.width - 32).clamp(200, 320),
+        maxWidth: (overlay.size.width - 32).clamp(200, 440),
+      ),
       color: luma.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: BorderSide(color: luma.border),
       ),
       items: [
-        PopupMenuItem<AssistantComposeMode>(
+        PopupMenuItem<Object>(
           enabled: false,
           height: 30,
           child: Text(
@@ -157,25 +184,89 @@ class ComposeModeButton extends StatelessWidget {
             ),
           ),
         ),
-        item(AssistantComposeMode.plan, t.assistantModePlanHint),
+        PopupMenuItem<Object>(
+          value: 'upload',
+          enabled: filesAllowed && onUpload != null,
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.attach_file_rounded, size: 18),
+            title: const Text('Upload files'),
+            subtitle: filesAllowed
+                ? const Text('Text, PDF and supported images')
+                : const Text('Requires Orbit or Nova'),
+          ),
+        ),
+        PopupMenuItem<Object>(
+          value: 'artifact',
+          enabled: filesAllowed,
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.description_outlined, size: 18),
+            title: const Text('Artifact generation'),
+            subtitle: Text(
+              filesAllowed ? 'Choose a file type' : 'Requires Orbit or Nova',
+            ),
+            trailing: const Icon(Icons.chevron_right_rounded, size: 18),
+          ),
+        ),
+        const PopupMenuDivider(),
+        item(
+          AssistantComposeMode.plan,
+          modesAllowed ? t.assistantModePlanHint : 'Requires Nova',
+          enabled: modesAllowed,
+        ),
         item(
           AssistantComposeMode.deepResearch,
           available.research
               ? t.assistantModeResearchHint
               : t.assistantModeResearchUnavailable,
-          enabled: available.research,
-        ),
-        item(
-          AssistantComposeMode.picture,
-          available.picture && available.picturePercent != null
-              ? t.assistantModePictureHint(available.picturePercent!)
-              : t.assistantModePictureUnavailable,
-          enabled: available.picture && available.picturePercent != null,
+          enabled: modesAllowed && available.research,
         ),
       ],
     );
     if (picked == null) return;
-    onChanged(picked == mode ? AssistantComposeMode.chat : picked);
+    if (picked == 'upload') {
+      onUpload?.call();
+      return;
+    }
+    if (picked == 'artifact') {
+      if (!buttonContext.mounted) return;
+      final type = await showMenu<String>(
+        context: buttonContext,
+        position: position,
+        color: luma.surface,
+        items: [
+          for (final type in assistantArtifactTypes.entries)
+            PopupMenuItem(
+              value: type.key,
+              child: Text('${type.value} (.${type.key})'),
+            ),
+          PopupMenuItem(
+            value: 'picture',
+            enabled: available.picture && available.picturePercent != null,
+            child: Text(
+              available.picturePercent != null
+                  ? 'Picture · ${available.picturePercent}% weekly usage'
+                  : 'Picture unavailable',
+            ),
+          ),
+        ],
+      );
+      if (type == null) return;
+      onChanged(
+        type == 'picture'
+            ? AssistantComposeMode.picture
+            : AssistantComposeMode.chat,
+      );
+      onArtifactTypeChanged?.call(type == 'picture' ? null : type);
+      return;
+    }
+    if (picked is AssistantComposeMode) {
+      onArtifactTypeChanged?.call(null);
+      onChanged(picked == mode ? AssistantComposeMode.chat : picked);
+    }
   }
 }
 

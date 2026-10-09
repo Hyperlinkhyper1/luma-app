@@ -1,10 +1,10 @@
-import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
 import '../../../../l10n/current_l.dart';
 import '../nbt.dart';
 import '../schematic_model.dart';
+import 'axiom_thumbnail.dart';
 import 'nbt_block_state.dart';
 
 /// Axiom's length-prefixed header, PNG thumbnail and gzip NBT block regions.
@@ -35,7 +35,8 @@ class AxiomBlueprint {
 
     try {
       final header = Nbt.read(part()).asCompound;
-      if (header.intValue('Version') != 1) {
+      final version = header.intValue('Version');
+      if (version != 1 && version != 2) {
         throw const FormatException('Unsupported Axiom blueprint version.');
       }
       part();
@@ -85,7 +86,10 @@ class AxiomBlueprint {
           }
           final state = blockStateFromNbt(tag);
           remap.add(builder.add(state));
-          voids.add(state.name == 'minecraft:structure_void');
+          voids.add(
+            state.name == 'minecraft:structure_void' ||
+                state.name == 'minecraft:void_air',
+          );
         }
         final bits = math.max(4, (remap.length - 1).bitLength);
         final perLong = 64 ~/ bits;
@@ -125,6 +129,25 @@ class AxiomBlueprint {
           voids: excluded,
         ));
       }
+      // Axiom stores only selected positions. Retain luma's source dimensions
+      // separately so ignored air borders survive conversion to other formats.
+      final sourceSize = header.intArray('LumaSize');
+      if (sourceSize != null) {
+        if (sourceSize.length != 3 ||
+            (maxX >= minX &&
+                (minX < 0 ||
+                    minY < 0 ||
+                    minZ < 0 ||
+                    maxX >= sourceSize[0] ||
+                    maxY >= sourceSize[1] ||
+                    maxZ >= sourceSize[2]))) {
+          throw const FormatException('Invalid Axiom source dimensions.');
+        }
+        minX = minY = minZ = 0;
+        maxX = sourceSize[0] - 1;
+        maxY = sourceSize[1] - 1;
+        maxZ = sourceSize[2] - 1;
+      }
       final width = maxX - minX + 1,
           height = maxY - minY + 1,
           length = maxZ - minZ + 1;
@@ -161,7 +184,7 @@ class AxiomBlueprint {
     }
   }
 
-  static Uint8List write(Schematic schematic) {
+  static Uint8List write(Schematic schematic, {bool includeAir = false}) {
     guardVolume(schematic.width, schematic.height, schematic.length);
     final regions = <NbtTag>[];
     final nx = (schematic.width + 15) ~/ 16;
@@ -178,9 +201,12 @@ class AxiomBlueprint {
             final x = rx * 16 + (i & 15),
                 y = ry * 16 + (i >> 8),
                 z = rz * 16 + ((i >> 4) & 15);
-            final state = schematic.contains(x, y, z)
+            var state = schematic.contains(x, y, z)
                 ? schematic.blockAt(x, y, z)
-                : BlockState('minecraft:structure_void');
+                : BlockState('minecraft:void_air');
+            if (!includeAir && state.isAir) {
+              state = BlockState('minecraft:void_air');
+            }
             final key = state.toStateString();
             values[i] = ids.putIfAbsent(key, () {
               palette.add(state);
@@ -209,21 +235,26 @@ class AxiomBlueprint {
       }
     }
     final header = NbtCompound.empty()
-      ..['Version'] = const NbtLong(1)
+      ..['Version'] = const NbtInt(2)
       ..['Name'] = NbtString(schematic.name ?? 'Blueprint')
       ..['Author'] = NbtString(schematic.author ?? 'luma')
       ..['Tags'] = const NbtList(8, [])
       ..['ThumbnailYaw'] = const NbtFloat(0)
       ..['ThumbnailPitch'] = const NbtFloat(45)
       ..['LockedThumbnail'] = const NbtByte(0)
-      ..['ContainsAir'] = NbtByte(
-        schematic.blocks.any(
-              (id) => schematic.palette[id].name == 'minecraft:air',
-            )
-            ? 1
-            : 0,
+      ..['LumaSize'] = NbtIntArray(
+        Int32List.fromList([
+          schematic.width,
+          schematic.height,
+          schematic.length,
+        ]),
       )
-      ..['BlockCount'] = NbtInt(schematic.blockCount);
+      // This flag describes the contents; void_air in the palette is what
+      // actually makes Axiom skip empty positions when previewing and pasting.
+      ..['ContainsAir'] = NbtByte(includeAir ? 1 : 0)
+      ..['BlockCount'] = NbtInt(
+        includeAir ? schematic.volume : schematic.blockCount,
+      );
     final root = NbtCompound.empty()
       ..['DataVersion'] = NbtInt(schematic.dataVersion ?? 3700)
       ..['BlockRegion'] = NbtList(10, regions)
@@ -241,12 +272,7 @@ class AxiomBlueprint {
 
     integer(magic);
     part(Nbt.write(NamedTag('', header), compression: NbtCompression.none));
-    // An original neutral thumbnail; no Minecraft assets are embedded.
-    part(
-      base64Decode(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==',
-      ),
-    );
+    part(axiomThumbnail(schematic));
     part(Nbt.write(NamedTag('', root)));
     return out.takeBytes();
   }

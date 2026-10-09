@@ -141,6 +141,7 @@ class DeepResearch {
         ...history.take(history.length - 1),
         AiTurn(
           role: 'user',
+          images: history.last.images,
           text:
               '$question\n\n(List at most $agentCount sub-questions as a '
               'JSON array.)',
@@ -178,6 +179,7 @@ class DeepResearch {
           history: [
             AiTurn(
               role: 'user',
+              images: history.last.images,
               text:
                   'The user asked: $question\n\nYour sub-question: '
                   '${questions[i]}',
@@ -198,7 +200,9 @@ class DeepResearch {
     }
 
     if (parallel) {
-      await Future.wait([for (var i = 0; i < questions.length; i++) runAgent(i)]);
+      await Future.wait([
+        for (var i = 0; i < questions.length; i++) runAgent(i),
+      ]);
     } else {
       for (var i = 0; i < questions.length; i++) {
         await runAgent(i);
@@ -221,6 +225,7 @@ class DeepResearch {
         ...history.take(history.length - 1),
         AiTurn(
           role: 'user',
+          images: history.last.images,
           text: '$question\n\n<research_notes>\n$notes</research_notes>',
         ),
       ],

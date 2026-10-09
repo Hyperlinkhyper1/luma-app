@@ -8,12 +8,14 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/luma_theme.dart';
 import '../assistant_compose_mode.dart';
+import '../assistant_files.dart';
 import '../chat_usage.dart';
 import '../memory/assistant_memory_repository.dart';
 import '../memory/assistant_memory_scope.dart';
 import '../data/chat_repository.dart';
 import 'chat_markdown.dart';
 import 'compose_mode_menu.dart';
+import 'assistant_artifacts_view.dart';
 
 /// Renders a single message the way the Claude app does: the user's turns
 /// sit in a soft bubble on the right, the assistant's are unboxed prose
@@ -77,6 +79,19 @@ class _ChatBubbleState extends State<ChatBubble> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
+        for (final attachment in chatAttachmentsOf(widget.message.metadataJson))
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Chip(
+              avatar: Icon(
+                attachment.isImage
+                    ? Icons.image_outlined
+                    : Icons.attach_file_rounded,
+                size: 16,
+              ),
+              label: Text(attachment.name),
+            ),
+          ),
         Align(
           alignment: Alignment.centerRight,
           child: LayoutBuilder(
@@ -151,6 +166,7 @@ class _ChatBubbleState extends State<ChatBubble> {
         ],
         if (widget.message.content.trim().isNotEmpty || imagePath == null)
           ChatMarkdown(source: widget.message.content),
+        ..._artifactLinks(context),
         if (qrUrl != null) ...[
           const SizedBox(height: 14),
           Container(
@@ -180,6 +196,25 @@ class _ChatBubbleState extends State<ChatBubble> {
         _actions(context, visible: widget.isLast || _hovering),
       ],
     );
+  }
+
+  List<Widget> _artifactLinks(BuildContext context) {
+    try {
+      final decoded = jsonDecode(widget.message.metadataJson ?? '{}');
+      final artifacts = decoded is Map ? decoded['artifacts'] : null;
+      return [
+        for (final artifact in artifacts is List ? artifacts : const [])
+          if (artifact is Map && artifact['path'] is String)
+            TextButton.icon(
+              onPressed: () =>
+                  openAssistantArtifact(context, artifact['path'] as String),
+              icon: const Icon(Icons.description_outlined, size: 18),
+              label: Text(artifact['name']?.toString() ?? 'Open file'),
+            ),
+      ];
+    } catch (_) {
+      return const [];
+    }
   }
 
   Widget _errorNotice(BuildContext context) {
@@ -294,7 +329,11 @@ class _ChatPicture extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.hide_image_outlined, size: 18, color: luma.textMuted),
+                Icon(
+                  Icons.hide_image_outlined,
+                  size: 18,
+                  color: luma.textMuted,
+                ),
                 const SizedBox(width: 8),
                 Flexible(
                   child: Text(

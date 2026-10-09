@@ -19,18 +19,30 @@ class AiToolDefinition {
 /// text only. The tool_use/tool_result bookkeeping needed mid-turn is each
 /// client's own internal concern, not part of persisted history.
 class AiTurn {
-  const AiTurn({required this.role, required this.text});
+  const AiTurn({
+    required this.role,
+    required this.text,
+    this.images = const [],
+  });
 
   /// 'user' or 'assistant'.
   final String role;
   final String text;
+  final List<AiInputImage> images;
+}
+
+class AiInputImage {
+  const AiInputImage({required this.mimeType, required this.data});
+  final String mimeType;
+  final String data;
 }
 
 /// Runs a tool by name and returns a small JSON-able result.
-typedef AiToolExecutor = Future<Map<String, dynamic>> Function(
-  String name,
-  Map<String, dynamic> input,
-);
+typedef AiToolExecutor =
+    Future<Map<String, dynamic>> Function(
+      String name,
+      Map<String, dynamic> input,
+    );
 
 /// Given a tool name + its result, returns optional render metadata (e.g.
 /// `{"qrUrl": "..."}`) to attach to the final assistant message.

@@ -26,6 +26,8 @@ class ChatInputBar extends StatefulWidget {
     this.focusNode,
     this.autofocus = false,
     this.minLines = 1,
+    this.attachments,
+    this.hasAttachments = false,
   });
 
   final ValueChanged<String> onSend;
@@ -51,6 +53,8 @@ class ChatInputBar extends StatefulWidget {
 
   /// The new-chat composer starts taller than the reply box, as in Claude.
   final int minLines;
+  final Widget? attachments;
+  final bool hasAttachments;
 
   @override
   State<ChatInputBar> createState() => _ChatInputBarState();
@@ -110,11 +114,17 @@ class _ChatInputBarState extends State<ChatInputBar> {
     return KeyEventResult.handled;
   }
 
-  bool get _canSend => _hasText && widget.enabled && !widget.sending;
+  bool get _canSend =>
+      (_hasText || widget.hasAttachments) && widget.enabled && !widget.sending;
 
   void _submit() {
-    final text = _controller.text.trim();
-    if (text.isEmpty || widget.sending || !widget.enabled) return;
+    final typed = _controller.text.trim();
+    if ((typed.isEmpty && !widget.hasAttachments) ||
+        widget.sending ||
+        !widget.enabled) {
+      return;
+    }
+    final text = typed.isEmpty ? 'Please review the attached files.' : typed;
     _controller.clear();
     widget.onSend(text);
   }
@@ -149,6 +159,11 @@ class _ChatInputBarState extends State<ChatInputBar> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (widget.attachments != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+                  child: widget.attachments,
+                ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
                 child: Focus(
@@ -194,7 +209,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
                         child: widget.leading,
                       ),
                     ),
-                    widget.modelSelector,
+                    Flexible(flex: 2, child: widget.modelSelector),
                     const SizedBox(width: 6),
                     _SendButton(
                       enabled: _canSend,

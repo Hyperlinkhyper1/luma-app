@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 import 'package:luma/features/converter/schematic/formats/axiom_blueprint.dart';
 import 'package:luma/features/converter/schematic/nbt.dart';
 import 'package:luma/features/converter/schematic/schematic_model.dart';
@@ -46,6 +47,84 @@ Uint8List fixture({bool broken = false}) {
 }
 
 void main() {
+  ({NbtCompound header, Uint8List png, NbtCompound root}) unpack(
+    Uint8List bytes,
+  ) {
+    var offset = 4;
+    Uint8List part() {
+      final length = ByteData.sublistView(bytes).getUint32(offset);
+      offset += 4;
+      final result = Uint8List.sublistView(bytes, offset, offset + length);
+      offset += length;
+      return result;
+    }
+
+    final header = Nbt.read(part()).asCompound;
+    final png = part();
+    return (header: header, png: png, root: Nbt.read(part()).asCompound);
+  }
+
+  Schematic tinyBuild() => Schematic(
+    width: 2,
+    height: 1,
+    length: 1,
+    palette: [BlockState.air, BlockState('minecraft:stone')],
+    blocks: Uint16List.fromList([1, 0]),
+  );
+
+  test(
+    'export thumbnail is a valid build preview rather than one red pixel',
+    () {
+      final exported = unpack(AxiomBlueprint.write(tinyBuild()));
+      final image = img.decodePng(exported.png)!;
+      expect([image.width, image.height], [128, 128]);
+      final pixels = image.map((p) => '${p.r},${p.g},${p.b},${p.a}').toSet();
+      expect(pixels.length, greaterThan(2));
+    },
+  );
+
+  test(
+    'Axiom ignores air and section padding instead of pasting empty volume',
+    () {
+      final exported = unpack(AxiomBlueprint.write(tinyBuild()));
+      expect(exported.header.intValue('ContainsAir'), 0);
+      final region =
+          exported.root.list('BlockRegion')!.items.single as NbtCompound;
+      final names = region
+          .compound('BlockStates')!
+          .list('palette')!
+          .items
+          .cast<NbtCompound>()
+          .map((entry) => entry.stringValue('Name'))
+          .toSet();
+      expect(names, contains('minecraft:void_air'));
+      expect(names, isNot(contains('minecraft:air')));
+      expect(names, isNot(contains('minecraft:structure_void')));
+      expect(exported.header.intValue('Version'), 2);
+      expect(exported.header.intArray('LumaSize'), [2, 1, 1]);
+    },
+  );
+
+  test('ignored air borders and an entirely empty volume still round-trip', () {
+    final source = Schematic(
+      width: 3,
+      height: 4,
+      length: 5,
+      palette: [BlockState.air, BlockState('minecraft:stone')],
+      blocks: Uint16List(60)..[31] = 1,
+    );
+    for (final schematic in [source, source.copyWith(blocks: Uint16List(60))]) {
+      final back = AxiomBlueprint.read(AxiomBlueprint.write(schematic));
+      expect([back.width, back.height, back.length], [3, 4, 5]);
+      expect(back.blocks, schematic.blocks);
+    }
+    final explicitAir = unpack(
+      AxiomBlueprint.write(tinyBuild(), includeAir: true),
+    );
+    expect(explicitAir.header.intValue('ContainsAir'), 1);
+    expect(explicitAir.header.intValue('BlockCount'), 2);
+  });
+
   test('reads negative sections and padded five-bit entries independently', () {
     final schematic = SchematicService.load(fixture(), 'external.bp');
     expect([schematic.width, schematic.height, schematic.length], [16, 16, 16]);

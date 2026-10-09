@@ -45,6 +45,15 @@ class AnthropicClient implements AiClient {
           'role': t.role,
           'content': [
             {'type': 'text', 'text': t.text},
+            for (final image in t.images)
+              {
+                'type': 'image',
+                'source': {
+                  'type': 'base64',
+                  'media_type': image.mimeType,
+                  'data': image.data,
+                },
+              },
           ],
         },
     ];
@@ -61,23 +70,27 @@ class AnthropicClient implements AiClient {
     String? metadataJson;
     AiTokenUsage? usage;
     while (true) {
-      final res =
-          await _send(apiKey: apiKey, messages: messages, systemPrompt: systemPrompt, tools: toolSchemas);
+      final res = await _send(
+        apiKey: apiKey,
+        messages: messages,
+        systemPrompt: systemPrompt,
+        tools: toolSchemas,
+      );
       usage = addAiUsage(usage, res.usage);
 
       if (res.toolUses.isEmpty) {
-        final text = res.text.isEmpty
-            ? currentL.aiClientNoReply
-            : res.text;
-        return AiChatResult(text: text, metadataJson: metadataJson, usage: usage);
+        final text = res.text.isEmpty ? currentL.aiClientNoReply : res.text;
+        return AiChatResult(
+          text: text,
+          metadataJson: metadataJson,
+          usage: usage,
+        );
       }
 
       hops++;
       if (hops > _maxToolHops) {
         return AiChatResult(
-          text: res.text.isEmpty
-              ? currentL.aiClientTooManySteps
-              : res.text,
+          text: res.text.isEmpty ? currentL.aiClientTooManySteps : res.text,
           metadataJson: metadataJson,
           usage: usage,
         );
@@ -87,8 +100,7 @@ class AnthropicClient implements AiClient {
       final toolResults = <Map<String, dynamic>>[];
       for (final toolUse in res.toolUses) {
         final name = toolUse['name'] as String;
-        final input =
-            (toolUse['input'] as Map?)?.cast<String, dynamic>() ?? {};
+        final input = (toolUse['input'] as Map?)?.cast<String, dynamic>() ?? {};
         final result = await executeTool(name, input);
         metadataJson ??= metadataFor(name, result);
         toolResults.add({
@@ -129,8 +141,7 @@ class AnthropicClient implements AiClient {
           )
           .timeout(const Duration(seconds: 30));
     } catch (e) {
-      throw AiNetworkError(
-          currentL.aiClientUnreachable('Anthropic', '$e'));
+      throw AiNetworkError(currentL.aiClientUnreachable('Anthropic', '$e'));
     }
 
     if (res.statusCode == 401) {

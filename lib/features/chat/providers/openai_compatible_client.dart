@@ -60,7 +60,22 @@ class OpenAiCompatibleClient implements AiClient {
   }) async {
     final messages = <Map<String, dynamic>>[
       if (systemPrompt.isNotEmpty) {'role': 'system', 'content': systemPrompt},
-      for (final t in history) {'role': t.role, 'content': t.text},
+      for (final t in history)
+        {
+          'role': t.role,
+          'content': t.images.isEmpty
+              ? t.text
+              : [
+                  {'type': 'text', 'text': t.text},
+                  for (final image in t.images)
+                    {
+                      'type': 'image_url',
+                      'image_url': {
+                        'url': 'data:${image.mimeType};base64,${image.data}',
+                      },
+                    },
+                ],
+        },
     ];
     final toolSchemas = [
       for (final t in tools)
@@ -81,11 +96,12 @@ class OpenAiCompatibleClient implements AiClient {
       final response = await _send(apiKey, messages, toolSchemas);
       usage = addAiUsage(usage, _usageFrom(response));
       final choices = response['choices'] as List;
-      final message = (choices.first as Map<String, dynamic>)['message']
-          as Map<String, dynamic>;
+      final message =
+          (choices.first as Map<String, dynamic>)['message']
+              as Map<String, dynamic>;
       final toolCalls =
           (message['tool_calls'] as List?)?.cast<Map<String, dynamic>>() ??
-              const [];
+          const [];
 
       if (toolCalls.isEmpty) {
         final text = (message['content'] as String?)?.trim() ?? '';
@@ -134,8 +150,9 @@ class OpenAiCompatibleClient implements AiClient {
   static String? _messageFromBody(String body) {
     try {
       final decoded = jsonDecode(body);
-      final obj =
-          decoded is List && decoded.isNotEmpty ? decoded.first : decoded;
+      final obj = decoded is List && decoded.isNotEmpty
+          ? decoded.first
+          : decoded;
       if (obj is Map) {
         final err = obj['error'];
         if (err is Map && err['message'] is String) {
@@ -173,8 +190,7 @@ class OpenAiCompatibleClient implements AiClient {
       if (disableResponseStorage) 'store': false,
     };
 
-    final client =
-        viaLumaServer ? GatedServerClient() : http.Client();
+    final client = viaLumaServer ? GatedServerClient() : http.Client();
     final http.Response res;
     try {
       res = await client
@@ -190,9 +206,7 @@ class OpenAiCompatibleClient implements AiClient {
     } on ServerAccessDeniedException catch (e) {
       throw AiAuthError(e.message);
     } catch (e) {
-      throw AiNetworkError(
-        currentL.aiClientUnreachable(providerLabel, '$e'),
-      );
+      throw AiNetworkError(currentL.aiClientUnreachable(providerLabel, '$e'));
     } finally {
       client.close();
     }

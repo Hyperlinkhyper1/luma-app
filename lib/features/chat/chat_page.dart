@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 
 import '../../account/plan.dart';
 import '../../app/widgets.dart';
@@ -24,6 +25,7 @@ import '../notes/notes_repository.dart';
 import 'account/assistant_panels.dart';
 import 'ai_key_store.dart';
 import 'assistant_compose_mode.dart';
+import 'assistant_files.dart';
 import 'local_model_store.dart';
 import 'ai_tools.dart';
 import 'web_search_client.dart';
@@ -42,6 +44,8 @@ import 'widgets/chat_message_list.dart';
 import 'widgets/chat_moon.dart';
 import 'widgets/chat_usage_meter.dart';
 import 'widgets/compose_mode_menu.dart';
+import 'widgets/assistant_projects_view.dart';
+import 'widgets/assistant_artifacts_view.dart';
 
 const _wideBreakpoint = 760.0;
 
@@ -68,6 +72,12 @@ class _ChatPageState extends State<ChatPage> {
   late final Future<AiKeyStore> _storesFuture = _loadKeyStore();
   ChatController? _controller;
   int? _activeConversationId;
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
 
   static Future<AiKeyStore> _loadKeyStore() {
     return AiKeyStore.load();
@@ -265,14 +275,6 @@ class _ChatBodyState extends State<_ChatBody> {
             ),
           );
         }
-        if (snap.data != true) {
-          return _NoKeyState(
-            settings: widget.settings,
-            localModel: _providerId == AiProviderId.local.name,
-            onOpenSettings: widget.onOpenSettings,
-            onRecheck: _recheckKey,
-          );
-        }
         return AnimatedBuilder(
           animation: widget.controller,
           builder: (context, _) => _ChatLayout(
@@ -282,6 +284,14 @@ class _ChatBodyState extends State<_ChatBody> {
             activeConversationId: widget.activeConversationId,
             onSelectConversation: widget.onSelectConversation,
             onOpenPlugin: widget.onOpenPlugin,
+            chatUnavailable: snap.data == true
+                ? null
+                : _NoKeyState(
+                    settings: widget.settings,
+                    localModel: _providerId == AiProviderId.local.name,
+                    onOpenSettings: widget.onOpenSettings,
+                    onRecheck: _recheckKey,
+                  ),
           ),
         );
       },
@@ -301,6 +311,7 @@ class _ChatLayout extends StatefulWidget {
     required this.activeConversationId,
     required this.onSelectConversation,
     required this.onOpenPlugin,
+    this.chatUnavailable,
   });
 
   final ChatController controller;
@@ -309,6 +320,7 @@ class _ChatLayout extends StatefulWidget {
   final int? activeConversationId;
   final ValueChanged<int?> onSelectConversation;
   final ValueChanged<String> onOpenPlugin;
+  final Widget? chatUnavailable;
 
   @override
   State<_ChatLayout> createState() => _ChatLayoutState();
@@ -319,14 +331,23 @@ class _ChatLayoutState extends State<_ChatLayout> {
   final _homeText = TextEditingController();
   final _homeFocus = FocusNode();
   bool _sidebarOpen = true;
+  String _view = 'chat';
+  int? _projectId;
+  String? _artifactType;
+  final List<AssistantAttachment> _attachments = [];
+  int _selectionRevision = 0;
 
   /// The + menu mode, kept here so it survives the greeting screen turning
   /// into the new chat's thread.
   AssistantComposeMode _composeMode = AssistantComposeMode.chat;
 
-  /// [_composeMode] as it applies right now: off without Nova, and deep
-  /// research only on the models that can run it.
+  /// Pictures require Orbit or Nova. Plan/research require Nova, with
+  /// research restricted to the models that can run it.
   AssistantComposeMode _effectiveComposeMode(SettingsController settings) {
+    if (_composeMode == AssistantComposeMode.picture &&
+        assistantFilesAllowed(settings.selectedPlanId)) {
+      return _composeMode;
+    }
     if (!composeModesUnlocked(settings.selectedPlanId)) {
       return AssistantComposeMode.chat;
     }
@@ -348,22 +369,106 @@ class _ChatLayoutState extends State<_ChatLayout> {
     super.dispose();
   }
 
-  void _select(int? id) {
+  Future<void> _select(int? id) async {
+    final revision = ++_selectionRevision;
     _scaffoldKey.currentState?.closeDrawer();
     widget.onSelectConversation(id);
+    setState(() {
+      _view = 'chat';
+      _attachments.clear();
+      _projectId = null;
+    });
+    if (id != null) {
+      final project = await ChatScope.of(context).projectForConversation(id);
+      if (mounted && revision == _selectionRevision) {
+        setState(() => _projectId = project?.id);
+      }
+    }
+  }
+
+  void _openProjects([int? id]) {
+    _selectionRevision++;
+    _scaffoldKey.currentState?.closeDrawer();
+    setState(() {
+      _view = 'projects';
+      _projectId = id;
+      _attachments.clear();
+    });
+  }
+
+  void _newProjectChat(int id) {
+    _selectionRevision++;
+    widget.onSelectConversation(null);
+    setState(() {
+      _view = 'chat';
+      _projectId = id;
+      _attachments.clear();
+    });
+  }
+
+  Future<void> _upload() async {
+    final settings = SettingsScope.of(context);
+    if (!assistantFilesAllowed(settings.selectedPlanId)) return;
+    final supportsImages = await widget.controller.supportsImageInput();
+    if (!mounted) return;
+    final picked = await FilePicker.pickFiles(
+      allowMultiple: true,
+      type: FileType.custom,
+      allowedExtensions: [
+        ...AssistantAttachment.textExtensions,
+        if (supportsImages) ...AssistantAttachment.imageExtensions,
+      ],
+    );
+    if (picked == null || !mounted) return;
+    try {
+      if (_attachments.length + picked.files.length > 3) {
+        throw const FormatException('Choose up to three attachments.');
+      }
+      final loaded = <AssistantAttachment>[];
+      for (final file in picked.files) {
+        if (file.path == null) {
+          throw const FormatException('This file could not be opened.');
+        }
+        loaded.add(await AssistantAttachment.fromFile(File(file.path!)));
+      }
+      if (mounted && assistantFilesAllowed(settings.selectedPlanId)) {
+        setState(() => _attachments.addAll(loaded));
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$error')));
+      }
+    }
   }
 
   /// Sends [text] into [conversationId], or — from the greeting screen —
   /// into a brand-new chat, which is only created once there's something to
   /// put in it (so "New chat" never leaves empty conversations behind).
   Future<void> _send(int? conversationId, String text) async {
-    final mode = _effectiveComposeMode(SettingsScope.of(context));
+    if (widget.controller.isSending) return;
+    final settings = SettingsScope.of(context);
+    final mode = _effectiveComposeMode(settings);
     final id =
-        conversationId ?? await ChatScope.of(context).createConversation();
+        conversationId ??
+        await ChatScope.of(context).createConversation(projectId: _projectId);
+    if (!mounted) return;
     if (conversationId == null) widget.onSelectConversation(id);
     setState(() => _pendingConversationId = id);
     try {
-      await widget.controller.sendMessage(id, text, mode: mode);
+      await widget.controller.sendMessage(
+        id,
+        text,
+        mode: mode,
+        artifactType: assistantFilesAllowed(settings.selectedPlanId)
+            ? _artifactType
+            : null,
+        attachments: assistantFilesAllowed(settings.selectedPlanId)
+            ? List.of(_attachments)
+            : const [],
+      );
+      if (mounted) setState(() => _attachments.clear());
     } finally {
       if (mounted) setState(() => _pendingConversationId = null);
     }
@@ -376,11 +481,17 @@ class _ChatLayoutState extends State<_ChatLayout> {
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= _wideBreakpoint;
         final activeId = widget.activeConversationId;
-        final sidebar = _Sidebar(
+        final sidebar = AssistantSidebar(
           activeConversationId: activeId,
           syncService: widget.syncService,
           onSelect: _select,
           onOpenPlugin: widget.onOpenPlugin,
+          onProjects: () => _openProjects(),
+          onArtifacts: () {
+            _scaffoldKey.currentState?.closeDrawer();
+            setState(() => _view = 'artifacts');
+          },
+          selectedView: _view,
           onCollapse: wide
               ? () => setState(() => _sidebarOpen = false)
               : () => _scaffoldKey.currentState?.closeDrawer(),
@@ -403,37 +514,62 @@ class _ChatLayoutState extends State<_ChatLayout> {
           composeMode: _effectiveComposeMode(settings),
           onComposeModeChanged: (mode) => setState(() => _composeMode = mode),
           onSend: (text) => _send(activeId, text),
+          artifactType: assistantFilesAllowed(settings.selectedPlanId)
+              ? _artifactType
+              : null,
+          onArtifactTypeChanged: (type) => setState(() => _artifactType = type),
+          attachments: assistantFilesAllowed(settings.selectedPlanId)
+              ? _attachments
+              : const [],
+          onRemoveAttachment: (a) => setState(() => _attachments.remove(a)),
+          onUpload: _upload,
         );
 
-        final Widget body = activeId == null
-            ? _HomeView(
-                syncService: widget.syncService,
-                composer: composer,
-                onSuggestion: (prompt) {
-                  _homeText.value = TextEditingValue(
-                    text: prompt,
-                    selection: TextSelection.collapsed(offset: prompt.length),
-                  );
-                  _homeFocus.requestFocus();
-                },
+        final Widget body = _view == 'projects'
+            ? AssistantProjectsView(
+                repository: ChatScope.of(context),
+                projectId: _projectId,
+                onOpenProject: _openProjects,
+                onOpenChat: _select,
+                onNewChat: _newProjectChat,
               )
-            : _ConversationThread(
-                key: ValueKey(activeId),
-                conversationId: activeId,
-                thinking:
-                    widget.controller.isSending &&
-                    _pendingConversationId == activeId,
-                draft: widget.controller.draftReply,
-                activity: widget.controller.activity,
-                composer: composer,
-                onOpenPlugin: widget.onOpenPlugin,
-              );
+            : _view == 'artifacts'
+            ? AssistantArtifactsView(
+                repository: ChatScope.of(context),
+                onOpenChat: _select,
+              )
+            : widget.chatUnavailable ??
+                  (activeId == null
+                      ? _HomeView(
+                          syncService: widget.syncService,
+                          composer: composer,
+                          onSuggestion: (prompt) {
+                            _homeText.value = TextEditingValue(
+                              text: prompt,
+                              selection: TextSelection.collapsed(
+                                offset: prompt.length,
+                              ),
+                            );
+                            _homeFocus.requestFocus();
+                          },
+                        )
+                      : _ConversationThread(
+                          key: ValueKey(activeId),
+                          conversationId: activeId,
+                          thinking:
+                              widget.controller.isSending &&
+                              _pendingConversationId == activeId,
+                          draft: widget.controller.draftReply,
+                          activity: widget.controller.activity,
+                          composer: composer,
+                          onOpenPlugin: widget.onOpenPlugin,
+                        ));
 
         final main = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _TitleBar(
-              activeConversationId: activeId,
+              activeConversationId: _view == 'chat' ? activeId : null,
               showSidebarButton: !wide || !_sidebarOpen,
               showNewChatButton: !wide || !_sidebarOpen,
               onToggleSidebar: wide
@@ -441,6 +577,26 @@ class _ChatLayoutState extends State<_ChatLayout> {
                   : () => _scaffoldKey.currentState?.openDrawer(),
               onSelect: _select,
             ),
+            if (_view == 'chat' && _projectId != null)
+              StreamBuilder<List<ChatProjectRecord>>(
+                stream: ChatScope.of(context).watchProjects(),
+                builder: (context, snap) {
+                  final project = snap.data
+                      ?.where((p) => p.id == _projectId)
+                      .firstOrNull;
+                  return Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 16),
+                      child: TextButton.icon(
+                        onPressed: () => _openProjects(_projectId),
+                        icon: const Icon(Icons.folder_outlined, size: 16),
+                        label: Text(project?.name ?? 'Project'),
+                      ),
+                    ),
+                  );
+                },
+              ),
             Expanded(child: body),
           ],
         );
@@ -493,13 +649,17 @@ class _ChatLayoutState extends State<_ChatLayout> {
 
 /// The chat sidebar: collapse toggle, "New chat", a search box, Starred and
 /// Recents sections, and the signed-in account at the foot.
-class _Sidebar extends StatefulWidget {
-  const _Sidebar({
+class AssistantSidebar extends StatefulWidget {
+  const AssistantSidebar({
+    super.key,
     required this.activeConversationId,
     required this.syncService,
     required this.onSelect,
     required this.onCollapse,
     required this.onOpenPlugin,
+    required this.onProjects,
+    required this.onArtifacts,
+    required this.selectedView,
   });
 
   final int? activeConversationId;
@@ -507,14 +667,18 @@ class _Sidebar extends StatefulWidget {
   final ValueChanged<int?> onSelect;
   final VoidCallback onCollapse;
   final ValueChanged<String> onOpenPlugin;
+  final VoidCallback onProjects;
+  final VoidCallback onArtifacts;
+  final String selectedView;
 
   @override
-  State<_Sidebar> createState() => _SidebarState();
+  State<AssistantSidebar> createState() => _SidebarState();
 }
 
-class _SidebarState extends State<_Sidebar> {
+class _SidebarState extends State<AssistantSidebar> {
   final _search = TextEditingController();
   String _query = '';
+  bool _moreOpen = false;
 
   @override
   void dispose() {
@@ -531,59 +695,21 @@ class _SidebarState extends State<_Sidebar> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+          padding: const EdgeInsets.fromLTRB(12, 10, 8, 8),
           child: Row(
             children: [
-              Expanded(
-                child: Text(
-                  t.assistantChats,
-                  style: TextStyle(
-                    color: luma.textPrimary,
-                    fontFamily: chatSerifFamily,
-                    fontFamilyFallback: chatSerifFallback,
-                    fontSize: 19,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+              _IconAction(
+                icon: Icons.menu_rounded,
+                tooltip: t.assistantToggleSidebar,
+                onTap: widget.onCollapse,
               ),
               _IconAction(
                 icon: Icons.view_sidebar_outlined,
                 tooltip: t.assistantToggleSidebar,
                 onTap: widget.onCollapse,
               ),
+              const Spacer(),
             ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: _SidebarRow(
-            onTap: () => widget.onSelect(null),
-            child: Row(
-              children: [
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: luma.accent,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.add_rounded,
-                    size: 17,
-                    color: luma.onAccent,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  t.assistantNewChat,
-                  style: TextStyle(
-                    color: luma.accent,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
           ),
         ),
         Padding(
@@ -617,40 +743,102 @@ class _SidebarState extends State<_Sidebar> {
           ),
         ),
         Expanded(
-          child: StreamData<List<ChatConversationRecord>>(
-            stream: repo.watchConversations(),
-            builder: (context, conversations) {
-              final visible = _query.isEmpty
-                  ? conversations
-                  : conversations
-                        .where((c) => c.title.toLowerCase().contains(_query))
-                        .toList();
-              if (visible.isEmpty) {
-                return Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    _query.isEmpty ? t.assistantNoChats : t.assistantNoMatches,
-                    style: TextStyle(color: luma.textMuted, fontSize: 13),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(0, 0, 0, 12),
+            children: [
+              _navigation(
+                Icons.add_circle_outline_rounded,
+                'New',
+                () => widget.onSelect(null),
+              ),
+              _navigation(
+                Icons.folder_outlined,
+                'Projects',
+                widget.onProjects,
+                selected: widget.selectedView == 'projects',
+              ),
+              _navigation(
+                Icons.category_outlined,
+                'Artifacts',
+                widget.onArtifacts,
+                selected: widget.selectedView == 'artifacts',
+              ),
+              _navigation(
+                Icons.work_outline_rounded,
+                'Customize',
+                () => showAssistantPanel(
+                  context,
+                  AssistantPanel.settings,
+                  onOpenPlugin: widget.onOpenPlugin,
+                ),
+              ),
+              _navigation(
+                _moreOpen
+                    ? Icons.expand_more_rounded
+                    : Icons.chevron_right_rounded,
+                'More',
+                () => setState(() => _moreOpen = !_moreOpen),
+              ),
+              if (_moreOpen) ...[
+                _navigation(
+                  Icons.data_usage_rounded,
+                  t.assistantMenuUsage,
+                  () => showAssistantPanel(
+                    context,
+                    AssistantPanel.usage,
+                    onOpenPlugin: widget.onOpenPlugin,
                   ),
-                );
-              }
-              final starred = visible.where((c) => c.pinned).toList();
-              final recents = visible.where((c) => !c.pinned).toList();
-              return ListView(
-                padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
-                children: [
-                  if (starred.isNotEmpty) ...[
-                    _SectionLabel(t.assistantStarred),
-                    for (final c in starred) _tile(c),
-                    const SizedBox(height: 10),
-                  ],
-                  if (recents.isNotEmpty) ...[
-                    _SectionLabel(t.assistantRecents),
-                    for (final c in recents) _tile(c),
-                  ],
-                ],
-              );
-            },
+                ),
+                _navigation(
+                  Icons.smart_toy_outlined,
+                  t.assistantMenuAgents,
+                  () => showAssistantPanel(
+                    context,
+                    AssistantPanel.agents,
+                    onOpenPlugin: widget.onOpenPlugin,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 10),
+              StreamData<List<ChatConversationRecord>>(
+                stream: repo.watchConversations(query: _query),
+                builder: (context, conversations) {
+                  final visible = _query.isEmpty
+                      ? conversations.where((c) => c.projectId == null).toList()
+                      : conversations;
+                  if (visible.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        _query.isEmpty
+                            ? t.assistantNoChats
+                            : t.assistantNoMatches,
+                        style: TextStyle(color: luma.textMuted, fontSize: 13),
+                      ),
+                    );
+                  }
+                  final starred = visible.where((c) => c.pinned).toList();
+                  final recents = visible.where((c) => !c.pinned).toList();
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (starred.isNotEmpty) ...[
+                          _SectionLabel(t.assistantStarred),
+                          for (final c in starred) _tile(c),
+                          const SizedBox(height: 10),
+                        ],
+                        if (recents.isNotEmpty) ...[
+                          _SectionLabel(t.assistantRecents),
+                          for (final c in recents) _tile(c),
+                        ],
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
         ),
         Divider(height: 1, color: luma.border),
@@ -661,6 +849,29 @@ class _SidebarState extends State<_Sidebar> {
       ],
     );
   }
+
+  Widget _navigation(
+    IconData icon,
+    String label,
+    VoidCallback onTap, {
+    bool selected = false,
+  }) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 8),
+    child: _SidebarRow(
+      onTap: onTap,
+      selected: selected,
+      child: Row(
+        children: [
+          Icon(icon, size: 19, color: context.luma.textSecondary),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: TextStyle(color: context.luma.textPrimary, fontSize: 14),
+          ),
+        ],
+      ),
+    ),
+  );
 
   Widget _tile(ChatConversationRecord c) => _ConversationTile(
     conversation: c,
@@ -1331,6 +1542,7 @@ Future<void> _showConversationMenu(
         c.pinned ? t.assistantUnstar : t.assistantStar,
       ),
       item('rename', Icons.edit_outlined, t.assistantRename),
+      item('project', Icons.drive_file_move_outlined, 'Move to project'),
       item(
         'delete',
         Icons.delete_outline_rounded,
@@ -1342,6 +1554,35 @@ Future<void> _showConversationMenu(
 
   if (!context.mounted) return;
   switch (action) {
+    case 'project':
+      final projects = await repo.watchProjects().first;
+      if (!context.mounted) return;
+      final selected = await showDialog<int>(
+        context: context,
+        builder: (context) => SimpleDialog(
+          title: const Text('Move chat'),
+          children: [
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, -1),
+              child: const Text('Main chats'),
+            ),
+            for (final project in projects)
+              SimpleDialogOption(
+                onPressed: () => Navigator.pop(context, project.id),
+                child: Text(project.name),
+              ),
+            if (projects.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(20),
+                child: Text('Create a project from Projects first.'),
+              ),
+          ],
+        ),
+      );
+      if (selected != null) {
+        await repo.moveConversation(c.id, selected == -1 ? null : selected);
+        if (c.id == activeConversationId) onSelect(c.id);
+      }
     case 'rename':
       _renameConversation(context, c);
     case 'pin':
@@ -1407,7 +1648,10 @@ void _renameConversation(BuildContext context, ChatConversationRecord c) {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
-          child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
+          child: Text(
+            t.commonCancel,
+            style: TextStyle(color: luma.textSecondary),
+          ),
         ),
         TextButton(
           onPressed: () {
@@ -1450,7 +1694,10 @@ void _confirmDelete(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
-          child: Text(t.commonCancel, style: TextStyle(color: luma.textSecondary)),
+          child: Text(
+            t.commonCancel,
+            style: TextStyle(color: luma.textSecondary),
+          ),
         ),
         TextButton(
           onPressed: () {
@@ -1529,6 +1776,11 @@ class _ChatComposer extends StatefulWidget {
     required this.onOpenPlugin,
     required this.composeMode,
     required this.onComposeModeChanged,
+    required this.artifactType,
+    required this.onArtifactTypeChanged,
+    required this.attachments,
+    required this.onRemoveAttachment,
+    required this.onUpload,
     this.textController,
     this.focusNode,
     this.hintText,
@@ -1546,6 +1798,11 @@ class _ChatComposer extends StatefulWidget {
   final ValueChanged<String> onOpenPlugin;
   final AssistantComposeMode composeMode;
   final ValueChanged<AssistantComposeMode> onComposeModeChanged;
+  final String? artifactType;
+  final ValueChanged<String?> onArtifactTypeChanged;
+  final List<AssistantAttachment> attachments;
+  final ValueChanged<AssistantAttachment> onRemoveAttachment;
+  final VoidCallback onUpload;
   final TextEditingController? textController;
   final FocusNode? focusNode;
   final String? hintText;
@@ -1678,7 +1935,7 @@ class _ChatComposerState extends State<_ChatComposer> {
     final settings = widget.settings;
     final t = L.of(context);
     final providerId = settings.aiProviderId;
-    final meter =StreamBuilder<List<ChatMessageRecord>>(
+    final meter = StreamBuilder<List<ChatMessageRecord>>(
       stream: _messages,
       builder: (context, snap) => ChatUsageMeter(
         contextWindow: contextWindowFor(providerId),
@@ -1697,19 +1954,47 @@ class _ChatComposerState extends State<_ChatComposer> {
       sending: widget.controller.isSending,
       enabled: !_blocked,
       caption: '',
-      leading: composeModesUnlocked(settings.selectedPlanId)
-          ? ComposeModeButton(
-              mode: composeMode,
-              onChanged: widget.onComposeModeChanged,
-              availability: _composeModeAvailability,
-            )
-          : null,
+      leading: ComposeModeButton(
+        mode: composeMode,
+        onChanged: widget.onComposeModeChanged,
+        availability: _composeModeAvailability,
+        modesAllowed: composeModesUnlocked(settings.selectedPlanId),
+        filesAllowed: assistantFilesAllowed(settings.selectedPlanId),
+        artifactType: widget.artifactType,
+        onArtifactTypeChanged: widget.onArtifactTypeChanged,
+        onUpload: widget.onUpload,
+      ),
+      hasAttachments: widget.attachments.isNotEmpty,
+      attachments: widget.attachments.isEmpty
+          ? null
+          : Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final attachment in widget.attachments)
+                  InputChip(
+                    label: Text(
+                      attachment.name,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onDeleted: () => widget.onRemoveAttachment(attachment),
+                    avatar: Icon(
+                      attachment.isImage
+                          ? Icons.image_outlined
+                          : Icons.description_outlined,
+                      size: 16,
+                    ),
+                  ),
+              ],
+            ),
       modelSelector: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _ModelSelector(
-            settings: settings,
-            picture: composeMode == AssistantComposeMode.picture,
+          Flexible(
+            child: _ModelSelector(
+              settings: settings,
+              picture: composeMode == AssistantComposeMode.picture,
+            ),
           ),
           meter,
         ],
@@ -1720,7 +2005,10 @@ class _ChatComposerState extends State<_ChatComposer> {
         AssistantComposeMode.plan => t.assistantPlanComposerHint,
         AssistantComposeMode.deepResearch => t.assistantResearchComposerHint,
         AssistantComposeMode.picture => t.assistantPictureComposerHint,
-        AssistantComposeMode.chat => widget.hintText,
+        AssistantComposeMode.chat =>
+          widget.artifactType == null
+              ? widget.hintText
+              : 'Describe the .${widget.artifactType} file you want to create…',
       },
       minLines: widget.minLines,
       autofocus: widget.autofocus,
@@ -1932,9 +2220,12 @@ class _ModelSelectorState extends State<_ModelSelector> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            picture ? 'Luma Picture 1.0' : _active.label,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+          Flexible(
+            child: Text(
+              picture ? 'Luma Picture 1.0' : _active.label,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+            ),
           ),
           if (!picture) ...[
             const SizedBox(width: 2),

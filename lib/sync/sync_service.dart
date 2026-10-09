@@ -1920,6 +1920,7 @@ class AiServerStatus {
     this.modeVersions = const {},
     this.pictureConfigured = false,
     this.pictureWeeklyPct,
+    this.imageInputModes = const {},
     this.aiCheckUsed = 0,
     this.aiCheckLimit = 0,
     this.aiCheckExchangePct = 0,
@@ -1973,6 +1974,7 @@ class AiServerStatus {
 
   /// Whether the operator set up a model for the Assistant's picture mode.
   final bool pictureConfigured;
+  final Map<String, bool> imageInputModes;
 
   /// Share of the weekly limit one picture costs on this plan; null when
   /// the plan can't make pictures.
@@ -1992,6 +1994,10 @@ class AiServerStatus {
     final credits = json['credits'] is Map ? json['credits'] as Map : const {};
     return AiServerStatus(
       creditBalance: intOf(credits['balance']),
+      imageInputModes: {
+        if (json['imageInputModes'] is Map) for (final entry in (json['imageInputModes'] as Map).entries)
+          entry.key.toString(): entry.value == true,
+      },
       pictureConfigured: picture['configured'] == true,
       pictureWeeklyPct: picture['weeklyPct'] is num
           ? (picture['weeklyPct'] as num).toInt()

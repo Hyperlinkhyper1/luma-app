@@ -10,6 +10,25 @@ class ChatConversations extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
   BoolColumn get pinned => boolean().withDefault(const Constant(false))();
+  IntColumn get projectId =>
+      integer().nullable().references(ChatProjects, #id)();
+}
+
+class ChatProjects extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().withLength(min: 1, max: 200)();
+  TextColumn get description => text().withDefault(const Constant(''))();
+  TextColumn get memory => text().withDefault(const Constant(''))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+class ChatArtifacts extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get conversationId => integer().nullable()();
+  TextColumn get name => text()();
+  TextColumn get path => text().unique()();
+  TextColumn get mimeType => text()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
 class ChatMessages extends Table {
@@ -28,27 +47,36 @@ class ChatMessages extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
-@DriftDatabase(tables: [ChatConversations, ChatMessages])
+@DriftDatabase(
+  tables: [ChatConversations, ChatMessages, ChatProjects, ChatArtifacts],
+)
 class ChatDatabase extends _$ChatDatabase {
   ChatDatabase([QueryExecutor? executor])
-      : super(executor ??
+    : super(
+        executor ??
             driftDatabase(
               name: 'luma_chat',
               native: DriftNativeOptions(
                 databaseDirectory: getApplicationSupportDirectory,
               ),
-            ));
+            ),
+      );
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) => m.createAll(),
-        onUpgrade: (m, from, to) async {
-          if (from < 2) {
-            await m.addColumn(chatConversations, chatConversations.pinned);
-          }
-        },
-      );
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.addColumn(chatConversations, chatConversations.pinned);
+      }
+      if (from < 3) {
+        await m.createTable(chatProjects);
+        await m.addColumn(chatConversations, chatConversations.projectId);
+        await m.createTable(chatArtifacts);
+      }
+    },
+  );
 }

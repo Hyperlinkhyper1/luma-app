@@ -69,6 +69,7 @@ class AiToolRegistry {
             parameters: {
               'type': 'object', 'properties': {
                 'section': {'type': 'string', 'enum': ['you', 'topics', 'areas']},
+                'scope': {'type': 'string', 'enum': ['global', 'project'], 'description': 'Use project for facts specific to the current project; global for preferences about the user that apply to all chats.'},
                 'title': {'type': 'string', 'description': 'Short page title, e.g. "Hardware" or "Profile".'},
                 'fact': {'type': 'string', 'description': 'The fact, as one short sentence.'},
                 'description': {'type': 'string', 'description': 'One-line summary of the page, for a new page.'},

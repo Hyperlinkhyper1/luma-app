@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'assistant_files.dart';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart' as c;
@@ -2554,6 +2555,15 @@ class Api {
   /// Which shared AI keys the operator has configured, plus this user's
   /// usage — expressed only as percentages / message counts, never raw
   /// token numbers (the budgets are a server-side implementation detail).
+  bool _assistantRouteSupportsImages(AiModeRoute? route) {
+    if (route == null) return false;
+    final catalog = aiCatalog.routingModelById(route.model);
+    if (catalog != null && catalog.inputModalities.isNotEmpty) {
+      return catalog.inputModalities.contains('image');
+    }
+    return route.upstream == AiUpstream.google && route.model.startsWith('gemini-');
+  }
+
   Response _aiStatus(Request request, StoredUser user) {
     int pct(int used, int limit) =>
         ((used * 100) / limit).clamp(0, 100).round();
@@ -2581,6 +2591,10 @@ class Api {
       // modes; either upstream can serve them now.
       'googleConfigured': config.configuredAiUpstreams.isNotEmpty,
       'modeVersions': aiModeRoutes.versions,
+      'imageInputModes': {
+        for (final mode in modes.keys) mode: _assistantRouteSupportsImages(
+          aiModeRoutes.resolve(mode, config.configuredAiUpstreams)),
+      },
       'usage': {
         'fiveHourPct': shared['fiveHourPct'],
         'weeklyPct': shared['weeklyPct'],
@@ -3161,12 +3175,18 @@ class Api {
     }
     Map<String, dynamic> body;
     try {
-      body = await _readJson(request);
+      body = await _readJson(request, maxBytes: assistantChatBodyLimit(user.planId));
     } on FormatException {
       return errorResponse(400, 'bad_request', 'Malformed request.');
     }
     if (body['messages'] is! List) {
       return errorResponse(400, 'bad_request', 'messages is required.');
+    }
+    if (!assistantFilesAllowed(user.planId)) {
+      stripAssistantFileTools(body);
+      if (assistantRequestUsesFiles(body)) {
+        return errorResponse(403, 'plan_required', assistantFilePlanMessage);
+      }
     }
     final mode = body['model'] is String ? body['model'] as String : 'normal';
     final meteredMode = kAiModeNames.containsKey(mode) ? mode : 'normal';
@@ -3201,6 +3221,10 @@ class Api {
     for (final (index, candidate) in candidates.indexed) {
       final last = index == candidates.length - 1;
       final route = candidate.route;
+      if (assistantRequestHasImages(body) && !_assistantRouteSupportsImages(route)) {
+        if (!last) continue;
+        return errorResponse(400, 'unsupported_attachment', 'This model does not support image uploads. Choose another model or a text file.');
+      }
       final upstreamBody = _aiUpstreamBody(body, route);
       final maxPrice = _applyAiMaxPrice(candidate.key, route, upstreamBody);
       final int status;
@@ -3908,7 +3932,7 @@ class Api {
     final pct = aiImageWeeklyPercentForPlan(user.planId);
     if (pct == null) {
       return errorResponse(
-          403, 'plan_required', 'Picture mode requires a Nova (\$6/month) plan.');
+          403, 'plan_required', assistantFilePlanMessage);
     }
     final route = aiImageConfig.resolve(config.configuredAiUpstreams);
     if (route == null) {
@@ -4488,12 +4512,21 @@ class Api {
     }
     Map<String, dynamic> body;
     try {
-      body = await _readJson(request);
+      body = await _readJson(request, maxBytes: assistantChatBodyLimit(user.planId));
     } on FormatException {
       return errorResponse(400, 'bad_request', 'Malformed request.');
     }
     if (body['messages'] is! List) {
       return errorResponse(400, 'bad_request', 'messages is required.');
+    }
+    if (!assistantFilesAllowed(user.planId)) {
+      stripAssistantFileTools(body);
+      if (assistantRequestUsesFiles(body)) {
+        return errorResponse(403, 'plan_required', assistantFilePlanMessage);
+      }
+    }
+    if (assistantRequestHasImages(body)) {
+      return errorResponse(400, 'unsupported_attachment', 'Luma Support accepts text files only.');
     }
     // One "support message" = one user turn. A single turn can trigger
     // several upstream calls when the model uses tools (the follow-up calls
@@ -15391,9 +15424,9 @@ window.lumaAskReason = function (form, message) {
     }
   }
 
-  static Future<Map<String, dynamic>> _readJson(Request request) async {
+  static Future<Map<String, dynamic>> _readJson(Request request, {int maxBytes = _maxJsonBody}) async {
     final declared = request.contentLength ?? -1;
-    if (declared > _maxJsonBody) {
+    if (declared > maxBytes) {
       throw const FormatException('body too large');
     }
     // Enforce the cap while streaming, not after: a chunked request has no
@@ -15403,7 +15436,7 @@ window.lumaAskReason = function (form, message) {
       final builder = BytesBuilder(copy: false);
       await for (final chunk in request.read()) {
         builder.add(chunk);
-        if (builder.length > _maxJsonBody) {
+        if (builder.length > maxBytes) {
           throw const FormatException('body too large');
         }
       }

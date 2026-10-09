@@ -3,6 +3,357 @@
 part of 'chat_database.dart';
 
 // ignore_for_file: type=lint
+class $ChatProjectsTable extends ChatProjects
+    with TableInfo<$ChatProjectsTable, ChatProject> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ChatProjectsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 200,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _memoryMeta = const VerificationMeta('memory');
+  @override
+  late final GeneratedColumn<String> memory = GeneratedColumn<String>(
+    'memory',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    description,
+    memory,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'chat_projects';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ChatProject> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('memory')) {
+      context.handle(
+        _memoryMeta,
+        memory.isAcceptableOrUnknown(data['memory']!, _memoryMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ChatProject map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ChatProject(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      )!,
+      memory: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}memory'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ChatProjectsTable createAlias(String alias) {
+    return $ChatProjectsTable(attachedDatabase, alias);
+  }
+}
+
+class ChatProject extends DataClass implements Insertable<ChatProject> {
+  final int id;
+  final String name;
+  final String description;
+  final String memory;
+  final DateTime createdAt;
+  const ChatProject({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.memory,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['description'] = Variable<String>(description);
+    map['memory'] = Variable<String>(memory);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  ChatProjectsCompanion toCompanion(bool nullToAbsent) {
+    return ChatProjectsCompanion(
+      id: Value(id),
+      name: Value(name),
+      description: Value(description),
+      memory: Value(memory),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory ChatProject.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ChatProject(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      description: serializer.fromJson<String>(json['description']),
+      memory: serializer.fromJson<String>(json['memory']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'description': serializer.toJson<String>(description),
+      'memory': serializer.toJson<String>(memory),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  ChatProject copyWith({
+    int? id,
+    String? name,
+    String? description,
+    String? memory,
+    DateTime? createdAt,
+  }) => ChatProject(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    description: description ?? this.description,
+    memory: memory ?? this.memory,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  ChatProject copyWithCompanion(ChatProjectsCompanion data) {
+    return ChatProject(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      memory: data.memory.present ? data.memory.value : this.memory,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ChatProject(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('memory: $memory, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, description, memory, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ChatProject &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.description == this.description &&
+          other.memory == this.memory &&
+          other.createdAt == this.createdAt);
+}
+
+class ChatProjectsCompanion extends UpdateCompanion<ChatProject> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<String> description;
+  final Value<String> memory;
+  final Value<DateTime> createdAt;
+  const ChatProjectsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.description = const Value.absent(),
+    this.memory = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  ChatProjectsCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    this.description = const Value.absent(),
+    this.memory = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : name = Value(name);
+  static Insertable<ChatProject> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<String>? description,
+    Expression<String>? memory,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (description != null) 'description': description,
+      if (memory != null) 'memory': memory,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  ChatProjectsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<String>? description,
+    Value<String>? memory,
+    Value<DateTime>? createdAt,
+  }) {
+    return ChatProjectsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      memory: memory ?? this.memory,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (memory.present) {
+      map['memory'] = Variable<String>(memory.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ChatProjectsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('memory: $memory, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $ChatConversationsTable extends ChatConversations
     with TableInfo<$ChatConversationsTable, ChatConversation> {
   @override
@@ -72,6 +423,20 @@ class $ChatConversationsTable extends ChatConversations
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _projectIdMeta = const VerificationMeta(
+    'projectId',
+  );
+  @override
+  late final GeneratedColumn<int> projectId = GeneratedColumn<int>(
+    'project_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES chat_projects (id)',
+    ),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -79,6 +444,7 @@ class $ChatConversationsTable extends ChatConversations
     createdAt,
     updatedAt,
     pinned,
+    projectId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -121,6 +487,12 @@ class $ChatConversationsTable extends ChatConversations
         pinned.isAcceptableOrUnknown(data['pinned']!, _pinnedMeta),
       );
     }
+    if (data.containsKey('project_id')) {
+      context.handle(
+        _projectIdMeta,
+        projectId.isAcceptableOrUnknown(data['project_id']!, _projectIdMeta),
+      );
+    }
     return context;
   }
 
@@ -150,6 +522,10 @@ class $ChatConversationsTable extends ChatConversations
         DriftSqlType.bool,
         data['${effectivePrefix}pinned'],
       )!,
+      projectId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}project_id'],
+      ),
     );
   }
 
@@ -166,12 +542,14 @@ class ChatConversation extends DataClass
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool pinned;
+  final int? projectId;
   const ChatConversation({
     required this.id,
     required this.title,
     required this.createdAt,
     required this.updatedAt,
     required this.pinned,
+    this.projectId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -181,6 +559,9 @@ class ChatConversation extends DataClass
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['pinned'] = Variable<bool>(pinned);
+    if (!nullToAbsent || projectId != null) {
+      map['project_id'] = Variable<int>(projectId);
+    }
     return map;
   }
 
@@ -191,6 +572,9 @@ class ChatConversation extends DataClass
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       pinned: Value(pinned),
+      projectId: projectId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(projectId),
     );
   }
 
@@ -205,6 +589,7 @@ class ChatConversation extends DataClass
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       pinned: serializer.fromJson<bool>(json['pinned']),
+      projectId: serializer.fromJson<int?>(json['projectId']),
     );
   }
   @override
@@ -216,6 +601,7 @@ class ChatConversation extends DataClass
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'pinned': serializer.toJson<bool>(pinned),
+      'projectId': serializer.toJson<int?>(projectId),
     };
   }
 
@@ -225,12 +611,14 @@ class ChatConversation extends DataClass
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? pinned,
+    Value<int?> projectId = const Value.absent(),
   }) => ChatConversation(
     id: id ?? this.id,
     title: title ?? this.title,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     pinned: pinned ?? this.pinned,
+    projectId: projectId.present ? projectId.value : this.projectId,
   );
   ChatConversation copyWithCompanion(ChatConversationsCompanion data) {
     return ChatConversation(
@@ -239,6 +627,7 @@ class ChatConversation extends DataClass
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       pinned: data.pinned.present ? data.pinned.value : this.pinned,
+      projectId: data.projectId.present ? data.projectId.value : this.projectId,
     );
   }
 
@@ -249,13 +638,15 @@ class ChatConversation extends DataClass
           ..write('title: $title, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('pinned: $pinned')
+          ..write('pinned: $pinned, ')
+          ..write('projectId: $projectId')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, title, createdAt, updatedAt, pinned);
+  int get hashCode =>
+      Object.hash(id, title, createdAt, updatedAt, pinned, projectId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -264,7 +655,8 @@ class ChatConversation extends DataClass
           other.title == this.title &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
-          other.pinned == this.pinned);
+          other.pinned == this.pinned &&
+          other.projectId == this.projectId);
 }
 
 class ChatConversationsCompanion extends UpdateCompanion<ChatConversation> {
@@ -273,12 +665,14 @@ class ChatConversationsCompanion extends UpdateCompanion<ChatConversation> {
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<bool> pinned;
+  final Value<int?> projectId;
   const ChatConversationsCompanion({
     this.id = const Value.absent(),
     this.title = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.pinned = const Value.absent(),
+    this.projectId = const Value.absent(),
   });
   ChatConversationsCompanion.insert({
     this.id = const Value.absent(),
@@ -286,6 +680,7 @@ class ChatConversationsCompanion extends UpdateCompanion<ChatConversation> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.pinned = const Value.absent(),
+    this.projectId = const Value.absent(),
   }) : title = Value(title);
   static Insertable<ChatConversation> custom({
     Expression<int>? id,
@@ -293,6 +688,7 @@ class ChatConversationsCompanion extends UpdateCompanion<ChatConversation> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<bool>? pinned,
+    Expression<int>? projectId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -300,6 +696,7 @@ class ChatConversationsCompanion extends UpdateCompanion<ChatConversation> {
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (pinned != null) 'pinned': pinned,
+      if (projectId != null) 'project_id': projectId,
     });
   }
 
@@ -309,6 +706,7 @@ class ChatConversationsCompanion extends UpdateCompanion<ChatConversation> {
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<bool>? pinned,
+    Value<int?>? projectId,
   }) {
     return ChatConversationsCompanion(
       id: id ?? this.id,
@@ -316,6 +714,7 @@ class ChatConversationsCompanion extends UpdateCompanion<ChatConversation> {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       pinned: pinned ?? this.pinned,
+      projectId: projectId ?? this.projectId,
     );
   }
 
@@ -337,6 +736,9 @@ class ChatConversationsCompanion extends UpdateCompanion<ChatConversation> {
     if (pinned.present) {
       map['pinned'] = Variable<bool>(pinned.value);
     }
+    if (projectId.present) {
+      map['project_id'] = Variable<int>(projectId.value);
+    }
     return map;
   }
 
@@ -347,7 +749,8 @@ class ChatConversationsCompanion extends UpdateCompanion<ChatConversation> {
           ..write('title: $title, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('pinned: $pinned')
+          ..write('pinned: $pinned, ')
+          ..write('projectId: $projectId')
           ..write(')'))
         .toString();
   }
@@ -768,22 +1171,732 @@ class ChatMessagesCompanion extends UpdateCompanion<ChatMessage> {
   }
 }
 
+class $ChatArtifactsTable extends ChatArtifacts
+    with TableInfo<$ChatArtifactsTable, ChatArtifact> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ChatArtifactsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _conversationIdMeta = const VerificationMeta(
+    'conversationId',
+  );
+  @override
+  late final GeneratedColumn<int> conversationId = GeneratedColumn<int>(
+    'conversation_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pathMeta = const VerificationMeta('path');
+  @override
+  late final GeneratedColumn<String> path = GeneratedColumn<String>(
+    'path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _mimeTypeMeta = const VerificationMeta(
+    'mimeType',
+  );
+  @override
+  late final GeneratedColumn<String> mimeType = GeneratedColumn<String>(
+    'mime_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    conversationId,
+    name,
+    path,
+    mimeType,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'chat_artifacts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ChatArtifact> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('conversation_id')) {
+      context.handle(
+        _conversationIdMeta,
+        conversationId.isAcceptableOrUnknown(
+          data['conversation_id']!,
+          _conversationIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('path')) {
+      context.handle(
+        _pathMeta,
+        path.isAcceptableOrUnknown(data['path']!, _pathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pathMeta);
+    }
+    if (data.containsKey('mime_type')) {
+      context.handle(
+        _mimeTypeMeta,
+        mimeType.isAcceptableOrUnknown(data['mime_type']!, _mimeTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_mimeTypeMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ChatArtifact map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ChatArtifact(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      conversationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}conversation_id'],
+      ),
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      path: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}path'],
+      )!,
+      mimeType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mime_type'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ChatArtifactsTable createAlias(String alias) {
+    return $ChatArtifactsTable(attachedDatabase, alias);
+  }
+}
+
+class ChatArtifact extends DataClass implements Insertable<ChatArtifact> {
+  final int id;
+  final int? conversationId;
+  final String name;
+  final String path;
+  final String mimeType;
+  final DateTime createdAt;
+  const ChatArtifact({
+    required this.id,
+    this.conversationId,
+    required this.name,
+    required this.path,
+    required this.mimeType,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    if (!nullToAbsent || conversationId != null) {
+      map['conversation_id'] = Variable<int>(conversationId);
+    }
+    map['name'] = Variable<String>(name);
+    map['path'] = Variable<String>(path);
+    map['mime_type'] = Variable<String>(mimeType);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  ChatArtifactsCompanion toCompanion(bool nullToAbsent) {
+    return ChatArtifactsCompanion(
+      id: Value(id),
+      conversationId: conversationId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(conversationId),
+      name: Value(name),
+      path: Value(path),
+      mimeType: Value(mimeType),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory ChatArtifact.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ChatArtifact(
+      id: serializer.fromJson<int>(json['id']),
+      conversationId: serializer.fromJson<int?>(json['conversationId']),
+      name: serializer.fromJson<String>(json['name']),
+      path: serializer.fromJson<String>(json['path']),
+      mimeType: serializer.fromJson<String>(json['mimeType']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'conversationId': serializer.toJson<int?>(conversationId),
+      'name': serializer.toJson<String>(name),
+      'path': serializer.toJson<String>(path),
+      'mimeType': serializer.toJson<String>(mimeType),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  ChatArtifact copyWith({
+    int? id,
+    Value<int?> conversationId = const Value.absent(),
+    String? name,
+    String? path,
+    String? mimeType,
+    DateTime? createdAt,
+  }) => ChatArtifact(
+    id: id ?? this.id,
+    conversationId: conversationId.present
+        ? conversationId.value
+        : this.conversationId,
+    name: name ?? this.name,
+    path: path ?? this.path,
+    mimeType: mimeType ?? this.mimeType,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  ChatArtifact copyWithCompanion(ChatArtifactsCompanion data) {
+    return ChatArtifact(
+      id: data.id.present ? data.id.value : this.id,
+      conversationId: data.conversationId.present
+          ? data.conversationId.value
+          : this.conversationId,
+      name: data.name.present ? data.name.value : this.name,
+      path: data.path.present ? data.path.value : this.path,
+      mimeType: data.mimeType.present ? data.mimeType.value : this.mimeType,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ChatArtifact(')
+          ..write('id: $id, ')
+          ..write('conversationId: $conversationId, ')
+          ..write('name: $name, ')
+          ..write('path: $path, ')
+          ..write('mimeType: $mimeType, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, conversationId, name, path, mimeType, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ChatArtifact &&
+          other.id == this.id &&
+          other.conversationId == this.conversationId &&
+          other.name == this.name &&
+          other.path == this.path &&
+          other.mimeType == this.mimeType &&
+          other.createdAt == this.createdAt);
+}
+
+class ChatArtifactsCompanion extends UpdateCompanion<ChatArtifact> {
+  final Value<int> id;
+  final Value<int?> conversationId;
+  final Value<String> name;
+  final Value<String> path;
+  final Value<String> mimeType;
+  final Value<DateTime> createdAt;
+  const ChatArtifactsCompanion({
+    this.id = const Value.absent(),
+    this.conversationId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.path = const Value.absent(),
+    this.mimeType = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  ChatArtifactsCompanion.insert({
+    this.id = const Value.absent(),
+    this.conversationId = const Value.absent(),
+    required String name,
+    required String path,
+    required String mimeType,
+    this.createdAt = const Value.absent(),
+  }) : name = Value(name),
+       path = Value(path),
+       mimeType = Value(mimeType);
+  static Insertable<ChatArtifact> custom({
+    Expression<int>? id,
+    Expression<int>? conversationId,
+    Expression<String>? name,
+    Expression<String>? path,
+    Expression<String>? mimeType,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (conversationId != null) 'conversation_id': conversationId,
+      if (name != null) 'name': name,
+      if (path != null) 'path': path,
+      if (mimeType != null) 'mime_type': mimeType,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  ChatArtifactsCompanion copyWith({
+    Value<int>? id,
+    Value<int?>? conversationId,
+    Value<String>? name,
+    Value<String>? path,
+    Value<String>? mimeType,
+    Value<DateTime>? createdAt,
+  }) {
+    return ChatArtifactsCompanion(
+      id: id ?? this.id,
+      conversationId: conversationId ?? this.conversationId,
+      name: name ?? this.name,
+      path: path ?? this.path,
+      mimeType: mimeType ?? this.mimeType,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (conversationId.present) {
+      map['conversation_id'] = Variable<int>(conversationId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (path.present) {
+      map['path'] = Variable<String>(path.value);
+    }
+    if (mimeType.present) {
+      map['mime_type'] = Variable<String>(mimeType.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ChatArtifactsCompanion(')
+          ..write('id: $id, ')
+          ..write('conversationId: $conversationId, ')
+          ..write('name: $name, ')
+          ..write('path: $path, ')
+          ..write('mimeType: $mimeType, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$ChatDatabase extends GeneratedDatabase {
   _$ChatDatabase(QueryExecutor e) : super(e);
   $ChatDatabaseManager get managers => $ChatDatabaseManager(this);
+  late final $ChatProjectsTable chatProjects = $ChatProjectsTable(this);
   late final $ChatConversationsTable chatConversations =
       $ChatConversationsTable(this);
   late final $ChatMessagesTable chatMessages = $ChatMessagesTable(this);
+  late final $ChatArtifactsTable chatArtifacts = $ChatArtifactsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
+    chatProjects,
     chatConversations,
     chatMessages,
+    chatArtifacts,
   ];
 }
 
+typedef $$ChatProjectsTableCreateCompanionBuilder =
+    ChatProjectsCompanion Function({
+      Value<int> id,
+      required String name,
+      Value<String> description,
+      Value<String> memory,
+      Value<DateTime> createdAt,
+    });
+typedef $$ChatProjectsTableUpdateCompanionBuilder =
+    ChatProjectsCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<String> description,
+      Value<String> memory,
+      Value<DateTime> createdAt,
+    });
+
+final class $$ChatProjectsTableReferences
+    extends BaseReferences<_$ChatDatabase, $ChatProjectsTable, ChatProject> {
+  $$ChatProjectsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$ChatConversationsTable, List<ChatConversation>>
+  _chatConversationsRefsTable(_$ChatDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.chatConversations,
+        aliasName: 'chat_projects__id__chat_conversations__project_id',
+      );
+
+  $$ChatConversationsTableProcessedTableManager get chatConversationsRefs {
+    final manager = $$ChatConversationsTableTableManager(
+      $_db,
+      $_db.chatConversations,
+    ).filter((f) => f.projectId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _chatConversationsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$ChatProjectsTableFilterComposer
+    extends Composer<_$ChatDatabase, $ChatProjectsTable> {
+  $$ChatProjectsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get memory => $composableBuilder(
+    column: $table.memory,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> chatConversationsRefs(
+    Expression<bool> Function($$ChatConversationsTableFilterComposer f) f,
+  ) {
+    final $$ChatConversationsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.chatConversations,
+      getReferencedColumn: (t) => t.projectId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChatConversationsTableFilterComposer(
+            $db: $db,
+            $table: $db.chatConversations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$ChatProjectsTableOrderingComposer
+    extends Composer<_$ChatDatabase, $ChatProjectsTable> {
+  $$ChatProjectsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get memory => $composableBuilder(
+    column: $table.memory,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ChatProjectsTableAnnotationComposer
+    extends Composer<_$ChatDatabase, $ChatProjectsTable> {
+  $$ChatProjectsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get memory =>
+      $composableBuilder(column: $table.memory, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> chatConversationsRefs<T extends Object>(
+    Expression<T> Function($$ChatConversationsTableAnnotationComposer a) f,
+  ) {
+    final $$ChatConversationsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.chatConversations,
+          getReferencedColumn: (t) => t.projectId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ChatConversationsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.chatConversations,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$ChatProjectsTableTableManager
+    extends
+        RootTableManager<
+          _$ChatDatabase,
+          $ChatProjectsTable,
+          ChatProject,
+          $$ChatProjectsTableFilterComposer,
+          $$ChatProjectsTableOrderingComposer,
+          $$ChatProjectsTableAnnotationComposer,
+          $$ChatProjectsTableCreateCompanionBuilder,
+          $$ChatProjectsTableUpdateCompanionBuilder,
+          (ChatProject, $$ChatProjectsTableReferences),
+          ChatProject,
+          PrefetchHooks Function({bool chatConversationsRefs})
+        > {
+  $$ChatProjectsTableTableManager(_$ChatDatabase db, $ChatProjectsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ChatProjectsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ChatProjectsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ChatProjectsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> description = const Value.absent(),
+                Value<String> memory = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => ChatProjectsCompanion(
+                id: id,
+                name: name,
+                description: description,
+                memory: memory,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                Value<String> description = const Value.absent(),
+                Value<String> memory = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => ChatProjectsCompanion.insert(
+                id: id,
+                name: name,
+                description: description,
+                memory: memory,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$ChatProjectsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({chatConversationsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (chatConversationsRefs) db.chatConversations,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (chatConversationsRefs)
+                    await $_getPrefetchedData<
+                      ChatProject,
+                      $ChatProjectsTable,
+                      ChatConversation
+                    >(
+                      currentTable: table,
+                      referencedTable: $$ChatProjectsTableReferences
+                          ._chatConversationsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$ChatProjectsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).chatConversationsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.projectId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ChatProjectsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$ChatDatabase,
+      $ChatProjectsTable,
+      ChatProject,
+      $$ChatProjectsTableFilterComposer,
+      $$ChatProjectsTableOrderingComposer,
+      $$ChatProjectsTableAnnotationComposer,
+      $$ChatProjectsTableCreateCompanionBuilder,
+      $$ChatProjectsTableUpdateCompanionBuilder,
+      (ChatProject, $$ChatProjectsTableReferences),
+      ChatProject,
+      PrefetchHooks Function({bool chatConversationsRefs})
+    >;
 typedef $$ChatConversationsTableCreateCompanionBuilder =
     ChatConversationsCompanion Function({
       Value<int> id,
@@ -791,6 +1904,7 @@ typedef $$ChatConversationsTableCreateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<bool> pinned,
+      Value<int?> projectId,
     });
 typedef $$ChatConversationsTableUpdateCompanionBuilder =
     ChatConversationsCompanion Function({
@@ -799,6 +1913,7 @@ typedef $$ChatConversationsTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<bool> pinned,
+      Value<int?> projectId,
     });
 
 final class $$ChatConversationsTableReferences
@@ -813,6 +1928,24 @@ final class $$ChatConversationsTableReferences
     super.$_table,
     super.$_typedResult,
   );
+
+  static $ChatProjectsTable _projectIdTable(_$ChatDatabase db) => db
+      .chatProjects
+      .createAlias('chat_conversations__project_id__chat_projects__id');
+
+  $$ChatProjectsTableProcessedTableManager? get projectId {
+    final $_column = $_itemColumn<int>('project_id');
+    if ($_column == null) return null;
+    final manager = $$ChatProjectsTableTableManager(
+      $_db,
+      $_db.chatProjects,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_projectIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
 
   static MultiTypedResultKey<$ChatMessagesTable, List<ChatMessage>>
   _chatMessagesRefsTable(_$ChatDatabase db) => MultiTypedResultKey.fromTable(
@@ -866,6 +1999,29 @@ class $$ChatConversationsTableFilterComposer
     column: $table.pinned,
     builder: (column) => ColumnFilters(column),
   );
+
+  $$ChatProjectsTableFilterComposer get projectId {
+    final $$ChatProjectsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.projectId,
+      referencedTable: $db.chatProjects,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChatProjectsTableFilterComposer(
+            $db: $db,
+            $table: $db.chatProjects,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 
   Expression<bool> chatMessagesRefs(
     Expression<bool> Function($$ChatMessagesTableFilterComposer f) f,
@@ -926,6 +2082,29 @@ class $$ChatConversationsTableOrderingComposer
     column: $table.pinned,
     builder: (column) => ColumnOrderings(column),
   );
+
+  $$ChatProjectsTableOrderingComposer get projectId {
+    final $$ChatProjectsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.projectId,
+      referencedTable: $db.chatProjects,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChatProjectsTableOrderingComposer(
+            $db: $db,
+            $table: $db.chatProjects,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$ChatConversationsTableAnnotationComposer
@@ -951,6 +2130,29 @@ class $$ChatConversationsTableAnnotationComposer
 
   GeneratedColumn<bool> get pinned =>
       $composableBuilder(column: $table.pinned, builder: (column) => column);
+
+  $$ChatProjectsTableAnnotationComposer get projectId {
+    final $$ChatProjectsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.projectId,
+      referencedTable: $db.chatProjects,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChatProjectsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.chatProjects,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 
   Expression<T> chatMessagesRefs<T extends Object>(
     Expression<T> Function($$ChatMessagesTableAnnotationComposer a) f,
@@ -991,7 +2193,7 @@ class $$ChatConversationsTableTableManager
           $$ChatConversationsTableUpdateCompanionBuilder,
           (ChatConversation, $$ChatConversationsTableReferences),
           ChatConversation,
-          PrefetchHooks Function({bool chatMessagesRefs})
+          PrefetchHooks Function({bool projectId, bool chatMessagesRefs})
         > {
   $$ChatConversationsTableTableManager(
     _$ChatDatabase db,
@@ -1016,12 +2218,14 @@ class $$ChatConversationsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> pinned = const Value.absent(),
+                Value<int?> projectId = const Value.absent(),
               }) => ChatConversationsCompanion(
                 id: id,
                 title: title,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 pinned: pinned,
+                projectId: projectId,
               ),
           createCompanionCallback:
               ({
@@ -1030,12 +2234,14 @@ class $$ChatConversationsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> pinned = const Value.absent(),
+                Value<int?> projectId = const Value.absent(),
               }) => ChatConversationsCompanion.insert(
                 id: id,
                 title: title,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 pinned: pinned,
+                projectId: projectId,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -1045,38 +2251,74 @@ class $$ChatConversationsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({chatMessagesRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [if (chatMessagesRefs) db.chatMessages],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (chatMessagesRefs)
-                    await $_getPrefetchedData<
-                      ChatConversation,
-                      $ChatConversationsTable,
-                      ChatMessage
-                    >(
-                      currentTable: table,
-                      referencedTable: $$ChatConversationsTableReferences
-                          ._chatMessagesRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$ChatConversationsTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).chatMessagesRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where(
-                            (e) => e.conversationId == item.id,
-                          ),
-                      typedResults: items,
-                    ),
-                ];
+          prefetchHooksCallback:
+              ({projectId = false, chatMessagesRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (chatMessagesRefs) db.chatMessages,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (projectId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.projectId,
+                                    referencedTable:
+                                        $$ChatConversationsTableReferences
+                                            ._projectIdTable(db),
+                                    referencedColumn:
+                                        $$ChatConversationsTableReferences
+                                            ._projectIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (chatMessagesRefs)
+                        await $_getPrefetchedData<
+                          ChatConversation,
+                          $ChatConversationsTable,
+                          ChatMessage
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ChatConversationsTableReferences
+                              ._chatMessagesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ChatConversationsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).chatMessagesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.conversationId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -1093,7 +2335,7 @@ typedef $$ChatConversationsTableProcessedTableManager =
       $$ChatConversationsTableUpdateCompanionBuilder,
       (ChatConversation, $$ChatConversationsTableReferences),
       ChatConversation,
-      PrefetchHooks Function({bool chatMessagesRefs})
+      PrefetchHooks Function({bool projectId, bool chatMessagesRefs})
     >;
 typedef $$ChatMessagesTableCreateCompanionBuilder =
     ChatMessagesCompanion Function({
@@ -1429,12 +2671,231 @@ typedef $$ChatMessagesTableProcessedTableManager =
       ChatMessage,
       PrefetchHooks Function({bool conversationId})
     >;
+typedef $$ChatArtifactsTableCreateCompanionBuilder =
+    ChatArtifactsCompanion Function({
+      Value<int> id,
+      Value<int?> conversationId,
+      required String name,
+      required String path,
+      required String mimeType,
+      Value<DateTime> createdAt,
+    });
+typedef $$ChatArtifactsTableUpdateCompanionBuilder =
+    ChatArtifactsCompanion Function({
+      Value<int> id,
+      Value<int?> conversationId,
+      Value<String> name,
+      Value<String> path,
+      Value<String> mimeType,
+      Value<DateTime> createdAt,
+    });
+
+class $$ChatArtifactsTableFilterComposer
+    extends Composer<_$ChatDatabase, $ChatArtifactsTable> {
+  $$ChatArtifactsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mimeType => $composableBuilder(
+    column: $table.mimeType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ChatArtifactsTableOrderingComposer
+    extends Composer<_$ChatDatabase, $ChatArtifactsTable> {
+  $$ChatArtifactsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mimeType => $composableBuilder(
+    column: $table.mimeType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ChatArtifactsTableAnnotationComposer
+    extends Composer<_$ChatDatabase, $ChatArtifactsTable> {
+  $$ChatArtifactsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get path =>
+      $composableBuilder(column: $table.path, builder: (column) => column);
+
+  GeneratedColumn<String> get mimeType =>
+      $composableBuilder(column: $table.mimeType, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$ChatArtifactsTableTableManager
+    extends
+        RootTableManager<
+          _$ChatDatabase,
+          $ChatArtifactsTable,
+          ChatArtifact,
+          $$ChatArtifactsTableFilterComposer,
+          $$ChatArtifactsTableOrderingComposer,
+          $$ChatArtifactsTableAnnotationComposer,
+          $$ChatArtifactsTableCreateCompanionBuilder,
+          $$ChatArtifactsTableUpdateCompanionBuilder,
+          (
+            ChatArtifact,
+            BaseReferences<_$ChatDatabase, $ChatArtifactsTable, ChatArtifact>,
+          ),
+          ChatArtifact,
+          PrefetchHooks Function()
+        > {
+  $$ChatArtifactsTableTableManager(_$ChatDatabase db, $ChatArtifactsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ChatArtifactsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ChatArtifactsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ChatArtifactsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int?> conversationId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> path = const Value.absent(),
+                Value<String> mimeType = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => ChatArtifactsCompanion(
+                id: id,
+                conversationId: conversationId,
+                name: name,
+                path: path,
+                mimeType: mimeType,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int?> conversationId = const Value.absent(),
+                required String name,
+                required String path,
+                required String mimeType,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => ChatArtifactsCompanion.insert(
+                id: id,
+                conversationId: conversationId,
+                name: name,
+                path: path,
+                mimeType: mimeType,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ChatArtifactsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$ChatDatabase,
+      $ChatArtifactsTable,
+      ChatArtifact,
+      $$ChatArtifactsTableFilterComposer,
+      $$ChatArtifactsTableOrderingComposer,
+      $$ChatArtifactsTableAnnotationComposer,
+      $$ChatArtifactsTableCreateCompanionBuilder,
+      $$ChatArtifactsTableUpdateCompanionBuilder,
+      (
+        ChatArtifact,
+        BaseReferences<_$ChatDatabase, $ChatArtifactsTable, ChatArtifact>,
+      ),
+      ChatArtifact,
+      PrefetchHooks Function()
+    >;
 
 class $ChatDatabaseManager {
   final _$ChatDatabase _db;
   $ChatDatabaseManager(this._db);
+  $$ChatProjectsTableTableManager get chatProjects =>
+      $$ChatProjectsTableTableManager(_db, _db.chatProjects);
   $$ChatConversationsTableTableManager get chatConversations =>
       $$ChatConversationsTableTableManager(_db, _db.chatConversations);
   $$ChatMessagesTableTableManager get chatMessages =>
       $$ChatMessagesTableTableManager(_db, _db.chatMessages);
+  $$ChatArtifactsTableTableManager get chatArtifacts =>
+      $$ChatArtifactsTableTableManager(_db, _db.chatArtifacts);
 }
