@@ -35335,4 +35335,3187 @@ class LNl extends L {
   String sceneAssetStudioCatalogFootprint(String width, String depth) {
     return 'Catalogusafmetingen: $width x $depth m. Het model gebruikt de w- en d-parameters van je bestaande model.';
   }
+
+  @override
+  String get gameToolsMinecraftBlurb => 'Bouwers, beheerders & datapacks';
+
+  @override
+  String mcToolsKicker(String version) {
+    return 'Minecraft Java $version';
+  }
+
+  @override
+  String get mcToolsHeadline => 'Minecraft-tools voor bouwers en makers';
+
+  @override
+  String get mcToolsSubtitle =>
+      'Plan bouwwerken, ontwerp uitrusting, beheer je server en schrijf datapacks. Alles draait op dit apparaat.';
+
+  @override
+  String get mcToolsSearchHint => 'Tools zoeken';
+
+  @override
+  String get mcToolsAudiencePlayers => 'Spelers';
+
+  @override
+  String get mcToolsAudiencePlayersBlurb =>
+      'Bouwen, craften en dingen opzoeken';
+
+  @override
+  String get mcToolsAudienceAdmins => 'Beheerders';
+
+  @override
+  String get mcToolsAudienceAdminsBlurb => 'Werelden, chat en commando\'s';
+
+  @override
+  String get mcToolsAudienceDevelopers => 'Ontwikkelaars';
+
+  @override
+  String get mcToolsAudienceDevelopersBlurb => 'Assets en datapackbestanden';
+
+  @override
+  String get mcToolsGroupBuild => 'Bouwen & ontwerpen';
+
+  @override
+  String get mcToolsGroupGear => 'Uitrusting & craften';
+
+  @override
+  String get mcToolsGroupGuides => 'Gidsen';
+
+  @override
+  String get mcToolsGroupWorlds => 'Werelden';
+
+  @override
+  String get mcToolsGroupChat => 'Chat & tekst';
+
+  @override
+  String get mcToolsGroupGameplay => 'Commando\'s & gameplay';
+
+  @override
+  String get mcToolsGroupAssets => 'Assets';
+
+  @override
+  String get mcToolsGroupDatapacks => 'Datapackgeneratoren';
+
+  @override
+  String mcToolsSearchResults(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tools',
+      one: '1 tool',
+      zero: 'Geen tools gevonden',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mcToolsNoMatchBody =>
+      'Probeer een ander woord — elke tool is te vinden op naam of op wat hij doet.';
+
+  @override
+  String get mcToolsDisclaimer =>
+      'Geen officieel Minecraft-product. Niet goedgekeurd door of verbonden met Mojang of Microsoft.';
+
+  @override
+  String mcToolsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tools',
+      one: '1 tool',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mcToolEnchantOptimizer => 'Betoveringsoptimalisatie';
+
+  @override
+  String get mcToolEnchantOptimizerBlurb =>
+      'Vind de goedkoopste aambeeldvolgorde voor je betoveringen.';
+
+  @override
+  String get mcToolShapeGenerator => 'Vormgenerator';
+
+  @override
+  String get mcToolShapeGeneratorBlurb =>
+      'Cirkels, bogen, bollen, koepels en cilinders, blok voor blok.';
+
+  @override
+  String get mcToolSkinEditor => 'Skin-editor';
+
+  @override
+  String get mcToolSkinEditorBlurb =>
+      'Beschilder een skin op een live 3D-model en sla de PNG op.';
+
+  @override
+  String get mcToolSchematicOrganizer => 'Schematic-organizer';
+
+  @override
+  String get mcToolSchematicOrganizerBlurb =>
+      'Bekijk, markeer, groepeer en hernoem een map met schematics.';
+
+  @override
+  String get mcToolVillagerGuide => 'Dorpelingenruil';
+
+  @override
+  String get mcToolVillagerGuideBlurb =>
+      'Elke ruil, prijs, level en hoe groot de kans is dat hij verschijnt.';
+
+  @override
+  String get mcToolOreGuide => 'Ertsverdeling';
+
+  @override
+  String get mcToolOreGuideBlurb =>
+      'Ertscurves uit de spelbestanden en het beste Y-niveau per erts.';
+
+  @override
+  String get mcToolPotionGuide => 'Drankengids';
+
+  @override
+  String get mcToolPotionGuideBlurb =>
+      'Recepten, ingrediënten, duur en upgrades.';
+
+  @override
+  String get mcToolSulfurCubeGuide => 'Zwavelkubusgids';
+
+  @override
+  String get mcToolSulfurCubeGuideBlurb =>
+      'Wat een zwavelkubus doet met elk blok dat je hem voert.';
+
+  @override
+  String get mcToolBeaconGuide => 'Bakengids';
+
+  @override
+  String get mcToolBeaconGuideBlurb =>
+      'Piramidegroottes, bereik per niveau en wat elk effect doet.';
+
+  @override
+  String get mcToolShieldMaker => 'Schildmaker';
+
+  @override
+  String get mcToolShieldMakerBlurb =>
+      'Stapel bannerpatronen op een schild en krijg het commando.';
+
+  @override
+  String get mcToolFireworkMaker => 'Vuurwerkmaker';
+
+  @override
+  String get mcToolFireworkMakerBlurb =>
+      'Ontwerp vuurpijlen ster voor ster, met recept en commando.';
+
+  @override
+  String get mcToolBannerMaker => 'Bannermaker';
+
+  @override
+  String get mcToolBannerMakerBlurb =>
+      'Stapel tot 16 patronen en krijg weefgetouwstappen en een commando.';
+
+  @override
+  String get mcToolBuildPlanner => 'Bouwplanner';
+
+  @override
+  String get mcToolBuildPlannerBlurb =>
+      'Open een schematic in 3D, loop laag voor laag en krijg de materialen.';
+
+  @override
+  String get mcToolMapArtGenerator => 'Kaartkunstgenerator';
+
+  @override
+  String get mcToolMapArtGeneratorBlurb =>
+      'Maak van elke afbeelding bouwbare kaartkunst.';
+
+  @override
+  String get mcToolRoofGenerator => 'Dakontwerper';
+
+  @override
+  String get mcToolRoofGeneratorBlurb =>
+      'Zadel-, schild-, mansardedaken en meer, als schematic.';
+
+  @override
+  String get mcToolArmorDesigner => 'Harnasversiering & verf';
+
+  @override
+  String get mcToolArmorDesignerBlurb =>
+      'Bekijk versieringen en leerkleuren en vind de verfmix.';
+
+  @override
+  String get mcToolFlatPreset => 'Platte-wereldgenerator';
+
+  @override
+  String get mcToolFlatPresetBlurb =>
+      'Stapel superplatte lagen en krijg de preset.';
+
+  @override
+  String get mcToolCustomWorld => 'Aangepaste wereldpreset';
+
+  @override
+  String get mcToolCustomWorldBlurb =>
+      'Pas zeeniveau, terreinblokken en biomen aan als datapack.';
+
+  @override
+  String get mcToolColorCodes => 'Kleurcodes';
+
+  @override
+  String get mcToolColorCodesBlurb =>
+      'Elke §-kleur- en opmaakcode, met live voorbeeld.';
+
+  @override
+  String get mcToolTitleGenerator => 'Titelgenerator';
+
+  @override
+  String get mcToolTitleGeneratorBlurb =>
+      'Titels, ondertitels en actiebalken met timing.';
+
+  @override
+  String get mcToolTellrawGenerator => 'Tellraw-generator';
+
+  @override
+  String get mcToolTellrawGeneratorBlurb =>
+      'Opgemaakte chatberichten met hover- en klikacties.';
+
+  @override
+  String get mcToolMotdGenerator => 'MOTD-generator';
+
+  @override
+  String get mcToolMotdGeneratorBlurb =>
+      'Ontwerp je serverlijstbericht en bekijk het.';
+
+  @override
+  String get mcToolLootTables => 'Buittabellen';
+
+  @override
+  String get mcToolLootTablesBlurb =>
+      'Bouw buittabellen voor kisten, mobs en blokken als JSON.';
+
+  @override
+  String get mcToolCustomPotions => 'Aangepaste drankjes';
+
+  @override
+  String get mcToolCustomPotionsBlurb =>
+      'Drankjes, werpdrankjes en pijlen met elk effect.';
+
+  @override
+  String get mcToolCommandGenerator => 'Commandogenerator';
+
+  @override
+  String get mcToolCommandGeneratorBlurb =>
+      'Give, summon, effect, teleport en meer, voor je ingevuld.';
+
+  @override
+  String get mcToolAssetLibrary => 'Assetbibliotheek';
+
+  @override
+  String get mcToolAssetLibraryBlurb =>
+      'Elke blok-, item- en mobtextuur en elk geluid uit je eigen spel.';
+
+  @override
+  String get mcToolRecipeGenerator => 'Receptgenerator';
+
+  @override
+  String get mcToolRecipeGeneratorBlurb =>
+      'Recepten voor craften, smelten, steenhouwen en smeden.';
+
+  @override
+  String get mcToolEnchantmentGenerator => 'Betoveringsgenerator';
+
+  @override
+  String get mcToolEnchantmentGeneratorBlurb =>
+      'Schrijf eigen datagestuurde betoveringen.';
+
+  @override
+  String get mcToolAdvancementGenerator => 'Vooruitgangsgenerator';
+
+  @override
+  String get mcToolAdvancementGeneratorBlurb =>
+      'Bouw vooruitgangen met criteria, weergave en beloningen.';
+
+  @override
+  String get mcCopiedToClipboard => 'Gekopieerd naar klembord';
+
+  @override
+  String mcCouldNotSave(String error) {
+    return 'Opslaan mislukt: $error';
+  }
+
+  @override
+  String get mcAllTools => 'Alle tools';
+
+  @override
+  String get mcBackToTools => 'Terug naar alle Minecraft-tools';
+
+  @override
+  String get mcOutput => 'Uitvoer';
+
+  @override
+  String get mcSave => 'Opslaan';
+
+  @override
+  String get mcCopy => 'Kopiëren';
+
+  @override
+  String get mcSearchIds => 'Id\'s zoeken…';
+
+  @override
+  String get mcStatBlocks => 'blokken';
+
+  @override
+  String get mcStatFootprint => 'grondvlak';
+
+  @override
+  String get mcStatTall => 'hoog';
+
+  @override
+  String get mcExport => 'Exporteren';
+
+  @override
+  String mcSaveExtension(String extension) {
+    return 'Opslaan als .$extension';
+  }
+
+  @override
+  String get mcMaterials => 'Materialen';
+
+  @override
+  String get mcCopyList => 'Lijst kopiëren';
+
+  @override
+  String get mcMaterialListCopied => 'Materiaallijst gekopieerd';
+
+  @override
+  String get mcShowFewer => 'Minder tonen';
+
+  @override
+  String mcShowAllCount(int count) {
+    return 'Alle $count tonen';
+  }
+
+  @override
+  String get mcSpanAddPart => 'Opgemaakt deel toevoegen';
+
+  @override
+  String get mcSpanText => 'Tekst';
+
+  @override
+  String get mcSpanMore => ' meer';
+
+  @override
+  String get mcBold => 'Vet';
+
+  @override
+  String get mcItalic => 'Cursief';
+
+  @override
+  String get mcUnderlined => 'Onderstreept';
+
+  @override
+  String get mcStrikethrough => 'Doorgestreept';
+
+  @override
+  String get mcObfuscated => 'Versluierd';
+
+  @override
+  String get mcRemovePart => 'Deel verwijderen';
+
+  @override
+  String get mcOnClickNothing => 'Bij klikken: niets';
+
+  @override
+  String get mcClickOpenUrl => 'URL openen';
+
+  @override
+  String get mcClickRunCommand => 'Commando uitvoeren';
+
+  @override
+  String get mcClickSuggestCommand => 'Commando voorstellen';
+
+  @override
+  String get mcClickCopy => 'Naar klembord kopiëren';
+
+  @override
+  String get mcClickChangePage => 'Pagina wisselen (boeken)';
+
+  @override
+  String get mcClickNothing => 'Niets';
+
+  @override
+  String get mcHintPageNumber => 'Paginanummer';
+
+  @override
+  String get mcHintTextToCopy => 'Te kopiëren tekst';
+
+  @override
+  String get mcHintHoverText => 'Hovertekst (optioneel)';
+
+  @override
+  String get mcTextColour => 'Tekstkleur';
+
+  @override
+  String get mcHexColour => 'Hexkleur';
+
+  @override
+  String get mcDefault => 'Standaard';
+
+  @override
+  String get mcUseHex => 'Hex gebruiken';
+
+  @override
+  String get mcTagFiles => 'Bestanden';
+
+  @override
+  String get mcTagExport => 'Export';
+
+  @override
+  String get mcTagPaint => 'Tekenen';
+
+  @override
+  String get mcTagPopular => 'Populair';
+
+  @override
+  String get mcTagDesign => 'Ontwerp';
+
+  @override
+  String get mcTagGuide => 'Gids';
+
+  @override
+  String get mcTagNew => 'Nieuw';
+
+  @override
+  String get mcTagWorld => 'Wereld';
+
+  @override
+  String get mcTagDatapack => 'Datapack';
+
+  @override
+  String get mcTagText => 'Tekst';
+
+  @override
+  String get mcTagCommand => 'Commando';
+
+  @override
+  String get mcTagServer => 'Server';
+
+  @override
+  String get mcTagBrowse => 'Bladeren';
+
+  @override
+  String get mcEnchItemSword => 'Zwaard';
+
+  @override
+  String get mcEnchItemSpear => 'Speer';
+
+  @override
+  String get mcEnchItemAxe => 'Bijl';
+
+  @override
+  String get mcEnchItemMace => 'Knots';
+
+  @override
+  String get mcEnchItemTrident => 'Drietand';
+
+  @override
+  String get mcEnchItemBow => 'Boog';
+
+  @override
+  String get mcEnchItemCrossbow => 'Kruisboog';
+
+  @override
+  String get mcEnchItemPickaxe => 'Houweel';
+
+  @override
+  String get mcEnchItemShovel => 'Schep';
+
+  @override
+  String get mcEnchItemHoe => 'Schoffel';
+
+  @override
+  String get mcEnchItemHelmet => 'Helm';
+
+  @override
+  String get mcEnchItemChestplate => 'Borstplaat';
+
+  @override
+  String get mcEnchItemLeggings => 'Beenstukken';
+
+  @override
+  String get mcEnchItemBoots => 'Laarzen';
+
+  @override
+  String get mcEnchItemElytra => 'Elytra';
+
+  @override
+  String get mcEnchItemFishingRod => 'Hengel';
+
+  @override
+  String get mcEnchItemShield => 'Schild';
+
+  @override
+  String get mcEnchItemShears => 'Schaar';
+
+  @override
+  String get mcEnchItemFlintAndSteel => 'Vuursteen en staal';
+
+  @override
+  String get mcEnchItemBrush => 'Kwast';
+
+  @override
+  String get mcEnchItemCarrotOnAStick => 'Wortel aan een stok';
+
+  @override
+  String get mcEnchItemBookMerge => 'Boek (samenvoegen)';
+
+  @override
+  String get mcEnchNeedTwo =>
+      'Kies minstens twee betoveringen om in één boek samen te voegen.';
+
+  @override
+  String get mcEnchTooExpensive =>
+      'Elke volgorde loopt in survival vast op \"Te duur!\". Laat een betovering weg, begin met een nieuw voorwerp of zet de survivallimiet uit.';
+
+  @override
+  String get mcEnchItem => 'Voorwerp';
+
+  @override
+  String get mcEnchEnchantments => 'Betoveringen';
+
+  @override
+  String get mcEnchMaxAll => 'Alles maximaal';
+
+  @override
+  String get mcEnchAnvilSettings => 'Aambeeldinstellingen';
+
+  @override
+  String get mcEnchPriorUses =>
+      'Keren dat het voorwerp al in een aambeeld is geweest';
+
+  @override
+  String get mcEnchSurvivalLimit => 'Survivallimiet';
+
+  @override
+  String get mcEnchSurvivalLimitDetail =>
+      'Stappen boven 39 levels zijn \"Te duur!\"';
+
+  @override
+  String mcEnchConflicts(String other) {
+    return 'Botst met $other — tik om te wisselen';
+  }
+
+  @override
+  String get mcEnchNoOrder => 'Geen volgorde werkt';
+
+  @override
+  String get mcEnchPickSome => 'Kies een paar betoveringen';
+
+  @override
+  String get mcEnchPickSomeBody =>
+      'Kies een voorwerp en de levels die je wilt. Elke mogelijke aambeeldvolgorde wordt geprobeerd en de goedkoopste wordt stap voor stap uitgelegd.';
+
+  @override
+  String get mcEnchLevelsTotal => 'levels in totaal';
+
+  @override
+  String mcEnchAnvilUses(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'aambeeldbeurten',
+      one: 'aambeeldbeurt',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mcEnchMostExpensive => 'duurste stap';
+
+  @override
+  String get mcEnchXpPoints => 'ervaringspunten';
+
+  @override
+  String get mcEnchSteps => 'Stappen';
+
+  @override
+  String mcEnchFootnote(int penalty, int cost) {
+    return 'Het voorwerp eindigt met een werkstraf van $penalty, dus de volgende aambeeldbeurt begint bij $cost levels vóór betoveringen. Kosten volgen Java Edition 26.3: elke opgeofferde betovering kost haar level maal haar boekvermenigvuldiger, plus 2ⁿ−1 voor het eerdere werk van elke kant.';
+  }
+
+  @override
+  String mcEnchLevelsShort(int levels) {
+    return '$levels lvl';
+  }
+
+  @override
+  String mcEnchBook(String enchantments) {
+    return 'Boek ($enchantments)';
+  }
+
+  @override
+  String get mcShapeCircle => 'Cirkel';
+
+  @override
+  String get mcShapeArch => 'Boog & curve';
+
+  @override
+  String get mcShape3d => '3D-vorm';
+
+  @override
+  String get mcShapeRound => 'Rond';
+
+  @override
+  String get mcShapePointed => 'Spits (gotisch)';
+
+  @override
+  String get mcShapeParabolic => 'Parabolisch';
+
+  @override
+  String get mcShapeSegmental => 'Segmentboog';
+
+  @override
+  String get mcShapeSphere => 'Bol';
+
+  @override
+  String get mcShapeDome => 'Koepel';
+
+  @override
+  String get mcShapeCylinder => 'Cilinder';
+
+  @override
+  String get mcShapeCone => 'Kegel';
+
+  @override
+  String get mcShapePyramid => 'Piramide';
+
+  @override
+  String get mcShapeTorus => 'Torus';
+
+  @override
+  String get mcShapeSize => 'Grootte';
+
+  @override
+  String get mcShapeSpan => 'Overspanning';
+
+  @override
+  String get mcShapeWidth => 'Breedte';
+
+  @override
+  String get mcShapePerfectCircle => 'Perfecte cirkel';
+
+  @override
+  String get mcShapeSameSize => 'Even groot op elke as';
+
+  @override
+  String get mcShapeRise => 'Pijl';
+
+  @override
+  String get mcShapeLength => 'Lengte';
+
+  @override
+  String get mcShapeHeight => 'Hoogte';
+
+  @override
+  String get mcShapeDepth => 'Diepte';
+
+  @override
+  String get mcShapeTube => 'Buisstraal';
+
+  @override
+  String get mcShapeArchDepth => 'Diepte (blokken de muur in)';
+
+  @override
+  String get mcShapeStyle => 'Stijl';
+
+  @override
+  String get mcShapeFilled => 'Gevuld';
+
+  @override
+  String get mcShapeHollow => 'Hol';
+
+  @override
+  String get mcShapeHollowDetail => 'Alleen de schil — veel minder blokken';
+
+  @override
+  String get mcShapeWall => 'Wanddikte';
+
+  @override
+  String get mcShapeThick => 'Dikke rand';
+
+  @override
+  String get mcShapeThickDetail =>
+      'Geen diagonale gaten — mobs glippen er niet door';
+
+  @override
+  String get mcShapeBlock => 'Blok';
+
+  @override
+  String mcShapeLayerOf(int layer, int count) {
+    return 'Laag $layer van $count';
+  }
+
+  @override
+  String get mcShapePlan => 'Plattegrond';
+
+  @override
+  String get mcShapeLayer => 'Laag';
+
+  @override
+  String get mcShapeGhost =>
+      'Grijze punten zijn de laag eronder, om elke laag uit te lijnen.';
+
+  @override
+  String mcShapeRuns(String runs) {
+    return 'Rijlengtes vanaf de bovenste rij: $runs. Spiegel ze voor de andere kwarten.';
+  }
+
+  @override
+  String get mcVillNovice => 'Beginneling';
+
+  @override
+  String get mcVillApprentice => 'Leerling';
+
+  @override
+  String get mcVillJourneyman => 'Gezel';
+
+  @override
+  String get mcVillExpert => 'Expert';
+
+  @override
+  String get mcVillMaster => 'Meester';
+
+  @override
+  String get mcVillSearch =>
+      'Welke dorpeling ruilt… (bijv. mending, glass, emerald)';
+
+  @override
+  String get mcVillTraderBody =>
+      'Verschijnt af en toe bij spelers en vult nooit aan. Elk bezoek trekt zijn aanbod uit de lijsten hieronder.';
+
+  @override
+  String mcVillBody(String workstation) {
+    return 'Werkblok: $workstation. Elk level ontgrendelt nieuwe aanbiedingen, willekeurig gekozen uit de pool van dat level.';
+  }
+
+  @override
+  String mcVillPicks(int picks, int total) {
+    return '$picks van $total';
+  }
+
+  @override
+  String mcVillLevelTitle(int level, String name) {
+    return 'Level $level · $name';
+  }
+
+  @override
+  String mcVillLevelXp(int xp) {
+    return '($xp XP)';
+  }
+
+  @override
+  String get mcVillNoTrades => 'Geen dorpeling ruilt dat';
+
+  @override
+  String get mcVillNoTradesBody =>
+      'Probeer een item-id zoals \"book\", \"glass\" of \"diamond\".';
+
+  @override
+  String mcVillUses(int count) {
+    return '$count keer';
+  }
+
+  @override
+  String mcVillXp(int xp) {
+    return '$xp xp';
+  }
+
+  @override
+  String mcVillNoteEnchant(String min, String max) {
+    return 'Betoverd op level $min–$max';
+  }
+
+  @override
+  String get mcVillNoteRandomEnchant => 'Willekeurige betovering';
+
+  @override
+  String mcVillNoteMap(String place) {
+    return 'Kaart naar de dichtstbijzijnde $place';
+  }
+
+  @override
+  String get mcVillNoteExplorer => 'Ontdekkingskaart';
+
+  @override
+  String get mcVillNoteDyes => 'Willekeurige verfkleuren';
+
+  @override
+  String get mcVillNoteStew => 'Willekeurig stoofpoteffect';
+
+  @override
+  String get mcVillNoteRandomPotion => 'Willekeurig drankeffect';
+
+  @override
+  String mcVillNotePotion(String potion) {
+    return 'Drank: $potion';
+  }
+
+  @override
+  String get mcVillNoteTreasure => 'Schatbetoveringen kosten het dubbele';
+
+  @override
+  String mcVillNoteVariants(String variants) {
+    return 'Alleen van $variants-dorpelingen';
+  }
+
+  @override
+  String get mcVillNotePrice => 'Prijs schaalt met het betoveringslevel';
+
+  @override
+  String get mcOreTipCoal =>
+      'Overal boven zeeniveau te vinden; bergen hebben een tweede band tot aan de bouwlimiet. De helft van de steenkool die aan lucht grenst onder Y 136 wordt overgeslagen, dus grotten onder het oppervlak tonen er minder van.';
+
+  @override
+  String get mcOreTipIron =>
+      'Twee banden: een kleine met een piek op Y 16 en een enorme bergband rond Y 232, plus verspreide kleine aders onder Y 72.';
+
+  @override
+  String get mcOreTipCopper =>
+      'Piek op Y 48. Druipsteengrotten krijgen een tweede, grotere set aders op dezelfde hoogtes.';
+
+  @override
+  String get mcOreTipGold =>
+      'Piek op Y −16 met extra kleine aders helemaal onderin. Badlands voegen vijftig extra pogingen per chunk toe van Y 32 tot Y 256.';
+
+  @override
+  String get mcOreTipRedstone =>
+      'Geconcentreerd onderin de wereld. Mijn net boven het gesteente — rond Y −58.';
+
+  @override
+  String get mcOreTipLapis =>
+      'Een smalle band met een piek op Y 0, en een \"begraven\" spreiding van Y −64 tot 64 die nooit op een grotwand zichtbaar is.';
+
+  @override
+  String get mcOreTipDiamond =>
+      'Hoe dieper hoe beter, tot aan het gesteente. De meeste diamant die aan lucht grenst wordt weggegooid, dus mijn in gangen op Y −58 in plaats van grotten te verkennen.';
+
+  @override
+  String get mcOreTipEmerald =>
+      'Alleen in bergbiomen, als losse blokken, met een piek rond Y 232.';
+
+  @override
+  String get mcOreTipQuartz =>
+      'Gelijk verspreid van Y 10 tot 117 in de Nether; basaltdelta\'s hebben twee keer zoveel aders.';
+
+  @override
+  String get mcOreTipNetherGold =>
+      'Gelijk verspreid van Y 10 tot 117; basaltdelta\'s verdubbelen het.';
+
+  @override
+  String get mcOreTipDebris =>
+      'Vooral tussen Y 8 en 24, met een piek op Y 16. Het ontstaat nooit aan de lucht — mijn in stroken of gebruik bedden of TNT om snel ruimte te maken.';
+
+  @override
+  String get mcOreBestLevel => 'beste mijnhoogte';
+
+  @override
+  String get mcOreRange => 'waar het kan voorkomen';
+
+  @override
+  String get mcOreAttempts => 'aderpogingen per chunk';
+
+  @override
+  String get mcOreLargest => 'grootste adergrootte';
+
+  @override
+  String mcOreDistribution(String ore) {
+    return 'Verdeling van $ore';
+  }
+
+  @override
+  String get mcOreBiomeBonus => 'Biomebonus';
+
+  @override
+  String get mcOreTips => 'Tips';
+
+  @override
+  String get mcOrePlacements => 'Plaatsingen';
+
+  @override
+  String get mcOreAllOverworld => 'Alle bovenwereld-ertsen';
+
+  @override
+  String get mcOreNether => 'Nether';
+
+  @override
+  String mcOreTriangle(int y) {
+    return 'driehoek met piek op Y $y';
+  }
+
+  @override
+  String get mcOreEven => 'gelijkmatig';
+
+  @override
+  String mcOrePerChunk(int count) {
+    return '$count per chunk';
+  }
+
+  @override
+  String mcOreOneIn(int count) {
+    return '1 op $count chunks';
+  }
+
+  @override
+  String mcOrePlacementLine(
+    int min,
+    int max,
+    String shape,
+    String attempts,
+    int size,
+  ) {
+    return 'Y $min tot $max, $shape · $attempts · grootte $size';
+  }
+
+  @override
+  String mcOreAirSkip(int percent) {
+    return '$percent% overgeslagen naast lucht';
+  }
+
+  @override
+  String mcOrePeak(int y) {
+    return 'Piek Y $y';
+  }
+
+  @override
+  String get mcPotionDescSwiftness =>
+      'Snelheid I verhoogt de loopsnelheid met 20% (Snelheid II: 40%).';
+
+  @override
+  String get mcPotionDescLeaping => 'Spring hoger en neem minder valschade.';
+
+  @override
+  String get mcPotionDescStrength => '+3 melee-schade per level.';
+
+  @override
+  String get mcPotionDescHealing =>
+      'Herstelt 4 gezondheid (8 op level II). Schaadt ondode mobs.';
+
+  @override
+  String get mcPotionDescRegeneration =>
+      'Herstelt elke 2,5 seconden een hart (1,2 s op level II).';
+
+  @override
+  String get mcPotionDescPoison =>
+      'Laat gezondheid zakken tot een half hart; doodt nooit.';
+
+  @override
+  String get mcPotionDescFireResistance =>
+      'Immuun voor vuur, lava en magmablokken.';
+
+  @override
+  String get mcPotionDescWaterBreathing => 'Adem de hele duur onder water.';
+
+  @override
+  String get mcPotionDescNightVision =>
+      'Zie in het donker en helder onder water.';
+
+  @override
+  String get mcPotionDescSlowFalling => 'Val zacht en krijg geen valschade.';
+
+  @override
+  String get mcPotionDescTurtleMaster =>
+      'Traagheid IV en Weerstand III (VI en IV als sterk).';
+
+  @override
+  String get mcPotionDescWindCharged => 'Laat bij de dood een windstoot los.';
+
+  @override
+  String get mcPotionDescWeaving =>
+      'Laat bij de dood spinnenwebben achter; beweeg sneller door spinnenwebben.';
+
+  @override
+  String get mcPotionDescOozing =>
+      'Laat bij de dood twee middelgrote slijmen los.';
+
+  @override
+  String get mcPotionDescInfested =>
+      'Kans om zilvervisjes los te laten als je geraakt wordt.';
+
+  @override
+  String get mcPotionDescSlowness =>
+      'Traagheid I verlaagt de snelheid met 15% (IV: 60%).';
+
+  @override
+  String get mcPotionDescHarming =>
+      '6 schade (12 op level II). Geneest ondode mobs.';
+
+  @override
+  String get mcPotionDescInvisibility =>
+      'Mobs merken je niet meer op, tenzij je een harnas draagt.';
+
+  @override
+  String get mcPotionDescWeakness =>
+      '−4 melee-schade. Nodig om zombiedorpelingen te genezen.';
+
+  @override
+  String get mcPotionSearch => 'Drank of ingrediënt zoeken';
+
+  @override
+  String get mcPotionExtended => 'Verlengd';
+
+  @override
+  String get mcPotionRedstone => '+ Redstone';
+
+  @override
+  String get mcPotionLevel2 => 'Level II';
+
+  @override
+  String get mcPotionGlowstone => '+ Gloeisteenstof';
+
+  @override
+  String get mcPotionBeneficial => 'Gunstig';
+
+  @override
+  String get mcPotionHarmful => 'Schadelijk';
+
+  @override
+  String mcPotionEffect(String effect) {
+    return 'Effect: $effect';
+  }
+
+  @override
+  String get mcPotionBrewing => 'Brouwpad';
+
+  @override
+  String get mcPotionDurations => 'Duur';
+
+  @override
+  String get mcPotionDrinkSplash => 'Drinken / Werp';
+
+  @override
+  String get mcPotionLingering => 'Blijvend';
+
+  @override
+  String get mcPotionArrow => 'Pijl';
+
+  @override
+  String get mcPotionInstant => 'Direct';
+
+  @override
+  String get mcPotionVariants => 'Varianten';
+
+  @override
+  String get mcPotionSplash =>
+      'Werp: brouw met buskruit. Zelfde duur; raakt iedereen in de spetter.';
+
+  @override
+  String get mcPotionLingeringNote =>
+      'Blijvend: brouw een werpdrank met drakenadem. Een wolk voor een kwart van de tijd.';
+
+  @override
+  String get mcPotionArrows =>
+      'Pijlen met effect: 8 pijlen rond een blijvende drank in een werkbank. Een achtste van de tijd.';
+
+  @override
+  String mcPotionCorrupts(String potion) {
+    return 'Gefermenteerd spinnenoog maakt hier $potion van — tik om te openen.';
+  }
+
+  @override
+  String get mcPotionFuel =>
+      'Brouwstandaards verbruiken één blazepoeder per 20 brouwsels en nemen tot drie flessen tegelijk.';
+
+  @override
+  String get mcCubeRegular => 'Normaal';
+
+  @override
+  String get mcCubeRegularBlocks => 'Betonpoeder, aarde & zachte blokken';
+
+  @override
+  String get mcCubeBouncy => 'Veerkrachtig';
+
+  @override
+  String get mcCubeBouncyBlocks => 'Stammen, planken & bamboe';
+
+  @override
+  String get mcCubeSlowBouncy => 'Traag veerkrachtig';
+
+  @override
+  String get mcCubeSlowBouncyBlocks => 'Steen, ertsen & terracotta';
+
+  @override
+  String get mcCubeSlowFlat => 'Traag plat';
+
+  @override
+  String get mcCubeSlowFlatBlocks => 'Metaalertsen & metaalblokken';
+
+  @override
+  String get mcCubeFastFlat => 'Snel plat';
+
+  @override
+  String get mcCubeFastFlatBlocks => 'Mos, koraal, pompoenen & sponzen';
+
+  @override
+  String get mcCubeLight => 'Licht';
+
+  @override
+  String get mcCubeLightBlocks => 'Wol';
+
+  @override
+  String get mcCubeFastSliding => 'Snel glijdend';
+
+  @override
+  String get mcCubeFastSlidingBlocks => 'IJs & sneeuw';
+
+  @override
+  String get mcCubeSlowSliding => 'Traag glijdend';
+
+  @override
+  String get mcCubeSlowSlidingBlocks => 'Paddenstoel- & wratblokken';
+
+  @override
+  String get mcCubeHighResistance => 'Hoge weerstand';
+
+  @override
+  String get mcCubeHighResistanceBlocks => 'Zielenzand & zielengrond';
+
+  @override
+  String get mcCubeSticky => 'Plakkerig';
+
+  @override
+  String get mcCubeStickyBlocks => 'Honingraat';
+
+  @override
+  String get mcCubeExplosive => 'Explosief';
+
+  @override
+  String get mcCubeExplosiveBlocks => 'TNT';
+
+  @override
+  String get mcCubeHot => 'Heet';
+
+  @override
+  String get mcCubeHotBlocks => 'Magma';
+
+  @override
+  String get mcCubeDmgArrow => 'Pijlen';
+
+  @override
+  String get mcCubeDmgCactus => 'Cactus';
+
+  @override
+  String get mcCubeDmgDryOut => 'Uitdrogen';
+
+  @override
+  String get mcCubeDmgFall => 'Valschade';
+
+  @override
+  String get mcCubeDmgFallingAnvil => 'Vallende aambeelden';
+
+  @override
+  String get mcCubeDmgFallingBlock => 'Vallende blokken';
+
+  @override
+  String get mcCubeDmgFallingStalactite => 'Vallende stalactieten';
+
+  @override
+  String get mcCubeDmgFreeze => 'Bevriezing';
+
+  @override
+  String get mcCubeDmgMaceSmash => 'Knotsslag';
+
+  @override
+  String get mcCubeDmgHotFloor => 'Magmavloeren';
+
+  @override
+  String get mcCubeDmgMobAttack => 'Melee van mobs';
+
+  @override
+  String get mcCubeDmgMobAttackNoAggro => 'Melee van mobs (zonder agressie)';
+
+  @override
+  String get mcCubeDmgMobProjectile => 'Projectielen van mobs';
+
+  @override
+  String get mcCubeDmgPlayerAttack => 'Melee van spelers';
+
+  @override
+  String get mcCubeDmgSpear => 'Speren';
+
+  @override
+  String get mcCubeDmgSpit => 'Lamaspuug';
+
+  @override
+  String get mcCubeDmgStalagmite => 'Stalagmieten';
+
+  @override
+  String get mcCubeDmgSting => 'Bijensteken';
+
+  @override
+  String get mcCubeDmgSulfurCubeHot => 'Hitte van een andere kubus';
+
+  @override
+  String get mcCubeDmgSweetBerryBush => 'Zoetebessenstruiken';
+
+  @override
+  String get mcCubeDmgThrown => 'Gegooide voorwerpen';
+
+  @override
+  String get mcCubeDmgTrident => 'Drietanden';
+
+  @override
+  String get mcCubeDmgWindCharge => 'Windladingen';
+
+  @override
+  String get mcCubeVeryEasyShove => 'Heel makkelijk te duwen';
+
+  @override
+  String get mcCubeShovesEasily => 'Makkelijk te duwen';
+
+  @override
+  String get mcCubeResists => 'Verzet zich tegen duwen';
+
+  @override
+  String get mcCubeHardToBudge => 'Nauwelijks te verplaatsen';
+
+  @override
+  String get mcCubeSuperBouncy => 'Superveerkrachtig';
+
+  @override
+  String get mcCubeBouncyDesc => 'Veerkrachtig';
+
+  @override
+  String get mcCubeLittleBouncy => 'Een beetje veerkrachtig';
+
+  @override
+  String get mcCubeBarely => 'Stuitert nauwelijks';
+
+  @override
+  String get mcCubeNoBounce => 'Stuitert niet';
+
+  @override
+  String get mcCubeSticks => 'Blijft plakken';
+
+  @override
+  String get mcCubeGrippy => 'Veel grip';
+
+  @override
+  String get mcCubeSlidesBit => 'Glijdt een beetje';
+
+  @override
+  String get mcCubeSlidesIce => 'Glijdt als op ijs';
+
+  @override
+  String get mcCubeFloaty => 'Zwevend & traag';
+
+  @override
+  String get mcCubeDamps => 'Remt snel af';
+
+  @override
+  String get mcCubeHolds => 'Behoudt vaart';
+
+  @override
+  String get mcCubeKeepsFlying => 'Blijft vliegen';
+
+  @override
+  String get mcCubeEatsTitle => 'Wat gebeurt er als mijn kubus… eet';
+
+  @override
+  String mcCubeSearchHint(int count) {
+    return 'Zoek in alle $count slikbare blokken';
+  }
+
+  @override
+  String get mcCubeNotSwallowable =>
+      'Dat slikt een kubus niet — alleen de blokken onder de twaalf gedragingen.';
+
+  @override
+  String get mcCubeMeet => 'Maak kennis met de kubus';
+
+  @override
+  String get mcCubeSpawnsIn => 'Verschijnt in';
+
+  @override
+  String get mcCubeSpawnsInValue => 'Zwavelgrotten';
+
+  @override
+  String get mcCubeHealth => 'Gezondheid';
+
+  @override
+  String get mcCubeHealthValue => '8 volgroeid · 4 baby';
+
+  @override
+  String get mcCubeOnDeath => 'Bij de dood';
+
+  @override
+  String get mcCubeOnDeathValue => 'Een volgroeide kubus splitst in 2 baby\'s';
+
+  @override
+  String get mcCubeExperience => 'Ervaring';
+
+  @override
+  String get mcCubeExperienceValue => '1 tot 2';
+
+  @override
+  String get mcCubeFood => 'Babyvoer';
+
+  @override
+  String get mcCubeFoodValue => 'Slijmballen laten baby\'s groeien en kweken';
+
+  @override
+  String get mcCubeHome => 'Neem hem mee';
+
+  @override
+  String get mcCubeHomeValue => 'Schep de hele kubus op met een emmer';
+
+  @override
+  String get mcCubeChange => 'Blok vervangen';
+
+  @override
+  String get mcCubeChangeValue =>
+      'Een schaar wipt het blok eruit (5 s voordat hij weer kan slikken)';
+
+  @override
+  String get mcCubeTempt => 'Lokbereik';
+
+  @override
+  String get mcCubeTemptValue => '8 blokken';
+
+  @override
+  String get mcCubeShrugs => 'Met een blok binnen negeert hij…';
+
+  @override
+  String get mcCubeShrugsNote =>
+      'Hij ademt ook onder water en kan niet bevriezen. Explosies doen nog steeds pijn — TNT knalt een kubus zelfs halverwege het slikken — en elke genegeerde klap duwt hem nog steeds weg.';
+
+  @override
+  String get mcCubeHow => 'Hoe slikken werkt';
+
+  @override
+  String get mcCubeHowBody =>
+      'Alleen volgroeide kubussen slikken blokken: klik er met rechts op met een slikbaar blok, laat hem over een gevallen blok lopen of laat een dispenser hem voeren. Het blok zit in zijn lichaamsvak; een nieuw blok wisselt het om en verandert het gedrag. Met een blok binnen dwaalt de kubus niet meer rond maar wordt hij door spelers en mobs geduwd, met terugslag naar zijn weerstand.';
+
+  @override
+  String get mcCubeExplodes => 'Explodeert';
+
+  @override
+  String get mcCubeBurns => 'Brandt';
+
+  @override
+  String get mcCubeFloats => 'Drijft';
+
+  @override
+  String get mcCubeSinks => 'Zinkt';
+
+  @override
+  String mcCubeBehaviour(String name) {
+    return 'Gedrag: $name';
+  }
+
+  @override
+  String mcCubeBlockCount(int count) {
+    return '$count blokken';
+  }
+
+  @override
+  String get mcCubeMobility => 'Beweeglijkheid';
+
+  @override
+  String mcCubeKbRes(String value) {
+    return 'terugslagweerstand $value';
+  }
+
+  @override
+  String get mcCubeBounce => 'Stuiteren';
+
+  @override
+  String mcCubeBounciness(String value) {
+    return 'veerkracht +$value';
+  }
+
+  @override
+  String get mcCubeGrip => 'Grip';
+
+  @override
+  String mcCubeFriction(String value) {
+    return 'wrijving $value';
+  }
+
+  @override
+  String get mcCubeAirDrag => 'Luchtweerstand';
+
+  @override
+  String mcCubeAirDragValue(String value) {
+    return 'luchtweerstand $value';
+  }
+
+  @override
+  String get mcCubeKnockback => 'Terugslag';
+
+  @override
+  String get mcCubeKnockbackDetail => 'horizontaal · verticaal';
+
+  @override
+  String get mcCubePush => 'Duw';
+
+  @override
+  String mcCubePushValue(String seconds) {
+    return 'elke $seconds s';
+  }
+
+  @override
+  String get mcCubePushDetail => 'hoe vaak een duw raakt';
+
+  @override
+  String get mcCubeExplosion => 'Explosie';
+
+  @override
+  String mcCubePower(String power) {
+    return 'Kracht $power';
+  }
+
+  @override
+  String mcCubeFuse(String seconds) {
+    return 'lont van $seconds s';
+  }
+
+  @override
+  String get mcCubeSetsFire => 'steekt in brand';
+
+  @override
+  String get mcCubeNoFire => 'geen vuur';
+
+  @override
+  String get mcCubeContact => 'Contact';
+
+  @override
+  String mcCubeBurnDamage(String amount) {
+    return '$amount brandschade';
+  }
+
+  @override
+  String get mcCubeWhenTouched => 'bij aanraking';
+
+  @override
+  String get mcCubeWater => 'Water';
+
+  @override
+  String get mcCubeBuoyant => 'drijvend';
+
+  @override
+  String get mcCubeNotBuoyant => 'niet drijvend';
+
+  @override
+  String get mcBeaconSpeed => 'Beweeg 20% sneller (40% op II).';
+
+  @override
+  String get mcBeaconHaste => 'Sneller hakken en aanvallen.';
+
+  @override
+  String get mcBeaconResistance => 'Neem 20% minder schade (40% op II).';
+
+  @override
+  String get mcBeaconJump => 'Spring hoger en val zachter.';
+
+  @override
+  String get mcBeaconStrength => '+3 melee-schade (+6 op II).';
+
+  @override
+  String get mcBeaconRegen => 'Secundaire kracht: langzaam genezen.';
+
+  @override
+  String get mcBeaconTier => 'Piramideniveau';
+
+  @override
+  String mcBeaconTierN(int tier) {
+    return 'Niveau $tier';
+  }
+
+  @override
+  String get mcBeaconBuildFrom => 'Bouw het van';
+
+  @override
+  String get mcBeaconLayers => 'Lagen';
+
+  @override
+  String mcBeaconLayerN(int layer) {
+    return 'Laag $layer';
+  }
+
+  @override
+  String mcBeaconBlocksOf(String mineral) {
+    return 'blokken $mineral';
+  }
+
+  @override
+  String get mcBeaconRange => 'blokken bereik';
+
+  @override
+  String get mcBeaconEffectLength => 'effectduur';
+
+  @override
+  String mcBeaconEffectsAt(int tier) {
+    return 'Effecten op niveau $tier';
+  }
+
+  @override
+  String get mcBeaconUnlocked => 'Ontgrendeld';
+
+  @override
+  String get mcBeaconHow => 'Hoe het werkt';
+
+  @override
+  String mcBeaconHowBody(int range, int seconds, String mineral) {
+    return 'Het bereik is $range blokken rond het baken (10 + 10 per niveau) en reikt $range blokken eronder en tot aan de hemel. Effecten worden elke 4 seconden opnieuw toegepast en duren $seconds seconden, dus ze blijven even hangen als je weggaat. Een volledige piramide van niveau 4 ontgrendelt een tweede kracht: Regeneratie, of level II van de primaire. Betaal met één ijzerstaaf, goudstaaf, smaragd, diamant of netherietstaaf. De straal heeft vrij zicht op de hemel nodig; gekleurd glas erop kleurt hem. Mineraalblokken mengen in de piramide mag — $mineral is alleen degene die hierboven geteld is.';
+  }
+
+  @override
+  String get mcCommand => 'Commando';
+
+  @override
+  String get mcCommands => 'Commando\'s';
+
+  @override
+  String get mcGiveTo => 'Geven aan';
+
+  @override
+  String get mcCancel => 'Annuleren';
+
+  @override
+  String get mcBannerRandomize => 'Willekeurig';
+
+  @override
+  String get mcBannerBase => 'Basiskleur';
+
+  @override
+  String get mcBannerAdd => 'Patroon toevoegen';
+
+  @override
+  String get mcBannerDye => 'Verf';
+
+  @override
+  String mcBannerLoomLimit(int limit) {
+    return 'Een weefgetouw stopt bij $limit lagen. Meer lagen bestaan alleen via commando\'s.';
+  }
+
+  @override
+  String get mcBannerLayers => 'Lagen';
+
+  @override
+  String get mcBannerEmpty => 'Kies links patronen om ze hier te stapelen.';
+
+  @override
+  String get mcBannerSteps => 'Weefgetouwstappen';
+
+  @override
+  String mcBannerCraft(String banner, String wool) {
+    return 'Craft de $banner: 6 $wool boven een stok.';
+  }
+
+  @override
+  String get mcBannerShieldStep =>
+      'Combineer daarna de afgewerkte banier met een schild in een craftingrooster.';
+
+  @override
+  String mcBannerLoomStep(String inputs, String pattern) {
+    return 'Weefgetouw: banier + $inputs → $pattern';
+  }
+
+  @override
+  String mcBannerNeeds(String pattern, String item) {
+    return '$pattern — vereist $item';
+  }
+
+  @override
+  String get mcBannerChangeColour => 'Kleur wijzigen';
+
+  @override
+  String get mcBannerRemoveLayer => 'Laag verwijderen';
+
+  @override
+  String get mcFwSmallBall => 'Kleine bal';
+
+  @override
+  String get mcFwLargeBall => 'Grote bal';
+
+  @override
+  String get mcFwStar => 'Ster';
+
+  @override
+  String get mcFwCreeper => 'Creeper';
+
+  @override
+  String get mcFwBurst => 'Uitbarsting';
+
+  @override
+  String get mcFwRocket => 'Vuurpijl';
+
+  @override
+  String get mcFwFlight => 'Vluchtduur (buskruit)';
+
+  @override
+  String get mcFwCount => 'Hoeveel vuurpijlen';
+
+  @override
+  String get mcFwStars => 'Sterren';
+
+  @override
+  String get mcFwAddStar => 'Ster toevoegen';
+
+  @override
+  String get mcFwNoStars =>
+      'Geen sterren: de vuurpijl vliegt alleen — handig voor elytra-boosts.';
+
+  @override
+  String mcFwStarN(int number) {
+    return 'Ster $number';
+  }
+
+  @override
+  String mcFwFadeN(int number) {
+    return 'Vervaging $number';
+  }
+
+  @override
+  String get mcFwShape => 'Vorm';
+
+  @override
+  String mcFwColours(int count) {
+    return 'Kleuren ($count/8)';
+  }
+
+  @override
+  String mcFwFade(int count) {
+    return 'Vervagen naar ($count/8)';
+  }
+
+  @override
+  String get mcFwTrail => 'Spoor';
+
+  @override
+  String get mcFwTrailDetail => 'Voegt een diamant toe';
+
+  @override
+  String get mcFwTwinkle => 'Fonkeling';
+
+  @override
+  String get mcFwTwinkleDetail => 'Voegt gloeisteenstof toe';
+
+  @override
+  String get mcFwCrafting => 'Craften';
+
+  @override
+  String get mcFwRocketX3 => 'Vuurpijl ×3';
+
+  @override
+  String get mcArmorPiece => 'Onderdeel';
+
+  @override
+  String get mcArmorApplyAll => 'Op alles toepassen';
+
+  @override
+  String get mcArmorWear => 'Dit onderdeel dragen';
+
+  @override
+  String get mcArmorMaterial => 'Materiaal';
+
+  @override
+  String get mcArmorTrim => 'Versiering';
+
+  @override
+  String get mcArmorNone => 'Geen';
+
+  @override
+  String mcArmorFoundIn(String place) {
+    return 'Sjabloon te vinden in: $place';
+  }
+
+  @override
+  String get mcArmorTrimMaterial => 'Versieringsmateriaal';
+
+  @override
+  String get mcArmorLeather => 'Leerkleur';
+
+  @override
+  String get mcArmorSearching => '735.000 mengsels doorzoeken…';
+
+  @override
+  String get mcArmorFindMix => 'Zoek de verfmix voor deze kleur';
+
+  @override
+  String get mcArmorMixYourself =>
+      'Of meng zelf verf (één keer craften, tot 8):';
+
+  @override
+  String get mcArmorRemoveDye => 'Laatste verf verwijderen';
+
+  @override
+  String get mcArmorSmithing => 'Smeden';
+
+  @override
+  String mcArmorSmithStep(
+    String template,
+    String armor,
+    String material,
+    String piece,
+  ) {
+    return '$template + $armor + $material → versierde $piece';
+  }
+
+  @override
+  String get mcArmorCopyTemplate =>
+      'Kopieer een sjabloon met 7 diamanten en het blok waarvan het gemaakt is in een craftingrooster.';
+
+  @override
+  String get mcArmorNoPieces => '# Geen onderdelen gekozen';
+
+  @override
+  String get mcArmorIndistinguishable => 'Niet te onderscheiden';
+
+  @override
+  String get mcArmorVeryClose => 'Heel dichtbij';
+
+  @override
+  String get mcArmorClose => 'Dichtbij';
+
+  @override
+  String get mcArmorNearest => 'Zo dichtbij mogelijk';
+
+  @override
+  String get mcArmorUse => 'Gebruiken';
+
+  @override
+  String get mcTrimSentry => 'Plunderaarsuitposten';
+
+  @override
+  String get mcTrimDune => 'Woestijnpiramides';
+
+  @override
+  String get mcTrimCoast => 'Scheepswrakken';
+
+  @override
+  String get mcTrimWild => 'Jungletempels';
+
+  @override
+  String get mcTrimTide => 'Oudere bewakers (oceaanmonumenten)';
+
+  @override
+  String get mcTrimWard => 'Oude steden';
+
+  @override
+  String get mcTrimSilence => 'Oude steden (zeldzaam)';
+
+  @override
+  String get mcTrimVex => 'Bosvilla\'s';
+
+  @override
+  String get mcTrimEye => 'Burchten';
+
+  @override
+  String get mcTrimSnout => 'Bastionruïnes';
+
+  @override
+  String get mcTrimRib => 'Netherforten';
+
+  @override
+  String get mcTrimSpire => 'Endsteden';
+
+  @override
+  String get mcTrimTrail => 'Spoorruïnes (verdacht grind)';
+
+  @override
+  String get mcTrimFlow => 'Beproevingskamers (onheilspellende kluizen)';
+
+  @override
+  String get mcTrimBolt => 'Beproevingskamers (kluizen)';
+
+  @override
+  String get mcPlanOpen => 'Schematic openen';
+
+  @override
+  String get mcPlanOpenAnother => 'Andere openen';
+
+  @override
+  String get mcPlanOpenTitle => 'Open een bouwwerk om het te plannen';
+
+  @override
+  String get mcPlanUnreadable => 'Dat bestand kon niet gelezen worden';
+
+  @override
+  String get mcPlanFormats =>
+      'Litematica (.litematic), Sponge (.schem), Axiom (.bp), MCEdit (.schematic), constructieblokken (.nbt) en Bedrock (.mcstructure) werken allemaal.';
+
+  @override
+  String get mcPlanFile => 'bestand';
+
+  @override
+  String get mcPlanSize => 'grootte (B×H×L)';
+
+  @override
+  String get mcPlanBlockTypes => 'bloksoorten';
+
+  @override
+  String get mcPlanLayerMaterials => 'Materialen op deze laag';
+
+  @override
+  String get mcPlanShopping => 'Boodschappenlijst';
+
+  @override
+  String get mcPlanShoppingCopied => 'Boodschappenlijst gekopieerd';
+
+  @override
+  String get mcPlanCsv => 'Opslaan als CSV';
+
+  @override
+  String get mcPlanLayerOnly => 'Alleen de huidige laag';
+
+  @override
+  String mcPlanGathered(int total, int done, int count) {
+    return '$total blokken · $done/$count verzameld';
+  }
+
+  @override
+  String get mcOrgUnreadable => 'Onleesbaar';
+
+  @override
+  String get mcOrgTooLarge => 'Te groot voor een voorbeeld';
+
+  @override
+  String get mcOrgSortName => 'Naam';
+
+  @override
+  String get mcOrgSortNewest => 'Nieuwste';
+
+  @override
+  String get mcOrgSortLargest => 'Grootste bestand';
+
+  @override
+  String get mcOrgSortBlocks => 'Meeste blokken';
+
+  @override
+  String get mcOrgChooseFolderTitle => 'Kies een schematicsmap';
+
+  @override
+  String mcOrgFolderError(String error) {
+    return 'Kon die map niet lezen: $error';
+  }
+
+  @override
+  String get mcOrgRenameTitle => 'Schematic hernoemen';
+
+  @override
+  String get mcOrgRename => 'Hernoemen';
+
+  @override
+  String mcOrgExists(String name) {
+    return 'Er bestaat al een bestand met de naam $name.';
+  }
+
+  @override
+  String mcOrgRenameError(String error) {
+    return 'Hernoemen mislukt: $error';
+  }
+
+  @override
+  String get mcOrgGroup => 'Groep';
+
+  @override
+  String get mcOrgGroupHint => 'bijv. Huizen, Boerderijen, Redstone';
+
+  @override
+  String get mcOrgNoGroup => 'Geen groep';
+
+  @override
+  String mcOrgReadError(String name, String error) {
+    return 'Kon $name niet lezen: $error';
+  }
+
+  @override
+  String get mcOrgChooseFolder => 'Map kiezen';
+
+  @override
+  String get mcOrgChangeFolder => 'Map wijzigen';
+
+  @override
+  String get mcOrgRescan => 'Opnieuw scannen';
+
+  @override
+  String get mcOrgPointTitle => 'Wijs je schematics aan';
+
+  @override
+  String get mcOrgPointBody =>
+      'Kies de map met je schematics — de map \"schematics\" van Litematica, die van WorldEdit of een andere. Bestanden worden ter plekke gelezen; alleen hernoemen verandert iets op schijf.';
+
+  @override
+  String get mcOrgSearch => 'Zoeken op naam';
+
+  @override
+  String mcOrgSortBy(String order) {
+    return 'Sorteren: $order';
+  }
+
+  @override
+  String get mcOrgSubfolders => 'Submappen';
+
+  @override
+  String mcOrgAll(int count) {
+    return 'Alle ($count)';
+  }
+
+  @override
+  String get mcOrgFavourites => '★ Favorieten';
+
+  @override
+  String get mcOrgEmpty => 'Geen schematics in deze map';
+
+  @override
+  String get mcOrgNothing => 'Niets komt overeen';
+
+  @override
+  String mcOrgLookingFor(String extensions) {
+    return 'Op zoek naar $extensions-bestanden.';
+  }
+
+  @override
+  String get mcOrgUnfavourite => 'Uit favorieten';
+
+  @override
+  String get mcOrgFavourite => 'Favoriet';
+
+  @override
+  String mcOrgBlocks(int count) {
+    return '$count blokken';
+  }
+
+  @override
+  String get mcOrgMore => 'Meer';
+
+  @override
+  String get mcOrgPreview => 'Voorbeeld';
+
+  @override
+  String get mcOrgRenameMenu => 'Hernoemen…';
+
+  @override
+  String get mcOrgGroupMenu => 'Groeperen…';
+
+  @override
+  String get mcMapCrop => 'Bijsnijden tot vullen';
+
+  @override
+  String get mcMapContain => 'Binnen passen';
+
+  @override
+  String get mcMapStretch => 'Uitrekken';
+
+  @override
+  String get mcMapPaletteAll => 'Elke kleur';
+
+  @override
+  String get mcMapPaletteSurvival => 'Survivalvriendelijk';
+
+  @override
+  String get mcMapPaletteConcrete => 'Beton & terracotta';
+
+  @override
+  String get mcMapPaletteGreys => 'Grijstinten';
+
+  @override
+  String get mcMapDitherNone => 'Geen';
+
+  @override
+  String get mcMapDitherFs => 'Floyd–Steinberg';
+
+  @override
+  String get mcMapDitherOrdered => 'Geordend (Bayer)';
+
+  @override
+  String get mcMapNotImage =>
+      'Dat bestand is geen afbeelding die luma kan lezen.';
+
+  @override
+  String mcMapCouldNotConvert(String error) {
+    return 'Omzetten mislukt: $error';
+  }
+
+  @override
+  String get mcMapChooseImage => 'Afbeelding kiezen';
+
+  @override
+  String get mcMapChangeImage => 'Afbeelding wijzigen';
+
+  @override
+  String get mcMapSize => 'Grootte in kaarten';
+
+  @override
+  String get mcMapAcross => 'Breed';
+
+  @override
+  String get mcMapDown => 'Hoog';
+
+  @override
+  String mcMapBlocksSize(int width, int height) {
+    return '$width × $height blokken';
+  }
+
+  @override
+  String get mcMapStaircase => 'Trapvorm (3 tinten)';
+
+  @override
+  String get mcMapStaircaseDetail =>
+      'Meer kleuren, maar elke kolom gaat op en neer';
+
+  @override
+  String get mcMapDithering => 'Dithering';
+
+  @override
+  String mcMapBlocksToUse(int count) {
+    return 'Te gebruiken blokken ($count)';
+  }
+
+  @override
+  String get mcMapChooseTitle => 'Kies een afbeelding';
+
+  @override
+  String get mcMapChooseBody =>
+      'Elke PNG of JPG. Hij wordt in kaarten van 128 blokken gesneden, afgestemd op de kleuren die een kaart kan tonen en omgezet in een schematic die je kunt plakken of blok voor blok kunt bouwen.';
+
+  @override
+  String get mcMapPreview => 'Zo ziet het eruit op een kaart';
+
+  @override
+  String get mcMapSavePng => 'PNG opslaan';
+
+  @override
+  String get mcMapTallest => 'hoogste kolom';
+
+  @override
+  String get mcMapShow3d => 'In 3D tonen';
+
+  @override
+  String get mcMapBuildNote =>
+      'Bouw van noord naar zuid, met de rij keien aan de noordrand — die rij bepaalt de tint van de eerste lijn. Elke kaart beslaat een gebied van 128 × 128, uitgelijnd op het kaartraster.';
+
+  @override
+  String get mcRoofGable => 'Zadeldak';
+
+  @override
+  String get mcRoofSteepGable => 'Steil zadeldak';
+
+  @override
+  String get mcRoofGentleGable => 'Laag zadeldak (platen)';
+
+  @override
+  String get mcRoofGambrel => 'Mansardezadeldak (schuur)';
+
+  @override
+  String get mcRoofHip => 'Schilddak';
+
+  @override
+  String get mcRoofGentleHip => 'Laag schilddak (platen)';
+
+  @override
+  String get mcRoofMansard => 'Mansardedak';
+
+  @override
+  String get mcRoofShed => 'Lessenaarsdak';
+
+  @override
+  String get mcRoofAFrame => 'A-frame';
+
+  @override
+  String get mcRoofFootprint => 'Grondvlak';
+
+  @override
+  String get mcRoofWidthX => 'Breedte (X)';
+
+  @override
+  String get mcRoofDepthZ => 'Diepte (Z)';
+
+  @override
+  String get mcRoofOverhang => 'Overstek';
+
+  @override
+  String get mcRoofSizeNote =>
+      'Breedte en diepte zijn de buitenmaat van de muren; de overstek komt aan elke kant erbij.';
+
+  @override
+  String get mcRoofRoof => 'Dak';
+
+  @override
+  String get mcRoofRidge => 'Nokafwerking';
+
+  @override
+  String get mcRoofRidgeDetail => 'Platen over de hele nok';
+
+  @override
+  String get mcRoofFillGables => 'Gevels opvullen';
+
+  @override
+  String get mcRoofStairs => 'trappen';
+
+  @override
+  String get mcRoofSlabs => 'platen';
+
+  @override
+  String get mcSkinPencil => 'Potlood';
+
+  @override
+  String get mcSkinEraser => 'Gum';
+
+  @override
+  String get mcSkinFill => 'Vullen';
+
+  @override
+  String get mcSkinPicker => 'Kleur kiezen';
+
+  @override
+  String get mcSkinNotSkin => 'Die PNG is geen skin van 64×64 of 64×32.';
+
+  @override
+  String get mcSkinLoadTitle => 'Skin van een speler laden';
+
+  @override
+  String get mcSkinLoadBody =>
+      'Zoekt de gebruikersnaam op via de openbare profieldienst van Mojang en downloadt de huidige skin.';
+
+  @override
+  String get mcSkinUsername => 'Gebruikersnaam';
+
+  @override
+  String get mcSkinLoad => 'Laden';
+
+  @override
+  String get mcSkinUnsupported =>
+      'Die skin heeft een formaat dat luma niet kan bewerken.';
+
+  @override
+  String mcSkinLoadError(String error) {
+    return 'Kon die skin niet laden ($error).';
+  }
+
+  @override
+  String get mcSkinUndo => 'Ongedaan maken';
+
+  @override
+  String get mcSkinRedo => 'Opnieuw';
+
+  @override
+  String get mcSkinPaintOuter => 'Buitenlaag tekenen';
+
+  @override
+  String get mcSkinShowOuter => 'Buitenlaag tonen';
+
+  @override
+  String get mcSkinSlim => 'Slanke armen';
+
+  @override
+  String get mcSkinColour => 'Kleur';
+
+  @override
+  String get mcSkinRecent => 'Recent';
+
+  @override
+  String get mcSkinLightness => 'Lichtheid';
+
+  @override
+  String get mcSkinModel => '3D-model';
+
+  @override
+  String get mcSkinResetView => 'Weergave herstellen';
+
+  @override
+  String get mcSkinTurn => 'Draaien';
+
+  @override
+  String get mcSkinTexture => 'Textuur';
+
+  @override
+  String get mcSkinOpenPng => 'PNG openen';
+
+  @override
+  String get mcSkinFromUser => 'Van gebruikersnaam';
+
+  @override
+  String get mcSkinHelp =>
+      'Sleep met de rechtermuisknop (of gebruik de schuif Draaien) om het model te draaien; links klikken tekent. \"Buitenlaag tekenen\" tekent op de laag met hoed, jas, mouwen en broek in plaats van de basis.';
+
+  @override
+  String mcVersionAndNewer(String version) {
+    return '$version en nieuwer';
+  }
+
+  @override
+  String get mcSaveDatapack => 'Opslaan als datapack';
+
+  @override
+  String get mcSaveDatapackShort => 'Datapack opslaan';
+
+  @override
+  String get mcSendTo => 'Sturen naar';
+
+  @override
+  String get mcShowTo => 'Tonen aan';
+
+  @override
+  String get mcAdd => 'Toevoegen';
+
+  @override
+  String get mcRemove => 'Verwijderen';
+
+  @override
+  String get mcFlatStart => 'Begin met een preset';
+
+  @override
+  String get mcFlatLayers => 'Lagen (bovenste eerst)';
+
+  @override
+  String mcFlatTotal(int count) {
+    return '$count blokken';
+  }
+
+  @override
+  String get mcFlatRemoveLayer => 'Laag verwijderen';
+
+  @override
+  String get mcFlatAddLayer => 'Laag bovenop toevoegen';
+
+  @override
+  String get mcFlatWorld => 'Wereld';
+
+  @override
+  String get mcFlatBiome => 'Bioom';
+
+  @override
+  String get mcFlatDecorations => 'Decoraties (bomen, gras…)';
+
+  @override
+  String get mcFlatLakes => 'Meren';
+
+  @override
+  String get mcFlatStructures => 'Bouwwerken';
+
+  @override
+  String get mcFlatCrossSection => 'Doorsnede';
+
+  @override
+  String get mcFlatPresetString => 'Presettekst';
+
+  @override
+  String get mcFlatPresetNote =>
+      'Wereld maken → Wereldtype: Superplat → Aanpassen → Presets, en plak dit in het vak.';
+
+  @override
+  String get mcFlatServerNote =>
+      'Wordt alleen gelezen als de server een nieuwe wereld maakt.';
+
+  @override
+  String get mcFlatPresetName => 'Naam van de datapack-preset';
+
+  @override
+  String get mcFlatDatapackNote =>
+      'Opslaan maakt een datapack-zip die dit als wereldtype toevoegt op het scherm Wereld maken (sleep hem erin bij \"Datapacks\").';
+
+  @override
+  String mcFlatDatapackDesc(String name) {
+    return 'Superplatte preset \"$name\" gemaakt met luma';
+  }
+
+  @override
+  String get mcWorldNormalTerrain => 'Normaal';
+
+  @override
+  String get mcWorldAmplified => 'Versterkt';
+
+  @override
+  String get mcWorldLargeBiomes => 'Grote biomen';
+
+  @override
+  String get mcWorldEveryBiome => 'Elk bioom';
+
+  @override
+  String get mcWorldOneBiome => 'Eén bioom';
+
+  @override
+  String get mcWorldCheckerboard => 'Dambord';
+
+  @override
+  String get mcWorldHeightStandard => 'Standaard (Y −64 tot 319)';
+
+  @override
+  String get mcWorldHeightTall => 'Hoog (Y −64 tot 447)';
+
+  @override
+  String get mcWorldHeightDeep => 'Diep (Y −128 tot 319)';
+
+  @override
+  String get mcWorldHeightShort => 'Laag (Y 0 tot 255)';
+
+  @override
+  String mcWorldDatapackDesc(String name) {
+    return 'Aangepaste wereld \"$name\" gemaakt met luma';
+  }
+
+  @override
+  String get mcWorldPreset => 'Preset';
+
+  @override
+  String get mcWorldTerrain => 'Terrein';
+
+  @override
+  String get mcWorldSeaLevel => 'Zeeniveau';
+
+  @override
+  String get mcWorldBuildHeight => 'Bouwhoogte';
+
+  @override
+  String get mcWorldTerrainBlock => 'Terreinblok';
+
+  @override
+  String get mcWorldFluid => 'Oceanen en meren van';
+
+  @override
+  String get mcWorldAnimals => 'Dieren bij het genereren van de wereld';
+
+  @override
+  String get mcWorldBiomes => 'Biomen';
+
+  @override
+  String get mcWorldSquare => 'Vakgrootte';
+
+  @override
+  String mcWorldSquareBlocks(int count) {
+    return '$count blokken';
+  }
+
+  @override
+  String get mcWorldUsing => 'Gebruiken';
+
+  @override
+  String mcWorldUsingBody(String name, String version) {
+    return 'Singleplayer: Wereld maken → Datapacks, sleep de zip erin en kies \"luma:$name\" bij Wereldtype. Servers: zet de zip in world/datapacks voordat de wereld bestaat en stel level-type=luma\\:$name in server.properties in. Gemaakt voor Minecraft $version; terrein en noise-router wijzen naar de eigen dichtheidsfuncties van het spel, dus alleen wat je hier wijzigt verschilt van vanilla.';
+  }
+
+  @override
+  String get mcColorTry => 'Probeer het';
+
+  @override
+  String get mcColorHelp =>
+      'Typ &-codes, of &#RRGGBB voor hexkleuren (servers met een chatplugin; vanilla-chat kent alleen de 16 kleuren).';
+
+  @override
+  String get mcColorSection => 'Paragraaftekens (§) — borden, boeken, MOTD';
+
+  @override
+  String get mcColorAmpersand => 'Ampersandcodes (&) — plugins';
+
+  @override
+  String get mcColorMiniMessage => 'MiniMessage — Paper / Adventure';
+
+  @override
+  String get mcColorJson => 'JSON-tekstcomponent — tellraw, titels';
+
+  @override
+  String get mcColorCodes => 'Kleurcodes';
+
+  @override
+  String get mcColorName => 'Naam';
+
+  @override
+  String get mcColorCode => 'Code';
+
+  @override
+  String get mcColorSectionCol => 'Paragraaf';
+
+  @override
+  String get mcColorHex => 'Hex';
+
+  @override
+  String get mcColorFormatting => 'Opmaakcodes';
+
+  @override
+  String get mcColorObfuscatedDetail => 'Versluierd — husselt voortdurend';
+
+  @override
+  String get mcColorReset => 'Reset — terug naar gewoon wit';
+
+  @override
+  String get mcColorOrderNote =>
+      'Een kleurcode wist alle opmaak ervoor, dus zet de kleur eerst: &c&l, niet &l&c.';
+
+  @override
+  String mcColorCopied(String code) {
+    return '$code gekopieerd';
+  }
+
+  @override
+  String get mcTitleTitle => 'Titel';
+
+  @override
+  String get mcTitleSubtitle => 'Ondertitel';
+
+  @override
+  String get mcTitleActionbar => 'Actiebalk';
+
+  @override
+  String get mcTitleTiming => 'Timing';
+
+  @override
+  String get mcTitleFadeIn => 'Invagen';
+
+  @override
+  String get mcTitleStay => 'Blijven';
+
+  @override
+  String get mcTitleFadeOut => 'Uitvagen';
+
+  @override
+  String mcTitleTicks(int ticks, String seconds) {
+    return '$ticks ticks · $seconds s';
+  }
+
+  @override
+  String get mcTitlePlay => 'Voorbeeld afspelen';
+
+  @override
+  String get mcTitleOrder =>
+      'Voer ze in deze volgorde uit: de tijden en de ondertitel wachten tot de titel verstuurd wordt.';
+
+  @override
+  String get mcTellMessage => 'Bericht';
+
+  @override
+  String get mcTellHoverHelp =>
+      'Beweeg over een deel in het voorbeeld om de hovertekst te zien.';
+
+  @override
+  String get mcTellPretty => 'JSON netjes opmaken';
+
+  @override
+  String get mcTellComponent => 'Tekstcomponent';
+
+  @override
+  String get mcTellNote =>
+      'Gebruikt de componentnamen van 26.x (click_event, hover_event), die 1.21.5 en nieuwer verwachten.';
+
+  @override
+  String get mcMotdLines => 'Regels';
+
+  @override
+  String get mcMotdTooLong =>
+      'Regels van meer dan ongeveer 45 tekens worden in de serverlijst afgekapt.';
+
+  @override
+  String get mcMotdServerName => 'Servernaam in de lijst';
+
+  @override
+  String get mcMotdPlayers => 'Spelers';
+
+  @override
+  String get mcMotdOf => 'van';
+
+  @override
+  String get mcMotdEscapeNote =>
+      '§ en alles buiten gewone ASCII moet hier als \\u-escape geschreven worden.';
+
+  @override
+  String get mcMotdRaw =>
+      'Ruwe tekst met §-codes (Bukkit-, Paper-, BungeeCord-configs)';
+
+  @override
+  String get mcMotdMiniMessage => 'MiniMessage (Velocity, Paper-plugins)';
+
+  @override
+  String get mcLootTable => 'Tabel';
+
+  @override
+  String get mcLootVersion => 'Spelversie';
+
+  @override
+  String get mcLootUsedFor => 'Gebruikt voor';
+
+  @override
+  String get mcLootPath => 'Pad in de datapack';
+
+  @override
+  String mcLootPool(int number) {
+    return 'Pool $number';
+  }
+
+  @override
+  String get mcLootRemovePool => 'Pool verwijderen';
+
+  @override
+  String get mcLootAddPool => 'Pool toevoegen';
+
+  @override
+  String get mcLootDatapackDesc => 'Buittabel gemaakt met luma';
+
+  @override
+  String mcLootUse(String give, String setblock) {
+    return 'Gebruik het met $give, of koppel een kist eraan: $setblock';
+  }
+
+  @override
+  String get mcLootRolls => 'Worpen';
+
+  @override
+  String get mcLootTo => 'tot';
+
+  @override
+  String get mcLootPlayerKill => 'Alleen als gedood door een speler';
+
+  @override
+  String get mcLootAddEntry => 'Item toevoegen';
+
+  @override
+  String get mcLootNothing => 'Niets (lege worp)';
+
+  @override
+  String get mcLootRemoveEntry => 'Item verwijderen';
+
+  @override
+  String get mcLootWeight => 'Gewicht';
+
+  @override
+  String get mcLootCount => 'Aantal';
+
+  @override
+  String get mcLootEmpty => 'Leeg';
+
+  @override
+  String get mcLootRandomEnchant => 'Willekeurige betovering';
+
+  @override
+  String get mcLootEnchantLevels => 'Betoveren met levels';
+
+  @override
+  String get mcLootLooting => 'Plunderingbonus';
+
+  @override
+  String get mcLootSmelt => 'Smelten als het brandt';
+
+  @override
+  String get mcLootDecay => 'Explosieverval';
+
+  @override
+  String get mcLootLevels => 'Levels';
+
+  @override
+  String get mcLootCustomName => 'Eigen naam (optioneel)';
+
+  @override
+  String get mcLootChance => 'Kans om überhaupt te vallen';
+
+  @override
+  String get mcPotItem => 'Voorwerp';
+
+  @override
+  String get mcPotCustomName => 'Eigen naam';
+
+  @override
+  String get mcPotCustomColour => 'Eigen kleur';
+
+  @override
+  String get mcPotEffects => 'Effecten';
+
+  @override
+  String get mcPotRemoveEffect => 'Effect verwijderen';
+
+  @override
+  String get mcPotDuration => 'Duur';
+
+  @override
+  String get mcPotInfinite => 'Oneindig';
+
+  @override
+  String get mcPotParticles => 'Deeltjes';
+
+  @override
+  String get mcPotIcon => 'Icoon';
+
+  @override
+  String get mcPotAmbient => 'Omgeving';
+
+  @override
+  String get mcPotNoEffects =>
+      'Geen effecten — het wordt een gekleurde waterfles.';
+
+  @override
+  String get mcPotDurationNote =>
+      'De getoonde duur geldt voor de drinkbare drank; blijvende wolken duren een kwart zo lang en pijlen een achtste.';
+
+  @override
+  String get mcCmdItem => 'Voorwerp';
+
+  @override
+  String get mcCmdCount => 'Aantal';
+
+  @override
+  String get mcCmdCustomName => 'Eigen naam';
+
+  @override
+  String get mcCmdEnchantments => 'Betoveringen';
+
+  @override
+  String get mcCmdAddEnchantment => 'Betovering toevoegen';
+
+  @override
+  String get mcCmdLore => 'Beschrijvingsregels';
+
+  @override
+  String get mcCmdRemoveLine => 'Regel verwijderen';
+
+  @override
+  String get mcCmdAddLore => 'Beschrijvingsregel toevoegen';
+
+  @override
+  String get mcCmdUnbreakable => 'Onbreekbaar';
+
+  @override
+  String get mcCmdGlint => 'Altijd glinsteren';
+
+  @override
+  String get mcCmdEntity => 'Entiteit';
+
+  @override
+  String get mcCmdPosition => 'Positie';
+
+  @override
+  String get mcCmdName => 'Naam';
+
+  @override
+  String get mcCmdOptional => 'Optioneel';
+
+  @override
+  String get mcCmdNameVisible => 'Naam altijd zichtbaar';
+
+  @override
+  String get mcCmdNoAi => 'Geen AI';
+
+  @override
+  String get mcCmdSilent => 'Stil';
+
+  @override
+  String get mcCmdInvulnerable => 'Onkwetsbaar';
+
+  @override
+  String get mcCmdGlowing => 'Gloeiend';
+
+  @override
+  String get mcCmdPersistent => 'Verdwijnt nooit';
+
+  @override
+  String get mcCmdNoGravity => 'Geen zwaartekracht';
+
+  @override
+  String get mcCmdBaby => 'Baby (zombies)';
+
+  @override
+  String get mcCmdClear => 'Wissen';
+
+  @override
+  String get mcCmdGive => 'Geven';
+
+  @override
+  String get mcCmdEffect => 'Effect';
+
+  @override
+  String get mcCmdLevel => 'Level';
+
+  @override
+  String get mcCmdSeconds => 'Seconden';
+
+  @override
+  String get mcCmdHideParticles => 'Deeltjes verbergen';
+
+  @override
+  String get mcCmdYaw => 'Kijkrichting (yaw)';
+
+  @override
+  String get mcCmdPitch => 'Kijkhoek (pitch)';
+
+  @override
+  String get mcCmdYawHint => 'optioneel, bijv. 90';
+
+  @override
+  String get mcCmdPitchHint => 'optioneel, bijv. 0';
+
+  @override
+  String get mcCmdCoordsHelp =>
+      'Gebruik ~ voor relatieve en ^ voor lokale coördinaten.';
+
+  @override
+  String get mcCmdOneBlock => 'Eén blok';
+
+  @override
+  String get mcCmdArea => 'Gebied';
+
+  @override
+  String get mcCmdBlock => 'Blok';
+
+  @override
+  String get mcCmdAt => 'Op';
+
+  @override
+  String get mcCmdFrom => 'Van';
+
+  @override
+  String get mcCmdTo => 'Tot';
+
+  @override
+  String get mcCmdFillLimit =>
+      '/fill is beperkt tot 32.768 blokken per commando.';
+
+  @override
+  String get mcCmdRule => 'Regel';
+
+  @override
+  String get mcCmdValue => 'Waarde';
+
+  @override
+  String get mcCmdNumber => 'getal';
+
+  @override
+  String get mcCmdRuleNote =>
+      'Spelregels in 26.x gebruiken hun snake_case-id\'s.';
+
+  @override
+  String get mcCmdSet => 'Instellen';
+
+  @override
+  String get mcCmdAddXp => 'Toevoegen';
+
+  @override
+  String get mcCmdLevels => 'Levels';
+
+  @override
+  String get mcCmdPoints => 'Punten';
+
+  @override
+  String get mcCmdAmount => 'Hoeveelheid';
+
+  @override
+  String mcCmdXpNote(int points, int level) {
+    return '$points punten om van nul level $level te bereiken.';
+  }
+
+  @override
+  String get mcCmdTime => 'Tijd';
+
+  @override
+  String get mcCmdWeather => 'Weer';
+
+  @override
+  String get mcCmdWeatherLasts => 'Weer duurt';
+
+  @override
+  String get mcCmdRandom => 'Willekeurig';
+
+  @override
+  String get mcCmdTarget => 'Doelwit';
+
+  @override
+  String get mcCmdPlayerName => 'of een spelersnaam';
+
+  @override
+  String mcCmdLength(int length) {
+    return 'Commando\'s langer dan 256 tekens hebben een commandoblok nodig — de chat kapt ze af. Dit commando is $length tekens.';
+  }
+
+  @override
+  String get mcAdvObtain => 'Heeft een voorwerp';
+
+  @override
+  String get mcAdvEat => 'Eet of drinkt';
+
+  @override
+  String get mcAdvPlace => 'Plaatst een blok';
+
+  @override
+  String get mcAdvKill => 'Doodt een mob';
+
+  @override
+  String get mcAdvTravel => 'Betreedt een dimensie';
+
+  @override
+  String get mcAdvCraft => 'Craft een recept';
+
+  @override
+  String get mcAdvManual => 'Alleen via commando';
+
+  @override
+  String get mcAdvAdvancement => 'Vooruitgang';
+
+  @override
+  String get mcAdvFileName => 'Bestandsnaam';
+
+  @override
+  String get mcAdvTitle => 'Titel';
+
+  @override
+  String get mcAdvDescription => 'Beschrijving';
+
+  @override
+  String get mcAdvIcon => 'Icoon';
+
+  @override
+  String get mcAdvFrame => 'Kader';
+
+  @override
+  String get mcAdvRoot => 'Begin van een nieuw tabblad';
+
+  @override
+  String get mcAdvBackground => 'Achtergrondtextuur';
+
+  @override
+  String get mcAdvParent => 'Ouder';
+
+  @override
+  String get mcAdvToast => 'Melding tonen';
+
+  @override
+  String get mcAdvChat => 'Aankondigen in de chat';
+
+  @override
+  String get mcAdvHidden => 'Verborgen tot behaald';
+
+  @override
+  String get mcAdvCriteria => 'Criteria';
+
+  @override
+  String get mcAdvAnyOne => 'Eén ervan';
+
+  @override
+  String get mcAdvAllOf => 'Allemaal';
+
+  @override
+  String get mcAdvRewards => 'Beloningen';
+
+  @override
+  String get mcAdvXp => 'Ervaringspunten';
+
+  @override
+  String get mcAdvRecipeHint => 'Recept ontgrendelen (id, optioneel)';
+
+  @override
+  String get mcAdvLootHint => 'Buittabel geven (id, optioneel)';
+
+  @override
+  String get mcAdvFunctionHint => 'Functie uitvoeren (id, optioneel)';
+
+  @override
+  String get mcAdvChallenge => 'Uitdaging voltooid!';
+
+  @override
+  String get mcAdvGoal => 'Doel bereikt!';
+
+  @override
+  String get mcAdvMade => 'Vooruitgang behaald!';
+
+  @override
+  String get mcAdvDatapackDesc => 'Vooruitgang gemaakt met luma';
+
+  @override
+  String mcAdvGrant(String command) {
+    return 'Geef of test het met $command.';
+  }
+
+  @override
+  String mcAssetReadError(String source, String error) {
+    return 'Kon $source niet lezen: $error';
+  }
+
+  @override
+  String get mcAssetAsking => 'Mojang vragen naar de nieuwste versie…';
+
+  @override
+  String mcAssetDownloadFailed(String error) {
+    return 'Downloaden mislukt: $error';
+  }
+
+  @override
+  String get mcAssetNoCopy => 'Geen Minecraft-installatie gevonden';
+
+  @override
+  String mcAssetNoCopyBody(int megabytes) {
+    return 'luma levert geen spelassets mee. Wijs een client-jar of resourcepack aan, of laat de vanilla-client ophalen van de openbare servers van Mojang (ongeveer $megabytes MB, bewaard op dit apparaat en gedeeld met de Minecraft-launcherplugin).';
+  }
+
+  @override
+  String get mcAssetChooseJar => 'Kies een jar of pack';
+
+  @override
+  String get mcAssetDownload => 'Downloaden van Mojang';
+
+  @override
+  String get mcAssetOtherFile => 'Ander bestand';
+
+  @override
+  String mcAssetSounds(int count) {
+    return 'Geluiden ($count)';
+  }
+
+  @override
+  String mcAssetImages(int count) {
+    return 'Afbeeldingen ($count)';
+  }
+
+  @override
+  String get mcAssetSearch => 'Alle assets doorzoeken';
+
+  @override
+  String get mcAssetFirst600 =>
+      'De eerste 600 worden getoond — zoek om te verfijnen.';
+
+  @override
+  String get mcAssetNoSounds => 'Geen geluiden voor deze installatie';
+
+  @override
+  String get mcAssetNoSoundsBody =>
+      'Geluiden komen uit de assetopslag van de launcher, die pas bestaat als het spel minstens één keer is gestart. Een resourcepack of gedownloade jar heeft alleen afbeeldingen.';
+
+  @override
+  String get mcAssetPlay => 'Afspelen';
+
+  @override
+  String get mcAssetCannotPlay =>
+      'Dit apparaat kan .ogg hier niet afspelen — sla het op en open het in een speler.';
+
+  @override
+  String get mcAssetSaveOgg => 'Opslaan als .ogg';
+
+  @override
+  String get mcAssetNotice =>
+      'Assets © Mojang. Ze worden ter referentie uit je eigen bestanden gelezen en maken geen deel uit van luma.';
+
+  @override
+  String get mcAssetClose => 'Sluiten';
+
+  @override
+  String get mcAssetCopyId => 'Id kopiëren';
+
+  @override
+  String get mcEnchGenDamage => 'Extra schade';
+
+  @override
+  String get mcEnchGenProtection => 'Schadebescherming';
+
+  @override
+  String get mcEnchGenAttribute => 'Attribuutbonus';
+
+  @override
+  String get mcEnchGenMobEffect => 'Effect op het doelwit';
+
+  @override
+  String get mcEnchGenIgnite => 'Doelwit in brand steken';
+
+  @override
+  String get mcEnchGenKnockback => 'Extra terugslag';
+
+  @override
+  String get mcEnchGenExperience => 'Meer ervaring van mobs';
+
+  @override
+  String get mcEnchGenPierce => 'Pantserdoorboring';
+
+  @override
+  String get mcEnchGenTitle => 'Betovering';
+
+  @override
+  String get mcEnchGenName => 'Naam';
+
+  @override
+  String get mcEnchGenGoesOn => 'Kan op';
+
+  @override
+  String get mcEnchGenTable => 'Aangeboden door de betoveringstafel op';
+
+  @override
+  String get mcEnchGenSame => 'Zelfde als hierboven';
+
+  @override
+  String get mcEnchGenExclusive => 'Niet te combineren met';
+
+  @override
+  String get mcEnchGenAnything => 'Alles mag';
+
+  @override
+  String mcEnchGenSetName(String set) {
+    return '$set-betoveringen';
+  }
+
+  @override
+  String get mcEnchGenSlots => 'Actief in vakken';
+
+  @override
+  String get mcEnchGenLevels => 'Levels & kosten';
+
+  @override
+  String get mcEnchGenMaxLevel => 'Maximaal level';
+
+  @override
+  String get mcEnchGenWeight => 'Zeldzaamheid (1 zeldzaam – 10 gewoon)';
+
+  @override
+  String get mcEnchGenAnvil => 'Aambeeldkosten';
+
+  @override
+  String get mcEnchGenMin => 'Minimaal betoveringslevel';
+
+  @override
+  String get mcEnchGenPerLevel => '… plus per level';
+
+  @override
+  String get mcEnchGenMax => 'Maximaal betoveringslevel';
+
+  @override
+  String get mcEnchGenEffects => 'Effecten';
+
+  @override
+  String get mcEnchGenAddEffect => 'Effect toevoegen';
+
+  @override
+  String get mcEnchGenNoEffects =>
+      'Geen effecten — het betovert wel, maar doet niets.';
+
+  @override
+  String mcEnchGenDatapackDesc(String name) {
+    return 'Betovering \"$name\" gemaakt met luma';
+  }
+
+  @override
+  String mcEnchGenNote(String command) {
+    return 'De datapack voegt het ook toe aan de betoveringstafel- en willekeurige-buit-tags, zodat het in survival verschijnt. Probeer het met $command.';
+  }
+
+  @override
+  String get mcEnchGenUnitDamage => 'schade';
+
+  @override
+  String get mcEnchGenUnitProtection => 'beschermingspunten';
+
+  @override
+  String get mcEnchGenUnitSeconds => 'seconden';
+
+  @override
+  String get mcEnchGenUnitKnockback => 'terugslag';
+
+  @override
+  String get mcEnchGenUnitPierce => '× 10% pantser genegeerd';
+
+  @override
+  String get mcEnchGenRemoveEffect => 'Effect verwijderen';
+
+  @override
+  String get mcEnchGenOpAdd => 'Optellen';
+
+  @override
+  String get mcEnchGenOpBase => '× basis';
+
+  @override
+  String get mcEnchGenOpTotal => '× totaal';
+
+  @override
+  String get mcEnchGenEffectLevel => 'Effectlevel';
+
+  @override
+  String mcEnchGenAtLevel1(String unit) {
+    return 'Op level I ($unit)';
+  }
+
+  @override
+  String get mcEnchGenEachLevel => 'Elk volgend level';
+
+  @override
+  String get mcEnchGenDirect => 'Alleen bij directe treffers';
+
+  @override
+  String get mcEnchGenDirectDetail => 'Niet door doornen of projectielen';
+
+  @override
+  String get mcRecShaped => 'Gevormd craften';
+
+  @override
+  String get mcRecShapeless => 'Vormloos craften';
+
+  @override
+  String get mcRecFurnace => 'Oven';
+
+  @override
+  String get mcRecBlast => 'Hoogoven';
+
+  @override
+  String get mcRecSmoker => 'Roker';
+
+  @override
+  String get mcRecCampfire => 'Kampvuur';
+
+  @override
+  String get mcRecStonecutter => 'Steenhouwer';
+
+  @override
+  String get mcRecSmithing => 'Smidstafel';
+
+  @override
+  String mcRecEmptySlot(String item) {
+    return 'Leeg — klik om $item te plaatsen';
+  }
+
+  @override
+  String mcRecFilledSlot(String item) {
+    return '$item — klik nogmaals of rechtsklik om te wissen';
+  }
+
+  @override
+  String get mcRecIdOrTag => 'item-id of #tag';
+
+  @override
+  String get mcRecId => 'item-id';
+
+  @override
+  String get mcRecStation => 'Werkstation';
+
+  @override
+  String get mcRecIngredients => 'Ingrediënten';
+
+  @override
+  String get mcRecBrush => 'Penseel — klik vakken om het te plaatsen';
+
+  @override
+  String get mcRecClear => 'Rooster wissen';
+
+  @override
+  String get mcRecFill => 'Rooster vullen';
+
+  @override
+  String get mcRecTemplate => 'Sjabloon';
+
+  @override
+  String get mcRecBase => 'Basisvoorwerp';
+
+  @override
+  String get mcRecAddition => 'Toevoeging';
+
+  @override
+  String get mcRecInput => 'Invoer';
+
+  @override
+  String get mcRecXp => 'Ervaring';
+
+  @override
+  String get mcRecTime => 'Kooktijd';
+
+  @override
+  String get mcRecResult => 'Resultaat';
+
+  @override
+  String get mcRecTab => 'Tabblad in receptenboek';
+
+  @override
+  String get mcRecGroup => 'Groep (optioneel — voegt receptenboekitems samen)';
+
+  @override
+  String get mcRecDatapackDesc => 'Recept gemaakt met luma';
+
+  @override
+  String mcRecNote(String command) {
+    return 'Ingrediënten kunnen een item-id of een item-tag zijn (#minecraft:planks). Eigen recepten werken meteen; om er een in het receptenboek te zetten, voer je $command uit.';
+  }
 }

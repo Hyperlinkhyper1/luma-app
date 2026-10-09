@@ -12,6 +12,7 @@ import 'package:luma/features/converter/schematic/textures/texture_pack_source_i
 import 'package:luma/features/converter/schematic/textures/texture_pack_types.dart';
 import 'package:luma/features/converter/tools/schematic_converter_view.dart';
 import 'package:luma/features/converter/tools/schematic_viewer.dart';
+import 'package:luma/l10n/app_localizations.dart';
 import 'package:luma/theme/luma_theme.dart';
 
 /// A flat-colour 16x16 PNG standing in for a block texture.
@@ -23,6 +24,8 @@ Uint8List _solidPng(int r, int g, int b) {
 
 Widget _app(Widget child) => MaterialApp(
       theme: LumaTheme.dark,
+      localizationsDelegates: L.localizationsDelegates,
+      supportedLocales: L.supportedLocales,
       home: Scaffold(body: child),
     );
 

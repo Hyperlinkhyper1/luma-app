@@ -360,7 +360,7 @@ class _TextureStatus extends StatelessWidget {
           : t.schemViewerFailureFallback(failure!);
     }
 
-    return Row(
+    final status = Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         leading,
@@ -371,22 +371,41 @@ class _TextureStatus extends StatelessWidget {
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
         ),
-        if (!loading) ...[
-          if (loaded == null) ...[
-            ConverterTextButton(
-              label: t.schemViewerDownloadTextures,
-              onTap: onDownload,
-            ),
-            const SizedBox(width: 4),
-          ],
-          ConverterTextButton(
-            label: loaded == null
-                ? t.schemViewerUseInstall
-                : t.converterChange,
-            onTap: onPick,
-          ),
-        ],
       ],
+    );
+    final actions = [
+      if (!loading) ...[
+        if (loaded == null)
+          ConverterTextButton(
+            label: t.schemViewerDownloadTextures,
+            onTap: onDownload,
+          ),
+        ConverterTextButton(
+          label: loaded == null ? t.schemViewerUseInstall : t.converterChange,
+          onTap: onPick,
+        ),
+      ],
+    ];
+    // Side by side when there is room; on a phone the buttons go under the
+    // message instead of squeezing it to nothing.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 520) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              status,
+              if (actions.isNotEmpty) Wrap(spacing: 4, children: actions),
+            ],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(child: status),
+            for (final a in actions) ...[const SizedBox(width: 4), a],
+          ],
+        );
+      },
     );
   }
 }
@@ -462,16 +481,21 @@ class _ViewerControls extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            Text(
-              t.schemViewerLayerRange(from, to),
-              style: TextStyle(
-                color: luma.textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                fontFeatures: const [ui.FontFeature.tabularFigures()],
+            // The range gives way first, so the buttons keep their room on a
+            // phone.
+            Expanded(
+              child: Text(
+                t.schemViewerLayerRange(from, to),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: luma.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  fontFeatures: const [ui.FontFeature.tabularFigures()],
+                ),
               ),
             ),
-            const Spacer(),
             _ViewerIconButton(
               icon: Icons.rotate_left_rounded,
               tooltip: t.convImgEditRotateLeft,

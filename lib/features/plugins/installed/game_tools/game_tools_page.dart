@@ -7,6 +7,8 @@ import '../roblox_tools/mafia/mafia_role_counter_tab.dart';
 import '../steam_tools/ui/cs2_market_tab.dart';
 import '../steam_tools/ui/cs2_selling_calculator_tab.dart';
 import '../steam_tools/ui/steam_price_tracker_tab.dart';
+import 'minecraft/mc_tool_catalog.dart';
+import 'minecraft/minecraft_tools_page.dart';
 
 /// A game (or game platform) the sidebar groups its sections under.
 ///
@@ -16,15 +18,12 @@ import '../steam_tools/ui/steam_price_tracker_tab.dart';
 enum GameToolsGame {
   steam('Steam', Icons.sports_esports_rounded),
   roblox('Roblox', Icons.videogame_asset_rounded),
-  minecraft('Minecraft', Icons.widgets_rounded, comingSoon: true);
+  minecraft('Minecraft', Icons.widgets_rounded);
 
-  const GameToolsGame(this.label, this.icon, {this.comingSoon = false});
+  const GameToolsGame(this.label, this.icon);
 
   final String label;
   final IconData icon;
-
-  /// Listed so the game is discoverable, but with nothing behind it yet.
-  final bool comingSoon;
 
   List<GameToolsSection> get sections => [
     for (final section in GameToolsSection.values)
@@ -55,7 +54,7 @@ enum GameToolsSection {
     GameToolsSection.cs2Market => t.gameToolsCs2MarketLabel,
     GameToolsSection.sellingCalculator => t.gameToolsSellingCalculatorLabel,
     GameToolsSection.mafia => 'Mafia',
-    GameToolsSection.minecraft => 'Minecraft',
+    GameToolsSection.minecraft => t.mcToolsCount(McTool.values.length),
   };
 
   /// One-line description, shown under the label while the rail is expanded
@@ -65,7 +64,7 @@ enum GameToolsSection {
     GameToolsSection.cs2Market => t.gameToolsCs2MarketBlurb,
     GameToolsSection.sellingCalculator => t.gameToolsSellingCalculatorBlurb,
     GameToolsSection.mafia => t.gameToolsMafiaBlurb,
-    GameToolsSection.minecraft => t.assistantAgentsComingSoon,
+    GameToolsSection.minecraft => t.gameToolsMinecraftBlurb,
   };
 
   /// The label a flat tab strip uses, where there is no heading to say which
@@ -139,9 +138,7 @@ class _GameToolsPageState extends State<GameToolsPage> {
               GameToolsSection.sellingCalculator =>
                 const Cs2SellingCalculatorTab(),
               GameToolsSection.mafia => const MafiaRoleCounterTab(),
-              GameToolsSection.minecraft => const _ComingSoon(
-                game: GameToolsGame.minecraft,
-              ),
+              GameToolsSection.minecraft => const MinecraftToolsPage(),
             },
       ],
     );
@@ -180,23 +177,6 @@ class _GameToolsPageState extends State<GameToolsPage> {
         Container(width: 1, color: luma.border),
         Expanded(child: body),
       ],
-    );
-  }
-}
-
-/// What a game listed ahead of its tools shows.
-class _ComingSoon extends StatelessWidget {
-  const _ComingSoon({required this.game});
-
-  final GameToolsGame game;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = L.of(context);
-    return LumaEmptyState(
-      icon: game.icon,
-      title: t.gameToolsComingSoonTitle(game.label),
-      subtitle: t.gameToolsComingSoonSubtitle(game.label),
     );
   }
 }
@@ -316,9 +296,7 @@ class _GameHeading extends StatelessWidget {
     final luma = context.luma;
     final t = L.of(context);
     final count = game.sections.length;
-    final line = game.comingSoon
-        ? t.assistantAgentsComingSoon
-        : game.collapsible
+    final line = game.collapsible
         ? t.gameToolsToolCount(count)
         : game.sections.first.label(t);
 
@@ -364,7 +342,7 @@ class _GameHeading extends StatelessWidget {
                       width: 6,
                       height: 6,
                       decoration: BoxDecoration(
-                        color: game.comingSoon ? luma.textMuted : luma.success,
+                        color: luma.success,
                         shape: BoxShape.circle,
                       ),
                     ),
