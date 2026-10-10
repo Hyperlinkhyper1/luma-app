@@ -4614,6 +4614,11 @@ class Api {
       'usedBytes': store.usedBytes(user.id),
       'quotaBytes': user.quotaBytes,
       'planId': user.planId,
+      // Plugins that can't be downloaded, only granted from the dashboard's
+      // Users tab. The app shows each one in the nav rail while it is here.
+      'grantedPlugins': [
+        if (teamBoard.roleOf(user.id) != null) 'team-clipboard',
+      ],
       // Ids only ('google', 'github') — never the provider-side subject.
       'linkedProviders': user.oauthSubjects.keys.toList()..sort(),
       // The client mirrors this into its own server-access gate: an account

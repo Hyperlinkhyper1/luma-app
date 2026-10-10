@@ -72,6 +72,7 @@ class RemoteAccount {
     this.passwordResetRequired = false,
     this.deletionRequest,
     this.recoveryKeyBox,
+    this.grantedPlugins = const [],
   });
 
   final String email;
@@ -117,6 +118,11 @@ class RemoteAccount {
 
   bool get hasRecoveryKey => recoveryKeyBox != null;
 
+  /// Plugins the admin granted this account from the dashboard. They can't
+  /// be downloaded; the app shows them in the nav rail while they are listed
+  /// here (see kGrantedOnlyPlugins). Servers older than this field omit it.
+  final List<String> grantedPlugins;
+
   factory RemoteAccount.fromJson(Map<String, dynamic> j) {
     final collections = <String, RemoteCollectionMeta>{};
     for (final raw in (j['collections'] as List<dynamic>? ?? const [])) {
@@ -143,6 +149,9 @@ class RemoteAccount {
         _ => null,
       },
       collections: collections,
+      grantedPlugins: (j['grantedPlugins'] as List<dynamic>? ?? const [])
+          .whereType<String>()
+          .toList(),
     );
   }
 }

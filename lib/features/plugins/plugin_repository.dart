@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../sync/server_access.dart';
 import '../../sync/sync_api.dart' show kDefaultSyncServerUrl;
@@ -27,6 +28,14 @@ class InstalledPluginRecord {
   final int downloadCount;
 }
 
+/// Plugins nobody can download. They are not in the marketplace; the admin
+/// grants one to an account from the dashboard, the server lists it in that
+/// account's `grantedPlugins`, and it shows up in the nav rail on its own —
+/// and leaves again when the grant is taken away.
+const kGrantedOnlyPlugins = {
+  'team-clipboard': (name: 'Team Clipboard', icon: 'content_paste'),
+};
+
 /// CRUD over the local "installed plugins" record, backed by [PluginDatabase].
 /// Installing fetches the plugin's manifest from the repo first, so a
 /// download always involves a real round trip to the source of truth.
@@ -42,17 +51,68 @@ class PluginRepository {
   /// and because the token changes on every sign-in/out.
   final String? Function()? _authToken;
 
+  /// The [kGrantedOnlyPlugins] the signed-in account has been granted, as
+  /// the server last reported them. Set from the sync service; empty while
+  /// signed out.
+  final ValueNotifier<Set<String>> granted = ValueNotifier(const {});
+
+  /// When each granted plugin first showed up this session, so it keeps its
+  /// place at the bottom of the nav rail instead of jumping around.
+  final Map<String, DateTime> _grantedSince = {};
+
   /// Streams installed plugins, oldest-installed first (so newly downloaded
-  /// plugins appear at the bottom of the nav rail group).
+  /// plugins appear at the bottom of the nav rail group), with the granted
+  /// plugins after them. A granted-only plugin never comes from the
+  /// database, so an old row for one can't keep it on screen.
   Stream<List<InstalledPluginRecord>> watchInstalled() {
     final query = _db.select(_db.installedPlugins)
       ..orderBy([(t) => OrderingTerm.asc(t.installedAt)]);
-    return query.watch().map(
-          (rows) => rows.map(_toRecord).toList(growable: false),
-        );
+    late final StreamController<List<InstalledPluginRecord>> out;
+    StreamSubscription<List<InstalledPlugin>>? rowsSub;
+    List<InstalledPlugin>? rows;
+    void emit() {
+      final current = rows;
+      if (current != null && !out.isClosed) out.add(_merge(current));
+    }
+
+    out = StreamController<List<InstalledPluginRecord>>(
+      onListen: () {
+        granted.addListener(emit);
+        rowsSub = query.watch().listen((next) {
+          rows = next;
+          emit();
+        }, onError: out.addError);
+      },
+      onCancel: () async {
+        granted.removeListener(emit);
+        await rowsSub?.cancel();
+      },
+    );
+    return out.stream;
+  }
+
+  List<InstalledPluginRecord> _merge(List<InstalledPlugin> rows) {
+    final ids = granted.value.where(kGrantedOnlyPlugins.containsKey);
+    _grantedSince.removeWhere((id, _) => !ids.contains(id));
+    return [
+      for (final row in rows)
+        if (!kGrantedOnlyPlugins.containsKey(row.pluginId)) _toRecord(row),
+      for (final id in ids)
+        InstalledPluginRecord(
+          pluginId: id,
+          name: kGrantedOnlyPlugins[id]!.name,
+          icon: kGrantedOnlyPlugins[id]!.icon,
+          version: '1.0.0',
+          installedAt: _grantedSince.putIfAbsent(id, DateTime.now),
+          downloadCount: 0,
+        ),
+    ];
   }
 
   Future<void> install(PluginCatalogEntry entry) async {
+    if (kGrantedOnlyPlugins.containsKey(entry.id)) {
+      throw StateError('${entry.id} is granted by the admin, not downloaded.');
+    }
     final manifest = await _service.fetchManifest(entry.id);
     final existing = await (_db.select(_db.installedPlugins)
           ..where((t) => t.pluginId.equals(entry.id)))
@@ -160,6 +220,7 @@ class PluginRepository {
   }
 
   Future<void> uninstall(String pluginId) {
+    if (kGrantedOnlyPlugins.containsKey(pluginId)) return Future.value();
     return (_db.delete(_db.installedPlugins)
           ..where((t) => t.pluginId.equals(pluginId)))
         .go();

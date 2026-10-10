@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
@@ -782,6 +783,8 @@ class _LumaAppState extends State<LumaApp> {
     _secureChatRepository.init();
     _recipeBookController.init();
     _teamClipboardController.init();
+    _sync.addListener(_syncGrantedPlugins);
+    _syncGrantedPlugins();
     _autoClickerRepository.init();
     unawaited(_audioToolsRepository.init());
     unawaited(_petRepository.init());
@@ -842,6 +845,15 @@ class _LumaAppState extends State<LumaApp> {
   /// Turning AI Usage sync on (or signing in with it on) counts as opening:
   /// without this the first exchange would wait for the next restart.
   /// Turning it off drops the other devices' numbers straight away.
+  /// Puts the plugins the admin granted this account in the nav rail, and
+  /// takes them out again when the grant goes or the account signs out.
+  void _syncGrantedPlugins() {
+    final next = _sync.grantedPlugins;
+    if (!setEquals(next, _pluginRepository.granted.value)) {
+      _pluginRepository.granted.value = next;
+    }
+  }
+
   void _onSyncStateChanged() {
     final backendAccount = _sync.serverReady
         ? '${_sync.serverUrl}:${_sync.email}'
@@ -900,6 +912,7 @@ class _LumaAppState extends State<LumaApp> {
     _lifecycleListener?.dispose();
     _windowCloseSubscription?.cancel();
     _sync.removeListener(_onSyncStateChanged);
+    _sync.removeListener(_syncGrantedPlugins);
     widget.settings.removeListener(_onSettingsChanged);
     _deviceShare?.dispose();
     _peerSync.dispose();

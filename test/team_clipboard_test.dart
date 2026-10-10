@@ -290,8 +290,32 @@ void main() {
     await _unmount(tester);
   });
 
+  testWidgets('with nothing open the board fills the page as tiles', (
+    tester,
+  ) async {
+    final controller = await _pump(tester, _FakeBoard());
+    double y(String title) => tester.getTopLeft(find.text(title).first).dy;
+    double x(String title) => tester.getTopLeft(find.text(title).first).dx;
+    expect(y('Chest lid clips'), y('Ruby ore'));
+    expect(x('Chest lid clips'), isNot(x('Ruby ore')));
+    expect(y('Ruby ore'), lessThan(y('Copper lantern')));
+    expect(find.text('Brief for Ruby ore'), findsOneWidget);
+
+    await tester.tap(find.text('Ruby ore'));
+    await tester.pumpAndSettle();
+    expect(find.text('Claim it'), findsOneWidget);
+    expect(x('Chest lid clips'), x('Ruby ore'));
+
+    await tester.tap(find.byTooltip('Close'));
+    await tester.pumpAndSettle();
+    expect(controller.selectedId, isNull);
+    expect(find.text('Claim it'), findsNothing);
+    expect(y('Chest lid clips'), y('Ruby ore'));
+    await _unmount(tester);
+  });
+
   testWidgets('work to do sits above finished entries', (tester) async {
-    await _pump(tester, _FakeBoard());
+    await _pump(tester, _FakeBoard(), size: const Size(700, 1200));
     double y(String title) => tester.getTopLeft(find.text(title)).dy;
     expect(y('Chest lid clips'), lessThan(y('Copper lantern')));
     expect(y('Ruby ore'), lessThan(y('Copper lantern')));

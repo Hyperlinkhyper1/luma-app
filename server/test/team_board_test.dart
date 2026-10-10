@@ -256,6 +256,21 @@ void main() {
             token: token,
             json: {'kind': kind, 'title': title, 'brief': 'Glows a bit.'});
 
+    test('the account lists the plugin only while the admin grants it',
+        () async {
+      final token = await register('pixel@example.com');
+      Future<List<dynamic>?> granted() async =>
+          (await call('GET', '/api/v1/account', token: token))['grantedPlugins']
+              as List<dynamic>?;
+      expect(await granted(), isEmpty);
+      await setRole('pixel@example.com', 'member');
+      expect(await granted(), ['team-clipboard']);
+      await setRole('pixel@example.com', 'lead');
+      expect(await granted(), ['team-clipboard']);
+      await setRole('pixel@example.com', 'none');
+      expect(await granted(), isEmpty);
+    });
+
     test('nobody gets in until the admin adds them', () async {
       final token = await register('stranger@example.com');
       final board = await call('GET', '/api/v1/team-board', token: token);

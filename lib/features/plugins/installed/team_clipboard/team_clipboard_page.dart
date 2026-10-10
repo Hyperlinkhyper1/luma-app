@@ -12,9 +12,10 @@ import 'ui/team_entry_editor.dart';
 
 /// The Team Clipboard: every bug, suggestion and model the team is working
 /// on, on one screen. Work still to do sits on top; done, added and closed
-/// entries sink to the bottom on a darker surface. On a wide window the
-/// open entry and its chat sit beside the list; on a phone the entry opens
-/// as a page of its own.
+/// entries sink to the bottom on a darker surface. On a wide window with
+/// nothing open the board fills the page as a grid of tiles; opening an
+/// entry folds it into a side list with the entry and its chat beside it.
+/// On a phone the entry opens as a page of its own.
 class TeamClipboardPage extends StatefulWidget {
   const TeamClipboardPage({super.key});
 
@@ -88,6 +89,7 @@ class _TeamClipboardPageState extends State<TeamClipboardPage> {
       builder: (context, box) {
         final wide = box.maxWidth >= 1240;
         final split = box.maxWidth >= 820;
+        final selected = controller.selected;
         final list = _BoardList(
           controller: controller,
           filter: _filter,
@@ -103,28 +105,24 @@ class _TeamClipboardPageState extends State<TeamClipboardPage> {
             if (!split) _openOnPhone(context, entry.id);
           },
           highlightSelection: split,
+          tiles: split && selected == null,
         );
-        if (!split) return list;
+        if (!split || selected == null) return list;
         final luma = context.luma;
-        final selected = controller.selected;
         return Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(width: wide ? 380 : 340, child: list),
             VerticalDivider(width: 1, color: luma.border),
             Expanded(
-              child: selected == null
-                  ? LumaEmptyState(
-                      icon: Icons.touch_app_rounded,
-                      title: t.teamClipboardSelectHint,
-                    )
-                  : TeamEntryDetail(
-                      key: ValueKey(selected.id),
-                      entry: selected,
-                      withThread: !wide,
-                    ),
+              child: TeamEntryDetail(
+                key: ValueKey(selected.id),
+                entry: selected,
+                withThread: !wide,
+                onClose: () => controller.select(null),
+              ),
             ),
-            if (wide && selected != null) ...[
+            if (wide) ...[
               VerticalDivider(width: 1, color: luma.border),
               SizedBox(
                 width: 380,
@@ -216,6 +214,7 @@ class _BoardList extends StatelessWidget {
     required this.onToggleFinished,
     required this.onOpen,
     required this.highlightSelection,
+    this.tiles = false,
   });
 
   final TeamClipboardController controller;
@@ -229,6 +228,48 @@ class _BoardList extends StatelessWidget {
   final ValueChanged<TeamEntry> onOpen;
   final bool highlightSelection;
 
+  /// With nothing open on a wide window the board takes the whole page and
+  /// lays its entries out as a grid of tiles instead of a single column.
+  final bool tiles;
+
+  Widget _cards(List<TeamEntry> entries) {
+    Widget card(TeamEntry e) => _EntryCard(
+      key: ValueKey(e.id),
+      entry: e,
+      selected: highlightSelection && e.id == controller.selectedId,
+      news: controller.hasNews(e),
+      tile: tiles,
+      onTap: () => onOpen(e),
+    );
+    if (!tiles) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [for (final e in entries) card(e)],
+      );
+    }
+    return LayoutBuilder(
+      builder: (context, box) {
+        const gap = 12.0;
+        final columns = ((box.maxWidth + gap) / (280 + gap)).floor().clamp(
+          1,
+          99,
+        );
+        final width = (box.maxWidth - gap * (columns - 1)) / columns;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Wrap(
+            spacing: gap,
+            runSpacing: gap,
+            children: [
+              for (final e in entries)
+                SizedBox(width: width, height: 176, child: card(e)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = L.of(context);
@@ -238,12 +279,20 @@ class _BoardList extends StatelessWidget {
     final todo = shown.where((e) => !e.finished).toList();
     final finished = shown.where((e) => e.finished).toList();
     final openCount = all.where((e) => !e.finished).length;
+    final side = tiles ? 24.0 : 18.0;
+    final newEntry = LumaPrimaryButton(
+      label: t.teamClipboardNewEntry,
+      icon: Icons.add_rounded,
+      expand: !tiles,
+      onTap: () => showTeamEntryEditor(context, controller),
+    );
+    final search = _SearchField(query: query, onChanged: onQuery);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(18, 18, 12, 0),
+          padding: EdgeInsets.fromLTRB(side, 18, side - 6, 0),
           child: Row(
             children: [
               Expanded(
@@ -288,6 +337,12 @@ class _BoardList extends StatelessWidget {
                   ],
                 ),
               ),
+              if (tiles) ...[
+                SizedBox(width: 320, child: search),
+                const SizedBox(width: 12),
+                newEntry,
+                const SizedBox(width: 4),
+              ],
               IconButton(
                 tooltip: t.teamClipboardRefresh,
                 onPressed: controller.loading ? null : controller.refresh,
@@ -302,24 +357,21 @@ class _BoardList extends StatelessWidget {
             ],
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
-          child: LumaPrimaryButton(
-            label: t.teamClipboardNewEntry,
-            icon: Icons.add_rounded,
-            expand: true,
-            onTap: () => showTeamEntryEditor(context, controller),
+        if (!tiles) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+            child: newEntry,
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
-          child: _SearchField(query: query, onChanged: onQuery),
-        ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+            child: search,
+          ),
+        ],
         SizedBox(
           height: 48,
           child: ListView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(18, 10, 18, 4),
+            padding: EdgeInsets.fromLTRB(side, 10, side, 4),
             children: [
               for (final f in _KindFilter.values)
                 Padding(
@@ -349,7 +401,7 @@ class _BoardList extends StatelessWidget {
         ),
         if (controller.error != null)
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 6, 18, 0),
+            padding: EdgeInsets.fromLTRB(side, 6, side, 0),
             child: Text(
               controller.error!,
               style: TextStyle(color: luma.danger, fontSize: 12.5),
@@ -370,22 +422,13 @@ class _BoardList extends StatelessWidget {
               : RefreshIndicator(
                   onRefresh: controller.refresh,
                   child: ListView(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+                    padding: EdgeInsets.fromLTRB(side - 6, 8, side - 6, 24),
                     children: [
                       _SectionHeader(
                         label: t.teamClipboardSectionToDo,
                         count: todo.length,
                       ),
-                      for (final e in todo)
-                        _EntryCard(
-                          key: ValueKey(e.id),
-                          entry: e,
-                          selected:
-                              highlightSelection &&
-                              e.id == controller.selectedId,
-                          news: controller.hasNews(e),
-                          onTap: () => onOpen(e),
-                        ),
+                      _cards(todo),
                       if (finished.isNotEmpty) ...[
                         const SizedBox(height: 10),
                         _SectionHeader(
@@ -394,17 +437,7 @@ class _BoardList extends StatelessWidget {
                           expanded: showFinished,
                           onToggle: onToggleFinished,
                         ),
-                        if (showFinished)
-                          for (final e in finished)
-                            _EntryCard(
-                              key: ValueKey(e.id),
-                              entry: e,
-                              selected:
-                                  highlightSelection &&
-                                  e.id == controller.selectedId,
-                              news: controller.hasNews(e),
-                              onTap: () => onOpen(e),
-                            ),
+                        if (showFinished) _cards(finished),
                       ],
                     ],
                   ),
@@ -587,12 +620,17 @@ class _EntryCard extends StatefulWidget {
     required this.selected,
     required this.news,
     required this.onTap,
+    this.tile = false,
   });
 
   final TeamEntry entry;
   final bool selected;
   final bool news;
   final VoidCallback onTap;
+
+  /// Laid out as a fixed-size tile for the full-page grid, with a preview
+  /// of the brief, rather than as a row in the side list.
+  final bool tile;
 
   @override
   State<_EntryCard> createState() => _EntryCardState();
@@ -618,8 +656,128 @@ class _EntryCardState extends State<_EntryCard> {
         ? Color.lerp(base, luma.surfaceHover, 0.7)!
         : base;
 
+    final kindBadge = Container(
+      width: 34,
+      height: 34,
+      decoration: BoxDecoration(
+        color: kindColor.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Icon(teamKindIcon(e.kind), size: 19, color: kindColor),
+    );
+    final title = Text(
+      e.title,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        color: finished ? luma.textSecondary : luma.textPrimary,
+        fontSize: widget.tile ? 15 : 14,
+        fontWeight: FontWeight.w600,
+        height: 1.3,
+        decoration: e.closed ? TextDecoration.lineThrough : null,
+        decorationColor: luma.textMuted,
+      ),
+    );
+    final newsDot = widget.news
+        ? Tooltip(
+            message: t.teamClipboardNews,
+            child: Container(
+              margin: const EdgeInsets.only(left: 6, top: 4),
+              width: 9,
+              height: 9,
+              decoration: BoxDecoration(
+                color: luma.accent,
+                shape: BoxShape.circle,
+              ),
+            ),
+          )
+        : null;
+    final meta = Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        TeamPill(
+          label: e.closed
+              ? t.teamClipboardClosed
+              : e.stage == TeamEntryStage.claimed && e.claimedBy != null
+              ? t.teamClipboardClaimedBy(
+                  e.claimedByMe
+                      ? t.teamClipboardYou
+                      : teamPerson(t, e.claimedBy!),
+                )
+              : teamStageLabel(t, e.stage, e.kind),
+          color: stageColor,
+          icon: e.closed ? Icons.lock_rounded : teamStageIcon(e.stage),
+          filled: e.stage == TeamEntryStage.added,
+        ),
+        if (e.files.isNotEmpty)
+          _Meta(icon: Icons.attach_file_rounded, text: '${e.files.length}'),
+        if (e.messageCount > 0)
+          _Meta(
+            icon: Icons.chat_bubble_outline_rounded,
+            text: '${e.messageCount}',
+          ),
+        _Meta(
+          text:
+              '${teamPerson(t, e.author)} · ${teamRelativeTime(context, e.updatedAt)}',
+        ),
+      ],
+    );
+
+    final Widget content = widget.tile
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  kindBadge,
+                  const SizedBox(width: 11),
+                  Expanded(child: title),
+                  ?newsDot,
+                ],
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: Text(
+                  e.brief.trim(),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: luma.textMuted,
+                    fontSize: 12.5,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              meta,
+            ],
+          )
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              kindBadge,
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [Expanded(child: title), ?newsDot],
+                    ),
+                    const SizedBox(height: 6),
+                    meta,
+                  ],
+                ),
+              ),
+            ],
+          );
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.only(bottom: widget.tile ? 0 : 8),
       child: Semantics(
         button: true,
         selected: widget.selected,
@@ -631,7 +789,9 @@ class _EntryCardState extends State<_EntryCard> {
             onTap: widget.onTap,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 11),
+              padding: widget.tile
+                  ? const EdgeInsets.all(14)
+                  : const EdgeInsets.fromLTRB(12, 12, 12, 11),
               decoration: BoxDecoration(
                 color: background,
                 borderRadius: BorderRadius.circular(12),
@@ -643,111 +803,7 @@ class _EntryCardState extends State<_EntryCard> {
                       : luma.border,
                 ),
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: kindColor.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(9),
-                    ),
-                    child: Icon(
-                      teamKindIcon(e.kind),
-                      size: 19,
-                      color: kindColor,
-                    ),
-                  ),
-                  const SizedBox(width: 11),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                e.title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: finished
-                                      ? luma.textSecondary
-                                      : luma.textPrimary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.3,
-                                  decoration: e.closed
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                                  decorationColor: luma.textMuted,
-                                ),
-                              ),
-                            ),
-                            if (widget.news)
-                              Tooltip(
-                                message: t.teamClipboardNews,
-                                child: Container(
-                                  margin: const EdgeInsets.only(
-                                    left: 6,
-                                    top: 4,
-                                  ),
-                                  width: 9,
-                                  height: 9,
-                                  decoration: BoxDecoration(
-                                    color: luma.accent,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            TeamPill(
-                              label: e.closed
-                                  ? t.teamClipboardClosed
-                                  : e.stage == TeamEntryStage.claimed &&
-                                        e.claimedBy != null
-                                  ? t.teamClipboardClaimedBy(
-                                      e.claimedByMe
-                                          ? t.teamClipboardYou
-                                          : teamPerson(t, e.claimedBy!),
-                                    )
-                                  : teamStageLabel(t, e.stage, e.kind),
-                              color: stageColor,
-                              icon: e.closed
-                                  ? Icons.lock_rounded
-                                  : teamStageIcon(e.stage),
-                              filled: e.stage == TeamEntryStage.added,
-                            ),
-                            if (e.files.isNotEmpty)
-                              _Meta(
-                                icon: Icons.attach_file_rounded,
-                                text: '${e.files.length}',
-                              ),
-                            if (e.messageCount > 0)
-                              _Meta(
-                                icon: Icons.chat_bubble_outline_rounded,
-                                text: '${e.messageCount}',
-                              ),
-                            _Meta(
-                              text:
-                                  '${teamPerson(t, e.author)} · ${teamRelativeTime(context, e.updatedAt)}',
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+              child: content,
             ),
           ),
         ),

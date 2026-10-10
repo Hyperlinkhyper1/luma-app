@@ -203,6 +203,11 @@ class SyncService extends ChangeNotifier {
   /// Latest known storage usage / quota, refreshed on every sync.
   RemoteAccount? get account => _account;
 
+  /// Plugins the admin granted this account, from the last account fetch.
+  /// Empty while the device can't use the server.
+  Set<String> get grantedPlugins =>
+      serverReady ? {...?_account?.grantedPlugins} : const {};
+
   /// The operator reset this account's password from the admin dashboard and
   /// the user has not chosen a new one yet. While this is true the app puts
   /// a blocking "choose a new password" screen over everything (see

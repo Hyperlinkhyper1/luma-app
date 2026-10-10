@@ -29,16 +29,19 @@ Future<void> _attempt(
 
 /// Everything about one entry on one screen: what it is, where it stands,
 /// its brief, its files and — unless [withThread] is off because the
-/// thread has a column of its own — its chat.
+/// thread has a column of its own — its chat. With [onClose] the header
+/// carries a close button that goes back to the board.
 class TeamEntryDetail extends StatefulWidget {
   const TeamEntryDetail({
     super.key,
     required this.entry,
     this.withThread = true,
+    this.onClose,
   });
 
   final TeamEntry entry;
   final bool withThread;
+  final VoidCallback? onClose;
 
   @override
   State<TeamEntryDetail> createState() => _TeamEntryDetailState();
@@ -87,7 +90,7 @@ class _TeamEntryDetailState extends State<TeamEntryDetail> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _Header(entry: entry),
+                _Header(entry: entry, onClose: widget.onClose),
                 const SizedBox(height: 18),
                 if (entry.closed) ...[
                   _ClosedBanner(entry: entry),
@@ -169,9 +172,10 @@ class TeamThreadPanel extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.entry});
+  const _Header({required this.entry, this.onClose});
 
   final TeamEntry entry;
+  final VoidCallback? onClose;
 
   @override
   Widget build(BuildContext context) {
@@ -268,6 +272,12 @@ class _Header extends StatelessWidget {
                 ),
               ],
             ],
+          ),
+        if (onClose != null)
+          IconButton(
+            tooltip: t.commonClose,
+            onPressed: onClose,
+            icon: Icon(Icons.close_rounded, color: luma.textSecondary),
           ),
       ],
     );
