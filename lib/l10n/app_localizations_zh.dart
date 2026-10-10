@@ -36644,4 +36644,310 @@ class LZh extends L {
   String mcRecNote(String command) {
     return '材料可以是物品 ID 或物品标签（#minecraft:planks）。自定义配方立即可用；要在配方书中显示，请运行 $command。';
   }
+
+  @override
+  String get pluginNameTeamClipboard => '团队剪贴板';
+
+  @override
+  String get serverGateTeamClipboardTitle => '团队剪贴板需要已批准的账户';
+
+  @override
+  String get serverGateTeamClipboardDescription =>
+      '看板保存在 luma 服务器上。请先登录已批准的账户，之后管理员才能把你加入团队。';
+
+  @override
+  String teamClipboardSubtitle(int open, int finished) {
+    return '$open 项待办 · $finished 项已完成';
+  }
+
+  @override
+  String get teamClipboardRoleLead => '负责人';
+
+  @override
+  String get teamClipboardRoleMember => '成员';
+
+  @override
+  String get teamClipboardNewEntry => '新建条目';
+
+  @override
+  String get teamClipboardSearchHint => '搜索标题、说明和文件';
+
+  @override
+  String get teamClipboardFilterBugs => 'Bug';
+
+  @override
+  String get teamClipboardFilterSuggestions => '建议';
+
+  @override
+  String get teamClipboardFilterModels => '模型';
+
+  @override
+  String get teamClipboardKindBug => 'Bug';
+
+  @override
+  String get teamClipboardKindSuggestion => '建议';
+
+  @override
+  String get teamClipboardKindModel => '模型';
+
+  @override
+  String get teamClipboardStageIdea => '想法';
+
+  @override
+  String get teamClipboardStageOpen => '待处理';
+
+  @override
+  String get teamClipboardStageClaimed => '已认领';
+
+  @override
+  String get teamClipboardStageDone => '完成';
+
+  @override
+  String get teamClipboardStageAdded => '已添加';
+
+  @override
+  String get teamClipboardStageFixed => '已修复';
+
+  @override
+  String get teamClipboardClosed => '已关闭';
+
+  @override
+  String teamClipboardClaimedBy(String name) {
+    return '$name 已认领';
+  }
+
+  @override
+  String teamClipboardByAuthor(String name) {
+    return '来自 $name';
+  }
+
+  @override
+  String get teamClipboardYou => '你';
+
+  @override
+  String get teamClipboardFormerMember => '前成员';
+
+  @override
+  String get teamClipboardSectionToDo => '待办';
+
+  @override
+  String get teamClipboardSectionFinished => '已完成';
+
+  @override
+  String get teamClipboardEmptyTitle => '看板是空的';
+
+  @override
+  String get teamClipboardEmptySubtitle => '添加第一个 bug、建议或模型，让团队知道接下来做什么。';
+
+  @override
+  String get teamClipboardSelectHint => '选择一个条目，查看说明、文件和讨论';
+
+  @override
+  String get teamClipboardErrorTitle => '无法连接到看板';
+
+  @override
+  String get teamClipboardRefresh => '刷新';
+
+  @override
+  String get teamClipboardNews => '有新动态';
+
+  @override
+  String get teamClipboardGateTitle => '等待加入团队';
+
+  @override
+  String teamClipboardGateBody(String email) {
+    return '团队剪贴板仅限受邀使用。请让管理员在管理面板中添加 $email，然后再检查一次。';
+  }
+
+  @override
+  String get teamClipboardGateBodyNoEmail =>
+      '团队剪贴板仅限受邀使用。请让管理员在管理面板中添加你的 luma 账户，然后再检查一次。';
+
+  @override
+  String get teamClipboardGateCheckAgain => '再次检查';
+
+  @override
+  String get teamClipboardBrief => '说明';
+
+  @override
+  String get teamClipboardNoBrief => '还没有说明。';
+
+  @override
+  String get teamClipboardFiles => '文件';
+
+  @override
+  String get teamClipboardNoFiles => '还没有文件。在这里附上模型 .json、.png 贴图以及 .mcmeta。';
+
+  @override
+  String get teamClipboardAddFiles => '添加文件';
+
+  @override
+  String get teamClipboardDownloadAll => '全部下载';
+
+  @override
+  String get teamClipboardRemoveFile => '移除文件';
+
+  @override
+  String teamClipboardRemoveFileConfirm(String name) {
+    return '从该条目中移除 $name？';
+  }
+
+  @override
+  String teamClipboardFileBy(String size, String name) {
+    return '$size · $name';
+  }
+
+  @override
+  String teamClipboardFrames(int count) {
+    return '$count 帧';
+  }
+
+  @override
+  String teamClipboardSavedTo(String path) {
+    return '已保存到 $path';
+  }
+
+  @override
+  String teamClipboardSavedFiles(int count, String path) {
+    return '已将 $count 个文件保存到 $path';
+  }
+
+  @override
+  String get teamClipboardCouldNotLoad => '无法加载此文件。';
+
+  @override
+  String teamClipboardUploadFailed(String names) {
+    return '无法附加：$names';
+  }
+
+  @override
+  String teamClipboardFileTooLarge(String name) {
+    return '$name 超过 10 MB。';
+  }
+
+  @override
+  String teamClipboardFileWrongType(String name) {
+    return '$name 不是 .png、.json 或 .mcmeta 文件。';
+  }
+
+  @override
+  String get teamClipboardChat => '讨论';
+
+  @override
+  String get teamClipboardNoMessages => '还没有消息，开始讨论吧。';
+
+  @override
+  String get teamClipboardMessageHint => '输入消息…';
+
+  @override
+  String get teamClipboardSend => '发送';
+
+  @override
+  String get teamClipboardThreadClosed => '此讨论已关闭。';
+
+  @override
+  String get teamClipboardReopen => '重新打开';
+
+  @override
+  String get teamClipboardCloseThread => '关闭讨论';
+
+  @override
+  String get teamClipboardClaim => '认领';
+
+  @override
+  String get teamClipboardUnclaim => '取消认领';
+
+  @override
+  String get teamClipboardMarkDone => '标记为完成';
+
+  @override
+  String get teamClipboardMarkAdded => '标记为已添加';
+
+  @override
+  String get teamClipboardMarkFixed => '标记为已修复';
+
+  @override
+  String get teamClipboardLeadOnlyAdded => '只有团队负责人可以将其标记为已添加。';
+
+  @override
+  String get teamClipboardEditEntry => '编辑条目';
+
+  @override
+  String get teamClipboardDeleteEntry => '删除条目';
+
+  @override
+  String get teamClipboardDeleteConfirmTitle => '删除此条目？';
+
+  @override
+  String get teamClipboardDeleteConfirmBody => '它的说明、文件和讨论将对整个团队删除。';
+
+  @override
+  String get teamClipboardEditorNewTitle => '新建条目';
+
+  @override
+  String get teamClipboardEditorKind => '类型';
+
+  @override
+  String get teamClipboardEditorTitleLabel => '标题';
+
+  @override
+  String get teamClipboardEditorTitleHint => '例如：红宝石矿石方块';
+
+  @override
+  String get teamClipboardEditorTitleRequired => '请填写标题。';
+
+  @override
+  String get teamClipboardEditorBriefLabel => '说明';
+
+  @override
+  String get teamClipboardEditorBriefHint => '用几行话描述你的想法：它是什么，应该是什么样子或有什么行为。';
+
+  @override
+  String get teamClipboardEditorFilesHint => '.png、.json 和 .mcmeta，每个最大 10 MB';
+
+  @override
+  String get teamClipboardCreate => '添加到看板';
+
+  @override
+  String teamClipboardServerError(int status) {
+    return '服务器错误（$status）。';
+  }
+
+  @override
+  String get teamClipboardMe => '你';
+
+  @override
+  String teamClipboardFileEmpty(String name) {
+    return '$name 是空文件。';
+  }
+
+  @override
+  String teamClipboardFileBadPng(String name) {
+    return '$name 不是有效的 PNG 图片。';
+  }
+
+  @override
+  String teamClipboardFileImageTooBig(String name, int width, int height) {
+    return '$name 图片过大：贴图最大为 $width × $height 像素。';
+  }
+
+  @override
+  String teamClipboardFileNotText(String name) {
+    return '$name 不是 UTF-8 文本。';
+  }
+
+  @override
+  String teamClipboardFileBadJson(String name, int line, int column) {
+    return '$name 不是有效的 JSON（第 $line 行，第 $column 列）。';
+  }
+
+  @override
+  String teamClipboardFileNotObject(String name) {
+    return '$name 必须包含一个 JSON 对象。';
+  }
+
+  @override
+  String teamClipboardFileTooDeep(String name, int depth) {
+    return '$name 的嵌套层级超过 $depth 层。';
+  }
 }

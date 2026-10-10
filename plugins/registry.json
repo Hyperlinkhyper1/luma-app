@@ -871,6 +871,34 @@
       }
     },
     {
+      "id": "team-clipboard",
+      "name": "Team Clipboard",
+      "description": "One shared board for a modding team: every bug, suggestion and model still to add, on one screen. Each entry carries a short brief, its .png, .json and .mcmeta files, a stage (idea, claimed, done, added) and its own chat. Work to do stays on top; finished entries sink to the bottom. Invite-only: the admin adds each account from the admin panel before it can see or upload anything.",
+      "icon": "content_paste",
+      "category": "Productivity",
+      "tags": ["Productivity", "Social", "Minecraft", "Sync"],
+      "free": true,
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Teamklembord",
+          "description": "Eén gedeeld bord voor een modteam: elke bug, elk voorstel en elk model dat er nog bij moet, op één scherm. Elk item heeft een korte uitleg, de .png-, .json- en .mcmeta-bestanden, een fase (idee, geclaimd, klaar, toegevoegd) en een eigen chat. Wat nog moet blijft bovenaan; afgeronde items zakken naar onderen. Alleen op uitnodiging: de beheerder voegt elk account toe via het beheerpaneel voordat het iets kan zien of uploaden."
+        },
+        "fr": {
+          "name": "Presse-papiers d’équipe",
+          "description": "Un tableau partagé pour une équipe de modding : chaque bug, suggestion et modèle à ajouter, sur un seul écran. Chaque entrée a un court résumé, ses fichiers .png, .json et .mcmeta, une étape (idée, prise en charge, terminée, ajoutée) et sa propre discussion. Le travail à faire reste en haut ; les entrées terminées descendent en bas. Sur invitation : l’administrateur ajoute chaque compte depuis le panneau d’administration avant qu’il puisse voir ou envoyer quoi que ce soit."
+        },
+        "es": {
+          "name": "Portapapeles del equipo",
+          "description": "Un tablero compartido para un equipo de mods: cada error, sugerencia y modelo pendiente, en una sola pantalla. Cada entrada lleva un breve resumen, sus archivos .png, .json y .mcmeta, una etapa (idea, asignada, hecha, añadida) y su propio chat. Lo pendiente queda arriba; lo terminado baja al fondo. Solo por invitación: el administrador añade cada cuenta desde el panel de administración antes de que pueda ver o subir nada."
+        },
+        "zh": {
+          "name": "团队剪贴板",
+          "description": "为模组团队准备的共享看板：所有待处理的 bug、建议和要添加的模型都在一个页面上。每个条目都有简短说明、对应的 .png、.json 和 .mcmeta 文件、所处阶段（想法、已认领、完成、已添加）以及独立的讨论。待办事项置顶，已完成的条目沉到底部。仅限受邀：管理员需在管理面板中添加账户后，该账户才能查看或上传内容。"
+        }
+      }
+    },
+    {
       "id": "calculator",
       "name": "Calculator",
       "description": "An everyday calculator that turns into a graphing one. Basic mode handles the daily sums; Advanced adds a scientific keypad and plots any number of functions of x on a pannable, zoomable graph you can tap to trace. The ☰ button in its header converts measurements — km to miles, °C to °F, kg to pounds, and more.",

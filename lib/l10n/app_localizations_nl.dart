@@ -100,7 +100,7 @@ class LNl extends L {
 
   @override
   String get settingsThemeStyleDefaultSub =>
-      'Gewoon luma zoals je hem kent — simpel, in jouw kleur.';
+      'Gewoon luma zoals je hem kent. Simpel, in jouw kleur.';
 
   @override
   String get settingsThemeStyleCoffee => 'Koffie';
@@ -272,7 +272,7 @@ class LNl extends L {
 
   @override
   String get homeNoTransactions =>
-      'Nog rustig hier — zet wat in Geld en het verschijnt vanzelf hier.';
+      'Nog rustig hier. Zet iets in Geld en het verschijnt vanzelf hier.';
 
   @override
   String get homeIncome => 'Erbij';
@@ -519,7 +519,7 @@ class LNl extends L {
 
   @override
   String get petSettingsSummonHint =>
-      'Zet het paneel meteen open — zonder sneltoets.';
+      'Zet het paneel meteen open, zonder sneltoets.';
 
   @override
   String get monthJan => 'jan';
@@ -716,11 +716,11 @@ class LNl extends L {
 
   @override
   String get assistantNoLimits =>
-      'Draait op dit apparaat — geen gebruikslimieten';
+      'Draait op dit apparaat, geen gebruikslimieten';
 
   @override
   String get assistantUsageUnavailable =>
-      'Gebruik niet beschikbaar — controleer je verbinding';
+      'Gebruik niet beschikbaar. Controleer je verbinding.';
 
   @override
   String get assistantDetailedBreakdown => 'Gedetailleerd overzicht bekijken';
@@ -1787,7 +1787,7 @@ class LNl extends L {
       'Bedankt dat je de bibliotheek bijhoudt. Hier is iets kleins voor je kluis.';
 
   @override
-  String get textLibraryMcLetterSign => '— De Bibliotheekpost';
+  String get textLibraryMcLetterSign => 'De Bibliotheekpost';
 
   @override
   String get textLibraryMcLetterTake => 'Pak de munten';
@@ -2102,7 +2102,7 @@ class LNl extends L {
       'Het leest goed, maar het is niet beter dan de vorige keer, dus er zijn geen nieuwe munten.';
 
   @override
-  String get textLibraryMcReviewSign => '— De recensiebalie van de bibliotheek';
+  String get textLibraryMcReviewSign => 'De recensiebalie van de bibliotheek';
 
   @override
   String get textLibraryMcReviewThanks => 'Bedankt';
@@ -2979,7 +2979,7 @@ class LNl extends L {
 
   @override
   String get accountProfilePictureNote =>
-      'Alleen op dit apparaat — niemand anders ziet het.';
+      'Alleen op dit apparaat. Niemand anders ziet het.';
 
   @override
   String get accountChangePhoto => 'Foto wijzigen';
@@ -3114,7 +3114,7 @@ class LNl extends L {
 
   @override
   String get loginPasswordTooShort =>
-      'Gebruik minstens 10 tekens — dit wachtwoord beschermt je versleutelde gegevens.';
+      'Gebruik minstens 10 tekens. Dit wachtwoord beschermt je versleutelde gegevens.';
 
   @override
   String get loginEnterPassword => 'Voer je wachtwoord in.';
@@ -3146,7 +3146,7 @@ class LNl extends L {
 
   @override
   String get loginPassphraseTooShort =>
-      'Gebruik minstens 10 tekens — deze wachtzin versleutelt je gegevens.';
+      'Gebruik minstens 10 tekens. Met deze wachtzin worden je gegevens versleuteld.';
 
   @override
   String get loginPassphrasesMismatch => 'De wachtzinnen komen niet overeen.';
@@ -3179,7 +3179,7 @@ class LNl extends L {
 
   @override
   String get loginCreateSubtitle =>
-      'Eén account, op elk apparaat — vergrendeld voordat het dit apparaat verlaat.';
+      'Eén account voor al je apparaten, vergrendeld voordat het dit apparaat verlaat.';
 
   @override
   String get loginLocalSubtitle =>
@@ -3215,7 +3215,7 @@ class LNl extends L {
 
   @override
   String loginOpenedInBrowser(String provider) {
-    return 'We hebben $provider in je browser geopend. Rond het daar af en kom dan terug — deze pagina regelt zichzelf.';
+    return 'We hebben $provider in je browser geopend. Rond het daar af en kom dan terug, deze pagina regelt de rest.';
   }
 
   @override
@@ -3238,12 +3238,12 @@ class LNl extends L {
 
   @override
   String loginNewAccountExplain(String provider) {
-    return '$provider heeft bewezen wie je bent, maar daarmee kan je data niet ontgrendeld worden — alleen een wachtzin die alleen jij kent kan dat. Kies er nu een; je hebt hem op elk apparaat nodig.';
+    return '$provider heeft bewezen wie je bent, maar kan je gegevens niet ontgrendelen. Dat kan alleen een wachtzin die jij kent. Kies er nu een; je hebt hem op elk apparaat nodig.';
   }
 
   @override
   String loginExistingAccountExplain(String provider) {
-    return 'Dit account bestaat al, dus $provider heeft je er meteen in gelaten. Voer de luma-wachtzin in die je hebt ingesteld — dezelfde die je zou typen om met een wachtwoord in te loggen.';
+    return 'Dit account bestaat al, dus $provider heeft je er meteen in gelaten. Voer de luma-wachtzin in die je hebt ingesteld, dezelfde die je zou typen om met een wachtwoord in te loggen.';
   }
 
   @override
@@ -3369,7 +3369,7 @@ class LNl extends L {
 
   @override
   String get loginKeyWarning =>
-      'Alles wordt hiermee versleuteld voordat het het apparaat verlaat. Als je hem vergeet, kun je hem per e-mail resetten, maar de gesynchroniseerde kopieën op de server worden dan gewist — alleen wat nog op je apparaten staat, komt terug.';
+      'Alles wordt hiermee versleuteld voordat het het apparaat verlaat. Als je hem vergeet, kun je hem per e-mail resetten, maar dan worden de gesynchroniseerde kopieën op de server gewist. Alleen wat nog op je apparaten staat, komt terug.';
 
   @override
   String get loginResetWithRecoveryKey =>
@@ -3564,7 +3564,7 @@ class LNl extends L {
 
   @override
   String planCreditsNotOpen(String tokens, String price) {
-    return 'Credits kopen is nog niet beschikbaar — $tokens tokens voor $price komen beschikbaar zodra betalingen zijn ingesteld.';
+    return 'Credits kopen kan nog niet. $tokens tokens voor $price komen beschikbaar zodra betalingen zijn ingesteld.';
   }
 
   @override
@@ -3781,12 +3781,12 @@ class LNl extends L {
 
   @override
   String serverGatePendingEmail(String email) {
-    return 'Je account ($email) moet nog worden goedgekeurd. Voer de 6-cijferige code in die we je per e-mail hebben gestuurd om het inloggen af te ronden — tot die tijd laten we de server volledig met rust.';
+    return 'Je account ($email) moet nog worden goedgekeurd. Voer de 6-cijferige code in die we je hebben gemaild om het inloggen af te ronden. Tot die tijd laten we de server volledig met rust.';
   }
 
   @override
   String serverGatePendingApproval(String email) {
-    return 'Je account ($email) wacht op goedkeuring van de eigenaar van de server. Je hoeft verder niets te doen — log gewoon in zodra die het heeft goedgekeurd; tot die tijd laten we de server volledig met rust.';
+    return 'Je account ($email) wacht op goedkeuring van de eigenaar van de server. Je hoeft verder niets te doen, log gewoon in zodra het is goedgekeurd. Tot die tijd laten we de server volledig met rust.';
   }
 
   @override
@@ -3833,7 +3833,7 @@ class LNl extends L {
 
   @override
   String get updateNoTestBuilds =>
-      'Er zijn geen updates voor testbuilds — deze is met de hand gemaakt.';
+      'Er zijn geen updates voor testbuilds. Deze is met de hand gemaakt.';
 
   @override
   String updateUpToDate(String version) {
@@ -3847,7 +3847,7 @@ class LNl extends L {
 
   @override
   String updateNewVersionTitle(String version) {
-    return 'Er is een nieuwe luma — $version';
+    return 'Er is een nieuwe luma: $version';
   }
 
   @override
@@ -3872,7 +3872,7 @@ class LNl extends L {
 
   @override
   String get updateAndroidBlocked =>
-      'Android heeft de installatie geblokkeerd — sta \"Onbekende apps installeren\" toe voor luma in de systeeminstellingen en probeer het opnieuw.';
+      'Android heeft de installatie geblokkeerd. Sta \"Onbekende apps installeren\" toe voor luma in de systeeminstellingen en probeer het opnieuw.';
 
   @override
   String get updateDownloadFailed =>
@@ -3898,7 +3898,7 @@ class LNl extends L {
 
   @override
   String get updateDontClose =>
-      'Sluit luma niet af — het start vanzelf opnieuw op.';
+      'Sluit luma niet af. Het start vanzelf opnieuw op.';
 
   @override
   String get updateStageDownloading => 'Update downloaden';
@@ -4075,12 +4075,12 @@ class LNl extends L {
 
   @override
   String aiSettingsSharedKeyExplanation(String provider) {
-    return 'De beheerder van je synchronisatieserver heeft een gedeelde $provider-sleutel ingesteld, dus je hebt er geen nodig — chats worden via je synchronisatieserver doorgestuurd, die de sleutel bewaart; hij wordt nooit naar dit apparaat gestuurd. Voer hierboven je eigen sleutel in om de server te omzeilen en direct met $provider te chatten.';
+    return 'De beheerder van je synchronisatieserver heeft een gedeelde $provider-sleutel ingesteld, dus je hebt er zelf geen nodig. Chats lopen via je synchronisatieserver, die de sleutel bewaart; hij komt nooit op dit apparaat. Wil je de server overslaan en direct met $provider praten, vul dan hierboven je eigen sleutel in.';
   }
 
   @override
   String aiSettingsLocalKeyExplanation(String provider) {
-    return 'Alleen lokaal op dit apparaat opgeslagen, versleuteld in rust. Wordt rechtstreeks naar $provider gestuurd wanneer je chat — nooit naar een luma-server.';
+    return 'Alleen lokaal op dit apparaat opgeslagen, versleuteld. Gaat rechtstreeks naar $provider wanneer je chat, en nooit naar een luma-server.';
   }
 
   @override
@@ -4089,7 +4089,7 @@ class LNl extends L {
 
   @override
   String get assistantNeedsAccountBody =>
-      'Stel een luma-account in — alleen een e-mailadres en wachtwoord, geen server nodig — voordat je met de assistent chat.';
+      'Stel een luma-account in voordat je met de assistent chat. Je hebt alleen een e-mailadres en wachtwoord nodig, geen server.';
 
   @override
   String get assistantSetUpAccount => 'Account instellen';
@@ -4166,7 +4166,7 @@ class LNl extends L {
 
   @override
   String get assistantModelUnavailableBody =>
-      'Voeg in Instellingen je eigen API-sleutel toe om het te gebruiken — alleen lokaal op dit apparaat opgeslagen — of kies hieronder een ander model.';
+      'Voeg in Instellingen je eigen API-sleutel toe om het te gebruiken (die wordt alleen op dit apparaat opgeslagen), of kies hieronder een ander model.';
 
   @override
   String get assistantOpenSettings => 'Instellingen openen';
@@ -4176,7 +4176,7 @@ class LNl extends L {
 
   @override
   String assistantNoApiKeyYet(String provider) {
-    return 'Nog geen $provider-API-sleutel opgeslagen — voeg er een toe in Instellingen.';
+    return 'Nog geen $provider-API-sleutel opgeslagen. Voeg er een toe in Instellingen.';
   }
 
   @override
@@ -4195,16 +4195,16 @@ class LNl extends L {
 
   @override
   String get aiClientTooManySteps =>
-      'Ik kon dit niet afronden — te veel stappen.';
+      'Ik kon dit niet afronden, het waren te veel stappen.';
 
   @override
   String aiClientUnreachable(String provider, String error) {
-    return 'Kan $provider niet bereiken — controleer je verbinding.\n($error)';
+    return 'Kan $provider niet bereiken. Controleer je verbinding.\n($error)';
   }
 
   @override
   String aiClientNoConnection(String provider) {
-    return 'Kan $provider niet bereiken — controleer je verbinding.';
+    return 'Kan $provider niet bereiken. Controleer je verbinding.';
   }
 
   @override
@@ -4214,7 +4214,7 @@ class LNl extends L {
 
   @override
   String get aiClientRateLimited =>
-      'Te veel verzoeken — probeer het zo dadelijk opnieuw.';
+      'Te veel verzoeken. Probeer het zo opnieuw.';
 
   @override
   String aiClientApiError(String provider, int status) {
@@ -4523,7 +4523,7 @@ class LNl extends L {
 
   @override
   String converterCorruptTooSmall(int size) {
-    return 'Dat bestand is maar $size bytes — te klein om er op een interessante manier schade aan toe te brengen.';
+    return 'Dat bestand is maar $size bytes, te klein om er op een interessante manier schade aan toe te brengen.';
   }
 
   @override
@@ -4654,7 +4654,7 @@ class LNl extends L {
 
   @override
   String get converterRepairChecksumExact =>
-      'Het resultaat komt exact overeen met de oorspronkelijke checksum — dit is het bestand dat beschadigd werd, byte voor byte.';
+      'Het resultaat komt exact overeen met de oorspronkelijke checksum. Dit is het bestand dat beschadigd werd, byte voor byte.';
 
   @override
   String get converterRepairChecksumChanged =>
@@ -4665,7 +4665,7 @@ class LNl extends L {
 
   @override
   String get converterRepairEmpty =>
-      'Dat bestand is leeg — er valt niets te repareren.';
+      'Dat bestand is leeg, er valt niets te repareren.';
 
   @override
   String converterRepairFoundHeader(String label, String size) {
@@ -4710,7 +4710,7 @@ class LNl extends L {
 
   @override
   String get converterRepairNothingChanged =>
-      'Er hoefde niets te worden gewijzigd — de structuur klopt al.';
+      'Er hoefde niets te worden gewijzigd. De structuur klopt al.';
 
   @override
   String get repairBmpTooShort =>
@@ -4888,7 +4888,7 @@ class LNl extends L {
 
   @override
   String repairMp4UnreadableBox(String offset) {
-    return 'Onleesbare boxnaam bij $offset — het doorlopen stopt daar.';
+    return 'Onleesbare boxnaam bij $offset. Daar is het doorlopen gestopt.';
   }
 
   @override
@@ -4898,7 +4898,7 @@ class LNl extends L {
     String claimed,
     String available,
   ) {
-    return 'De \"$type\"-box bij $offset beweert $claimed, maar er volgt maar $available — aangepast aan wat er is.';
+    return 'De \"$type\"-box bij $offset beweert $claimed, maar er volgt maar $available. Aangepast aan wat er is.';
   }
 
   @override
@@ -4995,7 +4995,7 @@ class LNl extends L {
 
   @override
   String get repairPdfXrefFromScratch =>
-      'Een kruisverwijzingstabel en trailer vanaf nul opgebouwd — het bestand had geen van beide.';
+      'Een kruisverwijzingstabel en trailer vanaf nul opgebouwd, want het bestand had geen van beide.';
 
   @override
   String get repairPngTooShort => 'Het bestand is te kort om een PNG te zijn.';
@@ -5006,7 +5006,7 @@ class LNl extends L {
 
   @override
   String repairPngUnreadableChunk(String offset) {
-    return 'Onleesbare chunknaam bij $offset — het doorlopen stopt daar.';
+    return 'Onleesbare chunknaam bij $offset. Daar is het doorlopen gestopt.';
   }
 
   @override
@@ -5024,9 +5024,9 @@ class LNl extends L {
       count,
       locale: localeName,
       other:
-          '$count foutieve chunkcontrolesommen herberekend — de pixelgegevens erachter kunnen nog steeds fout zijn, maar lezers weigeren het bestand niet meer meteen.',
+          '$count foutieve chunkcontrolesommen herberekend. De pixelgegevens erachter kunnen nog steeds fout zijn, maar lezers weigeren het bestand niet meer meteen.',
       one:
-          '1 foutieve chunkcontrolesom herberekend — de pixelgegevens erachter kunnen nog steeds fout zijn, maar lezers weigeren het bestand niet meer meteen.',
+          '1 foutieve chunkcontrolesom herberekend. De pixelgegevens erachter kunnen nog steeds fout zijn, maar lezers weigeren het bestand niet meer meteen.',
     );
     return '$_temp0';
   }
@@ -5072,12 +5072,12 @@ class LNl extends L {
 
   @override
   String repairRiffUnreadableChunk(String offset) {
-    return 'Onleesbare chunknaam bij $offset — daar gestopt.';
+    return 'Onleesbare chunknaam bij $offset. Daar gestopt.';
   }
 
   @override
   String repairRiffChunkClamped(String id, String claimed, String available) {
-    return 'De \"$id\"-chunk beweert $claimed, maar er is maar $available aanwezig — ingekort om te passen.';
+    return 'De \"$id\"-chunk beweert $claimed, maar er is maar $available aanwezig. Ingekort zodat het past.';
   }
 
   @override
@@ -5096,7 +5096,7 @@ class LNl extends L {
 
   @override
   String get repairZipNoEntries =>
-      'Er zijn geen herstelbare items gevonden — alle lokale bestandsheaders zijn weg, dus er is niets meer om het archief uit op te bouwen.';
+      'Er zijn geen herstelbare items gevonden. Alle lokale bestandsheaders zijn weg, dus er is niets meer om het archief uit op te bouwen.';
 
   @override
   String repairZipDamagedEntries(int count) {
@@ -5139,7 +5139,7 @@ class LNl extends L {
 
   @override
   String repairZipUndecompressable(String name) {
-    return '\"$name\" kon helemaal niet worden uitgepakt — weggegooid.';
+    return '\"$name\" kon helemaal niet worden uitgepakt en is weggelaten.';
   }
 
   @override
@@ -5149,7 +5149,7 @@ class LNl extends L {
 
   @override
   String repairZipChecksumMismatch(String name) {
-    return '\"$name\" komt niet overeen met zijn controlesom — de inhoud is beschadigd, maar het item is bewaard zodat je kunt zien wat ervan over is.';
+    return '\"$name\" komt niet overeen met zijn controlesom. De inhoud is beschadigd, maar het item is bewaard zodat je kunt zien wat ervan over is.';
   }
 
   @override
@@ -5198,7 +5198,7 @@ class LNl extends L {
 
   @override
   String get converterImageCouldNotRead =>
-      'Deze afbeelding kon niet worden gelezen — ze is mogelijk beschadigd of wordt niet ondersteund.';
+      'Deze afbeelding kon niet worden gelezen. Mogelijk is ze beschadigd of wordt ze niet ondersteund.';
 
   @override
   String get ffmpegInstallDesktopOnly =>
@@ -5649,7 +5649,7 @@ class LNl extends L {
 
   @override
   String get audioEditorNoFilePath =>
-      'Kon het bestandspad niet lezen — bewerken vereist de desktopapp.';
+      'Kon het bestandspad niet lezen. Voor bewerken heb je de desktopapp nodig.';
 
   @override
   String get audioEditorCannotRead =>
@@ -5662,7 +5662,7 @@ class LNl extends L {
 
   @override
   String get audioEditorEverythingCut =>
-      'Alles is weggeknipt — verwijder eerst een knip.';
+      'Alles is weggeknipt. Verwijder eerst een knip.';
 
   @override
   String get audioEditorPreviewDesktopOnly =>
@@ -5973,7 +5973,7 @@ class LNl extends L {
 
   @override
   String get downscalerDecodeFailed =>
-      'Deze afbeelding kon niet worden gelezen — mogelijk is hij beschadigd of niet ondersteund.';
+      'Deze afbeelding kon niet worden gelezen. Mogelijk is hij beschadigd of wordt hij niet ondersteund.';
 
   @override
   String downscalerEstimateFailed(String error) {
@@ -6075,7 +6075,7 @@ class LNl extends L {
 
   @override
   String get downscalerRemoveAlphaDisabled =>
-      'Niet beschikbaar — deze afbeelding heeft geen alfakanaal of gebruikt echte transparantie.';
+      'Niet beschikbaar: deze afbeelding heeft geen alfakanaal of gebruikt echte transparantie.';
 
   @override
   String get downscalerTrimTitle => 'Transparante randen bijsnijden';
@@ -6086,7 +6086,7 @@ class LNl extends L {
 
   @override
   String get downscalerTrimDisabled =>
-      'Niet beschikbaar — geen transparante rand om bij te snijden.';
+      'Niet beschikbaar: er is geen transparante rand om bij te snijden.';
 
   @override
   String get downscalerPngRecompressTitle =>
@@ -6105,7 +6105,7 @@ class LNl extends L {
 
   @override
   String get downscalerToWebpDisabled =>
-      'Niet beschikbaar — WebP vereist ffmpeg (alleen desktopapp).';
+      'Niet beschikbaar: WebP vereist ffmpeg (alleen desktopapp).';
 
   @override
   String get convFileReadFailed => 'Kon het gekozen bestand niet lezen.';
@@ -6137,7 +6137,7 @@ class LNl extends L {
 
   @override
   String get convOtherCorruptorSub =>
-      'Breek een bestand opzettelijk — later repareren, of niet';
+      'Maak een bestand expres kapot en repareer het later (of niet)';
 
   @override
   String get convOtherFixer => 'Bestandsherstellers';
@@ -6156,7 +6156,7 @@ class LNl extends L {
 
   @override
   String get convCorruptPickSubtitle =>
-      'Elk bestand — het origineel wordt nooit aangeraakt';
+      'Elk bestand. Het origineel wordt nooit aangeraakt.';
 
   @override
   String get convCorruptDamageLabel => 'Schade';
@@ -6180,7 +6180,7 @@ class LNl extends L {
 
   @override
   String get convCorruptNoRecipeWarning =>
-      'Er wordt geen herstelrecept opgeslagen. Niets — ook luma niet — kan dit ongedaan maken.';
+      'Er wordt geen herstelrecept opgeslagen. Niets kan dit ongedaan maken, ook luma niet.';
 
   @override
   String get convCorruptSaveCorrupted => 'Beschadigd bestand opslaan';
@@ -6190,7 +6190,7 @@ class LNl extends L {
 
   @override
   String get convCorruptKeepRecipe =>
-      'Bewaar het recept goed — het is het enige dat dit ongedaan kan maken.';
+      'Bewaar het recept goed. Het is het enige waarmee dit ongedaan kan worden gemaakt.';
 
   @override
   String get convCorruptSaveRecipe => 'Opslaan .lumafix-recept';
@@ -6329,7 +6329,7 @@ class LNl extends L {
 
   @override
   String get convFixStructuralWarning =>
-      'Een structurele reparatie zet de container weer in elkaar. Overschreven inhoud kan er niet bij worden verzonnen — controleer het resultaat voordat je erop vertrouwt.';
+      'Een structurele reparatie zet de container weer in elkaar. Overschreven inhoud kan niet worden verzonnen, dus controleer het resultaat voordat je erop vertrouwt.';
 
   @override
   String get convMediaAudioTitle => 'Audio-converter';
@@ -6347,7 +6347,7 @@ class LNl extends L {
 
   @override
   String get convMediaNoFilePath =>
-      'Kon het bestandspad niet lezen — converteren vereist de desktopapp.';
+      'Kon het bestandspad niet lezen. Voor converteren heb je de desktopapp nodig.';
 
   @override
   String convMediaConvertFailed(String error) {
@@ -6495,7 +6495,7 @@ class LNl extends L {
 
   @override
   String get pictureConvSvgVector =>
-      'SVG is vectorgrafiek — het wordt eerst op een scherp formaat naar pixels omgezet.';
+      'SVG is vectorgrafiek, dus het wordt eerst op een scherp formaat naar pixels omgezet.';
 
   @override
   String get pictureConvConvertDownload => 'Converteren en downloaden';
@@ -6571,7 +6571,7 @@ class LNl extends L {
 
   @override
   String get schemViewerEmpty =>
-      'Niets te tonen — dit bouwwerk bestaat alleen uit lucht.';
+      'Niets te tonen. Dit bouwwerk bestaat alleen uit lucht.';
 
   @override
   String schemViewerSemantics(int width, int height, int length) {
@@ -6580,7 +6580,7 @@ class LNl extends L {
 
   @override
   String schemViewerSimplified(int stride) {
-    return 'Dit bouwwerk is te groot om blok voor blok te tekenen, dus het voorbeeld is $stride× vereenvoudigd — het geconverteerde bestand bevat elk blok.';
+    return 'Dit bouwwerk is te groot om blok voor blok te tekenen, dus het voorbeeld is $stride× vereenvoudigd. Het geconverteerde bestand bevat nog wel elk blok.';
   }
 
   @override
@@ -6599,7 +6599,7 @@ class LNl extends L {
 
   @override
   String schemViewerFlatColours(String size) {
-    return 'Vlakke kleuren — geen Minecraft gevonden. Download de texturen van Mojang (~$size) of gebruik je eigen kopie.';
+    return 'Vlakke kleuren, want er is geen Minecraft gevonden. Download de texturen van Mojang (~$size) of gebruik je eigen kopie.';
   }
 
   @override
@@ -6642,11 +6642,11 @@ class LNl extends L {
 
   @override
   String get vidDownNoPath =>
-      'Kon het bestandspad niet lezen — video verkleinen heeft de desktopapp nodig.';
+      'Kon het bestandspad niet lezen. Voor video verkleinen heb je de desktopapp nodig.';
 
   @override
   String get vidDownProbeFailed =>
-      'Kon deze video niet lezen — mogelijk wordt hij niet ondersteund of ontbreekt ffmpeg.';
+      'Kon deze video niet lezen. Mogelijk wordt hij niet ondersteund of ontbreekt ffmpeg.';
 
   @override
   String vidDownEstimateFailed(String error) {
@@ -6719,7 +6719,7 @@ class LNl extends L {
 
   @override
   String get vidDownH265Body =>
-      'Gebruik de nieuwere HEVC-codec — ongeveer 40–50% kleiner dan H.264 bij dezelfde kwaliteit, maar trager om te coderen en minder compatibel met oude spelers.';
+      'Gebruik de nieuwere HEVC-codec. Ongeveer 40–50% kleiner dan H.264 bij dezelfde kwaliteit, maar trager om te coderen en minder compatibel met oude spelers.';
 
   @override
   String get vidDownAudioBitrateTitle => 'Audiobitrate verlagen';
@@ -6730,14 +6730,14 @@ class LNl extends L {
 
   @override
   String get vidDownNoAudio =>
-      'Niet beschikbaar — deze video heeft geen audiospoor.';
+      'Niet beschikbaar: deze video heeft geen audiospoor.';
 
   @override
   String get vidDownRemoveAudioTitle => 'Audiospoor verwijderen';
 
   @override
   String get vidDownRemoveAudioBody =>
-      'Laat het geluid helemaal weg — ideaal voor schermopnames en stille clips.';
+      'Laat het geluid helemaal weg. Ideaal voor schermopnames en stille clips.';
 
   @override
   String get vidDownStripTitle => 'Metadata verwijderen';
@@ -6751,7 +6751,7 @@ class LNl extends L {
 
   @override
   String get vidDownWebmBody =>
-      'Codeer opnieuw naar de VP9/WebM-codec — vaak kleiner dan H.264 en geschikt voor het web. Trager om te coderen; levert een .webm-bestand op.';
+      'Codeer opnieuw naar VP9/WebM. Vaak kleiner dan H.264 en geschikt voor het web, maar trager om te coderen. Levert een .webm-bestand op.';
 
   @override
   String vidDownSmaller(String percent, String saved) {
@@ -6765,7 +6765,7 @@ class LNl extends L {
 
   @override
   String vidDownSampleNote(String seconds) {
-    return 'Geschat op basis van een fragment van $seconds s — de uiteindelijke grootte kan verschillen.';
+    return 'Geschat op basis van een fragment van $seconds s, dus de uiteindelijke grootte kan afwijken.';
   }
 
   @override
@@ -7614,7 +7614,7 @@ class LNl extends L {
 
   @override
   String get passwordsDecryptFailed =>
-      '⚠ Kon niet ontsleutelen — gegevens beschadigd of sleutelbestand gewijzigd';
+      '⚠ Kon niet ontsleutelen. De gegevens zijn beschadigd of het sleutelbestand is gewijzigd.';
 
   @override
   String get passwordsInvalidSecret => 'Ongeldig geheim';
@@ -7627,7 +7627,7 @@ class LNl extends L {
 
   @override
   String get passwordsBreachedWarning =>
-      'Dit wachtwoord is gevonden in een bekende datalek — wijzig het waar je het gebruikt.';
+      'Dit wachtwoord is gevonden in een bekend datalek. Wijzig het overal waar je het gebruikt.';
 
   @override
   String get nativeWebviewNoHost =>
@@ -7748,7 +7748,7 @@ class LNl extends L {
 
   @override
   String accountOverviewServiceTooltip(String service, String status) {
-    return '$service — $status';
+    return '$service: $status';
   }
 
   @override
@@ -7758,7 +7758,7 @@ class LNl extends L {
 
   @override
   String accountOverviewSectionTooltip(String label, String blurb) {
-    return '$label — $blurb';
+    return '$label: $blurb';
   }
 
   @override
@@ -7794,7 +7794,7 @@ class LNl extends L {
 
   @override
   String get accountOverviewConnectGithubSubtitle =>
-      'Bekijk je commits, sterren, downloads, repositories, issues en workflowruns op één plek — plus je Copilot-, opslag- en rekenlimieten.';
+      'Bekijk je commits, sterren, downloads, repositories, issues en workflowruns op één plek, plus je Copilot-, opslag- en rekenlimieten.';
 
   @override
   String get accountOverviewConnectGithubButton => 'GitHub verbinden';
@@ -7808,7 +7808,7 @@ class LNl extends L {
 
   @override
   String get accountOverviewConnectYoutubeSubtitle =>
-      'Bekijk je abonnees, weergaven, recente uploads en uitgebreide analyses — kijktijd, verkeersbronnen en abonneetrends — op één plek.';
+      'Bekijk je abonnees, weergaven, recente uploads en uitgebreide analyses (kijktijd, verkeersbronnen en abonneetrends) op één plek.';
 
   @override
   String get accountOverviewConnectYoutubeButton => 'YouTube verbinden';
@@ -8785,7 +8785,7 @@ class LNl extends L {
 
   @override
   String get ghUsageStorageSummed =>
-      'Rechtstreeks opgeteld uit de Actions-artifacts van elke privérepo — GitHub heeft geen API voor Packages-opslag, dus die is niet meegeteld.';
+      'Opgeteld uit de Actions-artifacts van al je privérepo\'s. GitHub heeft geen API voor Packages-opslag, dus die is niet meegeteld.';
 
   @override
   String get ghUsagePackagesBandwidth => 'Packages-bandbreedte';
@@ -9014,7 +9014,7 @@ class LNl extends L {
 
   @override
   String get mcPmcKeptSeparate =>
-      'Apart gehouden — PMC telt weergaven, en de skins, blogs en bouwwerken zijn geen mods.';
+      'Apart gehouden, want PMC telt weergaven, en skins, blogs en bouwwerken zijn geen mods.';
 
   @override
   String get mcPmcAddUsername =>
@@ -9102,7 +9102,7 @@ class LNl extends L {
 
   @override
   String get mcPmcApproximateSubtitle =>
-      'Benaderd — PMC rondt cijfers boven de duizend af';
+      'Bij benadering, PMC rondt alles boven de duizend af';
 
   @override
   String get mcPmcDownloads => 'PMC-downloads';
@@ -9117,24 +9117,24 @@ class LNl extends L {
 
   @override
   String get mcSetupSubtitle =>
-      'Haal CurseForge, Modrinth en Planet Minecraft in één dashboard — downloads, volgers, weergaven en trends in de tijd.';
+      'Zet CurseForge, Modrinth en Planet Minecraft samen in één dashboard: downloads, volgers, weergaven en trends door de tijd.';
 
   @override
-  String get mcReqModrinthTitle => 'Modrinth — alleen gebruikersnaam';
+  String get mcReqModrinthTitle => 'Modrinth (alleen gebruikersnaam)';
 
   @override
   String get mcReqModrinthBody =>
       'Totalen zijn openbaar. Een token is optioneel en ontgrendelt alleen de echte downloadgeschiedenis.';
 
   @override
-  String get mcReqCurseforgeTitle => 'CurseForge — API-sleutel vereist';
+  String get mcReqCurseforgeTitle => 'CurseForge (API-sleutel vereist)';
 
   @override
   String get mcReqCurseforgeBody =>
       'CurseForge levert niets anoniem. Voeg een sleutel toe, plus je numerieke auteur-id of losse projectlinks.';
 
   @override
-  String get mcReqPmcTitle => 'Planet Minecraft — alleen gebruikersnaam';
+  String get mcReqPmcTitle => 'Planet Minecraft (alleen gebruikersnaam)';
 
   @override
   String get mcReqPmcBody =>
@@ -9144,7 +9144,7 @@ class LNl extends L {
   String get mcSetupPlatformsTitle => 'Minecraft-platforms';
 
   @override
-  String get mcSetupModrinthNote => 'Openbaar — een gebruikersnaam is genoeg.';
+  String get mcSetupModrinthNote => 'Openbaar, een gebruikersnaam is genoeg.';
 
   @override
   String get mcSetupModrinthUsername => 'Modrinth-gebruikersnaam';
@@ -9164,7 +9164,7 @@ class LNl extends L {
 
   @override
   String get mcSetupCurseNote =>
-      'Heeft een API-sleutel nodig — CurseForge levert niets zonder.';
+      'Heeft een API-sleutel nodig. Zonder sleutel levert CurseForge niets.';
 
   @override
   String get mcSetupCurseKey => 'CurseForge API-sleutel';
@@ -9186,7 +9186,7 @@ class LNl extends L {
 
   @override
   String get mcSetupKeyWorks =>
-      'Sleutel werkt — CurseForge antwoordde HTTP 200.';
+      'Sleutel werkt. CurseForge antwoordde met HTTP 200.';
 
   @override
   String get mcSetupAuthorId => 'Auteur-id (optioneel)';
@@ -9222,7 +9222,7 @@ class LNl extends L {
 
   @override
   String get mcSetupPmcNote =>
-      'Geen API — wordt gelezen uit je openbare profiel in een ingebouwde browser.';
+      'Er is geen API, dus wordt alles gelezen uit je openbare profiel in een ingebouwde browser.';
 
   @override
   String get mcSetupPmcUsername => 'Planet Minecraft-gebruikersnaam';
@@ -9246,7 +9246,7 @@ class LNl extends L {
 
   @override
   String get mcSetupDisconnectBody =>
-      'De opgeslagen sleutels, de gecachte cijfers en de downloadgeschiedenis die luma heeft bijgehouden, worden allemaal van dit apparaat verwijderd. De geschiedenis kan niet opnieuw worden opgehaald — CurseForge en Planet Minecraft publiceren geen gegevens uit het verleden.';
+      'De opgeslagen sleutels, de gecachte cijfers en de downloadgeschiedenis die luma heeft bijgehouden, worden allemaal van dit apparaat verwijderd. De geschiedenis kan niet opnieuw worden opgehaald, want CurseForge en Planet Minecraft publiceren geen oude gegevens.';
 
   @override
   String get accountOverviewKeepIt => 'Behouden';
@@ -9766,7 +9766,7 @@ class LNl extends L {
 
   @override
   String get aiDetectorDisclaimer =>
-      'Heuristische stijlanalyse — rekenkunde op zinslengtes en woordkeuzes, geen bewijs van iets. Formeel menselijk schrijfwerk kan machineachtig overkomen; bewerkte machine-uitvoer kan menselijk lijken. Een benoemd oordeel rust op een handtekening die de tekst zelf draagt, en een handtekening kan worden verwijderd of vervalst. De statistieken draaien op dit apparaat. Als je bent aangemeld, wordt de tekst ook naar de luma-server gestuurd voor een beoordeling door een AI-model.';
+      'Heuristische stijlanalyse: rekenwerk op zinslengtes en woordkeuzes, geen bewijs van wat dan ook. Formeel geschreven tekst van mensen kan machineachtig overkomen, en bewerkte machinetekst kan menselijk lijken. Een oordeel met een naam erbij rust op een handtekening die de tekst zelf draagt, en een handtekening kan worden verwijderd of vervalst. De statistieken draaien op dit apparaat. Als je bent aangemeld, wordt de tekst ook naar de luma-server gestuurd zodat een AI-model ernaar kijkt.';
 
   @override
   String get aiDetectorInputTitle => 'Een tekst beoordelen';
@@ -9790,11 +9790,11 @@ class LNl extends L {
 
   @override
   String get aiDetectorHint =>
-      'Plak de tekst die je wilt controleren — een essay, een e-mail, een productrecensie…';
+      'Plak de tekst die je wilt controleren: een essay, een e-mail, een productrecensie…';
 
   @override
   String aiDetectorWordsShort(int words, int minWords) {
-    return '$words van $minWords woorden — stijlstatistieken hebben wat meer tekst nodig.';
+    return '$words van $minWords woorden. De stijlstatistieken hebben wat meer tekst nodig.';
   }
 
   @override
@@ -9824,7 +9824,7 @@ class LNl extends L {
 
   @override
   String get aiDetectorSummarySigned =>
-      'De tekst ondertekent zichzelf — de scan vond de verborgen tekens waarin een Claude-watermerk wordt gedragen, dus dit is een toeschrijving en geen gok over stijl.';
+      'De tekst ondertekent zichzelf. De scan vond de verborgen tekens waarin een Claude-watermerk zit, dus dit is een toeschrijving en geen gok op basis van stijl.';
 
   @override
   String aiDetectorSummaryBased(int words, int sentences) {
@@ -9833,7 +9833,7 @@ class LNl extends L {
 
   @override
   String get aiDetectorSummaryShort =>
-      'Korte tekst — beschouw elk signaal als aanwijzing, niet als meting.';
+      'Korte tekst. Zie elk signaal als een aanwijzing, niet als een meting.';
 
   @override
   String get aiDetectorStatWords => 'woorden';
@@ -9916,7 +9916,7 @@ class LNl extends L {
 
   @override
   String get aiDetectorSignalsNothing =>
-      'Niets verdachts gevonden — gevarieerde lengtes, geen stopzinnen, geen watermerk. Leest als menselijk schrijfwerk.';
+      'Niets verdachts gevonden: gevarieerde zinslengtes, geen stopzinnen, geen watermerk. Leest alsof een mens het heeft geschreven.';
 
   @override
   String get aiDetectorQuietChecks => 'Stille controles';
@@ -9927,9 +9927,9 @@ class LNl extends L {
       count,
       locale: localeName,
       other:
-          '$count controles vonden niets — een streepje betekent dat de controle alleen tegen een tekst telt, dus niets vinden betekent dat die geen oordeel heeft',
+          '$count controles vonden niets. Een streepje betekent dat de controle alleen tegen een tekst kan tellen, dus als er niets is gevonden heeft die geen oordeel',
       one:
-          '1 controle vond niets — een streepje betekent dat de controle alleen tegen een tekst telt, dus niets vinden betekent dat die geen oordeel heeft',
+          '1 controle vond niets. Een streepje betekent dat de controle alleen tegen een tekst kan tellen, dus als er niets is gevonden heeft die geen oordeel',
     );
     return '$_temp0';
   }
@@ -10017,7 +10017,7 @@ class LNl extends L {
 
   @override
   String aiAgentPromptCopied(String target) {
-    return 'Prompt gekopieerd — plak hem in $target';
+    return 'Prompt gekopieerd. Plak hem in $target.';
   }
 
   @override
@@ -10133,7 +10133,7 @@ class LNl extends L {
 
   @override
   String aiLibraryImported(String name) {
-    return '$name geïmporteerd — sla op om het aan de bibliotheek toe te voegen';
+    return '$name geïmporteerd. Sla het op om het aan de bibliotheek toe te voegen.';
   }
 
   @override
@@ -10643,7 +10643,7 @@ class LNl extends L {
 
   @override
   String aiUsageSectionTooltip(String label, String blurb) {
-    return '$label — $blurb';
+    return '$label: $blurb';
   }
 
   @override
@@ -10804,7 +10804,7 @@ class LNl extends L {
 
   @override
   String get aiUsageAssetStudioUnsupportedHint =>
-      'Download de HTML om dit model in elke browser te openen — het werkt offline.';
+      'Download de HTML om dit model in elke browser te openen. Het werkt ook offline.';
 
   @override
   String get aiUsageAssetStudioUnavailable => 'Studio niet beschikbaar';
@@ -11097,7 +11097,7 @@ class LNl extends L {
 
   @override
   String get aiLeaderboardDetailProprietary =>
-      'Gesloten — alleen toegang via API';
+      'Gesloten, alleen toegang via API';
 
   @override
   String get aiLeaderboardDetailOpenWeights => 'Open gewichten';
@@ -11364,14 +11364,14 @@ class LNl extends L {
 
   @override
   String get aiOsEmptySubtitle =>
-      'Deze calculator berekent modellen waarvan je de gewichten kunt downloaden. Geen enkel model in de huidige catalogus heeft een bekend aantal parameters — vernieuw het klassement en probeer het opnieuw.';
+      'Deze calculator rekent aan modellen waarvan je de gewichten kunt downloaden. Van geen enkel model in de huidige catalogus is het aantal parameters bekend. Vernieuw het klassement en probeer het opnieuw.';
 
   @override
   String get aiOsWhatCanRunIt => 'WAT KAN HET DRAAIEN';
 
   @override
   String get aiOsFootnote =>
-      'Het geheugen voor de gewichten is exacte rekenkunde. De kosten van de context worden geschat op basis van het aantal parameters — de catalogus bevat niet het aantal lagen of de attentievorm van elk model, dus een model met een ongewoon ontwerp zal afwijken. Houd wat marge aan.';
+      'Het geheugen voor de gewichten is exact uit te rekenen. De kosten van de context worden geschat op basis van het aantal parameters, want de catalogus bevat niet het aantal lagen of de attentievorm van elk model. Een model met een ongewoon ontwerp wijkt dus af. Houd wat marge aan.';
 
   @override
   String get aiOsFieldModel => 'Model';
@@ -11387,7 +11387,7 @@ class LNl extends L {
 
   @override
   String get aiOsKv8bitTooltip =>
-      'Sla de contextcache op in 8 bits in plaats van 16 — dat halveert ruwweg de kosten van de context.';
+      'Sla de contextcache op in 8 bits in plaats van 16. Dat halveert ongeveer wat de context kost.';
 
   @override
   String get aiOsGbOfMemory => 'GB geheugen';
@@ -11418,7 +11418,7 @@ class LNl extends L {
 
   @override
   String get aiOsUnifiedTooltip =>
-      'Gedeeld CPU/GPU-geheugen — dit is het deel dat een model echt kan gebruiken, niet het totaal van de machine.';
+      'Gedeeld CPU/GPU-geheugen. Dit is het deel dat een model echt kan gebruiken, niet het totaal van de machine.';
 
   @override
   String aiOsBitsPerWeight(String bits) {
@@ -11613,11 +11613,11 @@ class LNl extends L {
 
   @override
   String get aiTestsEngineIntro =>
-      'Doorsnede-V8 — een realtime 3D-benchmark van een cross-plane motor met door de krukas aangedreven zuigers, nokkenassen op halve snelheid, gesynchroniseerde kleppen, verbrandingseffecten en een FPS-benchmark van 30 seconden.';
+      'Doorsnede-V8: een realtime 3D-benchmark van een cross-plane motor met door de krukas aangedreven zuigers, nokkenassen op halve snelheid, gesynchroniseerde kleppen, verbrandingseffecten en een FPS-benchmark van 30 seconden.';
 
   @override
   String get aiTestsPagodaIntro =>
-      'Lentefeest bij de vijfverdiepingen-pagode — een interactieve voxeltuin-benchmark met procedurele terreinen, geanimeerde elementen en dynamische verlichting.';
+      'Lentefeest bij de vijfverdiepingen-pagode: een interactieve voxeltuin-benchmark met procedurele terreinen, geanimeerde elementen en dynamische verlichting.';
 
   @override
   String get aiTestsSelectModel => 'Kies een model';
@@ -11724,19 +11724,19 @@ class LNl extends L {
 
   @override
   String get aiTestsPagodaDescSpaceBunny =>
-      'Onafhankelijke voxeltuin-benchmark — zwevend eiland, hemelwatervallen en een vijfverdiepingen-pagode';
+      'Onafhankelijke voxeltuin-benchmark met een zwevend eiland, hemelwatervallen en een vijfverdiepingen-pagode';
 
   @override
   String get aiTestsPagodaDescSonnetXhigh =>
-      'Sonnet 5.5 met extra hoge redeneerinspanning — een zwevend tuineiland met een waterval en een vijfverdiepingen-pagode';
+      'Sonnet 5.5 met extra hoge redeneerinspanning: een zwevend tuineiland met een waterval en een vijfverdiepingen-pagode';
 
   @override
   String get aiTestsPagodaDescGptSolXhigh =>
-      'GPT 6.1 Sol met extra hoge redeneerinspanning — lentefeest-voxeltuin met een vijfverdiepingen-pagode';
+      'GPT 6.1 Sol met extra hoge redeneerinspanning: een lentefeest-voxeltuin met een vijfverdiepingen-pagode';
 
   @override
   String get aiTestsPagodaDescGptSolLow =>
-      'GPT 6.1 Sol met lage redeneerinspanning — lentefeest-voxeltuin met een vijfverdiepingen-pagode';
+      'GPT 6.1 Sol met lage redeneerinspanning: een lentefeest-voxeltuin met een vijfverdiepingen-pagode';
 
   @override
   String get aiTestPagodaTitle => 'Pagodetest';
@@ -11840,7 +11840,7 @@ class LNl extends L {
 
   @override
   String get aiTestPcBundledDesc =>
-      'HELIX 01 — een showcase in ivoor en aluminium met een eigen waterkoellus, scharnierglas, uiteengevouwen inspectie en voeding-/RGB-bediening.';
+      'HELIX 01, een showcase in ivoor en aluminium met een eigen waterkoellus, scharnierglas, uiteengevouwen inspectie en voeding-/RGB-bediening.';
 
   @override
   String get aiTestPcPlatformBody =>
@@ -12029,7 +12029,7 @@ class LNl extends L {
     String km,
     String rangeKm,
   ) {
-    return '$model kan $city niet bereiken — $km km, terwijl het bereik $rangeKm km is.';
+    return '$model kan $city niet bereiken: $km km, terwijl het bereik $rangeKm km is.';
   }
 
   @override
@@ -12056,7 +12056,7 @@ class LNl extends L {
       other: '$count gates',
       one: '1 gate',
     );
-    return 'Elke bruikbare gate is bezet. Je hebt $_temp0 die niet aan een terminal grenzen — zet ze naast een terminal om ze te laten werken.';
+    return 'Elke bruikbare gate is bezet. Je hebt $_temp0 die niet aan een terminal grenzen. Zet ze naast een terminal om ze te laten werken.';
   }
 
   @override
@@ -12392,7 +12392,7 @@ class LNl extends L {
 
   @override
   String airlineFinLandAtMax(String size) {
-    return 'Je terrein is $size bij $size — het grootste dat de luchthavenautoriteit je verkoopt.';
+    return 'Je terrein is $size bij $size, het grootste stuk dat de luchthavenautoriteit je wil verkopen.';
   }
 
   @override
@@ -12524,7 +12524,7 @@ class LNl extends L {
 
   @override
   String get airlineRoutesNoUsableAircraft =>
-      'Niets in de catalogus kan dit vanaf je hub vliegen — je hebt een langere landingsbaan nodig, of dit traject ligt buiten elk vliegtuig dat je kunt kopen.';
+      'Niets in de catalogus kan dit vanaf je hub vliegen. Je hebt een langere landingsbaan nodig, of dit traject is te ver voor elk vliegtuig dat je kunt kopen.';
 
   @override
   String airlineRoutesCanBeFlownBy(String names) {
@@ -12588,7 +12588,7 @@ class LNl extends L {
 
   @override
   String airlineHubTileTooltip(String name, String blurb) {
-    return '$name — $blurb';
+    return '$name: $blurb';
   }
 
   @override
@@ -12816,7 +12816,7 @@ class LNl extends L {
 
   @override
   String get autoClickerHotKeyRegisterFailed =>
-      'De globale sneltoets kon niet worden geregistreerd — mogelijk gebruikt een andere app hem al.';
+      'De globale sneltoets kon niet worden geregistreerd. Misschien gebruikt een andere app hem al.';
 
   @override
   String get autoClickerInvalidSnapshot =>
@@ -12862,7 +12862,7 @@ class LNl extends L {
 
   @override
   String get calcErrorHasX =>
-      'Daar zit een x in — druk op Teken om het te tekenen.';
+      'Daar zit een x in. Druk op Teken om het te tekenen.';
 
   @override
   String get calcPlotNeedsExpression => 'Typ eerst iets als x^2 - 3.';
@@ -12905,7 +12905,7 @@ class LNl extends L {
 
   @override
   String get calcNothingPlotted =>
-      'Nog niets getekend. Typ iets met een x — zoals x^2 - 3 of sin(x) — en druk op Teken.';
+      'Nog niets getekend. Typ iets met een x, zoals x^2 - 3 of sin(x), en druk op Teken.';
 
   @override
   String get calcFunctionHide => 'Verbergen';
@@ -13385,7 +13385,7 @@ class LNl extends L {
 
   @override
   String calendarSharedByView(String author) {
-    return 'Gedeeld door $author — alleen bekijken';
+    return 'Gedeeld door $author (alleen bekijken)';
   }
 
   @override
@@ -13549,7 +13549,7 @@ class LNl extends L {
 
   @override
   String get cardWalletHoldFlat =>
-      'Houd je kaart plat tegen de achterkant van je telefoon en houd hem stil — grotere kaarten hebben even nodig om te lezen.';
+      'Houd je kaart plat tegen de achterkant van je telefoon en houd hem stil. Grotere kaarten hebben even nodig om te lezen.';
 
   @override
   String cardWalletScanUnexpectedError(String error) {
@@ -13596,7 +13596,7 @@ class LNl extends L {
 
   @override
   String get cardWalletCodeHintScan =>
-      'Scan hem hierboven, of typ hem in — bijv. 2601234567890';
+      'Scan hem hierboven, of typ hem in (bijv. 2601234567890)';
 
   @override
   String get cardWalletCodeHint => 'bijv. 2601234567890';
@@ -13668,7 +13668,7 @@ class LNl extends L {
 
   @override
   String cardWalletNoStandardMatch(String format) {
-    return 'Geen standaardovereenkomst — $format wordt gebruikt';
+    return 'Geen standaardovereenkomst, $format wordt gebruikt';
   }
 
   @override
@@ -13727,15 +13727,15 @@ class LNl extends L {
 
   @override
   String get cardWalletNfcReadFailed =>
-      'Kon die tag niet lezen — hij lijkt leeg of niet ondersteund.';
+      'Kon die tag niet lezen. Hij lijkt leeg of wordt niet ondersteund.';
 
   @override
   String get cardWalletNfcPaymentCardRefused =>
-      'Dit lijkt een bank- of creditcard — luma kopieert betaalkaarten niet, voor jouw veiligheid. Voeg in plaats daarvan een spaar-, hotel-, vervoers- of evenementenkaart toe.';
+      'Dit lijkt een bank- of creditcard. Voor je eigen veiligheid kopieert luma geen betaalkaarten. Voeg in plaats daarvan een spaar-, hotel-, vervoers- of evenementenkaart toe.';
 
   @override
   String get cardWalletNfcEmptyTag =>
-      'Kon niets van die tag lezen — hij is misschien leeg of vergrendeld.';
+      'Kon niets van die tag lezen. Misschien is hij leeg of vergrendeld.';
 
   @override
   String get cityPlannerLinuxTitle => 'Niet beschikbaar op Linux';
@@ -13746,7 +13746,7 @@ class LNl extends L {
 
   @override
   String get cloudFilesSessionExpired =>
-      'Je sessie is verlopen — meld je opnieuw aan via Instellingen → Synchronisatie.';
+      'Je sessie is verlopen. Meld je opnieuw aan via Instellingen → Synchronisatie.';
 
   @override
   String get cloudFilesSignInFirst =>
@@ -13770,7 +13770,7 @@ class LNl extends L {
 
   @override
   String get cloudFilesIndexConflict =>
-      'Kon de bestandenlijst niet bijwerken — probeer het opnieuw.';
+      'Kon de bestandenlijst niet bijwerken. Probeer het opnieuw.';
 
   @override
   String cloudFilesSizeB(String value) {
@@ -13798,7 +13798,7 @@ class LNl extends L {
 
   @override
   String get cloudFilesSignedOutBody =>
-      'Meld je aan bij je synchronisatieserver via Instellingen → Synchronisatie en account, en kom daarna hier terug om bestanden te uploaden. Bestanden worden op dit apparaat versleuteld voordat ze worden geüpload — de server kan ze nooit lezen.';
+      'Meld je aan bij je synchronisatieserver via Instellingen → Synchronisatie en account, en kom daarna hier terug om bestanden te uploaden. Bestanden worden op dit apparaat versleuteld voordat ze worden geüpload, dus de server kan ze nooit lezen.';
 
   @override
   String get cloudFilesHeaderSubtitle =>
@@ -14045,7 +14045,7 @@ class LNl extends L {
 
   @override
   String get dataMgmtTagsExplainer =>
-      'Labels kun je aan elke rij koppelen en gebruiken om grafieken te groeperen — label bijvoorbeeld inkomstenrijen per bron om te zien wat het meeste oplevert.';
+      'Labels kun je aan elke rij koppelen en gebruiken om grafieken te groeperen. Label bijvoorbeeld inkomstenrijen per bron om te zien wat het meeste oplevert.';
 
   @override
   String get dataMgmtNoTagsYet => 'Nog geen labels.';
@@ -14164,7 +14164,7 @@ class LNl extends L {
 
   @override
   String get deviceHealthErrDefenderUnavailable =>
-      'De status van Windows Defender kon niet worden gelezen — mogelijk is een ander antivirusprogramma actief of is de Defender-service uitgeschakeld.';
+      'De status van Windows Defender kon niet worden gelezen. Misschien is er een ander antivirusprogramma actief, of staat de Defender-service uit.';
 
   @override
   String get deviceHealthErrListProcesses =>
@@ -14176,7 +14176,7 @@ class LNl extends L {
 
   @override
   String get deviceHealthNeedsManualUpdate =>
-      'Handmatige update nodig — winget kon het niet stil voltooien.';
+      'Handmatige update nodig. winget kon het niet op de achtergrond afronden.';
 
   @override
   String deviceHealthIssueRamHigh(int percent) {
@@ -14243,7 +14243,7 @@ class LNl extends L {
 
   @override
   String get deviceHealthCardAppUpdatesNotScanned =>
-      'Nog niet gescand — controleert winget en luma op beschikbare updates.';
+      'Nog niet gescand. Dit controleert winget en luma op beschikbare updates.';
 
   @override
   String deviceHealthCardUpdateAll(int count) {
@@ -14257,7 +14257,7 @@ class LNl extends L {
 
   @override
   String get deviceHealthCardUpdateFailedHint =>
-      'Kon niet automatisch bijwerken — probeer het zelf.';
+      'Kon niet automatisch bijwerken. Probeer het zelf.';
 
   @override
   String get deviceHealthCardAppsUpToDate =>
@@ -14271,7 +14271,7 @@ class LNl extends L {
 
   @override
   String get deviceHealthCardNoBattery =>
-      'Geen batterij gevonden — dit lijkt een desktop.';
+      'Geen batterij gevonden. Dit lijkt een desktop.';
 
   @override
   String deviceHealthCardBatteryHealth(int percent) {
@@ -14375,7 +14375,7 @@ class LNl extends L {
 
   @override
   String get deviceHealthCardGpuDisclaimer =>
-      'Windows biedt geen manier om direct te controleren of een stuurprogramma up-to-date is — deze knoppen openen de tool die dat wel weet. Er wordt niets automatisch geïnstalleerd.';
+      'Windows biedt geen manier om direct te controleren of een stuurprogramma up-to-date is, dus deze knoppen openen de tool die dat wel weet. Er wordt niets automatisch geïnstalleerd.';
 
   @override
   String get deviceHealthCardProcessesTitle => 'Achtergrondprocessen';
@@ -14385,7 +14385,7 @@ class LNl extends L {
 
   @override
   String get deviceHealthCardProcessesNotScanned =>
-      'Nog niet gescand — dit leest elk actief proces, daarom wordt het niet automatisch uitgevoerd.';
+      'Nog niet gescand. Dit leest elk actief proces, daarom gebeurt het niet automatisch.';
 
   @override
   String deviceHealthCardProcessesSummary(int count) {
@@ -14440,13 +14440,13 @@ class LNl extends L {
 
   @override
   String get errandsEmptySubtitle =>
-      'Voeg een terugkerende klus toe — dagelijks, wekelijks, maandelijks of elke paar dagen — en hij verschijnt op je lijst op de dag dat hij moet gebeuren.';
+      'Voeg een terugkerende klus toe (dagelijks, wekelijks, maandelijks of om de paar dagen) en hij staat op je lijst op de dag dat hij moet gebeuren.';
 
   @override
   String get errandsAddErrand => 'Klus toevoegen';
 
   @override
-  String get errandsAllDoneToday => 'Alles klaar voor vandaag — goed gedaan.';
+  String get errandsAllDoneToday => 'Alles klaar voor vandaag. Goed gedaan!';
 
   @override
   String get errandsNothingDueToday =>
@@ -14581,7 +14581,7 @@ class LNl extends L {
 
   @override
   String get errandsCategoriesHelp =>
-      'Groepeer je lijst zoals je wilt — Huishouden, Gezondheid, Administratie… Een categorie verwijderen houdt de klusjes wel.';
+      'Groepeer je lijst zoals je wilt: Huishouden, Gezondheid, Administratie… Als je een categorie verwijdert, blijven de klusjes bestaan.';
 
   @override
   String get errandsCategoryNameHint => 'Huishouden';
@@ -14759,7 +14759,7 @@ class LNl extends L {
 
   @override
   String get fileViewerNoPageTextHint =>
-      'Deze pagina bevat geen uitleesbare tekst — mogelijk is het een scan of afbeelding.';
+      'Deze pagina bevat geen tekst die kan worden uitgelezen. Misschien is het een scan of een afbeelding.';
 
   @override
   String get fileViewerNoReadableText =>
@@ -14775,7 +14775,7 @@ class LNl extends L {
 
   @override
   String get fileViewerLargeFile =>
-      'Groot bestand — de eerste 500 KB wordt getoond.';
+      'Groot bestand, alleen de eerste 500 KB wordt getoond.';
 
   @override
   String get fileViewerNotWordDocument =>
@@ -14842,7 +14842,7 @@ class LNl extends L {
 
   @override
   String get freeSketchGalleryEmptyHint =>
-      'Begin een nieuw kunstwerk — potloden, inkt, waterverf, markers, airbrushes en blenders, met lagen, mengmodi, symmetrie en druk. Exporteer naar PNG, JPEG, Photoshop of OpenRaster.';
+      'Begin aan een nieuw kunstwerk. Er zijn potloden, inkt, waterverf, markers, airbrushes en blenders, met lagen, mengmodi, symmetrie en drukgevoeligheid. Exporteer naar PNG, JPEG, Photoshop of OpenRaster.';
 
   @override
   String freeSketchArtworkInfo(String size, int count, String updated) {
@@ -15168,7 +15168,7 @@ class LNl extends L {
 
   @override
   String get freeSketchTraitGlazes =>
-      'glaceert als een marker — overlappingen worden donkerder';
+      'glaceert als een marker, overlappingen worden donkerder';
 
   @override
   String get freeSketchTraitAddsLight => 'voegt licht toe';
@@ -15685,7 +15685,7 @@ class LNl extends L {
 
   @override
   String freeSketchLayerHidden(String name) {
-    return '“$name” is verborgen — toon de laag om erop te schilderen.';
+    return '“$name” is verborgen. Toon de laag om erop te schilderen.';
   }
 
   @override
@@ -15727,14 +15727,14 @@ class LNl extends L {
 
   @override
   String get freeSketchLayerEmptyTransform =>
-      'Deze laag is leeg — er valt niets te transformeren.';
+      'Deze laag is leeg, er valt niets te transformeren.';
 
   @override
   String get freeSketchUndoTransform => 'Transformeren';
 
   @override
   String get freeSketchLayerEmptyAdjust =>
-      'Deze laag is leeg — er valt niets aan te passen.';
+      'Deze laag is leeg, er valt niets aan te passen.';
 
   @override
   String get freeSketchUndoFill => 'Vullen';
@@ -15821,7 +15821,7 @@ class LNl extends L {
 
   @override
   String get freeSketchViewMirroredTip =>
-      'Weergave is gespiegeld — tik om terug te draaien (H)';
+      'Weergave is gespiegeld. Tik om terug te draaien (H)';
 
   @override
   String get freeSketchUndoTip => 'Ongedaan maken (Ctrl+Z)';
@@ -15901,7 +15901,7 @@ class LNl extends L {
 
   @override
   String freeSketchToolTapAgainBrushes(String tool) {
-    return '$tool — tik nog eens voor penselen';
+    return '$tool (tik nog eens voor penselen)';
   }
 
   @override
@@ -15914,11 +15914,10 @@ class LNl extends L {
   String get freeSketchPressureCurve => 'Drukcurve';
 
   @override
-  String get freeSketchPressureSoft => 'Zacht — licht drukken reikt verder';
+  String get freeSketchPressureSoft => 'Zacht: licht drukken reikt verder';
 
   @override
-  String get freeSketchPressureFirm =>
-      'Stevig — druk harder voor volle sterkte';
+  String get freeSketchPressureFirm => 'Stevig: druk harder voor volle sterkte';
 
   @override
   String get freeSketchPressureLinear => 'Lineair';
@@ -15928,7 +15927,7 @@ class LNl extends L {
 
   @override
   String get freeSketchPalmRejectionHint =>
-      'Zodra een stylus is gebruikt, verplaatsen en zoomen vingers in plaats van schilderen — handpalmherkenning.';
+      'Zodra je een stylus hebt gebruikt, verschuiven en zoomen je vingers in plaats van te schilderen (handpalmherkenning).';
 
   @override
   String get freeSketchShortcutsHelp =>
@@ -16132,7 +16131,7 @@ class LNl extends L {
   String get galleryDetailsStored => 'Opslag';
 
   @override
-  String get galleryDetailsOnlineOnly => 'Alleen online — niet op deze pc';
+  String get galleryDetailsOnlineOnly => 'Alleen online, niet op deze pc';
 
   @override
   String get galleryDetailsFolder => 'Map';
@@ -16189,7 +16188,7 @@ class LNl extends L {
 
   @override
   String get galleryEditNameTooLong =>
-      'Die naam is te lang — houd hem onder de 250 tekens.';
+      'Die naam is te lang. Houd hem onder de 250 tekens.';
 
   @override
   String galleryEditNameIllegal(String characters) {
@@ -16211,7 +16210,7 @@ class LNl extends L {
 
   @override
   String galleryEditKeepExtension(String extension) {
-    return 'Houd de .$extension-extensie aan — als je die wijzigt, opent het bestand niet meer.';
+    return 'Laat de .$extension-extensie staan. Als je die wijzigt, opent het bestand niet meer.';
   }
 
   @override
@@ -16242,7 +16241,7 @@ class LNl extends L {
 
   @override
   String galleryMapPlacedSoFar(int placed) {
-    return '$placed geplaatst tot nu toe — locaties worden nog gelezen';
+    return '$placed tot nu toe geplaatst, locaties worden nog gelezen';
   }
 
   @override
@@ -16280,7 +16279,7 @@ class LNl extends L {
 
   @override
   String get galleryPageNoFoldersYet =>
-      'Nog geen mappen gevonden — wacht tot de eerste scan klaar is.';
+      'Nog geen mappen gevonden. Wacht tot de eerste scan klaar is.';
 
   @override
   String get galleryPageScanOneFolder => 'Eén map scannen';
@@ -16302,7 +16301,7 @@ class LNl extends L {
 
   @override
   String galleryPageSortingProgress(int count, int total) {
-    return 'Foto\'s sorteren in Personen en Categorieën — $count van $total';
+    return 'Foto\'s sorteren in Personen en Categorieën: $count van $total';
   }
 
   @override
@@ -16416,7 +16415,7 @@ class LNl extends L {
 
   @override
   String get galleryPagePeopleStillSorting =>
-      'De bibliotheek wordt nog gesorteerd — personen verschijnen hier zodra een gezicht in een paar foto\'s voorkomt.';
+      'De bibliotheek wordt nog gesorteerd. Personen verschijnen hier zodra een gezicht in een paar foto\'s voorkomt.';
 
   @override
   String get galleryPagePeopleSortHint =>
@@ -16427,7 +16426,7 @@ class LNl extends L {
 
   @override
   String get galleryPageNoTripsBody =>
-      'Een reeks foto\'s over een paar drukke dagen — een weekendje weg, een vakantie — verschijnt hier vanzelf. Niets om in te stellen, en het werkt zonder Nova.';
+      'Een reeks foto\'s van een paar drukke dagen, zoals een weekendje weg of een vakantie, verschijnt hier vanzelf. Je hoeft niets in te stellen en het werkt zonder Nova.';
 
   @override
   String get galleryPageNothingSortedYet => 'Nog niets gesorteerd';
@@ -16523,7 +16522,7 @@ class LNl extends L {
 
   @override
   String get galleryPageStaysOnDevice =>
-      'Foto\'s en video\'s blijven op dit apparaat — de galerij leest ze alleen om ze hier te tonen.';
+      'Foto\'s en video\'s blijven op dit apparaat. De galerij leest ze alleen om ze hier te tonen.';
 
   @override
   String get galleryPageScanEverything => 'Alles scannen';
@@ -16554,12 +16553,12 @@ class LNl extends L {
 
   @override
   String galleryPageSortingPhotosProgress(int count, int total) {
-    return 'Foto\'s sorteren — $count van $total';
+    return 'Foto\'s sorteren: $count van $total';
   }
 
   @override
   String galleryPageReadingDetails(int count) {
-    return 'Fotodetails lezen — nog $count te gaan';
+    return 'Fotodetails lezen, nog $count te gaan';
   }
 
   @override
@@ -16590,7 +16589,7 @@ class LNl extends L {
       other: '$skipped zijn overgeslagen',
       one: '1 is overgeslagen',
     );
-    return '$_temp0. $_temp1 omdat ze alleen in de cloud staan, of in een indeling die hier niet gelezen kan worden — maak ze offline beschikbaar en kijk opnieuw.';
+    return '$_temp0. $_temp1 omdat ze alleen in de cloud staan of een indeling hebben die hier niet gelezen kan worden. Maak ze offline beschikbaar en kijk opnieuw.';
   }
 
   @override
@@ -16604,7 +16603,7 @@ class LNl extends L {
       other: '$pending foto\'s om te bekijken.',
       one: '1 foto om te bekijken.',
     );
-    return '$_temp0 Dit downloadt eenmalig ongeveer $megabytes MB aan modellen (herkenning en gezichtsvergelijking); daarna gebeurt alles op deze pc, offline — er wordt geen foto geüpload.';
+    return '$_temp0 Dit downloadt eenmalig ongeveer $megabytes MB aan modellen (herkenning en gezichtsvergelijking). Daarna gebeurt alles offline op deze pc en wordt er geen foto geüpload.';
   }
 
   @override
@@ -16615,7 +16614,7 @@ class LNl extends L {
       other: '$pending foto\'s om te bekijken.',
       one: '1 foto om te bekijken.',
     );
-    return '$_temp0 Dit downloadt eenmalig een klein (~$megabytes MB) model voor gezichtsvergelijking, zodat foto\'s van dezelfde persoon kunnen worden gegroepeerd — offline, en er wordt niets geüpload.';
+    return '$_temp0 Dit downloadt eenmalig een klein model (~$megabytes MB) voor gezichtsvergelijking, zodat foto\'s van dezelfde persoon kunnen worden gegroepeerd. Alles gebeurt offline en er wordt niets geüpload.';
   }
 
   @override
@@ -16644,7 +16643,7 @@ class LNl extends L {
 
   @override
   String get galleryPageSmartUpsellBodyModels =>
-      'Nova groepeert je foto\'s op wie erop staan en wat er echt op de foto te zien is — eten, huisdieren, oceaan en meer — met modellen die offline op dit apparaat draaien. Er wordt niets geüpload.';
+      'Nova groepeert je foto\'s op wie erop staat en wat er echt op de foto te zien is (eten, huisdieren, de zee en meer) met modellen die offline op dit apparaat draaien. Er wordt niets geüpload.';
 
   @override
   String get galleryPageSmartUpsellBodyPhone =>
@@ -16796,7 +16795,7 @@ class LNl extends L {
 
   @override
   String gameToolsComingSoonSubtitle(String game) {
-    return 'Hier komen de $game-hulpmiddelen. Er is nog niets in te stellen — ze verschijnen hier in een toekomstige update.';
+    return 'Hier komen de $game-hulpmiddelen. Er valt nog niets in te stellen; ze verschijnen hier in een toekomstige update.';
   }
 
   @override
@@ -16812,7 +16811,7 @@ class LNl extends L {
 
   @override
   String gameToolsSectionTooltip(String label, String blurb) {
-    return '$label — $blurb';
+    return '$label: $blurb';
   }
 
   @override
@@ -16834,7 +16833,7 @@ class LNl extends L {
 
   @override
   String groceriesApiNeedsAccount(String section) {
-    return 'Productzoeken vereist een goedgekeurd luma-account. Maak er een aan via Instellingen → $section — je boodschappenlijst werkt gewoon offline.';
+    return 'Voor productzoeken heb je een goedgekeurd luma-account nodig. Maak er een aan via Instellingen → $section. Je boodschappenlijst zelf werkt gewoon offline.';
   }
 
   @override
@@ -16861,7 +16860,7 @@ class LNl extends L {
 
   @override
   String get groceriesGateSubtitle =>
-      'Vergelijk prijzen van Jumbo, Albert Heijn, Hoogvliet en Lidl naast elkaar, en maak boodschappenlijsten die zichzelf per winkel en gangpad splitsen, met lopende totalen — gratis inbegrepen bij Orbit en Nova.';
+      'Vergelijk prijzen van Jumbo, Albert Heijn, Hoogvliet en Lidl naast elkaar, en maak boodschappenlijsten die zichzelf per winkel en gangpad opsplitsen, met lopende totalen. Gratis bij Orbit en Nova.';
 
   @override
   String groceriesUpgradeTo(String plan) {
@@ -17106,7 +17105,7 @@ class LNl extends L {
 
   @override
   String mlStoppedAtLimit(String limit) {
-    return 'gestopt bij $limit — zet \"stoppen na\" hoger om door te gaan';
+    return 'gestopt bij $limit. Zet \"stoppen na\" hoger om door te gaan';
   }
 
   @override
@@ -17270,7 +17269,7 @@ class LNl extends L {
 
   @override
   String get mediaDlSetupBody =>
-      'yt-dlp en ffmpeg ophalen — dit gebeurt maar één keer.';
+      'yt-dlp en ffmpeg ophalen. Dit gebeurt maar één keer.';
 
   @override
   String get mediaDlSetupFailed => 'Kon yt-dlp / ffmpeg niet instellen.';
@@ -17307,7 +17306,7 @@ class LNl extends L {
 
   @override
   String mediaDlIntroBody(String updateLabel) {
-    return 'Plak een YouTube-videolink om te beginnen. Als downloads beginnen te mislukken met een 403-fout, heeft YouTube waarschijnlijk iets veranderd — probeer hierboven \"$updateLabel\".';
+    return 'Plak een YouTube-videolink om te beginnen. Als downloads mislukken met een 403-fout, heeft YouTube waarschijnlijk iets veranderd. Probeer dan hierboven \"$updateLabel\".';
   }
 
   @override
@@ -17428,7 +17427,7 @@ class LNl extends L {
 
   @override
   String get mindMapLibraryEmptySubtitle =>
-      'Geef er hierboven een naam. Je begint bij het centrale idee en drukt op Tab om uit te waaieren — slepen is niet nodig.';
+      'Geef er hierboven een naam. Je begint bij het centrale idee en drukt op Tab om uit te waaieren. Slepen is niet nodig.';
 
   @override
   String get mindMapDeleteMapTooltip => 'Kaart verwijderen';
@@ -17566,7 +17565,7 @@ class LNl extends L {
 
   @override
   String get mindMapAiAllowanceUsed =>
-      'Je hebt je AI-limiet van vandaag gebruikt — morgen weer meer.';
+      'Je hebt je AI-limiet van vandaag gebruikt. Morgen weer meer.';
 
   @override
   String mindMapAiNoKey(String provider, String settings, String assistant) {
@@ -17698,7 +17697,7 @@ class LNl extends L {
 
   @override
   String get mcCrashAiUsageLimit =>
-      'Je hebt je AI-gebruikslimiet voor vandaag bereikt — probeer het morgen opnieuw.';
+      'Je hebt je AI-gebruikslimiet voor vandaag bereikt. Probeer het morgen opnieuw.';
 
   @override
   String mcCrashAiNoKey(String provider) {
@@ -17997,7 +17996,7 @@ class LNl extends L {
 
   @override
   String get mcCloudBackupNeedsAccount =>
-      'Cloudback-ups vereisen een goedgekeurd luma-account — maak er een aan onder Instellingen → Synchronisatie en account.';
+      'Voor cloudback-ups heb je een goedgekeurd luma-account nodig. Maak er een aan onder Instellingen → Synchronisatie en account.';
 
   @override
   String get mcCloudStorageFull => 'Onvoldoende ruimte in de cloudopslag.';
@@ -18008,7 +18007,7 @@ class LNl extends L {
 
   @override
   String get mcCloudBackupIndexFailed =>
-      'Kan de back-uplijst niet bijwerken — probeer het opnieuw.';
+      'Kan de back-uplijst niet bijwerken. Probeer het opnieuw.';
 
   @override
   String get mcMsAuthNotConfigured =>
@@ -18097,7 +18096,7 @@ class LNl extends L {
 
   @override
   String mcModCurseForgeOnly(String title) {
-    return '$title kan alleen via de CurseForge-pagina worden gedownload — de auteur heeft downloads in andere launchers uitgeschakeld.';
+    return '$title kan alleen via de CurseForge-pagina worden gedownload, omdat de maker downloads in andere launchers heeft uitgezet.';
   }
 
   @override
@@ -18173,7 +18172,7 @@ class LNl extends L {
 
   @override
   String get minecraftLauncherOfflineNeedsMicrosoft =>
-      'Meld je eerst aan met een Microsoft-account dat Minecraft bezit — offlineprofielen zijn bedoeld om daarna zonder verbinding te spelen, niet in plaats daarvan.';
+      'Meld je eerst aan met een Microsoft-account dat Minecraft bezit. Offlineprofielen zijn bedoeld om daarna zonder verbinding te spelen, niet als vervanging daarvan.';
 
   @override
   String get minecraftLauncherCloudBackups => 'Cloudback-ups';
@@ -19012,7 +19011,7 @@ class LNl extends L {
 
   @override
   String get nfcRecordEditorWifiNote =>
-      'Geschreven als tekstrecord die de meeste telefoons kunnen lezen wanneer ze de tag aantikken — het verbindt niet automatisch met elk apparaat zoals de eigen Wi-Fi-QR-code van een router soms wel doet.';
+      'Geschreven als tekstrecord dat de meeste telefoons kunnen lezen als ze de tag aantikken. Het verbindt niet automatisch met elk apparaat, zoals de wifi-QR-code van een router soms wel doet.';
 
   @override
   String get nfcRecordEditorPhoneOptional => 'Telefoon (optioneel)';
@@ -19077,7 +19076,7 @@ class LNl extends L {
 
   @override
   String nfcSummaryRawBytes(int bytes) {
-    return 'Ongewijzigd bewaard ($bytes bytes) — niet bewerkbaar';
+    return 'Ongewijzigd bewaard ($bytes bytes), niet bewerkbaar';
   }
 
   @override
@@ -19088,11 +19087,11 @@ class LNl extends L {
 
   @override
   String get nfcUnsupportedNotice =>
-      'NFC Tag Editor heeft de NFC-hardware en lezer-API\'s van Android nodig, dus werkt hij alleen op een Android-telefoon of -tablet — hier valt niets te scannen of schrijven.';
+      'NFC Tag Editor heeft de NFC-hardware en lezer-API\'s van Android nodig, dus werkt hij alleen op een Android-telefoon of -tablet. Hier valt niets te scannen of te schrijven.';
 
   @override
   String get nfcErrNotNdef =>
-      'Deze tag ondersteunt geen NDEF, dus luma kan hem niet bewerken. De meeste lege NFC-stickers en -kaarten wel — probeer een andere tag.';
+      'Deze tag ondersteunt geen NDEF, dus luma kan hem niet bewerken. De meeste lege NFC-stickers en -kaarten doen dat wel, dus probeer een andere tag.';
 
   @override
   String get nfcErrNotAvailable =>
@@ -19123,7 +19122,7 @@ class LNl extends L {
 
   @override
   String get nfcErrNotWritable =>
-      'Er kan niet naar deze tag worden geschreven — hij ondersteunt geen NDEF.';
+      'Er kan niet naar deze tag worden geschreven. Hij ondersteunt geen NDEF.';
 
   @override
   String get nfcErrNothingToLock =>
@@ -19147,7 +19146,7 @@ class LNl extends L {
 
   @override
   String get nfcHeroBody =>
-      'Houd een NFC-tag of -sticker tegen je telefoon om de records te lezen en bewerken — of begin helemaal opnieuw en schrijf een nieuwe tag.';
+      'Houd een NFC-tag of -sticker tegen je telefoon om de records te lezen en bewerken, of begin helemaal opnieuw en schrijf een nieuwe tag.';
 
   @override
   String get nfcScanTag => 'Scan een tag';
@@ -19163,14 +19162,14 @@ class LNl extends L {
 
   @override
   String get nfcNoRecordsBody =>
-      'Voeg hierboven een record toe — tekst, een link, Wi-Fi-gegevens, een contactkaart en meer.';
+      'Voeg hierboven een record toe: tekst, een link, wifi-gegevens, een contactkaart en meer.';
 
   @override
   String get nfcWriteToTag => 'Naar tag schrijven';
 
   @override
   String get nfcWriteHint =>
-      'Werkt op de tag die je hebt gescand of een andere — houd gewoon de tag die je wilt beschrijven tegen de telefoon wanneer je zover bent.';
+      'Werkt op de tag die je hebt gescand of op een andere. Houd gewoon de tag die je wilt beschrijven tegen de telefoon als je zover bent.';
 
   @override
   String get nfcStartOver => 'Opnieuw beginnen';
@@ -19213,7 +19212,7 @@ class LNl extends L {
 
   @override
   String get nfcWriteLockBody =>
-      'Dit schrijft de records hieronder en maakt de tag daarna permanent alleen-lezen. Er kan nooit meer naar worden geschreven — niet door luma, niet door een andere app.';
+      'Dit schrijft de records hieronder en maakt de tag daarna permanent alleen-lezen. Er kan nooit meer naar worden geschreven, niet door luma en ook niet door een andere app.';
 
   @override
   String get nfcWriteLockAction => 'Beschrijven en vergrendelen';
@@ -19229,7 +19228,7 @@ class LNl extends L {
 
   @override
   String nfcDeleteTemplateBody(String name) {
-    return 'Dit verwijdert “$name” — tags die er al mee zijn beschreven, behouden hun inhoud.';
+    return 'Dit verwijdert “$name”. Tags die er al mee zijn beschreven, houden hun inhoud.';
   }
 
   @override
@@ -19237,7 +19236,7 @@ class LNl extends L {
 
   @override
   String get nfcNoTemplatesBody =>
-      'Maak een set records in het tabblad Editor en sla die hier op om dezelfde tag-inhoud steeds opnieuw te schrijven — handig voor een serie stickers.';
+      'Maak een set records in het tabblad Editor en sla die hier op om dezelfde tag-inhoud steeds opnieuw te schrijven. Handig voor een hele serie stickers.';
 
   @override
   String nfcTemplateRecordsSummary(int count, String kinds) {
@@ -19336,7 +19335,7 @@ class LNl extends L {
   String get nfcTagReadOnly => 'Alleen-lezen';
 
   @override
-  String get nfcTagBlankWillFormat => 'Leeg — wordt geformatteerd';
+  String get nfcTagBlankWillFormat => 'Leeg, wordt geformatteerd';
 
   @override
   String nfcTagUid(String uid) {
@@ -19554,7 +19553,7 @@ class LNl extends L {
 
   @override
   String get recipeBookFavouritesHint =>
-      'Tik op het hartje bij een recept — privé of openbaar — om het hier te bewaren.';
+      'Tik op het hartje bij een recept, privé of openbaar, om het hier te bewaren.';
 
   @override
   String get recipeBookNew => 'Nieuw';
@@ -19891,7 +19890,7 @@ class LNl extends L {
 
   @override
   String get mafiaRoleCountingLowCountWarning =>
-      'De wiki markeert de gegevens onder 7 spelers als mogelijk onnauwkeurig — zie dit aantal als een ruwe richtlijn.';
+      'De wiki markeert de gegevens onder 7 spelers als mogelijk onnauwkeurig, dus zie dit aantal als een ruwe richtlijn.';
 
   @override
   String mafiaRoleCountingClaimedOfTotal(int claimed, int total) {
@@ -20847,7 +20846,7 @@ class LNl extends L {
 
   @override
   String get secureChatPeerNoKey =>
-      'Deze persoon heeft chatversleuteling nog niet ingesteld — probeer het later opnieuw.';
+      'Deze persoon heeft chatversleuteling nog niet ingesteld. Probeer het later opnieuw.';
 
   @override
   String get secureChatNotSignedIn => 'Niet aangemeld.';
@@ -20876,7 +20875,7 @@ class LNl extends L {
 
   @override
   String get secureChatNeedsSyncBody =>
-      'Meld je aan onder Instellingen → Sync en account om mensen uit te nodigen en te chatten. Berichten worden end-to-end versleuteld op dit apparaat — de server geeft alleen versleutelde tekst door.';
+      'Meld je aan onder Instellingen → Sync en account om mensen uit te nodigen en te chatten. Berichten worden op dit apparaat end-to-end versleuteld en de server geeft alleen versleutelde tekst door.';
 
   @override
   String get secureChatHeading => 'Chat';
@@ -20918,7 +20917,7 @@ class LNl extends L {
 
   @override
   String secureChatPeerNotReady(String email) {
-    return '$email heeft chatversleuteling nog niet op een apparaat ingesteld — je kunt hen een bericht sturen zodra dat wel is gebeurd.';
+    return '$email heeft chatversleuteling nog niet op een apparaat ingesteld. Je kunt een bericht sturen zodra dat wel zo is.';
   }
 
   @override
@@ -20936,7 +20935,7 @@ class LNl extends L {
 
   @override
   String get secureChatInviteBody =>
-      'Ze zien de uitnodiging de volgende keer dat ze Luma openen onder Chat → Uitnodigingen. Zodra die is geaccepteerd, wordt elk bericht end-to-end versleuteld — alleen jullie twee kunnen ze lezen.';
+      'Ze zien de uitnodiging onder Chat → Uitnodigingen de volgende keer dat ze Luma openen. Zodra ze accepteren, wordt elk bericht end-to-end versleuteld en kunnen alleen jullie twee ze lezen.';
 
   @override
   String get secureChatSendInvite => 'Uitnodiging sturen';
@@ -22233,7 +22232,7 @@ class LNl extends L {
 
   @override
   String get serverTycoonNothingPluggedIn =>
-      'Niets aangesloten — sleep een servicenode naar deze rig.';
+      'Niets aangesloten. Sleep een servicenode naar deze rig.';
 
   @override
   String get serverTycoonInstallService => 'Service installeren';
@@ -22260,7 +22259,7 @@ class LNl extends L {
 
   @override
   String get serverTycoonServiceNotPluggedIn =>
-      'Niet aangesloten — sleep de poort van dit knooppunt naar een rig.';
+      'Niet aangesloten. Sleep de poort van deze node naar een rig.';
 
   @override
   String serverTycoonRunningOn(String name) {
@@ -22568,7 +22567,7 @@ class LNl extends L {
 
   @override
   String get serverTycoonNoOffersToday =>
-      'Geen aanbiedingen vandaag — bouw reputatie op en koop licenties om bedrijven aan te trekken.';
+      'Geen aanbiedingen vandaag. Bouw reputatie op en koop licenties om bedrijven aan te trekken.';
 
   @override
   String get serverTycoonActive => 'Actief';
@@ -22618,7 +22617,7 @@ class LNl extends L {
 
   @override
   String serverTycoonResearchIdle(String rate) {
-    return 'Niets in het lab — verdient $rate RP/dag';
+    return 'Niets in het lab, verdient $rate RP/dag';
   }
 
   @override
@@ -22647,7 +22646,7 @@ class LNl extends L {
 
   @override
   String serverTycoonResearchLevel(int level) {
-    return 'Niveau $level — herhaalbaar';
+    return 'Niveau $level (herhaalbaar)';
   }
 
   @override
@@ -22770,22 +22769,22 @@ class LNl extends L {
 
   @override
   String serverTycoonBoostExtend(String cost, String days) {
-    return 'Verlengen — $cost voor $days dagen';
+    return 'Verlengen: $cost voor $days dagen';
   }
 
   @override
   String serverTycoonBoostActivate(String cost, String days) {
-    return 'Activeren — $cost voor $days dagen';
+    return 'Activeren: $cost voor $days dagen';
   }
 
   @override
   String serverTycoonNetProfitLastDays(int count) {
-    return 'Nettowinst — laatste $count dagen';
+    return 'Nettowinst, laatste $count dagen';
   }
 
   @override
   String serverTycoonPowerDrawLastDays(int count) {
-    return 'Stroomverbruik — laatste $count dagen';
+    return 'Stroomverbruik, laatste $count dagen';
   }
 
   @override
@@ -22859,12 +22858,12 @@ class LNl extends L {
       other: '$days dagen',
       one: '1 dag',
     );
-    return 'Afwezig gedurende $duration — $_temp0 gesimuleerd tegen $rate%.';
+    return '$duration weg geweest. $_temp0 gesimuleerd tegen $rate%.';
   }
 
   @override
   String serverTycoonAwayCapped(int maxDays, int elapsed) {
-    return 'Begrensd tot $maxDays dagen — $elapsed waren er verstreken. Onderzoek de R&D Lab-tak om meer te verdienen terwijl je weg bent.';
+    return 'Begrensd tot $maxDays dagen ($elapsed was verstreken). Onderzoek de R&D Lab-tak om meer te verdienen terwijl je weg bent.';
   }
 
   @override
@@ -22989,7 +22988,7 @@ class LNl extends L {
 
   @override
   String get serverTycoonRepoOneProjectAtATime =>
-      'Slechts één project tegelijk — bouw de R&D-lab-tak voor meer wachtrijplekken';
+      'Maar één project tegelijk. Bouw de R&D Lab-tak voor meer plekken in de wachtrij';
 
   @override
   String serverTycoonRepoResearchSlotsBusy(String slots) {
@@ -23158,7 +23157,7 @@ class LNl extends L {
 
   @override
   String serverTycoonRepoCloned(String cost) {
-    return 'Gekloond voor $cost — installeer er diensten op om inkomsten te verdienen';
+    return 'Gekloond voor $cost. Installeer er diensten op om geld te verdienen';
   }
 
   @override
@@ -23372,7 +23371,7 @@ class LNl extends L {
 
   @override
   String get sftpHostOwnPasswordSubtitle =>
-      'Standaard uit — luma genereert een veel sterker wachtwoord.';
+      'Standaard uit. luma maakt een veel sterker wachtwoord.';
 
   @override
   String sftpHostPasswordHint(String minLength) {
@@ -23380,7 +23379,7 @@ class LNl extends L {
   }
 
   @override
-  String get sftpHostPasswordTooShortWarn => 'Te kort — dit wordt geweigerd.';
+  String get sftpHostPasswordTooShortWarn => 'Te kort. Dit wordt geweigerd.';
 
   @override
   String get sftpHostPasswordWeak =>
@@ -23402,7 +23401,7 @@ class LNl extends L {
 
   @override
   String get sftpHostSecurityNote =>
-      'De twee apparaten komen via het koppelwachtwoord tot een sleutel en versleutelen daarna alles tussen hen. De servers van luma zijn er niet bij betrokken en zien nooit de map, het wachtwoord of de bestanden. Alleen de map die je kiest is bereikbaar. Delen blijft doorgaan zolang luma open is — druk op Stop als je klaar bent.';
+      'De twee apparaten spreken via het koppelwachtwoord een sleutel af en versleutelen daarna alles wat ze uitwisselen. De servers van luma zijn er niet bij betrokken en zien nooit de map, het wachtwoord of de bestanden. Alleen de map die je kiest is bereikbaar. Delen blijft doorgaan zolang luma open is, dus druk op Stop als je klaar bent.';
 
   @override
   String get sftpHostNoAddress => 'Dit apparaat heeft geen adres.';
@@ -23655,7 +23654,7 @@ class LNl extends L {
 
   @override
   String get sftpThisDeviceUserNameNote =>
-      'De gebruikersnaam is er om apparaten uit elkaar te houden. luma koppelt alleen op het wachtwoord — dit is geen SSH-login, en er wordt niets van het account van dit apparaat blootgesteld.';
+      'De gebruikersnaam is er alleen om apparaten uit elkaar te houden. luma koppelt alleen op het wachtwoord. Dit is geen SSH-login, en er wordt niets van het account op dit apparaat mee blootgesteld.';
 
   @override
   String get sftpThisDeviceNewPassword => 'Nieuw wachtwoord';
@@ -23665,7 +23664,7 @@ class LNl extends L {
 
   @override
   String get sftpThisDeviceStatusChooseBody =>
-      'Niets is bereikbaar tot je er een kiest. Alleen die map wordt gedeeld — niets erboven.';
+      'Niets is bereikbaar tot je er een kiest. Alleen die map wordt gedeeld, niets daarboven.';
 
   @override
   String get sftpThisDeviceStatusOpeningTitle => 'Dit apparaat wordt geopend…';
@@ -24088,7 +24087,7 @@ class LNl extends L {
 
   @override
   String get sftpSharingFolderNote =>
-      'Er wordt een map gedeeld — elk apparaat met het koppelwachtwoord kan verbinden.';
+      'Er wordt een map gedeeld. Elk apparaat met het koppelwachtwoord kan verbinden.';
 
   @override
   String get sftpHostIdleNote =>
@@ -24100,7 +24099,7 @@ class LNl extends L {
 
   @override
   String get sftpServersNote =>
-      'Verbind met je eigen server — niets loopt via luma.';
+      'Verbind met je eigen server. Er loopt niets via luma.';
 
   @override
   String sftpConnectedTo(String endpoint) {
@@ -24172,7 +24171,7 @@ class LNl extends L {
 
   @override
   String get sftpUpsellBody =>
-      'Verbind met je eigen servers via een host, gebruikersnaam, wachtwoord en poort, blader aan beide kanten tegelijk en sleep bestanden over. De verbinding gaat rechtstreeks van dit apparaat naar je server — niets gaat via een luma-server.';
+      'Verbind met je eigen servers via een host, gebruikersnaam, wachtwoord en poort, blader aan beide kanten tegelijk en sleep bestanden over. De verbinding gaat rechtstreeks van dit apparaat naar je server en nooit via een luma-server.';
 
   @override
   String sftpUpgradeTo(String plan) {
@@ -24312,7 +24311,7 @@ class LNl extends L {
 
   @override
   String sftpNearbyOtherVersion(String address) {
-    return '$address · draait een andere versie van luma — werk beide bij om te verbinden';
+    return '$address · draait een andere versie van luma. Werk beide bij om te verbinden';
   }
 
   @override
@@ -24334,7 +24333,7 @@ class LNl extends L {
 
   @override
   String get sftpPrivacyNote =>
-      'Verbindingen gaan rechtstreeks van dit apparaat naar je server. Er loopt niets via een luma-server, en opgeslagen wachtwoorden blijven hier versleuteld — ze worden nooit gesynchroniseerd.';
+      'Verbindingen gaan rechtstreeks van dit apparaat naar je server. Er loopt niets via een luma-server, en opgeslagen wachtwoorden blijven hier versleuteld. Ze worden nooit gesynchroniseerd.';
 
   @override
   String get sftpPasswordSavedTooltip =>
@@ -24377,7 +24376,7 @@ class LNl extends L {
 
   @override
   String get sftpSshServerHint =>
-      'Elke server die SSH spreekt — een VPS, een NAS, een Pi.';
+      'Elke server die SSH spreekt: een VPS, een NAS, een Pi.';
 
   @override
   String get sftpSiteNameHintLuma => 'Mijn laptop';
@@ -24501,7 +24500,7 @@ class LNl extends L {
 
   @override
   String get sftpShareEmptyHint =>
-      'Sleep bestanden van links naar hier, of gebruik +. Alles hier verschijnt in dezelfde map op je andere apparaten — rechtstreeks over je netwerk verstuurd, nooit via een luma-server.';
+      'Sleep bestanden van links hierheen, of gebruik +. Alles hier verschijnt in dezelfde map op je andere apparaten. Het gaat rechtstreeks over je netwerk, nooit via een luma-server.';
 
   @override
   String get sftpShareOpen => 'Openen';
@@ -24614,7 +24613,7 @@ class LNl extends L {
       other: '$count bestanden klaar',
       one: '1 bestand klaar',
     );
-    return '$_temp0 — ze gaan zodra een ander apparaat op dit netwerk is.';
+    return '$_temp0. Ze worden verstuurd zodra er een ander apparaat op dit netwerk is.';
   }
 
   @override
@@ -24684,7 +24683,8 @@ class LNl extends L {
   String get cardGamesHandStraightFlush => 'Straight flush';
 
   @override
-  String get cardGamesBjPushBlackjack => 'Gelijk — beiden hebben blackjack.';
+  String get cardGamesBjPushBlackjack =>
+      'Gelijkspel. Jullie hebben allebei blackjack.';
 
   @override
   String get cardGamesBjPlayerBlackjack => 'Blackjack! Je wint.';
@@ -24693,7 +24693,7 @@ class LNl extends L {
   String get cardGamesBjDealerBlackjack => 'De dealer heeft blackjack.';
 
   @override
-  String get cardGamesBjBust => 'Over 21 — de dealer wint.';
+  String get cardGamesBjBust => 'Over 21. De dealer wint.';
 
   @override
   String get cardGamesBjPlayerWins => 'Je wint deze ronde!';
@@ -24716,7 +24716,7 @@ class LNl extends L {
 
   @override
   String cardGamesPokerPush(String hand) {
-    return 'Gelijk — beide handen zijn gelijk met $hand.';
+    return 'Gelijkspel. Beide handen zijn gelijk met $hand.';
   }
 
   @override
@@ -25598,15 +25598,15 @@ class LNl extends L {
 
   @override
   String get cs2MarketSearchTracked =>
-      'Zoek in wat je volgt — naam, wapen, zeldzaamheid';
+      'Zoek in wat je volgt op naam, wapen of zeldzaamheid';
 
   @override
   String get cs2MarketSearchAny =>
-      'Zoek naar elk CS2-item — naam, wapen, zeldzaamheid, koffer';
+      'Zoek een CS2-item op naam, wapen, zeldzaamheid of koffer';
 
   @override
   String cs2MarketCheckingProgress(int done, int total) {
-    return 'Prijzen controleren — $done van $total';
+    return 'Prijzen controleren: $done van $total';
   }
 
   @override
@@ -25624,7 +25624,7 @@ class LNl extends L {
 
   @override
   String get cs2MarketKeepTypingHint =>
-      'Eén letter komt in te veel items voor om nuttig te zijn — een paar meer maakt het smaller.';
+      'Eén letter komt in te veel items voor om nuttig te zijn. Met een paar letters meer wordt het al kleiner.';
 
   @override
   String cs2MarketNoMatch(String query) {
@@ -25697,7 +25697,7 @@ class LNl extends L {
 
   @override
   String get cs2ItemNotFoundHint =>
-      'Het is mogelijk verdwenen bij de laatste catalogusupdate — probeer de catalogus te vernieuwen.';
+      'Misschien is het bij de laatste catalogusupdate verdwenen. Probeer de catalogus te vernieuwen.';
 
   @override
   String get cs2ItemBackToMarket => 'Terug naar de markt';
@@ -25730,7 +25730,7 @@ class LNl extends L {
 
   @override
   String get cs2ItemQuickCheckNotSaved =>
-      'Een snelle controle, niet opgeslagen — volg dit item om een prijsgeschiedenis bij te houden.';
+      'Dit is een snelle controle en wordt niet opgeslagen. Volg dit item om een prijsgeschiedenis bij te houden.';
 
   @override
   String get cs2ItemStatusNotChecked => 'Nog niet gecontroleerd.';
@@ -25791,7 +25791,7 @@ class LNl extends L {
   String get cs2ItemFactCase => 'Koffer';
 
   @override
-  String get cs2ItemFactNoCase => 'Geen koffer — collectie- of promo-item';
+  String get cs2ItemFactNoCase => 'Geen koffer (collectie- of promo-item)';
 
   @override
   String get cs2ItemFactAvailable => 'Beschikbaar voor deze afwerking';
@@ -25823,7 +25823,7 @@ class LNl extends L {
 
   @override
   String get cs2ChartOneReading =>
-      'Eén meting tot nu toe — een trend heeft er minstens twee nodig.';
+      'Pas één meting tot nu toe. Voor een trend zijn er minstens twee nodig.';
 
   @override
   String cs2ChartUnchangedAcrossCount(String delta, int count) {
@@ -25863,7 +25863,7 @@ class LNl extends L {
 
   @override
   String get cs2ChartNoHistoryHint =>
-      'De Steam-markt publiceert zelf geen geschiedenis — volg dit item en luma begint vanaf hier een geschiedenis op te bouwen.';
+      'De Steam-markt publiceert zelf geen geschiedenis. Volg dit item en luma begint vanaf nu een geschiedenis op te bouwen.';
 
   @override
   String get cs2ChartNoReadingsInRange => 'Geen metingen in dit bereik';
@@ -25909,25 +25909,25 @@ class LNl extends L {
 
   @override
   String get cs2StartPriceGradeHelper =>
-      'Slijtage en prijs worden samen ingesteld — ze kunnen niet los van elkaar worden gewijzigd zodra het volgen is gestart.';
+      'Slijtage en prijs worden samen ingesteld. Zodra het volgen is gestart, kun je ze niet los van elkaar wijzigen.';
 
   @override
   String get cs2StartPriceGradeFixedHelper =>
-      'Vast — deze basislijn hoort bij precies deze listing.';
+      'Vast. Deze basislijn hoort bij precies deze listing.';
 
   @override
   String get cs2StartPriceStartingPrice => 'Startprijs';
 
   @override
   String get cs2StartPriceStartingPriceHelper =>
-      'Wat je betaald hebt, of de prijs om winst en verlies vanaf te berekenen — niet opgehaald van Steam.';
+      'Wat je hebt betaald, of de prijs waarvanaf je winst en verlies wilt berekenen. Dit wordt niet van Steam opgehaald.';
 
   @override
   String get cs2TrackedEmptyTitle => 'Nog niets gevolgd';
 
   @override
   String get cs2TrackedEmptySubtitle =>
-      'Volg een listing vanuit Bladeren om de prijs te bekijken — hij verschijnt hier, naast al het andere dat je volgt.';
+      'Volg een listing vanuit Bladeren om de prijs in de gaten te houden. Hij verschijnt hier, naast al het andere dat je volgt.';
 
   @override
   String cs2TrackedNoMatchTitle(String query) {
@@ -25975,7 +25975,7 @@ class LNl extends L {
 
   @override
   String steamAccountConnectedWithKey(String maskedKey) {
-    return 'Verbonden — $maskedKey';
+    return 'Verbonden ($maskedKey)';
   }
 
   @override
@@ -26023,7 +26023,7 @@ class LNl extends L {
 
   @override
   String get steamAccountEncryptedNote =>
-      'Je sleutel wordt versleuteld op dit apparaat opgeslagen en alleen naar Steam gestuurd — nooit naar een luma-server.';
+      'Je sleutel wordt versleuteld op dit apparaat opgeslagen en alleen naar Steam gestuurd, nooit naar een luma-server.';
 
   @override
   String get steamAccountPrivacyNote =>
@@ -26031,7 +26031,7 @@ class LNl extends L {
 
   @override
   String get steamAccountHistoryNote =>
-      'Prijsgeschiedenis vereist ook een ingelogd luma-account — deze wordt via de server opgehaald, dus er is hiervoor geen aparte sleutel nodig.';
+      'Voor prijsgeschiedenis heb je ook een ingelogd luma-account nodig. Die wordt via de server opgehaald, dus je hebt er geen aparte sleutel voor nodig.';
 
   @override
   String get steamDetailNoLongerInLibraryTitle =>
@@ -26228,7 +26228,7 @@ class LNl extends L {
 
   @override
   String get steamChartSignInBody =>
-      'Steam toont alleen wat een game nu kost. Een ingelogd luma-account leest de jaren daarachter — geen extra sleutel nodig.';
+      'Steam laat alleen zien wat een game nu kost. Met een ingelogd luma-account zie je ook de jaren daarvoor, zonder extra sleutel.';
 
   @override
   String steamChartNoHistoryOver(String range) {
@@ -26241,7 +26241,7 @@ class LNl extends L {
 
   @override
   String get steamSearchSubtitle =>
-      'Zoek in de Steam-winkel — geen account nodig.';
+      'Zoek in de Steam-winkel. Geen account nodig.';
 
   @override
   String get steamSearchHint => 'Zoek een game';
@@ -26278,7 +26278,7 @@ class LNl extends L {
 
   @override
   String get steamTrackerSubtitleDisconnected =>
-      'Prijzen volgen — verbind een Steam-account om ook je bibliotheek in één keer toe te voegen.';
+      'Prijzen volgen. Verbind een Steam-account om ook je hele bibliotheek in één keer toe te voegen.';
 
   @override
   String get steamTrackerSubtitleNoSync =>
@@ -26314,7 +26314,7 @@ class LNl extends L {
 
   @override
   String steamTrackerCheckingPrices(int done, int total) {
-    return 'Prijzen controleren — $done van $total';
+    return 'Prijzen controleren: $done van $total';
   }
 
   @override
@@ -26322,7 +26322,7 @@ class LNl extends L {
 
   @override
   String get steamTrackerEmptySubtitle =>
-      'Zoek een game om de prijs ervan te gaan volgen — geen Steam-account nodig.';
+      'Zoek een game om de prijs te gaan volgen. Je hebt geen Steam-account nodig.';
 
   @override
   String steamTrackerNoMatchTitle(String query) {
@@ -26516,7 +26516,7 @@ class LNl extends L {
 
   @override
   String get transportTrackerConnectedWaiting =>
-      'Verbonden — wachten op positiemeldingen. Drukke vaarroutes vullen zich binnen enkele seconden; open zee kan langer duren.';
+      'Verbonden, wachten op positiemeldingen. Drukke vaarroutes vullen zich binnen enkele seconden; op open zee kan het langer duren.';
 
   @override
   String transportTrackerNoVesselsYet(String label) {
@@ -26540,7 +26540,7 @@ class LNl extends L {
 
   @override
   String transportTrackerMapLoadFailed(String error) {
-    return 'De kaart kon niet volledig laden — controleer de internetverbinding van dit apparaat. ($error)';
+    return 'De kaart kon niet volledig laden. Controleer de internetverbinding van dit apparaat. ($error)';
   }
 
   @override
@@ -26608,7 +26608,7 @@ class LNl extends L {
 
   @override
   String get transportTrackerInterpolatedNote =>
-      'Geschat op basis van de dienstregeling — treinen zenden hun positie niet uit in de open data, dus dit is berekend tussen stations.';
+      'Geschat op basis van de dienstregeling. Treinen zenden hun positie niet uit in de open data, dus dit is berekend tussen stations.';
 
   @override
   String get transportTrackerDownloadingStops =>
@@ -26674,7 +26674,7 @@ class LNl extends L {
       'Live AIS-scheepsposities wereldwijd. Vereist je eigen gratis AISStream.io-sleutel.';
 
   @override
-  String get transportTrackerTransitTitle => 'Openbaar vervoer — Nederland';
+  String get transportTrackerTransitTitle => 'Openbaar vervoer in Nederland';
 
   @override
   String get transportTrackerTransitSubtitle =>
@@ -26688,7 +26688,7 @@ class LNl extends L {
 
   @override
   String get transportTrackerGetKeyHint =>
-      'Haal een gratis sleutel op bij aisstream.io — meld je aan en kopieer daarna je API-sleutel uit het dashboard.';
+      'Haal een gratis sleutel op bij aisstream.io. Meld je aan en kopieer daarna je API-sleutel uit het dashboard.';
 
   @override
   String get transportTrackerKeyHintReplace =>
@@ -26705,7 +26705,7 @@ class LNl extends L {
 
   @override
   String get transportTrackerKeyPrivacyNote =>
-      'Alleen lokaal op dit apparaat opgeslagen, versleuteld. Wordt tijdens het volgen rechtstreeks naar aisstream.io gestuurd — nooit naar een luma-server.';
+      'Alleen lokaal op dit apparaat opgeslagen, versleuteld. Wordt tijdens het volgen rechtstreeks naar aisstream.io gestuurd en nooit naar een luma-server.';
 
   @override
   String get vesselCategoryCargo => 'Vracht';
@@ -27075,7 +27075,7 @@ class LNl extends L {
   String get speedTestStart => 'Test starten';
 
   @override
-  String get speedTestTesting => 'Test wordt uitgevoerd — even geduld…';
+  String get speedTestTesting => 'Bezig met testen, even geduld…';
 
   @override
   String get speedTestFailed =>
@@ -27530,7 +27530,7 @@ class LNl extends L {
 
   @override
   String get financeOverviewNoPots =>
-      'Nog geen potten — maak er een in het tabblad Potten en verdeel je geld.';
+      'Nog geen potten. Maak er een in het tabblad Potten en verdeel je geld.';
 
   @override
   String get financeThisWeek => 'Deze week';
@@ -27615,7 +27615,7 @@ class LNl extends L {
 
   @override
   String get financeUpcomingEmpty =>
-      'Nog geen vaste lasten of inkomsten — voeg ze toe in het tabblad Terugkerend.';
+      'Nog geen vaste lasten of inkomsten. Voeg ze toe in het tabblad Terugkerend.';
 
   @override
   String get financeAddDebt => 'Schuld toevoegen';
@@ -27725,7 +27725,7 @@ class LNl extends L {
   String get financeDebtsNameHintOwe => 'bijv. Studieschuld (DUO)';
 
   @override
-  String get financeDebtsNameHintOwed => 'bijv. Sam — concertkaartjes';
+  String get financeDebtsNameHintOwed => 'bijv. Sam, concertkaartjes';
 
   @override
   String get financeDebtsOriginalAmount => 'Oorspronkelijk bedrag';
@@ -27786,7 +27786,7 @@ class LNl extends L {
 
   @override
   String financeDebtsHistoryTitle(String name) {
-    return '$name — geschiedenis';
+    return '$name: geschiedenis';
   }
 
   @override
@@ -27859,7 +27859,7 @@ class LNl extends L {
     String lowest,
     String lowestDate,
   ) {
-    return 'Op weg naar onder €0 op $date — laagste $lowest op $lowestDate.';
+    return 'Op $date zak je onder €0. Laagste punt is $lowest op $lowestDate.';
   }
 
   @override
@@ -27869,7 +27869,7 @@ class LNl extends L {
 
   @override
   String get financeForecastNothingScheduled =>
-      'Niets gepland — voeg vaste kosten en inkomsten toe op het tabblad Terugkerend.';
+      'Niets gepland. Voeg vaste lasten en inkomsten toe in het tabblad Terugkerend.';
 
   @override
   String get financePlanningGoalReached => 'Doel bereikt';
@@ -28105,7 +28105,7 @@ class LNl extends L {
 
   @override
   String get financeRecurringTreatAsBill =>
-      'Behandelen als rekening/abonnement — tonen bij \"binnenkort\"';
+      'Behandelen als rekening/abonnement (tonen bij \"binnenkort\")';
 
   @override
   String get financeRecurringRemindDays =>
@@ -28548,7 +28548,7 @@ class LNl extends L {
 
   @override
   String get financeStocksAtCostNoQuote =>
-      'Tegen kostprijs — nog geen actuele koers';
+      'Tegen kostprijs, nog geen actuele koers';
 
   @override
   String financeStocksPricesAsOf(String stamp) {
@@ -28943,29 +28943,29 @@ class LNl extends L {
 
   @override
   String get devicesSetupBody =>
-      'Geen server nodig — alleen een e-mailadres en wachtwoord die je apparaten delen, enkel gebruikt om elkaar via wifi te herkennen. Heb je al een luma-cloudaccount? Log dan hierboven in; dit wordt dan automatisch ingeschakeld.';
+      'Geen server nodig. Alleen een e-mailadres en wachtwoord die je apparaten delen, puur zodat ze elkaar via wifi herkennen. Heb je al een luma-cloudaccount? Log dan hierboven in, dan gaat dit automatisch aan.';
 
   @override
   String get devicesErrorInvalidEmail => 'Voer een geldig e-mailadres in.';
 
   @override
   String get devicesErrorPasswordShort =>
-      'Gebruik minstens 10 tekens — dit wachtwoord beschermt ook je versleutelde gegevens.';
+      'Gebruik minstens 10 tekens. Dit wachtwoord beschermt ook je versleutelde gegevens.';
 
   @override
   String get devicesEnableTitle => 'Apparaatsynchronisatie inschakelen';
 
   @override
   String get devicesEnableBody =>
-      'Voer op elk apparaat dat je wilt koppelen hetzelfde e-mailadres en wachtwoord in — ze verlaten dit apparaat nooit en raken geen server aan. Ze bewijzen alleen dat je apparaten van dezelfde persoon zijn.';
+      'Voer op elk apparaat dat je wilt koppelen hetzelfde e-mailadres en wachtwoord in. Ze verlaten dit apparaat nooit en komen niet op een server; ze bewijzen alleen dat je apparaten van dezelfde persoon zijn.';
 
   @override
   String get devicesPasswordWarning =>
-      'Als je het wachtwoord verkeerd intypt bij het koppelen van een tweede apparaat, wordt het niet herkend als hetzelfde account — er is geen server om het mee te controleren of te resetten.';
+      'Als je het wachtwoord verkeerd intypt bij het koppelen van een tweede apparaat, wordt het gewoon niet herkend als hetzelfde account. Er is geen server om het mee te controleren of te resetten.';
 
   @override
   String devicesLocalOnly(String email) {
-    return 'Alleen lokaal — $email (nergens geback-upt)';
+    return 'Alleen lokaal: $email (nergens geback-upt)';
   }
 
   @override
@@ -29012,7 +29012,7 @@ class LNl extends L {
 
   @override
   String devicesIpHint(String addresses) {
-    return 'IP: $addresses — het andere apparaat moet op hetzelfde netwerk zitten om dit apparaat te vinden.';
+    return 'IP: $addresses. Het andere apparaat moet op hetzelfde netwerk zitten om dit apparaat te vinden.';
   }
 
   @override
@@ -29034,7 +29034,7 @@ class LNl extends L {
 
   @override
   String get devicesHotspotBody =>
-      'Detectie vindt alleen apparaten op hetzelfde netwerk. Als je telefoon op mobiele data zit in plaats van wifi, is er geen lokaal netwerk om elkaar op te vinden — zet dan de hotspot van de telefoon aan en laat het andere apparaat daarmee verbinden. Zodra beide op hetzelfde netwerk zitten, werkt alles hier precies hetzelfde.';
+      'Detectie vindt alleen apparaten op hetzelfde netwerk. Als je telefoon op mobiele data zit in plaats van wifi, is er geen lokaal netwerk waarop ze elkaar kunnen vinden. Zet dan de hotspot van je telefoon aan en laat het andere apparaat daarmee verbinden. Zodra ze allebei op dat netwerk zitten, werkt alles hier precies hetzelfde.';
 
   @override
   String get devicesHotspotStep1 =>
@@ -29117,11 +29117,11 @@ class LNl extends L {
 
   @override
   String get syncSettingsSignedOutBody =>
-      'Maak een account aan om functies tussen apparaten te synchroniseren — met Google, GitHub, of een e-mailadres en wachtwoord. Alles wordt op dit apparaat versleuteld voordat het het verlaat; er wordt niets gesynchroniseerd tot je het per functie aanzet. Je kunt ook de server helemaal overslaan en apparaten via je eigen netwerk koppelen.';
+      'Maak een account aan om functies tussen apparaten te synchroniseren, met Google, GitHub of een e-mailadres en wachtwoord. Alles wordt op dit apparaat versleuteld voordat het weggaat, en er wordt niets gesynchroniseerd tot je het per functie aanzet. Je kunt de server ook helemaal overslaan en apparaten via je eigen netwerk koppelen.';
 
   @override
   String get syncSettingsSessionExpired =>
-      'Je cloudsessie is verlopen — log opnieuw in.';
+      'Je cloudsessie is verlopen. Log opnieuw in.';
 
   @override
   String get syncSettingsSetUpAccount => 'Account instellen';
@@ -29136,7 +29136,7 @@ class LNl extends L {
 
   @override
   String syncSettingsPendingApproval(String email) {
-    return '$email wacht op goedkeuring door de serverbeheerder. Er hoeft intussen niets te gebeuren — log gewoon in zodra die dat heeft gedaan. Tot die tijd neemt dit apparaat helemaal geen contact op met de server, en blijven de plug-ins die het nodig hebben uitgeschakeld.';
+    return '$email wacht op goedkeuring door de serverbeheerder. Je hoeft intussen niets te doen, log gewoon in zodra het is goedgekeurd. Tot die tijd neemt dit apparaat helemaal geen contact op met de server, en blijven de plug-ins die hem nodig hebben uitgeschakeld.';
   }
 
   @override
@@ -29150,7 +29150,7 @@ class LNl extends L {
 
   @override
   String syncSettingsSyncedToCloudWith(String providers) {
-    return 'Gesynchroniseerd met de cloud — log in met $providers';
+    return 'Gesynchroniseerd met de cloud. Log in met $providers';
   }
 
   @override
@@ -29158,7 +29158,7 @@ class LNl extends L {
 
   @override
   String get syncSettingsLocalOnly =>
-      'Alleen lokaal — synchroniseert direct tussen je apparaten, zonder server';
+      'Alleen lokaal. Synchroniseert direct tussen je apparaten, zonder server';
 
   @override
   String get syncSettingsBackUpToServer => 'Back-up naar een server…';
@@ -29169,11 +29169,11 @@ class LNl extends L {
 
   @override
   String get syncSettingsWhatSyncsBody =>
-      'Alles staat standaard uit. Alleen wat je hier aanzet, verlaat dit apparaat — versleuteld met je wachtwoord voordat het wordt geüpload. Wanneer je een functie die al gesynchroniseerde gegevens heeft voor het eerst aanzet, vervangt de serverkopie de kopie op dit apparaat.';
+      'Alles staat standaard uit. Alleen wat je hier aanzet verlaat dit apparaat, en dat wordt eerst met je wachtwoord versleuteld. Als je een functie die al gesynchroniseerde gegevens heeft voor het eerst aanzet, vervangt de kopie op de server die op dit apparaat.';
 
   @override
   String get syncSettingsAutomaticTooltip =>
-      'Voorkeuren, het geheugen van de assistent en thuisindelingen van overeenkomstige apparaten worden altijd gesynchroniseerd — dit kan niet worden uitgeschakeld.';
+      'Voorkeuren, het geheugen van de assistent en thuisindelingen van overeenkomstige apparaten worden altijd gesynchroniseerd. Dit kan niet worden uitgezet.';
 
   @override
   String get syncSettingsAlwaysOn => 'Altijd aan';
@@ -29211,7 +29211,7 @@ class LNl extends L {
 
   @override
   String syncSettingsPlanNeededBody(String label, String plan) {
-    return '$label wordt vanaf het $plan-abonnement naar de server gesynchroniseerd. Het blijft in ieder geval op dit apparaat werken — alleen het synchroniseren tussen apparaten vereist het abonnement.';
+    return '$label wordt vanaf het $plan-abonnement naar de server gesynchroniseerd. Op dit apparaat blijft het hoe dan ook werken; alleen voor synchroniseren tussen apparaten heb je het abonnement nodig.';
   }
 
   @override
@@ -29248,7 +29248,7 @@ class LNl extends L {
 
   @override
   String get syncSettingsNothingSavedYet =>
-      'Nog niets op de server opgeslagen — zet hieronder iets aan om het te back-uppen.';
+      'Nog niets op de server opgeslagen. Zet hieronder iets aan om er een back-up van te maken.';
 
   @override
   String get syncSettingsSyncing => 'Synchroniseren…';
@@ -29308,11 +29308,11 @@ class LNl extends L {
 
   @override
   String get syncSettingsDataSyncsDirectly =>
-      'Deze gegevens worden rechtstreeks met gekoppelde apparaten gesynchroniseerd — zie Apparaten hieronder om er een te verbinden en uit te schakelen.';
+      'Deze gegevens worden rechtstreeks met gekoppelde apparaten gesynchroniseerd. Ga naar Apparaten hieronder om er een te verbinden of dit uit te zetten.';
 
   @override
   String get syncSettingsRecoveryKeySetUp =>
-      'Herstelsleutel ingesteld — als je je wachtwoord vergeet, verlies je je gesynchroniseerde gegevens niet.';
+      'Herstelsleutel ingesteld. Als je je wachtwoord vergeet, raak je je gesynchroniseerde gegevens niet kwijt.';
 
   @override
   String get syncSettingsRecoveryKeyMissing =>
@@ -29346,11 +29346,11 @@ class LNl extends L {
 
   @override
   String get syncSettingsRecoveryHasKeyBody =>
-      'Dit account heeft een herstelsleutel. Als je die kwijt bent, maak dan een nieuwe — de oude sleutel werkt dan direct niet meer.';
+      'Dit account heeft een herstelsleutel. Ben je die kwijt, maak dan een nieuwe. De oude sleutel werkt daarna meteen niet meer.';
 
   @override
   String get syncSettingsRecoveryNoKeyBody =>
-      'Je gesynchroniseerde gegevens worden versleuteld met een sleutel die uit je wachtwoord komt, dus niemand — ook de server niet — kan ze lezen. Dat betekent ook dat een vergeten wachtwoord ze meestal wist.\n\nEen herstelsleutel is een tweede manier om toegang te krijgen. Bewaar hem op een veilige plek, dan blijven al je gesynchroniseerde gegevens behouden bij een wachtwoordreset.';
+      'Je gesynchroniseerde gegevens worden versleuteld met een sleutel die uit je wachtwoord komt, dus niemand kan ze lezen, ook de server niet. Dat betekent ook dat een vergeten wachtwoord ze normaal gesproken wist.\n\nEen herstelsleutel is een tweede manier om erbij te komen. Bewaar hem op een veilige plek, dan blijven al je gesynchroniseerde gegevens behouden als je je wachtwoord reset.';
 
   @override
   String get syncSettingsMakeNewKey => 'Nieuwe sleutel maken';
@@ -29380,7 +29380,7 @@ class LNl extends L {
 
   @override
   String get syncSettingsDeletionPending =>
-      'Verwijdering van gegevens aangevraagd — wachten tot de serverbeheerder een besluit neemt.';
+      'Verwijdering van gegevens aangevraagd. Wachten tot de serverbeheerder een besluit neemt.';
 
   @override
   String get syncSettingsDeletionDeclined =>
@@ -30179,7 +30179,7 @@ class LNl extends L {
 
   @override
   String get aiDetectorContrastExplanationHigh =>
-      'Zinnen die eerst een antwoord opzetten om het daarna om te keren — zoals \"niet alleen X, maar ook Y\" of \"de echte vraag is\" — zijn een stijlmiddel dat huidige modellen gebruiken om scherpzinnig te klinken.';
+      'Zinnen die eerst een antwoord neerzetten om het daarna onderuit te halen (zoals \"niet alleen X, maar ook Y\" of \"de echte vraag is\") zijn een trucje dat huidige modellen gebruiken om scherpzinnig te klinken.';
 
   @override
   String get aiDetectorContrastExplanationLow =>
@@ -31030,8 +31030,7 @@ class LNl extends L {
       'De voorbeeldadapter gebruikt gecentreerde blokken en lichtnetten met afmetingen. Je model heeft geen externe bestanden, materialen of geometrie die elk frame opnieuw wordt toegewezen. Instellingen worden in deze browser opgeslagen.';
 
   @override
-  String get sceneCityPlannerMetroplanStadsplanner =>
-      'MetroPlan — Stadsplanner';
+  String get sceneCityPlannerMetroplanStadsplanner => 'MetroPlan: Stadsplanner';
 
   @override
   String get sceneCityPlannerMetroplan => 'MetroPlan';
@@ -31219,7 +31218,7 @@ class LNl extends L {
 
   @override
   String get sceneCityPlannerSleepVrijOverDeKaartDeEngineMaaktErAutomat =>
-      'Sleep vrij over de kaart — de engine maakt er automatisch een vloeiende weg van. Kruisende wegen worden vanzelf kruispunten.';
+      'Sleep vrij over de kaart en de engine maakt er automatisch een vloeiende weg van. Kruisende wegen worden vanzelf kruispunten.';
 
   @override
   String get sceneCityPlannerKlikOmEenRotondeTePlaatsenSluitErWegenOpAa =>
@@ -31304,42 +31303,42 @@ class LNl extends L {
 
   @override
   String get sceneSpaceColonyPlaceTheseFiveBuildingsWithoutThemYourColo =>
-      ', plaats deze vijf gebouwen — anders raakt je kolonie binnen een dag of twee zonder stroom, lucht of water:';
+      ', plaats deze vijf gebouwen. Anders raakt je kolonie binnen een dag of twee zonder stroom, lucht of water:';
 
   @override
   String get sceneSpaceColonySolarPanel => 'Zonnepaneel';
 
   @override
-  String get sceneSpaceColonyPowerDuringTheDay => '— levert overdag stroom.';
+  String get sceneSpaceColonyPowerDuringTheDay => ': levert overdag stroom.';
 
   @override
   String get sceneSpaceColonyStoresPowerSoSystemsKeepRunningAtNight =>
-      '— slaat stroom op zodat systemen ’s nachts blijven werken.';
+      ': slaat stroom op zodat systemen ’s nachts blijven werken.';
 
   @override
   String get sceneSpaceColonyOxygenGenerator => 'Zuurstofgenerator';
 
   @override
   String get sceneSpaceColonyTurnsWaterIntoBreathableAir =>
-      '— zet water om in ademlucht.';
+      ': zet water om in ademlucht.';
 
   @override
   String get sceneSpaceColonyWaterExtractor => 'Waterwinner';
 
   @override
   String get sceneSpaceColonyPlaceItOnAnIceFieldLightBlueTilesForAWater =>
-      '— plaats op een ijsveld (lichtblauwe tegels) voor watervoorziening.';
+      ': plaats op een ijsveld (lichtblauwe tegels) voor watervoorziening.';
 
   @override
   String get sceneSpaceColonyMiningRig => 'Mijnbouwinstallatie';
 
   @override
   String get sceneSpaceColonyPlaceItOnAMetalDepositOrangeTilesSoYouCanK =>
-      '— plaats op een metaalvoorraad (oranje tegels) om te kunnen blijven bouwen.';
+      ': plaats op een metaalvoorraad (oranje tegels) om te kunnen blijven bouwen.';
 
   @override
   String get sceneSpaceColonyWatchTheResourceBarAtTheTopAnythingShownIn =>
-      'Houd de grondstoffenbalk bovenaan in de gaten — rood betekent bijna op. Erts- en kristalvoorraden raken op; verken dus verder. Klik op een kolonist voor diens statistieken. Open dit opnieuw via ❓ Handleiding.';
+      'Houd de grondstoffenbalk bovenaan in de gaten. Rood betekent bijna op. Erts- en kristalvoorraden raken op, dus blijf verder verkennen. Klik op een kolonist voor diens statistieken. Open dit opnieuw via ❓ Handleiding.';
 
   @override
   String get sceneSpaceColonyLetSGo => 'Aan de slag!';
@@ -31452,7 +31451,7 @@ class LNl extends L {
 
   @override
   String get sceneSubwayBuilderVeryLongHopsVeryFastFewStopsRealStationsAn =>
-      'Zeer lange ritten, zeer snel, weinig haltes — echte stations en sporen';
+      'Zeer lange ritten, zeer snel, weinig haltes. Echte stations en sporen';
 
   @override
   String get sceneSubwayBuilderSelectPan => 'Selecteren / pannen';
@@ -31544,7 +31543,7 @@ class LNl extends L {
 
   @override
   String get sceneSubwayBuilderTreasuryIsInTheRedConsiderALoanOrHigherFar =>
-      'De schatkist is negatief — overweeg een lening of hogere tarieven';
+      'De schatkist staat rood. Overweeg een lening of hogere tarieven';
 
   @override
   String get sceneSubwayBuilderCouldNotConnectToTheRoom =>
@@ -31556,7 +31555,7 @@ class LNl extends L {
 
   @override
   String get sceneSubwayBuilderLostConnectionToTheRoomReconnecting =>
-      'Verbinding met de kamer verloren — opnieuw verbinden…';
+      'Verbinding met de kamer verloren. Opnieuw verbinden…';
 
   @override
   String get sceneSubwayBuilderRunningTheClockForThisRoom =>
@@ -31629,7 +31628,7 @@ class LNl extends L {
 
   @override
   String get sceneSubwayBuilderStationLookupFailedTheMapDataServiceIsBusy =>
-      'Station zoeken mislukt — de kaartdienst is druk, probeer opnieuw';
+      'Station zoeken mislukt. De kaartdienst is druk, probeer het opnieuw';
 
   @override
   String get sceneSubwayBuilderNoNewOfficialStationsFoundInView =>
@@ -32359,7 +32358,7 @@ class LNl extends L {
 
   @override
   String sceneSubwayWelcomeBack(String place, String day) {
-    return 'Welkom terug in $place — dag $day';
+    return 'Welkom terug in $place, dag $day';
   }
 
   @override
@@ -32389,7 +32388,7 @@ class LNl extends L {
 
   @override
   String sceneSubwayStationModeStop(String station, String mode) {
-    return '$station is een $mode-halte — wissel van vervoermiddel om deze te verbinden';
+    return '$station is een $mode-halte. Wissel van vervoermiddel om deze te verbinden';
   }
 
   @override
@@ -32404,7 +32403,7 @@ class LNl extends L {
 
   @override
   String sceneSubwayRouteHopsMax(Object mode, Object maxKm) {
-    return '$mode: hoogstens $maxKm km tussen haltes — voeg een halte toe, of gebruik de trein voor langere afstanden';
+    return '$mode: hoogstens $maxKm km tussen haltes. Voeg een halte toe, of gebruik de trein voor langere afstanden';
   }
 
   @override
@@ -32428,12 +32427,12 @@ class LNl extends L {
 
   @override
   String sceneSubwayModeServicesRealRailStations(Object mode) {
-    return '$mode-diensten stoppen alleen bij echte treinstations — klik op een station';
+    return '$mode-diensten stoppen alleen bij echte treinstations. Klik op een station';
   }
 
   @override
   String sceneSubwayModeServicesHighlightedRailStations(Object mode) {
-    return '$mode-diensten stoppen alleen bij echte treinstations — klik op een gemarkeerd station';
+    return '$mode-diensten stoppen alleen bij echte treinstations. Klik op een gemarkeerd station';
   }
 
   @override
@@ -32470,7 +32469,7 @@ class LNl extends L {
 
   @override
   String sceneSubwayDraftStopsCost(Object count, Object distance, Object cost) {
-    return '$count haltes · $distance · $cost — druk op Enter om te bouwen of Esc om te annuleren.';
+    return '$count haltes · $distance · $cost. Druk op Enter om te bouwen of Esc om te annuleren.';
   }
 
   @override
@@ -32479,17 +32478,17 @@ class LNl extends L {
     Object distance,
     Object cost,
   ) {
-    return '$count haltes · $distance · $cost (inclusief tunnel onder water) — druk op Enter om te bouwen of Esc om te annuleren.';
+    return '$count haltes · $distance · $cost (inclusief tunnel onder water). Druk op Enter om te bouwen of Esc om te annuleren.';
   }
 
   @override
   String sceneSubwayLineOpened(Object line, Object cost) {
-    return '$line geopend — $cost, inclusief twee voertuigen';
+    return '$line geopend voor $cost, inclusief twee voertuigen';
   }
 
   @override
   String sceneSubwayLineOpenedTunnel(Object line, Object cost) {
-    return '$line geopend — $cost, inclusief twee voertuigen en een tunnel onder water';
+    return '$line geopend voor $cost, inclusief twee voertuigen en een tunnel onder water';
   }
 
   @override
@@ -32508,12 +32507,12 @@ class LNl extends L {
 
   @override
   String sceneSubwayRoomCreatedReady(Object code) {
-    return 'Kamer $code gemaakt — begin met bouwen';
+    return 'Kamer $code gemaakt. Begin met bouwen';
   }
 
   @override
   String sceneSubwayRoomCreatedShare(Object code) {
-    return 'Kamer $code gemaakt — deel de code of nodig een contact uit';
+    return 'Kamer $code gemaakt. Deel de code of nodig een contact uit';
   }
 
   @override
@@ -32752,7 +32751,7 @@ class LNl extends L {
 
   @override
   String sceneSubwayLinePanelDisruption(Object label) {
-    return '$label — de dienst rijdt langzamer tot dit voorbij is';
+    return '$label: de dienst rijdt langzamer tot dit voorbij is';
   }
 
   @override
@@ -32826,7 +32825,7 @@ class LNl extends L {
 
   @override
   String sceneSubwayCoopRoomCodeTitle(Object code) {
-    return 'Coöp — kamer $code';
+    return 'Coöp: kamer $code';
   }
 
   @override
@@ -32839,14 +32838,14 @@ class LNl extends L {
 
   @override
   String get sceneSubwayCoopClockPeer =>
-      'Een andere bouwer beheert de klok — je neemt deze automatisch over als diegene vertrekt.';
+      'Een andere bouwer beheert nu de klok. Je neemt het automatisch over als diegene vertrekt.';
 
   @override
   String get sceneSubwayCoopInviteContact => 'Nodig een chatcontact uit';
 
   @override
   String sceneSubwayCoopNoChatContacts(Object code) {
-    return 'Nog geen chatcontacten — stel eerst de Chat-plugin in of deel de kamercode $code.';
+    return 'Nog geen chatcontacten. Stel eerst de Chat-plugin in, of deel gewoon de kamercode $code.';
   }
 
   @override
@@ -32861,13 +32860,13 @@ class LNl extends L {
 
   @override
   String get sceneSubwayCoopRoomsEmpty =>
-      'Bouw samen met vrienden aan hetzelfde netwerk — nodig ze uit via chat of deel een kamercode. Wie verbonden is, houdt de klok draaiend; je kunt altijd vertrekken en terugkomen.';
+      'Bouw samen met vrienden aan hetzelfde netwerk. Nodig ze uit via chat of deel een kamercode. Wie verbonden is, houdt de klok draaiend, en je kunt altijd weggaan en terugkomen.';
 
   @override
   String get sceneSubwayCoopCreateRoom => 'Nieuwe kamer maken';
 
   @override
-  String get sceneSubwayCoopJoinByCode => '— of doe mee met een code —';
+  String get sceneSubwayCoopJoinByCode => 'of doe mee met een code';
 
   @override
   String get sceneSubwayCoopJoinRoom => 'Deelnemen aan kamer';
@@ -32997,17 +32996,17 @@ class LNl extends L {
 
   @override
   String sceneSubwayMilestoneShareReached(Object grant, Object share) {
-    return '$share% OV-aandeel bereikt — subsidie van $grant toegekend!';
+    return '$share% OV-aandeel bereikt! Subsidie van $grant toegekend!';
   }
 
   @override
   String sceneSubwayAchievementBonus(Object grant, Object sub) {
-    return '$sub — bonus van $grant';
+    return '$sub: bonus van $grant';
   }
 
   @override
   String sceneSubwayCrowdingGrantReduced(Object grant, Object label) {
-    return '$label — drukte verlaagde de bonus tot $grant';
+    return '$label: door de drukte is de bonus verlaagd tot $grant';
   }
 
   @override
@@ -33806,7 +33805,7 @@ class LNl extends L {
   @override
   String
   get sceneSpaceColonyDataAutomaticallyShootsDownIncomingMeteorsBeforeTheyHit75InterceptChance =>
-      'Automatically shoots down incoming meteors before they hit — 75% intercept chance.';
+      'Schiet inkomende meteoren automatisch neer voordat ze inslaan. 75% kans op onderschepping.';
 
   @override
   String get sceneSpaceColonyDataWindTurbines => 'Wind Turbines';
@@ -33996,11 +33995,11 @@ class LNl extends L {
 
   @override
   String get sceneSpaceColonyStatusBroken =>
-      'KAPOT — klik om te repareren (2🔩)';
+      'KAPOT: klik om te repareren (2🔩)';
 
   @override
   String get sceneSpaceColonyStatusDepleted =>
-      'LEEG — voorraad is op, sloop om de tegel terug te krijgen';
+      'LEEG: de voorraad is op, sloop het om de tegel terug te krijgen';
 
   @override
   String get sceneSpaceColonyStatusOnline => 'online';
@@ -34068,7 +34067,7 @@ class LNl extends L {
 
   @override
   String get sceneCityPlannerNewsPowerOutage =>
-      '⚡ Stroomstoring! Het net is overbelast — delen van de stad zitten zonder stroom.';
+      '⚡ Stroomstoring! Het net is overbelast en delen van de stad zitten zonder stroom.';
 
   @override
   String get sceneCityPlannerNewsDrought =>
@@ -34110,14 +34109,14 @@ class LNl extends L {
 
   @override
   String get sceneSpaceColonyEventMoraleLow =>
-      '😠 Het moreel is gevaarlijk laag — de productie lijdt eronder.';
+      '😠 Het moreel is gevaarlijk laag en de productie lijdt eronder.';
 
   @override
   String sceneSpaceColonyEventDepositDepleted(
     Object building,
     Object resource,
   ) {
-    return 'De $resource-voorraad onder je $building is op — het gebouw staat nu stil. Verplaats of sloop het.';
+    return 'De $resource-voorraad onder je $building is op, dus het gebouw staat nu stil. Verplaats of sloop het.';
   }
 
   @override
@@ -34163,11 +34162,11 @@ class LNl extends L {
 
   @override
   String get sceneSpaceColonyEventSolarFlareOver =>
-      'Zonnevlam voorbij — stroomopwekking hersteld.';
+      'Zonnevlam voorbij. De stroomopwekking is hersteld.';
 
   @override
   String get sceneSpaceColonyAlertMoraleLow =>
-      '😠 Het moreel is gevaarlijk laag — de productie lijdt eronder.';
+      '😠 Het moreel is gevaarlijk laag en de productie lijdt eronder.';
 
   @override
   String get sceneSpaceColonyAlertDustStorm =>
@@ -34282,7 +34281,7 @@ class LNl extends L {
 
   @override
   String sceneSpaceColonyEventRoverTech(Object technology) {
-    return 'De rover ontdekte oude kennis — $technology gratis ontgrendeld!';
+    return 'De rover heeft oude kennis ontdekt en $technology gratis ontgrendeld!';
   }
 
   @override
@@ -34331,7 +34330,7 @@ class LNl extends L {
 
   @override
   String get sceneSpaceColonyAlertTerraformUnlocked =>
-      '🌍 Terraforming ontgrendeld — de toekomst van je kolonie is veilig!';
+      '🌍 Terraforming ontgrendeld! De toekomst van je kolonie is veilig!';
 
   @override
   String get sceneSpaceColonyEventTerraformAchievement =>
@@ -34352,7 +34351,7 @@ class LNl extends L {
 
   @override
   String get sceneSubwayLostConnectionReconnecting =>
-      'Verbinding met de ruimte verbroken — opnieuw verbinden…';
+      'Verbinding met de kamer verbroken. Opnieuw verbinden…';
 
   @override
   String get sceneSubwayClockAuthorityRunning =>
@@ -34370,7 +34369,7 @@ class LNl extends L {
 
   @override
   String sceneSubwayRoomCreatedStartBuilding(Object code) {
-    return 'Ruimte $code aangemaakt — begin met bouwen';
+    return 'Kamer $code aangemaakt. Begin met bouwen';
   }
 
   @override
@@ -34378,12 +34377,12 @@ class LNl extends L {
 
   @override
   String sceneSubwayRoomCreatedShareCode(Object code) {
-    return 'Ruimte $code aangemaakt — deel de code of nodig een contact uit';
+    return 'Kamer $code aangemaakt. Deel de code of nodig een contact uit';
   }
 
   @override
   String sceneSubwayInviteChatMessage(Object code) {
-    return 'Doe mee met mijn Subway Builder-co-opruimte — open Subway Builder, tik op Co-op → Deelnemen en voer code $code in.';
+    return 'Doe mee in mijn Subway Builder-coöpkamer! Open Subway Builder, tik op Co-op → Deelnemen en voer code $code in.';
   }
 
   @override
@@ -34452,12 +34451,12 @@ class LNl extends L {
 
   @override
   String sceneSubwayUiSurfaceSlowdown(String factor) {
-    return '— bovengronds vervoer vertraagd ×$factor';
+    return '(bovengronds vervoer vertraagd ×$factor)';
   }
 
   @override
   String sceneSubwayUiAchievementSummary(String done, String total) {
-    return '$done / $total ontgrendeld — echte feiten over het netwerk dat je hebt gebouwd.';
+    return '$done / $total ontgrendeld. Echte feiten over het netwerk dat je hebt gebouwd.';
   }
 
   @override
@@ -34502,12 +34501,12 @@ class LNl extends L {
 
   @override
   String sceneSubwayUiStreetStationHint(String mode) {
-    return 'Klik bij een straat om een halte voor $mode te plaatsen — die wordt op de weg uitgelijnd.';
+    return 'Klik bij een straat om een halte voor $mode te plaatsen. Die wordt vanzelf op de weg gezet.';
   }
 
   @override
   String get sceneSubwayUiRailLineHint =>
-      'Klik echte stations op volgorde aan — de route volgt bestaande sporen. Druk op Enter om te voltooien, of klik opnieuw op het eerste station om een lus te sluiten.';
+      'Klik echte stations op volgorde aan, de route volgt dan bestaande sporen. Druk op Enter om af te ronden, of klik opnieuw op het eerste station om een lus te sluiten.';
 
   @override
   String get sceneSubwayUiMetroLineHint =>
@@ -34515,7 +34514,7 @@ class LNl extends L {
 
   @override
   String get sceneSubwayUiStreetLineHint =>
-      'Klik haltes op volgorde aan — de route volgt echte straten. Druk op Enter om te voltooien, of klik opnieuw op de eerste halte om een lus te sluiten.';
+      'Klik haltes op volgorde aan, de route volgt dan echte straten. Druk op Enter om af te ronden, of klik opnieuw op de eerste halte om een lus te sluiten.';
 
   @override
   String get sceneSubwayUiBulldozeHint =>
@@ -34523,7 +34522,7 @@ class LNl extends L {
 
   @override
   String sceneSubwayUiExtendNextStop(String line) {
-    return 'Lijn $line verlengen — klik op de volgende halte. Druk op Esc om te stoppen.';
+    return 'Lijn $line verlengen. Klik op de volgende halte, of druk op Esc om te stoppen.';
   }
 
   @override
@@ -34533,7 +34532,7 @@ class LNl extends L {
 
   @override
   String sceneSubwayUiDraftCost(String count, String distance, String cost) {
-    return '$count haltes · $distance · $cost — druk op Enter om te bouwen of Esc om te annuleren.';
+    return '$count haltes · $distance · $cost. Druk op Enter om te bouwen of Esc om te annuleren.';
   }
 
   @override
@@ -34542,7 +34541,7 @@ class LNl extends L {
     String distance,
     String cost,
   ) {
-    return '$count haltes · $distance · $cost (inclusief onderwatertunnels) — druk op Enter om te bouwen of Esc om te annuleren.';
+    return '$count haltes · $distance · $cost (inclusief onderwatertunnels). Druk op Enter om te bouwen of Esc om te annuleren.';
   }
 
   @override
@@ -34624,7 +34623,7 @@ class LNl extends L {
 
   @override
   String sceneSubwayWeatherSlowedNews(Object weather) {
-    return '$weather weer — bovengronds vervoer rijdt langzamer';
+    return 'Door $weather weer rijdt het bovengrondse vervoer langzamer';
   }
 
   @override
@@ -34633,12 +34632,12 @@ class LNl extends L {
     Object line,
     Object hours,
   ) {
-    return '⚠️ $disruption op $line — reken op ongeveer $hours uur vertraging';
+    return '⚠️ $disruption op $line. Reken op ongeveer $hours uur vertraging';
   }
 
   @override
   String sceneSubwayEventNews(Object event, Object station) {
-    return '🎪 $event bij $station vanavond — verwacht extra drukte!';
+    return '🎪 $event bij $station vanavond. Verwacht extra drukte!';
   }
 
   @override
@@ -35421,7 +35420,7 @@ class LNl extends L {
 
   @override
   String get mcToolsNoMatchBody =>
-      'Probeer een ander woord — elke tool is te vinden op naam of op wat hij doet.';
+      'Probeer een ander woord. Elke tool is te vinden op naam of op wat hij doet.';
 
   @override
   String get mcToolsDisclaimer =>
@@ -35908,7 +35907,7 @@ class LNl extends L {
 
   @override
   String mcEnchConflicts(String other) {
-    return 'Botst met $other — tik om te wisselen';
+    return 'Botst met $other. Tik om te wisselen';
   }
 
   @override
@@ -36041,7 +36040,7 @@ class LNl extends L {
   String get mcShapeHollow => 'Hol';
 
   @override
-  String get mcShapeHollowDetail => 'Alleen de schil — veel minder blokken';
+  String get mcShapeHollowDetail => 'Alleen de buitenkant, veel minder blokken';
 
   @override
   String get mcShapeWall => 'Wanddikte';
@@ -36051,7 +36050,7 @@ class LNl extends L {
 
   @override
   String get mcShapeThickDetail =>
-      'Geen diagonale gaten — mobs glippen er niet door';
+      'Geen diagonale gaten, dus mobs glippen er niet door';
 
   @override
   String get mcShapeBlock => 'Blok';
@@ -36195,7 +36194,7 @@ class LNl extends L {
 
   @override
   String get mcOreTipRedstone =>
-      'Geconcentreerd onderin de wereld. Mijn net boven het gesteente — rond Y −58.';
+      'Zit vooral onderin de wereld. Mijn net boven het bodemgesteente, rond Y −58.';
 
   @override
   String get mcOreTipLapis =>
@@ -36219,7 +36218,7 @@ class LNl extends L {
 
   @override
   String get mcOreTipDebris =>
-      'Vooral tussen Y 8 en 24, met een piek op Y 16. Het ontstaat nooit aan de lucht — mijn in stroken of gebruik bedden of TNT om snel ruimte te maken.';
+      'Vooral tussen Y 8 en 24, met een piek op Y 16. Het ligt nooit aan de lucht, dus mijn in stroken of gebruik bedden of TNT om snel ruimte te maken.';
 
   @override
   String get mcOreBestLevel => 'beste mijnhoogte';
@@ -36424,7 +36423,7 @@ class LNl extends L {
 
   @override
   String mcPotionCorrupts(String potion) {
-    return 'Gefermenteerd spinnenoog maakt hier $potion van — tik om te openen.';
+    return 'Gefermenteerd spinnenoog maakt hier $potion van. Tik om te openen.';
   }
 
   @override
@@ -36633,7 +36632,7 @@ class LNl extends L {
 
   @override
   String get mcCubeNotSwallowable =>
-      'Dat slikt een kubus niet — alleen de blokken onder de twaalf gedragingen.';
+      'Dat slikt een kubus niet in. Alleen de blokken onder de twaalf gedragingen.';
 
   @override
   String get mcCubeMeet => 'Maak kennis met de kubus';
@@ -36692,7 +36691,7 @@ class LNl extends L {
 
   @override
   String get mcCubeShrugsNote =>
-      'Hij ademt ook onder water en kan niet bevriezen. Explosies doen nog steeds pijn — TNT knalt een kubus zelfs halverwege het slikken — en elke genegeerde klap duwt hem nog steeds weg.';
+      'Hij ademt ook onder water en kan niet bevriezen. Explosies doen nog wel pijn (TNT laat een kubus zelfs halverwege het slikken knallen), en elke klap die hij negeert duwt hem nog steeds weg.';
 
   @override
   String get mcCubeHow => 'Hoe slikken werkt';
@@ -36872,7 +36871,7 @@ class LNl extends L {
 
   @override
   String mcBeaconHowBody(int range, int seconds, String mineral) {
-    return 'Het bereik is $range blokken rond het baken (10 + 10 per niveau) en reikt $range blokken eronder en tot aan de hemel. Effecten worden elke 4 seconden opnieuw toegepast en duren $seconds seconden, dus ze blijven even hangen als je weggaat. Een volledige piramide van niveau 4 ontgrendelt een tweede kracht: Regeneratie, of level II van de primaire. Betaal met één ijzerstaaf, goudstaaf, smaragd, diamant of netherietstaaf. De straal heeft vrij zicht op de hemel nodig; gekleurd glas erop kleurt hem. Mineraalblokken mengen in de piramide mag — $mineral is alleen degene die hierboven geteld is.';
+    return 'Het bereik is $range blokken rond het baken (10 + 10 per niveau) en reikt $range blokken eronder en tot aan de hemel. Effecten worden elke 4 seconden opnieuw toegepast en duren $seconds seconden, dus ze blijven even hangen als je weggaat. Een volledige piramide van niveau 4 ontgrendelt een tweede kracht: Regeneratie, of level II van de primaire. Betaal met één ijzerstaaf, goudstaaf, smaragd, diamant of netherietstaaf. De straal heeft vrij zicht op de hemel nodig; gekleurd glas erop kleurt hem. Mineraalblokken mengen in de piramide mag gewoon. $mineral is alleen degene die hierboven wordt geteld.';
   }
 
   @override
@@ -36929,7 +36928,7 @@ class LNl extends L {
 
   @override
   String mcBannerNeeds(String pattern, String item) {
-    return '$pattern — vereist $item';
+    return '$pattern (vereist $item)';
   }
 
   @override
@@ -36970,7 +36969,7 @@ class LNl extends L {
 
   @override
   String get mcFwNoStars =>
-      'Geen sterren: de vuurpijl vliegt alleen — handig voor elytra-boosts.';
+      'Geen sterren: de vuurpijl vliegt alleen. Handig voor elytra-boosts.';
 
   @override
   String mcFwStarN(int number) {
@@ -37250,7 +37249,7 @@ class LNl extends L {
 
   @override
   String get mcOrgPointBody =>
-      'Kies de map met je schematics — de map \"schematics\" van Litematica, die van WorldEdit of een andere. Bestanden worden ter plekke gelezen; alleen hernoemen verandert iets op schijf.';
+      'Kies de map met je schematics: de map \"schematics\" van Litematica, die van WorldEdit of een andere. Bestanden worden ter plekke gelezen; alleen hernoemen verandert iets op schijf.';
 
   @override
   String get mcOrgSearch => 'Zoeken op naam';
@@ -37843,16 +37842,16 @@ class LNl extends L {
       'Typ &-codes, of &#RRGGBB voor hexkleuren (servers met een chatplugin; vanilla-chat kent alleen de 16 kleuren).';
 
   @override
-  String get mcColorSection => 'Paragraaftekens (§) — borden, boeken, MOTD';
+  String get mcColorSection => 'Paragraaftekens (§): borden, boeken, MOTD';
 
   @override
-  String get mcColorAmpersand => 'Ampersandcodes (&) — plugins';
+  String get mcColorAmpersand => 'Ampersandcodes (&): plugins';
 
   @override
-  String get mcColorMiniMessage => 'MiniMessage — Paper / Adventure';
+  String get mcColorMiniMessage => 'MiniMessage: Paper / Adventure';
 
   @override
-  String get mcColorJson => 'JSON-tekstcomponent — tellraw, titels';
+  String get mcColorJson => 'JSON-tekstcomponent: tellraw, titels';
 
   @override
   String get mcColorCodes => 'Kleurcodes';
@@ -37873,10 +37872,10 @@ class LNl extends L {
   String get mcColorFormatting => 'Opmaakcodes';
 
   @override
-  String get mcColorObfuscatedDetail => 'Versluierd — husselt voortdurend';
+  String get mcColorObfuscatedDetail => 'Versluierd: husselt voortdurend';
 
   @override
-  String get mcColorReset => 'Reset — terug naar gewoon wit';
+  String get mcColorReset => 'Reset: terug naar gewoon wit';
 
   @override
   String get mcColorOrderNote =>
@@ -38078,7 +38077,7 @@ class LNl extends L {
 
   @override
   String get mcPotNoEffects =>
-      'Geen effecten — het wordt een gekleurde waterfles.';
+      'Geen effecten. Het wordt een gekleurde waterfles.';
 
   @override
   String get mcPotDurationNote =>
@@ -38259,7 +38258,7 @@ class LNl extends L {
 
   @override
   String mcCmdLength(int length) {
-    return 'Commando\'s langer dan 256 tekens hebben een commandoblok nodig — de chat kapt ze af. Dit commando is $length tekens.';
+    return 'Commando\'s langer dan 256 tekens hebben een commandoblok nodig, want de chat kapt ze af. Dit commando is $length tekens.';
   }
 
   @override
@@ -38405,7 +38404,7 @@ class LNl extends L {
 
   @override
   String get mcAssetFirst600 =>
-      'De eerste 600 worden getoond — zoek om te verfijnen.';
+      'De eerste 600 worden getoond. Zoek om te verfijnen.';
 
   @override
   String get mcAssetNoSounds => 'Geen geluiden voor deze installatie';
@@ -38419,7 +38418,7 @@ class LNl extends L {
 
   @override
   String get mcAssetCannotPlay =>
-      'Dit apparaat kan .ogg hier niet afspelen — sla het op en open het in een speler.';
+      'Dit apparaat kan .ogg hier niet afspelen. Sla het op en open het in een speler.';
 
   @override
   String get mcAssetSaveOgg => 'Opslaan als .ogg';
@@ -38516,7 +38515,7 @@ class LNl extends L {
 
   @override
   String get mcEnchGenNoEffects =>
-      'Geen effecten — het betovert wel, maar doet niets.';
+      'Geen effecten. Het betovert wel, maar doet niets.';
 
   @override
   String mcEnchGenDatapackDesc(String name) {
@@ -38598,12 +38597,12 @@ class LNl extends L {
 
   @override
   String mcRecEmptySlot(String item) {
-    return 'Leeg — klik om $item te plaatsen';
+    return 'Leeg. Klik om $item te plaatsen';
   }
 
   @override
   String mcRecFilledSlot(String item) {
-    return '$item — klik nogmaals of rechtsklik om te wissen';
+    return '$item. Klik nogmaals of rechtsklik om te wissen';
   }
 
   @override
@@ -38619,7 +38618,7 @@ class LNl extends L {
   String get mcRecIngredients => 'Ingrediënten';
 
   @override
-  String get mcRecBrush => 'Penseel — klik vakken om het te plaatsen';
+  String get mcRecBrush => 'Penseel: klik op vakken om het te plaatsen';
 
   @override
   String get mcRecClear => 'Rooster wissen';
@@ -38652,7 +38651,7 @@ class LNl extends L {
   String get mcRecTab => 'Tabblad in receptenboek';
 
   @override
-  String get mcRecGroup => 'Groep (optioneel — voegt receptenboekitems samen)';
+  String get mcRecGroup => 'Groep (optioneel, voegt receptenboekitems samen)';
 
   @override
   String get mcRecDatapackDesc => 'Recept gemaakt met luma';
@@ -38660,5 +38659,326 @@ class LNl extends L {
   @override
   String mcRecNote(String command) {
     return 'Ingrediënten kunnen een item-id of een item-tag zijn (#minecraft:planks). Eigen recepten werken meteen; om er een in het receptenboek te zetten, voer je $command uit.';
+  }
+
+  @override
+  String get pluginNameTeamClipboard => 'Teamklembord';
+
+  @override
+  String get serverGateTeamClipboardTitle =>
+      'Teamklembord heeft een goedgekeurd account nodig';
+
+  @override
+  String get serverGateTeamClipboardDescription =>
+      'Het bord staat op de luma-server. Log eerst in met een goedgekeurd account; daarna kan de beheerder je aan het team toevoegen.';
+
+  @override
+  String teamClipboardSubtitle(int open, int finished) {
+    return '$open te doen · $finished afgerond';
+  }
+
+  @override
+  String get teamClipboardRoleLead => 'Leider';
+
+  @override
+  String get teamClipboardRoleMember => 'Lid';
+
+  @override
+  String get teamClipboardNewEntry => 'Nieuw item';
+
+  @override
+  String get teamClipboardSearchHint => 'Zoek in titels, uitleg en bestanden';
+
+  @override
+  String get teamClipboardFilterBugs => 'Bugs';
+
+  @override
+  String get teamClipboardFilterSuggestions => 'Voorstellen';
+
+  @override
+  String get teamClipboardFilterModels => 'Modellen';
+
+  @override
+  String get teamClipboardKindBug => 'Bug';
+
+  @override
+  String get teamClipboardKindSuggestion => 'Voorstel';
+
+  @override
+  String get teamClipboardKindModel => 'Model';
+
+  @override
+  String get teamClipboardStageIdea => 'Idee';
+
+  @override
+  String get teamClipboardStageOpen => 'Open';
+
+  @override
+  String get teamClipboardStageClaimed => 'Geclaimd';
+
+  @override
+  String get teamClipboardStageDone => 'Klaar';
+
+  @override
+  String get teamClipboardStageAdded => 'Toegevoegd';
+
+  @override
+  String get teamClipboardStageFixed => 'Opgelost';
+
+  @override
+  String get teamClipboardClosed => 'Gesloten';
+
+  @override
+  String teamClipboardClaimedBy(String name) {
+    return 'Geclaimd door $name';
+  }
+
+  @override
+  String teamClipboardByAuthor(String name) {
+    return 'door $name';
+  }
+
+  @override
+  String get teamClipboardYou => 'jou';
+
+  @override
+  String get teamClipboardFormerMember => 'oud-lid';
+
+  @override
+  String get teamClipboardSectionToDo => 'Te doen';
+
+  @override
+  String get teamClipboardSectionFinished => 'Afgerond';
+
+  @override
+  String get teamClipboardEmptyTitle => 'Het bord is leeg';
+
+  @override
+  String get teamClipboardEmptySubtitle =>
+      'Voeg de eerste bug, het eerste voorstel of model toe, zodat het team weet waar het aan moet werken.';
+
+  @override
+  String get teamClipboardSelectHint =>
+      'Kies een item om de uitleg, bestanden en chat te zien';
+
+  @override
+  String get teamClipboardErrorTitle => 'Kan het bord niet bereiken';
+
+  @override
+  String get teamClipboardRefresh => 'Vernieuwen';
+
+  @override
+  String get teamClipboardNews => 'Nieuwe activiteit';
+
+  @override
+  String get teamClipboardGateTitle => 'Wachten op toegang tot het team';
+
+  @override
+  String teamClipboardGateBody(String email) {
+    return 'Het Teamklembord is alleen op uitnodiging. Vraag de beheerder om $email toe te voegen via het beheerpaneel en controleer het daarna opnieuw.';
+  }
+
+  @override
+  String get teamClipboardGateBodyNoEmail =>
+      'Het Teamklembord is alleen op uitnodiging. Vraag de beheerder om je luma-account toe te voegen via het beheerpaneel en controleer het daarna opnieuw.';
+
+  @override
+  String get teamClipboardGateCheckAgain => 'Opnieuw controleren';
+
+  @override
+  String get teamClipboardBrief => 'Uitleg';
+
+  @override
+  String get teamClipboardNoBrief => 'Nog geen uitleg.';
+
+  @override
+  String get teamClipboardFiles => 'Bestanden';
+
+  @override
+  String get teamClipboardNoFiles =>
+      'Nog geen bestanden. Voeg hier de model-.json, de .png-texture en eventuele .mcmeta toe.';
+
+  @override
+  String get teamClipboardAddFiles => 'Bestanden toevoegen';
+
+  @override
+  String get teamClipboardDownloadAll => 'Alles downloaden';
+
+  @override
+  String get teamClipboardRemoveFile => 'Bestand verwijderen';
+
+  @override
+  String teamClipboardRemoveFileConfirm(String name) {
+    return '$name uit dit item verwijderen?';
+  }
+
+  @override
+  String teamClipboardFileBy(String size, String name) {
+    return '$size · $name';
+  }
+
+  @override
+  String teamClipboardFrames(int count) {
+    return '$count frames';
+  }
+
+  @override
+  String teamClipboardSavedTo(String path) {
+    return 'Opgeslagen in $path';
+  }
+
+  @override
+  String teamClipboardSavedFiles(int count, String path) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count bestanden opgeslagen in $path',
+      one: '1 bestand opgeslagen in $path',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get teamClipboardCouldNotLoad => 'Kan dit bestand niet laden.';
+
+  @override
+  String teamClipboardUploadFailed(String names) {
+    return 'Kon niet toevoegen: $names';
+  }
+
+  @override
+  String teamClipboardFileTooLarge(String name) {
+    return '$name is groter dan 10 MB.';
+  }
+
+  @override
+  String teamClipboardFileWrongType(String name) {
+    return '$name is geen .png-, .json- of .mcmeta-bestand.';
+  }
+
+  @override
+  String get teamClipboardChat => 'Chat';
+
+  @override
+  String get teamClipboardNoMessages =>
+      'Nog geen berichten. Begin het gesprek.';
+
+  @override
+  String get teamClipboardMessageHint => 'Schrijf een bericht…';
+
+  @override
+  String get teamClipboardSend => 'Versturen';
+
+  @override
+  String get teamClipboardThreadClosed => 'Deze draad is gesloten.';
+
+  @override
+  String get teamClipboardReopen => 'Heropenen';
+
+  @override
+  String get teamClipboardCloseThread => 'Draad sluiten';
+
+  @override
+  String get teamClipboardClaim => 'Claimen';
+
+  @override
+  String get teamClipboardUnclaim => 'Vrijgeven';
+
+  @override
+  String get teamClipboardMarkDone => 'Markeer als klaar';
+
+  @override
+  String get teamClipboardMarkAdded => 'Markeer als toegevoegd';
+
+  @override
+  String get teamClipboardMarkFixed => 'Markeer als opgelost';
+
+  @override
+  String get teamClipboardLeadOnlyAdded =>
+      'Alleen een teamleider kan dit als toegevoegd markeren.';
+
+  @override
+  String get teamClipboardEditEntry => 'Item bewerken';
+
+  @override
+  String get teamClipboardDeleteEntry => 'Item verwijderen';
+
+  @override
+  String get teamClipboardDeleteConfirmTitle => 'Dit item verwijderen?';
+
+  @override
+  String get teamClipboardDeleteConfirmBody =>
+      'De uitleg, bestanden en chat verdwijnen voor het hele team.';
+
+  @override
+  String get teamClipboardEditorNewTitle => 'Nieuw item';
+
+  @override
+  String get teamClipboardEditorKind => 'Soort';
+
+  @override
+  String get teamClipboardEditorTitleLabel => 'Titel';
+
+  @override
+  String get teamClipboardEditorTitleHint => 'bijv. Robijnerts-blok';
+
+  @override
+  String get teamClipboardEditorTitleRequired => 'Geef het een titel.';
+
+  @override
+  String get teamClipboardEditorBriefLabel => 'Uitleg';
+
+  @override
+  String get teamClipboardEditorBriefHint =>
+      'Je idee in een paar regels: wat het is en hoe het eruit moet zien of zich moet gedragen.';
+
+  @override
+  String get teamClipboardEditorFilesHint =>
+      '.png, .json en .mcmeta, tot 10 MB per bestand';
+
+  @override
+  String get teamClipboardCreate => 'Op het bord zetten';
+
+  @override
+  String teamClipboardServerError(int status) {
+    return 'Serverfout ($status).';
+  }
+
+  @override
+  String get teamClipboardMe => 'Jij';
+
+  @override
+  String teamClipboardFileEmpty(String name) {
+    return '$name is leeg.';
+  }
+
+  @override
+  String teamClipboardFileBadPng(String name) {
+    return '$name is geen geldige PNG-afbeelding.';
+  }
+
+  @override
+  String teamClipboardFileImageTooBig(String name, int width, int height) {
+    return '$name is te groot: textures mogen hoogstens $width × $height pixels zijn.';
+  }
+
+  @override
+  String teamClipboardFileNotText(String name) {
+    return '$name is geen UTF-8-tekst.';
+  }
+
+  @override
+  String teamClipboardFileBadJson(String name, int line, int column) {
+    return '$name is geen geldige JSON (regel $line, kolom $column).';
+  }
+
+  @override
+  String teamClipboardFileNotObject(String name) {
+    return '$name moet een JSON-object bevatten.';
+  }
+
+  @override
+  String teamClipboardFileTooDeep(String name, int depth) {
+    return '$name is dieper genest dan $depth niveaus.';
   }
 }

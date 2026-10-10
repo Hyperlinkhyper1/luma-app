@@ -9,6 +9,8 @@ IconData pluginIconFor(String? name) {
       return Icons.qr_code_2_rounded;
     case 'account_tree':
       return Icons.account_tree_rounded;
+    case 'content_paste':
+      return Icons.content_paste_rounded;
     case 'dashboard':
       return Icons.dashboard_rounded;
     case 'show_chart':

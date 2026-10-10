@@ -42,6 +42,7 @@ String pluginDisplayName(L t, String id, String fallback) => switch (id) {
   'smart-home' => t.pluginNameSmartHome,
   'space-colony' => t.pluginNameSpaceColony,
   'subway-builder' => t.pluginNameSubwayBuilder,
+  'team-clipboard' => t.pluginNameTeamClipboard,
   'text-library' => t.pluginNameTextLibrary,
   'transport-tracker' => t.pluginNameTransportTracker,
   'usage' => t.pluginNameUsage,

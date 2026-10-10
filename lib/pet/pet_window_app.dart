@@ -169,7 +169,7 @@ class _PetWindowAppState extends State<_PetWindowApp> with WindowListener {
     return PetScope(
       repository: _pet,
       child: MaterialApp(
-        title: L.of(context).petSettingsTitle,
+        title: currentL.petSettingsTitle,
         debugShowCheckedModeBanner: false,
         theme: LumaTheme.from(
           brightness,

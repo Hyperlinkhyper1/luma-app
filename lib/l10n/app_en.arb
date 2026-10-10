@@ -29,7 +29,7 @@
   "settingsAccentColor": "Colour",
   "settingsThemeStyle": "Theme style",
   "settingsThemeStyleDefault": "Default",
-  "settingsThemeStyleDefaultSub": "Good old luma — plain and simple, in your colour.",
+  "settingsThemeStyleDefaultSub": "Good old luma. Plain and simple, in your colour.",
   "settingsThemeStyleCoffee": "Coffee",
   "settingsThemeStyleCoffeeSub": "Warm browns, soft corners, little coffee beans floating around.",
   "settingsThemeStyleLocked": "Orbit or Nova",
@@ -83,7 +83,7 @@
   "homeFileConverterSub": "Change up images & files",
   "homeSettings": "Settings",
   "homeSettingsSub": "Colours, theme & stuff",
-  "homeNoTransactions": "Quiet here for now — add something in Finance and it'll pop up here.",
+  "homeNoTransactions": "Quiet here for now. Add something in Finance and it'll show up here.",
   "homeIncome": "In",
   "homeExpense": "Out",
   "homeAllocation": "Split",
@@ -182,7 +182,7 @@
   "petSettingsRebindSave": "Use it",
   "petSettingsName": "Name",
   "petSettingsSummon": "Open the pet now",
-  "petSettingsSummonHint": "Brings the panel up straight away — no keyboard shortcut needed.",
+  "petSettingsSummonHint": "Brings the panel up straight away, no keyboard shortcut needed.",
   "monthJan": "Jan",
   "monthFeb": "Feb",
   "monthMar": "Mar",
@@ -291,8 +291,8 @@
       }
     }
   },
-  "assistantNoLimits": "Runs on this device — no usage limits",
-  "assistantUsageUnavailable": "Usage unavailable — check your connection",
+  "assistantNoLimits": "Runs on this device, no usage limits",
+  "assistantUsageUnavailable": "Usage unavailable. Check your connection.",
   "assistantDetailedBreakdown": "See detailed breakdown",
   "assistantNoRepliesYet": "No replies in this chat yet",
   "assistantMenuUsage": "Usage",
@@ -805,7 +805,7 @@
   "textLibraryMcLetterOpen": "Click the letter to open it",
   "textLibraryMcLetterTitle": "Dear reader,",
   "textLibraryMcLetterBody": "Thank you for keeping the library. Here is a little something for your vault.",
-  "textLibraryMcLetterSign": "— The Library Post",
+  "textLibraryMcLetterSign": "The Library Post",
   "textLibraryMcLetterTake": "Take the coins",
   "textLibraryMcCoins": "{count} coins",
   "@textLibraryMcCoins": {
@@ -1009,7 +1009,7 @@
   },
   "textLibraryMcReviewTips": "To make it better:",
   "textLibraryMcReviewNoBetter": "It reads well, but it isn't better than last time, so there are no new coins.",
-  "textLibraryMcReviewSign": "— The Library Review Desk",
+  "textLibraryMcReviewSign": "The Library Review Desk",
   "textLibraryMcReviewThanks": "Thanks",
   "textLibraryMcReviewEmpty": "That book is empty.",
   "textLibraryMcReviewSignIn": "Sign in to an approved luma account to send books for review.",
@@ -1378,7 +1378,7 @@
   "accountPlanSubtitle": "What you picked and what is in it.",
   "accountFamilySubtitle": "Share your calendar with your people.",
   "accountProfilePicture": "Profile picture",
-  "accountProfilePictureNote": "Only on this device — nobody else sees it.",
+  "accountProfilePictureNote": "Only on this device. Nobody else sees it.",
   "accountChangePhoto": "Change photo",
   "accountChoosePhoto": "Choose photo",
   "accountLocalStorage": "Local storage",
@@ -1437,7 +1437,7 @@
   "familyInviteSend": "Send invite",
   "loginBarrierLabel": "Sign in",
   "loginEnterValidEmail": "Enter a valid email address.",
-  "loginPasswordTooShort": "Use at least 10 characters — this password protects your encrypted data.",
+  "loginPasswordTooShort": "Use at least 10 characters. This password protects your encrypted data.",
   "loginEnterPassword": "Enter your password.",
   "loginPasswordsMismatch": "Passwords do not match.",
   "loginEmailNotVerified": "Your email is not verified yet. We sent you a new code.",
@@ -1446,7 +1446,7 @@
   "loginSignInIncomplete": "Sign-in did not complete.",
   "loginChoosePassphrase": "Choose a passphrase.",
   "loginEnterPassphrase": "Enter your luma passphrase to unlock your data.",
-  "loginPassphraseTooShort": "Use at least 10 characters — this passphrase is what encrypts your data.",
+  "loginPassphraseTooShort": "Use at least 10 characters. This passphrase is what encrypts your data.",
   "loginPassphrasesMismatch": "Passphrases do not match.",
   "loginPasswordResetDone": "Your password was reset. Sign in with your new password.",
   "loginLinkCopied": "Link copied to your clipboard.",
@@ -1456,7 +1456,7 @@
   "loginMakeAccount": "Make your account",
   "loginSetUpLocalSync": "Set up local-only sync",
   "loginSignInSubtitle": "Sign in and grab your stuff from your other devices.",
-  "loginCreateSubtitle": "One account, every device — locked before it leaves this one.",
+  "loginCreateSubtitle": "One account for every device, locked before it leaves this one.",
   "loginLocalSubtitle": "No server, no account. Devices pair directly over your own network.",
   "loginCreateAccount": "Create account",
   "loginConfirmPassword": "Confirm password",
@@ -1467,7 +1467,7 @@
   "loginUseLumaAccount": "Use a luma account instead",
   "loginSelfHostedServer": "Self-hosted server",
   "loginContinueInBrowser": "Continue in your browser",
-  "loginOpenedInBrowser": "We opened {provider} in your browser. Finish up there, then come back — this page sorts itself out.",
+  "loginOpenedInBrowser": "We opened {provider} in your browser. Finish up there, then come back. This page will sort itself out.",
   "@loginOpenedInBrowser": {
     "placeholders": {
       "provider": {
@@ -1481,7 +1481,7 @@
   "loginCancelAndGoBack": "Cancel and go back",
   "loginOneLastThing": "One last thing",
   "loginUnlockYourData": "Unlock your data",
-  "loginNewAccountExplain": "{provider} proved who you are, but it cannot unlock your data — nothing can except a passphrase only you know. Choose one now; you will need it on every device.",
+  "loginNewAccountExplain": "{provider} proved who you are, but it can't unlock your data. Only a passphrase you know can do that. Pick one now; you'll need it on every device.",
   "@loginNewAccountExplain": {
     "placeholders": {
       "provider": {
@@ -1489,7 +1489,7 @@
       }
     }
   },
-  "loginExistingAccountExplain": "This account already exists, so {provider} signed you straight into it. Enter the luma passphrase you set up — the same one you would type to sign in with a password.",
+  "loginExistingAccountExplain": "This account already exists, so {provider} signed you straight into it. Enter the luma passphrase you set up, the same one you'd type to sign in with a password.",
   "@loginExistingAccountExplain": {
     "placeholders": {
       "provider": {
@@ -1554,7 +1554,7 @@
     }
   },
   "loginOrWithEmail": "or with your email",
-  "loginKeyWarning": "Everything is encrypted with this before it leaves the device. If you forget it you can reset it by email, but the synced copies on the server are erased — only what is still on your devices comes back.",
+  "loginKeyWarning": "Everything is encrypted with this before it leaves the device. If you forget it you can reset it by email, but the synced copies on the server get erased. Only what's still on your devices comes back.",
   "loginResetWithRecoveryKey": "Your recovery key unlocks your synced data, so it stays on the server and is re-encrypted under your new password. Every device is signed out and picks it up again with the new password.",
   "loginResetWithoutRecoveryKey": "Your synced data is locked with your old password. Without your recovery key, a reset erases the copies on the server and signs out every device. Whatever is still on your devices uploads again once they sign in with the new password.",
   "loginAgreeLegal": "By continuing you agree to our {terms} and {privacy}",
@@ -1672,7 +1672,7 @@
   "planSelectionTitle": "Choose your plan",
   "planSelectionSubtitle": "Select the plan that works best for you.",
   "planSelectionInvalidCode": "That access code is invalid.",
-  "planCreditsNotOpen": "Buying credits isn't open yet — {tokens} tokens for {price} will be available once payments are set up.",
+  "planCreditsNotOpen": "You can't buy credits yet. {tokens} tokens for {price} will be available once payments are set up.",
   "@planCreditsNotOpen": {
     "placeholders": {
       "tokens": {
@@ -1866,7 +1866,7 @@
   "pinMustBe8Digits": "PIN must be exactly 8 digits.",
   "serverGateSetUpAccount": "Set up account",
   "serverGateEnterCode": "Enter code",
-  "serverGatePendingEmail": "Your account ({email}) still needs a thumbs-up. Enter the 6-digit code we emailed you to finish signing in — until then we leave the server completely alone.",
+  "serverGatePendingEmail": "Your account ({email}) still needs a thumbs-up. Enter the 6-digit code we emailed you to finish signing in. Until then we leave the server completely alone.",
   "@serverGatePendingEmail": {
     "placeholders": {
       "email": {
@@ -1874,7 +1874,7 @@
       }
     }
   },
-  "serverGatePendingApproval": "Your account ({email}) is waiting on the server owner to say yes. Nothing for you to do in the meantime — just sign in once they have; until then we leave the server completely alone.",
+  "serverGatePendingApproval": "Your account ({email}) is waiting for the server owner to say yes. There's nothing for you to do in the meantime, just sign in once they have. Until then we leave the server completely alone.",
   "@serverGatePendingApproval": {
     "placeholders": {
       "email": {
@@ -1901,7 +1901,7 @@
   "licensePoweredByFlutter": "Powered by Flutter",
   "splashTagline": "The utility app",
   "splashStarting": "Starting luma",
-  "updateNoTestBuilds": "No updates on test builds — this one is handmade.",
+  "updateNoTestBuilds": "No updates on test builds. This one is handmade.",
   "updateUpToDate": "You are all caught up ({version}). Nice.",
   "@updateUpToDate": {
     "placeholders": {
@@ -1918,7 +1918,7 @@
       }
     }
   },
-  "updateNewVersionTitle": "There is a new luma — {version}",
+  "updateNewVersionTitle": "There's a new luma: {version}",
   "@updateNewVersionTitle": {
     "placeholders": {
       "version": {
@@ -1948,7 +1948,7 @@
   "updateLater": "Later",
   "updateInstallIt": "Install it",
   "updateFailedGeneric": "Update failed. Please try again later.",
-  "updateAndroidBlocked": "Android blocked the install — allow \"Install unknown apps\" for luma in system settings, then try again.",
+  "updateAndroidBlocked": "Android blocked the install. Allow \"Install unknown apps\" for luma in system settings, then try again.",
   "updateDownloadFailed": "Download failed. Check the network and update source.",
   "updateServerHttpError": "Server returned HTTP {code} for the installer.",
   "@updateServerHttpError": {
@@ -1975,7 +1975,7 @@
     }
   },
   "updateTitle": "Updating luma",
-  "updateDontClose": "Don't close luma — it will relaunch on its own.",
+  "updateDontClose": "Don't close luma. It will relaunch on its own.",
   "updateStageDownloading": "Downloading update",
   "updateStageVerifying": "Verifying files",
   "updateStagePreparing": "Preparing installer",
@@ -2109,7 +2109,7 @@
   "aiSettingsSharedKeyAvailable": "Shared key available from your sync server",
   "aiSettingsHintReplaceKey": "Enter a new key to replace it",
   "aiSettingsHintOverrideSharedKey": "Enter your own key to override the shared one",
-  "aiSettingsSharedKeyExplanation": "Your sync server's admin has configured a shared {provider} key, so you don't need one — chats are relayed through your sync server, which holds the key; it's never sent to this device. Enter your own key above to bypass the server and talk to {provider} directly instead.",
+  "aiSettingsSharedKeyExplanation": "Your sync server's admin has set up a shared {provider} key, so you don't need one. Chats are relayed through your sync server, which holds the key; it's never sent to this device. Enter your own key above if you'd rather skip the server and talk to {provider} directly.",
   "@aiSettingsSharedKeyExplanation": {
     "placeholders": {
       "provider": {
@@ -2117,7 +2117,7 @@
       }
     }
   },
-  "aiSettingsLocalKeyExplanation": "Stored locally on this device only, encrypted at rest. Sent directly to {provider} when you chat — never to any luma server.",
+  "aiSettingsLocalKeyExplanation": "Stored locally on this device only, encrypted at rest. It goes straight to {provider} when you chat and never to a luma server.",
   "@aiSettingsLocalKeyExplanation": {
     "placeholders": {
       "provider": {
@@ -2126,7 +2126,7 @@
     }
   },
   "assistantNeedsAccountTitle": "Create an account to continue",
-  "assistantNeedsAccountBody": "Set up a luma account — just an email and password, no server required — before chatting with the assistant.",
+  "assistantNeedsAccountBody": "Set up a luma account before chatting with the assistant. It's just an email and password, no server required.",
   "assistantSetUpAccount": "Set up account",
   "assistantRenameTitle": "Rename conversation",
   "assistantDeleteTitle": "Delete \"{title}\"?",
@@ -2186,10 +2186,10 @@
     }
   },
   "assistantModelUnavailableTitle": "This model isn't available yet",
-  "assistantModelUnavailableBody": "Add your own API key in Settings to use it — stored locally on this device only — or switch to another model below.",
+  "assistantModelUnavailableBody": "Add your own API key in Settings to use it (it's stored only on this device), or pick another model below.",
   "assistantOpenSettings": "Open Settings",
   "assistantIAddedKey": "I added a key",
-  "assistantNoApiKeyYet": "No {provider} API key saved yet — add one in Settings.",
+  "assistantNoApiKeyYet": "No {provider} API key saved yet. Add one in Settings.",
   "@assistantNoApiKeyYet": {
     "placeholders": {
       "provider": {
@@ -2201,8 +2201,8 @@
   "assistantResearchAgentsEmpty": "The research agents came back empty.",
   "assistantNewConversation": "New conversation",
   "aiClientNoReply": "I couldn't come up with a reply for that.",
-  "aiClientTooManySteps": "I couldn't finish that — too many tool steps.",
-  "aiClientUnreachable": "Couldn't reach {provider} — check your connection.\n({error})",
+  "aiClientTooManySteps": "I couldn't finish that, it took too many tool steps.",
+  "aiClientUnreachable": "Couldn't reach {provider}. Check your connection.\n({error})",
   "@aiClientUnreachable": {
     "placeholders": {
       "provider": {
@@ -2213,7 +2213,7 @@
       }
     }
   },
-  "aiClientNoConnection": "Couldn't reach {provider} — check your connection.",
+  "aiClientNoConnection": "Couldn't reach {provider}. Check your connection.",
   "@aiClientNoConnection": {
     "placeholders": {
       "provider": {
@@ -2229,7 +2229,7 @@
       }
     }
   },
-  "aiClientRateLimited": "Too many requests — try again shortly.",
+  "aiClientRateLimited": "Too many requests. Try again in a moment.",
   "aiClientApiError": "{provider} returned an error ({status}).",
   "@aiClientApiError": {
     "placeholders": {
@@ -2355,7 +2355,7 @@
   "converterPresetMediumHint": "Most readers will refuse to open it.",
   "converterPresetHeavyHint": "Thoroughly broken.",
   "converterPresetTotalHint": "Nothing recognisable is left.",
-  "converterCorruptTooSmall": "That file is only {size} bytes — too small to corrupt in any interesting way.",
+  "converterCorruptTooSmall": "That file is only {size} bytes, too small to corrupt in any interesting way.",
   "@converterCorruptTooSmall": {
     "placeholders": {
       "size": {
@@ -2364,7 +2364,7 @@
     }
   },
   "converterCorruptPickStyle": "Pick at least one kind of damage.",
-  "converterCorruptStyleSkipped": "{style} was skipped — the file is too small for it.",
+  "converterCorruptStyleSkipped": "{style} was skipped because the file is too small for it.",
   "@converterCorruptStyleSkipped": {
     "placeholders": {
       "style": {
@@ -2493,10 +2493,10 @@
       }
     }
   },
-  "converterRepairChecksumExact": "The result matches the original checksum exactly — this is the file that was corrupted, byte for byte.",
+  "converterRepairChecksumExact": "The result matches the original checksum exactly. This is the file that was corrupted, byte for byte.",
   "converterRepairChecksumChanged": "The rebuilt file does not match the checksum recorded when it was corrupted, so something else changed it after the fact.",
   "converterRepairFormatRecipe": "Restored from recipe",
-  "converterRepairEmpty": "That file is empty — there is nothing in it to repair.",
+  "converterRepairEmpty": "That file is empty, so there's nothing in it to repair.",
   "converterRepairFoundHeader": "Found the {label} header {size} into the file and dropped everything before it.",
   "@converterRepairFoundHeader": {
     "placeholders": {
@@ -2563,7 +2563,7 @@
     }
   },
   "converterRepairPaddingOnly": "Nothing but padding was left once the zero-fill came off.",
-  "converterRepairNothingChanged": "Nothing needed changing — the structure already checks out.",
+  "converterRepairNothingChanged": "Nothing needed changing. The structure already checks out.",
   "repairBmpTooShort": "A BMP needs at least a 14-byte file header and a DIB header.",
   "repairBmpMagicRewritten": "Rewrote the \"BM\" magic bytes.",
   "repairBmpSizeCorrected": "Corrected the file-size field from {declared} to {actual}.",
@@ -2711,7 +2711,7 @@
       }
     }
   },
-  "repairJpegNoSegments": "No readable JPEG segments survived — the quantisation and Huffman tables are gone, and those cannot be guessed.",
+  "repairJpegNoSegments": "No readable JPEG segments survived. The quantisation and Huffman tables are gone, and those can't be guessed.",
   "repairJpegNoScan": "The file never reaches its image scan (SOS), so there is header but no picture to decode.",
   "repairJpegEoiAppended": "Appended the missing FFD9 end-of-image marker.",
   "repairJpegTrailingTrimmed": "Trimmed {size} of trailing junk after the end marker.",
@@ -2722,7 +2722,7 @@
       }
     }
   },
-  "repairMp3TagTooBig": "The ID3 tag claims {size} but the file is smaller — dropped the tag and kept the audio.",
+  "repairMp3TagTooBig": "The ID3 tag claims {size} but the file is smaller, so the tag was dropped and the audio kept.",
   "@repairMp3TagTooBig": {
     "placeholders": {
       "size": {
@@ -2782,7 +2782,7 @@
     }
   },
   "repairMp4NoFtyp": "There is no ftyp box, so the exact flavour of MP4 is unknown. The box tree was still checked.",
-  "repairMp4UnreadableBox": "Unreadable box name at {offset} — stopping the walk there.",
+  "repairMp4UnreadableBox": "Unreadable box name at {offset}. Stopped walking the file there.",
   "@repairMp4UnreadableBox": {
     "placeholders": {
       "offset": {
@@ -2790,7 +2790,7 @@
       }
     }
   },
-  "repairMp4BoxClamped": "The \"{type}\" box at {offset} claimed {claimed} but only {available} follows — clamped it to fit.",
+  "repairMp4BoxClamped": "The \"{type}\" box at {offset} claimed {claimed} but only {available} follows. Clamped it to fit.",
   "@repairMp4BoxClamped": {
     "placeholders": {
       "type": {
@@ -2823,7 +2823,7 @@
       }
     }
   },
-  "repairMp4NoMoov": "There is no moov box. That box is the index of every video and audio sample in the file, and without it the media data cannot be played back — recovering it needs an undamaged file recorded by the same device.",
+  "repairMp4NoMoov": "There is no moov box. That box indexes every video and audio sample in the file, and without it the media data can't be played back. Getting it back needs an undamaged file recorded by the same device.",
   "repairMp4NoMdat": "No mdat box was found, so there may be no media data left.",
   "repairMp4ClampExplain": "Clamping a box size keeps readers from walking off the end; it does not bring back what was cut off.",
   "repairMp4TailTrimmed": "Trimmed {size} of unreadable tail.",
@@ -2879,10 +2879,10 @@
     }
   },
   "repairPdfXrefRebuilt": "Rebuilt the cross-reference table and appended a fresh trailer.",
-  "repairPdfXrefFromScratch": "Built a cross-reference table and trailer from scratch — the file had neither.",
+  "repairPdfXrefFromScratch": "Built a cross-reference table and trailer from scratch, since the file had neither.",
   "repairPngTooShort": "The file is too short to be a PNG at all.",
   "repairPngSignatureRewritten": "Rewrote the 8-byte PNG signature.",
-  "repairPngUnreadableChunk": "Unreadable chunk name at {offset} — stopping the walk there.",
+  "repairPngUnreadableChunk": "Unreadable chunk name at {offset}. Stopped walking the file there.",
   "@repairPngUnreadableChunk": {
     "placeholders": {
       "offset": {
@@ -2905,7 +2905,7 @@
     }
   },
   "repairPngNoIhdr": "No IHDR header chunk survived, so the image size and colour type are gone. Nothing can rebuild those.",
-  "repairPngCrcRecomputed": "{count, plural, =1{Recomputed 1 bad chunk checksum — the pixel data behind it may still be wrong, but readers will stop rejecting the file outright.} other{Recomputed {count} bad chunk checksums — the pixel data behind them may still be wrong, but readers will stop rejecting the file outright.}}",
+  "repairPngCrcRecomputed": "{count, plural, =1{Recomputed 1 bad chunk checksum. The pixel data behind it may still be wrong, but readers will stop rejecting the file outright.} other{Recomputed {count} bad chunk checksums. The pixel data behind them may still be wrong, but readers will stop rejecting the file outright.}}",
   "@repairPngCrcRecomputed": {
     "placeholders": {
       "count": {
@@ -2953,7 +2953,7 @@
       }
     }
   },
-  "repairRiffUnreadableChunk": "Unreadable chunk name at {offset} — stopping there.",
+  "repairRiffUnreadableChunk": "Unreadable chunk name at {offset}. Stopped there.",
   "@repairRiffUnreadableChunk": {
     "placeholders": {
       "offset": {
@@ -2961,7 +2961,7 @@
       }
     }
   },
-  "repairRiffChunkClamped": "The \"{id}\" chunk claimed {claimed} but only {available} is present — shortened it to match.",
+  "repairRiffChunkClamped": "The \"{id}\" chunk claimed {claimed} but only {available} is there. Shortened it to match.",
   "@repairRiffChunkClamped": {
     "placeholders": {
       "id": {
@@ -2995,7 +2995,7 @@
       }
     }
   },
-  "repairZipNoEntries": "No recoverable entries were found — every local file header is gone, so there is nothing left to rebuild the archive from.",
+  "repairZipNoEntries": "No recoverable entries were found. Every local file header is gone, so there's nothing left to rebuild the archive from.",
   "repairZipDamagedEntries": "{count, plural, =1{1 entry was damaged beyond use and left out of the rebuilt archive.} other{{count} entries were damaged beyond use and left out of the rebuilt archive.}}",
   "@repairZipDamagedEntries": {
     "placeholders": {
@@ -3020,7 +3020,7 @@
       }
     }
   },
-  "repairZipUndecompressable": "\"{name}\" could not be decompressed at all — dropped.",
+  "repairZipUndecompressable": "\"{name}\" couldn't be decompressed at all, so it was dropped.",
   "@repairZipUndecompressable": {
     "placeholders": {
       "name": {
@@ -3039,7 +3039,7 @@
       }
     }
   },
-  "repairZipChecksumMismatch": "\"{name}\" does not match its checksum — the contents came out damaged, but the entry was kept so you can see what is left of it.",
+  "repairZipChecksumMismatch": "\"{name}\" doesn't match its checksum. The contents came out damaged, but the entry was kept so you can see what's left of it.",
   "@repairZipChecksumMismatch": {
     "placeholders": {
       "name": {
@@ -3095,7 +3095,7 @@
   "converterReplaceUnsupported": "Replacing files is not supported on this platform.",
   "converterReplaceUnsupportedWeb": "Replacing files is not supported on the web.",
   "downscalerCouldNotRead": "Could not read this image.",
-  "converterImageCouldNotRead": "Could not read this image — it may be corrupt or unsupported.",
+  "converterImageCouldNotRead": "Couldn't read this image. It may be corrupt or unsupported.",
   "ffmpegInstallDesktopOnly": "Automatic install is only available on Windows. Please add ffmpeg to your PATH manually.",
   "ffmpegDownloadFailed": "Download failed (HTTP {status}). Check your connection and try again.",
   "@ffmpegDownloadFailed": {
@@ -3423,7 +3423,7 @@
   "audioEditorPickPrompt": "Tap to pick some audio",
   "audioEditorEditAnother": "Edit another",
   "audioEditorReadingWaveform": "Reading audio & building waveform…",
-  "audioEditorNoFilePath": "Could not read the file path — editing needs the desktop app.",
+  "audioEditorNoFilePath": "Couldn't read the file path. Editing needs the desktop app.",
   "audioEditorCannotRead": "Could not read this audio file.",
   "audioEditorLoadFailed": "Could not load this file: {error}",
   "@audioEditorLoadFailed": {
@@ -3433,7 +3433,7 @@
       }
     }
   },
-  "audioEditorEverythingCut": "Everything has been cut — remove a cut first.",
+  "audioEditorEverythingCut": "Everything has been cut. Remove a cut first.",
   "audioEditorPreviewDesktopOnly": "Preview playback is only available in the desktop app.",
   "audioEditorPreviewFailed": "Could not play the preview: {error}",
   "@audioEditorPreviewFailed": {
@@ -3589,7 +3589,7 @@
   "downscalerPickFormats": "PNG or JPEG",
   "downscalerOptimizeAnother": "Optimize another",
   "downscalerReadFailed": "Could not read the selected file.",
-  "downscalerDecodeFailed": "Could not read this image — it may be corrupt or unsupported.",
+  "downscalerDecodeFailed": "Couldn't read this image. It may be corrupt or unsupported.",
   "downscalerEstimateFailed": "Could not estimate size: {error}",
   "@downscalerEstimateFailed": {
     "placeholders": {
@@ -3649,15 +3649,15 @@
   "downscalerStripMetadataDesc": "Remove the embedded ICC profile, EXIF and text chunks. No visible change.",
   "downscalerRemoveAlphaTitle": "Remove alpha channel",
   "downscalerRemoveAlphaDesc": "Drop the transparency channel. Only offered when the image is fully opaque, so it is lossless.",
-  "downscalerRemoveAlphaDisabled": "Unavailable — this image either has no alpha channel or uses real transparency.",
+  "downscalerRemoveAlphaDisabled": "Unavailable: this image either has no alpha channel or uses real transparency.",
   "downscalerTrimTitle": "Trim transparent borders",
   "downscalerTrimDesc": "Crop away fully transparent edges around the image.",
-  "downscalerTrimDisabled": "Unavailable — no transparent border to trim.",
+  "downscalerTrimDisabled": "Unavailable: there's no transparent border to trim.",
   "downscalerPngRecompressTitle": "PNG lossless re-compress",
   "downscalerPngRecompressDesc": "Re-encode the PNG at maximum compression. Safe, no visible change.",
   "downscalerToWebpTitle": "Convert to WebP",
   "downscalerToWebpDesc": "Encode the result as WebP, which is often much smaller than PNG.",
-  "downscalerToWebpDisabled": "Unavailable — WebP needs ffmpeg (desktop app only).",
+  "downscalerToWebpDisabled": "Unavailable: WebP needs ffmpeg (desktop app only).",
   "convFileReadFailed": "Could not read the selected file.",
   "convTapToPickFile": "Tap to pick a file",
   "convOtherSubtitle": "Odd jobs that fit nowhere else",
@@ -3667,12 +3667,12 @@
   "convOtherBadgeDamage": "DAMAGE",
   "convOtherBadgeRepair": "REPAIR",
   "convOtherCorruptor": "File corruptor",
-  "convOtherCorruptorSub": "Break a file on purpose — fix it later, or not",
+  "convOtherCorruptorSub": "Break a file on purpose, then fix it later (or don't)",
   "convOtherFixer": "File fixer",
   "convOtherFixerSub": "Unbreak a file, or patch up a broken one",
   "convOtherFooter": "The schematic tool converts any of the five block formats into any other and shows the build in 3D before you save it. The corruptor and fixer are a pair: corrupt with a recipe and the fixer rebuilds the original byte for byte, or point the fixer at any damaged file and it rebuilds what structure it can.",
   "convCorruptorSubtitle": "Break a file on purpose, and keep the key to unbreak it",
-  "convCorruptPickSubtitle": "Any file at all — the original is never touched",
+  "convCorruptPickSubtitle": "Any file at all. The original is never touched.",
   "convCorruptDamageLabel": "Damage",
   "convCorruptPickMany": "Pick one or more",
   "convCorruptHowHard": "How hard",
@@ -3686,10 +3686,10 @@
   },
   "convCorruptNewSeed": "New seed",
   "convCorruptButton": "Corrupt file",
-  "convCorruptNoRecipeWarning": "No recovery recipe will be written. Nothing — including luma — will be able to undo this.",
+  "convCorruptNoRecipeWarning": "No recovery recipe will be written. Nothing, not even luma, will be able to undo this.",
   "convCorruptSaveCorrupted": "Save corrupted file",
   "convCorruptDownloadCorrupted": "Download corrupted file",
-  "convCorruptKeepRecipe": "Keep the recipe somewhere safe — it is the only thing that can undo this.",
+  "convCorruptKeepRecipe": "Keep the recipe somewhere safe. It's the only thing that can undo this.",
   "convCorruptSaveRecipe": "Save .lumafix recipe",
   "convCorruptDownloadRecipe": "Download .lumafix recipe",
   "convCorruptAnother": "Corrupt another file",
@@ -3787,12 +3787,12 @@
       }
     }
   },
-  "convFixStructuralWarning": "A structural repair puts the container back together. It cannot invent content that was overwritten — check the result before you rely on it.",
+  "convFixStructuralWarning": "A structural repair puts the container back together. It can't invent content that was overwritten, so check the result before you rely on it.",
   "convMediaAudioTitle": "Audio converter",
   "convMediaAudioSubtitle": "Convert between MP3, OGG, FLAC, M4A, WAV and AAC",
   "convMediaVideoTitle": "Video converter",
   "convMediaVideoSubtitle": "Convert between MP4, MOV, WEBM, OGV, MPG, M4V (or to M4A)",
-  "convMediaNoFilePath": "Could not read the file path — conversion needs the desktop app.",
+  "convMediaNoFilePath": "Couldn't read the file path. Conversion needs the desktop app.",
   "convMediaConvertFailed": "Something went wrong while converting: {error}",
   "@convMediaConvertFailed": {
     "placeholders": {
@@ -3858,7 +3858,7 @@
   "convImgEditNotSet": "Not set",
   "pictureConvUnsupported": "That file is not a supported image (PNG, JPG, BMP, TIFF, ICO, SVG or OIP).",
   "pictureConvSubtitle": "Convert between PNG, JPG, BMP, TIFF, ICO, SVG and OIP",
-  "pictureConvSvgVector": "SVG is vector — it will be rasterized at a crisp size before converting.",
+  "pictureConvSvgVector": "SVG is a vector format, so it gets rasterized at a crisp size before converting.",
   "pictureConvConvertDownload": "Convert & download",
   "schemConvTitle": "Minecraft schematics",
   "schemConvSubtitle": "Convert between bp, schem, litematic, schematic, nbt and mcstructure",
@@ -3899,7 +3899,7 @@
       }
     }
   },
-  "schemViewerEmpty": "Nothing to show — this build is all air.",
+  "schemViewerEmpty": "Nothing to show. This build is all air.",
   "schemViewerSemantics": "3D preview of the build, {width} by {height} by {length} blocks. Drag to rotate, or use the rotate and zoom buttons below.",
   "@schemViewerSemantics": {
     "placeholders": {
@@ -3914,7 +3914,7 @@
       }
     }
   },
-  "schemViewerSimplified": "This build is too large to draw block-for-block, so the preview is simplified {stride}× — the converted file keeps every block.",
+  "schemViewerSimplified": "This build is too big to draw block by block, so the preview is simplified {stride}×. The converted file still keeps every block.",
   "@schemViewerSimplified": {
     "placeholders": {
       "stride": {
@@ -3947,7 +3947,7 @@
       }
     }
   },
-  "schemViewerFlatColours": "Flat colours — no Minecraft found. Download the textures from Mojang (~{size}) or use your own copy.",
+  "schemViewerFlatColours": "Flat colours, since no Minecraft install was found. Download the textures from Mojang (~{size}) or use your own copy.",
   "@schemViewerFlatColours": {
     "placeholders": {
       "size": {
@@ -3983,8 +3983,8 @@
   "schemViewerZoomOut": "Zoom out",
   "schemViewerZoomIn": "Zoom in",
   "schemViewerResetView": "Reset the view",
-  "vidDownNoPath": "Could not read the file path — video downscaling needs the desktop app.",
-  "vidDownProbeFailed": "Could not read this video — it may be unsupported or ffmpeg is missing.",
+  "vidDownNoPath": "Couldn't read the file path. Video downscaling needs the desktop app.",
+  "vidDownProbeFailed": "Couldn't read this video. It may be unsupported, or ffmpeg is missing.",
   "vidDownEstimateFailed": "Could not estimate size: {error}",
   "@vidDownEstimateFailed": {
     "placeholders": {
@@ -4022,16 +4022,16 @@
   "vidDownFpsTitle": "Frame rate cap",
   "vidDownFpsBody": "Limit frames per second (e.g. 60 → 30). Invisible for most footage and cuts size noticeably.",
   "vidDownH265Title": "Re-encode to H.265",
-  "vidDownH265Body": "Use the newer HEVC codec — roughly 40–50% smaller than H.264 at the same quality, but slower to encode and less compatible with old players.",
+  "vidDownH265Body": "Use the newer HEVC codec. It's roughly 40–50% smaller than H.264 at the same quality, but slower to encode and less compatible with old players.",
   "vidDownAudioBitrateTitle": "Reduce audio bitrate",
   "vidDownAudioBitrateBody": "Re-encode the soundtrack at a lower bitrate (e.g. 96 kbps).",
-  "vidDownNoAudio": "Unavailable — this video has no audio track.",
+  "vidDownNoAudio": "Unavailable: this video has no audio track.",
   "vidDownRemoveAudioTitle": "Remove audio track",
-  "vidDownRemoveAudioBody": "Drop audio entirely — ideal for screen recordings and silent clips.",
+  "vidDownRemoveAudioBody": "Drop the audio entirely. Good for screen recordings and silent clips.",
   "vidDownStripTitle": "Strip metadata",
   "vidDownStripBody": "Remove embedded metadata and chapter markers. No visible change.",
   "vidDownWebmTitle": "Convert to WebM (VP9)",
-  "vidDownWebmBody": "Re-encode to the VP9/WebM codec — often smaller than H.264 and great for the web. Slower to encode; outputs a .webm file.",
+  "vidDownWebmBody": "Re-encode to VP9/WebM. Often smaller than H.264 and great for the web, but slower to encode. Outputs a .webm file.",
   "vidDownSmaller": "≈ {percent}% smaller (saves {saved})",
   "@vidDownSmaller": {
     "placeholders": {
@@ -4051,7 +4051,7 @@
       }
     }
   },
-  "vidDownSampleNote": "Estimated from a {seconds}s sample — the final size may vary.",
+  "vidDownSampleNote": "Estimated from a {seconds}s sample, so the final size may vary.",
   "@vidDownSampleNote": {
     "placeholders": {
       "seconds": {
@@ -4494,11 +4494,11 @@
   "passwordsCopyEmail": "Copy email",
   "passwordsCopyUsername": "Copy username",
   "passwordsCopyTotp": "Copy 2FA code",
-  "passwordsDecryptFailed": "⚠ Could not decrypt — data corrupt or key file changed",
+  "passwordsDecryptFailed": "⚠ Couldn't decrypt. The data is corrupt or the key file changed.",
   "passwordsInvalidSecret": "Invalid secret",
   "passwordsPhone": "Phone",
   "passwordsInfo": "Info",
-  "passwordsBreachedWarning": "This password was found in a known breach — change it where you use it.",
+  "passwordsBreachedWarning": "This password showed up in a known breach. Change it wherever you use it.",
   "nativeWebviewNoHost": "This build has no native webview host.",
   "accountOverviewPasteTokenFirst": "Paste a personal access token first.",
   "accountOverviewStageIdle": "Idle",
@@ -4568,7 +4568,7 @@
   "accountOverviewBlurbSpotifyStats": "Top music, recent plays, library",
   "accountOverviewConnected": "Connected",
   "accountOverviewNotSetUp": "Not set up",
-  "accountOverviewServiceTooltip": "{service} — {status}",
+  "accountOverviewServiceTooltip": "{service}: {status}",
   "@accountOverviewServiceTooltip": {
     "placeholders": {
       "service": {
@@ -4587,7 +4587,7 @@
       }
     }
   },
-  "accountOverviewSectionTooltip": "{label} — {blurb}",
+  "accountOverviewSectionTooltip": "{label}: {blurb}",
   "@accountOverviewSectionTooltip": {
     "placeholders": {
       "label": {
@@ -4624,11 +4624,11 @@
   },
   "accountOverviewAccountSettings": "Account settings",
   "accountOverviewConnectGithubTitle": "Connect your GitHub account",
-  "accountOverviewConnectGithubSubtitle": "See your commits, stars, downloads, repositories, issues and workflow runs in one place — plus your Copilot, storage and compute allowances.",
+  "accountOverviewConnectGithubSubtitle": "See your commits, stars, downloads, repositories, issues and workflow runs in one place, plus your Copilot, storage and compute allowances.",
   "accountOverviewConnectGithubButton": "Connect GitHub",
   "accountOverviewGithubPrivacy": "luma stores your personal access token encrypted on this device and talks to api.github.com directly. Nothing about your GitHub account is sent to a luma server, and no account is needed to use this plugin.",
   "accountOverviewConnectYoutubeTitle": "Connect your YouTube channel",
-  "accountOverviewConnectYoutubeSubtitle": "See your subscribers, views, recent uploads and deep analytics — watch time, traffic sources and subscriber trends — in one place.",
+  "accountOverviewConnectYoutubeSubtitle": "See your subscribers, views, recent uploads and deeper analytics (watch time, traffic sources, subscriber trends) in one place.",
   "accountOverviewConnectYoutubeButton": "Connect YouTube",
   "accountOverviewYoutubePrivacy": "luma stores your Google OAuth credentials encrypted on this device and talks to Google directly. Nothing about your account is sent to a luma server, and no luma account is needed to use this plugin.",
   "accountOverviewGithubRateLimited": "GitHub rate limit reached. Try again shortly.",
@@ -5341,7 +5341,7 @@
       }
     }
   },
-  "ghUsageStorageSummed": "Summed directly from every private repository's Actions artifacts — GitHub has no API for Packages storage, so that is not included.",
+  "ghUsageStorageSummed": "Added up from every private repository's Actions artifacts. GitHub has no API for Packages storage, so that isn't included.",
   "ghUsagePackagesBandwidth": "Packages bandwidth",
   "ghUsageWorkflowCompute": "Workflow compute",
   "ghUsageActionsSubtitle": "GitHub Actions minutes",
@@ -5506,7 +5506,7 @@
   "mcStateNotSetUp": "Not set up",
   "mcStateConnected": "Connected",
   "mcStateUnavailable": "Unavailable",
-  "mcPmcKeptSeparate": "Kept separate — PMC counts views, and its skins, blogs and builds are not mods.",
+  "mcPmcKeptSeparate": "Kept separate, because PMC counts views, and its skins, blogs and builds aren't mods.",
   "mcPmcAddUsername": "Add your Planet Minecraft username to include it.",
   "mcPmcApproximate": "Planet Minecraft rounds views and downloads above a thousand on listing pages (“1.1k”), so these totals are approximate. Diamonds and favourites are exact.",
   "mcPmcViewsDownloadsOverTime": "Views and downloads over time",
@@ -5550,7 +5550,7 @@
     }
   },
   "mcPmcViews": "PMC views",
-  "mcPmcApproximateSubtitle": "Approximate — PMC rounds figures above a thousand",
+  "mcPmcApproximateSubtitle": "Approximate, since PMC rounds anything over a thousand",
   "mcPmcDownloads": "PMC downloads",
   "mcSinceDate": "since {date}",
   "@mcSinceDate": {
@@ -5561,28 +5561,28 @@
     }
   },
   "mcSetupTitle": "Track your Minecraft content",
-  "mcSetupSubtitle": "Pull CurseForge, Modrinth and Planet Minecraft into one dashboard — downloads, followers, views and trends over time.",
-  "mcReqModrinthTitle": "Modrinth — username only",
+  "mcSetupSubtitle": "Pull CurseForge, Modrinth and Planet Minecraft into one dashboard: downloads, followers, views and trends over time.",
+  "mcReqModrinthTitle": "Modrinth (username only)",
   "mcReqModrinthBody": "Totals are public. A token is optional and only unlocks real download history.",
-  "mcReqCurseforgeTitle": "CurseForge — API key required",
+  "mcReqCurseforgeTitle": "CurseForge (API key required)",
   "mcReqCurseforgeBody": "CurseForge serves nothing anonymously. Add a key plus either your numeric author id or individual project links.",
-  "mcReqPmcTitle": "Planet Minecraft — username only",
+  "mcReqPmcTitle": "Planet Minecraft (username only)",
   "mcReqPmcBody": "PMC has no API, so luma reads your public profile in an embedded browser. Windows and Android only.",
   "mcSetupPlatformsTitle": "Minecraft platforms",
-  "mcSetupModrinthNote": "Public — a username is all it takes.",
+  "mcSetupModrinthNote": "Public, so a username is all it takes.",
   "mcSetupModrinthUsername": "Modrinth username",
   "mcSetupModrinthUsernameHint": "e.g. jellysquid3",
   "mcSetupModrinthToken": "Access token (optional)",
   "mcSetupModrinthTokenHelper": "Only needed for real download history. Without it, luma grows the graph itself from daily snapshots.",
   "mcSetupModrinthTokenLink": "Modrinth token settings",
-  "mcSetupCurseNote": "Needs an API key — CurseForge serves nothing without one.",
+  "mcSetupCurseNote": "Needs an API key. CurseForge won't serve anything without one.",
   "mcSetupCurseKey": "CurseForge API key",
   "mcSetupCurseKeyHint": "x-api-key from the Studios console",
   "mcSetupCurseKeysLink": "CurseForge API keys",
   "mcSetupTestingKey": "Testing…",
   "mcSetupTestKey": "Test key",
   "mcSetupEnterKeyFirst": "Enter a key first.",
-  "mcSetupKeyWorks": "Key works — CurseForge answered HTTP 200.",
+  "mcSetupKeyWorks": "Key works. CurseForge answered HTTP 200.",
   "mcSetupAuthorId": "Author id (optional)",
   "mcSetupAuthorIdHint": "numeric id, e.g. 123456",
   "mcSetupAuthorIdHelper": "CurseForge filters by numeric id and offers no username lookup. Leave it blank and track projects individually instead.",
@@ -5606,14 +5606,14 @@
     }
   },
   "mcSetupCurseConsole": "CurseForge console",
-  "mcSetupPmcNote": "No API — read from your public profile in an embedded browser.",
+  "mcSetupPmcNote": "There's no API, so it's read from your public profile in an embedded browser.",
   "mcSetupPmcUsername": "Planet Minecraft username",
   "mcSetupPmcUsernameHint": "e.g. cyprezz",
   "mcSetupPmcUnsupported": "This platform has no embedded browser engine, so Planet Minecraft cannot be read here. Windows and Android can.",
   "mcSetupPrivacy": "Every key is encrypted on this device and sent only to the platform it belongs to. None of it reaches a luma server.",
   "mcSetupDisconnectAll": "Disconnect all",
   "mcSetupDisconnectTitle": "Disconnect every platform?",
-  "mcSetupDisconnectBody": "The stored keys, the cached numbers and the download history luma has been recording are all deleted from this device. The history cannot be re-fetched — CurseForge and Planet Minecraft publish no past data.",
+  "mcSetupDisconnectBody": "The stored keys, the cached numbers and the download history luma has been recording are all deleted from this device. The history can't be fetched again, because CurseForge and Planet Minecraft don't publish past data.",
   "accountOverviewKeepIt": "Keep it",
   "accountOverviewDisconnect": "Disconnect",
   "accountOverviewOneTimeSetup": "One-time setup",
@@ -5930,7 +5930,7 @@
       }
     }
   },
-  "aiDetectorDisclaimer": "Heuristic style analysis — arithmetic on sentence lengths and word choices, not proof of anything. Formal human writing can look machine-like; edited machine output can look human. A named verdict rests on a signature the text carries itself, and a signature can be stripped or forged. The statistics run on this device. Signed in, the text is also sent to the luma server for an AI model review.",
+  "aiDetectorDisclaimer": "Heuristic style analysis: arithmetic on sentence lengths and word choices, not proof of anything. Formal human writing can look machine-like, and edited machine output can look human. A named verdict rests on a signature the text carries itself, and a signature can be stripped or forged. The statistics run on this device. If you're signed in, the text is also sent to the luma server for an AI model review.",
   "aiDetectorInputTitle": "Review a piece of writing",
   "aiDetectorInputSubtitle": "Style statistics plus a Claude watermark scan.",
   "aiDetectorOnDevice": "On device",
@@ -5953,8 +5953,8 @@
       }
     }
   },
-  "aiDetectorHint": "Paste the text you want checked — an essay, an email, a product review…",
-  "aiDetectorWordsShort": "{words} of {minWords} words — style statistics need a bit more to work on.",
+  "aiDetectorHint": "Paste the text you want checked: an essay, an email, a product review…",
+  "aiDetectorWordsShort": "{words} of {minWords} words. The style statistics need a bit more to work with.",
   "@aiDetectorWordsShort": {
     "placeholders": {
       "words": {
@@ -5987,7 +5987,7 @@
     }
   },
   "aiDetectorWatermarkMatch": "Watermark match",
-  "aiDetectorSummarySigned": "The text signs itself — the scan found the hidden marks a Claude watermark is carried in, so this is an attribution rather than a guess about style.",
+  "aiDetectorSummarySigned": "The text signs itself. The scan found the hidden marks a Claude watermark is carried in, so this is an attribution, not a guess about style.",
   "aiDetectorSummaryBased": "Based on {words} words across {sentences} sentences.",
   "@aiDetectorSummaryBased": {
     "placeholders": {
@@ -5999,7 +5999,7 @@
       }
     }
   },
-  "aiDetectorSummaryShort": "Short sample — treat every signal as a hint rather than a measurement.",
+  "aiDetectorSummaryShort": "Short sample. Treat every signal as a hint, not a measurement.",
   "aiDetectorStatWords": "words",
   "aiDetectorStatSentences": "sentences",
   "aiDetectorStatAvgWords": "avg words/sentence",
@@ -6078,9 +6078,9 @@
       }
     }
   },
-  "aiDetectorSignalsNothing": "Nothing suspicious fired — varied lengths, no stock phrases, no watermark. Reads like human writing.",
+  "aiDetectorSignalsNothing": "Nothing suspicious came up: varied lengths, no stock phrases, no watermark. Reads like a person wrote it.",
   "aiDetectorQuietChecks": "Quiet checks",
-  "aiDetectorQuietOneWay": "{count, plural, =1{1 check found nothing — a dash means the check only ever counts against a text, so finding nothing left it with no opinion} other{{count} checks found nothing — a dash means the check only ever counts against a text, so finding nothing left it with no opinion}}",
+  "aiDetectorQuietOneWay": "{count, plural, =1{1 check found nothing. A dash means the check can only ever count against a text, so finding nothing leaves it without an opinion} other{{count} checks found nothing. A dash means the check can only ever count against a text, so finding nothing leaves it without an opinion}}",
   "@aiDetectorQuietOneWay": {
     "placeholders": {
       "count": {
@@ -6141,7 +6141,7 @@
     }
   },
   "aiAgentSaved": "Agent saved",
-  "aiAgentPromptCopied": "Prompt copied — paste it into {target}",
+  "aiAgentPromptCopied": "Prompt copied. Paste it into {target}.",
   "@aiAgentPromptCopied": {
     "placeholders": {
       "target": {
@@ -6241,7 +6241,7 @@
   "aiMarkdownNoteLabel": "Markdown note",
   "aiLibrarySaved": "Markdown note saved",
   "aiLibraryImportTitle": "Import Markdown note",
-  "aiLibraryImported": "Imported {name} — save it to add it to the library",
+  "aiLibraryImported": "Imported {name}. Save it to add it to the library.",
   "@aiLibraryImported": {
     "placeholders": {
       "name": {
@@ -6603,7 +6603,7 @@
   "aiUsageSidebarExpand": "Expand sidebar",
   "aiUsageSidebarCollapse": "Collapse sidebar",
   "aiUsageSidebarCollapseShort": "Collapse",
-  "aiUsageSectionTooltip": "{label} — {blurb}",
+  "aiUsageSectionTooltip": "{label}: {blurb}",
   "@aiUsageSectionTooltip": {
     "placeholders": {
       "label": {
@@ -6698,7 +6698,7 @@
     }
   },
   "aiUsageAssetStudioUnsupported": "The 3D studio runs on Windows and Android",
-  "aiUsageAssetStudioUnsupportedHint": "Download the HTML to open this model in any browser — it works offline.",
+  "aiUsageAssetStudioUnsupportedHint": "Download the HTML to open this model in any browser. It works offline.",
   "aiUsageAssetStudioUnavailable": "Studio unavailable",
   "aiUsageAssetStudioPrepareFailed": "Could not prepare the studio: {error}",
   "@aiUsageAssetStudioPrepareFailed": {
@@ -6828,7 +6828,7 @@
   "aiLeaderboardDetailFallbackTitle": "Model",
   "aiLeaderboardDetailCompareTooltip": "Compare with other models",
   "aiLeaderboardDetailNoLongerListed": "This model is no longer listed.",
-  "aiLeaderboardDetailProprietary": "Proprietary — API access only",
+  "aiLeaderboardDetailProprietary": "Proprietary, API access only",
   "aiLeaderboardDetailOpenWeights": "Open weights",
   "aiLeaderboardDetailOpenWeightsLicensed": "Open weights · {license}",
   "@aiLeaderboardDetailOpenWeightsLicensed": {
@@ -7053,14 +7053,14 @@
     }
   },
   "aiOsEmptyTitle": "No open-weight models yet",
-  "aiOsEmptySubtitle": "This calculator sizes models whose weights you can download. None in the current catalogue have a known parameter count — refresh the leaderboard and try again.",
+  "aiOsEmptySubtitle": "This calculator sizes models whose weights you can download. None in the current catalogue have a known parameter count. Refresh the leaderboard and try again.",
   "aiOsWhatCanRunIt": "WHAT CAN RUN IT",
-  "aiOsFootnote": "Weight memory is exact arithmetic. The context cost is estimated from the parameter count — the catalogue does not carry each model’s layer count or attention shape, so a model with an unusual design will differ. Leave headroom.",
+  "aiOsFootnote": "Weight memory is exact arithmetic. The context cost is estimated from the parameter count, because the catalogue doesn't list each model’s layer count or attention shape, so a model with an unusual design will differ. Leave some headroom.",
   "aiOsFieldModel": "Model",
   "aiOsFieldQuantization": "Quantization",
   "aiOsFieldContext": "Context",
   "aiOsKv8bit": "8-bit KV",
-  "aiOsKv8bitTooltip": "Store the context cache at 8 bits instead of 16 — roughly halves what the context costs.",
+  "aiOsKv8bitTooltip": "Store the context cache at 8 bits instead of 16. That roughly halves what the context costs.",
   "aiOsGbOfMemory": "GB of memory",
   "aiOsPartWeights": "Weights",
   "aiOsPartContextCache": "Context cache",
@@ -7070,7 +7070,7 @@
   "aiOsVerdictSpills": "Spills to RAM",
   "aiOsVerdictWontRun": "Won’t run",
   "aiOsUnified": "unified",
-  "aiOsUnifiedTooltip": "Shared CPU/GPU memory — this is the share a model can actually claim, not the machine’s total.",
+  "aiOsUnifiedTooltip": "Shared CPU/GPU memory. This is the share a model can actually use, not the machine’s total.",
   "aiOsBitsPerWeight": "{bits} bit",
   "@aiOsBitsPerWeight": {
     "placeholders": {
@@ -7176,8 +7176,8 @@
   "aiTestsBenchmarkModelHeading": "Benchmark Model",
   "aiTestsBenchmarkSceneHeading": "Benchmark Scene",
   "aiTestsKeyboardIntro": "A keyboard built as an interactive scene, one per model.",
-  "aiTestsEngineIntro": "Cutaway V8 — a real-time 3D cross-plane engine benchmark with crank-driven pistons, half-speed camshafts, synchronized valves, combustion effects and a 30-second FPS benchmark.",
-  "aiTestsPagodaIntro": "Spring Festival at the Five-Story Pagoda — an interactive voxel garden benchmark with procedural terrain, animated elements, and dynamic lighting.",
+  "aiTestsEngineIntro": "Cutaway V8: a real-time 3D cross-plane engine benchmark with crank-driven pistons, half-speed camshafts, synchronized valves, combustion effects and a 30-second FPS benchmark.",
+  "aiTestsPagodaIntro": "Spring Festival at the Five-Story Pagoda: an interactive voxel garden benchmark with procedural terrain, animated elements and dynamic lighting.",
   "aiTestsSelectModel": "Select a Model",
   "aiTestsListView": "List",
   "aiTestsBannersView": "Banners",
@@ -7267,10 +7267,10 @@
   },
   "aiTestsPagodaDescStep5": "StepFun Step 5 Preview voxel garden benchmark",
   "aiTestsPagodaDescIndependent": "Independent voxel garden benchmark",
-  "aiTestsPagodaDescSpaceBunny": "Independent voxel garden benchmark — flying island, sky waterfalls and a five-storey pagoda",
-  "aiTestsPagodaDescSonnetXhigh": "Sonnet 5.5 at extra-high reasoning effort — a floating garden island with a waterfall and a five-storey pagoda",
-  "aiTestsPagodaDescGptSolXhigh": "GPT 6.1 Sol at extra-high reasoning effort — spring festival voxel garden with a five-storey pagoda",
-  "aiTestsPagodaDescGptSolLow": "GPT 6.1 Sol at low reasoning effort — spring festival voxel garden with a five-storey pagoda",
+  "aiTestsPagodaDescSpaceBunny": "Independent voxel garden benchmark with a flying island, sky waterfalls and a five-storey pagoda",
+  "aiTestsPagodaDescSonnetXhigh": "Sonnet 5.5 at extra-high reasoning effort: a floating garden island with a waterfall and a five-storey pagoda",
+  "aiTestsPagodaDescGptSolXhigh": "GPT 6.1 Sol at extra-high reasoning effort: a spring festival voxel garden with a five-storey pagoda",
+  "aiTestsPagodaDescGptSolLow": "GPT 6.1 Sol at low reasoning effort: a spring festival voxel garden with a five-storey pagoda",
   "aiTestPagodaTitle": "Pagoda Test",
   "aiTestEngineTitle": "Engine Test",
   "aiTestPcTitle": "PC Test",
@@ -7329,7 +7329,7 @@
   },
   "aiTestDownloadFailed": "The download failed.",
   "aiTestPcBlurb": "Explore interactive 3D gaming PC builds with power sequences, RGB lighting and hardware controls.",
-  "aiTestPcBundledDesc": "HELIX 01 — an ivory and aluminum showcase with a custom liquid loop, hinged glass, exploded inspection and power/RGB controls.",
+  "aiTestPcBundledDesc": "HELIX 01, an ivory and aluminum showcase with a custom liquid loop, hinged glass, exploded inspection and power/RGB controls.",
   "aiTestPcPlatformBody": "The PC Test requires a Windows desktop. Mobile and Linux support are coming soon.",
   "aiTestPcEmptyCanRefresh": "The benchmark list could not be loaded. Try again, or ask the server operator to add scenes.",
   "aiTestEmptyNoAccount": "Benchmarks download from the luma server. Sign in to an approved account to fetch them.",
@@ -7385,7 +7385,7 @@
   "airlineErrCancelFlightsFirst": "Cancel scheduled flights and wait for this aircraft to return before releasing it.",
   "airlineErrNoSuchAircraft": "No such aircraft.",
   "airlineErrRouteUnavailable": "That route is not available.",
-  "airlineErrOutOfRange": "{model} cannot reach {city} — {km} km against {rangeKm} km of range.",
+  "airlineErrOutOfRange": "{model} can't reach {city}: {km} km against {rangeKm} km of range.",
   "@airlineErrOutOfRange": {
     "placeholders": {
       "model": {
@@ -7426,7 +7426,7 @@
       }
     }
   },
-  "airlineErrGatesTaken": "Every usable gate is taken. You have {count, plural, =1{1 gate} other{{count} gates}} not touching a terminal — move them next to one to put them to work.",
+  "airlineErrGatesTaken": "Every usable gate is taken. You have {count, plural, =1{1 gate} other{{count} gates}} not touching a terminal. Move them next to one to put them to work.",
   "@airlineErrGatesTaken": {
     "placeholders": {
       "count": {
@@ -7640,7 +7640,7 @@
     }
   },
   "airlineFinFieldTitle": "The field",
-  "airlineFinLandAtMax": "Your land is {size} by {size} — the largest the airport authority will sell you.",
+  "airlineFinLandAtMax": "Your land is {size} by {size}, the biggest plot the airport authority will sell you.",
   "@airlineFinLandAtMax": {
     "placeholders": {
       "size": {
@@ -7771,7 +7771,7 @@
       }
     }
   },
-  "airlineRoutesNoUsableAircraft": "Nothing in the catalogue can fly this from your hub yet — you need a longer runway, or this sector is beyond every aircraft you could buy.",
+  "airlineRoutesNoUsableAircraft": "Nothing in the catalogue can fly this from your hub yet. You need a longer runway, or this route is beyond every aircraft you could buy.",
   "airlineRoutesCanBeFlownBy": "Can be flown by: {names}.",
   "@airlineRoutesCanBeFlownBy": {
     "placeholders": {
@@ -7834,7 +7834,7 @@
   },
   "airlineRoutesCloseRoute": "Close this route",
   "airlineHubFailed": "That did not work.",
-  "airlineHubTileTooltip": "{name} — {blurb}",
+  "airlineHubTileTooltip": "{name}: {blurb}",
   "@airlineHubTileTooltip": {
     "placeholders": {
       "name": {
@@ -8023,7 +8023,7 @@
   "autoClickerClicksTotal": "clicks total",
   "autoClickerHotkeyLabel": "Start/stop hotkey",
   "autoClickerChange": "Change",
-  "autoClickerHotKeyRegisterFailed": "Could not register the global hotkey — another app may already be using it.",
+  "autoClickerHotKeyRegisterFailed": "Couldn't register the global hotkey. Another app may already be using it.",
   "autoClickerInvalidSnapshot": "Invalid auto clicker snapshot.",
   "bulletinBoardNewNote": "New Note",
   "bulletinBoardNewChecklist": "New Checklist",
@@ -8044,7 +8044,7 @@
   "bulletinBoardAddItem": "+ Add Item",
   "bulletinBoardNoImage": "No image",
   "bulletinBoardImageNotFound": "Image not found",
-  "calcErrorHasX": "That has an x in it — press Plot to draw it.",
+  "calcErrorHasX": "That has an x in it. Press Plot to draw it.",
   "calcPlotNeedsExpression": "Type something like x^2 - 3 first.",
   "calcStorageFullFunctionNotSaved": "Local storage is full, so this function was not saved.",
   "calcConvertUnitsTooltip": "Convert units",
@@ -8064,7 +8064,7 @@
   },
   "calcHistoryEmpty": "Sums you work out show up here.",
   "calcFunctionsTitle": "Functions",
-  "calcNothingPlotted": "Nothing plotted yet. Type something with an x — like x^2 - 3 or sin(x) — and press Plot.",
+  "calcNothingPlotted": "Nothing plotted yet. Type something with an x, like x^2 - 3 or sin(x), and press Plot.",
   "calcFunctionHide": "Hide",
   "calcFunctionShow": "Show",
   "calcClearTrace": "Clear trace",
@@ -8272,7 +8272,7 @@
   "calendarReminder": "Reminder",
   "calendarAddPlace": "Add a place",
   "calendarAddDetails": "Add details",
-  "calendarSharedByView": "Shared by {author} — view only",
+  "calendarSharedByView": "Shared by {author} (view only)",
   "@calendarSharedByView": {
     "placeholders": {
       "author": {
@@ -8361,7 +8361,7 @@
   "cardWalletCouldntScan": "Couldn't scan",
   "cardWalletReadyToScan": "Ready to scan",
   "cardWalletScanATag": "Scan a tag",
-  "cardWalletHoldFlat": "Hold your card flat against the back of your phone and keep it still — larger cards take a second to read.",
+  "cardWalletHoldFlat": "Hold your card flat against the back of your phone and keep it still. Bigger cards take a second to read.",
   "cardWalletScanUnexpectedError": "Something went wrong while scanning. ({error})",
   "@cardWalletScanUnexpectedError": {
     "placeholders": {
@@ -8382,7 +8382,7 @@
   "cardWalletFromImage": "From image",
   "cardWalletNfcHintScanOrPaste": "Tap “Scan tag”, or paste it (text or hex)",
   "cardWalletNfcHintPaste": "Paste the tag payload (text or hex)",
-  "cardWalletCodeHintScan": "Scan it in above, or type it — e.g. 2601234567890",
+  "cardWalletCodeHintScan": "Scan it in above, or type it (e.g. 2601234567890)",
   "cardWalletCodeHint": "e.g. 2601234567890",
   "cardWalletNotesOptional": "Notes (optional)",
   "cardWalletNotesHint": "PIN, member since, anything handy",
@@ -8449,7 +8449,7 @@
       }
     }
   },
-  "cardWalletNoStandardMatch": "No standard match — using {format}",
+  "cardWalletNoStandardMatch": "No standard match, using {format}",
   "@cardWalletNoStandardMatch": {
     "placeholders": {
       "format": {
@@ -8486,12 +8486,12 @@
     }
   },
   "cardWalletNfcNoTag": "No tag detected. Hold the card flat against the back of your phone and try again.",
-  "cardWalletNfcReadFailed": "Couldn't read that tag — it looks empty or unsupported.",
-  "cardWalletNfcPaymentCardRefused": "That looks like a bank or credit card — luma won't copy payment cards for your security. Add a loyalty, hotel, transit or event card instead.",
-  "cardWalletNfcEmptyTag": "Couldn't read anything off that tag — it may be empty or locked.",
+  "cardWalletNfcReadFailed": "Couldn't read that tag. It looks empty or unsupported.",
+  "cardWalletNfcPaymentCardRefused": "That looks like a bank or credit card. For your security, luma won't copy payment cards. Add a loyalty, hotel, transit or event card instead.",
+  "cardWalletNfcEmptyTag": "Couldn't read anything off that tag. It may be empty or locked.",
   "cityPlannerLinuxTitle": "Not available on Linux",
   "cityPlannerLinuxSubtitle": "City Planner requires an embedded WebView that is not yet supported on this platform.",
-  "cloudFilesSessionExpired": "Your session expired — sign in again under Settings → Sync.",
+  "cloudFilesSessionExpired": "Your session expired. Sign in again under Settings → Sync.",
   "cloudFilesSignInFirst": "Sign in under Settings → Sync first.",
   "cloudFilesBusy": "Another transfer is already running.",
   "cloudFilesNotEnoughSpace": "Not enough space: \"{name}\" needs {needed} but only {free} is free.",
@@ -8510,7 +8510,7 @@
   },
   "cloudFilesServerFull": "The server is out of space for your account.",
   "cloudFilesPartMissing": "Part of this file is missing on the server.",
-  "cloudFilesIndexConflict": "Could not update the file list — please try again.",
+  "cloudFilesIndexConflict": "Couldn't update the file list. Please try again.",
   "cloudFilesSizeB": "{value} B",
   "@cloudFilesSizeB": {
     "placeholders": {
@@ -8544,7 +8544,7 @@
     }
   },
   "cloudFilesSignedOutTitle": "Cloud Files needs sync",
-  "cloudFilesSignedOutBody": "Sign in to your sync server under Settings → Sync & account, then come back here to upload files. Files are encrypted on this device before upload — the server can never read them.",
+  "cloudFilesSignedOutBody": "Sign in to your sync server under Settings → Sync & account, then come back here to upload files. Files are encrypted on this device before upload, so the server can never read them.",
   "cloudFilesHeaderSubtitle": "Encrypted files on your server, on every device.",
   "cloudFilesEmptyTitle": "No files yet",
   "cloudFilesEmptySubtitle": "Drop one in to keep it safe everywhere.",
@@ -8715,7 +8715,7 @@
   "dataMgmtSaveCsvTitle": "Save CSV",
   "dataMgmtImportedName": "Imported",
   "dataMgmtManageTagsTitle": "Manage Tags",
-  "dataMgmtTagsExplainer": "Tags can be attached to any row and used to group charts — e.g. tag income rows by source and see what earns the most.",
+  "dataMgmtTagsExplainer": "Tags can be attached to any row and used to group charts. For example, tag income rows by source and see what earns the most.",
   "dataMgmtNoTagsYet": "No tags yet.",
   "dataMgmtNewTag": "New tag",
   "dataMgmtNewTagTitle": "New Tag",
@@ -8785,10 +8785,10 @@
   "deviceHealthWhatNeedsAttention": "What needs attention",
   "deviceHealthErrReadStatus": "Could not read system status.",
   "deviceHealthErrCpuRamUnavailable": "CPU/RAM reading unavailable.",
-  "deviceHealthErrDefenderUnavailable": "Couldn't read Windows Defender's status — another antivirus may be active, or the Defender service is disabled.",
+  "deviceHealthErrDefenderUnavailable": "Couldn't read Windows Defender's status. Another antivirus may be active, or the Defender service is turned off.",
   "deviceHealthErrListProcesses": "Could not list processes.",
   "deviceHealthErrWingetMissing": "winget is not available on this system.",
-  "deviceHealthNeedsManualUpdate": "Needs a manual update — winget could not finish silently.",
+  "deviceHealthNeedsManualUpdate": "Needs a manual update. winget couldn't finish silently.",
   "deviceHealthIssueRamHigh": "RAM usage is very high ({percent}%).",
   "@deviceHealthIssueRamHigh": {
     "placeholders": {
@@ -8843,7 +8843,7 @@
   "deviceHealthCardAppUpdatesTitle": "App Updates",
   "deviceHealthCardRescan": "Rescan",
   "deviceHealthCardScanForUpdates": "Scan for updates",
-  "deviceHealthCardAppUpdatesNotScanned": "Not scanned yet — checks winget and luma for available updates.",
+  "deviceHealthCardAppUpdatesNotScanned": "Not scanned yet. This checks winget and luma for available updates.",
   "deviceHealthCardUpdateAll": "Update all ({count})",
   "@deviceHealthCardUpdateAll": {
     "placeholders": {
@@ -8860,11 +8860,11 @@
       }
     }
   },
-  "deviceHealthCardUpdateFailedHint": "Couldn't update automatically — try updating it yourself.",
+  "deviceHealthCardUpdateFailedHint": "Couldn't update automatically. Try updating it yourself.",
   "deviceHealthCardAppsUpToDate": "Everything luma checked is up to date.",
   "deviceHealthCardBatteryTitle": "Battery",
   "deviceHealthCardNotCheckedYet": "Not checked yet.",
-  "deviceHealthCardNoBattery": "No battery detected — this looks like a desktop.",
+  "deviceHealthCardNoBattery": "No battery found. This looks like a desktop.",
   "deviceHealthCardBatteryHealth": "Battery health: {percent}% of design capacity remains.",
   "@deviceHealthCardBatteryHealth": {
     "placeholders": {
@@ -8939,10 +8939,10 @@
     }
   },
   "deviceHealthCardOpenWindowsUpdate": "Open Windows Update",
-  "deviceHealthCardGpuDisclaimer": "Windows doesn't expose a way to check driver freshness directly — these open the tool that actually knows. Nothing is installed automatically.",
+  "deviceHealthCardGpuDisclaimer": "Windows doesn't offer a way to check driver freshness directly, so these open the tool that actually knows. Nothing gets installed automatically.",
   "deviceHealthCardProcessesTitle": "Background Processes",
   "deviceHealthCardScanProcesses": "Scan processes",
-  "deviceHealthCardProcessesNotScanned": "Not scanned yet — this reads every running process, so it isn't run automatically.",
+  "deviceHealthCardProcessesNotScanned": "Not scanned yet. This reads every running process, so it doesn't run automatically.",
   "deviceHealthCardProcessesSummary": "{count, plural, =1{1 process · sorted by memory} other{{count} processes · sorted by memory}}",
   "@deviceHealthCardProcessesSummary": {
     "placeholders": {
@@ -8983,9 +8983,9 @@
   "deviceHealthStatusNotChecked": "Not checked",
   "deviceHealthCardCheck": "Check",
   "errandsEmptyTitle": "No errands yet",
-  "errandsEmptySubtitle": "Add a recurring errand — daily, weekly, monthly or every few days — and it shows up on your checklist the day it's due.",
+  "errandsEmptySubtitle": "Add a recurring errand (daily, weekly, monthly or every few days) and it shows up on your checklist the day it's due.",
   "errandsAddErrand": "Add errand",
-  "errandsAllDoneToday": "All done for today — nice work.",
+  "errandsAllDoneToday": "All done for today. Nice work.",
   "errandsNothingDueToday": "Nothing due today. Your next errands are listed under Coming up.",
   "errandsComingUp": "Coming up",
   "errandsDoneToday": "Done today",
@@ -9074,7 +9074,7 @@
   "errandsNotesHint": "Which plants, which store, anything handy",
   "errandsNoCategory": "No category",
   "errandsNoCategoriesYet": "No categories yet.",
-  "errandsCategoriesHelp": "Group your checklist however you like — Household, Health, Admin… Deleting a category keeps its errands.",
+  "errandsCategoriesHelp": "Group your checklist however you like: Household, Health, Admin… Deleting a category keeps its errands.",
   "errandsCategoryNameHint": "Household",
   "errandsCategoryNameRequired": "Give the category a name.",
   "errandsDeleteTitle": "Delete errand?",
@@ -9189,7 +9189,7 @@
     }
   },
   "fileViewerNoPageText": "No text on this page",
-  "fileViewerNoPageTextHint": "This page has no extractable text — it may be a scan or an image.",
+  "fileViewerNoPageTextHint": "This page has no text to extract. It may be a scan or an image.",
   "fileViewerNoReadableText": "This document has no readable text",
   "fileViewerEmptyWorksheet": "This worksheet is empty",
   "fileViewerShowingRows": "Showing the first {shown} of {total} rows.",
@@ -9203,7 +9203,7 @@
       }
     }
   },
-  "fileViewerLargeFile": "Large file — showing the first 500 KB.",
+  "fileViewerLargeFile": "Large file, showing the first 500 KB.",
   "fileViewerNotWordDocument": "This file does not look like a Word document.",
   "fileViewerNoDocumentBody": "Could not find the document body.",
   "fileViewerNoWorksheets": "This workbook has no worksheets.",
@@ -9247,7 +9247,7 @@
   "freeSketchNewArtwork": "New artwork",
   "freeSketchCouldNotReadGallery": "The gallery could not be read",
   "freeSketchGalleryEmpty": "Your gallery is empty",
-  "freeSketchGalleryEmptyHint": "Start a new artwork — pencils, inks, watercolours, markers, airbrushes and blenders, with layers, blend modes, symmetry and pressure. Export to PNG, JPEG, Photoshop or OpenRaster.",
+  "freeSketchGalleryEmptyHint": "Start a new artwork. You get pencils, inks, watercolours, markers, airbrushes and blenders, with layers, blend modes, symmetry and pressure. Export to PNG, JPEG, Photoshop or OpenRaster.",
   "freeSketchArtworkInfo": "{size} · {count, plural, =1{1 layer} other{{count} layers}} · {updated}",
   "@freeSketchArtworkInfo": {
     "placeholders": {
@@ -9373,7 +9373,7 @@
   "freeSketchEnginePaints": "Paints",
   "freeSketchEngineSmudges": "Smudges the colour under it",
   "freeSketchEngineBlurs": "Blurs what is under it",
-  "freeSketchTraitGlazes": "glazes like a marker — overlaps darken",
+  "freeSketchTraitGlazes": "glazes like a marker, overlaps darken",
   "freeSketchTraitAddsLight": "adds light",
   "freeSketchTraitGrain": "with {grain} grain",
   "@freeSketchTraitGrain": {
@@ -9607,7 +9607,7 @@
       }
     }
   },
-  "freeSketchLayerHidden": "“{name}” is hidden — show it to paint on it.",
+  "freeSketchLayerHidden": "“{name}” is hidden. Show it to paint on it.",
   "@freeSketchLayerHidden": {
     "placeholders": {
       "name": {
@@ -9627,9 +9627,9 @@
   "freeSketchSelectionCopied": "Selection copied.",
   "freeSketchUndoCut": "Cut",
   "freeSketchLayerPasted": "Pasted",
-  "freeSketchLayerEmptyTransform": "This layer is empty — nothing to transform.",
+  "freeSketchLayerEmptyTransform": "This layer is empty, so there's nothing to transform.",
   "freeSketchUndoTransform": "Transform",
-  "freeSketchLayerEmptyAdjust": "This layer is empty — nothing to adjust.",
+  "freeSketchLayerEmptyAdjust": "This layer is empty, so there's nothing to adjust.",
   "freeSketchUndoFill": "Fill",
   "freeSketchFillFailed": "Fill failed: {error}",
   "@freeSketchFillFailed": {
@@ -9702,7 +9702,7 @@
       }
     }
   },
-  "freeSketchViewMirroredTip": "View is mirrored — tap to unflip (H)",
+  "freeSketchViewMirroredTip": "View is mirrored. Tap to unflip (H)",
   "freeSketchUndoTip": "Undo (Ctrl+Z)",
   "freeSketchUndoLabelTip": "Undo {label} (Ctrl+Z)",
   "@freeSketchUndoLabelTip": {
@@ -9763,7 +9763,7 @@
   "freeSketchViewActualMenu": "Actual pixels   Ctrl+1",
   "freeSketchViewMirrorMenu": "Mirror view   H",
   "freeSketchViewHideMenu": "Hide interface   Tab",
-  "freeSketchToolTapAgainBrushes": "{tool} — tap again for brushes",
+  "freeSketchToolTapAgainBrushes": "{tool} (tap again for brushes)",
   "@freeSketchToolTapAgainBrushes": {
     "placeholders": {
       "tool": {
@@ -9774,11 +9774,11 @@
   "freeSketchBrushSize": "Brush size",
   "freeSketchPenInput": "Pen & input",
   "freeSketchPressureCurve": "Pressure curve",
-  "freeSketchPressureSoft": "Soft — light touch goes further",
-  "freeSketchPressureFirm": "Firm — press harder for full strength",
+  "freeSketchPressureSoft": "Soft: a light touch goes further",
+  "freeSketchPressureFirm": "Firm: press harder for full strength",
   "freeSketchPressureLinear": "Linear",
   "freeSketchDrawPenOnly": "Draw with pen only",
-  "freeSketchPalmRejectionHint": "Once a stylus is used, fingers pan and zoom instead of painting — palm rejection.",
+  "freeSketchPalmRejectionHint": "Once you've used a stylus, fingers pan and zoom instead of painting (palm rejection).",
   "freeSketchShortcutsHelp": "Shortcuts: B brush · E eraser · S smudge · G fill · D gradient · U shapes · L select · V transform · I eyedropper · [ ] size · X swap colours · H mirror view · Space-drag pan · R-drag rotate · Alt-click pick colour · Shift-click straight line · two-finger tap undo · three-finger tap redo.",
   "galleryCategoryPictures": "Pictures",
   "galleryCategoryVideos": "Videos",
@@ -9913,7 +9913,7 @@
   "galleryDetailsSectionRecognised": "Recognised",
   "galleryDetailsFormat": "Format",
   "galleryDetailsStored": "Stored",
-  "galleryDetailsOnlineOnly": "Online only — not on this PC",
+  "galleryDetailsOnlineOnly": "Online only, not on this PC",
   "galleryDetailsFolder": "Folder",
   "galleryDetailsTaken": "Taken",
   "galleryDetailsDimensions": "Dimensions",
@@ -9942,7 +9942,7 @@
   "galleryDetailsCopyPath": "Copy folder path",
   "galleryDetailsPathCopied": "Path copied",
   "galleryEditNameEmpty": "A file needs a name.",
-  "galleryEditNameTooLong": "That name is too long — keep it under 250 characters.",
+  "galleryEditNameTooLong": "That name is too long. Keep it under 250 characters.",
   "galleryEditNameIllegal": "A file name can’t contain {characters}",
   "@galleryEditNameIllegal": {
     "placeholders": {
@@ -9961,7 +9961,7 @@
       }
     }
   },
-  "galleryEditKeepExtension": "Keep the .{extension} ending — changing it stops the file opening.",
+  "galleryEditKeepExtension": "Keep the .{extension} ending. Changing it stops the file from opening.",
   "@galleryEditKeepExtension": {
     "placeholders": {
       "extension": {
@@ -9990,7 +9990,7 @@
     }
   },
   "galleryMapTitle": "Photo map",
-  "galleryMapPlacedSoFar": "{placed} placed so far — still reading locations",
+  "galleryMapPlacedSoFar": "{placed} placed so far, still reading locations",
   "@galleryMapPlacedSoFar": {
     "placeholders": {
       "placed": {
@@ -10022,7 +10022,7 @@
   },
   "galleryPageAddFolderDialogTitle": "Add a folder to the gallery",
   "galleryPageScanOneFolderDialogTitle": "Scan only this folder",
-  "galleryPageNoFoldersYet": "No folders found yet — let the first scan finish.",
+  "galleryPageNoFoldersYet": "No folders found yet. Let the first scan finish.",
   "galleryPageScanOneFolder": "Scan one folder",
   "galleryPageScanOneFolderBody": "Everything inside the folder you pick is included, sub-folders and all. Nothing else is looked at.",
   "galleryPageWholeLibrary": "The whole library",
@@ -10035,7 +10035,7 @@
     }
   },
   "galleryPageRenameHint": "e.g. Mum, Alex…",
-  "galleryPageSortingProgress": "Sorting photos into People and Categories — {count} of {total}",
+  "galleryPageSortingProgress": "Sorting photos into People and Categories: {count} of {total}",
   "@galleryPageSortingProgress": {
     "placeholders": {
       "count": {
@@ -10105,10 +10105,10 @@
   },
   "galleryPageCategoryFallback": "Category",
   "galleryPageNoOneRecognised": "No one recognised yet",
-  "galleryPagePeopleStillSorting": "Still sorting the library — people appear here once a face has turned up in a few photos.",
+  "galleryPagePeopleStillSorting": "Still sorting the library. People show up here once a face has turned up in a few photos.",
   "galleryPagePeopleSortHint": "Sort the library from the albums screen and people who appear in a few photos together will show up here.",
   "galleryPageNoTripsYet": "No trips yet",
-  "galleryPageNoTripsBody": "A run of photos over a few busy days — a weekend away, a holiday — shows up here on its own. Nothing to set up, and it works without Nova.",
+  "galleryPageNoTripsBody": "A run of photos over a few busy days, like a weekend away or a holiday, shows up here on its own. Nothing to set up, and it works without Nova.",
   "galleryPageNothingSortedYet": "Nothing sorted yet",
   "galleryPageStillLooking": "Still looking through the library.",
   "galleryPageSortToFill": "Sort the library from the albums screen to fill these in.",
@@ -10167,7 +10167,7 @@
     }
   },
   "galleryPageNothingFoundPoint": "Nothing was found in Pictures, Videos or Downloads. Point the gallery at a folder and it will scan that instead.",
-  "galleryPageStaysOnDevice": "Photos and videos stay on this device — the gallery only reads them to show them here.",
+  "galleryPageStaysOnDevice": "Photos and videos stay on this device. The gallery only reads them to show them here.",
   "galleryPageScanEverything": "Scan everything",
   "galleryPagePickAnotherFolder": "Pick another folder",
   "galleryPageAllowAccess": "Allow access",
@@ -10183,7 +10183,7 @@
   "galleryPageChange": "Change",
   "galleryPageLimitedAccess": "Only the photos you picked are shared with luma.",
   "galleryPageSelectMore": "Select more",
-  "galleryPageSortingPhotosProgress": "Sorting photos — {count} of {total}",
+  "galleryPageSortingPhotosProgress": "Sorting photos: {count} of {total}",
   "@galleryPageSortingPhotosProgress": {
     "placeholders": {
       "count": {
@@ -10194,7 +10194,7 @@
       }
     }
   },
-  "galleryPageReadingDetails": "Reading photo details — {count} to go",
+  "galleryPageReadingDetails": "Reading photo details, {count} to go",
   "@galleryPageReadingDetails": {
     "placeholders": {
       "count": {
@@ -10211,7 +10211,7 @@
       }
     }
   },
-  "galleryPageLookedAtSkipped": "Looked at {examined, plural, =1{1 photo} other{{examined} photos}}. {skipped, plural, =1{1 was skipped} other{{skipped} were skipped}} because they are only in the cloud, or in a format that can't be read here — make them available offline and look again.",
+  "galleryPageLookedAtSkipped": "Looked at {examined, plural, =1{1 photo} other{{examined} photos}}. {skipped, plural, =1{1 was skipped} other{{skipped} were skipped}} because they're only in the cloud, or in a format that can't be read here. Make them available offline and look again.",
   "@galleryPageLookedAtSkipped": {
     "placeholders": {
       "examined": {
@@ -10223,7 +10223,7 @@
     }
   },
   "galleryPageLookAgain": "Look again",
-  "galleryPageSmartDownloadDesktop": "{pending, plural, =1{1 photo to look at.} other{{pending} photos to look at.}} This downloads about {megabytes} MB of models once (recognition and face matching); after that everything happens on this PC, offline — no photo is uploaded.",
+  "galleryPageSmartDownloadDesktop": "{pending, plural, =1{1 photo to look at.} other{{pending} photos to look at.}} This downloads about {megabytes} MB of models once (recognition and face matching). After that everything happens on this PC, offline, and no photo is uploaded.",
   "@galleryPageSmartDownloadDesktop": {
     "placeholders": {
       "pending": {
@@ -10234,7 +10234,7 @@
       }
     }
   },
-  "galleryPageSmartDownloadPhone": "{pending, plural, =1{1 photo to look at.} other{{pending} photos to look at.}} This downloads a small (~{megabytes} MB) face-matching model once, so photos of the same person can be grouped — offline, and nothing is uploaded.",
+  "galleryPageSmartDownloadPhone": "{pending, plural, =1{1 photo to look at.} other{{pending} photos to look at.}} This downloads a small (~{megabytes} MB) face-matching model once, so photos of the same person can be grouped. It runs offline and nothing is uploaded.",
   "@galleryPageSmartDownloadPhone": {
     "placeholders": {
       "pending": {
@@ -10257,7 +10257,7 @@
   "galleryPageGetModels": "Get the models",
   "galleryPageSortThem": "Sort them",
   "galleryPageSmartUpsellTitle": "People and Categories are a Nova extra",
-  "galleryPageSmartUpsellBodyModels": "Nova groups your photos by who is in them and what is actually in the picture — food, pets, ocean, and more — using models that run on this device, offline. Nothing is uploaded.",
+  "galleryPageSmartUpsellBodyModels": "Nova groups your photos by who's in them and what's actually in the picture (food, pets, the ocean and more) using models that run on this device, offline. Nothing is uploaded.",
   "galleryPageSmartUpsellBodyPhone": "Nova groups your photos by what is in them. The full set of categories needs the phone build's models; this device still gets Panoramas and Places for free.",
   "galleryPageUpgradeTo": "Upgrade to {plan}",
   "@galleryPageUpgradeTo": {
@@ -10400,7 +10400,7 @@
       }
     }
   },
-  "gameToolsComingSoonSubtitle": "This is where {game} helpers will live. Nothing to set up yet — they will show up here in a future update.",
+  "gameToolsComingSoonSubtitle": "This is where {game} helpers will live. Nothing to set up yet; they'll show up here in a future update.",
   "@gameToolsComingSoonSubtitle": {
     "placeholders": {
       "game": {
@@ -10416,7 +10416,7 @@
       }
     }
   },
-  "gameToolsSectionTooltip": "{label} — {blurb}",
+  "gameToolsSectionTooltip": "{label}: {blurb}",
   "@gameToolsSectionTooltip": {
     "placeholders": {
       "label": {
@@ -10438,7 +10438,7 @@
       }
     }
   },
-  "groceriesApiNeedsAccount": "Product search needs an approved luma account. Create one under Settings → {section} — your shopping list itself keeps working offline.",
+  "groceriesApiNeedsAccount": "Product search needs an approved luma account. Create one under Settings → {section}. Your shopping list itself keeps working offline.",
   "@groceriesApiNeedsAccount": {
     "placeholders": {
       "section": {
@@ -10459,7 +10459,7 @@
   "groceriesApiCouldNotReach": "Could not reach the groceries server.",
   "groceriesTitle": "Groceries",
   "groceriesGateTitle": "Groceries List comes with Orbit and Nova",
-  "groceriesGateSubtitle": "Search Jumbo, Albert Heijn, Hoogvliet and Lidl prices side by side, and build shopping lists that split themselves by store and aisle with running totals — included free with Orbit and Nova.",
+  "groceriesGateSubtitle": "Search Jumbo, Albert Heijn, Hoogvliet and Lidl prices side by side, and build shopping lists that split themselves by store and aisle with running totals. Included free with Orbit and Nova.",
   "groceriesUpgradeTo": "Upgrade to {plan}",
   "@groceriesUpgradeTo": {
     "placeholders": {
@@ -10522,15 +10522,15 @@
   "mlTabHowItWorks": "How it works",
   "mlSubtitle": "Draw a body, let evolution find the movement.",
   "mlHowStep1Title": "Your drawing becomes a body",
-  "mlHowStep1Body": "Every stroke is stamped down with a thickness and merged with the others wherever they touch. That is thinned to its centre line, which becomes a graph of bones sitting exactly on what was drawn — a ring stays a ring, a stick figure stays a stick figure. Short spikes thrown off by wobbles are pruned, bends keep a joint and straight runs do not, and the result is capped at eighteen bones so the search stays small enough to finish.",
+  "mlHowStep1Body": "Every stroke is stamped down with a thickness and merged with the others wherever they touch. That gets thinned to its centre line, which becomes a graph of bones sitting exactly on what was drawn: a ring stays a ring, a stick figure stays a stick figure. Short spikes from wobbly lines are pruned, bends keep a joint and straight runs don't, and the result is capped at eighteen bones so the search stays small enough to finish.",
   "mlHowStep2Title": "The bones get motors",
   "mlHowStep2Body": "Bones are rigid and held together by distance constraints. Where two bones meet there is a joint, and every joint is a spring-damper chasing a target angle that swings as a sine wave: rest + centre + amplitude x sin(2 pi f t + phase). A joint has a strength limit, the ground has ordinary Coulomb friction, and nothing a creature does to itself can shift its own centre of mass. Forward motion has to be pushed for.",
   "mlHowStep3Title": "The gait is the genome",
-  "mlHowStep3Body": "One gene sets the frequency the whole body steps at, then each joint gets three: how far it swings, where in the cycle it swings, and which angle it swings around. That handful of numbers is the entire nervous system — there is no brain reacting to the world, only a rhythm, which is why a good gait looks stubborn.",
+  "mlHowStep3Body": "One gene sets the frequency the whole body steps at, then each joint gets three: how far it swings, where in the cycle it swings, and which angle it swings around. That handful of numbers is the whole nervous system. There's no brain reacting to the world, only a rhythm, which is why a good gait looks stubborn.",
   "mlHowStep4Title": "Sixty of them run every generation",
   "mlHowStep4Body": "Each creature gets a twenty-five second trial, scored on metres travelled, docked for time spent with its head on the floor, with a bonus for every second saved once it crosses 50 m. The best four survive untouched, five fresh random genomes join each round to keep the population from getting stuck, and the rest are bred by tournament selection, uniform crossover and gaussian mutation.",
   "mlHowStep5Title": "And it climbs",
-  "mlHowStep5Body": "The best line climbs fast and then flattens, because the search has found a local trick and is polishing it. The average line stays jagged and far below — that is mutation still throwing away most of its guesses. Restarting rolls new dice, and the same body often learns a completely different walk.",
+  "mlHowStep5Body": "The best line climbs fast and then flattens, because the search has found a local trick and is polishing it. The average line stays jagged and far below, which is mutation still throwing away most of its guesses. Restarting rolls new dice, and the same body often learns a completely different walk.",
   "mlHowFooter": "Everything runs on this device. The population is evaluated in background isolates, so the walk you are watching stays smooth while the next generation is being scored.",
   "mlStepDrawCreature": "Draw your creature",
   "mlTooSmall": "too small",
@@ -10575,7 +10575,7 @@
       }
     }
   },
-  "mlStoppedAtLimit": "stopped at {limit} — move \"stop after\" up to carry on",
+  "mlStoppedAtLimit": "stopped at {limit}. Raise \"stop after\" to keep going",
   "@mlStoppedAtLimit": {
     "placeholders": {
       "limit": {
@@ -10711,7 +10711,7 @@
   "mediaDlCouldNotParseInfo": "Could not parse video info.",
   "mediaDlYtDlpUnknownError": "yt-dlp failed for an unknown reason.",
   "mediaDlSetupTitle": "Setting up Media Downloader",
-  "mediaDlSetupBody": "Fetching yt-dlp and ffmpeg — this only happens once.",
+  "mediaDlSetupBody": "Fetching yt-dlp and ffmpeg. This only happens once.",
   "mediaDlSetupFailed": "Could not set up yt-dlp / ffmpeg.",
   "mediaDlPasteLinkFirst": "Paste a YouTube link first.",
   "mediaDlCouldNotReadLink": "Could not read that link.",
@@ -10723,7 +10723,7 @@
   "mediaDlIntroTitle": "Download a video or song",
   "mediaDlUpdateYtDlp": "Update yt-dlp",
   "mediaDlUpdating": "Updating…",
-  "mediaDlIntroBody": "Paste a YouTube video link to get started. If downloads start failing with a 403 error, YouTube has likely changed something — try \"{updateLabel}\" above.",
+  "mediaDlIntroBody": "Paste a YouTube video link to get started. If downloads start failing with a 403 error, YouTube has probably changed something, so try \"{updateLabel}\" above.",
   "@mediaDlIntroBody": {
     "placeholders": {
       "updateLabel": {
@@ -10798,7 +10798,7 @@
   },
   "mindMapNewMapHint": "Name a new mind map",
   "mindMapLibraryEmptyTitle": "No mind maps yet",
-  "mindMapLibraryEmptySubtitle": "Name one above. You start on the centre idea and press Tab to branch out — no dragging required.",
+  "mindMapLibraryEmptySubtitle": "Name one above. You start on the centre idea and press Tab to branch out. No dragging required.",
   "mindMapDeleteMapTooltip": "Delete map",
   "mindMapNodeCount": "{count, plural, =1{1 node} other{{count} nodes}}",
   "@mindMapNodeCount": {
@@ -10890,7 +10890,7 @@
   "mindMapInheritColour": "Inherit branch colour",
   "mindMapColourSwatch": "Colour swatch",
   "mindMapInheritFromBranch": "Inherit from branch",
-  "mindMapAiAllowanceUsed": "You've used today's AI allowance — more tomorrow.",
+  "mindMapAiAllowanceUsed": "You've used today's AI allowance. More tomorrow.",
   "mindMapAiNoKey": "No API key saved for {provider}. Add one under {settings} → {assistant} to use this.",
   "@mindMapAiNoKey": {
     "placeholders": {
@@ -10973,7 +10973,7 @@
   "mindMapFirstBranchHintNarrow": "Tap the centre node, then Child",
   "mindMapFirstBranchHint": "Select the centre node and press Tab to add your first branch",
   "mindMapEmptyNodeLabel": "Empty node",
-  "mcCrashAiUsageLimit": "You've hit today's AI usage limit — try again tomorrow.",
+  "mcCrashAiUsageLimit": "You've hit today's AI usage limit. Try again tomorrow.",
   "mcCrashAiNoKey": "No API key set for {provider}. Add one under Settings → AI Assistant.",
   "@mcCrashAiNoKey": {
     "placeholders": {
@@ -11317,10 +11317,10 @@
       }
     }
   },
-  "mcCloudBackupNeedsAccount": "Cloud backups need an approved luma account — create one under Settings → Sync & account.",
+  "mcCloudBackupNeedsAccount": "Cloud backups need an approved luma account. Create one under Settings → Sync & account.",
   "mcCloudStorageFull": "Not enough cloud storage space.",
   "mcCloudBackupMissingPart": "Part of this backup is missing on the server.",
-  "mcCloudBackupIndexFailed": "Could not update the backup list — please try again.",
+  "mcCloudBackupIndexFailed": "Couldn't update the backup list. Please try again.",
   "mcMsAuthNotConfigured": "Microsoft sign-in is not configured for this build.",
   "mcMsAuthDeclined": "Sign-in was declined.",
   "mcMsAuthCodeExpired": "The sign-in code expired. Try again.",
@@ -11402,7 +11402,7 @@
   "mcContentTypeMods": "Mods",
   "mcContentTypeResourcePacks": "Resource Packs",
   "mcContentTypeShaderPacks": "Shader Packs",
-  "mcModCurseForgeOnly": "{title} can only be downloaded from its CurseForge page — the author has turned off downloads in other launchers.",
+  "mcModCurseForgeOnly": "{title} can only be downloaded from its CurseForge page, because the author has turned off downloads in other launchers.",
   "@mcModCurseForgeOnly": {
     "placeholders": {
       "title": {
@@ -11473,7 +11473,7 @@
   "minecraftLauncherTabSettings": "Settings",
   "minecraftLauncherNotWindowsTitle": "Not available on this platform",
   "minecraftLauncherNotWindowsSubtitle": "Minecraft Launcher currently only supports Windows.",
-  "minecraftLauncherOfflineNeedsMicrosoft": "Sign in with a Microsoft account that owns Minecraft first — offline profiles are for playing without a connection afterwards, not instead of that.",
+  "minecraftLauncherOfflineNeedsMicrosoft": "Sign in with a Microsoft account that owns Minecraft first. Offline profiles are for playing without a connection afterwards, not a replacement for that.",
   "minecraftLauncherCloudBackups": "Cloud backups",
   "minecraftLauncherBackedUpCount": "{count} backed up",
   "@minecraftLauncherBackedUpCount": {
@@ -11984,7 +11984,7 @@
   "nfcRecordEditorNetworkName": "Network name (SSID)",
   "nfcRecordEditorSecurity": "Security",
   "nfcRecordEditorSecurityOpen": "Open",
-  "nfcRecordEditorWifiNote": "Written as a text record most phones can read when they tap the tag — it won't auto-join every device the way a router's own Wi-Fi QR code sometimes does.",
+  "nfcRecordEditorWifiNote": "Written as a text record that most phones can read when they tap the tag. It won't auto-join every device the way a router's own Wi-Fi QR code sometimes does.",
   "nfcRecordEditorPhoneOptional": "Phone (optional)",
   "nfcRecordEditorEmailOptional": "Email (optional)",
   "nfcRecordEditorOrganizationOptional": "Organization (optional)",
@@ -12005,7 +12005,7 @@
   "nfcSummaryNoNetwork": "No network set",
   "nfcSummaryNoName": "No name set",
   "nfcSummaryNoPackage": "No package set",
-  "nfcSummaryRawBytes": "Kept as-is ({bytes} bytes) — not editable",
+  "nfcSummaryRawBytes": "Kept as-is ({bytes} bytes), not editable",
   "@nfcSummaryRawBytes": {
     "placeholders": {
       "bytes": {
@@ -12015,8 +12015,8 @@
   },
   "nfcDuplicate": "Duplicate",
   "nfcAndroidOnlyTitle": "Android only",
-  "nfcUnsupportedNotice": "NFC Tag Editor needs Android's NFC hardware and reader APIs, so it only works on an Android phone or tablet — there's nothing to scan or write here.",
-  "nfcErrNotNdef": "This tag doesn't support NDEF, so luma can't edit it. Most blank NFC stickers and cards do — try another tag.",
+  "nfcUnsupportedNotice": "NFC Tag Editor needs Android's NFC hardware and reader APIs, so it only works on an Android phone or tablet. There's nothing to scan or write here.",
+  "nfcErrNotNdef": "This tag doesn't support NDEF, so luma can't edit it. Most blank NFC stickers and cards do, so try another tag.",
   "nfcErrNotAvailable": "NFC editing isn't available on this device.",
   "nfcErrNfcOff": "NFC is off or unsupported here. Turn it on in your device settings and try again.",
   "nfcErrStartFailed": "Could not start the NFC reader. ({error})",
@@ -12047,21 +12047,21 @@
       }
     }
   },
-  "nfcErrNotWritable": "This tag can't be written to — it doesn't support NDEF.",
+  "nfcErrNotWritable": "This tag can't be written to. It doesn't support NDEF.",
   "nfcErrNothingToLock": "This tag isn't NDEF-formatted, so there's nothing to lock.",
   "nfcErrNoTag": "No tag detected. Hold it flat against the back of your phone and try again.",
   "nfcTabEditor": "Editor",
   "nfcTabTemplates": "Templates",
   "nfcTabHistory": "History",
   "nfcHeroTitle": "Scan a tag to see what's on it",
-  "nfcHeroBody": "Hold any NFC tag or sticker to your phone to read and edit its records — or start from scratch and write a brand-new tag.",
+  "nfcHeroBody": "Hold any NFC tag or sticker to your phone to read and edit its records, or start from scratch and write a brand-new tag.",
   "nfcScanTag": "Scan a tag",
   "nfcStartFromScratch": "Start from scratch",
   "nfcRecordsHeading": "Records",
   "nfcNoRecordsTitle": "No records yet",
-  "nfcNoRecordsBody": "Add a record above — text, a link, Wi-Fi details, a contact card and more.",
+  "nfcNoRecordsBody": "Add a record above: text, a link, Wi-Fi details, a contact card and more.",
   "nfcWriteToTag": "Write to tag",
-  "nfcWriteHint": "Works on the tag you scanned or a different one — just hold whichever you want to write to when it's ready.",
+  "nfcWriteHint": "Works on the tag you scanned or a different one. Just hold whichever one you want to write to when it's ready.",
   "nfcStartOver": "Start over",
   "nfcStartOverTitle": "Start over?",
   "nfcStartOverBody": "This clears every record in the editor. Anything already written to a tag is unaffected.",
@@ -12081,12 +12081,12 @@
     }
   },
   "nfcWriteLockTitle": "Write & lock this tag?",
-  "nfcWriteLockBody": "This writes the records below, then makes the tag permanently read-only. It can never be written to again — not by luma, not by any other app.",
+  "nfcWriteLockBody": "This writes the records below, then makes the tag permanently read-only. It can never be written to again, not by luma and not by any other app.",
   "nfcWriteLockAction": "Write & lock",
   "nfcWriteLockMenu": "Write & lock (read-only)",
   "nfcNoRecords": "No records",
   "nfcDeleteTemplateTitle": "Delete template?",
-  "nfcDeleteTemplateBody": "This removes “{name}” — tags already written with it keep their content.",
+  "nfcDeleteTemplateBody": "This removes “{name}”. Tags already written with it keep their content.",
   "@nfcDeleteTemplateBody": {
     "placeholders": {
       "name": {
@@ -12095,7 +12095,7 @@
     }
   },
   "nfcNoTemplatesTitle": "No templates yet",
-  "nfcNoTemplatesBody": "Build a set of records in the Editor tab, then save it here to write the same tag content again and again — handy for a batch of stickers.",
+  "nfcNoTemplatesBody": "Build a set of records in the Editor tab, then save it here to write the same tag content again and again. Handy for a batch of stickers.",
   "nfcTemplateRecordsSummary": "{count, plural, =1{1 record} other{{count} records}} · {kinds}",
   "@nfcTemplateRecordsSummary": {
     "placeholders": {
@@ -12173,7 +12173,7 @@
   "nfcBusyWriteLabel": "Hold the tag you want to write to",
   "nfcBusyHint": "Keep it flat against the back of the phone until it beeps or vibrates.",
   "nfcTagReadOnly": "Read-only",
-  "nfcTagBlankWillFormat": "Blank — will format",
+  "nfcTagBlankWillFormat": "Blank, will be formatted",
   "nfcTagUid": "UID {uid}",
   "@nfcTagUid": {
     "placeholders": {
@@ -12293,7 +12293,7 @@
   "recipeBookNoPublicYet": "No public recipes yet",
   "recipeBookPublishFirstHint": "Publish one of your recipes to get the catalogue started.",
   "recipeBookNoFavouritesYet": "No favourites yet",
-  "recipeBookFavouritesHint": "Tap the heart on any recipe — private or public — to keep it here.",
+  "recipeBookFavouritesHint": "Tap the heart on any recipe, private or public, to keep it here.",
   "recipeBookNew": "New",
   "recipeBookYou": "You",
   "recipeBookPlanner": "Planner",
@@ -12494,7 +12494,7 @@
   "mafiaRoleCountingTitle": "Role Counting",
   "mafiaRoleCountingIntro": "Pick how many players are in the lobby, then check off roles as they get claimed.",
   "mafiaRoleCountingPlayersInLobby": "Players in lobby",
-  "mafiaRoleCountingLowCountWarning": "The wiki flags its data below 7 players as possibly inaccurate — treat this count as a rough guide.",
+  "mafiaRoleCountingLowCountWarning": "The wiki flags its data below 7 players as possibly inaccurate, so treat this count as a rough guide.",
   "mafiaRoleCountingClaimedOfTotal": "{claimed} / {total} claimed",
   "@mafiaRoleCountingClaimedOfTotal": {
     "placeholders": {
@@ -13165,7 +13165,7 @@
     }
   },
   "secureChatNotReady": "Chat encryption is not ready yet.",
-  "secureChatPeerNoKey": "This person hasn't set up chat encryption yet — try again later.",
+  "secureChatPeerNoKey": "This person hasn't set up chat encryption yet. Try again later.",
   "secureChatNotSignedIn": "Not signed in.",
   "secureChatIdentityLoadFailed": "Chat identity could not be loaded. Restore the original identity.",
   "secureChatServerError": "Server error ({status}).",
@@ -13180,7 +13180,7 @@
   "secureChatPickOrInvite": "Pick a conversation, or invite someone new by email.",
   "secureChatBack": "Chats",
   "secureChatNeedsSyncTitle": "Chat needs sync",
-  "secureChatNeedsSyncBody": "Sign in under Settings → Sync & account to invite people and chat. Messages are end-to-end encrypted on this device — the server only ever relays ciphertext.",
+  "secureChatNeedsSyncBody": "Sign in under Settings → Sync & account to invite people and chat. Messages are end-to-end encrypted on this device, and the server only ever relays ciphertext.",
   "secureChatHeading": "Chat",
   "secureChatNewChat": "New chat",
   "secureChatInviteSent": "Invite sent.",
@@ -13199,7 +13199,7 @@
   },
   "secureChatSayHello": "Say hello",
   "secureChatMessagesEncrypted": "Messages here are end-to-end encrypted.",
-  "secureChatPeerNotReady": "{email} hasn't set up chat encryption on a device yet — you'll be able to message them once they do.",
+  "secureChatPeerNotReady": "{email} hasn't set up chat encryption on a device yet. You'll be able to message them once they do.",
   "@secureChatPeerNotReady": {
     "placeholders": {
       "email": {
@@ -13211,7 +13211,7 @@
   "secureChatCouldNotDecrypt": "Could not decrypt this message.",
   "secureChatEnterValidEmail": "Enter a valid email address.",
   "secureChatInviteTitle": "Start an encrypted chat",
-  "secureChatInviteBody": "They'll see the invite in Chat → Invites the next time they open Luma. Once accepted, every message is end-to-end encrypted — only the two of you can read them.",
+  "secureChatInviteBody": "They'll see the invite in Chat → Invites the next time they open Luma. Once they accept, every message is end-to-end encrypted and only the two of you can read them.",
   "secureChatSendInvite": "Send invite",
   "serverTycoonAchFirstGrand": "First Grand",
   "serverTycoonAchFiveFigures": "Five Figures",
@@ -13822,7 +13822,7 @@
   },
   "serverTycoonAdd": "+ Add",
   "serverTycoonServices": "Services",
-  "serverTycoonNothingPluggedIn": "Nothing plugged in — drag a service node onto this rig.",
+  "serverTycoonNothingPluggedIn": "Nothing plugged in. Drag a service node onto this rig.",
   "serverTycoonInstallService": "Install Service",
   "serverTycoonNetwork": "Network",
   "serverTycoonNotConnected": "Not connected",
@@ -13837,7 +13837,7 @@
   },
   "serverTycoonClone": "Clone",
   "serverTycoonService": "Service",
-  "serverTycoonServiceNotPluggedIn": "Not plugged in — drag this node's port onto a rig.",
+  "serverTycoonServiceNotPluggedIn": "Not plugged in. Drag this node's port onto a rig.",
   "serverTycoonRunningOn": "Running on {name}",
   "@serverTycoonRunningOn": {
     "placeholders": {
@@ -14090,7 +14090,7 @@
     }
   },
   "serverTycoonNotPluggedIn": "Not plugged in",
-  "serverTycoonNoOffersToday": "No offers today — build reputation and buy licenses to attract companies.",
+  "serverTycoonNoOffersToday": "No offers today. Build reputation and buy licenses to attract companies.",
   "serverTycoonActive": "Active",
   "serverTycoonTodaysOffers": "Today's Offers",
   "serverTycoonAccept": "Accept",
@@ -14138,7 +14138,7 @@
       }
     }
   },
-  "serverTycoonResearchIdle": "Nothing in the lab — earning {rate} RP/day",
+  "serverTycoonResearchIdle": "Nothing in the lab, earning {rate} RP/day",
   "@serverTycoonResearchIdle": {
     "placeholders": {
       "rate": {
@@ -14184,7 +14184,7 @@
       }
     }
   },
-  "serverTycoonResearchLevel": "Level {level} — repeatable",
+  "serverTycoonResearchLevel": "Level {level} (repeatable)",
   "@serverTycoonResearchLevel": {
     "placeholders": {
       "level": {
@@ -14286,7 +14286,7 @@
       }
     }
   },
-  "serverTycoonBoostExtend": "Extend — {cost} for {days} days",
+  "serverTycoonBoostExtend": "Extend: {cost} for {days} days",
   "@serverTycoonBoostExtend": {
     "placeholders": {
       "cost": {
@@ -14297,7 +14297,7 @@
       }
     }
   },
-  "serverTycoonBoostActivate": "Activate — {cost} for {days} days",
+  "serverTycoonBoostActivate": "Activate: {cost} for {days} days",
   "@serverTycoonBoostActivate": {
     "placeholders": {
       "cost": {
@@ -14308,7 +14308,7 @@
       }
     }
   },
-  "serverTycoonNetProfitLastDays": "Net profit — last {count} days",
+  "serverTycoonNetProfitLastDays": "Net profit, last {count} days",
   "@serverTycoonNetProfitLastDays": {
     "placeholders": {
       "count": {
@@ -14316,7 +14316,7 @@
       }
     }
   },
-  "serverTycoonPowerDrawLastDays": "Power draw — last {count} days",
+  "serverTycoonPowerDrawLastDays": "Power draw, last {count} days",
   "@serverTycoonPowerDrawLastDays": {
     "placeholders": {
       "count": {
@@ -14367,7 +14367,7 @@
   "serverTycoonAwayRate": "Away rate",
   "serverTycoonNotEnoughDays": "Not enough days yet",
   "serverTycoonWhileYouWereAway": "While you were away",
-  "serverTycoonAwayFor": "Away for {duration} — {days, plural, =1{1 day} other{{days} days}} simulated at {rate}% rate.",
+  "serverTycoonAwayFor": "Away for {duration}. {days, plural, =1{1 day} other{{days} days}} simulated at {rate}% rate.",
   "@serverTycoonAwayFor": {
     "placeholders": {
       "duration": {
@@ -14381,7 +14381,7 @@
       }
     }
   },
-  "serverTycoonAwayCapped": "Capped at {maxDays} days — {elapsed} had passed. Research the R&D Lab branch to earn more while away.",
+  "serverTycoonAwayCapped": "Capped at {maxDays} days ({elapsed} had passed). Research the R&D Lab branch to earn more while you're away.",
   "@serverTycoonAwayCapped": {
     "placeholders": {
       "maxDays": {
@@ -14567,7 +14567,7 @@
       }
     }
   },
-  "serverTycoonRepoOneProjectAtATime": "Only one project at a time — build the R&D Lab branch for more queue slots",
+  "serverTycoonRepoOneProjectAtATime": "Only one project at a time. Build the R&D Lab branch for more queue slots",
   "serverTycoonRepoResearchSlotsBusy": "All {slots} research slots are busy",
   "@serverTycoonRepoResearchSlotsBusy": {
     "placeholders": {
@@ -14673,7 +14673,7 @@
   "serverTycoonRepoNothingHoldingBack": "Nothing is holding this rig back",
   "serverTycoonRepoNoAffordableUpgrade": "No affordable upgrade for that bottleneck",
   "serverTycoonRepoFastestPlan": "Already on the fastest plan",
-  "serverTycoonRepoCloned": "Cloned for {cost} — install services on it to start earning",
+  "serverTycoonRepoCloned": "Cloned for {cost}. Install services on it to start earning",
   "@serverTycoonRepoCloned": {
     "placeholders": {
       "cost": {
@@ -14841,7 +14841,7 @@
   "sftpHostApprovalToggle": "Ask me before letting a device in",
   "sftpHostApprovalToggleSubtitle": "Even with the right password, you approve each one.",
   "sftpHostOwnPasswordToggle": "Choose the pairing password myself",
-  "sftpHostOwnPasswordSubtitle": "Off by default — luma generates a much stronger one.",
+  "sftpHostOwnPasswordSubtitle": "Off by default. luma generates a much stronger one.",
   "sftpHostPasswordHint": "At least {minLength} characters",
   "@sftpHostPasswordHint": {
     "placeholders": {
@@ -14850,13 +14850,13 @@
       }
     }
   },
-  "sftpHostPasswordTooShortWarn": "Too short — this will be refused.",
+  "sftpHostPasswordTooShortWarn": "Too short. This will be refused.",
   "sftpHostPasswordWeak": "Weak. Anyone who can reach this port could work it out.",
   "sftpHostPasswordFair": "Fair. A longer one would be better.",
   "sftpHostPasswordStrong": "Strong.",
   "sftpHostStartHosting": "Start hosting",
   "sftpHostEmptyClients": "Nothing is reading this folder. It stays shared until you press Stop or close luma.",
-  "sftpHostSecurityNote": "The two devices agree on a key from the pairing password, then encrypt everything between them. luma's servers are not involved and never see the folder, the password or the files. Only the folder you pick is reachable. Hosting keeps running while luma is open — press Stop when you are done.",
+  "sftpHostSecurityNote": "The two devices agree on a key from the pairing password, then encrypt everything between them. luma's servers aren't involved and never see the folder, the password or the files. Only the folder you pick is reachable. Hosting keeps running while luma is open, so press Stop when you're done.",
   "sftpHostNoAddress": "This device has no address.",
   "sftpHostTypePassword": "Type the pairing password shown on that device.",
   "sftpHostCouldNotReach": "Could not reach {host} on port {port}. Check that the other device is still showing its pairing screen and that both are on the same network.\n{detail}",
@@ -15053,10 +15053,10 @@
   },
   "sftpThisDeviceCredentialsTitle": "Credentials for this device",
   "sftpThisDeviceCredentialsHelp": "On the other device open the SFTP plugin, press New site, pick \"luma device\", and enter these.",
-  "sftpThisDeviceUserNameNote": "The user name is here to tell devices apart. luma pairs on the password alone — this is not an SSH login, and nothing on this device's account is exposed by it.",
+  "sftpThisDeviceUserNameNote": "The user name is just there to tell devices apart. luma pairs on the password alone. This isn't an SSH login, and nothing on this device's account is exposed by it.",
   "sftpThisDeviceNewPassword": "New password",
   "sftpThisDeviceStatusChooseTitle": "Choose a folder to share",
-  "sftpThisDeviceStatusChooseBody": "Nothing is reachable until you pick one. Only that folder is served — nothing above it.",
+  "sftpThisDeviceStatusChooseBody": "Nothing is reachable until you pick one. Only that folder is served, nothing above it.",
   "sftpThisDeviceStatusOpeningTitle": "Opening this device…",
   "sftpThisDeviceStatusOpeningBody": "Setting up the listener.",
   "sftpThisDeviceStatusPausedTitle": "Paused while luma is in the background",
@@ -15407,10 +15407,10 @@
   "sftpMyDevices": "My devices",
   "sftpServers": "Servers",
   "sftpHost": "Host",
-  "sftpSharingFolderNote": "Sharing a folder — any device with the pairing password can connect.",
+  "sftpSharingFolderNote": "Sharing a folder. Any device with the pairing password can connect.",
   "sftpHostIdleNote": "Let another device connect to this one over your network.",
   "sftpDevicesNote": "One folder, mirrored across your own devices over your network.",
-  "sftpServersNote": "Connect to your own server — nothing routes through luma.",
+  "sftpServersNote": "Connect to your own server. Nothing goes through luma.",
   "sftpConnectedTo": "Connected to {endpoint}",
   "@sftpConnectedTo": {
     "placeholders": {
@@ -15459,7 +15459,7 @@
   "sftpUploadSelected": "Upload the selected files",
   "sftpDownloadSelected": "Download the selected files",
   "sftpUpsellTitle": "SFTP comes with Orbit and Nova",
-  "sftpUpsellBody": "Connect to your own servers with a host, username, password and port, browse both sides at once, and drag files across. The connection goes straight from this device to your server — nothing passes through a luma server.",
+  "sftpUpsellBody": "Connect to your own servers with a host, username, password and port, browse both sides at once, and drag files across. The connection goes straight from this device to your server and never passes through a luma server.",
   "sftpUpgradeTo": "Upgrade to {plan}",
   "@sftpUpgradeTo": {
     "placeholders": {
@@ -15601,7 +15601,7 @@
   "sftpSiteSnapshotInvalid": "Invalid SFTP sites snapshot.",
   "sftpNearbyTitle": "On this network",
   "sftpNearbyEmpty": "No luma device on this network is hosting right now. Open the Host tab or This device on the other one and it shows up here.",
-  "sftpNearbyOtherVersion": "{address} · runs a different version of luma — update both to connect",
+  "sftpNearbyOtherVersion": "{address} · runs a different version of luma. Update both to connect",
   "@sftpNearbyOtherVersion": {
     "placeholders": {
       "address": {
@@ -15610,11 +15610,11 @@
     }
   },
   "sftpSiteNoServersTitle": "No servers yet",
-  "sftpSiteNoServersBody": "A site is one saved server — its host name, user name, password and port. luma connects straight to it from this device. To go the other way and let a device connect to this one, open This device.",
+  "sftpSiteNoServersBody": "A site is one saved server: its host name, user name, password and port. luma connects straight to it from this device. To go the other way and let a device connect to this one, open This device.",
   "sftpSiteNew": "New site",
   "sftpSiteManagerTitle": "Site Manager",
   "sftpSiteManagerSubtitle": "Your servers, saved on this device only.",
-  "sftpPrivacyNote": "Connections go straight from this device to your server. Nothing passes through a luma server, and saved passwords stay encrypted here — they are never synced.",
+  "sftpPrivacyNote": "Connections go straight from this device to your server. Nothing passes through a luma server, and saved passwords stay encrypted here. They're never synced.",
   "sftpPasswordSavedTooltip": "Password saved, encrypted on this device",
   "sftpEditSiteTooltip": "Edit site",
   "sftpRemoveSiteTooltip": "Remove site",
@@ -15627,7 +15627,7 @@
   "sftpTransportSshServer": "SSH server",
   "sftpTransportLumaDevice": "luma device",
   "sftpLumaDeviceHint": "Another device running luma with hosting turned on. Read its address, port and pairing password off its Host tab.",
-  "sftpSshServerHint": "Any server that speaks SSH — a VPS, a NAS, a Pi.",
+  "sftpSshServerHint": "Any server that speaks SSH: a VPS, a NAS, a Pi.",
   "sftpSiteNameHintLuma": "My laptop",
   "sftpSiteNameHintServer": "My VPS",
   "sftpSiteFieldHost": "Host",
@@ -15640,7 +15640,7 @@
   "sftpSaveDeviceSecret": "Save the pairing password for this device",
   "sftpSaveKeyPassphrase": "Save the passphrase for this site",
   "sftpSaveSitePassword": "Save the password for this site",
-  "sftpSaveDeviceSecretNote": "Encrypted on this device — but the other device changes it every time it starts hosting.",
+  "sftpSaveDeviceSecretNote": "Encrypted on this device, but the other device changes it every time it starts hosting.",
   "sftpSaveSiteSecretNote": "Encrypted on this device. Untick and luma asks every time you connect.",
   "sftpOpenFolderOnConnect": "Open this folder on connect",
   "sftpLumaFolderHint": "/photos (optional)",
@@ -15695,7 +15695,7 @@
   "sftpShareRescan": "Rescan",
   "sftpShareDropToShare": "Drop to share",
   "sftpShareNothingYet": "Nothing shared yet",
-  "sftpShareEmptyHint": "Drag files in from the left, or use +. Anything here shows up in the same folder on your other devices — sent straight over your network, never through a luma server.",
+  "sftpShareEmptyHint": "Drag files in from the left, or use +. Anything here shows up in the same folder on your other devices. It's sent straight over your network, never through a luma server.",
   "sftpShareOpen": "Open",
   "sftpShareLookingForDevices": "Looking for your other devices on this network. Open luma on one of them, signed in to the same account.",
   "sftpShareSyncOff": "Device sync is off. Turn it on in Settings → Sync & account to reach your other devices.",
@@ -15771,7 +15771,7 @@
       }
     }
   },
-  "sendToDevicesQueued": "{count, plural, =1{1 file ready} other{{count} files ready}} — they will go over as soon as another device is on this network.",
+  "sendToDevicesQueued": "{count, plural, =1{1 file ready} other{{count} files ready}}. They'll go over as soon as another device is on this network.",
   "@sendToDevicesQueued": {
     "placeholders": {
       "count": {
@@ -15806,12 +15806,12 @@
   "cardGamesHandFullHouse": "Full house",
   "cardGamesHandFourOfKind": "Four of a kind",
   "cardGamesHandStraightFlush": "Straight flush",
-  "cardGamesBjPushBlackjack": "Push — both have blackjack.",
+  "cardGamesBjPushBlackjack": "Push. You both have blackjack.",
   "cardGamesBjPlayerBlackjack": "Blackjack! You win.",
   "cardGamesBjDealerBlackjack": "Dealer has blackjack.",
-  "cardGamesBjBust": "Bust — dealer wins.",
+  "cardGamesBjBust": "Bust. Dealer wins.",
   "cardGamesBjPlayerWins": "You win this hand!",
-  "cardGamesBjPushTie": "Push — it is a tie.",
+  "cardGamesBjPushTie": "Push. It's a tie.",
   "cardGamesBjDealerWins": "Dealer wins this hand.",
   "cardGamesPokerPlayerWins": "You win! {yours} beats {theirs}.",
   "@cardGamesPokerPlayerWins": {
@@ -15835,7 +15835,7 @@
       }
     }
   },
-  "cardGamesPokerPush": "Push — both hands tie with {hand}.",
+  "cardGamesPokerPush": "Push. Both hands tie with {hand}.",
   "@cardGamesPokerPush": {
     "placeholders": {
       "hand": {
@@ -16367,9 +16367,9 @@
   "cs2MarketChecking": "Checking…",
   "cs2MarketBrowse": "Browse",
   "cs2MarketTracked": "Tracked",
-  "cs2MarketSearchTracked": "Search what you track — name, weapon, rarity",
-  "cs2MarketSearchAny": "Search any CS2 item — name, weapon, rarity, case",
-  "cs2MarketCheckingProgress": "Checking prices — {done} of {total}",
+  "cs2MarketSearchTracked": "Search what you track by name, weapon or rarity",
+  "cs2MarketSearchAny": "Search any CS2 item by name, weapon, rarity or case",
+  "cs2MarketCheckingProgress": "Checking prices: {done} of {total}",
   "@cs2MarketCheckingProgress": {
     "placeholders": {
       "done": {
@@ -16384,7 +16384,7 @@
   "cs2MarketCatalogEmpty": "Catalog is empty",
   "cs2MarketCatalogEmptyHint": "Refresh the catalog to load every CS2 item.",
   "cs2MarketKeepTyping": "Keep typing",
-  "cs2MarketKeepTypingHint": "One letter matches too much of the catalog to be useful — a couple more will narrow it down.",
+  "cs2MarketKeepTypingHint": "One letter matches too much of the catalog to be useful. A couple more will narrow it down.",
   "cs2MarketNoMatch": "No items match \"{query}\"",
   "@cs2MarketNoMatch": {
     "placeholders": {
@@ -16455,7 +16455,7 @@
   "cs2ItemEditStartingPrice": "Edit starting price",
   "cs2ItemStartingPriceSubtitle": "The price this copy's gain and loss is measured from.",
   "cs2ItemNotFound": "Item not found",
-  "cs2ItemNotFoundHint": "It may have dropped out of the last catalog update — try refreshing the catalog.",
+  "cs2ItemNotFoundHint": "It may have dropped out of the last catalog update. Try refreshing the catalog.",
   "cs2ItemBackToMarket": "Back to the market",
   "cs2ItemWear": "Wear",
   "cs2ItemVariant": "Variant",
@@ -16472,7 +16472,7 @@
     }
   },
   "cs2ItemCheckNow": "Check now",
-  "cs2ItemQuickCheckNotSaved": "A quick check, not saved — track this listing to keep a history of its price.",
+  "cs2ItemQuickCheckNotSaved": "This is a quick check and isn't saved. Track this listing to keep a history of its price.",
   "cs2ItemStatusNotChecked": "Not checked yet.",
   "cs2ItemCheckedJustNow": "Checked just now.",
   "cs2ItemCheckedMinutes": "Checked {minutes} min ago.",
@@ -16522,7 +16522,7 @@
   "cs2ItemFactWeapon": "Weapon",
   "cs2ItemFactRarity": "Rarity",
   "cs2ItemFactCase": "Case",
-  "cs2ItemFactNoCase": "No case — collection or promo item",
+  "cs2ItemFactNoCase": "No case (collection or promo item)",
   "cs2ItemFactAvailable": "Available for this finish",
   "cs2ItemFactSouvenir": "Souvenir",
   "cs2ItemOpenOnMarket": "Open on Steam Market",
@@ -16548,7 +16548,7 @@
       }
     }
   },
-  "cs2ChartOneReading": "One reading so far — a trend needs at least two.",
+  "cs2ChartOneReading": "Only one reading so far. A trend needs at least two.",
   "cs2ChartUnchangedAcrossCount": "Unchanged at {delta} across {count, plural, =1{1 reading} other{{count} readings}}.",
   "@cs2ChartUnchangedAcrossCount": {
     "placeholders": {
@@ -16584,7 +16584,7 @@
   "cs2ChartLowest": "Lowest",
   "cs2ChartHighest": "Highest",
   "cs2ChartNoHistory": "No history yet",
-  "cs2ChartNoHistoryHint": "Steam's market publishes no history of its own — track this listing and luma starts building one from here.",
+  "cs2ChartNoHistoryHint": "Steam's market doesn't publish any history of its own. Track this listing and luma starts building one from here.",
   "cs2ChartNoReadingsInRange": "No readings in this range",
   "cs2ChartTryWiderRange": "Try a wider range, or check the price again.",
   "steamFreeToPlay": "Free to play",
@@ -16605,12 +16605,12 @@
   "steamAccountSettingsTooltip": "Steam account settings",
   "cs2StartPriceEnterValid": "Enter a valid price.",
   "cs2StartPriceGrade": "Grade",
-  "cs2StartPriceGradeHelper": "Wear and price are set together — they can't be changed independently once tracking starts.",
-  "cs2StartPriceGradeFixedHelper": "Fixed — this baseline belongs to that exact listing.",
+  "cs2StartPriceGradeHelper": "Wear and price are set together. They can't be changed separately once tracking starts.",
+  "cs2StartPriceGradeFixedHelper": "Fixed. This baseline belongs to that exact listing.",
   "cs2StartPriceStartingPrice": "Starting price",
-  "cs2StartPriceStartingPriceHelper": "What you paid, or the price to measure gain and loss from — not fetched from Steam.",
+  "cs2StartPriceStartingPriceHelper": "What you paid, or the price to measure gain and loss from. This isn't fetched from Steam.",
   "cs2TrackedEmptyTitle": "Nothing tracked yet",
-  "cs2TrackedEmptySubtitle": "Track a listing from Browse to start watching its price — it shows up here, alongside everything else you track.",
+  "cs2TrackedEmptySubtitle": "Track a listing from Browse to start watching its price. It shows up here, alongside everything else you track.",
   "cs2TrackedNoMatchTitle": "No tracked items match \"{query}\"",
   "@cs2TrackedNoMatchTitle": {
     "placeholders": {
@@ -16645,7 +16645,7 @@
   "steamAccountTitle": "Steam account",
   "steamAccountSubtitle": "So luma can list the games you own.",
   "steamAccountConnected": "Connected",
-  "steamAccountConnectedWithKey": "Connected — {maskedKey}",
+  "steamAccountConnectedWithKey": "Connected ({maskedKey})",
   "@steamAccountConnectedWithKey": {
     "placeholders": {
       "maskedKey": {
@@ -16666,9 +16666,9 @@
   "steamAccountErrorNoId": "Enter your Steam ID or profile URL.",
   "steamAccountConnect": "Connect",
   "steamAccountDisconnect": "Disconnect",
-  "steamAccountEncryptedNote": "Your key is stored encrypted on this device and is sent only to Steam — never to a luma server.",
+  "steamAccountEncryptedNote": "Your key is stored encrypted on this device and is only ever sent to Steam, never to a luma server.",
   "steamAccountPrivacyNote": "Steam only returns your library when \"Game details\" is set to Public in your privacy settings.",
-  "steamAccountHistoryNote": "Price history needs a signed-in luma account too — it is fetched through the server, so no separate key is needed for it.",
+  "steamAccountHistoryNote": "Price history also needs a signed-in luma account. It's fetched through the server, so you don't need a separate key for it.",
   "steamDetailNoLongerInLibraryTitle": "That game is no longer in your library",
   "steamDetailNoLongerInLibrarySubtitle": "Refresh your library to see what changed.",
   "steamDetailBackTooltip": "Back to your library",
@@ -16833,7 +16833,7 @@
     }
   },
   "steamChartSignInTitle": "Sign in for price history",
-  "steamChartSignInBody": "Steam only publishes what a game costs today. A signed-in luma account reads the years behind it — no extra key to find or paste in.",
+  "steamChartSignInBody": "Steam only publishes what a game costs today. A signed-in luma account can read the years behind it, with no extra key to find or paste in.",
   "steamChartNoHistoryOver": "No price history over {range}",
   "@steamChartNoHistoryOver": {
     "placeholders": {
@@ -16843,7 +16843,7 @@
     }
   },
   "steamChartNothingOnFile": "IsThereAnyDeal has nothing on file for this game.",
-  "steamSearchSubtitle": "Search the Steam store — no account needed.",
+  "steamSearchSubtitle": "Search the Steam store. No account needed.",
   "steamSearchHint": "Search for a game",
   "steamSearchStartHint": "Search by a game's name to start tracking its price.",
   "steamSearchCouldNot": "Could not search Steam: {error}",
@@ -16880,7 +16880,7 @@
   },
   "steamTrackerSortPlaytime": "Playtime",
   "steamTrackerTitle": "Price Tracker",
-  "steamTrackerSubtitleDisconnected": "Tracking prices — connect a Steam account to bulk-add your library too.",
+  "steamTrackerSubtitleDisconnected": "Tracking prices. Connect a Steam account to bulk-add your library too.",
   "steamTrackerSubtitleNoSync": "Connected. Refresh library to import it.",
   "steamTrackerSyncedJustNow": "Library synced just now.",
   "steamTrackerSyncedMinutes": "Library synced {count} min ago.",
@@ -16910,7 +16910,7 @@
   "steamTrackerRefreshLibrary": "Refresh library",
   "steamTrackerRefreshPrices": "Refresh prices",
   "steamTrackerSearchHint": "Search tracked games",
-  "steamTrackerCheckingPrices": "Checking prices — {done} of {total}",
+  "steamTrackerCheckingPrices": "Checking prices: {done} of {total}",
   "@steamTrackerCheckingPrices": {
     "placeholders": {
       "done": {
@@ -16922,7 +16922,7 @@
     }
   },
   "steamTrackerEmptyTitle": "Track your first game",
-  "steamTrackerEmptySubtitle": "Search for a game to start watching its price — no Steam account needed.",
+  "steamTrackerEmptySubtitle": "Search for a game to start watching its price. You don't need a Steam account.",
   "steamTrackerNoMatchTitle": "No games match \"{query}\"",
   "@steamTrackerNoMatchTitle": {
     "placeholders": {
@@ -17073,7 +17073,7 @@
     }
   },
   "transportTrackerAddKeyToSeeShips": "Add a free AISStream.io API key to see live ships.",
-  "transportTrackerConnectedWaiting": "Connected — waiting for position reports. Busy shipping lanes fill in within seconds; open ocean can take longer.",
+  "transportTrackerConnectedWaiting": "Connected, waiting for position reports. Busy shipping lanes fill in within seconds; open ocean can take longer.",
   "transportTrackerNoVesselsYet": "No vessels yet. Press \"{label}\" to start the live feed for the area on screen.",
   "@transportTrackerNoVesselsYet": {
     "placeholders": {
@@ -17091,7 +17091,7 @@
       }
     }
   },
-  "transportTrackerMapLoadFailed": "The map could not load fully — check this device's internet connection. ({error})",
+  "transportTrackerMapLoadFailed": "The map couldn't load fully. Check this device's internet connection. ({error})",
   "@transportTrackerMapLoadFailed": {
     "placeholders": {
       "error": {
@@ -17139,7 +17139,7 @@
   "transportTrackerVehicleNumber": "Vehicle #",
   "transportTrackerOperator": "Operator",
   "transportTrackerLastUpdate": "Last update",
-  "transportTrackerInterpolatedNote": "Estimated from the timetable — trains do not broadcast their position in the open data, so this is interpolated between stations.",
+  "transportTrackerInterpolatedNote": "Estimated from the timetable. Trains don't broadcast their position in the open data, so this is interpolated between stations.",
   "transportTrackerDownloadingStops": "Downloading stop names (about 1.4 MB, once)…",
   "transportTrackerStopNamesUnavailable": "Stop names unavailable: {error}",
   "@transportTrackerStopNamesUnavailable": {
@@ -17207,16 +17207,16 @@
   "transportTrackerLayersTitle": "What to track",
   "transportTrackerShips": "Ships",
   "transportTrackerShipsSubtitle": "Live AIS vessel positions worldwide. Needs your own free AISStream.io key.",
-  "transportTrackerTransitTitle": "Public transport — Netherlands",
+  "transportTrackerTransitTitle": "Public transport: Netherlands",
   "transportTrackerTransitSubtitle": "Live trains, metros, trams, buses and ferries from the Dutch open-data feed. No key needed.",
   "transportTrackerModes": "Modes",
   "transportTrackerKeyDialogTitle": "AISStream.io API key",
-  "transportTrackerGetKeyHint": "Get a free key at aisstream.io — sign in, then copy your API key from the dashboard.",
+  "transportTrackerGetKeyHint": "Get a free key at aisstream.io. Sign in, then copy your API key from the dashboard.",
   "transportTrackerKeyHintReplace": "Enter a new key to replace it",
   "transportTrackerKeyHintPaste": "Paste your API key",
   "transportTrackerShowKey": "Show key",
   "transportTrackerHideKey": "Hide key",
-  "transportTrackerKeyPrivacyNote": "Stored locally on this device only, encrypted at rest. Sent directly to aisstream.io when tracking — never to any luma server.",
+  "transportTrackerKeyPrivacyNote": "Stored locally on this device only, encrypted at rest. It's sent straight to aisstream.io when tracking and never to a luma server.",
   "vesselCategoryCargo": "Cargo",
   "vesselCategoryTanker": "Tanker",
   "vesselCategoryPassenger": "Passenger",
@@ -17433,7 +17433,7 @@
   },
   "speedTestTryAgain": "Try Again",
   "speedTestStart": "Start Test",
-  "speedTestTesting": "Testing — please wait…",
+  "speedTestTesting": "Testing, please wait…",
   "speedTestFailed": "Test failed. Check your connection and try again.",
   "speedTestReady": "Ready",
   "speedTestPinging": "Pinging…",
@@ -17676,7 +17676,7 @@
   "financeBudgets": "Budgets",
   "financeDashboard": "Dashboard",
   "financePots": "Pots",
-  "financeOverviewNoPots": "No pots yet — make one in the Pots tab and split your money up.",
+  "financeOverviewNoPots": "No pots yet. Make one in the Pots tab and split your money up.",
   "financeThisWeek": "This week",
   "financeInvestments": "Investments",
   "financeUpcoming": "Upcoming",
@@ -17713,7 +17713,7 @@
       }
     }
   },
-  "financeUpcomingEmpty": "No fixed costs or income yet — add them in the Recurring tab.",
+  "financeUpcomingEmpty": "No fixed costs or income yet. Add them in the Recurring tab.",
   "financeAddDebt": "Add debt",
   "financeDebtsEmpty": "No debts tracked",
   "financeDebtsEmptySubtitle": "Add a student loan, a mortgage, or money a friend owes you to see when it's paid off.",
@@ -17817,7 +17817,7 @@
   "financeDebtsIOwe": "I owe",
   "financeDebtsOwedToMe": "Owed to me",
   "financeDebtsNameHintOwe": "e.g. Student loan (DUO)",
-  "financeDebtsNameHintOwed": "e.g. Sam — concert tickets",
+  "financeDebtsNameHintOwed": "e.g. Sam, concert tickets",
   "financeDebtsOriginalAmount": "Original amount",
   "financeDebtsInterestOptional": "Interest (optional)",
   "financeDebtsPerYear": "% / year",
@@ -17848,7 +17848,7 @@
   "financeDebtsEnterBalance": "Enter the balance as an amount.",
   "financeDebtsAdjustExplainer": "Type the balance from your latest statement. The difference is recorded as an adjustment (interest, fees) and doesn't touch your transactions.",
   "financeDebtsCurrentBalance": "Current balance",
-  "financeDebtsHistoryTitle": "{name} — history",
+  "financeDebtsHistoryTitle": "{name}: history",
   "@financeDebtsHistoryTitle": {
     "placeholders": {
       "name": {
@@ -17916,7 +17916,7 @@
   },
   "financeForecast30Days": "30d",
   "financeForecast90Days": "90d",
-  "financeForecastBelowZero": "Heading below €0 on {date} — lowest {lowest} on {lowestDate}.",
+  "financeForecastBelowZero": "Heading below €0 on {date}. Lowest point is {lowest} on {lowestDate}.",
   "@financeForecastBelowZero": {
     "placeholders": {
       "date": {
@@ -17941,7 +17941,7 @@
       }
     }
   },
-  "financeForecastNothingScheduled": "Nothing scheduled — add fixed costs and income in the Recurring tab.",
+  "financeForecastNothingScheduled": "Nothing scheduled. Add fixed costs and income in the Recurring tab.",
   "financePlanningGoalReached": "Goal reached",
   "financePlanningGoalShortWasDue": "{amount} short · was due {date}",
   "@financePlanningGoalShortWasDue": {
@@ -18119,7 +18119,7 @@
   "financeRecurringToMain": "To main balance",
   "financeRecurringCategoryOptional": "Category (optional)",
   "financeRecurringNoCategory": "No category",
-  "financeRecurringTreatAsBill": "Treat as a bill/subscription — show it in \"due soon\"",
+  "financeRecurringTreatAsBill": "Treat as a bill/subscription (show it in \"due soon\")",
   "financeRecurringRemindDays": "Remind me this many days before it's due",
   "financeRecurringEnterNameAndAmount": "Enter a name and a valid amount.",
   "financeRecurringInvalidReminder": "Enter a valid number of reminder days.",
@@ -18455,7 +18455,7 @@
     }
   },
   "financeStocksUpdatingPrices": "Updating prices…",
-  "financeStocksAtCostNoQuote": "At cost price — no live quote yet",
+  "financeStocksAtCostNoQuote": "At cost price, no live quote yet",
   "financeStocksPricesAsOf": "Prices as of {stamp}",
   "@financeStocksPricesAsOf": {
     "placeholders": {
@@ -18709,13 +18709,13 @@
   "secretStoreConflictingKeys": "Conflicting encryption keys; restore requires review.",
   "secretStoreInvalidKey": "Invalid stored encryption key.",
   "devicesSetupTitle": "Sync directly between devices",
-  "devicesSetupBody": "No server needed — just an email + password shared between your devices, used only to recognize each other over Wi-Fi. Already have a luma cloud account? Sign in above instead and this turns on automatically.",
+  "devicesSetupBody": "No server needed. Just an email and password shared between your devices, used only so they recognize each other over Wi-Fi. Already have a luma cloud account? Sign in above instead and this turns on automatically.",
   "devicesErrorInvalidEmail": "Enter a valid email address.",
-  "devicesErrorPasswordShort": "Use at least 10 characters — this password also protects your encrypted data.",
+  "devicesErrorPasswordShort": "Use at least 10 characters. This password also protects your encrypted data.",
   "devicesEnableTitle": "Enable device sync",
-  "devicesEnableBody": "Enter the same email and password on every device you want to pair — they never leave this device or touch a server. They just prove your devices belong to the same person.",
-  "devicesPasswordWarning": "If you mistype the password while pairing a second device, it just won't be recognized as the same account — there's no server to check against or reset it with.",
-  "devicesLocalOnly": "Local only — {email} (not backed up anywhere)",
+  "devicesEnableBody": "Enter the same email and password on every device you want to pair. They never leave this device or touch a server; they just prove your devices belong to the same person.",
+  "devicesPasswordWarning": "If you mistype the password while pairing a second device, it just won't be recognized as the same account. There's no server to check against or reset it with.",
+  "devicesLocalOnly": "Local only: {email} (not backed up anywhere)",
   "@devicesLocalOnly": {
     "placeholders": {
       "email": {
@@ -18736,7 +18736,7 @@
   "devicesAutoSyncHint": "Auto-sync pushes changes to connected devices within a couple of seconds. Off, you tap a device and choose Sync now.",
   "devicesViewDebugLog": "View debug log",
   "devicesThisDevice": "This device",
-  "devicesIpHint": "IP: {addresses} — the other device must be on the same network to find this one.",
+  "devicesIpHint": "IP: {addresses}. The other device has to be on the same network to find this one.",
   "@devicesIpHint": {
     "placeholders": {
       "addresses": {
@@ -18759,7 +18759,7 @@
   "devicesDisconnect": "Disconnect",
   "devicesConnect": "Connect",
   "devicesHotspotTitle": "No shared Wi-Fi? Use a hotspot",
-  "devicesHotspotBody": "Discovery only finds devices on the same network. If your phone is on mobile data instead of Wi-Fi, there's no LAN to find each other on — turn on the phone's own hotspot instead and have the other device join it. Once both are on that one network, everything here works exactly the same.",
+  "devicesHotspotBody": "Discovery only finds devices on the same network. If your phone is on mobile data instead of Wi-Fi, there's no LAN for them to find each other on. Turn on the phone's own hotspot instead and have the other device join it. Once both are on that network, everything here works exactly the same.",
   "devicesHotspotStep1": "On the phone: Settings → Network & internet → Hotspot & tethering → turn on Wi-Fi hotspot.",
   "devicesHotspotStep2": "On the other device: connect to that hotspot's Wi-Fi network like any other.",
   "devicesHotspotStep3": "Come back here and turn discovery on (or off and back on) on both devices.",
@@ -18769,7 +18769,7 @@
   "devicesTurnOffBody": "This disconnects every paired device and forgets this device's sync identity. You can set it up again any time with the same email and password.",
   "devicesErrorHostPort": "Enter a host and a valid port (1–65535).",
   "devicesConnectManualTitle": "Connect manually",
-  "devicesManualBody": "Use this when discovery can't see the other device — e.g. a firewall is blocking mDNS. Enter the address it shows on its Devices screen.",
+  "devicesManualBody": "Use this when discovery can't see the other device, for example when a firewall is blocking mDNS. Enter the address it shows on its Devices screen.",
   "devicesHost": "Host",
   "devicesPort": "Port",
   "settingsAccentLavender": "Lavender",
@@ -18784,8 +18784,8 @@
   "settingsHomeScreenSub": "Arrange and resize tiles, pin your favorites, and choose what you see. Layouts sync within the same device format.",
   "settingsHomeScreenEdit": "Edit home screen",
   "syncSettingsHeadline": "Keep your stuff on every device",
-  "syncSettingsSignedOutBody": "Set up an account to sync features between devices — with Google, GitHub, or an email and password. Everything is encrypted on this device before it leaves; nothing is synced until you turn it on per feature. You can also skip the server entirely and pair devices over your own network.",
-  "syncSettingsSessionExpired": "Your cloud session expired — please sign in again.",
+  "syncSettingsSignedOutBody": "Set up an account to sync features between devices, with Google, GitHub, or an email and password. Everything is encrypted on this device before it leaves, and nothing syncs until you turn it on per feature. You can also skip the server entirely and pair devices over your own network.",
+  "syncSettingsSessionExpired": "Your cloud session expired. Please sign in again.",
   "syncSettingsSetUpAccount": "Set up account",
   "syncSettingsEnterCode": "Enter code",
   "syncSettingsPendingEmailCode": "{email} is waiting to be approved. Enter the 6-digit code we emailed you to finish signing in. Until then this device does not contact the server at all, and the plugins that need it stay switched off.",
@@ -18796,7 +18796,7 @@
       }
     }
   },
-  "syncSettingsPendingApproval": "{email} is waiting for the server operator to approve it. There is nothing to do in the meantime — just sign in once they have. Until then this device does not contact the server at all, and the plugins that need it stay switched off.",
+  "syncSettingsPendingApproval": "{email} is waiting for the server operator to approve it. There's nothing to do in the meantime, just sign in once they have. Until then this device doesn't contact the server at all, and the plugins that need it stay switched off.",
   "@syncSettingsPendingApproval": {
     "placeholders": {
       "email": {
@@ -18807,7 +18807,7 @@
   "syncSettingsResendCode": "Resend code",
   "syncSettingsUseDifferentEmail": "Use a different email",
   "syncSettingsSyncedToCloud": "Synced to the cloud",
-  "syncSettingsSyncedToCloudWith": "Synced to the cloud — sign in with {providers}",
+  "syncSettingsSyncedToCloudWith": "Synced to the cloud. Sign in with {providers}",
   "@syncSettingsSyncedToCloudWith": {
     "placeholders": {
       "providers": {
@@ -18816,11 +18816,11 @@
     }
   },
   "syncSettingsProviderSeparator": " or ",
-  "syncSettingsLocalOnly": "Local only — syncs directly between your devices, no server",
+  "syncSettingsLocalOnly": "Local only. Syncs directly between your devices, no server",
   "syncSettingsBackUpToServer": "Back up to a server…",
   "syncSettingsWhatSyncs": "What syncs from this device",
-  "syncSettingsWhatSyncsBody": "Everything is off by default. Only what you switch on here leaves this device — encrypted with your password before upload. When you first enable a feature that already has synced data, the server copy replaces this device's copy.",
-  "syncSettingsAutomaticTooltip": "Preferences, assistant memory and matching-device home layouts always sync — this can't be turned off.",
+  "syncSettingsWhatSyncsBody": "Everything is off by default. Only what you switch on here leaves this device, and it's encrypted with your password before upload. When you first turn on a feature that already has synced data, the server copy replaces this device's copy.",
+  "syncSettingsAutomaticTooltip": "Preferences, assistant memory and matching-device home layouts always sync. This can't be turned off.",
   "syncSettingsAlwaysOn": "Always on",
   "syncSettingsPlanSyncsOn": "{label} syncs on the {plan} plan and above.",
   "@syncSettingsPlanSyncsOn": {
@@ -18867,7 +18867,7 @@
       }
     }
   },
-  "syncSettingsPlanNeededBody": "{label} syncs to the server on the {plan} plan and above. It keeps working on this device either way — only syncing it between devices needs the plan.",
+  "syncSettingsPlanNeededBody": "{label} syncs to the server on the {plan} plan and above. It keeps working on this device either way; you only need the plan to sync it between devices.",
   "@syncSettingsPlanNeededBody": {
     "placeholders": {
       "label": {
@@ -18902,7 +18902,7 @@
       }
     }
   },
-  "syncSettingsNothingSavedYet": "Nothing saved on the server yet — turn something on below to back it up.",
+  "syncSettingsNothingSavedYet": "Nothing saved on the server yet. Turn something on below to back it up.",
   "syncSettingsSyncing": "Syncing…",
   "syncSettingsSyncFailed": "Sync failed.",
   "syncSettingsNotSyncedYet": "Not synced yet.",
@@ -18927,8 +18927,8 @@
   "syncSettingsDevicesSignedIn": "Devices signed in…",
   "syncSettingsAskDeleteData": "Ask to delete my data…",
   "syncSettingsDeleteAccount": "Delete account…",
-  "syncSettingsDataSyncsDirectly": "This data syncs directly with paired devices — see Devices below to connect one and turn it off.",
-  "syncSettingsRecoveryKeySetUp": "Recovery key set up — forgetting your password will not cost you your synced data.",
+  "syncSettingsDataSyncsDirectly": "This data syncs directly with paired devices. See Devices below to connect one or turn it off.",
+  "syncSettingsRecoveryKeySetUp": "Recovery key set up. Forgetting your password won't cost you your synced data.",
   "syncSettingsRecoveryKeyMissing": "No recovery key. If you forget your password, resetting it erases your synced data on the server.",
   "syncSettingsManage": "Manage…",
   "syncSettingsSetUp": "Set up…",
@@ -18938,8 +18938,8 @@
   "syncSettingsRecoveryKeySaved": "I saved it",
   "syncSettingsRecoveryKeyTitle": "Recovery key",
   "syncSettingsYourRecoveryKey": "Your recovery key",
-  "syncSettingsRecoveryHasKeyBody": "This account has a recovery key. If you lost it, make a new one — the old key stops working the moment you do.",
-  "syncSettingsRecoveryNoKeyBody": "Your synced data is encrypted with a key that comes from your password, so nobody — not even the server — can read it. That also means a forgotten password normally erases it.\n\nA recovery key is a second way in. Keep it somewhere safe, and a password reset keeps all your synced data.",
+  "syncSettingsRecoveryHasKeyBody": "This account has a recovery key. If you lost it, make a new one. The old key stops working as soon as you do.",
+  "syncSettingsRecoveryNoKeyBody": "Your synced data is encrypted with a key that comes from your password, so nobody can read it, not even the server. That also means a forgotten password normally erases it.\n\nA recovery key is a second way in. Keep it somewhere safe, and a password reset keeps all your synced data.",
   "syncSettingsMakeNewKey": "Make a new key",
   "syncSettingsCreateRecoveryKey": "Create recovery key",
   "syncSettingsUnknownDevice": "Unknown device",
@@ -18955,7 +18955,7 @@
   "syncSettingsCurrentSession": "Current",
   "syncSettingsRevoke": "Revoke",
   "syncSettingsNoOtherSessions": "No other active sessions.",
-  "syncSettingsDeletionPending": "Data deletion requested — waiting for the server operator to decide.",
+  "syncSettingsDeletionPending": "Data deletion requested. Waiting for the server operator to decide.",
   "syncSettingsDeletionDeclined": "The server operator declined your data-deletion request.",
   "syncSettingsDeletionSentNothingDeleted": "Sent {date}. Nothing has been deleted yet.",
   "@syncSettingsDeletionSentNothingDeleted": {
@@ -19250,20 +19250,20 @@
       }
     }
   },
-  "aiDetectorSignatureExplanation": "The text identifies its own author — it names Claude or Anthropic in a product context, not as an ordinary person’s name. That is a direct attribution, so it outranks every style statistic below it.",
-  "aiDetectorAssistantExplanation": "Stock chat-assistant phrasing shows the text came out of a conversation with a model. It does not say which model, so the verdict stays unnamed — this only raises the score.",
+  "aiDetectorSignatureExplanation": "The text names its own author: it mentions Claude or Anthropic in a product context, not as an ordinary person’s name. That's a direct attribution, so it outranks every style statistic below it.",
+  "aiDetectorAssistantExplanation": "Stock chat-assistant phrasing shows the text came out of a conversation with a model. It doesn't say which model, so the verdict stays unnamed. This only raises the score.",
   "aiDetectorNoWatermarkExplanation": "No invisible watermark characters and no self-reference to Claude. That is not a clean bill of health: plenty of generated text carries no signature at all, so the style checks below still do the work.",
   "aiDetectorBurstinessExplanationHigh": "Every sentence hovers around the same length. Human writing usually swings between short punches and long rambles; steady lengths suggest one generator keeping a consistent rhythm.",
   "aiDetectorBurstinessExplanationLow": "Sentence lengths vary naturally, which human writers do and models find hard to fake.",
   "aiDetectorPhraseExplanationHigh": "These words and constructions appear far more often in model-generated prose than in everyday human writing. Each chip below is a literal match in your text.",
-  "aiDetectorPhraseExplanationLow": "None of the stock phrases models lean on were found. That is not a point in the text’s favour — plenty of generated writing avoids them — so this check abstains rather than voting the score down.",
+  "aiDetectorPhraseExplanationLow": "None of the stock phrases models lean on were found. That isn't a point in the text’s favour, since plenty of generated writing avoids them, so this check abstains instead of voting the score down.",
   "aiDetectorExtremesExplanationHigh": "Not one sentence is genuinely short and not one genuinely runs on. People write both without thinking about it; a generator settles into a safe middle band and stays there.",
   "aiDetectorExtremesExplanationLow": "The text contains both clipped sentences and long ones, the way unedited human writing usually does.",
-  "aiDetectorVoiceExplanationHigh": "Nobody is on the page — barely an \"I\", \"we\" or \"you\", no casual wording, no direct questions. Generated prose defaults to this detached register. Formal human writing does too, which is why this counts for less than the rhythm checks.",
+  "aiDetectorVoiceExplanationHigh": "Nobody is on the page: barely an \"I\", \"we\" or \"you\", no casual wording, no direct questions. Generated prose defaults to this detached register. Formal human writing does too, which is why this counts for less than the rhythm checks.",
   "aiDetectorVoiceExplanationLow": "The text speaks in a personal voice, with pronouns and casual wording that generated prose rarely reaches for unprompted.",
   "aiDetectorFormattingExplanationHigh": "The text is laid out the way a chat model answers: headings, bullet runs and bolded labels. That structure travels with the text when it is pasted somewhere else.",
   "aiDetectorFormattingExplanationLow": "The text reads as prose rather than a formatted chat answer. Plenty of generated text is prose too, so this only counts when it fires.",
-  "aiDetectorContrastExplanationHigh": "Sentences that set up a wrong answer only to knock it down — \"not just X, but Y\", \"the real question is\" — are the rhetorical move current models use to sound insightful.",
+  "aiDetectorContrastExplanationHigh": "Sentences that set up a wrong answer only to knock it down (\"not just X, but Y\", \"the real question is\") are the rhetorical move current models use to sound insightful.",
   "aiDetectorContrastExplanationLow": "None of the set-up-and-knock-down constructions models favour were found. Their absence means nothing on its own.",
   "aiDetectorOpenersExplanationHigh": "{used} of {total} sentences start with a formal connective. Essay-bot structure opens sections with \"Moreover,\" and \"Furthermore,\" far more than people do.",
   "@aiDetectorOpenersExplanationHigh": {
@@ -19279,10 +19279,10 @@
   "aiDetectorOpenersExplanationLow": "Sentences do not lean on formal connectives to start. That on its own says nothing about who wrote them.",
   "aiDetectorContractionsExplanationHigh": "Almost no contracted forms (\"don’t\", \"it’s\"). Generated text defaults to the stiffer un-contracted register.",
   "aiDetectorContractionsExplanationLow": "Contractions appear at a natural human rate.",
-  "aiDetectorDashExplanationHigh": "Em dashes pepper the text well past what typical human prose uses — a much-memed model habit.",
+  "aiDetectorDashExplanationHigh": "The text is full of em dashes, far more than typical human prose uses. It's a much-memed model habit.",
   "aiDetectorDashExplanationLow": "Em-dash use is within normal range.",
   "aiDetectorDashExplanationNone": "No em dashes present, which proves nothing either way.",
-  "aiDetectorPassiveExplanationHigh": "Heavy passive construction (\"was designed to\", \"is considered\") keeps agency out of sentences — common in generated prose.",
+  "aiDetectorPassiveExplanationHigh": "Heavy passive construction (\"was designed to\", \"is considered\") keeps agency out of sentences, which is common in generated prose.",
   "aiDetectorPassiveExplanationLow": "Passive voice stays at a normal level, which is true of most generated text as well.",
   "aiDetectorParagraphExplanationHigh": "All paragraphs are nearly the same size, like content poured evenly into containers. Human drafts lurch between short and long.",
   "aiDetectorParagraphExplanationLow": "Paragraph sizes differ naturally.",
@@ -19656,7 +19656,7 @@
   "sceneAssetStudioGiveItAHome": "Give it a home",
   "sceneAssetStudioExportTheFunctionIntoYourExistingHelperSco": "Export the function into your existing helper scope, add the JavaScript facility branch, and register the Dart catalog entry. Bake with your donor before shipping.",
   "sceneAssetStudioThePreviewAdapterUsesCenteredBoxesAndSizeS": "The preview adapter uses centered boxes and size-sided light meshes. Your model has no external files, materials, or per-frame geometry allocations. Settings are saved in this browser.",
-  "sceneCityPlannerMetroplanStadsplanner": "MetroPlan — City Planner",
+  "sceneCityPlannerMetroplanStadsplanner": "MetroPlan: City Planner",
   "sceneCityPlannerMetroplan": "MetroPlan",
   "sceneCityPlanner1Jan1925": "Jan 1, 1925",
   "sceneCityPlannerPauze": "Pause",
@@ -19714,7 +19714,7 @@
   "sceneCityPlannerLijnVerwijderen": "Delete line",
   "sceneCityPlannerSaveVerwijderen": "Delete save",
   "sceneCityPlannerDezeSaveVerwijderen": "Delete this save?",
-  "sceneCityPlannerSleepVrijOverDeKaartDeEngineMaaktErAutomat": "Drag freely across the map — the engine automatically turns it into a smooth road. Crossing roads become intersections.",
+  "sceneCityPlannerSleepVrijOverDeKaartDeEngineMaaktErAutomat": "Drag freely across the map and the engine turns it into a smooth road. Crossing roads become intersections.",
   "sceneCityPlannerKlikOmEenRotondeTePlaatsenSluitErWegenOpAa": "Click to place a roundabout; connect roads to it.",
   "sceneCityPlannerKlikHaltesOpWegenDubbelklikOfEnterOmDeLijn": "Click stops on roads; double-click or press Enter to finish the line.",
   "sceneCityPlannerOnvoldoendeGeld": "Not enough money.",
@@ -19739,17 +19739,17 @@
   "sceneSpaceColonyWelcomeToSpaceColony": "🚀 Welcome to Space Colony",
   "sceneSpaceColonyYouVeLandedWith3ColonistsALandingModuleASm": "You’ve landed with 3 colonists, a landing module, a small battery, a solar panel and basic materials. Your job: keep everyone alive and grow a self-sufficient colony.",
   "sceneSpaceColonyBeforeAnythingElse": "Before anything else",
-  "sceneSpaceColonyPlaceTheseFiveBuildingsWithoutThemYourColo": ", place these five buildings — without them your colony will run out of power, air or water within a day or two:",
+  "sceneSpaceColonyPlaceTheseFiveBuildingsWithoutThemYourColo": ", place these five buildings. Without them your colony will run out of power, air or water within a day or two:",
   "sceneSpaceColonySolarPanel": "Solar Panel",
-  "sceneSpaceColonyPowerDuringTheDay": "— power during the day.",
-  "sceneSpaceColonyStoresPowerSoSystemsKeepRunningAtNight": "— stores power so systems keep running at night.",
+  "sceneSpaceColonyPowerDuringTheDay": ": power during the day.",
+  "sceneSpaceColonyStoresPowerSoSystemsKeepRunningAtNight": ": stores power so systems keep running at night.",
   "sceneSpaceColonyOxygenGenerator": "Oxygen Generator",
-  "sceneSpaceColonyTurnsWaterIntoBreathableAir": "— turns water into breathable air.",
+  "sceneSpaceColonyTurnsWaterIntoBreathableAir": ": turns water into breathable air.",
   "sceneSpaceColonyWaterExtractor": "Water Extractor",
-  "sceneSpaceColonyPlaceItOnAnIceFieldLightBlueTilesForAWater": "— place it on an ice field (light blue tiles) for a water supply.",
+  "sceneSpaceColonyPlaceItOnAnIceFieldLightBlueTilesForAWater": ": place it on an ice field (light blue tiles) for a water supply.",
   "sceneSpaceColonyMiningRig": "Mining Rig",
-  "sceneSpaceColonyPlaceItOnAMetalDepositOrangeTilesSoYouCanK": "— place it on a metal deposit (orange tiles) so you can keep building.",
-  "sceneSpaceColonyWatchTheResourceBarAtTheTopAnythingShownIn": "Watch the resource bar at the top — anything shown in red is running low. Ore and crystal deposits run out over time, so keep exploring for new ones. Click any colonist’s name to see their full stats. Reopen this any time with the ❓ Tutorial button.",
+  "sceneSpaceColonyPlaceItOnAMetalDepositOrangeTilesSoYouCanK": ": place it on a metal deposit (orange tiles) so you can keep building.",
+  "sceneSpaceColonyWatchTheResourceBarAtTheTopAnythingShownIn": "Keep an eye on the resource bar at the top. Anything shown in red is running low. Ore and crystal deposits run out over time, so keep exploring for new ones. Click any colonist’s name to see their full stats. Reopen this any time with the ❓ Tutorial button.",
   "sceneSpaceColonyLetSGo": "Let’s go!",
   "sceneSpaceColonySciencePoints": "Science points:",
   "sceneSpaceColonyProducedByLaboratories": "(produced by Laboratories)",
@@ -19782,7 +19782,7 @@
   "sceneSubwayBuilderShortHopsCheapRunsOnStreets": "Short hops, cheap, runs on streets",
   "sceneSubwayBuilderAnyDistanceCheapestSlow": "Any distance, cheapest, slow",
   "sceneSubwayBuilderLongHopsOnRealStationsAndTracks": "Long hops on real stations and tracks",
-  "sceneSubwayBuilderVeryLongHopsVeryFastFewStopsRealStationsAn": "Very long hops, very fast, few stops — real stations and tracks",
+  "sceneSubwayBuilderVeryLongHopsVeryFastFewStopsRealStationsAn": "Very long hops, very fast, few stops. Real stations and tracks",
   "sceneSubwayBuilderSelectPan": "Select / pan",
   "sceneSubwayBuilderDrawLine": "Draw line",
   "sceneSubwayBuilderBulldoze": "Bulldoze",
@@ -19811,10 +19811,10 @@
   "sceneSubwayBuilderClickOneOfTheTwoEndStationsOf": "Click one of the two end stations of",
   "sceneSubwayBuilderSurveyingTheRailCorridor": "Surveying the rail corridor…",
   "sceneSubwayBuilderAlreadyOnThisDraft": "Already on this draft",
-  "sceneSubwayBuilderTreasuryIsInTheRedConsiderALoanOrHigherFar": "Treasury is in the red — consider a loan or higher fares",
+  "sceneSubwayBuilderTreasuryIsInTheRedConsiderALoanOrHigherFar": "Treasury is in the red. Consider a loan or higher fares",
   "sceneSubwayBuilderCouldNotConnectToTheRoom": "Could not connect to the room:",
   "sceneSubwayBuilderCouldNotReachTheCoOpServer": "Could not reach the co-op server",
-  "sceneSubwayBuilderLostConnectionToTheRoomReconnecting": "Lost connection to the room — reconnecting…",
+  "sceneSubwayBuilderLostConnectionToTheRoomReconnecting": "Lost connection to the room. Reconnecting…",
   "sceneSubwayBuilderRunningTheClockForThisRoom": "Running the clock for this room",
   "sceneSubwayBuilderCouldNotJoinThatRoom": "Could not join that room:",
   "sceneSubwayBuilderTravellingTo": "Travelling to",
@@ -19835,7 +19835,7 @@
   "sceneSubwayBuilderEnterARoomCode": "Enter a room code",
   "sceneSubwayBuilderTurnOff2DModeInSettingsToTiltTheCamera": "Turn off 2D mode in Settings to tilt the camera",
   "sceneSubwayBuilderLoadingOfficialStationsInView": "Loading official stations in view…",
-  "sceneSubwayBuilderStationLookupFailedTheMapDataServiceIsBusy": "Station lookup failed — the map data service is busy, try again",
+  "sceneSubwayBuilderStationLookupFailedTheMapDataServiceIsBusy": "Station lookup failed. The map data service is busy, try again",
   "sceneSubwayBuilderNoNewOfficialStationsFoundInView": "No new official stations found in view",
   "sceneSubwayBuilderOnlyWhoeverIsRunningTheClockManagesTheTrea": "Only whoever is running the clock manages the treasury",
   "aiDetectorHiddenCharacterEvidence": "\"{name} ×{count} (hidden)\"",
@@ -20459,7 +20459,7 @@
       }
     }
   },
-  "sceneSubwayWelcomeBack": "Welcome back to {place} — day {day}",
+  "sceneSubwayWelcomeBack": "Welcome back to {place}, day {day}",
   "@sceneSubwayWelcomeBack": {
     "placeholders": {
       "place": {
@@ -20522,7 +20522,7 @@
       }
     }
   },
-  "sceneSubwayStationModeStop": "{station} is a {mode} stop — switch mode to connect it",
+  "sceneSubwayStationModeStop": "{station} is a {mode} stop. Switch mode to connect it",
   "@sceneSubwayStationModeStop": {
     "placeholders": {
       "station": {
@@ -20552,7 +20552,7 @@
       }
     }
   },
-  "sceneSubwayRouteHopsMax": "{mode} hops max {maxKm} km between stops — add a stop in between, or use Train for long distances",
+  "sceneSubwayRouteHopsMax": "{mode} can only go {maxKm} km between stops. Add a stop in between, or use Train for long distances",
   "@sceneSubwayRouteHopsMax": {
     "placeholders": {
       "mode": {},
@@ -20569,13 +20569,13 @@
     }
   },
   "sceneSubwayNotEnoughFunds": "Not enough funds",
-  "sceneSubwayModeServicesRealRailStations": "{mode} services only call at real railway stations — click one",
+  "sceneSubwayModeServicesRealRailStations": "{mode} services only stop at real railway stations. Click one",
   "@sceneSubwayModeServicesRealRailStations": {
     "placeholders": {
       "mode": {}
     }
   },
-  "sceneSubwayModeServicesHighlightedRailStations": "{mode} services only call at real railway stations — click a highlighted one",
+  "sceneSubwayModeServicesHighlightedRailStations": "{mode} services only stop at real railway stations. Click a highlighted one",
   "@sceneSubwayModeServicesHighlightedRailStations": {
     "placeholders": {
       "mode": {}
@@ -20595,7 +20595,7 @@
   },
   "sceneSubwayLineRequiresVehicle": "A line needs at least one vehicle",
   "sceneSubwayNoOutstandingLoans": "No outstanding loans",
-  "sceneSubwayDraftStopsCost": "{count} stops · {distance} · {cost} — Enter to build, Esc to cancel.",
+  "sceneSubwayDraftStopsCost": "{count} stops · {distance} · {cost}. Enter to build, Esc to cancel.",
   "@sceneSubwayDraftStopsCost": {
     "placeholders": {
       "count": {},
@@ -20603,7 +20603,7 @@
       "cost": {}
     }
   },
-  "sceneSubwayDraftStopsCostTunnel": "{count} stops · {distance} · {cost} (incl. underwater tunnelling) — Enter to build, Esc to cancel.",
+  "sceneSubwayDraftStopsCostTunnel": "{count} stops · {distance} · {cost} (incl. underwater tunnelling). Enter to build, Esc to cancel.",
   "@sceneSubwayDraftStopsCostTunnel": {
     "placeholders": {
       "count": {},
@@ -20611,14 +20611,14 @@
       "cost": {}
     }
   },
-  "sceneSubwayLineOpened": "{line} opened — {cost}, two vehicles included",
+  "sceneSubwayLineOpened": "{line} opened for {cost}, two vehicles included",
   "@sceneSubwayLineOpened": {
     "placeholders": {
       "line": {},
       "cost": {}
     }
   },
-  "sceneSubwayLineOpenedTunnel": "{line} opened — {cost}, two vehicles included, including underwater tunnelling",
+  "sceneSubwayLineOpenedTunnel": "{line} opened for {cost}, two vehicles and underwater tunnelling included",
   "@sceneSubwayLineOpenedTunnel": {
     "placeholders": {
       "line": {},
@@ -20638,13 +20638,13 @@
       "code": {}
     }
   },
-  "sceneSubwayRoomCreatedReady": "Room {code} created — start building",
+  "sceneSubwayRoomCreatedReady": "Room {code} created. Start building",
   "@sceneSubwayRoomCreatedReady": {
     "placeholders": {
       "code": {}
     }
   },
-  "sceneSubwayRoomCreatedShare": "Room {code} created — share the code or invite a contact",
+  "sceneSubwayRoomCreatedShare": "Room {code} created. Share the code or invite a contact",
   "@sceneSubwayRoomCreatedShare": {
     "placeholders": {
       "code": {}
@@ -20794,7 +20794,7 @@
       "factor": {}
     }
   },
-  "sceneSubwayLinePanelDisruption": "{label} — service is slowed until it clears",
+  "sceneSubwayLinePanelDisruption": "{label}: service is slowed until it clears",
   "@sceneSubwayLinePanelDisruption": {
     "placeholders": {
       "label": {}
@@ -20830,8 +20830,8 @@
   "sceneSubwayStatsBoardingsByMode": "Boardings by mode",
   "sceneSubwayStatsBusiestStops": "Busiest stops",
   "sceneSubwayStatsPlayDaysForData": "Play a few days for data…",
-  "sceneSubwayCoopSignedOut": "Co-op rooms are tied to your Luma account — that’s what makes invites and room membership work. Sign in from the app’s account settings, then come back here.",
-  "sceneSubwayCoopRoomCodeTitle": "Co-op — room {code}",
+  "sceneSubwayCoopSignedOut": "Co-op rooms are tied to your Luma account, which is what makes invites and room membership work. Sign in from the app’s account settings, then come back here.",
+  "sceneSubwayCoopRoomCodeTitle": "Co-op: room {code}",
   "@sceneSubwayCoopRoomCodeTitle": {
     "placeholders": {
       "code": {}
@@ -20839,20 +20839,20 @@
   },
   "sceneSubwayCoopRoomCodeDescription": "Anyone with the code (or an invite) can join and build on this network with you.",
   "sceneSubwayCoopClockYou": "You’re currently running the clock for this room.",
-  "sceneSubwayCoopClockPeer": "A fellow builder is currently running the clock — you’ll pick it up automatically if they leave.",
+  "sceneSubwayCoopClockPeer": "Another builder is running the clock right now. You’ll take it over automatically if they leave.",
   "sceneSubwayCoopInviteContact": "Invite a chat contact",
-  "sceneSubwayCoopNoChatContacts": "No chat contacts yet — set up the Chat plugin first, or just share the room code {code} directly.",
+  "sceneSubwayCoopNoChatContacts": "No chat contacts yet. Set up the Chat plugin first, or just share the room code {code} directly.",
   "@sceneSubwayCoopNoChatContacts": {
     "placeholders": {
       "code": {}
     }
   },
-  "sceneSubwayCoopInviteInstruction": "Sends them a chat message with the room code — they still need to tap Join.",
+  "sceneSubwayCoopInviteInstruction": "Sends them a chat message with the room code. They still need to tap Join.",
   "sceneSubwayCoopLoadingContacts": "Loading your chat contacts…",
   "sceneSubwayCoopLoadingRooms": "Loading your rooms…",
-  "sceneSubwayCoopRoomsEmpty": "Build on the same network as friends — invite via chat, or share a room code. Whoever’s connected keeps the clock running; leave and rejoin any time.",
+  "sceneSubwayCoopRoomsEmpty": "Build together with friends on the same network. Invite them via chat or share a room code. Whoever's connected keeps the clock running, and you can leave and rejoin any time.",
   "sceneSubwayCoopCreateRoom": "Create a new room",
-  "sceneSubwayCoopJoinByCode": "— or join by code —",
+  "sceneSubwayCoopJoinByCode": "or join by code",
   "sceneSubwayCoopJoinRoom": "Join room",
   "sceneSubwayCoopMemberCountOne": "{count} member",
   "@sceneSubwayCoopMemberCountOne": {
@@ -20898,9 +20898,9 @@
   "sceneAirlineTycoonUnassignedStand": "Unassigned stand",
   "sceneAirlineTycoonContractCharter": "Charter · {flights} flight(s)",
   "sceneAirlineTycoonContractDaily": "Daily · {flights} days",
-  "sceneSubwayMilestoneShareReached": "{share}% transit share reached — {grant} grant awarded!",
-  "sceneSubwayAchievementBonus": "{sub} — {grant} bonus",
-  "sceneSubwayCrowdingGrantReduced": "{label} — crowding cut the surge payout to {grant}",
+  "sceneSubwayMilestoneShareReached": "{share}% transit share reached! {grant} grant awarded!",
+  "sceneSubwayAchievementBonus": "{sub}: {grant} bonus",
+  "sceneSubwayCrowdingGrantReduced": "{label}: crowding cut the surge payout to {grant}",
   "sceneSubwaySurgeGrant": "{label} brought a surge: +{grant}",
   "cardWalletNameHintExample": "Albert Heijn loyalty card",
   "sceneCityPlannerDataGras": "Grass",
@@ -21134,7 +21134,7 @@
   "sceneSpaceColonyDataObservatory": "Observatory",
   "sceneSpaceColonyData1ScienceHAndGivesEarlyWarningOfIncomingMeteorsHalvingTheDamageTheyDeal": "+1 science/h and gives early warning of incoming meteors, halving the damage they deal.",
   "sceneSpaceColonyDataDefenseTurret": "Defense Turret",
-  "sceneSpaceColonyDataAutomaticallyShootsDownIncomingMeteorsBeforeTheyHit75InterceptChance": "Automatically shoots down incoming meteors before they hit — 75% intercept chance.",
+  "sceneSpaceColonyDataAutomaticallyShootsDownIncomingMeteorsBeforeTheyHit75InterceptChance": "Automatically shoots down incoming meteors before they hit. 75% intercept chance.",
   "sceneSpaceColonyDataWindTurbines": "Wind Turbines",
   "sceneSpaceColonyDataEnergy": "Energy",
   "sceneSpaceColonyDataUnlocksWindPowerWorksAtNight": "Unlocks wind power, works at night.",
@@ -21187,8 +21187,8 @@
   "schoolFormulaDefaultCategory": "Custom",
   "marketplaceLoadFailedDetail": "Check your connection, then try again.",
   "fileTreeErrorDetail": "Scan failed: {detail}",
-  "sceneSpaceColonyStatusBroken": "BROKEN — click to repair (2🔩)",
-  "sceneSpaceColonyStatusDepleted": "DEPLETED — deposit ran dry, demolish to reclaim the tile",
+  "sceneSpaceColonyStatusBroken": "BROKEN: click to repair (2🔩)",
+  "sceneSpaceColonyStatusDepleted": "DEPLETED: deposit ran dry, demolish to reclaim the tile",
   "sceneSpaceColonyStatusOnline": "online",
   "sceneSpaceColonyStatusNoPowerInput": "no power/input",
   "sceneSpaceColonyColonistNeedsTitle": "hunger / O₂ / sleep / happy / health",
@@ -21205,7 +21205,7 @@
   "sceneCityPlannerNewsResearchCompleted": "🔬 Research completed: {technology}",
   "sceneCityPlannerNewsPhaseGrowth": "🏙 Your city has grown to phase {phase}: {name}! New buildings unlocked.",
   "sceneCityPlannerNewsBankruptcy": "💸 The city is nearing bankruptcy! Lower spending or raise taxes.",
-  "sceneCityPlannerNewsPowerOutage": "⚡ Power outage! The grid is overloaded — parts of the city are without power.",
+  "sceneCityPlannerNewsPowerOutage": "⚡ Power outage! The grid is overloaded and parts of the city are without power.",
   "sceneCityPlannerNewsDrought": "🌵 Drought! Water demand is approaching supply. Build more pumps or treatment plants.",
   "sceneCityPlannerNewsCloudyWeek": "🌥 A week of cloudy weather: wind and solar power are producing less.",
   "sceneCityPlannerNewsFoodShortage": "🌾 Food shortage looming: imports are becoming more expensive this month.",
@@ -21215,8 +21215,8 @@
   "sceneSpaceColonyEventMeteorWarningNote": "(the Observatory softened the impact)",
   "sceneSpaceColonyEventLandingSuccess": "Landing successful. Sol 1 begins on an unexplored world.",
   "sceneSpaceColonyEventSurvivalTip": "Keep oxygen, food and power positive to survive.",
-  "sceneSpaceColonyEventMoraleLow": "😠 Morale is dangerously low — production is suffering.",
-  "sceneSpaceColonyEventDepositDepleted": "The {resource} deposit under your {building} ran dry — it is now idle. Relocate or demolish it.",
+  "sceneSpaceColonyEventMoraleLow": "😠 Morale is dangerously low and production is suffering.",
+  "sceneSpaceColonyEventDepositDepleted": "The {resource} deposit under your {building} ran dry, so it's idle now. Relocate or demolish it.",
   "sceneSpaceColonyEventDepositExhausted": "⛏️ A {resource} deposit has been exhausted!",
   "sceneSpaceColonyEventRecoveredMedical": "{colonist} recovered in the medical bay.",
   "sceneSpaceColonyEventRecovered": "{colonist} recovered.",
@@ -21225,8 +21225,8 @@
   "sceneSpaceColonyEventNewColonist": "A new colonist, {name}, has arrived from Earth!",
   "sceneSpaceColonyEventTradeBeacon": "Trade beacon: sold 5 crystal → +20 metal, +10 glass, +6 electronics.",
   "sceneSpaceColonyEventDustStormPassed": "The dust storm has passed.",
-  "sceneSpaceColonyEventSolarFlareOver": "Solar flare over — power generation restored.",
-  "sceneSpaceColonyAlertMoraleLow": "😠 Morale is dangerously low — production is suffering.",
+  "sceneSpaceColonyEventSolarFlareOver": "Solar flare over. Power generation restored.",
+  "sceneSpaceColonyAlertMoraleLow": "😠 Morale is dangerously low and production is suffering.",
   "sceneSpaceColonyAlertDustStorm": "🌪️ Dust storm! Solar output halved.",
   "sceneSpaceColonyEventDustStorm": "A dust storm rolls in. Solar panels degraded, wind turbines boosted.",
   "sceneSpaceColonyAlertSolarFlare": "☀️ Solar flare! Generation −80%.",
@@ -21251,7 +21251,7 @@
   "sceneSpaceColonyAlertRoverCrystal": "🛰️ Rover recovered {amount} alien crystal!",
   "sceneSpaceColonyEventRoverMaterials": "Rover salvaged {metal} metal and {glass} glass.",
   "sceneSpaceColonyAlertRoverMaterials": "🛰️ Rover salvaged materials!",
-  "sceneSpaceColonyEventRoverTech": "Rover uncovered ancient knowledge — unlocked {technology} for free!",
+  "sceneSpaceColonyEventRoverTech": "Rover uncovered ancient knowledge and unlocked {technology} for free!",
   "sceneSpaceColonyAlertRoverTech": "🛰️ Ancient tech insight: {technology} unlocked!",
   "sceneSpaceColonyEventRoverScience": "Rover salvaged +30 science from the ruins.",
   "sceneSpaceColonyAlertRoverScience": "🛰️ Rover returned with +30 science!",
@@ -21262,20 +21262,20 @@
   "sceneSpaceColonyAlertRepairNeedsMetal": "Need 2 metal to repair.",
   "sceneSpaceColonyAlertSendRover": "Click an Ancient Ruins tile (dusty violet) to send the rover.",
   "sceneSpaceColonyEventResearchComplete": "Research complete: {technology}!",
-  "sceneSpaceColonyAlertTerraformUnlocked": "🌍 Terraforming unlocked — your colony’s future is secured!",
+  "sceneSpaceColonyAlertTerraformUnlocked": "🌍 Terraforming unlocked! Your colony’s future is secured!",
   "sceneSpaceColonyEventTerraformAchievement": "Achievement: Terraforming research complete. Long-term survival assured.",
   "sceneSpaceColonyEventGameSaved": "Game saved.",
   "sceneSpaceColonyEventGameLoaded": "Game loaded.",
   "sceneSpaceColonyAlertNoSave": "No save found.",
   "sceneSubwayCouldNotReachCoopServer": "Could not reach the co-op server",
-  "sceneSubwayLostConnectionReconnecting": "Lost connection to the room — reconnecting…",
+  "sceneSubwayLostConnectionReconnecting": "Lost connection to the room. Reconnecting…",
   "sceneSubwayClockAuthorityRunning": "Running the clock for this room",
   "sceneSubwayTravellingToPlace": "Travelling to {place}…",
   "sceneSubwayJoinedRoom": "Joined room {code}",
-  "sceneSubwayRoomCreatedStartBuilding": "Room {code} created — start building",
+  "sceneSubwayRoomCreatedStartBuilding": "Room {code} created. Start building",
   "sceneSubwayLoadCityFirst": "Load a city first",
-  "sceneSubwayRoomCreatedShareCode": "Room {code} created — share the code or invite a contact",
-  "sceneSubwayInviteChatMessage": "Join my Subway Builder co-op room — open Subway Builder, tap Co-op → Join, and enter code {code}.",
+  "sceneSubwayRoomCreatedShareCode": "Room {code} created. Share the code or invite a contact",
+  "sceneSubwayInviteChatMessage": "Join my Subway Builder co-op room! Open Subway Builder, tap Co-op → Join, and enter code {code}.",
   "sceneSubwayFailedToSendInvite": "Failed to send the invite message: {error}",
   "sceneSubwayStillSyncing": "Still syncing with the host…",
   "sceneSubwaySurveyingPlace": "Surveying {place}… reading OpenStreetMap land use, water and neighbourhoods",
@@ -21304,7 +21304,7 @@
   },
   "sceneSubwayUiRushHour": "rush",
   "sceneSubwayUiNight": "night",
-  "sceneSubwayUiSurfaceSlowdown": "— surface transit slowed ×{factor}",
+  "sceneSubwayUiSurfaceSlowdown": "(surface transit slowed ×{factor})",
   "@sceneSubwayUiSurfaceSlowdown": {
     "placeholders": {
       "factor": {
@@ -21312,7 +21312,7 @@
       }
     }
   },
-  "sceneSubwayUiAchievementSummary": "{done} / {total} unlocked — real facts about the network you actually built.",
+  "sceneSubwayUiAchievementSummary": "{done} / {total} unlocked. Real facts about the network you actually built.",
   "@sceneSubwayUiAchievementSummary": {
     "placeholders": {
       "done": {
@@ -21432,15 +21432,15 @@
   "sceneSubwayUiSelectHint": "Click a stop or line to inspect it. Drag to pan, scroll to zoom, right-drag to rotate.",
   "sceneSubwayUiRailStationHint": "{mode} services only call at real stations, highlighted on the map. Click one to lease it.",
   "sceneSubwayUiMetroStationHint": "Click the map to dig a metro station. Denser areas cost more.",
-  "sceneSubwayUiStreetStationHint": "Click near a street to place a {mode} stop — it snaps to the road.",
-  "sceneSubwayUiRailLineHint": "Click real stations in order — the route follows existing tracks. Enter to finish, or click the first station again to close a loop.",
+  "sceneSubwayUiStreetStationHint": "Click near a street to place a {mode} stop. It snaps to the road.",
+  "sceneSubwayUiRailLineHint": "Click real stations in order and the route follows existing tracks. Press Enter to finish, or click the first station again to close a loop.",
   "sceneSubwayUiMetroLineHint": "Click stations in order to bore tunnels between them. Enter to finish, or click the first station again to close a loop.",
-  "sceneSubwayUiStreetLineHint": "Click stops in order — the route follows real streets. Enter to finish, or click the first stop again to close a loop.",
+  "sceneSubwayUiStreetLineHint": "Click stops in order and the route follows real streets. Press Enter to finish, or click the first stop again to close a loop.",
   "sceneSubwayUiBulldozeHint": "Click a stop to demolish it (25% refund). Click a line to remove the whole line.",
-  "sceneSubwayUiExtendNextStop": "Extending {line} — click the next stop. Esc to stop.",
+  "sceneSubwayUiExtendNextStop": "Extending {line}. Click the next stop, Esc to stop.",
   "sceneSubwayUiExtendNewStop": "Extending {line}: click a stop at either end, then the new stop.",
-  "sceneSubwayUiDraftCost": "{count} stops · {distance} · {cost} — Enter to build, Esc to cancel.",
-  "sceneSubwayUiDraftCostWater": "{count} stops · {distance} · {cost} (incl. underwater tunnelling) — Enter to build, Esc to cancel.",
+  "sceneSubwayUiDraftCost": "{count} stops · {distance} · {cost}. Enter to build, Esc to cancel.",
+  "sceneSubwayUiDraftCostWater": "{count} stops · {distance} · {cost} (incl. underwater tunnelling). Enter to build, Esc to cancel.",
   "sceneSubwaySeasonSpring": "Spring",
   "sceneSubwaySeasonSummer": "Summer",
   "sceneSubwaySeasonAutumn": "Autumn",
@@ -21466,9 +21466,9 @@
   "sceneSubwayEventFireworksShow": "Fireworks show",
   "sceneSubwayEventFootballDerby": "Football derby",
   "sceneSubwayWeatherNews": "{weather} weather",
-  "sceneSubwayWeatherSlowedNews": "{weather} weather — surface transit is slowed",
-  "sceneSubwayDisruptionNews": "⚠️ {disruption} on {line} — expect delays for ~{hours}h",
-  "sceneSubwayEventNews": "🎪 {event} near {station} tonight — expect a crowd surge!",
+  "sceneSubwayWeatherSlowedNews": "{weather} weather is slowing surface transit",
+  "sceneSubwayDisruptionNews": "⚠️ {disruption} on {line}. Expect delays for ~{hours}h",
+  "sceneSubwayEventNews": "🎪 {event} near {station} tonight. Expect a crowd surge!",
   "@sceneSubwayWeatherNews": {
     "placeholders": {
       "weather": {}
@@ -21854,7 +21854,7 @@
       }
     }
   },
-  "mcToolsNoMatchBody": "Try another word — every tool can be found by its name or by what it does.",
+  "mcToolsNoMatchBody": "Try another word. Every tool can be found by its name or by what it does.",
   "mcToolsDisclaimer": "Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.",
   "mcToolsCount": "{count, plural, =1{1 tool} other{{count} tools}}",
   "@mcToolsCount": {
@@ -22028,7 +22028,7 @@
   "mcEnchPriorUses": "Times the item has already been in an anvil",
   "mcEnchSurvivalLimit": "Survival limit",
   "mcEnchSurvivalLimitDetail": "Steps above 39 levels are \"Too Expensive!\"",
-  "mcEnchConflicts": "Conflicts with {other} — tap to swap",
+  "mcEnchConflicts": "Conflicts with {other}. Tap to swap",
   "@mcEnchConflicts": {
     "placeholders": {
       "other": {
@@ -22105,10 +22105,10 @@
   "mcShapeStyle": "Style",
   "mcShapeFilled": "Filled",
   "mcShapeHollow": "Hollow",
-  "mcShapeHollowDetail": "Only the shell — far fewer blocks",
+  "mcShapeHollowDetail": "Only the shell, far fewer blocks",
   "mcShapeWall": "Wall thickness",
   "mcShapeThick": "Thick outline",
-  "mcShapeThickDetail": "No diagonal gaps — mobs cannot slip through",
+  "mcShapeThickDetail": "No diagonal gaps, so mobs can't slip through",
   "mcShapeBlock": "Block",
   "mcShapeLayerOf": "Layer {layer} of {count}",
   "@mcShapeLayerOf": {
@@ -22241,13 +22241,13 @@
   "mcOreTipIron": "Two bands: a small one peaking at Y 16 and a huge mountain band peaking near Y 232, plus scattered small veins below Y 72.",
   "mcOreTipCopper": "Peaks at Y 48. Dripstone caves roll a second, larger set of veins over the same heights.",
   "mcOreTipGold": "Peaks at Y −16 with extra small veins at the very bottom. Badlands add fifty more attempts a chunk from Y 32 up to Y 256.",
-  "mcOreTipRedstone": "Concentrated at the bottom of the world. Mine just above the bedrock ceiling — around Y −58.",
+  "mcOreTipRedstone": "Concentrated at the bottom of the world. Mine just above the bedrock ceiling, around Y −58.",
   "mcOreTipLapis": "A narrow band peaking at Y 0, and a \"buried\" spread from Y −64 to 64 that never shows on a cave wall.",
   "mcOreTipDiamond": "The deeper the better, down to the bedrock. Most diamond touching air is thrown away, so branch-mine at Y −58 instead of exploring caves.",
   "mcOreTipEmerald": "Only in mountain biomes, as single blocks, peaking near Y 232.",
   "mcOreTipQuartz": "Evenly spread from Y 10 to 117 across the Nether; basalt deltas roll twice as many veins.",
   "mcOreTipNetherGold": "Evenly spread from Y 10 to 117; basalt deltas double it.",
-  "mcOreTipDebris": "Mostly between Y 8 and 24, peaking at Y 16. It never generates exposed to air — strip-mine, or use beds or TNT to clear fast.",
+  "mcOreTipDebris": "Mostly between Y 8 and 24, peaking at Y 16. It never generates exposed to air, so strip-mine, or use beds or TNT to clear fast.",
   "mcOreBestLevel": "best level to mine",
   "mcOreRange": "where it can appear",
   "mcOreAttempts": "vein attempts per chunk",
@@ -22370,7 +22370,7 @@
   "mcPotionSplash": "Splash: brew with Gunpowder. Same duration; hits everyone in the splash.",
   "mcPotionLingeringNote": "Lingering: brew a splash potion with Dragon's Breath. A cloud for a quarter of the time.",
   "mcPotionArrows": "Tipped arrows: 8 arrows around a lingering potion in a crafting table. An eighth of the time.",
-  "mcPotionCorrupts": "Fermented Spider Eye turns this into {potion} — tap to open.",
+  "mcPotionCorrupts": "Fermented Spider Eye turns this into {potion}. Tap to open.",
   "@mcPotionCorrupts": {
     "placeholders": {
       "potion": {
@@ -22452,7 +22452,7 @@
       }
     }
   },
-  "mcCubeNotSwallowable": "A cube will not swallow that — only the blocks listed under the twelve behaviours.",
+  "mcCubeNotSwallowable": "A cube won't swallow that. Only the blocks listed under the twelve behaviours.",
   "mcCubeMeet": "Meet the cube",
   "mcCubeSpawnsIn": "Spawns in",
   "mcCubeSpawnsInValue": "Sulfur Caves",
@@ -22471,7 +22471,7 @@
   "mcCubeTempt": "Tempt range",
   "mcCubeTemptValue": "8 blocks",
   "mcCubeShrugs": "While it holds a block it shrugs off…",
-  "mcCubeShrugsNote": "It also breathes underwater and cannot freeze. Explosions still hurt — TNT pops a cube even mid-swallow — and every shrugged-off hit still knocks it around.",
+  "mcCubeShrugsNote": "It also breathes underwater and can't freeze. Explosions still hurt (TNT pops a cube even mid-swallow), and every shrugged-off hit still knocks it around.",
   "mcCubeHow": "How swallowing works",
   "mcCubeHowBody": "Only full-size cubes swallow blocks: right-click one with a swallowable block, let it walk over a dropped one, or have a dispenser feed it. The block sits in its body slot; feeding another swaps it out and switches the behaviour. While it holds a block the cube stops wandering and is pushed around by players and mobs instead, with knockback scaled by its resistance.",
   "mcCubeExplodes": "Explodes",
@@ -22619,7 +22619,7 @@
   },
   "mcBeaconUnlocked": "Unlocked",
   "mcBeaconHow": "How it works",
-  "mcBeaconHowBody": "Range is {range} blocks around the beacon (10 + 10 per tier) and reaches {range} blocks below it and up to the sky. Effects are re-applied every 4 seconds and last {seconds} seconds, so they linger briefly after you leave. A full tier-4 pyramid unlocks a second power: Regeneration, or level II of the primary. Pay with one iron ingot, gold ingot, emerald, diamond or netherite ingot. The beam needs a clear view of the sky; stained glass on top tints it. Mixing mineral blocks in the pyramid is fine — {mineral} is just the one counted above.",
+  "mcBeaconHowBody": "Range is {range} blocks around the beacon (10 + 10 per tier) and reaches {range} blocks below it and up to the sky. Effects are re-applied every 4 seconds and last {seconds} seconds, so they linger briefly after you leave. A full tier-4 pyramid unlocks a second power: Regeneration, or level II of the primary. Pay with one iron ingot, gold ingot, emerald, diamond or netherite ingot. The beam needs a clear view of the sky; stained glass on top tints it. Mixing mineral blocks in the pyramid is fine. {mineral} is just the one counted above.",
   "@mcBeaconHowBody": {
     "placeholders": {
       "range": {
@@ -22675,7 +22675,7 @@
       }
     }
   },
-  "mcBannerNeeds": "{pattern} — needs {item}",
+  "mcBannerNeeds": "{pattern} (needs {item})",
   "@mcBannerNeeds": {
     "placeholders": {
       "pattern": {
@@ -22698,7 +22698,7 @@
   "mcFwCount": "How many rockets",
   "mcFwStars": "Stars",
   "mcFwAddStar": "Add star",
-  "mcFwNoStars": "No stars: the rocket just flies — handy for elytra boosts.",
+  "mcFwNoStars": "No stars: the rocket just flies. Handy for elytra boosts.",
   "mcFwStarN": "Star {number}",
   "@mcFwStarN": {
     "placeholders": {
@@ -22876,7 +22876,7 @@
   "mcOrgChangeFolder": "Change folder",
   "mcOrgRescan": "Rescan",
   "mcOrgPointTitle": "Point it at your schematics",
-  "mcOrgPointBody": "Pick the folder your schematics live in — Litematica's \"schematics\" folder, WorldEdit's, or any other. Files are read in place; only renames change anything on disk.",
+  "mcOrgPointBody": "Pick the folder your schematics live in: Litematica's \"schematics\" folder, WorldEdit's, or any other. Files are read in place; only renames change anything on disk.",
   "mcOrgSearch": "Search by name",
   "mcOrgSortBy": "Sort: {order}",
   "@mcOrgSortBy": {
@@ -23193,18 +23193,18 @@
   },
   "mcColorTry": "Try it",
   "mcColorHelp": "Type & codes, or &#RRGGBB for hex colours (servers with a chat plugin; vanilla chat only knows the 16 colours).",
-  "mcColorSection": "Section signs (§) — signs, books, MOTD",
-  "mcColorAmpersand": "Ampersand codes (&) — plugins",
-  "mcColorMiniMessage": "MiniMessage — Paper / Adventure",
-  "mcColorJson": "JSON text component — tellraw, titles",
+  "mcColorSection": "Section signs (§): signs, books, MOTD",
+  "mcColorAmpersand": "Ampersand codes (&): plugins",
+  "mcColorMiniMessage": "MiniMessage: Paper / Adventure",
+  "mcColorJson": "JSON text component: tellraw, titles",
   "mcColorCodes": "Colour codes",
   "mcColorName": "Name",
   "mcColorCode": "Code",
   "mcColorSectionCol": "Section",
   "mcColorHex": "Hex",
   "mcColorFormatting": "Formatting codes",
-  "mcColorObfuscatedDetail": "Obfuscated — scrambles constantly",
-  "mcColorReset": "Reset — back to plain white",
+  "mcColorObfuscatedDetail": "Obfuscated: scrambles constantly",
+  "mcColorReset": "Reset: back to plain white",
   "mcColorOrderNote": "A colour code resets any formatting before it, so put the colour first: &c&l, not &l&c.",
   "mcColorCopied": "{code} copied",
   "@mcColorCopied": {
@@ -23300,7 +23300,7 @@
   "mcPotParticles": "Particles",
   "mcPotIcon": "Icon",
   "mcPotAmbient": "Ambient",
-  "mcPotNoEffects": "No effects — it will be a coloured water bottle.",
+  "mcPotNoEffects": "No effects. It'll be a coloured water bottle.",
   "mcPotDurationNote": "Tooltip durations shown are for the drinkable potion; lingering clouds last a quarter as long and tipped arrows an eighth.",
   "mcCmdItem": "Item",
   "mcCmdCount": "Count",
@@ -23368,7 +23368,7 @@
   "mcCmdRandom": "Random",
   "mcCmdTarget": "Target",
   "mcCmdPlayerName": "or a player name",
-  "mcCmdLength": "Commands longer than 256 characters need a command block — chat cuts them off. This one is {length} characters.",
+  "mcCmdLength": "Commands longer than 256 characters need a command block, because chat cuts them off. This one is {length} characters.",
   "@mcCmdLength": {
     "placeholders": {
       "length": {
@@ -23464,11 +23464,11 @@
     }
   },
   "mcAssetSearch": "Search every asset",
-  "mcAssetFirst600": "Showing the first 600 — search to narrow it down.",
+  "mcAssetFirst600": "Showing the first 600. Search to narrow it down.",
   "mcAssetNoSounds": "No sounds for this copy",
   "mcAssetNoSoundsBody": "Sounds come from the launcher's asset store, which only exists once the game has been launched at least once. A resource pack or a downloaded jar has images only.",
   "mcAssetPlay": "Play",
-  "mcAssetCannotPlay": "This device cannot play .ogg here — save it and open it in a player.",
+  "mcAssetCannotPlay": "This device can't play .ogg here. Save it and open it in a player.",
   "mcAssetSaveOgg": "Save .ogg",
   "mcAssetNotice": "Assets © Mojang. They are read from your own files for reference and are not part of luma.",
   "mcAssetClose": "Close",
@@ -23506,7 +23506,7 @@
   "mcEnchGenMax": "Max enchanting level",
   "mcEnchGenEffects": "Effects",
   "mcEnchGenAddEffect": "Add effect",
-  "mcEnchGenNoEffects": "No effects — it will enchant, but do nothing.",
+  "mcEnchGenNoEffects": "No effects. It will enchant, but do nothing.",
   "mcEnchGenDatapackDesc": "Enchantment \"{name}\" made with luma",
   "@mcEnchGenDatapackDesc": {
     "placeholders": {
@@ -23552,7 +23552,7 @@
   "mcRecCampfire": "Campfire",
   "mcRecStonecutter": "Stonecutter",
   "mcRecSmithing": "Smithing table",
-  "mcRecEmptySlot": "Empty — click to place {item}",
+  "mcRecEmptySlot": "Empty. Click to place {item}",
   "@mcRecEmptySlot": {
     "placeholders": {
       "item": {
@@ -23560,7 +23560,7 @@
       }
     }
   },
-  "mcRecFilledSlot": "{item} — click again or right-click to clear",
+  "mcRecFilledSlot": "{item}. Click again or right-click to clear",
   "@mcRecFilledSlot": {
     "placeholders": {
       "item": {
@@ -23572,7 +23572,7 @@
   "mcRecId": "item id",
   "mcRecStation": "Station",
   "mcRecIngredients": "Ingredients",
-  "mcRecBrush": "Brush — click slots to place it",
+  "mcRecBrush": "Brush: click slots to place it",
   "mcRecClear": "Clear grid",
   "mcRecFill": "Fill grid",
   "mcRecTemplate": "Template",
@@ -23583,13 +23583,265 @@
   "mcRecTime": "Cooking time",
   "mcRecResult": "Result",
   "mcRecTab": "Recipe book tab",
-  "mcRecGroup": "Group (optional — merges recipe book entries)",
+  "mcRecGroup": "Group (optional, merges recipe book entries)",
   "mcRecDatapackDesc": "Recipe made with luma",
   "mcRecNote": "Ingredients can be an item id or an item tag (#minecraft:planks). Custom recipes craft straight away; to list one in the recipe book run {command}.",
   "@mcRecNote": {
     "placeholders": {
       "command": {
         "type": "String"
+      }
+    }
+  },
+  "pluginNameTeamClipboard": "Team Clipboard",
+  "serverGateTeamClipboardTitle": "Team Clipboard needs an approved account",
+  "serverGateTeamClipboardDescription": "The board lives on the luma server. Sign in with an approved account first; then the admin can add you to the team.",
+  "teamClipboardSubtitle": "{open} to do · {finished} finished",
+  "@teamClipboardSubtitle": {
+    "placeholders": {
+      "open": {
+        "type": "int"
+      },
+      "finished": {
+        "type": "int"
+      }
+    }
+  },
+  "teamClipboardRoleLead": "Lead",
+  "teamClipboardRoleMember": "Member",
+  "teamClipboardNewEntry": "New entry",
+  "teamClipboardSearchHint": "Search titles, briefs and files",
+  "teamClipboardFilterBugs": "Bugs",
+  "teamClipboardFilterSuggestions": "Suggestions",
+  "teamClipboardFilterModels": "Models",
+  "teamClipboardKindBug": "Bug",
+  "teamClipboardKindSuggestion": "Suggestion",
+  "teamClipboardKindModel": "Model",
+  "teamClipboardStageIdea": "Idea",
+  "teamClipboardStageOpen": "Open",
+  "teamClipboardStageClaimed": "Claimed",
+  "teamClipboardStageDone": "Done",
+  "teamClipboardStageAdded": "Added",
+  "teamClipboardStageFixed": "Fixed",
+  "teamClipboardClosed": "Closed",
+  "teamClipboardClaimedBy": "Claimed by {name}",
+  "@teamClipboardClaimedBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamClipboardByAuthor": "by {name}",
+  "@teamClipboardByAuthor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamClipboardYou": "you",
+  "teamClipboardFormerMember": "former member",
+  "teamClipboardSectionToDo": "To do",
+  "teamClipboardSectionFinished": "Finished",
+  "teamClipboardEmptyTitle": "The board is empty",
+  "teamClipboardEmptySubtitle": "Add the first bug, suggestion or model so the team knows what to work on.",
+  "teamClipboardSelectHint": "Pick an entry to see its brief, files and chat",
+  "teamClipboardErrorTitle": "Could not reach the board",
+  "teamClipboardRefresh": "Refresh",
+  "teamClipboardNews": "New activity",
+  "teamClipboardGateTitle": "Waiting for team access",
+  "teamClipboardGateBody": "The Team Clipboard is invite-only. Ask the admin to add {email} from the admin panel, then check again.",
+  "@teamClipboardGateBody": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "teamClipboardGateBodyNoEmail": "The Team Clipboard is invite-only. Ask the admin to add your luma account from the admin panel, then check again.",
+  "teamClipboardGateCheckAgain": "Check again",
+  "teamClipboardBrief": "Brief",
+  "teamClipboardNoBrief": "No brief yet.",
+  "teamClipboardFiles": "Files",
+  "teamClipboardNoFiles": "No files yet. Attach the model .json, the .png texture and any .mcmeta here.",
+  "teamClipboardAddFiles": "Add files",
+  "teamClipboardDownloadAll": "Download all",
+  "teamClipboardRemoveFile": "Remove file",
+  "teamClipboardRemoveFileConfirm": "Remove {name} from this entry?",
+  "@teamClipboardRemoveFileConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamClipboardFileBy": "{size} · {name}",
+  "@teamClipboardFileBy": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamClipboardFrames": "{count} frames",
+  "@teamClipboardFrames": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "teamClipboardSavedTo": "Saved to {path}",
+  "@teamClipboardSavedTo": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "teamClipboardSavedFiles": "{count, plural, =1{Saved 1 file to {path}} other{Saved {count} files to {path}}}",
+  "@teamClipboardSavedFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "teamClipboardCouldNotLoad": "Could not load this file.",
+  "teamClipboardUploadFailed": "Could not attach: {names}",
+  "@teamClipboardUploadFailed": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "teamClipboardFileTooLarge": "{name} is over 10 MB.",
+  "@teamClipboardFileTooLarge": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamClipboardFileWrongType": "{name} is not a .png, .json or .mcmeta file.",
+  "@teamClipboardFileWrongType": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamClipboardChat": "Chat",
+  "teamClipboardNoMessages": "No messages yet. Start the discussion.",
+  "teamClipboardMessageHint": "Write a message…",
+  "teamClipboardSend": "Send",
+  "teamClipboardThreadClosed": "This thread is closed.",
+  "teamClipboardReopen": "Reopen",
+  "teamClipboardCloseThread": "Close thread",
+  "teamClipboardClaim": "Claim it",
+  "teamClipboardUnclaim": "Unclaim",
+  "teamClipboardMarkDone": "Mark done",
+  "teamClipboardMarkAdded": "Mark added",
+  "teamClipboardMarkFixed": "Mark fixed",
+  "teamClipboardLeadOnlyAdded": "Only a team lead can mark this added.",
+  "teamClipboardEditEntry": "Edit entry",
+  "teamClipboardDeleteEntry": "Delete entry",
+  "teamClipboardDeleteConfirmTitle": "Delete this entry?",
+  "teamClipboardDeleteConfirmBody": "Its brief, files and chat are removed for the whole team.",
+  "teamClipboardEditorNewTitle": "New entry",
+  "teamClipboardEditorKind": "Type",
+  "teamClipboardEditorTitleLabel": "Title",
+  "teamClipboardEditorTitleHint": "e.g. Ruby ore block",
+  "teamClipboardEditorTitleRequired": "Give it a title.",
+  "teamClipboardEditorBriefLabel": "Brief",
+  "teamClipboardEditorBriefHint": "Your idea in a few lines: what it is, and how it should look or behave.",
+  "teamClipboardEditorFilesHint": ".png, .json and .mcmeta, up to 10 MB each",
+  "teamClipboardCreate": "Add to board",
+  "teamClipboardServerError": "Server error ({status}).",
+  "@teamClipboardServerError": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "teamClipboardMe": "You",
+  "teamClipboardFileEmpty": "{name} is empty.",
+  "@teamClipboardFileEmpty": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamClipboardFileBadPng": "{name} is not a valid PNG image.",
+  "@teamClipboardFileBadPng": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamClipboardFileImageTooBig": "{name} is too big an image: textures can be at most {width} × {height} pixels.",
+  "@teamClipboardFileImageTooBig": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      }
+    }
+  },
+  "teamClipboardFileNotText": "{name} is not UTF-8 text.",
+  "@teamClipboardFileNotText": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamClipboardFileBadJson": "{name} is not valid JSON (line {line}, column {column}).",
+  "@teamClipboardFileBadJson": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "line": {
+        "type": "int"
+      },
+      "column": {
+        "type": "int"
+      }
+    }
+  },
+  "teamClipboardFileNotObject": "{name} must hold a JSON object.",
+  "@teamClipboardFileNotObject": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamClipboardFileTooDeep": "{name} nests deeper than {depth} levels.",
+  "@teamClipboardFileTooDeep": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "depth": {
+        "type": "int"
       }
     }
   }

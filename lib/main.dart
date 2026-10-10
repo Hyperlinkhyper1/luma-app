@@ -117,6 +117,8 @@ import 'features/plugins/installed/groceries/groceries_scope.dart';
 import 'features/plugins/installed/recipe_book/data/recipe_book_database.dart';
 import 'features/plugins/installed/recipe_book/recipe_book_controller.dart';
 import 'features/plugins/installed/recipe_book/recipe_book_scope.dart';
+import 'features/plugins/installed/team_clipboard/team_clipboard_controller.dart';
+import 'features/plugins/installed/team_clipboard/team_clipboard_scope.dart';
 import 'features/plugins/installed/minecraft_launcher/data/minecraft_launcher_database.dart';
 import 'features/plugins/installed/minecraft_launcher/minecraft_launcher_repository.dart';
 import 'features/plugins/installed/minecraft_launcher/minecraft_launcher_scope.dart';
@@ -312,6 +314,11 @@ class _LumaAppState extends State<LumaApp> {
     _sync,
     _recipeBookDb,
   );
+  // The Team Clipboard plugin: a shared board on the luma server that only
+  // accounts the admin added can open. Nothing is stored here but which
+  // threads this device has read.
+  late final TeamClipboardController _teamClipboardController =
+      TeamClipboardController(_sync);
   late final MinecraftLauncherDatabase _minecraftDb =
       MinecraftLauncherDatabase();
   late final MinecraftLauncherRepository _minecraftRepository =
@@ -774,6 +781,7 @@ class _LumaAppState extends State<LumaApp> {
     unawaited(_passwordRepository.migrateLegacyCiphertexts());
     _secureChatRepository.init();
     _recipeBookController.init();
+    _teamClipboardController.init();
     _autoClickerRepository.init();
     unawaited(_audioToolsRepository.init());
     unawaited(_petRepository.init());
@@ -899,6 +907,7 @@ class _LumaAppState extends State<LumaApp> {
     _familyRepository.dispose();
     _secureChatRepository.dispose();
     _recipeBookController.dispose();
+    _teamClipboardController.dispose();
     _sync.dispose();
     _db.close();
     _passwordDb.close();
@@ -968,7 +977,9 @@ class _LumaAppState extends State<LumaApp> {
 
   @override
   Widget build(BuildContext context) {
-    return AssistantMemoryScope(
+    return TeamClipboardScope(
+      controller: _teamClipboardController,
+      child: AssistantMemoryScope(
       repository: _assistantMemoryRepository,
       child: PetScope(
         repository: _petRepository,
@@ -1183,6 +1194,7 @@ class _LumaAppState extends State<LumaApp> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

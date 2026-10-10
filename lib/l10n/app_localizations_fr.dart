@@ -38875,4 +38875,326 @@ class LFr extends L {
   String mcRecNote(String command) {
     return 'Les ingrédients peuvent être un id d\'objet ou un tag (#minecraft:planks). Les recettes personnalisées fonctionnent tout de suite ; pour en afficher une dans le livre, lancez $command.';
   }
+
+  @override
+  String get pluginNameTeamClipboard => 'Presse-papiers d’équipe';
+
+  @override
+  String get serverGateTeamClipboardTitle =>
+      'Le presse-papiers d’équipe nécessite un compte approuvé';
+
+  @override
+  String get serverGateTeamClipboardDescription =>
+      'Le tableau se trouve sur le serveur luma. Connectez-vous d’abord avec un compte approuvé ; l’administrateur pourra ensuite vous ajouter à l’équipe.';
+
+  @override
+  String teamClipboardSubtitle(int open, int finished) {
+    return '$open à faire · $finished terminées';
+  }
+
+  @override
+  String get teamClipboardRoleLead => 'Responsable';
+
+  @override
+  String get teamClipboardRoleMember => 'Membre';
+
+  @override
+  String get teamClipboardNewEntry => 'Nouvelle entrée';
+
+  @override
+  String get teamClipboardSearchHint =>
+      'Rechercher dans les titres, résumés et fichiers';
+
+  @override
+  String get teamClipboardFilterBugs => 'Bugs';
+
+  @override
+  String get teamClipboardFilterSuggestions => 'Suggestions';
+
+  @override
+  String get teamClipboardFilterModels => 'Modèles';
+
+  @override
+  String get teamClipboardKindBug => 'Bug';
+
+  @override
+  String get teamClipboardKindSuggestion => 'Suggestion';
+
+  @override
+  String get teamClipboardKindModel => 'Modèle';
+
+  @override
+  String get teamClipboardStageIdea => 'Idée';
+
+  @override
+  String get teamClipboardStageOpen => 'Ouvert';
+
+  @override
+  String get teamClipboardStageClaimed => 'Pris en charge';
+
+  @override
+  String get teamClipboardStageDone => 'Terminé';
+
+  @override
+  String get teamClipboardStageAdded => 'Ajouté';
+
+  @override
+  String get teamClipboardStageFixed => 'Corrigé';
+
+  @override
+  String get teamClipboardClosed => 'Fermé';
+
+  @override
+  String teamClipboardClaimedBy(String name) {
+    return 'Pris en charge par $name';
+  }
+
+  @override
+  String teamClipboardByAuthor(String name) {
+    return 'par $name';
+  }
+
+  @override
+  String get teamClipboardYou => 'vous';
+
+  @override
+  String get teamClipboardFormerMember => 'ancien membre';
+
+  @override
+  String get teamClipboardSectionToDo => 'À faire';
+
+  @override
+  String get teamClipboardSectionFinished => 'Terminé';
+
+  @override
+  String get teamClipboardEmptyTitle => 'Le tableau est vide';
+
+  @override
+  String get teamClipboardEmptySubtitle =>
+      'Ajoutez le premier bug, la première suggestion ou le premier modèle pour que l’équipe sache sur quoi travailler.';
+
+  @override
+  String get teamClipboardSelectHint =>
+      'Choisissez une entrée pour voir son résumé, ses fichiers et sa discussion';
+
+  @override
+  String get teamClipboardErrorTitle => 'Impossible de joindre le tableau';
+
+  @override
+  String get teamClipboardRefresh => 'Actualiser';
+
+  @override
+  String get teamClipboardNews => 'Nouvelle activité';
+
+  @override
+  String get teamClipboardGateTitle => 'En attente d’accès à l’équipe';
+
+  @override
+  String teamClipboardGateBody(String email) {
+    return 'Le presse-papiers d’équipe est sur invitation. Demandez à l’administrateur d’ajouter $email depuis le panneau d’administration, puis vérifiez à nouveau.';
+  }
+
+  @override
+  String get teamClipboardGateBodyNoEmail =>
+      'Le presse-papiers d’équipe est sur invitation. Demandez à l’administrateur d’ajouter votre compte luma depuis le panneau d’administration, puis vérifiez à nouveau.';
+
+  @override
+  String get teamClipboardGateCheckAgain => 'Vérifier à nouveau';
+
+  @override
+  String get teamClipboardBrief => 'Résumé';
+
+  @override
+  String get teamClipboardNoBrief => 'Pas encore de résumé.';
+
+  @override
+  String get teamClipboardFiles => 'Fichiers';
+
+  @override
+  String get teamClipboardNoFiles =>
+      'Aucun fichier pour l’instant. Joignez ici le .json du modèle, la texture .png et un éventuel .mcmeta.';
+
+  @override
+  String get teamClipboardAddFiles => 'Ajouter des fichiers';
+
+  @override
+  String get teamClipboardDownloadAll => 'Tout télécharger';
+
+  @override
+  String get teamClipboardRemoveFile => 'Retirer le fichier';
+
+  @override
+  String teamClipboardRemoveFileConfirm(String name) {
+    return 'Retirer $name de cette entrée ?';
+  }
+
+  @override
+  String teamClipboardFileBy(String size, String name) {
+    return '$size · $name';
+  }
+
+  @override
+  String teamClipboardFrames(int count) {
+    return '$count images';
+  }
+
+  @override
+  String teamClipboardSavedTo(String path) {
+    return 'Enregistré dans $path';
+  }
+
+  @override
+  String teamClipboardSavedFiles(int count, String path) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count fichiers enregistrés dans $path',
+      one: '1 fichier enregistré dans $path',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get teamClipboardCouldNotLoad => 'Impossible de charger ce fichier.';
+
+  @override
+  String teamClipboardUploadFailed(String names) {
+    return 'Impossible de joindre : $names';
+  }
+
+  @override
+  String teamClipboardFileTooLarge(String name) {
+    return '$name dépasse 10 Mo.';
+  }
+
+  @override
+  String teamClipboardFileWrongType(String name) {
+    return '$name n’est pas un fichier .png, .json ou .mcmeta.';
+  }
+
+  @override
+  String get teamClipboardChat => 'Discussion';
+
+  @override
+  String get teamClipboardNoMessages =>
+      'Aucun message pour l’instant. Lancez la discussion.';
+
+  @override
+  String get teamClipboardMessageHint => 'Écrire un message…';
+
+  @override
+  String get teamClipboardSend => 'Envoyer';
+
+  @override
+  String get teamClipboardThreadClosed => 'Cette discussion est fermée.';
+
+  @override
+  String get teamClipboardReopen => 'Rouvrir';
+
+  @override
+  String get teamClipboardCloseThread => 'Fermer la discussion';
+
+  @override
+  String get teamClipboardClaim => 'Prendre en charge';
+
+  @override
+  String get teamClipboardUnclaim => 'Libérer';
+
+  @override
+  String get teamClipboardMarkDone => 'Marquer comme terminé';
+
+  @override
+  String get teamClipboardMarkAdded => 'Marquer comme ajouté';
+
+  @override
+  String get teamClipboardMarkFixed => 'Marquer comme corrigé';
+
+  @override
+  String get teamClipboardLeadOnlyAdded =>
+      'Seul un responsable peut marquer ceci comme ajouté.';
+
+  @override
+  String get teamClipboardEditEntry => 'Modifier l’entrée';
+
+  @override
+  String get teamClipboardDeleteEntry => 'Supprimer l’entrée';
+
+  @override
+  String get teamClipboardDeleteConfirmTitle => 'Supprimer cette entrée ?';
+
+  @override
+  String get teamClipboardDeleteConfirmBody =>
+      'Son résumé, ses fichiers et sa discussion sont supprimés pour toute l’équipe.';
+
+  @override
+  String get teamClipboardEditorNewTitle => 'Nouvelle entrée';
+
+  @override
+  String get teamClipboardEditorKind => 'Type';
+
+  @override
+  String get teamClipboardEditorTitleLabel => 'Titre';
+
+  @override
+  String get teamClipboardEditorTitleHint => 'ex. Bloc de minerai de rubis';
+
+  @override
+  String get teamClipboardEditorTitleRequired => 'Donnez-lui un titre.';
+
+  @override
+  String get teamClipboardEditorBriefLabel => 'Résumé';
+
+  @override
+  String get teamClipboardEditorBriefHint =>
+      'Votre idée en quelques lignes : ce que c’est, et à quoi cela doit ressembler ou comment cela doit se comporter.';
+
+  @override
+  String get teamClipboardEditorFilesHint =>
+      '.png, .json et .mcmeta, jusqu’à 10 Mo chacun';
+
+  @override
+  String get teamClipboardCreate => 'Ajouter au tableau';
+
+  @override
+  String teamClipboardServerError(int status) {
+    return 'Erreur du serveur ($status).';
+  }
+
+  @override
+  String get teamClipboardMe => 'Vous';
+
+  @override
+  String teamClipboardFileEmpty(String name) {
+    return '$name est vide.';
+  }
+
+  @override
+  String teamClipboardFileBadPng(String name) {
+    return '$name n’est pas une image PNG valide.';
+  }
+
+  @override
+  String teamClipboardFileImageTooBig(String name, int width, int height) {
+    return '$name est une image trop grande : les textures font au plus $width × $height pixels.';
+  }
+
+  @override
+  String teamClipboardFileNotText(String name) {
+    return '$name n’est pas du texte UTF-8.';
+  }
+
+  @override
+  String teamClipboardFileBadJson(String name, int line, int column) {
+    return '$name n’est pas du JSON valide (ligne $line, colonne $column).';
+  }
+
+  @override
+  String teamClipboardFileNotObject(String name) {
+    return '$name doit contenir un objet JSON.';
+  }
+
+  @override
+  String teamClipboardFileTooDeep(String name, int depth) {
+    return '$name est imbriqué sur plus de $depth niveaux.';
+  }
 }

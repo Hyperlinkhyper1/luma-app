@@ -99,7 +99,7 @@ class LEn extends L {
 
   @override
   String get settingsThemeStyleDefaultSub =>
-      'Good old luma — plain and simple, in your colour.';
+      'Good old luma. Plain and simple, in your colour.';
 
   @override
   String get settingsThemeStyleCoffee => 'Coffee';
@@ -270,7 +270,7 @@ class LEn extends L {
 
   @override
   String get homeNoTransactions =>
-      'Quiet here for now — add something in Finance and it\'ll pop up here.';
+      'Quiet here for now. Add something in Finance and it\'ll show up here.';
 
   @override
   String get homeIncome => 'In';
@@ -516,7 +516,7 @@ class LEn extends L {
 
   @override
   String get petSettingsSummonHint =>
-      'Brings the panel up straight away — no keyboard shortcut needed.';
+      'Brings the panel up straight away, no keyboard shortcut needed.';
 
   @override
   String get monthJan => 'Jan';
@@ -712,11 +712,11 @@ class LEn extends L {
   }
 
   @override
-  String get assistantNoLimits => 'Runs on this device — no usage limits';
+  String get assistantNoLimits => 'Runs on this device, no usage limits';
 
   @override
   String get assistantUsageUnavailable =>
-      'Usage unavailable — check your connection';
+      'Usage unavailable. Check your connection.';
 
   @override
   String get assistantDetailedBreakdown => 'See detailed breakdown';
@@ -1776,7 +1776,7 @@ class LEn extends L {
       'Thank you for keeping the library. Here is a little something for your vault.';
 
   @override
-  String get textLibraryMcLetterSign => '— The Library Post';
+  String get textLibraryMcLetterSign => 'The Library Post';
 
   @override
   String get textLibraryMcLetterTake => 'Take the coins';
@@ -2085,7 +2085,7 @@ class LEn extends L {
       'It reads well, but it isn\'t better than last time, so there are no new coins.';
 
   @override
-  String get textLibraryMcReviewSign => '— The Library Review Desk';
+  String get textLibraryMcReviewSign => 'The Library Review Desk';
 
   @override
   String get textLibraryMcReviewThanks => 'Thanks';
@@ -2961,7 +2961,7 @@ class LEn extends L {
 
   @override
   String get accountProfilePictureNote =>
-      'Only on this device — nobody else sees it.';
+      'Only on this device. Nobody else sees it.';
 
   @override
   String get accountChangePhoto => 'Change photo';
@@ -3096,7 +3096,7 @@ class LEn extends L {
 
   @override
   String get loginPasswordTooShort =>
-      'Use at least 10 characters — this password protects your encrypted data.';
+      'Use at least 10 characters. This password protects your encrypted data.';
 
   @override
   String get loginEnterPassword => 'Enter your password.';
@@ -3128,7 +3128,7 @@ class LEn extends L {
 
   @override
   String get loginPassphraseTooShort =>
-      'Use at least 10 characters — this passphrase is what encrypts your data.';
+      'Use at least 10 characters. This passphrase is what encrypts your data.';
 
   @override
   String get loginPassphrasesMismatch => 'Passphrases do not match.';
@@ -3161,7 +3161,7 @@ class LEn extends L {
 
   @override
   String get loginCreateSubtitle =>
-      'One account, every device — locked before it leaves this one.';
+      'One account for every device, locked before it leaves this one.';
 
   @override
   String get loginLocalSubtitle =>
@@ -3196,7 +3196,7 @@ class LEn extends L {
 
   @override
   String loginOpenedInBrowser(String provider) {
-    return 'We opened $provider in your browser. Finish up there, then come back — this page sorts itself out.';
+    return 'We opened $provider in your browser. Finish up there, then come back. This page will sort itself out.';
   }
 
   @override
@@ -3219,12 +3219,12 @@ class LEn extends L {
 
   @override
   String loginNewAccountExplain(String provider) {
-    return '$provider proved who you are, but it cannot unlock your data — nothing can except a passphrase only you know. Choose one now; you will need it on every device.';
+    return '$provider proved who you are, but it can\'t unlock your data. Only a passphrase you know can do that. Pick one now; you\'ll need it on every device.';
   }
 
   @override
   String loginExistingAccountExplain(String provider) {
-    return 'This account already exists, so $provider signed you straight into it. Enter the luma passphrase you set up — the same one you would type to sign in with a password.';
+    return 'This account already exists, so $provider signed you straight into it. Enter the luma passphrase you set up, the same one you\'d type to sign in with a password.';
   }
 
   @override
@@ -3349,7 +3349,7 @@ class LEn extends L {
 
   @override
   String get loginKeyWarning =>
-      'Everything is encrypted with this before it leaves the device. If you forget it you can reset it by email, but the synced copies on the server are erased — only what is still on your devices comes back.';
+      'Everything is encrypted with this before it leaves the device. If you forget it you can reset it by email, but the synced copies on the server get erased. Only what\'s still on your devices comes back.';
 
   @override
   String get loginResetWithRecoveryKey =>
@@ -3543,7 +3543,7 @@ class LEn extends L {
 
   @override
   String planCreditsNotOpen(String tokens, String price) {
-    return 'Buying credits isn\'t open yet — $tokens tokens for $price will be available once payments are set up.';
+    return 'You can\'t buy credits yet. $tokens tokens for $price will be available once payments are set up.';
   }
 
   @override
@@ -3759,12 +3759,12 @@ class LEn extends L {
 
   @override
   String serverGatePendingEmail(String email) {
-    return 'Your account ($email) still needs a thumbs-up. Enter the 6-digit code we emailed you to finish signing in — until then we leave the server completely alone.';
+    return 'Your account ($email) still needs a thumbs-up. Enter the 6-digit code we emailed you to finish signing in. Until then we leave the server completely alone.';
   }
 
   @override
   String serverGatePendingApproval(String email) {
-    return 'Your account ($email) is waiting on the server owner to say yes. Nothing for you to do in the meantime — just sign in once they have; until then we leave the server completely alone.';
+    return 'Your account ($email) is waiting for the server owner to say yes. There\'s nothing for you to do in the meantime, just sign in once they have. Until then we leave the server completely alone.';
   }
 
   @override
@@ -3811,7 +3811,7 @@ class LEn extends L {
 
   @override
   String get updateNoTestBuilds =>
-      'No updates on test builds — this one is handmade.';
+      'No updates on test builds. This one is handmade.';
 
   @override
   String updateUpToDate(String version) {
@@ -3825,7 +3825,7 @@ class LEn extends L {
 
   @override
   String updateNewVersionTitle(String version) {
-    return 'There is a new luma — $version';
+    return 'There\'s a new luma: $version';
   }
 
   @override
@@ -3849,7 +3849,7 @@ class LEn extends L {
 
   @override
   String get updateAndroidBlocked =>
-      'Android blocked the install — allow \"Install unknown apps\" for luma in system settings, then try again.';
+      'Android blocked the install. Allow \"Install unknown apps\" for luma in system settings, then try again.';
 
   @override
   String get updateDownloadFailed =>
@@ -3875,7 +3875,7 @@ class LEn extends L {
 
   @override
   String get updateDontClose =>
-      'Don\'t close luma — it will relaunch on its own.';
+      'Don\'t close luma. It will relaunch on its own.';
 
   @override
   String get updateStageDownloading => 'Downloading update';
@@ -4051,12 +4051,12 @@ class LEn extends L {
 
   @override
   String aiSettingsSharedKeyExplanation(String provider) {
-    return 'Your sync server\'s admin has configured a shared $provider key, so you don\'t need one — chats are relayed through your sync server, which holds the key; it\'s never sent to this device. Enter your own key above to bypass the server and talk to $provider directly instead.';
+    return 'Your sync server\'s admin has set up a shared $provider key, so you don\'t need one. Chats are relayed through your sync server, which holds the key; it\'s never sent to this device. Enter your own key above if you\'d rather skip the server and talk to $provider directly.';
   }
 
   @override
   String aiSettingsLocalKeyExplanation(String provider) {
-    return 'Stored locally on this device only, encrypted at rest. Sent directly to $provider when you chat — never to any luma server.';
+    return 'Stored locally on this device only, encrypted at rest. It goes straight to $provider when you chat and never to a luma server.';
   }
 
   @override
@@ -4064,7 +4064,7 @@ class LEn extends L {
 
   @override
   String get assistantNeedsAccountBody =>
-      'Set up a luma account — just an email and password, no server required — before chatting with the assistant.';
+      'Set up a luma account before chatting with the assistant. It\'s just an email and password, no server required.';
 
   @override
   String get assistantSetUpAccount => 'Set up account';
@@ -4142,7 +4142,7 @@ class LEn extends L {
 
   @override
   String get assistantModelUnavailableBody =>
-      'Add your own API key in Settings to use it — stored locally on this device only — or switch to another model below.';
+      'Add your own API key in Settings to use it (it\'s stored only on this device), or pick another model below.';
 
   @override
   String get assistantOpenSettings => 'Open Settings';
@@ -4152,7 +4152,7 @@ class LEn extends L {
 
   @override
   String assistantNoApiKeyYet(String provider) {
-    return 'No $provider API key saved yet — add one in Settings.';
+    return 'No $provider API key saved yet. Add one in Settings.';
   }
 
   @override
@@ -4171,16 +4171,16 @@ class LEn extends L {
 
   @override
   String get aiClientTooManySteps =>
-      'I couldn\'t finish that — too many tool steps.';
+      'I couldn\'t finish that, it took too many tool steps.';
 
   @override
   String aiClientUnreachable(String provider, String error) {
-    return 'Couldn\'t reach $provider — check your connection.\n($error)';
+    return 'Couldn\'t reach $provider. Check your connection.\n($error)';
   }
 
   @override
   String aiClientNoConnection(String provider) {
-    return 'Couldn\'t reach $provider — check your connection.';
+    return 'Couldn\'t reach $provider. Check your connection.';
   }
 
   @override
@@ -4189,7 +4189,7 @@ class LEn extends L {
   }
 
   @override
-  String get aiClientRateLimited => 'Too many requests — try again shortly.';
+  String get aiClientRateLimited => 'Too many requests. Try again in a moment.';
 
   @override
   String aiClientApiError(String provider, int status) {
@@ -4495,7 +4495,7 @@ class LEn extends L {
 
   @override
   String converterCorruptTooSmall(int size) {
-    return 'That file is only $size bytes — too small to corrupt in any interesting way.';
+    return 'That file is only $size bytes, too small to corrupt in any interesting way.';
   }
 
   @override
@@ -4503,7 +4503,7 @@ class LEn extends L {
 
   @override
   String converterCorruptStyleSkipped(String style) {
-    return '$style was skipped — the file is too small for it.';
+    return '$style was skipped because the file is too small for it.';
   }
 
   @override
@@ -4625,7 +4625,7 @@ class LEn extends L {
 
   @override
   String get converterRepairChecksumExact =>
-      'The result matches the original checksum exactly — this is the file that was corrupted, byte for byte.';
+      'The result matches the original checksum exactly. This is the file that was corrupted, byte for byte.';
 
   @override
   String get converterRepairChecksumChanged =>
@@ -4636,7 +4636,7 @@ class LEn extends L {
 
   @override
   String get converterRepairEmpty =>
-      'That file is empty — there is nothing in it to repair.';
+      'That file is empty, so there\'s nothing in it to repair.';
 
   @override
   String converterRepairFoundHeader(String label, String size) {
@@ -4681,7 +4681,7 @@ class LEn extends L {
 
   @override
   String get converterRepairNothingChanged =>
-      'Nothing needed changing — the structure already checks out.';
+      'Nothing needed changing. The structure already checks out.';
 
   @override
   String get repairBmpTooShort =>
@@ -4784,7 +4784,7 @@ class LEn extends L {
 
   @override
   String get repairJpegNoSegments =>
-      'No readable JPEG segments survived — the quantisation and Huffman tables are gone, and those cannot be guessed.';
+      'No readable JPEG segments survived. The quantisation and Huffman tables are gone, and those can\'t be guessed.';
 
   @override
   String get repairJpegNoScan =>
@@ -4801,7 +4801,7 @@ class LEn extends L {
 
   @override
   String repairMp3TagTooBig(String size) {
-    return 'The ID3 tag claims $size but the file is smaller — dropped the tag and kept the audio.';
+    return 'The ID3 tag claims $size but the file is smaller, so the tag was dropped and the audio kept.';
   }
 
   @override
@@ -4857,7 +4857,7 @@ class LEn extends L {
 
   @override
   String repairMp4UnreadableBox(String offset) {
-    return 'Unreadable box name at $offset — stopping the walk there.';
+    return 'Unreadable box name at $offset. Stopped walking the file there.';
   }
 
   @override
@@ -4867,7 +4867,7 @@ class LEn extends L {
     String claimed,
     String available,
   ) {
-    return 'The \"$type\" box at $offset claimed $claimed but only $available follows — clamped it to fit.';
+    return 'The \"$type\" box at $offset claimed $claimed but only $available follows. Clamped it to fit.';
   }
 
   @override
@@ -4888,7 +4888,7 @@ class LEn extends L {
 
   @override
   String get repairMp4NoMoov =>
-      'There is no moov box. That box is the index of every video and audio sample in the file, and without it the media data cannot be played back — recovering it needs an undamaged file recorded by the same device.';
+      'There is no moov box. That box indexes every video and audio sample in the file, and without it the media data can\'t be played back. Getting it back needs an undamaged file recorded by the same device.';
 
   @override
   String get repairMp4NoMdat =>
@@ -4963,7 +4963,7 @@ class LEn extends L {
 
   @override
   String get repairPdfXrefFromScratch =>
-      'Built a cross-reference table and trailer from scratch — the file had neither.';
+      'Built a cross-reference table and trailer from scratch, since the file had neither.';
 
   @override
   String get repairPngTooShort => 'The file is too short to be a PNG at all.';
@@ -4973,7 +4973,7 @@ class LEn extends L {
 
   @override
   String repairPngUnreadableChunk(String offset) {
-    return 'Unreadable chunk name at $offset — stopping the walk there.';
+    return 'Unreadable chunk name at $offset. Stopped walking the file there.';
   }
 
   @override
@@ -4991,9 +4991,9 @@ class LEn extends L {
       count,
       locale: localeName,
       other:
-          'Recomputed $count bad chunk checksums — the pixel data behind them may still be wrong, but readers will stop rejecting the file outright.',
+          'Recomputed $count bad chunk checksums. The pixel data behind them may still be wrong, but readers will stop rejecting the file outright.',
       one:
-          'Recomputed 1 bad chunk checksum — the pixel data behind it may still be wrong, but readers will stop rejecting the file outright.',
+          'Recomputed 1 bad chunk checksum. The pixel data behind it may still be wrong, but readers will stop rejecting the file outright.',
     );
     return '$_temp0';
   }
@@ -5038,12 +5038,12 @@ class LEn extends L {
 
   @override
   String repairRiffUnreadableChunk(String offset) {
-    return 'Unreadable chunk name at $offset — stopping there.';
+    return 'Unreadable chunk name at $offset. Stopped there.';
   }
 
   @override
   String repairRiffChunkClamped(String id, String claimed, String available) {
-    return 'The \"$id\" chunk claimed $claimed but only $available is present — shortened it to match.';
+    return 'The \"$id\" chunk claimed $claimed but only $available is there. Shortened it to match.';
   }
 
   @override
@@ -5062,7 +5062,7 @@ class LEn extends L {
 
   @override
   String get repairZipNoEntries =>
-      'No recoverable entries were found — every local file header is gone, so there is nothing left to rebuild the archive from.';
+      'No recoverable entries were found. Every local file header is gone, so there\'s nothing left to rebuild the archive from.';
 
   @override
   String repairZipDamagedEntries(int count) {
@@ -5104,7 +5104,7 @@ class LEn extends L {
 
   @override
   String repairZipUndecompressable(String name) {
-    return '\"$name\" could not be decompressed at all — dropped.';
+    return '\"$name\" couldn\'t be decompressed at all, so it was dropped.';
   }
 
   @override
@@ -5114,7 +5114,7 @@ class LEn extends L {
 
   @override
   String repairZipChecksumMismatch(String name) {
-    return '\"$name\" does not match its checksum — the contents came out damaged, but the entry was kept so you can see what is left of it.';
+    return '\"$name\" doesn\'t match its checksum. The contents came out damaged, but the entry was kept so you can see what\'s left of it.';
   }
 
   @override
@@ -5162,7 +5162,7 @@ class LEn extends L {
 
   @override
   String get converterImageCouldNotRead =>
-      'Could not read this image — it may be corrupt or unsupported.';
+      'Couldn\'t read this image. It may be corrupt or unsupported.';
 
   @override
   String get ffmpegInstallDesktopOnly =>
@@ -5614,7 +5614,7 @@ class LEn extends L {
 
   @override
   String get audioEditorNoFilePath =>
-      'Could not read the file path — editing needs the desktop app.';
+      'Couldn\'t read the file path. Editing needs the desktop app.';
 
   @override
   String get audioEditorCannotRead => 'Could not read this audio file.';
@@ -5626,7 +5626,7 @@ class LEn extends L {
 
   @override
   String get audioEditorEverythingCut =>
-      'Everything has been cut — remove a cut first.';
+      'Everything has been cut. Remove a cut first.';
 
   @override
   String get audioEditorPreviewDesktopOnly =>
@@ -5937,7 +5937,7 @@ class LEn extends L {
 
   @override
   String get downscalerDecodeFailed =>
-      'Could not read this image — it may be corrupt or unsupported.';
+      'Couldn\'t read this image. It may be corrupt or unsupported.';
 
   @override
   String downscalerEstimateFailed(String error) {
@@ -6039,7 +6039,7 @@ class LEn extends L {
 
   @override
   String get downscalerRemoveAlphaDisabled =>
-      'Unavailable — this image either has no alpha channel or uses real transparency.';
+      'Unavailable: this image either has no alpha channel or uses real transparency.';
 
   @override
   String get downscalerTrimTitle => 'Trim transparent borders';
@@ -6050,7 +6050,7 @@ class LEn extends L {
 
   @override
   String get downscalerTrimDisabled =>
-      'Unavailable — no transparent border to trim.';
+      'Unavailable: there\'s no transparent border to trim.';
 
   @override
   String get downscalerPngRecompressTitle => 'PNG lossless re-compress';
@@ -6068,7 +6068,7 @@ class LEn extends L {
 
   @override
   String get downscalerToWebpDisabled =>
-      'Unavailable — WebP needs ffmpeg (desktop app only).';
+      'Unavailable: WebP needs ffmpeg (desktop app only).';
 
   @override
   String get convFileReadFailed => 'Could not read the selected file.';
@@ -6100,7 +6100,7 @@ class LEn extends L {
 
   @override
   String get convOtherCorruptorSub =>
-      'Break a file on purpose — fix it later, or not';
+      'Break a file on purpose, then fix it later (or don\'t)';
 
   @override
   String get convOtherFixer => 'File fixer';
@@ -6118,7 +6118,7 @@ class LEn extends L {
 
   @override
   String get convCorruptPickSubtitle =>
-      'Any file at all — the original is never touched';
+      'Any file at all. The original is never touched.';
 
   @override
   String get convCorruptDamageLabel => 'Damage';
@@ -6142,7 +6142,7 @@ class LEn extends L {
 
   @override
   String get convCorruptNoRecipeWarning =>
-      'No recovery recipe will be written. Nothing — including luma — will be able to undo this.';
+      'No recovery recipe will be written. Nothing, not even luma, will be able to undo this.';
 
   @override
   String get convCorruptSaveCorrupted => 'Save corrupted file';
@@ -6152,7 +6152,7 @@ class LEn extends L {
 
   @override
   String get convCorruptKeepRecipe =>
-      'Keep the recipe somewhere safe — it is the only thing that can undo this.';
+      'Keep the recipe somewhere safe. It\'s the only thing that can undo this.';
 
   @override
   String get convCorruptSaveRecipe => 'Save .lumafix recipe';
@@ -6291,7 +6291,7 @@ class LEn extends L {
 
   @override
   String get convFixStructuralWarning =>
-      'A structural repair puts the container back together. It cannot invent content that was overwritten — check the result before you rely on it.';
+      'A structural repair puts the container back together. It can\'t invent content that was overwritten, so check the result before you rely on it.';
 
   @override
   String get convMediaAudioTitle => 'Audio converter';
@@ -6309,7 +6309,7 @@ class LEn extends L {
 
   @override
   String get convMediaNoFilePath =>
-      'Could not read the file path — conversion needs the desktop app.';
+      'Couldn\'t read the file path. Conversion needs the desktop app.';
 
   @override
   String convMediaConvertFailed(String error) {
@@ -6457,7 +6457,7 @@ class LEn extends L {
 
   @override
   String get pictureConvSvgVector =>
-      'SVG is vector — it will be rasterized at a crisp size before converting.';
+      'SVG is a vector format, so it gets rasterized at a crisp size before converting.';
 
   @override
   String get pictureConvConvertDownload => 'Convert & download';
@@ -6531,7 +6531,7 @@ class LEn extends L {
   }
 
   @override
-  String get schemViewerEmpty => 'Nothing to show — this build is all air.';
+  String get schemViewerEmpty => 'Nothing to show. This build is all air.';
 
   @override
   String schemViewerSemantics(int width, int height, int length) {
@@ -6540,7 +6540,7 @@ class LEn extends L {
 
   @override
   String schemViewerSimplified(int stride) {
-    return 'This build is too large to draw block-for-block, so the preview is simplified $stride× — the converted file keeps every block.';
+    return 'This build is too big to draw block by block, so the preview is simplified $stride×. The converted file still keeps every block.';
   }
 
   @override
@@ -6559,7 +6559,7 @@ class LEn extends L {
 
   @override
   String schemViewerFlatColours(String size) {
-    return 'Flat colours — no Minecraft found. Download the textures from Mojang (~$size) or use your own copy.';
+    return 'Flat colours, since no Minecraft install was found. Download the textures from Mojang (~$size) or use your own copy.';
   }
 
   @override
@@ -6601,11 +6601,11 @@ class LEn extends L {
 
   @override
   String get vidDownNoPath =>
-      'Could not read the file path — video downscaling needs the desktop app.';
+      'Couldn\'t read the file path. Video downscaling needs the desktop app.';
 
   @override
   String get vidDownProbeFailed =>
-      'Could not read this video — it may be unsupported or ffmpeg is missing.';
+      'Couldn\'t read this video. It may be unsupported, or ffmpeg is missing.';
 
   @override
   String vidDownEstimateFailed(String error) {
@@ -6678,7 +6678,7 @@ class LEn extends L {
 
   @override
   String get vidDownH265Body =>
-      'Use the newer HEVC codec — roughly 40–50% smaller than H.264 at the same quality, but slower to encode and less compatible with old players.';
+      'Use the newer HEVC codec. It\'s roughly 40–50% smaller than H.264 at the same quality, but slower to encode and less compatible with old players.';
 
   @override
   String get vidDownAudioBitrateTitle => 'Reduce audio bitrate';
@@ -6688,14 +6688,14 @@ class LEn extends L {
       'Re-encode the soundtrack at a lower bitrate (e.g. 96 kbps).';
 
   @override
-  String get vidDownNoAudio => 'Unavailable — this video has no audio track.';
+  String get vidDownNoAudio => 'Unavailable: this video has no audio track.';
 
   @override
   String get vidDownRemoveAudioTitle => 'Remove audio track';
 
   @override
   String get vidDownRemoveAudioBody =>
-      'Drop audio entirely — ideal for screen recordings and silent clips.';
+      'Drop the audio entirely. Good for screen recordings and silent clips.';
 
   @override
   String get vidDownStripTitle => 'Strip metadata';
@@ -6709,7 +6709,7 @@ class LEn extends L {
 
   @override
   String get vidDownWebmBody =>
-      'Re-encode to the VP9/WebM codec — often smaller than H.264 and great for the web. Slower to encode; outputs a .webm file.';
+      'Re-encode to VP9/WebM. Often smaller than H.264 and great for the web, but slower to encode. Outputs a .webm file.';
 
   @override
   String vidDownSmaller(String percent, String saved) {
@@ -6723,7 +6723,7 @@ class LEn extends L {
 
   @override
   String vidDownSampleNote(String seconds) {
-    return 'Estimated from a ${seconds}s sample — the final size may vary.';
+    return 'Estimated from a ${seconds}s sample, so the final size may vary.';
   }
 
   @override
@@ -7562,7 +7562,7 @@ class LEn extends L {
 
   @override
   String get passwordsDecryptFailed =>
-      '⚠ Could not decrypt — data corrupt or key file changed';
+      '⚠ Couldn\'t decrypt. The data is corrupt or the key file changed.';
 
   @override
   String get passwordsInvalidSecret => 'Invalid secret';
@@ -7575,7 +7575,7 @@ class LEn extends L {
 
   @override
   String get passwordsBreachedWarning =>
-      'This password was found in a known breach — change it where you use it.';
+      'This password showed up in a known breach. Change it wherever you use it.';
 
   @override
   String get nativeWebviewNoHost => 'This build has no native webview host.';
@@ -7696,7 +7696,7 @@ class LEn extends L {
 
   @override
   String accountOverviewServiceTooltip(String service, String status) {
-    return '$service — $status';
+    return '$service: $status';
   }
 
   @override
@@ -7706,7 +7706,7 @@ class LEn extends L {
 
   @override
   String accountOverviewSectionTooltip(String label, String blurb) {
-    return '$label — $blurb';
+    return '$label: $blurb';
   }
 
   @override
@@ -7742,7 +7742,7 @@ class LEn extends L {
 
   @override
   String get accountOverviewConnectGithubSubtitle =>
-      'See your commits, stars, downloads, repositories, issues and workflow runs in one place — plus your Copilot, storage and compute allowances.';
+      'See your commits, stars, downloads, repositories, issues and workflow runs in one place, plus your Copilot, storage and compute allowances.';
 
   @override
   String get accountOverviewConnectGithubButton => 'Connect GitHub';
@@ -7757,7 +7757,7 @@ class LEn extends L {
 
   @override
   String get accountOverviewConnectYoutubeSubtitle =>
-      'See your subscribers, views, recent uploads and deep analytics — watch time, traffic sources and subscriber trends — in one place.';
+      'See your subscribers, views, recent uploads and deeper analytics (watch time, traffic sources, subscriber trends) in one place.';
 
   @override
   String get accountOverviewConnectYoutubeButton => 'Connect YouTube';
@@ -8732,7 +8732,7 @@ class LEn extends L {
 
   @override
   String get ghUsageStorageSummed =>
-      'Summed directly from every private repository\'s Actions artifacts — GitHub has no API for Packages storage, so that is not included.';
+      'Added up from every private repository\'s Actions artifacts. GitHub has no API for Packages storage, so that isn\'t included.';
 
   @override
   String get ghUsagePackagesBandwidth => 'Packages bandwidth';
@@ -8960,7 +8960,7 @@ class LEn extends L {
 
   @override
   String get mcPmcKeptSeparate =>
-      'Kept separate — PMC counts views, and its skins, blogs and builds are not mods.';
+      'Kept separate, because PMC counts views, and its skins, blogs and builds aren\'t mods.';
 
   @override
   String get mcPmcAddUsername =>
@@ -9047,7 +9047,7 @@ class LEn extends L {
 
   @override
   String get mcPmcApproximateSubtitle =>
-      'Approximate — PMC rounds figures above a thousand';
+      'Approximate, since PMC rounds anything over a thousand';
 
   @override
   String get mcPmcDownloads => 'PMC downloads';
@@ -9062,24 +9062,24 @@ class LEn extends L {
 
   @override
   String get mcSetupSubtitle =>
-      'Pull CurseForge, Modrinth and Planet Minecraft into one dashboard — downloads, followers, views and trends over time.';
+      'Pull CurseForge, Modrinth and Planet Minecraft into one dashboard: downloads, followers, views and trends over time.';
 
   @override
-  String get mcReqModrinthTitle => 'Modrinth — username only';
+  String get mcReqModrinthTitle => 'Modrinth (username only)';
 
   @override
   String get mcReqModrinthBody =>
       'Totals are public. A token is optional and only unlocks real download history.';
 
   @override
-  String get mcReqCurseforgeTitle => 'CurseForge — API key required';
+  String get mcReqCurseforgeTitle => 'CurseForge (API key required)';
 
   @override
   String get mcReqCurseforgeBody =>
       'CurseForge serves nothing anonymously. Add a key plus either your numeric author id or individual project links.';
 
   @override
-  String get mcReqPmcTitle => 'Planet Minecraft — username only';
+  String get mcReqPmcTitle => 'Planet Minecraft (username only)';
 
   @override
   String get mcReqPmcBody =>
@@ -9089,7 +9089,7 @@ class LEn extends L {
   String get mcSetupPlatformsTitle => 'Minecraft platforms';
 
   @override
-  String get mcSetupModrinthNote => 'Public — a username is all it takes.';
+  String get mcSetupModrinthNote => 'Public, so a username is all it takes.';
 
   @override
   String get mcSetupModrinthUsername => 'Modrinth username';
@@ -9109,7 +9109,7 @@ class LEn extends L {
 
   @override
   String get mcSetupCurseNote =>
-      'Needs an API key — CurseForge serves nothing without one.';
+      'Needs an API key. CurseForge won\'t serve anything without one.';
 
   @override
   String get mcSetupCurseKey => 'CurseForge API key';
@@ -9130,7 +9130,7 @@ class LEn extends L {
   String get mcSetupEnterKeyFirst => 'Enter a key first.';
 
   @override
-  String get mcSetupKeyWorks => 'Key works — CurseForge answered HTTP 200.';
+  String get mcSetupKeyWorks => 'Key works. CurseForge answered HTTP 200.';
 
   @override
   String get mcSetupAuthorId => 'Author id (optional)';
@@ -9166,7 +9166,7 @@ class LEn extends L {
 
   @override
   String get mcSetupPmcNote =>
-      'No API — read from your public profile in an embedded browser.';
+      'There\'s no API, so it\'s read from your public profile in an embedded browser.';
 
   @override
   String get mcSetupPmcUsername => 'Planet Minecraft username';
@@ -9190,7 +9190,7 @@ class LEn extends L {
 
   @override
   String get mcSetupDisconnectBody =>
-      'The stored keys, the cached numbers and the download history luma has been recording are all deleted from this device. The history cannot be re-fetched — CurseForge and Planet Minecraft publish no past data.';
+      'The stored keys, the cached numbers and the download history luma has been recording are all deleted from this device. The history can\'t be fetched again, because CurseForge and Planet Minecraft don\'t publish past data.';
 
   @override
   String get accountOverviewKeepIt => 'Keep it';
@@ -9704,7 +9704,7 @@ class LEn extends L {
 
   @override
   String get aiDetectorDisclaimer =>
-      'Heuristic style analysis — arithmetic on sentence lengths and word choices, not proof of anything. Formal human writing can look machine-like; edited machine output can look human. A named verdict rests on a signature the text carries itself, and a signature can be stripped or forged. The statistics run on this device. Signed in, the text is also sent to the luma server for an AI model review.';
+      'Heuristic style analysis: arithmetic on sentence lengths and word choices, not proof of anything. Formal human writing can look machine-like, and edited machine output can look human. A named verdict rests on a signature the text carries itself, and a signature can be stripped or forged. The statistics run on this device. If you\'re signed in, the text is also sent to the luma server for an AI model review.';
 
   @override
   String get aiDetectorInputTitle => 'Review a piece of writing';
@@ -9728,11 +9728,11 @@ class LEn extends L {
 
   @override
   String get aiDetectorHint =>
-      'Paste the text you want checked — an essay, an email, a product review…';
+      'Paste the text you want checked: an essay, an email, a product review…';
 
   @override
   String aiDetectorWordsShort(int words, int minWords) {
-    return '$words of $minWords words — style statistics need a bit more to work on.';
+    return '$words of $minWords words. The style statistics need a bit more to work with.';
   }
 
   @override
@@ -9762,7 +9762,7 @@ class LEn extends L {
 
   @override
   String get aiDetectorSummarySigned =>
-      'The text signs itself — the scan found the hidden marks a Claude watermark is carried in, so this is an attribution rather than a guess about style.';
+      'The text signs itself. The scan found the hidden marks a Claude watermark is carried in, so this is an attribution, not a guess about style.';
 
   @override
   String aiDetectorSummaryBased(int words, int sentences) {
@@ -9771,7 +9771,7 @@ class LEn extends L {
 
   @override
   String get aiDetectorSummaryShort =>
-      'Short sample — treat every signal as a hint rather than a measurement.';
+      'Short sample. Treat every signal as a hint, not a measurement.';
 
   @override
   String get aiDetectorStatWords => 'words';
@@ -9854,7 +9854,7 @@ class LEn extends L {
 
   @override
   String get aiDetectorSignalsNothing =>
-      'Nothing suspicious fired — varied lengths, no stock phrases, no watermark. Reads like human writing.';
+      'Nothing suspicious came up: varied lengths, no stock phrases, no watermark. Reads like a person wrote it.';
 
   @override
   String get aiDetectorQuietChecks => 'Quiet checks';
@@ -9865,9 +9865,9 @@ class LEn extends L {
       count,
       locale: localeName,
       other:
-          '$count checks found nothing — a dash means the check only ever counts against a text, so finding nothing left it with no opinion',
+          '$count checks found nothing. A dash means the check can only ever count against a text, so finding nothing leaves it without an opinion',
       one:
-          '1 check found nothing — a dash means the check only ever counts against a text, so finding nothing left it with no opinion',
+          '1 check found nothing. A dash means the check can only ever count against a text, so finding nothing leaves it without an opinion',
     );
     return '$_temp0';
   }
@@ -9952,7 +9952,7 @@ class LEn extends L {
 
   @override
   String aiAgentPromptCopied(String target) {
-    return 'Prompt copied — paste it into $target';
+    return 'Prompt copied. Paste it into $target.';
   }
 
   @override
@@ -10068,7 +10068,7 @@ class LEn extends L {
 
   @override
   String aiLibraryImported(String name) {
-    return 'Imported $name — save it to add it to the library';
+    return 'Imported $name. Save it to add it to the library.';
   }
 
   @override
@@ -10575,7 +10575,7 @@ class LEn extends L {
 
   @override
   String aiUsageSectionTooltip(String label, String blurb) {
-    return '$label — $blurb';
+    return '$label: $blurb';
   }
 
   @override
@@ -10736,7 +10736,7 @@ class LEn extends L {
 
   @override
   String get aiUsageAssetStudioUnsupportedHint =>
-      'Download the HTML to open this model in any browser — it works offline.';
+      'Download the HTML to open this model in any browser. It works offline.';
 
   @override
   String get aiUsageAssetStudioUnavailable => 'Studio unavailable';
@@ -11024,7 +11024,7 @@ class LEn extends L {
       'This model is no longer listed.';
 
   @override
-  String get aiLeaderboardDetailProprietary => 'Proprietary — API access only';
+  String get aiLeaderboardDetailProprietary => 'Proprietary, API access only';
 
   @override
   String get aiLeaderboardDetailOpenWeights => 'Open weights';
@@ -11290,14 +11290,14 @@ class LEn extends L {
 
   @override
   String get aiOsEmptySubtitle =>
-      'This calculator sizes models whose weights you can download. None in the current catalogue have a known parameter count — refresh the leaderboard and try again.';
+      'This calculator sizes models whose weights you can download. None in the current catalogue have a known parameter count. Refresh the leaderboard and try again.';
 
   @override
   String get aiOsWhatCanRunIt => 'WHAT CAN RUN IT';
 
   @override
   String get aiOsFootnote =>
-      'Weight memory is exact arithmetic. The context cost is estimated from the parameter count — the catalogue does not carry each model’s layer count or attention shape, so a model with an unusual design will differ. Leave headroom.';
+      'Weight memory is exact arithmetic. The context cost is estimated from the parameter count, because the catalogue doesn\'t list each model’s layer count or attention shape, so a model with an unusual design will differ. Leave some headroom.';
 
   @override
   String get aiOsFieldModel => 'Model';
@@ -11313,7 +11313,7 @@ class LEn extends L {
 
   @override
   String get aiOsKv8bitTooltip =>
-      'Store the context cache at 8 bits instead of 16 — roughly halves what the context costs.';
+      'Store the context cache at 8 bits instead of 16. That roughly halves what the context costs.';
 
   @override
   String get aiOsGbOfMemory => 'GB of memory';
@@ -11344,7 +11344,7 @@ class LEn extends L {
 
   @override
   String get aiOsUnifiedTooltip =>
-      'Shared CPU/GPU memory — this is the share a model can actually claim, not the machine’s total.';
+      'Shared CPU/GPU memory. This is the share a model can actually use, not the machine’s total.';
 
   @override
   String aiOsBitsPerWeight(String bits) {
@@ -11532,11 +11532,11 @@ class LEn extends L {
 
   @override
   String get aiTestsEngineIntro =>
-      'Cutaway V8 — a real-time 3D cross-plane engine benchmark with crank-driven pistons, half-speed camshafts, synchronized valves, combustion effects and a 30-second FPS benchmark.';
+      'Cutaway V8: a real-time 3D cross-plane engine benchmark with crank-driven pistons, half-speed camshafts, synchronized valves, combustion effects and a 30-second FPS benchmark.';
 
   @override
   String get aiTestsPagodaIntro =>
-      'Spring Festival at the Five-Story Pagoda — an interactive voxel garden benchmark with procedural terrain, animated elements, and dynamic lighting.';
+      'Spring Festival at the Five-Story Pagoda: an interactive voxel garden benchmark with procedural terrain, animated elements and dynamic lighting.';
 
   @override
   String get aiTestsSelectModel => 'Select a Model';
@@ -11642,19 +11642,19 @@ class LEn extends L {
 
   @override
   String get aiTestsPagodaDescSpaceBunny =>
-      'Independent voxel garden benchmark — flying island, sky waterfalls and a five-storey pagoda';
+      'Independent voxel garden benchmark with a flying island, sky waterfalls and a five-storey pagoda';
 
   @override
   String get aiTestsPagodaDescSonnetXhigh =>
-      'Sonnet 5.5 at extra-high reasoning effort — a floating garden island with a waterfall and a five-storey pagoda';
+      'Sonnet 5.5 at extra-high reasoning effort: a floating garden island with a waterfall and a five-storey pagoda';
 
   @override
   String get aiTestsPagodaDescGptSolXhigh =>
-      'GPT 6.1 Sol at extra-high reasoning effort — spring festival voxel garden with a five-storey pagoda';
+      'GPT 6.1 Sol at extra-high reasoning effort: a spring festival voxel garden with a five-storey pagoda';
 
   @override
   String get aiTestsPagodaDescGptSolLow =>
-      'GPT 6.1 Sol at low reasoning effort — spring festival voxel garden with a five-storey pagoda';
+      'GPT 6.1 Sol at low reasoning effort: a spring festival voxel garden with a five-storey pagoda';
 
   @override
   String get aiTestPagodaTitle => 'Pagoda Test';
@@ -11758,7 +11758,7 @@ class LEn extends L {
 
   @override
   String get aiTestPcBundledDesc =>
-      'HELIX 01 — an ivory and aluminum showcase with a custom liquid loop, hinged glass, exploded inspection and power/RGB controls.';
+      'HELIX 01, an ivory and aluminum showcase with a custom liquid loop, hinged glass, exploded inspection and power/RGB controls.';
 
   @override
   String get aiTestPcPlatformBody =>
@@ -11946,7 +11946,7 @@ class LEn extends L {
     String km,
     String rangeKm,
   ) {
-    return '$model cannot reach $city — $km km against $rangeKm km of range.';
+    return '$model can\'t reach $city: $km km against $rangeKm km of range.';
   }
 
   @override
@@ -11973,7 +11973,7 @@ class LEn extends L {
       other: '$count gates',
       one: '1 gate',
     );
-    return 'Every usable gate is taken. You have $_temp0 not touching a terminal — move them next to one to put them to work.';
+    return 'Every usable gate is taken. You have $_temp0 not touching a terminal. Move them next to one to put them to work.';
   }
 
   @override
@@ -12305,7 +12305,7 @@ class LEn extends L {
 
   @override
   String airlineFinLandAtMax(String size) {
-    return 'Your land is $size by $size — the largest the airport authority will sell you.';
+    return 'Your land is $size by $size, the biggest plot the airport authority will sell you.';
   }
 
   @override
@@ -12437,7 +12437,7 @@ class LEn extends L {
 
   @override
   String get airlineRoutesNoUsableAircraft =>
-      'Nothing in the catalogue can fly this from your hub yet — you need a longer runway, or this sector is beyond every aircraft you could buy.';
+      'Nothing in the catalogue can fly this from your hub yet. You need a longer runway, or this route is beyond every aircraft you could buy.';
 
   @override
   String airlineRoutesCanBeFlownBy(String names) {
@@ -12501,7 +12501,7 @@ class LEn extends L {
 
   @override
   String airlineHubTileTooltip(String name, String blurb) {
-    return '$name — $blurb';
+    return '$name: $blurb';
   }
 
   @override
@@ -12728,7 +12728,7 @@ class LEn extends L {
 
   @override
   String get autoClickerHotKeyRegisterFailed =>
-      'Could not register the global hotkey — another app may already be using it.';
+      'Couldn\'t register the global hotkey. Another app may already be using it.';
 
   @override
   String get autoClickerInvalidSnapshot => 'Invalid auto clicker snapshot.';
@@ -12772,7 +12772,7 @@ class LEn extends L {
   String get bulletinBoardImageNotFound => 'Image not found';
 
   @override
-  String get calcErrorHasX => 'That has an x in it — press Plot to draw it.';
+  String get calcErrorHasX => 'That has an x in it. Press Plot to draw it.';
 
   @override
   String get calcPlotNeedsExpression => 'Type something like x^2 - 3 first.';
@@ -12815,7 +12815,7 @@ class LEn extends L {
 
   @override
   String get calcNothingPlotted =>
-      'Nothing plotted yet. Type something with an x — like x^2 - 3 or sin(x) — and press Plot.';
+      'Nothing plotted yet. Type something with an x, like x^2 - 3 or sin(x), and press Plot.';
 
   @override
   String get calcFunctionHide => 'Hide';
@@ -13294,7 +13294,7 @@ class LEn extends L {
 
   @override
   String calendarSharedByView(String author) {
-    return 'Shared by $author — view only';
+    return 'Shared by $author (view only)';
   }
 
   @override
@@ -13457,7 +13457,7 @@ class LEn extends L {
 
   @override
   String get cardWalletHoldFlat =>
-      'Hold your card flat against the back of your phone and keep it still — larger cards take a second to read.';
+      'Hold your card flat against the back of your phone and keep it still. Bigger cards take a second to read.';
 
   @override
   String cardWalletScanUnexpectedError(String error) {
@@ -13504,7 +13504,7 @@ class LEn extends L {
 
   @override
   String get cardWalletCodeHintScan =>
-      'Scan it in above, or type it — e.g. 2601234567890';
+      'Scan it in above, or type it (e.g. 2601234567890)';
 
   @override
   String get cardWalletCodeHint => 'e.g. 2601234567890';
@@ -13576,7 +13576,7 @@ class LEn extends L {
 
   @override
   String cardWalletNoStandardMatch(String format) {
-    return 'No standard match — using $format';
+    return 'No standard match, using $format';
   }
 
   @override
@@ -13635,15 +13635,15 @@ class LEn extends L {
 
   @override
   String get cardWalletNfcReadFailed =>
-      'Couldn\'t read that tag — it looks empty or unsupported.';
+      'Couldn\'t read that tag. It looks empty or unsupported.';
 
   @override
   String get cardWalletNfcPaymentCardRefused =>
-      'That looks like a bank or credit card — luma won\'t copy payment cards for your security. Add a loyalty, hotel, transit or event card instead.';
+      'That looks like a bank or credit card. For your security, luma won\'t copy payment cards. Add a loyalty, hotel, transit or event card instead.';
 
   @override
   String get cardWalletNfcEmptyTag =>
-      'Couldn\'t read anything off that tag — it may be empty or locked.';
+      'Couldn\'t read anything off that tag. It may be empty or locked.';
 
   @override
   String get cityPlannerLinuxTitle => 'Not available on Linux';
@@ -13654,7 +13654,7 @@ class LEn extends L {
 
   @override
   String get cloudFilesSessionExpired =>
-      'Your session expired — sign in again under Settings → Sync.';
+      'Your session expired. Sign in again under Settings → Sync.';
 
   @override
   String get cloudFilesSignInFirst => 'Sign in under Settings → Sync first.';
@@ -13677,7 +13677,7 @@ class LEn extends L {
 
   @override
   String get cloudFilesIndexConflict =>
-      'Could not update the file list — please try again.';
+      'Couldn\'t update the file list. Please try again.';
 
   @override
   String cloudFilesSizeB(String value) {
@@ -13704,7 +13704,7 @@ class LEn extends L {
 
   @override
   String get cloudFilesSignedOutBody =>
-      'Sign in to your sync server under Settings → Sync & account, then come back here to upload files. Files are encrypted on this device before upload — the server can never read them.';
+      'Sign in to your sync server under Settings → Sync & account, then come back here to upload files. Files are encrypted on this device before upload, so the server can never read them.';
 
   @override
   String get cloudFilesHeaderSubtitle =>
@@ -13950,7 +13950,7 @@ class LEn extends L {
 
   @override
   String get dataMgmtTagsExplainer =>
-      'Tags can be attached to any row and used to group charts — e.g. tag income rows by source and see what earns the most.';
+      'Tags can be attached to any row and used to group charts. For example, tag income rows by source and see what earns the most.';
 
   @override
   String get dataMgmtNoTagsYet => 'No tags yet.';
@@ -14066,7 +14066,7 @@ class LEn extends L {
 
   @override
   String get deviceHealthErrDefenderUnavailable =>
-      'Couldn\'t read Windows Defender\'s status — another antivirus may be active, or the Defender service is disabled.';
+      'Couldn\'t read Windows Defender\'s status. Another antivirus may be active, or the Defender service is turned off.';
 
   @override
   String get deviceHealthErrListProcesses => 'Could not list processes.';
@@ -14077,7 +14077,7 @@ class LEn extends L {
 
   @override
   String get deviceHealthNeedsManualUpdate =>
-      'Needs a manual update — winget could not finish silently.';
+      'Needs a manual update. winget couldn\'t finish silently.';
 
   @override
   String deviceHealthIssueRamHigh(int percent) {
@@ -14143,7 +14143,7 @@ class LEn extends L {
 
   @override
   String get deviceHealthCardAppUpdatesNotScanned =>
-      'Not scanned yet — checks winget and luma for available updates.';
+      'Not scanned yet. This checks winget and luma for available updates.';
 
   @override
   String deviceHealthCardUpdateAll(int count) {
@@ -14157,7 +14157,7 @@ class LEn extends L {
 
   @override
   String get deviceHealthCardUpdateFailedHint =>
-      'Couldn\'t update automatically — try updating it yourself.';
+      'Couldn\'t update automatically. Try updating it yourself.';
 
   @override
   String get deviceHealthCardAppsUpToDate =>
@@ -14171,7 +14171,7 @@ class LEn extends L {
 
   @override
   String get deviceHealthCardNoBattery =>
-      'No battery detected — this looks like a desktop.';
+      'No battery found. This looks like a desktop.';
 
   @override
   String deviceHealthCardBatteryHealth(int percent) {
@@ -14272,7 +14272,7 @@ class LEn extends L {
 
   @override
   String get deviceHealthCardGpuDisclaimer =>
-      'Windows doesn\'t expose a way to check driver freshness directly — these open the tool that actually knows. Nothing is installed automatically.';
+      'Windows doesn\'t offer a way to check driver freshness directly, so these open the tool that actually knows. Nothing gets installed automatically.';
 
   @override
   String get deviceHealthCardProcessesTitle => 'Background Processes';
@@ -14282,7 +14282,7 @@ class LEn extends L {
 
   @override
   String get deviceHealthCardProcessesNotScanned =>
-      'Not scanned yet — this reads every running process, so it isn\'t run automatically.';
+      'Not scanned yet. This reads every running process, so it doesn\'t run automatically.';
 
   @override
   String deviceHealthCardProcessesSummary(int count) {
@@ -14337,13 +14337,13 @@ class LEn extends L {
 
   @override
   String get errandsEmptySubtitle =>
-      'Add a recurring errand — daily, weekly, monthly or every few days — and it shows up on your checklist the day it\'s due.';
+      'Add a recurring errand (daily, weekly, monthly or every few days) and it shows up on your checklist the day it\'s due.';
 
   @override
   String get errandsAddErrand => 'Add errand';
 
   @override
-  String get errandsAllDoneToday => 'All done for today — nice work.';
+  String get errandsAllDoneToday => 'All done for today. Nice work.';
 
   @override
   String get errandsNothingDueToday =>
@@ -14477,7 +14477,7 @@ class LEn extends L {
 
   @override
   String get errandsCategoriesHelp =>
-      'Group your checklist however you like — Household, Health, Admin… Deleting a category keeps its errands.';
+      'Group your checklist however you like: Household, Health, Admin… Deleting a category keeps its errands.';
 
   @override
   String get errandsCategoryNameHint => 'Household';
@@ -14654,7 +14654,7 @@ class LEn extends L {
 
   @override
   String get fileViewerNoPageTextHint =>
-      'This page has no extractable text — it may be a scan or an image.';
+      'This page has no text to extract. It may be a scan or an image.';
 
   @override
   String get fileViewerNoReadableText => 'This document has no readable text';
@@ -14668,7 +14668,7 @@ class LEn extends L {
   }
 
   @override
-  String get fileViewerLargeFile => 'Large file — showing the first 500 KB.';
+  String get fileViewerLargeFile => 'Large file, showing the first 500 KB.';
 
   @override
   String get fileViewerNotWordDocument =>
@@ -14733,7 +14733,7 @@ class LEn extends L {
 
   @override
   String get freeSketchGalleryEmptyHint =>
-      'Start a new artwork — pencils, inks, watercolours, markers, airbrushes and blenders, with layers, blend modes, symmetry and pressure. Export to PNG, JPEG, Photoshop or OpenRaster.';
+      'Start a new artwork. You get pencils, inks, watercolours, markers, airbrushes and blenders, with layers, blend modes, symmetry and pressure. Export to PNG, JPEG, Photoshop or OpenRaster.';
 
   @override
   String freeSketchArtworkInfo(String size, int count, String updated) {
@@ -15058,7 +15058,7 @@ class LEn extends L {
   String get freeSketchEngineBlurs => 'Blurs what is under it';
 
   @override
-  String get freeSketchTraitGlazes => 'glazes like a marker — overlaps darken';
+  String get freeSketchTraitGlazes => 'glazes like a marker, overlaps darken';
 
   @override
   String get freeSketchTraitAddsLight => 'adds light';
@@ -15570,7 +15570,7 @@ class LEn extends L {
 
   @override
   String freeSketchLayerHidden(String name) {
-    return '“$name” is hidden — show it to paint on it.';
+    return '“$name” is hidden. Show it to paint on it.';
   }
 
   @override
@@ -15611,14 +15611,14 @@ class LEn extends L {
 
   @override
   String get freeSketchLayerEmptyTransform =>
-      'This layer is empty — nothing to transform.';
+      'This layer is empty, so there\'s nothing to transform.';
 
   @override
   String get freeSketchUndoTransform => 'Transform';
 
   @override
   String get freeSketchLayerEmptyAdjust =>
-      'This layer is empty — nothing to adjust.';
+      'This layer is empty, so there\'s nothing to adjust.';
 
   @override
   String get freeSketchUndoFill => 'Fill';
@@ -15704,8 +15704,7 @@ class LEn extends L {
   }
 
   @override
-  String get freeSketchViewMirroredTip =>
-      'View is mirrored — tap to unflip (H)';
+  String get freeSketchViewMirroredTip => 'View is mirrored. Tap to unflip (H)';
 
   @override
   String get freeSketchUndoTip => 'Undo (Ctrl+Z)';
@@ -15785,7 +15784,7 @@ class LEn extends L {
 
   @override
   String freeSketchToolTapAgainBrushes(String tool) {
-    return '$tool — tap again for brushes';
+    return '$tool (tap again for brushes)';
   }
 
   @override
@@ -15798,10 +15797,10 @@ class LEn extends L {
   String get freeSketchPressureCurve => 'Pressure curve';
 
   @override
-  String get freeSketchPressureSoft => 'Soft — light touch goes further';
+  String get freeSketchPressureSoft => 'Soft: a light touch goes further';
 
   @override
-  String get freeSketchPressureFirm => 'Firm — press harder for full strength';
+  String get freeSketchPressureFirm => 'Firm: press harder for full strength';
 
   @override
   String get freeSketchPressureLinear => 'Linear';
@@ -15811,7 +15810,7 @@ class LEn extends L {
 
   @override
   String get freeSketchPalmRejectionHint =>
-      'Once a stylus is used, fingers pan and zoom instead of painting — palm rejection.';
+      'Once you\'ve used a stylus, fingers pan and zoom instead of painting (palm rejection).';
 
   @override
   String get freeSketchShortcutsHelp =>
@@ -16015,7 +16014,7 @@ class LEn extends L {
   String get galleryDetailsStored => 'Stored';
 
   @override
-  String get galleryDetailsOnlineOnly => 'Online only — not on this PC';
+  String get galleryDetailsOnlineOnly => 'Online only, not on this PC';
 
   @override
   String get galleryDetailsFolder => 'Folder';
@@ -16072,7 +16071,7 @@ class LEn extends L {
 
   @override
   String get galleryEditNameTooLong =>
-      'That name is too long — keep it under 250 characters.';
+      'That name is too long. Keep it under 250 characters.';
 
   @override
   String galleryEditNameIllegal(String characters) {
@@ -16094,7 +16093,7 @@ class LEn extends L {
 
   @override
   String galleryEditKeepExtension(String extension) {
-    return 'Keep the .$extension ending — changing it stops the file opening.';
+    return 'Keep the .$extension ending. Changing it stops the file from opening.';
   }
 
   @override
@@ -16125,7 +16124,7 @@ class LEn extends L {
 
   @override
   String galleryMapPlacedSoFar(int placed) {
-    return '$placed placed so far — still reading locations';
+    return '$placed placed so far, still reading locations';
   }
 
   @override
@@ -16162,7 +16161,7 @@ class LEn extends L {
 
   @override
   String get galleryPageNoFoldersYet =>
-      'No folders found yet — let the first scan finish.';
+      'No folders found yet. Let the first scan finish.';
 
   @override
   String get galleryPageScanOneFolder => 'Scan one folder';
@@ -16184,7 +16183,7 @@ class LEn extends L {
 
   @override
   String galleryPageSortingProgress(int count, int total) {
-    return 'Sorting photos into People and Categories — $count of $total';
+    return 'Sorting photos into People and Categories: $count of $total';
   }
 
   @override
@@ -16297,7 +16296,7 @@ class LEn extends L {
 
   @override
   String get galleryPagePeopleStillSorting =>
-      'Still sorting the library — people appear here once a face has turned up in a few photos.';
+      'Still sorting the library. People show up here once a face has turned up in a few photos.';
 
   @override
   String get galleryPagePeopleSortHint =>
@@ -16308,7 +16307,7 @@ class LEn extends L {
 
   @override
   String get galleryPageNoTripsBody =>
-      'A run of photos over a few busy days — a weekend away, a holiday — shows up here on its own. Nothing to set up, and it works without Nova.';
+      'A run of photos over a few busy days, like a weekend away or a holiday, shows up here on its own. Nothing to set up, and it works without Nova.';
 
   @override
   String get galleryPageNothingSortedYet => 'Nothing sorted yet';
@@ -16403,7 +16402,7 @@ class LEn extends L {
 
   @override
   String get galleryPageStaysOnDevice =>
-      'Photos and videos stay on this device — the gallery only reads them to show them here.';
+      'Photos and videos stay on this device. The gallery only reads them to show them here.';
 
   @override
   String get galleryPageScanEverything => 'Scan everything';
@@ -16434,12 +16433,12 @@ class LEn extends L {
 
   @override
   String galleryPageSortingPhotosProgress(int count, int total) {
-    return 'Sorting photos — $count of $total';
+    return 'Sorting photos: $count of $total';
   }
 
   @override
   String galleryPageReadingDetails(int count) {
-    return 'Reading photo details — $count to go';
+    return 'Reading photo details, $count to go';
   }
 
   @override
@@ -16470,7 +16469,7 @@ class LEn extends L {
       other: '$skipped were skipped',
       one: '1 was skipped',
     );
-    return 'Looked at $_temp0. $_temp1 because they are only in the cloud, or in a format that can\'t be read here — make them available offline and look again.';
+    return 'Looked at $_temp0. $_temp1 because they\'re only in the cloud, or in a format that can\'t be read here. Make them available offline and look again.';
   }
 
   @override
@@ -16484,7 +16483,7 @@ class LEn extends L {
       other: '$pending photos to look at.',
       one: '1 photo to look at.',
     );
-    return '$_temp0 This downloads about $megabytes MB of models once (recognition and face matching); after that everything happens on this PC, offline — no photo is uploaded.';
+    return '$_temp0 This downloads about $megabytes MB of models once (recognition and face matching). After that everything happens on this PC, offline, and no photo is uploaded.';
   }
 
   @override
@@ -16495,7 +16494,7 @@ class LEn extends L {
       other: '$pending photos to look at.',
       one: '1 photo to look at.',
     );
-    return '$_temp0 This downloads a small (~$megabytes MB) face-matching model once, so photos of the same person can be grouped — offline, and nothing is uploaded.';
+    return '$_temp0 This downloads a small (~$megabytes MB) face-matching model once, so photos of the same person can be grouped. It runs offline and nothing is uploaded.';
   }
 
   @override
@@ -16524,7 +16523,7 @@ class LEn extends L {
 
   @override
   String get galleryPageSmartUpsellBodyModels =>
-      'Nova groups your photos by who is in them and what is actually in the picture — food, pets, ocean, and more — using models that run on this device, offline. Nothing is uploaded.';
+      'Nova groups your photos by who\'s in them and what\'s actually in the picture (food, pets, the ocean and more) using models that run on this device, offline. Nothing is uploaded.';
 
   @override
   String get galleryPageSmartUpsellBodyPhone =>
@@ -16674,7 +16673,7 @@ class LEn extends L {
 
   @override
   String gameToolsComingSoonSubtitle(String game) {
-    return 'This is where $game helpers will live. Nothing to set up yet — they will show up here in a future update.';
+    return 'This is where $game helpers will live. Nothing to set up yet; they\'ll show up here in a future update.';
   }
 
   @override
@@ -16690,7 +16689,7 @@ class LEn extends L {
 
   @override
   String gameToolsSectionTooltip(String label, String blurb) {
-    return '$label — $blurb';
+    return '$label: $blurb';
   }
 
   @override
@@ -16711,7 +16710,7 @@ class LEn extends L {
 
   @override
   String groceriesApiNeedsAccount(String section) {
-    return 'Product search needs an approved luma account. Create one under Settings → $section — your shopping list itself keeps working offline.';
+    return 'Product search needs an approved luma account. Create one under Settings → $section. Your shopping list itself keeps working offline.';
   }
 
   @override
@@ -16739,7 +16738,7 @@ class LEn extends L {
 
   @override
   String get groceriesGateSubtitle =>
-      'Search Jumbo, Albert Heijn, Hoogvliet and Lidl prices side by side, and build shopping lists that split themselves by store and aisle with running totals — included free with Orbit and Nova.';
+      'Search Jumbo, Albert Heijn, Hoogvliet and Lidl prices side by side, and build shopping lists that split themselves by store and aisle with running totals. Included free with Orbit and Nova.';
 
   @override
   String groceriesUpgradeTo(String plan) {
@@ -16864,7 +16863,7 @@ class LEn extends L {
 
   @override
   String get mlHowStep1Body =>
-      'Every stroke is stamped down with a thickness and merged with the others wherever they touch. That is thinned to its centre line, which becomes a graph of bones sitting exactly on what was drawn — a ring stays a ring, a stick figure stays a stick figure. Short spikes thrown off by wobbles are pruned, bends keep a joint and straight runs do not, and the result is capped at eighteen bones so the search stays small enough to finish.';
+      'Every stroke is stamped down with a thickness and merged with the others wherever they touch. That gets thinned to its centre line, which becomes a graph of bones sitting exactly on what was drawn: a ring stays a ring, a stick figure stays a stick figure. Short spikes from wobbly lines are pruned, bends keep a joint and straight runs don\'t, and the result is capped at eighteen bones so the search stays small enough to finish.';
 
   @override
   String get mlHowStep2Title => 'The bones get motors';
@@ -16878,7 +16877,7 @@ class LEn extends L {
 
   @override
   String get mlHowStep3Body =>
-      'One gene sets the frequency the whole body steps at, then each joint gets three: how far it swings, where in the cycle it swings, and which angle it swings around. That handful of numbers is the entire nervous system — there is no brain reacting to the world, only a rhythm, which is why a good gait looks stubborn.';
+      'One gene sets the frequency the whole body steps at, then each joint gets three: how far it swings, where in the cycle it swings, and which angle it swings around. That handful of numbers is the whole nervous system. There\'s no brain reacting to the world, only a rhythm, which is why a good gait looks stubborn.';
 
   @override
   String get mlHowStep4Title => 'Sixty of them run every generation';
@@ -16892,7 +16891,7 @@ class LEn extends L {
 
   @override
   String get mlHowStep5Body =>
-      'The best line climbs fast and then flattens, because the search has found a local trick and is polishing it. The average line stays jagged and far below — that is mutation still throwing away most of its guesses. Restarting rolls new dice, and the same body often learns a completely different walk.';
+      'The best line climbs fast and then flattens, because the search has found a local trick and is polishing it. The average line stays jagged and far below, which is mutation still throwing away most of its guesses. Restarting rolls new dice, and the same body often learns a completely different walk.';
 
   @override
   String get mlHowFooter =>
@@ -16983,7 +16982,7 @@ class LEn extends L {
 
   @override
   String mlStoppedAtLimit(String limit) {
-    return 'stopped at $limit — move \"stop after\" up to carry on';
+    return 'stopped at $limit. Raise \"stop after\" to keep going';
   }
 
   @override
@@ -17145,7 +17144,7 @@ class LEn extends L {
 
   @override
   String get mediaDlSetupBody =>
-      'Fetching yt-dlp and ffmpeg — this only happens once.';
+      'Fetching yt-dlp and ffmpeg. This only happens once.';
 
   @override
   String get mediaDlSetupFailed => 'Could not set up yt-dlp / ffmpeg.';
@@ -17182,7 +17181,7 @@ class LEn extends L {
 
   @override
   String mediaDlIntroBody(String updateLabel) {
-    return 'Paste a YouTube video link to get started. If downloads start failing with a 403 error, YouTube has likely changed something — try \"$updateLabel\" above.';
+    return 'Paste a YouTube video link to get started. If downloads start failing with a 403 error, YouTube has probably changed something, so try \"$updateLabel\" above.';
   }
 
   @override
@@ -17301,7 +17300,7 @@ class LEn extends L {
 
   @override
   String get mindMapLibraryEmptySubtitle =>
-      'Name one above. You start on the centre idea and press Tab to branch out — no dragging required.';
+      'Name one above. You start on the centre idea and press Tab to branch out. No dragging required.';
 
   @override
   String get mindMapDeleteMapTooltip => 'Delete map';
@@ -17438,7 +17437,7 @@ class LEn extends L {
 
   @override
   String get mindMapAiAllowanceUsed =>
-      'You\'ve used today\'s AI allowance — more tomorrow.';
+      'You\'ve used today\'s AI allowance. More tomorrow.';
 
   @override
   String mindMapAiNoKey(String provider, String settings, String assistant) {
@@ -17569,7 +17568,7 @@ class LEn extends L {
 
   @override
   String get mcCrashAiUsageLimit =>
-      'You\'ve hit today\'s AI usage limit — try again tomorrow.';
+      'You\'ve hit today\'s AI usage limit. Try again tomorrow.';
 
   @override
   String mcCrashAiNoKey(String provider) {
@@ -17866,7 +17865,7 @@ class LEn extends L {
 
   @override
   String get mcCloudBackupNeedsAccount =>
-      'Cloud backups need an approved luma account — create one under Settings → Sync & account.';
+      'Cloud backups need an approved luma account. Create one under Settings → Sync & account.';
 
   @override
   String get mcCloudStorageFull => 'Not enough cloud storage space.';
@@ -17877,7 +17876,7 @@ class LEn extends L {
 
   @override
   String get mcCloudBackupIndexFailed =>
-      'Could not update the backup list — please try again.';
+      'Couldn\'t update the backup list. Please try again.';
 
   @override
   String get mcMsAuthNotConfigured =>
@@ -17965,7 +17964,7 @@ class LEn extends L {
 
   @override
   String mcModCurseForgeOnly(String title) {
-    return '$title can only be downloaded from its CurseForge page — the author has turned off downloads in other launchers.';
+    return '$title can only be downloaded from its CurseForge page, because the author has turned off downloads in other launchers.';
   }
 
   @override
@@ -18041,7 +18040,7 @@ class LEn extends L {
 
   @override
   String get minecraftLauncherOfflineNeedsMicrosoft =>
-      'Sign in with a Microsoft account that owns Minecraft first — offline profiles are for playing without a connection afterwards, not instead of that.';
+      'Sign in with a Microsoft account that owns Minecraft first. Offline profiles are for playing without a connection afterwards, not a replacement for that.';
 
   @override
   String get minecraftLauncherCloudBackups => 'Cloud backups';
@@ -18877,7 +18876,7 @@ class LEn extends L {
 
   @override
   String get nfcRecordEditorWifiNote =>
-      'Written as a text record most phones can read when they tap the tag — it won\'t auto-join every device the way a router\'s own Wi-Fi QR code sometimes does.';
+      'Written as a text record that most phones can read when they tap the tag. It won\'t auto-join every device the way a router\'s own Wi-Fi QR code sometimes does.';
 
   @override
   String get nfcRecordEditorPhoneOptional => 'Phone (optional)';
@@ -18942,7 +18941,7 @@ class LEn extends L {
 
   @override
   String nfcSummaryRawBytes(int bytes) {
-    return 'Kept as-is ($bytes bytes) — not editable';
+    return 'Kept as-is ($bytes bytes), not editable';
   }
 
   @override
@@ -18953,11 +18952,11 @@ class LEn extends L {
 
   @override
   String get nfcUnsupportedNotice =>
-      'NFC Tag Editor needs Android\'s NFC hardware and reader APIs, so it only works on an Android phone or tablet — there\'s nothing to scan or write here.';
+      'NFC Tag Editor needs Android\'s NFC hardware and reader APIs, so it only works on an Android phone or tablet. There\'s nothing to scan or write here.';
 
   @override
   String get nfcErrNotNdef =>
-      'This tag doesn\'t support NDEF, so luma can\'t edit it. Most blank NFC stickers and cards do — try another tag.';
+      'This tag doesn\'t support NDEF, so luma can\'t edit it. Most blank NFC stickers and cards do, so try another tag.';
 
   @override
   String get nfcErrNotAvailable =>
@@ -18988,7 +18987,7 @@ class LEn extends L {
 
   @override
   String get nfcErrNotWritable =>
-      'This tag can\'t be written to — it doesn\'t support NDEF.';
+      'This tag can\'t be written to. It doesn\'t support NDEF.';
 
   @override
   String get nfcErrNothingToLock =>
@@ -19012,7 +19011,7 @@ class LEn extends L {
 
   @override
   String get nfcHeroBody =>
-      'Hold any NFC tag or sticker to your phone to read and edit its records — or start from scratch and write a brand-new tag.';
+      'Hold any NFC tag or sticker to your phone to read and edit its records, or start from scratch and write a brand-new tag.';
 
   @override
   String get nfcScanTag => 'Scan a tag';
@@ -19028,14 +19027,14 @@ class LEn extends L {
 
   @override
   String get nfcNoRecordsBody =>
-      'Add a record above — text, a link, Wi-Fi details, a contact card and more.';
+      'Add a record above: text, a link, Wi-Fi details, a contact card and more.';
 
   @override
   String get nfcWriteToTag => 'Write to tag';
 
   @override
   String get nfcWriteHint =>
-      'Works on the tag you scanned or a different one — just hold whichever you want to write to when it\'s ready.';
+      'Works on the tag you scanned or a different one. Just hold whichever one you want to write to when it\'s ready.';
 
   @override
   String get nfcStartOver => 'Start over';
@@ -19078,7 +19077,7 @@ class LEn extends L {
 
   @override
   String get nfcWriteLockBody =>
-      'This writes the records below, then makes the tag permanently read-only. It can never be written to again — not by luma, not by any other app.';
+      'This writes the records below, then makes the tag permanently read-only. It can never be written to again, not by luma and not by any other app.';
 
   @override
   String get nfcWriteLockAction => 'Write & lock';
@@ -19094,7 +19093,7 @@ class LEn extends L {
 
   @override
   String nfcDeleteTemplateBody(String name) {
-    return 'This removes “$name” — tags already written with it keep their content.';
+    return 'This removes “$name”. Tags already written with it keep their content.';
   }
 
   @override
@@ -19102,7 +19101,7 @@ class LEn extends L {
 
   @override
   String get nfcNoTemplatesBody =>
-      'Build a set of records in the Editor tab, then save it here to write the same tag content again and again — handy for a batch of stickers.';
+      'Build a set of records in the Editor tab, then save it here to write the same tag content again and again. Handy for a batch of stickers.';
 
   @override
   String nfcTemplateRecordsSummary(int count, String kinds) {
@@ -19200,7 +19199,7 @@ class LEn extends L {
   String get nfcTagReadOnly => 'Read-only';
 
   @override
-  String get nfcTagBlankWillFormat => 'Blank — will format';
+  String get nfcTagBlankWillFormat => 'Blank, will be formatted';
 
   @override
   String nfcTagUid(String uid) {
@@ -19411,7 +19410,7 @@ class LEn extends L {
 
   @override
   String get recipeBookFavouritesHint =>
-      'Tap the heart on any recipe — private or public — to keep it here.';
+      'Tap the heart on any recipe, private or public, to keep it here.';
 
   @override
   String get recipeBookNew => 'New';
@@ -19746,7 +19745,7 @@ class LEn extends L {
 
   @override
   String get mafiaRoleCountingLowCountWarning =>
-      'The wiki flags its data below 7 players as possibly inaccurate — treat this count as a rough guide.';
+      'The wiki flags its data below 7 players as possibly inaccurate, so treat this count as a rough guide.';
 
   @override
   String mafiaRoleCountingClaimedOfTotal(int claimed, int total) {
@@ -20696,7 +20695,7 @@ class LEn extends L {
 
   @override
   String get secureChatPeerNoKey =>
-      'This person hasn\'t set up chat encryption yet — try again later.';
+      'This person hasn\'t set up chat encryption yet. Try again later.';
 
   @override
   String get secureChatNotSignedIn => 'Not signed in.';
@@ -20725,7 +20724,7 @@ class LEn extends L {
 
   @override
   String get secureChatNeedsSyncBody =>
-      'Sign in under Settings → Sync & account to invite people and chat. Messages are end-to-end encrypted on this device — the server only ever relays ciphertext.';
+      'Sign in under Settings → Sync & account to invite people and chat. Messages are end-to-end encrypted on this device, and the server only ever relays ciphertext.';
 
   @override
   String get secureChatHeading => 'Chat';
@@ -20767,7 +20766,7 @@ class LEn extends L {
 
   @override
   String secureChatPeerNotReady(String email) {
-    return '$email hasn\'t set up chat encryption on a device yet — you\'ll be able to message them once they do.';
+    return '$email hasn\'t set up chat encryption on a device yet. You\'ll be able to message them once they do.';
   }
 
   @override
@@ -20784,7 +20783,7 @@ class LEn extends L {
 
   @override
   String get secureChatInviteBody =>
-      'They\'ll see the invite in Chat → Invites the next time they open Luma. Once accepted, every message is end-to-end encrypted — only the two of you can read them.';
+      'They\'ll see the invite in Chat → Invites the next time they open Luma. Once they accept, every message is end-to-end encrypted and only the two of you can read them.';
 
   @override
   String get secureChatSendInvite => 'Send invite';
@@ -22070,7 +22069,7 @@ class LEn extends L {
 
   @override
   String get serverTycoonNothingPluggedIn =>
-      'Nothing plugged in — drag a service node onto this rig.';
+      'Nothing plugged in. Drag a service node onto this rig.';
 
   @override
   String get serverTycoonInstallService => 'Install Service';
@@ -22097,7 +22096,7 @@ class LEn extends L {
 
   @override
   String get serverTycoonServiceNotPluggedIn =>
-      'Not plugged in — drag this node\'s port onto a rig.';
+      'Not plugged in. Drag this node\'s port onto a rig.';
 
   @override
   String serverTycoonRunningOn(String name) {
@@ -22404,7 +22403,7 @@ class LEn extends L {
 
   @override
   String get serverTycoonNoOffersToday =>
-      'No offers today — build reputation and buy licenses to attract companies.';
+      'No offers today. Build reputation and buy licenses to attract companies.';
 
   @override
   String get serverTycoonActive => 'Active';
@@ -22454,7 +22453,7 @@ class LEn extends L {
 
   @override
   String serverTycoonResearchIdle(String rate) {
-    return 'Nothing in the lab — earning $rate RP/day';
+    return 'Nothing in the lab, earning $rate RP/day';
   }
 
   @override
@@ -22483,7 +22482,7 @@ class LEn extends L {
 
   @override
   String serverTycoonResearchLevel(int level) {
-    return 'Level $level — repeatable';
+    return 'Level $level (repeatable)';
   }
 
   @override
@@ -22606,22 +22605,22 @@ class LEn extends L {
 
   @override
   String serverTycoonBoostExtend(String cost, String days) {
-    return 'Extend — $cost for $days days';
+    return 'Extend: $cost for $days days';
   }
 
   @override
   String serverTycoonBoostActivate(String cost, String days) {
-    return 'Activate — $cost for $days days';
+    return 'Activate: $cost for $days days';
   }
 
   @override
   String serverTycoonNetProfitLastDays(int count) {
-    return 'Net profit — last $count days';
+    return 'Net profit, last $count days';
   }
 
   @override
   String serverTycoonPowerDrawLastDays(int count) {
-    return 'Power draw — last $count days';
+    return 'Power draw, last $count days';
   }
 
   @override
@@ -22695,12 +22694,12 @@ class LEn extends L {
       other: '$days days',
       one: '1 day',
     );
-    return 'Away for $duration — $_temp0 simulated at $rate% rate.';
+    return 'Away for $duration. $_temp0 simulated at $rate% rate.';
   }
 
   @override
   String serverTycoonAwayCapped(int maxDays, int elapsed) {
-    return 'Capped at $maxDays days — $elapsed had passed. Research the R&D Lab branch to earn more while away.';
+    return 'Capped at $maxDays days ($elapsed had passed). Research the R&D Lab branch to earn more while you\'re away.';
   }
 
   @override
@@ -22825,7 +22824,7 @@ class LEn extends L {
 
   @override
   String get serverTycoonRepoOneProjectAtATime =>
-      'Only one project at a time — build the R&D Lab branch for more queue slots';
+      'Only one project at a time. Build the R&D Lab branch for more queue slots';
 
   @override
   String serverTycoonRepoResearchSlotsBusy(String slots) {
@@ -22994,7 +22993,7 @@ class LEn extends L {
 
   @override
   String serverTycoonRepoCloned(String cost) {
-    return 'Cloned for $cost — install services on it to start earning';
+    return 'Cloned for $cost. Install services on it to start earning';
   }
 
   @override
@@ -23205,7 +23204,7 @@ class LEn extends L {
 
   @override
   String get sftpHostOwnPasswordSubtitle =>
-      'Off by default — luma generates a much stronger one.';
+      'Off by default. luma generates a much stronger one.';
 
   @override
   String sftpHostPasswordHint(String minLength) {
@@ -23213,8 +23212,7 @@ class LEn extends L {
   }
 
   @override
-  String get sftpHostPasswordTooShortWarn =>
-      'Too short — this will be refused.';
+  String get sftpHostPasswordTooShortWarn => 'Too short. This will be refused.';
 
   @override
   String get sftpHostPasswordWeak =>
@@ -23235,7 +23233,7 @@ class LEn extends L {
 
   @override
   String get sftpHostSecurityNote =>
-      'The two devices agree on a key from the pairing password, then encrypt everything between them. luma\'s servers are not involved and never see the folder, the password or the files. Only the folder you pick is reachable. Hosting keeps running while luma is open — press Stop when you are done.';
+      'The two devices agree on a key from the pairing password, then encrypt everything between them. luma\'s servers aren\'t involved and never see the folder, the password or the files. Only the folder you pick is reachable. Hosting keeps running while luma is open, so press Stop when you\'re done.';
 
   @override
   String get sftpHostNoAddress => 'This device has no address.';
@@ -23481,7 +23479,7 @@ class LEn extends L {
 
   @override
   String get sftpThisDeviceUserNameNote =>
-      'The user name is here to tell devices apart. luma pairs on the password alone — this is not an SSH login, and nothing on this device\'s account is exposed by it.';
+      'The user name is just there to tell devices apart. luma pairs on the password alone. This isn\'t an SSH login, and nothing on this device\'s account is exposed by it.';
 
   @override
   String get sftpThisDeviceNewPassword => 'New password';
@@ -23491,7 +23489,7 @@ class LEn extends L {
 
   @override
   String get sftpThisDeviceStatusChooseBody =>
-      'Nothing is reachable until you pick one. Only that folder is served — nothing above it.';
+      'Nothing is reachable until you pick one. Only that folder is served, nothing above it.';
 
   @override
   String get sftpThisDeviceStatusOpeningTitle => 'Opening this device…';
@@ -23910,7 +23908,7 @@ class LEn extends L {
 
   @override
   String get sftpSharingFolderNote =>
-      'Sharing a folder — any device with the pairing password can connect.';
+      'Sharing a folder. Any device with the pairing password can connect.';
 
   @override
   String get sftpHostIdleNote =>
@@ -23922,7 +23920,7 @@ class LEn extends L {
 
   @override
   String get sftpServersNote =>
-      'Connect to your own server — nothing routes through luma.';
+      'Connect to your own server. Nothing goes through luma.';
 
   @override
   String sftpConnectedTo(String endpoint) {
@@ -23993,7 +23991,7 @@ class LEn extends L {
 
   @override
   String get sftpUpsellBody =>
-      'Connect to your own servers with a host, username, password and port, browse both sides at once, and drag files across. The connection goes straight from this device to your server — nothing passes through a luma server.';
+      'Connect to your own servers with a host, username, password and port, browse both sides at once, and drag files across. The connection goes straight from this device to your server and never passes through a luma server.';
 
   @override
   String sftpUpgradeTo(String plan) {
@@ -24132,7 +24130,7 @@ class LEn extends L {
 
   @override
   String sftpNearbyOtherVersion(String address) {
-    return '$address · runs a different version of luma — update both to connect';
+    return '$address · runs a different version of luma. Update both to connect';
   }
 
   @override
@@ -24140,7 +24138,7 @@ class LEn extends L {
 
   @override
   String get sftpSiteNoServersBody =>
-      'A site is one saved server — its host name, user name, password and port. luma connects straight to it from this device. To go the other way and let a device connect to this one, open This device.';
+      'A site is one saved server: its host name, user name, password and port. luma connects straight to it from this device. To go the other way and let a device connect to this one, open This device.';
 
   @override
   String get sftpSiteNew => 'New site';
@@ -24154,7 +24152,7 @@ class LEn extends L {
 
   @override
   String get sftpPrivacyNote =>
-      'Connections go straight from this device to your server. Nothing passes through a luma server, and saved passwords stay encrypted here — they are never synced.';
+      'Connections go straight from this device to your server. Nothing passes through a luma server, and saved passwords stay encrypted here. They\'re never synced.';
 
   @override
   String get sftpPasswordSavedTooltip =>
@@ -24197,7 +24195,7 @@ class LEn extends L {
 
   @override
   String get sftpSshServerHint =>
-      'Any server that speaks SSH — a VPS, a NAS, a Pi.';
+      'Any server that speaks SSH: a VPS, a NAS, a Pi.';
 
   @override
   String get sftpSiteNameHintLuma => 'My laptop';
@@ -24240,7 +24238,7 @@ class LEn extends L {
 
   @override
   String get sftpSaveDeviceSecretNote =>
-      'Encrypted on this device — but the other device changes it every time it starts hosting.';
+      'Encrypted on this device, but the other device changes it every time it starts hosting.';
 
   @override
   String get sftpSaveSiteSecretNote =>
@@ -24321,7 +24319,7 @@ class LEn extends L {
 
   @override
   String get sftpShareEmptyHint =>
-      'Drag files in from the left, or use +. Anything here shows up in the same folder on your other devices — sent straight over your network, never through a luma server.';
+      'Drag files in from the left, or use +. Anything here shows up in the same folder on your other devices. It\'s sent straight over your network, never through a luma server.';
 
   @override
   String get sftpShareOpen => 'Open';
@@ -24433,7 +24431,7 @@ class LEn extends L {
       other: '$count files ready',
       one: '1 file ready',
     );
-    return '$_temp0 — they will go over as soon as another device is on this network.';
+    return '$_temp0. They\'ll go over as soon as another device is on this network.';
   }
 
   @override
@@ -24502,7 +24500,7 @@ class LEn extends L {
   String get cardGamesHandStraightFlush => 'Straight flush';
 
   @override
-  String get cardGamesBjPushBlackjack => 'Push — both have blackjack.';
+  String get cardGamesBjPushBlackjack => 'Push. You both have blackjack.';
 
   @override
   String get cardGamesBjPlayerBlackjack => 'Blackjack! You win.';
@@ -24511,13 +24509,13 @@ class LEn extends L {
   String get cardGamesBjDealerBlackjack => 'Dealer has blackjack.';
 
   @override
-  String get cardGamesBjBust => 'Bust — dealer wins.';
+  String get cardGamesBjBust => 'Bust. Dealer wins.';
 
   @override
   String get cardGamesBjPlayerWins => 'You win this hand!';
 
   @override
-  String get cardGamesBjPushTie => 'Push — it is a tie.';
+  String get cardGamesBjPushTie => 'Push. It\'s a tie.';
 
   @override
   String get cardGamesBjDealerWins => 'Dealer wins this hand.';
@@ -24534,7 +24532,7 @@ class LEn extends L {
 
   @override
   String cardGamesPokerPush(String hand) {
-    return 'Push — both hands tie with $hand.';
+    return 'Push. Both hands tie with $hand.';
   }
 
   @override
@@ -25403,15 +25401,15 @@ class LEn extends L {
 
   @override
   String get cs2MarketSearchTracked =>
-      'Search what you track — name, weapon, rarity';
+      'Search what you track by name, weapon or rarity';
 
   @override
   String get cs2MarketSearchAny =>
-      'Search any CS2 item — name, weapon, rarity, case';
+      'Search any CS2 item by name, weapon, rarity or case';
 
   @override
   String cs2MarketCheckingProgress(int done, int total) {
-    return 'Checking prices — $done of $total';
+    return 'Checking prices: $done of $total';
   }
 
   @override
@@ -25429,7 +25427,7 @@ class LEn extends L {
 
   @override
   String get cs2MarketKeepTypingHint =>
-      'One letter matches too much of the catalog to be useful — a couple more will narrow it down.';
+      'One letter matches too much of the catalog to be useful. A couple more will narrow it down.';
 
   @override
   String cs2MarketNoMatch(String query) {
@@ -25502,7 +25500,7 @@ class LEn extends L {
 
   @override
   String get cs2ItemNotFoundHint =>
-      'It may have dropped out of the last catalog update — try refreshing the catalog.';
+      'It may have dropped out of the last catalog update. Try refreshing the catalog.';
 
   @override
   String get cs2ItemBackToMarket => 'Back to the market';
@@ -25535,7 +25533,7 @@ class LEn extends L {
 
   @override
   String get cs2ItemQuickCheckNotSaved =>
-      'A quick check, not saved — track this listing to keep a history of its price.';
+      'This is a quick check and isn\'t saved. Track this listing to keep a history of its price.';
 
   @override
   String get cs2ItemStatusNotChecked => 'Not checked yet.';
@@ -25596,7 +25594,7 @@ class LEn extends L {
   String get cs2ItemFactCase => 'Case';
 
   @override
-  String get cs2ItemFactNoCase => 'No case — collection or promo item';
+  String get cs2ItemFactNoCase => 'No case (collection or promo item)';
 
   @override
   String get cs2ItemFactAvailable => 'Available for this finish';
@@ -25628,7 +25626,7 @@ class LEn extends L {
 
   @override
   String get cs2ChartOneReading =>
-      'One reading so far — a trend needs at least two.';
+      'Only one reading so far. A trend needs at least two.';
 
   @override
   String cs2ChartUnchangedAcrossCount(String delta, int count) {
@@ -25668,7 +25666,7 @@ class LEn extends L {
 
   @override
   String get cs2ChartNoHistoryHint =>
-      'Steam\'s market publishes no history of its own — track this listing and luma starts building one from here.';
+      'Steam\'s market doesn\'t publish any history of its own. Track this listing and luma starts building one from here.';
 
   @override
   String get cs2ChartNoReadingsInRange => 'No readings in this range';
@@ -25714,25 +25712,25 @@ class LEn extends L {
 
   @override
   String get cs2StartPriceGradeHelper =>
-      'Wear and price are set together — they can\'t be changed independently once tracking starts.';
+      'Wear and price are set together. They can\'t be changed separately once tracking starts.';
 
   @override
   String get cs2StartPriceGradeFixedHelper =>
-      'Fixed — this baseline belongs to that exact listing.';
+      'Fixed. This baseline belongs to that exact listing.';
 
   @override
   String get cs2StartPriceStartingPrice => 'Starting price';
 
   @override
   String get cs2StartPriceStartingPriceHelper =>
-      'What you paid, or the price to measure gain and loss from — not fetched from Steam.';
+      'What you paid, or the price to measure gain and loss from. This isn\'t fetched from Steam.';
 
   @override
   String get cs2TrackedEmptyTitle => 'Nothing tracked yet';
 
   @override
   String get cs2TrackedEmptySubtitle =>
-      'Track a listing from Browse to start watching its price — it shows up here, alongside everything else you track.';
+      'Track a listing from Browse to start watching its price. It shows up here, alongside everything else you track.';
 
   @override
   String cs2TrackedNoMatchTitle(String query) {
@@ -25779,7 +25777,7 @@ class LEn extends L {
 
   @override
   String steamAccountConnectedWithKey(String maskedKey) {
-    return 'Connected — $maskedKey';
+    return 'Connected ($maskedKey)';
   }
 
   @override
@@ -25825,7 +25823,7 @@ class LEn extends L {
 
   @override
   String get steamAccountEncryptedNote =>
-      'Your key is stored encrypted on this device and is sent only to Steam — never to a luma server.';
+      'Your key is stored encrypted on this device and is only ever sent to Steam, never to a luma server.';
 
   @override
   String get steamAccountPrivacyNote =>
@@ -25833,7 +25831,7 @@ class LEn extends L {
 
   @override
   String get steamAccountHistoryNote =>
-      'Price history needs a signed-in luma account too — it is fetched through the server, so no separate key is needed for it.';
+      'Price history also needs a signed-in luma account. It\'s fetched through the server, so you don\'t need a separate key for it.';
 
   @override
   String get steamDetailNoLongerInLibraryTitle =>
@@ -26030,7 +26028,7 @@ class LEn extends L {
 
   @override
   String get steamChartSignInBody =>
-      'Steam only publishes what a game costs today. A signed-in luma account reads the years behind it — no extra key to find or paste in.';
+      'Steam only publishes what a game costs today. A signed-in luma account can read the years behind it, with no extra key to find or paste in.';
 
   @override
   String steamChartNoHistoryOver(String range) {
@@ -26043,7 +26041,7 @@ class LEn extends L {
 
   @override
   String get steamSearchSubtitle =>
-      'Search the Steam store — no account needed.';
+      'Search the Steam store. No account needed.';
 
   @override
   String get steamSearchHint => 'Search for a game';
@@ -26080,7 +26078,7 @@ class LEn extends L {
 
   @override
   String get steamTrackerSubtitleDisconnected =>
-      'Tracking prices — connect a Steam account to bulk-add your library too.';
+      'Tracking prices. Connect a Steam account to bulk-add your library too.';
 
   @override
   String get steamTrackerSubtitleNoSync =>
@@ -26115,7 +26113,7 @@ class LEn extends L {
 
   @override
   String steamTrackerCheckingPrices(int done, int total) {
-    return 'Checking prices — $done of $total';
+    return 'Checking prices: $done of $total';
   }
 
   @override
@@ -26123,7 +26121,7 @@ class LEn extends L {
 
   @override
   String get steamTrackerEmptySubtitle =>
-      'Search for a game to start watching its price — no Steam account needed.';
+      'Search for a game to start watching its price. You don\'t need a Steam account.';
 
   @override
   String steamTrackerNoMatchTitle(String query) {
@@ -26316,7 +26314,7 @@ class LEn extends L {
 
   @override
   String get transportTrackerConnectedWaiting =>
-      'Connected — waiting for position reports. Busy shipping lanes fill in within seconds; open ocean can take longer.';
+      'Connected, waiting for position reports. Busy shipping lanes fill in within seconds; open ocean can take longer.';
 
   @override
   String transportTrackerNoVesselsYet(String label) {
@@ -26340,7 +26338,7 @@ class LEn extends L {
 
   @override
   String transportTrackerMapLoadFailed(String error) {
-    return 'The map could not load fully — check this device\'s internet connection. ($error)';
+    return 'The map couldn\'t load fully. Check this device\'s internet connection. ($error)';
   }
 
   @override
@@ -26408,7 +26406,7 @@ class LEn extends L {
 
   @override
   String get transportTrackerInterpolatedNote =>
-      'Estimated from the timetable — trains do not broadcast their position in the open data, so this is interpolated between stations.';
+      'Estimated from the timetable. Trains don\'t broadcast their position in the open data, so this is interpolated between stations.';
 
   @override
   String get transportTrackerDownloadingStops =>
@@ -26474,7 +26472,7 @@ class LEn extends L {
       'Live AIS vessel positions worldwide. Needs your own free AISStream.io key.';
 
   @override
-  String get transportTrackerTransitTitle => 'Public transport — Netherlands';
+  String get transportTrackerTransitTitle => 'Public transport: Netherlands';
 
   @override
   String get transportTrackerTransitSubtitle =>
@@ -26488,7 +26486,7 @@ class LEn extends L {
 
   @override
   String get transportTrackerGetKeyHint =>
-      'Get a free key at aisstream.io — sign in, then copy your API key from the dashboard.';
+      'Get a free key at aisstream.io. Sign in, then copy your API key from the dashboard.';
 
   @override
   String get transportTrackerKeyHintReplace => 'Enter a new key to replace it';
@@ -26504,7 +26502,7 @@ class LEn extends L {
 
   @override
   String get transportTrackerKeyPrivacyNote =>
-      'Stored locally on this device only, encrypted at rest. Sent directly to aisstream.io when tracking — never to any luma server.';
+      'Stored locally on this device only, encrypted at rest. It\'s sent straight to aisstream.io when tracking and never to a luma server.';
 
   @override
   String get vesselCategoryCargo => 'Cargo';
@@ -26872,7 +26870,7 @@ class LEn extends L {
   String get speedTestStart => 'Start Test';
 
   @override
-  String get speedTestTesting => 'Testing — please wait…';
+  String get speedTestTesting => 'Testing, please wait…';
 
   @override
   String get speedTestFailed =>
@@ -27321,7 +27319,7 @@ class LEn extends L {
 
   @override
   String get financeOverviewNoPots =>
-      'No pots yet — make one in the Pots tab and split your money up.';
+      'No pots yet. Make one in the Pots tab and split your money up.';
 
   @override
   String get financeThisWeek => 'This week';
@@ -27405,7 +27403,7 @@ class LEn extends L {
 
   @override
   String get financeUpcomingEmpty =>
-      'No fixed costs or income yet — add them in the Recurring tab.';
+      'No fixed costs or income yet. Add them in the Recurring tab.';
 
   @override
   String get financeAddDebt => 'Add debt';
@@ -27515,7 +27513,7 @@ class LEn extends L {
   String get financeDebtsNameHintOwe => 'e.g. Student loan (DUO)';
 
   @override
-  String get financeDebtsNameHintOwed => 'e.g. Sam — concert tickets';
+  String get financeDebtsNameHintOwed => 'e.g. Sam, concert tickets';
 
   @override
   String get financeDebtsOriginalAmount => 'Original amount';
@@ -27576,7 +27574,7 @@ class LEn extends L {
 
   @override
   String financeDebtsHistoryTitle(String name) {
-    return '$name — history';
+    return '$name: history';
   }
 
   @override
@@ -27649,7 +27647,7 @@ class LEn extends L {
     String lowest,
     String lowestDate,
   ) {
-    return 'Heading below €0 on $date — lowest $lowest on $lowestDate.';
+    return 'Heading below €0 on $date. Lowest point is $lowest on $lowestDate.';
   }
 
   @override
@@ -27659,7 +27657,7 @@ class LEn extends L {
 
   @override
   String get financeForecastNothingScheduled =>
-      'Nothing scheduled — add fixed costs and income in the Recurring tab.';
+      'Nothing scheduled. Add fixed costs and income in the Recurring tab.';
 
   @override
   String get financePlanningGoalReached => 'Goal reached';
@@ -27895,7 +27893,7 @@ class LEn extends L {
 
   @override
   String get financeRecurringTreatAsBill =>
-      'Treat as a bill/subscription — show it in \"due soon\"';
+      'Treat as a bill/subscription (show it in \"due soon\")';
 
   @override
   String get financeRecurringRemindDays =>
@@ -28331,7 +28329,7 @@ class LEn extends L {
   String get financeStocksUpdatingPrices => 'Updating prices…';
 
   @override
-  String get financeStocksAtCostNoQuote => 'At cost price — no live quote yet';
+  String get financeStocksAtCostNoQuote => 'At cost price, no live quote yet';
 
   @override
   String financeStocksPricesAsOf(String stamp) {
@@ -28720,29 +28718,29 @@ class LEn extends L {
 
   @override
   String get devicesSetupBody =>
-      'No server needed — just an email + password shared between your devices, used only to recognize each other over Wi-Fi. Already have a luma cloud account? Sign in above instead and this turns on automatically.';
+      'No server needed. Just an email and password shared between your devices, used only so they recognize each other over Wi-Fi. Already have a luma cloud account? Sign in above instead and this turns on automatically.';
 
   @override
   String get devicesErrorInvalidEmail => 'Enter a valid email address.';
 
   @override
   String get devicesErrorPasswordShort =>
-      'Use at least 10 characters — this password also protects your encrypted data.';
+      'Use at least 10 characters. This password also protects your encrypted data.';
 
   @override
   String get devicesEnableTitle => 'Enable device sync';
 
   @override
   String get devicesEnableBody =>
-      'Enter the same email and password on every device you want to pair — they never leave this device or touch a server. They just prove your devices belong to the same person.';
+      'Enter the same email and password on every device you want to pair. They never leave this device or touch a server; they just prove your devices belong to the same person.';
 
   @override
   String get devicesPasswordWarning =>
-      'If you mistype the password while pairing a second device, it just won\'t be recognized as the same account — there\'s no server to check against or reset it with.';
+      'If you mistype the password while pairing a second device, it just won\'t be recognized as the same account. There\'s no server to check against or reset it with.';
 
   @override
   String devicesLocalOnly(String email) {
-    return 'Local only — $email (not backed up anywhere)';
+    return 'Local only: $email (not backed up anywhere)';
   }
 
   @override
@@ -28789,7 +28787,7 @@ class LEn extends L {
 
   @override
   String devicesIpHint(String addresses) {
-    return 'IP: $addresses — the other device must be on the same network to find this one.';
+    return 'IP: $addresses. The other device has to be on the same network to find this one.';
   }
 
   @override
@@ -28811,7 +28809,7 @@ class LEn extends L {
 
   @override
   String get devicesHotspotBody =>
-      'Discovery only finds devices on the same network. If your phone is on mobile data instead of Wi-Fi, there\'s no LAN to find each other on — turn on the phone\'s own hotspot instead and have the other device join it. Once both are on that one network, everything here works exactly the same.';
+      'Discovery only finds devices on the same network. If your phone is on mobile data instead of Wi-Fi, there\'s no LAN for them to find each other on. Turn on the phone\'s own hotspot instead and have the other device join it. Once both are on that network, everything here works exactly the same.';
 
   @override
   String get devicesHotspotStep1 =>
@@ -28846,7 +28844,7 @@ class LEn extends L {
 
   @override
   String get devicesManualBody =>
-      'Use this when discovery can\'t see the other device — e.g. a firewall is blocking mDNS. Enter the address it shows on its Devices screen.';
+      'Use this when discovery can\'t see the other device, for example when a firewall is blocking mDNS. Enter the address it shows on its Devices screen.';
 
   @override
   String get devicesHost => 'Host';
@@ -28893,11 +28891,11 @@ class LEn extends L {
 
   @override
   String get syncSettingsSignedOutBody =>
-      'Set up an account to sync features between devices — with Google, GitHub, or an email and password. Everything is encrypted on this device before it leaves; nothing is synced until you turn it on per feature. You can also skip the server entirely and pair devices over your own network.';
+      'Set up an account to sync features between devices, with Google, GitHub, or an email and password. Everything is encrypted on this device before it leaves, and nothing syncs until you turn it on per feature. You can also skip the server entirely and pair devices over your own network.';
 
   @override
   String get syncSettingsSessionExpired =>
-      'Your cloud session expired — please sign in again.';
+      'Your cloud session expired. Please sign in again.';
 
   @override
   String get syncSettingsSetUpAccount => 'Set up account';
@@ -28912,7 +28910,7 @@ class LEn extends L {
 
   @override
   String syncSettingsPendingApproval(String email) {
-    return '$email is waiting for the server operator to approve it. There is nothing to do in the meantime — just sign in once they have. Until then this device does not contact the server at all, and the plugins that need it stay switched off.';
+    return '$email is waiting for the server operator to approve it. There\'s nothing to do in the meantime, just sign in once they have. Until then this device doesn\'t contact the server at all, and the plugins that need it stay switched off.';
   }
 
   @override
@@ -28926,7 +28924,7 @@ class LEn extends L {
 
   @override
   String syncSettingsSyncedToCloudWith(String providers) {
-    return 'Synced to the cloud — sign in with $providers';
+    return 'Synced to the cloud. Sign in with $providers';
   }
 
   @override
@@ -28934,7 +28932,7 @@ class LEn extends L {
 
   @override
   String get syncSettingsLocalOnly =>
-      'Local only — syncs directly between your devices, no server';
+      'Local only. Syncs directly between your devices, no server';
 
   @override
   String get syncSettingsBackUpToServer => 'Back up to a server…';
@@ -28944,11 +28942,11 @@ class LEn extends L {
 
   @override
   String get syncSettingsWhatSyncsBody =>
-      'Everything is off by default. Only what you switch on here leaves this device — encrypted with your password before upload. When you first enable a feature that already has synced data, the server copy replaces this device\'s copy.';
+      'Everything is off by default. Only what you switch on here leaves this device, and it\'s encrypted with your password before upload. When you first turn on a feature that already has synced data, the server copy replaces this device\'s copy.';
 
   @override
   String get syncSettingsAutomaticTooltip =>
-      'Preferences, assistant memory and matching-device home layouts always sync — this can\'t be turned off.';
+      'Preferences, assistant memory and matching-device home layouts always sync. This can\'t be turned off.';
 
   @override
   String get syncSettingsAlwaysOn => 'Always on';
@@ -28986,7 +28984,7 @@ class LEn extends L {
 
   @override
   String syncSettingsPlanNeededBody(String label, String plan) {
-    return '$label syncs to the server on the $plan plan and above. It keeps working on this device either way — only syncing it between devices needs the plan.';
+    return '$label syncs to the server on the $plan plan and above. It keeps working on this device either way; you only need the plan to sync it between devices.';
   }
 
   @override
@@ -29022,7 +29020,7 @@ class LEn extends L {
 
   @override
   String get syncSettingsNothingSavedYet =>
-      'Nothing saved on the server yet — turn something on below to back it up.';
+      'Nothing saved on the server yet. Turn something on below to back it up.';
 
   @override
   String get syncSettingsSyncing => 'Syncing…';
@@ -29080,11 +29078,11 @@ class LEn extends L {
 
   @override
   String get syncSettingsDataSyncsDirectly =>
-      'This data syncs directly with paired devices — see Devices below to connect one and turn it off.';
+      'This data syncs directly with paired devices. See Devices below to connect one or turn it off.';
 
   @override
   String get syncSettingsRecoveryKeySetUp =>
-      'Recovery key set up — forgetting your password will not cost you your synced data.';
+      'Recovery key set up. Forgetting your password won\'t cost you your synced data.';
 
   @override
   String get syncSettingsRecoveryKeyMissing =>
@@ -29118,11 +29116,11 @@ class LEn extends L {
 
   @override
   String get syncSettingsRecoveryHasKeyBody =>
-      'This account has a recovery key. If you lost it, make a new one — the old key stops working the moment you do.';
+      'This account has a recovery key. If you lost it, make a new one. The old key stops working as soon as you do.';
 
   @override
   String get syncSettingsRecoveryNoKeyBody =>
-      'Your synced data is encrypted with a key that comes from your password, so nobody — not even the server — can read it. That also means a forgotten password normally erases it.\n\nA recovery key is a second way in. Keep it somewhere safe, and a password reset keeps all your synced data.';
+      'Your synced data is encrypted with a key that comes from your password, so nobody can read it, not even the server. That also means a forgotten password normally erases it.\n\nA recovery key is a second way in. Keep it somewhere safe, and a password reset keeps all your synced data.';
 
   @override
   String get syncSettingsMakeNewKey => 'Make a new key';
@@ -29152,7 +29150,7 @@ class LEn extends L {
 
   @override
   String get syncSettingsDeletionPending =>
-      'Data deletion requested — waiting for the server operator to decide.';
+      'Data deletion requested. Waiting for the server operator to decide.';
 
   @override
   String get syncSettingsDeletionDeclined =>
@@ -29882,11 +29880,11 @@ class LEn extends L {
 
   @override
   String get aiDetectorSignatureExplanation =>
-      'The text identifies its own author — it names Claude or Anthropic in a product context, not as an ordinary person’s name. That is a direct attribution, so it outranks every style statistic below it.';
+      'The text names its own author: it mentions Claude or Anthropic in a product context, not as an ordinary person’s name. That\'s a direct attribution, so it outranks every style statistic below it.';
 
   @override
   String get aiDetectorAssistantExplanation =>
-      'Stock chat-assistant phrasing shows the text came out of a conversation with a model. It does not say which model, so the verdict stays unnamed — this only raises the score.';
+      'Stock chat-assistant phrasing shows the text came out of a conversation with a model. It doesn\'t say which model, so the verdict stays unnamed. This only raises the score.';
 
   @override
   String get aiDetectorNoWatermarkExplanation =>
@@ -29906,7 +29904,7 @@ class LEn extends L {
 
   @override
   String get aiDetectorPhraseExplanationLow =>
-      'None of the stock phrases models lean on were found. That is not a point in the text’s favour — plenty of generated writing avoids them — so this check abstains rather than voting the score down.';
+      'None of the stock phrases models lean on were found. That isn\'t a point in the text’s favour, since plenty of generated writing avoids them, so this check abstains instead of voting the score down.';
 
   @override
   String get aiDetectorExtremesExplanationHigh =>
@@ -29918,7 +29916,7 @@ class LEn extends L {
 
   @override
   String get aiDetectorVoiceExplanationHigh =>
-      'Nobody is on the page — barely an \"I\", \"we\" or \"you\", no casual wording, no direct questions. Generated prose defaults to this detached register. Formal human writing does too, which is why this counts for less than the rhythm checks.';
+      'Nobody is on the page: barely an \"I\", \"we\" or \"you\", no casual wording, no direct questions. Generated prose defaults to this detached register. Formal human writing does too, which is why this counts for less than the rhythm checks.';
 
   @override
   String get aiDetectorVoiceExplanationLow =>
@@ -29934,7 +29932,7 @@ class LEn extends L {
 
   @override
   String get aiDetectorContrastExplanationHigh =>
-      'Sentences that set up a wrong answer only to knock it down — \"not just X, but Y\", \"the real question is\" — are the rhetorical move current models use to sound insightful.';
+      'Sentences that set up a wrong answer only to knock it down (\"not just X, but Y\", \"the real question is\") are the rhetorical move current models use to sound insightful.';
 
   @override
   String get aiDetectorContrastExplanationLow =>
@@ -29959,7 +29957,7 @@ class LEn extends L {
 
   @override
   String get aiDetectorDashExplanationHigh =>
-      'Em dashes pepper the text well past what typical human prose uses — a much-memed model habit.';
+      'The text is full of em dashes, far more than typical human prose uses. It\'s a much-memed model habit.';
 
   @override
   String get aiDetectorDashExplanationLow =>
@@ -29971,7 +29969,7 @@ class LEn extends L {
 
   @override
   String get aiDetectorPassiveExplanationHigh =>
-      'Heavy passive construction (\"was designed to\", \"is considered\") keeps agency out of sentences — common in generated prose.';
+      'Heavy passive construction (\"was designed to\", \"is considered\") keeps agency out of sentences, which is common in generated prose.';
 
   @override
   String get aiDetectorPassiveExplanationLow =>
@@ -30782,8 +30780,7 @@ class LEn extends L {
       'The preview adapter uses centered boxes and size-sided light meshes. Your model has no external files, materials, or per-frame geometry allocations. Settings are saved in this browser.';
 
   @override
-  String get sceneCityPlannerMetroplanStadsplanner =>
-      'MetroPlan — City Planner';
+  String get sceneCityPlannerMetroplanStadsplanner => 'MetroPlan: City Planner';
 
   @override
   String get sceneCityPlannerMetroplan => 'MetroPlan';
@@ -30971,7 +30968,7 @@ class LEn extends L {
 
   @override
   String get sceneCityPlannerSleepVrijOverDeKaartDeEngineMaaktErAutomat =>
-      'Drag freely across the map — the engine automatically turns it into a smooth road. Crossing roads become intersections.';
+      'Drag freely across the map and the engine turns it into a smooth road. Crossing roads become intersections.';
 
   @override
   String get sceneCityPlannerKlikOmEenRotondeTePlaatsenSluitErWegenOpAa =>
@@ -31056,42 +31053,42 @@ class LEn extends L {
 
   @override
   String get sceneSpaceColonyPlaceTheseFiveBuildingsWithoutThemYourColo =>
-      ', place these five buildings — without them your colony will run out of power, air or water within a day or two:';
+      ', place these five buildings. Without them your colony will run out of power, air or water within a day or two:';
 
   @override
   String get sceneSpaceColonySolarPanel => 'Solar Panel';
 
   @override
-  String get sceneSpaceColonyPowerDuringTheDay => '— power during the day.';
+  String get sceneSpaceColonyPowerDuringTheDay => ': power during the day.';
 
   @override
   String get sceneSpaceColonyStoresPowerSoSystemsKeepRunningAtNight =>
-      '— stores power so systems keep running at night.';
+      ': stores power so systems keep running at night.';
 
   @override
   String get sceneSpaceColonyOxygenGenerator => 'Oxygen Generator';
 
   @override
   String get sceneSpaceColonyTurnsWaterIntoBreathableAir =>
-      '— turns water into breathable air.';
+      ': turns water into breathable air.';
 
   @override
   String get sceneSpaceColonyWaterExtractor => 'Water Extractor';
 
   @override
   String get sceneSpaceColonyPlaceItOnAnIceFieldLightBlueTilesForAWater =>
-      '— place it on an ice field (light blue tiles) for a water supply.';
+      ': place it on an ice field (light blue tiles) for a water supply.';
 
   @override
   String get sceneSpaceColonyMiningRig => 'Mining Rig';
 
   @override
   String get sceneSpaceColonyPlaceItOnAMetalDepositOrangeTilesSoYouCanK =>
-      '— place it on a metal deposit (orange tiles) so you can keep building.';
+      ': place it on a metal deposit (orange tiles) so you can keep building.';
 
   @override
   String get sceneSpaceColonyWatchTheResourceBarAtTheTopAnythingShownIn =>
-      'Watch the resource bar at the top — anything shown in red is running low. Ore and crystal deposits run out over time, so keep exploring for new ones. Click any colonist’s name to see their full stats. Reopen this any time with the ❓ Tutorial button.';
+      'Keep an eye on the resource bar at the top. Anything shown in red is running low. Ore and crystal deposits run out over time, so keep exploring for new ones. Click any colonist’s name to see their full stats. Reopen this any time with the ❓ Tutorial button.';
 
   @override
   String get sceneSpaceColonyLetSGo => 'Let’s go!';
@@ -31204,7 +31201,7 @@ class LEn extends L {
 
   @override
   String get sceneSubwayBuilderVeryLongHopsVeryFastFewStopsRealStationsAn =>
-      'Very long hops, very fast, few stops — real stations and tracks';
+      'Very long hops, very fast, few stops. Real stations and tracks';
 
   @override
   String get sceneSubwayBuilderSelectPan => 'Select / pan';
@@ -31296,7 +31293,7 @@ class LEn extends L {
 
   @override
   String get sceneSubwayBuilderTreasuryIsInTheRedConsiderALoanOrHigherFar =>
-      'Treasury is in the red — consider a loan or higher fares';
+      'Treasury is in the red. Consider a loan or higher fares';
 
   @override
   String get sceneSubwayBuilderCouldNotConnectToTheRoom =>
@@ -31308,7 +31305,7 @@ class LEn extends L {
 
   @override
   String get sceneSubwayBuilderLostConnectionToTheRoomReconnecting =>
-      'Lost connection to the room — reconnecting…';
+      'Lost connection to the room. Reconnecting…';
 
   @override
   String get sceneSubwayBuilderRunningTheClockForThisRoom =>
@@ -31380,7 +31377,7 @@ class LEn extends L {
 
   @override
   String get sceneSubwayBuilderStationLookupFailedTheMapDataServiceIsBusy =>
-      'Station lookup failed — the map data service is busy, try again';
+      'Station lookup failed. The map data service is busy, try again';
 
   @override
   String get sceneSubwayBuilderNoNewOfficialStationsFoundInView =>
@@ -32103,7 +32100,7 @@ class LEn extends L {
 
   @override
   String sceneSubwayWelcomeBack(String place, String day) {
-    return 'Welcome back to $place — day $day';
+    return 'Welcome back to $place, day $day';
   }
 
   @override
@@ -32133,7 +32130,7 @@ class LEn extends L {
 
   @override
   String sceneSubwayStationModeStop(String station, String mode) {
-    return '$station is a $mode stop — switch mode to connect it';
+    return '$station is a $mode stop. Switch mode to connect it';
   }
 
   @override
@@ -32148,7 +32145,7 @@ class LEn extends L {
 
   @override
   String sceneSubwayRouteHopsMax(Object mode, Object maxKm) {
-    return '$mode hops max $maxKm km between stops — add a stop in between, or use Train for long distances';
+    return '$mode can only go $maxKm km between stops. Add a stop in between, or use Train for long distances';
   }
 
   @override
@@ -32172,12 +32169,12 @@ class LEn extends L {
 
   @override
   String sceneSubwayModeServicesRealRailStations(Object mode) {
-    return '$mode services only call at real railway stations — click one';
+    return '$mode services only stop at real railway stations. Click one';
   }
 
   @override
   String sceneSubwayModeServicesHighlightedRailStations(Object mode) {
-    return '$mode services only call at real railway stations — click a highlighted one';
+    return '$mode services only stop at real railway stations. Click a highlighted one';
   }
 
   @override
@@ -32214,7 +32211,7 @@ class LEn extends L {
 
   @override
   String sceneSubwayDraftStopsCost(Object count, Object distance, Object cost) {
-    return '$count stops · $distance · $cost — Enter to build, Esc to cancel.';
+    return '$count stops · $distance · $cost. Enter to build, Esc to cancel.';
   }
 
   @override
@@ -32223,17 +32220,17 @@ class LEn extends L {
     Object distance,
     Object cost,
   ) {
-    return '$count stops · $distance · $cost (incl. underwater tunnelling) — Enter to build, Esc to cancel.';
+    return '$count stops · $distance · $cost (incl. underwater tunnelling). Enter to build, Esc to cancel.';
   }
 
   @override
   String sceneSubwayLineOpened(Object line, Object cost) {
-    return '$line opened — $cost, two vehicles included';
+    return '$line opened for $cost, two vehicles included';
   }
 
   @override
   String sceneSubwayLineOpenedTunnel(Object line, Object cost) {
-    return '$line opened — $cost, two vehicles included, including underwater tunnelling';
+    return '$line opened for $cost, two vehicles and underwater tunnelling included';
   }
 
   @override
@@ -32251,12 +32248,12 @@ class LEn extends L {
 
   @override
   String sceneSubwayRoomCreatedReady(Object code) {
-    return 'Room $code created — start building';
+    return 'Room $code created. Start building';
   }
 
   @override
   String sceneSubwayRoomCreatedShare(Object code) {
-    return 'Room $code created — share the code or invite a contact';
+    return 'Room $code created. Share the code or invite a contact';
   }
 
   @override
@@ -32491,7 +32488,7 @@ class LEn extends L {
 
   @override
   String sceneSubwayLinePanelDisruption(Object label) {
-    return '$label — service is slowed until it clears';
+    return '$label: service is slowed until it clears';
   }
 
   @override
@@ -32560,11 +32557,11 @@ class LEn extends L {
 
   @override
   String get sceneSubwayCoopSignedOut =>
-      'Co-op rooms are tied to your Luma account — that’s what makes invites and room membership work. Sign in from the app’s account settings, then come back here.';
+      'Co-op rooms are tied to your Luma account, which is what makes invites and room membership work. Sign in from the app’s account settings, then come back here.';
 
   @override
   String sceneSubwayCoopRoomCodeTitle(Object code) {
-    return 'Co-op — room $code';
+    return 'Co-op: room $code';
   }
 
   @override
@@ -32577,19 +32574,19 @@ class LEn extends L {
 
   @override
   String get sceneSubwayCoopClockPeer =>
-      'A fellow builder is currently running the clock — you’ll pick it up automatically if they leave.';
+      'Another builder is running the clock right now. You’ll take it over automatically if they leave.';
 
   @override
   String get sceneSubwayCoopInviteContact => 'Invite a chat contact';
 
   @override
   String sceneSubwayCoopNoChatContacts(Object code) {
-    return 'No chat contacts yet — set up the Chat plugin first, or just share the room code $code directly.';
+    return 'No chat contacts yet. Set up the Chat plugin first, or just share the room code $code directly.';
   }
 
   @override
   String get sceneSubwayCoopInviteInstruction =>
-      'Sends them a chat message with the room code — they still need to tap Join.';
+      'Sends them a chat message with the room code. They still need to tap Join.';
 
   @override
   String get sceneSubwayCoopLoadingContacts => 'Loading your chat contacts…';
@@ -32599,13 +32596,13 @@ class LEn extends L {
 
   @override
   String get sceneSubwayCoopRoomsEmpty =>
-      'Build on the same network as friends — invite via chat, or share a room code. Whoever’s connected keeps the clock running; leave and rejoin any time.';
+      'Build together with friends on the same network. Invite them via chat or share a room code. Whoever\'s connected keeps the clock running, and you can leave and rejoin any time.';
 
   @override
   String get sceneSubwayCoopCreateRoom => 'Create a new room';
 
   @override
-  String get sceneSubwayCoopJoinByCode => '— or join by code —';
+  String get sceneSubwayCoopJoinByCode => 'or join by code';
 
   @override
   String get sceneSubwayCoopJoinRoom => 'Join room';
@@ -32735,17 +32732,17 @@ class LEn extends L {
 
   @override
   String sceneSubwayMilestoneShareReached(Object grant, Object share) {
-    return '$share% transit share reached — $grant grant awarded!';
+    return '$share% transit share reached! $grant grant awarded!';
   }
 
   @override
   String sceneSubwayAchievementBonus(Object grant, Object sub) {
-    return '$sub — $grant bonus';
+    return '$sub: $grant bonus';
   }
 
   @override
   String sceneSubwayCrowdingGrantReduced(Object grant, Object label) {
-    return '$label — crowding cut the surge payout to $grant';
+    return '$label: crowding cut the surge payout to $grant';
   }
 
   @override
@@ -33540,7 +33537,7 @@ class LEn extends L {
   @override
   String
   get sceneSpaceColonyDataAutomaticallyShootsDownIncomingMeteorsBeforeTheyHit75InterceptChance =>
-      'Automatically shoots down incoming meteors before they hit — 75% intercept chance.';
+      'Automatically shoots down incoming meteors before they hit. 75% intercept chance.';
 
   @override
   String get sceneSpaceColonyDataWindTurbines => 'Wind Turbines';
@@ -33729,11 +33726,11 @@ class LEn extends L {
   }
 
   @override
-  String get sceneSpaceColonyStatusBroken => 'BROKEN — click to repair (2🔩)';
+  String get sceneSpaceColonyStatusBroken => 'BROKEN: click to repair (2🔩)';
 
   @override
   String get sceneSpaceColonyStatusDepleted =>
-      'DEPLETED — deposit ran dry, demolish to reclaim the tile';
+      'DEPLETED: deposit ran dry, demolish to reclaim the tile';
 
   @override
   String get sceneSpaceColonyStatusOnline => 'online';
@@ -33801,7 +33798,7 @@ class LEn extends L {
 
   @override
   String get sceneCityPlannerNewsPowerOutage =>
-      '⚡ Power outage! The grid is overloaded — parts of the city are without power.';
+      '⚡ Power outage! The grid is overloaded and parts of the city are without power.';
 
   @override
   String get sceneCityPlannerNewsDrought =>
@@ -33843,14 +33840,14 @@ class LEn extends L {
 
   @override
   String get sceneSpaceColonyEventMoraleLow =>
-      '😠 Morale is dangerously low — production is suffering.';
+      '😠 Morale is dangerously low and production is suffering.';
 
   @override
   String sceneSpaceColonyEventDepositDepleted(
     Object building,
     Object resource,
   ) {
-    return 'The $resource deposit under your $building ran dry — it is now idle. Relocate or demolish it.';
+    return 'The $resource deposit under your $building ran dry, so it\'s idle now. Relocate or demolish it.';
   }
 
   @override
@@ -33897,11 +33894,11 @@ class LEn extends L {
 
   @override
   String get sceneSpaceColonyEventSolarFlareOver =>
-      'Solar flare over — power generation restored.';
+      'Solar flare over. Power generation restored.';
 
   @override
   String get sceneSpaceColonyAlertMoraleLow =>
-      '😠 Morale is dangerously low — production is suffering.';
+      '😠 Morale is dangerously low and production is suffering.';
 
   @override
   String get sceneSpaceColonyAlertDustStorm =>
@@ -34016,7 +34013,7 @@ class LEn extends L {
 
   @override
   String sceneSpaceColonyEventRoverTech(Object technology) {
-    return 'Rover uncovered ancient knowledge — unlocked $technology for free!';
+    return 'Rover uncovered ancient knowledge and unlocked $technology for free!';
   }
 
   @override
@@ -34064,7 +34061,7 @@ class LEn extends L {
 
   @override
   String get sceneSpaceColonyAlertTerraformUnlocked =>
-      '🌍 Terraforming unlocked — your colony’s future is secured!';
+      '🌍 Terraforming unlocked! Your colony’s future is secured!';
 
   @override
   String get sceneSpaceColonyEventTerraformAchievement =>
@@ -34085,7 +34082,7 @@ class LEn extends L {
 
   @override
   String get sceneSubwayLostConnectionReconnecting =>
-      'Lost connection to the room — reconnecting…';
+      'Lost connection to the room. Reconnecting…';
 
   @override
   String get sceneSubwayClockAuthorityRunning =>
@@ -34103,7 +34100,7 @@ class LEn extends L {
 
   @override
   String sceneSubwayRoomCreatedStartBuilding(Object code) {
-    return 'Room $code created — start building';
+    return 'Room $code created. Start building';
   }
 
   @override
@@ -34111,12 +34108,12 @@ class LEn extends L {
 
   @override
   String sceneSubwayRoomCreatedShareCode(Object code) {
-    return 'Room $code created — share the code or invite a contact';
+    return 'Room $code created. Share the code or invite a contact';
   }
 
   @override
   String sceneSubwayInviteChatMessage(Object code) {
-    return 'Join my Subway Builder co-op room — open Subway Builder, tap Co-op → Join, and enter code $code.';
+    return 'Join my Subway Builder co-op room! Open Subway Builder, tap Co-op → Join, and enter code $code.';
   }
 
   @override
@@ -34183,12 +34180,12 @@ class LEn extends L {
 
   @override
   String sceneSubwayUiSurfaceSlowdown(String factor) {
-    return '— surface transit slowed ×$factor';
+    return '(surface transit slowed ×$factor)';
   }
 
   @override
   String sceneSubwayUiAchievementSummary(String done, String total) {
-    return '$done / $total unlocked — real facts about the network you actually built.';
+    return '$done / $total unlocked. Real facts about the network you actually built.';
   }
 
   @override
@@ -34233,12 +34230,12 @@ class LEn extends L {
 
   @override
   String sceneSubwayUiStreetStationHint(String mode) {
-    return 'Click near a street to place a $mode stop — it snaps to the road.';
+    return 'Click near a street to place a $mode stop. It snaps to the road.';
   }
 
   @override
   String get sceneSubwayUiRailLineHint =>
-      'Click real stations in order — the route follows existing tracks. Enter to finish, or click the first station again to close a loop.';
+      'Click real stations in order and the route follows existing tracks. Press Enter to finish, or click the first station again to close a loop.';
 
   @override
   String get sceneSubwayUiMetroLineHint =>
@@ -34246,7 +34243,7 @@ class LEn extends L {
 
   @override
   String get sceneSubwayUiStreetLineHint =>
-      'Click stops in order — the route follows real streets. Enter to finish, or click the first stop again to close a loop.';
+      'Click stops in order and the route follows real streets. Press Enter to finish, or click the first stop again to close a loop.';
 
   @override
   String get sceneSubwayUiBulldozeHint =>
@@ -34254,7 +34251,7 @@ class LEn extends L {
 
   @override
   String sceneSubwayUiExtendNextStop(String line) {
-    return 'Extending $line — click the next stop. Esc to stop.';
+    return 'Extending $line. Click the next stop, Esc to stop.';
   }
 
   @override
@@ -34264,7 +34261,7 @@ class LEn extends L {
 
   @override
   String sceneSubwayUiDraftCost(String count, String distance, String cost) {
-    return '$count stops · $distance · $cost — Enter to build, Esc to cancel.';
+    return '$count stops · $distance · $cost. Enter to build, Esc to cancel.';
   }
 
   @override
@@ -34273,7 +34270,7 @@ class LEn extends L {
     String distance,
     String cost,
   ) {
-    return '$count stops · $distance · $cost (incl. underwater tunnelling) — Enter to build, Esc to cancel.';
+    return '$count stops · $distance · $cost (incl. underwater tunnelling). Enter to build, Esc to cancel.';
   }
 
   @override
@@ -34355,7 +34352,7 @@ class LEn extends L {
 
   @override
   String sceneSubwayWeatherSlowedNews(Object weather) {
-    return '$weather weather — surface transit is slowed';
+    return '$weather weather is slowing surface transit';
   }
 
   @override
@@ -34364,12 +34361,12 @@ class LEn extends L {
     Object line,
     Object hours,
   ) {
-    return '⚠️ $disruption on $line — expect delays for ~${hours}h';
+    return '⚠️ $disruption on $line. Expect delays for ~${hours}h';
   }
 
   @override
   String sceneSubwayEventNews(Object event, Object station) {
-    return '🎪 $event near $station tonight — expect a crowd surge!';
+    return '🎪 $event near $station tonight. Expect a crowd surge!';
   }
 
   @override
@@ -35147,7 +35144,7 @@ class LEn extends L {
 
   @override
   String get mcToolsNoMatchBody =>
-      'Try another word — every tool can be found by its name or by what it does.';
+      'Try another word. Every tool can be found by its name or by what it does.';
 
   @override
   String get mcToolsDisclaimer =>
@@ -35633,7 +35630,7 @@ class LEn extends L {
 
   @override
   String mcEnchConflicts(String other) {
-    return 'Conflicts with $other — tap to swap';
+    return 'Conflicts with $other. Tap to swap';
   }
 
   @override
@@ -35766,7 +35763,7 @@ class LEn extends L {
   String get mcShapeHollow => 'Hollow';
 
   @override
-  String get mcShapeHollowDetail => 'Only the shell — far fewer blocks';
+  String get mcShapeHollowDetail => 'Only the shell, far fewer blocks';
 
   @override
   String get mcShapeWall => 'Wall thickness';
@@ -35776,7 +35773,7 @@ class LEn extends L {
 
   @override
   String get mcShapeThickDetail =>
-      'No diagonal gaps — mobs cannot slip through';
+      'No diagonal gaps, so mobs can\'t slip through';
 
   @override
   String get mcShapeBlock => 'Block';
@@ -35920,7 +35917,7 @@ class LEn extends L {
 
   @override
   String get mcOreTipRedstone =>
-      'Concentrated at the bottom of the world. Mine just above the bedrock ceiling — around Y −58.';
+      'Concentrated at the bottom of the world. Mine just above the bedrock ceiling, around Y −58.';
 
   @override
   String get mcOreTipLapis =>
@@ -35944,7 +35941,7 @@ class LEn extends L {
 
   @override
   String get mcOreTipDebris =>
-      'Mostly between Y 8 and 24, peaking at Y 16. It never generates exposed to air — strip-mine, or use beds or TNT to clear fast.';
+      'Mostly between Y 8 and 24, peaking at Y 16. It never generates exposed to air, so strip-mine, or use beds or TNT to clear fast.';
 
   @override
   String get mcOreBestLevel => 'best level to mine';
@@ -36147,7 +36144,7 @@ class LEn extends L {
 
   @override
   String mcPotionCorrupts(String potion) {
-    return 'Fermented Spider Eye turns this into $potion — tap to open.';
+    return 'Fermented Spider Eye turns this into $potion. Tap to open.';
   }
 
   @override
@@ -36356,7 +36353,7 @@ class LEn extends L {
 
   @override
   String get mcCubeNotSwallowable =>
-      'A cube will not swallow that — only the blocks listed under the twelve behaviours.';
+      'A cube won\'t swallow that. Only the blocks listed under the twelve behaviours.';
 
   @override
   String get mcCubeMeet => 'Meet the cube';
@@ -36415,7 +36412,7 @@ class LEn extends L {
 
   @override
   String get mcCubeShrugsNote =>
-      'It also breathes underwater and cannot freeze. Explosions still hurt — TNT pops a cube even mid-swallow — and every shrugged-off hit still knocks it around.';
+      'It also breathes underwater and can\'t freeze. Explosions still hurt (TNT pops a cube even mid-swallow), and every shrugged-off hit still knocks it around.';
 
   @override
   String get mcCubeHow => 'How swallowing works';
@@ -36595,7 +36592,7 @@ class LEn extends L {
 
   @override
   String mcBeaconHowBody(int range, int seconds, String mineral) {
-    return 'Range is $range blocks around the beacon (10 + 10 per tier) and reaches $range blocks below it and up to the sky. Effects are re-applied every 4 seconds and last $seconds seconds, so they linger briefly after you leave. A full tier-4 pyramid unlocks a second power: Regeneration, or level II of the primary. Pay with one iron ingot, gold ingot, emerald, diamond or netherite ingot. The beam needs a clear view of the sky; stained glass on top tints it. Mixing mineral blocks in the pyramid is fine — $mineral is just the one counted above.';
+    return 'Range is $range blocks around the beacon (10 + 10 per tier) and reaches $range blocks below it and up to the sky. Effects are re-applied every 4 seconds and last $seconds seconds, so they linger briefly after you leave. A full tier-4 pyramid unlocks a second power: Regeneration, or level II of the primary. Pay with one iron ingot, gold ingot, emerald, diamond or netherite ingot. The beam needs a clear view of the sky; stained glass on top tints it. Mixing mineral blocks in the pyramid is fine. $mineral is just the one counted above.';
   }
 
   @override
@@ -36652,7 +36649,7 @@ class LEn extends L {
 
   @override
   String mcBannerNeeds(String pattern, String item) {
-    return '$pattern — needs $item';
+    return '$pattern (needs $item)';
   }
 
   @override
@@ -36693,7 +36690,7 @@ class LEn extends L {
 
   @override
   String get mcFwNoStars =>
-      'No stars: the rocket just flies — handy for elytra boosts.';
+      'No stars: the rocket just flies. Handy for elytra boosts.';
 
   @override
   String mcFwStarN(int number) {
@@ -36973,7 +36970,7 @@ class LEn extends L {
 
   @override
   String get mcOrgPointBody =>
-      'Pick the folder your schematics live in — Litematica\'s \"schematics\" folder, WorldEdit\'s, or any other. Files are read in place; only renames change anything on disk.';
+      'Pick the folder your schematics live in: Litematica\'s \"schematics\" folder, WorldEdit\'s, or any other. Files are read in place; only renames change anything on disk.';
 
   @override
   String get mcOrgSearch => 'Search by name';
@@ -37564,16 +37561,16 @@ class LEn extends L {
       'Type & codes, or &#RRGGBB for hex colours (servers with a chat plugin; vanilla chat only knows the 16 colours).';
 
   @override
-  String get mcColorSection => 'Section signs (§) — signs, books, MOTD';
+  String get mcColorSection => 'Section signs (§): signs, books, MOTD';
 
   @override
-  String get mcColorAmpersand => 'Ampersand codes (&) — plugins';
+  String get mcColorAmpersand => 'Ampersand codes (&): plugins';
 
   @override
-  String get mcColorMiniMessage => 'MiniMessage — Paper / Adventure';
+  String get mcColorMiniMessage => 'MiniMessage: Paper / Adventure';
 
   @override
-  String get mcColorJson => 'JSON text component — tellraw, titles';
+  String get mcColorJson => 'JSON text component: tellraw, titles';
 
   @override
   String get mcColorCodes => 'Colour codes';
@@ -37594,10 +37591,10 @@ class LEn extends L {
   String get mcColorFormatting => 'Formatting codes';
 
   @override
-  String get mcColorObfuscatedDetail => 'Obfuscated — scrambles constantly';
+  String get mcColorObfuscatedDetail => 'Obfuscated: scrambles constantly';
 
   @override
-  String get mcColorReset => 'Reset — back to plain white';
+  String get mcColorReset => 'Reset: back to plain white';
 
   @override
   String get mcColorOrderNote =>
@@ -37798,8 +37795,7 @@ class LEn extends L {
   String get mcPotAmbient => 'Ambient';
 
   @override
-  String get mcPotNoEffects =>
-      'No effects — it will be a coloured water bottle.';
+  String get mcPotNoEffects => 'No effects. It\'ll be a coloured water bottle.';
 
   @override
   String get mcPotDurationNote =>
@@ -37978,7 +37974,7 @@ class LEn extends L {
 
   @override
   String mcCmdLength(int length) {
-    return 'Commands longer than 256 characters need a command block — chat cuts them off. This one is $length characters.';
+    return 'Commands longer than 256 characters need a command block, because chat cuts them off. This one is $length characters.';
   }
 
   @override
@@ -38124,7 +38120,7 @@ class LEn extends L {
 
   @override
   String get mcAssetFirst600 =>
-      'Showing the first 600 — search to narrow it down.';
+      'Showing the first 600. Search to narrow it down.';
 
   @override
   String get mcAssetNoSounds => 'No sounds for this copy';
@@ -38138,7 +38134,7 @@ class LEn extends L {
 
   @override
   String get mcAssetCannotPlay =>
-      'This device cannot play .ogg here — save it and open it in a player.';
+      'This device can\'t play .ogg here. Save it and open it in a player.';
 
   @override
   String get mcAssetSaveOgg => 'Save .ogg';
@@ -38235,7 +38231,7 @@ class LEn extends L {
 
   @override
   String get mcEnchGenNoEffects =>
-      'No effects — it will enchant, but do nothing.';
+      'No effects. It will enchant, but do nothing.';
 
   @override
   String mcEnchGenDatapackDesc(String name) {
@@ -38317,12 +38313,12 @@ class LEn extends L {
 
   @override
   String mcRecEmptySlot(String item) {
-    return 'Empty — click to place $item';
+    return 'Empty. Click to place $item';
   }
 
   @override
   String mcRecFilledSlot(String item) {
-    return '$item — click again or right-click to clear';
+    return '$item. Click again or right-click to clear';
   }
 
   @override
@@ -38338,7 +38334,7 @@ class LEn extends L {
   String get mcRecIngredients => 'Ingredients';
 
   @override
-  String get mcRecBrush => 'Brush — click slots to place it';
+  String get mcRecBrush => 'Brush: click slots to place it';
 
   @override
   String get mcRecClear => 'Clear grid';
@@ -38371,7 +38367,7 @@ class LEn extends L {
   String get mcRecTab => 'Recipe book tab';
 
   @override
-  String get mcRecGroup => 'Group (optional — merges recipe book entries)';
+  String get mcRecGroup => 'Group (optional, merges recipe book entries)';
 
   @override
   String get mcRecDatapackDesc => 'Recipe made with luma';
@@ -38379,5 +38375,326 @@ class LEn extends L {
   @override
   String mcRecNote(String command) {
     return 'Ingredients can be an item id or an item tag (#minecraft:planks). Custom recipes craft straight away; to list one in the recipe book run $command.';
+  }
+
+  @override
+  String get pluginNameTeamClipboard => 'Team Clipboard';
+
+  @override
+  String get serverGateTeamClipboardTitle =>
+      'Team Clipboard needs an approved account';
+
+  @override
+  String get serverGateTeamClipboardDescription =>
+      'The board lives on the luma server. Sign in with an approved account first; then the admin can add you to the team.';
+
+  @override
+  String teamClipboardSubtitle(int open, int finished) {
+    return '$open to do · $finished finished';
+  }
+
+  @override
+  String get teamClipboardRoleLead => 'Lead';
+
+  @override
+  String get teamClipboardRoleMember => 'Member';
+
+  @override
+  String get teamClipboardNewEntry => 'New entry';
+
+  @override
+  String get teamClipboardSearchHint => 'Search titles, briefs and files';
+
+  @override
+  String get teamClipboardFilterBugs => 'Bugs';
+
+  @override
+  String get teamClipboardFilterSuggestions => 'Suggestions';
+
+  @override
+  String get teamClipboardFilterModels => 'Models';
+
+  @override
+  String get teamClipboardKindBug => 'Bug';
+
+  @override
+  String get teamClipboardKindSuggestion => 'Suggestion';
+
+  @override
+  String get teamClipboardKindModel => 'Model';
+
+  @override
+  String get teamClipboardStageIdea => 'Idea';
+
+  @override
+  String get teamClipboardStageOpen => 'Open';
+
+  @override
+  String get teamClipboardStageClaimed => 'Claimed';
+
+  @override
+  String get teamClipboardStageDone => 'Done';
+
+  @override
+  String get teamClipboardStageAdded => 'Added';
+
+  @override
+  String get teamClipboardStageFixed => 'Fixed';
+
+  @override
+  String get teamClipboardClosed => 'Closed';
+
+  @override
+  String teamClipboardClaimedBy(String name) {
+    return 'Claimed by $name';
+  }
+
+  @override
+  String teamClipboardByAuthor(String name) {
+    return 'by $name';
+  }
+
+  @override
+  String get teamClipboardYou => 'you';
+
+  @override
+  String get teamClipboardFormerMember => 'former member';
+
+  @override
+  String get teamClipboardSectionToDo => 'To do';
+
+  @override
+  String get teamClipboardSectionFinished => 'Finished';
+
+  @override
+  String get teamClipboardEmptyTitle => 'The board is empty';
+
+  @override
+  String get teamClipboardEmptySubtitle =>
+      'Add the first bug, suggestion or model so the team knows what to work on.';
+
+  @override
+  String get teamClipboardSelectHint =>
+      'Pick an entry to see its brief, files and chat';
+
+  @override
+  String get teamClipboardErrorTitle => 'Could not reach the board';
+
+  @override
+  String get teamClipboardRefresh => 'Refresh';
+
+  @override
+  String get teamClipboardNews => 'New activity';
+
+  @override
+  String get teamClipboardGateTitle => 'Waiting for team access';
+
+  @override
+  String teamClipboardGateBody(String email) {
+    return 'The Team Clipboard is invite-only. Ask the admin to add $email from the admin panel, then check again.';
+  }
+
+  @override
+  String get teamClipboardGateBodyNoEmail =>
+      'The Team Clipboard is invite-only. Ask the admin to add your luma account from the admin panel, then check again.';
+
+  @override
+  String get teamClipboardGateCheckAgain => 'Check again';
+
+  @override
+  String get teamClipboardBrief => 'Brief';
+
+  @override
+  String get teamClipboardNoBrief => 'No brief yet.';
+
+  @override
+  String get teamClipboardFiles => 'Files';
+
+  @override
+  String get teamClipboardNoFiles =>
+      'No files yet. Attach the model .json, the .png texture and any .mcmeta here.';
+
+  @override
+  String get teamClipboardAddFiles => 'Add files';
+
+  @override
+  String get teamClipboardDownloadAll => 'Download all';
+
+  @override
+  String get teamClipboardRemoveFile => 'Remove file';
+
+  @override
+  String teamClipboardRemoveFileConfirm(String name) {
+    return 'Remove $name from this entry?';
+  }
+
+  @override
+  String teamClipboardFileBy(String size, String name) {
+    return '$size · $name';
+  }
+
+  @override
+  String teamClipboardFrames(int count) {
+    return '$count frames';
+  }
+
+  @override
+  String teamClipboardSavedTo(String path) {
+    return 'Saved to $path';
+  }
+
+  @override
+  String teamClipboardSavedFiles(int count, String path) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Saved $count files to $path',
+      one: 'Saved 1 file to $path',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get teamClipboardCouldNotLoad => 'Could not load this file.';
+
+  @override
+  String teamClipboardUploadFailed(String names) {
+    return 'Could not attach: $names';
+  }
+
+  @override
+  String teamClipboardFileTooLarge(String name) {
+    return '$name is over 10 MB.';
+  }
+
+  @override
+  String teamClipboardFileWrongType(String name) {
+    return '$name is not a .png, .json or .mcmeta file.';
+  }
+
+  @override
+  String get teamClipboardChat => 'Chat';
+
+  @override
+  String get teamClipboardNoMessages =>
+      'No messages yet. Start the discussion.';
+
+  @override
+  String get teamClipboardMessageHint => 'Write a message…';
+
+  @override
+  String get teamClipboardSend => 'Send';
+
+  @override
+  String get teamClipboardThreadClosed => 'This thread is closed.';
+
+  @override
+  String get teamClipboardReopen => 'Reopen';
+
+  @override
+  String get teamClipboardCloseThread => 'Close thread';
+
+  @override
+  String get teamClipboardClaim => 'Claim it';
+
+  @override
+  String get teamClipboardUnclaim => 'Unclaim';
+
+  @override
+  String get teamClipboardMarkDone => 'Mark done';
+
+  @override
+  String get teamClipboardMarkAdded => 'Mark added';
+
+  @override
+  String get teamClipboardMarkFixed => 'Mark fixed';
+
+  @override
+  String get teamClipboardLeadOnlyAdded =>
+      'Only a team lead can mark this added.';
+
+  @override
+  String get teamClipboardEditEntry => 'Edit entry';
+
+  @override
+  String get teamClipboardDeleteEntry => 'Delete entry';
+
+  @override
+  String get teamClipboardDeleteConfirmTitle => 'Delete this entry?';
+
+  @override
+  String get teamClipboardDeleteConfirmBody =>
+      'Its brief, files and chat are removed for the whole team.';
+
+  @override
+  String get teamClipboardEditorNewTitle => 'New entry';
+
+  @override
+  String get teamClipboardEditorKind => 'Type';
+
+  @override
+  String get teamClipboardEditorTitleLabel => 'Title';
+
+  @override
+  String get teamClipboardEditorTitleHint => 'e.g. Ruby ore block';
+
+  @override
+  String get teamClipboardEditorTitleRequired => 'Give it a title.';
+
+  @override
+  String get teamClipboardEditorBriefLabel => 'Brief';
+
+  @override
+  String get teamClipboardEditorBriefHint =>
+      'Your idea in a few lines: what it is, and how it should look or behave.';
+
+  @override
+  String get teamClipboardEditorFilesHint =>
+      '.png, .json and .mcmeta, up to 10 MB each';
+
+  @override
+  String get teamClipboardCreate => 'Add to board';
+
+  @override
+  String teamClipboardServerError(int status) {
+    return 'Server error ($status).';
+  }
+
+  @override
+  String get teamClipboardMe => 'You';
+
+  @override
+  String teamClipboardFileEmpty(String name) {
+    return '$name is empty.';
+  }
+
+  @override
+  String teamClipboardFileBadPng(String name) {
+    return '$name is not a valid PNG image.';
+  }
+
+  @override
+  String teamClipboardFileImageTooBig(String name, int width, int height) {
+    return '$name is too big an image: textures can be at most $width × $height pixels.';
+  }
+
+  @override
+  String teamClipboardFileNotText(String name) {
+    return '$name is not UTF-8 text.';
+  }
+
+  @override
+  String teamClipboardFileBadJson(String name, int line, int column) {
+    return '$name is not valid JSON (line $line, column $column).';
+  }
+
+  @override
+  String teamClipboardFileNotObject(String name) {
+    return '$name must hold a JSON object.';
+  }
+
+  @override
+  String teamClipboardFileTooDeep(String name, int depth) {
+    return '$name nests deeper than $depth levels.';
   }
 }

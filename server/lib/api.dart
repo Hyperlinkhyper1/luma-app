@@ -42,6 +42,7 @@ import 'school_test.dart';
 import 'store.dart';
 import 'subway_relay.dart';
 import 'subway_store.dart';
+import 'team_board.dart';
 import 'util.dart';
 import 'web_search.dart';
 
@@ -49,6 +50,7 @@ part 'api_benchmark_generate.dart';
 part 'api_benchmark_repair.dart';
 part 'api_classroom.dart';
 part 'api_school_tests.dart';
+part 'api_team_board.dart';
 
 /// How a newly registered account becomes usable.
 enum ApprovalMode {
@@ -657,6 +659,23 @@ class Api {
           _requireAuth(_uploadReviewPhoto))
       ..delete(
           '/api/v1/recipes/<id>/reviews', _requireAuth(_deleteRecipeReview))
+      ..get('/api/v1/team-board', _requireAuth(_teamBoardGet))
+      ..post('/api/v1/team-board/entries', _requireAuth(_teamEntryCreate))
+      ..get('/api/v1/team-board/entries/<id>', _requireAuth(_teamEntryGet))
+      ..put('/api/v1/team-board/entries/<id>', _requireAuth(_teamEntryUpdate))
+      ..delete(
+          '/api/v1/team-board/entries/<id>', _requireAuth(_teamEntryDelete))
+      ..post('/api/v1/team-board/entries/<id>/stage',
+          _requireAuth(_teamEntryStage))
+      ..post('/api/v1/team-board/entries/<id>/close',
+          _requireAuth(_teamEntryClose))
+      ..post('/api/v1/team-board/entries/<id>/messages',
+          _requireAuth(_teamMessagePost))
+      ..post('/api/v1/team-board/entries/<id>/files',
+          _requireAuth(_teamFileUpload))
+      ..delete('/api/v1/team-board/entries/<id>/files/<fileId>',
+          _requireAuth(_teamFileDelete))
+      ..get('/api/v1/team-board/files/<fileId>', _requireAuth(_teamFileGet))
       ..post('/api/v1/plugins/download', _requireAuth(_reportPluginDownload))
       ..post('/api/v1/subway/rooms', _requireAuth(_createSubwayRoom))
       ..get('/api/v1/subway/rooms', _requireAuth(_listSubwayRooms))
@@ -725,6 +744,7 @@ class Api {
           _requireAdmin(_adminSchoolTestsDelete))
       ..post('/admin/classroom/country/reset',
           _requireAdmin(_adminClassroomCountryReset))
+      ..post('/admin/team-board/access', _requireAdmin(_adminTeamBoardAccess))
       ..post('/admin/ai-image', _requireAdmin(_adminAiImageSave))
       ..post(
           '/admin/benchmark-banners/render', _requireAdmin(_adminBannersRender))
@@ -2470,6 +2490,7 @@ class Api {
     await familyStore.deleteUser(user.id, user.email);
     await chatStore.deleteUser(user.id, user.email);
     await recipeStore.deleteUser(user.id);
+    await teamBoard.forgetUser(user.id);
     await subwayStore.deleteUser(user.id);
     await aiUsage.deleteUser(user.id);
     await store.forgetUser(user.id, user.email);
@@ -2953,6 +2974,10 @@ class Api {
   /// The Tests tab's school test: the operator's cases and every run (see
   /// `api_school_tests.dart`).
   late final SchoolTestStore schoolTests = SchoolTestStore(config.dataDir);
+
+  /// The Team Clipboard: its entries, files and who is on the team (see
+  /// `api_team_board.dart`).
+  late final TeamBoardStore teamBoard = TeamBoardStore(config.dataDir);
 
   late final BookReviewConfigStore aiBookReviewConfig =
       BookReviewConfigStore(config.dataDir);
@@ -10533,6 +10558,8 @@ syncToolbar();
               confirm: 'Unblock the ${bannedIps.length} address'
                   '${bannedIps.length == 1 ? '' : 'es'} banned for $safeEmail?'),
         '<div class="menu-sep"></div>',
+        ..._teamBoardMenuItems(u, safeEmail, item),
+        '<div class="menu-sep"></div>',
         if (classroomCountries.countryOf(u.id) case final country?) ...[
           item('/admin/classroom/country/reset',
               'Reset classroom country (${_htmlEscape(country)})',
@@ -10566,7 +10593,7 @@ syncToolbar();
                   ? '<span class="badge err">ip banned</span>'
                   : '<span class="badge $statusClass">${_htmlEscape(u.status)}</span>';
       return '<tr>'
-          '<td data-label="Email">$safeEmail</td>'
+          '<td data-label="Email">$safeEmail${_teamBoardBadge(u)}</td>'
           '<td data-label="Status">$statusBadge</td>'
           '<td data-label="Plan">${_htmlEscape(planLabels[u.planId] ?? u.planId)}</td>'
           '<td data-label="Storage">'
@@ -10628,6 +10655,7 @@ syncToolbar();
       'plan_granted': 'Plan granted',
       'credits_granted': 'AI credits granted',
       'classroom_country_reset': 'Classroom country reset',
+      'team_board_access': 'Team Clipboard access',
       'school_test_run': 'School test',
       'ai_routes_changed': 'Assistant models',
       'admin_password_reset': 'Password reset',

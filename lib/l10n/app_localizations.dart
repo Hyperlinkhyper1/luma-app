@@ -280,7 +280,7 @@ abstract class L {
   /// No description provided for @settingsThemeStyleDefaultSub.
   ///
   /// In en, this message translates to:
-  /// **'Good old luma — plain and simple, in your colour.'**
+  /// **'Good old luma. Plain and simple, in your colour.'**
   String get settingsThemeStyleDefaultSub;
 
   /// No description provided for @settingsThemeStyleCoffee.
@@ -604,7 +604,7 @@ abstract class L {
   /// No description provided for @homeNoTransactions.
   ///
   /// In en, this message translates to:
-  /// **'Quiet here for now — add something in Finance and it\'ll pop up here.'**
+  /// **'Quiet here for now. Add something in Finance and it\'ll show up here.'**
   String get homeNoTransactions;
 
   /// No description provided for @homeIncome.
@@ -1072,7 +1072,7 @@ abstract class L {
   /// No description provided for @petSettingsSummonHint.
   ///
   /// In en, this message translates to:
-  /// **'Brings the panel up straight away — no keyboard shortcut needed.'**
+  /// **'Brings the panel up straight away, no keyboard shortcut needed.'**
   String get petSettingsSummonHint;
 
   /// No description provided for @monthJan.
@@ -1438,13 +1438,13 @@ abstract class L {
   /// No description provided for @assistantNoLimits.
   ///
   /// In en, this message translates to:
-  /// **'Runs on this device — no usage limits'**
+  /// **'Runs on this device, no usage limits'**
   String get assistantNoLimits;
 
   /// No description provided for @assistantUsageUnavailable.
   ///
   /// In en, this message translates to:
-  /// **'Usage unavailable — check your connection'**
+  /// **'Usage unavailable. Check your connection.'**
   String get assistantUsageUnavailable;
 
   /// No description provided for @assistantDetailedBreakdown.
@@ -3298,7 +3298,7 @@ abstract class L {
   /// No description provided for @textLibraryMcLetterSign.
   ///
   /// In en, this message translates to:
-  /// **'— The Library Post'**
+  /// **'The Library Post'**
   String get textLibraryMcLetterSign;
 
   /// No description provided for @textLibraryMcLetterTake.
@@ -3814,7 +3814,7 @@ abstract class L {
   /// No description provided for @textLibraryMcReviewSign.
   ///
   /// In en, this message translates to:
-  /// **'— The Library Review Desk'**
+  /// **'The Library Review Desk'**
   String get textLibraryMcReviewSign;
 
   /// No description provided for @textLibraryMcReviewThanks.
@@ -5446,7 +5446,7 @@ abstract class L {
   /// No description provided for @accountProfilePictureNote.
   ///
   /// In en, this message translates to:
-  /// **'Only on this device — nobody else sees it.'**
+  /// **'Only on this device. Nobody else sees it.'**
   String get accountProfilePictureNote;
 
   /// No description provided for @accountChangePhoto.
@@ -5698,7 +5698,7 @@ abstract class L {
   /// No description provided for @loginPasswordTooShort.
   ///
   /// In en, this message translates to:
-  /// **'Use at least 10 characters — this password protects your encrypted data.'**
+  /// **'Use at least 10 characters. This password protects your encrypted data.'**
   String get loginPasswordTooShort;
 
   /// No description provided for @loginEnterPassword.
@@ -5752,7 +5752,7 @@ abstract class L {
   /// No description provided for @loginPassphraseTooShort.
   ///
   /// In en, this message translates to:
-  /// **'Use at least 10 characters — this passphrase is what encrypts your data.'**
+  /// **'Use at least 10 characters. This passphrase is what encrypts your data.'**
   String get loginPassphraseTooShort;
 
   /// No description provided for @loginPassphrasesMismatch.
@@ -5812,7 +5812,7 @@ abstract class L {
   /// No description provided for @loginCreateSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'One account, every device — locked before it leaves this one.'**
+  /// **'One account for every device, locked before it leaves this one.'**
   String get loginCreateSubtitle;
 
   /// No description provided for @loginLocalSubtitle.
@@ -5878,7 +5878,7 @@ abstract class L {
   /// No description provided for @loginOpenedInBrowser.
   ///
   /// In en, this message translates to:
-  /// **'We opened {provider} in your browser. Finish up there, then come back — this page sorts itself out.'**
+  /// **'We opened {provider} in your browser. Finish up there, then come back. This page will sort itself out.'**
   String loginOpenedInBrowser(String provider);
 
   /// No description provided for @loginYourProvider.
@@ -5920,13 +5920,13 @@ abstract class L {
   /// No description provided for @loginNewAccountExplain.
   ///
   /// In en, this message translates to:
-  /// **'{provider} proved who you are, but it cannot unlock your data — nothing can except a passphrase only you know. Choose one now; you will need it on every device.'**
+  /// **'{provider} proved who you are, but it can\'t unlock your data. Only a passphrase you know can do that. Pick one now; you\'ll need it on every device.'**
   String loginNewAccountExplain(String provider);
 
   /// No description provided for @loginExistingAccountExplain.
   ///
   /// In en, this message translates to:
-  /// **'This account already exists, so {provider} signed you straight into it. Enter the luma passphrase you set up — the same one you would type to sign in with a password.'**
+  /// **'This account already exists, so {provider} signed you straight into it. Enter the luma passphrase you set up, the same one you\'d type to sign in with a password.'**
   String loginExistingAccountExplain(String provider);
 
   /// No description provided for @loginChoosePassphraseLabel.
@@ -6148,7 +6148,7 @@ abstract class L {
   /// No description provided for @loginKeyWarning.
   ///
   /// In en, this message translates to:
-  /// **'Everything is encrypted with this before it leaves the device. If you forget it you can reset it by email, but the synced copies on the server are erased — only what is still on your devices comes back.'**
+  /// **'Everything is encrypted with this before it leaves the device. If you forget it you can reset it by email, but the synced copies on the server get erased. Only what\'s still on your devices comes back.'**
   String get loginKeyWarning;
 
   /// No description provided for @loginResetWithRecoveryKey.
@@ -6460,7 +6460,7 @@ abstract class L {
   /// No description provided for @planCreditsNotOpen.
   ///
   /// In en, this message translates to:
-  /// **'Buying credits isn\'t open yet — {tokens} tokens for {price} will be available once payments are set up.'**
+  /// **'You can\'t buy credits yet. {tokens} tokens for {price} will be available once payments are set up.'**
   String planCreditsNotOpen(String tokens, String price);
 
   /// No description provided for @planCreditsHeader.
@@ -6808,13 +6808,13 @@ abstract class L {
   /// No description provided for @serverGatePendingEmail.
   ///
   /// In en, this message translates to:
-  /// **'Your account ({email}) still needs a thumbs-up. Enter the 6-digit code we emailed you to finish signing in — until then we leave the server completely alone.'**
+  /// **'Your account ({email}) still needs a thumbs-up. Enter the 6-digit code we emailed you to finish signing in. Until then we leave the server completely alone.'**
   String serverGatePendingEmail(String email);
 
   /// No description provided for @serverGatePendingApproval.
   ///
   /// In en, this message translates to:
-  /// **'Your account ({email}) is waiting on the server owner to say yes. Nothing for you to do in the meantime — just sign in once they have; until then we leave the server completely alone.'**
+  /// **'Your account ({email}) is waiting for the server owner to say yes. There\'s nothing for you to do in the meantime, just sign in once they have. Until then we leave the server completely alone.'**
   String serverGatePendingApproval(String email);
 
   /// No description provided for @serverGateExpired.
@@ -6892,7 +6892,7 @@ abstract class L {
   /// No description provided for @updateNoTestBuilds.
   ///
   /// In en, this message translates to:
-  /// **'No updates on test builds — this one is handmade.'**
+  /// **'No updates on test builds. This one is handmade.'**
   String get updateNoTestBuilds;
 
   /// No description provided for @updateUpToDate.
@@ -6910,7 +6910,7 @@ abstract class L {
   /// No description provided for @updateNewVersionTitle.
   ///
   /// In en, this message translates to:
-  /// **'There is a new luma — {version}'**
+  /// **'There\'s a new luma: {version}'**
   String updateNewVersionTitle(String version);
 
   /// No description provided for @updateReadyBody.
@@ -6946,7 +6946,7 @@ abstract class L {
   /// No description provided for @updateAndroidBlocked.
   ///
   /// In en, this message translates to:
-  /// **'Android blocked the install — allow \"Install unknown apps\" for luma in system settings, then try again.'**
+  /// **'Android blocked the install. Allow \"Install unknown apps\" for luma in system settings, then try again.'**
   String get updateAndroidBlocked;
 
   /// No description provided for @updateDownloadFailed.
@@ -6982,7 +6982,7 @@ abstract class L {
   /// No description provided for @updateDontClose.
   ///
   /// In en, this message translates to:
-  /// **'Don\'t close luma — it will relaunch on its own.'**
+  /// **'Don\'t close luma. It will relaunch on its own.'**
   String get updateDontClose;
 
   /// No description provided for @updateStageDownloading.
@@ -7240,13 +7240,13 @@ abstract class L {
   /// No description provided for @aiSettingsSharedKeyExplanation.
   ///
   /// In en, this message translates to:
-  /// **'Your sync server\'s admin has configured a shared {provider} key, so you don\'t need one — chats are relayed through your sync server, which holds the key; it\'s never sent to this device. Enter your own key above to bypass the server and talk to {provider} directly instead.'**
+  /// **'Your sync server\'s admin has set up a shared {provider} key, so you don\'t need one. Chats are relayed through your sync server, which holds the key; it\'s never sent to this device. Enter your own key above if you\'d rather skip the server and talk to {provider} directly.'**
   String aiSettingsSharedKeyExplanation(String provider);
 
   /// No description provided for @aiSettingsLocalKeyExplanation.
   ///
   /// In en, this message translates to:
-  /// **'Stored locally on this device only, encrypted at rest. Sent directly to {provider} when you chat — never to any luma server.'**
+  /// **'Stored locally on this device only, encrypted at rest. It goes straight to {provider} when you chat and never to a luma server.'**
   String aiSettingsLocalKeyExplanation(String provider);
 
   /// No description provided for @assistantNeedsAccountTitle.
@@ -7258,7 +7258,7 @@ abstract class L {
   /// No description provided for @assistantNeedsAccountBody.
   ///
   /// In en, this message translates to:
-  /// **'Set up a luma account — just an email and password, no server required — before chatting with the assistant.'**
+  /// **'Set up a luma account before chatting with the assistant. It\'s just an email and password, no server required.'**
   String get assistantNeedsAccountBody;
 
   /// No description provided for @assistantSetUpAccount.
@@ -7372,7 +7372,7 @@ abstract class L {
   /// No description provided for @assistantModelUnavailableBody.
   ///
   /// In en, this message translates to:
-  /// **'Add your own API key in Settings to use it — stored locally on this device only — or switch to another model below.'**
+  /// **'Add your own API key in Settings to use it (it\'s stored only on this device), or pick another model below.'**
   String get assistantModelUnavailableBody;
 
   /// No description provided for @assistantOpenSettings.
@@ -7390,7 +7390,7 @@ abstract class L {
   /// No description provided for @assistantNoApiKeyYet.
   ///
   /// In en, this message translates to:
-  /// **'No {provider} API key saved yet — add one in Settings.'**
+  /// **'No {provider} API key saved yet. Add one in Settings.'**
   String assistantNoApiKeyYet(String provider);
 
   /// No description provided for @assistantPictureNeedsAccount.
@@ -7420,19 +7420,19 @@ abstract class L {
   /// No description provided for @aiClientTooManySteps.
   ///
   /// In en, this message translates to:
-  /// **'I couldn\'t finish that — too many tool steps.'**
+  /// **'I couldn\'t finish that, it took too many tool steps.'**
   String get aiClientTooManySteps;
 
   /// No description provided for @aiClientUnreachable.
   ///
   /// In en, this message translates to:
-  /// **'Couldn\'t reach {provider} — check your connection.\n({error})'**
+  /// **'Couldn\'t reach {provider}. Check your connection.\n({error})'**
   String aiClientUnreachable(String provider, String error);
 
   /// No description provided for @aiClientNoConnection.
   ///
   /// In en, this message translates to:
-  /// **'Couldn\'t reach {provider} — check your connection.'**
+  /// **'Couldn\'t reach {provider}. Check your connection.'**
   String aiClientNoConnection(String provider);
 
   /// No description provided for @aiClientKeyRejected.
@@ -7444,7 +7444,7 @@ abstract class L {
   /// No description provided for @aiClientRateLimited.
   ///
   /// In en, this message translates to:
-  /// **'Too many requests — try again shortly.'**
+  /// **'Too many requests. Try again in a moment.'**
   String get aiClientRateLimited;
 
   /// No description provided for @aiClientApiError.
@@ -8014,7 +8014,7 @@ abstract class L {
   /// No description provided for @converterCorruptTooSmall.
   ///
   /// In en, this message translates to:
-  /// **'That file is only {size} bytes — too small to corrupt in any interesting way.'**
+  /// **'That file is only {size} bytes, too small to corrupt in any interesting way.'**
   String converterCorruptTooSmall(int size);
 
   /// No description provided for @converterCorruptPickStyle.
@@ -8026,7 +8026,7 @@ abstract class L {
   /// No description provided for @converterCorruptStyleSkipped.
   ///
   /// In en, this message translates to:
-  /// **'{style} was skipped — the file is too small for it.'**
+  /// **'{style} was skipped because the file is too small for it.'**
   String converterCorruptStyleSkipped(String style);
 
   /// No description provided for @converterCorruptNothingApplied.
@@ -8164,7 +8164,7 @@ abstract class L {
   /// No description provided for @converterRepairChecksumExact.
   ///
   /// In en, this message translates to:
-  /// **'The result matches the original checksum exactly — this is the file that was corrupted, byte for byte.'**
+  /// **'The result matches the original checksum exactly. This is the file that was corrupted, byte for byte.'**
   String get converterRepairChecksumExact;
 
   /// No description provided for @converterRepairChecksumChanged.
@@ -8182,7 +8182,7 @@ abstract class L {
   /// No description provided for @converterRepairEmpty.
   ///
   /// In en, this message translates to:
-  /// **'That file is empty — there is nothing in it to repair.'**
+  /// **'That file is empty, so there\'s nothing in it to repair.'**
   String get converterRepairEmpty;
 
   /// No description provided for @converterRepairFoundHeader.
@@ -8242,7 +8242,7 @@ abstract class L {
   /// No description provided for @converterRepairNothingChanged.
   ///
   /// In en, this message translates to:
-  /// **'Nothing needed changing — the structure already checks out.'**
+  /// **'Nothing needed changing. The structure already checks out.'**
   String get converterRepairNothingChanged;
 
   /// No description provided for @repairBmpTooShort.
@@ -8380,7 +8380,7 @@ abstract class L {
   /// No description provided for @repairJpegNoSegments.
   ///
   /// In en, this message translates to:
-  /// **'No readable JPEG segments survived — the quantisation and Huffman tables are gone, and those cannot be guessed.'**
+  /// **'No readable JPEG segments survived. The quantisation and Huffman tables are gone, and those can\'t be guessed.'**
   String get repairJpegNoSegments;
 
   /// No description provided for @repairJpegNoScan.
@@ -8404,7 +8404,7 @@ abstract class L {
   /// No description provided for @repairMp3TagTooBig.
   ///
   /// In en, this message translates to:
-  /// **'The ID3 tag claims {size} but the file is smaller — dropped the tag and kept the audio.'**
+  /// **'The ID3 tag claims {size} but the file is smaller, so the tag was dropped and the audio kept.'**
   String repairMp3TagTooBig(String size);
 
   /// No description provided for @repairMp3TagKept.
@@ -8470,13 +8470,13 @@ abstract class L {
   /// No description provided for @repairMp4UnreadableBox.
   ///
   /// In en, this message translates to:
-  /// **'Unreadable box name at {offset} — stopping the walk there.'**
+  /// **'Unreadable box name at {offset}. Stopped walking the file there.'**
   String repairMp4UnreadableBox(String offset);
 
   /// No description provided for @repairMp4BoxClamped.
   ///
   /// In en, this message translates to:
-  /// **'The \"{type}\" box at {offset} claimed {claimed} but only {available} follows — clamped it to fit.'**
+  /// **'The \"{type}\" box at {offset} claimed {claimed} but only {available} follows. Clamped it to fit.'**
   String repairMp4BoxClamped(
     String type,
     String offset,
@@ -8499,7 +8499,7 @@ abstract class L {
   /// No description provided for @repairMp4NoMoov.
   ///
   /// In en, this message translates to:
-  /// **'There is no moov box. That box is the index of every video and audio sample in the file, and without it the media data cannot be played back — recovering it needs an undamaged file recorded by the same device.'**
+  /// **'There is no moov box. That box indexes every video and audio sample in the file, and without it the media data can\'t be played back. Getting it back needs an undamaged file recorded by the same device.'**
   String get repairMp4NoMoov;
 
   /// No description provided for @repairMp4NoMdat.
@@ -8583,7 +8583,7 @@ abstract class L {
   /// No description provided for @repairPdfXrefFromScratch.
   ///
   /// In en, this message translates to:
-  /// **'Built a cross-reference table and trailer from scratch — the file had neither.'**
+  /// **'Built a cross-reference table and trailer from scratch, since the file had neither.'**
   String get repairPdfXrefFromScratch;
 
   /// No description provided for @repairPngTooShort.
@@ -8601,7 +8601,7 @@ abstract class L {
   /// No description provided for @repairPngUnreadableChunk.
   ///
   /// In en, this message translates to:
-  /// **'Unreadable chunk name at {offset} — stopping the walk there.'**
+  /// **'Unreadable chunk name at {offset}. Stopped walking the file there.'**
   String repairPngUnreadableChunk(String offset);
 
   /// No description provided for @repairPngChunkPastEnd.
@@ -8619,7 +8619,7 @@ abstract class L {
   /// No description provided for @repairPngCrcRecomputed.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{Recomputed 1 bad chunk checksum — the pixel data behind it may still be wrong, but readers will stop rejecting the file outright.} other{Recomputed {count} bad chunk checksums — the pixel data behind them may still be wrong, but readers will stop rejecting the file outright.}}'**
+  /// **'{count, plural, =1{Recomputed 1 bad chunk checksum. The pixel data behind it may still be wrong, but readers will stop rejecting the file outright.} other{Recomputed {count} bad chunk checksums. The pixel data behind them may still be wrong, but readers will stop rejecting the file outright.}}'**
   String repairPngCrcRecomputed(int count);
 
   /// No description provided for @repairPngCutAtLastChunk.
@@ -8679,13 +8679,13 @@ abstract class L {
   /// No description provided for @repairRiffUnreadableChunk.
   ///
   /// In en, this message translates to:
-  /// **'Unreadable chunk name at {offset} — stopping there.'**
+  /// **'Unreadable chunk name at {offset}. Stopped there.'**
   String repairRiffUnreadableChunk(String offset);
 
   /// No description provided for @repairRiffChunkClamped.
   ///
   /// In en, this message translates to:
-  /// **'The \"{id}\" chunk claimed {claimed} but only {available} is present — shortened it to match.'**
+  /// **'The \"{id}\" chunk claimed {claimed} but only {available} is there. Shortened it to match.'**
   String repairRiffChunkClamped(String id, String claimed, String available);
 
   /// No description provided for @repairRiffNoFmt.
@@ -8709,7 +8709,7 @@ abstract class L {
   /// No description provided for @repairZipNoEntries.
   ///
   /// In en, this message translates to:
-  /// **'No recoverable entries were found — every local file header is gone, so there is nothing left to rebuild the archive from.'**
+  /// **'No recoverable entries were found. Every local file header is gone, so there\'s nothing left to rebuild the archive from.'**
   String get repairZipNoEntries;
 
   /// No description provided for @repairZipDamagedEntries.
@@ -8733,7 +8733,7 @@ abstract class L {
   /// No description provided for @repairZipUndecompressable.
   ///
   /// In en, this message translates to:
-  /// **'\"{name}\" could not be decompressed at all — dropped.'**
+  /// **'\"{name}\" couldn\'t be decompressed at all, so it was dropped.'**
   String repairZipUndecompressable(String name);
 
   /// No description provided for @repairZipUnsupportedMethod.
@@ -8745,7 +8745,7 @@ abstract class L {
   /// No description provided for @repairZipChecksumMismatch.
   ///
   /// In en, this message translates to:
-  /// **'\"{name}\" does not match its checksum — the contents came out damaged, but the entry was kept so you can see what is left of it.'**
+  /// **'\"{name}\" doesn\'t match its checksum. The contents came out damaged, but the entry was kept so you can see what\'s left of it.'**
   String repairZipChecksumMismatch(String name);
 
   /// No description provided for @repairZipOfficeComplete.
@@ -8811,7 +8811,7 @@ abstract class L {
   /// No description provided for @converterImageCouldNotRead.
   ///
   /// In en, this message translates to:
-  /// **'Could not read this image — it may be corrupt or unsupported.'**
+  /// **'Couldn\'t read this image. It may be corrupt or unsupported.'**
   String get converterImageCouldNotRead;
 
   /// No description provided for @ffmpegInstallDesktopOnly.
@@ -9390,7 +9390,7 @@ abstract class L {
   /// No description provided for @audioEditorNoFilePath.
   ///
   /// In en, this message translates to:
-  /// **'Could not read the file path — editing needs the desktop app.'**
+  /// **'Couldn\'t read the file path. Editing needs the desktop app.'**
   String get audioEditorNoFilePath;
 
   /// No description provided for @audioEditorCannotRead.
@@ -9408,7 +9408,7 @@ abstract class L {
   /// No description provided for @audioEditorEverythingCut.
   ///
   /// In en, this message translates to:
-  /// **'Everything has been cut — remove a cut first.'**
+  /// **'Everything has been cut. Remove a cut first.'**
   String get audioEditorEverythingCut;
 
   /// No description provided for @audioEditorPreviewDesktopOnly.
@@ -9954,7 +9954,7 @@ abstract class L {
   /// No description provided for @downscalerDecodeFailed.
   ///
   /// In en, this message translates to:
-  /// **'Could not read this image — it may be corrupt or unsupported.'**
+  /// **'Couldn\'t read this image. It may be corrupt or unsupported.'**
   String get downscalerDecodeFailed;
 
   /// No description provided for @downscalerEstimateFailed.
@@ -10128,7 +10128,7 @@ abstract class L {
   /// No description provided for @downscalerRemoveAlphaDisabled.
   ///
   /// In en, this message translates to:
-  /// **'Unavailable — this image either has no alpha channel or uses real transparency.'**
+  /// **'Unavailable: this image either has no alpha channel or uses real transparency.'**
   String get downscalerRemoveAlphaDisabled;
 
   /// No description provided for @downscalerTrimTitle.
@@ -10146,7 +10146,7 @@ abstract class L {
   /// No description provided for @downscalerTrimDisabled.
   ///
   /// In en, this message translates to:
-  /// **'Unavailable — no transparent border to trim.'**
+  /// **'Unavailable: there\'s no transparent border to trim.'**
   String get downscalerTrimDisabled;
 
   /// No description provided for @downscalerPngRecompressTitle.
@@ -10176,7 +10176,7 @@ abstract class L {
   /// No description provided for @downscalerToWebpDisabled.
   ///
   /// In en, this message translates to:
-  /// **'Unavailable — WebP needs ffmpeg (desktop app only).'**
+  /// **'Unavailable: WebP needs ffmpeg (desktop app only).'**
   String get downscalerToWebpDisabled;
 
   /// No description provided for @convFileReadFailed.
@@ -10236,7 +10236,7 @@ abstract class L {
   /// No description provided for @convOtherCorruptorSub.
   ///
   /// In en, this message translates to:
-  /// **'Break a file on purpose — fix it later, or not'**
+  /// **'Break a file on purpose, then fix it later (or don\'t)'**
   String get convOtherCorruptorSub;
 
   /// No description provided for @convOtherFixer.
@@ -10266,7 +10266,7 @@ abstract class L {
   /// No description provided for @convCorruptPickSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Any file at all — the original is never touched'**
+  /// **'Any file at all. The original is never touched.'**
   String get convCorruptPickSubtitle;
 
   /// No description provided for @convCorruptDamageLabel.
@@ -10308,7 +10308,7 @@ abstract class L {
   /// No description provided for @convCorruptNoRecipeWarning.
   ///
   /// In en, this message translates to:
-  /// **'No recovery recipe will be written. Nothing — including luma — will be able to undo this.'**
+  /// **'No recovery recipe will be written. Nothing, not even luma, will be able to undo this.'**
   String get convCorruptNoRecipeWarning;
 
   /// No description provided for @convCorruptSaveCorrupted.
@@ -10326,7 +10326,7 @@ abstract class L {
   /// No description provided for @convCorruptKeepRecipe.
   ///
   /// In en, this message translates to:
-  /// **'Keep the recipe somewhere safe — it is the only thing that can undo this.'**
+  /// **'Keep the recipe somewhere safe. It\'s the only thing that can undo this.'**
   String get convCorruptKeepRecipe;
 
   /// No description provided for @convCorruptSaveRecipe.
@@ -10524,7 +10524,7 @@ abstract class L {
   /// No description provided for @convFixStructuralWarning.
   ///
   /// In en, this message translates to:
-  /// **'A structural repair puts the container back together. It cannot invent content that was overwritten — check the result before you rely on it.'**
+  /// **'A structural repair puts the container back together. It can\'t invent content that was overwritten, so check the result before you rely on it.'**
   String get convFixStructuralWarning;
 
   /// No description provided for @convMediaAudioTitle.
@@ -10554,7 +10554,7 @@ abstract class L {
   /// No description provided for @convMediaNoFilePath.
   ///
   /// In en, this message translates to:
-  /// **'Could not read the file path — conversion needs the desktop app.'**
+  /// **'Couldn\'t read the file path. Conversion needs the desktop app.'**
   String get convMediaNoFilePath;
 
   /// No description provided for @convMediaConvertFailed.
@@ -10824,7 +10824,7 @@ abstract class L {
   /// No description provided for @pictureConvSvgVector.
   ///
   /// In en, this message translates to:
-  /// **'SVG is vector — it will be rasterized at a crisp size before converting.'**
+  /// **'SVG is a vector format, so it gets rasterized at a crisp size before converting.'**
   String get pictureConvSvgVector;
 
   /// No description provided for @pictureConvConvertDownload.
@@ -10944,7 +10944,7 @@ abstract class L {
   /// No description provided for @schemViewerEmpty.
   ///
   /// In en, this message translates to:
-  /// **'Nothing to show — this build is all air.'**
+  /// **'Nothing to show. This build is all air.'**
   String get schemViewerEmpty;
 
   /// No description provided for @schemViewerSemantics.
@@ -10956,7 +10956,7 @@ abstract class L {
   /// No description provided for @schemViewerSimplified.
   ///
   /// In en, this message translates to:
-  /// **'This build is too large to draw block-for-block, so the preview is simplified {stride}× — the converted file keeps every block.'**
+  /// **'This build is too big to draw block by block, so the preview is simplified {stride}×. The converted file still keeps every block.'**
   String schemViewerSimplified(int stride);
 
   /// No description provided for @schemViewerDownloadProgress.
@@ -10978,7 +10978,7 @@ abstract class L {
   /// No description provided for @schemViewerFlatColours.
   ///
   /// In en, this message translates to:
-  /// **'Flat colours — no Minecraft found. Download the textures from Mojang (~{size}) or use your own copy.'**
+  /// **'Flat colours, since no Minecraft install was found. Download the textures from Mojang (~{size}) or use your own copy.'**
   String schemViewerFlatColours(String size);
 
   /// No description provided for @schemViewerFailureFallback.
@@ -11050,13 +11050,13 @@ abstract class L {
   /// No description provided for @vidDownNoPath.
   ///
   /// In en, this message translates to:
-  /// **'Could not read the file path — video downscaling needs the desktop app.'**
+  /// **'Couldn\'t read the file path. Video downscaling needs the desktop app.'**
   String get vidDownNoPath;
 
   /// No description provided for @vidDownProbeFailed.
   ///
   /// In en, this message translates to:
-  /// **'Could not read this video — it may be unsupported or ffmpeg is missing.'**
+  /// **'Couldn\'t read this video. It may be unsupported, or ffmpeg is missing.'**
   String get vidDownProbeFailed;
 
   /// No description provided for @vidDownEstimateFailed.
@@ -11182,7 +11182,7 @@ abstract class L {
   /// No description provided for @vidDownH265Body.
   ///
   /// In en, this message translates to:
-  /// **'Use the newer HEVC codec — roughly 40–50% smaller than H.264 at the same quality, but slower to encode and less compatible with old players.'**
+  /// **'Use the newer HEVC codec. It\'s roughly 40–50% smaller than H.264 at the same quality, but slower to encode and less compatible with old players.'**
   String get vidDownH265Body;
 
   /// No description provided for @vidDownAudioBitrateTitle.
@@ -11200,7 +11200,7 @@ abstract class L {
   /// No description provided for @vidDownNoAudio.
   ///
   /// In en, this message translates to:
-  /// **'Unavailable — this video has no audio track.'**
+  /// **'Unavailable: this video has no audio track.'**
   String get vidDownNoAudio;
 
   /// No description provided for @vidDownRemoveAudioTitle.
@@ -11212,7 +11212,7 @@ abstract class L {
   /// No description provided for @vidDownRemoveAudioBody.
   ///
   /// In en, this message translates to:
-  /// **'Drop audio entirely — ideal for screen recordings and silent clips.'**
+  /// **'Drop the audio entirely. Good for screen recordings and silent clips.'**
   String get vidDownRemoveAudioBody;
 
   /// No description provided for @vidDownStripTitle.
@@ -11236,7 +11236,7 @@ abstract class L {
   /// No description provided for @vidDownWebmBody.
   ///
   /// In en, this message translates to:
-  /// **'Re-encode to the VP9/WebM codec — often smaller than H.264 and great for the web. Slower to encode; outputs a .webm file.'**
+  /// **'Re-encode to VP9/WebM. Often smaller than H.264 and great for the web, but slower to encode. Outputs a .webm file.'**
   String get vidDownWebmBody;
 
   /// No description provided for @vidDownSmaller.
@@ -11254,7 +11254,7 @@ abstract class L {
   /// No description provided for @vidDownSampleNote.
   ///
   /// In en, this message translates to:
-  /// **'Estimated from a {seconds}s sample — the final size may vary.'**
+  /// **'Estimated from a {seconds}s sample, so the final size may vary.'**
   String vidDownSampleNote(String seconds);
 
   /// No description provided for @worldConvPickFolderTitle.
@@ -12595,7 +12595,7 @@ abstract class L {
   /// No description provided for @passwordsDecryptFailed.
   ///
   /// In en, this message translates to:
-  /// **'⚠ Could not decrypt — data corrupt or key file changed'**
+  /// **'⚠ Couldn\'t decrypt. The data is corrupt or the key file changed.'**
   String get passwordsDecryptFailed;
 
   /// No description provided for @passwordsInvalidSecret.
@@ -12619,7 +12619,7 @@ abstract class L {
   /// No description provided for @passwordsBreachedWarning.
   ///
   /// In en, this message translates to:
-  /// **'This password was found in a known breach — change it where you use it.'**
+  /// **'This password showed up in a known breach. Change it wherever you use it.'**
   String get passwordsBreachedWarning;
 
   /// No description provided for @nativeWebviewNoHost.
@@ -12829,7 +12829,7 @@ abstract class L {
   /// No description provided for @accountOverviewServiceTooltip.
   ///
   /// In en, this message translates to:
-  /// **'{service} — {status}'**
+  /// **'{service}: {status}'**
   String accountOverviewServiceTooltip(String service, String status);
 
   /// No description provided for @accountOverviewSectionListLabel.
@@ -12841,7 +12841,7 @@ abstract class L {
   /// No description provided for @accountOverviewSectionTooltip.
   ///
   /// In en, this message translates to:
-  /// **'{label} — {blurb}'**
+  /// **'{label}: {blurb}'**
   String accountOverviewSectionTooltip(String label, String blurb);
 
   /// No description provided for @accountOverviewMoreServicesComing.
@@ -12901,7 +12901,7 @@ abstract class L {
   /// No description provided for @accountOverviewConnectGithubSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'See your commits, stars, downloads, repositories, issues and workflow runs in one place — plus your Copilot, storage and compute allowances.'**
+  /// **'See your commits, stars, downloads, repositories, issues and workflow runs in one place, plus your Copilot, storage and compute allowances.'**
   String get accountOverviewConnectGithubSubtitle;
 
   /// No description provided for @accountOverviewConnectGithubButton.
@@ -12925,7 +12925,7 @@ abstract class L {
   /// No description provided for @accountOverviewConnectYoutubeSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'See your subscribers, views, recent uploads and deep analytics — watch time, traffic sources and subscriber trends — in one place.'**
+  /// **'See your subscribers, views, recent uploads and deeper analytics (watch time, traffic sources, subscriber trends) in one place.'**
   String get accountOverviewConnectYoutubeSubtitle;
 
   /// No description provided for @accountOverviewConnectYoutubeButton.
@@ -14411,7 +14411,7 @@ abstract class L {
   /// No description provided for @ghUsageStorageSummed.
   ///
   /// In en, this message translates to:
-  /// **'Summed directly from every private repository\'s Actions artifacts — GitHub has no API for Packages storage, so that is not included.'**
+  /// **'Added up from every private repository\'s Actions artifacts. GitHub has no API for Packages storage, so that isn\'t included.'**
   String get ghUsageStorageSummed;
 
   /// No description provided for @ghUsagePackagesBandwidth.
@@ -14777,7 +14777,7 @@ abstract class L {
   /// No description provided for @mcPmcKeptSeparate.
   ///
   /// In en, this message translates to:
-  /// **'Kept separate — PMC counts views, and its skins, blogs and builds are not mods.'**
+  /// **'Kept separate, because PMC counts views, and its skins, blogs and builds aren\'t mods.'**
   String get mcPmcKeptSeparate;
 
   /// No description provided for @mcPmcAddUsername.
@@ -14915,7 +14915,7 @@ abstract class L {
   /// No description provided for @mcPmcApproximateSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Approximate — PMC rounds figures above a thousand'**
+  /// **'Approximate, since PMC rounds anything over a thousand'**
   String get mcPmcApproximateSubtitle;
 
   /// No description provided for @mcPmcDownloads.
@@ -14939,13 +14939,13 @@ abstract class L {
   /// No description provided for @mcSetupSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Pull CurseForge, Modrinth and Planet Minecraft into one dashboard — downloads, followers, views and trends over time.'**
+  /// **'Pull CurseForge, Modrinth and Planet Minecraft into one dashboard: downloads, followers, views and trends over time.'**
   String get mcSetupSubtitle;
 
   /// No description provided for @mcReqModrinthTitle.
   ///
   /// In en, this message translates to:
-  /// **'Modrinth — username only'**
+  /// **'Modrinth (username only)'**
   String get mcReqModrinthTitle;
 
   /// No description provided for @mcReqModrinthBody.
@@ -14957,7 +14957,7 @@ abstract class L {
   /// No description provided for @mcReqCurseforgeTitle.
   ///
   /// In en, this message translates to:
-  /// **'CurseForge — API key required'**
+  /// **'CurseForge (API key required)'**
   String get mcReqCurseforgeTitle;
 
   /// No description provided for @mcReqCurseforgeBody.
@@ -14969,7 +14969,7 @@ abstract class L {
   /// No description provided for @mcReqPmcTitle.
   ///
   /// In en, this message translates to:
-  /// **'Planet Minecraft — username only'**
+  /// **'Planet Minecraft (username only)'**
   String get mcReqPmcTitle;
 
   /// No description provided for @mcReqPmcBody.
@@ -14987,7 +14987,7 @@ abstract class L {
   /// No description provided for @mcSetupModrinthNote.
   ///
   /// In en, this message translates to:
-  /// **'Public — a username is all it takes.'**
+  /// **'Public, so a username is all it takes.'**
   String get mcSetupModrinthNote;
 
   /// No description provided for @mcSetupModrinthUsername.
@@ -15023,7 +15023,7 @@ abstract class L {
   /// No description provided for @mcSetupCurseNote.
   ///
   /// In en, this message translates to:
-  /// **'Needs an API key — CurseForge serves nothing without one.'**
+  /// **'Needs an API key. CurseForge won\'t serve anything without one.'**
   String get mcSetupCurseNote;
 
   /// No description provided for @mcSetupCurseKey.
@@ -15065,7 +15065,7 @@ abstract class L {
   /// No description provided for @mcSetupKeyWorks.
   ///
   /// In en, this message translates to:
-  /// **'Key works — CurseForge answered HTTP 200.'**
+  /// **'Key works. CurseForge answered HTTP 200.'**
   String get mcSetupKeyWorks;
 
   /// No description provided for @mcSetupAuthorId.
@@ -15125,7 +15125,7 @@ abstract class L {
   /// No description provided for @mcSetupPmcNote.
   ///
   /// In en, this message translates to:
-  /// **'No API — read from your public profile in an embedded browser.'**
+  /// **'There\'s no API, so it\'s read from your public profile in an embedded browser.'**
   String get mcSetupPmcNote;
 
   /// No description provided for @mcSetupPmcUsername.
@@ -15167,7 +15167,7 @@ abstract class L {
   /// No description provided for @mcSetupDisconnectBody.
   ///
   /// In en, this message translates to:
-  /// **'The stored keys, the cached numbers and the download history luma has been recording are all deleted from this device. The history cannot be re-fetched — CurseForge and Planet Minecraft publish no past data.'**
+  /// **'The stored keys, the cached numbers and the download history luma has been recording are all deleted from this device. The history can\'t be fetched again, because CurseForge and Planet Minecraft don\'t publish past data.'**
   String get mcSetupDisconnectBody;
 
   /// No description provided for @accountOverviewKeepIt.
@@ -16001,7 +16001,7 @@ abstract class L {
   /// No description provided for @aiDetectorDisclaimer.
   ///
   /// In en, this message translates to:
-  /// **'Heuristic style analysis — arithmetic on sentence lengths and word choices, not proof of anything. Formal human writing can look machine-like; edited machine output can look human. A named verdict rests on a signature the text carries itself, and a signature can be stripped or forged. The statistics run on this device. Signed in, the text is also sent to the luma server for an AI model review.'**
+  /// **'Heuristic style analysis: arithmetic on sentence lengths and word choices, not proof of anything. Formal human writing can look machine-like, and edited machine output can look human. A named verdict rests on a signature the text carries itself, and a signature can be stripped or forged. The statistics run on this device. If you\'re signed in, the text is also sent to the luma server for an AI model review.'**
   String get aiDetectorDisclaimer;
 
   /// No description provided for @aiDetectorInputTitle.
@@ -16037,13 +16037,13 @@ abstract class L {
   /// No description provided for @aiDetectorHint.
   ///
   /// In en, this message translates to:
-  /// **'Paste the text you want checked — an essay, an email, a product review…'**
+  /// **'Paste the text you want checked: an essay, an email, a product review…'**
   String get aiDetectorHint;
 
   /// No description provided for @aiDetectorWordsShort.
   ///
   /// In en, this message translates to:
-  /// **'{words} of {minWords} words — style statistics need a bit more to work on.'**
+  /// **'{words} of {minWords} words. The style statistics need a bit more to work with.'**
   String aiDetectorWordsShort(int words, int minWords);
 
   /// No description provided for @aiDetectorWordsReady.
@@ -16079,7 +16079,7 @@ abstract class L {
   /// No description provided for @aiDetectorSummarySigned.
   ///
   /// In en, this message translates to:
-  /// **'The text signs itself — the scan found the hidden marks a Claude watermark is carried in, so this is an attribution rather than a guess about style.'**
+  /// **'The text signs itself. The scan found the hidden marks a Claude watermark is carried in, so this is an attribution, not a guess about style.'**
   String get aiDetectorSummarySigned;
 
   /// No description provided for @aiDetectorSummaryBased.
@@ -16091,7 +16091,7 @@ abstract class L {
   /// No description provided for @aiDetectorSummaryShort.
   ///
   /// In en, this message translates to:
-  /// **'Short sample — treat every signal as a hint rather than a measurement.'**
+  /// **'Short sample. Treat every signal as a hint, not a measurement.'**
   String get aiDetectorSummaryShort;
 
   /// No description provided for @aiDetectorStatWords.
@@ -16217,7 +16217,7 @@ abstract class L {
   /// No description provided for @aiDetectorSignalsNothing.
   ///
   /// In en, this message translates to:
-  /// **'Nothing suspicious fired — varied lengths, no stock phrases, no watermark. Reads like human writing.'**
+  /// **'Nothing suspicious came up: varied lengths, no stock phrases, no watermark. Reads like a person wrote it.'**
   String get aiDetectorSignalsNothing;
 
   /// No description provided for @aiDetectorQuietChecks.
@@ -16229,7 +16229,7 @@ abstract class L {
   /// No description provided for @aiDetectorQuietOneWay.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 check found nothing — a dash means the check only ever counts against a text, so finding nothing left it with no opinion} other{{count} checks found nothing — a dash means the check only ever counts against a text, so finding nothing left it with no opinion}}'**
+  /// **'{count, plural, =1{1 check found nothing. A dash means the check can only ever count against a text, so finding nothing leaves it without an opinion} other{{count} checks found nothing. A dash means the check can only ever count against a text, so finding nothing leaves it without an opinion}}'**
   String aiDetectorQuietOneWay(int count);
 
   /// No description provided for @aiDetectorQuietNothing.
@@ -16343,7 +16343,7 @@ abstract class L {
   /// No description provided for @aiAgentPromptCopied.
   ///
   /// In en, this message translates to:
-  /// **'Prompt copied — paste it into {target}'**
+  /// **'Prompt copied. Paste it into {target}.'**
   String aiAgentPromptCopied(String target);
 
   /// No description provided for @aiAgentExportDialogTitle.
@@ -16529,7 +16529,7 @@ abstract class L {
   /// No description provided for @aiLibraryImported.
   ///
   /// In en, this message translates to:
-  /// **'Imported {name} — save it to add it to the library'**
+  /// **'Imported {name}. Save it to add it to the library.'**
   String aiLibraryImported(String name);
 
   /// No description provided for @aiLibraryExportTitle.
@@ -17279,7 +17279,7 @@ abstract class L {
   /// No description provided for @aiUsageSectionTooltip.
   ///
   /// In en, this message translates to:
-  /// **'{label} — {blurb}'**
+  /// **'{label}: {blurb}'**
   String aiUsageSectionTooltip(String label, String blurb);
 
   /// No description provided for @aiUsageRangeLast7Days.
@@ -17537,7 +17537,7 @@ abstract class L {
   /// No description provided for @aiUsageAssetStudioUnsupportedHint.
   ///
   /// In en, this message translates to:
-  /// **'Download the HTML to open this model in any browser — it works offline.'**
+  /// **'Download the HTML to open this model in any browser. It works offline.'**
   String get aiUsageAssetStudioUnsupportedHint;
 
   /// No description provided for @aiUsageAssetStudioUnavailable.
@@ -18047,7 +18047,7 @@ abstract class L {
   /// No description provided for @aiLeaderboardDetailProprietary.
   ///
   /// In en, this message translates to:
-  /// **'Proprietary — API access only'**
+  /// **'Proprietary, API access only'**
   String get aiLeaderboardDetailProprietary;
 
   /// No description provided for @aiLeaderboardDetailOpenWeights.
@@ -18425,7 +18425,7 @@ abstract class L {
   /// No description provided for @aiOsEmptySubtitle.
   ///
   /// In en, this message translates to:
-  /// **'This calculator sizes models whose weights you can download. None in the current catalogue have a known parameter count — refresh the leaderboard and try again.'**
+  /// **'This calculator sizes models whose weights you can download. None in the current catalogue have a known parameter count. Refresh the leaderboard and try again.'**
   String get aiOsEmptySubtitle;
 
   /// No description provided for @aiOsWhatCanRunIt.
@@ -18437,7 +18437,7 @@ abstract class L {
   /// No description provided for @aiOsFootnote.
   ///
   /// In en, this message translates to:
-  /// **'Weight memory is exact arithmetic. The context cost is estimated from the parameter count — the catalogue does not carry each model’s layer count or attention shape, so a model with an unusual design will differ. Leave headroom.'**
+  /// **'Weight memory is exact arithmetic. The context cost is estimated from the parameter count, because the catalogue doesn\'t list each model’s layer count or attention shape, so a model with an unusual design will differ. Leave some headroom.'**
   String get aiOsFootnote;
 
   /// No description provided for @aiOsFieldModel.
@@ -18467,7 +18467,7 @@ abstract class L {
   /// No description provided for @aiOsKv8bitTooltip.
   ///
   /// In en, this message translates to:
-  /// **'Store the context cache at 8 bits instead of 16 — roughly halves what the context costs.'**
+  /// **'Store the context cache at 8 bits instead of 16. That roughly halves what the context costs.'**
   String get aiOsKv8bitTooltip;
 
   /// No description provided for @aiOsGbOfMemory.
@@ -18527,7 +18527,7 @@ abstract class L {
   /// No description provided for @aiOsUnifiedTooltip.
   ///
   /// In en, this message translates to:
-  /// **'Shared CPU/GPU memory — this is the share a model can actually claim, not the machine’s total.'**
+  /// **'Shared CPU/GPU memory. This is the share a model can actually use, not the machine’s total.'**
   String get aiOsUnifiedTooltip;
 
   /// No description provided for @aiOsBitsPerWeight.
@@ -18851,13 +18851,13 @@ abstract class L {
   /// No description provided for @aiTestsEngineIntro.
   ///
   /// In en, this message translates to:
-  /// **'Cutaway V8 — a real-time 3D cross-plane engine benchmark with crank-driven pistons, half-speed camshafts, synchronized valves, combustion effects and a 30-second FPS benchmark.'**
+  /// **'Cutaway V8: a real-time 3D cross-plane engine benchmark with crank-driven pistons, half-speed camshafts, synchronized valves, combustion effects and a 30-second FPS benchmark.'**
   String get aiTestsEngineIntro;
 
   /// No description provided for @aiTestsPagodaIntro.
   ///
   /// In en, this message translates to:
-  /// **'Spring Festival at the Five-Story Pagoda — an interactive voxel garden benchmark with procedural terrain, animated elements, and dynamic lighting.'**
+  /// **'Spring Festival at the Five-Story Pagoda: an interactive voxel garden benchmark with procedural terrain, animated elements and dynamic lighting.'**
   String get aiTestsPagodaIntro;
 
   /// No description provided for @aiTestsSelectModel.
@@ -19019,25 +19019,25 @@ abstract class L {
   /// No description provided for @aiTestsPagodaDescSpaceBunny.
   ///
   /// In en, this message translates to:
-  /// **'Independent voxel garden benchmark — flying island, sky waterfalls and a five-storey pagoda'**
+  /// **'Independent voxel garden benchmark with a flying island, sky waterfalls and a five-storey pagoda'**
   String get aiTestsPagodaDescSpaceBunny;
 
   /// No description provided for @aiTestsPagodaDescSonnetXhigh.
   ///
   /// In en, this message translates to:
-  /// **'Sonnet 5.5 at extra-high reasoning effort — a floating garden island with a waterfall and a five-storey pagoda'**
+  /// **'Sonnet 5.5 at extra-high reasoning effort: a floating garden island with a waterfall and a five-storey pagoda'**
   String get aiTestsPagodaDescSonnetXhigh;
 
   /// No description provided for @aiTestsPagodaDescGptSolXhigh.
   ///
   /// In en, this message translates to:
-  /// **'GPT 6.1 Sol at extra-high reasoning effort — spring festival voxel garden with a five-storey pagoda'**
+  /// **'GPT 6.1 Sol at extra-high reasoning effort: a spring festival voxel garden with a five-storey pagoda'**
   String get aiTestsPagodaDescGptSolXhigh;
 
   /// No description provided for @aiTestsPagodaDescGptSolLow.
   ///
   /// In en, this message translates to:
-  /// **'GPT 6.1 Sol at low reasoning effort — spring festival voxel garden with a five-storey pagoda'**
+  /// **'GPT 6.1 Sol at low reasoning effort: a spring festival voxel garden with a five-storey pagoda'**
   String get aiTestsPagodaDescGptSolLow;
 
   /// No description provided for @aiTestPagodaTitle.
@@ -19223,7 +19223,7 @@ abstract class L {
   /// No description provided for @aiTestPcBundledDesc.
   ///
   /// In en, this message translates to:
-  /// **'HELIX 01 — an ivory and aluminum showcase with a custom liquid loop, hinged glass, exploded inspection and power/RGB controls.'**
+  /// **'HELIX 01, an ivory and aluminum showcase with a custom liquid loop, hinged glass, exploded inspection and power/RGB controls.'**
   String get aiTestPcBundledDesc;
 
   /// No description provided for @aiTestPcPlatformBody.
@@ -19517,7 +19517,7 @@ abstract class L {
   /// No description provided for @airlineErrOutOfRange.
   ///
   /// In en, this message translates to:
-  /// **'{model} cannot reach {city} — {km} km against {rangeKm} km of range.'**
+  /// **'{model} can\'t reach {city}: {km} km against {rangeKm} km of range.'**
   String airlineErrOutOfRange(
     String model,
     String city,
@@ -19552,7 +19552,7 @@ abstract class L {
   /// No description provided for @airlineErrGatesTaken.
   ///
   /// In en, this message translates to:
-  /// **'Every usable gate is taken. You have {count, plural, =1{1 gate} other{{count} gates}} not touching a terminal — move them next to one to put them to work.'**
+  /// **'Every usable gate is taken. You have {count, plural, =1{1 gate} other{{count} gates}} not touching a terminal. Move them next to one to put them to work.'**
   String airlineErrGatesTaken(int count);
 
   /// No description provided for @airlineErrNeedGate.
@@ -20098,7 +20098,7 @@ abstract class L {
   /// No description provided for @airlineFinLandAtMax.
   ///
   /// In en, this message translates to:
-  /// **'Your land is {size} by {size} — the largest the airport authority will sell you.'**
+  /// **'Your land is {size} by {size}, the biggest plot the airport authority will sell you.'**
   String airlineFinLandAtMax(String size);
 
   /// No description provided for @airlineFinLandGrow.
@@ -20272,7 +20272,7 @@ abstract class L {
   /// No description provided for @airlineRoutesNoUsableAircraft.
   ///
   /// In en, this message translates to:
-  /// **'Nothing in the catalogue can fly this from your hub yet — you need a longer runway, or this sector is beyond every aircraft you could buy.'**
+  /// **'Nothing in the catalogue can fly this from your hub yet. You need a longer runway, or this route is beyond every aircraft you could buy.'**
   String get airlineRoutesNoUsableAircraft;
 
   /// No description provided for @airlineRoutesCanBeFlownBy.
@@ -20362,7 +20362,7 @@ abstract class L {
   /// No description provided for @airlineHubTileTooltip.
   ///
   /// In en, this message translates to:
-  /// **'{name} — {blurb}'**
+  /// **'{name}: {blurb}'**
   String airlineHubTileTooltip(String name, String blurb);
 
   /// No description provided for @airlineHubTileSemantics.
@@ -20722,7 +20722,7 @@ abstract class L {
   /// No description provided for @autoClickerHotKeyRegisterFailed.
   ///
   /// In en, this message translates to:
-  /// **'Could not register the global hotkey — another app may already be using it.'**
+  /// **'Couldn\'t register the global hotkey. Another app may already be using it.'**
   String get autoClickerHotKeyRegisterFailed;
 
   /// No description provided for @autoClickerInvalidSnapshot.
@@ -20806,7 +20806,7 @@ abstract class L {
   /// No description provided for @calcErrorHasX.
   ///
   /// In en, this message translates to:
-  /// **'That has an x in it — press Plot to draw it.'**
+  /// **'That has an x in it. Press Plot to draw it.'**
   String get calcErrorHasX;
 
   /// No description provided for @calcPlotNeedsExpression.
@@ -20884,7 +20884,7 @@ abstract class L {
   /// No description provided for @calcNothingPlotted.
   ///
   /// In en, this message translates to:
-  /// **'Nothing plotted yet. Type something with an x — like x^2 - 3 or sin(x) — and press Plot.'**
+  /// **'Nothing plotted yet. Type something with an x, like x^2 - 3 or sin(x), and press Plot.'**
   String get calcNothingPlotted;
 
   /// No description provided for @calcFunctionHide.
@@ -21778,7 +21778,7 @@ abstract class L {
   /// No description provided for @calendarSharedByView.
   ///
   /// In en, this message translates to:
-  /// **'Shared by {author} — view only'**
+  /// **'Shared by {author} (view only)'**
   String calendarSharedByView(String author);
 
   /// No description provided for @calendarFamilyMemberFallback.
@@ -22060,7 +22060,7 @@ abstract class L {
   /// No description provided for @cardWalletHoldFlat.
   ///
   /// In en, this message translates to:
-  /// **'Hold your card flat against the back of your phone and keep it still — larger cards take a second to read.'**
+  /// **'Hold your card flat against the back of your phone and keep it still. Bigger cards take a second to read.'**
   String get cardWalletHoldFlat;
 
   /// No description provided for @cardWalletScanUnexpectedError.
@@ -22144,7 +22144,7 @@ abstract class L {
   /// No description provided for @cardWalletCodeHintScan.
   ///
   /// In en, this message translates to:
-  /// **'Scan it in above, or type it — e.g. 2601234567890'**
+  /// **'Scan it in above, or type it (e.g. 2601234567890)'**
   String get cardWalletCodeHintScan;
 
   /// No description provided for @cardWalletCodeHint.
@@ -22252,7 +22252,7 @@ abstract class L {
   /// No description provided for @cardWalletNoStandardMatch.
   ///
   /// In en, this message translates to:
-  /// **'No standard match — using {format}'**
+  /// **'No standard match, using {format}'**
   String cardWalletNoStandardMatch(String format);
 
   /// No description provided for @cardWalletChange.
@@ -22348,19 +22348,19 @@ abstract class L {
   /// No description provided for @cardWalletNfcReadFailed.
   ///
   /// In en, this message translates to:
-  /// **'Couldn\'t read that tag — it looks empty or unsupported.'**
+  /// **'Couldn\'t read that tag. It looks empty or unsupported.'**
   String get cardWalletNfcReadFailed;
 
   /// No description provided for @cardWalletNfcPaymentCardRefused.
   ///
   /// In en, this message translates to:
-  /// **'That looks like a bank or credit card — luma won\'t copy payment cards for your security. Add a loyalty, hotel, transit or event card instead.'**
+  /// **'That looks like a bank or credit card. For your security, luma won\'t copy payment cards. Add a loyalty, hotel, transit or event card instead.'**
   String get cardWalletNfcPaymentCardRefused;
 
   /// No description provided for @cardWalletNfcEmptyTag.
   ///
   /// In en, this message translates to:
-  /// **'Couldn\'t read anything off that tag — it may be empty or locked.'**
+  /// **'Couldn\'t read anything off that tag. It may be empty or locked.'**
   String get cardWalletNfcEmptyTag;
 
   /// No description provided for @cityPlannerLinuxTitle.
@@ -22378,7 +22378,7 @@ abstract class L {
   /// No description provided for @cloudFilesSessionExpired.
   ///
   /// In en, this message translates to:
-  /// **'Your session expired — sign in again under Settings → Sync.'**
+  /// **'Your session expired. Sign in again under Settings → Sync.'**
   String get cloudFilesSessionExpired;
 
   /// No description provided for @cloudFilesSignInFirst.
@@ -22414,7 +22414,7 @@ abstract class L {
   /// No description provided for @cloudFilesIndexConflict.
   ///
   /// In en, this message translates to:
-  /// **'Could not update the file list — please try again.'**
+  /// **'Couldn\'t update the file list. Please try again.'**
   String get cloudFilesIndexConflict;
 
   /// No description provided for @cloudFilesSizeB.
@@ -22450,7 +22450,7 @@ abstract class L {
   /// No description provided for @cloudFilesSignedOutBody.
   ///
   /// In en, this message translates to:
-  /// **'Sign in to your sync server under Settings → Sync & account, then come back here to upload files. Files are encrypted on this device before upload — the server can never read them.'**
+  /// **'Sign in to your sync server under Settings → Sync & account, then come back here to upload files. Files are encrypted on this device before upload, so the server can never read them.'**
   String get cloudFilesSignedOutBody;
 
   /// No description provided for @cloudFilesHeaderSubtitle.
@@ -22846,7 +22846,7 @@ abstract class L {
   /// No description provided for @dataMgmtTagsExplainer.
   ///
   /// In en, this message translates to:
-  /// **'Tags can be attached to any row and used to group charts — e.g. tag income rows by source and see what earns the most.'**
+  /// **'Tags can be attached to any row and used to group charts. For example, tag income rows by source and see what earns the most.'**
   String get dataMgmtTagsExplainer;
 
   /// No description provided for @dataMgmtNoTagsYet.
@@ -23044,7 +23044,7 @@ abstract class L {
   /// No description provided for @deviceHealthErrDefenderUnavailable.
   ///
   /// In en, this message translates to:
-  /// **'Couldn\'t read Windows Defender\'s status — another antivirus may be active, or the Defender service is disabled.'**
+  /// **'Couldn\'t read Windows Defender\'s status. Another antivirus may be active, or the Defender service is turned off.'**
   String get deviceHealthErrDefenderUnavailable;
 
   /// No description provided for @deviceHealthErrListProcesses.
@@ -23062,7 +23062,7 @@ abstract class L {
   /// No description provided for @deviceHealthNeedsManualUpdate.
   ///
   /// In en, this message translates to:
-  /// **'Needs a manual update — winget could not finish silently.'**
+  /// **'Needs a manual update. winget couldn\'t finish silently.'**
   String get deviceHealthNeedsManualUpdate;
 
   /// No description provided for @deviceHealthIssueRamHigh.
@@ -23140,7 +23140,7 @@ abstract class L {
   /// No description provided for @deviceHealthCardAppUpdatesNotScanned.
   ///
   /// In en, this message translates to:
-  /// **'Not scanned yet — checks winget and luma for available updates.'**
+  /// **'Not scanned yet. This checks winget and luma for available updates.'**
   String get deviceHealthCardAppUpdatesNotScanned;
 
   /// No description provided for @deviceHealthCardUpdateAll.
@@ -23158,7 +23158,7 @@ abstract class L {
   /// No description provided for @deviceHealthCardUpdateFailedHint.
   ///
   /// In en, this message translates to:
-  /// **'Couldn\'t update automatically — try updating it yourself.'**
+  /// **'Couldn\'t update automatically. Try updating it yourself.'**
   String get deviceHealthCardUpdateFailedHint;
 
   /// No description provided for @deviceHealthCardAppsUpToDate.
@@ -23182,7 +23182,7 @@ abstract class L {
   /// No description provided for @deviceHealthCardNoBattery.
   ///
   /// In en, this message translates to:
-  /// **'No battery detected — this looks like a desktop.'**
+  /// **'No battery found. This looks like a desktop.'**
   String get deviceHealthCardNoBattery;
 
   /// No description provided for @deviceHealthCardBatteryHealth.
@@ -23344,7 +23344,7 @@ abstract class L {
   /// No description provided for @deviceHealthCardGpuDisclaimer.
   ///
   /// In en, this message translates to:
-  /// **'Windows doesn\'t expose a way to check driver freshness directly — these open the tool that actually knows. Nothing is installed automatically.'**
+  /// **'Windows doesn\'t offer a way to check driver freshness directly, so these open the tool that actually knows. Nothing gets installed automatically.'**
   String get deviceHealthCardGpuDisclaimer;
 
   /// No description provided for @deviceHealthCardProcessesTitle.
@@ -23362,7 +23362,7 @@ abstract class L {
   /// No description provided for @deviceHealthCardProcessesNotScanned.
   ///
   /// In en, this message translates to:
-  /// **'Not scanned yet — this reads every running process, so it isn\'t run automatically.'**
+  /// **'Not scanned yet. This reads every running process, so it doesn\'t run automatically.'**
   String get deviceHealthCardProcessesNotScanned;
 
   /// No description provided for @deviceHealthCardProcessesSummary.
@@ -23440,7 +23440,7 @@ abstract class L {
   /// No description provided for @errandsEmptySubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Add a recurring errand — daily, weekly, monthly or every few days — and it shows up on your checklist the day it\'s due.'**
+  /// **'Add a recurring errand (daily, weekly, monthly or every few days) and it shows up on your checklist the day it\'s due.'**
   String get errandsEmptySubtitle;
 
   /// No description provided for @errandsAddErrand.
@@ -23452,7 +23452,7 @@ abstract class L {
   /// No description provided for @errandsAllDoneToday.
   ///
   /// In en, this message translates to:
-  /// **'All done for today — nice work.'**
+  /// **'All done for today. Nice work.'**
   String get errandsAllDoneToday;
 
   /// No description provided for @errandsNothingDueToday.
@@ -23674,7 +23674,7 @@ abstract class L {
   /// No description provided for @errandsCategoriesHelp.
   ///
   /// In en, this message translates to:
-  /// **'Group your checklist however you like — Household, Health, Admin… Deleting a category keeps its errands.'**
+  /// **'Group your checklist however you like: Household, Health, Admin… Deleting a category keeps its errands.'**
   String get errandsCategoriesHelp;
 
   /// No description provided for @errandsCategoryNameHint.
@@ -23950,7 +23950,7 @@ abstract class L {
   /// No description provided for @fileViewerNoPageTextHint.
   ///
   /// In en, this message translates to:
-  /// **'This page has no extractable text — it may be a scan or an image.'**
+  /// **'This page has no text to extract. It may be a scan or an image.'**
   String get fileViewerNoPageTextHint;
 
   /// No description provided for @fileViewerNoReadableText.
@@ -23974,7 +23974,7 @@ abstract class L {
   /// No description provided for @fileViewerLargeFile.
   ///
   /// In en, this message translates to:
-  /// **'Large file — showing the first 500 KB.'**
+  /// **'Large file, showing the first 500 KB.'**
   String get fileViewerLargeFile;
 
   /// No description provided for @fileViewerNotWordDocument.
@@ -24070,7 +24070,7 @@ abstract class L {
   /// No description provided for @freeSketchGalleryEmptyHint.
   ///
   /// In en, this message translates to:
-  /// **'Start a new artwork — pencils, inks, watercolours, markers, airbrushes and blenders, with layers, blend modes, symmetry and pressure. Export to PNG, JPEG, Photoshop or OpenRaster.'**
+  /// **'Start a new artwork. You get pencils, inks, watercolours, markers, airbrushes and blenders, with layers, blend modes, symmetry and pressure. Export to PNG, JPEG, Photoshop or OpenRaster.'**
   String get freeSketchGalleryEmptyHint;
 
   /// No description provided for @freeSketchArtworkInfo.
@@ -24688,7 +24688,7 @@ abstract class L {
   /// No description provided for @freeSketchTraitGlazes.
   ///
   /// In en, this message translates to:
-  /// **'glazes like a marker — overlaps darken'**
+  /// **'glazes like a marker, overlaps darken'**
   String get freeSketchTraitGlazes;
 
   /// No description provided for @freeSketchTraitAddsLight.
@@ -25640,7 +25640,7 @@ abstract class L {
   /// No description provided for @freeSketchLayerHidden.
   ///
   /// In en, this message translates to:
-  /// **'“{name}” is hidden — show it to paint on it.'**
+  /// **'“{name}” is hidden. Show it to paint on it.'**
   String freeSketchLayerHidden(String name);
 
   /// No description provided for @freeSketchStrokeModeErase.
@@ -25718,7 +25718,7 @@ abstract class L {
   /// No description provided for @freeSketchLayerEmptyTransform.
   ///
   /// In en, this message translates to:
-  /// **'This layer is empty — nothing to transform.'**
+  /// **'This layer is empty, so there\'s nothing to transform.'**
   String get freeSketchLayerEmptyTransform;
 
   /// No description provided for @freeSketchUndoTransform.
@@ -25730,7 +25730,7 @@ abstract class L {
   /// No description provided for @freeSketchLayerEmptyAdjust.
   ///
   /// In en, this message translates to:
-  /// **'This layer is empty — nothing to adjust.'**
+  /// **'This layer is empty, so there\'s nothing to adjust.'**
   String get freeSketchLayerEmptyAdjust;
 
   /// No description provided for @freeSketchUndoFill.
@@ -25874,7 +25874,7 @@ abstract class L {
   /// No description provided for @freeSketchViewMirroredTip.
   ///
   /// In en, this message translates to:
-  /// **'View is mirrored — tap to unflip (H)'**
+  /// **'View is mirrored. Tap to unflip (H)'**
   String get freeSketchViewMirroredTip;
 
   /// No description provided for @freeSketchUndoTip.
@@ -26012,7 +26012,7 @@ abstract class L {
   /// No description provided for @freeSketchToolTapAgainBrushes.
   ///
   /// In en, this message translates to:
-  /// **'{tool} — tap again for brushes'**
+  /// **'{tool} (tap again for brushes)'**
   String freeSketchToolTapAgainBrushes(String tool);
 
   /// No description provided for @freeSketchBrushSize.
@@ -26036,13 +26036,13 @@ abstract class L {
   /// No description provided for @freeSketchPressureSoft.
   ///
   /// In en, this message translates to:
-  /// **'Soft — light touch goes further'**
+  /// **'Soft: a light touch goes further'**
   String get freeSketchPressureSoft;
 
   /// No description provided for @freeSketchPressureFirm.
   ///
   /// In en, this message translates to:
-  /// **'Firm — press harder for full strength'**
+  /// **'Firm: press harder for full strength'**
   String get freeSketchPressureFirm;
 
   /// No description provided for @freeSketchPressureLinear.
@@ -26060,7 +26060,7 @@ abstract class L {
   /// No description provided for @freeSketchPalmRejectionHint.
   ///
   /// In en, this message translates to:
-  /// **'Once a stylus is used, fingers pan and zoom instead of painting — palm rejection.'**
+  /// **'Once you\'ve used a stylus, fingers pan and zoom instead of painting (palm rejection).'**
   String get freeSketchPalmRejectionHint;
 
   /// No description provided for @freeSketchShortcutsHelp.
@@ -26438,7 +26438,7 @@ abstract class L {
   /// No description provided for @galleryDetailsOnlineOnly.
   ///
   /// In en, this message translates to:
-  /// **'Online only — not on this PC'**
+  /// **'Online only, not on this PC'**
   String get galleryDetailsOnlineOnly;
 
   /// No description provided for @galleryDetailsFolder.
@@ -26528,7 +26528,7 @@ abstract class L {
   /// No description provided for @galleryEditNameTooLong.
   ///
   /// In en, this message translates to:
-  /// **'That name is too long — keep it under 250 characters.'**
+  /// **'That name is too long. Keep it under 250 characters.'**
   String get galleryEditNameTooLong;
 
   /// No description provided for @galleryEditNameIllegal.
@@ -26558,7 +26558,7 @@ abstract class L {
   /// No description provided for @galleryEditKeepExtension.
   ///
   /// In en, this message translates to:
-  /// **'Keep the .{extension} ending — changing it stops the file opening.'**
+  /// **'Keep the .{extension} ending. Changing it stops the file from opening.'**
   String galleryEditKeepExtension(String extension);
 
   /// No description provided for @galleryEditFileGone.
@@ -26606,7 +26606,7 @@ abstract class L {
   /// No description provided for @galleryMapPlacedSoFar.
   ///
   /// In en, this message translates to:
-  /// **'{placed} placed so far — still reading locations'**
+  /// **'{placed} placed so far, still reading locations'**
   String galleryMapPlacedSoFar(int placed);
 
   /// No description provided for @galleryMapLocatedOfTotal.
@@ -26654,7 +26654,7 @@ abstract class L {
   /// No description provided for @galleryPageNoFoldersYet.
   ///
   /// In en, this message translates to:
-  /// **'No folders found yet — let the first scan finish.'**
+  /// **'No folders found yet. Let the first scan finish.'**
   String get galleryPageNoFoldersYet;
 
   /// No description provided for @galleryPageScanOneFolder.
@@ -26690,7 +26690,7 @@ abstract class L {
   /// No description provided for @galleryPageSortingProgress.
   ///
   /// In en, this message translates to:
-  /// **'Sorting photos into People and Categories — {count} of {total}'**
+  /// **'Sorting photos into People and Categories: {count} of {total}'**
   String galleryPageSortingProgress(int count, int total);
 
   /// No description provided for @galleryPageSortingStarting.
@@ -26840,7 +26840,7 @@ abstract class L {
   /// No description provided for @galleryPagePeopleStillSorting.
   ///
   /// In en, this message translates to:
-  /// **'Still sorting the library — people appear here once a face has turned up in a few photos.'**
+  /// **'Still sorting the library. People show up here once a face has turned up in a few photos.'**
   String get galleryPagePeopleStillSorting;
 
   /// No description provided for @galleryPagePeopleSortHint.
@@ -26858,7 +26858,7 @@ abstract class L {
   /// No description provided for @galleryPageNoTripsBody.
   ///
   /// In en, this message translates to:
-  /// **'A run of photos over a few busy days — a weekend away, a holiday — shows up here on its own. Nothing to set up, and it works without Nova.'**
+  /// **'A run of photos over a few busy days, like a weekend away or a holiday, shows up here on its own. Nothing to set up, and it works without Nova.'**
   String get galleryPageNoTripsBody;
 
   /// No description provided for @galleryPageNothingSortedYet.
@@ -26984,7 +26984,7 @@ abstract class L {
   /// No description provided for @galleryPageStaysOnDevice.
   ///
   /// In en, this message translates to:
-  /// **'Photos and videos stay on this device — the gallery only reads them to show them here.'**
+  /// **'Photos and videos stay on this device. The gallery only reads them to show them here.'**
   String get galleryPageStaysOnDevice;
 
   /// No description provided for @galleryPageScanEverything.
@@ -27038,13 +27038,13 @@ abstract class L {
   /// No description provided for @galleryPageSortingPhotosProgress.
   ///
   /// In en, this message translates to:
-  /// **'Sorting photos — {count} of {total}'**
+  /// **'Sorting photos: {count} of {total}'**
   String galleryPageSortingPhotosProgress(int count, int total);
 
   /// No description provided for @galleryPageReadingDetails.
   ///
   /// In en, this message translates to:
-  /// **'Reading photo details — {count} to go'**
+  /// **'Reading photo details, {count} to go'**
   String galleryPageReadingDetails(int count);
 
   /// No description provided for @galleryPageUpToDate.
@@ -27062,7 +27062,7 @@ abstract class L {
   /// No description provided for @galleryPageLookedAtSkipped.
   ///
   /// In en, this message translates to:
-  /// **'Looked at {examined, plural, =1{1 photo} other{{examined} photos}}. {skipped, plural, =1{1 was skipped} other{{skipped} were skipped}} because they are only in the cloud, or in a format that can\'t be read here — make them available offline and look again.'**
+  /// **'Looked at {examined, plural, =1{1 photo} other{{examined} photos}}. {skipped, plural, =1{1 was skipped} other{{skipped} were skipped}} because they\'re only in the cloud, or in a format that can\'t be read here. Make them available offline and look again.'**
   String galleryPageLookedAtSkipped(int examined, int skipped);
 
   /// No description provided for @galleryPageLookAgain.
@@ -27074,13 +27074,13 @@ abstract class L {
   /// No description provided for @galleryPageSmartDownloadDesktop.
   ///
   /// In en, this message translates to:
-  /// **'{pending, plural, =1{1 photo to look at.} other{{pending} photos to look at.}} This downloads about {megabytes} MB of models once (recognition and face matching); after that everything happens on this PC, offline — no photo is uploaded.'**
+  /// **'{pending, plural, =1{1 photo to look at.} other{{pending} photos to look at.}} This downloads about {megabytes} MB of models once (recognition and face matching). After that everything happens on this PC, offline, and no photo is uploaded.'**
   String galleryPageSmartDownloadDesktop(int pending, int megabytes);
 
   /// No description provided for @galleryPageSmartDownloadPhone.
   ///
   /// In en, this message translates to:
-  /// **'{pending, plural, =1{1 photo to look at.} other{{pending} photos to look at.}} This downloads a small (~{megabytes} MB) face-matching model once, so photos of the same person can be grouped — offline, and nothing is uploaded.'**
+  /// **'{pending, plural, =1{1 photo to look at.} other{{pending} photos to look at.}} This downloads a small (~{megabytes} MB) face-matching model once, so photos of the same person can be grouped. It runs offline and nothing is uploaded.'**
   String galleryPageSmartDownloadPhone(int pending, int megabytes);
 
   /// No description provided for @galleryPageSmartRemaining.
@@ -27116,7 +27116,7 @@ abstract class L {
   /// No description provided for @galleryPageSmartUpsellBodyModels.
   ///
   /// In en, this message translates to:
-  /// **'Nova groups your photos by who is in them and what is actually in the picture — food, pets, ocean, and more — using models that run on this device, offline. Nothing is uploaded.'**
+  /// **'Nova groups your photos by who\'s in them and what\'s actually in the picture (food, pets, the ocean and more) using models that run on this device, offline. Nothing is uploaded.'**
   String get galleryPageSmartUpsellBodyModels;
 
   /// No description provided for @galleryPageSmartUpsellBodyPhone.
@@ -27356,7 +27356,7 @@ abstract class L {
   /// No description provided for @gameToolsComingSoonSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'This is where {game} helpers will live. Nothing to set up yet — they will show up here in a future update.'**
+  /// **'This is where {game} helpers will live. Nothing to set up yet; they\'ll show up here in a future update.'**
   String gameToolsComingSoonSubtitle(String game);
 
   /// No description provided for @gameToolsToolCount.
@@ -27368,7 +27368,7 @@ abstract class L {
   /// No description provided for @gameToolsSectionTooltip.
   ///
   /// In en, this message translates to:
-  /// **'{label} — {blurb}'**
+  /// **'{label}: {blurb}'**
   String gameToolsSectionTooltip(String label, String blurb);
 
   /// No description provided for @groceriesApiEnterFullAddress.
@@ -27398,7 +27398,7 @@ abstract class L {
   /// No description provided for @groceriesApiNeedsAccount.
   ///
   /// In en, this message translates to:
-  /// **'Product search needs an approved luma account. Create one under Settings → {section} — your shopping list itself keeps working offline.'**
+  /// **'Product search needs an approved luma account. Create one under Settings → {section}. Your shopping list itself keeps working offline.'**
   String groceriesApiNeedsAccount(String section);
 
   /// No description provided for @groceriesApiTimeout.
@@ -27440,7 +27440,7 @@ abstract class L {
   /// No description provided for @groceriesGateSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Search Jumbo, Albert Heijn, Hoogvliet and Lidl prices side by side, and build shopping lists that split themselves by store and aisle with running totals — included free with Orbit and Nova.'**
+  /// **'Search Jumbo, Albert Heijn, Hoogvliet and Lidl prices side by side, and build shopping lists that split themselves by store and aisle with running totals. Included free with Orbit and Nova.'**
   String get groceriesGateSubtitle;
 
   /// No description provided for @groceriesUpgradeTo.
@@ -27650,7 +27650,7 @@ abstract class L {
   /// No description provided for @mlHowStep1Body.
   ///
   /// In en, this message translates to:
-  /// **'Every stroke is stamped down with a thickness and merged with the others wherever they touch. That is thinned to its centre line, which becomes a graph of bones sitting exactly on what was drawn — a ring stays a ring, a stick figure stays a stick figure. Short spikes thrown off by wobbles are pruned, bends keep a joint and straight runs do not, and the result is capped at eighteen bones so the search stays small enough to finish.'**
+  /// **'Every stroke is stamped down with a thickness and merged with the others wherever they touch. That gets thinned to its centre line, which becomes a graph of bones sitting exactly on what was drawn: a ring stays a ring, a stick figure stays a stick figure. Short spikes from wobbly lines are pruned, bends keep a joint and straight runs don\'t, and the result is capped at eighteen bones so the search stays small enough to finish.'**
   String get mlHowStep1Body;
 
   /// No description provided for @mlHowStep2Title.
@@ -27674,7 +27674,7 @@ abstract class L {
   /// No description provided for @mlHowStep3Body.
   ///
   /// In en, this message translates to:
-  /// **'One gene sets the frequency the whole body steps at, then each joint gets three: how far it swings, where in the cycle it swings, and which angle it swings around. That handful of numbers is the entire nervous system — there is no brain reacting to the world, only a rhythm, which is why a good gait looks stubborn.'**
+  /// **'One gene sets the frequency the whole body steps at, then each joint gets three: how far it swings, where in the cycle it swings, and which angle it swings around. That handful of numbers is the whole nervous system. There\'s no brain reacting to the world, only a rhythm, which is why a good gait looks stubborn.'**
   String get mlHowStep3Body;
 
   /// No description provided for @mlHowStep4Title.
@@ -27698,7 +27698,7 @@ abstract class L {
   /// No description provided for @mlHowStep5Body.
   ///
   /// In en, this message translates to:
-  /// **'The best line climbs fast and then flattens, because the search has found a local trick and is polishing it. The average line stays jagged and far below — that is mutation still throwing away most of its guesses. Restarting rolls new dice, and the same body often learns a completely different walk.'**
+  /// **'The best line climbs fast and then flattens, because the search has found a local trick and is polishing it. The average line stays jagged and far below, which is mutation still throwing away most of its guesses. Restarting rolls new dice, and the same body often learns a completely different walk.'**
   String get mlHowStep5Body;
 
   /// No description provided for @mlHowFooter.
@@ -27866,7 +27866,7 @@ abstract class L {
   /// No description provided for @mlStoppedAtLimit.
   ///
   /// In en, this message translates to:
-  /// **'stopped at {limit} — move \"stop after\" up to carry on'**
+  /// **'stopped at {limit}. Raise \"stop after\" to keep going'**
   String mlStoppedAtLimit(String limit);
 
   /// No description provided for @mlBestDistance.
@@ -28106,7 +28106,7 @@ abstract class L {
   /// No description provided for @mediaDlSetupBody.
   ///
   /// In en, this message translates to:
-  /// **'Fetching yt-dlp and ffmpeg — this only happens once.'**
+  /// **'Fetching yt-dlp and ffmpeg. This only happens once.'**
   String get mediaDlSetupBody;
 
   /// No description provided for @mediaDlSetupFailed.
@@ -28178,7 +28178,7 @@ abstract class L {
   /// No description provided for @mediaDlIntroBody.
   ///
   /// In en, this message translates to:
-  /// **'Paste a YouTube video link to get started. If downloads start failing with a 403 error, YouTube has likely changed something — try \"{updateLabel}\" above.'**
+  /// **'Paste a YouTube video link to get started. If downloads start failing with a 403 error, YouTube has probably changed something, so try \"{updateLabel}\" above.'**
   String mediaDlIntroBody(String updateLabel);
 
   /// No description provided for @mediaDlLinkHint.
@@ -28376,7 +28376,7 @@ abstract class L {
   /// No description provided for @mindMapLibraryEmptySubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Name one above. You start on the centre idea and press Tab to branch out — no dragging required.'**
+  /// **'Name one above. You start on the centre idea and press Tab to branch out. No dragging required.'**
   String get mindMapLibraryEmptySubtitle;
 
   /// No description provided for @mindMapDeleteMapTooltip.
@@ -28532,7 +28532,7 @@ abstract class L {
   /// No description provided for @mindMapAiAllowanceUsed.
   ///
   /// In en, this message translates to:
-  /// **'You\'ve used today\'s AI allowance — more tomorrow.'**
+  /// **'You\'ve used today\'s AI allowance. More tomorrow.'**
   String get mindMapAiAllowanceUsed;
 
   /// No description provided for @mindMapAiNoKey.
@@ -28766,7 +28766,7 @@ abstract class L {
   /// No description provided for @mcCrashAiUsageLimit.
   ///
   /// In en, this message translates to:
-  /// **'You\'ve hit today\'s AI usage limit — try again tomorrow.'**
+  /// **'You\'ve hit today\'s AI usage limit. Try again tomorrow.'**
   String get mcCrashAiUsageLimit;
 
   /// No description provided for @mcCrashAiNoKey.
@@ -29172,7 +29172,7 @@ abstract class L {
   /// No description provided for @mcCloudBackupNeedsAccount.
   ///
   /// In en, this message translates to:
-  /// **'Cloud backups need an approved luma account — create one under Settings → Sync & account.'**
+  /// **'Cloud backups need an approved luma account. Create one under Settings → Sync & account.'**
   String get mcCloudBackupNeedsAccount;
 
   /// No description provided for @mcCloudStorageFull.
@@ -29190,7 +29190,7 @@ abstract class L {
   /// No description provided for @mcCloudBackupIndexFailed.
   ///
   /// In en, this message translates to:
-  /// **'Could not update the backup list — please try again.'**
+  /// **'Couldn\'t update the backup list. Please try again.'**
   String get mcCloudBackupIndexFailed;
 
   /// No description provided for @mcMsAuthNotConfigured.
@@ -29316,7 +29316,7 @@ abstract class L {
   /// No description provided for @mcModCurseForgeOnly.
   ///
   /// In en, this message translates to:
-  /// **'{title} can only be downloaded from its CurseForge page — the author has turned off downloads in other launchers.'**
+  /// **'{title} can only be downloaded from its CurseForge page, because the author has turned off downloads in other launchers.'**
   String mcModCurseForgeOnly(String title);
 
   /// No description provided for @mcModUnsafeFileName.
@@ -29436,7 +29436,7 @@ abstract class L {
   /// No description provided for @minecraftLauncherOfflineNeedsMicrosoft.
   ///
   /// In en, this message translates to:
-  /// **'Sign in with a Microsoft account that owns Minecraft first — offline profiles are for playing without a connection afterwards, not instead of that.'**
+  /// **'Sign in with a Microsoft account that owns Minecraft first. Offline profiles are for playing without a connection afterwards, not a replacement for that.'**
   String get minecraftLauncherOfflineNeedsMicrosoft;
 
   /// No description provided for @minecraftLauncherCloudBackups.
@@ -30846,7 +30846,7 @@ abstract class L {
   /// No description provided for @nfcRecordEditorWifiNote.
   ///
   /// In en, this message translates to:
-  /// **'Written as a text record most phones can read when they tap the tag — it won\'t auto-join every device the way a router\'s own Wi-Fi QR code sometimes does.'**
+  /// **'Written as a text record that most phones can read when they tap the tag. It won\'t auto-join every device the way a router\'s own Wi-Fi QR code sometimes does.'**
   String get nfcRecordEditorWifiNote;
 
   /// No description provided for @nfcRecordEditorPhoneOptional.
@@ -30972,7 +30972,7 @@ abstract class L {
   /// No description provided for @nfcSummaryRawBytes.
   ///
   /// In en, this message translates to:
-  /// **'Kept as-is ({bytes} bytes) — not editable'**
+  /// **'Kept as-is ({bytes} bytes), not editable'**
   String nfcSummaryRawBytes(int bytes);
 
   /// No description provided for @nfcDuplicate.
@@ -30990,13 +30990,13 @@ abstract class L {
   /// No description provided for @nfcUnsupportedNotice.
   ///
   /// In en, this message translates to:
-  /// **'NFC Tag Editor needs Android\'s NFC hardware and reader APIs, so it only works on an Android phone or tablet — there\'s nothing to scan or write here.'**
+  /// **'NFC Tag Editor needs Android\'s NFC hardware and reader APIs, so it only works on an Android phone or tablet. There\'s nothing to scan or write here.'**
   String get nfcUnsupportedNotice;
 
   /// No description provided for @nfcErrNotNdef.
   ///
   /// In en, this message translates to:
-  /// **'This tag doesn\'t support NDEF, so luma can\'t edit it. Most blank NFC stickers and cards do — try another tag.'**
+  /// **'This tag doesn\'t support NDEF, so luma can\'t edit it. Most blank NFC stickers and cards do, so try another tag.'**
   String get nfcErrNotNdef;
 
   /// No description provided for @nfcErrNotAvailable.
@@ -31038,7 +31038,7 @@ abstract class L {
   /// No description provided for @nfcErrNotWritable.
   ///
   /// In en, this message translates to:
-  /// **'This tag can\'t be written to — it doesn\'t support NDEF.'**
+  /// **'This tag can\'t be written to. It doesn\'t support NDEF.'**
   String get nfcErrNotWritable;
 
   /// No description provided for @nfcErrNothingToLock.
@@ -31080,7 +31080,7 @@ abstract class L {
   /// No description provided for @nfcHeroBody.
   ///
   /// In en, this message translates to:
-  /// **'Hold any NFC tag or sticker to your phone to read and edit its records — or start from scratch and write a brand-new tag.'**
+  /// **'Hold any NFC tag or sticker to your phone to read and edit its records, or start from scratch and write a brand-new tag.'**
   String get nfcHeroBody;
 
   /// No description provided for @nfcScanTag.
@@ -31110,7 +31110,7 @@ abstract class L {
   /// No description provided for @nfcNoRecordsBody.
   ///
   /// In en, this message translates to:
-  /// **'Add a record above — text, a link, Wi-Fi details, a contact card and more.'**
+  /// **'Add a record above: text, a link, Wi-Fi details, a contact card and more.'**
   String get nfcNoRecordsBody;
 
   /// No description provided for @nfcWriteToTag.
@@ -31122,7 +31122,7 @@ abstract class L {
   /// No description provided for @nfcWriteHint.
   ///
   /// In en, this message translates to:
-  /// **'Works on the tag you scanned or a different one — just hold whichever you want to write to when it\'s ready.'**
+  /// **'Works on the tag you scanned or a different one. Just hold whichever one you want to write to when it\'s ready.'**
   String get nfcWriteHint;
 
   /// No description provided for @nfcStartOver.
@@ -31200,7 +31200,7 @@ abstract class L {
   /// No description provided for @nfcWriteLockBody.
   ///
   /// In en, this message translates to:
-  /// **'This writes the records below, then makes the tag permanently read-only. It can never be written to again — not by luma, not by any other app.'**
+  /// **'This writes the records below, then makes the tag permanently read-only. It can never be written to again, not by luma and not by any other app.'**
   String get nfcWriteLockBody;
 
   /// No description provided for @nfcWriteLockAction.
@@ -31230,7 +31230,7 @@ abstract class L {
   /// No description provided for @nfcDeleteTemplateBody.
   ///
   /// In en, this message translates to:
-  /// **'This removes “{name}” — tags already written with it keep their content.'**
+  /// **'This removes “{name}”. Tags already written with it keep their content.'**
   String nfcDeleteTemplateBody(String name);
 
   /// No description provided for @nfcNoTemplatesTitle.
@@ -31242,7 +31242,7 @@ abstract class L {
   /// No description provided for @nfcNoTemplatesBody.
   ///
   /// In en, this message translates to:
-  /// **'Build a set of records in the Editor tab, then save it here to write the same tag content again and again — handy for a batch of stickers.'**
+  /// **'Build a set of records in the Editor tab, then save it here to write the same tag content again and again. Handy for a batch of stickers.'**
   String get nfcNoTemplatesBody;
 
   /// No description provided for @nfcTemplateRecordsSummary.
@@ -31380,7 +31380,7 @@ abstract class L {
   /// No description provided for @nfcTagBlankWillFormat.
   ///
   /// In en, this message translates to:
-  /// **'Blank — will format'**
+  /// **'Blank, will be formatted'**
   String get nfcTagBlankWillFormat;
 
   /// No description provided for @nfcTagUid.
@@ -31746,7 +31746,7 @@ abstract class L {
   /// No description provided for @recipeBookFavouritesHint.
   ///
   /// In en, this message translates to:
-  /// **'Tap the heart on any recipe — private or public — to keep it here.'**
+  /// **'Tap the heart on any recipe, private or public, to keep it here.'**
   String get recipeBookFavouritesHint;
 
   /// No description provided for @recipeBookNew.
@@ -32328,7 +32328,7 @@ abstract class L {
   /// No description provided for @mafiaRoleCountingLowCountWarning.
   ///
   /// In en, this message translates to:
-  /// **'The wiki flags its data below 7 players as possibly inaccurate — treat this count as a rough guide.'**
+  /// **'The wiki flags its data below 7 players as possibly inaccurate, so treat this count as a rough guide.'**
   String get mafiaRoleCountingLowCountWarning;
 
   /// No description provided for @mafiaRoleCountingClaimedOfTotal.
@@ -33831,7 +33831,7 @@ abstract class L {
   /// No description provided for @secureChatPeerNoKey.
   ///
   /// In en, this message translates to:
-  /// **'This person hasn\'t set up chat encryption yet — try again later.'**
+  /// **'This person hasn\'t set up chat encryption yet. Try again later.'**
   String get secureChatPeerNoKey;
 
   /// No description provided for @secureChatNotSignedIn.
@@ -33879,7 +33879,7 @@ abstract class L {
   /// No description provided for @secureChatNeedsSyncBody.
   ///
   /// In en, this message translates to:
-  /// **'Sign in under Settings → Sync & account to invite people and chat. Messages are end-to-end encrypted on this device — the server only ever relays ciphertext.'**
+  /// **'Sign in under Settings → Sync & account to invite people and chat. Messages are end-to-end encrypted on this device, and the server only ever relays ciphertext.'**
   String get secureChatNeedsSyncBody;
 
   /// No description provided for @secureChatHeading.
@@ -33951,7 +33951,7 @@ abstract class L {
   /// No description provided for @secureChatPeerNotReady.
   ///
   /// In en, this message translates to:
-  /// **'{email} hasn\'t set up chat encryption on a device yet — you\'ll be able to message them once they do.'**
+  /// **'{email} hasn\'t set up chat encryption on a device yet. You\'ll be able to message them once they do.'**
   String secureChatPeerNotReady(String email);
 
   /// No description provided for @secureChatMessageHint.
@@ -33981,7 +33981,7 @@ abstract class L {
   /// No description provided for @secureChatInviteBody.
   ///
   /// In en, this message translates to:
-  /// **'They\'ll see the invite in Chat → Invites the next time they open Luma. Once accepted, every message is end-to-end encrypted — only the two of you can read them.'**
+  /// **'They\'ll see the invite in Chat → Invites the next time they open Luma. Once they accept, every message is end-to-end encrypted and only the two of you can read them.'**
   String get secureChatInviteBody;
 
   /// No description provided for @secureChatSendInvite.
@@ -36063,7 +36063,7 @@ abstract class L {
   /// No description provided for @serverTycoonNothingPluggedIn.
   ///
   /// In en, this message translates to:
-  /// **'Nothing plugged in — drag a service node onto this rig.'**
+  /// **'Nothing plugged in. Drag a service node onto this rig.'**
   String get serverTycoonNothingPluggedIn;
 
   /// No description provided for @serverTycoonInstallService.
@@ -36111,7 +36111,7 @@ abstract class L {
   /// No description provided for @serverTycoonServiceNotPluggedIn.
   ///
   /// In en, this message translates to:
-  /// **'Not plugged in — drag this node\'s port onto a rig.'**
+  /// **'Not plugged in. Drag this node\'s port onto a rig.'**
   String get serverTycoonServiceNotPluggedIn;
 
   /// No description provided for @serverTycoonRunningOn.
@@ -36553,7 +36553,7 @@ abstract class L {
   /// No description provided for @serverTycoonNoOffersToday.
   ///
   /// In en, this message translates to:
-  /// **'No offers today — build reputation and buy licenses to attract companies.'**
+  /// **'No offers today. Build reputation and buy licenses to attract companies.'**
   String get serverTycoonNoOffersToday;
 
   /// No description provided for @serverTycoonActive.
@@ -36613,7 +36613,7 @@ abstract class L {
   /// No description provided for @serverTycoonResearchIdle.
   ///
   /// In en, this message translates to:
-  /// **'Nothing in the lab — earning {rate} RP/day'**
+  /// **'Nothing in the lab, earning {rate} RP/day'**
   String serverTycoonResearchIdle(String rate);
 
   /// No description provided for @serverTycoonResearchingValue.
@@ -36647,7 +36647,7 @@ abstract class L {
   /// No description provided for @serverTycoonResearchLevel.
   ///
   /// In en, this message translates to:
-  /// **'Level {level} — repeatable'**
+  /// **'Level {level} (repeatable)'**
   String serverTycoonResearchLevel(int level);
 
   /// No description provided for @serverTycoonResearched.
@@ -36855,25 +36855,25 @@ abstract class L {
   /// No description provided for @serverTycoonBoostExtend.
   ///
   /// In en, this message translates to:
-  /// **'Extend — {cost} for {days} days'**
+  /// **'Extend: {cost} for {days} days'**
   String serverTycoonBoostExtend(String cost, String days);
 
   /// No description provided for @serverTycoonBoostActivate.
   ///
   /// In en, this message translates to:
-  /// **'Activate — {cost} for {days} days'**
+  /// **'Activate: {cost} for {days} days'**
   String serverTycoonBoostActivate(String cost, String days);
 
   /// No description provided for @serverTycoonNetProfitLastDays.
   ///
   /// In en, this message translates to:
-  /// **'Net profit — last {count} days'**
+  /// **'Net profit, last {count} days'**
   String serverTycoonNetProfitLastDays(int count);
 
   /// No description provided for @serverTycoonPowerDrawLastDays.
   ///
   /// In en, this message translates to:
-  /// **'Power draw — last {count} days'**
+  /// **'Power draw, last {count} days'**
   String serverTycoonPowerDrawLastDays(int count);
 
   /// No description provided for @serverTycoonBestWorst.
@@ -36993,13 +36993,13 @@ abstract class L {
   /// No description provided for @serverTycoonAwayFor.
   ///
   /// In en, this message translates to:
-  /// **'Away for {duration} — {days, plural, =1{1 day} other{{days} days}} simulated at {rate}% rate.'**
+  /// **'Away for {duration}. {days, plural, =1{1 day} other{{days} days}} simulated at {rate}% rate.'**
   String serverTycoonAwayFor(String duration, int days, String rate);
 
   /// No description provided for @serverTycoonAwayCapped.
   ///
   /// In en, this message translates to:
-  /// **'Capped at {maxDays} days — {elapsed} had passed. Research the R&D Lab branch to earn more while away.'**
+  /// **'Capped at {maxDays} days ({elapsed} had passed). Research the R&D Lab branch to earn more while you\'re away.'**
   String serverTycoonAwayCapped(int maxDays, int elapsed);
 
   /// No description provided for @serverTycoonRunningCosts.
@@ -37179,7 +37179,7 @@ abstract class L {
   /// No description provided for @serverTycoonRepoOneProjectAtATime.
   ///
   /// In en, this message translates to:
-  /// **'Only one project at a time — build the R&D Lab branch for more queue slots'**
+  /// **'Only one project at a time. Build the R&D Lab branch for more queue slots'**
   String get serverTycoonRepoOneProjectAtATime;
 
   /// No description provided for @serverTycoonRepoResearchSlotsBusy.
@@ -37461,7 +37461,7 @@ abstract class L {
   /// No description provided for @serverTycoonRepoCloned.
   ///
   /// In en, this message translates to:
-  /// **'Cloned for {cost} — install services on it to start earning'**
+  /// **'Cloned for {cost}. Install services on it to start earning'**
   String serverTycoonRepoCloned(String cost);
 
   /// No description provided for @serverTycoonRepoNothingToArrange.
@@ -37787,7 +37787,7 @@ abstract class L {
   /// No description provided for @sftpHostOwnPasswordSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Off by default — luma generates a much stronger one.'**
+  /// **'Off by default. luma generates a much stronger one.'**
   String get sftpHostOwnPasswordSubtitle;
 
   /// No description provided for @sftpHostPasswordHint.
@@ -37799,7 +37799,7 @@ abstract class L {
   /// No description provided for @sftpHostPasswordTooShortWarn.
   ///
   /// In en, this message translates to:
-  /// **'Too short — this will be refused.'**
+  /// **'Too short. This will be refused.'**
   String get sftpHostPasswordTooShortWarn;
 
   /// No description provided for @sftpHostPasswordWeak.
@@ -37835,7 +37835,7 @@ abstract class L {
   /// No description provided for @sftpHostSecurityNote.
   ///
   /// In en, this message translates to:
-  /// **'The two devices agree on a key from the pairing password, then encrypt everything between them. luma\'s servers are not involved and never see the folder, the password or the files. Only the folder you pick is reachable. Hosting keeps running while luma is open — press Stop when you are done.'**
+  /// **'The two devices agree on a key from the pairing password, then encrypt everything between them. luma\'s servers aren\'t involved and never see the folder, the password or the files. Only the folder you pick is reachable. Hosting keeps running while luma is open, so press Stop when you\'re done.'**
   String get sftpHostSecurityNote;
 
   /// No description provided for @sftpHostNoAddress.
@@ -38231,7 +38231,7 @@ abstract class L {
   /// No description provided for @sftpThisDeviceUserNameNote.
   ///
   /// In en, this message translates to:
-  /// **'The user name is here to tell devices apart. luma pairs on the password alone — this is not an SSH login, and nothing on this device\'s account is exposed by it.'**
+  /// **'The user name is just there to tell devices apart. luma pairs on the password alone. This isn\'t an SSH login, and nothing on this device\'s account is exposed by it.'**
   String get sftpThisDeviceUserNameNote;
 
   /// No description provided for @sftpThisDeviceNewPassword.
@@ -38249,7 +38249,7 @@ abstract class L {
   /// No description provided for @sftpThisDeviceStatusChooseBody.
   ///
   /// In en, this message translates to:
-  /// **'Nothing is reachable until you pick one. Only that folder is served — nothing above it.'**
+  /// **'Nothing is reachable until you pick one. Only that folder is served, nothing above it.'**
   String get sftpThisDeviceStatusChooseBody;
 
   /// No description provided for @sftpThisDeviceStatusOpeningTitle.
@@ -38855,7 +38855,7 @@ abstract class L {
   /// No description provided for @sftpSharingFolderNote.
   ///
   /// In en, this message translates to:
-  /// **'Sharing a folder — any device with the pairing password can connect.'**
+  /// **'Sharing a folder. Any device with the pairing password can connect.'**
   String get sftpSharingFolderNote;
 
   /// No description provided for @sftpHostIdleNote.
@@ -38873,7 +38873,7 @@ abstract class L {
   /// No description provided for @sftpServersNote.
   ///
   /// In en, this message translates to:
-  /// **'Connect to your own server — nothing routes through luma.'**
+  /// **'Connect to your own server. Nothing goes through luma.'**
   String get sftpServersNote;
 
   /// No description provided for @sftpConnectedTo.
@@ -38957,7 +38957,7 @@ abstract class L {
   /// No description provided for @sftpUpsellBody.
   ///
   /// In en, this message translates to:
-  /// **'Connect to your own servers with a host, username, password and port, browse both sides at once, and drag files across. The connection goes straight from this device to your server — nothing passes through a luma server.'**
+  /// **'Connect to your own servers with a host, username, password and port, browse both sides at once, and drag files across. The connection goes straight from this device to your server and never passes through a luma server.'**
   String get sftpUpsellBody;
 
   /// No description provided for @sftpUpgradeTo.
@@ -39155,7 +39155,7 @@ abstract class L {
   /// No description provided for @sftpNearbyOtherVersion.
   ///
   /// In en, this message translates to:
-  /// **'{address} · runs a different version of luma — update both to connect'**
+  /// **'{address} · runs a different version of luma. Update both to connect'**
   String sftpNearbyOtherVersion(String address);
 
   /// No description provided for @sftpSiteNoServersTitle.
@@ -39167,7 +39167,7 @@ abstract class L {
   /// No description provided for @sftpSiteNoServersBody.
   ///
   /// In en, this message translates to:
-  /// **'A site is one saved server — its host name, user name, password and port. luma connects straight to it from this device. To go the other way and let a device connect to this one, open This device.'**
+  /// **'A site is one saved server: its host name, user name, password and port. luma connects straight to it from this device. To go the other way and let a device connect to this one, open This device.'**
   String get sftpSiteNoServersBody;
 
   /// No description provided for @sftpSiteNew.
@@ -39191,7 +39191,7 @@ abstract class L {
   /// No description provided for @sftpPrivacyNote.
   ///
   /// In en, this message translates to:
-  /// **'Connections go straight from this device to your server. Nothing passes through a luma server, and saved passwords stay encrypted here — they are never synced.'**
+  /// **'Connections go straight from this device to your server. Nothing passes through a luma server, and saved passwords stay encrypted here. They\'re never synced.'**
   String get sftpPrivacyNote;
 
   /// No description provided for @sftpPasswordSavedTooltip.
@@ -39269,7 +39269,7 @@ abstract class L {
   /// No description provided for @sftpSshServerHint.
   ///
   /// In en, this message translates to:
-  /// **'Any server that speaks SSH — a VPS, a NAS, a Pi.'**
+  /// **'Any server that speaks SSH: a VPS, a NAS, a Pi.'**
   String get sftpSshServerHint;
 
   /// No description provided for @sftpSiteNameHintLuma.
@@ -39347,7 +39347,7 @@ abstract class L {
   /// No description provided for @sftpSaveDeviceSecretNote.
   ///
   /// In en, this message translates to:
-  /// **'Encrypted on this device — but the other device changes it every time it starts hosting.'**
+  /// **'Encrypted on this device, but the other device changes it every time it starts hosting.'**
   String get sftpSaveDeviceSecretNote;
 
   /// No description provided for @sftpSaveSiteSecretNote.
@@ -39473,7 +39473,7 @@ abstract class L {
   /// No description provided for @sftpShareEmptyHint.
   ///
   /// In en, this message translates to:
-  /// **'Drag files in from the left, or use +. Anything here shows up in the same folder on your other devices — sent straight over your network, never through a luma server.'**
+  /// **'Drag files in from the left, or use +. Anything here shows up in the same folder on your other devices. It\'s sent straight over your network, never through a luma server.'**
   String get sftpShareEmptyHint;
 
   /// No description provided for @sftpShareOpen.
@@ -39599,7 +39599,7 @@ abstract class L {
   /// No description provided for @sendToDevicesQueued.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 file ready} other{{count} files ready}} — they will go over as soon as another device is on this network.'**
+  /// **'{count, plural, =1{1 file ready} other{{count} files ready}}. They\'ll go over as soon as another device is on this network.'**
   String sendToDevicesQueued(int count);
 
   /// No description provided for @sendToDevicesNoPeers.
@@ -39725,7 +39725,7 @@ abstract class L {
   /// No description provided for @cardGamesBjPushBlackjack.
   ///
   /// In en, this message translates to:
-  /// **'Push — both have blackjack.'**
+  /// **'Push. You both have blackjack.'**
   String get cardGamesBjPushBlackjack;
 
   /// No description provided for @cardGamesBjPlayerBlackjack.
@@ -39743,7 +39743,7 @@ abstract class L {
   /// No description provided for @cardGamesBjBust.
   ///
   /// In en, this message translates to:
-  /// **'Bust — dealer wins.'**
+  /// **'Bust. Dealer wins.'**
   String get cardGamesBjBust;
 
   /// No description provided for @cardGamesBjPlayerWins.
@@ -39755,7 +39755,7 @@ abstract class L {
   /// No description provided for @cardGamesBjPushTie.
   ///
   /// In en, this message translates to:
-  /// **'Push — it is a tie.'**
+  /// **'Push. It\'s a tie.'**
   String get cardGamesBjPushTie;
 
   /// No description provided for @cardGamesBjDealerWins.
@@ -39779,7 +39779,7 @@ abstract class L {
   /// No description provided for @cardGamesPokerPush.
   ///
   /// In en, this message translates to:
-  /// **'Push — both hands tie with {hand}.'**
+  /// **'Push. Both hands tie with {hand}.'**
   String cardGamesPokerPush(String hand);
 
   /// No description provided for @cardGamesPatienceStart.
@@ -41081,19 +41081,19 @@ abstract class L {
   /// No description provided for @cs2MarketSearchTracked.
   ///
   /// In en, this message translates to:
-  /// **'Search what you track — name, weapon, rarity'**
+  /// **'Search what you track by name, weapon or rarity'**
   String get cs2MarketSearchTracked;
 
   /// No description provided for @cs2MarketSearchAny.
   ///
   /// In en, this message translates to:
-  /// **'Search any CS2 item — name, weapon, rarity, case'**
+  /// **'Search any CS2 item by name, weapon, rarity or case'**
   String get cs2MarketSearchAny;
 
   /// No description provided for @cs2MarketCheckingProgress.
   ///
   /// In en, this message translates to:
-  /// **'Checking prices — {done} of {total}'**
+  /// **'Checking prices: {done} of {total}'**
   String cs2MarketCheckingProgress(int done, int total);
 
   /// No description provided for @cs2MarketDismiss.
@@ -41123,7 +41123,7 @@ abstract class L {
   /// No description provided for @cs2MarketKeepTypingHint.
   ///
   /// In en, this message translates to:
-  /// **'One letter matches too much of the catalog to be useful — a couple more will narrow it down.'**
+  /// **'One letter matches too much of the catalog to be useful. A couple more will narrow it down.'**
   String get cs2MarketKeepTypingHint;
 
   /// No description provided for @cs2MarketNoMatch.
@@ -41235,7 +41235,7 @@ abstract class L {
   /// No description provided for @cs2ItemNotFoundHint.
   ///
   /// In en, this message translates to:
-  /// **'It may have dropped out of the last catalog update — try refreshing the catalog.'**
+  /// **'It may have dropped out of the last catalog update. Try refreshing the catalog.'**
   String get cs2ItemNotFoundHint;
 
   /// No description provided for @cs2ItemBackToMarket.
@@ -41295,7 +41295,7 @@ abstract class L {
   /// No description provided for @cs2ItemQuickCheckNotSaved.
   ///
   /// In en, this message translates to:
-  /// **'A quick check, not saved — track this listing to keep a history of its price.'**
+  /// **'This is a quick check and isn\'t saved. Track this listing to keep a history of its price.'**
   String get cs2ItemQuickCheckNotSaved;
 
   /// No description provided for @cs2ItemStatusNotChecked.
@@ -41385,7 +41385,7 @@ abstract class L {
   /// No description provided for @cs2ItemFactNoCase.
   ///
   /// In en, this message translates to:
-  /// **'No case — collection or promo item'**
+  /// **'No case (collection or promo item)'**
   String get cs2ItemFactNoCase;
 
   /// No description provided for @cs2ItemFactAvailable.
@@ -41439,7 +41439,7 @@ abstract class L {
   /// No description provided for @cs2ChartOneReading.
   ///
   /// In en, this message translates to:
-  /// **'One reading so far — a trend needs at least two.'**
+  /// **'Only one reading so far. A trend needs at least two.'**
   String get cs2ChartOneReading;
 
   /// No description provided for @cs2ChartUnchangedAcrossCount.
@@ -41493,7 +41493,7 @@ abstract class L {
   /// No description provided for @cs2ChartNoHistoryHint.
   ///
   /// In en, this message translates to:
-  /// **'Steam\'s market publishes no history of its own — track this listing and luma starts building one from here.'**
+  /// **'Steam\'s market doesn\'t publish any history of its own. Track this listing and luma starts building one from here.'**
   String get cs2ChartNoHistoryHint;
 
   /// No description provided for @cs2ChartNoReadingsInRange.
@@ -41577,13 +41577,13 @@ abstract class L {
   /// No description provided for @cs2StartPriceGradeHelper.
   ///
   /// In en, this message translates to:
-  /// **'Wear and price are set together — they can\'t be changed independently once tracking starts.'**
+  /// **'Wear and price are set together. They can\'t be changed separately once tracking starts.'**
   String get cs2StartPriceGradeHelper;
 
   /// No description provided for @cs2StartPriceGradeFixedHelper.
   ///
   /// In en, this message translates to:
-  /// **'Fixed — this baseline belongs to that exact listing.'**
+  /// **'Fixed. This baseline belongs to that exact listing.'**
   String get cs2StartPriceGradeFixedHelper;
 
   /// No description provided for @cs2StartPriceStartingPrice.
@@ -41595,7 +41595,7 @@ abstract class L {
   /// No description provided for @cs2StartPriceStartingPriceHelper.
   ///
   /// In en, this message translates to:
-  /// **'What you paid, or the price to measure gain and loss from — not fetched from Steam.'**
+  /// **'What you paid, or the price to measure gain and loss from. This isn\'t fetched from Steam.'**
   String get cs2StartPriceStartingPriceHelper;
 
   /// No description provided for @cs2TrackedEmptyTitle.
@@ -41607,7 +41607,7 @@ abstract class L {
   /// No description provided for @cs2TrackedEmptySubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Track a listing from Browse to start watching its price — it shows up here, alongside everything else you track.'**
+  /// **'Track a listing from Browse to start watching its price. It shows up here, alongside everything else you track.'**
   String get cs2TrackedEmptySubtitle;
 
   /// No description provided for @cs2TrackedNoMatchTitle.
@@ -41673,7 +41673,7 @@ abstract class L {
   /// No description provided for @steamAccountConnectedWithKey.
   ///
   /// In en, this message translates to:
-  /// **'Connected — {maskedKey}'**
+  /// **'Connected ({maskedKey})'**
   String steamAccountConnectedWithKey(String maskedKey);
 
   /// No description provided for @steamAccountApiKeyLabel.
@@ -41757,7 +41757,7 @@ abstract class L {
   /// No description provided for @steamAccountEncryptedNote.
   ///
   /// In en, this message translates to:
-  /// **'Your key is stored encrypted on this device and is sent only to Steam — never to a luma server.'**
+  /// **'Your key is stored encrypted on this device and is only ever sent to Steam, never to a luma server.'**
   String get steamAccountEncryptedNote;
 
   /// No description provided for @steamAccountPrivacyNote.
@@ -41769,7 +41769,7 @@ abstract class L {
   /// No description provided for @steamAccountHistoryNote.
   ///
   /// In en, this message translates to:
-  /// **'Price history needs a signed-in luma account too — it is fetched through the server, so no separate key is needed for it.'**
+  /// **'Price history also needs a signed-in luma account. It\'s fetched through the server, so you don\'t need a separate key for it.'**
   String get steamAccountHistoryNote;
 
   /// No description provided for @steamDetailNoLongerInLibraryTitle.
@@ -42081,7 +42081,7 @@ abstract class L {
   /// No description provided for @steamChartSignInBody.
   ///
   /// In en, this message translates to:
-  /// **'Steam only publishes what a game costs today. A signed-in luma account reads the years behind it — no extra key to find or paste in.'**
+  /// **'Steam only publishes what a game costs today. A signed-in luma account can read the years behind it, with no extra key to find or paste in.'**
   String get steamChartSignInBody;
 
   /// No description provided for @steamChartNoHistoryOver.
@@ -42099,7 +42099,7 @@ abstract class L {
   /// No description provided for @steamSearchSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Search the Steam store — no account needed.'**
+  /// **'Search the Steam store. No account needed.'**
   String get steamSearchSubtitle;
 
   /// No description provided for @steamSearchHint.
@@ -42153,7 +42153,7 @@ abstract class L {
   /// No description provided for @steamTrackerSubtitleDisconnected.
   ///
   /// In en, this message translates to:
-  /// **'Tracking prices — connect a Steam account to bulk-add your library too.'**
+  /// **'Tracking prices. Connect a Steam account to bulk-add your library too.'**
   String get steamTrackerSubtitleDisconnected;
 
   /// No description provided for @steamTrackerSubtitleNoSync.
@@ -42207,7 +42207,7 @@ abstract class L {
   /// No description provided for @steamTrackerCheckingPrices.
   ///
   /// In en, this message translates to:
-  /// **'Checking prices — {done} of {total}'**
+  /// **'Checking prices: {done} of {total}'**
   String steamTrackerCheckingPrices(int done, int total);
 
   /// No description provided for @steamTrackerEmptyTitle.
@@ -42219,7 +42219,7 @@ abstract class L {
   /// No description provided for @steamTrackerEmptySubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Search for a game to start watching its price — no Steam account needed.'**
+  /// **'Search for a game to start watching its price. You don\'t need a Steam account.'**
   String get steamTrackerEmptySubtitle;
 
   /// No description provided for @steamTrackerNoMatchTitle.
@@ -42519,7 +42519,7 @@ abstract class L {
   /// No description provided for @transportTrackerConnectedWaiting.
   ///
   /// In en, this message translates to:
-  /// **'Connected — waiting for position reports. Busy shipping lanes fill in within seconds; open ocean can take longer.'**
+  /// **'Connected, waiting for position reports. Busy shipping lanes fill in within seconds; open ocean can take longer.'**
   String get transportTrackerConnectedWaiting;
 
   /// No description provided for @transportTrackerNoVesselsYet.
@@ -42543,7 +42543,7 @@ abstract class L {
   /// No description provided for @transportTrackerMapLoadFailed.
   ///
   /// In en, this message translates to:
-  /// **'The map could not load fully — check this device\'s internet connection. ({error})'**
+  /// **'The map couldn\'t load fully. Check this device\'s internet connection. ({error})'**
   String transportTrackerMapLoadFailed(String error);
 
   /// No description provided for @transportTrackerAddKeyPrompt.
@@ -42663,7 +42663,7 @@ abstract class L {
   /// No description provided for @transportTrackerInterpolatedNote.
   ///
   /// In en, this message translates to:
-  /// **'Estimated from the timetable — trains do not broadcast their position in the open data, so this is interpolated between stations.'**
+  /// **'Estimated from the timetable. Trains don\'t broadcast their position in the open data, so this is interpolated between stations.'**
   String get transportTrackerInterpolatedNote;
 
   /// No description provided for @transportTrackerDownloadingStops.
@@ -42759,7 +42759,7 @@ abstract class L {
   /// No description provided for @transportTrackerTransitTitle.
   ///
   /// In en, this message translates to:
-  /// **'Public transport — Netherlands'**
+  /// **'Public transport: Netherlands'**
   String get transportTrackerTransitTitle;
 
   /// No description provided for @transportTrackerTransitSubtitle.
@@ -42783,7 +42783,7 @@ abstract class L {
   /// No description provided for @transportTrackerGetKeyHint.
   ///
   /// In en, this message translates to:
-  /// **'Get a free key at aisstream.io — sign in, then copy your API key from the dashboard.'**
+  /// **'Get a free key at aisstream.io. Sign in, then copy your API key from the dashboard.'**
   String get transportTrackerGetKeyHint;
 
   /// No description provided for @transportTrackerKeyHintReplace.
@@ -42813,7 +42813,7 @@ abstract class L {
   /// No description provided for @transportTrackerKeyPrivacyNote.
   ///
   /// In en, this message translates to:
-  /// **'Stored locally on this device only, encrypted at rest. Sent directly to aisstream.io when tracking — never to any luma server.'**
+  /// **'Stored locally on this device only, encrypted at rest. It\'s sent straight to aisstream.io when tracking and never to a luma server.'**
   String get transportTrackerKeyPrivacyNote;
 
   /// No description provided for @vesselCategoryCargo.
@@ -43431,7 +43431,7 @@ abstract class L {
   /// No description provided for @speedTestTesting.
   ///
   /// In en, this message translates to:
-  /// **'Testing — please wait…'**
+  /// **'Testing, please wait…'**
   String get speedTestTesting;
 
   /// No description provided for @speedTestFailed.
@@ -44229,7 +44229,7 @@ abstract class L {
   /// No description provided for @financeOverviewNoPots.
   ///
   /// In en, this message translates to:
-  /// **'No pots yet — make one in the Pots tab and split your money up.'**
+  /// **'No pots yet. Make one in the Pots tab and split your money up.'**
   String get financeOverviewNoPots;
 
   /// No description provided for @financeThisWeek.
@@ -44391,7 +44391,7 @@ abstract class L {
   /// No description provided for @financeUpcomingEmpty.
   ///
   /// In en, this message translates to:
-  /// **'No fixed costs or income yet — add them in the Recurring tab.'**
+  /// **'No fixed costs or income yet. Add them in the Recurring tab.'**
   String get financeUpcomingEmpty;
 
   /// No description provided for @financeAddDebt.
@@ -44552,7 +44552,7 @@ abstract class L {
   /// No description provided for @financeDebtsNameHintOwed.
   ///
   /// In en, this message translates to:
-  /// **'e.g. Sam — concert tickets'**
+  /// **'e.g. Sam, concert tickets'**
   String get financeDebtsNameHintOwed;
 
   /// No description provided for @financeDebtsOriginalAmount.
@@ -44654,7 +44654,7 @@ abstract class L {
   /// No description provided for @financeDebtsHistoryTitle.
   ///
   /// In en, this message translates to:
-  /// **'{name} — history'**
+  /// **'{name}: history'**
   String financeDebtsHistoryTitle(String name);
 
   /// No description provided for @financeDebtsNoPayments.
@@ -44760,7 +44760,7 @@ abstract class L {
   /// No description provided for @financeForecastBelowZero.
   ///
   /// In en, this message translates to:
-  /// **'Heading below €0 on {date} — lowest {lowest} on {lowestDate}.'**
+  /// **'Heading below €0 on {date}. Lowest point is {lowest} on {lowestDate}.'**
   String financeForecastBelowZero(
     String date,
     String lowest,
@@ -44776,7 +44776,7 @@ abstract class L {
   /// No description provided for @financeForecastNothingScheduled.
   ///
   /// In en, this message translates to:
-  /// **'Nothing scheduled — add fixed costs and income in the Recurring tab.'**
+  /// **'Nothing scheduled. Add fixed costs and income in the Recurring tab.'**
   String get financeForecastNothingScheduled;
 
   /// No description provided for @financePlanningGoalReached.
@@ -45148,7 +45148,7 @@ abstract class L {
   /// No description provided for @financeRecurringTreatAsBill.
   ///
   /// In en, this message translates to:
-  /// **'Treat as a bill/subscription — show it in \"due soon\"'**
+  /// **'Treat as a bill/subscription (show it in \"due soon\")'**
   String get financeRecurringTreatAsBill;
 
   /// No description provided for @financeRecurringRemindDays.
@@ -45771,7 +45771,7 @@ abstract class L {
   /// No description provided for @financeStocksAtCostNoQuote.
   ///
   /// In en, this message translates to:
-  /// **'At cost price — no live quote yet'**
+  /// **'At cost price, no live quote yet'**
   String get financeStocksAtCostNoQuote;
 
   /// No description provided for @financeStocksPricesAsOf.
@@ -46425,7 +46425,7 @@ abstract class L {
   /// No description provided for @devicesSetupBody.
   ///
   /// In en, this message translates to:
-  /// **'No server needed — just an email + password shared between your devices, used only to recognize each other over Wi-Fi. Already have a luma cloud account? Sign in above instead and this turns on automatically.'**
+  /// **'No server needed. Just an email and password shared between your devices, used only so they recognize each other over Wi-Fi. Already have a luma cloud account? Sign in above instead and this turns on automatically.'**
   String get devicesSetupBody;
 
   /// No description provided for @devicesErrorInvalidEmail.
@@ -46437,7 +46437,7 @@ abstract class L {
   /// No description provided for @devicesErrorPasswordShort.
   ///
   /// In en, this message translates to:
-  /// **'Use at least 10 characters — this password also protects your encrypted data.'**
+  /// **'Use at least 10 characters. This password also protects your encrypted data.'**
   String get devicesErrorPasswordShort;
 
   /// No description provided for @devicesEnableTitle.
@@ -46449,19 +46449,19 @@ abstract class L {
   /// No description provided for @devicesEnableBody.
   ///
   /// In en, this message translates to:
-  /// **'Enter the same email and password on every device you want to pair — they never leave this device or touch a server. They just prove your devices belong to the same person.'**
+  /// **'Enter the same email and password on every device you want to pair. They never leave this device or touch a server; they just prove your devices belong to the same person.'**
   String get devicesEnableBody;
 
   /// No description provided for @devicesPasswordWarning.
   ///
   /// In en, this message translates to:
-  /// **'If you mistype the password while pairing a second device, it just won\'t be recognized as the same account — there\'s no server to check against or reset it with.'**
+  /// **'If you mistype the password while pairing a second device, it just won\'t be recognized as the same account. There\'s no server to check against or reset it with.'**
   String get devicesPasswordWarning;
 
   /// No description provided for @devicesLocalOnly.
   ///
   /// In en, this message translates to:
-  /// **'Local only — {email} (not backed up anywhere)'**
+  /// **'Local only: {email} (not backed up anywhere)'**
   String devicesLocalOnly(String email);
 
   /// No description provided for @devicesTurnOff.
@@ -46545,7 +46545,7 @@ abstract class L {
   /// No description provided for @devicesIpHint.
   ///
   /// In en, this message translates to:
-  /// **'IP: {addresses} — the other device must be on the same network to find this one.'**
+  /// **'IP: {addresses}. The other device has to be on the same network to find this one.'**
   String devicesIpHint(String addresses);
 
   /// No description provided for @devicesListeningOnPort.
@@ -46581,7 +46581,7 @@ abstract class L {
   /// No description provided for @devicesHotspotBody.
   ///
   /// In en, this message translates to:
-  /// **'Discovery only finds devices on the same network. If your phone is on mobile data instead of Wi-Fi, there\'s no LAN to find each other on — turn on the phone\'s own hotspot instead and have the other device join it. Once both are on that one network, everything here works exactly the same.'**
+  /// **'Discovery only finds devices on the same network. If your phone is on mobile data instead of Wi-Fi, there\'s no LAN for them to find each other on. Turn on the phone\'s own hotspot instead and have the other device join it. Once both are on that network, everything here works exactly the same.'**
   String get devicesHotspotBody;
 
   /// No description provided for @devicesHotspotStep1.
@@ -46641,7 +46641,7 @@ abstract class L {
   /// No description provided for @devicesManualBody.
   ///
   /// In en, this message translates to:
-  /// **'Use this when discovery can\'t see the other device — e.g. a firewall is blocking mDNS. Enter the address it shows on its Devices screen.'**
+  /// **'Use this when discovery can\'t see the other device, for example when a firewall is blocking mDNS. Enter the address it shows on its Devices screen.'**
   String get devicesManualBody;
 
   /// No description provided for @devicesHost.
@@ -46731,13 +46731,13 @@ abstract class L {
   /// No description provided for @syncSettingsSignedOutBody.
   ///
   /// In en, this message translates to:
-  /// **'Set up an account to sync features between devices — with Google, GitHub, or an email and password. Everything is encrypted on this device before it leaves; nothing is synced until you turn it on per feature. You can also skip the server entirely and pair devices over your own network.'**
+  /// **'Set up an account to sync features between devices, with Google, GitHub, or an email and password. Everything is encrypted on this device before it leaves, and nothing syncs until you turn it on per feature. You can also skip the server entirely and pair devices over your own network.'**
   String get syncSettingsSignedOutBody;
 
   /// No description provided for @syncSettingsSessionExpired.
   ///
   /// In en, this message translates to:
-  /// **'Your cloud session expired — please sign in again.'**
+  /// **'Your cloud session expired. Please sign in again.'**
   String get syncSettingsSessionExpired;
 
   /// No description provided for @syncSettingsSetUpAccount.
@@ -46761,7 +46761,7 @@ abstract class L {
   /// No description provided for @syncSettingsPendingApproval.
   ///
   /// In en, this message translates to:
-  /// **'{email} is waiting for the server operator to approve it. There is nothing to do in the meantime — just sign in once they have. Until then this device does not contact the server at all, and the plugins that need it stay switched off.'**
+  /// **'{email} is waiting for the server operator to approve it. There\'s nothing to do in the meantime, just sign in once they have. Until then this device doesn\'t contact the server at all, and the plugins that need it stay switched off.'**
   String syncSettingsPendingApproval(String email);
 
   /// No description provided for @syncSettingsResendCode.
@@ -46785,7 +46785,7 @@ abstract class L {
   /// No description provided for @syncSettingsSyncedToCloudWith.
   ///
   /// In en, this message translates to:
-  /// **'Synced to the cloud — sign in with {providers}'**
+  /// **'Synced to the cloud. Sign in with {providers}'**
   String syncSettingsSyncedToCloudWith(String providers);
 
   /// No description provided for @syncSettingsProviderSeparator.
@@ -46797,7 +46797,7 @@ abstract class L {
   /// No description provided for @syncSettingsLocalOnly.
   ///
   /// In en, this message translates to:
-  /// **'Local only — syncs directly between your devices, no server'**
+  /// **'Local only. Syncs directly between your devices, no server'**
   String get syncSettingsLocalOnly;
 
   /// No description provided for @syncSettingsBackUpToServer.
@@ -46815,13 +46815,13 @@ abstract class L {
   /// No description provided for @syncSettingsWhatSyncsBody.
   ///
   /// In en, this message translates to:
-  /// **'Everything is off by default. Only what you switch on here leaves this device — encrypted with your password before upload. When you first enable a feature that already has synced data, the server copy replaces this device\'s copy.'**
+  /// **'Everything is off by default. Only what you switch on here leaves this device, and it\'s encrypted with your password before upload. When you first turn on a feature that already has synced data, the server copy replaces this device\'s copy.'**
   String get syncSettingsWhatSyncsBody;
 
   /// No description provided for @syncSettingsAutomaticTooltip.
   ///
   /// In en, this message translates to:
-  /// **'Preferences, assistant memory and matching-device home layouts always sync — this can\'t be turned off.'**
+  /// **'Preferences, assistant memory and matching-device home layouts always sync. This can\'t be turned off.'**
   String get syncSettingsAutomaticTooltip;
 
   /// No description provided for @syncSettingsAlwaysOn.
@@ -46875,7 +46875,7 @@ abstract class L {
   /// No description provided for @syncSettingsPlanNeededBody.
   ///
   /// In en, this message translates to:
-  /// **'{label} syncs to the server on the {plan} plan and above. It keeps working on this device either way — only syncing it between devices needs the plan.'**
+  /// **'{label} syncs to the server on the {plan} plan and above. It keeps working on this device either way; you only need the plan to sync it between devices.'**
   String syncSettingsPlanNeededBody(String label, String plan);
 
   /// No description provided for @syncSettingsSeePlans.
@@ -46923,7 +46923,7 @@ abstract class L {
   /// No description provided for @syncSettingsNothingSavedYet.
   ///
   /// In en, this message translates to:
-  /// **'Nothing saved on the server yet — turn something on below to back it up.'**
+  /// **'Nothing saved on the server yet. Turn something on below to back it up.'**
   String get syncSettingsNothingSavedYet;
 
   /// No description provided for @syncSettingsSyncing.
@@ -47031,13 +47031,13 @@ abstract class L {
   /// No description provided for @syncSettingsDataSyncsDirectly.
   ///
   /// In en, this message translates to:
-  /// **'This data syncs directly with paired devices — see Devices below to connect one and turn it off.'**
+  /// **'This data syncs directly with paired devices. See Devices below to connect one or turn it off.'**
   String get syncSettingsDataSyncsDirectly;
 
   /// No description provided for @syncSettingsRecoveryKeySetUp.
   ///
   /// In en, this message translates to:
-  /// **'Recovery key set up — forgetting your password will not cost you your synced data.'**
+  /// **'Recovery key set up. Forgetting your password won\'t cost you your synced data.'**
   String get syncSettingsRecoveryKeySetUp;
 
   /// No description provided for @syncSettingsRecoveryKeyMissing.
@@ -47097,13 +47097,13 @@ abstract class L {
   /// No description provided for @syncSettingsRecoveryHasKeyBody.
   ///
   /// In en, this message translates to:
-  /// **'This account has a recovery key. If you lost it, make a new one — the old key stops working the moment you do.'**
+  /// **'This account has a recovery key. If you lost it, make a new one. The old key stops working as soon as you do.'**
   String get syncSettingsRecoveryHasKeyBody;
 
   /// No description provided for @syncSettingsRecoveryNoKeyBody.
   ///
   /// In en, this message translates to:
-  /// **'Your synced data is encrypted with a key that comes from your password, so nobody — not even the server — can read it. That also means a forgotten password normally erases it.\n\nA recovery key is a second way in. Keep it somewhere safe, and a password reset keeps all your synced data.'**
+  /// **'Your synced data is encrypted with a key that comes from your password, so nobody can read it, not even the server. That also means a forgotten password normally erases it.\n\nA recovery key is a second way in. Keep it somewhere safe, and a password reset keeps all your synced data.'**
   String get syncSettingsRecoveryNoKeyBody;
 
   /// No description provided for @syncSettingsMakeNewKey.
@@ -47157,7 +47157,7 @@ abstract class L {
   /// No description provided for @syncSettingsDeletionPending.
   ///
   /// In en, this message translates to:
-  /// **'Data deletion requested — waiting for the server operator to decide.'**
+  /// **'Data deletion requested. Waiting for the server operator to decide.'**
   String get syncSettingsDeletionPending;
 
   /// No description provided for @syncSettingsDeletionDeclined.
@@ -48447,13 +48447,13 @@ abstract class L {
   /// No description provided for @aiDetectorSignatureExplanation.
   ///
   /// In en, this message translates to:
-  /// **'The text identifies its own author — it names Claude or Anthropic in a product context, not as an ordinary person’s name. That is a direct attribution, so it outranks every style statistic below it.'**
+  /// **'The text names its own author: it mentions Claude or Anthropic in a product context, not as an ordinary person’s name. That\'s a direct attribution, so it outranks every style statistic below it.'**
   String get aiDetectorSignatureExplanation;
 
   /// No description provided for @aiDetectorAssistantExplanation.
   ///
   /// In en, this message translates to:
-  /// **'Stock chat-assistant phrasing shows the text came out of a conversation with a model. It does not say which model, so the verdict stays unnamed — this only raises the score.'**
+  /// **'Stock chat-assistant phrasing shows the text came out of a conversation with a model. It doesn\'t say which model, so the verdict stays unnamed. This only raises the score.'**
   String get aiDetectorAssistantExplanation;
 
   /// No description provided for @aiDetectorNoWatermarkExplanation.
@@ -48483,7 +48483,7 @@ abstract class L {
   /// No description provided for @aiDetectorPhraseExplanationLow.
   ///
   /// In en, this message translates to:
-  /// **'None of the stock phrases models lean on were found. That is not a point in the text’s favour — plenty of generated writing avoids them — so this check abstains rather than voting the score down.'**
+  /// **'None of the stock phrases models lean on were found. That isn\'t a point in the text’s favour, since plenty of generated writing avoids them, so this check abstains instead of voting the score down.'**
   String get aiDetectorPhraseExplanationLow;
 
   /// No description provided for @aiDetectorExtremesExplanationHigh.
@@ -48501,7 +48501,7 @@ abstract class L {
   /// No description provided for @aiDetectorVoiceExplanationHigh.
   ///
   /// In en, this message translates to:
-  /// **'Nobody is on the page — barely an \"I\", \"we\" or \"you\", no casual wording, no direct questions. Generated prose defaults to this detached register. Formal human writing does too, which is why this counts for less than the rhythm checks.'**
+  /// **'Nobody is on the page: barely an \"I\", \"we\" or \"you\", no casual wording, no direct questions. Generated prose defaults to this detached register. Formal human writing does too, which is why this counts for less than the rhythm checks.'**
   String get aiDetectorVoiceExplanationHigh;
 
   /// No description provided for @aiDetectorVoiceExplanationLow.
@@ -48525,7 +48525,7 @@ abstract class L {
   /// No description provided for @aiDetectorContrastExplanationHigh.
   ///
   /// In en, this message translates to:
-  /// **'Sentences that set up a wrong answer only to knock it down — \"not just X, but Y\", \"the real question is\" — are the rhetorical move current models use to sound insightful.'**
+  /// **'Sentences that set up a wrong answer only to knock it down (\"not just X, but Y\", \"the real question is\") are the rhetorical move current models use to sound insightful.'**
   String get aiDetectorContrastExplanationHigh;
 
   /// No description provided for @aiDetectorContrastExplanationLow.
@@ -48561,7 +48561,7 @@ abstract class L {
   /// No description provided for @aiDetectorDashExplanationHigh.
   ///
   /// In en, this message translates to:
-  /// **'Em dashes pepper the text well past what typical human prose uses — a much-memed model habit.'**
+  /// **'The text is full of em dashes, far more than typical human prose uses. It\'s a much-memed model habit.'**
   String get aiDetectorDashExplanationHigh;
 
   /// No description provided for @aiDetectorDashExplanationLow.
@@ -48579,7 +48579,7 @@ abstract class L {
   /// No description provided for @aiDetectorPassiveExplanationHigh.
   ///
   /// In en, this message translates to:
-  /// **'Heavy passive construction (\"was designed to\", \"is considered\") keeps agency out of sentences — common in generated prose.'**
+  /// **'Heavy passive construction (\"was designed to\", \"is considered\") keeps agency out of sentences, which is common in generated prose.'**
   String get aiDetectorPassiveExplanationHigh;
 
   /// No description provided for @aiDetectorPassiveExplanationLow.
@@ -49977,7 +49977,7 @@ abstract class L {
   /// No description provided for @sceneCityPlannerMetroplanStadsplanner.
   ///
   /// In en, this message translates to:
-  /// **'MetroPlan — City Planner'**
+  /// **'MetroPlan: City Planner'**
   String get sceneCityPlannerMetroplanStadsplanner;
 
   /// No description provided for @sceneCityPlannerMetroplan.
@@ -50325,7 +50325,7 @@ abstract class L {
   /// No description provided for @sceneCityPlannerSleepVrijOverDeKaartDeEngineMaaktErAutomat.
   ///
   /// In en, this message translates to:
-  /// **'Drag freely across the map — the engine automatically turns it into a smooth road. Crossing roads become intersections.'**
+  /// **'Drag freely across the map and the engine turns it into a smooth road. Crossing roads become intersections.'**
   String get sceneCityPlannerSleepVrijOverDeKaartDeEngineMaaktErAutomat;
 
   /// No description provided for @sceneCityPlannerKlikOmEenRotondeTePlaatsenSluitErWegenOpAa.
@@ -50475,7 +50475,7 @@ abstract class L {
   /// No description provided for @sceneSpaceColonyPlaceTheseFiveBuildingsWithoutThemYourColo.
   ///
   /// In en, this message translates to:
-  /// **', place these five buildings — without them your colony will run out of power, air or water within a day or two:'**
+  /// **', place these five buildings. Without them your colony will run out of power, air or water within a day or two:'**
   String get sceneSpaceColonyPlaceTheseFiveBuildingsWithoutThemYourColo;
 
   /// No description provided for @sceneSpaceColonySolarPanel.
@@ -50487,13 +50487,13 @@ abstract class L {
   /// No description provided for @sceneSpaceColonyPowerDuringTheDay.
   ///
   /// In en, this message translates to:
-  /// **'— power during the day.'**
+  /// **': power during the day.'**
   String get sceneSpaceColonyPowerDuringTheDay;
 
   /// No description provided for @sceneSpaceColonyStoresPowerSoSystemsKeepRunningAtNight.
   ///
   /// In en, this message translates to:
-  /// **'— stores power so systems keep running at night.'**
+  /// **': stores power so systems keep running at night.'**
   String get sceneSpaceColonyStoresPowerSoSystemsKeepRunningAtNight;
 
   /// No description provided for @sceneSpaceColonyOxygenGenerator.
@@ -50505,7 +50505,7 @@ abstract class L {
   /// No description provided for @sceneSpaceColonyTurnsWaterIntoBreathableAir.
   ///
   /// In en, this message translates to:
-  /// **'— turns water into breathable air.'**
+  /// **': turns water into breathable air.'**
   String get sceneSpaceColonyTurnsWaterIntoBreathableAir;
 
   /// No description provided for @sceneSpaceColonyWaterExtractor.
@@ -50517,7 +50517,7 @@ abstract class L {
   /// No description provided for @sceneSpaceColonyPlaceItOnAnIceFieldLightBlueTilesForAWater.
   ///
   /// In en, this message translates to:
-  /// **'— place it on an ice field (light blue tiles) for a water supply.'**
+  /// **': place it on an ice field (light blue tiles) for a water supply.'**
   String get sceneSpaceColonyPlaceItOnAnIceFieldLightBlueTilesForAWater;
 
   /// No description provided for @sceneSpaceColonyMiningRig.
@@ -50529,13 +50529,13 @@ abstract class L {
   /// No description provided for @sceneSpaceColonyPlaceItOnAMetalDepositOrangeTilesSoYouCanK.
   ///
   /// In en, this message translates to:
-  /// **'— place it on a metal deposit (orange tiles) so you can keep building.'**
+  /// **': place it on a metal deposit (orange tiles) so you can keep building.'**
   String get sceneSpaceColonyPlaceItOnAMetalDepositOrangeTilesSoYouCanK;
 
   /// No description provided for @sceneSpaceColonyWatchTheResourceBarAtTheTopAnythingShownIn.
   ///
   /// In en, this message translates to:
-  /// **'Watch the resource bar at the top — anything shown in red is running low. Ore and crystal deposits run out over time, so keep exploring for new ones. Click any colonist’s name to see their full stats. Reopen this any time with the ❓ Tutorial button.'**
+  /// **'Keep an eye on the resource bar at the top. Anything shown in red is running low. Ore and crystal deposits run out over time, so keep exploring for new ones. Click any colonist’s name to see their full stats. Reopen this any time with the ❓ Tutorial button.'**
   String get sceneSpaceColonyWatchTheResourceBarAtTheTopAnythingShownIn;
 
   /// No description provided for @sceneSpaceColonyLetSGo.
@@ -50733,7 +50733,7 @@ abstract class L {
   /// No description provided for @sceneSubwayBuilderVeryLongHopsVeryFastFewStopsRealStationsAn.
   ///
   /// In en, this message translates to:
-  /// **'Very long hops, very fast, few stops — real stations and tracks'**
+  /// **'Very long hops, very fast, few stops. Real stations and tracks'**
   String get sceneSubwayBuilderVeryLongHopsVeryFastFewStopsRealStationsAn;
 
   /// No description provided for @sceneSubwayBuilderSelectPan.
@@ -50907,7 +50907,7 @@ abstract class L {
   /// No description provided for @sceneSubwayBuilderTreasuryIsInTheRedConsiderALoanOrHigherFar.
   ///
   /// In en, this message translates to:
-  /// **'Treasury is in the red — consider a loan or higher fares'**
+  /// **'Treasury is in the red. Consider a loan or higher fares'**
   String get sceneSubwayBuilderTreasuryIsInTheRedConsiderALoanOrHigherFar;
 
   /// No description provided for @sceneSubwayBuilderCouldNotConnectToTheRoom.
@@ -50925,7 +50925,7 @@ abstract class L {
   /// No description provided for @sceneSubwayBuilderLostConnectionToTheRoomReconnecting.
   ///
   /// In en, this message translates to:
-  /// **'Lost connection to the room — reconnecting…'**
+  /// **'Lost connection to the room. Reconnecting…'**
   String get sceneSubwayBuilderLostConnectionToTheRoomReconnecting;
 
   /// No description provided for @sceneSubwayBuilderRunningTheClockForThisRoom.
@@ -51051,7 +51051,7 @@ abstract class L {
   /// No description provided for @sceneSubwayBuilderStationLookupFailedTheMapDataServiceIsBusy.
   ///
   /// In en, this message translates to:
-  /// **'Station lookup failed — the map data service is busy, try again'**
+  /// **'Station lookup failed. The map data service is busy, try again'**
   String get sceneSubwayBuilderStationLookupFailedTheMapDataServiceIsBusy;
 
   /// No description provided for @sceneSubwayBuilderNoNewOfficialStationsFoundInView.
@@ -52152,7 +52152,7 @@ abstract class L {
   /// No description provided for @sceneSubwayWelcomeBack.
   ///
   /// In en, this message translates to:
-  /// **'Welcome back to {place} — day {day}'**
+  /// **'Welcome back to {place}, day {day}'**
   String sceneSubwayWelcomeBack(String place, String day);
 
   /// No description provided for @sceneSubwayDeleteLineQuestion.
@@ -52188,7 +52188,7 @@ abstract class L {
   /// No description provided for @sceneSubwayStationModeStop.
   ///
   /// In en, this message translates to:
-  /// **'{station} is a {mode} stop — switch mode to connect it'**
+  /// **'{station} is a {mode} stop. Switch mode to connect it'**
   String sceneSubwayStationModeStop(String station, String mode);
 
   /// No description provided for @sceneSubwaySelectLineEndpoint.
@@ -52206,7 +52206,7 @@ abstract class L {
   /// No description provided for @sceneSubwayRouteHopsMax.
   ///
   /// In en, this message translates to:
-  /// **'{mode} hops max {maxKm} km between stops — add a stop in between, or use Train for long distances'**
+  /// **'{mode} can only go {maxKm} km between stops. Add a stop in between, or use Train for long distances'**
   String sceneSubwayRouteHopsMax(Object mode, Object maxKm);
 
   /// No description provided for @sceneSubwayRouteNoRailConnection.
@@ -52242,13 +52242,13 @@ abstract class L {
   /// No description provided for @sceneSubwayModeServicesRealRailStations.
   ///
   /// In en, this message translates to:
-  /// **'{mode} services only call at real railway stations — click one'**
+  /// **'{mode} services only stop at real railway stations. Click one'**
   String sceneSubwayModeServicesRealRailStations(Object mode);
 
   /// No description provided for @sceneSubwayModeServicesHighlightedRailStations.
   ///
   /// In en, this message translates to:
-  /// **'{mode} services only call at real railway stations — click a highlighted one'**
+  /// **'{mode} services only stop at real railway stations. Click a highlighted one'**
   String sceneSubwayModeServicesHighlightedRailStations(Object mode);
 
   /// No description provided for @sceneSubwayLineRequiresTwoStops.
@@ -52308,13 +52308,13 @@ abstract class L {
   /// No description provided for @sceneSubwayDraftStopsCost.
   ///
   /// In en, this message translates to:
-  /// **'{count} stops · {distance} · {cost} — Enter to build, Esc to cancel.'**
+  /// **'{count} stops · {distance} · {cost}. Enter to build, Esc to cancel.'**
   String sceneSubwayDraftStopsCost(Object count, Object distance, Object cost);
 
   /// No description provided for @sceneSubwayDraftStopsCostTunnel.
   ///
   /// In en, this message translates to:
-  /// **'{count} stops · {distance} · {cost} (incl. underwater tunnelling) — Enter to build, Esc to cancel.'**
+  /// **'{count} stops · {distance} · {cost} (incl. underwater tunnelling). Enter to build, Esc to cancel.'**
   String sceneSubwayDraftStopsCostTunnel(
     Object count,
     Object distance,
@@ -52324,13 +52324,13 @@ abstract class L {
   /// No description provided for @sceneSubwayLineOpened.
   ///
   /// In en, this message translates to:
-  /// **'{line} opened — {cost}, two vehicles included'**
+  /// **'{line} opened for {cost}, two vehicles included'**
   String sceneSubwayLineOpened(Object line, Object cost);
 
   /// No description provided for @sceneSubwayLineOpenedTunnel.
   ///
   /// In en, this message translates to:
-  /// **'{line} opened — {cost}, two vehicles included, including underwater tunnelling'**
+  /// **'{line} opened for {cost}, two vehicles and underwater tunnelling included'**
   String sceneSubwayLineOpenedTunnel(Object line, Object cost);
 
   /// No description provided for @sceneSubwayOfficialStationLoadedOne.
@@ -52354,13 +52354,13 @@ abstract class L {
   /// No description provided for @sceneSubwayRoomCreatedReady.
   ///
   /// In en, this message translates to:
-  /// **'Room {code} created — start building'**
+  /// **'Room {code} created. Start building'**
   String sceneSubwayRoomCreatedReady(Object code);
 
   /// No description provided for @sceneSubwayRoomCreatedShare.
   ///
   /// In en, this message translates to:
-  /// **'Room {code} created — share the code or invite a contact'**
+  /// **'Room {code} created. Share the code or invite a contact'**
   String sceneSubwayRoomCreatedShare(Object code);
 
   /// No description provided for @sceneSubwayCouldNotConnectRoom.
@@ -52754,7 +52754,7 @@ abstract class L {
   /// No description provided for @sceneSubwayLinePanelDisruption.
   ///
   /// In en, this message translates to:
-  /// **'{label} — service is slowed until it clears'**
+  /// **'{label}: service is slowed until it clears'**
   String sceneSubwayLinePanelDisruption(Object label);
 
   /// No description provided for @sceneSubwayLinePanelServiceWindow.
@@ -52880,13 +52880,13 @@ abstract class L {
   /// No description provided for @sceneSubwayCoopSignedOut.
   ///
   /// In en, this message translates to:
-  /// **'Co-op rooms are tied to your Luma account — that’s what makes invites and room membership work. Sign in from the app’s account settings, then come back here.'**
+  /// **'Co-op rooms are tied to your Luma account, which is what makes invites and room membership work. Sign in from the app’s account settings, then come back here.'**
   String get sceneSubwayCoopSignedOut;
 
   /// No description provided for @sceneSubwayCoopRoomCodeTitle.
   ///
   /// In en, this message translates to:
-  /// **'Co-op — room {code}'**
+  /// **'Co-op: room {code}'**
   String sceneSubwayCoopRoomCodeTitle(Object code);
 
   /// No description provided for @sceneSubwayCoopRoomCodeDescription.
@@ -52904,7 +52904,7 @@ abstract class L {
   /// No description provided for @sceneSubwayCoopClockPeer.
   ///
   /// In en, this message translates to:
-  /// **'A fellow builder is currently running the clock — you’ll pick it up automatically if they leave.'**
+  /// **'Another builder is running the clock right now. You’ll take it over automatically if they leave.'**
   String get sceneSubwayCoopClockPeer;
 
   /// No description provided for @sceneSubwayCoopInviteContact.
@@ -52916,13 +52916,13 @@ abstract class L {
   /// No description provided for @sceneSubwayCoopNoChatContacts.
   ///
   /// In en, this message translates to:
-  /// **'No chat contacts yet — set up the Chat plugin first, or just share the room code {code} directly.'**
+  /// **'No chat contacts yet. Set up the Chat plugin first, or just share the room code {code} directly.'**
   String sceneSubwayCoopNoChatContacts(Object code);
 
   /// No description provided for @sceneSubwayCoopInviteInstruction.
   ///
   /// In en, this message translates to:
-  /// **'Sends them a chat message with the room code — they still need to tap Join.'**
+  /// **'Sends them a chat message with the room code. They still need to tap Join.'**
   String get sceneSubwayCoopInviteInstruction;
 
   /// No description provided for @sceneSubwayCoopLoadingContacts.
@@ -52940,7 +52940,7 @@ abstract class L {
   /// No description provided for @sceneSubwayCoopRoomsEmpty.
   ///
   /// In en, this message translates to:
-  /// **'Build on the same network as friends — invite via chat, or share a room code. Whoever’s connected keeps the clock running; leave and rejoin any time.'**
+  /// **'Build together with friends on the same network. Invite them via chat or share a room code. Whoever\'s connected keeps the clock running, and you can leave and rejoin any time.'**
   String get sceneSubwayCoopRoomsEmpty;
 
   /// No description provided for @sceneSubwayCoopCreateRoom.
@@ -52952,7 +52952,7 @@ abstract class L {
   /// No description provided for @sceneSubwayCoopJoinByCode.
   ///
   /// In en, this message translates to:
-  /// **'— or join by code —'**
+  /// **'or join by code'**
   String get sceneSubwayCoopJoinByCode;
 
   /// No description provided for @sceneSubwayCoopJoinRoom.
@@ -53168,19 +53168,19 @@ abstract class L {
   /// No description provided for @sceneSubwayMilestoneShareReached.
   ///
   /// In en, this message translates to:
-  /// **'{share}% transit share reached — {grant} grant awarded!'**
+  /// **'{share}% transit share reached! {grant} grant awarded!'**
   String sceneSubwayMilestoneShareReached(Object grant, Object share);
 
   /// No description provided for @sceneSubwayAchievementBonus.
   ///
   /// In en, this message translates to:
-  /// **'{sub} — {grant} bonus'**
+  /// **'{sub}: {grant} bonus'**
   String sceneSubwayAchievementBonus(Object grant, Object sub);
 
   /// No description provided for @sceneSubwayCrowdingGrantReduced.
   ///
   /// In en, this message translates to:
-  /// **'{label} — crowding cut the surge payout to {grant}'**
+  /// **'{label}: crowding cut the surge payout to {grant}'**
   String sceneSubwayCrowdingGrantReduced(Object grant, Object label);
 
   /// No description provided for @sceneSubwaySurgeGrant.
@@ -54594,7 +54594,7 @@ abstract class L {
   /// No description provided for @sceneSpaceColonyDataAutomaticallyShootsDownIncomingMeteorsBeforeTheyHit75InterceptChance.
   ///
   /// In en, this message translates to:
-  /// **'Automatically shoots down incoming meteors before they hit — 75% intercept chance.'**
+  /// **'Automatically shoots down incoming meteors before they hit. 75% intercept chance.'**
   String
   get sceneSpaceColonyDataAutomaticallyShootsDownIncomingMeteorsBeforeTheyHit75InterceptChance;
 
@@ -54916,13 +54916,13 @@ abstract class L {
   /// No description provided for @sceneSpaceColonyStatusBroken.
   ///
   /// In en, this message translates to:
-  /// **'BROKEN — click to repair (2🔩)'**
+  /// **'BROKEN: click to repair (2🔩)'**
   String get sceneSpaceColonyStatusBroken;
 
   /// No description provided for @sceneSpaceColonyStatusDepleted.
   ///
   /// In en, this message translates to:
-  /// **'DEPLETED — deposit ran dry, demolish to reclaim the tile'**
+  /// **'DEPLETED: deposit ran dry, demolish to reclaim the tile'**
   String get sceneSpaceColonyStatusDepleted;
 
   /// No description provided for @sceneSpaceColonyStatusOnline.
@@ -55024,7 +55024,7 @@ abstract class L {
   /// No description provided for @sceneCityPlannerNewsPowerOutage.
   ///
   /// In en, this message translates to:
-  /// **'⚡ Power outage! The grid is overloaded — parts of the city are without power.'**
+  /// **'⚡ Power outage! The grid is overloaded and parts of the city are without power.'**
   String get sceneCityPlannerNewsPowerOutage;
 
   /// No description provided for @sceneCityPlannerNewsDrought.
@@ -55084,13 +55084,13 @@ abstract class L {
   /// No description provided for @sceneSpaceColonyEventMoraleLow.
   ///
   /// In en, this message translates to:
-  /// **'😠 Morale is dangerously low — production is suffering.'**
+  /// **'😠 Morale is dangerously low and production is suffering.'**
   String get sceneSpaceColonyEventMoraleLow;
 
   /// No description provided for @sceneSpaceColonyEventDepositDepleted.
   ///
   /// In en, this message translates to:
-  /// **'The {resource} deposit under your {building} ran dry — it is now idle. Relocate or demolish it.'**
+  /// **'The {resource} deposit under your {building} ran dry, so it\'s idle now. Relocate or demolish it.'**
   String sceneSpaceColonyEventDepositDepleted(Object building, Object resource);
 
   /// No description provided for @sceneSpaceColonyEventDepositExhausted.
@@ -55148,13 +55148,13 @@ abstract class L {
   /// No description provided for @sceneSpaceColonyEventSolarFlareOver.
   ///
   /// In en, this message translates to:
-  /// **'Solar flare over — power generation restored.'**
+  /// **'Solar flare over. Power generation restored.'**
   String get sceneSpaceColonyEventSolarFlareOver;
 
   /// No description provided for @sceneSpaceColonyAlertMoraleLow.
   ///
   /// In en, this message translates to:
-  /// **'😠 Morale is dangerously low — production is suffering.'**
+  /// **'😠 Morale is dangerously low and production is suffering.'**
   String get sceneSpaceColonyAlertMoraleLow;
 
   /// No description provided for @sceneSpaceColonyAlertDustStorm.
@@ -55307,7 +55307,7 @@ abstract class L {
   /// No description provided for @sceneSpaceColonyEventRoverTech.
   ///
   /// In en, this message translates to:
-  /// **'Rover uncovered ancient knowledge — unlocked {technology} for free!'**
+  /// **'Rover uncovered ancient knowledge and unlocked {technology} for free!'**
   String sceneSpaceColonyEventRoverTech(Object technology);
 
   /// No description provided for @sceneSpaceColonyAlertRoverTech.
@@ -55373,7 +55373,7 @@ abstract class L {
   /// No description provided for @sceneSpaceColonyAlertTerraformUnlocked.
   ///
   /// In en, this message translates to:
-  /// **'🌍 Terraforming unlocked — your colony’s future is secured!'**
+  /// **'🌍 Terraforming unlocked! Your colony’s future is secured!'**
   String get sceneSpaceColonyAlertTerraformUnlocked;
 
   /// No description provided for @sceneSpaceColonyEventTerraformAchievement.
@@ -55409,7 +55409,7 @@ abstract class L {
   /// No description provided for @sceneSubwayLostConnectionReconnecting.
   ///
   /// In en, this message translates to:
-  /// **'Lost connection to the room — reconnecting…'**
+  /// **'Lost connection to the room. Reconnecting…'**
   String get sceneSubwayLostConnectionReconnecting;
 
   /// No description provided for @sceneSubwayClockAuthorityRunning.
@@ -55433,7 +55433,7 @@ abstract class L {
   /// No description provided for @sceneSubwayRoomCreatedStartBuilding.
   ///
   /// In en, this message translates to:
-  /// **'Room {code} created — start building'**
+  /// **'Room {code} created. Start building'**
   String sceneSubwayRoomCreatedStartBuilding(Object code);
 
   /// No description provided for @sceneSubwayLoadCityFirst.
@@ -55445,13 +55445,13 @@ abstract class L {
   /// No description provided for @sceneSubwayRoomCreatedShareCode.
   ///
   /// In en, this message translates to:
-  /// **'Room {code} created — share the code or invite a contact'**
+  /// **'Room {code} created. Share the code or invite a contact'**
   String sceneSubwayRoomCreatedShareCode(Object code);
 
   /// No description provided for @sceneSubwayInviteChatMessage.
   ///
   /// In en, this message translates to:
-  /// **'Join my Subway Builder co-op room — open Subway Builder, tap Co-op → Join, and enter code {code}.'**
+  /// **'Join my Subway Builder co-op room! Open Subway Builder, tap Co-op → Join, and enter code {code}.'**
   String sceneSubwayInviteChatMessage(Object code);
 
   /// No description provided for @sceneSubwayFailedToSendInvite.
@@ -55565,13 +55565,13 @@ abstract class L {
   /// No description provided for @sceneSubwayUiSurfaceSlowdown.
   ///
   /// In en, this message translates to:
-  /// **'— surface transit slowed ×{factor}'**
+  /// **'(surface transit slowed ×{factor})'**
   String sceneSubwayUiSurfaceSlowdown(String factor);
 
   /// No description provided for @sceneSubwayUiAchievementSummary.
   ///
   /// In en, this message translates to:
-  /// **'{done} / {total} unlocked — real facts about the network you actually built.'**
+  /// **'{done} / {total} unlocked. Real facts about the network you actually built.'**
   String sceneSubwayUiAchievementSummary(String done, String total);
 
   /// No description provided for @sceneSubwayUiLoanOwed.
@@ -55631,13 +55631,13 @@ abstract class L {
   /// No description provided for @sceneSubwayUiStreetStationHint.
   ///
   /// In en, this message translates to:
-  /// **'Click near a street to place a {mode} stop — it snaps to the road.'**
+  /// **'Click near a street to place a {mode} stop. It snaps to the road.'**
   String sceneSubwayUiStreetStationHint(String mode);
 
   /// No description provided for @sceneSubwayUiRailLineHint.
   ///
   /// In en, this message translates to:
-  /// **'Click real stations in order — the route follows existing tracks. Enter to finish, or click the first station again to close a loop.'**
+  /// **'Click real stations in order and the route follows existing tracks. Press Enter to finish, or click the first station again to close a loop.'**
   String get sceneSubwayUiRailLineHint;
 
   /// No description provided for @sceneSubwayUiMetroLineHint.
@@ -55649,7 +55649,7 @@ abstract class L {
   /// No description provided for @sceneSubwayUiStreetLineHint.
   ///
   /// In en, this message translates to:
-  /// **'Click stops in order — the route follows real streets. Enter to finish, or click the first stop again to close a loop.'**
+  /// **'Click stops in order and the route follows real streets. Press Enter to finish, or click the first stop again to close a loop.'**
   String get sceneSubwayUiStreetLineHint;
 
   /// No description provided for @sceneSubwayUiBulldozeHint.
@@ -55661,7 +55661,7 @@ abstract class L {
   /// No description provided for @sceneSubwayUiExtendNextStop.
   ///
   /// In en, this message translates to:
-  /// **'Extending {line} — click the next stop. Esc to stop.'**
+  /// **'Extending {line}. Click the next stop, Esc to stop.'**
   String sceneSubwayUiExtendNextStop(String line);
 
   /// No description provided for @sceneSubwayUiExtendNewStop.
@@ -55673,13 +55673,13 @@ abstract class L {
   /// No description provided for @sceneSubwayUiDraftCost.
   ///
   /// In en, this message translates to:
-  /// **'{count} stops · {distance} · {cost} — Enter to build, Esc to cancel.'**
+  /// **'{count} stops · {distance} · {cost}. Enter to build, Esc to cancel.'**
   String sceneSubwayUiDraftCost(String count, String distance, String cost);
 
   /// No description provided for @sceneSubwayUiDraftCostWater.
   ///
   /// In en, this message translates to:
-  /// **'{count} stops · {distance} · {cost} (incl. underwater tunnelling) — Enter to build, Esc to cancel.'**
+  /// **'{count} stops · {distance} · {cost} (incl. underwater tunnelling). Enter to build, Esc to cancel.'**
   String sceneSubwayUiDraftCostWater(
     String count,
     String distance,
@@ -55839,13 +55839,13 @@ abstract class L {
   /// No description provided for @sceneSubwayWeatherSlowedNews.
   ///
   /// In en, this message translates to:
-  /// **'{weather} weather — surface transit is slowed'**
+  /// **'{weather} weather is slowing surface transit'**
   String sceneSubwayWeatherSlowedNews(Object weather);
 
   /// No description provided for @sceneSubwayDisruptionNews.
   ///
   /// In en, this message translates to:
-  /// **'⚠️ {disruption} on {line} — expect delays for ~{hours}h'**
+  /// **'⚠️ {disruption} on {line}. Expect delays for ~{hours}h'**
   String sceneSubwayDisruptionNews(
     Object disruption,
     Object line,
@@ -55855,7 +55855,7 @@ abstract class L {
   /// No description provided for @sceneSubwayEventNews.
   ///
   /// In en, this message translates to:
-  /// **'🎪 {event} near {station} tonight — expect a crowd surge!'**
+  /// **'🎪 {event} near {station} tonight. Expect a crowd surge!'**
   String sceneSubwayEventNews(Object event, Object station);
 
   /// No description provided for @sceneSubwayEventDayReport.
@@ -57161,7 +57161,7 @@ abstract class L {
   /// No description provided for @mcToolsNoMatchBody.
   ///
   /// In en, this message translates to:
-  /// **'Try another word — every tool can be found by its name or by what it does.'**
+  /// **'Try another word. Every tool can be found by its name or by what it does.'**
   String get mcToolsNoMatchBody;
 
   /// No description provided for @mcToolsDisclaimer.
@@ -58037,7 +58037,7 @@ abstract class L {
   /// No description provided for @mcEnchConflicts.
   ///
   /// In en, this message translates to:
-  /// **'Conflicts with {other} — tap to swap'**
+  /// **'Conflicts with {other}. Tap to swap'**
   String mcEnchConflicts(String other);
 
   /// No description provided for @mcEnchNoOrder.
@@ -58271,7 +58271,7 @@ abstract class L {
   /// No description provided for @mcShapeHollowDetail.
   ///
   /// In en, this message translates to:
-  /// **'Only the shell — far fewer blocks'**
+  /// **'Only the shell, far fewer blocks'**
   String get mcShapeHollowDetail;
 
   /// No description provided for @mcShapeWall.
@@ -58289,7 +58289,7 @@ abstract class L {
   /// No description provided for @mcShapeThickDetail.
   ///
   /// In en, this message translates to:
-  /// **'No diagonal gaps — mobs cannot slip through'**
+  /// **'No diagonal gaps, so mobs can\'t slip through'**
   String get mcShapeThickDetail;
 
   /// No description provided for @mcShapeBlock.
@@ -58511,7 +58511,7 @@ abstract class L {
   /// No description provided for @mcOreTipRedstone.
   ///
   /// In en, this message translates to:
-  /// **'Concentrated at the bottom of the world. Mine just above the bedrock ceiling — around Y −58.'**
+  /// **'Concentrated at the bottom of the world. Mine just above the bedrock ceiling, around Y −58.'**
   String get mcOreTipRedstone;
 
   /// No description provided for @mcOreTipLapis.
@@ -58547,7 +58547,7 @@ abstract class L {
   /// No description provided for @mcOreTipDebris.
   ///
   /// In en, this message translates to:
-  /// **'Mostly between Y 8 and 24, peaking at Y 16. It never generates exposed to air — strip-mine, or use beds or TNT to clear fast.'**
+  /// **'Mostly between Y 8 and 24, peaking at Y 16. It never generates exposed to air, so strip-mine, or use beds or TNT to clear fast.'**
   String get mcOreTipDebris;
 
   /// No description provided for @mcOreBestLevel.
@@ -58883,7 +58883,7 @@ abstract class L {
   /// No description provided for @mcPotionCorrupts.
   ///
   /// In en, this message translates to:
-  /// **'Fermented Spider Eye turns this into {potion} — tap to open.'**
+  /// **'Fermented Spider Eye turns this into {potion}. Tap to open.'**
   String mcPotionCorrupts(String potion);
 
   /// No description provided for @mcPotionFuel.
@@ -59291,7 +59291,7 @@ abstract class L {
   /// No description provided for @mcCubeNotSwallowable.
   ///
   /// In en, this message translates to:
-  /// **'A cube will not swallow that — only the blocks listed under the twelve behaviours.'**
+  /// **'A cube won\'t swallow that. Only the blocks listed under the twelve behaviours.'**
   String get mcCubeNotSwallowable;
 
   /// No description provided for @mcCubeMeet.
@@ -59405,7 +59405,7 @@ abstract class L {
   /// No description provided for @mcCubeShrugsNote.
   ///
   /// In en, this message translates to:
-  /// **'It also breathes underwater and cannot freeze. Explosions still hurt — TNT pops a cube even mid-swallow — and every shrugged-off hit still knocks it around.'**
+  /// **'It also breathes underwater and can\'t freeze. Explosions still hurt (TNT pops a cube even mid-swallow), and every shrugged-off hit still knocks it around.'**
   String get mcCubeShrugsNote;
 
   /// No description provided for @mcCubeHow.
@@ -59705,7 +59705,7 @@ abstract class L {
   /// No description provided for @mcBeaconHowBody.
   ///
   /// In en, this message translates to:
-  /// **'Range is {range} blocks around the beacon (10 + 10 per tier) and reaches {range} blocks below it and up to the sky. Effects are re-applied every 4 seconds and last {seconds} seconds, so they linger briefly after you leave. A full tier-4 pyramid unlocks a second power: Regeneration, or level II of the primary. Pay with one iron ingot, gold ingot, emerald, diamond or netherite ingot. The beam needs a clear view of the sky; stained glass on top tints it. Mixing mineral blocks in the pyramid is fine — {mineral} is just the one counted above.'**
+  /// **'Range is {range} blocks around the beacon (10 + 10 per tier) and reaches {range} blocks below it and up to the sky. Effects are re-applied every 4 seconds and last {seconds} seconds, so they linger briefly after you leave. A full tier-4 pyramid unlocks a second power: Regeneration, or level II of the primary. Pay with one iron ingot, gold ingot, emerald, diamond or netherite ingot. The beam needs a clear view of the sky; stained glass on top tints it. Mixing mineral blocks in the pyramid is fine. {mineral} is just the one counted above.'**
   String mcBeaconHowBody(int range, int seconds, String mineral);
 
   /// No description provided for @mcCommand.
@@ -59801,7 +59801,7 @@ abstract class L {
   /// No description provided for @mcBannerNeeds.
   ///
   /// In en, this message translates to:
-  /// **'{pattern} — needs {item}'**
+  /// **'{pattern} (needs {item})'**
   String mcBannerNeeds(String pattern, String item);
 
   /// No description provided for @mcBannerChangeColour.
@@ -59879,7 +59879,7 @@ abstract class L {
   /// No description provided for @mcFwNoStars.
   ///
   /// In en, this message translates to:
-  /// **'No stars: the rocket just flies — handy for elytra boosts.'**
+  /// **'No stars: the rocket just flies. Handy for elytra boosts.'**
   String get mcFwNoStars;
 
   /// No description provided for @mcFwStarN.
@@ -60382,7 +60382,7 @@ abstract class L {
   /// No description provided for @mcOrgPointBody.
   ///
   /// In en, this message translates to:
-  /// **'Pick the folder your schematics live in — Litematica\'s \"schematics\" folder, WorldEdit\'s, or any other. Files are read in place; only renames change anything on disk.'**
+  /// **'Pick the folder your schematics live in: Litematica\'s \"schematics\" folder, WorldEdit\'s, or any other. Files are read in place; only renames change anything on disk.'**
   String get mcOrgPointBody;
 
   /// No description provided for @mcOrgSearch.
@@ -61438,25 +61438,25 @@ abstract class L {
   /// No description provided for @mcColorSection.
   ///
   /// In en, this message translates to:
-  /// **'Section signs (§) — signs, books, MOTD'**
+  /// **'Section signs (§): signs, books, MOTD'**
   String get mcColorSection;
 
   /// No description provided for @mcColorAmpersand.
   ///
   /// In en, this message translates to:
-  /// **'Ampersand codes (&) — plugins'**
+  /// **'Ampersand codes (&): plugins'**
   String get mcColorAmpersand;
 
   /// No description provided for @mcColorMiniMessage.
   ///
   /// In en, this message translates to:
-  /// **'MiniMessage — Paper / Adventure'**
+  /// **'MiniMessage: Paper / Adventure'**
   String get mcColorMiniMessage;
 
   /// No description provided for @mcColorJson.
   ///
   /// In en, this message translates to:
-  /// **'JSON text component — tellraw, titles'**
+  /// **'JSON text component: tellraw, titles'**
   String get mcColorJson;
 
   /// No description provided for @mcColorCodes.
@@ -61498,13 +61498,13 @@ abstract class L {
   /// No description provided for @mcColorObfuscatedDetail.
   ///
   /// In en, this message translates to:
-  /// **'Obfuscated — scrambles constantly'**
+  /// **'Obfuscated: scrambles constantly'**
   String get mcColorObfuscatedDetail;
 
   /// No description provided for @mcColorReset.
   ///
   /// In en, this message translates to:
-  /// **'Reset — back to plain white'**
+  /// **'Reset: back to plain white'**
   String get mcColorReset;
 
   /// No description provided for @mcColorOrderNote.
@@ -61876,7 +61876,7 @@ abstract class L {
   /// No description provided for @mcPotNoEffects.
   ///
   /// In en, this message translates to:
-  /// **'No effects — it will be a coloured water bottle.'**
+  /// **'No effects. It\'ll be a coloured water bottle.'**
   String get mcPotNoEffects;
 
   /// No description provided for @mcPotDurationNote.
@@ -62224,7 +62224,7 @@ abstract class L {
   /// No description provided for @mcCmdLength.
   ///
   /// In en, this message translates to:
-  /// **'Commands longer than 256 characters need a command block — chat cuts them off. This one is {length} characters.'**
+  /// **'Commands longer than 256 characters need a command block, because chat cuts them off. This one is {length} characters.'**
   String mcCmdLength(int length);
 
   /// No description provided for @mcAdvObtain.
@@ -62488,7 +62488,7 @@ abstract class L {
   /// No description provided for @mcAssetFirst600.
   ///
   /// In en, this message translates to:
-  /// **'Showing the first 600 — search to narrow it down.'**
+  /// **'Showing the first 600. Search to narrow it down.'**
   String get mcAssetFirst600;
 
   /// No description provided for @mcAssetNoSounds.
@@ -62512,7 +62512,7 @@ abstract class L {
   /// No description provided for @mcAssetCannotPlay.
   ///
   /// In en, this message translates to:
-  /// **'This device cannot play .ogg here — save it and open it in a player.'**
+  /// **'This device can\'t play .ogg here. Save it and open it in a player.'**
   String get mcAssetCannotPlay;
 
   /// No description provided for @mcAssetSaveOgg.
@@ -62698,7 +62698,7 @@ abstract class L {
   /// No description provided for @mcEnchGenNoEffects.
   ///
   /// In en, this message translates to:
-  /// **'No effects — it will enchant, but do nothing.'**
+  /// **'No effects. It will enchant, but do nothing.'**
   String get mcEnchGenNoEffects;
 
   /// No description provided for @mcEnchGenDatapackDesc.
@@ -62848,13 +62848,13 @@ abstract class L {
   /// No description provided for @mcRecEmptySlot.
   ///
   /// In en, this message translates to:
-  /// **'Empty — click to place {item}'**
+  /// **'Empty. Click to place {item}'**
   String mcRecEmptySlot(String item);
 
   /// No description provided for @mcRecFilledSlot.
   ///
   /// In en, this message translates to:
-  /// **'{item} — click again or right-click to clear'**
+  /// **'{item}. Click again or right-click to clear'**
   String mcRecFilledSlot(String item);
 
   /// No description provided for @mcRecIdOrTag.
@@ -62884,7 +62884,7 @@ abstract class L {
   /// No description provided for @mcRecBrush.
   ///
   /// In en, this message translates to:
-  /// **'Brush — click slots to place it'**
+  /// **'Brush: click slots to place it'**
   String get mcRecBrush;
 
   /// No description provided for @mcRecClear.
@@ -62950,7 +62950,7 @@ abstract class L {
   /// No description provided for @mcRecGroup.
   ///
   /// In en, this message translates to:
-  /// **'Group (optional — merges recipe book entries)'**
+  /// **'Group (optional, merges recipe book entries)'**
   String get mcRecGroup;
 
   /// No description provided for @mcRecDatapackDesc.
@@ -62964,6 +62964,534 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Ingredients can be an item id or an item tag (#minecraft:planks). Custom recipes craft straight away; to list one in the recipe book run {command}.'**
   String mcRecNote(String command);
+
+  /// No description provided for @pluginNameTeamClipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Team Clipboard'**
+  String get pluginNameTeamClipboard;
+
+  /// No description provided for @serverGateTeamClipboardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Team Clipboard needs an approved account'**
+  String get serverGateTeamClipboardTitle;
+
+  /// No description provided for @serverGateTeamClipboardDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The board lives on the luma server. Sign in with an approved account first; then the admin can add you to the team.'**
+  String get serverGateTeamClipboardDescription;
+
+  /// No description provided for @teamClipboardSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{open} to do · {finished} finished'**
+  String teamClipboardSubtitle(int open, int finished);
+
+  /// No description provided for @teamClipboardRoleLead.
+  ///
+  /// In en, this message translates to:
+  /// **'Lead'**
+  String get teamClipboardRoleLead;
+
+  /// No description provided for @teamClipboardRoleMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Member'**
+  String get teamClipboardRoleMember;
+
+  /// No description provided for @teamClipboardNewEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'New entry'**
+  String get teamClipboardNewEntry;
+
+  /// No description provided for @teamClipboardSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search titles, briefs and files'**
+  String get teamClipboardSearchHint;
+
+  /// No description provided for @teamClipboardFilterBugs.
+  ///
+  /// In en, this message translates to:
+  /// **'Bugs'**
+  String get teamClipboardFilterBugs;
+
+  /// No description provided for @teamClipboardFilterSuggestions.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestions'**
+  String get teamClipboardFilterSuggestions;
+
+  /// No description provided for @teamClipboardFilterModels.
+  ///
+  /// In en, this message translates to:
+  /// **'Models'**
+  String get teamClipboardFilterModels;
+
+  /// No description provided for @teamClipboardKindBug.
+  ///
+  /// In en, this message translates to:
+  /// **'Bug'**
+  String get teamClipboardKindBug;
+
+  /// No description provided for @teamClipboardKindSuggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestion'**
+  String get teamClipboardKindSuggestion;
+
+  /// No description provided for @teamClipboardKindModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get teamClipboardKindModel;
+
+  /// No description provided for @teamClipboardStageIdea.
+  ///
+  /// In en, this message translates to:
+  /// **'Idea'**
+  String get teamClipboardStageIdea;
+
+  /// No description provided for @teamClipboardStageOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get teamClipboardStageOpen;
+
+  /// No description provided for @teamClipboardStageClaimed.
+  ///
+  /// In en, this message translates to:
+  /// **'Claimed'**
+  String get teamClipboardStageClaimed;
+
+  /// No description provided for @teamClipboardStageDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get teamClipboardStageDone;
+
+  /// No description provided for @teamClipboardStageAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Added'**
+  String get teamClipboardStageAdded;
+
+  /// No description provided for @teamClipboardStageFixed.
+  ///
+  /// In en, this message translates to:
+  /// **'Fixed'**
+  String get teamClipboardStageFixed;
+
+  /// No description provided for @teamClipboardClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get teamClipboardClosed;
+
+  /// No description provided for @teamClipboardClaimedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Claimed by {name}'**
+  String teamClipboardClaimedBy(String name);
+
+  /// No description provided for @teamClipboardByAuthor.
+  ///
+  /// In en, this message translates to:
+  /// **'by {name}'**
+  String teamClipboardByAuthor(String name);
+
+  /// No description provided for @teamClipboardYou.
+  ///
+  /// In en, this message translates to:
+  /// **'you'**
+  String get teamClipboardYou;
+
+  /// No description provided for @teamClipboardFormerMember.
+  ///
+  /// In en, this message translates to:
+  /// **'former member'**
+  String get teamClipboardFormerMember;
+
+  /// No description provided for @teamClipboardSectionToDo.
+  ///
+  /// In en, this message translates to:
+  /// **'To do'**
+  String get teamClipboardSectionToDo;
+
+  /// No description provided for @teamClipboardSectionFinished.
+  ///
+  /// In en, this message translates to:
+  /// **'Finished'**
+  String get teamClipboardSectionFinished;
+
+  /// No description provided for @teamClipboardEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The board is empty'**
+  String get teamClipboardEmptyTitle;
+
+  /// No description provided for @teamClipboardEmptySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add the first bug, suggestion or model so the team knows what to work on.'**
+  String get teamClipboardEmptySubtitle;
+
+  /// No description provided for @teamClipboardSelectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick an entry to see its brief, files and chat'**
+  String get teamClipboardSelectHint;
+
+  /// No description provided for @teamClipboardErrorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach the board'**
+  String get teamClipboardErrorTitle;
+
+  /// No description provided for @teamClipboardRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get teamClipboardRefresh;
+
+  /// No description provided for @teamClipboardNews.
+  ///
+  /// In en, this message translates to:
+  /// **'New activity'**
+  String get teamClipboardNews;
+
+  /// No description provided for @teamClipboardGateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for team access'**
+  String get teamClipboardGateTitle;
+
+  /// No description provided for @teamClipboardGateBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The Team Clipboard is invite-only. Ask the admin to add {email} from the admin panel, then check again.'**
+  String teamClipboardGateBody(String email);
+
+  /// No description provided for @teamClipboardGateBodyNoEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'The Team Clipboard is invite-only. Ask the admin to add your luma account from the admin panel, then check again.'**
+  String get teamClipboardGateBodyNoEmail;
+
+  /// No description provided for @teamClipboardGateCheckAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Check again'**
+  String get teamClipboardGateCheckAgain;
+
+  /// No description provided for @teamClipboardBrief.
+  ///
+  /// In en, this message translates to:
+  /// **'Brief'**
+  String get teamClipboardBrief;
+
+  /// No description provided for @teamClipboardNoBrief.
+  ///
+  /// In en, this message translates to:
+  /// **'No brief yet.'**
+  String get teamClipboardNoBrief;
+
+  /// No description provided for @teamClipboardFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Files'**
+  String get teamClipboardFiles;
+
+  /// No description provided for @teamClipboardNoFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'No files yet. Attach the model .json, the .png texture and any .mcmeta here.'**
+  String get teamClipboardNoFiles;
+
+  /// No description provided for @teamClipboardAddFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Add files'**
+  String get teamClipboardAddFiles;
+
+  /// No description provided for @teamClipboardDownloadAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Download all'**
+  String get teamClipboardDownloadAll;
+
+  /// No description provided for @teamClipboardRemoveFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove file'**
+  String get teamClipboardRemoveFile;
+
+  /// No description provided for @teamClipboardRemoveFileConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name} from this entry?'**
+  String teamClipboardRemoveFileConfirm(String name);
+
+  /// No description provided for @teamClipboardFileBy.
+  ///
+  /// In en, this message translates to:
+  /// **'{size} · {name}'**
+  String teamClipboardFileBy(String size, String name);
+
+  /// No description provided for @teamClipboardFrames.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} frames'**
+  String teamClipboardFrames(int count);
+
+  /// No description provided for @teamClipboardSavedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to {path}'**
+  String teamClipboardSavedTo(String path);
+
+  /// No description provided for @teamClipboardSavedFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Saved 1 file to {path}} other{Saved {count} files to {path}}}'**
+  String teamClipboardSavedFiles(int count, String path);
+
+  /// No description provided for @teamClipboardCouldNotLoad.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load this file.'**
+  String get teamClipboardCouldNotLoad;
+
+  /// No description provided for @teamClipboardUploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not attach: {names}'**
+  String teamClipboardUploadFailed(String names);
+
+  /// No description provided for @teamClipboardFileTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is over 10 MB.'**
+  String teamClipboardFileTooLarge(String name);
+
+  /// No description provided for @teamClipboardFileWrongType.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is not a .png, .json or .mcmeta file.'**
+  String teamClipboardFileWrongType(String name);
+
+  /// No description provided for @teamClipboardChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat'**
+  String get teamClipboardChat;
+
+  /// No description provided for @teamClipboardNoMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'No messages yet. Start the discussion.'**
+  String get teamClipboardNoMessages;
+
+  /// No description provided for @teamClipboardMessageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a message…'**
+  String get teamClipboardMessageHint;
+
+  /// No description provided for @teamClipboardSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get teamClipboardSend;
+
+  /// No description provided for @teamClipboardThreadClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'This thread is closed.'**
+  String get teamClipboardThreadClosed;
+
+  /// No description provided for @teamClipboardReopen.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen'**
+  String get teamClipboardReopen;
+
+  /// No description provided for @teamClipboardCloseThread.
+  ///
+  /// In en, this message translates to:
+  /// **'Close thread'**
+  String get teamClipboardCloseThread;
+
+  /// No description provided for @teamClipboardClaim.
+  ///
+  /// In en, this message translates to:
+  /// **'Claim it'**
+  String get teamClipboardClaim;
+
+  /// No description provided for @teamClipboardUnclaim.
+  ///
+  /// In en, this message translates to:
+  /// **'Unclaim'**
+  String get teamClipboardUnclaim;
+
+  /// No description provided for @teamClipboardMarkDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark done'**
+  String get teamClipboardMarkDone;
+
+  /// No description provided for @teamClipboardMarkAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark added'**
+  String get teamClipboardMarkAdded;
+
+  /// No description provided for @teamClipboardMarkFixed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark fixed'**
+  String get teamClipboardMarkFixed;
+
+  /// No description provided for @teamClipboardLeadOnlyAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Only a team lead can mark this added.'**
+  String get teamClipboardLeadOnlyAdded;
+
+  /// No description provided for @teamClipboardEditEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit entry'**
+  String get teamClipboardEditEntry;
+
+  /// No description provided for @teamClipboardDeleteEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete entry'**
+  String get teamClipboardDeleteEntry;
+
+  /// No description provided for @teamClipboardDeleteConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this entry?'**
+  String get teamClipboardDeleteConfirmTitle;
+
+  /// No description provided for @teamClipboardDeleteConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Its brief, files and chat are removed for the whole team.'**
+  String get teamClipboardDeleteConfirmBody;
+
+  /// No description provided for @teamClipboardEditorNewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New entry'**
+  String get teamClipboardEditorNewTitle;
+
+  /// No description provided for @teamClipboardEditorKind.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get teamClipboardEditorKind;
+
+  /// No description provided for @teamClipboardEditorTitleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get teamClipboardEditorTitleLabel;
+
+  /// No description provided for @teamClipboardEditorTitleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Ruby ore block'**
+  String get teamClipboardEditorTitleHint;
+
+  /// No description provided for @teamClipboardEditorTitleRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Give it a title.'**
+  String get teamClipboardEditorTitleRequired;
+
+  /// No description provided for @teamClipboardEditorBriefLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Brief'**
+  String get teamClipboardEditorBriefLabel;
+
+  /// No description provided for @teamClipboardEditorBriefHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Your idea in a few lines: what it is, and how it should look or behave.'**
+  String get teamClipboardEditorBriefHint;
+
+  /// No description provided for @teamClipboardEditorFilesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'.png, .json and .mcmeta, up to 10 MB each'**
+  String get teamClipboardEditorFilesHint;
+
+  /// No description provided for @teamClipboardCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to board'**
+  String get teamClipboardCreate;
+
+  /// No description provided for @teamClipboardServerError.
+  ///
+  /// In en, this message translates to:
+  /// **'Server error ({status}).'**
+  String teamClipboardServerError(int status);
+
+  /// No description provided for @teamClipboardMe.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get teamClipboardMe;
+
+  /// No description provided for @teamClipboardFileEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is empty.'**
+  String teamClipboardFileEmpty(String name);
+
+  /// No description provided for @teamClipboardFileBadPng.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is not a valid PNG image.'**
+  String teamClipboardFileBadPng(String name);
+
+  /// No description provided for @teamClipboardFileImageTooBig.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is too big an image: textures can be at most {width} × {height} pixels.'**
+  String teamClipboardFileImageTooBig(String name, int width, int height);
+
+  /// No description provided for @teamClipboardFileNotText.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is not UTF-8 text.'**
+  String teamClipboardFileNotText(String name);
+
+  /// No description provided for @teamClipboardFileBadJson.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is not valid JSON (line {line}, column {column}).'**
+  String teamClipboardFileBadJson(String name, int line, int column);
+
+  /// No description provided for @teamClipboardFileNotObject.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} must hold a JSON object.'**
+  String teamClipboardFileNotObject(String name);
+
+  /// No description provided for @teamClipboardFileTooDeep.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} nests deeper than {depth} levels.'**
+  String teamClipboardFileTooDeep(String name, int depth);
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

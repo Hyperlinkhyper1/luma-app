@@ -60,6 +60,7 @@ import '../features/plugins/installed/small_games/small_games_page.dart';
 import '../features/plugins/installed/worth_counter/worth_counter_page.dart';
 import '../features/plugins/installed/media_downloader/media_downloader_page.dart';
 import '../features/plugins/installed/recipe_book/recipe_book_page.dart';
+import '../features/plugins/installed/team_clipboard/team_clipboard_page.dart';
 import '../features/plugins/plugin_icons.dart';
 import '../features/plugins/plugin_l10n.dart';
 import '../features/plugins/plugin_repository.dart';
@@ -846,7 +847,11 @@ class _AppShellState extends State<AppShell> {
   /// account. Kept compiled in rather than read from the fetched registry —
   /// the registry's own `requiresAccount` flag only drives the marketplace
   /// badge, and a gate must not depend on a file downloaded at runtime.
-  static const serverOnlyPlugins = {'cloud-files', 'secure-chat'};
+  static const serverOnlyPlugins = {
+    'cloud-files',
+    'secure-chat',
+    'team-clipboard',
+  };
 
   /// The localised copy for a [serverOnlyPlugins] entry, or null for plugins
   /// that work without the server.
@@ -863,6 +868,11 @@ class _AppShellState extends State<AppShell> {
       title: t.serverGateChatTitle,
       description: t.serverGateChatDescription,
       icon: Icons.lock_outline_rounded,
+    ),
+    'team-clipboard' => (
+      title: t.serverGateTeamClipboardTitle,
+      description: t.serverGateTeamClipboardDescription,
+      icon: Icons.content_paste_off_rounded,
     ),
     _ => null,
   };
@@ -923,6 +933,7 @@ class _AppShellState extends State<AppShell> {
     'secure-chat' => const SecureChatPage(),
     'sftp' => const SftpPage(),
     'recipe-book' => const RecipeBookPage(),
+    'team-clipboard' => const TeamClipboardPage(),
     'worth-counter' => const WorthCounterPage(),
     'gallery' => const GalleryPage(),
     'nfc-tag-editor' => const NfcTagEditorPage(),
