@@ -18,11 +18,72 @@ extension TeamBoardApi on Api {
     return (role, null);
   }
 
-  /// A name to show for an email: its local part, the way the recipe
-  /// catalogue does. Empty once the account has been deleted.
-  static String _teamName(String email) {
+  /// The name [userId] shows up under: the one they picked for the board,
+  /// or else their email's local part, the way the recipe catalogue does.
+  /// Empty once the account has been deleted.
+  String _teamName(String userId, String email) {
+    if (email.isEmpty) return '';
+    return teamBoard.nameOf(userId) ?? _teamDefaultName(email);
+  }
+
+  static String _teamDefaultName(String email) {
     final at = email.indexOf('@');
     return at > 0 ? email.substring(0, at) : email;
+  }
+
+  /// Whether someone else on the team already goes by [name], in any case,
+  /// so nobody can post as a teammate.
+  bool _teamNameTaken(String userId, String name) {
+    final wanted = name.toLowerCase();
+    for (final id in teamBoard.roles.keys) {
+      if (id == userId) continue;
+      final other = store.usersById[id];
+      if (other != null && _teamName(id, other.email).toLowerCase() == wanted) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Why [entry] (null for a new one) can't be filed under main thread
+  /// [parentId], or null when it can. Main threads are one level deep.
+  String? _teamParentProblem(TeamBoardEntry? entry, String parentId) {
+    final parent = TeamBoardStore.idPattern.hasMatch(parentId)
+        ? teamBoard.entry(parentId)
+        : null;
+    if (parent == null) return 'That main thread is gone.';
+    if (parent.parentId != null) {
+      return 'A sub-entry can’t have entries of its own.';
+    }
+    if (entry != null &&
+        (entry.id == parentId || teamBoard.childrenOf(entry.id).isNotEmpty)) {
+      return 'A main thread can’t go under another one.';
+    }
+    if (parent.closed) return 'Reopen the main thread first.';
+    return null;
+  }
+
+  /// Changes the name this account goes by on the board. An empty name
+  /// goes back to the email's.
+  Future<Response> _teamNameSet(Request request, StoredUser user) async {
+    final (_, refused) = _teamRole(user);
+    if (refused != null) return refused;
+    final body = await _teamJsonBody(request);
+    var name = cleanTeamBoardName(body?['name']);
+    if (body == null || name == null) {
+      return errorResponse(400, 'bad_name',
+          'Pick a name of at most $kTeamBoardMaxNameChars characters.');
+    }
+    if (name == _teamDefaultName(user.email)) name = '';
+    if (name.isNotEmpty && _teamNameTaken(user.id, name)) {
+      return errorResponse(
+          409, 'name_taken', 'Someone on the team already goes by $name.');
+    }
+    await teamBoard.setName(user.id, name);
+    return jsonResponse(200, {
+      'me': _teamName(user.id, user.email),
+      'revision': teamBoard.revision,
+    });
   }
 
   Map<String, dynamic> _teamFileJson(
@@ -31,7 +92,7 @@ extension TeamBoardApi on Api {
         'id': f.id,
         'name': f.name,
         'sizeBytes': f.sizeBytes,
-        'uploader': _teamName(f.uploaderEmail),
+        'uploader': _teamName(f.uploaderId, f.uploaderEmail),
         'mine': f.uploaderId == viewer.id,
         'canRemove': can.canRemoveFile(f),
         'createdAtMs': f.createdAtMs,
@@ -49,17 +110,19 @@ extension TeamBoardApi on Api {
       'brief': e.brief,
       'stage': e.stage,
       'closed': e.closed,
-      'author': _teamName(e.authorEmail),
+      'author': _teamName(e.authorId, e.authorEmail),
       'mine': can.isAuthor,
-      'claimedBy':
-          e.claimedById == null ? null : _teamName(e.claimedByEmail ?? ''),
+      'claimedBy': e.claimedById == null
+          ? null
+          : _teamName(e.claimedById!, e.claimedByEmail ?? ''),
+      'parentId': e.parentId,
       'claimedByMe': e.claimedById == viewer.id,
       'createdAtMs': e.createdAtMs,
       'updatedAtMs': e.updatedAtMs,
       'messageCount': e.messages.length,
       if (last != null)
         'lastMessage': {
-          'author': _teamName(last.authorEmail),
+          'author': _teamName(last.authorId, last.authorEmail),
           'text': last.text.length > 140
               ? '${last.text.substring(0, 140)}…'
               : last.text,
@@ -74,7 +137,7 @@ extension TeamBoardApi on Api {
           for (final m in e.messages)
             {
               'id': m.id,
-              'author': _teamName(m.authorEmail),
+              'author': _teamName(m.authorId, m.authorEmail),
               'mine': m.authorId == viewer.id,
               'text': m.text,
               'createdAtMs': m.createdAtMs,
@@ -102,7 +165,7 @@ extension TeamBoardApi on Api {
     final base = {
       'member': true,
       'lead': role == 'lead',
-      'me': _teamName(user.email),
+      'me': _teamName(user.id, user.email),
       'revision': teamBoard.revision,
     };
     if (since == teamBoard.revision) {
@@ -166,6 +229,10 @@ extension TeamBoardApi on Api {
       return errorResponse(
           409, 'board_full', 'The board is full. Remove old entries first.');
     }
+    final parentId = body['parentId'];
+    if (parentId != null && parentId is! String) {
+      return errorResponse(400, 'bad_parent', 'Pick a main thread.');
+    }
     final now = DateTime.now().millisecondsSinceEpoch;
     final entry = TeamBoardEntry(
       id: TeamBoardStore.newId(),
@@ -176,8 +243,18 @@ extension TeamBoardApi on Api {
       authorEmail: user.email,
       createdAtMs: now,
       updatedAtMs: now,
+      parentId: parentId as String?,
     );
-    await teamBoard.mutate(() => teamBoard.addEntry(entry));
+    final problem = await teamBoard.mutate(() {
+      if (parentId != null) {
+        final why = _teamParentProblem(null, parentId);
+        if (why != null) return why;
+        teamBoard.entry(parentId)!.updatedAtMs = now;
+      }
+      teamBoard.addEntry(entry);
+      return null;
+    });
+    if (problem != null) return errorResponse(409, 'bad_parent', problem);
     return _teamEntryResponse(201, entry, user, role!);
   }
 
@@ -201,13 +278,25 @@ extension TeamBoardApi on Api {
     if (!kTeamBoardKinds.contains(kind) || title == null || brief == null) {
       return errorResponse(400, 'bad_request', 'Check the title and brief.');
     }
-    await teamBoard.mutate(() {
+    final moves = body.containsKey('parentId');
+    final parentId = body['parentId'];
+    if (parentId != null && parentId is! String) {
+      return errorResponse(400, 'bad_parent', 'Pick a main thread.');
+    }
+    final problem = await teamBoard.mutate(() {
+      if (moves && parentId != null && parentId != entry.parentId) {
+        final why = _teamParentProblem(entry, parentId as String);
+        if (why != null) return why;
+      }
       entry
         ..kind = kind as String
         ..title = title
         ..brief = brief
+        ..parentId = moves ? parentId as String? : entry.parentId
         ..updatedAtMs = DateTime.now().millisecondsSinceEpoch;
+      return null;
     });
+    if (problem != null) return errorResponse(409, 'bad_parent', problem);
     return _teamEntryResponse(200, entry, user, role);
   }
 

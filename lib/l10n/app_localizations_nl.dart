@@ -38901,6 +38901,45 @@ class LNl extends L {
   String get teamClipboardEditEntry => 'Item bewerken';
 
   @override
+  String get teamClipboardChangeName => 'Je naam op het bord';
+
+  @override
+  String get teamClipboardChangeNameBody =>
+      'Zo ziet het team je bij elk item, bestand en bericht. Laat leeg om je e-mailnaam te gebruiken.';
+
+  @override
+  String get teamClipboardNameHint => 'Naam';
+
+  @override
+  String get teamClipboardMainThread => 'Hoofdthread';
+
+  @override
+  String get teamClipboardEditorNoParent => 'Geen, staat op zichzelf';
+
+  @override
+  String get teamClipboardNewSubEntry => 'Nieuw subitem';
+
+  @override
+  String get teamClipboardSubEntries => 'Subitems';
+
+  @override
+  String get teamClipboardAddSubEntry => 'Subitem toevoegen';
+
+  @override
+  String get teamClipboardNoSubEntries =>
+      'Splits dit op in kleinere items. Elk krijgt een eigen fase, bestanden en chat.';
+
+  @override
+  String teamClipboardPartOf(String title) {
+    return 'Onderdeel van $title';
+  }
+
+  @override
+  String teamClipboardSubProgress(int done, int total) {
+    return '$done/$total klaar';
+  }
+
+  @override
   String get teamClipboardDeleteEntry => 'Item verwijderen';
 
   @override

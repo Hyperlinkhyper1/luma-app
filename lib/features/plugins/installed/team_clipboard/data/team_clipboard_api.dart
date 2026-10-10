@@ -106,26 +106,39 @@ class TeamClipboardApi {
     required TeamEntryKind kind,
     required String title,
     required String brief,
+    String? parentId,
   }) async => TeamEntry.fromJson(
     await _send('POST', '/entries', {
       'kind': kind.name,
       'title': title,
       'brief': brief,
+      'parentId': ?parentId,
     }),
   );
 
+  /// Saves an edit. [parentId] files the entry under that main thread, or
+  /// with null takes it out of one.
   Future<TeamEntry> update(
     String id, {
     required TeamEntryKind kind,
     required String title,
     required String brief,
+    required String? parentId,
   }) async => TeamEntry.fromJson(
     await _send('PUT', '/entries/$id', {
       'kind': kind.name,
       'title': title,
       'brief': brief,
+      'parentId': parentId,
     }),
   );
+
+  /// Sets the name this account goes by on the board; '' goes back to the
+  /// email's. Returns the name the board now shows.
+  Future<String> rename(String name) async {
+    final body = await _send('PUT', '/me', {'name': name});
+    return body['me'] as String? ?? name;
+  }
 
   Future<TeamEntry> setStage(String id, TeamEntryStage stage) async =>
       TeamEntry.fromJson(

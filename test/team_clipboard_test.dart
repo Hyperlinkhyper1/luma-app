@@ -43,6 +43,7 @@ Map<String, dynamic> _entry(
   int updatedAtMs = 1000,
   List<Map<String, dynamic>> files = const [],
   List<Map<String, dynamic>>? messages,
+  String? parentId,
 }) => {
   'id': id,
   'kind': kind,
@@ -62,6 +63,7 @@ Map<String, dynamic> _entry(
   'canClose': true,
   'canDelete': true,
   'messages': ?messages,
+  'parentId': parentId,
 };
 
 /// A small fake of the board endpoints, enough for the page.
@@ -70,6 +72,7 @@ class _FakeBoard {
 
   bool member;
   int revision = 1;
+  String me = 'pixel';
   final requests = <http.Request>[];
   final List<Map<String, dynamic>> entries = [
     _entry('a0', 'Copper lantern', stage: 'added', updatedAtMs: 9000),
@@ -149,10 +152,16 @@ class _FakeBoard {
       return json({
         'member': true,
         'lead': false,
-        'me': 'pixel',
+        'me': me,
         'revision': revision,
         'entries': entries,
       });
+    }
+    if (path == '/api/v1/team-board/me' && request.method == 'PUT') {
+      final name = (jsonDecode(request.body) as Map)['name'] as String;
+      me = name.isEmpty ? 'pixel' : name;
+      revision++;
+      return json({'me': me, 'revision': revision});
     }
     final match = RegExp(
       r'^/api/v1/team-board/entries/(\w+)(/messages)?$',
@@ -454,6 +463,52 @@ void main() {
     expect(find.text('Pushed the model'), findsOneWidget);
     final sent = board.requests.where((r) => r.method == 'POST').single;
     expect(sent.url.path, '/api/v1/team-board/entries/b0/messages');
+    await _unmount(tester);
+  });
+
+  testWidgets('a main thread holds its sub-entries and shows their progress', (
+    tester,
+  ) async {
+    final board = _FakeBoard()
+      ..entries.addAll([
+        _entry('e0', 'Ruby ore texture', stage: 'done', parentId: 'b0'),
+        _entry('e1', 'Ruby ore drop table', parentId: 'b0'),
+      ]);
+    final controller = await _pump(tester, board);
+    expect(find.text('Ruby ore texture'), findsNothing);
+    expect(find.text('1/2 finished'), findsOneWidget);
+
+    await tester.tap(find.text('Ruby ore'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sub-entries'), findsOneWidget);
+    expect(find.text('Add sub-entry'), findsOneWidget);
+    expect(find.text('Ruby ore texture'), findsWidgets);
+
+    await tester.tap(find.text('Ruby ore drop table').last);
+    await tester.pumpAndSettle();
+    expect(controller.selectedId, 'e1');
+    expect(find.text('Part of Ruby ore'), findsOneWidget);
+    expect(find.text('Sub-entries'), findsNothing);
+
+    await tester.tap(find.text('Part of Ruby ore'));
+    await tester.pumpAndSettle();
+    expect(controller.selectedId, 'b0');
+    await _unmount(tester);
+  });
+
+  testWidgets('a member changes the name the team sees', (tester) async {
+    final board = _FakeBoard();
+    final controller = await _pump(tester, board);
+    await tester.tap(find.byTooltip('Your name on the board'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, 'Pixel Pete');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(controller.me, 'Pixel Pete');
+    expect(find.text('Pixel Pete'), findsOneWidget);
+    final sent = board.requests.where((r) => r.method == 'PUT').single;
+    expect(sent.url.path, '/api/v1/team-board/me');
+    expect(jsonDecode(sent.body), {'name': 'Pixel Pete'});
     await _unmount(tester);
   });
 }

@@ -39047,6 +39047,45 @@ class LEs extends L {
   String get teamClipboardEditEntry => 'Editar entrada';
 
   @override
+  String get teamClipboardChangeName => 'Tu nombre en el tablero';
+
+  @override
+  String get teamClipboardChangeNameBody =>
+      'Así te ve el equipo en cada entrada, archivo y mensaje. Déjalo vacío para volver al nombre de tu correo.';
+
+  @override
+  String get teamClipboardNameHint => 'Nombre';
+
+  @override
+  String get teamClipboardMainThread => 'Hilo principal';
+
+  @override
+  String get teamClipboardEditorNoParent => 'Ninguno, va por su cuenta';
+
+  @override
+  String get teamClipboardNewSubEntry => 'Nueva subentrada';
+
+  @override
+  String get teamClipboardSubEntries => 'Subentradas';
+
+  @override
+  String get teamClipboardAddSubEntry => 'Añadir subentrada';
+
+  @override
+  String get teamClipboardNoSubEntries =>
+      'Divide esto en entradas más pequeñas. Cada una tiene su propia etapa, archivos y chat.';
+
+  @override
+  String teamClipboardPartOf(String title) {
+    return 'Parte de $title';
+  }
+
+  @override
+  String teamClipboardSubProgress(int done, int total) {
+    return '$done/$total terminadas';
+  }
+
+  @override
   String get teamClipboardDeleteEntry => 'Eliminar entrada';
 
   @override

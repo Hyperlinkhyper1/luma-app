@@ -31,6 +31,7 @@ const kTeamBoardFileExtensions = ['png', 'json', 'mcmeta'];
 
 const kTeamBoardMaxFileBytes = 10 * 1024 * 1024;
 const kTeamBoardMaxTitleChars = 140;
+const kTeamBoardMaxNameChars = 32;
 const kTeamBoardMaxBriefChars = 4000;
 const kTeamBoardMaxMessageChars = 4000;
 const kTeamBoardMaxEntries = 2000;
@@ -133,6 +134,7 @@ class TeamBoardEntry {
     this.closed = false,
     this.claimedById,
     this.claimedByEmail,
+    this.parentId,
     List<TeamBoardFile>? files,
     List<TeamBoardMessage>? messages,
   })  : files = files ?? [],
@@ -149,6 +151,11 @@ class TeamBoardEntry {
   String? claimedById;
   String? claimedByEmail;
   final int createdAtMs;
+
+  /// The main thread this entry is one part of, or null for an entry that
+  /// stands on its own (or is itself a main thread). Only one level deep:
+  /// a main thread is never filed under another one.
+  String? parentId;
 
   /// The last time anything happened to the entry — an edit, a stage, a
   /// file or a message. The board sorts on it and the app polls on it.
@@ -175,6 +182,7 @@ class TeamBoardEntry {
         'authorEmail': authorEmail,
         'claimedById': claimedById,
         'claimedByEmail': claimedByEmail,
+        'parentId': parentId,
         'createdAtMs': createdAtMs,
         'updatedAtMs': updatedAtMs,
         'files': files.map((f) => f.toJson()).toList(),
@@ -198,6 +206,7 @@ class TeamBoardEntry {
       authorEmail: raw['authorEmail'] as String? ?? '',
       claimedById: raw['claimedById'] as String?,
       claimedByEmail: raw['claimedByEmail'] as String?,
+      parentId: raw['parentId'] as String?,
       createdAtMs: raw['createdAtMs'] as int? ?? 0,
       updatedAtMs: raw['updatedAtMs'] as int? ?? 0,
       files: [
@@ -218,6 +227,17 @@ String? cleanTeamBoardTitle(Object? raw) {
   final title = raw.replaceAll(RegExp(r'\s+'), ' ').trim();
   if (title.isEmpty || title.length > kTeamBoardMaxTitleChars) return null;
   return title;
+}
+
+/// A display name with its spaces collapsed: '' to go back to the email's
+/// name, or null when it is too long or holds control characters.
+String? cleanTeamBoardName(Object? raw) {
+  if (raw == null) return '';
+  if (raw is! String) return null;
+  if (RegExp(r'[\x00-\x1F\x7F]').hasMatch(raw)) return null;
+  final name = raw.replaceAll(RegExp(r'\s+'), ' ').trim();
+  if (name.length > kTeamBoardMaxNameChars) return null;
+  return name;
 }
 
 /// A trimmed multi-line text of at most [max] characters, or null when it is
@@ -467,6 +487,14 @@ class TeamBoardStore {
       final decoded = jsonDecode(file.readAsStringSync());
       if (decoded is! Map) return;
       revision = decoded['revision'] as int? ?? 0;
+      final names = decoded['names'];
+      if (names is Map) {
+        names.forEach((userId, name) {
+          if (userId is String && name is String && name.isNotEmpty) {
+            _names[userId] = name;
+          }
+        });
+      }
       final members = decoded['members'];
       if (members is Map) {
         members.forEach((userId, role) {
@@ -486,6 +514,7 @@ class TeamBoardStore {
 
   final String _dir;
   final Map<String, String> _roles = {};
+  final Map<String, String> _names = {};
   final Map<String, TeamBoardEntry> _entries = {};
   final AsyncLock _lock = AsyncLock();
 
@@ -504,6 +533,26 @@ class TeamBoardStore {
   String? roleOf(String userId) => _roles[userId];
 
   Map<String, String> get roles => Map.unmodifiable(_roles);
+
+  /// The name [userId] picked for the board, or null for the default.
+  String? nameOf(String userId) => _names[userId];
+
+  /// Sets the name [userId] goes by on the board; '' goes back to the
+  /// default. Names are looked up whenever the board is read rather than
+  /// stored on posts, so everything they wrote shows the new one at once.
+  Future<void> setName(String userId, String name) => mutate(() {
+        if (name.isEmpty) {
+          _names.remove(userId);
+        } else {
+          _names[userId] = name;
+        }
+      });
+
+  /// The entries filed under main thread [id].
+  List<TeamBoardEntry> childrenOf(String id) => [
+        for (final e in _entries.values)
+          if (e.parentId == id) e
+      ];
 
   TeamBoardEntry? entry(String id) => _entries[id];
 
@@ -541,8 +590,14 @@ class TeamBoardStore {
   void addEntry(TeamBoardEntry entry) => _entries[entry.id] = entry;
 
   /// Takes [id] off the board. Call inside [mutate], then [deleteFile] each
-  /// of the returned entry's files.
-  TeamBoardEntry? removeEntry(String id) => _entries.remove(id);
+  /// of the returned entry's files. Entries filed under it stay on the
+  /// board, as entries of their own.
+  TeamBoardEntry? removeEntry(String id) {
+    for (final child in childrenOf(id)) {
+      child.parentId = null;
+    }
+    return _entries.remove(id);
+  }
 
   Future<void> _save() async {
     await Directory(_dir).create(recursive: true);
@@ -551,6 +606,7 @@ class TeamBoardStore {
         jsonEncode({
           'revision': revision,
           'members': _roles,
+          'names': _names,
           'entries': _entries.values.map((e) => e.toJson()).toList(),
         }));
   }
@@ -592,6 +648,7 @@ class TeamBoardStore {
   /// from it.
   Future<void> forgetUser(String userId) => mutate(() {
         _roles.remove(userId);
+        _names.remove(userId);
         for (final entry in _entries.values) {
           if (entry.authorId == userId) entry.authorEmail = '';
           if (entry.claimedById == userId) entry.claimedByEmail = '';

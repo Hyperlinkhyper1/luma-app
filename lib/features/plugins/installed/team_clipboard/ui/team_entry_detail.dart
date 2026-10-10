@@ -90,6 +90,10 @@ class _TeamEntryDetailState extends State<TeamEntryDetail> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (entry.parentId != null) ...[
+                  _ParentLink(parentId: entry.parentId!),
+                  const SizedBox(height: 10),
+                ],
                 _Header(entry: entry, onClose: widget.onClose),
                 const SizedBox(height: 18),
                 if (entry.closed) ...[
@@ -99,6 +103,10 @@ class _TeamEntryDetailState extends State<TeamEntryDetail> {
                 _StageTrack(entry: entry),
                 const SizedBox(height: 22),
                 _Brief(entry: entry),
+                if (entry.parentId == null) ...[
+                  const SizedBox(height: 24),
+                  _SubEntries(entry: entry),
+                ],
                 const SizedBox(height: 24),
                 _Files(entry: entry),
                 if (widget.withThread) ...[
@@ -695,6 +703,223 @@ class _Brief extends StatelessWidget {
                 ),
         ),
       ],
+    );
+  }
+}
+
+/// "Part of <main thread>" above a sub-entry's header; tapping it opens the
+/// main thread.
+class _ParentLink extends StatelessWidget {
+  const _ParentLink({required this.parentId});
+
+  final String parentId;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = L.of(context);
+    final luma = context.luma;
+    final controller = TeamClipboardScope.of(context);
+    final parent = controller.entryById(parentId);
+    if (parent == null) return const SizedBox.shrink();
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: InkWell(
+        onTap: () => controller.select(parent.id),
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.account_tree_rounded, size: 15, color: luma.accent),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  t.teamClipboardPartOf(parent.title),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: luma.accent,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The smaller entries a main thread is broken into, each with its own
+/// stage, and a button to add another.
+class _SubEntries extends StatelessWidget {
+  const _SubEntries({required this.entry});
+
+  final TeamEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = L.of(context);
+    final luma = context.luma;
+    final controller = TeamClipboardScope.of(context);
+    final children = controller.childrenOf(entry.id);
+    final finished = children.where((e) => e.finished).length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionTitle(
+          icon: Icons.account_tree_rounded,
+          label: t.teamClipboardSubEntries,
+          trailing: entry.closed
+              ? null
+              : TextButton.icon(
+                  onPressed: () => showTeamEntryEditor(
+                    context,
+                    controller,
+                    parentId: entry.id,
+                  ),
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: Text(t.teamClipboardAddSubEntry),
+                ),
+        ),
+        const SizedBox(height: 10),
+        if (children.isEmpty)
+          Text(
+            t.teamClipboardNoSubEntries,
+            style: TextStyle(color: luma.textMuted, fontSize: 13),
+          )
+        else ...[
+          Row(
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: LinearProgressIndicator(
+                    value: finished / children.length,
+                    minHeight: 6,
+                    backgroundColor: luma.border,
+                    color: luma.success,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                t.teamClipboardSubProgress(finished, children.length),
+                style: TextStyle(color: luma.textMuted, fontSize: 12.5),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          for (final child in children)
+            TeamSubEntryRow(
+              entry: child,
+              news: controller.hasNews(child),
+              onTap: () => controller.select(child.id),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+/// One sub-entry as a compact row: its kind, title and stage.
+class TeamSubEntryRow extends StatelessWidget {
+  const TeamSubEntryRow({
+    super.key,
+    required this.entry,
+    required this.onTap,
+    this.news = false,
+    this.selected = false,
+  });
+
+  final TeamEntry entry;
+  final VoidCallback onTap;
+  final bool news;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = L.of(context);
+    final luma = context.luma;
+    final finished = entry.finished;
+    final base = finished ? teamFinishedSurface(context) : luma.background;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Material(
+        color: selected ? Color.lerp(base, luma.accent, 0.12) : base,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: selected
+                    ? luma.accent.withValues(alpha: 0.7)
+                    : finished
+                    ? Colors.transparent
+                    : luma.border,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  teamKindIcon(entry.kind),
+                  size: 16,
+                  color: finished
+                      ? luma.textMuted
+                      : teamKindColor(entry.kind, luma),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    entry.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: finished ? luma.textSecondary : luma.textPrimary,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w500,
+                      decoration: entry.closed
+                          ? TextDecoration.lineThrough
+                          : null,
+                      decorationColor: luma.textMuted,
+                    ),
+                  ),
+                ),
+                if (news) ...[
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: luma.accent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                TeamPill(
+                  label: entry.closed
+                      ? t.teamClipboardClosed
+                      : teamStageLabel(t, entry.stage, entry.kind),
+                  color: entry.closed
+                      ? luma.textMuted
+                      : teamStageColor(entry.stage, luma),
+                  icon: entry.closed
+                      ? Icons.lock_rounded
+                      : teamStageIcon(entry.stage),
+                  filled: entry.stage == TeamEntryStage.added,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -23753,6 +23753,34 @@
   "teamClipboardMarkFixed": "Mark fixed",
   "teamClipboardLeadOnlyAdded": "Only a team lead can mark this added.",
   "teamClipboardEditEntry": "Edit entry",
+  "teamClipboardChangeName": "Your name on the board",
+  "teamClipboardChangeNameBody": "This is how the team sees you on every entry, file and message. Leave it empty to go back to your email name.",
+  "teamClipboardNameHint": "Name",
+  "teamClipboardMainThread": "Main thread",
+  "teamClipboardEditorNoParent": "None, it stands on its own",
+  "teamClipboardNewSubEntry": "New sub-entry",
+  "teamClipboardSubEntries": "Sub-entries",
+  "teamClipboardAddSubEntry": "Add sub-entry",
+  "teamClipboardNoSubEntries": "Break this into smaller entries. Each one gets its own stage, files and chat.",
+  "teamClipboardPartOf": "Part of {title}",
+  "@teamClipboardPartOf": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "teamClipboardSubProgress": "{done}/{total} finished",
+  "@teamClipboardSubProgress": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "teamClipboardDeleteEntry": "Delete entry",
   "teamClipboardDeleteConfirmTitle": "Delete this entry?",
   "teamClipboardDeleteConfirmBody": "Its brief, files and chat are removed for the whole team.",

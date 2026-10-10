@@ -10,29 +10,43 @@ import 'team_clipboard_style.dart';
 import 'team_files.dart';
 
 /// Opens the dialog for a new entry, or for editing [existing]. A new entry
-/// can bring its files along straight away.
+/// can bring its files along straight away, and with [parentId] starts out
+/// filed under that main thread.
 Future<void> showTeamEntryEditor(
   BuildContext context,
   TeamClipboardController controller, {
   TeamEntry? existing,
+  String? parentId,
 }) => showDialog<void>(
   context: context,
-  builder: (context) =>
-      _TeamEntryEditor(controller: controller, existing: existing),
+  builder: (context) => _TeamEntryEditor(
+    controller: controller,
+    existing: existing,
+    parentId: parentId,
+  ),
 );
 
 class _TeamEntryEditor extends StatefulWidget {
-  const _TeamEntryEditor({required this.controller, this.existing});
+  const _TeamEntryEditor({
+    required this.controller,
+    this.existing,
+    this.parentId,
+  });
 
   final TeamClipboardController controller;
   final TeamEntry? existing;
+  final String? parentId;
 
   @override
   State<_TeamEntryEditor> createState() => _TeamEntryEditorState();
 }
 
 class _TeamEntryEditorState extends State<_TeamEntryEditor> {
-  late TeamEntryKind _kind = widget.existing?.kind ?? TeamEntryKind.model;
+  late TeamEntryKind _kind =
+      widget.existing?.kind ??
+      widget.controller.entryById(widget.parentId)?.kind ??
+      TeamEntryKind.model;
+  late String? _parentId = widget.existing?.parentId ?? widget.parentId;
   late final _title = TextEditingController(text: widget.existing?.title);
   late final _brief = TextEditingController(text: widget.existing?.brief);
   final List<TeamPickedFile> _files = [];
@@ -41,6 +55,23 @@ class _TeamEntryEditorState extends State<_TeamEntryEditor> {
   bool _titleMissing = false;
 
   bool get _isNew => widget.existing == null;
+
+  /// The main threads this entry could be filed under. An entry that has
+  /// sub-entries of its own is a main thread, so it can't go under another.
+  List<TeamEntry> get _parentChoices {
+    final existing = widget.existing;
+    if (existing != null &&
+        widget.controller.childrenOf(existing.id).isNotEmpty) {
+      return const [];
+    }
+    return [
+      for (final e in widget.controller.entries)
+        if (widget.controller.canHoldChildren(e) &&
+            e.id != existing?.id &&
+            (!e.closed || e.id == _parentId))
+          e,
+    ];
+  }
 
   @override
   void dispose() {
@@ -81,6 +112,7 @@ class _TeamEntryEditorState extends State<_TeamEntryEditor> {
           kind: _kind,
           title: title,
           brief: _brief.text,
+          parentId: _parentId,
           files: _files,
         );
         if (failed.isNotEmpty) {
@@ -96,6 +128,7 @@ class _TeamEntryEditorState extends State<_TeamEntryEditor> {
           kind: _kind,
           title: title,
           brief: _brief.text,
+          parentId: _parentId,
         );
       }
       navigator.pop();
@@ -112,6 +145,8 @@ class _TeamEntryEditorState extends State<_TeamEntryEditor> {
   Widget build(BuildContext context) {
     final t = L.of(context);
     final luma = context.luma;
+    final parents = _parentChoices;
+    final isSub = _isNew && widget.parentId != null;
     return Dialog(
       backgroundColor: luma.surface,
       insetPadding: const EdgeInsets.all(20),
@@ -124,7 +159,9 @@ class _TeamEntryEditorState extends State<_TeamEntryEditor> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                _isNew
+                isSub
+                    ? t.teamClipboardNewSubEntry
+                    : _isNew
                     ? t.teamClipboardEditorNewTitle
                     : t.teamClipboardEditEntry,
                 style: TextStyle(
@@ -149,6 +186,46 @@ class _TeamEntryEditorState extends State<_TeamEntryEditor> {
                     ),
                 ],
               ),
+              if (parents.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                _Label(t.teamClipboardMainThread),
+                DropdownButtonFormField<String?>(
+                  initialValue: parents.any((e) => e.id == _parentId)
+                      ? _parentId
+                      : null,
+                  isExpanded: true,
+                  decoration: const InputDecoration(isDense: true),
+                  items: [
+                    DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text(t.teamClipboardEditorNoParent),
+                    ),
+                    for (final e in parents)
+                      DropdownMenuItem<String?>(
+                        value: e.id,
+                        child: Row(
+                          children: [
+                            Icon(
+                              teamKindIcon(e.kind),
+                              size: 16,
+                              color: teamKindColor(e.kind, luma),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                e.title,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                  onChanged: _saving
+                      ? null
+                      : (id) => setState(() => _parentId = id),
+                ),
+              ],
               const SizedBox(height: 16),
               _Label(t.teamClipboardEditorTitleLabel),
               TextField(

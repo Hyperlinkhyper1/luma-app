@@ -105,6 +105,16 @@ class TeamClipboardController extends ChangeNotifier {
     return null;
   }
 
+  TeamEntry? entryById(String? id) =>
+      id == null ? null : _entries.where((e) => e.id == id).firstOrNull;
+
+  /// The entries filed under main thread [id], in board order.
+  List<TeamEntry> childrenOf(String id) =>
+      _entries.where((e) => e.parentId == id).toList();
+
+  /// Whether [e] can be a main thread: it isn't filed under one itself.
+  bool canHoldChildren(TeamEntry e) => e.parentId == null;
+
   bool hasNews(TeamEntry e) =>
       _seenLoaded && e.updatedAtMs > (_seen[e.id] ?? 0) && e.id != _selectedId;
 
@@ -334,10 +344,16 @@ class TeamClipboardController extends ChangeNotifier {
     required TeamEntryKind kind,
     required String title,
     required String brief,
+    String? parentId,
     List<TeamPickedFile> files = const [],
   }) async {
     var entry = await _change(
-      (api) => api.create(kind: kind, title: title, brief: brief),
+      (api) => api.create(
+        kind: kind,
+        title: title,
+        brief: brief,
+        parentId: parentId,
+      ),
     );
     final failed = <String>[];
     for (final file in files) {
@@ -358,8 +374,32 @@ class TeamClipboardController extends ChangeNotifier {
     required TeamEntryKind kind,
     required String title,
     required String brief,
-  }) =>
-      _change((api) => api.update(id, kind: kind, title: title, brief: brief));
+    required String? parentId,
+  }) => _change(
+    (api) => api.update(
+      id,
+      kind: kind,
+      title: title,
+      brief: brief,
+      parentId: parentId,
+    ),
+  );
+
+  /// Changes the name this account goes by on the board, then reloads the
+  /// board so every entry and message shows it.
+  Future<void> rename(String name) async {
+    final api = _api;
+    if (api == null) throw StateError('Not signed in.');
+    try {
+      _me = await api.rename(name);
+      notifyListeners();
+      unawaited(refresh());
+      if (_selectedId case final id?) unawaited(_loadSelected(id));
+    } on TeamClipboardApiException catch (e) {
+      if (e.accessRemoved) unawaited(refresh());
+      rethrow;
+    }
+  }
 
   Future<TeamEntry> setStage(String id, TeamEntryStage stage) =>
       _change((api) => api.setStage(id, stage));

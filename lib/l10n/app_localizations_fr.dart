@@ -39117,6 +39117,45 @@ class LFr extends L {
   String get teamClipboardEditEntry => 'Modifier l’entrée';
 
   @override
+  String get teamClipboardChangeName => 'Votre nom sur le tableau';
+
+  @override
+  String get teamClipboardChangeNameBody =>
+      'C’est ainsi que l’équipe vous voit sur chaque entrée, fichier et message. Laissez vide pour reprendre le nom de votre e-mail.';
+
+  @override
+  String get teamClipboardNameHint => 'Nom';
+
+  @override
+  String get teamClipboardMainThread => 'Fil principal';
+
+  @override
+  String get teamClipboardEditorNoParent => 'Aucun, elle est autonome';
+
+  @override
+  String get teamClipboardNewSubEntry => 'Nouvelle sous-entrée';
+
+  @override
+  String get teamClipboardSubEntries => 'Sous-entrées';
+
+  @override
+  String get teamClipboardAddSubEntry => 'Ajouter une sous-entrée';
+
+  @override
+  String get teamClipboardNoSubEntries =>
+      'Découpez ceci en entrées plus petites. Chacune a sa propre étape, ses fichiers et sa discussion.';
+
+  @override
+  String teamClipboardPartOf(String title) {
+    return 'Fait partie de $title';
+  }
+
+  @override
+  String teamClipboardSubProgress(int done, int total) {
+    return '$done/$total terminées';
+  }
+
+  @override
   String get teamClipboardDeleteEntry => 'Supprimer l’entrée';
 
   @override

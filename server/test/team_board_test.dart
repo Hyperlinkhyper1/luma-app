@@ -543,5 +543,91 @@ void main() {
       expect(moved['unchanged'], isNull);
       expect(moved['entries'], hasLength(1));
     });
+
+    test('a member picks the name the board shows for everything they wrote',
+        () async {
+      final author = await register('ruby.dev@example.com');
+      final other = await register('other@example.com');
+      await setRole('ruby.dev@example.com', 'member');
+      await setRole('other@example.com', 'member');
+      final id = (await create(author))['id'] as String;
+      await call('POST', '/api/v1/team-board/entries/$id/messages',
+          token: author, json: {'text': 'Texture is up'});
+
+      final renamed = await call('PUT', '/api/v1/team-board/me',
+          token: author, json: {'name': '  Ruby   Smith '});
+      expect(renamed['httpStatus'], 200);
+      expect(renamed['me'], 'Ruby Smith');
+
+      final entry =
+          await call('GET', '/api/v1/team-board/entries/$id', token: other);
+      expect(entry['author'], 'Ruby Smith');
+      expect((entry['messages'] as List).single['author'], 'Ruby Smith');
+      final board = await call('GET', '/api/v1/team-board', token: author);
+      expect(board['me'], 'Ruby Smith');
+
+      expect(
+          (await call('PUT', '/api/v1/team-board/me',
+              token: other, json: {'name': 'ruby smith'}))['httpStatus'],
+          409);
+      expect(
+          (await call('PUT', '/api/v1/team-board/me',
+              token: other, json: {'name': 'x' * 33}))['httpStatus'],
+          400);
+
+      final reset = await call('PUT', '/api/v1/team-board/me',
+          token: author, json: {'name': ''});
+      expect(reset['me'], 'ruby.dev');
+
+      final outsider = await register('outsider@example.com');
+      expect(
+          (await call('PUT', '/api/v1/team-board/me',
+              token: outsider, json: {'name': 'Boss'}))['httpStatus'],
+          403);
+    });
+
+    test('a main thread holds sub-entries one level deep', () async {
+      final token = await register('member@example.com');
+      await setRole('member@example.com', 'member');
+      final main =
+          (await create(token, title: 'Nether update'))['id'] as String;
+      final sub = await call('POST', '/api/v1/team-board/entries',
+          token: token,
+          json: {'kind': 'model', 'title': 'Ash block', 'parentId': main});
+      expect(sub['httpStatus'], 201);
+      expect(sub['parentId'], main);
+      final subId = sub['id'] as String;
+
+      expect(
+          (await call('POST', '/api/v1/team-board/entries',
+              token: token,
+              json: {
+                'kind': 'model',
+                'title': 'Too deep',
+                'parentId': subId
+              }))['httpStatus'],
+          409);
+      expect(
+          (await call('PUT', '/api/v1/team-board/entries/$main',
+              token: token, json: {'parentId': subId}))['httpStatus'],
+          409);
+
+      final loose = (await create(token, title: 'Ember'))['id'] as String;
+      final moved = await call('PUT', '/api/v1/team-board/entries/$loose',
+          token: token, json: {'parentId': main});
+      expect(moved['parentId'], main);
+      final freed = await call('PUT', '/api/v1/team-board/entries/$loose',
+          token: token, json: {'parentId': null});
+      expect(freed['parentId'], isNull);
+      final kept = await call('PUT', '/api/v1/team-board/entries/$subId',
+          token: token, json: {'title': 'Ash block v2'});
+      expect(kept['parentId'], main);
+
+      await call('DELETE', '/api/v1/team-board/entries/$main', token: token);
+      final orphan =
+          await call('GET', '/api/v1/team-board/entries/$subId', token: token);
+      expect(orphan['httpStatus'], 200);
+      expect(orphan['parentId'], isNull);
+    });
   });
 }

@@ -36873,6 +36873,43 @@ class LZh extends L {
   String get teamClipboardEditEntry => '编辑条目';
 
   @override
+  String get teamClipboardChangeName => '你在看板上的名字';
+
+  @override
+  String get teamClipboardChangeNameBody => '团队会在每个条目、文件和消息上看到这个名字。留空则恢复使用邮箱名。';
+
+  @override
+  String get teamClipboardNameHint => '名字';
+
+  @override
+  String get teamClipboardMainThread => '主线程';
+
+  @override
+  String get teamClipboardEditorNoParent => '无，独立条目';
+
+  @override
+  String get teamClipboardNewSubEntry => '新建子条目';
+
+  @override
+  String get teamClipboardSubEntries => '子条目';
+
+  @override
+  String get teamClipboardAddSubEntry => '添加子条目';
+
+  @override
+  String get teamClipboardNoSubEntries => '把它拆分成更小的条目。每个条目都有自己的阶段、文件和聊天。';
+
+  @override
+  String teamClipboardPartOf(String title) {
+    return '属于 $title';
+  }
+
+  @override
+  String teamClipboardSubProgress(int done, int total) {
+    return '已完成 $done/$total';
+  }
+
+  @override
   String get teamClipboardDeleteEntry => '删除条目';
 
   @override

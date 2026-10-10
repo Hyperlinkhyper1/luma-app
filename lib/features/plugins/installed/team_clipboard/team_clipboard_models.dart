@@ -118,6 +118,7 @@ class TeamEntry {
     required this.canEdit,
     required this.canClose,
     required this.canDelete,
+    this.parentId,
     this.messages,
   });
 
@@ -139,6 +140,9 @@ class TeamEntry {
   final bool canEdit;
   final bool canClose;
   final bool canDelete;
+
+  /// The main thread this entry is filed under, or null.
+  final String? parentId;
   final List<TeamMessage>? messages;
 
   DateTime get updatedAt => DateTime.fromMillisecondsSinceEpoch(updatedAtMs);
@@ -175,6 +179,7 @@ class TeamEntry {
       canEdit: j['canEdit'] == true,
       canClose: j['canClose'] == true,
       canDelete: j['canDelete'] == true,
+      parentId: j['parentId'] as String?,
       messages: messages is List
           ? [
               for (final m in messages)

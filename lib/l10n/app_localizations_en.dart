@@ -38617,6 +38617,45 @@ class LEn extends L {
   String get teamClipboardEditEntry => 'Edit entry';
 
   @override
+  String get teamClipboardChangeName => 'Your name on the board';
+
+  @override
+  String get teamClipboardChangeNameBody =>
+      'This is how the team sees you on every entry, file and message. Leave it empty to go back to your email name.';
+
+  @override
+  String get teamClipboardNameHint => 'Name';
+
+  @override
+  String get teamClipboardMainThread => 'Main thread';
+
+  @override
+  String get teamClipboardEditorNoParent => 'None, it stands on its own';
+
+  @override
+  String get teamClipboardNewSubEntry => 'New sub-entry';
+
+  @override
+  String get teamClipboardSubEntries => 'Sub-entries';
+
+  @override
+  String get teamClipboardAddSubEntry => 'Add sub-entry';
+
+  @override
+  String get teamClipboardNoSubEntries =>
+      'Break this into smaller entries. Each one gets its own stage, files and chat.';
+
+  @override
+  String teamClipboardPartOf(String title) {
+    return 'Part of $title';
+  }
+
+  @override
+  String teamClipboardSubProgress(int done, int total) {
+    return '$done/$total finished';
+  }
+
+  @override
   String get teamClipboardDeleteEntry => 'Delete entry';
 
   @override

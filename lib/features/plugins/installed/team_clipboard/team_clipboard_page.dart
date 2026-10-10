@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/widgets.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
+import 'data/team_clipboard_api.dart';
 import 'team_clipboard_controller.dart';
 import 'team_clipboard_models.dart';
 import 'team_clipboard_scope.dart';
@@ -146,12 +147,12 @@ class _TeamClipboardPageState extends State<TeamClipboardPage> {
             builder: (context) => _PhoneEntryPage(id: id),
           ),
         )
-        .then((_) {
-          if (controller.selectedId == id) controller.select(null);
-        });
+        .then((_) => controller.select(null));
   }
 }
 
+/// An entry opened on a phone. Moving between a main thread and its
+/// sub-entries swaps what this page shows rather than stacking pages.
 class _PhoneEntryPage extends StatelessWidget {
   const _PhoneEntryPage({required this.id});
 
@@ -162,6 +163,7 @@ class _PhoneEntryPage extends StatelessWidget {
     final controller = TeamClipboardScope.of(context);
     final luma = context.luma;
     final entry = controller.selected;
+    final id = controller.selectedId ?? this.id;
     return Scaffold(
       backgroundColor: luma.background,
       appBar: AppBar(
@@ -171,7 +173,7 @@ class _PhoneEntryPage extends StatelessWidget {
       ),
       body: entry == null || entry.id != id
           ? const Center(child: CircularProgressIndicator())
-          : TeamEntryDetail(entry: entry),
+          : TeamEntryDetail(key: ValueKey(entry.id), entry: entry),
     );
   }
 }
@@ -232,19 +234,44 @@ class _BoardList extends StatelessWidget {
   /// lays its entries out as a grid of tiles instead of a single column.
   final bool tiles;
 
-  Widget _cards(List<TeamEntry> entries) {
-    Widget card(TeamEntry e) => _EntryCard(
-      key: ValueKey(e.id),
-      entry: e,
-      selected: highlightSelection && e.id == controller.selectedId,
-      news: controller.hasNews(e),
-      tile: tiles,
-      onTap: () => onOpen(e),
-    );
+  /// [entries] are the board's top-level cards; [shown] is everything the
+  /// filter lets through, so a main thread's matching sub-entries can hang
+  /// under it in the list.
+  Widget _cards(List<TeamEntry> entries, List<TeamEntry> shown) {
+    Widget card(TeamEntry e) {
+      final children = controller.childrenOf(e.id);
+      return _EntryCard(
+        key: ValueKey(e.id),
+        entry: e,
+        selected: highlightSelection && e.id == controller.selectedId,
+        news: controller.hasNews(e),
+        tile: tiles,
+        subTotal: children.length,
+        subDone: children.where((c) => c.finished).length,
+        onTap: () => onOpen(e),
+      );
+    }
+
     if (!tiles) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [for (final e in entries) card(e)],
+        children: [
+          for (final e in entries) ...[
+            card(e),
+            for (final child in shown.where((c) => c.parentId == e.id))
+              Padding(
+                padding: const EdgeInsets.only(left: 22),
+                child: TeamSubEntryRow(
+                  key: ValueKey(child.id),
+                  entry: child,
+                  news: controller.hasNews(child),
+                  selected:
+                      highlightSelection && child.id == controller.selectedId,
+                  onTap: () => onOpen(child),
+                ),
+              ),
+          ],
+        ],
       );
     }
     return LayoutBuilder(
@@ -276,8 +303,12 @@ class _BoardList extends StatelessWidget {
     final luma = context.luma;
     final all = controller.entries;
     final shown = all.where(matches).toList();
-    final todo = shown.where((e) => !e.finished).toList();
-    final finished = shown.where((e) => e.finished).toList();
+    final shownIds = {for (final e in shown) e.id};
+    final roots = shown
+        .where((e) => e.parentId == null || !shownIds.contains(e.parentId))
+        .toList();
+    final todo = roots.where((e) => !e.finished).toList();
+    final finished = roots.where((e) => e.finished).toList();
     final openCount = all.where((e) => !e.finished).length;
     final side = tiles ? 24.0 : 18.0;
     final newEntry = LumaPrimaryButton(
@@ -324,6 +355,8 @@ class _BoardList extends StatelessWidget {
                               ? Icons.star_rounded
                               : Icons.person_rounded,
                         ),
+                        const SizedBox(width: 6),
+                        Flexible(child: _NameChip(controller: controller)),
                       ],
                     ),
                     const SizedBox(height: 2),
@@ -428,7 +461,7 @@ class _BoardList extends StatelessWidget {
                         label: t.teamClipboardSectionToDo,
                         count: todo.length,
                       ),
-                      _cards(todo),
+                      _cards(todo, shown),
                       if (finished.isNotEmpty) ...[
                         const SizedBox(height: 10),
                         _SectionHeader(
@@ -437,11 +470,143 @@ class _BoardList extends StatelessWidget {
                           expanded: showFinished,
                           onToggle: onToggleFinished,
                         ),
-                        if (showFinished) _cards(finished),
+                        if (showFinished) _cards(finished, shown),
                       ],
                     ],
                   ),
                 ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The name this account goes by on the board; tapping it opens a dialog
+/// to change it.
+class _NameChip extends StatelessWidget {
+  const _NameChip({required this.controller});
+
+  final TeamClipboardController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = L.of(context);
+    final luma = context.luma;
+    final me = controller.me ?? '';
+    return Tooltip(
+      message: t.teamClipboardChangeName,
+      child: InkWell(
+        onTap: () => showDialog<void>(
+          context: context,
+          builder: (context) => _RenameDialog(controller: controller),
+        ),
+        borderRadius: BorderRadius.circular(999),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  me,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: luma.textSecondary,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.edit_rounded, size: 13, color: luma.textMuted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RenameDialog extends StatefulWidget {
+  const _RenameDialog({required this.controller});
+
+  final TeamClipboardController controller;
+
+  @override
+  State<_RenameDialog> createState() => _RenameDialogState();
+}
+
+class _RenameDialogState extends State<_RenameDialog> {
+  late final _name = TextEditingController(text: widget.controller.me);
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    final navigator = Navigator.of(context);
+    try {
+      await widget.controller.rename(_name.text.trim());
+      navigator.pop();
+    } on TeamClipboardApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } catch (e) {
+      if (mounted) setState(() => _error = '$e');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = L.of(context);
+    final luma = context.luma;
+    return AlertDialog(
+      title: Text(t.teamClipboardChangeName),
+      content: SizedBox(
+        width: 380,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              t.teamClipboardChangeNameBody,
+              style: TextStyle(color: luma.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _name,
+              autofocus: true,
+              enabled: !_saving,
+              maxLength: 32,
+              onSubmitted: (_) => _save(),
+              decoration: InputDecoration(
+                hintText: t.teamClipboardNameHint,
+                errorText: _error,
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        LumaGhostButton(
+          label: t.commonCancel,
+          onTap: _saving ? null : () => Navigator.of(context).pop(),
+        ),
+        LumaPrimaryButton(
+          label: t.commonSave,
+          icon: Icons.check_rounded,
+          loading: _saving,
+          onTap: _saving ? null : _save,
         ),
       ],
     );
@@ -621,12 +786,19 @@ class _EntryCard extends StatefulWidget {
     required this.news,
     required this.onTap,
     this.tile = false,
+    this.subTotal = 0,
+    this.subDone = 0,
   });
 
   final TeamEntry entry;
   final bool selected;
   final bool news;
   final VoidCallback onTap;
+
+  /// For a main thread: how many sub-entries it has, and how many of them
+  /// are finished.
+  final int subTotal;
+  final int subDone;
 
   /// Laid out as a fixed-size tile for the full-page grid, with a preview
   /// of the brief, rather than as a row in the side list.
@@ -711,6 +883,14 @@ class _EntryCardState extends State<_EntryCard> {
           icon: e.closed ? Icons.lock_rounded : teamStageIcon(e.stage),
           filled: e.stage == TeamEntryStage.added,
         ),
+        if (widget.subTotal > 0)
+          Tooltip(
+            message: t.teamClipboardMainThread,
+            child: _Meta(
+              icon: Icons.account_tree_rounded,
+              text: t.teamClipboardSubProgress(widget.subDone, widget.subTotal),
+            ),
+          ),
         if (e.files.isNotEmpty)
           _Meta(icon: Icons.attach_file_rounded, text: '${e.files.length}'),
         if (e.messageCount > 0)
@@ -766,7 +946,10 @@ class _EntryCardState extends State<_EntryCard> {
                   children: [
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [Expanded(child: title), ?newsDot],
+                      children: [
+                        Expanded(child: title),
+                        ?newsDot,
+                      ],
                     ),
                     const SizedBox(height: 6),
                     meta,

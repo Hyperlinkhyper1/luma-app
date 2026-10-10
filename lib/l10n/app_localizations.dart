@@ -63367,6 +63367,72 @@ abstract class L {
   /// **'Edit entry'**
   String get teamClipboardEditEntry;
 
+  /// No description provided for @teamClipboardChangeName.
+  ///
+  /// In en, this message translates to:
+  /// **'Your name on the board'**
+  String get teamClipboardChangeName;
+
+  /// No description provided for @teamClipboardChangeNameBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This is how the team sees you on every entry, file and message. Leave it empty to go back to your email name.'**
+  String get teamClipboardChangeNameBody;
+
+  /// No description provided for @teamClipboardNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get teamClipboardNameHint;
+
+  /// No description provided for @teamClipboardMainThread.
+  ///
+  /// In en, this message translates to:
+  /// **'Main thread'**
+  String get teamClipboardMainThread;
+
+  /// No description provided for @teamClipboardEditorNoParent.
+  ///
+  /// In en, this message translates to:
+  /// **'None, it stands on its own'**
+  String get teamClipboardEditorNoParent;
+
+  /// No description provided for @teamClipboardNewSubEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'New sub-entry'**
+  String get teamClipboardNewSubEntry;
+
+  /// No description provided for @teamClipboardSubEntries.
+  ///
+  /// In en, this message translates to:
+  /// **'Sub-entries'**
+  String get teamClipboardSubEntries;
+
+  /// No description provided for @teamClipboardAddSubEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Add sub-entry'**
+  String get teamClipboardAddSubEntry;
+
+  /// No description provided for @teamClipboardNoSubEntries.
+  ///
+  /// In en, this message translates to:
+  /// **'Break this into smaller entries. Each one gets its own stage, files and chat.'**
+  String get teamClipboardNoSubEntries;
+
+  /// No description provided for @teamClipboardPartOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Part of {title}'**
+  String teamClipboardPartOf(String title);
+
+  /// No description provided for @teamClipboardSubProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'{done}/{total} finished'**
+  String teamClipboardSubProgress(int done, int total);
+
   /// No description provided for @teamClipboardDeleteEntry.
   ///
   /// In en, this message translates to:
