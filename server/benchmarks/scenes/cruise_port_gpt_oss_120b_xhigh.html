@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lisbon Cruise Benchmark</title>
+<style>
+html,body{margin:0;overflow:hidden;height:100%;background:#000;color:#fff;font-family:Arial,Helvetica,sans-serif}
+#ui{position:absolute;top:10px;left:10px;background:rgba(0,0,0,0.6);padding:10px;border-radius:5px;max-width:300px;z-index:10}
+#ui button,#ui input{margin:2px;padding:4px 8px;font-size:13px}
+#ui label{font-size:13px}
+#loading{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);padding:20px;border-radius:5px;z-index:20}
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three":"https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="loading">Loading...</div>
+<div id="ui">
+  <div>
+    <button id="btnMiradouro">Miradouro</button>
+    <button id="btnWaterfront">Waterfront</button>
+    <button id="btnAerial">Aerial</button>
+    <button id="btnRiver">From River</button>
+    <button id="btnDeck">Ship Deck</button>
+    <button id="btnWalk">Walk Mode</button>
+  </div>
+  <div>
+    <label>Time: <input type="range" id="timeSlider" min="0" max="24" step="0.1" value="12"></label>
+    <button id="btnPlayPause">Pause</button>
+  </div>
+  <div>
+    <button id="btnDepart">Depart</button>
+    <button id="btnReturn">Return</button>
+  </div>
+  <div>
+    <button id="btnToggleUI">Hide UI</button>
+  </div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+import { Water } from 'three/addons/objects/Water2.js';
+import { Sky } from 'three/addons/objects/Sky.js';
+
+// WebGL2 check
+function isWebGL2Available() {
+  try {
+    const canvas = document.createElement('canvas');
+    return !!canvas.getContext('webgl2');
+  } catch (e) {
+    return false;
+  }
+}
+if (!isWebGL2Available()) {
+  document.body.innerHTML = '<div style="color:#fff;background:#000;padding:20px;">WebGL2 is not supported in this browser.</div>';
+} else {
+  init();
+}
+function init() {
+  const loadingDiv = document.getElementById('loading');
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+  camera.position.set(0, 30, 150);
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  document.body.appendChild(renderer.domElement);
+  // Controls
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  const pointerControls = new PointerLockControls(camera, renderer.domElement);
+  let walkMode = false;
+  // Lights
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+  scene.add(ambientLight);
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  scene.add(directionalLight);
+  // Sky
+  const sky = new Sky();
+  sky.scale.setScalar(10000);
+  scene.add(sky);
+  const sun = new THREE.Vector3();
+  // Water
+  function generateWaterNormalTexture(size) {
+    const data = new Uint8Array(size * size * 4);
+    for (let i = 0; i < size * size; i++) {
+      const stride = i * 4;
+      data[stride] = Math.random() * 255;
+      data[stride + 1] = Math.random() * 255;
+      data[stride + 2] = 255;
+      data[stride + 3] = 255;
+    }
+    const tex = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.needsUpdate = true;
+    return tex;
+  }
+  const waterNormals = generateWaterNormalTexture(256);
+  const waterGeometry = new THREE.PlaneGeometry(2000, 2000);
+  const water = new Water(waterGeometry, {
+    textureWidth: 512,
+    textureHeight: 512,
+    waterNormals: waterNormals,
+    sunDirection: new THREE.Vector3(),
+    sunColor: 0xffffff,
+    waterColor: 0x001e0f,
+    distortionScale: 3.7,
+    fog: scene.fog !== undefined
+  });
+  water.rotation.x = -Math.PI / 2;
+  scene.add(water);
+  // Ground (quay)
+  const quayGeometry = new THREE.BoxGeometry(400, 5, 30);
+  const quayMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
+  const quay = new THREE.Mesh(quayGeometry, quayMaterial);
+  quay.position.set(0, -2.5, 0);
+  scene.add(quay);
+  // Terminal building
+  const terminalGeometry = new THREE.BoxGeometry(80, 30, 30);
+  const terminalMaterial = new THREE.MeshStandardMaterial({ color: 0x777777 });
+  const terminal = new THREE.Mesh(terminalGeometry, terminalMaterial);
+  terminal.position.set(0, 15, -10);
+  scene.add(terminal);
+  // Terminal windows
+  const terminalWindowMaterial = new THREE.MeshStandardMaterial({
+    color: 0x222222,
+    emissive: 0x111111,
+    emissiveIntensity: 0.5,
+    side: THREE.DoubleSide
+  });
+  const windowGeometry = new THREE.PlaneGeometry(2, 2);
+  const windowCountX = 10, windowCountY = 5;
+  const terminalWindows = new THREE.InstancedMesh(windowGeometry, terminalWindowMaterial, windowCountX * windowCountY);
+  let idx = 0;
+  for (let i = 0; i < windowCountX; i++) {
+    for (let j = 0; j < windowCountY; j++) {
+      const matrix = new THREE.Matrix4();
+      const x = -30 + i * 6;
+      const y = 5 + j * 5;
+      const z = 15.1;
+      matrix.setPosition(x, y, z);
+      terminalWindows.setMatrixAt(idx++, matrix);
+    }
+  }
+  scene.add(terminalWindows);
+  // Ship
+  const ship = new THREE.Group();
+  // Hull
+  const hullShape = new THREE.Shape();
+  hullShape.moveTo(0, -2);
+  hullShape.lineTo(0, 10);
+  hullShape.lineTo(300, 10);
+  hullShape.lineTo(300, -2);
+  hullShape.lineTo(0, -2);
+  const extrudeSettings = { depth: 38, bevelEnabled: false };
+  const hullGeometry = new THREE.ExtrudeGeometry(hullShape, extrudeSettings);
+  const hullMaterial = new THREE.MeshStandardMaterial({ color: 0x003366, metalness: 0.2, roughness: 0.6 });
+  const hullMesh = new THREE.Mesh(hullGeometry, hullMaterial);
+  hullMesh.position.set(-150, 0, -19);
+  ship.add(hullMesh);
+  // Bulbous bow
+  const bulbousGeometry = new THREE.SphereGeometry(5, 16, 8);
+  const bulbousMesh = new THREE.Mesh(bulbousGeometry, hullMaterial);
+  bulbousMesh.position.set(-150, -2, 0);
+  ship.add(bulbousMesh);
+  // Funnel
+  const funnelGeometry = new THREE.CylinderGeometry(2, 2, 15, 12);
+  const funnelMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
+  const funnelMesh = new THREE.Mesh(funnelGeometry, funnelMaterial);
+  funnelMesh.position.set(-150 + 50, 10 + 7.5, 0);
+  ship.add(funnelMesh);
+  // Deck
+  const deckGeometry = new THREE.BoxGeometry(300, 2, 38);
+  const deckMaterial = new THREE.MeshStandardMaterial({ color: 0x004488 });
+  const deckMesh = new THREE.Mesh(deckGeometry, deckMaterial);
+  deckMesh.position.set(-150 + 150, 11, 0);
+  ship.add(deckMesh);
+  // Cabin windows
+  const cabinWindowGeometry = new THREE.BoxGeometry(1, 1, 0.2);
+  const cabinWindowMaterial = new THREE.MeshStandardMaterial({
+    color: 0x111111,
+    emissive: 0x222222,
+    emissiveIntensity: 0.5
+  });
+  const rows = 12, cols = 30;
+  const cabinWindows = new THREE.InstancedMesh(cabinWindowGeometry, cabinWindowMaterial, rows * cols * 2);
+  let wIdx = 0;
+  for (let i = 0; i < cols; i++) {
+    const x = -150 + (i + 0.5) * (300 / cols);
+    for (let j = 0; j < rows; j++) {
+      const y = -2 + (j + 0.5) * ((10 + 2) / rows);
+      const leftMatrix = new THREE.Matrix4().setPosition(x, y, -19 + 0.2);
+      cabinWindows.setMatrixAt(wIdx++, leftMatrix);
+      const rightMatrix = new THREE.Matrix4().setPosition(x, y, 19 - 0.2);
+      cabinWindows.setMatrixAt(wIdx++, rightMatrix);
+    }
+  }
+  scene.add(cabinWindows);
+  // Lifeboats
+  const lifeboatGeometry = new THREE.BoxGeometry(5, 1, 2);
+  const lifeboatMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
+  const lifeboatCount = 10;
+  for (let i = 0; i < lifeboatCount; i++) {
+    const lifeboat = new THREE.Mesh(lifeboatGeometry, lifeboatMaterial);
+    const x = -150 + (i + 1) * (300 / (lifeboatCount + 1));
+    lifeboat.position.set(x, 10.5, 20);
+    ship.add(lifeboat);
+  }
+  // Gangways
+  const gangwayGeometry = new THREE.BoxGeometry(5, 2, 2);
+  const gangwayMaterial = new THREE.MeshStandardMaterial({ color: 0x777777 });
+  const gangwayFront = new THREE.Mesh(gangwayGeometry, gangwayMaterial);
+  gangwayFront.position.set(-150, 5, 0);
+  gangwayFront.rotation.x = Math.PI / 6;
+  ship.add(gangwayFront);
+  const gangwayStern = new THREE.Mesh(gangwayGeometry, gangwayMaterial);
+  gangwayStern.position.set(150, 5, 0);
+  gangwayStern.rotation.x = -Math.PI / 6;
+  ship.add(gangwayStern);
+  // Mooring lines
+  const mooringMaterial = new THREE.LineBasicMaterial({ color: 0xaaaaaa });
+  const mooringLineBow = new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(-150, 5, 0),
+    new THREE.Vector3(-150, 5, -15)
+  ]), mooringMaterial);
+  const mooringLineStern = new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(150, 5, 0),
+    new THREE.Vector3(150, 5, -15)
+  ]), mooringMaterial);
+  scene.add(mooringLineBow, mooringLineStern);
+  // Ship name
+  function createShipNameTexture(name) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(0,0,0,0)';
+    ctx.fillRect(0,0,256,64);
+    ctx.font = '48px Arial';
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(name, 128, 32);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.needsUpdate = true;
+    return tex;
+  }
+  const nameTexture = createShipNameTexture('LISBON STAR');
+  const nameMaterial = new THREE.MeshBasicMaterial({ map: nameTexture, transparent: true });
+  const namePlaneGeometry = new THREE.PlaneGeometry(30,5);
+  const namePlane = new THREE.Mesh(namePlaneGeometry, nameMaterial);
+  namePlane.position.set(-150, 5, 0.5);
+  namePlane.rotation.y = -Math.PI/2;
+  ship.add(namePlane);
+  scene.add(ship);
+  // Store original ship position
+  const shipOriginalPos = ship.position.clone();
+  const shipOriginalRot = ship.rotation.clone();
+  // City landmarks
+  // Houses
+  function createHouse(x,z,floors){
+    const houseGroup = new THREE.Group();
+    const width=8, depth=8, height=floors*3;
+    const houseGeom = new THREE.BoxGeometry(width,height,depth);
+    const houseMat = new THREE.MeshStandardMaterial({color:0xD2691E});
+    const house = new THREE.Mesh(houseGeom,houseMat);
+    house.position.y=height/2;
+    houseGroup.add(house);
+    const roofGeom = new THREE.ConeGeometry(width*0.6,2,4);
+    const roofMat = new THREE.MeshStandardMaterial({color:0x8B4513});
+    const roof = new THREE.Mesh(roofGeom,roofMat);
+    roof.position.y=height+1;
+    roof.rotation.y=Math.PI/4;
+    houseGroup.add(roof);
+    houseGroup.position.set(x,0,z);
+    scene.add(houseGroup);
+  }
+  for(let i=-200;i<=200;i+=30){
+    for(let j=-200;j<=-50;j+=30){
+      const floors=3+Math.floor(Math.random()*3);
+      createHouse(i,j,floors);
+    }
+  }
+  // Castle
+  function createCastle(){
+    const castleGroup = new THREE.Group();
+    const wallGeom = new THREE.BoxGeometry(60,20,10);
+    const wallMat = new THREE.MeshStandardMaterial({color:0x777777});
+    const wall = new THREE.Mesh(wallGeom,wallMat);
+    wall.position.y=10;
+    castleGroup.add(wall);
+    const towerGeom = new THREE.CylinderGeometry(5,5,30,8);
+    const towerMat = new THREE.MeshStandardMaterial({color:0x555555});
+    const tower1 = new THREE.Mesh(towerGeom,towerMat);
+    tower1.position.set(-25,15,0);
+    const tower2 = tower1.clone();
+    tower2.position.set(25,15,0);
+    castleGroup.add(tower1,tower2);
+    castleGroup.position.set(100,0,-80);
+    scene.add(castleGroup);
+  }
+  createCastle();
+  // Pantheon dome
+  function createPantheon(){
+    const domeGeom = new THREE.SphereGeometry(10,16,8,0,Math.PI*2,0,Math.PI/2);
+    const domeMat = new THREE.MeshStandardMaterial({color:0xffffff});
+    const dome = new THREE.Mesh(domeGeom,domeMat);
+    dome.position.set(50,20,-30);
+    scene.add(dome);
+  }
+  createPantheon();
+  // Cathedral towers
+  function createCathedral(){
+    const towerGeom = new THREE.CylinderGeometry(4,4,25,8);
+    const towerMat = new THREE.MeshStandardMaterial({color:0xcccccc});
+    const t1 = new THREE.Mesh(towerGeom,towerMat);
+    t1.position.set(70,12.5,-30);
+    const t2 = t1.clone();
+    t2.position.set(80,12.5,-30);
+    scene.add(t1,t2);
+  }
+  createCathedral();
+  // Praça do Comércio arch
+  function createArcade(){
+    const archGeom = new THREE.TorusGeometry(15,2,8,16,Math.PI);
+    const archMat = new THREE.MeshStandardMaterial({color:0xFFD700});
+    const arch = new THREE.Mesh(archGeom,archMat);
+    arch.position.set(-50,5,0);
+    arch.rotation.x=Math.PI/2;
+    scene.add(arch);
+  }
+  createArcade();
+  // 25 de Abril bridge
+  function createBridge(){
+    const bridgeGroup = new THREE.Group();
+    const towerGeom = new THREE.CylinderGeometry(5,5,150,8);
+    const towerMat = new THREE.MeshStandardMaterial({color:0x888888});
+    const tower1 = new THREE.Mesh(towerGeom,towerMat);
+    tower1.position.set(-200,75,200);
+    const tower2 = tower1.clone();
+    tower2.position.set(-200,75,-200);
+    bridgeGroup.add(tower1,tower2);
+    const deckGeom = new THREE.BoxGeometry(10,5,400);
+    const deckMat = new THREE.MeshStandardMaterial({color:0x555555});
+    const deck = new THREE.Mesh(deckGeom,deckMat);
+    deck.position.set(-200,2.5,0);
+    bridgeGroup.add(deck);
+    const cableMat = new THREE.LineBasicMaterial({color:0xffffff});
+    const cableGeom1 = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(-200,150,200),
+      new THREE.Vector3(-200,5,200)
+    ]);
+    const cable1 = new THREE.Line(cableGeom1,cableMat);
+    const cableGeom2 = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(-200,150,-200),
+      new THREE.Vector3(-200,5,-200)
+    ]);
+    const cable2 = new THREE.Line(cableGeom2,cableMat);
+    bridgeGroup.add(cable1,cable2);
+    scene.add(bridgeGroup);
+  }
+  createBridge();
+  // Cristo Rei statue
+  function createCristoRei(){
+    const group = new THREE.Group();
+    const pedGeom = new THREE.CylinderGeometry(5,5,10,8);
+    const pedMat = new THREE.MeshStandardMaterial({color:0x777777});
+    const pedestal = new THREE.Mesh(pedGeom,pedMat);
+    pedestal.position.set(200,5,200);
+    group.add(pedestal);
+    const statueGeom = new THREE.CylinderGeometry(3,3,30,8);
+    const statueMat = new THREE.MeshStandardMaterial({color:0xffffff});
+    const statue = new THREE.Mesh(statueGeom,statueMat);
+    statue.position.set(200,25,200);
+    group.add(statue);
+    const armGeom = new THREE.BoxGeometry(1,20,1);
+    const armMat = new THREE.MeshStandardMaterial({color:0xffffff});
+    const arm1 = new THREE.Mesh(armGeom,armMat);
+    arm1.position.set(200,40,200);
+    arm1.rotation.z = Math.PI/4;
+    const arm2 = arm1.clone();
+    arm2.rotation.z = -Math.PI/4;
+    group.add(arm1,arm2);
+    scene.add(group);
+  }
+  createCristoRei();
+  // Yellow tram
+  function createTram(){
+    const tramGroup = new THREE.Group();
+    const bodyGeom = new THREE.BoxGeometry(12,6,4);
+    const bodyMat = new THREE.MeshStandardMaterial({color:0xFFD700});
+    const body = new THREE.Mesh(bodyGeom,bodyMat);
+    tramGroup.add(body);
+    const winGeom = new THREE.BoxGeometry(1,2,0.5);
+    const winMat = new THREE.MeshStandardMaterial({color:0xffffff});
+    for(let i=-4;i<=4;i+=2){
+      const win = new THREE.Mesh(winGeom,winMat);
+      win.position.set(i,1,2.25);
+      tramGroup.add(win);
+    }
+    tramGroup.position.set(0,3,-10);
+    scene.add(tramGroup);
+  }
+  createTram();
+  // Passengers
+  function createPassengers(){
+    const geo = new THREE.SphereGeometry(0.5,8,8);
+    const mat = new THREE.MeshStandardMaterial({color:0xFFCC00});
+    const count = 200;
+    const inst = new THREE.InstancedMesh(geo,mat,count);
+    const dummy = new THREE.Object3D();
+    for(let i=0;i<count;i++){
+      dummy.position.set(Math.random()*200-100,0.5,Math.random()*200-100);
+      dummy.updateMatrix();
+      inst.setMatrixAt(i,dummy.matrix);
+    }
+    scene.add(inst);
+  }
+  createPassengers();
+  // Trucks
+  function createTrucks(){
+    const geo = new THREE.BoxGeometry(6,3,3);
+    const mat = new THREE.MeshStandardMaterial({color:0x333333});
+    for(let i=0;i<10;i++){
+      const truck = new THREE.Mesh(geo,mat);
+      truck.position.set(Math.random()*200-100,1.5,Math.random()*200-100);
+      scene.add(truck);
+    }
+  }
+  createTrucks();
+  // Tugboat
+  const tugboat = (function(){
+    const hullGeom = new THREE.CylinderGeometry(2,2,10,8);
+    const hullMat = new THREE.MeshStandardMaterial({color:0x555555});
+    const hull = new THREE.Mesh(hullGeom,hullMat);
+    hull.rotation.z = Math.PI/2;
+    hull.position.set(-150,-1,10);
+    scene.add(hull);
+    return hull;
+  })();
+  // Pilot boat
+  const pilotBoat = (function(){
+    const hullGeom = new THREE.CylinderGeometry(1.5,1.5,8,8);
+    const hullMat = new THREE.MeshStandardMaterial({color:0x777777});
+    const hull = new THREE.Mesh(hullGeom,hullMat);
+    hull.rotation.z = Math.PI/2;
+    hull.position.set(-150,-1,-10);
+    scene.add(hull);
+    return hull;
+  })();
+  // Ferry
+  const ferry = (function(){
+    const geo = new THREE.BoxGeometry(30,5,10);
+    const mat = new THREE.MeshStandardMaterial({color:0x2222FF});
+    const mesh = new THREE.Mesh(geo,mat);
+    mesh.position.set(0,-1,200);
+    scene.add(mesh);
+    return mesh;
+  })();
+  // Sailboats
+  function createSailboat(x,z){
+    const hullGeom = new THREE.ConeGeometry(2,6,8);
+    const hullMat = new THREE.MeshStandardMaterial({color:0x8B4513});
+    const hull = new THREE.Mesh(hullGeom,hullMat);
+    hull.rotation.x = Math.PI/2;
+    hull.position.set(x,-1,z);
+    const sailGeom = new THREE.ConeGeometry(1,4,4);
+    const sailMat = new THREE.MeshStandardMaterial({color:0xffffff,side:THREE.DoubleSide});
+    const sail = new THREE.Mesh(sailGeom,sailMat);
+    sail.position.set(x,2,z);
+    scene.add(hull,sail);
+  }
+  for(let i=0;i<5;i++){
+    createSailboat(Math.random()*200-100,Math.random()*200-100);
+  }
+  // Seagulls
+  function createSeagulls(){
+    const geom = new THREE.BufferGeometry();
+    const verts = new Float32Array([
+      0,0,0,
+      0.5,0.2,0,
+      1,0,0
+    ]);
+    geom.setAttribute('position',new THREE.BufferAttribute(verts,3));
+    const mat = new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide});
+    const count = 30;
+    const inst = new THREE.InstancedMesh(geom,mat,count);
+    const dummy = new THREE.Object3D();
+    for(let i=0;i<count;i++){
+      dummy.position.set(Math.random()*200-100,Math.random()*30+10,Math.random()*200-100);
+      dummy.scale.setScalar(2);
+      dummy.updateMatrix();
+      inst.setMatrixAt(i,dummy.matrix);
+    }
+    scene.add(inst);
+  }
+  createSeagulls();
+  // Time of day
+  let timeOfDay = 12;
+  function updateSun(t){
+    const phi = THREE.MathUtils.degToRad(90 - (t/24)*180);
+    const theta = THREE.MathUtils.degToRad(180);
+    sun.setFromSphericalCoords(1,phi,theta);
+    sky.material.uniforms['sunPosition'].value.copy(sun);
+    directionalLight.position.copy(sun).multiplyScalar(1000);
+    const dayFactor = Math.max(0, Math.cos(phi));
+    ambientLight.intensity = 0.3 + 0.5 * dayFactor;
+    directionalLight.intensity = 0.5 + 0.5 * dayFactor;
+    terminalWindowMaterial.emissiveIntensity = 0.5 * (1 - dayFactor);
+    cabinWindowMaterial.emissiveIntensity = 0.5 * (1 - dayFactor);
+    water.material.uniforms['waterColor'].value.setHSL(0.6,0.5,0.5 + 0.1*dayFactor);
+    water.material.uniforms['sunDirection'].value.copy(sun).normalize();
+  }
+  updateSun(timeOfDay);
+  // UI interactions
+  const btnMiradouro = document.getElementById('btnMiradouro');
+  const btnWaterfront = document.getElementById('btnWaterfront');
+  const btnAerial = document.getElementById('btnAerial');
+  const btnRiver = document.getElementById('btnRiver');
+  const btnDeck = document.getElementById('btnDeck');
+  const btnWalk = document.getElementById('btnWalk');
+  const btnPlayPause = document.getElementById('btnPlayPause');
+  const btnDepart = document.getElementById('btnDepart');
+  const btnReturn = document.getElementById('btnReturn');
+  const btnToggleUI = document.getElementById('btnToggleUI');
+  const timeSlider = document.getElementById('timeSlider');
+  btnMiradouro.addEventListener('click',()=>{camera.position.set(0,80,200);controls.target.set(0,0,0);});
+  btnWaterfront.addEventListener('click',()=>{camera.position.set(0,10,50);controls.target.set(0,5,0);});
+  btnAerial.addEventListener('click',()=>{camera.position.set(0,200,0);controls.target.set(0,0,0);});
+  btnRiver.addEventListener('click',()=>{camera.position.set(200,30,200);controls.target.set(0,0,0);});
+  btnDeck.addEventListener('click',()=>{const deckPos = new THREE.Vector3(-150+150,12,0);camera.position.copy(deckPos).add(new THREE.Vector3(0,5,20));controls.target.copy(deckPos);});
+  btnWalk.addEventListener('click',()=>{walkMode=!walkMode;if(walkMode){pointerControls.lock();controls.enabled=false;}else{pointerControls.unlock();controls.enabled=true;}});
+  btnPlayPause.addEventListener('click',()=>{timePlaying=!timePlaying;btnPlayPause.textContent=timePlaying?'Pause':'Play';});
+  btnDepart.addEventListener('click',()=>{if(!departing){departing=true;returning=false;playHorn();retractGangways();}});
+  btnReturn.addEventListener('click',()=>{if(!returning){returning=true;departing=false;extendGangways();}});
+  btnToggleUI.addEventListener('click',()=>{const ui=document.getElementById('ui');if(ui.style.display==='none'){ui.style.display='block';btnToggleUI.textContent='Hide UI';}else{ui.style.display='none';btnToggleUI.textContent='Show UI';}});
+  timeSlider.addEventListener('input',(e)=>{timeOfDay=parseFloat(e.target.value);updateSun(timeOfDay);});
+  // Horn sound
+  function playHorn(){
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type='sawtooth';
+    osc.frequency.setValueAtTime(440,ctx.currentTime);
+    gain.gain.setValueAtTime(0,ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.5,ctx.currentTime+0.1);
+    gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+2);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime+2);
+  }
+  // Gangways
+  function retractGangways(){
+    gangwayFront.rotation.x = -Math.PI/2;
+    gangwayStern.rotation.x = Math.PI/2;
+  }
+  function extendGangways(){
+    gangwayFront.rotation.x = Math.PI/6;
+    gangwayStern.rotation.x = -Math.PI/6;
+  }
+  // Animation loop
+  const clock = new THREE.Clock();
+  let timePlaying = true;
+  let departing = false;
+  let returning = false;
+  const moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+  const keyState = {forward:false,back:false,left:false,right:false};
+  document.addEventListener('keydown',(e)=>{switch(e.code){case'KeyW':keyState.forward=true;break;case'KeyS':keyState.back=true;break;case'KeyA':keyState.left=true;break;case'KeyD':keyState.right=true;break;}});
+  document.addEventListener('keyup',(e)=>{switch(e.code){case'KeyW':keyState.forward=false;break;case'KeyS':keyState.back=false;break;case'KeyA':keyState.left=false;break;case'KeyD':keyState.right=false;break;}});
+  function animate(){
+    requestAnimationFrame(animate);
+    const delta = clock.getDelta();
+    if(timePlaying){
+      timeOfDay+=delta*0.1;
+      if(timeOfDay>=24)timeOfDay-=24;
+      timeSlider.value=timeOfDay;
+      updateSun(timeOfDay);
+    }
+    water.material.uniforms['time'].value = clock.getElapsedTime();
+    // Ferry movement
+    ferry.position.z = Math.sin(clock.getElapsedTime()*0.2)*200;
+    ferry.position.x = Math.cos(clock.getElapsedTime()*0.2)*100;
+    // Depart/return animation
+    if(departing){
+      ship.position.x+=delta*5;
+      ship.rotation.y+=delta*0.02;
+      tugboat.position.x = ship.position.x - 10;
+    }
+    if(returning){
+      ship.position.x-=delta*5;
+      ship.rotation.y-=delta*0.02;
+      tugboat.position.x = ship.position.x - 10;
+      if(ship.position.x<=shipOriginalPos.x){
+        ship.position.copy(shipOriginalPos);
+        ship.rotation.copy(shipOriginalRot);
+        returning=false;
+        extendGangways();
+      }
+    }
+    // Walk mode
+    if(walkMode){
+      const speed=20;
+      const obj=pointerControls.getObject();
+      if(keyState.forward) obj.translateZ(-speed*delta);
+      if(keyState.back) obj.translateZ(speed*delta);
+      if(keyState.left) obj.translateX(-speed*delta);
+      if(keyState.right) obj.translateX(speed*delta);
+    }
+    controls.update();
+    renderer.render(scene,camera);
+  }
+  animate();
+  loadingDiv.style.display='none';
+  // Resize handling
+  window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
+}
+</script>
+</html>
