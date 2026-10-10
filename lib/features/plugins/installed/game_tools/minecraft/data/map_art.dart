@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import '../../../../../../l10n/app_localizations.dart';
+import '../../../../../converter/schematic/schematic_model.dart';
 
 /// A map base colour and the block luma suggests for it. Colours are the
 /// game's map palette; each shows in four shades depending on height.
@@ -105,6 +106,24 @@ enum McDither {
   };
 }
 
+/// How a pixel is matched to the nearest map colour.
+enum McColorMatch {
+  /// "Redmean" weighted RGB: cheap and close to perceptual.
+  balanced,
+
+  /// Distance in CIELAB, which follows the eye best.
+  best,
+
+  /// Plain RGB distance.
+  fast;
+
+  String label(L t) => switch (this) {
+    balanced => t.mcMapMatchBalanced,
+    best => t.mcMapMatchBest,
+    fast => t.mcMapMatchFast,
+  };
+}
+
 /// Input for [mcConvertMapArt], kept to plain data so it can cross isolates.
 class McMapArtJob {
   const McMapArtJob({
@@ -114,6 +133,8 @@ class McMapArtJob {
     required this.colors,
     required this.staircase,
     required this.dither,
+    this.ditherStrength = 1,
+    this.match = McColorMatch.balanced,
   });
 
   /// RGBA, already scaled to [width] × [height] (128 per map).
@@ -125,6 +146,10 @@ class McMapArtJob {
   final List<int> colors;
   final bool staircase;
   final McDither dither;
+
+  /// 0–1: how much of the dither is applied.
+  final double ditherStrength;
+  final McColorMatch match;
 }
 
 class McMapArtResult {
@@ -149,12 +174,33 @@ class McMapArtResult {
   final Uint8List preview;
 }
 
-double _distance(int r1, int g1, int b1, int rgb) {
+double _redmean(int r1, int g1, int b1, int rgb) {
   final r2 = (rgb >> 16) & 0xFF, g2 = (rgb >> 8) & 0xFF, b2 = rgb & 0xFF;
-  // "Redmean" weighting — cheap and close to perceptual for this job.
   final rm = (r1 + r2) / 2;
   final dr = r1 - r2, dg = g1 - g2, db = b1 - b2;
   return (2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db;
+}
+
+double _rgbDistance(int r1, int g1, int b1, int rgb) {
+  final dr = r1 - ((rgb >> 16) & 0xFF), dg = g1 - ((rgb >> 8) & 0xFF), db = b1 - (rgb & 0xFF);
+  return (dr * dr + dg * dg + db * db).toDouble();
+}
+
+double _linear(int c) {
+  final v = c / 255;
+  return v <= 0.04045 ? v / 12.92 : math.pow((v + 0.055) / 1.055, 2.4).toDouble();
+}
+
+double _labF(double t) => t > 0.008856 ? math.pow(t, 1 / 3).toDouble() : 7.787 * t + 16 / 116;
+
+/// sRGB to CIELAB (D65).
+(double, double, double) _lab(int r, int g, int b) {
+  final lr = _linear(r), lg = _linear(g), lb = _linear(b);
+  final x = (lr * 0.4124 + lg * 0.3576 + lb * 0.1805) / 0.95047;
+  final y = lr * 0.2126 + lg * 0.7152 + lb * 0.0722;
+  final z = (lr * 0.0193 + lg * 0.1192 + lb * 0.9505) / 1.08883;
+  final fx = _labF(x), fy = _labF(y), fz = _labF(z);
+  return (116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz));
 }
 
 const _bayer = [
@@ -187,37 +233,63 @@ McMapArtResult mcConvertMapArt(McMapArtJob job) {
     return McMapArtResult(width: w, height: h, color: colorOut, shade: shadeOut, preview: preview);
   }
 
+  final best = job.match == McColorMatch.best;
+  final labs = [
+    if (best)
+      for (final c in candidates) _lab((c.$3 >> 16) & 0xFF, (c.$3 >> 8) & 0xFF, c.$3 & 0xFF),
+  ];
+  // The same colour turns up again and again, dithered or not.
+  final cache = <int, int>{};
+  int nearest(int r, int g, int b) => cache.putIfAbsent((r << 16) | (g << 8) | b, () {
+    var found = 0;
+    var foundD = double.infinity;
+    final lab = best ? _lab(r, g, b) : null;
+    for (var k = 0; k < candidates.length; k++) {
+      final double d;
+      if (lab != null) {
+        final c = labs[k];
+        final dl = lab.$1 - c.$1, da = lab.$2 - c.$2, db = lab.$3 - c.$3;
+        d = dl * dl + da * da + db * db;
+      } else if (job.match == McColorMatch.fast) {
+        d = _rgbDistance(r, g, b, candidates[k].$3);
+      } else {
+        d = _redmean(r, g, b, candidates[k].$3);
+      }
+      if (d < foundD) {
+        foundD = d;
+        found = k;
+      }
+    }
+    return found;
+  });
+
+  final strength = job.ditherStrength.clamp(0.0, 1.0);
   for (var y = 0; y < h; y++) {
     for (var x = 0; x < w; x++) {
       final i = y * w + x;
       if (job.pixels[i * 4 + 3] < 128) continue;
       var r = work[i * 3], g = work[i * 3 + 1], b = work[i * 3 + 2];
       if (job.dither == McDither.ordered) {
-        final t = (_bayer[y % 4][x % 4] / 16 - 0.5) * 32;
+        final t = (_bayer[y % 4][x % 4] / 16 - 0.5) * 32 * strength;
         r += t;
         g += t;
         b += t;
       }
-      final ri = r.round().clamp(0, 255), gi = g.round().clamp(0, 255), bi = b.round().clamp(0, 255);
-      var best = candidates.first;
-      var bestD = double.infinity;
-      for (final c in candidates) {
-        final d = _distance(ri, gi, bi, c.$3);
-        if (d < bestD) {
-          bestD = d;
-          best = c;
-        }
-      }
-      colorOut[i] = best.$1;
-      shadeOut[i] = best.$2;
-      final rgb = best.$3;
+      final match = candidates[nearest(
+        r.round().clamp(0, 255),
+        g.round().clamp(0, 255),
+        b.round().clamp(0, 255),
+      )];
+      colorOut[i] = match.$1;
+      shadeOut[i] = match.$2;
+      final rgb = match.$3;
       final pr = (rgb >> 16) & 0xFF, pg = (rgb >> 8) & 0xFF, pb = rgb & 0xFF;
       preview[i * 4] = pr;
       preview[i * 4 + 1] = pg;
       preview[i * 4 + 2] = pb;
       preview[i * 4 + 3] = 255;
-      if (job.dither == McDither.floydSteinberg) {
-        final er = r - pr, eg = g - pg, eb = b - pb;
+      if (job.dither == McDither.floydSteinberg && strength > 0) {
+        final er = (r - pr) * strength, eg = (g - pg) * strength, eb = (b - pb) * strength;
         void spread(int dx, int dy, double f) {
           final nx = x + dx, ny = y + dy;
           if (nx < 0 || nx >= w || ny >= h) return;
@@ -238,14 +310,46 @@ McMapArtResult mcConvertMapArt(McMapArtJob job) {
 }
 
 /// Block heights for a staircase build, one column (x) at a time from the
-/// north. Row −1 is the "noobline" of blocks north of the map whose height
-/// sets the first row's shade. Each column is lifted so its lowest block
-/// sits at 0.
-Int32List mcStaircaseHeights(McMapArtResult art) {
+/// north, in shade steps (multiply by [mcShadeStep] for blocks). Row −1 is
+/// the "noobline" of blocks north of the map whose height sets the first
+/// row's shade.
+///
+/// Aligned climbs or drops exactly one step per shade change and lifts each
+/// column so its lowest block sits at 0. Compact uses the slack the game
+/// allows — a darker block only has to be lower than its neighbour, not one
+/// lower — and drops every descent as far as it can, which keeps columns far
+/// shorter.
+Int32List mcStaircaseHeights(McMapArtResult art, {bool compact = false}) {
   final w = art.width, h = art.height;
   // Index (z + 1) * w + x; z = −1 is the noobline.
   final heights = Int32List(w * (h + 1));
+  // How row p (1-based; 0 is the noobline) relates to the row north of it.
+  int relation(int x, int p) {
+    final i = (p - 1) * w + x;
+    return art.color[i] < 0 ? 1 : art.shade[i];
+  }
+
   for (var x = 0; x < w; x++) {
+    if (compact) {
+      // descents[p]: darker steps still to come before the next brighter
+      // one, which is how high row p must be for all of them to fit above 0.
+      final descents = Int32List(h + 1);
+      for (var p = h - 1; p >= 0; p--) {
+        final next = relation(x, p + 1);
+        descents[p] = next == 2 ? 0 : descents[p + 1] + (next == 0 ? 1 : 0);
+      }
+      var current = descents[0];
+      heights[x] = current;
+      for (var p = 1; p <= h; p++) {
+        current = switch (relation(x, p)) {
+          0 => descents[p],
+          2 => math.max(descents[p], current + 1),
+          _ => current,
+        };
+        heights[p * w + x] = current;
+      }
+      continue;
+    }
     var current = 0;
     var lowest = 0;
     heights[x] = 0;
@@ -266,4 +370,90 @@ Int32List mcStaircaseHeights(McMapArtResult art) {
     }
   }
   return heights;
+}
+
+/// Blocks per map pixel side at a map's zoom level 0–4: 1, 2, 4, 8 or 16.
+int mcMapScaleBlocks(int scale) => 1 << scale;
+
+/// How many blocks higher or lower a pixel must sit than the one north of it
+/// to read as brighter or darker on a map at [scale].
+///
+/// The game compares the two pixels' average heights, scaled by 4 / (k + 4)
+/// for k blocks a pixel, adds ±0.2 of checkerboard noise, and changes the
+/// shade past 0.6. One block is enough at 1:1; zoomed-out maps need more.
+/// Worked out in doubles as the game does, rounding included.
+int mcShadeStep(int scale) {
+  final k = mcMapScaleBlocks(scale);
+  for (var d = 1;; d++) {
+    if (d * 4.0 / (k + 4) + (0 - 0.5) * 0.4 > 0.6) return d;
+  }
+}
+
+/// Past this many cells a build would take hundreds of megabytes.
+const kMcMapMaxVoxels = 48 * 1024 * 1024;
+
+/// Builds the schematic for a converted map: each pixel a square of
+/// [mcMapScaleBlocks] blocks, plus the strip of cobblestone north of the map
+/// that sets the first row's shade. Null when the build would be larger than
+/// [kMcMapMaxVoxels].
+Schematic? mcBuildMapSchematic(
+  McMapArtResult art, {
+  required bool staircase,
+  bool compact = false,
+  int scale = 0,
+}) {
+  final k = mcMapScaleBlocks(scale);
+  final step = mcShadeStep(scale);
+  final w = art.width, h = art.height;
+  final heights = staircase ? mcStaircaseHeights(art, compact: compact) : null;
+  var maxStep = 0;
+  if (heights != null) {
+    for (final v in heights) {
+      if (v > maxStep) maxStep = v;
+    }
+  }
+  final width = w * k;
+  final length = (h + 1) * k;
+  final height = maxStep * step + 1;
+  if (width * length * height > kMcMapMaxVoxels) return null;
+  final palette = PaletteBuilder();
+  final blocks = Uint16List(width * height * length);
+  final noob = palette.add(BlockState('minecraft:cobblestone'));
+  final ids = <int, int>{};
+  // Zoomed-out maps read a pixel from a k × k area, so each one is a square.
+  void square(int px, int pz, int y, int id) {
+    for (var dz = 0; dz < k; dz++) {
+      final row = (pz * k + dz) * width + y * width * length + px * k;
+      for (var dx = 0; dx < k; dx++) {
+        blocks[row + dx] = id;
+      }
+    }
+  }
+
+  for (var x = 0; x < w; x++) {
+    square(x, 0, heights == null ? 0 : heights[x] * step, noob);
+    for (var z = 0; z < h; z++) {
+      final ci = art.color[z * w + x];
+      if (ci < 0) continue;
+      final p = ids.putIfAbsent(ci, () {
+        final c = kMcMapColors[ci];
+        return palette.add(
+          c.block == 'oak_leaves'
+              ? BlockState('minecraft:oak_leaves', {'persistent': 'true'})
+              : BlockState('minecraft:${c.block}'),
+        );
+      });
+      square(x, z + 1, heights == null ? 0 : heights[(z + 1) * w + x] * step, p);
+    }
+  }
+  return Schematic(
+    width: width,
+    height: height,
+    length: length,
+    palette: palette.build(),
+    blocks: blocks,
+    name: 'map_art',
+    author: 'luma',
+    dataVersion: 5023,
+  );
 }

@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/luma_theme.dart';
@@ -24,15 +25,25 @@ import '../schematic/schematic_model.dart';
 /// orbit smoothly: the alternative, a draw call per face, is tens of thousands
 /// of calls a frame.
 class SchematicViewer extends StatefulWidget {
-  const SchematicViewer({super.key, required this.schematic});
+  const SchematicViewer({
+    super.key,
+    required this.schematic,
+    this.immersive = false,
+  });
 
   final Schematic schematic;
+
+  /// Fills whatever space it is given, with the controls floating over the
+  /// build, instead of a fixed-height panel with the controls underneath.
+  /// The parent draws the backdrop.
+  final bool immersive;
 
   @override
   State<SchematicViewer> createState() => _SchematicViewerState();
 }
 
-class _SchematicViewerState extends State<SchematicViewer> {
+class _SchematicViewerState extends State<SchematicViewer>
+    with SingleTickerProviderStateMixin {
   static const double _minPitch = -1.45;
   static const double _maxPitch = 1.45;
 
@@ -58,12 +69,40 @@ class _SchematicViewerState extends State<SchematicViewer> {
   double _gestureStartZoom = 1;
   Offset _gestureStartFocal = Offset.zero;
 
+  /// Turns the build slowly while auto-rotate is on.
+  Ticker? _spin;
+  bool get _spinning => _spin?.isActive ?? false;
+  Duration _lastSpin = Duration.zero;
+
   @override
   void initState() {
     super.initState();
     _atlas = BlockAtlas.current;
     _rebuild();
     if (_atlas == null) _loadTextures();
+  }
+
+  @override
+  void dispose() {
+    _spin?.dispose();
+    super.dispose();
+  }
+
+  void _onSpin(Duration elapsed) {
+    final dt = (elapsed - _lastSpin).inMicroseconds / 1e6;
+    _lastSpin = elapsed;
+    setState(() => _yaw = (_yaw + dt * 0.35) % (math.pi * 2));
+  }
+
+  void _toggleSpin() {
+    setState(() {
+      if (_spinning) {
+        _spin!.stop();
+      } else {
+        _lastSpin = Duration.zero;
+        (_spin ??= createTicker(_onSpin)).start();
+      }
+    });
   }
 
   @override
@@ -165,6 +204,7 @@ class _SchematicViewerState extends State<SchematicViewer> {
 
     if (_geometry.isEmpty) {
       return _ViewerShell(
+        immersive: widget.immersive,
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -181,11 +221,7 @@ class _SchematicViewerState extends State<SchematicViewer> {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _ViewerShell(
-          child: Listener(
+    final viewport = Listener(
             onPointerSignal: (event) {
               if (event is! PointerScrollEvent) return;
               _nudgeZoom(event.scrollDelta.dy > 0 ? 0.9 : 1.1);
@@ -193,6 +229,8 @@ class _SchematicViewerState extends State<SchematicViewer> {
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onScaleStart: (details) {
+                // Taking hold of the build stops it turning by itself.
+                _spin?.stop();
                 _gestureStartYaw = _yaw;
                 _gestureStartPitch = _pitch;
                 _gestureStartZoom = _zoom;
@@ -237,8 +275,14 @@ class _SchematicViewerState extends State<SchematicViewer> {
                 ),
               ),
             ),
-          ),
-        ),
+          );
+
+    if (widget.immersive) return _buildImmersive(context, viewport);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ViewerShell(child: viewport),
         const SizedBox(height: 12),
         _ViewerControls(
           t: t,
@@ -279,6 +323,203 @@ class _SchematicViewerState extends State<SchematicViewer> {
           ),
         ],
       ],
+    );
+  }
+
+  /// The build edge to edge, with a layer slider and the size floating at the
+  /// bottom and the camera buttons down the right.
+  Widget _buildImmersive(BuildContext context, Widget viewport) {
+    final luma = context.luma;
+    final t = L.of(context);
+    final schematic = widget.schematic;
+    final maxLayer = _geometry.height;
+    final scale = maxLayer == 0 ? 1.0 : schematic.height / maxLayer;
+    final atTop = _layers.end >= maxLayer;
+    final top = (_layers.end * scale).round().clamp(1, schematic.height);
+    final textures = _atlas == null || _loadingTextures;
+
+    final layerPill = _FloatingPill(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            t.schemViewerLayers,
+            style: TextStyle(color: luma.textSecondary, fontSize: 12.5),
+          ),
+          SizedBox(
+            width: 128,
+            child: SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 3,
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+              ),
+              child: Slider(
+                value: _layers.end.clamp(1, math.max(1, maxLayer)).toDouble(),
+                min: maxLayer > 1 ? 1 : 0,
+                max: math.max(1, maxLayer).toDouble(),
+                divisions: maxLayer > 1 ? maxLayer - 1 : null,
+                activeColor: luma.accent,
+                inactiveColor: luma.border,
+                onChanged: maxLayer > 1
+                    ? (v) => setState(() => _layers = RangeValues(0, v))
+                    : null,
+              ),
+            ),
+          ),
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 26),
+            child: Text(
+              atTop ? t.schemViewerAll : '$top',
+              style: TextStyle(
+                color: luma.textSecondary,
+                fontSize: 12.5,
+                fontFeatures: const [ui.FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final roomy = constraints.maxWidth >= 620;
+        return Stack(
+          children: [
+            Positioned.fill(child: viewport),
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 12,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Wrap(
+                      spacing: 14,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        layerPill,
+                        if (roomy)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: Text(
+                              t.schemViewerOrbitHint,
+                              style: TextStyle(
+                                color: luma.textMuted,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _FloatingPill(
+                    child: Text(
+                      '${schematic.width} × ${schematic.length} × ${schematic.height}',
+                      style: TextStyle(
+                        color: luma.textSecondary,
+                        fontSize: 12,
+                        fontFeatures: const [ui.FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              right: 12,
+              top: 12,
+              child: _FloatingPill(
+                padding: const EdgeInsets.all(2),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _ViewerIconButton(
+                      icon: _spinning
+                          ? Icons.pause_rounded
+                          : Icons.threesixty_rounded,
+                      tooltip: t.schemViewerAutoRotate,
+                      onTap: _toggleSpin,
+                    ),
+                    _ViewerIconButton(
+                      icon: Icons.zoom_in_rounded,
+                      tooltip: t.schemViewerZoomIn,
+                      onTap: () => _nudgeZoom(1.25),
+                    ),
+                    _ViewerIconButton(
+                      icon: Icons.zoom_out_rounded,
+                      tooltip: t.schemViewerZoomOut,
+                      onTap: () => _nudgeZoom(0.8),
+                    ),
+                    _ViewerIconButton(
+                      icon: Icons.restart_alt_rounded,
+                      tooltip: t.schemViewerResetView,
+                      onTap: _resetView,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Flat colours until textures arrive: say why, and offer them.
+            if (textures)
+              Positioned(
+                right: 70,
+                top: 12,
+                left: roomy ? null : 12,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 380),
+                  child: _FloatingPill(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                    child: _TextureStatus(
+                      t: t,
+                      atlas: _atlas,
+                      loading: _loadingTextures,
+                      download: _download,
+                      failure: BlockAtlas.failure,
+                      onPick: _pickTextureSource,
+                      onDownload: _downloadTextures,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// A small frosted card floating over the immersive viewer.
+class _FloatingPill extends StatelessWidget {
+  const _FloatingPill({
+    required this.child,
+    this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: luma.surface.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: luma.border.withValues(alpha: 0.6)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: child,
     );
   }
 }
@@ -412,12 +653,14 @@ class _TextureStatus extends StatelessWidget {
 
 /// The recessed panel the preview is drawn into.
 class _ViewerShell extends StatelessWidget {
-  const _ViewerShell({required this.child});
+  const _ViewerShell({required this.child, this.immersive = false});
   final Widget child;
+  final bool immersive;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    if (immersive) return child;
     return ClipRRect(
       borderRadius: BorderRadius.circular(14),
       child: Container(

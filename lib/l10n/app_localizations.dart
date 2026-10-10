@@ -11005,6 +11005,24 @@ abstract class L {
   /// **'Layers'**
   String get schemViewerLayers;
 
+  /// No description provided for @schemViewerAll.
+  ///
+  /// In en, this message translates to:
+  /// **'all'**
+  String get schemViewerAll;
+
+  /// No description provided for @schemViewerOrbitHint.
+  ///
+  /// In en, this message translates to:
+  /// **'drag to orbit · scroll to zoom'**
+  String get schemViewerOrbitHint;
+
+  /// No description provided for @schemViewerAutoRotate.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-rotate'**
+  String get schemViewerAutoRotate;
+
   /// No description provided for @schemViewerLayerRange.
   ///
   /// In en, this message translates to:
@@ -15221,7 +15239,7 @@ abstract class L {
   /// No description provided for @spotifySetupSteps.
   ///
   /// In en, this message translates to:
-  /// **'1. Create an app in the Spotify Developer Dashboard (Web API).\n2. Add http://127.0.0.1/callback as its redirect URI. Spotify allows luma to use a dynamic port for this loopback address.\n3. Copy the app Client ID here, then sign in through your browser. A development-mode app requires Spotify Premium.'**
+  /// **'1. Create an app in the Spotify Developer Dashboard (Web API).\n2. Add http://127.0.0.1:8888/callback as its redirect URI. Include the port exactly as shown.\n3. Copy the app Client ID here, then sign in through your browser. A development-mode app requires Spotify Premium.'**
   String get spotifySetupSteps;
 
   /// No description provided for @spotifyOpenDashboard.
@@ -60517,6 +60535,258 @@ abstract class L {
   /// **'Ordered (Bayer)'**
   String get mcMapDitherOrdered;
 
+  /// No description provided for @mcMapStaircase.
+  ///
+  /// In en, this message translates to:
+  /// **'Staircase'**
+  String get mcMapStaircase;
+
+  /// No description provided for @mcMapTabMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Map'**
+  String get mcMapTabMap;
+
+  /// No description provided for @mcMapTab3d.
+  ///
+  /// In en, this message translates to:
+  /// **'3D build'**
+  String get mcMapTab3d;
+
+  /// No description provided for @mcMapTabGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Guide'**
+  String get mcMapTabGuide;
+
+  /// No description provided for @mcMapSectionImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Image'**
+  String get mcMapSectionImage;
+
+  /// No description provided for @mcMapSectionSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Size'**
+  String get mcMapSectionSize;
+
+  /// No description provided for @mcMapSectionStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Style'**
+  String get mcMapSectionStyle;
+
+  /// No description provided for @mcMapSectionBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocks'**
+  String get mcMapSectionBlocks;
+
+  /// No description provided for @mcMapByMaps.
+  ///
+  /// In en, this message translates to:
+  /// **'By maps'**
+  String get mcMapByMaps;
+
+  /// No description provided for @mcMapFreeSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Free size'**
+  String get mcMapFreeSize;
+
+  /// No description provided for @mcMapWidth.
+  ///
+  /// In en, this message translates to:
+  /// **'Width'**
+  String get mcMapWidth;
+
+  /// No description provided for @mcMapHeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Height'**
+  String get mcMapHeight;
+
+  /// No description provided for @mcMapScale.
+  ///
+  /// In en, this message translates to:
+  /// **'Map scale'**
+  String get mcMapScale;
+
+  /// No description provided for @mcMapSizeSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{width} × {height} blocks · {count, plural, =1{1 map} other{{count} maps}}'**
+  String mcMapSizeSummary(int width, int height, int count);
+
+  /// No description provided for @mcMapBuildMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Build mode'**
+  String get mcMapBuildMode;
+
+  /// No description provided for @mcMapFlat.
+  ///
+  /// In en, this message translates to:
+  /// **'Flat'**
+  String get mcMapFlat;
+
+  /// No description provided for @mcMapStaircaseStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Staircase style'**
+  String get mcMapStaircaseStyle;
+
+  /// No description provided for @mcMapCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact'**
+  String get mcMapCompact;
+
+  /// No description provided for @mcMapAligned.
+  ///
+  /// In en, this message translates to:
+  /// **'Aligned'**
+  String get mcMapAligned;
+
+  /// No description provided for @mcMapColourMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Colour match'**
+  String get mcMapColourMatch;
+
+  /// No description provided for @mcMapMatchBalanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Balanced'**
+  String get mcMapMatchBalanced;
+
+  /// No description provided for @mcMapMatchBest.
+  ///
+  /// In en, this message translates to:
+  /// **'Best'**
+  String get mcMapMatchBest;
+
+  /// No description provided for @mcMapMatchFast.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast'**
+  String get mcMapMatchFast;
+
+  /// No description provided for @mcMapDitherStrength.
+  ///
+  /// In en, this message translates to:
+  /// **'Dither strength'**
+  String get mcMapDitherStrength;
+
+  /// No description provided for @mcMapPaletteCheap.
+  ///
+  /// In en, this message translates to:
+  /// **'Cheapest'**
+  String get mcMapPaletteCheap;
+
+  /// No description provided for @mcMapAdvanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced'**
+  String get mcMapAdvanced;
+
+  /// No description provided for @mcMapDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get mcMapDownload;
+
+  /// No description provided for @mcMapOtherFormats.
+  ///
+  /// In en, this message translates to:
+  /// **'Other formats'**
+  String get mcMapOtherFormats;
+
+  /// No description provided for @mcMapDownloadPng.
+  ///
+  /// In en, this message translates to:
+  /// **'Map image (.png)'**
+  String get mcMapDownloadPng;
+
+  /// No description provided for @mcMapFlattened.
+  ///
+  /// In en, this message translates to:
+  /// **'Too big to build as a staircase, so it is built flat.'**
+  String get mcMapFlattened;
+
+  /// No description provided for @mcMapPanHint.
+  ///
+  /// In en, this message translates to:
+  /// **'scroll to zoom · drag to pan'**
+  String get mcMapPanHint;
+
+  /// No description provided for @mcMapMapsStat.
+  ///
+  /// In en, this message translates to:
+  /// **'maps'**
+  String get mcMapMapsStat;
+
+  /// No description provided for @mcMapGuideTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How to build it'**
+  String get mcMapGuideTitle;
+
+  /// No description provided for @mcMapGuideMaps.
+  ///
+  /// In en, this message translates to:
+  /// **'Craft {count, plural, =1{one empty map} other{{count} empty maps}}.'**
+  String mcMapGuideMaps(int count);
+
+  /// No description provided for @mcMapGuideZoom.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom each map out {times}× on a cartography table (map plus paper) so it covers {size} × {size} blocks.'**
+  String mcMapGuideZoom(int times, int size);
+
+  /// No description provided for @mcMapGuideArea.
+  ///
+  /// In en, this message translates to:
+  /// **'Each map shows a fixed {size} × {size} block area lined up to the world’s map grid. Open a fresh map where you want the art to see which area it claims.'**
+  String mcMapGuideArea(int size);
+
+  /// No description provided for @mcMapGuideFree.
+  ///
+  /// In en, this message translates to:
+  /// **'A free size doesn’t line up to whole maps. Switch to By maps if the art should fill a map exactly.'**
+  String get mcMapGuideFree;
+
+  /// No description provided for @mcMapGuideNoobline.
+  ///
+  /// In en, this message translates to:
+  /// **'Lay the cobblestone strip along the north edge first. It sets the shade of the first row.'**
+  String get mcMapGuideNoobline;
+
+  /// No description provided for @mcMapGuideBuild.
+  ///
+  /// In en, this message translates to:
+  /// **'Build from north to south. In Litematica, load the schematic and line its north edge up with that strip.'**
+  String get mcMapGuideBuild;
+
+  /// No description provided for @mcMapGuideStair.
+  ///
+  /// In en, this message translates to:
+  /// **'This build rises and falls column by column. Use the 3D build view and its layer slider to check each block’s height.'**
+  String get mcMapGuideStair;
+
+  /// No description provided for @mcMapGuideFlat.
+  ///
+  /// In en, this message translates to:
+  /// **'Every block sits on one layer, so any flat patch of ground works.'**
+  String get mcMapGuideFlat;
+
+  /// No description provided for @mcMapGuideDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Stand in the area holding the map to fill it in, then lock it with a glass pane on a cartography table so it never changes.'**
+  String get mcMapGuideDone;
+
   /// No description provided for @mcMapNotImage.
   ///
   /// In en, this message translates to:
@@ -60541,12 +60811,6 @@ abstract class L {
   /// **'Change image'**
   String get mcMapChangeImage;
 
-  /// No description provided for @mcMapSize.
-  ///
-  /// In en, this message translates to:
-  /// **'Size in maps'**
-  String get mcMapSize;
-
   /// No description provided for @mcMapAcross.
   ///
   /// In en, this message translates to:
@@ -60564,18 +60828,6 @@ abstract class L {
   /// In en, this message translates to:
   /// **'{width} × {height} blocks'**
   String mcMapBlocksSize(int width, int height);
-
-  /// No description provided for @mcMapStaircase.
-  ///
-  /// In en, this message translates to:
-  /// **'Staircase (3 shades)'**
-  String get mcMapStaircase;
-
-  /// No description provided for @mcMapStaircaseDetail.
-  ///
-  /// In en, this message translates to:
-  /// **'More colours, but each column climbs up and down'**
-  String get mcMapStaircaseDetail;
 
   /// No description provided for @mcMapDithering.
   ///
@@ -60601,12 +60853,6 @@ abstract class L {
   /// **'Any PNG or JPG. It is cut into 128-block maps, matched to the colours a map can show, and turned into a schematic you can paste or build block by block.'**
   String get mcMapChooseBody;
 
-  /// No description provided for @mcMapPreview.
-  ///
-  /// In en, this message translates to:
-  /// **'How it will look on a map'**
-  String get mcMapPreview;
-
   /// No description provided for @mcMapSavePng.
   ///
   /// In en, this message translates to:
@@ -60618,18 +60864,6 @@ abstract class L {
   /// In en, this message translates to:
   /// **'tallest column'**
   String get mcMapTallest;
-
-  /// No description provided for @mcMapShow3d.
-  ///
-  /// In en, this message translates to:
-  /// **'Show in 3D'**
-  String get mcMapShow3d;
-
-  /// No description provided for @mcMapBuildNote.
-  ///
-  /// In en, this message translates to:
-  /// **'Build it facing north to south, with the cobblestone row on the north edge — that row is what shades the first line. Each map covers a 128 × 128 area aligned to the map grid.'**
-  String get mcMapBuildNote;
 
   /// No description provided for @mcRoofGable.
   ///

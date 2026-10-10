@@ -46,7 +46,7 @@ class SpotifyOAuth {
       sha256.convert(utf8.encode(verifier)).bytes,
     ).replaceAll('=', '');
     final state = _random(24);
-    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 8888);
     try {
       final redirect = 'http://127.0.0.1:${server.port}/callback';
       final uri = Uri.https('accounts.spotify.com', '/authorize', {

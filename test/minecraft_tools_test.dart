@@ -252,6 +252,108 @@ void main() {
       // All brighter shades: each column climbs one block per row.
       expect(heights.reduce(math.max), 128);
     });
+
+    /// A one-pixel-wide column with these shades, north to south.
+    McMapArtResult column(List<int> shades) => McMapArtResult(
+      width: 1,
+      height: shades.length,
+      color: Int16List(shades.length),
+      shade: Uint8List.fromList(shades),
+      preview: Uint8List(shades.length * 4),
+    );
+
+    void expectShadesHold(McMapArtResult art, Int32List heights) {
+      for (var z = 0; z < art.height; z++) {
+        final north = heights[z], here = heights[z + 1];
+        expect(here, greaterThanOrEqualTo(0));
+        switch (art.shade[z]) {
+          case 0:
+            expect(here, lessThan(north), reason: 'row $z should be lower');
+          case 2:
+            expect(here, greaterThan(north), reason: 'row $z should be higher');
+          default:
+            expect(here, north, reason: 'row $z should be level');
+        }
+      }
+    }
+
+    test('a compact staircase drops descents to the floor', () {
+      // Ten up, one down, ten up: aligned keeps climbing, compact starts over.
+      final art = column([...List.filled(10, 2), 0, ...List.filled(10, 2)]);
+      final aligned = mcStaircaseHeights(art);
+      final compact = mcStaircaseHeights(art, compact: true);
+      expectShadesHold(art, aligned);
+      expectShadesHold(art, compact);
+      expect(aligned.reduce(math.max), 19);
+      expect(compact.reduce(math.max), 10);
+    });
+
+    test('compact staircases keep every shade on a mixed column', () {
+      final random = math.Random(7);
+      final art = column([for (var i = 0; i < 300; i++) random.nextInt(3)]);
+      final compact = mcStaircaseHeights(art, compact: true);
+      expectShadesHold(art, compact);
+      expect(
+        compact.reduce(math.max),
+        lessThanOrEqualTo(mcStaircaseHeights(art).reduce(math.max)),
+      );
+    });
+
+    test('zoomed-out maps need taller steps to change shade', () {
+      expect([for (var s = 0; s <= 4; s++) mcShadeStep(s)], [1, 2, 2, 3, 4]);
+      for (var s = 0; s <= 4; s++) {
+        final k = mcMapScaleBlocks(s);
+        final step = mcShadeStep(s);
+        // The game's test, with its checkerboard noise either way.
+        for (final noise in [-0.2, 0.2]) {
+          expect(step * 4.0 / (k + 4) + noise > 0.6, isTrue);
+          expect(-step * 4.0 / (k + 4) + noise < -0.6, isTrue);
+        }
+      }
+    });
+
+    test('a zoomed-out map builds each pixel as a square', () {
+      final art = column([2, 1]);
+      final schematic = mcBuildMapSchematic(art, staircase: true, scale: 1)!;
+      // One pixel wide, two long plus the cobblestone strip, two blocks a
+      // pixel, and a two-block step for the one climb.
+      expect([schematic.width, schematic.length, schematic.height], [2, 6, 3]);
+      int at(int x, int y, int z) =>
+          schematic.blocks[x + z * schematic.width + y * schematic.width * schematic.length];
+      final cobble = schematic.palette.indexWhere((s) => s.name == 'minecraft:cobblestone');
+      expect([at(0, 0, 0), at(1, 0, 1)], [cobble, cobble]);
+      for (final (x, z) in [(0, 2), (1, 3), (0, 4), (1, 5)]) {
+        expect(at(x, 2, z), isNot(0));
+        expect(at(x, 0, z), 0);
+      }
+    });
+
+    test('a staircase too big to hold is refused rather than built', () {
+      final art = column(List.filled(4096, 2));
+      expect(mcBuildMapSchematic(art, staircase: true, scale: 4), isNull);
+      expect(mcBuildMapSchematic(art, staircase: false, scale: 4), isNotNull);
+    });
+
+    test('every colour match finds an exact map colour', () {
+      final grass = kMcMapColors.indexWhere((c) => c.id == 1);
+      final rgb = mcShade(kMcMapColors[grass].rgb, 220);
+      final pixels = Uint8List(16 * 4);
+      for (var i = 0; i < 16; i++) {
+        pixels.setAll(i * 4, [(rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF, 255]);
+      }
+      for (final match in McColorMatch.values) {
+        final r = mcConvertMapArt(McMapArtJob(
+          pixels: pixels,
+          width: 4,
+          height: 4,
+          colors: [for (var i = 0; i < kMcMapColors.length; i++) i],
+          staircase: false,
+          dither: McDither.floydSteinberg,
+          match: match,
+        ));
+        expect(r.color.every((c) => c == grass), isTrue, reason: '$match');
+      }
+    });
   });
 
   group('text codes', () {

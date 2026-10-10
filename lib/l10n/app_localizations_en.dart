@@ -6577,6 +6577,15 @@ class LEn extends L {
   String get schemViewerLayers => 'Layers';
 
   @override
+  String get schemViewerAll => 'all';
+
+  @override
+  String get schemViewerOrbitHint => 'drag to orbit · scroll to zoom';
+
+  @override
+  String get schemViewerAutoRotate => 'Auto-rotate';
+
+  @override
   String schemViewerLayerRange(int startY, int endY) {
     return 'Y $startY–$endY';
   }
@@ -9222,7 +9231,7 @@ class LEn extends L {
 
   @override
   String get spotifySetupSteps =>
-      '1. Create an app in the Spotify Developer Dashboard (Web API).\n2. Add http://127.0.0.1/callback as its redirect URI. Spotify allows luma to use a dynamic port for this loopback address.\n3. Copy the app Client ID here, then sign in through your browser. A development-mode app requires Spotify Premium.';
+      '1. Create an app in the Spotify Developer Dashboard (Web API).\n2. Add http://127.0.0.1:8888/callback as its redirect URI. Include the port exactly as shown.\n3. Copy the app Client ID here, then sign in through your browser. A development-mode app requires Spotify Premium.';
 
   @override
   String get spotifyOpenDashboard => 'Open Spotify Developer Dashboard';
@@ -37050,6 +37059,159 @@ class LEn extends L {
   String get mcMapDitherOrdered => 'Ordered (Bayer)';
 
   @override
+  String get mcMapStaircase => 'Staircase';
+
+  @override
+  String get mcMapTabMap => 'Map';
+
+  @override
+  String get mcMapTab3d => '3D build';
+
+  @override
+  String get mcMapTabGuide => 'Guide';
+
+  @override
+  String get mcMapSectionImage => 'Image';
+
+  @override
+  String get mcMapSectionSize => 'Size';
+
+  @override
+  String get mcMapSectionStyle => 'Style';
+
+  @override
+  String get mcMapSectionBlocks => 'Blocks';
+
+  @override
+  String get mcMapByMaps => 'By maps';
+
+  @override
+  String get mcMapFreeSize => 'Free size';
+
+  @override
+  String get mcMapWidth => 'Width';
+
+  @override
+  String get mcMapHeight => 'Height';
+
+  @override
+  String get mcMapScale => 'Map scale';
+
+  @override
+  String mcMapSizeSummary(int width, int height, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count maps',
+      one: '1 map',
+    );
+    return '$width × $height blocks · $_temp0';
+  }
+
+  @override
+  String get mcMapBuildMode => 'Build mode';
+
+  @override
+  String get mcMapFlat => 'Flat';
+
+  @override
+  String get mcMapStaircaseStyle => 'Staircase style';
+
+  @override
+  String get mcMapCompact => 'Compact';
+
+  @override
+  String get mcMapAligned => 'Aligned';
+
+  @override
+  String get mcMapColourMatch => 'Colour match';
+
+  @override
+  String get mcMapMatchBalanced => 'Balanced';
+
+  @override
+  String get mcMapMatchBest => 'Best';
+
+  @override
+  String get mcMapMatchFast => 'Fast';
+
+  @override
+  String get mcMapDitherStrength => 'Dither strength';
+
+  @override
+  String get mcMapPaletteCheap => 'Cheapest';
+
+  @override
+  String get mcMapAdvanced => 'Advanced';
+
+  @override
+  String get mcMapDownload => 'Download';
+
+  @override
+  String get mcMapOtherFormats => 'Other formats';
+
+  @override
+  String get mcMapDownloadPng => 'Map image (.png)';
+
+  @override
+  String get mcMapFlattened =>
+      'Too big to build as a staircase, so it is built flat.';
+
+  @override
+  String get mcMapPanHint => 'scroll to zoom · drag to pan';
+
+  @override
+  String get mcMapMapsStat => 'maps';
+
+  @override
+  String get mcMapGuideTitle => 'How to build it';
+
+  @override
+  String mcMapGuideMaps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count empty maps',
+      one: 'one empty map',
+    );
+    return 'Craft $_temp0.';
+  }
+
+  @override
+  String mcMapGuideZoom(int times, int size) {
+    return 'Zoom each map out $times× on a cartography table (map plus paper) so it covers $size × $size blocks.';
+  }
+
+  @override
+  String mcMapGuideArea(int size) {
+    return 'Each map shows a fixed $size × $size block area lined up to the world’s map grid. Open a fresh map where you want the art to see which area it claims.';
+  }
+
+  @override
+  String get mcMapGuideFree =>
+      'A free size doesn’t line up to whole maps. Switch to By maps if the art should fill a map exactly.';
+
+  @override
+  String get mcMapGuideNoobline =>
+      'Lay the cobblestone strip along the north edge first. It sets the shade of the first row.';
+
+  @override
+  String get mcMapGuideBuild =>
+      'Build from north to south. In Litematica, load the schematic and line its north edge up with that strip.';
+
+  @override
+  String get mcMapGuideStair =>
+      'This build rises and falls column by column. Use the 3D build view and its layer slider to check each block’s height.';
+
+  @override
+  String get mcMapGuideFlat =>
+      'Every block sits on one layer, so any flat patch of ground works.';
+
+  @override
+  String get mcMapGuideDone =>
+      'Stand in the area holding the map to fill it in, then lock it with a glass pane on a cartography table so it never changes.';
+
+  @override
   String get mcMapNotImage => 'That file is not an image luma can read.';
 
   @override
@@ -37064,9 +37226,6 @@ class LEn extends L {
   String get mcMapChangeImage => 'Change image';
 
   @override
-  String get mcMapSize => 'Size in maps';
-
-  @override
   String get mcMapAcross => 'Across';
 
   @override
@@ -37076,13 +37235,6 @@ class LEn extends L {
   String mcMapBlocksSize(int width, int height) {
     return '$width × $height blocks';
   }
-
-  @override
-  String get mcMapStaircase => 'Staircase (3 shades)';
-
-  @override
-  String get mcMapStaircaseDetail =>
-      'More colours, but each column climbs up and down';
 
   @override
   String get mcMapDithering => 'Dithering';
@@ -37100,20 +37252,10 @@ class LEn extends L {
       'Any PNG or JPG. It is cut into 128-block maps, matched to the colours a map can show, and turned into a schematic you can paste or build block by block.';
 
   @override
-  String get mcMapPreview => 'How it will look on a map';
-
-  @override
   String get mcMapSavePng => 'Save PNG';
 
   @override
   String get mcMapTallest => 'tallest column';
-
-  @override
-  String get mcMapShow3d => 'Show in 3D';
-
-  @override
-  String get mcMapBuildNote =>
-      'Build it facing north to south, with the cobblestone row on the north edge — that row is what shades the first line. Each map covers a 128 × 128 area aligned to the map grid.';
 
   @override
   String get mcRoofGable => 'Gable';

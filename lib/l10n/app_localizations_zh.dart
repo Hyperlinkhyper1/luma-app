@@ -6238,6 +6238,15 @@ class LZh extends L {
   String get schemViewerLayers => '层';
 
   @override
+  String get schemViewerAll => '全部';
+
+  @override
+  String get schemViewerOrbitHint => '拖动环绕 · 滚动缩放';
+
+  @override
+  String get schemViewerAutoRotate => '自动旋转';
+
+  @override
   String schemViewerLayerRange(int startY, int endY) {
     return 'Y $startY–$endY';
   }
@@ -8741,7 +8750,7 @@ class LZh extends L {
 
   @override
   String get spotifySetupSteps =>
-      '1. 在 Spotify 开发者控制台（Web API）中创建一个应用。\n2. 将 http://127.0.0.1/callback 添加为其重定向 URI。Spotify 允许 luma 为此回环地址使用动态端口。\n3. 在此粘贴应用的客户端 ID，然后通过浏览器登录。开发模式的应用需要 Spotify Premium。';
+      '1. 在 Spotify 开发者控制台（Web API）中创建一个应用。\n2. 将 http://127.0.0.1:8888/callback 添加为其重定向 URI。请原样包含端口号。\n3. 在此粘贴应用的客户端 ID，然后通过浏览器登录。开发模式的应用需要 Spotify Premium。';
 
   @override
   String get spotifyOpenDashboard => '打开 Spotify 开发者控制台';
@@ -35350,6 +35359,140 @@ class LZh extends L {
   String get mcMapDitherOrdered => '有序（Bayer）';
 
   @override
+  String get mcMapStaircase => '阶梯';
+
+  @override
+  String get mcMapTabMap => '地图';
+
+  @override
+  String get mcMapTab3d => '3D 建筑';
+
+  @override
+  String get mcMapTabGuide => '指南';
+
+  @override
+  String get mcMapSectionImage => '图片';
+
+  @override
+  String get mcMapSectionSize => '尺寸';
+
+  @override
+  String get mcMapSectionStyle => '样式';
+
+  @override
+  String get mcMapSectionBlocks => '方块';
+
+  @override
+  String get mcMapByMaps => '按地图';
+
+  @override
+  String get mcMapFreeSize => '自由尺寸';
+
+  @override
+  String get mcMapWidth => '宽度';
+
+  @override
+  String get mcMapHeight => '高度';
+
+  @override
+  String get mcMapScale => '地图比例';
+
+  @override
+  String mcMapSizeSummary(int width, int height, int count) {
+    return '$width × $height 方块 · $count 张地图';
+  }
+
+  @override
+  String get mcMapBuildMode => '建造方式';
+
+  @override
+  String get mcMapFlat => '平面';
+
+  @override
+  String get mcMapStaircaseStyle => '阶梯样式';
+
+  @override
+  String get mcMapCompact => '紧凑';
+
+  @override
+  String get mcMapAligned => '对齐';
+
+  @override
+  String get mcMapColourMatch => '颜色匹配';
+
+  @override
+  String get mcMapMatchBalanced => '均衡';
+
+  @override
+  String get mcMapMatchBest => '最佳';
+
+  @override
+  String get mcMapMatchFast => '快速';
+
+  @override
+  String get mcMapDitherStrength => '抖动强度';
+
+  @override
+  String get mcMapPaletteCheap => '最便宜';
+
+  @override
+  String get mcMapAdvanced => '高级';
+
+  @override
+  String get mcMapDownload => '下载';
+
+  @override
+  String get mcMapOtherFormats => '其他格式';
+
+  @override
+  String get mcMapDownloadPng => '地图图片（.png）';
+
+  @override
+  String get mcMapFlattened => '尺寸太大，无法做成阶梯，因此改为平面建造。';
+
+  @override
+  String get mcMapPanHint => '滚动缩放 · 拖动平移';
+
+  @override
+  String get mcMapMapsStat => '张地图';
+
+  @override
+  String get mcMapGuideTitle => '建造步骤';
+
+  @override
+  String mcMapGuideMaps(int count) {
+    return '合成 $count 张空地图。';
+  }
+
+  @override
+  String mcMapGuideZoom(int times, int size) {
+    return '在制图台上把每张地图缩小 $times 次（地图加纸），让它覆盖 $size × $size 方块。';
+  }
+
+  @override
+  String mcMapGuideArea(int size) {
+    return '每张地图显示与世界地图网格对齐的固定 $size × $size 方块区域。在想放作品的地方打开一张新地图，就能看到它覆盖的范围。';
+  }
+
+  @override
+  String get mcMapGuideFree => '自由尺寸不会与整张地图对齐。如果作品要正好填满地图，请选择“按地图”。';
+
+  @override
+  String get mcMapGuideNoobline => '先沿北边铺好圆石条，它决定第一行的明暗。';
+
+  @override
+  String get mcMapGuideBuild => '从北向南建造。在 Litematica 中载入原理图，让它的北边与圆石条对齐。';
+
+  @override
+  String get mcMapGuideStair => '这个建筑逐列起伏。用 3D 视图和图层滑块检查每个方块的高度。';
+
+  @override
+  String get mcMapGuideFlat => '所有方块都在同一层，任何平地都可以。';
+
+  @override
+  String get mcMapGuideDone => '手持地图站在区域内让它绘制完成，然后在制图台上用玻璃板锁定，使它不再改变。';
+
+  @override
   String get mcMapNotImage => '该文件不是 luma 能读取的图片。';
 
   @override
@@ -35364,9 +35507,6 @@ class LZh extends L {
   String get mcMapChangeImage => '更换图片';
 
   @override
-  String get mcMapSize => '地图数量';
-
-  @override
   String get mcMapAcross => '横向';
 
   @override
@@ -35376,12 +35516,6 @@ class LZh extends L {
   String mcMapBlocksSize(int width, int height) {
     return '$width × $height 格';
   }
-
-  @override
-  String get mcMapStaircase => '阶梯式（3 种明暗）';
-
-  @override
-  String get mcMapStaircaseDetail => '颜色更多，但每列会上下起伏';
 
   @override
   String get mcMapDithering => '抖动';
@@ -35399,20 +35533,10 @@ class LZh extends L {
       '任意 PNG 或 JPG。图片会被切成 128 格的地图，匹配到地图能显示的颜色，再变成可粘贴或逐块建造的原理图。';
 
   @override
-  String get mcMapPreview => '在地图上的效果';
-
-  @override
   String get mcMapSavePng => '保存 PNG';
 
   @override
   String get mcMapTallest => '最高的一列';
-
-  @override
-  String get mcMapShow3d => '以 3D 显示';
-
-  @override
-  String get mcMapBuildNote =>
-      '从北向南建造，把圆石那一排放在北边——它决定第一行的明暗。每张地图覆盖与地图网格对齐的 128 × 128 区域。';
 
   @override
   String get mcRoofGable => '人字顶';

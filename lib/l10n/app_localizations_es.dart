@@ -6616,6 +6616,15 @@ class LEs extends L {
   String get schemViewerLayers => 'Capas';
 
   @override
+  String get schemViewerAll => 'todo';
+
+  @override
+  String get schemViewerOrbitHint => 'arrastra para girar · rueda para ampliar';
+
+  @override
+  String get schemViewerAutoRotate => 'Rotación automática';
+
+  @override
   String schemViewerLayerRange(int startY, int endY) {
     return 'Y $startY–$endY';
   }
@@ -9286,7 +9295,7 @@ class LEs extends L {
 
   @override
   String get spotifySetupSteps =>
-      '1. Crea una aplicación en el Spotify Developer Dashboard (Web API).\n2. Añade http://127.0.0.1/callback como URI de redirección. Spotify permite a luma usar un puerto dinámico para esta dirección de bucle local.\n3. Copia aquí el ID de cliente de la aplicación y luego inicia sesión en tu navegador. Una aplicación en modo desarrollo requiere Spotify Premium.';
+      '1. Crea una aplicación en el Spotify Developer Dashboard (Web API).\n2. Añade http://127.0.0.1:8888/callback como URI de redirección. Incluye el puerto exactamente como se muestra.\n3. Copia aquí el ID de cliente de la aplicación y luego inicia sesión en tu navegador. Una aplicación en modo desarrollo requiere Spotify Premium.';
 
   @override
   String get spotifyOpenDashboard => 'Abrir Spotify Developer Dashboard';
@@ -37473,6 +37482,159 @@ class LEs extends L {
   String get mcMapDitherOrdered => 'Ordenado (Bayer)';
 
   @override
+  String get mcMapStaircase => 'Escalera';
+
+  @override
+  String get mcMapTabMap => 'Mapa';
+
+  @override
+  String get mcMapTab3d => 'Construcción 3D';
+
+  @override
+  String get mcMapTabGuide => 'Guía';
+
+  @override
+  String get mcMapSectionImage => 'Imagen';
+
+  @override
+  String get mcMapSectionSize => 'Tamaño';
+
+  @override
+  String get mcMapSectionStyle => 'Estilo';
+
+  @override
+  String get mcMapSectionBlocks => 'Bloques';
+
+  @override
+  String get mcMapByMaps => 'Por mapas';
+
+  @override
+  String get mcMapFreeSize => 'Tamaño libre';
+
+  @override
+  String get mcMapWidth => 'Ancho';
+
+  @override
+  String get mcMapHeight => 'Alto';
+
+  @override
+  String get mcMapScale => 'Escala del mapa';
+
+  @override
+  String mcMapSizeSummary(int width, int height, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count mapas',
+      one: '1 mapa',
+    );
+    return '$width × $height bloques · $_temp0';
+  }
+
+  @override
+  String get mcMapBuildMode => 'Modo de construcción';
+
+  @override
+  String get mcMapFlat => 'Plano';
+
+  @override
+  String get mcMapStaircaseStyle => 'Estilo de escalera';
+
+  @override
+  String get mcMapCompact => 'Compacto';
+
+  @override
+  String get mcMapAligned => 'Alineado';
+
+  @override
+  String get mcMapColourMatch => 'Ajuste de color';
+
+  @override
+  String get mcMapMatchBalanced => 'Equilibrado';
+
+  @override
+  String get mcMapMatchBest => 'Mejor';
+
+  @override
+  String get mcMapMatchFast => 'Rápido';
+
+  @override
+  String get mcMapDitherStrength => 'Intensidad del tramado';
+
+  @override
+  String get mcMapPaletteCheap => 'Más baratos';
+
+  @override
+  String get mcMapAdvanced => 'Avanzado';
+
+  @override
+  String get mcMapDownload => 'Descargar';
+
+  @override
+  String get mcMapOtherFormats => 'Otros formatos';
+
+  @override
+  String get mcMapDownloadPng => 'Imagen del mapa (.png)';
+
+  @override
+  String get mcMapFlattened =>
+      'Demasiado grande para una escalera, así que se construye plano.';
+
+  @override
+  String get mcMapPanHint => 'rueda para ampliar · arrastra para mover';
+
+  @override
+  String get mcMapMapsStat => 'mapas';
+
+  @override
+  String get mcMapGuideTitle => 'Cómo construirlo';
+
+  @override
+  String mcMapGuideMaps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count mapas vacíos',
+      one: 'un mapa vacío',
+    );
+    return 'Fabrica $_temp0.';
+  }
+
+  @override
+  String mcMapGuideZoom(int times, int size) {
+    return 'Aleja cada mapa $times× en una mesa de cartografía (mapa más papel) para que cubra $size × $size bloques.';
+  }
+
+  @override
+  String mcMapGuideArea(int size) {
+    return 'Cada mapa muestra una zona fija de $size × $size bloques alineada con la cuadrícula de mapas del mundo. Abre un mapa nuevo donde quieras la obra para ver qué zona cubre.';
+  }
+
+  @override
+  String get mcMapGuideFree =>
+      'Un tamaño libre no encaja con mapas completos. Elige Por mapas si la obra debe llenar un mapa exacto.';
+
+  @override
+  String get mcMapGuideNoobline =>
+      'Coloca primero la franja de roca en el borde norte. Fija el tono de la primera fila.';
+
+  @override
+  String get mcMapGuideBuild =>
+      'Construye de norte a sur. En Litematica, carga el esquema y alinea su borde norte con esa franja.';
+
+  @override
+  String get mcMapGuideStair =>
+      'Esta construcción sube y baja columna a columna. Usa la vista 3D y su control de capas para comprobar la altura de cada bloque.';
+
+  @override
+  String get mcMapGuideFlat =>
+      'Todos los bloques están en una sola capa, así que sirve cualquier terreno llano.';
+
+  @override
+  String get mcMapGuideDone =>
+      'Ponte en la zona con el mapa en la mano para rellenarlo y después bloquéalo con un panel de vidrio en una mesa de cartografía para que no cambie.';
+
+  @override
   String get mcMapNotImage =>
       'Ese archivo no es una imagen que luma pueda leer.';
 
@@ -37488,9 +37650,6 @@ class LEs extends L {
   String get mcMapChangeImage => 'Cambiar imagen';
 
   @override
-  String get mcMapSize => 'Tamaño en mapas';
-
-  @override
   String get mcMapAcross => 'De ancho';
 
   @override
@@ -37500,13 +37659,6 @@ class LEs extends L {
   String mcMapBlocksSize(int width, int height) {
     return '$width × $height bloques';
   }
-
-  @override
-  String get mcMapStaircase => 'Escalonado (3 tonos)';
-
-  @override
-  String get mcMapStaircaseDetail =>
-      'Más colores, pero cada columna sube y baja';
 
   @override
   String get mcMapDithering => 'Difuminado';
@@ -37524,20 +37676,10 @@ class LEs extends L {
       'Cualquier PNG o JPG. Se corta en mapas de 128 bloques, se ajusta a los colores que un mapa puede mostrar y se convierte en un esquema que puedes pegar o construir bloque a bloque.';
 
   @override
-  String get mcMapPreview => 'Cómo se verá en un mapa';
-
-  @override
   String get mcMapSavePng => 'Guardar PNG';
 
   @override
   String get mcMapTallest => 'columna más alta';
-
-  @override
-  String get mcMapShow3d => 'Mostrar en 3D';
-
-  @override
-  String get mcMapBuildNote =>
-      'Constrúyelo de norte a sur, con la fila de roca en el borde norte: esa fila da el tono a la primera línea. Cada mapa cubre un área de 128 × 128 alineada con la cuadrícula de mapas.';
 
   @override
   String get mcRoofGable => 'A dos aguas';

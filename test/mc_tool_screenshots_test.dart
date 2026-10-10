@@ -9,7 +9,9 @@
 //
 // Narrow it with --dart-define=MC_SHOTS_ONLY=enchantOptimizer,bannerMaker
 // and --dart-define=MC_SHOTS_VARIANTS=light,coffee_dark; point it at a jar
-// with --dart-define=MC_SHOTS_JAR=<path>.
+// with --dart-define=MC_SHOTS_JAR=<path>. MC_SHOTS_MAP_VIEW=3D build (or
+// Guide) captures the map art tool on that tab, and MC_SHOTS_FULL=true also
+// writes each whole window to build/mc_full_<background>_<tool>.png.
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
@@ -373,6 +375,10 @@ void main() {
             height: (crop.height * scale).round(),
           );
           image.dispose();
+          if (const bool.fromEnvironment('MC_SHOTS_FULL')) {
+            File('build/mc_full_${variant.dir}_${tool.name}.png')
+                .writeAsBytesSync(img.encodePng(full));
+          }
           return img.encodeJpg(cropped, quality: 82);
         });
 
@@ -411,6 +417,12 @@ Future<void> _stage(McTool tool, WidgetTester tester) async {
         if (button.evaluate().isEmpty) continue;
         tester.widget<InkWell>(button.first).onTap?.call();
         await tester.pump();
+      }
+    case McTool.mapArtGenerator:
+      const view = String.fromEnvironment('MC_SHOTS_MAP_VIEW');
+      if (view.isNotEmpty) {
+        await tester.tap(find.text(view));
+        await tester.pump(const Duration(milliseconds: 300));
       }
     default:
       break;

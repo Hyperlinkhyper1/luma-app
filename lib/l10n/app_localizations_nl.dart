@@ -6617,6 +6617,16 @@ class LNl extends L {
   String get schemViewerLayers => 'Lagen';
 
   @override
+  String get schemViewerAll => 'alles';
+
+  @override
+  String get schemViewerOrbitHint =>
+      'sleep om te draaien · scroll om te zoomen';
+
+  @override
+  String get schemViewerAutoRotate => 'Automatisch draaien';
+
+  @override
   String schemViewerLayerRange(int startY, int endY) {
     return 'Y $startY–$endY';
   }
@@ -9277,7 +9287,7 @@ class LNl extends L {
 
   @override
   String get spotifySetupSteps =>
-      '1. Maak een app in het Spotify Developer Dashboard (Web API).\n2. Voeg http://127.0.0.1/callback toe als redirect-URI. Spotify staat luma toe een dynamische poort voor dit loopback-adres te gebruiken.\n3. Kopieer hier de client-ID van de app en meld je daarna aan via je browser. Een app in ontwikkelmodus vereist Spotify Premium.';
+      '1. Maak een app in het Spotify Developer Dashboard (Web API).\n2. Voeg http://127.0.0.1:8888/callback toe als redirect-URI. Neem de poort precies zo over.\n3. Kopieer hier de client-ID van de app en meld je daarna aan via je browser. Een app in ontwikkelmodus vereist Spotify Premium.';
 
   @override
   String get spotifyOpenDashboard => 'Spotify Developer Dashboard openen';
@@ -37326,6 +37336,159 @@ class LNl extends L {
   String get mcMapDitherOrdered => 'Geordend (Bayer)';
 
   @override
+  String get mcMapStaircase => 'Trap';
+
+  @override
+  String get mcMapTabMap => 'Kaart';
+
+  @override
+  String get mcMapTab3d => '3D-bouwwerk';
+
+  @override
+  String get mcMapTabGuide => 'Handleiding';
+
+  @override
+  String get mcMapSectionImage => 'Afbeelding';
+
+  @override
+  String get mcMapSectionSize => 'Formaat';
+
+  @override
+  String get mcMapSectionStyle => 'Stijl';
+
+  @override
+  String get mcMapSectionBlocks => 'Blokken';
+
+  @override
+  String get mcMapByMaps => 'Per kaart';
+
+  @override
+  String get mcMapFreeSize => 'Vrij formaat';
+
+  @override
+  String get mcMapWidth => 'Breedte';
+
+  @override
+  String get mcMapHeight => 'Hoogte';
+
+  @override
+  String get mcMapScale => 'Kaartschaal';
+
+  @override
+  String mcMapSizeSummary(int width, int height, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count kaarten',
+      one: '1 kaart',
+    );
+    return '$width × $height blokken · $_temp0';
+  }
+
+  @override
+  String get mcMapBuildMode => 'Bouwwijze';
+
+  @override
+  String get mcMapFlat => 'Plat';
+
+  @override
+  String get mcMapStaircaseStyle => 'Trapstijl';
+
+  @override
+  String get mcMapCompact => 'Compact';
+
+  @override
+  String get mcMapAligned => 'Uitgelijnd';
+
+  @override
+  String get mcMapColourMatch => 'Kleurafstemming';
+
+  @override
+  String get mcMapMatchBalanced => 'Gebalanceerd';
+
+  @override
+  String get mcMapMatchBest => 'Beste';
+
+  @override
+  String get mcMapMatchFast => 'Snel';
+
+  @override
+  String get mcMapDitherStrength => 'Ditheringsterkte';
+
+  @override
+  String get mcMapPaletteCheap => 'Goedkoopst';
+
+  @override
+  String get mcMapAdvanced => 'Geavanceerd';
+
+  @override
+  String get mcMapDownload => 'Downloaden';
+
+  @override
+  String get mcMapOtherFormats => 'Andere formaten';
+
+  @override
+  String get mcMapDownloadPng => 'Kaartafbeelding (.png)';
+
+  @override
+  String get mcMapFlattened =>
+      'Te groot voor een trap, dus het wordt plat gebouwd.';
+
+  @override
+  String get mcMapPanHint => 'scroll om te zoomen · sleep om te verschuiven';
+
+  @override
+  String get mcMapMapsStat => 'kaarten';
+
+  @override
+  String get mcMapGuideTitle => 'Zo bouw je het';
+
+  @override
+  String mcMapGuideMaps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count lege kaarten',
+      one: 'één lege kaart',
+    );
+    return 'Maak $_temp0.';
+  }
+
+  @override
+  String mcMapGuideZoom(int times, int size) {
+    return 'Zoom elke kaart $times× uit op een kartografietafel (kaart plus papier) zodat ze $size × $size blokken beslaat.';
+  }
+
+  @override
+  String mcMapGuideArea(int size) {
+    return 'Elke kaart toont een vast gebied van $size × $size blokken, uitgelijnd op het kaartraster van de wereld. Open een nieuwe kaart op de plek van je kunstwerk om te zien welk gebied ze beslaat.';
+  }
+
+  @override
+  String get mcMapGuideFree =>
+      'Een vrij formaat valt niet samen met hele kaarten. Kies Per kaart als het kunstwerk een kaart precies moet vullen.';
+
+  @override
+  String get mcMapGuideNoobline =>
+      'Leg eerst de strook keien langs de noordrand. Die bepaalt de tint van de eerste rij.';
+
+  @override
+  String get mcMapGuideBuild =>
+      'Bouw van noord naar zuid. Laad het schema in Litematica en lijn de noordrand uit met die strook.';
+
+  @override
+  String get mcMapGuideStair =>
+      'Dit bouwwerk stijgt en daalt per kolom. Gebruik de 3D-weergave en de laagschuif om de hoogte van elk blok te controleren.';
+
+  @override
+  String get mcMapGuideFlat =>
+      'Alle blokken liggen op één laag, dus elk vlak stuk grond volstaat.';
+
+  @override
+  String get mcMapGuideDone =>
+      'Sta in het gebied met de kaart in je hand om ze in te vullen, en vergrendel ze daarna met een glazen paneel op een kartografietafel.';
+
+  @override
   String get mcMapNotImage =>
       'Dat bestand is geen afbeelding die luma kan lezen.';
 
@@ -37341,9 +37504,6 @@ class LNl extends L {
   String get mcMapChangeImage => 'Afbeelding wijzigen';
 
   @override
-  String get mcMapSize => 'Grootte in kaarten';
-
-  @override
   String get mcMapAcross => 'Breed';
 
   @override
@@ -37353,13 +37513,6 @@ class LNl extends L {
   String mcMapBlocksSize(int width, int height) {
     return '$width × $height blokken';
   }
-
-  @override
-  String get mcMapStaircase => 'Trapvorm (3 tinten)';
-
-  @override
-  String get mcMapStaircaseDetail =>
-      'Meer kleuren, maar elke kolom gaat op en neer';
 
   @override
   String get mcMapDithering => 'Dithering';
@@ -37377,20 +37530,10 @@ class LNl extends L {
       'Elke PNG of JPG. Hij wordt in kaarten van 128 blokken gesneden, afgestemd op de kleuren die een kaart kan tonen en omgezet in een schematic die je kunt plakken of blok voor blok kunt bouwen.';
 
   @override
-  String get mcMapPreview => 'Zo ziet het eruit op een kaart';
-
-  @override
   String get mcMapSavePng => 'PNG opslaan';
 
   @override
   String get mcMapTallest => 'hoogste kolom';
-
-  @override
-  String get mcMapShow3d => 'In 3D tonen';
-
-  @override
-  String get mcMapBuildNote =>
-      'Bouw van noord naar zuid, met de rij keien aan de noordrand — die rij bepaalt de tint van de eerste lijn. Elke kaart beslaat een gebied van 128 × 128, uitgelijnd op het kaartraster.';
 
   @override
   String get mcRoofGable => 'Zadeldak';

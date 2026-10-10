@@ -168,6 +168,42 @@ void main() {
     expect(find.text('Enchant Optimizer'), findsOneWidget);
   });
 
+  testWidgets('map art switches views, map sizes and zoom levels', (tester) async {
+    _size(tester, 1400, 1000);
+    await tester.pumpWidget(_app(const MinecraftToolsPage(initialTool: McTool.mapArtGenerator)));
+    await tester.pump();
+
+    expect(find.text('Map'), findsOneWidget);
+    expect(find.text('3D build'), findsOneWidget);
+    expect(find.text('128 × 128 blocks · 1 map'), findsOneWidget);
+
+    await tester.tap(find.text('1:2'));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('256 × 256 blocks · 1 map · 1:2'), findsOneWidget);
+
+    // Four maps across at 1:1, then zoomed out to 1:8: only two fit.
+    await tester.tap(find.text('1:1'));
+    for (var i = 0; i < 3; i++) {
+      await tester.tap(find.byIcon(Icons.add_rounded).first);
+      await tester.pump();
+    }
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('512 × 128 blocks · 4 maps'), findsOneWidget);
+    await tester.tap(find.text('1:8'));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('2048 × 1024 blocks · 2 maps · 1:8'), findsOneWidget);
+
+    await tester.tap(find.text('Guide'));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('How to build it'), findsOneWidget);
+    expect(find.textContaining('out 3×'), findsOneWidget);
+
+    await tester.tap(find.text('Free size'));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('WIDTH'), findsOneWidget);
+    expect(find.text('128 × 128 blocks'), findsOneWidget);
+  });
+
   // Every tool screen must build on a desktop window and a phone, in both
   // themes, without throwing or overflowing. The asset library and the
   // schematic organizer go to disk on open, so they only get the desktop

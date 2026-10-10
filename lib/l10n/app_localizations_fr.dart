@@ -6634,6 +6634,16 @@ class LFr extends L {
   String get schemViewerLayers => 'Couches';
 
   @override
+  String get schemViewerAll => 'tout';
+
+  @override
+  String get schemViewerOrbitHint =>
+      'glisser pour pivoter · molette pour zoomer';
+
+  @override
+  String get schemViewerAutoRotate => 'Rotation automatique';
+
+  @override
   String schemViewerLayerRange(int startY, int endY) {
     return 'Y $startY–$endY';
   }
@@ -9313,7 +9323,7 @@ class LFr extends L {
 
   @override
   String get spotifySetupSteps =>
-      '1. Créez une application dans le Spotify Developer Dashboard (Web API).\n2. Ajoutez http://127.0.0.1/callback comme URI de redirection. Spotify permet à luma d’utiliser un port dynamique pour cette adresse de bouclage.\n3. Copiez ici l’ID client de l’application, puis connectez-vous via votre navigateur. Une application en mode développement nécessite Spotify Premium.';
+      '1. Créez une application dans le Spotify Developer Dashboard (Web API).\n2. Ajoutez http://127.0.0.1:8888/callback comme URI de redirection. Gardez le port exactement tel quel.\n3. Copiez ici l’ID client de l’application, puis connectez-vous via votre navigateur. Une application en mode développement nécessite Spotify Premium.';
 
   @override
   String get spotifyOpenDashboard => 'Ouvrir le Spotify Developer Dashboard';
@@ -37540,6 +37550,159 @@ class LFr extends L {
   String get mcMapDitherOrdered => 'Ordonné (Bayer)';
 
   @override
+  String get mcMapStaircase => 'Escalier';
+
+  @override
+  String get mcMapTabMap => 'Carte';
+
+  @override
+  String get mcMapTab3d => 'Construction 3D';
+
+  @override
+  String get mcMapTabGuide => 'Guide';
+
+  @override
+  String get mcMapSectionImage => 'Image';
+
+  @override
+  String get mcMapSectionSize => 'Taille';
+
+  @override
+  String get mcMapSectionStyle => 'Style';
+
+  @override
+  String get mcMapSectionBlocks => 'Blocs';
+
+  @override
+  String get mcMapByMaps => 'En cartes';
+
+  @override
+  String get mcMapFreeSize => 'Taille libre';
+
+  @override
+  String get mcMapWidth => 'Largeur';
+
+  @override
+  String get mcMapHeight => 'Hauteur';
+
+  @override
+  String get mcMapScale => 'Échelle de la carte';
+
+  @override
+  String mcMapSizeSummary(int width, int height, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count cartes',
+      one: '1 carte',
+    );
+    return '$width × $height blocs · $_temp0';
+  }
+
+  @override
+  String get mcMapBuildMode => 'Mode de construction';
+
+  @override
+  String get mcMapFlat => 'Plat';
+
+  @override
+  String get mcMapStaircaseStyle => 'Style d’escalier';
+
+  @override
+  String get mcMapCompact => 'Compact';
+
+  @override
+  String get mcMapAligned => 'Aligné';
+
+  @override
+  String get mcMapColourMatch => 'Correspondance des couleurs';
+
+  @override
+  String get mcMapMatchBalanced => 'Équilibrée';
+
+  @override
+  String get mcMapMatchBest => 'Meilleure';
+
+  @override
+  String get mcMapMatchFast => 'Rapide';
+
+  @override
+  String get mcMapDitherStrength => 'Intensité du tramage';
+
+  @override
+  String get mcMapPaletteCheap => 'Les moins chers';
+
+  @override
+  String get mcMapAdvanced => 'Avancé';
+
+  @override
+  String get mcMapDownload => 'Télécharger';
+
+  @override
+  String get mcMapOtherFormats => 'Autres formats';
+
+  @override
+  String get mcMapDownloadPng => 'Image de la carte (.png)';
+
+  @override
+  String get mcMapFlattened =>
+      'Trop grand pour un escalier : la construction est à plat.';
+
+  @override
+  String get mcMapPanHint => 'molette pour zoomer · glisser pour déplacer';
+
+  @override
+  String get mcMapMapsStat => 'cartes';
+
+  @override
+  String get mcMapGuideTitle => 'Comment le construire';
+
+  @override
+  String mcMapGuideMaps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count cartes vierges',
+      one: 'une carte vierge',
+    );
+    return 'Fabriquez $_temp0.';
+  }
+
+  @override
+  String mcMapGuideZoom(int times, int size) {
+    return 'Dézoomez chaque carte $times× sur une table de cartographie (carte plus papier) pour qu’elle couvre $size × $size blocs.';
+  }
+
+  @override
+  String mcMapGuideArea(int size) {
+    return 'Chaque carte montre une zone fixe de $size × $size blocs alignée sur la grille des cartes du monde. Ouvrez une carte neuve à l’endroit voulu pour voir la zone qu’elle couvre.';
+  }
+
+  @override
+  String get mcMapGuideFree =>
+      'Une taille libre ne correspond pas à des cartes entières. Choisissez En cartes pour remplir une carte exactement.';
+
+  @override
+  String get mcMapGuideNoobline =>
+      'Posez d’abord la bande de pierre le long du bord nord. Elle fixe la teinte de la première rangée.';
+
+  @override
+  String get mcMapGuideBuild =>
+      'Construisez du nord au sud. Dans Litematica, chargez le schéma et alignez son bord nord sur cette bande.';
+
+  @override
+  String get mcMapGuideStair =>
+      'Cette construction monte et descend colonne par colonne. Utilisez la vue 3D et son curseur de couches pour vérifier la hauteur de chaque bloc.';
+
+  @override
+  String get mcMapGuideFlat =>
+      'Tous les blocs sont sur une seule couche : n’importe quel terrain plat convient.';
+
+  @override
+  String get mcMapGuideDone =>
+      'Tenez la carte dans la zone pour la remplir, puis verrouillez-la avec une vitre sur une table de cartographie pour qu’elle ne change plus.';
+
+  @override
   String get mcMapNotImage =>
       'Ce fichier n\'est pas une image que luma sait lire.';
 
@@ -37555,9 +37718,6 @@ class LFr extends L {
   String get mcMapChangeImage => 'Changer d\'image';
 
   @override
-  String get mcMapSize => 'Taille en cartes';
-
-  @override
   String get mcMapAcross => 'En largeur';
 
   @override
@@ -37567,13 +37727,6 @@ class LFr extends L {
   String mcMapBlocksSize(int width, int height) {
     return '$width × $height blocs';
   }
-
-  @override
-  String get mcMapStaircase => 'Escalier (3 nuances)';
-
-  @override
-  String get mcMapStaircaseDetail =>
-      'Plus de couleurs, mais chaque colonne monte et descend';
 
   @override
   String get mcMapDithering => 'Tramage';
@@ -37591,20 +37744,10 @@ class LFr extends L {
       'N\'importe quel PNG ou JPG. Elle est découpée en cartes de 128 blocs, adaptée aux couleurs qu\'une carte peut afficher et convertie en schématique à coller ou à construire bloc par bloc.';
 
   @override
-  String get mcMapPreview => 'Rendu sur une carte';
-
-  @override
   String get mcMapSavePng => 'Enregistrer le PNG';
 
   @override
   String get mcMapTallest => 'colonne la plus haute';
-
-  @override
-  String get mcMapShow3d => 'Afficher en 3D';
-
-  @override
-  String get mcMapBuildNote =>
-      'Construisez du nord au sud, avec la rangée de pierre taillée au bord nord — c\'est elle qui ombre la première ligne. Chaque carte couvre une zone de 128 × 128 alignée sur la grille des cartes.';
 
   @override
   String get mcRoofGable => 'Pignon';
