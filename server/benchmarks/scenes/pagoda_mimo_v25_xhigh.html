@@ -246,7 +246,7 @@ function buildPath(){
 const PAG={CX:0,CZ:0,BY:1,wallW:[7,6,5,4,3]};
 const glowOpt={m:'glow'};
 
-function roof(cx,y,half,tag){
+function roof(cx,cz,y,half,tag){
   const rs=[half,half-1,half-3,half-5];
   for(let k=0;k<4;k++){
     const r=rs[k];if(r<0)continue;
@@ -339,7 +339,7 @@ function buildPagoda(){
     // interior golden core (glimmers through open doors)
     for(let y=yb+1;y<=yb+3;y++)V(CX,y,CZ,PAL.gold,glowOpt);
     V(CX,yb+1,CZ,PAL.gold,{m:'metal'});
-    roof(CX,yb+4,w+2);
+    roof(CX,CZ,yb+4,w+2);
     makeDoor(i,w,yb);
     addHit(i,w,yb);
   }
