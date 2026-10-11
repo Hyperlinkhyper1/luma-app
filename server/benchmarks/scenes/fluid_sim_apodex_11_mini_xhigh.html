@@ -27,7 +27,7 @@
   #mode-text { color: #fbbf24; }
   #warn { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #fff; background: rgba(0,0,0,0.9); padding: 40px; border-radius: 16px; z-index: 100; display: none; border: 2px solid var(--err); }
   #loader { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--c1); z-index: 50; display: flex; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.5s; }
-  #loader.hidden { opacity: 0; pointer-events: none; }
+  #loader.hidden { opacity: 0; pointer-events: none; visibility: hidden; transition: opacity .5s, visibility 0s .5s; }
   .spinner { width: 40px; height: 40px; border: 3px solid #334155; border-top: 3px solid var(--acc); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   .hint { font-size: 11px; color: #64748b; margin-top: 4px; font-style: italic; }

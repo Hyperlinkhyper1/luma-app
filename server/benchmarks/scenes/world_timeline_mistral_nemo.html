@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SVG Animation Benchmark - A Timeline of the World</title>
   <style>
-    body, html { margin: 0; padding: 0; font-family: system-ui; }
+    body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: system-ui; background: #081122; }
+    #animation { display: block; height: calc(100% - 40px) !important; }
     #timeline { position: fixed; bottom: 0; left: 0; width: 100%; height: 40px; background: rgba(0, 0, 0, 0.8); color: #fff; display: flex; align-items: center; }
-    #timeline svg { height: 100%; }
+    #timeline svg { height: 100%; pointer-events: none; }
     #controls { position: fixed; bottom: 0; right: 0; display: flex; align-items: center; background: rgba(0, 0, 0, 0.8); padding: 0 10px; }
     #controls button { margin: 0 5px; }
     #playhead { position: absolute; height: 100%; width: 10px; background: #fff; cursor: pointer; }
@@ -21,12 +22,49 @@
 <body>
 
 <svg id="animation" viewBox="0 0 1920 1080" style="width: 100%; height: 100%;">
-  <!-- Paths, shapes, gradients, patterns, masks, clip paths and filters here -->
+  <defs>
+    <radialGradient id="space"><stop stop-color="#25365b"/><stop offset="1" stop-color="#081122"/></radialGradient>
+    <radialGradient id="earth"><stop stop-color="#58bce5"/><stop offset="1" stop-color="#175080"/></radialGradient>
+    <radialGradient id="fire"><stop stop-color="#fff6cb"/><stop offset="0.3" stop-color="#ffc269"/><stop offset="1" stop-color="#b74235"/></radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="8"/></filter>
+    <clipPath id="planet-clip"><circle cx="960" cy="535" r="250"/></clipPath>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#space)"/>
+  <g id="stars" fill="#dae7ff"></g>
+  <g id="origin"><circle cx="960" cy="535" r="150" fill="url(#fire)" filter="url(#glow)"/><circle cx="960" cy="535" r="80" fill="#fff6cb"/></g>
+  <g id="planet">
+    <circle cx="960" cy="535" r="265" fill="#58bce5" opacity="0.12"/>
+    <circle id="surface" cx="960" cy="535" r="250" fill="url(#earth)"/>
+    <g id="land" clip-path="url(#planet-clip)" fill="#78aa73">
+      <path d="M735 375L795 335 866 357 899 410 872 453 900 501 861 532 824 506 779 443 732 430Z"/>
+      <path d="M867 523L914 538 943 596 921 663 891 722 867 658 838 594Z"/>
+      <path d="M1007 354L1090 339 1188 395 1204 483 1161 527 1098 483 1074 437 1036 463 1006 419 969 396Z"/>
+      <path d="M997 471L1055 476 1080 546 1048 627 1012 654 979 593 955 523Z"/>
+      <path d="M1105 642L1169 621 1208 660 1181 713 1127 702Z"/>
+    </g>
+    <g id="clouds" fill="none" stroke="#fff" stroke-width="14" opacity="0.3"><path d="M799 413Q881 382 937 416M1054 399Q1113 380 1167 416M975 651Q1038 681 1105 642"/></g>
+  </g>
+  <g id="life" stroke="#78aa73" stroke-width="10" fill="#97c68f">
+    <path d="M720 814V691M720 742Q659 711 665 675Q719 678 720 742M720 777Q783 741 777 704Q723 714 720 777"/>
+    <path d="M1200 814V691M1200 742Q1139 711 1145 675Q1199 678 1200 742M1200 777Q1263 741 1257 704Q1203 714 1200 777"/>
+  </g>
+  <g id="civilization" fill="#e3be82">
+    <path d="M680 818L750 716 820 818ZM1100 818L1170 716 1240 818Z"/>
+    <rect x="833" y="767" width="34" height="51"/><rect x="878" y="729" width="40" height="89"/>
+    <rect x="931" y="750" width="44" height="68"/><rect x="988" y="693" width="43" height="125"/><rect x="1044" y="744" width="40" height="74"/>
+  </g>
+  <g id="exploration" fill="none" stroke="#d5e4ef" stroke-width="3">
+    <ellipse cx="960" cy="535" rx="380" ry="120" transform="rotate(-25 960 535)"/>
+    <g id="satellite" fill="#d5e4ef"><rect x="-15" y="-15" width="30" height="30"/><path d="M-65-12H-23V12H-65ZM23-12H65V12H23Z" fill="#64a5c8"/></g>
+  </g>
+  <text x="960" y="100" fill="#dce8f8" text-anchor="middle" font-size="26" letter-spacing="8">A TIMELINE OF THE WORLD</text>
+  <text id="era-title" x="960" y="940" fill="#fff" text-anchor="middle" font-size="54"></text>
+  <text id="era-date" x="960" y="992" fill="#9fbbd6" text-anchor="middle" font-size="26"></text>
 </svg>
 
 <div id="timeline">
   <svg width="100%" height="100%">
-    <!-- Timeline bar paths and text here -->
+    <rect width="100%" height="40" fill="#15253b"/>
   </svg>
   <div id="playhead"></div>
 </div>
@@ -45,20 +83,63 @@
   const playhead = document.getElementById('playhead');
   const playPauseBtn = document.getElementById('play-pause');
   const restartBtn = document.getElementById('restart');
-  const speedBtns = document.querySelectorAll('#controls button');
+  const speedBtns = document.querySelectorAll('#controls button[id^="speed-"]');
+  const duration = 90000;
+  const eras = [
+    ['The universe begins', '13.8 billion years ago'],
+    ['Earth takes shape', '4.5 billion years ago'],
+    ['Oceans and continents', '4 billion years ago'],
+    ['Life flourishes', 'From simple cells to living landscapes'],
+    ['Human civilizations', 'Cities, cultures and connected societies'],
+    ['Beyond our planet', 'The space age and a shared future'],
+  ];
 
   let playheadPosition = 0;
   let animationSpeed = 1;
   let isPlaying = false;
 
-  // Initialize timeline and playhead
-  // ...
-
-  // Animate SVG paths, shapes, gradients, etc. based on playheadPosition
-  // ...
-
-  // Update playhead position and timeline display
-  // ...
+  const svgNS = 'http://www.w3.org/2000/svg';
+  for (let i = 0; i < 180; i++) {
+    const star = document.createElementNS(svgNS, 'circle');
+    star.setAttribute('cx', (i * 137.508) % 1920);
+    star.setAttribute('cy', (i * 83.731) % 870 + 130);
+    star.setAttribute('r', 1 + i % 3);
+    document.getElementById('stars').appendChild(star);
+  }
+  function updatePlayheadPosition() {
+    playheadPosition = Math.max(0, Math.min(duration, playheadPosition));
+    const progress = playheadPosition / duration;
+    const stage = Math.min(5, Math.floor(progress * 6));
+    playhead.style.left = `${progress * (timeline.clientWidth - 10)}px`;
+    document.getElementById('era-title').textContent = eras[stage][0];
+    document.getElementById('era-date').textContent = eras[stage][1];
+    document.getElementById('origin').style.display = stage === 0 ? '' : 'none';
+    document.getElementById('planet').style.display = stage > 0 ? '' : 'none';
+    document.getElementById('surface').setAttribute('fill', stage === 1 ? 'url(#fire)' : 'url(#earth)');
+    document.getElementById('land').style.display = stage > 1 ? '' : 'none';
+    document.getElementById('clouds').style.display = stage > 1 ? '' : 'none';
+    document.getElementById('life').style.display = stage > 2 ? '' : 'none';
+    document.getElementById('civilization').style.display = stage > 3 ? '' : 'none';
+    document.getElementById('exploration').style.display = stage > 4 ? '' : 'none';
+    const angle = progress * Math.PI * 24;
+    const x = 960 + Math.cos(angle) * 350;
+    const y = 535 + Math.sin(angle) * 120;
+    document.getElementById('satellite').setAttribute('transform', `translate(${x} ${y}) rotate(-25)`);
+    const scale = 0.4 + (progress * 6 % 1) * 1.4;
+    document.getElementById('origin').setAttribute('transform', `translate(960 535) scale(${scale}) translate(-960 -535)`);
+  }
+  timeline.addEventListener('pointerdown', event => {
+    if (event.target.closest('#controls')) return;
+    timeline.setPointerCapture(event.pointerId);
+    scrub(event);
+  });
+  timeline.addEventListener('pointermove', event => {
+    if (timeline.hasPointerCapture(event.pointerId)) scrub(event);
+  });
+  function scrub(event) {
+    playheadPosition = event.clientX / timeline.clientWidth * duration;
+    updatePlayheadPosition();
+  }
 
   // Play/pause animation
   playPauseBtn.addEventListener('click', () => {
@@ -69,6 +150,7 @@
   // Restart animation
   restartBtn.addEventListener('click', () => {
     playheadPosition = 0;
+    updatePlayheadPosition();
     isPlaying = true;
     playPauseBtn.textContent = 'Pause';
   });
@@ -86,6 +168,7 @@
   document.addEventListener('keydown', event => {
     switch (event.key) {
       case ' ':
+        event.preventDefault();
         playPauseBtn.click();
         break;
       case 'ArrowLeft':
@@ -95,20 +178,25 @@
         playheadPosition += 10000 * animationSpeed;
         break;
     }
+    updatePlayheadPosition();
   });
 
   // Start animation automatically
   playPauseBtn.click();
 
   // Animate timeline and update playhead position
-  function animateTimeline() {
+  let lastTime;
+  function animateTimeline(time) {
+    const elapsed = lastTime === undefined ? 0 : Math.min(100, time - lastTime);
+    lastTime = time;
     if (isPlaying) {
-      playheadPosition += 10000 * animationSpeed;
+      playheadPosition = (playheadPosition + elapsed * animationSpeed) % duration;
       updatePlayheadPosition();
-      requestAnimationFrame(animateTimeline);
     }
+    requestAnimationFrame(animateTimeline);
   }
-  animateTimeline();
+  updatePlayheadPosition();
+  requestAnimationFrame(animateTimeline);
 </script>
 
 </body>

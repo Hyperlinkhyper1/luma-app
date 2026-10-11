@@ -159,7 +159,7 @@ scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xFFEECC, 1.6);
 sun.position.set(35, 30, 20);
 sun.castShadow = true;
-sun.shadow.mapSize = 2048;
+sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.near = 0.5;
 sun.shadow.camera.far = 120;
 sun.shadow.camera.left = -45;
@@ -1605,7 +1605,7 @@ function animate(time) {
 
   // Petal animation
   const pPos = petals.geometry.attributes.position;
-  const pArray = pPos.array;
+  const petalArray = pPos.array;
   for (let i = 0; i < petalCount; i++) {
     const pd = petalData[i];
     pd.x += pd.vx * delta + Math.sin(time * 0.001 + pd.phase) * 0.05 * delta;
@@ -1618,9 +1618,9 @@ function animate(time) {
       pd.y = 15 + Math.random() * 8;
       pd.z = (Math.random() - 0.5) * 40;
     }
-    pArray[i*3] = pd.x;
-    pArray[i*3+1] = pd.y;
-    pArray[i*3+2] = pd.z;
+    petalArray[i*3] = pd.x;
+    petalArray[i*3+1] = pd.y;
+    petalArray[i*3+2] = pd.z;
   }
   pPos.needsUpdate = true;
 
@@ -1664,7 +1664,7 @@ const origAnimate = animate;
 let introDone = false;
 
 // Patch the animation loop start
-const original RAF = window.requestAnimationFrame;
+const originalRAF = window.requestAnimationFrame;
 // Actually, let's just modify the animate function to include intro
 
 // Since we already defined animate above, let's add intro logic there

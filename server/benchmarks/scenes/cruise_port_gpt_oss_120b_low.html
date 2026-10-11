@@ -226,16 +226,18 @@ function animate(){
     }
 
     // simple water animation
-    water.geometry.verticesNeedUpdate = true;
+    const positions = water.geometry.attributes.position;
     const time = performance.now()*0.001;
-    water.geometry.vertices.forEach(v=>{
-        v.z = Math.sin((v.x+time*20)*0.1)*0.5;
-    });
+    for (let i = 0; i < positions.count; i++) {
+        positions.setZ(i, Math.sin((positions.getX(i)+time*20)*0.1)*0.5);
+    }
+    positions.needsUpdate = true;
     water.geometry.computeVertexNormals();
 
     renderer.render(scene,camera);
 }
 animate();
+document.getElementById('loader').style.display = 'none';
 
 // ---------- Resize ----------
 window.addEventListener('resize',()=>{

@@ -313,8 +313,9 @@ function buildCity() {
   // Cristo Rei
   const stat = new THREE.Group();
   const ped = new THREE.Mesh(new THREE.BoxGeometry(30,30,30), new THREE.MeshStandardMaterial({color:0xdddddd}));
-  const body = new THREE.CylinderGeometry(2,4,16,10); body.rotateZ(Math.PI/6);
-  const head = new THREE.SphereGeometry(2.2,12,12);
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(2,4,16,10), ped.material);
+  body.rotation.z = Math.PI/6;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(2.2,12,12), ped.material);
   const arms = new THREE.Mesh(new THREE.BoxGeometry(12,2,2), new THREE.MeshStandardMaterial({color:0xdddddd}));
   arms.position.set(0,4,3.2);
   stat.add(ped, body, head, arms);
@@ -725,6 +726,7 @@ function init() {
   setTimeout(() => {
     document.getElementById('loading').style.opacity = 0;
     document.getElementById('loading').style.pointerEvents = 'none';
+    setTimeout(() => { document.getElementById('loading').style.display = 'none'; }, 600);
   }, 500);
 }
 

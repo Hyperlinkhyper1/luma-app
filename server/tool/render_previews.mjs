@@ -189,7 +189,7 @@ async function pressStart(page) {
     const b = [...document.querySelectorAll('button, [role=button], .start, #start')].find(
       (el) =>
         el.offsetParent !== null &&
-        /^\s*(start|begin|enter|explore|play|enter the garden|begin journey)\b/i.test(el.textContent || ''),
+        (el.id === 'howto-close' || /^\s*(start|begin|enter|explore|play|enter the garden|begin journey)\b/i.test(el.textContent || '')),
     );
     if (b) b.click();
     return !!b;

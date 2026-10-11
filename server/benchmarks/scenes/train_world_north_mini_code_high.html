@@ -222,12 +222,12 @@ function init() {
   createBlocks();
 
   // UI events
-  document.getElementById('pause').addEventListener('click',()=>{ state.isPaused=!state.isPaused; this.textContent=state.isPaused?'Resume':'Pause'; });
+  document.getElementById('pause').addEventListener('click',event=>{ state.isPaused=!state.isPaused; event.currentTarget.textContent=state.isPaused?'Resume':'Pause'; });
   document.getElementById('speed').addEventListener('change',e=>{ state.speedFactor=parseFloat(e.target.value); });
   document.getElementById('timeSlider').addEventListener('input',e=>{ state.timeOfDay=parseFloat(e.target.value); updateTimeOfDay(); });
   document.getElementById('toggleTrackColor').addEventListener('click',()=>{ state.trackColorEnabled=!state.trackColorEnabled; updateTrackColors(); });
-  document.getElementById('toggleUI').addEventListener('click',()=>{ state.uiVisible=!state.uiVisible; document.getElementById('ui').style.display=state.uiVisible?'block':'none'; this.textContent=state.uiVisible?'Hide UI':'Show UI'; });
-  document.getElementById('howto-close').addEventListener('click',()=>{ document.getElementById('howto').classList.add('hidden'); });
+  document.getElementById('toggleUI').addEventListener('click',event=>{ state.uiVisible=!state.uiVisible; document.querySelectorAll('#ui > :not(#controls):not(#howto)').forEach(panel=>panel.classList.toggle('hidden',!state.uiVisible)); event.currentTarget.textContent=state.uiVisible?'Hide UI':'Show UI'; });
+  document.getElementById('howto-close').addEventListener('click',()=>{ document.getElementById('howto').classList.add('hidden'); document.getElementById('controls').classList.remove('hidden'); document.querySelectorAll('.panel').forEach(panel=>panel.classList.remove('hidden')); });
   document.getElementById('cameraPresets').addEventListener('click',showCameraPresets);
 
   // Raycaster for clicks

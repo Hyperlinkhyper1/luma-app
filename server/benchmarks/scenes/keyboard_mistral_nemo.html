@@ -87,33 +87,52 @@
   <script src="https://unpkg.com/three@0.139.2/build/three.js"></script>
   <script>
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
-    camera.position.z = 500;
+    const container = document.getElementById('scene');
+    container.replaceChildren(renderer.domElement);
+    camera.position.set(0, -120, 300);
+    camera.lookAt(0, 0, 0);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(100, 150, 300);
+    scene.add(light);
 
     const keyboardParts = ['pcb', 'foam', 'plate', 'switches', 'keycaps'];
     const keys = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', ' ', 'enter', 'backspace', 'shift', 'ctrl'];
     let isMuted = false;
     let isAnimating = false;
 
-    keyboardParts.forEach(part => {
-      const obj = document.querySelector(`.${part}`);
-      const mesh = new THREE.Object3D();
+    const partColors = [0x808080, 0xffffff, 0x404040, 0x000000, 0xffffff];
+    keyboardParts.forEach((part, index) => {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(200, 100, index === 0 ? 2 : 1),
+        new THREE.MeshStandardMaterial({ color: partColors[index] }));
+      mesh.name = part;
+      mesh.userData.assembledZ = index * 4;
       mesh.position.set(0, 0, -50 - keyboardParts.indexOf(part) * 10);
       scene.add(mesh);
-      mesh.add(obj);
     });
 
-    keys.forEach(key => {
-      const obj = document.createElement('div');
-      obj.classList.add('key');
-      obj.innerText = key;
-      const mesh = new THREE.Object3D();
-      mesh.position.set((key.charCodeAt(0) - 97) * 10 - 100, 0, 0);
+    keys.forEach((key, index) => {
+      const label = document.createElement('canvas');
+      label.width = label.height = 128;
+      const paint = label.getContext('2d');
+      paint.fillStyle = '#eeeeee';
+      paint.fillRect(0, 0, 128, 128);
+      paint.strokeStyle = '#777777';
+      paint.lineWidth = 8;
+      paint.strokeRect(4, 4, 120, 120);
+      paint.fillStyle = '#222222';
+      paint.font = '24px sans-serif';
+      paint.textAlign = 'center';
+      paint.fillText(key === ' ' ? 'space' : key, 64, 72);
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(16, 16, 6),
+        new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(label) }));
+      mesh.name = key;
+      mesh.position.set((index % 10) * 19 - 85, 32 - Math.floor(index / 10) * 20, 22);
+      mesh.userData.restZ = 22;
       scene.add(mesh);
-      mesh.add(obj);
     });
 
     function animate() {
@@ -124,6 +143,9 @@
     function assembleKeyboard() {
       if (isAnimating) return;
       isAnimating = true;
+      keyboardParts.forEach((part, index) => {
+        scene.getObjectByName(part).position.z = -50 - index * 10;
+      });
       let currentPart = 0;
       function animateAssembly() {
         if (currentPart === keyboardParts.length) {
@@ -133,8 +155,8 @@
         const part = keyboardParts[currentPart];
         const obj = scene.getObjectByName(part);
         obj.position.z += 10;
-        if (obj.position.z > 0) {
-          obj.position.z = 0;
+        if (obj.position.z >= obj.userData.assembledZ) {
+          obj.position.z = obj.userData.assembledZ;
           currentPart++;
         }
         requestAnimationFrame(animateAssembly);
@@ -142,27 +164,31 @@
       animateAssembly();
     }
 
+    let audio;
     function playSound(key) {
       if (isMuted) return;
-      const oscillator = new AudioContext().createOscillator();
+      audio ||= new AudioContext();
+      audio.resume();
+      const oscillator = audio.createOscillator();
       oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(key === ' ' ? 200 : key === 'enter' || key === 'backspace' || key === 'shift' || key === 'ctrl' ? 400 : 800, AudioContext.currentTime);
-      oscillator.connect(AudioContext.destination);
+      oscillator.frequency.setValueAtTime(key === ' ' ? 200 : key === 'enter' || key === 'backspace' || key === 'shift' || key === 'ctrl' ? 400 : 800, audio.currentTime);
+      oscillator.connect(audio.destination);
       oscillator.start();
-      oscillator.stop(AudioContext.currentTime + 0.1);
+      oscillator.stop(audio.currentTime + 0.1);
     }
 
     function pressKey(key) {
       const obj = scene.getObjectByName(key);
-      obj.position.y = -5;
+      if (!obj) return;
+      obj.position.z = obj.userData.restZ - 5;
       setTimeout(() => {
-        obj.position.y = 0;
+        obj.position.z = obj.userData.restZ;
       }, 50);
       playSound(key);
     }
 
     document.addEventListener('keydown', event => {
-      pressKey(event.key);
+      pressKey(event.key.toLowerCase().replace('control', 'ctrl'));
     });
 
     document.getElementById('mute').addEventListener('click', () => {
@@ -174,6 +200,11 @@
 
     assembleKeyboard();
     animate();
+    window.addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
   </script>
 </body>
 </html>
