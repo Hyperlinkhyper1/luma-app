@@ -5,12 +5,30 @@ import '../../../../../theme/luma_theme.dart';
 import '../team_clipboard_models.dart';
 import 'team_clipboard_style.dart';
 
-const _assigneeWidth = 94.0;
-const _subtasksWidth = 100.0;
-const _typeWidth = 104.0;
-const _statusWidth = 118.0;
-const _updatedWidth = 92.0;
-const _activityWidth = 74.0;
+/// The table's column widths for a row [width] wide. At their narrowest
+/// the columns hug the right edge; on a wide screen they grow (up to 1.8×)
+/// so names and labels stop truncating and the columns move left, while
+/// the title keeps at least 40% of the row.
+class _TaskColumns {
+  factory _TaskColumns(double width) {
+    final scale = ((width - _add - width * 0.4) / _base).clamp(1.0, 1.8);
+    return _TaskColumns._(scale);
+  }
+
+  const _TaskColumns._(this.scale);
+
+  final double scale;
+
+  static const _add = 30.0;
+  static const _base = 122.0 + 80 + 104 + 112 + 90 + 74;
+
+  double get assignee => 122 * scale;
+  double get subtasks => 80 * scale;
+  double get type => 104 * scale;
+  double get status => 112 * scale;
+  double get updated => 90 * scale;
+  double get activity => 74 * scale;
+}
 
 class TeamTaskHeader extends StatelessWidget {
   const TeamTaskHeader({super.key});
@@ -31,26 +49,31 @@ class TeamTaskHeader extends StatelessWidget {
     );
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 6, 8, 10),
-      child: Row(
-        children: [
-          Expanded(child: label(t.teamClipboardTaskTitle)),
-          SizedBox(
-            width: _assigneeWidth,
-            child: label(t.teamClipboardAssignee),
-          ),
-          SizedBox(
-            width: _subtasksWidth,
-            child: label(t.teamClipboardSubEntries),
-          ),
-          SizedBox(width: _typeWidth, child: label(t.teamClipboardEditorKind)),
-          SizedBox(width: _statusWidth, child: label(t.teamClipboardStatus)),
-          SizedBox(width: _updatedWidth, child: label(t.teamClipboardUpdated)),
-          SizedBox(
-            width: _activityWidth,
-            child: label(t.teamClipboardActivity),
-          ),
-          const SizedBox(width: 30),
-        ],
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final c = _TaskColumns(box.maxWidth);
+          return Row(
+            children: [
+              Expanded(child: label(t.teamClipboardTaskTitle)),
+              SizedBox(
+                width: c.assignee,
+                child: label(t.teamClipboardAssignee),
+              ),
+              SizedBox(
+                width: c.subtasks,
+                child: label(t.teamClipboardSubEntries),
+              ),
+              SizedBox(width: c.type, child: label(t.teamClipboardEditorKind)),
+              SizedBox(width: c.status, child: label(t.teamClipboardStatus)),
+              SizedBox(width: c.updated, child: label(t.teamClipboardUpdated)),
+              SizedBox(
+                width: c.activity,
+                child: label(t.teamClipboardActivity),
+              ),
+              const SizedBox(width: _TaskColumns._add),
+            ],
+          );
+        },
       ),
     );
   }
@@ -197,40 +220,51 @@ class TeamTaskRow extends StatelessWidget {
             ),
           );
     final Widget content = table
-        ? Row(
-            children: [
-              Expanded(child: title),
-              SizedBox(
-                width: _assigneeWidth,
-                child: _Assignee(name: name, label: assignee),
-              ),
-              SizedBox(width: _subtasksWidth, child: progress),
-              SizedBox(
-                width: _typeWidth,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: typeLabel,
-                ),
-              ),
-              SizedBox(
-                width: _statusWidth,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: statusLabel,
-                ),
-              ),
-              SizedBox(
-                width: _updatedWidth,
-                child: Text(
-                  teamRelativeTime(context, entry.updatedAt),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: luma.textMuted, fontSize: 11.5),
-                ),
-              ),
-              SizedBox(width: _activityWidth, child: activity),
-              add,
-            ],
+        ? LayoutBuilder(
+            builder: (context, box) {
+              final c = _TaskColumns(box.maxWidth);
+              return Row(
+                children: [
+                  Expanded(child: title),
+                  SizedBox(
+                    width: c.assignee,
+                    child: _Assignee(name: name, label: assignee),
+                  ),
+                  SizedBox(width: c.subtasks, child: progress),
+                  SizedBox(
+                    width: c.type,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: typeLabel,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: c.status,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: statusLabel,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: c.updated,
+                    child: Text(
+                      teamRelativeTime(context, entry.updatedAt),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: luma.textMuted, fontSize: 11.5),
+                    ),
+                  ),
+                  SizedBox(width: c.activity, child: activity),
+                  add,
+                ],
+              );
+            },
           )
         : Column(
             crossAxisAlignment: CrossAxisAlignment.start,
