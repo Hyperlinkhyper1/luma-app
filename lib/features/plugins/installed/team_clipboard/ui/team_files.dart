@@ -98,6 +98,33 @@ Future<(String, int)?> saveAllTeamFiles(
 
 bool get teamCanSaveAll => !(Platform.isAndroid || Platform.isIOS);
 
+/// How fast `name.png` animates, from `name.png.mcmeta` beside it: its
+/// `frametime` is in game ticks of 50 ms.
+Future<Duration?> teamFrameTime(
+  TeamClipboardController controller,
+  TeamEntry entry,
+  TeamFile texture,
+) async {
+  final meta = entry.files
+      .where(
+        (f) => f.name.toLowerCase() == '${texture.name.toLowerCase()}.mcmeta',
+      )
+      .firstOrNull;
+  if (meta == null) return null;
+  final bytes = await controller.file(meta.id);
+  if (bytes == null) return null;
+  try {
+    final json = jsonDecode(utf8.decode(bytes));
+    final animation = json is Map ? json['animation'] : null;
+    final ticks = animation is Map ? animation['frametime'] : null;
+    return ticks is int && ticks > 0
+        ? Duration(milliseconds: ticks * 50)
+        : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 /// Draws [image] pixel-sharp, showing only [frame] of an animated strip.
 class _TexturePainter extends CustomPainter {
   _TexturePainter(this.image, this.frame, this.frames);
@@ -243,11 +270,19 @@ class TeamFileTile extends StatefulWidget {
     required this.entry,
     required this.file,
     required this.onRemove,
+    this.onTap,
+    this.selected = false,
   });
 
   final TeamEntry entry;
   final TeamFile file;
   final VoidCallback? onRemove;
+
+  /// What a tap does; the full-size preview when left out.
+  final VoidCallback? onTap;
+
+  /// Outlined as the file the viewer above is showing.
+  final bool selected;
 
   @override
   State<TeamFileTile> createState() => _TeamFileTileState();
@@ -279,7 +314,9 @@ class _TeamFileTileState extends State<TeamFileTile> {
         onEnter: (_) => setState(() => _hover = true),
         onExit: (_) => setState(() => _hover = false),
         child: GestureDetector(
-          onTap: () => showTeamFilePreview(context, widget.entry, file),
+          onTap:
+              widget.onTap ??
+              () => showTeamFilePreview(context, widget.entry, file),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
             width: 168,
@@ -287,9 +324,12 @@ class _TeamFileTileState extends State<TeamFileTile> {
               color: _hover ? luma.surfaceHover : luma.surface,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: _hover
+                color: widget.selected
+                    ? luma.accent
+                    : _hover
                     ? luma.accent.withValues(alpha: 0.5)
                     : luma.border,
+                width: widget.selected ? 1.5 : 1,
               ),
             ),
             clipBehavior: Clip.antiAlias,
@@ -497,26 +537,13 @@ class _FilePreviewDialogState extends State<_FilePreviewDialog> {
     if (widget.file.isImage) _readFrameTime();
   }
 
-  /// `ruby.png` animates by `ruby.png.mcmeta`; its frametime is in ticks.
   Future<void> _readFrameTime() async {
-    final meta = widget.entry.files
-        .where(
-          (f) =>
-              f.name.toLowerCase() ==
-              '${widget.file.name.toLowerCase()}.mcmeta',
-        )
-        .firstOrNull;
-    if (meta == null) return;
-    final bytes = await widget.controller.file(meta.id);
-    if (bytes == null) return;
-    try {
-      final json = jsonDecode(utf8.decode(bytes));
-      final animation = json is Map ? json['animation'] : null;
-      final ticks = animation is Map ? animation['frametime'] : null;
-      if (ticks is int && ticks > 0 && mounted) {
-        setState(() => _frameTime = Duration(milliseconds: ticks * 50));
-      }
-    } catch (_) {}
+    final time = await teamFrameTime(
+      widget.controller,
+      widget.entry,
+      widget.file,
+    );
+    if (time != null && mounted) setState(() => _frameTime = time);
   }
 
   @override

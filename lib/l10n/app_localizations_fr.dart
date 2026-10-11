@@ -39076,6 +39076,41 @@ class LFr extends L {
   String get teamClipboardChat => 'Discussion';
 
   @override
+  String get teamClipboardTabOverview => 'Aperçu';
+
+  @override
+  String get teamClipboardViewer2d => '2D';
+
+  @override
+  String get teamClipboardViewer3d => '3D';
+
+  @override
+  String get teamClipboardViewerShowJson => 'Afficher le JSON';
+
+  @override
+  String get teamClipboardViewerReset => 'Réinitialiser la vue';
+
+  @override
+  String get teamClipboardViewerPick => 'Afficher un autre fichier';
+
+  @override
+  String get teamClipboardViewerHint =>
+      'Glisser pour tourner · défiler pour zoomer · double-clic pour réinitialiser';
+
+  @override
+  String teamClipboardViewerMissing(String names) {
+    return 'Textures manquantes : $names';
+  }
+
+  @override
+  String get teamClipboardViewerNotModel =>
+      'Ce .json n\'est pas un modèle de bloc ou d\'objet.';
+
+  @override
+  String get teamClipboardViewerEmpty =>
+      'Rien à dessiner pour l\'instant. Joignez les textures utilisées par ce modèle, ou le modèle parent sur lequel il s\'appuie.';
+
+  @override
   String get teamClipboardNoMessages =>
       'Aucun message pour l’instant. Lancez la discussion.';
 

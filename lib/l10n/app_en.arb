@@ -23740,6 +23740,23 @@
     }
   },
   "teamClipboardChat": "Chat",
+  "teamClipboardTabOverview": "Overview",
+  "teamClipboardViewer2d": "2D",
+  "teamClipboardViewer3d": "3D",
+  "teamClipboardViewerShowJson": "Show JSON",
+  "teamClipboardViewerReset": "Reset view",
+  "teamClipboardViewerPick": "Show another file",
+  "teamClipboardViewerHint": "Drag to turn · scroll to zoom · double-click to reset",
+  "teamClipboardViewerMissing": "Missing textures: {names}",
+  "@teamClipboardViewerMissing": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "teamClipboardViewerNotModel": "This .json isn't a block or item model.",
+  "teamClipboardViewerEmpty": "Nothing to draw yet. Attach the textures this model uses, or the parent model it builds on.",
   "teamClipboardNoMessages": "No messages yet. Start the discussion.",
   "teamClipboardMessageHint": "Write a message…",
   "teamClipboardSend": "Send",

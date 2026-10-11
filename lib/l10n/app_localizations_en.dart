@@ -38576,6 +38576,41 @@ class LEn extends L {
   String get teamClipboardChat => 'Chat';
 
   @override
+  String get teamClipboardTabOverview => 'Overview';
+
+  @override
+  String get teamClipboardViewer2d => '2D';
+
+  @override
+  String get teamClipboardViewer3d => '3D';
+
+  @override
+  String get teamClipboardViewerShowJson => 'Show JSON';
+
+  @override
+  String get teamClipboardViewerReset => 'Reset view';
+
+  @override
+  String get teamClipboardViewerPick => 'Show another file';
+
+  @override
+  String get teamClipboardViewerHint =>
+      'Drag to turn · scroll to zoom · double-click to reset';
+
+  @override
+  String teamClipboardViewerMissing(String names) {
+    return 'Missing textures: $names';
+  }
+
+  @override
+  String get teamClipboardViewerNotModel =>
+      'This .json isn\'t a block or item model.';
+
+  @override
+  String get teamClipboardViewerEmpty =>
+      'Nothing to draw yet. Attach the textures this model uses, or the parent model it builds on.';
+
+  @override
   String get teamClipboardNoMessages =>
       'No messages yet. Start the discussion.';
 

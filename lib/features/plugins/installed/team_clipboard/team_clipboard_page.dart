@@ -32,6 +32,9 @@ class _TeamClipboardPageState extends State<TeamClipboardPage> {
   String _query = '';
   bool _showFinished = true;
 
+  /// The open entry's tab, kept while moving between entries.
+  TeamDetailTab _tab = TeamDetailTab.overview;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -88,9 +91,9 @@ class _TeamClipboardPageState extends State<TeamClipboardPage> {
     }
     return LayoutBuilder(
       builder: (context, box) {
-        final wide = box.maxWidth >= 1240;
         final split = box.maxWidth >= 820;
         final selected = controller.selected;
+        final open = split && selected != null;
         final list = _BoardList(
           controller: controller,
           filter: _filter,
@@ -107,32 +110,24 @@ class _TeamClipboardPageState extends State<TeamClipboardPage> {
           },
           highlightSelection: split,
           tiles: split && selected == null,
+          compact: open,
         );
-        if (!split || selected == null) return list;
+        if (!open) return list;
         final luma = context.luma;
         return Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SizedBox(width: wide ? 380 : 340, child: list),
+            SizedBox(width: box.maxWidth >= 1240 ? 340 : 300, child: list),
             VerticalDivider(width: 1, color: luma.border),
             Expanded(
               child: TeamEntryDetail(
                 key: ValueKey(selected.id),
                 entry: selected,
-                withThread: !wide,
+                tab: _tab,
+                onTab: (tab) => setState(() => _tab = tab),
                 onClose: () => controller.select(null),
               ),
             ),
-            if (wide) ...[
-              VerticalDivider(width: 1, color: luma.border),
-              SizedBox(
-                width: 380,
-                child: ColoredBox(
-                  color: luma.surface,
-                  child: TeamThreadPanel(entry: selected),
-                ),
-              ),
-            ],
           ],
         );
       },
@@ -217,6 +212,7 @@ class _BoardList extends StatelessWidget {
     required this.onOpen,
     required this.highlightSelection,
     this.tiles = false,
+    this.compact = false,
   });
 
   final TeamClipboardController controller;
@@ -234,6 +230,10 @@ class _BoardList extends StatelessWidget {
   /// lays its entries out as a grid of tiles instead of a single column.
   final bool tiles;
 
+  /// Squeezed beside an open entry: a one-line header with the new-entry
+  /// button as an icon, and cards without their author and time.
+  final bool compact;
+
   /// [entries] are the board's top-level cards; [shown] is everything the
   /// filter lets through, so a main thread's matching sub-entries can hang
   /// under it in the list.
@@ -246,6 +246,7 @@ class _BoardList extends StatelessWidget {
         selected: highlightSelection && e.id == controller.selectedId,
         news: controller.hasNews(e),
         tile: tiles,
+        compact: compact,
         subTotal: children.length,
         subDone: children.where((c) => c.finished).length,
         onTap: () => onOpen(e),
@@ -319,84 +320,119 @@ class _BoardList extends StatelessWidget {
     );
     final search = _SearchField(query: query, onChanged: onQuery);
 
+    final refresh = IconButton(
+      tooltip: t.teamClipboardRefresh,
+      onPressed: controller.loading ? null : controller.refresh,
+      icon: controller.loading
+          ? const SizedBox.square(
+              dimension: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.refresh_rounded),
+      color: luma.textSecondary,
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: EdgeInsets.fromLTRB(side, 18, side - 6, 0),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            t.pluginNameTeamClipboard,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: luma.textPrimary,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
+        if (compact)
+          Padding(
+            padding: EdgeInsets.fromLTRB(side, 14, side - 8, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    t.pluginNameTeamClipboard,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: luma.textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                IconButton.filled(
+                  tooltip: t.teamClipboardNewEntry,
+                  onPressed: () => showTeamEntryEditor(context, controller),
+                  style: IconButton.styleFrom(
+                    backgroundColor: luma.accent,
+                    foregroundColor: luma.onAccent,
+                    minimumSize: const Size(34, 34),
+                    padding: EdgeInsets.zero,
+                  ),
+                  icon: const Icon(Icons.add_rounded, size: 20),
+                ),
+                refresh,
+              ],
+            ),
+          )
+        else
+          Padding(
+            padding: EdgeInsets.fromLTRB(side, 18, side - 6, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              t.pluginNameTeamClipboard,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: luma.textPrimary,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        TeamPill(
-                          label: controller.isLead
-                              ? t.teamClipboardRoleLead
-                              : t.teamClipboardRoleMember,
-                          color: controller.isLead
-                              ? luma.accent
-                              : luma.textSecondary,
-                          icon: controller.isLead
-                              ? Icons.star_rounded
-                              : Icons.person_rounded,
-                        ),
-                        const SizedBox(width: 6),
-                        Flexible(child: _NameChip(controller: controller)),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      t.teamClipboardSubtitle(
-                        openCount,
-                        all.length - openCount,
+                          const SizedBox(width: 8),
+                          TeamPill(
+                            label: controller.isLead
+                                ? t.teamClipboardRoleLead
+                                : t.teamClipboardRoleMember,
+                            color: controller.isLead
+                                ? luma.accent
+                                : luma.textSecondary,
+                            icon: controller.isLead
+                                ? Icons.star_rounded
+                                : Icons.person_rounded,
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(child: _NameChip(controller: controller)),
+                        ],
                       ),
-                      style: TextStyle(color: luma.textMuted, fontSize: 12.5),
-                    ),
-                  ],
+                      const SizedBox(height: 2),
+                      Text(
+                        t.teamClipboardSubtitle(
+                          openCount,
+                          all.length - openCount,
+                        ),
+                        style: TextStyle(color: luma.textMuted, fontSize: 12.5),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              if (tiles) ...[
-                SizedBox(width: 320, child: search),
-                const SizedBox(width: 12),
-                newEntry,
-                const SizedBox(width: 4),
+                if (tiles) ...[
+                  SizedBox(width: 320, child: search),
+                  const SizedBox(width: 12),
+                  newEntry,
+                  const SizedBox(width: 4),
+                ],
+                refresh,
               ],
-              IconButton(
-                tooltip: t.teamClipboardRefresh,
-                onPressed: controller.loading ? null : controller.refresh,
-                icon: controller.loading
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.refresh_rounded),
-                color: luma.textSecondary,
-              ),
-            ],
+            ),
           ),
-        ),
         if (!tiles) ...[
+          if (!compact)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+              child: newEntry,
+            ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
-            child: newEntry,
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+            padding: EdgeInsets.fromLTRB(18, compact ? 8 : 12, 18, 0),
             child: search,
           ),
         ],
@@ -786,9 +822,14 @@ class _EntryCard extends StatefulWidget {
     required this.news,
     required this.onTap,
     this.tile = false,
+    this.compact = false,
     this.subTotal = 0,
     this.subDone = 0,
   });
+
+  /// Leaves out who wrote it and when, for the narrow list beside an open
+  /// entry.
+  final bool compact;
 
   final TeamEntry entry;
   final bool selected;
@@ -898,10 +939,11 @@ class _EntryCardState extends State<_EntryCard> {
             icon: Icons.chat_bubble_outline_rounded,
             text: '${e.messageCount}',
           ),
-        _Meta(
-          text:
-              '${teamPerson(t, e.author)} · ${teamRelativeTime(context, e.updatedAt)}',
-        ),
+        if (!widget.compact)
+          _Meta(
+            text:
+                '${teamPerson(t, e.author)} · ${teamRelativeTime(context, e.updatedAt)}',
+          ),
       ],
     );
 

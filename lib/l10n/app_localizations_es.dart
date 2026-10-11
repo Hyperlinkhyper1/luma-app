@@ -39006,6 +39006,41 @@ class LEs extends L {
   String get teamClipboardChat => 'Chat';
 
   @override
+  String get teamClipboardTabOverview => 'Resumen';
+
+  @override
+  String get teamClipboardViewer2d => '2D';
+
+  @override
+  String get teamClipboardViewer3d => '3D';
+
+  @override
+  String get teamClipboardViewerShowJson => 'Ver JSON';
+
+  @override
+  String get teamClipboardViewerReset => 'Restablecer vista';
+
+  @override
+  String get teamClipboardViewerPick => 'Ver otro archivo';
+
+  @override
+  String get teamClipboardViewerHint =>
+      'Arrastra para girar · desplaza para hacer zoom · doble clic para restablecer';
+
+  @override
+  String teamClipboardViewerMissing(String names) {
+    return 'Faltan texturas: $names';
+  }
+
+  @override
+  String get teamClipboardViewerNotModel =>
+      'Este .json no es un modelo de bloque ni de objeto.';
+
+  @override
+  String get teamClipboardViewerEmpty =>
+      'Aún no hay nada que dibujar. Adjunta las texturas que usa este modelo, o el modelo padre en el que se basa.';
+
+  @override
   String get teamClipboardNoMessages =>
       'Aún no hay mensajes. Empieza la conversación.';
 

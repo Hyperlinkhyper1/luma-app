@@ -38860,6 +38860,41 @@ class LNl extends L {
   String get teamClipboardChat => 'Chat';
 
   @override
+  String get teamClipboardTabOverview => 'Overzicht';
+
+  @override
+  String get teamClipboardViewer2d => '2D';
+
+  @override
+  String get teamClipboardViewer3d => '3D';
+
+  @override
+  String get teamClipboardViewerShowJson => 'JSON tonen';
+
+  @override
+  String get teamClipboardViewerReset => 'Weergave herstellen';
+
+  @override
+  String get teamClipboardViewerPick => 'Ander bestand tonen';
+
+  @override
+  String get teamClipboardViewerHint =>
+      'Sleep om te draaien · scroll om te zoomen · dubbelklik om te herstellen';
+
+  @override
+  String teamClipboardViewerMissing(String names) {
+    return 'Ontbrekende textures: $names';
+  }
+
+  @override
+  String get teamClipboardViewerNotModel =>
+      'Deze .json is geen blok- of itemmodel.';
+
+  @override
+  String get teamClipboardViewerEmpty =>
+      'Nog niets te tekenen. Voeg de textures toe die dit model gebruikt, of het oudermodel waarop het voortbouwt.';
+
+  @override
   String get teamClipboardNoMessages =>
       'Nog geen berichten. Begin het gesprek.';
 

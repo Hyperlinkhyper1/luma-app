@@ -11,6 +11,7 @@ import '../team_clipboard_scope.dart';
 import 'team_clipboard_style.dart';
 import 'team_entry_editor.dart';
 import 'team_files.dart';
+import 'team_model_view.dart';
 
 /// Runs [action] and shows what went wrong, if anything, as a snack bar.
 Future<void> _attempt(
@@ -27,140 +28,247 @@ Future<void> _attempt(
   }
 }
 
-/// Everything about one entry on one screen: what it is, where it stands,
-/// its brief, its files and — unless [withThread] is off because the
-/// thread has a column of its own — its chat. With [onClose] the header
-/// carries a close button that goes back to the board.
+/// The three views of an open entry.
+enum TeamDetailTab { overview, files, chat }
+
+/// Everything about one entry, under a fixed header: its stage, brief and
+/// sub-entries on [TeamDetailTab.overview], its files with a big texture
+/// and 3D model viewer on [TeamDetailTab.files], and its chat on
+/// [TeamDetailTab.chat]. Pass [tab] and [onTab] to keep the tab as the user
+/// moves between entries; otherwise it's kept here. With [onClose] the
+/// header carries a close button that goes back to the board.
 class TeamEntryDetail extends StatefulWidget {
   const TeamEntryDetail({
     super.key,
     required this.entry,
-    this.withThread = true,
     this.onClose,
+    this.tab,
+    this.onTab,
   });
 
   final TeamEntry entry;
-  final bool withThread;
   final VoidCallback? onClose;
+  final TeamDetailTab? tab;
+  final ValueChanged<TeamDetailTab>? onTab;
 
   @override
   State<TeamEntryDetail> createState() => _TeamEntryDetailState();
 }
 
 class _TeamEntryDetailState extends State<TeamEntryDetail> {
-  final _scroll = ScrollController();
+  TeamDetailTab _tab = TeamDetailTab.overview;
+  String? _viewing;
+
+  TeamDetailTab get _current => widget.tab ?? _tab;
+
+  void _setTab(TeamDetailTab tab) {
+    setState(() => _tab = tab);
+    widget.onTab?.call(tab);
+  }
 
   @override
   void didUpdateWidget(TeamEntryDetail old) {
     super.didUpdateWidget(old);
-    if (old.entry.id != widget.entry.id && _scroll.hasClients) {
-      _scroll.jumpTo(0);
-    }
+    if (old.entry.id != widget.entry.id) _viewing = null;
   }
-
-  @override
-  void dispose() {
-    _scroll.dispose();
-    super.dispose();
-  }
-
-  /// After the user posts, follow the thread down to their message.
-  void _followThread() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scroll.hasClients) {
-        _scroll.animateTo(
-          _scroll.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-        );
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final entry = widget.entry;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            controller: _scroll,
-            padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (entry.parentId != null) ...[
-                  _ParentLink(parentId: entry.parentId!),
-                  const SizedBox(height: 10),
-                ],
-                _Header(entry: entry, onClose: widget.onClose),
-                const SizedBox(height: 18),
-                if (entry.closed) ...[
-                  _ClosedBanner(entry: entry),
-                  const SizedBox(height: 14),
-                ],
-                _StageTrack(entry: entry),
-                const SizedBox(height: 22),
-                _Brief(entry: entry),
-                if (entry.parentId == null) ...[
-                  const SizedBox(height: 24),
-                  _SubEntries(entry: entry),
-                ],
-                const SizedBox(height: 24),
-                _Files(entry: entry),
-                if (widget.withThread) ...[
-                  const SizedBox(height: 24),
-                  _SectionTitle(
-                    icon: Icons.forum_rounded,
-                    label: L.of(context).teamClipboardChat,
-                    count: entry.messageCount,
-                  ),
-                  const SizedBox(height: 10),
-                  TeamMessages(entry: entry),
-                ],
-              ],
-            ),
-          ),
-        ),
-        if (widget.withThread)
-          TeamComposer(entry: entry, onSent: _followThread),
-      ],
-    );
-  }
-}
-
-/// The chat on its own, for the third column of a wide window.
-class TeamThreadPanel extends StatelessWidget {
-  const TeamThreadPanel({super.key, required this.entry});
-
-  final TeamEntry entry;
 
   @override
   Widget build(BuildContext context) {
     final t = L.of(context);
     final luma = context.luma;
-    final messages = entry.messages;
+    final entry = widget.entry;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 10),
-          child: _SectionTitle(
-            icon: Icons.forum_rounded,
-            label: t.teamClipboardChat,
-            count: entry.messageCount,
+          padding: const EdgeInsets.fromLTRB(22, 16, 14, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (entry.parentId != null) ...[
+                _ParentLink(parentId: entry.parentId!),
+                const SizedBox(height: 8),
+              ],
+              _Header(entry: entry, onClose: widget.onClose),
+              const SizedBox(height: 10),
+              _Tabs(
+                current: _current,
+                onTab: _setTab,
+                labels: {
+                  TeamDetailTab.overview: (t.teamClipboardTabOverview, 0),
+                  TeamDetailTab.files: (
+                    t.teamClipboardFiles,
+                    entry.files.length,
+                  ),
+                  TeamDetailTab.chat: (t.teamClipboardChat, entry.messageCount),
+                },
+              ),
+            ],
           ),
         ),
         Divider(height: 1, color: luma.border),
         Expanded(
+          child: switch (_current) {
+            TeamDetailTab.overview => SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(22, 18, 22, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (entry.closed) ...[
+                    _ClosedBanner(entry: entry),
+                    const SizedBox(height: 14),
+                  ],
+                  _StageTrack(entry: entry),
+                  const SizedBox(height: 22),
+                  _Brief(entry: entry),
+                  if (entry.parentId == null) ...[
+                    const SizedBox(height: 24),
+                    _SubEntries(entry: entry),
+                  ],
+                ],
+              ),
+            ),
+            TeamDetailTab.files => _Files(
+              entry: entry,
+              viewing: _viewing,
+              onView: (id) => setState(() => _viewing = id),
+            ),
+            TeamDetailTab.chat => _Chat(entry: entry),
+          },
+        ),
+      ],
+    );
+  }
+}
+
+/// Overview · Files 3 · Chat 12, underlined under the one on show.
+class _Tabs extends StatelessWidget {
+  const _Tabs({
+    required this.current,
+    required this.onTab,
+    required this.labels,
+  });
+
+  final TeamDetailTab current;
+  final ValueChanged<TeamDetailTab> onTab;
+  final Map<TeamDetailTab, (String, int)> labels;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final tab in TeamDetailTab.values)
+            _TabButton(
+              label: labels[tab]!.$1,
+              count: labels[tab]!.$2,
+              selected: tab == current,
+              onTap: () => onTab(tab),
+              luma: luma,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TabButton extends StatelessWidget {
+  const _TabButton({
+    required this.label,
+    required this.count,
+    required this.selected,
+    required this.onTap,
+    required this.luma,
+  });
+
+  final String label;
+  final int count;
+  final bool selected;
+  final VoidCallback onTap;
+  final LumaPalette luma;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.fromLTRB(4, 8, 4, 9),
+          margin: const EdgeInsets.only(right: 18),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: selected ? luma.accent : Colors.transparent,
+                width: 2,
+              ),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: selected ? luma.textPrimary : luma.textSecondary,
+                  fontSize: 13.5,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+              if (count > 0) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: selected ? luma.accentSubtle : luma.background,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: TextStyle(
+                      color: selected ? luma.accent : luma.textMuted,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The chat: newest at the bottom, the composer under it.
+class _Chat extends StatelessWidget {
+  const _Chat({required this.entry});
+
+  final TeamEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final messages = entry.messages;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
           child: messages == null
               ? const Center(child: CircularProgressIndicator())
               : messages.isEmpty
-              ? _NoMessages(closed: entry.closed)
+              ? Center(child: _NoMessages(closed: entry.closed))
               : ListView.builder(
                   reverse: true,
-                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
+                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
                   itemCount: messages.length,
                   itemBuilder: (context, i) {
                     final index = messages.length - 1 - i;
@@ -219,6 +327,18 @@ class _Header extends StatelessWidget {
                     label: teamKindLabel(t, entry.kind),
                     color: kindColor,
                     icon: teamKindIcon(entry.kind),
+                  ),
+                  TeamPill(
+                    label: entry.closed
+                        ? t.teamClipboardClosed
+                        : teamStageLabel(t, entry.stage, entry.kind),
+                    color: entry.closed
+                        ? luma.textMuted
+                        : teamStageColor(entry.stage, luma),
+                    icon: entry.closed
+                        ? Icons.lock_rounded
+                        : teamStageIcon(entry.stage),
+                    filled: entry.stage == TeamEntryStage.added,
                   ),
                   Text(
                     '${t.teamClipboardByAuthor(teamPerson(t, entry.author))}'
@@ -626,16 +746,10 @@ class _StageStep extends StatelessWidget {
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({
-    required this.icon,
-    required this.label,
-    this.count,
-    this.trailing,
-  });
+  const _SectionTitle({required this.icon, required this.label, this.trailing});
 
   final IconData icon;
   final String label;
-  final int? count;
   final Widget? trailing;
 
   @override
@@ -653,10 +767,6 @@ class _SectionTitle extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
-        if (count != null && count! > 0) ...[
-          const SizedBox(width: 8),
-          Text('$count', style: TextStyle(color: luma.textMuted, fontSize: 13)),
-        ],
         const Spacer(),
         ?trailing,
       ],
@@ -924,10 +1034,18 @@ class TeamSubEntryRow extends StatelessWidget {
   }
 }
 
+/// The Files tab: the viewer on top when there's a texture or model to
+/// show, every file below it, and the add / save-all actions.
 class _Files extends StatefulWidget {
-  const _Files({required this.entry});
+  const _Files({
+    required this.entry,
+    required this.viewing,
+    required this.onView,
+  });
 
   final TeamEntry entry;
+  final String? viewing;
+  final ValueChanged<String> onView;
 
   @override
   State<_Files> createState() => _FilesState();
@@ -1024,54 +1142,30 @@ class _FilesState extends State<_Files> {
     final t = L.of(context);
     final luma = context.luma;
     final entry = widget.entry;
-    final narrow = context.isPhoneWidth;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _SectionTitle(
-          icon: Icons.folder_rounded,
-          label: t.teamClipboardFiles,
-          count: entry.files.length,
-          trailing: Wrap(
-            spacing: 4,
-            children: [
-              if (entry.files.length > 1 && teamCanSaveAll)
-                narrow
-                    ? IconButton(
-                        tooltip: t.teamClipboardDownloadAll,
-                        onPressed: _saveAll,
-                        icon: const Icon(Icons.download_rounded, size: 20),
-                      )
-                    : TextButton.icon(
-                        onPressed: _saveAll,
-                        icon: const Icon(Icons.download_rounded, size: 18),
-                        label: Text(t.teamClipboardDownloadAll),
-                      ),
-              if (!entry.closed)
-                narrow
-                    ? IconButton(
-                        tooltip: t.teamClipboardAddFiles,
-                        onPressed: _uploading > 0 ? null : _add,
-                        icon: const Icon(Icons.attach_file_rounded, size: 20),
-                      )
-                    : TextButton.icon(
-                        onPressed: _uploading > 0 ? null : _add,
-                        icon: _uploading > 0
-                            ? const SizedBox.square(
-                                dimension: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.attach_file_rounded, size: 18),
-                        label: Text(t.teamClipboardAddFiles),
-                      ),
-            ],
-          ),
+    final viewable = entry.files.where(teamViewable).toList();
+    final shown = viewable.where((f) => f.id == widget.viewing).firstOrNull?.id;
+    final actions = [
+      if (entry.files.length > 1 && teamCanSaveAll)
+        TextButton.icon(
+          onPressed: _saveAll,
+          icon: const Icon(Icons.download_rounded, size: 18),
+          label: Text(t.teamClipboardDownloadAll),
         ),
-        const SizedBox(height: 10),
-        if (entry.files.isEmpty)
-          Container(
+      if (!entry.closed)
+        TextButton.icon(
+          onPressed: _uploading > 0 ? null : _add,
+          icon: _uploading > 0
+              ? const SizedBox.square(
+                  dimension: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.attach_file_rounded, size: 18),
+          label: Text(t.teamClipboardAddFiles),
+        ),
+    ];
+
+    final grid = entry.files.isEmpty
+        ? Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
@@ -1090,8 +1184,7 @@ class _FilesState extends State<_Files> {
               ],
             ),
           )
-        else
-          Wrap(
+        : Wrap(
             spacing: 10,
             runSpacing: 10,
             children: [
@@ -1100,40 +1193,81 @@ class _FilesState extends State<_Files> {
                   key: ValueKey(file.id),
                   entry: entry,
                   file: file,
+                  selected: viewable.length > 1 && file.id == shown,
+                  onTap: teamViewable(file)
+                      ? () => widget.onView(file.id)
+                      : null,
                   onRemove: file.canRemove ? () => _remove(file) : null,
                 ),
             ],
+          );
+
+    final toolbar = actions.isEmpty
+        ? null
+        : Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 4,
+              children: actions,
+            ),
+          );
+
+    return LayoutBuilder(
+      builder: (context, box) {
+        const pad = EdgeInsets.fromLTRB(22, 14, 22, 24);
+        if (viewable.isEmpty) {
+          return SingleChildScrollView(
+            padding: pad,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [?toolbar, grid],
+            ),
+          );
+        }
+        final viewer = TeamFileViewer(
+          entry: entry,
+          subjectId: shown,
+          onSubject: widget.onView,
+        );
+        // With room to spare the viewer stays put and only the files
+        // scroll, so a vertical drag on a touch screen turns the model
+        // rather than the page.
+        if (box.maxHeight >= 520) {
+          return Padding(
+            padding: pad.copyWith(bottom: 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  height: (box.maxHeight * 0.58).clamp(280.0, 520.0),
+                  child: viewer,
+                ),
+                const SizedBox(height: 12),
+                ?toolbar,
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: grid,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        return SingleChildScrollView(
+          padding: pad,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(height: 240, child: viewer),
+              const SizedBox(height: 12),
+              ?toolbar,
+              grid,
+            ],
           ),
-      ],
-    );
-  }
-}
-
-/// The thread as a plain column, for when it sits under the files.
-class TeamMessages extends StatelessWidget {
-  const TeamMessages({super.key, required this.entry});
-
-  final TeamEntry entry;
-
-  @override
-  Widget build(BuildContext context) {
-    final messages = entry.messages;
-    if (messages == null) {
-      return const Padding(
-        padding: EdgeInsets.all(20),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-    if (messages.isEmpty) return _NoMessages(closed: entry.closed);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (var i = 0; i < messages.length; i++)
-          _Bubble(
-            message: messages[i],
-            showAuthor: i == 0 || messages[i - 1].author != messages[i].author,
-          ),
-      ],
+        );
+      },
     );
   }
 }

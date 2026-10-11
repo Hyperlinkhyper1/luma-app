@@ -36834,6 +36834,38 @@ class LZh extends L {
   String get teamClipboardChat => '讨论';
 
   @override
+  String get teamClipboardTabOverview => '概览';
+
+  @override
+  String get teamClipboardViewer2d => '2D';
+
+  @override
+  String get teamClipboardViewer3d => '3D';
+
+  @override
+  String get teamClipboardViewerShowJson => '查看 JSON';
+
+  @override
+  String get teamClipboardViewerReset => '重置视角';
+
+  @override
+  String get teamClipboardViewerPick => '查看其他文件';
+
+  @override
+  String get teamClipboardViewerHint => '拖动旋转 · 滚动缩放 · 双击重置';
+
+  @override
+  String teamClipboardViewerMissing(String names) {
+    return '缺少贴图：$names';
+  }
+
+  @override
+  String get teamClipboardViewerNotModel => '此 .json 不是方块或物品模型。';
+
+  @override
+  String get teamClipboardViewerEmpty => '暂无可绘制内容。请附上此模型使用的贴图，或它所继承的父模型。';
+
+  @override
   String get teamClipboardNoMessages => '还没有消息，开始讨论吧。';
 
   @override

@@ -63289,6 +63289,66 @@ abstract class L {
   /// **'Chat'**
   String get teamClipboardChat;
 
+  /// No description provided for @teamClipboardTabOverview.
+  ///
+  /// In en, this message translates to:
+  /// **'Overview'**
+  String get teamClipboardTabOverview;
+
+  /// No description provided for @teamClipboardViewer2d.
+  ///
+  /// In en, this message translates to:
+  /// **'2D'**
+  String get teamClipboardViewer2d;
+
+  /// No description provided for @teamClipboardViewer3d.
+  ///
+  /// In en, this message translates to:
+  /// **'3D'**
+  String get teamClipboardViewer3d;
+
+  /// No description provided for @teamClipboardViewerShowJson.
+  ///
+  /// In en, this message translates to:
+  /// **'Show JSON'**
+  String get teamClipboardViewerShowJson;
+
+  /// No description provided for @teamClipboardViewerReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset view'**
+  String get teamClipboardViewerReset;
+
+  /// No description provided for @teamClipboardViewerPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Show another file'**
+  String get teamClipboardViewerPick;
+
+  /// No description provided for @teamClipboardViewerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag to turn · scroll to zoom · double-click to reset'**
+  String get teamClipboardViewerHint;
+
+  /// No description provided for @teamClipboardViewerMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing textures: {names}'**
+  String teamClipboardViewerMissing(String names);
+
+  /// No description provided for @teamClipboardViewerNotModel.
+  ///
+  /// In en, this message translates to:
+  /// **'This .json isn\'t a block or item model.'**
+  String get teamClipboardViewerNotModel;
+
+  /// No description provided for @teamClipboardViewerEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to draw yet. Attach the textures this model uses, or the parent model it builds on.'**
+  String get teamClipboardViewerEmpty;
+
   /// No description provided for @teamClipboardNoMessages.
   ///
   /// In en, this message translates to:
