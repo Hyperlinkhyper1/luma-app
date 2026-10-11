@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -8,6 +9,7 @@ import { PNG } from 'pngjs';
 import puppeteer from 'puppeteer-core';
 
 import { installShotControl } from './shot_control.mjs';
+import { benchmarkSceneFile } from './benchmark_scene_file.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -788,18 +790,7 @@ async function main() {
     manifest.benchmarks.find((x) => x.id === id)?.kind ??
     (SCENE_KINDS.find((k) => id.startsWith(`${k}_`)) ?? 'pagoda');
   const sceneExtension = (id) => (kindOf(id) === 'cathedral' ? 'glb' : 'html');
-  const sceneFile = (id) => {
-    const ext = sceneExtension(id);
-    const candidates = [
-      override && path.join(override, `${id}.${ext}`),
-      override && ext === 'html' && path.join(override, id, 'index.html'),
-      // Scenes uploaded from the admin dashboard (AiBenchmarkStore.saveUpload).
-      override && path.join(override, 'uploads', `${id}.${ext}`),
-      path.join(root, 'scenes', `${id}.${ext}`),
-      ext === 'html' && path.join(root, 'scenes', id, 'index.html'),
-    ].filter(Boolean);
-    return candidates.find((f) => fs.existsSync(f)) ?? null;
-  };
+  const sceneFile = (id) => benchmarkSceneFile({ root, override, id, ext: sceneExtension(id) });
   // A hand-set camera from the dashboard's framing editor, overlaid the
   // same way as scenes.
   const framingOf = (id) => {
@@ -888,6 +879,8 @@ async function main() {
       failed.push(id);
       return;
     }
+    const source = await fs.promises.readFile(file);
+    note(`source: ${file} · sha256 ${createHash('sha256').update(source).digest('hex')}`);
     const kind = kindOf(id);
     // A scene that crashes the browser takes only itself down.
     if (!worker.browser.connected) {
