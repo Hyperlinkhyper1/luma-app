@@ -43,6 +43,7 @@ import 'store.dart';
 import 'subway_relay.dart';
 import 'subway_store.dart';
 import 'team_board.dart';
+import 'team_discord.dart';
 import 'util.dart';
 import 'web_search.dart';
 
@@ -51,6 +52,7 @@ part 'api_benchmark_repair.dart';
 part 'api_classroom.dart';
 part 'api_school_tests.dart';
 part 'api_team_board.dart';
+part 'api_team_discord.dart';
 
 /// How a newly registered account becomes usable.
 enum ApprovalMode {
@@ -677,6 +679,11 @@ class Api {
       ..delete('/api/v1/team-board/entries/<id>/files/<fileId>',
           _requireAuth(_teamFileDelete))
       ..get('/api/v1/team-board/files/<fileId>', _requireAuth(_teamFileGet))
+      ..get('/api/v1/team-board/discord', _requireAuth(_teamDiscordGet))
+      ..put('/api/v1/team-board/discord', _requireAuth(_teamDiscordUpdate))
+      ..put('/api/v1/team-board/discord/token', _requireAuth(_teamDiscordLink))
+      ..delete('/api/v1/team-board/discord/token',
+          _requireAuth(_teamDiscordUnlink))
       ..post('/api/v1/plugins/download', _requireAuth(_reportPluginDownload))
       ..post('/api/v1/subway/rooms', _requireAuth(_createSubwayRoom))
       ..get('/api/v1/subway/rooms', _requireAuth(_listSubwayRooms))
@@ -2979,6 +2986,10 @@ class Api {
   /// The Team Clipboard: its entries, files and who is on the team (see
   /// `api_team_board.dart`).
   late final TeamBoardStore teamBoard = TeamBoardStore(config.dataDir);
+
+  /// The Team Clipboard's Discord bot (see `api_team_discord.dart`). It
+  /// only connects once `main` calls `start`.
+  late final TeamDiscordBot teamDiscord = TeamDiscordBot(config.dataDir);
 
   late final BookReviewConfigStore aiBookReviewConfig =
       BookReviewConfigStore(config.dataDir);

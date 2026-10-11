@@ -755,19 +755,29 @@ class _SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    return Row(
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 8,
+      runSpacing: 6,
       children: [
-        Icon(icon, size: 18, color: luma.textSecondary),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: TextStyle(
-            color: luma.textPrimary,
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: luma.textSecondary),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: luma.textPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
         ),
-        const Spacer(),
         ?trailing,
       ],
     );

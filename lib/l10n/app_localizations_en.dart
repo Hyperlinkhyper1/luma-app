@@ -9,6 +9,293 @@ class LEn extends L {
   LEn([String locale = 'en']) : super(locale);
 
   @override
+  String get teamClipboardTasks => 'Tasks';
+
+  @override
+  String get teamClipboardDiscordBot => 'Discord bot';
+
+  @override
+  String get teamDiscordPlugins => 'Plugins';
+
+  @override
+  String get teamDiscordPluginsHint =>
+      'Switch on what the bot should do in your Discord server.';
+
+  @override
+  String get teamDiscordEssentials => 'Essentials';
+
+  @override
+  String get teamDiscordBotSettings => 'Bot settings';
+
+  @override
+  String get teamDiscordEnable => 'Enable';
+
+  @override
+  String get teamDiscordManage => 'Manage';
+
+  @override
+  String get teamDiscordView => 'View';
+
+  @override
+  String get teamDiscordEnabled => 'Enabled';
+
+  @override
+  String get teamDiscordPluginOff => 'Off';
+
+  @override
+  String get teamDiscordRules => 'Rules';
+
+  @override
+  String get teamDiscordNotLinkedBanner =>
+      'No bot is linked yet, so these plugins wait until one is. Link it in Bot settings.';
+
+  @override
+  String get teamDiscordNoBot => 'No bot linked';
+
+  @override
+  String teamDiscordRuleCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count rules',
+      one: '1 rule',
+      zero: 'No rules yet',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get teamDiscordStatusOnline => 'Online';
+
+  @override
+  String get teamDiscordStatusConnecting => 'Connecting…';
+
+  @override
+  String get teamDiscordStatusOff => 'Off';
+
+  @override
+  String get teamDiscordStatusError => 'Not connected';
+
+  @override
+  String get teamDiscordErrorBadToken =>
+      'Discord no longer accepts this token. Reset it in the developer portal and link it again.';
+
+  @override
+  String get teamDiscordErrorIntents =>
+      'Turn on Message Content Intent on the bot\'s page in the developer portal, then switch the bot off and on here.';
+
+  @override
+  String get teamDiscordErrorNetwork =>
+      'The server can\'t reach Discord right now. It keeps trying.';
+
+  @override
+  String get teamDiscordErrorOther =>
+      'Discord closed the connection. Switch the bot off and on to try again.';
+
+  @override
+  String get teamDiscordSetupTitle => 'Link your Discord bot';
+
+  @override
+  String get teamDiscordSetupBody =>
+      'The bot runs on the luma server, so it keeps working while everyone\'s app is closed.';
+
+  @override
+  String get teamDiscordStep1 =>
+      'Create an application in the Discord developer portal and open its Bot page.';
+
+  @override
+  String get teamDiscordStep2 =>
+      'Turn on Message Content Intent there, then reset and copy the token.';
+
+  @override
+  String get teamDiscordStep3 =>
+      'Paste the token below. The server checks it with Discord and keeps it; it is never shown again.';
+
+  @override
+  String get teamDiscordOpenPortal => 'Open developer portal';
+
+  @override
+  String get teamDiscordTokenLabel => 'Bot token';
+
+  @override
+  String get teamDiscordLink => 'Link bot';
+
+  @override
+  String get teamDiscordNotLinkedMember =>
+      'No bot is linked yet. A team lead can link one here.';
+
+  @override
+  String get teamDiscordNoServers =>
+      'Not in a server yet. A lead can add it with Add to server.';
+
+  @override
+  String teamDiscordInServers(String servers) {
+    return 'In $servers';
+  }
+
+  @override
+  String get teamDiscordAddToServer => 'Add to server';
+
+  @override
+  String get teamDiscordReplaceToken => 'Replace token';
+
+  @override
+  String get teamDiscordUnlink => 'Unlink';
+
+  @override
+  String teamDiscordUnlinkConfirm(String name) {
+    return 'Unlink $name? It goes offline until a lead links a bot again. The rules stay.';
+  }
+
+  @override
+  String get teamDiscordLeadOnly => 'Only team leads can change the bot.';
+
+  @override
+  String get teamDiscordAutomodTitle => 'Automod';
+
+  @override
+  String get teamDiscordAutomodHint =>
+      'Removes messages that use any of these words.';
+
+  @override
+  String get teamDiscordRepliesTitle => 'Auto replies';
+
+  @override
+  String get teamDiscordRepliesHint =>
+      'Answers messages that mention a trigger word.';
+
+  @override
+  String get teamDiscordAddRule => 'Add rule';
+
+  @override
+  String get teamDiscordNoAutomod => 'No banned words yet.';
+
+  @override
+  String get teamDiscordNoReplies => 'No auto replies yet.';
+
+  @override
+  String get teamDiscordWordsLabel => 'Words';
+
+  @override
+  String get teamDiscordWordsHint => 'One per line, or separated by commas';
+
+  @override
+  String get teamDiscordWordsRequired => 'Add at least one word.';
+
+  @override
+  String get teamDiscordWholeWord => 'Whole words only';
+
+  @override
+  String get teamDiscordWholeWordHint => 'So \"ass\" doesn\'t catch \"class\".';
+
+  @override
+  String get teamDiscordWarnLabel => 'Warning (optional)';
+
+  @override
+  String get teamDiscordWarnHint =>
+      'Posted in the channel, mentioning the author';
+
+  @override
+  String get teamDiscordWarns => 'Warns';
+
+  @override
+  String get teamDiscordTimeoutLabel => 'Timeout';
+
+  @override
+  String get teamDiscordTimeoutNone => 'No timeout';
+
+  @override
+  String teamDiscordTimeoutShort(String duration) {
+    return '$duration timeout';
+  }
+
+  @override
+  String teamDiscordMinutes(int count) {
+    return '$count min';
+  }
+
+  @override
+  String teamDiscordHours(int count) {
+    return '$count h';
+  }
+
+  @override
+  String teamDiscordDays(int count) {
+    return '$count d';
+  }
+
+  @override
+  String get teamDiscordTriggersLabel => 'Trigger words';
+
+  @override
+  String get teamDiscordReplyLabel => 'Reply';
+
+  @override
+  String get teamDiscordReplyRequired => 'Write the reply.';
+
+  @override
+  String get teamDiscordMatchLabel => 'Match';
+
+  @override
+  String get teamDiscordMatchWord => 'As a word';
+
+  @override
+  String get teamDiscordMatchContains => 'Anywhere';
+
+  @override
+  String get teamDiscordMatchExact => 'Whole message';
+
+  @override
+  String get teamDiscordNewAutomod => 'New automod rule';
+
+  @override
+  String get teamDiscordEditAutomod => 'Edit automod rule';
+
+  @override
+  String get teamDiscordNewReply => 'New auto reply';
+
+  @override
+  String get teamDiscordEditReply => 'Edit auto reply';
+
+  @override
+  String get teamDiscordDeleteRule => 'Delete rule';
+
+  @override
+  String get teamDiscordActivity => 'Recent activity';
+
+  @override
+  String get teamDiscordNoActivity =>
+      'Nothing yet. What the bot does since the server last started shows here.';
+
+  @override
+  String teamDiscordLogAutomod(String user, String word) {
+    return 'Removed a message from $user for “$word”';
+  }
+
+  @override
+  String teamDiscordLogReply(String user, String word) {
+    return 'Answered $user about “$word”';
+  }
+
+  @override
+  String get teamClipboardTaskTitle => 'Task title';
+
+  @override
+  String get teamClipboardAssignee => 'Assignee';
+
+  @override
+  String get teamClipboardUnassigned => 'Unassigned';
+
+  @override
+  String get teamClipboardStatus => 'Status';
+
+  @override
+  String get teamClipboardUpdated => 'Updated';
+
+  @override
+  String get teamClipboardActivity => 'Files / chat';
+
+  @override
   String get settingsTrackBackendAiUsage => 'Track backend AI usage';
 
   @override

@@ -8,14 +8,15 @@ import 'team_clipboard_controller.dart';
 import 'team_clipboard_models.dart';
 import 'team_clipboard_scope.dart';
 import 'ui/team_clipboard_style.dart';
+import 'ui/team_discord_page.dart';
 import 'ui/team_entry_detail.dart';
 import 'ui/team_entry_editor.dart';
+import 'ui/team_task_row.dart';
 
 /// The Team Clipboard: every bug, suggestion and model the team is working
 /// on, on one screen. Work still to do sits on top; done, added and closed
-/// entries sink to the bottom on a darker surface. On a wide window with
-/// nothing open the board fills the page as a grid of tiles; opening an
-/// entry folds it into a side list with the entry and its chat beside it.
+/// entries sink to the bottom. The full board uses aligned task rows;
+/// opening an entry folds it into a side list beside the entry and its chat.
 /// On a phone the entry opens as a page of its own.
 class TeamClipboardPage extends StatefulWidget {
   const TeamClipboardPage({super.key});
@@ -26,10 +27,14 @@ class TeamClipboardPage extends StatefulWidget {
 
 enum _KindFilter { all, bug, suggestion, model }
 
+enum _WorkspacePage { tasks, discordBot }
+
 class _TeamClipboardPageState extends State<TeamClipboardPage> {
   TeamClipboardController? _controller;
   _KindFilter _filter = _KindFilter.all;
   String _query = '';
+  _WorkspacePage _page = _WorkspacePage.tasks;
+  bool _showTodo = true;
   bool _showFinished = true;
 
   /// The open entry's tab, kept while moving between entries.
@@ -89,48 +94,67 @@ class _TeamClipboardPageState extends State<TeamClipboardPage> {
     if (controller.access == TeamAccess.outside) {
       return _AccessGate(controller: controller);
     }
-    return LayoutBuilder(
-      builder: (context, box) {
-        final split = box.maxWidth >= 820;
-        final selected = controller.selected;
-        final open = split && selected != null;
-        final list = _BoardList(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _WorkspaceHeader(
           controller: controller,
-          filter: _filter,
-          query: _query,
-          showFinished: _showFinished,
-          matches: _matches,
-          onFilter: (f) => setState(() => _filter = f),
-          onQuery: (q) => setState(() => _query = q),
-          onToggleFinished: () =>
-              setState(() => _showFinished = !_showFinished),
-          onOpen: (entry) {
-            controller.select(entry.id);
-            if (!split) _openOnPhone(context, entry.id);
-          },
-          highlightSelection: split,
-          tiles: split && selected == null,
-          compact: open,
-        );
-        if (!open) return list;
-        final luma = context.luma;
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(width: box.maxWidth >= 1240 ? 340 : 300, child: list),
-            VerticalDivider(width: 1, color: luma.border),
-            Expanded(
-              child: TeamEntryDetail(
-                key: ValueKey(selected.id),
-                entry: selected,
-                tab: _tab,
-                onTab: (tab) => setState(() => _tab = tab),
-                onClose: () => controller.select(null),
-              ),
-            ),
-          ],
-        );
-      },
+          page: _page,
+          onPage: (page) => setState(() => _page = page),
+        ),
+        Expanded(
+          child: _page == _WorkspacePage.discordBot
+              ? TeamDiscordPage(controller: controller)
+              : LayoutBuilder(
+                  builder: (context, box) {
+                    final split = box.maxWidth >= 820;
+                    final selected = controller.selected;
+                    final open = split && selected != null;
+                    final list = _BoardList(
+                      controller: controller,
+                      filter: _filter,
+                      query: _query,
+                      showTodo: _showTodo,
+                      showFinished: _showFinished,
+                      matches: _matches,
+                      onFilter: (f) => setState(() => _filter = f),
+                      onQuery: (q) => setState(() => _query = q),
+                      onToggleFinished: () =>
+                          setState(() => _showFinished = !_showFinished),
+                      onToggleTodo: () =>
+                          setState(() => _showTodo = !_showTodo),
+                      onOpen: (entry) {
+                        controller.select(entry.id);
+                        if (!split) _openOnPhone(context, entry.id);
+                      },
+                      highlightSelection: split,
+                      compact: open,
+                    );
+                    if (!open) return list;
+                    final luma = context.luma;
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SizedBox(
+                          width: box.maxWidth >= 1240 ? 340 : 300,
+                          child: list,
+                        ),
+                        VerticalDivider(width: 1, color: luma.border),
+                        Expanded(
+                          child: TeamEntryDetail(
+                            key: ValueKey(selected.id),
+                            entry: selected,
+                            tab: _tab,
+                            onTab: (tab) => setState(() => _tab = tab),
+                            onClose: () => controller.select(null),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 
@@ -199,102 +223,232 @@ class _AccessGate extends StatelessWidget {
   }
 }
 
+class _WorkspaceHeader extends StatelessWidget {
+  const _WorkspaceHeader({
+    required this.controller,
+    required this.page,
+    required this.onPage,
+  });
+
+  final TeamClipboardController controller;
+  final _WorkspacePage page;
+  final ValueChanged<_WorkspacePage> onPage;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = L.of(context);
+    final luma = context.luma;
+    final openCount = controller.entries.where((e) => !e.finished).length;
+    final identity = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TeamPill(
+          label: controller.isLead
+              ? t.teamClipboardRoleLead
+              : t.teamClipboardRoleMember,
+          color: controller.isLead ? luma.accent : luma.textSecondary,
+          icon: controller.isLead ? Icons.star_rounded : Icons.person_rounded,
+        ),
+        const SizedBox(width: 8),
+        Flexible(child: _NameChip(controller: controller)),
+      ],
+    );
+    final heading = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          t.pluginNameTeamClipboard,
+          style: TextStyle(
+            color: luma.textPrimary,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          t.teamClipboardSubtitle(
+            openCount,
+            controller.entries.length - openCount,
+          ),
+          style: TextStyle(color: luma.textMuted, fontSize: 12.5),
+        ),
+      ],
+    );
+    return Container(
+      decoration: BoxDecoration(
+        color: luma.surface,
+        border: Border(bottom: BorderSide(color: luma.border)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+            child: LayoutBuilder(
+              builder: (context, box) => box.maxWidth >= 600
+                  ? Row(
+                      children: [
+                        Expanded(child: heading),
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: box.maxWidth * 0.42,
+                          ),
+                          child: identity,
+                        ),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [heading, const SizedBox(height: 10), identity],
+                    ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Wrap(
+              spacing: 4,
+              children: [
+                _WorkspaceTab(
+                  key: const ValueKey('team-clipboard-tasks-tab'),
+                  label: t.teamClipboardTasks,
+                  icon: Icons.checklist_rounded,
+                  selected: page == _WorkspacePage.tasks,
+                  onTap: () => onPage(_WorkspacePage.tasks),
+                ),
+                _WorkspaceTab(
+                  key: const ValueKey('team-clipboard-discord-tab'),
+                  label: t.teamClipboardDiscordBot,
+                  icon: Icons.smart_toy_outlined,
+                  selected: page == _WorkspacePage.discordBot,
+                  onTap: () => onPage(_WorkspacePage.discordBot),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WorkspaceTab extends StatelessWidget {
+  const _WorkspaceTab({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Semantics(
+      selected: selected,
+      button: true,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: selected ? luma.accent : Colors.transparent,
+              width: 2,
+            ),
+          ),
+        ),
+        child: TextButton.icon(
+          onPressed: onTap,
+          style: TextButton.styleFrom(
+            foregroundColor: selected ? luma.accent : luma.textSecondary,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+            textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          icon: Icon(icon, size: 17),
+          label: Text(label),
+        ),
+      ),
+    );
+  }
+}
+
 class _BoardList extends StatelessWidget {
   const _BoardList({
     required this.controller,
     required this.filter,
     required this.query,
+    required this.showTodo,
     required this.showFinished,
     required this.matches,
     required this.onFilter,
     required this.onQuery,
+    required this.onToggleTodo,
     required this.onToggleFinished,
     required this.onOpen,
     required this.highlightSelection,
-    this.tiles = false,
     this.compact = false,
   });
 
   final TeamClipboardController controller;
   final _KindFilter filter;
   final String query;
+  final bool showTodo;
   final bool showFinished;
   final bool Function(TeamEntry) matches;
   final ValueChanged<_KindFilter> onFilter;
   final ValueChanged<String> onQuery;
+  final VoidCallback onToggleTodo;
   final VoidCallback onToggleFinished;
   final ValueChanged<TeamEntry> onOpen;
   final bool highlightSelection;
-
-  /// With nothing open on a wide window the board takes the whole page and
-  /// lays its entries out as a grid of tiles instead of a single column.
-  final bool tiles;
-
-  /// Squeezed beside an open entry: a one-line header with the new-entry
-  /// button as an icon, and cards without their author and time.
   final bool compact;
 
-  /// [entries] are the board's top-level cards; [shown] is everything the
-  /// filter lets through, so a main thread's matching sub-entries can hang
-  /// under it in the list.
-  Widget _cards(List<TeamEntry> entries, List<TeamEntry> shown) {
-    Widget card(TeamEntry e) {
-      final children = controller.childrenOf(e.id);
-      return _EntryCard(
-        key: ValueKey(e.id),
-        entry: e,
-        selected: highlightSelection && e.id == controller.selectedId,
-        news: controller.hasNews(e),
-        tile: tiles,
+  Widget _rows(
+    BuildContext context,
+    List<TeamEntry> roots,
+    List<TeamEntry> shown,
+    bool table,
+  ) {
+    final shownChildren = <String, List<TeamEntry>>{};
+    for (final entry in shown) {
+      if (entry.parentId case final parent?) {
+        (shownChildren[parent] ??= []).add(entry);
+      }
+    }
+    Widget row(TeamEntry entry, {bool child = false}) {
+      final children = controller.childrenOf(entry.id);
+      return TeamTaskRow(
+        key: ValueKey(entry.id),
+        entry: entry,
+        table: table,
+        child: child,
         compact: compact,
+        selected: highlightSelection && entry.id == controller.selectedId,
+        news: controller.hasNews(entry),
         subTotal: children.length,
-        subDone: children.where((c) => c.finished).length,
-        onTap: () => onOpen(e),
+        subDone: children.where((e) => e.finished).length,
+        onTap: () => onOpen(entry),
+        onAddSubEntry: controller.canHoldChildren(entry) && !entry.closed
+            ? () => showTeamEntryEditor(context, controller, parentId: entry.id)
+            : null,
       );
     }
 
-    if (!tiles) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final e in entries) ...[
-            card(e),
-            for (final child in shown.where((c) => c.parentId == e.id))
-              Padding(
-                padding: const EdgeInsets.only(left: 22),
-                child: TeamSubEntryRow(
-                  key: ValueKey(child.id),
-                  entry: child,
-                  news: controller.hasNews(child),
-                  selected:
-                      highlightSelection && child.id == controller.selectedId,
-                  onTap: () => onOpen(child),
-                ),
-              ),
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final root in roots) ...[
+          row(root),
+          for (final child in shownChildren[root.id] ?? <TeamEntry>[])
+            row(child, child: true),
         ],
-      );
-    }
-    return LayoutBuilder(
-      builder: (context, box) {
-        const gap = 12.0;
-        final columns = ((box.maxWidth + gap) / (280 + gap)).floor().clamp(
-          1,
-          99,
-        );
-        final width = (box.maxWidth - gap * (columns - 1)) / columns;
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Wrap(
-            spacing: gap,
-            runSpacing: gap,
-            children: [
-              for (final e in entries)
-                SizedBox(width: width, height: 176, child: card(e)),
-            ],
-          ),
-        );
-      },
+      ],
     );
   }
 
@@ -310,209 +464,154 @@ class _BoardList extends StatelessWidget {
         .toList();
     final todo = roots.where((e) => !e.finished).toList();
     final finished = roots.where((e) => e.finished).toList();
-    final openCount = all.where((e) => !e.finished).length;
-    final side = tiles ? 24.0 : 18.0;
-    final newEntry = LumaPrimaryButton(
-      label: t.teamClipboardNewEntry,
-      icon: Icons.add_rounded,
-      expand: !tiles,
-      onTap: () => showTeamEntryEditor(context, controller),
-    );
-    final search = _SearchField(query: query, onChanged: onQuery);
-
-    final refresh = IconButton(
-      tooltip: t.teamClipboardRefresh,
-      onPressed: controller.loading ? null : controller.refresh,
-      icon: controller.loading
-          ? const SizedBox.square(
-              dimension: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Icon(Icons.refresh_rounded),
-      color: luma.textSecondary,
-    );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (compact)
-          Padding(
-            padding: EdgeInsets.fromLTRB(side, 14, side - 8, 0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    t.pluginNameTeamClipboard,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: luma.textPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                IconButton.filled(
-                  tooltip: t.teamClipboardNewEntry,
-                  onPressed: () => showTeamEntryEditor(context, controller),
-                  style: IconButton.styleFrom(
-                    backgroundColor: luma.accent,
-                    foregroundColor: luma.onAccent,
-                    minimumSize: const Size(34, 34),
-                    padding: EdgeInsets.zero,
-                  ),
-                  icon: const Icon(Icons.add_rounded, size: 20),
-                ),
-                refresh,
-              ],
+    return LayoutBuilder(
+      builder: (context, box) {
+        final table = box.maxWidth >= 760;
+        final side = compact ? 14.0 : 24.0;
+        final search = _SearchField(query: query, onChanged: onQuery);
+        final refresh = IconButton(
+          tooltip: t.teamClipboardRefresh,
+          onPressed: controller.loading ? null : controller.refresh,
+          icon: controller.loading
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.refresh_rounded, size: 20),
+          color: luma.textSecondary,
+        );
+        final add = FilledButton.icon(
+          onPressed: () => showTeamEntryEditor(context, controller),
+          style: FilledButton.styleFrom(
+            backgroundColor: luma.accent,
+            foregroundColor: luma.onAccent,
+            minimumSize: const Size(0, 38),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
             ),
-          )
-        else
-          Padding(
-            padding: EdgeInsets.fromLTRB(side, 18, side - 6, 0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+          ),
+          icon: const Icon(Icons.add_rounded, size: 18),
+          label: Text(t.teamClipboardNewEntry),
+        );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(side, 16, side - 8, 0),
+              child: box.maxWidth >= 580
+                  ? Row(
+                      children: [
+                        add,
+                        const SizedBox(width: 14),
+                        SizedBox(width: 280, child: search),
+                        const Spacer(),
+                        refresh,
+                      ],
+                    )
+                  : Column(
+                      children: [
+                        Row(children: [add, const Spacer(), refresh]),
+                        const SizedBox(height: 10),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: search,
+                        ),
+                      ],
+                    ),
+            ),
+            SizedBox(
+              height: 49,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: EdgeInsets.fromLTRB(side, 10, side, 5),
+                children: [
+                  for (final f in _KindFilter.values)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: _FilterChip(
+                        label: switch (f) {
+                          _KindFilter.all => t.commonAll,
+                          _KindFilter.bug => t.teamClipboardFilterBugs,
+                          _KindFilter.suggestion =>
+                            t.teamClipboardFilterSuggestions,
+                          _KindFilter.model => t.teamClipboardFilterModels,
+                        },
+                        icon: switch (f) {
+                          _KindFilter.all => null,
+                          _KindFilter.bug => teamKindIcon(TeamEntryKind.bug),
+                          _KindFilter.suggestion => teamKindIcon(
+                            TeamEntryKind.suggestion,
+                          ),
+                          _KindFilter.model => teamKindIcon(
+                            TeamEntryKind.model,
+                          ),
+                        },
+                        selected: f == filter,
+                        onTap: () => onFilter(f),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            if (controller.error != null)
+              Padding(
+                padding: EdgeInsets.fromLTRB(side, 6, side, 8),
+                child: Text(
+                  controller.error!,
+                  style: TextStyle(color: luma.danger, fontSize: 12.5),
+                ),
+              ),
+            Expanded(
+              child: all.isEmpty
+                  ? LumaEmptyState(
+                      icon: Icons.content_paste_rounded,
+                      title: t.teamClipboardEmptyTitle,
+                      subtitle: t.teamClipboardEmptySubtitle,
+                    )
+                  : shown.isEmpty
+                  ? LumaEmptyState(
+                      icon: Icons.search_off_rounded,
+                      title: t.commonNoResults,
+                    )
+                  : RefreshIndicator(
+                      onRefresh: controller.refresh,
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: EdgeInsets.fromLTRB(side, 8, side, 24),
                         children: [
-                          Flexible(
-                            child: Text(
-                              t.pluginNameTeamClipboard,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: luma.textPrimary,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                              ),
+                          _SectionHeader(
+                            label: t.teamClipboardSectionToDo,
+                            count: todo.length,
+                            expanded: showTodo,
+                            onToggle: onToggleTodo,
+                            color: luma.accent,
+                          ),
+                          if (showTodo && todo.isNotEmpty) ...[
+                            if (table) const TeamTaskHeader(),
+                            _rows(context, todo, shown, table),
+                          ],
+                          if (finished.isNotEmpty) ...[
+                            const SizedBox(height: 24),
+                            _SectionHeader(
+                              label: t.teamClipboardSectionFinished,
+                              count: finished.length,
+                              expanded: showFinished,
+                              onToggle: onToggleFinished,
+                              color: luma.success,
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          TeamPill(
-                            label: controller.isLead
-                                ? t.teamClipboardRoleLead
-                                : t.teamClipboardRoleMember,
-                            color: controller.isLead
-                                ? luma.accent
-                                : luma.textSecondary,
-                            icon: controller.isLead
-                                ? Icons.star_rounded
-                                : Icons.person_rounded,
-                          ),
-                          const SizedBox(width: 6),
-                          Flexible(child: _NameChip(controller: controller)),
+                            if (showFinished) ...[
+                              if (table) const TeamTaskHeader(),
+                              _rows(context, finished, shown, table),
+                            ],
+                          ],
                         ],
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        t.teamClipboardSubtitle(
-                          openCount,
-                          all.length - openCount,
-                        ),
-                        style: TextStyle(color: luma.textMuted, fontSize: 12.5),
-                      ),
-                    ],
-                  ),
-                ),
-                if (tiles) ...[
-                  SizedBox(width: 320, child: search),
-                  const SizedBox(width: 12),
-                  newEntry,
-                  const SizedBox(width: 4),
-                ],
-                refresh,
-              ],
+                    ),
             ),
-          ),
-        if (!tiles) ...[
-          if (!compact)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
-              child: newEntry,
-            ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(18, compact ? 8 : 12, 18, 0),
-            child: search,
-          ),
-        ],
-        SizedBox(
-          height: 48,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.fromLTRB(side, 10, side, 4),
-            children: [
-              for (final f in _KindFilter.values)
-                Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: _FilterChip(
-                    label: switch (f) {
-                      _KindFilter.all => t.commonAll,
-                      _KindFilter.bug => t.teamClipboardFilterBugs,
-                      _KindFilter.suggestion =>
-                        t.teamClipboardFilterSuggestions,
-                      _KindFilter.model => t.teamClipboardFilterModels,
-                    },
-                    icon: switch (f) {
-                      _KindFilter.all => null,
-                      _KindFilter.bug => teamKindIcon(TeamEntryKind.bug),
-                      _KindFilter.suggestion => teamKindIcon(
-                        TeamEntryKind.suggestion,
-                      ),
-                      _KindFilter.model => teamKindIcon(TeamEntryKind.model),
-                    },
-                    selected: f == filter,
-                    onTap: () => onFilter(f),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        if (controller.error != null)
-          Padding(
-            padding: EdgeInsets.fromLTRB(side, 6, side, 0),
-            child: Text(
-              controller.error!,
-              style: TextStyle(color: luma.danger, fontSize: 12.5),
-            ),
-          ),
-        Expanded(
-          child: all.isEmpty
-              ? LumaEmptyState(
-                  icon: Icons.content_paste_rounded,
-                  title: t.teamClipboardEmptyTitle,
-                  subtitle: t.teamClipboardEmptySubtitle,
-                )
-              : shown.isEmpty
-              ? LumaEmptyState(
-                  icon: Icons.search_off_rounded,
-                  title: t.commonNoResults,
-                )
-              : RefreshIndicator(
-                  onRefresh: controller.refresh,
-                  child: ListView(
-                    padding: EdgeInsets.fromLTRB(side - 6, 8, side - 6, 24),
-                    children: [
-                      _SectionHeader(
-                        label: t.teamClipboardSectionToDo,
-                        count: todo.length,
-                      ),
-                      _cards(todo, shown),
-                      if (finished.isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        _SectionHeader(
-                          label: t.teamClipboardSectionFinished,
-                          count: finished.length,
-                          expanded: showFinished,
-                          onToggle: onToggleFinished,
-                        ),
-                        if (showFinished) _cards(finished, shown),
-                      ],
-                    ],
-                  ),
-                ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 }
@@ -755,12 +854,14 @@ class _SectionHeader extends StatelessWidget {
   const _SectionHeader({
     required this.label,
     required this.count,
+    required this.color,
     this.expanded = true,
     this.onToggle,
   });
 
   final String label;
   final int count;
+  final Color color;
   final bool expanded;
   final VoidCallback? onToggle;
 
@@ -768,13 +869,28 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final row = Padding(
-      padding: const EdgeInsets.fromLTRB(6, 8, 6, 6),
+      padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
       child: Row(
         children: [
+          Icon(
+            expanded ? Icons.expand_more_rounded : Icons.chevron_right_rounded,
+            size: 18,
+            color: luma.textMuted,
+          ),
+          const SizedBox(width: 7),
+          Container(
+            width: 3,
+            height: 16,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
           Text(
             label.toUpperCase(),
             style: TextStyle(
-              color: luma.textMuted,
+              color: color,
               fontSize: 11.5,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.8,
@@ -786,16 +902,6 @@ class _SectionHeader extends StatelessWidget {
             style: TextStyle(color: luma.textMuted, fontSize: 11.5),
           ),
           const Spacer(),
-          if (onToggle != null)
-            AnimatedRotation(
-              turns: expanded ? 0 : -0.25,
-              duration: const Duration(milliseconds: 180),
-              child: Icon(
-                Icons.expand_more_rounded,
-                size: 18,
-                color: luma.textMuted,
-              ),
-            ),
         ],
       ),
     );
@@ -808,253 +914,6 @@ class _SectionHeader extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         child: row,
       ),
-    );
-  }
-}
-
-/// One entry on the board. Finished entries sit on a darker surface with
-/// muted text, so what still needs doing reads first.
-class _EntryCard extends StatefulWidget {
-  const _EntryCard({
-    super.key,
-    required this.entry,
-    required this.selected,
-    required this.news,
-    required this.onTap,
-    this.tile = false,
-    this.compact = false,
-    this.subTotal = 0,
-    this.subDone = 0,
-  });
-
-  /// Leaves out who wrote it and when, for the narrow list beside an open
-  /// entry.
-  final bool compact;
-
-  final TeamEntry entry;
-  final bool selected;
-  final bool news;
-  final VoidCallback onTap;
-
-  /// For a main thread: how many sub-entries it has, and how many of them
-  /// are finished.
-  final int subTotal;
-  final int subDone;
-
-  /// Laid out as a fixed-size tile for the full-page grid, with a preview
-  /// of the brief, rather than as a row in the side list.
-  final bool tile;
-
-  @override
-  State<_EntryCard> createState() => _EntryCardState();
-}
-
-class _EntryCardState extends State<_EntryCard> {
-  bool _hover = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = L.of(context);
-    final luma = context.luma;
-    final e = widget.entry;
-    final finished = e.finished;
-    final kindColor = finished ? luma.textMuted : teamKindColor(e.kind, luma);
-    final stageColor = e.closed
-        ? luma.textMuted
-        : teamStageColor(e.stage, luma);
-    final base = finished ? teamFinishedSurface(context) : luma.surface;
-    final background = widget.selected
-        ? Color.lerp(base, luma.accent, 0.12)!
-        : _hover
-        ? Color.lerp(base, luma.surfaceHover, 0.7)!
-        : base;
-
-    final kindBadge = Container(
-      width: 34,
-      height: 34,
-      decoration: BoxDecoration(
-        color: kindColor.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(9),
-      ),
-      child: Icon(teamKindIcon(e.kind), size: 19, color: kindColor),
-    );
-    final title = Text(
-      e.title,
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-      style: TextStyle(
-        color: finished ? luma.textSecondary : luma.textPrimary,
-        fontSize: widget.tile ? 15 : 14,
-        fontWeight: FontWeight.w600,
-        height: 1.3,
-        decoration: e.closed ? TextDecoration.lineThrough : null,
-        decorationColor: luma.textMuted,
-      ),
-    );
-    final newsDot = widget.news
-        ? Tooltip(
-            message: t.teamClipboardNews,
-            child: Container(
-              margin: const EdgeInsets.only(left: 6, top: 4),
-              width: 9,
-              height: 9,
-              decoration: BoxDecoration(
-                color: luma.accent,
-                shape: BoxShape.circle,
-              ),
-            ),
-          )
-        : null;
-    final meta = Wrap(
-      spacing: 6,
-      runSpacing: 4,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        TeamPill(
-          label: e.closed
-              ? t.teamClipboardClosed
-              : e.stage == TeamEntryStage.claimed && e.claimedBy != null
-              ? t.teamClipboardClaimedBy(
-                  e.claimedByMe
-                      ? t.teamClipboardYou
-                      : teamPerson(t, e.claimedBy!),
-                )
-              : teamStageLabel(t, e.stage, e.kind),
-          color: stageColor,
-          icon: e.closed ? Icons.lock_rounded : teamStageIcon(e.stage),
-          filled: e.stage == TeamEntryStage.added,
-        ),
-        if (widget.subTotal > 0)
-          Tooltip(
-            message: t.teamClipboardMainThread,
-            child: _Meta(
-              icon: Icons.account_tree_rounded,
-              text: t.teamClipboardSubProgress(widget.subDone, widget.subTotal),
-            ),
-          ),
-        if (e.files.isNotEmpty)
-          _Meta(icon: Icons.attach_file_rounded, text: '${e.files.length}'),
-        if (e.messageCount > 0)
-          _Meta(
-            icon: Icons.chat_bubble_outline_rounded,
-            text: '${e.messageCount}',
-          ),
-        if (!widget.compact)
-          _Meta(
-            text:
-                '${teamPerson(t, e.author)} · ${teamRelativeTime(context, e.updatedAt)}',
-          ),
-      ],
-    );
-
-    final Widget content = widget.tile
-        ? Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  kindBadge,
-                  const SizedBox(width: 11),
-                  Expanded(child: title),
-                  ?newsDot,
-                ],
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: Text(
-                  e.brief.trim(),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: luma.textMuted,
-                    fontSize: 12.5,
-                    height: 1.4,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              meta,
-            ],
-          )
-        : Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              kindBadge,
-              const SizedBox(width: 11),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: title),
-                        ?newsDot,
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    meta,
-                  ],
-                ),
-              ),
-            ],
-          );
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: widget.tile ? 0 : 8),
-      child: Semantics(
-        button: true,
-        selected: widget.selected,
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          onEnter: (_) => setState(() => _hover = true),
-          onExit: (_) => setState(() => _hover = false),
-          child: GestureDetector(
-            onTap: widget.onTap,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: widget.tile
-                  ? const EdgeInsets.all(14)
-                  : const EdgeInsets.fromLTRB(12, 12, 12, 11),
-              decoration: BoxDecoration(
-                color: background,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: widget.selected
-                      ? luma.accent.withValues(alpha: 0.7)
-                      : finished
-                      ? Colors.transparent
-                      : luma.border,
-                ),
-              ),
-              child: content,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Meta extends StatelessWidget {
-  const _Meta({required this.text, this.icon});
-
-  final String text;
-  final IconData? icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (icon != null) ...[
-          Icon(icon, size: 13, color: luma.textMuted),
-          const SizedBox(width: 3),
-        ],
-        Text(text, style: TextStyle(color: luma.textMuted, fontSize: 12)),
-      ],
     );
   }
 }

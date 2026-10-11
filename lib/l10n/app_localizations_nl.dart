@@ -9,6 +9,296 @@ class LNl extends L {
   LNl([String locale = 'nl']) : super(locale);
 
   @override
+  String get teamClipboardTasks => 'Taken';
+
+  @override
+  String get teamClipboardDiscordBot => 'Discord-bot';
+
+  @override
+  String get teamDiscordPlugins => 'Plugins';
+
+  @override
+  String get teamDiscordPluginsHint =>
+      'Zet aan wat de bot in je Discord-server moet doen.';
+
+  @override
+  String get teamDiscordEssentials => 'Basis';
+
+  @override
+  String get teamDiscordBotSettings => 'Botinstellingen';
+
+  @override
+  String get teamDiscordEnable => 'Inschakelen';
+
+  @override
+  String get teamDiscordManage => 'Beheren';
+
+  @override
+  String get teamDiscordView => 'Bekijken';
+
+  @override
+  String get teamDiscordEnabled => 'Ingeschakeld';
+
+  @override
+  String get teamDiscordPluginOff => 'Uit';
+
+  @override
+  String get teamDiscordRules => 'Regels';
+
+  @override
+  String get teamDiscordNotLinkedBanner =>
+      'Er is nog geen bot gekoppeld, dus deze plugins wachten daarop. Koppel hem in Botinstellingen.';
+
+  @override
+  String get teamDiscordNoBot => 'Geen bot gekoppeld';
+
+  @override
+  String teamDiscordRuleCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count regels',
+      one: '1 regel',
+      zero: 'Nog geen regels',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get teamDiscordStatusOnline => 'Online';
+
+  @override
+  String get teamDiscordStatusConnecting => 'Verbinden…';
+
+  @override
+  String get teamDiscordStatusOff => 'Uit';
+
+  @override
+  String get teamDiscordStatusError => 'Niet verbonden';
+
+  @override
+  String get teamDiscordErrorBadToken =>
+      'Discord accepteert deze token niet meer. Reset hem in het developer portal en koppel hem opnieuw.';
+
+  @override
+  String get teamDiscordErrorIntents =>
+      'Zet Message Content Intent aan op de botpagina in het developer portal en zet de bot hier uit en weer aan.';
+
+  @override
+  String get teamDiscordErrorNetwork =>
+      'De server kan Discord nu niet bereiken. Hij blijft het proberen.';
+
+  @override
+  String get teamDiscordErrorOther =>
+      'Discord heeft de verbinding verbroken. Zet de bot uit en weer aan om het opnieuw te proberen.';
+
+  @override
+  String get teamDiscordSetupTitle => 'Koppel je Discord-bot';
+
+  @override
+  String get teamDiscordSetupBody =>
+      'De bot draait op de luma-server, dus hij blijft werken als ieders app dicht is.';
+
+  @override
+  String get teamDiscordStep1 =>
+      'Maak een applicatie in het Discord developer portal en open de Bot-pagina.';
+
+  @override
+  String get teamDiscordStep2 =>
+      'Zet daar Message Content Intent aan, en reset en kopieer de token.';
+
+  @override
+  String get teamDiscordStep3 =>
+      'Plak de token hieronder. De server controleert hem bij Discord en bewaart hem; hij wordt nooit meer getoond.';
+
+  @override
+  String get teamDiscordOpenPortal => 'Developer portal openen';
+
+  @override
+  String get teamDiscordTokenLabel => 'Bottoken';
+
+  @override
+  String get teamDiscordLink => 'Bot koppelen';
+
+  @override
+  String get teamDiscordNotLinkedMember =>
+      'Er is nog geen bot gekoppeld. Een teamleider kan er hier een koppelen.';
+
+  @override
+  String get teamDiscordNoServers =>
+      'Nog in geen enkele server. Een leider kan hem toevoegen met Aan server toevoegen.';
+
+  @override
+  String teamDiscordInServers(String servers) {
+    return 'In $servers';
+  }
+
+  @override
+  String get teamDiscordAddToServer => 'Aan server toevoegen';
+
+  @override
+  String get teamDiscordReplaceToken => 'Token vervangen';
+
+  @override
+  String get teamDiscordUnlink => 'Ontkoppelen';
+
+  @override
+  String teamDiscordUnlinkConfirm(String name) {
+    return '$name ontkoppelen? Hij gaat offline tot een leider opnieuw een bot koppelt. De regels blijven.';
+  }
+
+  @override
+  String get teamDiscordLeadOnly =>
+      'Alleen teamleiders kunnen de bot aanpassen.';
+
+  @override
+  String get teamDiscordAutomodTitle => 'Automod';
+
+  @override
+  String get teamDiscordAutomodHint =>
+      'Verwijdert berichten met een van deze woorden.';
+
+  @override
+  String get teamDiscordRepliesTitle => 'Automatische antwoorden';
+
+  @override
+  String get teamDiscordRepliesHint =>
+      'Beantwoordt berichten waarin een triggerwoord staat.';
+
+  @override
+  String get teamDiscordAddRule => 'Regel toevoegen';
+
+  @override
+  String get teamDiscordNoAutomod => 'Nog geen verboden woorden.';
+
+  @override
+  String get teamDiscordNoReplies => 'Nog geen automatische antwoorden.';
+
+  @override
+  String get teamDiscordWordsLabel => 'Woorden';
+
+  @override
+  String get teamDiscordWordsHint =>
+      'Eén per regel, of gescheiden door komma\'s';
+
+  @override
+  String get teamDiscordWordsRequired => 'Voeg minstens één woord toe.';
+
+  @override
+  String get teamDiscordWholeWord => 'Alleen hele woorden';
+
+  @override
+  String get teamDiscordWholeWordHint =>
+      'Zodat \"ass\" niet in \"class\" wordt gevonden.';
+
+  @override
+  String get teamDiscordWarnLabel => 'Waarschuwing (optioneel)';
+
+  @override
+  String get teamDiscordWarnHint =>
+      'Geplaatst in het kanaal, met een vermelding van de afzender';
+
+  @override
+  String get teamDiscordWarns => 'Waarschuwt';
+
+  @override
+  String get teamDiscordTimeoutLabel => 'Time-out';
+
+  @override
+  String get teamDiscordTimeoutNone => 'Geen time-out';
+
+  @override
+  String teamDiscordTimeoutShort(String duration) {
+    return '$duration time-out';
+  }
+
+  @override
+  String teamDiscordMinutes(int count) {
+    return '$count min';
+  }
+
+  @override
+  String teamDiscordHours(int count) {
+    return '$count u';
+  }
+
+  @override
+  String teamDiscordDays(int count) {
+    return '$count d';
+  }
+
+  @override
+  String get teamDiscordTriggersLabel => 'Triggerwoorden';
+
+  @override
+  String get teamDiscordReplyLabel => 'Antwoord';
+
+  @override
+  String get teamDiscordReplyRequired => 'Schrijf het antwoord.';
+
+  @override
+  String get teamDiscordMatchLabel => 'Overeenkomst';
+
+  @override
+  String get teamDiscordMatchWord => 'Als woord';
+
+  @override
+  String get teamDiscordMatchContains => 'Overal';
+
+  @override
+  String get teamDiscordMatchExact => 'Hele bericht';
+
+  @override
+  String get teamDiscordNewAutomod => 'Nieuwe automodregel';
+
+  @override
+  String get teamDiscordEditAutomod => 'Automodregel bewerken';
+
+  @override
+  String get teamDiscordNewReply => 'Nieuw automatisch antwoord';
+
+  @override
+  String get teamDiscordEditReply => 'Automatisch antwoord bewerken';
+
+  @override
+  String get teamDiscordDeleteRule => 'Regel verwijderen';
+
+  @override
+  String get teamDiscordActivity => 'Recente activiteit';
+
+  @override
+  String get teamDiscordNoActivity =>
+      'Nog niets. Wat de bot doet sinds de server voor het laatst is gestart, zie je hier.';
+
+  @override
+  String teamDiscordLogAutomod(String user, String word) {
+    return 'Bericht van $user verwijderd om “$word”';
+  }
+
+  @override
+  String teamDiscordLogReply(String user, String word) {
+    return '$user beantwoord over “$word”';
+  }
+
+  @override
+  String get teamClipboardTaskTitle => 'Taaktitel';
+
+  @override
+  String get teamClipboardAssignee => 'Toegewezen aan';
+
+  @override
+  String get teamClipboardUnassigned => 'Niet toegewezen';
+
+  @override
+  String get teamClipboardStatus => 'Status';
+
+  @override
+  String get teamClipboardUpdated => 'Bijgewerkt';
+
+  @override
+  String get teamClipboardActivity => 'Bestanden / chat';
+
+  @override
   String get settingsTrackBackendAiUsage =>
       'AI-gebruik via de server bijhouden';
 

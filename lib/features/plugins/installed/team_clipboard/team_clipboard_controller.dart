@@ -9,6 +9,7 @@ import '../../../../l10n/current_l.dart';
 import '../../../../sync/sync_service.dart';
 import 'data/team_clipboard_api.dart';
 import 'team_clipboard_models.dart';
+import 'team_discord_models.dart';
 import 'team_file_check.dart';
 
 /// A file picked to attach, before it is uploaded.
@@ -446,6 +447,23 @@ class TeamClipboardController extends ChangeNotifier {
     unawaited(_saveSeen());
     notifyListeners();
     unawaited(_tick());
+  }
+
+  // ---- Discord bot ----------------------------------------------------------
+
+  /// Runs one Discord-bot request. The bot's state lives on the Discord
+  /// tab rather than here: it is only fetched while that tab is open.
+  Future<TeamDiscordState> discord(
+    Future<TeamDiscordState> Function(TeamClipboardApi api) call,
+  ) async {
+    final api = _api;
+    if (api == null) throw StateError('Not signed in.');
+    try {
+      return await call(api);
+    } on TeamClipboardApiException catch (e) {
+      if (e.accessRemoved) unawaited(refresh());
+      rethrow;
+    }
   }
 
   // ---- Files ----------------------------------------------------------------

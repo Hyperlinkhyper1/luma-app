@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../../../../../l10n/current_l.dart';
 import '../../../../../sync/server_access.dart';
 import '../team_clipboard_models.dart';
+import '../team_discord_models.dart';
 
 class TeamClipboardApiException implements Exception {
   const TeamClipboardApiException(this.status, this.code, this.message);
@@ -192,6 +193,46 @@ class TeamClipboardApi {
       'http_${response.statusCode}',
       currentL.teamClipboardServerError(response.statusCode),
     );
+  }
+
+  Future<TeamDiscordState> discord() async {
+    final response = await _client
+        .get(_uri('/discord'), headers: _auth)
+        .timeout(_timeout);
+    return TeamDiscordState.fromJson(_decodeOrThrow(response));
+  }
+
+  /// Saves whichever of [enabled], [automodOn], [repliesOn], [automod] and
+  /// [replies] is given. A list
+  /// replaces the whole list on the server.
+  Future<TeamDiscordState> saveDiscord({
+    bool? enabled,
+    bool? automodOn,
+    bool? repliesOn,
+    List<TeamAutomodRule>? automod,
+    List<TeamReplyRule>? replies,
+  }) async => TeamDiscordState.fromJson(
+    await _send('PUT', '/discord', {
+      'enabled': ?enabled,
+      'automodOn': ?automodOn,
+      'repliesOn': ?repliesOn,
+      if (automod != null) 'automod': [for (final r in automod) r.toJson()],
+      if (replies != null) 'replies': [for (final r in replies) r.toJson()],
+    }),
+  );
+
+  /// Hands the server a bot token. It checks it with Discord and keeps it;
+  /// the token never comes back.
+  Future<TeamDiscordState> linkDiscord(String token) async =>
+      TeamDiscordState.fromJson(
+        await _send('PUT', '/discord/token', {'token': token}),
+      );
+
+  Future<TeamDiscordState> unlinkDiscord() async {
+    final response = await _client
+        .delete(_uri('/discord/token'), headers: _auth)
+        .timeout(_timeout);
+    return TeamDiscordState.fromJson(_decodeOrThrow(response));
   }
 
   Future<Map<String, dynamic>> _send(

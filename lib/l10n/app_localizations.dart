@@ -103,6 +103,498 @@ abstract class L {
     Locale('zh'),
   ];
 
+  /// No description provided for @teamClipboardTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks'**
+  String get teamClipboardTasks;
+
+  /// No description provided for @teamClipboardDiscordBot.
+  ///
+  /// In en, this message translates to:
+  /// **'Discord bot'**
+  String get teamClipboardDiscordBot;
+
+  /// No description provided for @teamDiscordPlugins.
+  ///
+  /// In en, this message translates to:
+  /// **'Plugins'**
+  String get teamDiscordPlugins;
+
+  /// No description provided for @teamDiscordPluginsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch on what the bot should do in your Discord server.'**
+  String get teamDiscordPluginsHint;
+
+  /// No description provided for @teamDiscordEssentials.
+  ///
+  /// In en, this message translates to:
+  /// **'Essentials'**
+  String get teamDiscordEssentials;
+
+  /// No description provided for @teamDiscordBotSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Bot settings'**
+  String get teamDiscordBotSettings;
+
+  /// No description provided for @teamDiscordEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable'**
+  String get teamDiscordEnable;
+
+  /// No description provided for @teamDiscordManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get teamDiscordManage;
+
+  /// No description provided for @teamDiscordView.
+  ///
+  /// In en, this message translates to:
+  /// **'View'**
+  String get teamDiscordView;
+
+  /// No description provided for @teamDiscordEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get teamDiscordEnabled;
+
+  /// No description provided for @teamDiscordPluginOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get teamDiscordPluginOff;
+
+  /// No description provided for @teamDiscordRules.
+  ///
+  /// In en, this message translates to:
+  /// **'Rules'**
+  String get teamDiscordRules;
+
+  /// No description provided for @teamDiscordNotLinkedBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'No bot is linked yet, so these plugins wait until one is. Link it in Bot settings.'**
+  String get teamDiscordNotLinkedBanner;
+
+  /// No description provided for @teamDiscordNoBot.
+  ///
+  /// In en, this message translates to:
+  /// **'No bot linked'**
+  String get teamDiscordNoBot;
+
+  /// No description provided for @teamDiscordRuleCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No rules yet} =1{1 rule} other{{count} rules}}'**
+  String teamDiscordRuleCount(int count);
+
+  /// No description provided for @teamDiscordStatusOnline.
+  ///
+  /// In en, this message translates to:
+  /// **'Online'**
+  String get teamDiscordStatusOnline;
+
+  /// No description provided for @teamDiscordStatusConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting…'**
+  String get teamDiscordStatusConnecting;
+
+  /// No description provided for @teamDiscordStatusOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get teamDiscordStatusOff;
+
+  /// No description provided for @teamDiscordStatusError.
+  ///
+  /// In en, this message translates to:
+  /// **'Not connected'**
+  String get teamDiscordStatusError;
+
+  /// No description provided for @teamDiscordErrorBadToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Discord no longer accepts this token. Reset it in the developer portal and link it again.'**
+  String get teamDiscordErrorBadToken;
+
+  /// No description provided for @teamDiscordErrorIntents.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on Message Content Intent on the bot\'s page in the developer portal, then switch the bot off and on here.'**
+  String get teamDiscordErrorIntents;
+
+  /// No description provided for @teamDiscordErrorNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'The server can\'t reach Discord right now. It keeps trying.'**
+  String get teamDiscordErrorNetwork;
+
+  /// No description provided for @teamDiscordErrorOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Discord closed the connection. Switch the bot off and on to try again.'**
+  String get teamDiscordErrorOther;
+
+  /// No description provided for @teamDiscordSetupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Link your Discord bot'**
+  String get teamDiscordSetupTitle;
+
+  /// No description provided for @teamDiscordSetupBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The bot runs on the luma server, so it keeps working while everyone\'s app is closed.'**
+  String get teamDiscordSetupBody;
+
+  /// No description provided for @teamDiscordStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'Create an application in the Discord developer portal and open its Bot page.'**
+  String get teamDiscordStep1;
+
+  /// No description provided for @teamDiscordStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on Message Content Intent there, then reset and copy the token.'**
+  String get teamDiscordStep2;
+
+  /// No description provided for @teamDiscordStep3.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the token below. The server checks it with Discord and keeps it; it is never shown again.'**
+  String get teamDiscordStep3;
+
+  /// No description provided for @teamDiscordOpenPortal.
+  ///
+  /// In en, this message translates to:
+  /// **'Open developer portal'**
+  String get teamDiscordOpenPortal;
+
+  /// No description provided for @teamDiscordTokenLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Bot token'**
+  String get teamDiscordTokenLabel;
+
+  /// No description provided for @teamDiscordLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Link bot'**
+  String get teamDiscordLink;
+
+  /// No description provided for @teamDiscordNotLinkedMember.
+  ///
+  /// In en, this message translates to:
+  /// **'No bot is linked yet. A team lead can link one here.'**
+  String get teamDiscordNotLinkedMember;
+
+  /// No description provided for @teamDiscordNoServers.
+  ///
+  /// In en, this message translates to:
+  /// **'Not in a server yet. A lead can add it with Add to server.'**
+  String get teamDiscordNoServers;
+
+  /// No description provided for @teamDiscordInServers.
+  ///
+  /// In en, this message translates to:
+  /// **'In {servers}'**
+  String teamDiscordInServers(String servers);
+
+  /// No description provided for @teamDiscordAddToServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to server'**
+  String get teamDiscordAddToServer;
+
+  /// No description provided for @teamDiscordReplaceToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace token'**
+  String get teamDiscordReplaceToken;
+
+  /// No description provided for @teamDiscordUnlink.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlink'**
+  String get teamDiscordUnlink;
+
+  /// No description provided for @teamDiscordUnlinkConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlink {name}? It goes offline until a lead links a bot again. The rules stay.'**
+  String teamDiscordUnlinkConfirm(String name);
+
+  /// No description provided for @teamDiscordLeadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only team leads can change the bot.'**
+  String get teamDiscordLeadOnly;
+
+  /// No description provided for @teamDiscordAutomodTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Automod'**
+  String get teamDiscordAutomodTitle;
+
+  /// No description provided for @teamDiscordAutomodHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Removes messages that use any of these words.'**
+  String get teamDiscordAutomodHint;
+
+  /// No description provided for @teamDiscordRepliesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto replies'**
+  String get teamDiscordRepliesTitle;
+
+  /// No description provided for @teamDiscordRepliesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Answers messages that mention a trigger word.'**
+  String get teamDiscordRepliesHint;
+
+  /// No description provided for @teamDiscordAddRule.
+  ///
+  /// In en, this message translates to:
+  /// **'Add rule'**
+  String get teamDiscordAddRule;
+
+  /// No description provided for @teamDiscordNoAutomod.
+  ///
+  /// In en, this message translates to:
+  /// **'No banned words yet.'**
+  String get teamDiscordNoAutomod;
+
+  /// No description provided for @teamDiscordNoReplies.
+  ///
+  /// In en, this message translates to:
+  /// **'No auto replies yet.'**
+  String get teamDiscordNoReplies;
+
+  /// No description provided for @teamDiscordWordsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Words'**
+  String get teamDiscordWordsLabel;
+
+  /// No description provided for @teamDiscordWordsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'One per line, or separated by commas'**
+  String get teamDiscordWordsHint;
+
+  /// No description provided for @teamDiscordWordsRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least one word.'**
+  String get teamDiscordWordsRequired;
+
+  /// No description provided for @teamDiscordWholeWord.
+  ///
+  /// In en, this message translates to:
+  /// **'Whole words only'**
+  String get teamDiscordWholeWord;
+
+  /// No description provided for @teamDiscordWholeWordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'So \"ass\" doesn\'t catch \"class\".'**
+  String get teamDiscordWholeWordHint;
+
+  /// No description provided for @teamDiscordWarnLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning (optional)'**
+  String get teamDiscordWarnLabel;
+
+  /// No description provided for @teamDiscordWarnHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Posted in the channel, mentioning the author'**
+  String get teamDiscordWarnHint;
+
+  /// No description provided for @teamDiscordWarns.
+  ///
+  /// In en, this message translates to:
+  /// **'Warns'**
+  String get teamDiscordWarns;
+
+  /// No description provided for @teamDiscordTimeoutLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Timeout'**
+  String get teamDiscordTimeoutLabel;
+
+  /// No description provided for @teamDiscordTimeoutNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No timeout'**
+  String get teamDiscordTimeoutNone;
+
+  /// No description provided for @teamDiscordTimeoutShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} timeout'**
+  String teamDiscordTimeoutShort(String duration);
+
+  /// No description provided for @teamDiscordMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} min'**
+  String teamDiscordMinutes(int count);
+
+  /// No description provided for @teamDiscordHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} h'**
+  String teamDiscordHours(int count);
+
+  /// No description provided for @teamDiscordDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} d'**
+  String teamDiscordDays(int count);
+
+  /// No description provided for @teamDiscordTriggersLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Trigger words'**
+  String get teamDiscordTriggersLabel;
+
+  /// No description provided for @teamDiscordReplyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply'**
+  String get teamDiscordReplyLabel;
+
+  /// No description provided for @teamDiscordReplyRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Write the reply.'**
+  String get teamDiscordReplyRequired;
+
+  /// No description provided for @teamDiscordMatchLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Match'**
+  String get teamDiscordMatchLabel;
+
+  /// No description provided for @teamDiscordMatchWord.
+  ///
+  /// In en, this message translates to:
+  /// **'As a word'**
+  String get teamDiscordMatchWord;
+
+  /// No description provided for @teamDiscordMatchContains.
+  ///
+  /// In en, this message translates to:
+  /// **'Anywhere'**
+  String get teamDiscordMatchContains;
+
+  /// No description provided for @teamDiscordMatchExact.
+  ///
+  /// In en, this message translates to:
+  /// **'Whole message'**
+  String get teamDiscordMatchExact;
+
+  /// No description provided for @teamDiscordNewAutomod.
+  ///
+  /// In en, this message translates to:
+  /// **'New automod rule'**
+  String get teamDiscordNewAutomod;
+
+  /// No description provided for @teamDiscordEditAutomod.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit automod rule'**
+  String get teamDiscordEditAutomod;
+
+  /// No description provided for @teamDiscordNewReply.
+  ///
+  /// In en, this message translates to:
+  /// **'New auto reply'**
+  String get teamDiscordNewReply;
+
+  /// No description provided for @teamDiscordEditReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit auto reply'**
+  String get teamDiscordEditReply;
+
+  /// No description provided for @teamDiscordDeleteRule.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete rule'**
+  String get teamDiscordDeleteRule;
+
+  /// No description provided for @teamDiscordActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent activity'**
+  String get teamDiscordActivity;
+
+  /// No description provided for @teamDiscordNoActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing yet. What the bot does since the server last started shows here.'**
+  String get teamDiscordNoActivity;
+
+  /// No description provided for @teamDiscordLogAutomod.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed a message from {user} for “{word}”'**
+  String teamDiscordLogAutomod(String user, String word);
+
+  /// No description provided for @teamDiscordLogReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Answered {user} about “{word}”'**
+  String teamDiscordLogReply(String user, String word);
+
+  /// No description provided for @teamClipboardTaskTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Task title'**
+  String get teamClipboardTaskTitle;
+
+  /// No description provided for @teamClipboardAssignee.
+  ///
+  /// In en, this message translates to:
+  /// **'Assignee'**
+  String get teamClipboardAssignee;
+
+  /// No description provided for @teamClipboardUnassigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Unassigned'**
+  String get teamClipboardUnassigned;
+
+  /// No description provided for @teamClipboardStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get teamClipboardStatus;
+
+  /// No description provided for @teamClipboardUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated'**
+  String get teamClipboardUpdated;
+
+  /// No description provided for @teamClipboardActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Files / chat'**
+  String get teamClipboardActivity;
+
   /// No description provided for @settingsTrackBackendAiUsage.
   ///
   /// In en, this message translates to:

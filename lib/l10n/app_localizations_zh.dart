@@ -9,6 +9,277 @@ class LZh extends L {
   LZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get teamClipboardTasks => '任务';
+
+  @override
+  String get teamClipboardDiscordBot => 'Discord 机器人';
+
+  @override
+  String get teamDiscordPlugins => '插件';
+
+  @override
+  String get teamDiscordPluginsHint => '开启你希望机器人在 Discord 服务器中执行的功能。';
+
+  @override
+  String get teamDiscordEssentials => '基础功能';
+
+  @override
+  String get teamDiscordBotSettings => '机器人设置';
+
+  @override
+  String get teamDiscordEnable => '启用';
+
+  @override
+  String get teamDiscordManage => '管理';
+
+  @override
+  String get teamDiscordView => '查看';
+
+  @override
+  String get teamDiscordEnabled => '已启用';
+
+  @override
+  String get teamDiscordPluginOff => '已关闭';
+
+  @override
+  String get teamDiscordRules => '规则';
+
+  @override
+  String get teamDiscordNotLinkedBanner => '还没有关联机器人，这些插件会等到关联后才生效。请在机器人设置中关联。';
+
+  @override
+  String get teamDiscordNoBot => '未关联机器人';
+
+  @override
+  String teamDiscordRuleCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 条规则',
+      zero: '还没有规则',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get teamDiscordStatusOnline => '在线';
+
+  @override
+  String get teamDiscordStatusConnecting => '正在连接…';
+
+  @override
+  String get teamDiscordStatusOff => '已关闭';
+
+  @override
+  String get teamDiscordStatusError => '未连接';
+
+  @override
+  String get teamDiscordErrorBadToken => 'Discord 不再接受此令牌。请在开发者门户中重置令牌后重新关联。';
+
+  @override
+  String get teamDiscordErrorIntents =>
+      '请在开发者门户的机器人页面中开启 Message Content Intent，然后在这里关闭再打开机器人。';
+
+  @override
+  String get teamDiscordErrorNetwork => '服务器暂时无法连接 Discord，会继续重试。';
+
+  @override
+  String get teamDiscordErrorOther => 'Discord 关闭了连接。关闭再打开机器人即可重试。';
+
+  @override
+  String get teamDiscordSetupTitle => '关联你的 Discord 机器人';
+
+  @override
+  String get teamDiscordSetupBody => '机器人运行在 luma 服务器上，所以即使所有人的应用都已关闭，它也会继续工作。';
+
+  @override
+  String get teamDiscordStep1 => '在 Discord 开发者门户中创建一个应用，并打开它的 Bot 页面。';
+
+  @override
+  String get teamDiscordStep2 => '在那里开启 Message Content Intent，然后重置并复制令牌。';
+
+  @override
+  String get teamDiscordStep3 => '在下方粘贴令牌。服务器会向 Discord 验证并保存它，之后不会再显示。';
+
+  @override
+  String get teamDiscordOpenPortal => '打开开发者门户';
+
+  @override
+  String get teamDiscordTokenLabel => '机器人令牌';
+
+  @override
+  String get teamDiscordLink => '关联机器人';
+
+  @override
+  String get teamDiscordNotLinkedMember => '还没有关联机器人。团队负责人可以在这里关联。';
+
+  @override
+  String get teamDiscordNoServers => '还没有加入任何服务器。负责人可以通过“添加到服务器”添加。';
+
+  @override
+  String teamDiscordInServers(String servers) {
+    return '已加入 $servers';
+  }
+
+  @override
+  String get teamDiscordAddToServer => '添加到服务器';
+
+  @override
+  String get teamDiscordReplaceToken => '更换令牌';
+
+  @override
+  String get teamDiscordUnlink => '取消关联';
+
+  @override
+  String teamDiscordUnlinkConfirm(String name) {
+    return '取消关联 $name？在负责人重新关联机器人之前它会离线。规则会保留。';
+  }
+
+  @override
+  String get teamDiscordLeadOnly => '只有团队负责人可以修改机器人。';
+
+  @override
+  String get teamDiscordAutomodTitle => '自动审核';
+
+  @override
+  String get teamDiscordAutomodHint => '删除包含以下任一词语的消息。';
+
+  @override
+  String get teamDiscordRepliesTitle => '自动回复';
+
+  @override
+  String get teamDiscordRepliesHint => '回复提到触发词的消息。';
+
+  @override
+  String get teamDiscordAddRule => '添加规则';
+
+  @override
+  String get teamDiscordNoAutomod => '还没有屏蔽词。';
+
+  @override
+  String get teamDiscordNoReplies => '还没有自动回复。';
+
+  @override
+  String get teamDiscordWordsLabel => '词语';
+
+  @override
+  String get teamDiscordWordsHint => '每行一个，或用逗号分隔';
+
+  @override
+  String get teamDiscordWordsRequired => '请至少添加一个词。';
+
+  @override
+  String get teamDiscordWholeWord => '仅匹配完整单词';
+
+  @override
+  String get teamDiscordWholeWordHint => '这样 \"ass\" 不会误伤 \"class\"。';
+
+  @override
+  String get teamDiscordWarnLabel => '警告（可选）';
+
+  @override
+  String get teamDiscordWarnHint => '在频道中发布并提及发送者';
+
+  @override
+  String get teamDiscordWarns => '发送警告';
+
+  @override
+  String get teamDiscordTimeoutLabel => '禁言';
+
+  @override
+  String get teamDiscordTimeoutNone => '不禁言';
+
+  @override
+  String teamDiscordTimeoutShort(String duration) {
+    return '禁言 $duration';
+  }
+
+  @override
+  String teamDiscordMinutes(int count) {
+    return '$count 分钟';
+  }
+
+  @override
+  String teamDiscordHours(int count) {
+    return '$count 小时';
+  }
+
+  @override
+  String teamDiscordDays(int count) {
+    return '$count 天';
+  }
+
+  @override
+  String get teamDiscordTriggersLabel => '触发词';
+
+  @override
+  String get teamDiscordReplyLabel => '回复内容';
+
+  @override
+  String get teamDiscordReplyRequired => '请填写回复内容。';
+
+  @override
+  String get teamDiscordMatchLabel => '匹配方式';
+
+  @override
+  String get teamDiscordMatchWord => '作为单词';
+
+  @override
+  String get teamDiscordMatchContains => '任意位置';
+
+  @override
+  String get teamDiscordMatchExact => '整条消息';
+
+  @override
+  String get teamDiscordNewAutomod => '新建自动审核规则';
+
+  @override
+  String get teamDiscordEditAutomod => '编辑自动审核规则';
+
+  @override
+  String get teamDiscordNewReply => '新建自动回复';
+
+  @override
+  String get teamDiscordEditReply => '编辑自动回复';
+
+  @override
+  String get teamDiscordDeleteRule => '删除规则';
+
+  @override
+  String get teamDiscordActivity => '最近活动';
+
+  @override
+  String get teamDiscordNoActivity => '暂无内容。这里显示服务器上次启动以来机器人执行的操作。';
+
+  @override
+  String teamDiscordLogAutomod(String user, String word) {
+    return '因“$word”删除了 $user 的消息';
+  }
+
+  @override
+  String teamDiscordLogReply(String user, String word) {
+    return '就“$word”回复了 $user';
+  }
+
+  @override
+  String get teamClipboardTaskTitle => '任务标题';
+
+  @override
+  String get teamClipboardAssignee => '负责人';
+
+  @override
+  String get teamClipboardUnassigned => '未分配';
+
+  @override
+  String get teamClipboardStatus => '状态';
+
+  @override
+  String get teamClipboardUpdated => '更新时间';
+
+  @override
+  String get teamClipboardActivity => '文件 / 聊天';
+
+  @override
   String get settingsTrackBackendAiUsage => '记录后端 AI 用量';
 
   @override

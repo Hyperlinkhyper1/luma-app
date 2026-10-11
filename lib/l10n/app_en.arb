@@ -1,4 +1,155 @@
 {
+  "teamClipboardTasks": "Tasks",
+  "teamClipboardDiscordBot": "Discord bot",
+  "teamDiscordPlugins": "Plugins",
+  "teamDiscordPluginsHint": "Switch on what the bot should do in your Discord server.",
+  "teamDiscordEssentials": "Essentials",
+  "teamDiscordBotSettings": "Bot settings",
+  "teamDiscordEnable": "Enable",
+  "teamDiscordManage": "Manage",
+  "teamDiscordView": "View",
+  "teamDiscordEnabled": "Enabled",
+  "teamDiscordPluginOff": "Off",
+  "teamDiscordRules": "Rules",
+  "teamDiscordNotLinkedBanner": "No bot is linked yet, so these plugins wait until one is. Link it in Bot settings.",
+  "teamDiscordNoBot": "No bot linked",
+  "teamDiscordRuleCount": "{count, plural, =0{No rules yet} =1{1 rule} other{{count} rules}}",
+  "@teamDiscordRuleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "teamDiscordStatusOnline": "Online",
+  "teamDiscordStatusConnecting": "Connecting…",
+  "teamDiscordStatusOff": "Off",
+  "teamDiscordStatusError": "Not connected",
+  "teamDiscordErrorBadToken": "Discord no longer accepts this token. Reset it in the developer portal and link it again.",
+  "teamDiscordErrorIntents": "Turn on Message Content Intent on the bot's page in the developer portal, then switch the bot off and on here.",
+  "teamDiscordErrorNetwork": "The server can't reach Discord right now. It keeps trying.",
+  "teamDiscordErrorOther": "Discord closed the connection. Switch the bot off and on to try again.",
+  "teamDiscordSetupTitle": "Link your Discord bot",
+  "teamDiscordSetupBody": "The bot runs on the luma server, so it keeps working while everyone's app is closed.",
+  "teamDiscordStep1": "Create an application in the Discord developer portal and open its Bot page.",
+  "teamDiscordStep2": "Turn on Message Content Intent there, then reset and copy the token.",
+  "teamDiscordStep3": "Paste the token below. The server checks it with Discord and keeps it; it is never shown again.",
+  "teamDiscordOpenPortal": "Open developer portal",
+  "teamDiscordTokenLabel": "Bot token",
+  "teamDiscordLink": "Link bot",
+  "teamDiscordNotLinkedMember": "No bot is linked yet. A team lead can link one here.",
+  "teamDiscordNoServers": "Not in a server yet. A lead can add it with Add to server.",
+  "teamDiscordInServers": "In {servers}",
+  "@teamDiscordInServers": {
+    "placeholders": {
+      "servers": {
+        "type": "String"
+      }
+    }
+  },
+  "teamDiscordAddToServer": "Add to server",
+  "teamDiscordReplaceToken": "Replace token",
+  "teamDiscordUnlink": "Unlink",
+  "teamDiscordUnlinkConfirm": "Unlink {name}? It goes offline until a lead links a bot again. The rules stay.",
+  "@teamDiscordUnlinkConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamDiscordLeadOnly": "Only team leads can change the bot.",
+  "teamDiscordAutomodTitle": "Automod",
+  "teamDiscordAutomodHint": "Removes messages that use any of these words.",
+  "teamDiscordRepliesTitle": "Auto replies",
+  "teamDiscordRepliesHint": "Answers messages that mention a trigger word.",
+  "teamDiscordAddRule": "Add rule",
+  "teamDiscordNoAutomod": "No banned words yet.",
+  "teamDiscordNoReplies": "No auto replies yet.",
+  "teamDiscordWordsLabel": "Words",
+  "teamDiscordWordsHint": "One per line, or separated by commas",
+  "teamDiscordWordsRequired": "Add at least one word.",
+  "teamDiscordWholeWord": "Whole words only",
+  "teamDiscordWholeWordHint": "So \"ass\" doesn't catch \"class\".",
+  "teamDiscordWarnLabel": "Warning (optional)",
+  "teamDiscordWarnHint": "Posted in the channel, mentioning the author",
+  "teamDiscordWarns": "Warns",
+  "teamDiscordTimeoutLabel": "Timeout",
+  "teamDiscordTimeoutNone": "No timeout",
+  "teamDiscordTimeoutShort": "{duration} timeout",
+  "@teamDiscordTimeoutShort": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "teamDiscordMinutes": "{count} min",
+  "@teamDiscordMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "teamDiscordHours": "{count} h",
+  "@teamDiscordHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "teamDiscordDays": "{count} d",
+  "@teamDiscordDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "teamDiscordTriggersLabel": "Trigger words",
+  "teamDiscordReplyLabel": "Reply",
+  "teamDiscordReplyRequired": "Write the reply.",
+  "teamDiscordMatchLabel": "Match",
+  "teamDiscordMatchWord": "As a word",
+  "teamDiscordMatchContains": "Anywhere",
+  "teamDiscordMatchExact": "Whole message",
+  "teamDiscordNewAutomod": "New automod rule",
+  "teamDiscordEditAutomod": "Edit automod rule",
+  "teamDiscordNewReply": "New auto reply",
+  "teamDiscordEditReply": "Edit auto reply",
+  "teamDiscordDeleteRule": "Delete rule",
+  "teamDiscordActivity": "Recent activity",
+  "teamDiscordNoActivity": "Nothing yet. What the bot does since the server last started shows here.",
+  "teamDiscordLogAutomod": "Removed a message from {user} for “{word}”",
+  "@teamDiscordLogAutomod": {
+    "placeholders": {
+      "user": {
+        "type": "String"
+      },
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "teamDiscordLogReply": "Answered {user} about “{word}”",
+  "@teamDiscordLogReply": {
+    "placeholders": {
+      "user": {
+        "type": "String"
+      },
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "teamClipboardTaskTitle": "Task title",
+  "teamClipboardAssignee": "Assignee",
+  "teamClipboardUnassigned": "Unassigned",
+  "teamClipboardStatus": "Status",
+  "teamClipboardUpdated": "Updated",
+  "teamClipboardActivity": "Files / chat",
   "settingsTrackBackendAiUsage": "Track backend AI usage",
   "settingsTrackBackendAiUsageSub": "Include new calls made by app features through the Luma server in AI Usage. Off by default.",
   "@@locale": "en",

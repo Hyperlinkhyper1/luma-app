@@ -9,6 +9,295 @@ class LEs extends L {
   LEs([String locale = 'es']) : super(locale);
 
   @override
+  String get teamClipboardTasks => 'Tareas';
+
+  @override
+  String get teamClipboardDiscordBot => 'Bot de Discord';
+
+  @override
+  String get teamDiscordPlugins => 'Plugins';
+
+  @override
+  String get teamDiscordPluginsHint =>
+      'Activa lo que el bot debe hacer en tu servidor de Discord.';
+
+  @override
+  String get teamDiscordEssentials => 'Esenciales';
+
+  @override
+  String get teamDiscordBotSettings => 'Ajustes del bot';
+
+  @override
+  String get teamDiscordEnable => 'Activar';
+
+  @override
+  String get teamDiscordManage => 'Gestionar';
+
+  @override
+  String get teamDiscordView => 'Ver';
+
+  @override
+  String get teamDiscordEnabled => 'Activado';
+
+  @override
+  String get teamDiscordPluginOff => 'Apagado';
+
+  @override
+  String get teamDiscordRules => 'Reglas';
+
+  @override
+  String get teamDiscordNotLinkedBanner =>
+      'Aún no hay ningún bot vinculado, así que estos plugins esperan a que lo haya. Vincúlalo en Ajustes del bot.';
+
+  @override
+  String get teamDiscordNoBot => 'Ningún bot vinculado';
+
+  @override
+  String teamDiscordRuleCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count reglas',
+      one: '1 regla',
+      zero: 'Aún no hay reglas',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get teamDiscordStatusOnline => 'En línea';
+
+  @override
+  String get teamDiscordStatusConnecting => 'Conectando…';
+
+  @override
+  String get teamDiscordStatusOff => 'Apagado';
+
+  @override
+  String get teamDiscordStatusError => 'Sin conexión';
+
+  @override
+  String get teamDiscordErrorBadToken =>
+      'Discord ya no acepta este token. Restablécelo en el portal de desarrolladores y vuelve a vincularlo.';
+
+  @override
+  String get teamDiscordErrorIntents =>
+      'Activa Message Content Intent en la página del bot en el portal de desarrolladores y luego apaga y enciende el bot aquí.';
+
+  @override
+  String get teamDiscordErrorNetwork =>
+      'El servidor no puede conectar con Discord ahora mismo. Sigue intentándolo.';
+
+  @override
+  String get teamDiscordErrorOther =>
+      'Discord cerró la conexión. Apaga y enciende el bot para volver a intentarlo.';
+
+  @override
+  String get teamDiscordSetupTitle => 'Vincula tu bot de Discord';
+
+  @override
+  String get teamDiscordSetupBody =>
+      'El bot se ejecuta en el servidor de luma, así que sigue funcionando aunque todas las apps estén cerradas.';
+
+  @override
+  String get teamDiscordStep1 =>
+      'Crea una aplicación en el portal de desarrolladores de Discord y abre su página Bot.';
+
+  @override
+  String get teamDiscordStep2 =>
+      'Activa allí Message Content Intent y luego restablece y copia el token.';
+
+  @override
+  String get teamDiscordStep3 =>
+      'Pega el token abajo. El servidor lo comprueba con Discord y lo guarda; nunca se vuelve a mostrar.';
+
+  @override
+  String get teamDiscordOpenPortal => 'Abrir portal de desarrolladores';
+
+  @override
+  String get teamDiscordTokenLabel => 'Token del bot';
+
+  @override
+  String get teamDiscordLink => 'Vincular bot';
+
+  @override
+  String get teamDiscordNotLinkedMember =>
+      'Aún no hay ningún bot vinculado. Un líder del equipo puede vincular uno aquí.';
+
+  @override
+  String get teamDiscordNoServers =>
+      'Aún no está en ningún servidor. Un líder puede añadirlo con Añadir a un servidor.';
+
+  @override
+  String teamDiscordInServers(String servers) {
+    return 'En $servers';
+  }
+
+  @override
+  String get teamDiscordAddToServer => 'Añadir a un servidor';
+
+  @override
+  String get teamDiscordReplaceToken => 'Cambiar token';
+
+  @override
+  String get teamDiscordUnlink => 'Desvincular';
+
+  @override
+  String teamDiscordUnlinkConfirm(String name) {
+    return '¿Desvincular a $name? Se desconecta hasta que un líder vincule otro bot. Las reglas se mantienen.';
+  }
+
+  @override
+  String get teamDiscordLeadOnly =>
+      'Solo los líderes del equipo pueden cambiar el bot.';
+
+  @override
+  String get teamDiscordAutomodTitle => 'Automod';
+
+  @override
+  String get teamDiscordAutomodHint =>
+      'Elimina los mensajes que usan alguna de estas palabras.';
+
+  @override
+  String get teamDiscordRepliesTitle => 'Respuestas automáticas';
+
+  @override
+  String get teamDiscordRepliesHint =>
+      'Responde a los mensajes que mencionan una palabra clave.';
+
+  @override
+  String get teamDiscordAddRule => 'Añadir regla';
+
+  @override
+  String get teamDiscordNoAutomod => 'Aún no hay palabras prohibidas.';
+
+  @override
+  String get teamDiscordNoReplies => 'Aún no hay respuestas automáticas.';
+
+  @override
+  String get teamDiscordWordsLabel => 'Palabras';
+
+  @override
+  String get teamDiscordWordsHint => 'Una por línea o separadas por comas';
+
+  @override
+  String get teamDiscordWordsRequired => 'Añade al menos una palabra.';
+
+  @override
+  String get teamDiscordWholeWord => 'Solo palabras completas';
+
+  @override
+  String get teamDiscordWholeWordHint =>
+      'Para que «culo» no bloquee «calculo».';
+
+  @override
+  String get teamDiscordWarnLabel => 'Advertencia (opcional)';
+
+  @override
+  String get teamDiscordWarnHint =>
+      'Se publica en el canal mencionando al autor';
+
+  @override
+  String get teamDiscordWarns => 'Advierte';
+
+  @override
+  String get teamDiscordTimeoutLabel => 'Aislamiento';
+
+  @override
+  String get teamDiscordTimeoutNone => 'Sin aislamiento';
+
+  @override
+  String teamDiscordTimeoutShort(String duration) {
+    return 'Aislamiento de $duration';
+  }
+
+  @override
+  String teamDiscordMinutes(int count) {
+    return '$count min';
+  }
+
+  @override
+  String teamDiscordHours(int count) {
+    return '$count h';
+  }
+
+  @override
+  String teamDiscordDays(int count) {
+    return '$count d';
+  }
+
+  @override
+  String get teamDiscordTriggersLabel => 'Palabras clave';
+
+  @override
+  String get teamDiscordReplyLabel => 'Respuesta';
+
+  @override
+  String get teamDiscordReplyRequired => 'Escribe la respuesta.';
+
+  @override
+  String get teamDiscordMatchLabel => 'Coincidencia';
+
+  @override
+  String get teamDiscordMatchWord => 'Como palabra';
+
+  @override
+  String get teamDiscordMatchContains => 'En cualquier parte';
+
+  @override
+  String get teamDiscordMatchExact => 'Mensaje completo';
+
+  @override
+  String get teamDiscordNewAutomod => 'Nueva regla de automod';
+
+  @override
+  String get teamDiscordEditAutomod => 'Editar regla de automod';
+
+  @override
+  String get teamDiscordNewReply => 'Nueva respuesta automática';
+
+  @override
+  String get teamDiscordEditReply => 'Editar respuesta automática';
+
+  @override
+  String get teamDiscordDeleteRule => 'Eliminar regla';
+
+  @override
+  String get teamDiscordActivity => 'Actividad reciente';
+
+  @override
+  String get teamDiscordNoActivity =>
+      'Nada todavía. Aquí aparece lo que hace el bot desde el último arranque del servidor.';
+
+  @override
+  String teamDiscordLogAutomod(String user, String word) {
+    return 'Mensaje de $user eliminado por «$word»';
+  }
+
+  @override
+  String teamDiscordLogReply(String user, String word) {
+    return 'Respondió a $user sobre «$word»';
+  }
+
+  @override
+  String get teamClipboardTaskTitle => 'Título de la tarea';
+
+  @override
+  String get teamClipboardAssignee => 'Responsable';
+
+  @override
+  String get teamClipboardUnassigned => 'Sin asignar';
+
+  @override
+  String get teamClipboardStatus => 'Estado';
+
+  @override
+  String get teamClipboardUpdated => 'Actualizada';
+
+  @override
+  String get teamClipboardActivity => 'Archivos / chat';
+
+  @override
   String get settingsTrackBackendAiUsage =>
       'Registrar el uso de IA del servidor';
 

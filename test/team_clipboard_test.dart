@@ -70,9 +70,21 @@ Map<String, dynamic> _entry(
 
 /// A small fake of the board endpoints, enough for the page.
 class _FakeBoard {
-  _FakeBoard({this.member = true});
+  _FakeBoard({this.member = true, this.lead = false});
 
   bool member;
+  bool lead;
+
+  /// What the Discord endpoints answer; a PUT merges into it.
+  final Map<String, dynamic> discord = {
+    'linked': false,
+    'enabled': true,
+    'status': 'off',
+    'guilds': <Object>[],
+    'automod': <Object>[],
+    'replies': <Object>[],
+    'log': <Object>[],
+  };
   int revision = 1;
   String me = 'pixel';
   final requests = <http.Request>[];
@@ -154,11 +166,30 @@ class _FakeBoard {
       }
       return json({
         'member': true,
-        'lead': false,
+        'lead': lead,
         'me': me,
         'revision': revision,
         'entries': entries,
       });
+    }
+    if (path == '/api/v1/team-board/discord') {
+      if (request.method == 'PUT') {
+        discord.addAll(jsonDecode(request.body) as Map<String, dynamic>);
+      }
+      return json({...discord, 'canManage': lead});
+    }
+    if (path == '/api/v1/team-board/discord/token') {
+      if (request.method == 'PUT') {
+        discord
+          ..['linked'] = true
+          ..['bot'] = {'id': '1', 'name': 'ModBot'}
+          ..['inviteUrl'] = 'https://discord.com/oauth2/authorize?client_id=1';
+      } else {
+        discord
+          ..['linked'] = false
+          ..remove('bot');
+      }
+      return json({...discord, 'canManage': lead});
     }
     if (path == '/api/v1/team-board/me' && request.method == 'PUT') {
       final name = (jsonDecode(request.body) as Map)['name'] as String;
@@ -196,6 +227,7 @@ Future<TeamClipboardController> _pump(
   WidgetTester tester,
   _FakeBoard board, {
   Size size = const Size(1400, 900),
+  ThemeData? theme,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -212,7 +244,7 @@ Future<TeamClipboardController> _pump(
     TeamClipboardScope(
       controller: controller,
       child: MaterialApp(
-        theme: LumaTheme.dark,
+        theme: theme ?? LumaTheme.dark,
         localizationsDelegates: L.localizationsDelegates,
         supportedLocales: L.supportedLocales,
         home: const Scaffold(body: TeamClipboardPage()),
@@ -306,16 +338,17 @@ void main() {
     await _unmount(tester);
   });
 
-  testWidgets('with nothing open the board fills the page as tiles', (
+  testWidgets('the task table opens details and returns to aligned rows', (
     tester,
   ) async {
     final controller = await _pump(tester, _FakeBoard());
     double y(String title) => tester.getTopLeft(find.text(title).first).dy;
     double x(String title) => tester.getTopLeft(find.text(title).first).dx;
-    expect(y('Chest lid clips'), y('Ruby ore'));
-    expect(x('Chest lid clips'), isNot(x('Ruby ore')));
+    expect(y('Chest lid clips'), isNot(y('Ruby ore')));
+    expect(x('Chest lid clips'), x('Ruby ore'));
     expect(y('Ruby ore'), lessThan(y('Copper lantern')));
-    expect(find.text('Brief for Ruby ore'), findsOneWidget);
+    expect(find.text('Tasks'), findsOneWidget);
+    expect(find.text('Discord bot'), findsOneWidget);
 
     await tester.tap(find.text('Ruby ore'));
     await tester.pumpAndSettle();
@@ -326,7 +359,206 @@ void main() {
     await tester.pumpAndSettle();
     expect(controller.selectedId, isNull);
     expect(find.text('Claim it'), findsNothing);
-    expect(y('Chest lid clips'), y('Ruby ore'));
+    expect(y('Chest lid clips'), isNot(y('Ruby ore')));
+    expect(x('Chest lid clips'), x('Ruby ore'));
+    await _unmount(tester);
+  });
+
+  testWidgets('Discord bot keeps task selection and filters on return', (
+    tester,
+  ) async {
+    final board = _FakeBoard();
+    final controller = await _pump(tester, board);
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Search titles, briefs and files'),
+      'Ruby',
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ruby ore'));
+    await tester.pumpAndSettle();
+    expect(controller.selectedId, 'b0');
+    final requestCount = board.requests.length;
+
+    await tester.tap(find.byKey(const ValueKey('team-clipboard-discord-tab')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('team-discord-card-automod')),
+      findsOneWidget,
+    );
+    expect(find.text('Claim it'), findsNothing);
+    expect(
+      board.requests.skip(requestCount).map((r) => r.url.path),
+      everyElement('/api/v1/team-board/discord'),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('team-clipboard-tasks-tab')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('team-discord-card-automod')),
+      findsNothing,
+    );
+    expect(controller.selectedId, 'b0');
+    expect(find.text('Claim it'), findsOneWidget);
+    expect(find.text('Chest lid clips'), findsNothing);
+    expect(
+      tester
+          .widget<TextField>(
+            find.widgetWithText(TextField, 'Search titles, briefs and files'),
+          )
+          .controller!
+          .text,
+      'Ruby',
+    );
+    expect(tester.takeException(), isNull);
+    await _unmount(tester);
+  });
+
+  testWidgets('task navigation and phone details fit a narrow light view', (
+    tester,
+  ) async {
+    final board = _FakeBoard()
+      ..entries.add(_entry('e0', 'Ruby ore texture', parentId: 'b0'));
+    final controller = await _pump(
+      tester,
+      board,
+      size: const Size(320, 844),
+      theme: LumaTheme.light,
+    );
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.byKey(const ValueKey('team-clipboard-discord-tab')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('team-discord-card-automod')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.byKey(const ValueKey('team-clipboard-tasks-tab')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ruby ore'));
+    await tester.pumpAndSettle();
+    expect(controller.selectedId, 'b0');
+    expect(find.text('Brief for Ruby ore'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(controller.selectedId, isNull);
+    expect(find.text('Tasks'), findsOneWidget);
+    await _unmount(tester);
+  });
+
+  testWidgets('a lead links the Discord bot and adds an automod rule', (
+    tester,
+  ) async {
+    final board = _FakeBoard(lead: true);
+    await _pump(tester, board);
+    await tester.tap(find.byKey(const ValueKey('team-clipboard-discord-tab')));
+    await tester.pumpAndSettle();
+    expect(find.text('Plugins'), findsWidgets);
+    await tester.tap(find.byKey(const ValueKey('team-discord-nav-bot')));
+    await tester.pumpAndSettle();
+    expect(find.text('Link your Discord bot'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('team-discord-token')),
+      'secret-token',
+    );
+    await tester.tap(find.text('Link bot'));
+    await tester.pumpAndSettle();
+    final link = board.requests.lastWhere(
+      (r) => r.url.path == '/api/v1/team-board/discord/token',
+    );
+    expect(jsonDecode(link.body), {'token': 'secret-token'});
+    expect(find.text('ModBot'), findsWidgets);
+    expect(find.text('Add to server'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('team-discord-nav-plugins')));
+    await tester.pumpAndSettle();
+    expect(find.text('Enable'), findsNWidgets(2));
+    await tester.tap(find.byKey(const ValueKey('team-discord-card-automod')));
+    await tester.pumpAndSettle();
+    final enable = board.requests.lastWhere(
+      (r) => r.url.path == '/api/v1/team-board/discord' && r.method == 'PUT',
+    );
+    expect(jsonDecode(enable.body), {'automodOn': true});
+    expect(find.text('Rules'), findsOneWidget);
+
+    await tester.tap(find.text('Add rule'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('team-discord-words')),
+      'Creeper, griefing\ncreeper',
+    );
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    final save = board.requests.lastWhere(
+      (r) => r.url.path == '/api/v1/team-board/discord' && r.method == 'PUT',
+    );
+    final automod = (jsonDecode(save.body) as Map)['automod'] as List;
+    expect((automod.single as Map)['words'], ['creeper', 'griefing']);
+    expect(find.text('griefing'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await _unmount(tester);
+  });
+
+  testWidgets('a member sees the bot but none of its controls', (tester) async {
+    final board = _FakeBoard()
+      ..discord.addAll({
+        'linked': true,
+        'status': 'online',
+        'bot': {'id': '1', 'name': 'ModBot'},
+        'replies': [
+          {
+            'id': 'r1',
+            'triggers': ['modpack'],
+            'reply': 'Grab it in #downloads',
+            'match': 'word',
+          },
+        ],
+      });
+    await _pump(tester, board, size: const Size(360, 800));
+    await tester.tap(find.byKey(const ValueKey('team-clipboard-discord-tab')));
+    await tester.pumpAndSettle();
+    expect(find.text('ModBot'), findsOneWidget);
+    expect(find.text('Enable'), findsNothing);
+    expect(find.text('View'), findsNWidgets(2));
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('team-discord-card-replies')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('team-discord-card-replies')));
+    await tester.pumpAndSettle();
+    expect(find.text('modpack'), findsOneWidget);
+    expect(find.text('Add rule'), findsNothing);
+    expect(find.byType(Switch), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('team-discord-identity')));
+    await tester.pumpAndSettle();
+    expect(find.text('Online'), findsOneWidget);
+    expect(find.text('Only team leads can change the bot.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('team-discord-enabled')), findsNothing);
+    expect(tester.takeException(), isNull);
+    await _unmount(tester);
+  });
+
+  testWidgets('search keeps a matching subtask visible without its parent', (
+    tester,
+  ) async {
+    final board = _FakeBoard()
+      ..entries.add(_entry('e0', 'Distinct texture', parentId: 'b0'));
+    final controller = await _pump(tester, board);
+    expect(find.text('Distinct texture'), findsOneWidget);
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Search titles, briefs and files'),
+      'Distinct',
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Ruby ore'), findsNothing);
+    expect(find.text('Distinct texture'), findsOneWidget);
+    await tester.tap(find.text('Distinct texture'));
+    await tester.pumpAndSettle();
+    expect(controller.selectedId, 'e0');
+    expect(find.text('Part of Ruby ore'), findsOneWidget);
+    expect(tester.takeException(), isNull);
     await _unmount(tester);
   });
 
@@ -499,8 +731,9 @@ void main() {
         _entry('e1', 'Ruby ore drop table', parentId: 'b0'),
       ]);
     final controller = await _pump(tester, board);
-    expect(find.text('Ruby ore texture'), findsNothing);
-    expect(find.text('1/2 finished'), findsOneWidget);
+    expect(find.text('Ruby ore texture'), findsOneWidget);
+    expect(find.text('1/2'), findsOneWidget);
+    expect(find.byTooltip('1/2 finished'), findsOneWidget);
 
     await tester.tap(find.text('Ruby ore'));
     await tester.pumpAndSettle();

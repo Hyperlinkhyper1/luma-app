@@ -61,6 +61,7 @@ Future<void> main() async {
       cs2OfflineStore: cs2OfflineStore);
 
   api.startAiPriceWatch();
+  api.teamDiscord.start();
   await api.resumeBenchmarkBatches();
 
   final server = await shelf_io.serve(
