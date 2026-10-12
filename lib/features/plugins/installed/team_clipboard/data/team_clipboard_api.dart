@@ -7,6 +7,7 @@ import '../../../../../l10n/current_l.dart';
 import '../../../../../sync/server_access.dart';
 import '../team_clipboard_models.dart';
 import '../team_discord_models.dart';
+import '../team_library_models.dart';
 
 class TeamClipboardApiException implements Exception {
   const TeamClipboardApiException(this.status, this.code, this.message);
@@ -236,6 +237,95 @@ class TeamClipboardApi {
         .delete(_uri('/discord/token'), headers: _auth)
         .timeout(_timeout);
     return TeamDiscordState.fromJson(_decodeOrThrow(response));
+  }
+
+  /// The assets library's mods, or [TeamLibraryState.mods] null when
+  /// nothing changed since revision [since].
+  Future<TeamLibraryState> library({int? since}) async {
+    final response = await _client
+        .get(
+          _uri('/library', since == null ? null : {'since': '$since'}),
+          headers: _auth,
+        )
+        .timeout(_timeout);
+    return TeamLibraryState.fromJson(_decodeOrThrow(response));
+  }
+
+  /// Modrinth's mods and resource packs for [query], through the server.
+  Future<List<TeamLibraryHit>> searchLibrary(String query) async {
+    final response = await _client
+        .get(_uri('/library/search', {'q': query}), headers: _auth)
+        .timeout(_timeout);
+    return [
+      for (final h in _decodeOrThrow(response)['hits'] as List? ?? const [])
+        TeamLibraryHit.fromJson(h as Map<String, dynamic>),
+    ];
+  }
+
+  Future<TeamLibraryState> addLibraryMod(
+    String projectId, {
+    String? loader,
+    String? gameVersion,
+  }) async => TeamLibraryState.fromJson(
+    await _send('POST', '/library/mods', {
+      'projectId': projectId,
+      'loader': loader,
+      'gameVersion': gameVersion,
+    }),
+  );
+
+  /// Which loader and game version [projectId] follows; null follows any.
+  Future<TeamLibraryState> setLibraryFilters(
+    String projectId, {
+    required String? loader,
+    required String? gameVersion,
+  }) async => TeamLibraryState.fromJson(
+    await _send('PUT', '/library/mods/$projectId', {
+      'loader': loader,
+      'gameVersion': gameVersion,
+    }),
+  );
+
+  Future<TeamLibraryState> removeLibraryMod(String projectId) async {
+    final response = await _client
+        .delete(_uri('/library/mods/$projectId'), headers: _auth)
+        .timeout(_timeout);
+    return TeamLibraryState.fromJson(_decodeOrThrow(response));
+  }
+
+  /// Has the server look for new versions now: of [projectId], or of
+  /// every mod.
+  Future<TeamLibraryState> checkLibrary([String? projectId]) async =>
+      TeamLibraryState.fromJson(
+        await _send('POST', '/library/check', {'projectId': ?projectId}),
+      );
+
+  Future<TeamLibraryIndex> libraryFiles(
+    String projectId, {
+    DateTime? loadedAt,
+  }) async {
+    final response = await _client
+        .get(_uri('/library/mods/$projectId/files'), headers: _auth)
+        .timeout(_fileTimeout);
+    return TeamLibraryIndex.fromJson(
+      _decodeOrThrow(response),
+      loadedAt: loadedAt,
+    );
+  }
+
+  Future<Uint8List> libraryBlob(String sha1) async {
+    final response = await _client
+        .get(_uri('/library/blobs/$sha1'), headers: _auth)
+        .timeout(_fileTimeout);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return response.bodyBytes;
+    }
+    _decodeOrThrow(response);
+    throw TeamClipboardApiException(
+      response.statusCode,
+      'http_${response.statusCode}',
+      currentL.teamClipboardServerError(response.statusCode),
+    );
   }
 
   Future<Map<String, dynamic>> _send(

@@ -7,12 +7,6 @@ const { sleep, stripHtml } = require('../util');
 // (categories here max out around a few thousand products at size=100).
 const REQUEST_DELAY_MS = 200;
 const MAX_PAGES_PER_CATEGORY = 200;
-
-// A category that fails on its very first page contributed nothing. A handful
-// of those is noise, but once AH starts refusing tokens every remaining
-// category fails that way in turn — and a partial catalog is worse than no
-// sync at all, because markStaleAsUnavailable would flag everything we never
-// reached as unavailable. Above this share, fail the run instead.
 const MAX_EMPTY_CATEGORY_RATIO = 0.2;
 
 function bestImage(images) {
@@ -81,12 +75,11 @@ class AhSync extends BaseSync {
             `AH sync: failed on category ${category.name} (id ${category.id}), page ${page}:`,
             error.message
           );
-          break; // Move on to the next category rather than aborting the whole sync.
+          throw new Error(`AH sync: incomplete category ${category.name}, page ${page}: ${error.message}`);
         }
         page += 1;
         await sleep(REQUEST_DELAY_MS);
       }
-
       if (seenInCategory === 0) emptyCategories.push(category.name);
     }
 

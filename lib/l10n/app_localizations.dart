@@ -103,6 +103,264 @@ abstract class L {
     Locale('zh'),
   ];
 
+  /// No description provided for @teamClipboardLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Assets library'**
+  String get teamClipboardLibrary;
+
+  /// No description provided for @teamLibraryMods.
+  ///
+  /// In en, this message translates to:
+  /// **'Mods'**
+  String get teamLibraryMods;
+
+  /// No description provided for @teamLibraryAddMod.
+  ///
+  /// In en, this message translates to:
+  /// **'Add mod'**
+  String get teamLibraryAddMod;
+
+  /// No description provided for @teamLibraryCheckUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for updates'**
+  String get teamLibraryCheckUpdates;
+
+  /// No description provided for @teamLibraryCheckStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Asking Modrinth for new versions…'**
+  String get teamLibraryCheckStarted;
+
+  /// No description provided for @teamLibraryEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No mods in the library yet'**
+  String get teamLibraryEmptyTitle;
+
+  /// No description provided for @teamLibraryEmptyLead.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a mod from Modrinth and the server unpacks its textures, models and data files here for the whole team. It reloads by itself whenever a new version drops.'**
+  String get teamLibraryEmptyLead;
+
+  /// No description provided for @teamLibraryEmptyMember.
+  ///
+  /// In en, this message translates to:
+  /// **'A team lead picks which Modrinth mods are unpacked here. Once they do, the whole team can browse their textures and models.'**
+  String get teamLibraryEmptyMember;
+
+  /// No description provided for @teamLibraryPickMod.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a mod to browse its assets.'**
+  String get teamLibraryPickMod;
+
+  /// No description provided for @teamLibraryQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Queued'**
+  String get teamLibraryQueued;
+
+  /// No description provided for @teamLibraryLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Unpacking…'**
+  String get teamLibraryLoading;
+
+  /// No description provided for @teamLibraryFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get teamLibraryFailed;
+
+  /// No description provided for @teamLibraryUnpackingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unpacking {title}'**
+  String teamLibraryUnpackingTitle(String title);
+
+  /// No description provided for @teamLibraryUnpackingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The server is downloading the jar from Modrinth and unpacking its assets. This page fills in by itself.'**
+  String get teamLibraryUnpackingBody;
+
+  /// No description provided for @teamLibraryFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This mod couldn\'t be unpacked'**
+  String get teamLibraryFailedTitle;
+
+  /// No description provided for @teamLibraryFileCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 file} other{{count} files}}'**
+  String teamLibraryFileCount(int count);
+
+  /// No description provided for @teamLibraryUnpackedAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'Unpacked {time}'**
+  String teamLibraryUnpackedAgo(String time);
+
+  /// No description provided for @teamLibraryCheckedAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'checked {time}'**
+  String teamLibraryCheckedAgo(String time);
+
+  /// No description provided for @teamLibraryReloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'{title} updated to {version}. The library reloaded.'**
+  String teamLibraryReloaded(String title, String version);
+
+  /// No description provided for @teamLibrarySkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 file couldn\'t be read and was left out.} other{{count} files couldn\'t be read and were left out.}}'**
+  String teamLibrarySkipped(int count);
+
+  /// No description provided for @teamLibraryAnyLoader.
+  ///
+  /// In en, this message translates to:
+  /// **'Any loader'**
+  String get teamLibraryAnyLoader;
+
+  /// No description provided for @teamLibraryAnyVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Any game version'**
+  String get teamLibraryAnyVersion;
+
+  /// No description provided for @teamLibraryLoader.
+  ///
+  /// In en, this message translates to:
+  /// **'Loader'**
+  String get teamLibraryLoader;
+
+  /// No description provided for @teamLibraryGameVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Game version'**
+  String get teamLibraryGameVersion;
+
+  /// No description provided for @teamLibraryChangeVersions.
+  ///
+  /// In en, this message translates to:
+  /// **'Change versions'**
+  String get teamLibraryChangeVersions;
+
+  /// No description provided for @teamLibraryChangeVersionsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The library holds the newest version Modrinth has for this loader and game version, and reloads when a newer one drops.'**
+  String get teamLibraryChangeVersionsBody;
+
+  /// No description provided for @teamLibraryRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from library'**
+  String get teamLibraryRemove;
+
+  /// No description provided for @teamLibraryRemoveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {title} from the library? Its unpacked files are deleted for the whole team.'**
+  String teamLibraryRemoveConfirm(String title);
+
+  /// No description provided for @teamLibrarySearchModrinth.
+  ///
+  /// In en, this message translates to:
+  /// **'Search Modrinth'**
+  String get teamLibrarySearchModrinth;
+
+  /// No description provided for @teamLibrarySearchFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Search files'**
+  String get teamLibrarySearchFiles;
+
+  /// No description provided for @teamLibraryOpenModrinth.
+  ///
+  /// In en, this message translates to:
+  /// **'Open on Modrinth'**
+  String get teamLibraryOpenModrinth;
+
+  /// No description provided for @teamLibraryTextures.
+  ///
+  /// In en, this message translates to:
+  /// **'Textures'**
+  String get teamLibraryTextures;
+
+  /// No description provided for @teamLibraryModels.
+  ///
+  /// In en, this message translates to:
+  /// **'Models'**
+  String get teamLibraryModels;
+
+  /// No description provided for @teamLibraryBlockstates.
+  ///
+  /// In en, this message translates to:
+  /// **'Blockstates'**
+  String get teamLibraryBlockstates;
+
+  /// No description provided for @teamLibraryLang.
+  ///
+  /// In en, this message translates to:
+  /// **'Lang'**
+  String get teamLibraryLang;
+
+  /// No description provided for @teamLibraryData.
+  ///
+  /// In en, this message translates to:
+  /// **'Data'**
+  String get teamLibraryData;
+
+  /// No description provided for @teamLibraryAddedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Added by {name}'**
+  String teamLibraryAddedBy(String name);
+
+  /// No description provided for @teamLibraryEarlierVersions.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier versions'**
+  String get teamLibraryEarlierVersions;
+
+  /// No description provided for @teamLibraryResourcePack.
+  ///
+  /// In en, this message translates to:
+  /// **'Resource pack'**
+  String get teamLibraryResourcePack;
+
+  /// No description provided for @teamLibraryDownloads.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} downloads'**
+  String teamLibraryDownloads(String count);
+
+  /// No description provided for @teamLibraryAllNamespaces.
+  ///
+  /// In en, this message translates to:
+  /// **'All namespaces'**
+  String get teamLibraryAllNamespaces;
+
+  /// No description provided for @teamLibraryAddTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to the assets library'**
+  String get teamLibraryAddTitle;
+
+  /// No description provided for @teamLibraryAddHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a mod or resource pack. Its newest version is unpacked now, and again whenever an update drops.'**
+  String get teamLibraryAddHint;
+
   /// No description provided for @teamClipboardTasks.
   ///
   /// In en, this message translates to:

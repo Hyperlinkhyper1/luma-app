@@ -44,6 +44,42 @@ function memberIdOf(token) {
 // refusing freshly minted anonymous tokens for minutes, so a ladder topping out
 // in seconds spends every attempt inside the same cooldown.
 const AUTH_RETRY_DELAYS_MS = [1000, 5000, 15000, 60000, 180000];
+const REQUEST_RETRY_DELAYS_MS = [1000, 5000, 15000];
+
+function isTransientStatus(status) {
+  return status === 408 || status === 429 || status >= 500;
+}
+
+async function requestWithRetry(url, options) {
+  for (let attempt = 0; ; attempt += 1) {
+    let response;
+    try {
+      response = await fetch(url, { ...options, signal: AbortSignal.timeout(30000) });
+    } catch (error) {
+      if (attempt >= REQUEST_RETRY_DELAYS_MS.length) throw error;
+      await sleep(REQUEST_RETRY_DELAYS_MS[attempt]);
+      continue;
+    }
+    if (!isTransientStatus(response.status) || attempt >= REQUEST_RETRY_DELAYS_MS.length) return response;
+    const retryAfter = response.headers?.get('retry-after');
+    const seconds = retryAfter && Number(retryAfter);
+    const serverDelay = retryAfter
+      ? (Number.isFinite(seconds) ? seconds * 1000 : Date.parse(retryAfter) - Date.now()) : 0;
+    await response.text().catch(() => '');
+    console.warn(`AH: HTTP ${response.status}; retry ${attempt + 1}/${REQUEST_RETRY_DELAYS_MS.length}`);
+    await sleep(Math.min(180000, Math.max(REQUEST_RETRY_DELAYS_MS[attempt], serverDelay || 0)));
+  }
+}
+
+function responseError(label, status, body) {
+  const detail = /edgesuite/i.test(body)
+    ? 'AH edge service rejected the request after retries; retry later and check connectivity from the supermarket server'
+    : body.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300);
+  const error = new Error(`${label}: HTTP ${status} ${detail}`);
+  error.status = status;
+  error.body = body;
+  return error;
+}
 
 // A token AH has dropped comes back as an OAuth error body on the data
 // endpoint — as a 400 `invalid_grant` ("member not active") just as often as
@@ -86,6 +122,7 @@ async function renewToken() {
         refreshToken: session.refreshToken,
       });
     } catch (error) {
+      if (!isAuthFailure(error.status, error.body || '')) throw error;
       console.warn(`AH token refresh failed, registering a new anonymous member: ${error.message}`);
     }
   }
@@ -96,16 +133,20 @@ async function renewToken() {
 }
 
 async function requestToken(path, payload) {
-  const response = await fetch(`${BASE_URL}${path}`, {
+  const response = await requestWithRetry(`${BASE_URL}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'User-Agent': USER_AGENT },
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
     const body = await response.text().catch(() => '');
-    throw new Error(`AH auth failed: HTTP ${response.status} ${body.slice(0, 300)}`);
+    throw responseError('AH auth failed', response.status, body);
   }
   const data = await response.json();
+  if (typeof data.access_token !== 'string' || !data.access_token ||
+      !Number.isFinite(data.expires_in) || data.expires_in <= 60) {
+    throw new Error('AH auth failed: invalid token response');
+  }
   session = {
     accessToken: data.access_token,
     refreshToken: data.refresh_token || session?.refreshToken || null,
@@ -122,7 +163,7 @@ async function authedGet(path, params = {}, { _attempt = 0 } = {}) {
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== null) url.searchParams.set(key, value);
   }
-  const response = await fetch(url, {
+  const response = await requestWithRetry(url, {
     headers: {
       Authorization: `Bearer ${token}`,
       // Required for the mobile-services endpoints to route correctly —
@@ -146,7 +187,7 @@ async function authedGet(path, params = {}, { _attempt = 0 } = {}) {
       await getAccessToken({ forceRefresh: true, newMember: isDeadMember(body) });
       return authedGet(path, params, { _attempt: _attempt + 1 });
     }
-    throw new Error(`AH request failed: HTTP ${response.status} for ${path} ${body.slice(0, 300)}`);
+    throw responseError(`AH request failed for ${path}`, response.status, body);
   }
   return response.json();
 }

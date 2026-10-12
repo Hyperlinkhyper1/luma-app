@@ -9,6 +9,170 @@ class LEn extends L {
   LEn([String locale = 'en']) : super(locale);
 
   @override
+  String get teamClipboardLibrary => 'Assets library';
+
+  @override
+  String get teamLibraryMods => 'Mods';
+
+  @override
+  String get teamLibraryAddMod => 'Add mod';
+
+  @override
+  String get teamLibraryCheckUpdates => 'Check for updates';
+
+  @override
+  String get teamLibraryCheckStarted => 'Asking Modrinth for new versions…';
+
+  @override
+  String get teamLibraryEmptyTitle => 'No mods in the library yet';
+
+  @override
+  String get teamLibraryEmptyLead =>
+      'Add a mod from Modrinth and the server unpacks its textures, models and data files here for the whole team. It reloads by itself whenever a new version drops.';
+
+  @override
+  String get teamLibraryEmptyMember =>
+      'A team lead picks which Modrinth mods are unpacked here. Once they do, the whole team can browse their textures and models.';
+
+  @override
+  String get teamLibraryPickMod => 'Pick a mod to browse its assets.';
+
+  @override
+  String get teamLibraryQueued => 'Queued';
+
+  @override
+  String get teamLibraryLoading => 'Unpacking…';
+
+  @override
+  String get teamLibraryFailed => 'Failed';
+
+  @override
+  String teamLibraryUnpackingTitle(String title) {
+    return 'Unpacking $title';
+  }
+
+  @override
+  String get teamLibraryUnpackingBody =>
+      'The server is downloading the jar from Modrinth and unpacking its assets. This page fills in by itself.';
+
+  @override
+  String get teamLibraryFailedTitle => 'This mod couldn\'t be unpacked';
+
+  @override
+  String teamLibraryFileCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count files',
+      one: '1 file',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String teamLibraryUnpackedAgo(String time) {
+    return 'Unpacked $time';
+  }
+
+  @override
+  String teamLibraryCheckedAgo(String time) {
+    return 'checked $time';
+  }
+
+  @override
+  String teamLibraryReloaded(String title, String version) {
+    return '$title updated to $version. The library reloaded.';
+  }
+
+  @override
+  String teamLibrarySkipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count files couldn\'t be read and were left out.',
+      one: '1 file couldn\'t be read and was left out.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get teamLibraryAnyLoader => 'Any loader';
+
+  @override
+  String get teamLibraryAnyVersion => 'Any game version';
+
+  @override
+  String get teamLibraryLoader => 'Loader';
+
+  @override
+  String get teamLibraryGameVersion => 'Game version';
+
+  @override
+  String get teamLibraryChangeVersions => 'Change versions';
+
+  @override
+  String get teamLibraryChangeVersionsBody =>
+      'The library holds the newest version Modrinth has for this loader and game version, and reloads when a newer one drops.';
+
+  @override
+  String get teamLibraryRemove => 'Remove from library';
+
+  @override
+  String teamLibraryRemoveConfirm(String title) {
+    return 'Remove $title from the library? Its unpacked files are deleted for the whole team.';
+  }
+
+  @override
+  String get teamLibrarySearchModrinth => 'Search Modrinth';
+
+  @override
+  String get teamLibrarySearchFiles => 'Search files';
+
+  @override
+  String get teamLibraryOpenModrinth => 'Open on Modrinth';
+
+  @override
+  String get teamLibraryTextures => 'Textures';
+
+  @override
+  String get teamLibraryModels => 'Models';
+
+  @override
+  String get teamLibraryBlockstates => 'Blockstates';
+
+  @override
+  String get teamLibraryLang => 'Lang';
+
+  @override
+  String get teamLibraryData => 'Data';
+
+  @override
+  String teamLibraryAddedBy(String name) {
+    return 'Added by $name';
+  }
+
+  @override
+  String get teamLibraryEarlierVersions => 'Earlier versions';
+
+  @override
+  String get teamLibraryResourcePack => 'Resource pack';
+
+  @override
+  String teamLibraryDownloads(String count) {
+    return '$count downloads';
+  }
+
+  @override
+  String get teamLibraryAllNamespaces => 'All namespaces';
+
+  @override
+  String get teamLibraryAddTitle => 'Add to the assets library';
+
+  @override
+  String get teamLibraryAddHint =>
+      'Pick a mod or resource pack. Its newest version is unpacked now, and again whenever an update drops.';
+
+  @override
   String get teamClipboardTasks => 'Tasks';
 
   @override

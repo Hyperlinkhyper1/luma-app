@@ -9,6 +9,171 @@ class LEs extends L {
   LEs([String locale = 'es']) : super(locale);
 
   @override
+  String get teamClipboardLibrary => 'Biblioteca de assets';
+
+  @override
+  String get teamLibraryMods => 'Mods';
+
+  @override
+  String get teamLibraryAddMod => 'Añadir mod';
+
+  @override
+  String get teamLibraryCheckUpdates => 'Buscar actualizaciones';
+
+  @override
+  String get teamLibraryCheckStarted =>
+      'Buscando versiones nuevas en Modrinth…';
+
+  @override
+  String get teamLibraryEmptyTitle => 'Aún no hay mods en la biblioteca';
+
+  @override
+  String get teamLibraryEmptyLead =>
+      'Añade un mod de Modrinth y el servidor descomprime aquí sus texturas, modelos y archivos de datos para todo el equipo. Se recarga sola cada vez que sale una versión nueva.';
+
+  @override
+  String get teamLibraryEmptyMember =>
+      'Un líder del equipo elige qué mods de Modrinth se descomprimen aquí. Después, todo el equipo puede ver sus texturas y modelos.';
+
+  @override
+  String get teamLibraryPickMod => 'Elige un mod para ver sus assets.';
+
+  @override
+  String get teamLibraryQueued => 'En cola';
+
+  @override
+  String get teamLibraryLoading => 'Descomprimiendo…';
+
+  @override
+  String get teamLibraryFailed => 'Error';
+
+  @override
+  String teamLibraryUnpackingTitle(String title) {
+    return 'Descomprimiendo $title';
+  }
+
+  @override
+  String get teamLibraryUnpackingBody =>
+      'El servidor está descargando el jar de Modrinth y descomprimiendo sus assets. Esta página se completa sola.';
+
+  @override
+  String get teamLibraryFailedTitle => 'No se pudo descomprimir este mod';
+
+  @override
+  String teamLibraryFileCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count archivos',
+      one: '1 archivo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String teamLibraryUnpackedAgo(String time) {
+    return 'Descomprimido $time';
+  }
+
+  @override
+  String teamLibraryCheckedAgo(String time) {
+    return 'comprobado $time';
+  }
+
+  @override
+  String teamLibraryReloaded(String title, String version) {
+    return '$title se actualizó a $version. La biblioteca se recargó.';
+  }
+
+  @override
+  String teamLibrarySkipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count archivos no se pudieron leer y se omitieron.',
+      one: '1 archivo no se pudo leer y se omitió.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get teamLibraryAnyLoader => 'Cualquier loader';
+
+  @override
+  String get teamLibraryAnyVersion => 'Cualquier versión del juego';
+
+  @override
+  String get teamLibraryLoader => 'Loader';
+
+  @override
+  String get teamLibraryGameVersion => 'Versión del juego';
+
+  @override
+  String get teamLibraryChangeVersions => 'Cambiar versiones';
+
+  @override
+  String get teamLibraryChangeVersionsBody =>
+      'La biblioteca guarda la versión más reciente que Modrinth tiene para este loader y versión del juego, y se recarga cuando sale otra más nueva.';
+
+  @override
+  String get teamLibraryRemove => 'Quitar de la biblioteca';
+
+  @override
+  String teamLibraryRemoveConfirm(String title) {
+    return '¿Quitar $title de la biblioteca? Sus archivos descomprimidos se borran para todo el equipo.';
+  }
+
+  @override
+  String get teamLibrarySearchModrinth => 'Buscar en Modrinth';
+
+  @override
+  String get teamLibrarySearchFiles => 'Buscar archivos';
+
+  @override
+  String get teamLibraryOpenModrinth => 'Abrir en Modrinth';
+
+  @override
+  String get teamLibraryTextures => 'Texturas';
+
+  @override
+  String get teamLibraryModels => 'Modelos';
+
+  @override
+  String get teamLibraryBlockstates => 'Blockstates';
+
+  @override
+  String get teamLibraryLang => 'Idiomas';
+
+  @override
+  String get teamLibraryData => 'Datos';
+
+  @override
+  String teamLibraryAddedBy(String name) {
+    return 'Añadido por $name';
+  }
+
+  @override
+  String get teamLibraryEarlierVersions => 'Versiones anteriores';
+
+  @override
+  String get teamLibraryResourcePack => 'Paquete de recursos';
+
+  @override
+  String teamLibraryDownloads(String count) {
+    return '$count descargas';
+  }
+
+  @override
+  String get teamLibraryAllNamespaces => 'Todos los namespaces';
+
+  @override
+  String get teamLibraryAddTitle => 'Añadir a la biblioteca de assets';
+
+  @override
+  String get teamLibraryAddHint =>
+      'Elige un mod o paquete de recursos. Su versión más reciente se descomprime ahora y de nuevo con cada actualización.';
+
+  @override
   String get teamClipboardTasks => 'Tareas';
 
   @override

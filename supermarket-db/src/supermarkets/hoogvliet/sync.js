@@ -49,7 +49,7 @@ class HoogvlietSync extends BaseSync {
       let totalPages = 1;
       let totalCount;
       for (let pageNumber = 1; pageNumber <= totalPages; pageNumber += 1) {
-        const listing = await fetchCategoryPage({ path: category.path, pageNumber, expectedTotal: totalCount });
+        const listing = await fetchCategoryPage({ path: category.path, categoryId: category.categoryId, pageNumber, expectedTotal: totalCount });
         if (listing.totalPages > MAX_PAGES_PER_CATEGORY) {
           throw new Error(`Hoogvliet: ${category.path} exceeds the ${MAX_PAGES_PER_CATEGORY}-page limit`);
         }

@@ -9,6 +9,171 @@ class LNl extends L {
   LNl([String locale = 'nl']) : super(locale);
 
   @override
+  String get teamClipboardLibrary => 'Assetbibliotheek';
+
+  @override
+  String get teamLibraryMods => 'Mods';
+
+  @override
+  String get teamLibraryAddMod => 'Mod toevoegen';
+
+  @override
+  String get teamLibraryCheckUpdates => 'Naar updates zoeken';
+
+  @override
+  String get teamLibraryCheckStarted =>
+      'Modrinth wordt gevraagd naar nieuwe versies…';
+
+  @override
+  String get teamLibraryEmptyTitle => 'Nog geen mods in de bibliotheek';
+
+  @override
+  String get teamLibraryEmptyLead =>
+      'Voeg een mod van Modrinth toe en de server pakt de textures, modellen en databestanden hier uit voor het hele team. Bij elke nieuwe versie laadt hij vanzelf opnieuw.';
+
+  @override
+  String get teamLibraryEmptyMember =>
+      'Een teamleider kiest welke Modrinth-mods hier worden uitgepakt. Daarna kan het hele team de textures en modellen bekijken.';
+
+  @override
+  String get teamLibraryPickMod => 'Kies een mod om de assets te bekijken.';
+
+  @override
+  String get teamLibraryQueued => 'In de wachtrij';
+
+  @override
+  String get teamLibraryLoading => 'Uitpakken…';
+
+  @override
+  String get teamLibraryFailed => 'Mislukt';
+
+  @override
+  String teamLibraryUnpackingTitle(String title) {
+    return '$title wordt uitgepakt';
+  }
+
+  @override
+  String get teamLibraryUnpackingBody =>
+      'De server downloadt de jar van Modrinth en pakt de assets uit. Deze pagina vult zich vanzelf.';
+
+  @override
+  String get teamLibraryFailedTitle => 'Deze mod kon niet worden uitgepakt';
+
+  @override
+  String teamLibraryFileCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count bestanden',
+      one: '1 bestand',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String teamLibraryUnpackedAgo(String time) {
+    return 'Uitgepakt $time';
+  }
+
+  @override
+  String teamLibraryCheckedAgo(String time) {
+    return 'gecontroleerd $time';
+  }
+
+  @override
+  String teamLibraryReloaded(String title, String version) {
+    return '$title is bijgewerkt naar $version. De bibliotheek is opnieuw geladen.';
+  }
+
+  @override
+  String teamLibrarySkipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count bestanden konden niet worden gelezen en zijn weggelaten.',
+      one: '1 bestand kon niet worden gelezen en is weggelaten.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get teamLibraryAnyLoader => 'Elke loader';
+
+  @override
+  String get teamLibraryAnyVersion => 'Elke gameversie';
+
+  @override
+  String get teamLibraryLoader => 'Loader';
+
+  @override
+  String get teamLibraryGameVersion => 'Gameversie';
+
+  @override
+  String get teamLibraryChangeVersions => 'Versies wijzigen';
+
+  @override
+  String get teamLibraryChangeVersionsBody =>
+      'De bibliotheek houdt de nieuwste versie die Modrinth voor deze loader en gameversie heeft, en laadt opnieuw zodra er een nieuwere is.';
+
+  @override
+  String get teamLibraryRemove => 'Uit bibliotheek verwijderen';
+
+  @override
+  String teamLibraryRemoveConfirm(String title) {
+    return '$title uit de bibliotheek verwijderen? De uitgepakte bestanden verdwijnen voor het hele team.';
+  }
+
+  @override
+  String get teamLibrarySearchModrinth => 'Zoeken op Modrinth';
+
+  @override
+  String get teamLibrarySearchFiles => 'Bestanden zoeken';
+
+  @override
+  String get teamLibraryOpenModrinth => 'Openen op Modrinth';
+
+  @override
+  String get teamLibraryTextures => 'Textures';
+
+  @override
+  String get teamLibraryModels => 'Modellen';
+
+  @override
+  String get teamLibraryBlockstates => 'Blockstates';
+
+  @override
+  String get teamLibraryLang => 'Taal';
+
+  @override
+  String get teamLibraryData => 'Data';
+
+  @override
+  String teamLibraryAddedBy(String name) {
+    return 'Toegevoegd door $name';
+  }
+
+  @override
+  String get teamLibraryEarlierVersions => 'Eerdere versies';
+
+  @override
+  String get teamLibraryResourcePack => 'Resourcepack';
+
+  @override
+  String teamLibraryDownloads(String count) {
+    return '$count downloads';
+  }
+
+  @override
+  String get teamLibraryAllNamespaces => 'Alle namespaces';
+
+  @override
+  String get teamLibraryAddTitle => 'Toevoegen aan de assetbibliotheek';
+
+  @override
+  String get teamLibraryAddHint =>
+      'Kies een mod of resourcepack. De nieuwste versie wordt nu uitgepakt, en opnieuw bij elke update.';
+
+  @override
   String get teamClipboardTasks => 'Taken';
 
   @override

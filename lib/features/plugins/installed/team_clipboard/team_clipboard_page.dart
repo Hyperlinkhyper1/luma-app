@@ -11,6 +11,7 @@ import 'ui/team_clipboard_style.dart';
 import 'ui/team_discord_page.dart';
 import 'ui/team_entry_detail.dart';
 import 'ui/team_entry_editor.dart';
+import 'ui/team_library_page.dart';
 import 'ui/team_task_row.dart';
 
 /// The Team Clipboard: every bug, suggestion and model the team is working
@@ -27,7 +28,7 @@ class TeamClipboardPage extends StatefulWidget {
 
 enum _KindFilter { all, bug, suggestion, model }
 
-enum _WorkspacePage { tasks, discordBot }
+enum _WorkspacePage { tasks, library, discordBot }
 
 class _TeamClipboardPageState extends State<TeamClipboardPage> {
   TeamClipboardController? _controller;
@@ -105,6 +106,8 @@ class _TeamClipboardPageState extends State<TeamClipboardPage> {
         Expanded(
           child: _page == _WorkspacePage.discordBot
               ? TeamDiscordPage(controller: controller)
+              : _page == _WorkspacePage.library
+              ? TeamLibraryPage(controller: controller)
               : LayoutBuilder(
                   builder: (context, box) {
                     final split = box.maxWidth >= 820;
@@ -314,6 +317,13 @@ class _WorkspaceHeader extends StatelessWidget {
                   icon: Icons.checklist_rounded,
                   selected: page == _WorkspacePage.tasks,
                   onTap: () => onPage(_WorkspacePage.tasks),
+                ),
+                _WorkspaceTab(
+                  key: const ValueKey('team-clipboard-library-tab'),
+                  label: t.teamClipboardLibrary,
+                  icon: Icons.inventory_2_outlined,
+                  selected: page == _WorkspacePage.library,
+                  onTap: () => onPage(_WorkspacePage.library),
                 ),
                 _WorkspaceTab(
                   key: const ValueKey('team-clipboard-discord-tab'),

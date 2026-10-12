@@ -44,6 +44,7 @@ import 'subway_relay.dart';
 import 'subway_store.dart';
 import 'team_board.dart';
 import 'team_discord.dart';
+import 'team_library.dart';
 import 'util.dart';
 import 'web_search.dart';
 
@@ -53,6 +54,7 @@ part 'api_classroom.dart';
 part 'api_school_tests.dart';
 part 'api_team_board.dart';
 part 'api_team_discord.dart';
+part 'api_team_library.dart';
 
 /// How a newly registered account becomes usable.
 enum ApprovalMode {
@@ -684,6 +686,19 @@ class Api {
       ..put('/api/v1/team-board/discord/token', _requireAuth(_teamDiscordLink))
       ..delete('/api/v1/team-board/discord/token',
           _requireAuth(_teamDiscordUnlink))
+      ..get('/api/v1/team-board/library', _requireAuth(_teamLibraryGet))
+      ..get('/api/v1/team-board/library/search',
+          _requireAuth(_teamLibrarySearch))
+      ..post('/api/v1/team-board/library/mods', _requireAuth(_teamLibraryAdd))
+      ..put('/api/v1/team-board/library/mods/<id>',
+          _requireAuth(_teamLibraryUpdate))
+      ..delete('/api/v1/team-board/library/mods/<id>',
+          _requireAuth(_teamLibraryRemove))
+      ..get('/api/v1/team-board/library/mods/<id>/files',
+          _requireAuth(_teamLibraryFiles))
+      ..post('/api/v1/team-board/library/check', _requireAuth(_teamLibraryCheck))
+      ..get('/api/v1/team-board/library/blobs/<sha1>',
+          _requireAuth(_teamLibraryBlob))
       ..post('/api/v1/plugins/download', _requireAuth(_reportPluginDownload))
       ..post('/api/v1/subway/rooms', _requireAuth(_createSubwayRoom))
       ..get('/api/v1/subway/rooms', _requireAuth(_listSubwayRooms))
@@ -2499,6 +2514,7 @@ class Api {
     await chatStore.deleteUser(user.id, user.email);
     await recipeStore.deleteUser(user.id);
     await teamBoard.forgetUser(user.id);
+    await teamLibrary.forgetUser(user.id);
     await subwayStore.deleteUser(user.id);
     await aiUsage.deleteUser(user.id);
     await store.forgetUser(user.id, user.email);
@@ -2991,6 +3007,10 @@ class Api {
   /// only connects once `main` calls `start`.
   late final TeamDiscordBot teamDiscord = TeamDiscordBot(config.dataDir)
     ..board = teamBoard;
+
+  /// The Team Clipboard's assets library (see `api_team_library.dart`). It
+  /// only watches Modrinth for updates once `main` calls `start`.
+  late final TeamLibraryStore teamLibrary = TeamLibraryStore(config.dataDir);
 
   late final BookReviewConfigStore aiBookReviewConfig =
       BookReviewConfigStore(config.dataDir);

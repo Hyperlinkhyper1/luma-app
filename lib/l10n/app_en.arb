@@ -1,4 +1,113 @@
 {
+  "teamClipboardLibrary": "Assets library",
+  "teamLibraryMods": "Mods",
+  "teamLibraryAddMod": "Add mod",
+  "teamLibraryCheckUpdates": "Check for updates",
+  "teamLibraryCheckStarted": "Asking Modrinth for new versions…",
+  "teamLibraryEmptyTitle": "No mods in the library yet",
+  "teamLibraryEmptyLead": "Add a mod from Modrinth and the server unpacks its textures, models and data files here for the whole team. It reloads by itself whenever a new version drops.",
+  "teamLibraryEmptyMember": "A team lead picks which Modrinth mods are unpacked here. Once they do, the whole team can browse their textures and models.",
+  "teamLibraryPickMod": "Pick a mod to browse its assets.",
+  "teamLibraryQueued": "Queued",
+  "teamLibraryLoading": "Unpacking…",
+  "teamLibraryFailed": "Failed",
+  "teamLibraryUnpackingTitle": "Unpacking {title}",
+  "@teamLibraryUnpackingTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "teamLibraryUnpackingBody": "The server is downloading the jar from Modrinth and unpacking its assets. This page fills in by itself.",
+  "teamLibraryFailedTitle": "This mod couldn't be unpacked",
+  "teamLibraryFileCount": "{count, plural, =1{1 file} other{{count} files}}",
+  "@teamLibraryFileCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "teamLibraryUnpackedAgo": "Unpacked {time}",
+  "@teamLibraryUnpackedAgo": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "teamLibraryCheckedAgo": "checked {time}",
+  "@teamLibraryCheckedAgo": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "teamLibraryReloaded": "{title} updated to {version}. The library reloaded.",
+  "@teamLibraryReloaded": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "teamLibrarySkipped": "{count, plural, =1{1 file couldn't be read and was left out.} other{{count} files couldn't be read and were left out.}}",
+  "@teamLibrarySkipped": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "teamLibraryAnyLoader": "Any loader",
+  "teamLibraryAnyVersion": "Any game version",
+  "teamLibraryLoader": "Loader",
+  "teamLibraryGameVersion": "Game version",
+  "teamLibraryChangeVersions": "Change versions",
+  "teamLibraryChangeVersionsBody": "The library holds the newest version Modrinth has for this loader and game version, and reloads when a newer one drops.",
+  "teamLibraryRemove": "Remove from library",
+  "teamLibraryRemoveConfirm": "Remove {title} from the library? Its unpacked files are deleted for the whole team.",
+  "@teamLibraryRemoveConfirm": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "teamLibrarySearchModrinth": "Search Modrinth",
+  "teamLibrarySearchFiles": "Search files",
+  "teamLibraryOpenModrinth": "Open on Modrinth",
+  "teamLibraryTextures": "Textures",
+  "teamLibraryModels": "Models",
+  "teamLibraryBlockstates": "Blockstates",
+  "teamLibraryLang": "Lang",
+  "teamLibraryData": "Data",
+  "teamLibraryAddedBy": "Added by {name}",
+  "@teamLibraryAddedBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamLibraryEarlierVersions": "Earlier versions",
+  "teamLibraryResourcePack": "Resource pack",
+  "teamLibraryDownloads": "{count} downloads",
+  "@teamLibraryDownloads": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "teamLibraryAllNamespaces": "All namespaces",
+  "teamLibraryAddTitle": "Add to the assets library",
+  "teamLibraryAddHint": "Pick a mod or resource pack. Its newest version is unpacked now, and again whenever an update drops.",
   "teamClipboardTasks": "Tasks",
   "teamClipboardDiscordBot": "Discord bot",
   "teamDiscordForumsTitle": "Forum tracking",

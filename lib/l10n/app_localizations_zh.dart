@@ -9,6 +9,167 @@ class LZh extends L {
   LZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get teamClipboardLibrary => '素材库';
+
+  @override
+  String get teamLibraryMods => '模组';
+
+  @override
+  String get teamLibraryAddMod => '添加模组';
+
+  @override
+  String get teamLibraryCheckUpdates => '检查更新';
+
+  @override
+  String get teamLibraryCheckStarted => '正在向 Modrinth 查询新版本…';
+
+  @override
+  String get teamLibraryEmptyTitle => '素材库中还没有模组';
+
+  @override
+  String get teamLibraryEmptyLead =>
+      '从 Modrinth 添加一个模组，服务器会在这里为整个团队解包它的纹理、模型和数据文件。每当有新版本发布，素材库都会自动重新加载。';
+
+  @override
+  String get teamLibraryEmptyMember =>
+      '由团队负责人选择要在这里解包的 Modrinth 模组。选好之后，整个团队都能浏览它们的纹理和模型。';
+
+  @override
+  String get teamLibraryPickMod => '选择一个模组来浏览它的素材。';
+
+  @override
+  String get teamLibraryQueued => '排队中';
+
+  @override
+  String get teamLibraryLoading => '正在解包…';
+
+  @override
+  String get teamLibraryFailed => '失败';
+
+  @override
+  String teamLibraryUnpackingTitle(String title) {
+    return '正在解包 $title';
+  }
+
+  @override
+  String get teamLibraryUnpackingBody =>
+      '服务器正在从 Modrinth 下载 jar 并解包其中的素材。此页面会自动更新。';
+
+  @override
+  String get teamLibraryFailedTitle => '无法解包此模组';
+
+  @override
+  String teamLibraryFileCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个文件',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String teamLibraryUnpackedAgo(String time) {
+    return '$time解包';
+  }
+
+  @override
+  String teamLibraryCheckedAgo(String time) {
+    return '$time检查';
+  }
+
+  @override
+  String teamLibraryReloaded(String title, String version) {
+    return '$title 已更新到 $version，素材库已重新加载。';
+  }
+
+  @override
+  String teamLibrarySkipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '有 $count 个文件无法读取，已跳过。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get teamLibraryAnyLoader => '任意加载器';
+
+  @override
+  String get teamLibraryAnyVersion => '任意游戏版本';
+
+  @override
+  String get teamLibraryLoader => '加载器';
+
+  @override
+  String get teamLibraryGameVersion => '游戏版本';
+
+  @override
+  String get teamLibraryChangeVersions => '更改版本';
+
+  @override
+  String get teamLibraryChangeVersionsBody =>
+      '素材库会保存 Modrinth 上该加载器和游戏版本的最新版本，并在有更新时重新加载。';
+
+  @override
+  String get teamLibraryRemove => '从素材库移除';
+
+  @override
+  String teamLibraryRemoveConfirm(String title) {
+    return '要从素材库移除 $title 吗？它解包的文件将对整个团队删除。';
+  }
+
+  @override
+  String get teamLibrarySearchModrinth => '搜索 Modrinth';
+
+  @override
+  String get teamLibrarySearchFiles => '搜索文件';
+
+  @override
+  String get teamLibraryOpenModrinth => '在 Modrinth 上打开';
+
+  @override
+  String get teamLibraryTextures => '纹理';
+
+  @override
+  String get teamLibraryModels => '模型';
+
+  @override
+  String get teamLibraryBlockstates => '方块状态';
+
+  @override
+  String get teamLibraryLang => '语言';
+
+  @override
+  String get teamLibraryData => '数据';
+
+  @override
+  String teamLibraryAddedBy(String name) {
+    return '由 $name 添加';
+  }
+
+  @override
+  String get teamLibraryEarlierVersions => '早期版本';
+
+  @override
+  String get teamLibraryResourcePack => '资源包';
+
+  @override
+  String teamLibraryDownloads(String count) {
+    return '$count 次下载';
+  }
+
+  @override
+  String get teamLibraryAllNamespaces => '所有命名空间';
+
+  @override
+  String get teamLibraryAddTitle => '添加到素材库';
+
+  @override
+  String get teamLibraryAddHint => '选择一个模组或资源包。它的最新版本会立即解包，并在每次更新时重新解包。';
+
+  @override
   String get teamClipboardTasks => '任务';
 
   @override

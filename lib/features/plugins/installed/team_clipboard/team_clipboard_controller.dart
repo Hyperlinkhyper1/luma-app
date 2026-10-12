@@ -11,6 +11,7 @@ import 'data/team_clipboard_api.dart';
 import 'team_clipboard_models.dart';
 import 'team_discord_models.dart';
 import 'team_file_check.dart';
+import 'team_library_models.dart';
 
 /// A file picked to attach, before it is uploaded.
 class TeamPickedFile {
@@ -466,18 +467,39 @@ class TeamClipboardController extends ChangeNotifier {
     }
   }
 
+  // ---- Assets library -------------------------------------------------------
+
+  /// Runs one assets-library request. Like the Discord bot, the library's
+  /// state lives on its tab and is only fetched while that tab is open.
+  Future<T> library<T>(Future<T> Function(TeamClipboardApi api) call) async {
+    final api = _api;
+    if (api == null) throw StateError('Not signed in.');
+    try {
+      return await call(api);
+    } on TeamClipboardApiException catch (e) {
+      if (e.accessRemoved) unawaited(refresh());
+      rethrow;
+    }
+  }
+
   // ---- Files ----------------------------------------------------------------
 
   Uint8List? cachedFile(String fileId) => _fileCache[fileId];
 
   /// The contents of [fileId], from the cache or the server. Null when it
-  /// can't be fetched.
+  /// can't be fetched. A [kTeamLibraryFilePrefix] id is an assets-library
+  /// file, so the board's viewer and previews show those as well.
   Future<Uint8List?> file(String fileId) {
     final cached = _fileCache[fileId];
     if (cached != null) return Future.value(cached);
     return _fileLoads[fileId] ??= () async {
       try {
-        final bytes = await _api?.download(fileId);
+        final api = _api;
+        final bytes = fileId.startsWith(kTeamLibraryFilePrefix)
+            ? await api?.libraryBlob(
+                fileId.substring(kTeamLibraryFilePrefix.length),
+              )
+            : await api?.download(fileId);
         if (bytes != null) _fileCache[fileId] = bytes;
         return bytes;
       } catch (_) {
