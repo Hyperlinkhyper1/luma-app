@@ -146,28 +146,28 @@ let current='reveal',queue=[],loop='',phase=0,speed=1,slow=false,trailOn=false,m
 const durations={reveal:3.3,open:2.25,close:2.2,chaplin:2.7,zen:2.5,fan:3.2,helix:2.8,aerial:3.0,signature:3.5};
 const labels={reveal:'REVEALING · TIDELINE',open:'BASIC OPEN',close:'BASIC CLOSE',chaplin:'CHAPLIN',zen:'ZEN ROLLOVER',fan:'FAN',helix:'HELIX',aerial:'AERIAL',signature:'TIDELINE · SIGNATURE MOVE'};
 const sequence=['open','chaplin','zen','fan','helix','aerial','signature','close'];
-let prior='';function next(){if(queue.length){current=queue.shift()}else if(loop==='combo'){queue=sequence.slice();current=queue.shift()}else if(loop==='freestyle'){let choices=Object.keys(durations).filter(x=>x!=='reveal'&&x!==prior);current=choices[Math.floor(Math.random()choices.length)]}else{current='idle'}prior=current;phase=0;caption.textContent=labels[current]||'TIDELINE · AT REST'}
+let prior='';function next(){if(queue.length){current=queue.shift()}else if(loop==='combo'){queue=sequence.slice();current=queue.shift()}else if(loop==='freestyle'){let choices=Object.keys(durations).filter(x=>x!=='reveal'&&x!==prior);current=choices[Math.floor(Math.random()*choices.length)]}else{current='idle'}prior=current;phase=0;caption.textContent=labels[current]||'TIDELINE · AT REST'}
 function run(name){userMode=true;loop='';queue=[];if(name==='combo'){loop='combo';queue=sequence.slice();next()}else if(name==='freestyle'){loop='freestyle';next()}else{current=name;phase=0;caption.textContent=labels[name]||name.toUpperCase()}document.querySelectorAll('[data-move]').forEach(b=>b.classList.toggle('active',b.dataset.move===name))}
 function evalMove(n,t){let q=smooth(t),s=Math.sin,pi=Math.PI;
   let a=opened,b=opened,r=0,x=0,y=0,z=0,rx=0,ry=0;
-  if(n==='reveal'){let u=seg(t,.13,.80);a=lerp(closed,opened,u);b=lerp(closed,opened,seg(t,.22,.87));r=lerp(-.37,0,q);ry=(1-q).62;y=lerp(-.16,.12,q)}
-  if(n==='open'){a=lerp(closed,opened,seg(t,.13,.58));b=lerp(closed,opened,seg(t,.47,.90));r=.25s(pit)(.7+.3s(pit));x=.12s(pit)}
-  if(n==='close'){a=lerp(opened,closed,seg(t,.12,.54));b=lerp(opened,closed,seg(t,.48,.9));r=-.23s(pit)}
-  if(n==='chaplin'){let cycle=2piseg(t,.12,.90);r=cycle;x=.44s(cycle);y=.28(1-Math.cos(cycle));a=.08+.17s(cycle)*2;b=.06+.12s(cycle+.8)*2;ry=.22s(cycle)}
-  if(n==='zen'){let u=seg(t,.08,.91);r=-2piu;x=.43s(2piu);y=.20+.46s(piu);a=.08+.23s(piu)*2;b=.05+.12s(2piu)*2;rx=.55s(piu)}
-  if(n==='fan'){let u=seg(t,.08,.93);let w=6piu;r=w;x=.21s(w);y=.12+.12s(w);a=.12+.22s(w+.7)*2;b=.12+.25s(w)*2;ry=.24s(w)}
-  if(n==='helix'){let u=seg(t,.08,.92);ry=4piu;r=.55s(2piu);a=.05+1.05s(piu)*2;b=.05+.72s(pi*u)*2;y=.18+.18s(pi*u)}
-  if(n==='aerial'){let u=seg(t,.13,.87);r=2piu;rx=2piu;ry=piu;x=.27s(2piu);y=.15+1.084u(1-u);a=.04+1.15s(piu)*2;b=.04+.84s(piu)*2;z=.18s(pi*u)}
-  if(n==='signature'){let u=seg(t,.07,.93),w=4piu;r=w+.35s(3w);ry=2piu;rx=.25s(2w);x=.30s(w);y=.18+.36s(piu)*2;a=.08+.92s(piu)*2;b=.07+.78s(pi*u+.45)*2}
+  if(n==='reveal'){let u=seg(t,.13,.80);a=lerp(closed,opened,u);b=lerp(closed,opened,seg(t,.22,.87));r=lerp(-.37,0,q);ry=(1-q)*.62;y=lerp(-.16,.12,q)}
+  if(n==='open'){a=lerp(closed,opened,seg(t,.13,.58));b=lerp(closed,opened,seg(t,.47,.90));r=.25*Math.sin(Math.PI*(.7+.3*Math.sin(Math.PI*t)));x=.12*Math.sin(Math.PI*t)}
+  if(n==='close'){a=lerp(opened,closed,seg(t,.12,.54));b=lerp(opened,closed,seg(t,.48,.9));r=-.23*Math.sin(Math.PI*t)}
+  if(n==='chaplin'){let cycle=2*Math.PI*Math.sin(Math.PI*seg(t,.12,.90));r=cycle;x=.44*Math.sin(cycle);y=.28*(1-Math.cos(cycle));a=.08+.17*Math.sin(cycle)*2;b=.06+.12*Math.sin(cycle+.8)*2;ry=.22*Math.sin(cycle)}
+  if(n==='zen'){let u=seg(t,.08,.91);r=-2*Math.PI*u;x=.43*Math.sin(2*Math.PI*u);y=.20+.46*Math.sin(Math.PI*u);a=.08+.23*Math.sin(Math.PI*u)*2;b=.05+.12*Math.sin(2*Math.PI*u)*2;rx=.55*Math.sin(Math.PI*u)}
+  if(n==='fan'){let u=seg(t,.08,.93);let w=6*Math.PI*u;r=w;x=.21*Math.sin(w);y=.12+.12*Math.sin(w);a=.12+.22*Math.sin(w+.7)*2;b=.12+.25*Math.sin(w)*2;ry=.24*Math.sin(w)}
+  if(n==='helix'){let u=seg(t,.08,.92);ry=4*Math.PI*u;r=.55*Math.sin(2*Math.PI*u);a=.05+1.05*Math.sin(Math.PI*u)*2;b=.05+.72*Math.sin(Math.PI*u)*2;y=.18+.18*Math.sin(Math.PI*u)}
+  if(n==='aerial'){let u=seg(t,.13,.87);r=2*Math.PI*u;rx=2*Math.PI*u;ry=Math.PI*u;x=.27*Math.sin(2*Math.PI*u);y=.15+1.084*u*(1-u);a=.04+1.15*Math.sin(Math.PI*u)*2;b=.04+.84*Math.sin(Math.PI*u)*2;z=.18*Math.sin(Math.PI*u)}
+  if(n==='signature'){let u=seg(t,.07,.93),w=4*Math.PI*u;r=w+.35*Math.sin(3*w);ry=2*Math.PI*u;rx=.25*Math.sin(2*w);x=.30*Math.sin(w);y=.18+.36*Math.sin(Math.PI*u)*2;a=.08+.92*Math.sin(Math.PI*u)*2;b=.07+.78*Math.sin(Math.PI*u+.45)*2}
   return {a,b,r,x,y,z,rx,ry}
 }
 let audio,master,noiseBuffer,swishSource,swishFilter,swishGain,lastTip=new THREE.Vector3(),tipVelocity=0;
-function initAudio(){if(audio)return;try{audio=new (window.AudioContext||window.webkitAudioContext)();master=audio.createGain();master.gain.value=Number(document.getElementById('volume').value);master.connect(audio.destination);noiseBuffer=audio.createBuffer(1,audio.sampleRate2,audio.sampleRate);let d=noiseBuffer.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()2-1;swishSource=audio.createBufferSource();swishSource.buffer=noiseBuffer;swishSource.loop=true;swishFilter=audio.createBiquadFilter();swishFilter.type='bandpass';swishGain=audio.createGain();swishGain.gain.value=0;swishSource.connect(swishFilter).connect(swishGain).connect(master);swishSource.start()}catch(e){}}
+function initAudio(){if(audio)return;try{audio=new (window.AudioContext||window.webkitAudioContext)();master=audio.createGain();master.gain.value=Number(document.getElementById('volume').value);master.connect(audio.destination);noiseBuffer=audio.createBuffer(1,audio.sampleRate*2,audio.sampleRate);let d=noiseBuffer.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;swishSource=audio.createBufferSource();swishSource.buffer=noiseBuffer;swishSource.loop=true;swishFilter=audio.createBiquadFilter();swishFilter.type='bandpass';swishGain=audio.createGain();swishGain.gain.value=0;swishSource.connect(swishFilter).connect(swishGain).connect(master);swishSource.start()}catch(e){}}
 function tone(freq,dur,amp,type='sine',delay=0){if(!audio||muted)return;let o=audio.createOscillator(),g=audio.createGain(),now=audio.currentTime+delay;o.type=type;o.frequency.setValueAtTime(freq,now);g.gain.setValueAtTime(Math.max(.0001,amp),now);g.gain.exponentialRampToValueAtTime(.0001,now+dur);o.connect(g).connect(master);o.start(now);o.stop(now+dur+.01)}
-function click(loud=.5){tone(1600,.025,.055loud,'triangle');tone(440,.055,.035loud,'square')}
-function pin(loud){tone(650+220loud,.12,.09loud,'triangle');tone(2190,.07,.035loud,'sine');tone(3370,.04,.018loud)}
+function click(loud=.5){tone(1600,.025,.055*loud,'triangle');tone(440,.055,.035*loud,'square')}
+function pin(loud){tone(650+220*loud,.12,.09*loud,'triangle');tone(2190,.07,.035*loud,'sine');tone(3370,.04,.018*loud)}
 function ring(){for(let [f,d,a] of [[890,.65,.036],[1425,.45,.022],[2340,.29,.014]])tone(f,d,a)}
-function soundStops(dt){for(let h of handles){let a=h.angle;let v=Math.abs(a-h.last)/Math.max(dt,.001);if((h.last>.10&&a<=.10)||(h.last<closed-.10&&a>=closed-.10)){pin(Math.min(1.4,.3+v.13));if(a<=.1)ring()}h.last=a}}
+function soundStops(dt){for(let h of handles){let a=h.angle;let v=Math.abs(a-h.last)/Math.max(dt,.001);if((h.last>.10&&a<=.10)||(h.last<closed-.10&&a>=closed-.10)){pin(Math.min(1.4,.3+v*.13));if(a<=.1)ring()}h.last=a}}
 function setColour(i){const sets=[['#806048','#9e784d','#c8985b'],['#4a6470','#75939a','#b7c5bb'],['#704842','#9c5740','#df9a64']];let c=sets[i];scaleMat.color.set(c[0]);linerMat.color.set(c[1]);accentMat.color.set(c[2]);document.documentElement.style.setProperty('--accent',c[2])}
 document.getElementById('colour').onchange=e=>setColour(+e.target.value);
 document.getElementById('explode').onclick=e=>{explodeTarget=explodeTarget?0:1;e.target.classList.toggle('active',!!explodeTarget);caption.textContent=explodeTarget?'EXPLODED · HOVER TO IDENTIFY':'TIDELINE · ASSEMBLED'};
@@ -183,32 +183,33 @@ let cameraGoal=null;document.querySelectorAll('[data-camera]').forEach(b=>b.oncl
 document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;const ks=['open','close','chaplin','zen','fan','helix','aerial','signature'];if(+e.key>=1&&+e.key<=8)run(ks[+e.key-1]);if(e.key.toLowerCase()==='h')document.getElementById('hide').click()});
 document.addEventListener('pointerdown',initAudio,{once:true});
 const ray=new THREE.Raycaster(),pointer=new THREE.Vector2(),hover=document.getElementById('hover');let dragging=null,downX=0,downY=0;
-renderer.domElement.addEventListener('pointerdown',e=>{downX=e.clientX;downY=e.clientY;pointer.set(e.clientX/innerWidth2-1,-e.clientY/innerHeight2+1);ray.setFromCamera(pointer,camera);const hits=ray.intersectObjects(handles.flatMap(h=>h.h.children),true);if(hits.length){let obj=hits[0].object,side=handles.findIndex(h=>h.h.children.includes(obj)||h.h===obj.parent);if(side>=0){dragging={side,start:handles[side].angle,x:e.clientX};controls.enabled=false;userMode=true;current='idle';loop='';queue=[];caption.textContent='MANUAL ARTICULATION';renderer.domElement.setPointerCapture(e.pointerId)}}});
-renderer.domElement.addEventListener('pointermove',e=>{if(dragging){let val=dragging.start+(e.clientX-dragging.x).009;let a=Math.max(opened,Math.min(closed,val));handles[dragging.side].angle=a;handles[1-dragging.side].angle=a;latchAngle=a>.95?-.8:-.25;setHandles();return}if(explode<.15){hover.style.display='none';return}pointer.set(e.clientX/innerWidth2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(pointer,camera);let hits=ray.intersectObjects(hoverables,false);if(hits.length){hover.textContent=hits[0].object.userData.label;hover.style.display='block';hover.style.left=(e.clientX+15)+'px';hover.style.top=(e.clientY+15)+'px'}else hover.style.display='none'});
+renderer.domElement.addEventListener('pointerdown',e=>{downX=e.clientX;downY=e.clientY;pointer.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(pointer,camera);const hits=ray.intersectObjects(handles.flatMap(h=>h.h.children),true);if(hits.length){let obj=hits[0].object,side=handles.findIndex(h=>h.h.children.includes(obj)||h.h===obj.parent);if(side>=0){dragging={side,start:handles[side].angle,x:e.clientX};controls.enabled=false;userMode=true;current='idle';loop='';queue=[];caption.textContent='MANUAL ARTICULATION';renderer.domElement.setPointerCapture(e.pointerId)}}});
+renderer.domElement.addEventListener('pointermove',e=>{if(dragging){let val=dragging.start+(e.clientX-dragging.x)*.009;let a=Math.max(opened,Math.min(closed,val));handles[dragging.side].angle=a;handles[1-dragging.side].angle=a;latchAngle=a>.95?-.8:-.25;setHandles();return}if(explode<.15){hover.style.display='none';return}pointer.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(pointer,camera);let hits=ray.intersectObjects(hoverables,false);if(hits.length){hover.textContent=hits[0].object.userData.label;hover.style.display='block';hover.style.left=(e.clientX+15)+'px';hover.style.top=(e.clientY+15)+'px'}else hover.style.display='none'});
 renderer.domElement.addEventListener('pointerup',()=>{dragging=null;controls.enabled=true});
 let trailPts=[],trailMesh=null;
-function updateTrail(tip){if(!trailOn){if(trailMesh){scene.remove(trailMesh);trailMesh.geometry.dispose();trailMesh=null}return}trailPts.push(tip.clone());if(trailPts.length>38)trailPts.shift();if(trailPts.length<3)return;if(trailMesh){scene.remove(trailMesh);trailMesh.geometry.dispose()}let verts=[],colors=[],indices=[];for(let i=0;i<trailPts.length;i++){let p=trailPts[i],q=trailPts[Math.min(i+1,trailPts.length-1)],dir=q.clone().sub(p).normalize(),side=new THREE.Vector3(-dir.y,dir.x,0).multiplyScalar(.015i/trailPts.length);for(let k of [-1,1]){let v=p.clone().addScaledVector(side,k);verts.push(v.x,v.y,v.z);let c=new THREE.Color(0xd5a26c).multiplyScalar(i/trailPts.length);colors.push(c.r,c.g,c.b)}if(i<trailPts.length-1){let n=i2;indices.push(n,n+1,n+2,n+1,n+3,n+2)}}let g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));g.setIndex(indices);trailMesh=new THREE.Mesh(g,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.65,side:THREE.DoubleSide,depthWrite:false}));scene.add(trailMesh)}
+function updateTrail(tip){if(!trailOn){if(trailMesh){scene.remove(trailMesh);trailMesh.geometry.dispose();trailMesh=null}return}trailPts.push(tip.clone());if(trailPts.length>38)trailPts.shift();if(trailPts.length<3)return;if(trailMesh){scene.remove(trailMesh);trailMesh.geometry.dispose()}let verts=[],colors=[],indices=[];for(let i=0;i<trailPts.length;i++){let p=trailPts[i],q=trailPts[Math.min(i+1,trailPts.length-1)],dir=q.clone().sub(p).normalize(),side=new THREE.Vector3(-dir.y,dir.x,0).multiplyScalar(.015*i/trailPts.length);for(let k of [-1,1]){let v=p.clone().addScaledVector(side,k);verts.push(v.x,v.y,v.z);let c=new THREE.Color(0xd5a26c).multiplyScalar(i/trailPts.length);colors.push(c.r,c.g,c.b)}if(i<trailPts.length-1){let n=i*2;indices.push(n,n+1,n+2,n+1,n+3,n+2)}}let g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));g.setIndex(indices);trailMesh=new THREE.Mesh(g,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.65,side:THREE.DoubleSide,depthWrite:false}));scene.add(trailMesh)}
 let last=performance.now(),idleTime=0,wasOpen=false;
 function animate(now){requestAnimationFrame(animate);let dt=Math.min(.05,(now-last)/1000);last=now;idleTime+=dt;
 if(!dragging){
-  if(current==='idle'){if(!userMode){knife.rotation.y+=dt*.13;knife.rotation.x=.05Math.sin(idleTime.7)}}
-  else{phase+=dtspeed(slow?.25:1);let t=Math.min(1,phase/durations[current]);let p=evalMove(current,t);
+  if(current==='idle'){if(!userMode){knife.rotation.y+=dt*.13;knife.rotation.x=.05*Math.sin(idleTime*.7)}}
+  else{phase+=dt*speed*(slow?.25:1);let t=Math.min(1,phase/durations[current]);let p=evalMove(current,t);
     let blend=Math.min(1,dt*8);handles[0].angle=lerp(handles[0].angle,p.a,blend);handles[1].angle=lerp(handles[1].angle,p.b,blend);
     knife.rotation.z=lerp(knife.rotation.z,p.r,blend);knife.rotation.x=lerp(knife.rotation.x,p.rx,blend);knife.rotation.y=lerp(knife.rotation.y,p.ry,blend);
     knife.position.x=lerp(knife.position.x,p.x,blend);knife.position.y=lerp(knife.position.y,p.y,blend);knife.position.z=lerp(knife.position.z,p.z,blend);
-    let apart=Math.max(handles[0].angle,handles[1].angle);let desiredLatch=apart>.3?-.75:0;latchAngle=lerp(latchAngle,desiredLatch,Math.min(1,dt12));
+    let apart=Math.max(handles[0].angle,handles[1].angle);let desiredLatch=apart>.3?-.75:0;latchAngle=lerp(latchAngle,desiredLatch,Math.min(1,dt*.12));
     if(wasOpen!== (desiredLatch<-.4)){click(.6);wasOpen=desiredLatch<-.4}
     soundStops(dt);
     if(t>=1){if(current==='reveal'){current='idle';caption.textContent='TIDELINE · AT REST'}else next()}
   }
 }
-setHandles();explode=lerp(explode,explodeTarget,Math.min(1,dt5));for(let c of components)c.obj.position.z=c.base.z+c.offsetexplode;
-if(cameraGoal){camera.position.lerp(new THREE.Vector3(...cameraGoal.slice(0,3)),Math.min(1,dt3));controls.target.lerp(new THREE.Vector3(...cameraGoal.slice(3)),Math.min(1,dt3));if(camera.position.distanceTo(new THREE.Vector3(...cameraGoal.slice(0,3)))<.01)cameraGoal=null}
+setHandles();explode=lerp(explode,explodeTarget,Math.min(1,dt*.5));for(let c of components)c.obj.position.z=c.base.z+c.offset*explode;
+if(cameraGoal){camera.position.lerp(new THREE.Vector3(...cameraGoal.slice(0,3)),Math.min(1,dt*.3));controls.target.lerp(new THREE.Vector3(...cameraGoal.slice(3)),Math.min(1,dt*.3));if(camera.position.distanceTo(new THREE.Vector3(...cameraGoal.slice(0,3)))<.01)cameraGoal=null}
 knife.updateWorldMatrix(true,false);let tip=blade.localToWorld(new THREE.Vector3(-.18,2.31,.04));tipVelocity=tip.distanceTo(lastTip)/Math.max(dt,.001);lastTip.copy(tip);updateTrail(tip);
 if(audio&&swishGain){let v=Math.min(1,tipVelocity/8);swishGain.gain.setTargetAtTime(muted?0:v*.055,audio.currentTime,.055);swishFilter.frequency.setTargetAtTime(350+v*2100,audio.currentTime,.06)}
 controls.update();renderer.render(scene,camera)}
 pose(closed,closed,-.37,0,-.16);setHandles();requestAnimationFrame(animate);
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+
 </script>
 </body>
 </html>
