@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#181a18">
+<title>TIDEMARK — LOW TIDE / 07</title>
+<style>
+:root{color-scheme:dark;--ink:#ece6d9;--muted:#aaa99c;--line:#ffffff24;--copper:#d58b5e}
+*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#181a18;color:var(--ink)}
+body{font:12px/1.5 "Trebuchet MS",sans-serif}button,input{font:inherit}button{color:inherit;border:0;cursor:pointer;background:none}
+button:focus-visible,input:focus-visible{outline:2px solid var(--copper);outline-offset:5px}button:hover{color:#fff}
+#scene{position:fixed;inset:0;touch-action:none}#scene canvas{display:block;width:100%;height:100%}
+.shell{position:fixed;inset:0;pointer-events:none;transition:opacity .35s}.shell button,.shell input,.shell label{pointer-events:auto}
+.header{position:absolute;left:36px;right:36px;top:25px;display:flex;align-items:center;justify-content:space-between;padding-bottom:19px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:12px;font-size:15px;letter-spacing:.3em;font-weight:bold}.brand svg{width:35px;height:35px}
+.edition{font-size:10px;letter-spacing:.18em;color:var(--muted)}.header-tools{display:flex;gap:20px;align-items:center}
+.text-button{padding:7px 0;border-bottom:1px solid transparent;text-transform:uppercase;letter-spacing:.13em;font-size:10px}
+.text-button[aria-pressed=true]{border-color:var(--copper);color:var(--copper)}
+.intro{position:absolute;top:124px;left:37px;width:290px}.eyebrow{color:var(--copper);font-size:10px;letter-spacing:.18em;text-transform:uppercase}
+h1{font:normal clamp(54px,6.3vw,94px)/.91 Georgia,"Times New Roman",serif;letter-spacing:-.06em;margin:21px 0 17px}h1 em{font-size:.48em;font-weight:normal;font-style:italic;letter-spacing:-.035em}
+.description{max-width:235px;color:var(--muted);line-height:1.8;font-size:11px;margin:0}
+.specs{margin:29px 0 0;width:236px;border-top:1px solid var(--line)}.specs div{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #ffffff11;font-size:10px}
+.specs dt{color:var(--muted)}.specs dd{margin:0;text-align:right}.material-note{display:flex;gap:9px;align-items:center;margin-top:19px;color:var(--muted);font-size:9px;letter-spacing:.08em}
+.material-note span{width:5px;height:5px;border-radius:50%;background:var(--copper)}
+.right-rail{position:absolute;right:36px;top:129px;width:137px}.rail-title{color:var(--muted);font-size:9px;letter-spacing:.17em;margin-bottom:12px}
+.palette{display:flex;gap:12px;margin-bottom:8px}.swatch{width:30px;height:30px;border-radius:50%;border:4px solid #181a18;outline:1px solid #ffffff25;transition:outline .2s,transform .2s}
+.swatch:hover{transform:translateY(-2px)}.swatch[aria-pressed=true]{outline-color:var(--ink)}
+.swatch:nth-child(1){background:linear-gradient(135deg,#e5dfc9 50%,#8c573e 50%)}.swatch:nth-child(2){background:linear-gradient(135deg,#4c6863 50%,#bb9c64 50%)}.swatch:nth-child(3){background:linear-gradient(135deg,#353944 50%,#b9bcc1 50%)}
+#colorName{font-size:10px}.camera-list{display:flex;flex-direction:column;align-items:flex-start;gap:3px;margin-top:36px}
+.camera-list button{position:relative;padding:6px 0;color:var(--muted);font-size:10px;letter-spacing:.05em}.camera-list button.active{color:var(--ink)}
+.camera-list button.active:before{content:"";position:absolute;left:-12px;top:12px;width:4px;height:4px;background:var(--copper)}
+.vertical-label{position:absolute;right:37px;bottom:226px;writing-mode:vertical-rl;font-size:9px;letter-spacing:.19em;color:#82877c}
+.annotation{position:absolute;left:50%;bottom:236px;transform:translateX(-50%);display:flex;align-items:center;gap:12px;white-space:nowrap}.annotation .rule{width:30px;height:1px;background:var(--copper)}
+#caption{font:italic 17px Georgia,serif}#state{font-size:9px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase}
+.console{position:absolute;left:36px;right:36px;bottom:23px;padding-top:17px;border-top:1px solid var(--line);background:linear-gradient(180deg,#181a1800,#181a18e0 28%)}
+.console-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.section-title{font-size:9px;letter-spacing:.17em;color:var(--muted)}
+.playback{display:flex;gap:20px;align-items:center}.playback button{font-size:10px;letter-spacing:.08em;color:var(--muted);padding:3px 0}.playback button[aria-pressed=true]{color:var(--copper)}
+.dot{display:inline-block;width:5px;height:5px;background:currentColor;border-radius:50%;margin-right:6px}
+.moves{display:grid;grid-template-columns:repeat(8,1fr);border-left:1px solid var(--line)}
+.move{min-height:59px;padding:8px 13px;text-align:left;border:1px solid var(--line);border-left:0;transition:background .2s}
+.move .num{font-size:9px;color:#919487;display:block;margin-bottom:4px}.move .name{font-size:11px;white-space:nowrap}
+.move:hover{background:#ffffff06}.move.active{background:#a56f4030;border-bottom-color:var(--copper)}.move.active .num,.move:last-child .name{color:var(--copper)}
+.console-bottom{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-top:15px}.settings{display:flex;align-items:center;gap:24px}
+.slider-control{display:flex;align-items:center;gap:9px;white-space:nowrap;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.05em}
+input[type=range]{width:85px;accent-color:var(--copper);height:2px;cursor:pointer}#volume{width:55px}
+.toggle{color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.07em;padding:5px 0}.toggle[aria-pressed=true]{color:var(--copper)}
+.hint{font-size:9px;color:#909487;letter-spacing:.035em}
+#revealUI{position:fixed;right:23px;top:23px;z-index:8;padding:10px 14px;background:#222520d9;border:1px solid var(--line);font-size:10px;letter-spacing:.1em;display:none}
+body.ui-hidden .shell{opacity:0;pointer-events:none}body.ui-hidden .shell *{pointer-events:none}body.ui-hidden #revealUI{display:block}
+#tooltip{position:fixed;z-index:10;pointer-events:none;padding:8px 12px;background:#e5dfce;color:#252a24;font-size:10px;letter-spacing:.07em;display:none;max-width:230px}
+#loading{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:17px;background:#181a18;transition:opacity .7s;letter-spacing:.2em;font-size:11px}
+#loading.done{opacity:0;pointer-events:none}.load-mark{width:44px;height:44px;border:1px solid #c3895950;border-top-color:var(--copper);border-radius:50%;animation:spin 1.5s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#error{display:none;position:fixed;inset:0;z-index:30;background:#181a18;place-content:center;text-align:center;padding:32px}
+#error h2{font:36px Georgia,serif}#error p{color:var(--muted);max-width:460px}#error button{margin-top:15px;border:1px solid var(--line);padding:12px 22px}
+@media(max-width:1100px){.intro{width:235px}.description{max-width:190px}.specs{width:205px}.right-rail{right:25px;width:105px}.move{padding:8px}.move .name{font-size:10px}.hint{display:none}.settings{gap:17px}.header,.console{left:25px;right:25px}.intro{left:25px}h1{font-size:68px}}
+@media(max-width:720px){.header{top:17px;left:18px;right:18px;padding-bottom:12px}.brand{font-size:12px;gap:7px}.brand svg{width:28px;height:28px}.edition{display:none}.header-tools{gap:13px}.text-button{font-size:9px}.intro{top:85px;left:19px;width:auto}.eyebrow{font-size:8px}h1{font-size:45px;line-height:.95;margin:12px 0}.description,.specs,.material-note{display:none}.right-rail{top:89px;right:18px;width:auto}.rail-title{font-size:8px}.swatch{width:25px;height:25px}.palette{gap:9px}.camera-list{margin-top:18px;gap:1px}.camera-list button{font-size:9px;padding:4px 0}.camera-list button.active:before{top:10px}.vertical-label{display:none}.console{left:15px;right:15px;bottom:15px;padding-top:12px}.moves{grid-template-columns:repeat(4,1fr)}.move{min-height:49px;padding:5px 8px}.move:nth-child(n+5){border-top:0}.move:nth-child(5){border-left:1px solid var(--line);margin-left:-1px}.move .num{margin-bottom:1px;font-size:8px}.move .name{font-size:10px}.console-top{margin-bottom:9px}.playback{gap:13px}.playback button{font-size:9px}.console-bottom{margin-top:9px}.settings{gap:11px;flex-wrap:wrap;justify-content:space-between;width:100%}.slider-control{font-size:8px;gap:6px}input[type=range]{width:62px}#volume{width:39px}.toggle{font-size:8px}.annotation{bottom:241px;gap:8px}#caption{font-size:15px}#state{font-size:8px}.annotation .rule{width:19px}}
+@media(max-height:700px) and (min-width:721px){.intro{top:105px}.specs{margin-top:18px}.specs div{padding:5px 0}.description{display:none}h1{font-size:62px}.material-note{display:none}.right-rail{top:109px}.console{bottom:15px}.annotation{bottom:209px}.camera-list{margin-top:20px}}
+@media(prefers-reduced-motion:reduce){.load-mark{animation:none}}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="scene" aria-label="Interactive three-dimensional Low Tide butterfly knife"></div>
+<div id="loading"><div class="load-mark"></div><span>TIDEMARK / ASSEMBLING 07</span></div>
+<div id="error" role="alert"><div><h2>The exhibit could not open.</h2><p id="errorText">This experience needs WebGL and a connection to load Three.js.</p><button onclick="location.reload()">TRY AGAIN</button></div></div>
+<div class="shell">
+<header class="header">
+<div class="brand"><svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M6 12h28M10 19h20M14 26h12M20 7v26" stroke="currentColor" stroke-width="1.4"/><circle cx="20" cy="33" r="2" fill="currentColor"/></svg>TIDEMARK</div>
+<div class="edition">INSTRUMENTS FOR THE IN-BETWEEN</div>
+<div class="header-tools"><button id="inspect" class="text-button" aria-pressed="false">Inspect</button><button id="explode" class="text-button" aria-pressed="false">Explode</button><button id="hide" class="text-button" title="Hide interface (H)">Hide UI ↗</button></div>
+</header>
+<section class="intro">
+<div class="eyebrow">Object 007 / The littoral collection</div>
+<h1>LOW<br>TIDE <em>/ 07</em></h1>
+<p class="description">An instrument shaped by the quiet<br>between two tides. Ceramic, copper,<br>and a little controlled momentum.</p>
+<dl class="specs"><div><dt>Overall / blade</dt><dd>230 / 104 mm</dd></div><div><dt>Closed length</dt><dd>128 mm</dd></div><div><dt>Scales / chassis</dt><dd>Ceramic / titanium</dd></div><div><dt>Blade</dt><dd id="bladeSpec">Bronze-coated steel</dd></div><div><dt>Mass / pivot</dt><dd>112 g / ceramic bearings</dd></div></dl>
+<div class="material-note"><span></span>MILLED TIDE REGISTER · BUOY LATCH</div>
+</section>
+<aside class="right-rail">
+<div class="rail-title">FINISH / <span id="finishNumber">01</span></div>
+<div class="palette" role="group" aria-label="Colourway">
+<button class="swatch" data-color="0" aria-label="Salt and copper" aria-pressed="true"></button>
+<button class="swatch" data-color="1" aria-label="Estuary and brass" aria-pressed="false"></button>
+<button class="swatch" data-color="2" aria-label="Midnight and silver" aria-pressed="false"></button>
+</div><div id="colorName">Salt / copper</div>
+<nav class="camera-list" aria-label="Camera presets"><div class="rail-title">PERSPECTIVE</div><button data-camera="hero" class="active">01 — Hero</button><button data-camera="blade">02 — Blade</button><button data-camera="pivot">03 — Pivot</button><button data-camera="latch">04 — Latch</button><button data-camera="top">05 — Top</button></nav>
+</aside>
+<div class="vertical-label">DESIGNED AT THE WATERLINE / NO. 007</div>
+<div class="annotation"><span class="rule"></span><span id="caption">A study in balance.</span><span id="state" aria-live="polite">REVEAL</span></div>
+<section class="console" aria-label="Performance controls">
+<div class="console-top"><span class="section-title">THE REPERTOIRE <span style="color:#687060">/ 01—08</span></span><div class="playback"><button id="combo" aria-pressed="false"><span class="dot"></span>Combo</button><button id="freestyle" aria-pressed="false">Freestyle ↗</button><button id="pause" aria-pressed="false">Pause Ⅱ</button></div></div>
+<div class="moves">
+<button class="move" data-move="0"><span class="num">01 / 1</span><span class="name">Basic open</span></button>
+<button class="move" data-move="1"><span class="num">02 / 2</span><span class="name">Basic close</span></button>
+<button class="move" data-move="2"><span class="num">03 / 3</span><span class="name">Chaplin</span></button>
+<button class="move" data-move="3"><span class="num">04 / 4</span><span class="name">Zen rollover</span></button>
+<button class="move" data-move="4"><span class="num">05 / 5</span><span class="name">Fan</span></button>
+<button class="move" data-move="5"><span class="num">06 / 6</span><span class="name">Helix</span></button>
+<button class="move" data-move="6"><span class="num">07 / 7</span><span class="name">Aerial</span></button>
+<button class="move" data-move="7"><span class="num">08 / 8</span><span class="name">Low Tide sweep</span></button>
+</div>
+<div class="console-bottom"><div class="settings">
+<label class="slider-control">Tempo <input id="speed" type="range" min=".25" max="2" step=".05" value="1" aria-label="Animation speed"><output id="speedValue">1.00×</output></label>
+<button id="slow" class="toggle" aria-pressed="false">Slow motion</button>
+<button id="trail" class="toggle" aria-pressed="false">Tip trail</button>
+<button id="mute" class="toggle" aria-pressed="false">Sound on</button>
+<label class="slider-control">Vol <input id="volume" type="range" min="0" max="1" step=".01" value=".42" aria-label="Sound volume"></label>
+</div><span class="hint" id="hint">Drag to orbit · Scroll to zoom · 1–8 to perform · H to hide</span></div>
+</section>
+</div>
+<button id="revealUI">SHOW UI ↙</button>
+<div id="tooltip"></div>
+<script type="module">
+const $=s=>document.querySelector(s);
+let booted=false;
+const fail=message=>{$('#loading').classList.add('done');$('#errorText').textContent=message;$('#error').style.display='grid'};
+const bootTimeout=setTimeout(()=>{if(!booted)fail('The 3D library could not load. Check your connection and allow unpkg.com, then try again.')},18000);
+try{
+const THREE=await import('three');
+const {OrbitControls}=await import('three/addons/controls/OrbitControls.js');
+const {RoomEnvironment}=await import('three/addons/environments/RoomEnvironment.js');
+const PI=Math.PI,TAU=PI*2,clamp=THREE.MathUtils.clamp,lerp=THREE.MathUtils.lerp;
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.35;
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+$('#scene').appendChild(renderer.domElement);
+renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();fail('The graphics context was interrupted. Reload to reopen the exhibit.')});
+const scene=new THREE.Scene();scene.background=new THREE.Color('#181a18');scene.fog=new THREE.Fog('#181a18',35,65);
+const camera=new THREE.PerspectiveCamera(36,innerWidth/innerHeight,.1,100);camera.position.set(2.7,4,26);
+const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.07;controls.minDistance=3;controls.maxDistance=45;controls.target.set(.35,-.25,0);controls.maxPolarAngle=PI*.94;
+const room=new RoomEnvironment(),pmrem=new THREE.PMREMGenerator(renderer),env=pmrem.fromScene(room,.04);
+scene.environment=env.texture;room.dispose();pmrem.dispose();
+scene.add(new THREE.HemisphereLight(0xefeee0,0x333a2b,1.9));
+function light(x,y,z,color,power){const l=new THREE.DirectionalLight(color,power);l.position.set(x,y,z);scene.add(l);return l}
+const key=light(-4,9,7,0xffefcf,4.1);
+key.castShadow=true;key.shadow.mapSize.set(1024,1024);Object.assign(key.shadow.camera,{left:-11,right:11,top:14,bottom:-10});key.shadow.bias=-.0007;key.shadow.normalBias=.035;
+light(7,1,-5,0x8eb6b0,3.5);light(-7,-1,2,0xce8254,1.5);
+const sweep=new THREE.PointLight(0xffddae,15,22,2);sweep.position.set(-8,4,6);scene.add(sweep);
+function texture(kind){
+const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');
+x.fillStyle=kind==='metal'?'#a9a9a9':'#deded7';x.fillRect(0,0,256,256);
+let seed=27;const rand=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
+for(let i=0;i<3000;i++){const p=rand()*256,q=rand()*256;x.strokeStyle=`rgba(${rand()>.5?'255,255,255':'0,0,0'},${kind==='metal'?.035+rand()*.085:.035})`;x.lineWidth=.3+rand()*.6;x.beginPath();x.moveTo(p,q);x.lineTo(p+(kind==='metal'?20+rand()*80:rand()*3),q+(kind==='metal'?.15:rand()*3));x.stroke()}
+const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());return t
+}
+const brushed=texture('metal'),ceramicTexture=texture('ceramic');
+const mat=(color,metalness,roughness,other={})=>new THREE.MeshPhysicalMaterial({color,metalness,roughness,clearcoat:.28,clearcoatRoughness:.25,...other});
+const bronze=mat('#9a684c',.96,.29,{map:brushed,side:THREE.DoubleSide});
+const steel=mat('#85735a',1,.3,{map:brushed});
+const edgeMat=mat('#d1bca2',1,.19,{side:THREE.DoubleSide});
+const pearl=mat('#e4ddc8',.13,.3,{map:ceramicTexture,clearcoat:.58});
+const inner=mat('#343d39',.9,.35),dark=mat('#202821',.75,.28),orange=mat('#bf643d',.55,.28),pinMat=mat('#c5b795',1,.18);
+const stage=new THREE.Mesh(new THREE.CylinderGeometry(7.5,7.9,.38,96),mat('#242923',.36,.47));stage.position.y=-5.9;stage.receiveShadow=true;scene.add(stage);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(200,200),new THREE.MeshStandardMaterial({color:'#171b16',roughness:.88}));ground.rotation.x=-PI/2;ground.position.y=-6.12;ground.receiveShadow=true;scene.add(ground);
+const ringMat=new THREE.MeshBasicMaterial({color:'#8d8063',transparent:true,opacity:.22});
+for(let r=3.8;r<7.5;r+=.9){const ring=new THREE.Mesh(new THREE.TorusGeometry(r,.009,4,96),ringMat);ring.rotation.x=PI/2;ring.position.y=-5.699;scene.add(ring)}
+const ticks=new THREE.InstancedMesh(new THREE.BoxGeometry(.012,.008,.1),bronze,60),dummy=new THREE.Object3D();
+for(let i=0;i<60;i++){const a=i*TAU/60;dummy.position.set(Math.sin(a)*7.05,-5.7,Math.cos(a)*7.05);dummy.rotation.y=a;dummy.scale.z=i%5===0?2.6:1;dummy.updateMatrix();ticks.setMatrixAt(i,dummy.matrix)}scene.add(ticks);
+const shadowCanvas=document.createElement('canvas');shadowCanvas.width=shadowCanvas.height=128;
+const sc=shadowCanvas.getContext('2d'),sg=sc.createRadialGradient(64,64,0,64,64,64);sg.addColorStop(0,'rgba(0,0,0,.7)');sg.addColorStop(1,'rgba(0,0,0,0)');sc.fillStyle=sg;sc.fillRect(0,0,128,128);
+const shadow=new THREE.Mesh(new THREE.PlaneGeometry(10,10),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(shadowCanvas),transparent:true,depthWrite:false,opacity:.5}));shadow.rotation.x=-PI/2;shadow.position.y=-5.68;scene.add(shadow);
+const knife=new THREE.Group();scene.add(knife);
+const parts=[],pickables=[];
+function mesh(g,m,parent,name){const o=new THREE.Mesh(g,m);o.castShadow=true;o.receiveShadow=true;o.userData.label=name;parent.add(o);pickables.push(o);return o}
+function part(object,amount){parts.push({object,z:object.position.z,amount});return object}
+function shape(points){const s=new THREE.Shape();points.forEach((p,i)=>i?s.lineTo(...p):s.moveTo(...p));s.closePath();return s}
+function extrude(s,d=.12,b=.035){return new THREE.ExtrudeGeometry(s,{depth:d,bevelEnabled:true,bevelThickness:b,bevelSize:b,bevelSegments:3,steps:1,curveSegments:20})}
+function rounded(w,h,r=.15){const s=new THREE.Shape(),x=-w/2;s.moveTo(x+r,0);s.lineTo(x+w-r,0);s.quadraticCurveTo(x+w,0,x+w,r);s.lineTo(x+w,h-r);s.quadraticCurveTo(x+w,h,x+w-r,h);s.lineTo(x+r,h);s.quadraticCurveTo(x,h,x,h-r);s.lineTo(x,r);s.quadraticCurveTo(x,0,x+r,0);return s}
+function tube(parent,points,r,material,name){const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));return mesh(new THREE.TubeGeometry(curve,Math.max(6,points.length*3),r,5,false),material,parent,name)}
+function cylinder(parent,r,d,x,y,z,material,name){const o=mesh(new THREE.CylinderGeometry(r,r,d,24),material,parent,name);o.rotation.x=PI/2;o.position.set(x,y,z);return o}
+function torus(parent,r,t,x,y,z,material,name){const o=mesh(new THREE.TorusGeometry(r,t,8,28),material,parent,name);o.position.set(x,y,z);return o}
+const bladeGroup=new THREE.Group();knife.add(bladeGroup);
+const bladeShape=new THREE.Shape();
+bladeShape.moveTo(-.44,-.245);bladeShape.lineTo(.44,-.245);bladeShape.lineTo(.44,.22);bladeShape.lineTo(.28,.45);
+bladeShape.bezierCurveTo(.04,.52,.09,.81,.25,.83);
+bladeShape.bezierCurveTo(.49,1.75,.40,2.7,.24,3.53);
+bladeShape.bezierCurveTo(.24,4.05,.30,4.7,-.12,5.48);
+bladeShape.bezierCurveTo(-.41,4.74,-.41,3.1,-.34,1.35);
+bladeShape.lineTo(-.34,.43);bladeShape.lineTo(-.44,.23);bladeShape.closePath();
+for(const x of [-.32,.32]){const hole=new THREE.Path();hole.absarc(x,0,.113,0,TAU,true);bladeShape.holes.push(hole)}
+const blade=mesh(extrude(bladeShape,.12,.025),steel,bladeGroup,'Recurved bronze-coated steel blade');blade.position.z=-.06;
+const grindShape=new THREE.Shape();
+grindShape.moveTo(-.03,.89);grindShape.bezierCurveTo(.21,1.7,.17,2.73,.04,3.52);grindShape.bezierCurveTo(.08,4.12,.04,4.93,-.12,5.43);grindShape.bezierCurveTo(.30,4.7,.24,4.05,.24,3.53);grindShape.bezierCurveTo(.40,2.7,.49,1.75,.25,.83);grindShape.closePath();
+for(const side of [-1,1]){
+const face=mesh(new THREE.ShapeGeometry(grindShape,32),bronze,bladeGroup,'Hollow grind');face.position.z=side*.087;
+const bevel=shape([[.25,.84],[.34,1.35],[.375,2],[.30,2.8],[.215,3.6],[.205,4.25],[-.12,5.46],[.15,4.28],[.16,3.59],[.245,2.78],[.315,2],[.285,1.36],[.195,.87]]);
+const ed=mesh(new THREE.ShapeGeometry(bevel),edgeMat,bladeGroup,'Polished cutting bevel');ed.position.z=side*.092;
+const kicker=mesh(extrude(rounded(.20,.20,.055),.15,.025),bronze,bladeGroup,side===1?'Edge-protecting kicker / closed stop':'Spine shoulder / closed stop');kicker.position.set(side*.33,.29,-.075);
+const shoulder=mesh(extrude(rounded(.14,.10,.025),.15,.01),steel,bladeGroup,'Relieved tang / open stop shoulder');shoulder.position.set(side*.12,-.305,-.075);
+}
+const markCanvas=document.createElement('canvas');markCanvas.width=256;markCanvas.height=512;const mc=markCanvas.getContext('2d');
+mc.strokeStyle='#302e25';mc.fillStyle='#302e25';mc.lineWidth=7;mc.beginPath();mc.moveTo(128,58);mc.lineTo(128,236);mc.moveTo(40,93);mc.lineTo(216,93);mc.moveTo(65,138);mc.lineTo(191,138);mc.moveTo(91,182);mc.lineTo(165,182);mc.stroke();mc.beginPath();mc.arc(128,242,10,0,TAU);mc.fill();mc.font='23px serif';mc.textAlign='center';mc.fillText('TIDEMARK',128,307);mc.font='19px monospace';mc.fillText('07 / LT',128,348);
+const mark=new THREE.Mesh(new THREE.PlaneGeometry(.39,.78),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(markCanvas),transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2}));mark.position.set(-.16,1.35,.093);bladeGroup.add(mark);
+const handles=[];
+for(let index=0;index<2;index++){
+const side=index===0?-1:1,pivot=new THREE.Group();pivot.position.x=side*.32;pivot.userData.handle=index;knife.add(pivot);handles.push(pivot);
+const label=index===0?'Safe':'Bite';
+for(const front of [-1,1]){
+const linerGroup=new THREE.Group();linerGroup.position.z=front*.185;pivot.add(linerGroup);part(linerGroup,front*.76);
+const liner=mesh(extrude(rounded(.58,6.13,.25),.05,.022),inner,linerGroup,`${label} handle · titanium channel liner`);liner.position.set(0,-.27,-.025);
+const scaleGroup=new THREE.Group();scaleGroup.position.z=front*.29;pivot.add(scaleGroup);part(scaleGroup,front*1.43);
+const scale=mesh(extrude(rounded(.52,5.40,.22),.075,.025),pearl,scaleGroup,`${label} handle · ceramic scale`);scale.position.set(0,.39,-.0375);
+const z=front*.084;
+tube(scaleGroup,[[side*.11,.85,z],[side*.11,2.2,z],[side*.07,3.6,z],[side*.07,5.28,z]],.014,bronze,'Inlaid copper tide register');
+for(let j=0;j<15;j++){
+const y=1+j*.28,len=j%5===0?.27:(j%2===0?.18:.10),x=side*.08;
+tube(scaleGroup,[[x,y,z],[x-side*len,y,z]],.009,bronze,'Milled tide-gauge graduation');
+if(j%5===0)cylinder(scaleGroup,.022,.007,x-side*(len+.035),y,z,orange,'Copper tide marker');
+}
+for(const y of [.69,5.44]){
+const screwGroup=new THREE.Group();screwGroup.position.set(0,y,front*.406);pivot.add(screwGroup);part(screwGroup,front*1.95);
+cylinder(screwGroup,.073,.04,0,0,0,bronze,'Scale screw');
+tube(screwGroup,[[-.035,0,front*.025],[.035,0,front*.025]],.008,dark,'Screw driver recess');
+}
+}
+const back=mesh(extrude(rounded(.115,4.8,.05),.30,.025),bronze,pivot,`${label} handle · channel spine`);back.position.set(side*.225,.77,-.15);part(back,side*.14);
+for(const front of [-1,1]){
+const washer=torus(pivot,.20,.030,0,0,front*.26,pinMat,'Polished pivot washer');part(washer,front*2);
+const bearing=new THREE.Group();bearing.position.z=front*.12;pivot.add(bearing);part(bearing,front*.48);
+torus(bearing,.143,.014,0,0,0,bronze,'Ceramic bearing cage');
+for(let j=0;j<8;j++){const ball=mesh(new THREE.SphereGeometry(.025,8,6),pearl,bearing,'Ceramic pivot bearing');ball.position.set(Math.cos(j*TAU/8)*.14,Math.sin(j*TAU/8)*.14,0)}
+const screw=cylinder(pivot,.145,.07,0,0,front*.36,bronze,'Captive titanium pivot screw');part(screw,front*2.5);
+const slot=tube(pivot,[[-.065,0,front*.402],[.065,0,front*.402]],.012,dark,'Pivot screw recess');part(slot,front*2.5);
+}
+const axle=cylinder(pivot,.10,.43,0,0,0,pinMat,'Hardened pivot axle');part(axle,side*.32);
+const stop=cylinder(pivot,.065,.42,side*.20,.38,0,pinMat,`${label} handle · zen stop pin`);part(stop,side*.9);
+}
+const latch=new THREE.Group();latch.position.set(0,5.87,.43);handles[1].add(latch);part(latch,2);
+cylinder(latch,.08,.08,0,0,0,bronze,'Latch hinge screw');
+tube(latch,[[0,0,0],[-.15,.10,0],[-.44,.10,0],[-.61,.01,0],[-.61,-.13,0]],.04,bronze,'Swinging buoy latch');
+const buoy=mesh(new THREE.SphereGeometry(.12,16,10),orange,latch,'Copper buoy latch thumbpiece');buoy.scale.set(.7,1.15,.65);buoy.position.set(-.34,.115,0);
+torus(latch,.074,.015,-.34,.115,.08,pinMat,'Buoy latch collar');
+const keeper=cylinder(handles[0],.08,.11,0,5.87,.45,pinMat,'Latch keeper');part(keeper,2);
+const tipLocal=new THREE.Vector3(-.12,5.48,0);
+let exploded=0,explodeTarget=0,inspecting=false,drag=null;
+let speed=1,slow=false,trailEnabled=false,paused=false,mode='',comboIndex=0,lastMove=-1;
+let pose={a:0,b:0,z:-.25,x:.14,y:-.35,h:0,lift:0,side:1};
+let latchAngle=0,latchOpen=0,prevLatch=0,settle=0;
+const idleBase={a:PI,b:-PI,z:-.43,x:.10,y:-.25,h:0,lift:0,side:1};
+let motion=null,elapsed=0,showcaseTime=0,viewTween=null,lastVelocity=0;
+const names=['Basic open','Basic close','Chaplin','Zen rollover','Fan','Helix','Aerial','Low Tide sweep'];
+function P(a,b,z=0,x=.1,y=-.25,h=1,lift=0,side=1){return{a,b,z,x,y,h,lift,side}}
+const open=P(PI,-PI,-.43,.1,-.25,0),closed=P(0,0,-.43,.1,-.25,0);
+function frames(index){
+const z=pose.z;
+switch(index){
+case 0:return[[.25,P(.04,-.04,z,.1,-.25,.8)],[.78,P(PI,-.12,z+.45,.12,-.25,1)],[1.3,P(PI,-PI*.78,z-.3,.15,-.25,1)],[1.65,P(PI,-PI,z-.4,.1,-.25,1)],[2,{...open,z}]];
+case 1:return[[.25,P(PI,-PI,z,.1,-.25,1)],[.75,P(PI*.8,-.1,z+.6,.1,-.25,1)],[1.2,P(.1,-.08,z-.35,.1,-.25,1)],[1.55,P(0,0,z-.15,.1,-.25,.7)],[1.9,{...closed,z}]];
+case 2:return[[.25,P(PI,-PI*.25,z,.1,-.25,1)],[.85,P(PI*.65,-PI*.1,z+PI,.2,-.3,1)],[1.45,P(PI,-PI*.6,z+TAU,.3,-.15,1)],[2.05,P(PI,-PI,z+TAU,.1,-.25,1)],[2.4,{...open,z:z+TAU}]];
+case 3:return[[.25,P(PI,-PI*.3,z,.1,-.25,1)],[.75,P(PI*.4,-PI*.85,z-PI*.8,.3,.5,1,0,.7)],[1.25,P(PI*.1,-PI,z-PI*1.6,-.2,.7,1,0,.25)],[1.8,P(PI,-PI,z-TAU,.1,-.25,1,0,0)],[2.2,{...open,z:z-TAU,side:0}]];
+case 4:return[[.25,P(PI*.8,-.15,z,.12,.1,1)],[.85,P(PI*.8,-.3,z+TAU,.3,.2,1)],[1.45,P(PI*.8,-.15,z+TAU*2,-.1,-.3,1)],[2.05,P(PI*.8,-.3,z+TAU*3,.2,.15,1)],[2.6,P(PI,-PI,z+TAU*3+.65,.1,-.25,1)],[2.9,{...open,z:z+TAU*3+.65}]];
+case 5:return[[.3,P(PI,-.2,z,.1,-.25,1)],[.9,P(PI*.2,-PI*.7,z+PI,.6,PI,1)],[1.5,P(PI,-PI*.2,z+TAU,-.5,TAU,1)],[2.1,P(PI*.5,-PI,z+TAU*1.5,.3,TAU+PI,1)],[2.7,P(PI,-PI,z+TAU*2,.1,TAU*2-.25,0)]];
+case 6:return[[.3,P(PI,-PI,z-.25,.1,-.25,1,-.6)],[.65,P(PI,-.2,z+.3,.1,-.25,.5,1)],[1.1,P(.15,-.15,z+PI,.4,.3,0,3)],[1.55,P(PI,-PI*.2,z+TAU,.2,.5,0,2.1)],[1.95,P(PI,-PI,z+TAU+.2,.1,-.25,1,-.25)],[2.35,{...open,z:z+TAU}]];
+case 7:return[[.35,P(PI*.25,-PI,z,.1,-.25,1)],[.9,P(PI,-PI*.2,z-PI*.65,PI*.4,-.4,1,.4)],[1.5,P(.2,-.2,z-PI*1.5,PI*.8,.6,0,1.3)],[2.1,P(PI*.8,-PI*.8,z-TAU,PI*1.5,1.2,0,1.4)],[2.75,P(PI,-PI,z-TAU,TAU+.1,-.25,1)],[3.2,{...open,z:z-TAU,x:TAU+.1}]];
+}}
+function setCaption(name,state){$('#caption').textContent=name;$('#state').textContent=state}
+function markActive(index){document.querySelectorAll('.move').forEach((b,i)=>b.classList.toggle('active',i===index))}
+function play(index,reveal=false){
+explodeTarget=0;$('#explode').setAttribute('aria-pressed','false');
+inspecting=false;$('#inspect').setAttribute('aria-pressed','false');
+if(activeCamera!=='hero')setCamera('hero');
+paused=false;$('#pause').setAttribute('aria-pressed','false');$('#pause').textContent='Pause Ⅱ';
+const data=frames(index);motion={frames:[[0,{...pose}],...data],duration:data.at(-1)[0],time:0,reveal,index,finished:false};settle=0;
+lastMove=index;markActive(index);setCaption(reveal?'The tide comes in.':names[index],reveal?'REVEAL':mode||'PERFORMING');
+}
+function randomMove(){let n;do{n=Math.floor(Math.random()*8)}while(n===lastMove);return n}
+function smooth(t){return t*t*(3-2*t)}
+function hermite(v0,v1,m0,m1,t,d){const t2=t*t,t3=t2*t;return(2*t3-3*t2+1)*v0+(t3-2*t2+t)*m0*d+(-2*t3+3*t2)*v1+(t3-t2)*m1*d}
+function advance(dt){
+if(!motion||paused)return;
+if(motion.finished){
+if(latchOpen>.015)return;
+if(mode==='combo'){comboIndex=(comboIndex+1)%8;play(comboIndex)}
+else if(mode==='freestyle')play(randomMove());
+else{const index=motion.index;motion=null;markActive(-1);setCaption(index===1?'Quiet, until the next tide.':'A study in balance.','SHOWCASE');showcaseTime=0}
+return
+}
+if(motion.time===0&&(latchOpen<.995||exploded>.015))return;
+motion.time+=dt*speed*(slow?.25:1);
+const t=Math.min(motion.time,motion.duration),f=motion.frames;
+let j=1;while(j<f.length-1&&t>f[j][0])j++;
+const[t0,p0]=f[j-1],[t1,p1]=f[j],u=clamp((t-t0)/(t1-t0),0,1),s=smooth(u);
+for(const k of Object.keys(pose))pose[k]=lerp(p0[k],p1[k],s);
+if(motion.index===4&&j>=2&&j<=5){
+const velocityAt=n=>n<=1||n>=5?0:(f[n+1][1].z-f[n-1][1].z)/(f[n+1][0]-f[n-1][0]);
+pose.z=hermite(p0.z,p1.z,velocityAt(j-1),velocityAt(j),u,t1-t0);
+}
+if(motion.time>=motion.duration){
+motion.finished=true;settle=0;
+for(const k of ['z','x','y'])pose[k]=THREE.MathUtils.euclideanModulo(pose[k]+PI,TAU)-PI;
+}
+}
+const audio={ctx:null,master:null,swish:null,filter:null,pivot:null,pivotGain:null,muted:false,volume:.42};
+function initAudio(){
+if(audio.ctx){if(audio.ctx.state==='suspended')audio.ctx.resume().catch(()=>{});return}
+try{
+const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+audio.ctx=new AC();const c=audio.ctx;audio.master=c.createGain();audio.master.gain.value=audio.muted?0:audio.volume;audio.master.connect(c.destination);
+const buffer=c.createBuffer(1,c.sampleRate*2,c.sampleRate),d=buffer.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+audio.noise=buffer;const source=c.createBufferSource();source.buffer=buffer;source.loop=true;
+audio.filter=c.createBiquadFilter();audio.filter.type='bandpass';audio.filter.frequency.value=1400;audio.filter.Q.value=.6;
+audio.swish=c.createGain();audio.swish.gain.value=0;source.connect(audio.filter).connect(audio.swish).connect(audio.master);source.start();
+audio.pivot=c.createOscillator();audio.pivot.type='triangle';audio.pivot.frequency.value=180;
+audio.pivotGain=c.createGain();audio.pivotGain.gain.value=0;audio.pivot.connect(audio.pivotGain).connect(audio.master);audio.pivot.start();
+}catch(e){$('#mute').textContent='Audio unavailable'}
+}
+function strike(kind,force=.5){
+if(!audio.ctx||audio.ctx.state!=='running')return;
+const c=audio.ctx,t=c.currentTime,g=c.createGain(),level=kind==='latch'?.08:.10+force*.16;
+g.gain.setValueAtTime(level,t);g.gain.exponentialRampToValueAtTime(.0001,t+.09);
+const n=c.createBufferSource();n.buffer=audio.noise;const f=c.createBiquadFilter();f.type='highpass';f.frequency.value=kind==='latch'?4400:2100;n.connect(f).connect(g).connect(audio.master);n.start();n.stop(t+.11);n.onended=()=>{n.disconnect();f.disconnect();g.disconnect()};
+const partials=kind==='ring'?[1460,2337,3811,5192]:kind==='latch'?[3200,5100]:[2200,3641,5720];
+partials.forEach((freq,i)=>{const o=c.createOscillator(),v=c.createGain();o.type='sine';o.frequency.value=freq;v.gain.setValueAtTime((kind==='ring'?.08:.045)*(.25+force)/(i+1),t);v.gain.exponentialRampToValueAtTime(.0001,t+(kind==='ring'?.7:.12)/(1+i*.2));o.connect(v).connect(audio.master);o.start();o.stop(t+.85);o.onended=()=>{o.disconnect();v.disconnect()}});
+}
+function audioMotion(v){
+if(!audio.ctx)return;const t=audio.ctx.currentTime;
+audio.swish.gain.setTargetAtTime(paused?0:Math.min(.16,v*.005),t,.045);audio.filter.frequency.setTargetAtTime(clamp(500+v*90,500,5500),t,.05);
+audio.pivotGain.gain.setTargetAtTime(paused?0:Math.min(.014,v*.0006),t,.03);audio.pivot.frequency.setTargetAtTime(110+Math.min(v,30)*22,t,.05);
+}
+document.addEventListener('pointerdown',initAudio,{passive:true});document.addEventListener('keydown',initAudio);
+const trailCount=56,trailHistory=[],trailPos=new Float32Array(trailCount*6),trailAlpha=new Float32Array(trailCount*2),trailIndices=[];
+for(let i=0;i<trailCount-1;i++){const a=i*2;trailIndices.push(a,a+1,a+2,a+1,a+3,a+2)}
+const trailGeometry=new THREE.BufferGeometry();trailGeometry.setAttribute('position',new THREE.BufferAttribute(trailPos,3));trailGeometry.setAttribute('fade',new THREE.BufferAttribute(trailAlpha,1));trailGeometry.setIndex(trailIndices);
+const trailMaterial=new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,uniforms:{color:{value:new THREE.Color('#d28c59')}},vertexShader:'attribute float fade; varying float vFade; void main(){vFade=fade;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:'uniform vec3 color;varying float vFade;void main(){gl_FragColor=vec4(color,vFade*.5);}'});
+const ribbon=new THREE.Mesh(trailGeometry,trailMaterial);ribbon.frustumCulled=false;scene.add(ribbon);
+const worldTip=new THREE.Vector3(),right=new THREE.Vector3();
+function updateTrail(dt){
+if(!trailEnabled){ribbon.visible=false;return}ribbon.visible=true;
+for(const point of trailHistory)point.age+=dt;
+worldTip.copy(tipLocal);knife.localToWorld(worldTip);trailHistory.unshift({p:worldTip.clone(),age:0});if(trailHistory.length>trailCount)trailHistory.pop();
+right.set(1,0,0).applyQuaternion(camera.quaternion);
+for(let i=0;i<trailCount;i++){
+const p=trailHistory[Math.min(i,trailHistory.length-1)],fade=Math.max(0,1-i/trailCount)*Math.max(0,1-p.age/.7);
+for(let j=0;j<2;j++){const k=i*6+j*3,w=(j===0?-1:1)*.045;trailPos[k]=p.p.x+right.x*w;trailPos[k+1]=p.p.y+right.y*w;trailPos[k+2]=p.p.z+right.z*w;trailAlpha[i*2+j]=fade}
+}
+trailGeometry.attributes.position.needsUpdate=true;trailGeometry.attributes.fade.needsUpdate=true;
+}
+let activeCamera='hero';
+function setCamera(name){
+activeCamera=name;document.querySelectorAll('[data-camera]').forEach(b=>b.classList.toggle('active',b.dataset.camera===name));
+if(name!=='hero'){stopFlow();motion=null;inspecting=true;$('#inspect').setAttribute('aria-pressed','true');markActive(-1);setCaption('Every detail, considered.','INSPECT')}
+knife.updateMatrixWorld(true);
+const target=new THREE.Vector3(),offset=new THREE.Vector3();
+if(name==='hero'){target.set(innerWidth>720?.45:0,-.55,0);offset.set(innerWidth>720?2.7:1,innerWidth>720?3:2,innerWidth>720?26:32);if(explodeTarget)offset.z+=3}
+else{
+if(name==='blade')knife.localToWorld(target.set(-.1,3,0));
+else if(name==='latch')latch.getWorldPosition(target);
+else if(name==='top')knife.getWorldPosition(target);
+else knife.localToWorld(target.set(0,0,0));
+const distance=name==='blade'?7:name==='pivot'?4.3:name==='latch'?4.6:22;
+offset.set(name==='top'?0:.7,name==='top'?0:.6,distance).applyQuaternion(knife.quaternion).add(target);
+}
+viewTween={from:camera.position.clone(),to:offset,start:controls.target.clone(),end:target,t:0};
+}
+controls.addEventListener('start',()=>{viewTween=null;if(!motion){inspecting=true;$('#inspect').setAttribute('aria-pressed','true')}});
+const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
+function hit(event){const rect=renderer.domElement.getBoundingClientRect();pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);return raycaster.intersectObjects(pickables,false)[0]}
+function stopFlow(){mode='';$('#combo').setAttribute('aria-pressed','false');$('#freestyle').setAttribute('aria-pressed','false')}
+function toggleExplode(value){
+explodeTarget=value?1:0;$('#explode').setAttribute('aria-pressed',String(value));stopFlow();motion=null;paused=false;
+$('#pause').setAttribute('aria-pressed','false');$('#pause').textContent='Pause Ⅱ';
+inspecting=value;$('#inspect').setAttribute('aria-pressed',String(value));markActive(-1);
+setCaption(value?'The anatomy of a tide.':'A study in balance.',value?'HOVER TO IDENTIFY':'SHOWCASE');setCamera('hero');
+}
+renderer.domElement.addEventListener('pointerdown',event=>{
+if(event.button!==0||!inspecting||exploded>.02||explodeTarget)return;
+const intersection=hit(event);if(!intersection)return;
+let node=intersection.object;while(node&&node.userData.handle===undefined)node=node.parent;if(!node)return;
+stopFlow();motion=null;markActive(-1);controls.enabled=false;
+const v=new THREE.Vector3();node.getWorldPosition(v);v.project(camera);
+const center={x:(v.x*.5+.5)*innerWidth,y:(-.5*v.y+.5)*innerHeight};
+drag={id:event.pointerId,index:node.userData.handle,start:Math.atan2(event.clientY-center.y,event.clientX-center.x),angle:pose.a,pending:pose.a,center};
+renderer.domElement.setPointerCapture(event.pointerId);setCaption('Follow the current.','DRAG HANDLE');
+},true);
+renderer.domElement.addEventListener('pointermove',event=>{
+if(drag){
+const theta=Math.atan2(event.clientY-drag.center.y,event.clientX-drag.center.x);
+let delta=theta-drag.start;delta=Math.atan2(Math.sin(delta),Math.cos(delta));
+drag.pending=clamp(drag.angle+(drag.index===0?-delta:delta),0,PI);return;
+}
+const intersection=hit(event);
+if(explodeTarget&&intersection){
+let node=intersection.object;while(node&&!node.userData.label)node=node.parent;
+if(node){$('#tooltip').textContent=node.userData.label;$('#tooltip').style.display='block';$('#tooltip').style.left=clamp(event.clientX+14,8,innerWidth-240)+'px';$('#tooltip').style.top=Math.max(8,event.clientY-32)+'px';return}
+}
+$('#tooltip').style.display='none';renderer.domElement.style.cursor=inspecting&&intersection?'grab':'default';
+});
+function endDrag(){if(drag){drag=null;controls.enabled=true;setCaption('Every detail, considered.','INSPECT')}}
+for(const e of ['pointerup','pointercancel','lostpointercapture'])renderer.domElement.addEventListener(e,endDrag);
+renderer.domElement.addEventListener('pointerleave',()=>{$('#tooltip').style.display='none'});
+document.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>{stopFlow();play(+b.dataset.move)});
+$('#combo').onclick=()=>{if(mode==='combo'){stopFlow();return}mode='combo';$('#combo').setAttribute('aria-pressed','true');$('#freestyle').setAttribute('aria-pressed','false');comboIndex=0;play(0)};
+$('#freestyle').onclick=()=>{if(mode==='freestyle'){stopFlow();return}mode='freestyle';$('#freestyle').setAttribute('aria-pressed','true');$('#combo').setAttribute('aria-pressed','false');play(randomMove())};
+$('#pause').onclick=()=>{paused=!paused;$('#pause').setAttribute('aria-pressed',String(paused));$('#pause').textContent=paused?'Resume ▷':'Pause Ⅱ';$('#state').textContent=paused?'PAUSED':motion?'PERFORMING':inspecting?'INSPECT':'SHOWCASE'};
+$('#inspect').onclick=()=>{
+inspecting=!inspecting;$('#inspect').setAttribute('aria-pressed',String(inspecting));
+if(inspecting){stopFlow();motion=null;markActive(-1)}
+$('#hint').textContent=inspecting?'Drag a handle to fold · Drag empty space to orbit · Right-drag to pan':'Drag to orbit · Scroll to zoom · 1–8 to perform · H to hide';
+setCaption(inspecting?'Every detail, considered.':'A study in balance.',inspecting?'DRAG HANDLES':'SHOWCASE')
+};
+$('#explode').onclick=()=>toggleExplode(!explodeTarget);
+$('#hide').onclick=()=>document.body.classList.add('ui-hidden');$('#revealUI').onclick=()=>document.body.classList.remove('ui-hidden');
+$('#speed').oninput=e=>{speed=+e.target.value;$('#speedValue').textContent=speed.toFixed(2)+'×'};
+$('#slow').onclick=()=>{slow=!slow;$('#slow').setAttribute('aria-pressed',String(slow))};
+$('#trail').onclick=()=>{trailEnabled=!trailEnabled;$('#trail').setAttribute('aria-pressed',String(trailEnabled));trailHistory.length=0};
+$('#mute').onclick=()=>{audio.muted=!audio.muted;$('#mute').setAttribute('aria-pressed',String(audio.muted));$('#mute').textContent=audio.muted?'Sound off':'Sound on';if(audio.master)audio.master.gain.setTargetAtTime(audio.muted?0:audio.volume,audio.ctx.currentTime,.03)};
+$('#volume').oninput=e=>{audio.volume=+e.target.value;if(audio.master)audio.master.gain.setTargetAtTime(audio.muted?0:audio.volume,audio.ctx.currentTime,.03)};
+document.querySelectorAll('[data-camera]').forEach(b=>b.onclick=()=>setCamera(b.dataset.camera));
+const colorways=[
+{name:'Salt / copper',pearl:'#e4ddc8',bronze:'#9a684c',steel:'#85735a',edge:'#d1bca2',orange:'#bf643d',inner:'#343d39',blade:'Bronze-coated steel'},
+{name:'Estuary / brass',pearl:'#597973',bronze:'#bba066',steel:'#6a7764',edge:'#d2c897',orange:'#d4c191',inner:'#233e39',blade:'Olive PVD steel'},
+{name:'Midnight / silver',pearl:'#353d4b',bronze:'#a6b6b8',steel:'#596676',edge:'#d1dde1',orange:'#77a7ae',inner:'#222b38',blade:'Slate PVD steel'}
+];
+document.querySelectorAll('[data-color]').forEach(b=>b.onclick=()=>{
+const i=+b.dataset.color,c=colorways[i];pearl.color.set(c.pearl);bronze.color.set(c.bronze);steel.color.set(c.steel);edgeMat.color.set(c.edge);orange.color.set(c.orange);inner.color.set(c.inner);trailMaterial.uniforms.color.value.set(c.bronze);
+$('#colorName').textContent=c.name;$('#finishNumber').textContent='0'+(i+1);$('#bladeSpec').textContent=c.blade;
+document.querySelectorAll('[data-color]').forEach(s=>s.setAttribute('aria-pressed',String(s===b)));
+});
+document.addEventListener('keydown',e=>{
+if(e.target.matches('input')||e.repeat)return;
+if(/^[1-8]$/.test(e.key)){stopFlow();play(+e.key-1)}
+else if(e.code==='Space'){e.preventDefault();$('#pause').click()}
+else if(e.key.toLowerCase()==='h')document.body.classList.toggle('ui-hidden');
+else if(e.key.toLowerCase()==='e')$('#explode').click();
+else if(e.key==='Escape'){if(explodeTarget)toggleExplode(false);document.body.classList.remove('ui-hidden')}
+});
+const temp=new THREE.Vector3(),heldA=new THREE.Vector3(),heldB=new THREE.Vector3(),held=new THREE.Vector3(),basePosition=new THREE.Vector3();
+const prevAngles=[0,0],peaks=[0,0],stopState=[0,0];
+let previousZ=pose.z,previousY=pose.y,previousX=pose.x,idleSway=0;
+function applyPose(dt){
+const animationDT=paused?0:dt;
+if(drag&&latchOpen>.995){
+const next=lerp(pose.a,drag.pending,1-Math.exp(-dt*20));pose.a=Math.abs(next-drag.pending)<.002?drag.pending:next;pose.b=-pose.a;
+}
+handles[0].rotation.z=clamp(pose.a,0,PI);handles[1].rotation.z=clamp(pose.b,-PI,0);
+const idle=!motion&&!inspecting&&!paused&&!explodeTarget&&!drag;
+const sway=idle&&!reduced?Math.sin(showcaseTime*.24)*.16:0;
+idleSway=lerp(idleSway,sway,1-Math.exp(-dt*4));knife.rotation.set(pose.x,pose.y+idleSway,pose.z);
+basePosition.set(innerWidth>720?.65:0,.45+pose.lift,0);
+heldA.set(-.32-Math.sin(pose.a)*3.5,Math.cos(pose.a)*3.5,0);
+heldB.set(.32-Math.sin(pose.b)*3.5,Math.cos(pose.b)*3.5,0);
+held.copy(heldA).lerp(heldB,clamp(pose.side,0,1)).applyEuler(knife.rotation);
+temp.set(.4,-1.35+pose.lift,0).sub(held);knife.position.copy(basePosition).lerp(temp,pose.h);
+exploded=lerp(exploded,explodeTarget,1-Math.exp(-animationDT*5));
+for(const p of parts)p.object.position.z=p.z+p.amount*exploded;
+const fullyClosed=pose.a<.002&&Math.abs(pose.b)<.002,fullyOpen=pose.a>PI-.002&&Math.abs(pose.b)>PI-.002;
+const validLock=fullyClosed||fullyOpen;
+if(validLock&&(!motion||motion.finished)&&!drag)settle+=animationDT;else settle=0;
+const desired=!validLock||drag||exploded>.015||explodeTarget||(motion&&!motion.finished)||settle<.08?1:0;
+latchOpen=lerp(latchOpen,desired,1-Math.exp(-animationDT*22));
+const lockDirection=pose.a>PI*.5?PI:0;
+latchAngle=lerp(latchAngle,lockDirection+latchOpen*1.4,1-Math.exp(-animationDT*25));latch.rotation.z=latchAngle;
+if((prevLatch<.65&&latchOpen>=.65)||(prevLatch>.015&&latchOpen<=.015))strike('latch',.5);prevLatch=latchOpen;
+let angular=0;
+for(let i=0;i<2;i++){
+const a=i===0?pose.a:-pose.b,v=Math.abs(a-prevAngles[i])/Math.max(dt,.001);peaks[i]=Math.max(peaks[i]*Math.exp(-dt*3),v);
+const endpoint=a<.001?0:a>PI-.001?1:-1;
+if(endpoint!==-1&&stopState[i]!==endpoint&&peaks[i]>.12){strike('clack',Math.min(1,peaks[i]/12));if(endpoint===1&&i===1)strike('ring',Math.min(1,peaks[i]/12))}
+stopState[i]=endpoint;prevAngles[i]=a;angular+=v;
+}
+const dz=Math.atan2(Math.sin(pose.z-previousZ),Math.cos(pose.z-previousZ)),dy=Math.atan2(Math.sin(pose.y-previousY),Math.cos(pose.y-previousY)),dx=Math.atan2(Math.sin(pose.x-previousX),Math.cos(pose.x-previousX));
+angular+=(Math.abs(dz)+Math.abs(dy)+Math.abs(dx))/Math.max(dt,.001);
+previousZ=pose.z;previousY=pose.y;previousX=pose.x;
+lastVelocity=lerp(lastVelocity,angular,1-Math.exp(-dt*12));audioMotion(lastVelocity);
+shadow.scale.setScalar(1+Math.max(0,pose.lift)*.13);shadow.material.opacity=.48/(1+Math.max(0,pose.lift)*.25);knife.updateMatrixWorld(true);
+}
+let last=performance.now();
+function render(now){
+requestAnimationFrame(render);
+const dt=Math.min((now-last)/1000,.04);last=now;elapsed+=dt;
+if(!paused)showcaseTime+=dt;
+advance(dt);applyPose(dt);
+if(viewTween){viewTween.t+=dt*1.5;const t=smooth(Math.min(1,viewTween.t));camera.position.lerpVectors(viewTween.from,viewTween.to,t);controls.target.lerpVectors(viewTween.start,viewTween.end,t);if(t===1)viewTween=null}
+controls.update();updateTrail(dt);
+sweep.position.x=elapsed<3?lerp(-8,8,elapsed/3):8;sweep.intensity=elapsed<3?20:5;
+renderer.render(scene,camera);
+}
+function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);if(activeCamera==='hero')setCamera('hero')}
+addEventListener('resize',resize);
+document.addEventListener('visibilitychange',()=>{last=performance.now();if(document.hidden&&audio.ctx)audio.ctx.suspend().catch(()=>{});else if(audio.ctx)audio.ctx.resume().catch(()=>{})});
+booted=true;clearTimeout(bootTimeout);$('#error').style.display='none';$('#loading').classList.add('done');
+setCamera('hero');if(reduced){pose={...idleBase};setCaption('A study in balance.','SHOWCASE')}else play(0,true);
+requestAnimationFrame(render);
+}catch(error){clearTimeout(bootTimeout);fail('Unable to create the 3D exhibit. This browser needs WebGL and access to the Three.js CDN. '+(error?.message||''))}
+</script>
+</body>
+</html>
