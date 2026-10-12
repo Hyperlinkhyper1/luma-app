@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vesper Foundry — TIDELINE</title>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<style>
+:root{color-scheme:dark;--ink:#e9e5dc;--muted:#aaa99f;--line:#ffffff28;--accent:#d2a66f}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#080d12;font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--ink)}
+#app{position:fixed;inset:0}
+canvas{display:block}
+#shade{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at 51% 43%,transparent 27%,#03070bb8 100%);z-index:1}
+#ui{position:fixed;inset:0;z-index:2;pointer-events:none;transition:opacity .3s}
+#ui.hidden{opacity:0}
+#ui button,#ui select,#ui input{pointer-events:auto}
+#top{position:absolute;left:28px;top:24px;max-width:340px}
+#brand{font-size:11px;font-weight:700;letter-spacing:.38em;color:var(--accent)}
+h1{font-size:clamp(31px,4vw,58px);letter-spacing:.13em;font-weight:300;margin:8px 0 3px;line-height:1}
+#subtitle{font-size:11px;letter-spacing:.2em;color:var(--muted)}
+#mark{width:35px;height:35px;margin-bottom:15px;opacity:.8}
+#spec{margin-top:23px;display:grid;grid-template-columns:auto auto;gap:7px 20px;font-size:11px;line-height:1.5;color:var(--muted)}
+#spec b{font-weight:500;color:var(--ink);text-align:right}
+#right{position:absolute;right:24px;top:24px;display:flex;gap:7px;align-items:flex-start;flex-wrap:wrap;justify-content:flex-end;max-width:440px}
+button,select{border:1px solid var(--line);background:#101923d9;color:var(--ink);padding:9px 11px;border-radius:3px;font-size:10px;letter-spacing:.12em;cursor:pointer;backdrop-filter:blur(12px)}
+button:hover,button.active,select:hover{border-color:var(--accent);color:#fff;background:#22303a}
+#bottom{position:absolute;bottom:22px;left:22px;right:22px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px}
+#controls{max-width:690px;display:flex;gap:6px;flex-wrap:wrap}
+#controls button{min-width:92px;text-align:left}
+#controls small{color:var(--accent);margin-right:6px}
+#settings{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--line);background:#101923d9;backdrop-filter:blur(12px);font-size:10px;white-space:nowrap}
+input[type=range]{width:75px;accent-color:var(--accent)}
+#caption{position:absolute;left:50%;bottom:111px;transform:translateX(-50%);font-size:11px;letter-spacing:.3em;color:#efe5d7;text-align:center;text-shadow:0 0 18px #000;white-space:nowrap}
+#hint{position:absolute;right:25px;bottom:100px;font-size:10px;color:#9b9d9f;line-height:1.8;text-align:right}
+#notice{position:fixed;inset:0;z-index:5;display:none;align-items:center;justify-content:center;padding:30px;text-align:center;background:#080d12;color:#e9e5dc}
+#hide{position:fixed;z-index:4;right:18px;bottom:16px;opacity:.65}
+#hover{position:absolute;z-index:3;display:none;pointer-events:none;border:1px solid #d2a66f80;background:#0a1018ec;padding:7px 10px;font-size:11px;letter-spacing:.1em}
+@media(max-width:800px){#top{left:15px;top:15px}#spec{display:none}#right{right:12px;top:13px;max-width:53%}#bottom{left:12px;right:12px;bottom:56px;display:block}#controls{max-width:100%}#controls button{min-width:0;padding:7px;font-size:9px}#settings{margin-top:8px;width:max-content}#hint{display:none}#caption{bottom:164px}}
+</style>
+</head>
+<body>
+<div id="app"></div><div id="shade"></div>
+<div id="ui">
+  <div id="top">
+    <svg id="mark" viewBox="0 0 50 50" fill="none" stroke="#d2a66f" stroke-width="1.7"><path d="M7 31C18 19 22 11 25 4c3 7 7 15 18 27M8 36c8-4 12-7 17-12 5 5 9 8 17 12M13 41h24"/></svg>
+    <div id="brand">VESPER FOUNDRY</div><h1>TIDELINE</h1><div id="subtitle">SERIES 01 · A BALISONG STUDY</div>
+    <div id="spec"><span>OVERALL</span><b>230 MM</b><span>BLADE</span><b>100 MM</b><span>BODY</span><b>TITANIUM · SATIN STEEL</b><span>WEIGHT</span><b>112 G</b><span>PIVOTS</span><b>CAGED CERAMIC BEARINGS</b></div>
+  </div>
+  <div id="right">
+    <button data-camera="hero">HERO</button><button data-camera="blade">BLADE</button><button data-camera="pivot">PIVOT</button><button data-camera="latch">LATCH</button><button data-camera="top">TOP</button>
+    <button id="explode">EXPLODE</button>
+    <select id="colour" aria-label="Colourway"><option value="0">DUSK BRONZE</option><option value="1">COLD TIDE</option><option value="2">EMBER REEF</option></select>
+  </div>
+  <div id="caption">REVEALING · TIDELINE</div>
+  <div id="hint">DRAG TO ORBIT · SCROLL TO ZOOM<br>DRAG A HANDLE TO ARTICULATE</div>
+  <div id="bottom">
+    <div id="controls">
+      <button data-move="open"><small>1</small> BASIC OPEN</button><button data-move="close"><small>2</small> BASIC CLOSE</button><button data-move="chaplin"><small>3</small> CHAPLIN</button><button data-move="zen"><small>4</small> ZEN ROLLOVER</button><button data-move="fan"><small>5</small> FAN</button><button data-move="helix"><small>6</small> HELIX</button><button data-move="aerial"><small>7</small> AERIAL</button><button data-move="signature"><small>8</small> TIDELINE</button><button data-move="combo">COMBO</button><button data-move="freestyle">FREESTYLE</button>
+    </div>
+    <div id="settings"><label>SPEED <input id="speed" type="range" min=".25" max="2" step=".05" value="1"></label><button id="slow">SLOW</button><button id="trail">TRAIL</button><button id="mute">SOUND</button><label>VOL <input id="volume" type="range" min="0" max="1" step=".01" value=".55"></label></div>
+  </div>
+</div>
+<button id="hide">HIDE UI</button><div id="hover"></div><div id="notice"></div>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+
+const app=document.getElementById('app'),caption=document.getElementById('caption'),notice=document.getElementById('notice');
+let renderer;
+try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.45;renderer.shadowMap.enabled=true;app.appendChild(renderer.domElement)}catch(e){notice.style.display='flex';notice.textContent='This 3D experience needs WebGL. Please enable hardware acceleration in your browser.';throw e}
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x080d12);
+const camera=new THREE.PerspectiveCamera(36,innerWidth/innerHeight,.01,100);camera.position.set(0,-.1,7.6);
+const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.06;controls.minDistance=2.1;controls.maxDistance=12;controls.target.set(0,.2,0);
+const pmrem=new THREE.PMREMGenerator(renderer);scene.environment=pmrem.fromScene(new RoomEnvironment(renderer),.04).texture;
+scene.add(new THREE.HemisphereLight(0xd9e7ff,0x1b1c22,1.0));
+function light(color,intensity,x,y,z,size){const l=new THREE.DirectionalLight(color,intensity);l.position.set(x,y,z);scene.add(l);return l}
+light(0xffe8c8,3.6,-3,5,6);light(0xa9d8e9,2.7,4,-1,2);light(0xffa65d,1.3,-5,-2,-3);
+const groundMat=new THREE.MeshPhysicalMaterial({color:0x111a20,metalness:.55,roughness:.43});
+const pedestal=new THREE.Mesh(new THREE.CylinderGeometry(2.12,2.2,.15,96),groundMat);pedestal.rotation.x=Math.PI/2;pedestal.position.z=-.44;scene.add(pedestal);
+const ringMat=new THREE.MeshBasicMaterial({color:0xb88a55,transparent:true,opacity:.3});
+for(let r of [1.76,2.04]){let mesh=new THREE.Mesh(new THREE.TorusGeometry(r,.007,4,128),ringMat);mesh.position.z=-.352;scene.add(mesh)}
+const contact=new THREE.Mesh(new THREE.CircleGeometry(1.25,64),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.38,depthWrite:false}));contact.position.z=-.35;scene.add(contact);
+const knife=new THREE.Group();scene.add(knife);
+const components=[], hoverables=[];
+function mat(color,rough=.3,metal=1,clearcoat=.25){return new THREE.MeshPhysicalMaterial({color,metalness:metal,roughness:rough,clearcoat,clearcoatRoughness:.16,side:THREE.DoubleSide})}
+const steel=mat(0xc5d0d3,.24),edge=mat(0xe4e8e4,.17),darkSteel=mat(0x39464b,.33),gold=mat(0xb88956,.25),voidMat=mat(0x142029,.4),markMat=new THREE.MeshBasicMaterial({color:0x394f56,side:THREE.DoubleSide});
+let scaleMat=mat(0x795947,.32),linerMat=mat(0x9c784f,.27),accentMat=mat(0xc39152,.24);
+function mesh(parent,geo,material,x=0,y=0,z=0,name='',explode=0){let o=new THREE.Mesh(geo,material);o.position.set(x,y,z);parent.add(o);if(name){o.userData.label=name;hoverables.push(o)}if(explode)components.push({obj:o,base:o.position.clone(),offset:explode});return o}
+function shape(points){const s=new THREE.Shape();s.moveTo(...points[0]);for(let i=1;i<points.length;i++)s.lineTo(...points[i]);s.closePath();return s}
+function extrude(points,depth,bevel=.012){let g=new THREE.ExtrudeGeometry(shape(points),{depth,bevelEnabled:true,bevelThickness:bevel,bevelSize:bevel,bevelSegments:2,steps:1,curveSegments:12});g.translate(0,0,-depth/2);return g}
+function capsule(parent,x,y,w,h,z,material,name='',explode=0){let s=new THREE.Shape();let r=w/2;s.moveTo(-r,0);s.lineTo(-r,h-w);s.absarc(0,h-w,r,Math.PI,0,true);s.lineTo(r,0);s.absarc(0,0,r,0,Math.PI,true);const o=mesh(parent,new THREE.ExtrudeGeometry(s,{depth:.032,bevelEnabled:true,bevelThickness:.008,bevelSize:.008,bevelSegments:2}),material,x,y,z,name,explode);return o}
+function cylinder(parent,r,h,material,x,y,z,name='',explode=0){const o=mesh(parent,new THREE.CylinderGeometry(r,r,h,20),material,x,y,z,name,explode);o.rotation.x=Math.PI/2;return o}
+function line(parent,pts,color,opacity=1){let g=new THREE.BufferGeometry().setFromPoints(pts.map(p=>new THREE.Vector3(...p)));let o=new THREE.Line(g,new THREE.LineBasicMaterial({color,transparent:opacity<1,opacity}));parent.add(o);return o}
+const blade=new THREE.Group();knife.add(blade);
+const bladeOutline=[[-.31,-.20],[.30,-.20],[.28,.13],[.27,.25],[.22,.42],[.19,1.10],[.18,1.78],[.12,2.02],[-.02,2.22],[-.14,2.37],[-.23,2.40],[-.27,2.26],[-.26,1.89],[-.27,1.05],[-.28,.43],[-.31,.25]];
+const bladeBody=mesh(blade,extrude(bladeOutline,.065,.008),steel,0,0,0,'Satin steel blade',.32);
+mesh(blade,extrude([[-.27,.47],[-.18,.52],[-.15,1.94],[-.23,2.27],[-.27,2.24]],.005,.001),edge,0,0,.038,'Hollow ground edge',.34);
+line(blade,[[-.15,.51,.049],[-.13,1.87,.049],[-.21,2.28,.049]],0x89999c,.8);
+for(let p of [[-.15,1.40],[-.055,1.44],[.04,1.4]]){let o=mesh(blade,new THREE.CapsuleGeometry(.023,.30,4,8),darkSteel,p[0],p[1],.040,'Tidal fuller',.34);o.rotation.z=.06}
+const choil=mesh(blade,new THREE.TorusGeometry(.07,.013,5,24,Math.PI),darkSteel,-.245,.42,.045,'Choil',.33);choil.rotation.z=Math.PI/2;
+mesh(blade,extrude([[-.24,.30],[-.17,.29],[-.15,.44],[-.23,.45]],.075,.004),darkSteel,0,0,0,'Kicker',.32);
+const emblem=new THREE.Group();blade.add(emblem);emblem.position.set(.08,.78,.051);
+line(emblem,[[-.08,0,0],[0,.15,0],[.08,0,0],[-.08,0,0]],0x3a5558);
+line(emblem,[[-.10,-.035,0],[0,.025,0],[.10,-.035,0]],0x3a5558);
+line(emblem,[[-.07,-.06,0],[.07,-.06,0]],0x3a5558);
+const handles=[];
+function makeHandle(side){
+  const pivotX=side*.205, group=new THREE.Group();group.position.x=pivotX;knife.add(group);
+  const h=new THREE.Group();group.add(h);h.position.y=-.13;
+  // The two channel walls flank the blade, leaving a visible open channel.
+  for(let face of [-1,1]){
+    const z=face*.115;
+    const rail=mesh(h,extrude([[-.15,-.02],[.15,-.02],[.16,-1.55],[.12,-1.70],[-.12,-1.70],[-.16,-1.55]],.037,.014),linerMat,0,0,z,'Chamfered titanium liner',face*.42);
+    const sc=capsule(h,0,-1.65,.255,1.61,z+face*.035,scaleMat,'Tidal bronze scale',face*.54);sc.rotation.z=Math.PI;
+    // The signature detail: five tide-mark channels that climb each handle.
+    for(let i=0;i<5;i++){let yy=-.50-i*.225;let xx=(i%2?-.015:.017);let groove=mesh(h,new THREE.CapsuleGeometry(.012,.105,3,6),voidMat,xx,yy,z+face*.070,'Milled tide-line',face*.56);groove.rotation.z=side*(.22+i*.08)}
+    for(let yy of [-.37,-1.49]){cylinder(h,.035,.015,darkSteel,0,yy,z+face*.079,'Scale screw',face*.60)}
+  }
+  const end=mesh(h,new THREE.BoxGeometry(.27,.09,.27),accentMat,0,-1.72,0,'Anodised end cap',side*.47);end.geometry=new THREE.CapsuleGeometry(.115,.07,4,10);end.rotation.z=Math.PI/2;
+  for(let face of [-1,1]){
+    cylinder(group,.118,.032,accentMat,0,0,face*.17,'Pivot collar',face*.72);
+    cylinder(group,.079,.041,darkSteel,0,0,face*.19,'Pivot screw',face*.85);
+    cylinder(group,.029,.044,steel,0,0,face*.215,'Pivot screw head',face*.91)
+  }
+  cylinder(group,.115,.013,steel,0,0,.064,'Bearing washer',.49);
+  cylinder(group,.115,.013,steel,0,0,-.064,'Bearing washer',-.49);
+  handles.push({group,h,side,angle:0,last:0});
+}
+makeHandle(-1);makeHandle(1);
+for(let side of [-1,1]) cylinder(knife,.031,.28,gold,side*.31,.35,0,'Zen stop pin',side*.28);
+const latchPivot=new THREE.Group();handles[1].h.add(latchPivot);latchPivot.position.set(0,-1.64,.21);
+const latch=mesh(latchPivot,extrude([[-.055,0],[.055,0],[.060,-.22],[.015,-.28],[-.045,-.21]],.055,.009),darkSteel,0,0,0,'Wave-shaped latch',.66);
+cylinder(latchPivot,.056,.023,accentMat,0,0,.063,'Latch pivot',.72);
+let latchAngle=0,explode=0,explodeTarget=0;
+function pose(a,b,rot=0,x=0,y=0,z=0){handles[0].angle=a;handles[1].angle=b;knife.rotation.z=rot;knife.position.set(x,y,z)}
+function setHandles(){for(let h of handles)h.group.rotation.z=h.sideh.angle;latchPivot.rotation.z=latchAngle}
+function smooth(t){t=Math.max(0,Math.min(1,t));return tt(3-2*t)}
+function seg(t,a,b){return smooth((t-a)/(b-a))}
+function lerp(a,b,t){return a+(b-a)*t}
+const closed=Math.PI-.16,opened=.03;
+let current='reveal',queue=[],loop='',phase=0,speed=1,slow=false,trailOn=false,muted=false,userMode=false;
+const durations={reveal:3.3,open:2.25,close:2.2,chaplin:2.7,zen:2.5,fan:3.2,helix:2.8,aerial:3.0,signature:3.5};
+const labels={reveal:'REVEALING · TIDELINE',open:'BASIC OPEN',close:'BASIC CLOSE',chaplin:'CHAPLIN',zen:'ZEN ROLLOVER',fan:'FAN',helix:'HELIX',aerial:'AERIAL',signature:'TIDELINE · SIGNATURE MOVE'};
+const sequence=['open','chaplin','zen','fan','helix','aerial','signature','close'];
+let prior='';function next(){if(queue.length){current=queue.shift()}else if(loop==='combo'){queue=sequence.slice();current=queue.shift()}else if(loop==='freestyle'){let choices=Object.keys(durations).filter(x=>x!=='reveal'&&x!==prior);current=choices[Math.floor(Math.random()choices.length)]}else{current='idle'}prior=current;phase=0;caption.textContent=labels[current]||'TIDELINE · AT REST'}
+function run(name){userMode=true;loop='';queue=[];if(name==='combo'){loop='combo';queue=sequence.slice();next()}else if(name==='freestyle'){loop='freestyle';next()}else{current=name;phase=0;caption.textContent=labels[name]||name.toUpperCase()}document.querySelectorAll('[data-move]').forEach(b=>b.classList.toggle('active',b.dataset.move===name))}
+function evalMove(n,t){let q=smooth(t),s=Math.sin,pi=Math.PI;
+  let a=opened,b=opened,r=0,x=0,y=0,z=0,rx=0,ry=0;
+  if(n==='reveal'){let u=seg(t,.13,.80);a=lerp(closed,opened,u);b=lerp(closed,opened,seg(t,.22,.87));r=lerp(-.37,0,q);ry=(1-q).62;y=lerp(-.16,.12,q)}
+  if(n==='open'){a=lerp(closed,opened,seg(t,.13,.58));b=lerp(closed,opened,seg(t,.47,.90));r=.25s(pit)(.7+.3s(pit));x=.12s(pit)}
+  if(n==='close'){a=lerp(opened,closed,seg(t,.12,.54));b=lerp(opened,closed,seg(t,.48,.9));r=-.23s(pit)}
+  if(n==='chaplin'){let cycle=2piseg(t,.12,.90);r=cycle;x=.44s(cycle);y=.28(1-Math.cos(cycle));a=.08+.17s(cycle)*2;b=.06+.12s(cycle+.8)*2;ry=.22s(cycle)}
+  if(n==='zen'){let u=seg(t,.08,.91);r=-2piu;x=.43s(2piu);y=.20+.46s(piu);a=.08+.23s(piu)*2;b=.05+.12s(2piu)*2;rx=.55s(piu)}
+  if(n==='fan'){let u=seg(t,.08,.93);let w=6piu;r=w;x=.21s(w);y=.12+.12s(w);a=.12+.22s(w+.7)*2;b=.12+.25s(w)*2;ry=.24s(w)}
+  if(n==='helix'){let u=seg(t,.08,.92);ry=4piu;r=.55s(2piu);a=.05+1.05s(piu)*2;b=.05+.72s(pi*u)*2;y=.18+.18s(pi*u)}
+  if(n==='aerial'){let u=seg(t,.13,.87);r=2piu;rx=2piu;ry=piu;x=.27s(2piu);y=.15+1.084u(1-u);a=.04+1.15s(piu)*2;b=.04+.84s(piu)*2;z=.18s(pi*u)}
+  if(n==='signature'){let u=seg(t,.07,.93),w=4piu;r=w+.35s(3w);ry=2piu;rx=.25s(2w);x=.30s(w);y=.18+.36s(piu)*2;a=.08+.92s(piu)*2;b=.07+.78s(pi*u+.45)*2}
+  return {a,b,r,x,y,z,rx,ry}
+}
+let audio,master,noiseBuffer,swishSource,swishFilter,swishGain,lastTip=new THREE.Vector3(),tipVelocity=0;
+function initAudio(){if(audio)return;try{audio=new (window.AudioContext||window.webkitAudioContext)();master=audio.createGain();master.gain.value=Number(document.getElementById('volume').value);master.connect(audio.destination);noiseBuffer=audio.createBuffer(1,audio.sampleRate2,audio.sampleRate);let d=noiseBuffer.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()2-1;swishSource=audio.createBufferSource();swishSource.buffer=noiseBuffer;swishSource.loop=true;swishFilter=audio.createBiquadFilter();swishFilter.type='bandpass';swishGain=audio.createGain();swishGain.gain.value=0;swishSource.connect(swishFilter).connect(swishGain).connect(master);swishSource.start()}catch(e){}}
+function tone(freq,dur,amp,type='sine',delay=0){if(!audio||muted)return;let o=audio.createOscillator(),g=audio.createGain(),now=audio.currentTime+delay;o.type=type;o.frequency.setValueAtTime(freq,now);g.gain.setValueAtTime(Math.max(.0001,amp),now);g.gain.exponentialRampToValueAtTime(.0001,now+dur);o.connect(g).connect(master);o.start(now);o.stop(now+dur+.01)}
+function click(loud=.5){tone(1600,.025,.055loud,'triangle');tone(440,.055,.035loud,'square')}
+function pin(loud){tone(650+220loud,.12,.09loud,'triangle');tone(2190,.07,.035loud,'sine');tone(3370,.04,.018loud)}
+function ring(){for(let [f,d,a] of [[890,.65,.036],[1425,.45,.022],[2340,.29,.014]])tone(f,d,a)}
+function soundStops(dt){for(let h of handles){let a=h.angle;let v=Math.abs(a-h.last)/Math.max(dt,.001);if((h.last>.10&&a<=.10)||(h.last<closed-.10&&a>=closed-.10)){pin(Math.min(1.4,.3+v.13));if(a<=.1)ring()}h.last=a}}
+function setColour(i){const sets=[['#806048','#9e784d','#c8985b'],['#4a6470','#75939a','#b7c5bb'],['#704842','#9c5740','#df9a64']];let c=sets[i];scaleMat.color.set(c[0]);linerMat.color.set(c[1]);accentMat.color.set(c[2]);document.documentElement.style.setProperty('--accent',c[2])}
+document.getElementById('colour').onchange=e=>setColour(+e.target.value);
+document.getElementById('explode').onclick=e=>{explodeTarget=explodeTarget?0:1;e.target.classList.toggle('active',!!explodeTarget);caption.textContent=explodeTarget?'EXPLODED · HOVER TO IDENTIFY':'TIDELINE · ASSEMBLED'};
+document.getElementById('speed').oninput=e=>speed=+e.target.value;
+document.getElementById('slow').onclick=e=>{slow=!slow;e.target.classList.toggle('active',slow)};
+document.getElementById('trail').onclick=e=>{trailOn=!trailOn;e.target.classList.toggle('active',trailOn);if(!trailOn)trailPts=[]};
+document.getElementById('mute').onclick=e=>{muted=!muted;e.target.textContent=muted?'MUTED':'SOUND';e.target.classList.toggle('active',muted);if(audio)master.gain.value=muted?0:+document.getElementById('volume').value};
+document.getElementById('volume').oninput=e=>{if(audio&&!muted)master.gain.value=+e.target.value};
+document.getElementById('hide').onclick=e=>{let h=document.getElementById('ui').classList.toggle('hidden');e.target.textContent=h?'SHOW UI':'HIDE UI'};
+document.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>run(b.dataset.move));
+const presets={hero:[0,-.1,7.6,0,.2,0],blade:[.22,1.45,3.1,0,1.35,0],pivot:[.5,-.15,2.7,0,-.1,0],latch:[.1,-1.8,2.6,0,-1.45,0],top:[.01,.01,7.0,0,0,0]};
+let cameraGoal=null;document.querySelectorAll('[data-camera]').forEach(b=>b.onclick=()=>{cameraGoal=presets[b.dataset.camera];document.querySelectorAll('[data-camera]').forEach(x=>x.classList.toggle('active',x===b))});
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;const ks=['open','close','chaplin','zen','fan','helix','aerial','signature'];if(+e.key>=1&&+e.key<=8)run(ks[+e.key-1]);if(e.key.toLowerCase()==='h')document.getElementById('hide').click()});
+document.addEventListener('pointerdown',initAudio,{once:true});
+const ray=new THREE.Raycaster(),pointer=new THREE.Vector2(),hover=document.getElementById('hover');let dragging=null,downX=0,downY=0;
+renderer.domElement.addEventListener('pointerdown',e=>{downX=e.clientX;downY=e.clientY;pointer.set(e.clientX/innerWidth2-1,-e.clientY/innerHeight2+1);ray.setFromCamera(pointer,camera);const hits=ray.intersectObjects(handles.flatMap(h=>h.h.children),true);if(hits.length){let obj=hits[0].object,side=handles.findIndex(h=>h.h.children.includes(obj)||h.h===obj.parent);if(side>=0){dragging={side,start:handles[side].angle,x:e.clientX};controls.enabled=false;userMode=true;current='idle';loop='';queue=[];caption.textContent='MANUAL ARTICULATION';renderer.domElement.setPointerCapture(e.pointerId)}}});
+renderer.domElement.addEventListener('pointermove',e=>{if(dragging){let val=dragging.start+(e.clientX-dragging.x).009;let a=Math.max(opened,Math.min(closed,val));handles[dragging.side].angle=a;handles[1-dragging.side].angle=a;latchAngle=a>.95?-.8:-.25;setHandles();return}if(explode<.15){hover.style.display='none';return}pointer.set(e.clientX/innerWidth2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(pointer,camera);let hits=ray.intersectObjects(hoverables,false);if(hits.length){hover.textContent=hits[0].object.userData.label;hover.style.display='block';hover.style.left=(e.clientX+15)+'px';hover.style.top=(e.clientY+15)+'px'}else hover.style.display='none'});
+renderer.domElement.addEventListener('pointerup',()=>{dragging=null;controls.enabled=true});
+let trailPts=[],trailMesh=null;
+function updateTrail(tip){if(!trailOn){if(trailMesh){scene.remove(trailMesh);trailMesh.geometry.dispose();trailMesh=null}return}trailPts.push(tip.clone());if(trailPts.length>38)trailPts.shift();if(trailPts.length<3)return;if(trailMesh){scene.remove(trailMesh);trailMesh.geometry.dispose()}let verts=[],colors=[],indices=[];for(let i=0;i<trailPts.length;i++){let p=trailPts[i],q=trailPts[Math.min(i+1,trailPts.length-1)],dir=q.clone().sub(p).normalize(),side=new THREE.Vector3(-dir.y,dir.x,0).multiplyScalar(.015i/trailPts.length);for(let k of [-1,1]){let v=p.clone().addScaledVector(side,k);verts.push(v.x,v.y,v.z);let c=new THREE.Color(0xd5a26c).multiplyScalar(i/trailPts.length);colors.push(c.r,c.g,c.b)}if(i<trailPts.length-1){let n=i2;indices.push(n,n+1,n+2,n+1,n+3,n+2)}}let g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));g.setIndex(indices);trailMesh=new THREE.Mesh(g,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.65,side:THREE.DoubleSide,depthWrite:false}));scene.add(trailMesh)}
+let last=performance.now(),idleTime=0,wasOpen=false;
+function animate(now){requestAnimationFrame(animate);let dt=Math.min(.05,(now-last)/1000);last=now;idleTime+=dt;
+if(!dragging){
+  if(current==='idle'){if(!userMode){knife.rotation.y+=dt*.13;knife.rotation.x=.05Math.sin(idleTime.7)}}
+  else{phase+=dtspeed(slow?.25:1);let t=Math.min(1,phase/durations[current]);let p=evalMove(current,t);
+    let blend=Math.min(1,dt*8);handles[0].angle=lerp(handles[0].angle,p.a,blend);handles[1].angle=lerp(handles[1].angle,p.b,blend);
+    knife.rotation.z=lerp(knife.rotation.z,p.r,blend);knife.rotation.x=lerp(knife.rotation.x,p.rx,blend);knife.rotation.y=lerp(knife.rotation.y,p.ry,blend);
+    knife.position.x=lerp(knife.position.x,p.x,blend);knife.position.y=lerp(knife.position.y,p.y,blend);knife.position.z=lerp(knife.position.z,p.z,blend);
+    let apart=Math.max(handles[0].angle,handles[1].angle);let desiredLatch=apart>.3?-.75:0;latchAngle=lerp(latchAngle,desiredLatch,Math.min(1,dt12));
+    if(wasOpen!== (desiredLatch<-.4)){click(.6);wasOpen=desiredLatch<-.4}
+    soundStops(dt);
+    if(t>=1){if(current==='reveal'){current='idle';caption.textContent='TIDELINE · AT REST'}else next()}
+  }
+}
+setHandles();explode=lerp(explode,explodeTarget,Math.min(1,dt5));for(let c of components)c.obj.position.z=c.base.z+c.offsetexplode;
+if(cameraGoal){camera.position.lerp(new THREE.Vector3(...cameraGoal.slice(0,3)),Math.min(1,dt3));controls.target.lerp(new THREE.Vector3(...cameraGoal.slice(3)),Math.min(1,dt3));if(camera.position.distanceTo(new THREE.Vector3(...cameraGoal.slice(0,3)))<.01)cameraGoal=null}
+knife.updateWorldMatrix(true,false);let tip=blade.localToWorld(new THREE.Vector3(-.18,2.31,.04));tipVelocity=tip.distanceTo(lastTip)/Math.max(dt,.001);lastTip.copy(tip);updateTrail(tip);
+if(audio&&swishGain){let v=Math.min(1,tipVelocity/8);swishGain.gain.setTargetAtTime(muted?0:v*.055,audio.currentTime,.055);swishFilter.frequency.setTargetAtTime(350+v*2100,audio.currentTime,.06)}
+controls.update();renderer.render(scene,camera)}
+pose(closed,closed,-.37,0,-.16);setHandles();requestAnimationFrame(animate);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script>
+</body>
+</html>
