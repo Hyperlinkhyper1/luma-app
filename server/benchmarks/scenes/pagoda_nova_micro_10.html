@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D PAGODA BENCHMARK</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+    <script type="importmap">
+        {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const { THREE } = await import('three');
+            const { OrbitControls } = await import('three/examples/jsm/controls/OrbitControls.js');
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.screenSpacePanning = false;
+            controls.minDistance = 5;
+            controls.maxDistance = 20;
+            controls.maxPolarAngle = Math.PI / 2;
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(1, 1, 1).normalize();
+            scene.add(directionalLight);
+
+            const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
+            scene.add(hemisphereLight);
+
+            const pointLights = [];
+            for (let i = 0; i < 4; i++) {
+                const light = new THREE.PointLight(0xffffff, 0.8, 100);
+                light.position.set(i * 20 + 10, 10, i * 10 + 10);
+                scene.add(light);
+                pointLights.push(light);
+            }
+
+            const voxelMaterials = [
+                new THREE.MeshStandardMaterial({ color: 0x9AA0A6 }), // Stone
+                new THREE.MeshStandardMaterial({ color: 0xE8B86D }), // Gold
+                new THREE.MeshStandardMaterial({ color: 0x4A2C1A }), // Deep Teak
+                new THREE.MeshStandardMaterial({ color: 0x2D6A4F }), // Jade
+                new THREE.MeshStandardMaterial({ color: 0x40916C }), // Jade
+                new THREE.MeshStandardMaterial({ color: 0xC73E1D }), // Vermillion
+                new THREE.MeshStandardMaterial({ color: 0x7ED6DF }), // Pond
+                new THREE.MeshStandardMaterial({ color: 0x606C38 }) // Moss
+            ];
+
+            const voxelGroup = new THREE.Group();
+            scene.add(voxelGroup);
+
+            const voxelCounts = [4000, 2000, 1500, 1000, 500];
+            const totalVoxelCount = voxelCounts.reduce((acc, count) => acc + count, 0);
+
+            for (let floorIndex = 0; floorIndex < 5; floorIndex++) {
+                const count = voxelCounts[floorIndex];
+                const geometry = new THREE.BoxGeometry(1, 1, 1);
+                const instancedMesh = new THREE.InstancedMesh(geometry, voxelMaterials[floorIndex % voxelMaterials.length], count);
+                instancedMesh.position.set(0, 20 * floorIndex, 0);
+                voxelGroup.add(instancedMesh);
+            }
+
+            const terrain = new THREE.BoxGeometry(64, 1, 64);
+            const terrainMaterial = new THREE.MeshStandardMaterial({ color: 0x9AA0A6 });
+            const terrainMesh = new THREE.Mesh(terrain, terrainMaterial);
+            terrainMesh.position.y = -0.5;
+            scene.add(terrainMesh);
+
+            const createVoxelPath = () => {
+                const geometry = new THREE.BoxGeometry(1, 0.5, 1);
+                const material = new THREE.MeshStandardMaterial({ color: 0x9AA0A6 });
+                for (let i = 0; i < 64; i++) {
+                    for (let j = 0; j < 64; j++) {
+                        const x = i % 2 === 0 ? j * 2 : j * 2 + 1;
+                        const z = i % 2 === 0? j * 2 : j * 2;
+                        const pathMesh = new THREE.Mesh(geometry, material);
+                        pathMesh.position.set(x, 0, z);
+                        scene.add(pathMesh);
+                    }
+                }
+            };
+            createVoxelPath();
+
+            const pondGeometry = new THREE.BoxGeometry(60, 0.1, 60);
+            const pondMaterial = new THREE.MeshStandardMaterial({ color: 0x7ED6DF });
+            const pondMesh = new THREE.Mesh(pondGeometry, pondMaterial);
+            pondMesh.position.set(0, -1, 0);
+            scene.add(pondMesh);
+
+            const createLantern = (x, y, z, color) => {
+                const geometry = new THREE.BoxGeometry(1, 2, 1);
+                const material = new THREE.MeshStandardMaterial({ color });
+                const lantern = new THREE.Mesh(geometry, material);
+                lantern.position.set(x, y, z);
+                lantern.isLantern = true;
+                return lantern;
+            };
+
+            const lanterns = [];
+            for (let i = 0; i < 4; i++) {
+                const lantern = createLantern(i * 15 - 10, 1, i * 10 - 10, 0xE8B86D);
+                lanterns.push(lantern);
+                scene.add(lantern);
+            }
+
+            const animate = () => {
+                requestAnimationFrame(animate);
+                const time = Date.now() * 0.0005;
+
+                for (const lantern of lanterns) {
+                    lantern.rotation.y = time;
+                }
+
+                controls.update();
+                renderer.render(scene, camera);
+            };
+            animate();
+
+            function updateStats() {
+                const voxelCount = scene.children.reduce((acc, child) => acc + (child.isInstancedMesh ? child.count : 1), 0);
+                const fps = Math.round(1 / ((Date.now() - time) / 1000));
+                document.title = `${voxelCount} voxels | ${fps} FPS`;
+                window.__VOXEL__ = { voxelCount, fps, pagodaFloors: 5, timeOfDay: Date.now() % 86400000 };
+            }
+            let time = Date.now();
+            setInterval(updateStats, 1000);
+
+            controls.addEventListener('change', () => {
+                requestAnimationFrame(updateStats);
+            });
+
+            camera.position.set(0, 5, -10);
+            controls.autoRotate = true;
+
+            const intro = () => {
+                const camTween = TweenMax.to(camera.position, { duration: 2.5, x: 0, y: 5, z: -10, onUpdate: () => renderer.render(scene, camera) });
+                const lookAtTween = TweenMax.to(camera.rotation, { duration: 2.5, x: 0, y: 0, z: 0, onUpdate: () => renderer.render(scene, camera) });
+                camTween.eventCallback('onComplete', () => controls.autoRotate = false);
+            };
+            intro();
+        });
+    </script>
+</body>
+</html>
