@@ -59,6 +59,16 @@ Color teamFinishedSurface(BuildContext context) {
 }
 
 /// "by name", or the stand-in for a deleted account.
+/// The warning shown when a Discord post lacks the file its forum asks for.
+String? teamDiscordMissingLabel(L t, TeamDiscordMissing missing) =>
+    switch (missing) {
+      TeamDiscordMissing.none => null,
+      TeamDiscordMissing.image => t.teamClipboardMissingImage,
+      TeamDiscordMissing.log => t.teamClipboardMissingLog,
+      TeamDiscordMissing.both => t.teamClipboardMissingBoth,
+      TeamDiscordMissing.either => t.teamClipboardMissingEither,
+    };
+
 String teamPerson(L t, String name) =>
     name.isEmpty ? t.teamClipboardFormerMember : name;
 

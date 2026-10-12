@@ -15,6 +15,128 @@ class LNl extends L {
   String get teamClipboardDiscordBot => 'Discord-bot';
 
   @override
+  String get teamDiscordForumsTitle => 'Forums volgen';
+
+  @override
+  String get teamDiscordForumsHint =>
+      'Zet nieuwe berichten uit forums zoals #bug-reports op het klembord, met bestanden.';
+
+  @override
+  String get teamDiscordNoForumRules => 'Er worden nog geen forums gevolgd.';
+
+  @override
+  String get teamDiscordNewForum => 'Forum volgen';
+
+  @override
+  String get teamDiscordEditForum => 'Gevolgd forum bewerken';
+
+  @override
+  String get teamDiscordForumLabel => 'Forumkanaal';
+
+  @override
+  String get teamDiscordForumRequired => 'Kies een forum.';
+
+  @override
+  String get teamDiscordNoForumsSeen =>
+      'De bot ziet geen forumkanalen. Hij moet online zijn en in een server met een forum zitten.';
+
+  @override
+  String get teamDiscordTagsLabel => 'Alleen berichten met deze tags';
+
+  @override
+  String get teamDiscordTagsHint => 'Kies er geen om elk bericht mee te nemen.';
+
+  @override
+  String get teamDiscordAllPosts => 'Alle berichten';
+
+  @override
+  String get teamDiscordKindLabel => 'Op het klembord zetten als';
+
+  @override
+  String get teamDiscordRequireLabel => 'Berichten moeten bevatten';
+
+  @override
+  String get teamDiscordRequireNone => 'Niets in het bijzonder';
+
+  @override
+  String get teamDiscordRequireImage => 'Een screenshot';
+
+  @override
+  String get teamDiscordRequireLog => 'Een logbestand';
+
+  @override
+  String get teamDiscordRequireEither => 'Een screenshot of een logbestand';
+
+  @override
+  String get teamDiscordRequireBoth => 'Een screenshot en een logbestand';
+
+  @override
+  String get teamDiscordMissingLabel => 'Antwoord als er iets ontbreekt';
+
+  @override
+  String get teamDiscordMissingHint =>
+      'Wordt in de thread geplaatst met een vermelding van de auteur. Laat leeg om niets te zeggen. Het bericht komt toch op het klembord.';
+
+  @override
+  String get teamDiscordMissingDefault =>
+      'Bedankt voor je melding! Voeg een screenshot en je latest.log toe, dan kunnen we ernaar kijken.';
+
+  @override
+  String get teamDiscordDoneLabel => 'Antwoord bij opgelost of gesloten';
+
+  @override
+  String teamDiscordDoneHint(String token) {
+    return '$token wordt “fixed”, “added” of “closed”. Daarna sluit de bot het bericht. Laat leeg om zonder bericht te sluiten.';
+  }
+
+  @override
+  String teamDiscordDoneDefault(String token) {
+    return 'Dit is bij ons $token. Bedankt voor je melding!';
+  }
+
+  @override
+  String teamDiscordLogForum(String user, String title) {
+    return '$user plaatste “$title”';
+  }
+
+  @override
+  String teamDiscordLogForumDone(String title) {
+    return 'Bericht “$title” gesloten';
+  }
+
+  @override
+  String teamClipboardFromDiscord(String name) {
+    return 'Uit Discord · geplaatst door $name';
+  }
+
+  @override
+  String get teamClipboardOpenInDiscord => 'Openen in Discord';
+
+  @override
+  String get teamClipboardViaDiscord => 'via Discord';
+
+  @override
+  String get teamClipboardMissingImage => 'Mist nog een screenshot';
+
+  @override
+  String get teamClipboardMissingLog => 'Mist nog een logbestand';
+
+  @override
+  String get teamClipboardMissingBoth =>
+      'Mist nog een screenshot en een logbestand';
+
+  @override
+  String get teamClipboardMissingEither =>
+      'Mist nog een screenshot of een logbestand';
+
+  @override
+  String get teamClipboardDiscordOnly => 'Alleen op Discord';
+
+  @override
+  String get teamClipboardLogTail =>
+      'Alleen het einde van het log staat hier. Kopieer of download het voor het hele bestand.';
+
+  @override
   String get teamDiscordPlugins => 'Plugins';
 
   @override
@@ -39143,7 +39265,7 @@ class LNl extends L {
 
   @override
   String teamClipboardFileWrongType(String name) {
-    return '$name is geen .png-, .json- of .mcmeta-bestand.';
+    return '$name is geen .png-, .json-, .mcmeta-, .log- of .txt-bestand.';
   }
 
   @override

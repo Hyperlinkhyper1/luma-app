@@ -15,6 +15,129 @@ class LEs extends L {
   String get teamClipboardDiscordBot => 'Bot de Discord';
 
   @override
+  String get teamDiscordForumsTitle => 'Seguimiento de foros';
+
+  @override
+  String get teamDiscordForumsHint =>
+      'Lleva las nuevas publicaciones de foros como #bug-reports al portapapeles, con sus archivos.';
+
+  @override
+  String get teamDiscordNoForumRules => 'Aún no se sigue ningún foro.';
+
+  @override
+  String get teamDiscordNewForum => 'Seguir un foro';
+
+  @override
+  String get teamDiscordEditForum => 'Editar foro seguido';
+
+  @override
+  String get teamDiscordForumLabel => 'Canal de foro';
+
+  @override
+  String get teamDiscordForumRequired => 'Elige un foro.';
+
+  @override
+  String get teamDiscordNoForumsSeen =>
+      'El bot no ve ningún canal de foro. Tiene que estar en línea y en un servidor que tenga uno.';
+
+  @override
+  String get teamDiscordTagsLabel => 'Solo publicaciones con estas etiquetas';
+
+  @override
+  String get teamDiscordTagsHint =>
+      'No elijas ninguna para tomar todas las publicaciones.';
+
+  @override
+  String get teamDiscordAllPosts => 'Todas las publicaciones';
+
+  @override
+  String get teamDiscordKindLabel => 'Añadir al portapapeles como';
+
+  @override
+  String get teamDiscordRequireLabel => 'Las publicaciones deben incluir';
+
+  @override
+  String get teamDiscordRequireNone => 'Nada en particular';
+
+  @override
+  String get teamDiscordRequireImage => 'Una captura de pantalla';
+
+  @override
+  String get teamDiscordRequireLog => 'Un archivo de registro';
+
+  @override
+  String get teamDiscordRequireEither => 'Una captura o un archivo de registro';
+
+  @override
+  String get teamDiscordRequireBoth => 'Una captura y un archivo de registro';
+
+  @override
+  String get teamDiscordMissingLabel => 'Respuesta si falta algo';
+
+  @override
+  String get teamDiscordMissingHint =>
+      'Se publica en el hilo mencionando al autor. Déjalo vacío para no decir nada. La publicación llega igualmente al portapapeles.';
+
+  @override
+  String get teamDiscordMissingDefault =>
+      '¡Gracias por el reporte! Añade una captura de pantalla y tu latest.log para que podamos revisarlo.';
+
+  @override
+  String get teamDiscordDoneLabel => 'Respuesta al arreglar o cerrar';
+
+  @override
+  String teamDiscordDoneHint(String token) {
+    return '$token se convierte en «fixed», «added» o «closed». Luego el bot cierra la publicación. Déjalo vacío para cerrarla sin mensaje.';
+  }
+
+  @override
+  String teamDiscordDoneDefault(String token) {
+    return 'Esto ya está $token por nuestra parte. ¡Gracias por avisar!';
+  }
+
+  @override
+  String teamDiscordLogForum(String user, String title) {
+    return '$user publicó «$title»';
+  }
+
+  @override
+  String teamDiscordLogForumDone(String title) {
+    return 'Publicación «$title» cerrada';
+  }
+
+  @override
+  String teamClipboardFromDiscord(String name) {
+    return 'Desde Discord · publicado por $name';
+  }
+
+  @override
+  String get teamClipboardOpenInDiscord => 'Abrir en Discord';
+
+  @override
+  String get teamClipboardViaDiscord => 'vía Discord';
+
+  @override
+  String get teamClipboardMissingImage => 'Aún falta una captura de pantalla';
+
+  @override
+  String get teamClipboardMissingLog => 'Aún falta un archivo de registro';
+
+  @override
+  String get teamClipboardMissingBoth =>
+      'Aún faltan una captura y un archivo de registro';
+
+  @override
+  String get teamClipboardMissingEither =>
+      'Aún falta una captura o un archivo de registro';
+
+  @override
+  String get teamClipboardDiscordOnly => 'Solo en Discord';
+
+  @override
+  String get teamClipboardLogTail =>
+      'Solo se muestra el final del registro. Cópialo o descárgalo para ver el archivo completo.';
+
+  @override
   String get teamDiscordPlugins => 'Plugins';
 
   @override
@@ -39288,7 +39411,7 @@ class LEs extends L {
 
   @override
   String teamClipboardFileWrongType(String name) {
-    return '$name no es un archivo .png, .json ni .mcmeta.';
+    return '$name no es un archivo .png, .json, .mcmeta, .log ni .txt.';
   }
 
   @override

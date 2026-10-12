@@ -473,7 +473,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('team-discord-nav-plugins')));
     await tester.pumpAndSettle();
-    expect(find.text('Enable'), findsNWidgets(2));
+    expect(find.text('Enable'), findsNWidgets(3));
     await tester.tap(find.byKey(const ValueKey('team-discord-card-automod')));
     await tester.pumpAndSettle();
     final enable = board.requests.lastWhere(
@@ -500,6 +500,111 @@ void main() {
     await _unmount(tester);
   });
 
+  testWidgets('a lead tracks a forum, limited to a tag', (tester) async {
+    final board = _FakeBoard(lead: true)
+      ..discord.addAll({
+        'linked': true,
+        'status': 'online',
+        'bot': {'id': '1', 'name': 'ModBot'},
+        'forums': [
+          {
+            'id': '100',
+            'name': 'bug-reports',
+            'guild': 'Mod Team',
+            'tags': [
+              {'id': '5', 'name': 'Crash'},
+              {'id': '6', 'name': 'Visual'},
+            ],
+          },
+        ],
+      });
+    await _pump(tester, board);
+    await tester.tap(find.byKey(const ValueKey('team-clipboard-discord-tab')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('team-discord-nav-forums')));
+    await tester.pumpAndSettle();
+    expect(find.text('Forum tracking'), findsWidgets);
+    await tester.tap(find.byKey(const ValueKey('team-discord-plugin-forums')));
+    await tester.pumpAndSettle();
+    final enable = board.requests.lastWhere(
+      (r) => r.url.path == '/api/v1/team-board/discord' && r.method == 'PUT',
+    );
+    expect(jsonDecode(enable.body), {'forumsOn': true});
+
+    await tester.tap(find.text('Add rule'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(find.text('Pick a forum.'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('team-discord-forum')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('#bug-reports · Mod Team').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilterChip, 'Crash'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('team-discord-missing')),
+      'Add your latest.log please',
+    );
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    final save = board.requests.lastWhere(
+      (r) => r.url.path == '/api/v1/team-board/discord' && r.method == 'PUT',
+    );
+    final tracker =
+        ((jsonDecode(save.body) as Map)['trackers'] as List).single as Map;
+    expect(tracker['forumId'], '100');
+    expect(tracker['forumName'], 'bug-reports');
+    expect(tracker['tags'], [
+      {'id': '5', 'name': 'Crash'},
+    ]);
+    expect(tracker['kind'], 'bug');
+    expect(tracker['require'], 'both');
+    expect(tracker['missingMessage'], 'Add your latest.log please');
+    expect(tracker['doneMessage'], contains('{status}'));
+    expect(find.text('#bug-reports'), findsOneWidget);
+    expect(find.text('Crash'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await _unmount(tester);
+  });
+
+  testWidgets('an entry from Discord links back and says what it misses', (
+    tester,
+  ) async {
+    final board = _FakeBoard();
+    board.entries.add({
+      ..._entry('e0', 'Ruby chest crash', kind: 'bug', updatedAtMs: 9900),
+      'author': 'steve',
+      'discord': {
+        'url': 'https://discord.com/channels/1/900',
+        'author': 'steve',
+        'missing': 'log',
+        'attachments': [
+          {
+            'name': 'crash.jpg',
+            'messageUrl': 'https://discord.com/channels/1/900/900',
+          },
+        ],
+      },
+    });
+    await _pump(tester, board);
+    expect(
+      find.byTooltip('Still missing a log file'),
+      findsOneWidget,
+      reason: 'the task row flags it',
+    );
+    await tester.tap(find.text('Ruby chest crash'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('team-entry-discord')), findsOneWidget);
+    expect(find.text('From Discord · posted by steve'), findsOneWidget);
+    expect(find.text('Open in Discord'), findsOneWidget);
+    expect(find.text('Still missing a log file'), findsOneWidget);
+    expect(find.text('crash.jpg'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await _unmount(tester);
+  });
+
   testWidgets('a member sees the bot but none of its controls', (tester) async {
     final board = _FakeBoard()
       ..discord.addAll({
@@ -520,7 +625,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('ModBot'), findsOneWidget);
     expect(find.text('Enable'), findsNothing);
-    expect(find.text('View'), findsNWidgets(2));
+    expect(find.text('View'), findsNWidgets(3));
     await tester.ensureVisible(
       find.byKey(const ValueKey('team-discord-card-replies')),
     );

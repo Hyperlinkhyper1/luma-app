@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../app/widgets.dart';
 import '../../../../../l10n/app_localizations.dart';
@@ -116,6 +117,10 @@ class _TeamEntryDetailState extends State<TeamEntryDetail> {
                 children: [
                   if (entry.closed) ...[
                     _ClosedBanner(entry: entry),
+                    const SizedBox(height: 14),
+                  ],
+                  if (entry.discord != null) ...[
+                    _DiscordBanner(discord: entry.discord!),
                     const SizedBox(height: 14),
                   ],
                   _StageTrack(entry: entry),
@@ -500,6 +505,103 @@ class _ClosedBanner extends StatelessWidget {
               icon: const Icon(Icons.lock_open_rounded, size: 18),
               label: Text(t.teamClipboardReopen),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+Future<void> _openDiscord(String url) =>
+    launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+
+/// Where an entry the bot made came from: who posted it, a link back to
+/// the thread, what it still misses, and the attachments only Discord has.
+class _DiscordBanner extends StatelessWidget {
+  const _DiscordBanner({required this.discord});
+
+  final TeamEntryDiscord discord;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = L.of(context);
+    final luma = context.luma;
+    final missing = teamDiscordMissingLabel(t, discord.missing);
+    return Container(
+      key: const ValueKey('team-entry-discord'),
+      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+      decoration: BoxDecoration(
+        color: luma.accent.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: luma.accent.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.forum_rounded, size: 18, color: luma.accent),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  t.teamClipboardFromDiscord(teamPerson(t, discord.author)),
+                  style: TextStyle(color: luma.textSecondary),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () => _openDiscord(discord.url),
+                icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                label: Text(t.teamClipboardOpenInDiscord),
+              ),
+            ],
+          ),
+          if (missing != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, right: 6),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    size: 18,
+                    color: luma.warning,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      missing,
+                      style: TextStyle(
+                        color: luma.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (discord.attachments.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              t.teamClipboardDiscordOnly,
+              style: TextStyle(color: luma.textMuted, fontSize: 12),
+            ),
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final a in discord.attachments)
+                  ActionChip(
+                    avatar: Icon(
+                      Icons.attach_file_rounded,
+                      size: 16,
+                      color: luma.textSecondary,
+                    ),
+                    label: Text(a.name),
+                    tooltip: t.teamClipboardOpenInDiscord,
+                    onPressed: () => _openDiscord(a.url),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -1332,8 +1434,11 @@ class _Bubble extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 3, left: 4, right: 4),
               child: Text(
-                '${mine ? t.teamClipboardMe : teamPerson(t, message.author)}'
-                ' · ${teamRelativeTime(context, message.createdAt)}',
+                [
+                  mine ? t.teamClipboardMe : teamPerson(t, message.author),
+                  if (message.fromDiscord) t.teamClipboardViaDiscord,
+                  teamRelativeTime(context, message.createdAt),
+                ].join(' · '),
                 style: TextStyle(
                   color: luma.textMuted,
                   fontSize: 11.5,

@@ -15,6 +15,128 @@ class LEn extends L {
   String get teamClipboardDiscordBot => 'Discord bot';
 
   @override
+  String get teamDiscordForumsTitle => 'Forum tracking';
+
+  @override
+  String get teamDiscordForumsHint =>
+      'Puts new posts from forums like #bug-reports on the clipboard, files and all.';
+
+  @override
+  String get teamDiscordNoForumRules => 'No forums tracked yet.';
+
+  @override
+  String get teamDiscordNewForum => 'Track a forum';
+
+  @override
+  String get teamDiscordEditForum => 'Edit tracked forum';
+
+  @override
+  String get teamDiscordForumLabel => 'Forum channel';
+
+  @override
+  String get teamDiscordForumRequired => 'Pick a forum.';
+
+  @override
+  String get teamDiscordNoForumsSeen =>
+      'The bot sees no forum channels. It has to be online and in a server that has one.';
+
+  @override
+  String get teamDiscordTagsLabel => 'Only posts with these tags';
+
+  @override
+  String get teamDiscordTagsHint => 'Pick none to take every post.';
+
+  @override
+  String get teamDiscordAllPosts => 'All posts';
+
+  @override
+  String get teamDiscordKindLabel => 'Add to the clipboard as';
+
+  @override
+  String get teamDiscordRequireLabel => 'Posts must include';
+
+  @override
+  String get teamDiscordRequireNone => 'Nothing in particular';
+
+  @override
+  String get teamDiscordRequireImage => 'A screenshot';
+
+  @override
+  String get teamDiscordRequireLog => 'A log file';
+
+  @override
+  String get teamDiscordRequireEither => 'A screenshot or a log file';
+
+  @override
+  String get teamDiscordRequireBoth => 'A screenshot and a log file';
+
+  @override
+  String get teamDiscordMissingLabel => 'Reply when something is missing';
+
+  @override
+  String get teamDiscordMissingHint =>
+      'Posted in the thread, mentioning the author. Leave it empty to say nothing. The post still goes on the clipboard.';
+
+  @override
+  String get teamDiscordMissingDefault =>
+      'Thanks for the report! Please add a screenshot and your latest.log so we can look into it.';
+
+  @override
+  String get teamDiscordDoneLabel => 'Reply when fixed or closed';
+
+  @override
+  String teamDiscordDoneHint(String token) {
+    return '$token becomes “fixed”, “added” or “closed”. The bot then closes the post. Leave it empty to close it without a message.';
+  }
+
+  @override
+  String teamDiscordDoneDefault(String token) {
+    return 'This was $token on our side. Thanks for reporting!';
+  }
+
+  @override
+  String teamDiscordLogForum(String user, String title) {
+    return '$user posted “$title”';
+  }
+
+  @override
+  String teamDiscordLogForumDone(String title) {
+    return 'Closed the post “$title”';
+  }
+
+  @override
+  String teamClipboardFromDiscord(String name) {
+    return 'From Discord · posted by $name';
+  }
+
+  @override
+  String get teamClipboardOpenInDiscord => 'Open in Discord';
+
+  @override
+  String get teamClipboardViaDiscord => 'via Discord';
+
+  @override
+  String get teamClipboardMissingImage => 'Still missing a screenshot';
+
+  @override
+  String get teamClipboardMissingLog => 'Still missing a log file';
+
+  @override
+  String get teamClipboardMissingBoth =>
+      'Still missing a screenshot and a log file';
+
+  @override
+  String get teamClipboardMissingEither =>
+      'Still missing a screenshot or a log file';
+
+  @override
+  String get teamClipboardDiscordOnly => 'Only on Discord';
+
+  @override
+  String get teamClipboardLogTail =>
+      'Showing the end of the log. Copy or download it for the whole file.';
+
+  @override
   String get teamDiscordPlugins => 'Plugins';
 
   @override
@@ -38856,7 +38978,7 @@ class LEn extends L {
 
   @override
   String teamClipboardFileWrongType(String name) {
-    return '$name is not a .png, .json or .mcmeta file.';
+    return '$name is not a .png, .json, .mcmeta, .log or .txt file.';
   }
 
   @override

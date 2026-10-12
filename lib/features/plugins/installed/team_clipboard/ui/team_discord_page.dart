@@ -8,11 +8,12 @@ import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/team_clipboard_api.dart';
 import '../team_clipboard_controller.dart';
+import '../team_clipboard_models.dart';
 import '../team_discord_models.dart';
 import 'team_clipboard_style.dart';
 
 /// The Team Clipboard's Discord tab: link the team's bot, then manage its
-/// automod and auto-reply rules. The bot runs on the luma server; this page
+/// automod, auto replies and tracked forums. The bot runs on the luma server; this page
 /// only reads and saves its settings. Everyone on the team sees it, and only
 /// leads get the controls.
 class TeamDiscordPage extends StatefulWidget {
@@ -96,10 +97,15 @@ class _TeamDiscordPageState extends State<TeamDiscordPage> {
   Future<void> _saveReplies(List<TeamReplyRule> rules) =>
       _apply((api) => api.saveDiscord(replies: rules));
 
+  Future<void> _saveTrackers(List<TeamForumTracker> rules) =>
+      _apply((api) => api.saveDiscord(trackers: rules));
+
   Future<void> _setPlugin(_Section plugin, bool on) => _apply(
-    (api) => plugin == _Section.automod
-        ? api.saveDiscord(automodOn: on)
-        : api.saveDiscord(repliesOn: on),
+    (api) => switch (plugin) {
+      _Section.automod => api.saveDiscord(automodOn: on),
+      _Section.forums => api.saveDiscord(forumsOn: on),
+      _ => api.saveDiscord(repliesOn: on),
+    },
   );
 
   void _go(_Section section) => setState(() => _section = section);
@@ -311,6 +317,68 @@ class _TeamDiscordPageState extends State<TeamDiscordPage> {
             ),
           ],
         );
+      case _Section.forums:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _PluginHeader(
+              section: _Section.forums,
+              hint: t.teamDiscordForumsHint,
+              on: state.forumsOn,
+              lead: lead,
+              busy: _busy,
+              onBack: () => _go(_Section.plugins),
+              onToggle: (on) => _setPlugin(_Section.forums, on),
+            ),
+            const SizedBox(height: 20),
+            _RulesCard(
+              key: const ValueKey('team-discord-forums'),
+              icon: Icons.rule_rounded,
+              title: t.teamDiscordRules,
+              empty: t.teamDiscordNoForumRules,
+              lead: lead,
+              busy: _busy,
+              onAdd: () async {
+                final rule = await _editForum(context, state, null);
+                if (rule != null) {
+                  await _saveTrackers([...state.trackers, rule]);
+                }
+              },
+              tiles: [
+                for (final (i, rule) in state.trackers.indexed)
+                  _RuleTile(
+                    words: [
+                      '#${_forumName(state, rule)}',
+                      if (rule.tags.isEmpty)
+                        t.teamDiscordAllPosts
+                      else
+                        for (final tag in rule.tags) tag.name,
+                    ],
+                    summary: [
+                      teamKindLabel(t, rule.kind),
+                      if (rule.require != TeamForumRequire.none)
+                        _requireLabel(t, rule.require),
+                    ].join(' · '),
+                    enabled: rule.enabled,
+                    lead: lead,
+                    busy: _busy,
+                    onEnabled: (on) => _saveTrackers([
+                      for (final r in state.trackers)
+                        r == rule ? r.copyWith(enabled: on) : r,
+                    ]),
+                    onEdit: () async {
+                      final edited = await _editForum(context, state, rule);
+                      if (edited != null) {
+                        await _saveTrackers([...state.trackers]..[i] = edited);
+                      }
+                    },
+                    onDelete: () =>
+                        _saveTrackers([...state.trackers]..removeAt(i)),
+                  ),
+              ],
+            ),
+          ],
+        );
       case _Section.bot:
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -337,14 +405,16 @@ class _TeamDiscordPageState extends State<TeamDiscordPage> {
 
 /// Where the Discord tab is: the plugin grid, one plugin, the bot's own
 /// settings or its activity.
-enum _Section { plugins, automod, replies, bot, activity }
+enum _Section { plugins, automod, replies, forums, bot, activity }
 
-bool _isPlugin(_Section s) => s == _Section.automod || s == _Section.replies;
+bool _isPlugin(_Section s) =>
+    s == _Section.automod || s == _Section.replies || s == _Section.forums;
 
 String _sectionLabel(L t, _Section s) => switch (s) {
   _Section.plugins => t.teamDiscordPlugins,
   _Section.automod => t.teamDiscordAutomodTitle,
   _Section.replies => t.teamDiscordRepliesTitle,
+  _Section.forums => t.teamDiscordForumsTitle,
   _Section.bot => t.teamDiscordBotSettings,
   _Section.activity => t.teamDiscordActivity,
 };
@@ -353,12 +423,29 @@ IconData _sectionIcon(_Section s) => switch (s) {
   _Section.plugins => Icons.grid_view_rounded,
   _Section.automod => Icons.shield_rounded,
   _Section.replies => Icons.quickreply_rounded,
+  _Section.forums => Icons.forum_rounded,
   _Section.bot => Icons.settings_rounded,
   _Section.activity => Icons.history_rounded,
 };
 
-bool _pluginOn(TeamDiscordState state, _Section s) =>
-    s == _Section.automod ? state.automodOn : state.repliesOn;
+bool _pluginOn(TeamDiscordState state, _Section s) => switch (s) {
+  _Section.automod => state.automodOn,
+  _Section.forums => state.forumsOn,
+  _ => state.repliesOn,
+};
+
+/// A tracked forum's name as the bot sees it now, or as it was saved.
+String _forumName(TeamDiscordState state, TeamForumTracker rule) =>
+    state.forums.where((f) => f.id == rule.forumId).firstOrNull?.name ??
+    rule.forumName;
+
+String _requireLabel(L t, TeamForumRequire require) => switch (require) {
+  TeamForumRequire.none => t.teamDiscordRequireNone,
+  TeamForumRequire.image => t.teamDiscordRequireImage,
+  TeamForumRequire.log => t.teamDiscordRequireLog,
+  TeamForumRequire.either => t.teamDiscordRequireEither,
+  TeamForumRequire.both => t.teamDiscordRequireBoth,
+};
 
 class _PageTitle extends StatelessWidget {
   const _PageTitle(this.text);
@@ -613,6 +700,7 @@ class _Sidebar extends StatelessWidget {
           ),
           item(_Section.automod, nested: true),
           item(_Section.replies, nested: true),
+          item(_Section.forums, nested: true),
         ],
       ),
     );
@@ -643,6 +731,7 @@ class _PluginsOverview extends StatelessWidget {
     final plugins = [
       (_Section.automod, t.teamDiscordAutomodHint, state.automod.length),
       (_Section.replies, t.teamDiscordRepliesHint, state.replies.length),
+      (_Section.forums, t.teamDiscordForumsHint, state.trackers.length),
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1497,13 +1586,16 @@ class _ActivityCard extends StatelessWidget {
                       switch (e.kind) {
                         'automod' => Icons.shield_outlined,
                         'reply' => Icons.quickreply_outlined,
+                        'forum' => Icons.forum_outlined,
+                        'forum_done' => Icons.task_alt_rounded,
                         'error' => Icons.error_outline_rounded,
                         _ => Icons.info_outline_rounded,
                       },
                       size: 16,
                       color: switch (e.kind) {
                         'automod' => luma.warning,
-                        'reply' => luma.accent,
+                        'reply' || 'forum' => luma.accent,
+                        'forum_done' => luma.success,
                         'error' => luma.danger,
                         _ => luma.textMuted,
                       },
@@ -1518,6 +1610,8 @@ class _ActivityCard extends StatelessWidget {
                               e.detail,
                             ),
                             'reply' => t.teamDiscordLogReply(e.user, e.detail),
+                            'forum' => t.teamDiscordLogForum(e.user, e.detail),
+                            'forum_done' => t.teamDiscordLogForumDone(e.detail),
                             _ => e.detail,
                           },
                           if (e.channel.isNotEmpty) '#${e.channel}',
@@ -1563,6 +1657,15 @@ Future<TeamReplyRule?> _editReply(
 ) => showDialog<TeamReplyRule>(
   context: context,
   builder: (context) => _ReplyEditor(existing: existing),
+);
+
+Future<TeamForumTracker?> _editForum(
+  BuildContext context,
+  TeamDiscordState state,
+  TeamForumTracker? existing,
+) => showDialog<TeamForumTracker>(
+  context: context,
+  builder: (context) => _ForumEditor(state: state, existing: existing),
 );
 
 class _EditorShell extends StatelessWidget {
@@ -1831,6 +1934,234 @@ class _ReplyEditorState extends State<_ReplyEditor> {
           decoration: InputDecoration(
             labelText: t.teamDiscordReplyLabel,
             errorText: _replyMissing ? t.teamDiscordReplyRequired : null,
+            alignLabelWithHint: true,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Picks a forum (and maybe some of its tags), what its posts become on
+/// the board, what they must include, and what the bot says.
+class _ForumEditor extends StatefulWidget {
+  const _ForumEditor({required this.state, this.existing});
+
+  final TeamDiscordState state;
+  final TeamForumTracker? existing;
+
+  @override
+  State<_ForumEditor> createState() => _ForumEditorState();
+}
+
+class _ForumEditorState extends State<_ForumEditor> {
+  late String? _forumId = widget.existing?.forumId;
+  late final Set<TeamDiscordTag> _tags = {...?widget.existing?.tags};
+  late TeamEntryKind _kind = widget.existing?.kind ?? TeamEntryKind.bug;
+  late TeamForumRequire _require =
+      widget.existing?.require ?? TeamForumRequire.both;
+  TextEditingController? _missing;
+  TextEditingController? _done;
+  bool _forumMissing = false;
+
+  /// The forums the bot sees, plus the saved one while the bot can't see
+  /// it (offline, say), so editing never loses it.
+  late final List<TeamDiscordForum> _forums = [
+    ...widget.state.forums,
+    if (widget.existing case final e?
+        when !widget.state.forums.any((f) => f.id == e.forumId))
+      TeamDiscordForum(id: e.forumId, name: e.forumName, tags: e.tags),
+  ];
+
+  TeamDiscordForum? get _forum =>
+      _forums.where((f) => f.id == _forumId).firstOrNull;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final t = L.of(context);
+    _missing ??= TextEditingController(
+      text: widget.existing?.missingMessage ?? t.teamDiscordMissingDefault,
+    );
+    _done ??= TextEditingController(
+      text:
+          widget.existing?.doneMessage ?? t.teamDiscordDoneDefault('{status}'),
+    );
+  }
+
+  @override
+  void dispose() {
+    _missing?.dispose();
+    _done?.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final forum = _forum;
+    if (forum == null) {
+      setState(() => _forumMissing = true);
+      return;
+    }
+    Navigator.of(context).pop(
+      TeamForumTracker(
+        id: widget.existing?.id,
+        forumId: forum.id,
+        forumName: forum.name,
+        tags: _tags.toList(),
+        kind: _kind,
+        require: _require,
+        missingMessage: _require == TeamForumRequire.none
+            ? ''
+            : _missing!.text.trim(),
+        doneMessage: _done!.text.trim(),
+        enabled: widget.existing?.enabled ?? true,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = L.of(context);
+    final luma = context.luma;
+    final forum = _forum;
+    final tags = [
+      ...?forum?.tags,
+      for (final tag in _tags)
+        if (!(forum?.tags.contains(tag) ?? false)) tag,
+    ];
+    return _EditorShell(
+      title: widget.existing == null
+          ? t.teamDiscordNewForum
+          : t.teamDiscordEditForum,
+      onSave: _save,
+      children: [
+        if (_forums.isEmpty)
+          Text(
+            t.teamDiscordNoForumsSeen,
+            style: TextStyle(color: luma.warning, fontSize: 13),
+          )
+        else
+          DropdownButtonFormField<String>(
+            key: const ValueKey('team-discord-forum'),
+            initialValue: _forumId,
+            decoration: InputDecoration(
+              isDense: true,
+              labelText: t.teamDiscordForumLabel,
+              errorText: _forumMissing ? t.teamDiscordForumRequired : null,
+            ),
+            items: [
+              for (final f in _forums)
+                DropdownMenuItem(
+                  value: f.id,
+                  child: Text(
+                    f.guild.isEmpty ? '#${f.name}' : '#${f.name} · ${f.guild}',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+            ],
+            onChanged: (id) => setState(() {
+              if (id != _forumId) _tags.clear();
+              _forumId = id;
+              _forumMissing = false;
+            }),
+          ),
+        if (tags.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            t.teamDiscordTagsLabel,
+            style: TextStyle(
+              color: luma.textPrimary,
+              fontSize: 13.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            t.teamDiscordTagsHint,
+            style: TextStyle(color: luma.textMuted, fontSize: 12.5),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final tag in tags)
+                FilterChip(
+                  label: Text(tag.name),
+                  selected: _tags.contains(tag),
+                  onSelected: (on) =>
+                      setState(() => on ? _tags.add(tag) : _tags.remove(tag)),
+                ),
+            ],
+          ),
+        ],
+        const SizedBox(height: 16),
+        DropdownButtonFormField<TeamEntryKind>(
+          initialValue: _kind,
+          decoration: InputDecoration(
+            isDense: true,
+            labelText: t.teamDiscordKindLabel,
+          ),
+          items: [
+            for (final k in TeamEntryKind.values)
+              DropdownMenuItem(
+                value: k,
+                child: Row(
+                  children: [
+                    Icon(
+                      teamKindIcon(k),
+                      size: 16,
+                      color: teamKindColor(k, luma),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(teamKindLabel(t, k)),
+                  ],
+                ),
+              ),
+          ],
+          onChanged: (k) => setState(() => _kind = k ?? _kind),
+        ),
+        const SizedBox(height: 16),
+        DropdownButtonFormField<TeamForumRequire>(
+          key: const ValueKey('team-discord-require'),
+          initialValue: _require,
+          decoration: InputDecoration(
+            isDense: true,
+            labelText: t.teamDiscordRequireLabel,
+          ),
+          items: [
+            for (final r in TeamForumRequire.values)
+              DropdownMenuItem(value: r, child: Text(_requireLabel(t, r))),
+          ],
+          onChanged: (r) => setState(() => _require = r ?? _require),
+        ),
+        if (_require != TeamForumRequire.none) ...[
+          const SizedBox(height: 16),
+          TextField(
+            key: const ValueKey('team-discord-missing'),
+            controller: _missing,
+            minLines: 2,
+            maxLines: 6,
+            maxLength: 2000,
+            decoration: InputDecoration(
+              labelText: t.teamDiscordMissingLabel,
+              helperText: t.teamDiscordMissingHint,
+              helperMaxLines: 3,
+              alignLabelWithHint: true,
+            ),
+          ),
+        ],
+        const SizedBox(height: 12),
+        TextField(
+          key: const ValueKey('team-discord-done'),
+          controller: _done,
+          minLines: 2,
+          maxLines: 6,
+          maxLength: 2000,
+          decoration: InputDecoration(
+            labelText: t.teamDiscordDoneLabel,
+            helperText: t.teamDiscordDoneHint('{status}'),
+            helperMaxLines: 3,
             alignLabelWithHint: true,
           ),
         ),

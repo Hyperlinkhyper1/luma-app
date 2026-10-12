@@ -58,8 +58,9 @@ class TeamFileProblem {
 
 /// Checks a file the way the server will, before it is sent: the right
 /// extension and size, a PNG that is whole (every chunk's CRC right, IHDR
-/// first, IEND last, nothing hidden after it) and actually decodes, and a
-/// model or `.mcmeta` that parses as a JSON object. Null when it's fine.
+/// first, IEND last, nothing hidden after it) and actually decodes, a
+/// model or `.mcmeta` that parses as a JSON object, and a log that is text
+/// (no NUL bytes). Null when it's fine.
 Future<TeamFileProblem?> checkTeamFile(String name, Uint8List bytes) async {
   final problem = teamFileStructureProblem(name, bytes);
   if (problem != null) return problem;
@@ -87,7 +88,14 @@ TeamFileProblem? teamFileStructureProblem(String name, Uint8List bytes) {
   if (bytes.length > kTeamMaxFileBytes) {
     return const TeamFileProblem(TeamFileProblemKind.tooLarge);
   }
-  return ext == 'png' ? _pngProblem(bytes) : _jsonProblem(bytes);
+  return switch (ext) {
+    'png' => _pngProblem(bytes),
+    'log' || 'txt' =>
+      bytes.contains(0)
+          ? const TeamFileProblem(TeamFileProblemKind.notText)
+          : null,
+    _ => _jsonProblem(bytes),
+  };
 }
 
 String _extension(String name) {

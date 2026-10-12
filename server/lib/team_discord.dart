@@ -2,15 +2,21 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 
+import 'team_board.dart';
 import 'util.dart';
+
+part 'team_discord_forums.dart';
 
 /// The Team Clipboard's Discord bot: a bot the team's leads link from the
 /// app, which then sits in the team's Discord server and
 ///
 ///  * removes messages that use a banned word (automod), optionally warning
-///    the author or putting them in timeout, and
-///  * answers messages that mention a trigger word with a canned reply.
+///    the author or putting them in timeout,
+///  * answers messages that mention a trigger word with a canned reply, and
+///  * puts every new post in the forums it tracks on the board (see
+///    `team_discord_forums.dart`).
 ///
 /// The bot has to be online while every app is closed, so it runs here on
 /// the server, over Discord's gateway. The app only edits its settings. The
@@ -38,9 +44,11 @@ const kDiscordReplyMatches = ['contains', 'word', 'exact'];
 /// connection with 4014.
 const kDiscordIntents = 1 | (1 << 9) | (1 << 15);
 
-/// View channels, send messages, manage messages, read message history and
-/// moderate members: everything the rules can do, nothing more.
-const kDiscordInvitePermissions = 1024 + 2048 + 8192 + 65536 + 1099511627776;
+/// View channels, send messages, manage messages, read message history,
+/// moderate members, send messages in threads and manage threads (to close
+/// a forum post): everything the rules can do, nothing more.
+const kDiscordInvitePermissions =
+    1024 + 2048 + 8192 + 65536 + 1099511627776 + 274877906944 + 17179869184;
 
 const _api = 'https://discord.com/api/v10';
 const _gateway = 'wss://gateway.discord.gg/?v=10&encoding=json';
@@ -306,6 +314,11 @@ class TeamDiscordBot {
       enabled = raw['enabled'] != false;
       automodOn = raw['automodOn'] == true;
       repliesOn = raw['repliesOn'] == true;
+      forumsOn = raw['forumsOn'] == true;
+      trackers = (raw['trackers'] as List? ?? const [])
+          .map(DiscordForumTracker.fromJson)
+          .whereType<DiscordForumTracker>()
+          .toList();
       automod = (raw['automod'] as List? ?? const [])
           .map(DiscordAutomodRule.fromJson)
           .whereType<DiscordAutomodRule>()
@@ -330,11 +343,26 @@ class TeamDiscordBot {
   /// a plugin from its card, the way a bot dashboard does.
   bool automodOn = false;
   bool repliesOn = false;
+  bool forumsOn = false;
   List<DiscordAutomodRule> automod = [];
   List<DiscordReplyRule> replies = [];
+  List<DiscordForumTracker> trackers = [];
+
+  /// Where tracked forum posts go. Set by the API; without it the forum
+  /// plugin does nothing.
+  TeamBoardStore? board;
 
   /// Checks a token with Discord. Swapped out by tests.
   Future<DiscordIdentity> Function(String token) whoAmI = _restWhoAmI;
+
+  /// Calls Discord's REST API. Swapped out by tests.
+  Future<DiscordRestResult> Function(String token, String method, String path,
+      {Object? body, String? reason}) rest = _rest;
+
+  /// Fetches an attachment from Discord's CDN, or null when it can't or it
+  /// is over the byte limit. Swapped out by tests.
+  Future<Uint8List?> Function(String url, int maxBytes) download =
+      _downloadAttachment;
 
   bool get linked => _token != null;
   DiscordIdentity? get identity => _identity;
@@ -348,10 +376,22 @@ class TeamDiscordBot {
 
   final Map<String, String> _guilds = {};
   final Map<String, String> _channels = {};
+  final Map<String, DiscordForum> _forums = {};
   final List<DiscordLogEntry> _log = [];
   final Map<String, DateTime> _replyCooldown = {};
 
+  /// Forum posts are handled one at a time, so a reply that arrives while
+  /// its post is still being put on the board waits for the entry.
+  final AsyncLock _forumLock = AsyncLock();
+
   Map<String, String> get guilds => Map.unmodifiable(_guilds);
+
+  /// The forum channels the bot can see right now, by name.
+  List<DiscordForum> get forums => _forums.values.toList()
+    ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
+  /// The name of guild [id], once the bot has seen it.
+  String guildName(String id) => _guilds[id] ?? '';
   List<DiscordLogEntry> get log => List.unmodifiable(_log.reversed);
 
   String? get inviteUrl => _identity == null
@@ -379,8 +419,10 @@ class TeamDiscordBot {
           'enabled': enabled,
           'automodOn': automodOn,
           'repliesOn': repliesOn,
+          'forumsOn': forumsOn,
           'automod': [for (final r in automod) r.toJson()],
           'replies': [for (final r in replies) r.toJson()],
+          'trackers': [for (final t in trackers) t.toJson()],
         }));
   }
 
@@ -393,6 +435,7 @@ class TeamDiscordBot {
       _identity = who;
       _guilds.clear();
       _channels.clear();
+      _forums.clear();
       _note(DiscordLogEntry('info', 'Linked ${who.name}.'));
       await _save();
     });
@@ -406,6 +449,7 @@ class TeamDiscordBot {
       _identity = null;
       _guilds.clear();
       _channels.clear();
+      _forums.clear();
       _note(DiscordLogEntry('info', 'Unlinked the bot.'));
       await _save();
     });
@@ -417,16 +461,20 @@ class TeamDiscordBot {
     bool? enabled,
     bool? automodOn,
     bool? repliesOn,
+    bool? forumsOn,
     List<DiscordAutomodRule>? automod,
     List<DiscordReplyRule>? replies,
+    List<DiscordForumTracker>? trackers,
   }) async {
     final wasOn = this.enabled;
     await _lock.synchronized(() async {
       if (enabled != null) this.enabled = enabled;
       if (automodOn != null) this.automodOn = automodOn;
       if (repliesOn != null) this.repliesOn = repliesOn;
+      if (forumsOn != null) this.forumsOn = forumsOn;
       if (automod != null) this.automod = automod;
       if (replies != null) this.replies = replies;
+      if (trackers != null) this.trackers = trackers;
       await _save();
     });
     if (wasOn != this.enabled) _restart();
@@ -452,6 +500,7 @@ class TeamDiscordBot {
     if (socket != null) unawaited(socket.close(1000));
     _guilds.clear();
     _channels.clear();
+    _forums.clear();
     if (!_shouldRun) {
       status = 'off';
       statusReason = null;
@@ -562,7 +611,7 @@ class TeamDiscordBot {
           case 0:
             seq = payload['s'] as int? ?? seq;
             if (generation == _generation) {
-              _dispatch(payload['t'] as String?, d, token);
+              unawaited(_dispatch(payload['t'] as String?, d, token));
             }
         }
       },
@@ -586,7 +635,14 @@ class TeamDiscordBot {
     };
   }
 
-  void _dispatch(String? type, Object? d, String token) {
+  /// Handles one gateway event as if it had just come in. The gateway
+  /// calls this; tests feed it events directly.
+  Future<void> handleGatewayEvent(String type, Map d) async {
+    final token = _token;
+    if (token != null) await _dispatch(type, d, token);
+  }
+
+  Future<void> _dispatch(String? type, Object? d, String token) async {
     if (d is! Map) return;
     switch (type) {
       case 'READY':
@@ -605,18 +661,33 @@ class TeamDiscordBot {
         for (final c in d['channels'] as List? ?? const []) {
           if (c is Map && c['id'] is String) {
             _channels[c['id'] as String] = c['name'] as String? ?? '';
+            _seeForum(c, id);
           }
         }
       case 'GUILD_DELETE':
-        if (d['unavailable'] != true) _guilds.remove(d['id']);
+        if (d['unavailable'] != true) {
+          _guilds.remove(d['id']);
+          _forums.removeWhere((_, f) => f.guildId == d['id']);
+        }
       case 'CHANNEL_CREATE' || 'CHANNEL_UPDATE':
         if (d['id'] is String && d['name'] is String) {
           _channels[d['id'] as String] = d['name'] as String;
+          if (d['guild_id'] is String) _seeForum(d, d['guild_id'] as String);
+        }
+      case 'CHANNEL_DELETE':
+        _forums.remove(d['id']);
+      case 'THREAD_CREATE':
+        try {
+          await _onThreadCreate(d, token);
+        } catch (e) {
+          _note(DiscordLogEntry('error', 'Handling a forum post failed: $e'));
         }
       case 'MESSAGE_CREATE':
-        unawaited(_onMessage(d, token).catchError((Object e) {
+        try {
+          await _onMessage(d, token);
+        } catch (e) {
           _note(DiscordLogEntry('error', 'Handling a message failed: $e'));
-        }));
+        }
     }
   }
 
@@ -638,39 +709,39 @@ class TeamDiscordBot {
         return until == null || now.isAfter(until);
       },
     );
+    if (action is! DiscordRemove) await _onThreadMessage(d);
     if (action == null) return;
     final where = (
       guild: _guilds[guildId] ?? '',
       channel: _channels[channelId] ?? '',
       user: author['username'] as String? ?? '',
     );
-    void fail(String what, _RestResult r) =>
+    void fail(String what, DiscordRestResult r) =>
         _note(DiscordLogEntry('error', '$what: ${r.describe()}',
             guild: where.guild, channel: where.channel, user: where.user));
 
     switch (action) {
       case DiscordRemove(:final rule, :final word):
-        final removed = await _rest(
+        final removed = await rest(
             token, 'DELETE', '/channels/$channelId/messages/$messageId',
             reason: 'luma automod');
         if (!removed.ok) return fail('Could not remove a message', removed);
         _note(DiscordLogEntry('automod', word,
             guild: where.guild, channel: where.channel, user: where.user));
         if (rule.warn.isNotEmpty) {
-          final warned = await _rest(
-              token, 'POST', '/channels/$channelId/messages',
-              body: {
-                'content': '<@$userId> ${rule.warn}',
-                'allowed_mentions': {
-                  'parse': <String>[],
-                  'users': [userId],
-                },
-              });
+          final warned =
+              await rest(token, 'POST', '/channels/$channelId/messages', body: {
+            'content': '<@$userId> ${rule.warn}',
+            'allowed_mentions': {
+              'parse': <String>[],
+              'users': [userId],
+            },
+          });
           if (!warned.ok) fail('Could not post the warning', warned);
         }
         if (rule.timeoutMinutes > 0) {
           final until = now.toUtc().add(Duration(minutes: rule.timeoutMinutes));
-          final timedOut = await _rest(
+          final timedOut = await rest(
               token, 'PATCH', '/guilds/$guildId/members/$userId',
               body: {'communication_disabled_until': until.toIso8601String()},
               reason: 'luma automod');
@@ -680,7 +751,7 @@ class TeamDiscordBot {
         _replyCooldown['${rule.id}:$channelId'] =
             now.add(kDiscordReplyCooldown);
         final sent =
-            await _rest(token, 'POST', '/channels/$channelId/messages', body: {
+            await rest(token, 'POST', '/channels/$channelId/messages', body: {
           'content': rule.reply,
           'message_reference': {
             'message_id': messageId,
@@ -712,7 +783,8 @@ class TeamDiscordBot {
   }
 
   /// One REST call, retried once if Discord asks us to slow down.
-  static Future<_RestResult> _rest(String token, String method, String path,
+  static Future<DiscordRestResult> _rest(
+      String token, String method, String path,
       {Object? body, String? reason}) async {
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 15);
@@ -744,18 +816,50 @@ class TeamDiscordBot {
               Duration(milliseconds: (seconds * 1000).round()));
           continue;
         }
-        return _RestResult(response.statusCode, decoded);
+        return DiscordRestResult(response.statusCode, decoded);
       }
     } catch (e) {
-      return _RestResult(0, null, e.toString());
+      return DiscordRestResult(0, null, e.toString());
     } finally {
       client.close();
     }
   }
+
+  /// Only Discord's own CDN, over HTTPS: the URL comes from a message, so
+  /// the server never fetches anything else on its say-so.
+  static Future<Uint8List?> _downloadAttachment(
+      String url, int maxBytes) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null ||
+        uri.scheme != 'https' ||
+        !const {'cdn.discordapp.com', 'media.discordapp.net'}
+            .contains(uri.host)) {
+      return null;
+    }
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 15);
+    try {
+      final request = await client.getUrl(uri);
+      request.headers.set('User-Agent', _userAgent);
+      final response =
+          await request.close().timeout(const Duration(seconds: 30));
+      if (response.statusCode != 200) return null;
+      final bytes = BytesBuilder(copy: false);
+      await for (final chunk in response.timeout(const Duration(seconds: 60))) {
+        bytes.add(chunk);
+        if (bytes.length > maxBytes) return null;
+      }
+      return bytes.takeBytes();
+    } catch (_) {
+      return null;
+    } finally {
+      client.close(force: true);
+    }
+  }
 }
 
-class _RestResult {
-  _RestResult(this.status, this.body, [this.failure]);
+class DiscordRestResult {
+  DiscordRestResult(this.status, this.body, [this.failure]);
   final int status;
   final Object? body;
   final String? failure;

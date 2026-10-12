@@ -147,6 +147,29 @@ class TeamTaskRow extends StatelessWidget {
             ),
           ),
         ),
+        if (entry.discord case final discord?) ...[
+          const SizedBox(width: 6),
+          if (teamDiscordMissingLabel(t, discord.missing) case final missing?)
+            Tooltip(
+              message: missing,
+              child: Icon(
+                Icons.warning_amber_rounded,
+                size: 15,
+                color: luma.warning,
+              ),
+            )
+          else
+            Tooltip(
+              message: t.teamClipboardFromDiscord(
+                teamPerson(t, discord.author),
+              ),
+              child: Icon(
+                Icons.forum_outlined,
+                size: 14,
+                color: luma.textMuted,
+              ),
+            ),
+        ],
         if (news)
           Tooltip(
             message: t.teamClipboardNews,

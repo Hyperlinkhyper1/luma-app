@@ -22,6 +22,7 @@ extension TeamDiscordApi on Api {
       'enabled': bot.enabled,
       'automodOn': bot.automodOn,
       'repliesOn': bot.repliesOn,
+      'forumsOn': bot.forumsOn,
       'status': bot.status,
       'statusReason': bot.statusReason,
       if (bot.identity != null)
@@ -32,6 +33,16 @@ extension TeamDiscordApi on Api {
       ],
       'automod': [for (final r in bot.automod) r.toJson()],
       'replies': [for (final r in bot.replies) r.toJson()],
+      'trackers': [for (final t in bot.trackers) t.toJson()],
+      'forums': [
+        for (final f in bot.forums)
+          {
+            'id': f.id,
+            'name': f.name,
+            'guild': bot.guildName(f.guildId),
+            'tags': [for (final t in f.tags) t.toJson()],
+          }
+      ],
       'log': [for (final e in bot.log) e.toJson()],
     };
   }
@@ -42,9 +53,9 @@ extension TeamDiscordApi on Api {
     return jsonResponse(200, _teamDiscordJson(role!));
   }
 
-  /// Saves `enabled`, `automodOn`, `repliesOn`, `automod` and/or
-  /// `replies`. A list replaces the whole
-  /// list, and one bad rule refuses the lot.
+  /// Saves `enabled`, `automodOn`, `repliesOn`, `forumsOn`, `automod`,
+  /// `replies` and/or `trackers`. A list replaces the whole list, and one
+  /// bad rule refuses the lot.
   Future<Response> _teamDiscordUpdate(Request request, StoredUser user) async {
     final refused = _teamDiscordLeadOnly(user);
     if (refused != null) return refused;
@@ -55,12 +66,15 @@ extension TeamDiscordApi on Api {
     final enabled = body['enabled'];
     final automodOn = body['automodOn'];
     final repliesOn = body['repliesOn'];
-    if ([enabled, automodOn, repliesOn].any((v) => v != null && v is! bool)) {
+    final forumsOn = body['forumsOn'];
+    if ([enabled, automodOn, repliesOn, forumsOn]
+        .any((v) => v != null && v is! bool)) {
       return errorResponse(400, 'bad_request', 'Say whether the bot is on.');
     }
-    List<T>? rules<T>(String key, T? Function(Object?) parse) {
+    List<T>? rules<T>(String key, T? Function(Object?) parse,
+        {int max = kDiscordMaxRules}) {
       final raw = body[key];
-      if (raw is! List || raw.length > kDiscordMaxRules) return null;
+      if (raw is! List || raw.length > max) return null;
       final out = <T>[];
       for (final r in raw) {
         final rule = parse(r);
@@ -87,12 +101,25 @@ extension TeamDiscordApi on Api {
           'Each auto reply needs a trigger word and a reply of at most '
               '$kDiscordMaxReplyChars characters.');
     }
+    final trackers = body.containsKey('trackers')
+        ? rules('trackers', DiscordForumTracker.fromJson,
+            max: kDiscordMaxForumTrackers)
+        : null;
+    if (body.containsKey('trackers') && trackers == null) {
+      return errorResponse(
+          400,
+          'bad_rule',
+          'Each tracked forum needs a forum, a kind and messages of at most '
+              '$kDiscordMaxReplyChars characters.');
+    }
     await teamDiscord.configure(
         enabled: enabled as bool?,
         automodOn: automodOn as bool?,
         repliesOn: repliesOn as bool?,
+        forumsOn: forumsOn as bool?,
         automod: automod,
-        replies: replies);
+        replies: replies,
+        trackers: trackers);
     return jsonResponse(200, _teamDiscordJson('lead'));
   }
 

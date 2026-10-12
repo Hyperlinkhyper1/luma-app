@@ -25,9 +25,9 @@ const kTeamBoardStages = ['idea', 'claimed', 'done', 'added'];
 /// any thread and remove anything; a member can do everything else.
 const kTeamBoardRoles = ['member', 'lead'];
 
-/// The only files the board takes: models and textures, and the `.mcmeta`
-/// that animates a texture.
-const kTeamBoardFileExtensions = ['png', 'json', 'mcmeta'];
+/// The only files the board takes: models and textures, the `.mcmeta`
+/// that animates a texture, and the game logs that come with a bug report.
+const kTeamBoardFileExtensions = ['png', 'json', 'mcmeta', 'log', 'txt'];
 
 const kTeamBoardMaxFileBytes = 10 * 1024 * 1024;
 const kTeamBoardMaxTitleChars = 140;
@@ -120,6 +120,131 @@ class TeamBoardMessage {
   }
 }
 
+/// What a Discord forum post asks of its author: nothing, a screenshot, a
+/// log file, either of the two, or both.
+const kTeamBoardDiscordRequires = ['none', 'image', 'log', 'either', 'both'];
+
+/// What [require] still misses with or without an image and a log: '' when
+/// nothing, else `image`, `log`, `both` or `either`.
+String teamBoardDiscordMissing(String require,
+    {required bool hasImage, required bool hasLog}) {
+  switch (require) {
+    case 'image':
+      return hasImage ? '' : 'image';
+    case 'log':
+      return hasLog ? '' : 'log';
+    case 'either':
+      return hasImage || hasLog ? '' : 'either';
+    case 'both':
+      if (!hasImage && !hasLog) return 'both';
+      return !hasImage ? 'image' : (!hasLog ? 'log' : '');
+  }
+  return '';
+}
+
+/// An attachment of the Discord post the board couldn't keep a copy of,
+/// such as a JPEG, listed with the message it is on.
+class TeamBoardDiscordAttachment {
+  const TeamBoardDiscordAttachment(this.name, this.messageUrl);
+  final String name;
+  final String messageUrl;
+
+  Map<String, dynamic> toJson() => {'name': name, 'messageUrl': messageUrl};
+
+  static TeamBoardDiscordAttachment? fromJson(Object? raw) =>
+      raw is Map && raw['name'] is String && raw['messageUrl'] is String
+          ? TeamBoardDiscordAttachment(
+              raw['name'] as String, raw['messageUrl'] as String)
+          : null;
+}
+
+/// The Discord forum post an entry came from. The bot keeps the two in
+/// step: replies in the thread land in the entry's chat, attachments in its
+/// files, and fixing or closing the entry closes the thread.
+class TeamBoardDiscordLink {
+  TeamBoardDiscordLink({
+    required this.guildId,
+    required this.forumId,
+    required this.threadId,
+    required this.trackerId,
+    required this.authorName,
+    this.require = 'none',
+    this.hasImage = false,
+    this.hasLog = false,
+    this.notified = false,
+    List<TeamBoardDiscordAttachment>? attachments,
+  }) : attachments = attachments ?? [];
+
+  final String guildId;
+  final String forumId;
+  final String threadId;
+
+  /// The forum rule that picked the post up, for its messages.
+  final String trackerId;
+  final String authorName;
+
+  /// One of [kTeamBoardDiscordRequires], as the rule said when the post
+  /// came in.
+  final String require;
+  bool hasImage;
+  bool hasLog;
+
+  /// Whether the bot already told the thread the entry was fixed or
+  /// closed, so it says so once until the entry is reopened.
+  bool notified;
+  final List<TeamBoardDiscordAttachment> attachments;
+
+  String get url => 'https://discord.com/channels/$guildId/$threadId';
+
+  String get missing =>
+      teamBoardDiscordMissing(require, hasImage: hasImage, hasLog: hasLog);
+
+  Map<String, dynamic> toJson() => {
+        'guildId': guildId,
+        'forumId': forumId,
+        'threadId': threadId,
+        'trackerId': trackerId,
+        'authorName': authorName,
+        'require': require,
+        'hasImage': hasImage,
+        'hasLog': hasLog,
+        'notified': notified,
+        'attachments': [for (final a in attachments) a.toJson()],
+      };
+
+  static TeamBoardDiscordLink? fromJson(Object? raw) {
+    if (raw is! Map) return null;
+    final guildId = raw['guildId'], threadId = raw['threadId'];
+    if (guildId is! String || threadId is! String) return null;
+    final require = raw['require'];
+    return TeamBoardDiscordLink(
+      guildId: guildId,
+      forumId: raw['forumId'] as String? ?? '',
+      threadId: threadId,
+      trackerId: raw['trackerId'] as String? ?? '',
+      authorName: raw['authorName'] as String? ?? '',
+      require: kTeamBoardDiscordRequires.contains(require)
+          ? require as String
+          : 'none',
+      hasImage: raw['hasImage'] == true,
+      hasLog: raw['hasLog'] == true,
+      notified: raw['notified'] == true,
+      attachments: [
+        for (final a in raw['attachments'] as List? ?? const [])
+          if (TeamBoardDiscordAttachment.fromJson(a) case final att?) att,
+      ],
+    );
+  }
+}
+
+/// Ids the bot posts under on the board: `discord:` and the Discord user's
+/// id. No luma account has one, so a Discord user is never taken for
+/// someone on the team.
+const kTeamBoardDiscordIdPrefix = 'discord:';
+
+bool isTeamBoardDiscordId(String id) =>
+    id.startsWith(kTeamBoardDiscordIdPrefix);
+
 class TeamBoardEntry {
   TeamBoardEntry({
     required this.id,
@@ -135,6 +260,7 @@ class TeamBoardEntry {
     this.claimedById,
     this.claimedByEmail,
     this.parentId,
+    this.discord,
     List<TeamBoardFile>? files,
     List<TeamBoardMessage>? messages,
   })  : files = files ?? [],
@@ -156,6 +282,9 @@ class TeamBoardEntry {
   /// stands on its own (or is itself a main thread). Only one level deep:
   /// a main thread is never filed under another one.
   String? parentId;
+
+  /// The Discord forum post this entry came from, if it did.
+  final TeamBoardDiscordLink? discord;
 
   /// The last time anything happened to the entry — an edit, a stage, a
   /// file or a message. The board sorts on it and the app polls on it.
@@ -183,6 +312,7 @@ class TeamBoardEntry {
         'claimedById': claimedById,
         'claimedByEmail': claimedByEmail,
         'parentId': parentId,
+        if (discord != null) 'discord': discord!.toJson(),
         'createdAtMs': createdAtMs,
         'updatedAtMs': updatedAtMs,
         'files': files.map((f) => f.toJson()).toList(),
@@ -207,6 +337,7 @@ class TeamBoardEntry {
       claimedById: raw['claimedById'] as String?,
       claimedByEmail: raw['claimedByEmail'] as String?,
       parentId: raw['parentId'] as String?,
+      discord: TeamBoardDiscordLink.fromJson(raw['discord']),
       createdAtMs: raw['createdAtMs'] as int? ?? 0,
       updatedAtMs: raw['updatedAtMs'] as int? ?? 0,
       files: [
@@ -309,9 +440,19 @@ String? teamBoardFileProblem(String name, Uint8List bytes) {
   return switch (teamBoardFileExtension(name)) {
     'png' => _pngProblem(name, bytes),
     'json' || 'mcmeta' => _jsonProblem(name, bytes),
-    _ => 'Only .png, .json and .mcmeta files can be attached.',
+    'log' || 'txt' => _textProblem(name, bytes),
+    _ => kTeamBoardFileTypesHint,
   };
 }
+
+const kTeamBoardFileTypesHint =
+    'Only .png, .json, .mcmeta, .log and .txt files can be attached.';
+
+/// A log is taken as any text: logs aren't always clean UTF-8, so the only
+/// thing refused is a NUL byte, which no text file has and nearly every
+/// binary does.
+String? _textProblem(String name, Uint8List bytes) =>
+    bytes.contains(0) ? '$name is not a text file.' : null;
 
 String? _pngProblem(String name, Uint8List bytes) {
   final bad = '$name is not a valid PNG image.';
@@ -431,9 +572,11 @@ int _crc32(Uint8List bytes, int start, int end) {
 
 /// The Content-Type a file is served with.
 String teamBoardFileContentType(String name) =>
-    teamBoardFileExtension(name) == 'png'
-        ? 'image/png'
-        : 'application/json; charset=utf-8';
+    switch (teamBoardFileExtension(name)) {
+      'png' => 'image/png',
+      'log' || 'txt' => 'text/plain; charset=utf-8',
+      _ => 'application/json; charset=utf-8',
+    };
 
 /// What [userId] (on the board as [role]) may do to [entry].
 class TeamBoardPermissions {
@@ -555,6 +698,14 @@ class TeamBoardStore {
       ];
 
   TeamBoardEntry? entry(String id) => _entries[id];
+
+  /// The entry Discord thread [threadId] became, if one did.
+  TeamBoardEntry? entryForThread(String threadId) {
+    for (final e in _entries.values) {
+      if (e.discord?.threadId == threadId) return e;
+    }
+    return null;
+  }
 
   int get entryCount => _entries.length;
 

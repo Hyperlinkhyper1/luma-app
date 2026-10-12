@@ -1,6 +1,79 @@
 {
   "teamClipboardTasks": "Tasks",
   "teamClipboardDiscordBot": "Discord bot",
+  "teamDiscordForumsTitle": "Forum tracking",
+  "teamDiscordForumsHint": "Puts new posts from forums like #bug-reports on the clipboard, files and all.",
+  "teamDiscordNoForumRules": "No forums tracked yet.",
+  "teamDiscordNewForum": "Track a forum",
+  "teamDiscordEditForum": "Edit tracked forum",
+  "teamDiscordForumLabel": "Forum channel",
+  "teamDiscordForumRequired": "Pick a forum.",
+  "teamDiscordNoForumsSeen": "The bot sees no forum channels. It has to be online and in a server that has one.",
+  "teamDiscordTagsLabel": "Only posts with these tags",
+  "teamDiscordTagsHint": "Pick none to take every post.",
+  "teamDiscordAllPosts": "All posts",
+  "teamDiscordKindLabel": "Add to the clipboard as",
+  "teamDiscordRequireLabel": "Posts must include",
+  "teamDiscordRequireNone": "Nothing in particular",
+  "teamDiscordRequireImage": "A screenshot",
+  "teamDiscordRequireLog": "A log file",
+  "teamDiscordRequireEither": "A screenshot or a log file",
+  "teamDiscordRequireBoth": "A screenshot and a log file",
+  "teamDiscordMissingLabel": "Reply when something is missing",
+  "teamDiscordMissingHint": "Posted in the thread, mentioning the author. Leave it empty to say nothing. The post still goes on the clipboard.",
+  "teamDiscordMissingDefault": "Thanks for the report! Please add a screenshot and your latest.log so we can look into it.",
+  "teamDiscordDoneLabel": "Reply when fixed or closed",
+  "teamDiscordDoneHint": "{token} becomes “fixed”, “added” or “closed”. The bot then closes the post. Leave it empty to close it without a message.",
+  "@teamDiscordDoneHint": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
+  "teamDiscordDoneDefault": "This was {token} on our side. Thanks for reporting!",
+  "@teamDiscordDoneDefault": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
+  "teamDiscordLogForum": "{user} posted “{title}”",
+  "@teamDiscordLogForum": {
+    "placeholders": {
+      "user": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "teamDiscordLogForumDone": "Closed the post “{title}”",
+  "@teamDiscordLogForumDone": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "teamClipboardFromDiscord": "From Discord · posted by {name}",
+  "@teamClipboardFromDiscord": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamClipboardOpenInDiscord": "Open in Discord",
+  "teamClipboardViaDiscord": "via Discord",
+  "teamClipboardMissingImage": "Still missing a screenshot",
+  "teamClipboardMissingLog": "Still missing a log file",
+  "teamClipboardMissingBoth": "Still missing a screenshot and a log file",
+  "teamClipboardMissingEither": "Still missing a screenshot or a log file",
+  "teamClipboardDiscordOnly": "Only on Discord",
+  "teamClipboardLogTail": "Showing the end of the log. Copy or download it for the whole file.",
   "teamDiscordPlugins": "Plugins",
   "teamDiscordPluginsHint": "Switch on what the bot should do in your Discord server.",
   "teamDiscordEssentials": "Essentials",
@@ -23882,7 +23955,7 @@
       }
     }
   },
-  "teamClipboardFileWrongType": "{name} is not a .png, .json or .mcmeta file.",
+  "teamClipboardFileWrongType": "{name} is not a .png, .json, .mcmeta, .log or .txt file.",
   "@teamClipboardFileWrongType": {
     "placeholders": {
       "name": {

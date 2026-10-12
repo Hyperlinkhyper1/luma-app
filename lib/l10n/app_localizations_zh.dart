@@ -15,6 +15,121 @@ class LZh extends L {
   String get teamClipboardDiscordBot => 'Discord 机器人';
 
   @override
+  String get teamDiscordForumsTitle => '论坛跟踪';
+
+  @override
+  String get teamDiscordForumsHint => '将 #bug-reports 等论坛中的新帖子连同文件一起添加到剪贴板。';
+
+  @override
+  String get teamDiscordNoForumRules => '还没有跟踪任何论坛。';
+
+  @override
+  String get teamDiscordNewForum => '跟踪论坛';
+
+  @override
+  String get teamDiscordEditForum => '编辑跟踪的论坛';
+
+  @override
+  String get teamDiscordForumLabel => '论坛频道';
+
+  @override
+  String get teamDiscordForumRequired => '请选择一个论坛。';
+
+  @override
+  String get teamDiscordNoForumsSeen => '机器人看不到任何论坛频道。它需要在线，并且所在服务器中有论坛。';
+
+  @override
+  String get teamDiscordTagsLabel => '仅限带有这些标签的帖子';
+
+  @override
+  String get teamDiscordTagsHint => '不选则接收所有帖子。';
+
+  @override
+  String get teamDiscordAllPosts => '所有帖子';
+
+  @override
+  String get teamDiscordKindLabel => '在剪贴板中添加为';
+
+  @override
+  String get teamDiscordRequireLabel => '帖子必须包含';
+
+  @override
+  String get teamDiscordRequireNone => '无特别要求';
+
+  @override
+  String get teamDiscordRequireImage => '一张截图';
+
+  @override
+  String get teamDiscordRequireLog => '一个日志文件';
+
+  @override
+  String get teamDiscordRequireEither => '截图或日志文件';
+
+  @override
+  String get teamDiscordRequireBoth => '截图和日志文件';
+
+  @override
+  String get teamDiscordMissingLabel => '缺少内容时的回复';
+
+  @override
+  String get teamDiscordMissingHint => '会在帖子中发布并提及作者。留空则不回复。帖子仍会添加到剪贴板。';
+
+  @override
+  String get teamDiscordMissingDefault => '感谢反馈！请附上截图和你的 latest.log，方便我们排查。';
+
+  @override
+  String get teamDiscordDoneLabel => '修复或关闭时的回复';
+
+  @override
+  String teamDiscordDoneHint(String token) {
+    return '$token 会替换为 “fixed”、“added” 或 “closed”。随后机器人会关闭该帖子。留空则直接关闭。';
+  }
+
+  @override
+  String teamDiscordDoneDefault(String token) {
+    return '我们这边已 $token。感谢反馈！';
+  }
+
+  @override
+  String teamDiscordLogForum(String user, String title) {
+    return '$user 发布了“$title”';
+  }
+
+  @override
+  String teamDiscordLogForumDone(String title) {
+    return '已关闭帖子“$title”';
+  }
+
+  @override
+  String teamClipboardFromDiscord(String name) {
+    return '来自 Discord · $name 发布';
+  }
+
+  @override
+  String get teamClipboardOpenInDiscord => '在 Discord 中打开';
+
+  @override
+  String get teamClipboardViaDiscord => '来自 Discord';
+
+  @override
+  String get teamClipboardMissingImage => '仍缺少截图';
+
+  @override
+  String get teamClipboardMissingLog => '仍缺少日志文件';
+
+  @override
+  String get teamClipboardMissingBoth => '仍缺少截图和日志文件';
+
+  @override
+  String get teamClipboardMissingEither => '仍缺少截图或日志文件';
+
+  @override
+  String get teamClipboardDiscordOnly => '仅在 Discord 上';
+
+  @override
+  String get teamClipboardLogTail => '仅显示日志末尾。复制或下载即可查看完整文件。';
+
+  @override
   String get teamDiscordPlugins => '插件';
 
   @override
@@ -37098,7 +37213,7 @@ class LZh extends L {
 
   @override
   String teamClipboardFileWrongType(String name) {
-    return '$name 不是 .png、.json 或 .mcmeta 文件。';
+    return '$name 不是 .png、.json、.mcmeta、.log 或 .txt 文件。';
   }
 
   @override

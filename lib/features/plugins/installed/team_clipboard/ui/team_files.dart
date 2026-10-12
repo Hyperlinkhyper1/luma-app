@@ -370,7 +370,9 @@ class _TeamFileTileState extends State<TeamFileTile> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                file.extension == 'mcmeta'
+                                file.isLog
+                                    ? Icons.article_outlined
+                                    : file.extension == 'mcmeta'
                                     ? Icons.animation_rounded
                                     : Icons.data_object_rounded,
                                 color: luma.accent,
@@ -564,7 +566,13 @@ class _FilePreviewDialogState extends State<_FilePreviewDialog> {
               final bytes = snap.data;
               final text = bytes == null || file.isImage
                   ? null
+                  : file.isLog
+                  ? utf8.decode(bytes, allowMalformed: true)
                   : _pretty(utf8.decode(bytes, allowMalformed: true));
+              final tail = text != null && text.length > _maxShownChars;
+              final shown = tail
+                  ? '…${text.substring(text.length - _maxShownChars)}'
+                  : text;
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -609,6 +617,13 @@ class _FilePreviewDialogState extends State<_FilePreviewDialog> {
                     ].join(' · '),
                     style: TextStyle(color: luma.textMuted, fontSize: 12.5),
                   ),
+                  if (tail) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      t.teamClipboardLogTail,
+                      style: TextStyle(color: luma.warning, fontSize: 12.5),
+                    ),
+                  ],
                   const SizedBox(height: 14),
                   Flexible(
                     child: switch (snap.connectionState) {
@@ -653,7 +668,7 @@ class _FilePreviewDialogState extends State<_FilePreviewDialog> {
                         child: SingleChildScrollView(
                           padding: const EdgeInsets.all(14),
                           child: SelectableText(
-                            text ?? '',
+                            shown ?? '',
                             style: TextStyle(
                               color: luma.textPrimary,
                               fontFamily: 'monospace',
@@ -677,6 +692,10 @@ class _FilePreviewDialogState extends State<_FilePreviewDialog> {
       ),
     );
   }
+
+  /// A long log is shown by its end, where the crash is; the whole text
+  /// still goes to the clipboard.
+  static const _maxShownChars = 200000;
 
   static String _pretty(String raw) {
     try {

@@ -15,6 +15,130 @@ class LFr extends L {
   String get teamClipboardDiscordBot => 'Bot Discord';
 
   @override
+  String get teamDiscordForumsTitle => 'Suivi des forums';
+
+  @override
+  String get teamDiscordForumsHint =>
+      'Ajoute les nouveaux messages de forums comme #bug-reports au presse-papiers, fichiers compris.';
+
+  @override
+  String get teamDiscordNoForumRules => 'Aucun forum suivi pour l’instant.';
+
+  @override
+  String get teamDiscordNewForum => 'Suivre un forum';
+
+  @override
+  String get teamDiscordEditForum => 'Modifier le forum suivi';
+
+  @override
+  String get teamDiscordForumLabel => 'Salon forum';
+
+  @override
+  String get teamDiscordForumRequired => 'Choisissez un forum.';
+
+  @override
+  String get teamDiscordNoForumsSeen =>
+      'Le bot ne voit aucun salon forum. Il doit être en ligne et sur un serveur qui en a un.';
+
+  @override
+  String get teamDiscordTagsLabel => 'Seulement les messages avec ces tags';
+
+  @override
+  String get teamDiscordTagsHint =>
+      'N’en choisissez aucun pour prendre tous les messages.';
+
+  @override
+  String get teamDiscordAllPosts => 'Tous les messages';
+
+  @override
+  String get teamDiscordKindLabel => 'Ajouter au presse-papiers comme';
+
+  @override
+  String get teamDiscordRequireLabel => 'Les messages doivent contenir';
+
+  @override
+  String get teamDiscordRequireNone => 'Rien de particulier';
+
+  @override
+  String get teamDiscordRequireImage => 'Une capture d’écran';
+
+  @override
+  String get teamDiscordRequireLog => 'Un fichier journal';
+
+  @override
+  String get teamDiscordRequireEither => 'Une capture ou un fichier journal';
+
+  @override
+  String get teamDiscordRequireBoth => 'Une capture et un fichier journal';
+
+  @override
+  String get teamDiscordMissingLabel => 'Réponse si quelque chose manque';
+
+  @override
+  String get teamDiscordMissingHint =>
+      'Publiée dans le fil en mentionnant l’auteur. Laissez vide pour ne rien dire. Le message arrive quand même dans le presse-papiers.';
+
+  @override
+  String get teamDiscordMissingDefault =>
+      'Merci pour le signalement ! Ajoutez une capture d’écran et votre latest.log pour que nous puissions regarder.';
+
+  @override
+  String get teamDiscordDoneLabel => 'Réponse une fois corrigé ou fermé';
+
+  @override
+  String teamDiscordDoneHint(String token) {
+    return '$token devient « fixed », « added » ou « closed ». Le bot ferme ensuite le message. Laissez vide pour fermer sans message.';
+  }
+
+  @override
+  String teamDiscordDoneDefault(String token) {
+    return 'C’est $token de notre côté. Merci pour le signalement !';
+  }
+
+  @override
+  String teamDiscordLogForum(String user, String title) {
+    return '$user a publié « $title »';
+  }
+
+  @override
+  String teamDiscordLogForumDone(String title) {
+    return 'Message « $title » fermé';
+  }
+
+  @override
+  String teamClipboardFromDiscord(String name) {
+    return 'Depuis Discord · publié par $name';
+  }
+
+  @override
+  String get teamClipboardOpenInDiscord => 'Ouvrir dans Discord';
+
+  @override
+  String get teamClipboardViaDiscord => 'via Discord';
+
+  @override
+  String get teamClipboardMissingImage =>
+      'Il manque encore une capture d’écran';
+
+  @override
+  String get teamClipboardMissingLog => 'Il manque encore un fichier journal';
+
+  @override
+  String get teamClipboardMissingBoth =>
+      'Il manque encore une capture et un fichier journal';
+
+  @override
+  String get teamClipboardMissingEither =>
+      'Il manque encore une capture ou un fichier journal';
+
+  @override
+  String get teamClipboardDiscordOnly => 'Seulement sur Discord';
+
+  @override
+  String get teamClipboardLogTail =>
+      'Seule la fin du journal est affichée. Copiez-le ou téléchargez-le pour le fichier entier.';
+
+  @override
   String get teamDiscordPlugins => 'Plugins';
 
   @override
@@ -39360,7 +39484,7 @@ class LFr extends L {
 
   @override
   String teamClipboardFileWrongType(String name) {
-    return '$name n’est pas un fichier .png, .json ou .mcmeta.';
+    return '$name n’est pas un fichier .png, .json, .mcmeta, .log ou .txt.';
   }
 
   @override

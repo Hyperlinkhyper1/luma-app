@@ -68,10 +68,21 @@ void main() {
       expect(cleanTeamBoardFileName('../../etc/ruby.json'), 'ruby.json');
       expect(cleanTeamBoardFileName('fire.png.mcmeta'), 'fire.png.mcmeta');
       expect(cleanTeamBoardFileName('...hidden.json'), 'hidden.json');
+      expect(cleanTeamBoardFileName('latest.log'), 'latest.log');
       expect(cleanTeamBoardFileName('model.zip'), isNull);
       expect(cleanTeamBoardFileName('.png'), isNull);
       expect(cleanTeamBoardFileName('run.exe'), isNull);
       expect(cleanTeamBoardFileName(null), isNull);
+    });
+
+    test('a log is any text, but not a binary in disguise', () {
+      expect(teamBoardFileProblem('latest.log', utf8.encode('[INFO] ok\n')),
+          isNull);
+      expect(teamBoardFileProblem('crash.txt', latin1.encode('café')), isNull);
+      expect(teamBoardFileProblem('crash.txt', _png),
+          contains('not a text file'));
+      expect(teamBoardFileContentType('latest.log'),
+          'text/plain; charset=utf-8');
     });
 
     test('a PNG has to be a whole, honest PNG', () {

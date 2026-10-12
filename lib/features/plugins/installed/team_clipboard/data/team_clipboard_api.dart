@@ -202,22 +202,25 @@ class TeamClipboardApi {
     return TeamDiscordState.fromJson(_decodeOrThrow(response));
   }
 
-  /// Saves whichever of [enabled], [automodOn], [repliesOn], [automod] and
-  /// [replies] is given. A list
+  /// Saves whichever of the switches and rule lists is given. A list
   /// replaces the whole list on the server.
   Future<TeamDiscordState> saveDiscord({
     bool? enabled,
     bool? automodOn,
     bool? repliesOn,
+    bool? forumsOn,
     List<TeamAutomodRule>? automod,
     List<TeamReplyRule>? replies,
+    List<TeamForumTracker>? trackers,
   }) async => TeamDiscordState.fromJson(
     await _send('PUT', '/discord', {
       'enabled': ?enabled,
       'automodOn': ?automodOn,
       'repliesOn': ?repliesOn,
+      'forumsOn': ?forumsOn,
       if (automod != null) 'automod': [for (final r in automod) r.toJson()],
       if (replies != null) 'replies': [for (final r in replies) r.toJson()],
+      if (trackers != null) 'trackers': [for (final r in trackers) r.toJson()],
     }),
   );
 

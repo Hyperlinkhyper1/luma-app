@@ -115,6 +115,216 @@ abstract class L {
   /// **'Discord bot'**
   String get teamClipboardDiscordBot;
 
+  /// No description provided for @teamDiscordForumsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Forum tracking'**
+  String get teamDiscordForumsTitle;
+
+  /// No description provided for @teamDiscordForumsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Puts new posts from forums like #bug-reports on the clipboard, files and all.'**
+  String get teamDiscordForumsHint;
+
+  /// No description provided for @teamDiscordNoForumRules.
+  ///
+  /// In en, this message translates to:
+  /// **'No forums tracked yet.'**
+  String get teamDiscordNoForumRules;
+
+  /// No description provided for @teamDiscordNewForum.
+  ///
+  /// In en, this message translates to:
+  /// **'Track a forum'**
+  String get teamDiscordNewForum;
+
+  /// No description provided for @teamDiscordEditForum.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit tracked forum'**
+  String get teamDiscordEditForum;
+
+  /// No description provided for @teamDiscordForumLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Forum channel'**
+  String get teamDiscordForumLabel;
+
+  /// No description provided for @teamDiscordForumRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a forum.'**
+  String get teamDiscordForumRequired;
+
+  /// No description provided for @teamDiscordNoForumsSeen.
+  ///
+  /// In en, this message translates to:
+  /// **'The bot sees no forum channels. It has to be online and in a server that has one.'**
+  String get teamDiscordNoForumsSeen;
+
+  /// No description provided for @teamDiscordTagsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Only posts with these tags'**
+  String get teamDiscordTagsLabel;
+
+  /// No description provided for @teamDiscordTagsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick none to take every post.'**
+  String get teamDiscordTagsHint;
+
+  /// No description provided for @teamDiscordAllPosts.
+  ///
+  /// In en, this message translates to:
+  /// **'All posts'**
+  String get teamDiscordAllPosts;
+
+  /// No description provided for @teamDiscordKindLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to the clipboard as'**
+  String get teamDiscordKindLabel;
+
+  /// No description provided for @teamDiscordRequireLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Posts must include'**
+  String get teamDiscordRequireLabel;
+
+  /// No description provided for @teamDiscordRequireNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing in particular'**
+  String get teamDiscordRequireNone;
+
+  /// No description provided for @teamDiscordRequireImage.
+  ///
+  /// In en, this message translates to:
+  /// **'A screenshot'**
+  String get teamDiscordRequireImage;
+
+  /// No description provided for @teamDiscordRequireLog.
+  ///
+  /// In en, this message translates to:
+  /// **'A log file'**
+  String get teamDiscordRequireLog;
+
+  /// No description provided for @teamDiscordRequireEither.
+  ///
+  /// In en, this message translates to:
+  /// **'A screenshot or a log file'**
+  String get teamDiscordRequireEither;
+
+  /// No description provided for @teamDiscordRequireBoth.
+  ///
+  /// In en, this message translates to:
+  /// **'A screenshot and a log file'**
+  String get teamDiscordRequireBoth;
+
+  /// No description provided for @teamDiscordMissingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply when something is missing'**
+  String get teamDiscordMissingLabel;
+
+  /// No description provided for @teamDiscordMissingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Posted in the thread, mentioning the author. Leave it empty to say nothing. The post still goes on the clipboard.'**
+  String get teamDiscordMissingHint;
+
+  /// No description provided for @teamDiscordMissingDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks for the report! Please add a screenshot and your latest.log so we can look into it.'**
+  String get teamDiscordMissingDefault;
+
+  /// No description provided for @teamDiscordDoneLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply when fixed or closed'**
+  String get teamDiscordDoneLabel;
+
+  /// No description provided for @teamDiscordDoneHint.
+  ///
+  /// In en, this message translates to:
+  /// **'{token} becomes “fixed”, “added” or “closed”. The bot then closes the post. Leave it empty to close it without a message.'**
+  String teamDiscordDoneHint(String token);
+
+  /// No description provided for @teamDiscordDoneDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'This was {token} on our side. Thanks for reporting!'**
+  String teamDiscordDoneDefault(String token);
+
+  /// No description provided for @teamDiscordLogForum.
+  ///
+  /// In en, this message translates to:
+  /// **'{user} posted “{title}”'**
+  String teamDiscordLogForum(String user, String title);
+
+  /// No description provided for @teamDiscordLogForumDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed the post “{title}”'**
+  String teamDiscordLogForumDone(String title);
+
+  /// No description provided for @teamClipboardFromDiscord.
+  ///
+  /// In en, this message translates to:
+  /// **'From Discord · posted by {name}'**
+  String teamClipboardFromDiscord(String name);
+
+  /// No description provided for @teamClipboardOpenInDiscord.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in Discord'**
+  String get teamClipboardOpenInDiscord;
+
+  /// No description provided for @teamClipboardViaDiscord.
+  ///
+  /// In en, this message translates to:
+  /// **'via Discord'**
+  String get teamClipboardViaDiscord;
+
+  /// No description provided for @teamClipboardMissingImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Still missing a screenshot'**
+  String get teamClipboardMissingImage;
+
+  /// No description provided for @teamClipboardMissingLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Still missing a log file'**
+  String get teamClipboardMissingLog;
+
+  /// No description provided for @teamClipboardMissingBoth.
+  ///
+  /// In en, this message translates to:
+  /// **'Still missing a screenshot and a log file'**
+  String get teamClipboardMissingBoth;
+
+  /// No description provided for @teamClipboardMissingEither.
+  ///
+  /// In en, this message translates to:
+  /// **'Still missing a screenshot or a log file'**
+  String get teamClipboardMissingEither;
+
+  /// No description provided for @teamClipboardDiscordOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only on Discord'**
+  String get teamClipboardDiscordOnly;
+
+  /// No description provided for @teamClipboardLogTail.
+  ///
+  /// In en, this message translates to:
+  /// **'Showing the end of the log. Copy or download it for the whole file.'**
+  String get teamClipboardLogTail;
+
   /// No description provided for @teamDiscordPlugins.
   ///
   /// In en, this message translates to:
@@ -63772,7 +63982,7 @@ abstract class L {
   /// No description provided for @teamClipboardFileWrongType.
   ///
   /// In en, this message translates to:
-  /// **'{name} is not a .png, .json or .mcmeta file.'**
+  /// **'{name} is not a .png, .json, .mcmeta, .log or .txt file.'**
   String teamClipboardFileWrongType(String name);
 
   /// No description provided for @teamClipboardChat.

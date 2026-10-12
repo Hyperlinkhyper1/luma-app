@@ -2989,7 +2989,8 @@ class Api {
 
   /// The Team Clipboard's Discord bot (see `api_team_discord.dart`). It
   /// only connects once `main` calls `start`.
-  late final TeamDiscordBot teamDiscord = TeamDiscordBot(config.dataDir);
+  late final TeamDiscordBot teamDiscord = TeamDiscordBot(config.dataDir)
+    ..board = teamBoard;
 
   late final BookReviewConfigStore aiBookReviewConfig =
       BookReviewConfigStore(config.dataDir);

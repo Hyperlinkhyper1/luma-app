@@ -13,6 +13,7 @@ import 'package:luma_sync_server/mail.dart';
 import 'package:luma_sync_server/recipe_store.dart';
 import 'package:luma_sync_server/store.dart';
 import 'package:luma_sync_server/subway_store.dart';
+import 'package:luma_sync_server/team_board.dart';
 import 'package:luma_sync_server/team_discord.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
@@ -95,6 +96,85 @@ void main() {
             'match': 'regex',
           }),
           isNull);
+    });
+  });
+
+  group('forums', () {
+    DiscordForumTracker tracker(String id,
+            {List<String> tags = const [], bool enabled = true}) =>
+        DiscordForumTracker(
+            id: id,
+            forumId: '100',
+            tags: [for (final t in tags) DiscordForumTag(t, t)],
+            enabled: enabled);
+
+    test('a rule naming the post’s tag beats one that takes every post', () {
+      final any = tracker('any');
+      final crash = tracker('crash', tags: ['7']);
+      expect(pickDiscordForumTracker([any, crash], '100', ['7'])?.id, 'crash');
+      expect(pickDiscordForumTracker([any, crash], '100', ['8'])?.id, 'any');
+      expect(pickDiscordForumTracker([crash], '100', const []), isNull);
+      expect(pickDiscordForumTracker([any], '200', const []), isNull);
+      expect(
+          pickDiscordForumTracker(
+              [tracker('off', enabled: false)], '100', const []),
+          isNull);
+    });
+
+    test('what a post still misses', () {
+      String missing(String require, bool image, bool log) =>
+          teamBoardDiscordMissing(require, hasImage: image, hasLog: log);
+      expect(missing('none', false, false), '');
+      expect(missing('image', false, true), 'image');
+      expect(missing('log', false, true), '');
+      expect(missing('either', false, false), 'either');
+      expect(missing('either', true, false), '');
+      expect(missing('both', false, false), 'both');
+      expect(missing('both', true, false), 'log');
+      expect(missing('both', true, true), '');
+    });
+
+    test('screenshots, logs and paste links are recognised', () {
+      expect(discordAttachmentIsImage('shot.JPG', null), isTrue);
+      expect(discordAttachmentIsImage('clip', 'image/png'), isTrue);
+      expect(discordAttachmentIsImage('latest.log', 'text/plain'), isFalse);
+      expect(discordAttachmentIsLog('latest.log'), isTrue);
+      expect(discordAttachmentIsLog('crash-2026.txt'), isTrue);
+      expect(discordAttachmentIsLog('debug.log.gz'), isTrue);
+      expect(discordTextHasLogLink('log: https://mclo.gs/abc123'), isTrue);
+      expect(discordTextHasLogLink('see https://evilmclo.gs/x'), isFalse);
+      expect(discordTextHasLogLink('no link here'), isFalse);
+    });
+
+    test('rules from the app are checked', () {
+      final ok = DiscordForumTracker.fromJson({
+        'forumId': '123456789',
+        'forumName': ' bug-reports ',
+        'tags': [
+          {'id': '5', 'name': 'Crash'},
+          {'id': '5', 'name': 'Crash'},
+        ],
+        'kind': 'bug',
+        'require': 'both',
+        'missingMessage': ' Please add a screenshot and your log. ',
+      })!;
+      expect(ok.forumName, 'bug-reports');
+      expect(ok.tags.map((t) => t.id), ['5']);
+      expect(ok.missingMessage, 'Please add a screenshot and your log.');
+      for (final bad in [
+        {'forumId': 'general'},
+        {'forumId': '1', 'kind': 'issue'},
+        {'forumId': '1', 'require': 'video'},
+        {'forumId': '1', 'missingMessage': 'x' * (kDiscordMaxReplyChars + 1)},
+        {
+          'forumId': '1',
+          'tags': [
+            {'id': 'x'}
+          ]
+        },
+      ]) {
+        expect(DiscordForumTracker.fromJson(bad), isNull, reason: '$bad');
+      }
     });
   });
 
@@ -296,6 +376,154 @@ void main() {
       expect(reopened.automod.single.warn, 'Keep it friendly.');
       expect(reopened.replies.single.reply, 'Grab it from #downloads.');
       expect(reopened.replies.single.match, 'contains');
+    });
+
+    test('a forum post goes on the board and stays in step with it', () async {
+      final lead = await register('lead@example.com', role: 'lead');
+      final calls = <String>[];
+      final posted = <Object?>[];
+      final bot = api.teamDiscord
+        ..rest = (token, method, path, {body, reason}) async {
+          calls.add('$method $path');
+          if (method == 'GET' && path == '/channels/900/messages/900') {
+            return DiscordRestResult(200, {
+              'id': '900',
+              'content': 'The game crashes when I open the ruby chest.',
+              'author': {'id': '42', 'username': 'steve', 'bot': false},
+              'attachments': [
+                {
+                  'filename': 'crash.jpg',
+                  'url': 'https://cdn.discordapp.com/a/crash.jpg',
+                  'size': 10,
+                  'content_type': 'image/jpeg',
+                },
+              ],
+            });
+          }
+          if (method == 'POST') posted.add(body);
+          return DiscordRestResult(200, {});
+        }
+        ..download = (url, max) async =>
+            url.endsWith('.log') ? utf8.encode('[main/INFO] boom\n') : null;
+
+      await call('PUT', '/api/v1/team-board/discord/token',
+          token: lead, json: {'token': _token});
+      final saved =
+          await call('PUT', '/api/v1/team-board/discord', token: lead, json: {
+        'forumsOn': true,
+        'trackers': [
+          {
+            'forumId': '100',
+            'forumName': 'bug-reports',
+            'kind': 'bug',
+            'require': 'both',
+            'missingMessage': 'Please attach your latest.log.',
+            'doneMessage': 'This was {status} in the mod.',
+          }
+        ],
+      });
+      expect(saved['httpStatus'], 200, reason: '$saved');
+      expect(saved['forumsOn'], isTrue);
+
+      await bot.handleGatewayEvent('GUILD_CREATE', {
+        'id': '1',
+        'name': 'Mod Team',
+        'channels': [
+          {
+            'id': '100',
+            'type': 15,
+            'name': 'bug-reports',
+            'available_tags': [
+              {'id': '5', 'name': 'Crash'}
+            ],
+          },
+          {'id': '101', 'type': 0, 'name': 'general'},
+        ],
+      });
+      final state =
+          await call('GET', '/api/v1/team-board/discord', token: lead);
+      expect((state['forums'] as List).single,
+          containsPair('name', 'bug-reports'));
+
+      Future<void> thread(String id, String forum) =>
+          bot.handleGatewayEvent('THREAD_CREATE', {
+            'id': id,
+            'parent_id': forum,
+            'guild_id': '1',
+            'name': 'Ruby chest crash',
+            'newly_created': true,
+            'applied_tags': ['5'],
+          });
+      await thread('900', '100');
+      await thread('900', '100');
+      await thread('901', '101');
+
+      var board = await call('GET', '/api/v1/team-board', token: lead);
+      final entry = (board['entries'] as List).single as Map;
+      expect(entry['kind'], 'bug');
+      expect(entry['title'], 'Ruby chest crash');
+      expect(entry['author'], 'steve');
+      expect(entry['brief'], contains('ruby chest'));
+      final link = entry['discord'] as Map;
+      expect(link['url'], 'https://discord.com/channels/1/900');
+      expect(link['missing'], 'log');
+      expect((link['attachments'] as List).single['name'], 'crash.jpg');
+      expect(posted.single, containsPair('content', contains('<@42>')));
+
+      await bot.handleGatewayEvent('MESSAGE_CREATE', {
+        'id': '950',
+        'channel_id': '900',
+        'guild_id': '1',
+        'content': 'here you go',
+        'author': {'id': '42', 'username': 'steve'},
+        'attachments': [
+          {
+            'filename': 'latest.log',
+            'url': 'https://cdn.discordapp.com/a/latest.log',
+            'size': 16,
+          },
+        ],
+      });
+      final id = entry['id'];
+      var full =
+          await call('GET', '/api/v1/team-board/entries/$id', token: lead);
+      expect((full['discord'] as Map)['missing'], '');
+      final file = (full['files'] as List).single as Map;
+      expect(file['name'], 'latest.log');
+      expect(file['fromDiscord'], isTrue);
+      final message = (full['messages'] as List).single as Map;
+      expect(message['text'], 'here you go\n\nShared latest.log');
+      expect(message['fromDiscord'], isTrue);
+
+      calls.clear();
+      posted.clear();
+      await call('POST', '/api/v1/team-board/entries/$id/stage',
+          token: lead, json: {'stage': 'added'});
+      for (var i = 0; i < 100 && calls.length < 2; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      expect(calls, ['POST /channels/900/messages', 'PATCH /channels/900']);
+      expect(
+          posted.single, containsPair('content', 'This was fixed in the mod.'));
+
+      calls.clear();
+      await call('POST', '/api/v1/team-board/entries/$id/close',
+          token: lead, json: {'closed': true});
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(calls, isEmpty, reason: 'the thread was already told');
+
+      await bot.handleGatewayEvent('MESSAGE_CREATE', {
+        'id': '951',
+        'channel_id': '900',
+        'guild_id': '1',
+        'content': 'still broken?',
+        'author': {'id': '43', 'username': 'alex'},
+      });
+      full = await call('GET', '/api/v1/team-board/entries/$id', token: lead);
+      expect(full['messages'], hasLength(1),
+          reason: 'a closed entry takes no more replies');
+      board = await call('GET', '/api/v1/team-board', token: lead);
+      expect(board['entries'], hasLength(1));
     });
   });
 }

@@ -23,6 +23,7 @@ extension TeamBoardApi on Api {
   /// Empty once the account has been deleted.
   String _teamName(String userId, String email) {
     if (email.isEmpty) return '';
+    if (isTeamBoardDiscordId(userId)) return email;
     return teamBoard.nameOf(userId) ?? _teamDefaultName(email);
   }
 
@@ -93,6 +94,7 @@ extension TeamBoardApi on Api {
         'name': f.name,
         'sizeBytes': f.sizeBytes,
         'uploader': _teamName(f.uploaderId, f.uploaderEmail),
+        'fromDiscord': isTeamBoardDiscordId(f.uploaderId),
         'mine': f.uploaderId == viewer.id,
         'canRemove': can.canRemoveFile(f),
         'createdAtMs': f.createdAtMs,
@@ -116,6 +118,13 @@ extension TeamBoardApi on Api {
           ? null
           : _teamName(e.claimedById!, e.claimedByEmail ?? ''),
       'parentId': e.parentId,
+      if (e.discord case final d?)
+        'discord': {
+          'url': d.url,
+          'author': d.authorName,
+          'missing': d.missing,
+          'attachments': [for (final a in d.attachments) a.toJson()],
+        },
       'claimedByMe': e.claimedById == viewer.id,
       'createdAtMs': e.createdAtMs,
       'updatedAtMs': e.updatedAtMs,
@@ -138,6 +147,7 @@ extension TeamBoardApi on Api {
             {
               'id': m.id,
               'author': _teamName(m.authorId, m.authorEmail),
+              'fromDiscord': isTeamBoardDiscordId(m.authorId),
               'mine': m.authorId == viewer.id,
               'text': m.text,
               'createdAtMs': m.createdAtMs,
@@ -334,6 +344,7 @@ extension TeamBoardApi on Api {
         ..stage = stage
         ..updatedAtMs = DateTime.now().millisecondsSinceEpoch;
     });
+    unawaited(teamDiscord.syncEntryState(entry));
     return _teamEntryResponse(200, entry, user, role);
   }
 
@@ -358,6 +369,7 @@ extension TeamBoardApi on Api {
         ..closed = closed
         ..updatedAtMs = DateTime.now().millisecondsSinceEpoch;
     });
+    unawaited(teamDiscord.syncEntryState(entry));
     return _teamEntryResponse(200, entry, user, role);
   }
 
@@ -421,8 +433,7 @@ extension TeamBoardApi on Api {
     }
     final name = cleanTeamBoardFileName(request.url.queryParameters['name']);
     if (name == null) {
-      return errorResponse(400, 'bad_file_type',
-          'Only .png, .json and .mcmeta files can be attached.');
+      return errorResponse(400, 'bad_file_type', kTeamBoardFileTypesHint);
     }
     if (entry.files.length >= kTeamBoardMaxFilesPerEntry) {
       return errorResponse(409, 'too_many_files',
