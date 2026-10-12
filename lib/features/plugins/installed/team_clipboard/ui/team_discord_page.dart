@@ -516,11 +516,11 @@ class _BotIdentity extends StatelessWidget {
     };
     return Material(
       color: luma.background,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(2),
       child: InkWell(
         key: const ValueKey('team-discord-identity'),
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(2),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
@@ -528,9 +528,20 @@ class _BotIdentity extends StatelessWidget {
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundColor: luma.accent.withValues(alpha: 0.18),
+                  Container(
+                    width: 36,
+                    height: 36,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: luma.accent.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(2),
+                      image: state.botAvatarUrl == null
+                          ? null
+                          : DecorationImage(
+                              image: NetworkImage(state.botAvatarUrl!),
+                              fit: BoxFit.cover,
+                            ),
+                    ),
                     child: Text(
                       name.isEmpty ? '?' : name.characters.first.toUpperCase(),
                       style: TextStyle(
@@ -616,11 +627,11 @@ class _Sidebar extends StatelessWidget {
           color: selected
               ? luma.accent.withValues(alpha: 0.12)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(2),
           child: InkWell(
             key: ValueKey('team-discord-nav-${s.name}'),
             onTap: () => onSection(s),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(2),
             child: Padding(
               padding: EdgeInsets.fromLTRB(nested ? 10 : 12, 9, 10, 9),
               child: Row(
@@ -1267,6 +1278,9 @@ class _ConnectionCardState extends State<_ConnectionCard> {
               CircleAvatar(
                 radius: 20,
                 backgroundColor: luma.accent.withValues(alpha: 0.14),
+                foregroundImage: state.botAvatarUrl == null
+                    ? null
+                    : NetworkImage(state.botAvatarUrl!),
                 child: Icon(Icons.smart_toy_outlined, color: luma.accent),
               ),
               const SizedBox(width: 12),

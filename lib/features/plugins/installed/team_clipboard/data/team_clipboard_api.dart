@@ -313,19 +313,23 @@ class TeamClipboardApi {
     );
   }
 
-  Future<Uint8List> libraryBlob(String sha1) async {
-    final response = await _client
-        .get(_uri('/library/blobs/$sha1'), headers: _auth)
-        .timeout(_fileTimeout);
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return response.bodyBytes;
-    }
-    _decodeOrThrow(response);
-    throw TeamClipboardApiException(
-      response.statusCode,
-      'http_${response.statusCode}',
-      currentL.teamClipboardServerError(response.statusCode),
+  /// Up to [kTeamLibraryBatchFiles] library files by SHA-1 in one request.
+  /// A "slow down" from the server comes back as
+  /// [TeamLibraryBlobs.retryAfter] rather than an error.
+  Future<TeamLibraryBlobs> libraryBlobs(List<String> ids) async {
+    final request = http.Request('POST', _uri('/library/blobs'))
+      ..headers.addAll({..._auth, 'Content-Type': 'application/json'})
+      ..body = jsonEncode({'ids': ids});
+    final response = await http.Response.fromStream(
+      await _client.send(request).timeout(_fileTimeout),
     );
+    if (response.statusCode == 429) {
+      final seconds = int.tryParse(response.headers['retry-after'] ?? '');
+      return TeamLibraryBlobs.wait(
+        Duration(seconds: (seconds ?? 2).clamp(1, 60)),
+      );
+    }
+    return TeamLibraryBlobs.fromJson(_decodeOrThrow(response));
   }
 
   Future<Map<String, dynamic>> _send(

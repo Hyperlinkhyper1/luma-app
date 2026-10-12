@@ -41,6 +41,11 @@ const kTeamLibraryMaxModFiles = 40000;
 /// server is a home machine.
 const kTeamLibraryMaxTotalBytes = 2 * 1024 * 1024 * 1024;
 
+/// What one batch of assets may hold: how many files, and how many bytes
+/// before the rest are left for the next request.
+const kTeamLibraryBatchFiles = 200;
+const kTeamLibraryBatchBytes = 8 * 1024 * 1024;
+
 /// How often the server looks for new versions.
 const kTeamLibraryCheckEvery = Duration(minutes: 30);
 

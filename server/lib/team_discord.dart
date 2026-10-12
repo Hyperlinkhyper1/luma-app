@@ -282,9 +282,16 @@ class DiscordLogEntry {
 
 /// Who a token belongs to.
 class DiscordIdentity {
-  const DiscordIdentity(this.id, this.name);
+  const DiscordIdentity(this.id, this.name, [this.avatar]);
   final String id;
   final String name;
+
+  /// Discord's avatar hash; null when the bot never set one.
+  final String? avatar;
+
+  String? get avatarUrl => avatar == null
+      ? null
+      : 'https://cdn.discordapp.com/avatars/$id/$avatar.png?size=128';
 }
 
 /// Why a token was refused.
@@ -309,7 +316,8 @@ class TeamDiscordBot {
       final token = raw['token'];
       if (token is String && token.isNotEmpty) _token = token;
       _identity = raw['botId'] is String && raw['botName'] is String
-          ? DiscordIdentity(raw['botId'] as String, raw['botName'] as String)
+          ? DiscordIdentity(raw['botId'] as String, raw['botName'] as String,
+              raw['botAvatar'] as String?)
           : null;
       enabled = raw['enabled'] != false;
       automodOn = raw['automodOn'] == true;
@@ -416,6 +424,7 @@ class TeamDiscordBot {
           'token': _token,
           'botId': _identity?.id,
           'botName': _identity?.name,
+          'botAvatar': _identity?.avatar,
           'enabled': enabled,
           'automodOn': automodOn,
           'repliesOn': repliesOn,
@@ -648,8 +657,8 @@ class TeamDiscordBot {
       case 'READY':
         final user = d['user'];
         if (user is Map && user['id'] is String) {
-          _identity = DiscordIdentity(
-              user['id'] as String, user['username'] as String? ?? 'bot');
+          _identity = DiscordIdentity(user['id'] as String,
+              user['username'] as String? ?? 'bot', user['avatar'] as String?);
         }
         status = 'online';
         statusReason = null;
@@ -778,8 +787,8 @@ class TeamDiscordBot {
       throw const DiscordTokenRejected(
           'That is not a bot token. Copy it from the Bot page.');
     }
-    return DiscordIdentity(
-        body['id'] as String, body['username'] as String? ?? 'bot');
+    return DiscordIdentity(body['id'] as String,
+        body['username'] as String? ?? 'bot', body['avatar'] as String?);
   }
 
   /// One REST call, retried once if Discord asks us to slow down.

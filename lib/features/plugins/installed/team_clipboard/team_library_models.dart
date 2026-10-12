@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'team_clipboard_models.dart';
 
 /// Where a library mod is: waiting or being unpacked on the server, ready
@@ -280,6 +283,51 @@ class TeamLibraryAsset {
 
 /// The prefix that marks a controller file id as a library asset.
 const kTeamLibraryFilePrefix = 'lib:';
+
+/// How many library files one request asks for; the server takes at most
+/// this many.
+const kTeamLibraryBatchFiles = 200;
+
+/// What a batch of library files came back as. Ids in neither [files] nor
+/// [missing] didn't fit in the answer and are asked for again; a
+/// [retryAfter] means the server wants the whole batch asked again later.
+class TeamLibraryBlobs {
+  const TeamLibraryBlobs({
+    this.files = const {},
+    this.missing = const {},
+    this.retryAfter,
+  });
+
+  const TeamLibraryBlobs.wait(Duration this.retryAfter)
+    : files = const {},
+      missing = const {};
+
+  final Map<String, Uint8List> files;
+  final Set<String> missing;
+  final Duration? retryAfter;
+
+  factory TeamLibraryBlobs.fromJson(Map<String, dynamic> j) {
+    final files = <String, Uint8List>{};
+    final raw = j['files'];
+    if (raw is Map) {
+      raw.forEach((id, data) {
+        if (id is! String || data is! String) return;
+        try {
+          files[id] = base64Decode(data);
+        } on FormatException {
+          return;
+        }
+      });
+    }
+    return TeamLibraryBlobs(
+      files: files,
+      missing: {
+        for (final id in j['missing'] as List? ?? const [])
+          if (id is String) id,
+      },
+    );
+  }
+}
 
 /// A mod's file list, for the version the library holds.
 class TeamLibraryIndex {

@@ -14,6 +14,7 @@ class TeamDiscordState {
     required this.status,
     this.statusReason,
     this.botName,
+    this.botAvatarUrl,
     this.inviteUrl,
     this.guilds = const [],
     this.automod = const [],
@@ -37,6 +38,7 @@ class TeamDiscordState {
   /// `network` or `other`.
   final String? statusReason;
   final String? botName;
+  final String? botAvatarUrl;
 
   /// Adds the bot to a Discord server with the permissions its rules need.
   final String? inviteUrl;
@@ -63,6 +65,7 @@ class TeamDiscordState {
             TeamDiscordStatus.off,
         statusReason: json['statusReason'] as String?,
         botName: (json['bot'] as Map?)?['name'] as String?,
+        botAvatarUrl: (json['bot'] as Map?)?['avatarUrl'] as String?,
         inviteUrl: json['inviteUrl'] as String?,
         guilds: [
           for (final g in json['guilds'] as List? ?? const [])

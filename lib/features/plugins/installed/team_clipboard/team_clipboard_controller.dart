@@ -34,6 +34,7 @@ class TeamClipboardController extends ChangeNotifier {
     this._sync, {
     Future<File?> Function()? stateFile,
     this.pollInterval = const Duration(seconds: 8),
+    this.libraryBatchGap = const Duration(milliseconds: 250),
     TeamClipboardApi Function(String serverUrl, String? token)? apiFactory,
   }) : _stateFile = stateFile ?? _defaultStateFile,
        _apiFactory =
@@ -45,6 +46,9 @@ class TeamClipboardController extends ChangeNotifier {
   final Future<File?> Function() _stateFile;
   final TeamClipboardApi Function(String, String?) _apiFactory;
   final Duration pollInterval;
+
+  /// The least time between two batches of assets-library files.
+  final Duration libraryBatchGap;
 
   static Future<File?> _defaultStateFile() async {
     final dir = await getApplicationSupportDirectory();
@@ -133,6 +137,7 @@ class TeamClipboardController extends ChangeNotifier {
   void dispose() {
     _sync.removeListener(_onSyncChanged);
     _poll?.cancel();
+    _dropLibraryQueue();
     _api?.close();
     super.dispose();
   }
@@ -191,6 +196,7 @@ class TeamClipboardController extends ChangeNotifier {
     _selected = null;
     _fileCache.clear();
     _fileLoads.clear();
+    _dropLibraryQueue();
   }
 
   // ---- Board ----------------------------------------------------------------
@@ -494,12 +500,11 @@ class TeamClipboardController extends ChangeNotifier {
     if (cached != null) return Future.value(cached);
     return _fileLoads[fileId] ??= () async {
       try {
-        final api = _api;
         final bytes = fileId.startsWith(kTeamLibraryFilePrefix)
-            ? await api?.libraryBlob(
+            ? await _libraryFile(
                 fileId.substring(kTeamLibraryFilePrefix.length),
               )
-            : await api?.download(fileId);
+            : await _api?.download(fileId);
         if (bytes != null) _fileCache[fileId] = bytes;
         return bytes;
       } catch (_) {
@@ -508,6 +513,99 @@ class TeamClipboardController extends ChangeNotifier {
         _fileLoads.remove(fileId);
       }
     }();
+  }
+
+  /// An assets-library file. A mod can have thousands, and a scrolling grid
+  /// asks for a screenful at once, so they are queued and fetched
+  /// [kTeamLibraryBatchFiles] to a request, at most one request every
+  /// [libraryBatchGap]. That stays inside the server's rate limit; if it
+  /// says to slow down anyway, the batch waits as long as it asks and goes
+  /// again rather than failing every file in it.
+  Future<Uint8List?> _libraryFile(String sha1) {
+    final wanted = _libraryWanted.putIfAbsent(sha1, Completer.new);
+    _scheduleLibraryBatch(const Duration(milliseconds: 40));
+    return wanted.future;
+  }
+
+  final Map<String, Completer<Uint8List?>> _libraryWanted = {};
+  Timer? _libraryTimer;
+  bool _libraryFetching = false;
+
+  void _scheduleLibraryBatch(Duration delay) {
+    if (_libraryFetching || _libraryTimer != null || _libraryWanted.isEmpty) {
+      return;
+    }
+    _libraryTimer = Timer(delay, () {
+      _libraryTimer = null;
+      unawaited(_fetchLibraryBatch());
+    });
+  }
+
+  Future<void> _fetchLibraryBatch() async {
+    final api = _api;
+    final batch = <String, Completer<Uint8List?>>{
+      for (final id in _libraryWanted.keys.take(kTeamLibraryBatchFiles))
+        id: _libraryWanted[id]!,
+    };
+    batch.keys.forEach(_libraryWanted.remove);
+    if (api == null) {
+      for (final c in batch.values) {
+        c.complete(null);
+      }
+      return;
+    }
+    _libraryFetching = true;
+    var pause = libraryBatchGap;
+    try {
+      final result = await api.libraryBlobs(batch.keys.toList());
+      if (result.retryAfter case final wait?) {
+        _requeueLibrary(batch);
+        pause = wait;
+      } else {
+        final later = <String, Completer<Uint8List?>>{};
+        batch.forEach((id, wanted) {
+          if (result.files[id] case final bytes?) {
+            wanted.complete(bytes);
+          } else if (result.missing.contains(id)) {
+            wanted.complete(null);
+          } else {
+            later[id] = wanted;
+          }
+        });
+        _requeueLibrary(later);
+      }
+    } on TeamClipboardApiException catch (e) {
+      for (final c in batch.values) {
+        c.complete(null);
+      }
+      if (e.accessRemoved) unawaited(refresh());
+    } catch (_) {
+      for (final c in batch.values) {
+        c.complete(null);
+      }
+    } finally {
+      _libraryFetching = false;
+      _scheduleLibraryBatch(pause);
+    }
+  }
+
+  /// Puts [batch] back at the front of the queue.
+  void _requeueLibrary(Map<String, Completer<Uint8List?>> batch) {
+    if (batch.isEmpty) return;
+    final rest = Map.of(_libraryWanted);
+    _libraryWanted
+      ..clear()
+      ..addAll(batch)
+      ..addAll(rest);
+  }
+
+  void _dropLibraryQueue() {
+    _libraryTimer?.cancel();
+    _libraryTimer = null;
+    for (final c in _libraryWanted.values) {
+      c.complete(null);
+    }
+    _libraryWanted.clear();
   }
 
   // ---- Seen state -----------------------------------------------------------

@@ -697,6 +697,8 @@ class Api {
       ..get('/api/v1/team-board/library/mods/<id>/files',
           _requireAuth(_teamLibraryFiles))
       ..post('/api/v1/team-board/library/check', _requireAuth(_teamLibraryCheck))
+      ..post('/api/v1/team-board/library/blobs',
+          _requireAuth(_teamLibraryBlobBatch))
       ..get('/api/v1/team-board/library/blobs/<sha1>',
           _requireAuth(_teamLibraryBlob))
       ..post('/api/v1/plugins/download', _requireAuth(_reportPluginDownload))
@@ -1042,6 +1044,12 @@ class Api {
     }
     if (path == 'admin' || path.startsWith('admin/')) {
       return ('adm', _adminLimiter);
+    }
+    // Browsing the Team Clipboard's assets library fetches files in
+    // batches as the grid scrolls; its own budget keeps that from starving
+    // the same device's board polls and sync.
+    if (path.startsWith('api/v1/team-board/library/blobs')) {
+      return ('lib', _generalLimiter);
     }
     return ('g', _generalLimiter);
   }

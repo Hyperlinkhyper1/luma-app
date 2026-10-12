@@ -75,6 +75,14 @@ class _FakeServer {
   final blobs = <String, List<int>>{};
   final requests = <http.Request>[];
 
+  /// How many batch requests to answer with "slow down" first.
+  int busyFor = 0;
+  int maxPerBatch = 1000;
+
+  int get batchRequests => requests
+      .where((r) => r.url.path == '/api/v1/team-board/library/blobs')
+      .length;
+
   http.Client get client => MockClient((request) async {
     requests.add(request);
     final path = request.url.path;
@@ -120,8 +128,7 @@ class _FakeServer {
         ],
       });
     }
-    if (path == '/api/v1/team-board/library/mods' &&
-        request.method == 'POST') {
+    if (path == '/api/v1/team-board/library/mods' && request.method == 'POST') {
       mods.add(_mod(state: 'queued', version: null));
       revision++;
       return json(library(), 201);
@@ -134,11 +141,31 @@ class _FakeServer {
       final index = indexes[files.group(1)];
       return index == null ? json({'error': 'not_found'}, 404) : json(index);
     }
-    final blob = RegExp(
-      r'^/api/v1/team-board/library/blobs/(\w+)$',
-    ).firstMatch(path);
-    if (blob != null && blobs.containsKey(blob.group(1))) {
-      return http.Response.bytes(blobs[blob.group(1)]!, 200);
+    if (path == '/api/v1/team-board/library/blobs' &&
+        request.method == 'POST') {
+      if (busyFor > 0) {
+        busyFor--;
+        return http.Response(
+          '{"error": "rate_limited"}',
+          429,
+          headers: {'retry-after': '1'},
+        );
+      }
+      final ids = ((jsonDecode(request.body) as Map)['ids'] as List)
+          .cast<String>();
+      // Like the server, a batch holds only so much; the rest is asked
+      // for again.
+      final served = ids.take(maxPerBatch).toList();
+      return json({
+        'files': {
+          for (final id in served)
+            if (blobs[id] case final bytes?) id: base64Encode(bytes),
+        },
+        'missing': [
+          for (final id in served)
+            if (!blobs.containsKey(id)) id,
+        ],
+      });
     }
     return json({'error': 'not_found', 'message': 'nope'}, 404);
   });
@@ -148,16 +175,15 @@ class _FakeServer {
     final list = <List<Object>>[];
     var i = 0;
     for (final f in files.entries) {
-      final sha = '${version}_${i++}'.padRight(40, '0');
+      final n = (i++).toString().padLeft(5, '0');
+      final sha = '${version}_$n'.padRight(40, '0');
       blobs[sha] = f.value;
       list.add([f.key, sha, f.value.length]);
     }
     indexes['AABBCCDD'] = {'versionId': version, 'files': list};
     mods
       ..clear()
-      ..add(
-        _mod(version: version, number: number, fileCount: files.length),
-      );
+      ..add(_mod(version: version, number: number, fileCount: files.length));
     revision++;
   }
 }
@@ -208,13 +234,14 @@ Future<void> _pump(WidgetTester tester, _FakeServer server) async {
   await tester.pump();
 }
 
-/// Lets real work (PNG decodes) finish, a frame at a time.
+/// Lets real work (PNG decodes) finish, and the library's batch timer
+/// fire, a frame at a time.
 Future<void> _settle(WidgetTester tester) async {
   for (var i = 0; i < 8; i++) {
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 40)),
     );
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 60));
   }
 }
 
@@ -239,15 +266,18 @@ void main() {
     ]);
 
     test('files sort into categories by where they sit', () {
-      expect([for (final a in index.assets) a.category], [
-        TeamAssetCategory.textures,
-        TeamAssetCategory.other,
-        TeamAssetCategory.models,
-        TeamAssetCategory.blockstates,
-        TeamAssetCategory.lang,
-        TeamAssetCategory.data,
-        TeamAssetCategory.other,
-      ]);
+      expect(
+        [for (final a in index.assets) a.category],
+        [
+          TeamAssetCategory.textures,
+          TeamAssetCategory.other,
+          TeamAssetCategory.models,
+          TeamAssetCategory.blockstates,
+          TeamAssetCategory.lang,
+          TeamAssetCategory.data,
+          TeamAssetCategory.other,
+        ],
+      );
       final texture = index.assets.first;
       expect(texture.name, 'ruby_block.png');
       expect(texture.namespace, 'ruby');
@@ -364,7 +394,7 @@ void main() {
     expect(find.textContaining('Missing textures'), findsNothing);
     expect(
       server.requests.map((r) => r.url.path),
-      contains(startsWith('/api/v1/team-board/library/blobs/')),
+      contains('/api/v1/team-board/library/blobs'),
     );
 
     // An update drops: the library reloads and says so.
@@ -384,6 +414,40 @@ void main() {
     await tester.pump();
     await _settle(tester);
     expect(find.text('sapphire'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await _unmount(tester);
+  });
+
+  testWidgets('a big texture grid loads in batches and rides out a 429', (
+    tester,
+  ) async {
+    final server = _FakeServer(lead: false)
+      ..unpacked('v1', '1.0.0', {
+        for (var i = 0; i < 400; i++)
+          'assets/ruby/textures/block/tile_${i.toString().padLeft(3, '0')}.png':
+              _png(),
+      })
+      ..busyFor = 1
+      ..maxPerBatch = 30;
+    await _pump(tester, server);
+    await tester.tap(find.text('Ruby Mod'));
+    await tester.pump();
+    await tester.pump();
+    // The first batch is told to slow down, then everything on screen
+    // arrives anyway.
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 600));
+      await _settle(tester);
+    }
+    expect(find.byIcon(Icons.broken_image_rounded), findsNothing);
+    final shown = tester.widgetList(find.textContaining('tile_')).length;
+    expect(shown, greaterThan(20));
+    // A screenful costs a few requests, not one per texture.
+    expect(server.batchRequests, lessThan(shown ~/ 4));
+    expect(
+      server.requests.map((r) => r.url.path),
+      isNot(contains(startsWith('/api/v1/team-board/library/blobs/'))),
+    );
     expect(tester.takeException(), isNull);
     await _unmount(tester);
   });

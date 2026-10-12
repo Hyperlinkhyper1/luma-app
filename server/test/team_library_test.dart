@@ -461,6 +461,24 @@ void main() {
               token: stranger))['httpStatus'],
           403);
 
+      // A screenful of files comes in one request; unknown ids are named.
+      final ids = [for (final f in filesOf(index)) (f as List)[1] as String];
+      final gone = 'f' * 40;
+      final batch = await call('POST', '/api/v1/team-board/library/blobs',
+          token: crew, json: {'ids': [...ids, gone]});
+      expect(batch['httpStatus'], 200);
+      expect((batch['files'] as Map).keys, unorderedEquals(ids));
+      expect(base64Decode((batch['files'] as Map)[png[1]] as String), _png());
+      expect(batch['missing'], [gone]);
+      expect(
+          (await call('POST', '/api/v1/team-board/library/blobs',
+              token: crew, json: {'ids': ['../../etc/passwd']}))['httpStatus'],
+          400);
+      expect(
+          (await call('POST', '/api/v1/team-board/library/blobs',
+              token: stranger, json: {'ids': ids}))['httpStatus'],
+          403);
+
       // Nothing new: a check doesn't download again.
       await call('POST', '/api/v1/team-board/library/check',
           token: crew, json: {});

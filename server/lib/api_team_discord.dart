@@ -26,7 +26,12 @@ extension TeamDiscordApi on Api {
       'status': bot.status,
       'statusReason': bot.statusReason,
       if (bot.identity != null)
-        'bot': {'id': bot.identity!.id, 'name': bot.identity!.name},
+        'bot': {
+          'id': bot.identity!.id,
+          'name': bot.identity!.name,
+          if (bot.identity!.avatarUrl != null)
+            'avatarUrl': bot.identity!.avatarUrl,
+        },
       'inviteUrl': bot.inviteUrl,
       'guilds': [
         for (final g in bot.guilds.entries) {'id': g.key, 'name': g.value}

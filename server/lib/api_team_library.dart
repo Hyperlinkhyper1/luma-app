@@ -181,4 +181,38 @@ extension TeamLibraryApi on Api {
       'Cache-Control': 'private, max-age=31536000, immutable',
     });
   }
+
+  /// Many assets in one go, so scrolling through a mod's textures costs a
+  /// request per screenful rather than one per file: `{ids: [sha1, ...]}`
+  /// answers `{files: {sha1: base64}, missing: [sha1, ...]}`. Ids that
+  /// don't fit in [kTeamLibraryBatchBytes] are in neither; ask again.
+  Future<Response> _teamLibraryBlobBatch(
+      Request request, StoredUser user) async {
+    final (_, refused) = _teamRole(user);
+    if (refused != null) return refused;
+    final body = await _teamJsonBody(request);
+    final ids = body?['ids'];
+    if (ids is! List ||
+        ids.length > kTeamLibraryBatchFiles ||
+        ids.any((id) => id is! String || !isTeamLibraryBlobId(id))) {
+      return errorResponse(400, 'bad_request',
+          'Ask for at most $kTeamLibraryBatchFiles files by id.');
+    }
+    final files = <String, String>{};
+    final missing = <String>[];
+    var total = 0;
+    for (final id in ids.cast<String>().toSet()) {
+      final bytes = await teamLibrary.readBlob(id);
+      if (bytes == null) {
+        missing.add(id);
+        continue;
+      }
+      if (files.isNotEmpty && total + bytes.length > kTeamLibraryBatchBytes) {
+        continue;
+      }
+      total += bytes.length;
+      files[id] = base64Encode(bytes);
+    }
+    return jsonResponse(200, {'files': files, 'missing': missing});
+  }
 }
