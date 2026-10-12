@@ -37,6 +37,12 @@ class SceneTest {
 /// shows their tiles.
 List<SceneTest> sceneTestsOf(L t) => [
   SceneTest(
+    kind: 'butterfly_knife',
+    title: t.aiTestButterflyKnifeTitle,
+    blurb: t.aiTestButterflyKnifeBlurb,
+    icon: Icons.content_cut_rounded,
+  ),
+  SceneTest(
     kind: 'website_landing_page',
     title: t.aiTestWebsiteLandingTitle,
     blurb: t.aiTestWebsiteLandingBlurb,

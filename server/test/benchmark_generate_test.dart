@@ -150,6 +150,40 @@ void main() {
       expect(benchmarkPromptFor('pagoda'), contains('no page scrollbars'));
     });
 
+    test('a butterfly knife run is dealt a lot from its scene id', () {
+      const kind = 'butterfly_knife';
+      final prompt = benchmarkPromptFor(kind);
+      expect(prompt, contains('No lot was dealt for this run'));
+      expect(benchmarkDealsLot(kind), isTrue);
+      expect(benchmarkDealsLot('pagoda'), isFalse);
+
+      final dealt = benchmarkPromptWithLot(kind, prompt, 'butterfly_knife_x');
+      expect(dealt, isNot(contains('No lot was dealt')));
+      expect(dealt, contains(butterflyDesignLot('butterfly_knife_x')));
+      expect(dealt.trimRight(), endsWith('breaks it.'));
+      expect(benchmarkPromptWithLot(kind, prompt, 'butterfly_knife_x'), dealt);
+      expect(benchmarkPromptWithLot('pagoda', prompt, 'x'), prompt);
+      expect(benchmarkPromptWithLot(kind, 'my own prompt', 'x'),
+          'my own prompt');
+
+      for (final line in [
+        'PALETTE AND FINISH',
+        'BLADE',
+        'HANDLES',
+        'LATCH',
+        'THEME',
+        'STAGE',
+        'PIVOTS AND SOUND',
+      ]) {
+        expect(butterflyDesignLot('a'), contains('- $line: '));
+      }
+      final palettes = {
+        for (var i = 0; i < 40; i++)
+          butterflyDesignLot('butterfly_knife_model_$i').split('\n').first,
+      };
+      expect(palettes.length, greaterThan(8));
+    });
+
     test('every test has a prompt ending in the output contract', () {
       for (final kind in kBenchmarkPrompts.keys) {
         expect(AiBenchmarkStore.kinds, contains(kind));
@@ -195,7 +229,8 @@ void main() {
         'train_world',
         'fluid_sim',
         'galaxy',
-        'cruise_port'
+        'cruise_port',
+        'butterfly_knife',
       ]) {
         expect(benchmarkPromptFor(kind), contains('three@0.160.0'));
         expect(

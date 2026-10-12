@@ -10,11 +10,16 @@ import 'package:luma/features/plugins/installed/ai_usage/tests/hero_tile.dart';
 import 'package:luma/features/plugins/installed/ai_usage/tests/scene_test_page.dart';
 import 'package:luma/features/plugins/installed/ai_usage/tests/test_view_prefs.dart';
 import 'package:luma/features/plugins/installed/ai_usage/tests/tests_tab.dart';
+import 'package:luma/l10n/app_localizations.dart';
 import 'package:luma/theme/luma_theme.dart';
+
+final kSceneTests = sceneTestsOf(lookupL(const Locale('en')));
 
 Widget _app(AiBenchmarkRepository repository) => AiBenchmarkScope(
   repository: repository,
   child: MaterialApp(
+    localizationsDelegates: L.localizationsDelegates,
+    supportedLocales: L.supportedLocales,
     theme: LumaTheme.dark,
     home: const Scaffold(body: TestsTab()),
   ),
@@ -103,6 +108,8 @@ void main() {
       AiBenchmarkScope(
         repository: repository,
         child: MaterialApp(
+          localizationsDelegates: L.localizationsDelegates,
+          supportedLocales: L.supportedLocales,
           theme: LumaTheme.dark,
           home: SceneTestPage(test: kSceneTests.first),
         ),

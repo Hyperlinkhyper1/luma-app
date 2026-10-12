@@ -12358,6 +12358,9 @@ class LNl extends L {
   String get aiTestCruisePortTitle => 'Cruisehaventest';
 
   @override
+  String get aiTestButterflyKnifeTitle => 'Vlindermestest';
+
+  @override
   String get aiTestOpenScreen => 'Open het testscherm';
 
   @override
@@ -12467,6 +12470,10 @@ class LNl extends L {
   @override
   String get aiTestCruisePortBlurb =>
       'Een cruiseschip aangemeerd in Lissabon, onder Alfama.';
+
+  @override
+  String get aiTestButterflyKnifeBlurb =>
+      'Een eigen ontworpen balisong met echte flip-trucs en gesynthetiseerd geluid.';
 
   @override
   String get aiTestWebsiteLandingBlurb =>

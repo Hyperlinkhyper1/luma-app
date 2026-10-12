@@ -12366,6 +12366,9 @@ class LEs extends L {
   String get aiTestCruisePortTitle => 'Prueba de puerto de cruceros';
 
   @override
+  String get aiTestButterflyKnifeTitle => 'Prueba de navaja mariposa';
+
+  @override
   String get aiTestOpenScreen => 'Abrir la pantalla de prueba';
 
   @override
@@ -12475,6 +12478,10 @@ class LEs extends L {
   @override
   String get aiTestCruisePortBlurb =>
       'Un crucero atracado en Lisboa, bajo el Alfama.';
+
+  @override
+  String get aiTestButterflyKnifeBlurb =>
+      'Una balisong original con trucos reales y sonido sintetizado.';
 
   @override
   String get aiTestWebsiteLandingBlurb =>

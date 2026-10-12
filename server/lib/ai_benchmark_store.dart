@@ -111,6 +111,7 @@ class AiBenchmarkStore {
     'galaxy',
     'cruise_port',
     'website_landing_page',
+    'butterfly_knife',
   ];
 
   static final RegExp vendorPattern = RegExp(r'^[a-z0-9-]{0,40}$');
@@ -319,6 +320,7 @@ class AiBenchmarkStore {
     'fluid_sim',
     'galaxy',
     'cruise_port',
+    'butterfly_knife',
   };
 
   static final RegExp _drawsOnCanvas = RegExp(

@@ -20084,6 +20084,12 @@ abstract class L {
   /// **'Cruise Port Test'**
   String get aiTestCruisePortTitle;
 
+  /// No description provided for @aiTestButterflyKnifeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Butterfly Knife Test'**
+  String get aiTestButterflyKnifeTitle;
+
   /// No description provided for @aiTestOpenScreen.
   ///
   /// In en, this message translates to:
@@ -20257,6 +20263,12 @@ abstract class L {
   /// In en, this message translates to:
   /// **'A cruise ship docked in Lisbon, below Alfama.'**
   String get aiTestCruisePortBlurb;
+
+  /// No description provided for @aiTestButterflyKnifeBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'An original balisong with real flipping moves and synthesised sound.'**
+  String get aiTestButterflyKnifeBlurb;
 
   /// No description provided for @aiTestWebsiteLandingBlurb.
   ///

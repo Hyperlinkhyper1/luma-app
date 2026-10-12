@@ -257,6 +257,7 @@ extension BenchmarkGenerateApi on Api {
             'label': e.value.label,
             'prompt': benchmarkPromptFor(e.key),
             'manual': kBenchmarkManualKinds.contains(e.key),
+            'lot': benchmarkDealsLot(e.key),
           },
       ],
       'keys': [
@@ -401,18 +402,19 @@ extension BenchmarkGenerateApi on Api {
       for (final j in _benchmarkGenJobs)
         if (j.status == 'running') j.sceneId,
     };
+    final sceneId = replacing != null
+        ? replaceId
+        : benchmarkSceneId(kind, name, effort, taken);
     final job = BenchmarkGenJob(
       id: DateTime.now().microsecondsSinceEpoch.toRadixString(36),
       kind: kind,
-      sceneId: replacing != null
-          ? replaceId
-          : benchmarkSceneId(kind, name, effort, taken),
+      sceneId: sceneId,
       replaces: replacing != null,
       name: name,
       vendor: vendor,
       route: AiModeRoute(upstream, model,
           reasoningEffort: effort.isEmpty ? null : effort),
-      prompt: prompt,
+      prompt: benchmarkPromptWithLot(kind, prompt, sceneId),
       maxTokens: maxTokens,
       startedAtMs: DateTime.now().millisecondsSinceEpoch,
       batchId: existingBatch.isEmpty ? null : existingBatch,
@@ -1297,7 +1299,9 @@ const _bgScript = r'''
     radio(testsBox, k);
     const t = state.tests.find((x) => x.kind === k);
     prompt.value = t ? t.prompt : '';
-    promptNote.textContent = t ? '· default for ' + t.label : '';
+    promptNote.textContent = t
+      ? '· default for ' + t.label + (t.lot ? ' · design lot dealt per run' : '')
+      : '';
     manualNote = !!(t && t.manual);
     if (manualNote) {
       status.textContent = t.label + ' needs a model file, not a page. Copy the prompt into an agent that can export it, then upload the result by hand.';

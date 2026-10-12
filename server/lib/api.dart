@@ -13536,6 +13536,7 @@ window.lumaAskReason = function (form, message) {
     'galaxy': 'Galaxy Voyage (.html)',
     'cruise_port': 'Cruise Port (.html)',
     'website_landing_page': 'Website landing page (.html)',
+    'butterfly_knife': 'Butterfly Knife (.html)',
     'cathedral': 'Cathedral (3D model, .glb)',
   };
 
@@ -13636,7 +13637,7 @@ window.lumaAskReason = function (form, message) {
   let idEdited = false;
   let maxBytes = 60 * 1024 * 1024;
   let entries = [];
-  const KIND_LABEL = { pagoda: 'Pagoda', engine: 'Engine', pc: 'PC', cathedral: 'Cathedral', keyboard: 'Keyboard', cruise_ship: 'Cruise Ship', server_rack: 'Server Rack', sports_car: 'Sports Car', train_world: 'Train World', world_timeline: 'World Timeline', fluid_sim: 'Fluid Sim', galaxy: 'Galaxy', cruise_port: 'Cruise Port', website_landing_page: 'Website landing page' };
+  const KIND_LABEL = { pagoda: 'Pagoda', engine: 'Engine', pc: 'PC', cathedral: 'Cathedral', keyboard: 'Keyboard', cruise_ship: 'Cruise Ship', server_rack: 'Server Rack', sports_car: 'Sports Car', train_world: 'Train World', world_timeline: 'World Timeline', fluid_sim: 'Fluid Sim', galaxy: 'Galaxy', cruise_port: 'Cruise Port', website_landing_page: 'Website landing page', butterfly_knife: 'Butterfly Knife' };
 
   function editing() {
     return entries.find(function (e) { return e.id === entryPick.value; }) || null;
@@ -14493,7 +14494,7 @@ window.lumaAskReason = function (form, message) {
     const selCount = $('bnSelCount');
     const renderSel = $('bnRenderSelected');
     const countLine = $('bnCatalogCount');
-    const KIND_LABEL = { pagoda: 'Pagoda', engine: 'Engine', pc: 'PC', cathedral: 'Cathedral', keyboard: 'Keyboard', cruise_ship: 'Cruise Ship', server_rack: 'Server Rack', sports_car: 'Sports Car', train_world: 'Train World', world_timeline: 'World Timeline', fluid_sim: 'Fluid Sim', galaxy: 'Galaxy', cruise_port: 'Cruise Port', website_landing_page: 'Website landing page' };
+    const KIND_LABEL = { pagoda: 'Pagoda', engine: 'Engine', pc: 'PC', cathedral: 'Cathedral', keyboard: 'Keyboard', cruise_ship: 'Cruise Ship', server_rack: 'Server Rack', sports_car: 'Sports Car', train_world: 'Train World', world_timeline: 'World Timeline', fluid_sim: 'Fluid Sim', galaxy: 'Galaxy', cruise_port: 'Cruise Port', website_landing_page: 'Website landing page', butterfly_knife: 'Butterfly Knife' };
     let scenes = [];
     let kind = 'all';
     const selected = new Set();

@@ -51,6 +51,7 @@ const kBenchmarkPrompts = <String, ({String label, String prompt})>{
   'fluid_sim': (label: 'Fluid Simulation', prompt: _fluidSim),
   'galaxy': (label: 'Galaxy Voyage', prompt: _galaxyVoyage),
   'cruise_port': (label: 'Cruise Port', prompt: _cruisePort),
+  'butterfly_knife': (label: 'Butterfly Knife', prompt: _butterflyKnife),
   'website_landing_page': (
     label: 'Website landing page',
     prompt: _websiteLandingPage
@@ -3266,5 +3267,351 @@ CAMERAS AND INTERACTION
   gangways retract, the mooring lines are released, the tug pushes the
   bow out and the ship slowly turns and sails west down the Tagus towards
   the bridge; a second button brings it back to its berth
+''' +
+    _sceneQualityBar;
+
+/// Stands where a butterfly-knife prompt's design lot goes. "Add benchmark"
+/// swaps it for a lot dealt from the run's scene id
+/// ([benchmarkPromptWithLot]); a prompt pasted anywhere else keeps it and
+/// the model picks its own direction.
+const _butterflyLotFallback = r'''No lot was dealt for this run. Choose one direction yourself for each of
+PALETTE AND FINISH, BLADE, HANDLES, LATCH, THEME, STAGE and PIVOTS AND
+SOUND, and skip the first idea that comes to mind for each.''';
+
+/// The design lot's dimensions, each dealt independently, so the same brief
+/// does not give every model the same knife.
+const _butterflyLot = <(String, List<String>)>[
+  (
+    'PALETTE AND FINISH',
+    [
+      'heat-tinted anodised titanium: the handles run from bronze through '
+          'violet to deep blue, the blade is satin bare titanium',
+      'oxidised copper: warm polished copper handles turning to green '
+          'verdigris in the recesses, a dark stonewashed blade',
+      'arctic: frosted translucent ice-blue inlays over brushed silver, a '
+          'pale near-white satin blade, cyan accents',
+      'blackened steel with molten accents: a matte black knife whose '
+          'milling and edges glow lava orange and red',
+      'brass and oxblood: aged gold-brass handles with deep oxblood-red '
+          'inlays and a mirror-polished blade',
+      'Damascus: a blade with a flowing layered pattern, handles of dark '
+          'stabilised wood, bronze hardware',
+      'white ceramic and rose gold: glossy white scales, rose-gold liners '
+          'and hardware, a light grey blade',
+      'neon noir: black chrome with thin emissive magenta and cyan lines '
+          'that brighten as the knife moves',
+      'field tool: matte olive drab cerakote, tan textured G10 scales, a '
+          'dark grey blade',
+      'candy-apple red: deep metal-flake red lacquer handles, black '
+          'hardware, a black blade with a polished edge bevel',
+      'midnight: deep navy anodised handles flecked with silver like a '
+          'night sky, a gunmetal blade with a gold edge line',
+      'sunset fade: anodised handles fading from hot pink through orange to '
+          'yellow, a bronze-tinted blade',
+      'jade and bone: pale carved-jade inlays in off-white resin bone '
+          'scales, a satin blade',
+      'gunmetal and pearl: dark gunmetal handles with iridescent '
+          'mother-of-pearl-like inlays, a polished blade',
+      'toxic: matte charcoal with acid-lime liners, lime pivot screws and a '
+          'lime-tinted edge bevel',
+      'royal: deep purple anodising, gold pins and latch, a mirror-polished '
+          'blade',
+    ]
+  ),
+  (
+    'BLADE',
+    [
+      'tanto: a straight, angular point with a secondary edge',
+      'Bowie clip point with a sharpened swedge',
+      'Weehawk: a straight edge under a long curved spine that drops to the '
+          'point',
+      'spear point with a symmetrical double grind',
+      'drop point with a deep hollow grind',
+      'recurve, with a belly forward and a waist near the tang',
+      'sheepsfoot: a straight edge and a rounded spine falling to the tip',
+      'kris-inspired: a gently waved edge',
+      'a TRAINER: blunt and unsharpened, with a row of round holes or a '
+          'skeletonised window pattern cut through it',
+      'cleaver-like: a broad rectangular blade with a squared tip',
+      'hooked spine: a straight edge, a raised hook near the tip and '
+          'jimping along the spine',
+    ]
+  ),
+  (
+    'HANDLES',
+    [
+      'channel: each handle milled from one piece with a U-shaped channel, '
+          'smooth and rounded',
+      'sandwich: two liners and two outer scales with spacers, held by '
+          'visible screws',
+      'skeletonised: long windows milled through the handles, so the blade '
+          'shows through when closed',
+      'contoured: ergonomic finger grooves and a flared end',
+      'faceted: angular flat facets, like a cut gem',
+      'tubular: rounded, rod-like handles with grip rings',
+      'chunky: thick, squared-off handles with deep machined 3D texture '
+          '(waves, a grid or scales)',
+      'slim: thin, light, minimal flat handles with one long slot each',
+    ]
+  ),
+  (
+    'LATCH',
+    [
+      'a classic T-latch on the bite handle',
+      'a magnetic latch with no visible spring',
+      'a spring latch on the safe handle',
+      'a drop-down hook latch',
+      'a sprung latch at the end of the bite handle, shaped like your theme',
+    ]
+  ),
+  (
+    'THEME',
+    [
+      'deep sea: waves, scales, a kraken',
+      'clockwork: gears, rivets, exposed screws',
+      'botanical: vines, leaves, a fern',
+      'circuit board: traces, vias, chips',
+      'dragon: scales, claws, a dragon\'s eye',
+      'art deco: sunbursts, stepped lines, fans',
+      'space: orbits, planets, a comet',
+      'volcano: basalt, lava cracks, embers',
+      'storm: lightning bolts and clouds',
+      'desert: dunes, a low sun, woven geometric bands',
+      'arctic wolf: fur strokes, a wolf\'s head, snowflakes',
+      'origami: folded paper creases and paper cranes',
+    ]
+  ),
+  (
+    'STAGE',
+    [
+      'a velvet-lined display case whose glass lid opens for the reveal',
+      'a workbench in a small workshop, with a vice and tools under a warm '
+          'lamp',
+      'a mossy rock in a fern garden, in dappled daylight',
+      'a felt practice mat under one soft top light, like a product photo',
+      'a black reflective void with a neon ring light behind the knife',
+      'a museum plinth under a spotlight, with a placard',
+      'a snowy rock in falling snow, in cold blue light',
+      'a sci-fi bench with a holographic scanner sweeping the knife',
+      'a wooden table by a rainy window',
+      'a sand dune at golden hour, with drifting sand',
+    ]
+  ),
+  (
+    'PIVOTS AND SOUND',
+    [
+      'bearing pivots: a smooth, long swing with a soft whir and crisp light '
+          'clacks',
+      'bushing pivots: a tight, slightly rattly swing, chattery clacks and '
+          'a sharp latch snap',
+      'washer pivots: a heavier swing, deep weighty clacks with a low thud',
+      'bearing pivots in a light titanium build: high, glassy clicks and a '
+          'bright ring when the knife snaps open',
+      'bushing pivots in a heavy steel build: a long bell-like blade ring '
+          'and solid clanks',
+      'washer pivots with soft scale materials: woody, damped knocks and a '
+          'muted latch',
+    ]
+  ),
+];
+
+/// [prompt] with its design lot dealt from [seed] (the run's scene id), if
+/// it is a butterfly-knife prompt that still has the lot's placeholder.
+/// The same seed always deals the same lot, so regenerating a contestant
+/// keeps its design direction.
+String benchmarkPromptWithLot(String kind, String prompt, String seed) {
+  if (!benchmarkDealsLot(kind) || !prompt.contains(_butterflyLotFallback)) {
+    return prompt;
+  }
+  return prompt.replaceFirst(_butterflyLotFallback, butterflyDesignLot(seed));
+}
+
+/// Whether "Add benchmark" deals [kind] a design lot per run.
+bool benchmarkDealsLot(String kind) => kind == 'butterfly_knife';
+
+/// The design lot for [seed], one line per dimension.
+String butterflyDesignLot(String seed) => [
+      for (final (i, (name, options)) in _butterflyLot.indexed)
+        '- $name: ${options[_fnv1a('$seed#$i') % options.length]}',
+    ].join('\n');
+
+/// FNV-1a over [s]'s code units: stable across runs and Dart versions,
+/// unlike [String.hashCode].
+int _fnv1a(String s) {
+  var h = 0x811c9dc5;
+  for (final c in s.codeUnits) {
+    h = ((h ^ c) * 0x01000193) & 0xffffffff;
+  }
+  return h;
+}
+
+const _butterflyKnife = r'''
+# 3D BUTTERFLY KNIFE BENCHMARK — DESIGN YOUR OWN BALISONG AND FLIP IT
+
+Design your own butterfly knife (balisong) and present it as an
+interactive 3D page: a reveal on a stage of its own, a model you can
+inspect and take apart, and a performance of real balisong moves with
+synthesised sound.
+
+This is a design, animation and sound benchmark. Many models get this
+brief and their knives are shown side by side, so the knife must be
+YOURS: original, recognisably different from everyone else's, and
+desirable. The generic answer — a plain silver blade with black handles,
+an emerald "gem" blade like a game skin, or a copy of a real maker's
+knife — loses on design however well it moves.
+
+''' +
+    _threeLibraries +
+    r'''
+
+==================================================
+YOUR DESIGN LOT
+==================================================
+
+To keep the contestants apart, each run is dealt a design direction.
+Build your knife around it. Interpret every line your own way — choose
+the exact tones, proportions, patterns and details yourself — but a
+viewer must be able to read the lot in the result.
+
+''' +
+    _butterflyLotFallback +
+    r'''
+
+
+Then give the knife an identity of its own:
+
+- invent a maker (a fictional brand) and a model name, and design a
+  maker's mark — a simple emblem — etched or engraved on the blade
+- add one signature detail nobody else would think of (a pattern milled
+  into the handles, an inlay, a shaped kicker, a coloured pivot collar, an
+  engraved motto, a theme-shaped latch) and make it visible in the hero
+  shot
+- show the names and a short spec card in the UI: overall length, blade
+  length, materials, weight and pivot system
+
+Never use a real knife maker's name or logo, or a video game's skin name
+or pattern.
+
+==================================================
+THE KNIFE — ANATOMY, ALL MODELLED IN 3D
+==================================================
+
+Real balisong mechanics at a believable scale (about 13 cm closed and
+23 cm open):
+
+- the BLADE: a profile extruded from a 2D shape with bevels, never a box.
+  A visible grind line and edge bevel (a trainer is blunt instead), a
+  choil, a tang at its base, and a KICKER that keeps the edge off the
+  handles when the knife is closed
+- TWO HANDLES on two separate pivot pins through the tang: the BITE
+  handle on the edge side and the SAFE handle on the spine side. Each one
+  rotates only around its own pivot. Closed, they enclose the blade; open,
+  they meet behind it and the blade points out
+- pivot hardware: pivot screws with washers, bushings or bearings
+- ZEN PINS or tang pins that stop the handles exactly at the open and the
+  closed position
+- the LATCH, which locks the handles together when closed or open; it
+  swings clear before any move starts and is latched again at the end
+- the screws, liners, scales, cut-outs or milling your lot calls for, and
+  small chamfers on every edge so highlights catch them
+
+Materials: MeshPhysicalMaterial with metalness, roughness and clearcoat;
+procedural textures generated in code for brushed or stonewashed metal,
+anodising (iridescence where it fits), wood, G10, carbon fibre or
+Damascus layers. Reflections come from an environment map generated in
+code (PMREM of a procedural room or of your stage). Polished faces must
+show highlights sliding across them as the knife turns — that is what
+makes a knife read as metal.
+
+==================================================
+THE MOVES — THE CORE OF THE TEST
+==================================================
+
+The knife performs real balisong tricks. Animate each one as the knife's
+transform AND both handle angles, rotating about believable centres (a
+pivot, the handle being held, or the centre of mass while airborne).
+Sell weight and momentum: handles accelerate, swing through, stop dead on
+the pins with a tiny bounce, and the knife's spin carries on from one
+phase into the next.
+
+Required moves, each on its own button and number key:
+
+1. BASIC OPEN — unlatch, drop the safe handle, swing the bite handle
+   round and catch it: the knife ends open in a forward grip
+2. BASIC CLOSE — the reverse, ending latched
+3. CHAPLIN — the knife flips over the hand so the handles swap sides, and
+   is caught again
+4. ZEN ROLLOVER — the knife rolls over the back of the hand from one side
+   to the other
+5. FAN — a handle spins round the index finger for several revolutions
+6. HELIX — the knife twirls about its long axis while it flips
+7. AERIAL — the knife is tossed, turns freely in the air (at least one
+   full turn, the handles opening or closing mid-air), and is caught by a
+   handle
+8. a SIGNATURE move of your own invention, named after your knife and
+   clearly different from the others
+
+Also:
+
+- COMBO: chains all the moves, blending each one's end pose into the next
+  one's start without a snap, and loops
+- FREESTYLE: an endless flow of random moves, never the same one twice in
+  a row
+- a speed slider (0.25× to 2×), a slow-motion toggle, and a TRAIL toggle
+  that draws a fading ribbon behind the blade tip
+- the current move's name as a small caption while it plays
+
+A stylised hand that holds the knife and performs the moves (procedural,
+low-poly or capsule fingers are fine) is a strong plus. Without one, the
+motion must still read as held: whatever is being held stays put while
+the rest of the knife swings around it.
+
+Judged physical rules:
+
+- the handles never pass through the blade, the pins or each other
+- the latch is open whenever the handles are apart
+- the edge never closes onto a handle: the kicker meets it first
+- the knife never teleports or snaps between poses
+
+==================================================
+SOUND — SYNTHESISED WITH WEB AUDIO
+==================================================
+
+No audio files. Start audio on the first user interaction, and offer a
+mute toggle and a volume slider.
+
+- LATCH: a small sharp click as it opens and as it closes
+- PINS: a metallic clack every time a handle hits its stop, as loud as the
+  handle was fast
+- SWISH: filtered noise whose volume and pitch follow the knife's angular
+  speed — a fan hums, an aerial whistles
+- BLADE RING: a short resonant ring (a few inharmonic partials with
+  decay) when the knife snaps open
+- PIVOTS: the rattle, whir or grind your pivots make as the handles swing
+
+The sound follows your materials and your lot's PIVOTS AND SOUND line:
+titanium is lighter and brighter than steel, wood dampens a clack,
+bearings run smoother than washers. Trigger each sound from the
+animation itself — when a handle actually reaches a pin — not from fixed
+timers, so it stays in sync at every speed.
+
+==================================================
+PRESENTATION AND INTERACTION
+==================================================
+
+- REVEAL: the page opens on a short reveal of your knife on its stage —
+  light sweeping across the blade, the knife flipping open into a hero
+  pose, the maker's mark and the knife's name appearing — then settles
+  into a slowly turning showcase
+- INSPECT: orbit, zoom and pan. Drag a handle with the mouse to open and
+  close the knife by hand, the other handle and the latch following
+  physically. Camera presets: HERO, BLADE CLOSE-UP, PIVOT, LATCH, TOP
+- EXPLODED VIEW: the knife comes apart along the pivot axis — blade,
+  handle parts, pivot screws, washers, bushings or bearings, zen pins,
+  latch, screws — with each part labelled on hover, and goes back together
+- COLOURWAYS: at least three colourways of your own design for the same
+  knife; the lot's is the default, the others still belong to your theme
+- light the knife like a product shot: a key light raking along the
+  blade, a rim light on the handles, a soft contact shadow on the stage
 ''' +
     _sceneQualityBar;

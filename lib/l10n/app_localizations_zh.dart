@@ -11611,6 +11611,9 @@ class LZh extends L {
   String get aiTestCruisePortTitle => '邮轮港口测试';
 
   @override
+  String get aiTestButterflyKnifeTitle => '蝴蝶刀测试';
+
+  @override
   String get aiTestOpenScreen => '打开测试页面';
 
   @override
@@ -11707,6 +11710,9 @@ class LZh extends L {
 
   @override
   String get aiTestCruisePortBlurb => '一艘游轮停靠在里斯本，位于阿尔法玛区下方。';
+
+  @override
+  String get aiTestButterflyKnifeBlurb => '一把原创蝴蝶刀，带有真实的甩刀动作和合成音效。';
 
   @override
   String get aiTestWebsiteLandingBlurb => '一个响应式咖啡店落地页，带有可用的交互功能。';

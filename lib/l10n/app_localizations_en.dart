@@ -12272,6 +12272,9 @@ class LEn extends L {
   String get aiTestCruisePortTitle => 'Cruise Port Test';
 
   @override
+  String get aiTestButterflyKnifeTitle => 'Butterfly Knife Test';
+
+  @override
   String get aiTestOpenScreen => 'Open the test screen';
 
   @override
@@ -12380,6 +12383,10 @@ class LEn extends L {
   @override
   String get aiTestCruisePortBlurb =>
       'A cruise ship docked in Lisbon, below Alfama.';
+
+  @override
+  String get aiTestButterflyKnifeBlurb =>
+      'An original balisong with real flipping moves and synthesised sound.';
 
   @override
   String get aiTestWebsiteLandingBlurb =>

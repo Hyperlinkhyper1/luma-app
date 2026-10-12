@@ -540,8 +540,8 @@ async function shootSvgScene(page) {
 }
 
 const SCENE_KINDS = ['engine', 'pc', 'cathedral', 'keyboard', 'cruise_ship', 'server_rack',
-  'sports_car', 'train_world', 'world_timeline', 'fluid_sim', 'galaxy', 'cruise_port', 'website_landing_page'];
-const CANVAS_SCENE_KINDS = new Set(['sports_car', 'train_world', 'fluid_sim', 'galaxy', 'cruise_port']);
+  'sports_car', 'train_world', 'world_timeline', 'fluid_sim', 'galaxy', 'cruise_port', 'website_landing_page', 'butterfly_knife'];
+const CANVAS_SCENE_KINDS = new Set(['sports_car', 'train_world', 'fluid_sim', 'galaxy', 'cruise_port', 'butterfly_knife']);
 
 async function shootWebsiteLandingPage(page) {
   step(0.2, 'waiting for the landing page');

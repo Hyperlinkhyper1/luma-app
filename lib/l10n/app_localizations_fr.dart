@@ -12404,6 +12404,9 @@ class LFr extends L {
   String get aiTestCruisePortTitle => 'Test du port de croisière';
 
   @override
+  String get aiTestButterflyKnifeTitle => 'Test du couteau papillon';
+
+  @override
   String get aiTestOpenScreen => 'Ouvrir l\'écran de test';
 
   @override
@@ -12514,6 +12517,10 @@ class LFr extends L {
   @override
   String get aiTestCruisePortBlurb =>
       'Un paquebot amarré à Lisbonne, sous l\'Alfama.';
+
+  @override
+  String get aiTestButterflyKnifeBlurb =>
+      'Un balisong original avec de vraies figures et un son synthétisé.';
 
   @override
   String get aiTestWebsiteLandingBlurb =>
