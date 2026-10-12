@@ -198,6 +198,52 @@ void main() {
         throwsA(isA<FormatException>().having((e) => e.message, 'message',
             startsWith('Your reply was not valid JSON'))));
   });
+  test('edit blocks carry code with quotes and backslashes unescaped', () {
+    final page = 'one\n'
+        'const re = /broken()/;\n'
+        'const s = "x";\n'
+        'four\n'
+        '${'// unchanged\n' * 20}';
+    final fixed = applyBenchmarkRepair(page, '''Here is the fix.
+<<<<<<< SEARCH
+const re = /broken()/;
+=======
+const re = /\\d+"'`/;
+>>>>>>> REPLACE
+
+<<<<<<< LINES 3-3
+const s = "y";
+>>>>>>> END
+''');
+    expect(fixed,
+        startsWith('one\nconst re = /\\d+"\'`/;\nconst s = "y";\nfour\n'));
+    expect(repairReplyIsEmpty('NO_FIX', page), isTrue);
+    expect(
+        repairReplyIsEmpty(
+            '<<<<<<< SEARCH\none\n=======\ntwo\n>>>>>>> REPLACE', page),
+        isFalse);
+    expect(
+        () => applyBenchmarkRepair(page, 'I think line 2 is wrong.'),
+        throwsA(isA<FormatException>()
+            .having((e) => e.message, 'message', contains('no edit blocks'))));
+    expect(
+        () => applyBenchmarkRepair(page, '<<<<<<< SEARCH\none\n=======\ntwo'),
+        throwsA(isA<FormatException>()
+            .having((e) => e.message, 'message', startsWith('Your reply'))));
+  });
+  test('a reply of many small edits is applied, not refused', () {
+    final page = [for (var i = 0; i < 100; i++) 'let v$i = $i;'].join('\n');
+    final reply = [
+      for (var i = 0; i < 60; i++)
+        '<<<<<<< SEARCH\nlet v$i = $i;\n=======\nlet v$i = ${i + 1};\n>>>>>>> REPLACE'
+    ].join('\n');
+    expect(applyBenchmarkRepair(page, reply), contains('let v59 = 60;'));
+  });
+  test('the html reaches the model verbatim after one line of facts', () {
+    final message = repairUserMessage({'renderError': 'x'}, 'a "q" \\ b\nc');
+    expect(jsonDecode(message.split('\n').first), {'renderError': 'x'});
+    expect(message, endsWith('html:\na "q" \\ b\nc'));
+  });
   test('errors about a declaration are told where the name is declared', () {
     const page = 'const A = 1;\n'
         'function run() {\n'
@@ -561,6 +607,9 @@ void main() {
     late List<String> replies;
     late double callCost;
     late Map<String, dynamic> sent;
+    String htmlSent() => ((sent['messages'] as List).last['content'] as String)
+        .split('\nhtml:\n')
+        .last;
     Completer<void>? hold;
 
     Future<Map<String, dynamic>> request(String method, String path,
@@ -796,9 +845,10 @@ void main() {
           : null;
       await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
       await finished();
-      final user =
-          jsonDecode((sent['messages'] as List).last['content'] as String)
-              as Map;
+      final user = jsonDecode(
+          ((sent['messages'] as List).last['content'] as String)
+              .split('\n')
+              .first) as Map;
       expect(user['renderError'], startsWith('Syntax error at line 1:40'));
       expect(user['renderError'], contains('ReferenceError: broken'));
       expect(user['errorLine'], 1);
@@ -853,12 +903,13 @@ void main() {
       await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
       await finished();
       expect(calls, kRepairMaxAttempts);
-      final user =
-          jsonDecode((sent['messages'] as List).last['content'] as String)
-              as Map;
+      final user = jsonDecode(
+          ((sent['messages'] as List).last['content'] as String)
+              .split('\n')
+              .first) as Map;
       expect(
           (user['previousAttempts'] as List).first, contains('Automatic fix'));
-      expect(user['html'], contains('importmap'));
+      expect(htmlSent(), contains('importmap'));
     });
     test('a fix that trades one error for another gets another attempt',
         () async {
@@ -882,13 +933,14 @@ void main() {
       expect(job.state, 'done', reason: job.detail);
       expect(job.detail, contains('attempt 2'));
       expect(calls, 2);
-      final user =
-          jsonDecode((sent['messages'] as List).last['content'] as String)
-              as Map;
+      final user = jsonDecode(
+          ((sent['messages'] as List).last['content'] as String)
+              .split('\n')
+              .first) as Map;
       expect(user['renderError'], startsWith('Syntax error at line 1:30'));
       expect(user['originalError'], 'ReferenceError: broken is not defined');
       expect(user['previousAttempts'], hasLength(1));
-      expect(user['html'], contains('oops()'));
+      expect(htmlSent(), contains('oops()'));
       expect(utf8.decode((await scenes.readScene('pagoda_demo'))!.bytes),
           contains('fixed()'));
       final backups =
@@ -988,10 +1040,11 @@ void main() {
       final job = api.benchmarkRepairJobs['pagoda_demo']!;
       expect(job.state, 'done', reason: job.detail);
       expect(calls, 2);
-      final user =
-          jsonDecode((sent['messages'] as List).last['content'] as String)
-              as Map;
-      expect(user['html'], original);
+      final user = jsonDecode(
+          ((sent['messages'] as List).last['content'] as String)
+              .split('\n')
+              .first) as Map;
+      expect(htmlSent(), original);
       expect(user['renderError'], 'ReferenceError: broken is not defined');
       expect((user['previousAttempts'] as List).single,
           contains('unbalanced the brackets'));
@@ -1010,9 +1063,10 @@ void main() {
       await finished();
       expect(api.benchmarkRepairJobs['pagoda_demo']!.state, 'done');
       expect(calls, 2);
-      final user =
-          jsonDecode((sent['messages'] as List).last['content'] as String)
-              as Map;
+      final user = jsonDecode(
+          ((sent['messages'] as List).last['content'] as String)
+              .split('\n')
+              .first) as Map;
       expect(user['renderError'], 'ReferenceError: broken is not defined');
       expect((user['previousAttempts'] as List).single,
           contains('could not be applied'));

@@ -380,7 +380,7 @@ extension BenchmarkRepairApi on Api {
           {'role': 'system', 'content': benchmarkRepairInstructions},
           {
             'role': 'user',
-            'content': jsonEncode({
+            'content': repairUserMessage({
               'renderError': error,
               if (attempt > 1) 'originalError': diagnostic,
               if (tried.isNotEmpty) 'previousAttempts': tried,
@@ -388,8 +388,7 @@ extension BenchmarkRepairApi on Api {
                 'errorLine': line,
                 'errorLines': errorLinesOf(base, line, radius: 25),
               },
-              'html': base,
-            })
+            }, base)
           },
         ];
         modelAttempts = attempt;
@@ -515,7 +514,7 @@ extension BenchmarkRepairApi on Api {
         try {
           candidate = applyBenchmarkRepair(base, acc.content);
         } on FormatException catch (e) {
-          problem = e.message.startsWith('Your reply was not valid JSON')
+          problem = e.message.startsWith('Your reply')
               ? e.message
               : 'Your reply could not be applied: ${e.message}';
           focus = nearestLineOf(base, acc.content) ?? focus;

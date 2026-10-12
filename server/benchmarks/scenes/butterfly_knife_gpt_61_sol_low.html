@@ -249,11 +249,11 @@ function brush(){
  ctx.fillRect(0,0,256,256);
  for(let i=0;i<1700;i++){
   const v=100+Math.random()*80;
-  ctx.strokeStyle=rgba(${v},${v},${v},.13);
+  ctx.strokeStyle=`rgba(${v},${v},${v},.13)`;
   ctx.beginPath();
-  const y=Math.random()256;
+  const y=Math.random()*256;
   ctx.moveTo(0,y);
-  ctx.lineTo(256,y+Math.random().6);
+  ctx.lineTo(256,y+Math.random()*.6);
   ctx.stroke();
  }
  const t=new THREE.CanvasTexture(c);
@@ -387,20 +387,20 @@ for(let i=0;i<2;i++){
  const s=roundShape(-.39,-.24,.78,H+.24,.3);
  for(let j=0;j<4;j++){
   const hole=new THREE.Path();
-  hole.absellipse(0,1.55+j1.23,.125,.38,0,TAU,true);
+  hole.absellipse(0,1.55+j*1.23,.125,.38,0,TAU,true);
   s.holes.push(hole);
  }
  for(const side of [-1,1]){
   const liner=new THREE.Mesh(extrude(s,.08,.018),liners);
-  liner.position.z=side.17;
-  part(liner,pivot,${i?'Bite':'Safe'} handle · titanium liner,side*.75,i);
+  liner.position.z=side*.17;
+  part(liner,pivot,`${i?'Bite':'Safe'} handle · titanium liner`,side*.75,i);
   const scale=new THREE.Mesh(extrude(s,.095,.035),titanium);
   scale.position.z=side*.28;
-  part(scale,pivot,${i?'Bite':'Safe'} scale · anodised titanium,side1.4,i);
+  part(scale,pivot,`${i?'Bite':'Safe'} scale · anodised titanium`,side*1.4,i);
   for(const rx of [-.025,.655]){
    const rail=new THREE.Mesh(extrude(roundShape(-.34,.55,.035,5.89,.017),.015,.006),copper);
-   rail.position.set(rx,0,side.36);
-   part(rail,pivot,'Copper orbit · recessed scale tracing',side1.42,i);
+   rail.position.set(rx,0,side*.36);
+   part(rail,pivot,'Copper orbit · recessed scale tracing',side*1.42,i);
   }
   for(let j=0;j<5;j++){
    const disk=new THREE.Shape();
@@ -411,21 +411,21 @@ for(let i=0;i<2;i++){
     disk.holes.push(hole);
    }
    const moon=new THREE.Mesh(extrude(disk,.012,.004),ceramic);
-   moon.position.set(i===0?-.218:.218,.98+j1.235,side*.353);
-   part(moon,pivot,'Ivory ceramic · five lunar phases',side1.44,i);
+   moon.position.set(i===0?-.218:.218,.98+j*1.235,side*.353);
+   part(moon,pivot,'Ivory ceramic · five lunar phases',side*1.44,i);
   }
   for(const y of [0,6.65]){
-   cylinder(y===0?.255:.105,.04,copper,0,y,side.36,pivot,y===0?'Copper pivot collar':'Scale fastener',side2.1,i);
-   cylinder(y===0?.177:.065,.065,dark,0,y,side.393,pivot,y===0?'T8 pivot screw':'T6 body screw',side2.45,i);
+   cylinder(y===0?.255:.105,.04,copper,0,y,side*.36,pivot,y===0?'Copper pivot collar':'Scale fastener',side*2.1,i);
+   cylinder(y===0?.177:.065,.065,dark,0,y,side*.393,pivot,y===0?'T8 pivot screw':'T6 body screw',side*2.45,i);
    const socket=new THREE.Mesh(new THREE.CircleGeometry(y===0?.087:.033,6),etch);
-   socket.position.set(0,y,side.43);
+   socket.position.set(0,y,side*.43);
    if(side<0)socket.rotation.y=PI;
-   part(socket,pivot,'Hexagonal drive socket',side2.46,i);
+   part(socket,pivot,'Hexagonal drive socket',side*2.46,i);
   }
-  torus(.225,.027,steel,0,0,side.125,pivot,'Hardened bearing race',side*.45,i);
+  torus(.225,.027,steel,0,0,side*.125,pivot,'Hardened bearing race',side*.45,i);
   for(let b=0;b<9;b++){
    const ball=new THREE.Mesh(new THREE.SphereGeometry(.035,8,6),ceramic);
-   ball.position.set(Math.cos(b/9TAU).215,Math.sin(b/9TAU).215,side*.11);
+   ball.position.set(Math.cos(b/9*TAU)*.215,Math.sin(b/9*TAU)*.215,side*.11);
    part(ball,pivot,'Silicon nitride bearing ball',side*.46,i);
   }
  }
@@ -437,8 +437,8 @@ const latchPivot=new THREE.Group();
 latchPivot.position.set(0,H-.04,0);
 handles[1].add(latchPivot);
 const ls=new THREE.Shape();
-ls.absarc(-.32,.03,.43,-.58,PI1.57,false);
-ls.absarc(-.26,.07,.29,PI1.48,-.55,true);
+ls.absarc(-.32,.03,.43,-.58,PI*1.57,false);
+ls.absarc(-.26,.07,.29,PI*1.48,-.55,true);
 ls.closePath();
 const latch=new THREE.Mesh(extrude(ls,.1,.025),copper);
 latch.position.z=.06;
@@ -451,8 +451,8 @@ finger.rotation.z=PI/2;
 guide.add(finger);
 guide.visible=false;
 const tipLocal=new THREE.Vector3(-.1,6.72,0),tip=new THREE.Vector3(),trailPoints=[],trailMax=90,trailGeom=new THREE.BufferGeometry();
-trailGeom.setAttribute('position',new THREE.BufferAttribute(new Float32Array(trailMax18),3));
-trailGeom.setAttribute('color',new THREE.BufferAttribute(new Float32Array(trailMax18),3));
+trailGeom.setAttribute('position',new THREE.BufferAttribute(new Float32Array(trailMax*18),3));
+trailGeom.setAttribute('color',new THREE.BufferAttribute(new Float32Array(trailMax*18),3));
 const trailMesh=new THREE.Mesh(trailGeom,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.48,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}));
 trailMesh.frustumCulled=false;
 scene.add(trailMesh);
@@ -515,7 +515,7 @@ let mode='showcase',flow='',flowIndex=0,active=-1,elapsed=0,speed=1,slow=false,p
 const closed={a:.012,b:-.012,rz:-.34,rx:.12,ry:-.25,x:0,y:-3.15,z:0,l:0};
 const open={a:PI-.012,b:-PI+.012,rz:-.4,rx:.16,ry:-.2,x:0,y:.2,z:0,l:0};
 let pose={...closed},startPose={...closed},prevPose={...closed},currentStops=[true,true],latchWasClosed=true;
-const ease=t=>tt(3-2t),lerp=(a,b,t)=>a+(b-a)t;
+const ease=t=>t*t*(3-2*t),lerp=(a,b,t)=>a+(b-a)*t;
 function mix(a,b,t){
  const p={};
  for(const k of Object.keys(a))p[k]=lerp(a[k],b[k],t);
@@ -559,12 +559,12 @@ function sample(n,t){
   [1,{...open,rz:-TAU-.4}]
  ]);
  if(n===4){
-  const s=Math.sin(PIt);
-  return P(O,-O+1.8ss,-.4+TAU3ease(t),.16+.12s,-.2+.2s,.2,0,0,ease(Math.min(1,t/.04,(1-t)/.04)));
+  const s=Math.sin(PI*t);
+  return P(O,-O+1.8*s*s,-.4+TAU*3*ease(t),.16+.12*s,-.2+.2*s,.2,0,0,ease(Math.min(1,t/.04,(1-t)/.04)));
  }
  if(n===5){
-  const s=Math.sin(PIt);
-  return P(O-.95s,-O+1.5s,-.4+TAUease(t),.16+.34s,-.2+TAU2ease(t),.2+.7*s,0,0,ease(Math.min(1,t/.04,(1-t)/.04)));
+  const s=Math.sin(PI*t);
+  return P(O-.95*s,-O+1.5*s,-.4+TAU*ease(t),.16+.34*s,-.2+TAU*2*ease(t),.2+.7*s,0,0,ease(Math.min(1,t/.04,(1-t)/.04)));
  }
  if(n===6)return keys(t,[
   [0,open],[.12,P(O,-O,-.4)],
@@ -584,7 +584,7 @@ function sample(n,t){
  ]);
 }
 let blendFrom={...closed},phaseTime=0,phase='blend',anchor=new THREE.Vector3(),gripEnd=new THREE.Vector3(),angleOffsetZ=0,angleOffsetY=0,inspectTransition=null;
-const nearestAngle=(value,to)=>value+Math.round((to-value)/TAU)TAU;
+const nearestAngle=(value,to)=>value+Math.round((to-value)/TAU)*TAU;
 function normalizedStart(n){
  const p=n===0?{...closed}:{...open};
  p.rz=nearestAngle(p.rz,pose.rz);
@@ -635,7 +635,7 @@ function nextMove(){
   beginMove(flowIndex);
  }else if(flow==='freestyle'){
   let n;
-  do{n=Math.floor(Math.random()8);}while(n===active);
+  do{n=Math.floor(Math.random()*8);}while(n===active);
   beginMove(n);
  }else{
   mode='showcase';
@@ -665,8 +665,8 @@ function applyPose(p,dt){
  }else guide.visible=false;
  const aligned=(Math.abs(p.a-.012)<.04&&Math.abs(p.b+.012)<.04)||(Math.abs(p.a-(PI-.012))<.04&&Math.abs(p.b+(PI-.012))<.04);
  if(!aligned)p.l=1;
- const orientation=PITHREE.MathUtils.clamp((p.a-.012)/(PI-.024),0,1);
- latchPivot.rotation.z=orientation+lerp(0,-PI.66,p.l);
+ const orientation=THREE.MathUtils.clamp((p.a-.012)/(PI-.024),0,1);
+ latchPivot.rotation.z=orientation+lerp(0,-PI*.66,p.l);
  const isClosed=p.l<.15;
  if(isClosed!==latchWasClosed){
   clack('latch',1);
@@ -687,8 +687,8 @@ function applyPose(p,dt){
   angular+=Math.abs(p.rz-prevPose.rz)/dt+Math.abs(p.ry-prevPose.ry)/dt;
   if(audio){
    const t=audio.ctx.currentTime;
-   audio.filter.frequency.setTargetAtTime(800+Math.min(angular,25)150,t,.035);
-   audio.gain.gain.setTargetAtTime(Math.min(.095,angular.003),t,.035);
+   audio.filter.frequency.setTargetAtTime(800+Math.min(angular,25)*150,t,.035);
+   audio.gain.gain.setTargetAtTime(Math.min(.095,angular*.003),t,.035);
   }
  }
 }
@@ -773,7 +773,7 @@ renderer.domElement.addEventListener('pointerdown',e=>{
 });
 renderer.domElement.addEventListener('pointermove',e=>{
  if(drag){
-  const delta=(e.clientX-drag.x-(e.clientY-drag.y).35).014;
+  const delta=(e.clientX-drag.x-(e.clientY-drag.y)*.35)*.014;
   const amount=THREE.MathUtils.clamp((drag.a-.012)/(PI-.024)+delta,0,1);
   const p={...pose,a:lerp(.012,PI-.012,amount),b:-lerp(.012,PI-.012,amount),l:amount>.015&&amount<.985?1:0};
   applyPose(p,1/60);
@@ -923,16 +923,16 @@ function animate(now){
  requestAnimationFrame(animate);
  const dt=Math.min(.05,(now-last)/1000);
  last=now;
- const step=dtspeed(slow?.22:1);
+ const step=dt*speed*(slow?.22:1);
  if(!paused&&!inspect){
   if(mode==='reveal'){
    revealTime+=step;
    const t=Math.min(revealTime/3.6,1),p=sample(0,Math.max(0,(t-.12)/.88));
-   p.ry+=Math.sin(PIt).55;
-   p.rz+=Math.sin(PIt).2;
+   p.ry+=Math.sin(PI*t)*.55;
+   p.rz+=Math.sin(PI*t)*.2;
    applyPose(p,dt);
-   key.position.x=-7+18t;
-   $('progress').style.width=t100+'%';
+   key.position.x=-7+18*t;
+   $('progress').style.width=t*100+'%';
    if(t===1){
     mode='showcase';
     $('status').textContent='AT REST / OBSERVATORY';
@@ -955,7 +955,7 @@ function animate(now){
      const end=sample(active,1);
      end.rz+=angleOffsetZ;
      end.ry+=angleOffsetY;
-     gripEnd.set(-.49-Math.sin(end.a).6,Math.cos(end.a).6,0).applyEuler(new THREE.Euler(end.rx,end.ry,end.rz)).add(new THREE.Vector3(end.x,end.y,end.z));
+     gripEnd.set(-.49-Math.sin(end.a)*.6,Math.cos(end.a)*.6,0).applyEuler(new THREE.Euler(end.rx,end.ry,end.rz)).add(new THREE.Vector3(end.x,end.y,end.z));
     }
    }else{
     elapsed+=step;
@@ -977,7 +977,7 @@ function animate(now){
    }
   }else if(mode==='showcase'){
    const p={...pose};
-   p.ry+=dt.075;
+   p.ry+=dt*.075;
    applyPose(p,dt);
   }
  }

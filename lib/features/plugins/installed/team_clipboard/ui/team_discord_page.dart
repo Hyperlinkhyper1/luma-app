@@ -1673,23 +1673,55 @@ class _EditorShell extends StatelessWidget {
     required this.title,
     required this.onSave,
     required this.children,
+    this.spacious = false,
   });
 
   final String title;
   final VoidCallback onSave;
   final List<Widget> children;
+  final bool spacious;
 
   @override
   Widget build(BuildContext context) {
     final t = L.of(context);
     final luma = context.luma;
+    if (!spacious) {
+      return Dialog(
+        backgroundColor: luma.surface,
+        insetPadding: const EdgeInsets.all(20),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                ...children,
+                const SizedBox(height: 20),
+                _actions(context, t),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return Dialog(
       backgroundColor: luma.surface,
       insetPadding: const EdgeInsets.all(20),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(22),
+        constraints: const BoxConstraints(maxWidth: 680),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1698,34 +1730,44 @@ class _EditorShell extends StatelessWidget {
                 title,
                 style: TextStyle(
                   color: luma.textPrimary,
-                  fontSize: 18,
+                  fontSize: 22,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 18),
-              ...children,
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  LumaGhostButton(
-                    label: t.commonCancel,
-                    onTap: () => Navigator.of(context).pop(),
+              const SizedBox(height: 28),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: children,
                   ),
-                  const SizedBox(width: 10),
-                  LumaPrimaryButton(
-                    label: t.commonSave,
-                    icon: Icons.check_rounded,
-                    onTap: onSave,
-                  ),
-                ],
+                ),
               ),
+              const SizedBox(height: 20),
+              _actions(context, t),
             ],
           ),
         ),
       ),
     );
   }
+
+  Widget _actions(BuildContext context, L t) => Row(
+    mainAxisAlignment: MainAxisAlignment.end,
+    children: [
+      LumaGhostButton(
+        label: t.commonCancel,
+        onTap: () => Navigator.of(context).pop(),
+      ),
+      const SizedBox(width: 10),
+      LumaPrimaryButton(
+        label: t.commonSave,
+        icon: Icons.check_rounded,
+        onTap: onSave,
+      ),
+    ],
+  );
 }
 
 class _AutomodEditor extends StatefulWidget {
@@ -2033,6 +2075,7 @@ class _ForumEditorState extends State<_ForumEditor> {
       title: widget.existing == null
           ? t.teamDiscordNewForum
           : t.teamDiscordEditForum,
+      spacious: true,
       onSave: _save,
       children: [
         if (_forums.isEmpty)
@@ -2043,10 +2086,9 @@ class _ForumEditorState extends State<_ForumEditor> {
         else
           DropdownButtonFormField<String>(
             key: const ValueKey('team-discord-forum'),
+            isExpanded: true,
             initialValue: _forumId,
-            decoration: InputDecoration(
-              isDense: true,
-              labelText: t.teamDiscordForumLabel,
+            decoration: _fieldDecoration(t.teamDiscordForumLabel).copyWith(
               errorText: _forumMissing ? t.teamDiscordForumRequired : null,
             ),
             items: [
@@ -2095,13 +2137,11 @@ class _ForumEditorState extends State<_ForumEditor> {
             ],
           ),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
         DropdownButtonFormField<TeamEntryKind>(
+          isExpanded: true,
           initialValue: _kind,
-          decoration: InputDecoration(
-            isDense: true,
-            labelText: t.teamDiscordKindLabel,
-          ),
+          decoration: _fieldDecoration(t.teamDiscordKindLabel),
           items: [
             for (final k in TeamEntryKind.values)
               DropdownMenuItem(
@@ -2114,58 +2154,125 @@ class _ForumEditorState extends State<_ForumEditor> {
                       color: teamKindColor(k, luma),
                     ),
                     const SizedBox(width: 8),
-                    Text(teamKindLabel(t, k)),
+                    Flexible(
+                      child: Text(
+                        teamKindLabel(t, k),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
               ),
           ],
           onChanged: (k) => setState(() => _kind = k ?? _kind),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
         DropdownButtonFormField<TeamForumRequire>(
           key: const ValueKey('team-discord-require'),
+          isExpanded: true,
           initialValue: _require,
-          decoration: InputDecoration(
-            isDense: true,
-            labelText: t.teamDiscordRequireLabel,
-          ),
+          decoration: _fieldDecoration(t.teamDiscordRequireLabel),
           items: [
             for (final r in TeamForumRequire.values)
-              DropdownMenuItem(value: r, child: Text(_requireLabel(t, r))),
+              DropdownMenuItem(
+                value: r,
+                child: Text(
+                  _requireLabel(t, r),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
           ],
           onChanged: (r) => setState(() => _require = r ?? _require),
         ),
         if (_require != TeamForumRequire.none) ...[
-          const SizedBox(height: 16),
-          TextField(
-            key: const ValueKey('team-discord-missing'),
-            controller: _missing,
-            minLines: 2,
-            maxLines: 6,
-            maxLength: 2000,
-            decoration: InputDecoration(
-              labelText: t.teamDiscordMissingLabel,
-              helperText: t.teamDiscordMissingHint,
-              helperMaxLines: 3,
-              alignLabelWithHint: true,
+          const SizedBox(height: 28),
+          _ForumReplyField(
+            label: t.teamDiscordMissingLabel,
+            hint: t.teamDiscordMissingHint,
+            child: TextField(
+              key: const ValueKey('team-discord-missing'),
+              controller: _missing,
+              minLines: 3,
+              maxLines: 6,
+              maxLength: 2000,
+              style: const TextStyle(fontSize: 14, height: 1.5),
+              decoration: _fieldDecoration(null),
             ),
           ),
         ],
-        const SizedBox(height: 12),
-        TextField(
-          key: const ValueKey('team-discord-done'),
-          controller: _done,
-          minLines: 2,
-          maxLines: 6,
-          maxLength: 2000,
-          decoration: InputDecoration(
-            labelText: t.teamDiscordDoneLabel,
-            helperText: t.teamDiscordDoneHint('{status}'),
-            helperMaxLines: 3,
-            alignLabelWithHint: true,
+        const SizedBox(height: 24),
+        _ForumReplyField(
+          label: t.teamDiscordDoneLabel,
+          hint: t.teamDiscordDoneHint('{status}'),
+          child: TextField(
+            key: const ValueKey('team-discord-done'),
+            controller: _done,
+            minLines: 3,
+            maxLines: 6,
+            maxLength: 2000,
+            style: const TextStyle(fontSize: 14, height: 1.5),
+            decoration: _fieldDecoration(null),
           ),
         ),
       ],
     );
   }
+
+  InputDecoration _fieldDecoration(String? label) {
+    final luma = context.luma;
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: luma.border),
+    );
+    return InputDecoration(
+      labelText: label,
+      floatingLabelBehavior: FloatingLabelBehavior.always,
+      filled: true,
+      fillColor: luma.background,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      border: border,
+      enabledBorder: border,
+      focusedBorder: border.copyWith(
+        borderSide: BorderSide(color: luma.accent, width: 2),
+      ),
+    );
+  }
+}
+
+class _ForumReplyField extends StatelessWidget {
+  const _ForumReplyField({
+    required this.label,
+    required this.hint,
+    required this.child,
+  });
+
+  final String label;
+  final String hint;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text(
+        label,
+        style: TextStyle(
+          color: context.luma.textPrimary,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      const SizedBox(height: 6),
+      Text(
+        hint,
+        style: TextStyle(
+          color: context.luma.textSecondary,
+          fontSize: 12,
+          height: 1.5,
+        ),
+      ),
+      const SizedBox(height: 12),
+      child,
+    ],
+  );
 }
