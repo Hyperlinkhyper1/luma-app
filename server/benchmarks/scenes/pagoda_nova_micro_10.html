@@ -16,8 +16,9 @@
     </script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            const { THREE } = await import('three');
-            const { OrbitControls } = await import('three/examples/jsm/controls/OrbitControls.js');
+            const THREE = await import('three');
+            const THREE$OrbitControls = await import('three/addons/controls/OrbitControls.js');
+            const OrbitControls = THREE$OrbitControls.OrbitControls;
 
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -149,12 +150,7 @@
             camera.position.set(0, 5, -10);
             controls.autoRotate = true;
 
-            const intro = () => {
-                const camTween = TweenMax.to(camera.position, { duration: 2.5, x: 0, y: 5, z: -10, onUpdate: () => renderer.render(scene, camera) });
-                const lookAtTween = TweenMax.to(camera.rotation, { duration: 2.5, x: 0, y: 0, z: 0, onUpdate: () => renderer.render(scene, camera) });
-                camTween.eventCallback('onComplete', () => controls.autoRotate = false);
-            };
-            intro();
+
         });
     </script>
 </body>
