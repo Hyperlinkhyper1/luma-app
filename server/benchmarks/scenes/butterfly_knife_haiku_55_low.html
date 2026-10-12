@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VESPER 9 Balisong Study</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#0b0a0b;color:#e8e2d6;font:13px/1.35 system-ui,”Segoe UI”,sans-serif;user-select:none}
+#gl{position:fixed;inset:0;width:100vw;height:100vh;display:block;touch-action:none;outline:none}
+#loading{position:fixed;inset:0;display:grid;place-items:center;background:#0b0a0b;color:#cbbfae;letter-spacing:.22em;font-size:12px;text-transform:uppercase;z-index:5;transition:opacity .8s}
+#loading.done{opacity:0;pointer-events:none}
+#nogl{position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;background:#0b0a0b;z-index:6}
+#ui{position:fixed;inset:0;pointer-events:none;z-index:2}
+#ui.off{display:none}
+#ui .panel,#ui button,#ui input,#ui label{pointer-events:auto}
+.panel{position:fixed;background:rgba(14,12,13,.76);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 14px}
+button{font:inherit;color:inherit;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);border-radius:7px;padding:6px 10px;cursor:pointer}
+button:hover{background:rgba(255,255,255,.13)}
+button.on{background:#ff6a2a;border-color:#ff6a2a;color:#160d0a}
+button kbd{font:600 10px/1 system-ui;opacity:.7;margin-right:4px;padding:2px 4px;border:1px solid currentColor;border-radius:4px}
+input[type=range]{accent-color:#ff6a2a;vertical-align:middle;width:120px}
+label{color:#b9ae9c;display:inline-flex;align-items:center;gap:6px}
+.kicker{font-size:10px;letter-spacing:.28em;color:#ff8a52}
+h1{margin:3px 0 0;font:600 30px/1 Georgia,”Times New Roman”,serif;letter-spacing:.06em}
+.sub{color:#b9ae9c;margin:6px 0 10px}
+.spec{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;margin:0;font-size:12px}
+.spec dt{color:#8e867a}
+.spec dd{margin:0}
+#hud{left:16px;top:16px;width:264px;opacity:0;transform:translateY(8px);transition:opacity 1.2s,transform 1.2s}
+#hud.on{opacity:1;transform:none}
+#hud button{margin-top:10px;width:100%}
+#tools{right:16px;top:16px;width:236px;display:flex;flex-direction:column;gap:8px}
+.lbl{font-size:10px;letter-spacing:.2em;color:#8e867a;text-transform:uppercase;margin-top:4px}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+#bar{left:50%;bottom:16px;transform:translateX(-50%);width:min(1000px,calc(100vw - 32px));display:flex;flex-direction:column;gap:10px}
+#moves{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.transport{align-items:center;justify-content:center;font-size:12px}
+#caption{position:fixed;left:50%;top:18px;transform:translateX(-50%);font:600 14px/1 system-ui;letter-spacing:.3em;text-transform:uppercase;color:#ffd2b5;text-shadow:0 0 14px rgba(255,106,42,.7);z-index:2;pointer-events:none;white-space:nowrap}
+#tip{position:fixed;pointer-events:none;padding:4px 8px;border-radius:6px;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.12);font-size:12px;z-index:3;display:none;white-space:nowrap}
+#btn-show{left:16px;bottom:16px;z-index:2}
+#btn-show[hidden]{display:none}
+@media (max-width:760px){
+#hud{width:auto;right:16px}
+.spec{display:none}
+#tools{top:auto;left:16px;right:16px;bottom:250px;width:auto;flex-direction:row;flex-wrap:wrap}
+#tools .lbl{width:100%}
+#caption{top:auto;bottom:235px}
+input[type=range]{width:90px}
+}
+</style>
+<script type="importmap">
+{“imports”:{“three”:”https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="loading">Forging the Vesper 9</div>
+<div id="nogl" hidden><p>WebGL is unavailable in this browser, so the knife cannot be shown. Turn on hardware acceleration and reload.</p></div>
+
+<div id="ui">
+<section id="hud" class="panel">
+<div class="kicker">HOLLOW EMBER WORKS</div>
+<h1>VESPER 9</h1>
+<div class="sub" id="way-name">Oxblood and Smoked Titanium</div>
+<dl class="spec">
+<dt>Open</dt><dd>23.0 cm</dd>
+<dt>Closed</dt><dd>13.0 cm</dd>
+<dt>Blade</dt><dd>9.5 cm, titanium</dd>
+<dt>Scales</dt><dd>Milled G10</dd>
+<dt>Weight</dt><dd>118 g</dd>
+<dt>Pivot</dt><dd>Dual bearing, ember collar</dd>
+</dl>
+<button id="btn-hide">Hide UI (H)</button>
+</section>
+
+<section id="tools" class="panel">
+<div class="lbl">Colourway</div>
+<div class="row" id="ways">
+<button data-way="0" class="on">Oxblood</button>
+<button data-way="1">Ink</button>
+<button data-way="2">Bone</button>
+</div>
+<div class="lbl">Camera</div>
+<div class="row">
+<button data-cam="HERO">Hero</button>
+<button data-cam="BLADE">Blade</button>
+<button data-cam="PIVOT">Pivot</button>
+<button data-cam="LATCH">Latch</button>
+<button data-cam="TOP">Top</button>
+</div>
+<div class="lbl">Inspect</div>
+<div class="row">
+<button id="btn-explode">Exploded view (E)</button>
+</div>
+</section>
+
+<section id="bar" class="panel">
+<div id="moves">
+<button data-move="open">1Basic open</button>
+<button data-move="close">2Basic close</button>
+<button data-move="chaplin">3Chaplin</button>
+<button data-move="zen">4Zen rollover</button>
+<button data-move="fan">5Fan</button>
+<button data-move="helix">6Helix</button>
+<button data-move="aerial">7Aerial</button>
+<button data-move="vesper">8Vesper snap</button>
+<button id="btn-combo">9Combo</button>
+<button id="btn-free">FFreestyle</button>
+<button id="btn-stop">EscStop</button>
+</div>
+<div class="row transport">
+<label>Speed <input id="speed" type="range" min="0.25" max="2" step="0.05" value="1"> <span id="speed-v">1.00x</span></label>
+<button id="btn-slow">Slow motion</button>
+<button id="btn-trail">Trail (T)</button>
+<label>Volume <input id="vol" type="range" min="0" max="1" step="0.01" value="0.6"></label>
+<button id="btn-mute">Sound on (M)</button>
+</div>
+</section>
+</div>
+
+<button id="btn-show" class="panel" hidden>Show UI</button>
+<div id="caption"></div>
+<div id="tip"></div>
+
+<script type="module">
+import * as THREE from ‘three’;
+import { OrbitControls } from ‘three/addons/controls/OrbitControls.js’;
+import { RoomEnvironment } from ‘three/addons/environments/RoomEnvironment.js’;
+
+const PI = Math.PI, TAU = PI * 2, P = PI;
+const $ = (id) => document.getElementById(id);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+const canvas = $(‘gl’);
+
+let renderer = null;
+try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true }); } catch (e) { renderer = null; }
+
+if (!renderer) {
+$(‘loading’).classList.add(‘done’);
+$(‘nogl’).hidden = false;
+} else {
+start(renderer);
+}
+
+function start(renderer) {
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight, false);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(32, window.innerWidth / window.innerHeight, 0.01, 100);
+camera.position.set(6, 3, 8);
+const controls = new OrbitControls(camera, canvas);
+controls.target.set(0.45, 0.02, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 0.5;
+controls.maxDistance = 9;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.5;
+controls.update();
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+function canvasTex(w, h, paint) {
+const c = document.createElement(‘canvas’);
+c.width = w; c.height = h;
+paint(c.getContext(‘2d’), w, h);
+const t = new THREE.CanvasTexture(c);
+t.colorSpace = THREE.SRGBColorSpace;
+t.anisotropy = 4;
+return t;
+}
+
+scene.background = canvasTex(512, 512, (g, w, h) => {
+const gr = g.createRadialGradient(w / 2, h * 0.42, 10, w / 2, h / 2, w * 0.72);
+gr.addColorStop(0, ‘#2c2429’);
+gr.addColorStop(1, ‘#050405’);
+g.fillStyle = gr;
+g.fillRect(0, 0, w, h);
+});
+
+const key = new THREE.DirectionalLight(0xfff1e0, 1.7);
+key.position.set(3, 4, 3);
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x8cbcff, 1.2);
+rim.position.set(-3, 2, -4);
+scene.add(rim);
+scene.add(new THREE.HemisphereLight(0x2a2228, 0x050405, 0.35));
+
+const plinth = new THREE.Mesh(
+new THREE.CylinderGeometry(1.35, 1.45, 0.06, 120),
+new THREE.MeshPhysicalMaterial({ color: 0x17151a, roughness: 0.35, metalness: 0.2, clearcoat: 0.6, clearcoatRoughness: 0.2 })
+);
+plinth.position.set(0.45, -0.36, 0);
+scene.add(plinth);
+const shadowTex = canvasTex(256, 256, (g, w, h) => {
+const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+gr.addColorStop(0, ‘rgba(0,0,0,0.8)’);
+gr.addColorStop(1, ‘rgba(0,0,0,0)’);
+g.fillStyle = gr;
+g.fillRect(0, 0, w, h);
+});
+const shadow = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.0), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
+shadow.rotation.x = -PI / 2;
+shadow.position.set(0.45, -0.325, 0);
+scene.add(shadow);
+
+function bladeShape() {
+const s = new THREE.Shape();
+s.moveTo(0.0, 0.085);
+s.lineTo(0.62, 0.095);
+s.quadraticCurveTo(0.86, 0.1, 0.97, 0.03);
+s.quadraticCurveTo(0.84, -0.02, 0.62, -0.06);
+s.lineTo(0.22, -0.07);
+s.quadraticCurveTo(0.12, -0.075, 0.06, -0.13);
+s.lineTo(-0.02, -0.18);
+s.lineTo(-0.02, 0.0);
+s.closePath();
+return s;
+}
+function handleShape() {
+const s = new THREE.Shape();
+s.moveTo(-0.02, 0.075);
+s.quadraticCurveTo(0.35, 0.13, 0.8, 0.115);
+s.quadraticCurveTo(1.2, 0.1, 1.27, 0.0);
+s.quadraticCurveTo(1.24, -0.085, 0.85, -0.095);
+s.quadraticCurveTo(0.4, -0.1, 0.02, -0.07);
+s.quadraticCurveTo(-0.04, -0.02, -0.02, 0.075);
+return s;
+}
+
+const bladeGeo = new THREE.ExtrudeGeometry(bladeShape(), { depth: 0.034, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.01, bevelSegments: 3, curveSegments: 24 });
+bladeGeo.translate(0, 0, -0.017);
+const handleGeo = new THREE.ExtrudeGeometry(handleShape(), { depth: 0.066, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.008, bevelSegments: 3, curveSegments: 20 });
+handleGeo.translate(0, 0, -0.033);
+
+const bladeTex = canvasTex(1024, 292, (g, w, h) => {
+g.fillStyle = ‘#c8ccd2’;
+g.fillRect(0, 0, w, h);
+for (let i = 0; i < 2400; i++) {
+const y = Math.random() * h, x = Math.random() * w, v = 150 + Math.random() * 90 | 0;
+g.strokeStyle = rgba(${v},${v},${v},0.22);
+g.lineWidth = 0.7;
+g.beginPath();
+g.moveTo(x, y);
+g.lineTo(x + 30 + Math.random() * 160, y + (Math.random() - 0.5) * 0.8);
+g.stroke();
+}
+g.save();
+g.translate(w / 2, h / 2);
+g.fillStyle = ‘rgba(18,16,18,0.88)’;
+g.beginPath();
+g.moveTo(0, -58);
+g.bezierCurveTo(22, -30, 30, -6, 20, 16);
+g.bezierCurveTo(12, 36, -12, 36, -20, 16);
+g.bezierCurveTo(-30, -6, -22, -30, 0, -58);
+g.fill();
+g.fillStyle = ‘rgba(214,218,224,0.95)’;
+g.beginPath();
+g.ellipse(0, 6, 5, 13, 0, 0, TAU);
+g.fill();
+g.fillStyle = ‘rgba(18,16,18,0.9)’;
+g.font = ‘600 18px Georgia, serif’;
+g.textAlign = ‘center’;
+g.fillText(‘HOLLOW EMBER WORKS’, 0, -76);
+g.font = ‘700 22px Georgia, serif’;
+g.fillText(‘VESPER 9’, 0, 84);
+g.restore();
+});
+const scaleTex = canvasTex(256, 256, (g, w, h) => {
+g.fillStyle = ‘#f2f2f2’;
+g.fillRect(0, 0, w, h);
+g.strokeStyle = ‘rgba(0,0,0,0.22)’;
+g.lineWidth = 5;
+for (let i = -h; i < w + h; i += 18) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + h, h); g.stroke(); }
+g.strokeStyle = ‘rgba(255,255,255,0.18)’;
+g.lineWidth = 2;
+for (let i = -h + 9; i < w + h; i += 18) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + h, h); g.stroke(); }
+});
+scaleTex.wrapS = scaleTex.wrapT = THREE.RepeatWrapping;
+scaleTex.repeat.set(3, 3);
+bladeTex.repeat.set(1 / 0.7, 1 / 0.2);
+bladeTex.offset.set(-0.1 / 0.7, 0.5);
+
+const mats = {
+blade: new THREE.MeshPhysicalMaterial({ map: bladeTex, metalness: 1, roughness: 0.27, clearcoat: 0.3, clearcoatRoughness: 0.2 }),
+scale: new THREE.MeshPhysicalMaterial({ map: scaleTex, roughness: 0.5, metalness: 0, clearcoat: 0.5, clearcoatRoughness: 0.25 }),
+hard: new THREE.MeshPhysicalMaterial({ metalness: 1, roughness: 0.22 }),
+collar: new THREE.MeshPhysicalMaterial({ metalness: 0.6, roughness: 0.22, emissiveIntensity: 0.25, iridescence: 0.55, iridescenceIOR: 1.6, clearcoat: 1 }),
+latch: new THREE.MeshPhysicalMaterial({ metalness: 1, roughness: 0.3 })
+};
+
+const WAYS = [
+{ name: ‘Oxblood and Smoked Titanium’, blade: 0xdfe4ec, scale: 0x5c141b, collar: 0xff6a2a, latch: 0xc48a45, hard: 0xc3c8cf, bl: ‘titanium’, sc: ‘g10’, piv: ‘bearing’ },
+{ name: ‘Ink Carbon and Teal’, blade: 0xb4bac3, scale: 0x16181c, collar: 0x2fd9c6, latch: 0x9aa3ad, hard: 0x7d8590, bl: ‘steel’, sc: ‘carbon’, piv: ‘washer’ },
+{ name: ‘Bone and Brass’, blade: 0xe6dfcb, scale: 0xd9d0b8, collar: 0xd9a441, latch: 0xd9a441, hard: 0xb8b09c, bl: ‘steel’, sc: ‘bone’, piv: ‘bushing’ }
+];
+const BLADE_SND = { titanium: { hz: 3600, g: 0.75, ring: 2300 }, steel: { hz: 2600, g: 1, ring: 1700 } };
+const SCALE_DAMP = { g10: 0.55, carbon: 0.85, bone: 0.6 };
+const PIVOT_SND = { bearing: { g: 0.2, hz: 3200 }, washer: { g: 0.9, hz: 1700 }, bushing: { g: 0.5, hz: 900 } };
+
+let way = WAYS[0];
+let wayIndex = 0;
+function applyWay(i) {
+wayIndex = i;
+way = WAYS[i];
+mats.blade.color.setHex(way.blade);
+mats.scale.color.setHex(way.scale);
+mats.hard.color.setHex(way.hard);
+mats.collar.color.setHex(way.collar);
+mats.collar.emissive.setHex(way.collar);
+mats.latch.color.setHex(way.latch);
+const b = BLADE_SND[way.bl], pv = PIVOT_SND[way.piv];
+SND.clackHz = b.hz;
+SND.clackG = b.g * SCALE_DAMP[way.sc];
+SND.ringHz = b.ring * (way.sc === ‘carbon’ ? 1 : 0.7);
+SND.pivG = pv.g;
+SND.pivHz = pv.hz;
+$(‘way-name’).textContent = way.name;
+document.querySelectorAll(‘[data-way]’).forEach((b2) => b2.classList.toggle(‘on’, +b2.dataset.way === i));
+}
+
+const parts = [];
+const partMeshes = [];
+function reg(mesh, label, dir, amt, handle) {
+mesh.userData.label = label;
+if (handle) mesh.userData.handle = handle;
+parts.push({ mesh, dir, amt, base: mesh.position.clone() });
+partMeshes.push(mesh);
+return mesh;
+}
+function cylZ(r, len, mat) {
+const g = new THREE.CylinderGeometry(r, r, len, 28);
+g.rotateX(PI / 2);
+return new THREE.Mesh(g, mat);
+}
+
+const root = new THREE.Group();
+scene.add(root);
+root.add(reg(new THREE.Mesh(bladeGeo, mats.blade), ‘Blade: stonewashed titanium, flat ground’, 0, 0));
+root.add(reg(cylZ(0.012, 0.46, mats.hard), ‘Pivot pin: shared axis’, 0, 0));
+const zen = cylZ(0.007, 0.28, mats.hard);
+zen.position.set(0.05, 0.125, 0);
+root.add(reg(zen, ‘Zen pin: stops the handles’, 0, 0));
+
+const pivA = new THREE.Group();
+const pivB = new THREE.Group();
+root.add(pivA, pivB);
+
+function buildSide(piv, side, name, tag) {
+const h = new THREE.Mesh(handleGeo, mats.scale);
+h.position.z = side * 0.09;
+piv.add(reg(h, ${name} handle: milled G10 scale, side, 0.22, tag));
+const specs = [
+[0.042, 0.012, 0.158, ‘Pivot washer’, 0.4, mats.hard],
+[0.024, 0.02, 0.172, ‘Bearing bushing’, 0.5, mats.hard],
+[0.032, 0.016, 0.184, ‘Ember pivot collar’, 0.6, mats.collar],
+[0.018, 0.01, 0.2, ‘Pivot screw’, 0.72, mats.hard]
+];
+for (const [r, len, z, label, amt, mat] of specs) {
+const m = cylZ(r, len, mat);
+m.position.z = side * z;
+piv.add(reg(m, ${label}: ${name.toLowerCase()} side, side, amt));
+}
+}
+buildSide(pivA, 1, ‘Safe’, ‘A’);
+buildSide(pivB, -1, ‘Bite’, ‘B’);
+
+const lg = new THREE.CapsuleGeometry(0.02, 0.2, 6, 14);
+lg.rotateX(PI / 2);
+const latchMesh = new THREE.Mesh(lg, mats.latch);
+latchMesh.position.set(1.22, 0.16, 0);
+pivA.add(reg(latchMesh, ‘Latch: bronze lever’, 1, 0.35));
+
+applyWay(0);
+
+const SND = { clackHz: 3000, clackG: 0.8, ringHz: 2000, pivG: 0.5, pivHz: 2000 };
+let ac = null, master = null, noiseBuf = null, swG = null, swF = null, pvG = null, pvF = null;
+let volume = 0.6, muted = false;
+
+function loopNoise() {
+const s = ac.createBufferSource();
+s.buffer = noiseBuf;
+s.loop = true;
+s.start();
+return s;
+}
+function ensureAudio() {
+try {
+if (!ac) {
+ac = new (window.AudioContext || window.webkitAudioContext)();
+master = ac.createGain();
+master.gain.value = muted ? 0 : volume;
+master.connect(ac.destination);
+noiseBuf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
+const d = noiseBuf.getChannelData(0);
+for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+const sw = loopNoise();
+swF = ac.createBiquadFilter();
+swF.type = ‘bandpass’;
+swF.frequency.value = 500;
+swF.Q.value = 1.1;
+swG = ac.createGain();
+swG.gain.value = 0;
+sw.connect(swF); swF.connect(swG); swG.connect(master);
+const pv = loopNoise();
+pvF = ac.createBiquadFilter();
+pvF.type = ‘bandpass’;
+pvF.frequency.value = 2000;
+pvF.Q.value = 2;
+pvG = ac.createGain();
+pvG.gain.value = 0;
+pv.connect(pvF); pvF.connect(pvG); pvG.connect(master);
+}
+if (ac.state === ‘suspended’) ac.resume();
+} catch (e) { ac = null; }
+}
+function hit(type, freq, q, gain, dur) {
+if (!ac) return;
+const t = ac.currentTime;
+const src = ac.createBufferSource();
+src.buffer = noiseBuf;
+const f = ac.createBiquadFilter();
+f.type = type; f.frequency.value = freq; f.Q.value = q;
+const g = ac.createGain();
+g.gain.setValueAtTime(gain, t);
+g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+src.connect(f); f.connect(g); g.connect(master);
+src.start(t, Math.random() * 1.5, dur + 0.02);
+}
+function tone(freq, gain, dur) {
+if (!ac) return;
+const t = ac.currentTime;
+const o = ac.createOscillator();
+o.frequency.value = freq;
+const g = ac.createGain();
+g.gain.setValueAtTime(gain, t);
+g.gain.exponentialRampToValueAtTime(0.0005, t + dur);
+o.connect(g); g.connect(master);
+o.start(t); o.stop(t + dur + 0.02);
+}
+function clack(spd) {
+const s = SND.clackG * clamp(spd / 7, 0.08, 1);
+hit(‘bandpass’, SND.clackHz, 3, s, 0.05);
+tone(SND.clackHz * 1.5, s * 0.3, 0.05);
+}
+function latchClick() { hit(‘highpass’, 3800, 0.7, 0.35, 0.03); }
+function ring() { [1, 2.76, 5.4, 8.93].forEach((m, i) => tone(SND.ringHz * m, 0.09 / (i + 1), 1.6)); }
+
+const COLS = [‘A’, ‘B’, ‘rx’, ‘ry’, ‘rz’, ‘px’, ‘py’, ‘pz’, ‘L’];
+const COLS8 = COLS.slice(0, 8);
+function reverseRows(rows) {
+const T = rows[rows.length - 1][0];
+return rows.slice().reverse().map((r) => [T - r[0], ...r.slice(1)]);
+}
+
+const rowsOpen = [
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+[0.22, 0, 0, 0, 0, 0.03, 0, 0, 0, 0],
+[0.36, 0.05, 0, 0, 0, 0.06, 0, 0, 0, 0],
+[0.56, P, 0.12, 0, 0, 0.12, 0, 0, 0, 0],
+[0.64, P, 0.2, 0, 0, 0.12, 0, 0, 0, 0],
+[0.82, P, P, 0, 0, 0.06, 0, 0, 0, 0],
+[0.9, P, P - 0.035, 0, 0, 0.02, 0, 0, 0, 0],
+[1.02, P, P, 0, 0, 0, 0, 0, 0, 1]
+];
+const rowsChaplin = [
+[0, P, P, 0, 0, 0, 0, 0, 0, 1],
+[0.16, P, P, 0, 0, 0, 0, 0, 0, 0],
+[0.34, P, P, 0, 0.15, 0, 0, 0.22, 0, 0],
+[0.8, P, P, 0, PI, 0, 0, 0.32, 0, 0],
+[1.2, P, P, 0, TAU, 0, 0, 0.12, 0, 0],
+[1.36, P, P, 0, TAU, 0, 0, 0, 0, 0],
+[1.5, P, P, 0, TAU, 0, 0, 0, 0, 1]
+];
+const rowsZen = [
+[0, P, P, 0, 0, 0, 0, 0, 0, 1],
+[0.16, P, P, 0, 0, 0, 0, 0, 0, 0],
+[0.42, P, P, 0.35, 0, 0, 0, 0.05, 0, 0],
+[0.9, P, P, PI, 0, 0.04, 0, 0.12, 0, 0],
+[1.25, P, P, PI, 0, 0, 0, 0.02, 0, 0],
+[1.4, P, P, PI, 0, 0, 0, 0, 0, 0],
+[1.55, P, P, PI, 0, 0, 0, 0, 0, 1]
+];
+const rowsFan = [[0, P, P, 0, 0, 0, 0, 0, 0, 1], [0.16, P, P, 0, 0, 0, 0, 0, 0, 0]];
+for (let k = 0; k <= 8; k++) rowsFan.push([0.3 + k * 0.2, P, P + k * PI, 0, 0, 0, 0, 0, 0, 0]);
+rowsFan.push([2.0, P, P + 8 * PI, 0, 0, 0, 0, 0, 0, 0]);
+rowsFan.push([2.14, P, P + 8 * PI, 0, 0, 0, 0, 0, 0, 1]);
+const rowsHelix = [
+[0, P, P, 0, 0, 0, 0, 0, 0, 1],
+[0.16, P, P, 0, 0, 0, 0, 0, 0, 0],
+[0.4, P, P, 0, 0, 0, 0, 0.22, 0, 0],
+[1.1, P, P, TAU, 0.9, 0, 0, 0.36, 0, 0],
+[1.8, P, P, 2 * TAU, TAU, 0, 0, 0.04, 0, 0],
+[1.95, P, P, 2 * TAU, TAU, 0, 0, 0, 0, 0],
+[2.1, P, P, 2 * TAU, TAU, 0, 0, 0, 0, 1]
+];
+const rowsAerial = [
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+[0.16, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+[0.32, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+[0.62, 0.05, 0, 0, 0, TAU * 0.2, 0, 0.55, 0, 0],
+[0.9, 0.5, 0.25, 0, 0, TAU * 0.45, 0, 0.88, 0, 0],
+[1.12, P, 0.5, 0, 0, TAU * 0.6, 0, 0.9, 0, 0],
+[1.34, P, P, 0, 0, TAU * 0.8, 0, 0.66, 0, 0],
+[1.62, P, P, 0, 0, TAU, 0, 0, 0, 0],
+[1.76, P, P, 0, 0, TAU, 0, -0.02, 0, 0],
+[1.9, P, P, 0, 0, TAU, 0, 0, 0, 1]
+];
+const rowsVesper = [
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+[0.14, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+[0.32, 0, 0, 0, 0, 0, 0, 0.16, 0, 0],
+[0.5, P, 0, 0, PI * 0.5, 0, 0, 0.5, 0, 0],
+[0.64, P, P, 0, PI, 0, 0, 0.62, 0, 0],
+[0.82, P, P, 0, PI * 1.5, 0, 0, 0.5, 0, 0],
+[0.86, 0, P, 0, PI * 1.6, 0, 0, 0.45, 0, 0],
+[1.0, 0, 0, 0, TAU * 0.8, 0, 0, 0.2, 0, 0],
+[1.14, 0, 0, 0, TAU * 0.9, 0, 0, 0.08, 0, 0],
+[1.3, P, P, 0, TAU, 0, 0, 0, 0, 0],
+[1.36, P, P - 0.04, 0, TAU, 0, 0, 0, 0, 0],
+[1.46, P, P, 0, TAU, 0, 0, 0, 0, 1]
+];
+
+const MOVES = {
+open: { name: ‘Basic open’, rows: rowsOpen },
+close: { name: ‘Basic close’, rows: reverseRows(rowsOpen) },
+chaplin: { name: ‘Chaplin’, rows: rowsChaplin },
+zen: { name: ‘Zen rollover’, rows: rowsZen },
+fan: { name: ‘Fan’, rows: rowsFan, quiet: true },
+helix: { name: ‘Helix’, rows: rowsHelix },
+aerial: { name: ‘Aerial’, rows: rowsAerial },
+vesper: { name: ‘Vesper snap’, rows: rowsVesper }
+};
+const COMBO = [‘open’, ‘chaplin’, ‘zen’, ‘fan’, ‘helix’, ‘aerial’, ‘vesper’, ‘close’];
+
+function evalRows(rows, t) {
+const n = rows.length;
+let i = 0;
+while (i < n - 2 && t > rows[i + 1][0]) i++;
+const r0 = rows[Math.max(0, i - 1)], r1 = rows[i], r2 = rows[i + 1], r3 = rows[Math.min(n - 1, i + 2)];
+const span = r2[0] - r1[0];
+const u = span > 1e-6 ? clamp((t - r1[0]) / span, 0, 1) : 1;
+const u2 = u * u, u3 = u2 * u;
+const out = {};
+for (let c = 0; c < 9; c++) {
+const p0 = r0[c + 1], p1 = r1[c + 1], p2 = r2[c + 1], p3 = r3[c + 1];
+out[COLS[c]] = 0.5 * ((2 * p1) + (-p0 + p2) * u + (2 * p0 - 5 * p1 + 4 * p2 - p3) * u2 + (-p0 + 3 * p1 - 3 * p2 + p3) * u3);
+}
+return out;
+}
+function poseAt(m, t) {
+const raw = evalRows(m.rows, t);
+for (const c of COLS8) raw[c] += m.sh[c];
+return raw;
+}
+
+let state = { A: 0, B: 0, rx: 0, ry: 0, rz: 0, px: 0, py: 0, pz: 0, L: 1 };
+let prev = { ...state };
+let cur = null, lastKey = null, mode = ‘single’, drag = null, snap = null;
+const queue = [];
+let speedVal = 1, slowOn = false, trailOn = false, exT = 0, ex = 0, revealT = 0, loaded = false;
+
+function say(t) { $(‘caption’).textContent = t; }
+function startMove(key) {
+const m = MOVES[key];
+const r0 = m.rows[0];
+const sh = {};
+COLS8.forEach((c, i) => { sh[c] = state[c] - r0[i + 1]; });
+cur = { key, rows: m.rows, t: 0, dur: m.rows[m.rows.length - 1][0], sh, quiet: !!m.quiet };
+lastKey = key;
+say(m.name);
+}
+function pickFree() {
+const open = state.A > P / 2;
+const pool = Object.keys(MOVES).filter((k) => k !== lastKey && (open ? k !== ‘open’ : k !== ‘close’));
+return pool[Math.floor(Math.random() * pool.length)];
+}
+function play(key) {
+ensureAudio();
+if (drag) return;
+queue.length = 0;
+mode = ‘single’;
+snap = null;
+startMove(key);
+}
+function combo() {
+ensureAudio();
+if (drag) return;
+snap = null;
+mode = ‘combo’;
+queue.length = 0;
+if (state.A > P / 2) queue.push(‘close’);
+queue.push(...COMBO);
+startMove(queue.shift());
+}
+function freestyle() {
+ensureAudio();
+if (drag) return;
+snap = null;
+mode = ‘free’;
+queue.length = 0;
+startMove(pickFree());
+}
+function stopAll() {
+mode = ‘single’;
+queue.length = 0;
+cur = null;
+say(‘’);
+}
+
+const stopDist = (a) => {
+const m = ((a % TAU) + TAU) % TAU;
+return Math.min(m, TAU - m, Math.abs(m - P));
+};
+const prevDist = { A: 1, B: 1 };
+let wasOpen = false, prevL = 1;
+const SWISH_TARGET = 0.05;
+const tmp = new THREE.Vector3();
+
+const TRAIL_N = 120;
+const trailPos = new Float32Array(TRAIL_N * 3);
+const trailCol = new Float32Array(TRAIL_N * 3);
+const trailGeo = new THREE.BufferGeometry();
+trailGeo.setAttribute(‘position’, new THREE.BufferAttribute(trailPos, 3));
+trailGeo.setAttribute(‘color’, new THREE.BufferAttribute(trailCol, 3));
+const trailLine = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+trailLine.frustumCulled = false;
+trailLine.visible = false;
+scene.add(trailLine);
+let trailCount = 0;
+
+function applyPose(p) {
+pivA.rotation.z = p.A;
+pivB.rotation.z = p.B;
+root.position.set(p.px, p.py, p.pz);
+root.rotation.set(p.rx, p.ry, p.rz);
+latchMesh.position.y = lerp(0.16, 0, clamp(p.L, 0, 1));
+}
+
+let camTween = null;
+function flyTo(p, t, dur = 1.1) {
+camTween = { fp: camera.position.clone(), tp: new THREE.Vector3(...p), ft: controls.target.clone(), tt: new THREE.Vector3(...t), t: 0, dur };
+}
+const CAMS = {
+HERO: { p: [2.5, 1.25, 3.3], t: [0.45, 0.04, 0] },
+BLADE: { p: [1.35, 0.45, 1.15], t: [0.5, 0.03, 0] },
+PIVOT: { p: [0.45, 0.28, 0.85], t: [0.02, 0, 0] },
+LATCH: { p: [1.7, 0.5, 0.8], t: [1.15, 0.02, 0] },
+TOP: { p: [0.5, 2.8, 0.5], t: [0.45, 0, 0] }
+};
+function cam(k) { const c = CAMS[k]; controls.autoRotate = false; flyTo(c.p, c.t); setTimeout(() => { controls.autoRotate = true; }, 1200); }
+
+function step(dt) {
+dt = Math.max(dt, 1e-3);
+const ts = speedVal * (slowOn ? 0.35 : 1);
+const before = prev;
+
+if (drag) {
+  const lead = drag.side, other = lead === 'A' ? 'B' : 'A';
+  state[lead] = clamp(state[lead] + drag.pending * 0.009, -0.25, P + 0.3);
+  drag.pending = 0;
+  state[other] += (state[lead] - state[other]) * (1 - Math.exp(-dt * 10));
+  state.L = 0;
+} else if (snap) {
+  const k = 1 - Math.exp(-dt * 18);
+  state.A += (snap.t - state.A) * k;
+  state.B += (snap.t - state.B) * k;
+  if (Math.abs(snap.t - state.A) < 0.002 && Math.abs(snap.t - state.B) < 0.002) {
+    state.A = state.B = snap.t;
+    state.L = 1;
+    snap = null;
+  }
+} else if (cur) {
+  cur.t = Math.min(cur.t + dt * ts, cur.dur);
+  Object.assign(state, poseAt(cur, cur.t));
+  if (cur.t >= cur.dur) {
+    if (queue.length) startMove(queue.shift());
+    else if (mode === 'combo') { queue.push(...COMBO); startMove(queue.shift()); }
+    else if (mode === 'free') startMove(pickFree());
+    else { cur = null; say(''); }
+  }
+} else if (mode === 'free') {
+  startMove(pickFree());
+}
+
+state.L = clamp(state.L, 0, 1);
+applyPose(state);
+
+const omegaRot = (Math.abs(state.rx - before.rx) + Math.abs(state.ry - before.ry) + Math.abs(state.rz - before.rz)) / dt;
+const omegaH = (Math.abs(state.A - before.A) + Math.abs(state.B - before.B)) / dt;
+const quiet = !!(cur && cur.quiet);
+for (const k of ['A', 'B']) {
+  const d = stopDist(state[k]);
+  const spd = Math.abs(state[k] - before[k]) / dt;
+  if (prevDist[k] > 0.04 && d <= 0.04 && spd > 0.25 && !quiet) clack(spd);
+  prevDist[k] = d;
+}
+const open = Math.abs(wrap(state.A - P)) < 0.08 && Math.abs(wrap(state.B - P)) < 0.08;
+if (open && !wasOpen && omegaH > 2 && !quiet) ring();
+wasOpen = open;
+if ((prevL > 0.5) !== (state.L > 0.5)) latchClick();
+prevL = state.L;
+
+if (ac) {
+  const omega = omegaRot + omegaH * 0.5;
+  swG.gain.setTargetAtTime(Math.min(0.35, omega * 0.012), ac.currentTime, 0.03);
+  swF.frequency.setTargetAtTime(350 + omega * 40 + (state.py > 0.1 ? 900 : 0), ac.currentTime, 0.05);
+  pvG.gain.setTargetAtTime(clamp(omegaH * 0.03 * SND.pivG, 0, 0.35), ac.currentTime, 0.05);
+  pvF.frequency.setTargetAtTime(SND.pivHz, ac.currentTime, 0.1);
+}
+
+ex += (exT - ex) * (1 - Math.exp(-dt * 6));
+for (const p of parts) p.mesh.position.z = p.base.z + p.dir * p.amt * ex;
+
+if (camTween) {
+  camTween.t += dt / camTween.dur;
+  const u = clamp(camTween.t, 0, 1);
+  const e = u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+  camera.position.lerpVectors(camTween.fp, camTween.tp, e);
+  controls.target.lerpVectors(camTween.ft, camTween.tt, e);
+  if (u >= 1) camTween = null;
+}
+
+if (revealT < 2.6) {
+  revealT += dt;
+  key.position.x = lerp(-6, 3, clamp(revealT / 2.6, 0, 1));
+}
+
+if (trailOn) {
+  trailPos.copyWithin(3, 0, (TRAIL_N - 1) * 3);
+  root.localToWorld(tmp.set(0.97, 0.03, 0));
+  trailPos[0] = tmp.x; trailPos[1] = tmp.y; trailPos[2] = tmp.z;
+  trailCount = Math.min(trailCount + 1, TRAIL_N);
+  for (let i = 0; i < trailCount; i++) {
+    const f = Math.pow(1 - i / TRAIL_N, 1.6);
+    trailCol[i * 3] = f; trailCol[i * 3 + 1] = 0.42 * f; trailCol[i * 3 + 2] = 0.16 * f;
+  }
+  trailGeo.setDrawRange(0, trailCount);
+  trailGeo.attributes.position.needsUpdate = true;
+  trailGeo.attributes.color.needsUpdate = true;
+}
+
+prev = { ...state };
+
+}
+
+const ray = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+function pick(e) {
+const r = canvas.getBoundingClientRect();
+ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+ray.setFromCamera(ndc, camera);
+return ray.intersectObjects(partMeshes, false)[0] || null;
+}
+function endDrag() {
+if (!drag) return;
+const side = drag.side;
+drag = null;
+controls.enabled = true;
+snap = { t: state[side] > P / 2 ? P : 0 };
+}
+
+canvas.addEventListener(‘pointerdown’, (e) => {
+ensureAudio();
+const h = pick(e);
+if (h && h.object.userData.handle) {
+drag = { side: h.object.userData.handle, pending: 0 };
+cur = null;
+queue.length = 0;
+mode = ‘single’;
+snap = null;
+state.L = 0;
+controls.enabled = false;
+canvas.setPointerCapture(e.pointerId);
+say(‘’);
+}
+});
+canvas.addEventListener(‘pointermove’, (e) => {
+if (drag) { drag.pending += e.movementX; return; }
+const h = pick(e);
+const tip = $(‘tip’);
+if (h) {
+tip.textContent = h.object.userData.label;
+tip.style.display = ‘block’;
+tip.style.left = (e.clientX + 14) + ‘px’;
+tip.style.top = (e.clientY + 12) + ‘px’;
+canvas.style.cursor = h.object.userData.handle ? ‘grab’ : ‘default’;
+} else {
+tip.style.display = ‘none’;
+canvas.style.cursor = ‘default’;
+}
+});
+canvas.addEventListener(‘pointerup’, endDrag);
+canvas.addEventListener(‘pointercancel’, endDrag);
+canvas.addEventListener(‘pointerleave’, () => { $(‘tip’).style.display = ‘none’; });
+
+document.querySelectorAll(‘[data-move]’).forEach((b) => b.addEventListener(‘click’, () => play(b.dataset.move)));
+$(‘btn-combo’).onclick = combo;
+$(‘btn-free’).onclick = freestyle;
+$(‘btn-stop’).onclick = stopAll;
+document.querySelectorAll(‘[data-way]’).forEach((b) => b.addEventListener(‘click’, () => applyWay(+b.dataset.way)));
+document.querySelectorAll(‘[data-cam]’).forEach((b) => b.addEventListener(‘click’, () => cam(b.dataset.cam)));
+
+function toggleExplode() {
+exT = exT ? 0 : 1;
+$(‘btn-explode’).classList.toggle(‘on’, exT === 1);
+}
+$(‘btn-explode’).onclick = toggleExplode;
+
+function toggleTrail() {
+trailOn = !trailOn;
+trailLine.visible = trailOn;
+if (!trailOn) trailCount = 0;
+$(‘btn-trail’).classList.toggle(‘on’, trailOn);
+}
+$(‘btn-trail’).onclick = toggleTrail;
+
+$(‘speed’).addEventListener(‘input’, (e) => {
+speedVal = +e.target.value;
+$(‘speed-v’).textContent = speedVal.toFixed(2) + ‘x’;
+});
+$(‘btn-slow’).onclick = () => {
+slowOn = !slowOn;
+$(‘btn-slow’).classList.toggle(‘on’, slowOn);
+};
+$(‘vol’).addEventListener(‘input’, (e) => {
+volume = +e.target.value;
+if (master && !muted) master.gain.setTargetAtTime(volume, ac.currentTime, 0.02);
+});
+function toggleMute() {
+ensureAudio();
+muted = !muted;
+if (master) master.gain.setTargetAtTime(muted ? 0 : volume, ac.currentTime, 0.02);
+$(‘btn-mute’).textContent = muted ? ‘Sound off (M)’ : ‘Sound on (M)’;
+$(‘btn-mute’).classList.toggle(‘on’, muted);
+}
+$(‘btn-mute’).onclick = toggleMute;
+
+function hideUI(hide) {
+$(‘ui’).classList.toggle(‘off’, hide);
+$(‘btn-show’).hidden = !hide;
+}
+$(‘btn-hide’).onclick = () => hideUI(true);
+$(‘btn-show’).onclick = () => hideUI(false);
+
+const KEYMAP = { ‘1’: ‘open’, ‘2’: ‘close’, ‘3’: ‘chaplin’, ‘4’: ‘zen’, ‘5’: ‘fan’, ‘6’: ‘helix’, ‘7’: ‘aerial’, ‘8’: ‘vesper’ };
+window.addEventListener(‘keydown’, (e) => {
+if (e.target && e.target.tagName === ‘INPUT’) return;
+const k = e.key;
+if (KEYMAP[k]) play(KEYMAP[k]);
+else if (k === ‘9’) combo();
+else if (k === ‘f’ || k === ‘F’) freestyle();
+else if (k === ‘Escape’ || k === ‘ ‘) { e.preventDefault(); stopAll(); }
+else if (k === ‘e’ || k === ‘E’) toggleExplode();
+else if (k === ‘t’ || k === ‘T’) toggleTrail();
+else if (k === ‘m’ || k === ‘M’) toggleMute();
+else if (k === ‘h’ || k === ‘H’) hideUI(!$(‘ui’).classList.contains(‘off’));
+});
+
+window.addEventListener(‘resize’, () => {
+renderer.setSize(window.innerWidth, window.innerHeight, false);
+camera.aspect = window.innerWidth / window.innerHeight;
+camera.updateProjectionMatrix();
+});
+
+flyTo([2.5, 1.25, 3.3], [0.45, 0.04, 0], 2.4);
+setTimeout(() => play(‘open’), 700);
+setTimeout(() => $(‘hud’).classList.add(‘on’), 1800);
+if (!trailOn) trailLine.visible = false;
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+const dt = Math.min(clock.getDelta(), 0.05);
+step(dt);
+controls.update();
+renderer.render(scene, camera);
+if (!loaded) {
+loaded = true;
+$(‘loading’).classList.add(‘done’);
+}
+});
+}
+</script>
+</body>
+</html>
