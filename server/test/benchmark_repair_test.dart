@@ -428,6 +428,35 @@ void main() {
     expect(errorLinesOf(source, 0), isEmpty);
   });
 
+  test('a provider rejection names the upstream reason, not just the wrapper',
+      () {
+    expect(
+        providerErrorMessage(jsonEncode({
+          'error': {
+            'message': 'Provider returned error',
+            'code': 400,
+            'metadata': {
+              'provider_name': 'Novita',
+              'raw': jsonEncode({
+                'error': {'message': 'response_format is not supported'}
+              }),
+            },
+          }
+        })),
+        'Provider returned error (Novita): response_format is not supported');
+    expect(
+        providerErrorMessage(jsonEncode({
+          'error': {
+            'message': 'Provider returned error',
+            'metadata': {'raw': 'context length exceeded'},
+          }
+        })),
+        'Provider returned error: context length exceeded');
+    expect(providerErrorMessage('{"error":{"message":"Bad request"}}'),
+        'Bad request');
+    expect(providerErrorMessage('<html>502</html>'), isNull);
+  });
+
   test('price guard handles unknown, free and expensive prices', () {
     expect(() => repairOutputLimit('source', const AiPrice(null, 1), .25),
         throwsArgumentError);
@@ -726,6 +755,7 @@ void main() {
       await finished();
       expect(calls, 1);
       expect(sent, isNot(contains('tools')));
+      expect(sent, isNot(contains('response_format')));
       expect(sent['messages'], hasLength(2));
       expect((sent['provider'] as Map)['max_price'],
           {'prompt': 1.0, 'completion': 2.0});

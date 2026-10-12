@@ -388,6 +388,42 @@ class RepairHttpStatus implements Exception {
       'The live test was kept.';
 }
 
+/// The provider's own words in a failed response [body], or null when it
+/// gave none. OpenRouter wraps every upstream rejection as "Provider returned
+/// error" and puts the real reason (and who said it) in `error.metadata`.
+String? providerErrorMessage(String body) {
+  final Object? decoded;
+  try {
+    decoded = jsonDecode(body);
+  } on FormatException {
+    return null;
+  }
+  final error = decoded is Map ? decoded['error'] : null;
+  final message = error is Map ? error['message'] : error;
+  if (message is! String || message.isEmpty) return null;
+  final metadata = error is Map ? error['metadata'] : null;
+  var raw = metadata is Map ? metadata['raw'] : null;
+  if (raw is String) {
+    try {
+      final inner = jsonDecode(raw);
+      final innerError = inner is Map ? inner['error'] ?? inner : null;
+      final innerMessage = innerError is Map
+          ? innerError['message'] ?? innerError['detail']
+          : innerError;
+      if (innerMessage is String && innerMessage.isNotEmpty) raw = innerMessage;
+    } on FormatException {
+      // Plain text is already the reason.
+    }
+  } else if (raw != null) {
+    raw = jsonEncode(raw);
+  }
+  final provider = metadata is Map ? metadata['provider_name'] : null;
+  final text = '$message'
+      '${provider is String && provider.isNotEmpty ? ' ($provider)' : ''}'
+      '${raw is String && raw.trim().isNotEmpty && raw != message ? ': ${raw.trim()}' : ''}';
+  return text.length > 500 ? '${text.substring(0, 500)}…' : text;
+}
+
 /// A repair call stopped by its own clock rather than by the provider.
 class RepairTimeout implements Exception {
   RepairTimeout(this.message, {required this.idle});

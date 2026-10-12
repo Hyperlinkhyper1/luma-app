@@ -412,7 +412,6 @@ extension BenchmarkRepairApi on Api {
           'max_tokens': maxTokens,
           'stream': true,
           'stream_options': {'include_usage': true},
-          'response_format': {'type': 'json_object'},
           ..._repairReasoning(route),
           if (route.upstream == AiUpstream.openrouter)
             'provider': {
@@ -705,20 +704,13 @@ extension BenchmarkRepairApi on Api {
   /// The provider's own words for a failed request, when it gave any.
   Future<String?> _errorMessageOf(HttpClientResponse res) async {
     try {
-      final text = await res
+      return providerErrorMessage(await res
           .transform(utf8.decoder)
           .join()
-          .timeout(const Duration(seconds: 10));
-      final decoded = jsonDecode(text);
-      final error = decoded is Map ? decoded['error'] : null;
-      final message = error is Map ? error['message'] : error;
-      if (message is String && message.isNotEmpty) {
-        return message.length > 300 ? message.substring(0, 300) : message;
-      }
+          .timeout(const Duration(seconds: 10)));
     } catch (_) {
-      // A body that isn't JSON says nothing more than the status does.
+      return null;
     }
-    return null;
   }
 
   /// Whether a failed call can simply be sent again. Only when the provider
