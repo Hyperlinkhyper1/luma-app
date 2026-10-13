@@ -1,0 +1,1493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sirocco Forge — SC-13 "Simoom" Balisong</title>
+<style>
+:root {
+    --bg-dark: #0a0d10;
+    --panel-bg: rgba(13, 17, 23, 0.85);
+    --copper: #c86a3b;
+    --copper-glow: #e88a5b;
+    --verdigris: #2a7b6c;
+    --accent: #d97706;
+    --text: #f1f5f9;
+    --text-dim: #94a3b8;
+    --border: rgba(200, 106, 59, 0.3);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+}
+
+body, html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--bg-dark);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--text);
+}
+
+#webgl-container {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+/* UI Overlay */
+#ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 24px;
+}
+
+.interactive {
+    pointer-events: auto;
+}
+
+/* Header */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+}
+
+.brand-box {
+    background: var(--panel-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    padding: 16px 24px;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.brand-box h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--text);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.brand-box h1 span {
+    color: var(--copper);
+}
+
+.brand-box p {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+    margin-top: 4px;
+    text-transform: uppercase;
+}
+
+.top-controls {
+    display: flex;
+    gap: 12px;
+}
+
+.btn {
+    background: var(--panel-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.btn:hover {
+    border-color: var(--copper);
+    background: rgba(200, 106, 59, 0.15);
+    transform: translateY(-2px);
+}
+
+.btn.active {
+    background: var(--copper);
+    color: #fff;
+    border-color: var(--copper-glow);
+}
+
+/* Caption Overlay */
+#caption-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+#caption-overlay.visible {
+    opacity: 1;
+}
+
+#caption-text {
+    font-size: 2.2rem;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #fff;
+    text-shadow: 0 4px 20px rgba(0,0,0,0.8), 0 0 30px var(--copper);
+}
+
+/* Bottom Control Deck */
+.control-deck {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    align-items: center;
+}
+
+.moves-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    background: var(--panel-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    padding: 16px;
+    border-radius: 12px;
+    max-width: 900px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+}
+
+.move-btn {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+}
+
+.move-btn:hover {
+    background: rgba(200, 106, 59, 0.2);
+    border-color: var(--copper);
+    color: #fff;
+}
+
+.move-btn.active {
+    background: var(--copper);
+    border-color: var(--copper-glow);
+    color: #fff;
+    box-shadow: 0 0 15px rgba(200, 106, 59, 0.5);
+}
+
+.sub-deck {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    background: var(--panel-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    padding: 12px 24px;
+    border-radius: 10px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+
+.slider-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+}
+
+.slider-group input[type="range"] {
+    accent-color: var(--copper);
+    width: 100px;
+    cursor: pointer;
+}
+
+/* Modal Specs */
+#specs-modal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    background: var(--panel-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    padding: 32px;
+    border-radius: 12px;
+    width: 420px;
+    z-index: 100;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.8);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#specs-modal.open {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    pointer-events: auto;
+}
+
+#specs-modal h2 {
+    font-size: 1.3rem;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+    color: var(--copper);
+    text-transform: uppercase;
+}
+
+#specs-modal h3 {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+}
+
+.spec-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-size: 0.85srem;
+}
+
+.spec-label {
+    color: var(--text-dim);
+}
+
+.spec-value {
+    font-weight: 600;
+    color: var(--text);
+    text-align: right;
+}
+
+.close-modal {
+    margin-top: 24px;
+    width: 100%;
+    justify-content: center;
+}
+
+/* Loading Screen */
+#loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-dark);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    transition: opacity 0.6s ease;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid rgba(200, 106, 59, 0.2);
+    border-top-color: var(--copper);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+#loading p {
+    font-size: 0.9rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+
+/* Part Label tooltip in exploded view */
+#part-tooltip {
+    position: absolute;
+    background: rgba(10, 13, 16, 0.9);
+    border: 1px solid var(--copper);
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    pointer-events: none;
+    z-index: 50;
+    opacity: 0;
+    transition: opacity 0.2s;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    text-transform: uppercase;
+}
+</style>
+
+<!-- Three.js r160 importmap -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="loading">
+    <div class="spinner"></div>
+    <p>Forging Sirocco SC-13...</p>
+</div>
+
+<div id="webgl-container"></div>
+
+<div id="ui-layer">
+    <header>
+        <div class="brand-box interactive">
+            <h1>Sirocco <span>Forge</span></h1>
+            <p>SC-13 "Simoom" Balisong</p>
+        </div>
+        <div class="top-controls">
+            <button class="btn interactive" id="btn-colorway">🎨 Color: Desert</button>
+            <button class="btn interactive" id="btn-explode">💥 Exploded View</button>
+            <button class="btn interactive" id="btn-specs">📋 Specs</button>
+            <button class="btn interactive" id="btn-audio">🔊 Audio: On</button>
+        </div>
+    </header>
+
+    <div id="caption-overlay">
+        <div id="caption-text">Basic Open</div>
+    </div>
+
+    <div class="control-deck">
+        <div class="moves-grid interactive" id="moves-container">
+            <button class="move-btn active" data-move="reveal">Reveal</button>
+            <button class="move-btn" data-move="basicOpen">1. Basic Open</button>
+            <button class="move-btn" data-move="basicClose">2. Basic Close</button>
+            <button class="move-btn" data-move="chaplin">3. Chaplin</button>
+            <button class="move-btn" data-move="zenRollover">4. Zen Rollover</button>
+            <button class="move-btn" data-move="fan">5. Fan</button>
+            <button class="move-btn" data-move="helix">6. Helix</button>
+            <button class="move-btn" data-move="aerial">7. Aerial</button>
+            <button class="move-btn" data-move="signature">8. Simoom Strike</button>
+            <button class="move-btn" data-move="combo">Combo Loop</button>
+            <button class="move-btn" data-move="freestyle">Freestyle</button>
+        </div>
+
+        <div class="sub-deck interactive">
+            <div class="slider-group">
+                <span>Speed</span>
+                <input type="range" id="speed-slider" min="0.25" max="2" step="0.25" value="1">
+            </div>
+            <button class="btn" id="btn-slowmo">⏱️ Slow-Mo</button>
+            <button class="btn" id="btn-trail" style="background: rgba(200,106,59,0.3)">✨ Trail: On</button>
+            <button class="btn" id="btn-inspect">🔍 Inspect / Drag</button>
+        </div>
+    </div>
+</div>
+
+<div id="specs-modal" class="interactive">
+    <h2>SC-13 "Simoom"</h2>
+    <h3>Bespoke Tactical Balisong</h3>
+    <div class="spec-row">
+        <span class="spec-label">Overall Length</span>
+        <span class="spec-value">232 mm</span>
+    </div>
+    <div class="spec-row">
+        <span class="spec-label">Blade Length</span>
+        <span class="spec-value">102 mm</span>
+    </div>
+    <div class="spec-row">
+        <span class="spec-label">Blade Steel</span>
+        <span class="spec-value">Dark Stonewashed Bohler N690</span>
+    </div>
+    <div class="spec-row">
+        <span class="spec-label">Handle Material</span>
+        <span class="spec-value">Oxidized Copper w/ Verdigris & Woven Milling</span>
+    </div>
+    <div class="spec-row">
+        <span class="spec-label">Weight</span>
+        <span class="spec-value">138 g</span>
+    </div>
+    <div class="spec-row">
+        <span class="spec-label">Pivot System</span>
+        <span class="spec-value">Phosphor Bronze Washers w/ Damped Escapement</span>
+    </div>
+    <div class="spec-row">
+        <span class="spec-label">Latch Type</span>
+        <span class="spec-value">Drop-Down Hook Latch</span>
+    </div>
+    <button class="btn close-modal" id="btn-close-specs">Close Specs</button>
+</div>
+
+<div id="part-tooltip"></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// --- AUDIO SYNTHESIS ENGINE (Web Audio API) ---
+class AudioEngine {
+    constructor() {
+        this.ctx = null;
+        this.muted = false;
+        this.volume = 0.7;
+        this.swishNode = null;
+        this.swishGain = null;
+        this.initialized = false;
+    }
+
+    init() {
+        if (this.initialized) return;
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            this.ctx = new AudioContext();
+            this.setupSwish();
+            this.initialized = true;
+        } catch(e) {
+            console.warn("Web Audio not supported", e);
+        }
+    }
+
+    setupSwish() {
+        if (!this.ctx) return;
+        const bufferSize = this.ctx.sampleRate * 2;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+
+        this.swishSource = this.ctx.createBufferSource();
+        this.swishSource.buffer = buffer;
+        this.swishSource.loop = true;
+
+        this.swishFilter = this.ctx.createBiquadFilter();
+        this.swishFilter.type = 'bandpass';
+        this.swishFilter.frequency.value = 400;
+        this.swishFilter.Q.value = 3.0;
+
+        this.swishGain = this.ctx.createGain();
+        this.swishGain.gain.value = 0;
+
+        this.swishSource.connect(this.swishFilter);
+        this.swishFilter.connect(this.swishGain);
+        this.swishGain.connect(this.ctx.destination);
+        this.swishSource.start();
+    }
+
+    updateSwish(speed) {
+        if (!this.initialized || this.muted) {
+            if (this.swishGain) this.swishGain.gain.value = 0;
+            return;
+        }
+        const s = Math.abs(speed);
+        this.swishFilter.frequency.setValueAtTime(200 + s * 600, this.ctx.currentTime);
+        this.swishGain.gain.setValueAtTime(Math.min(s * 0.15, 0.3) * this.volume, this.ctx.currentTime);
+    }
+
+    playClack(intensity = 1.0) {
+        if (!this.initialized || this.muted) return;
+        const now = this.ctx.currentTime;
+        
+        // Woody/damped pin clack (lot specifies: washer pivots with woody, damped knocks)
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+        
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.04);
+        
+        filter.type = 'lowpass';
+        filter.frequency.value = 800;
+
+        gain.gain.setValueAtTime(intensity * 0.5 * this.volume, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.06);
+
+        // Add a subtle click noise
+        this.playNoiseClick(0.2 * intensity, 1200);
+    }
+
+    playRing() {
+        if (!this.initialized || this.muted) return;
+        const now = this.ctx.currentTime;
+        const freqs = [880, 1420, 2150];
+        freqs.forEach(f => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = f;
+            gain.gain.setValueAtTime(0.1 * this.volume, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.8);
+        });
+    }
+
+    playLatch() {
+        if (!this.initialized || this.muted) return;
+        this.playNoiseClick(0.4, 2500, 0.03);
+    }
+
+    playNoiseClick(vol, freq, duration = 0.02) {
+        if (!this.initialized || this.muted) return;
+        const now = this.ctx.currentTime;
+        const bufferSize = this.ctx.sampleRate * duration;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for(let i=0; i<bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = freq;
+        filter.Q.value = 5.0;
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(vol * this.volume, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        noise.start(now);
+    }
+}
+
+const audio = new AudioEngine();
+
+// --- PROCEDURAL TEXTURE GENERATORS ---
+function createCopperVerdigrisTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    
+    // Warm polished copper base
+    ctx.fillStyle = '#b85d34';
+    ctx.fillRect(0, 0, 512, 512);
+
+    // Fine brushed metal streaks
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+    for(let i=0; i<600; i++) {
+        let y = Math.random() * 512;
+        let h = Math.random() * 2 + 0.5;
+        ctx.fillRect(0, y, 512, h);
+    }
+
+    // Verdigris green in recesses / splotches
+    const grad = ctx.createRadialGradient(256, 256, 50, 256, 256, 300);
+    grad.addColorStop(0, 'rgba(42, 123, 108, 0.1)');
+    grad.addColorStop(0.7, 'rgba(30, 95, 80, 0.8)');
+    grad.addColorStop(1, 'rgba(15, 60, 50, 0.95)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 512, 512);
+
+    // Random verdigris spots
+    for(let i=0; i<150; i++) {
+        let x = Math.random() * 512;
+        let y = Math.random() * 512;
+        let r = Math.random() * 20 + 2;
+        let g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, 'rgba(50, 150, 125, 0.6)');
+        g.addColorStop(1, 'rgba(30, 95, 80, 0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    return new THREE.CanvasTexture(canvas);
+}
+
+function createDesertWovenBumpTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#808080';
+    ctx.fillRect(0, 0, 512, 512);
+
+    // Woven geometric desert band pattern
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 12;
+    for (let i = -512; i < 1024; i += 40) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i + 512, 512);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(i + 512, 0);
+        ctx.lineTo(i, 512);
+        ctx.stroke();
+    }
+
+    return new THREE.CanvasTexture(canvas);
+}
+
+function createStonewashBladeTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#3a3f44';
+    ctx.fillRect(0, 0, 512, 512);
+
+    // Stonewash micro scratches
+    for(let i=0; i<3000; i++) {
+        let x = Math.random() * 512;
+        let y = Math.random() * 512;
+        let len = Math.random() * 15 + 5;
+        let angle = Math.random() * Math.PI;
+        ctx.strokeStyle = Math.random() > 0.5 ? 'rgba(80,90,100,0.4)' : 'rgba(30,35,40,0.5)';
+        ctx.lineWidth = Math.random() * 1.5 + 0.5;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + Math.cos(angle)*len, y + Math.sin(angle)*len);
+        ctx.stroke();
+    }
+    return new THREE.CanvasTexture(canvas);
+}
+
+function createMakersMarkTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(0,0,0,0)';
+    ctx.fillRect(0, 0, 256, 256);
+
+    // Sirocco scorpion/sun emblem
+    ctx.strokeStyle = '#1a1f24';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.arc(128, 128, 70, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = '#1a1f24';
+    ctx.font = 'bold 36px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('SF', 128, 128);
+
+    return new THREE.CanvasTexture(canvas);
+}
+
+// --- THREE.JS SCENE SETUP ---
+const container = document.getElementById('webgl-container');
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x0a0d10, 0.015);
+
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 5, 14);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.maxDistance = 30;
+controls.minDistance = 2;
+
+// --- STAGE: MOSSY ROCK & FERN GARDEN ---
+function buildStage() {
+    // Ground / Mossy rock
+    const rockGeo = new THREE.DodecahedronGeometry(6, 2);
+    const pos = rockGeo.attributes.position;
+    for(let i=0; i<pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+        let l = Math.sqrt(x*x + y*y + z*z);
+        pos.setXYZ(i, x + (Math.sin(x*2)*0.3), y * 0.4 - 2, z + (Math.cos(z*2)*0.3));
+    }
+    rockGeo.computeVertexNormals();
+
+    const rockMat = new THREE.MeshStandardMaterial({
+        color: 0x222822,
+        roughness: 0.85,
+        metalness: 0.1,
+        bumpScale: 0.2
+    });
+    const rockMesh = new THREE.Mesh(rockGeo, rockMat);
+    rockMesh.position.set(0, -3.5, 0);
+    rockMesh.receiveShadow = true;
+    scene.add(rockMesh);
+
+    // Moss patches and ferns (procedural low-poly clumps)
+    for(let i=0; i<30; i++) {
+        let angle = Math.random() * Math.PI * 2;
+        let dist = Math.random() * 4 + 1.5;
+        let fernGroup = new THREE.Group();
+        fernGroup.position.set(Math.cos(angle)*dist, -2.1, Math.sin(angle)*dist);
+        fernGroup.rotation.y = Math.random() * Math.PI;
+        let scale = Math.random() * 0.6 + 0.5;
+        fernGroup.scale.set(scale, scale, scale);
+
+        for(let f=0; f<5; f++) {
+            let frondGeo = new THREE.ConeGeometry(0.3, 2, 3);
+            frondGeo.translate(0, 1, 0);
+            frondGeo.rotateX(Math.PI * 0.3 + Math.random()*0.2);
+            frondGeo.rotateY((f / 5) * Math.PI * 2);
+            let fernMat = new THREE.MeshStandardMaterial({
+                color: f % 2 === 0 ? 0x2e6b38 : 0x3b7a42,
+                roughness: 0.6,
+                side: THREE.DoubleSide
+            });
+            let frond = new THREE.Mesh(frondGeo, fernMat);
+            frond.castShadow = true;
+            fernGroup.add(frond);
+        }
+        scene.add(fernGroup);
+    }
+
+    // Lighting (Product shot + dappled daylight)
+    const ambientLight = new THREE.AmbientLight(0xd9c3a3, 0.8);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xffeedd, 2.5);
+    sunLight.position.set(8, 12, 6);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.bias = -0.0005;
+    scene.add(sunLight);
+
+    const fillLight = new THREE.DirectionalLight(0x407080, 1.2);
+    fillLight.position.set(-8, 6, -6);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.PointLight(0xffaa55, 3, 15);
+    rimLight.position.set(0, 5, -5);
+    scene.add(rimLight);
+}
+buildStage();
+
+// --- PROCEDURAL BALISONG MODEL (SC-13 "Simoom") ---
+let colorwayIndex = 0;
+const colorways = [
+    { name: "Desert Copper", copper: 0xb85d34, verdigris: 0x2a7b6c, blade: 0x3a3f44 },
+    { name: "Obsidian Gold", copper: 0x1f232a, verdigris: 0xd4af37, blade: 0x111315 },
+    { name: "Bloodwood Frost", copper: 0x5a2321, verdigris: 0x8892a0, blade: 0x505860 }
+];
+
+const copperTex = createCopperVerdigrisTexture();
+const bumpTex = createDesertWovenBumpTexture();
+const bladeTex = createStonewashBladeTexture();
+const markTex = createMakersMarkTexture();
+
+// Materials
+const bladeMat = new THREE.MeshPhysicalMaterial({
+    color: 0x3a3f44,
+    metalness: 0.92,
+    roughness: 0.38,
+    map: bladeTex,
+    bumpMap: bladeTex,
+    bumpScale: 0.005,
+    clearcoat: 0.2
+});
+
+const handleMat = new THREE.MeshPhysicalMaterial({
+    color: 0xb85d34,
+    map: copperTex,
+    bumpMap: bumpTex,
+    bumpScale: 0.04,
+    metalness: 0.88,
+    roughness: 0.3,
+    clearcoat: 0.4,
+    clearcoatRoughness: 0.2
+});
+
+const hardwareMat = new THREE.MeshStandardMaterial({
+    color: 0xdddddd,
+    metalness: 0.95,
+    roughness: 0.15
+});
+
+const brassMat = new THREE.MeshStandardMaterial({
+    color: 0xd4af37,
+    metalness: 0.9,
+    roughness: 0.25
+});
+
+// Master Knife Rig Hierarchy
+const knifeRoot = new THREE.Group();
+scene.add(knifeRoot);
+
+// Parts collection for exploded view & inspection
+const explodedParts = [];
+
+// --- BLADE GEOMETRY (Bowie clip point with sharpened swedge & fuller) ---
+function createBladeMesh() {
+    const shape = new THREE.Shape();
+    // Tang base
+    shape.moveTo(-0.15, -0.6);
+    shape.lineTo(0.25, -0.6);
+    shape.lineTo(0.25, -0.2);
+    // Choil & Ricasso
+    shape.lineTo(0.1, -0.1);
+    shape.lineTo(0.1, 0.2);
+    // Edge curve to tip
+    shape.bezierCurveTo(0.1, 1.8, 0.4, 3.2, 1.8, 4.2); // Clip point tip
+    // Swedge back to spine
+    shape.lineTo(0.2, 3.8);
+    shape.lineTo(0.2, -0.2);
+    shape.lineTo(-0.15, -0.2);
+    shape.closePath();
+
+    const extrudeSettings = {
+        steps: 1,
+        depth: 0.12,
+        bevelEnabled: true,
+        bevelThickness: 0.03,
+        bevelSize: 0.03,
+        bevelSegments: 3
+    };
+
+    const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    geom.center();
+    const blade = new THREE.Mesh(geom, bladeMat);
+    blade.castShadow = true;
+    blade.name = "Blade";
+
+    // Maker's mark plane on ricasso
+    const markGeo = new THREE.PlaneGeometry(0.3, 0.3);
+    const markMat = new THREE.MeshBasicMaterial({ map: markTex, transparent: true, opacity: 0.85 });
+    const markMesh = new THREE.Mesh(markGeo, markMat);
+    markMesh.position.set(0, 0, 0.07);
+    blade.add(markMesh);
+
+    const markMesh2 = markMesh.clone();
+    markMesh2.position.z = -0.07;
+    markMesh2.rotation.y = Math.PI;
+    blade.add(markMesh2);
+
+    return blade;
+}
+
+const bladeGroup = new THREE.Group();
+const bladeMesh = createBladeMesh();
+// Adjust origin to pivot pin
+bladeMesh.position.set(0, -1.8, 0);
+bladeGroup.add(bladeMesh);
+knifeRoot.add(bladeGroup);
+explodedpart(bladeGroup, new THREE.Vector3(0, 0, 0.8), "Blade (Bohler N690)");
+
+// --- HANDLES (Bite & Safe) with ergonomic contours, flared pommels, milled desert bands ---
+function createHandleMesh(isBite) {
+    const group = new THREE.Group();
+    
+    // U-Channel Handle body
+    const shape = new THREE.Shape();
+    shape.moveTo(-0.35, -2.5);
+    shape.lineTo(0.35, -2.5);
+    shape.lineTo(0.35, 2.5);
+    // Flared end / pommel
+    shape.lineTo(0.5, 2.7);
+    shape.lineTo(-0.5, 2.7);
+    shape.lineTo(-0.35, 2.5);
+    shape.closePath();
+
+    const extrudeSettings = {
+        depth: 0.35,
+        bevelEnabled: true,
+        bevelThickness: 0.04,
+        bevelSize: 0.04,
+        bevelSegments: 3
+    };
+
+    const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    geom.center();
+    const handleBody = new THREE.Mesh(geom, handleMat);
+    handleBody.castShadow = true;
+    handleBody.receiveShadow = true;
+    group.add(handleBody);
+
+    // Bite handle indicator rings (red/brass collars near pivot)
+    if (isBite) {
+        const ringGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.1, 16);
+        const ringMesh = new THREE.Mesh(ringGeo, brassMat);
+        ringMesh.position.set(0, -2.1, 0);
+        group.add(ringMesh);
+    }
+
+    // Pivot collar hardware
+    const pivotCollarGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.15, 16);
+    const pivotCollar = new THREE.Mesh(pivotCollarGeo, hardwareMat);
+    pivotCollar.position.set(0, -2.3, 0);
+    group.add(pivotCollar);
+
+    return group;
+}
+
+// Safe Handle Rig
+const safeHandleGroup = new THREE.Group();
+const safeHandleMesh = createHandleMesh(false);
+safeHandleMesh.position.set(0, 2.3, 0);
+safeHandleGroup.add(safeHandleMesh);
+safeHandleGroup.position.set(0.45, -1.8, 0);
+knifeRoot.add(safeHandleGroup);
+explodedpart(safeHandleGroup, new THREE.Vector3(1.2, 0, -0.5), "Safe Handle (Oxidized Copper)");
+
+// Bite Handle Rig
+const biteHandleGroup = new THREE.Group();
+const biteHandleMesh = createHandleMesh(true);
+biteHandleMesh.position.set(0, 2.3, 0);
+biteHandleGroup.add(biteHandleMesh);
+biteHandleGroup.position.set(-0.45, -1.8, 0);
+knifeRoot.add(biteHandleGroup);
+explodedpart(biteHandleGroup, new THREE.Vector3(-1.2, 0, -0.5), "Bite Handle (Oxidized Copper)");
+
+// --- LATCH (Drop-down hook latch) ---
+const latchGroup = new THREE.Group();
+const latchArmGeo = new THREE.BoxGeometry(0.12, 0.8, 0.12);
+const latchArm = new THREE.Mesh(latchArmGeo, hardwareMat);
+latchArm.position.set(0, 0.4, 0);
+latchGroup.add(latchArm);
+
+const latchHookGeo = new THREE.BoxGeometry(0.25, 0.15, 0.12);
+const latchHook = new THREE.Mesh(latchHookGeo, hardwareMat);
+latchHook.position.set(0.1, 0.8, 0);
+latchGroup.add(latchHook);
+
+latchGroup.position.set(0.45, -4.7, 0);
+safeHandleGroup.add(latchGroup);
+explodedpart(latchGroup, new THREE.Vector3(1.2, -1.5, -0.8), "Drop-Down Hook Latch");
+
+// --- HARDWARE & PINS (Zen pins, Pivot screws) ---
+const zenPinGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.5, 12);
+zenPinGeo.rotateX(Math.PI / 2);
+const zenPin = new THREE.Mesh(zenPinGeo, hardwareMat);
+zenPin.position.set(0, -0.9, 0);
+knifeRoot.add(zenPin);
+explodedpart(zenPin, new THREE.Vector3(0, 0.5, 0.5), "Zen Pin");
+
+const pivotScrewGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.45, 16);
+pivotScrewGeo.rotateX(Math.PI / 2);
+const pivotScrew1 = new THREE.Mesh(pivotScrewGeo, brassMat);
+pivotScrew1.position.set(-0.45, -1.8, 0.2);
+knifeRoot.add(pivotScrew1);
+
+const pivotScrew2 = pivotScrew1.clone();
+pivotScrew2.position.x = 0.45;
+knifeRoot.add(pivotScrew2);
+explodedpart(pivotScrew1, new THREE.Vector3(-0.45, -1.8, 1.2), "Pivot Screw & Bushing");
+
+function explodedpart(obj, targetOffset, label) {
+    obj.userData = {
+        originalPos: obj.position.clone(),
+        explodedPos: obj.position.clone().add(targetOffset),
+        label: label
+    };
+    explodedParts.push(obj);
+}
+
+// --- TRAIL SYSTEM ---
+const trailPointsCount = 50;
+const trailGeom = new THREE.BufferGeometry();
+const trailPositions = new Float32Array(trailPointsCount * 3);
+const trailColors = new Float32Array(trailPointsCount * 3);
+for(let i=0; i<trailPointsCount; i++) {
+    trailPositions[i*3] = 0;
+    trailPositions[i*3+1] = 0;
+    trailPositions[i*3+2] = 0;
+    trailColors[i*3] = 200/255;
+    trailColors[i*3+1] = 106/255;
+    trailColors[i*3+2] = 59/255;
+}
+trailGeom.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+trailGeom.setAttribute('color', new THREE.BufferAttribute(trailColors, 3));
+
+const trailMat = new THREE.LineBasicMaterial({
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.6,
+    linewidth: 3,
+    blending: THREE.AdditiveBlending
+});
+const trailLine = new THREE.Line(trailGeom, trailMat);
+scene.add(trailLine);
+const bladeTipWorldPos = new THREE.Vector3();
+let showTrail = true;
+
+// --- KINEMATICS & ANIMATION ENGINE ---
+let currentMove = 'reveal';
+let moveTime = 0;
+let speedMultiplier = 1;
+let isSlowMo = false;
+let isExploded = false;
+let isInspectMode = false;
+let isDraggingHandle = false;
+
+// Kinematic state variables
+let state = {
+    rootPos: new THREE.Vector3(0, 0, 0),
+    rootRot: new THREE.Euler(0, 0, 0),
+    bladeAngle: 0,       // relative to handles
+    safeAngle: 0,        // open/close angle
+    biteAngle: 0,
+    latchAngle: 0        // unlatched vs latched
+};
+
+// Caption dictionary
+const captions = {
+    reveal: "Sirocco SC-13 'Simoom' Reveal",
+    basicOpen: "Basic Open",
+    basicClose: "Basic Close",
+    chaplin: "Chaplin",
+    zenRollover: "Zen Rollover",
+    fan: "Fan",
+    helix: "Helix",
+    aerial: "Aerial Flip",
+    signature: "The Simoom Strike (Signature)",
+    combo: "Combo Flow",
+    freestyle: "Freestyle Flow"
+};
+
+function setCaption(text) {
+    const el = document.getElementById('caption-text');
+    const overlay = document.getElementById('caption-overlay');
+    el.innerText = text;
+    overlay.classList.add('visible');
+    setTimeout(() => overlay.classList.remove('visible'), 2500);
+}
+
+// Raycasting for Inspector / Dragging
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+window.addEventListener('pointerdown', (e) => {
+    if (!isInspectMode) return;
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(knifeRoot.children, true);
+    if (intersects.length > 0) {
+        isDraggingHandle = true;
+        controls.enabled = false;
+    }
+});
+
+window.addEventListener('pointermove', (e) => {
+    if (!isInspectMode || !isDraggingHandle) return;
+    state.safeAngle += e.movementX * 0.01;
+    state.biteAngle -= e.movementX * 0.01;
+    // Clamp
+    state.safeAngle = Math.max(0, Math.min(3.14, state.safeAngle));
+    state.biteAngle = Math.max(0, Math.min(3.14, state.biteAngle));
+});
+
+window.addEventListener('pointerup', () => {
+    isDraggingHandle = false;
+    if (isInspectMode) controls.enabled = true;
+});
+
+// --- MOVE ANIMATION COMPUTATIONS ---
+function updateAnimation(dt) {
+    if (isExploded || isInspectMode) return;
+
+    audio.updateSwish(speedMultiplier * (isSlowMo ? 0.5 : 1.0));
+    moveTime += dt * speedMultiplier * (isSlowMo ? 0.4 : 1.0);
+
+    let t = moveTime;
+
+    // Reset root transforms
+    knifeRoot.position.set(0,0,0);
+    knifeRoot.rotation.set(0,0,0);
+
+    switch (currentMove) {
+        case 'reveal':
+            if (t < 3.0) {
+                // Intro reveal spin
+                knifeRoot.rotation.y = t * 2.5;
+                knifeRoot.position.y = Math.sin(t * 2) * 0.2;
+                state.safeAngle = THREE.MathUtils.lerp(3.14, 0, Math.min(t/1.5, 1));
+                state.biteAngle = THREE.MathUtils.lerp(3.14, 0, Math.min(t/1.5, 1));
+                state.latchAngle = THREE.MathUtils.lerp(1.5, 0, Math.min(t/1.0, 1));
+            } else {
+                // Settled showcase orbit
+                knifeRoot.rotation.y = t * 0.5;
+                state.safeAngle = 0;
+                state.biteAngle = 0;
+                state.latchAngle = 0;
+            }
+            break;
+
+        case 'basicOpen':
+            // 1. Unlatch, drop safe, swing bite
+            if (t < 0.5) {
+                state.latchAngle = THREE.MathUtils.lerp(0, 1.5, t/0.5);
+                state.safeAngle = 0;
+                state.biteAngle = 0;
+            } else if (t < 1.8) {
+                let p = (t - 0.5) / 1.3;
+                state.safeAngle = p * 3.14;
+                state.biteAngle = 0;
+                knifeRoot.rotation.z = Math.sin(p * Math.PI) * 0.2;
+            } else if (t < 3.0) {
+                let p = (t - 1.8) / 1.2;
+                state.safeAngle = 3.14;
+                state.biteAngle = p * 3.14;
+                if (p > 0.95 && t - 1.8 < 1.25) { audio.playClack(0.8); }
+            } else {
+                moveTime = 0; // loop
+            }
+            break;
+
+        case 'basicClose':
+            if (t < 1.2) {
+                let p = t / 1.2;
+                state.biteAngle = (1 - p) * 3.14;
+                state.safeAngle = 3.14;
+            } else if (t < 2.4) {
+                let p = (t - 1.2) / 1.2;
+                state.safeAngle = (1 - p) * 3.14;
+                if (p > 0.95) { audio.playClack(0.9); audio.playRing(); }
+            } else if (t < 3.0) {
+                state.latchAngle = THREE.MathUtils.lerp(1.5, 0, (t - 2.4) / 0.6);
+                if (t - 2.4 < 0.1) audio.playLatch();
+            } else {
+                moveTime = 0;
+            }
+            break;
+
+        case 'chaplin':
+            // Knife spinning over finger (safe handle held static in air)
+            state.safeAngle = 3.14;
+            state.biteAngle = 3.14;
+            knifeRoot.rotation.z = t * 8.0;
+            knifeRoot.position.x = Math.sin(t * 4) * 0.5;
+            if (Math.floor(t * 8.0) > Math.floor((t - dt) * 8.0)) audio.playClack(0.4);
+            if (t > 3.5) moveTime = 0;
+            break;
+
+        case 'zenRollover':
+            // Rolls over back of hand
+            state.safeAngle = 3.14;
+            state.biteAngle = 3.14;
+            knifeRoot.rotation.x = Math.sin(t * 3) * 1.5;
+            knifeRoot.rotation.y = t * 4.0;
+            if (t > 3.5) moveTime = 0;
+            break;
+
+        case 'fan':
+            // High speed fan
+            state.safeAngle = 3.14;
+            state.biteAngle = 3.14;
+            knifeRoot.rotation.z = t * 15.0;
+            if (t > 3.0) moveTime = 0;
+            break;
+
+        case 'helix':
+            // Twirls about long axis while flipping
+            state.safeAngle = 3.14;
+            state.biteAngle = 3.14;
+            knifeRoot.rotation.y = t * 6.0;
+            knifeRoot.rotation.z = t * 10.0;
+            if (t > 3.5) moveTime = 0;
+            break;
+
+        case 'aerial':
+            // Tossed in air, flips 360, catches
+            if (t < 2.5) {
+                let p = t / 2.5;
+                knifeRoot.position.y = Math.sin(p * Math.PI) * 4.0;
+                knifeRoot.rotation.x = p * Math.PI * 4;
+                knifeRoot.rotation.z = p * Math.PI * 2;
+                state.safeAngle = 3.14;
+                state.biteAngle = 3.14;
+            } else if (t < 3.2) {
+                // Catch slam
+                knifeRoot.position.y = 0;
+                knifeRoot.rotation.set(0,0,0);
+                state.safeAngle = 3.14;
+                state.biteAngle = 3.14;
+                if (t - 2.5 < 0.1) { audio.playClack(1.0); audio.playRing(); }
+            } else {
+                moveTime = 0;
+            }
+            break;
+
+        case 'signature':
+            // The Simoom Strike: explosive double-rotation aerial spike into lightning-fast snap open
+            if (t < 2.0) {
+                let p = t / 2.0;
+                knifeRoot.position.y = Math.sin(p * Math.PI) * 5.0;
+                knifeRoot.rotation.x = p * Math.PI * 6;
+                knifeRoot.rotation.y = p * Math.PI * 4;
+                state.safeAngle = 3.14;
+                state.biteAngle = 3.14;
+            } else if (t < 3.2) {
+                let p = (t - 2.0) / 1.2;
+                knifeRoot.position.y = 0;
+                knifeRoot.rotation.set(0,0,0);
+                state.safeAngle = THREE.MathUtils.lerp(3.14, 0, p);
+                state.biteAngle = THREE.MathUtils.lerp(3.14, 0, p);
+                if (p > 0.9) { audio.playClack(1.2); audio.playRing(); }
+            } else {
+                moveTime = 0;
+            }
+            break;
+
+        case 'combo':
+            // Chains basic open, chaplin, fan, close
+            let cycle = t % 12.0;
+            if (cycle < 3.0) {
+                // open
+                let p = cycle / 3.0;
+                state.safeAngle = p * 3.14;
+                state.biteAngle = p * 3.14;
+            } else if (cycle < 6.0) {
+                // chaplin
+                state.safeAngle = 3.14;
+                state.biteAngle = 3.14;
+                knifeRoot.rotation.z = cycle * 10.0;
+            } else if (cycle < 9.0) {
+                // fan
+                state.safeAngle = 3.14;
+                state.biteAngle = 3.14;
+                knifeRoot.rotation.z = cycle * 15.0;
+            } else {
+                // close
+                let p = (cycle - 9.0) / 3.0;
+                state.safeAngle = (1 - p) * 3.14;
+                state.biteAngle = (1 - p) * 3.14;
+                knifeRoot.rotation.set(0,0,0);
+            }
+            break;
+
+        case 'freestyle':
+            // Endless smooth flow
+            state.safeAngle = 3.14 + Math.sin(t * 2) * 1.5;
+            state.biteAngle = 3.14 + Math.cos(t * 2.5) * 1.5;
+            knifeRoot.rotation.y = t * 2.0;
+            knifeRoot.rotation.x = Math.sin(t * 1.5) * 1.0;
+            break;
+    }
+
+    // Apply kinematics to mesh hierarchy
+    safeHandleGroup.rotation.z = state.safeAngle;
+    biteHandleGroup.rotation.z = -state.biteAngle;
+    latchGroup.rotation.z = state.latchAngle;
+
+    // Update Trail
+    if (showTrail) {
+        const tipPos = new THREE.Vector3(1.8, 4.2, 0); // blade tip local
+        bladeMesh.localToWorld(tipPos);
+        
+        const posAttr = trailGeom.attributes.position;
+        for(let i = trailPointsCount - 1; i > 0; i--) {
+            posAttr.setXYZ(i, posAttr.getX(i-1), posAttr.getY(i-1), posAttr.getZ(i-1));
+        }
+        posAttr.setXYZ(0, tipPos.x, tipPos.y, tipPos.z);
+        posAttr.needsUpdate = true;
+    }
+}
+
+// --- UI EVENT HANDLERS ---
+document.getElementById('moves-container').addEventListener('click', (e) => {
+    if (e.target.tagName === 'BUTTON') {
+        document.querySelectorAll('.move-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        currentMove = e.target.getAttribute('data-move');
+        moveTime = 0;
+        isExploded = false;
+        document.getElementById('btn-explode').classList.remove('active');
+        setCaption(captions[currentMove] || currentMove);
+        audio.init();
+    }
+});
+
+const speedSlider = document.getElementById('speed-slider');
+speedSlider.addEventListener('input', (e) => {
+    speedMultiplier = parseFloat(e.target.value);
+});
+
+const slowMoBtn = document.getElementById('btn-slowmo');
+slowMoBtn.addEventListener('click', () => {
+    isSlowMo = !isSlowMo;
+    slowMoBtn.classList.toggle('active', isSlowMo);
+});
+
+const trailBtn = document.getElementById('btn-trail');
+trailBtn.addEventListener('click', () => {
+    showTrail = !showTrail;
+    trailLine.visible = showTrail;
+    trailBtn.classList.toggle('active', showTrail);
+    trailBtn.innerText = showTrail ? "✨ Trail: On" : "✨ Trail: Off";
+});
+
+const audioBtn = document.getElementById('btn-audio');
+audioBtn.addEventListener('click', () => {
+    audio.init();
+    audio.muted = !audio.muted;
+    audioBtn.classList.toggle('active', audio.muted);
+    audioBtn.innerText = audio.muted ? "🔇 Audio: Muted" : "🔊 Audio: On";
+});
+
+const inspectBtn = document.getElementById('btn-inspect');
+inspectBtn.addEventListener('click', () => {
+    isInspectMode = !isInspectMode;
+    inspectBtn.classList.toggle('active', isInspectMode);
+    if (isInspectMode) setCaption("Inspect Mode: Drag Handles");
+});
+
+// Exploded View Toggle
+const explodeBtn = document.getElementById('btn-explode');
+explodeBtn.addEventListener('click', () => {
+    audio.init();
+    isExploded = !isExploded;
+    explodeBtn.classList.toggle('active', isExploded);
+    if (isExploded) {
+        setCaption("Exploded View");
+        audio.playRing();
+    }
+});
+
+// Colorway Switcher
+const colorwayBtn = document.getElementById('btn-colorway');
+colorwayBtn.addEventListener('click', () => {
+    audio.init();
+    colorwayIndex = (colorwayIndex + 1) % colorways.length;
+    const cw = colorways[colorwayIndex];
+    colorwayBtn.innerText = `🎨 Color: ${cw.name}`;
+    
+    handleMat.color.setHex(cw.copper);
+    brassMat.color.setHex(cw.verdigris);
+    bladeMat.color.setHex(cw.blade);
+    audio.playLatch();
+});
+
+// Specs Modal
+const specsModal = document.getElementById('specs-modal');
+document.getElementById('btn-specs').addEventListener('click', () => specsModal.classList.add('open'));
+document.getElementById('btn-close-specs').addEventListener('click', () => specsModal.classList.remove('open'));
+
+// Hover raycasting for exploded parts
+const tooltip = document.getElementById('part-tooltip');
+window.addEventListener('mousemove', (e) => {
+    if (!isExploded) {
+        tooltip.style.opacity = '0';
+        return;
+    }
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(explodedParts, true);
+    if (intersects.length > 0) {
+        let obj = intersects[0].object;
+        while(obj.parent && !obj.userData.label && obj.parent !== scene) {
+            obj = obj.parent;
+        }
+        if (obj.userData.label) {
+            tooltip.innerText = obj.userData.label;
+            tooltip.style.left = `${e.clientX + 15}px`;
+            tooltip.style.top = `${e.clientY + 15}px`;
+            tooltip.style.opacity = '1';
+            return;
+        }
+    }
+    tooltip.style.opacity = '0';
+});
+
+// --- REMOVE LOADING SCREEN ON START ---
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        const loader = document.getElementById('loading');
+        loader.style.opacity = '0';
+        setTimeout(() => loader.remove(), 600);
+        audio.init();
+        setCaption("Sirocco SC-13 'Simoom' Reveal");
+    }, 800);
+});
+
+// --- RENDER LOOP ---
+const clock = new THREE.Clock();
+
+function animate() {
+    requestAnimationFrame(animate);
+    const dt = clock.getDelta();
+
+    updateAnimation(dt);
+
+    // Lerp exploded positions if exploded view is active
+    explodedParts.forEach(part => {
+        const target = isExploded ? part.userData.explodedPos : part.userData.originalPos;
+        part.position.lerp(target, dt * 5.0);
+    });
+
+    controls.update();
+    renderer.render(scene, camera);
+}
+
+animate();
+
+// --- RESIZE HANDLER ---
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+</script>
+</body>
+</html>
