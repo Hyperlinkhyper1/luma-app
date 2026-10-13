@@ -1,0 +1,2697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SENBAZURU FORGE — Tsuru-Kiri (鶴切) Balisong Showcase</title>
+<style>
+  :root {
+    --bg-panel: rgba(14, 11, 20, 0.78);
+    --border-gold: rgba(212, 175, 55, 0.38);
+    --border-bright: rgba(245, 208, 97, 0.85);
+    --text-main: #f3efe6;
+    --text-muted: #a59bb5;
+    --accent-gold: #e6c15a;
+    --accent-purple: #8a4fff;
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-serif: 'Cinzel', 'Georgia', 'Times New Roman', serif;
+  }
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    overflow: hidden; background: #090c0a;
+    font-family: var(--font-sans); color: var(--text-main);
+  }
+  #canvas-container {
+    position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1;
+  }
+  #scene-canvas {
+    display: block; width: 100%; height: 100%; outline: none;
+  }
+  /* UI Overlay */
+  #ui-layer {
+    position: absolute; inset: 0; z-index: 10; pointer-events: none;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 18px 22px;
+    transition: opacity 0.35s ease;
+  }
+  #ui-layer.ui-hidden > *:not(#top-right-controls) {
+    opacity: 0; pointer-events: none !important;
+  }
+  .panel {
+    background: var(--bg-panel);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-gold);
+    border-radius: 8px;
+    padding: 12px 16px;
+    pointer-events: auto;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+  /* Top Row */
+  .top-row {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
+    width: 100%;
+  }
+  /* Brand & Spec Card */
+  #brand-card {
+    max-width: 340px;
+    position: relative;
+  }
+  .brand-header {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .crane-crest {
+    width: 30px; height: 30px; flex-shrink: 0;
+  }
+  .maker-name {
+    font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase;
+    color: var(--accent-gold); font-weight: 700;
+  }
+  .model-name {
+    font-family: var(--font-serif); font-size: 21px; font-weight: 700;
+    letter-spacing: 0.05em; color: #fff; margin: 1px 0 2px 0;
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  .model-jp {
+    font-size: 13px; color: var(--text-muted); font-weight: 400;
+  }
+  .sig-note {
+    font-size: 11px; color: #cfc6dc; line-height: 1.35; margin-top: 6px;
+    border-left: 2px solid var(--accent-gold); padding-left: 8px;
+  }
+  .spec-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 5px 12px;
+    margin-top: 10px; padding-top: 8px;
+    border-top: 1px solid rgba(212, 175, 55, 0.2);
+    font-size: 11px;
+  }
+  .spec-item span:first-child {
+    color: var(--text-muted); display: block; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .spec-item span:last-child {
+    color: var(--text-main); font-weight: 600;
+  }
+
+  /* Top Center Caption / Move Banner */
+  #center-hud {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    pointer-events: none;
+  }
+  #move-caption {
+    background: rgba(14, 11, 20, 0.85);
+    border: 1px solid var(--border-bright);
+    padding: 6px 18px; border-radius: 20px;
+    font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--accent-gold); font-weight: 700;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+  #interaction-hint {
+    font-size: 11px; color: rgba(243,239,230,0.75);
+    background: rgba(0,0,0,0.45); padding: 4px 10px; border-radius: 12px;
+  }
+
+  /* Top Right Controls */
+  #top-right-controls {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+    pointer-events: auto;
+  }
+  .control-bar {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end;
+  }
+
+  /* Buttons & Inputs */
+  button, .btn {
+    background: rgba(34, 26, 48, 0.75);
+    color: var(--text-main);
+    border: 1px solid rgba(212, 175, 55, 0.32);
+    border-radius: 5px;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  button:hover {
+    background: rgba(65, 45, 98, 0.85);
+    border-color: var(--accent-gold);
+    color: #fff;
+  }
+  button.active {
+    background: linear-gradient(135deg, rgba(138, 79, 255, 0.45), rgba(212, 175, 55, 0.35));
+    border-color: var(--border-bright);
+    color: #fff;
+    box-shadow: 0 0 12px rgba(212, 175, 55, 0.35);
+  }
+  .key-badge {
+    font-size: 9px; padding: 1px 4px; border-radius: 3px;
+    background: rgba(0,0,0,0.45); color: var(--accent-gold);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+  }
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 75px; height: 4px; background: rgba(255,255,255,0.2);
+    border-radius: 2px; outline: none; cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 12px; height: 12px;
+    border-radius: 50%; background: var(--accent-gold);
+    border: 1px solid #fff; cursor: pointer;
+  }
+  .section-label {
+    font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--accent-gold); margin-bottom: 5px; font-weight: 700;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+
+  /* Bottom Area */
+  .bottom-row {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    gap: 14px; width: 100%; flex-wrap: wrap;
+  }
+  #moves-panel {
+    flex: 1; min-width: 320px; max-width: 760px;
+  }
+  .moves-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
+  }
+  @media (max-width: 950px) {
+    .moves-grid { grid-template-columns: repeat(3, 1fr); }
+    #brand-card { max-width: 270px; }
+  }
+  #inspect-panel {
+    display: flex; flex-direction: column; gap: 8px;
+    min-width: 270px;
+  }
+  .sub-row {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  }
+  .swatch-btn {
+    padding: 5px 9px; font-size: 10.5px;
+  }
+  .swatch-dot {
+    width: 9px; height: 9px; border-radius: 50%; display: inline-block;
+    border: 1px solid rgba(255,255,255,0.6);
+  }
+
+  /* Hover Part Tooltip for Exploded / Inspect View */
+  #part-tooltip {
+    position: fixed; z-index: 30; pointer-events: none;
+    background: rgba(12, 9, 18, 0.92);
+    border: 1px solid var(--border-bright);
+    color: #fff; padding: 6px 11px; border-radius: 6px;
+    font-size: 11.5px; font-weight: 600;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+    transform: translate(14px, -14px);
+    display: none;
+    white-space: nowrap;
+  }
+  #part-tooltip small {
+    display: block; font-size: 9.5px; color: var(--accent-gold);
+    font-weight: 400; margin-top: 2px;
+  }
+
+  /* Reveal Title Overlay */
+  #reveal-banner {
+    position: absolute; left: 50%; top: 20%;
+    transform: translate(-50%, -50%);
+    z-index: 8; pointer-events: none;
+    text-align: center; opacity: 0;
+    transition: opacity 0.8s ease, transform 0.8s ease;
+  }
+  #reveal-banner.visible {
+    opacity: 1; transform: translate(-50%, -40%);
+  }
+  #reveal-banner h1 {
+    font-family: var(--font-serif); font-size: 36px; letter-spacing: 0.18em;
+    margin: 0; color: #fff; text-shadow: 0 4px 24px rgba(0,0,0,0.85);
+  }
+  #reveal-banner p {
+    font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--accent-gold); margin: 6px 0 0 0;
+  }
+
+  /* WebGL / Load Failure Fallback */
+  #webgl-error {
+    display: none; position: fixed; inset: 0; z-index: 100;
+    background: #111; color: #eee; align-items: center; justify-content: center;
+    flex-direction: column; text-align: center; padding: 24px;
+  }
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+
+<div id="webgl-error">
+  <h2>WebGL Not Available</h2>
+  <p>This interactive 3D balisong benchmark requires a browser with WebGL enabled.</p>
+</div>
+
+<div id="canvas-container">
+  <canvas id="scene-canvas"></canvas>
+</div>
+
+<div id="reveal-banner">
+  <p>SENBAZURU FORGE • KYOTO</p>
+  <h1>TSURU-KIRI (鶴切)</h1>
+</div>
+
+<div id="part-tooltip"></div>
+
+<div id="ui-layer">
+  <!-- TOP ROW -->
+  <div class="top-row">
+    <!-- Brand & Spec Card -->
+    <div id="brand-card" class="panel">
+      <div class="brand-header">
+        <svg class="crane-crest" viewBox="0 0 64 64" fill="none" stroke="#e6c15a" stroke-width="2.2" stroke-linejoin="round">
+          <polygon points="32,6 42,26 60,18 44,38 52,56 32,44 12,56 20,38 4,18 22,26" fill="rgba(138,79,255,0.22)"/>
+          <polyline points="32,6 32,44"/>
+          <polyline points="22,26 42,26"/>
+          <polyline points="20,38 44,38"/>
+        </svg>
+        <div>
+          <div class="maker-name">Senbazuru Forge</div>
+          <div class="model-name">TSURU-KIRI <span class="model-jp">鶴切</span></div>
+        </div>
+      </div>
+      <div class="sig-note">
+        <strong>Signature Detail:</strong> Pierced 24K gold origami crane kicker (<em>Orizuru-Dome</em>), triangulated paper-crease faceted grip rings, and gold-inlaid origami valley creases along the mirror cleaver fuller.
+      </div>
+      <div class="spec-grid">
+        <div class="spec-item"><span>Overall / Closed</span><span>23.0 cm / 13.2 cm</span></div>
+        <div class="spec-item"><span>Blade (9.8 cm)</span><span>Mirror M390 Cleaver</span></div>
+        <div class="spec-item"><span>Handles</span><span>Tubular Grade-5 Ti (Royal Ano)</span></div>
+        <div class="spec-item"><span>Weight &amp; Balance</span><span>104 g • Neutral-Bite</span></div>
+        <div class="spec-item"><span>Pivot System</span><span>Caged Ceramic Bearings</span></div>
+        <div class="spec-item"><span>Latch System</span><span>24K Gold Neodymium Mag-Latch</span></div>
+      </div>
+    </div>
+
+    <!-- Center Caption & Hint -->
+    <div id="center-hud">
+      <div id="move-caption">REVEAL SHOWCASE</div>
+      <div id="interaction-hint">Drag handles to manual flip • Orbit with mouse • Keys 1–8 for tricks</div>
+    </div>
+
+    <!-- Top Right Audio & UI Controls -->
+    <div id="top-right-controls">
+      <div class="panel control-bar">
+        <button id="btn-hand" class="active" title="Toggle Stylised Rigged Hand">Hand: ON</button>
+        <button id="btn-trail" class="active" title="Toggle Origami Gold Blade Ribbon">Trail: ON</button>
+        <button id="btn-mute" title="Mute / Unmute Synthesised Web Audio">🔊 Audio</button>
+        <input id="slider-vol" type="range" min="0" max="1" step="0.02" value="0.8" title="Master Volume">
+        <button id="btn-hide-ui" title="Toggle UI Overlay (H)">Hide UI</button>
+      </div>
+      <div class="panel control-bar">
+        <span style="font-size:10px; color:var(--accent-gold); font-weight:700; letter-spacing:0.08em;">COLOURWAY:</span>
+        <button class="swatch-btn active" data-theme="royal"><span class="swatch-dot" style="background:#5b23a8;"></span>Royal Orizuru</button>
+        <button class="swatch-btn" data-theme="sakura"><span class="swatch-dot" style="background:#d46a92;"></span>Sakura Kinpaku</button>
+        <button class="swatch-btn" data-theme="jade"><span class="swatch-dot" style="background:#1c7c54;"></span>Moss Washi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM ROW -->
+  <div class="bottom-row">
+    <!-- Moves & Performance Panel -->
+    <div id="moves-panel" class="panel">
+      <div class="section-label">
+        <span>Balisong Performance Moves</span>
+        <div class="sub-row">
+          <span style="font-size:10px; color:var(--text-muted);">Speed: <strong id="speed-val" style="color:#fff;">1.00×</strong></span>
+          <input id="slider-speed" type="range" min="0.25" max="2.0" step="0.05" value="1.0">
+          <button id="btn-slowmo" style="padding:3px 7px; font-size:10px;">0.35× Slow-Mo</button>
+        </div>
+      </div>
+      <div class="moves-grid">
+        <button class="move-btn" data-move="basic_open"><span class="key-badge">1</span>Basic Open</button>
+        <button class="move-btn" data-move="basic_close"><span class="key-badge">2</span>Basic Close</button>
+        <button class="move-btn" data-move="chaplin"><span class="key-badge">3</span>Chaplin</button>
+        <button class="move-btn" data-move="zen_rollover"><span class="key-badge">4</span>Zen Rollover</button>
+        <button class="move-btn" data-move="fan"><span class="key-badge">5</span>Origami Fan</button>
+        <button class="move-btn" data-move="helix"><span class="key-badge">6</span>Helix Twirl</button>
+        <button class="move-btn" data-move="aerial"><span class="key-badge">7</span>Crane Aerial</button>
+        <button class="move-btn" data-move="signature"><span class="key-badge">8</span>Orizuru Ascent</button>
+        <button class="move-btn" id="btn-combo" data-move="combo" style="border-color:rgba(230,193,90,0.6);">∞ Combo Flow</button>
+        <button class="move-btn" id="btn-freestyle" data-move="freestyle" style="border-color:rgba(138,79,255,0.6);">✦ Freestyle</button>
+      </div>
+    </div>
+
+    <!-- Inspect, Camera & Exploded View Panel -->
+    <div id="inspect-panel" class="panel">
+      <div class="section-label">
+        <span>Camera Presets &amp; Assembly</span>
+        <button id="btn-explode" style="padding:3px 8px; font-size:10px;">Explode View (E)</button>
+      </div>
+      <div class="sub-row">
+        <button class="cam-btn active" data-cam="hero">Hero</button>
+        <button class="cam-btn" data-cam="blade">Blade &amp; Mark</button>
+        <button class="cam-btn" data-cam="pivot">Pivot &amp; Kicker</button>
+        <button class="cam-btn" data-cam="latch">Mag-Latch</button>
+        <button class="cam-btn" data-cam="top">Top</button>
+      </div>
+      <div class="sub-row" style="justify-content:space-between; margin-top:2px;">
+        <span style="font-size:10px; color:var(--text-muted);">Explode Axis Separation</span>
+        <input id="slider-explode" type="range" min="0" max="1" step="0.01" value="0" style="width:130px;">
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // If the module never reports in (e.g. three.js could not be fetched from unpkg),
+  // say so instead of leaving an empty canvas behind the UI.
+  setTimeout(function () {
+    if (window.__tsuruReady) return;
+    var el = document.getElementById('webgl-error');
+    if (el.style.display === 'flex') return;
+    el.querySelector('h2').textContent = 'Scene failed to load';
+    el.querySelector('p').textContent =
+      'Three.js r160 could not be loaded from unpkg.com. Check the network connection and reload.';
+    el.style.display = 'flex';
+  }, 10000);
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============================================================================
+// 0. WEBGL CHECK & INITIALISATION
+// ============================================================================
+const container = document.getElementById('canvas-container');
+const sceneCanvas = document.getElementById('scene-canvas');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({
+    canvas: sceneCanvas,
+    antialias: true,
+    powerPreference: 'high-performance'
+  });
+} catch (e) {
+  document.getElementById('webgl-error').style.display = 'flex';
+  throw e;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.18;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0c130e);
+scene.fog = new THREE.FogExp2(0x0d1610, 0.025);
+
+const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.2, 120);
+camera.position.set(0, 8.5, 22);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.minDistance = 4.5;
+controls.maxDistance = 42;
+controls.target.set(0, 2.2, 0);
+
+// ============================================================================
+// 1. SYNTHESISED WEB AUDIO ENGINE (Titanium Bearings, Glassy Clicks, Bright Ring)
+// ============================================================================
+class BalisongAudio {
+  constructor() {
+    this.ctx = null;
+    this.muted = false;
+    this.volume = 0.8;
+    this.masterGain = null;
+    this.swishGain = null;
+    this.swishFilter = null;
+    this.bearingGain = null;
+    this.bearingFilter = null;
+    this.initialized = false;
+  }
+
+  init() {
+    if (this.initialized) {
+      if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+      return;
+    }
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    this.ctx = new AudioCtx();
+    this.masterGain = this.ctx.createGain();
+    this.masterGain.gain.value = this.muted ? 0 : this.volume;
+    this.masterGain.connect(this.ctx.destination);
+
+    // Continuous noise buffer for air swish & ceramic bearing roll
+    const bufferSize = this.ctx.sampleRate * 2.0;
+    const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+
+    // Air Swish Node
+    const swishSource = this.ctx.createBufferSource();
+    swishSource.buffer = noiseBuffer;
+    swishSource.loop = true;
+    this.swishFilter = this.ctx.createBiquadFilter();
+    this.swishFilter.type = 'bandpass';
+    this.swishFilter.frequency.value = 500;
+    this.swishFilter.Q.value = 2.2;
+    this.swishGain = this.ctx.createGain();
+    this.swishGain.gain.value = 0.0;
+    swishSource.connect(this.swishFilter);
+    this.swishFilter.connect(this.swishGain);
+    this.swishGain.connect(this.masterGain);
+    swishSource.start();
+
+    // Ceramic Bearing Whir Node
+    const bearingSource = this.ctx.createBufferSource();
+    bearingSource.buffer = noiseBuffer;
+    bearingSource.loop = true;
+    this.bearingFilter = this.ctx.createBiquadFilter();
+    this.bearingFilter.type = 'bandpass';
+    this.bearingFilter.frequency.value = 3800;
+    this.bearingFilter.Q.value = 8.5;
+    this.bearingGain = this.ctx.createGain();
+    this.bearingGain.gain.value = 0.0;
+    bearingSource.connect(this.bearingFilter);
+    this.bearingFilter.connect(this.bearingGain);
+    this.bearingGain.connect(this.masterGain);
+    bearingSource.start();
+
+    this.initialized = true;
+  }
+
+  setVolume(val) {
+    this.volume = val;
+    if (this.masterGain && !this.muted) {
+      this.masterGain.gain.setTargetAtTime(this.volume, this.ctx.currentTime, 0.02);
+    }
+  }
+
+  toggleMute() {
+    this.muted = !this.muted;
+    if (this.masterGain) {
+      this.masterGain.gain.setTargetAtTime(this.muted ? 0 : this.volume, this.ctx.currentTime, 0.02);
+    }
+    return this.muted;
+  }
+
+  // Magnetic latch click: high, crisp neodymium snap
+  playLatchClick(isClosing = true) {
+    if (!this.initialized || this.muted) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    const baseFreq = isClosing ? 4200 : 3400;
+    osc.frequency.setValueAtTime(baseFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.45, now + 0.018);
+
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.028);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(now);
+    osc.stop(now + 0.03);
+  }
+
+  // Zen pin clack: glassy titanium tubular ping + optional bright blade ring on open lockup
+  playPinClack(intensity = 0.8, isOpenStop = false) {
+    if (!this.initialized || this.muted) return;
+    const now = this.ctx.currentTime;
+    const amp = Math.min(Math.max(intensity, 0.1), 1.3);
+
+    // Glassy high titanium tube modes
+    const freqs = isOpenStop ? [2950, 4680, 7120, 9850] : [2620, 4120, 6450];
+    freqs.forEach((f, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+      osc.frequency.setValueAtTime(f * (0.99 + Math.random() * 0.02), now);
+      const decay = isOpenStop ? (0.14 / (idx + 1)) : (0.075 / (idx + 1));
+      gain.gain.setValueAtTime(0.22 * amp / (idx + 1), now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(now);
+      osc.stop(now + decay + 0.01);
+    });
+
+    // Bright resonant M390 cleaver ring when snapped open
+    if (isOpenStop && amp > 0.35) {
+      const ringPartials = [1840, 3510, 5890, 8420];
+      ringPartials.forEach((pf, i) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(pf, now);
+        const dur = 0.65 - i * 0.11;
+        gain.gain.setValueAtTime(0.085 * amp / (i + 1), now + 0.004);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(now);
+        osc.stop(now + dur + 0.02);
+      });
+    }
+  }
+
+  updateContinuous(knifeAngularVel, handleAngularVel) {
+    if (!this.initialized || this.muted) return;
+    const now = this.ctx.currentTime;
+    // Swish follows overall blade angular speed
+    const swishNorm = Math.min(knifeAngularVel / 22.0, 1.0);
+    this.swishGain.gain.setTargetAtTime(swishNorm * 0.22, now, 0.04);
+    this.swishFilter.frequency.setTargetAtTime(320 + swishNorm * 1450, now, 0.04);
+
+    // Ceramic bearing whir follows handle pivot rotation speed
+    const bearingNorm = Math.min(handleAngularVel / 26.0, 1.0);
+    this.bearingGain.gain.setTargetAtTime(bearingNorm * 0.08, now, 0.03);
+    this.bearingFilter.frequency.setTargetAtTime(3200 + bearingNorm * 2800, now, 0.03);
+  }
+}
+
+const sound = new BalisongAudio();
+window.addEventListener('pointerdown', () => sound.init(), { once: false });
+window.addEventListener('keydown', () => sound.init(), { once: false });
+
+// ============================================================================
+// 2. PROCEDURAL TEXTURES & ENVIRONMENT MAP (Dappled Forest Daylight + Studio)
+// ============================================================================
+function createDappledEnvironment(renderer) {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  pmrem.compileEquirectangularShader();
+
+  const envScene = new THREE.Scene();
+  // Sky dome with warm dappled sunlight & forest canopy reflections
+  const skyGeo = new THREE.SphereGeometry(50, 48, 24);
+  const skyCanvas = document.createElement('canvas');
+  skyCanvas.width = 512;
+  skyCanvas.height = 256;
+  const ctx = skyCanvas.getContext('2d');
+
+  const grad = ctx.createLinearGradient(0, 0, 0, 256);
+  grad.addColorStop(0.0, '#1e3522');
+  grad.addColorStop(0.25, '#3b5e3c');
+  grad.addColorStop(0.48, '#a6bf8e');
+  grad.addColorStop(0.52, '#1f2b1d');
+  grad.addColorStop(1.0, '#090d0a');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 512, 256);
+
+  // Bright sunlight patches breaking through canopy (crucial for sliding mirror blade highlights)
+  for (let i = 0; i < 42; i++) {
+    const x = Math.random() * 512;
+    const y = 15 + Math.random() * 105;
+    const r = 6 + Math.random() * 28;
+    const rad = ctx.createRadialGradient(x, y, 1, x, y, r);
+    rad.addColorStop(0, 'rgba(255, 250, 225, 0.95)');
+    rad.addColorStop(0.5, 'rgba(220, 245, 190, 0.45)');
+    rad.addColorStop(1, 'rgba(40, 70, 45, 0)');
+    ctx.fillStyle = rad;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Studio key-light strips so the mirror-polished cleaver blade catches crisp specular bars
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(90, 35, 110, 14);
+  ctx.fillStyle = '#ffe9a8';
+  ctx.fillRect(310, 50, 95, 12);
+
+  const envTex = new THREE.CanvasTexture(skyCanvas);
+  envTex.mapping = THREE.EquirectangularReflectionMapping;
+  const skyMat = new THREE.MeshBasicMaterial({ map: envTex, side: THREE.BackSide });
+  envScene.add(new THREE.Mesh(skyGeo, skyMat));
+
+  const envMap = pmrem.fromScene(envScene, 0.015).texture;
+  pmrem.dispose();
+  return envMap;
+}
+
+const envMap = createDappledEnvironment(renderer);
+scene.environment = envMap;
+
+// Procedural Blade Etching Texture: Senbazuru Origami Crane Crest + Fold Crease Lines
+function createBladeEtchTextures() {
+  const w = 1024, h = 512;
+  const colorCanvas = document.createElement('canvas');
+  colorCanvas.width = w; colorCanvas.height = h;
+  const cCtx = colorCanvas.getContext('2d');
+
+  const roughCanvas = document.createElement('canvas');
+  roughCanvas.width = w; roughCanvas.height = h;
+  const rCtx = roughCanvas.getContext('2d');
+
+  // Base mirror steel
+  cCtx.fillStyle = '#eef3f8';
+  cCtx.fillRect(0, 0, w, h);
+
+  // Very low roughness for mirror polish, with ultra-fine horizontal satin micro-grain on grind
+  rCtx.fillStyle = '#0c0c0c';
+  rCtx.fillRect(0, 0, w, h);
+  rCtx.strokeStyle = 'rgba(28,28,28,0.35)';
+  rCtx.lineWidth = 1;
+  for (let y = 0; y < h; y += 3) {
+    rCtx.beginPath();
+    rCtx.moveTo(0, y);
+    rCtx.lineTo(w, y);
+    rCtx.stroke();
+  }
+
+  // Draw Gold Origami Fold Creases & Maker's Mark Emblem
+  function drawOrigamiEtch(ctx, strokeStyle, fillStyle, lineWidth) {
+    ctx.save();
+    ctx.strokeStyle = strokeStyle;
+    ctx.fillStyle = fillStyle;
+    ctx.lineWidth = lineWidth;
+
+    // Geometric origami crease network along the upper fuller of the cleaver blade
+    ctx.beginPath();
+    ctx.moveTo(140, 170); ctx.lineTo(290, 110); ctx.lineTo(460, 185);
+    ctx.lineTo(640, 115); ctx.lineTo(820, 165); ctx.lineTo(930, 120);
+    ctx.moveTo(140, 170); ctx.lineTo(290, 230); ctx.lineTo(460, 185);
+    ctx.lineTo(640, 225); ctx.lineTo(820, 165); ctx.lineTo(930, 120);
+    ctx.moveTo(290, 110); ctx.lineTo(290, 230);
+    ctx.moveTo(640, 115); ctx.lineTo(640, 225);
+    ctx.stroke();
+
+    // Senbazuru Maker's Mark: Geometric Origami Crane (Orizuru) near ricasso
+    ctx.save();
+    ctx.translate(230, 170);
+    ctx.scale(1.15, 1.15);
+    ctx.beginPath();
+    // Wings & tail triangles
+    ctx.moveTo(0, -42); ctx.lineTo(18, -8); ctx.lineTo(52, -22); ctx.lineTo(22, 10);
+    ctx.lineTo(36, 38); ctx.lineTo(0, 18); ctx.lineTo(-36, 38); ctx.lineTo(-22, 10);
+    ctx.lineTo(-52, -22); ctx.lineTo(-18, -8); ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Internal fold lines
+    ctx.beginPath();
+    ctx.moveTo(0, -42); ctx.lineTo(0, 18);
+    ctx.moveTo(-18, -8); ctx.lineTo(18, -8);
+    ctx.moveTo(-22, 10); ctx.lineTo(22, 10);
+    ctx.stroke();
+    ctx.restore();
+
+    // Kanji & Model Engraving: 鶴切 • SENBAZURU
+    ctx.font = 'bold 26px "Georgia", serif';
+    ctx.fillText('鶴切  TSURU-KIRI', 340, 310);
+    ctx.font = '600 16px sans-serif';
+    ctx.fillText('SENBAZURU FORGE • M390 MIRROR', 342, 336);
+    ctx.restore();
+  }
+
+  // Gold inlay on colour map, matte micro-blast on roughness map
+  drawOrigamiEtch(cCtx, '#e5bc48', 'rgba(229, 188, 72, 0.28)', 3.2);
+  drawOrigamiEtch(rCtx, '#888888', '#555555', 4.0);
+
+  const map = new THREE.CanvasTexture(colorCanvas);
+  const roughMap = new THREE.CanvasTexture(roughCanvas);
+  map.anisotropy = 4;
+  roughMap.anisotropy = 4;
+  return { map, roughMap };
+}
+
+// Procedural Origami Crease Bump/Roughness Texture for Anodised Titanium Handles
+function createOrigamiHandleTexture() {
+  const size = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#404040';
+  ctx.fillRect(0, 0, size, size);
+
+  // Yoshimura / Miura-ori diamond paper fold pattern
+  const rows = 16, cols = 8;
+  const cw = size / cols, rh = size / rows;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const x0 = c * cw, y0 = r * rh;
+      const mx = x0 + cw * 0.5, my = y0 + rh * 0.5;
+      // Facet shading
+      ctx.fillStyle = (r + c) % 2 === 0 ? '#525252' : '#343434';
+      ctx.beginPath();
+      ctx.moveTo(x0, y0); ctx.lineTo(mx, my); ctx.lineTo(x0 + cw, y0); ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = (r + c) % 2 === 0 ? '#2b2b2b' : '#4a4a4a';
+      ctx.beginPath();
+      ctx.moveTo(x0, y0); ctx.lineTo(mx, my); ctx.lineTo(x0, y0 + rh); ctx.closePath();
+      ctx.fill();
+
+      // Sharp fold ridges
+      ctx.strokeStyle = '#888888';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x0, y0, cw, rh);
+      ctx.beginPath();
+      ctx.moveTo(x0, y0); ctx.lineTo(x0 + cw, y0 + rh);
+      ctx.moveTo(x0 + cw, y0); ctx.lineTo(x0, y0 + rh);
+      ctx.stroke();
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2, 5);
+  return tex;
+}
+
+// Procedural Dappled Gobo Light Cookie
+function createDappledGoboTexture() {
+  const size = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#182418';
+  ctx.fillRect(0, 0, size, size);
+
+  for (let i = 0; i < 65; i++) {
+    const x = 60 + Math.random() * (size - 120);
+    const y = 60 + Math.random() * (size - 120);
+    const r = 18 + Math.random() * 48;
+    const g = ctx.createRadialGradient(x, y, 2, x, y, r);
+    g.addColorStop(0, 'rgba(255, 250, 230, 1)');
+    g.addColorStop(0.6, 'rgba(210, 235, 180, 0.5)');
+    g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  return new THREE.CanvasTexture(canvas);
+}
+
+// ============================================================================
+// 3. STAGE: MOSSY ROCK IN A FERN GARDEN IN DAPPLED DAYLIGHT
+// ============================================================================
+function buildMossyFernStage() {
+  const stageGroup = new THREE.Group();
+
+  // Procedural Mossy Basalt Rock Texture
+  const rockCanvas = document.createElement('canvas');
+  rockCanvas.width = 512; rockCanvas.height = 512;
+  const rctx = rockCanvas.getContext('2d');
+  rctx.fillStyle = '#252b24';
+  rctx.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 1800; i++) {
+    const x = Math.random() * 512, y = Math.random() * 512;
+    const rad = 2 + Math.random() * 16;
+    const isMoss = Math.random() > 0.38;
+    rctx.fillStyle = isMoss
+      ? `rgba(${38 + Math.random() * 35}, ${72 + Math.random() * 55}, ${28 + Math.random() * 25}, 0.35)`
+      : `rgba(${30 + Math.random() * 25}, ${32 + Math.random() * 25}, ${35 + Math.random() * 25}, 0.3)`;
+    rctx.beginPath();
+    rctx.arc(x, y, rad, 0, Math.PI * 2);
+    rctx.fill();
+  }
+  const rockTex = new THREE.CanvasTexture(rockCanvas);
+  rockTex.wrapS = rockTex.wrapT = THREE.RepeatWrapping;
+  rockTex.repeat.set(3, 3);
+
+  // Sculpted Hero Mossy Rock Slab
+  const rockGeo = new THREE.IcosahedronGeometry(7.2, 5);
+  const pos = rockGeo.attributes.position;
+  const colorAttr = new Float32Array(pos.count * 3);
+  for (let i = 0; i < pos.count; i++) {
+    let vx = pos.getX(i), vy = pos.getY(i), vz = pos.getZ(i);
+    // Flatten into a natural Japanese garden stone pedestal
+    vy *= 0.34;
+    vx *= 1.35;
+    vz *= 1.05;
+    // Multi-frequency organic rock crags
+    const n1 = Math.sin(vx * 0.65) * Math.cos(vz * 0.65) * 0.45;
+    const n2 = Math.sin(vx * 1.9 + vz * 1.4) * 0.18;
+    const n3 = Math.cos(vx * 3.7 - vy * 2.5) * 0.08;
+    // Keep top relatively flat plateau for showcase shadow
+    if (vy > 0.6) {
+      vy = 0.6 + (vy - 0.6) * 0.35 + n2 * 0.35 + n3 * 0.25;
+    } else {
+      vy += n1 + n2;
+    }
+    pos.setXYZ(i, vx, vy, vz);
+
+    // Vertex colour: lush green velvet moss on top-facing surfaces, wet dark slate on sides
+    const mossFactor = THREE.MathUtils.smoothstep(vy, -0.2, 0.85);
+    const r = THREE.MathUtils.lerp(0.14, 0.24, mossFactor);
+    const g = THREE.MathUtils.lerp(0.16, 0.44, mossFactor);
+    const b = THREE.MathUtils.lerp(0.15, 0.16, mossFactor);
+    colorAttr[i * 3] = r;
+    colorAttr[i * 3 + 1] = g;
+    colorAttr[i * 3 + 2] = b;
+  }
+  rockGeo.setAttribute('color', new THREE.BufferAttribute(colorAttr, 3));
+  rockGeo.computeVertexNormals();
+
+  const rockMat = new THREE.MeshStandardMaterial({
+    map: rockTex,
+    bumpMap: rockTex,
+    bumpScale: 0.12,
+    vertexColors: true,
+    roughness: 0.88,
+    metalness: 0.04
+  });
+  const heroRock = new THREE.Mesh(rockGeo, rockMat);
+  heroRock.position.set(0, -1.85, 0);
+  heroRock.receiveShadow = true;
+  heroRock.castShadow = true;
+  stageGroup.add(heroRock);
+
+  // Secondary surrounding garden stones
+  const smallRockGeo = new THREE.DodecahedronGeometry(2.4, 2);
+  const stonePositions = [
+    [-8.5, -2.5, -3.5, 1.4, 0.5, 1.1],
+    [8.8, -2.6, -4.2, 1.6, 0.55, 1.2],
+    [-6.2, -2.8, 5.4, 1.1, 0.4, 0.9],
+    [7.4, -2.7, 4.8, 1.2, 0.45, 1.0]
+  ];
+  stonePositions.forEach(s => {
+    const m = new THREE.Mesh(smallRockGeo, rockMat);
+    m.position.set(s[0], s[1], s[2]);
+    m.scale.set(s[3], s[4], s[5]);
+    m.rotation.y = s[0];
+    m.receiveShadow = true;
+    stageGroup.add(m);
+  });
+
+  // Forest Floor Ground Plane
+  const groundGeo = new THREE.PlaneGeometry(90, 90);
+  const groundMat = new THREE.MeshStandardMaterial({
+    color: 0x111a12,
+    roughness: 0.95,
+    metalness: 0.0
+  });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -3.1;
+  ground.receiveShadow = true;
+  stageGroup.add(ground);
+
+  // Instanced Lush Fern Fronds around the mossy rock
+  const frondShapeGeo = new THREE.BufferGeometry();
+  const segments = 9;
+  const verts = [];
+  const uvs = [];
+  const indices = [];
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const y = t * 4.2;
+    const archZ = Math.pow(t, 1.8) * 2.1;
+    // Serrated pinnae width profile
+    const w = Math.sin(t * Math.PI) * 0.78 * (1 - t * 0.25);
+    verts.push(-w, y, archZ, 0, y + 0.04, archZ - 0.05, w, y, archZ);
+    uvs.push(0, t, 0.5, t, 1, t);
+    if (i < segments) {
+      const row = i * 3;
+      const next = (i + 1) * 3;
+      indices.push(row, next, row + 1, row + 1, next, next + 1);
+      indices.push(row + 1, next + 1, row + 2, row + 2, next + 1, next + 2);
+    }
+  }
+  frondShapeGeo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  frondShapeGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  frondShapeGeo.setIndex(indices);
+  frondShapeGeo.computeVertexNormals();
+
+  // Fern Pinnae alpha/striping texture
+  const fernCanvas = document.createElement('canvas');
+  fernCanvas.width = 128; fernCanvas.height = 256;
+  const fctx = fernCanvas.getContext('2d');
+  fctx.clearRect(0, 0, 128, 256);
+  // Central stem
+  fctx.fillStyle = '#2d5a27';
+  fctx.fillRect(61, 0, 6, 256);
+  // Individual leaflets (pinnae)
+  for (let y = 10; y < 248; y += 11) {
+    const normY = y / 256;
+    const span = Math.sin(normY * Math.PI) * 58;
+    const grad = fctx.createLinearGradient(64 - span, y, 64 + span, y);
+    grad.addColorStop(0, '#4f8f38');
+    grad.addColorStop(0.5, '#2b5720');
+    grad.addColorStop(1, '#4f8f38');
+    fctx.fillStyle = grad;
+    fctx.beginPath();
+    fctx.ellipse(64 - span * 0.5, y, span * 0.52, 3.8, -0.18, 0, Math.PI * 2);
+    fctx.ellipse(64 + span * 0.5, y, span * 0.52, 3.8, 0.18, 0, Math.PI * 2);
+    fctx.fill();
+  }
+  const fernTex = new THREE.CanvasTexture(fernCanvas);
+
+  const fernMat = new THREE.MeshStandardMaterial({
+    map: fernTex,
+    alphaTest: 0.35,
+    side: THREE.DoubleSide,
+    roughness: 0.65,
+    metalness: 0.05
+  });
+
+  const fernCount = 135;
+  const fernInst = new THREE.InstancedMesh(frondShapeGeo, fernMat, fernCount);
+  fernInst.castShadow = true;
+  fernInst.receiveShadow = true;
+
+  const dummy = new THREE.Object3D();
+  let idx = 0;
+  const clusters = [
+    [-7.5, -2.4, -4.5], [-9.2, -2.6, 0.8], [-6.8, -2.5, 4.8],
+    [7.8, -2.4, -4.2], [9.5, -2.6, 0.5], [7.2, -2.5, 4.9],
+    [-2.8, -2.4, -6.2], [2.9, -2.4, -6.0], [0.0, -2.5, -7.2]
+  ];
+  clusters.forEach(c => {
+    for (let f = 0; f < 15; f++) {
+      if (idx >= fernCount) break;
+      const angle = (f / 15) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+      const tilt = 0.25 + Math.random() * 0.55;
+      const sc = 0.75 + Math.random() * 0.75;
+      dummy.position.set(c[0] + Math.cos(angle) * 0.6, c[1], c[2] + Math.sin(angle) * 0.6);
+      dummy.rotation.set(tilt, angle, (Math.random() - 0.5) * 0.2);
+      dummy.scale.setScalar(sc);
+      dummy.updateMatrix();
+      fernInst.setMatrixAt(idx++, dummy.matrix);
+    }
+  });
+  stageGroup.add(fernInst);
+
+  // Subtle Origami Paper Crane resting on the mossy stone corner (theme detail)
+  const propCraneGeo = new THREE.BufferGeometry();
+  const craneVerts = new Float32Array([
+    // Left wing
+    0, 0.35, 0,  -0.95, 0.55, 0.1,  -0.25, 0.15, -0.25,
+    // Right wing
+    0, 0.35, 0,   0.25, 0.15, -0.25, 0.95, 0.55, 0.1,
+    // Neck & head
+    0, 0.15, 0.25, 0, 0.85, 0.55, -0.12, 0.2, 0,
+    0, 0.15, 0.25, 0.12, 0.2, 0,   0, 0.85, 0.55,
+    // Tail
+    0, 0.15, -0.25, -0.12, 0.2, 0, 0, 0.75, -0.6,
+    0, 0.15, -0.25, 0, 0.75, -0.6, 0.12, 0.2, 0
+  ]);
+  propCraneGeo.setAttribute('position', new THREE.BufferAttribute(craneVerts, 3));
+  propCraneGeo.computeVertexNormals();
+  const propCraneMat = new THREE.MeshStandardMaterial({
+    color: 0xf4ecd8, roughness: 0.6, metalness: 0.1, side: THREE.DoubleSide
+  });
+  const propCrane = new THREE.Mesh(propCraneGeo, propCraneMat);
+  propCrane.position.set(-5.2, -0.82, 2.3);
+  propCrane.rotation.y = 0.65;
+  propCrane.scale.setScalar(0.85);
+  propCrane.castShadow = true;
+  stageGroup.add(propCrane);
+
+  // Floating Forest Spores / Sunlit Motes
+  const moteCount = 90;
+  const moteGeo = new THREE.BufferGeometry();
+  const motePos = new Float32Array(moteCount * 3);
+  for (let i = 0; i < moteCount; i++) {
+    motePos[i * 3] = (Math.random() - 0.5) * 26;
+    motePos[i * 3 + 1] = -0.5 + Math.random() * 11;
+    motePos[i * 3 + 2] = (Math.random() - 0.5) * 18;
+  }
+  moteGeo.setAttribute('position', new THREE.BufferAttribute(motePos, 3));
+  const moteMat = new THREE.PointsMaterial({
+    color: 0xffeaa0, size: 0.11, transparent: true, opacity: 0.65, blending: THREE.AdditiveBlending
+  });
+  const motes = new THREE.Points(moteGeo, moteMat);
+  stageGroup.add(motes);
+
+  scene.add(stageGroup);
+  return { stageGroup, fernInst, motes };
+}
+
+const stage = buildMossyFernStage();
+
+// ============================================================================
+// 4. LIGHTING: PRODUCT-SHOT KEY LIGHT + DAPPLED GOBO + RIM LIGHT
+// ============================================================================
+const hemiLight = new THREE.HemisphereLight(0xdff2d8, 0x182218, 0.65);
+scene.add(hemiLight);
+
+// Dappled Daylight Canopy SpotLight
+const goboTex = createDappledGoboTexture();
+const sunSpot = new THREE.SpotLight(0xfff4d2, 95);
+sunSpot.position.set(7, 19, 8);
+sunSpot.angle = Math.PI / 4.2;
+sunSpot.penumbra = 0.65;
+sunSpot.decay = 1.35;
+sunSpot.distance = 48;
+sunSpot.map = goboTex;
+sunSpot.castShadow = true;
+sunSpot.shadow.mapSize.width = 2048;
+sunSpot.shadow.mapSize.height = 2048;
+sunSpot.shadow.bias = -0.0004;
+scene.add(sunSpot);
+
+// Sweeping Product Key Light (rakes across the mirror-polished cleaver blade)
+const bladeKeyLight = new THREE.DirectionalLight(0xffffff, 2.6);
+bladeKeyLight.position.set(-8, 11, 10);
+scene.add(bladeKeyLight);
+
+// Royal Rim Light (highlights tubular grip rings & gold pins)
+const rimLight = new THREE.DirectionalLight(0xd9b8ff, 1.65);
+rimLight.position.set(0, 5, -14);
+scene.add(rimLight);
+
+// Warm Gold Uplight bounce
+const goldBounce = new THREE.PointLight(0xffcb5c, 4.5, 16);
+goldBounce.position.set(0, 0.2, 3.5);
+scene.add(goldBounce);
+
+// ============================================================================
+// 5. THE KNIFE — TSURU-KIRI (鶴切) FULL 3D ANATOMY & MATERIALS
+// ============================================================================
+// Scale: 1 unit = 1 cm.
+// Closed length: ~13.2 cm, Open length: ~23.0 cm.
+// Blade length from pivots: +9.8 cm (Tang: -1.1 cm to +0.5 cm).
+// Safe Pivot at X = -0.58, Y = 0; Bite Pivot at X = +0.58, Y = 0.
+const SAFE_PIVOT_X = -0.58;
+const BITE_PIVOT_X = 0.58;
+
+const bladeEtch = createBladeEtchTextures();
+const handleBump = createOrigamiHandleTexture();
+
+// Shared Materials (dynamically updated by Colourways)
+const materials = {
+  bladeMirror: new THREE.MeshPhysicalMaterial({
+    color: 0xf4f7fb,
+    map: bladeEtch.map,
+    roughnessMap: bladeEtch.roughMap,
+    metalness: 1.0,
+    roughness: 0.04,
+    envMapIntensity: 2.3,
+    clearcoat: 0.35,
+    clearcoatRoughness: 0.05
+  }),
+  bladeBevel: new THREE.MeshPhysicalMaterial({
+    color: 0xffffff,
+    metalness: 1.0,
+    roughness: 0.015,
+    envMapIntensity: 2.7
+  }),
+  handleTi: new THREE.MeshPhysicalMaterial({
+    color: 0x3f1678, // Deep Royal Purple Anodised Ti
+    metalness: 0.88,
+    roughness: 0.24,
+    bumpMap: handleBump,
+    bumpScale: 0.028,
+    clearcoat: 0.45,
+    clearcoatRoughness: 0.18,
+    iridescence: 0.65,
+    iridescenceIOR: 1.42,
+    envMapIntensity: 1.6
+  }),
+  handleFluteGold: new THREE.MeshPhysicalMaterial({
+    color: 0xf2c14e, // 24K Gold milled origami grip rings & hardware
+    metalness: 0.96,
+    roughness: 0.14,
+    clearcoat: 0.3,
+    envMapIntensity: 2.1
+  }),
+  ceramicBearing: new THREE.MeshStandardMaterial({
+    color: 0xf5f5f0,
+    roughness: 0.15,
+    metalness: 0.1
+  }),
+  neodymiumMag: new THREE.MeshStandardMaterial({
+    color: 0x8e96a0,
+    roughness: 0.25,
+    metalness: 0.9
+  })
+};
+
+const colourways = {
+  royal: {
+    name: 'Royal Orizuru',
+    handleColor: 0x3f1678,
+    iridescence: 0.65,
+    iridIOR: 1.42,
+    goldColor: 0xf2c14e,
+    bladeTint: 0xf4f7fb
+  },
+  sakura: {
+    name: 'Sakura Kinpaku',
+    handleColor: 0x8c2d56,
+    iridescence: 0.78,
+    iridIOR: 1.55,
+    goldColor: 0xffcfa3,
+    bladeTint: 0xfff7f9
+  },
+  jade: {
+    name: 'Moss Washi',
+    handleColor: 0x164a36,
+    iridescence: 0.55,
+    iridIOR: 1.35,
+    goldColor: 0xe8b944,
+    bladeTint: 0xf2f8f4
+  }
+};
+
+// Track all interactive/explodable parts
+const interactiveParts = [];
+function registerPart(mesh, name, desc, explodeVec) {
+  mesh.userData.partName = name;
+  mesh.userData.partDesc = desc;
+  mesh.userData.basePos = mesh.position.clone();
+  mesh.userData.explodeVec = explodeVec.clone();
+  interactiveParts.push(mesh);
+}
+
+// Build custom Cleaver Blade with Hollow/Flat Grind Bevels, Choil, Tang & Origami Kicker
+function buildCleaverBladeGroup() {
+  const group = new THREE.Group();
+
+  // 1. Central Spine & Ricasso Core (Extruded 2D profile with chamfers)
+  const coreShape = new THREE.Shape();
+  // Start at Tang Base
+  coreShape.moveTo(-0.88, -1.05);
+  coreShape.quadraticCurveTo(0.0, -1.25, 0.88, -1.05);
+  // Bite side tang up to signature kicker base
+  coreShape.lineTo(0.95, 0.45);
+  // Finger Choil semicircle
+  coreShape.absarc(0.92, 0.98, 0.36, -Math.PI * 0.5, Math.PI * 0.5, true);
+  // Broad Cleaver Spine & Belly profile
+  coreShape.lineTo(0.55, 1.38);
+  coreShape.lineTo(0.62, 9.55); // Slight forward flare of cleaver
+  // Squared Cleaver Tip with Origami Reverse-Tanto Corner Facet
+  coreShape.lineTo(0.28, 9.82);
+  coreShape.lineTo(-0.88, 9.65);
+  // Spine with origami jimping notches near base
+  coreShape.lineTo(-0.92, 2.2);
+  coreShape.lineTo(-0.82, 1.95);
+  coreShape.lineTo(-0.92, 1.7);
+  coreShape.lineTo(-0.82, 1.45);
+  coreShape.lineTo(-0.92, 1.2);
+  coreShape.closePath();
+
+  // Pivot holes through tang
+  const safeHole = new THREE.Path();
+  safeHole.absarc(SAFE_PIVOT_X, 0, 0.19, 0, Math.PI * 2, false);
+  coreShape.holes.push(safeHole);
+
+  const biteHole = new THREE.Path();
+  biteHole.absarc(BITE_PIVOT_X, 0, 0.19, 0, Math.PI * 2, false);
+  coreShape.holes.push(biteHole);
+
+  // Origami triangular fuller cutout near spine
+  const fullerHole = new THREE.Path();
+  fullerHole.moveTo(-0.55, 2.5);
+  fullerHole.lineTo(-0.18, 3.8);
+  fullerHole.lineTo(-0.55, 5.8);
+  fullerHole.closePath();
+  coreShape.holes.push(fullerHole);
+
+  const extrudeSettings = {
+    depth: 0.24,
+    bevelEnabled: true,
+    bevelSegments: 2,
+    steps: 1,
+    bevelSize: 0.035,
+    bevelThickness: 0.035
+  };
+  const bladeCoreGeo = new THREE.ExtrudeGeometry(coreShape, extrudeSettings);
+  bladeCoreGeo.center();
+  // Re-align so pivot Y=0 is exact
+  bladeCoreGeo.translate(0.02, 4.28, 0);
+
+  // Remap UVs for side faces so the Origami Crane Maker's Mark & Gold Creases map cleanly
+  const uv = bladeCoreGeo.attributes.uv;
+  const pos = bladeCoreGeo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const px = pos.getX(i);
+    const py = pos.getY(i);
+    const u = THREE.MathUtils.clamp((py - 1.0) / 8.8, 0, 1);
+    const v = THREE.MathUtils.clamp((px + 0.95) / 2.2, 0, 1);
+    uv.setXY(i, u, v);
+  }
+
+  const bladeCoreMesh = new THREE.Mesh(bladeCoreGeo, materials.bladeMirror);
+  bladeCoreMesh.castShadow = true;
+  bladeCoreMesh.receiveShadow = true;
+  registerPart(
+    bladeCoreMesh,
+    'Mirror M390 Cleaver Blade',
+    'Broad rectangular cleaver profile with etched Senbazuru crest & 24K gold origami valley creases',
+    new THREE.Vector3(0, 1.2, 0)
+  );
+  group.add(bladeCoreMesh);
+
+  // 2. Custom Tapered Primary Grind & Razor Edge Bevel Geometry (True wedge cross-section)
+  const grindGeo = new THREE.BufferGeometry();
+  // Build front and back primary bevel facets + squared cleaver front bevel
+  const yStart = 1.38, yEnd = 9.55, yTip = 9.82;
+  const xGrindLine = -0.12; // Visible grind line halfway across blade width
+  const xEdge = 1.22;       // Broad cleaver cutting edge
+  const zThick = 0.155;     // Thickness at grind line
+  const zEdge = 0.008;      // Razor edge bevel apex
+
+  const gVerts = new Float32Array([
+    // Front primary bevel (Z+)
+    xGrindLine, yStart, zThick,   xEdge, yStart, zEdge,   xEdge, yEnd, zEdge,
+    xGrindLine, yStart, zThick,   xEdge, yEnd, zEdge,     xGrindLine, yTip, zThick * 0.7,
+    // Back primary bevel (Z-)
+    xGrindLine, yStart, -zThick,  xEdge, yEnd, -zEdge,    xEdge, yStart, -zEdge,
+    xGrindLine, yStart, -zThick,  xGrindLine, yTip, -zThick * 0.7, xEdge, yEnd, -zEdge,
+    // Secondary micro-bevel glint strip (Z+ and Z-)
+    xEdge - 0.11, yStart, 0.032,  xEdge, yStart, 0.0,     xEdge, yEnd, 0.0,
+    xEdge - 0.11, yStart, 0.032,  xEdge, yEnd, 0.0,       xEdge - 0.11, yEnd, 0.032,
+    xEdge - 0.11, yStart, -0.032, xEdge, yEnd, 0.0,       xEdge, yStart, 0.0,
+    xEdge - 0.11, yStart, -0.032, xEdge - 0.11, yEnd, -0.032, xEdge, yEnd, 0.0,
+    // Squared Cleaver Tip Bevel
+    -0.88, 9.65, zThick,          xGrindLine, yTip, zThick * 0.7,  xEdge, yEnd, 0.0,
+    -0.88, 9.65, -zThick,         xEdge, yEnd, 0.0,       xGrindLine, yTip, -zThick * 0.7
+  ]);
+  grindGeo.setAttribute('position', new THREE.BufferAttribute(gVerts, 3));
+  grindGeo.computeVertexNormals();
+
+  const grindMesh = new THREE.Mesh(grindGeo, materials.bladeBevel);
+  grindMesh.castShadow = true;
+  registerPart(
+    grindMesh,
+    'Compound Mirror Edge Bevel',
+    'Hollow-ground primary bevel with 17° mirror-stropped cleaver edge & origami tip facet',
+    new THREE.Vector3(0.4, 1.4, 0)
+  );
+  group.add(grindMesh);
+
+  // 3. SIGNATURE DETAIL: Pierced 24K Gold Origami Crane Kicker ("Orizuru-Dome")
+  // Positioned at the base of the blade on the bite side so it contacts the handle channel before the edge ever can.
+  const kickerShape = new THREE.Shape();
+  kickerShape.moveTo(0.72, 0.22);
+  kickerShape.lineTo(1.24, 0.42); // Origami beak point that meets bite handle zen block
+  kickerShape.lineTo(1.06, 0.65);
+  kickerShape.lineTo(1.18, 0.82); // Wing tip
+  kickerShape.lineTo(0.72, 0.76);
+  kickerShape.closePath();
+
+  const kickerHole = new THREE.Path();
+  kickerHole.moveTo(0.84, 0.42);
+  kickerHole.lineTo(1.05, 0.48);
+  kickerHole.lineTo(0.90, 0.62);
+  kickerHole.closePath();
+  kickerShape.holes.push(kickerHole);
+
+  const kickerGeo = new THREE.ExtrudeGeometry(kickerShape, {
+    depth: 0.26, bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: 0.02, bevelThickness: 0.02
+  });
+  kickerGeo.translate(0, 0, -0.13);
+  const kickerMesh = new THREE.Mesh(kickerGeo, materials.handleFluteGold);
+  registerPart(
+    kickerMesh,
+    'Orizuru-Dome (Origami Crane Kicker)',
+    'Signature 24K gold-plated pierced crane kicker — arrests bite handle travel so the blade edge never touches inside the channel',
+    new THREE.Vector3(1.1, 0.5, 0.8)
+  );
+  group.add(kickerMesh);
+
+  return group;
+}
+
+// Build Tubular Handle with Origami Faceted Grip Rings & Pivot Hardware
+function buildTubularHandle(isBiteHandle) {
+  const handleRoot = new THREE.Group();
+  const sideSign = isBiteHandle ? 1 : -1;
+  const labelPrefix = isBiteHandle ? 'Bite Handle' : 'Safe Handle';
+
+  // Tubular Rod Profile (LatheGeometry with rounded rod cross-section + milled origami grip rings)
+  const lathePoints = [];
+  const totalLen = 12.1; // From y=0 (pivot) to y=-12.1 (pommel)
+  const steps = 68;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const y = -t * totalLen;
+    let r = 0.46; // Base tubular radius
+
+    // Rounded pivot head dome at top
+    if (t < 0.06) {
+      r = 0.46 * Math.sin((t / 0.06) * (Math.PI * 0.5));
+    }
+    // Tapered neck below pivot
+    else if (t < 0.14) {
+      r = 0.42;
+    }
+    // 6 Milled Origami Grip Rings (V-creased bands along the tubular shaft)
+    else if (t > 0.18 && t < 0.84) {
+      const ringPhase = ((t - 0.18) / 0.66) * 6.0 * Math.PI * 2;
+      const groove = Math.cos(ringPhase);
+      if (groove > 0.55) {
+        r = 0.36; // Deep V-fold ring groove
+      } else {
+        r = 0.475 - Math.abs(groove) * 0.03; // Faceted origami barrel swell
+      }
+    }
+    // Pommel taper
+    else if (t > 0.93) {
+      r = 0.45 * Math.cos(((t - 0.93) / 0.07) * (Math.PI * 0.45));
+    }
+    lathePoints.push(new THREE.Vector2(Math.max(r, 0.02), y + 0.48));
+  }
+
+  // Split tube into front and back halves (scales/halves) separated by blade channel slot
+  const halfLatheGeoF = new THREE.LatheGeometry(lathePoints, 20, -Math.PI * 0.42, Math.PI * 0.84);
+  halfLatheGeoF.rotateY(Math.PI * 0.5);
+  halfLatheGeoF.translate(0, 0, 0.14);
+
+  const halfLatheGeoB = new THREE.LatheGeometry(lathePoints, 20, Math.PI * 0.58, Math.PI * 0.84);
+  halfLatheGeoB.rotateY(Math.PI * 0.5);
+  halfLatheGeoB.translate(0, 0, -0.14);
+
+  const frontScale = new THREE.Mesh(halfLatheGeoF, materials.handleTi);
+  const backScale = new THREE.Mesh(halfLatheGeoB, materials.handleTi);
+  frontScale.castShadow = true;
+  backScale.castShadow = true;
+
+  registerPart(
+    frontScale,
+    `${labelPrefix} — Front Tubular Scale`,
+    'Grade-5 Titanium rod milled with origami Yoshimura facets & grip rings',
+    new THREE.Vector3(sideSign * 0.6, -0.4, 1.6)
+  );
+  registerPart(
+    backScale,
+    `${labelPrefix} — Rear Tubular Scale`,
+    'Grade-5 Titanium rod milled with internal blade channel & relief cutouts',
+    new THREE.Vector3(sideSign * 0.6, -0.4, -1.6)
+  );
+  handleRoot.add(frontScale, backScale);
+
+  // Gold Anodised Grip Ring Collars (6 recessed gold bands inside the tubular grooves)
+  const ringGroup = new THREE.Group();
+  for (let rIdx = 0; rIdx < 6; rIdx++) {
+    const ry = -1.95 - rIdx * 1.32;
+    const torusGeo = new THREE.TorusGeometry(0.38, 0.048, 8, 16);
+    torusGeo.rotateX(Math.PI * 0.5);
+    const ringMesh = new THREE.Mesh(torusGeo, materials.handleFluteGold);
+    ringMesh.position.set(0, ry, 0);
+    ringGroup.add(ringMesh);
+  }
+  // Bite Handle Indicator Ring at top neck (crimson-gold collar on bite handle)
+  if (isBiteHandle) {
+    const biteMarkerGeo = new THREE.CylinderGeometry(0.44, 0.44, 0.22, 16);
+    const biteMarker = new THREE.Mesh(biteMarkerGeo, materials.handleFluteGold);
+    biteMarker.position.set(0, -1.1, 0);
+    ringGroup.add(biteMarker);
+  }
+  registerPart(
+    ringGroup,
+    `${labelPrefix} — 24K Gold Grip Rings`,
+    'Precision-turned gold grip collars seated inside the tubular handle grooves',
+    new THREE.Vector3(sideSign * 1.4, -0.8, 0.6)
+  );
+  handleRoot.add(ringGroup);
+
+  // PIVOT HARDWARE: Torx Pivot Screw, Sculpted Origami Pivot Collar, Ceramic Ball Bearing Cage
+  const pivotScrewGeo = new THREE.CylinderGeometry(0.26, 0.26, 0.68, 12);
+  pivotScrewGeo.rotateX(Math.PI * 0.5);
+  const pivotScrew = new THREE.Mesh(pivotScrewGeo, materials.handleFluteGold);
+  registerPart(
+    pivotScrew,
+    `${labelPrefix} — Gold Torx Pivot Pin`,
+    'Hardened titanium pivot barrel & T10 Torx screw with gold PVD finish',
+    new THREE.Vector3(0, 0, 2.8)
+  );
+  handleRoot.add(pivotScrew);
+
+  // Origami Octagonal Pivot Collar
+  const collarGeo = new THREE.RingGeometry(0.24, 0.38, 8);
+  const collarF = new THREE.Mesh(collarGeo, materials.handleFluteGold);
+  collarF.position.z = 0.35;
+  const collarB = new THREE.Mesh(collarGeo, materials.handleFluteGold);
+  collarB.position.z = -0.35;
+  collarB.rotation.y = Math.PI;
+  const collarPair = new THREE.Group();
+  collarPair.add(collarF, collarB);
+  registerPart(
+    collarPair,
+    `${labelPrefix} — Octagonal Origami Pivot Collars`,
+    'Faceted gold pivot collars framing the pivot screws',
+    new THREE.Vector3(0, 0, -2.4)
+  );
+  handleRoot.add(collarPair);
+
+  // Caged Ceramic Bearings (visible in Exploded View!)
+  const bearingGroup = new THREE.Group();
+  const raceGeo = new THREE.TorusGeometry(0.26, 0.04, 8, 18);
+  const raceF = new THREE.Mesh(raceGeo, materials.handleFluteGold);
+  raceF.position.z = 0.16;
+  const raceB = new THREE.Mesh(raceGeo, materials.handleFluteGold);
+  raceB.position.z = -0.16;
+  bearingGroup.add(raceF, raceB);
+
+  const ballGeo = new THREE.SphereGeometry(0.045, 8, 8);
+  for (let b = 0; b < 10; b++) {
+    const ang = (b / 10) * Math.PI * 2;
+    const ball1 = new THREE.Mesh(ballGeo, materials.ceramicBearing);
+    ball1.position.set(Math.cos(ang) * 0.26, Math.sin(ang) * 0.26, 0.16);
+    const ball2 = ball1.clone();
+    ball2.position.z = -0.16;
+    bearingGroup.add(ball1, ball2);
+  }
+  registerPart(
+    bearingGroup,
+    `${labelPrefix} — Caged Si3N4 Ceramic Bearings`,
+    'High-speed silicon nitride ceramic bearings delivering glassy, zero-play swing acoustics',
+    new THREE.Vector3(0, 0.3, 1.9)
+  );
+  handleRoot.add(bearingGroup);
+
+  // ZEN PIN: Hardened stop pin at y = -0.78 on outer edge of handle
+  const zenPinGeo = new THREE.CylinderGeometry(0.11, 0.11, 0.62, 12);
+  zenPinGeo.rotateX(Math.PI * 0.5);
+  const zenPin = new THREE.Mesh(zenPinGeo, materials.handleFluteGold);
+  zenPin.position.set(sideSign * 0.28, -0.78, 0);
+  registerPart(
+    zenPin,
+    `${labelPrefix} — Hardened Zen Stop Pin`,
+    'Arrests handle rotation against the tang nipple at exact open and closed lockup',
+    new THREE.Vector3(sideSign * 0.4, -0.2, -2.2)
+  );
+  handleRoot.add(zenPin);
+
+  // Pommel Spacer & Body Screw at bottom of handle
+  const spacerGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.56, 8);
+  spacerGeo.rotateX(Math.PI * 0.5);
+  const spacer = new THREE.Mesh(spacerGeo, materials.handleFluteGold);
+  spacer.position.set(0, -11.1, 0);
+  registerPart(
+    spacer,
+    `${labelPrefix} — Origami Barrel Spacer`,
+    'Geometrically faceted gold standoff and T8 body screw',
+    new THREE.Vector3(sideSign * 0.5, -1.2, 2.0)
+  );
+  handleRoot.add(spacer);
+
+  return handleRoot;
+}
+
+// Build Magnetic Latch with No Visible Spring (Origami Folded Bar + Internal Neodymium Magnets)
+function buildMagneticLatch() {
+  const latchPivotGroup = new THREE.Group();
+
+  // Sculpted Origami Folded Gold Latch Arm
+  const latchShape = new THREE.Shape();
+  latchShape.moveTo(-0.18, 0.15);
+  latchShape.lineTo(0.18, 0.15);
+  latchShape.lineTo(0.24, -1.25);
+  // Origami diamond catch head at tip
+  latchShape.lineTo(0.38, -1.55);
+  latchShape.lineTo(0.0, -1.92);
+  latchShape.lineTo(-0.38, -1.55);
+  latchShape.lineTo(-0.24, -1.25);
+  latchShape.closePath();
+
+  const latchGeo = new THREE.ExtrudeGeometry(latchShape, {
+    depth: 0.22, bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: 0.025, bevelThickness: 0.025
+  });
+  latchGeo.translate(0, 0, -0.11);
+  // Rotate so when latchAngle = 0, it bridges horizontally from Bite Handle across to Safe Handle
+  latchGeo.rotateZ(-Math.PI * 0.5);
+
+  const latchMesh = new THREE.Mesh(latchGeo, materials.handleFluteGold);
+  latchMesh.castShadow = true;
+  registerPart(
+    latchMesh,
+    'Origami Neodymium Magnetic Latch',
+    'Springless magnetic latch — internal N52 magnets snap the latch into open, neutral, or locked positions without coil springs',
+    new THREE.Vector3(1.5, -1.8, 0)
+  );
+  latchPivotGroup.add(latchMesh);
+
+  // Embedded N52 Neodymium Magnet Cylinders (visible on hover / explode)
+  const magGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.26, 12);
+  magGeo.rotateX(Math.PI * 0.5);
+  const mag1 = new THREE.Mesh(magGeo, materials.neodymiumMag);
+  mag1.position.set(-0.2, 0, 0);
+  const mag2 = new THREE.Mesh(magGeo, materials.neodymiumMag);
+  mag2.position.set(-1.45, 0, 0);
+  const magGroup = new THREE.Group();
+  magGroup.add(mag1, mag2);
+  registerPart(
+    magGroup,
+    'Embedded N52 Neodymium Magnet Cores',
+    'Opposing-polarity rare-earth magnets concealed inside the latch head and safe handle',
+    new THREE.Vector3(1.8, -2.2, 1.4)
+  );
+  latchPivotGroup.add(magGroup);
+
+  return latchPivotGroup;
+}
+
+// Assemble Complete Balisong Hierarchy
+const knifeRoot = new THREE.Group();
+knifeRoot.position.set(0, 3.2, 0);
+scene.add(knifeRoot);
+
+const bladeGroup = buildCleaverBladeGroup();
+knifeRoot.add(bladeGroup);
+
+const safePivot = new THREE.Group();
+safePivot.position.set(SAFE_PIVOT_X, 0, 0);
+knifeRoot.add(safePivot);
+const safeHandle = buildTubularHandle(false);
+safePivot.add(safeHandle);
+
+const bitePivot = new THREE.Group();
+bitePivot.position.set(BITE_PIVOT_X, 0, 0);
+knifeRoot.add(bitePivot);
+const biteHandle = buildTubularHandle(true);
+bitePivot.add(biteHandle);
+
+// Mount Magnetic Latch at bottom of Bite Handle
+const latchPivot = buildMagneticLatch();
+latchPivot.position.set(0, -11.45, 0);
+biteHandle.add(latchPivot);
+
+// ============================================================================
+// 6. STYLISED ARTICULATED HAND (Porcelain-Washi & Gold Capsule Rig)
+// ============================================================================
+function buildStylisedHand() {
+  const handGroup = new THREE.Group();
+
+  const handMat = new THREE.MeshStandardMaterial({
+    color: 0x221d2a,
+    roughness: 0.45,
+    metalness: 0.25
+  });
+  const jointGoldMat = new THREE.MeshStandardMaterial({
+    color: 0xd4af37,
+    roughness: 0.25,
+    metalness: 0.85
+  });
+
+  // Sculpted Palm Block with beveled wrist
+  const palmGeo = new THREE.BoxGeometry(3.4, 4.2, 1.15);
+  const palm = new THREE.Mesh(palmGeo, handMat);
+  palm.position.set(-0.8, -4.5, -1.35);
+  palm.castShadow = true;
+  handGroup.add(palm);
+
+  const wristGeo = new THREE.CylinderGeometry(1.3, 1.5, 3.2, 12);
+  const wrist = new THREE.Mesh(wristGeo, handMat);
+  wrist.position.set(-0.9, -8.2, -1.4);
+  wrist.rotation.z = -0.12;
+  handGroup.add(wrist);
+
+  // Articulated Capsule Fingers (Index, Middle, Ring, Pinky + Thumb)
+  const fingers = [];
+  const fingerY = [-2.5, -3.7, -4.9, -6.0];
+  const fingerLengths = [1.45, 1.6, 1.5, 1.25];
+
+  for (let i = 0; i < 4; i++) {
+    const fRoot = new THREE.Group();
+    fRoot.position.set(0.85, fingerY[i], -1.1);
+
+    const phalanx1Geo = new THREE.CapsuleGeometry(0.36, fingerLengths[i], 6, 10);
+    phalanx1Geo.rotateZ(Math.PI * 0.5);
+    const p1 = new THREE.Mesh(phalanx1Geo, handMat);
+    p1.position.set(0.6, 0, 0.45);
+    p1.rotation.y = -0.55;
+    fRoot.add(p1);
+
+    const knuckle = new THREE.Mesh(new THREE.SphereGeometry(0.39, 10, 10), jointGoldMat);
+    fRoot.add(knuckle);
+
+    const phalanx2Geo = new THREE.CapsuleGeometry(0.31, fingerLengths[i] * 0.8, 6, 10);
+    phalanx2Geo.rotateZ(Math.PI * 0.5);
+    const p2 = new THREE.Mesh(phalanx2Geo, handMat);
+    p2.position.set(0.85, 0, 1.45);
+    p2.rotation.y = -1.75;
+    fRoot.add(p2);
+
+    handGroup.add(fRoot);
+    fingers.push(fRoot);
+  }
+
+  // Thumb
+  const thumbRoot = new THREE.Group();
+  thumbRoot.position.set(-1.6, -2.6, -0.6);
+  const thumbMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 1.7, 6, 10), handMat);
+  thumbMesh.position.set(0.55, 0.55, 0.85);
+  thumbMesh.rotation.set(0.5, 0.4, -0.8);
+  const thumbJoint = new THREE.Mesh(new THREE.SphereGeometry(0.45, 10, 10), jointGoldMat);
+  thumbRoot.add(thumbJoint, thumbMesh);
+  handGroup.add(thumbRoot);
+
+  scene.add(handGroup);
+  return { handGroup, fingers, thumbRoot };
+}
+
+const handRig = buildStylisedHand();
+let showHand = true;
+
+// ============================================================================
+// 7. BLADE TIP RIBBON TRAIL (Fading Gold-Purple Origami Ribbon)
+// ============================================================================
+const TRAIL_POINTS = 56;
+const trailPositions = new Float32Array(TRAIL_POINTS * 2 * 3);
+const trailColors = new Float32Array(TRAIL_POINTS * 2 * 3);
+const trailGeo = new THREE.BufferGeometry();
+trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+trailGeo.setAttribute('color', new THREE.BufferAttribute(trailColors, 3));
+
+const trailIndices = [];
+for (let i = 0; i < TRAIL_POINTS - 1; i++) {
+  const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
+  trailIndices.push(a, b, c, b, d, c);
+}
+trailGeo.setIndex(trailIndices);
+
+const trailMat = new THREE.MeshBasicMaterial({
+  vertexColors: true,
+  side: THREE.DoubleSide,
+  transparent: true,
+  opacity: 0.72,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false
+});
+const trailMesh = new THREE.Mesh(trailGeo, trailMat);
+trailMesh.frustumCulled = false;
+scene.add(trailMesh);
+
+const tipHistory = [];
+let showTrail = true;
+
+function updateBladeTrail() {
+  trailMesh.visible = showTrail;
+  if (!showTrail) return;
+
+  // World position of Cleaver Squared Tip & Spine Corner
+  const tipOuter = new THREE.Vector3(0.55, 9.75, 0);
+  const tipInner = new THREE.Vector3(-0.75, 8.65, 0);
+  bladeGroup.localToWorld(tipOuter);
+  bladeGroup.localToWorld(tipInner);
+
+  tipHistory.unshift({ outer: tipOuter, inner: tipInner });
+  if (tipHistory.length > TRAIL_POINTS) tipHistory.pop();
+
+  const posAttr = trailGeo.attributes.position;
+  const colAttr = trailGeo.attributes.color;
+
+  for (let i = 0; i < TRAIL_POINTS; i++) {
+    const sample = tipHistory[Math.min(i, tipHistory.length - 1)] || { outer: tipOuter, inner: tipInner };
+    const fade = Math.pow(1 - i / (TRAIL_POINTS - 1), 1.7);
+
+    // Taper ribbon width toward tail
+    const mid = sample.outer.clone().lerp(sample.inner, 0.5);
+    const o = mid.clone().lerp(sample.outer, fade);
+    const inn = mid.clone().lerp(sample.inner, fade);
+
+    posAttr.setXYZ(i * 2, o.x, o.y, o.z);
+    posAttr.setXYZ(i * 2 + 1, inn.x, inn.y, inn.z);
+
+    // Gold-to-Royal-Purple gradient fade
+    const r = THREE.MathUtils.lerp(0.35, 0.98, fade) * fade;
+    const g = THREE.MathUtils.lerp(0.12, 0.80, fade) * fade;
+    const b = THREE.MathUtils.lerp(0.75, 0.32, fade) * fade;
+
+    colAttr.setXYZ(i * 2, r, g, b);
+    colAttr.setXYZ(i * 2 + 1, r * 0.7, g * 0.5, b * 1.1);
+  }
+  posAttr.needsUpdate = true;
+  colAttr.needsUpdate = true;
+}
+
+// ============================================================================
+// 8. BALISONG KINEMATICS, PHYSICAL RULES & ALL 8 MOVES + COMBO / FREESTYLE
+// ============================================================================
+/*
+  Handle Angle Convention (strictly enforced so handles NEVER pass through blade or each other):
+  - safeAngle in [0, Math.PI]:
+      0       = CLOSED (Safe handle encloses blade spine)
+      Math.PI = OPEN   (Safe handle rotated CCW around left pivot to meet behind tang)
+  - biteAngle in [0, Math.PI]:
+      0       = CLOSED (Bite handle rests on origami crane kicker, enclosing blade edge)
+      Math.PI = OPEN   (Bite handle rotated CW around right pivot to meet behind tang)
+  - latchAngle in [0, 1.65]:
+      0       = LATCHED (bridges across handle ends when both handles are together)
+      1.45    = UNLATCHED / SWUNG CLEAR
+*/
+
+const knifeState = {
+  safeAngle: Math.PI,
+  biteAngle: Math.PI,
+  latchAngle: 0.0,
+  rootPos: new THREE.Vector3(0, 3.2, 0),
+  rootRot: new THREE.Euler(0.18, 0.45, -0.32, 'XYZ'),
+  anchor: 'safe', // 'safe', 'bite', 'air', 'showcase'
+  explodeAmount: 0.0
+};
+
+let prevSafeAngle = Math.PI;
+let prevBiteAngle = Math.PI;
+let prevLatchClosed = true;
+
+function smoothstep(a, b, t) {
+  const x = THREE.MathUtils.clamp((t - a) / (b - a), 0, 1);
+  return x * x * (3 - 2 * x);
+}
+
+// Evaluate piecewise keyframe curves smoothly
+function evalCurve(keys, u) {
+  if (u <= keys[0][0]) return keys[0][1];
+  if (u >= keys[keys.length - 1][0]) return keys[keys.length - 1][1];
+  for (let i = 0; i < keys.length - 1; i++) {
+    const k0 = keys[i], k1 = keys[i + 1];
+    if (u >= k0[0] && u <= k1[0]) {
+      const s = smoothstep(k0[0], k1[0], u);
+      return THREE.MathUtils.lerp(k0[1], k1[1], s);
+    }
+  }
+  return keys[0][1];
+}
+
+// Definition of all 8 required balisong moves + Reveal Showcase
+const MOVES = {
+  reveal: {
+    title: 'REVEAL — TSURU-KIRI AWAKENING',
+    duration: 4.4,
+    evaluate(u) {
+      // Starts closed and flat on mossy rock, light sweeps, unlatches, flips open into hero pose
+      const safe = evalCurve([[0, 0], [0.22, 0], [0.48, Math.PI], [0.72, 0.3], [0.92, Math.PI], [1, Math.PI]], u);
+      const bite = evalCurve([[0, 0], [0.30, 0], [0.58, Math.PI * 0.85], [0.88, Math.PI], [1, Math.PI]], u);
+      const rx = evalCurve([[0, 1.35], [0.35, 0.45], [0.85, 0.16], [1, 0.16]], u);
+      const ry = evalCurve([[0, -0.9], [0.5, 0.8], [0.9, 0.35], [1, 0.35]], u);
+      const rz = evalCurve([[0, -1.2], [0.45, 0.35], [0.88, -0.28], [1, -0.28]], u);
+      const py = evalCurve([[0, 1.2], [0.45, 4.1], [0.88, 3.2], [1, 3.2]], u);
+      return {
+        safeAngle: safe,
+        biteAngle: bite,
+        pos: new THREE.Vector3(0, py, 0),
+        rot: new THREE.Euler(rx, ry, rz),
+        anchor: u < 0.25 ? 'showcase' : 'safe'
+      };
+    }
+  },
+
+  basic_open: {
+    title: '1 • BASIC OPEN (DOUBLE ROLLOUT)',
+    duration: 1.85,
+    evaluate(u) {
+      // Start closed -> unlatch -> swing bite & blade out -> wrist pass -> snap open & latch
+      const safe = evalCurve([
+        [0.0, 0.0], [0.12, 0.0], [0.38, Math.PI * 0.96],
+        [0.64, Math.PI * 0.22], [0.88, Math.PI], [1.0, Math.PI]
+      ], u);
+      const bite = evalCurve([
+        [0.0, 0.0], [0.10, 0.0], [0.36, Math.PI],
+        [0.66, Math.PI], [0.90, Math.PI], [1.0, Math.PI]
+      ], u);
+      const rz = evalCurve([
+        [0.0, -0.15], [0.35, 1.45], [0.65, -1.15], [0.90, -0.25], [1.0, -0.25]
+      ], u);
+      const rx = evalCurve([[0, 0.15], [0.5, 0.45], [1.0, 0.16]], u);
+      const ry = evalCurve([[0, 0.25], [0.45, 0.85], [1.0, 0.35]], u);
+      return {
+        safeAngle: safe,
+        biteAngle: bite,
+        pos: new THREE.Vector3(0, 3.2 + Math.sin(u * Math.PI) * 0.45, 0),
+        rot: new THREE.Euler(rx, ry, rz),
+        anchor: 'safe'
+      };
+    }
+  },
+
+  basic_close: {
+    title: '2 • BASIC CLOSE (LATCH LOCKUP)',
+    duration: 1.75,
+    evaluate(u) {
+      // Reverse of Basic Open: starts open, unlatches, swings bite handle out, closes onto kicker, magnetic latch clicks shut
+      const safe = evalCurve([
+        [0.0, Math.PI], [0.12, Math.PI], [0.42, Math.PI * 0.18],
+        [0.68, Math.PI * 0.88], [0.90, 0.0], [1.0, 0.0]
+      ], u);
+      const bite = evalCurve([
+        [0.0, Math.PI], [0.14, Math.PI], [0.45, 0.08],
+        [0.72, 0.0], [0.90, 0.0], [1.0, 0.0]
+      ], u);
+      const rz = evalCurve([
+        [0.0, -0.25], [0.40, 1.35], [0.70, -0.95], [0.92, -0.15], [1.0, -0.15]
+      ], u);
+      const rx = evalCurve([[0, 0.16], [0.5, 0.4], [1.0, 0.15]], u);
+      const ry = evalCurve([[0, 0.35], [0.5, -0.2], [1.0, 0.25]], u);
+      return {
+        safeAngle: safe,
+        biteAngle: bite,
+        pos: new THREE.Vector3(0, 3.2 + Math.sin(u * Math.PI) * 0.35, 0),
+        rot: new THREE.Euler(rx, ry, rz),
+        anchor: 'safe'
+      };
+    }
+  },
+
+  chaplin: {
+    title: '3 • ZERO-G CHAPLIN (SPINE INDEX ROLL)',
+    duration: 2.2,
+    evaluate(u) {
+      // Blade spine & safe handle form a 90° cradle rotating continuously around the index finger for 2 full revolutions
+      const safe = evalCurve([
+        [0.0, Math.PI], [0.15, Math.PI], [0.85, Math.PI], [1.0, Math.PI]
+      ], u);
+      const bite = evalCurve([
+        [0.0, Math.PI], [0.16, Math.PI * 0.24], [0.82, Math.PI * 0.22], [0.94, Math.PI], [1.0, Math.PI]
+      ], u);
+      const spinZ = evalCurve([
+        [0.0, -0.25], [0.15, 0.2], [0.84, 0.2 + Math.PI * 4.0], [0.96, Math.PI * 4.0 - 0.25], [1.0, Math.PI * 4.0 - 0.25]
+      ], u);
+      const orbitR = (u > 0.14 && u < 0.85) ? 0.85 : 0.0;
+      const ox = Math.cos(spinZ) * orbitR * 0.4;
+      const oy = 3.4 + Math.sin(spinZ) * orbitR * 0.4;
+      return {
+        safeAngle: safe,
+        biteAngle: bite,
+        pos: new THREE.Vector3(ox, oy, 0),
+        rot: new THREE.Euler(0.22, 0.45, spinZ),
+        anchor: 'safe'
+      };
+    }
+  },
+
+  zen_rollover: {
+    title: '4 • ZEN ROLLOVER (BACK-OF-HAND ORBIT)',
+    duration: 2.15,
+    evaluate(u) {
+      // Bite handle held initially, safe handle thrown over back of thumb/hand, released & caught by safe handle snapping open
+      const safe = evalCurve([
+        [0.0, Math.PI], [0.18, Math.PI * 0.15], [0.55, Math.PI * 0.45],
+        [0.88, Math.PI], [1.0, Math.PI]
+      ], u);
+      const bite = evalCurve([
+        [0.0, Math.PI], [0.22, 0.08], [0.62, Math.PI * 0.92],
+        [0.88, Math.PI], [1.0, Math.PI]
+      ], u);
+      const ry = evalCurve([
+        [0.0, 0.35], [0.20, 0.9], [0.72, 0.9 + Math.PI * 2.0], [0.95, Math.PI * 2.0 + 0.35], [1.0, Math.PI * 2.0 + 0.35]
+      ], u);
+      const rz = evalCurve([
+        [0.0, -0.25], [0.35, 1.15], [0.75, -0.85], [0.94, -0.25], [1.0, -0.25]
+      ], u);
+      return {
+        safeAngle: safe,
+        biteAngle: bite,
+        pos: new THREE.Vector3(Math.sin(u * Math.PI * 2) * 0.65, 3.3 + Math.sin(u * Math.PI) * 0.7, 0),
+        rot: new THREE.Euler(0.38, ry, rz),
+        anchor: u < 0.35 ? 'bite' : 'safe'
+      };
+    }
+  },
+
+  fan: {
+    title: '5 • ORIGAMI PROPELLER FAN',
+    duration: 2.25,
+    evaluate(u) {
+      // Safe handle spun rapidly around its long axis between thumb and index finger while bite handle fans out
+      const safe = evalCurve([
+        [0.0, Math.PI], [0.15, Math.PI * 0.75], [0.82, Math.PI * 0.78], [0.94, Math.PI], [1.0, Math.PI]
+      ], u);
+      const bite = evalCurve([
+        [0.0, Math.PI], [0.18, Math.PI * 0.18], [0.50, Math.PI * 0.35],
+        [0.82, Math.PI * 0.18], [0.94, Math.PI], [1.0, Math.PI]
+      ], u);
+      // 4 rapid axial revolutions (Y axis) while tilted forward
+      const ry = evalCurve([
+        [0.0, 0.35], [0.14, 0.8], [0.85, 0.8 + Math.PI * 8.0], [0.96, Math.PI * 8.0 + 0.35], [1.0, Math.PI * 8.0 + 0.35]
+      ], u);
+      const rx = evalCurve([
+        [0.0, 0.16], [0.20, 1.08], [0.80, 1.08], [0.95, 0.16], [1.0, 0.16]
+      ], u);
+      return {
+        safeAngle: safe,
+        biteAngle: bite,
+        pos: new THREE.Vector3(0, 3.4, 0),
+        rot: new THREE.Euler(rx, ry, -0.22),
+        anchor: 'safe'
+      };
+    }
+  },
+
+  helix: {
+    title: '6 • HELIX TWIRL (MULTI-AXIS ROLLOVER)',
+    duration: 2.55,
+    evaluate(u) {
+      // Behind-the-8-ball + thumb rollover twirling about the knife's long axis while handles scissor
+      const safe = evalCurve([
+        [0.0, Math.PI], [0.20, 0.15], [0.46, Math.PI * 0.92],
+        [0.70, 0.22], [0.92, Math.PI], [1.0, Math.PI]
+      ], u);
+      const bite = evalCurve([
+        [0.0, Math.PI], [0.22, Math.PI * 0.88], [0.48, 0.12],
+        [0.74, Math.PI * 0.95], [0.92, Math.PI], [1.0, Math.PI]
+      ], u);
+      const ry = evalCurve([
+        [0.0, 0.35], [0.50, 0.35 + Math.PI * 2.0], [0.95, 0.35 + Math.PI * 4.0], [1.0, 0.35 + Math.PI * 4.0]
+      ], u);
+      const rz = evalCurve([
+        [0.0, -0.25], [0.28, 1.25], [0.58, -1.35], [0.88, 0.45], [0.96, -0.25], [1.0, -0.25]
+      ], u);
+      return {
+        safeAngle: safe,
+        biteAngle: bite,
+        pos: new THREE.Vector3(Math.sin(u * Math.PI * 2) * 0.5, 3.4 + Math.sin(u * Math.PI) * 0.6, 0),
+        rot: new THREE.Euler(0.42, ry, rz),
+        anchor: (u > 0.32 && u < 0.65) ? 'bite' : 'safe'
+      };
+    }
+  },
+
+  aerial: {
+    title: '7 • ICEPICK CRANE AERIAL',
+    duration: 2.35,
+    evaluate(u) {
+      // Wind-up -> parabolic toss into the air -> 2 full end-over-end rotations with mid-air handle opening -> crisp catch
+      const airPhase = THREE.MathUtils.clamp((u - 0.22) / 0.58, 0, 1);
+      const parabolaY = (u > 0.22 && u < 0.80)
+        ? 4.0 * airPhase * (1 - airPhase) * 5.8
+        : (u <= 0.22 ? -Math.sin((u / 0.22) * Math.PI) * 0.7 : -Math.sin(((u - 0.80) / 0.20) * Math.PI) * 0.45);
+
+      const safe = evalCurve([
+        [0.0, Math.PI], [0.20, 0.18], [0.52, Math.PI * 0.65],
+        [0.78, Math.PI], [1.0, Math.PI]
+      ], u);
+      const bite = evalCurve([
+        [0.0, Math.PI], [0.22, 0.25], [0.56, Math.PI * 0.92],
+        [0.80, Math.PI], [1.0, Math.PI]
+      ], u);
+      const rz = evalCurve([
+        [0.0, -0.25], [0.22, -0.85], [0.80, -0.85 + Math.PI * 4.0], [0.95, Math.PI * 4.0 - 0.25], [1.0, Math.PI * 4.0 - 0.25]
+      ], u);
+      const ry = evalCurve([
+        [0.0, 0.35], [0.22, 0.45], [0.80, 0.45 + Math.PI * 2.0], [1.0, Math.PI * 2.0 + 0.35]
+      ], u);
+      return {
+        safeAngle: safe,
+        biteAngle: bite,
+        pos: new THREE.Vector3(0, 3.2 + parabolaY, 0),
+        rot: new THREE.Euler(0.18, ry, rz),
+        anchor: (u > 0.22 && u < 0.80) ? 'air' : 'safe'
+      };
+    }
+  },
+
+  signature: {
+    title: '8 • SIGNATURE: ORIZURU ASCENT (鶴舞)',
+    duration: 3.1,
+    evaluate(u) {
+      // Signature Senbazuru trick:
+      // Phase 1 (0..0.35): Both handles spread to 90° like origami crane wings while rising in a spiral fan
+      // Phase 2 (0.35..0.78): Levitating zero-G flat helicopter spin where handles pulse like beating crane wings
+      // Phase 3 (0.78..1.0): Vertical dive snap into open reverse-grip lockup with resonant cleaver ring
+      const safe = evalCurve([
+        [0.0, Math.PI], [0.18, Math.PI * 0.48], [0.35, Math.PI * 0.62],
+        [0.52, Math.PI * 0.38], [0.68, Math.PI * 0.68], [0.85, Math.PI], [1.0, Math.PI]
+      ], u);
+      const bite = evalCurve([
+        [0.0, Math.PI], [0.18, Math.PI * 0.48], [0.35, Math.PI * 0.62],
+        [0.52, Math.PI * 0.38], [0.68, Math.PI * 0.68], [0.85, Math.PI], [1.0, Math.PI]
+      ], u);
+
+      const liftY = evalCurve([
+        [0.0, 3.2], [0.28, 5.4], [0.58, 7.6], [0.84, 3.0], [0.94, 3.2], [1.0, 3.2]
+      ], u);
+      const rx = evalCurve([
+        [0.0, 0.16], [0.25, Math.PI * 0.48], [0.72, Math.PI * 0.48], [0.88, 0.16], [1.0, 0.16]
+      ], u);
+      const ry = evalCurve([
+        [0.0, 0.35], [0.82, 0.35 + Math.PI * 6.0], [0.96, 0.35 + Math.PI * 6.0], [1.0, 0.35 + Math.PI * 6.0]
+      ], u);
+      const rz = evalCurve([
+        [0.0, -0.25], [0.30, 0.0], [0.72, Math.PI * 2.0], [0.88, Math.PI * 2.0 - 0.25], [1.0, Math.PI * 2.0 - 0.25]
+      ], u);
+
+      return {
+        safeAngle: safe,
+        biteAngle: bite,
+        pos: new THREE.Vector3(Math.sin(u * Math.PI * 4) * 0.45, liftY, Math.cos(u * Math.PI * 4) * 0.35),
+        rot: new THREE.Euler(rx, ry, rz),
+        anchor: (u > 0.26 && u < 0.80) ? 'air' : 'safe'
+      };
+    }
+  }
+};
+
+const MOVE_KEYS = ['basic_open', 'basic_close', 'chaplin', 'zen_rollover', 'fan', 'helix', 'aerial', 'signature'];
+
+// Animation Sequencer State
+let activeMode = 'reveal'; // 'reveal', 'single', 'combo', 'freestyle', 'showcase', 'manual'
+let currentMoveName = 'reveal';
+let moveElapsed = 0;
+let speedMultiplier = 1.0;
+let slowMoActive = false;
+let comboIndex = 0;
+let lastFreestyleMove = '';
+
+// Pose blending state so transitions between moves NEVER snap or teleport
+const blendFrom = {
+  active: false,
+  alpha: 1.0,
+  safeAngle: Math.PI,
+  biteAngle: Math.PI,
+  pos: new THREE.Vector3(0, 3.2, 0),
+  quat: new THREE.Quaternion()
+};
+
+function triggerMove(moveKey, mode = 'single') {
+  sound.init();
+  // Capture current pose for a seamless blend into the move's first frame
+  blendFrom.active = true;
+  blendFrom.alpha = 0.0;
+  blendFrom.safeAngle = knifeState.safeAngle;
+  blendFrom.biteAngle = knifeState.biteAngle;
+  blendFrom.pos.copy(knifeRoot.position);
+  blendFrom.quat.copy(knifeRoot.quaternion);
+
+  activeMode = mode;
+  currentMoveName = moveKey;
+  moveElapsed = 0;
+
+  const moveDef = MOVES[moveKey];
+  if (moveDef) {
+    document.getElementById('move-caption').textContent = moveDef.title;
+  }
+
+  // Highlight active button
+  document.querySelectorAll('.move-btn').forEach(b => {
+    const m = b.dataset.move;
+    b.classList.toggle('active', (mode === 'combo' && m === 'combo') || (mode === 'freestyle' && m === 'freestyle') || (mode === 'single' && m === moveKey));
+  });
+}
+
+// ============================================================================
+// 9. INTERACTIVE HANDLE DRAGGING & PART HOVER RAYCASTER
+// ============================================================================
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+const tooltip = document.getElementById('part-tooltip');
+
+let draggingHandle = null; // 'safe' or 'bite'
+let dragStartPointerX = 0;
+let dragStartAngle = 0;
+
+function onPointerDown(e) {
+  if (e.target !== renderer.domElement) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObjects(interactiveParts, true);
+
+  if (hits.length > 0 && knifeState.explodeAmount < 0.05) {
+    let obj = hits[0].object;
+    while (obj && obj !== safeHandle && obj !== biteHandle && obj !== scene) {
+      obj = obj.parent;
+    }
+    if (obj === safeHandle || obj === biteHandle) {
+      draggingHandle = obj === safeHandle ? 'safe' : 'bite';
+      dragStartPointerX = e.clientX;
+      dragStartAngle = draggingHandle === 'safe' ? knifeState.safeAngle : knifeState.biteAngle;
+      activeMode = 'manual';
+      controls.enabled = false;
+      document.getElementById('move-caption').textContent =
+        draggingHandle === 'safe' ? 'MANUAL FLIP • SAFE HANDLE' : 'MANUAL FLIP • BITE HANDLE';
+    }
+  }
+}
+
+function onPointerMove(e) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+  if (draggingHandle) {
+    const dx = (e.clientX - dragStartPointerX) * 0.014;
+    if (draggingHandle === 'safe') {
+      knifeState.safeAngle = THREE.MathUtils.clamp(dragStartAngle - dx, 0, Math.PI);
+      // Sympathetic gravity coupling on the opposite handle
+      knifeState.biteAngle = THREE.MathUtils.lerp(knifeState.biteAngle, knifeState.safeAngle, 0.08);
+    } else {
+      knifeState.biteAngle = THREE.MathUtils.clamp(dragStartAngle + dx, 0, Math.PI);
+      knifeState.safeAngle = THREE.MathUtils.lerp(knifeState.safeAngle, knifeState.biteAngle, 0.08);
+    }
+    return;
+  }
+
+  // Hover Part Tooltip (always active in Exploded View or when hovering over knife)
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObjects(interactiveParts, true);
+  if (hits.length > 0) {
+    let hitObj = hits[0].object;
+    while (hitObj && !hitObj.userData.partName && hitObj.parent) {
+      hitObj = hitObj.parent;
+    }
+    if (hitObj && hitObj.userData.partName) {
+      tooltip.style.display = 'block';
+      tooltip.style.left = `${e.clientX}px`;
+      tooltip.style.top = `${e.clientY}px`;
+      tooltip.innerHTML = `${hitObj.userData.partName}<small>${hitObj.userData.partDesc}</small>`;
+      renderer.domElement.style.cursor = 'pointer';
+      return;
+    }
+  }
+  tooltip.style.display = 'none';
+  renderer.domElement.style.cursor = 'default';
+}
+
+function onPointerUp() {
+  if (draggingHandle) {
+    draggingHandle = null;
+    controls.enabled = true;
+  }
+}
+
+window.addEventListener('pointerdown', onPointerDown);
+window.addEventListener('pointermove', onPointerMove);
+window.addEventListener('pointerup', onPointerUp);
+
+// ============================================================================
+// 10. CAMERA PRESETS & EXPLODED VIEW CONTROLLER
+// ============================================================================
+const CAMERA_PRESETS = {
+  hero:  { pos: new THREE.Vector3(0, 7.5, 21.5), target: new THREE.Vector3(0, 2.8, 0) },
+  blade: { pos: new THREE.Vector3(0.5, 6.2, 10.5), target: new THREE.Vector3(0, 6.2, 0) },
+  pivot: { pos: new THREE.Vector3(1.2, 3.8, 7.2), target: new THREE.Vector3(0.2, 3.2, 0) },
+  latch: { pos: new THREE.Vector3(1.5, -4.5, 9.0), target: new THREE.Vector3(0, -6.2, 0) },
+  top:   { pos: new THREE.Vector3(0, 24.0, 2.5), target: new THREE.Vector3(0, 2.5, 0) }
+};
+
+let camTween = null;
+
+function setCameraPreset(key) {
+  const preset = CAMERA_PRESETS[key];
+  if (!preset) return;
+  camTween = {
+    startPos: camera.position.clone(),
+    endPos: preset.pos.clone(),
+    startTarget: controls.target.clone(),
+    endTarget: preset.target.clone(),
+    t: 0
+  };
+  document.querySelectorAll('.cam-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.cam === key);
+  });
+}
+
+let targetExplode = 0.0;
+const explodeSlider = document.getElementById('slider-explode');
+const explodeBtn = document.getElementById('btn-explode');
+
+function setExplodeTarget(val) {
+  targetExplode = THREE.MathUtils.clamp(val, 0, 1);
+  explodeSlider.value = targetExplode;
+  explodeBtn.classList.toggle('active', targetExplode > 0.1);
+  if (targetExplode > 0.1) {
+    // Settle knife upright in clear inspect pose when exploding
+    activeMode = 'manual';
+    knifeState.safeAngle = Math.PI * 0.88;
+    knifeState.biteAngle = Math.PI * 0.88;
+    document.getElementById('move-caption').textContent = 'EXPLODED ASSEMBLY • HOVER PARTS TO INSPECT';
+  }
+}
+
+// ============================================================================
+// 11. UI CONTROLS & KEYBOARD SHORTCUTS
+// ============================================================================
+// Move buttons
+document.querySelectorAll('.move-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const move = btn.dataset.move;
+    if (targetExplode > 0.05) setExplodeTarget(0);
+    if (move === 'combo') {
+      comboIndex = 0;
+      triggerMove(COMBO_ORDER[0], 'combo');
+    } else if (move === 'freestyle') {
+      const next = pickFreestyleMove();
+      lastFreestyleMove = next;
+      triggerMove(next, 'freestyle');
+    } else {
+      triggerMove(move, 'single');
+    }
+  });
+});
+
+// Speed & Slow-Mo
+const speedSlider = document.getElementById('slider-speed');
+const speedVal = document.getElementById('speed-val');
+const slowMoBtn = document.getElementById('btn-slowmo');
+
+speedSlider.addEventListener('input', () => {
+  speedMultiplier = parseFloat(speedSlider.value);
+  slowMoActive = false;
+  slowMoBtn.classList.remove('active');
+  speedVal.textContent = `${speedMultiplier.toFixed(2)}×`;
+});
+
+slowMoBtn.addEventListener('click', () => {
+  slowMoActive = !slowMoActive;
+  slowMoBtn.classList.toggle('active', slowMoActive);
+  const eff = slowMoActive ? 0.35 : speedMultiplier;
+  speedVal.textContent = `${eff.toFixed(2)}×`;
+});
+
+// Hand, Trail, Audio, Hide UI
+const handBtn = document.getElementById('btn-hand');
+handBtn.addEventListener('click', () => {
+  showHand = !showHand;
+  handBtn.classList.toggle('active', showHand);
+  handBtn.textContent = showHand ? 'Hand: ON' : 'Hand: OFF';
+});
+
+const trailBtn = document.getElementById('btn-trail');
+trailBtn.addEventListener('click', () => {
+  showTrail = !showTrail;
+  trailBtn.classList.toggle('active', showTrail);
+  trailBtn.textContent = showTrail ? 'Trail: ON' : 'Trail: OFF';
+});
+
+const muteBtn = document.getElementById('btn-mute');
+muteBtn.addEventListener('click', () => {
+  sound.init();
+  const isMuted = sound.toggleMute();
+  muteBtn.textContent = isMuted ? '🔇 Muted' : '🔊 Audio';
+  muteBtn.classList.toggle('active', !isMuted);
+});
+
+const volSlider = document.getElementById('slider-vol');
+volSlider.addEventListener('input', () => {
+  sound.init();
+  sound.setVolume(parseFloat(volSlider.value));
+});
+
+const hideUiBtn = document.getElementById('btn-hide-ui');
+const uiLayer = document.getElementById('ui-layer');
+hideUiBtn.addEventListener('click', () => {
+  uiLayer.classList.toggle('ui-hidden');
+  hideUiBtn.textContent = uiLayer.classList.contains('ui-hidden') ? 'Show UI' : 'Hide UI';
+});
+
+// Colourways
+document.querySelectorAll('.swatch-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const key = btn.dataset.theme;
+    const theme = colourways[key];
+    if (!theme) return;
+    materials.handleTi.color.setHex(theme.handleColor);
+    materials.handleTi.iridescence = theme.iridescence;
+    materials.handleTi.iridescenceIOR = theme.iridIOR;
+    materials.handleFluteGold.color.setHex(theme.goldColor);
+    materials.bladeMirror.color.setHex(theme.bladeTint);
+
+    document.querySelectorAll('.swatch-btn').forEach(b => b.classList.toggle('active', b === btn));
+  });
+});
+
+// Camera Presets & Explode
+document.querySelectorAll('.cam-btn').forEach(btn => {
+  btn.addEventListener('click', () => setCameraPreset(btn.dataset.cam));
+});
+
+explodeBtn.addEventListener('click', () => {
+  setExplodeTarget(targetExplode > 0.5 ? 0.0 : 1.0);
+});
+explodeSlider.addEventListener('input', () => {
+  setExplodeTarget(parseFloat(explodeSlider.value));
+});
+
+// Keyboard Shortcuts (1–8 moves, E explode, H hide UI, C combo, F freestyle, S slow-mo, Esc leave explode)
+window.addEventListener('keydown', (e) => {
+  const key = e.key.toLowerCase();
+  if (e.key >= '1' && e.key <= '8') {
+    const idx = parseInt(e.key, 10) - 1;
+    if (targetExplode > 0.05) setExplodeTarget(0);
+    triggerMove(MOVE_KEYS[idx], 'single');
+  } else if (key === 'e') {
+    setExplodeTarget(targetExplode > 0.5 ? 0.0 : 1.0);
+  } else if (key === 'h') {
+    hideUiBtn.click();
+  } else if (key === 'c') {
+    document.getElementById('btn-combo').click();
+  } else if (key === 'f') {
+    document.getElementById('btn-freestyle').click();
+  } else if (key === 's') {
+    slowMoBtn.click();
+  } else if (e.key === 'Escape' && targetExplode > 0.05) {
+    setExplodeTarget(0);
+  }
+});
+
+// ============================================================================
+// 12. RESIZE & CAMERA TWEEN CANCEL
+// ============================================================================
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Grabbing the orbit controls mid-tween hands the camera straight back to the user
+controls.addEventListener('start', () => { camTween = null; });
+
+// ============================================================================
+// 13. SEQUENCER: COMBO ORDER, FREESTYLE PICKER, POSE BLENDING
+// ============================================================================
+// Every move except Basic Open starts open, and only Basic Close ends closed,
+// so the combo chains open → tricks → close → open without a single snap.
+const COMBO_ORDER = ['basic_open', 'chaplin', 'zen_rollover', 'fan', 'helix', 'aerial', 'signature', 'basic_close'];
+const STARTS_CLOSED = new Set(['basic_open']);
+
+function pickFreestyleMove() {
+  const closed = knifeState.safeAngle < Math.PI * 0.5 && knifeState.biteAngle < Math.PI * 0.5;
+  if (closed) return 'basic_open';
+  const pool = MOVE_KEYS.filter(k => !STARTS_CLOSED.has(k) && k !== lastFreestyleMove);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+const moveCaption = document.getElementById('move-caption');
+const revealBanner = document.getElementById('reveal-banner');
+
+let blendDuration = 0.2;
+const _blendTargetQuat = new THREE.Quaternion();
+const _poseQuat = new THREE.Quaternion();
+
+// Returns the knife pose for the current move. While a blend is running the move
+// clock is frozen at u = 0, so the hand-off from the previous pose is a clean
+// glide into the move's first frame instead of a fight with its opening keys.
+function computeMovePose(simDt) {
+  const def = MOVES[currentMoveName];
+
+  if (blendFrom.active) {
+    const p0 = def.evaluate(0);
+    if (blendFrom.alpha === 0) {
+      const diff = Math.max(
+        Math.abs(p0.safeAngle - blendFrom.safeAngle),
+        Math.abs(p0.biteAngle - blendFrom.biteAngle)
+      );
+      blendDuration = 0.18 + 0.34 * (diff / Math.PI);
+    }
+    blendFrom.alpha = Math.min(blendFrom.alpha + simDt / blendDuration, 1);
+    const w = smoothstep(0, 1, blendFrom.alpha);
+    _blendTargetQuat.setFromEuler(p0.rot);
+    _poseQuat.copy(blendFrom.quat).slerp(_blendTargetQuat, w);
+    if (blendFrom.alpha >= 1) blendFrom.active = false;
+    return {
+      safeAngle: THREE.MathUtils.lerp(blendFrom.safeAngle, p0.safeAngle, w),
+      biteAngle: THREE.MathUtils.lerp(blendFrom.biteAngle, p0.biteAngle, w),
+      pos: blendFrom.pos.clone().lerp(p0.pos, w),
+      quat: _poseQuat.clone(),
+      anchor: p0.anchor,
+      u: 0,
+      done: false
+    };
+  }
+
+  moveElapsed += simDt;
+  const u = Math.min(moveElapsed / def.duration, 1);
+  const p = def.evaluate(u);
+  return {
+    safeAngle: p.safeAngle,
+    biteAngle: p.biteAngle,
+    pos: p.pos,
+    quat: _poseQuat.setFromEuler(p.rot).clone(),
+    anchor: p.anchor,
+    u,
+    done: u >= 1
+  };
+}
+
+let bannerHoldTimer = 0;
+
+function finishMove() {
+  if (activeMode === 'combo') {
+    comboIndex = (comboIndex + 1) % COMBO_ORDER.length;
+    triggerMove(COMBO_ORDER[comboIndex], 'combo');
+  } else if (activeMode === 'freestyle') {
+    const next = pickFreestyleMove();
+    lastFreestyleMove = next;
+    triggerMove(next, 'freestyle');
+  } else {
+    if (activeMode === 'reveal') bannerHoldTimer = 1.6;
+    activeMode = 'showcase';
+    moveCaption.textContent = 'TSURU-KIRI • SHOWCASE — PRESS 1–8';
+    document.querySelectorAll('.move-btn').forEach(b => b.classList.remove('active'));
+  }
+}
+
+// ============================================================================
+// 14. ZEN PIN STOPS, BOUNCE & MAGNETIC LATCH
+// ============================================================================
+const STOP_EPS = 0.025;
+let safeBounceAmp = 0, safeBounceT = 10, safeBounceDir = 0;
+let biteBounceAmp = 0, biteBounceT = 10, biteBounceDir = 0;
+
+function hitStop(which, intensity, isOpen) {
+  if (intensity > 0.2) sound.playPinClack(intensity, isOpen);
+  const amp = 0.11 * intensity;
+  const dir = isOpen ? -1 : 1;
+  if (which === 'safe') {
+    safeBounceAmp = amp; safeBounceT = 0; safeBounceDir = dir;
+  } else {
+    biteBounceAmp = amp; biteBounceT = 0; biteBounceDir = dir;
+  }
+}
+
+function detectStop(which, prev, cur, dt) {
+  const vel = Math.abs(cur - prev) / Math.max(dt, 1e-4);
+  const intensity = THREE.MathUtils.clamp(vel / 10, 0.15, 1.25);
+  if (prev < Math.PI - STOP_EPS && cur >= Math.PI - STOP_EPS) {
+    hitStop(which, intensity, true);
+  } else if (prev > STOP_EPS && cur <= STOP_EPS) {
+    hitStop(which, intensity, false);
+  }
+}
+
+function bounceOffset(amp, t) {
+  return amp * Math.exp(-t * 16) * Math.abs(Math.sin(t * 46));
+}
+
+function updateLatch(simDt) {
+  const S = 0.05;
+  const together =
+    (knifeState.safeAngle > Math.PI - S && knifeState.biteAngle > Math.PI - S) ||
+    (knifeState.safeAngle < S && knifeState.biteAngle < S);
+  const target = together ? 0.0 : 1.45;
+  knifeState.latchAngle = THREE.MathUtils.damp(knifeState.latchAngle, target, together ? 22 : 14, simDt);
+
+  const latchClosed = knifeState.latchAngle < 0.08;
+  if (latchClosed !== prevLatchClosed) {
+    sound.playLatchClick(latchClosed);
+    prevLatchClosed = latchClosed;
+  }
+
+  // Closed, the bite handle is flipped 180°, so the latch swings from the other side
+  const closedSide = knifeState.biteAngle < Math.PI * 0.5;
+  latchPivot.rotation.z = closedSide ? Math.PI - knifeState.latchAngle : knifeState.latchAngle;
+}
+
+// ============================================================================
+// 15. HAND RIG FOLLOW
+// ============================================================================
+let handScale = 0;
+let handCurl = 0;
+const handTargetPos = new THREE.Vector3();
+const handTargetQuat = new THREE.Quaternion();
+const lastGripPos = new THREE.Vector3(0, 3.2, 0);
+const _down = new THREE.Vector3(0, -1.2, 0);
+handRig.handGroup.scale.setScalar(0.001);
+handRig.handGroup.visible = false;
+
+function updateHand(dt) {
+  const hg = handRig.handGroup;
+  const anchor = knifeState.anchor;
+  const gripping = anchor === 'safe' || anchor === 'bite';
+  const wantVisible = showHand && knifeState.explodeAmount < 0.3 && anchor !== 'showcase';
+
+  handScale = THREE.MathUtils.damp(handScale, wantVisible ? 1 : 0, 8, dt);
+  hg.visible = handScale > 0.01;
+  hg.scale.setScalar(Math.max(handScale, 0.001));
+
+  if (gripping) {
+    const h = anchor === 'safe' ? safeHandle : biteHandle;
+    h.getWorldPosition(handTargetPos);
+    h.getWorldQuaternion(handTargetQuat);
+    lastGripPos.copy(handTargetPos);
+  } else {
+    // Released for an aerial: the hand drops slightly and waits, palm open
+    handTargetPos.copy(lastGripPos).add(_down);
+    handTargetQuat.copy(hg.quaternion);
+  }
+
+  hg.position.lerp(handTargetPos, 1 - Math.exp(-dt * (gripping ? 24 : 5)));
+  hg.quaternion.slerp(handTargetQuat, 1 - Math.exp(-dt * (gripping ? 12 : 3)));
+
+  handCurl = THREE.MathUtils.damp(handCurl, gripping ? 1 : 0, 10, dt);
+  const open = 1 - handCurl;
+  handRig.fingers.forEach((f, i) => {
+    f.rotation.y = open * (0.85 + i * 0.08);
+    f.rotation.z = open * 0.12;
+  });
+  handRig.thumbRoot.rotation.z = open * 0.6;
+}
+
+// ============================================================================
+// 16. AMBIENT STAGE MOTION
+// ============================================================================
+const motePosAttr = stage.motes.geometry.attributes.position;
+const moteSeeds = new Float32Array(motePosAttr.count).map(() => Math.random() * Math.PI * 2);
+
+function updateStage(dt, t) {
+  for (let i = 0; i < motePosAttr.count; i++) {
+    let y = motePosAttr.getY(i) + dt * (0.12 + 0.06 * Math.sin(moteSeeds[i]));
+    if (y > 10.5) y = -0.5;
+    motePosAttr.setY(i, y);
+    motePosAttr.setX(i, motePosAttr.getX(i) + Math.sin(t * 0.6 + moteSeeds[i]) * dt * 0.08);
+  }
+  motePosAttr.needsUpdate = true;
+
+  // Canopy drift: the dappled gobo slides slowly across the rock and blade
+  sunSpot.position.x = 7 + Math.sin(t * 0.13) * 1.4;
+  sunSpot.position.z = 8 + Math.cos(t * 0.11) * 1.1;
+  goldBounce.intensity = 4.5 + Math.sin(t * 1.7) * 0.25;
+}
+
+// ============================================================================
+// 17. MAIN LOOP — renders every frame into #scene-canvas
+// ============================================================================
+const clock = new THREE.Clock();
+let elapsedTotal = 0;
+const prevRootQuat = new THREE.Quaternion();
+const idleEuler = new THREE.Euler();
+const idlePos = new THREE.Vector3();
+const idleQuat = new THREE.Quaternion();
+
+// Start the reveal from its own first frame so no stop/latch fires on load
+prevSafeAngle = 0;
+prevBiteAngle = 0;
+moveCaption.textContent = MOVES.reveal.title;
+knifeRoot.quaternion.setFromEuler(MOVES.reveal.evaluate(0).rot);
+prevRootQuat.copy(knifeRoot.quaternion);
+
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (dt <= 0) return;
+  elapsedTotal += dt;
+  const speed = slowMoActive ? 0.35 : speedMultiplier;
+  const simDt = dt * speed;
+
+  // Explode amount eases toward its target
+  knifeState.explodeAmount = THREE.MathUtils.damp(knifeState.explodeAmount, targetExplode, 6, dt);
+  const exploding = knifeState.explodeAmount > 0.01 || targetExplode > 0.05;
+
+  // --- Knife pose -----------------------------------------------------------
+  const sequenced = activeMode === 'reveal' || activeMode === 'single' ||
+                    activeMode === 'combo' || activeMode === 'freestyle';
+  if (sequenced) {
+    const pose = computeMovePose(simDt);
+    knifeState.safeAngle = pose.safeAngle;
+    knifeState.biteAngle = pose.biteAngle;
+    knifeState.anchor = pose.anchor;
+    knifeRoot.position.copy(pose.pos);
+    knifeRoot.quaternion.copy(pose.quat);
+
+    if (activeMode === 'reveal') {
+      revealBanner.classList.toggle('visible', pose.u > 0.3);
+    }
+    if (pose.done) finishMove();
+  } else {
+    // Showcase / manual: a gentle hover, or an upright turntable while exploded
+    if (exploding) {
+      idleEuler.set(0.05, 0.25 + Math.sin(elapsedTotal * 0.25) * 0.35, 0);
+      idlePos.set(0, 3.6, 0);
+    } else {
+      idleEuler.set(
+        0.16 + Math.sin(elapsedTotal * 0.7) * 0.04,
+        0.35 + Math.sin(elapsedTotal * 0.4) * 0.25,
+        -0.25 + Math.sin(elapsedTotal * 0.9) * 0.03
+      );
+      idlePos.set(0, 3.2 + Math.sin(elapsedTotal * 1.1) * 0.12, 0);
+    }
+    idleQuat.setFromEuler(idleEuler);
+    const k = 1 - Math.exp(-dt * 4);
+    knifeRoot.position.lerp(idlePos, k);
+    knifeRoot.quaternion.slerp(idleQuat, k);
+    knifeState.anchor = exploding ? 'showcase' : 'safe';
+  }
+
+  if (bannerHoldTimer > 0) {
+    bannerHoldTimer -= dt;
+    if (bannerHoldTimer <= 0) revealBanner.classList.remove('visible');
+  }
+
+  // --- Zen pin stops & bounce -----------------------------------------------
+  detectStop('safe', prevSafeAngle, knifeState.safeAngle, dt);
+  detectStop('bite', prevBiteAngle, knifeState.biteAngle, dt);
+  safeBounceT += simDt;
+  biteBounceT += simDt;
+
+  const displaySafe = THREE.MathUtils.clamp(
+    knifeState.safeAngle + safeBounceDir * bounceOffset(safeBounceAmp, safeBounceT), 0, Math.PI);
+  const displayBite = THREE.MathUtils.clamp(
+    knifeState.biteAngle + biteBounceDir * bounceOffset(biteBounceAmp, biteBounceT), 0, Math.PI);
+
+  // Safe handle swings out over the spine side (-X), bite handle over the edge side (+X),
+  // so neither ever sweeps through the blade or the other handle.
+  safePivot.rotation.z = -(Math.PI - displaySafe);
+  bitePivot.rotation.z = (Math.PI - displayBite);
+
+  updateLatch(simDt);
+
+  // --- Exploded assembly ----------------------------------------------------
+  const ex = knifeState.explodeAmount;
+  for (const part of interactiveParts) {
+    part.position.copy(part.userData.basePos).addScaledVector(part.userData.explodeVec, ex);
+  }
+
+  scene.updateMatrixWorld();
+
+  // --- Hand, trail, audio ---------------------------------------------------
+  updateHand(dt);
+
+  updateBladeTrail();
+  if (exploding) trailMesh.visible = false;
+
+  const dq = Math.min(Math.abs(prevRootQuat.dot(knifeRoot.quaternion)), 1);
+  const rootAngVel = (2 * Math.acos(dq)) / dt;
+  const handleVel = Math.max(
+    Math.abs(knifeState.safeAngle - prevSafeAngle),
+    Math.abs(knifeState.biteAngle - prevBiteAngle)
+  ) / dt;
+  sound.updateContinuous(rootAngVel + handleVel * 0.5, handleVel);
+
+  prevSafeAngle = knifeState.safeAngle;
+  prevBiteAngle = knifeState.biteAngle;
+  prevRootQuat.copy(knifeRoot.quaternion);
+
+  // --- Camera ---------------------------------------------------------------
+  if (camTween) {
+    camTween.t = Math.min(camTween.t + dt / 1.3, 1);
+    const e = easeInOutCubic(camTween.t);
+    camera.position.lerpVectors(camTween.startPos, camTween.endPos, e);
+    controls.target.lerpVectors(camTween.startTarget, camTween.endTarget, e);
+    if (camTween.t >= 1) camTween = null;
+  }
+  controls.update();
+
+  updateStage(dt, elapsedTotal);
+
+  renderer.render(scene, camera);
+}
+
+renderer.render(scene, camera);
+window.__tsuruReady = true;
+animate();
+</script>
+</body>
+</html>
