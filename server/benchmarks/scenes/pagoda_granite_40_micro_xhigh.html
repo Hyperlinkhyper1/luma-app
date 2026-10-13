@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>3D Pagoda Benchmark – Spring Festival</title>
+<script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<style>
+  body { margin:0; overflow:hidden; }
+  canvas { width:100%; height:100%; }
+</style>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x2d6a4f);
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+camera.position.set(0, 30, 60);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.25;
+controls.enablePan = true;
+controls.enableZoom = true;
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(10, 20, 10);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.width = 2048;
+dirLight.shadow.mapSize.height = 2048;
+scene.add(dirLight);
+scene.add(new THREE.HemisphereLight(0x2d6a4f, 0x40916c, 0.5));
+
+const groundGeo = new THREE.BoxGeometry(50, 1, 50);
+const groundMat = new THREE.MeshStandardMaterial({ color: 0x9aa0a6 });
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI/2;
+ground.position.y = -0.5;
+scene.add(ground);
+
+const pagodaGeo = new THREE.BoxGeometry(20, 30, 20);
+const pagodaMat = new THREE.MeshStandardMaterial({
+  color: 0xc73e1d,
+  emissive: 0xe8b86d,
+  emissiveIntensity: 0.6,
+  roughness: 0.2,
+  metalness: 0.4
+});
+const pagoda = new THREE.Mesh(pagodaGeo, pagodaMat);
+pagoda.position.set(0, 35, 0);
+pagoda.castShadow = true;
+scene.add(pagoda);
+
+const pathGeo = new THREE.BoxGeometry(1, 1, 0.5);
+const pathMat = new THREE.MeshStandardMaterial({ color: 0x9aa0a6 });
+const path = new THREE.Mesh(pathGeo, pathMat);
+path.position.set(-2, 15, 0);
+path.castShadow = true;
+scene.add(path);
+
+const pondGeo = new THREE.BoxGeometry(30, 10, 30);
+const pondMat = new THREE.MeshStandardMaterial({ color: 0x7ed6df });
+const pond = new THREE.Mesh(pondGeo, pondMat);
+pond.position.set(-15, 5, 0);
+scene.add(pond);
+
+// Koi fish
+const koiGeo = new THREE.SphereGeometry(0.5, 32, 32);
+const koiMat = new THREE.MeshStandardMaterial({ color: 0xffb7c5 });
+const koi = new THREE.InstancedMesh(koiGeo, koiMat, 6);
+koi.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+for(let i=0;i<6;i++){
+  const pos = new THREE.Vector3(Math.random()*60-30, 10+Math.random()*4, Math.random()*60-30);
+  koi.instanceMatrix.setXYZ(i, pos.x, pos.y, pos.z);
+}
+scene.add(koi);
+
+// Lanterns
+const lanternGeo = new THREE.SphereGeometry(0.3, 16, 16);
+const lanternMat = new THREE.MeshStandardMaterial({ color: 0xff8fab });
+const lanterns = new THREE.InstancedMesh(lanternGeo, lanternMat, 4);
+lanterns.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+for(let i=0;i<4;i++){
+  const pos = new THREE.Vector3(Math.random()*40-20, 15+Math.random()*5, Math.random()*40-20);
+  lanterns.instanceMatrix.setXYZ(i, pos.x, pos.y, pos.z);
+}
+lanterns.position.y = 20;
+scene.add(lanterns);
+
+// Trees
+const treeGeo = new THREE.BoxGeometry(2, 8, 2);
+const treeMat = new THREE.MeshStandardMaterial({
+  color: 0x4a2c1a,
+  roughness: 0.6,
+  metalness: 0.2
+});
+const trees = [];
+let treeCount = 0;
+function createTree(pos){
+  const tree = new THREE.InstancedMesh(treeGeo, treeMat, 1);
+  tree.position.copy(pos);
+  scene.add(tree);
+  trees.push(tree);
+  treeCount++;
+}
+createTree(new THREE.Vector3(-10, 12, -10));
+createTree(new THREE.Vector3(10, 12, 10));
+createTree(new THREE.Vector3(0, 12, -20));
+createTree(new THREE.Vector3(0, 12, 20));
+createTree(new THREE.Vector3(-15, 12, 0));
+
+// Sakura petals
+const petalGeo = new THREE.PlaneGeometry(0.2, 0.2);
+const petalMat = new THREE.MeshStandardMaterial({
+  color: 0xfffb7c,
+  transparent: true,
+  opacity: 0.6
+});
+const petals = [];
+for(let i=0;i<200;i++){
+  const petal = new THREE.Mesh(petalGeo, petalMat);
+  petal.position.set(
+    (Math.random()-0.5)*50,
+    30+Math.random()*5,
+    (Math.random()-0.5)*50
+  );
+  scene.add(petal);
+  petals.push(petal);
+}
+requestAnimationFrame(tick);
+
+// Waterfall
+const waterfallGeo = new THREE.BoxGeometry(10, 5, 1);
+const waterfallMat = new THREE.MeshStandardMaterial({ color: 0x7ed6df });
+const waterfall = new THREE.Mesh(waterfallGeo, waterfallMat);
+waterfall.position.set(0, 5, -20);
+waterfall.rotation.x = -Math.PI/2;
+waterfall.castShadow = true;
+scene.add(waterfall);
+
+// Torii gate
+const toriiGeo = new THREE.ConeGeometry(1, 4, 8);
+const toriiMat = new THREE.MeshStandardMaterial({ color: 0xffb7c5 });
+const torii = new THREE.Mesh(toriiGeo, toriiMat);
+torii.position.set(-5, 5, 0);
+torii.castShadow = true;
+scene.add(torii);
+
+// Bamboo fence
+const fenceGeo = new THREE.BoxGeometry(0.1, 4, 1);
+const fenceMat = new THREE.MeshStandardMaterial({ color: 0x2d6a4f });
+const fence = new THREE.Mesh(fenceGeo, fenceMat);
+fence.position.set(-5, 3, 0);
+fence.castShadow = true;
+scene.add(fence);
+
+// Jizo statues
+const jizoGeo = new THREE.BoxGeometry(1, 1, 1);
+const jizoMat = new THREE.MeshStandardMaterial({ color: 0x606c38 });
+const jizo = [];
+for(let i=0;i<2;i++){
+  const statue = new THREE.Mesh(jizoGeo, jizoMat);
+  statue.position.set(Math.random()*30-15, 2, Math.random()*30-15);
+  statue.castShadow = true;
+  scene.add(statue);
+  jizo.push(statue);
+}
+
+// Animation loop
+function tick(){
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+
+// Interaction
+renderer.domElement.addEventListener('click', (e)=>{
+  const mouse = new THREE.Vector2(
+    (e.clientX / window.innerWidth) * 2 - 1,
+    -(e.clientY / window.innerHeight) * 2 + 1
+  );
+  const raycaster = new THREE.Raycaster();
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(trees);
+  if(intersects.length > 0){
+    const lantern = lanterns.children[intersects[0].instanceId];
+    lantern.material.color = new THREE.Color(0xffffff);
+  }
+});
+
+// Controls
+window.addEventListener('keydown', (e)=>{
+  if(e.key === 'p'){
+    controls.enabled = !controls.enabled;
+  }
+  if(e.key === 't'){
+    const day = day ? false : true;
+    day = day;
+    dirLight.color.set(day ? 0xffffff : 0xc73e1d);
+    dirLight.intensity = day ? 1 : 0.2;
+  }
+});
+
+// Stats
+import Stats from 'three/examples/jsm/libs/stats.module.js';
+const stats = new Stats();
+stats.showPanel(0); // 0: fps
+document.body.appendChild(stats.dom);
+
+// Resize handling
+window.addEventListener('resize', () =>{
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Voxel count and FPS stats
+let voxelCount = 0;
+let fps = 0;
+function updateStats(){
+  voxelCount = scene.traverse(obj=>{
+    return obj.isMesh ? obj.geometry.parameters.width * obj.geometry.parameters.height * obj.geometry.parameters.depth : 0;
+  }).count;
+  stats.begin();
+  renderer.render(scene, camera);
+  stats.end();
+  fps = stats.label.split(' ')[1].trim();
+}
+setInterval(updateStats, 1000);
+
+</script>
+</body>
+</html>
