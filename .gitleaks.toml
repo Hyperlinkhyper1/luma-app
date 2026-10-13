@@ -1,0 +1,36 @@
+title = "Luma secret scanning"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Audit checklist prose, not a credential assignment"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^docs/security/AUDIT_READINESS\.md$''']
+regexTarget = "match"
+regexes = ['''secret scan, dependency/advisory''']
+
+[[allowlists]]
+description = "Public character alphabet used to generate SFTP passwords"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^lib/features/plugins/installed/sftp/host/host_crypto\.dart$''']
+regexTarget = "secret"
+regexes = ["^ABCDEFGHJKMNPQRSTVWXYZ23456789$"]
+
+[[allowlists]]
+description = "Known common password SHA-1 digest corpus"
+targetRules = ["square-access-token"]
+condition = "AND"
+paths = ['''^assets/security/common_password_hashes\.txt$''']
+regexTarget = "match"
+regexes = ['''(?i)^[0-9a-f]{40}$''']
+
+[[allowlists]]
+description = "Public browser local-storage namespace"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^assets/city_planner/main\.js$''']
+regexTarget = "match"
+regexes = ['''^SAVE_KEY = "metroplan_save_v1"$''']

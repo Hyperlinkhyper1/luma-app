@@ -76,6 +76,7 @@ class _AccountsTabState extends State<AccountsTab> {
                       child: _AccountCard(
                         account: account,
                         repository: repository,
+                        onSignIn: () => _signInMicrosoft(context, repository),
                       ),
                     ),
                 ],
@@ -262,9 +263,7 @@ class _DeviceCodeDialog extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
                 const SizedBox(width: 10),
-                Expanded(
-                  child: Text(t.minecraftLauncherWaitingForBrowser),
-                ),
+                Expanded(child: Text(t.minecraftLauncherWaitingForBrowser)),
               ],
             ),
             const SizedBox(height: 12),
@@ -285,14 +284,20 @@ class _DeviceCodeDialog extends StatelessWidget {
 }
 
 class _AccountCard extends StatelessWidget {
-  const _AccountCard({required this.account, required this.repository});
+  const _AccountCard({
+    required this.account,
+    required this.repository,
+    required this.onSignIn,
+  });
   final McAccount account;
   final MinecraftLauncherRepository repository;
+  final VoidCallback onSignIn;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
     final t = L.of(context);
+    final needsSignIn = MinecraftLauncherRepository.requiresSignIn(account);
     return LumaCard(
       child: Row(
         children: [
@@ -316,7 +321,9 @@ class _AccountCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  account.type == 'microsoft'
+                  needsSignIn
+                      ? t.minecraftLauncherSignInAgain
+                      : account.type == 'microsoft'
                       ? t.minecraftLauncherMicrosoftAccount
                       : t.minecraftLauncherOfflineAccount,
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
@@ -324,7 +331,12 @@ class _AccountCard extends StatelessWidget {
               ],
             ),
           ),
-          if (account.isActive)
+          if (needsSignIn)
+            TextButton(
+              onPressed: onSignIn,
+              child: Text(t.minecraftLauncherSignInMicrosoft),
+            )
+          else if (account.isActive)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(

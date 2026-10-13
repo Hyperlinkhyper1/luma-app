@@ -41,7 +41,7 @@ class PasswordCrypto {
 
     final key = await SecureSecretStore.instance.loadKey(
       'passwords.key',
-      file,
+      legacyFile: file,
       encryptedData: [
         for (final suffix in ['', '-wal', '-shm', '-journal'])
           File('${dir.path}/luma_passwords.sqlite$suffix'),

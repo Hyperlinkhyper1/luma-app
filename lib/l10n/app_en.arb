@@ -387,6 +387,10 @@
   "settingsThemeStyleLocked": "Orbit or Nova",
   "settingsThemeStyleUpgrade": "Coffee comes with Orbit and Nova. Grab one of those to turn it on.",
   "settingsAccentCoffeeNote": "Coffee has its own colours, so you can't pick a colour while it's on.",
+  "settingsThemeStyleAutumn": "Autumn",
+  "settingsThemeStyleAutumnSub": "Rust and harvest gold, pixel corners, arcade buttons, leaves drifting down.",
+  "settingsThemeStyleUpgradeAutumn": "Autumn comes with Orbit and Nova. Grab one of those to turn it on.",
+  "settingsAccentAutumnNote": "Autumn has its own colours, so you can't pick a colour while it's on.",
   "settingsGeneral": "General",
   "settingsGeneralSub": "Small things that change how the app acts.",
   "settingsLanguage": "Language",
@@ -1926,7 +1930,7 @@
   "planPriceOrbit": "$3 / month",
   "planPriceNova": "$6 / month",
   "planCoreBlurb": "All the basics, right on your device.",
-  "planOrbitBlurb": "More synced features, SFTP, Groceries List and the Coffee theme.",
+  "planOrbitBlurb": "More synced features, SFTP, Groceries List and the Coffee and Autumn themes.",
   "planNovaBlurb": "Everything in sync on every device, plus the premium tools.",
   "planFeatureSyncUpTo": "Keep up to {count} features in sync across your devices, end-to-end encrypted",
   "@planFeatureSyncUpTo": {
@@ -1961,11 +1965,12 @@
   "planFeatureOrbitSftp": "SFTP client and shared folder between your devices",
   "planFeatureOrbitGroceries": "Groceries List with prices from Jumbo, Albert Heijn, Hoogvliet and Lidl",
   "planFeatureOrbitCoffee": "The Coffee theme",
+  "planFeatureOrbitAutumn": "The Autumn theme",
   "planFeatureNovaEverythingSync": "Keep everything in sync across all your devices, end-to-end encrypted",
   "planFeatureNovaAssistant": "Assistant plan mode, deep research and picture creation",
   "planFeatureNovaGallery": "Gallery People and Categories",
   "planFeatureNovaClassroom": "Classroom tutor in the Text Library hall",
-  "planFeatureNovaEverythingOrbit": "Everything in Orbit, including the Coffee theme",
+  "planFeatureNovaEverythingOrbit": "Everything in Orbit, including the Coffee and Autumn themes",
   "planCodeEnterCode": "Enter an access code.",
   "planCodeUnlockTitle": "Unlock {plan}",
   "@planCodeUnlockTitle": {
@@ -11958,6 +11963,7 @@
   "minecraftLauncherLoadMore": "Load more",
   "minecraftLauncherAddOfflineAccount": "Add offline account",
   "minecraftLauncherSignInMicrosoft": "Sign in with Microsoft",
+  "minecraftLauncherSignInAgain": "Sign in again",
   "minecraftLauncherNoAccounts": "No accounts yet",
   "minecraftLauncherNoAccountsSubtitle": "Sign in with a Microsoft account that owns Minecraft to get started. Once you have, you can add an offline profile for playing without a connection.",
   "minecraftLauncherMicrosoftUnavailable": "Microsoft sign-in is unavailable",
@@ -18991,6 +18997,28 @@
   "p2pLinkMalformedBlob": "Malformed blob header.",
   "p2pLinkMalformedShareChunk": "Malformed share chunk header.",
   "p2pLinkHandshakeNotSameAccount": "Handshake failed: not the same account.",
+  "p2pLinkHandshakeStartFailed": "Could not start the handshake: {error}",
+  "@p2pLinkHandshakeStartFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "p2pLinkSendFailed": "Could not send to the other device: {error}",
+  "@p2pLinkSendFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "p2pLinkAuthFailed": "A frame failed its authenticity check; the connection was closed.",
+  "p2pLinkPayloadMismatch": "Payload length did not match its header.",
+  "p2pLinkHandshakeUnexpected": "Handshake failed: unexpected message.",
+  "p2pLinkHandshakeNotSignedIn": "Handshake failed: this device is not signed in.",
+  "p2pLinkHandshakeUpdateBoth": "Handshake failed: update luma on both devices.",
+  "p2pLinkHandshakeInvalidHello": "Handshake failed: invalid hello.",
   "p2pSetUpSyncFirst": "Set up device sync first.",
   "p2pAccountNotReady": "Account not ready.",
   "p2pCouldNotStartDiscovery": "Could not start discovery: {error}",

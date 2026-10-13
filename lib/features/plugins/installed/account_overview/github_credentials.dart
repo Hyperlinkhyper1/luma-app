@@ -120,7 +120,7 @@ class GithubCredentialStore {
 
     final key = await SecureSecretStore.instance.loadKey(
       'github.key',
-      keyFile,
+      legacyFile: keyFile,
       encryptedData: [File('${dir.path}/$_dataFileName')],
     );
     return _instance = GithubCredentialStore._(key, dir.path);

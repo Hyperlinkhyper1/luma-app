@@ -13,6 +13,11 @@ enum LumaThemeStyle {
   /// Espresso/latte browns, stadium buttons, cup-round cards and a drifting
   /// coffee-bean backdrop. Paid: Orbit and Nova only.
   coffee,
+
+  /// Harvest rust and gold on a root-brew ground, notched pixel corners,
+  /// chunky arcade buttons, luma's own pixel lettering for headings and
+  /// leaves tumbling down behind everything. Paid: Orbit and Nova only.
+  autumn,
 }
 
 /// Describes a [LumaThemeStyle] for the Settings picker, including which plan
@@ -54,6 +59,13 @@ const List<ThemeStyleOption> kThemeStyles = [
     name: 'Coffee',
     blurb: 'Espresso and cream, softer shapes, and beans drifting behind '
         'everything.',
+    minPlanId: 'orbit',
+  ),
+  ThemeStyleOption(
+    style: LumaThemeStyle.autumn,
+    name: 'Autumn',
+    blurb: 'Rust and harvest gold, notched pixel corners, arcade buttons and '
+        'leaves falling past.',
     minPlanId: 'orbit',
   ),
 ];

@@ -385,17 +385,17 @@ void main() {
       await data.writeAsString('ciphertext');
       final store = SecureSecretStore(storageDir: dir);
       expect(
-        await store.loadKey('test.key', file, encryptedData: [data]),
+        await store.loadKey('test.key', legacyFile: file, encryptedData: [data]),
         key,
       );
       expect(await file.exists(), isFalse);
       expect(
-        await store.loadKey('test.key', file, encryptedData: [data]),
+        await store.loadKey('test.key', legacyFile: file, encryptedData: [data]),
         key,
       );
       await file.writeAsString('broken');
       await expectLater(
-        store.loadKey('broken.key', file, encryptedData: [data]),
+        store.loadKey('broken.key', legacyFile: file, encryptedData: [data]),
         throwsA(anything),
       );
       expect(await file.readAsString(), 'broken');
@@ -416,7 +416,7 @@ void main() {
 
       final fresh = await store.loadKey(
         'missing.key',
-        File('${dir.path}/missing'),
+        legacyFile: File('${dir.path}/missing'),
         encryptedData: [data, File('${dir.path}/vault.sqlite-wal')],
       );
 
@@ -433,7 +433,7 @@ void main() {
       expect(
         await store.loadKey(
           'missing.key',
-          File('${dir.path}/missing'),
+          legacyFile: File('${dir.path}/missing'),
           encryptedData: [data],
         ),
         fresh,

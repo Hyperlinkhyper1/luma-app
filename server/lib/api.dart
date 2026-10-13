@@ -414,7 +414,7 @@ class Api {
             RateLimiter(maxRequests: 240, window: const Duration(minutes: 1)),
         _loginFailLimiter =
             RateLimiter(maxRequests: 10, window: const Duration(minutes: 15)) {
-    _adminSessionExpiryByTokenHash.addAll(_adminSessions.load());
+    _adminSessionByTokenHash.addAll(_adminSessions.load());
   }
 
   final Store store;
@@ -553,7 +553,7 @@ class Api {
   ///
   /// Kept on disk as well as in memory, by [AdminSessionStore] — see there
   /// for why a restart must not sign the operator out.
-  final Map<String, int> _adminSessionExpiryByTokenHash = {};
+  final Map<String, AdminSession> _adminSessionByTokenHash = {};
   static const _adminSessionTtl = Duration(hours: 12);
   static const _adminCookieName = 'luma_admin';
 
@@ -720,6 +720,7 @@ class Api {
       ..get('/admin/login', _adminLoginPage)
       ..post('/admin/login', _adminLoginSubmit)
       ..post('/admin/logout', _adminLogout)
+      ..post('/admin/logout-all', _requireAdmin(_adminLogoutAll))
       ..get('/admin', _requireAdmin(_adminDashboard))
       ..get('/admin/users', _requireAdmin(_adminUsers))
       ..get('/admin/stats', _requireAdmin(_adminStats))
@@ -866,6 +867,7 @@ class Api {
 
     return const Pipeline()
         .addMiddleware(_recover)
+        .addMiddleware(_adminOrigin)
         .addMiddleware(_cors)
         .addMiddleware(_ipBan)
         .addMiddleware(_lumaOff)
@@ -874,6 +876,16 @@ class Api {
   }
 
   // ---- Middleware ---------------------------------------------------------
+
+  Handler _adminOrigin(Handler inner) => (request) async {
+        final path = request.url.path;
+        if (request.method != 'GET' &&
+            (path == 'admin' || path.startsWith('admin/')) &&
+            !_sameOrigin(request)) {
+          return errorResponse(403, 'forbidden', 'Invalid request origin.');
+        }
+        return inner(request);
+      };
 
   /// Refuses every request from a banned address (see [BannedIp]), before any
   /// route or rate limiter runs.
@@ -1149,13 +1161,14 @@ class Api {
   /// dashboard itself uses, so the key never appears in a URL, browser
   /// history, or a reverse-proxy access log line. Fallback path, for
   /// non-browser callers (curl, scripts): the raw key via the `X-Admin-Key`
-  /// header or a `?key=` query parameter — visiting /admin this way still
-  /// works but also opportunistically establishes a session, so only the
-  /// first request needs the key.
+  /// header. Old bookmarked URLs containing a key redirect to the login form.
   Handler _requireAdmin(FutureOr<Response> Function(Request) handler) {
     return (request) async {
       if (!config.adminEnabled) {
         return errorResponse(404, 'not_found', 'Not found.');
+      }
+      if (request.url.queryParameters.containsKey('key')) {
+        return _withAdminHeaders(Response.found('/admin/login'));
       }
       final clientKey = _clientKey(request);
       // Refuse outright while this IP is over its failed-attempt budget —
@@ -1175,8 +1188,7 @@ class Api {
 
       // Fall back to the raw key, for non-browser/API callers (curl, scripts)
       // that don't hold a session cookie.
-      final provided =
-          request.headers['x-admin-key'] ?? request.url.queryParameters['key'];
+      final provided = request.headers['x-admin-key'];
       if (provided == null) {
         // No credential of any kind — most likely a browser navigating here
         // directly, so send it to the login form rather than a bare 401.
@@ -1190,13 +1202,7 @@ class Api {
         return errorResponse(
             401, 'unauthorized', 'Invalid or missing admin key.');
       }
-      final response = _withAdminHeaders(await handler(request));
-      // Loading the dashboard itself via an old `?key=` bookmark: piggyback a
-      // session cookie on the response so every subsequent click/poll from
-      // this browser goes through the cookie instead of repeating the key.
-      return request.url.path == 'admin'
-          ? _establishAdminSession(response, request)
-          : response;
+      return _withAdminHeaders(await handler(request));
     };
   }
 
@@ -1204,9 +1210,12 @@ class Api {
     final token = base64UrlEncode(randomBytes(32)).replaceAll('=', '');
     final tokenHash = c.sha256.convert(utf8.encode(token)).toString();
     _pruneAdminSessions();
-    _adminSessionExpiryByTokenHash[tokenHash] =
-        DateTime.now().millisecondsSinceEpoch + _adminSessionTtl.inMilliseconds;
-    _adminSessions.save(_adminSessionExpiryByTokenHash);
+    _adminSessionByTokenHash[tokenHash] = AdminSession(
+      expiresAt: DateTime.now().millisecondsSinceEpoch +
+          _adminSessionTtl.inMilliseconds,
+      keyFp: _adminKeyFingerprint,
+    );
+    _adminSessions.save(_adminSessionByTokenHash);
     final secure = _isSecureRequest(request);
     return response.change(headers: {
       'Set-Cookie': '$_adminCookieName=$token; Path=/admin; HttpOnly; '
@@ -1260,10 +1269,12 @@ class Api {
     final token = _adminSessionToken(request);
     if (token == null) return false;
     final tokenHash = c.sha256.convert(utf8.encode(token)).toString();
-    final expiresAt = _adminSessionExpiryByTokenHash[tokenHash];
-    if (expiresAt == null) return false;
-    if (expiresAt <= DateTime.now().millisecondsSinceEpoch) {
-      _adminSessionExpiryByTokenHash.remove(tokenHash);
+    final session = _adminSessionByTokenHash[tokenHash];
+    if (session == null) return false;
+    if (session.expiresAt <= DateTime.now().millisecondsSinceEpoch ||
+        !constantTimeEquals(
+            utf8.encode(session.keyFp), utf8.encode(_adminKeyFingerprint))) {
+      _adminSessionByTokenHash.remove(tokenHash);
       return false;
     }
     return true;
@@ -1271,8 +1282,13 @@ class Api {
 
   void _pruneAdminSessions() {
     final now = DateTime.now().millisecondsSinceEpoch;
-    _adminSessionExpiryByTokenHash.removeWhere((_, exp) => exp <= now);
+    _adminSessionByTokenHash.removeWhere((_, session) =>
+        session.expiresAt <= now || session.keyFp != _adminKeyFingerprint);
   }
+
+  String get _adminKeyFingerprint => c.Hmac(c.sha256, store.serverSecret)
+      .convert(utf8.encode(config.adminKey!))
+      .toString();
 
   late final AdminSessionStore _adminSessions =
       AdminSessionStore(config.dataDir);
@@ -1337,9 +1353,13 @@ class Api {
       final wait = _adminFailLimiter.retryAfterSeconds(clientKey);
       return Response.found('/admin/login?locked=$wait');
     }
+    // This route is reachable by anyone, so the body is capped: a login form
+    // is one field, and an uncapped read would let a single request stream
+    // gigabytes into memory.
     Map<String, String> form = const {};
     try {
-      form = Uri.splitQueryString(await request.readAsString());
+      final raw = await _readCappedString(request, 4096);
+      if (raw != null) form = Uri.splitQueryString(raw);
     } catch (_) {}
     final provided = form['key'] ?? '';
     final match = constantTimeEquals(
@@ -1355,14 +1375,20 @@ class Api {
   Response _adminLogout(Request request) {
     final token = _adminSessionToken(request);
     if (token != null) {
-      _adminSessionExpiryByTokenHash
+      _adminSessionByTokenHash
           .remove(c.sha256.convert(utf8.encode(token)).toString());
-      _adminSessions.save(_adminSessionExpiryByTokenHash);
+      _adminSessions.save(_adminSessionByTokenHash);
     }
     return Response.found('/admin/login', headers: {
       'Set-Cookie': '$_adminCookieName=; Path=/admin; HttpOnly; '
           'SameSite=Strict; Max-Age=0',
     });
+  }
+
+  Response _adminLogoutAll(Request request) {
+    _adminSessionByTokenHash.clear();
+    _adminSessions.save(_adminSessionByTokenHash);
+    return _adminLogout(request);
   }
 
   // ---- Handlers: misc -----------------------------------------------------
@@ -1560,6 +1586,21 @@ class Api {
           : 'The server operator has revoked this account\'s access: '
               '${user.accessRevokedReason}');
 
+  Response? _loginEligibility(StoredUser u) {
+    if (u.accessRevoked) return _accessRevokedResponse(u);
+    if (u.passwordResetRequired) return _passwordResetRequiredResponse();
+    if (u.isPending) {
+      return errorResponse(
+          403,
+          'account_pending_approval',
+          config.approvalMode == ApprovalMode.email
+              ? 'Please verify your email address before signing in.'
+              : 'This account is waiting to be approved by the server '
+                  'operator.');
+    }
+    return null;
+  }
+
   Future<Response> _login(Request request) async {
     final body = await _readJson(request);
     final email = _normalizeEmail(body['email']);
@@ -1605,23 +1646,8 @@ class Api {
     // Checked only once the password is known to be right, so this never
     // becomes a way to probe which addresses have accounts. (The reset check
     // above cannot afford that luxury — there, no password is correct.)
-    if (user.accessRevoked) {
-      return _accessRevokedResponse(user);
-    }
-
-    if (user.passwordResetRequired) {
-      return _passwordResetRequiredResponse();
-    }
-
-    if (user.isPending) {
-      return errorResponse(
-          403,
-          'account_pending_approval',
-          config.approvalMode == ApprovalMode.email
-              ? 'Please verify your email address before signing in.'
-              : 'This account is waiting to be approved by the server '
-                  'operator.');
-    }
+    final ineligible = _loginEligibility(user);
+    if (ineligible != null) return ineligible;
 
     return store.lock.synchronized(() async {
       final token = await _createSession(user, deviceLabel: deviceLabel);
@@ -1814,17 +1840,34 @@ class Api {
           store.usersById[store.userIdByEmail[identity.email]];
 
       if (existing != null) {
+        if (_loginFailLimiter.isLimited(existing.email)) {
+          return errorResponse(429, 'rate_limited',
+              'Too many failed sign-in attempts for this account. Try again later.');
+        }
         final hash = await _hashAuthKey(
             authKey, Uint8List.fromList(base64Decode(existing.authSalt)));
         if (!constantTimeEquals(hash, base64Decode(existing.authHash))) {
+          _loginFailLimiter.allow(existing.email);
           flow.attempts++;
           if (flow.attempts >= OAuthFlow.maxAttempts) {
             _oauthFlows.remove(flow);
+          }
+          if (existing.passwordResetRequired) {
+            return _passwordResetRequiredResponse();
+          }
+          if (flow.attempts >= OAuthFlow.maxAttempts) {
             return errorResponse(429, 'too_many_attempts',
                 'Too many wrong passphrases. Start the sign-in again.');
           }
           return errorResponse(401, 'invalid_credentials',
               'That passphrase does not match this account.');
+        }
+        final ineligible = _loginEligibility(existing);
+        if (ineligible != null &&
+            (existing.accessRevoked ||
+                existing.passwordResetRequired ||
+                config.approvalMode != ApprovalMode.email)) {
+          return ineligible;
         }
         if (existing.isPending) {
           // The provider vouched for the address, which is precisely what an
@@ -1837,12 +1880,6 @@ class Api {
             existing.verificationExpiresAtMs = null;
             await store.logActivity('account_verified',
                 '${existing.email} verified via ${spec.displayName}');
-          } else {
-            return errorResponse(
-                403,
-                'account_pending_approval',
-                'This account is waiting to be approved by the server '
-                    'operator.');
           }
         }
         store.linkOAuthIdentity(existing, flow.provider, identity.subject);
@@ -2111,10 +2148,40 @@ class Api {
         headers: {'Content-Type': 'text/html; charset=utf-8'},
       );
 
+  /// Safe for element text and for quoted attribute values alike — quotes are
+  /// escaped too, because account emails may legally contain them and land in
+  /// `value="…"` attributes on the dashboard.
   static String _htmlEscape(String s) => s
       .replaceAll('&', '&amp;')
       .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;');
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+
+  /// For text placed inside a single-quoted JS string that itself sits in an
+  /// inline handler attribute (`onsubmit="return confirm('…')"`).
+  ///
+  /// [_htmlEscape] is not enough there: the browser decodes `&#39;` back to
+  /// `'` before the handler runs, so an account registered as
+  /// `a'+evil()+'@x.co` would break out of the string and run as the operator
+  /// the moment they clicked Approve. Every character outside a plain
+  /// allow-list becomes a `\uXXXX` escape instead, which neither the HTML
+  /// parser nor the JS string can misread.
+  static String _jsAttrString(String s) {
+    final out = StringBuffer();
+    for (final unit in s.codeUnits) {
+      final safe = (unit >= 0x30 && unit <= 0x39) ||
+          (unit >= 0x41 && unit <= 0x5a) ||
+          (unit >= 0x61 && unit <= 0x7a) ||
+          ' .,@_-:/?!()+'.codeUnits.contains(unit);
+      if (safe) {
+        out.writeCharCode(unit);
+      } else {
+        out.write('\\u${unit.toRadixString(16).padLeft(4, '0')}');
+      }
+    }
+    return out.toString();
+  }
 
   Future<Response> _logout(Request request, StoredUser user) async {
     final auth = request.headers['authorization']!;
@@ -3144,14 +3211,19 @@ class Api {
   /// Only `model`, `max_tokens` and reasoning are rewritten; everything else
   /// (messages, tools) passes straight through. OpenRouter spells reasoning
   /// as a `reasoning` object rather than OpenAI's `reasoning_effort`.
+  /// [maxTokensCap] is raised only by server-side callers that need room
+  /// for a reasoning model's thinking (the classroom, the school test); a
+  /// client's own request stays capped at 4096.
   static Map<String, dynamic> _aiUpstreamBody(
-      Map<String, dynamic> body, AiModeRoute route) {
+      Map<String, dynamic> body, AiModeRoute route,
+      {int maxTokensCap = 4096}) {
     final maxTokensRaw = body['max_tokens'];
     final effort = route.reasoningEffort ?? body['reasoning_effort'];
     final out = {
       ...body,
       'model': route.model,
-      'max_tokens': (maxTokensRaw is int ? maxTokensRaw : 1024).clamp(1, 4096),
+      'max_tokens':
+          (maxTokensRaw is int ? maxTokensRaw : 1024).clamp(1, maxTokensCap),
     }
       ..remove('agent_id')
       ..remove('reasoning_effort');
@@ -4286,8 +4358,8 @@ class Api {
       return errorResponse(403, 'plan_required',
           'CS2 offline saving requires an Orbit or Nova account.');
     }
-    final raw = await request.readAsString();
-    if (raw.length > 4 * 1024 * 1024) {
+    final raw = await _readCappedString(request, 4 * 1024 * 1024);
+    if (raw == null) {
       return errorResponse(
           413, 'body_too_large', 'CS2 offline saving data is too large.');
     }
@@ -4507,7 +4579,11 @@ class Api {
     }
     Object? body;
     try {
-      body = jsonDecode(await request.readAsString());
+      final raw = await _readCappedString(request, _maxJsonBody);
+      if (raw == null) {
+        return errorResponse(413, 'too_large', 'Request body too large.');
+      }
+      body = jsonDecode(raw);
     } catch (_) {
       return errorResponse(400, 'bad_request', 'Malformed request body.');
     }
@@ -5611,6 +5687,26 @@ class Api {
     return bytes.isEmpty ? null : bytes;
   }
 
+  /// [request]'s body as text, or null once it passes [cap] bytes. Use this
+  /// instead of `readAsString()`, which buffers however much a client sends
+  /// before anything gets to look at its size. A client that stops sending
+  /// for [idleTimeout] also gets null, so a trickled body cannot hold the
+  /// request open indefinitely.
+  static Future<String?> _readCappedString(Request request, int cap,
+      {Duration idleTimeout = const Duration(seconds: 20)}) async {
+    if ((request.contentLength ?? 0) > cap) return null;
+    final builder = BytesBuilder(copy: false);
+    try {
+      await for (final chunk in request.read().timeout(idleTimeout)) {
+        builder.add(chunk);
+        if (builder.length > cap) return null;
+      }
+    } on TimeoutException {
+      return null;
+    }
+    return utf8.decode(builder.takeBytes(), allowMalformed: true);
+  }
+
   // ---- Handlers: plugins ---------------------------------------------------
 
   /// Records one plugin install for the admin dashboard's "Plugins" tab (see
@@ -5753,8 +5849,8 @@ class Api {
     if (!room.isMember(user.id)) {
       return errorResponse(403, 'forbidden', 'Not a member of this room.');
     }
-    final raw = await request.readAsString();
-    if (raw.length > _maxSubwayStateBytes) {
+    final raw = await _readCappedString(request, _maxSubwayStateBytes);
+    if (raw == null) {
       return errorResponse(413, 'too_large', 'Room state too large.');
     }
     // Shape-validate without needing to understand it. A bare `null` (or any
@@ -7468,17 +7564,12 @@ class Api {
   /// The dashboard's forms POST here directly (cookie-authenticated) and
   /// expect an HTML redirect back to the page; a script/API caller
   /// authenticates with the `X-Admin-Key` header instead and expects JSON.
-  /// `?key=` is preserved on the redirect for old bookmarked dashboard links
-  /// still authenticating that way.
   Response _adminFormResponse(Request request, String path,
       {Map<String, dynamic>? json, String? fragment}) {
     if (request.headers['x-admin-key'] != null) {
       return jsonResponse(200, json ?? {'ok': true});
     }
-    final key = request.url.queryParameters['key'];
-    final withKey =
-        key != null ? '$path?key=${Uri.encodeQueryComponent(key)}' : path;
-    return Response.found(fragment != null ? '$withKey#$fragment' : withKey);
+    return Response.found(fragment != null ? '$path#$fragment' : path);
   }
 
   /// Grants (or revokes, by setting planId='core') a plan for an account —
@@ -7590,11 +7681,7 @@ class Api {
         return Response(200,
             body: body, headers: {'Content-Type': 'application/json'});
       }
-      final key = request.url.queryParameters['key'];
-      final withKey = key != null
-          ? '/admin?key=${Uri.encodeQueryComponent(key)}'
-          : '/admin';
-      return Response.found('$withKey#control');
+      return Response.found('/admin#control');
     } catch (_) {
       return errorResponse(
           502, 'upstream_error', 'Could not reach the groceries server.');
@@ -7639,11 +7726,7 @@ class Api {
         return Response(200,
             body: body, headers: {'Content-Type': 'application/json'});
       }
-      final key = request.url.queryParameters['key'];
-      final withKey = key != null
-          ? '/admin?key=${Uri.encodeQueryComponent(key)}'
-          : '/admin';
-      return Response.found('$withKey#control');
+      return Response.found('/admin#control');
     } catch (_) {
       return errorResponse(
           502, 'upstream_error', 'Could not reach the groceries server.');
@@ -7749,10 +7832,16 @@ class Api {
   /// Host we were reached on. Browser form posts always send Origin.
   bool _sameOrigin(Request request) {
     final origin = request.headers['origin'];
-    final host = request.headers['host'];
-    if (origin == null || host == null) return false;
+    if (origin == null) return request.headers['x-admin-key'] != null;
+    final host = request.headers['host'] ?? request.requestedUri.authority;
     final uri = Uri.tryParse(origin);
-    return uri != null && uri.authority == host;
+    return uri != null &&
+        (uri.scheme == 'http' || uri.scheme == 'https') &&
+        uri.userInfo.isEmpty &&
+        uri.path.isEmpty &&
+        !uri.hasQuery &&
+        !uri.hasFragment &&
+        uri.authority.toLowerCase() == host.toLowerCase();
   }
 
   Response? _wikiUnavailable() {
@@ -10541,6 +10630,7 @@ syncToolbar();
           u.quotaBytes > 0 ? (used / u.quotaBytes * 100).clamp(0, 100) : 0.0;
       final statusClass = u.status == 'active' ? 'ok' : 'warn';
       final safeEmail = _htmlEscape(u.email);
+      final jsEmail = _jsAttrString(u.email);
       final bannedIps = store.bannedIpsFor(u);
 
       /// One row of the Actions menu: a single-button form, so every action
@@ -10562,19 +10652,19 @@ syncToolbar();
       final items = <String>[
         if (u.isPending)
           item('/admin/verify', 'Approve account',
-              confirm: 'Approve $safeEmail? They can sign in straight after.')
+              confirm: 'Approve $jsEmail? They can sign in straight after.')
         else
           item('/admin/revoke', 'Revoke approval',
-              confirm: 'Revoke $safeEmail? All their devices are signed out '
+              confirm: 'Revoke $jsEmail? All their devices are signed out '
                   'immediately and blocked until you approve them again.',
               danger: true),
         if (u.passwordResetRequired)
           item('/admin/password-reset/cancel', 'Cancel password reset',
-              confirm: 'Cancel the pending password reset for $safeEmail? '
+              confirm: 'Cancel the pending password reset for $jsEmail? '
                   'Their old password starts working again.')
         else
           item('/admin/password-reset', 'Reset password',
-              confirm: 'Reset the password for $safeEmail?\\n\\nTheir current '
+              confirm: 'Reset the password for $jsEmail?\\n\\nTheir current '
                   'password stops working right away. luma will ask them to '
                   'choose a new one the next time they open it on a device '
                   'that is still signed in — that device is also the only '
@@ -10583,11 +10673,11 @@ syncToolbar();
         '<div class="menu-sep"></div>',
         if (u.accessRevoked)
           item('/admin/access/restore', 'Restore access',
-              confirm: 'Give $safeEmail their access back? They can sign in '
+              confirm: 'Give $jsEmail their access back? They can sign in '
                   'again with the password they already had.')
         else
           item('/admin/access/revoke', 'Revoke access',
-              confirm: 'Revoke access for $safeEmail?\\n\\nThey are signed '
+              confirm: 'Revoke access for $jsEmail?\\n\\nThey are signed '
                   'out everywhere and cannot sign in again until you restore '
                   'it here — approving them will not lift it. Their data is '
                   'left untouched.',
@@ -10595,7 +10685,7 @@ syncToolbar();
               askReason: true),
         if (bannedIps.isEmpty)
           item('/admin/ip-ban', 'Ban their IP address',
-              confirm: 'Block every address $safeEmail has connected from '
+              confirm: 'Block every address $jsEmail has connected from '
                   '(${u.recentIps.length})?\\n\\nNothing from those addresses '
                   'reaches luma — including anyone else behind them. The '
                   'account itself is left alone; use Revoke for that.',
@@ -10603,18 +10693,18 @@ syncToolbar();
         else
           item('/admin/ip-unban', 'Lift IP ban (${bannedIps.length})',
               confirm: 'Unblock the ${bannedIps.length} address'
-                  '${bannedIps.length == 1 ? '' : 'es'} banned for $safeEmail?'),
+                  '${bannedIps.length == 1 ? '' : 'es'} banned for $jsEmail?'),
         '<div class="menu-sep"></div>',
-        ..._teamBoardMenuItems(u, safeEmail, item),
+        ..._teamBoardMenuItems(u, jsEmail, item),
         '<div class="menu-sep"></div>',
         if (classroomCountries.countryOf(u.id) case final country?) ...[
           item('/admin/classroom/country/reset',
               'Reset classroom country (${_htmlEscape(country)})',
-              confirm: 'Let $safeEmail pick their classroom country again?'),
+              confirm: 'Let $jsEmail pick their classroom country again?'),
           '<div class="menu-sep"></div>',
         ],
         item('/admin/account/delete', 'Delete account',
-            confirm: 'Permanently delete $safeEmail?\\n\\nThe account, its '
+            confirm: 'Permanently delete $jsEmail?\\n\\nThe account, its '
                 'sessions and every synced snapshot are erased from the '
                 'server. This cannot be undone.',
             danger: true),
@@ -10662,7 +10752,8 @@ syncToolbar();
           '<td>${_htmlEscape(label)}</td>'
           '<td><form method="post" action="/admin/plan" '
           'style="margin:0" onsubmit="return confirm(\'Remove '
-          '${_htmlEscape(u.email)}\\\'s $label plan? They revert to Core.\')">'
+          '${_jsAttrString(u.email)}\\\'s ${_jsAttrString(label)} plan? They '
+          'revert to Core.\')">'
           '<input type="hidden" name="email" value="${_htmlEscape(u.email)}">'
           '<input type="hidden" name="planId" value="$kDefaultPlanId">'
           '<button type="submit" class="btn btn-danger btn-sm">Remove</button>'
@@ -10739,7 +10830,7 @@ syncToolbar();
           '<td class="nowrap">${fmtDate(b.createdAtMs)}</td>'
           '<td class="actions-cell">'
           '<form method="post" action="/admin/ip-unban" style="margin:0" '
-          'onsubmit="return confirm(\'Unblock $safeIp?\')">'
+          'onsubmit="return confirm(\'Unblock ${_jsAttrString(b.ip)}?\')">'
           '<input type="hidden" name="ip" value="$safeIp">'
           '<button type="submit" class="btn btn-ghost btn-sm">Unban</button>'
           '</form></td>'
@@ -10785,7 +10876,8 @@ syncToolbar();
           'placeholder="Note back to the user (optional)">'
           '<button type="submit" name="decision" value="accept" '
           'class="btn btn-danger btn-sm" '
-          'onclick="return confirm(\'Accept $safeEmail\\\'s request?\\n\\nThis '
+          'onclick="return confirm(\'Accept ${_jsAttrString(r.email)}\\\'s '
+          'request?\\n\\nThis '
           'permanently deletes their account and every synced snapshot the '
           'server holds. It cannot be undone.\')">Accept &amp; delete</button>'
           '<button type="submit" name="decision" value="decline" '
@@ -10927,6 +11019,9 @@ syncToolbar();
         '<a href="/admin/website" class="btn btn-ghost btn-sm">Website</a>'
         '<form method="post" action="/admin/logout" style="margin:0">'
         '<button type="submit" class="btn btn-ghost btn-sm">Sign out</button>'
+        '</form>'
+        '<form method="post" action="/admin/logout-all" style="margin:0">'
+        '<button type="submit" class="btn btn-ghost btn-sm">Sign out all admin sessions</button>'
         '</form>'
         '</div></header>'
         '${PowerConsole.dialogHtml}'

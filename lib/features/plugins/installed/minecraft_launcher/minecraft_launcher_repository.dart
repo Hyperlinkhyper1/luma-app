@@ -1,15 +1,129 @@
-﻿import 'dart:math';
+﻿import 'dart:convert';
+import 'dart:math';
 
 import 'package:drift/drift.dart';
 
 import '../../../../l10n/current_l.dart';
+import '../../../../security/authenticated_cipher.dart';
+import '../../../../security/secure_secret_store.dart';
 import '../../../../storage/storage_guard.dart';
 import 'data/minecraft_launcher_database.dart';
 import 'logic/offline_account_helper.dart';
 
 class MinecraftLauncherRepository {
-  MinecraftLauncherRepository(this._db);
+  MinecraftLauncherRepository(this._db, {SecureSecretStore? secretStore})
+    : _secretStore = secretStore ?? SecureSecretStore.instance {
+    _ready = _open();
+    _ready.ignore();
+  }
+
+  static const tokenKeyName = 'minecraft_launcher_tokens.key';
+  static const _tokenPrefix = 'enc:v1:';
   final MinecraftLauncherDatabase _db;
+  final SecureSecretStore _secretStore;
+  late final Future<void> _ready;
+  late final Uint8List _tokenKey;
+
+  Future<void> _open() async {
+    final accounts = await _db.select(_db.mcAccounts).get();
+    _tokenKey = await _secretStore.loadKey(
+      tokenKeyName,
+      hasEncryptedData: () async => accounts.any(
+        (account) =>
+            _isEncrypted(account.accessToken) ||
+            _isEncrypted(account.refreshToken),
+      ),
+    );
+    await _db.transaction(() async {
+      for (final account in accounts) {
+        if (account.type != 'microsoft') continue;
+        if (_secretStore.lostKeys.contains(tokenKeyName) &&
+            (_isEncrypted(account.accessToken) ||
+                _isEncrypted(account.refreshToken)) &&
+            requiresSignIn(_decodeAccount(account))) {
+          await (_db.update(
+            _db.mcAccounts,
+          )..where((table) => table.id.equals(account.id))).write(
+            const McAccountsCompanion(
+              accessToken: Value(null),
+              refreshToken: Value(null),
+              accessTokenExpiresAt: Value(null),
+            ),
+          );
+          continue;
+        }
+        final access = _migrateToken(
+          account.accessToken,
+          account.uuid,
+          'access',
+        );
+        final refresh = _migrateToken(
+          account.refreshToken,
+          account.uuid,
+          'refresh',
+        );
+        if (access != account.accessToken || refresh != account.refreshToken) {
+          await (_db.update(
+            _db.mcAccounts,
+          )..where((table) => table.id.equals(account.id))).write(
+            McAccountsCompanion(
+              accessToken: Value(access),
+              refreshToken: Value(refresh),
+            ),
+          );
+        }
+      }
+    });
+  }
+
+  static bool _isEncrypted(String? token) => token?.startsWith('enc:') ?? false;
+
+  String? _migrateToken(String? token, String uuid, String kind) =>
+      token == null || _isEncrypted(token)
+      ? token
+      : _sealToken(token, uuid, kind);
+
+  String _sealToken(String token, String uuid, String kind) =>
+      '$_tokenPrefix${base64Encode(AuthenticatedCipher.seal(utf8.encode(token), _tokenKey, 'luma-minecraft:$uuid:$kind'))}';
+
+  String? _openToken(String? token, String uuid, String kind) {
+    if (token == null) return null;
+    if (!token.startsWith(_tokenPrefix)) {
+      throw const FormatException('Unsupported Minecraft token envelope');
+    }
+    return utf8.decode(
+      AuthenticatedCipher.open(
+        base64Decode(token.substring(_tokenPrefix.length)),
+        _tokenKey,
+        'luma-minecraft:$uuid:$kind',
+      ),
+    );
+  }
+
+  McAccount _decodeAccount(McAccount account) {
+    if (account.type != 'microsoft') return account;
+    try {
+      return account.copyWith(
+        accessToken: Value(
+          _openToken(account.accessToken, account.uuid, 'access'),
+        ),
+        refreshToken: Value(
+          _openToken(account.refreshToken, account.uuid, 'refresh'),
+        ),
+      );
+    } catch (_) {
+      return account.copyWith(
+        accessToken: const Value(null),
+        refreshToken: const Value(null),
+        accessTokenExpiresAt: const Value(null),
+      );
+    }
+  }
+
+  static bool requiresSignIn(McAccount account) =>
+      account.type == 'microsoft' &&
+      ((account.accessToken?.isEmpty ?? true) ||
+          (account.refreshToken?.isEmpty ?? true));
 
   /// A random, folder-name-safe id used both as the instance's primary key
   /// and its directory name under `minecraft/instances/`.
@@ -21,16 +135,22 @@ class MinecraftLauncherRepository {
 
   // â”€â”€ Accounts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  Stream<List<McAccount>> watchAccounts() {
+  Stream<List<McAccount>> watchAccounts() async* {
+    await _ready;
     final query = _db.select(_db.mcAccounts)
       ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]);
-    return query.watch();
+    yield* query.watch().map((rows) => rows.map(_decodeAccount).toList());
   }
 
-  Stream<McAccount?> watchActiveAccount() {
+  Stream<McAccount?> watchActiveAccount() async* {
+    await _ready;
     final query = _db.select(_db.mcAccounts)
       ..where((t) => t.isActive.equals(true));
-    return query.watchSingleOrNull();
+    yield* query.watchSingleOrNull().map((row) {
+      if (row == null) return null;
+      final account = _decodeAccount(row);
+      return requiresSignIn(account) ? null : account;
+    });
   }
 
   /// Whether any Microsoft account has ever been added on this device. A
@@ -39,10 +159,12 @@ class MinecraftLauncherRepository {
   /// `microsoft_auth_client.dart`'s profile-lookup 404 check), so its
   /// presence here is the ownership proof offline accounts piggyback on.
   Future<bool> hasVerifiedOwnership() async {
-    final row = await (_db.select(_db.mcAccounts)
-          ..where((t) => t.type.equals('microsoft'))
-          ..limit(1))
-        .getSingleOrNull();
+    await _ready;
+    final row =
+        await (_db.select(_db.mcAccounts)
+              ..where((t) => t.type.equals('microsoft'))
+              ..limit(1))
+            .getSingleOrNull();
     return row != null;
   }
 
@@ -55,16 +177,18 @@ class MinecraftLauncherRepository {
     if (!await hasVerifiedOwnership()) {
       throw StateError(currentL.minecraftLauncherOfflineNeedsMicrosoft);
     }
-    final id = await _db.into(_db.mcAccounts).insert(
+    final id = await _db
+        .into(_db.mcAccounts)
+        .insert(
           McAccountsCompanion.insert(
             type: 'offline',
             username: username,
             uuid: offlinePlayerUuid(username),
           ),
         );
-    final hasActive = await (_db.select(_db.mcAccounts)
-          ..where((t) => t.isActive.equals(true)))
-        .getSingleOrNull();
+    final hasActive = await (_db.select(
+      _db.mcAccounts,
+    )..where((t) => t.isActive.equals(true))).getSingleOrNull();
     if (hasActive == null) await setActiveAccount(id);
     StorageGuard.instance.scheduleRefresh();
     return id;
@@ -78,48 +202,63 @@ class MinecraftLauncherRepository {
     required DateTime accessTokenExpiresAt,
     String? avatarUrl,
   }) async {
-    final existing = await (_db.select(_db.mcAccounts)
-          ..where((t) => t.type.equals('microsoft') & t.uuid.equals(uuid)))
-        .getSingleOrNull();
+    await _ready;
+    final encryptedAccess = _sealToken(accessToken, uuid, 'access');
+    final encryptedRefresh = _sealToken(refreshToken, uuid, 'refresh');
+    final existing =
+        await (_db.select(_db.mcAccounts)
+              ..where((t) => t.type.equals('microsoft') & t.uuid.equals(uuid)))
+            .getSingleOrNull();
     if (existing != null) {
-      await (_db.update(_db.mcAccounts)..where((t) => t.id.equals(existing.id)))
-          .write(McAccountsCompanion(
-        username: Value(username),
-        accessToken: Value(accessToken),
-        refreshToken: Value(refreshToken),
-        accessTokenExpiresAt: Value(accessTokenExpiresAt),
-        avatarUrl: Value(avatarUrl),
-      ));
+      await (_db.update(
+        _db.mcAccounts,
+      )..where((t) => t.id.equals(existing.id))).write(
+        McAccountsCompanion(
+          username: Value(username),
+          accessToken: Value(encryptedAccess),
+          refreshToken: Value(encryptedRefresh),
+          accessTokenExpiresAt: Value(accessTokenExpiresAt),
+          avatarUrl: Value(avatarUrl),
+        ),
+      );
       StorageGuard.instance.scheduleRefresh();
       return existing.id;
     }
-    final id = await _db.into(_db.mcAccounts).insert(
+    final id = await _db
+        .into(_db.mcAccounts)
+        .insert(
           McAccountsCompanion.insert(
             type: 'microsoft',
             username: username,
             uuid: uuid,
-            accessToken: Value(accessToken),
-            refreshToken: Value(refreshToken),
+            accessToken: Value(encryptedAccess),
+            refreshToken: Value(encryptedRefresh),
             accessTokenExpiresAt: Value(accessTokenExpiresAt),
             avatarUrl: Value(avatarUrl),
           ),
         );
-    final hasActive = await (_db.select(_db.mcAccounts)
-          ..where((t) => t.isActive.equals(true)))
-        .getSingleOrNull();
+    final hasActive = await (_db.select(
+      _db.mcAccounts,
+    )..where((t) => t.isActive.equals(true))).getSingleOrNull();
     if (hasActive == null) await setActiveAccount(id);
     StorageGuard.instance.scheduleRefresh();
     return id;
   }
 
   Future<void> setActiveAccount(int id) async {
-    await _db.update(_db.mcAccounts).write(const McAccountsCompanion(isActive: Value(false)));
-    await (_db.update(_db.mcAccounts)..where((t) => t.id.equals(id)))
-        .write(const McAccountsCompanion(isActive: Value(true)));
+    await _ready;
+    await _db
+        .update(_db.mcAccounts)
+        .write(const McAccountsCompanion(isActive: Value(false)));
+    await (_db.update(_db.mcAccounts)..where((t) => t.id.equals(id))).write(
+      const McAccountsCompanion(isActive: Value(true)),
+    );
   }
 
-  Future<void> deleteAccount(int id) =>
-      (_db.delete(_db.mcAccounts)..where((t) => t.id.equals(id))).go();
+  Future<void> deleteAccount(int id) async {
+    await _ready;
+    await (_db.delete(_db.mcAccounts)..where((t) => t.id.equals(id))).go();
+  }
 
   // â”€â”€ Instances â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -141,7 +280,9 @@ class MinecraftLauncherRepository {
     String? loaderVersion,
   }) async {
     final id = _newInstanceId();
-    await _db.into(_db.mcInstances).insert(
+    await _db
+        .into(_db.mcInstances)
+        .insert(
           McInstancesCompanion.insert(
             id: id,
             name: name,
@@ -169,28 +310,38 @@ class MinecraftLauncherRepository {
     return (_db.update(_db.mcInstances)..where((t) => t.id.equals(id))).write(
       McInstancesCompanion(
         name: name == null ? const Value.absent() : Value(name),
-        minMemoryMb: minMemoryMb == null ? const Value.absent() : Value(minMemoryMb),
-        maxMemoryMb: maxMemoryMb == null ? const Value.absent() : Value(maxMemoryMb),
+        minMemoryMb: minMemoryMb == null
+            ? const Value.absent()
+            : Value(minMemoryMb),
+        maxMemoryMb: maxMemoryMb == null
+            ? const Value.absent()
+            : Value(maxMemoryMb),
         jvmArgs: jvmArgs == null ? const Value.absent() : Value(jvmArgs),
         javaPath: javaPath == null ? const Value.absent() : Value(javaPath),
-        resolutionWidth:
-            resolutionWidth == null ? const Value.absent() : Value(resolutionWidth),
-        resolutionHeight:
-            resolutionHeight == null ? const Value.absent() : Value(resolutionHeight),
-        fullscreen: fullscreen == null ? const Value.absent() : Value(fullscreen),
+        resolutionWidth: resolutionWidth == null
+            ? const Value.absent()
+            : Value(resolutionWidth),
+        resolutionHeight: resolutionHeight == null
+            ? const Value.absent()
+            : Value(resolutionHeight),
+        fullscreen: fullscreen == null
+            ? const Value.absent()
+            : Value(fullscreen),
         iconPath: iconPath == null ? const Value.absent() : Value(iconPath),
       ),
     );
   }
 
   Future<void> markLaunched(String id) {
-    return (_db.update(_db.mcInstances)..where((t) => t.id.equals(id)))
-        .write(McInstancesCompanion(lastPlayedAt: Value(DateTime.now())));
+    return (_db.update(_db.mcInstances)..where((t) => t.id.equals(id))).write(
+      McInstancesCompanion(lastPlayedAt: Value(DateTime.now())),
+    );
   }
 
   Future<void> addPlayTime(String id, int seconds) async {
-    final row = await (_db.select(_db.mcInstances)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final row = await (_db.select(
+      _db.mcInstances,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (row == null) return;
     await (_db.update(_db.mcInstances)..where((t) => t.id.equals(id))).write(
       McInstancesCompanion(
@@ -200,14 +351,18 @@ class MinecraftLauncherRepository {
   }
 
   Future<void> deleteInstance(String id) async {
-    await (_db.delete(_db.mcLaunchHistory)..where((t) => t.instanceId.equals(id))).go();
+    await (_db.delete(
+      _db.mcLaunchHistory,
+    )..where((t) => t.instanceId.equals(id))).go();
     await (_db.delete(_db.mcInstances)..where((t) => t.id.equals(id))).go();
   }
 
   // â”€â”€ Launch history â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<int> recordLaunchStart(String instanceId) {
-    final future = _db.into(_db.mcLaunchHistory).insert(
+    final future = _db
+        .into(_db.mcLaunchHistory)
+        .insert(
           McLaunchHistoryCompanion.insert(
             instanceId: instanceId,
             startedAt: DateTime.now(),
@@ -217,12 +372,20 @@ class MinecraftLauncherRepository {
     return future;
   }
 
-  Future<void> recordLaunchEnd(int launchId, {int? exitCode, String? logFilePath}) {
-    return (_db.update(_db.mcLaunchHistory)..where((t) => t.id.equals(launchId))).write(
+  Future<void> recordLaunchEnd(
+    int launchId, {
+    int? exitCode,
+    String? logFilePath,
+  }) {
+    return (_db.update(
+      _db.mcLaunchHistory,
+    )..where((t) => t.id.equals(launchId))).write(
       McLaunchHistoryCompanion(
         endedAt: Value(DateTime.now()),
         exitCode: exitCode == null ? const Value.absent() : Value(exitCode),
-        logFilePath: logFilePath == null ? const Value.absent() : Value(logFilePath),
+        logFilePath: logFilePath == null
+            ? const Value.absent()
+            : Value(logFilePath),
       ),
     );
   }
@@ -236,7 +399,10 @@ class MinecraftLauncherRepository {
 
   // â”€â”€ Installed mods/resource packs/shader packs/datapacks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  Stream<List<McInstalledMod>> watchInstalledContent(String instanceId, {String? kind}) {
+  Stream<List<McInstalledMod>> watchInstalledContent(
+    String instanceId, {
+    String? kind,
+  }) {
     final query = _db.select(_db.mcInstalledMods)
       ..where((t) => t.instanceId.equals(instanceId))
       ..orderBy([(t) => OrderingTerm.asc(t.fileName)]);
@@ -245,9 +411,13 @@ class MinecraftLauncherRepository {
   }
 
   Future<bool> isProjectInstalled(String instanceId, String projectId) async {
-    final row = await (_db.select(_db.mcInstalledMods)
-          ..where((t) => t.instanceId.equals(instanceId) & t.projectId.equals(projectId)))
-        .getSingleOrNull();
+    final row =
+        await (_db.select(_db.mcInstalledMods)..where(
+              (t) =>
+                  t.instanceId.equals(instanceId) &
+                  t.projectId.equals(projectId),
+            ))
+            .getSingleOrNull();
     return row != null;
   }
 
@@ -261,7 +431,9 @@ class MinecraftLauncherRepository {
     String? sha1,
     String kind = 'mod',
   }) {
-    final future = _db.into(_db.mcInstalledMods).insert(
+    final future = _db
+        .into(_db.mcInstalledMods)
+        .insert(
           McInstalledModsCompanion.insert(
             instanceId: instanceId,
             projectId: Value(projectId),

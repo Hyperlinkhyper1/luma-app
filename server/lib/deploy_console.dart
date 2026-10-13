@@ -403,6 +403,15 @@ class DeployConsole {
 ''';
 }
 
+class AdminSession {
+  const AdminSession({required this.expiresAt, required this.keyFp});
+
+  final int expiresAt;
+  final String keyFp;
+
+  Map<String, Object> toJson() => {'expiresAt': expiresAt, 'keyFp': keyFp};
+}
+
 /// Restores the dashboard's own login sessions across a restart — most often
 /// the restart the deploy button just triggered.
 ///
@@ -420,16 +429,22 @@ class AdminSessionStore {
 
   /// Expired entries are dropped on the way in; anything malformed is
   /// ignored, which only costs a re-login.
-  Map<String, int> load() {
-    final out = <String, int>{};
+  Map<String, AdminSession> load() {
+    final out = <String, AdminSession>{};
     try {
       if (!_file.existsSync()) return out;
       final decoded = jsonDecode(_file.readAsStringSync());
       if (decoded is! Map) return out;
       final now = DateTime.now().millisecondsSinceEpoch;
-      decoded.forEach((hash, expiry) {
-        if (hash is String && expiry is int && expiry > now) {
-          out[hash] = expiry;
+      decoded.forEach((hash, entry) {
+        if (hash is! String || entry is! Map) return;
+        final expiresAt = entry['expiresAt'];
+        final keyFp = entry['keyFp'];
+        if (expiresAt is int &&
+            expiresAt > now &&
+            keyFp is String &&
+            RegExp(r'^[0-9a-f]{64}$').hasMatch(keyFp)) {
+          out[hash] = AdminSession(expiresAt: expiresAt, keyFp: keyFp);
         }
       });
     } catch (e) {
@@ -444,9 +459,10 @@ class AdminSessionStore {
   /// A failure here is worth a log line: it silently returns the dashboard
   /// to losing its session on every deploy, which is exactly the bug this
   /// file exists to fix, and nobody is watching the screen when it happens.
-  void save(Map<String, int> sessions) {
+  void save(Map<String, AdminSession> sessions) {
     try {
-      _file.writeAsStringSync(jsonEncode(sessions));
+      _file.writeAsStringSync(jsonEncode(
+          sessions.map((hash, session) => MapEntry(hash, session.toJson()))));
     } catch (e) {
       stderr.writeln('[luma] could not persist admin sessions to '
           '${_file.path}: $e — dashboard logins will not survive a restart.');

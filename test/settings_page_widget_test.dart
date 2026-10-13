@@ -25,6 +25,7 @@ Future<SettingsController> _pump(
   WidgetTester tester, {
   required String plan,
   required Size size,
+  LumaThemeStyle style = LumaThemeStyle.standard,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -33,7 +34,7 @@ Future<SettingsController> _pump(
   final settings = await _settings(tester, plan);
   await tester.pumpWidget(
     MaterialApp(
-      theme: LumaTheme.dark,
+      theme: LumaTheme.from(Brightness.dark, null, style),
       localizationsDelegates: L.localizationsDelegates,
       supportedLocales: L.supportedLocales,
       home: SettingsScope(
@@ -83,12 +84,13 @@ void main() {
   });
 
   group('theme style picker', () {
-    testWidgets('Core sees Coffee locked', (tester) async {
+    testWidgets('Core sees Coffee and Autumn locked', (tester) async {
       final settings =
           await _pump(tester, plan: 'core', size: const Size(1400, 1000));
 
       expect(find.text('Coffee'), findsOneWidget);
-      expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
+      expect(find.text('Autumn'), findsOneWidget);
+      expect(find.byIcon(Icons.lock_rounded), findsNWidgets(2));
       expect(settings.themeStyle, LumaThemeStyle.standard);
     });
 
@@ -116,6 +118,32 @@ void main() {
 
       expect(settings.themeStyle, LumaThemeStyle.standard);
       expect(find.byType(SnackBar), findsOneWidget);
+    });
+
+    testWidgets('Orbit can turn on Autumn', (tester) async {
+      final settings =
+          await _pump(tester, plan: 'orbit', size: const Size(1400, 1000));
+
+      await tester.tap(find.text('Autumn'));
+      await tester.pumpAndSettle();
+
+      expect(settings.themeStyle, LumaThemeStyle.autumn);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the page lays out dressed in Autumn, wide and narrow',
+        (tester) async {
+      // Notched shapes, the pixel display face and capitalised labels all
+      // change sizes; neither layout may overflow under them.
+      for (final size in const [Size(1400, 1000), Size(460, 900)]) {
+        await _pump(
+          tester,
+          plan: 'nova',
+          size: size,
+          style: LumaThemeStyle.autumn,
+        );
+        expect(tester.takeException(), isNull, reason: '$size');
+      }
     });
   });
 }

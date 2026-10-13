@@ -38,6 +38,22 @@
   }
   ui.ic = ic;
 
+  // Names reach these templates from other people: co-op room members write
+  // the shared state (line and station names), OpenStreetMap is publicly
+  // editable, and chat contacts chose their own email. This page also holds
+  // the account's session token (see mp.js), so none of it may become markup.
+  function esc(v) {
+    return escapeHtml(v == null ? '' : v);
+  }
+  ui.esc = esc;
+
+  // For style="background:…": anything that isn't a plain colour falls back
+  // to grey rather than letting a shared line smuggle in CSS or markup.
+  function cssColor(v) {
+    return /^#[0-9a-fA-F]{3,8}$|^[a-zA-Z]{1,20}$/.test(String(v)) ? v : '#888';
+  }
+  ui.cssColor = cssColor;
+
   const MODE_ICON = { metro: 'metro', tram: 'tram', bus: 'bus', train: 'train', hst: 'hst' };
   const LINE_COLOR_KEYS = {
     '#e6493f': 'sceneSubwayLineColorRed', '#2f6fdb': 'sceneSubwayLineColorBlue',
@@ -335,7 +351,7 @@
       const stopCount = line.stationIds.length - (isLoop ? 1 : 0);
       const M = SB.MODES[line.mode];
       row.innerHTML =
-        '<span class="sw" style="background:' + line.color + '">' + ic(MODE_ICON[line.mode]) + '</span>' +
+        '<span class="sw" style="background:' + cssColor(line.color) + '">' + ic(MODE_ICON[line.mode]) + '</span>' +
         '<span class="lcol"><span class="lname" data-luma-user-content>' + escapeHtml(ui.lineDisplayName(line)) + '</span>' +
         '<span class="lmeta">' + stopCount + ' ' + translate('stops') + (isLoop ? ' · ' + translate('loop') : '') + ' · ' + SB.fmtInt(riders) + '/d · ' + SB.fmtMoney(revenue) + '/d' +
         (ratio > 1.05 ? ' · <b class="bad">' + translate('crowded') + '</b>' : '') +
@@ -381,7 +397,7 @@
         '<button class="mini ghostbtn" id="ip-close">' + ic('x') + '</button></div>' +
         '<div class="ip-row">' + translate('Type') + ' <b>' + escapeHtml(translate(SB.MODES[s.mode].label)) + (s.real ? ' · ' + translate('real station') : '') + '</b></div>' +
         '<div class="ip-row">' + escapeHtml(format('sceneSubwayUiBoardings', {count: SB.fmtInt(boardings)})) + '</div>' +
-        '<div class="ip-row">' + translate('Lines') + ' <b>' + (lines.length ? lines.map((l) => '<span class="dot" style="background:' + l.color + '"></span>').join('') : translate('none yet')) + '</b></div>' +
+        '<div class="ip-row">' + translate('Lines') + ' <b>' + (lines.length ? lines.map((l) => '<span class="dot" style="background:' + cssColor(l.color) + '"></span>').join('') : translate('none yet')) + '</b></div>' +
         '<div class="ip-row">' + translate('Area') + ' <b data-luma-user-content>' + escapeHtml(SB.game.city.districtNameAt(s.x, s.y) || '—') + '</b></div>' +
         '<div class="ip-actions"><button id="ip-demolish" class="danger">' + ic('trash') + translate('Demolish') + '</button></div>';
       panel.style.display = 'block';
@@ -408,7 +424,7 @@
       const modeLabel = translate(M.label);
       const vehicleLabel = translate(M.vehicle);
       panel.innerHTML =
-        '<div class="ip-head"><span class="dot big" style="background:' + line.color + '"></span>' +
+        '<div class="ip-head"><span class="dot big" style="background:' + cssColor(line.color) + '"></span>' +
         '<span class="ip-title" data-luma-user-content>' + escapeHtml(ui.lineDisplayName(line)) + (isLoop ? ' <span class="pill">' + translate('loop') + '</span>' : '') + '</span>' +
         '<button class="mini ghostbtn" id="ip-close">' + ic('x') + '</button></div>' +
         '<div class="ip-row">' + escapeHtml(format('sceneSubwayLinePanelModeSpeed', {mode: modeLabel, speed: M.speedKmh + ' km/h'})) + '</div>' +
@@ -583,7 +599,7 @@
   ui.confirm = function (title, sub, onYes, localeRefresh) {
     ui._localeRefresh = localeRefresh || (() => ui.confirm(title, sub, onYes));
     openModal(
-      '<h2>' + title + '</h2><p class="sub">' + sub + '</p>' +
+      '<h2>' + esc(title) + '</h2><p class="sub">' + esc(sub) + '</p>' +
       '<div class="mrow"><button id="m-no">Cancel</button>' +
       '<button id="m-yes" class="danger">Confirm</button></div>'
     );
@@ -613,10 +629,10 @@
     let savedHtml = '';
     if (saved.length) {
       savedHtml = '<h3>' + translate('Your cities') + '</h3><div class="citygrid">' + saved.map((s) =>
-        '<div class="citycard" data-save="' + s.id + '">' +
-        '<div class="cc-head"><b data-luma-user-content>' + escapeHtml(s.place.name) + '</b><span class="pill">' + translate('Day') + ' ' + s.day + '</span></div>' +
-        '<div class="cc-meta">' + s.lines + ' ' + translate('lines') + ' · ' + s.stations + ' ' + translate('stops') + '</div>' +
-        '<div class="cc-save">' + translate('Continue') + ' · <a href="#" class="cc-del" data-save="' + s.id + '">' + translate('delete save') + '</a></div>' +
+        '<div class="citycard" data-save="' + esc(s.id) + '">' +
+        '<div class="cc-head"><b data-luma-user-content>' + escapeHtml(s.place.name) + '</b><span class="pill">' + translate('Day') + ' ' + esc(s.day) + '</span></div>' +
+        '<div class="cc-meta">' + esc(s.lines) + ' ' + translate('lines') + ' · ' + esc(s.stations) + ' ' + translate('stops') + '</div>' +
+        '<div class="cc-save">' + translate('Continue') + ' · <a href="#" class="cc-del" data-save="' + esc(s.id) + '">' + translate('delete save') + '</a></div>' +
         '</div>').join('') + '</div>';
     }
     openModal(

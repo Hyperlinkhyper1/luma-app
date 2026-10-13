@@ -6,7 +6,7 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart' as pc;
 import 'package:cryptography/cryptography.dart';
 
-import 'host_cipher_pool.dart';
+import '../../../../../security/record_cipher_pool.dart';
 import 'host_protocol.dart';
 import 'host_error_localizer.dart';
 import '../../../../../l10n/current_l.dart';
@@ -42,7 +42,7 @@ import '../../../../../l10n/current_l.dart';
 /// ## What that buys
 ///
 /// * **Confidentiality.** Every frame after the handshake is sealed with
-///   ChaCha20-Poly1305 (see [HostCipherPool] for why not AES-GCM) under a key
+///   ChaCha20-Poly1305 (see [RecordCipherPool] for why not AES-GCM) under a key
 ///   that only exists on the two devices. Someone
 ///   recording the network sees file sizes and timing, never content or
 ///   names.
@@ -192,9 +192,9 @@ class HostSecureChannel {
   ///
   /// The counter is taken *synchronously*, when this is called — not when the
   /// work finishes. So a caller may start several seals back to back and let
-  /// them run in parallel on [HostCipherPool], as long as it puts the results
+  /// them run in parallel on [RecordCipherPool], as long as it puts the results
   /// on the wire in the order it called this. Every sender here does.
-  Future<Uint8List> seal(Uint8List plaintext) => HostCipherPool.instance.seal(
+  Future<Uint8List> seal(Uint8List plaintext) => RecordCipherPool.instance.seal(
         _sendKey,
         _nonce(_sendNoncePrefix, _sendCounter++),
         plaintext,
@@ -209,12 +209,12 @@ class HostSecureChannel {
   /// the record. Continuing after a failed open would let a peer resynchronise
   /// the counter and replay traffic.
   Future<Uint8List> open(Uint8List record) async {
-    if (record.length < HostCipherPool.macLength) {
+    if (record.length < RecordCipherPool.macLength) {
       throw HostProtocolException(currentL.sftpHostRecordTooShort);
     }
     final nonce = _nonce(_receiveNoncePrefix, _receiveCounter++);
     try {
-      return await HostCipherPool.instance.open(_receiveKey, nonce, record);
+      return await RecordCipherPool.instance.open(_receiveKey, nonce, record);
     } catch (_) {
       throw HostProtocolException(currentL.sftpHostFrameFailedAuth);
     }

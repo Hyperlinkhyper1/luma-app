@@ -518,10 +518,11 @@ extension TeamBoardApi on Api {
   }
 
   /// The Users tab's Team Clipboard actions for [u]: add them, make them a
-  /// lead or a plain member, or take them off the board.
+  /// lead or a plain member, or take them off the board. [jsEmail] must come
+  /// from [Api._jsAttrString]: it lands inside an inline `confirm('…')`.
   List<String> _teamBoardMenuItems(
       StoredUser u,
-      String safeEmail,
+      String jsEmail,
       String Function(String action, String label,
               {String? confirm, bool danger, bool askReason})
           item) {
@@ -532,18 +533,18 @@ extension TeamBoardApi on Api {
     return switch (teamBoard.roleOf(u.id)) {
       null => [
           access('member', 'Add to Team Clipboard',
-              confirm: 'Let $safeEmail into the Team Clipboard? They can read '
+              confirm: 'Let $jsEmail into the Team Clipboard? They can read '
                   'every entry and file, post, and upload.'),
         ],
       final role => [
           if (role == 'member')
             access('lead', 'Make Team Clipboard lead',
-                confirm: 'Make $safeEmail a lead? Leads can mark entries '
+                confirm: 'Make $jsEmail a lead? Leads can mark entries '
                     'added, close any thread and remove anything.')
           else
             access('member', 'Make regular team member'),
           access('none', 'Remove from Team Clipboard',
-              confirm: 'Take $safeEmail off the Team Clipboard? What they '
+              confirm: 'Take $jsEmail off the Team Clipboard? What they '
                   'posted stays on the board.',
               danger: true),
         ],

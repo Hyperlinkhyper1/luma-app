@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart' as c;
 import 'package:luma_sync_server/ai_benchmark_store.dart';
 import 'package:luma_sync_server/ai_model_catalog.dart';
 import 'package:luma_sync_server/ai_usage_store.dart';
@@ -25,7 +26,10 @@ void main() {
     late Handler handler;
     late Store store;
 
-    Future<Handler> buildHandler({String? repoPath}) async {
+    Future<Handler> buildHandler({
+      String? repoPath,
+      String adminKey = 'test-admin-key',
+    }) async {
       final config = ServerConfig(
         port: 0,
         dataDir: dir.path,
@@ -37,7 +41,7 @@ void main() {
         verificationTtl: const Duration(hours: 24),
         maxVerificationEmailsPerHour: 50,
         approvalMode: ApprovalMode.open,
-        adminKey: 'test-admin-key',
+        adminKey: adminKey,
         mistralApiKey: null,
         googleApiKey: null,
         itadApiKey: null,
@@ -62,7 +66,6 @@ void main() {
         await AiBenchmarkStore.open(dir.path),
       ).handler;
     }
-
 
     setUp(() async {
       dir = await Directory.systemTemp.createTemp('luma_deploy_test');
@@ -98,7 +101,6 @@ void main() {
         'httpStatus': response.statusCode,
       };
     }
-
 
     /// Writes [name] on the shared volume, optionally backdated so the
     /// freshness checks can be exercised.
@@ -281,7 +283,10 @@ void main() {
       final login = await handler(Request(
         'POST',
         Uri.parse('http://localhost/admin/login'),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Origin': 'http://localhost',
+        },
         body: 'key=test-admin-key',
       ));
       final cookie = login.headers['set-cookie'];
@@ -293,7 +298,7 @@ void main() {
       final response = await handler(Request(
         'POST',
         Uri.parse('http://localhost/admin/deploy'),
-        headers: {'cookie': 'luma_admin=$token'},
+        headers: {'cookie': 'luma_admin=$token', 'Origin': 'http://localhost'},
       ));
 
       expect(response.statusCode, 200,
@@ -308,7 +313,10 @@ void main() {
       final login = await handler(Request(
         'POST',
         Uri.parse('http://localhost/admin/login'),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Origin': 'http://localhost',
+        },
         body: 'key=test-admin-key',
       ));
       final token =
@@ -317,17 +325,177 @@ void main() {
       await handler(Request(
         'POST',
         Uri.parse('http://localhost/admin/logout'),
-        headers: {'cookie': 'luma_admin=$token'},
+        headers: {'cookie': 'luma_admin=$token', 'Origin': 'http://localhost'},
       ));
 
       handler = await buildHandler(repoPath: '/home/example/luma-app');
       final response = await handler(Request(
         'POST',
         Uri.parse('http://localhost/admin/deploy'),
-        headers: {'cookie': 'luma_admin=$token'},
+        headers: {'cookie': 'luma_admin=$token', 'Origin': 'http://localhost'},
       ));
       expect(response.statusCode, 302);
       expect(response.headers['location'], '/admin/login');
+    });
+
+    Future<String> signIn() async {
+      final response = await handler(Request(
+        'POST',
+        Uri.parse('http://localhost/admin/login'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Origin': 'http://localhost',
+        },
+        body: 'key=test-admin-key',
+      ));
+      expect(response.statusCode, 302);
+      return response.headers['set-cookie']!.split(';').first;
+    }
+
+    test('persisted sessions use an HMAC fingerprint of the current key',
+        () async {
+      handler = await buildHandler();
+      final cookie = await signIn();
+      final persisted = jsonDecode(
+          await File('${dir.path}/admin_sessions.json').readAsString()) as Map;
+      final entry = persisted.values.single as Map;
+      expect(entry['expiresAt'], isA<int>());
+      expect(
+          entry['keyFp'],
+          c.Hmac(c.sha256, store.serverSecret)
+              .convert(utf8.encode('test-admin-key'))
+              .toString());
+      expect(entry['keyFp'],
+          isNot(c.sha256.convert(utf8.encode('test-admin-key')).toString()));
+      expect(persisted.keys.single,
+          c.sha256.convert(utf8.encode(cookie.split('=').last)).toString());
+    });
+
+    test('rotating the admin key invalidates a persisted session', () async {
+      handler = await buildHandler();
+      final cookie = await signIn();
+      handler = await buildHandler(adminKey: 'rotated-admin-key');
+      final refused = await handler(Request(
+        'GET',
+        Uri.parse('http://localhost/admin/deploy/status'),
+        headers: {'cookie': cookie},
+      ));
+      expect(refused.statusCode, 302);
+      expect(refused.headers['location'], '/admin/login');
+      final script = await handler(Request(
+        'GET',
+        Uri.parse('http://localhost/admin/deploy/status'),
+        headers: {'x-admin-key': 'rotated-admin-key'},
+      ));
+      expect(script.statusCode, 200);
+    });
+
+    test('old expiry-only sessions require signing in again', () async {
+      const token = 'old-admin-session';
+      await volumeFile(
+          'admin_sessions.json',
+          jsonEncode({
+            c.sha256.convert(utf8.encode(token)).toString(): DateTime.now()
+                .add(const Duration(hours: 1))
+                .millisecondsSinceEpoch,
+          }));
+      handler = await buildHandler();
+      final refused = await handler(Request(
+        'GET',
+        Uri.parse('http://localhost/admin/deploy/status'),
+        headers: {'cookie': 'luma_admin=$token'},
+      ));
+      expect(refused.statusCode, 302);
+      expect(refused.headers['location'], '/admin/login');
+    });
+
+    test('signing out all admins revokes every persisted session', () async {
+      handler = await buildHandler();
+      final first = await signIn();
+      final second = await signIn();
+      final signedOut = await handler(Request(
+        'POST',
+        Uri.parse('http://localhost/admin/logout-all'),
+        headers: {'cookie': first, 'Origin': 'http://localhost'},
+      ));
+      expect(signedOut.statusCode, 302);
+      expect(signedOut.headers['set-cookie'], contains('Max-Age=0'));
+      expect(
+          jsonDecode(
+              await File('${dir.path}/admin_sessions.json').readAsString()),
+          isEmpty);
+      handler = await buildHandler();
+      for (final cookie in [first, second]) {
+        final refused = await handler(Request(
+          'GET',
+          Uri.parse('http://localhost/admin/deploy/status'),
+          headers: {'cookie': cookie},
+        ));
+        expect(refused.statusCode, 302);
+        expect(refused.headers['location'], '/admin/login');
+      }
+    });
+
+    test('query keys redirect to login without establishing a session',
+        () async {
+      handler = await buildHandler();
+      for (final path in ['/admin', '/admin/deploy/status']) {
+        final response = await handler(Request(
+          'GET',
+          Uri.parse('http://localhost$path?key=test-admin-key'),
+        ));
+        expect(response.statusCode, 302);
+        expect(response.headers['location'], '/admin/login');
+        expect(response.headers['set-cookie'], isNull);
+        expect(response.headers['referrer-policy'], 'no-referrer');
+      }
+    });
+
+    test('Origin middleware covers login and every admin write method',
+        () async {
+      handler = await buildHandler(repoPath: '/home/example/luma-app');
+      for (final method in ['POST', 'PUT', 'DELETE', 'OPTIONS']) {
+        final refused = await handler(Request(
+          method,
+          Uri.parse('http://localhost/admin/deploy'),
+          headers: {
+            'x-admin-key': 'test-admin-key',
+            'Origin': 'https://attacker.example',
+          },
+        ));
+        expect(refused.statusCode, 403, reason: method);
+      }
+      final login = await handler(Request(
+        'POST',
+        Uri.parse('http://localhost/admin/login'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Origin': 'null',
+        },
+        body: 'key=test-admin-key',
+      ));
+      expect(login.statusCode, 403);
+      expect(login.headers['set-cookie'], isNull);
+      expect(await File('${dir.path}/deploy.request').exists(), isFalse);
+      expect((await post('/admin/deploy'))['httpStatus'], 200,
+          reason: 'header-authenticated scripts do not send Origin');
+    });
+
+    test('cookie writes without Origin are rejected', () async {
+      handler = await buildHandler();
+      final cookie = await signIn();
+      final refused = await handler(Request(
+        'POST',
+        Uri.parse('http://localhost/admin/logout-all'),
+        headers: {'cookie': cookie},
+      ));
+      expect(refused.statusCode, 403);
+      final stillValid = await handler(Request(
+        'GET',
+        Uri.parse('http://localhost/admin/deploy/status'),
+        headers: {'cookie': cookie},
+      ));
+      expect(stillValid.statusCode, 200);
     });
 
     test('the watcher counts as alive only while its heartbeat is fresh',

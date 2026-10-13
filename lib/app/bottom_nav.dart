@@ -51,30 +51,46 @@ class BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final coffee = context.lumaDecor.style == LumaDecor.coffee.style;
+    final decor = context.lumaDecor;
+    final coffee = decor.style == LumaDecor.coffee.style;
     final t = L.of(context);
     final primary = _primary(t);
     return SafeArea(
       top: false,
       child: Container(
         height: 64,
-        margin: coffee ? const EdgeInsets.fromLTRB(12, 8, 12, 8) : null,
-        decoration: BoxDecoration(
-          color: luma.rail,
-          border: coffee
-              ? Border.all(color: luma.border)
-              : Border(top: BorderSide(color: luma.border)),
-          borderRadius: coffee ? BorderRadius.circular(24) : null,
-          boxShadow: coffee
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.12),
-                    blurRadius: 18,
-                    offset: const Offset(0, 6),
+        margin: coffee || decor.notched
+            ? const EdgeInsets.fromLTRB(12, 8, 12, 8)
+            : null,
+        // Under a notched style the bar floats as one more block on its
+        // ledge, like a game's control strip.
+        decoration: decor.notched
+            ? ShapeDecoration(
+                color: luma.rail,
+                shape: decor.cardShape(
+                  side: BorderSide(
+                    color: Color.lerp(luma.border, luma.accent, 0.25)!,
+                    width: decor.borderWidth,
                   ),
-                ]
-              : null,
-        ),
+                ),
+                shadows: decor.blockShadow(luma),
+              )
+            : BoxDecoration(
+                color: luma.rail,
+                border: coffee
+                    ? Border.all(color: luma.border)
+                    : Border(top: BorderSide(color: luma.border)),
+                borderRadius: coffee ? BorderRadius.circular(24) : null,
+                boxShadow: coffee
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.12),
+                          blurRadius: 18,
+                          offset: const Offset(0, 6),
+                        ),
+                      ]
+                    : null,
+              ),
         child: Row(
           children: [
             for (var i = 0; i < primary.length; i++)
@@ -107,8 +123,8 @@ class BottomNav extends StatelessWidget {
       context: context,
       backgroundColor: context.luma.surface,
       isScrollControlled: true,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
+      shape: context.lumaDecor.shape(
+        BorderRadius.vertical(
           // 20 by default, rounder under a style that asks for it.
           top: Radius.circular(context.lumaDecor.cardRadius * 1.25),
         ),

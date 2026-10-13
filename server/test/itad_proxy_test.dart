@@ -68,14 +68,14 @@ void main() {
     /// Inserts an already-approved account and a live session directly,
     /// bypassing the password/KDF registration handshake — irrelevant to
     /// what this file is testing, which is what happens after auth passes.
-    String seedApprovedUser() {
+    Future<String> seedApprovedUser() async {
       const token = 'test-bearer-token-0123456789';
       final user = StoredUser(
         id: 'u1',
         email: 'alice@example.com',
-        authHash: '',
-        authSalt: '',
-        kdfSalt: '',
+        authHash: base64Encode(List.filled(32, 1)),
+        authSalt: base64Encode(List.filled(16, 2)),
+        kdfSalt: base64Encode(List.filled(16, 3)),
         kdfIterations: 200000,
         quotaBytes: 1024,
         createdAtMs: DateTime.now().millisecondsSinceEpoch,
@@ -90,6 +90,8 @@ void main() {
         expiresAtMs:
             DateTime.now().add(const Duration(days: 1)).millisecondsSinceEpoch,
       );
+      await store.saveUsers();
+      await store.saveSessions();
       return token;
     }
 
@@ -127,33 +129,34 @@ void main() {
         await call('GET', '/api/v1/steam/itad/status'),
         await call('GET', '/api/v1/steam/itad/lookup?appid=570'),
         await call('GET', '/api/v1/steam/itad/history?id=abc12345'),
-        await call('POST', '/api/v1/steam/itad/overview',
-            body: ['abc12345']),
+        await call('POST', '/api/v1/steam/itad/overview', body: ['abc12345']),
       ]) {
         expect(result['httpStatus'], 401, reason: '$result');
       }
     });
 
     test('status reports whether the operator configured a key', () async {
-      final token = seedApprovedUser();
+      final token = await seedApprovedUser();
 
       handler = await buildHandler(itadApiKey: null);
-      expect((await call('GET', '/api/v1/steam/itad/status', token: token))
-          ['configured'], isFalse);
+      expect(
+          (await call('GET', '/api/v1/steam/itad/status',
+              token: token))['configured'],
+          isFalse);
 
       handler = await buildHandler(itadApiKey: 'server-key');
-      expect((await call('GET', '/api/v1/steam/itad/status', token: token))
-          ['configured'], isTrue);
+      expect(
+          (await call('GET', '/api/v1/steam/itad/status',
+              token: token))['configured'],
+          isTrue);
     });
 
-    test('every proxy route answers not_configured with no key set',
-        () async {
-      final token = seedApprovedUser();
+    test('every proxy route answers not_configured with no key set', () async {
+      final token = await seedApprovedUser();
       handler = await buildHandler(itadApiKey: null);
 
       for (final result in [
-        await call('GET', '/api/v1/steam/itad/lookup?appid=570',
-            token: token),
+        await call('GET', '/api/v1/steam/itad/lookup?appid=570', token: token),
         await call('GET', '/api/v1/steam/itad/history?id=abc12345',
             token: token),
         await call('POST', '/api/v1/steam/itad/overview',
@@ -166,7 +169,7 @@ void main() {
 
     test('lookup rejects a non-numeric appid before touching the network',
         () async {
-      final token = seedApprovedUser();
+      final token = await seedApprovedUser();
       handler = await buildHandler(itadApiKey: 'server-key');
 
       final result = await call(
@@ -178,7 +181,7 @@ void main() {
     });
 
     test('history rejects an id that is not ITAD-id-shaped', () async {
-      final token = seedApprovedUser();
+      final token = await seedApprovedUser();
       handler = await buildHandler(itadApiKey: 'server-key');
 
       final result = await call(
@@ -190,17 +193,15 @@ void main() {
     });
 
     test('overview rejects a body that is not 1-5 id strings', () async {
-      final token = seedApprovedUser();
+      final token = await seedApprovedUser();
       handler = await buildHandler(itadApiKey: 'server-key');
 
-      final tooMany =
-          await call('POST', '/api/v1/steam/itad/overview', token: token,
-              body: List.generate(6, (i) => 'abc12345$i'));
+      final tooMany = await call('POST', '/api/v1/steam/itad/overview',
+          token: token, body: List.generate(6, (i) => 'abc12345$i'));
       expect(tooMany['httpStatus'], 400);
 
-      final wrongType = await call(
-          'POST', '/api/v1/steam/itad/overview', token: token,
-          body: [123]);
+      final wrongType = await call('POST', '/api/v1/steam/itad/overview',
+          token: token, body: [123]);
       expect(wrongType['httpStatus'], 400);
 
       final empty = await call('POST', '/api/v1/steam/itad/overview',

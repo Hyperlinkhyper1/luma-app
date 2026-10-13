@@ -96,14 +96,15 @@ class SecureSecretStore {
   /// than deleted, [name] is recorded in [lostKeys], and a fresh key is
   /// created so the app keeps starting.
   Future<Uint8List> loadKey(
-    String name,
-    File legacyFile, {
-    required List<File> encryptedData,
+    String name, {
+    File? legacyFile,
+    List<File> encryptedData = const [],
+    Future<bool> Function()? hasEncryptedData,
   }) {
     return _pendingKeys.putIfAbsent(name, () async {
       try {
         final saved = await read(name);
-        final legacy = await legacyFile.exists()
+        final legacy = legacyFile != null && await legacyFile.exists()
             ? (await legacyFile.readAsString()).trim()
             : null;
         if (saved != null && legacy != null && saved != legacy) {
@@ -112,6 +113,9 @@ class SecureSecretStore {
         var encoded = saved ?? legacy;
         if (encoded == null) {
           await _quarantine(name, encryptedData);
+          if (hasEncryptedData != null && await hasEncryptedData()) {
+            lostKeys.add(name);
+          }
           final random = Random.secure();
           encoded = base64Encode(List.generate(32, (_) => random.nextInt(256)));
         }
@@ -120,7 +124,7 @@ class SecureSecretStore {
           throw FormatException(currentL.secretStoreInvalidKey);
         }
         await write(name, encoded);
-        if (legacy != null) await legacyFile.delete();
+        if (legacy != null) await legacyFile!.delete();
         return key;
       } finally {
         _pendingKeys.remove(name);
@@ -138,7 +142,9 @@ class SecureSecretStore {
     }
     if (moved) {
       lostKeys.add(name);
-      debugPrint('Encryption key "$name" was missing; its data was moved aside.');
+      debugPrint(
+        'Encryption key "$name" was missing; its data was moved aside.',
+      );
     }
   }
 }

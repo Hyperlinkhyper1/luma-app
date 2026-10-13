@@ -10,6 +10,7 @@ import puppeteer from 'puppeteer-core';
 
 import { installShotControl } from './shot_control.mjs';
 import { benchmarkSceneFile } from './benchmark_scene_file.mjs';
+import { browserNetworkArgs, isolatePage, sceneUrl } from './renderer_network.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -831,7 +832,7 @@ async function main() {
     args: [
       `--window-size=${W},${H}`,
       '--force-device-scale-factor=1',
-      '--no-sandbox',
+      ...browserNetworkArgs,
       '--disable-dev-shm-usage',
       '--mute-audio',
       '--disable-background-timer-throttling',
@@ -903,7 +904,7 @@ async function main() {
       const cdp = await page.createCDPSession();
       await cdp.send('Runtime.enable');
       cdp.on('Runtime.exceptionThrown', ({ exceptionDetails: d }) => {
-        const own = (f) => typeof f?.url === 'string' && f.url.startsWith('file:');
+        const own = (f) => f?.url === sceneUrl;
         const frame = (d.stackTrace?.callFrames ?? []).find(own) ?? (own(d) ? d : null);
         const text = String(d.exception?.description || d.text || 'error').split('\n')[0]
           .replace(/^(Uncaught\s+)?\w*Error:\s*/, '');
@@ -919,7 +920,7 @@ async function main() {
         const text = String(first?.description || first?.value || 'error').split('\n')[0]
           .replace(/^\w*Error:\s*/, '').slice(0, 300);
         const frame = (e.stackTrace?.callFrames ?? []).find(
-          (f) => typeof f.url === 'string' && f.url.startsWith('file:'));
+          (f) => f.url === sceneUrl);
         const where = frame && Number.isInteger(frame.lineNumber)
           ? ` (at line ${frame.lineNumber + 1}:${(frame.columnNumber ?? 0) + 1})` : '';
         const note = `${text}${where}`;
@@ -939,8 +940,8 @@ async function main() {
       if (kind === 'cathedral') {
         const glb = repairGlb(await fs.promises.readFile(file));
         validateGlb(glb, id);
-        await page.setContent(cathedralViewerHtml(glb.toString('base64')),
-          { waitUntil: 'domcontentloaded', timeout: 120000 });
+        await isolatePage(page, cathedralViewerHtml(glb.toString('base64')));
+        await page.goto(sceneUrl, { waitUntil: 'domcontentloaded', timeout: 120000 });
         const modelLoad = await page.waitForFunction(
           `(() => {
             const m = document.querySelector('#model');
@@ -954,8 +955,8 @@ async function main() {
         if (loadResult.error) throw new Error(loadResult.error);
         await sleep(4000);
       } else {
-        const url = (process.platform === 'win32' ? 'file:///' : 'file://') + path.resolve(file).replace(/\\/g, '/');
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
+        await isolatePage(page, source.toString('utf8'));
+        await page.goto(sceneUrl, { waitUntil: 'domcontentloaded', timeout: 120000 });
       }
       if (kind === 'pagoda') await shootPagoda(page, framing);
       else if (kind !== 'cathedral') {

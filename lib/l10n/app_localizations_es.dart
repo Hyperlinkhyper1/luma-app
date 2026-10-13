@@ -741,6 +741,21 @@ class LEs extends L {
       'Café trae su propia paleta, así que el selector de acento queda en pausa mientras esté activo.';
 
   @override
+  String get settingsThemeStyleAutumn => 'Otoño';
+
+  @override
+  String get settingsThemeStyleAutumnSub =>
+      'Óxido y oro de cosecha, esquinas pixeladas, botones arcade y hojas cayendo.';
+
+  @override
+  String get settingsThemeStyleUpgradeAutumn =>
+      'Otoño forma parte de Orbit y Nova. Mejora tu plan para activarlo.';
+
+  @override
+  String get settingsAccentAutumnNote =>
+      'Otoño trae su propia paleta, así que el selector de acento queda en pausa mientras esté activo.';
+
+  @override
   String get settingsGeneral => 'General';
 
   @override
@@ -4027,7 +4042,7 @@ class LEs extends L {
 
   @override
   String get planOrbitBlurb =>
-      'Más funciones sincronizadas, SFTP, lista de la compra y el tema Coffee.';
+      'Más funciones sincronizadas, SFTP, lista de la compra y los temas Coffee y Otoño.';
 
   @override
   String get planNovaBlurb =>
@@ -4083,6 +4098,9 @@ class LEs extends L {
   String get planFeatureOrbitCoffee => 'El tema Coffee';
 
   @override
+  String get planFeatureOrbitAutumn => 'El tema Otoño';
+
+  @override
   String get planFeatureNovaEverythingSync =>
       'Mantén todo sincronizado en todos tus dispositivos, con cifrado de extremo a extremo';
 
@@ -4099,7 +4117,7 @@ class LEs extends L {
 
   @override
   String get planFeatureNovaEverythingOrbit =>
-      'Todo lo de Orbit, incluido el tema Coffee';
+      'Todo lo de Orbit, incluidos los temas Coffee y Otoño';
 
   @override
   String get planCodeEnterCode => 'Introduce un código de acceso.';
@@ -18994,6 +19012,9 @@ class LEs extends L {
   String get minecraftLauncherSignInMicrosoft => 'Iniciar sesión con Microsoft';
 
   @override
+  String get minecraftLauncherSignInAgain => 'Vuelve a iniciar sesión';
+
+  @override
   String get minecraftLauncherNoAccounts => 'Aún no hay cuentas';
 
   @override
@@ -29543,6 +29564,40 @@ class LEs extends L {
   @override
   String get p2pLinkHandshakeNotSameAccount =>
       'Falló el handshake: no es la misma cuenta.';
+
+  @override
+  String p2pLinkHandshakeStartFailed(String error) {
+    return 'No se pudo iniciar el handshake: $error';
+  }
+
+  @override
+  String p2pLinkSendFailed(String error) {
+    return 'No se pudo enviar al otro dispositivo: $error';
+  }
+
+  @override
+  String get p2pLinkAuthFailed =>
+      'Una trama no superó la comprobación de autenticidad; se cerró la conexión.';
+
+  @override
+  String get p2pLinkPayloadMismatch =>
+      'La longitud de los datos no coincide con su encabezado.';
+
+  @override
+  String get p2pLinkHandshakeUnexpected =>
+      'Falló el handshake: mensaje inesperado.';
+
+  @override
+  String get p2pLinkHandshakeNotSignedIn =>
+      'Falló el handshake: este dispositivo no ha iniciado sesión.';
+
+  @override
+  String get p2pLinkHandshakeUpdateBoth =>
+      'Falló el handshake: actualiza luma en ambos dispositivos.';
+
+  @override
+  String get p2pLinkHandshakeInvalidHello =>
+      'Falló el handshake: hello no válido.';
 
   @override
   String get p2pSetUpSyncFirst =>

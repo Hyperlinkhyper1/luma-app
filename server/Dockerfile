@@ -38,24 +38,13 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /data
 
-# The admin dashboard's "Render missing banners" / "Re-render all" buttons
-# (PreviewRenderService) shoot AI benchmark scenes in a headless Chromium
-# driven by node — see tool/render_previews.mjs. Scenes load three.js from a
-# CDN at render time; the fonts cover the scenes' HUD text, CJK included.
-# The Mesa drivers let Chromium draw WebGL on the host's GPU through the
-# /dev/dri device docker-compose maps in; without one it falls back to
-# SwiftShader on the CPU.
+# Node only parses inline scripts here. AI-generated HTML executes in the
+# separate renderer service, which cannot mount server data or credentials.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        nodejs npm chromium \
-        libgl1-mesa-dri libegl-mesa0 libegl1 mesa-vulkan-drivers \
-        fonts-liberation fonts-noto-cjk fonts-noto-color-emoji \
+    && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
-COPY tool/package.json tool/package-lock.json /app/tool/
-RUN cd /app/tool && npm ci --omit=dev --no-audit --no-fund
-COPY tool/*.mjs /app/tool/
+COPY tool/check_syntax.mjs tool/shot_control.mjs /app/tool/
 ENV LUMA_PREVIEW_TOOL=/app/tool/render_previews.mjs
-ENV LUMA_CHROMIUM_BIN=/usr/bin/chromium
 
 COPY --from=build /tmp/build-output/bundle/ /app/bundle/
 

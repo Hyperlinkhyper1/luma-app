@@ -102,6 +102,7 @@ void main() {
         if (form != null) 'Content-Type': 'application/x-www-form-urlencoded',
         if (token != null) 'Authorization': 'Bearer $token',
         if (admin) 'x-admin-key': 'test-admin-key',
+        if (path.startsWith('/admin/')) 'Origin': 'http://localhost',
       },
       body: json != null ? jsonEncode(json) : form,
     ));
@@ -153,9 +154,9 @@ void main() {
         admin: true, json: {'mode': 'detector'});
     expect(saved['httpStatus'], 404);
 
-    final unauthorized = await call('POST', '/admin/ai-routes/test',
-        json: {'mode': 'detector'});
-    expect(unauthorized['httpStatus'], 401);
+    final unauthorized =
+        await call('POST', '/admin/ai-routes/test', json: {'mode': 'detector'});
+    expect(unauthorized['httpStatus'], 302);
   });
 
   /// Registers an account (approval mode is `open`, so this signs straight in)
@@ -203,7 +204,7 @@ void main() {
     expect(invalid['httpStatus'], 400);
     final unauthorized = await call('POST', '/admin/ai-routes',
         form: 'normal.upstream=google&normal.model=model-11');
-    expect(unauthorized['httpStatus'], 401);
+    expect(unauthorized['httpStatus'], 302);
     final unchanged = await call('POST', '/admin/ai-routes',
         admin: true, form: 'normal.upstream=google&normal.model=model-10');
     expect(unchanged['httpStatus'], 200);

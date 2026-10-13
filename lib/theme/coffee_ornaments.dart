@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'autumn_ornaments.dart';
 import 'luma_theme.dart';
 
 /// Draws one coffee bean centered on [center]: an ellipse [radius] wide with
@@ -100,9 +101,9 @@ class _BeanIconPainter extends CustomPainter {
 
 /// Wraps the app's content in whatever backdrop the active style asks for.
 ///
-/// For every style but Coffee this is a straight pass-through — the widget
-/// costs one [InheritedWidget] read and returns [child] untouched, so the
-/// default theme pays nothing for the feature existing.
+/// For a style without an ornament this is a straight pass-through — the
+/// widget costs one [InheritedWidget] read and returns [child] untouched, so
+/// the default theme pays nothing for the feature existing.
 class StyleBackdrop extends StatelessWidget {
   const StyleBackdrop({super.key, required this.child});
 
@@ -110,9 +111,11 @@ class StyleBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final decor = context.lumaDecor;
-    if (decor.ornament != LumaOrnament.coffeeBeans) return child;
-    return _CoffeeBackdrop(child: child);
+    return switch (context.lumaDecor.ornament) {
+      LumaOrnament.none => child,
+      LumaOrnament.coffeeBeans => _CoffeeBackdrop(child: child),
+      LumaOrnament.fallingLeaves => AutumnBackdrop(child: child),
+    };
   }
 }
 

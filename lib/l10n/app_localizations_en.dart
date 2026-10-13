@@ -736,6 +736,21 @@ class LEn extends L {
       'Coffee has its own colours, so you can\'t pick a colour while it\'s on.';
 
   @override
+  String get settingsThemeStyleAutumn => 'Autumn';
+
+  @override
+  String get settingsThemeStyleAutumnSub =>
+      'Rust and harvest gold, pixel corners, arcade buttons, leaves drifting down.';
+
+  @override
+  String get settingsThemeStyleUpgradeAutumn =>
+      'Autumn comes with Orbit and Nova. Grab one of those to turn it on.';
+
+  @override
+  String get settingsAccentAutumnNote =>
+      'Autumn has its own colours, so you can\'t pick a colour while it\'s on.';
+
+  @override
   String get settingsGeneral => 'General';
 
   @override
@@ -4000,7 +4015,7 @@ class LEn extends L {
 
   @override
   String get planOrbitBlurb =>
-      'More synced features, SFTP, Groceries List and the Coffee theme.';
+      'More synced features, SFTP, Groceries List and the Coffee and Autumn themes.';
 
   @override
   String get planNovaBlurb =>
@@ -4056,6 +4071,9 @@ class LEn extends L {
   String get planFeatureOrbitCoffee => 'The Coffee theme';
 
   @override
+  String get planFeatureOrbitAutumn => 'The Autumn theme';
+
+  @override
   String get planFeatureNovaEverythingSync =>
       'Keep everything in sync across all your devices, end-to-end encrypted';
 
@@ -4072,7 +4090,7 @@ class LEn extends L {
 
   @override
   String get planFeatureNovaEverythingOrbit =>
-      'Everything in Orbit, including the Coffee theme';
+      'Everything in Orbit, including the Coffee and Autumn themes';
 
   @override
   String get planCodeEnterCode => 'Enter an access code.';
@@ -18831,6 +18849,9 @@ class LEn extends L {
   String get minecraftLauncherSignInMicrosoft => 'Sign in with Microsoft';
 
   @override
+  String get minecraftLauncherSignInAgain => 'Sign in again';
+
+  @override
   String get minecraftLauncherNoAccounts => 'No accounts yet';
 
   @override
@@ -29242,6 +29263,39 @@ class LEn extends L {
   @override
   String get p2pLinkHandshakeNotSameAccount =>
       'Handshake failed: not the same account.';
+
+  @override
+  String p2pLinkHandshakeStartFailed(String error) {
+    return 'Could not start the handshake: $error';
+  }
+
+  @override
+  String p2pLinkSendFailed(String error) {
+    return 'Could not send to the other device: $error';
+  }
+
+  @override
+  String get p2pLinkAuthFailed =>
+      'A frame failed its authenticity check; the connection was closed.';
+
+  @override
+  String get p2pLinkPayloadMismatch =>
+      'Payload length did not match its header.';
+
+  @override
+  String get p2pLinkHandshakeUnexpected =>
+      'Handshake failed: unexpected message.';
+
+  @override
+  String get p2pLinkHandshakeNotSignedIn =>
+      'Handshake failed: this device is not signed in.';
+
+  @override
+  String get p2pLinkHandshakeUpdateBoth =>
+      'Handshake failed: update luma on both devices.';
+
+  @override
+  String get p2pLinkHandshakeInvalidHello => 'Handshake failed: invalid hello.';
 
   @override
   String get p2pSetUpSyncFirst => 'Set up device sync first.';

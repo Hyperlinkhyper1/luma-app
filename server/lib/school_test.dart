@@ -389,6 +389,9 @@ final _numberPattern = RegExp(
 List<double> numberReadings(String text) {
   var flat = text
       .replaceAll('−', '-')
+      // A clock time is hours: "17:00" is 17 and "17:30" is 17.5, not 0.
+      .replaceAllMapped(RegExp(r'\b(\d{1,2}):([0-5]\d)\b'),
+          (m) => _fmtNumber(int.parse(m[1]!) + int.parse(m[2]!) / 60))
       .replaceAll(RegExp(r'(?<=\d)[  ](?=\d{3}\b)'), '')
       .replaceAllMapped(RegExp('[⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+'),
           (m) => '^${m[0]!.split('').map((c) => _superscripts[c]).join()}');

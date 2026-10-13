@@ -108,15 +108,9 @@ void main() {
     String authKey(int fill) => base64Encode(List<int>.filled(32, fill));
     String kdfSalt() => base64Encode(List<int>.filled(16, 7));
 
-    setUp(() async {
-      dir = await Directory.systemTemp.createTemp('luma_oauth_test');
-      store = await Store.open(dir.path);
-      oauth = _FakeOAuthClient(const OAuthIdentity(
-        provider: 'google',
-        subject: 'google-subject-1',
-        email: 'alice@example.com',
-        displayName: 'Alice',
-      ));
+    Future<Handler> buildHandler({
+      ApprovalMode approvalMode = ApprovalMode.open,
+    }) async {
       final config = ServerConfig(
         port: 0,
         dataDir: dir.path,
@@ -127,7 +121,7 @@ void main() {
         trustProxy: false,
         verificationTtl: const Duration(hours: 24),
         maxVerificationEmailsPerHour: 50,
-        approvalMode: ApprovalMode.open,
+        approvalMode: approvalMode,
         adminKey: null,
         mistralApiKey: null,
         googleApiKey: null,
@@ -147,7 +141,7 @@ void main() {
               OAuthProviderConfig(id: 'github', clientId: '', clientSecret: ''),
         },
       );
-      handler = Api(
+      return Api(
         store,
         config,
         Mailer(MailConfig.fromEnvironment(const {})),
@@ -160,6 +154,18 @@ void main() {
         await AiBenchmarkStore.open(dir.path),
         oauthClient: oauth,
       ).handler;
+    }
+
+    setUp(() async {
+      dir = await Directory.systemTemp.createTemp('luma_oauth_test');
+      store = await Store.open(dir.path);
+      oauth = _FakeOAuthClient(const OAuthIdentity(
+        provider: 'google',
+        subject: 'google-subject-1',
+        email: 'alice@example.com',
+        displayName: 'Alice',
+      ));
+      handler = await buildHandler();
     });
 
     tearDown(() async {
@@ -205,8 +211,8 @@ void main() {
               '?code=abc&state=$state')));
       expect(callback.statusCode, 200);
 
-      final polled =
-          await call('POST', '/api/v1/auth/oauth/poll', body: {'ticket': ticket});
+      final polled = await call('POST', '/api/v1/auth/oauth/poll',
+          body: {'ticket': ticket});
       return (ticket, polled);
     }
 
@@ -256,7 +262,8 @@ void main() {
       // Nothing to derive against yet — the client picks the parameters.
       expect(polled['kdfSalt'], isNull);
 
-      final completed = await call('POST', '/api/v1/auth/oauth/complete', body: {
+      final completed =
+          await call('POST', '/api/v1/auth/oauth/complete', body: {
         'ticket': ticket,
         'authKey': authKey(1),
         'kdfSalt': kdfSalt(),
@@ -267,7 +274,8 @@ void main() {
       expect(store.userIdByEmail['alice@example.com'], isNotNull);
     });
 
-    test('an address that already has a password account signs into it, and '
+    test(
+        'an address that already has a password account signs into it, and '
         'the link makes the button work from then on', () async {
       // An ordinary email + password account, made the old way.
       final registered = await call('POST', '/api/v1/auth/register', body: {
@@ -287,7 +295,8 @@ void main() {
       expect(polled['kdfSalt'], kdfSalt());
       expect(polled['kdfIterations'], 200000);
 
-      final completed = await call('POST', '/api/v1/auth/oauth/complete', body: {
+      final completed =
+          await call('POST', '/api/v1/auth/oauth/complete', body: {
         'ticket': ticket,
         'authKey': authKey(1),
         'kdfSalt': kdfSalt(),
@@ -298,8 +307,8 @@ void main() {
 
       // Same account, not a second one, and now linked to the provider.
       expect(store.usersById, hasLength(1));
-      expect(store.usersById[userId]!.oauthSubjects['google'],
-          'google-subject-1');
+      expect(
+          store.usersById[userId]!.oauthSubjects['google'], 'google-subject-1');
       expect(store.userIdByOAuth[Store.oauthKey('google', 'google-subject-1')],
           userId);
     });
@@ -314,7 +323,8 @@ void main() {
       });
 
       final (ticket, _) = await browserHalf();
-      final completed = await call('POST', '/api/v1/auth/oauth/complete', body: {
+      final completed =
+          await call('POST', '/api/v1/auth/oauth/complete', body: {
         'ticket': ticket,
         'authKey': authKey(2), // wrong passphrase
         'kdfSalt': kdfSalt(),
@@ -324,7 +334,135 @@ void main() {
       expect(completed['error'], 'invalid_credentials');
     });
 
-    test('a linked account is found again after the address changes at the '
+    Future<StoredUser> registerExisting() async {
+      final registered = await call('POST', '/api/v1/auth/register', body: {
+        'email': 'alice@example.com',
+        'authKey': authKey(1),
+        'kdfSalt': kdfSalt(),
+        'kdfIterations': 200000,
+      });
+      expect(registered['httpStatus'], 201);
+      return store.usersById[store.userIdByEmail['alice@example.com']]!;
+    }
+
+    for (final wrongPassphrase in [false, true]) {
+      test(
+          'OAuth reports a forced reset with '
+          '${wrongPassphrase ? 'a wrong' : 'the correct'} passphrase',
+          () async {
+        final user = await registerExisting();
+        user.passwordResetRequiredAtMs = DateTime.now().millisecondsSinceEpoch;
+        final sessionsBefore = store.sessionsByTokenHash.length;
+        final (ticket, _) = await browserHalf();
+        final completed =
+            await call('POST', '/api/v1/auth/oauth/complete', body: {
+          'ticket': ticket,
+          'authKey': authKey(wrongPassphrase ? 2 : 1),
+        });
+        expect(completed['httpStatus'], 403);
+        expect(completed['error'], 'password_reset_required');
+        expect(store.sessionsByTokenHash, hasLength(sessionsBefore));
+      });
+    }
+
+    test('OAuth refuses an account whose access was revoked', () async {
+      final user = await registerExisting();
+      user.accessRevokedAtMs = DateTime.now().millisecondsSinceEpoch;
+      final sessionsBefore = store.sessionsByTokenHash.length;
+      final (ticket, _) = await browserHalf();
+      final completed =
+          await call('POST', '/api/v1/auth/oauth/complete', body: {
+        'ticket': ticket,
+        'authKey': authKey(1),
+      });
+      expect(completed['httpStatus'], 403);
+      expect(completed['error'], 'access_revoked');
+      expect(store.sessionsByTokenHash, hasLength(sessionsBefore));
+    });
+
+    for (final revoked in [false, true]) {
+      test(
+          'email-mode OAuth cannot activate a pending '
+          '${revoked ? 'revoked' : 'reset-required'} account', () async {
+        final user = await registerExisting();
+        user.status = 'pending';
+        user.accessRevokedAtMs =
+            revoked ? DateTime.now().millisecondsSinceEpoch : null;
+        user.passwordResetRequiredAtMs =
+            revoked ? null : DateTime.now().millisecondsSinceEpoch;
+        handler = await buildHandler(approvalMode: ApprovalMode.email);
+        final (ticket, _) = await browserHalf();
+        final completed =
+            await call('POST', '/api/v1/auth/oauth/complete', body: {
+          'ticket': ticket,
+          'authKey': authKey(1),
+        });
+        expect(completed['httpStatus'], 403);
+        expect(completed['error'],
+            revoked ? 'access_revoked' : 'password_reset_required');
+        expect(user.status, 'pending');
+      });
+    }
+
+    test('email-mode OAuth still verifies an eligible pending account',
+        () async {
+      final user = await registerExisting();
+      user.status = 'pending';
+      handler = await buildHandler(approvalMode: ApprovalMode.email);
+      final (ticket, _) = await browserHalf();
+      final completed =
+          await call('POST', '/api/v1/auth/oauth/complete', body: {
+        'ticket': ticket,
+        'authKey': authKey(1),
+      });
+      expect(completed['httpStatus'], 200);
+      expect(user.status, 'active');
+    });
+
+    test('OAuth leaves manual approval pending', () async {
+      final user = await registerExisting();
+      user.status = 'pending';
+      handler = await buildHandler(approvalMode: ApprovalMode.manual);
+      final (ticket, _) = await browserHalf();
+      final completed =
+          await call('POST', '/api/v1/auth/oauth/complete', body: {
+        'ticket': ticket,
+        'authKey': authKey(1),
+      });
+      expect(completed['httpStatus'], 403);
+      expect(completed['error'], 'account_pending_approval');
+      expect(user.status, 'pending');
+    });
+
+    test('password and OAuth failures share the account attempt budget',
+        () async {
+      await registerExisting();
+      final (ticket, _) = await browserHalf();
+      for (var attempt = 0; attempt < 6; attempt++) {
+        final failed = await call('POST', '/api/v1/auth/login', body: {
+          'email': 'alice@example.com',
+          'authKey': authKey(2),
+        });
+        expect(failed['httpStatus'], 401);
+      }
+      for (var attempt = 0; attempt < 4; attempt++) {
+        final failed = await call('POST', '/api/v1/auth/oauth/complete', body: {
+          'ticket': ticket,
+          'authKey': authKey(2),
+        });
+        expect(failed['httpStatus'], 401);
+      }
+      final limited = await call('POST', '/api/v1/auth/oauth/complete', body: {
+        'ticket': ticket,
+        'authKey': authKey(1),
+      });
+      expect(limited['httpStatus'], 429);
+      expect(limited['error'], 'rate_limited');
+      expect(limited['message'], contains('for this account'));
+    });
+
+    test(
+        'a linked account is found again after the address changes at the '
         'provider', () async {
       final (firstTicket, _) = await browserHalf();
       await call('POST', '/api/v1/auth/oauth/complete', body: {
@@ -369,7 +507,8 @@ void main() {
     });
 
     test('a stale or unknown ticket cannot complete a sign-in', () async {
-      final completed = await call('POST', '/api/v1/auth/oauth/complete', body: {
+      final completed =
+          await call('POST', '/api/v1/auth/oauth/complete', body: {
         'ticket': 'not-a-real-ticket',
         'authKey': authKey(1),
         'kdfSalt': kdfSalt(),
@@ -382,7 +521,8 @@ void main() {
 
     test('the account endpoint reports which providers are linked', () async {
       final (ticket, _) = await browserHalf();
-      final completed = await call('POST', '/api/v1/auth/oauth/complete', body: {
+      final completed =
+          await call('POST', '/api/v1/auth/oauth/complete', body: {
         'ticket': ticket,
         'authKey': authKey(1),
         'kdfSalt': kdfSalt(),

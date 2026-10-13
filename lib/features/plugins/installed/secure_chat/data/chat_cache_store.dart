@@ -1,19 +1,19 @@
-import 'dart:convert';
 import 'dart:io';
 
-import 'package:path_provider/path_provider.dart';
+import '../../../../../security/encrypted_json_cache.dart';
+import '../../../../../security/secure_secret_store.dart';
 
 /// Local, file-backed cache of already-decrypted conversations and
 /// invites, so the plugin has something to show immediately on launch
 /// before the first network refresh completes — mirrors
-/// lib/family/family_cache_store.dart. Only ever holds *plaintext the user
-/// has already decrypted on this device*; it never stores key material.
+/// lib/family/family_cache_store.dart. Its complete payload is encrypted
+/// with a device-protected key, including temporary writes.
 class ChatCacheStore {
-  ChatCacheStore._(this._file);
+  ChatCacheStore._(this._cache);
 
   static const _fileName = 'luma_chat_cache.json';
 
-  final File? _file;
+  final EncryptedJsonCache _cache;
 
   List<dynamic> conversationsJson = const [];
   List<dynamic> invitesJson = const [];
@@ -21,21 +21,18 @@ class ChatCacheStore {
   /// conversationId -> list of {id, senderUserId, createdAtMs, text}
   Map<String, List<dynamic>> messagesByConversation = {};
 
-  static Future<ChatCacheStore> load() async {
-    File? file;
-    Map<String, dynamic> data = const {};
-    try {
-      final dir = await getApplicationSupportDirectory();
-      file = File('${dir.path}${Platform.pathSeparator}$_fileName');
-      if (await file.exists()) {
-        final decoded = jsonDecode(await file.readAsString());
-        if (decoded is Map<String, dynamic>) data = decoded;
-      }
-    } catch (_) {
-      file = null;
-    }
-
-    final store = ChatCacheStore._(file);
+  static Future<ChatCacheStore> load({
+    Directory? storageDir,
+    SecureSecretStore? secretStore,
+  }) async {
+    final cache = await EncryptedJsonCache.load(
+      _fileName,
+      'secure-chat-cache',
+      storageDir: storageDir,
+      secretStore: secretStore,
+    );
+    final data = cache.data;
+    final store = ChatCacheStore._(cache);
     try {
       store.conversationsJson = data['conversations'] as List? ?? const [];
       store.invitesJson = data['invites'] as List? ?? const [];
@@ -50,21 +47,9 @@ class ChatCacheStore {
     return store;
   }
 
-  Future<void> save() async {
-    final file = _file;
-    if (file == null) return;
-    try {
-      final payload = jsonEncode({
-        'conversations': conversationsJson,
-        'invites': invitesJson,
-        'messages': messagesByConversation,
-      });
-      final tmp = File('${file.path}.tmp');
-      await tmp.writeAsString(payload, flush: true);
-      if (await file.exists()) await file.delete();
-      await tmp.rename(file.path);
-    } catch (_) {
-      // Best effort — the cache just won't survive a restart.
-    }
-  }
+  Future<void> save() => _cache.save({
+    'conversations': conversationsJson,
+    'invites': invitesJson,
+    'messages': messagesByConversation,
+  });
 }

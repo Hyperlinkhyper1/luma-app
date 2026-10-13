@@ -624,9 +624,16 @@ void main() {
         expect(result['httpStatus'], 400, reason: '$bad');
       }
       {
-        final foreign = await call('PUT', '/admin/benchmark-banners/settings',
-            body: {'workers': 5});
-        expect(foreign['httpStatus'], 403);
+        final foreign = await handler(Request('PUT',
+            Uri.parse('http://localhost/admin/benchmark-banners/settings'),
+            headers: {
+              'x-admin-key': 'test-admin-key',
+              'host': 'localhost',
+              'origin': 'https://foreign.example',
+              'content-type': 'application/json'
+            },
+            body: jsonEncode({'workers': 5})));
+        expect(foreign.statusCode, 403);
       }
       expect(
           (await call('GET', '/admin/benchmark-banners/settings'))['workers'],

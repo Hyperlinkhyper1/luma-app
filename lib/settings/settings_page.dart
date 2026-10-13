@@ -12,6 +12,7 @@ import '../app/widgets.dart';
 import '../features/chat/ai_settings_section.dart';
 import '../l10n/app_localizations.dart';
 import '../pet/pet_settings_section.dart';
+import '../theme/autumn_ornaments.dart';
 import '../theme/coffee_ornaments.dart';
 import '../theme/luma_theme.dart';
 import '../theme/theme_style.dart';
@@ -281,7 +282,7 @@ class SettingsPage extends StatelessWidget {
   }
 }
 
-/// The two theme styles side by side, each showing a swatch of its own
+/// The theme styles side by side, each showing a swatch of its own
 /// palette so the choice is visible before it's made. A style the plan
 /// doesn't cover stays visible but locked, with the upgrade route one tap
 /// away — hiding it would leave the user wondering what they're missing.
@@ -293,11 +294,13 @@ class _ThemeStylePicker extends StatelessWidget {
   String _name(LumaThemeStyle style) => switch (style) {
     LumaThemeStyle.standard => t.settingsThemeStyleDefault,
     LumaThemeStyle.coffee => t.settingsThemeStyleCoffee,
+    LumaThemeStyle.autumn => t.settingsThemeStyleAutumn,
   };
 
   String _blurb(LumaThemeStyle style) => switch (style) {
     LumaThemeStyle.standard => t.settingsThemeStyleDefaultSub,
     LumaThemeStyle.coffee => t.settingsThemeStyleCoffeeSub,
+    LumaThemeStyle.autumn => t.settingsThemeStyleAutumnSub,
   };
 
   void _onTap(BuildContext context, LumaThemeStyle style) {
@@ -307,7 +310,11 @@ class _ThemeStylePicker extends StatelessWidget {
     }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(t.settingsThemeStyleUpgrade),
+        content: Text(
+          style == LumaThemeStyle.autumn
+              ? t.settingsThemeStyleUpgradeAutumn
+              : t.settingsThemeStyleUpgrade,
+        ),
         action: SnackBarAction(
           label: planById('orbit').name,
           onPressed: () => Navigator.of(
@@ -322,8 +329,8 @@ class _ThemeStylePicker extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Two across when there's room, stacked on a phone.
-        final twoUp = constraints.maxWidth >= 420;
+        // All across when there's room, stacked on a phone.
+        final across = constraints.maxWidth >= 640;
         final cards = [
           for (final option in kThemeStyles)
             _ThemeStyleCard(
@@ -338,7 +345,7 @@ class _ThemeStylePicker extends StatelessWidget {
               onTap: () => _onTap(context, option.style),
             ),
         ];
-        if (!twoUp) {
+        if (!across) {
           return Column(
             children: [
               for (var i = 0; i < cards.length; i++) ...[
@@ -419,14 +426,15 @@ class _ThemeStyleCardState extends State<_ThemeStyleCard> {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
             padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
+            decoration: ShapeDecoration(
               color: selected
                   ? luma.accentSubtle
                   : (_hovering ? luma.surfaceHover : Colors.transparent),
-              borderRadius: decor.cardBorderRadius,
-              border: Border.all(
-                color: selected ? luma.accent : luma.border,
-                width: decor.borderWidth,
+              shape: decor.cardShape(
+                side: BorderSide(
+                  color: selected ? luma.accent : luma.border,
+                  width: decor.borderWidth,
+                ),
               ),
             ),
             child: Column(
@@ -436,17 +444,22 @@ class _ThemeStyleCardState extends State<_ThemeStyleCard> {
                   children: [
                     _StylePreviewChip(
                       palette: _preview,
-                      showBean: widget.option.style == LumaThemeStyle.coffee,
+                      style: widget.option.style,
                     ),
                     const SizedBox(width: 10),
                     Expanded(
+                      // Each name is set in its own style's display face,
+                      // so the typeface is part of the preview.
                       child: Text(
                         widget.name,
-                        style: TextStyle(
-                          color: luma.textPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: LumaDecor.forStyle(widget.option.style)
+                            .applyDisplayFont(
+                              TextStyle(
+                                color: luma.textPrimary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                       ),
                     ),
                     if (widget.locked)
@@ -498,31 +511,43 @@ class _ThemeStyleCardState extends State<_ThemeStyleCard> {
   }
 }
 
-/// A 40px round chip split between a style's surface and accent, with a bean
-/// laid over the Coffee one.
+/// A 40px chip split between a style's surface and accent, in that style's
+/// own corner shape, with its emblem laid over it: a bean for Coffee, a
+/// maple leaf for Autumn.
 class _StylePreviewChip extends StatelessWidget {
-  const _StylePreviewChip({required this.palette, required this.showBean});
+  const _StylePreviewChip({required this.palette, required this.style});
 
   final LumaPalette palette;
-  final bool showBean;
+  final LumaThemeStyle style;
 
   @override
   Widget build(BuildContext context) {
+    final side = BorderSide(color: palette.border, width: 1.5);
     return Container(
       width: 40,
       height: 40,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
+      decoration: ShapeDecoration(
+        shape: LumaDecor.forStyle(style).notched
+            ? BeveledRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+                side: side,
+              )
+            : CircleBorder(side: side),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [palette.surface, palette.accent],
         ),
-        border: Border.all(color: palette.border, width: 1.5),
       ),
-      child: showBean
-          ? Center(child: CoffeeBeanIcon(color: palette.textPrimary, size: 20))
-          : null,
+      child: switch (style) {
+        LumaThemeStyle.coffee => Center(
+          child: CoffeeBeanIcon(color: palette.textPrimary, size: 20),
+        ),
+        LumaThemeStyle.autumn => Center(
+          child: MapleLeafIcon(color: palette.textPrimary, size: 22),
+        ),
+        LumaThemeStyle.standard => null,
+      },
     );
   }
 }
@@ -535,7 +560,7 @@ class _AccentPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    // Coffee ships a complete palette, so re-hueing it would undo the look
+    // Coffee and Autumn ship complete palettes, so re-hueing would undo the look
     // the user just chose. Say so rather than silently doing nothing.
     final paused = settings.themeStyle != LumaThemeStyle.standard;
     return Column(
@@ -565,7 +590,9 @@ class _AccentPicker extends StatelessWidget {
         if (paused) ...[
           const SizedBox(height: 10),
           Text(
-            t.settingsAccentCoffeeNote,
+            settings.themeStyle == LumaThemeStyle.autumn
+                ? t.settingsAccentAutumnNote
+                : t.settingsAccentCoffeeNote,
             style: TextStyle(color: luma.textMuted, fontSize: 12, height: 1.4),
           ),
         ],

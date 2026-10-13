@@ -32,7 +32,7 @@ class AisKeyStore {
 
     final key = await SecureSecretStore.instance.loadKey(
       'ais.key',
-      keyFile,
+      legacyFile: keyFile,
       encryptedData: [File('${dir.path}/$_dataFileName')],
     );
     return _instance = AisKeyStore._(key, dir.path);

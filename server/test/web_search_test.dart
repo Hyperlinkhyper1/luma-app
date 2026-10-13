@@ -31,14 +31,14 @@ void main() {
     await dir.delete(recursive: true);
   });
 
-  String seedUser() {
+  Future<String> seedUser() async {
     const token = 'test-web-search-bearer-token';
     final user = StoredUser(
       id: 'u1',
       email: 'alice@example.com',
-      authHash: '',
-      authSalt: '',
-      kdfSalt: '',
+      authHash: base64Encode(List.filled(32, 1)),
+      authSalt: base64Encode(List.filled(16, 2)),
+      kdfSalt: base64Encode(List.filled(16, 3)),
       kdfIterations: 200000,
       quotaBytes: 1024,
       createdAtMs: DateTime.now().millisecondsSinceEpoch,
@@ -53,6 +53,8 @@ void main() {
       expiresAtMs:
           DateTime.now().add(const Duration(days: 1)).millisecondsSinceEpoch,
     );
+    await store.saveUsers();
+    await store.saveSessions();
     return token;
   }
 
@@ -101,14 +103,14 @@ void main() {
       ));
 
   test('requires an approved session and configured search backend', () async {
-    final token = seedUser();
+    final token = await seedUser();
     final endpoint = await handler();
     expect((await search(endpoint, null, {'query': 'test'})).statusCode, 401);
     expect((await search(endpoint, token, {'query': 'test'})).statusCode, 503);
   });
 
   test('validates query and returns five bounded source results', () async {
-    final token = seedUser();
+    final token = await seedUser();
     final endpoint =
         await handler(searxngUrl: 'http://127.0.0.1:${upstream.port}');
     expect((await search(endpoint, token, {'query': '   '})).statusCode, 400);

@@ -703,6 +703,18 @@ class LZh extends L {
   String get settingsAccentCoffeeNote => '咖啡主题自带配色，启用时强调色选择器会暂停。';
 
   @override
+  String get settingsThemeStyleAutumn => '秋日';
+
+  @override
+  String get settingsThemeStyleAutumnSub => '铁锈红与丰收金、像素切角、街机按钮，还有缓缓飘落的落叶。';
+
+  @override
+  String get settingsThemeStyleUpgradeAutumn => '秋日主题属于 Orbit 和 Nova。升级即可启用。';
+
+  @override
+  String get settingsAccentAutumnNote => '秋日主题自带配色，启用时强调色选择器会暂停。';
+
+  @override
   String get settingsGeneral => '通用';
 
   @override
@@ -3848,7 +3860,7 @@ class LZh extends L {
   String get planCoreBlurb => '所有基础功能，直接在你的设备上。';
 
   @override
-  String get planOrbitBlurb => '更多同步功能、SFTP、购物清单和 Coffee 主题。';
+  String get planOrbitBlurb => '更多同步功能、SFTP、购物清单以及 Coffee 和秋日主题。';
 
   @override
   String get planNovaBlurb => '所有内容在每台设备上同步，外加高级工具。';
@@ -3897,6 +3909,9 @@ class LZh extends L {
   String get planFeatureOrbitCoffee => 'Coffee 主题';
 
   @override
+  String get planFeatureOrbitAutumn => '秋日主题';
+
+  @override
   String get planFeatureNovaEverythingSync => '所有内容在你的全部设备间同步，端到端加密';
 
   @override
@@ -3909,7 +3924,7 @@ class LZh extends L {
   String get planFeatureNovaClassroom => '文本库大厅中的课堂导师';
 
   @override
-  String get planFeatureNovaEverythingOrbit => '包含 Orbit 的全部功能，以及 Coffee 主题';
+  String get planFeatureNovaEverythingOrbit => '包含 Orbit 的全部功能，以及 Coffee 和秋日主题';
 
   @override
   String get planCodeEnterCode => '请输入访问码。';
@@ -17942,6 +17957,9 @@ class LZh extends L {
   String get minecraftLauncherSignInMicrosoft => '使用微软账户登录';
 
   @override
+  String get minecraftLauncherSignInAgain => '请重新登录';
+
+  @override
   String get minecraftLauncherNoAccounts => '还没有账户';
 
   @override
@@ -27870,6 +27888,34 @@ class LZh extends L {
 
   @override
   String get p2pLinkHandshakeNotSameAccount => '握手失败：不是同一个账户。';
+
+  @override
+  String p2pLinkHandshakeStartFailed(String error) {
+    return '无法开始握手：$error';
+  }
+
+  @override
+  String p2pLinkSendFailed(String error) {
+    return '无法发送到另一台设备：$error';
+  }
+
+  @override
+  String get p2pLinkAuthFailed => '一个数据帧未通过真实性校验；连接已关闭。';
+
+  @override
+  String get p2pLinkPayloadMismatch => '数据长度与其头部不符。';
+
+  @override
+  String get p2pLinkHandshakeUnexpected => '握手失败：意外的消息。';
+
+  @override
+  String get p2pLinkHandshakeNotSignedIn => '握手失败：此设备未登录。';
+
+  @override
+  String get p2pLinkHandshakeUpdateBoth => '握手失败：请在两台设备上更新 luma。';
+
+  @override
+  String get p2pLinkHandshakeInvalidHello => '握手失败：无效的 hello。';
 
   @override
   String get p2pSetUpSyncFirst => '请先设置设备同步。';

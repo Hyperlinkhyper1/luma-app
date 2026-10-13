@@ -569,60 +569,58 @@ class _PetAutoClickerPanelState extends State<PetAutoClickerPanel> {
     );
   }
 
-  Widget _statusCard(
-    L t,
-    LumaPalette luma,
-    bool running,
-    bool canStart,
-  ) => _card(
-    luma,
-    title: running
-        ? t.petAutoClickerClicksDone(_state['clicksDone'] ?? 0)
-        : t.petAutoClickerReady(_state['hotKey'] ?? 'F6'),
-    child: SizedBox(
-      height: 44,
-      child: FilledButton.icon(
-        style: FilledButton.styleFrom(
-          backgroundColor: running ? luma.danger : luma.accent,
-          foregroundColor: running ? Colors.white : luma.onAccent,
+  Widget _statusCard(L t, LumaPalette luma, bool running, bool canStart) =>
+      _card(
+        luma,
+        title: running
+            ? t.petAutoClickerClicksDone('${_state['clicksDone'] ?? 0}')
+            : t.petAutoClickerReady(_state['hotKey'] ?? 'F6'),
+        child: SizedBox(
+          height: 44,
+          child: FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: running ? luma.danger : luma.accent,
+              foregroundColor: running ? Colors.white : luma.onAccent,
+            ),
+            onPressed: _busy || (!running && !canStart)
+                ? null
+                : () => _command('toggle'),
+            icon: Icon(running ? Icons.stop_rounded : Icons.play_arrow_rounded),
+            label: Text(
+              running ? t.autoClickerStopClicking : t.autoClickerStartClicking,
+            ),
+          ),
         ),
-        onPressed: _busy || (!running && !canStart)
-            ? null
-            : () => _command('toggle'),
-        icon: Icon(running ? Icons.stop_rounded : Icons.play_arrow_rounded),
-        label: Text(
-          running ? t.autoClickerStopClicking : t.autoClickerStartClicking,
-        ),
-      ),
-    ),
-  );
+      );
 
   Widget _card(
     LumaPalette luma, {
     required String title,
     required Widget child,
-  }) => Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: luma.background,
-      border: Border.all(color: luma.border),
+  }) => Material(
+    color: luma.background,
+    shape: RoundedRectangleBorder(
+      side: BorderSide(color: luma.border),
       borderRadius: BorderRadius.circular(14),
     ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            color: luma.textMuted,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.6,
+    child: Padding(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: luma.textMuted,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
+            ),
           ),
-        ),
-        const SizedBox(height: 10),
-        child,
-      ],
+          const SizedBox(height: 10),
+          child,
+        ],
+      ),
     ),
   );
 

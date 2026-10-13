@@ -112,7 +112,11 @@ class _NavRailState extends State<NavRail> {
         defaultTargetPlatform == TargetPlatform.iOS;
 
     return Container(
-      width: decor.style == LumaDecor.coffee.style ? 80 : 72,
+      width: decor.style == LumaDecor.coffee.style
+          ? 80
+          : decor.notched
+          ? 76
+          : 72,
       decoration: BoxDecoration(
         color: luma.rail,
         border: Border(right: BorderSide(color: luma.border)),
@@ -337,6 +341,9 @@ class _RailButtonState extends State<_RailButton>
     final decor = context.lumaDecor;
     final selected = widget.selected;
     final coffee = decor.style == LumaDecor.coffee.style;
+    // Coffee and the notched styles frame the selected item instead of
+    // flagging it with a side bar.
+    final framed = coffee || decor.notched;
 
     final Color bg = selected
         ? luma.accentSubtle
@@ -351,7 +358,7 @@ class _RailButtonState extends State<_RailButton>
         child: Stack(
           alignment: Alignment.center,
           children: [
-            if (selected && !coffee)
+            if (selected && !framed)
               Positioned(
                 left: 0,
                 child: Container(
@@ -381,17 +388,29 @@ class _RailButtonState extends State<_RailButton>
                   duration: const Duration(milliseconds: 150),
                   width: 44,
                   height: 44,
-                  decoration: BoxDecoration(
-                    color: bg,
-                    borderRadius: coffee
-                        ? BorderRadius.circular(16)
-                        : decor.buttonBorderRadius,
-                    border: selected && coffee
-                        ? Border.all(
-                            color: luma.accent.withValues(alpha: 0.35),
-                          )
-                        : null,
-                  ),
+                  decoration: decor.notched
+                      ? ShapeDecoration(
+                          color: bg,
+                          shape: decor.buttonShape(
+                            side: selected
+                                ? BorderSide(
+                                    color: luma.accent,
+                                    width: decor.borderWidth,
+                                  )
+                                : BorderSide.none,
+                          ),
+                        )
+                      : BoxDecoration(
+                          color: bg,
+                          borderRadius: coffee
+                              ? BorderRadius.circular(16)
+                              : decor.buttonBorderRadius,
+                          border: selected && coffee
+                              ? Border.all(
+                                  color: luma.accent.withValues(alpha: 0.35),
+                                )
+                              : null,
+                        ),
                   child: ScaleTransition(
                     scale: _scale,
                     child: Icon(widget.destination.icon, color: fg, size: 24),

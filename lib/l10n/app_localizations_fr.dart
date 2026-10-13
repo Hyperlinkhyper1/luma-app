@@ -745,6 +745,21 @@ class LFr extends L {
       'Café apporte sa propre palette : le sélecteur d\'accent est en pause tant qu\'il est actif.';
 
   @override
+  String get settingsThemeStyleAutumn => 'Automne';
+
+  @override
+  String get settingsThemeStyleAutumnSub =>
+      'Rouille et or des moissons, coins pixelisés, boutons d\'arcade et feuilles qui tombent.';
+
+  @override
+  String get settingsThemeStyleUpgradeAutumn =>
+      'Automne fait partie d\'Orbit et Nova. Passez à l\'offre supérieure pour l\'activer.';
+
+  @override
+  String get settingsAccentAutumnNote =>
+      'Automne apporte sa propre palette : le sélecteur d\'accent est en pause tant qu\'il est actif.';
+
+  @override
   String get settingsGeneral => 'Général';
 
   @override
@@ -4044,7 +4059,7 @@ class LFr extends L {
 
   @override
   String get planOrbitBlurb =>
-      'Plus de fonctions synchronisées, SFTP, liste de courses et le thème Coffee.';
+      'Plus de fonctions synchronisées, SFTP, liste de courses et les thèmes Coffee et Automne.';
 
   @override
   String get planNovaBlurb =>
@@ -4100,6 +4115,9 @@ class LFr extends L {
   String get planFeatureOrbitCoffee => 'Le thème Coffee';
 
   @override
+  String get planFeatureOrbitAutumn => 'Le thème Automne';
+
+  @override
   String get planFeatureNovaEverythingSync =>
       'Synchronisez tout sur tous vos appareils, chiffré de bout en bout';
 
@@ -4116,7 +4134,7 @@ class LFr extends L {
 
   @override
   String get planFeatureNovaEverythingOrbit =>
-      'Tout ce qui est dans Orbit, y compris le thème Coffee';
+      'Tout ce qui est dans Orbit, y compris les thèmes Coffee et Automne';
 
   @override
   String get planCodeEnterCode => 'Saisissez un code d\'accès.';
@@ -19047,6 +19065,9 @@ class LFr extends L {
   String get minecraftLauncherSignInMicrosoft => 'Se connecter avec Microsoft';
 
   @override
+  String get minecraftLauncherSignInAgain => 'Reconnectez-vous';
+
+  @override
   String get minecraftLauncherNoAccounts => 'Aucun compte pour le moment';
 
   @override
@@ -29606,6 +29627,40 @@ class LFr extends L {
   @override
   String get p2pLinkHandshakeNotSameAccount =>
       'Échec de la poignée de main : ce n\'est pas le même compte.';
+
+  @override
+  String p2pLinkHandshakeStartFailed(String error) {
+    return 'Impossible de démarrer la poignée de main : $error';
+  }
+
+  @override
+  String p2pLinkSendFailed(String error) {
+    return 'Impossible d\'envoyer à l\'autre appareil : $error';
+  }
+
+  @override
+  String get p2pLinkAuthFailed =>
+      'Une trame a échoué au contrôle d\'authenticité ; la connexion a été fermée.';
+
+  @override
+  String get p2pLinkPayloadMismatch =>
+      'La longueur des données ne correspond pas à son en-tête.';
+
+  @override
+  String get p2pLinkHandshakeUnexpected =>
+      'Échec de la poignée de main : message inattendu.';
+
+  @override
+  String get p2pLinkHandshakeNotSignedIn =>
+      'Échec de la poignée de main : cet appareil n\'est pas connecté.';
+
+  @override
+  String get p2pLinkHandshakeUpdateBoth =>
+      'Échec de la poignée de main : mettez luma à jour sur les deux appareils.';
+
+  @override
+  String get p2pLinkHandshakeInvalidHello =>
+      'Échec de la poignée de main : hello invalide.';
 
   @override
   String get p2pSetUpSyncFirst =>

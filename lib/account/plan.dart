@@ -60,6 +60,7 @@ class Plan {
           t.planFeatureOrbitSftp,
           t.planFeatureOrbitGroceries,
           t.planFeatureOrbitCoffee,
+          t.planFeatureOrbitAutumn,
           t.planFeatureFamilyRoom(maxFamilyMembers),
           t.planFeatureAiOrbit,
           t.planFeatureStorage(storageMb),

@@ -204,6 +204,15 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
 
+  # luma's own 5x7 pixel lettering (the Text Library's built-in glyph set),
+  # compiled to TrueType. The Autumn theme style's display face.
+  fonts:
+    - family: LumaPixel
+      fonts:
+        - asset: assets/fonts/LumaPixel-Regular.ttf
+        - asset: assets/fonts/LumaPixel-Bold.ttf
+          weight: 700
+
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true

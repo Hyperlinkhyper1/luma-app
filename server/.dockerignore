@@ -1,3 +1,11 @@
 # Only the Dart sources are compiled in the build stage; the render tool's
 # dependencies are installed fresh in the image (see the Dockerfile).
 tool/node_modules/
+
+# Local runtime data and secrets: the build stage copies this whole
+# directory, so keep them out of the build context entirely.
+.env
+data/
+-server-local/
+*.sqlite
+secret.key

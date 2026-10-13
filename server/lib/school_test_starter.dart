@@ -33,7 +33,7 @@ final String kStarterSchoolTestSuite =
         "Vul de juiste vorm in: 'Het ___ (worden) steeds later.'",
         accept: ['wordt']),
     _grade('grade-lineair-teken', 1, _vergelijkingen, 'Los op: 2x + 6 = 0',
-        'x = 3', 'wrong'),
+        'x = −6 − 2 = −8', 'wrong'),
     _grade(
         'grade-markt',
         1,

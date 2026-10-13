@@ -26,7 +26,7 @@ $acl.SetOwner($owner)
 $acl.SetAccessRuleProtection($true, $false)
 $rule = New-Object System.Security.AccessControl.FileSystemAccessRule($owner, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
 $acl.AddAccessRule($rule)
-Set-Acl -LiteralPath $env:LUMA_ACCOUNT_DIRECTORY -AclObject $acl
+(New-Object System.IO.DirectoryInfo($env:LUMA_ACCOUNT_DIRECTORY)).SetAccessControl($acl)
 ''',
     ],
         environment: {

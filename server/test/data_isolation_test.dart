@@ -31,10 +31,8 @@ void main() {
 
   late Store store;
 
-  /// Reloads every feature store from disk. The account store is kept: on
-  /// Windows, reopening it in the same directory fails (see
-  /// restrictAccountDirectory), and the text fields under test don't live
-  /// there.
+  /// Reloads feature stores to cover persisted shared data. The account
+  /// store is reused because only feature text fields are under test.
   Future<Handler> openServer({bool reuseAccounts = false}) async {
     if (!reuseAccounts) store = await Store.open(dir.path);
     final config = ServerConfig(

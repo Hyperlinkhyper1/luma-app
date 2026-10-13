@@ -133,11 +133,51 @@ class LumaPalette extends ThemeExtension<LumaPalette> {
     warning: Color(0xFF9C6B12),
   );
 
+  /// Harvest night — a root-brew ground, chestnut borders and harvest gold
+  /// lighting the way, like a Tetris board left out in October.
+  static const autumnDark = LumaPalette(
+    rail: Color(0xFF1A0907),
+    background: Color(0xFF241009),
+    surface: Color(0xFF321710),
+    surfaceHover: Color(0xFF40200F),
+    border: Color(0xFF6A3A1E),
+    accent: Color(0xFFE8A939),
+    accentHover: Color(0xFFF3BF5A),
+    accentSubtle: Color(0x33E8A939),
+    onAccent: Color(0xFF2D0E09),
+    textPrimary: Color(0xFFF8E7CB),
+    textSecondary: Color(0xFFE0BC8E),
+    textMuted: Color(0xFFB98A5E),
+    success: Color(0xFFA9BE5B),
+    danger: Color(0xFFF07250),
+    warning: Color(0xFFF2C14E),
+  );
+
+  /// Harvest paper — sunlit parchment with a rusted-lock accent.
+  static const autumnLight = LumaPalette(
+    rail: Color(0xFFEBD3AE),
+    background: Color(0xFFF7EBD8),
+    surface: Color(0xFFFFF9EE),
+    surfaceHover: Color(0xFFF4E2C6),
+    border: Color(0xFFC8996A),
+    accent: Color(0xFFA44916),
+    accentHover: Color(0xFF75280F),
+    accentSubtle: Color(0x1FA44916),
+    onAccent: Color(0xFFFFF6E8),
+    textPrimary: Color(0xFF2D0E09),
+    textSecondary: Color(0xFF5E2E17),
+    textMuted: Color(0xFF7D4A28),
+    success: Color(0xFF4F6B1E),
+    danger: Color(0xFFB3261E),
+    warning: Color(0xFF8F5B07),
+  );
+
   /// The base palette for [style] at [brightness], before any accent seed.
   static LumaPalette forStyle(LumaThemeStyle style, Brightness brightness) {
     final isDark = brightness == Brightness.dark;
     return switch (style) {
       LumaThemeStyle.coffee => isDark ? coffeeDark : coffeeLight,
+      LumaThemeStyle.autumn => isDark ? autumnDark : autumnLight,
       LumaThemeStyle.standard => isDark ? dark : light,
     };
   }
@@ -244,6 +284,19 @@ enum LumaOrnament {
 
   /// Drifting coffee beans over a warm two-pool gradient wash.
   coffeeBeans,
+
+  /// Maple and birch leaves tumbling down over a faint pixel grid.
+  fallingLeaves,
+}
+
+/// How a style turns a corner.
+enum LumaCorners {
+  /// Circular arcs — the radius tokens are radii.
+  rounded,
+
+  /// Straight 45° cuts, like a sprite's corner pixel knocked out — the radius
+  /// tokens are the length of each cut.
+  notched,
 }
 
 /// Shape, weight and ornament tokens for the active [LumaThemeStyle].
@@ -265,6 +318,10 @@ class LumaDecor extends ThemeExtension<LumaDecor> {
     required this.displayFontFamily,
     required this.displayFontFallback,
     required this.ornament,
+    this.corners = LumaCorners.rounded,
+    this.fieldRadius = 12,
+    this.blockDepth = 0,
+    this.displayLabels = false,
   });
 
   final LumaThemeStyle style;
@@ -296,6 +353,22 @@ class LumaDecor extends ThemeExtension<LumaDecor> {
   final List<String> displayFontFallback;
 
   final LumaOrnament ornament;
+
+  /// Whether [cardRadius], [buttonRadius] and [pillRadius] describe arcs or
+  /// 45° cuts. Read shapes through [cardShape] and friends so both work.
+  final LumaCorners corners;
+
+  /// Corner radius for text fields. Always an arc: [InputBorder] has no
+  /// beveled variant.
+  final double fieldRadius;
+
+  /// Height of the hard, unblurred ledge under cards and primary buttons —
+  /// the arcade-cabinet "key" look. 0 for styles without one.
+  final double blockDepth;
+
+  /// Whether buttons and tabs set their labels in the display face, in
+  /// capitals. Only worth it for a display face built to be read small.
+  final bool displayLabels;
 
   /// luma's built-in look. These are the values the shared widgets used to
   /// hardcode, so the default theme is pixel-identical to before.
@@ -331,18 +404,78 @@ class LumaDecor extends ThemeExtension<LumaDecor> {
     displayFontFamily: 'Georgia',
     displayFontFallback: ['Times New Roman', 'Noto Serif', 'serif'],
     ornament: LumaOrnament.coffeeBeans,
+    fieldRadius: 16,
+  );
+
+  /// A harvest arcade: notched pixel corners everywhere, a 2px stroke,
+  /// cards and buttons sitting on a hard ledge, square-ish badges like
+  /// Tetris cells, and luma's own pixel lettering for headings and labels.
+  static const autumn = LumaDecor(
+    style: LumaThemeStyle.autumn,
+    cardRadius: 8,
+    buttonRadius: 8,
+    pillRadius: 5,
+    badgeRadiusFactor: 0.22,
+    borderWidth: 2,
+    cardShadow: [],
+    displayFontFamily: 'LumaPixel',
+    // The pixel face is Latin-only; CJK falls through to a system face.
+    displayFontFallback: ['Bahnschrift', 'Roboto Condensed', 'sans-serif'],
+    ornament: LumaOrnament.fallingLeaves,
+    corners: LumaCorners.notched,
+    fieldRadius: 3,
+    blockDepth: 4,
+    displayLabels: true,
   );
 
   static LumaDecor forStyle(LumaThemeStyle style) => switch (style) {
         LumaThemeStyle.coffee => coffee,
+        LumaThemeStyle.autumn => autumn,
         LumaThemeStyle.standard => standard,
       };
+
+  bool get notched => corners == LumaCorners.notched;
 
   /// A [BorderRadius] for cards, clamped so a stadium radius can't invert on
   /// a very short surface.
   BorderRadius get cardBorderRadius => BorderRadius.circular(cardRadius);
   BorderRadius get buttonBorderRadius => BorderRadius.circular(buttonRadius);
   BorderRadius get pillBorderRadius => BorderRadius.circular(pillRadius);
+
+  /// An [OutlinedBorder] whose corners follow [corners]: arcs of [radius], or
+  /// 45° cuts [radius] long.
+  OutlinedBorder shape(
+    BorderRadiusGeometry radius, {
+    BorderSide side = BorderSide.none,
+  }) =>
+      notched
+          ? BeveledRectangleBorder(borderRadius: radius, side: side)
+          : RoundedRectangleBorder(borderRadius: radius, side: side);
+
+  OutlinedBorder cardShape({BorderSide side = BorderSide.none}) =>
+      shape(cardBorderRadius, side: side);
+  OutlinedBorder buttonShape({BorderSide side = BorderSide.none}) =>
+      shape(buttonBorderRadius, side: side);
+  OutlinedBorder pillShape({BorderSide side = BorderSide.none}) =>
+      shape(pillBorderRadius, side: side);
+
+  /// The hard ledge under a block on palette [p], [depth] pixels deep
+  /// (default [blockDepth]). Unblurred and straight down, so it reads as the
+  /// side of a key rather than a soft lift. Empty when the style has none.
+  List<BoxShadow> blockShadow(LumaPalette p, {double? depth, Color? color}) {
+    final d = depth ?? blockDepth;
+    if (d <= 0) return const [];
+    final dark = p.background.computeLuminance() < 0.2;
+    return [
+      BoxShadow(
+        color: color ??
+            (dark
+                ? Color.lerp(p.border, p.rail, 0.45)!
+                : Color.lerp(p.border, p.accentHover, 0.3)!),
+        offset: Offset(0, d),
+      ),
+    ];
+  }
 
   /// The display [TextStyle] merged onto [base], or [base] unchanged when the
   /// style keeps the platform typeface.
@@ -353,6 +486,22 @@ class LumaDecor extends ThemeExtension<LumaDecor> {
       fontFamilyFallback: displayFontFallback,
     );
   }
+
+  /// [base] restyled for a button or tab label when [displayLabels] is on:
+  /// the display face, a touch smaller (pixel capitals stand taller than
+  /// the platform face's) and tracked out. Pair it with [labelText].
+  TextStyle labelStyle(TextStyle base) {
+    if (!displayLabels) return base;
+    return applyDisplayFont(base)!.copyWith(
+      fontSize: (base.fontSize ?? 14) - 2,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 1,
+      height: 1.2,
+    );
+  }
+
+  /// [text] as a label should show it — capitals under [displayLabels].
+  String labelText(String text) => displayLabels ? text.toUpperCase() : text;
 
   @override
   LumaDecor copyWith({
@@ -366,6 +515,10 @@ class LumaDecor extends ThemeExtension<LumaDecor> {
     String? displayFontFamily,
     List<String>? displayFontFallback,
     LumaOrnament? ornament,
+    LumaCorners? corners,
+    double? fieldRadius,
+    double? blockDepth,
+    bool? displayLabels,
   }) {
     return LumaDecor(
       style: style ?? this.style,
@@ -378,6 +531,10 @@ class LumaDecor extends ThemeExtension<LumaDecor> {
       displayFontFamily: displayFontFamily ?? this.displayFontFamily,
       displayFontFallback: displayFontFallback ?? this.displayFontFallback,
       ornament: ornament ?? this.ornament,
+      corners: corners ?? this.corners,
+      fieldRadius: fieldRadius ?? this.fieldRadius,
+      blockDepth: blockDepth ?? this.blockDepth,
+      displayLabels: displayLabels ?? this.displayLabels,
     );
   }
 
@@ -401,6 +558,10 @@ class LumaDecor extends ThemeExtension<LumaDecor> {
       displayFontFallback:
           past ? displayFontFallback : other.displayFontFallback,
       ornament: past ? ornament : other.ornament,
+      corners: past ? corners : other.corners,
+      fieldRadius: lerpDouble(fieldRadius, other.fieldRadius, t),
+      blockDepth: lerpDouble(blockDepth, other.blockDepth, t),
+      displayLabels: past ? displayLabels : other.displayLabels,
     );
   }
 
@@ -430,7 +591,8 @@ class LumaTheme {
   /// recoloring the accent with a chosen [accentSeed] (null keeps the style's
   /// own accent).
   ///
-  /// A style that ships a complete palette — Coffee — ignores [accentSeed]:
+  /// A style that ships a complete palette — Coffee, Autumn — ignores
+  /// [accentSeed]:
   /// re-hueing espresso to teal would undo the very thing the user picked.
   /// The Settings picker says as much next to the accent swatches.
   static ThemeData from(
@@ -481,12 +643,18 @@ class LumaTheme {
       outlineVariant: p.border,
     );
 
-    final coffee = decor.style == LumaThemeStyle.coffee;
-    final fieldRadius = coffee ? 16.0 : 12.0;
+    // Every non-default style restyles the Material components below; the
+    // default keeps Material's own so it stays byte-identical.
+    final styled = decor.style != LumaThemeStyle.standard;
+    final isDark = brightness == Brightness.dark;
     final fieldBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(fieldRadius),
+      borderRadius: BorderRadius.circular(styled ? decor.fieldRadius : 12),
       borderSide: BorderSide(color: p.border, width: decor.borderWidth),
     );
+    // Button labels in the display face, when the style asks for it.
+    final WidgetStateProperty<TextStyle?>? buttonText = decor.displayLabels
+        ? WidgetStatePropertyAll(decor.labelStyle(const TextStyle(fontSize: 14)))
+        : null;
 
     final applied =
         base.textTheme.apply(bodyColor: p.textPrimary, displayColor: p.textPrimary);
@@ -503,7 +671,8 @@ class LumaTheme {
         applied.titleLarge?.copyWith(
           fontWeight: FontWeight.w700,
           color: p.textPrimary,
-          letterSpacing: -0.2,
+          // Pixel capitals need air between them; a book face wants less.
+          letterSpacing: decor.displayLabels ? 0.6 : -0.2,
         ),
       ),
       titleMedium: applied.titleMedium?.copyWith(
@@ -520,33 +689,51 @@ class LumaTheme {
       dividerColor: p.border,
       textTheme: textTheme,
       iconTheme: IconThemeData(color: p.textSecondary),
-      cardTheme: coffee
+      cardTheme: styled
           ? CardThemeData(
               color: p.surface,
               surfaceTintColor: Colors.transparent,
               elevation: 0,
               margin: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(
-                borderRadius: decor.cardBorderRadius,
+              shape: decor.cardShape(
                 side: BorderSide(color: p.border, width: decor.borderWidth),
               ),
             )
           : base.cardTheme,
-      dialogTheme: coffee
+      dialogTheme: styled
           ? DialogThemeData(
               backgroundColor: p.surface,
               surfaceTintColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: decor.cardBorderRadius,
-                side: BorderSide(color: p.border, width: decor.borderWidth),
-              ),
+              shape: decor.notched
+                  // A dialog is the biggest block on screen; give it a
+                  // bigger notch and an accent rim so it reads as a frame.
+                  ? decor.shape(
+                      BorderRadius.circular(decor.cardRadius * 1.5),
+                      side: BorderSide(
+                        color: Color.lerp(p.border, p.accent, 0.35)!,
+                        width: decor.borderWidth,
+                      ),
+                    )
+                  : decor.cardShape(
+                      side: BorderSide(color: p.border, width: decor.borderWidth),
+                    ),
+              titleTextStyle: decor.displayLabels
+                  ? decor.applyDisplayFont(
+                      TextStyle(
+                        color: p.textPrimary,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.6,
+                      ),
+                    )
+                  : null,
             )
           : base.dialogTheme,
-      inputDecorationTheme: coffee
+      inputDecorationTheme: styled
           ? InputDecorationThemeData(
               filled: true,
               fillColor: p.surfaceHover.withValues(
-                alpha: brightness == Brightness.dark ? 0.72 : 0.88,
+                alpha: isDark ? 0.72 : 0.88,
               ),
               labelStyle: TextStyle(color: p.textSecondary),
               hintStyle: TextStyle(color: p.textMuted),
@@ -555,7 +742,10 @@ class LumaTheme {
               border: fieldBorder,
               enabledBorder: fieldBorder,
               focusedBorder: fieldBorder.copyWith(
-                borderSide: BorderSide(color: p.accent, width: 1.6),
+                borderSide: BorderSide(
+                  color: p.accent,
+                  width: decor.notched ? 2.4 : 1.6,
+                ),
               ),
               errorBorder: fieldBorder.copyWith(
                 borderSide: BorderSide(color: p.danger),
@@ -565,7 +755,7 @@ class LumaTheme {
               ),
             )
           : base.inputDecorationTheme,
-      filledButtonTheme: coffee
+      filledButtonTheme: styled
           ? FilledButtonThemeData(
               style: ButtonStyle(
                 minimumSize: const WidgetStatePropertyAll(Size(0, 44)),
@@ -574,15 +764,27 @@ class LumaTheme {
                 ),
                 foregroundColor: WidgetStatePropertyAll(p.onAccent),
                 backgroundColor: WidgetStatePropertyAll(p.accent),
-                shape: WidgetStatePropertyAll(
-                  RoundedRectangleBorder(
-                    borderRadius: decor.buttonBorderRadius,
-                  ),
-                ),
+                textStyle: buttonText,
+                shape: WidgetStatePropertyAll(decor.buttonShape()),
               ),
             )
           : base.filledButtonTheme,
-      outlinedButtonTheme: coffee
+      elevatedButtonTheme: decor.notched
+          ? ElevatedButtonThemeData(
+              style: ButtonStyle(
+                minimumSize: const WidgetStatePropertyAll(Size(0, 44)),
+                padding: const WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(horizontal: 20),
+                ),
+                foregroundColor: WidgetStatePropertyAll(p.onAccent),
+                backgroundColor: WidgetStatePropertyAll(p.accent),
+                elevation: const WidgetStatePropertyAll(0),
+                textStyle: buttonText,
+                shape: WidgetStatePropertyAll(decor.buttonShape()),
+              ),
+            )
+          : base.elevatedButtonTheme,
+      outlinedButtonTheme: styled
           ? OutlinedButtonThemeData(
               style: ButtonStyle(
                 minimumSize: const WidgetStatePropertyAll(Size(0, 44)),
@@ -593,30 +795,24 @@ class LumaTheme {
                 side: WidgetStatePropertyAll(
                   BorderSide(color: p.border, width: decor.borderWidth),
                 ),
-                shape: WidgetStatePropertyAll(
-                  RoundedRectangleBorder(
-                    borderRadius: decor.buttonBorderRadius,
-                  ),
-                ),
+                textStyle: buttonText,
+                shape: WidgetStatePropertyAll(decor.buttonShape()),
               ),
             )
           : base.outlinedButtonTheme,
-      textButtonTheme: coffee
+      textButtonTheme: styled
           ? TextButtonThemeData(
               style: ButtonStyle(
                 foregroundColor: WidgetStatePropertyAll(p.accent),
                 padding: const WidgetStatePropertyAll(
                   EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 ),
-                shape: WidgetStatePropertyAll(
-                  RoundedRectangleBorder(
-                    borderRadius: decor.buttonBorderRadius,
-                  ),
-                ),
+                textStyle: buttonText,
+                shape: WidgetStatePropertyAll(decor.buttonShape()),
               ),
             )
           : base.textButtonTheme,
-      appBarTheme: coffee
+      appBarTheme: styled
           ? AppBarThemeData(
               backgroundColor: p.background,
               foregroundColor: p.textPrimary,
@@ -628,44 +824,42 @@ class LumaTheme {
                   color: p.textPrimary,
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
+                  letterSpacing: decor.displayLabels ? 0.6 : null,
                 ),
               ),
             )
           : base.appBarTheme,
-      bottomSheetTheme: coffee
+      bottomSheetTheme: styled
           ? BottomSheetThemeData(
               backgroundColor: p.surface,
               modalBackgroundColor: p.surface,
               surfaceTintColor: Colors.transparent,
               showDragHandle: true,
               dragHandleColor: p.border,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(decor.cardRadius),
-                ),
+              shape: decor.shape(
+                BorderRadius.vertical(top: Radius.circular(decor.cardRadius)),
                 side: BorderSide(color: p.border, width: decor.borderWidth),
               ),
             )
           : base.bottomSheetTheme,
-      popupMenuTheme: coffee
+      popupMenuTheme: styled
           ? PopupMenuThemeData(
               color: p.surface,
               surfaceTintColor: Colors.transparent,
               elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(decor.cardRadius / 1.5),
+              shape: decor.shape(
+                BorderRadius.circular(decor.cardRadius / 1.5),
                 side: BorderSide(color: p.border, width: decor.borderWidth),
               ),
               textStyle: TextStyle(color: p.textPrimary, fontSize: 14),
             )
           : base.popupMenuTheme,
-      navigationBarTheme: coffee
+      navigationBarTheme: styled
           ? NavigationBarThemeData(
               backgroundColor: p.rail,
               surfaceTintColor: Colors.transparent,
               indicatorColor: p.accentSubtle,
-              indicatorShape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(decor.pillRadius),
+              indicatorShape: decor.pillShape(
                 side: BorderSide(color: p.accent, width: decor.borderWidth),
               ),
               labelTextStyle: WidgetStatePropertyAll(
@@ -680,7 +874,7 @@ class LumaTheme {
               ),
             )
           : base.navigationBarTheme,
-      navigationRailTheme: coffee
+      navigationRailTheme: styled
           ? NavigationRailThemeData(
               backgroundColor: p.rail,
               indicatorColor: p.accentSubtle,
@@ -693,13 +887,38 @@ class LumaTheme {
               unselectedLabelTextStyle: TextStyle(color: p.textSecondary),
             )
           : base.navigationRailTheme,
-      progressIndicatorTheme: coffee
+      progressIndicatorTheme: styled
           ? ProgressIndicatorThemeData(
               color: p.accent,
               linearTrackColor: p.border,
               circularTrackColor: p.border,
+              // Chunky, square-ended bars, like a level meter.
+              linearMinHeight: decor.notched ? 8 : null,
+              borderRadius: decor.notched ? BorderRadius.zero : null,
             )
           : base.progressIndicatorTheme,
+      checkboxTheme: decor.notched
+          ? CheckboxThemeData(
+              shape: const RoundedRectangleBorder(),
+              side: BorderSide(color: p.textMuted, width: decor.borderWidth),
+            )
+          : base.checkboxTheme,
+      chipTheme: decor.notched
+          ? base.chipTheme.copyWith(
+              shape: decor.pillShape(
+                side: BorderSide(color: p.border, width: decor.borderWidth),
+              ),
+            )
+          : base.chipTheme,
+      scrollbarTheme: decor.notched
+          ? ScrollbarThemeData(
+              radius: Radius.zero,
+              thickness: const WidgetStatePropertyAll(8),
+              thumbColor: WidgetStatePropertyAll(
+                p.border.withValues(alpha: 0.9),
+              ),
+            )
+          : base.scrollbarTheme,
       tooltipTheme: TooltipThemeData(
         decoration: BoxDecoration(
           color: p.surfaceHover,
@@ -720,6 +939,11 @@ class LumaTheme {
         backgroundColor: p.surfaceHover,
         contentTextStyle: TextStyle(color: p.textPrimary),
         behavior: SnackBarBehavior.floating,
+        shape: decor.notched
+            ? decor.buttonShape(
+                side: BorderSide(color: p.border, width: decor.borderWidth),
+              )
+            : null,
       ),
     );
   }

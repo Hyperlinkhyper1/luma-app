@@ -146,12 +146,15 @@ passphrases burn the flow.
 route 404s instead of being reachable unauthenticated.
 
 The dashboard itself authenticates via a cookie session (`/admin/login`
-form → `HttpOnly`, `SameSite=Strict` cookie, 12h TTL, in-memory only) so the
+form → `HttpOnly`, `SameSite=Strict` cookie, 12h TTL, persisted across restarts) so the
 admin key never has to appear in a URL, browser history, or a reverse-proxy
 access log line. Non-browser callers (curl, scripts) can still authenticate
-directly with the `X-Admin-Key` header or a `?key=` query parameter; hitting
-`/admin` that way also opportunistically establishes a session so only the
-first request needs the raw key.
+directly with the `X-Admin-Key` header. Old `?key=` bookmarks redirect to
+`/admin/login` with the key removed. Sessions are bound to the current admin
+key using an HMAC under `secret.key`, so rotating the admin key signs everyone
+out. The dashboard also offers **Sign out all admin sessions**. Legacy session
+files require a fresh sign-in after upgrading. Browser writes require an
+`Origin` matching the request host; header-authenticated scripts may omit it.
 
 Failed admin-key attempts are rate-limited separately from successful
 polling (10 failures / 15 min per IP), so the dashboard's own background
@@ -221,6 +224,44 @@ The app mirrors that — a device with no approved account sends nothing but
 the four handshake calls (`/auth/params`, `/auth/register`, `/auth/login`,
 `/auth/resend-verification`). That is why `/plugins/download` is
 authenticated: anonymous stats pings no longer exist.
+
+## Isolated benchmark renderer
+
+Compose runs previews in the separate `renderer` service. The server sends
+only the selected scene bytes and camera framing to `/render` and receives a
+PNG. `LUMA_RENDERER_URL=http://renderer:8081` selects this path; a service
+failure is recorded on the dashboard without falling back to local rendering.
+
+The renderer runs as a non-root user with Chromium's sandbox enabled, a
+read-only filesystem, a temporary workspace, and a dedicated internal network
+without internet egress. It has no `/data` or wiki mounts and no `.env` file.
+Only `/dev/dri` is mapped; remove that device mapping on a host without it.
+Set `LUMA_RENDERER_RENDER_GID` to the host group ID reported by
+`stat -c '%g' /dev/dri/renderD128`, and `LUMA_RENDERER_VIDEO_GID` to the ID for
+`/dev/dri/card0`, in the compose `.env` file. These become supplementary groups
+without granting root access. Without matching device groups, Chromium uses
+SwiftShader. The defaults are the unprivileged nobody group rather than guessed
+host group IDs; adapt device names to those present on the host.
+
+Scene requests are intercepted: HTML and pinned Three.js versions, model-viewer
+and Tween.js are supplied from local files. Other HTTP requests, local files,
+frames and forms are blocked. A dead browser proxy also blocks worker and
+WebSocket connections. When a new scene needs another library version, add an
+explicit pinned dependency and allowlist entry before rendering it.
+
+`renderer-seccomp.json` is the [Playwright Chromium sandbox profile](https://github.com/microsoft/playwright/blob/v1.56.1/utils/docker/seccomp_profile.json),
+licensed under Apache-2.0. It extends Docker's default profile with user
+namespace calls, as described in [Playwright's Docker guide](https://playwright.dev/docs/docker).
+Puppeteer's standard image recommends `SYS_ADMIN`; this setup uses the narrower
+user namespace profile. The security workflow builds the image and verifies a
+real PNG, sandbox startup, and blocked network requests in the isolated network.
+The profile includes Docker's `clone3` ENOSYS compatibility rule so Bookworm's
+glibc falls back to `clone` instead of failing to start threads.
+
+Local render commands still need Node, the dependencies in `server/tool`, and
+an installed Chromium. Child processes started by `PreviewRenderService`
+receive only a small runtime environment, excluding server/provider keys and
+Node injection settings.
 
 The full route table (including every family/chat sub-route and `/admin/*`)
 lives at the top of `Api.handler` in `api.dart` — that's the source of

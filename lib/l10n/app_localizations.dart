@@ -1345,6 +1345,30 @@ abstract class L {
   /// **'Coffee has its own colours, so you can\'t pick a colour while it\'s on.'**
   String get settingsAccentCoffeeNote;
 
+  /// No description provided for @settingsThemeStyleAutumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Autumn'**
+  String get settingsThemeStyleAutumn;
+
+  /// No description provided for @settingsThemeStyleAutumnSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Rust and harvest gold, pixel corners, arcade buttons, leaves drifting down.'**
+  String get settingsThemeStyleAutumnSub;
+
+  /// No description provided for @settingsThemeStyleUpgradeAutumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Autumn comes with Orbit and Nova. Grab one of those to turn it on.'**
+  String get settingsThemeStyleUpgradeAutumn;
+
+  /// No description provided for @settingsAccentAutumnNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Autumn has its own colours, so you can\'t pick a colour while it\'s on.'**
+  String get settingsAccentAutumnNote;
+
   /// No description provided for @settingsGeneral.
   ///
   /// In en, this message translates to:
@@ -7240,7 +7264,7 @@ abstract class L {
   /// No description provided for @planOrbitBlurb.
   ///
   /// In en, this message translates to:
-  /// **'More synced features, SFTP, Groceries List and the Coffee theme.'**
+  /// **'More synced features, SFTP, Groceries List and the Coffee and Autumn themes.'**
   String get planOrbitBlurb;
 
   /// No description provided for @planNovaBlurb.
@@ -7321,6 +7345,12 @@ abstract class L {
   /// **'The Coffee theme'**
   String get planFeatureOrbitCoffee;
 
+  /// No description provided for @planFeatureOrbitAutumn.
+  ///
+  /// In en, this message translates to:
+  /// **'The Autumn theme'**
+  String get planFeatureOrbitAutumn;
+
   /// No description provided for @planFeatureNovaEverythingSync.
   ///
   /// In en, this message translates to:
@@ -7348,7 +7378,7 @@ abstract class L {
   /// No description provided for @planFeatureNovaEverythingOrbit.
   ///
   /// In en, this message translates to:
-  /// **'Everything in Orbit, including the Coffee theme'**
+  /// **'Everything in Orbit, including the Coffee and Autumn themes'**
   String get planFeatureNovaEverythingOrbit;
 
   /// No description provided for @planCodeEnterCode.
@@ -30747,6 +30777,12 @@ abstract class L {
   /// **'Sign in with Microsoft'**
   String get minecraftLauncherSignInMicrosoft;
 
+  /// No description provided for @minecraftLauncherSignInAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in again'**
+  String get minecraftLauncherSignInAgain;
+
   /// No description provided for @minecraftLauncherNoAccounts.
   ///
   /// In en, this message translates to:
@@ -47303,6 +47339,54 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Handshake failed: not the same account.'**
   String get p2pLinkHandshakeNotSameAccount;
+
+  /// No description provided for @p2pLinkHandshakeStartFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start the handshake: {error}'**
+  String p2pLinkHandshakeStartFailed(String error);
+
+  /// No description provided for @p2pLinkSendFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not send to the other device: {error}'**
+  String p2pLinkSendFailed(String error);
+
+  /// No description provided for @p2pLinkAuthFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'A frame failed its authenticity check; the connection was closed.'**
+  String get p2pLinkAuthFailed;
+
+  /// No description provided for @p2pLinkPayloadMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Payload length did not match its header.'**
+  String get p2pLinkPayloadMismatch;
+
+  /// No description provided for @p2pLinkHandshakeUnexpected.
+  ///
+  /// In en, this message translates to:
+  /// **'Handshake failed: unexpected message.'**
+  String get p2pLinkHandshakeUnexpected;
+
+  /// No description provided for @p2pLinkHandshakeNotSignedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Handshake failed: this device is not signed in.'**
+  String get p2pLinkHandshakeNotSignedIn;
+
+  /// No description provided for @p2pLinkHandshakeUpdateBoth.
+  ///
+  /// In en, this message translates to:
+  /// **'Handshake failed: update luma on both devices.'**
+  String get p2pLinkHandshakeUpdateBoth;
+
+  /// No description provided for @p2pLinkHandshakeInvalidHello.
+  ///
+  /// In en, this message translates to:
+  /// **'Handshake failed: invalid hello.'**
+  String get p2pLinkHandshakeInvalidHello;
 
   /// No description provided for @p2pSetUpSyncFirst.
   ///

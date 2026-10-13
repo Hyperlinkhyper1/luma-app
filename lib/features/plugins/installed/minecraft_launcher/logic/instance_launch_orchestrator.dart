@@ -2,6 +2,7 @@ import 'dart:io';
 
 import '../../../../../l10n/current_l.dart';
 import '../data/minecraft_launcher_database.dart';
+import '../minecraft_launcher_repository.dart';
 import 'asset_resolver.dart';
 import 'download_manager.dart';
 import 'fabric_installer.dart';
@@ -39,6 +40,9 @@ class InstanceLaunchOrchestrator {
     required McAccount account,
     required void Function(String status, double? fraction) onStatus,
   }) async {
+    if (MinecraftLauncherRepository.requiresSignIn(account)) {
+      throw LaunchOrchestratorException(currentL.minecraftLauncherSignInAgain);
+    }
     onStatus(currentL.mcLaunchCheckingUpdates, null);
     final manifest = await PistonMetaClient.instance.fetchManifest();
     final entry = manifest.versions.where((v) => v.id == instance.versionId).firstOrNull;

@@ -9,6 +9,7 @@ services:
       # Enables the /admin/website editor over the mounted wiki checkout.
       LUMA_WIKI_DIR: /wiki
       LUMA_SEARXNG_URL: http://searxng:8080
+      LUMA_RENDERER_URL: http://renderer:8081
     volumes:
       - /opt/luma-sync-data:/data
       - ../wiki:/wiki
@@ -24,18 +25,40 @@ services:
       # rebuild from outside this container's blast radius. That also means
       # this container no longer needs host-Docker-socket access, which was
       # effectively root on the host.
-    # The host's GPU, so the benchmark banner renderer's headless Chromium
-    # draws WebGL in hardware instead of on the CPU (tool/render_previews.mjs
-    # falls back to software by itself if the device is unusable). Remove
-    # this on a host with no /dev/dri, or the container won't start.
-    devices:
-      - /dev/dri:/dev/dri
     # No "ports:" on purpose — only Caddy may reach the app, over the
     # internal network. Never expose 8080 to the internet (plain HTTP).
     networks:
       - internal
+      - renderer
     depends_on:
       - searxng
+      - renderer
+
+  renderer:
+    build:
+      context: .
+      dockerfile: Renderer.Dockerfile
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+      - seccomp=./renderer-seccomp.json
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=2g,mode=1777
+    shm_size: 512mb
+    pids_limit: 512
+    mem_limit: 4g
+    # Remove this mapping on a host without a GPU; SwiftShader is automatic.
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - "${LUMA_RENDERER_RENDER_GID:-65534}"
+      - "${LUMA_RENDERER_VIDEO_GID:-65534}"
+    networks:
+      - renderer
 
   searxng:
     image: docker.io/searxng/searxng:latest
@@ -73,3 +96,5 @@ volumes:
 
 networks:
   internal:
+  renderer:
+    internal: true

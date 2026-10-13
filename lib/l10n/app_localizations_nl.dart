@@ -741,6 +741,21 @@ class LNl extends L {
       'Koffie heeft z\'n eigen kleuren, dus je kunt even geen kleur kiezen.';
 
   @override
+  String get settingsThemeStyleAutumn => 'Herfst';
+
+  @override
+  String get settingsThemeStyleAutumnSub =>
+      'Roest en oogstgoud, pixelhoekjes, arcadeknoppen en vallende blaadjes.';
+
+  @override
+  String get settingsThemeStyleUpgradeAutumn =>
+      'Herfst zit bij Orbit en Nova. Neem een van die en je kunt hem aanzetten.';
+
+  @override
+  String get settingsAccentAutumnNote =>
+      'Herfst heeft z\'n eigen kleuren, dus je kunt even geen kleur kiezen.';
+
+  @override
   String get settingsGeneral => 'Algemeen';
 
   @override
@@ -4024,7 +4039,7 @@ class LNl extends L {
 
   @override
   String get planOrbitBlurb =>
-      'Meer gesynchroniseerde functies, SFTP, Boodschappenlijst en het Koffiethema.';
+      'Meer gesynchroniseerde functies, SFTP, Boodschappenlijst en het Koffie- en Herfstthema.';
 
   @override
   String get planNovaBlurb =>
@@ -4080,6 +4095,9 @@ class LNl extends L {
   String get planFeatureOrbitCoffee => 'Het Koffiethema';
 
   @override
+  String get planFeatureOrbitAutumn => 'Het Herfstthema';
+
+  @override
   String get planFeatureNovaEverythingSync =>
       'Houd alles gesynchroniseerd op al je apparaten, end-to-end versleuteld';
 
@@ -4096,7 +4114,7 @@ class LNl extends L {
 
   @override
   String get planFeatureNovaEverythingOrbit =>
-      'Alles uit Orbit, inclusief het Koffiethema';
+      'Alles uit Orbit, inclusief het Koffie- en Herfstthema';
 
   @override
   String get planCodeEnterCode => 'Voer een toegangscode in.';
@@ -18967,6 +18985,9 @@ class LNl extends L {
   String get minecraftLauncherSignInMicrosoft => 'Aanmelden met Microsoft';
 
   @override
+  String get minecraftLauncherSignInAgain => 'Meld je opnieuw aan';
+
+  @override
   String get minecraftLauncherNoAccounts => 'Nog geen accounts';
 
   @override
@@ -29470,6 +29491,40 @@ class LNl extends L {
   @override
   String get p2pLinkHandshakeNotSameAccount =>
       'Handshake mislukt: het is niet hetzelfde account.';
+
+  @override
+  String p2pLinkHandshakeStartFailed(String error) {
+    return 'Kon de handshake niet starten: $error';
+  }
+
+  @override
+  String p2pLinkSendFailed(String error) {
+    return 'Kon niet naar het andere apparaat verzenden: $error';
+  }
+
+  @override
+  String get p2pLinkAuthFailed =>
+      'Een frame kwam niet door de echtheidscontrole; de verbinding is verbroken.';
+
+  @override
+  String get p2pLinkPayloadMismatch =>
+      'De lengte van de payload kwam niet overeen met de header.';
+
+  @override
+  String get p2pLinkHandshakeUnexpected =>
+      'Handshake mislukt: onverwacht bericht.';
+
+  @override
+  String get p2pLinkHandshakeNotSignedIn =>
+      'Handshake mislukt: dit apparaat is niet aangemeld.';
+
+  @override
+  String get p2pLinkHandshakeUpdateBoth =>
+      'Handshake mislukt: werk luma bij op beide apparaten.';
+
+  @override
+  String get p2pLinkHandshakeInvalidHello =>
+      'Handshake mislukt: ongeldige hello.';
 
   @override
   String get p2pSetUpSyncFirst => 'Stel eerst apparaatsynchronisatie in.';

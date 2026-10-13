@@ -41,7 +41,7 @@ class AiKeyStore {
         .toList();
     final key = await SecureSecretStore.instance.loadKey(
       'ai.key',
-      keyFile,
+      legacyFile: keyFile,
       encryptedData: data,
     );
     return _instance = AiKeyStore._(key, dir.path);

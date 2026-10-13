@@ -34,7 +34,7 @@ class SftpSecretCrypto {
 
     final key = await SecureSecretStore.instance.loadKey(
       'sftp.key',
-      file,
+      legacyFile: file,
       encryptedData: [File('${dir.path}/luma_sftp_sites.json')],
     );
     return _instance = SftpSecretCrypto._(key);

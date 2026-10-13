@@ -22,7 +22,7 @@ class DiscoveredPeer {
   /// The resolved service record reported by nsd.
   final Service service;
 
-  /// First 16 hex chars of the peer's handshake token, from the TXT record.
+  /// The peer's same-account tag ([peerDiscoveryTag]), from the TXT record.
   /// Used by the UI to surface only same-account peers.
   final String tokenPrefix;
 

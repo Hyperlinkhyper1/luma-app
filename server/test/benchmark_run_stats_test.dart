@@ -6,15 +6,21 @@ import 'package:luma_sync_server/benchmark_github.dart';
 import 'package:luma_sync_server/benchmark_run_stats.dart';
 import 'package:test/test.dart';
 
-/// Every benchmark scene carries what its run cost: real figures when "Add
-/// benchmark" logged them, an estimate otherwise.
+/// Legacy estimators remain deterministic, while served scene metadata no
+/// longer exposes the removed run-cost fields.
 void main() {
   group('estimateBenchmarkRun', () {
     test('is stable for the same scene', () {
       final a = estimateBenchmarkRun(
-          id: 'pc_demo_high', kind: 'pc', model: 'Demo (High)', sizeBytes: 40000);
+          id: 'pc_demo_high',
+          kind: 'pc',
+          model: 'Demo (High)',
+          sizeBytes: 40000);
       final b = estimateBenchmarkRun(
-          id: 'pc_demo_high', kind: 'pc', model: 'Demo (High)', sizeBytes: 40000);
+          id: 'pc_demo_high',
+          kind: 'pc',
+          model: 'Demo (High)',
+          sizeBytes: 40000);
       expect(a, b);
     });
 
@@ -43,7 +49,7 @@ void main() {
     });
   });
 
-  group('AiBenchmarkStore run stats', () {
+  group('AiBenchmarkStore scene metadata', () {
     late Directory dir;
     late Directory seed;
 
@@ -80,33 +86,34 @@ void main() {
       await seed.delete(recursive: true);
     });
 
-    test('logged figures are served as they are, others are estimated',
-        () async {
+    test('legacy run stats are omitted from served scene metadata', () async {
       final store = await AiBenchmarkStore.open(dir.path, seedDir: seed.path);
       final entries = {for (final e in await store.list()) e.id: e};
-      expect(entries['pagoda_logged']!.tokens, 41200);
-      expect(entries['pagoda_logged']!.durationSec, 372);
-      expect(entries['pagoda_unlogged']!.tokens, greaterThan(0));
-      expect(entries['pagoda_unlogged']!.durationSec, greaterThan(0));
-      final json = entries['pagoda_logged']!.toJson();
-      expect(json['tokens'], 41200);
-      expect(json['durationSec'], 372);
+      expect(entries.keys, containsAll(['pagoda_logged', 'pagoda_unlogged']));
+      for (final entry in entries.values) {
+        final json = entry.toJson();
+        expect(json, isNot(contains('tokens')));
+        expect(json, isNot(contains('durationSec')));
+        expect(entry.sizeBytes, greaterThan(0));
+      }
     });
 
-    test('a run records its own figures; an edit keeps them', () async {
+    test('upload edits retain content integrity without removed run stats',
+        () async {
       final store = await AiBenchmarkStore.open(dir.path, seedDir: seed.path);
+      final bytes = utf8.encode('<canvas>fresh</canvas>');
       final entry = await store.saveUpload(
         kind: 'engine',
         id: 'engine_fresh',
         model: 'Fresh',
         vendor: '',
         description: 'run',
-        bytes: utf8.encode('<canvas>fresh</canvas>'),
-        tokens: 9000,
-        durationSec: 75,
+        bytes: bytes,
       );
-      expect(entry['tokens'], 9000);
-      expect(entry['durationSec'], 75);
+      expect(entry, isNot(contains('tokens')));
+      expect(entry, isNot(contains('durationSec')));
+      final uploaded =
+          (await store.list()).firstWhere((e) => e.id == 'engine_fresh');
 
       await store.saveUpload(
         kind: 'engine',
@@ -116,12 +123,16 @@ void main() {
         description: 'edited',
         bytes: null,
       );
-      final kept = (await store.list()).firstWhere((e) => e.id == 'engine_fresh');
-      expect(kept.tokens, 9000);
-      expect(kept.durationSec, 75);
+      final kept =
+          (await store.list()).firstWhere((e) => e.id == 'engine_fresh');
+      expect(kept.description, 'edited');
+      expect(kept.sizeBytes, bytes.length);
+      expect(kept.sha256, uploaded.sha256);
+      expect(kept.toJson(), isNot(contains('tokens')));
+      expect(kept.toJson(), isNot(contains('durationSec')));
     });
 
-    test('a hand upload gets an estimate', () async {
+    test('a hand upload does not add estimated run stats', () async {
       final store = await AiBenchmarkStore.open(dir.path, seedDir: seed.path);
       final entry = await store.saveUpload(
         kind: 'engine',
@@ -131,12 +142,12 @@ void main() {
         description: '',
         bytes: utf8.encode('<canvas>${'x' * 5000}</canvas>'),
       );
-      expect(entry['tokens'], greaterThan(0));
-      expect(entry['durationSec'], greaterThan(0));
+      expect(entry, isNot(contains('tokens')));
+      expect(entry, isNot(contains('durationSec')));
     });
   });
 
-  test('upsertManifest keeps a stanza\'s recorded figures through an edit', () {
+  test('upsertManifest replaces metadata and preserves explicitly supplied fields', () {
     final manifest = jsonEncode({
       'benchmarks': [
         {
@@ -149,16 +160,18 @@ void main() {
         },
       ],
     });
-    final edited = jsonDecode(BenchmarkGithubPublisher.upsertManifest(manifest, {
+    final edited =
+        jsonDecode(BenchmarkGithubPublisher.upsertManifest(manifest, {
       'id': 'pagoda_a',
       'kind': 'pagoda',
       'model': 'A2',
       'description': 'x',
     })) as Map<String, dynamic>;
-    final stanza = (edited['benchmarks'] as List).single as Map<String, dynamic>;
+    final stanza =
+        (edited['benchmarks'] as List).single as Map<String, dynamic>;
     expect(stanza['model'], 'A2');
-    expect(stanza['tokens'], 100);
-    expect(stanza['durationSec'], 5);
+    expect(stanza, isNot(contains('tokens')));
+    expect(stanza, isNot(contains('durationSec')));
 
     final reRun = jsonDecode(BenchmarkGithubPublisher.upsertManifest(manifest, {
       'id': 'pagoda_a',
@@ -169,6 +182,7 @@ void main() {
       'durationSec': 9,
     })) as Map<String, dynamic>;
     final fresh = (reRun['benchmarks'] as List).single as Map<String, dynamic>;
+    expect(fresh['model'], 'A2');
     expect(fresh['tokens'], 777);
     expect(fresh['durationSec'], 9);
   });

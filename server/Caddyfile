@@ -14,6 +14,13 @@
 		dns cloudflare {$CLOUDFLARE_API_TOKEN}
 	}
 
+	# The admin login is unauthenticated and its form is one field, so Caddy
+	# refuses anything bigger before it reaches the app (which caps it too).
+	@adminLogin path /admin/login
+	request_body @adminLogin {
+		max_size 8KB
+	}
+
 	reverse_proxy luma-sync:8080
 
 	header {

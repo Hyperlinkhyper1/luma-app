@@ -40,7 +40,7 @@ import '../../../../../l10n/current_l.dart';
 /// before its reply. A version-2 client would silently show only the last
 /// batch of a large folder, so the two must not mix.
 /// 4: records are sealed with ChaCha20-Poly1305 instead of AES-256-GCM, about
-/// three times faster in pure Dart (see `HostCipherPool`).
+/// three times faster in pure Dart (see `RecordCipherPool`).
 const int kHostProtocolVersion = 4;
 
 /// The port the host listens on unless the user picks another.

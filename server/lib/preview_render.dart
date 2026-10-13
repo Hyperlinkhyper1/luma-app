@@ -110,13 +110,12 @@ class PreviewRenderStatus {
 /// without a banner shows the kind's generic artwork in every client until
 /// one is rendered.
 ///
-/// Rendering needs node plus a headless Chromium (the Docker image carries
-/// both, see the Dockerfile; `LUMA_CHROMIUM_BIN` / `LUMA_NODE_BIN` /
-/// `LUMA_PREVIEW_TOOL` point elsewhere). When the tooling is absent a job
-/// refuses to start and says what is missing.
+/// Production sends scenes to `LUMA_RENDERER_URL`, in a separate container.
+/// Local rendering needs node plus a sandboxed Chromium; `LUMA_CHROMIUM_BIN`,
+/// `LUMA_NODE_BIN` and `LUMA_PREVIEW_TOOL` can select the local tooling.
 ///
-/// Only ever one job runs at a time, and the tool renders its scenes one by
-/// one in a single small tab, reporting each as it goes. Output goes to the
+/// Only one job runs at a time, with a configurable number of workers.
+/// Output goes to the
 /// data-directory override layer (never the read-only seed), so re-rendering
 /// can't clobber checked-in artwork, and a scene that fails to render keeps
 /// whatever banner it had.
@@ -133,14 +132,23 @@ class PreviewRenderService {
     this.toolScript,
     this.nodeBin,
     this.chromiumBin,
+    this.rendererUrl,
     bool? enabled,
     Map<String, String>? environment,
     Future<ProcessResult> Function(String exe, List<String> args)? runProcess,
     Future<Process> Function(String exe, List<String> args)? startProcess,
     Future<bool> Function(String path)? fileExists,
   })  : _environment = environment ?? Platform.environment,
-        _runProcess = runProcess ?? Process.run,
-        _startProcess = startProcess ?? Process.start,
+        _runProcess = runProcess ??
+            ((exe, args) => Process.run(exe, args,
+                includeParentEnvironment: false,
+                environment:
+                    childEnvironment(environment ?? Platform.environment))),
+        _startProcess = startProcess ??
+            ((exe, args) => Process.start(exe, args,
+                includeParentEnvironment: false,
+                environment:
+                    childEnvironment(environment ?? Platform.environment))),
         _fileExists = fileExists ?? ((path) => File(path).exists()),
         _enabledOverride = enabled;
 
@@ -153,6 +161,7 @@ class PreviewRenderService {
   final String? toolScript;
   final String? nodeBin;
   final String? chromiumBin;
+  final String? rendererUrl;
 
   final Map<String, String> _environment;
   final Future<ProcessResult> Function(String exe, List<String> args)
@@ -161,8 +170,24 @@ class PreviewRenderService {
   final Future<bool> Function(String path) _fileExists;
   final bool? _enabledOverride;
 
+  static Map<String, String> childEnvironment(Map<String, String> source) => {
+        for (final name in const [
+          'PATH',
+          'SystemRoot',
+          'SYSTEMROOT',
+          'WINDIR',
+          'TEMP',
+          'TMP',
+          'HOME',
+          'XDG_CONFIG_HOME',
+          'XDG_CACHE_HOME',
+        ])
+          if (source[name] case final value?) name: value,
+      };
+
   final PreviewRenderStatus status = PreviewRenderStatus();
   Process? _process;
+  final Set<HttpClient> _remoteClients = {};
   int? _workers;
 
   File get _settingsFile => File('$dataDir${Platform.pathSeparator}'
@@ -280,6 +305,7 @@ class PreviewRenderService {
         toolScript: toolScript,
         nodeBin: nodeBin,
         chromiumBin: chromiumBin,
+        rendererUrl: rendererUrl,
         environment: _environment,
         runProcess: _runProcess,
         startProcess: _startProcess,
@@ -365,6 +391,7 @@ class PreviewRenderService {
   Future<String?> start(PreviewRenderMode mode, {List<String>? only}) async {
     if (status.running) return 'A banner render is already running.';
     status.running = true;
+    status.stopped = false;
     try {
       final store = await _store();
       final coverage = await store.previewCoverage();
@@ -378,6 +405,7 @@ class PreviewRenderService {
           })
             c.id,
       ];
+      if (status.stopped) return _cancelStart(mode, ids);
       if (ids.isEmpty) {
         status.running = false;
         return switch (mode) {
@@ -386,7 +414,20 @@ class PreviewRenderService {
           PreviewRenderMode.all => 'There are no scenes to render.',
         };
       }
+      final endpoint = rendererUrl ?? _environment['LUMA_RENDERER_URL'];
+      if (endpoint != null && endpoint.isNotEmpty) {
+        final uri = Uri.parse(endpoint).resolve('/render');
+        if (!['http', 'https'].contains(uri.scheme) ||
+            uri.host.isEmpty ||
+            uri.userInfo.isNotEmpty) {
+          throw ArgumentError('Invalid renderer service URL.');
+        }
+        _reset(mode, ids);
+        unawaited(_renderRemote(store, ids, uri));
+        return null;
+      }
       final problem = await _toolProblem();
+      if (status.stopped) return _cancelStart(mode, ids);
       if (problem != null) {
         _reset(mode, const []);
         status
@@ -415,15 +456,28 @@ class PreviewRenderService {
           'banner(s) (${mode.name})…');
       final process = await _startProcess(_node, args);
       _process = process;
+      if (status.stopped) process.kill();
       unawaited(_follow(process));
       return null;
     } catch (e) {
+      if (status.stopped) return _cancelStart(mode, const []);
       status
         ..error = 'Could not start the renderer: $e'
         ..running = false
         ..finishedAtMs = DateTime.now().millisecondsSinceEpoch;
       return status.error;
     }
+  }
+
+  String _cancelStart(PreviewRenderMode mode, List<String> ids) {
+    _reset(mode, ids);
+    for (final item in status.items) {
+      item.state = 'skipped';
+    }
+    status
+      ..running = false
+      ..finishedAtMs = DateTime.now().millisecondsSinceEpoch;
+    return 'Banner render was stopped.';
   }
 
   /// Renders [ids] now, or right after the running job when there is one.
@@ -443,11 +497,154 @@ class PreviewRenderService {
   /// the rest are marked skipped, and nothing queued behind it runs.
   bool stop() {
     final process = _process;
-    if (!status.running || process == null) return false;
+    if (!status.running) return false;
     status.stopped = true;
     status.queued.clear();
-    process.kill();
+    process?.kill();
+    for (final client in _remoteClients) {
+      client.close(force: true);
+    }
     return true;
+  }
+
+  Future<void> _renderRemote(
+      AiBenchmarkStore store, List<String> ids, Uri uri) async {
+    try {
+      final entries = {
+        for (final entry in await store.editableEntries()) entry['id']: entry
+      };
+      var next = 0;
+      Future<void> worker() async {
+        while (!status.stopped && next < ids.length) {
+          final id = ids[next++];
+          final item = _item(id)!;
+          item
+            ..state = 'rendering'
+            ..startedAtMs = DateTime.now().millisecondsSinceEpoch
+            ..progress = 0.05
+            ..stage = 'rendering in isolated service';
+          final client = HttpClient()
+            ..connectionTimeout = const Duration(seconds: 30);
+          _remoteClients.add(client);
+          try {
+            final scene = await store.readScene(id);
+            if (scene == null) throw StateError('No scene file.');
+            final savedFraming = await store.readFraming(id);
+            final body = utf8.encode(jsonEncode({
+              'id': id,
+              'kind': entries[id]?['kind'],
+              'scene': base64Encode(scene.bytes),
+              'framing': savedFraming == null
+                  ? null
+                  : {
+                      for (final key in const [
+                        'px',
+                        'py',
+                        'pz',
+                        'qx',
+                        'qy',
+                        'qz',
+                        'qw',
+                        'fov',
+                        'zoom'
+                      ])
+                        if (savedFraming.containsKey(key))
+                          key: savedFraming[key],
+                    },
+            }));
+            Future<void> render() async {
+              final request = await client.postUrl(uri);
+              request.headers.contentType = ContentType.json;
+              request.contentLength = body.length;
+              request.add(body);
+              final response = await request.close();
+              if (response.statusCode != HttpStatus.ok) {
+                final errorBytes = <int>[];
+                await for (final chunk in response) {
+                  if (errorBytes.length + chunk.length > 4096) break;
+                  errorBytes.addAll(chunk);
+                }
+                String? message;
+                try {
+                  final error = jsonDecode(utf8.decode(errorBytes));
+                  if (error is Map && error['message'] is String) {
+                    message = error['message'] as String;
+                  }
+                } catch (_) {}
+                throw HttpException(message ??
+                    'Renderer returned HTTP ${response.statusCode}.');
+              }
+              if (response.headers.contentType?.mimeType != 'image/png') {
+                throw const FormatException('Renderer did not return a PNG.');
+              }
+              final png = <int>[];
+              await for (final chunk in response) {
+                if (png.length + chunk.length > 16 * 1024 * 1024) {
+                  throw const FormatException('Renderer PNG exceeds 16 MiB.');
+                }
+                png.addAll(chunk);
+              }
+              const signature = [137, 80, 78, 71, 13, 10, 26, 10];
+              if (png.length < signature.length ||
+                  Iterable<int>.generate(signature.length)
+                      .any((i) => png[i] != signature[i])) {
+                throw const FormatException('Invalid renderer PNG.');
+              }
+              if (status.stopped) return;
+              final target = File(
+                  '$_benchmarksDir${Platform.pathSeparator}previews${Platform.pathSeparator}$id.png');
+              await target.parent.create(recursive: true);
+              final temporary = File('${target.path}.tmp');
+              await temporary.writeAsBytes(png, flush: true);
+              if (status.stopped) {
+                await temporary.delete();
+                return;
+              }
+              await temporary.rename(target.path);
+              item
+                ..state = 'ok'
+                ..progress = 1;
+              status.renderer = response.headers.value('x-renderer-backend') ??
+                  'isolated Chromium';
+              item.detail = response.headers.value('x-renderer-detail') ?? '';
+              recordFailure(id, null);
+            }
+
+            await render().timeout(const Duration(minutes: 10));
+          } catch (e) {
+            item
+              ..state = status.stopped ? 'skipped' : 'failed'
+              ..detail = status.stopped ? '' : '$e';
+            if (!status.stopped) recordFailure(id, item.detail);
+          } finally {
+            item
+              ..stage = ''
+              ..finishedAtMs = DateTime.now().millisecondsSinceEpoch;
+            _remoteClients.remove(client);
+            client.close(force: true);
+          }
+        }
+      }
+
+      await Future.wait(
+          [for (var i = 0; i < workers && i < ids.length; i++) worker()]);
+    } catch (e) {
+      if (!status.stopped) status.error = 'Renderer job failed: $e';
+    } finally {
+      for (final item in status.items) {
+        if (item.state == 'queued' || item.state == 'rendering') {
+          item.state = status.stopped ? 'skipped' : 'failed';
+        }
+      }
+      status
+        ..running = false
+        ..finishedAtMs = DateTime.now().millisecondsSinceEpoch;
+      if (status.queued.isNotEmpty) {
+        final next = List<String>.of(status.queued);
+        status.queued.clear();
+        await start(PreviewRenderMode.selected, only: next);
+      }
+    }
   }
 
   Map<String, String>? _failures;
@@ -518,7 +715,6 @@ class PreviewRenderService {
       ..mode = mode
       ..startedAtMs = DateTime.now().millisecondsSinceEpoch
       ..finishedAtMs = null
-      ..stopped = false
       ..error = null
       ..renderer = null
       ..items = [for (final id in ids) PreviewRenderItem(id)]

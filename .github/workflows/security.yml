@@ -22,4 +22,81 @@ jobs:
           cache: true
       - run: flutter pub get --enforce-lockfile
       - run: dart analyze lib/security test/security_hardening_test.dart
-      - run: flutter test --no-pub test/security_hardening_test.dart test/sync_test.dart test/server_access_test.dart test/local_account_test.dart test/p2p_test.dart test/sftp_test.dart test/youtube_credentials_test.dart test/settings_page_widget_test.dart test/update_asset_test.dart
+      - run: flutter test --no-pub test/security_hardening_test.dart test/sync_test.dart test/server_access_test.dart test/local_account_test.dart test/p2p_test.dart test/sftp_test.dart test/youtube_credentials_test.dart test/settings_page_widget_test.dart test/update_asset_test.dart test/security_invariants_test.dart test/client_secret_storage_test.dart test/encrypted_cache_store_test.dart
+      # The server's own security regressions. Run here, on every master push
+      # via release.yml, because a stale-tree commit once deleted the admin
+      # escaping fix together with its test and nothing noticed.
+      - run: dart pub get --enforce-lockfile
+        working-directory: server
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: server/tool
+      - run: node --test server/test/benchmark_scene_file_test.mjs server/test/renderer_isolation_test.mjs
+      - name: Prepare isolated server test directory
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force -Path (Join-Path $env:RUNNER_TEMP 'luma-server-tests') | Out-Null
+      - name: Run all server regressions
+        run: dart test
+        working-directory: server
+        env:
+          TEMP: ${{ runner.temp }}\luma-server-tests
+          TMP: ${{ runner.temp }}\luma-server-tests
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.0'
+          cache: false
+      - name: Install Gitleaks
+        run: go install github.com/zricethezav/gitleaks/v8@v8.30.1
+      - name: Scan repository history for secrets
+        run: gitleaks git --redact --no-banner .
+
+  renderer-container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build isolated renderer
+        run: docker build -f server/Renderer.Dockerfile -t luma-renderer-test server
+      - name: Verify Chromium sandbox and network isolation
+        run: |
+          docker network create --internal luma-renderer-test
+          docker run --detach --name luma-renderer-test --network luma-renderer-test --network-alias renderer --init --read-only --cap-drop=ALL --security-opt no-new-privileges --security-opt seccomp=server/renderer-seccomp.json --tmpfs /tmp:rw,nosuid,nodev,size=2g,mode=1777 --shm-size=512m --memory=4g --pids-limit=512 luma-renderer-test
+          docker run --rm --name luma-renderer-smoke --network luma-renderer-test --network-alias smoke --read-only --cap-drop=ALL --security-opt no-new-privileges --security-opt seccomp=server/renderer-seccomp.json --tmpfs /tmp:rw,nosuid,nodev,size=512m,mode=1777 luma-renderer-test node renderer_smoke.mjs
+      - name: Renderer diagnostics
+        if: failure()
+        run: docker logs luma-renderer-test
+      - name: Clean up renderer test
+        if: always()
+        run: |
+          docker rm --force luma-renderer-test || true
+          docker network rm luma-renderer-test || true
+
+  dependency-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.0'
+          cache: false
+      - name: Install OSV-Scanner
+        run: go install github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.7.0
+      - name: Scan dependency lockfiles for vulnerabilities
+        run: osv-scanner scan source --recursive .
