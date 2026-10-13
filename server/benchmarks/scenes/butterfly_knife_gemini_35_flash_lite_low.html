@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Vesper "Origami" Balisong Benchmark</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background: #050505; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #eee; }
+    #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
+    
+    /* UI Overlay */
+    #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; }
+    pointer { pointer-events: auto; }
+    .interactive { pointer-events: auto; }
+
+    header { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; }
+    .brand-box { background: rgba(10,10,10,0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); padding: 15px 20px; border-radius: 8px; }
+    h1 { font-size: 1.2rem; font-weight: 600; letter-spacing: 2px; color: #ff5500; text-transform: uppercase; }
+    .maker { font-size: 0.75rem; color: #888; letter-spacing: 1px; margin-top: 2px; }
+
+    .spec-card { background: rgba(10,10,10,0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); padding: 15px 20px; border-radius: 8px; font-size: 0.8rem; line-height: 1.5; color: #ccc; max-width: 250px; }
+    .spec-card span { color: #ff7733; float: right; }
+
+    /* Controls Bottom */
+    footer { display: flex; flex-direction: column; align-items: center; gap: 15px; width: 100%; }
+    
+    .moves-bar { display: flex; gap: 8px; background: rgba(10,10,10,0.8); backdrop-filter: blur(10px); padding: 10px 15px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.1); flex-wrap: wrap; justify-content: center; }
+    .btn { background: #1a1a1a; border: 1px solid #333; color: #ccc; padding: 8px 14px; border-radius: 20px; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; font-weight: 500; }
+    .btn:hover { background: #ff5500; color: #fff; border-color: #ff5500; box-shadow: 0 0 10px rgba(255,85,0,0.4); }
+    .btn.active { background: #ff5500; color: #fff; border-color: #ff7733; }
+
+    .modes-bar { display: flex; gap: 10px; align-items: center; }
+    .mode-btn { background: rgba(20,20,20,0.8); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 16px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; backdrop-filter: blur(5px); }
+    .mode-btn:hover { background: rgba(50,50,50,0.9); }
+
+    /* Caption */
+    #caption { position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); font-size: 0.9rem; letter-spacing: 3px; color: #ff7733; text-transform: uppercase; font-weight: bold; text-shadow: 0 2px 10px rgba(255,85,0,0.5); pointer-events: none; opacity: 0; transition: opacity 0.3s; }
+
+    /* Loading Screen */
+    #loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #050505; z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px; transition: opacity 0.8s; }
+    .spinner { width: 50px; height: 50px; border: 3px solid rgba(255,85,0,0.2); border-top-color: #ff5500; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 0.9rem; letter-spacing: 4px; color: #888; text-transform: uppercase; }
+
+    /* Tooltip */
+    #tooltip { position: absolute; background: rgba(0,0,0,0.8); border: 1px solid #ff5500; padding: 5px 10px; border-radius: 4px; font-size: 0.75rem; pointer-events: none; display: none; z-index: 20; }
+</style>
+<!-- Importmap -->
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+
+<div id="loader">
+    <div class="spinner"></div>
+    <div class="loading-text">Forging Vesper Origami...</div>
+</div>
+
+<div id="canvas-container"></div>
+<div id="tooltip"></div>
+
+<div id="ui-layer">
+    <header class="interactive">
+        <div class="brand-box">
+            <h1>Vesper Origami</h1>
+            <div class="maker">By Kuro Kami Forge</div>
+        </div>
+        <div class="spec-card">
+            <div>Length Open: <span>23.2 cm</span></div>
+            <div>Length Closed: <span>13.0 cm</span></div>
+            <div>Blade Steel: <span>Blackened Böhler M390</span></div>
+            <div>Handles: <span>Titanium / Origami G10</span></div>
+            <div>Weight: <span>118 g</span></div>
+            <div>Pivots: <span>Ceramic Bearings</span></div>
+        </div>
+    </header>
+
+    <div id="caption">REVEAL SEQUENCE</div>
+
+    <footer class="interactive">
+        <div class="modes-bar">
+            <button class="mode-btn" id="btn-reveal">Reveal</button>
+            <button class="mode-btn" id="btn-inspect">Inspect</button>
+            <button class="mode-btn" id="btn-exploded">Exploded</button>
+            <button class="mode-btn" id="btn-colorway">Colorway</button>
+            <button class="mode-btn" id="btn-sound">Sound: ON</button>
+        </div>
+        <div class="moves-bar" id="moves-container">
+            <button class="btn" data-move="open">1. Basic Open</button>
+            <button class="btn" data-move="close">2. Basic Close</button>
+            <button class="btn" data-move="chaplin">3. Chaplin</button>
+            <button class="btn" data-move="zen">4. Zen Rollover</button>
+            <button class="btn" data-move="fan">5. Fan</button>
+            <button class="btn" data-move="helix">6. Helix</button>
+            <button class="btn" data-move="aerial">7. Aerial</button>
+            <button class="btn" data-move="signature">8. Crane Drop</button>
+            <button class="btn" data-move="combo">Combo</button>
+            <button class="btn" data-move="freestyle">Freestyle</button>
+        </div>
+    </footer>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+// --- AUDIO SYSTEM (WEB AUDIO API) ---
+class SoundSystem {
+    constructor() {
+        this.ctx = null;
+        this.enabled = true;
+        this.volume = 0.5;
+        this.swishNode = null;
+        this.swishGain = null;
+        this.initNeeded = true;
+    }
+
+    init() {
+        if (!this.initNeeded) return;
+        try {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Setup continuous swish noise generator
+            const bufferSize = this.ctx.sampleRate * 2;
+            const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+
+            this.swishNoise = this.ctx.createBufferSource();
+            this.swishNoise.buffer = buffer;
+            this.swishNoise.loop = true;
+
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.value = 400;
+            filter.Q.value = 3;
+            this.swishFilter = filter;
+
+            const gain = this.ctx.createGain();
+            gain.gain.value = 0;
+            this.swishGain = gain;
+
+            this.swishNoise.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.ctx.destination);
+            this.swishNoise.start();
+
+            this.initNeeded = false;
+        } catch(e) {
+            console.warn("Web Audio init failed", e);
+        }
+    }
+
+    playPinClack(intensity = 1) {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        // High glassy titanium ping
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(2400, now);
+        osc.frequency.exponentialRampToValueAtTime(800, now + 0.05);
+
+        gain.gain.setValueAtTime(intensity * 0.4 * this.volume, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.08);
+    }
+
+    playLatchClick(open = true) {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(open ? 1800 : 1200, now);
+
+        gain.gain.setValueAtTime(0.2 * this.volume, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.04);
+    }
+
+    playBladeRing() {
+        if (!this.enabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        [2800, 4200, 6100].forEach((freq, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now);
+
+            gain.gain.setValueAtTime((0.15 / (i+1)) * this.volume, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.8);
+        });
+    }
+
+    updateSwish(speed) {
+        if (!this.enabled || !this.ctx || !this.swishGain) return;
+        const targetGain = Math.min(Math.abs(speed) * 0.05, 0.3) * this.volume;
+        this.swishGain.gain.setTargetAtTime(targetGain, this.ctx.currentTime, 0.05);
+        this.swishFilter.frequency.setTargetAtTime(300 + Math.abs(speed) * 200, this.ctx.currentTime, 0.05);
+    }
+}
+
+const sound = new SoundSystem();
+
+// --- SCENE SETUP ---
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x050505);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 5, 25);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.maxDistance = 40;
+controls.minDistance = 5;
+
+// Environment Map
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
+scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+
+// Lights
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambientLight);
+
+const keyLight = new THREE.DirectionalLight(0xffeedd, 2.5);
+keyLight.position.set(10, 15, 10);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.width = 2048;
+keyLight.shadow.mapSize.height = 2048;
+keyLight.shadow.bias = -0.0001;
+scene.add(keyLight);
+
+const rimLight = new THREE.DirectionalLight(0xff5500, 2.0);
+rimLight.position.set(-10, 5, -10);
+scene.add(rimLight);
+
+const fillLight = new THREE.DirectionalLight(0x3366ff, 1.0);
+fillLight.position.set(0, -10, 10);
+scene.add(fillLight);
+
+// --- MATERIALS ---
+const colorways = [
+    {
+        name: "Lava / Blackened",
+        blade: new THREE.MeshPhysicalMaterial({ color: 0x111111, metalness: 0.95, roughness: 0.3, clearcoat: 0.5 }),
+        accent: new THREE.MeshPhysicalMaterial({ color: 0xff3300, metalness: 0.8, roughness: 0.2, emissive: 0xff2200, emissiveIntensity: 0.4 }),
+        scales: new THREE.MeshPhysicalMaterial({ color: 0x1a1a1a, metalness: 0.2, roughness: 0.7 })
+    },
+    {
+        name: "Arctic Steel",
+        blade: new THREE.MeshPhysicalMaterial({ color: 0xdddddd, metalness: 0.98, roughness: 0.15, clearcoat: 1.0 }),
+        accent: new THREE.MeshPhysicalMaterial({ color: 0x00aaff, metalness: 0.9, roughness: 0.2, emissive: 0x0044aa, emissiveIntensity: 0.3 }),
+        scales: new THREE.MeshPhysicalMaterial({ color: 0x223344, metalness: 0.5, roughness: 0.4 })
+    },
+    {
+        name: "Damascus Gold",
+        blade: new THREE.MeshPhysicalMaterial({ color: 0x332211, metalness: 0.9, roughness: 0.4, clearcoat: 0.8 }),
+        accent: new THREE.MeshPhysicalMaterial({ color: 0xffaa00, metalness: 0.9, roughness: 0.2, emissive: 0xff6600, emissiveIntensity: 0.5 }),
+        scales: new THREE.MeshPhysicalMaterial({ color: 0x2a221b, metalness: 0.3, roughness: 0.6 })
+    }
+];
+let currentColorway = 0;
+
+// --- PROCEDURAL STAGE (Display Case) ---
+const stageGroup = new THREE.Group();
+scene.add(stageGroup);
+
+const caseGeo = new THREE.BoxGeometry(20, 0.5, 12);
+const caseMat = new THREE.MeshPhysicalMaterial({ color: 0x0f0f0f, metalness: 0.8, roughness: 0.2 });
+const caseBase = new THREE.Mesh(caseGeo, caseMat);
+caseBase.position.y = -4;
+caseBase.receiveShadow = true;
+stageGroup.add(caseBase);
+
+// Velvet insert
+const velvetGeo = new THREE.BoxGeometry(19.2, 0.1, 11.2);
+const velvetMat = new THREE.MeshPhysicalMaterial({ color: 0x330a00, roughness: 0.9, metalness: 0.1 });
+const velvet = new THREE.Mesh(velvetGeo, velvetMat);
+velvet.position.y = -3.7;
+velvet.receiveShadow = true;
+stageGroup.add(velvet);
+
+// --- PROCEDURAL BALISONG MODEL ---
+const knifeGroup = new THREE.Group();
+scene.add(knifeGroup);
+
+// Create Blade Shape (Recurve with belly, waist, fuller, maker mark)
+const bladeShape = new THREE.Shape();
+bladeShape.moveTo(0, -0.8);
+bladeShape.lineTo(0.3, -0.5);
+bladeShape.lineTo(0.6, 0);
+bladeShape.lineTo(0.8, 4.5); // Belly
+bladeShape.quadraticCurveTo(0.4, 7.5, -0.2, 9.5); // Recurve tip
+bladeShape.lineTo(-0.8, 9.2); // Spine tip
+bladeShape.quadraticCurveTo(-0.5, 6.0, -0.6, 2.0); // Spine
+bladeShape.lineTo(-0.6, -0.5);
+bladeShape.closePath();
+
+const extrudeSettings = {
+    steps: 1,
+    depth: 0.12,
+    bevelEnabled: true,
+    bevelThickness: 0.04,
+    bevelSize: 0.04,
+    bevelSegments: 3
+};
+
+const bladeGeo = new THREE.ExtrudeGeometry(bladeShape, extrudeSettings);
+bladeGeo.center();
+const blade = new THREE.Mesh(bladeGeo, colorways[0].blade);
+blade.castShadow = true;
+const bladeGroup = new THREE.Group();
+bladeGroup.add(blade);
+knifeGroup.add(bladeGroup);
+
+// Maker's Mark (Origami Crane Emblem on Blade)
+const markGeo = new THREE.BufferGeometry();
+const markVertices = new Float32Array([
+    0, 2, 0.07,  0.3, 2.5, 0.07,  0, 3, 0.07,
+    0, 2, 0.07, -0.3, 2.5, 0.07,  0, 3, 0.07,
+    0, 3, 0.07,  0, 1.5, 0.07,  0.2, 1.2, 0.07
+]);
+markGeo.setAttribute('position', new THREE.BufferAttribute(markVertices, 3));
+const makerMark = new THREE.Mesh(markGeo, colorways[0].accent);
+bladeGroup.add(makerMark);
+
+// Handles Generator Function
+function createHandle(isSafe = false) {
+    const group = new THREE.Group();
+    
+    // Sandwich structure: 2 liners, 2 scales, spacers
+    const linerGeo = new THREE.BoxGeometry(0.3, 9.0, 0.08);
+    const scaleGeo = new THREE.BoxGeometry(0.34, 8.8, 0.12);
+    
+    const liner1 = new THREE.Mesh(linerGeo, colorways[0].accent);
+    liner1.position.set(-0.1, 4.5, 0);
+    liner1.castShadow = true;
+    group.add(liner1);
+
+    const liner2 = liner1.clone();
+    liner2.position.z = 0.35;
+    group.add(liner2);
+
+    const scale1 = new THREE.Mesh(scaleGeo, colorways[0].scales);
+    scale1.position.set(-0.1, 4.5, -0.1);
+    scale1.castShadow = true;
+    group.add(scale1);
+
+    const scale2 = scale1.clone();
+    scale2.position.z = 0.45;
+    group.add(scale2);
+
+    // Signature Origami Milled Pattern on Scales
+    for(let i=0; i<5; i++) {
+        const foldGeo = new THREE.BoxGeometry(0.25, 0.1, 0.02);
+        const fold = new THREE.Mesh(foldGeo, colorways[0].accent);
+        fold.position.set(-0.1, 2 + i * 1.2, 0.1);
+        group.add(fold);
+    }
+
+    return group;
+}
+
+const safeHandle = createHandle(true);
+const biteHandle = createHandle(false);
+
+// Pivot offsets from blade center
+const pivotOffset = new THREE.Vector3(0, -2.5, 0);
+safeHandle.position.copy(pivotOffset);
+biteHandle.position.copy(pivotOffset);
+
+const safeGroup = new THREE.Group();
+safeGroup.add(safeHandle);
+safeGroup.position.copy(pivotOffset);
+// Adjust local handle pivot
+safeHandle.position.set(0,0,0);
+
+const biteGroup = new THREE.Group();
+biteGroup.add(biteHandle);
+biteGroup.position.copy(pivotOffset);
+biteHandle.position.set(0,0,0);
+
+knifeGroup.add(safeGroup);
+knifeGroup.add(biteGroup);
+
+// Move handles to actual pivot point
+safeHandle.position.y -= 2.5;
+biteHandle.position.y -= 2.5;
+safeGroup.position.set(0.35, 2.5, 0);
+biteGroup.position.set(-0.35, 2.5, 0);
+
+// Spring Latch on Safe Handle
+const latchGroup = new THREE.Group();
+const latchArmGeo = new THREE.BoxGeometry(0.15, 1.5, 0.08);
+const latchArm = new THREE.Mesh(latchArmGeo, colorways[0].accent);
+latchArm.position.set(0, -0.8, 0.17);
+latchGroup.add(latchArm);
+
+// Origami crane shaped latch end
+const craneHeadGeo = new THREE.ConeGeometry(0.12, 0.4, 4);
+const craneHead = new THREE.Mesh(craneHeadGeo, colorways[0].accent);
+craneHead.rotation.x = Math.PI;
+craneHead.position.set(0, -1.6, 0.17);
+latchGroup.add(craneHead);
+
+latchGroup.position.set(0.35, -2.0, 0);
+knifeGroup.add(latchGroup);
+
+// --- ANIMATION / MOVE ENGINE ---
+let currentAnimation = 'reveal';
+let animTime = 0;
+let timeScale = 1.0;
+let slowMo = false;
+let isTrailEnabled = false;
+
+// Blade & Handle target rotations
+let targetBladeRot = 0;
+let targetSafeRot = 0;
+let targetBiteRot = 0;
+let targetKnifePos = new THREE.Vector3(0,0,0);
+let targetKnifeRot = new THREE.Euler(0,0,0);
+
+// Trail System
+const trailPoints = [];
+const trailGeo = new THREE.BufferGeometry();
+const trailMat = new THREE.LineBasicMaterial({ color: 0xff5500, transparent: true, opacity: 0.7 });
+const trailLine = new THREE.Line(trailGeo, trailMat);
+scene.add(trailLine);
+
+// Move Controllers
+const moves = {
+    reveal: (t) => {
+        targetKnifePos.set(0, 0, 0);
+        targetKnifeRot.set(Math.sin(t*0.5)*0.2, t*0.5, 0);
+        targetSafeRot = -Math.PI * 0.85;
+        targetBiteRot = Math.PI * 0.85;
+        targetBladeRot = 0;
+        latchGroup.rotation.z = 0;
+    },
+    inspect: (t) => {
+        targetKnifePos.set(0, 0, 0);
+        targetSafeRot = 0;
+        targetBiteRot = 0;
+        targetBladeRot = 0;
+        latchGroup.rotation.z = -0.5;
+    },
+    open: (t) => {
+        // Basic Open: unlatch, drop safe, swing bite, catch open
+        let phase = t % 4;
+        if (phase < 1) { // Unlatch
+            latchGroup.rotation.z = -1.0 * (phase);
+            targetSafeRot = 0; targetBiteRot = 0;
+        } else if (phase < 3) { // Swing
+            latchGroup.rotation.z = -1.0;
+            let p = (phase - 1) / 2;
+            targetSafeRot = -Math.PI * 1.0 * p;
+            targetBiteRot = Math.PI * 1.0 * p;
+            if (p > 0.95 && Math.abs(safeGroup.rotation.z - (-Math.PI)) < 0.1) sound.playPinClack(1.0);
+        } else { // Latched open state
+            targetSafeRot = -Math.PI;
+            targetBiteRot = Math.PI;
+            latchGroup.rotation.z = 0;
+        }
+    },
+    close: (t) => {
+        let phase = t % 4;
+        let p = Math.min(phase / 3, 1);
+        targetSafeRot = -Math.PI * (1 - p);
+        targetBiteRot = Math.PI * (1 - p);
+        if (p > 0.9) sound.playPinClack(0.8);
+    },
+    chaplin: (t) => {
+        targetSafeRot = -Math.PI;
+        targetBiteRot = Math.PI;
+        knifeGroup.rotation.z = t * Math.PI * 2;
+        sound.updateSwish(5);
+    },
+    zen: (t) => {
+        targetSafeRot = -Math.PI;
+        targetBiteRot = Math.PI;
+        targetKnifeRot.x = Math.sin(t * 4) * 0.5;
+        targetKnifeRot.y = t * Math.PI * 2;
+    },
+    fan: (t) => {
+        targetSafeRot = -Math.PI;
+        targetBiteRot = Math.PI;
+        targetKnifePos.x = Math.sin(t * 6) * 1.5;
+        targetKnifePos.y = Math.cos(t * 6) * 1.5;
+        targetKnifeRot.z = t * Math.PI * 4;
+        sound.updateSwish(8);
+    },
+    helix: (t) => {
+        targetSafeRot = -Math.PI;
+        targetBiteRot = Math.PI;
+        targetKnifeRot.y = t * Math.PI * 4;
+        targetKnifeRot.z = Math.sin(t * 8) * 1.0;
+    },
+    aerial: (t) => {
+        let cycle = t % 3;
+        if (cycle < 2) { // Airborne spin
+            targetKnifePos.y = Math.sin(cycle * Math.PI) * 4 + 2;
+            targetKnifeRot.x = cycle * Math.PI * 4;
+            targetSafeRot = -Math.PI * 0.5;
+            targetBiteRot = Math.PI * 0.5;
+            sound.updateSwish(10);
+        } else { // Caught
+            targetKnifePos.y = 0;
+            targetKnifeRot.set(0,0,0);
+            targetSafeRot = -Math.PI;
+            targetBiteRot = Math.PI;
+            if (cycle - 2 < 0.05) sound.playPinClack(1.5);
+        }
+    },
+    signature: (t) => {
+        // "Crane Drop" - Origami themed signature move
+        let p = t % 3;
+        targetKnifeRot.y = p * Math.PI * 2;
+        targetSafeRot = -Math.PI * (0.5 + 0.5 * Math.sin(p * Math.PI * 2));
+        targetBiteRot = Math.PI * (0.5 + 0.5 * Math.sin(p * Math.PI * 2));
+        targetKnifePos.z = Math.sin(p * Math.PI * 4) * 2;
+    },
+    combo: (t) => {
+        let sub = Math.floor(t / 3) % 4;
+        let lt = t % 3;
+        if (sub === 0) moves.open(lt);
+        else if (sub === 1) moves.chaplin(lt);
+        else if (sub === 2) moves.aerial(lt);
+        else moves.signature(lt);
+    },
+    freestyle: (t) => {
+        moves.combo(t * 1.5);
+    }
+};
+
+// --- EXPLODED VIEW ---
+let isExploded = false;
+const explodedParts = [];
+// Store original positions for assembly
+const originalPositions = {
+    blade: bladeGroup.position.clone(),
+    safe: safeGroup.position.clone(),
+    bite: biteGroup.position.clone(),
+    latch: latchGroup.position.clone()
+};
+
+function toggleExplodedView(active) {
+    isExploded = active;
+    const duration = 1.0;
+    // Simple direct interpolation setup in animate loop
+}
+
+// --- UI INTERACTIONS ---
+document.querySelectorAll('.btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        sound.init();
+        document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const moveName = btn.getAttribute('data-move');
+        currentAnimation = moveName;
+        animTime = 0;
+        document.getElementById('caption').innerText = btn.innerText;
+        document.getElementById('caption').style.opacity = '1';
+        setTimeout(() => document.getElementById('caption').style.opacity = '0', 2500);
+
+        if(moveName === 'open') sound.playBladeRing();
+    });
+});
+
+document.getElementById('btn-reveal').addEventListener('click', () => {
+    sound.init();
+    currentAnimation = 'reveal';
+    animTime = 0;
+    isExploded = false;
+    controls.reset();
+});
+
+document.getElementById('btn-inspect').addEventListener('click', () => {
+    sound.init();
+    currentAnimation = 'inspect';
+    animTime = 0;
+    isExploded = false;
+});
+
+document.getElementById('btn-exploded').addEventListener('click', () => {
+    sound.init();
+    isExploded = !isExploded;
+    document.getElementById('btn-exploded').classList.toggle('active', isExploded);
+});
+
+document.getElementById('btn-colorway').addEventListener('click', () => {
+    sound.init();
+    currentColorway = (currentColorway + 1) % colorways.length;
+    const cw = colorways[currentColorway];
+    blade.material = cw.blade;
+    makerMark.material = cw.accent;
+    document.getElementById('btn-colorway').innerText = `Color: ${cw.name}`;
+});
+
+const soundBtn = document.getElementById('btn-sound');
+soundBtn.addEventListener('click', () => {
+    sound.init();
+    sound.enabled = !sound.enabled;
+    soundBtn.innerText = `Sound: ${sound.enabled ? 'ON' : 'OFF'}`;
+});
+
+// Hide Loader
+setTimeout(() => {
+    const loader = document.getElementById('loader');
+    loader.style.opacity = '0';
+    setTimeout(() => loader.remove(), 800);
+}, 1000);
+
+// --- MAIN LOOP ---
+const clock = new THREE.Clock();
+
+function animate() {
+    requestAnimationFrame(animate);
+
+    const delta = clock.getDelta();
+    animTime += delta * timeScale;
+
+    // Execute current animation controller
+    if (moves[currentAnimation] && !isExploded) {
+        moves[currentAnimation](animTime);
+    }
+
+    // Exploded view override
+    if (isExploded) {
+        bladeGroup.position.lerp(new Vector3(0, 4, 0), 0.1);
+        safeGroup.position.lerp(new Vector3(3, 0, 0), 0.1);
+        biteGroup.position.lerp(new Vector3(-3, 0, 0), 0.1);
+        latchGroup.position.lerp(new Vector3(0, -5, 1), 0.1);
+    } else {
+        // Smoothly interpolate positions & rotations towards targets
+        bladeGroup.position.lerp(new THREE.Vector3(0,0,0), 0.1);
+        safeGroup.position.lerp(new THREE.Vector3(0.35, 2.5, 0), 0.1);
+        biteGroup.position.lerp(new THREE.Vector3(-0.35, 2.5, 0), 0.1);
+        
+        safeGroup.rotation.z = THREE.MathUtils.lerp(safeGroup.rotation.z, targetSafeRot, 0.15);
+        biteGroup.rotation.z = THREE.MathUtils.lerp(biteGroup.rotation.z, targetBiteRot, 0.15);
+        
+        knifeGroup.position.lerp(targetKnifePos, 0.1);
+        knifeGroup.rotation.x = THREE.MathUtils.lerp(knifeGroup.rotation.x, targetKnifeRot.x, 0.1);
+        knifeGroup.rotation.y = THREE.MathUtils.lerp(knifeGroup.rotation.y, targetKnifeRot.y, 0.1);
+        knifeGroup.rotation.z = THREE.MathUtils.lerp(knifeGroup.rotation.z, targetKnifeRot.z, 0.1);
+    }
+
+    // Trail update
+    if (isTrailEnabled) {
+        const tipPos = new THREE.Vector3(0, 9.5, 0).applyMatrix4(bladeGroup.matrixWorld);
+        trailPoints.push(tipPos.clone());
+        if (trailPoints.length > 50) trailPoints.shift();
+        trailGeo.setFromPoints(trailPoints);
+    }
+
+    sound.updateSwish(delta * 10);
+
+    controls.update();
+    renderer.render(scene, camera);
+}
+
+// Helper vector fix
+const Vector3 = THREE.Vector3;
+
+// Resize Handler
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+animate();
+
+</script>
+</body>
+</html>
