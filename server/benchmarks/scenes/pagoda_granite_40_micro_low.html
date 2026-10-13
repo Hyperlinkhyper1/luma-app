@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>3D Pagoda Benchmark</title>
+  <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+  <script type="importmap">
+  {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+  </script>
+  <style>
+    body { margin:0; overflow:hidden; }
+    canvas { width:100%; height:100%; }
+  </style>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x2d6a4f);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+camera.position.set(0, 20, 40);
+const controls = new OrbitControls(camera, document.body);
+controls.enableDamping = true;
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(1,1,1);
+scene.add(light);
+scene.add(new THREE.HemisphereLight(0x2d6a4f, 0x4a2c1a, 0.6));
+
+const pagodaGeometry = new THREE.BoxGeometry(4, 32, 4);
+const pagodaMaterial = new THREE.MeshStandardMaterial({
+  color: 0xc73e1d,
+  emissive: 0xe8b86d,
+  emissiveIntensity: 0.4,
+  metalness: 0.2,
+  roughness: 0.3
+});
+const pagodaMesh = new THREE.Mesh(pagodaGeometry, pagodaMaterial);
+pagodaMesh.position.y = 16;
+scene.add(pagodaMesh);
+
+// Add 28m tall stepped curved/jade roofs
+for (let i = 0; i < 5; i++) {
+  const roofSize = 4 - i*0.5;
+  const roofGeometry = new THREE.BoxGeometry(roofSize, 2, roofSize);
+  const roofMaterial = new THREE.MeshStandardMaterial({
+    color: 0x4a2c1a,
+    emissive: 0x2d6a4f,
+    emissiveIntensity: 0.2,
+    metalness: 0.1,
+    roughness: 0.4
+  });
+  const roofMesh = new THREE.Mesh(roofGeometry, roofMaterial);
+  roofMesh.position.y = 16 + i*2;
+  roofMesh.rotation.x = Math.PI/4;
+  scene.add(roofMesh);
+}
+
+// Add pillars and finials
+const pillarGeometry = new THREE.BoxGeometry(1, 1, 2);
+const pillarMaterial = new THREE.MeshStandardMaterial({
+  color: 0xffb7c5,
+  emissive: 0xe8b86d,
+  emissiveIntensity: 0.2,
+  metalness: 0.1,
+  roughness: 0.5
+});
+const pillarMesh = new THREE.Mesh(pillarGeometry, pillarMaterial);
+pillarMesh.position.set(0, 18, 0);
+scene.add(pillarMesh);
+pillarMesh = pillarMesh.clone();
+pillarMesh.position.x = 2;
+scene.add(pillarMesh);
+pillarMesh = pillarMesh.clone();
+pillarMesh.position.x = -2;
+scene.add(pillarMesh);
+
+// Add lanterns
+const lanternGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+const lanternMaterial = new THREE.MeshStandardMaterial({
+  color: 0xff8fab,
+  emissive: 0xff8fab,
+  emissiveIntensity: 0.3,
+  metalness: 0.3,
+  roughness: 0.3
+});
+for (let i = 0; i < 4; i++) {
+  const lanternMesh = lanternGeometry.clone();
+  lanternMesh.position.set(Math.random()*10-5, 12 + Math.random()*2, Math.random()*10-5);
+  scene.add(lanternMesh);
+}
+
+// Add koi fish
+const koiGeometry = new THREE.IcosahedronGeometry(0.5, 1);
+const koiMaterial = new THREE.MeshStandardMaterial({
+  color: 0x606c38,
+  emissive: 0x2d6a4f,
+  emissiveIntensity: 0.1,
+  metalness: 0.1,
+  roughness: 0.5
+});
+for (let i = 0; i < 6; i++) {
+  const koiMesh = koiGeometry.clone();
+  koiMesh.position.set(Math.random()*20-10, 10 + Math.random()*5, Math.random()*20-10);
+  scene.add(koiMesh);
+}
+
+// Add pond
+const pondGeometry = new THREE.BoxGeometry(20, 1, 20);
+const pondMaterial = new THREE.MeshStandardMaterial({
+  color: 0x7ed6df,
+  side: THREE.DoubleSide,
+  transparent: true,
+  opacity: 0.8
+});
+const pondMesh = new THREE.Mesh(pondGeometry, pondMaterial);
+pondMesh.position.set(0, 0.5, 0);
+scene.add(pondMesh);
+
+// Add path
+const pathGeometry = new THREE.PlaneGeometry(10, 1);
+const pathMaterial = new THREE.MeshStandardMaterial({
+  color: 0x9aa0a6,
+  side: THREE.DoubleSide
+});
+const pathMesh = new THREE.Mesh(pathGeometry, pathMaterial);
+pathMesh.rotation.x = -Math.PI/2;
+pathMesh.position.set(0, 0.1, -5);
+scene.add(pathMesh);
+
+// Add trees
+const treeGeometry = new THREE.BoxGeometry(1, 4, 1);
+const treeMaterial = new THREE.MeshStandardMaterial({
+  color: 0x2d6a4f,
+  emissive: 0x40916c,
+  emissiveIntensity: 0.2,
+  metalness: 0.1,
+  roughness: 0.5
+});
+for (let i = 0; i < 3; i++) {
+  const treeMesh = treeGeometry.clone();
+  treeMesh.position.set(Math.random()*20-10, 2 + Math.random()*2, Math.random()*20-10);
+  scene.add(treeMesh);
+}
+
+// Add Sakura petals
+const petalGeometry = new THREE.CircleGeometry(0.2, 32);
+const petalMaterial = new THREE.MeshStandardMaterial({
+  color: 0xfffb7c,
+  transparent: true,
+  opacity: 0.8
+});
+for (let i = 0; i < 200; i++) {
+  const petalMesh = petalGeometry.clone();
+  petalMesh.position.set(Math.random()*20-10, 15 + Math.random()*2, Math.random()*20-10);
+  scene.add(petalMesh);
+}
+
+// Add bamboo fence
+const fenceGeometry = new THREE.BoxGeometry(0.1, 2, 10);
+const fenceMaterial = new THREE.MeshStandardMaterial({
+  color: 0x9aa0a6,
+  side: THREE.DoubleSide
+});
+for (let i = 0; i < 20; i++) {
+  const fenceMesh = fenceGeometry.clone();
+  fenceMesh.position.set(Math.random()*20-10, 1, 0);
+  scene.add(fenceMesh);
+}
+
+// Add jizo statues
+const jizoGeometry = new THREE.BoxGeometry(1, 1, 1);
+const jizoMaterial = new THREE.MeshStandardMaterial({
+  color: 0x9aa0a6,
+  side: THREE.DoubleSide
+});
+for (let i = 0; i < 2; i++) {
+  const jizoMesh = jizoGeometry.clone();
+  jizoMesh.position.set(Math.random()*20-10, 0.5, Math.random()*20-10);
+  scene.add(jizoMesh);
+}
+
+// Add torii gate
+const toriiGeometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 16);
+const toriiMaterial = new THREE.MeshStandardMaterial({
+  color: 0xe8b86d,
+  emissive: 0xc73e1d,
+  emissiveIntensity: 0.3,
+  metalness: 0.3,
+  roughness: 0.4
+});
+const toriiMesh = new THREE.Mesh(toriiGeometry, toriiMaterial);
+toriiMesh.rotation.x = Math.PI/2;
+toriiMesh.position.set(0, 0.5, -5);
+scene.add(toriiMesh);
+
+// Add waterfall
+const waterfallGeometry = new THREE.BoxGeometry(2, 10, 1);
+const waterfallMaterial = new THREE.MeshStandardMaterial({
+  color: 0x7ed6df,
+  side: THREE.DoubleSide
+});
+const waterfallMesh = new THREE.Mesh(waterfallGeometry, waterfallMaterial);
+waterfallMesh.position.set(-5, 0.5, 0);
+scene.add(waterfallMesh);
+
+// Animation loop
+let time = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  time += 0.016;
+  controls.update();
+  camera.position.x = Math.sin(time*0.5)*5;
+  camera.position.z = Math.cos(time*0.5)*5;
+  camera.lookAt(scene.position);
+  renderer.render(scene, camera);
+}
+animate();
+
+// Controls
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// HUD
+let voxelCount = 0;
+let fps = 60;
+let pagodaFloors = 5;
+let timeOfDay = 0;
+
+function updateHUD() {
+  document.body.innerHTML = `
+    <h1>3D Pagoda Benchmark</h1>
+    <p>VOXEL GARDEN</p>
+    <p>${voxelCount} voxels | ${fps} FPS</p>
+    <p>Click lanterns</p>
+    <p>Time: ${timeOfDay.toFixed(1)}</p>
+  `;
+}
+
+updateHUD();
+
+// Interaction
+renderer.domElement.addEventListener('click', () => {
+  const lantern = scene.getObjectByName('lantern');
+  if (lantern) {
+    lantern.visible = !lantern.visible;
+    lantern.material.emissiveIntensity = lantern.visible ? 0.3 : 0;
+  }
+});
+
+// Day/night cycle
+function updateDayNight() {
+  const hour = timeOfDay % 24;
+  const sunPosition = new THREE.Vector3();
+  sunPosition.set(Math.sin(hour*0.1)*5, 20, Math.cos(hour*0.1)*5);
+  light.position.copy(sunPosition);
+  light.target.position.copy(sunPosition);
+  timeOfDay += 0.1;
+}
+setInterval(updateDayNight, 1000);
+
+// Resize handling
+window.addEventListener('resize', () => {
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+});
+</script>
+</body>
+</html>
