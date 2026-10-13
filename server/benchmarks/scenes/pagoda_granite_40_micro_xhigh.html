@@ -205,15 +205,14 @@ window.addEventListener('keydown', (e)=>{
     controls.enabled = !controls.enabled;
   }
   if(e.key === 't'){
-    const day = day ? false : true;
-    day = day;
-    dirLight.color.set(day ? 0xffffff : 0xc73e1d);
-    dirLight.intensity = day ? 1 : 0.2;
+    const isDay = !dirLight.color.equals(new THREE.Color(0xc73e1d));
+    dirLight.color.set(isDay ? 0xc73e1d : 0xffffff);
+    dirLight.intensity = isDay ? 0.2 : 1;
   }
 });
 
 // Stats
-import Stats from 'three/examples/jsm/libs/stats.module.js';
+import Stats from 'three/addons/libs/stats.module.js';
 const stats = new Stats();
 stats.showPanel(0); // 0: fps
 document.body.appendChild(stats.dom);
@@ -229,13 +228,17 @@ window.addEventListener('resize', () =>{
 let voxelCount = 0;
 let fps = 0;
 function updateStats(){
-  voxelCount = scene.traverse(obj=>{
-    return obj.isMesh ? obj.geometry.parameters.width * obj.geometry.parameters.height * obj.geometry.parameters.depth : 0;
-  }).count;
+  voxelCount = 0;
+  scene.traverse((obj) => {
+    if (obj.isMesh && obj.geometry) {
+      const params = obj.geometry.parameters;
+      if (params.width && params.height && params.depth) {
+        voxelCount += Math.round(params.width * params.height * params.depth);
+      }
+    }
+  });
   stats.begin();
-  renderer.render(scene, camera);
   stats.end();
-  fps = stats.label.split(' ')[1].trim();
 }
 setInterval(updateStats, 1000);
 
