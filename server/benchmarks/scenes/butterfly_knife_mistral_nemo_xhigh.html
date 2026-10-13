@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neon Noir Butterfly Knife</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #ui { position: absolute; top: 1rem; left: 1rem; z-index: 1; }
+    #info { display: none; margin-top: 0.5rem; }
+    #info.show { display: block; }
+  </style>
+  <script type="importmap">
+    {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+  </script>
+</head>
+<body>
+  <div id="ui">
+    <button id="open">Open</button>
+    <button id="close">Close</button>
+    <button id="chaplin">Chaplin</button>
+    <button id="zen">Zen</button>
+    <button id="fan">Fan</button>
+    <button id="helix">Helix</button>
+    <button id="aerial">Aerial</button>
+    <button id="signature">Signature</button>
+    <button id="combo">Combo</button>
+    <button id="freestyle">Freestyle</button>
+    <div>
+      Speed: <input type="range" id="speed" min="0.25" max="2" step="0.25" value="1">
+      <input type="checkbox" id="slowmo"> Slow-mo
+      <input type="checkbox" id="trail"> Trail
+      <input type="checkbox" id="mute"> Mute
+      <input type="range" id="volume" min="0" max="1" step="0.01" value="1">
+    </div>
+    <button id="infoBtn">Info</button>
+    <div id="info">
+      <h2>Neon Noir Butterfly Knife</h2>
+      <p><strong>Maker:</strong> Neon Noir Forge</p>
+      <p><strong>Model:</strong> CircuitBreaker</p>
+      <p><strong>Specs:</strong></p>
+      <ul>
+        <li>Overall length: 230mm</li>
+        <li>Blade length: 100mm</li>
+        <li>Materials: Black chrome, magenta & cyan emissive lines, G10 handles</li>
+        <li>Weight: 150g</li>
+        <li>Pivot system: Bushing</li>
+      </ul>
+    </div>
+  </div>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { Sky } from 'three/addons/objects/Sky.js';
+    import { Water } from 'three/addons/objects/Water.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+    let scene, camera, renderer, composer, controls, clock, knife, hand, moves, currentMove, speed, slowmo, trail, mute, volume, infoVisible;
+
+    init();
+    animate();
+
+    function init() {
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xcccccc);
+
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.z = 500;
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      composer = new EffectComposer(renderer);
+      const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0, 0);
+      composer.addPass(new THREE.RenderPass(scene, camera));
+      composer.addPass(bloomPass);
+
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.enablePan = false;
+      controls.enableZoom = false;
+
+      clock = new THREE.Clock();
+
+      createLights();
+      createStage();
+      createKnife();
+      createHand();
+      createMoves();
+
+      window.addEventListener('resize', onWindowResize);
+      document.addEventListener('keydown', onDocumentKeyDown);
+      document.getElementById('infoBtn').addEventListener('click', toggleInfo);
+      document.getElementById('speed').addEventListener('input', (e) => speed = parseFloat(e.target.value));
+      document.getElementById('slowmo').addEventListener('change', (e) => slowmo = e.target.checked);
+      document.getElementById('trail').addEventListener('change', (e) => trail = e.target.checked);
+      document.getElementById('mute').addEventListener('change', (e) => mute = e.target.checked);
+      document.getElementById('volume').addEventListener('input', (e) => volume = parseFloat(e.target.value));
+
+      document.getElementById('open').addEventListener('click', () => playMove('open'));
+      document.getElementById('close').addEventListener('click', () => playMove('close'));
+      document.getElementById('chaplin').addEventListener('click', () => playMove('chaplin'));
+      document.getElementById('zen').addEventListener('click', () => playMove('zen'));
+      document.getElementById('fan').addEventListener('click', () => playMove('fan'));
+      document.getElementById('helix').addEventListener('click', () => playMove('helix'));
+      document.getElementById('aerial').addEventListener('click', () => playMove('aerial'));
+      document.getElementById('signature').addEventListener('click', () => playMove('signature'));
+      document.getElementById('combo').addEventListener('click', () => playCombo());
+      document.getElementById('freestyle').addEventListener('click', () => playFreestyle());
+    }
+
+    function createLights() {
+      const environment = new RoomEnvironment();
+      scene.add(environment);
+
+      const sky = new Sky();
+      sky.scale.setScalar(1000);
+      scene.add(sky);
+
+      const sun = new THREE.Vector3();
+      environment.getSunDirection(sun);
+
+      const skyUniforms = sky.material.uniforms;
+      skyUniforms['turbidity'].value = 10;
+      skyUniforms['rayleigh'].value = 3;
+      skyUniforms['mieCoefficient'].value = 0.005;
+      skyUniforms['mieDirectionalG'].value = 0.8;
+
+      const waterGeometry = new THREE.PlaneGeometry(1000, 1000);
+      const water = new Water(waterGeometry, {
+        textureWidth: 512,
+        textureHeight: 512,
+        waterNormals: new THREE.TextureLoader().load('https://threejs.org/examples/textures/waternormals.jpg', function (texture) {
+          texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+        }),
+        flowDirection: new THREE.Vector2(1, 1),
+        color: 0x0066ff,
+        transparent: true,
+        opacity: 1,
+        depth: 1.2,
+        flowSpeed: 0.5,
+        scale: 20
+      });
+      scene.add(water);
+    }
+
+    function createStage() {
+      const tableGeometry = new THREE.BoxGeometry(200, 50, 100);
+      const tableMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+      const table = new THREE.Mesh(tableGeometry, tableMaterial);
+      table.position.y = -25;
+      scene.add(table);
+
+      const windowGeometry = new THREE.PlaneGeometry(200, 100);
+      const windowMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 });
+      const window = new THREE.Mesh(windowGeometry, windowMaterial);
+      window.position.x = 100;
+      window.position.y = 25;
+      window.rotation.x = Math.PI / 2;
+      scene.add(window);
+    }
+
+    function createKnife() {
+      const bladeGeometry = new THREE.ShapeGeometry(new THREE.Shape([
+        new THREE.Vector2(-50, 0),
+        new THREE.Vector2(50, 0),
+        new THREE.Vector2(50, 10),
+        new THREE.Vector2(-50, 10)
+      ]), { curveSegments: 4 });
+      const bladeMaterial = new THREE.MeshPhysicalMaterial({ color: 0x333333, metalness: 0.9, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.1 });
+      const blade = new THREE.Mesh(bladeGeometry, bladeMaterial);
+      blade.position.y = 5;
+      blade.rotation.x = Math.PI / 2;
+
+      const handleGeometry = new THREE.CylinderGeometry(10, 10, 100, 32);
+      const handleMaterial = new THREE.MeshPhysicalMaterial({ color: 0x111111, metalness: 0.9, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.1 });
+      const handle1 = new THREE.Mesh(handleGeometry, handleMaterial);
+      handle1.position.x = 60;
+      handle1.rotation.z = Math.PI / 2;
+      const handle2 = new THREE.Mesh(handleGeometry, handleMaterial);
+      handle2.position.x = -60;
+      handle2.rotation.z = Math.PI / 2;
+
+      const latchGeometry = new THREE.BoxGeometry(20, 10, 5);
+      const latchMaterial = new THREE.MeshPhysicalMaterial({ color: 0x333333, metalness: 0.9, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.1 });
+      const latch = new THREE.Mesh(latchGeometry, latchMaterial);
+      latch.position.x = 60;
+      latch.position.y = 50;
+      latch.rotation.z = Math.PI / 2;
+
+      const pivotGeometry = new THREE.CylinderGeometry(5, 5, 10, 32);
+      const pivotMaterial = new THREE.MeshPhysicalMaterial({ color: 0xcccccc, metalness: 0.9, roughness: 0.5 });
+      const pivot1 = new THREE.Mesh(pivotGeometry, pivotMaterial);
+      pivot1.position.x = 60;
+      pivot1.position.y = 50;
+      pivot1.rotation.z = Math.PI / 2;
+      const pivot2 = new THREE.Mesh(pivotGeometry, pivotMaterial);
+      pivot2.position.x = -60;
+      pivot2.position.y = 50;
+      pivot2.rotation.z = Math.PI / 2;
+
+      const zenPinGeometry = new THREE.CylinderGeometry(3, 3, 10, 32);
+      const zenPinMaterial = new THREE.MeshPhysicalMaterial({ color: 0xcccccc, metalness: 0.9, roughness: 0.5 });
+      const zenPin1 = new THREE.Mesh(zenPinGeometry, zenPinMaterial);
+      zenPin1.position.x = 60;
+      zenPin1.position.y = 60;
+      zenPin1.rotation.z = Math.PI / 2;
+      const zenPin2 = new THREE.Mesh(zenPinGeometry, zenPinMaterial);
+      zenPin2.position.x = -60;
+      zenPin2.position.y = 60;
+      zenPin2.rotation.z = Math.PI / 2;
+
+      const kickerGeometry = new THREE.BoxGeometry(10, 5, 5);
+      const kickerMaterial = new THREE.MeshPhysicalMaterial({ color: 0x333333, metalness: 0.9, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.1 });
+      const kicker = new THREE.Mesh(kickerGeometry, kickerMaterial);
+      kicker.position.x = 50;
+      kicker.position.y = -5;
+
+      const makerMarkGeometry = new THREE.TextGeometry('NN', { font: new THREE.FontLoader().load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json') });
+      const makerMarkMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const makerMark = new THREE.Mesh(makerMarkGeometry, makerMarkMaterial);
+      makerMark.position.x = 45;
+      makerMark.position.y = 5;
+      makerMark.rotation.x = Math.PI / 2;
+
+      const signatureDetailGeometry = new THREE.TextGeometry('CB', { font: new THREE.FontLoader().load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json') });
+      const signatureDetailMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const signatureDetail = new THREE.Mesh(signatureDetailGeometry, signatureDetailMaterial);
+      signatureDetail.position.x = -45;
+      signatureDetail.position.y = 5;
+      signatureDetail.rotation.x = Math.PI / 2;
+
+      const group = new THREE.Group();
+      group.add(blade, handle1, handle2, latch, pivot1, pivot2, zenPin1, zenPin2, kicker, makerMark, signatureDetail);
+      knife = group;
+
+      scene.add(knife);
+    }
+
+    function createHand() {
+      const geometry = new THREE.BoxGeometry(10, 10, 10);
+      const material = new THREE.MeshBasicMaterial({ color: 0xcccccc });
+      const mesh = new THREE.Mesh(geometry, material);
+      hand = mesh;
+
+      scene.add(hand);
+    }
+
+    function createMoves() {
+      const open = {
+        start: () => {
+          knife.rotation.x = -Math.PI / 2;
+          knife.rotation.y = 0;
+          knife.children[1].rotation.x = 0;
+          knife.children[2].rotation.x = 0;
+          knife.children[3].visible = true;
+        },
+        update: (delta) => {
+          const t = Math.min(1, delta / 0.5);
+          knife.rotation.x = -Math.PI / 2 + (Math.PI - Math.PI / 2) * t;
+          knife.children[1].rotation.x = (Math.PI / 2) * t;
+          knife.children[2].rotation.x = -(Math.PI / 2) * t;
+          knife.children[3].visible = t === 1;
+        },
+        end: () => {
+          knife.children[3].visible = false;
+          playSound('latch', 0.5);
+        }
+      };
+
+      const close = {
+        start: () => {
+          knife.rotation.x = 0;
+          knife.rotation.y = 0;
+          knife.children[1].rotation.x = Math.PI / 2;
+          knife.children[2].rotation.x = -Math.PI / 2;
+          knife.children[3].visible = true;
+        },
+        update: (delta) => {
+          const t = Math.min(1, delta / 0.5);
+          knife.rotation.x = (Math.PI / 2) * t;
+          knife.children[1].rotation.x = Math.PI / 2 - (Math.PI / 2) * t;
+          knife.children[2].rotation.x = -Math.PI / 2 + (Math.PI / 2) * t;
+          knife.children[3].visible = t === 1;
+        },
+        end: () => {
+          knife.children[3].visible = false;
+          playSound('latch', 0.5);
+        }
+      };
+
+      const chaplin = {
+        start: () => {
+          knife.rotation.x = 0;
+          knife.rotation.y = 0;
+          knife.children[1].rotation.x = Math.PI / 2;
+          knife.children[2].rotation.x = -Math.PI / 2;
+          knife.children[3].visible = true;
+        },
+        update: (delta) => {
+          const t = Math.min(1, delta / 0.5);
+          knife.rotation.x = (Math.PI / 2) * t;
+          knife.children[1].rotation.x = Math.PI / 2 - (Math.PI / 2) * t;
+          knife.children[2].rotation.x = -Math.PI / 2 + (Math.PI / 2) * t;
+          knife.children[3].visible = t === 1;
+        },
+        end: () => {
+          knife.children[3].visible = false;
+          playSound('latch', 0.5);
+        }
+      };
+
+      const zen = {
+        start: () => {
+          knife.rotation.x = 0;
+          knife.rotation.y = 0;
+          knife.children[1].rotation.x = Math.PI / 2;
+          knife.children[2].rotation.x = -Math.PI / 2;
+          knife.children[3].visible = true;
+        },
+        update: (delta) => {
+          const t = Math.min(1, delta / 0.5);
+          knife.rotation.x = (Math.PI / 2) * t;
+          knife.children[1].rotation.x = Math.PI / 2 - (Math.PI / 2) * t;
+          knife.children[2].rotation.x = -Math.PI / 2 + (Math.PI / 2) * t;
+          knife.children[3].visible = t === 1;
+        },
+        end: () => {
+          knife.children[3].visible = false;
+          playSound('latch', 0.5);
+        }
+      };
+
+      const fan = {
+        start: () => {
+          knife.rotation.x = 0;
+          knife.rotation.y = 0;
+          knife.children[1].rotation.x = Math.PI / 2;
+          knife.children[2].rotation.x = -Math.PI / 2;
+          knife.children[3].visible = true;
+        },
+        update: (delta) => {
+          const t = Math.min(1, delta / 0.5);
+          knife.rotation.x = (Math.PI / 2) * t;
+          knife.children[1].rotation.x = Math.PI / 2 - (Math.PI / 2) * t;
+          knife.children[2].rotation.x = -Math.PI / 2 + (Math.PI / 2) * t;
+          knife.children[3].visible = t === 1;
+        },
+        end: () => {
+          knife.children[3].visible = false;
+          playSound('latch', 0.5);
+        }
+      };
+
+      const helix = {
+        start: () => {
+          knife.rotation.x = 0;
+          knife.rotation.y = 0;
+          knife.children[1].rotation.x = Math.PI / 2;
+          knife.children[2].rotation.x = -Math.PI / 2;
+          knife.children[3].visible = true;
+        },
+        update: (delta) => {
+          const t = Math.min(1, delta / 0.5);
+          knife.rotation.x = (Math.PI / 2) * t;
+          knife.children[1].rotation.x = Math.PI / 2 - (Math.PI / 2) * t;
+          knife.children[2].rotation.x = -Math.PI / 2 + (Math.PI / 2) * t;
+          knife.children[3].visible = t === 1;
+        },
+        end: () => {
+          knife.children[3].visible = false;
+          playSound('latch', 0.5);
+        }
+      };
+
+      const aerial = {
+        start: () => {
+          knife.rotation.x = 0;
+          knife.rotation.y = 0;
+          knife.children[1].rotation.x = Math.PI / 2;
+          knife.children[2].rotation.x = -Math.PI / 2;
+          knife.children[3].visible = true;
+        },
+        update: (delta) => {
+          const t = Math.min(1, delta / 0.5);
+          knife.rotation.x = (Math.PI / 2) * t;
+          knife.children[1].rotation.x = Math.PI / 2 - (Math.PI / 2) * t;
+          knife.children[2].rotation.x = -Math.PI / 2 + (Math.PI / 2) * t;
+          knife.children[3].visible = t === 1;
+        },
+        end: () => {
+          knife.children[3].visible = false;
+          playSound('latch', 0.5);
+        }
+      };
+
+      const signature = {
+        start: () => {
+          knife.rotation.x = 0;
+          knife.rotation.y = 0;
+          knife.children[1].rotation.x = Math.PI / 2;
+          knife.children[2].rotation.x = -Math.PI / 2;
+          knife.children[3].visible = true;
+        },
+        update: (delta) => {
+          const t = Math.min(1, delta / 0.5);
+          knife.rotation.x = (Math.PI / 2) * t;
+          knife.children[1].rotation.x = Math.PI / 2 - (Math.PI / 2) * t;
+          knife.children[2].rotation.x = -Math.PI / 2 + (Math.PI / 2) * t;
+          knife.children[3].visible = t === 1;
+        },
+        end: () => {
+          knife.children[3].visible = false;
+          playSound('latch', 0.5);
+        }
+      };
+
+      moves = {
+        open,
+        close,
+        chaplin,
+        zen,
+        fan,
+        helix,
+        aerial,
+        signature
+      };
+    }
+
+    function playMove(move) {
+      if (currentMove) return;
+      currentMove = moves[move];
+      currentMove.start();
+      animateMove();
+    }
+
+    function animateMove() {
+      const delta = clock.getDelta() * speed;
+      currentMove.update(delta);
+      if (currentMove.update(delta) < 1) {
+        requestAnimationFrame(animateMove);
+      } else {
+        currentMove.end();
+        currentMove = null;
+      }
+    }
+
+    function playCombo() {
+      const movesOrder = ['open', 'close', 'chaplin', 'zen', 'fan', 'helix', 'aerial', 'signature', 'close'];
+      let index = 0;
+      function nextMove() {
+        if (index < movesOrder.length) {
+          playMove(movesOrder[index]);
+          index++;
+          setTimeout(nextMove, 1000);
+        }
+      }
+      nextMove();
+    }
+
+    function playFreestyle() {
+      const movesOrder = Object.keys(moves);
+      let index = 0;
+      function nextMove() {
+        if (index < movesOrder.length) {
+          playMove(movesOrder[index]);
+          index = Math.floor(Math.random() * movesOrder.length);
+          setTimeout(nextMove, 1000);
+        }
+      }
+      nextMove();
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      composer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function onDocumentKeyDown(event) {
+      if (event.key >= '1' && event.key <= '8') {
+        playMove(event.key);
+      }
+    }
+
+    function toggleInfo() {
+      infoVisible = !infoVisible;
+      document.getElementById('info').classList.toggle('show');
+    }
+
+    function createAudioContext() {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      return new AudioContext();
+    }
+
+    const audioContext = createAudioContext();
+    const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 2048;
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    function playSound(sound, volume) {
+      if (mute) return;
+      const audio = new Audio(`https://example.com/${sound}.mp3`);
+      audio.volume = volume * volume;
+      audio.play();
+      audio.addEventListener('ended', () => audio.remove());
+    }
+
+    function createOscillator(freq, volume) {
+      const oscillator = audioContext.createOscillator();
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+      oscillator.connect(analyser);
+      analyser.connect(audioContext.destination);
+      oscillator.start();
+      return oscillator;
+    }
+
+    function createNoise(freq, volume) {
+      const noise = audioContext.createBufferSource();
+      const buffer = audioContext.createBuffer(1, bufferLength, audioContext.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferLength; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+      noise.buffer = buffer;
+      noise.connect(analyser);
+      analyser.connect(audioContext.destination);
+      noise.start();
+      return noise;
+    }
+
+    function createFilter(freq, volume) {
+      const filter = audioContext.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(freq, audioContext.currentTime);
+      filter.connect(analyser);
+      analyser.connect(audioContext.destination);
+      return filter;
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      composer.render();
+      if (currentMove) {
+        analyser.getByteTimeDomainData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b) / bufferLength;
+        const freq = average * 100;
+        const volume = average * 0.1;
+        playSound('swish', volume);
+        createOscillator(freq, volume);
+      }
+    }
+  </script>
+</body>
+</html>
