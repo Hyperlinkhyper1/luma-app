@@ -1,0 +1,1634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>VORTEX KHAMSIN — Custom Cleaver Balisong Benchmark</title>
+<style>
+  :root {
+    --gold: #dfa85b;
+    --gold-dim: #946e38;
+    --red: #a41212;
+    --bg-panel: rgba(14, 11, 10, 0.88);
+    --border: rgba(223, 168, 91, 0.3);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-user-select: none; user-select: none; }
+  body, html { width: 100%; height: 100%; overflow: hidden; background: #070505; font-family: 'Cinzel', 'Trajan Pro', Georgia, serif; color: #eedcca; }
+  canvas#c { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; outline: none; }
+  
+  /* OVERLAY UI */
+  #ui-layer {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 10; pointer-events: none; display: flex; flex-direction: column;
+    justify-content: space-between; padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  }
+  .interactive { pointer-events: auto; }
+
+  /* HEADER & BRAND */
+  header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  .brand-badge {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    padding: 14px 20px; backdrop-filter: blur(8px); border-radius: 4px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+  }
+  .brand-badge h1 {
+    font-size: 19px; letter-spacing: 4px; text-transform: uppercase;
+    color: #fff; margin-bottom: 2px; font-weight: 700;
+  }
+  .brand-badge h2 {
+    font-size: 11px; letter-spacing: 2px; color: var(--gold); text-transform: uppercase; font-weight: 500;
+  }
+  .spec-card {
+    margin-top: 8px; font-size: 10.5px; line-height: 1.5; color: #baa798;
+    border-top: 1px solid rgba(223,168,91,0.2); padding-top: 6px;
+  }
+  .spec-card b { color: #f0e6dc; }
+
+  /* TOP RIGHT CONTROLS */
+  .top-right-bar {
+    display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;
+  }
+  .btn-chip {
+    background: var(--bg-panel); border: 1px solid var(--border); color: #eedcca;
+    padding: 7px 12px; font-size: 11px; letter-spacing: 1px; border-radius: 3px;
+    cursor: pointer; transition: all 0.2s ease; text-transform: uppercase;
+    display: flex; align-items: center; gap: 6px; backdrop-filter: blur(8px);
+  }
+  .btn-chip:hover, .btn-chip.active {
+    background: rgba(164, 18, 18, 0.4); border-color: var(--gold); color: #fff;
+    box-shadow: 0 0 10px rgba(223,168,91,0.3);
+  }
+
+  /* CENTER CAPTION NOTIFIER */
+  #caption-display {
+    position: absolute; top: 18%; left: 50%; transform: translate(-50%, -50%);
+    font-size: 26px; font-weight: 300; letter-spacing: 6px; text-transform: uppercase;
+    color: #fff; text-shadow: 0 0 16px rgba(223,168,91,0.8), 0 4px 10px rgba(0,0,0,0.9);
+    opacity: 0; transition: opacity 0.4s ease, transform 0.4s ease;
+    text-align: center; pointer-events: none;
+  }
+  #caption-display.show { opacity: 1; transform: translate(-50%, -40%); }
+  #caption-sub { font-size: 12px; letter-spacing: 3px; color: var(--gold); display: block; margin-top: 4px; }
+
+  /* HOVER PART TOOLTIP */
+  #tooltip {
+    position: absolute; pointer-events: none; background: rgba(8,6,5,0.92);
+    border: 1px solid var(--gold); padding: 6px 12px; font-size: 11px;
+    letter-spacing: 1.5px; text-transform: uppercase; color: #fff; border-radius: 3px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.8); display: none; transform: translate(-50%, -120%);
+    z-index: 20;
+  }
+
+  /* BOTTOM CONTROLS PANEL */
+  footer {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .controls-dock {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 4px; padding: 10px 14px; backdrop-filter: blur(10px);
+    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px;
+  }
+  .moves-grid {
+    display: flex; gap: 5px; flex-wrap: wrap; align-items: center;
+  }
+  .move-btn {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(223,168,91,0.2);
+    color: #d8c8ba; padding: 6px 11px; font-size: 10.5px; border-radius: 3px;
+    cursor: pointer; transition: all 0.15s ease; font-weight: 500;
+  }
+  .move-btn span.num { color: var(--gold); margin-right: 4px; font-size: 9px; }
+  .move-btn:hover { background: rgba(223,168,91,0.2); color: #fff; border-color: var(--gold); }
+  .move-btn.active { background: var(--red); color: #fff; border-color: var(--gold); box-shadow: 0 0 8px rgba(164,18,18,0.7); }
+
+  .aux-toolbar {
+    display: flex; gap: 14px; align-items: center; font-size: 11px; color: #baa798;
+  }
+  .aux-toolbar label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+  .aux-toolbar input[type="range"] {
+    appearance: none; -webkit-appearance: none; background: rgba(255,255,255,0.1);
+    height: 4px; border-radius: 2px; width: 70px; outline: none;
+  }
+  .aux-toolbar input[type="range"]::-webkit-slider-thumb {
+    appearance: none; -webkit-appearance: none; width: 12px; height: 12px;
+    border-radius: 50%; background: var(--gold); cursor: pointer;
+  }
+
+  /* COLORWAYS PANEL */
+  .colorways { display: flex; gap: 6px; align-items: center; }
+  .color-dot {
+    width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid #fff;
+    cursor: pointer; position: relative; transition: transform 0.2s;
+  }
+  .color-dot:hover { transform: scale(1.15); }
+  .color-dot.active { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  /* HIDE UI TOGGLE */
+  #ui-toggle {
+    position: absolute; right: 20px; bottom: 82px; background: var(--bg-panel);
+    border: 1px solid var(--border); color: var(--gold); padding: 5px 9px;
+    font-size: 10px; text-transform: uppercase; border-radius: 3px; cursor: pointer;
+  }
+
+  #loading-screen {
+    position: absolute; top:0; left:0; width:100%; height:100%;
+    background: #080505; z-index: 100; display: flex; flex-direction: column;
+    justify-content: center; align-items: center; color: var(--gold);
+    transition: opacity 0.8s ease;
+  }
+  #loading-screen.fade-out { opacity: 0; pointer-events: none; }
+  .spin {
+    width: 44px; height: 44px; border: 3px solid rgba(223,168,91,0.2);
+    border-top: 3px solid var(--gold); border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin-bottom: 16px;
+  }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="spin"></div>
+  <div style="letter-spacing: 5px; font-size: 12px;">FORGING KHAMSIN BALISONG...</div>
+</div>
+
+<div id="tooltip">Blade</div>
+
+<div id="ui-layer">
+  <header class="interactive">
+    <div class="brand-badge">
+      <h1>VORTEX &bull; KHAMSIN</h1>
+      <h2>Cleaver Tactical Balisong &mdash; Desert Edition</h2>
+      <div class="spec-card">
+        <div><b>OAL:</b> 238 mm (9.37") &bull; <b>Blade:</b> 108 mm (4.25") &bull; <b>Weight:</b> 128 g</div>
+        <div><b>Blade Steel:</b> CPM-S90V DLC bevels &bull; <b>Handles:</b> Flake Red Anodized 7075-T6</div>
+        <div><b>Pivots:</b> Tuned PB Washers / Bushings &bull; <b>Latch:</b> Neodymium Magnetic Concealed</div>
+        <div><b>Signature:</b> Woven Berber Dunes Geometric CNC Fullers &bull; Steppes Kicker</div>
+      </div>
+    </div>
+
+    <div class="top-right-bar">
+      <div class="colorways">
+        <div class="color-dot active" title="Candy-Apple Dune Red" style="background: radial-gradient(circle, #ea1818 30%, #520505 90%);" data-scheme="red"></div>
+        <div class="color-dot" title="Sahara Ochre Gold" style="background: radial-gradient(circle, #ebb346 30%, #462f0a 90%);" data-scheme="desert"></div>
+        <div class="color-dot" title="Mirage Obsidian & Bronze" style="background: radial-gradient(circle, #3a3b40 30%, #111215 90%);" data-scheme="stealth"></div>
+      </div>
+      <button class="btn-chip" id="btn-explode"><span>⚡</span> Explode</button>
+      <button class="btn-chip" id="btn-case"><span>⚰️</span> Case Open</button>
+      <button class="btn-chip" id="btn-camera"><span>🎥</span> Cam: Hero</button>
+      <button class="btn-chip" id="btn-audio"><span>🔊</span> Sound</button>
+    </div>
+  </header>
+
+  <div id="caption-display">
+    <span id="caption-main">BASIC OPEN</span>
+    <span id="caption-sub">Standard index drop &amp; handle catch</span>
+  </div>
+
+  <button class="interactive" id="ui-toggle">Hide UI</button>
+
+  <footer class="interactive">
+    <div class="controls-dock">
+      <div class="moves-grid">
+        <button class="move-btn" data-move="0"><span class="num">1</span>Basic Open</button>
+        <button class="move-btn" data-move="1"><span class="num">2</span>Basic Close</button>
+        <button class="move-btn" data-move="2"><span class="num">3</span>Chaplin</button>
+        <button class="move-btn" data-move="3"><span class="num">4</span>Zen Rollover</button>
+        <button class="move-btn" data-move="4"><span class="num">5</span>Index Fan</button>
+        <button class="move-btn" data-move="5"><span class="num">6</span>Helix</button>
+        <button class="move-btn" data-move="6"><span class="num">7</span>Desert Aerial</button>
+        <button class="move-btn" data-move="7" style="border-color:var(--gold);"><span class="num">8</span>Khamsin Siwān</button>
+        <button class="move-btn" id="btn-combo" style="background:rgba(223,168,91,0.18);"><span>★</span> Combo</button>
+        <button class="move-btn" id="btn-freestyle"><span>∞</span> Freestyle</button>
+      </div>
+
+      <div class="aux-toolbar">
+        <label>
+          Trail
+          <input type="checkbox" id="chk-trail" checked>
+        </label>
+        <label>
+          Slow-Mo
+          <input type="checkbox" id="chk-slow">
+        </label>
+        <label>
+          Speed <span id="speed-val">1.0×</span>
+          <input type="range" id="rng-speed" min="0.25" max="2.0" step="0.05" value="1.0">
+        </label>
+        <label>
+          Vol
+          <input type="range" id="rng-vol" min="0" max="1" step="0.05" value="0.75">
+        </label>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<canvas id="c"></canvas>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ==========================================================
+   AUDIO SYNTHESIZER (Web Audio API)
+   Damped phosphor-bronze washer clacks, muted magnetic latch,
+   resonant CPM-S90V blade rings, and dynamic wind swish.
+========================================================== */
+class AudioEngine {
+  constructor() {
+    this.ctx = null;
+    this.masterGain = null;
+    this.muted = false;
+    this.volume = 0.75;
+    this.swishGain = null;
+    this.swishFilter = null;
+  }
+
+  init() {
+    if (this.ctx) return;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    this.ctx = new AudioCtx();
+    this.masterGain = this.ctx.createGain();
+    this.masterGain.gain.value = this.volume;
+    this.masterGain.connect(this.ctx.destination);
+
+    // Continuous dynamic swish generator
+    const bufferSize = this.ctx.sampleRate * 2;
+    const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      output[i] = Math.random() * 2 - 1;
+    }
+
+    const whiteNoise = this.ctx.createBufferSource();
+    whiteNoise.buffer = noiseBuffer;
+    whiteNoise.loop = true;
+
+    this.swishFilter = this.ctx.createBiquadFilter();
+    this.swishFilter.type = 'bandpass';
+    this.swishFilter.frequency.value = 650;
+    this.swishFilter.Q.value = 2.5;
+
+    this.swishGain = this.ctx.createGain();
+    this.swishGain.gain.value = 0.0001;
+
+    whiteNoise.connect(this.swishFilter);
+    this.swishFilter.connect(this.swishGain);
+    this.swishGain.connect(this.masterGain);
+    whiteNoise.start();
+  }
+
+  updateSwish(angularVel) {
+    if (!this.ctx || this.muted) return;
+    const speed = Math.min(Math.max(angularVel, 0), 40);
+    const targetGain = Math.pow(speed / 40, 1.8) * 0.45;
+    const targetFreq = 400 + speed * 60;
+    this.swishGain.gain.setTargetAtTime(targetGain, this.ctx.currentTime, 0.04);
+    this.swishFilter.frequency.setTargetAtTime(targetFreq, this.ctx.currentTime, 0.04);
+  }
+
+  playPinClack(velocity = 1.0) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const intensity = Math.min(Math.max(velocity, 0.2), 1.8);
+
+    // Warm, woody / washer-damped contact impact
+    const osc = this.ctx.createOscillator();
+    const oscGain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(320 * (0.9 + Math.random()*0.2), t);
+    osc.frequency.exponentialRampToValueAtTime(70, t + 0.045);
+    oscGain.gain.setValueAtTime(0.7 * intensity, t);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+
+    osc.connect(oscGain);
+    oscGain.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.055);
+
+    // Micro metal friction transient
+    const noiseLen = 0.025;
+    const b = this.ctx.createBuffer(1, this.ctx.sampleRate * noiseLen, this.ctx.sampleRate);
+    const d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * 0.3));
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = b;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 2400;
+    filter.Q.value = 3.0;
+    const nGain = this.ctx.createGain();
+    nGain.gain.value = 0.4 * intensity;
+    noise.connect(filter);
+    filter.connect(nGain);
+    nGain.connect(this.masterGain);
+    noise.start(t);
+
+    // High blade ring shimmer
+    this.playBladeRing(0.18 * intensity, 1680);
+  }
+
+  playBladeRing(vol = 0.3, baseFreq = 1850) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    // Inharmonic partials of hardened CPM steel cleaver
+    const freqs = [baseFreq, baseFreq * 1.58, baseFreq * 2.24];
+    freqs.forEach((f, idx) => {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f + (Math.random()-0.5)*10, t);
+      const att = vol / (idx + 1);
+      g.gain.setValueAtTime(att, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32 / (idx + 1));
+      osc.connect(g);
+      g.connect(this.masterGain);
+      osc.start(t);
+      osc.stop(t + 0.35);
+    });
+  }
+
+  playLatch(open = true) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    // Magnetic latch snap: subtle, deep, muffled click
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(open ? 440 : 580, t);
+    osc.frequency.exponentialRampToValueAtTime(140, t + 0.025);
+    g.gain.setValueAtTime(0.35, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
+    osc.connect(g);
+    g.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.035);
+  }
+
+  setVolume(v) {
+    this.volume = v;
+    if (this.masterGain) this.masterGain.gain.value = this.muted ? 0 : v;
+  }
+  toggleMute() {
+    this.muted = !this.muted;
+    if (this.masterGain) this.masterGain.gain.value = this.muted ? 0 : this.volume;
+    return this.muted;
+  }
+}
+
+const audio = new AudioEngine();
+window.addEventListener('pointerdown', () => audio.init(), { once: true });
+
+/* ==========================================================
+   PROCEDURAL TEXTURES & PROCEDURAL ENVIRONMENT
+========================================================== */
+function createProceduralEnv(renderer) {
+  // Desert Sunset Studio Environment
+  const scene = new THREE.Scene();
+  const geo = new THREE.SphereGeometry(50, 32, 16);
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024; canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  // Sky gradient with low golden sun and rich sand reflections
+  const grad = ctx.createLinearGradient(0, 0, 0, 512);
+  grad.addColorStop(0.0, '#0c1626');  // Deep dusk sky
+  grad.addColorStop(0.35, '#3c1d18'); // Warm horizon dusk
+  grad.addColorStop(0.48, '#e58032'); // Blazing low desert sun line
+  grad.addColorStop(0.52, '#fce19a'); // Golden sun corona
+  grad.addColorStop(0.55, '#c56b27'); // Dune edge
+  grad.addColorStop(0.75, '#3b1c0e'); // Sand floor shadow
+  grad.addColorStop(1.0, '#100806');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 1024, 512);
+
+  // Simulated warm studio key softbox + desert sun highlight
+  const sunGrad = ctx.createRadialGradient(512, 250, 5, 512, 250, 140);
+  sunGrad.addColorStop(0, 'rgba(255,255,240,1)');
+  sunGrad.addColorStop(0.2, 'rgba(255,210,130,0.85)');
+  sunGrad.addColorStop(0.6, 'rgba(230,110,40,0.3)');
+  sunGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = sunGrad;
+  ctx.beginPath();
+  ctx.arc(512, 250, 140, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Cool rim reflector opposite side
+  const rimGrad = ctx.createRadialGradient(100, 180, 5, 100, 180, 160);
+  rimGrad.addColorStop(0, 'rgba(180,210,255,0.7)');
+  rimGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = rimGrad;
+  ctx.beginPath();
+  ctx.arc(100, 180, 160, 0, Math.PI * 2);
+  ctx.fill();
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.mapping = THREE.EquirectangularReflectionMapping;
+  const mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide });
+  scene.add(new THREE.Mesh(geo, mat));
+
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const envMap = pmrem.fromScene(scene, 0.04).texture;
+  pmrem.dispose();
+  return envMap;
+}
+
+function generateFlakeRedTexture() {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 512;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#680507';
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Metallic micro-flake speckles
+  const id = ctx.getImageData(0, 0, 512, 512);
+  const d = id.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const flake = (Math.random() - 0.5) * 65;
+    const speckle = Math.random() > 0.96 ? 90 : 0;
+    d[i] = Math.min(255, Math.max(0, d[i] + flake + speckle));
+    d[i+1] = Math.min(255, Math.max(0, d[i+1] + (flake * 0.15) + (speckle * 0.3)));
+    d[i+2] = Math.min(255, Math.max(0, d[i+2] + (flake * 0.15)));
+  }
+  ctx.putImageData(id, 0, 0);
+
+  // Subtle woven Berber geometric band pattern along handles
+  ctx.strokeStyle = 'rgba(215, 165, 80, 0.18)';
+  ctx.lineWidth = 2;
+  for (let y = 30; y < 512; y += 48) {
+    ctx.beginPath();
+    for (let x = 0; x < 512; x += 24) {
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + 12, y - 10);
+      ctx.lineTo(x + 24, y);
+      ctx.lineTo(x + 12, y + 10);
+      ctx.closePath();
+    }
+    ctx.stroke();
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(1.5, 3);
+  return tex;
+}
+
+function generateBladeTextures() {
+  // DLC Black flat with maker emblem & etched motto + brushed steel bevel
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#111214'; // DLC Satin Black
+  ctx.fillRect(0, 0, 1024, 256);
+
+  // Maker's Mark: VORTEX geometric desert vortex eye
+  ctx.strokeStyle = '#cba05c';
+  ctx.lineWidth = 3.5;
+  const cx = 320, cy = 128;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 32, 0, Math.PI * 1.5);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx, cy, 20, Math.PI * 0.5, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx - 10, cy); ctx.lineTo(cx + 10, cy);
+  ctx.moveTo(cx, cy - 10); ctx.lineTo(cx, cy + 10);
+  ctx.stroke();
+
+  // Etched model name & motto
+  ctx.fillStyle = '#d8ae68';
+  ctx.font = 'bold 24px -apple-system, sans-serif';
+  ctx.letterSpacing = '6px';
+  ctx.fillText('VORTEX', cx + 46, cy - 4);
+  ctx.font = '13px -apple-system, sans-serif';
+  ctx.fillStyle = '#8f7344';
+  ctx.fillText('KHAMSIN 01/50 • CPM-S90V', cx + 48, cy + 18);
+  ctx.font = 'italic 11px Georgia, serif';
+  ctx.fillText('“Born in the Desert Gale”', cx + 48, cy + 34);
+
+  // Fine longitudinal brushed lines
+  ctx.fillStyle = 'rgba(255,255,255,0.025)';
+  for (let i = 0; i < 200; i++) {
+    const y = Math.random() * 256;
+    ctx.fillRect(0, y, 1024, 0.7);
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  return tex;
+}
+
+function generateVelvetTexture() {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 512;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#170b0c'; // Deep crimson velvet
+  ctx.fillRect(0, 0, 512, 512);
+  const id = ctx.getImageData(0, 0, 512, 512);
+  const d = id.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const n = (Math.random() - 0.5) * 25;
+    d[i] = Math.min(255, Math.max(0, d[i] + n));
+    d[i+1] = Math.min(255, Math.max(0, d[i+1] + (n*0.3)));
+    d[i+2] = Math.min(255, Math.max(0, d[i+2] + (n*0.3)));
+  }
+  ctx.putImageData(id, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(4, 4);
+  return tex;
+}
+
+/* ==========================================================
+   GEOMETRY BUILDERS — BALISONG ANATOMY
+   True cleaver profile, tang, kicker, zen pins, contoured handles,
+   hardware, washers, and concealed magnetic latch.
+========================================================== */
+const DIM = {
+  bladeLen: 12.2,
+  bladeW: 2.85,
+  bladeThick: 0.38,
+  pivotDist: 1.48,     // Distance between safe and bite pivot pins
+  pivotY: 0.0,
+  handleLen: 13.8,
+  handleW: 1.25,
+  handleThick: 0.44,
+  channelW: 0.48,
+  zenPinR: 0.16,
+  pivotR: 0.22,
+};
+
+function buildCleaverBladeGeometry() {
+  // Broad cleaver profile with straight cutting edge, stepped kicker, choil and squared tip
+  const shape = new THREE.Shape();
+  // Start tang base
+  shape.moveTo(0, -0.6);
+  shape.lineTo(0.9, -0.6); // Tang shoulder
+  shape.lineTo(0.9, -0.15); // Tang pin rest
+
+  // Kicker notch step (keeps blade edge from bottoming into bite handle channel)
+  shape.lineTo(0.72, 0.4);
+  shape.lineTo(0.85, 0.7); // Finger choil curve
+  shape.quadraticCurveTo(0.9, 1.1, 0.82, 1.5);
+
+  // Straight cleaver razor edge
+  shape.lineTo(0.82, 11.2);
+  // Squared blunt cleaver chisel nose & front drop
+  shape.lineTo(0.3, 11.8);
+  shape.lineTo(-0.85, 11.8); // Broad squared tip corner
+  shape.lineTo(-0.85, 11.2); // Spine transition
+
+  // Spine with ergonomic desert thumb jimping swedge
+  shape.lineTo(-0.75, 4.0);
+  shape.lineTo(-0.72, 1.2);
+  // Safe tang rest
+  shape.lineTo(-0.85, 0.4);
+  shape.lineTo(-0.85, -0.6);
+  shape.closePath();
+
+  // Pivot pin hole cutouts in tang
+  const p1 = new THREE.Path();
+  p1.absarc(-DIM.pivotDist/2, 0, DIM.pivotR*0.75, 0, Math.PI*2, true);
+  shape.holes.push(p1);
+
+  const p2 = new THREE.Path();
+  p2.absarc(DIM.pivotDist/2, 0, DIM.pivotR*0.75, 0, Math.PI*2, true);
+  shape.holes.push(p2);
+
+  const extrudeSettings = {
+    steps: 1,
+    depth: DIM.bladeThick,
+    bevelEnabled: true,
+    bevelThickness: 0.08,
+    bevelSize: 0.08,
+    bevelOffset: 0,
+    bevelSegments: 4
+  };
+
+  const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+  geo.center();
+  return geo;
+}
+
+function buildBevelCuttingEdgeGeo() {
+  // Polished high-bevel razor wedge overlay
+  const shape = new THREE.Shape();
+  shape.moveTo(0.82, 1.5);
+  shape.lineTo(0.82, 11.2);
+  shape.lineTo(0.0, 11.5);
+  shape.lineTo(0.0, 1.5);
+  shape.closePath();
+
+  const geo = new THREE.ExtrudeGeometry(shape, {
+    steps: 1,
+    depth: DIM.bladeThick * 0.9,
+    bevelEnabled: true,
+    bevelThickness: 0.04,
+    bevelSize: 0.04,
+    bevelSegments: 3
+  });
+  geo.center();
+  return geo;
+}
+
+function buildContouredHandleGeometry(isBite = false) {
+  // Ergonomic finger scallops, flared butt, desert fullers
+  const shape = new THREE.Shape();
+  const hw = DIM.handleW * 0.5;
+  const len = DIM.handleLen;
+
+  shape.moveTo(-hw, 0.2);
+  // Pivot head rounding
+  shape.quadraticCurveTo(-hw, -0.4, 0, -0.5);
+  shape.quadraticCurveTo(hw, -0.4, hw, 0.2);
+
+  // Outer ergonomic finger grooves
+  shape.lineTo(hw, 2.0);
+  shape.quadraticCurveTo(hw - 0.12, 3.2, hw, 4.4); // Scallop 1
+  shape.quadraticCurveTo(hw - 0.14, 5.8, hw, 7.2); // Scallop 2
+  shape.quadraticCurveTo(hw - 0.12, 8.8, hw + 0.1, 10.5); // Flare starts
+  // Flared end butt
+  shape.lineTo(hw + 0.25, len - 0.5);
+  shape.quadraticCurveTo(hw + 0.25, len, 0, len);
+  // Butt round
+  shape.quadraticCurveTo(-hw - 0.25, len, -hw - 0.25, len - 0.5);
+  // Inner spine contour
+  shape.lineTo(-hw - 0.1, 10.5);
+  shape.quadraticCurveTo(-hw - 0.12, 7.0, -hw, 4.0);
+  shape.lineTo(-hw, 0.2);
+  shape.closePath();
+
+  // Channel cutout hole to house blade
+  const channel = new THREE.Path();
+  const cw = DIM.channelW * 0.45;
+  channel.moveTo(-cw, 0.8);
+  channel.lineTo(cw, 0.8);
+  channel.lineTo(cw, len - 0.8);
+  channel.lineTo(-cw, len - 0.8);
+  channel.closePath();
+  shape.holes.push(channel);
+
+  const extrudeSettings = {
+    steps: 1,
+    depth: DIM.handleThick,
+    bevelEnabled: true,
+    bevelThickness: 0.06,
+    bevelSize: 0.06,
+    bevelSegments: 4
+  };
+
+  const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+  geo.center();
+  return geo;
+}
+
+/* ==========================================================
+   SCENE SETUP & MATERIALS
+========================================================== */
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#080505');
+
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 80);
+camera.position.set(0, 10, 24);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+controls.target.set(0, 3.5, 0);
+controls.maxDistance = 45;
+controls.minDistance = 4;
+
+// Procedural environment map
+const envMap = createProceduralEnv(renderer);
+scene.environment = envMap;
+
+// Lighting setup (Product shot: key raking, rim highlight, stage fill)
+const keyLight = new THREE.DirectionalLight('#fff1e0', 3.2);
+keyLight.position.set(8, 16, 12);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.width = 2048;
+keyLight.shadow.mapSize.height = 2048;
+keyLight.shadow.bias = -0.0001;
+keyLight.shadow.camera.near = 2;
+keyLight.shadow.camera.far = 40;
+keyLight.shadow.camera.left = -14;
+keyLight.shadow.camera.right = 14;
+keyLight.shadow.camera.top = 14;
+keyLight.shadow.camera.bottom = -14;
+scene.add(keyLight);
+
+const rimLight = new THREE.DirectionalLight('#ff7a38', 2.8);
+rimLight.position.set(-12, -4, -10);
+scene.add(rimLight);
+
+const softTop = new THREE.SpotLight('#eed8bf', 2.0, 30, Math.PI/4, 0.5, 1.2);
+softTop.position.set(0, 18, 2);
+softTop.castShadow = true;
+scene.add(softTop);
+
+const ambientLight = new THREE.AmbientLight('#2a1a15', 0.8);
+scene.add(ambientLight);
+
+/* ==========================================================
+   MATERIALS & COLORWAYS
+========================================================== */
+const flakeRedTex = generateFlakeRedTexture();
+const bladeTex = generateBladeTextures();
+const velvetTex = generateVelvetTexture();
+
+// Handle Materials
+const matHandlesRed = new THREE.MeshPhysicalMaterial({
+  color: 0xba1215,
+  metalness: 0.65,
+  roughness: 0.28,
+  clearcoat: 0.95,
+  clearcoatRoughness: 0.12,
+  map: flakeRedTex,
+  envMapIntensity: 1.4
+});
+
+const matHandlesDesert = new THREE.MeshPhysicalMaterial({
+  color: 0xd99b38,
+  metalness: 0.75,
+  roughness: 0.32,
+  clearcoat: 0.85,
+  clearcoatRoughness: 0.18,
+  map: flakeRedTex,
+  envMapIntensity: 1.5
+});
+
+const matHandlesStealth = new THREE.MeshPhysicalMaterial({
+  color: 0x222428,
+  metalness: 0.85,
+  roughness: 0.38,
+  clearcoat: 0.7,
+  clearcoatRoughness: 0.25,
+  map: flakeRedTex,
+  envMapIntensity: 1.3
+});
+
+let currentHandleMat = matHandlesRed;
+
+// Blade Materials
+const matBladeDLC = new THREE.MeshPhysicalMaterial({
+  color: 0x141517,
+  metalness: 0.88,
+  roughness: 0.32,
+  map: bladeTex,
+  envMapIntensity: 1.6,
+  clearcoat: 0.4
+});
+
+const matBladeBevel = new THREE.MeshPhysicalMaterial({
+  color: 0xf5f7fb,
+  metalness: 0.98,
+  roughness: 0.08,
+  envMapIntensity: 2.8,
+  clearcoat: 1.0,
+  clearcoatRoughness: 0.04
+});
+
+// Hardware Materials: Blackened Titanium screws & Phosphor Bronze washers
+const matHardwareBlack = new THREE.MeshPhysicalMaterial({
+  color: 0x181819,
+  metalness: 0.9,
+  roughness: 0.35,
+  envMapIntensity: 1.2
+});
+
+const matBronzeWashers = new THREE.MeshPhysicalMaterial({
+  color: 0xd28639,
+  metalness: 0.95,
+  roughness: 0.22,
+  envMapIntensity: 2.0
+});
+
+const matGoldAccents = new THREE.MeshPhysicalMaterial({
+  color: 0xecb454,
+  metalness: 0.95,
+  roughness: 0.18,
+  envMapIntensity: 2.5
+});
+
+/* ==========================================================
+   KNIFE ASSEMBLY GRAPH
+========================================================== */
+const knifeRoot = new THREE.Group();
+scene.add(knifeRoot);
+
+// Blade Pivot Anchor & Mesh
+const bladeGroup = new THREE.Group();
+knifeRoot.add(bladeGroup);
+
+const bladeGeo = buildCleaverBladeGeometry();
+const bladeMesh = new THREE.Mesh(bladeGeo, matBladeDLC);
+bladeMesh.castShadow = true;
+bladeMesh.receiveShadow = true;
+bladeMesh.position.y = 5.6; // Center tang at origin (0,0,0)
+bladeGroup.add(bladeMesh);
+
+// Polished edge wedge
+const edgeGeo = buildBevelCuttingEdgeGeo();
+const edgeMesh = new THREE.Mesh(edgeGeo, matBladeBevel);
+edgeMesh.position.set(0.42, 6.2, 0);
+edgeMesh.scale.set(1.0, 1.0, 0.45);
+bladeGroup.add(edgeMesh);
+
+// Tang Zen Pins (stops handles in closed & open positions)
+const zenPinGeo = new THREE.CylinderGeometry(DIM.zenPinR, DIM.zenPinR, DIM.bladeThick * 1.5, 16);
+zenPinGeo.rotateX(Math.PI/2);
+const zenPinOpenMesh = new THREE.Mesh(zenPinGeo, matHardwareBlack);
+zenPinOpenMesh.position.set(0, 0.45, 0);
+bladeGroup.add(zenPinOpenMesh);
+
+const zenPinClosedMesh = new THREE.Mesh(zenPinGeo, matHardwareBlack);
+zenPinClosedMesh.position.set(0, -0.45, 0);
+bladeGroup.add(zenPinClosedMesh);
+
+// --- SAFE HANDLE (Spine Side, Left: -X) ---
+const safePivotGroup = new THREE.Group();
+safePivotGroup.position.set(-DIM.pivotDist/2, 0, 0);
+knifeRoot.add(safePivotGroup);
+
+const safeHandleBody = new THREE.Group();
+safePivotGroup.add(safeHandleBody);
+
+const handleGeoSafe = buildContouredHandleGeometry(false);
+const safeHandleMesh = new THREE.Mesh(handleGeoSafe, currentHandleMat);
+safeHandleMesh.position.y = DIM.handleLen * 0.5 - 0.2;
+safeHandleMesh.castShadow = true;
+safeHandleMesh.receiveShadow = true;
+safeHandleBody.add(safeHandleMesh);
+
+// Milled signature Berber geometric pattern inlays along handle flats
+function createGeometricInlays() {
+  const g = new THREE.Group();
+  const diamondGeo = new THREE.ConeGeometry(0.18, 0.35, 4);
+  diamondGeo.rotateX(Math.PI/2);
+  for (let i = 2; i < 11; i += 1.3) {
+    const d1 = new THREE.Mesh(diamondGeo, matGoldAccents);
+    d1.position.set(0, i, DIM.handleThick * 0.52);
+    d1.scale.set(1, 0.3, 1);
+    g.add(d1);
+    const d2 = d1.clone();
+    d2.position.z = -DIM.handleThick * 0.52;
+    g.add(d2);
+  }
+  return g;
+}
+safeHandleBody.add(createGeometricInlays());
+
+// --- BITE HANDLE (Edge Side, Right: +X) ---
+const bitePivotGroup = new THREE.Group();
+bitePivotGroup.position.set(DIM.pivotDist/2, 0, 0);
+knifeRoot.add(bitePivotGroup);
+
+const biteHandleBody = new THREE.Group();
+bitePivotGroup.add(biteHandleBody);
+
+const handleGeoBite = buildContouredHandleGeometry(true);
+const biteHandleMesh = new THREE.Mesh(handleGeoBite, currentHandleMat);
+biteHandleMesh.position.y = DIM.handleLen * 0.5 - 0.2;
+biteHandleMesh.castShadow = true;
+biteHandleMesh.receiveShadow = true;
+biteHandleBody.add(biteHandleMesh);
+biteHandleBody.add(createGeometricInlays());
+
+// --- PIVOT HARDWARE (Screws, Collars & PB Washers) ---
+const screwCapGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.08, 24);
+screwCapGeo.rotateX(Math.PI/2);
+const washerGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.04, 20);
+washerGeo.rotateX(Math.PI/2);
+
+function attachPivotHardware(target) {
+  const screwF = new THREE.Mesh(screwCapGeo, matHardwareBlack);
+  screwF.position.z = DIM.handleThick*0.62;
+  const screwB = new THREE.Mesh(screwCapGeo, matHardwareBlack);
+  screwB.position.z = -DIM.handleThick*0.62;
+  const collarF = new THREE.Mesh(washerGeo, matBronzeWashers);
+  collarF.position.z = DIM.handleThick*0.56;
+  const collarB = new THREE.Mesh(washerGeo, matBronzeWashers);
+  collarB.position.z = -DIM.handleThick*0.56;
+  target.add(screwF, screwB, collarF, collarB);
+}
+attachPivotHardware(safePivotGroup);
+attachPivotHardware(bitePivotGroup);
+
+// --- CONCEALED MAGNETIC LATCH (Butt of Bite Handle) ---
+const latchPivotGroup = new THREE.Group();
+latchPivotGroup.position.set(0, DIM.handleLen - 0.25, 0);
+biteHandleBody.add(latchPivotGroup);
+
+const latchArmGeo = new THREE.BoxGeometry(0.24, 0.75, 0.22);
+latchArmGeo.translate(0, 0.36, 0);
+const latchMesh = new THREE.Mesh(latchArmGeo, matHardwareBlack);
+latchPivotGroup.add(latchMesh);
+
+// Embedded neodymium magnet studs on handle butts
+const magnetGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.08, 16);
+const magnetSafe = new THREE.Mesh(magnetGeo, matGoldAccents);
+magnetSafe.position.set(0, DIM.handleLen - 0.25, 0);
+magnetSafe.rotateZ(Math.PI/2);
+safeHandleBody.add(magnetSafe);
+
+/* Exploded view mesh registration */
+const explodedParts = [
+  { mesh: safeHandleMesh, dir: new THREE.Vector3(-1.4, 0, 0), label: 'Safe Handle (Contoured 7075-T6)' },
+  { mesh: biteHandleMesh, dir: new THREE.Vector3(1.4, 0, 0), label: 'Bite Handle with Scallops' },
+  { mesh: bladeMesh, dir: new THREE.Vector3(0, 1.2, 0), label: 'CPM-S90V Cleaver Blade (DLC)' },
+  { mesh: edgeMesh, dir: new THREE.Vector3(0.5, 1.2, 0), label: 'Mirror Polished Hollow Bevel' },
+  { mesh: latchMesh, dir: new THREE.Vector3(0, -1.2, 0), label: 'Concealed Magnetic Latch' },
+  { mesh: zenPinOpenMesh, dir: new THREE.Vector3(0, 0, 1.2), label: 'Zen Stop Pin (Hardened Steel)' },
+  { mesh: safePivotGroup.children[2], dir: new THREE.Vector3(-0.6, 0, 1.5), label: 'Blackened Pivot Torx Screw' },
+  { mesh: safePivotGroup.children[4], dir: new THREE.Vector3(-0.6, 0, 0.8), label: 'Phosphor Bronze Bushing Washer' }
+];
+
+/* ==========================================================
+   DISPLAY CASE STAGE (Desert Wood & Crimson Velvet Lid)
+========================================================== */
+const stageGroup = new THREE.Group();
+scene.add(stageGroup);
+
+// Exterior Dunes Showcase Casket (Rosewood & Gold Trim)
+const boxGeo = new THREE.BoxGeometry(20, 2.2, 28);
+const matWood = new THREE.MeshStandardMaterial({
+  color: 0x1f110c,
+  roughness: 0.45,
+  metalness: 0.1
+});
+const caseBase = new THREE.Mesh(boxGeo, matWood);
+caseBase.position.y = -2.8;
+caseBase.receiveShadow = true;
+stageGroup.add(caseBase);
+
+// Velvet Padded Interior Bed
+const velvetBedGeo = new THREE.BoxGeometry(18.5, 0.6, 26.5);
+const matVelvet = new THREE.MeshStandardMaterial({
+  map: velvetTex,
+  color: 0x5a0a0d,
+  roughness: 0.85,
+  metalness: 0.05
+});
+const velvetBed = new THREE.Mesh(velvetBedGeo, matVelvet);
+velvetBed.position.y = -1.6;
+velvetBed.receiveShadow = true;
+stageGroup.add(velvetBed);
+
+// Glass Lid Pivot Hinge (Opens for reveal)
+const lidPivot = new THREE.Group();
+lidPivot.position.set(0, -1.6, -13.5);
+stageGroup.add(lidPivot);
+
+const lidFrameGeo = new THREE.BoxGeometry(19.8, 0.5, 27.8);
+lidFrameGeo.translate(0, 0.25, 13.5);
+const matFrame = new THREE.MeshStandardMaterial({ color: 0x2e1910, roughness: 0.3, metalness: 0.4 });
+const lidFrame = new THREE.Mesh(lidFrameGeo, matFrame);
+
+const glassGeo = new THREE.BoxGeometry(18, 0.2, 26);
+glassGeo.translate(0, 0.35, 13.5);
+const matGlass = new THREE.MeshPhysicalMaterial({
+  color: 0xffffff,
+  transmission: 0.92,
+  opacity: 1,
+  transparent: true,
+  roughness: 0.05,
+  ior: 1.52,
+  thickness: 0.4
+});
+const glassPane = new THREE.Mesh(glassGeo, matGlass);
+lidPivot.add(lidFrame, glassPane);
+
+/* ==========================================================
+   MOTION TRAIL RIBBON (BLADE TIP)
+========================================================== */
+const TRAIL_MAX = 42;
+const trailPositions = new Float32Array(TRAIL_MAX * 3);
+const trailGeo = new THREE.BufferGeometry();
+trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+const trailMat = new THREE.LineBasicMaterial({
+  color: 0xdfa85b,
+  transparent: true,
+  opacity: 0.85,
+  blending: THREE.AdditiveBlending,
+  linewidth: 2
+});
+const trailLine = new THREE.Line(trailGeo, trailMat);
+scene.add(trailLine);
+let trailEnabled = true;
+let trailHistory = [];
+
+function updateTrail(tipWorldPos) {
+  if (!trailEnabled) {
+    trailLine.visible = false;
+    return;
+  }
+  trailLine.visible = true;
+  trailHistory.unshift(tipWorldPos.clone());
+  if (trailHistory.length > TRAIL_MAX) trailHistory.pop();
+
+  const posAttr = trailGeo.attributes.position;
+  for (let i = 0; i < TRAIL_MAX; i++) {
+    const p = trailHistory[i] || (trailHistory.length > 0 ? trailHistory[trailHistory.length - 1] : tipWorldPos);
+    posAttr.setXYZ(i, p.x, p.y, p.z);
+  }
+  posAttr.needsUpdate = true;
+}
+
+/* ==========================================================
+   INTERACTIVE BALISONG SIMULATION & KEYFRAME TRICKS
+   Handles rotate around real pivot axes. Collision with Zen
+   stops triggers sound & bounce dynamics.
+========================================================== */
+// Handle Angles relative to blade:
+// 0 rad = Closed (enclosing blade)
+// PI rad = Fully Open (stopped against zen pin)
+const BALI_CLOSED = 0.04;
+const BALI_OPEN = Math.PI - 0.04;
+
+const baliState = {
+  safeAngle: BALI_CLOSED,
+  biteAngle: BALI_CLOSED,
+  latchAngle: 0.0,
+  rootPos: new THREE.Vector3(0, 0.4, 0),
+  rootRot: new THREE.Euler(0, 0, 0),
+  angularVelocity: 0
+};
+
+// Physics collision tracker for pin knocks
+let prevSafeAngle = BALI_CLOSED;
+let prevBiteAngle = BALI_CLOSED;
+
+function applyBalisongPose(safeAng, biteAng, latchAng, rootPos, rootRot) {
+  baliState.safeAngle = safeAng;
+  baliState.biteAngle = biteAng;
+  baliState.latchAngle = latchAng;
+  if (rootPos) baliState.rootPos.copy(rootPos);
+  if (rootRot) baliState.rootRot.copy(rootRot);
+
+  // Apply to Three.js graph
+  safePivotGroup.rotation.z = -safeAng;
+  bitePivotGroup.rotation.z = biteAng;
+  latchPivotGroup.rotation.z = latchAng;
+
+  knifeRoot.position.copy(baliState.rootPos);
+  knifeRoot.rotation.copy(baliState.rootRot);
+
+  // Sound triggers on physical stop collision
+  const vSafe = Math.abs(safeAng - prevSafeAngle);
+  const vBite = Math.abs(biteAng - prevBiteAngle);
+
+  if ((Math.abs(safeAng - BALI_OPEN) < 0.06 && prevSafeAngle < BALI_OPEN - 0.08) ||
+      (Math.abs(safeAng - BALI_CLOSED) < 0.06 && prevSafeAngle > BALI_CLOSED + 0.08)) {
+    audio.playPinClack(vSafe * 14);
+  }
+  if ((Math.abs(biteAng - BALI_OPEN) < 0.06 && prevBiteAngle < BALI_OPEN - 0.08) ||
+      (Math.abs(biteAng - BALI_CLOSED) < 0.06 && prevBiteAngle > BALI_CLOSED + 0.08)) {
+    audio.playPinClack(vBite * 14);
+  }
+
+  prevSafeAngle = safeAng;
+  prevBiteAngle = biteAng;
+}
+
+/* ==========================================================
+   BALISONG TRICK KEYFRAME SEQUENCES
+========================================================== */
+// Helpers for interpolation
+const lerp = (a, b, t) => a + (b - a) * t;
+const easeInOutQuad = t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+
+const MOVES_DATA = [
+  {
+    name: 'Basic Open',
+    sub: 'Index drop, safe handle pivot swing & catch',
+    dur: 1.1,
+    fn: (p) => {
+      // Phase: Unlatch -> Safe swings 180 -> Bite follows -> Lock open
+      let safe, bite, latch;
+      let rx = 0, ry = 0, rz = 0;
+      let y = 0.4;
+      if (p < 0.2) {
+        const t = p / 0.2;
+        latch = lerp(0, 0.8, t);
+        safe = BALI_CLOSED; bite = BALI_CLOSED;
+      } else if (p < 0.6) {
+        const t = (p - 0.2) / 0.4;
+        latch = 0.8;
+        safe = lerp(BALI_CLOSED, BALI_OPEN, easeInOutQuad(t));
+        bite = lerp(BALI_CLOSED, 0.35, Math.sin(t * Math.PI));
+        rz = lerp(0, -0.6, Math.sin(t * Math.PI));
+      } else {
+        const t = (p - 0.6) / 0.4;
+        latch = lerp(0.8, 0, t);
+        safe = BALI_OPEN;
+        bite = lerp(BALI_CLOSED, BALI_OPEN, easeInOutQuad(t));
+        rz = lerp(-0.6, 0, t);
+      }
+      return { safe, bite, latch, pos: new THREE.Vector3(0, y, 0), rot: new THREE.Euler(rx, ry, rz) };
+    }
+  },
+  {
+    name: 'Basic Close',
+    sub: 'Reverse tang inertia swing into magnetic lock',
+    dur: 1.1,
+    fn: (p) => {
+      let safe, bite, latch;
+      let rz = 0;
+      if (p < 0.5) {
+        const t = p / 0.5;
+        latch = 0.8;
+        bite = lerp(BALI_OPEN, BALI_CLOSED, easeInOutQuad(t));
+        safe = BALI_OPEN;
+        rz = Math.sin(t * Math.PI) * 0.4;
+      } else {
+        const t = (p - 0.5) / 0.5;
+        bite = BALI_CLOSED;
+        safe = lerp(BALI_OPEN, BALI_CLOSED, easeInOutQuad(t));
+        latch = lerp(0.8, 0, t);
+        rz = Math.sin(t * Math.PI) * -0.3;
+      }
+      return { safe, bite, latch, pos: new THREE.Vector3(0, 0.4, 0), rot: new THREE.Euler(0, 0, rz) };
+    }
+  },
+  {
+    name: 'Chaplin',
+    sub: 'Centrifugal finger spin with handles open',
+    dur: 1.6,
+    fn: (p) => {
+      const revs = 2.5;
+      const angle = p * Math.PI * 2 * revs;
+      const tilt = Math.sin(angle) * 0.25;
+      const bob = Math.sin(angle * 2) * 0.3;
+      return {
+        safe: BALI_OPEN - 0.08 * Math.sin(angle * 3),
+        bite: BALI_OPEN - 0.08 * Math.cos(angle * 3),
+        latch: 0.6,
+        pos: new THREE.Vector3(0, 1.2 + bob, 0),
+        rot: new THREE.Euler(tilt, angle, 0.2)
+      };
+    }
+  },
+  {
+    name: 'Zen Rollover',
+    sub: 'Thumb pivot rotation & handle swap rebound',
+    dur: 1.3,
+    fn: (p) => {
+      const roll = p * Math.PI * 2.2;
+      const safe = lerp(BALI_OPEN, BALI_CLOSED, Math.abs(Math.sin(p * Math.PI)));
+      const bite = lerp(BALI_OPEN, BALI_CLOSED, Math.abs(Math.cos(p * Math.PI)));
+      const height = Math.sin(p * Math.PI) * 1.4;
+      return {
+        safe: Math.max(BALI_CLOSED, Math.min(BALI_OPEN, safe)),
+        bite: Math.max(BALI_CLOSED, Math.min(BALI_OPEN, bite)),
+        latch: 0.9,
+        pos: new THREE.Vector3(Math.cos(roll)*0.6, 1.0 + height, 0),
+        rot: new THREE.Euler(p * 1.2, roll, 0)
+      };
+    }
+  },
+  {
+    name: 'Index Fan',
+    sub: 'High-speed long-axis handle rotation with blade trailing',
+    dur: 1.8,
+    fn: (p) => {
+      const revs = 4.0;
+      const spin = p * Math.PI * 2 * revs;
+      // Handles slightly V-spread while blade fans out
+      return {
+        safe: BALI_OPEN * 0.55 + 0.1 * Math.sin(spin * 2),
+        bite: BALI_OPEN * 0.55 + 0.1 * Math.cos(spin * 2),
+        latch: 0.7,
+        pos: new THREE.Vector3(0, 1.5, 0),
+        rot: new THREE.Euler(0.4, 0, spin)
+      };
+    }
+  },
+  {
+    name: 'Helix',
+    sub: 'Twirling compound roll across fingers and wrist',
+    dur: 1.5,
+    fn: (p) => {
+      const twirl = p * Math.PI * 3;
+      const safe = lerp(0.4, BALI_OPEN, (Math.sin(p * Math.PI * 2) + 1) * 0.5);
+      const bite = lerp(BALI_OPEN, 0.4, (Math.sin(p * Math.PI * 2) + 1) * 0.5);
+      return {
+        safe, bite, latch: 0.8,
+        pos: new THREE.Vector3(Math.sin(twirl)*0.5, 1.2 + Math.sin(p*Math.PI)*0.8, 0),
+        rot: new THREE.Euler(twirl, twirl * 0.7, 0.3)
+      };
+    }
+  },
+  {
+    name: 'Desert Aerial',
+    sub: 'Tossed into the air: 360° airborne spin & clean handle catch',
+    dur: 1.7,
+    fn: (p) => {
+      // Parabolic toss trajectory
+      const height = 4.5 * Math.sin(p * Math.PI);
+      const flip = p * Math.PI * 4; // 2 full revolutions in flight
+      let safe, bite;
+      if (p < 0.25) {
+        safe = lerp(BALI_CLOSED, BALI_OPEN, p/0.25);
+        bite = BALI_CLOSED;
+      } else if (p < 0.75) {
+        // Airborne scissors action
+        const midP = (p - 0.25) / 0.5;
+        safe = BALI_OPEN - Math.sin(midP * Math.PI) * 0.6;
+        bite = BALI_OPEN - Math.sin(midP * Math.PI) * 0.6;
+      } else {
+        safe = BALI_OPEN;
+        bite = BALI_OPEN;
+      }
+      return {
+        safe, bite, latch: 1.0,
+        pos: new THREE.Vector3(0, 0.8 + height, 0),
+        rot: new THREE.Euler(flip, 0, flip * 0.3)
+      };
+    }
+  },
+  {
+    name: 'Khamsin Siwān',
+    sub: 'Signature Move: Chisel-tip orbital toss into backhand catch',
+    dur: 2.1,
+    fn: (p) => {
+      // Complex combination unique to Khamsin cleaver:
+      // Fan spin -> Aerial bump -> snap lock in forward grip
+      let safe, bite, latch = 0.8;
+      let pos = new THREE.Vector3();
+      let rot = new THREE.Euler();
+
+      if (p < 0.35) {
+        // High speed spin
+        const spin = (p / 0.35) * Math.PI * 4;
+        safe = 0.9; bite = 0.9;
+        rot.set(0.3, spin, 0);
+        pos.set(0, 1.2, 0);
+      } else if (p < 0.75) {
+        // Cleaver toss in air with blade heavy tumble
+        const ap = (p - 0.35) / 0.4;
+        const tossY = 3.6 * Math.sin(ap * Math.PI);
+        safe = lerp(0.9, BALI_OPEN, ap);
+        bite = lerp(0.9, BALI_OPEN, ap);
+        rot.set(ap * Math.PI * 3, ap * Math.PI * 2, 0.4);
+        pos.set(Math.sin(ap * Math.PI) * 0.8, 1.2 + tossY, 0);
+      } else {
+        // Hard snap lock into forward combat grip
+        const ep = (p - 0.75) / 0.25;
+        safe = BALI_OPEN; bite = BALI_OPEN;
+        latch = lerp(0.8, 0, ep);
+        rot.set(0, 0, lerp(0.4, 0, ep));
+        pos.set(0, lerp(1.2, 0.4, ep), 0);
+      }
+      return { safe, bite, latch, pos, rot };
+    }
+  }
+];
+
+/* ==========================================================
+   ANIMATION & PLAYBACK STATE ENGINE
+========================================================== */
+let activeMoveIdx = -1;
+let moveProgress = 0;
+let playbackSpeed = 1.0;
+let isSlowMo = false;
+let isCombo = false;
+let isFreestyle = false;
+let comboQueue = [];
+
+let isExploded = false;
+let explodeProgress = 0;
+
+let isCaseOpen = false;
+let caseProgress = 0;
+
+let isRevealing = true;
+let revealProgress = 0;
+
+// Camera transition state
+let targetCamPos = camera.position.clone();
+let targetCamLook = controls.target.clone();
+
+function setCameraPreset(preset) {
+  if (preset === 'HERO') {
+    targetCamPos.set(4, 7, 18);
+    targetCamLook.set(0, 3.5, 0);
+  } else if (preset === 'BLADE') {
+    targetCamPos.set(1.5, 9, 7);
+    targetCamLook.set(0.2, 8.5, 0);
+  } else if (preset === 'PIVOT') {
+    targetCamPos.set(0, 1.2, 5.2);
+    targetCamLook.set(0, 0.2, 0);
+  } else if (preset === 'LATCH') {
+    targetCamPos.set(0, 13, 6);
+    targetCamLook.set(0, 12.8, 0);
+  } else if (preset === 'TOP') {
+    targetCamPos.set(0, 26, 0.5);
+    targetCamLook.set(0, 4, 0);
+  }
+}
+
+function triggerMove(idx) {
+  if (isExploded) toggleExplode(false);
+  activeMoveIdx = idx;
+  moveProgress = 0;
+  isRevealing = false;
+
+  const m = MOVES_DATA[idx];
+  showCaption(m.name, m.sub);
+
+  // Update UI buttons
+  document.querySelectorAll('.move-btn').forEach((b, i) => {
+    b.classList.toggle('active', i === idx);
+  });
+}
+
+function showCaption(main, sub) {
+  const cap = document.getElementById('caption-display');
+  document.getElementById('caption-main').innerText = main;
+  document.getElementById('caption-sub').innerText = sub;
+  cap.classList.add('show');
+  clearTimeout(cap._t);
+  cap._t = setTimeout(() => cap.classList.remove('show'), 2200);
+}
+
+function toggleExplode(force) {
+  isExploded = force !== undefined ? force : !isExploded;
+  document.getElementById('btn-explode').classList.toggle('active', isExploded);
+  if (isExploded) {
+    activeMoveIdx = -1;
+    showCaption('EXPLODED ANATOMY', 'Hardware & Tolerances Inspection');
+  }
+}
+
+function toggleCase(force) {
+  isCaseOpen = force !== undefined ? force : !isCaseOpen;
+  document.getElementById('btn-case').classList.toggle('active', isCaseOpen);
+  if (isCaseOpen) audio.playLatch(true);
+}
+
+/* ==========================================================
+   INTERACTION: MOUSE DRAG HANDLE INSPECTION & HOVER TOOLTIP
+========================================================== */
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let hoveredMesh = null;
+const tooltipEl = document.getElementById('tooltip');
+
+window.addEventListener('pointermove', (e) => {
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+  if (isExploded) {
+    raycaster.setFromCamera(mouse, camera);
+    const targets = explodedParts.map(p => p.mesh);
+    const hits = raycaster.intersectObjects(targets, true);
+    if (hits.length > 0) {
+      let hitMesh = hits[0].object;
+      const part = explodedParts.find(p => p.mesh === hitMesh || p.mesh.children.includes(hitMesh));
+      if (part) {
+        tooltipEl.style.display = 'block';
+        tooltipEl.style.left = `${e.clientX}px`;
+        tooltipEl.style.top = `${e.clientY}px`;
+        tooltipEl.innerText = part.label;
+        return;
+      }
+    }
+  }
+  tooltipEl.style.display = 'none';
+});
+
+/* ==========================================================
+   MAIN RENDER LOOP
+========================================================== */
+let clock = new THREE.Clock();
+let prevBladeTipPos = new THREE.Vector3();
+let heroShowcaseAngle = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  const delta = Math.min(clock.getDelta(), 0.1);
+  const effectiveSpeed = playbackSpeed * (isSlowMo ? 0.3 : 1.0);
+
+  // Smooth camera glide
+  camera.position.lerp(targetCamPos, delta * 4);
+  controls.target.lerp(targetCamLook, delta * 4);
+  controls.update();
+
+  // Glass Lid Animation
+  const targetCaseLid = isCaseOpen ? -Math.PI * 0.55 : 0;
+  lidPivot.rotation.x = THREE.MathUtils.lerp(lidPivot.rotation.x, targetCaseLid, delta * 3.5);
+
+  // Exploded View Interpolation
+  const targetExplode = isExploded ? 1.0 : 0.0;
+  explodeProgress = THREE.MathUtils.lerp(explodeProgress, targetExplode, delta * 5.0);
+
+  explodedParts.forEach(item => {
+    item.mesh.position.x = item.mesh.userData.origX !== undefined ?
+      item.mesh.userData.origX + item.dir.x * explodeProgress * 2.8 :
+      item.mesh.position.x;
+  });
+
+  // Reveal Sequence on Load
+  if (isRevealing) {
+    revealProgress += delta * 0.55;
+    if (revealProgress < 1.0) {
+      // Lid swings open smoothly
+      if (revealProgress > 0.1 && !isCaseOpen) toggleCase(true);
+      // Sweeping light angle
+      keyLight.position.x = Math.sin(revealProgress * Math.PI) * 14;
+    } else {
+      isRevealing = false;
+      // Start showcasing open pose
+      triggerMove(0);
+    }
+  }
+
+  // Balisong Move Playback
+  if (activeMoveIdx >= 0 && !isExploded) {
+    const move = MOVES_DATA[activeMoveIdx];
+    moveProgress += (delta * effectiveSpeed) / move.dur;
+
+    if (moveProgress >= 1.0) {
+      if (isCombo) {
+        activeMoveIdx = (activeMoveIdx + 1) % MOVES_DATA.length;
+        moveProgress = 0;
+        const next = MOVES_DATA[activeMoveIdx];
+        showCaption(`COMBO: ${next.name}`, next.sub);
+      } else if (isFreestyle) {
+        let nextIdx;
+        do { nextIdx = Math.floor(Math.random() * MOVES_DATA.length); } while (nextIdx === activeMoveIdx);
+        activeMoveIdx = nextIdx;
+        moveProgress = 0;
+        const next = MOVES_DATA[activeMoveIdx];
+        showCaption(`FREESTYLE: ${next.name}`, next.sub);
+      } else {
+        // Complete single move, rest at finished pose
+        moveProgress = 1.0;
+      }
+    }
+
+    const frame = move.fn(Math.min(moveProgress, 1.0));
+    applyBalisongPose(frame.safe, frame.bite, frame.latch, frame.pos, frame.rot);
+
+  } else if (!isExploded && activeMoveIdx === -1 && !isRevealing) {
+    // Idle showcase slow turn
+    heroShowcaseAngle += delta * 0.35;
+    knifeRoot.rotation.y = heroShowcaseAngle;
+  }
+
+  // Tip World Position for Swish Audio & Motion Trail
+  const tipLocal = new THREE.Vector3(0.4, 11.6, 0);
+  const currentTipPos = tipLocal.clone().applyMatrix4(bladeMesh.matrixWorld);
+  const tipVel = currentTipPos.distanceTo(prevBladeTipPos) / delta;
+  audio.updateSwish(tipVel);
+  updateTrail(currentTipPos);
+  prevBladeTipPos.copy(currentTipPos);
+
+  renderer.render(scene, camera);
+}
+
+// Store initial explode positions
+explodedParts.forEach(item => {
+  item.mesh.userData.origX = item.mesh.position.x;
+  item.mesh.userData.origY = item.mesh.position.y;
+  item.mesh.userData.origZ = item.mesh.position.z;
+});
+
+// Dismiss loader
+setTimeout(() => {
+  const loader = document.getElementById('loading-screen');
+  loader.classList.add('fade-out');
+  setTimeout(() => loader.remove(), 800);
+  showCaption('VORTEX KHAMSIN', 'Revealing Desert Cleaver Balisong');
+}, 600);
+
+animate();
+
+/* ==========================================================
+   UI CONTROLLER LISTENERS & HOTKEYS
+========================================================== */
+// Move buttons
+document.querySelectorAll('.move-btn[data-move]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    isCombo = false; isFreestyle = false;
+    document.getElementById('btn-combo').classList.remove('active');
+    document.getElementById('btn-freestyle').classList.remove('active');
+    triggerMove(parseInt(btn.getAttribute('data-move')));
+  });
+});
+
+// Combo & Freestyle
+document.getElementById('btn-combo').addEventListener('click', (e) => {
+  isCombo = !isCombo; isFreestyle = false;
+  e.currentTarget.classList.toggle('active', isCombo);
+  document.getElementById('btn-freestyle').classList.remove('active');
+  if (isCombo) triggerMove(0);
+});
+
+document.getElementById('btn-freestyle').addEventListener('click', (e) => {
+  isFreestyle = !isFreestyle; isCombo = false;
+  e.currentTarget.classList.toggle('active', isFreestyle);
+  document.getElementById('btn-combo').classList.remove('active');
+  if (isFreestyle) triggerMove(Math.floor(Math.random() * MOVES_DATA.length));
+});
+
+// Aux controls
+document.getElementById('chk-trail').addEventListener('change', (e) => {
+  trailEnabled = e.target.checked;
+});
+document.getElementById('chk-slow').addEventListener('change', (e) => {
+  isSlowMo = e.target.checked;
+});
+document.getElementById('rng-speed').addEventListener('input', (e) => {
+  playbackSpeed = parseFloat(e.target.value);
+  document.getElementById('speed-val').innerText = `${playbackSpeed.toFixed(2)}×`;
+});
+document.getElementById('rng-vol').addEventListener('input', (e) => {
+  audio.setVolume(parseFloat(e.target.value));
+});
+
+// Top bar controls
+document.getElementById('btn-explode').addEventListener('click', () => toggleExplode());
+document.getElementById('btn-case').addEventListener('click', () => toggleCase());
+
+const camPresets = ['HERO', 'BLADE', 'PIVOT', 'LATCH', 'TOP'];
+let camIdx = 0;
+document.getElementById('btn-camera').addEventListener('click', (e) => {
+  camIdx = (camIdx + 1) % camPresets.length;
+  const p = camPresets[camIdx];
+  e.currentTarget.innerText = `🎥 Cam: ${p}`;
+  setCameraPreset(p);
+});
+
+document.getElementById('btn-audio').addEventListener('click', (e) => {
+  const muted = audio.toggleMute();
+  e.currentTarget.innerText = muted ? '🔇 Muted' : '🔊 Sound';
+});
+
+// Colorways switcher
+document.querySelectorAll('.color-dot').forEach(dot => {
+  dot.addEventListener('click', () => {
+    document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+    dot.classList.add('active');
+    const s = dot.getAttribute('data-scheme');
+    if (s === 'red') {
+      safeHandleMesh.material = biteHandleMesh.material = matHandlesRed;
+    } else if (s === 'desert') {
+      safeHandleMesh.material = biteHandleMesh.material = matHandlesDesert;
+    } else if (s === 'stealth') {
+      safeHandleMesh.material = biteHandleMesh.material = matHandlesStealth;
+    }
+  });
+});
+
+// UI Hide toggle
+let uiHidden = false;
+document.getElementById('ui-toggle').addEventListener('click', () => {
+  uiHidden = !uiHidden;
+  document.querySelector('header').style.display = uiHidden ? 'none' : 'flex';
+  document.querySelector('footer').style.display = uiHidden ? 'none' : 'flex';
+  document.getElementById('ui-toggle').innerText = uiHidden ? 'Show UI' : 'Hide UI';
+});
+
+// Number keys [1..8] hotkeys
+window.addEventListener('keydown', (e) => {
+  const k = parseInt(e.key);
+  if (k >= 1 && k <= 8) {
+    isCombo = false; isFreestyle = false;
+    document.getElementById('btn-combo').classList.remove('active');
+    document.getElementById('btn-freestyle').classList.remove('active');
+    triggerMove(k - 1);
+  }
+  if (e.key.toLowerCase() === 'e') toggleExplode();
+  if (e.key.toLowerCase() === 'c') toggleCase();
+  if (e.key === ' ') {
+    isSlowMo = !isSlowMo;
+    document.getElementById('chk-slow').checked = isSlowMo;
+  }
+});
+
+// Responsive resize
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
