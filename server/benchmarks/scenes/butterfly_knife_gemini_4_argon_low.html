@@ -1,0 +1,1316 @@
+latchPivotGroup.add(latchMesh);
+registerPart(
+  latchMesh,
+  'Drop-Down Escapement Hook Latch',
+  'Free-swinging horological hook that drops onto the safe-handle catch pin, locking the knife open or closed.',
+  new THREE.Vector3(0.9, 1.6, 2.2)
+);
+
+// The hand-built blade cross-sections alternate winding per quadrant; render both sides so no facet drops out.
+matBlade.side = THREE.DoubleSide;
+matEscapementCollar.emissive = new THREE.Color(COLOURWAYS[0].collarColor);
+matEscapementCollar.emissiveIntensity = 0;
+
+const PI = Math.PI;
+const TAU = Math.PI * 2;
+const V3 = THREE.Vector3;
+const wrapPi = (a) => a - TAU * Math.round(a / TAU);
+const $ = (id) => document.getElementById(id);
+
+const KNIFE_BASE = new V3(0, 6, 0);
+const BASE_RY = -0.22;
+knifeRoot.position.copy(KNIFE_BASE);
+camera.position.set(0, 13, 42);
+controls.target.set(0, 11.5, 0);
+controls.update();
+
+// ============================================================================
+// 5. STAGE: CLOCK-DIAL PLINTH, ASTROLABE RINGS, FOREST ATMOSPHERE & LIGHTING
+// ============================================================================
+function createDialTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 1024;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(512, 512, 40, 512, 512, 512);
+  grd.addColorStop(0, '#1c2622');
+  grd.addColorStop(0.7, '#111917');
+  grd.addColorStop(1, '#0a0f0d');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 1024, 1024);
+
+  g.strokeStyle = 'rgba(216,131,86,0.55)';
+  g.lineWidth = 4;
+  [490, 440, 300, 140].forEach((r) => { g.beginPath(); g.arc(512, 512, r, 0, TAU); g.stroke(); });
+
+  for (let i = 0; i < 60; i++) {
+    const a = (i / 60) * TAU;
+    const major = i % 5 === 0;
+    const r1 = major ? 405 : 420;
+    g.lineWidth = major ? 6 : 2;
+    g.strokeStyle = major ? 'rgba(243,170,126,0.85)' : 'rgba(67,181,155,0.55)';
+    g.beginPath();
+    g.moveTo(512 + Math.cos(a) * r1, 512 + Math.sin(a) * r1);
+    g.lineTo(512 + Math.cos(a) * 438, 512 + Math.sin(a) * 438);
+    g.stroke();
+  }
+
+  const numerals = ['XII', 'I', 'II', 'III', 'IIII', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'];
+  g.fillStyle = 'rgba(243,170,126,0.8)';
+  g.font = 'bold 46px Georgia, serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  numerals.forEach((n, i) => {
+    const a = (i / 12) * TAU - PI / 2;
+    g.save();
+    g.translate(512 + Math.cos(a) * 358, 512 + Math.sin(a) * 358);
+    g.rotate(a + PI / 2);
+    g.fillText(n, 0, 0);
+    g.restore();
+  });
+
+  g.font = 'italic 26px Georgia, serif';
+  g.fillStyle = 'rgba(67,181,155,0.75)';
+  g.fillText('AETHELGARD HOROLOGY', 512, 470);
+  g.fillText('TEMPUS SECAT OMNIA', 512, 560);
+
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return t;
+}
+
+const plinth = new THREE.Mesh(
+  new THREE.CylinderGeometry(10, 10.8, 0.8, 96),
+  new THREE.MeshStandardMaterial({ color: 0x18201d, roughness: 0.82, metalness: 0.15 })
+);
+plinth.position.y = -0.4;
+plinth.receiveShadow = true;
+scene.add(plinth);
+
+const dial = new THREE.Mesh(
+  new THREE.CircleGeometry(9.7, 96),
+  new THREE.MeshStandardMaterial({ map: createDialTexture(), roughness: 0.6, metalness: 0.35 })
+);
+dial.rotation.x = -PI / 2;
+dial.position.y = 0.012;
+dial.receiveShadow = true;
+scene.add(dial);
+
+const rimMat = new THREE.MeshPhysicalMaterial({ color: 0xd88356, metalness: 0.95, roughness: 0.25, clearcoat: 0.4 });
+const rim = new THREE.Mesh(new THREE.TorusGeometry(10.0, 0.14, 12, 160), rimMat);
+rim.rotation.x = PI / 2;
+rim.position.y = 0.02;
+scene.add(rim);
+
+const ground = new THREE.Mesh(
+  new THREE.CircleGeometry(140, 64),
+  new THREE.MeshStandardMaterial({ color: 0x0d1a14, roughness: 0.96 })
+);
+ground.rotation.x = -PI / 2;
+ground.position.y = -0.8;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// Astrolabe gimbal rings floating behind the knife
+const astrolabe = new THREE.Group();
+astrolabe.position.set(0, 12, -9);
+scene.add(astrolabe);
+const ringMatA = new THREE.MeshStandardMaterial({ color: 0xd88356, metalness: 1, roughness: 0.32, emissive: 0x3a1a0c, emissiveIntensity: 0.6 });
+const ringMatB = new THREE.MeshStandardMaterial({ color: 0x43b59b, metalness: 0.9, roughness: 0.35, emissive: 0x0b3a30, emissiveIntensity: 0.7 });
+const astroRings = [
+  new THREE.Mesh(new THREE.TorusGeometry(14, 0.07, 8, 220), ringMatA),
+  new THREE.Mesh(new THREE.TorusGeometry(12.2, 0.05, 8, 220), ringMatB),
+  new THREE.Mesh(new THREE.TorusGeometry(10.6, 0.04, 8, 220), ringMatA)
+];
+astroRings[1].rotation.x = 1.1;
+astroRings[2].rotation.y = 0.9;
+astroRings.forEach((r) => astrolabe.add(r));
+const astroTickGeo = new THREE.BoxGeometry(0.06, 0.55, 0.06);
+for (let i = 0; i < 48; i++) {
+  const a = (i / 48) * TAU;
+  const tick = new THREE.Mesh(astroTickGeo, i % 4 === 0 ? ringMatB : ringMatA);
+  tick.position.set(Math.cos(a) * 14, Math.sin(a) * 14, 0);
+  tick.rotation.z = a - PI / 2;
+  tick.scale.y = i % 4 === 0 ? 1.6 : 1;
+  astroRings[0].add(tick);
+}
+
+// Distant forest trunks swallowed by fog
+const trunkCount = 46;
+const trunks = new THREE.InstancedMesh(
+  new THREE.CylinderGeometry(0.6, 1.1, 70, 8),
+  new THREE.MeshStandardMaterial({ color: 0x14221a, roughness: 1 }),
+  trunkCount
+);
+{
+  const m4 = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const e = new THREE.Euler();
+  const sc = new V3();
+  for (let i = 0; i < trunkCount; i++) {
+    const a = Math.random() * TAU;
+    const r = 32 + Math.random() * 48;
+    const s = 0.7 + Math.random() * 1.3;
+    q.setFromEuler(e.set((Math.random() - 0.5) * 0.08, 0, (Math.random() - 0.5) * 0.08));
+    m4.compose(new V3(Math.cos(a) * r, 34, Math.sin(a) * r), q, sc.set(s, 1, s));
+    trunks.setMatrixAt(i, m4);
+  }
+}
+scene.add(trunks);
+
+// Volumetric-looking sun shafts through the canopy
+const shafts = [];
+[[-9, -10, 0.25], [7, -14, -0.2], [16, -4, 0.35]].forEach(([x, z, tilt]) => {
+  const m = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.8, 4.5, 60, 24, 1, true),
+    new THREE.MeshBasicMaterial({
+      color: 0xffd9a0, transparent: true, opacity: 0.045,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false
+    })
+  );
+  m.position.set(x, 28, z);
+  m.rotation.z = tilt;
+  m.rotation.x = tilt * 0.4;
+  scene.add(m);
+  shafts.push(m);
+});
+
+// Drifting pollen / dust motes
+const DUST_N = 650;
+const dustGeo = new THREE.BufferGeometry();
+{
+  const p = new Float32Array(DUST_N * 3);
+  for (let i = 0; i < DUST_N; i++) {
+    p[i * 3] = (Math.random() - 0.5) * 50;
+    p[i * 3 + 1] = Math.random() * 30;
+    p[i * 3 + 2] = (Math.random() - 0.5) * 40;
+  }
+  dustGeo.setAttribute('position', new THREE.BufferAttribute(p, 3));
+}
+const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({
+  size: 0.09, color: 0xffe0b0, transparent: true, opacity: 0.55,
+  depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true
+}));
+scene.add(dust);
+
+// Lighting
+scene.add(new THREE.HemisphereLight(0xcfe9d8, 0x16241c, 0.6));
+
+const sun = new THREE.DirectionalLight(0xffe0bd, 2.6);
+sun.position.set(14, 34, 16);
+sun.target.position.set(0, 8, 0);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -18, right: 18, top: 22, bottom: -18, near: 1, far: 90 });
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.03;
+scene.add(sun, sun.target);
+
+const copperRim = new THREE.PointLight(0xff9a5c, 160, 60, 2);
+copperRim.position.set(-12, 18, 6);
+const verdiRim = new THREE.PointLight(0x46e2bd, 190, 60, 2);
+verdiRim.position.set(12, 9, -9);
+const tipLight = new THREE.PointLight(0xbff5ff, 0, 12, 2);
+scene.add(copperRim, verdiRim, tipLight);
+
+// ============================================================================
+// 6. ARTICULATED AUTOMATON HAND
+// ============================================================================
+// Hand frame = knifeRoot. The held handle runs along Y through the origin,
+// palm sits behind it (-Z), fingers wrap round the +X side to the front.
+const handRoot = new THREE.Group();
+knifeRoot.add(handRoot);
+
+const matHandBrass = new THREE.MeshPhysicalMaterial({
+  color: 0xb98a4e, metalness: 0.93, roughness: 0.28, clearcoat: 0.35, clearcoatRoughness: 0.3, envMapIntensity: 1.5
+});
+const matHandSteel = new THREE.MeshPhysicalMaterial({
+  color: 0x27302d, metalness: 0.88, roughness: 0.32, envMapIntensity: 1.3
+});
+
+function capsuleAlongX(len, r) {
+  const g = new THREE.CapsuleGeometry(r, len, 4, 12);
+  g.rotateZ(-PI / 2);
+  g.translate(len / 2, 0, 0);
+  return g;
+}
+
+function buildDigit(lengths, radius) {
+  const root = new THREE.Group();
+  const joints = [];
+  let parent = root;
+  lengths.forEach((len, i) => {
+    const joint = new THREE.Group();
+    if (i > 0) joint.position.x = lengths[i - 1];
+    parent.add(joint);
+    const r = radius * (1 - i * 0.09);
+    joint.add(new THREE.Mesh(capsuleAlongX(len, r), matHandBrass));
+    joint.add(new THREE.Mesh(new THREE.SphereGeometry(r * 1.18, 14, 10), matHandSteel));
+    joints.push(joint);
+    parent = joint;
+  });
+  return { root, joints };
+}
+
+const fingers = [];
+const fingerYs = [1.05, 0.35, -0.35, -1.0];
+const fingerLens = [[0.5, 0.85, 0.6], [0.52, 0.9, 0.62], [0.5, 0.86, 0.6], [0.44, 0.74, 0.5]];
+fingerYs.forEach((y, i) => {
+  const f = buildDigit(fingerLens[i], i === 3 ? 0.13 : 0.15);
+  f.root.position.set(1.05, y, -0.66);
+  handRoot.add(f.root);
+  fingers.push(f);
+});
+
+const thumb = buildDigit([0.6, 0.55, 0.42], 0.17);
+thumb.root.position.set(-1.3, 1.45, -0.3);
+thumb.root.rotation.y = -PI / 2;
+handRoot.add(thumb.root);
+
+const palm = new THREE.Mesh(new THREE.BoxGeometry(2.5, 3.0, 0.34), matHandBrass);
+palm.position.set(-0.05, 0.05, -0.8);
+handRoot.add(palm);
+const palmPlate = new THREE.Mesh(new THREE.BoxGeometry(2.1, 2.6, 0.08), matHandSteel);
+palmPlate.position.set(-0.05, 0.05, -0.99);
+handRoot.add(palmPlate);
+
+const handGears = [];
+[[-0.55, 0.6, 0.42, 12, 1], [0.3, -0.3, 0.34, 10, -1.4], [-0.4, -0.85, 0.24, 8, 2]].forEach(([x, y, r, n, ratio]) => {
+  const g = new THREE.Mesh(createGearGeometry(n, r * 0.25, r * 0.8, r, 0.05, true), matClockworkGear);
+  g.position.set(x, y, -1.06);
+  handRoot.add(g);
+  handGears.push({ mesh: g, ratio });
+});
+
+const arm = new THREE.Group();
+arm.position.set(-1.25, -0.25, -0.8);
+arm.rotation.z = 0.28;
+handRoot.add(arm);
+const wrist = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.62, 1.2, 20), matHandSteel);
+wrist.rotation.z = PI / 2;
+wrist.position.x = -0.5;
+arm.add(wrist);
+const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.66, 0.82, 7, 24), matHandBrass);
+forearm.rotation.z = PI / 2;
+forearm.position.x = -4.6;
+arm.add(forearm);
+[-1.6, -3.4, -5.6, -7.6].forEach((x) => {
+  const band = new THREE.Mesh(new THREE.TorusGeometry(0.72 - x * 0.014, 0.06, 8, 32), matEscapementCollar);
+  band.rotation.y = PI / 2;
+  band.position.x = x;
+  arm.add(band);
+});
+handRoot.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+
+const FINGER_OPEN = [-0.12, -0.2, -0.15];
+const FINGER_CLOSED = [-0.7, -1.05, -1.1];
+const THUMB_OPEN = [-0.3, 0.15, 0.05];
+const THUMB_CLOSED = [0.1, 1.0, 0.5];
+function poseHand(grip) {
+  fingers.forEach((f, fi) => {
+    f.joints.forEach((j, k) => {
+      j.rotation.y = THREE.MathUtils.lerp(FINGER_OPEN[k], FINGER_CLOSED[k], grip) * (fi === 3 ? 1.06 : 1);
+    });
+  });
+  thumb.joints.forEach((j, k) => {
+    j.rotation.y = THREE.MathUtils.lerp(THUMB_OPEN[k], THUMB_CLOSED[k], grip);
+  });
+}
+
+// Toss / twist layer sits between the hand frame and the knife rig
+const tossGroup = new THREE.Group();
+knifeRoot.add(tossGroup);
+tossGroup.add(knifeRig);
+knifeRig.position.set(0, 7, 0);
+
+// ============================================================================
+// 7. BLADE-TIP RIBBON TRAIL
+// ============================================================================
+const TRAIL_N = 72;
+const trailPos = new Float32Array(TRAIL_N * 2 * 3);
+const trailCol = new Float32Array(TRAIL_N * 2 * 4);
+const trailGeo = new THREE.BufferGeometry();
+trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3).setUsage(THREE.DynamicDrawUsage));
+trailGeo.setAttribute('color', new THREE.BufferAttribute(trailCol, 4).setUsage(THREE.DynamicDrawUsage));
+{
+  const idx = [];
+  for (let i = 0; i < TRAIL_N - 1; i++) {
+    const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
+    idx.push(a, b, c, b, d, c);
+  }
+  trailGeo.setIndex(idx);
+}
+const trailMesh = new THREE.Mesh(trailGeo, new THREE.MeshBasicMaterial({
+  vertexColors: true, transparent: true, blending: THREE.AdditiveBlending,
+  depthWrite: false, side: THREE.DoubleSide, fog: false
+}));
+trailMesh.frustumCulled = false;
+scene.add(trailMesh);
+
+const trailColA = new THREE.Color(COLOURWAYS[0].copperHi);
+const trailColB = new THREE.Color(COLOURWAYS[0].patinaLight);
+const trailTips = Array.from({ length: TRAIL_N }, () => new V3());
+const trailBases = Array.from({ length: TRAIL_N }, () => new V3());
+const trailSpeed = new Float32Array(TRAIL_N);
+const _tip = new V3();
+const _base = new V3();
+const _tmpCol = new THREE.Color();
+let trailPrimed = false;
+let trailEnabled = true;
+
+function updateTrail(sdt) {
+  spearBladeMesh.localToWorld(_tip.set(0, 10.35, 0));
+  spearBladeMesh.localToWorld(_base.set(0, 8.4, 0));
+  if (!trailPrimed) {
+    trailTips.forEach((v) => v.copy(_tip));
+    trailBases.forEach((v) => v.copy(_base));
+    trailPrimed = true;
+  }
+  const speed = _tip.distanceTo(trailTips[0]) / Math.max(sdt, 1e-4);
+  for (let i = TRAIL_N - 1; i > 0; i--) {
+    trailTips[i].copy(trailTips[i - 1]);
+    trailBases[i].copy(trailBases[i - 1]);
+    trailSpeed[i] = trailSpeed[i - 1];
+  }
+  trailTips[0].copy(_tip);
+  trailBases[0].copy(_base);
+  trailSpeed[0] = speed;
+
+  trailMesh.visible = trailEnabled;
+  if (!trailEnabled) return;
+
+  const fade = explodeCur > 0.02 ? 0 : 1;
+  for (let i = 0; i < TRAIL_N; i++) {
+    const age = i / (TRAIL_N - 1);
+    const a = Math.pow(1 - age, 1.7) * THREE.MathUtils.clamp((trailSpeed[i] - 5) / 25, 0, 1) * fade;
+    _tmpCol.copy(trailColA).lerp(trailColB, age);
+    const t = trailTips[i], b = trailBases[i];
+    const p = i * 6;
+    trailPos[p] = t.x; trailPos[p + 1] = t.y; trailPos[p + 2] = t.z;
+    trailPos[p + 3] = b.x; trailPos[p + 4] = b.y; trailPos[p + 5] = b.z;
+    const c = i * 8;
+    trailCol[c] = _tmpCol.r; trailCol[c + 1] = _tmpCol.g; trailCol[c + 2] = _tmpCol.b; trailCol[c + 3] = a * 0.9;
+    trailCol[c + 4] = _tmpCol.r * 0.6; trailCol[c + 5] = _tmpCol.g * 0.6; trailCol[c + 6] = _tmpCol.b * 0.6; trailCol[c + 7] = 0;
+  }
+  trailGeo.attributes.position.needsUpdate = true;
+  trailGeo.attributes.color.needsUpdate = true;
+}
+
+// ============================================================================
+// 8. HANDLE PHYSICS: SPRING-DRIVEN PIVOTS, ZEN-PIN STOPS & SWINGING LATCH
+// ============================================================================
+// Safe opens CCW to +PI, bite opens CW to -PI. Both 0 = closed over the blade.
+const handles = {
+  safe: { angle: 0, vel: 0, target: 0, min: 0, max: PI, openAtMax: true, group: safePivotGroup },
+  bite: { angle: 0, vel: 0, target: 0, min: -PI, max: 0, openAtMax: false, group: bitePivotGroup }
+};
+const isOpen = (h, tol = 0.12) => (h.openAtMax ? h.angle > h.max - tol : h.angle < h.min + tol);
+const isClosed = (h, tol = 0.12) => (h.openAtMax ? h.angle < h.min + tol : h.angle > h.max - tol);
+let ringFlash = 0;
+
+function onStopImpact(h, hitOpenStop) {
+  const v = Math.abs(h.vel);
+  if (v < 0.9) return;
+  synth.triggerPinHit(v / 9, hitOpenStop);
+  if (hitOpenStop) {
+    const other = h === handles.safe ? handles.bite : handles.safe;
+    if (isOpen(other, 0.25)) {
+      synth.triggerBladeRing(v / 10);
+      ringFlash = Math.min(1, ringFlash + v / 12);
+    }
+  }
+}
+
+function stepHandle(h, dt, k, c) {
+  h.vel += (k * (h.target - h.angle) - c * h.vel) * dt;
+  h.angle += h.vel * dt;
+  if (h.angle < h.min) {
+    h.angle = h.min;
+    onStopImpact(h, !h.openAtMax);
+    h.vel = -h.vel * 0.3;
+  } else if (h.angle > h.max) {
+    h.angle = h.max;
+    onStopImpact(h, h.openAtMax);
+    h.vel = -h.vel * 0.3;
+  }
+}
+
+const latch = { angle: 0, vel: 0, clicked: true };
+const _qa = new THREE.Quaternion();
+const _down = new V3();
+
+function stepLatch(dt, hangAngle) {
+  const s = handles.safe, b = handles.bite;
+  const closedLock = isClosed(s, 0.05) && isClosed(b, 0.05);
+  const openLock = isOpen(s, 0.05) && isOpen(b, 0.05);
+  const locked = closedLock || openLock;
+  let target, k, c;
+  if (locked) {
+    // Rotating the bite handle by -PI mirrors the hook, so the open lock sits at PI.
+    target = latch.angle + wrapPi((closedLock ? 0 : PI) - latch.angle);
+    k = 320; c = 26;
+  } else {
+    target = latch.angle + wrapPi(hangAngle - latch.angle);
+    k = 55; c = 3.2;
+  }
+  latch.vel += (k * (target - latch.angle) - c * latch.vel) * dt;
+  latch.angle += latch.vel * dt;
+  if (locked && !latch.clicked && Math.abs(target - latch.angle) < 0.08) {
+    latch.clicked = true;
+    synth.triggerLatch(closedLock);
+  }
+  if (!locked) latch.clicked = false;
+}
+
+// ============================================================================
+// 9. MOVE LIBRARY (KEYFRAMED TARGETS -> SPRINGS & SMOOTHED KINEMATICS)
+// ============================================================================
+// s/b: handle targets. hold: 1 = bite in hand, 0 = safe. air: rotate about COM.
+// fix: lock blade upright (inspect/explode). grip: finger curl. tx/ty: toss offset.
+// spin: in-plane knife rotation. tw: twirl about the long axis.
+const POSE_KEYS = ['s', 'b', 'hold', 'air', 'fix', 'grip', 'rx', 'ry', 'rz', 'px', 'py', 'pz', 'tx', 'ty', 'spin', 'tw'];
+const KIN_KEYS = POSE_KEYS.slice(2);
+const DEFAULT_POSE = { hold: 1, air: 0, fix: 0, grip: 1, rx: 0, ry: 0, rz: 0, px: 0, py: 0, pz: 0, tx: 0, ty: 0, spin: 0, tw: 0 };
+const EASE = {
+  smooth: (x) => x * x * (3 - 2 * x),
+  lin: (x) => x,
+  out: (x) => 1 - (1 - x) * (1 - x),
+  in: (x) => x * x
+};
+
+const SIG_N = 12;
+const SIG_TICK_TIMES = [];
+const signatureKeys = [{ t: 0, hold: 1, rx: 0 }];
+for (let i = 1; i <= SIG_N; i++) {
+  const tk = 0.06 + (i - 1) * 0.046;
+  signatureKeys.push({ t: tk, rz: (i % 2 ? 0.035 : -0.035) });
+  signatureKeys.push({ t: tk + 0.016, s: (PI * i) / SIG_N, b: (-PI * i) / SIG_N, ease: 'out' });
+  SIG_TICK_TIMES.push(tk + 0.006);
+}
+signatureKeys.push(
+  { t: 0.66, air: 1, grip: 0.4, rx: 0.1, rz: 0 },
+  { t: 0.93, spin: TAU, rx: 0.22 },
+  { t: 1, air: 0, grip: 1, rx: 0 }
+);
+
+const MOVES = {
+  basicOpen: {
+    name: 'Basic Open', dur: 1.25, start: 'closed', end: 'open',
+    sub: 'Bite handle anchored — blade & safe handle swing through on ceramic bearings',
+    keys: [
+      { t: 0, hold: 1, rz: 0, rx: 0 },
+      { t: 0.14, rz: 0.28, rx: -0.08 },
+      { t: 0.46, b: -PI, rz: -0.32 },
+      { t: 0.54 },
+      { t: 0.86, s: PI, rz: 0.06, rx: 0.04 },
+      { t: 1, rz: 0, rx: 0 }
+    ]
+  },
+  basicClose: {
+    name: 'Basic Close', dur: 1.25, start: 'open', end: 'closed',
+    sub: 'Safe handle rolls over the spine, then the blade folds home into the channel',
+    keys: [
+      { t: 0, hold: 1 },
+      { t: 0.12, rz: -0.2 },
+      { t: 0.44, s: 0, rz: 0.3 },
+      { t: 0.52 },
+      { t: 0.86, b: 0, rz: -0.12 },
+      { t: 1, rz: 0 }
+    ]
+  },
+  chaplin: {
+    name: 'Chaplin', dur: 1.5, start: 'closed', end: 'open',
+    sub: 'Safe-handle grip, cane-twirl opening — zen pins clack at full lock-up',
+    keys: [
+      { t: 0, hold: 0 },
+      { t: 0.12, rx: -0.35, ry: 0.2 },
+      { t: 0.48, s: PI, rx: 0.25 },
+      { t: 0.56 },
+      { t: 0.88, b: -PI, rx: -0.05 },
+      { t: 1, rx: 0, ry: 0 }
+    ]
+  },
+  zenRollover: {
+    name: 'Zen Rollover', dur: 1.7, start: 'open', end: 'open',
+    sub: 'Rolls over the back of the automaton hand about its centre of mass',
+    keys: [
+      { t: 0, hold: 1 },
+      { t: 0.14, rz: 0.35, py: -0.35 },
+      { t: 0.26, air: 1, grip: 0.25, py: 0 },
+      { t: 0.5, spin: -PI, tx: -1.4, ty: 2.0, s: PI * 0.8, b: -PI * 0.85, rz: 0.1, ease: { spin: 'lin' } },
+      { t: 0.74, spin: -TAU, tx: -0.3, ty: 0.4, s: PI, b: -PI, rz: -0.2, ease: { spin: 'lin' } },
+      { t: 0.86, tx: 0, ty: 0, grip: 1 },
+      { t: 1, air: 0, rz: 0 }
+    ]
+  },
+  fan: {
+    name: 'Fan', dur: 2.2, start: 'open', end: 'open',
+    sub: 'Three full revolutions in the palm — continuous swish & bearing whir',
+    keys: [
+      { t: 0, hold: 1 },
+      { t: 0.1, air: 1, grip: 0.35, rx: 0.12 },
+      { t: 0.3, spin: PI, s: PI * 0.9, b: -PI * 0.93, ease: { spin: 'in' } },
+      { t: 0.72, spin: PI * 5, s: PI * 0.94, b: -PI * 0.88, ease: { spin: 'lin' } },
+      { t: 0.92, spin: TAU * 3, s: PI, b: -PI, ease: { spin: 'out' } },
+      { t: 1, air: 0, grip: 1, rx: 0 }
+    ]
+  },
+  helix: {
+    name: 'Helix', dur: 2.4, start: 'closed', end: 'closed',
+    sub: 'Axial twirl while both handles orbit the blade in sequence',
+    keys: [
+      { t: 0, hold: 1 },
+      { t: 0.08, grip: 0.35 },
+      { t: 0.3, tw: PI * 0.71, b: -PI, ease: { tw: 'in' } },
+      { t: 0.5, tw: PI * 2, s: PI, ease: { tw: 'lin' } },
+      { t: 0.7, tw: PI * 3.29, s: 0, ease: { tw: 'lin' } },
+      { t: 0.92, tw: TAU * 2, b: 0, grip: 1, ease: { tw: 'out' } },
+      { t: 1 }
+    ]
+  },
+  aerial: {
+    name: 'Aerial Toss', dur: 2.3, start: 'open', end: 'open',
+    sub: 'Released on the upswing, double rotation, caught by the bite handle',
+    keys: [
+      { t: 0, hold: 1 },
+      { t: 0.1, py: -0.9, rx: 0.22, grip: 1 },
+      { t: 0.2, py: 0.5, rx: -0.12, air: 1, grip: 0, ty: 0.8, ease: { ty: 'in' } },
+      { t: 0.5, ty: 6.5, spin: TAU, s: PI * 0.62, b: -PI * 0.58, ease: { ty: 'out', spin: 'lin' } },
+      { t: 0.8, ty: 0.9, spin: TAU * 2, s: PI, b: -PI, ease: { ty: 'in', spin: 'lin' } },
+      { t: 0.88, ty: 0, py: -0.6, grip: 1 },
+      { t: 1, py: 0, rx: 0, air: 0 }
+    ]
+  },
+  signature: {
+    name: 'Chronoclast Escapement', dur: 3.4, start: 'closed', end: 'open',
+    sub: 'Twelve escapement ticks unfold the blade like a clock hand — collars glow, blade rings',
+    keys: signatureKeys,
+    onUpdate(u) {
+      while (player.ticks < SIG_TICK_TIMES.length && u >= SIG_TICK_TIMES[player.ticks]) {
+        player.ticks++;
+        synth.triggerLatch(false);
+        joltTarget += TAU / 12;
+        collarGlow = 1;
+      }
+      if (!player.rang && u >= 0.95) {
+        player.rang = true;
+        synth.triggerBladeRing(1.25);
+        ringFlash = 1;
+        collarGlow = 1;
+      }
+    }
+  }
+};
+const MOVE_ORDER = ['basicOpen', 'basicClose', 'chaplin', 'zenRollover', 'fan', 'helix', 'aerial', 'signature'];
+
+Object.values(MOVES).forEach((def) => {
+  let prev = { ...DEFAULT_POSE, ...(def.start === 'closed' ? { s: 0, b: 0 } : { s: PI, b: -PI }) };
+  def.compiled = def.keys.map((k) => {
+    const full = { ...prev };
+    for (const p of POSE_KEYS) if (k[p] !== undefined) full[p] = k[p];
+    full.t = k.t;
+    full.ease = k.ease || null;
+    prev = full;
+    return full;
+  });
+});
+
+function sampleTrack(keys, u, out) {
+  const last = keys[keys.length - 1];
+  if (u <= keys[0].t) { for (const p of POSE_KEYS) out[p] = keys[0][p]; return; }
+  if (u >= last.t) { for (const p of POSE_KEYS) out[p] = last[p]; return; }
+  let i = 0;
+  while (i < keys.length - 1 && u > keys[i + 1].t) i++;
+  const a = keys[i], b = keys[i + 1];
+  const x = (u - a.t) / Math.max(1e-6, b.t - a.t);
+  for (const p of POSE_KEYS) {
+    let e = 'smooth';
+    if (b.ease) e = typeof b.ease === 'string' ? b.ease : (b.ease[p] || 'smooth');
+    out[p] = a[p] + (b[p] - a[p]) * EASE[e](x);
+  }
+}
+
+const goal = { ...DEFAULT_POSE, s: 0, b: 0 };
+const ctrl = { ...DEFAULT_POSE };
+
+// ============================================================================
+// 10. MOVE PLAYER (QUEUE, AUTO-TRANSITIONS, COMBO & FREESTYLE)
+// ============================================================================
+const player = {
+  current: null, id: null, t: 0, queue: [], freestyle: false,
+  state: 'closed', lastHold: 1, ticks: 0, rang: false, label: '', lastId: null
+};
+
+function estimateState() {
+  return isOpen(handles.safe, PI / 2) && isOpen(handles.bite, PI / 2) ? 'open' : 'closed';
+}
+
+function tailState() {
+  if (player.queue.length) return MOVES[player.queue[player.queue.length - 1]].end;
+  if (player.current) return player.current.end;
+  return player.state;
+}
+
+function enqueue(id) {
+  const def = MOVES[id];
+  if (def.start !== tailState()) player.queue.push(def.start === 'open' ? 'basicOpen' : 'basicClose');
+  player.queue.push(id);
+}
+
+function normalizeSpin() {
+  for (const p of ['spin', 'tw']) {
+    const k = Math.round(ctrl[p] / TAU) * TAU;
+    ctrl[p] -= k;
+    goal[p] -= k;
+  }
+}
+
+function pickFreestyleMove() {
+  const tail = tailState();
+  const pool = MOVE_ORDER.filter((id) => id !== player.lastId);
+  const matching = pool.filter((id) => MOVES[id].start === tail);
+  const src = matching.length && Math.random() < 0.7 ? matching : pool;
+  return src[Math.floor(Math.random() * src.length)];
+}
+
+function startNext() {
+  if (!player.queue.length && player.freestyle) enqueue(pickFreestyleMove());
+  const id = player.queue.shift();
+  player.current = id ? MOVES[id] : null;
+  player.id = id || null;
+  if (id) player.lastId = id;
+  else player.label = '';
+  player.t = 0;
+  player.ticks = 0;
+  player.rang = false;
+  refreshMoveUI();
+}
+
+function stopPlayer() {
+  player.current = null;
+  player.id = null;
+  player.queue = [];
+  player.freestyle = false;
+  player.label = '';
+  player.state = estimateState();
+  normalizeSpin();
+  syncFreestyleBtn();
+}
+
+function interruptAndPlay(ids, label = '') {
+  player.current = null;
+  player.queue = [];
+  player.state = estimateState();
+  player.label = label;
+  normalizeSpin();
+  ids.forEach(enqueue);
+  startNext();
+}
+
+function updatePlayer(sdt) {
+  if (player.current) {
+    player.t += sdt / player.current.dur;
+    const u = Math.min(1, player.t);
+    sampleTrack(player.current.compiled, u, goal);
+    if (player.current.onUpdate) player.current.onUpdate(u);
+    if (player.t >= 1) {
+      player.state = player.current.end;
+      player.lastHold = goal.hold;
+      normalizeSpin();
+      startNext();
+    }
+  } else {
+    Object.assign(goal, DEFAULT_POSE);
+    goal.hold = player.lastHold;
+    goal.s = player.state === 'open' ? PI : 0;
+    goal.b = player.state === 'open' ? -PI : 0;
+    goal.rz = Math.sin(elapsed * 0.9) * 0.04;
+    goal.rx = Math.sin(elapsed * 0.63) * 0.03;
+    goal.py = Math.sin(elapsed * 1.1) * 0.12;
+  }
+}
+
+// ============================================================================
+// 11. MODES, INSPECT TARGETS & EXPLODED ASSEMBLY
+// ============================================================================
+let mode = 'moves';
+let handEnabled = true;
+const inspectTarget = { safe: 0, bite: 0 };
+
+function applyModeOverrides() {
+  if (mode === 'inspect') {
+    Object.assign(goal, DEFAULT_POSE);
+    goal.fix = 1;
+    goal.grip = 0;
+    goal.s = inspectTarget.safe;
+    goal.b = inspectTarget.bite;
+  } else if (mode === 'explode') {
+    Object.assign(goal, DEFAULT_POSE);
+    goal.fix = 1;
+    goal.grip = 0;
+    goal.s = PI;
+    goal.b = -PI;
+    goal.ry = Math.sin(elapsed * 0.3) * 0.25;
+  }
+}
+
+let explodeTarget = 0;
+let explodeCur = 0;
+let explodeApplied = -1;
+
+function updateExplode(dt) {
+  explodeCur += (explodeTarget - explodeCur) * (1 - Math.exp(-dt * 5));
+  if (Math.abs(explodeCur - explodeApplied) < 1e-4) return;
+  explodeApplied = explodeCur;
+  const e = explodeCur * explodeCur * (3 - 2 * explodeCur);
+  explodableParts.forEach((m) => {
+    m.position.copy(m.userData.basePos).addScaledVector(m.userData.explodeOffset, e);
+  });
+}
+
+function applyKnifeTransform() {
+  const s = handles.safe.angle, b = handles.bite.angle;
+  safePivotGroup.rotation.z = s;
+  bitePivotGroup.rotation.z = b;
+  latchPivotGroup.rotation.z = latch.angle;
+
+  // Rig rotation that keeps the held handle fixed in the hand. Blend the two
+  // candidates on the short arc so swapping hands while aligned never flips the knife.
+  const A = PI - b;
+  const B = PI - s;
+  const Bn = A + wrapPi(B - A);
+  let rot = Bn + (A - Bn) * ctrl.hold;
+  rot += ctrl.fix * wrapPi(-rot);
+  const full = rot + ctrl.spin;
+
+  // Approximate centre of mass in rig space (blade + two handles)
+  const comX = (1.3 * (-0.62 - 6 * Math.sin(s)) + 1.3 * (0.62 - 6 * Math.sin(b))) / 3.6;
+  const comY = (1.0 * 5.6 + 1.3 * 6 * Math.cos(s) + 1.3 * 6 * Math.cos(b)) / 3.6;
+  const c1 = Math.cos(rot), s1 = Math.sin(rot);
+  const c2 = Math.cos(full), s2 = Math.sin(full);
+  const p0x = c1 * comX - s1 * comY, p0y = s1 * comX + c1 * comY;
+  const rcx = c2 * comX - s2 * comY, rcy = s2 * comX + c2 * comY;
+
+  knifeRig.rotation.z = full;
+  knifeRig.position.set(ctrl.air * (p0x - rcx), 7 + ctrl.air * (p0y - rcy), 0);
+  tossGroup.position.set(ctrl.tx, ctrl.ty, 0);
+  tossGroup.rotation.y = ctrl.tw;
+  knifeRoot.position.set(KNIFE_BASE.x + ctrl.px, KNIFE_BASE.y + ctrl.py, KNIFE_BASE.z + ctrl.pz);
+  knifeRoot.rotation.set(ctrl.rx, BASE_RY + ctrl.ry, ctrl.rz);
+
+  poseHand(ctrl.grip);
+  handRoot.visible = handEnabled && (mode === 'moves' || mode === 'reveal');
+}
+
+// Clockwork: once-a-second escapement tick plus handle-driven gear trains
+let simTime = 0;
+let joltPhase = 0;
+let joltTarget = 0;
+let collarGlow = 0;
+
+function updateClockwork(dt, sdt) {
+  const whole = Math.floor(simTime);
+  const snap = Math.min(1, (simTime - whole) * 7);
+  const eased = 1 - Math.pow(1 - snap, 3);
+  const tickPhase = (whole + eased) * (TAU / 60);
+  joltPhase += (joltTarget - joltPhase) * (1 - Math.exp(-sdt * 18));
+
+  dynamicInsetGears.forEach((g) => {
+    const a = g.isBite ? -handles.bite.angle : handles.safe.angle;
+    g.mesh.rotation.z = (a * 1.4 + tickPhase + joltPhase) * g.ratio;
+  });
+  handGears.forEach((g) => { g.mesh.rotation.z = (tickPhase * 4 + joltPhase) * g.ratio; });
+
+  collarGlow = Math.max(0, collarGlow - dt * 1.6);
+  matEscapementCollar.emissiveIntensity = collarGlow * 2.2;
+}
+
+// ============================================================================
+// 12. CAMERA PRESETS & TWEENS
+// ============================================================================
+let camTween = null;
+
+function flyCamera(pos, target, dur = 1.3) {
+  camTween = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: target, t: 0, dur };
+}
+
+function camPreset(name) {
+  scene.updateMatrixWorld(true);
+  const v = new V3();
+  if (name !== 'hero' && mode === 'reveal') setMode('moves');
+  switch (name) {
+    case 'blade':
+      tangMesh.localToWorld(v.set(0, 1.6, 0));
+      flyCamera(v.clone().add(new V3(2.2, 0.8, 6.5)), v.clone());
+      break;
+    case 'pivot':
+      bitePivotGroup.getWorldPosition(v);
+      flyCamera(v.clone().add(new V3(-2.2, 1.2, 4.6)), v.clone());
+      break;
+    case 'latch':
+      latchPivotGroup.getWorldPosition(v);
+      flyCamera(v.clone().add(new V3(2.6, 1.6, 5.2)), v.clone());
+      break;
+    case 'top':
+      flyCamera(new V3(0, 40, 3), new V3(0, 8, 0));
+      break;
+    default:
+      flyCamera(new V3(0, 13, 42), new V3(0, 11.5, 0));
+  }
+  document.querySelectorAll('.cam-btn').forEach((b) => b.classList.toggle('active', b.dataset.cam === name));
+}
+
+function updateCamTween(dt) {
+  if (!camTween) return;
+  camTween.t = Math.min(1, camTween.t + dt / camTween.dur);
+  const x = camTween.t;
+  const e = x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+  camera.position.lerpVectors(camTween.p0, camTween.p1, e);
+  controls.target.lerpVectors(camTween.t0, camTween.t1, e);
+  if (camTween.t >= 1) camTween = null;
+}
+
+// ============================================================================
+// 13. UI WIRING
+// ============================================================================
+const banner = $('reveal-banner');
+const uiRoot = $('ui-root');
+const showUiBtn = $('show-ui-btn');
+const tooltip = $('part-tooltip');
+const modeButtons = {
+  reveal: $('btn-mode-reveal'),
+  moves: $('btn-mode-moves'),
+  inspect: $('btn-mode-inspect'),
+  explode: $('btn-mode-explode')
+};
+let bannerTimer = null;
+
+function setCaption(title, sub) {
+  $('caption-title').textContent = title;
+  $('caption-sub').textContent = sub;
+}
+
+function refreshMoveUI() {
+  document.querySelectorAll('.move-btn').forEach((b) => b.classList.toggle('active', b.dataset.move === player.id));
+  if (mode === 'inspect') {
+    setCaption('INSPECT // HAND-FLIP', 'Drag either handle around its pivot — zen pins, latch and bearings respond physically. Space toggles.');
+  } else if (mode === 'explode') {
+    setCaption('EXPLODED ASSEMBLY', 'Hover any component for its horological spec. Drag the slider to reassemble.');
+  } else if (player.current) {
+    const next = player.queue[0];
+    const prefix = player.freestyle ? 'FREESTYLE // ' : (player.label ? player.label + ' // ' : '');
+    setCaption(prefix + player.current.name.toUpperCase(), player.current.sub + (next ? `  —  next: ${MOVES[next].name}` : ''));
+  } else if (mode === 'reveal') {
+    setCaption('REVEAL // THE CHRONOCLAST IX', 'Aethelgard Horology & Cutlery — escapement-driven spear-point balisong');
+  } else {
+    setCaption(`READY // KNIFE ${player.state.toUpperCase()}`, 'Click any move (1–8), C for combo, F for freestyle, Space to flip');
+  }
+}
+
+function setExplode(v) {
+  explodeTarget = v;
+  $('explode-slider').value = v;
+  $('explode-label').textContent = Math.round(v * 100) + '%';
+}
+
+function setMode(next, opts = {}) {
+  const prev = mode;
+  mode = next;
+  Object.entries(modeButtons).forEach(([k, b]) => b.classList.toggle('active', k === next));
+  controls.autoRotate = next === 'reveal';
+  controls.autoRotateSpeed = 0.7;
+  if (next !== 'reveal') {
+    banner.classList.remove('visible');
+    clearTimeout(bannerTimer);
+  }
+  if (next === 'inspect' || next === 'explode') {
+    stopPlayer();
+    inspectTarget.safe = handles.safe.angle;
+    inspectTarget.bite = handles.bite.angle;
+  }
+  if (next === 'explode') {
+    if (!opts.keepSlider) setExplode(1);
+  } else if (prev === 'explode') {
+    setExplode(0);
+  }
+  if ((prev === 'inspect' || prev === 'explode') && next !== prev) {
+    player.state = estimateState();
+    player.lastHold = 1;
+  }
+  refreshMoveUI();
+}
+
+function startReveal() {
+  setMode('reveal');
+  banner.classList.add('visible');
+  clearTimeout(bannerTimer);
+  bannerTimer = setTimeout(() => banner.classList.remove('visible'), 6500);
+  flyCamera(new V3(-16, 12.5, 37), new V3(0, 11.5, 0), 1.8);
+  player.freestyle = false;
+  syncFreestyleBtn();
+  interruptAndPlay(['signature', 'fan', 'aerial'], 'REVEAL');
+}
+
+function ensurePerformanceMode() {
+  if (mode !== 'moves' && mode !== 'reveal') setMode('moves');
+}
+
+function playSingle(id) {
+  ensurePerformanceMode();
+  player.freestyle = false;
+  syncFreestyleBtn();
+  interruptAndPlay([id]);
+}
+
+function playCombo() {
+  ensurePerformanceMode();
+  player.freestyle = false;
+  syncFreestyleBtn();
+  interruptAndPlay(MOVE_ORDER, 'COMBO');
+}
+
+function toggleFreestyle() {
+  ensurePerformanceMode();
+  player.freestyle = !player.freestyle;
+  player.label = '';
+  syncFreestyleBtn();
+  if (player.freestyle && !player.current) startNext();
+  refreshMoveUI();
+}
+
+function syncFreestyleBtn() {
+  $('btn-freestyle').classList.toggle('active', player.freestyle);
+}
+
+function flipSpace() {
+  if (mode === 'inspect') {
+    const open = estimateState() === 'open';
+    inspectTarget.safe = open ? 0 : PI;
+    inspectTarget.bite = open ? 0 : -PI;
+    return;
+  }
+  ensurePerformanceMode();
+  player.freestyle = false;
+  syncFreestyleBtn();
+  interruptAndPlay([tailState() === 'open' ? 'basicClose' : 'basicOpen']);
+}
+
+function toggleUI() {
+  const hidden = uiRoot.classList.toggle('ui-hidden');
+  showUiBtn.style.display = hidden ? 'inline-flex' : 'none';
+  if (hidden) tooltip.classList.remove('visible');
+}
+
+modeButtons.reveal.addEventListener('click', startReveal);
+modeButtons.moves.addEventListener('click', () => setMode('moves'));
+modeButtons.inspect.addEventListener('click', () => setMode('inspect'));
+modeButtons.explode.addEventListener('click', () => setMode('explode'));
+
+$('btn-toggle-hand').addEventListener('click', (e) => {
+  handEnabled = !handEnabled;
+  e.currentTarget.classList.toggle('active', handEnabled);
+  e.currentTarget.textContent = `Hand: ${handEnabled ? 'ON' : 'OFF'}`;
+});
+$('btn-toggle-trail').addEventListener('click', (e) => {
+  trailEnabled = !trailEnabled;
+  e.currentTarget.classList.toggle('active', trailEnabled);
+  e.currentTarget.textContent = `Trail: ${trailEnabled ? 'ON' : 'OFF'}`;
+});
+$('btn-hide-ui').addEventListener('click', toggleUI);
+showUiBtn.addEventListener('click', toggleUI);
+
+document.querySelectorAll('.move-btn').forEach((b) => b.addEventListener('click', () => playSingle(b.dataset.move)));
+$('btn-combo').addEventListener('click', playCombo);
+$('btn-freestyle').addEventListener('click', toggleFreestyle);
+
+let speedValue = 1;
+let slowMo = false;
+let timeScale = 1;
+function updateTimeScale() {
+  timeScale = slowMo ? 0.25 : speedValue;
+  $('speed-label').textContent = timeScale.toFixed(2) + '×';
+}
+$('speed-slider').addEventListener('input', (e) => {
+  speedValue = parseFloat(e.target.value);
+  if (slowMo) { slowMo = false; $('btn-slowmo').classList.remove('active'); }
+  updateTimeScale();
+});
+$('btn-slowmo').addEventListener('click', (e) => {
+  slowMo = !slowMo;
+  e.currentTarget.classList.toggle('active', slowMo);
+  updateTimeScale();
+});
+
+document.querySelectorAll('.cam-btn').forEach((b) => b.addEventListener('click', () => camPreset(b.dataset.cam)));
+
+$('explode-slider').addEventListener('input', (e) => {
+  const v = parseFloat(e.target.value);
+  if (v > 0.01 && mode !== 'explode') setMode('explode', { keepSlider: true });
+  setExplode(v);
+});
+
+function applyColourway(i) {
+  const cw = COLOURWAYS[i];
+  const ht = generateHandleTextures(i);
+  const bt = generateBladeTextures(i);
+  [matCopperScale.map, matCopperScale.roughnessMap, matCopperScale.bumpMap, matBlade.map, matBlade.roughnessMap]
+    .forEach((t) => t && t.dispose());
+  matCopperScale.map = ht.colTex;
+  matCopperScale.roughnessMap = ht.roughTex;
+  matCopperScale.bumpMap = ht.bumpTex;
+  matBlade.map = bt.colTex;
+  matBlade.roughnessMap = bt.roughTex;
+  matBlade.bumpMap = bt.roughTex;
+  matCopperScale.needsUpdate = true;
+  matBlade.needsUpdate = true;
+
+  matTitaniumLiner.color.setHex(cw.linerColor);
+  matClockworkGear.color.setHex(cw.gearColor);
+  matEscapementCollar.color.setHex(cw.collarColor);
+  matEscapementCollar.emissive.setHex(cw.collarColor);
+  matHandBrass.color.set(cw.copperMain).lerp(new THREE.Color(0xb98a4e), 0.5);
+  rimMat.color.set(cw.copperHi);
+  ringMatA.color.set(cw.copperHi);
+  ringMatB.color.set(cw.patinaMain);
+  trailColA.set(cw.copperHi);
+  trailColB.set(cw.patinaLight);
+  copperRim.color.set(cw.copperHi);
+  verdiRim.color.set(cw.patinaLight);
+  collarGlow = 0.8;
+
+  document.querySelectorAll('.cw-btn').forEach((b) => b.classList.toggle('active', +b.dataset.cw === i));
+}
+document.querySelectorAll('.cw-btn').forEach((b) => b.addEventListener('click', () => applyColourway(+b.dataset.cw)));
+
+$('btn-mute').addEventListener('click', (e) => {
+  synth.init();
+  synth.setMuted(!synth.muted);
+  e.currentTarget.classList.toggle('active', !synth.muted);
+  e.currentTarget.textContent = `Sound: ${synth.muted ? 'OFF' : 'ON'}`;
+});
+$('vol-slider').addEventListener('input', (e) => {
+  const v = parseFloat(e.target.value);
+  synth.setVolume(v);
+  $('vol-label').textContent = Math.round(v * 100) + '%';
+});
+
+window.addEventListener('keydown', (e) => {
+  if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (k >= '1' && k <= '8') {
+    playSingle(MOVE_ORDER[+k - 1]);
+  } else if (k === 'c') {
+    playCombo();
+  } else if (k === 'f') {
+    toggleFreestyle();
+  } else if (k === 'h') {
+    toggleUI();
+  } else if (k === ' ') {
+    e.preventDefault();
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    flipSpace();
+  } else if (k === 'i') {
+    setMode('inspect');
+  } else if (k === 'e') {
+    setMode(mode === 'explode' ? 'moves' : 'explode');
+  } else if (k === 'r') {
+    startReveal();
+  } else if (k === 'm') {
+    setMode('moves');
+  }
+});
+
+// ============================================================================
+// 14. HOVER TOOLTIPS & DIRECT HANDLE DRAGGING (INSPECT MODE)
+// ============================================================================
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+const pointer = { x: 0, y: 0, overCanvas: false, dirty: false };
+let drag = null;
+
+function pickPart(cx, cy) {
+  ndc.set((cx / window.innerWidth) * 2 - 1, -(cy / window.innerHeight) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+  const hits = raycaster.intersectObjects(interactiveHoverMeshes, true);
+  for (const h of hits) {
+    let o = h.object;
+    while (o && !o.userData.partName) o = o.parent;
+    if (o) return o;
+  }
+  return null;
+}
+
+function handleOwning(obj) {
+  for (let o = obj; o; o = o.parent) {
+    if (o === safePivotGroup) return 'safe';
+    if (o === bitePivotGroup) return 'bite';
+  }
+  return null;
+}
+
+const _pv = new V3();
+function pointerAngleAround(which, cx, cy) {
+  handles[which].group.getWorldPosition(_pv).project(camera);
+  const sx = ((_pv.x + 1) / 2) * window.innerWidth;
+  const sy = ((1 - _pv.y) / 2) * window.innerHeight;
+  return Math.atan2(-(cy - sy), cx - sx);
+}
+
+const _rigZ = new V3();
+const _toCam = new V3();
+function dragSign(which) {
+  knifeRig.getWorldQuaternion(_qa);
+  _rigZ.set(0, 0, 1).applyQuaternion(_qa);
+  handles[which].group.getWorldPosition(_pv);
+  _toCam.copy(camera.position).sub(_pv).normalize();
+  return _rigZ.dot(_toCam) >= 0 ? 1 : -1;
+}
+
+container.addEventListener('pointerdown', (e) => {
+  synth.init();
+  if (mode !== 'inspect') return;
+  const part = pickPart(e.clientX, e.clientY);
+  const which = part && handleOwning(part);
+  if (!which) return;
+  e.stopPropagation();
+  e.preventDefault();
+  drag = { which, lastAngle: pointerAngleAround(which, e.clientX, e.clientY), sign: dragSign(which) };
+  controls.enabled = false;
+  renderer.domElement.style.cursor = 'grabbing';
+  tooltip.classList.remove('visible');
+}, true);
+
+window.addEventListener('pointermove', (e) => {
+  pointer.x = e.clientX;
+  pointer.y = e.clientY;
+  pointer.overCanvas = e.target === renderer.domElement;
+  pointer.dirty = true;
+  if (!drag) return;
+  const a = pointerAngleAround(drag.which, e.clientX, e.clientY);
+  const d = wrapPi(a - drag.lastAngle);
+  drag.lastAngle = a;
+  const h = handles[drag.which];
+  inspectTarget[drag.which] = THREE.MathUtils.clamp(inspectTarget[drag.which] + d * drag.sign, h.min, h.max);
+});
+
+window.addEventListener('pointerup', () => {
+  if (!drag) return;
+  drag = null;
+  controls.enabled = true;
+  renderer.domElement.style.cursor = '';
+});
+
+function updateHover() {
+  if (!pointer.dirty || drag) return;
+  pointer.dirty = false;
+  if (!pointer.overCanvas || uiRoot.classList.contains('ui-hidden')) {
+    tooltip.classList.remove('visible');
+    renderer.domElement.style.cursor = '';
+    return;
+  }
+  const part = pickPart(pointer.x, pointer.y);
+  if (!part) {
+    tooltip.classList.remove('visible');
+    renderer.domElement.style.cursor = '';
+    return;
+  }
+  $('tt-name').textContent = part.userData.partName;
+  $('tt-desc').textContent = part.userData.partDesc;
+  tooltip.style.left = pointer.x + 'px';
+  tooltip.style.top = pointer.y + 'px';
+  tooltip.classList.add('visible');
+  renderer.domElement.style.cursor = mode === 'inspect' && handleOwning(part) ? 'grab' : '';
+}
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ============================================================================
+// 15. MAIN LOOP
+// ============================================================================
+const clock = new THREE.Clock();
+let elapsed = 0;
+const _qPrev = new THREE.Quaternion();
+const _qNow = new THREE.Quaternion();
+let audioPrimed = false;
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const sdt = dt * timeScale;
+  elapsed += dt;
+  simTime += sdt;
+
+  updatePlayer(sdt);
+  applyModeOverrides();
+
+  const kRate = 1 - Math.exp(-sdt * 13);
+  for (const p of KIN_KEYS) ctrl[p] += (goal[p] - ctrl[p]) * kRate;
+  handles.safe.target = goal.s;
+  handles.bite.target = goal.b;
+
+  // Latch hangs toward world-down in the bite handle's frame while unlocked
+  bitePivotGroup.getWorldQuaternion(_qa).invert();
+  _down.set(0, -1, 0).applyQuaternion(_qa);
+  const hang = Math.atan2(_down.y, _down.x) - PI;
+
+  const SUB = 5;
+  const h = sdt / SUB;
+  const k = drag ? 900 : 430;
+  const c = drag ? 42 : 21;
+  for (let i = 0; i < SUB; i++) {
+    stepHandle(handles.safe, h, k, c);
+    stepHandle(handles.bite, h, k, c);
+    stepLatch(h, hang);
+  }
+
+  applyKnifeTransform();
+  updateExplode(dt);
+  updateClockwork(dt, sdt);
+  scene.updateMatrixWorld();
+  updateTrail(sdt);
+
+  // Physics-driven continuous audio
+  spearBladeMesh.getWorldQuaternion(_qNow);
+  if (!audioPrimed) { _qPrev.copy(_qNow); audioPrimed = true; }
+  const dq = Math.min(1, Math.abs(_qPrev.dot(_qNow)));
+  const knifeSpeed = (2 * Math.acos(dq)) / Math.max(dt, 1e-4);
+  _qPrev.copy(_qNow);
+  const pivotSpeed = Math.max(Math.abs(handles.safe.vel), Math.abs(handles.bite.vel)) * timeScale;
+  synth.updateContinuous(knifeSpeed, pivotSpeed, dt);
+
+  // Ring flash at the blade tip
+  ringFlash = Math.max(0, ringFlash - dt * 2.2);
+  tipLight.position.copy(_tip);
+  tipLight.intensity = ringFlash * 60;
+
+  // Atmosphere
+  astroRings[0].rotation.z += dt * 0.05;
+  astroRings[1].rotation.y += dt * 0.08;
+  astroRings[2].rotation.x += dt * 0.06;
+  const dp = dustGeo.attributes.position.array;
+  for (let i = 0; i < DUST_N; i++) {
+    dp[i * 3 + 1] += dt * (0.12 + (i % 7) * 0.03);
+    dp[i * 3] += Math.sin(elapsed * 0.3 + i) * dt * 0.05;
+    if (dp[i * 3 + 1] > 30) dp[i * 3 + 1] = 0;
+  }
+  dustGeo.attributes.position.needsUpdate = true;
+  shafts.forEach((m, i) => { m.material.opacity = 0.035 + Math.sin(elapsed * 0.4 + i * 2.1) * 0.015; });
+
+  updateCamTween(dt);
+  updateHover();
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+updateTimeScale();
+applyKnifeTransform();
+refreshMoveUI();
+animate();
+setTimeout(startReveal, 700);
+</script>
+</body>
+</html>
