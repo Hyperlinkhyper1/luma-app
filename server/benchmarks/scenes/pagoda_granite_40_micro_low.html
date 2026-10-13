@@ -13,6 +13,7 @@
   </style>
 </head>
 <body>
+<div id="hud"></div>
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls';
@@ -76,7 +77,7 @@ const pillarMaterial = new THREE.MeshStandardMaterial({
   metalness: 0.1,
   roughness: 0.5
 });
-const pillarMesh = new THREE.Mesh(pillarGeometry, pillarMaterial);
+let pillarMesh = new THREE.Mesh(pillarGeometry, pillarMaterial);
 pillarMesh.position.set(0, 18, 0);
 scene.add(pillarMesh);
 pillarMesh = pillarMesh.clone();
@@ -96,8 +97,9 @@ const lanternMaterial = new THREE.MeshStandardMaterial({
   roughness: 0.3
 });
 for (let i = 0; i < 4; i++) {
-  const lanternMesh = lanternGeometry.clone();
+  const lanternMesh = new THREE.Mesh(lanternGeometry, lanternMaterial);
   lanternMesh.position.set(Math.random()*10-5, 12 + Math.random()*2, Math.random()*10-5);
+  lanternMesh.name = 'lantern';
   scene.add(lanternMesh);
 }
 
@@ -111,7 +113,7 @@ const koiMaterial = new THREE.MeshStandardMaterial({
   roughness: 0.5
 });
 for (let i = 0; i < 6; i++) {
-  const koiMesh = koiGeometry.clone();
+  const koiMesh = new THREE.Mesh(koiGeometry, koiMaterial);
   koiMesh.position.set(Math.random()*20-10, 10 + Math.random()*5, Math.random()*20-10);
   scene.add(koiMesh);
 }
@@ -149,7 +151,7 @@ const treeMaterial = new THREE.MeshStandardMaterial({
   roughness: 0.5
 });
 for (let i = 0; i < 3; i++) {
-  const treeMesh = treeGeometry.clone();
+  const treeMesh = new THREE.Mesh(treeGeometry, treeMaterial);
   treeMesh.position.set(Math.random()*20-10, 2 + Math.random()*2, Math.random()*20-10);
   scene.add(treeMesh);
 }
@@ -162,7 +164,7 @@ const petalMaterial = new THREE.MeshStandardMaterial({
   opacity: 0.8
 });
 for (let i = 0; i < 200; i++) {
-  const petalMesh = petalGeometry.clone();
+  const petalMesh = new THREE.Mesh(petalGeometry, petalMaterial);
   petalMesh.position.set(Math.random()*20-10, 15 + Math.random()*2, Math.random()*20-10);
   scene.add(petalMesh);
 }
@@ -174,7 +176,7 @@ const fenceMaterial = new THREE.MeshStandardMaterial({
   side: THREE.DoubleSide
 });
 for (let i = 0; i < 20; i++) {
-  const fenceMesh = fenceGeometry.clone();
+  const fenceMesh = new THREE.Mesh(fenceGeometry, fenceMaterial);
   fenceMesh.position.set(Math.random()*20-10, 1, 0);
   scene.add(fenceMesh);
 }
@@ -186,7 +188,7 @@ const jizoMaterial = new THREE.MeshStandardMaterial({
   side: THREE.DoubleSide
 });
 for (let i = 0; i < 2; i++) {
-  const jizoMesh = jizoGeometry.clone();
+  const jizoMesh = new THREE.Mesh(jizoGeometry, jizoMaterial);
   jizoMesh.position.set(Math.random()*20-10, 0.5, Math.random()*20-10);
   scene.add(jizoMesh);
 }
@@ -242,13 +244,16 @@ let pagodaFloors = 5;
 let timeOfDay = 0;
 
 function updateHUD() {
-  document.body.innerHTML = `
-    <h1>3D Pagoda Benchmark</h1>
-    <p>VOXEL GARDEN</p>
-    <p>${voxelCount} voxels | ${fps} FPS</p>
-    <p>Click lanterns</p>
-    <p>Time: ${timeOfDay.toFixed(1)}</p>
-  `;
+  const hud = document.getElementById('hud');
+  if (hud) {
+    hud.innerHTML = `
+      <h1>3D Pagoda Benchmark</h1>
+      <p>VOXEL GARDEN</p>
+      <p>${voxelCount} voxels | ${fps} FPS</p>
+      <p>Click lanterns</p>
+      <p>Time: ${timeOfDay.toFixed(1)}</p>
+    `;
+  }
 }
 
 updateHUD();
@@ -273,12 +278,6 @@ function updateDayNight() {
 }
 setInterval(updateDayNight, 1000);
 
-// Resize handling
-window.addEventListener('resize', () => {
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  camera.aspect = window.innerWidth/window.innerHeight;
-  camera.updateProjectionMatrix();
-});
 </script>
 </body>
 </html>
