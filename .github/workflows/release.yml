@@ -234,6 +234,13 @@ jobs:
 
       - run: flutter pub get
 
+      - name: Install and verify Android NDK
+        timeout-minutes: 15
+        shell: bash
+        run: |
+          bash tool/ci/test_ensure_android_ndk.sh
+          bash tool/ci/ensure_android_ndk.sh
+
       # Reconstruct the release keystore from repo secrets so every CI build
       # is signed with the same persistent key. Without this, Gradle falls
       # back to a debug keystore that ephemeral runners regenerate per run,

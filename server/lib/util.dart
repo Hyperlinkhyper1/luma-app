@@ -10,7 +10,8 @@ import 'package:shelf/shelf.dart';
 /// Cryptographically secure random bytes.
 Uint8List randomBytes(int length) {
   final rng = Random.secure();
-  return Uint8List.fromList(List<int>.generate(length, (_) => rng.nextInt(256)));
+  return Uint8List.fromList(
+      List<int>.generate(length, (_) => rng.nextInt(256)));
 }
 
 /// A cryptographically random numeric string of [length] digits, each drawn
@@ -54,9 +55,15 @@ bool constantTimeEquals(List<int> a, List<int> b) {
   return diff == 0;
 }
 
+/// A zone value: a `void Function(int bytes)` told about every
+/// [atomicWriteBytes] made in that zone. The Discord bot meters its disk
+/// writes with it.
+const kDiskWriteMeterKey = #lumaDiskWriteMeter;
+
 /// Writes [bytes] to [path] atomically: write a temp file, then rename over
 /// the target so readers never observe a half-written file.
 Future<void> atomicWriteBytes(String path, List<int> bytes) async {
+  (Zone.current[kDiskWriteMeterKey] as void Function(int)?)?.call(bytes.length);
   final tmp = File('$path.tmp');
   await tmp.writeAsBytes(bytes, flush: true);
   await tmp.rename(path);
@@ -81,11 +88,16 @@ final RegExp pluginIdPattern = RegExp(r'^[a-z0-9-]{1,64}$');
 class AsyncLock {
   Future<void> _tail = Future.value();
 
+  /// The next waiter starts from a fresh microtask rather than inside the
+  /// callback that finished this one, so its work never runs nested in
+  /// another zone's (the Discord bot's meter counts on that).
   Future<T> synchronized<T>(Future<T> Function() action) {
     final previous = _tail;
-    final completer = Completer<void>();
+    final completer = Completer<void>.sync();
     _tail = completer.future;
-    return previous.then((_) => action()).whenComplete(completer.complete);
+    return previous
+        .then((_) => action())
+        .whenComplete(() => Zone.root.scheduleMicrotask(completer.complete));
   }
 }
 

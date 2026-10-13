@@ -8,6 +8,7 @@ import 'team_board.dart';
 import 'util.dart';
 
 part 'team_discord_forums.dart';
+part 'team_discord_metrics.dart';
 
 /// The Team Clipboard's Discord bot: a bot the team's leads link from the
 /// app, which then sits in the team's Discord server and
@@ -311,6 +312,7 @@ class TeamDiscordBot {
     try {
       final file = File(_path);
       if (!file.existsSync()) return;
+      _settingsBytes = file.lengthSync();
       final raw = jsonDecode(file.readAsStringSync());
       if (raw is! Map) return;
       final token = raw['token'];
@@ -342,6 +344,11 @@ class TeamDiscordBot {
 
   final String _path;
   final AsyncLock _lock = AsyncLock();
+
+  /// Counts what the bot alone costs: everything below runs in its zone.
+  final DiscordBotMeter meter = DiscordBotMeter();
+  Timer? _sampler;
+  int _settingsBytes = 0;
 
   String? _token;
   DiscordIdentity? _identity;
@@ -418,52 +425,52 @@ class TeamDiscordBot {
 
   Future<void> _save() async {
     await Directory(File(_path).parent.path).create(recursive: true);
-    await atomicWriteString(
-        _path,
-        jsonEncode({
-          'token': _token,
-          'botId': _identity?.id,
-          'botName': _identity?.name,
-          'botAvatar': _identity?.avatar,
-          'enabled': enabled,
-          'automodOn': automodOn,
-          'repliesOn': repliesOn,
-          'forumsOn': forumsOn,
-          'automod': [for (final r in automod) r.toJson()],
-          'replies': [for (final r in replies) r.toJson()],
-          'trackers': [for (final t in trackers) t.toJson()],
-        }));
+    final text = jsonEncode({
+      'token': _token,
+      'botId': _identity?.id,
+      'botName': _identity?.name,
+      'botAvatar': _identity?.avatar,
+      'enabled': enabled,
+      'automodOn': automodOn,
+      'repliesOn': repliesOn,
+      'forumsOn': forumsOn,
+      'automod': [for (final r in automod) r.toJson()],
+      'replies': [for (final r in replies) r.toJson()],
+      'trackers': [for (final t in trackers) t.toJson()],
+    });
+    await atomicWriteString(_path, text);
+    _settingsBytes = discordUtf8Length(text);
   }
 
   /// Links the bot behind [token], once Discord confirms it is a bot
   /// token. Throws [DiscordTokenRejected] when it isn't.
-  Future<DiscordIdentity> link(String token) async {
-    final who = await whoAmI(token);
-    await _lock.synchronized(() async {
-      _token = token;
-      _identity = who;
-      _guilds.clear();
-      _channels.clear();
-      _forums.clear();
-      _note(DiscordLogEntry('info', 'Linked ${who.name}.'));
-      await _save();
-    });
-    _restart();
-    return who;
-  }
+  Future<DiscordIdentity> link(String token) => meter.run(() async {
+        final who = await whoAmI(token);
+        await _lock.synchronized(() async {
+          _token = token;
+          _identity = who;
+          _guilds.clear();
+          _channels.clear();
+          _forums.clear();
+          _note(DiscordLogEntry('info', 'Linked ${who.name}.'));
+          await _save();
+        });
+        _restart();
+        return who;
+      });
 
-  Future<void> unlink() async {
-    await _lock.synchronized(() async {
-      _token = null;
-      _identity = null;
-      _guilds.clear();
-      _channels.clear();
-      _forums.clear();
-      _note(DiscordLogEntry('info', 'Unlinked the bot.'));
-      await _save();
-    });
-    _restart();
-  }
+  Future<void> unlink() => meter.run(() async {
+        await _lock.synchronized(() async {
+          _token = null;
+          _identity = null;
+          _guilds.clear();
+          _channels.clear();
+          _forums.clear();
+          _note(DiscordLogEntry('info', 'Unlinked the bot.'));
+          await _save();
+        });
+        _restart();
+      });
 
   /// Saves new settings; any left null stay as they are.
   Future<void> configure({
@@ -474,32 +481,96 @@ class TeamDiscordBot {
     List<DiscordAutomodRule>? automod,
     List<DiscordReplyRule>? replies,
     List<DiscordForumTracker>? trackers,
-  }) async {
-    final wasOn = this.enabled;
-    await _lock.synchronized(() async {
-      if (enabled != null) this.enabled = enabled;
-      if (automodOn != null) this.automodOn = automodOn;
-      if (repliesOn != null) this.repliesOn = repliesOn;
-      if (forumsOn != null) this.forumsOn = forumsOn;
-      if (automod != null) this.automod = automod;
-      if (replies != null) this.replies = replies;
-      if (trackers != null) this.trackers = trackers;
-      await _save();
-    });
-    if (wasOn != this.enabled) _restart();
-  }
+  }) =>
+      meter.run(() async {
+        final wasOn = this.enabled;
+        await _lock.synchronized(() async {
+          if (enabled != null) this.enabled = enabled;
+          if (automodOn != null) this.automodOn = automodOn;
+          if (repliesOn != null) this.repliesOn = repliesOn;
+          if (forumsOn != null) this.forumsOn = forumsOn;
+          if (automod != null) this.automod = automod;
+          if (replies != null) this.replies = replies;
+          if (trackers != null) this.trackers = trackers;
+          await _save();
+        });
+        if (wasOn != this.enabled) _restart();
+      });
 
   bool get _shouldRun => _started && _token != null && enabled;
 
-  /// Connects, and keeps reconnecting until [stop].
+  /// Connects, and keeps reconnecting until [stop]. Also starts sampling
+  /// what the bot costs, every [kDiscordMeterEvery].
   void start() {
     _started = true;
-    _restart();
+    _sampler ??= Timer.periodic(kDiscordMeterEvery, (_) => takeSample());
+    meter.runSync(_restart);
   }
 
   Future<void> stop() async {
     _started = false;
+    _sampler?.cancel();
+    _sampler = null;
     _restart();
+  }
+
+  /// Bytes the bot holds in memory right now, estimated.
+  int get memoryBytes =>
+      meter.inFlightBytes +
+      discordApproxBytes([
+        _token,
+        _identity?.id,
+        _identity?.name,
+        _identity?.avatar,
+        _guilds,
+        _channels,
+        for (final f in _forums.values)
+          [f.id, f.guildId, f.name, for (final t in f.tags) t.toJson()],
+        for (final e in _log) e.toJson(),
+        _replyCooldown,
+        for (final r in automod) r.toJson(),
+        for (final r in replies) r.toJson(),
+        for (final t in trackers) t.toJson(),
+      ]);
+
+  /// Bytes of the attachments the bot copied onto the board.
+  int get attachmentBytes => (board?.board() ?? const <TeamBoardEntry>[])
+      .expand((e) => e.files)
+      .where((f) => f.uploaderId.startsWith(kTeamBoardDiscordIdPrefix))
+      .fold(0, (sum, f) => sum + f.sizeBytes);
+
+  DiscordMeterSample takeSample() => meter.sample(
+      memoryBytes: memoryBytes, storageBytes: _settingsBytes + attachmentBytes);
+
+  /// What the bot costs, for the app: totals since the server started,
+  /// the last window's rates and the last ten minutes of samples.
+  Map<String, dynamic> metricsJson() {
+    final samples = meter.samples;
+    final last = samples.lastOrNull;
+    double rounded(double v) => (v * 10000).roundToDouble() / 10000;
+    return {
+      'cores': Platform.numberOfProcessors,
+      'sinceMs': meter.sinceMs,
+      'everyMs': kDiscordMeterEvery.inMilliseconds,
+      'cpuMs': meter.cpuMicros ~/ 1000,
+      'cpuPercent': rounded(last?.cpuPercent ?? 0),
+      'memoryBytes': memoryBytes,
+      'settingsBytes': _settingsBytes,
+      'attachmentBytes': attachmentBytes,
+      'diskWrittenBytes': meter.diskWrittenBytes,
+      'diskWritePerSecond': last?.diskWritePerSecond ?? 0,
+      'netInBytes': meter.netInBytes,
+      'netOutBytes': meter.netOutBytes,
+      'netInPerSecond': last?.netInPerSecond ?? 0,
+      'netOutPerSecond': last?.netOutPerSecond ?? 0,
+      'history': {
+        'cpu': [for (final s in samples) rounded(s.cpuPercent)],
+        'memory': [for (final s in samples) s.memoryBytes],
+        'diskWrite': [for (final s in samples) s.diskWritePerSecond],
+        'netIn': [for (final s in samples) s.netInPerSecond],
+        'netOut': [for (final s in samples) s.netOutPerSecond],
+      },
+    };
   }
 
   void _restart() {
@@ -568,7 +639,11 @@ class TeamDiscordBot {
     var acked = true;
     Timer? beat;
     void send(Map<String, dynamic> payload) {
-      if (ws.readyState == WebSocket.open) ws.add(jsonEncode(payload));
+      if (ws.readyState != WebSocket.open) return;
+      final text = jsonEncode(payload);
+      meter.netOutBytes +=
+          discordWsFrameBytes(discordUtf8Length(text), masked: true);
+      ws.add(text);
     }
 
     void heartbeat() {
@@ -583,6 +658,9 @@ class TeamDiscordBot {
     final done = Completer<void>();
     ws.listen(
       (raw) {
+        meter.netInBytes += discordWsFrameBytes(
+            raw is String ? discordUtf8Length(raw) : (raw as List).length,
+            masked: false);
         if (raw is! String) return;
         final Map<String, dynamic> payload;
         try {
@@ -646,10 +724,10 @@ class TeamDiscordBot {
 
   /// Handles one gateway event as if it had just come in. The gateway
   /// calls this; tests feed it events directly.
-  Future<void> handleGatewayEvent(String type, Map d) async {
-    final token = _token;
-    if (token != null) await _dispatch(type, d, token);
-  }
+  Future<void> handleGatewayEvent(String type, Map d) => meter.run(() async {
+        final token = _token;
+        if (token != null) await _dispatch(type, d, token);
+      });
 
   Future<void> _dispatch(String? type, Object? d, String token) async {
     if (d is! Map) return;
@@ -795,11 +873,14 @@ class TeamDiscordBot {
   static Future<DiscordRestResult> _rest(
       String token, String method, String path,
       {Object? body, String? reason}) async {
+    final meter = _currentMeter;
     final client = HttpClient()
-      ..connectionTimeout = const Duration(seconds: 15);
+      ..connectionTimeout = const Duration(seconds: 15)
+      ..autoUncompress = false;
     try {
       for (var attempt = 0;; attempt++) {
-        final request = await client.openUrl(method, Uri.parse('$_api$path'));
+        final uri = Uri.parse('$_api$path');
+        final request = await client.openUrl(method, uri);
         request.headers
           ..set('Authorization', 'Bot $token')
           ..set('User-Agent', _userAgent);
@@ -807,13 +888,26 @@ class TeamDiscordBot {
           request.headers
               .set('X-Audit-Log-Reason', Uri.encodeComponent(reason));
         }
-        if (body != null) {
+        final payload = body == null ? null : utf8.encode(jsonEncode(body));
+        if (payload != null) {
           request.headers.contentType = ContentType.json;
-          request.add(utf8.encode(jsonEncode(body)));
+          request.add(payload);
         }
+        meter?.netOutBytes += discordUtf8Length(
+                '$method $uri HTTP/1.1\r\n${request.headers}\r\n') +
+            (payload?.length ?? 0);
         final response =
             await request.close().timeout(const Duration(seconds: 20));
-        final text = await response.transform(utf8.decoder).join();
+        final wire = (await response.fold(BytesBuilder(copy: false),
+                (BytesBuilder b, List<int> chunk) => b..add(chunk)))
+            .takeBytes();
+        meter?.netInBytes += discordUtf8Length(
+                'HTTP/1.1 ${response.statusCode} ${response.reasonPhrase}\r\n'
+                '${response.headers}\r\n') +
+            wire.length;
+        final gzipped =
+            response.headers.value('content-encoding')?.toLowerCase() == 'gzip';
+        final text = utf8.decode(gzipped ? gzip.decode(wire) : wire);
         Object? decoded;
         try {
           decoded = text.isEmpty ? null : jsonDecode(text);
@@ -845,23 +939,34 @@ class TeamDiscordBot {
             .contains(uri.host)) {
       return null;
     }
+    final meter = _currentMeter;
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 15);
+    var held = 0;
     try {
       final request = await client.getUrl(uri);
       request.headers.set('User-Agent', _userAgent);
+      meter?.netOutBytes +=
+          discordUtf8Length('GET $uri HTTP/1.1\r\n${request.headers}\r\n');
       final response =
           await request.close().timeout(const Duration(seconds: 30));
+      meter?.netInBytes += discordUtf8Length(
+          'HTTP/1.1 ${response.statusCode} ${response.reasonPhrase}\r\n'
+          '${response.headers}\r\n');
       if (response.statusCode != 200) return null;
       final bytes = BytesBuilder(copy: false);
       await for (final chunk in response.timeout(const Duration(seconds: 60))) {
         bytes.add(chunk);
+        held += chunk.length;
+        meter?.netInBytes += chunk.length;
+        meter?.inFlightBytes += chunk.length;
         if (bytes.length > maxBytes) return null;
       }
       return bytes.takeBytes();
     } catch (_) {
       return null;
     } finally {
+      meter?.inFlightBytes -= held;
       client.close(force: true);
     }
   }

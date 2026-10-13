@@ -323,6 +323,67 @@
   "teamDiscordDeleteRule": "Delete rule",
   "teamDiscordActivity": "Recent activity",
   "teamDiscordNoActivity": "Nothing yet. What the bot does since the server last started shows here.",
+  "teamDiscordUsage": "Resource usage",
+  "teamDiscordUsageHint": "Only what the bot itself uses. It runs inside the luma server, so everything else the server does (sync, the dashboard, the other plugins) is left out.",
+  "teamDiscordUsageCpu": "CPU",
+  "teamDiscordUsageCpuDetail": "Of all {cores} cores on the server · {time} of CPU time in total",
+  "@teamDiscordUsageCpuDetail": {
+    "placeholders": {
+      "cores": {
+        "type": "int"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "teamDiscordUsageMemory": "Memory",
+  "teamDiscordUsageMemoryDetail": "Estimated from what the bot keeps: its caches, log, rules and any download in progress",
+  "teamDiscordUsageDisk": "Disk",
+  "teamDiscordUsageDiskDetail": "Settings {settings} · attachments {attachments} · {written} written",
+  "@teamDiscordUsageDiskDetail": {
+    "placeholders": {
+      "settings": {
+        "type": "String"
+      },
+      "attachments": {
+        "type": "String"
+      },
+      "written": {
+        "type": "String"
+      }
+    }
+  },
+  "teamDiscordUsageNetwork": "Internet",
+  "teamDiscordUsageNetworkDetail": "{down} down · {up} up in total",
+  "@teamDiscordUsageNetworkDetail": {
+    "placeholders": {
+      "down": {
+        "type": "String"
+      },
+      "up": {
+        "type": "String"
+      }
+    }
+  },
+  "teamDiscordUsageSince": "Totals since the server started {when}.",
+  "@teamDiscordUsageSince": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "teamDiscordUsageWindow": "Last {minutes} min",
+  "@teamDiscordUsageWindow": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "teamDiscordUsageWaiting": "The first reading arrives a few seconds after the server starts.",
+  "teamDiscordUsageUnavailable": "This server doesn't measure the bot's usage yet. Update the luma server to see it.",
   "teamDiscordLogAutomod": "Removed a message from {user} for “{word}”",
   "@teamDiscordLogAutomod": {
     "placeholders": {

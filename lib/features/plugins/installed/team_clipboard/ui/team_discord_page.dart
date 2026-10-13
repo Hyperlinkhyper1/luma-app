@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -399,13 +400,15 @@ class _TeamDiscordPageState extends State<TeamDiscordPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [_ActivityCard(log: state.log)],
         );
+      case _Section.usage:
+        return _UsagePage(metrics: state.metrics);
     }
   }
 }
 
 /// Where the Discord tab is: the plugin grid, one plugin, the bot's own
-/// settings or its activity.
-enum _Section { plugins, automod, replies, forums, bot, activity }
+/// settings, its activity or what it costs the server.
+enum _Section { plugins, automod, replies, forums, bot, activity, usage }
 
 bool _isPlugin(_Section s) =>
     s == _Section.automod || s == _Section.replies || s == _Section.forums;
@@ -417,6 +420,7 @@ String _sectionLabel(L t, _Section s) => switch (s) {
   _Section.forums => t.teamDiscordForumsTitle,
   _Section.bot => t.teamDiscordBotSettings,
   _Section.activity => t.teamDiscordActivity,
+  _Section.usage => t.teamDiscordUsage,
 };
 
 IconData _sectionIcon(_Section s) => switch (s) {
@@ -426,6 +430,7 @@ IconData _sectionIcon(_Section s) => switch (s) {
   _Section.forums => Icons.forum_rounded,
   _Section.bot => Icons.settings_rounded,
   _Section.activity => Icons.history_rounded,
+  _Section.usage => Icons.monitor_heart_outlined,
 };
 
 bool _pluginOn(TeamDiscordState state, _Section s) => switch (s) {
@@ -697,6 +702,7 @@ class _Sidebar extends StatelessWidget {
           item(_Section.plugins),
           item(_Section.bot),
           item(_Section.activity),
+          item(_Section.usage),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 18, 12, 8),
             child: Text(
@@ -1651,6 +1657,327 @@ class _ActivityCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// ---- Resource usage ---------------------------------------------------------
+
+String _percent(double v) {
+  if (v <= 0) return '0%';
+  if (v < 0.01) return '<0.01%';
+  return '${v.toStringAsFixed(v < 10 ? 2 : 1)}%';
+}
+
+String _rate(int bytesPerSecond) => '${teamFileSize(bytesPerSecond)}/s';
+
+String _cpuTime(int ms) {
+  if (ms < 1000) return '$ms ms';
+  if (ms < 60 * 1000) return '${(ms / 1000).toStringAsFixed(1)} s';
+  if (ms < 60 * 60 * 1000) return '${(ms / 60000).toStringAsFixed(1)} min';
+  return '${(ms / 3600000).toStringAsFixed(1)} h';
+}
+
+/// What the bot itself costs the server: CPU, memory, disk and internet,
+/// each with its last ten minutes as a small chart.
+class _UsagePage extends StatelessWidget {
+  const _UsagePage({required this.metrics});
+
+  final TeamDiscordMetrics? metrics;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = L.of(context);
+    final luma = context.luma;
+    final m = metrics;
+    final hint = Text(
+      t.teamDiscordUsageHint,
+      style: TextStyle(color: luma.textSecondary, fontSize: 13.5),
+    );
+    if (m == null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _PageTitle(t.teamDiscordUsage),
+          const SizedBox(height: 8),
+          hint,
+          const SizedBox(height: 20),
+          LumaCard(
+            child: Text(
+              t.teamDiscordUsageUnavailable,
+              style: TextStyle(color: luma.textMuted, fontSize: 13),
+            ),
+          ),
+        ],
+      );
+    }
+    final minutes = (m.everyMs * math.max(m.cpuHistory.length, 1) / 60000)
+        .ceil();
+    final cards = [
+      _UsageCard(
+        key: const ValueKey('team-discord-usage-cpu'),
+        icon: Icons.memory_rounded,
+        title: t.teamDiscordUsageCpu,
+        value: _percent(m.cpuPercent),
+        detail: t.teamDiscordUsageCpuDetail(m.cores, _cpuTime(m.cpuMs)),
+        series: [m.cpuHistory],
+        colors: [luma.accent],
+        window: minutes,
+      ),
+      _UsageCard(
+        key: const ValueKey('team-discord-usage-memory'),
+        icon: Icons.developer_board_rounded,
+        title: t.teamDiscordUsageMemory,
+        value: '≈ ${teamFileSize(m.memoryBytes)}',
+        detail: t.teamDiscordUsageMemoryDetail,
+        series: [m.memoryHistory],
+        colors: [luma.accent],
+        window: minutes,
+      ),
+      _UsageCard(
+        key: const ValueKey('team-discord-usage-disk'),
+        icon: Icons.storage_rounded,
+        title: t.teamDiscordUsageDisk,
+        value: teamFileSize(m.storageBytes),
+        trailing: _rate(m.diskWritePerSecond),
+        trailingIcon: Icons.edit_rounded,
+        detail: t.teamDiscordUsageDiskDetail(
+          teamFileSize(m.settingsBytes),
+          teamFileSize(m.attachmentBytes),
+          teamFileSize(m.diskWrittenBytes),
+        ),
+        series: [m.diskWriteHistory],
+        colors: [luma.warning],
+        window: minutes,
+      ),
+      _UsageCard(
+        key: const ValueKey('team-discord-usage-network'),
+        icon: Icons.swap_vert_rounded,
+        title: t.teamDiscordUsageNetwork,
+        value: _rate(m.netInPerSecond),
+        valueIcon: Icons.south_rounded,
+        trailing: _rate(m.netOutPerSecond),
+        trailingIcon: Icons.north_rounded,
+        detail: t.teamDiscordUsageNetworkDetail(
+          teamFileSize(m.netInBytes),
+          teamFileSize(m.netOutBytes),
+        ),
+        series: [m.netInHistory, m.netOutHistory],
+        colors: [luma.accent, luma.success],
+        window: minutes,
+      ),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _PageTitle(t.teamDiscordUsage),
+        const SizedBox(height: 8),
+        hint,
+        const SizedBox(height: 20),
+        LayoutBuilder(
+          builder: (context, box) {
+            final columns = box.maxWidth >= 640 ? 2 : 1;
+            final width = (box.maxWidth - 16 * (columns - 1)) / columns;
+            return Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: [
+                for (final card in cards) SizedBox(width: width, child: card),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 14),
+        Text(
+          m.cpuHistory.isEmpty
+              ? t.teamDiscordUsageWaiting
+              : t.teamDiscordUsageSince(
+                  teamRelativeTime(
+                    context,
+                    DateTime.fromMillisecondsSinceEpoch(m.sinceMs),
+                  ),
+                ),
+          style: TextStyle(color: luma.textMuted, fontSize: 12),
+        ),
+      ],
+    );
+  }
+}
+
+class _UsageCard extends StatelessWidget {
+  const _UsageCard({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.detail,
+    required this.series,
+    required this.colors,
+    required this.window,
+    this.trailing,
+    this.valueIcon,
+    this.trailingIcon,
+  });
+
+  final IconData icon;
+  final String title;
+  final String value;
+
+  /// A second figure beside [value], smaller.
+  final String? trailing;
+  final IconData? valueIcon;
+  final IconData? trailingIcon;
+  final String detail;
+  final List<List<double>> series;
+  final List<Color> colors;
+
+  /// How many minutes the chart spans.
+  final int window;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = L.of(context);
+    final luma = context.luma;
+    return LumaCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: luma.accent),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: luma.textSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Text(
+                t.teamDiscordUsageWindow(window),
+                style: TextStyle(color: luma.textMuted, fontSize: 11.5),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 14,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (valueIcon != null)
+                    Icon(valueIcon, size: 20, color: luma.accent),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      color: luma.textPrimary,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+              if (trailing != null)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (trailingIcon != null)
+                      Icon(trailingIcon, size: 16, color: colors.last),
+                    const SizedBox(width: 2),
+                    Text(
+                      trailing!,
+                      style: TextStyle(
+                        color: luma.textSecondary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 56,
+            child: CustomPaint(
+              painter: _UsageChart(
+                series: series,
+                colors: colors,
+                grid: luma.border,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(detail, style: TextStyle(color: luma.textMuted, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Lines from zero up to the highest value any of [series] reached, the
+/// first one filled underneath.
+class _UsageChart extends CustomPainter {
+  _UsageChart({required this.series, required this.colors, required this.grid});
+
+  final List<List<double>> series;
+  final List<Color> colors;
+  final Color grid;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawLine(
+      Offset(0, size.height - 0.5),
+      Offset(size.width, size.height - 0.5),
+      Paint()..color = grid,
+    );
+    var high = 0.0;
+    for (final s in series) {
+      for (final v in s) {
+        high = math.max(high, v);
+      }
+    }
+    for (final (i, values) in series.indexed) {
+      if (values.length < 2) continue;
+      final path = Path();
+      for (final (j, v) in values.indexed) {
+        final x = j * size.width / (values.length - 1);
+        final y = high <= 0
+            ? size.height - 1
+            : size.height - 1 - v / high * (size.height - 4);
+        if (j == 0) {
+          path.moveTo(x, y);
+        } else {
+          path.lineTo(x, y);
+        }
+      }
+      final color = colors[i % colors.length];
+      if (i == 0) {
+        canvas.drawPath(
+          Path.from(path)
+            ..lineTo(size.width, size.height)
+            ..lineTo(0, size.height)
+            ..close(),
+          Paint()..color = color.withValues(alpha: 0.14),
+        );
+      }
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = color
+          ..strokeWidth = 2
+          ..style = PaintingStyle.stroke
+          ..strokeJoin = StrokeJoin.round,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_UsageChart old) =>
+      old.series != series || old.colors != colors || old.grid != grid;
 }
 
 // ---- Rule editors -----------------------------------------------------------

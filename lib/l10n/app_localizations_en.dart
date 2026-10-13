@@ -597,6 +597,66 @@ class LEn extends L {
       'Nothing yet. What the bot does since the server last started shows here.';
 
   @override
+  String get teamDiscordUsage => 'Resource usage';
+
+  @override
+  String get teamDiscordUsageHint =>
+      'Only what the bot itself uses. It runs inside the luma server, so everything else the server does (sync, the dashboard, the other plugins) is left out.';
+
+  @override
+  String get teamDiscordUsageCpu => 'CPU';
+
+  @override
+  String teamDiscordUsageCpuDetail(int cores, String time) {
+    return 'Of all $cores cores on the server · $time of CPU time in total';
+  }
+
+  @override
+  String get teamDiscordUsageMemory => 'Memory';
+
+  @override
+  String get teamDiscordUsageMemoryDetail =>
+      'Estimated from what the bot keeps: its caches, log, rules and any download in progress';
+
+  @override
+  String get teamDiscordUsageDisk => 'Disk';
+
+  @override
+  String teamDiscordUsageDiskDetail(
+    String settings,
+    String attachments,
+    String written,
+  ) {
+    return 'Settings $settings · attachments $attachments · $written written';
+  }
+
+  @override
+  String get teamDiscordUsageNetwork => 'Internet';
+
+  @override
+  String teamDiscordUsageNetworkDetail(String down, String up) {
+    return '$down down · $up up in total';
+  }
+
+  @override
+  String teamDiscordUsageSince(String when) {
+    return 'Totals since the server started $when.';
+  }
+
+  @override
+  String teamDiscordUsageWindow(int minutes) {
+    return 'Last $minutes min';
+  }
+
+  @override
+  String get teamDiscordUsageWaiting =>
+      'The first reading arrives a few seconds after the server starts.';
+
+  @override
+  String get teamDiscordUsageUnavailable =>
+      'This server doesn\'t measure the bot\'s usage yet. Update the luma server to see it.';
+
+  @override
   String teamDiscordLogAutomod(String user, String word) {
     return 'Removed a message from $user for “$word”';
   }

@@ -569,6 +569,64 @@ class LZh extends L {
   String get teamDiscordNoActivity => '暂无内容。这里显示服务器上次启动以来机器人执行的操作。';
 
   @override
+  String get teamDiscordUsage => '资源占用';
+
+  @override
+  String get teamDiscordUsageHint =>
+      '只统计机器人自身的占用。它运行在 luma 服务器内，服务器的其他工作（同步、控制台、其他插件）不计入。';
+
+  @override
+  String get teamDiscordUsageCpu => 'CPU';
+
+  @override
+  String teamDiscordUsageCpuDetail(int cores, String time) {
+    return '占服务器全部 $cores 个核心 · 累计 CPU 时间 $time';
+  }
+
+  @override
+  String get teamDiscordUsageMemory => '内存';
+
+  @override
+  String get teamDiscordUsageMemoryDetail => '按机器人保存的内容估算：缓存、日志、规则和正在进行的下载';
+
+  @override
+  String get teamDiscordUsageDisk => '磁盘';
+
+  @override
+  String teamDiscordUsageDiskDetail(
+    String settings,
+    String attachments,
+    String written,
+  ) {
+    return '设置 $settings · 附件 $attachments · 已写入 $written';
+  }
+
+  @override
+  String get teamDiscordUsageNetwork => '网络';
+
+  @override
+  String teamDiscordUsageNetworkDetail(String down, String up) {
+    return '累计下载 $down · 上传 $up';
+  }
+
+  @override
+  String teamDiscordUsageSince(String when) {
+    return '统计自服务器启动（$when）以来。';
+  }
+
+  @override
+  String teamDiscordUsageWindow(int minutes) {
+    return '最近 $minutes 分钟';
+  }
+
+  @override
+  String get teamDiscordUsageWaiting => '服务器启动几秒后会出现第一次读数。';
+
+  @override
+  String get teamDiscordUsageUnavailable =>
+      '该服务器尚未统计机器人的资源占用。更新 luma 服务器后即可查看。';
+
+  @override
   String teamDiscordLogAutomod(String user, String word) {
     return '因“$word”删除了 $user 的消息';
   }

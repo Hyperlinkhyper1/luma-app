@@ -15,6 +15,7 @@ import 'package:luma_sync_server/store.dart';
 import 'package:luma_sync_server/subway_store.dart';
 import 'package:luma_sync_server/team_board.dart';
 import 'package:luma_sync_server/team_discord.dart';
+import 'package:luma_sync_server/util.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 
@@ -524,6 +525,80 @@ void main() {
           reason: 'a closed entry takes no more replies');
       board = await call('GET', '/api/v1/team-board', token: lead);
       expect(board['entries'], hasLength(1));
+
+      final metrics = (await call('GET', '/api/v1/team-board/discord',
+          token: lead))['metrics'] as Map;
+      expect(metrics['cpuMs'], isA<int>());
+      expect(bot.meter.cpuMicros, greaterThan(0));
+      expect(metrics['diskWrittenBytes'], greaterThan(0),
+          reason: 'its settings and the board saves its posts set off');
+      expect(metrics['attachmentBytes'], 17, reason: 'only latest.log');
+      expect(metrics['settingsBytes'],
+          File('${dir.path}/team_board/discord.json').lengthSync());
+      expect(metrics['memoryBytes'], greaterThan(0));
+    });
+  });
+
+  group('metrics', () {
+    void spin() {
+      final until = DateTime.now().add(const Duration(milliseconds: 30));
+      while (DateTime.now().isBefore(until)) {}
+    }
+
+    test('only work in the bot’s zone counts as its CPU', () async {
+      final meter = DiscordBotMeter();
+      spin();
+      expect(meter.cpuMicros, 0);
+      meter.runSync(spin);
+      expect(meter.cpuMicros, greaterThanOrEqualTo(30000));
+      final before = meter.cpuMicros;
+      await meter.run(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        spin();
+      });
+      final added = meter.cpuMicros - before;
+      expect(added, greaterThanOrEqualTo(30000));
+      expect(added, lessThan(400000), reason: 'waiting is not CPU');
+      spin();
+      expect(meter.cpuMicros, before + added);
+    });
+
+    test('only the bot’s disk writes are counted', () async {
+      final dir = await Directory.systemTemp.createTemp('team_discord_meter');
+      addTearDown(() => dir.delete(recursive: true));
+      final meter = DiscordBotMeter();
+      await atomicWriteString('${dir.path}/a', 'hello');
+      expect(meter.diskWrittenBytes, 0);
+      await meter.run(() => atomicWriteString('${dir.path}/b', 'héllo'));
+      expect(meter.diskWrittenBytes, 6);
+    });
+
+    test('samples turn totals into rates and keep ten minutes', () async {
+      final meter = DiscordBotMeter()..netInBytes = 1000;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      final s = meter.sample(memoryBytes: 10, storageBytes: 20);
+      expect(s.netInPerSecond, inInclusiveRange(1000, 10000));
+      expect(s.memoryBytes, 10);
+      expect(s.storageBytes, 20);
+      expect(meter.sample(memoryBytes: 0, storageBytes: 0).netInPerSecond, 0);
+      for (var i = 0; i < kDiscordMeterSamples + 5; i++) {
+        meter.sample(memoryBytes: 0, storageBytes: 0);
+      }
+      expect(meter.samples, hasLength(kDiscordMeterSamples));
+    });
+
+    test('byte counting', () {
+      expect(discordUtf8Length('abc'), 3);
+      expect(discordUtf8Length('é€😀'), 2 + 3 + 4);
+      expect(discordWsFrameBytes(10, masked: false), 12);
+      expect(discordWsFrameBytes(200, masked: true), 208);
+      expect(discordWsFrameBytes(70000, masked: false), 70010);
+      expect(
+          discordApproxBytes([
+            'ab',
+            {'k': 'v'}
+          ]),
+          greaterThan(discordApproxBytes(['ab'])));
     });
   });
 }

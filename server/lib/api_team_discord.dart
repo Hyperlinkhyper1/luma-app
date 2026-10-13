@@ -49,6 +49,7 @@ extension TeamDiscordApi on Api {
           }
       ],
       'log': [for (final e in bot.log) e.toJson()],
+      'metrics': bot.metricsJson(),
     };
   }
 

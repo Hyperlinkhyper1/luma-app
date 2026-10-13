@@ -440,7 +440,10 @@ extension _DiscordForums on TeamDiscordBot {
 extension DiscordForumSync on TeamDiscordBot {
   /// Tells [entry]'s Discord thread, once, that it was fixed or closed, and
   /// closes the thread. Reopening the entry lets it say so again later.
-  Future<void> syncEntryState(TeamBoardEntry entry) async {
+  Future<void> syncEntryState(TeamBoardEntry entry) =>
+      meter.run(() => _syncEntryState(entry));
+
+  Future<void> _syncEntryState(TeamBoardEntry entry) async {
     final link = entry.discord;
     final board = this.board;
     if (link == null || board == null) return;

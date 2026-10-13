@@ -605,6 +605,66 @@ class LFr extends L {
       'Rien pour l\'instant. Ce que fait le bot depuis le dernier démarrage du serveur s\'affiche ici.';
 
   @override
+  String get teamDiscordUsage => 'Utilisation des ressources';
+
+  @override
+  String get teamDiscordUsageHint =>
+      'Uniquement ce que le bot utilise lui-même. Il tourne dans le serveur luma, donc le reste du travail du serveur (synchronisation, tableau de bord, autres plugins) n\'est pas compté.';
+
+  @override
+  String get teamDiscordUsageCpu => 'Processeur';
+
+  @override
+  String teamDiscordUsageCpuDetail(int cores, String time) {
+    return 'Sur les $cores cœurs du serveur · $time de temps processeur au total';
+  }
+
+  @override
+  String get teamDiscordUsageMemory => 'Mémoire';
+
+  @override
+  String get teamDiscordUsageMemoryDetail =>
+      'Estimée à partir de ce que le bot conserve : caches, journal, règles et téléchargements en cours';
+
+  @override
+  String get teamDiscordUsageDisk => 'Disque';
+
+  @override
+  String teamDiscordUsageDiskDetail(
+    String settings,
+    String attachments,
+    String written,
+  ) {
+    return 'Paramètres $settings · pièces jointes $attachments · $written écrits';
+  }
+
+  @override
+  String get teamDiscordUsageNetwork => 'Internet';
+
+  @override
+  String teamDiscordUsageNetworkDetail(String down, String up) {
+    return '$down reçus · $up envoyés au total';
+  }
+
+  @override
+  String teamDiscordUsageSince(String when) {
+    return 'Totaux depuis le démarrage du serveur $when.';
+  }
+
+  @override
+  String teamDiscordUsageWindow(int minutes) {
+    return 'Dernières $minutes min';
+  }
+
+  @override
+  String get teamDiscordUsageWaiting =>
+      'La première mesure arrive quelques secondes après le démarrage du serveur.';
+
+  @override
+  String get teamDiscordUsageUnavailable =>
+      'Ce serveur ne mesure pas encore l\'utilisation du bot. Mettez à jour le serveur luma pour la voir.';
+
+  @override
   String teamDiscordLogAutomod(String user, String word) {
     return 'Message de $user supprimé pour « $word »';
   }

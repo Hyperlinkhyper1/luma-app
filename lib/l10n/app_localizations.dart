@@ -1087,6 +1087,94 @@ abstract class L {
   /// **'Nothing yet. What the bot does since the server last started shows here.'**
   String get teamDiscordNoActivity;
 
+  /// No description provided for @teamDiscordUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Resource usage'**
+  String get teamDiscordUsage;
+
+  /// No description provided for @teamDiscordUsageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only what the bot itself uses. It runs inside the luma server, so everything else the server does (sync, the dashboard, the other plugins) is left out.'**
+  String get teamDiscordUsageHint;
+
+  /// No description provided for @teamDiscordUsageCpu.
+  ///
+  /// In en, this message translates to:
+  /// **'CPU'**
+  String get teamDiscordUsageCpu;
+
+  /// No description provided for @teamDiscordUsageCpuDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Of all {cores} cores on the server · {time} of CPU time in total'**
+  String teamDiscordUsageCpuDetail(int cores, String time);
+
+  /// No description provided for @teamDiscordUsageMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory'**
+  String get teamDiscordUsageMemory;
+
+  /// No description provided for @teamDiscordUsageMemoryDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated from what the bot keeps: its caches, log, rules and any download in progress'**
+  String get teamDiscordUsageMemoryDetail;
+
+  /// No description provided for @teamDiscordUsageDisk.
+  ///
+  /// In en, this message translates to:
+  /// **'Disk'**
+  String get teamDiscordUsageDisk;
+
+  /// No description provided for @teamDiscordUsageDiskDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings {settings} · attachments {attachments} · {written} written'**
+  String teamDiscordUsageDiskDetail(
+    String settings,
+    String attachments,
+    String written,
+  );
+
+  /// No description provided for @teamDiscordUsageNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Internet'**
+  String get teamDiscordUsageNetwork;
+
+  /// No description provided for @teamDiscordUsageNetworkDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'{down} down · {up} up in total'**
+  String teamDiscordUsageNetworkDetail(String down, String up);
+
+  /// No description provided for @teamDiscordUsageSince.
+  ///
+  /// In en, this message translates to:
+  /// **'Totals since the server started {when}.'**
+  String teamDiscordUsageSince(String when);
+
+  /// No description provided for @teamDiscordUsageWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Last {minutes} min'**
+  String teamDiscordUsageWindow(int minutes);
+
+  /// No description provided for @teamDiscordUsageWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'The first reading arrives a few seconds after the server starts.'**
+  String get teamDiscordUsageWaiting;
+
+  /// No description provided for @teamDiscordUsageUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This server doesn\'t measure the bot\'s usage yet. Update the luma server to see it.'**
+  String get teamDiscordUsageUnavailable;
+
   /// No description provided for @teamDiscordLogAutomod.
   ///
   /// In en, this message translates to:

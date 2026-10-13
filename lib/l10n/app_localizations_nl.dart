@@ -601,6 +601,66 @@ class LNl extends L {
       'Nog niets. Wat de bot doet sinds de server voor het laatst is gestart, zie je hier.';
 
   @override
+  String get teamDiscordUsage => 'Resourcegebruik';
+
+  @override
+  String get teamDiscordUsageHint =>
+      'Alleen wat de bot zelf gebruikt. Hij draait in de luma-server, dus al het andere werk van de server (sync, het dashboard, de andere plugins) telt niet mee.';
+
+  @override
+  String get teamDiscordUsageCpu => 'CPU';
+
+  @override
+  String teamDiscordUsageCpuDetail(int cores, String time) {
+    return 'Van alle $cores cores van de server · $time CPU-tijd in totaal';
+  }
+
+  @override
+  String get teamDiscordUsageMemory => 'Geheugen';
+
+  @override
+  String get teamDiscordUsageMemoryDetail =>
+      'Geschat op basis van wat de bot bewaart: caches, log, regels en lopende downloads';
+
+  @override
+  String get teamDiscordUsageDisk => 'Schijf';
+
+  @override
+  String teamDiscordUsageDiskDetail(
+    String settings,
+    String attachments,
+    String written,
+  ) {
+    return 'Instellingen $settings · bijlagen $attachments · $written geschreven';
+  }
+
+  @override
+  String get teamDiscordUsageNetwork => 'Internet';
+
+  @override
+  String teamDiscordUsageNetworkDetail(String down, String up) {
+    return '$down ontvangen · $up verzonden in totaal';
+  }
+
+  @override
+  String teamDiscordUsageSince(String when) {
+    return 'Totalen sinds de server $when startte.';
+  }
+
+  @override
+  String teamDiscordUsageWindow(int minutes) {
+    return 'Laatste $minutes min';
+  }
+
+  @override
+  String get teamDiscordUsageWaiting =>
+      'De eerste meting komt een paar seconden nadat de server is gestart.';
+
+  @override
+  String get teamDiscordUsageUnavailable =>
+      'Deze server meet het gebruik van de bot nog niet. Werk de luma-server bij om het te zien.';
+
+  @override
   String teamDiscordLogAutomod(String user, String word) {
     return 'Bericht van $user verwijderd om “$word”';
   }

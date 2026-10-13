@@ -446,6 +446,68 @@ void main() {
     await _unmount(tester);
   });
 
+  testWidgets('the bot’s resource usage shows only what the bot uses', (
+    tester,
+  ) async {
+    final board = _FakeBoard();
+    board.discord['metrics'] = {
+      'cores': 8,
+      'sinceMs': DateTime.now()
+          .subtract(const Duration(hours: 2))
+          .millisecondsSinceEpoch,
+      'everyMs': 10000,
+      'cpuMs': 12400,
+      'cpuPercent': 0.0312,
+      'memoryBytes': 84 * 1024,
+      'settingsBytes': 1024,
+      'attachmentBytes': 3 * 1024 * 1024,
+      'diskWrittenBytes': 5 * 1024 * 1024,
+      'diskWritePerSecond': 0,
+      'netInBytes': 2 * 1024 * 1024,
+      'netOutBytes': 300 * 1024,
+      'netInPerSecond': 1536,
+      'netOutPerSecond': 512,
+      'history': {
+        'cpu': [0.01, 0.05, 0.0312],
+        'memory': [80000, 82000, 86016],
+        'diskWrite': [0, 2048, 0],
+        'netIn': [1024, 4096, 1536],
+        'netOut': [256, 1024, 512],
+      },
+    };
+    await _pump(tester, board);
+    await tester.tap(find.byKey(const ValueKey('team-clipboard-discord-tab')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('team-discord-nav-usage')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Resource usage'), findsWidgets);
+    for (final key in ['cpu', 'memory', 'disk', 'network']) {
+      expect(find.byKey(ValueKey('team-discord-usage-$key')), findsOneWidget);
+    }
+    expect(find.text('0.03%'), findsOneWidget);
+    expect(find.textContaining('12.4 s of CPU time'), findsOneWidget);
+    expect(find.text('≈ 84.0 KB'), findsOneWidget);
+    expect(find.text('3.0 MB'), findsOneWidget);
+    expect(find.text('1.5 KB/s'), findsOneWidget);
+    expect(find.text('512 B/s'), findsOneWidget);
+    expect(find.textContaining('2.0 MB down'), findsOneWidget);
+    expect(find.textContaining('Totals since the server started'), findsOne);
+    expect(tester.takeException(), isNull);
+
+    board.discord.remove('metrics');
+    await tester.tap(find.byKey(const ValueKey('team-discord-nav-plugins')));
+    await tester.pump(const Duration(seconds: 7));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('team-discord-nav-usage')));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining("doesn't measure the bot's usage yet"),
+      findsOneWidget,
+    );
+    await _unmount(tester);
+  });
+
   testWidgets('a lead links the Discord bot and adds an automod rule', (
     tester,
   ) async {

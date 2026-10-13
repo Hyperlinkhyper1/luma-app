@@ -22,6 +22,7 @@ class TeamDiscordState {
     this.trackers = const [],
     this.forums = const [],
     this.log = const [],
+    this.metrics,
   });
 
   final bool canManage;
@@ -51,6 +52,10 @@ class TeamDiscordState {
   /// offline.
   final List<TeamDiscordForum> forums;
   final List<TeamDiscordLogEntry> log;
+
+  /// What the bot itself costs the server. Null from a server that
+  /// doesn't measure it yet.
+  final TeamDiscordMetrics? metrics;
 
   factory TeamDiscordState.fromJson(Map<String, dynamic> json) =>
       TeamDiscordState(
@@ -91,7 +96,101 @@ class TeamDiscordState {
           for (final e in json['log'] as List? ?? const [])
             TeamDiscordLogEntry.fromJson(e as Map<String, dynamic>),
         ],
+        metrics: json['metrics'] is Map<String, dynamic>
+            ? TeamDiscordMetrics.fromJson(
+                json['metrics'] as Map<String, dynamic>,
+              )
+            : null,
       );
+}
+
+/// The bot's own CPU, memory, disk and internet use, as the server meters
+/// it. The bot shares the server's process, so the server counts only the
+/// work done for the bot, not the process as a whole.
+class TeamDiscordMetrics {
+  const TeamDiscordMetrics({
+    this.cores = 1,
+    this.sinceMs = 0,
+    this.everyMs = 10000,
+    this.cpuMs = 0,
+    this.cpuPercent = 0,
+    this.memoryBytes = 0,
+    this.settingsBytes = 0,
+    this.attachmentBytes = 0,
+    this.diskWrittenBytes = 0,
+    this.diskWritePerSecond = 0,
+    this.netInBytes = 0,
+    this.netOutBytes = 0,
+    this.netInPerSecond = 0,
+    this.netOutPerSecond = 0,
+    this.cpuHistory = const [],
+    this.memoryHistory = const [],
+    this.diskWriteHistory = const [],
+    this.netInHistory = const [],
+    this.netOutHistory = const [],
+  });
+
+  /// The server's CPU cores; [cpuPercent] is a share of all of them.
+  final int cores;
+
+  /// When the server started counting; the totals run from here.
+  final int sinceMs;
+
+  /// How far apart the history's samples are.
+  final int everyMs;
+  final int cpuMs;
+  final double cpuPercent;
+
+  /// An estimate of what the bot holds in memory.
+  final int memoryBytes;
+  final int settingsBytes;
+
+  /// The attachments the bot copied from Discord onto the board.
+  final int attachmentBytes;
+  final int diskWrittenBytes;
+  final int diskWritePerSecond;
+  final int netInBytes;
+  final int netOutBytes;
+  final int netInPerSecond;
+  final int netOutPerSecond;
+
+  final List<double> cpuHistory;
+  final List<double> memoryHistory;
+  final List<double> diskWriteHistory;
+  final List<double> netInHistory;
+  final List<double> netOutHistory;
+
+  int get storageBytes => settingsBytes + attachmentBytes;
+
+  factory TeamDiscordMetrics.fromJson(Map<String, dynamic> json) {
+    int whole(String key) => (json[key] as num?)?.toInt() ?? 0;
+    final history = json['history'] as Map? ?? const {};
+    List<double> series(String key) => [
+      for (final v in history[key] as List? ?? const [])
+        if (v is num) v.toDouble(),
+    ];
+    return TeamDiscordMetrics(
+      cores: whole('cores').clamp(1, 1 << 16),
+      sinceMs: whole('sinceMs'),
+      everyMs: whole('everyMs') > 0 ? whole('everyMs') : 10000,
+      cpuMs: whole('cpuMs'),
+      cpuPercent: (json['cpuPercent'] as num?)?.toDouble() ?? 0,
+      memoryBytes: whole('memoryBytes'),
+      settingsBytes: whole('settingsBytes'),
+      attachmentBytes: whole('attachmentBytes'),
+      diskWrittenBytes: whole('diskWrittenBytes'),
+      diskWritePerSecond: whole('diskWritePerSecond'),
+      netInBytes: whole('netInBytes'),
+      netOutBytes: whole('netOutBytes'),
+      netInPerSecond: whole('netInPerSecond'),
+      netOutPerSecond: whole('netOutPerSecond'),
+      cpuHistory: series('cpu'),
+      memoryHistory: series('memory'),
+      diskWriteHistory: series('diskWrite'),
+      netInHistory: series('netIn'),
+      netOutHistory: series('netOut'),
+    );
+  }
 }
 
 enum TeamDiscordStatus { off, connecting, online, error }
