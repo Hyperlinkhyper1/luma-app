@@ -33,7 +33,50 @@ class LFr extends L {
 
   @override
   String get teamLibraryEmptyMember =>
-      'Un responsable d\'équipe choisit les mods Modrinth décompressés ici. Ensuite, toute l\'équipe peut parcourir leurs textures et modèles.';
+      'Un responsable d\'équipe choisit les mods partagés par toute l\'équipe. Vous pouvez aussi ajouter les vôtres : ils sont décompressés sur cet appareil et vous seul les voyez.';
+
+  @override
+  String get teamLibraryTeamSection => 'Équipe';
+
+  @override
+  String get teamLibraryLocalSection => 'Sur cet appareil';
+
+  @override
+  String get teamLibraryNoTeamMods =>
+      'Aucun responsable n\'a encore ajouté de mod pour l\'équipe.';
+
+  @override
+  String get teamLibraryNoTeamModsLead =>
+      'Pas encore de mods d\'équipe. Ajouter un mod en place un ici pour tout le monde.';
+
+  @override
+  String get teamLibraryLocalHint =>
+      'Les mods ajoutés ici sont téléchargés depuis Modrinth et décompressés sur cet appareil. Vous seul les voyez ; la bibliothèque de l\'équipe n\'est pas modifiée.';
+
+  @override
+  String get teamLibraryAddLocal => 'Ajouter à cet appareil';
+
+  @override
+  String get teamLibraryAddLocalTitle => 'Ajouter à cet appareil';
+
+  @override
+  String get teamLibraryAddLocalHint =>
+      'Choisissez un mod ou un pack de ressources. Il est téléchargé et décompressé uniquement sur cet appareil, à part des mods de l\'équipe, et ses mises à jour sont vérifiées quand cet onglet est ouvert.';
+
+  @override
+  String get teamLibraryLocalPill => 'Cet appareil';
+
+  @override
+  String get teamLibraryRemoveLocal => 'Retirer de cet appareil';
+
+  @override
+  String teamLibraryRemoveLocalConfirm(String title) {
+    return 'Retirer $title de cet appareil ? Ses fichiers décompressés sont supprimés ici ; la bibliothèque de l\'équipe n\'est pas modifiée.';
+  }
+
+  @override
+  String get teamLibraryUnpackingLocalBody =>
+      'Téléchargement du jar depuis Modrinth et décompression de ses ressources sur cet appareil. Cette page se remplit toute seule.';
 
   @override
   String get teamLibraryPickMod =>

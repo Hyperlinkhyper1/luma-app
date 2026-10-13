@@ -1,11 +1,16 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
+import 'package:crypto/crypto.dart' as crypto;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:image/image.dart' as img;
 import 'package:luma/features/plugins/installed/team_clipboard/data/team_clipboard_api.dart';
+import 'package:luma/features/plugins/installed/team_clipboard/data/team_local_library.dart';
 import 'package:luma/features/plugins/installed/team_clipboard/team_clipboard_controller.dart';
 import 'package:luma/features/plugins/installed/team_clipboard/team_clipboard_page.dart';
 import 'package:luma/features/plugins/installed/team_clipboard/team_clipboard_scope.dart';
@@ -205,7 +210,165 @@ final _cubeModel = utf8.encode(
   }),
 );
 
-Future<void> _pump(WidgetTester tester, _FakeServer server) async {
+/// This device's half of the library, in memory, so the widget tests never
+/// touch the disk. Adding a mod "unpacks" it straight away.
+class _FakeLocal extends TeamLocalLibrary {
+  _FakeLocal() : super(directory: () async => null);
+
+  int revision = 0;
+  final mods = <Map<String, dynamic>>[];
+  final added = <String>[];
+  final blobs = <String, List<int>>{};
+  Map<String, dynamic>? index;
+
+  TeamLibraryState _now({int? since}) => TeamLibraryState.fromJson({
+    'revision': revision,
+    'canManage': true,
+    'busy': false,
+    if (since == revision) 'unchanged': true else 'mods': mods,
+  });
+
+  @override
+  Future<TeamLibraryState> state({int? since}) async => _now(since: since);
+
+  @override
+  Future<void> checkStale() async {}
+
+  @override
+  Future<List<TeamLibraryHit>> search(String query) async => [
+    TeamLibraryHit.fromJson({
+      'id': 'AABBCCDD',
+      'title': 'Ruby Mod',
+      'description': 'Shiny red things.',
+      'author': 'gemcutter',
+      'downloads': 12500,
+      'projectType': 'mod',
+      'loaders': ['fabric'],
+      'gameVersions': ['1.21.1'],
+    }),
+  ];
+
+  @override
+  Future<TeamLibraryState> add(
+    String projectId, {
+    String? loader,
+    String? gameVersion,
+  }) async {
+    added.add(projectId);
+    final sha = 'c' * 40;
+    blobs[sha] = _png();
+    index = {
+      'versionId': 'v9',
+      'files': [
+        ['assets/ruby/textures/block/mine.png', sha, blobs[sha]!.length],
+      ],
+    };
+    mods.add(
+      _mod(version: 'v9', number: '2.0.0', fileCount: 1)..['addedBy'] = '',
+    );
+    revision++;
+    return _now();
+  }
+
+  @override
+  Future<TeamLibraryIndex> files(
+    String projectId, {
+    DateTime? loadedAt,
+  }) async =>
+      TeamLibraryIndex.fromJson(index!, loadedAt: loadedAt, local: true);
+
+  @override
+  Future<Uint8List?> blob(String sha1) async =>
+      blobs[sha1] == null ? null : Uint8List.fromList(blobs[sha1]!);
+}
+
+/// Modrinth for the real on-device library: one project whose versions
+/// [release] adds.
+class _FakeModrinth implements TeamLocalLibrarySource {
+  final versions = <Map<String, dynamic>>[];
+  final jars = <String, Uint8List>{};
+
+  @override
+  Future<Object?> getJson(String path, [Map<String, String>? query]) async {
+    if (path == '/project/AABBCCDD') {
+      return {
+        'id': 'AABBCCDD',
+        'slug': 'ruby',
+        'title': 'Ruby Mod',
+        'project_type': 'mod',
+        'icon_url': 'http://cdn.example.com/icon.png',
+        'loaders': ['fabric'],
+        'game_versions': ['1.20.1', '1.21.1'],
+      };
+    }
+    if (path == '/project/AABBCCDD/version') return versions;
+    if (path == '/search') {
+      return {
+        'hits': [
+          {
+            'project_id': 'AABBCCDD',
+            'project_type': 'mod',
+            'title': 'Ruby Mod',
+            'categories': ['fabric', 'decoration'],
+            'versions': ['1.20.1', '1.21.1'],
+          },
+          {'project_id': 'EEFFGGHH', 'project_type': 'modpack'},
+        ],
+      };
+    }
+    return null;
+  }
+
+  @override
+  Future<bool> download(Uri url, File to, int maxBytes) async {
+    final bytes = jars['$url'];
+    if (bytes == null) return false;
+    await to.writeAsBytes(bytes);
+    return true;
+  }
+
+  void release(
+    String id,
+    String number,
+    String date,
+    Uint8List jar, {
+    String? sha1,
+  }) {
+    final url = 'https://cdn.modrinth.com/data/AABBCCDD/versions/$id/ruby.jar';
+    jars[url] = jar;
+    versions.add({
+      'id': id,
+      'version_number': number,
+      'name': number,
+      'date_published': date,
+      'loaders': ['fabric'],
+      'game_versions': ['1.21.1'],
+      'files': [
+        {
+          'url': url,
+          'filename': 'ruby-$number.jar',
+          'primary': true,
+          'size': jar.length,
+          'hashes': {'sha1': sha1 ?? crypto.sha1.convert(jar).toString()},
+        },
+      ],
+    });
+  }
+}
+
+Uint8List _jar(Map<String, List<int>> files) {
+  final archive = Archive();
+  for (final f in files.entries) {
+    archive.addFile(ArchiveFile.bytes(f.key, f.value));
+  }
+  return ZipEncoder().encodeBytes(archive);
+}
+
+Future<void> _pump(
+  WidgetTester tester,
+  _FakeServer server, {
+  TeamLocalLibrary? local,
+}) async {
   tester.view.physicalSize = const Size(1400, 900);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -215,6 +378,7 @@ Future<void> _pump(WidgetTester tester, _FakeServer server) async {
     pollInterval: const Duration(hours: 1),
     apiFactory: (url, token) =>
         TeamClipboardApi(url, token: token, client: server.client),
+    localLibrary: local ?? _FakeLocal(),
   )..init();
   addTearDown(controller.dispose);
   await tester.pumpWidget(
@@ -460,7 +624,11 @@ void main() {
         'assets/ruby/lang/en_us.json': utf8.encode('{"a": "b"}'),
       });
     await _pump(tester, server);
-    expect(find.text('Add mod'), findsNothing);
+    expect(find.byKey(const ValueKey('team-library-add')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('team-library-add-local')),
+      findsOneWidget,
+    );
     await tester.tap(find.text('Ruby Mod'));
     await tester.pump();
     await tester.pump();
@@ -474,5 +642,160 @@ void main() {
     expect(find.text('Change versions'), findsNothing);
     expect(tester.takeException(), isNull);
     await _unmount(tester);
+  });
+
+  testWidgets('a member adds a mod to this device, apart from the team', (
+    tester,
+  ) async {
+    final server = _FakeServer(lead: false)
+      ..unpacked('v1', '1.0.0', {
+        'assets/ruby/lang/en_us.json': utf8.encode('{"a": "b"}'),
+      });
+    final local = _FakeLocal();
+    await _pump(tester, server, local: local);
+    expect(find.text('TEAM'), findsOneWidget);
+    expect(find.text('ON THIS DEVICE'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('team-library-add-local')));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Add to this device'), findsOneWidget);
+    await tester.tap(find.text('Ruby Mod').last);
+    await tester.pump();
+    await tester.tap(find.text('Add'));
+    await tester.pump();
+    await tester.pump();
+    await _settle(tester);
+
+    expect(local.added, ['AABBCCDD']);
+    // The team's copy and this device's own sit side by side.
+    expect(find.text('Ruby Mod'), findsNWidgets(3));
+    expect(find.text('This device'), findsOneWidget);
+    expect(find.text('mine'), findsOneWidget);
+    expect(find.byIcon(Icons.broken_image_rounded), findsNothing);
+    // Nothing about it went to the luma server.
+    expect(
+      server.requests.where(
+        (r) => r.method != 'GET' || r.url.path.contains('/library/mods/'),
+      ),
+      isEmpty,
+    );
+
+    await tester.tap(find.byIcon(Icons.more_vert_rounded));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Remove from this device'), findsOneWidget);
+    expect(find.text('Change versions'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await _unmount(tester);
+  });
+
+  group('on this device', () {
+    late Directory dir;
+    setUp(() async => dir = await Directory.systemTemp.createTemp('luma_tl'));
+    tearDown(() => dir.delete(recursive: true));
+
+    test('unpacks a mod, follows its updates and cleans up after it', () async {
+      final modrinth = _FakeModrinth()
+        ..release(
+          'v1',
+          '1.0.0',
+          '2026-01-01T00:00:00Z',
+          _jar({
+            'assets/ruby/textures/block/ruby_block.png': _png(),
+            'assets/ruby/models/block/ruby_block.json': _cubeModel,
+            'assets/ruby/textures/block/broken.png': [1, 2, 3],
+            'assets/ruby/sounds/ding.ogg': [1, 2],
+            'com/example/Ruby.class': [0xCA, 0xFE],
+          }),
+        );
+      final library = TeamLocalLibrary(
+        directory: () async => dir,
+        source: modrinth,
+      );
+
+      final hits = await library.search('');
+      expect(hits.map((h) => h.id), ['AABBCCDD']);
+      expect(hits.single.loaders, ['fabric']);
+      expect(hits.single.gameVersions, ['1.21.1', '1.20.1']);
+
+      await library.add('AABBCCDD', loader: 'fabric');
+      await library.settle();
+      var mod = (await library.state()).mods!.single;
+      expect(mod.state, TeamLibraryModState.ready);
+      expect(mod.version!.number, '1.0.0');
+      expect(mod.fileCount, 2);
+      expect(mod.skipped, 1);
+      expect(mod.loader, 'fabric');
+      expect(mod.iconUrl, isNull);
+      expect(mod.url, 'https://modrinth.com/mod/ruby');
+      expect(mod.namespaces, ['ruby']);
+
+      final index = await library.files('AABBCCDD');
+      final texture = index['assets/ruby/textures/block/ruby_block.png']!;
+      expect(texture.fileId, '$kTeamLocalFilePrefix${texture.sha1}');
+      expect(await library.blob(texture.sha1), _png());
+      expect(await library.blob('../library'), isNull);
+      expect(Directory('${dir.path}/tmp').listSync(), isEmpty);
+      await expectLater(
+        library.add('AABBCCDD'),
+        throwsA(isA<TeamLocalLibraryException>()),
+      );
+
+      modrinth.release(
+        'v2',
+        '1.1.0',
+        '2026-02-01T00:00:00Z',
+        _jar({'assets/ruby/models/block/sapphire.json': _cubeModel}),
+      );
+      await library.check('AABBCCDD');
+      await library.settle();
+      mod = (await library.state()).mods!.single;
+      expect(mod.version!.number, '1.1.0');
+      expect(mod.history.single.number, '1.0.0');
+      expect(await library.blob(texture.sha1), isNull);
+
+      // A fresh start reads the same folder back.
+      final again = TeamLocalLibrary(
+        directory: () async => dir,
+        source: modrinth,
+      );
+      expect((await again.state()).mods!.single.version!.number, '1.1.0');
+
+      await library.remove('AABBCCDD');
+      await library.settle();
+      expect((await library.state()).mods, isEmpty);
+      expect(Directory('${dir.path}/blobs').listSync(), isEmpty);
+    });
+
+    test('a damaged download fails and keeps nothing', () async {
+      final modrinth = _FakeModrinth()
+        ..release(
+          'v1',
+          '1.0.0',
+          '2026-01-01T00:00:00Z',
+          _jar({'assets/ruby/textures/block/ruby_block.png': _png()}),
+          sha1: 'f' * 40,
+        );
+      final library = TeamLocalLibrary(
+        directory: () async => dir,
+        source: modrinth,
+      );
+      await library.add('AABBCCDD');
+      await library.settle();
+      final mod = (await library.state()).mods!.single;
+      expect(mod.state, TeamLibraryModState.failed);
+      expect(mod.error, 'The download was damaged.');
+      final blobs = Directory('${dir.path}/blobs');
+      expect(blobs.existsSync() ? blobs.listSync() : const [], isEmpty);
+    });
+
+    test('a jar entry outside assets/ or data/ is never kept', () {
+      expect(isTeamLocalAssetPath('assets/ruby/textures/a.png'), isTrue);
+      expect(isTeamLocalAssetPath('data/ruby/recipe/a.json'), isTrue);
+      expect(isTeamLocalAssetPath('assets/ruby/../../evil.png'), isFalse);
+      expect(isTeamLocalAssetPath('assets/ruby/sounds/a.ogg'), isFalse);
+      expect(isTeamLocalAssetPath('META-INF/a.json'), isFalse);
+    });
   });
 }

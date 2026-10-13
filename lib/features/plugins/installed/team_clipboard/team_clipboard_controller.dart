@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../../../l10n/current_l.dart';
 import '../../../../sync/sync_service.dart';
 import 'data/team_clipboard_api.dart';
+import 'data/team_local_library.dart';
 import 'team_clipboard_models.dart';
 import 'team_discord_models.dart';
 import 'team_file_check.dart';
@@ -36,7 +37,9 @@ class TeamClipboardController extends ChangeNotifier {
     this.pollInterval = const Duration(seconds: 8),
     this.libraryBatchGap = const Duration(milliseconds: 250),
     TeamClipboardApi Function(String serverUrl, String? token)? apiFactory,
+    TeamLocalLibrary? localLibrary,
   }) : _stateFile = stateFile ?? _defaultStateFile,
+       localLibrary = localLibrary ?? TeamLocalLibrary(),
        _apiFactory =
            apiFactory ?? ((url, token) => TeamClipboardApi(url, token: token));
 
@@ -49,6 +52,9 @@ class TeamClipboardController extends ChangeNotifier {
 
   /// The least time between two batches of assets-library files.
   final Duration libraryBatchGap;
+
+  /// The mods this member unpacked on this device, apart from the team's.
+  final TeamLocalLibrary localLibrary;
 
   static Future<File?> _defaultStateFile() async {
     final dir = await getApplicationSupportDirectory();
@@ -494,7 +500,8 @@ class TeamClipboardController extends ChangeNotifier {
 
   /// The contents of [fileId], from the cache or the server. Null when it
   /// can't be fetched. A [kTeamLibraryFilePrefix] id is an assets-library
-  /// file, so the board's viewer and previews show those as well.
+  /// file and a [kTeamLocalFilePrefix] one was unpacked on this device, so
+  /// the board's viewer and previews show those as well.
   Future<Uint8List?> file(String fileId) {
     final cached = _fileCache[fileId];
     if (cached != null) return Future.value(cached);
@@ -503,6 +510,10 @@ class TeamClipboardController extends ChangeNotifier {
         final bytes = fileId.startsWith(kTeamLibraryFilePrefix)
             ? await _libraryFile(
                 fileId.substring(kTeamLibraryFilePrefix.length),
+              )
+            : fileId.startsWith(kTeamLocalFilePrefix)
+            ? await localLibrary.blob(
+                fileId.substring(kTeamLocalFilePrefix.length),
               )
             : await _api?.download(fileId);
         if (bytes != null) _fileCache[fileId] = bytes;

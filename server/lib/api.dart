@@ -22,6 +22,7 @@ import 'ai_preferred.dart';
 import 'ai_price_guard.dart';
 import 'preview_render.dart';
 import 'ai_usage_store.dart';
+import 'benchmark_cost.dart';
 import 'benchmark_generate.dart';
 import 'benchmark_github.dart';
 import 'benchmark_prompts.dart';
@@ -11291,6 +11292,14 @@ syncToolbar();
           'cacheWrite': pricing ? model?.cacheWritePerM : null,
           'intelligenceSource': model?.sources.contains('artificial-analysis') ?? false,
           'maxOutput': model?.maxOutputTokens,
+          // For the Add benchmark dialog's cost estimate: whether the model
+          // thinks, and the OpenRouter price of the same model when its own
+          // upstream (Google, Mistral) has none here.
+          if (model != null) 'efforts': model.supportedEfforts,
+          if (model?.defaultEffort != null)
+            'defaultEffort': model!.defaultEffort,
+          if (!pricing) 'refInput': model?.inputPricePerM,
+          if (!pricing) 'refOutput': model?.outputPricePerM,
         };
     final catalogById = {for (final model in aiCatalog.models) model.id: model};
     final pickerModels = <Map<String, Object?>>[

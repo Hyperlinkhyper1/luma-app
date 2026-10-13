@@ -16,11 +16,17 @@ import 'team_clipboard_style.dart';
 import 'team_files.dart';
 import 'team_model_view.dart';
 
-/// The Team Clipboard's assets library: the Modrinth mods a lead picked,
-/// unpacked on the luma server so the team can browse every texture, model,
-/// blockstate, lang and data file without downloading the jar. The server
-/// watches Modrinth and unpacks each new version as it drops; this tab polls
-/// while it is open, so a reload shows up here by itself.
+/// The Team Clipboard's assets library, in two halves.
+///
+/// The team's mods are the ones a lead picked, unpacked on the luma server
+/// so the whole team can browse every texture, model, blockstate, lang and
+/// data file without downloading the jar. The server watches Modrinth and
+/// unpacks each new version as it drops; this tab polls while it is open,
+/// so a reload shows up here by itself.
+///
+/// Mods "on this device" are any member's own picks, downloaded from
+/// Modrinth and unpacked by [TeamClipboardController.localLibrary]. They
+/// never reach the server and nobody else sees them.
 class TeamLibraryPage extends StatefulWidget {
   const TeamLibraryPage({
     super.key,
@@ -35,18 +41,158 @@ class TeamLibraryPage extends StatefulWidget {
   State<TeamLibraryPage> createState() => _TeamLibraryPageState();
 }
 
+/// One of the library's two halves: the team's, on the server, or this
+/// device's own.
+abstract class _Shelf {
+  bool get local;
+
+  /// Whether a mod is open, as [_TeamLibraryPageState._selected] keeps it.
+  String keyOf(String projectId) => '${local ? 'local' : 'team'}:$projectId';
+
+  Future<TeamLibraryState> load({int? since});
+  Future<List<TeamLibraryHit>> search(String query);
+  Future<TeamLibraryState> add(
+    String projectId, {
+    String? loader,
+    String? gameVersion,
+  });
+  Future<TeamLibraryState> setFilters(
+    String projectId, {
+    String? loader,
+    String? gameVersion,
+  });
+  Future<TeamLibraryState> remove(String projectId);
+  Future<TeamLibraryState> check([String? projectId]);
+  Future<TeamLibraryIndex> files(String projectId, {DateTime? loadedAt});
+}
+
+class _TeamShelf extends _Shelf {
+  _TeamShelf(this.controller);
+
+  final TeamClipboardController controller;
+
+  @override
+  bool get local => false;
+
+  @override
+  Future<TeamLibraryState> load({int? since}) =>
+      controller.library((api) => api.library(since: since));
+
+  @override
+  Future<List<TeamLibraryHit>> search(String query) =>
+      controller.library((api) => api.searchLibrary(query));
+
+  @override
+  Future<TeamLibraryState> add(
+    String projectId, {
+    String? loader,
+    String? gameVersion,
+  }) => controller.library(
+    (api) =>
+        api.addLibraryMod(projectId, loader: loader, gameVersion: gameVersion),
+  );
+
+  @override
+  Future<TeamLibraryState> setFilters(
+    String projectId, {
+    String? loader,
+    String? gameVersion,
+  }) => controller.library(
+    (api) => api.setLibraryFilters(
+      projectId,
+      loader: loader,
+      gameVersion: gameVersion,
+    ),
+  );
+
+  @override
+  Future<TeamLibraryState> remove(String projectId) =>
+      controller.library((api) => api.removeLibraryMod(projectId));
+
+  @override
+  Future<TeamLibraryState> check([String? projectId]) =>
+      controller.library((api) => api.checkLibrary(projectId));
+
+  @override
+  Future<TeamLibraryIndex> files(String projectId, {DateTime? loadedAt}) =>
+      controller.library(
+        (api) => api.libraryFiles(projectId, loadedAt: loadedAt),
+      );
+}
+
+class _LocalShelf extends _Shelf {
+  _LocalShelf(this.controller);
+
+  final TeamClipboardController controller;
+
+  @override
+  bool get local => true;
+
+  @override
+  Future<TeamLibraryState> load({int? since}) =>
+      controller.localLibrary.state(since: since);
+
+  @override
+  Future<List<TeamLibraryHit>> search(String query) =>
+      controller.localLibrary.search(query);
+
+  @override
+  Future<TeamLibraryState> add(
+    String projectId, {
+    String? loader,
+    String? gameVersion,
+  }) => controller.localLibrary.add(
+    projectId,
+    loader: loader,
+    gameVersion: gameVersion,
+  );
+
+  @override
+  Future<TeamLibraryState> setFilters(
+    String projectId, {
+    String? loader,
+    String? gameVersion,
+  }) => controller.localLibrary.setFilters(
+    projectId,
+    loader: loader,
+    gameVersion: gameVersion,
+  );
+
+  @override
+  Future<TeamLibraryState> remove(String projectId) =>
+      controller.localLibrary.remove(projectId);
+
+  @override
+  Future<TeamLibraryState> check([String? projectId]) =>
+      controller.localLibrary.check(projectId);
+
+  @override
+  Future<TeamLibraryIndex> files(String projectId, {DateTime? loadedAt}) =>
+      controller.localLibrary.files(projectId, loadedAt: loadedAt);
+}
+
 class _TeamLibraryPageState extends State<TeamLibraryPage> {
-  final _library = ValueNotifier<TeamLibraryState?>(null);
+  late final _Shelf _teamShelf = _TeamShelf(widget.controller);
+  late final _Shelf _localShelf = _LocalShelf(widget.controller);
+
+  final _team = ValueNotifier<TeamLibraryState?>(null);
+  final _local = ValueNotifier<TeamLibraryState?>(null);
   String? _error;
   Timer? _poll;
-  bool _polling = false;
-  String? _selectedId;
+
+  /// The shelves being asked right now. Each polls on its own, so a slow
+  /// disk never holds up the team's list or the other way round.
+  final Set<_Shelf> _loading = {};
+
+  /// The open mod, as [_Shelf.keyOf] spells it.
+  String? _selected;
 
   /// The version each mod was at when last seen, to tell a reload apart
   /// from the first load.
   final Map<String, String> _versions = {};
 
-  TeamLibraryState? get _state => _library.value;
+  ValueNotifier<TeamLibraryState?> _notifier(_Shelf shelf) =>
+      shelf.local ? _local : _team;
 
   @override
   void initState() {
@@ -58,44 +204,58 @@ class _TeamLibraryPageState extends State<TeamLibraryPage> {
   @override
   void dispose() {
     _poll?.cancel();
-    _library.dispose();
+    _team.dispose();
+    _local.dispose();
     super.dispose();
   }
 
-  Future<void> _load({bool quiet = false}) async {
-    if (_polling) return;
-    _polling = true;
+  Future<void> _load({bool quiet = false}) => Future.wait([
+    _loadShelf(_teamShelf, quiet: quiet),
+    _loadShelf(_localShelf, quiet: quiet),
+  ]);
+
+  Future<void> _loadShelf(_Shelf shelf, {required bool quiet}) async {
+    if (!_loading.add(shelf)) return;
     try {
-      final since = quiet ? _state?.revision : null;
-      final next = await widget.controller.library(
-        (api) => api.library(since: since),
-      );
+      final since = quiet ? _notifier(shelf).value?.revision : null;
+      final next = await shelf.load(since: since);
       if (!mounted) return;
-      _take(next);
-      if (_error != null) setState(() => _error = null);
+      _take(shelf, next);
+      if (!shelf.local && _error != null) setState(() => _error = null);
+      // Nothing watches Modrinth for this device's mods while the app is
+      // closed, so the tab looks for updates itself.
+      if (shelf.local) {
+        unawaited(
+          widget.controller.localLibrary.checkStale().catchError((_) {}),
+        );
+      }
     } catch (e) {
-      if (mounted && !quiet) setState(() => _error = '$e');
+      if (!shelf.local && mounted && !quiet) setState(() => _error = '$e');
     } finally {
-      _polling = false;
+      _loading.remove(shelf);
     }
   }
 
   /// Shows [next], and says so when a mod moved to a new version.
-  void _take(TeamLibraryState next) {
+  void _take(_Shelf shelf, TeamLibraryState next) {
     final mods = next.mods;
     if (mods == null) return;
     final reloaded = <TeamLibraryMod>[];
     for (final mod in mods) {
       final version = mod.version?.id;
       if (version == null) continue;
-      final before = _versions[mod.id];
+      final key = shelf.keyOf(mod.id);
+      final before = _versions[key];
       if (before != null && before != version) reloaded.add(mod);
-      _versions[mod.id] = version;
+      _versions[key] = version;
     }
-    _library.value = next;
+    _notifier(shelf).value = next;
     setState(() {
-      if (_selectedId != null && !mods.any((m) => m.id == _selectedId)) {
-        _selectedId = null;
+      final selected = _selected;
+      if (selected != null &&
+          selected.startsWith(shelf.keyOf('')) &&
+          !mods.any((m) => shelf.keyOf(m.id) == selected)) {
+        _selected = null;
       }
     });
     if (reloaded.isNotEmpty) {
@@ -116,11 +276,12 @@ class _TeamLibraryPageState extends State<TeamLibraryPage> {
   /// Runs a change and shows the library it returns. Returns whether it
   /// went through; a refusal is shown in a snack bar.
   Future<bool> _apply(
-    Future<TeamLibraryState> Function(TeamClipboardController c) call,
+    _Shelf shelf,
+    Future<TeamLibraryState> Function() call,
   ) async {
     try {
-      final next = await call(widget.controller);
-      if (mounted) _take(next);
+      final next = await call();
+      if (mounted) _take(shelf, next);
       return true;
     } catch (e) {
       if (mounted) {
@@ -132,12 +293,10 @@ class _TeamLibraryPageState extends State<TeamLibraryPage> {
     }
   }
 
-  Future<void> _check([String? projectId]) async {
+  Future<void> _check(_Shelf shelf, [String? projectId]) async {
     final t = L.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    final ok = await _apply(
-      (c) => c.library((api) => api.checkLibrary(projectId)),
-    );
+    final ok = await _apply(shelf, () => shelf.check(projectId));
     if (ok) {
       messenger.showSnackBar(
         SnackBar(content: Text(t.teamLibraryCheckStarted)),
@@ -145,47 +304,64 @@ class _TeamLibraryPageState extends State<TeamLibraryPage> {
     }
   }
 
-  Future<void> _add() async {
-    final state = _state;
+  Future<void> _checkAll() async {
+    final t = L.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final team = _apply(_teamShelf, _teamShelf.check);
+    final local = _apply(_localShelf, _localShelf.check);
+    if (await team || await local) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(t.teamLibraryCheckStarted)),
+      );
+    }
+  }
+
+  Future<void> _add(_Shelf shelf) async {
+    final state = _notifier(shelf).value;
     if (state == null) return;
     final next = await showDialog<TeamLibraryState>(
       context: context,
       builder: (context) => _AddModDialog(
-        controller: widget.controller,
+        shelf: shelf,
         inLibrary: {for (final m in state.mods ?? const []) m.id},
       ),
     );
     if (next != null && mounted) {
-      _take(next);
+      _take(shelf, next);
       final added = next.mods?.lastOrNull;
-      if (added != null) setState(() => _selectedId = added.id);
+      if (added != null) setState(() => _selected = shelf.keyOf(added.id));
     }
   }
 
-  Future<void> _editVersions(TeamLibraryMod mod) async {
+  Future<void> _editVersions(_Shelf shelf, TeamLibraryMod mod) async {
     final picked = await showDialog<({String? loader, String? gameVersion})>(
       context: context,
       builder: (context) => _VersionsDialog(mod: mod),
     );
     if (picked == null) return;
     await _apply(
-      (c) => c.library(
-        (api) => api.setLibraryFilters(
-          mod.id,
-          loader: picked.loader,
-          gameVersion: picked.gameVersion,
-        ),
+      shelf,
+      () => shelf.setFilters(
+        mod.id,
+        loader: picked.loader,
+        gameVersion: picked.gameVersion,
       ),
     );
   }
 
-  Future<bool> _remove(TeamLibraryMod mod) async {
+  Future<bool> _remove(_Shelf shelf, TeamLibraryMod mod) async {
     final t = L.of(context);
     final sure = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(t.teamLibraryRemove),
-        content: Text(t.teamLibraryRemoveConfirm(mod.title)),
+        title: Text(
+          shelf.local ? t.teamLibraryRemoveLocal : t.teamLibraryRemove,
+        ),
+        content: Text(
+          shelf.local
+              ? t.teamLibraryRemoveLocalConfirm(mod.title)
+              : t.teamLibraryRemoveConfirm(mod.title),
+        ),
         actions: [
           LumaGhostButton(
             label: t.commonCancel,
@@ -200,20 +376,21 @@ class _TeamLibraryPageState extends State<TeamLibraryPage> {
       ),
     );
     if (sure != true) return false;
-    return _apply((c) => c.library((api) => api.removeLibraryMod(mod.id)));
+    return _apply(shelf, () => shelf.remove(mod.id));
   }
 
-  _LibraryActions get _actions => _LibraryActions(
-    check: _check,
-    editVersions: _editVersions,
-    remove: _remove,
+  _LibraryActions _actions(_Shelf shelf) => _LibraryActions(
+    check: ([projectId]) => _check(shelf, projectId),
+    editVersions: (mod) => _editVersions(shelf, mod),
+    remove: (mod) => _remove(shelf, mod),
   );
 
   @override
   Widget build(BuildContext context) {
     final t = L.of(context);
-    final state = _state;
-    if (state == null) {
+    final team = _team.value;
+    final local = _local.value;
+    if (team == null && local == null) {
       if (_error != null) {
         return LumaEmptyState(
           icon: Icons.cloud_off_rounded,
@@ -228,51 +405,60 @@ class _TeamLibraryPageState extends State<TeamLibraryPage> {
       }
       return const Center(child: CircularProgressIndicator());
     }
-    final mods = state.mods ?? const <TeamLibraryMod>[];
-    if (mods.isEmpty) {
+    final lead = team?.canManage ?? false;
+    final teamMods = team?.mods ?? const <TeamLibraryMod>[];
+    final localMods = local?.mods ?? const <TeamLibraryMod>[];
+    final addShelf = lead ? _teamShelf : _localShelf;
+    if (teamMods.isEmpty && localMods.isEmpty) {
       return LumaEmptyState(
         icon: Icons.inventory_2_outlined,
         title: t.teamLibraryEmptyTitle,
-        subtitle: state.canManage
-            ? t.teamLibraryEmptyLead
-            : t.teamLibraryEmptyMember,
-        action: state.canManage
-            ? LumaPrimaryButton(
-                label: t.teamLibraryAddMod,
-                icon: Icons.add_rounded,
-                onTap: _add,
-              )
-            : null,
+        subtitle: lead ? t.teamLibraryEmptyLead : t.teamLibraryEmptyMember,
+        action: LumaPrimaryButton(
+          label: lead ? t.teamLibraryAddMod : t.teamLibraryAddLocal,
+          icon: Icons.add_rounded,
+          onTap: () => _add(addShelf),
+        ),
       );
     }
     final luma = context.luma;
     return LayoutBuilder(
       builder: (context, box) {
         final wide = box.maxWidth >= 820;
+        void open(_Shelf shelf, TeamLibraryMod mod) {
+          if (wide) {
+            setState(() => _selected = shelf.keyOf(mod.id));
+          } else {
+            _openOnPhone(shelf, mod);
+          }
+        }
+
         final list = _ModList(
-          mods: mods,
-          canManage: state.canManage,
-          busy: state.busy,
-          selectedId: wide ? _selectedId : null,
+          teamMods: teamMods,
+          localMods: localMods,
+          lead: lead,
+          busy: (team?.busy ?? false) || (local?.busy ?? false),
+          selected: wide ? _selected : null,
+          teamShelf: _teamShelf,
+          localShelf: _localShelf,
           onAdd: _add,
-          onCheckAll: () => _check(),
-          onOpen: (mod) {
-            if (wide) {
-              setState(() => _selectedId = mod.id);
-            } else {
-              _openOnPhone(mod);
-            }
-          },
+          onCheckAll: _checkAll,
+          onOpen: open,
         );
         if (!wide) return list;
-        final selected = _selectedId;
+        final selected = _selected;
+        final shelf = selected == null
+            ? null
+            : selected.startsWith(_localShelf.keyOf(''))
+            ? _localShelf
+            : _teamShelf;
         return Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(width: box.maxWidth >= 1240 ? 340 : 300, child: list),
             VerticalDivider(width: 1, color: luma.border),
             Expanded(
-              child: selected == null
+              child: selected == null || shelf == null
                   ? LumaEmptyState(
                       icon: Icons.inventory_2_outlined,
                       title: t.teamClipboardLibrary,
@@ -281,9 +467,10 @@ class _TeamLibraryPageState extends State<TeamLibraryPage> {
                   : _ModDetail(
                       key: ValueKey(selected),
                       controller: widget.controller,
-                      projectId: selected,
-                      library: _library,
-                      actions: _actions,
+                      shelf: shelf,
+                      projectId: selected.substring(selected.indexOf(':') + 1),
+                      library: _notifier(shelf),
+                      actions: _actions(shelf),
                     ),
             ),
           ],
@@ -292,7 +479,7 @@ class _TeamLibraryPageState extends State<TeamLibraryPage> {
     );
   }
 
-  void _openOnPhone(TeamLibraryMod mod) {
+  void _openOnPhone(_Shelf shelf, TeamLibraryMod mod) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) {
@@ -306,9 +493,10 @@ class _TeamLibraryPageState extends State<TeamLibraryPage> {
             ),
             body: _ModDetail(
               controller: widget.controller,
+              shelf: shelf,
               projectId: mod.id,
-              library: _library,
-              actions: _actions,
+              library: _notifier(shelf),
+              actions: _actions(shelf),
               onGone: () => Navigator.of(context).maybePop(),
             ),
           );
@@ -335,27 +523,48 @@ class _LibraryActions {
 
 class _ModList extends StatelessWidget {
   const _ModList({
-    required this.mods,
-    required this.canManage,
+    required this.teamMods,
+    required this.localMods,
+    required this.lead,
     required this.busy,
-    required this.selectedId,
+    required this.selected,
+    required this.teamShelf,
+    required this.localShelf,
     required this.onAdd,
     required this.onCheckAll,
     required this.onOpen,
   });
 
-  final List<TeamLibraryMod> mods;
-  final bool canManage;
+  final List<TeamLibraryMod> teamMods;
+  final List<TeamLibraryMod> localMods;
+
+  /// A lead's main button adds to the team's library; anyone else's adds
+  /// to this device.
+  final bool lead;
   final bool busy;
-  final String? selectedId;
-  final VoidCallback onAdd;
+  final String? selected;
+  final _Shelf teamShelf;
+  final _Shelf localShelf;
+  final ValueChanged<_Shelf> onAdd;
   final VoidCallback onCheckAll;
-  final ValueChanged<TeamLibraryMod> onOpen;
+  final void Function(_Shelf shelf, TeamLibraryMod mod) onOpen;
 
   @override
   Widget build(BuildContext context) {
     final t = L.of(context);
     final luma = context.luma;
+    Widget tile(_Shelf shelf, TeamLibraryMod mod) => _ModTile(
+      mod: mod,
+      selected: shelf.keyOf(mod.id) == selected,
+      onTap: () => onOpen(shelf, mod),
+    );
+    Widget note(String text) => Padding(
+      padding: const EdgeInsets.fromLTRB(10, 2, 10, 10),
+      child: Text(
+        text,
+        style: TextStyle(color: luma.textMuted, fontSize: 12, height: 1.35),
+      ),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -363,35 +572,26 @@ class _ModList extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
           child: Row(
             children: [
-              if (canManage)
-                FilledButton.icon(
-                  key: const ValueKey('team-library-add'),
-                  onPressed: onAdd,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: luma.accent,
-                    foregroundColor: luma.onAccent,
-                    minimumSize: const Size(0, 38),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+              FilledButton.icon(
+                key: ValueKey(
+                  lead ? 'team-library-add' : 'team-library-add-local',
+                ),
+                onPressed: () => onAdd(lead ? teamShelf : localShelf),
+                style: FilledButton.styleFrom(
+                  backgroundColor: luma.accent,
+                  foregroundColor: luma.onAccent,
+                  minimumSize: const Size(0, 38),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
                   ),
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: Text(t.teamLibraryAddMod),
-                )
-              else
-                Text(
-                  t.teamLibraryMods.toUpperCase(),
-                  style: TextStyle(
-                    color: luma.textMuted,
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: Text(t.teamLibraryAddMod),
+              ),
               const Spacer(),
               IconButton(
                 tooltip: t.teamLibraryCheckUpdates,
@@ -408,17 +608,78 @@ class _ModList extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: ListView.builder(
+          child: ListView(
             padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
-            itemCount: mods.length,
-            itemBuilder: (context, i) => _ModTile(
-              mod: mods[i],
-              selected: mods[i].id == selectedId,
-              onTap: () => onOpen(mods[i]),
-            ),
+            children: [
+              _SectionHeading(
+                icon: Icons.groups_rounded,
+                label: t.teamLibraryTeamSection,
+              ),
+              if (teamMods.isEmpty)
+                note(
+                  lead ? t.teamLibraryNoTeamModsLead : t.teamLibraryNoTeamMods,
+                ),
+              for (final mod in teamMods) tile(teamShelf, mod),
+              const SizedBox(height: 10),
+              _SectionHeading(
+                icon: Icons.devices_rounded,
+                label: t.teamLibraryLocalSection,
+                action: lead
+                    ? IconButton(
+                        key: const ValueKey('team-library-add-local'),
+                        tooltip: t.teamLibraryAddLocal,
+                        onPressed: () => onAdd(localShelf),
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        color: luma.textSecondary,
+                      )
+                    : null,
+              ),
+              if (localMods.isEmpty) note(t.teamLibraryLocalHint),
+              for (final mod in localMods) tile(localShelf, mod),
+            ],
           ),
         ),
       ],
+    );
+  }
+}
+
+class _SectionHeading extends StatelessWidget {
+  const _SectionHeading({required this.icon, required this.label, this.action});
+
+  final IconData icon;
+  final String label;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return SizedBox(
+      height: 34,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 10),
+        child: Row(
+          children: [
+            Icon(icon, size: 14, color: luma.textMuted),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                label.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: luma.textMuted,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ),
+            ?action,
+          ],
+        ),
+      ),
     );
   }
 }
@@ -591,6 +852,7 @@ class _ModDetail extends StatefulWidget {
   const _ModDetail({
     super.key,
     required this.controller,
+    required this.shelf,
     required this.projectId,
     required this.library,
     required this.actions,
@@ -598,6 +860,7 @@ class _ModDetail extends StatefulWidget {
   });
 
   final TeamClipboardController controller;
+  final _Shelf shelf;
   final String projectId;
   final ValueListenable<TeamLibraryState?> library;
   final _LibraryActions actions;
@@ -669,9 +932,7 @@ class _ModDetailState extends State<_ModDetail> {
   Future<void> _loadIndex(TeamLibraryMod mod) async {
     _indexLoading = true;
     try {
-      final index = await widget.controller.library(
-        (api) => api.libraryFiles(mod.id, loadedAt: mod.loadedAt),
-      );
+      final index = await widget.shelf.files(mod.id, loadedAt: mod.loadedAt);
       if (!mounted) return;
       final picked = _pickedPath;
       setState(() {
@@ -861,7 +1122,9 @@ class _ModDetailState extends State<_ModDetail> {
           ? LumaEmptyState(
               icon: Icons.downloading_rounded,
               title: t.teamLibraryUnpackingTitle(mod.title),
-              subtitle: t.teamLibraryUnpackingBody,
+              subtitle: widget.shelf.local
+                  ? t.teamLibraryUnpackingLocalBody
+                  : t.teamLibraryUnpackingBody,
               action: const SizedBox(
                 width: 160,
                 child: LinearProgressIndicator(),
@@ -896,7 +1159,12 @@ class _ModDetailState extends State<_ModDetail> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _ModHeader(mod: mod, canManage: _canManage, actions: widget.actions),
+        _ModHeader(
+          mod: mod,
+          local: widget.shelf.local,
+          canManage: _canManage,
+          actions: widget.actions,
+        ),
         Expanded(child: body),
       ],
     );
@@ -1095,11 +1363,15 @@ IconData? _categoryIcon(TeamAssetCategory? category) => switch (category) {
 class _ModHeader extends StatelessWidget {
   const _ModHeader({
     required this.mod,
+    required this.local,
     required this.canManage,
     required this.actions,
   });
 
   final TeamLibraryMod mod;
+
+  /// Unpacked on this device rather than on the server.
+  final bool local;
   final bool canManage;
   final _LibraryActions actions;
 
@@ -1167,6 +1439,12 @@ class _ModHeader extends StatelessWidget {
                           color: luma.textSecondary,
                           icon: Icons.sports_esports_outlined,
                         ),
+                        if (local)
+                          TeamPill(
+                            label: t.teamLibraryLocalPill,
+                            color: luma.accent,
+                            icon: Icons.devices_rounded,
+                          ),
                         if (mod.projectType == 'resourcepack')
                           TeamPill(
                             label: t.teamLibraryResourcePack,
@@ -1223,7 +1501,7 @@ class _ModHeader extends StatelessWidget {
                     _menuItem(
                       'remove',
                       Icons.delete_outline_rounded,
-                      t.teamLibraryRemove,
+                      local ? t.teamLibraryRemoveLocal : t.teamLibraryRemove,
                     ),
                   ],
                 ],
@@ -1276,7 +1554,7 @@ class _ModHeader extends StatelessWidget {
           children: [
             Icon(icon, size: 18),
             const SizedBox(width: 10),
-            Text(label),
+            Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
           ],
         ),
       );
@@ -1748,9 +2026,9 @@ class _CategoryChip extends StatelessWidget {
 /// Search Modrinth, pick a mod, say which loader and game version to follow.
 /// Pops with the library the server answers once it is added.
 class _AddModDialog extends StatefulWidget {
-  const _AddModDialog({required this.controller, required this.inLibrary});
+  const _AddModDialog({required this.shelf, required this.inLibrary});
 
-  final TeamClipboardController controller;
+  final _Shelf shelf;
   final Set<String> inLibrary;
 
   @override
@@ -1790,9 +2068,7 @@ class _AddModDialogState extends State<_AddModDialog> {
       _error = null;
     });
     try {
-      final hits = await widget.controller.library(
-        (api) => api.searchLibrary(_query.text.trim()),
-      );
+      final hits = await widget.shelf.search(_query.text.trim());
       if (mounted && id == _searchId) setState(() => _hits = hits);
     } catch (e) {
       if (mounted && id == _searchId) setState(() => _error = '$e');
@@ -1810,12 +2086,10 @@ class _AddModDialogState extends State<_AddModDialog> {
     });
     final navigator = Navigator.of(context);
     try {
-      final state = await widget.controller.library(
-        (api) => api.addLibraryMod(
-          hit.id,
-          loader: _loader,
-          gameVersion: _gameVersion,
-        ),
+      final state = await widget.shelf.add(
+        hit.id,
+        loader: _loader,
+        gameVersion: _gameVersion,
       );
       navigator.pop(state);
     } catch (e) {
@@ -1831,7 +2105,9 @@ class _AddModDialogState extends State<_AddModDialog> {
     final luma = context.luma;
     final picked = _picked;
     return AlertDialog(
-      title: Text(t.teamLibraryAddTitle),
+      title: Text(
+        widget.shelf.local ? t.teamLibraryAddLocalTitle : t.teamLibraryAddTitle,
+      ),
       content: SizedBox(
         width: 520,
         height: 460,
@@ -1840,7 +2116,9 @@ class _AddModDialogState extends State<_AddModDialog> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    t.teamLibraryAddHint,
+                    widget.shelf.local
+                        ? t.teamLibraryAddLocalHint
+                        : t.teamLibraryAddHint,
                     style: TextStyle(color: luma.textSecondary, fontSize: 13),
                   ),
                   const SizedBox(height: 12),

@@ -21,10 +21,19 @@ extension BenchmarkRepairApi on Api {
     if (benchmarkRepairPrice != null) return benchmarkRepairPrice!(route);
     if (route.upstream != AiUpstream.openrouter)
       return priceFor(aiCatalog, route);
+    final batch = isBenchmarkBatchModel(route.upstream, route.model);
+    if (batch) {
+      if (priceFor(aiCatalog, route) case final listed?
+          when completeRepairPrice(listed)) {
+        return listed;
+      }
+    }
+    // A batch variant without a listed price is guarded at its base model's
+    // full price, which it never costs more than.
     final fetcher = AiCatalogFetcher();
     try {
-      final endpoint =
-          cheapestEndpoint(await fetcher.fetchOpenRouterEndpoints(route.model));
+      final endpoint = cheapestEndpoint(await fetcher
+          .fetchOpenRouterEndpoints(benchmarkBatchBaseModel(route.model)));
       return endpoint == null ? null : AiPrice.ofEndpoint(endpoint);
     } catch (_) {
       return null;
@@ -47,9 +56,8 @@ extension BenchmarkRepairApi on Api {
       'models': {
         'openrouter': [
           for (final m in aiCatalog.routingModels)
-            if (!m.id.endsWith(':batch') &&
-                (m.outputModalities.isEmpty ||
-                    m.outputModalities.contains('text')))
+            if (m.outputModalities.isEmpty ||
+                m.outputModalities.contains('text'))
               m.id
         ],
         'google': await _googleModelIdsForSuggestions(),
@@ -76,7 +84,8 @@ extension BenchmarkRepairApi on Api {
         : null;
     final limit = body['maxCostUsd'];
     if (route == null ||
-        route.model.endsWith(':batch') ||
+        route.model.endsWith(kBenchmarkBatchSuffix) &&
+            !isBenchmarkBatchModel(route.upstream, route.model) ||
         !config.configuredAiUpstreams.contains(route.upstream) ||
         limit is! num ||
         !BenchmarkRepairSettings.validLimit(limit.toDouble())) {
@@ -412,7 +421,8 @@ extension BenchmarkRepairApi on Api {
           'stream': true,
           'stream_options': {'include_usage': true},
           ..._repairReasoning(route),
-          if (route.upstream == AiUpstream.openrouter)
+          if (route.upstream == AiUpstream.openrouter &&
+              !isBenchmarkBatchModel(route.upstream, route.model))
             'provider': {
               'max_price': {
                 'prompt': accepted.input,
@@ -430,7 +440,12 @@ extension BenchmarkRepairApi on Api {
           Object? thrown;
           StackTrace? trace;
           try {
-            await _callRepairModel(route, body, acc);
+            await _callRepairModel(route, body, acc,
+                onBatchStatus: (status) => job.detail =
+                    '${attempt == 1 ? '' : 'Attempt $attempt of $kRepairMaxAttempts: '}'
+                    'waiting on the OpenRouter batch '
+                    '(${status.replaceAll('_', ' ')}); batches can take up '
+                    'to 24 hours…');
           } catch (e, st) {
             thrown = e;
             trace = st;
@@ -635,9 +650,13 @@ extension BenchmarkRepairApi on Api {
 
   /// Exactly one request, with no automatic retry, fallback, tools or chat history.
   Future<void> _callRepairModel(AiModeRoute route, Map<String, dynamic> body,
-      ChatStreamAccumulator acc) async {
+      ChatStreamAccumulator acc,
+      {void Function(String status)? onBatchStatus}) async {
     if (benchmarkRepairCall != null) {
       return benchmarkRepairCall!(route, body, acc);
+    }
+    if (isBenchmarkBatchModel(route.upstream, route.model)) {
+      return _callRepairBatch(route, body, acc, onBatchStatus);
     }
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 30);
@@ -697,6 +716,76 @@ extension BenchmarkRepairApi on Api {
       deadline.cancel();
       idle?.cancel();
       client.close(force: true);
+    }
+  }
+
+  /// One repair call through OpenRouter's Batch API, for a `:batch` model:
+  /// submitted as a one-request batch, polled until it ends, and read into
+  /// [acc] as if it had been streamed. Batches finish within 24 hours; a
+  /// server restart abandons the wait (the batch still runs and is billed).
+  Future<void> _callRepairBatch(AiModeRoute route, Map<String, dynamic> body,
+      ChatStreamAccumulator acc, void Function(String)? onStatus) async {
+    final request = Map<String, dynamic>.of(body)
+      ..remove('model')
+      ..remove('stream')
+      ..remove('stream_options');
+    // OpenRouter stream-parses the submit and wants `requests` last.
+    final (submitted, created) = await _openRouterBatchCall('POST', '/batches',
+        body: {
+          'endpoint': '/v1/chat/completions',
+          'model': benchmarkBatchBaseModel(route.model),
+          'requests': [
+            {'custom_id': 'repair', 'body': request},
+          ],
+        });
+    final id = created is Map ? created['id'] : null;
+    if (submitted == 0) throw HttpException('$created');
+    if ((submitted != HttpStatus.ok && submitted != HttpStatus.accepted) ||
+        id is! String ||
+        id.isEmpty) {
+      throw RepairHttpStatus(
+          submitted,
+          created is String
+              ? providerErrorMessage(created) ?? created
+              : providerErrorMessage(jsonEncode(created)));
+    }
+    onStatus?.call('${(created as Map)['status'] ?? 'submitted'}');
+    final deadline = DateTime.now().add(const Duration(hours: 26));
+    // A new batch can 404 for a while before OpenRouter has stored it.
+    final graceUntil = DateTime.now().add(const Duration(minutes: 30));
+    var seen = false;
+    var wait = const Duration(seconds: 5);
+    while (true) {
+      await Future<void>.delayed(wait);
+      wait = const Duration(seconds: 30);
+      if (DateTime.now().isAfter(deadline)) {
+        throw RepairTimeout(
+            'The batch $id still was not done after 26 hours.',
+            idle: false);
+      }
+      final (status, batch) =
+          await _openRouterBatchCall('GET', '/batches/$id');
+      final missing =
+          status == HttpStatus.notFound || status == HttpStatus.gone;
+      if (missing && !seen && DateTime.now().isBefore(graceUntil)) continue;
+      if (status == HttpStatus.ok && batch is Map) {
+        seen = true;
+        final s = batch['status'];
+        if (s is String) onStatus?.call(s);
+        if (!kBenchmarkBatchTerminal.contains(s)) continue;
+        final why = readBenchmarkBatch(batch, acc);
+        if (why != null) acc.error ??= why;
+        unawaited(_openRouterBatchCall('DELETE', '/batches/$id')
+            .then((_) {}, onError: (_) {}));
+        return;
+      }
+      if (missing ||
+          status == HttpStatus.unauthorized ||
+          status == HttpStatus.forbidden) {
+        throw StateError('OpenRouter lost the repair batch $id (HTTP $status). '
+            'The live test was kept.');
+      }
+      // Anything else is OpenRouter not answering; keep waiting.
     }
   }
 

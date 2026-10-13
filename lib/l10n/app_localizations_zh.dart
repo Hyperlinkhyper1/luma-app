@@ -32,7 +32,48 @@ class LZh extends L {
 
   @override
   String get teamLibraryEmptyMember =>
-      '由团队负责人选择要在这里解包的 Modrinth 模组。选好之后，整个团队都能浏览它们的纹理和模型。';
+      '团队负责人选择全队共享的模组。你也可以添加自己的模组：它们只在这台设备上解包，只有你能看到。';
+
+  @override
+  String get teamLibraryTeamSection => '团队';
+
+  @override
+  String get teamLibraryLocalSection => '这台设备';
+
+  @override
+  String get teamLibraryNoTeamMods => '团队负责人还没有为团队添加模组。';
+
+  @override
+  String get teamLibraryNoTeamModsLead => '还没有团队模组。点“添加模组”即可为所有人添加。';
+
+  @override
+  String get teamLibraryLocalHint =>
+      '在这里添加的模组会从 Modrinth 下载并在这台设备上解包。只有你能看到，团队素材库不受影响。';
+
+  @override
+  String get teamLibraryAddLocal => '添加到这台设备';
+
+  @override
+  String get teamLibraryAddLocalTitle => '添加到这台设备';
+
+  @override
+  String get teamLibraryAddLocalHint =>
+      '选择一个模组或资源包。它只会在这台设备上下载并解包，与团队模组分开，并在此标签页打开时检查更新。';
+
+  @override
+  String get teamLibraryLocalPill => '这台设备';
+
+  @override
+  String get teamLibraryRemoveLocal => '从这台设备移除';
+
+  @override
+  String teamLibraryRemoveLocalConfirm(String title) {
+    return '要从这台设备移除 $title 吗？它解包的文件会在这里删除，团队素材库不受影响。';
+  }
+
+  @override
+  String get teamLibraryUnpackingLocalBody =>
+      '正在从 Modrinth 下载 jar 并在这台设备上解包其素材。此页面会自动更新。';
 
   @override
   String get teamLibraryPickMod => '选择一个模组来浏览它的素材。';

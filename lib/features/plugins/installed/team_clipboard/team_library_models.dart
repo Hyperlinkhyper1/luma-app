@@ -232,8 +232,13 @@ enum TeamAssetCategory { textures, models, blockstates, lang, data, other }
 
 /// One file the library unpacked from a mod.
 class TeamLibraryAsset {
-  TeamLibraryAsset(this.path, this.sha1, this.size, {DateTime? loadedAt})
-    : loadedAt = loadedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+  TeamLibraryAsset(
+    this.path,
+    this.sha1,
+    this.size, {
+    DateTime? loadedAt,
+    this.local = false,
+  }) : loadedAt = loadedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
 
   /// Where it sits in the jar: `assets/ruby/textures/block/ruby.png`.
   final String path;
@@ -241,8 +246,12 @@ class TeamLibraryAsset {
   final int size;
   final DateTime loadedAt;
 
+  /// Unpacked on this device rather than on the server.
+  final bool local;
+
   /// The id the controller fetches it by, beside the board's own files.
-  String get fileId => '$kTeamLibraryFilePrefix$sha1';
+  String get fileId =>
+      '${local ? kTeamLocalFilePrefix : kTeamLibraryFilePrefix}$sha1';
 
   String get name => path.substring(path.lastIndexOf('/') + 1);
 
@@ -283,6 +292,9 @@ class TeamLibraryAsset {
 
 /// The prefix that marks a controller file id as a library asset.
 const kTeamLibraryFilePrefix = 'lib:';
+
+/// The prefix of a file a member unpacked on this device.
+const kTeamLocalFilePrefix = 'loc:';
 
 /// How many library files one request asks for; the server takes at most
 /// this many.
@@ -343,6 +355,7 @@ class TeamLibraryIndex {
   factory TeamLibraryIndex.fromJson(
     Map<String, dynamic> j, {
     DateTime? loadedAt,
+    bool local = false,
   }) => TeamLibraryIndex(j['versionId'] as String? ?? '', [
     for (final f in j['files'] as List? ?? const [])
       if (f is List && f.length >= 3 && f[0] is String && f[1] is String)
@@ -351,6 +364,7 @@ class TeamLibraryIndex {
           f[1] as String,
           (f[2] as num?)?.toInt() ?? 0,
           loadedAt: loadedAt,
+          local: local,
         ),
   ]);
 

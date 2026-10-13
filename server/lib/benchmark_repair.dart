@@ -88,10 +88,88 @@ const kRepairMaxOutputTokens = 16384;
 const kRepairReasoningCharBudget = 40000;
 
 /// Fixes for errors that always mean the same thing, applied without asking
-/// a model: null when [error] isn't one of them. A three.js add-on (OrbitControls
-/// and friends) imports the bare name 'three', which a page needs an import map
-/// to resolve; the map points at the same copy of three the page already loads.
+/// a model: null when none applies. Each is mechanical, and some touch
+/// hundreds of lines, which no model gets right as SEARCH/REPLACE blocks.
 ({String source, String what})? knownRepair(String source, String error) {
+  final fixes = <String>[];
+  var page = source;
+  if (straightenCodeQuotes(page) case final straight?) {
+    page = straight;
+    fixes.add('replaced typographic quotes in the code with plain ones');
+  }
+  if (_missingImportMap(page, error) case final mapped?) {
+    page = mapped;
+    fixes.add('added the missing import map for three');
+  }
+  if (_hiddenOverridden(page, error) case final shown?) {
+    page = shown;
+    fixes.add('made the hidden attribute hide the fallback screen');
+  }
+  return fixes.isEmpty ? null : (source: page, what: fixes.join(' and '));
+}
+
+/// A fallback screen ("WebGL is unavailable") marked `hidden` whose own CSS
+/// sets `display`, which beats the attribute: the screen covers a scene that
+/// works. Null unless the render reported an error screen and some element
+/// that starts hidden is styled that way.
+String? _hiddenOverridden(String source, String error) {
+  if (!error.contains('error screen') ||
+      RegExp(r'\[hidden\]').hasMatch(source)) {
+    return null;
+  }
+  final styled = RegExp(r'<[a-z][^>]*\bid\s*=\s*"([\w-]+)"[^>]*\shidden\b',
+          caseSensitive: false)
+      .allMatches(source)
+      .map((m) => m.group(1)!)
+      .any((id) => RegExp('#${RegExp.escape(id)}\\s*\\{[^}]*\\bdisplay\\s*:')
+          .hasMatch(source));
+  final at = source.indexOf(RegExp('</style>', caseSensitive: false));
+  if (!styled || at < 0) return null;
+  return source.replaceRange(at, at, '[hidden]{display:none!important}\n');
+}
+
+/// [source] with the typographic quotes (‘ ’ “ ”) that some models write in
+/// place of ' and " turned back into plain ones inside its scripts, import
+/// maps and styles, or null when its code has none. A script is only touched
+/// when the quotes sit where code delimits strings (`(‘x’)`, `= “y”,`), so
+/// prose quoted inside a string is left alone; an apostrophe between two
+/// letters (don’t) stays typographic either way, since it is inside a string.
+String? straightenCodeQuotes(String source) {
+  final blocks = RegExp(
+      r'(<(script|style)\b[^>]*>)([\s\S]*?)(</\2\s*>)',
+      caseSensitive: false);
+  final opener = RegExp(r'[(\[{,=:?+]\s*[‘“]');
+  final closer = RegExp(r'[’”]\s*[)\]},;:+]');
+  var changed = false;
+  final out = source.replaceAllMapped(blocks, (m) {
+    final tag = m.group(1)!, code = m.group(3)!;
+    if (!RegExp('[‘’“”]').hasMatch(code)) return m.group(0)!;
+    final json = RegExp(r'importmap|json', caseSensitive: false).hasMatch(tag);
+    final style = m.group(2)!.toLowerCase() == 'style';
+    final delimits = json ||
+        (style
+            ? RegExp(r'[,:]\s*[“”‘]|[”’]\s*[,;]').hasMatch(code)
+            : opener.allMatches(code).length >= 2 &&
+                closer.allMatches(code).length >= 2);
+    if (!delimits) return m.group(0)!;
+    final fixed = code
+        .replaceAll(RegExp('[“”]'), '"')
+        .replaceAll('‘', "'")
+        .replaceAllMapped(RegExp(r'(\w?)’(\w?)'), (q) {
+      final a = q.group(1)!, b = q.group(2)!;
+      return a.isNotEmpty && b.isNotEmpty && !json ? '$a’$b' : "$a'$b";
+    });
+    if (fixed == code) return m.group(0)!;
+    changed = true;
+    return '$tag$fixed${m.group(4)}';
+  });
+  return changed ? out : null;
+}
+
+/// A three.js add-on (OrbitControls and friends) imports the bare name
+/// 'three', which a page needs an import map to resolve; the map points at
+/// the same copy of three the page already loads.
+String? _missingImportMap(String source, String error) {
   if (!RegExp(r'Failed to resolve module specifier "three(/[^"]*)?"')
           .hasMatch(error) ||
       source.contains('importmap')) {
@@ -108,10 +186,7 @@ const kRepairReasoningCharBudget = 40000;
   var at = source.indexOf(RegExp(r'''<script[^>]*type\s*=\s*["']?module'''));
   if (at < 0) at = source.indexOf('</head>');
   if (at < 0) return null;
-  return (
-    source: source.replaceRange(at, at, map),
-    what: 'added the missing import map for three',
-  );
+  return source.replaceRange(at, at, map);
 }
 
 /// Where a name the error complains about is declared, which is what a
@@ -324,7 +399,7 @@ int? nearestLineOf(String source, String reply) {
     final edits = _parseRepairReply(reply).edits;
     final lines = source.split('\n');
     for (final edit in edits) {
-      final before = (edit as Map)['before'];
+      final before = _normalizeEdit(edit as Map)['before'];
       if (before is! String) continue;
       for (final candidate in before.split('\n').map((l) => l.trim())) {
         if (candidate.length < 12) continue;
@@ -537,7 +612,9 @@ The LINES form takes 1-based inclusive line numbers and replaces those lines
 entirely; use it to rewrite a broken block, and leave it empty to delete them.
 The html itself is not numbered: only use line numbers listed in errorLines,
 and use SEARCH anywhere else. Keep SEARCH text short (a few lines) but unique.
-Use as few blocks as you can, and no two may overlap.
+Use as few blocks as you can, and no two may overlap. SEARCH is never
+empty and the replacement always differs from it: to insert code, put the
+line it goes next to in SEARCH and repeat that line in the replacement.
 Before you add a function, const, let or class, check the html does not
 already declare that name; if it does, edit the existing one instead.
 If previousAttempts is given, those fixes did not work: the html you now see
@@ -546,7 +623,8 @@ Do not repeat a fix that failed. If the page cannot be made to render, answer
 with the single word NO_FIX.
 Common causes: a typo or stray character in code; a leftover "..." or other
 placeholder where code was never written; a name declared twice; a name used
-before its const/let line runs; a missing import map for 'three' (add one
+before its const/let line runs; a template literal whose backticks were lost
+(a bare `\${x}` outside any string); a missing import map for 'three' (add one
 before the module script, pointing at the URL the page already imports three
 from, plus "three/addons/" at that version's examples/jsm/).
 Think briefly: find the cause, then answer with the blocks as soon as you
@@ -572,9 +650,27 @@ String repairUserMessage(Map<String, Object?> facts, String html) =>
     if (source.indexOf(before, exact + 1) >= 0) throw ambiguous;
     return (start: exact, end: exact + before.length);
   }
+  // Models also retype quotes and dashes: a ‘ in the page comes back as '.
+  String chars(String text) => text.split('').map((c) {
+        if ("'‘’".contains(c)) return "['‘’]";
+        if ('"“”'.contains(c)) return '["“”]';
+        if ('-–—'.contains(c)) return '[-–—]';
+        return RegExp.escape(c);
+      }).join();
   final loose = RegExp(before.splitMapJoin(RegExp(r'\s+'),
-      onMatch: (_) => r'\s+', onNonMatch: RegExp.escape));
+      onMatch: (_) => r'\s+', onNonMatch: chars));
   final found = loose.allMatches(source).take(2).toList();
+  // Text copied out of errorLines arrives JSON-escaped (`\"`, `\\`).
+  if (found.isEmpty && before.contains(r'\')) {
+    try {
+      final unescaped = jsonDecode('"${before.replaceAll('\n', r'\n').replaceAll('\r', r'\r').replaceAll('\t', r'\t')}"');
+      if (unescaped is String && unescaped != before) {
+        return _locateEdit(source, unescaped);
+      }
+    } on FormatException {
+      // Not JSON-escaped after all.
+    }
+  }
   if (found.isEmpty) {
     throw const FormatException(
         'An edit\'s "before" text was not found in the source. Copy it '
@@ -658,21 +754,30 @@ bool _hasEditBlocks(String reply) => reply
 ///     <<<<<<< LINES 12-20
 ///     new text for those lines
 ///     >>>>>>> END
+///
+/// A block that is missing its divider or end line is skipped, so long as
+/// the reply has at least one whole block: one slip in a long reply used to
+/// throw away every good edit in it.
 List<Map<String, Object>> _blockEdits(String reply) {
   final lines = reply.replaceAll('\r\n', '\n').split('\n');
+  bool starts(String l) => _searchStart.hasMatch(l) || _linesStart.hasMatch(l);
   final edits = <Map<String, Object>>[];
+  String? broken;
   for (var i = 0; i < lines.length; i++) {
     final range = _linesStart.firstMatch(lines[i]);
     if (range != null) {
       final body = <String>[];
       var j = i + 1;
-      while (j < lines.length && !_blockEnd.hasMatch(lines[j])) {
+      while (j < lines.length &&
+          !_blockEnd.hasMatch(lines[j]) &&
+          !starts(lines[j])) {
         body.add(lines[j++]);
       }
-      if (j >= lines.length) {
-        throw const FormatException(
-            'Your reply has a LINES block that never ends; close each one '
-            'with a ">>>>>>> END" line.');
+      if (j >= lines.length || starts(lines[j])) {
+        broken ??= 'Your reply has a LINES block that never ends; close each '
+            'one with a ">>>>>>> END" line.';
+        i = j - 1;
+        continue;
       }
       edits.add({
         'startLine': int.parse(range.group(1)!),
@@ -685,22 +790,35 @@ List<Map<String, Object>> _blockEdits(String reply) {
     if (!_searchStart.hasMatch(lines[i])) continue;
     final search = <String>[];
     var j = i + 1;
-    while (j < lines.length && !_divider.hasMatch(lines[j])) {
+    while (j < lines.length &&
+        !_divider.hasMatch(lines[j]) &&
+        !_blockEnd.hasMatch(lines[j]) &&
+        !starts(lines[j])) {
       search.add(lines[j++]);
+    }
+    if (j >= lines.length || !_divider.hasMatch(lines[j])) {
+      broken ??= 'Your reply has a SEARCH block without its "=======" and '
+          '">>>>>>> REPLACE" lines.';
+      i = j < lines.length && starts(lines[j]) ? j - 1 : j;
+      continue;
     }
     final replace = <String>[];
     j++;
-    while (j < lines.length && !_blockEnd.hasMatch(lines[j])) {
+    while (j < lines.length &&
+        !_blockEnd.hasMatch(lines[j]) &&
+        !starts(lines[j])) {
       replace.add(lines[j++]);
     }
-    if (j >= lines.length) {
-      throw const FormatException(
-          'Your reply has a SEARCH block without its "=======" and '
-          '">>>>>>> REPLACE" lines.');
+    if (j >= lines.length || starts(lines[j])) {
+      broken ??= 'Your reply has a SEARCH block without its '
+          '">>>>>>> REPLACE" line.';
+      i = j - 1;
+      continue;
     }
     edits.add({'before': search.join('\n'), 'after': replace.join('\n')});
     i = j;
   }
+  if (edits.isEmpty && broken != null) throw FormatException(broken);
   return edits;
 }
 
@@ -750,8 +868,9 @@ Object? _decodeRepairReply(String reply) {
   final found = raw['edits'] ?? raw['changes'] ?? raw['patches'] ?? raw['edit'];
   if (found is List) return (edits: found, page: null);
   if (found is Map) return (edits: [found], page: null);
-  if (raw.containsKey('after') &&
-      (raw.containsKey('before') || raw.containsKey('startLine'))) {
+  final single = _normalizeEdit(raw);
+  if (single['after'] != null &&
+      (single['before'] != null || single['startLine'] != null)) {
     return (edits: [raw], page: null);
   }
   for (final key in const ['html', 'page', 'source', 'fixedHtml']) {
@@ -800,6 +919,29 @@ String _applyWholePage(String source, String page) {
   return b;
 }
 
+/// [edit] with the names models use for its parts in a JSON reply
+/// (`search`/`replace`, `old_string`/`new_string`, `start_line`, …) mapped
+/// onto `before`, `after`, `startLine` and `endLine`.
+Map _normalizeEdit(Map edit) {
+  Object? pick(List<String> keys) {
+    for (final key in keys) {
+      if (edit.containsKey(key)) return edit[key];
+    }
+    return null;
+  }
+
+  return {
+    'before': pick(const [
+      'before', 'search', 'find', 'old', 'old_string', 'oldText', 'original'
+    ]),
+    'after': pick(const [
+      'after', 'replace', 'replacement', 'new', 'new_string', 'newText', 'text'
+    ]),
+    'startLine': pick(const ['startLine', 'start_line', 'start', 'from']),
+    'endLine': pick(const ['endLine', 'end_line', 'end', 'to']),
+  };
+}
+
 /// A line number from an edit, which some models send as "12" or 12.0.
 int? _lineNumber(Object? value) => switch (value) {
       int n => n,
@@ -831,10 +973,24 @@ String applyBenchmarkRepair(String source, String reply) {
   }
   final spans = <({int start, int end, String after})>[];
   var changed = 0;
-  for (final edit in edits) {
-    final after = edit is Map ? edit['after'] : null;
-    if (after is! String || after.length > 60000) {
-      throw const FormatException('Repair edits must be exact changes.');
+  var noOps = 0;
+  for (final raw in edits) {
+    if (raw is! Map) {
+      throw const FormatException(
+          'An edit is not a SEARCH/REPLACE or LINES block. Answer with those '
+          'blocks only.');
+    }
+    final edit = _normalizeEdit(raw);
+    final after = edit['after'];
+    if (after is! String) {
+      throw const FormatException(
+          'An edit has no replacement text. Every SEARCH needs a "=======" '
+          'line followed by the replacement, then ">>>>>>> REPLACE".');
+    }
+    if (after.length > 60000) {
+      throw const FormatException(
+          'An edit\'s replacement is over 60000 characters; replace a '
+          'smaller block.');
     }
     if (edit['startLine'] != null || edit['endLine'] != null) {
       final first = _lineNumber(edit['startLine']);
@@ -871,16 +1027,29 @@ String applyBenchmarkRepair(String source, String reply) {
       continue;
     }
     final before = edit['before'];
-    if (before is! String ||
-        after.isEmpty && before.isEmpty ||
-        before.isEmpty ||
-        before == after ||
-        before.length > 30000) {
-      throw const FormatException('Repair edits must be exact changes.');
+    if (before is! String || before.trim().isEmpty) {
+      throw const FormatException(
+          'A SEARCH block is empty, so there is no place to put its '
+          'replacement. To insert code, put the existing line next to where '
+          'it goes in SEARCH, and repeat that line in the replacement along '
+          'with the new code.');
+    }
+    if (before.length > 30000) {
+      throw const FormatException(
+          'A SEARCH text is over 30000 characters; keep it to a few lines.');
+    }
+    if (before == after) {
+      noOps++;
+      continue;
     }
     final at = _locateEdit(source, before);
     spans.add((start: at.start, end: at.end, after: after));
     changed += at.end - at.start;
+  }
+  if (spans.isEmpty && noOps > 0) {
+    throw const FormatException(
+        'Every edit\'s replacement was identical to its SEARCH text, so '
+        'nothing would change. Write the corrected code after "=======".');
   }
   if (changed >= source.length || changed > source.length * .6) {
     throw const FormatException('The reply changes too much of the test.');

@@ -33,7 +33,50 @@ class LNl extends L {
 
   @override
   String get teamLibraryEmptyMember =>
-      'Een teamleider kiest welke Modrinth-mods hier worden uitgepakt. Daarna kan het hele team de textures en modellen bekijken.';
+      'Een teamleider kiest de mods die het hele team deelt. Je kunt ook je eigen mods toevoegen: die worden op dit apparaat uitgepakt en alleen jij ziet ze.';
+
+  @override
+  String get teamLibraryTeamSection => 'Team';
+
+  @override
+  String get teamLibraryLocalSection => 'Op dit apparaat';
+
+  @override
+  String get teamLibraryNoTeamMods =>
+      'Een teamleider heeft nog geen mods voor het team toegevoegd.';
+
+  @override
+  String get teamLibraryNoTeamModsLead =>
+      'Nog geen teammods. Met Mod toevoegen zet je er een neer voor iedereen.';
+
+  @override
+  String get teamLibraryLocalHint =>
+      'Mods die je hier toevoegt worden van Modrinth gedownload en op dit apparaat uitgepakt. Alleen jij ziet ze; de teambibliotheek blijft ongemoeid.';
+
+  @override
+  String get teamLibraryAddLocal => 'Toevoegen aan dit apparaat';
+
+  @override
+  String get teamLibraryAddLocalTitle => 'Toevoegen aan dit apparaat';
+
+  @override
+  String get teamLibraryAddLocalHint =>
+      'Kies een mod of resourcepack. Die wordt alleen op dit apparaat gedownload en uitgepakt, los van de teammods, en gecontroleerd op updates zodra dit tabblad open is.';
+
+  @override
+  String get teamLibraryLocalPill => 'Dit apparaat';
+
+  @override
+  String get teamLibraryRemoveLocal => 'Verwijderen van dit apparaat';
+
+  @override
+  String teamLibraryRemoveLocalConfirm(String title) {
+    return '$title van dit apparaat verwijderen? De uitgepakte bestanden worden hier gewist; de teambibliotheek blijft ongemoeid.';
+  }
+
+  @override
+  String get teamLibraryUnpackingLocalBody =>
+      'De jar wordt van Modrinth gedownload en op dit apparaat uitgepakt. Deze pagina vult zich vanzelf.';
 
   @override
   String get teamLibraryPickMod => 'Kies een mod om de assets te bekijken.';

@@ -6,11 +6,12 @@
 <title>VESPER 9 Balisong Study</title>
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;overflow:hidden;background:#0b0a0b;color:#e8e2d6;font:13px/1.35 system-ui,”Segoe UI”,sans-serif;user-select:none}
+html,body{margin:0;height:100%;overflow:hidden;background:#0b0a0b;color:#e8e2d6;font:13px/1.35 system-ui,"Segoe UI",sans-serif;user-select:none}
 #gl{position:fixed;inset:0;width:100vw;height:100vh;display:block;touch-action:none;outline:none}
 #loading{position:fixed;inset:0;display:grid;place-items:center;background:#0b0a0b;color:#cbbfae;letter-spacing:.22em;font-size:12px;text-transform:uppercase;z-index:5;transition:opacity .8s}
 #loading.done{opacity:0;pointer-events:none}
 #nogl{position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;background:#0b0a0b;z-index:6}
+#nogl[hidden]{display:none}
 #ui{position:fixed;inset:0;pointer-events:none;z-index:2}
 #ui.off{display:none}
 #ui .panel,#ui button,#ui input,#ui label{pointer-events:auto}
@@ -22,7 +23,7 @@ button kbd{font:600 10px/1 system-ui;opacity:.7;margin-right:4px;padding:2px 4px
 input[type=range]{accent-color:#ff6a2a;vertical-align:middle;width:120px}
 label{color:#b9ae9c;display:inline-flex;align-items:center;gap:6px}
 .kicker{font-size:10px;letter-spacing:.28em;color:#ff8a52}
-h1{margin:3px 0 0;font:600 30px/1 Georgia,”Times New Roman”,serif;letter-spacing:.06em}
+h1{margin:3px 0 0;font:600 30px/1 Georgia,"Times New Roman",serif;letter-spacing:.06em}
 .sub{color:#b9ae9c;margin:6px 0 10px}
 .spec{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;margin:0;font-size:12px}
 .spec dt{color:#8e867a}
@@ -50,7 +51,7 @@ input[type=range]{width:90px}
 }
 </style>
 <script type="importmap">
-{“imports”:{“three”:”https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
 </script>
 </head>
 <body>
@@ -124,23 +125,23 @@ input[type=range]{width:90px}
 <div id="tip"></div>
 
 <script type="module">
-import * as THREE from ‘three’;
-import { OrbitControls } from ‘three/addons/controls/OrbitControls.js’;
-import { RoomEnvironment } from ‘three/addons/environments/RoomEnvironment.js’;
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 const PI = Math.PI, TAU = PI * 2, P = PI;
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
-const canvas = $(‘gl’);
+const canvas = $('gl');
 
 let renderer = null;
 try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true }); } catch (e) { renderer = null; }
 
 if (!renderer) {
-$(‘loading’).classList.add(‘done’);
-$(‘nogl’).hidden = false;
+$('loading').classList.add('done');
+$('nogl').hidden = false;
 } else {
 start(renderer);
 }
@@ -168,9 +169,9 @@ const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
 function canvasTex(w, h, paint) {
-const c = document.createElement(‘canvas’);
+const c = document.createElement('canvas');
 c.width = w; c.height = h;
-paint(c.getContext(‘2d’), w, h);
+paint(c.getContext('2d'), w, h);
 const t = new THREE.CanvasTexture(c);
 t.colorSpace = THREE.SRGBColorSpace;
 t.anisotropy = 4;
@@ -179,8 +180,8 @@ return t;
 
 scene.background = canvasTex(512, 512, (g, w, h) => {
 const gr = g.createRadialGradient(w / 2, h * 0.42, 10, w / 2, h / 2, w * 0.72);
-gr.addColorStop(0, ‘#2c2429’);
-gr.addColorStop(1, ‘#050405’);
+gr.addColorStop(0, '#2c2429');
+gr.addColorStop(1, '#050405');
 g.fillStyle = gr;
 g.fillRect(0, 0, w, h);
 });
@@ -201,8 +202,8 @@ plinth.position.set(0.45, -0.36, 0);
 scene.add(plinth);
 const shadowTex = canvasTex(256, 256, (g, w, h) => {
 const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
-gr.addColorStop(0, ‘rgba(0,0,0,0.8)’);
-gr.addColorStop(1, ‘rgba(0,0,0,0)’);
+gr.addColorStop(0, 'rgba(0,0,0,0.8)');
+gr.addColorStop(1, 'rgba(0,0,0,0)');
 g.fillStyle = gr;
 g.fillRect(0, 0, w, h);
 });
@@ -241,11 +242,11 @@ const handleGeo = new THREE.ExtrudeGeometry(handleShape(), { depth: 0.066, bevel
 handleGeo.translate(0, 0, -0.033);
 
 const bladeTex = canvasTex(1024, 292, (g, w, h) => {
-g.fillStyle = ‘#c8ccd2’;
+g.fillStyle = '#c8ccd2';
 g.fillRect(0, 0, w, h);
 for (let i = 0; i < 2400; i++) {
 const y = Math.random() * h, x = Math.random() * w, v = 150 + Math.random() * 90 | 0;
-g.strokeStyle = rgba(${v},${v},${v},0.22);
+g.strokeStyle = `rgba(${v},${v},${v},0.22)`;
 g.lineWidth = 0.7;
 g.beginPath();
 g.moveTo(x, y);
@@ -254,32 +255,32 @@ g.stroke();
 }
 g.save();
 g.translate(w / 2, h / 2);
-g.fillStyle = ‘rgba(18,16,18,0.88)’;
+g.fillStyle = 'rgba(18,16,18,0.88)';
 g.beginPath();
 g.moveTo(0, -58);
 g.bezierCurveTo(22, -30, 30, -6, 20, 16);
 g.bezierCurveTo(12, 36, -12, 36, -20, 16);
 g.bezierCurveTo(-30, -6, -22, -30, 0, -58);
 g.fill();
-g.fillStyle = ‘rgba(214,218,224,0.95)’;
+g.fillStyle = 'rgba(214,218,224,0.95)';
 g.beginPath();
 g.ellipse(0, 6, 5, 13, 0, 0, TAU);
 g.fill();
-g.fillStyle = ‘rgba(18,16,18,0.9)’;
-g.font = ‘600 18px Georgia, serif’;
-g.textAlign = ‘center’;
-g.fillText(‘HOLLOW EMBER WORKS’, 0, -76);
-g.font = ‘700 22px Georgia, serif’;
-g.fillText(‘VESPER 9’, 0, 84);
+g.fillStyle = 'rgba(18,16,18,0.9)';
+g.font = '600 18px Georgia, serif';
+g.textAlign = 'center';
+g.fillText('HOLLOW EMBER WORKS', 0, -76);
+g.font = '700 22px Georgia, serif';
+g.fillText('VESPER 9', 0, 84);
 g.restore();
 });
 const scaleTex = canvasTex(256, 256, (g, w, h) => {
-g.fillStyle = ‘#f2f2f2’;
+g.fillStyle = '#f2f2f2';
 g.fillRect(0, 0, w, h);
-g.strokeStyle = ‘rgba(0,0,0,0.22)’;
+g.strokeStyle = 'rgba(0,0,0,0.22)';
 g.lineWidth = 5;
 for (let i = -h; i < w + h; i += 18) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + h, h); g.stroke(); }
-g.strokeStyle = ‘rgba(255,255,255,0.18)’;
+g.strokeStyle = 'rgba(255,255,255,0.18)';
 g.lineWidth = 2;
 for (let i = -h + 9; i < w + h; i += 18) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + h, h); g.stroke(); }
 });
@@ -297,9 +298,9 @@ latch: new THREE.MeshPhysicalMaterial({ metalness: 1, roughness: 0.3 })
 };
 
 const WAYS = [
-{ name: ‘Oxblood and Smoked Titanium’, blade: 0xdfe4ec, scale: 0x5c141b, collar: 0xff6a2a, latch: 0xc48a45, hard: 0xc3c8cf, bl: ‘titanium’, sc: ‘g10’, piv: ‘bearing’ },
-{ name: ‘Ink Carbon and Teal’, blade: 0xb4bac3, scale: 0x16181c, collar: 0x2fd9c6, latch: 0x9aa3ad, hard: 0x7d8590, bl: ‘steel’, sc: ‘carbon’, piv: ‘washer’ },
-{ name: ‘Bone and Brass’, blade: 0xe6dfcb, scale: 0xd9d0b8, collar: 0xd9a441, latch: 0xd9a441, hard: 0xb8b09c, bl: ‘steel’, sc: ‘bone’, piv: ‘bushing’ }
+{ name: 'Oxblood and Smoked Titanium', blade: 0xdfe4ec, scale: 0x5c141b, collar: 0xff6a2a, latch: 0xc48a45, hard: 0xc3c8cf, bl: 'titanium', sc: 'g10', piv: 'bearing' },
+{ name: 'Ink Carbon and Teal', blade: 0xb4bac3, scale: 0x16181c, collar: 0x2fd9c6, latch: 0x9aa3ad, hard: 0x7d8590, bl: 'steel', sc: 'carbon', piv: 'washer' },
+{ name: 'Bone and Brass', blade: 0xe6dfcb, scale: 0xd9d0b8, collar: 0xd9a441, latch: 0xd9a441, hard: 0xb8b09c, bl: 'steel', sc: 'bone', piv: 'bushing' }
 ];
 const BLADE_SND = { titanium: { hz: 3600, g: 0.75, ring: 2300 }, steel: { hz: 2600, g: 1, ring: 1700 } };
 const SCALE_DAMP = { g10: 0.55, carbon: 0.85, bone: 0.6 };
@@ -319,11 +320,11 @@ mats.latch.color.setHex(way.latch);
 const b = BLADE_SND[way.bl], pv = PIVOT_SND[way.piv];
 SND.clackHz = b.hz;
 SND.clackG = b.g * SCALE_DAMP[way.sc];
-SND.ringHz = b.ring * (way.sc === ‘carbon’ ? 1 : 0.7);
+SND.ringHz = b.ring * (way.sc === 'carbon' ? 1 : 0.7);
 SND.pivG = pv.g;
 SND.pivHz = pv.hz;
-$(‘way-name’).textContent = way.name;
-document.querySelectorAll(‘[data-way]’).forEach((b2) => b2.classList.toggle(‘on’, +b2.dataset.way === i));
+$('way-name').textContent = way.name;
+document.querySelectorAll('[data-way]').forEach((b2) => b2.classList.toggle('on', +b2.dataset.way === i));
 }
 
 const parts = [];
@@ -343,11 +344,11 @@ return new THREE.Mesh(g, mat);
 
 const root = new THREE.Group();
 scene.add(root);
-root.add(reg(new THREE.Mesh(bladeGeo, mats.blade), ‘Blade: stonewashed titanium, flat ground’, 0, 0));
-root.add(reg(cylZ(0.012, 0.46, mats.hard), ‘Pivot pin: shared axis’, 0, 0));
+root.add(reg(new THREE.Mesh(bladeGeo, mats.blade), 'Blade: stonewashed titanium, flat ground', 0, 0));
+root.add(reg(cylZ(0.012, 0.46, mats.hard), 'Pivot pin: shared axis', 0, 0));
 const zen = cylZ(0.007, 0.28, mats.hard);
 zen.position.set(0.05, 0.125, 0);
-root.add(reg(zen, ‘Zen pin: stops the handles’, 0, 0));
+root.add(reg(zen, 'Zen pin: stops the handles', 0, 0));
 
 const pivA = new THREE.Group();
 const pivB = new THREE.Group();
@@ -356,31 +357,30 @@ root.add(pivA, pivB);
 function buildSide(piv, side, name, tag) {
 const h = new THREE.Mesh(handleGeo, mats.scale);
 h.position.z = side * 0.09;
-piv.add(reg(h, ${name} handle: milled G10 scale, side, 0.22, tag));
+piv.add(reg(h, `${name} handle: milled G10 scale`, side, 0.22, tag));
 const specs = [
-[0.042, 0.012, 0.158, ‘Pivot washer’, 0.4, mats.hard],
-[0.024, 0.02, 0.172, ‘Bearing bushing’, 0.5, mats.hard],
-[0.032, 0.016, 0.184, ‘Ember pivot collar’, 0.6, mats.collar],
-[0.018, 0.01, 0.2, ‘Pivot screw’, 0.72, mats.hard]
+[0.042, 0.012, 0.158, 'Pivot washer', 0.4, mats.hard],
+[0.024, 0.02, 0.172, 'Bearing bushing', 0.5, mats.hard],
+[0.032, 0.016, 0.184, 'Ember pivot collar', 0.6, mats.collar],
+[0.018, 0.01, 0.2, 'Pivot screw', 0.72, mats.hard]
 ];
 for (const [r, len, z, label, amt, mat] of specs) {
 const m = cylZ(r, len, mat);
 m.position.z = side * z;
-piv.add(reg(m, ${label}: ${name.toLowerCase()} side, side, amt));
+piv.add(reg(m, `${label}: ${name.toLowerCase()} side`, side, amt));
 }
 }
-buildSide(pivA, 1, ‘Safe’, ‘A’);
-buildSide(pivB, -1, ‘Bite’, ‘B’);
+buildSide(pivA, 1, 'Safe', 'A');
+buildSide(pivB, -1, 'Bite', 'B');
 
 const lg = new THREE.CapsuleGeometry(0.02, 0.2, 6, 14);
 lg.rotateX(PI / 2);
 const latchMesh = new THREE.Mesh(lg, mats.latch);
 latchMesh.position.set(1.22, 0.16, 0);
-pivA.add(reg(latchMesh, ‘Latch: bronze lever’, 1, 0.35));
-
-applyWay(0);
+pivA.add(reg(latchMesh, 'Latch: bronze lever', 1, 0.35));
 
 const SND = { clackHz: 3000, clackG: 0.8, ringHz: 2000, pivG: 0.5, pivHz: 2000 };
+applyWay(0);
 let ac = null, master = null, noiseBuf = null, swG = null, swF = null, pvG = null, pvF = null;
 let volume = 0.6, muted = false;
 
@@ -403,7 +403,7 @@ const d = noiseBuf.getChannelData(0);
 for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
 const sw = loopNoise();
 swF = ac.createBiquadFilter();
-swF.type = ‘bandpass’;
+swF.type = 'bandpass';
 swF.frequency.value = 500;
 swF.Q.value = 1.1;
 swG = ac.createGain();
@@ -411,14 +411,14 @@ swG.gain.value = 0;
 sw.connect(swF); swF.connect(swG); swG.connect(master);
 const pv = loopNoise();
 pvF = ac.createBiquadFilter();
-pvF.type = ‘bandpass’;
+pvF.type = 'bandpass';
 pvF.frequency.value = 2000;
 pvF.Q.value = 2;
 pvG = ac.createGain();
 pvG.gain.value = 0;
 pv.connect(pvF); pvF.connect(pvG); pvG.connect(master);
 }
-if (ac.state === ‘suspended’) ac.resume();
+if (ac.state === 'suspended') ac.resume();
 } catch (e) { ac = null; }
 }
 function hit(type, freq, q, gain, dur) {
@@ -447,13 +447,13 @@ o.start(t); o.stop(t + dur + 0.02);
 }
 function clack(spd) {
 const s = SND.clackG * clamp(spd / 7, 0.08, 1);
-hit(‘bandpass’, SND.clackHz, 3, s, 0.05);
+hit('bandpass', SND.clackHz, 3, s, 0.05);
 tone(SND.clackHz * 1.5, s * 0.3, 0.05);
 }
-function latchClick() { hit(‘highpass’, 3800, 0.7, 0.35, 0.03); }
+function latchClick() { hit('highpass', 3800, 0.7, 0.35, 0.03); }
 function ring() { [1, 2.76, 5.4, 8.93].forEach((m, i) => tone(SND.ringHz * m, 0.09 / (i + 1), 1.6)); }
 
-const COLS = [‘A’, ‘B’, ‘rx’, ‘ry’, ‘rz’, ‘px’, ‘py’, ‘pz’, ‘L’];
+const COLS = ['A', 'B', 'rx', 'ry', 'rz', 'px', 'py', 'pz', 'L'];
 const COLS8 = COLS.slice(0, 8);
 function reverseRows(rows) {
 const T = rows[rows.length - 1][0];
@@ -529,16 +529,16 @@ const rowsVesper = [
 ];
 
 const MOVES = {
-open: { name: ‘Basic open’, rows: rowsOpen },
-close: { name: ‘Basic close’, rows: reverseRows(rowsOpen) },
-chaplin: { name: ‘Chaplin’, rows: rowsChaplin },
-zen: { name: ‘Zen rollover’, rows: rowsZen },
-fan: { name: ‘Fan’, rows: rowsFan, quiet: true },
-helix: { name: ‘Helix’, rows: rowsHelix },
-aerial: { name: ‘Aerial’, rows: rowsAerial },
-vesper: { name: ‘Vesper snap’, rows: rowsVesper }
+open: { name: 'Basic open', rows: rowsOpen },
+close: { name: 'Basic close', rows: reverseRows(rowsOpen) },
+chaplin: { name: 'Chaplin', rows: rowsChaplin },
+zen: { name: 'Zen rollover', rows: rowsZen },
+fan: { name: 'Fan', rows: rowsFan, quiet: true },
+helix: { name: 'Helix', rows: rowsHelix },
+aerial: { name: 'Aerial', rows: rowsAerial },
+vesper: { name: 'Vesper snap', rows: rowsVesper }
 };
-const COMBO = [‘open’, ‘chaplin’, ‘zen’, ‘fan’, ‘helix’, ‘aerial’, ‘vesper’, ‘close’];
+const COMBO = ['open', 'chaplin', 'zen', 'fan', 'helix', 'aerial', 'vesper', 'close'];
 
 function evalRows(rows, t) {
 const n = rows.length;
@@ -563,11 +563,11 @@ return raw;
 
 let state = { A: 0, B: 0, rx: 0, ry: 0, rz: 0, px: 0, py: 0, pz: 0, L: 1 };
 let prev = { ...state };
-let cur = null, lastKey = null, mode = ‘single’, drag = null, snap = null;
+let cur = null, lastKey = null, mode = 'single', drag = null, snap = null;
 const queue = [];
 let speedVal = 1, slowOn = false, trailOn = false, exT = 0, ex = 0, revealT = 0, loaded = false;
 
-function say(t) { $(‘caption’).textContent = t; }
+function say(t) { $('caption').textContent = t; }
 function startMove(key) {
 const m = MOVES[key];
 const r0 = m.rows[0];
@@ -579,14 +579,14 @@ say(m.name);
 }
 function pickFree() {
 const open = state.A > P / 2;
-const pool = Object.keys(MOVES).filter((k) => k !== lastKey && (open ? k !== ‘open’ : k !== ‘close’));
+const pool = Object.keys(MOVES).filter((k) => k !== lastKey && (open ? k !== 'open' : k !== 'close'));
 return pool[Math.floor(Math.random() * pool.length)];
 }
 function play(key) {
 ensureAudio();
 if (drag) return;
 queue.length = 0;
-mode = ‘single’;
+mode = 'single';
 snap = null;
 startMove(key);
 }
@@ -594,9 +594,9 @@ function combo() {
 ensureAudio();
 if (drag) return;
 snap = null;
-mode = ‘combo’;
+mode = 'combo';
 queue.length = 0;
-if (state.A > P / 2) queue.push(‘close’);
+if (state.A > P / 2) queue.push('close');
 queue.push(...COMBO);
 startMove(queue.shift());
 }
@@ -604,15 +604,15 @@ function freestyle() {
 ensureAudio();
 if (drag) return;
 snap = null;
-mode = ‘free’;
+mode = 'free';
 queue.length = 0;
 startMove(pickFree());
 }
 function stopAll() {
-mode = ‘single’;
+mode = 'single';
 queue.length = 0;
 cur = null;
-say(‘’);
+say('');
 }
 
 const stopDist = (a) => {
@@ -628,8 +628,8 @@ const TRAIL_N = 120;
 const trailPos = new Float32Array(TRAIL_N * 3);
 const trailCol = new Float32Array(TRAIL_N * 3);
 const trailGeo = new THREE.BufferGeometry();
-trailGeo.setAttribute(‘position’, new THREE.BufferAttribute(trailPos, 3));
-trailGeo.setAttribute(‘color’, new THREE.BufferAttribute(trailCol, 3));
+trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+trailGeo.setAttribute('color', new THREE.BufferAttribute(trailCol, 3));
 const trailLine = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
 trailLine.frustumCulled = false;
 trailLine.visible = false;
@@ -767,70 +767,70 @@ controls.enabled = true;
 snap = { t: state[side] > P / 2 ? P : 0 };
 }
 
-canvas.addEventListener(‘pointerdown’, (e) => {
+canvas.addEventListener('pointerdown', (e) => {
 ensureAudio();
 const h = pick(e);
 if (h && h.object.userData.handle) {
 drag = { side: h.object.userData.handle, pending: 0 };
 cur = null;
 queue.length = 0;
-mode = ‘single’;
+mode = 'single';
 snap = null;
 state.L = 0;
 controls.enabled = false;
 canvas.setPointerCapture(e.pointerId);
-say(‘’);
+say('');
 }
 });
-canvas.addEventListener(‘pointermove’, (e) => {
+canvas.addEventListener('pointermove', (e) => {
 if (drag) { drag.pending += e.movementX; return; }
 const h = pick(e);
-const tip = $(‘tip’);
+const tip = $('tip');
 if (h) {
 tip.textContent = h.object.userData.label;
-tip.style.display = ‘block’;
-tip.style.left = (e.clientX + 14) + ‘px’;
-tip.style.top = (e.clientY + 12) + ‘px’;
-canvas.style.cursor = h.object.userData.handle ? ‘grab’ : ‘default’;
+tip.style.display = 'block';
+tip.style.left = (e.clientX + 14) + 'px';
+tip.style.top = (e.clientY + 12) + 'px';
+canvas.style.cursor = h.object.userData.handle ? 'grab' : 'default';
 } else {
-tip.style.display = ‘none’;
-canvas.style.cursor = ‘default’;
+tip.style.display = 'none';
+canvas.style.cursor = 'default';
 }
 });
-canvas.addEventListener(‘pointerup’, endDrag);
-canvas.addEventListener(‘pointercancel’, endDrag);
-canvas.addEventListener(‘pointerleave’, () => { $(‘tip’).style.display = ‘none’; });
+canvas.addEventListener('pointerup', endDrag);
+canvas.addEventListener('pointercancel', endDrag);
+canvas.addEventListener('pointerleave', () => { $('tip').style.display = 'none'; });
 
-document.querySelectorAll(‘[data-move]’).forEach((b) => b.addEventListener(‘click’, () => play(b.dataset.move)));
-$(‘btn-combo’).onclick = combo;
-$(‘btn-free’).onclick = freestyle;
-$(‘btn-stop’).onclick = stopAll;
-document.querySelectorAll(‘[data-way]’).forEach((b) => b.addEventListener(‘click’, () => applyWay(+b.dataset.way)));
-document.querySelectorAll(‘[data-cam]’).forEach((b) => b.addEventListener(‘click’, () => cam(b.dataset.cam)));
+document.querySelectorAll('[data-move]').forEach((b) => b.addEventListener('click', () => play(b.dataset.move)));
+$('btn-combo').onclick = combo;
+$('btn-free').onclick = freestyle;
+$('btn-stop').onclick = stopAll;
+document.querySelectorAll('[data-way]').forEach((b) => b.addEventListener('click', () => applyWay(+b.dataset.way)));
+document.querySelectorAll('[data-cam]').forEach((b) => b.addEventListener('click', () => cam(b.dataset.cam)));
 
 function toggleExplode() {
 exT = exT ? 0 : 1;
-$(‘btn-explode’).classList.toggle(‘on’, exT === 1);
+$('btn-explode').classList.toggle('on', exT === 1);
 }
-$(‘btn-explode’).onclick = toggleExplode;
+$('btn-explode').onclick = toggleExplode;
 
 function toggleTrail() {
 trailOn = !trailOn;
 trailLine.visible = trailOn;
 if (!trailOn) trailCount = 0;
-$(‘btn-trail’).classList.toggle(‘on’, trailOn);
+$('btn-trail').classList.toggle('on', trailOn);
 }
-$(‘btn-trail’).onclick = toggleTrail;
+$('btn-trail').onclick = toggleTrail;
 
-$(‘speed’).addEventListener(‘input’, (e) => {
+$('speed').addEventListener('input', (e) => {
 speedVal = +e.target.value;
-$(‘speed-v’).textContent = speedVal.toFixed(2) + ‘x’;
+$('speed-v').textContent = speedVal.toFixed(2) + 'x';
 });
-$(‘btn-slow’).onclick = () => {
+$('btn-slow').onclick = () => {
 slowOn = !slowOn;
-$(‘btn-slow’).classList.toggle(‘on’, slowOn);
+$('btn-slow').classList.toggle('on', slowOn);
 };
-$(‘vol’).addEventListener(‘input’, (e) => {
+$('vol').addEventListener('input', (e) => {
 volume = +e.target.value;
 if (master && !muted) master.gain.setTargetAtTime(volume, ac.currentTime, 0.02);
 });
@@ -838,41 +838,41 @@ function toggleMute() {
 ensureAudio();
 muted = !muted;
 if (master) master.gain.setTargetAtTime(muted ? 0 : volume, ac.currentTime, 0.02);
-$(‘btn-mute’).textContent = muted ? ‘Sound off (M)’ : ‘Sound on (M)’;
-$(‘btn-mute’).classList.toggle(‘on’, muted);
+$('btn-mute').textContent = muted ? 'Sound off (M)' : 'Sound on (M)';
+$('btn-mute').classList.toggle('on', muted);
 }
-$(‘btn-mute’).onclick = toggleMute;
+$('btn-mute').onclick = toggleMute;
 
 function hideUI(hide) {
-$(‘ui’).classList.toggle(‘off’, hide);
-$(‘btn-show’).hidden = !hide;
+$('ui').classList.toggle('off', hide);
+$('btn-show').hidden = !hide;
 }
-$(‘btn-hide’).onclick = () => hideUI(true);
-$(‘btn-show’).onclick = () => hideUI(false);
+$('btn-hide').onclick = () => hideUI(true);
+$('btn-show').onclick = () => hideUI(false);
 
-const KEYMAP = { ‘1’: ‘open’, ‘2’: ‘close’, ‘3’: ‘chaplin’, ‘4’: ‘zen’, ‘5’: ‘fan’, ‘6’: ‘helix’, ‘7’: ‘aerial’, ‘8’: ‘vesper’ };
-window.addEventListener(‘keydown’, (e) => {
-if (e.target && e.target.tagName === ‘INPUT’) return;
+const KEYMAP = { '1': 'open', '2': 'close', '3': 'chaplin', '4': 'zen', '5': 'fan', '6': 'helix', '7': 'aerial', '8': 'vesper' };
+window.addEventListener('keydown', (e) => {
+if (e.target && e.target.tagName === 'INPUT') return;
 const k = e.key;
 if (KEYMAP[k]) play(KEYMAP[k]);
-else if (k === ‘9’) combo();
-else if (k === ‘f’ || k === ‘F’) freestyle();
-else if (k === ‘Escape’ || k === ‘ ‘) { e.preventDefault(); stopAll(); }
-else if (k === ‘e’ || k === ‘E’) toggleExplode();
-else if (k === ‘t’ || k === ‘T’) toggleTrail();
-else if (k === ‘m’ || k === ‘M’) toggleMute();
-else if (k === ‘h’ || k === ‘H’) hideUI(!$(‘ui’).classList.contains(‘off’));
+else if (k === '9') combo();
+else if (k === 'f' || k === 'F') freestyle();
+else if (k === 'Escape' || k === ' ') { e.preventDefault(); stopAll(); }
+else if (k === 'e' || k === 'E') toggleExplode();
+else if (k === 't' || k === 'T') toggleTrail();
+else if (k === 'm' || k === 'M') toggleMute();
+else if (k === 'h' || k === 'H') hideUI(!$('ui').classList.contains('off'));
 });
 
-window.addEventListener(‘resize’, () => {
+window.addEventListener('resize', () => {
 renderer.setSize(window.innerWidth, window.innerHeight, false);
 camera.aspect = window.innerWidth / window.innerHeight;
 camera.updateProjectionMatrix();
 });
 
 flyTo([2.5, 1.25, 3.3], [0.45, 0.04, 0], 2.4);
-setTimeout(() => play(‘open’), 700);
-setTimeout(() => $(‘hud’).classList.add(‘on’), 1800);
+setTimeout(() => play('open'), 700);
+setTimeout(() => $('hud').classList.add('on'), 1800);
 if (!trailOn) trailLine.visible = false;
 
 const clock = new THREE.Clock();
@@ -883,7 +883,7 @@ controls.update();
 renderer.render(scene, camera);
 if (!loaded) {
 loaded = true;
-$(‘loading’).classList.add(‘done’);
+$('loading').classList.add('done');
 }
 });
 }

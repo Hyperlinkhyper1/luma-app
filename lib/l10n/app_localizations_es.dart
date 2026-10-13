@@ -33,7 +33,50 @@ class LEs extends L {
 
   @override
   String get teamLibraryEmptyMember =>
-      'Un líder del equipo elige qué mods de Modrinth se descomprimen aquí. Después, todo el equipo puede ver sus texturas y modelos.';
+      'Un líder del equipo elige los mods que comparte todo el equipo. También puedes añadir los tuyos: se descomprimen en este dispositivo y solo tú los ves.';
+
+  @override
+  String get teamLibraryTeamSection => 'Equipo';
+
+  @override
+  String get teamLibraryLocalSection => 'En este dispositivo';
+
+  @override
+  String get teamLibraryNoTeamMods =>
+      'Ningún líder ha añadido todavía mods para el equipo.';
+
+  @override
+  String get teamLibraryNoTeamModsLead =>
+      'Aún no hay mods del equipo. Añadir mod pone uno aquí para todos.';
+
+  @override
+  String get teamLibraryLocalHint =>
+      'Los mods que añadas aquí se descargan de Modrinth y se descomprimen en este dispositivo. Solo tú los ves; la biblioteca del equipo no cambia.';
+
+  @override
+  String get teamLibraryAddLocal => 'Añadir a este dispositivo';
+
+  @override
+  String get teamLibraryAddLocalTitle => 'Añadir a este dispositivo';
+
+  @override
+  String get teamLibraryAddLocalHint =>
+      'Elige un mod o paquete de recursos. Se descarga y descomprime solo en este dispositivo, aparte de los mods del equipo, y se buscan actualizaciones cuando esta pestaña está abierta.';
+
+  @override
+  String get teamLibraryLocalPill => 'Este dispositivo';
+
+  @override
+  String get teamLibraryRemoveLocal => 'Quitar de este dispositivo';
+
+  @override
+  String teamLibraryRemoveLocalConfirm(String title) {
+    return '¿Quitar $title de este dispositivo? Sus archivos descomprimidos se borran aquí; la biblioteca del equipo no cambia.';
+  }
+
+  @override
+  String get teamLibraryUnpackingLocalBody =>
+      'Descargando el jar de Modrinth y descomprimiendo sus recursos en este dispositivo. Esta página se completa sola.';
 
   @override
   String get teamLibraryPickMod => 'Elige un mod para ver sus assets.';

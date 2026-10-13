@@ -239,6 +239,40 @@ const s = "y";
     ].join('\n');
     expect(applyBenchmarkRepair(page, reply), contains('let v59 = 60;'));
   });
+  test('bad edits are refused with what to change, and no-ops are skipped',
+      () {
+    final page = 'one\nconst s = "x";\nthree\n${'// unchanged\n' * 20}';
+    Matcher says(String text) => throwsA(isA<FormatException>()
+        .having((e) => e.message, 'message', contains(text)));
+    expect(
+        () => applyBenchmarkRepair(
+            page, '<<<<<<< SEARCH\n=======\nadded\n>>>>>>> REPLACE'),
+        says('SEARCH block is empty'));
+    expect(
+        () => applyBenchmarkRepair(
+            page, '<<<<<<< SEARCH\nthree\n=======\nthree\n>>>>>>> REPLACE'),
+        says('identical to its SEARCH text'));
+    expect(
+        applyBenchmarkRepair(
+            page,
+            '<<<<<<< SEARCH\nthree\n=======\nthree\n>>>>>>> REPLACE\n'
+            '<<<<<<< SEARCH\none\n=======\nuno\n>>>>>>> REPLACE'),
+        startsWith('uno\nconst s = "x";\nthree\n'));
+    expect(() => applyBenchmarkRepair(page, '{"edits":[{"search":"one"}]}'),
+        says('no replacement text'));
+  });
+  test('JSON edits under other key names and JSON-escaped SEARCH text apply',
+      () {
+    final page = 'one\nconst s = "x";\nthree\n${'// unchanged\n' * 20}';
+    expect(
+        applyBenchmarkRepair(page,
+            '{"edits":[{"search":"one","replace":"uno"},{"old_string":"three","new_string":"tres"}]}'),
+        startsWith('uno\nconst s = "x";\ntres\n'));
+    expect(
+        applyBenchmarkRepair(page,
+            '<<<<<<< SEARCH\nconst s = \\"x\\";\n=======\nconst s = "y";\n>>>>>>> REPLACE'),
+        startsWith('one\nconst s = "y";\nthree\n'));
+  });
   test('the html reaches the model verbatim after one line of facts', () {
     final message = repairUserMessage({'renderError': 'x'}, 'a "q" \\ b\nc');
     expect(jsonDecode(message.split('\n').first), {'renderError': 'x'});
@@ -319,6 +353,61 @@ const s = "y";
             .source,
         contains('unpkg.com/three@0.160.0'));
     expect(knownRepair('plain text, no head or module script', error), isNull);
+  });
+
+  test('typographic quotes in code are straightened without a model', () {
+    const page = '<html><head><style>body{font:13px system-ui,”Segoe UI”,sans-serif}</style>\n'
+        '<script type="importmap">{“imports”:{“three”:”https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>\n'
+        '</head><body><p>“Prose” stays</p><script type="module">\n'
+        'import * as THREE from ‘three’;\n'
+        'const el = document.getElementById(‘gl’);\n'
+        'say(‘don’t stop’, ‘x’);\n'
+        '</script></body></html>';
+    final fix = knownRepair(page, 'Failed to parse import map')!;
+    expect(fix.what, contains('typographic quotes'));
+    expect(fix.source, contains('{"imports":{"three":"https://'));
+    expect(fix.source, contains("import * as THREE from 'three';"));
+    expect(fix.source, contains("say('don’t stop', 'x');"));
+    expect(fix.source, contains('system-ui,"Segoe UI",sans-serif'));
+    expect(fix.source, contains('<p>“Prose” stays</p>'));
+    expect(knownRepair(fix.source, 'x'), isNull);
+    // Quotes inside an ordinary string are prose, not broken code.
+    const fine = '<script>const s = "She said “hi” to me";</script>';
+    expect(straightenCodeQuotes(fine), isNull);
+  });
+
+  test('a fallback screen whose CSS beats its hidden attribute is hidden', () {
+    const page = '<style>#nogl{display:grid}</style>'
+        '<div id="nogl" hidden>WebGL is unavailable</div>';
+    const error = 'the scene showed an error screen: "WebGL is unavailable"';
+    expect(knownRepair(page, error)!.source,
+        contains('[hidden]{display:none!important}\n</style>'));
+    expect(knownRepair(page, 'ReferenceError: x'), isNull);
+    expect(
+        knownRepair('<style>#nogl{color:red}</style><div id="nogl" hidden></div>',
+            error),
+        isNull);
+  });
+
+  test('SEARCH text matches when the model retyped its quotes', () {
+    final page = "a\nconst el = \$(‘gl’);\nb\n${'// unchanged\n' * 20}";
+    expect(
+        applyBenchmarkRepair(page,
+            "<<<<<<< SEARCH\nconst el = \$('gl');\n=======\nconst el = \$('gl2');\n>>>>>>> REPLACE"),
+        contains("const el = \$('gl2');"));
+  });
+
+  test('a malformed block is skipped when the reply has good ones', () {
+    final page = 'one\ntwo\nthree\n${'// unchanged\n' * 20}';
+    const reply = '<<<<<<< SEARCH\none\n=======\nuno\n>>>>>>> REPLACE\n'
+        '<<<<<<< SEARCH\ntwo\n>>>>>>> REPLACE\n'
+        '<<<<<<< SEARCH\nthree\n=======\ntres\n>>>>>>> REPLACE';
+    expect(applyBenchmarkRepair(page, reply), startsWith('uno\ntwo\ntres\n'));
+    expect(
+        () => applyBenchmarkRepair(
+            page, '<<<<<<< SEARCH\ntwo\n>>>>>>> REPLACE'),
+        throwsA(isA<FormatException>().having(
+            (e) => e.message, 'message', contains('without its'))));
   });
 
   test('a block of lines can be rewritten, and the page cannot be replaced',
@@ -632,13 +721,14 @@ const s = "y";
       };
     }
 
-    Future<void> save({double limit = .25, String? effort}) async {
+    Future<void> save(
+        {double limit = .25, String? effort, String model = 'test/model'}) async {
       final response = await request(
           'PUT', '/admin/benchmark-banners/repair/settings',
           body: {
             'route': {
               'upstream': 'openrouter',
-              'model': 'test/model',
+              'model': model,
               if (effort != null) 'reasoningEffort': effort,
             },
             'maxCostUsd': limit,
@@ -1103,6 +1193,16 @@ const s = "y";
           original);
       expect(renderer.rendered, isEmpty);
     });
+    test('a :batch model can be chosen and is not sent a max price', () async {
+      await save(model: 'test/model:batch');
+      final saved =
+          await request('GET', '/admin/benchmark-banners/repair/settings');
+      expect(saved['route']['model'], 'test/model:batch');
+      await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
+      await finished();
+      expect(sent, isNot(contains('provider')));
+    });
+
     test('repairs ask for low reasoning unless the settings say otherwise',
         () async {
       await save();

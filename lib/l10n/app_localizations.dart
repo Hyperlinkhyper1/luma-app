@@ -148,8 +148,80 @@ abstract class L {
   /// No description provided for @teamLibraryEmptyMember.
   ///
   /// In en, this message translates to:
-  /// **'A team lead picks which Modrinth mods are unpacked here. Once they do, the whole team can browse their textures and models.'**
+  /// **'A team lead picks the mods the whole team shares. You can add your own too: they are unpacked on this device and only you see them.'**
   String get teamLibraryEmptyMember;
+
+  /// No description provided for @teamLibraryTeamSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Team'**
+  String get teamLibraryTeamSection;
+
+  /// No description provided for @teamLibraryLocalSection.
+  ///
+  /// In en, this message translates to:
+  /// **'On this device'**
+  String get teamLibraryLocalSection;
+
+  /// No description provided for @teamLibraryNoTeamMods.
+  ///
+  /// In en, this message translates to:
+  /// **'A team lead hasn\'t added any mods for the team yet.'**
+  String get teamLibraryNoTeamMods;
+
+  /// No description provided for @teamLibraryNoTeamModsLead.
+  ///
+  /// In en, this message translates to:
+  /// **'No team mods yet. Add mod puts one here for everyone.'**
+  String get teamLibraryNoTeamModsLead;
+
+  /// No description provided for @teamLibraryLocalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Mods you add here are downloaded from Modrinth and unpacked on this device. Only you see them; the team library isn\'t touched.'**
+  String get teamLibraryLocalHint;
+
+  /// No description provided for @teamLibraryAddLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to this device'**
+  String get teamLibraryAddLocal;
+
+  /// No description provided for @teamLibraryAddLocalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to this device'**
+  String get teamLibraryAddLocalTitle;
+
+  /// No description provided for @teamLibraryAddLocalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a mod or resource pack. It is downloaded and unpacked on this device only, apart from the team\'s mods, and checked for updates whenever this tab is open.'**
+  String get teamLibraryAddLocalHint;
+
+  /// No description provided for @teamLibraryLocalPill.
+  ///
+  /// In en, this message translates to:
+  /// **'This device'**
+  String get teamLibraryLocalPill;
+
+  /// No description provided for @teamLibraryRemoveLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from this device'**
+  String get teamLibraryRemoveLocal;
+
+  /// No description provided for @teamLibraryRemoveLocalConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {title} from this device? Its unpacked files are deleted here; the team library isn\'t touched.'**
+  String teamLibraryRemoveLocalConfirm(String title);
+
+  /// No description provided for @teamLibraryUnpackingLocalBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading the jar from Modrinth and unpacking its assets on this device. This page fills in by itself.'**
+  String get teamLibraryUnpackingLocalBody;
 
   /// No description provided for @teamLibraryPickMod.
   ///

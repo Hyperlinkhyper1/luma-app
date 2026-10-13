@@ -249,6 +249,10 @@ extension BenchmarkGenerateApi on Api {
   /// server's keys, the efforts, and every recent run.
   Future<Response> _adminBenchmarkGenState(Request request) async {
     final configured = config.configuredAiUpstreams;
+    final pageSizes = <String, List<int>>{};
+    for (final entry in await aiBenchmarks.list()) {
+      (pageSizes[entry.kind] ??= []).add(entry.sizeBytes);
+    }
     return jsonResponse(200, {
       'tests': [
         for (final e in kBenchmarkPrompts.entries)
@@ -258,8 +262,11 @@ extension BenchmarkGenerateApi on Api {
             'prompt': benchmarkPromptFor(e.key),
             'manual': kBenchmarkManualKinds.contains(e.key),
             'lot': benchmarkDealsLot(e.key),
+            'pageTokens':
+                benchmarkMedianPageTokens(pageSizes[e.key] ?? const []),
           },
       ],
+      'costModel': benchmarkCostModelJson(),
       'keys': [
         for (final u in AiUpstream.values)
           {
@@ -690,7 +697,7 @@ extension BenchmarkGenerateApi on Api {
       job.phase = 'submitting';
       // OpenRouter stream-parses the submit and wants `requests` last.
       final (status, body) =
-          await _openRouterBatchCall(job, 'POST', '/batches', body: {
+          await _openRouterBatchCall('POST', '/batches', body: {
         'endpoint': '/v1/chat/completions',
         'model': benchmarkBatchBaseModel(job.route.model),
         'requests': [
@@ -731,7 +738,7 @@ extension BenchmarkGenerateApi on Api {
       if (job.stopRequested) break;
       if (DateTime.now().isAfter(deadline)) throw TimeoutException('batch');
       final (status, body) =
-          await _openRouterBatchCall(job, 'GET', '/batches/${job.batchId}');
+          await _openRouterBatchCall('GET', '/batches/${job.batchId}');
       if (job.stopRequested) break;
       final missing =
           status == HttpStatus.notFound || status == HttpStatus.gone;
@@ -757,7 +764,7 @@ extension BenchmarkGenerateApi on Api {
           }
           // The reply is saved here now; OpenRouter needn't keep a copy.
           unawaited(
-              _openRouterBatchCall(job, 'DELETE', '/batches/${job.batchId}')
+              _openRouterBatchCall('DELETE', '/batches/${job.batchId}')
                   .then((_) {}, onError: (_) {}));
           return;
         }
@@ -783,7 +790,7 @@ extension BenchmarkGenerateApi on Api {
   /// status and the decoded JSON, or the raw text when it isn't JSON; a
   /// network failure comes back as status 0.
   Future<(int, Object?)> _openRouterBatchCall(
-      BenchmarkGenJob job, String method, String path,
+      String method, String path,
       {Map<String, dynamic>? body}) async {
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 30);
@@ -1075,6 +1082,12 @@ String _bgDialogHtml() => '<dialog id="bgDialog" class="bn-dialog bg-dialog" '
     '<div class="bg-preview" aria-live="polite"><span id="bgPreviewLabel" '
     'class="muted">New entry</span> <strong id="bgPreviewName">—</strong> <span id="bgPreviewVendor" '
     'class="muted"></span><code id="bgPreviewId"></code></div>'
+    '<div class="bg-cost"><div id="bgCost" class="bg-cost-line" '
+    'aria-live="polite"></div>'
+    '<details class="bg-prompt bg-cost-all"><summary>Every test and effort '
+    '<span class="muted">· estimated cost per run on this model</span>'
+    '</summary><div id="bgCostTable" class="bg-cost-table"></div>'
+    '</details></div>'
     '</section>'
     '</div>'
     '<div class="bn-dlg-foot">'
@@ -1125,6 +1138,23 @@ const _bgCss = r'''
 .bg-entry{padding:0}
 .bg-preview{margin-top:12px;background:#12101e;border:1px solid #241e36;border-radius:9px;padding:10px 12px;font-size:13.5px;display:flex;flex-wrap:wrap;gap:6px;align-items:baseline}
 .bg-preview code{margin-left:auto;font-size:11.5px;color:#8d86a8}
+.bg-cost{margin-top:10px}
+.bg-cost-line{font-size:13px;color:#c5bed9;font-variant-numeric:tabular-nums;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}
+.bg-cost-line:empty{display:none}
+.bg-cost-line b{color:#ece8f7;font-size:15px;font-weight:650}
+.bg-cost-line .bg-cost-warn{color:#e8c37a}
+.bg-model-stats .bg-cost-chip{color:#b9b0f5}
+.bg-model-stats .bg-cost-chip b{color:#d9d2ff}
+.bg-cost-all{margin-top:10px}
+.bg-cost-table{overflow-x:auto;padding:0 12px 4px}
+.bg-cost-table table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+.bg-cost-table th,.bg-cost-table td{padding:6px 8px;text-align:right;border-bottom:1px solid #241e36;white-space:nowrap}
+.bg-cost-table th:first-child,.bg-cost-table td:first-child{text-align:left}
+.bg-cost-table thead th{color:#9b94b3;font-weight:600}
+.bg-cost-table tbody tr:last-child td{border-bottom:0}
+.bg-cost-table td.is-current{background:#1a1530;color:#ece8f7;font-weight:650;box-shadow:inset 0 0 0 1px #8a7ee0}
+.bg-cost-table td.is-capped{color:#e8c37a}
+.bg-cost-note{font-size:11.5px;color:#8d86a8;padding:6px 12px 10px}
 .bg-runs{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .bg-runs:empty{display:none}
 .bg-run{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:start}
@@ -1187,6 +1217,86 @@ const _bgScript = r'''
   }
   function kfmt(n) { return n >= 1000 ? (n / 1000).toFixed(n >= 100000 ? 0 : 1).replace(/\.0$/, '') + 'k' : String(n); }
   function price(p) { return p == null ? null : '$' + (p < 1 ? +p.toFixed(3) : p.toFixed(2)); }
+  function usd(c) { return c == null ? null : '$' + (c >= 1 ? c.toFixed(2) : c > 0 ? String(+c.toPrecision(3)) : '0'); }
+
+  // What one run is likely to cost: the test's prompt in, the median page
+  // on its roster plus the thinking the effort buys out. The calibration
+  // lives in benchmark_cost.dart. A :batch card thinks like its base model.
+  const EFFORT_COLS = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh'];
+  function baseOf(m) {
+    if (!m || !m.id.endsWith(BATCH)) return m;
+    return allModels.find((x) => x.upstream === m.upstream && x.id === m.id.slice(0, -BATCH.length)) || m;
+  }
+  function thinks(m) { const b = baseOf(m); return !b || !Array.isArray(b.efforts) || b.efforts.length > 0; }
+  function priceOf(m) {
+    if (!m) return null;
+    const o = m.output != null ? m.output : m.refOutput;
+    if (o == null) return null;
+    const i = m.input != null ? m.input : m.refInput;
+    return { input: i || 0, output: o, ref: m.output == null };
+  }
+  function resolvedEffort(m, eff) {
+    if (!thinks(m)) return '';
+    const b = baseOf(m);
+    return eff || (b && b.defaultEffort) || 'medium';
+  }
+  function estimate(m, eff, t) {
+    const cm = state.costModel;
+    const chars = t.kind === kind ? prompt.value.length : t.prompt.length;
+    const input = Math.round(chars / cm.promptCharsPerToken);
+    const r = resolvedEffort(m, eff);
+    let out = !r ? t.pageTokens * cm.plainPageScale
+      : t.pageTokens * (1 + (cm.thinking[r] != null ? cm.thinking[r] : cm.thinking.medium));
+    out = Math.round(out / 100) * 100;
+    const cap = Number(maxTokens.value) || 0;
+    const capped = cap > 0 && out > cap;
+    if (capped) out = cap;
+    const p = priceOf(m);
+    return { input, out, capped, ref: !!(p && p.ref),
+      cost: p ? (input * p.input + out * p.output) / 1e6 : null };
+  }
+  function currentTest() { return state && state.costModel ? state.tests.find((x) => x.kind === kind) : null; }
+  function effortCols(m) {
+    if (!thinks(m)) return [''];
+    const b = baseOf(m);
+    const listed = b && Array.isArray(b.efforts) ? b.efforts : [];
+    return EFFORT_COLS.filter((e) => e === 'none' || e === effort.value || !listed.length || listed.includes(e));
+  }
+  function renderCost() {
+    const line = $('bgCost'), table = $('bgCostTable');
+    const t = currentTest(), id = modelId.value.trim();
+    if (!t || t.manual || !id) {
+      line.innerHTML = t && !t.manual ? '<span class="muted">Pick a model to see what a run costs.</span>' : '';
+      table.innerHTML = '';
+      return;
+    }
+    const e = estimate(model, effort.value, t);
+    const parts = [e.cost == null
+      ? '<span>Estimated cost: no price listed for this model</span>'
+      : '<span>Estimated cost <b>≈ ' + usd(e.cost) + '</b> per run</span>'];
+    parts.push('<span>' + kfmt(e.input) + ' in · ' + kfmt(e.out) + ' out</span>');
+    if (!thinks(model)) parts.push('<span class="muted">Lists no reasoning, so effort changes nothing</span>');
+    if (e.capped) parts.push('<span class="bg-cost-warn">Reaches the ' + kfmt(e.out) + ' output cap; the page may be cut off</span>');
+    if (e.ref) parts.push('<span class="muted">OpenRouter price for the same model</span>');
+    line.innerHTML = parts.join('');
+
+    const cols = effortCols(model);
+    const cur = resolvedEffort(model, effort.value);
+    const tests = state.tests.filter((x) => !x.manual);
+    table.innerHTML = '<table><thead><tr><th>Test</th>'
+      + cols.map((c) => '<th>' + esc(c ? EFFORT_LABEL[c] : 'Any effort') + '</th>').join('')
+      + '</tr></thead><tbody>'
+      + tests.map((x) => '<tr><td>' + esc(x.label) + '</td>' + cols.map((c) => {
+        const r = estimate(model, c, x);
+        const cls = [x.kind === kind && c === cur ? 'is-current' : '', r.capped ? 'is-capped' : ''].filter(Boolean).join(' ');
+        return '<td' + (cls ? ' class="' + cls + '"' : '')
+          + ' title="' + esc(kfmt(r.input) + ' in · ' + kfmt(r.out) + ' out' + (r.capped ? ', at the output cap' : '')) + '">'
+          + esc(r.cost == null ? '–' : usd(r.cost)) + '</td>';
+      }).join('') + '</tr>').join('')
+      + '</tbody></table>'
+      + '<div class="bg-cost-note">Per run: the test\'s prompt in; out, the median page already on that test\'s roster '
+      + 'plus the thinking each effort usually adds. Expect real runs within about half to double this.</div>';
+  }
   function elapsed(ms) {
     const s = Math.max(0, Math.round(ms / 1000));
     return s < 60 ? s + 's' : Math.floor(s / 60) + 'm ' + String(s % 60).padStart(2, '0') + 's';
@@ -1267,6 +1377,12 @@ const _bgScript = r'''
       if (price(m.output)) stats.push('<span><b>' + price(m.input) + '</b> / <b>' + price(m.output) + '</b> per M</span>');
       const batch = isBatch(m.id);
       if (batch) stats.push('<span>Up to <b>24 h</b></span>');
+      const t = currentTest();
+      if (t && !t.manual && priceOf(m)) {
+        const e = estimate(m, effort.value, t);
+        stats.push('<span class="bg-cost-chip" title="' + esc('Estimated cost of one ' + t.label + ' run: '
+          + kfmt(e.input) + ' in · ' + kfmt(e.out) + ' out') + '">≈ <b>' + usd(e.cost) + '</b> / run</span>');
+      }
       const title = batch ? (m.name || m.id).replace(/\s*\(batch\)$/i, '') : (m.name || m.id);
       return '<button type="button" role="option" class="bg-opt" data-id="' + esc(m.id) + '" aria-selected="'
         + (model && model.id === m.id ? 'true' : 'false') + '"'
@@ -1303,6 +1419,7 @@ const _bgScript = r'''
       ? '· default for ' + t.label + (t.lot ? ' · design lot dealt per run' : '')
       : '';
     manualNote = !!(t && t.manual);
+    renderModels();
     if (manualNote) {
       status.textContent = t.label + ' needs a model file, not a page. Copy the prompt into an agent that can export it, then upload the result by hand.';
     } else if (hintShown) status.textContent = '';
@@ -1337,6 +1454,7 @@ const _bgScript = r'''
   }
   function preview() {
     syncStart();
+    renderCost();
     const n = nameBox.value.trim();
     $('bgPreviewName').textContent = n || '—';
     $('bgPreviewVendor').textContent = !replace && vendor.value ? 'by ' + vendor.options[vendor.selectedIndex].text : '';
@@ -1358,7 +1476,7 @@ const _bgScript = r'''
     if (b) pickModel(b.dataset.id);
   });
   search.addEventListener('input', renderModels);
-  effort.addEventListener('change', autofill);
+  effort.addEventListener('change', () => { renderModels(); autofill(); });
   $('bgBatchId').addEventListener('input', syncStart);
   modelId.addEventListener('input', () => {
     const id = modelId.value.trim();
@@ -1369,7 +1487,8 @@ const _bgScript = r'''
   });
   nameBox.addEventListener('input', () => { nameEdited = nameBox.value.trim() !== ''; preview(); });
   vendor.addEventListener('change', () => { vendorEdited = true; preview(); });
-  maxTokens.addEventListener('input', () => { maxEdited = true; });
+  maxTokens.addEventListener('input', () => { maxEdited = true; renderCost(); renderModels(); });
+  prompt.addEventListener('input', renderCost);
   $('bgPromptReset').addEventListener('click', () => { if (kind) pickTest(kind); });
   dlg.addEventListener('click', (e) => {
     if (e.target.closest('[data-close]') || e.target === dlg) dlg.close();
@@ -1471,6 +1590,11 @@ const _bgScript = r'''
       if (j.chars) bits.push('Generated: ' + (j.outputTokens ? kfmt(j.outputTokens) + ' output tokens / ' : '') + kfmt(j.chars) + ' chars');
       else if (j.reasoningChars) bits.push(kfmt(j.reasoningChars) + ' characters of reasoning');
       if (j.tokens) bits.push(kfmt(j.tokens) + ' total tokens');
+      const jp = priceOf(allModels.find((m) => m.upstream === j.upstream && m.id === j.model));
+      if (j.tokens && jp) {
+        const out = Math.min(j.outputTokens || 0, j.tokens);
+        bits.push('Cost ≈ ' + usd(((j.tokens - out) * jp.input + out * jp.output) / 1e6));
+      }
       bits.push('Output cap: ' + (j.outputCapSent === false ? 'provider default (requested ' + kfmt(j.maxTokens) + ')' : kfmt(j.maxTokens)));
       if (j.batch && running) bits.push('OpenRouter batch ' + (j.batchStatus || 'not submitted yet').replace(/_/g, ' '));
       bits.push(took);

@@ -32,7 +32,50 @@ class LEn extends L {
 
   @override
   String get teamLibraryEmptyMember =>
-      'A team lead picks which Modrinth mods are unpacked here. Once they do, the whole team can browse their textures and models.';
+      'A team lead picks the mods the whole team shares. You can add your own too: they are unpacked on this device and only you see them.';
+
+  @override
+  String get teamLibraryTeamSection => 'Team';
+
+  @override
+  String get teamLibraryLocalSection => 'On this device';
+
+  @override
+  String get teamLibraryNoTeamMods =>
+      'A team lead hasn\'t added any mods for the team yet.';
+
+  @override
+  String get teamLibraryNoTeamModsLead =>
+      'No team mods yet. Add mod puts one here for everyone.';
+
+  @override
+  String get teamLibraryLocalHint =>
+      'Mods you add here are downloaded from Modrinth and unpacked on this device. Only you see them; the team library isn\'t touched.';
+
+  @override
+  String get teamLibraryAddLocal => 'Add to this device';
+
+  @override
+  String get teamLibraryAddLocalTitle => 'Add to this device';
+
+  @override
+  String get teamLibraryAddLocalHint =>
+      'Pick a mod or resource pack. It is downloaded and unpacked on this device only, apart from the team\'s mods, and checked for updates whenever this tab is open.';
+
+  @override
+  String get teamLibraryLocalPill => 'This device';
+
+  @override
+  String get teamLibraryRemoveLocal => 'Remove from this device';
+
+  @override
+  String teamLibraryRemoveLocalConfirm(String title) {
+    return 'Remove $title from this device? Its unpacked files are deleted here; the team library isn\'t touched.';
+  }
+
+  @override
+  String get teamLibraryUnpackingLocalBody =>
+      'Downloading the jar from Modrinth and unpacking its assets on this device. This page fills in by itself.';
 
   @override
   String get teamLibraryPickMod => 'Pick a mod to browse its assets.';
