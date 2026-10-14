@@ -82,6 +82,14 @@ jobs:
             docker logs luma-renderer-test 2>&1
             echo "Host user namespace policy:"
             sysctl kernel.apparmor_restrict_unprivileged_userns kernel.unprivileged_userns_clone 2>&1 || true
+            echo "----- renderer confinement -----"
+            docker exec luma-renderer-test sh -c 'cat /proc/self/attr/current; grep -E "^(Cap|NoNewPrivs|Seccomp)" /proc/self/status' 2>&1 || true
+            echo "----- chromium, sandboxed -----"
+            docker exec luma-renderer-test timeout 60 /usr/bin/chromium --headless --disable-gpu --dump-dom about:blank 2>&1 | tail -40 || true
+            echo "----- chromium, --no-sandbox (diagnostic only) -----"
+            docker exec luma-renderer-test timeout 60 /usr/bin/chromium --headless --no-sandbox --disable-gpu --dump-dom about:blank 2>&1 | tail -20 || true
+            echo "----- kernel audit (apparmor/seccomp denials) -----"
+            sudo dmesg 2>/dev/null | grep -iE 'apparmor="DENIED"|audit.*(seccomp|userns)' | tail -20 || true
             exit 1
           }
       - name: Clean up renderer test

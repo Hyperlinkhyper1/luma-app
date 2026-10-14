@@ -858,7 +858,7 @@ async function main() {
       }
       console.log(`  ${backend.name} backend ${backend.args.at(-1)} unusable: ${gl ? `software fallback (${gl})` : 'no WebGL'}`);
     } catch (e) {
-      console.log(`  ${backend.name} backend ${backend.args.at(-1)} failed to launch: ${String(e).split('\n')[0]}`);
+      console.log(`  ${backend.name} backend ${backend.args.at(-1)} failed to launch: ${String(e).trim().slice(0, 2000).replace(/\n+/g, '\n    ')}`);
     }
     await b?.close().catch(() => {});
   }
