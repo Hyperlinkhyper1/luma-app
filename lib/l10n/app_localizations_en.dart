@@ -9,6 +9,165 @@ class LEn extends L {
   LEn([String locale = 'en']) : super(locale);
 
   @override
+  String get teamClipboardSettings => 'Settings';
+
+  @override
+  String get teamSettingsTitle => 'Team settings';
+
+  @override
+  String get teamSettingsSubtitle =>
+      'Only leads see this tab. Give a member extra permissions on their own, or give them a tag and set what everyone with that tag may do.';
+
+  @override
+  String get teamSettingsMembers => 'Members';
+
+  @override
+  String get teamSettingsTags => 'Tags';
+
+  @override
+  String get teamSettingsNewTag => 'New tag';
+
+  @override
+  String get teamSettingsNoTags =>
+      'No tags yet. Make one, like Modeller or Tester, to give a group the same permissions in one go.';
+
+  @override
+  String get teamSettingsLeadEverything => 'Lead · can do everything';
+
+  @override
+  String teamSettingsPermissionCount(int count, int total) {
+    return '$count of $total permissions';
+  }
+
+  @override
+  String teamSettingsTagMembers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count members',
+      one: '1 member',
+      zero: 'Nobody has it',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String teamSettingsTagPermissionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count permissions',
+      one: '1 permission',
+      zero: 'no permissions',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String teamSettingsEditMember(String name) {
+    return 'Permissions for $name';
+  }
+
+  @override
+  String get teamSettingsMemberTagsHint =>
+      'Everyone with a tag gets what the tag allows.';
+
+  @override
+  String get teamSettingsOwnPermissions => 'Their own permissions';
+
+  @override
+  String teamSettingsFromTag(String tag) {
+    return 'Given by $tag';
+  }
+
+  @override
+  String get teamSettingsEditTag => 'Edit tag';
+
+  @override
+  String get teamSettingsTagName => 'Name';
+
+  @override
+  String get teamSettingsTagNameHint => 'Modeller, Tester…';
+
+  @override
+  String get teamSettingsTagColor => 'Colour';
+
+  @override
+  String get teamSettingsTagPermissions => 'Everyone with this tag may';
+
+  @override
+  String get teamSettingsTagWearers => 'Who has this tag';
+
+  @override
+  String get teamSettingsDeleteTag => 'Delete tag';
+
+  @override
+  String teamSettingsDeleteTagConfirm(String name) {
+    return 'Delete the $name tag? Everyone who has it loses what it allowed.';
+  }
+
+  @override
+  String get teamSettingsNoMembers =>
+      'Nobody else is on the team yet. The admin adds people from the dashboard.';
+
+  @override
+  String get teamSettingsGroupBoard => 'Board';
+
+  @override
+  String get teamSettingsGroupLibrary => 'Assets library';
+
+  @override
+  String get teamSettingsGroupBot => 'Discord bot';
+
+  @override
+  String get teamPermMarkAdded => 'Mark entries added or fixed';
+
+  @override
+  String get teamPermMarkAddedBody =>
+      'Move an entry to Added (Fixed for a bug), or take it back out.';
+
+  @override
+  String get teamPermEditAny => 'Edit any entry';
+
+  @override
+  String get teamPermEditAnyBody =>
+      'Change the title, brief and kind of entries others wrote.';
+
+  @override
+  String get teamPermCloseAny => 'Close any thread';
+
+  @override
+  String get teamPermCloseAnyBody => 'Close or reopen threads others started.';
+
+  @override
+  String get teamPermRemoveAny => 'Remove anything';
+
+  @override
+  String get teamPermRemoveAnyBody =>
+      'Delete any entry or file, even ones others added to.';
+
+  @override
+  String get teamPermLibrary => 'Manage the library';
+
+  @override
+  String get teamPermLibraryBody =>
+      'Add, change and remove the mods the whole team shares.';
+
+  @override
+  String get teamPermBotSettings => 'Change bot settings';
+
+  @override
+  String get teamPermBotSettingsBody =>
+      'Switch the bot and its plugins on or off and edit their rules.';
+
+  @override
+  String get teamPermBotToken => 'Edit bot credentials';
+
+  @override
+  String get teamPermBotTokenBody =>
+      'Link, replace or unlink the bot\'s token.';
+
+  @override
   String get teamClipboardLibrary => 'Assets library';
 
   @override

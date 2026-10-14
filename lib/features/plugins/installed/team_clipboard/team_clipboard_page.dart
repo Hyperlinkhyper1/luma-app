@@ -12,6 +12,7 @@ import 'ui/team_discord_page.dart';
 import 'ui/team_entry_detail.dart';
 import 'ui/team_entry_editor.dart';
 import 'ui/team_library_page.dart';
+import 'ui/team_settings_page.dart';
 import 'ui/team_task_row.dart';
 
 /// The Team Clipboard: every bug, suggestion and model the team is working
@@ -28,7 +29,7 @@ class TeamClipboardPage extends StatefulWidget {
 
 enum _KindFilter { all, bug, suggestion, model }
 
-enum _WorkspacePage { tasks, library, discordBot }
+enum _WorkspacePage { tasks, library, discordBot, settings }
 
 class _TeamClipboardPageState extends State<TeamClipboardPage> {
   TeamClipboardController? _controller;
@@ -95,18 +96,24 @@ class _TeamClipboardPageState extends State<TeamClipboardPage> {
     if (controller.access == TeamAccess.outside) {
       return _AccessGate(controller: controller);
     }
+    // A lead who was made a member again loses the tab while on it.
+    final page = _page == _WorkspacePage.settings && !controller.isLead
+        ? _WorkspacePage.tasks
+        : _page;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _WorkspaceHeader(
           controller: controller,
-          page: _page,
+          page: page,
           onPage: (page) => setState(() => _page = page),
         ),
         Expanded(
-          child: _page == _WorkspacePage.discordBot
+          child: page == _WorkspacePage.settings
+              ? TeamSettingsPage(controller: controller)
+              : page == _WorkspacePage.discordBot
               ? TeamDiscordPage(controller: controller)
-              : _page == _WorkspacePage.library
+              : page == _WorkspacePage.library
               ? TeamLibraryPage(controller: controller)
               : LayoutBuilder(
                   builder: (context, box) {
@@ -252,6 +259,12 @@ class _WorkspaceHeader extends StatelessWidget {
           color: controller.isLead ? luma.accent : luma.textSecondary,
           icon: controller.isLead ? Icons.star_rounded : Icons.person_rounded,
         ),
+        for (final tag in controller.myTags.take(2)) ...[
+          const SizedBox(width: 6),
+          Flexible(
+            child: TeamTagChip(name: tag.name, color: tag.color),
+          ),
+        ],
         const SizedBox(width: 8),
         Flexible(child: _NameChip(controller: controller)),
       ],
@@ -332,6 +345,14 @@ class _WorkspaceHeader extends StatelessWidget {
                   selected: page == _WorkspacePage.discordBot,
                   onTap: () => onPage(_WorkspacePage.discordBot),
                 ),
+                if (controller.isLead)
+                  _WorkspaceTab(
+                    key: const ValueKey('team-clipboard-settings-tab'),
+                    label: t.teamClipboardSettings,
+                    icon: Icons.tune_rounded,
+                    selected: page == _WorkspacePage.settings,
+                    onTap: () => onPage(_WorkspacePage.settings),
+                  ),
               ],
             ),
           ),
@@ -558,6 +579,7 @@ class _BoardList extends StatelessWidget {
                           ),
                         },
                         selected: f == filter,
+                        iconOnly: compact,
                         onTap: () => onFilter(f),
                       ),
                     ),
@@ -809,6 +831,7 @@ class _FilterChip extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.icon,
+    this.iconOnly = false,
   });
 
   final String label;
@@ -816,18 +839,27 @@ class _FilterChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
+  /// Shows just the icon, with the label as a tooltip, so every chip fits
+  /// in the narrow list beside an open entry.
+  final bool iconOnly;
+
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    return Semantics(
+    final bare = iconOnly && icon != null;
+    final chip = Semantics(
       selected: selected,
       button: true,
+      label: bare ? label : null,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(999),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: EdgeInsets.symmetric(
+            horizontal: bare ? 10 : 12,
+            vertical: 6,
+          ),
           decoration: BoxDecoration(
             color: selected ? luma.accentSubtle : Colors.transparent,
             borderRadius: BorderRadius.circular(999),
@@ -842,21 +874,23 @@ class _FilterChip extends StatelessWidget {
                   size: 15,
                   color: selected ? luma.accent : luma.textSecondary,
                 ),
-                const SizedBox(width: 5),
+                if (!bare) const SizedBox(width: 5),
               ],
-              Text(
-                label,
-                style: TextStyle(
-                  color: selected ? luma.textPrimary : luma.textSecondary,
-                  fontSize: 13,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              if (!bare)
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: selected ? luma.textPrimary : luma.textSecondary,
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  ),
                 ),
-              ),
             ],
           ),
         ),
       ),
     );
+    return bare ? Tooltip(message: label, child: chip) : chip;
   }
 }
 

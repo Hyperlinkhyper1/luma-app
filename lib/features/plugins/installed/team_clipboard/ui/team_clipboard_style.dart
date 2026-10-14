@@ -50,6 +50,24 @@ Color teamStageColor(TeamEntryStage stage, LumaPalette luma) => switch (stage) {
   TeamEntryStage.added => luma.success,
 };
 
+/// The colours a team tag can pick from, by index; the server keeps only
+/// the index (fewer than its `kTeamBoardTagColors`).
+List<Color> teamTagPalette(LumaPalette luma) => [
+  luma.accent,
+  luma.success,
+  luma.warning,
+  luma.danger,
+  const Color(0xFF4F9DF0),
+  const Color(0xFFE477B0),
+  const Color(0xFF2BB5A8),
+  luma.textSecondary,
+];
+
+Color teamTagColor(int index, LumaPalette luma) {
+  final palette = teamTagPalette(luma);
+  return palette[index.clamp(0, palette.length - 1)];
+}
+
 /// The darker surface finished entries sit on, so the work still to do
 /// stands out above them in either theme.
 Color teamFinishedSurface(BuildContext context) {

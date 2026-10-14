@@ -9,6 +9,7 @@ import '../data/team_clipboard_api.dart';
 import '../team_clipboard_controller.dart';
 import '../team_clipboard_models.dart';
 import '../team_clipboard_scope.dart';
+import '../team_settings_models.dart';
 import 'team_clipboard_style.dart';
 import 'team_entry_editor.dart';
 import 'team_files.dart';
@@ -646,7 +647,7 @@ class _StageTrackState extends State<_StageTrack> {
     final t = L.of(context);
     final luma = context.luma;
     final controller = TeamClipboardScope.of(context);
-    final lead = controller.isLead;
+    final lead = controller.can(TeamPermission.markAdded);
     final entry = widget.entry;
     final bug = entry.kind == TeamEntryKind.bug;
 

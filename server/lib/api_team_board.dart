@@ -18,6 +18,20 @@ extension TeamBoardApi on Api {
     return (role, null);
   }
 
+  /// A 403 unless [user] is on the team and holds [permission] (a lead
+  /// holds them all). [why] is what a teammate without it is told.
+  Response? _teamRequire(StoredUser user, String permission, String why) {
+    final (_, refused) = _teamRole(user);
+    if (refused != null) return refused;
+    if (!teamBoard.can(user.id, permission)) {
+      return errorResponse(403, 'forbidden', why);
+    }
+    return null;
+  }
+
+  TeamBoardPermissions _teamCan(TeamBoardEntry entry, StoredUser user) =>
+      TeamBoardPermissions(entry, user.id, teamBoard.permissionsOf(user.id));
+
   /// The name [userId] shows up under: the one they picked for the board,
   /// or else their email's local part, the way the recipe catalogue does.
   /// Empty once the account has been deleted.
@@ -101,9 +115,9 @@ extension TeamBoardApi on Api {
       };
 
   Map<String, dynamic> _teamEntryJson(
-      TeamBoardEntry e, StoredUser viewer, String role,
+      TeamBoardEntry e, StoredUser viewer, Set<String> permissions,
       {bool withMessages = false}) {
-    final can = TeamBoardPermissions(e, viewer.id, role);
+    final can = TeamBoardPermissions(e, viewer.id, permissions);
     final last = e.messages.isEmpty ? null : e.messages.last;
     return {
       'id': e.id,
@@ -156,10 +170,10 @@ extension TeamBoardApi on Api {
     };
   }
 
-  Response _teamEntryResponse(
-          int status, TeamBoardEntry e, StoredUser user, String role) =>
+  Response _teamEntryResponse(int status, TeamBoardEntry e, StoredUser user) =>
       jsonResponse(status, {
-        ..._teamEntryJson(e, user, role, withMessages: true),
+        ..._teamEntryJson(e, user, teamBoard.permissionsOf(user.id),
+            withMessages: true),
         'revision': teamBoard.revision,
       });
 
@@ -172,10 +186,20 @@ extension TeamBoardApi on Api {
       return jsonResponse(200, {'member': false, 'email': user.email});
     }
     final since = int.tryParse(request.url.queryParameters['since'] ?? '');
+    final permissions = teamBoard.permissionsOf(user.id);
     final base = {
       'member': true,
       'lead': role == 'lead',
       'me': _teamName(user.id, user.email),
+      'permissions': [
+        for (final p in kTeamBoardPermissions)
+          if (permissions.contains(p)) p
+      ],
+      'tags': [
+        for (final t in teamBoard.tags)
+          if (teamBoard.tagsOf(user.id).contains(t.id))
+            {'name': t.name, 'color': t.color}
+      ],
       'revision': teamBoard.revision,
     };
     if (since == teamBoard.revision) {
@@ -184,7 +208,7 @@ extension TeamBoardApi on Api {
     return jsonResponse(200, {
       ...base,
       'entries': [
-        for (final e in teamBoard.board()) _teamEntryJson(e, user, role)
+        for (final e in teamBoard.board()) _teamEntryJson(e, user, permissions)
       ],
     });
   }
@@ -208,15 +232,15 @@ extension TeamBoardApi on Api {
   }
 
   Response _teamEntryGet(Request request, StoredUser user) {
-    final (role, refused) = _teamRole(user);
+    final (_, refused) = _teamRole(user);
     if (refused != null) return refused;
     final (entry, missing) = _teamEntryParam(request);
     if (missing != null) return missing;
-    return _teamEntryResponse(200, entry!, user, role!);
+    return _teamEntryResponse(200, entry!, user);
   }
 
   Future<Response> _teamEntryCreate(Request request, StoredUser user) async {
-    final (role, refused) = _teamRole(user);
+    final (_, refused) = _teamRole(user);
     if (refused != null) return refused;
     final body = await _teamJsonBody(request);
     if (body == null) {
@@ -265,15 +289,15 @@ extension TeamBoardApi on Api {
       return null;
     });
     if (problem != null) return errorResponse(409, 'bad_parent', problem);
-    return _teamEntryResponse(201, entry, user, role!);
+    return _teamEntryResponse(201, entry, user);
   }
 
   Future<Response> _teamEntryUpdate(Request request, StoredUser user) async {
-    final (role, refused) = _teamRole(user);
+    final (_, refused) = _teamRole(user);
     if (refused != null) return refused;
     final (entry, missing) = _teamEntryParam(request);
     if (missing != null) return missing;
-    if (!TeamBoardPermissions(entry!, user.id, role!).canEdit) {
+    if (!_teamCan(entry!, user).canEdit) {
       return errorResponse(
           403, 'forbidden', 'Only its author or a team lead can edit this.');
     }
@@ -307,11 +331,11 @@ extension TeamBoardApi on Api {
       return null;
     });
     if (problem != null) return errorResponse(409, 'bad_parent', problem);
-    return _teamEntryResponse(200, entry, user, role);
+    return _teamEntryResponse(200, entry, user);
   }
 
   Future<Response> _teamEntryStage(Request request, StoredUser user) async {
-    final (role, refused) = _teamRole(user);
+    final (_, refused) = _teamRole(user);
     if (refused != null) return refused;
     final (entry, missing) = _teamEntryParam(request);
     if (missing != null) return missing;
@@ -320,8 +344,7 @@ extension TeamBoardApi on Api {
     if (stage is! String) {
       return errorResponse(400, 'bad_stage', 'Pick a stage.');
     }
-    final why =
-        TeamBoardPermissions(entry!, user.id, role!).stageRefusal(stage);
+    final why = _teamCan(entry!, user).stageRefusal(stage);
     if (why != null) return errorResponse(403, 'forbidden', why);
     await teamBoard.mutate(() {
       switch (stage) {
@@ -345,17 +368,17 @@ extension TeamBoardApi on Api {
         ..updatedAtMs = DateTime.now().millisecondsSinceEpoch;
     });
     unawaited(teamDiscord.syncEntryState(entry));
-    return _teamEntryResponse(200, entry, user, role);
+    return _teamEntryResponse(200, entry, user);
   }
 
   /// Closes or reopens the thread. A closed entry sinks to the bottom of
   /// the board and takes no more messages, files or stage changes.
   Future<Response> _teamEntryClose(Request request, StoredUser user) async {
-    final (role, refused) = _teamRole(user);
+    final (_, refused) = _teamRole(user);
     if (refused != null) return refused;
     final (entry, missing) = _teamEntryParam(request);
     if (missing != null) return missing;
-    if (!TeamBoardPermissions(entry!, user.id, role!).canClose) {
+    if (!_teamCan(entry!, user).canClose) {
       return errorResponse(
           403, 'forbidden', 'Only its author or a team lead can close this.');
     }
@@ -370,15 +393,15 @@ extension TeamBoardApi on Api {
         ..updatedAtMs = DateTime.now().millisecondsSinceEpoch;
     });
     unawaited(teamDiscord.syncEntryState(entry));
-    return _teamEntryResponse(200, entry, user, role);
+    return _teamEntryResponse(200, entry, user);
   }
 
   Future<Response> _teamEntryDelete(Request request, StoredUser user) async {
-    final (role, refused) = _teamRole(user);
+    final (_, refused) = _teamRole(user);
     if (refused != null) return refused;
     final (entry, missing) = _teamEntryParam(request);
     if (missing != null) return missing;
-    if (!TeamBoardPermissions(entry!, user.id, role!).canDelete) {
+    if (!_teamCan(entry!, user).canDelete) {
       return errorResponse(403, 'forbidden',
           'Others have added to this entry. Ask a team lead to remove it.');
     }
@@ -390,11 +413,11 @@ extension TeamBoardApi on Api {
   }
 
   Future<Response> _teamMessagePost(Request request, StoredUser user) async {
-    final (role, refused) = _teamRole(user);
+    final (_, refused) = _teamRole(user);
     if (refused != null) return refused;
     final (entry, missing) = _teamEntryParam(request);
     if (missing != null) return missing;
-    if (!TeamBoardPermissions(entry!, user.id, role!).canPost) {
+    if (!_teamCan(entry!, user).canPost) {
       return errorResponse(409, 'closed', 'This thread is closed.');
     }
     final body = await _teamJsonBody(request);
@@ -419,16 +442,16 @@ extension TeamBoardApi on Api {
       ));
       entry.updatedAtMs = now;
     });
-    return _teamEntryResponse(201, entry, user, role);
+    return _teamEntryResponse(201, entry, user);
   }
 
   /// Attaches one file, sent as the raw body with its name in `?name=`.
   Future<Response> _teamFileUpload(Request request, StoredUser user) async {
-    final (role, refused) = _teamRole(user);
+    final (_, refused) = _teamRole(user);
     if (refused != null) return refused;
     final (entry, missing) = _teamEntryParam(request);
     if (missing != null) return missing;
-    if (!TeamBoardPermissions(entry!, user.id, role!).canPost) {
+    if (!_teamCan(entry!, user).canPost) {
       return errorResponse(409, 'closed', 'This thread is closed.');
     }
     final name = cleanTeamBoardFileName(request.url.queryParameters['name']);
@@ -471,11 +494,11 @@ extension TeamBoardApi on Api {
       await teamBoard.deleteFile(file.id);
       return errorResponse(409, 'closed', 'This thread is closed.');
     }
-    return _teamEntryResponse(201, entry, user, role);
+    return _teamEntryResponse(201, entry, user);
   }
 
   Future<Response> _teamFileDelete(Request request, StoredUser user) async {
-    final (role, refused) = _teamRole(user);
+    final (_, refused) = _teamRole(user);
     if (refused != null) return refused;
     final (entry, missing) = _teamEntryParam(request);
     if (missing != null) return missing;
@@ -484,7 +507,7 @@ extension TeamBoardApi on Api {
     if (file == null) {
       return errorResponse(404, 'not_found', 'That file is gone.');
     }
-    if (!TeamBoardPermissions(entry, user.id, role!).canRemoveFile(file)) {
+    if (!_teamCan(entry, user).canRemoveFile(file)) {
       return errorResponse(
           403, 'forbidden', 'Only its uploader or a team lead can remove it.');
     }
@@ -493,7 +516,7 @@ extension TeamBoardApi on Api {
       entry.updatedAtMs = DateTime.now().millisecondsSinceEpoch;
     });
     await teamBoard.deleteFile(file.id);
-    return _teamEntryResponse(200, entry, user, role);
+    return _teamEntryResponse(200, entry, user);
   }
 
   /// Hands a file to any team member, member or lead, open thread or
@@ -515,6 +538,153 @@ extension TeamBoardApi on Api {
       'Content-Security-Policy': "default-src 'none'; sandbox",
       'Cache-Control': 'private, max-age=86400',
     });
+  }
+
+  /// The Settings tab: only a lead sees it or changes what it holds.
+  Response? _teamLeadOnly(StoredUser user) {
+    final (role, refused) = _teamRole(user);
+    if (refused != null) return refused;
+    if (role != 'lead') {
+      return errorResponse(
+          403, 'forbidden', 'Only a team lead can change team settings.');
+    }
+    return null;
+  }
+
+  Map<String, dynamic> _teamSettingsJson() {
+    final members = [
+      for (final MapEntry(key: id, value: role) in teamBoard.roles.entries)
+        if (store.usersById[id] case final u?)
+          {
+            'id': id,
+            'name': _teamName(id, u.email),
+            'email': u.email,
+            'role': role,
+            'permissions': [
+              for (final p in kTeamBoardPermissions)
+                if (teamBoard.grantsOf(id).contains(p)) p
+            ],
+            'tags': teamBoard.tagsOf(id),
+            'effective': [
+              for (final p in kTeamBoardPermissions)
+                if (teamBoard.permissionsOf(id).contains(p)) p
+            ],
+          }
+    ]..sort((a, b) {
+        final lead = (a['role'] == 'lead' ? 0 : 1)
+            .compareTo(b['role'] == 'lead' ? 0 : 1);
+        return lead != 0
+            ? lead
+            : (a['name'] as String)
+                .toLowerCase()
+                .compareTo((b['name'] as String).toLowerCase());
+      });
+    return {
+      'permissions': kTeamBoardPermissions,
+      'tagColors': kTeamBoardTagColors,
+      'tags': [for (final t in teamBoard.tags) t.toJson()],
+      'members': members,
+      'revision': teamBoard.revision,
+    };
+  }
+
+  Response _teamSettingsGet(Request request, StoredUser user) {
+    final refused = _teamLeadOnly(user);
+    if (refused != null) return refused;
+    return jsonResponse(200, _teamSettingsJson());
+  }
+
+  /// Saves `tags` (the whole list: a tag without a known id is new, and a
+  /// tag left out is deleted) and/or `members` (each `{id, permissions?,
+  /// tags?}`). One bad item refuses the lot.
+  Future<Response> _teamSettingsUpdate(Request request, StoredUser user) async {
+    final refused = _teamLeadOnly(user);
+    if (refused != null) return refused;
+    final body = await _teamJsonBody(request);
+    if (body == null) {
+      return errorResponse(400, 'bad_request', 'Malformed request.');
+    }
+
+    List<TeamBoardTag>? tags;
+    if (body.containsKey('tags')) {
+      final raw = body['tags'];
+      if (raw is! List || raw.length > kTeamBoardMaxTags) {
+        return errorResponse(
+            400, 'bad_tags', 'A team has at most $kTeamBoardMaxTags tags.');
+      }
+      final known = {for (final t in teamBoard.tags) t.id};
+      final names = <String>{};
+      tags = [];
+      for (final r in raw) {
+        if (r is! Map) {
+          return errorResponse(400, 'bad_tags', 'Malformed tag.');
+        }
+        final name = cleanTeamBoardTagName(r['name']);
+        if (name == null) {
+          return errorResponse(400, 'bad_tag_name',
+              'Give each tag a name of at most $kTeamBoardMaxTagChars characters.');
+        }
+        if (!names.add(name.toLowerCase())) {
+          return errorResponse(
+              409, 'tag_taken', 'There is already a tag called $name.');
+        }
+        final permissions = teamBoardPermissionSet(r['permissions'] ?? []);
+        if (permissions == null) {
+          return errorResponse(400, 'bad_permission', 'Unknown permission.');
+        }
+        final id = r['id'];
+        final color = r['color'];
+        tags.add(TeamBoardTag(
+          id: id is String && known.contains(id) ? id : TeamBoardStore.newId(),
+          name: name,
+          color: color is int && color >= 0 && color < kTeamBoardTagColors
+              ? color
+              : 0,
+          permissions: permissions,
+        ));
+      }
+    }
+
+    final changes =
+        <({String id, Set<String>? permissions, Set<String>? tags})>[];
+    if (body.containsKey('members')) {
+      final raw = body['members'];
+      if (raw is! List) {
+        return errorResponse(400, 'bad_members', 'Malformed member list.');
+      }
+      for (final r in raw) {
+        final id = r is Map ? r['id'] : null;
+        if (id is! String || teamBoard.roleOf(id) == null) {
+          return errorResponse(
+              404, 'not_found', 'That person is no longer on the team.');
+        }
+        r as Map;
+        final permissions = r.containsKey('permissions')
+            ? teamBoardPermissionSet(r['permissions'])
+            : null;
+        if (r.containsKey('permissions') && permissions == null) {
+          return errorResponse(400, 'bad_permission', 'Unknown permission.');
+        }
+        final rawTags = r['tags'];
+        if (r.containsKey('tags') &&
+            (rawTags is! List || rawTags.any((t) => t is! String))) {
+          return errorResponse(400, 'bad_tags', 'Malformed tag list.');
+        }
+        changes.add((
+          id: id,
+          permissions: permissions,
+          tags: rawTags is List ? {for (final t in rawTags) t as String} : null,
+        ));
+      }
+    }
+
+    await teamBoard.mutate(() {
+      if (tags != null) teamBoard.replaceTags(tags);
+      for (final c in changes) {
+        teamBoard.setAccess(c.id, permissions: c.permissions, tagIds: c.tags);
+      }
+    });
+    return jsonResponse(200, _teamSettingsJson());
   }
 
   /// The Users tab's Team Clipboard actions for [u]: add them, make them a
@@ -540,7 +710,8 @@ extension TeamBoardApi on Api {
           if (role == 'member')
             access('lead', 'Make Team Clipboard lead',
                 confirm: 'Make $jsEmail a lead? Leads can mark entries '
-                    'added, close any thread and remove anything.')
+                    'added, close any thread, remove anything and set '
+                    'what everyone else may do.')
           else
             access('member', 'Make regular team member'),
           access('none', 'Remove from Team Clipboard',

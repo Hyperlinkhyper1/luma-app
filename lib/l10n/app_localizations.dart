@@ -103,6 +103,252 @@ abstract class L {
     Locale('zh'),
   ];
 
+  /// No description provided for @teamClipboardSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get teamClipboardSettings;
+
+  /// No description provided for @teamSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Team settings'**
+  String get teamSettingsTitle;
+
+  /// No description provided for @teamSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Only leads see this tab. Give a member extra permissions on their own, or give them a tag and set what everyone with that tag may do.'**
+  String get teamSettingsSubtitle;
+
+  /// No description provided for @teamSettingsMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'Members'**
+  String get teamSettingsMembers;
+
+  /// No description provided for @teamSettingsTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags'**
+  String get teamSettingsTags;
+
+  /// No description provided for @teamSettingsNewTag.
+  ///
+  /// In en, this message translates to:
+  /// **'New tag'**
+  String get teamSettingsNewTag;
+
+  /// No description provided for @teamSettingsNoTags.
+  ///
+  /// In en, this message translates to:
+  /// **'No tags yet. Make one, like Modeller or Tester, to give a group the same permissions in one go.'**
+  String get teamSettingsNoTags;
+
+  /// No description provided for @teamSettingsLeadEverything.
+  ///
+  /// In en, this message translates to:
+  /// **'Lead · can do everything'**
+  String get teamSettingsLeadEverything;
+
+  /// No description provided for @teamSettingsPermissionCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} of {total} permissions'**
+  String teamSettingsPermissionCount(int count, int total);
+
+  /// No description provided for @teamSettingsTagMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Nobody has it} =1{1 member} other{{count} members}}'**
+  String teamSettingsTagMembers(int count);
+
+  /// No description provided for @teamSettingsTagPermissionCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{no permissions} =1{1 permission} other{{count} permissions}}'**
+  String teamSettingsTagPermissionCount(int count);
+
+  /// No description provided for @teamSettingsEditMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Permissions for {name}'**
+  String teamSettingsEditMember(String name);
+
+  /// No description provided for @teamSettingsMemberTagsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone with a tag gets what the tag allows.'**
+  String get teamSettingsMemberTagsHint;
+
+  /// No description provided for @teamSettingsOwnPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Their own permissions'**
+  String get teamSettingsOwnPermissions;
+
+  /// No description provided for @teamSettingsFromTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Given by {tag}'**
+  String teamSettingsFromTag(String tag);
+
+  /// No description provided for @teamSettingsEditTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit tag'**
+  String get teamSettingsEditTag;
+
+  /// No description provided for @teamSettingsTagName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get teamSettingsTagName;
+
+  /// No description provided for @teamSettingsTagNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Modeller, Tester…'**
+  String get teamSettingsTagNameHint;
+
+  /// No description provided for @teamSettingsTagColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Colour'**
+  String get teamSettingsTagColor;
+
+  /// No description provided for @teamSettingsTagPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone with this tag may'**
+  String get teamSettingsTagPermissions;
+
+  /// No description provided for @teamSettingsTagWearers.
+  ///
+  /// In en, this message translates to:
+  /// **'Who has this tag'**
+  String get teamSettingsTagWearers;
+
+  /// No description provided for @teamSettingsDeleteTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete tag'**
+  String get teamSettingsDeleteTag;
+
+  /// No description provided for @teamSettingsDeleteTagConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the {name} tag? Everyone who has it loses what it allowed.'**
+  String teamSettingsDeleteTagConfirm(String name);
+
+  /// No description provided for @teamSettingsNoMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody else is on the team yet. The admin adds people from the dashboard.'**
+  String get teamSettingsNoMembers;
+
+  /// No description provided for @teamSettingsGroupBoard.
+  ///
+  /// In en, this message translates to:
+  /// **'Board'**
+  String get teamSettingsGroupBoard;
+
+  /// No description provided for @teamSettingsGroupLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Assets library'**
+  String get teamSettingsGroupLibrary;
+
+  /// No description provided for @teamSettingsGroupBot.
+  ///
+  /// In en, this message translates to:
+  /// **'Discord bot'**
+  String get teamSettingsGroupBot;
+
+  /// No description provided for @teamPermMarkAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark entries added or fixed'**
+  String get teamPermMarkAdded;
+
+  /// No description provided for @teamPermMarkAddedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Move an entry to Added (Fixed for a bug), or take it back out.'**
+  String get teamPermMarkAddedBody;
+
+  /// No description provided for @teamPermEditAny.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit any entry'**
+  String get teamPermEditAny;
+
+  /// No description provided for @teamPermEditAnyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Change the title, brief and kind of entries others wrote.'**
+  String get teamPermEditAnyBody;
+
+  /// No description provided for @teamPermCloseAny.
+  ///
+  /// In en, this message translates to:
+  /// **'Close any thread'**
+  String get teamPermCloseAny;
+
+  /// No description provided for @teamPermCloseAnyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Close or reopen threads others started.'**
+  String get teamPermCloseAnyBody;
+
+  /// No description provided for @teamPermRemoveAny.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove anything'**
+  String get teamPermRemoveAny;
+
+  /// No description provided for @teamPermRemoveAnyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete any entry or file, even ones others added to.'**
+  String get teamPermRemoveAnyBody;
+
+  /// No description provided for @teamPermLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage the library'**
+  String get teamPermLibrary;
+
+  /// No description provided for @teamPermLibraryBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Add, change and remove the mods the whole team shares.'**
+  String get teamPermLibraryBody;
+
+  /// No description provided for @teamPermBotSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Change bot settings'**
+  String get teamPermBotSettings;
+
+  /// No description provided for @teamPermBotSettingsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch the bot and its plugins on or off and edit their rules.'**
+  String get teamPermBotSettingsBody;
+
+  /// No description provided for @teamPermBotToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit bot credentials'**
+  String get teamPermBotToken;
+
+  /// No description provided for @teamPermBotTokenBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Link, replace or unlink the bot\'s token.'**
+  String get teamPermBotTokenBody;
+
   /// No description provided for @teamClipboardLibrary.
   ///
   /// In en, this message translates to:

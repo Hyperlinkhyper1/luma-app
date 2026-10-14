@@ -79,10 +79,10 @@ void main() {
       expect(teamBoardFileProblem('latest.log', utf8.encode('[INFO] ok\n')),
           isNull);
       expect(teamBoardFileProblem('crash.txt', latin1.encode('café')), isNull);
-      expect(teamBoardFileProblem('crash.txt', _png),
-          contains('not a text file'));
-      expect(teamBoardFileContentType('latest.log'),
-          'text/plain; charset=utf-8');
+      expect(
+          teamBoardFileProblem('crash.txt', _png), contains('not a text file'));
+      expect(
+          teamBoardFileContentType('latest.log'), 'text/plain; charset=utf-8');
     });
 
     test('a PNG has to be a whole, honest PNG', () {
@@ -640,5 +640,265 @@ void main() {
       expect(orphan['httpStatus'], 200);
       expect(orphan['parentId'], isNull);
     });
+
+    test('only a lead sees or changes the settings', () async {
+      final member = await register('member@example.com');
+      final lead = await register('lead@example.com');
+      await setRole('member@example.com', 'member');
+      await setRole('lead@example.com', 'lead');
+
+      expect(
+          (await call('GET', '/api/v1/team-board/settings',
+              token: member))['httpStatus'],
+          403);
+      expect(
+          (await call('PUT', '/api/v1/team-board/settings',
+              token: member,
+              json: {
+                'tags': [
+                  {
+                    'name': 'Me',
+                    'permissions': ['markAdded']
+                  }
+                ]
+              }))['httpStatus'],
+          403);
+
+      final settings =
+          await call('GET', '/api/v1/team-board/settings', token: lead);
+      expect(settings['httpStatus'], 200);
+      expect(settings['permissions'], kTeamBoardPermissions);
+      final members = settings['members'] as List;
+      expect(members.map((m) => m['email']),
+          ['lead@example.com', 'member@example.com']);
+      expect(members.first['effective'], kTeamBoardPermissions);
+      expect(members.last['effective'], isEmpty);
+    });
+
+    test('a lead hands out permissions one by one or through a tag', () async {
+      final author = await register('author@example.com');
+      final tester = await register('tester@example.com');
+      final lead = await register('lead@example.com');
+      await setRole('author@example.com', 'member');
+      await setRole('tester@example.com', 'member');
+      await setRole('lead@example.com', 'lead');
+      Future<String> idOf(String email) async =>
+          ((await call('GET', '/api/v1/team-board/settings',
+                  token: lead))['members'] as List)
+              .firstWhere((m) => m['email'] == email)['id'] as String;
+      final testerId = await idOf('tester@example.com');
+
+      final id = (await create(author))['id'] as String;
+      await call('POST', '/api/v1/team-board/entries/$id/stage',
+          token: author, json: {'stage': 'done'});
+      Future<int> markAdded() async =>
+          (await call('POST', '/api/v1/team-board/entries/$id/stage',
+              token: tester, json: {'stage': 'added'}))['httpStatus'] as int;
+      Future<int> undo() async =>
+          (await call('POST', '/api/v1/team-board/entries/$id/stage',
+              token: tester, json: {'stage': 'done'}))['httpStatus'] as int;
+      expect(await markAdded(), 403);
+
+      final direct =
+          await call('PUT', '/api/v1/team-board/settings', token: lead, json: {
+        'members': [
+          {
+            'id': testerId,
+            'permissions': ['markAdded']
+          }
+        ]
+      });
+      expect(direct['httpStatus'], 200, reason: '$direct');
+      final board = await call('GET', '/api/v1/team-board', token: tester);
+      expect(board['permissions'], ['markAdded']);
+      expect(await markAdded(), 200);
+      expect(await undo(), 200);
+
+      await call('PUT', '/api/v1/team-board/settings', token: lead, json: {
+        'members': [
+          {'id': testerId, 'permissions': []}
+        ]
+      });
+      expect(await markAdded(), 403);
+
+      final tagged =
+          await call('PUT', '/api/v1/team-board/settings', token: lead, json: {
+        'tags': [
+          {
+            'name': 'Tester',
+            'color': 3,
+            'permissions': ['markAdded', 'editAny']
+          }
+        ]
+      });
+      final tagId = (tagged['tags'] as List).single['id'] as String;
+      await call('PUT', '/api/v1/team-board/settings', token: lead, json: {
+        'members': [
+          {
+            'id': testerId,
+            'tags': [tagId]
+          }
+        ]
+      });
+      expect(await markAdded(), 200);
+      final entry =
+          await call('GET', '/api/v1/team-board/entries/$id', token: tester);
+      expect(entry['canEdit'], isTrue);
+      expect(entry['canDelete'], isFalse);
+      final mine = await call('GET', '/api/v1/team-board', token: tester);
+      expect(mine['tags'], [
+        {'name': 'Tester', 'color': 3}
+      ]);
+
+      // Taking the permission off the tag takes it off everyone wearing it.
+      await call('PUT', '/api/v1/team-board/settings', token: lead, json: {
+        'tags': [
+          {'id': tagId, 'name': 'Tester', 'permissions': []}
+        ]
+      });
+      expect(await undo(), 403);
+
+      // Deleting the tag takes it off its wearers.
+      final gone = await call('PUT', '/api/v1/team-board/settings',
+          token: lead, json: {'tags': []});
+      expect(
+          (gone['members'] as List)
+              .firstWhere((m) => m['id'] == testerId)['tags'],
+          isEmpty);
+    });
+
+    test('settings refuse unknown permissions and clashing tags', () async {
+      final lead = await register('lead@example.com');
+      await setRole('lead@example.com', 'lead');
+      Future<int> put(Object body) async =>
+          (await call('PUT', '/api/v1/team-board/settings',
+              token: lead, json: body))['httpStatus'] as int;
+      expect(
+          await put({
+            'tags': [
+              {
+                'name': 'X',
+                'permissions': ['root']
+              }
+            ]
+          }),
+          400);
+      expect(
+          await put({
+            'tags': [
+              {'name': 'Tester'},
+              {'name': 'tester'}
+            ]
+          }),
+          409);
+      expect(
+          await put({
+            'tags': [
+              {'name': ''}
+            ]
+          }),
+          400);
+      expect(
+          await put({
+            'members': [
+              {'id': 'nobody', 'permissions': []}
+            ]
+          }),
+          404);
+    });
+
+    test('the bot and library check their own permission', () async {
+      final member = await register('member@example.com');
+      final lead = await register('lead@example.com');
+      await setRole('member@example.com', 'member');
+      await setRole('lead@example.com', 'lead');
+      final memberId = ((await call('GET', '/api/v1/team-board/settings',
+              token: lead))['members'] as List)
+          .firstWhere((m) => m['email'] == 'member@example.com')['id'];
+
+      Future<int> botSettings() async =>
+          (await call('PUT', '/api/v1/team-board/discord',
+              token: member, json: {'repliesOn': true}))['httpStatus'] as int;
+      Future<int> botToken() async =>
+          (await call('DELETE', '/api/v1/team-board/discord/token',
+              token: member))['httpStatus'] as int;
+      expect(await botSettings(), 403);
+      expect(await botToken(), 403);
+      var discord =
+          await call('GET', '/api/v1/team-board/discord', token: member);
+      expect(discord['canManage'], isFalse);
+      expect(discord['canLink'], isFalse);
+      expect(
+          (await call('GET', '/api/v1/team-board/library',
+              token: member))['canManage'],
+          isFalse);
+
+      await call('PUT', '/api/v1/team-board/settings', token: lead, json: {
+        'members': [
+          {
+            'id': memberId,
+            'permissions': ['botSettings', 'library']
+          }
+        ]
+      });
+      expect(await botSettings(), 200);
+      expect(await botToken(), 403);
+      discord = await call('GET', '/api/v1/team-board/discord', token: member);
+      expect(discord['canManage'], isTrue);
+      expect(discord['canLink'], isFalse);
+      expect(
+          (await call('GET', '/api/v1/team-board/library',
+              token: member))['canManage'],
+          isTrue);
+    });
+
+    test('leaving the team drops what a member was given', () async {
+      final member = await register('member@example.com');
+      final lead = await register('lead@example.com');
+      await setRole('member@example.com', 'member');
+      await setRole('lead@example.com', 'lead');
+      final memberId = ((await call('GET', '/api/v1/team-board/settings',
+              token: lead))['members'] as List)
+          .firstWhere((m) => m['email'] == 'member@example.com')['id'];
+      await call('PUT', '/api/v1/team-board/settings', token: lead, json: {
+        'members': [
+          {
+            'id': memberId,
+            'permissions': ['removeAny']
+          }
+        ]
+      });
+      await setRole('member@example.com', 'none');
+      await setRole('member@example.com', 'member');
+      expect(
+          (await call('GET', '/api/v1/team-board',
+              token: member))['permissions'],
+          isEmpty);
+    });
+  });
+
+  test('tags, grants and who wears what survive a restart', () async {
+    final dir = Directory.systemTemp.createTempSync('team_board_access');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final board = TeamBoardStore(dir.path);
+    await board.setRole('u1', 'member');
+    await board.setRole('u2', 'lead');
+    final tag = TeamBoardTag(
+        id: TeamBoardStore.newId(),
+        name: 'Modeller',
+        color: 2,
+        permissions: {'library'});
+    await board.mutate(() {
+      board.replaceTags([tag]);
+      board.setAccess('u1', permissions: {'closeAny'}, tagIds: {tag.id});
+    });
+
+    final again = TeamBoardStore(dir.path);
+    expect(again.tags.single.name, 'Modeller');
+    expect(again.tagsOf('u1'), [tag.id]);
+    expect(again.grantsOf('u1'), {'closeAny'});
+    expect(again.permissionsOf('u1'), {'closeAny', 'library'});
+    expect(again.permissionsOf('u2'), kTeamBoardPermissions.toSet());
+    expect(again.permissionsOf('stranger'), isEmpty);
   });
 }

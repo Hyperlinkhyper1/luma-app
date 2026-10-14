@@ -1,4 +1,90 @@
 {
+  "teamClipboardSettings": "Settings",
+  "teamSettingsTitle": "Team settings",
+  "teamSettingsSubtitle": "Only leads see this tab. Give a member extra permissions on their own, or give them a tag and set what everyone with that tag may do.",
+  "teamSettingsMembers": "Members",
+  "teamSettingsTags": "Tags",
+  "teamSettingsNewTag": "New tag",
+  "teamSettingsNoTags": "No tags yet. Make one, like Modeller or Tester, to give a group the same permissions in one go.",
+  "teamSettingsLeadEverything": "Lead · can do everything",
+  "teamSettingsPermissionCount": "{count} of {total} permissions",
+  "@teamSettingsPermissionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "teamSettingsTagMembers": "{count, plural, =0{Nobody has it} =1{1 member} other{{count} members}}",
+  "@teamSettingsTagMembers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "teamSettingsTagPermissionCount": "{count, plural, =0{no permissions} =1{1 permission} other{{count} permissions}}",
+  "@teamSettingsTagPermissionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "teamSettingsEditMember": "Permissions for {name}",
+  "@teamSettingsEditMember": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamSettingsMemberTagsHint": "Everyone with a tag gets what the tag allows.",
+  "teamSettingsOwnPermissions": "Their own permissions",
+  "teamSettingsFromTag": "Given by {tag}",
+  "@teamSettingsFromTag": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "teamSettingsEditTag": "Edit tag",
+  "teamSettingsTagName": "Name",
+  "teamSettingsTagNameHint": "Modeller, Tester…",
+  "teamSettingsTagColor": "Colour",
+  "teamSettingsTagPermissions": "Everyone with this tag may",
+  "teamSettingsTagWearers": "Who has this tag",
+  "teamSettingsDeleteTag": "Delete tag",
+  "teamSettingsDeleteTagConfirm": "Delete the {name} tag? Everyone who has it loses what it allowed.",
+  "@teamSettingsDeleteTagConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamSettingsNoMembers": "Nobody else is on the team yet. The admin adds people from the dashboard.",
+  "teamSettingsGroupBoard": "Board",
+  "teamSettingsGroupLibrary": "Assets library",
+  "teamSettingsGroupBot": "Discord bot",
+  "teamPermMarkAdded": "Mark entries added or fixed",
+  "teamPermMarkAddedBody": "Move an entry to Added (Fixed for a bug), or take it back out.",
+  "teamPermEditAny": "Edit any entry",
+  "teamPermEditAnyBody": "Change the title, brief and kind of entries others wrote.",
+  "teamPermCloseAny": "Close any thread",
+  "teamPermCloseAnyBody": "Close or reopen threads others started.",
+  "teamPermRemoveAny": "Remove anything",
+  "teamPermRemoveAnyBody": "Delete any entry or file, even ones others added to.",
+  "teamPermLibrary": "Manage the library",
+  "teamPermLibraryBody": "Add, change and remove the mods the whole team shares.",
+  "teamPermBotSettings": "Change bot settings",
+  "teamPermBotSettingsBody": "Switch the bot and its plugins on or off and edit their rules.",
+  "teamPermBotToken": "Edit bot credentials",
+  "teamPermBotTokenBody": "Link, replace or unlink the bot's token.",
   "teamClipboardLibrary": "Assets library",
   "teamLibraryMods": "Mods",
   "teamLibraryAddMod": "Add mod",

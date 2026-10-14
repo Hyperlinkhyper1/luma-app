@@ -21,9 +21,37 @@ const kTeamBoardKinds = ['bug', 'suggestion', 'model'];
 /// bug's "fixed"; the app picks the wording per kind.
 const kTeamBoardStages = ['idea', 'claimed', 'done', 'added'];
 
-/// The two ways onto the board. A lead can also mark things added, close
-/// any thread and remove anything; a member can do everything else.
+/// The two ways onto the board. A lead can do everything, including
+/// handing members the [kTeamBoardPermissions] below from the app's
+/// Settings tab; a member can do everything else.
 const kTeamBoardRoles = ['member', 'lead'];
+
+/// What a lead can let a member do, one by one or through a tag. A lead
+/// always has all of them.
+///
+/// - `markAdded`: mark an entry added (a bug fixed), or take it back out.
+/// - `editAny`: edit anyone's entry.
+/// - `closeAny`: close or reopen anyone's thread.
+/// - `removeAny`: remove any entry or file.
+/// - `library`: choose the assets library's mods.
+/// - `botSettings`: switch the Discord bot and its plugins on or off and
+///   change their rules.
+/// - `botToken`: link, replace or unlink the Discord bot.
+const kTeamBoardPermissions = [
+  'markAdded',
+  'editAny',
+  'closeAny',
+  'removeAny',
+  'library',
+  'botSettings',
+  'botToken',
+];
+
+const kTeamBoardMaxTags = 30;
+const kTeamBoardMaxTagChars = 24;
+
+/// How many colours a tag can pick from; the app owns the palette.
+const kTeamBoardTagColors = 8;
 
 /// The only files the board takes: models and textures, the `.mcmeta`
 /// that animates a texture, and the game logs that come with a bug report.
@@ -578,24 +606,87 @@ String teamBoardFileContentType(String name) =>
       _ => 'application/json; charset=utf-8',
     };
 
-/// What [userId] (on the board as [role]) may do to [entry].
+/// A label a lead puts on team members, like "Modeller" or "Tester",
+/// carrying permissions everyone wearing it gets.
+class TeamBoardTag {
+  TeamBoardTag({
+    required this.id,
+    required this.name,
+    required this.color,
+    required this.permissions,
+  });
+
+  final String id;
+  final String name;
+  final int color;
+  final Set<String> permissions;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'color': color,
+        'permissions': [
+          for (final p in kTeamBoardPermissions)
+            if (permissions.contains(p)) p
+        ],
+      };
+
+  static TeamBoardTag? fromJson(Object? raw) {
+    if (raw is! Map) return null;
+    final id = raw['id'];
+    final name = cleanTeamBoardTagName(raw['name']);
+    if (id is! String || !TeamBoardStore.idPattern.hasMatch(id)) return null;
+    if (name == null) return null;
+    final color = raw['color'];
+    return TeamBoardTag(
+      id: id,
+      name: name,
+      color:
+          color is int && color >= 0 && color < kTeamBoardTagColors ? color : 0,
+      permissions: teamBoardPermissionSet(raw['permissions']) ?? {},
+    );
+  }
+}
+
+/// A tag's name, trimmed, or null when it is empty, too long or carries
+/// control characters.
+String? cleanTeamBoardTagName(Object? raw) {
+  if (raw is! String) return null;
+  if (RegExp(r'[\x00-\x1F\x7F]').hasMatch(raw)) return null;
+  final name = raw.replaceAll(RegExp(r'\s+'), ' ').trim();
+  if (name.isEmpty || name.length > kTeamBoardMaxTagChars) return null;
+  return name;
+}
+
+/// [raw] as a set of known permissions, or null when it isn't a list of
+/// them.
+Set<String>? teamBoardPermissionSet(Object? raw) {
+  if (raw is! List) return null;
+  final out = <String>{};
+  for (final p in raw) {
+    if (p is! String || !kTeamBoardPermissions.contains(p)) return null;
+    out.add(p);
+  }
+  return out;
+}
+
+/// What [userId], holding [permissions], may do to [entry].
 class TeamBoardPermissions {
-  const TeamBoardPermissions(this.entry, this.userId, this.role);
+  const TeamBoardPermissions(this.entry, this.userId, this.permissions);
 
   final TeamBoardEntry entry;
   final String userId;
-  final String role;
+  final Set<String> permissions;
 
-  bool get isLead => role == 'lead';
   bool get isAuthor => entry.authorId == userId;
 
-  bool get canEdit => isLead || isAuthor;
-  bool get canClose => isLead || isAuthor;
+  bool get canEdit => isAuthor || permissions.contains('editAny');
+  bool get canClose => isAuthor || permissions.contains('closeAny');
 
-  /// A lead can remove anything. An author can take back their own entry
-  /// only while nobody else has put anything in it.
+  /// Anyone allowed to remove anything can. An author can take back their
+  /// own entry only while nobody else has put anything in it.
   bool get canDelete =>
-      isLead ||
+      permissions.contains('removeAny') ||
       (isAuthor &&
           entry.messages.every((m) => m.authorId == userId) &&
           entry.files.every((f) => f.uploaderId == userId));
@@ -603,15 +694,17 @@ class TeamBoardPermissions {
   bool get canPost => !entry.closed;
 
   bool canRemoveFile(TeamBoardFile file) =>
-      !entry.closed && (isLead || file.uploaderId == userId);
+      !entry.closed &&
+      (permissions.contains('removeAny') || file.uploaderId == userId);
 
   /// Why moving the entry to [stage] is refused, or null when it is allowed.
-  /// Anyone can move between idea, claimed and done; only a lead can mark
-  /// something added or take it back out of added.
+  /// Anyone can move between idea, claimed and done; marking something
+  /// added, or taking it back out of added, takes `markAdded`.
   String? stageRefusal(String stage) {
     if (!kTeamBoardStages.contains(stage)) return 'Unknown stage.';
     if (entry.closed) return 'Reopen the thread first.';
-    if ((stage == 'added' || entry.stage == 'added') && !isLead) {
+    if ((stage == 'added' || entry.stage == 'added') &&
+        !permissions.contains('markAdded')) {
       return 'Only a team lead can mark something added.';
     }
     return null;
@@ -646,6 +739,31 @@ class TeamBoardStore {
           }
         });
       }
+      for (final raw in decoded['tags'] as List? ?? const []) {
+        final tag = TeamBoardTag.fromJson(raw);
+        if (tag != null) _tags.add(tag);
+      }
+      final grants = decoded['grants'];
+      if (grants is Map) {
+        grants.forEach((userId, raw) {
+          final set = teamBoardPermissionSet(raw);
+          if (userId is String && set != null && set.isNotEmpty) {
+            _grants[userId] = set;
+          }
+        });
+      }
+      final tagIds = {for (final t in _tags) t.id};
+      final memberTags = decoded['memberTags'];
+      if (memberTags is Map) {
+        memberTags.forEach((userId, raw) {
+          if (userId is! String || raw is! List) return;
+          final ids = {
+            for (final id in raw)
+              if (tagIds.contains(id)) id as String
+          };
+          if (ids.isNotEmpty) _memberTags[userId] = ids;
+        });
+      }
       for (final raw in decoded['entries'] as List? ?? const []) {
         final entry = TeamBoardEntry.fromJson(raw);
         if (entry != null) _entries[entry.id] = entry;
@@ -658,6 +776,13 @@ class TeamBoardStore {
   final String _dir;
   final Map<String, String> _roles = {};
   final Map<String, String> _names = {};
+  final List<TeamBoardTag> _tags = [];
+
+  /// Permissions a lead gave one member directly, on top of their tags'.
+  final Map<String, Set<String>> _grants = {};
+
+  /// The ids of the tags each member wears.
+  final Map<String, Set<String>> _memberTags = {};
   final Map<String, TeamBoardEntry> _entries = {};
   final AsyncLock _lock = AsyncLock();
 
@@ -676,6 +801,74 @@ class TeamBoardStore {
   String? roleOf(String userId) => _roles[userId];
 
   Map<String, String> get roles => Map.unmodifiable(_roles);
+
+  List<TeamBoardTag> get tags => List.unmodifiable(_tags);
+
+  /// The permissions a lead gave [userId] directly.
+  Set<String> grantsOf(String userId) => {...?_grants[userId]};
+
+  /// The ids of the tags [userId] wears, in tag order.
+  List<String> tagsOf(String userId) {
+    final mine = _memberTags[userId] ?? const <String>{};
+    return [
+      for (final t in _tags)
+        if (mine.contains(t.id)) t.id
+    ];
+  }
+
+  /// Everything [userId] may do beyond what every member can: all of
+  /// [kTeamBoardPermissions] for a lead, their own grants plus their tags'
+  /// for a member, and nothing for anyone off the team.
+  Set<String> permissionsOf(String userId) {
+    final role = _roles[userId];
+    if (role == null) return const {};
+    if (role == 'lead') return kTeamBoardPermissions.toSet();
+    final mine = _memberTags[userId] ?? const <String>{};
+    return {
+      ...?_grants[userId],
+      for (final t in _tags)
+        if (mine.contains(t.id)) ...t.permissions,
+    };
+  }
+
+  bool can(String userId, String permission) =>
+      permissionsOf(userId).contains(permission);
+
+  /// Replaces the tag list. A tag left out is gone, and comes off everyone
+  /// who wore it. Call inside [mutate].
+  void replaceTags(List<TeamBoardTag> tags) {
+    _tags
+      ..clear()
+      ..addAll(tags);
+    final ids = {for (final t in tags) t.id};
+    for (final set in _memberTags.values) {
+      set.retainAll(ids);
+    }
+    _memberTags.removeWhere((_, set) => set.isEmpty);
+  }
+
+  /// Sets what [userId] gets directly and which tags they wear; a null
+  /// leaves that part alone. Unknown tag ids are dropped. Call inside
+  /// [mutate].
+  void setAccess(String userId,
+      {Set<String>? permissions, Set<String>? tagIds}) {
+    if (permissions != null) {
+      if (permissions.isEmpty) {
+        _grants.remove(userId);
+      } else {
+        _grants[userId] = {...permissions};
+      }
+    }
+    if (tagIds != null) {
+      final known = {for (final t in _tags) t.id};
+      final ids = tagIds.where(known.contains).toSet();
+      if (ids.isEmpty) {
+        _memberTags.remove(userId);
+      } else {
+        _memberTags[userId] = ids;
+      }
+    }
+  }
 
   /// The name [userId] picked for the board, or null for the default.
   String? nameOf(String userId) => _names[userId];
@@ -725,6 +918,8 @@ class TeamBoardStore {
   Future<void> setRole(String userId, String? role) => mutate(() {
         if (role == null) {
           _roles.remove(userId);
+          _grants.remove(userId);
+          _memberTags.remove(userId);
         } else {
           _roles[userId] = role;
         }
@@ -758,6 +953,13 @@ class TeamBoardStore {
           'revision': revision,
           'members': _roles,
           'names': _names,
+          'tags': [for (final t in _tags) t.toJson()],
+          'grants': {
+            for (final g in _grants.entries) g.key: g.value.toList(),
+          },
+          'memberTags': {
+            for (final m in _memberTags.entries) m.key: m.value.toList(),
+          },
           'entries': _entries.values.map((e) => e.toJson()).toList(),
         }));
   }
@@ -800,6 +1002,8 @@ class TeamBoardStore {
   Future<void> forgetUser(String userId) => mutate(() {
         _roles.remove(userId);
         _names.remove(userId);
+        _grants.remove(userId);
+        _memberTags.remove(userId);
         for (final entry in _entries.values) {
           if (entry.authorId == userId) entry.authorEmail = '';
           if (entry.claimedById == userId) entry.claimedByEmail = '';

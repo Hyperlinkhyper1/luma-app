@@ -8,6 +8,7 @@ import '../../../../../sync/server_access.dart';
 import '../team_clipboard_models.dart';
 import '../team_discord_models.dart';
 import '../team_library_models.dart';
+import '../team_settings_models.dart';
 
 class TeamClipboardApiException implements Exception {
   const TeamClipboardApiException(this.status, this.code, this.message);
@@ -31,6 +32,8 @@ class TeamBoardSnapshot {
     required this.revision,
     this.email,
     this.me,
+    this.permissions = const {},
+    this.tags = const [],
     this.entries,
   });
 
@@ -41,6 +44,12 @@ class TeamBoardSnapshot {
   /// which account to add.
   final String? email;
   final String? me;
+
+  /// What this account may do beyond any member; everything for a lead.
+  final Set<TeamPermission> permissions;
+
+  /// The tags a lead put on this account.
+  final List<TeamTag> tags;
 
   /// Null when nothing changed since the revision asked about.
   final List<TeamEntry>? entries;
@@ -88,6 +97,11 @@ class TeamClipboardApi {
       access: body['lead'] == true ? TeamAccess.lead : TeamAccess.member,
       revision: body['revision'] as int? ?? 0,
       me: body['me'] as String?,
+      permissions: TeamPermission.parseAll(body['permissions']),
+      tags: [
+        for (final t in body['tags'] as List? ?? const [])
+          TeamTag.fromJson(t as Map<String, dynamic>),
+      ],
       entries: body['unchanged'] == true
           ? null
           : [
@@ -195,6 +209,36 @@ class TeamClipboardApi {
       currentL.teamClipboardServerError(response.statusCode),
     );
   }
+
+  /// The team's tags and every member's permissions. Leads only.
+  Future<TeamSettings> settings() async {
+    final response = await _client
+        .get(_uri('/settings'), headers: _auth)
+        .timeout(_timeout);
+    return TeamSettings.fromJson(_decodeOrThrow(response));
+  }
+
+  /// Saves the whole tag list (a tag without an id is new, one left out is
+  /// deleted) and/or what each of [members] gets directly and wears.
+  Future<TeamSettings> saveSettings({
+    List<TeamTag>? tags,
+    List<({String id, Set<TeamPermission>? permissions, List<String>? tags})>?
+    members,
+  }) async => TeamSettings.fromJson(
+    await _send('PUT', '/settings', {
+      if (tags != null) 'tags': [for (final t in tags) t.toJson()],
+      if (members != null)
+        'members': [
+          for (final m in members)
+            {
+              'id': m.id,
+              if (m.permissions case final p?)
+                'permissions': teamPermissionKeys(p),
+              'tags': ?m.tags,
+            },
+        ],
+    }),
+  );
 
   Future<TeamDiscordState> discord() async {
     final response = await _client

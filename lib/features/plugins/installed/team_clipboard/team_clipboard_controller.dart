@@ -13,6 +13,7 @@ import 'team_clipboard_models.dart';
 import 'team_discord_models.dart';
 import 'team_file_check.dart';
 import 'team_library_models.dart';
+import 'team_settings_models.dart';
 
 /// A file picked to attach, before it is uploaded.
 class TeamPickedFile {
@@ -68,6 +69,8 @@ class TeamClipboardController extends ChangeNotifier {
   TeamAccess _access = TeamAccess.unknown;
   String? _outsideEmail;
   String? _me;
+  Set<TeamPermission> _permissions = const {};
+  List<TeamTag> _myTags = const [];
   int? _revision;
   List<TeamEntry> _entries = const [];
   bool _loading = false;
@@ -93,6 +96,14 @@ class TeamClipboardController extends ChangeNotifier {
   bool get serverReady => _sync.serverReady;
   TeamAccess get access => _access;
   bool get isLead => _access == TeamAccess.lead;
+
+  /// Whether this account may do [permission]: a lead always may, a
+  /// member when a lead gave it to them or to one of their tags.
+  bool can(TeamPermission permission) =>
+      isLead || _permissions.contains(permission);
+
+  /// The tags a lead put on this account.
+  List<TeamTag> get myTags => _myTags;
   bool get onTeam => _access == TeamAccess.member || _access == TeamAccess.lead;
 
   /// The signed-in email, for the "ask the admin" screen.
@@ -195,6 +206,8 @@ class TeamClipboardController extends ChangeNotifier {
     _access = TeamAccess.unknown;
     _outsideEmail = null;
     _me = null;
+    _permissions = const {};
+    _myTags = const [];
     _revision = null;
     _entries = const [];
     _error = null;
@@ -239,6 +252,8 @@ class TeamClipboardController extends ChangeNotifier {
         _selected = null;
       } else {
         _me = snapshot.me;
+        _permissions = snapshot.permissions;
+        _myTags = snapshot.tags;
         _revision = snapshot.revision;
         if (snapshot.entries case final entries?) {
           _applyBoard(entries);
@@ -476,6 +491,25 @@ class TeamClipboardController extends ChangeNotifier {
     } on TeamClipboardApiException catch (e) {
       if (e.accessRemoved) unawaited(refresh());
       rethrow;
+    }
+  }
+
+  // ---- Settings -------------------------------------------------------------
+
+  /// Runs one Settings-tab request (leads only), then reloads the board
+  /// so this account's own permissions and tags follow at once.
+  Future<TeamSettings> settings(
+    Future<TeamSettings> Function(TeamClipboardApi api) call,
+  ) async {
+    final api = _api;
+    if (api == null) throw StateError('Not signed in.');
+    try {
+      return await call(api);
+    } on TeamClipboardApiException catch (e) {
+      if (e.accessRemoved || e.status == 403) unawaited(refresh());
+      rethrow;
+    } finally {
+      unawaited(_tick());
     }
   }
 

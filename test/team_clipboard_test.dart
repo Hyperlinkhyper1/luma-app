@@ -13,6 +13,7 @@ import 'package:luma/features/plugins/installed/team_clipboard/team_clipboard_pa
 import 'package:luma/features/plugins/installed/team_clipboard/team_clipboard_scope.dart';
 import 'package:luma/features/plugins/installed/team_clipboard/team_file_check.dart';
 import 'package:luma/features/plugins/installed/team_clipboard/team_model_mesh.dart';
+import 'package:luma/features/plugins/installed/team_clipboard/team_settings_models.dart';
 import 'package:luma/features/plugins/installed/team_clipboard/ui/team_model_view.dart';
 import 'package:luma/l10n/app_localizations.dart';
 import 'package:luma/sync/server_access.dart';
@@ -87,6 +88,77 @@ class _FakeBoard {
   };
   int revision = 1;
   String me = 'pixel';
+
+  /// This account's permissions as a member; a lead has them all.
+  List<String> permissions = [];
+
+  /// What the Settings endpoints hold.
+  final List<Map<String, dynamic>> tags = [];
+  final List<Map<String, dynamic>> members = [
+    {
+      'id': 'u-pixel',
+      'name': 'pixel',
+      'email': 'pixel@example.com',
+      'role': 'lead',
+      'permissions': <String>[],
+      'tags': <String>[],
+    },
+    {
+      'id': 'u-blocky',
+      'name': 'blocky',
+      'email': 'blocky@example.com',
+      'role': 'member',
+      'permissions': <String>[],
+      'tags': <String>[],
+    },
+  ];
+
+  Map<String, dynamic> get _settings => {
+    'permissions': [for (final p in TeamPermission.values) p.name],
+    'tags': tags,
+    'members': [
+      for (final m in members)
+        {
+          ...m,
+          'effective': m['role'] == 'lead'
+              ? [for (final p in TeamPermission.values) p.name]
+              : {
+                  ...m['permissions'] as List,
+                  for (final t in tags)
+                    if ((m['tags'] as List).contains(t['id']))
+                      ...t['permissions'] as List,
+                }.toList(),
+        },
+    ],
+  };
+
+  void _saveSettings(Map<String, dynamic> body) {
+    if (body['tags'] case final List<dynamic> next) {
+      var n = tags.length;
+      final kept = [
+        for (final t in next.cast<Map<String, dynamic>>())
+          {...t, 'id': t['id'] ?? 't${n++}'},
+      ];
+      tags
+        ..clear()
+        ..addAll(kept);
+      final ids = {for (final t in kept) t['id']};
+      for (final m in members) {
+        m['tags'] = [
+          for (final id in m['tags'] as List)
+            if (ids.contains(id)) id,
+        ];
+      }
+    }
+    if (body['members'] case final List<dynamic> changes) {
+      for (final c in changes.cast<Map<String, dynamic>>()) {
+        final m = members.firstWhere((m) => m['id'] == c['id']);
+        if (c.containsKey('permissions')) m['permissions'] = c['permissions'];
+        if (c.containsKey('tags')) m['tags'] = c['tags'];
+      }
+    }
+  }
+
   final requests = <http.Request>[];
   final blobs = <String, List<int>>{};
   final List<Map<String, dynamic>> entries = [
@@ -161,16 +233,28 @@ class _FakeBoard {
     );
     if (path == '/api/v1/team-board') {
       if (!member) return json({'member': false, 'email': 'pixel@example.com'});
-      if (request.url.queryParameters['since'] == '$revision') {
-        return json({'member': true, 'revision': revision, 'unchanged': true});
-      }
-      return json({
+      final base = {
         'member': true,
         'lead': lead,
         'me': me,
+        'permissions': lead
+            ? [for (final p in TeamPermission.values) p.name]
+            : permissions,
         'revision': revision,
-        'entries': entries,
-      });
+      };
+      if (request.url.queryParameters['since'] == '$revision') {
+        return json({...base, 'unchanged': true});
+      }
+      return json({...base, 'entries': entries});
+    }
+    if (path == '/api/v1/team-board/settings') {
+      if (!lead) {
+        return json({'error': 'forbidden', 'message': 'Leads only.'}, 403);
+      }
+      if (request.method == 'PUT') {
+        _saveSettings(jsonDecode(request.body) as Map<String, dynamic>);
+      }
+      return json(_settings);
     }
     if (path == '/api/v1/team-board/discord') {
       if (request.method == 'PUT') {
@@ -1160,6 +1244,149 @@ void main() {
     final sent = board.requests.where((r) => r.method == 'PUT').single;
     expect(sent.url.path, '/api/v1/team-board/me');
     expect(jsonDecode(sent.body), {'name': 'Pixel Pete'});
+    await _unmount(tester);
+  });
+
+  testWidgets('only a lead gets the Settings tab', (tester) async {
+    final settingsTab = find.byKey(
+      const ValueKey('team-clipboard-settings-tab'),
+    );
+    await _pump(tester, _FakeBoard());
+    expect(settingsTab, findsNothing);
+    await _unmount(tester);
+
+    await _pump(tester, _FakeBoard(lead: true));
+    expect(settingsTab, findsOneWidget);
+    await tester.tap(settingsTab);
+    await tester.pumpAndSettle();
+    expect(find.text('Team settings'), findsOneWidget);
+    expect(find.text('Lead · can do everything'), findsOneWidget);
+    expect(find.text('0 of 7 permissions'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await _unmount(tester);
+  });
+
+  testWidgets('a lead makes a tag and puts a member in it', (tester) async {
+    final board = _FakeBoard(lead: true);
+    await _pump(tester, board);
+    await tester.tap(find.byKey(const ValueKey('team-clipboard-settings-tab')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('team-settings-new-tag')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('team-settings-tag-name')),
+      'Tester',
+    );
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const ValueKey('team-settings-perm-markAdded')),
+    );
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('team-settings-wearer-u-blocky')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('team-settings-wearer-u-blocky')),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('team-settings-save')));
+    await tester.pumpAndSettle();
+
+    final puts = [
+      for (final r in board.requests)
+        if (r.method == 'PUT') jsonDecode(r.body) as Map<String, dynamic>,
+    ];
+    expect(puts, hasLength(2));
+    expect(puts.first['tags'], [
+      {
+        'name': 'Tester',
+        'color': 0,
+        'permissions': ['markAdded'],
+      },
+    ]);
+    expect(puts.last['members'], [
+      {
+        'id': 'u-blocky',
+        'tags': ['t0'],
+      },
+    ]);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text('Tester'), findsNWidgets(2));
+    expect(find.text('1 of 7 permissions'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await _unmount(tester);
+  });
+
+  testWidgets('a tag’s permission shows as given by it, and is not saved as '
+      'the member’s own', (tester) async {
+    final board = _FakeBoard(lead: true)
+      ..tags.add({
+        'id': 't0',
+        'name': 'Tester',
+        'color': 2,
+        'permissions': ['markAdded'],
+      });
+    await _pump(tester, board);
+    await tester.tap(find.byKey(const ValueKey('team-clipboard-settings-tab')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('team-settings-member-u-blocky')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Permissions for blocky'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('team-settings-wear-t0')));
+    await tester.pump();
+    expect(find.textContaining('Given by Tester'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const ValueKey('team-settings-perm-markAdded')),
+    );
+    await tester.tap(find.byKey(const ValueKey('team-settings-perm-editAny')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('team-settings-save')));
+    await tester.pumpAndSettle();
+
+    final put = board.requests.lastWhere((r) => r.method == 'PUT');
+    expect(jsonDecode(put.body), {
+      'members': [
+        {
+          'id': 'u-blocky',
+          'permissions': ['editAny'],
+          'tags': ['t0'],
+        },
+      ],
+    });
+    expect(find.text('2 of 7 permissions'), findsOneWidget);
+    await _unmount(tester);
+  });
+
+  testWidgets('a member given markAdded may mark entries added', (
+    tester,
+  ) async {
+    final board = _FakeBoard();
+    final controller = await _pump(tester, board);
+    expect(controller.can(TeamPermission.markAdded), isFalse);
+    board
+      ..permissions = ['markAdded']
+      ..revision += 1;
+    await controller.refresh();
+    expect(controller.can(TeamPermission.markAdded), isTrue);
+    expect(controller.can(TeamPermission.botToken), isFalse);
+    expect(controller.isLead, isFalse);
+    await _unmount(tester);
+  });
+
+  testWidgets('the kind filters fit beside an open entry', (tester) async {
+    await _pump(tester, _FakeBoard());
+    await tester.tap(find.text('Ruby ore'));
+    await tester.pumpAndSettle();
+    final list = tester.getRect(find.byType(VerticalDivider));
+    for (final label in ['Bugs', 'Suggestions', 'Models']) {
+      final chip = find.byTooltip(label);
+      expect(chip, findsOneWidget, reason: label);
+      expect(tester.getRect(chip).right, lessThanOrEqualTo(list.left));
+    }
     await _unmount(tester);
   });
 }

@@ -168,7 +168,7 @@ class TeamLibraryState {
 
   final int revision;
 
-  /// A lead: may add, change and remove mods.
+  /// May add, change and remove mods: a lead, or a member given that.
   final bool canManage;
 
   /// The server is checking or unpacking something right now.

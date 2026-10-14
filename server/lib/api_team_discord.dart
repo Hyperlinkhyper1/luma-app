@@ -1,23 +1,21 @@
 part of 'api.dart';
 
 /// The Team Clipboard's Discord bot (see `team_discord.dart`). Everyone on
-/// the team can see how the bot is doing and what its rules are; only a
-/// lead can link it or change them.
+/// the team can see how the bot is doing and what its rules are; changing
+/// them takes `botSettings`, and linking the bot takes `botToken` (a lead
+/// has both).
 extension TeamDiscordApi on Api {
-  Response? _teamDiscordLeadOnly(StoredUser user) {
-    final (role, refused) = _teamRole(user);
-    if (refused != null) return refused;
-    if (role != 'lead') {
-      return errorResponse(
-          403, 'forbidden', 'Only a team lead can manage the Discord bot.');
-    }
-    return null;
-  }
+  Response? _teamDiscordSettingsOnly(StoredUser user) => _teamRequire(
+      user, 'botSettings', 'You may not change the Discord bot\'s settings.');
 
-  Map<String, dynamic> _teamDiscordJson(String role) {
+  Response? _teamDiscordTokenOnly(StoredUser user) => _teamRequire(
+      user, 'botToken', 'You may not link or unlink the Discord bot.');
+
+  Map<String, dynamic> _teamDiscordJson(StoredUser user) {
     final bot = teamDiscord;
     return {
-      'canManage': role == 'lead',
+      'canManage': teamBoard.can(user.id, 'botSettings'),
+      'canLink': teamBoard.can(user.id, 'botToken'),
       'linked': bot.linked,
       'enabled': bot.enabled,
       'automodOn': bot.automodOn,
@@ -54,16 +52,16 @@ extension TeamDiscordApi on Api {
   }
 
   Response _teamDiscordGet(Request request, StoredUser user) {
-    final (role, refused) = _teamRole(user);
+    final (_, refused) = _teamRole(user);
     if (refused != null) return refused;
-    return jsonResponse(200, _teamDiscordJson(role!));
+    return jsonResponse(200, _teamDiscordJson(user));
   }
 
   /// Saves `enabled`, `automodOn`, `repliesOn`, `forumsOn`, `automod`,
   /// `replies` and/or `trackers`. A list replaces the whole list, and one
   /// bad rule refuses the lot.
   Future<Response> _teamDiscordUpdate(Request request, StoredUser user) async {
-    final refused = _teamDiscordLeadOnly(user);
+    final refused = _teamDiscordSettingsOnly(user);
     if (refused != null) return refused;
     final body = await _teamJsonBody(request);
     if (body == null) {
@@ -126,11 +124,11 @@ extension TeamDiscordApi on Api {
         automod: automod,
         replies: replies,
         trackers: trackers);
-    return jsonResponse(200, _teamDiscordJson('lead'));
+    return jsonResponse(200, _teamDiscordJson(user));
   }
 
   Future<Response> _teamDiscordLink(Request request, StoredUser user) async {
-    final refused = _teamDiscordLeadOnly(user);
+    final refused = _teamDiscordTokenOnly(user);
     if (refused != null) return refused;
     final body = await _teamJsonBody(request);
     final token = body?['token'];
@@ -146,15 +144,15 @@ extension TeamDiscordApi on Api {
     }
     await store.logActivity(
         'team_discord', '${user.email} linked a Discord bot');
-    return jsonResponse(200, _teamDiscordJson('lead'));
+    return jsonResponse(200, _teamDiscordJson(user));
   }
 
   Future<Response> _teamDiscordUnlink(Request request, StoredUser user) async {
-    final refused = _teamDiscordLeadOnly(user);
+    final refused = _teamDiscordTokenOnly(user);
     if (refused != null) return refused;
     await teamDiscord.unlink();
     await store.logActivity(
         'team_discord', '${user.email} unlinked the Discord bot');
-    return jsonResponse(200, _teamDiscordJson('lead'));
+    return jsonResponse(200, _teamDiscordJson(user));
   }
 }

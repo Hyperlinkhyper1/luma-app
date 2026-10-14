@@ -666,6 +666,8 @@ class Api {
           '/api/v1/recipes/<id>/reviews', _requireAuth(_deleteRecipeReview))
       ..get('/api/v1/team-board', _requireAuth(_teamBoardGet))
       ..put('/api/v1/team-board/me', _requireAuth(_teamNameSet))
+      ..get('/api/v1/team-board/settings', _requireAuth(_teamSettingsGet))
+      ..put('/api/v1/team-board/settings', _requireAuth(_teamSettingsUpdate))
       ..post('/api/v1/team-board/entries', _requireAuth(_teamEntryCreate))
       ..get('/api/v1/team-board/entries/<id>', _requireAuth(_teamEntryGet))
       ..put('/api/v1/team-board/entries/<id>', _requireAuth(_teamEntryUpdate))

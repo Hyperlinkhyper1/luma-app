@@ -9,6 +9,166 @@ class LNl extends L {
   LNl([String locale = 'nl']) : super(locale);
 
   @override
+  String get teamClipboardSettings => 'Instellingen';
+
+  @override
+  String get teamSettingsTitle => 'Teaminstellingen';
+
+  @override
+  String get teamSettingsSubtitle =>
+      'Alleen leiders zien dit tabblad. Geef een lid zelf extra rechten, of geef ze een tag en bepaal wat iedereen met die tag mag.';
+
+  @override
+  String get teamSettingsMembers => 'Leden';
+
+  @override
+  String get teamSettingsTags => 'Tags';
+
+  @override
+  String get teamSettingsNewTag => 'Nieuwe tag';
+
+  @override
+  String get teamSettingsNoTags =>
+      'Nog geen tags. Maak er een, zoals Modelleur of Tester, om een groep in één keer dezelfde rechten te geven.';
+
+  @override
+  String get teamSettingsLeadEverything => 'Leider · mag alles';
+
+  @override
+  String teamSettingsPermissionCount(int count, int total) {
+    return '$count van $total rechten';
+  }
+
+  @override
+  String teamSettingsTagMembers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count leden',
+      one: '1 lid',
+      zero: 'Niemand heeft hem',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String teamSettingsTagPermissionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count rechten',
+      one: '1 recht',
+      zero: 'geen rechten',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String teamSettingsEditMember(String name) {
+    return 'Rechten van $name';
+  }
+
+  @override
+  String get teamSettingsMemberTagsHint =>
+      'Iedereen met een tag krijgt wat de tag toestaat.';
+
+  @override
+  String get teamSettingsOwnPermissions => 'Eigen rechten';
+
+  @override
+  String teamSettingsFromTag(String tag) {
+    return 'Via $tag';
+  }
+
+  @override
+  String get teamSettingsEditTag => 'Tag bewerken';
+
+  @override
+  String get teamSettingsTagName => 'Naam';
+
+  @override
+  String get teamSettingsTagNameHint => 'Modelleur, Tester…';
+
+  @override
+  String get teamSettingsTagColor => 'Kleur';
+
+  @override
+  String get teamSettingsTagPermissions => 'Iedereen met deze tag mag';
+
+  @override
+  String get teamSettingsTagWearers => 'Wie heeft deze tag';
+
+  @override
+  String get teamSettingsDeleteTag => 'Tag verwijderen';
+
+  @override
+  String teamSettingsDeleteTagConfirm(String name) {
+    return 'De tag $name verwijderen? Iedereen die hem heeft verliest wat hij toestond.';
+  }
+
+  @override
+  String get teamSettingsNoMembers =>
+      'Er zit nog niemand anders in het team. De beheerder voegt mensen toe via het dashboard.';
+
+  @override
+  String get teamSettingsGroupBoard => 'Bord';
+
+  @override
+  String get teamSettingsGroupLibrary => 'Assetbibliotheek';
+
+  @override
+  String get teamSettingsGroupBot => 'Discord-bot';
+
+  @override
+  String get teamPermMarkAdded => 'Items als toegevoegd of opgelost markeren';
+
+  @override
+  String get teamPermMarkAddedBody =>
+      'Een item naar Toegevoegd (Opgelost bij een bug) zetten, of terugzetten.';
+
+  @override
+  String get teamPermEditAny => 'Elk item bewerken';
+
+  @override
+  String get teamPermEditAnyBody =>
+      'Titel, beschrijving en soort wijzigen van items van anderen.';
+
+  @override
+  String get teamPermCloseAny => 'Elke thread sluiten';
+
+  @override
+  String get teamPermCloseAnyBody =>
+      'Threads van anderen sluiten of heropenen.';
+
+  @override
+  String get teamPermRemoveAny => 'Alles verwijderen';
+
+  @override
+  String get teamPermRemoveAnyBody =>
+      'Elk item of bestand verwijderen, ook als anderen eraan bijdroegen.';
+
+  @override
+  String get teamPermLibrary => 'Bibliotheek beheren';
+
+  @override
+  String get teamPermLibraryBody =>
+      'De mods die het hele team deelt toevoegen, wijzigen en verwijderen.';
+
+  @override
+  String get teamPermBotSettings => 'Botinstellingen wijzigen';
+
+  @override
+  String get teamPermBotSettingsBody =>
+      'De bot en zijn plug-ins aan- of uitzetten en hun regels bewerken.';
+
+  @override
+  String get teamPermBotToken => 'Botgegevens bewerken';
+
+  @override
+  String get teamPermBotTokenBody =>
+      'Het token van de bot koppelen, vervangen of ontkoppelen.';
+
+  @override
   String get teamClipboardLibrary => 'Assetbibliotheek';
 
   @override

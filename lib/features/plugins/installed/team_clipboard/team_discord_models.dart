@@ -6,6 +6,7 @@ import 'team_clipboard_models.dart';
 class TeamDiscordState {
   const TeamDiscordState({
     required this.canManage,
+    this.canLink = false,
     required this.linked,
     required this.enabled,
     this.automodOn = false,
@@ -25,7 +26,11 @@ class TeamDiscordState {
     this.metrics,
   });
 
+  /// May switch the bot and its plugins and change their rules.
   final bool canManage;
+
+  /// May link, replace or unlink the bot's token.
+  final bool canLink;
   final bool linked;
   final bool enabled;
 
@@ -60,6 +65,7 @@ class TeamDiscordState {
   factory TeamDiscordState.fromJson(Map<String, dynamic> json) =>
       TeamDiscordState(
         canManage: json['canManage'] == true,
+        canLink: (json['canLink'] ?? json['canManage']) == true,
         linked: json['linked'] == true,
         enabled: json['enabled'] != false,
         automodOn: json['automodOn'] == true,

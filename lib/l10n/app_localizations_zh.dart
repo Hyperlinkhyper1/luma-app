@@ -9,6 +9,154 @@ class LZh extends L {
   LZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get teamClipboardSettings => '设置';
+
+  @override
+  String get teamSettingsTitle => '团队设置';
+
+  @override
+  String get teamSettingsSubtitle =>
+      '只有负责人能看到此标签页。可以单独给成员额外权限，也可以给他们一个标签，并设置拥有该标签的人能做什么。';
+
+  @override
+  String get teamSettingsMembers => '成员';
+
+  @override
+  String get teamSettingsTags => '标签';
+
+  @override
+  String get teamSettingsNewTag => '新建标签';
+
+  @override
+  String get teamSettingsNoTags => '还没有标签。创建一个（例如建模师或测试员），即可一次性给一组人相同的权限。';
+
+  @override
+  String get teamSettingsLeadEverything => '负责人 · 拥有全部权限';
+
+  @override
+  String teamSettingsPermissionCount(int count, int total) {
+    return '$total 项权限中的 $count 项';
+  }
+
+  @override
+  String teamSettingsTagMembers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 名成员',
+      zero: '没有人',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String teamSettingsTagPermissionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 项权限',
+      zero: '无权限',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String teamSettingsEditMember(String name) {
+    return '$name 的权限';
+  }
+
+  @override
+  String get teamSettingsMemberTagsHint => '拥有标签的人会获得该标签允许的权限。';
+
+  @override
+  String get teamSettingsOwnPermissions => '个人权限';
+
+  @override
+  String teamSettingsFromTag(String tag) {
+    return '来自 $tag';
+  }
+
+  @override
+  String get teamSettingsEditTag => '编辑标签';
+
+  @override
+  String get teamSettingsTagName => '名称';
+
+  @override
+  String get teamSettingsTagNameHint => '建模师、测试员…';
+
+  @override
+  String get teamSettingsTagColor => '颜色';
+
+  @override
+  String get teamSettingsTagPermissions => '拥有此标签的人可以';
+
+  @override
+  String get teamSettingsTagWearers => '谁拥有此标签';
+
+  @override
+  String get teamSettingsDeleteTag => '删除标签';
+
+  @override
+  String teamSettingsDeleteTagConfirm(String name) {
+    return '删除标签 $name？拥有它的人将失去它所给的权限。';
+  }
+
+  @override
+  String get teamSettingsNoMembers => '团队里还没有其他人。管理员可在后台添加成员。';
+
+  @override
+  String get teamSettingsGroupBoard => '看板';
+
+  @override
+  String get teamSettingsGroupLibrary => '资源库';
+
+  @override
+  String get teamSettingsGroupBot => 'Discord 机器人';
+
+  @override
+  String get teamPermMarkAdded => '标记为已添加或已修复';
+
+  @override
+  String get teamPermMarkAddedBody => '将条目移到“已添加”（缺陷为“已修复”），或移回。';
+
+  @override
+  String get teamPermEditAny => '编辑任何条目';
+
+  @override
+  String get teamPermEditAnyBody => '修改他人条目的标题、简介和类型。';
+
+  @override
+  String get teamPermCloseAny => '关闭任何讨论串';
+
+  @override
+  String get teamPermCloseAnyBody => '关闭或重新打开他人发起的讨论串。';
+
+  @override
+  String get teamPermRemoveAny => '删除任何内容';
+
+  @override
+  String get teamPermRemoveAnyBody => '删除任何条目或文件，即使他人也有贡献。';
+
+  @override
+  String get teamPermLibrary => '管理资源库';
+
+  @override
+  String get teamPermLibraryBody => '添加、修改和移除全队共享的模组。';
+
+  @override
+  String get teamPermBotSettings => '修改机器人设置';
+
+  @override
+  String get teamPermBotSettingsBody => '开关机器人及其插件，并编辑它们的规则。';
+
+  @override
+  String get teamPermBotToken => '编辑机器人凭据';
+
+  @override
+  String get teamPermBotTokenBody => '关联、替换或取消关联机器人的令牌。';
+
+  @override
   String get teamClipboardLibrary => '素材库';
 
   @override

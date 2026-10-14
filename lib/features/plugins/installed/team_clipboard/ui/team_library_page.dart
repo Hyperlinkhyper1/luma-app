@@ -239,7 +239,20 @@ class _TeamLibraryPageState extends State<TeamLibraryPage> {
   /// Shows [next], and says so when a mod moved to a new version.
   void _take(_Shelf shelf, TeamLibraryState next) {
     final mods = next.mods;
-    if (mods == null) return;
+    if (mods == null) {
+      // The mods are the same, but a lead may have changed who manages them.
+      final current = _notifier(shelf).value;
+      if (current != null && current.canManage != next.canManage) {
+        _notifier(shelf).value = TeamLibraryState(
+          revision: current.revision,
+          canManage: next.canManage,
+          busy: current.busy,
+          mods: current.mods,
+        );
+        setState(() {});
+      }
+      return;
+    }
     final reloaded = <TeamLibraryMod>[];
     for (final mod in mods) {
       final version = mod.version?.id;

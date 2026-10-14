@@ -547,13 +547,17 @@ class _BotIdentity extends StatelessWidget {
                               fit: BoxFit.cover,
                             ),
                     ),
-                    child: Text(
-                      name.isEmpty ? '?' : name.characters.first.toUpperCase(),
-                      style: TextStyle(
-                        color: luma.accent,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+                    child: state.botAvatarUrl == null
+                        ? Text(
+                            name.isEmpty
+                                ? '?'
+                                : name.characters.first.toUpperCase(),
+                            style: TextStyle(
+                              color: luma.accent,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          )
+                        : null,
                   ),
                   Positioned(
                     right: -1,
@@ -1172,7 +1176,8 @@ class _ConnectionCardState extends State<_ConnectionCard> {
     final t = L.of(context);
     final luma = context.luma;
     final state = widget.state;
-    final lead = state.canManage;
+    final manage = state.canManage;
+    final link = state.canLink;
 
     if (!state.linked) {
       return LumaCard(
@@ -1185,7 +1190,7 @@ class _ConnectionCardState extends State<_ConnectionCard> {
               hint: t.teamDiscordSetupBody,
             ),
             const SizedBox(height: 16),
-            if (!lead)
+            if (!link)
               Text(
                 t.teamDiscordNotLinkedMember,
                 style: TextStyle(color: luma.textSecondary, fontSize: 13.5),
@@ -1319,7 +1324,7 @@ class _ConnectionCardState extends State<_ConnectionCard> {
                 color: statusColor,
                 icon: statusIcon,
               ),
-              if (lead) ...[
+              if (manage) ...[
                 const SizedBox(width: 8),
                 Switch(
                   key: const ValueKey('team-discord-enabled'),
@@ -1333,7 +1338,7 @@ class _ConnectionCardState extends State<_ConnectionCard> {
             const SizedBox(height: 12),
             Text(problem, style: TextStyle(color: luma.danger, fontSize: 13)),
           ],
-          if (lead) ...[
+          if (link) ...[
             const SizedBox(height: 14),
             Wrap(
               spacing: 8,
@@ -1366,7 +1371,7 @@ class _ConnectionCardState extends State<_ConnectionCard> {
               ],
             ),
             if (_replacing) ...[const SizedBox(height: 12), _tokenRow(t)],
-          ] else ...[
+          ] else if (!manage) ...[
             const SizedBox(height: 10),
             Text(
               t.teamDiscordLeadOnly,
