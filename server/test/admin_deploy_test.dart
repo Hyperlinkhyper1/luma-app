@@ -481,6 +481,25 @@ void main() {
           reason: 'header-authenticated scripts do not send Origin');
     });
 
+    test('dashboard form posts with Origin null pass only when same-origin',
+        () async {
+      handler = await buildHandler();
+      final cookie = await signIn();
+      Future<int> postWith(String site) async => (await handler(Request(
+            'POST',
+            Uri.parse('http://localhost/admin/groceries/sync'),
+            headers: {
+              'cookie': cookie,
+              'Origin': 'null',
+              'Sec-Fetch-Site': site,
+            },
+          )))
+              .statusCode;
+      expect(await postWith('cross-site'), 403);
+      expect(await postWith('same-site'), 403);
+      expect(await postWith('same-origin'), isNot(403));
+    });
+
     test('cookie writes without Origin are rejected', () async {
       handler = await buildHandler();
       final cookie = await signIn();

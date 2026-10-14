@@ -7830,9 +7830,17 @@ class Api {
   /// CSRF guard for the state-changing website endpoints: the session cookie
   /// is SameSite=Strict, and on top of that the Origin header must match the
   /// Host we were reached on. Browser form posts always send Origin.
+  ///
+  /// The dashboard's `Referrer-Policy: no-referrer` makes browsers send
+  /// `Origin: null` on its own form posts, so a null Origin falls back to
+  /// Sec-Fetch-Site, which pages cannot set. A sandboxed or foreign page
+  /// reports `cross-site` there and stays refused.
   bool _sameOrigin(Request request) {
     final origin = request.headers['origin'];
     if (origin == null) return request.headers['x-admin-key'] != null;
+    if (origin == 'null') {
+      return request.headers['sec-fetch-site'] == 'same-origin';
+    }
     final host = request.headers['host'] ?? request.requestedUri.authority;
     final uri = Uri.tryParse(origin);
     return uri != null &&
