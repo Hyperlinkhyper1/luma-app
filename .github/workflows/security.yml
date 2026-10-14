@@ -71,10 +71,12 @@ jobs:
           persist-credentials: false
       - name: Build isolated renderer
         run: docker build -f server/Renderer.Dockerfile -t luma-renderer-test server
+      - name: Load renderer AppArmor profile
+        run: sudo apparmor_parser -r -W server/renderer-apparmor
       - name: Verify Chromium sandbox and network isolation
         run: |
           docker network create --internal luma-renderer-test
-          docker run --detach --name luma-renderer-test --network luma-renderer-test --network-alias renderer --init --read-only --cap-drop=ALL --security-opt no-new-privileges --security-opt seccomp=server/renderer-seccomp.json --tmpfs /tmp:rw,nosuid,nodev,size=2g,mode=1777 --shm-size=512m --memory=4g --pids-limit=512 luma-renderer-test
+          docker run --detach --name luma-renderer-test --network luma-renderer-test --network-alias renderer --init --read-only --cap-drop=ALL --security-opt no-new-privileges --security-opt seccomp=server/renderer-seccomp.json --security-opt apparmor=luma-renderer --tmpfs /tmp:rw,nosuid,nodev,size=2g,mode=1777 --shm-size=512m --memory=4g --pids-limit=512 luma-renderer-test
           docker run --rm --name luma-renderer-smoke --network luma-renderer-test --network-alias smoke --read-only --cap-drop=ALL --security-opt no-new-privileges --security-opt seccomp=server/renderer-seccomp.json --tmpfs /tmp:rw,nosuid,nodev,size=512m,mode=1777 luma-renderer-test node renderer_smoke.mjs || {
             echo "----- renderer container log -----"
             docker logs luma-renderer-test 2>&1

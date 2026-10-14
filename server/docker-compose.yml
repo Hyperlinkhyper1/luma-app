@@ -46,6 +46,9 @@ services:
     security_opt:
       - no-new-privileges:true
       - seccomp=./renderer-seccomp.json
+      # Set to luma-renderer after loading renderer-apparmor on hosts that
+      # restrict unprivileged user namespaces (see README).
+      - apparmor=${LUMA_RENDERER_APPARMOR_PROFILE:-docker-default}
     tmpfs:
       - /tmp:rw,nosuid,nodev,size=2g,mode=1777
     shm_size: 512mb

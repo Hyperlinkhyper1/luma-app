@@ -259,6 +259,14 @@ real PNG, sandbox startup, and blocked network requests in the isolated network.
 The profile includes Docker's `clone3` ENOSYS compatibility rule so Bookworm's
 glibc falls back to `clone` instead of failing to start threads.
 
+Hosts with `kernel.apparmor_restrict_unprivileged_userns = 1` (Ubuntu 23.10
+and later) deny user namespaces to Docker's default AppArmor profile, so
+Chromium is killed on launch and every render fails with "Renderer failed."
+`renderer-apparmor` is Docker's default profile plus `userns`. Load it with
+`sudo apparmor_parser -r -W renderer-apparmor` (again after a reboot, or copy
+it to `/etc/apparmor.d/`), then set `LUMA_RENDERER_APPARMOR_PROFILE=luma-renderer`
+in `.env`. Check the host with `sysctl kernel.apparmor_restrict_unprivileged_userns`.
+
 Local render commands still need Node, the dependencies in `server/tool`, and
 an installed Chromium. Child processes started by `PreviewRenderService`
 receive only a small runtime environment, excluding server/provider keys and
