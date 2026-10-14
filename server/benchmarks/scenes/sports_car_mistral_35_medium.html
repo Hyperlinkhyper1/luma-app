@@ -1,0 +1,3431 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Sports Car Benchmark</title>
+    <script type="importmap">
+        {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            overflow: hidden; 
+            background: #000; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+        }
+        #container { 
+            position: absolute; 
+            width: 100%; 
+            height: 100%;
+        }
+        #ui { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            pointer-events: none; 
+            z-index: 100;
+        }
+        .panel {
+            pointer-events: auto;
+            background: rgba(0,0,0,0.7);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            padding: 12px;
+            backdrop-filter: blur(10px);
+        }
+        .panel.hidden { display: none; }
+        #showroom-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 300px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        #hud {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 40px;
+            align-items: center;
+        }
+        #track-hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 250px;
+        }
+        #minimap {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 8px;
+        }
+        #minimap canvas { width: 100%; height: 100%; }
+        #loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+            z-index: 1000;
+        }
+        #loading .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .section { margin-bottom: 15px; }
+        .section h3 { 
+            margin-bottom: 8px; 
+            font-size: 14px; 
+            color: #aaa;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            padding-bottom: 5px;
+        }
+        .controls { display: flex; gap: 8px; flex-wrap: wrap; }
+        button {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        button:hover { background: rgba(255,255,255,0.2); }
+        button.active { background: #0066ff; border-color: #0066ff; }
+        select, input {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: #fff;
+            padding: 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        select:focus, input:focus { outline: none; border-color: #0066ff; }
+        .color-option {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: transform 0.2s;
+        }
+        .color-option:hover { transform: scale(1.1); border-color: #fff; }
+        .color-option.selected { border-color: #0066ff; }
+        .color-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+        .label { font-size: 11px; color: #888; text-align: center; margin-top: 3px; }
+        #mode-toggle {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+        #mode-toggle button { padding: 8px 20px; }
+        #camera-presets {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 5px;
+        }
+        #camera-presets button { padding: 5px 10px; font-size: 11px; }
+        .hide-ui { position: absolute; bottom: 20px; right: 20px; }
+        .gauge {
+            width: 120px;
+            height: 120px;
+            position: relative;
+        }
+        .gauge canvas { width: 100%; height: 100%; }
+        .gauge .value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .gauge .label {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            color: #888;
+        }
+        #exploded-info {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+        }
+        #exploded-info h3 { margin-bottom: 10px; color: #0066ff; }
+        #exploded-info p { font-size: 14px; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    <div id="ui">
+        <div id="loading">
+            <div class="spinner"></div>
+        </div>
+        <div id="mode-toggle">
+            <button id="showroom-btn">SHOWROOM</button>
+            <button id="drive-btn">DRIVE</button>
+        </div>
+        <div id="camera-presets">
+            <button data-cam="front34">FRONT 3/4</button>
+            <button data-cam="side">SIDE</button>
+            <button data-cam="rear34">REAR 3/4</button>
+            <button data-cam="top">TOP</button>
+            <button data-cam="interior">INTERIOR</button>
+            <button data-cam="wheel">WHEEL</button>
+        </div>
+        <button class="hide-ui" id="toggle-ui">HIDE UI</button>
+        
+        <div id="showroom-panel" class="panel">
+            <div class="section">
+                <h3>PAINT COLOR</h3>
+                <div class="color-grid" id="paint-colors">
+                    <div class="color-option" style="background: #ff0000;" data-color="#ff0000" data-type="gloss"><div class="label">Red</div></div>
+                    <div class="color-option" style="background: #0000ff;" data-color="#0000ff" data-type="gloss"><div class="label">Blue</div></div>
+                    <div class="color-option" style="background: #00ff00;" data-color="#00ff00" data-type="gloss"><div class="label">Green</div></div>
+                    <div class="color-option" style="background: #ffff00;" data-color="#ffff00" data-type="gloss"><div class="label">Yellow</div></div>
+                    <div class="color-option" style="background: #ff00ff;" data-color="#ff00ff" data-type="gloss"><div class="label">Purple</div></div>
+                    <div class="color-option" style="background: #c0c0c0;" data-color="#c0c0c0" data-type="gloss"><div class="label">Silver</div></div>
+                    <div class="color-option" style="background: linear-gradient(135deg, #666, #333);" data-color="#444444" data-type="matte"><div class="label">Matte Black</div></div>
+                    <div class="color-option" style="background: linear-gradient(135deg, #a0a0a0, #666);" data-color="#888888" data-type="metallic"><div class="label">Gunmetal</div></div>
+                </div>
+            </div>
+            <div class="section">
+                <h3>RIM FINISH</h3>
+                <div class="controls">
+                    <button class="rim-btn" data-rim="silver">Silver</button>
+                    <button class="rim-btn" data-rim="black">Black</button>
+                    <button class="rim-btn" data-rim="bronze">Bronze</button>
+                </div>
+            </div>
+            <div class="section">
+                <h3>CALIPER COLOR</h3>
+                <div class="controls">
+                    <button class="caliper-btn" data-cal="#ff0000">Red</button>
+                    <button class="caliper-btn" data-cal="#00ff00">Green</button>
+                    <button class="caliper-btn" data-cal="#0000ff">Blue</button>
+                    <button class="caliper-btn" data-cal="#ff6600">Orange</button>
+                </div>
+            </div>
+            <div class="section">
+                <h3>DOORS</h3>
+                <div class="controls">
+                    <button id="open-doors">OPEN</button>
+                    <button id="close-doors">CLOSE</button>
+                </div>
+            </div>
+            <div class="section">
+                <h3>LIGHTS</h3>
+                <div class="controls">
+                    <button id="toggle-lights">HEADLIGHTS OFF</button>
+                </div>
+            </div>
+            <div class="section">
+                <h3>VIEW</h3>
+                <div class="controls">
+                    <button id="xray-toggle">X-RAY OFF</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="track-hud" class="panel hidden">
+            <div class="section">
+                <h3>CONTROLS</h3>
+                <p style="font-size: 11px; line-height: 1.4;">
+                    W/S: Throttle/Brake<br>
+                    A/D: Steer<br>
+                    Space: Handbrake<br>
+                    Q/E: Gear +/-<br>
+                    C: Camera<br>
+                    R: Reset
+                </p>
+            </div>
+            <div class="section">
+                <h3>AUDIO</h3>
+                <button id="mute-audio">MUTE</button>
+            </div>
+        </div>
+        
+        <div id="hud" class="hidden">
+            <div class="gauge">
+                <canvas id="speedo"></canvas>
+                <div class="value" id="speed-value">0</div>
+                <div class="label">km/h</div>
+            </div>
+            <div class="gauge">
+                <canvas id="tacho"></canvas>
+                <div class="value" id="rpm-value">0</div>
+                <div class="label">RPM</div>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                <div style="font-size: 32px; font-weight: bold;" id="gear-display">N</div>
+                <div style="font-size: 12px; color: #888;">GEAR</div>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                <div style="font-size: 24px; font-weight: bold;" id="lap-time">0:00.000</div>
+                <div style="font-size: 12px; color: #888;">LAP TIME</div>
+                <div style="font-size: 12px; color: #00ff00;" id="best-lap">BEST: --</div>
+            </div>
+        </div>
+        
+        <div id="minimap" class="hidden">
+            <canvas id="minimap-canvas"></canvas>
+            <div style="position: absolute; top: 5px; left: 5px; font-size: 10px;">MINIMAP</div>
+        </div>
+        
+        <div id="exploded-info" class="panel">
+            <h3 id="part-name">PART NAME</h3>
+            <p id="part-desc">Description of the selected part</p>
+        </div>
+        
+        <div id="no-webgl" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #ff4444; font-size: 24px;">
+            WebGL not supported in your browser.
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+        import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+        import { GammaCorrectionShader } from 'three/addons/shaders/GammaCorrectionShader.js';
+
+        // ============================================
+        // STATE MANAGEMENT
+        // ============================================
+        const state = {
+            mode: 'showroom',
+            loading: true,
+            webglAvailable: true,
+            uiHidden: false,
+            paintColor: '#ff0000',
+            paintType: 'gloss',
+            rimColor: '#c0c0c0',
+            caliperColor: '#ff0000',
+            doorsOpen: false,
+            lightsOn: false,
+            xrayMode: false,
+            explodedView: false,
+            currentCamera: 'orbit',
+            cameraPreset: null,
+            audioEnabled: false,
+            audioMuted: false,
+            brake: false,
+            indicator: false,
+            indicatorLeft: false,
+            indicatorRight: false,
+            // Drive state
+            speed: 0,
+            rpm: 0,
+            gear: 0,
+            throttle: 0,
+            brake: 0,
+            steering: 0,
+            handbrake: false,
+            lapTime: 0,
+            bestLap: null,
+            lapCount: 0,
+            cameraIndex: 0,
+            // Track
+            track: null,
+            carPosition: { x: 0, z: 0 },
+            carRotation: 0
+        };
+
+        // ============================================
+        // SCENE SETUP
+        // ============================================
+        let container, renderer, scene, camera, orbitControls, pointerLockControls;
+        let composer, bloomPass;
+        let car, studioLights, trackEnvironment;
+        let carGroup, studioGroup, trackGroup;
+        let cameras = {};
+        let audioContext, engineOscillators = [], engineGain, gearChangeSound;
+        let clock = new THREE.Clock();
+        let trackSpline, trackPoints = [];
+        let skidMarks = [];
+        let smokeParticles = [];
+        let minimapCtx, speedoCtx, tachoCtx;
+        let lastTime = 0;
+
+        // ============================================
+        // CAR GEOMETRY GENERATION
+        // ============================================
+        function createCar() {
+            const group = new THREE.Group();
+            group.name = 'car';
+            
+            // Main body using custom geometry
+            const bodyGroup = new THREE.Group();
+            bodyGroup.name = 'body';
+            
+            // Car dimensions (meters)
+            const length = 4.5;
+            const width = 2.0;
+            const height = 1.15;
+            
+            // Create the main body mesh
+            const bodyMesh = createCarBodyMesh(length, width, height);
+            bodyGroup.add(bodyMesh);
+            
+            // Add details
+            const detailsGroup = new THREE.Group();
+            detailsGroup.name = 'details';
+            
+            // Front splitter
+            const splitter = createSplitter();
+            splitter.position.set(0, -0.15, -2.2);
+            bodyGroup.add(splitter);
+            
+            // Rear diffuser
+            const diffuser = createDiffuser();
+            diffuser.position.set(0, -0.1, 2.2);
+            bodyGroup.add(diffuser);
+            
+            // Side mirrors
+            const mirrorL = createMirror();
+            mirrorL.position.set(-0.9, 0.8, -0.5);
+            mirrorL.rotation.y = Math.PI / 4;
+            bodyGroup.add(mirrorL);
+            
+            const mirrorR = createMirror();
+            mirrorR.position.set(0.9, 0.8, -0.5);
+            mirrorR.rotation.y = -Math.PI / 4;
+            bodyGroup.add(mirrorR);
+            
+            // Side air intakes
+            const intakeL = createAirIntake();
+            intakeL.position.set(-1.0, 0.3, 0.5);
+            intakeL.rotation.y = Math.PI / 2;
+            bodyGroup.add(intakeL);
+            
+            const intakeR = createAirIntake();
+            intakeR.position.set(1.0, 0.3, 0.5);
+            intakeR.rotation.y = -Math.PI / 2;
+            bodyGroup.add(intakeR);
+            
+            // Exhaust tips
+            const exhaustL = createExhaustTip();
+            exhaustL.position.set(-0.35, 0.2, 2.3);
+            bodyGroup.add(exhaustL);
+            
+            const exhaustR = createExhaustTip();
+            exhaustR.position.set(0.35, 0.2, 2.3);
+            bodyGroup.add(exhaustR);
+            
+            // Door handles
+            const handleL = createDoorHandle();
+            handleL.position.set(-1.0, 0.4, -0.3);
+            bodyGroup.add(handleL);
+            
+            const handleR = createDoorHandle();
+            handleR.position.set(1.0, 0.4, -0.3);
+            bodyGroup.add(handleR);
+            
+            // Door shut lines (as thin meshes)
+            const shutLineL = createShutLine();
+            shutLineL.position.set(-0.95, 0.4, -0.5);
+            shutLineL.rotation.y = Math.PI / 2;
+            bodyGroup.add(shutLineL);
+            
+            const shutLineR = createShutLine();
+            shutLineR.position.set(0.95, 0.4, -0.5);
+            shutLineR.rotation.y = -Math.PI / 2;
+            bodyGroup.add(shutLineR);
+            
+            // Doors (as separate groups for animation)
+            const doorL = createDoor(true);
+            doorL.position.set(-0.9, 0.4, -0.3);
+            doorL.name = 'door_left';
+            group.add(doorL);
+            
+            const doorR = createDoor(false);
+            doorR.position.set(0.9, 0.4, -0.3);
+            doorR.name = 'door_right';
+            group.add(doorR);
+            
+            group.add(bodyGroup);
+            group.add(detailsGroup);
+            
+            // Glass canopy
+            const glass = createGlassCanopy();
+            glass.position.y = 0.7;
+            group.add(glass);
+            
+            // Interior
+            const interior = createInterior();
+            interior.position.y = 0.3;
+            group.add(interior);
+            
+            // Wheels
+            const wheelFL = createWheel();
+            wheelFL.position.set(-0.8, -0.25, -1.0);
+            wheelFL.name = 'wheel_fl';
+            group.add(wheelFL);
+            
+            const wheelFR = createWheel();
+            wheelFR.position.set(0.8, -0.25, -1.0);
+            wheelFR.name = 'wheel_fr';
+            group.add(wheelFR);
+            
+            const wheelRL = createWheel();
+            wheelRL.position.set(-0.8, -0.25, 1.2);
+            wheelRL.name = 'wheel_rl';
+            group.add(wheelRL);
+            
+            const wheelRR = createWheel();
+            wheelRR.position.set(0.8, -0.25, 1.2);
+            wheelRR.name = 'wheel_rr';
+            group.add(wheelRR);
+            
+            // Headlights
+            const headlightL = createHeadlight();
+            headlightL.position.set(-0.7, 0.4, -2.0);
+            headlightL.rotation.y = Math.PI / 4;
+            group.add(headlightL);
+            
+            const headlightR = createHeadlight();
+            headlightR.position.set(0.7, 0.4, -2.0);
+            headlightR.rotation.y = -Math.PI / 4;
+            group.add(headlightR);
+            
+            // Taillights
+            const taillightL = createTaillight();
+            taillightL.position.set(-0.7, 0.4, 2.1);
+            taillightL.rotation.y = Math.PI / 4;
+            group.add(taillightL);
+            
+            const taillightR = createTaillight();
+            taillightR.position.set(0.7, 0.4, 2.1);
+            taillightR.rotation.y = -Math.PI / 4;
+            group.add(taillightR);
+            
+            // Active rear wing
+            const wing = createRearWing();
+            wing.position.set(0, 1.0, 1.8);
+            wing.name = 'rear_wing';
+            group.add(wing);
+            
+            // Chassis for X-ray view
+            const chassis = createChassis();
+            chassis.name = 'chassis';
+            chassis.visible = false;
+            group.add(chassis);
+            
+            // Engine
+            const engine = createEngine();
+            engine.position.set(0, 0.3, 0.8);
+            engine.name = 'engine';
+            engine.visible = false;
+            group.add(engine);
+            
+            // Suspension
+            const suspFL = createSuspension();
+            suspFL.position.set(-0.7, -0.25, -0.8);
+            suspFL.name = 'suspension_fl';
+            suspFL.visible = false;
+            group.add(suspFL);
+            
+            const suspFR = createSuspension();
+            suspFR.position.set(0.7, -0.25, -0.8);
+            suspFR.name = 'suspension_fr';
+            suspFR.visible = false;
+            group.add(suspFR);
+            
+            const suspRL = createSuspension();
+            suspRL.position.set(-0.7, -0.25, 1.0);
+            suspRL.name = 'suspension_rl';
+            suspRL.visible = false;
+            group.add(suspRL);
+            
+            const suspRR = createSuspension();
+            suspRR.position.set(0.7, -0.25, 1.0);
+            suspRR.name = 'suspension_rr';
+            suspRR.visible = false;
+            group.add(suspRR);
+            
+            // Radiators
+            const radiatorL = createRadiator();
+            radiatorL.position.set(-0.6, 0.2, -1.5);
+            radiatorL.rotation.y = Math.PI / 2;
+            radiatorL.name = 'radiator_l';
+            radiatorL.visible = false;
+            group.add(radiatorL);
+            
+            const radiatorR = createRadiator();
+            radiatorR.position.set(0.6, 0.2, -1.5);
+            radiatorR.rotation.y = -Math.PI / 2;
+            radiatorR.name = 'radiator_r';
+            radiatorR.visible = false;
+            group.add(radiatorR);
+            
+            // Fuel tank
+            const fuelTank = createFuelTank();
+            fuelTank.position.set(0, 0.3, -0.5);
+            fuelTank.name = 'fuel_tank';
+            fuelTank.visible = false;
+            group.add(fuelTank);
+            
+            // Battery
+            const battery = createBattery();
+            battery.position.set(0, 0.2, 1.5);
+            battery.name = 'battery';
+            battery.visible = false;
+            group.add(battery);
+            
+            // Gearbox
+            const gearbox = createGearbox();
+            gearbox.position.set(0, 0.2, 0.5);
+            gearbox.name = 'gearbox';
+            gearbox.visible = false;
+            group.add(gearbox);
+            
+            // Monocoque tub
+            const monocoque = createMonocoque();
+            monocoque.name = 'monocoque';
+            monocoque.visible = false;
+            group.add(monocoque);
+            
+            return group;
+        }
+
+        function createCarSections(length, width, height) {
+            const sections = [];
+            const halfWidth = width / 2;
+            const halfHeight = height / 2;
+            
+            // Front bumper section
+            sections.push(createSection(
+                [
+                    { x: 0, y: -0.15 },
+                    { x: 0.2, y: -0.1 },
+                    { x: 0.5, y: 0.1 },
+                    { x: 0.6, y: 0.3 },
+                    { x: 0.5, y: 0.5 },
+                    { x: 0.2, y: 0.6 },
+                    { x: 0, y: 0.55 }
+                ],
+                32,
+                -length / 2
+            ));
+            
+            // Front wheel arch
+            sections.push(createSection(
+                [
+                    { x: 0, y: -0.1 },
+                    { x: 0.3, y: -0.05 },
+                    { x: 0.7, y: 0.2 },
+                    { x: 0.8, y: 0.45 },
+                    { x: 0.7, y: 0.65 },
+                    { x: 0.3, y: 0.7 },
+                    { x: 0, y: 0.6 }
+                ],
+                32,
+                -1.8
+            ));
+            
+            // Cabin front
+            sections.push(createSection(
+                [
+                    { x: 0, y: 0 },
+                    { x: 0.4, y: 0.1 },
+                    { x: 0.8, y: 0.5 },
+                    { x: 0.9, y: 0.8 },
+                    { x: 0.8, y: 1.0 },
+                    { x: 0.4, y: 1.0 },
+                    { x: 0, y: 0.8 }
+                ],
+                32,
+                -1.0
+            ));
+            
+            // Cabin middle (widest point)
+            sections.push(createSection(
+                [
+                    { x: 0, y: 0.1 },
+                    { x: 0.5, y: 0.15 },
+                    { x: 0.9, y: 0.6 },
+                    { x: 0.95, y: 0.9 },
+                    { x: 0.9, y: 1.1 },
+                    { x: 0.5, y: 1.1 },
+                    { x: 0, y: 0.9 }
+                ],
+                32,
+                -0.2
+            ));
+            
+            // Cabin rear
+            sections.push(createSection(
+                [
+                    { x: 0, y: 0.1 },
+                    { x: 0.4, y: 0.15 },
+                    { x: 0.7, y: 0.5 },
+                    { x: 0.8, y: 0.8 },
+                    { x: 0.7, y: 1.0 },
+                    { x: 0.4, y: 1.0 },
+                    { x: 0, y: 0.8 }
+                ],
+                32,
+                0.8
+            ));
+            
+            // Rear wheel arch
+            sections.push(createSection(
+                [
+                    { x: 0, y: 0.1 },
+                    { x: 0.3, y: 0.15 },
+                    { x: 0.7, y: 0.4 },
+                    { x: 0.8, y: 0.65 },
+                    { x: 0.7, y: 0.85 },
+                    { x: 0.3, y: 0.9 },
+                    { x: 0, y: 0.8 }
+                ],
+                32,
+                1.6
+            ));
+            
+            // Rear bumper
+            sections.push(createSection(
+                [
+                    { x: 0, y: 0.15 },
+                    { x: 0.2, y: 0.2 },
+                    { x: 0.5, y: 0.4 },
+                    { x: 0.6, y: 0.6 },
+                    { x: 0.5, y: 0.8 },
+                    { x: 0.2, y: 0.9 },
+                    { x: 0, y: 0.75 }
+                ],
+                32,
+                length / 2
+            ));
+            
+            return sections;
+        }
+
+        function createSection(points, segments, z) {
+            const shape = new THREE.Shape();
+            shape.moveTo(points[0].x, points[0].y);
+            for (let i = 1; i < points.length; i++) {
+                shape.lineTo(points[i].x, points[i].y);
+            }
+            return { shape, z };
+        }
+
+        function createCarBodyMesh(length, width, height) {
+            // Create a smooth car body using BufferGeometry
+            const geometry = new THREE.BufferGeometry();
+            
+            // Define car profile points (half car, mirrored)
+            const profilePoints = [
+                // Front bumper
+                { x: 0, y: 0.15, z: -length/2 },
+                { x: 0.1, y: 0.2, z: -length/2 + 0.2 },
+                { x: 0.3, y: 0.3, z: -length/2 + 0.5 },
+                { x: 0.5, y: 0.4, z: -length/2 + 0.8 },
+                // Windshield
+                { x: 0.6, y: 0.6, z: -length/2 + 1.2 },
+                { x: 0.7, y: 0.8, z: -length/2 + 1.5 },
+                // Roof
+                { x: 0.7, y: 0.95, z: -length/2 + 2.0 },
+                { x: 0.7, y: 0.95, z: -length/2 + 2.5 },
+                // Rear
+                { x: 0.6, y: 0.8, z: -length/2 + 3.0 },
+                { x: 0.5, y: 0.6, z: -length/2 + 3.5 },
+                { x: 0.3, y: 0.4, z: -length/2 + 3.8 },
+                { x: 0.1, y: 0.2, z: -length/2 + 4.0 },
+                { x: 0, y: 0.15, z: length/2 }
+            ];
+            
+            // Create vertices for one side
+            const vertices = [];
+            const indices = [];
+            const uvs = [];
+            
+            const segments = 32;
+            const halfWidth = width / 2;
+            
+            // Create vertices for both sides
+            for (let i = 0; i < profilePoints.length; i++) {
+                const p = profilePoints[i];
+                // Left side
+                vertices.push(p.x * halfWidth, p.y, p.z);
+                // Right side
+                vertices.push(-p.x * halfWidth, p.y, p.z);
+            }
+            
+            // Create faces
+            const numPoints = profilePoints.length;
+            for (let i = 0; i < numPoints - 1; i++) {
+                const v0 = i * 2;
+                const v1 = v0 + 1;
+                const v2 = (i + 1) * 2;
+                const v3 = v2 + 1;
+                
+                // Left face
+                indices.push(v0, v2, v3);
+                indices.push(v0, v3, v1);
+            }
+            
+            // Add bottom faces
+            for (let i = 0; i < numPoints - 1; i++) {
+                const v0 = i * 2;
+                const v1 = v0 + 1;
+                const v2 = (i + 1) * 2;
+                const v3 = v2 + 1;
+                
+                indices.push(v0, v1, v2);
+                indices.push(v1, v3, v2);
+            }
+            
+            // Add UVs
+            for (let i = 0; i < numPoints; i++) {
+                const u = i / (numPoints - 1);
+                uvs.push(u, 0); // Left
+                uvs.push(u, 1); // Right
+            }
+            
+            geometry.setIndex(indices);
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+            geometry.computeVertexNormals();
+            
+            // Create material
+            const material = new THREE.MeshPhysicalMaterial({
+                color: new THREE.Color(state.paintColor),
+                metalness: state.paintType === 'metallic' ? 0.9 : state.paintType === 'gloss' ? 0.7 : 0.1,
+                roughness: state.paintType === 'matte' ? 0.8 : state.paintType === 'metallic' ? 0.1 : 0.2,
+                clearcoat: state.paintType !== 'matte' ? 0.5 : 0,
+                clearcoatRoughness: 0.1,
+                envMapIntensity: 1.0
+            });
+            
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.name = 'body_mesh';
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            
+            return mesh;
+        }
+
+        function createLoftedBody(sections) {
+            const shapes = sections.map(s => s.shape);
+            const path = new THREE.CatmullRomCurve3(
+                sections.map(s => new THREE.Vector3(0, 0, s.z))
+            );
+            path.curveType = 'catmullrom';
+            
+            const extrudeSettings = {
+                steps: 100,
+                bevelEnabled: false,
+                extrudePath: path
+            };
+            
+            // Use the first shape as the base for extrusion
+            const geometry = new THREE.ExtrudeGeometry(shapes[0], extrudeSettings);
+            
+            // Apply transformation to match car orientation
+            geometry.rotateX(Math.PI / 2);
+            geometry.scale(2, 1, 1); // Scale width
+            
+            // Create material
+            const material = new THREE.MeshPhysicalMaterial({
+                color: new THREE.Color(state.paintColor),
+                metalness: state.paintType === 'metallic' ? 0.9 : state.paintType === 'gloss' ? 0.7 : 0.1,
+                roughness: state.paintType === 'matte' ? 0.8 : state.paintType === 'metallic' ? 0.1 : 0.2,
+                clearcoat: state.paintType !== 'matte' ? 0.5 : 0,
+                clearcoatRoughness: 0.1,
+                envMapIntensity: 1.0
+            });
+            
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.name = 'body_mesh';
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            
+            return mesh;
+        }
+
+        function createWheel() {
+            const group = new THREE.Group();
+            
+            // Tyre
+            const tyreGeometry = new THREE.TorusGeometry(0.35, 0.18, 16, 48);
+            const tyreMaterial = new THREE.MeshStandardMaterial({
+                color: 0x111111,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+            const tyre = new THREE.Mesh(tyreGeometry, tyreMaterial);
+            tyre.rotation.x = Math.PI / 2;
+            tyre.castShadow = true;
+            group.add(tyre);
+            
+            // Rim
+            const rimGeometry = createRimGeometry();
+            const rimMaterial = new THREE.MeshPhysicalMaterial({
+                color: new THREE.Color(state.rimColor),
+                metalness: 0.9,
+                roughness: 0.1,
+                envMapIntensity: 1.5
+            });
+            const rim = new THREE.Mesh(rimGeometry, rimMaterial);
+            rim.rotation.x = Math.PI / 2;
+            rim.castShadow = true;
+            group.add(rim);
+            
+            // Brake disc
+            const discGeometry = new THREE.TorusGeometry(0.28, 0.03, 8, 64);
+            const discMaterial = new THREE.MeshStandardMaterial({
+                color: 0x333333,
+                metalness: 0.9,
+                roughness: 0.2
+            });
+            const disc = new THREE.Mesh(discGeometry, discMaterial);
+            disc.rotation.x = Math.PI / 2;
+            disc.position.z = 0.01;
+            group.add(disc);
+            
+            // Brake caliper
+            const caliperGeometry = new THREE.BoxGeometry(0.1, 0.08, 0.05);
+            const caliperMaterial = new THREE.MeshStandardMaterial({
+                color: new THREE.Color(state.caliperColor),
+                metalness: 0.6,
+                roughness: 0.3
+            });
+            const caliper = new THREE.Mesh(caliperGeometry, caliperMaterial);
+            caliper.position.set(0, 0, 0.15);
+            caliper.castShadow = true;
+            group.add(caliper);
+            
+            return group;
+        }
+
+        function createRimGeometry() {
+            // Create a detailed 5-spoke rim
+            const geometry = new THREE.BufferGeometry();
+            const outerRadius = 0.33;
+            const innerRadius = 0.25;
+            const width = 0.15;
+            const spokeWidth = 0.04;
+            const numSpokes = 5;
+            
+            const vertices = [];
+            const indices = [];
+            
+            // Helper to add vertex
+            let vertexIndex = 0;
+            const addVertex = (x, y, z) => {
+                vertices.push(x, y, z);
+                return vertexIndex++;
+            };
+            
+            // Create outer rim (front and back)
+            const rimSegments = 40;
+            for (let i = 0; i <= rimSegments; i++) {
+                const angle = (i / rimSegments) * Math.PI * 2;
+                const x = Math.cos(angle) * outerRadius;
+                const y = Math.sin(angle) * outerRadius;
+                addVertex(x, y, width / 2);
+                addVertex(x, y, -width / 2);
+            }
+            
+            // Create inner hub
+            const hubSegments = 20;
+            for (let i = 0; i <= hubSegments; i++) {
+                const angle = (i / hubSegments) * Math.PI * 2;
+                const x = Math.cos(angle) * innerRadius;
+                const y = Math.sin(angle) * innerRadius;
+                addVertex(x, y, width / 2);
+                addVertex(x, y, -width / 2);
+            }
+            
+            // Create spokes
+            const spokeVertices = [];
+            for (let s = 0; s < numSpokes; s++) {
+                const angle = (s / numSpokes) * Math.PI * 2;
+                const x1 = Math.cos(angle) * innerRadius;
+                const y1 = Math.sin(angle) * innerRadius;
+                const x2 = Math.cos(angle) * outerRadius;
+                const y2 = Math.sin(angle) * outerRadius;
+                
+                // Spoke front face
+                spokeVertices.push(
+                    addVertex(x1 - Math.cos(angle + Math.PI/2) * spokeWidth/2, y1 - Math.sin(angle + Math.PI/2) * spokeWidth/2, width/2),
+                    addVertex(x1 + Math.cos(angle + Math.PI/2) * spokeWidth/2, y1 + Math.sin(angle + Math.PI/2) * spokeWidth/2, width/2),
+                    addVertex(x2 + Math.cos(angle + Math.PI/2) * spokeWidth/2, y2 + Math.sin(angle + Math.PI/2) * spokeWidth/2, width/2),
+                    addVertex(x2 - Math.cos(angle + Math.PI/2) * spokeWidth/2, y2 - Math.sin(angle + Math.PI/2) * spokeWidth/2, width/2)
+                );
+                
+                // Spoke back face
+                spokeVertices.push(
+                    addVertex(x1 - Math.cos(angle + Math.PI/2) * spokeWidth/2, y1 - Math.sin(angle + Math.PI/2) * spokeWidth/2, -width/2),
+                    addVertex(x1 + Math.cos(angle + Math.PI/2) * spokeWidth/2, y1 + Math.sin(angle + Math.PI/2) * spokeWidth/2, -width/2),
+                    addVertex(x2 + Math.cos(angle + Math.PI/2) * spokeWidth/2, y2 + Math.sin(angle + Math.PI/2) * spokeWidth/2, -width/2),
+                    addVertex(x2 - Math.cos(angle + Math.PI/2) * spokeWidth/2, y2 - Math.sin(angle + Math.PI/2) * spokeWidth/2, -width/2)
+                );
+            }
+            
+            // Create faces for outer rim
+            for (let i = 0; i < rimSegments; i++) {
+                const base = i * 2;
+                indices.push(base, base + 2, base + 3);
+                indices.push(base, base + 3, base + 1);
+            }
+            
+            // Create faces for inner hub
+            const hubStart = (rimSegments + 1) * 2;
+            for (let i = 0; i < hubSegments; i++) {
+                const base = hubStart + i * 2;
+                indices.push(base, base + 1, base + 2);
+                indices.push(base + 1, base + 3, base + 2);
+            }
+            
+            // Create faces for spokes (front and back)
+            for (let s = 0; s < numSpokes; s++) {
+                const frontBase = (rimSegments + 1 + hubSegments + 1) * 2 + s * 8;
+                const backBase = frontBase + 4;
+                
+                // Front face
+                indices.push(frontBase, frontBase + 1, frontBase + 2);
+                indices.push(frontBase, frontBase + 2, frontBase + 3);
+                
+                // Back face
+                indices.push(backBase, backBase + 2, backBase + 1);
+                indices.push(backBase, backBase + 3, backBase + 2);
+                
+                // Connect front and back
+                for (let i = 0; i < 4; i++) {
+                    indices.push(frontBase + i, backBase + i, backBase + (i + 1) % 4);
+                    indices.push(frontBase + i, backBase + (i + 1) % 4, frontBase + (i + 1) % 4);
+                }
+            }
+            
+            geometry.setIndex(indices);
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.computeVertexNormals();
+            
+            return geometry;
+        }
+
+        function createGlassCanopy() {
+            const group = new THREE.Group();
+            group.name = 'glass';
+            
+            // Windshield
+            const windshieldShape = new THREE.Shape();
+            windshieldShape.moveTo(-0.8, 0.6);
+            windshieldShape.quadraticCurveTo(-0.4, 0.9, 0, 0.95);
+            windshieldShape.quadraticCurveTo(0.4, 0.9, 0.8, 0.6);
+            windshieldShape.lineTo(0.8, 0);
+            windshieldShape.lineTo(-0.8, 0);
+            windshieldShape.lineTo(-0.8, 0.6);
+            
+            const windshieldGeometry = new THREE.ExtrudeGeometry(windshieldShape, { 
+                depth: -0.8, 
+                bevelEnabled: false 
+            });
+            const glassMaterial = new THREE.MeshPhysicalMaterial({
+                color: 0x4488cc,
+                transparent: true,
+                opacity: 0.3,
+                metalness: 0.05,
+                roughness: 0.05,
+                envMapIntensity: 0.3,
+                transmission: 0.9,
+                thickness: 0.01
+            });
+            const windshield = new THREE.Mesh(windshieldGeometry, glassMaterial);
+            windshield.position.set(0, 0.5, -1.2);
+            windshield.rotation.x = Math.PI / 4;
+            group.add(windshield);
+            
+            // Roof glass
+            const roofGeometry = new THREE.BoxGeometry(1.4, 0.1, 1.0);
+            const roof = new THREE.Mesh(roofGeometry, glassMaterial);
+            roof.position.set(0, 1.0, -0.3);
+            group.add(roof);
+            
+            // Rear glass
+            const rearShape = new THREE.Shape();
+            rearShape.moveTo(-0.7, 0);
+            rearShape.lineTo(-0.7, 0.4);
+            rearShape.quadraticCurveTo(-0.3, 0.7, 0, 0.75);
+            rearShape.quadraticCurveTo(0.3, 0.7, 0.7, 0.4);
+            rearShape.lineTo(0.7, 0);
+            rearShape.lineTo(-0.7, 0);
+            
+            const rearGeometry = new THREE.ExtrudeGeometry(rearShape, { 
+                depth: -0.2, 
+                bevelEnabled: false 
+            });
+            const rearGlass = new THREE.Mesh(rearGeometry, glassMaterial);
+            rearGlass.position.set(0, 0.5, 1.8);
+            rearGlass.rotation.x = -Math.PI / 6;
+            group.add(rearGlass);
+            
+            return group;
+        }
+
+        function createInterior() {
+            const group = new THREE.Group();
+            
+            // Seats
+            const seatGeometry = new THREE.BoxGeometry(0.4, 0.2, 0.5);
+            const seatMaterial = new THREE.MeshStandardMaterial({
+                color: 0x222222,
+                roughness: 0.8
+            });
+            
+            const seatL = new THREE.Mesh(seatGeometry, seatMaterial);
+            seatL.position.set(-0.5, 0, -0.3);
+            seatL.rotation.x = -Math.PI / 12;
+            group.add(seatL);
+            
+            const seatR = new THREE.Mesh(seatGeometry, seatMaterial);
+            seatR.position.set(0.5, 0, -0.3);
+            seatR.rotation.x = -Math.PI / 12;
+            group.add(seatR);
+            
+            // Steering wheel
+            const wheelGeometry = new THREE.TorusGeometry(0.15, 0.02, 8, 32);
+            const wheelMaterial = new THREE.MeshStandardMaterial({
+                color: 0x333333,
+                roughness: 0.3
+            });
+            const steeringWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            steeringWheel.rotation.x = Math.PI / 2;
+            steeringWheel.position.set(0, 0.3, -1.2);
+            group.add(steeringWheel);
+            
+            // Dashboard
+            const dashGeometry = new THREE.BoxGeometry(0.8, 0.1, 0.3);
+            const dashMaterial = new THREE.MeshStandardMaterial({
+                color: 0x111111,
+                roughness: 0.5
+            });
+            const dashboard = new THREE.Mesh(dashGeometry, dashMaterial);
+            dashboard.position.set(0, 0.4, -1.0);
+            group.add(dashboard);
+            
+            // Instrument cluster (glowing)
+            const clusterGeometry = new THREE.BoxGeometry(0.2, 0.05, 0.1);
+            const clusterMaterial = new THREE.MeshBasicMaterial({
+                color: 0x00ffff,
+                emissive: 0x00ffff,
+                emissiveIntensity: 0.8
+            });
+            const cluster = new THREE.Mesh(clusterGeometry, clusterMaterial);
+            cluster.position.set(0, 0.45, -1.0);
+            group.add(cluster);
+            
+            // Center console
+            const consoleGeometry = new THREE.BoxGeometry(0.3, 0.1, 0.4);
+            const consoleMaterial = new THREE.MeshStandardMaterial({
+                color: 0x222222,
+                roughness: 0.6
+            });
+            const centerConsole = new THREE.Mesh(consoleGeometry, consoleMaterial);
+            centerConsole.position.set(0, 0.2, -0.5);
+            group.add(centerConsole);
+            
+            return group;
+        }
+
+        function createHeadlight() {
+            const group = new THREE.Group();
+            group.name = 'headlight';
+            
+            // Main housing (complex shape)
+            const housingGeometry = new THREE.CylinderGeometry(0.08, 0.1, 0.2, 16, 1, false, 0, Math.PI * 2);
+            const housingMaterial = new THREE.MeshStandardMaterial({
+                color: 0x111111,
+                roughness: 0.4,
+                metalness: 0.3
+            });
+            const housing = new THREE.Mesh(housingGeometry, housingMaterial);
+            housing.rotation.x = Math.PI / 2;
+            group.add(housing);
+            
+            // Projector lens (parabolic shape)
+            const lensGeometry = new THREE.ConeGeometry(0.06, 0.1, 16);
+            const lensMaterial = new THREE.MeshPhysicalMaterial({
+                color: 0xcccccc,
+                transparent: true,
+                opacity: 0.8,
+                metalness: 0.2,
+                roughness: 0.1
+            });
+            const lens = new THREE.Mesh(lensGeometry, lensMaterial);
+            lens.position.set(0, 0, 0.15);
+            lens.rotation.x = Math.PI;
+            group.add(lens);
+            
+            // DRL light (C-shaped)
+            const drlGroup = new THREE.Group();
+            drlGroup.name = 'headlight_drl';
+            
+            const drlMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                emissive: 0xffffff,
+                emissiveIntensity: 0
+            });
+            
+            // Create C-shaped DRL
+            const drlShape = new THREE.Shape();
+            drlShape.moveTo(0, 0);
+            drlShape.lineTo(0.01, 0);
+            drlShape.lineTo(0.01, 0.04);
+            drlShape.lineTo(0.005, 0.04);
+            drlShape.lineTo(0.005, 0.01);
+            drlShape.lineTo(-0.005, 0.01);
+            drlShape.lineTo(-0.005, 0.04);
+            drlShape.lineTo(-0.01, 0.04);
+            drlShape.lineTo(-0.01, 0);
+            drlShape.lineTo(0, 0);
+            
+            const drlGeometry = new THREE.ExtrudeGeometry(drlShape, { depth: 0.02, bevelEnabled: false });
+            const drlMesh = new THREE.Mesh(drlGeometry, drlMaterial);
+            drlMesh.position.set(0, -0.02, 0.2);
+            drlGroup.add(drlMesh);
+            
+            group.add(drlGroup);
+            
+            // Headlight bulb (hidden when off)
+            const bulbGeometry = new THREE.SphereGeometry(0.02, 8, 8);
+            const bulbMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffffcc,
+                emissive: 0xffffcc,
+                emissiveIntensity: 0
+            });
+            const bulb = new THREE.Mesh(bulbGeometry, bulbMaterial);
+            bulb.position.set(0, 0, 0.05);
+            bulb.name = 'headlight_bulb';
+            group.add(bulb);
+            
+            return group;
+        }
+
+        function createTaillight() {
+            const group = new THREE.Group();
+            group.name = 'taillight';
+            
+            // Main housing (complex shape)
+            const housingGeometry = new THREE.CylinderGeometry(0.06, 0.08, 0.15, 16, 1, false, 0, Math.PI * 2);
+            const housingMaterial = new THREE.MeshStandardMaterial({
+                color: 0x111111,
+                roughness: 0.4,
+                metalness: 0.3
+            });
+            const housing = new THREE.Mesh(housingGeometry, housingMaterial);
+            housing.rotation.x = Math.PI / 2;
+            group.add(housing);
+            
+            // Tail light (always on when lights are on)
+            const tailGeometry = new THREE.BoxGeometry(0.08, 0.05, 0.02);
+            const tailMaterial = new THREE.MeshBasicMaterial({
+                color: 0xff0000,
+                emissive: 0xff0000,
+                emissiveIntensity: 0.1
+            });
+            const tail = new THREE.Mesh(tailGeometry, tailMaterial);
+            tail.position.set(0, 0, -0.05);
+            tail.name = 'taillight_main';
+            group.add(tail);
+            
+            // Brake light (brighter when braking)
+            const brakeGeometry = new THREE.BoxGeometry(0.06, 0.04, 0.01);
+            const brakeMaterial = new THREE.MeshBasicMaterial({
+                color: 0xff0000,
+                emissive: 0xff0000,
+                emissiveIntensity: 0
+            });
+            const brake = new THREE.Mesh(brakeGeometry, brakeMaterial);
+            brake.position.set(0, 0, -0.07);
+            brake.name = 'brake_light';
+            group.add(brake);
+            
+            // Indicator (amber)
+            const indicatorGeometry = new THREE.BoxGeometry(0.03, 0.03, 0.01);
+            const indicatorMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffaa00,
+                emissive: 0xffaa00,
+                emissiveIntensity: 0
+            });
+            const indicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
+            indicator.position.set(-0.05, 0, -0.07);
+            indicator.name = 'indicator';
+            group.add(indicator);
+            
+            // Reverse light
+            const reverseGeometry = new THREE.BoxGeometry(0.03, 0.03, 0.01);
+            const reverseMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                emissive: 0xffffff,
+                emissiveIntensity: 0
+            });
+            const reverse = new THREE.Mesh(reverseGeometry, reverseMaterial);
+            reverse.position.set(0.05, 0, -0.07);
+            reverse.name = 'reverse_light';
+            group.add(reverse);
+            
+            return group;
+        }
+
+        function createSplitter() {
+            const shape = new THREE.Shape();
+            shape.moveTo(-0.5, 0);
+            shape.lineTo(-0.8, 0.05);
+            shape.lineTo(0.8, 0.05);
+            shape.lineTo(0.5, 0);
+            shape.lineTo(-0.5, 0);
+            
+            const geometry = new THREE.ExtrudeGeometry(shape, { depth: 0.1, bevelEnabled: false });
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x111111,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.rotation.x = Math.PI / 2;
+            return mesh;
+        }
+
+        function createDiffuser() {
+            const shape = new THREE.Shape();
+            shape.moveTo(-0.6, 0);
+            shape.lineTo(-0.8, -0.1);
+            shape.lineTo(0.8, -0.1);
+            shape.lineTo(0.6, 0);
+            shape.lineTo(-0.6, 0);
+            
+            const geometry = new THREE.ExtrudeGeometry(shape, { depth: 0.3, bevelEnabled: false });
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x111111,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            
+            // Add fins
+            const finGeometry = new THREE.BoxGeometry(0.05, 0.2, 0.02);
+            const finMaterial = new THREE.MeshStandardMaterial({
+                color: 0x222222,
+                roughness: 0.5
+            });
+            
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.rotation.x = Math.PI / 2;
+            
+            for (let i = 0; i < 5; i++) {
+                const fin = new THREE.Mesh(finGeometry, finMaterial);
+                fin.position.set((-0.4 + i * 0.2), 0.1, 0);
+                fin.rotation.x = Math.PI / 4;
+                mesh.add(fin);
+            }
+            
+            return mesh;
+        }
+
+        function createExhaustTip() {
+            const geometry = new THREE.CylinderGeometry(0.04, 0.06, 0.2, 16);
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x333333,
+                metalness: 0.9,
+                roughness: 0.1
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.rotation.x = Math.PI / 2;
+            return mesh;
+        }
+
+        function createMirror() {
+            const group = new THREE.Group();
+            
+            // Mirror housing
+            const housingGeometry = new THREE.BoxGeometry(0.08, 0.05, 0.15);
+            const housingMaterial = new THREE.MeshStandardMaterial({
+                color: 0x222222,
+                roughness: 0.5
+            });
+            const housing = new THREE.Mesh(housingGeometry, housingMaterial);
+            group.add(housing);
+            
+            // Mirror glass
+            const glassGeometry = new THREE.BoxGeometry(0.06, 0.03, 0.1);
+            const glassMaterial = new THREE.MeshPhysicalMaterial({
+                color: 0x4488cc,
+                transparent: true,
+                opacity: 0.6,
+                metalness: 0.1,
+                roughness: 0.1
+            });
+            const glass = new THREE.Mesh(glassGeometry, glassMaterial);
+            glass.position.set(0, 0, 0.1);
+            group.add(glass);
+            
+            return group;
+        }
+
+        function createAirIntake() {
+            const shape = new THREE.Shape();
+            shape.moveTo(0, 0);
+            shape.lineTo(0.1, 0);
+            shape.lineTo(0.15, 0.1);
+            shape.lineTo(0.1, 0.2);
+            shape.lineTo(0, 0.2);
+            shape.lineTo(0, 0);
+            
+            const geometry = new THREE.ExtrudeGeometry(shape, { depth: 0.3, bevelEnabled: false });
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x111111,
+                roughness: 0.7,
+                metalness: 0.3
+            });
+            
+            const mesh = new THREE.Mesh(geometry, material);
+            return mesh;
+        }
+
+        function createDoorHandle() {
+            const geometry = new THREE.BoxGeometry(0.1, 0.02, 0.03);
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x333333,
+                roughness: 0.3,
+                metalness: 0.6
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            return mesh;
+        }
+
+        function createShutLine() {
+            const geometry = new THREE.BoxGeometry(1.8, 0.01, 0.01);
+            const material = new THREE.MeshBasicMaterial({
+                color: 0x222222
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            return mesh;
+        }
+
+        function createDoor(isLeft) {
+            const group = new THREE.Group();
+            group.name = 'door';
+            
+            // Door shape
+            const doorShape = new THREE.Shape();
+            doorShape.moveTo(0, 0);
+            doorShape.lineTo(0, 0.6);
+            doorShape.quadraticCurveTo(0.2, 0.8, 0.4, 0.7);
+            doorShape.lineTo(0.4, 0);
+            doorShape.lineTo(0, 0);
+            
+            const doorGeometry = new THREE.ExtrudeGeometry(doorShape, { 
+                depth: 0.05, 
+                bevelEnabled: false 
+            });
+            const doorMaterial = new THREE.MeshPhysicalMaterial({
+                color: new THREE.Color(state.paintColor),
+                metalness: state.paintType === 'metallic' ? 0.9 : state.paintType === 'gloss' ? 0.7 : 0.1,
+                roughness: state.paintType === 'matte' ? 0.8 : state.paintType === 'metallic' ? 0.1 : 0.2,
+                clearcoat: state.paintType !== 'matte' ? 0.5 : 0,
+                clearcoatRoughness: 0.1,
+                envMapIntensity: 1.0
+            });
+            const door = new THREE.Mesh(doorGeometry, doorMaterial);
+            door.rotation.x = Math.PI / 2;
+            group.add(door);
+            
+            // Door glass
+            const glassShape = new THREE.Shape();
+            glassShape.moveTo(0.05, 0.1);
+            glassShape.lineTo(0.05, 0.5);
+            glassShape.quadraticCurveTo(0.15, 0.65, 0.3, 0.6);
+            glassShape.lineTo(0.3, 0.1);
+            glassShape.lineTo(0.05, 0.1);
+            
+            const glassGeometry = new THREE.ExtrudeGeometry(glassShape, { 
+                depth: 0.01, 
+                bevelEnabled: false 
+            });
+            const glassMaterial = new THREE.MeshPhysicalMaterial({
+                color: 0x4488cc,
+                transparent: true,
+                opacity: 0.3,
+                metalness: 0.05,
+                roughness: 0.05,
+                envMapIntensity: 0.3
+            });
+            const glass = new THREE.Mesh(glassGeometry, glassMaterial);
+            glass.position.z = 0.03;
+            glass.rotation.x = Math.PI / 2;
+            group.add(glass);
+            
+            // Door handle
+            const handle = createDoorHandle();
+            handle.position.set(0, -0.2, 0.05);
+            group.add(handle);
+            
+            // Set initial rotation based on side
+            if (isLeft) {
+                group.rotation.y = 0;
+            } else {
+                group.rotation.y = 0;
+            }
+            
+            return group;
+        }
+
+        function createRearWing() {
+            const group = new THREE.Group();
+            
+            // Wing main element
+            const wingGeometry = new THREE.BoxGeometry(1.2, 0.02, 0.3);
+            const wingMaterial = new THREE.MeshStandardMaterial({
+                color: 0x111111,
+                roughness: 0.3,
+                metalness: 0.7
+            });
+            const wing = new THREE.Mesh(wingGeometry, wingMaterial);
+            wing.position.y = 0.15;
+            group.add(wing);
+            
+            // Wing supports
+            const supportGeometry = new THREE.BoxGeometry(0.05, 0.2, 0.05);
+            const supportMaterial = new THREE.MeshStandardMaterial({
+                color: 0x222222,
+                roughness: 0.4
+            });
+            
+            const supportL = new THREE.Mesh(supportGeometry, supportMaterial);
+            supportL.position.set(-0.4, 0.1, 0);
+            group.add(supportL);
+            
+            const supportR = new THREE.Mesh(supportGeometry, supportMaterial);
+            supportR.position.set(0.4, 0.1, 0);
+            group.add(supportR);
+            
+            return group;
+        }
+
+        function createChassis() {
+            const group = new THREE.Group();
+            
+            // Main chassis frame
+            const frameGeometry = new THREE.BoxGeometry(2.0, 0.1, 4.0);
+            const frameMaterial = new THREE.MeshStandardMaterial({
+                color: 0x444444,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+            frame.position.y = -0.2;
+            group.add(frame);
+            
+            // Cross members
+            for (let i = 0; i < 5; i++) {
+                const crossGeometry = new THREE.BoxGeometry(1.8, 0.05, 0.1);
+                const cross = new THREE.Mesh(crossGeometry, frameMaterial);
+                cross.position.set(0, -0.2, -1.8 + i * 1.0);
+                group.add(cross);
+            }
+            
+            return group;
+        }
+
+        function createEngine() {
+            const group = new THREE.Group();
+            
+            // Engine block
+            const blockGeometry = new THREE.BoxGeometry(0.8, 0.4, 0.6);
+            const blockMaterial = new THREE.MeshStandardMaterial({
+                color: 0x555555,
+                metalness: 0.8,
+                roughness: 0.3
+            });
+            const block = new THREE.Mesh(blockGeometry, blockMaterial);
+            group.add(block);
+            
+            // Intake plenum
+            const plenumGeometry = new THREE.CylinderGeometry(0.15, 0.2, 0.4, 16);
+            const plenumMaterial = new THREE.MeshStandardMaterial({
+                color: 0x666666,
+                metalness: 0.7,
+                roughness: 0.3
+            });
+            const plenum = new THREE.Mesh(plenumGeometry, plenumMaterial);
+            plenum.position.set(0, 0.25, -0.2);
+            plenum.rotation.x = Math.PI / 4;
+            group.add(plenum);
+            
+            // Exhaust manifolds
+            for (let i = 0; i < 2; i++) {
+                const manifoldGeometry = new THREE.CylinderGeometry(0.05, 0.08, 0.3, 8);
+                const manifold = new THREE.Mesh(manifoldGeometry, plenumMaterial);
+                manifold.position.set(i === 0 ? -0.2 : 0.2, 0.1, 0.2);
+                manifold.rotation.x = -Math.PI / 6;
+                group.add(manifold);
+            }
+            
+            return group;
+        }
+
+        function createSuspension() {
+            const group = new THREE.Group();
+            
+            // Upper control arm
+            const upperGeometry = new THREE.BoxGeometry(0.2, 0.02, 0.02);
+            const upperMaterial = new THREE.MeshStandardMaterial({
+                color: 0x444444,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            const upper = new THREE.Mesh(upperGeometry, upperMaterial);
+            upper.position.set(0, 0.2, 0);
+            upper.rotation.y = Math.PI / 4;
+            group.add(upper);
+            
+            // Lower control arm
+            const lower = new THREE.Mesh(upperGeometry, upperMaterial);
+            lower.position.set(0, -0.2, 0);
+            lower.rotation.y = -Math.PI / 4;
+            group.add(lower);
+            
+            // Spring and damper
+            const springGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.3, 8);
+            const springMaterial = new THREE.MeshStandardMaterial({
+                color: 0x00aa00,
+                metalness: 0.5,
+                roughness: 0.4
+            });
+            const spring = new THREE.Mesh(springGeometry, springMaterial);
+            spring.position.set(0, 0, 0);
+            spring.rotation.x = Math.PI / 2;
+            group.add(spring);
+            
+            return group;
+        }
+
+        function createRadiator() {
+            const geometry = new THREE.BoxGeometry(0.3, 0.2, 0.05);
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x333333,
+                metalness: 0.7,
+                roughness: 0.3
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            return mesh;
+        }
+
+        function createFuelTank() {
+            const geometry = new THREE.CylinderGeometry(0.15, 0.15, 0.4, 16);
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x444444,
+                metalness: 0.6,
+                roughness: 0.4
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.rotation.x = Math.PI / 2;
+            return mesh;
+        }
+
+        function createBattery() {
+            const geometry = new THREE.BoxGeometry(0.2, 0.15, 0.3);
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x333333,
+                roughness: 0.6
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            return mesh;
+        }
+
+        function createGearbox() {
+            const geometry = new THREE.BoxGeometry(0.4, 0.3, 0.3);
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x555555,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            return mesh;
+        }
+
+        function createMonocoque() {
+            const geometry = new THREE.BoxGeometry(1.8, 0.8, 2.5);
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x222222,
+                roughness: 0.7
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.y = 0.3;
+            return mesh;
+        }
+
+        // ============================================
+        // PROCEDURAL TEXTURES
+        // ============================================
+        function createCarbonFiberTexture() {
+            const size = 512;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // Draw carbon fiber weave pattern
+            ctx.fillStyle = '#111111';
+            ctx.fillRect(0, 0, size, size);
+            
+            ctx.strokeStyle = '#333333';
+            ctx.lineWidth = 2;
+            
+            // Diagonal lines
+            for (let i = 0; i < size; i += 20) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(0, i);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(size, i);
+                ctx.lineTo(i, size);
+                ctx.stroke();
+            }
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(2, 2);
+            return texture;
+        }
+
+        function createBrushedMetalTexture() {
+            const size = 256;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // Gradient for brushed look
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#444444');
+            gradient.addColorStop(0.5, '#666666');
+            gradient.addColorStop(1, '#444444');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+            
+            // Add horizontal lines
+            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+            ctx.lineWidth = 1;
+            
+            for (let i = 0; i < size; i += 5) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(size, i);
+                ctx.stroke();
+            }
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            return texture;
+        }
+
+        // ============================================
+        // STUDIO ENVIRONMENT
+        // ============================================
+        function createStudioEnvironment() {
+            const group = new THREE.Group();
+            group.name = 'studio';
+            
+            // Floor - reflective
+            const floorGeometry = new THREE.PlaneGeometry(20, 20);
+            const floorMaterial = new THREE.MeshPhysicalMaterial({
+                color: 0x111111,
+                metalness: 0.9,
+                roughness: 0.1,
+                envMapIntensity: 0.5
+            });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            group.add(floor);
+            
+            // Soft-box lights
+            const lightIntensity = 2;
+            
+            // Key light
+            const keyLight = new THREE.RectAreaLight(0xffffff, lightIntensity, 5, 5);
+            keyLight.position.set(-3, 4, -2);
+            keyLight.lookAt(0, 1, 0);
+            group.add(keyLight);
+            
+            // Fill light
+            const fillLight = new THREE.RectAreaLight(0xffffff, lightIntensity * 0.7, 5, 5);
+            fillLight.position.set(3, 4, -2);
+            fillLight.lookAt(0, 1, 0);
+            group.add(fillLight);
+            
+            // Rim light
+            const rimLight = new THREE.RectAreaLight(0xffffff, lightIntensity * 0.5, 5, 5);
+            rimLight.position.set(0, 4, -5);
+            rimLight.lookAt(0, 1, 0);
+            group.add(rimLight);
+            
+            // Back light
+            const backLight = new THREE.RectAreaLight(0xffffff, lightIntensity * 0.3, 5, 5);
+            backLight.position.set(0, 4, 3);
+            backLight.lookAt(0, 1, 0);
+            group.add(backLight);
+            
+            // Add light helpers (for debugging)
+            // const keyLightHelper = new THREE.RectAreaLightHelper(keyLight);
+            // group.add(keyLightHelper);
+            
+            // Environment map
+            const envMap = new THREE.PMREMGenerator(renderer).fromScene(
+                new RoomEnvironment(),
+                0.04
+            ).texture;
+            
+            // Apply to all materials
+            applyEnvironmentMap(envMap);
+            
+            return { group, envMap, lights: [keyLight, fillLight, rimLight, backLight] };
+        }
+
+        function applyEnvironmentMap(envMap) {
+            scene.traverse((obj) => {
+                if (obj.isMesh && obj.material) {
+                    if (Array.isArray(obj.material)) {
+                        obj.material.forEach(m => {
+                            if (m.envMap) m.envMap = envMap;
+                            m.needsUpdate = true;
+                        });
+                    } else if (obj.material.envMap) {
+                        obj.material.envMap = envMap;
+                        obj.material.needsUpdate = true;
+                    }
+                }
+            });
+        }
+
+        // ============================================
+        // TRACK ENVIRONMENT
+        // ============================================
+        function createTrackEnvironment() {
+            const group = new THREE.Group();
+            group.name = 'track';
+            
+            // Ground
+            const groundGeometry = new THREE.PlaneGeometry(1000, 1000);
+            const groundMaterial = new THREE.MeshStandardMaterial({
+                color: 0x333333,
+                roughness: 0.9
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            group.add(ground);
+            
+            // Track surface
+            createTrackSurface(group);
+            
+            // Kerbs
+            createKerbs(group);
+            
+            // Barriers
+            createBarriers(group);
+            
+            // Trees and scenery
+            createScenery(group);
+            
+            // Sky
+            createSky(group);
+            
+            // Ambient light
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+            group.add(ambientLight);
+            
+            // Directional light (sun)
+            const sunLight = new THREE.DirectionalLight(0xffffff, 1);
+            sunLight.position.set(50, 100, 50);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.near = 0.5;
+            sunLight.shadow.camera.far = 200;
+            sunLight.shadow.camera.left = -50;
+            sunLight.shadow.camera.right = 50;
+            sunLight.shadow.camera.top = 50;
+            sunLight.shadow.camera.bottom = -50;
+            group.add(sunLight);
+            
+            // Hemisphere light for sky color
+            const hemiLight = new THREE.HemisphereLight(0xffffbb, 0x080820, 0.6);
+            group.add(hemiLight);
+            
+            // Environment map for track
+            const envMap = new THREE.PMREMGenerator(renderer).fromScene(
+                createTrackEnvScene(),
+                0.04
+            ).texture;
+            
+            return { group, envMap, sunLight };
+        }
+
+        function createTrackEnvScene() {
+            const envScene = new THREE.Scene();
+            
+            // Sky dome
+            const skyGeometry = new THREE.SphereGeometry(50, 32, 32);
+            const skyMaterial = new THREE.MeshBasicMaterial({
+                color: 0x87ceeb
+            });
+            const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+            envScene.add(sky);
+            
+            // Ground
+            const groundGeometry = new THREE.PlaneGeometry(100, 100);
+            const groundMaterial = new THREE.MeshBasicMaterial({
+                color: 0x333333
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -10;
+            envScene.add(ground);
+            
+            // Sun
+            const sunGeometry = new THREE.SphereGeometry(5, 16, 16);
+            const sunMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                emissive: 0xffffff,
+                emissiveIntensity: 2
+            });
+            const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+            sun.position.set(30, 30, 30);
+            envScene.add(sun);
+            
+            return envScene;
+        }
+
+        function createTrackSurface(group) {
+            // Create a simple oval track
+            const outerRadius = 50;
+            const innerRadius = 30;
+            const trackWidth = outerRadius - innerRadius;
+            
+            // Outer ring
+            const outerRing = new THREE.RingGeometry(innerRadius, outerRadius, 64, 1, 0, Math.PI * 2);
+            const trackMaterial = new THREE.MeshStandardMaterial({
+                color: 0x222222,
+                roughness: 0.8
+            });
+            const track = new THREE.Mesh(outerRing, trackMaterial);
+            track.rotation.x = -Math.PI / 2;
+            track.receiveShadow = true;
+            group.add(track);
+            
+            // Inner ring (infield)
+            const innerRing = new THREE.RingGeometry(0, innerRadius - 5, 64, 1, 0, Math.PI * 2);
+            const infieldMaterial = new THREE.MeshStandardMaterial({
+                color: 0x114411,
+                roughness: 0.9
+            });
+            const infield = new THREE.Mesh(innerRing, infieldMaterial);
+            infield.rotation.x = -Math.PI / 2;
+            infield.receiveShadow = true;
+            group.add(infield);
+            
+            // Store track points for spline
+            for (let i = 0; i < 32; i++) {
+                const angle = (i / 32) * Math.PI * 2;
+                const radius = innerRadius + trackWidth / 2;
+                trackPoints.push({
+                    x: Math.cos(angle) * radius,
+                    z: Math.sin(angle) * radius
+                });
+            }
+            
+            // Create spline from track points
+            trackSpline = new THREE.CatmullRomCurve3(
+                trackPoints.map(p => new THREE.Vector3(p.x, 0, p.z))
+            );
+            trackSpline.curveType = 'catmullrom';
+            trackSpline.closed = true;
+        }
+
+        function createKerbs(group) {
+            const kerbMaterial = new THREE.MeshStandardMaterial({
+                color: 0xff0000,
+                roughness: 0.7
+            });
+            
+            // Kerbs at corners
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const radius = 40;
+                
+                const kerb = new THREE.Mesh(
+                    new THREE.BoxGeometry(5, 0.2, 1),
+                    kerbMaterial
+                );
+                kerb.position.set(
+                    Math.cos(angle) * radius,
+                    0.1,
+                    Math.sin(angle) * radius
+                );
+                kerb.rotation.y = angle + Math.PI / 2;
+                group.add(kerb);
+            }
+        }
+
+        function createBarriers(group) {
+            const barrierMaterial = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                roughness: 0.5
+            });
+            
+            // Barriers around track
+            for (let i = 0; i < 16; i++) {
+                const angle = (i / 16) * Math.PI * 2;
+                const radius = 55;
+                
+                const barrier = new THREE.Mesh(
+                    new THREE.BoxGeometry(3, 1, 0.2),
+                    barrierMaterial
+                );
+                barrier.position.set(
+                    Math.cos(angle) * radius,
+                    0.5,
+                    Math.sin(angle) * radius
+                );
+                barrier.rotation.y = angle + Math.PI / 2;
+                barrier.castShadow = true;
+                group.add(barrier);
+            }
+        }
+
+        function createScenery(group) {
+            // Trees
+            const treeGeometry = new THREE.ConeGeometry(1, 3, 8);
+            const leafMaterial = new THREE.MeshStandardMaterial({
+                color: 0x228822,
+                roughness: 0.8
+            });
+            const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.3, 2, 8);
+            const trunkMaterial = new THREE.MeshStandardMaterial({
+                color: 0x8b4513,
+                roughness: 0.7
+            });
+            
+            for (let i = 0; i < 50; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 60 + Math.random() * 20;
+                
+                const tree = new THREE.Group();
+                const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+                trunk.position.y = 1;
+                tree.add(trunk);
+                
+                const leaves = new THREE.Mesh(treeGeometry, leafMaterial);
+                leaves.position.y = 3;
+                tree.add(leaves);
+                
+                tree.position.set(
+                    Math.cos(angle) * radius,
+                    0,
+                    Math.sin(angle) * radius
+                );
+                tree.rotation.y = Math.random() * Math.PI * 2;
+                tree.castShadow = true;
+                group.add(tree);
+            }
+            
+            // Distant mountains
+            const mountainGeometry = new THREE.ConeGeometry(10, 5, 16);
+            const mountainMaterial = new THREE.MeshStandardMaterial({
+                color: 0x555566,
+                roughness: 0.9
+            });
+            
+            for (let i = 0; i < 5; i++) {
+                const mountain = new THREE.Mesh(mountainGeometry, mountainMaterial);
+                mountain.position.set(
+                    (Math.random() - 0.5) * 200,
+                    2,
+                    (Math.random() - 0.5) * 200
+                );
+                mountain.rotation.y = Math.random() * Math.PI * 2;
+                group.add(mountain);
+            }
+        }
+
+        function createSky(group) {
+            const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
+            const skyMaterial = new THREE.MeshBasicMaterial({
+                color: 0x87ceeb,
+                side: THREE.BackSide
+            });
+            const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+            group.add(sky);
+        }
+
+        // ============================================
+        // CAMERA SETUP
+        // ============================================
+        function setupCameras() {
+            // Orbit camera (showroom)
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(5, 2, 5);
+            camera.lookAt(0, 1, 0);
+            cameras.orbit = camera;
+            
+            orbitControls = new OrbitControls(camera, renderer.domElement);
+            orbitControls.enableDamping = true;
+            orbitControls.dampingFactor = 0.05;
+            orbitControls.minDistance = 2;
+            orbitControls.maxDistance = 50;
+            orbitControls.maxPolarAngle = Math.PI / 2 + 0.1;
+            
+            // Chase camera (drive mode)
+            cameras.chase = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            // Bonnet camera
+            cameras.bonnet = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            // Cockpit camera
+            cameras.cockpit = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            // Trackside camera
+            cameras.trackside = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            cameras.trackside.position.set(20, 5, 0);
+            cameras.trackside.lookAt(0, 0, 0);
+        }
+
+        function setCameraPreset(preset) {
+            if (!car) return;
+            
+            state.cameraPreset = preset;
+            
+            switch (preset) {
+                case 'front34':
+                    camera.position.set(3, 1.5, -3);
+                    camera.lookAt(0, 1, 0);
+                    break;
+                case 'side':
+                    camera.position.set(5, 1.5, 0);
+                    camera.lookAt(0, 1, 0);
+                    break;
+                case 'rear34':
+                    camera.position.set(-3, 1.5, 3);
+                    camera.lookAt(0, 1, 0);
+                    break;
+                case 'top':
+                    camera.position.set(0, 10, 0);
+                    camera.lookAt(0, 1, 0);
+                    break;
+                case 'interior':
+                    camera.position.set(0, 0.8, -0.5);
+                    camera.lookAt(0, 0.8, 1);
+                    break;
+                case 'wheel':
+                    camera.position.set(1.5, 0.3, -1.2);
+                    camera.lookAt(0.8, 0.3, -1.2);
+                    break;
+            }
+            
+            orbitControls.update();
+        }
+
+        // ============================================
+        // INPUT HANDLING
+        // ============================================
+        const keys = {};
+        const mouse = new THREE.Vector2();
+        
+        function setupInput() {
+            window.addEventListener('keydown', (e) => {
+                keys[e.code] = true;
+                
+                // Enable audio on first interaction
+                if (!state.audioEnabled) {
+                    state.audioEnabled = true;
+                    initAudio();
+                }
+                
+                // Handle key presses
+                if (e.code === 'KeyC' && state.mode === 'drive') {
+                    state.cameraIndex = (state.cameraIndex + 1) % 4;
+                    updateDriveCamera();
+                }
+                
+                if (e.code === 'KeyR' && state.mode === 'drive') {
+                    resetCar();
+                }
+                
+                if (e.code === 'Space' && state.mode === 'drive') {
+                    state.handbrake = true;
+                }
+                
+                if (e.code === 'KeyQ' && state.mode === 'drive') {
+                    shiftGear(-1);
+                }
+                if (e.code === 'KeyE' && state.mode === 'drive') {
+                    shiftGear(1);
+                }
+            });
+            
+            window.addEventListener('keyup', (e) => {
+                keys[e.code] = false;
+                
+                if (e.code === 'Space' && state.mode === 'drive') {
+                    state.handbrake = false;
+                }
+            });
+            
+            window.addEventListener('mousemove', (e) => {
+                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            });
+            
+            // UI event listeners
+            document.getElementById('showroom-btn').addEventListener('click', () => switchToShowroom());
+            document.getElementById('drive-btn').addEventListener('click', () => switchToDrive());
+            document.getElementById('toggle-ui').addEventListener('click', toggleUI);
+            document.getElementById('open-doors').addEventListener('click', () => openDoors(true));
+            document.getElementById('close-doors').addEventListener('click', () => openDoors(false));
+            document.getElementById('toggle-lights').addEventListener('click', toggleLights);
+            document.getElementById('xray-toggle').addEventListener('click', toggleXRay);
+            document.getElementById('mute-audio').addEventListener('click', toggleMute);
+            
+            // Color selection
+            document.querySelectorAll('.color-option').forEach(opt => {
+                opt.addEventListener('click', () => {
+                    document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+                    opt.classList.add('selected');
+                    state.paintColor = opt.dataset.color;
+                    state.paintType = opt.dataset.type;
+                    updateCarPaint();
+                });
+            });
+            
+            // Rim color
+            document.querySelectorAll('.rim-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.rim-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    state.rimColor = btn.dataset.rim === 'silver' ? '#c0c0c0' : btn.dataset.rim === 'black' ? '#000000' : '#cd7f32';
+                    updateWheelRims();
+                });
+            });
+            
+            // Caliper color
+            document.querySelectorAll('.caliper-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.caliper-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    state.caliperColor = btn.dataset.cal;
+                    updateCaliperColor();
+                });
+            });
+            
+            // Camera presets
+            document.querySelectorAll('#camera-presets button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    setCameraPreset(btn.dataset.cam);
+                });
+            });
+            
+            // Pointer lock for drive mode
+            document.addEventListener('click', () => {
+                if (state.mode === 'drive' && !pointerLockControls.isLocked) {
+                    renderer.domElement.requestPointerLock();
+                }
+            });
+            
+            document.addEventListener('pointerlockchange', () => {
+                if (document.pointerLockElement === renderer.domElement) {
+                    pointerLockControls.lock();
+                } else {
+                    pointerLockControls.unlock();
+                }
+            });
+        }
+
+        function updateDriveControls() {
+            if (state.mode !== 'drive') return;
+            
+            // Throttle and brake
+            state.throttle = keys['KeyW'] || keys['ArrowUp'] ? 1 : 0;
+            state.brake = keys['KeyS'] || keys['ArrowDown'] ? 1 : 0;
+            
+            // Steering
+            state.steering = 0;
+            if (keys['KeyA'] || keys['ArrowLeft']) state.steering = -1;
+            if (keys['KeyD'] || keys['ArrowRight']) state.steering = 1;
+            
+            // Handbrake
+            state.handbrake = keys['Space'];
+        }
+
+        // ============================================
+        // VEHICLE PHYSICS
+        // ============================================
+        const vehicleParams = {
+            maxSpeed: 250, // km/h
+            maxRPM: 8000,
+            idleRPM: 800,
+            gearRatios: [3.5, 2.5, 2.0, 1.7, 1.5, 1.3],
+            finalDrive: 4.0,
+            wheelRadius: 0.35,
+            mass: 1200, // kg
+            dragCoefficient: 0.3,
+            rollingResistance: 0.02,
+            maxSteeringAngle: Math.PI / 6,
+            steeringSpeed: 0.05,
+            // Tyre parameters
+            maxGrip: 1.2,
+            slipAngle: 0.1,
+            // Engine torque curve (normalized)
+            torqueCurve: [0.3, 0.5, 0.7, 0.85, 0.95, 1.0, 0.95, 0.8, 0.6, 0.4]
+        };
+        
+        let currentSteeringAngle = 0;
+        let wheelRotation = 0;
+        let wheelRotationSpeed = 0;
+        let bodyRoll = 0;
+        let bodyPitch = 0;
+        let suspensionTravel = [0, 0, 0, 0]; // FL, FR, RL, RR
+        
+        function updatePhysics(deltaTime) {
+            if (state.mode !== 'drive') return;
+            
+            // Update steering
+            const targetSteering = state.steering * vehicleParams.maxSteeringAngle * 
+                (1 - Math.min(1, state.speed / 100));
+            currentSteeringAngle += (targetSteering - currentSteeringAngle) * vehicleParams.steeringSpeed;
+            
+            // Calculate engine RPM based on speed and gear
+            const wheelCircumference = 2 * Math.PI * vehicleParams.wheelRadius;
+            const speedMPS = state.speed / 3.6; // km/h to m/s
+            const wheelRPS = speedMPS / wheelCircumference;
+            
+            let gearRatio = 1;
+            if (state.gear > 0 && state.gear <= vehicleParams.gearRatios.length) {
+                gearRatio = vehicleParams.gearRatios[state.gear - 1];
+            }
+            
+            state.rpm = wheelRPS * 60 * gearRatio * vehicleParams.finalDrive;
+            
+            // If in neutral, engine idles
+            if (state.gear === 0) {
+                state.rpm = vehicleParams.idleRPM + state.throttle * 2000;
+            }
+            
+            // Rev limiter
+            if (state.rpm > vehicleParams.maxRPM) {
+                state.rpm = vehicleParams.maxRPM;
+            }
+            
+            // Calculate torque
+            let torque = 0;
+            if (state.gear > 0 && state.throttle > 0) {
+                const rpmIndex = Math.min(
+                    vehicleParams.torqueCurve.length - 1,
+                    Math.floor((state.rpm / vehicleParams.maxRPM) * vehicleParams.torqueCurve.length)
+                );
+                const torqueFactor = vehicleParams.torqueCurve[rpmIndex];
+                torque = state.throttle * torqueFactor * 500; // Nm
+            }
+            
+            // Calculate acceleration
+            let acceleration = 0;
+            if (state.gear > 0) {
+                const force = (torque * gearRatio * vehicleParams.finalDrive) / vehicleParams.wheelRadius;
+                acceleration = force / vehicleParams.mass;
+            }
+            
+            // Braking
+            const brakeForce = state.brake * 4000 + (state.handbrake ? 3000 : 0);
+            const brakeAcceleration = -brakeForce / vehicleParams.mass;
+            
+            // Drag
+            const dragForce = 0.5 * 1.225 * vehicleParams.dragCoefficient * 
+                Math.pow(speedMPS, 2) * Math.sign(speedMPS);
+            const dragAcceleration = -dragForce / vehicleParams.mass;
+            
+            // Rolling resistance
+            const rollingForce = vehicleParams.rollingResistance * vehicleParams.mass * 9.81 * Math.sign(speedMPS);
+            const rollingAcceleration = -rollingForce / vehicleParams.mass;
+            
+            // Total acceleration
+            let totalAcceleration = acceleration + brakeAcceleration + dragAcceleration + rollingAcceleration;
+            
+            // Apply acceleration to speed
+            state.speed += totalAcceleration * deltaTime * 1000; // Convert to km/h
+            
+            // Clamp speed
+            if (state.speed < 0) state.speed = 0;
+            if (state.speed > vehicleParams.maxSpeed) state.speed = vehicleParams.maxSpeed;
+            
+            // Update wheel rotation
+            wheelRotationSpeed = speedMPS / wheelCircumference * 2 * Math.PI;
+            wheelRotation += wheelRotationSpeed * deltaTime;
+            
+            // Body roll based on steering and speed
+            const rollFactor = currentSteeringAngle * (state.speed / 100) * 0.1;
+            bodyRoll += (rollFactor - bodyRoll) * 0.1;
+            
+            // Body pitch based on acceleration
+            const pitchFactor = totalAcceleration * 0.01;
+            bodyPitch += (pitchFactor - bodyPitch) * 0.1;
+            
+            // Update suspension based on weight transfer
+            const weightTransferFront = -totalAcceleration * vehicleParams.mass * 0.001;
+            const weightTransferSide = rollFactor * vehicleParams.mass * 0.001;
+            
+            suspensionTravel[0] = Math.sin(Date.now() * 0.001 * state.speed) * 0.02 + weightTransferFront * 0.01 - weightTransferSide * 0.01;
+            suspensionTravel[1] = Math.sin(Date.now() * 0.001 * state.speed + Math.PI) * 0.02 + weightTransferFront * 0.01 + weightTransferSide * 0.01;
+            suspensionTravel[2] = Math.cos(Date.now() * 0.001 * state.speed) * 0.02 - weightTransferFront * 0.01 - weightTransferSide * 0.01;
+            suspensionTravel[3] = Math.cos(Date.now() * 0.001 * state.speed + Math.PI) * 0.02 - weightTransferFront * 0.01 + weightTransferSide * 0.01;
+            
+            // Update car position on track
+            const speedFactor = state.speed / vehicleParams.maxSpeed;
+            const moveDistance = speedMPS * deltaTime;
+            
+            if (state.speed > 0.1) {
+                // Calculate track position
+                state.carPosition.x += moveDistance / 100;
+                if (state.carPosition.x > 1) {
+                    state.carPosition.x = 0;
+                    // Lap completed
+                    if (state.lapCount === 0) {
+                        // First lap
+                        state.lapCount++;
+                    } else {
+                        // Subsequent laps
+                        const lapTime = state.lapTime;
+                        if (state.bestLap === null || lapTime < state.bestLap) {
+                            state.bestLap = lapTime;
+                        }
+                        state.lapCount++;
+                        state.lapTime = 0;
+                    }
+                }
+                
+                // Get current position on track
+                const currentPoint = trackSpline.getPointAt(state.carPosition.x);
+                
+                // Calculate direction with steering
+                const baseDirection = trackSpline.getTangentAt(state.carPosition.x);
+                const direction = baseDirection.clone();
+                
+                // Apply steering
+                direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), currentSteeringAngle * speedFactor * 0.1);
+                
+                state.carRotation = Math.atan2(direction.x, direction.z);
+                
+                // Update lap timer
+                state.lapTime += deltaTime;
+            } else {
+                // Car is stopped, reset lap timer if not moving
+                if (state.lapTime > 0 && state.speed < 0.1) {
+                    // Don't reset lap time when stopped, just pause it
+                }
+            }
+            
+            // Check for tyre sliding (simplified)
+            const slipThreshold = 50;
+            if (Math.abs(currentSteeringAngle) > 0.1 && state.speed > slipThreshold) {
+                createSkidMark();
+                createSmoke();
+            }
+            
+            // Update rear wing position based on speed
+            const wing = car.getObjectByName('rear_wing');
+            if (wing) {
+                const wingHeight = state.speed > 120 ? 0.2 : state.speed < 80 ? 0 : 
+                    0.2 * ((state.speed - 80) / (120 - 80));
+                wing.position.y = 1.0 + wingHeight;
+            }
+            
+            // Update brake lights
+            updateBrakeLights(state.brake || state.handbrake);
+            
+            // Update indicators based on steering
+            const indicatorThreshold = 0.2;
+            if (state.steering < -indicatorThreshold) {
+                updateIndicators(true, false);
+            } else if (state.steering > indicatorThreshold) {
+                updateIndicators(false, true);
+            } else {
+                updateIndicators(false, false);
+            }
+        }
+
+        function shiftGear(direction) {
+            if (state.mode !== 'drive') return;
+            
+            // Play gear change sound
+            if (state.audioEnabled && !state.audioMuted) {
+                playGearChange();
+            }
+            
+            if (direction > 0) {
+                if (state.gear < vehicleParams.gearRatios.length) {
+                    state.gear++;
+                }
+            } else {
+                if (state.gear > 0) {
+                    state.gear--;
+                }
+            }
+        }
+
+        function resetCar() {
+            state.speed = 0;
+            state.rpm = vehicleParams.idleRPM;
+            state.gear = 1;
+            state.carPosition = { x: 0, z: 0 };
+            state.carRotation = 0;
+            currentSteeringAngle = 0;
+            bodyRoll = 0;
+            bodyPitch = 0;
+            
+            // Reset car position
+            if (car) {
+                car.position.set(0, 0, 0);
+                car.rotation.y = 0;
+                car.rotation.x = 0;
+                car.rotation.z = 0;
+            }
+        }
+
+        function createSkidMark() {
+            if (skidMarks.length > 50) {
+                const oldMark = skidMarks.shift();
+                scene.remove(oldMark);
+            }
+            
+            const markGeometry = new THREE.BoxGeometry(0.5, 0.01, 0.1);
+            const markMaterial = new THREE.MeshBasicMaterial({
+                color: 0x222222,
+                transparent: true,
+                opacity: 0.8
+            });
+            const mark = new THREE.Mesh(markGeometry, markMaterial);
+            
+            const wheelFL = car.getObjectByName('wheel_fl');
+            if (wheelFL) {
+                mark.position.copy(wheelFL.getWorldPosition(new THREE.Vector3()));
+                mark.position.y = 0.01;
+                mark.rotation.y = car.rotation.y + currentSteeringAngle;
+            }
+            
+            scene.add(mark);
+            skidMarks.push(mark);
+            
+            // Fade out over time
+            setTimeout(() => {
+                const index = skidMarks.indexOf(mark);
+                if (index !== -1) {
+                    skidMarks.splice(index, 1);
+                    scene.remove(mark);
+                }
+            }, 2000);
+        }
+
+        function createSmoke() {
+            if (smokeParticles.length > 20) {
+                const oldParticle = smokeParticles.shift();
+                scene.remove(oldParticle);
+            }
+            
+            const particleGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+            const particleMaterial = new THREE.MeshBasicMaterial({
+                color: 0x666666,
+                transparent: true,
+                opacity: 0.6
+            });
+            const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+            
+            const wheelFL = car.getObjectByName('wheel_fl');
+            if (wheelFL) {
+                particle.position.copy(wheelFL.getWorldPosition(new THREE.Vector3()));
+                particle.position.y = 0.1;
+            }
+            
+            scene.add(particle);
+            smokeParticles.push(particle);
+            
+            // Animate and fade
+            const animateParticle = () => {
+                particle.position.y += 0.02;
+                particle.position.x += (Math.random() - 0.5) * 0.05;
+                particle.position.z += (Math.random() - 0.5) * 0.05;
+                particle.scale.multiplyScalar(1.02);
+                particleMaterial.opacity -= 0.01;
+                
+                if (particleMaterial.opacity > 0) {
+                    requestAnimationFrame(animateParticle);
+                } else {
+                    const index = smokeParticles.indexOf(particle);
+                    if (index !== -1) {
+                        smokeParticles.splice(index, 1);
+                        scene.remove(particle);
+                    }
+                }
+            };
+            animateParticle();
+        }
+
+        // ============================================
+        // AUDIO
+        // ============================================
+        function initAudio() {
+            if (!state.audioEnabled) return;
+            
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Engine sound - multiple oscillators for richness
+            for (let i = 0; i < 3; i++) {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.type = i === 0 ? 'sine' : i === 1 ? 'sawtooth' : 'square';
+                oscillator.frequency.value = 50 + i * 20;
+                
+                gainNode.gain.value = 0.1;
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.start();
+                
+                engineOscillators.push({
+                    oscillator,
+                    gain: gainNode,
+                    baseFreq: 50 + i * 20
+                });
+            }
+            
+            // Engine gain (master)
+            engineGain = audioContext.createGain();
+            engineGain.gain.value = 0;
+            
+            // Reconnect oscillators through master gain
+            engineOscillators.forEach(o => {
+                o.gain.disconnect();
+                o.gain.connect(engineGain);
+            });
+            engineGain.connect(audioContext.destination);
+            
+            // Gear change sound buffer
+            createGearChangeSound();
+        }
+
+        function createGearChangeSound() {
+            if (!audioContext) return;
+            
+            const bufferSize = audioContext.sampleRate * 0.1;
+            const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            for (let i = 0; i < bufferSize; i++) {
+                const t = i / bufferSize;
+                data[i] = Math.sin(t * Math.PI * 2 * 800) * (1 - t) * 0.3;
+            }
+            
+            const source = audioContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(audioContext.destination);
+            
+            gearChangeSound = source;
+        }
+
+        function playGearChange() {
+            if (!gearChangeSound || state.audioMuted) return;
+            
+            const newSource = audioContext.createBufferSource();
+            newSource.buffer = gearChangeSound.buffer;
+            newSource.connect(audioContext.destination);
+            newSource.start();
+        }
+
+        function updateAudio() {
+            if (!audioContext || state.audioMuted || !state.audioEnabled) {
+                if (engineGain) engineGain.gain.value = 0;
+                return;
+            }
+            
+            if (!engineGain) return;
+            
+            // Map RPM to frequency and volume
+            const rpmFactor = state.rpm / vehicleParams.maxRPM;
+            const baseFreq = 50;
+            const maxFreq = 400;
+            const currentFreq = baseFreq + rpmFactor * (maxFreq - baseFreq);
+            
+            const volume = rpmFactor * 0.5 + (state.throttle > 0 ? 0.3 : 0);
+            
+            engineOscillators.forEach((o, i) => {
+                o.oscillator.frequency.value = o.baseFreq + rpmFactor * (maxFreq - baseFreq) * (0.8 + i * 0.1);
+            });
+            
+            engineGain.gain.value = volume * (state.audioMuted ? 0 : 1);
+        }
+
+        function toggleMute() {
+            state.audioMuted = !state.audioMuted;
+            document.getElementById('mute-audio').textContent = state.audioMuted ? 'UNMUTE' : 'MUTE';
+        }
+
+        // ============================================
+        // UI UPDATES
+        // ============================================
+        function updateCarPaint() {
+            if (!car) return;
+            
+            const body = car.getObjectByName('body_mesh');
+            if (body && body.material) {
+                body.material.color.set(state.paintColor);
+                body.material.metalness = state.paintType === 'metallic' ? 0.9 : state.paintType === 'gloss' ? 0.7 : 0.1;
+                body.material.roughness = state.paintType === 'matte' ? 0.8 : state.paintType === 'metallic' ? 0.1 : 0.2;
+                body.material.clearcoat = state.paintType !== 'matte' ? 0.5 : 0;
+                body.material.needsUpdate = true;
+            }
+        }
+
+        function updateWheelRims() {
+            if (!car) return;
+            
+            car.traverse((obj) => {
+                if (obj.isMesh && obj.name && obj.name.includes('wheel')) {
+                    // Find rim meshes (this is simplified - in a real implementation, we'd need to identify them properly)
+                    obj.traverse((child) => {
+                        if (child.isMesh && child.geometry.type === 'BufferGeometry') {
+                            // This is a simplification - we're assuming all wheel children are rims
+                            if (child.material && child.material.color) {
+                                child.material.color.set(state.rimColor);
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        function updateCaliperColor() {
+            if (!car) return;
+            
+            car.traverse((obj) => {
+                if (obj.isMesh && obj.name && obj.name.includes('caliper')) {
+                    if (obj.material) {
+                        obj.material.color.set(state.caliperColor);
+                    }
+                }
+            });
+        }
+
+        function openDoors(open) {
+            state.doorsOpen = open;
+            if (!car) return;
+            
+            const doorL = car.getObjectByName('door_left');
+            const doorR = car.getObjectByName('door_right');
+            
+            if (doorL) {
+                // Animate left door (butterfly door)
+                const targetRotationY = open ? Math.PI / 2 : 0;
+                const targetRotationX = open ? -Math.PI / 4 : 0;
+                
+                const animate = () => {
+                    doorL.rotation.y += (targetRotationY - doorL.rotation.y) * 0.1;
+                    doorL.rotation.x += (targetRotationX - doorL.rotation.x) * 0.1;
+                    
+                    if (Math.abs(targetRotationY - doorL.rotation.y) > 0.01 || 
+                        Math.abs(targetRotationX - doorL.rotation.x) > 0.01) {
+                        requestAnimationFrame(animate);
+                    }
+                };
+                animate();
+            }
+            
+            if (doorR) {
+                // Animate right door (butterfly door)
+                const targetRotationY = open ? -Math.PI / 2 : 0;
+                const targetRotationX = open ? -Math.PI / 4 : 0;
+                
+                const animate = () => {
+                    doorR.rotation.y += (targetRotationY - doorR.rotation.y) * 0.1;
+                    doorR.rotation.x += (targetRotationX - doorR.rotation.x) * 0.1;
+                    
+                    if (Math.abs(targetRotationY - doorR.rotation.y) > 0.01 || 
+                        Math.abs(targetRotationX - doorR.rotation.x) > 0.01) {
+                        requestAnimationFrame(animate);
+                    }
+                };
+                animate();
+            }
+        }
+
+        function toggleLights() {
+            state.lightsOn = !state.lightsOn;
+            document.getElementById('toggle-lights').textContent = state.lightsOn ? 'HEADLIGHTS ON' : 'HEADLIGHTS OFF';
+            
+            if (!car) return;
+            
+            car.traverse((obj) => {
+                if (obj.isMesh) {
+                    if (obj.name && obj.name.includes('headlight_drl')) {
+                        if (obj.material) {
+                            obj.material.emissiveIntensity = state.lightsOn ? 0.5 : 0;
+                        }
+                    }
+                    if (obj.name && obj.name.includes('headlight_bulb')) {
+                        if (obj.material) {
+                            obj.material.emissiveIntensity = state.lightsOn ? 1.0 : 0;
+                        }
+                    }
+                    if (obj.name && obj.name.includes('taillight')) {
+                        if (obj.material && !obj.name.includes('brake')) {
+                            obj.material.emissiveIntensity = state.lightsOn ? 0.3 : 0.1;
+                        }
+                    }
+                }
+            });
+        }
+
+        function toggleXRay() {
+            state.xrayMode = !state.xrayMode;
+            document.getElementById('xray-toggle').textContent = state.xrayMode ? 'X-RAY ON' : 'X-RAY OFF';
+            
+            if (!car) return;
+            
+            const body = car.getObjectByName('body_mesh');
+            if (body) {
+                body.visible = !state.xrayMode;
+            }
+            
+            const glass = car.getObjectByName('glass');
+            if (glass) {
+                glass.visible = !state.xrayMode;
+            }
+            
+            // Show/hide chassis and components
+            const chassisParts = ['chassis', 'engine', 'suspension_fl', 'suspension_fr', 'suspension_rl', 
+                'suspension_rr', 'radiator_l', 'radiator_r', 'fuel_tank', 'battery', 'gearbox', 'monocoque'];
+            
+            chassisParts.forEach(name => {
+                const part = car.getObjectByName(name);
+                if (part) {
+                    part.visible = state.xrayMode;
+                }
+            });
+        }
+
+        function updateBrakeLights(brake) {
+            state.brake = brake;
+            if (!car) return;
+            
+            car.traverse((obj) => {
+                if (obj.isMesh) {
+                    if (obj.name && obj.name.includes('brake_light')) {
+                        if (obj.material) {
+                            obj.material.emissiveIntensity = brake ? 1.0 : 0;
+                        }
+                    }
+                    if (obj.name && obj.name.includes('taillight_main')) {
+                        if (obj.material) {
+                            obj.material.emissiveIntensity = brake ? 0.8 : (state.lightsOn ? 0.3 : 0.1);
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateIndicators(left, right) {
+            state.indicatorLeft = left;
+            state.indicatorRight = right;
+            if (!car) return;
+            
+            car.traverse((obj) => {
+                if (obj.isMesh && obj.name && obj.name.includes('indicator')) {
+                    if (obj.parent && obj.parent.name === 'taillight') {
+                        const isLeft = obj.parent.position.x < 0;
+                        if (obj.material) {
+                            obj.material.emissiveIntensity = (isLeft && left) || (!isLeft && right) ? 0.8 : 0;
+                        }
+                    }
+                }
+            });
+        }
+
+        function toggleUI() {
+            state.uiHidden = !state.uiHidden;
+            document.getElementById('ui').style.pointerEvents = state.uiHidden ? 'none' : 'auto';
+            document.querySelectorAll('.panel, #mode-toggle, #camera-presets, .hide-ui, #hud, #minimap').forEach(el => {
+                el.classList.toggle('hidden', state.uiHidden);
+            });
+            document.getElementById('toggle-ui').textContent = state.uiHidden ? 'SHOW UI' : 'HIDE UI';
+        }
+
+        function updateHUD() {
+            if (state.mode !== 'drive') return;
+            
+            // Update speed
+            document.getElementById('speed-value').textContent = Math.round(state.speed);
+            
+            // Update RPM
+            document.getElementById('rpm-value').textContent = Math.round(state.rpm);
+            
+            // Update gear
+            let gearText = 'N';
+            if (state.gear === 0) gearText = 'N';
+            else if (state.gear === -1) gearText = 'R';
+            else gearText = state.gear.toString();
+            document.getElementById('gear-display').textContent = gearText;
+            
+            // Update lap time
+            const minutes = Math.floor(state.lapTime / 60);
+            const seconds = Math.floor(state.lapTime % 60);
+            const milliseconds = Math.floor((state.lapTime % 1) * 1000);
+            document.getElementById('lap-time').textContent = 
+                `${minutes}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
+            
+            // Update best lap
+            if (state.bestLap !== null) {
+                const bestMinutes = Math.floor(state.bestLap / 60);
+                const bestSeconds = Math.floor(state.bestLap % 60);
+                const bestMillis = Math.floor((state.bestLap % 1) * 1000);
+                document.getElementById('best-lap').textContent = 
+                    `BEST: ${bestMinutes}:${bestSeconds.toString().padStart(2, '0')}.${bestMillis.toString().padStart(3, '0')}`;
+            }
+        }
+
+        function updateMinimap() {
+            if (state.mode !== 'drive' || !minimapCtx) return;
+            
+            const canvas = document.getElementById('minimap-canvas');
+            minimapCtx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw track
+            minimapCtx.strokeStyle = '#666666';
+            minimapCtx.lineWidth = 2;
+            minimapCtx.beginPath();
+            
+            const scale = canvas.width / 100;
+            const centerX = canvas.width / 2;
+            const centerZ = canvas.height / 2;
+            
+            // Draw simplified track
+            for (let i = 0; i < trackPoints.length; i++) {
+                const next = (i + 1) % trackPoints.length;
+                minimapCtx.moveTo(
+                    centerX + trackPoints[i].x * scale,
+                    centerZ + trackPoints[i].z * scale
+                );
+                minimapCtx.lineTo(
+                    centerX + trackPoints[next].x * scale,
+                    centerZ + trackPoints[next].z * scale
+                );
+            }
+            minimapCtx.stroke();
+            
+            // Draw car
+            minimapCtx.fillStyle = '#ff0000';
+            minimapCtx.beginPath();
+            minimapCtx.arc(
+                centerX + state.carPosition.x * 100 * scale,
+                centerZ + state.carPosition.z * 100 * scale,
+                5, 0, Math.PI * 2
+            );
+            minimapCtx.fill();
+            
+            // Draw direction
+            minimapCtx.strokeStyle = '#ffffff';
+            minimapCtx.lineWidth = 1;
+            minimapCtx.beginPath();
+            minimapCtx.moveTo(
+                centerX + state.carPosition.x * 100 * scale,
+                centerZ + state.carPosition.z * 100 * scale
+            );
+            minimapCtx.lineTo(
+                centerX + (state.carPosition.x * 100 + Math.cos(state.carRotation) * 10) * scale,
+                centerZ + (state.carPosition.z * 100 + Math.sin(state.carRotation) * 10) * scale
+            );
+            minimapCtx.stroke();
+        }
+
+        function updateDriveCamera() {
+            if (state.mode !== 'drive' || !car) return;
+            
+            const cameraNames = ['chase', 'bonnet', 'cockpit', 'trackside'];
+            const currentCam = cameraNames[state.cameraIndex];
+            
+            // Update all drive cameras
+            if (cameras.chase) {
+                const chasePos = new THREE.Vector3(
+                    Math.cos(state.carRotation) * (-5),
+                    2,
+                    Math.sin(state.carRotation) * (-5)
+                );
+                cameras.chase.position.copy(chasePos);
+                cameras.chase.position.add(car.position);
+                cameras.chase.lookAt(car.position.clone().add(new THREE.Vector3(
+                    Math.cos(state.carRotation) * 2,
+                    0.5,
+                    Math.sin(state.carRotation) * 2
+                )));
+            }
+            
+            if (cameras.bonnet) {
+                cameras.bonnet.position.set(
+                    car.position.x + Math.cos(state.carRotation) * 0.5,
+                    car.position.y + 0.5,
+                    car.position.z + Math.sin(state.carRotation) * 0.5
+                );
+                cameras.bonnet.lookAt(car.position.clone().add(new THREE.Vector3(
+                    Math.cos(state.carRotation) * 5,
+                    0.5,
+                    Math.sin(state.carRotation) * 5
+                )));
+            }
+            
+            if (cameras.cockpit) {
+                cameras.cockpit.position.set(
+                    car.position.x,
+                    car.position.y + 0.8,
+                    car.position.z - 0.3
+                );
+                cameras.cockpit.rotation.order = 'YXZ';
+                cameras.cockpit.rotation.y = state.carRotation;
+                cameras.cockpit.rotation.x = bodyPitch;
+                cameras.cockpit.rotation.z = bodyRoll;
+            }
+            
+            // Set active camera
+            camera = cameras[currentCam];
+        }
+
+        // ============================================
+        // MODE SWITCHING
+        // ============================================
+        function switchToShowroom() {
+            if (state.mode === 'showroom') return;
+            
+            state.mode = 'showroom';
+            state.loading = true;
+            
+            // Hide drive UI
+            document.getElementById('track-hud').classList.add('hidden');
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('minimap').classList.add('hidden');
+            
+            // Show showroom UI
+            document.getElementById('showroom-panel').classList.remove('hidden');
+            document.getElementById('camera-presets').style.display = 'flex';
+            
+            // Switch scene
+            if (studioGroup) studioGroup.visible = true;
+            if (trackGroup) trackGroup.visible = false;
+            
+            // Reset car
+            if (car) {
+                car.position.set(0, 0, 0);
+                car.rotation.set(0, 0, 0);
+                car.scale.set(1, 1, 1);
+            }
+            
+            // Switch to orbit camera
+            camera = cameras.orbit;
+            orbitControls.enabled = true;
+            if (pointerLockControls) pointerLockControls.enabled = false;
+            
+            // Start reveal animation
+            startRevealAnimation();
+            
+            state.loading = false;
+        }
+
+        function switchToDrive() {
+            if (state.mode === 'drive') return;
+            
+            state.mode = 'drive';
+            state.loading = true;
+            
+            // Hide showroom UI
+            document.getElementById('showroom-panel').classList.add('hidden');
+            document.getElementById('camera-presets').style.display = 'none';
+            
+            // Show drive UI
+            document.getElementById('track-hud').classList.remove('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+            document.getElementById('minimap').classList.remove('hidden');
+            
+            // Switch scene
+            if (studioGroup) studioGroup.visible = false;
+            if (trackGroup) trackGroup.visible = true;
+            
+            // Reset car for drive
+            resetCar();
+            state.gear = 1;
+            
+            // Switch to chase camera
+            state.cameraIndex = 0;
+            updateDriveCamera();
+            
+            orbitControls.enabled = false;
+            if (pointerLockControls) pointerLockControls.enabled = true;
+            
+            state.loading = false;
+        }
+
+        function startRevealAnimation() {
+            if (!studioLights || !car) return;
+            
+            // Animate lights coming up
+            const lights = studioLights.lights;
+            lights.forEach((light, i) => {
+                light.intensity = 0;
+                
+                setTimeout(() => {
+                    const animate = () => {
+                        light.intensity += 0.1;
+                        if (light.intensity < light.userData.originalIntensity) {
+                            requestAnimationFrame(animate);
+                        }
+                    };
+                    animate();
+                }, i * 200);
+            });
+            
+            // Rotate car slightly
+            if (car) {
+                car.rotation.y = -Math.PI / 4;
+            }
+        }
+
+        // ============================================
+        // RENDERING
+        // ============================================
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const deltaTime = clock.getDelta();
+            
+            if (state.mode === 'showroom') {
+                // Rotate car on turntable
+                if (car && !state.cameraPreset) {
+                    car.rotation.y += deltaTime * 0.1;
+                }
+                
+                // Update orbit controls
+                if (orbitControls) orbitControls.update();
+            } else if (state.mode === 'drive') {
+                // Update physics
+                updateDriveControls();
+                updatePhysics(deltaTime);
+                updateDriveCamera();
+                
+                // Update car position and rotation
+                if (car) {
+                    car.position.x = trackSpline.getPointAt(state.carPosition.x).x;
+                    car.position.z = trackSpline.getPointAt(state.carPosition.x).z;
+                    car.rotation.y = state.carRotation;
+                    car.rotation.x = bodyPitch;
+                    car.rotation.z = bodyRoll;
+                    
+                    // Rotate wheels
+                    car.children.forEach(child => {
+                        if (child.name && child.name.includes('wheel')) {
+                            child.rotation.x = wheelRotation;
+                            if (child.name.includes('fl') || child.name.includes('fr')) {
+                                child.rotation.y = currentSteeringAngle;
+                            }
+                        }
+                    });
+                    
+                    // Apply suspension
+                    const wheels = [
+                        car.getObjectByName('wheel_fl'),
+                        car.getObjectByName('wheel_fr'),
+                        car.getObjectByName('wheel_rl'),
+                        car.getObjectByName('wheel_rr')
+                    ];
+                    
+                    wheels.forEach((wheel, i) => {
+                        if (wheel) {
+                            wheel.position.y = -0.25 + suspensionTravel[i];
+                        }
+                    });
+                }
+                
+                // Update HUD and minimap
+                updateHUD();
+                updateMinimap();
+            }
+            
+            // Update audio
+            updateAudio();
+            
+            // Render
+            if (composer) {
+                composer.render();
+            } else if (renderer) {
+                renderer.render(scene, camera);
+            }
+        }
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        function init() {
+            // Check WebGL support
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (!gl) {
+                    throw new Error('WebGL not supported');
+                }
+            } catch (e) {
+                state.webglAvailable = false;
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('no-webgl').style.display = 'block';
+                return;
+            }
+            
+            // Container
+            container = document.getElementById('container');
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: true,
+                powerPreference: 'high-performance'
+            });
+            renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
+            container.appendChild(renderer.domElement);
+            
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+            
+            // Setup cameras
+            setupCameras();
+            
+            // Create car
+            car = createCar();
+            car.position.y = 0.5; // Position car at proper height
+            scene.add(car);
+            
+            // Create studio environment
+            const studio = createStudioEnvironment();
+            studioGroup = studio.group;
+            studioLights = studio;
+            scene.add(studioGroup);
+            
+            // Create track environment (hidden initially)
+            const track = createTrackEnvironment();
+            trackGroup = track.group;
+            trackGroup.visible = false;
+            scene.add(trackGroup);
+            
+            // Setup post-processing
+            setupPostProcessing();
+            
+            // Setup input
+            setupInput();
+            
+            // Initialize UI
+            document.querySelector('.rim-btn[data-rim="silver"]').classList.add('active');
+            document.querySelector('.caliper-btn[data-cal="#ff0000"]').classList.add('active');
+            document.querySelector('.color-option[data-color="#ff0000"]').classList.add('selected');
+            
+            // Setup minimap canvas
+            const minimapCanvas = document.getElementById('minimap-canvas');
+            minimapCanvas.width = 200;
+            minimapCanvas.height = 150;
+            minimapCtx = minimapCanvas.getContext('2d');
+            
+            // Setup gauges
+            setupGauges();
+            
+            // Hide loading
+            setTimeout(() => {
+                state.loading = false;
+                document.getElementById('loading').style.display = 'none';
+            }, 500);
+            
+            // Start animation
+            animate();
+            
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function setupPostProcessing() {
+            composer = new EffectComposer(renderer);
+            
+            const renderPass = new RenderPass(scene, camera);
+            composer.addPass(renderPass);
+            
+            bloomPass = new UnrealBloomPass(
+                new THREE.Vector2(window.innerWidth, window.innerHeight),
+                0.4, // strength
+                0.4, // radius
+                0.85  // threshold
+            );
+            composer.addPass(bloomPass);
+            
+            const gammaPass = new ShaderPass(GammaCorrectionShader);
+            composer.addPass(gammaPass);
+        }
+
+        function setupGauges() {
+            // Speedometer
+            const speedoCanvas = document.getElementById('speedo');
+            speedoCanvas.width = 120;
+            speedoCanvas.height = 120;
+            speedoCtx = speedoCanvas.getContext('2d');
+            
+            // Tachometer
+            const tachoCanvas = document.getElementById('tacho');
+            tachoCanvas.width = 120;
+            tachoCanvas.height = 120;
+            tachoCtx = tachoCanvas.getContext('2d');
+            
+            drawGauge(speedoCtx, 0, 250, 'Speed');
+            drawGauge(tachoCtx, 0, 8000, 'RPM');
+        }
+
+        function drawGauge(ctx, min, max, label) {
+            const centerX = ctx.canvas.width / 2;
+            const centerY = ctx.canvas.height / 2;
+            const radius = Math.min(centerX, centerY) * 0.9;
+            
+            // Clear
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            
+            // Draw arc
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, -Math.PI * 0.8, Math.PI * 0.2);
+            ctx.lineWidth = 10;
+            ctx.strokeStyle = '#333333';
+            ctx.stroke();
+            
+            // Draw ticks
+            const range = max - min;
+            const numTicks = 10;
+            for (let i = 0; i <= numTicks; i++) {
+                const angle = -Math.PI * 0.8 + (i / numTicks) * Math.PI * 1.0;
+                const tickRadius = radius - 5;
+                const tickLength = i % 2 === 0 ? 15 : 8;
+                
+                ctx.beginPath();
+                ctx.moveTo(
+                    centerX + Math.cos(angle) * tickRadius,
+                    centerY + Math.sin(angle) * tickRadius
+                );
+                ctx.lineTo(
+                    centerX + Math.cos(angle) * (tickRadius - tickLength),
+                    centerY + Math.sin(angle) * (tickRadius - tickLength)
+                );
+                ctx.lineWidth = i % 2 === 0 ? 2 : 1;
+                ctx.strokeStyle = '#ffffff';
+                ctx.stroke();
+                
+                // Draw numbers
+                if (i % 2 === 0) {
+                    const value = min + (i / numTicks) * range;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '10px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(
+                        Math.round(value).toString(),
+                        centerX + Math.cos(angle) * (tickRadius - 25),
+                        centerY + Math.sin(angle) * (tickRadius - 25)
+                    );
+                }
+            }
+            
+            // Redline for tachometer
+            if (label === 'RPM') {
+                const redlineAngle = -Math.PI * 0.8 + (vehicleParams.maxRPM / max) * Math.PI * 1.0;
+                ctx.beginPath();
+                ctx.arc(
+                    centerX, centerY, radius - 3,
+                    redlineAngle, Math.PI * 0.2
+                );
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#ff0000';
+                ctx.stroke();
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            
+            Object.values(cameras).forEach(cam => {
+                if (cam && cam.isPerspectiveCamera) {
+                    cam.aspect = window.innerWidth / window.innerHeight;
+                    cam.updateProjectionMatrix();
+                }
+            });
+            
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            if (composer) {
+                composer.setSize(window.innerWidth, window.innerHeight);
+                if (bloomPass) {
+                    bloomPass.resolution.set(window.innerWidth, window.innerHeight);
+                }
+            }
+        }
+
+        // ============================================
+        // START
+        // ============================================
+        init();
+    </script>
+</body>
+</html>
