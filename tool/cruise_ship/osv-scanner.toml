@@ -1,0 +1,6 @@
+# braces has no patched release. It is only reached at build time, through
+# vite-plugin-singlefile's micromatch, on this repo's own glob patterns, and
+# never ships in the built scene. Drop this once a fixed braces exists.
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm"
+reason = "Dev-only build dependency with no fixed version; never shipped."

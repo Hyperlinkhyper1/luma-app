@@ -56,7 +56,7 @@ services:
       - /dev/dri:/dev/dri
     group_add:
       - "${LUMA_RENDERER_RENDER_GID:-65534}"
-      - "${LUMA_RENDERER_VIDEO_GID:-65534}"
+      - "${LUMA_RENDERER_VIDEO_GID:-65533}"
     networks:
       - renderer
 

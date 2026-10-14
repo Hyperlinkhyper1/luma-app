@@ -240,8 +240,9 @@ Set `LUMA_RENDERER_RENDER_GID` to the host group ID reported by
 `stat -c '%g' /dev/dri/renderD128`, and `LUMA_RENDERER_VIDEO_GID` to the ID for
 `/dev/dri/card0`, in the compose `.env` file. These become supplementary groups
 without granting root access. Without matching device groups, Chromium uses
-SwiftShader. The defaults are the unprivileged nobody group rather than guessed
-host group IDs; adapt device names to those present on the host.
+SwiftShader. The defaults are unprivileged unused group IDs (65534 and 65533;
+compose rejects two identical entries) rather than guessed host group IDs;
+adapt device names to those present on the host.
 
 Scene requests are intercepted: HTML and pinned Three.js versions, model-viewer
 and Tween.js are supplied from local files. Other HTTP requests, local files,

@@ -60,7 +60,7 @@ jobs:
       - name: Install Gitleaks
         run: go install github.com/zricethezav/gitleaks/v8@v8.30.1
       - name: Scan repository history for secrets
-        run: gitleaks git --redact --no-banner .
+        run: gitleaks git --redact --verbose --no-banner .
 
   renderer-container:
     runs-on: ubuntu-latest

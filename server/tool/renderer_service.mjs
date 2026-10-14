@@ -76,6 +76,7 @@ export async function renderWithProcess(scene, signal) {
     });
     if (signal.aborted) throw new Error('Render cancelled.');
     if (code !== 0 || !output.split(/\r?\n/).some((line) => line === `OK   ${scene.id}`)) {
+      console.error(`Render of ${scene.id} exited with ${code}:\n${output.slice(-8000)}`);
       throw new SceneRenderError(output.split(/\r?\n/).find((line) => line.startsWith(`FAIL ${scene.id}:`)) ?? 'Renderer failed.');
     }
     const png = await fs.readFile(path.join(scratch, 'previews', `${scene.id}.png`));
