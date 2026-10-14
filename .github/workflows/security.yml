@@ -75,10 +75,13 @@ jobs:
         run: |
           docker network create --internal luma-renderer-test
           docker run --detach --name luma-renderer-test --network luma-renderer-test --network-alias renderer --init --read-only --cap-drop=ALL --security-opt no-new-privileges --security-opt seccomp=server/renderer-seccomp.json --tmpfs /tmp:rw,nosuid,nodev,size=2g,mode=1777 --shm-size=512m --memory=4g --pids-limit=512 luma-renderer-test
-          docker run --rm --name luma-renderer-smoke --network luma-renderer-test --network-alias smoke --read-only --cap-drop=ALL --security-opt no-new-privileges --security-opt seccomp=server/renderer-seccomp.json --tmpfs /tmp:rw,nosuid,nodev,size=512m,mode=1777 luma-renderer-test node renderer_smoke.mjs
-      - name: Renderer diagnostics
-        if: failure()
-        run: docker logs luma-renderer-test
+          docker run --rm --name luma-renderer-smoke --network luma-renderer-test --network-alias smoke --read-only --cap-drop=ALL --security-opt no-new-privileges --security-opt seccomp=server/renderer-seccomp.json --tmpfs /tmp:rw,nosuid,nodev,size=512m,mode=1777 luma-renderer-test node renderer_smoke.mjs || {
+            echo "----- renderer container log -----"
+            docker logs luma-renderer-test 2>&1
+            echo "Host user namespace policy:"
+            sysctl kernel.apparmor_restrict_unprivileged_userns kernel.unprivileged_userns_clone 2>&1 || true
+            exit 1
+          }
       - name: Clean up renderer test
         if: always()
         run: |
