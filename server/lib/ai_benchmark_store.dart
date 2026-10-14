@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 
 import 'benchmark_generate.dart';
+import 'util.dart';
 
 /// One interactive benchmark scene the app can download, e.g. a model's
 /// independent implementation of the Pagoda, Engine, or Cathedral test.
@@ -208,7 +209,7 @@ class AiBenchmarkStore {
       });
       final rosterTmp = File('${_uploadsRoster.path}.tmp');
       await rosterTmp.writeAsString(jsonEncode(uploads));
-      await rosterTmp.rename(_uploadsRoster.path);
+      await renameReplacing(rosterTmp, _uploadsRoster.path);
     });
     return entry;
   }

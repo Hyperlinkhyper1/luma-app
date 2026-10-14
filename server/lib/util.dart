@@ -66,7 +66,22 @@ Future<void> atomicWriteBytes(String path, List<int> bytes) async {
   (Zone.current[kDiskWriteMeterKey] as void Function(int)?)?.call(bytes.length);
   final tmp = File('$path.tmp');
   await tmp.writeAsBytes(bytes, flush: true);
-  await tmp.rename(path);
+  await renameReplacing(tmp, path);
+}
+
+/// Renames [source] over [path]. Windows refuses to replace a file another
+/// handle is still reading ("Access is denied"), which a concurrent reader
+/// causes for a moment; retry briefly there instead of failing the write.
+Future<void> renameReplacing(File source, String path) async {
+  for (var attempt = 1;; attempt++) {
+    try {
+      await source.rename(path);
+      return;
+    } on FileSystemException {
+      if (!Platform.isWindows || attempt >= 10) rethrow;
+      await Future<void>.delayed(Duration(milliseconds: 20 * attempt));
+    }
+  }
 }
 
 Future<void> atomicWriteString(String path, String content) =>
