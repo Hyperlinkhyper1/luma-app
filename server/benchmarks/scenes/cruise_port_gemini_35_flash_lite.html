@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>3D Cruise Port Benchmark — Lisbon</title>
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: #050811;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  #canvas-container {
+    width: 100vw;
+    height: 100vh;
+    display: block;
+  }
+  #loading {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: #0b111e;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    transition: opacity 0.8s ease;
+  }
+  #loading h1 {
+    font-weight: 300;
+    letter-spacing: 4px;
+    margin-bottom: 10px;
+    font-size: 28px;
+    background: linear-gradient(45deg, #ff9a44, #fc5c7d);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  #loading p {
+    color: #8b9bb4;
+    font-size: 14px;
+    letter-spacing: 1px;
+  }
+  .spinner {
+    width: 50px; height: 50px;
+    border: 3px solid rgba(255,255,255,0.1);
+    border-radius: 50%;
+    border-top-color: #ff9a44;
+    animation: spin 1s ease-in-out infinite;
+    margin-bottom: 25px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* UI Styling */
+  #ui {
+    position: fixed;
+    top: 15px; left: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 10;
+    max-width: 320px;
+    pointer-events: none;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+  #ui.hidden {
+    transform: translateX(-350px);
+    opacity: 0;
+  }
+  .panel {
+    background: rgba(11, 17, 30, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 14px 18px;
+    color: #fff;
+    pointer-events: auto;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin: 0 0 10px 0;
+    color: #ffb347;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .btn-group {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .btn-group.full {
+    grid-template-columns: 1fr;
+  }
+  button {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #e2e8f0;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    letter-spacing: 0.5px;
+  }
+  button:hover {
+    background: rgba(255, 179, 71, 0.2);
+    border-color: #ffb347;
+    color: #fff;
+  }
+  button.active {
+    background: #ffb347;
+    border-color: #ffb347;
+    color: #0b111e;
+    font-weight: 600;
+  }
+  button.action-btn {
+    background: linear-gradient(135deg, #ff9a44, #e65c00);
+    border: none;
+    color: white;
+    font-weight: 600;
+    padding: 10px;
+    margin-top: 4px;
+  }
+  button.action-btn:hover {
+    background: linear-gradient(135deg, #ffa85c, #f56c00);
+    box-shadow: 0 0 15px rgba(255, 154, 68, 0.4);
+  }
+  .slider-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+    font-size: 11px;
+    color: #a0aec0;
+  }
+  .slider-row input[type="range"] {
+    width: 100%;
+    accent-color: #ffb347;
+    cursor: pointer;
+  }
+  .toggle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    margin-top: 8px;
+    color: #a0aec0;
+  }
+  #toggle-ui {
+    position: fixed;
+    top: 15px; left: 15px;
+    z-index: 20;
+    background: rgba(11, 17, 30, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+  }
+  #toggle-ui:hover { background: rgba(255, 179, 71, 0.2); }
+
+  #crosshair {
+    position: fixed;
+    top: 50%; left: 50%;
+    width: 6px; height: 6px;
+    background: rgba(255,255,255,0.6);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    display: none;
+    z-index: 50;
+    box-shadow: 0 0 4px rgba(0,0,0,0.8);
+  }
+  #instructions {
+    position: fixed;
+    bottom: 20px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(11, 17, 30, 0.9);
+    border: 1px solid rgba(255,179,71,0.3);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 30px;
+    font-size: 12px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 50;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+    letter-spacing: 0.5px;
+  }
+  #webgl-error {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: #0b111e;
+    color: #ff5252;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    font-family: monospace;
+    padding: 20px;
+    text-align: center;
+  }
+</style>
+
+<!-- Importmap for Three.js r160 -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <h1>LISBON CRUISE PORT</h1>
+  <p>Generating procedural 3D world...</p>
+</div>
+
+<div id="webgl-error">
+  <h2>WebGL 2 Not Available</h2>
+  <p>Your browser or device does not support WebGL 2, which is required for this 3D benchmark.</p>
+</div>
+
+<div id="crosshair"></div>
+<div id="instructions">WASD to walk, Mouse to look, ESC to release cursor</div>
+<button id="toggle-ui" title="Toggle UI">≡</button>
+
+<div id="ui">
+  <div class="panel">
+    <h2>
+      <span>Lisbon Port</span>
+      <button id="hide-ui-btn" style="padding:2px 6px; font-size:10px;">Hide</button>
+    </h2>
+    <div style="font-size:10px; color:#8b9bb4; margin-bottom:8px;">Camera Presets</div>
+    <div class="btn-group">
+      <button class="cam-btn active" data-cam="orbit">Orbit</button>
+      <button class="cam-btn" data-cam="miradouro">Miradouro</button>
+      <button class="cam-btn" data-cam="waterfront">Waterfront</button>
+      <button class="cam-btn" data-cam="aerial">Aerial</button>
+      <button class="cam-btn" data-cam="river">From River</button>
+      <button class="cam-btn" data-cam="deck">Ship Deck</button>
+    </div>
+    <div class="btn-group full" style="margin-top:4px;">
+      <button class="cam-btn" data-cam="walk" id="walk-mode-btn" style="background:rgba(255,179,71,0.15); border-color:#ffb347;">Walk on Quay (WASD)</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Environment</h2>
+    <div class="slider-row">
+      <div style="display:flex; justify-content:space-between;">
+        <span>Time of Day</span>
+        <span id="time-val">18:30 (Golden Hour)</span>
+      </div>
+      <input type="range" id="time-slider" min="0" max="24" step="0.05" value="18.5">
+    </div>
+    <div class="toggle-row">
+      <span>Auto Time Cycle</span>
+      <button id="play-time-btn" style="padding:4px 10px;">Pause</button>
+    </div>
+    <div class="toggle-row" style="margin-top:10px;">
+      <span>Weather</span>
+      <select id="weather-select" style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:#fff; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer;">
+        <option value="clear">Clear Skies</option>
+        <option value="haze">Morning Haze</option>
+        <option value="rain">Light Rain</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Ship Operations</h2>
+    <div class="btn-group full">
+      <button id="departure-btn" class="action-btn">DEPARTURE</button>
+    </div>
+    <div style="font-size:10px; color:#8b9bb4; margin-top:6px; text-align:center;" id="ship-status">Status: Moored at Jardim do Tabaco</div>
+  </div>
+</div>
+
+<div id="canvas-container"></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+import { Water } from 'three/addons/objects/Water.js';
+import { Sky } from 'three/addons/objects/Sky.js';
+
+// Global check for WebGL2
+(() => {
+  const canvas = document.createElement('canvas');
+  const gl = canvas.getContext('webgl2');
+  if (!gl) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('webgl-error').style.display = 'flex';
+    throw new Error("WebGL 2 not supported");
+  }
+})();
+
+// --- AUDIO SYSTEM (Web Audio API) ---
+class AudioSystem {
+  constructor() {
+    this.ctx = null;
+    this.hornOscs = [];
+    this.hornGain = null;
+  }
+
+  init() {
+    if (this.ctx) return;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (AudioContext) {
+      this.ctx = new AudioContext();
+    }
+  }
+
+  playHorn() {
+    this.init();
+    if (!this.ctx) return;
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+
+    const now = this.ctx.currentTime;
+    
+    // Deep ship horn chord (F2, C3, F3 frequencies approx)
+    const freqs = [87.31, 130.81, 174.61];
+    
+    this.hornGain = this.ctx.createGain();
+    this.hornGain.gain.setValueAtTime(0, now);
+    this.hornGain.gain.linearRampToValueAtTime(0.4, now + 0.5);
+    this.hornGain.gain.setValueAtTime(0.4, now + 3.5);
+    this.hornGain.gain.exponentialRampToValueAtTime(0.001, now + 5.0);
+    this.hornGain.connect(this.ctx.destination);
+
+    this.hornOscs = freqs.map(f => {
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(f, now);
+      // Slight pitch wobble for realism
+      osc.frequency.linearRampToValueAtTime(f * 0.99, now + 3.0);
+      
+      // Lowpass filter for muffled deep tone
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(600, now);
+
+      osc.connect(filter);
+      filter.connect(this.hornGain);
+      osc.start(now);
+      osc.stop(now + 5.2);
+      return osc;
+    });
+  }
+}
+
+const audioSys = new AudioSystem();
+
+// --- SCENE SETUP ---
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x050811);
+scene.fog = new THREE.FogExp2(0x8cb4e1, 0.0015);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 5000);
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+container.appendChild(renderer.domElement);
+
+// --- CONTROLS ---
+const orbitControls = new OrbitControls(camera, renderer.domElement);
+orbitControls.enableDamping = true;
+orbitControls.dampingFactor = 0.05;
+orbitControls.maxPolarAngle = Math.PI / 2 - 0.01;
+orbitControls.minDistance = 10;
+orbitControls.maxDistance = 1500;
+
+const walkControls = new PointerLockControls(camera, document.body);
+let isWalkMode = false;
+
+const keys = { forward: false, backward: false, left: false, right: false };
+document.addEventListener('keydown', (e) => {
+  if (!isWalkMode) return;
+  if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.forward = true;
+  if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.backward = true;
+  if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
+  if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = true;
+});
+document.addEventListener('keyup', (e) => {
+  if (!isWalkMode) return;
+  if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.forward = false;
+  if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.backward = false;
+  if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = false;
+  if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = false;
+});
+
+// --- LIGHTING & SKY ---
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+scene.add(ambientLight);
+
+const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.width = 2048;
+sunLight.shadow.mapSize.height = 2048;
+sunLight.shadow.camera.near = 10;
+sunLight.shadow.camera.far = 2000;
+const d = 400;
+sunLight.shadow.camera.left = -d;
+sunLight.shadow.camera.right = d;
+sunLight.shadow.camera.top = d;
+sunLight.shadow.camera.bottom = -d;
+sunLight.shadow.bias = -0.0005;
+scene.add(sunLight);
+
+// Sky & Water
+const sky = new Sky();
+sky.scale.setScalar(10000);
+scene.add(sky);
+const skyUniforms = sky.material.uniforms;
+skyUniforms['turbidity'].value = 10;
+skyUniforms['rayleigh'].value = 2;
+skyUniforms['mieCoefficient'].value = 0.005;
+skyUniforms['mieDirectionalG'].value = 0.8;
+
+const waterGeometry = new THREE.PlaneGeometry(10000, 10000);
+const water = new Water(waterGeometry, {
+  textureWidth: 512,
+  textureHeight: 512,
+  waterNormals: new THREE.TextureLoader().load('https://raw.githubusercontent.com/mrdoob/three.js/r160/examples/textures/waternormals.jpg', (texture) => {
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  }),
+  sunDirection: new THREE.Vector3(),
+  sunColor: 0xffffff,
+  waterColor: 0x001e2f,
+  distortionScale: 3.7,
+  fog: scene.fog !== undefined
+});
+water.rotation.x = -Math.PI / 2;
+water.position.y = 0;
+scene.add(water);
+
+// --- PROCEDURAL TEXTURES GENERATOR ---
+function createBuildingTexture(type) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  
+  if (type === 'azulejo') {
+    ctx.fillStyle = '#e8f0f8';
+    ctx.fillRect(0, 0, 256, 256);
+    ctx.fillStyle = '#1e3a8a';
+    // Portuguese tile pattern
+    ctx.strokeStyle = '#1e3a8a';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(8, 8, 240, 240);
+    ctx.beginPath();
+    ctx.arc(128, 128, 60, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.fillStyle = '#3b82f6';
+    ctx.beginPath();
+    ctx.arc(128, 128, 20, 0, Math.PI*2);
+    ctx.fill();
+    for(let i=0; i<4; i++) {
+      ctx.save();
+      ctx.translate(128, 128);
+      ctx.rotate((i * Math.PI) / 2);
+      ctx.beginPath();
+      ctx.moveTo(0, -60);
+      ctx.lineTo(20, -100);
+      ctx.lineTo(-20, -100);
+      ctx.fill();
+      ctx.restore();
+    }
+  } else if (type === 'windows') {
+    ctx.fillStyle = type === 'pastel_yellow' ? '#fef08a' : (type === 'pastel_pink' ? '#fbcfe8' : '#f1f5f9');
+    ctx.fillRect(0, 0, 256, 256);
+    ctx.fillStyle = '#334155';
+    // Grid of windows
+    for (let x = 32; x < 256; x += 64) {
+      for (let y = 32; y < 256; y += 64) {
+        ctx.fillRect(x, y, 32, 44);
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(x+4, y+4, 24, 36);
+        ctx.fillStyle = '#334155';
+      }
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  return texture;
+}
+
+const azulejoTex = createBuildingTexture('azulejo');
+const windowTex = createBuildingTexture('windows');
+
+// --- WORLD GENERATION: LISBON LANDMARKS ---
+const worldGroup = new THREE.Group();
+scene.add(worldGroup);
+
+// Materials for City
+const roofMat = new THREE.MeshStandardMaterial({ color: 0xb94a2b, roughness: 0.8 });
+const wallMatWhite = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.7 });
+const wallMatYellow = new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.7 });
+const wallMatPink = new THREE.MeshStandardMaterial({ color: 0xfbcfe8, roughness: 0.7 });
+const stoneMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d4, roughness: 0.6 });
+
+// 1. ALFAMA HILLSIDE & HOUSES
+function buildAlfama() {
+  const alfamaGroup = new THREE.Group();
+  const houseGeo = new THREE.BoxGeometry(1, 1, 1);
+  const roofGeo = new THREE.ConeGeometry(0.75, 0.8, 4);
+
+  // Generate dense terraced houses climbing the hill
+  for (let x = -300; x <= 0; x += 16) {
+    for (let z = -200; z <= 200; z += 16) {
+      const heightFactor = Math.min(1, Math.max(0, (-x - 30) / 250));
+      const floors = Math.floor(3 + heightFactor * 4);
+      const h = floors * 3.5;
+      const w = 12 + Math.random() * 4;
+      const d = 12 + Math.random() * 4;
+      const posX = x + (Math.random() - 0.5) * 4;
+      const posZ = z + (Math.random() - 0.5) * 4;
+      const posY = 5 + (-x * 0.3) + (Math.random() - 0.5) * 2;
+
+      const matChoice = Math.random();
+      let wallMat = wallMatWhite;
+      if (matChoice > 0.6) wallMat = wallMatYellow;
+      else if (matChoice > 0.3) wallMat = wallMatPink;
+
+      // House Body
+      const houseMesh = new THREE.Mesh(houseGeo, wallMat);
+      houseMesh.scale.set(w, h, d);
+      houseMesh.position.set(posX, posY + h / 2, posZ);
+      houseMesh.castShadow = true;
+      houseMesh.receiveShadow = true;
+      alfamaGroup.add(houseMesh);
+
+      // Roof
+      const roofMesh = new THREE.Mesh(roofGeo, roofMat);
+      roofMesh.scale.set(w * 0.8, 1, d * 0.8);
+      roofMesh.position.set(posX, posY + h + 0.4, posZ);
+      roofMesh.rotation.y = Math.PI / 4;
+      roofMesh.castShadow = true;
+      alfamaGroup.add(roofMesh);
+    }
+  }
+  worldGroup.add(alfamaGroup);
+}
+buildAlfama();
+
+// 2. SÃO JORGE CASTLE (on top of Alfama hill)
+function buildCastle() {
+  const castleGroup = new THREE.Group();
+  castleGroup.position.set(-250, 95, 0);
+
+  const wallGeo = new THREE.BoxGeometry(10, 12, 120);
+  const wall = new THREE.Mesh(wallGeo, stoneMat);
+  wall.castShadow = true; wall.receiveShadow = true;
+  castleGroup.add(wall);
+
+  // Towers
+塔s: for (let i = -1; i <= 1; i += 2) {
+    const towerGeo = new THREE.CylinderGeometry(6, 6, 18, 8);
+    const tower = new THREE.Mesh(towerGeo, stoneMat);
+    tower.position.set(0, 3, i * 60);
+    tower.castShadow = true;
+    castleGroup.add(tower);
+  }
+  worldGroup.add(castleGroup);
+}
+buildCastle();
+
+// 3. NATIONAL PANTHEON (Santa Engrácia - white dome near terminal)
+function buildPantheon() {
+  const group = new THREE.Group();
+  group.position.set(-80, 12, 120); // Close to Jardim do Tabaco
+
+  const baseGeo = new THREE.BoxGeometry(30, 25, 30);
+  const base = new THREE.Mesh(baseGeo, wallMatWhite);
+  base.castShadow = true; base.receiveShadow = true;
+  group.add(base);
+
+  const drumGeo = new THREE.CylinderGeometry(10, 10, 12, 16);
+  const drum = new THREE.Mesh(drumGeo, wallMatWhite);
+  drum.position.y = 18;
+  drum.castShadow = true;
+  group.add(drum);
+
+  const domeGeo = new THREE.SphereGeometry(10, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+  const dome = new THREE.Mesh(domeGeo, stoneMat);
+  dome.position.y = 24;
+  dome.castShadow = true;
+  group.add(dome);
+
+  worldGroup.add(group);
+}
+buildPantheon();
+
+// 4. LISBON CRUISE TERMINAL (Jardim do Tabaco)
+const terminalGroup = new THREE.Group();
+terminalGroup.position.set(20, 2.5, -40);
+function buildTerminal() {
+  const termGeo = new THREE.BoxGeometry(160, 12, 50);
+  const termMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.4, metalness: 0.2 });
+  const terminal = new THREE.Mesh(termGeo, termMat);
+  terminal.castShadow = true; terminal.receiveShadow = true;
+  terminalGroup.add(terminal);
+
+  // Glass facade facing water
+  const glassGeo = new THREE.BoxGeometry(150, 8, 2);
+  const glassMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.1, metalness: 0.9, transparent: true, opacity: 0.7 });
+  const glass = new THREE.Mesh(glassGeo, glassMat);
+  glass.position.set(0, 0, 25);
+  terminalGroup.add(glass);
+
+  worldGroup.add(terminalGroup);
+}
+buildTerminal();
+
+// 5. 25 DE ABRIL BRIDGE (Red suspension bridge to the west)
+function buildBridge() {
+  const bridgeGroup = new THREE.Group();
+  bridgeGroup.position.set(-650, 0, 0);
+
+  const towerMat = new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.5 });
+  const deckMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 });
+
+  // Two massive towers (~190m tall)
+  [-150, 150].forEach(z => {
+    const towerGeo = new THREE.BoxGeometry(12, 190, 16);
+    const tower = new THREE.Mesh(towerGeo, towerMat);
+    tower.position.set(0, 95, z);
+    tower.castShadow = true;
+    bridgeGroup.add(tower);
+  });
+
+  // Deck (~70m above water)
+  const deckGeo = new THREE.BoxGeometry(40, 4, 600);
+  const deck = new THREE.Mesh(deckGeo, deckMat);
+  deck.position.set(0, 70, 0);
+  deck.castShadow = true; deck.receiveShadow = true;
+  bridgeGroup.add(deck);
+
+  // Cristo Rei statue on south bank opposite bridge
+  const statueGroup = new THREE.Group();
+  statueGroup.position.set(-650, 0, 500);
+  
+  const pedestalGeo = new THREE.BoxGeometry(20, 80, 20);
+  const pedestal = new THREE.Mesh(pedestalGeo, wallMatWhite);
+  pedestal.position.y = 40;
+  statueGroup.add(pedestal);
+
+  const statueGeo = new THREE.CylinderGeometry(2, 4, 28, 8);
+  const statue = new THREE.Mesh(statueGeo, wallMatWhite);
+  statue.position.y = 94;
+  statueGroup.add(statue);
+
+  bridgeGroup.add(statueGroup);
+  worldGroup.add(bridgeGroup);
+}
+buildBridge();
+
+// 6. PRAÇA DO COMÉRCIO (Yellow arcades to the west)
+function buildComercio() {
+  const group = new THREE.Group();
+  group.position.set(-350, 2, -120);
+
+  const arcadeGeo = new THREE.BoxGeometry(200, 16, 30);
+  const arcadeMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.8 }); // Yellow Lisbon ochre
+  const arcades = new THREE.Mesh(arcadeGeo, arcadeMat);
+  arcades.position.set(0, 8, 0);
+  arcades.castShadow = true; arcades.receiveShadow = true;
+  group.add(arcades);
+
+  // Triumphal Arch in middle
+  const archGeo = new THREE.BoxGeometry(30, 24, 32);
+  const arch = new THREE.Mesh(archGeo, arcadeMat);
+  arch.position.set(0, 12, 0);
+  arch.castShadow = true;
+  group.add(arch);
+
+  worldGroup.add(group);
+}
+buildComercio();
+
+// 7. QUAY & WATERFRONT ROAD
+const quayGroup = new THREE.Group();
+function buildQuay() {
+  const quayGeo = new THREE.BoxGeometry(2000, 4, 80);
+  const quayMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.9 });
+  const quay = new THREE.Mesh(quayGeo, quayMat);
+  quay.position.set(0, 2, -40);
+  quay.receiveShadow = true;
+  quayGroup.add(quay);
+
+  // Bollards along quay
+  const bollardGeo = new THREE.CylinderGeometry(0.6, 0.8, 2, 12);
+  const bollardMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8 });
+  for (let x = -150; x <= 150; x += 25) {
+    const bollard = new THREE.Mesh(bollardGeo, bollardMat);
+    bollard.position.set(x, 4.5, -2);
+    bollard.castShadow = true;
+    quayGroup.add(bollard);
+  }
+
+  worldGroup.add(quayGroup);
+}
+buildQuay();
+
+
+// --- THE CRUISE SHIP ---
+const shipGroup = new THREE.Group();
+// Initial docked position: alongside terminal at Jardim do Tabaco
+const dockedPos = new THREE.Vector3(0, 2, 35);
+const dockedRot = new THREE.Euler(0, 0, 0);
+shipGroup.position.copy(dockedPos);
+scene.add(shipGroup);
+
+// Ship Materials
+const hullBlackMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3, metalness: 0.5 });
+const hullRedMat = new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.6 }); // Boot-top
+const hullWhiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2 });
+const glassBalconyMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.1, metalness: 0.9, transparent: true, opacity: 0.6 });
+const deckFloorMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 });
+const poolBlueMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.1, metalness: 0.8 });
+
+function buildCruiseShip() {
+  // 1. Hull & Bulbous Bow (~300m long, ~38m wide)
+  const hullGroup = new THREE.Group();
+
+  // Main hull body
+  const hullGeo = new THREE.BoxGeometry(38, 14, 280);
+  const hull = new THREE.Mesh(hullGeo, hullWhiteMat);
+  hull.position.set(0, 7, 0);
+  hull.castShadow = true; hull.receiveShadow = true;
+  hullGroup.add(hull);
+
+  // Black lower hull & red boot-top
+  const lowerHullGeo = new THREE.BoxGeometry(37.6, 6, 276);
+  const lowerHull = new THREE.Mesh(lowerHullGeo, hullBlackMat);
+  lowerHull.position.set(0, 3, 0);
+  lowerHull.castShadow = true;
+  hullGroup.add(lowerHull);
+
+  const bootGeo = new THREE.BoxGeometry(37.8, 1, 278);
+  const boot = new THREE.Mesh(bootGeo, hullRedMat);
+  boot.position.set(0, 6.2, 0);
+  hullGroup.add(boot);
+
+  // Bulbous bow (protruding forward underwater)
+  const bulbGeo = new THREE.SphereGeometry(4, 16, 16);
+  const bulb = new THREE.Mesh(bulbGeo, hullBlackMat);
+  bulb.scale.set(1, 0.8, 2);
+  bulb.position.set(0, 2, -145);
+  hullGroup.add(bulb);
+
+  // Ship Name on Bow & Stern
+  // (We use a simple canvas texture for ship name "MSC LISBOA")
+  const nameCanvas = document.createElement('canvas');
+  nameCanvas.width = 512; nameCanvas.height = 128;
+  const nCtx = nameCanvas.getContext('2d');
+  nCtx.fillStyle = '#d4af37'; // Gold lettering
+  nCtx.font = 'bold 48px sans-serif';
+  nCtx.textAlign = 'center';
+  nCtx.textBaseline = 'middle';
+  nCtx.fillText('OCEAN SPIRIT — LISBOA', 256, 64);
+  const nameTex = new THREE.CanvasTexture(nameCanvas);
+  
+  const nameMat = new THREE.MeshBasicMaterial({ map: nameTex, transparent: true });
+  const bowNameGeo = new THREE.PlaneGeometry(16, 4);
+  const bowName = new THREE.Mesh(bowNameGeo, nameMat);
+  bowName.position.set(0, 8, -141);
+  hullGroup.add(bowName);
+
+  const sternName = bowName.clone();
+  sternName.position.set(0, 8, 141);
+  sternName.rotation.y = Math.PI;
+  hullGroup.add(sternName);
+
+  shipGroup.add(hullGroup);
+
+  // 2. Superstructure & Balcony Cabin Decks (18 decks total)
+  const superstructureGroup = new THREE.Group();
+  
+  // Stacking decks
+  for (let i = 0; i < 12; i++) {
+    const deckWidth = 34 - i * 0.4;
+    const deckLength = 220 - i * 4;
+    const deckHeight = 3.2;
+    const deckGeo = new THREE.BoxGeometry(deckWidth, deckHeight, deckLength);
+    const deckMesh = new THREE.Mesh(deckGeo, hullWhiteMat);
+    deckMesh.position.set(0, 14 + i * deckHeight + deckHeight/2, -5 + i * 1);
+    deckMesh.castShadow = true; deckMesh.receiveShadow = true;
+    superstructureGroup.add(deckMesh);
+
+    // Glass balcony railings along sides
+    const railGeo = new THREE.BoxGeometry(deckWidth + 0.4, deckHeight * 0.8, deckLength);
+    const railMesh = new THREE.Mesh(railGeo, glassBalconyMat);
+    railMesh.position.set(0, 14 + i * deckHeight + deckHeight/2, -5 + i * 1);
+    superstructureGroup.add(railMesh);
+  }
+
+  // Lifeboats hanging in davits
+  const boatGeo = new THREE.CapsuleGeometry(1.5, 8, 4, 8);
+  const boatMat = new THREE.MeshStandardMaterial({ color: 0xfff5e6, roughness: 0.5 });
+  for (let z = -60; z <= 60; z += 20) {
+    [-17.5, 17.5].forEach(x => {
+      const lifeboat = new THREE.Mesh(boatGeo, boatMat);
+      lifeboat.rotation.z = Math.PI / 2;
+      lifeboat.position.set(x, 18, z);
+      lifeboat.castShadow = true;
+      superstructureGroup.add(lifeboat);
+    });
+  }
+
+  shipGroup.add(superstructureGroup);
+
+  // 3. Bridge & Top Pool Deck
+  const topGroup = new THREE.Group();
+  const topY = 14 + 12 * 3.2;
+
+  // Bridge (Navigational command center with wings)
+  const bridgeGeo = new THREE.BoxGeometry(36, 6, 12);
+  const bridgeMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.2 });
+  const bridge = new THREE.Mesh(bridgeGeo, bridgeMat);
+  bridge.position.set(0, topY + 3, -60);
+  bridge.castShadow = true;
+  topGroup.add(bridge);
+
+  // Radar Mast & Funnels
+  const mastGeo = new THREE.CylinderGeometry(0.8, 1.5, 16, 8);
+  const mastMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8 });
+  const mast = new THREE.Mesh(mastGeo, mastMat);
+  mast.position.set(0, topY + 14, -55);
+  topGroup.add(mast);
+
+  // Twin Funnels
+  [-4, 4].forEach(x => {
+    const funnelGeo = new THREE.CylinderGeometry(4, 5, 14, 12);
+    const funnelMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.3 }); // Dark blue funnel
+    const funnel = new THREE.Mesh(funnelGeo, funnelMat);
+    funnel.position.set(x, topY + 10, 20);
+    funnel.castShadow = true;
+    topGroup.add(funnel);
+
+    // Funnel stripe
+    const stripeGeo = new THREE.CylinderGeometry(4.1, 4.1, 3, 12);
+    const stripeMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.3 }); // Orange stripe
+    const stripe = new THREE.Mesh(stripeGeo, stripeMat);
+    stripe.position.set(x, topY + 11, 20);
+    topGroup.add(stripe);
+  });
+
+  // Top Pool Deck & Water Slides
+  const poolDeckGeo = new THREE.BoxGeometry(26, 1, 100);
+  const poolDeck = new THREE.Mesh(poolDeckGeo, deckFloorMat);
+  poolDeck.position.set(0, topY + 0.5, 40);
+  poolDeck.receiveShadow = true;
+  topGroup.add(poolDeck);
+
+  // Swimming pools
+  const poolGeo = new THREE.BoxGeometry(10, 0.5, 18);
+  const pool1 = new THREE.Mesh(poolGeo, poolBlueMat);
+  pool1.position.set(0, topY + 1.1, 30);
+  topGroup.add(pool1);
+
+  const pool2 = pool1.clone();
+  pool2.position.set(0, topY + 1.1, 60);
+  topGroup.add(pool2);
+
+  // Water slide tubes (curved tori/tubes)
+  const slideMat = new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.2, metalness: 0.5 });
+  const curve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(6, topY + 12, 10),
+    new THREE.Vector3(12, topY + 8, 30),
+    new THREE.Vector3(10, topY + 1, 70)
+  ]);
+  const slideGeo = new THREE.TubeGeometry(curve, 64, 0.8, 8, false);
+  const slide = new THREE.Mesh(slideGeo, slideMat);
+  topGroup.add(slide);
+
+  shipGroup.add(topGroup);
+
+  // 4. Mooring Lines & Gangways
+  const lineMat = new THREE.LineBasicMaterial({ color: 0xcbd5e1 });
+  const lineGeos = [];
+  // Bow lines to quay bollards
+  [-120, -100, -80].forEach(z => {
+    const points = [new THREE.Vector3(-15, 10, z), new THREE.Vector3(-20, 4.5, z - 30)];
+    const geo = new THREE.BufferGeometry().setFromPoints(points);
+    const line = new THREE.Line(geo, lineMat);
+    shipGroup.add(line);
+  });
+  // Stern lines
+  [80, 100, 120].forEach(z => {
+    const points = [new THREE.Vector3(-15, 10, z), new THREE.Vector3(-20, 4.5, z + 30)];
+    const geo = new THREE.BufferGeometry().setFromPoints(points);
+    const line = new THREE.Line(geo, lineMat);
+    shipGroup.add(line);
+  });
+
+  // Gangways connecting ship to terminal
+  const gangwayGeo = new THREE.BoxGeometry(2, 2, 25);
+  const gangwayMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.7 });
+  const gangway1 = new THREE.Mesh(gangwayGeo, gangwayMat);
+  gangway1.position.set(-18, 10, -20);
+  gangway1.rotation.y = 0.3;
+  shipGroup.add(gangway1);
+
+  const gangway2 = gangway1.clone();
+  gangway2.position.set(-18, 10, 20);
+  gangway2.rotation.y = -0.3;
+  shipGroup.add(gangway2);
+}
+buildCruiseShip();
+
+
+// --- LIFE IN THE PORT & TRAFFIC ---
+const trafficGroup = new THREE.Group();
+scene.add(trafficGroup);
+
+// 1. Seagulls circling in the sky
+const seagullGroup = new THREE.Group();
+const birdGeo = new THREE.ConeGeometry(0.5, 2, 3);
+birdGeo.rotateX(Math.PI / 2);
+const birdMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+const seagulls = [];
+for(let i=0; i<15; i++) {
+  const bird = new THREE.Mesh(birdGeo, birdMat);
+  bird.position.set((Math.random()-0.5)*400, 120 + Math.random()*80, (Math.random()-0.5)*400);
+  seagullGroup.add(bird);
+  seagulls.push({ mesh: bird, speed: 0.5 + Math.random()*0.5, radius: 50 + Math.random()*100, angle: Math.random()*Math.PI*2 });
+}
+scene.add(seagullGroup);
+
+// 2. Boats on the Tagus (Tugboat, Pilot boat, Ferries, Sailboats)
+const boatGroup = new THREE.Group();
+scene.add(boatGroup);
+
+// Helper to create simple boat
+function createBoat(color, scale) {
+  const g = new THREE.Group();
+  const hull = new THREE.Mesh(new THREE.BoxGeometry(4, 3, 12), new THREE.MeshStandardMaterial({ color: color }));
+  hull.position.y = 1.5;
+  hull.castShadow = true;
+  g.add(hull);
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(3, 2.5, 5), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+  cabin.position.set(0, 3.5, 1);
+  g.add(cabin);
+  g.scale.set(scale, scale, scale);
+  return g;
+}
+
+const tugboat = createBoat(0x1e3a8a, 1.5); // Standing by near ship bow
+tugboat.position.set(-30, 0, -100);
+tugboat.rotation.y = Math.PI / 4;
+boatGroup.add(tugboat);
+
+const ferry = createBoat(0xf97316, 2.5); // Crossing Tagus
+ferry.position.set(200, 0, -300);
+boatGroup.add(ferry);
+
+const sailboat = new THREE.Group();
+const sbHull = new THREE.Mesh(new THREE.BoxGeometry(2, 1.5, 8), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+sailboat.add(sbHull);
+const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 12), new THREE.MeshStandardMaterial({ color: 0x334155 }));
+mast.position.set(0, 6, 0);
+sailboat.add(mast);
+const sail = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ color: 0xf8fafc, side: THREE.DoubleSide }));
+// Simple triangle sail
+const sailGeo = new THREE.BufferGeometry();
+const vertices = new Float32Array([0, 11, 0,  0, 2, 0,  -4, 4, 0]);
+sailGeo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+const sailMesh = new THREE.Mesh(sailGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }));
+sailboat.add(sailMesh);
+sailboat.position.set(-300, 0, 150);
+sailboat.scale.set(1.5, 1.5, 1.5);
+boatGroup.add(sailboat);
+
+
+// --- DEPARTURE ANIMATION STATE ---
+let isDeparting = false;
+let departureProgress = 0;
+
+document.getElementById('departure-btn').addEventListener('click', () => {
+  if (isDeparting) return;
+  isDeparting = true;
+  audioSys.playHorn();
+  document.getElementById('ship-status').innerText = 'Status: Sounding horn & departing port';
+  
+  // Retract gangways and loosen lines logic can be visually triggered here
+  setTimeout(() => {
+    document.getElementById('ship-status').innerText = 'Status: Sailing down Tagus towards 25 de Abril bridge';
+  }, 3000);
+});
+
+
+// --- CAMERA PRESETS & UI LOGIC ---
+const cameraPresets = {
+  orbit: { pos: new THREE.Vector3(150, 80, 250), target: new THREE.Vector3(0, 30, 0) },
+  miradouro: { pos: new THREE.Vector3(-180, 110, -180), target: new THREE.Vector3(0, 25, 0) },
+  waterfront: { pos: new THREE.Vector3(40, 6, 80), target: new THREE.Vector3(0, 15, 0) },
+  aerial: { pos: new THREE.Vector3(0, 450, 450), target: new THREE.Vector3(0, 0, 0) },
+  river: { pos: new THREE.Vector3(100, 15, 450), target: new THREE.Vector3(0, 20, 0) },
+  deck: { pos: new THREE.Vector3(0, 65, 40), target: new THREE.Vector3(-250, 80, 0) }
+};
+
+let currentCamMode = 'orbit';
+
+function setCameraPreset(name) {
+  currentCamMode = name;
+  const preset = cameraPresets[name];
+  if (!preset) return;
+
+  if (isWalkMode) {
+    walkControls.unlock();
+    isWalkMode = false;
+    document.getElementById('crosshair').style.display = 'none';
+    document.getElementById('instructions').style.opacity = 0;
+    document.getElementById('walk-mode-btn').classList.remove('active');
+  }
+
+  orbitControls.enabled = true;
+  
+  // Smoothly animate camera position & target
+  const startPos = camera.position.clone();
+  const startTarget = orbitControls.target.clone();
+  let t = 0;
+  
+  function animateCam() {
+    t += 0.04;
+    if (t > 1) t = 1;
+    camera.position.lerpVectors(startPos, preset.pos, t);
+    orbitControls.target.lerpVectors(startTarget, preset.target, t);
+    orbitControls.update();
+    if (t < 1 && currentCamMode === name) requestAnimationFrame(animateCam);
+  }
+  animateCam();
+}
+
+// UI Event Listeners
+document.querySelectorAll('.cam-btn').forEach(btn => {
+  if (btn.id === 'walk-mode-btn') {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.cam-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentCamMode = 'walk';
+      orbitControls.enabled = false;
+      isWalkMode = true;
+      camera.position.set(0, 6, 20);
+      walkControls.lock();
+      document.getElementById('crosshair').style.display = 'block';
+      document.getElementById('instructions').style.opacity = 1;
+    });
+  } else {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.cam-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      setCameraPreset(e.target.dataset.cam);
+    });
+  }
+});
+
+walkControls.addEventListener('unlock', () => {
+  if (isWalkMode) {
+    document.getElementById('crosshair').style.display = 'none';
+    document.getElementById('instructions').style.opacity = 0;
+  }
+});
+
+// Time & Weather UI
+const timeSlider = document.getElementById('time-slider');
+const timeVal = document.getElementById('time-val');
+const playTimeBtn = document.getElementById('play-time-btn');
+const weatherSelect = document.getElementById('weather-select');
+
+let timeOfDay = 18.5; // 18:30 Golden Hour default
+let autoTime = true;
+
+playTimeBtn.addEventListener('click', () => {
+  autoTime = !autoTime;
+  playTimeBtn.innerText = autoTime ? 'Pause' : 'Play';
+  playTimeBtn.classList.toggle('active', autoTime);
+});
+
+timeSlider.addEventListener('input', (e) => {
+  timeOfDay = parseFloat(e.target.value);
+  updateTimeOfDay();
+});
+
+weatherSelect.addEventListener('change', (e) => {
+  const val = e.target.value;
+  if (val === 'clear') {
+    scene.fog.density = 0.0015;
+    skyUniforms['turbidity'].value = 10;
+  } else if (val === 'haze') {
+    scene.fog.density = 0.004;
+    skyUniforms['turbidity'].value = 25;
+  } else if (val === 'rain') {
+    scene.fog.density = 0.008;
+    skyUniforms['turbidity'].value = 15;
+  }
+});
+
+// UI Hide/Show
+const ui = document.getElementById('ui');
+const toggleUiBtn = document.getElementById('toggle-ui');
+document.getElementById('hide-ui-btn').addEventListener('click', () => {
+  ui.classList.add('hidden');
+  toggleUiBtn.style.display = 'flex';
+});
+toggleUiBtn.addEventListener('click', () => {
+  ui.classList.remove('hidden');
+  toggleUiBtn.style.display = 'none';
+});
+
+
+// --- TIME OF DAY LIGHTING ENGINE ---
+function updateTimeOfDay() {
+  const hours = Math.floor(timeOfDay);
+  const mins = Math.floor((timeOfDay - hours) * 60);
+  timeVal.innerText = `${hours.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')} ` + 
+    (timeOfDay >= 18 && timeOfDay < 20 ? '(Golden Hour)' : (timeOfDay < 6 || timeOfDay > 20 ? '(Night)' : '(Day)'));
+
+  // Calculate sun angle from time of day (0 to 24)
+  const theta = Math.PI * ((timeOfDay - 6) / 12);
+  const sunRadius = 400;
+  const sunX = Math.cos(theta) * sunRadius;
+  const sunY = Math.sin(theta) * sunRadius;
+  const sunZ = 200;
+
+  sunLight.position.set(sunX, Math.max(-50, sunY), sunZ);
+  water.material.uniforms['sunDirection'].value.copy(sunLight.position).normalize();
+  sky.material.uniforms['sunPosition'].value.copy(sunLight.position);
+
+  // Dynamic ambient and lighting intensity based on sun elevation
+  const elevation = sunY / sunRadius;
+  if (elevation > 0.1) {
+    // Day / Golden Hour
+    ambientLight.intensity = Math.max(0.2, elevation * 0.8);
+    sunLight.intensity = Math.max(0.2, elevation * 2.0);
+    scene.background.setHex(elevation > 0.3 ? 0x8cb4e1 : 0xff9944); // warm golden hour tint
+  } else {
+    // Night time
+    ambientLight.intensity = 0.15;
+    sunLight.intensity = 0.1;
+    scene.background.setHex(0x050811);
+  }
+}
+
+
+// --- ANIMATION LOOP ---
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  const delta = clock.getDelta();
+  const time = clock.getElapsedTime();
+
+  // 1. Time of Day Auto Progress
+  if (autoTime) {
+    timeOfDay += delta * 0.05;
+    if (timeOfDay > 24) timeOfDay = 0;
+    timeSlider.value = timeOfDay;
+    updateTimeOfDay();
+  }
+
+  // 2. Water Animation
+  water.material.uniforms['time'].value += delta * 0.3;
+
+  // 3. Seagulls Circling
+  seagulls.forEach(g => {
+    g.angle += delta * g.speed * 0.5;
+    g.mesh.position.x = Math.cos(g.angle) * g.radius - 100;
+    g.mesh.position.z = Math.sin(g.angle) * g.radius;
+    g.mesh.rotation.y = -g.angle;
+  });
+
+  // 4. Boats Traffic Movement
+  ferry.position.x -= delta * 15;
+  if (ferry.position.x < -800) ferry.position.x = 800;
+
+  sailboat.position.x += delta * 8;
+  sailboat.position.z -= delta * 2;
+  if (sailboat.position.x > 800) { sailboat.position.x = -800; sailboat.position.z = 150; }
+
+  // 5. Cruise Ship Departure Animation
+  if (isDeparting) {
+    departureProgress += delta * 0.05;
+    if (departureProgress < 5) {
+      // Push bow out slightly
+      shipGroup.rotation.y = departureProgress * 0.02;
+    } else {
+      // Sail west down Tagus towards bridge
+      shipGroup.position.x -= delta * 15;
+      shipGroup.rotation.y = Math.PI / 2 + 0.1;
+    }
+  }
+
+  // 6. Walk Mode Controls Update
+  if (isWalkMode) {
+    const speed = 15 * delta;
+    if (keys.forward) walkControls.moveForward(speed);
+    if (keys.backward) walkControls.moveForward(-speed);
+    if (keys.left) walkControls.moveRight(-speed);
+    if (keys.right) walkControls.moveRight(speed);
+    
+    // Clamp walk position strictly on quay
+    camera.position.y = 6;
+    if (camera.position.x > 300) camera.position.x = 300;
+    if (camera.position.x < -300) camera.position.x = -300;
+    if (camera.position.z > 20) camera.position.z = 20;
+    if (camera.position.z < -20) camera.position.z = -20;
+  } else if (currentCamMode === 'orbit' || currentCamMode === 'miradouro' || currentCamMode === 'waterfront' || currentCamMode === 'aerial' || currentCamMode === 'river' || currentCamMode === 'deck') {
+    orbitControls.update();
+  }
+
+  renderer.render(scene, camera);
+}
+
+// Initial lighting call
+updateTimeOfDay();
+
+// Start animation loop
+animate();
+
+// --- WINDOW RESIZE ---
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Hide loading screen once ready
+setTimeout(() => {
+  const loading = document.getElementById('loading');
+  loading.style.opacity = '0';
+  setTimeout(() => loading.style.display = 'none', 800);
+}, 1000);
+
+</script>
+</body>
+</html>
