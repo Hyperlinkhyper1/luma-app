@@ -12,7 +12,7 @@ test('container syscall profile keeps default denial and supports glibc thread f
   const clone3 = profile.syscalls.find((rule) => rule.names.includes('clone3'));
   assert.equal(clone3.action, 'SCMP_ACT_ERRNO');
   assert.equal(clone3.errnoRet, 38);
-  for (const name of ['clone', 'setns', 'unshare']) {
+  for (const name of ['clone', 'setns', 'unshare', 'chroot']) {
     assert.ok(profile.syscalls.some((rule) => rule.action === 'SCMP_ACT_ALLOW' && rule.names.includes(name) && !rule.args?.length));
   }
 });

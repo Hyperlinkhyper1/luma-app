@@ -69,6 +69,16 @@
 			"excludes": {}
 		},
 		{
+			"comment": "Chromium's namespace sandbox chroots inside its own user namespace. The container drops every capability, so Docker would discard the CAP_SYS_CHROOT-gated rule below; the kernel's own capability check still refuses chroot outside that namespace.",
+			"names": [
+				"chroot"
+			],
+			"action": "SCMP_ACT_ALLOW",
+			"args": [],
+			"includes": {},
+			"excludes": {}
+		},
+		{
 			"names": [
 				"accept",
 				"accept4",

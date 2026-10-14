@@ -257,7 +257,12 @@ Puppeteer's standard image recommends `SYS_ADMIN`; this setup uses the narrower
 user namespace profile. The security workflow builds the image and verifies a
 real PNG, sandbox startup, and blocked network requests in the isolated network.
 The profile includes Docker's `clone3` ENOSYS compatibility rule so Bookworm's
-glibc falls back to `clone` instead of failing to start threads.
+glibc falls back to `clone` instead of failing to start threads. It also
+allows `chroot` unconditionally: Docker drops the default `CAP_SYS_CHROOT`-gated
+rule when every capability is dropped, and Chromium's sandbox chroots inside
+its own user namespace (`Check failed: sys_chroot("/proc/self/fdinfo/")`
+otherwise). The kernel still refuses `chroot` to the capability-less renderer
+user outside that namespace.
 
 Hosts with `kernel.apparmor_restrict_unprivileged_userns = 1` (Ubuntu 23.10
 and later) deny user namespaces to Docker's default AppArmor profile, so
