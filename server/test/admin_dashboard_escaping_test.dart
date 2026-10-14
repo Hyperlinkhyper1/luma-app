@@ -162,6 +162,33 @@ void main() {
     expect(response.headers['location'], '/admin/login?failed=1');
   });
 
+  test('server storage tile includes files outside account quotas', () async {
+    Future<Map<String, dynamic>> storage() async {
+      final response = await send('GET', '/admin/storage', admin: true);
+      expect(response.statusCode, 200);
+      return jsonDecode(await response.readAsString()) as Map<String, dynamic>;
+    }
+
+    final before = await storage();
+    final media = File('${dir.path}/new_feature/nested/upload.bin');
+    await media.parent.create(recursive: true);
+    await media.writeAsBytes(List.filled(1234, 1));
+    final after = await storage();
+    expect(after['complete'], isTrue);
+    expect(after['totalBytes'], (before['totalBytes'] as int) + 1234);
+    expect((after['entries'] as List).map((entry) => entry['id']),
+        contains('other_luma_files'));
+
+    final response = await send('GET', '/admin', admin: true);
+    expect(response.statusCode, 200);
+    final html = await response.readAsString();
+    expect(html, contains('id="serverStorageValue">${after['capacityText']}'));
+    expect(html, contains('Luma server storage'));
+    expect(html, isNot(contains('Storage capacity</div>')));
+    expect(
+        html, contains('serverStorageValue.textContent = data.capacityText'));
+  });
+
   test('co-op room state is capped while it streams in', () async {
     final token = await register('player@example.com');
     final created = await send('POST', '/api/v1/subway/rooms', token: token);

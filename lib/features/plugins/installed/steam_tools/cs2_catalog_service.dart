@@ -32,8 +32,13 @@ class Cs2CatalogService {
 
   final http.Client _client;
 
-  static const _datasetUrl =
-      'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/skins.json';
+  /// Tried in order. jsDelivr's GitHub mirror stopped serving this repo
+  /// (it now stalls ~60 s and answers 404), so raw GitHub goes first and
+  /// jsDelivr stays only as a fallback in case it recovers.
+  static const _datasetUrls = [
+    'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/skins.json',
+    'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/skins.json',
+  ];
   static const _cacheFileName = 'luma_cs2_catalog.json';
   static const _timeout = Duration(seconds: 30);
 
@@ -72,24 +77,7 @@ class Cs2CatalogService {
 
   /// Fetches the live dataset and replaces the on-disk cache with it.
   Future<List<Cs2SkinDef>> refresh() async {
-    http.Response response;
-    try {
-      response = await _client.get(Uri.parse(_datasetUrl)).timeout(_timeout);
-    } catch (e) {
-      throw Cs2CatalogException(currentL.steamCs2CatalogUnreachable);
-    }
-    if (response.statusCode != 200) {
-      throw Cs2CatalogException(
-        currentL.steamCs2CatalogHttpError(response.statusCode),
-      );
-    }
-
-    List<dynamic> decoded;
-    try {
-      decoded = jsonDecode(response.body) as List;
-    } catch (_) {
-      throw Cs2CatalogException(currentL.steamCs2CatalogUnreadable);
-    }
+    final decoded = await _fetchDataset();
 
     final items = <Cs2SkinDef>[
       for (final entry in decoded)
@@ -114,6 +102,33 @@ class Cs2CatalogService {
     }
 
     return items;
+  }
+
+  /// Returns the first source that answers with a readable JSON list; if
+  /// none does, throws the failure from the last one tried.
+  Future<List<dynamic>> _fetchDataset() async {
+    late Cs2CatalogException failure;
+    for (final url in _datasetUrls) {
+      http.Response response;
+      try {
+        response = await _client.get(Uri.parse(url)).timeout(_timeout);
+      } catch (_) {
+        failure = Cs2CatalogException(currentL.steamCs2CatalogUnreachable);
+        continue;
+      }
+      if (response.statusCode != 200) {
+        failure = Cs2CatalogException(
+          currentL.steamCs2CatalogHttpError(response.statusCode),
+        );
+        continue;
+      }
+      try {
+        return jsonDecode(response.body) as List;
+      } catch (_) {
+        failure = Cs2CatalogException(currentL.steamCs2CatalogUnreadable);
+      }
+    }
+    throw failure;
   }
 
   Future<File> _cacheFile() async {

@@ -41,6 +41,7 @@ import 'rate_limit.dart';
 import 'recipe_store.dart';
 import 'school_test.dart';
 import 'store.dart';
+import 'storage_usage.dart';
 import 'subway_relay.dart';
 import 'subway_store.dart';
 import 'team_board.dart';
@@ -6859,6 +6860,17 @@ class Api {
     });
   }
 
+  Future<StorageUsage> _measureLumaStorage() => measureStorageUsage({
+        config.dataDir: 'Server data',
+        if (config.wikiEnabled) config.wikiDir!: 'Website',
+        if (aiBenchmarks.seedDir != null)
+          aiBenchmarks.seedDir!: 'Bundled benchmark scenes',
+        if (config.repoPathConfigured) config.repoPath!: 'Luma checkout',
+        // The Docker runtime includes the server bundle and helper tools.
+        if (Platform.isLinux && Platform.resolvedExecutable.startsWith('/app/'))
+          '/app': 'Server runtime',
+      });
+
   /// Storage breakdown for the admin dashboard's metrics tab: how many bytes
   /// each logical "database" (JSON store file or blob/media directory) is
   /// using on disk. Enables the doughnut chart in the metrics panel.
@@ -7008,6 +7020,17 @@ class Api {
       },
     ];
 
+    final usage = await _measureLumaStorage();
+    final knownBytes = raw.fold<int>(0, (s, e) => s + (e['bytes'] as int));
+    final otherBytes = usage.totalBytes - knownBytes;
+    if (otherBytes > 0) {
+      raw.add({
+        'id': 'other_luma_files',
+        'label': 'Other Luma files',
+        'bytes': otherBytes,
+      });
+    }
+
     // Drop empty stores so the chart doesn't render 20 zero-width slices;
     // keep at least one entry so the total is still reported.
     final entries = raw.where((e) => (e['bytes'] as int) > 0).toList()
@@ -7019,7 +7042,7 @@ class Api {
     final payloadEntries = entries.isEmpty && total == 0 ? raw : entries;
 
     return jsonResponse(200, {
-      'totalBytes': total,
+      ...usage.toJson(),
       'entries': payloadEntries,
     });
   }
@@ -10581,6 +10604,7 @@ syncToolbar();
     final googleModels = await _googleModelIdsForSuggestions();
     final mistralModels = await _mistralModelIdsForSuggestions();
     final stats = _adminStatsJson();
+    final serverStorage = await _measureLumaStorage();
     // Accounts waiting for approval float to the top: with the default
     // manual approval mode, working through them is the operator's routine
     // job here, and they'd otherwise be scattered through the list.
@@ -11040,7 +11064,7 @@ syncToolbar();
         '<div class="stat"><div class="n">${stats['activeAccounts']}</div><div class="l">Active</div></div>'
         '<div class="stat"><div class="n">${stats['pendingAccounts']}</div><div class="l">Pending</div></div>'
         '<div class="stat"><div class="n">${fmtBytes(stats['usedBytesTotal'] as int)}</div><div class="l">Storage used</div></div>'
-        '<div class="stat"><div class="n">${fmtBytes(stats['quotaBytesTotal'] as int)}</div><div class="l">Storage capacity</div></div>'
+        '<div class="stat"><div class="n" id="serverStorageValue">${serverStorage.capacityText}</div><div class="l">Luma server storage</div></div>'
         '<div class="stat"><div class="n">${recentActivity.length}</div><div class="l">Activity (24h)</div></div>'
         '</div>'
         '<div class="tabs">'
@@ -15475,6 +15499,8 @@ window.lumaAskReason = function (form, message) {
       if (!res.ok) return;
       const data = await res.json();
       storageCache = data;
+      const serverStorageValue = document.getElementById('serverStorageValue');
+      if (serverStorageValue) serverStorageValue.textContent = data.capacityText;
       drawStorageChart(data.entries || [], data.totalBytes || 0);
     } catch (_) {}
   }

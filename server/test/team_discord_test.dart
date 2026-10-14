@@ -541,8 +541,8 @@ void main() {
 
   group('metrics', () {
     void spin() {
-      final until = DateTime.now().add(const Duration(milliseconds: 30));
-      while (DateTime.now().isBefore(until)) {}
+      final clock = Stopwatch()..start();
+      while (clock.elapsedMicroseconds < 30000) {}
     }
 
     test('only work in the bot’s zone counts as its CPU', () async {
