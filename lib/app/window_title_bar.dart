@@ -137,7 +137,18 @@ class _WindowTitleBarState extends State<WindowTitleBar> {
                 widget.showWindowControls
                     ? _DragRegion(child: content)
                     : content,
-              Expanded(child: widget.tabs!),
+              Expanded(
+                child: widget.showWindowControls
+                    ? Stack(
+                        children: [
+                          const Positioned.fill(
+                            child: _DragRegion(child: SizedBox.expand()),
+                          ),
+                          widget.tabs!,
+                        ],
+                      )
+                    : widget.tabs!,
+              ),
               if (widget.showWindowControls && !compact)
                 const SizedBox(
                   width: 48,

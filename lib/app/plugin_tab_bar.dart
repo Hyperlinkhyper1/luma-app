@@ -39,9 +39,11 @@ class PluginTabBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final t = L.of(context);
+    // No fill of its own: the title bar paints the background, and leaving
+    // the gaps between and after the tabs unpainted lets clicks there fall
+    // through to the window drag region underneath.
     return Container(
       height: 46,
-      color: luma.background,
       padding: const EdgeInsets.only(left: 6, top: 5),
       child: Row(
         children: [
