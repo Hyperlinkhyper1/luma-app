@@ -1,3 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Benchmark</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #000; }
+  canvas { display: block; }
+  /* UI Styles */
+  .ui-container { position: absolute; top: 10px; left: 10px; color: white; font-family: sans-serif; pointer-events: none; }
+  .ui-container button { pointer-events: auto; cursor: pointer; padding: 5px 10px; margin: 2px; }
+  #ui-root { display: none; } /* Hidden initially as per logic */
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="container"></div>
+<style>
+  #ui-root {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 20px;
+    box-sizing: border-box;
+    font-family: sans-serif;
+  }
+  #ui-root > * { pointer-events: auto; }
+  .ui-hidden { display: none !important; }
+  #reveal-banner {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    font-size: 48px; color: white; opacity: 0; transition: opacity 0.5s;
+    text-shadow: 0 0 20px rgba(216,131,86,0.8);
+    pointer-events: none;
+  }
+  #reveal-banner.visible { opacity: 1; }
+  .caption-container {
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    text-align: center; color: white; background: rgba(0,0,0,0.5); padding: 10px 20px;
+    border-radius: 8px; pointer-events: none;
+  }
+  #caption-title { font-weight: bold; font-size: 18px; margin-bottom: 4px; }
+  #caption-sub { font-size: 14px; opacity: 0.8; }
+  #part-tooltip {
+    position: absolute; background: rgba(0,0,0,0.8); color: white; padding: 8px;
+    border-radius: 4px; font-size: 12px; pointer-events: none; opacity: 0;
+    transition: opacity 0.2s; max-width: 200px;
+  }
+  #part-tooltip.visible { opacity: 1; }
+  #show-ui-btn {
+    position: absolute; top: 20px; right: 20px; display: none;
+    background: rgba(255,255,255,0.2); color: white; border: none;
+    padding: 8px 12px; cursor: pointer; border-radius: 4px;
+  }
+  .controls-row {
+    display: flex; gap: 10px; flex-wrap: wrap;
+  }
+  button {
+    background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3);
+    padding: 6px 12px; cursor: pointer; border-radius: 4px; font-size: 12px;
+    transition: all 0.2s;
+  }
+  button:hover { background: rgba(255,255,255,0.2); }
+  button.active { background: rgba(216,131,86,0.6); border-color: #d88356; }
+</style>
+<div id="ui-root">
+  <div id="reveal-banner" class="visible">REVEAL</div>
+  <div id="caption-title"></div>
+  <div id="caption-sub"></div>
+  <div id="part-tooltip" class="visible"><span id="tt-name"></span><br><span id="tt-desc"></span></div>
+  <button id="show-ui-btn">Show UI</button>
+  
+  <!-- Mode Buttons -->
+  <div class="controls-row" style="position: absolute; top: 20px; left: 20px;">
+    <button id="btn-mode-reveal">Reveal</button>
+    <button id="btn-mode-moves" class="active">Moves</button>
+    <button id="btn-mode-inspect">Inspect</button>
+    <button id="btn-mode-explode">Explode</button>
+  </div>
+
+  <!-- Move Buttons -->
+  <div class="controls-row" style="position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%);">
+    <button class="move-btn" data-move="basicOpen">1. Basic Open</button>
+    <button class="move-btn" data-move="basicClose">2. Basic Close</button>
+    <button class="move-btn" data-move="chaplin">3. Chaplin</button>
+    <button class="move-btn" data-move="zenRollover">4. Zen Rollover</button>
+    <button class="move-btn" data-move="fan">5. Fan</button>
+    <button class="move-btn" data-move="helix">6. Helix</button>
+    <button class="move-btn" data-move="aerial">7. Aerial Toss</button>
+    <button class="move-btn" data-move="signature">8. Signature</button>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="controls-row" style="position: absolute; bottom: 20px; left: 20px;">
+    <button id="btn-combo">Combo (C)</button>
+    <button id="btn-freestyle">Freestyle (F)</button>
+    <button id="btn-toggle-hand">Hand: ON</button>
+    <button id="btn-toggle-trail">Trail: ON</button>
+    <button id="btn-hide-ui">Hide UI (H)</button>
+  </div>
+
+  <!-- Sliders & Extras -->
+  <div class="controls-row" style="position: absolute; bottom: 20px; right: 20px;">
+    <input type="range" id="explode-slider" min="0" max="1" step="0.01" value="0" style="width: 100px;">
+    <span id="explode-label">0%</span>
+  </div>
+  <div class="controls-row" style="position: absolute; bottom: 50px; right: 20px;">
+    <input type="range" id="speed-slider" min="0.1" max="2" step="0.1" value="1" style="width: 80px;">
+    <span id="speed-label">1.00×</span>
+    <button id="btn-slowmo">Slow Mo</button>
+  </div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// Global Scene Setup
+const container = document.getElementById('container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d1a14);
+scene.fog = new THREE.FogExp2(0x0d1a14, 0.02);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+
+// Mock Objects required by the snippet
+const latchMesh = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5));
+const latchPivotGroup = new THREE.Group();
+const knifeRoot = new THREE.Group();
+const knifeRig = new THREE.Group();
+const safePivotGroup = new THREE.Group();
+const bitePivotGroup = new THREE.Group();
+const spearBladeMesh = new THREE.Mesh();
+const tangMesh = new THREE.Mesh();
+
+// Mock Materials & Textures
+const matBlade = new THREE.MeshStandardMaterial();
+const matEscapementCollar = new THREE.MeshPhysicalMaterial();
+const matCopperScale = new THREE.MeshStandardMaterial();
+const matTitaniumLiner = new THREE.MeshStandardMaterial();
+const matClockworkGear = new THREE.MeshStandardMaterial();
+
+// Mock Data
+const COLOURWAYS = [{
+  copperMain: 0xb98a4e, copperHi: 0xd88356, patinaMain: 0x43b59b, patinaLight: 0x46e2bd,
+  linerColor: 0x27302d, gearColor: 0x27302d, collarColor: 0xd88356
+}];
+
+function generateHandleTextures(i) { return { colTex: null, roughTex: null, bumpTex: null }; }
+function generateBladeTextures(i) { return { colTex: null, roughTex: null, bumpTex: null }; }
+
+// Mock Synth
+const synth = {
+  init: () => {},
+  setMuted: (v) => { synth.muted = v; },
+  muted: false,
+  setVolume: (v) => {},
+  triggerPinHit: () => {},
+  triggerBladeRing: () => {},
+  triggerLatch: () => {},
+  updateContinuous: () => {}
+};
+
+// Mock Geometries
+function createGearGeometry(n, rIn, rOut, depth, toothHeight, flat) {
+  return new THREE.CylinderGeometry(rOut, rOut, depth, n * 2);
+}
+
+const interactiveHoverMeshes = [];
+const explodableParts = [];
+
+// ============================================================================
+// 1. START OF USER CODE (Injected here to wrap the snippet)
+// ============================================================================
+function registerPart(mesh, name, desc, offset) {
+  mesh.userData.partName = name;
+  mesh.userData.partDesc = desc;
+  mesh.userData.basePos = new THREE.Vector3().copy(mesh.position);
+  mesh.userData.explodeOffset = offset.clone();
+  interactiveHoverMeshes.push(mesh);
+  explodableParts.push(mesh);
+  scene.add(mesh);
+}
+
 latchPivotGroup.add(latchMesh);
 registerPart(
   latchMesh,
