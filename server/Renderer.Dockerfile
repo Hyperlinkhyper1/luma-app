@@ -12,6 +12,8 @@ RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
 COPY tool/render_previews.mjs tool/renderer_network.mjs tool/renderer_service.mjs \
     tool/renderer_smoke.mjs tool/shot_control.mjs tool/benchmark_scene_file.mjs ./
 ENV LUMA_CHROMIUM_BIN=/usr/bin/chromium
+# Only safe where the service is init's sole child: compose's `init: true`.
+ENV LUMA_RENDERER_REAP_ORPHANS=1
 ENV HOME=/tmp
 ENV XDG_CONFIG_HOME=/tmp/chromium-config
 ENV XDG_CACHE_HOME=/tmp/chromium-cache

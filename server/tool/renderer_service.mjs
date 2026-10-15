@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import fsSync from 'node:fs';
 import fs from 'node:fs/promises';
 import http from 'node:http';
 import os from 'node:os';
@@ -35,15 +36,68 @@ export function validateScene(value) {
   return { id: value.id, kind: value.kind, scene, framing };
 }
 
+// Puppeteer starts Chromium detached, in a process group of its own, so
+// killing the render script's group never reached the browser. Orphaned to
+// the container's init, it kept animating its scene on SwiftShader at most
+// of a core with nothing left to screenshot it. Kills therefore walk the
+// whole process tree, read from /proc.
+export function processTable(procDir = '/proc') {
+  const table = new Map();
+  let names = [];
+  try { names = fsSync.readdirSync(procDir); } catch { return table; }
+  for (const name of names) {
+    if (!/^\d+$/.test(name)) continue;
+    try {
+      const stat = fsSync.readFileSync(path.join(procDir, name, 'stat'), 'utf8');
+      const ppid = Number(stat.slice(stat.lastIndexOf(')') + 2).split(' ')[1]);
+      if (Number.isInteger(ppid)) table.set(Number(name), ppid);
+    } catch { /* Exited meanwhile. */ }
+  }
+  return table;
+}
+
+export function descendants(table, root) {
+  const found = [];
+  const queue = [root];
+  while (queue.length > 0) {
+    const parent = queue.shift();
+    for (const [pid, ppid] of table) {
+      if (ppid === parent && !found.includes(pid)) {
+        found.push(pid);
+        queue.push(pid);
+      }
+    }
+  }
+  return found;
+}
+
+const killQuietly = (pid) => {
+  try { process.kill(pid, 'SIGKILL'); } catch { /* Already exited. */ }
+};
+
+// Kills whatever hangs off the container's init besides this service: in
+// the renderer container that is only ever a browser some render left
+// behind, along with its GPU, renderer and crashpad children.
+export function reapOrphans({ table = processTable(), self = process.pid } = {}) {
+  const orphans = [...table].filter(([pid, ppid]) => ppid === 1 && pid !== self).map(([pid]) => pid);
+  for (const pid of orphans) {
+    for (const p of [...descendants(table, pid).reverse(), pid]) killQuietly(p);
+  }
+  return orphans;
+}
+
 export async function renderWithProcess(scene, signal) {
   const scratch = await fs.mkdtemp(path.join(os.tmpdir(), 'luma_renderer_'));
   let child;
   const kill = () => {
     if (!child?.pid) return;
-    try {
-      if (process.platform === 'linux') process.kill(-child.pid, 'SIGKILL');
-      else child.kill('SIGKILL');
-    } catch { /* Already exited. */ }
+    if (process.platform !== 'linux') {
+      try { child.kill('SIGKILL'); } catch { /* Already exited. */ }
+      return;
+    }
+    const tree = descendants(processTable(), child.pid);
+    try { process.kill(-child.pid, 'SIGKILL'); } catch { /* Already exited. */ }
+    for (const pid of tree) killQuietly(pid);
   };
   const timeout = setTimeout(kill, 9 * 60 * 1000);
   try {
@@ -141,5 +195,13 @@ export function createRendererServer({ render = renderWithProcess, maxJobs = 6 }
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  if (process.platform === 'linux' && process.env.LUMA_RENDERER_REAP_ORPHANS === '1') {
+    const sweep = () => {
+      const reaped = reapOrphans();
+      if (reaped.length > 0) console.log(`Reaped ${reaped.length} orphaned renderer process(es).`);
+    };
+    sweep();
+    setInterval(sweep, 30000).unref();
+  }
   createRendererServer().listen(Number(process.env.PORT ?? 8081), '0.0.0.0', () => console.log('Isolated renderer listening.'));
 }
