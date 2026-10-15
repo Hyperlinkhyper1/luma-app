@@ -49,9 +49,20 @@ class WindowsWebview extends StatefulWidget {
   State<WindowsWebview> createState() => _WindowsWebviewState();
 }
 
-class _WindowsWebviewState extends State<WindowsWebview> {
+class _WindowsWebviewState extends State<WindowsWebview>
+    with WidgetsBindingObserver {
   final _controller = WebviewController();
   bool _ready = false;
+
+  /// The flags below stop Chromium from ever throttling this page on its
+  /// own, so a WebGL scene would keep rendering flat out in a background tab
+  /// or with luma minimised to the tray. The page is suspended instead
+  /// whenever nobody can see it: [TickerMode] is off (another tab is in
+  /// front) or the app window is hidden.
+  bool _tickerEnabled = true;
+  bool _appVisible = true;
+  bool _suspended = false;
+  Future<void> _visibilityChange = Future.value();
 
   /// WebView2 in composition mode is often flagged as occluded by Chromium's
   /// native-window occlusion tracker, which marks the page hidden and freezes
@@ -76,7 +87,28 @@ class _WindowsWebviewState extends State<WindowsWebview> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _appVisible = _isAppVisible(WidgetsBinding.instance.lifecycleState);
     unawaited(_init());
+  }
+
+  static bool _isAppVisible(AppLifecycleState? state) =>
+      state != AppLifecycleState.hidden && state != AppLifecycleState.paused;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appVisible = _isAppVisible(state);
+    _syncSuspended();
+  }
+
+  void _syncSuspended() {
+    if (!_ready) return;
+    final suspend = !(_tickerEnabled && _appVisible);
+    if (suspend == _suspended) return;
+    _suspended = suspend;
+    _visibilityChange = _visibilityChange
+        .then((_) => suspend ? _controller.suspend() : _controller.resume())
+        .catchError((Object _) {});
   }
 
   Future<void> _init() async {
@@ -99,7 +131,10 @@ class _WindowsWebviewState extends State<WindowsWebview> {
         await _controller.loadUrl(fileUrl);
       }
     } finally {
-      if (mounted) setState(() => _ready = true);
+      if (mounted) {
+        setState(() => _ready = true);
+        _syncSuspended();
+      }
     }
   }
 
@@ -115,6 +150,7 @@ class _WindowsWebviewState extends State<WindowsWebview> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _loadedFallback?.cancel();
     _controller.dispose();
     super.dispose();
@@ -122,6 +158,8 @@ class _WindowsWebviewState extends State<WindowsWebview> {
 
   @override
   Widget build(BuildContext context) {
+    _tickerEnabled = TickerMode.valuesOf(context).enabled;
+    _syncSuspended();
     if (!_ready) return const SizedBox.shrink();
     return Webview(_controller);
   }

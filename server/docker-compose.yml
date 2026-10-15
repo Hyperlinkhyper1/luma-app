@@ -10,9 +10,14 @@ services:
       LUMA_WIKI_DIR: /wiki
       LUMA_SEARXNG_URL: http://searxng:8080
       LUMA_RENDERER_URL: http://renderer:8081
+      LUMA_HOST_PROC: /host/proc
     volumes:
       - /opt/luma-sync-data:/data
       - ../wiki:/wiki
+      # Read-only host procfs for the admin Metrics tab's per-process
+      # breakdown. The container's own /proc lists only its own processes,
+      # while the CPU tile (/proc/stat) is host-wide.
+      - /proc:/host/proc:ro
       # No Docker socket and no repo bind mount here on purpose. The admin
       # dashboard's "Update & restart server" button used to run
       # `git pull && docker compose up -d --build` directly inside this

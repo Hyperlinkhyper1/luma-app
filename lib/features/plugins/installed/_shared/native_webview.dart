@@ -94,12 +94,14 @@ class NativeWebviewController {
   }
 }
 
-class _NativeWebviewState extends State<NativeWebview> {
+class _NativeWebviewState extends State<NativeWebview>
+    with WidgetsBindingObserver {
   NativeWebviewController? _controller;
   Rect? _sentBounds;
   bool? _sentVisible;
   bool _routeCurrent = true;
   bool _tickerEnabled = true;
+  bool _appVisible = true;
   double _pixelRatio = 1;
   bool _tracking = false;
   bool _disposed = false;
@@ -107,6 +109,7 @@ class _NativeWebviewState extends State<NativeWebview> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     unawaited(_create());
   }
 
@@ -183,13 +186,29 @@ class _NativeWebviewState extends State<NativeWebview> {
         );
       }
     }
-    final visible = widget.visible && _routeCurrent && _tickerEnabled;
-    if (visible != _sentVisible) {
-      _sentVisible = visible;
-      unawaited(controller._call('setVisible', {'visible': visible}));
-      if (visible) unawaited(controller._call('focus'));
-    }
+    _syncVisible();
     WidgetsBinding.instance.addPostFrameCallback(_track);
+  }
+
+  /// Hidden windows put the page in the hidden state, which stops its
+  /// render loop; the app's WebView2 flags turn off Chromium's own occlusion
+  /// detection, so a minimised or tray-hidden luma has to say so itself.
+  void _syncVisible() {
+    final controller = _controller;
+    if (_disposed || controller == null) return;
+    final visible =
+        widget.visible && _routeCurrent && _tickerEnabled && _appVisible;
+    if (visible == _sentVisible) return;
+    _sentVisible = visible;
+    unawaited(controller._call('setVisible', {'visible': visible}));
+    if (visible) unawaited(controller._call('focus'));
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appVisible =
+        state != AppLifecycleState.hidden && state != AppLifecycleState.paused;
+    _syncVisible();
   }
 
   @override
@@ -204,6 +223,7 @@ class _NativeWebviewState extends State<NativeWebview> {
   @override
   void dispose() {
     _disposed = true;
+    WidgetsBinding.instance.removeObserver(this);
     _controller?._dispose();
     super.dispose();
   }

@@ -36,6 +36,7 @@ import 'update_check.dart';
 import 'family_store.dart';
 import 'mail.dart';
 import 'metrics.dart';
+import 'process_metrics.dart';
 import 'oauth.dart';
 import 'rate_limit.dart';
 import 'recipe_store.dart';
@@ -729,6 +730,7 @@ class Api {
       ..get('/admin/stats', _requireAdmin(_adminStats))
       ..get('/admin/metrics', _requireAdmin(_adminMetrics))
       ..get('/admin/metrics/history', _requireAdmin(_adminMetricsHistory))
+      ..get('/admin/metrics/processes', _requireAdmin(_adminMetricsProcesses))
       ..get('/admin/storage', _requireAdmin(_adminStorage))
       ..get('/admin/activity', _requireAdmin(_adminActivity))
       ..post('/admin/verify', _requireAdmin(_adminVerifyUser))
@@ -6846,6 +6848,11 @@ class Api {
     return jsonResponse(200, metrics.toJson());
   }
 
+  /// What is behind each metrics tile, for the dialog a tile click opens.
+  /// Takes about a second: rates come from two procfs reads that far apart.
+  Future<Response> _adminMetricsProcesses(Request request) async =>
+      jsonResponse(200, (await ProcessBreakdown.sample()).toJson());
+
   /// Persisted graph history for the admin dashboard's range selector —
   /// range is one of 'minute' / 'hour' / 'day' / 'week' (default 'minute').
   /// Backed by [MetricsHistory], which downsamples raw /admin/metrics
@@ -11161,23 +11168,31 @@ syncToolbar();
         '<button class="range-btn" data-range="week">1 week</button>'
         '</div>'
         '<div class="metrics-grid" id="metricsGrid">'
-        '<div class="metric-card"><div class="metric-title">CPU</div>'
+        '<div class="metric-card" data-kind="cpu"><div class="metric-title">CPU</div>'
         '<canvas id="cpuGraph" width="280" height="120"></canvas>'
         '<div class="metric-value" id="cpuValue">–</div></div>'
-        '<div class="metric-card"><div class="metric-title">RAM</div>'
+        '<div class="metric-card" data-kind="ram"><div class="metric-title">RAM</div>'
         '<canvas id="ramGraph" width="280" height="120"></canvas>'
         '<div class="metric-value" id="ramValue">–</div></div>'
-        '<div class="metric-card"><div class="metric-title">Network '
+        '<div class="metric-card" data-kind="net"><div class="metric-title">Network '
         '<span class="legend"><span class="k accent">&#8595; down</span>'
         '<span class="k green">&#8593; up</span></span></div>'
         '<canvas id="netGraph" width="280" height="120"></canvas>'
         '<div class="metric-value" id="netValue">–</div></div>'
-        '<div class="metric-card"><div class="metric-title">SSD '
+        '<div class="metric-card" data-kind="disk"><div class="metric-title">SSD '
         '<span class="legend"><span class="k accent">&#8595; read</span>'
         '<span class="k green">&#8593; write</span></span></div>'
         '<canvas id="diskGraph" width="280" height="120"></canvas>'
         '<div class="metric-value" id="diskValue">–</div></div>'
         '</div>'
+        '<dialog id="procDialog" class="proc-dialog" aria-labelledby="procTitle">'
+        '<div class="proc-head"><h2 id="procTitle">CPU</h2>'
+        '<span class="proc-live" id="procLive">Sampling…</span>'
+        '<label class="proc-group"><input type="checkbox" id="procGroup"> Group by name</label>'
+        '<button type="button" class="proc-close" id="procClose" aria-label="Close">&times;</button></div>'
+        '<div class="proc-body"><div id="procNote" class="hint" style="display:none"></div>'
+        '<div id="procSummary"></div><div id="procTable"></div></div>'
+        '</dialog>'
         '<div class="card" style="margin-top:18px">'
         '<h2>Storage by database</h2>'
         '<div class="storage-wrap">'
@@ -12672,7 +12687,34 @@ button.hbar{cursor:pointer}
 .maint-out{margin-top:14px;max-height:220px;overflow:auto;background:#12101e;border:1px solid #241e36;border-radius:10px}
 .maint-grid pre.log{margin-top:14px;max-height:220px}
 @media (max-width:900px){.maint-grid{grid-template-columns:1fr}}
-.metric-card{background:#151122;border:1px solid #241e36;border-radius:14px;padding:16px 18px}
+.metric-card{background:#151122;border:1px solid #241e36;border-radius:14px;padding:16px 18px;position:relative;cursor:pointer;transition:border-color .15s}
+.metric-card:hover{border-color:#3a3160}
+.metric-card::after{content:'Details \203A';position:absolute;right:18px;bottom:17px;font-size:11px;color:#6f688a;transition:color .15s}
+.metric-card:hover::after{color:#b4addc}
+.proc-dialog{background:#151122;color:#ece8f7;border:1px solid #2d2645;border-radius:16px;padding:0;width:min(980px,calc(100vw - 32px));max-height:calc(100dvh - 32px);box-shadow:0 24px 64px rgba(0,0,0,.6);color-scheme:dark}
+.proc-dialog[open]{display:flex;flex-direction:column}
+.proc-dialog::backdrop{background:rgba(8,6,16,.62);backdrop-filter:blur(3px)}
+.proc-head{display:flex;align-items:center;gap:14px;padding:16px 20px;border-bottom:1px solid #241e36}
+.proc-head h2{margin:0;font-size:16px}
+.proc-live{font-size:12px;color:#8d86a8;flex:1}
+.proc-group{font-size:12px;color:#9b94b3;display:flex;align-items:center;gap:6px;cursor:pointer}
+.proc-close{background:transparent;border:0;color:#9b94b3;font-size:22px;line-height:1;cursor:pointer;padding:2px 6px;border-radius:6px}
+.proc-close:hover{color:#ece8f7;background:#241e36}
+.proc-body{padding:16px 20px 20px;overflow:auto}
+.proc-states{display:flex;height:12px;border-radius:6px;overflow:hidden;background:#241e36;margin-bottom:8px}
+.proc-states span{display:block;height:100%}
+.proc-legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:#9b94b3;margin-bottom:16px;font-variant-numeric:tabular-nums}
+.proc-legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:0}
+.proc-table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+.proc-table th{text-align:left;font-size:11px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:#8d86a8;padding:6px 8px;border-bottom:1px solid #241e36}
+.proc-table td{padding:8px;border-bottom:1px solid #1e1930;vertical-align:top}
+.proc-table td.n{text-align:right;white-space:nowrap}
+.proc-table th.n{text-align:right}
+.proc-name{font-weight:600}
+.proc-desc{color:#b4addc;font-size:12px;margin-top:2px}
+.proc-cmd{color:#6f688a;font-size:11px;margin-top:3px;font-family:ui-monospace,Consolas,monospace;word-break:break-all;max-width:560px}
+.proc-bar{height:4px;border-radius:2px;background:#8a7ee0;margin-top:5px;min-width:1px}
+.proc-section{font-size:12px;color:#8d86a8;text-transform:uppercase;letter-spacing:.05em;margin:18px 0 6px}
 .metric-title{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#8d86a8;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
 .metric-title .legend{display:inline-flex;gap:10px;text-transform:none;letter-spacing:0}
 .metric-title .k.accent{color:#8a7ee0}
@@ -15272,6 +15314,197 @@ window.lumaAskReason = function (form, message) {
   attachHover(document.getElementById('ramGraph'), (v) => v.toFixed(1) + '%');
   attachHover(document.getElementById('netGraph'), fmtRate);
   attachHover(document.getElementById('diskGraph'), fmtRate);
+
+  // ---- Tile click: what is behind the number ---------------------------
+  // /admin/metrics/processes samples for ~1s per call, so the dialog polls
+  // it back to back while open rather than on a fixed timer.
+  const procDialog = document.getElementById('procDialog');
+  const procTitles = { cpu: 'CPU', ram: 'RAM', net: 'Network', disk: 'SSD' };
+  const STATE_COLORS = {
+    'User': '#8a7ee0', 'Nice': '#a07ee0', 'System': '#e0a07e',
+    'I/O wait': '#e07e7e', 'IRQ': '#e0c87e', 'Soft IRQ': '#c8e07e',
+    'Steal': '#7ec8e0', 'Idle': '#2c2640',
+  };
+  let procKind = null;
+  let procLast = null;
+  let procBusy = false;
+
+  function groupProcesses(list) {
+    const by = new Map();
+    for (const p of list) {
+      const key = p.name + '\u0000' + (p.description || '');
+      let g = by.get(key);
+      if (!g) {
+        g = Object.assign({}, p, {
+          count: 0, cpuPercent: 0, ramBytes: 0,
+          readBytesPerSec: 0, writeBytesPerSec: 0, pids: [],
+        });
+        by.set(key, g);
+      }
+      g.count++;
+      g.pids.push(p.pid);
+      g.cpuPercent += p.cpuPercent || 0;
+      g.ramBytes += p.ramBytes || 0;
+      g.readBytesPerSec += p.readBytesPerSec || 0;
+      g.writeBytesPerSec += p.writeBytesPerSec || 0;
+    }
+    return [...by.values()];
+  }
+
+  function procCell(p) {
+    const label = p.count > 1
+        ? esc(p.name) + ' <span class="muted">×' + p.count + '</span>'
+        : esc(p.name);
+    const where = [];
+    if (p.parent && p.count == null) where.push('started by ' + esc(p.parent));
+    if (p.container) where.push('container ' + esc(p.container));
+    return '<div class="proc-name">' + label + '</div>'
+        + (p.description ? '<div class="proc-desc">' + esc(p.description) + '</div>' : '')
+        + (where.length ? '<div class="proc-desc muted">' + where.join(' · ') + '</div>' : '')
+        + (p.command && p.count == null
+            ? '<div class="proc-cmd">' + esc(p.command) + '</div>' : '');
+  }
+
+  function throughputTable(rows, inLabel, outLabel) {
+    const sorted = rows.slice().sort((a, b) =>
+        ((b.in || 0) + (b.out || 0)) - ((a.in || 0) + (a.out || 0)));
+    if (!sorted.length) return '<div class="muted">Nothing to show.</div>';
+    return '<table class="proc-table"><thead><tr><th>Name</th><th class="n">'
+        + inLabel + '</th><th class="n">' + outLabel + '</th></tr></thead><tbody>'
+        + sorted.map((r) => '<tr><td class="proc-name">' + esc(r.name) + '</td><td class="n">'
+            + fmtRate(r.in) + '</td><td class="n">' + fmtRate(r.out) + '</td></tr>').join('')
+        + '</tbody></table>';
+  }
+
+  function renderProc() {
+    const d = procLast;
+    if (!d || !procKind) return;
+    const note = document.getElementById('procNote');
+    const summary = document.getElementById('procSummary');
+    const table = document.getElementById('procTable');
+    if (!d.platformSupported) {
+      note.style.display = 'block';
+      note.textContent = 'A breakdown isn\'t available on this server\'s OS.';
+      summary.innerHTML = table.innerHTML = '';
+      return;
+    }
+    const notes = [];
+    if (d.scope === 'container' && procKind !== 'net') {
+      notes.push('Only the luma-sync container\'s own processes are visible, so '
+          + 'other containers (renderer, SearXNG, Caddy) and the host are missing. '
+          + 'Mount /proc:/host/proc:ro into the container to see everything.');
+    }
+    if (procKind === 'net') {
+      notes.push('The OS doesn\'t count network traffic per process, so this is per '
+          + 'network interface. On Linux, docker0 / br-… / veth… are containers\' virtual links.');
+    }
+    if (procKind === 'disk' && !d.processIoAvailable) {
+      notes.push('Per-process disk counters aren\'t readable from inside the '
+          + 'container, so only per-disk totals are shown.');
+    }
+    note.style.display = notes.length ? 'block' : 'none';
+    note.textContent = notes.join(' ');
+
+    summary.innerHTML = '';
+    if (procKind === 'cpu' && d.cpuStates && d.cpuStates.length) {
+      const states = d.cpuStates.filter((s) => s.percent > 0.05);
+      summary.innerHTML = '<div class="proc-states">'
+          + states.map((s) => '<span style="width:' + s.percent.toFixed(2) + '%;background:'
+              + (STATE_COLORS[s.label] || '#6f688a') + '"></span>').join('')
+          + '</div><div class="proc-legend">'
+          + states.map((s) => '<span><i style="background:'
+              + (STATE_COLORS[s.label] || '#6f688a') + '"></i>' + esc(s.label) + ' '
+              + s.percent.toFixed(1) + '%</span>').join('')
+          + '</div>';
+    }
+
+    if (procKind === 'net') {
+      table.innerHTML = throughputTable(d.interfaces || [], '↓ down', '↑ up');
+      return;
+    }
+    let html = '';
+    if (procKind === 'disk') {
+      html += '<div class="proc-section">Disks</div>'
+          + throughputTable(d.disks || [], '↓ read', '↑ write');
+      if (!d.processIoAvailable) { table.innerHTML = html; return; }
+      html += '<div class="proc-section">Processes</div>';
+    }
+
+    let list = d.processes || [];
+    if (document.getElementById('procGroup').checked) list = groupProcesses(list);
+    const metric = {
+      cpu: (p) => p.cpuPercent || 0,
+      ram: (p) => p.ramBytes || 0,
+      disk: (p) => (p.readBytesPerSec || 0) + (p.writeBytesPerSec || 0),
+    }[procKind];
+    list = list.slice().sort((a, b) => metric(b) - metric(a)).slice(0, 30);
+    const top = list.length ? Math.max(metric(list[0]), 1e-9) : 1;
+    const head = {
+      cpu: '<th class="n">CPU</th><th class="n">RAM</th>',
+      ram: '<th class="n">RAM</th><th class="n">CPU</th>',
+      disk: '<th class="n">↓ read</th><th class="n">↑ write</th>',
+    }[procKind];
+    const ramPct = (b) => d.ramTotalBytes
+        ? ' <span class="muted">' + (b / d.ramTotalBytes * 100).toFixed(1) + '%</span>' : '';
+    const cells = (p) => {
+      const cpu = p.cpuPercent == null ? '–' : p.cpuPercent.toFixed(1) + '%';
+      const ram = p.ramBytes == null ? '–' : fmtBytes(p.ramBytes);
+      if (procKind === 'cpu') return '<td class="n">' + cpu + '</td><td class="n">' + ram + '</td>';
+      if (procKind === 'ram') {
+        return '<td class="n">' + ram + ramPct(p.ramBytes || 0) + '</td><td class="n">' + cpu + '</td>';
+      }
+      return '<td class="n">' + fmtRate(p.readBytesPerSec) + '</td><td class="n">'
+          + fmtRate(p.writeBytesPerSec) + '</td>';
+    };
+    html += '<table class="proc-table"><thead><tr><th>Process</th><th class="n">PID</th>'
+        + head + '</tr></thead><tbody>'
+        + list.map((p) => '<tr><td>' + procCell(p)
+            + '<div class="proc-bar" style="width:' + (metric(p) / top * 100).toFixed(1) + '%"></div></td>'
+            + '<td class="n muted">' + (p.pids ? (p.pids.length > 1 ? p.pids.length + ' pids' : p.pids[0]) : p.pid) + '</td>'
+            + cells(p) + '</tr>').join('')
+        + '</tbody></table>';
+    table.innerHTML = html;
+  }
+
+  async function pollProc() {
+    if (procBusy || !procDialog.open) return;
+    procBusy = true;
+    try {
+      const res = await fetch('/admin/metrics/processes');
+      if (res.ok) {
+        procLast = await res.json();
+        document.getElementById('procLive').textContent = procLast.sampleSeconds
+            ? 'Live · averaged over the last ' + procLast.sampleSeconds.toFixed(1) + 's'
+            : 'Live';
+        renderProc();
+      } else {
+        document.getElementById('procLive').textContent = 'Couldn\'t load (' + res.status + ')';
+      }
+    } catch (e) {
+      document.getElementById('procLive').textContent = 'Couldn\'t reach the server';
+    }
+    procBusy = false;
+    if (procDialog.open) setTimeout(pollProc, 1000);
+  }
+
+  function openProc(kind) {
+    procKind = kind;
+    document.getElementById('procTitle').textContent = procTitles[kind] + ' breakdown';
+    document.getElementById('procGroup').parentElement.style.display =
+        kind === 'net' ? 'none' : '';
+    if (procLast) renderProc();
+    else document.getElementById('procTable').innerHTML = '';
+    if (!procDialog.open) procDialog.showModal();
+    pollProc();
+  }
+
+  document.querySelectorAll('.metric-card[data-kind]').forEach((card) =>
+      card.addEventListener('click', () => openProc(card.dataset.kind)));
+  document.getElementById('procClose').addEventListener('click', () => procDialog.close());
+  document.getElementById('procGroup').addEventListener('change', renderProc);
+  procDialog.addEventListener('click', (e) => {
+    if (e.target === procDialog) procDialog.close();
+  });
 
   // Rebuilds the `history` arrays (as drawn on the graphs) from a server
   // history payload — same derived fields poll() computes per live sample
