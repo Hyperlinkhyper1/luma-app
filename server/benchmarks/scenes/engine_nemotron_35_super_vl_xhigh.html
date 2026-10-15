@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Procedural V8 Engine</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+  body { margin: 0; overflow: hidden; background: #141418; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+  #ui {
+    position: absolute; top: 12px; left: 12px; z-index: 50;
+    width: 318px; color: #e8e8f0;
+    background: rgba(16, 16, 22, 0.92); backdrop-filter: blur(8px);
+    padding: 13px 14px 14px; border-radius: 10px;
+    border: 1px solid #363648; box-shadow: 0 18px 45px rgba(0,0,0,0.55);
+    user-select: none; pointer-events: auto;
+  }
+  h1 { margin: 0 0 8px 0; font-size: 13px; letter-spacing: 1.4px; text-transform: uppercase; color: #00d2ff; border-bottom: 1px solid #363648; padding-bottom: 6px; }
+  .lbl { font-size: 10.5px; color: #a8a8b8; display: block; margin: 6px 0 3px 0; font-weight: 600; }
+  input[type=range] { width: 100%; accent-color: #00d2ff; height: 6px; cursor: pointer; }
+  .row { display: flex; gap: 8px; margin-bottom: 9px; align-items: center; flex-wrap: wrap; }
+  .row > label { font-size: 10px; color: #c4c4d6; flex: 0 0 46px; }
+  .row > input { flex: 1 1 120px; min-width: 90px; }
+  .btn {
+    border: 1px solid #46465c; color: #d8d8e6; background: #252532;
+    padding: 5px 8px; font-size: 10px; border-radius: 5px; cursor: pointer;
+    text-align: center; flex: 0 0 auto; white-space: nowrap;
+  }
+  .btn:hover { background: #333346; border-color: #00d2ff; color: #00d2ff; }
+  .btn.active { background: #00d2ff; color: #001a24; border-color: #00d2ff; font-weight: 700; }
+  .section { margin-top: 13px; padding-top: 9px; border-top: 1px solid #303042; }
+  .sect { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.8px; color: #808094; margin-bottom: 8px; }
+  .toggle { display: flex; align-items: center; gap: 8px; font-size: 10.5px; color: #c9c9d8; margin-bottom: 5px; cursor: pointer; }
+  .toggle input { accent-color: #00d2ff; width: 15px; height: 15px; }
+  .campreset { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .campreset .btn { flex: 0 0 auto; font-size: 9.5px; padding: 4px 7px; }
+  .info { margin-top: 10px; font-size: 11px; color: #8a8aa2; line-height: 1.45; border-top: 1px solid #303042; padding-top: 8px; }
+  .info b { color: #00d2ff; }
+  .val { color: #ffd47a; }
+  a { color: #00d2ff; text-decoration: none; font-size: 10px; }
+</style>
+</head>
+<body>
+<div id="ui">
+  <h1>V8 Procedural Engine</h1>
+  <div class="lbl">Crankshaft RPM</div>
+  <input type="range" id="rpmSlider" min="0" max="8000" step="50" value="700">
+  <div class="row"><label>RPM</label><span id="rpmVal" class="val" style="margin-left:auto">700</span></div>
+
+  <div class="row" style="margin-top:8px">
+    <button class="btn active" data-rpm="700" id="b700">IDLE</button>
+    <button class="btn" data-rpm="0" id="b0">STOP</button>
+    <button class="btn" data-rpm="2000" id="b2000">2000</button>
+    <button class="btn" data-rpm="4000" id="b4000">4000</button>
+    <button class="btn" data-rpm="6000" id="b6000">6000</button>
+    <button class="btn" data-rpm="8000" id="b8000">8000</button>
+  </div>
+
+  <div class="section">
+    <div class="sect">Playback</div>
+    <div class="row"><label>Speed</label>
+      <button class="btn active" data-mult="1" id="m1">1×</button>
+      <button class="btn" data-mult="0.25" id="m025">0.25×</button>
+      <button class="btn" data-mult="0.05" id="m005">0.05×</button>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <button class="btn" id="btnPause">PAUSE</button>
+      <label class="toggle" style="margin-left:8px;margin-bottom:0"><input type="checkbox" id="chkManual"> Manual crank</label>
+    </div>
+    <div class="row" style="margin-top:6px"><label>Crank angle</label><input type="range" id="manSlider" min="0" max="720" step="1" value="0"></div>
+  </div>
+
+  <div class="section">
+    <div class="sect">Cylinder inspection</div>
+    <div class="row" id="cylButtons"></div>
+    <div id="cylInfo" class="info" style="margin-top:6px">Select a cylinder</div>
+  </div>
+
+  <div class="section">
+    <div class="sect">Camera</div>
+    <div class="campreset">
+      <button class="btn active" data-cam="hero">HERO</button>
+      <button class="btn" data-cam="front">FRONT</button>
+      <button class="btn" data-cam="side">SIDE</button>
+      <button class="btn" data-cam="top">TOP</button>
+      <button class="btn" data-cam="internal">INTERNAL</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sect">Exploded view</div>
+    <input type="range" id="explSlider" min="0" max="100" step="1" value="0">
+    <div class="row"><label>Explode</label><span id="explVal" class="val" style="margin-left:auto">0%</span></div>
+  </div>
+
+  <div class="section">
+    <div class="sect">Visibility</div>
+    <label class="toggle"><input type="checkbox" id="vBlock" checked> Block</label>
+    <label class="toggle"><input type="checkbox" id="vPistons" checked> Pistons</label>
+    <label class="toggle"><input type="checkbox" id="vRods" checked> Rods</label>
+    <label class="toggle"><input type="checkbox" id="vCrank" checked> Crankshaft</label>
+    <label class="toggle"><input type="checkbox" id="vValvetrain" checked> Valve train</label>
+    <label class="toggle"><input type="checkbox" id="vCam" checked> Camshaft</label>
+    <label class="toggle"><input type="checkbox" id="vIntake" checked> Intake</label>
+    <label class="toggle"><input type="checkbox" id="vExhaust" checked> Exhaust</label>
+    <label class="toggle"><input type="checkbox" id="vTiming" checked> Timing</label>
+  </div>
+
+  <div class="info">
+    Cross-plane V8 &bull; 90&deg; banks &bull; Firing: 1-8-4-3-6-5-7-2<br>
+    Crank drives all motion. Cam = crank / 2. Cycle = 720&deg;.
+  </div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ========================= Constants / Math =========================
+const DEG = Math.PI / 180;
+const RAD = 180 / Math.PI;
+
+const CRANK_R = 0.42;      // crank radius (throw)
+const ROD_L = 1.06;        // connecting rod length
+const BANK_ANG = 45 * DEG; // each bank from centreline
+const CYL_X = [-1.62, -0.56, 0.56, 1.62]; // four positions per bank along crank axis
+const MAIN_X = [-2.14, -1.62, -0.56, 0.56, 1.62, 2.14]; // main journals
+const BORE_R = 0.175;
+const PISTON_R = 0.168;
+
+// Firing order 1-8-4-3-6-5-7-2, power stroke starts at cycle phase 360 deg.
+// cyclePhase = (rawAngle + offset) % 720 ; fire when phase enters [360,360]
+const FIRE_ORDER = [1,8,4,3,6,5,7,2];
+const PHASE_OFFSET = [0,90,450,540,270,360,180,630]; // for cyl 1..8
+
+// Throw (cross-plane) phase per X position index
+const THROW_PHASE_DEG = [0, 90, 180, 270];
+
+const BankDir = [
+  new THREE.Vector3(0, Math.sin(BANK_ANG), Math.cos(BANK_ANG)), // A (left) cylinders 1,3,5,7
+  new THREE.Vector3(0, -Math.sin(BANK_ANG), Math.cos(BANK_ANG)) // B (right) cylinders 2,4,6,8
+];
+
+const _vA = new THREE.Vector3(), _vB = new THREE.Vector3(), _vC = new THREE.Vector3();
+const _qA = new THREE.Quaternion(), _qB = new THREE.Quaternion();
+function safeNorm(v){ const l = v.length(); if (l < 1e-7) return v.set(0,1,0); return v.divideScalar(l); }
+function alignY(mesh, dir){
+  dir = safeNorm(dir);
+  _qA.setFromUnitVectors(new THREE.Vector3(0,1,0), dir);
+  mesh.quaternion.copy(_qA);
+}
+function clamp(x,a,b){ return x < a ? a : x > b ? b : x; }
+function wrap720(a){ a %= 720; if (a < 0) a += 720; return a; }
+
+// ========================= Scene =========================
+const canvas = document.createElement('div'); // placeholder not used
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a20);
+scene.fog = new THREE.FogExp2(0x1a1a20, 0.07);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
+camera.position.set(0, 2.6, 5.6);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minDistance = 1.2;
+controls.maxDistance = 30;
+controls.target.set(0, 0.35, 0);
+
+const ambLight = new THREE.AmbientLight(0xffffff, 0.35);
+scene.add(ambLight);
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.15);
+keyLight.position.set(3, 6, 4);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.near = 0.5; keyLight.shadow.camera.far = 22;
+keyLight.shadow.camera.left = -7; keyLight.shadow.camera.right = 7;
+keyLight.shadow.camera.top = 7; keyLight.shadow.camera.bottom = -7;
+scene.add(keyLight);
+const fillLight = new THREE.DirectionalLight(0x6b8ff2, 0.45);
+fillLight.position.set(-3, 2, -4); scene.add(fillLight);
+const rimLight = new THREE.DirectionalLight(0x00d2ff, 0.5);
+rimLight.position.set(0, 2, -5); scene.add(rimLight);
+
+const grid = new THREE.GridHelper(30, 60, 0x3a3a4a, 0x222228);
+grid.position.y = -1.02; scene.add(grid);
+const floor = new THREE.Mesh(new THREE.CircleGeometry(14, 64), new THREE.MeshStandardMaterial({ color: 0x121216, roughness: 0.9 }));
+floor.rotation.x = -Math.PI/2; floor.position.y = -1.03; floor.receiveShadow = true; scene.add(floor);
+
+// ========================= Shared geometries / materials =========================
+const matBlock = new THREE.MeshStandardMaterial({ color: 0x26262c, roughness: 0.55, metalness: 0.25 });
+const matBlockCutaway = new THREE.MeshStandardMaterial({ color: 0x32323a, roughness: 0.6, metalness: 0.3 });
+const matPiston = new THREE.MeshStandardMaterial({ color: 0xd8d8e0, roughness: 0.22, metalness: 0.55 });
+const matRing = new THREE.MeshStandardMaterial({ color: 0x7a7a82, roughness: 0.3, metalness: 0.9 });
+const matRod = new THREE.MeshStandardMaterial({ color: 0x7a7a84, roughness: 0.45, metalness: 0.7 });
+const matCrank = new THREE.MeshStandardMaterial({ color: 0x42424a, roughness: 0.25, metalness: 0.85 });
+const matCam = new THREE.MeshStandardMaterial({ color: 0x666670, roughness: 0.35, metalness: 0.8 });
+const matValve = new THREE.MeshStandardMaterial({ color: 0xb8b8c4, roughness: 0.25, metalness: 0.9 });
+const matSpring = new THREE.MeshStandardMaterial({ color: 0x242428, roughness: 0.55, metalness: 0.9 });
+const matIntake = new THREE.MeshStandardMaterial({ color: 0xa8b8c8, roughness: 0.35, metalness: 0.55 });
+const matExhaust = new THREE.MeshStandardMaterial({ color: 0x4a382c, roughness: 0.5, metalness: 0.4 });
+const matFlywheel = new THREE.MeshStandardMaterial({ color: 0xe4e4e8, roughness: 0.25, metalness: 0.85 });
+const matPulley = new THREE.MeshStandardMaterial({ color: 0x44444e, roughness: 0.35, metalness: 0.8 });
+const matGlow = new THREE.MeshBasicMaterial({ color: 0xff4400 });
+
+const geoPiston = new THREE.Group();
+// crown
+const crown = new THREE.Mesh(new THREE.CylinderGeometry(PISTON_R, PISTON_R, 0.14, 24), matPiston);
+crown.position.y = 0.56; geoPiston.add(crown);
+// skirt
+const skirt = new THREE.Mesh(new THREE.CylinderGeometry(PISTON_R, PISTON_R*0.97, 0.72, 24), matPiston);
+skirt.position.y = 0.18; geoPiston.add(skirt);
+// wrist pin boss
+const boss = new THREE.Mesh(new THREE.CylinderGeometry(PISTON_R*1.12, PISTON_R*1.12, 0.22, 24), matPiston);
+boss.position.y = -0.18; geoPiston.add(boss);
+// rings
+for (const off of [0.42, 0.50, 0.585]) {
+  const r = new THREE.Mesh(new THREE.CylinderGeometry(PISTON_R+0.008, PISTON_R+0.008, 0.035, 32), matRing);
+  r.position.y = off; geoPiston.add(r);
+}
+geoPiston.traverse(c => { c.castShadow = true; c.receiveShadow = true; });
+
+const geoRod = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, ROD_L, 20), matRod);
+geoRod.castShadow = true; geoRod.receiveShadow = true;
+const rodCap = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.18, 20), matRod);
+rodCap.position.y = -ROD_L/2 - 0.09; rodCap.castShadow = true; rodCap.receiveShadow = true;
+const rodGroupGeo = new THREE.Group(); rodGroupGeo.add(geoRod); rodGroupGeo.add(rodCap);
+
+const geoValveHead = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.062, 0.05, 20), matValve);
+geoValveHead.position.y = 0; geoValveHead.castShadow = true; geoValveHead.receiveShadow = true;
+const geoValveStem = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.62, 12), matValve);
+geoValveStem.position.y = -0.34; geoValveStem.castShadow = true;
+const valveGeoGroup = new THREE.Group(); valveGeoGroup.add(geoValveHead); valveGeoGroup.add(geoValveStem);
+
+function makeSpring(length, turns){
+  const pts = [], segs = turns * 24;
+  const rad = 0.032, wire = 0.007;
+  for (let i = 0; i <= segs; i++) {
+    const t = i / segs;
+    const ang = t * Math.PI * 2 * turns;
+    pts.push(new THREE.Vector3(rad * Math.cos(ang), t * length, rad * Math.sin(ang)));
+  }
+  const curve = new THREE.CatmullRomCurve3(pts);
+  const geo = new THREE.TubeGeometry(curve, segs, wire, 8, false);
+  const m = new THREE.Mesh(geo, matSpring);
+  m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+
+// ========================= Engine State =========================
+const State = {
+  rawAngle: 0,       // degrees, unwrapped mechanical crank angle
+  rpm: 700,
+  targetRpm: 700,
+  mult: 1,
+  paused: false,
+  manual: false,
+  manualAngle: 0,
+  explode: 0,
+  inspect: null,     // cylinder index 0-7
+  vis: { block:true, pistons:true, rods:true, crank:true, valvetrain:true, cam:true, intake:true, exhaust:true, timing:true }
+};
+
+// Cylinder definitions
+const Cylinders = [];
+for (let i = 0; i < 8; i++) {
+  const bank = i % 2 === 0 ? 0 : 1; // A=0 for 1,3,5,7 ; B=1 for 2,4,6,8
+  const xi = CYL_X[Math.floor(i / 2)];
+  const throwIdx = Math.floor(i / 2);
+  Cylinders.push({
+    index: i, num: i + 1, bank, x: xi, throwIdx, throwPhase: THROW_PHASE_DEG[throwIdx],
+    phaseOffset: PHASE_OFFSET[i],
+    u: BankDir[bank].clone(),
+    root: new THREE.Group(),
+    piston: null, rod: null,
+    valves: [],   // {mesh, spring, base, axis, type}
+    chamberPos: new THREE.Vector3(),
+    glow: null, fireTimer: 0
+  });
+}
+
+// ========================= Groups =========================
+const grpBlock = new THREE.Group(); scene.add(grpBlock);
+const grpHeads = new THREE.Group(); scene.add(grpHeads);
+const grpCrank = new THREE.Group(); scene.add(grpCrank); // rotates around X at crank angle
+const grpCam = new THREE.Group(); scene.add(grpCam);      // rotates around X at crank/2
+const grpTiming = new THREE.Group(); scene.add(grpTiming);
+const grpFlywheel = new THREE.Group(); scene.add(grpFlywheel);
+const grpAccessories = new THREE.Group(); scene.add(grpAccessories);
+const grpIntake = new THREE.Group(); scene.add(grpIntake);
+const grpExhaust = new THREE.Group(); scene.add(grpExhaust);
+
+// ========================= Build: Block (cutaway) =========================
+{
+  // Crankcase (lower block)
+  const cc = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.75, 1.05), matBlock);
+  cc.position.set(0, -0.72, 0.42); cc.castShadow = cc.receiveShadow = true; grpBlock.add(cc);
+  // Outer bank walls (leave inner V open for visibility)
+  for (let s = -1; s <= 1; s += 2) {
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(4.7, 1.5, 1.55), matBlock);
+    wall.position.set(0, s * 1.02, 0.98); wall.castShadow = wall.receiveShadow = true; grpBlock.add(wall);
+  }
+  // Deck plate with visible bores (open top)
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(4.7, 0.12, 1.75), matBlockCutaway);
+  deck.position.set(0, 0.02, 1.62); deck.castShadow = deck.receiveShadow = true; grpBlock.add(deck);
+  // Main bearing caps (under crank)
+  for (const mx of MAIN_X) {
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.34, 0.62), matBlock);
+    cap.position.set(mx, -1.03, 0.55); cap.castShadow = cap.receiveShadow = true; grpBlock.add(cap);
+    const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.12, 10), matBlock);
+    bolt.position.set(mx, -1.22, 0.55); bolt.rotation.x = Math.PI/2; grpBlock.add(bolt);
+  }
+  // Bore liners (dark cylinders so piston travel is obvious) - positioned per cylinder
+  const boreGeo = new THREE.CylinderGeometry(BORE_R, BORE_R, 1.75, 24);
+  const boreMat = new THREE.MeshStandardMaterial({ color: 0x141418, roughness: 0.9, metalness: 0.4 });
+  for (const c of Cylinders) {
+    const bore = new THREE.Mesh(boreGeo, boreMat);
+    // bore runs from block deck inward along u; center roughly mid-bore
+    bore.position.copy(c.u).multiplyScalar(0.85).add(new THREE.Vector3(c.x, 0, 0.55));
+    alignY(bore, c.u);
+    bore.receiveShadow = true; grpBlock.add(bore);
+    c.boreMesh = bore;
+  }
+}
+
+// ========================= Build: Heads + Valvetrain =========================
+{
+  for (const c of Cylinders) {
+    const head = new THREE.Group();
+    const hDist = 1.85; // head center from main journal along bore
+    const hCenter = new THREE.Vector3(c.x, 0, 0).add(c.u.clone().multiplyScalar(hDist));
+    c.chamberPos.copy(hCenter);
+    // head casting
+    const casting = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.34, 0.62), matBlock);
+    casting.position.copy(hCenter); casting.castShadow = casting.receiveShadow = true; head.add(casting);
+    // rocker cover on top of head
+    const cover = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.22, 0.42), matIntake);
+    cover.position.copy(hCenter).add(c.u.clone().multiplyScalar(0.34)); cover.castShadow = cover.receiveShadow = true; head.add(cover);
+    // rocker shaft across cylinders (along X)
+    grpHeads.add(head);
+    c.headGroup = head;
+
+    // Two valves per cylinder (intake + exhaust), axis ~ u
+    for (let t = 0; t < 2; t++) {
+      const type = t === 0 ? 'intake' : 'exhaust';
+      const vGroup = new THREE.Group();
+      const valve = valveGeoGroup.clone();
+      valve.children[0].material = type === 'intake' ? matValve : matValve;
+      // seat slightly inside chamber; stem out along +u
+      const seatOff = 0.16; // head to seat
+      const basePos = hCenter.clone().add(c.u.clone().multiplyScalar(seatOff - 0.06));
+      vGroup.position.copy(basePos);
+      alignY(vGroup, c.u);
+      vGroup.userData = { type, axis: c.u.clone(), base: basePos, lift: 0 };
+      head.add(vGroup);
+
+      // spring between fixed seat (below valve) and retainer (moves with valve)
+      const spring = makeSpring(0.55, 10);
+      spring.position.copy(basePos).add(c.u.clone().multiplyScalar(-0.04));
+      alignY(spring, c.u);
+      head.add(spring);
+
+      c.valves.push({ mesh: vGroup, spring, base: basePos, axis: c.u.clone(), type, lift: 0, retainer: null });
+    }
+  }
+}
+
+// ========================= Build: Crankshaft (in grpCrank) =========================
+{
+  const mainRad = 0.21, pinRad = 0.17, pinWidth = 0.36;
+  const shaftRad = 0.17;
+  // Main shaft through mains
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(shaftRad, shaftRad, 4.75, 20), matCrank);
+  shaft.rotation.z = Math.PI/2; shaft.castShadow = shaft.receiveShadow = true; grpCrank.add(shaft);
+  // Main journals
+  for (const mx of MAIN_X) {
+    const j = new THREE.Mesh(new THREE.CylinderGeometry(mainRad, mainRad, 0.62, 24), matCrank);
+    j.position.set(mx, 0, 0); j.rotation.z = Math.PI/2; j.castShadow = j.receiveShadow = true; grpCrank.add(j);
+  }
+  // Throws: crank pins, webs, counterweights (at crankAngle=0 local phases)
+  for (let ti = 0; ti < 4; ti++) {
+    const mx = CYL_X[ti];
+    const phase = THROW_PHASE_DEG[ti] * DEG;
+    const py = CRANK_R * Math.cos(phase), pz = CRANK_R * Math.sin(phase);
+    // rod journal (crank pin)
+    const pin = new THREE.Mesh(new THREE.CylinderGeometry(pinRad, pinRad, pinWidth, 20), matCrank);
+    pin.position.set(mx, py, pz); pin.rotation.z = Math.PI/2; pin.castShadow = pin.receiveShadow = true; grpCrank.add(pin);
+    // web: flat cylinder connecting main to pin
+    const web = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.62, 16), matCrank);
+    web.position.set(mx, py*0.5, pz*0.5);
+    _qA.setFromUnitVectors(new THREE.Vector3(0,1,0), safeNorm(new THREE.Vector3(0, py, pz)));
+    web.quaternion.copy(_qA); web.rotation.z = Math.PI/2;
+    web.castShadow = web.receiveShadow = true; grpCrank.add(web);
+    // counterweight opposite side
+    const cw = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.62, 0.16), matCrank);
+    cw.position.set(mx, -py * 0.55, -pz * 0.55);
+    cw.rotation.z = Math.PI/2; cw.castShadow = cw.receiveShadow = true; grpCrank.add(cw);
+  }
+}
+
+// ========================= Build: Camshaft (in grpCam) =========================
+{
+  // Camshaft sits in the V valley, between banks, below deck
+  const camRad = 0.075;
+  const camShaft = new THREE.Mesh(new THREE.CylinderGeometry(camRad, camRad, 4.75, 16), matCam);
+  camShaft.position.set(0, 0, -0.62); camShaft.rotation.z = Math.PI/2;
+  camShaft.castShadow = camShaft.receiveShadow = true; grpCam.add(camShaft);
+  // Cam bearings (supports)
+  for (const mx of MAIN_X) {
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.42, 16), matCam);
+    b.position.set(mx, 0, -0.62); b.rotation.z = Math.PI/2; grpCam.add(b);
+  }
+  // Lobes: 16 lobes (2 per cylinder), positioned around cam at angles matching timing roughly
+  const lobeRad = 0.145, baseRad = 0.095;
+  for (let i = 0; i < 8; i++) {
+    const c = Cylinders[i];
+    const bankSign = c.bank === 0 ? 1 : -1;
+    // Intake lobe: opens during intake stroke (cycle phase near 0-180). Cam angle = crank/2.
+    // We place lobe so its high point is at cam angle = (cycle fire phase/2) adjusted.
+    for (let t = 0; t < 2; t++) {
+      const type = t === 0 ? 'intake' : 'exhaust';
+      // rough cam angle (deg) at which this valve should be fully open:
+      // intake fully open ~ cycle phase 90 ; exhaust fully open ~ cycle phase 630
+      const cycleOpen = t === 0 ? 90 : 630; // degrees of cycle (720)
+      const camAngleDeg = ((c.phaseOffset + cycleOpen) / 2) % 360; // cam turns half
+      const a = camAngleDeg * DEG;
+      // lobe pushes toward the bank head: direction in YZ toward +bank Y and +Z (up/out of V)
+      const pushDir = new THREE.Vector3(0, bankSign * 0.85, 0.55).normalize();
+      const lobe = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.52, 12), matCam);
+      // local lobe axis = pushDir; position eccentric from cam center
+      const off = pushDir.clone().multiplyScalar((baseRad + lobeRad) * 0.9);
+      lobe.position.set(c.x, off.y, -0.62 + off.z);
+      alignY(lobe, pushDir);
+      lobe.castShadow = lobe.receiveShadow = true;
+      grpCam.add(lobe);
+      c.lobeMesh = lobe;
+      c.lobeAngle = a;
+      c.lobePushDir = pushDir;
+      c.lobeType = type;
+    }
+  }
+}
+
+// ========================= Build: Timing gears + flywheel + accessories =========================
+{
+  // Front of engine = +X (pulley side), rear = -X (flywheel)
+  function gearMesh(radius, height, teeth, mat) {
+    const g = new THREE.Group();
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, height, 32), mat);
+    rim.castShadow = rim.receiveShadow = true; g.add(rim);
+    const toothH = 0.05;
+    for (let i = 0; i < teeth; i++) {
+      const a = (i / teeth) * Math.PI * 2;
+      const t = new THREE.Mesh(new THREE.BoxGeometry(0.045, toothH, height), mat);
+      const r = radius + toothH/2 + 0.02;
+      t.position.set(Math.cos(a) * r, Math.sin(a) * r, 0);
+      t.rotation.z = a; t.castShadow = t.receiveShadow = true; g.add(t);
+    }
+    return g;
+  }
+  const crankGear = gearMesh(0.34, 0.32, 20, matCrank);
+  crankGear.position.set(2.32, 0, 0.1); grpTiming.add(crankGear);
+  const camGear = gearMesh(0.62, 0.32, 40, matCam);
+  camGear.position.set(0, 0, -0.62); grpCam.add(camGear); // rotates with cam group
+
+  // Flywheel at rear (-X)
+  const fw = new THREE.Group();
+  const rimFw = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.9, 64), matFlywheel);
+  rimFw.rotation.z = Math.PI/2; fw.add(rimFw);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.62, 32), matFlywheel);
+  hub.position.set(-2.18, 0, 0); hub.castShadow = hub.receiveShadow = true; fw.add(hub);
+  const fwDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.18, 64), matFlywheel);
+  fwDisc.position.set(-2.18, 0, 0); fwDisc.rotation.z = Math.PI/2; fwDisc.castShadow = fwDisc.receiveShadow = true; fw.add(fwDisc);
+  // ring gear teeth on outer edge of disc at rear face
+  for (let i = 0; i < 64; i++) {
+    const a = (i / 64) * Math.PI * 2;
+    const t = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.07, 0.1), matFlywheel);
+    t.position.set(-2.18 + 0.92 * Math.cos(a), 0.92 * Math.sin(a), -0.12);
+    t.rotation.z = a; t.rotation.x = Math.PI/2; t.castShadow = t.receiveShadow = true; fw.add(t);
+  }
+  // bolt pattern on hub face
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.05, 10), matFlywheel);
+    t.position.set(-2.18, 0.28 * Math.cos(a), 0.28 * Math.sin(a)); t.rotation.x = Math.PI/2; fw.add(t);
+  }
+  grpFlywheel.add(fw);
+
+  // Accessories front: crank pulley, alternator, water pump, belt
+  const crankPulley = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.42, 32), matPulley);
+  crankPulley.position.set(2.5, 0, 0); crankPulley.rotation.z = Math.PI/2; crankPulley.castShadow = crankPulley.receiveShadow = true;
+  grpAccessories.add(crankPulley); State.crankPulley = crankPulley;
+  const altPulley = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.3, 24), matPulley);
+  altPulley.position.set(2.5, 1.0, -0.55); altPulley.rotation.z = Math.PI/2; altPulley.castShadow = altPulley.receiveShadow = true;
+  grpAccessories.add(altPulley); State.altPulley = altPulley;
+  const wpPulley = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.26, 24), matPulley);
+  wpPulley.position.set(2.5, -1.0, -0.55); wpPulley.rotation.z = Math.PI/2; wpPulley.castShadow = wpPulley.receiveShadow = true;
+  grpAccessories.add(wpPulley); State.wpPulley = wpPulley;
+  // belt as thin static loop (decorative)
+  const belt = new THREE.Mesh(new THREE.TorusGeometry(0.43, 0.014, 16, 40), matPulley);
+  belt.position.set(2.5, 0, 0); belt.rotation.z = Math.PI/2; belt.receiveShadow = true; grpAccessories.add(belt);
+}
+
+// ========================= Build: Intake & Exhaust =========================
+{
+  // Intake plenum in V between banks, runners to each head inner port
+  const plenum = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.9), matIntake);
+  plenum.position.set(0, 0, 1.42); plenum.castShadow = plenum.receiveShadow = true; grpIntake.add(plenum);
+  const tb = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.35, 20), matIntake);
+  tb.position.set(0, 0, 1.95); tb.rotation.z = Math.PI/2; tb.castShadow = tb.receiveShadow = true; grpIntake.add(tb);
+  for (const c of Cylinders) {
+    // runner from plenum to head (approach inner side)
+    const start = new THREE.Vector3(0, 0, 1.42);
+    const end = c.chamberPos.clone().add(c.u.clone().multiplyScalar(-0.15));
+    const dir = safeNorm(new THREE.Vector3().subVectors(end, start));
+    const len = start.distanceTo(end);
+    const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+    const run = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, len, 16), matIntake);
+    run.position.copy(mid); alignY(run, dir); run.castShadow = run.receiveShadow = true; grpIntake.add(run);
+    c.intakePort = end.clone();
+  }
+  // Exhaust headers per bank: outer ports merge into collector
+  for (let bank = 0; bank <= 1; bank++) {
+    const sign = bank === 0 ? 1 : -1;
+    const collector = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.95, 20), matExhaust);
+    collector.position.set(sign * 1.9, 0, 0.85); collector.rotation.z = Math.PI/2; collector.castShadow = collector.receiveShadow = true; grpExhaust.add(collector);
+    const bankCyls = Cylinders.filter(c => c.bank === bank);
+    bankCyls.forEach((c, ci) => {
+      const start = c.chamberPos.clone().add(c.u.clone().multiplyScalar(-0.15));
+      // route to outer side then back to collector
+      const mid = new THREE.Vector3(sign * 1.35, sign * 0.55, 1.05 + ci * 0.25);
+      const end = collector.position.clone();
+      // simple two-segment tube using curve
+      const pts = [start, mid, end];
+      const curve = new THREE.CatmullRomCurve3(pts);
+      const tube = new THREE.TubeGeometry(curve, 20, 0.06, 12, false);
+      const mesh = new THREE.Mesh(tube, matExhaust); mesh.castShadow = mesh.receiveShadow = true; grpExhaust.add(mesh);
+    });
+  }
+}
+
+// ========================= Assembly of cylinder groups (piston+rod placed per frame) =========================
+for (const c of Cylinders) {
+  // piston group
+  const p = geoPiston.clone();
+  p.castShadow = true; p.receiveShadow = true;
+  c.pistonMesh = p; c.root.add(p);
+  // rod group (clone template)
+  const rod = rodGroupGeo.clone();
+  rod.castShadow = true; rod.receiveShadow = true;
+  c.rodMesh = rod; c.root.add(rod);
+  c.root.add(c.headGroup);
+  scene.add(c.root);
+}
+
+// ========================= Update kinematics =========================
+function updateMechanics(angleDeg) {
+  const aRad = angleDeg * DEG;
+  const camRad = (angleDeg * 0.5) * DEG;
+
+  // Crankshaft group rotates with crank
+  grpCrank.rotation.x = aRad;
+  grpFlywheel.rotation.x = aRad;
+  if (State.crankPulley) State.crankPulley.rotation.x = aRad;
+
+  // Camshaft rotates at half speed
+  grpCam.rotation.x = camRad;
+
+  // Timing: cam gear counter-rotates relative to crank at half speed to show 2:1 mesh
+  // (crank gear rotates with grpCrank? timing group is world; crank gear at front fixed to crankshaft)
+  // We rotate crank gear extra inside grpTiming? grpTiming is world-aligned. Rotate crankGear mesh:
+  const cg = grpTiming.children[0];
+  if (cg) cg.rotation.x = aRad;
+  // cam gear already inside grpCam which rotates at camRad; fine.
+
+  // Accessory pulley ratios
+  if (State.altPulley) State.altPulley.rotation.x = aRad * (0.4 / 0.17);
+  if (State.wpPulley) State.wpPulley.rotation.x = aRad * (0.4 / 0.19);
+
+  // Per cylinder
+  for (const c of Cylinders) {
+    const tp = c.throwPhase * DEG;
+    const phase = aRad + tp; // crank angle for this throw
+    // crank pin position (journal at x,0,0 rotated within crank group => world position after grpCrank rotation)
+    // Compute world pin by rotating local offset by aRad about X:
+    const pinLocal = new THREE.Vector3(0, CRANK_R * Math.cos(phase), CRANK_R * Math.sin(phase));
+    // rotate pinLocal about X by aRad
+    _vA.copy(pinLocal);
+    _vB.copy(_vA); // y,z rotate
+    const y = _vB.y * Math.cos(aRad) - _vB.z * Math.sin(aRad);
+    const z = _vB.y * Math.sin(aRad) + _vB.z * Math.cos(aRad);
+    const pinWorld = new THREE.Vector3(c.x, y, z);
+
+    const u = c.u;
+    const dot = u.y * Math.cos(phase) + u.z * Math.sin(phase); // u · v, x comps zero
+    const under = ROD_L * ROD_L - CRANK_R * CRANK_R * (1 - dot * dot);
+    const s = CRANK_R * dot + Math.sqrt(Math.max(under, 0.0001));
+    const wrist = new THREE.Vector3(c.x, 0, 0).add(u.clone().multiplyScalar(s));
+
+    // piston
+    const p = c.pistonMesh;
+    p.position.copy(wrist).add(u.clone().multiplyScalar(0.16));
+    alignY(p, u);
+
+    // rod
+    const rod = c.rodMesh;
+    _vA.copy(wrist); _vB.copy(pinWorld);
+    const mid = _vA.add(_vB).multiplyScalar(0.5);
+    const dir = safeNorm(new THREE.Vector3().subVectors(pinWorld, wrist));
+    rod.position.copy(mid);
+    alignY(rod, dir);
+    // slight bank offset so two rods sharing a pin don't perfectly overlap
+    rod.position.add(dir.clone().cross(u).multiplyScalar(c.bank === 0 ? 0.018 : -0.018));
+
+    // Four stroke cycle
+    const cyc = wrap720(angleDeg + c.phaseOffset);
+    let intakeLift = 0, exhaustLift = 0;
+    // intake open: cycle [680,720] U [0,220]
+    {
+      const open = 680, close = 220, dur = (close - open + 720) % 720;
+      const t = ((cyc - open + 720) % 720) / dur;
+      if (t >= 0 && t <= 1) intakeLift = 0.21 * Math.sin(Math.PI * t);
+    }
+    // exhaust open: cycle [520,720] U [0,40]
+    {
+      const open = 520, close = 40, dur = (close - open + 720) % 720;
+      const t = ((cyc - open + 720) % 720) / dur;
+      if (t >= 0 && t <= 1) exhaustLift = 0.19 * Math.sin(Math.PI * t);
+    }
+    c.cyclePhase = cyc;
+
+    // Valves
+    const valves = c.valves;
+    if (valves[0]) { valves[0].lift = intakeLift; setValvePose(valves[0], intakeLift); }
+    if (valves[1]) { valves[1].lift = exhaustLift; setValvePose(valves[1], exhaustLift); }
+
+    // Combustion flash near start of power stroke (phase entering 360)
+    const inFire = cyc >= 360 && cyc <= 372;
+    if (inFire && c.fireTimer <= 0) c.fireTimer = 0.18;
+    if (c.fireTimer > 0) {
+      c.fireTimer -= (1 / 60) * State.mult; // rough per-frame delta handled outside; use dt later
+      if (c.fireTimer < 0) c.fireTimer = 0;
+    }
+    if (!c.glow) {
+      const g = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 12), matGlow);
+      g.position.copy(c.chamberPos); g.position.add(u.clone().multiplyScalar(0.22));
+      g.material = matGlow.clone(); scene.add(g); c.glow = g;
+    }
+    const glow = c.glow;
+    const intensity = c.fireTimer > 0 ? Math.min(1, c.fireTimer / 0.18) : 0;
+    glow.material.opacity = intensity;
+    glow.material.emissiveIntensity = intensity * 4;
+    glow.scale.setScalar(1 + intensity * 2);
+    glow.visible = intensity > 0.01;
+  }
+}
+
+function setValvePose(v, lift) {
+  const axis = v.axis;
+  // valve moves +u (out of chamber) by lift
+  v.mesh.position.copy(v.base).add(axis.clone().multiplyScalar(lift));
+  // spring: fixed seat at base - small, retainer moves with valve top; compress by lift
+  const spring = v.spring;
+  const seat = v.base.clone().add(axis.clone().multiplyScalar(-0.05));
+  const retainer = v.base.clone().add(axis.clone().multiplyScalar(0.42 + lift));
+  const mid = new Vector3Tmp().addVectors(seat, retainer).multiplyScalar(0.5);
+  spring.position.copy(mid);
+  alignY(spring, axis);
+  spring.scale.set(1, (0.47 + lift) / 0.55, 1);
+  spring.scale.x = spring.scale.z = 1;
+}
+const Vector3Tmp = new THREE.Vector3();
+
+// ========================= Explosion offsets =========================
+function applyExplode(e) { // e in 0..1
+  const s = e * 1.35;
+  // Heads off along bank normals from deck
+  for (const c of Cylinders) {
+    c.headGroup.position.copy(c.chamberPos).add(c.u.clone().multiplyScalar(s * 0.9));
+    // valves & springs are children of headGroup -> move with it
+  }
+  // Intake plenum up/out
+  grpIntake.position.set(0, s * 0.9, 0);
+  // Exhaust headers down/out
+  grpExhaust.position.set(0, -s * 0.6, 0);
+  // Timing cover/components forward (front +X)
+  grpTiming.position.set(s * 1.2, 0, 0);
+  // Valve covers already on heads
+}
+
+// ========================= UI wiring =========================
+const ui = {
+  rpmSlider: document.getElementById('rpmSlider'),
+  rpmVal: document.getElementById('rpmVal'),
+  btnPause: document.getElementById('btnPause'),
+  manSlider: document.getElementById('manSlider'),
+  explSlider: document.getElementById('explSlider'),
+  explVal: document.getElementById('explVal'),
+  cylButtons: document.getElementById('cylButtons'),
+  cylInfo: document.getElementById('cylInfo'),
+  toggles: {}
+};
+for (const k of ['vBlock','vPistons','vRods','vCrank','vValvetrain','vCam','vIntake','vExhaust','vTiming']) {
+  ui.toggles[k] = document.getElementById(k);
+}
+
+// cylinder inspection buttons
+for (let i = 0; i < 8; i++) {
+  const b = document.createElement('button');
+  b.className = 'btn'; b.textContent = String(i + 1); b.style.flex = '0 0 auto';
+  b.style.padding = '4px 7px'; b.style.fontSize = '9.5px';
+  b.onclick = () => { State.inspect = i; updateInspectUI(); };
+  ui.cylButtons.appendChild(b);
+}
+function updateInspectUI() {
+  const b = ui.cylInfo;
+  if (State.inspect === null) { b.textContent = 'Select a cylinder'; return; }
+  const c = Cylinders[State.inspect];
+  const strokeNames = ['Intake','Compression','Power','Exhaust'];
+  const stroke = Math.floor(c.cyclePhase / 180) % 4;
+  b.innerHTML = `Cyl ${c.num} (bank ${c.bank === 0 ? 'A' : 'B'})<br>Cycle: ${c.cyclePhase.toFixed(0)}&deg; / 720&deg;<br>Stroke: <b>${strokeNames[stroke]}</b>`;
+  // highlight
+  for (const bb of ui.cylButtons.children) bb.className = 'btn';
+  ui.cylButtons.children[State.inspect].className = 'btn active';
+}
+
+// RPM buttons
+document.querySelectorAll('.btn[data-rpm]').forEach(b => {
+  b.onclick = () => { State.targetRpm = parseInt(b.dataset.rpm); State.paused = State.targetRpm === 0; ui.btnPause.textContent = State.paused ? 'RESUME' : 'PAUSE'; updateRpmButtons(); };
+});
+function updateRpmButtons(){
+  document.querySelectorAll('.btn[data-rpm]').forEach(b => {
+    b.className = parseInt(b.dataset.rpm) === State.targetRpm ? 'btn active' : 'btn';
+  });
+}
+ui.btnPause.onclick = () => { State.paused = !State.paused; ui.btnPause.textContent = State.paused ? 'RESUME' : 'PAUSE'; };
+document.querySelectorAll('.btn[data-mult]').forEach(b => {
+  b.onclick = () => { State.mult = parseFloat(b.dataset.mult);
+    document.querySelectorAll('.btn[data-mult]').forEach(x => x.className = x.dataset.mult == State.mult ? 'btn active' : 'btn'); };
+});
+
+// camera presets
+const camPresets = {
+  hero: () => { camera.position.set(0, 2.6, 5.6); controls.target.set(0, 0.35, 0); },
+  front: () => { camera.position.set(0, 1.6, 6.2); controls.target.set(0, 0.35, 0); },
+  side: () => { camera.position.set(6.2, 1.4, 0); controls.target.set(0, 0.35, 0); },
+  top: () => { camera.position.set(0, 7.2, 0.6); controls.target.set(0, 0.35, 0); },
+  internal: () => { camera.position.set(-0.4, 0.28, 2.2); controls.target.set(0, 0.35, 0.4); }
+};
+document.querySelectorAll('.btn[data-cam]').forEach(b => {
+  b.onclick = () => { camPresets[b.dataset.cam]();
+    document.querySelectorAll('.btn[data-cam]').forEach(x => x.className = x.dataset.cam === b.dataset.cam ? 'btn active' : 'btn'); };
+});
+
+// visibility
+for (const k in ui.toggles) {
+  ui.toggles[k].onchange = () => { State.vis[k] = ui.toggles[k].checked; };
+}
+const visMap = { vBlock: grpBlock, vPistons: null, vRods: null, vCrank: grpCrank, vValvetrain: null, vCam: grpCam, vIntake: grpIntake, vExhaust: grpExhaust, vTiming: grpTiming };
+
+// ========================= Main loop =========================
+const clock = new THREE.Clock();
+let lastRaw = State.rawAngle;
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+
+  if (!State.paused && !State.manual) {
+    const dAngle = 360 * (State.rpm / 60) * State.mult * dt; // degrees per second (360 deg/rev)
+    State.rawAngle += dAngle;
+    // smooth rpm toward target
+    if (State.rpm < State.targetRpm) State.rpm = Math.min(State.targetRpm, State.rpm + 2500 * dt);
+    if (State.rpm > State.targetRpm) State.rpm = Math.max(State.targetRpm, State.rpm - 2500 * dt);
+  } else if (State.manual) {
+    State.rawAngle = State.manualAngle;
+  }
+  // keep rpmVal in sync
+  ui.rpmSlider.value = State.targetRpm;
+  ui.rpmVal.textContent = State.targetRpm.toString();
+  ui.manSlider.disabled = !State.manual;
+  if (State.manual) {
+    State.manualAngle = parseFloat(ui.manSlider.value);
+    ui.manSlider.value = State.manualAngle;
+  }
+
+  updateMechanics(State.rawAngle);
+  applyExplode(State.explode / 100);
+
+  // visibility
+  for (const k in visMap) { if (visMap[k]) visMap[k].visible = State.vis[k]; }
+  // pistons/rods/valvetrain per cylinder root visibility
+  for (const c of Cylinders) {
+    c.root.visible = State.vis.pistons || State.vis.rods || State.vis.valvetrain; // root holds all
+    // refine: hide piston/rod individually if toggles off
+    if (c.pistonMesh) c.pistonMesh.visible = State.vis.pistons;
+    if (c.rodMesh) c.rodMesh.visible = State.vis.rods;
+    if (c.headGroup) {
+      c.headGroup.visible = State.vis.valvetrain || State.vis.block; // heads part of block-ish
+      for (const v of c.valves) { v.mesh.visible = State.vis.valvetrain; v.spring.visible = State.vis.valvetrain; }
+    }
+  }
+
+  updateInspectUI();
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// inputs
+ui.rpmSlider.oninput = () => { State.targetRpm = parseInt(ui.rpmSlider.value); State.paused = State.targetRpm === 0; ui.btnPause.textContent = State.paused ? 'RESUME' : 'PAUSE'; updateRpmButtons(); };
+ui.explSlider.oninput = () => { State.explode = parseFloat(ui.explSlider.value); ui.explVal.textContent = State.explode.toFixed(0) + '%'; };
+ui.manSlider.oninput = () => { State.manual = true; document.getElementById('chkManual').checked = true; State.manualAngle = parseFloat(ui.manSlider.value); };
+document.getElementById('chkManual').onchange = () => { State.manual = document.getElementById('chkManual').checked; };
+
+animate();
+</script>
+</body>
+</html>
