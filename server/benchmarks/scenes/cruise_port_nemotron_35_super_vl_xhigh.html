@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Cruise Port Benchmark — Lisbon</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; overflow:hidden; background:#0b0c10; font-family:sans-serif; }
+#canvas { position:absolute; inset:0; display:block; }
+#ui {
+  position:absolute; top:10px; left:10px; width:330px; max-width:92%;
+  background:rgba(10,12,18,0.8); color:#eee; padding:10px 12px; border-radius:8px;
+  pointer-events:auto; backdrop-filter:blur(4px); user-select:none; z-index:15;
+  transition:opacity .3s, transform .3s;
+}
+#ui.hidden { opacity:0; pointer-events:none; transform:translateX(-120%); }
+#ui h1 { font-size:12px; margin:0 0 8px; color:#ffd166; letter-spacing:1px; text-transform:uppercase; }
+.row { display:flex; gap:8px; margin-bottom:7px; align-items:center; flex-wrap:wrap; }
+label { font-size:10px; color:#9aa3b2; flex-shrink:0; }
+button { flex:1 1 46%; padding:6px 8px; font-size:11px; border:none; border-radius:4px; background:#242a37; color:#eee; cursor:pointer; }
+button:hover { background:#364052; }
+button.primary { background:#c0392b; }
+button.primary:hover { background:#e74c3c; }
+button.active { background:#1e8449; }
+button.active:hover { background:#27ae60; }
+select, input[type=range] { font-size:10px; padding:4px; border-radius:4px; border:none; background:#1c2130; color:#eee; }
+#timebox { font-size:11px; color:#ffd166; font-variant-numeric: tabular-nums; min-width:44px; text-align:right; }
+#status { font-size:10px; color:#888; margin-top:6px; min-height:13px; }
+#hide { position:absolute; top:10px; left:10px; z-index:20; padding:6px 10px; background:rgba(10,12,18,0.75); color:#eee; border:none; border-radius:0 6px 6px 0; font-size:11px; cursor:pointer; }
+#hide.hidden { display:none; }
+#loading { position:absolute; inset:0; background:#06080c; color:#eee; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:40; font-family:sans-serif; }
+#loading .bar { width:220px; height:5px; background:#161a28; margin-top:10px; border-radius:3px; overflow:hidden; }
+#loading .fill { width:0%; height:100%; background:#ffd166; transition:width .2s; }
+#webgl-error { position:absolute; inset:0; background:#210505; color:#fcc; display:none; align-items:center; justify-content:center; padding:24px; z-index:50; font-family:sans-serif; line-height:1.6; text-align:center; }
+</style>
+</head>
+<body>
+<div id="webgl-error">WebGL is not available on this device.</div>
+<div id="loading"><div>Generating Lisbon cruise port...</div><div class="bar"><div class="fill" id="loadFill"></div></div></div>
+<button id="hide">HIDE UI</button>
+<div id="ui">
+  <h1>Lisbon Cruise Port</h1>
+  <div class="row">
+    <label for="time">TIME OF DAY</label>
+    <input type="range" id="time" min="0" max="1" step="0.005" value="0.45">
+    <span id="timebox">10:48</span>
+  </div>
+  <div class="row">
+    <button id="btnPlay">PAUSE</button>
+    <select id="weather"><option>CLEAR</option><option>HAZE</option><option>LIGHT RAIN</option></select>
+  </div>
+  <div class="row">
+    <button class="cam" data-cam="ORBIT">ORBIT</button>
+    <button class="cam" data-cam="MIRADOURO">MIRADOURO</button>
+    <button class="cam" data-cam="WATERFRONT">WATERFRONT</button>
+    <button class="cam" data-cam="AERIAL">AERIAL</button>
+    <button class="cam" data-cam="RIVER">FROM RIVER</button>
+    <button class="cam" data-cam="DECK">SHIP DECK</button>
+  </div>
+  <div class="row">
+    <button id="btnWalk" style="flex:1 1 100%">WALK MODE (QUAY)</button>
+  </div>
+  <div class="row">
+    <button id="btnDepart" class="primary">DEPARTURE</button>
+    <button id="btnReturn">RETURN TO BERTH</button>
+  </div>
+  <div id="status">Docked at Jardim do Tabaco</div>
+</div>
+<div id="canvas"></div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+const webglErr = document.getElementById('webgl-error');
+if (!(document.createElement('canvas').getContext('webgl') || document.createElement('canvas').getContext('experimental-webgl'))) {
+  webglErr.style.display = 'flex';
+  throw new Error('WebGL unavailable');
+}
+
+let scene, camera, renderer, orbit, walker, clock;
+let water, ship, city, gangway, quay, bridge, tram, tramPath, tramT = 0;
+let dirLight, hemiLight, ambLight;
+let cityMat, shipCabMat;
+let streetLights = [], mooring = [], gulls = [], ferries = [], boats = [], persons = [];
+let birdInst, peopleInst;
+let timeOfDay = 0.45, timePaused = false, timeSpeed = 0.00017;
+let departureState = 'docked', departureStart = 0, departureProgress = 0;
+let keyState = {}, walkActive = false;
+
+function textTexture(text, w = 512, h = 160, color = '#dddddd', size = 52) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#00000000'; ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `bold ${size}px sans-serif`; ctx.fillText(text, w / 2, h / 2);
+  const t = new THREE.CanvasTexture(c); t.needsUpdate = true; return t;
+}
+
+function createLights() {
+  ambLight = new THREE.AmbientLight(0xffffff, 0.06);
+  scene.add(ambLight);
+  dirLight = new THREE.DirectionalLight(0xffdd88, 1.2);
+  dirLight.position.set(500, 1000, 500);
+  dirLight.castShadow = true;
+  dirLight.shadow.mapSize.set(2048, 2048);
+  dirLight.shadow.camera.left = -900; dirLight.shadow.camera.right = 900;
+  dirLight.shadow.camera.top = 900; dirLight.shadow.camera.bottom = -900;
+  scene.add(dirLight);
+  hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x001a33, 0.5);
+  scene.add(hemiLight);
+}
+
+function createWater() {
+  const geo = new THREE.PlaneGeometry(7000, 7000, 110, 110);
+  geo.rotateX(-Math.PI / 2);
+  const un = {
+    uTime: { value: 0 },
+    uSkyColor: { value: new THREE.Color(0x87ceeb) },
+    uDeepColor: { value: new THREE.Color(0x001022) },
+    uSunColor: { value: new THREE.Color(0xffaa00) },
+  };
+  const vs = [
+    'uniform float uTime; varying vec3 vN; varying float vE;',
+    'void main(){ vN=normal; vec3 p=position;',
+    ' float w=sin(p.x*0.09+uTime)*0.55 + cos(p.z*0.07+uTime*0.8)*0.45 + sin((p.x+p.z)*0.04+uTime*1.2)*0.25;',
+    ' p.y += w*0.8; vE=w; gl_Position = projectionMatrix * modelViewMatrix * vec4(p,1.0); }'
+  ].join('\n');
+  const fs = [
+    'uniform vec3 uSkyColor; uniform vec3 uDeepColor; uniform vec3 uSunColor; varying vec3 vN; varying float vE;',
+    'void main(){ float light=dot(normalize(vN),vec3(0.25,1,0.3)); vec3 c=mix(uDeepColor,uSkyColor,0.5+vN.y*0.55); c += uSunColor*pow(max(light,0.0),110.0)*0.55; c *= 0.8 + vE*0.2; gl_FragColor=vec4(c,1.0); }'
+  ].join('\n');
+  const m = new THREE.ShaderMaterial({ uniforms: un, vertexShader: vs, fragmentShader: fs, side: THREE.DoubleSide });
+  water = new THREE.Mesh(geo, m);
+  scene.add(water);
+}
+
+function updateSkyAndLights() {
+  const t = timeOfDay;
+  const sunAlt = Math.cos((t - 0.5) * Math.PI);
+  const sunVis = Math.max(sunAlt, 0);
+  let sky, deep, sunCol;
+  if (t < 0.25) {
+    const k = t / 0.25;
+    sky = new THREE.Color(0x03030a).lerp(new THREE.Color(0xff9955), k);
+    deep = new THREE.Color(0x000004).lerp(new THREE.Color(0x4a1800), k);
+  } else if (t < 0.5) {
+    const k = (t - 0.25) / 0.25;
+    sky = new THREE.Color(0xff9955).lerp(new THREE.Color(0x87ceeb), k);
+    deep = new THREE.Color(0x4a1800).lerp(new THREE.Color(0x00152a), k);
+  } else if (t < 0.75) {
+    const k = (t - 0.5) / 0.25;
+    sky = new THREE.Color(0x87ceeb).lerp(new THREE.Color(0xff7733), k);
+    deep = new THREE.Color(0x00152a).lerp(new THREE.Color(0x4a0800), k);
+  } else {
+    const k = (t - 0.75) / 0.25;
+    sky = new THREE.Color(0xff7733).lerp(new THREE.Color(0x03030a), k);
+    deep = new THREE.Color(0x4a0800).lerp(new THREE.Color(0x000004), k);
+  }
+  scene.background = sky;
+  if (scene.fog) scene.fog.color.copy(sky);
+  sunCol = new THREE.Color(0xffdd88).lerp(new THREE.Color(0x555577), 1 - sunVis);
+  dirLight.color.set(sunCol);
+  dirLight.intensity = 0.3 + 1.5 * sunVis;
+  dirLight.position.set(Math.sin(t * Math.PI * 2) * 1600, sunAlt * 1300 + 180, -Math.cos(t * Math.PI * 2) * 1600);
+  hemiLight.color.set(sky); hemiLight.groundColor.set(deep); hemiLight.intensity = 0.5 + 0.6 * sunVis;
+  ambLight.intensity = 0.04 + 0.32 * sunVis;
+  water.material.uniforms.uSkyColor.value.copy(sky);
+  water.material.uniforms.uDeepColor.value.copy(deep);
+  water.material.uniforms.uSunColor.value.copy(sunCol);
+  const night = 1 - sunVis;
+  if (shipCabMat) shipCabMat.emissiveIntensity = night * 1.6;
+  if (cityMat) cityMat.emissiveIntensity = night * 0.7;
+  streetLights.forEach(l => { l.intensity = night * 4; });
+}
+
+const m4 = new THREE.Matrix4();
+
+function createCity() {
+  city = new THREE.Group();
+  cityMat = new THREE.MeshStandardMaterial({ color: 0xffecd9, emissive: 0xffdd88, emissiveIntensity: 0 });
+  const tiledMat = new THREE.MeshStandardMaterial({ color: 0x3b73a8, emissive: 0x224466, emissiveIntensity: 0 });
+  const roofMat = new THREE.MeshStandardMaterial({ color: 0xb7563b });
+  const baseGeo = new THREE.BoxGeometry(7, 11, 7);
+  const roofGeo = new THREE.BoxGeometry(9, 1.6, 9);
+  const baseInst = new THREE.InstancedMesh(baseGeo, cityMat, 320);
+  const roofInst = new THREE.InstancedMesh(roofGeo, roofMat, 320);
+  const tBaseInst = new THREE.InstancedMesh(baseGeo, tiledMat, 50);
+  const tRoofInst = new THREE.InstancedMesh(roofGeo, roofMat, 50);
+  let nI = 0, rI = 0, tI = 0, trI = 0;
+  const heights = [];
+  for (let i = 0; i < 370; i++) {
+    const x = (Math.random() - 0.5) * 1000;
+    const z = 35 + Math.random() * 540;
+    const y = 6 + Math.pow((z - 35) / 505, 1.7) * 82 + Math.sin(x * 0.014) * 5;
+    const hx = x, hy = y, hz = z;
+    m4.compose(new THREE.Vector3(hx, hy + 5.5, hz), new THREE.Quaternion(), new THREE.Vector3(1, 1, 1));
+    if (i < 320) { baseInst.setMatrixAt(nI++, m4); }
+    else { tBaseInst.setMatrixAt(tI++, m4); }
+    m4.compose(new THREE.Vector3(hx, hy + 11.9, hz), new THREE.Quaternion(), new THREE.Vector3(1, 1, 1));
+    if (i < 320) { roofInst.setMatrixAt(rI++, m4); }
+    else { tRoofInst.setMatrixAt(trI++, m4); }
+  }
+  baseInst.instanceMatrix.needsUpdate = true;
+  roofInst.instanceMatrix.needsUpdate = true;
+  tBaseInst.instanceMatrix.needsUpdate = true;
+  tRoofInst.instanceMatrix.needsUpdate = true;
+  city.add(baseInst, roofInst, tBaseInst, tRoofInst);
+
+  const stone = new THREE.MeshStandardMaterial({ color: 0xd4d0c4 });
+  const white = new THREE.MeshStandardMaterial({ color: 0xf5f5f2 });
+  const yellow = new THREE.MeshStandardMaterial({ color: 0xf1c40f });
+
+  // São Jorge Castle
+  const castle = new THREE.Group();
+  const keep = new THREE.Mesh(new THREE.BoxGeometry(42, 26, 42), stone);
+  keep.position.y = 13; keep.castShadow = true; castle.add(keep);
+  for (const sx of [-19, 19]) for (const sz of [-19, 19]) {
+    const tw = new THREE.Mesh(new THREE.BoxGeometry(9, 38, 9), stone);
+    tw.position.set(sx, 32, sz); tw.castShadow = true; castle.add(tw);
+  }
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(64, 14, 6), stone);
+  wall.position.set(0, 7, 22); wall.castShadow = true; castle.add(wall);
+  castle.position.set(-130, 60, 430);
+  city.add(castle);
+
+  // Pantheon dome
+  const pan = new THREE.Group();
+  const drum = new THREE.Mesh(new THREE.CylinderGeometry(9, 9, 12, 18), white);
+  drum.position.y = 6; pan.add(drum);
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(10, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), white);
+  dome.position.y = 12; pan.add(dome);
+  pan.position.set(-300, 50, 230); pan.scale.set(1, 1.15, 1);
+  city.add(pan);
+
+  // Sé Cathedral twin towers
+  const se = new THREE.Group();
+  const nave = new THREE.Mesh(new THREE.BoxGeometry(52, 24, 18), stone);
+  nave.position.y = 12; se.add(nave);
+  const t1 = new THREE.Mesh(new THREE.BoxGeometry(11, 46, 11), stone);
+  t1.position.set(-21, 35, 0); se.add(t1);
+  const t2 = t1.clone(); t2.position.set(21, 35, 0); se.add(t2);
+  se.position.set(-360, 35, 320); city.add(se);
+
+  // Praça do Comércio arcades + arch
+  const praca = new THREE.Group();
+  for (let i = 0; i < 16; i++) {
+    const col = new THREE.Mesh(new THREE.BoxGeometry(5, 15, 4), yellow);
+    col.position.set(-700 + i * 9.5, 7.5, 0); col.castShadow = true; praca.add(col);
+  }
+  const ent = new THREE.Mesh(new THREE.BoxGeometry(152, 3.5, 6), yellow);
+  ent.position.set(-624, 15, 0); praca.add(ent);
+  const arch = new THREE.Mesh(new THREE.BoxGeometry(34, 32, 6), yellow);
+  arch.position.set(-544, 16, 0); praca.add(arch);
+  praca.position.z = 1;
+  city.add(praca);
+  scene.add(city);
+}
+
+function createShip() {
+  ship = new THREE.Group();
+  const hullGeo = new THREE.BoxGeometry(300, 52, 38, 14, 7, 2);
+  const pos = hullGeo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i);
+    if (x < -138) { const tt = (y + 26) / 78; pos.setX(i, x + tt * 17); }
+    if (x > 138) { const tt = (y + 26) / 78; pos.setX(i, x - tt * 11); }
+  }
+  hullGeo.computeVertexNormals();
+  const hullMat = new THREE.MeshStandardMaterial({ color: 0x1e2128 });
+  const hull = new THREE.Mesh(hullGeo, hullMat);
+  hull.position.y = 25; hull.castShadow = true; hull.receiveShadow = true;
+  ship.add(hull);
+
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(300, 1.4, 38), new THREE.MeshStandardMaterial({ color: 0x9b1c1c }));
+  stripe.position.set(0, 25.8, -19.1); stripe.renderOrder = 2; ship.add(stripe);
+
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(6.5, 14, 10), hullMat);
+  bulb.position.set(-160, 18.5, -0.1); bulb.castShadow = true; ship.add(bulb);
+
+  const nameTex = textTexture('ATLANTIC STAR', 512, 130, '#eeeeee', 58);
+  const nameMat = new THREE.MeshBasicMaterial({ map: nameTex });
+  const nb = new THREE.Mesh(new THREE.PlaneGeometry(42, 10.5), nameMat);
+  nb.position.set(-148, 34, -19.2); nb.renderOrder = 3; ship.add(nb);
+  const ns = nb.clone(); ns.position.set(148, 34, -19.2); ns.rotation.y = Math.PI; ship.add(ns);
+
+  shipCabMat = new THREE.MeshStandardMaterial({ color: 0xececec, emissive: 0xffdd88, emissiveIntensity: 0 });
+  const cabMat = new THREE.MeshStandardMaterial({ color: 0xf2f2f2 });
+  const cabinGeo = new THREE.BoxGeometry(2.7, 2.6, 0.5);
+  const railGeo = new THREE.BoxGeometry(2.7, 0.35, 0.15);
+  const cabinInst = new THREE.InstancedMesh(cabinGeo, shipCabMat, 380);
+  const railInst = new THREE.InstancedMesh(railGeo, new THREE.MeshStandardMaterial({ color: 0x3a3f48 }), 380);
+  let ci = 0;
+  for (let d = 0; d < 18; d++) {
+    const y = 56 + d * 3.15;
+    for (const z of [-0.6, -37.4]) {
+      for (let j = 0; j < 10; j++) {
+        const x = -133 + j * 14;
+        m4.compose(new THREE.Vector3(x, y + 1.3, z), new THREE.Quaternion(), new THREE.Vector3(1, 1, 1));
+        cabinInst.setMatrixAt(ci, m4);
+        m4.compose(new THREE.Vector3(x, y + 2.85, z), new THREE.Quaternion(), new THREE.Vector3(1, 1, 1));
+        railInst.setMatrixAt(ci, m4);
+        ci++;
+      }
+    }
+  }
+  cabinInst.instanceMatrix.needsUpdate = true;
+  railInst.instanceMatrix.needsUpdate = true;
+  ship.add(cabinInst, railInst);
+
+  const lbGeo = new THREE.CylinderGeometry(1.3, 1.3, 3, 8);
+  const lbMat = new THREE.MeshStandardMaterial({ color: 0xc0392b });
+  const lbInst = new THREE.InstancedMesh(lbGeo, lbMat, 8);
+  let li = 0;
+  for (const z of [-0.8, -37.2]) {
+    for (let j = 0; j < 4; j++) {
+      const x = -125 + j * 80;
+      m4.compose(new THREE.Vector3(x, 80, z + 2.5), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI / 2)), new THREE.Vector3(1, 1, 1));
+      lbInst.setMatrixAt(li++, m4);
+    }
+  }
+  lbInst.instanceMatrix.needsUpdate = true;
+  ship.add(lbInst);
+
+  const funnel = new THREE.Group();
+  const f = new THREE.Mesh(new THREE.CylinderGeometry(6, 5, 15, 18), new THREE.MeshStandardMaterial({ color: 0xc0392b }));
+  f.position.y = 162; funnel.add(f);
+  const fs = new THREE.Mesh(new THREE.CylinderGeometry(5.1, 4.1, 15.2, 18), new THREE.MeshStandardMaterial({ color: 0x1a1a1a }));
+  fs.position.y = 162; funnel.add(fs);
+  funnel.position.set(45, 0, -19); ship.add(funnel);
+
+  const br = new THREE.Group();
+  const bmx = new THREE.Mesh(new THREE.BoxGeometry(46, 11, 18), new THREE.MeshStandardMaterial({ color: 0x1a1c22 }));
+  bmx.position.y = 142; br.add(bmx);
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(17, 5, 2), new THREE.MeshStandardMaterial({ color: 0x1a1c22 }));
+  wing.position.set(-29, 142, -9); br.add(wing);
+  const wing2 = wing.clone(); wing2.position.x = 29; br.add(wing2);
+  br.position.set(-70, 0, -19); ship.add(br);
+
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 18, 8), new THREE.MeshStandardMaterial({ color: 0x111 }));
+  mast.position.set(-70, 154, -19); ship.add(mast);
+  const radar = new THREE.Mesh(new THREE.BoxGeometry(11, 2, 6), new THREE.MeshStandardMaterial({ color: 0x2a2a2a }));
+  radar.position.set(-70, 175, -19); ship.add(radar);
+
+  const topDeck = new THREE.Mesh(new THREE.BoxGeometry(22, 1.6, 24), new THREE.MeshStandardMaterial({ color: 0x7f8c8d }));
+  topDeck.position.set(82, 154, -19); ship.add(topDeck);
+  const pool = new THREE.Mesh(new THREE.BoxGeometry(9, 0.9, 13), new THREE.MeshStandardMaterial({ color: 0x1f6f8f }));
+  pool.position.set(82, 155, -19); ship.add(pool);
+  const slide = new THREE.Mesh(new THREE.BoxGeometry(2.5, 14, 5), new THREE.MeshStandardMaterial({ color: 0xe74c3c }));
+  slide.position.set(86, 147, -19); slide.rotation.z = 0.35; ship.add(slide);
+  for (let j = 0; j < 6; j++) {
+    const lou = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.25, 2), new THREE.MeshStandardMaterial({ color: 0x95a5a6 }));
+    lou.position.set(84 + j * 1.9, 155.8, -28 + j * 4.4); ship.add(lou);
+  }
+
+  ship.position.set(0, 0, -19);
+  scene.add(ship);
+
+  gangway = new THREE.Mesh(new THREE.BoxGeometry(13, 0.7, 1.1), new THREE.MeshStandardMaterial({ color: 0x95a5a6 }));
+  gangway.position.set(0, 6, -0.6); gangway.rotation.x = -0.35; gangway.castShadow = true;
+  scene.add(gangway);
+
+  const lineMat = new THREE.LineBasicMaterial({ color: 0x5d4037 });
+  function mkLine(x1, y1, z1, x2, y2, z2) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute([x1, y1, z1, x2, y2, z2], 3));
+    const l = new THREE.Line(g, lineMat);
+    scene.add(l);
+    mooring.push(l);
+  }
+  mkLine(-130, 31, -19, -130, 2, 5);
+  mkLine(-105, 32, -19, -105, 2, 5);
+  mkLine(130, 31, -19, 130, 2, 5);
+  mkLine(105, 32, -19, 105, 2, 5);
+}
+
+function createQuay() {
+  quay = new THREE.Mesh(new THREE.PlaneGeometry(1700, 220), new THREE.MeshStandardMaterial({ color: 0x8c8c7f }));
+  quay.rotateX(-Math.PI / 2); quay.position.set(120, 0, 12); quay.receiveShadow = true;
+  scene.add(quay);
+  const term = new THREE.Mesh(new THREE.BoxGeometry(130, 14, 9), new THREE.MeshStandardMaterial({ color: 0xf4f4f2 }));
+  term.position.set(185, 7, 2); term.castShadow = true; term.receiveShadow = true;
+  scene.add(term);
+  for (let i = 0; i < 9; i++) {
+    const w = new THREE.Mesh(new THREE.BoxGeometry(4.5, 4.2, 0.12), new THREE.MeshBasicMaterial({ color: 0xffdd88 }));
+    w.position.set(132 + i * 14, 9, 2.1); scene.add(w);
+  }
+  const bollMat = new THREE.MeshStandardMaterial({ color: 0x554433 });
+  for (let i = 0; i < 10; i++) {
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 1.4, 8), bollMat);
+    b.position.set(-200 + i * 40, 0.7, 6); scene.add(b);
+  }
+}
+
+function createBridge() {
+  bridge = new THREE.Group();
+  const towerMat = new THREE.MeshStandardMaterial({ color: 0x7f8c8d });
+  const deckMat = new THREE.MeshStandardMaterial({ color: 0x34495e });
+  function tower(x) {
+    const g = new THREE.Group();
+    const col = new THREE.Mesh(new THREE.BoxGeometry(26, 190, 26), towerMat);
+    col.position.y = 95; col.castShadow = true; g.add(col);
+    g.position.set(x, 0, -180); return g;
+  }
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(420, 7, 36), deckMat);
+  deck.position.set(-1230, 70, -180); deck.castShadow = true;
+  bridge.add(tower(-1040), tower(-1420), deck);
+  const cabGeo = new THREE.BufferGeometry();
+  const cabPos = [];
+  for (let x = -1040; x <= -1420; x += 16) {
+    cabPos.push(-1040, 285, -180, x, 70, -180);
+    cabPos.push(-1420, 285, -180, x, 70, -180);
+  }
+  cabGeo.setAttribute('position', new THREE.Float32BufferAttribute(cabPos, 3));
+  const cables = new THREE.LineSegments(cabGeo, new THREE.LineBasicMaterial({ color: 0x95a5a6 }));
+  bridge.add(cables);
+  scene.add(bridge);
+}
+
+function createSouthBank() {
+  const south = new THREE.Mesh(new THREE.PlaneGeometry(2600, 500), new THREE.MeshStandardMaterial({ color: 0x3d4b3d }));
+  south.rotateX(-Math.PI / 2); south.position.set(-500, 0, -760); south.receiveShadow = true;
+  scene.add(south);
+  const cr = new THREE.Group();
+  const ped = new THREE.Mesh(new THREE.BoxGeometry(34, 48, 34), new THREE.MeshStandardMaterial({ color: 0x555 }));
+  ped.position.y = 24; cr.add(ped);
+  const stat = new THREE.Mesh(new THREE.BoxGeometry(13, 44, 13), new THREE.MeshStandardMaterial({ color: 0x777 }));
+  stat.position.set(0, 70, 0); cr.add(stat);
+  cr.position.set(-1420, 0, -820); scene.add(cr);
+}
+
+function createBoats() {
+  const tug = new THREE.Group();
+  const th = new THREE.Mesh(new THREE.BoxGeometry(24, 8, 11), new THREE.MeshStandardMaterial({ color: 0x1a1b26 }));
+  th.position.y = 4; tug.add(th);
+  const tc = new THREE.Mesh(new THREE.BoxGeometry(11, 6, 6), new THREE.MeshStandardMaterial({ color: 0xffce54 }));
+  tc.position.set(5, 8, 0); tug.add(tc);
+  tug.position.set(-165, 0, -48); scene.add(tug);
+  boats.push({ obj: tug, type: 'tug' });
+
+  const pilot = new THREE.Mesh(new THREE.BoxGeometry(11, 4, 5), new THREE.MeshStandardMaterial({ color: 0x3498db }));
+  pilot.position.y = 2; scene.add(pilot);
+  boats.push({ obj: pilot, type: 'pilot', phase: Math.random() });
+
+  for (let i = 0; i < 2; i++) {
+    const f = new THREE.Group();
+    const b = new THREE.Mesh(new THREE.BoxGeometry(28, 6, 11), new THREE.MeshStandardMaterial({ color: 0xe67e22 }));
+    b.position.y = 3; f.add(b);
+    f.position.set(-780, 0, -140 + i * 120); scene.add(f);
+    ferries.push({ obj: f, dir: 1, t: Math.random(), phase: i });
+  }
+}
+
+function createPeople() {
+  const bodyGeo = new THREE.BoxGeometry(0.5, 1.7, 0.3);
+  const headGeo = new THREE.SphereGeometry(0.22, 7, 7);
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0xecf0f1 });
+  const headMat = new THREE.MeshStandardMaterial({ color: 0xe8c9a8 });
+  peopleInst = {
+    body: new THREE.InstancedMesh(bodyGeo, bodyMat, 44),
+    head: new THREE.InstancedMesh(headGeo, headMat, 44)
+  };
+  for (let i = 0; i < 44; i++) {
+    const side = i % 2 === 0;
+    persons.push({
+      start: new THREE.Vector3(side ? 170 : 0, 2, side ? 2 : -1),
+      end: new THREE.Vector3(side ? 0 : 170, 2, side ? -1 : 2),
+      speed: 0.6 + Math.random() * 0.7,
+      offset: Math.random(),
+      t: 0
+    });
+  }
+  scene.add(peopleInst.body, peopleInst.head);
+}
+
+function createGulls() {
+  const birdGeo = new THREE.BoxGeometry(1.4, 0.18, 0.7);
+  const birdMat = new THREE.MeshStandardMaterial({ color: 0xe8e8e8 });
+  birdInst = new THREE.InstancedMesh(birdGeo, birdMat, 34);
+  for (let i = 0; i < 34; i++) {
+    gulls.push({
+      cx: -500 + Math.random() * 1400,
+      cy: 35 + Math.random() * 70,
+      cz: -80 + Math.random() * 400,
+      speed: 0.4 + Math.random() * 0.8,
+      phase: Math.random() * Math.PI
+    });
+  }
+  scene.add(birdInst);
+}
+
+function createTram() {
+  tram = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(3.6, 2.3, 9.5), new THREE.MeshStandardMaterial({ color: 0xf1c40f }));
+  body.position.y = 1.15; tram.add(body);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.9, 9.5), new THREE.MeshStandardMaterial({ color: 0xd35400 }));
+  roof.position.y = 3; tram.add(roof);
+  scene.add(tram);
+  tramPath = [];
+  for (let i = 0; i <= 40; i++) {
+    tramPath.push(new THREE.Vector3(-210 + i * 8.5, 2 + i * 0.55, 110 + i * 1.6));
+  }
+}
+
+function updateSkyFromSlider() {
+  const v = parseFloat(document.getElementById('time').value);
+  timeOfDay = v;
+  const h = Math.floor(v * 24); const mm = Math.floor((v * 24 - h) * 60);
+  document.getElementById('timebox').textContent = String(h).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+}
+
+function setCamPreset(name) {
+  const presets = {
+    ORBIT: { p: [700, 450, 700], t: [0, 0, 0] },
+    MIRADOURO: { p: [-280, 140, 380], t: [20, 25, 120] },
+    WATERFRONT: { p: [0, 9, -48], t: [0, 18, -19] },
+    AERIAL: { p: [0, 1300, 200], t: [0, 0, 0] },
+    RIVER: { p: [-700, 12, 260], t: [0, 20, 0] },
+    DECK: { p: [0, 152, -30], t: [-340, 30, 200] }
+  };
+  const pr = presets[name];
+  camera.position.set(...pr.p);
+  orbit.target.set(...pr.t);
+  orbit.update();
+}
+
+function playHorn() {
+  try {
+    if (!window._ac) { window._ac = new (window.AudioContext || window.webkitAudioContext)(); }
+    const ac = window._ac;
+    if (ac.state === 'suspended') ac.resume();
+    const t = ac.currentTime;
+    const o = ac.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(75, t); o.frequency.exponentialRampToValueAtTime(50, t + 2.8);
+    const g = ac.createGain(); g.gain.setValueAtTime(0.18, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.8);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + 2.8);
+  } catch (e) { }
+}
+
+function startDeparture() {
+  if (departureState !== 'docked') return;
+  departureState = 'departing';
+  departureStart = performance.now();
+  playHorn();
+  document.getElementById('status').textContent = 'Cast off — sailing west toward the 25 de Abril Bridge';
+}
+function returnToBerth() {
+  if (departureState === 'departed' || departureState === 'returning' || departureState === 'docked') {
+    departureState = 'returning';
+    departureProgress = 0;
+    departureStart = performance.now();
+    document.getElementById('status').textContent = 'Returning to berth at Jardim do Tabaco';
+  }
+}
+
+function updateDeparture(dt) {
+  if (departureState === 'docked') return;
+  const elapsed = (performance.now() - departureStart) / 1000;
+  if (departureState === 'returning') {
+    departureProgress = Math.min(departureProgress + dt * 0.09, 1);
+    const k = departureProgress;
+    ship.position.x = -150 * (1 - k);
+    ship.rotation.y = -0.5 * (1 - k);
+    ship.position.z = -19 - 10 * Math.sin((1 - k) * Math.PI);
+    if (elapsed < 2.2) {
+      const kk = elapsed / 2.2;
+      gangway.position.y = 14 - kk * 8;
+      gangway.position.z = -11 + kk * 10.4;
+      gangway.rotation.x = 0.15 - kk * 0.5;
+    } else {
+      gangway.position.set(0, 6, -0.6); gangway.rotation.x = -0.35;
+    }
+    if (elapsed > 5) mooring.forEach(l => l.visible = true);
+    if (k >= 1) {
+      departureState = 'docked'; departureProgress = 0;
+      document.getElementById('status').textContent = 'Docked at Jardim do Tabaco';
+    }
+    return;
+  }
+  if (elapsed < 2.2) {
+    const k = elapsed / 2.2;
+    gangway.position.y = 6 + k * 8;
+    gangway.position.z = -0.6 - k * 10.4;
+    gangway.rotation.x = -0.35 + k * 0.5;
+  } else {
+    gangway.position.y = 14; gangway.position.z = -11; gangway.rotation.x = 0.15;
+  }
+  if (elapsed > 3.2) mooring.forEach(l => l.visible = false);
+  if (elapsed > 4.2) {
+    const k = Math.min((elapsed - 4.2) / 11, 1);
+    ship.position.x = -150 * k;
+    ship.rotation.y = -0.5 * k;
+    ship.position.z = -19 - 10 * Math.sin(k * Math.PI);
+  }
+  if (elapsed > 15.5) {
+    departureState = 'departed';
+    document.getElementById('status').textContent = 'Under way west down the Tagus — 25 de Abril Bridge ahead';
+  }
+}
+
+function updateWater(time) {
+  if (water) water.material.uniforms.uTime.value = time;
+}
+
+function updateBoats(dt) {
+  const time = performance.now() * 0.001;
+  const pilot = boats.find(b => b.type === 'pilot');
+  if (pilot) {
+    const a = time * 1.1 + pilot.phase;
+    pilot.obj.position.set(-140 + Math.cos(a) * 110, 0, -70 + Math.sin(a) * 110);
+  }
+  ferries.forEach(f => {
+    f.t += dt * 0.18 * f.dir;
+    if (f.t > 1) { f.t = 1; f.dir = -1; }
+    if (f.t < 0) { f.t = 0; f.dir = 1; }
+    f.obj.position.z = THREE.MathUtils.lerp(-160, -640, f.t);
+    f.obj.position.x = -780 + Math.sin(f.t * Math.PI) * 150;
+  });
+}
+
+function updatePeople(dt) {
+  if (!peopleInst) return;
+  const time = performance.now() * 0.001;
+  persons.forEach((p, i) => {
+    p.t = (p.t + dt * p.speed) % 2;
+    let tt = p.t; if (tt > 1) tt = 2 - tt;
+    const pos = new THREE.Vector3().lerpVectors(p.start, p.end, tt);
+    pos.y = 2 + Math.sin(time * 10 + p.offset) * 0.04;
+    m4.compose(pos, new THREE.Quaternion(), new THREE.Vector3(0.9, 1, 0.9));
+    peopleInst.body.setMatrixAt(i, m4);
+    m4.compose(pos.clone().add(new THREE.Vector3(0, 2, 0)), new THREE.Quaternion(), new THREE.Vector3(0.75, 0.75, 0.75));
+    peopleInst.head.setMatrixAt(i, m4);
+  });
+  peopleInst.body.instanceMatrix.needsUpdate = true;
+  peopleInst.head.instanceMatrix.needsUpdate = true;
+}
+
+function updateGulls() {
+  if (!birdInst) return;
+  const time = performance.now() * 0.001;
+  gulls.forEach((g, i) => {
+    const a = time * g.speed + g.phase;
+    const x = g.cx + Math.cos(a) * 200;
+    const z = g.cz + Math.sin(a) * 200;
+    const y = g.cy + Math.sin(time * 1.5 + g.phase) * 7;
+    m4.compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, a, 0)), new THREE.Vector3(1, 1, 1));
+    birdInst.setMatrixAt(i, m4);
+  });
+  birdInst.instanceMatrix.needsUpdate = true;
+}
+
+function updateTram(dt) {
+  if (!tram || !tramPath) return;
+  tramT = (tramT + dt * 0.9) % (tramPath.length - 1);
+  const i = Math.floor(tramT); const frac = tramT - i;
+  const p0 = tramPath[i]; const p1 = tramPath[Math.min(i + 1, tramPath.length - 1)];
+  const pos = new THREE.Vector3().lerpVectors(p0, p1, frac);
+  tram.position.copy(pos);
+  tram.position.y += 1.15;
+}
+
+function init() {
+  const container = document.getElementById('canvas');
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 1, 9000);
+  camera.position.set(700, 450, 700);
+  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.shadowMap.enabled = true;
+  container.appendChild(renderer.domElement);
+
+  clock = new THREE.Clock();
+  orbit = new OrbitControls(camera, renderer.domElement);
+  orbit.enableDamping = true; orbit.dampingFactor = 0.05;
+  orbit.maxPolarAngle = Math.PI / 2 - 0.02;
+  walker = new PointerLockControls(camera, document.body);
+  walker.maxPolarAngle = Math.PI / 2 - 0.02;
+
+  createLights();
+  createWater();
+  createCity();
+  createQuay();
+  createShip();
+  createBridge();
+  createSouthBank();
+  createBoats();
+  createPeople();
+  createGulls();
+  createTram();
+
+  document.getElementById('loadFill').style.width = '100%';
+  setTimeout(() => { document.getElementById('loading').style.display = 'none'; }, 300);
+
+  setupUI();
+  setCamPreset('ORBIT');
+  updateSkyAndLights();
+  animate();
+}
+
+function setupUI() {
+  const timeInp = document.getElementById('time');
+  timeInp.oninput = updateSkyFromSlider;
+  document.getElementById('btnPlay').onclick = e => {
+    timePaused = !timePaused;
+    e.target.textContent = timePaused ? 'PLAY' : 'PAUSE';
+  };
+  document.getElementById('weather').onchange = e => {
+    if (e.target.value === 'HAZE') scene.fog = new THREE.Fog(scene.background, 150, 900);
+    else if (e.target.value === 'LIGHT RAIN') scene.fog = new THREE.Fog(scene.background, 250, 1400);
+    else scene.fog = new THREE.Fog(scene.background, 200, 2200);
+  };
+  document.querySelectorAll('.cam').forEach(b => {
+    b.onclick = () => setCamPreset(b.dataset.cam);
+  });
+  const btnWalk = document.getElementById('btnWalk');
+  btnWalk.onclick = () => {
+    if (walkActive) { document.exitPointerLock(); }
+    else { document.body.requestPointerLock(); }
+  };
+  document.addEventListener('pointerlockchange', () => {
+    walkActive = document.pointerLockElement === document.body;
+    btnWalk.textContent = walkActive ? 'EXIT WALK MODE' : 'WALK MODE (QUAY)';
+    btnWalk.classList.toggle('active', walkActive);
+    orbit.enabled = !walkActive;
+  });
+  document.getElementById('btnDepart').onclick = startDeparture;
+  document.getElementById('btnReturn').onclick = returnToBerth;
+  document.getElementById('hide').onclick = () => {
+    const ui = document.getElementById('ui');
+    ui.classList.toggle('hidden');
+    document.getElementById('hide').textContent = ui.classList.contains('hidden') ? 'SHOW UI' : 'HIDE UI';
+  };
+  window.addEventListener('keydown', e => { keyState[e.key.toLowerCase()] = true; if (e.key === 'Escape' && walker.isLocked) document.exitPointerLock(); });
+  window.addEventListener('keyup', e => { keyState[e.key.toLowerCase()] = false; });
+  window.addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  if (!timePaused) {
+    timeOfDay = (timeOfDay + timeSpeed * dt) % 1;
+    const h = Math.floor(timeOfDay * 24);
+    const mm = Math.floor((timeOfDay * 24 - h) * 60);
+    document.getElementById('timebox').textContent = String(h).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+    document.getElementById('time').value = timeOfDay;
+  }
+  updateSkyAndLights();
+  updateWater(performance.now() * 0.001);
+  updateBoats(dt);
+  updatePeople(dt);
+  updateGulls();
+  updateTram(dt);
+  updateDeparture(dt);
+  if (walkActive && walker.isLocked) {
+    walker.moveForward(keyState['w'] ? dt * 4.5 : (keyState['s'] ? -dt * 4.5 : 0));
+    walker.moveRight(keyState['d'] ? dt * 4.5 : (keyState['a'] ? -dt * 4.5 : 0));
+    camera.position.y = 1.75;
+  }
+  orbit.update();
+  renderer.render(scene, camera);
+}
+
+init();
+</script>
+</body>
+</html>
