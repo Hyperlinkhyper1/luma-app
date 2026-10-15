@@ -1038,7 +1038,7 @@ const driveWorld=new THREE.Group();driveWorld.visible=false;scene.add(driveWorld
 /* backdrop */
 studio.add(new THREE.Mesh(new THREE.SphereGeometry(64,40,26),new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,
   vertexShader:'varying vec3 vP;void main(){vP=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-  fragmentShader:'varying vec3 vP;void main(){float h=normalize(vP).y;vec3 c=mix(vec3(.016,.018,.023),vec3(.14,.155,.19),smoothstep(-.1,.85,h));gl_FragColor=vec4(c,1.);}')})));
+  fragmentShader:'varying vec3 vP;void main(){float h=normalize(vP).y;vec3 c=mix(vec3(.016,.018,.023),vec3(.14,.155,.19),smoothstep(-.1,.85,h));gl_FragColor=vec4(c,1.);}'})));
 const floorMat=new THREE.MeshPhysicalMaterial({color:0x0a0b0e,metalness:.42,roughness:.20,envMapIntensity:1.0,roughnessMap:T.paintR});
 const studioFloor=new THREE.Mesh(new THREE.CircleGeometry(52,80),floorMat);
 studioFloor.rotation.x=-Math.PI/2;studioFloor.receiveShadow=true;studio.add(studioFloor);
