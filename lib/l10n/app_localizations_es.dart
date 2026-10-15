@@ -9,6 +9,62 @@ class LEs extends L {
   LEs([String locale = 'es']) : super(locale);
 
   @override
+  String get homeTileSteamGamePrice => 'Precio de juego de Steam';
+
+  @override
+  String get homeTileCs2SkinPrice => 'Precio de skin de CS2';
+
+  @override
+  String get homeTileCs2TrackedGraph => 'Gráfica de skins de CS2 seguidas';
+
+  @override
+  String get homeChooseSteamGame => 'Elegir un juego de Steam';
+
+  @override
+  String get homeChooseCs2Skin => 'Elegir una skin de CS2';
+
+  @override
+  String get homeSteamAllGames => 'Todos los juegos seguidos';
+
+  @override
+  String get homeSteamAllSkins => 'Todas las skins de CS2 seguidas';
+
+  @override
+  String get homeSteamGamesEmpty =>
+      'Sigue un juego en Steam Tools para añadir su precio aquí.';
+
+  @override
+  String get homeSteamSkinsEmpty =>
+      'Sigue una skin de CS2 en Steam Tools para añadir su precio o gráfica aquí.';
+
+  @override
+  String get homeSteamGameUnavailable =>
+      'Ya no se sigue este juego. Elige otro en los ajustes del widget.';
+
+  @override
+  String get homeSteamSkinUnavailable =>
+      'Ya no se sigue esta skin de CS2. Elige otra en los ajustes del widget.';
+
+  @override
+  String get homeSteamDataError =>
+      'No se pudieron cargar los datos de Steam Tools.';
+
+  @override
+  String get homeOpenSteamTools => 'Abrir Steam Tools';
+
+  @override
+  String get homeSteamSavedPrices => 'Últimos precios guardados';
+
+  @override
+  String get homeSteamMixedCurrency =>
+      'Estos precios usan distintas monedas y no se pueden combinar en una sola gráfica.';
+
+  @override
+  String homeSteamPriceChecked(String date) {
+    return 'Comprobado el $date';
+  }
+
+  @override
   String get teamClipboardSettings => 'Ajustes';
 
   @override
@@ -3874,6 +3930,52 @@ class LEs extends L {
   String get accountManageFamily => 'Gestionar la familia';
 
   @override
+  String get accountPageSubtitle =>
+      'Gestiona tu perfil, la sincronización, tu plan y tu familia.';
+
+  @override
+  String get accountNavSync => 'Sincronización y dispositivos';
+
+  @override
+  String get accountDetailsTitle => 'Detalles de la cuenta';
+
+  @override
+  String get accountManage => 'Gestionar';
+
+  @override
+  String get accountNotSignedIn => 'Sin iniciar sesión';
+
+  @override
+  String get accountLocalProfile => 'Perfil local';
+
+  @override
+  String get accountStatusActive => 'Activa';
+
+  @override
+  String get accountStatusPending => 'Esperando aprobación';
+
+  @override
+  String get accountStatusLocal => 'Solo local';
+
+  @override
+  String get accountFieldLastSynced => 'Última sincronización';
+
+  @override
+  String get accountFieldSyncStorage => 'Almacenamiento sincronizado';
+
+  @override
+  String accountStorageOf(String used, String total) {
+    return '$used de $total';
+  }
+
+  @override
+  String get accountPlanIncluded => 'Incluido en tu plan';
+
+  @override
+  String get accountStatsSubtitle =>
+      'Tus totales de siempre y los lugares donde has estado.';
+
+  @override
   String get familyTitle => 'Familia';
 
   @override
@@ -4120,6 +4222,20 @@ class LEs extends L {
   String get loginUseDifferentAccount => 'Usar otra cuenta';
 
   @override
+  String get loginAccountCreated => 'Cuenta creada';
+
+  @override
+  String get loginAwaitingApproval =>
+      'Tu correo está verificado y tu cuenta está creada. El operador del servidor todavía tiene que aprobarla; hasta entonces, este dispositivo no toca el servidor. Inicia sesión cuando te aprueben.';
+
+  @override
+  String get loginVerifyEmail => 'Verificar correo';
+
+  @override
+  String get loginEmailVerifiedSignIn =>
+      'Tu correo está verificado. Inicia sesión para continuar.';
+
+  @override
   String get loginAlmostThere => 'Casi listo';
 
   @override
@@ -4253,10 +4369,10 @@ class LEs extends L {
   String get planPriceFree => 'Gratis';
 
   @override
-  String get planPriceOrbit => '3 \$ / mes';
+  String get planPriceOrbit => '4 \$ / mes';
 
   @override
-  String get planPriceNova => '6 \$ / mes';
+  String get planPriceNova => '8 \$ / mes';
 
   @override
   String get planCoreBlurb => 'Todo lo básico, directamente en tu dispositivo.';
@@ -4642,6 +4758,11 @@ class LEs extends L {
   @override
   String serverGatePendingEmail(String email) {
     return 'Tu cuenta ($email) aún necesita aprobación. Introduce el código de 6 dígitos que te enviamos por correo para terminar de iniciar sesión; hasta entonces no tocamos el servidor en absoluto.';
+  }
+
+  @override
+  String serverGateAwaitingApproval(String email) {
+    return 'Tu cuenta ($email) está creada y tu correo está verificado. Solo falta que el propietario del servidor la apruebe: inicia sesión cuando lo haga; hasta entonces no tocamos el servidor.';
   }
 
   @override
@@ -10154,7 +10275,7 @@ class LEs extends L {
 
   @override
   String get spotifySetupSteps =>
-      '1. Crea una aplicación en el Spotify Developer Dashboard (Web API).\n2. Añade http://127.0.0.1:8888/callback como URI de redirección. Incluye el puerto exactamente como se muestra.\n3. Copia aquí el ID de cliente de la aplicación y luego inicia sesión en tu navegador. Una aplicación en modo desarrollo requiere Spotify Premium.';
+      '1. Crea una aplicación en el Spotify Developer Dashboard (Web API).\n2. Añade tanto http://127.0.0.1:8888/callback como http://127.0.0.1/callback como URI de redirección. Conserva la URI con el puerto 8888 para las configuraciones existentes; la URI sin puerto permite que luma use automáticamente un puerto libre si el 8888 está ocupado.\n3. Copia aquí el ID de cliente de la aplicación y luego inicia sesión en tu navegador. Una aplicación en modo desarrollo requiere Spotify Premium.';
 
   @override
   String get spotifyOpenDashboard => 'Abrir Spotify Developer Dashboard';
@@ -30113,6 +30234,11 @@ class LEs extends L {
   @override
   String syncSettingsPendingEmailCode(String email) {
     return '$email está pendiente de aprobación. Introduce el código de 6 dígitos que te enviamos por correo electrónico para terminar de iniciar sesión. Hasta entonces, este dispositivo no contacta en absoluto con el servidor, y los complementos que lo necesitan permanecen desactivados.';
+  }
+
+  @override
+  String syncSettingsAwaitingApproval(String email) {
+    return '$email está creada y verificada, y ahora espera a que el operador del servidor la apruebe. Inicia sesión cuando lo haga. Hasta entonces, este dispositivo no contacta en absoluto con el servidor, y los complementos que lo necesitan permanecen desactivados.';
   }
 
   @override

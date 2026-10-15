@@ -106,6 +106,12 @@ class SyncStateStore {
   /// offers to resend anything.
   String? pendingApprovalMode;
 
+  /// Whether that account has already proved its address (the emailed code,
+  /// or a provider vouching for it). From then on it is officially created
+  /// and only waits for the operator, so the UI stops asking for a code.
+  /// Like [pendingApprovalEmail] it grants no access.
+  bool pendingEmailVerified = false;
+
   /// One-time migration flag: the first time this device's state is loaded
   /// after this field was introduced, any existing local-only (serverless)
   /// identity is cleared so the user is prompted to create a real cloud
@@ -207,6 +213,7 @@ class SyncStateStore {
           data['accountApproved'] as bool? ?? (store.token != null);
       store.pendingApprovalEmail = data['pendingApprovalEmail'] as String?;
       store.pendingApprovalMode = data['pendingApprovalMode'] as String?;
+      store.pendingEmailVerified = data['pendingEmailVerified'] == true;
       store.localVerifier = data['localVerifier'] as String?;
       store.localAccountMigrated = data['localAccountMigrated'] == true;
       store.accountSetupPromptDismissed =
@@ -273,6 +280,7 @@ class SyncStateStore {
       'accountApproved': accountApproved,
       'pendingApprovalEmail': pendingApprovalEmail,
       'pendingApprovalMode': pendingApprovalMode,
+      'pendingEmailVerified': pendingEmailVerified,
       'localVerifier': localVerifier,
       'localAccountMigrated': localAccountMigrated,
       'accountSetupPromptDismissed': accountSetupPromptDismissed,

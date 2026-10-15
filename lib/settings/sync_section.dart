@@ -86,7 +86,7 @@ class _SignedOutBody extends StatelessWidget {
           child: LumaPrimaryButton(
             label: sync.pendingApprovalEmail == null
                 ? t.syncSettingsSetUpAccount
-                : sync.pendingApprovalMode == ServerApprovalMode.email
+                : sync.awaitingEmailCode
                     ? t.syncSettingsEnterCode
                     : t.commonSignIn,
             icon: Icons.person_add_rounded,
@@ -135,15 +135,16 @@ class _PendingApprovalNoticeState extends State<_PendingApprovalNotice> {
     final luma = context.luma;
     final t = L.of(context);
     final email = widget.sync.pendingApprovalEmail ?? '';
-    final byEmail =
-        widget.sync.pendingApprovalMode == ServerApprovalMode.email;
+    final byEmail = widget.sync.awaitingEmailCode;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           byEmail
               ? t.syncSettingsPendingEmailCode(email)
-              : t.syncSettingsPendingApproval(email),
+              : widget.sync.pendingEmailVerified
+                  ? t.syncSettingsAwaitingApproval(email)
+                  : t.syncSettingsPendingApproval(email),
           style: TextStyle(
               color: Colors.orange.shade400, fontSize: 12, height: 1.5),
         ),

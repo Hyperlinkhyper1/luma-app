@@ -16,7 +16,8 @@ enum ServerApprovalMode {
   /// Nothing is emailed, so there is nothing for the user to resend.
   manual,
 
-  /// The user approves their own account from a link emailed to them.
+  /// The user proves their address with a code emailed to them; the
+  /// operator then approves the account like [manual].
   email,
 
   /// No approval step at all — registering signs you straight in.
@@ -607,14 +608,22 @@ class SyncApi {
 
   /// Submits the 6-digit code emailed to [email] for the pending account
   /// [register] created. Throws [SyncApiException] if the code is wrong,
-  /// expired, or the account has made too many bad attempts — the caller
-  /// still has to [login]/[authParams] afterwards, since this only flips the
-  /// account to active rather than signing anything in.
-  Future<void> verifyEmailCode({
+  /// expired, or the account has made too many bad attempts. Never signs
+  /// anything in. `awaitingApproval` is true when the server keeps the
+  /// now-verified account waiting for its operator (an older server
+  /// activates it on the code alone and reports false).
+  Future<({bool awaitingApproval, String? message})> verifyEmailCode({
     required String email,
     required String code,
   }) async {
-    await _postJson('/auth/verify-code', {'email': email, 'code': code});
+    final body = await _postJson('/auth/verify-code', {
+      'email': email,
+      'code': code,
+    });
+    return (
+      awaitingApproval: body['status'] == 'awaiting_approval',
+      message: body['message'] as String?,
+    );
   }
 
   /// Asks the server to email a 6-digit password-reset code to [email]. The

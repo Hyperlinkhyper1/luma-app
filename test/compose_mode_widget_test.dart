@@ -11,7 +11,9 @@ Widget _host(Widget child) => MaterialApp(
   theme: LumaTheme.dark,
   localizationsDelegates: L.localizationsDelegates,
   supportedLocales: L.supportedLocales,
-  home: Scaffold(body: Center(child: SizedBox(width: 700, child: child))),
+  home: Scaffold(
+    body: Center(child: SizedBox(width: 700, child: child)),
+  ),
 );
 
 class _ModeHost extends StatefulWidget {
@@ -62,10 +64,9 @@ void main() {
     expect(find.text('Add'), findsWidgets);
     expect(find.text('Plan mode'), findsOneWidget);
     expect(find.text('Deep research'), findsOneWidget);
-    expect(
-      find.text('Draw an image · uses 3% of your weekly limit'),
-      findsOneWidget,
-    );
+    await tester.tap(find.text('Artifact generation'));
+    await tester.pumpAndSettle();
+    expect(find.text('Picture · 3% weekly usage'), findsOneWidget);
 
     await tester.tap(find.text('Plan mode'));
     await tester.pumpAndSettle();
@@ -83,7 +84,10 @@ void main() {
     await tester.pumpWidget(
       _host(
         const _ModeHost(
-          availability: ComposeModeAvailability(research: false, picture: false),
+          availability: ComposeModeAvailability(
+            research: false,
+            picture: false,
+          ),
         ),
       ),
     );
@@ -94,7 +98,9 @@ void main() {
       find.text('Switch to Nebula, Pulsar or Luma Assistant'),
       findsOneWidget,
     );
-    expect(find.text('Needs a signed-in luma account'), findsOneWidget);
+    await tester.tap(find.text('Artifact generation'));
+    await tester.pumpAndSettle();
+    expect(find.text('Picture unavailable'), findsOneWidget);
 
     await tester.tap(find.text('Deep research'), warnIfMissed: false);
     await tester.pumpAndSettle();

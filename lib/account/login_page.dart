@@ -149,9 +149,10 @@ class _LoginPageState extends State<LoginPage> {
     // screen) - there is no point sending the user back through
     // credentials for an account that already exists.
     final pending = widget.sync.pendingApprovalEmail;
-    if (pending != null &&
-        widget.sync.pendingApprovalMode == ServerApprovalMode.email) {
+    if (pending != null && widget.sync.awaitingEmailCode) {
       _step = _Step.code;
+      _email.text = pending;
+    } else if (pending != null) {
       _email.text = pending;
     }
   }
@@ -224,6 +225,14 @@ class _LoginPageState extends State<LoginPage> {
             password: _password.text,
           );
         } on SyncApiException catch (e) {
+          if (e.code == 'account_awaiting_approval') {
+            if (!mounted) return;
+            setState(() {
+              _step = _Step.pending;
+              _info = null;
+            });
+            return;
+          }
           if (e.code != 'account_pending_approval') rethrow;
           final emailed = await widget.sync.beginEmailVerification(
             serverUrl: _server.text,
@@ -270,14 +279,27 @@ class _LoginPageState extends State<LoginPage> {
       setState(() => _error = t.loginEnterSixDigitCode);
       return;
     }
-    if (_password.text.isEmpty) {
-      setState(() => _error = t.loginEnterPassword);
-      return;
-    }
     final email = widget.sync.pendingApprovalEmail ?? _email.text.trim();
 
     await _run(() async {
-      await widget.sync.verifyEmailCode(code);
+      // The code makes the account official; the operator still has to
+      // approve it, so this lands on "created, waiting" rather than
+      // signing in.
+      final awaiting = await widget.sync.verifyEmailCode(code);
+      if (awaiting != null) {
+        setState(() {
+          _step = _Step.pending;
+          _info = null;
+          _code.clear();
+        });
+        return;
+      }
+      // An older server activates the account on the code alone.
+      if (_password.text.isEmpty) {
+        _backToSignIn(info: t.loginEmailVerifiedSignIn);
+        _email.text = email;
+        return;
+      }
       await widget.sync.signIn(
         serverUrl: _server.text,
         email: email,
@@ -975,6 +997,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget _pendingPanel() {
     final t = L.of(context);
     final luma = context.luma;
+    final verified = widget.sync.pendingEmailVerified;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -987,15 +1010,20 @@ class _LoginPageState extends State<LoginPage> {
               color: luma.accentSubtle,
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.mark_email_read_rounded,
-                size: 30, color: luma.accent),
+            child: Icon(
+                verified
+                    ? Icons.how_to_reg_rounded
+                    : Icons.mark_email_read_rounded,
+                size: 30,
+                color: luma.accent),
           ),
         ),
         const SizedBox(height: 22),
         _Heading(
-          title: t.loginAlmostThere,
-          subtitle: _info ??
-              t.loginNeedsApproval,
+          title: verified ? t.loginAccountCreated : t.loginAlmostThere,
+          subtitle: verified
+              ? t.loginAwaitingApproval
+              : _info ?? t.loginNeedsApproval,
           centered: true,
         ),
         const SizedBox(height: 24),
@@ -1062,19 +1090,9 @@ class _LoginPageState extends State<LoginPage> {
           autofillHints: const [AutofillHints.oneTimeCode],
           onSubmitted: (_) => _submitCode(),
         ),
-        const SizedBox(height: 12),
-        _LoginField(
-          controller: _password,
-          label: t.commonPassword,
-          icon: Icons.lock_outline_rounded,
-          enabled: !_busy,
-          obscure: true,
-          autofillHints: const [AutofillHints.password],
-          onSubmitted: (_) => _submitCode(),
-        ),
         const SizedBox(height: 18),
         LumaPrimaryButton(
-          label: t.loginVerifyAndSignIn,
+          label: t.loginVerifyEmail,
           expand: true,
           loading: _busy,
           onTap: _busy ? null : _submitCode,

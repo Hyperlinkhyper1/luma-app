@@ -6,13 +6,20 @@ import '../../../../../theme/luma_theme.dart';
 import '../spotify_scope.dart';
 import 'account_shared.dart';
 
-Future<void> showSpotifyConnectDialog(BuildContext context) => showDialog<void>(
-  context: context,
-  builder: (_) => SpotifyScope(
-    repository: SpotifyScope.of(context),
-    child: const _SpotifyConnectDialog(),
-  ),
-);
+Future<void> showSpotifyConnectDialog(BuildContext context) async {
+  final repository = SpotifyScope.of(context);
+  try {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => SpotifyScope(
+        repository: repository,
+        child: const _SpotifyConnectDialog(),
+      ),
+    );
+  } finally {
+    await repository.cancelConnect();
+  }
+}
 
 class _SpotifyConnectDialog extends StatefulWidget {
   const _SpotifyConnectDialog();
@@ -71,7 +78,8 @@ class _SpotifyConnectDialogState extends State<_SpotifyConnectDialog> {
                   icon: Icons.check_circle_outline_rounded,
                   tone: luma.success,
                   message: t.spotifyConnectedAs(
-                      repository.credentials!.displayName),
+                    repository.credentials!.displayName,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -89,9 +97,7 @@ class _SpotifyConnectDialogState extends State<_SpotifyConnectDialog> {
                 controller: _id,
                 enabled: !_busy,
                 style: TextStyle(color: luma.textPrimary),
-                decoration: InputDecoration(
-                  hintText: t.spotifyClientIdHint,
-                ),
+                decoration: InputDecoration(hintText: t.spotifyClientIdHint),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 10),
@@ -151,7 +157,7 @@ class _SpotifyConnectDialogState extends State<_SpotifyConnectDialog> {
             child: Text(t.accountOverviewDisconnect),
           ),
         TextButton(
-          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          onPressed: () => Navigator.of(context).pop(),
           child: Text(t.commonCancel),
         ),
         LumaPrimaryButton(

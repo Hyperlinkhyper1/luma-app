@@ -30,6 +30,7 @@ class SpotifyOAuth {
 
   final http.Client _client;
   final Future<void> Function(Uri) _openBrowser;
+  _SpotifyAuthorization? _authorization;
 
   static const scopes = [
     'user-top-read',
@@ -38,16 +39,41 @@ class SpotifyOAuth {
     'playlist-read-private',
   ];
 
-  void dispose() => _client.close();
+  void dispose() {
+    unawaited(cancelAuthorization());
+    _client.close();
+  }
 
-  Future<SpotifyTokens> authorize(String clientId) async {
+  Future<void> cancelAuthorization() async {
+    final authorization = _authorization;
+    _authorization = null;
+    await authorization?.cancel();
+  }
+
+  Future<SpotifyTokens> authorize(String clientId) {
+    final previous = _authorization;
+    final authorization = _SpotifyAuthorization();
+    _authorization = authorization;
+    return _authorize(clientId, authorization, previous).whenComplete(() {
+      if (identical(_authorization, authorization)) _authorization = null;
+    });
+  }
+
+  Future<SpotifyTokens> _authorize(
+    String clientId,
+    _SpotifyAuthorization authorization,
+    _SpotifyAuthorization? previous,
+  ) async {
+    await previous?.cancel();
     final verifier = _random(64);
     final challenge = base64UrlEncode(
       sha256.convert(utf8.encode(verifier)).bytes,
     ).replaceAll('=', '');
     final state = _random(24);
-    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 8888);
     try {
+      final server = await _bindCallback();
+      authorization.server = server;
+      authorization.checkCancelled();
       final redirect = 'http://127.0.0.1:${server.port}/callback';
       final uri = Uri.https('accounts.spotify.com', '/authorize', {
         'client_id': clientId,
@@ -58,11 +84,13 @@ class SpotifyOAuth {
         'code_challenge': challenge,
         'state': state,
       });
-      await _openBrowser(uri);
-      final request = await server.first.timeout(
-        const Duration(minutes: 5),
-        onTimeout: () => throw SpotifyOAuthException(
-          currentL.accountOverviewSpotifyOAuthTimedOut,
+      await authorization.wait(_openBrowser(uri));
+      final request = await authorization.wait(
+        server.first.timeout(
+          const Duration(minutes: 5),
+          onTimeout: () => throw SpotifyOAuthException(
+            currentL.accountOverviewSpotifyOAuthTimedOut,
+          ),
         ),
       );
       final params = request.uri.queryParameters;
@@ -87,15 +115,27 @@ class SpotifyOAuth {
           currentL.accountOverviewSpotifyInvalidResponse,
         );
       }
-      return _token({
-        'client_id': clientId,
-        'grant_type': 'authorization_code',
-        'code': params['code']!,
-        'redirect_uri': redirect,
-        'code_verifier': verifier,
-      });
+      await authorization.close();
+      authorization.checkCancelled();
+      return await authorization.wait(
+        _token({
+          'client_id': clientId,
+          'grant_type': 'authorization_code',
+          'code': params['code']!,
+          'redirect_uri': redirect,
+          'code_verifier': verifier,
+        }),
+      );
     } finally {
-      await server.close(force: true);
+      await authorization.close();
+    }
+  }
+
+  Future<HttpServer> _bindCallback() async {
+    try {
+      return await HttpServer.bind(InternetAddress.loopbackIPv4, 8888);
+    } on SocketException {
+      return HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     }
   }
 
@@ -128,9 +168,7 @@ class SpotifyOAuth {
     }
     final access = json['access_token'] as String?;
     if (access == null || access.isEmpty) {
-      throw SpotifyOAuthException(
-        currentL.accountOverviewSpotifyNoAccessToken,
-      );
+      throw SpotifyOAuthException(currentL.accountOverviewSpotifyNoAccessToken);
     }
     return SpotifyTokens(
       access,
@@ -154,5 +192,36 @@ class SpotifyOAuth {
     return base64UrlEncode(
       List<int>.generate(length, (_) => rng.nextInt(256)),
     ).replaceAll('=', '');
+  }
+}
+
+class _SpotifyAuthorization {
+  final _cancelled = Completer<void>();
+  HttpServer? server;
+  Future<void>? _closing;
+
+  void checkCancelled() {
+    if (_cancelled.isCompleted) {
+      throw SpotifyOAuthException(currentL.syncOAuthSignInCancelled);
+    }
+  }
+
+  Future<T> wait<T>(Future<T> task) => Future.any([
+    task,
+    _cancelled.future.then<T>((_) {
+      throw SpotifyOAuthException(currentL.syncOAuthSignInCancelled);
+    }),
+  ]);
+
+  Future<void> cancel() async {
+    if (!_cancelled.isCompleted) _cancelled.complete();
+    await close();
+  }
+
+  Future<void> close() {
+    final listener = server;
+    if (listener == null) return _closing ?? Future.value();
+    server = null;
+    return _closing = listener.close(force: true).then((_) {});
   }
 }

@@ -20,8 +20,11 @@ import '../plugins/installed/minecraft_launcher/minecraft_launcher_scope.dart';
 import '../plugins/installed/minecraft_launcher/data/minecraft_launcher_database.dart';
 import '../plugins/installed/minecraft_launcher/logic/active_launch_registry.dart';
 import '../plugins/installed/minecraft_launcher/ui/download_progress_sheet.dart';
+import '../plugins/installed/steam_tools/cs2_market_scope.dart';
+import '../plugins/installed/steam_tools/steam_scope.dart';
 import 'home_layout.dart';
 import 'dashboard_connected_tiles.dart';
+import 'dashboard_steam_tiles.dart';
 import 'home_classic_tiles.dart';
 
 String? _configString(Map<String, dynamic> config, String key) =>
@@ -59,6 +62,9 @@ class DashboardTileDefinition {
       'minecraft' => t.homeTileMinecraftInstance,
       'errands' => t.homeTileErrands,
       'stocks' => t.homeTileStockChart,
+      'steam_game_price' => t.homeTileSteamGamePrice,
+      'cs2_skin_price' => t.homeTileCs2SkinPrice,
+      'cs2_tracked_graph' => t.homeTileCs2TrackedGraph,
       'github_graph' => t.homeTileGithubActivity,
       'github_issues' => t.homeTileGithubIssues,
       'ai_usage' => t.homeTileAiUsage,
@@ -89,6 +95,14 @@ const dashboardTileDefinitions = [
   DashboardTileDefinition('minecraft', Icons.sports_esports_outlined, 4, 4),
   DashboardTileDefinition('errands', Icons.checklist_rounded, 4, 5),
   DashboardTileDefinition('stocks', Icons.show_chart_rounded, 6, 5),
+  DashboardTileDefinition(
+    'steam_game_price',
+    Icons.sports_esports_outlined,
+    6,
+    5,
+  ),
+  DashboardTileDefinition('cs2_skin_price', Icons.sell_outlined, 6, 5),
+  DashboardTileDefinition('cs2_tracked_graph', Icons.show_chart_rounded, 6, 7),
   DashboardTileDefinition('github_graph', Icons.grid_on_rounded, 6, 4),
   DashboardTileDefinition('github_issues', Icons.adjust_rounded, 6, 5),
   DashboardTileDefinition('ai_usage', Icons.auto_awesome_outlined, 4, 4),
@@ -147,6 +161,53 @@ Future<HomeTile?> configureDashboardTile(
     config['instanceName'] = instance.name;
     config['instanceVersion'] = instance.versionId;
     config['instanceLoader'] = instance.loader;
+  } else if (tile.kind == 'steam_game_price') {
+    try {
+      final games = await SteamScope.of(context).watchTrackedGames().first;
+      if (!context.mounted) return null;
+      final id = await _pick(context, t.homeChooseSteamGame, {
+        if (games.isNotEmpty) '__all__': t.homeSteamAllGames,
+        for (final game in games) '${game.appId}': game.name,
+      }, t.homeSteamGamesEmpty);
+      if (id == null) return null;
+      if (id == '__all__') {
+        config.remove('appId');
+      } else {
+        config['appId'] = int.parse(id);
+      }
+    } catch (_) {
+      if (context.mounted) {
+        await _pick(context, t.homeChooseSteamGame, {}, t.homeSteamDataError);
+      }
+      return null;
+    }
+  } else if (tile.kind == 'cs2_skin_price' ||
+      tile.kind == 'cs2_tracked_graph') {
+    try {
+      final repository = Cs2MarketScope.of(context);
+      final entries = await repository.watchAllEntries().first;
+      final items = await repository.watchTrackedItems().first;
+      if (!context.mounted) return null;
+      final tracked = entries.map((entry) => entry.marketHashName).toSet();
+      final skins = items.where(
+        (item) => tracked.contains(item.marketHashName),
+      );
+      final hash = await _pick(context, t.homeChooseCs2Skin, {
+        if (skins.isNotEmpty) '__all__': t.homeSteamAllSkins,
+        for (final item in skins) item.marketHashName: item.marketHashName,
+      }, t.homeSteamSkinsEmpty);
+      if (hash == null) return null;
+      if (hash == '__all__') {
+        config.remove('marketHashName');
+      } else {
+        config['marketHashName'] = hash;
+      }
+    } catch (_) {
+      if (context.mounted) {
+        await _pick(context, t.homeChooseCs2Skin, {}, t.homeSteamDataError);
+      }
+      return null;
+    }
   } else if (tile.kind == 'stocks' ||
       tile.kind == 'github_issues' ||
       tile.kind == 'timer') {
@@ -279,6 +340,18 @@ class DashboardTileContent extends StatelessWidget {
       'stocks' => DashboardStocksTile(
         symbol: _configString(tile.config, 'symbol'),
       ),
+      'steam_game_price' => DashboardSteamGamePriceTile(
+        appId: tile.config['appId'] is int ? tile.config['appId'] as int : null,
+        onOpen: () => onPlugin('game-tools'),
+      ),
+      'cs2_skin_price' => DashboardCs2SkinPriceTile(
+        marketHashName: _configString(tile.config, 'marketHashName'),
+        onOpen: () => onPlugin('game-tools'),
+      ),
+      'cs2_tracked_graph' => DashboardCs2TrackedGraphTile(
+        marketHashName: _configString(tile.config, 'marketHashName'),
+        onOpen: () => onPlugin('game-tools'),
+      ),
       'github_graph' => const DashboardGithubTile(issues: false),
       'github_issues' => DashboardGithubTile(
         issues: true,
@@ -313,6 +386,9 @@ class DashboardTileContent extends StatelessWidget {
       'calculator' => 'calculator',
       'github_graph' || 'github_issues' => 'account-overview',
       'ai_usage' => 'ai-usage',
+      'steam_game_price' ||
+      'cs2_skin_price' ||
+      'cs2_tracked_graph' => 'game-tools',
       _ => null,
     };
     if (pluginId == null) return child;

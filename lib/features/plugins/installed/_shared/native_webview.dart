@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../app/native_overlay_decoration.dart';
 import '../../../../l10n/current_l.dart';
 
 /// A real WebView2 window laid over this widget's rectangle (Windows only).
@@ -15,9 +17,9 @@ import '../../../../l10n/current_l.dart';
 /// native_webview.cpp`). It presents straight to the screen and gets input
 /// directly, which is what a WebGL game needs.
 ///
-/// The price is that Flutter can never draw on top of it. The window hides
-/// itself whenever this widget is not the top-most content: while a dialog,
-/// menu or another route covers it, or while [TickerMode] is off.
+/// Flutter tooltips cut their bounds out of the native window region. The
+/// window hides itself while a dialog, menu or another route covers it, or
+/// while [TickerMode] is off.
 class NativeWebview extends StatefulWidget {
   const NativeWebview({
     super.key,
@@ -98,6 +100,7 @@ class _NativeWebviewState extends State<NativeWebview>
     with WidgetsBindingObserver {
   NativeWebviewController? _controller;
   Rect? _sentBounds;
+  List<RRect> _sentOcclusion = const [];
   bool? _sentVisible;
   bool _routeCurrent = true;
   bool _tickerEnabled = true;
@@ -187,7 +190,56 @@ class _NativeWebviewState extends State<NativeWebview>
       }
     }
     _syncVisible();
+    _syncOcclusion();
     WidgetsBinding.instance.addPostFrameCallback(_track);
+  }
+
+  void _syncOcclusion() {
+    final bounds = _sentBounds;
+    final controller = _controller;
+    if (bounds == null || controller == null || _sentVisible != true) return;
+    final overlay = Overlay.maybeOf(
+      context,
+      rootOverlay: true,
+    )?.context.findRenderObject();
+    final regions = <RRect>[];
+    if (overlay != null) {
+      for (final region in NativeOverlayDecoration.regionsIn(overlay)) {
+        final rect = Rect.fromLTRB(
+          region.left * _pixelRatio - bounds.left,
+          region.top * _pixelRatio - bounds.top,
+          region.right * _pixelRatio - bounds.left,
+          region.bottom * _pixelRatio - bounds.top,
+        );
+        if (!rect.overlaps(Offset.zero & bounds.size)) continue;
+        regions.add(
+          RRect.fromRectAndRadius(
+            rect,
+            Radius.elliptical(
+              region.tlRadiusX * _pixelRatio,
+              region.tlRadiusY * _pixelRatio,
+            ),
+          ),
+        );
+      }
+    }
+    if (listEquals(regions, _sentOcclusion)) return;
+    _sentOcclusion = regions;
+    unawaited(
+      controller._call('setOcclusionRects', {
+        'rects': [
+          for (final region in regions)
+            {
+              'x': region.left.floor(),
+              'y': region.top.floor(),
+              'width': region.right.ceil() - region.left.floor(),
+              'height': region.bottom.ceil() - region.top.floor(),
+              'radiusX': region.tlRadiusX.ceil(),
+              'radiusY': region.tlRadiusY.ceil(),
+            },
+        ],
+      }),
+    );
   }
 
   /// Hidden windows put the page in the hidden state, which stops its

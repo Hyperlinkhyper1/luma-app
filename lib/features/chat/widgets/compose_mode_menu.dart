@@ -37,7 +37,7 @@ String composeModeLabel(L t, AssistantComposeMode mode) => switch (mode) {
 /// The composer's bottom-left corner: a round + that opens the "Add" menu
 /// of modes, and — once one is on — a pill naming it that turns it back
 /// off, like plan mode in the Claude app.
-class ComposeModeButton extends StatelessWidget {
+class ComposeModeButton extends StatefulWidget {
   const ComposeModeButton({
     super.key,
     required this.mode,
@@ -60,30 +60,71 @@ class ComposeModeButton extends StatelessWidget {
   final VoidCallback? onUpload;
 
   @override
+  State<ComposeModeButton> createState() => _ComposeModeButtonState();
+}
+
+class _ComposeModeButtonState extends State<ComposeModeButton> {
+  final _menuController = MenuController();
+  ComposeModeAvailability _available = const ComposeModeAvailability(
+    research: false,
+    picture: false,
+  );
+  bool _loadingAvailability = false;
+
+  @override
   Widget build(BuildContext context) {
+    final luma = context.luma;
+    final maxWidth = (MediaQuery.sizeOf(context).width - 32).clamp(
+      200.0,
+      440.0,
+    );
+    final menuStyle = MenuStyle(
+      backgroundColor: WidgetStatePropertyAll(luma.surface),
+      surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+      maximumSize: WidgetStatePropertyAll(Size(maxWidth, double.infinity)),
+      shape: WidgetStatePropertyAll(
+        RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: luma.border),
+        ),
+      ),
+    );
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _PlusButton(onTap: (buttonContext) => _openMenu(buttonContext)),
-        if (artifactType != null)
+        MenuAnchor(
+          controller: _menuController,
+          consumeOutsideTap: true,
+          crossAxisUnconstrained: false,
+          style: menuStyle.copyWith(
+            minimumSize: WidgetStatePropertyAll(
+              Size(maxWidth.clamp(200.0, 320.0), 0),
+            ),
+          ),
+          menuChildren: _menuItems(context, menuStyle),
+          builder: (context, controller, child) =>
+              _PlusButton(onTap: _toggleMenu),
+        ),
+        if (widget.artifactType != null)
           Flexible(
             child: Tooltip(
-              message: '${assistantArtifactTypes[artifactType]} artifact',
+              message:
+                  '${assistantArtifactTypes[widget.artifactType]} artifact',
               child: TextButton(
-                onPressed: () => onArtifactTypeChanged?.call(null),
+                onPressed: () => widget.onArtifactTypeChanged?.call(null),
                 child: Text(
-                  '.$artifactType ×',
+                  '.${widget.artifactType} ×',
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
           ),
-        if (mode != AssistantComposeMode.chat) ...[
+        if (widget.mode != AssistantComposeMode.chat) ...[
           const SizedBox(width: 6),
           Flexible(
             child: _ModePill(
-              mode: mode,
-              onClear: () => onChanged(AssistantComposeMode.chat),
+              mode: widget.mode,
+              onClear: () => widget.onChanged(AssistantComposeMode.chat),
             ),
           ),
         ],
@@ -91,40 +132,55 @@ class ComposeModeButton extends StatelessWidget {
     );
   }
 
-  Future<void> _openMenu(BuildContext buttonContext) async {
-    final luma = buttonContext.luma;
-    final t = L.of(buttonContext);
-    final button = buttonContext.findRenderObject()! as RenderBox;
-    final overlay =
-        Overlay.of(buttonContext).context.findRenderObject()! as RenderBox;
-    final position = RelativeRect.fromRect(
-      Rect.fromPoints(
-        button.localToGlobal(Offset.zero, ancestor: overlay),
-        button.localToGlobal(
-          button.size.bottomRight(Offset.zero),
-          ancestor: overlay,
-        ),
-      ),
-      Offset.zero & overlay.size,
-    );
-    final available = await availability();
-    if (!buttonContext.mounted) return;
+  Future<void> _toggleMenu() async {
+    if (_menuController.isOpen) {
+      _menuController.close();
+      return;
+    }
+    if (_loadingAvailability) return;
+    _loadingAvailability = true;
+    try {
+      final available = await widget.availability();
+      if (!mounted) return;
+      setState(() => _available = available);
+      _menuController.open();
+    } finally {
+      _loadingAvailability = false;
+    }
+  }
 
-    PopupMenuItem<Object> item(
+  void _selectArtifact(String type) {
+    widget.onChanged(
+      type == 'picture'
+          ? AssistantComposeMode.picture
+          : AssistantComposeMode.chat,
+    );
+    widget.onArtifactTypeChanged?.call(type == 'picture' ? null : type);
+  }
+
+  List<Widget> _menuItems(BuildContext context, MenuStyle menuStyle) {
+    final luma = context.luma;
+    final t = L.of(context);
+    final artifactItemStyle = ButtonStyle(maximumSize: menuStyle.maximumSize);
+
+    MenuItemButton item(
       AssistantComposeMode value,
       String hint, {
       bool enabled = true,
     }) {
-      final selected = value == mode;
+      final selected = value == widget.mode;
       final color = !enabled
           ? luma.textMuted.withValues(alpha: 0.6)
           : selected
           ? luma.accent
           : luma.textPrimary;
-      return PopupMenuItem<Object>(
-        value: value,
-        enabled: enabled,
-        height: 40,
+      return MenuItemButton(
+        onPressed: enabled
+            ? () {
+                widget.onArtifactTypeChanged?.call(null);
+                widget.onChanged(selected ? AssistantComposeMode.chat : value);
+              }
+            : null,
         child: Row(
           children: [
             Icon(composeModeIcon(value), size: 18, color: color),
@@ -159,121 +215,95 @@ class ComposeModeButton extends StatelessWidget {
       );
     }
 
-    final picked = await showMenu<Object>(
-      context: buttonContext,
-      position: position,
-      constraints: BoxConstraints(
-        minWidth: (overlay.size.width - 32).clamp(200, 320),
-        maxWidth: (overlay.size.width - 32).clamp(200, 440),
+    return [
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Text(
+          t.assistantAddMenu,
+          style: TextStyle(
+            color: luma.textMuted,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
-      color: luma.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: luma.border),
+      MenuItemButton(
+        onPressed: widget.filesAllowed ? widget.onUpload : null,
+        child: ListTile(
+          dense: true,
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.attach_file_rounded, size: 18),
+          title: const Text('Upload files'),
+          subtitle: widget.filesAllowed
+              ? const Text('Text, PDF and supported images')
+              : const Text('Requires Orbit or Nova'),
+        ),
       ),
-      items: [
-        PopupMenuItem<Object>(
-          enabled: false,
-          height: 30,
-          child: Text(
-            t.assistantAddMenu,
-            style: TextStyle(
-              color: luma.textMuted,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+      SubmenuButton(
+        menuStyle: menuStyle,
+        submenuIcon: const WidgetStatePropertyAll(
+          Icon(Icons.chevron_right_rounded, size: 18),
+        ),
+        menuChildren: [
+          if (widget.filesAllowed) ...[
+            for (final type in assistantArtifactTypes.entries)
+              MenuItemButton(
+                style: artifactItemStyle,
+                onPressed: () => _selectArtifact(type.key),
+                child: Text(
+                  '${type.value} (.${type.key})',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            MenuItemButton(
+              style: artifactItemStyle,
+              onPressed: _available.picture && _available.picturePercent != null
+                  ? () => _selectArtifact('picture')
+                  : null,
+              child: Text(
+                _available.picturePercent != null
+                    ? 'Picture · ${_available.picturePercent}% weekly usage'
+                    : 'Picture unavailable',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-          ),
-        ),
-        PopupMenuItem<Object>(
-          value: 'upload',
-          enabled: filesAllowed && onUpload != null,
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.attach_file_rounded, size: 18),
-            title: const Text('Upload files'),
-            subtitle: filesAllowed
-                ? const Text('Text, PDF and supported images')
-                : const Text('Requires Orbit or Nova'),
-          ),
-        ),
-        PopupMenuItem<Object>(
-          value: 'artifact',
-          enabled: filesAllowed,
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.description_outlined, size: 18),
-            title: const Text('Artifact generation'),
-            subtitle: Text(
-              filesAllowed ? 'Choose a file type' : 'Requires Orbit or Nova',
-            ),
-            trailing: const Icon(Icons.chevron_right_rounded, size: 18),
-          ),
-        ),
-        const PopupMenuDivider(),
-        item(
-          AssistantComposeMode.plan,
-          modesAllowed ? t.assistantModePlanHint : 'Requires Nova',
-          enabled: modesAllowed,
-        ),
-        item(
-          AssistantComposeMode.deepResearch,
-          available.research
-              ? t.assistantModeResearchHint
-              : t.assistantModeResearchUnavailable,
-          enabled: modesAllowed && available.research,
-        ),
-      ],
-    );
-    if (picked == null) return;
-    if (picked == 'upload') {
-      onUpload?.call();
-      return;
-    }
-    if (picked == 'artifact') {
-      if (!buttonContext.mounted) return;
-      final type = await showMenu<String>(
-        context: buttonContext,
-        position: position,
-        color: luma.surface,
-        items: [
-          for (final type in assistantArtifactTypes.entries)
-            PopupMenuItem(
-              value: type.key,
-              child: Text('${type.value} (.${type.key})'),
-            ),
-          PopupMenuItem(
-            value: 'picture',
-            enabled: available.picture && available.picturePercent != null,
-            child: Text(
-              available.picturePercent != null
-                  ? 'Picture · ${available.picturePercent}% weekly usage'
-                  : 'Picture unavailable',
-            ),
-          ),
+          ],
         ],
-      );
-      if (type == null) return;
-      onChanged(
-        type == 'picture'
-            ? AssistantComposeMode.picture
-            : AssistantComposeMode.chat,
-      );
-      onArtifactTypeChanged?.call(type == 'picture' ? null : type);
-      return;
-    }
-    if (picked is AssistantComposeMode) {
-      onArtifactTypeChanged?.call(null);
-      onChanged(picked == mode ? AssistantComposeMode.chat : picked);
-    }
+        child: ListTile(
+          dense: true,
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.description_outlined, size: 18),
+          title: const Text('Artifact generation'),
+          subtitle: Text(
+            widget.filesAllowed
+                ? 'Choose a file type'
+                : 'Requires Orbit or Nova',
+          ),
+        ),
+      ),
+      const Divider(height: 16),
+      item(
+        AssistantComposeMode.plan,
+        widget.modesAllowed ? t.assistantModePlanHint : 'Requires Nova',
+        enabled: widget.modesAllowed,
+      ),
+      item(
+        AssistantComposeMode.deepResearch,
+        _available.research
+            ? t.assistantModeResearchHint
+            : t.assistantModeResearchUnavailable,
+        enabled: widget.modesAllowed && _available.research,
+      ),
+    ];
   }
 }
 
 class _PlusButton extends StatefulWidget {
   const _PlusButton({required this.onTap});
 
-  final ValueChanged<BuildContext> onTap;
+  final VoidCallback onTap;
 
   @override
   State<_PlusButton> createState() => _PlusButtonState();
@@ -292,7 +322,7 @@ class _PlusButtonState extends State<_PlusButton> {
         onEnter: (_) => setState(() => _hovering = true),
         onExit: (_) => setState(() => _hovering = false),
         child: GestureDetector(
-          onTap: () => widget.onTap(context),
+          onTap: widget.onTap,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
             width: 34,

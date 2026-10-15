@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
 import '../settings/sync_section.dart';
-import '../sync/sync_api.dart';
 import '../sync/sync_scope.dart';
 import '../sync/sync_service.dart';
 import '../theme/luma_theme.dart';
@@ -15,8 +14,9 @@ import 'widgets.dart';
 /// Three states, driven by [SyncService]:
 /// * no account at all → "create one";
 /// * an account created here that is still waiting for approval → who we're
-///   waiting for, and (only when the server approves by email) a resend
-///   button;
+///   waiting for, and (only while its emailed code is still outstanding) a
+///   resend button. Once the code is in, the account is created and only
+///   the operator's approval is left;
 /// * an approved account whose session expired → "sign in again".
 class ServerAccountRequired extends StatefulWidget {
   const ServerAccountRequired({
@@ -68,7 +68,7 @@ class _ServerAccountRequiredState extends State<ServerAccountRequired> {
       listenable: sync,
       builder: (context, _) {
         final pending = sync.pendingApprovalEmail;
-        final byEmail = sync.pendingApprovalMode == ServerApprovalMode.email;
+        final byEmail = sync.awaitingEmailCode;
         final expired = sync.signedIn && !sync.accountApproved;
         return Center(
         child: SingleChildScrollView(
@@ -94,7 +94,9 @@ class _ServerAccountRequiredState extends State<ServerAccountRequired> {
                   pending != null
                       ? byEmail
                           ? t.serverGatePendingEmail(pending)
-                          : t.serverGatePendingApproval(pending)
+                          : sync.pendingEmailVerified
+                              ? t.serverGateAwaitingApproval(pending)
+                              : t.serverGatePendingApproval(pending)
                       : expired
                           ? t.serverGateExpired
                           : t.serverGateSetupHint(widget.description),

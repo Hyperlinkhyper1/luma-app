@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 
 import '../../../../../../../l10n/app_localizations.dart';
 import '../../../../../../../theme/luma_theme.dart';
+import '../../../../../../converter/schematic/textures/block_atlas.dart';
 import '../../data/mc_dyes.dart';
 import '../../mc_tool_host.dart';
 import '../../ui/mc_style.dart';
+import '../../ui/mc_textures.dart';
 
 enum _Shape {
   smallBall('small_ball', null),
@@ -42,7 +44,8 @@ class _Star {
   bool twinkle = false;
 
   String get component {
-    String ints(List<McDye> d) => '[I;${d.map((c) => c.fireworkRgb).join(',')}]';
+    String ints(List<McDye> d) =>
+        '[I;${d.map((c) => c.fireworkRgb).join(',')}]';
     return [
       'shape:"${shape.id}"',
       'colors:${ints(colors)}',
@@ -68,7 +71,11 @@ class _FireworkToolState extends State<FireworkTool>
     with SingleTickerProviderStateMixin {
   int _flight = 2;
   final List<_Star> _stars = [
-    _Star(colors: [McDye.lightBlue, McDye.white], fades: [McDye.purple], trail: true),
+    _Star(
+      colors: [McDye.lightBlue, McDye.white],
+      fades: [McDye.purple],
+      trail: true,
+    ),
   ];
   int _selected = 0;
   int _count = 1;
@@ -105,193 +112,215 @@ class _FireworkToolState extends State<FireworkTool>
   Widget build(BuildContext context) {
     final luma = context.luma;
     final t = L.of(context);
-    return widget.host.frame(
-      context,
-      child: McSplit(
-        controlsWidth: 400,
-        controls: McFormColumn(
-          children: [
-            McPanel(
-              title: t.mcFwRocket,
-              icon: Icons.rocket_launch_rounded,
-              child: McFormColumn(
-                gap: 8,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          t.mcFwFlight,
-                          style: TextStyle(color: luma.textSecondary, fontSize: 12.5),
-                        ),
-                      ),
-                      McChoice<int>(
-                        values: const [1, 2, 3],
-                        selected: _flight,
-                        label: (v) => '$v',
-                        onSelect: (v) => setState(() => _flight = v),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          t.mcFwCount,
-                          style: TextStyle(color: luma.textSecondary, fontSize: 12.5),
-                        ),
-                      ),
-                      McStepper(
-                        value: _count,
-                        min: 1,
-                        max: 64,
-                        onChanged: (v) => setState(() => _count = v),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            McPanel(
-              title: t.mcFwStars,
-              icon: Icons.auto_awesome_rounded,
-              trailing: TextButton.icon(
-                onPressed: _stars.length >= 7
-                    ? null
-                    : () => setState(() {
-                        _stars.add(_Star(colors: [McDye.values[math.Random().nextInt(16)]]));
-                        _selected = _stars.length - 1;
-                      }),
-                icon: const Icon(Icons.add_rounded, size: 16),
-                label: Text(t.mcFwAddStar),
-              ),
-              child: _stars.isEmpty
-                  ? Text(
-                      t.mcFwNoStars,
-                      style: TextStyle(color: luma.textMuted, fontSize: 12.5),
-                    )
-                  : Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
+    return McTextureBuilder(
+      builder: (context, atlas, textureStatus) => widget.host.frame(
+        context,
+        child: McSplit(
+          controlsWidth: 400,
+          controls: McFormColumn(
+            children: [
+              McPanel(
+                title: t.mcFwRocket,
+                icon: Icons.rocket_launch_rounded,
+                child: McFormColumn(
+                  gap: 8,
+                  children: [
+                    Row(
                       children: [
-                        for (var i = 0; i < _stars.length; i++)
-                          InputChip(
-                            label: Text('${i + 1}. ${_stars[i].shape.label(t)}'),
-                            selected: i == _selected,
-                            avatar: CircleAvatar(
-                              backgroundColor: _stars[i].colors.isEmpty
-                                  ? luma.border
-                                  : _stars[i].colors.first.fireworkColor,
-                              radius: 7,
+                        Expanded(
+                          child: Text(
+                            t.mcFwFlight,
+                            style: TextStyle(
+                              color: luma.textSecondary,
+                              fontSize: 12.5,
                             ),
-                            onPressed: () => setState(() => _selected = i),
-                            onDeleted: () => setState(() {
-                              _stars.removeAt(i);
-                              _selected = _selected.clamp(0, math.max(0, _stars.length - 1));
-                            }),
                           ),
+                        ),
+                        McChoice<int>(
+                          values: const [1, 2, 3],
+                          selected: _flight,
+                          label: (v) => '$v',
+                          onSelect: (v) => setState(() => _flight = v),
+                        ),
                       ],
                     ),
-            ),
-            if (_stars.isNotEmpty)
-              McPanel(
-                title: t.mcFwStarN(_selected + 1),
-                icon: Icons.star_rounded,
-                child: McFormColumn(
-                  gap: 12,
-                  children: [
-                    McField(
-                      label: t.mcFwShape,
-                      child: McChoice<_Shape>(
-                        values: _Shape.values,
-                        selected: _star.shape,
-                        label: (s) => s.label(t),
-                        onSelect: (s) => setState(() => _star.shape = s),
-                      ),
-                    ),
-                    McField(
-                      label: t.mcFwColours(_star.colors.length),
-                      child: _MultiDye(
-                        selected: _star.colors,
-                        onTap: (d) => _toggleDye(_star.colors, d),
-                      ),
-                    ),
-                    McField(
-                      label: t.mcFwFade(_star.fades.length),
-                      child: _MultiDye(
-                        selected: _star.fades,
-                        onTap: (d) => _toggleDye(_star.fades, d),
-                      ),
-                    ),
-                    McSwitch(
-                      label: t.mcFwTrail,
-                      detail: t.mcFwTrailDetail,
-                      value: _star.trail,
-                      onChanged: (v) => setState(() => _star.trail = v),
-                    ),
-                    McSwitch(
-                      label: t.mcFwTwinkle,
-                      detail: t.mcFwTwinkleDetail,
-                      value: _star.twinkle,
-                      onChanged: (v) => setState(() => _star.twinkle = v),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            t.mcFwCount,
+                            style: TextStyle(
+                              color: luma.textSecondary,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                        ),
+                        McStepper(
+                          value: _count,
+                          min: 1,
+                          max: 64,
+                          onChanged: (v) => setState(() => _count = v),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-          ],
-        ),
-        result: McFormColumn(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: SizedBox(
-                height: 320,
-                child: AnimatedBuilder(
-                  animation: _anim,
-                  builder: (context, _) => CustomPaint(
-                    painter: _FireworkPainter(
-                      t: _anim.value,
-                      stars: _stars,
-                      flight: _flight,
+              McPanel(
+                title: t.mcFwStars,
+                icon: Icons.auto_awesome_rounded,
+                trailing: TextButton.icon(
+                  onPressed: _stars.length >= 7
+                      ? null
+                      : () => setState(() {
+                          _stars.add(
+                            _Star(
+                              colors: [McDye.values[math.Random().nextInt(16)]],
+                            ),
+                          );
+                          _selected = _stars.length - 1;
+                        }),
+                  icon: const Icon(Icons.add_rounded, size: 16),
+                  label: Text(t.mcFwAddStar),
+                ),
+                child: _stars.isEmpty
+                    ? Text(
+                        t.mcFwNoStars,
+                        style: TextStyle(color: luma.textMuted, fontSize: 12.5),
+                      )
+                    : Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (var i = 0; i < _stars.length; i++)
+                            InputChip(
+                              label: Text(
+                                '${i + 1}. ${_stars[i].shape.label(t)}',
+                              ),
+                              selected: i == _selected,
+                              avatar: CustomPaint(
+                                painter: _StarPainter(
+                                  atlas,
+                                  _stars[i].colors.isEmpty
+                                      ? luma.border
+                                      : _stars[i].colors.first.fireworkColor,
+                                ),
+                                size: const Size.square(22),
+                              ),
+                              onPressed: () => setState(() => _selected = i),
+                              onDeleted: () => setState(() {
+                                _stars.removeAt(i);
+                                _selected = _selected.clamp(
+                                  0,
+                                  math.max(0, _stars.length - 1),
+                                );
+                              }),
+                            ),
+                        ],
+                      ),
+              ),
+              if (_stars.isNotEmpty)
+                McPanel(
+                  title: t.mcFwStarN(_selected + 1),
+                  icon: Icons.star_rounded,
+                  child: McFormColumn(
+                    gap: 12,
+                    children: [
+                      McField(
+                        label: t.mcFwShape,
+                        child: McChoice<_Shape>(
+                          values: _Shape.values,
+                          selected: _star.shape,
+                          label: (s) => s.label(t),
+                          onSelect: (s) => setState(() => _star.shape = s),
+                        ),
+                      ),
+                      McField(
+                        label: t.mcFwColours(_star.colors.length),
+                        child: _MultiDye(
+                          selected: _star.colors,
+                          onTap: (d) => _toggleDye(_star.colors, d),
+                        ),
+                      ),
+                      McField(
+                        label: t.mcFwFade(_star.fades.length),
+                        child: _MultiDye(
+                          selected: _star.fades,
+                          onTap: (d) => _toggleDye(_star.fades, d),
+                        ),
+                      ),
+                      McSwitch(
+                        label: t.mcFwTrail,
+                        detail: t.mcFwTrailDetail,
+                        value: _star.trail,
+                        onChanged: (v) => setState(() => _star.trail = v),
+                      ),
+                      McSwitch(
+                        label: t.mcFwTwinkle,
+                        detail: t.mcFwTwinkleDetail,
+                        value: _star.twinkle,
+                        onChanged: (v) => setState(() => _star.twinkle = v),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          result: McFormColumn(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  height: 320,
+                  child: AnimatedBuilder(
+                    animation: _anim,
+                    builder: (context, _) => CustomPaint(
+                      key: const ValueKey('mc-firework-preview'),
+                      painter: _FireworkPainter(
+                        t: _anim.value,
+                        stars: _stars,
+                        flight: _flight,
+                        atlas: atlas,
+                      ),
+                      size: Size.infinite,
                     ),
-                    size: Size.infinite,
                   ),
                 ),
               ),
-            ),
-            McPanel(
-              title: t.mcFwCrafting,
-              icon: Icons.grid_on_rounded,
-              child: McFormColumn(
-                gap: 6,
-                children: [
-                  for (var i = 0; i < _stars.length; i++) ...[
-                    _Recipe(
-                      t.mcFwStarN(i + 1),
-                      [
+              textureStatus,
+              McPanel(
+                title: t.mcFwCrafting,
+                icon: Icons.grid_on_rounded,
+                child: McFormColumn(
+                  gap: 6,
+                  children: [
+                    for (var i = 0; i < _stars.length; i++) ...[
+                      _Recipe(t.mcFwStarN(i + 1), [
                         '1 Gunpowder',
                         for (final d in _stars[i].colors) '1 ${d.label} Dye',
-                        if (_stars[i].shape.item != null) '1 ${mcPretty(_stars[i].shape.item!)}',
+                        if (_stars[i].shape.item != null)
+                          '1 ${mcPretty(_stars[i].shape.item!)}',
                         if (_stars[i].trail) '1 Diamond',
                         if (_stars[i].twinkle) '1 Glowstone Dust',
-                      ],
-                    ),
-                    if (_stars[i].fades.isNotEmpty)
-                      _Recipe(t.mcFwFadeN(i + 1), [
-                        t.mcFwStarN(i + 1),
-                        for (final d in _stars[i].fades) '1 ${d.label} Dye',
                       ]),
+                      if (_stars[i].fades.isNotEmpty)
+                        _Recipe(t.mcFwFadeN(i + 1), [
+                          t.mcFwStarN(i + 1),
+                          for (final d in _stars[i].fades) '1 ${d.label} Dye',
+                        ]),
+                    ],
+                    _Recipe(t.mcFwRocketX3, [
+                      '1 Paper',
+                      '$_flight Gunpowder',
+                      for (var i = 0; i < _stars.length; i++)
+                        t.mcFwStarN(i + 1),
+                    ]),
                   ],
-                  _Recipe(t.mcFwRocketX3, [
-                    '1 Paper',
-                    '$_flight Gunpowder',
-                    for (var i = 0; i < _stars.length; i++) t.mcFwStarN(i + 1),
-                  ]),
-                ],
+                ),
               ),
-            ),
-            McCodeBox(code: _command, title: t.mcCommand),
-          ],
+              McCodeBox(code: _command, title: t.mcCommand),
+            ],
+          ),
         ),
       ),
     );
@@ -322,7 +351,9 @@ class _MultiDye extends StatelessWidget {
                     child: Text(
                       '${selected.indexOf(d) + 1}',
                       style: TextStyle(
-                        color: d.fireworkColor.computeLuminance() > 0.5 ? Colors.black : Colors.white,
+                        color: d.fireworkColor.computeLuminance() > 0.5
+                            ? Colors.black
+                            : Colors.white,
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                       ),
@@ -351,7 +382,11 @@ class _Recipe extends StatelessWidget {
           width: 78,
           child: Text(
             name,
-            style: TextStyle(color: luma.accent, fontWeight: FontWeight.w700, fontSize: 12.5),
+            style: TextStyle(
+              color: luma.accent,
+              fontWeight: FontWeight.w700,
+              fontSize: 12.5,
+            ),
           ),
         ),
         Expanded(
@@ -365,12 +400,49 @@ class _Recipe extends StatelessWidget {
   }
 }
 
+class _StarPainter extends CustomPainter {
+  _StarPainter(this.atlas, this.color);
+
+  final BlockAtlas? atlas;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    if (mcPaintSprite(canvas, atlas, 'item/firework_star', rect)) {
+      mcPaintSprite(
+        canvas,
+        atlas,
+        'item/firework_star_overlay',
+        rect,
+        tint: color,
+      );
+    } else {
+      canvas.drawCircle(
+        rect.center,
+        size.shortestSide / 3,
+        Paint()..color = color,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_StarPainter old) =>
+      old.atlas != atlas || old.color != color;
+}
+
 class _FireworkPainter extends CustomPainter {
-  _FireworkPainter({required this.t, required this.stars, required this.flight});
+  _FireworkPainter({
+    required this.t,
+    required this.stars,
+    required this.flight,
+    required this.atlas,
+  });
 
   final double t;
   final List<_Star> stars;
   final int flight;
+  final BlockAtlas? atlas;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -391,19 +463,52 @@ class _FireworkPainter extends CustomPainter {
     if (t < launch) {
       final p = t / launch;
       final y = size.height - 18 - (size.height - 18 - burstAt.dy) * p;
-      final trail = Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Colors.white, Colors.orange.withValues(alpha: 0)],
-        ).createShader(Rect.fromLTWH(burstAt.dx - 2, y, 4, 40));
-      canvas.drawRect(Rect.fromLTWH(burstAt.dx - 1.5, y, 3, 40), trail);
-      canvas.drawCircle(Offset(burstAt.dx, y), 3, Paint()..color = Colors.white);
+      for (var i = 0; i < 6; i++) {
+        final age = i / 6;
+        _spark(
+          canvas,
+          Offset(burstAt.dx, y + 12 + i * 5),
+          age,
+          Colors.white.withValues(alpha: 1 - age),
+          5,
+        );
+      }
+      if (!mcPaintSprite(
+        canvas,
+        atlas,
+        'item/firework_rocket',
+        Rect.fromCenter(center: Offset(burstAt.dx, y), width: 28, height: 28),
+      )) {
+        canvas.drawCircle(
+          Offset(burstAt.dx, y),
+          3,
+          Paint()..color = Colors.white,
+        );
+      }
       return;
     }
     final p = ((t - launch) / (1 - launch)).clamp(0.0, 1.0);
+    if (stars.any((s) => s.colors.isNotEmpty) && p < 0.18) {
+      mcPaintSprite(
+        canvas,
+        atlas,
+        'particle/flash',
+        Rect.fromCenter(
+          center: burstAt,
+          width: 36 + p * 240,
+          height: 36 + p * 240,
+        ),
+        tint: Colors.white.withValues(alpha: 1 - p / 0.18),
+      );
+    }
     for (var s = 0; s < stars.length; s++) {
-      _burst(canvas, stars[s], burstAt + Offset((s - (stars.length - 1) / 2) * 6, 0), p, s);
+      _burst(
+        canvas,
+        stars[s],
+        burstAt + Offset((s - (stars.length - 1) / 2) * 6, 0),
+        p,
+        s,
+      );
     }
   }
 
@@ -435,12 +540,20 @@ class _FireworkPainter extends CustomPainter {
         }
       case _Shape.creeper:
         const face = [
-          '........', '.XX..XX.', '.XX..XX.', '...XX...',
-          '..XXXX..', '..XXXX..', '..X..X..', '........',
+          '........',
+          '.XX..XX.',
+          '.XX..XX.',
+          '...XX...',
+          '..XXXX..',
+          '..XXXX..',
+          '..X..X..',
+          '........',
         ];
         for (var y = 0; y < 8; y++) {
           for (var x = 0; x < 8; x++) {
-            if (face[y][x] == 'X') points.add(Offset((x - 3.5) / 4, (y - 3.5) / 4));
+            if (face[y][x] == 'X') {
+              points.add(Offset((x - 3.5) / 4, (y - 3.5) / 4));
+            }
           }
         }
       case _Shape.burst:
@@ -450,27 +563,60 @@ class _FireworkPainter extends CustomPainter {
           points.add(Offset(math.cos(a), math.sin(a)) * r);
         }
     }
-    final radius = (star.shape == _Shape.largeBall ? 120.0 : 80.0) * Curves.easeOut.transform(math.min(1, p * 1.6));
+    final radius =
+        (star.shape == _Shape.largeBall ? 120.0 : 80.0) *
+        Curves.easeOut.transform(math.min(1, p * 1.6));
     final fadePhase = ((p - 0.45) / 0.55).clamp(0.0, 1.0);
     final alpha = (1 - math.max(0, p - 0.7) / 0.3).clamp(0.0, 1.0);
-    final paint = Paint()..strokeCap = StrokeCap.round;
     for (var i = 0; i < points.length; i++) {
       final base = star.colors[i % star.colors.length].fireworkColor;
-      final fade = star.fades.isEmpty ? base : star.fades[i % star.fades.length].fireworkColor;
+      final fade = star.fades.isEmpty
+          ? base
+          : star.fades[i % star.fades.length].fireworkColor;
       var color = Color.lerp(base, fade, fadePhase)!;
       var a = alpha;
-      if (star.twinkle && p > 0.4 && ((i * 31 + (p * 40).floor()) % 3 == 0)) a *= 0.2;
+      if (star.twinkle && p > 0.4 && ((i * 31 + (p * 40).floor()) % 3 == 0)) {
+        a *= 0.2;
+      }
       color = color.withValues(alpha: a);
       final gravity = Offset(0, p * p * 40);
       final pos = c + points[i] * radius + gravity;
       if (star.trail) {
-        final prev = c + points[i] * radius * 0.82 + gravity * 0.7;
-        paint
-          ..color = color.withValues(alpha: a * 0.45)
-          ..strokeWidth = 1.6;
-        canvas.drawLine(prev, pos, paint);
+        for (var j = 1; j <= 3; j++) {
+          final age = j / 4;
+          final prev =
+              c +
+              points[i] * radius * (1 - age * 0.24) +
+              gravity * (1 - age * 0.4);
+          _spark(
+            canvas,
+            prev,
+            (p + age * 0.3).clamp(0.0, 1.0),
+            color.withValues(alpha: a * (1 - age) * 0.5),
+            4,
+          );
+        }
       }
-      canvas.drawCircle(pos, 2.2, Paint()..color = color);
+      _spark(canvas, pos, p, color, 7);
+    }
+  }
+
+  void _spark(
+    Canvas canvas,
+    Offset position,
+    double age,
+    Color color,
+    double size,
+  ) {
+    final frame = (7 * (1 - age)).round().clamp(0, 7);
+    if (!mcPaintSprite(
+      canvas,
+      atlas,
+      'particle/spark_$frame',
+      Rect.fromCenter(center: position, width: size, height: size),
+      tint: color,
+    )) {
+      canvas.drawCircle(position, size / 3, Paint()..color = color);
     }
   }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -79,6 +80,7 @@ class _FakeServer {
   final indexes = <String, Map<String, dynamic>>{};
   final blobs = <String, List<int>>{};
   final requests = <http.Request>[];
+  Future<void>? libraryLoad;
 
   /// How many batch requests to answer with "slow down" first.
   int busyFor = 0;
@@ -112,6 +114,7 @@ class _FakeServer {
       });
     }
     if (path == '/api/v1/team-board/library') {
+      await libraryLoad;
       if (request.url.queryParameters['since'] == '$revision') {
         return json({'revision': revision, 'unchanged': true});
       }
@@ -220,6 +223,7 @@ class _FakeLocal extends TeamLocalLibrary {
   final added = <String>[];
   final blobs = <String, List<int>>{};
   Map<String, dynamic>? index;
+  Future<void>? libraryLoad;
 
   TeamLibraryState _now({int? since}) => TeamLibraryState.fromJson({
     'revision': revision,
@@ -229,7 +233,10 @@ class _FakeLocal extends TeamLocalLibrary {
   });
 
   @override
-  Future<TeamLibraryState> state({int? since}) async => _now(since: since);
+  Future<TeamLibraryState> state({int? since}) async {
+    await libraryLoad;
+    return _now(since: since);
+  }
 
   @override
   Future<void> checkStale() async {}
@@ -504,6 +511,113 @@ void main() {
       expect(mod.version!.number, '1.0.0');
       expect(mod.state, TeamLibraryModState.ready);
     });
+  });
+
+  for (final slowShelf in ['team', 'local']) {
+    testWidgets('does not flash an empty library while $slowShelf mods load', (
+      tester,
+    ) async {
+      final pending = Completer<void>();
+      final server = _FakeServer();
+      final local = _FakeLocal();
+      if (slowShelf == 'team') {
+        server.libraryLoad = pending.future;
+        server.mods.add(_mod());
+      } else {
+        local.libraryLoad = pending.future;
+        local.mods.add(_mod());
+      }
+
+      await _pump(tester, server, local: local);
+      expect(find.text('No mods in the library yet'), findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+      pending.complete();
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Ruby Mod'), findsOneWidget);
+      expect(find.text('No mods in the library yet'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await _unmount(tester);
+    });
+
+    testWidgets(
+      'shows loaded mods while the $slowShelf shelf is still loading',
+      (tester) async {
+        final pending = Completer<void>();
+        final server = _FakeServer();
+        final local = _FakeLocal();
+        if (slowShelf == 'team') {
+          server.libraryLoad = pending.future;
+          local.mods.add(_mod());
+        } else {
+          local.libraryLoad = pending.future;
+          server.mods.add(_mod());
+        }
+
+        await _pump(tester, server, local: local);
+        expect(find.text('Ruby Mod'), findsOneWidget);
+        expect(find.text('No mods in the library yet'), findsNothing);
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+
+        pending.complete();
+        await tester.pump();
+        await tester.pump();
+        expect(find.text('Ruby Mod'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await _unmount(tester);
+      },
+    );
+
+    testWidgets(
+      'a failed $slowShelf load shows a retry instead of an empty library',
+      (tester) async {
+        final pending = Completer<void>();
+        final server = _FakeServer();
+        final local = _FakeLocal();
+        if (slowShelf == 'team') {
+          server.libraryLoad = pending.future;
+        } else {
+          local.libraryLoad = pending.future;
+        }
+
+        await _pump(tester, server, local: local);
+        pending.completeError(StateError('Library load failed'));
+        await tester.pump();
+        await tester.pump();
+        expect(find.textContaining('Library load failed'), findsOneWidget);
+        expect(find.text('Retry'), findsOneWidget);
+        expect(find.text('No mods in the library yet'), findsNothing);
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+
+        server.libraryLoad = null;
+        local.libraryLoad = null;
+        await tester.tap(find.text('Retry'));
+        await tester.pump();
+        await tester.pump();
+        expect(find.textContaining('Library load failed'), findsNothing);
+        expect(find.text('No mods in the library yet'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await _unmount(tester);
+      },
+    );
+  }
+
+  testWidgets('shows an empty library only after both shelves finish loading', (
+    tester,
+  ) async {
+    final pending = Completer<void>();
+    final server = _FakeServer()..libraryLoad = pending.future;
+    await _pump(tester, server);
+    expect(find.text('No mods in the library yet'), findsNothing);
+
+    pending.complete();
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('No mods in the library yet'), findsOneWidget);
+    expect(find.text('Add mod'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await _unmount(tester);
   });
 
   testWidgets('a lead adds a mod; it fills in, previews and reloads', (

@@ -206,13 +206,13 @@ void main() {
       await tester.pumpWidget(host(composer(false)));
       await tester.tap(find.byIcon(Icons.add_rounded));
       await tester.pumpAndSettle();
-      final locked = tester.widget<PopupMenuItem<Object>>(
+      final locked = tester.widget<SubmenuButton>(
         find.ancestor(
           of: find.text('Artifact generation'),
-          matching: find.byType(PopupMenuItem<Object>),
+          matching: find.byType(SubmenuButton),
         ),
       );
-      expect(locked.enabled, isFalse);
+      expect(locked.menuChildren, isEmpty);
       expect(find.text('Requires Orbit or Nova'), findsNWidgets(2));
       await tester.tapAt(const Offset(310, 650));
       await tester.pumpAndSettle();

@@ -31,7 +31,7 @@ class RawTextureData {
     required this.label,
   });
 
-  /// `block/<name>` to the raw PNG bytes.
+  /// Texture path, such as `block/stone` or `particle/spark_0`, to PNG bytes.
   final Map<String, Uint8List> textures;
 
   /// Block name to the raw `blockstates/<name>.json` text.
@@ -102,6 +102,23 @@ class AtlasBitmap {
 /// flat colour through unchanged.
 const String kSolidTileName = 'luma:solid';
 
+/// The few non-block sprites shared by the Minecraft tool previews. These
+/// are read from the user's jar or resource pack alongside block textures.
+const Set<String> kMinecraftPreviewSprites = {
+  'item/firework_rocket',
+  'item/firework_star',
+  'item/firework_star_overlay',
+  'particle/flash',
+  'particle/spark_0',
+  'particle/spark_1',
+  'particle/spark_2',
+  'particle/spark_3',
+  'particle/spark_4',
+  'particle/spark_5',
+  'particle/spark_6',
+  'particle/spark_7',
+};
+
 /// How far along a texture download is, for the UI to show.
 class TextureDownloadProgress {
   const TextureDownloadProgress({
@@ -117,8 +134,7 @@ class TextureDownloadProgress {
   final int total;
 
   /// 0..1 once the total is known, null while it is not.
-  double? get fraction =>
-      total > 0 ? (received / total).clamp(0.0, 1.0) : null;
+  double? get fraction => total > 0 ? (received / total).clamp(0.0, 1.0) : null;
 }
 
 class TextureDownloadException implements Exception {

@@ -162,6 +162,26 @@ void NativeWebviewManager::HandleMethodCall(
   } else if (method == "setVisible") {
     view.visible = BoolArg(*args, "visible");
     ApplyVisibility(view);
+  } else if (method == "setOcclusionRects") {
+    view.occlusions.clear();
+    auto value = Arg(*args, "rects");
+    const auto* rects = value ? std::get_if<flutter::EncodableList>(value) : nullptr;
+    if (rects) {
+      for (const auto& rect : *rects) {
+        const auto* map = std::get_if<flutter::EncodableMap>(&rect);
+        if (!map) continue;
+        LONG x = static_cast<LONG>(IntArg(*map, "x").value_or(0));
+        LONG y = static_cast<LONG>(IntArg(*map, "y").value_or(0));
+        LONG width = static_cast<LONG>(IntArg(*map, "width").value_or(0));
+        LONG height = static_cast<LONG>(IntArg(*map, "height").value_or(0));
+        if (width <= 0 || height <= 0) continue;
+        view.occlusions.push_back({
+            RECT{x, y, x + width, y + height},
+            static_cast<LONG>(IntArg(*map, "radiusX").value_or(0)),
+            static_cast<LONG>(IntArg(*map, "radiusY").value_or(0))});
+      }
+    }
+    ApplyOcclusion(view);
   } else if (method == "post") {
     if (view.webview) {
       view.webview->PostWebMessageAsString(
@@ -318,6 +338,11 @@ void NativeWebviewManager::ApplyBounds(View& view) {
     view.controller->put_Bounds(
         RECT{0, 0, b.right - b.left, b.bottom - b.top});
   }
+  ApplyOcclusion(view);
+}
+
+void NativeWebviewManager::ApplyOcclusion(View& view) {
+  ApplyNativeWebviewRegion(view.host, view.bounds, view.occlusions);
 }
 
 void NativeWebviewManager::ApplyVisibility(View& view) {

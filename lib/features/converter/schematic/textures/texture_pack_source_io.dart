@@ -53,10 +53,12 @@ List<Directory> _gameDirectories() {
   void add(String? base, List<String> relatives) {
     if (base == null) return;
     for (final relative in relatives) {
-      dirs.add(Directory(
-        '$base${Platform.pathSeparator}'
-        '${relative.replaceAll('/', Platform.pathSeparator)}',
-      ));
+      dirs.add(
+        Directory(
+          '$base${Platform.pathSeparator}'
+          '${relative.replaceAll('/', Platform.pathSeparator)}',
+        ),
+      );
     }
   }
 
@@ -117,33 +119,25 @@ Future<List<TexturePackSource>> findTextureSources() async {
   final roots = <Directory>[];
   try {
     final support = await getApplicationSupportDirectory();
-    roots.add(Directory(
-      '${support.path}${Platform.pathSeparator}minecraft',
-    ));
+    roots.add(Directory('${support.path}${Platform.pathSeparator}minecraft'));
   } catch (_) {
     // No support directory (unusual); the standard game dirs may still work.
   }
   roots.addAll(_gameDirectories());
 
   for (final root in roots) {
-    final versions = Directory(
-      '${root.path}${Platform.pathSeparator}versions',
-    );
+    final versions = Directory('${root.path}${Platform.pathSeparator}versions');
     if (!await versions.exists()) continue;
     await for (final entry in versions.list()) {
       if (entry is! Directory) continue;
       final id = entry.path.split(Platform.pathSeparator).last;
-      final jar = File(
-        '${entry.path}${Platform.pathSeparator}$id.jar',
-      );
+      final jar = File('${entry.path}${Platform.pathSeparator}$id.jar');
       if (!await jar.exists()) continue;
       // A client jar has the assets in it; a tiny one is a loader stub.
       if (await jar.length() < 1024 * 512) continue;
-      found.add(TexturePackSource(
-        path: jar.path,
-        label: 'Minecraft $id',
-        version: id,
-      ));
+      found.add(
+        TexturePackSource(path: jar.path, label: 'Minecraft $id', version: id),
+      );
     }
   }
 
@@ -163,12 +157,14 @@ Future<List<TexturePackSource>> findTextureSources() async {
           continue;
         }
         final name = entry.path.split(Platform.pathSeparator).last;
-        found.add(TexturePackSource(
-          path: entry.path,
-          label: name.substring(0, name.length - 4),
-          version: '',
-          isResourcePack: true,
-        ));
+        found.add(
+          TexturePackSource(
+            path: entry.path,
+            label: name.substring(0, name.length - 4),
+            version: '',
+            isResourcePack: true,
+          ),
+        );
       }
     }
   }
@@ -182,15 +178,14 @@ Future<List<TexturePackSource>> findTextureSources() async {
 /// is the version — which reads better than the bare file name and matches
 /// what the source picker calls it.
 String _labelFor(String path) {
-  final segments = path.split(RegExp(r'[\\/]'))
-    ..removeWhere((s) => s.isEmpty);
+  final segments = path.split(RegExp(r'[\\/]'))..removeWhere((s) => s.isEmpty);
   if (segments.isEmpty) return path;
   final file = segments.last;
   final stem = file.endsWith('.jar')
       ? file.substring(0, file.length - 4)
       : file.endsWith('.zip')
-          ? file.substring(0, file.length - 4)
-          : file;
+      ? file.substring(0, file.length - 4)
+      : file;
   if (segments.length >= 3 &&
       file.endsWith('.jar') &&
       segments[segments.length - 2] == stem &&
@@ -200,7 +195,7 @@ String _labelFor(String path) {
   return stem;
 }
 
-/// Reads every block texture, blockstate and model out of [path].
+/// Reads block assets and the sprites used by Minecraft tool previews.
 ///
 /// Runs off the UI isolate — a client jar holds several thousand entries and
 /// inflating them all takes long enough to drop frames.
@@ -217,13 +212,15 @@ RawTextureData readTexturePack(String path) {
     final name = entry.name;
     if (!name.startsWith('assets/minecraft/')) continue;
 
-    if (name.startsWith('assets/minecraft/textures/block/') &&
+    if (name.startsWith('assets/minecraft/textures/') &&
         name.endsWith('.png')) {
-      final key = 'block/${name.substring(
-        'assets/minecraft/textures/block/'.length,
+      final key = name.substring(
+        'assets/minecraft/textures/'.length,
         name.length - 4,
-      )}';
-      textures[key] = Uint8List.fromList(entry.content as List<int>);
+      );
+      if (key.startsWith('block/') || kMinecraftPreviewSprites.contains(key)) {
+        textures[key] = Uint8List.fromList(entry.content as List<int>);
+      }
     } else if (name.startsWith('assets/minecraft/blockstates/') &&
         name.endsWith('.json')) {
       final key = name.substring(
@@ -236,10 +233,8 @@ RawTextureData readTexturePack(String path) {
       );
     } else if (name.startsWith('assets/minecraft/models/block/') &&
         name.endsWith('.json')) {
-      final key = 'block/${name.substring(
-        'assets/minecraft/models/block/'.length,
-        name.length - 5,
-      )}';
+      final key =
+          'block/${name.substring('assets/minecraft/models/block/'.length, name.length - 5)}';
       models[key] = utf8.decode(
         entry.content as List<int>,
         allowMalformed: true,
@@ -327,7 +322,7 @@ AtlasBitmap buildAtlas(RawTextureData data) {
 
   // A pack with no block textures in it is not a pack this can use, and must
   // not come back looking like a one-tile atlas that paints everything white.
-  if (decoded.isEmpty) {
+  if (!decoded.keys.any((name) => name.startsWith('block/'))) {
     return AtlasBitmap(
       pixels: Uint8List(0),
       width: 0,

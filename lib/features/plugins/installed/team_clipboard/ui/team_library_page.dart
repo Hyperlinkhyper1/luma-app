@@ -177,7 +177,7 @@ class _TeamLibraryPageState extends State<TeamLibraryPage> {
 
   final _team = ValueNotifier<TeamLibraryState?>(null);
   final _local = ValueNotifier<TeamLibraryState?>(null);
-  String? _error;
+  final Map<_Shelf, String> _errors = {};
   Timer? _poll;
 
   /// The shelves being asked right now. Each polls on its own, so a slow
@@ -221,7 +221,7 @@ class _TeamLibraryPageState extends State<TeamLibraryPage> {
       final next = await shelf.load(since: since);
       if (!mounted) return;
       _take(shelf, next);
-      if (!shelf.local && _error != null) setState(() => _error = null);
+      if (_errors.containsKey(shelf)) setState(() => _errors.remove(shelf));
       // Nothing watches Modrinth for this device's mods while the app is
       // closed, so the tab looks for updates itself.
       if (shelf.local) {
@@ -230,7 +230,7 @@ class _TeamLibraryPageState extends State<TeamLibraryPage> {
         );
       }
     } catch (e) {
-      if (!shelf.local && mounted && !quiet) setState(() => _error = '$e');
+      if (mounted && !quiet) setState(() => _errors[shelf] = '$e');
     } finally {
       _loading.remove(shelf);
     }
@@ -403,12 +403,16 @@ class _TeamLibraryPageState extends State<TeamLibraryPage> {
     final t = L.of(context);
     final team = _team.value;
     final local = _local.value;
-    if (team == null && local == null) {
-      if (_error != null) {
+    final lead = team?.canManage ?? false;
+    final teamMods = team?.mods ?? const <TeamLibraryMod>[];
+    final localMods = local?.mods ?? const <TeamLibraryMod>[];
+    final addShelf = lead ? _teamShelf : _localShelf;
+    if (teamMods.isEmpty && localMods.isEmpty) {
+      if (_errors.isNotEmpty) {
         return LumaEmptyState(
           icon: Icons.cloud_off_rounded,
           title: t.teamClipboardErrorTitle,
-          subtitle: _error,
+          subtitle: _errors.values.first,
           action: LumaPrimaryButton(
             label: t.commonRetry,
             icon: Icons.refresh_rounded,
@@ -416,13 +420,9 @@ class _TeamLibraryPageState extends State<TeamLibraryPage> {
           ),
         );
       }
-      return const Center(child: CircularProgressIndicator());
-    }
-    final lead = team?.canManage ?? false;
-    final teamMods = team?.mods ?? const <TeamLibraryMod>[];
-    final localMods = local?.mods ?? const <TeamLibraryMod>[];
-    final addShelf = lead ? _teamShelf : _localShelf;
-    if (teamMods.isEmpty && localMods.isEmpty) {
+      if (team == null || local == null) {
+        return const Center(child: CircularProgressIndicator());
+      }
       return LumaEmptyState(
         icon: Icons.inventory_2_outlined,
         title: t.teamLibraryEmptyTitle,

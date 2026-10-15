@@ -6,6 +6,7 @@ import 'package:luma/features/home/home_layout.dart';
 import 'package:luma/features/notes/notes_repository.dart';
 import 'package:luma/features/plugins/plugin_repository.dart';
 import 'package:luma/features/plugins/plugin_scope.dart';
+import 'package:luma/l10n/app_localizations.dart';
 import 'package:luma/theme/luma_theme.dart';
 
 class _InstalledCalculator implements PluginRepository {
@@ -39,6 +40,8 @@ HomeTile tile(
 );
 
 Widget host(HomeTile value) => MaterialApp(
+  localizationsDelegates: L.localizationsDelegates,
+  supportedLocales: L.supportedLocales,
   theme: ThemeData(extensions: const [LumaPalette.light]),
   home: Scaffold(
     body: PluginScope(

@@ -103,6 +103,102 @@ abstract class L {
     Locale('zh'),
   ];
 
+  /// No description provided for @homeTileSteamGamePrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Steam game price'**
+  String get homeTileSteamGamePrice;
+
+  /// No description provided for @homeTileCs2SkinPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'CS2 skin price'**
+  String get homeTileCs2SkinPrice;
+
+  /// No description provided for @homeTileCs2TrackedGraph.
+  ///
+  /// In en, this message translates to:
+  /// **'Tracked CS2 skins graph'**
+  String get homeTileCs2TrackedGraph;
+
+  /// No description provided for @homeChooseSteamGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a Steam game'**
+  String get homeChooseSteamGame;
+
+  /// No description provided for @homeChooseCs2Skin.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a CS2 skin'**
+  String get homeChooseCs2Skin;
+
+  /// No description provided for @homeSteamAllGames.
+  ///
+  /// In en, this message translates to:
+  /// **'All tracked games'**
+  String get homeSteamAllGames;
+
+  /// No description provided for @homeSteamAllSkins.
+  ///
+  /// In en, this message translates to:
+  /// **'All tracked CS2 skins'**
+  String get homeSteamAllSkins;
+
+  /// No description provided for @homeSteamGamesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Track a game in Steam Tools to add its price here.'**
+  String get homeSteamGamesEmpty;
+
+  /// No description provided for @homeSteamSkinsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Track a CS2 skin in Steam Tools to add its price or graph here.'**
+  String get homeSteamSkinsEmpty;
+
+  /// No description provided for @homeSteamGameUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This game is no longer tracked. Choose another game in the tile settings.'**
+  String get homeSteamGameUnavailable;
+
+  /// No description provided for @homeSteamSkinUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This CS2 skin is no longer tracked. Choose another skin in the tile settings.'**
+  String get homeSteamSkinUnavailable;
+
+  /// No description provided for @homeSteamDataError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load Steam Tools data.'**
+  String get homeSteamDataError;
+
+  /// No description provided for @homeOpenSteamTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Steam Tools'**
+  String get homeOpenSteamTools;
+
+  /// No description provided for @homeSteamSavedPrices.
+  ///
+  /// In en, this message translates to:
+  /// **'Latest saved prices'**
+  String get homeSteamSavedPrices;
+
+  /// No description provided for @homeSteamMixedCurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'These prices use different currencies and cannot be combined in one graph.'**
+  String get homeSteamMixedCurrency;
+
+  /// No description provided for @homeSteamPriceChecked.
+  ///
+  /// In en, this message translates to:
+  /// **'Checked {date}'**
+  String homeSteamPriceChecked(String date);
+
   /// No description provided for @teamClipboardSettings.
   ///
   /// In en, this message translates to:
@@ -6905,6 +7001,90 @@ abstract class L {
   /// **'Manage family'**
   String get accountManageFamily;
 
+  /// No description provided for @accountPageSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage your profile, sync, plan and family.'**
+  String get accountPageSubtitle;
+
+  /// No description provided for @accountNavSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync & devices'**
+  String get accountNavSync;
+
+  /// No description provided for @accountDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Account details'**
+  String get accountDetailsTitle;
+
+  /// No description provided for @accountManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get accountManage;
+
+  /// No description provided for @accountNotSignedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Not signed in'**
+  String get accountNotSignedIn;
+
+  /// No description provided for @accountLocalProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Local profile'**
+  String get accountLocalProfile;
+
+  /// No description provided for @accountStatusActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get accountStatusActive;
+
+  /// No description provided for @accountStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for approval'**
+  String get accountStatusPending;
+
+  /// No description provided for @accountStatusLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Local only'**
+  String get accountStatusLocal;
+
+  /// No description provided for @accountFieldLastSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Last synced'**
+  String get accountFieldLastSynced;
+
+  /// No description provided for @accountFieldSyncStorage.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync storage'**
+  String get accountFieldSyncStorage;
+
+  /// No description provided for @accountStorageOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{used} of {total}'**
+  String accountStorageOf(String used, String total);
+
+  /// No description provided for @accountPlanIncluded.
+  ///
+  /// In en, this message translates to:
+  /// **'Included in your plan'**
+  String get accountPlanIncluded;
+
+  /// No description provided for @accountStatsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Lifetime totals and the places you\'ve been.'**
+  String get accountStatsSubtitle;
+
   /// No description provided for @familyTitle.
   ///
   /// In en, this message translates to:
@@ -7349,6 +7529,30 @@ abstract class L {
   /// **'Use a different account'**
   String get loginUseDifferentAccount;
 
+  /// No description provided for @loginAccountCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Account created'**
+  String get loginAccountCreated;
+
+  /// No description provided for @loginAwaitingApproval.
+  ///
+  /// In en, this message translates to:
+  /// **'Your email is verified and your account is created. The server operator still has to approve it. Until they do, this device leaves the server alone. Sign in once you\'ve been approved.'**
+  String get loginAwaitingApproval;
+
+  /// No description provided for @loginVerifyEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify email'**
+  String get loginVerifyEmail;
+
+  /// No description provided for @loginEmailVerifiedSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Your email is verified. Sign in to continue.'**
+  String get loginEmailVerifiedSignIn;
+
   /// No description provided for @loginAlmostThere.
   ///
   /// In en, this message translates to:
@@ -7580,13 +7784,13 @@ abstract class L {
   /// No description provided for @planPriceOrbit.
   ///
   /// In en, this message translates to:
-  /// **'\$3 / month'**
+  /// **'\$4 / month'**
   String get planPriceOrbit;
 
   /// No description provided for @planPriceNova.
   ///
   /// In en, this message translates to:
-  /// **'\$6 / month'**
+  /// **'\$8 / month'**
   String get planPriceNova;
 
   /// No description provided for @planCoreBlurb.
@@ -8206,6 +8410,12 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Your account ({email}) still needs a thumbs-up. Enter the 6-digit code we emailed you to finish signing in. Until then we leave the server completely alone.'**
   String serverGatePendingEmail(String email);
+
+  /// No description provided for @serverGateAwaitingApproval.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account ({email}) is created and your email is verified. Now the server owner just has to approve it. Sign in once they have. Until then we leave the server completely alone.'**
+  String serverGateAwaitingApproval(String email);
 
   /// No description provided for @serverGatePendingApproval.
   ///
@@ -16635,7 +16845,7 @@ abstract class L {
   /// No description provided for @spotifySetupSteps.
   ///
   /// In en, this message translates to:
-  /// **'1. Create an app in the Spotify Developer Dashboard (Web API).\n2. Add http://127.0.0.1:8888/callback as its redirect URI. Include the port exactly as shown.\n3. Copy the app Client ID here, then sign in through your browser. A development-mode app requires Spotify Premium.'**
+  /// **'1. Create an app in the Spotify Developer Dashboard (Web API).\n2. Add both http://127.0.0.1:8888/callback and http://127.0.0.1/callback as redirect URIs. Keep the 8888 URI for existing setups; the URI without a port lets luma automatically use a free port if 8888 is busy.\n3. Copy the app Client ID here, then sign in through your browser. A development-mode app requires Spotify Premium.'**
   String get spotifySetupSteps;
 
   /// No description provided for @spotifyOpenDashboard.
@@ -48219,6 +48429,12 @@ abstract class L {
   /// In en, this message translates to:
   /// **'{email} is waiting to be approved. Enter the 6-digit code we emailed you to finish signing in. Until then this device does not contact the server at all, and the plugins that need it stay switched off.'**
   String syncSettingsPendingEmailCode(String email);
+
+  /// No description provided for @syncSettingsAwaitingApproval.
+  ///
+  /// In en, this message translates to:
+  /// **'{email} is created and verified, and is now waiting for the server operator to approve it. Sign in once they have. Until then this device doesn\'t contact the server at all, and the plugins that need it stay switched off.'**
+  String syncSettingsAwaitingApproval(String email);
 
   /// No description provided for @syncSettingsPendingApproval.
   ///

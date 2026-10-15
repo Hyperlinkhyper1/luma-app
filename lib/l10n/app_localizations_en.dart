@@ -9,6 +9,61 @@ class LEn extends L {
   LEn([String locale = 'en']) : super(locale);
 
   @override
+  String get homeTileSteamGamePrice => 'Steam game price';
+
+  @override
+  String get homeTileCs2SkinPrice => 'CS2 skin price';
+
+  @override
+  String get homeTileCs2TrackedGraph => 'Tracked CS2 skins graph';
+
+  @override
+  String get homeChooseSteamGame => 'Choose a Steam game';
+
+  @override
+  String get homeChooseCs2Skin => 'Choose a CS2 skin';
+
+  @override
+  String get homeSteamAllGames => 'All tracked games';
+
+  @override
+  String get homeSteamAllSkins => 'All tracked CS2 skins';
+
+  @override
+  String get homeSteamGamesEmpty =>
+      'Track a game in Steam Tools to add its price here.';
+
+  @override
+  String get homeSteamSkinsEmpty =>
+      'Track a CS2 skin in Steam Tools to add its price or graph here.';
+
+  @override
+  String get homeSteamGameUnavailable =>
+      'This game is no longer tracked. Choose another game in the tile settings.';
+
+  @override
+  String get homeSteamSkinUnavailable =>
+      'This CS2 skin is no longer tracked. Choose another skin in the tile settings.';
+
+  @override
+  String get homeSteamDataError => 'Could not load Steam Tools data.';
+
+  @override
+  String get homeOpenSteamTools => 'Open Steam Tools';
+
+  @override
+  String get homeSteamSavedPrices => 'Latest saved prices';
+
+  @override
+  String get homeSteamMixedCurrency =>
+      'These prices use different currencies and cannot be combined in one graph.';
+
+  @override
+  String homeSteamPriceChecked(String date) {
+    return 'Checked $date';
+  }
+
+  @override
   String get teamClipboardSettings => 'Settings';
 
   @override
@@ -3849,6 +3904,52 @@ class LEn extends L {
   String get accountManageFamily => 'Manage family';
 
   @override
+  String get accountPageSubtitle =>
+      'Manage your profile, sync, plan and family.';
+
+  @override
+  String get accountNavSync => 'Sync & devices';
+
+  @override
+  String get accountDetailsTitle => 'Account details';
+
+  @override
+  String get accountManage => 'Manage';
+
+  @override
+  String get accountNotSignedIn => 'Not signed in';
+
+  @override
+  String get accountLocalProfile => 'Local profile';
+
+  @override
+  String get accountStatusActive => 'Active';
+
+  @override
+  String get accountStatusPending => 'Waiting for approval';
+
+  @override
+  String get accountStatusLocal => 'Local only';
+
+  @override
+  String get accountFieldLastSynced => 'Last synced';
+
+  @override
+  String get accountFieldSyncStorage => 'Sync storage';
+
+  @override
+  String accountStorageOf(String used, String total) {
+    return '$used of $total';
+  }
+
+  @override
+  String get accountPlanIncluded => 'Included in your plan';
+
+  @override
+  String get accountStatsSubtitle =>
+      'Lifetime totals and the places you\'ve been.';
+
+  @override
   String get familyTitle => 'Family';
 
   @override
@@ -4093,6 +4194,20 @@ class LEn extends L {
   String get loginUseDifferentAccount => 'Use a different account';
 
   @override
+  String get loginAccountCreated => 'Account created';
+
+  @override
+  String get loginAwaitingApproval =>
+      'Your email is verified and your account is created. The server operator still has to approve it. Until they do, this device leaves the server alone. Sign in once you\'ve been approved.';
+
+  @override
+  String get loginVerifyEmail => 'Verify email';
+
+  @override
+  String get loginEmailVerifiedSignIn =>
+      'Your email is verified. Sign in to continue.';
+
+  @override
   String get loginAlmostThere => 'Almost there';
 
   @override
@@ -4224,10 +4339,10 @@ class LEn extends L {
   String get planPriceFree => 'Free';
 
   @override
-  String get planPriceOrbit => '\$3 / month';
+  String get planPriceOrbit => '\$4 / month';
 
   @override
-  String get planPriceNova => '\$6 / month';
+  String get planPriceNova => '\$8 / month';
 
   @override
   String get planCoreBlurb => 'All the basics, right on your device.';
@@ -4613,6 +4728,11 @@ class LEn extends L {
   @override
   String serverGatePendingEmail(String email) {
     return 'Your account ($email) still needs a thumbs-up. Enter the 6-digit code we emailed you to finish signing in. Until then we leave the server completely alone.';
+  }
+
+  @override
+  String serverGateAwaitingApproval(String email) {
+    return 'Your account ($email) is created and your email is verified. Now the server owner just has to approve it. Sign in once they have. Until then we leave the server completely alone.';
   }
 
   @override
@@ -10084,7 +10204,7 @@ class LEn extends L {
 
   @override
   String get spotifySetupSteps =>
-      '1. Create an app in the Spotify Developer Dashboard (Web API).\n2. Add http://127.0.0.1:8888/callback as its redirect URI. Include the port exactly as shown.\n3. Copy the app Client ID here, then sign in through your browser. A development-mode app requires Spotify Premium.';
+      '1. Create an app in the Spotify Developer Dashboard (Web API).\n2. Add both http://127.0.0.1:8888/callback and http://127.0.0.1/callback as redirect URIs. Keep the 8888 URI for existing setups; the URI without a port lets luma automatically use a free port if 8888 is busy.\n3. Copy the app Client ID here, then sign in through your browser. A development-mode app requires Spotify Premium.';
 
   @override
   String get spotifyOpenDashboard => 'Open Spotify Developer Dashboard';
@@ -29802,6 +29922,11 @@ class LEn extends L {
   @override
   String syncSettingsPendingEmailCode(String email) {
     return '$email is waiting to be approved. Enter the 6-digit code we emailed you to finish signing in. Until then this device does not contact the server at all, and the plugins that need it stay switched off.';
+  }
+
+  @override
+  String syncSettingsAwaitingApproval(String email) {
+    return '$email is created and verified, and is now waiting for the server operator to approve it. Sign in once they have. Until then this device doesn\'t contact the server at all, and the plugins that need it stay switched off.';
   }
 
   @override

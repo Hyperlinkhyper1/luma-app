@@ -9,6 +9,56 @@ class LZh extends L {
   LZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get homeTileSteamGamePrice => 'Steam 游戏价格';
+
+  @override
+  String get homeTileCs2SkinPrice => 'CS2 皮肤价格';
+
+  @override
+  String get homeTileCs2TrackedGraph => '已跟踪 CS2 皮肤图表';
+
+  @override
+  String get homeChooseSteamGame => '选择 Steam 游戏';
+
+  @override
+  String get homeChooseCs2Skin => '选择 CS2 皮肤';
+
+  @override
+  String get homeSteamAllGames => '所有已跟踪游戏';
+
+  @override
+  String get homeSteamAllSkins => '所有已跟踪 CS2 皮肤';
+
+  @override
+  String get homeSteamGamesEmpty => '在 Steam Tools 中跟踪游戏，即可在此添加其价格。';
+
+  @override
+  String get homeSteamSkinsEmpty => '在 Steam Tools 中跟踪 CS2 皮肤，即可在此添加其价格或图表。';
+
+  @override
+  String get homeSteamGameUnavailable => '此游戏已不再跟踪。请在磁贴设置中选择其他游戏。';
+
+  @override
+  String get homeSteamSkinUnavailable => '此 CS2 皮肤已不再跟踪。请在磁贴设置中选择其他皮肤。';
+
+  @override
+  String get homeSteamDataError => '无法加载 Steam Tools 数据。';
+
+  @override
+  String get homeOpenSteamTools => '打开 Steam Tools';
+
+  @override
+  String get homeSteamSavedPrices => '最近保存的价格';
+
+  @override
+  String get homeSteamMixedCurrency => '这些价格使用不同货币，无法合并到同一张图表中。';
+
+  @override
+  String homeSteamPriceChecked(String date) {
+    return '检查时间：$date';
+  }
+
+  @override
   String get teamClipboardSettings => '设置';
 
   @override
@@ -3701,6 +3751,50 @@ class LZh extends L {
   String get accountManageFamily => '管理家庭';
 
   @override
+  String get accountPageSubtitle => '管理你的个人资料、同步、套餐和家庭。';
+
+  @override
+  String get accountNavSync => '同步与设备';
+
+  @override
+  String get accountDetailsTitle => '账户详情';
+
+  @override
+  String get accountManage => '管理';
+
+  @override
+  String get accountNotSignedIn => '未登录';
+
+  @override
+  String get accountLocalProfile => '本地资料';
+
+  @override
+  String get accountStatusActive => '已激活';
+
+  @override
+  String get accountStatusPending => '等待审核';
+
+  @override
+  String get accountStatusLocal => '仅本地';
+
+  @override
+  String get accountFieldLastSynced => '上次同步';
+
+  @override
+  String get accountFieldSyncStorage => '同步存储';
+
+  @override
+  String accountStorageOf(String used, String total) {
+    return '$used / $total';
+  }
+
+  @override
+  String get accountPlanIncluded => '套餐包含';
+
+  @override
+  String get accountStatsSubtitle => '累计数据和你去过的地方。';
+
+  @override
   String get familyTitle => '家庭';
 
   @override
@@ -3931,6 +4025,19 @@ class LZh extends L {
   String get loginUseDifferentAccount => '使用其他账户';
 
   @override
+  String get loginAccountCreated => '账户已创建';
+
+  @override
+  String get loginAwaitingApproval =>
+      '你的邮箱已验证，账户已创建。服务器管理员还需要批准它；在此之前，本设备不会联系服务器。获批后再登录即可。';
+
+  @override
+  String get loginVerifyEmail => '验证邮箱';
+
+  @override
+  String get loginEmailVerifiedSignIn => '你的邮箱已验证。请登录以继续。';
+
+  @override
   String get loginAlmostThere => '快完成了';
 
   @override
@@ -4057,10 +4164,10 @@ class LZh extends L {
   String get planPriceFree => '免费';
 
   @override
-  String get planPriceOrbit => '每月 3 美元';
+  String get planPriceOrbit => '每月 4 美元';
 
   @override
-  String get planPriceNova => '每月 6 美元';
+  String get planPriceNova => '每月 8 美元';
 
   @override
   String get planCoreBlurb => '所有基础功能，直接在你的设备上。';
@@ -4427,6 +4534,11 @@ class LZh extends L {
   @override
   String serverGatePendingEmail(String email) {
     return '你的账户（$email）仍需要确认。请输入我们发到你邮箱的 6 位验证码以完成登录，在此之前我们完全不会打扰服务器。';
+  }
+
+  @override
+  String serverGateAwaitingApproval(String email) {
+    return '你的账户（$email）已创建，邮箱也已验证。现在只需服务器管理员批准，批准后再登录即可；在此之前我们完全不会打扰服务器。';
   }
 
   @override
@@ -9559,7 +9671,7 @@ class LZh extends L {
 
   @override
   String get spotifySetupSteps =>
-      '1. 在 Spotify 开发者控制台（Web API）中创建一个应用。\n2. 将 http://127.0.0.1:8888/callback 添加为其重定向 URI。请原样包含端口号。\n3. 在此粘贴应用的客户端 ID，然后通过浏览器登录。开发模式的应用需要 Spotify Premium。';
+      '1. 在 Spotify 开发者控制台（Web API）中创建一个应用。\n2. 将 http://127.0.0.1:8888/callback 和 http://127.0.0.1/callback 都添加为重定向 URI。保留带 8888 端口的 URI，以兼容现有设置；当 8888 端口被占用时，不含端口的 URI 可让 luma 自动使用空闲端口。\n3. 在此粘贴应用的客户端 ID，然后通过浏览器登录。开发模式的应用需要 Spotify Premium。';
 
   @override
   String get spotifyOpenDashboard => '打开 Spotify 开发者控制台';
@@ -28398,6 +28510,11 @@ class LZh extends L {
   @override
   String syncSettingsPendingEmailCode(String email) {
     return '$email 正在等待批准。请输入我们发送到你邮箱的 6 位验证码以完成登录。在此之前，本设备不会与服务器联系，依赖服务器的插件将保持关闭。';
+  }
+
+  @override
+  String syncSettingsAwaitingApproval(String email) {
+    return '$email 已创建并验证，正在等待服务器管理员批准。批准后直接登录即可。在此之前，本设备不会与服务器联系，依赖服务器的插件将保持关闭。';
   }
 
   @override

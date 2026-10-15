@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/converter/schematic/textures/block_atlas.dart';
 import 'package:luma/features/plugins/installed/game_tools/game_tools_page.dart';
@@ -36,6 +38,32 @@ void _size(WidgetTester tester, double width, double height) {
   tester.view.physicalSize = Size(width, height);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
+}
+
+Finder _audienceButton(String label) =>
+    find.ancestor(of: find.text(label), matching: find.byType(InkWell)).first;
+
+Future<Color> _pixelAt(WidgetTester tester, Offset point) async {
+  final boundary = tester.renderObject<RenderRepaintBoundary>(
+    find.byKey(const ValueKey('hub-paint')),
+  );
+  return (await tester.runAsync(() async {
+    final image = await boundary.toImage();
+    try {
+      final bytes = (await image.toByteData(
+        format: ui.ImageByteFormat.rawRgba,
+      ))!;
+      final offset = (point.dy.floor() * image.width + point.dx.floor()) * 4;
+      return Color.fromARGB(
+        bytes.getUint8(offset + 3),
+        bytes.getUint8(offset),
+        bytes.getUint8(offset + 1),
+        bytes.getUint8(offset + 2),
+      );
+    } finally {
+      image.dispose();
+    }
+  }))!;
 }
 
 void main() {
@@ -84,6 +112,106 @@ void main() {
     expect(find.text('Recipe Generator'), findsWidgets);
     expect(find.text('Asset Library'), findsWidgets);
   });
+
+  for (final width in [320.0, 720.0, 900.0, 1100.0, 1400.0]) {
+    testWidgets('audience tabs stay fully visible at width $width', (
+      tester,
+    ) async {
+      _size(tester, width, 1000);
+      await tester.pumpWidget(_app(const MinecraftToolsPage()));
+      await tester.pump();
+
+      final developers = _audienceButton('Developers');
+      final horizontalScrolls = find.ancestor(
+        of: developers,
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is Scrollable &&
+              axisDirectionToAxis(widget.axisDirection) == Axis.horizontal,
+        ),
+      );
+      for (final scroll in horizontalScrolls.evaluate()) {
+        final state = (scroll as StatefulElement).state as ScrollableState;
+        expect(
+          state.position.maxScrollExtent,
+          0,
+          reason: 'The audience bar must fit without cropping its right edge.',
+        );
+      }
+      expect(tester.getRect(developers).right, lessThanOrEqualTo(width));
+      await tester.tap(developers);
+      await tester.pump();
+      final semantics = tester.widget<Semantics>(
+        find
+            .ancestor(
+              of: developers,
+              matching: find.byWidgetPredicate(
+                (widget) =>
+                    widget is Semantics && widget.properties.selected != null,
+              ),
+            )
+            .first,
+      );
+      expect(semantics.properties.selected, isTrue);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
+
+  for (final (name, theme) in [
+    ('light', LumaTheme.light),
+    ('dark', LumaTheme.dark),
+  ]) {
+    testWidgets(
+      'audience selection keeps its fill during clicks in $name mode',
+      (tester) async {
+        _size(tester, 1400, 1000);
+        await tester.pumpWidget(
+          _app(
+            const RepaintBoundary(
+              key: ValueKey('hub-paint'),
+              child: MinecraftToolsPage(),
+            ),
+            theme: theme,
+          ),
+        );
+        await tester.pump();
+        final palette = theme.extension<LumaPalette>()!;
+        final mouse = await tester.createGesture(
+          kind: ui.PointerDeviceKind.mouse,
+        );
+        await mouse.addPointer(location: Offset.zero);
+        addTearDown(mouse.removePointer);
+
+        for (final label in ['Developers', 'Players', 'Admins']) {
+          final button = _audienceButton(label);
+          final center = tester.getCenter(button);
+          await mouse.moveTo(center);
+          await tester.pump(const Duration(milliseconds: 200));
+          await mouse.down(center);
+          await tester.pump(const Duration(milliseconds: 100));
+          await mouse.up();
+          await tester.pump();
+          for (final elapsed in [0, 16, 80, 160, 320]) {
+            await tester.pump(Duration(milliseconds: elapsed));
+            final rect = tester.getRect(button);
+            final fill = await _pixelAt(
+              tester,
+              Offset(rect.center.dx, rect.top + 4),
+            );
+            expect(
+              fill,
+              palette.accent,
+              reason:
+                  '$label must keep its accent behind the selected text '
+                  'throughout the click ($elapsed ms).',
+            );
+          }
+        }
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
 
   testWidgets('the spotlight turns over by itself and on the arrows', (tester) async {
     _size(tester, 1400, 1000);

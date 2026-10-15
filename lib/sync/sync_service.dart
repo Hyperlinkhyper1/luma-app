@@ -155,6 +155,18 @@ class SyncService extends ChangeNotifier {
   ServerApprovalMode get pendingApprovalMode =>
       ServerApprovalMode.parse(_state?.pendingApprovalMode);
 
+  /// True once the pending account has proved its address: it is officially
+  /// created and only the server operator's approval is left. Still no
+  /// access: the gate stays shut until a sign-in succeeds.
+  bool get pendingEmailVerified =>
+      pendingApprovalEmail != null && (_state?.pendingEmailVerified ?? false);
+
+  /// True while the pending account still has to enter its emailed code.
+  bool get awaitingEmailCode =>
+      pendingApprovalEmail != null &&
+      pendingApprovalMode == ServerApprovalMode.email &&
+      !pendingEmailVerified;
+
   /// True when an account exists on this device but the server has put it
   /// back to "waiting for approval", so the UI can explain why everything
   /// server-backed stopped working.
@@ -332,11 +344,19 @@ class SyncService extends ChangeNotifier {
         kdfSalt: params.kdfSalt,
         iterations: params.kdfIterations,
       );
-      final token = await api.login(
-        email: normalizedEmail,
-        authKey: keys.authKey,
-        deviceLabel: _deviceLabel(),
-      );
+      final String token;
+      try {
+        token = await api.login(
+          email: normalizedEmail,
+          authKey: keys.authKey,
+          deviceLabel: _deviceLabel(),
+        );
+      } on SyncApiException catch (e) {
+        if (e.code == 'account_awaiting_approval') {
+          await _markAwaitingApproval(api.baseUrl, normalizedEmail);
+        }
+        rethrow;
+      }
       api.token = token;
 
       _api?.close();
@@ -353,7 +373,8 @@ class SyncService extends ChangeNotifier {
         // server-access gate for the rest of the app.
         ..accountApproved = true
         ..pendingApprovalEmail = null
-        ..pendingApprovalMode = null;
+        ..pendingApprovalMode = null
+        ..pendingEmailVerified = false;
       // Fresh account on this device: forget previous sync bookkeeping.
       for (final st in s.collections.values) {
         st.lastSyncedVersion = null;
@@ -417,9 +438,13 @@ class SyncService extends ChangeNotifier {
         // for (and who does the approving) so the UI can explain it, and
         // leave the gate shut â€” no further request reaches the server until
         // the approval lands and the user signs in.
+        // The server is remembered too: the code, the resend and the later
+        // sign-in all have to go to the one the account was created on.
         s
+          ..serverUrl = api.baseUrl
           ..pendingApprovalEmail = normalizedEmail
-          ..pendingApprovalMode = result.approvalMode.name;
+          ..pendingApprovalMode = result.approvalMode.name
+          ..pendingEmailVerified = false;
         await s.save();
         notifyListeners();
         return result.message;
@@ -438,7 +463,8 @@ class SyncService extends ChangeNotifier {
         ..kdfIterations = iterations
         ..accountApproved = true
         ..pendingApprovalEmail = null
-        ..pendingApprovalMode = null;
+        ..pendingApprovalMode = null
+        ..pendingEmailVerified = false;
       for (final st in s.collections.values) {
         st.lastSyncedVersion = null;
         st.lastSyncedHash = null;
@@ -578,9 +604,13 @@ class SyncService extends ChangeNotifier {
 
     if (result.pendingApproval) {
       handle.close();
+      // The provider vouched for the address, so all that is left is the
+      // operator's approval; there is never a code to enter here.
       s
+        ..serverUrl = api.baseUrl
         ..pendingApprovalEmail = email
-        ..pendingApprovalMode = ServerApprovalMode.manual.name;
+        ..pendingApprovalMode = ServerApprovalMode.manual.name
+        ..pendingEmailVerified = true;
       await s.save();
       notifyListeners();
       return result.message ??
@@ -601,7 +631,8 @@ class SyncService extends ChangeNotifier {
       ..kdfIterations = iterations
       ..accountApproved = true
       ..pendingApprovalEmail = null
-      ..pendingApprovalMode = null;
+      ..pendingApprovalMode = null
+      ..pendingEmailVerified = false;
     for (final st in s.collections.values) {
       st.lastSyncedVersion = null;
       st.lastSyncedHash = null;
@@ -631,7 +662,8 @@ class SyncService extends ChangeNotifier {
     s.clearAccount();
     s
       ..pendingApprovalEmail = null
-      ..pendingApprovalMode = null;
+      ..pendingApprovalMode = null
+      ..pendingEmailVerified = false;
     await s.save();
     _applyServerAccess();
     notifyListeners();
@@ -679,7 +711,8 @@ class SyncService extends ChangeNotifier {
             (result.emailed
                     ? ServerApprovalMode.email
                     : ServerApprovalMode.manual)
-                .name;
+                .name
+        ..pendingEmailVerified = false;
       await s.save();
       notifyListeners();
       return result.emailed;
@@ -690,24 +723,48 @@ class SyncService extends ChangeNotifier {
 
   /// Submits the 6-digit code emailed for the account this device is
   /// waiting on. Only confirms the code server-side — it does NOT sign
-  /// anything in, since that needs the password again; call [signIn]
-  /// right after this returns. Throws [StateError] when nothing is
-  /// pending, or [SyncApiException] when the server rejects the code (wrong,
-  /// expired, or too many attempts) — same contract as [resendApprovalEmail].
-  Future<void> verifyEmailCode(String code) async {
+  /// anything in, since that needs the password again.
+  ///
+  /// The code makes the account official, but the server operator still has
+  /// to approve it: the account moves to [pendingEmailVerified], the gate
+  /// stays shut, and this returns the server's message to show. It returns
+  /// null only for an older server that activates the account on the code
+  /// alone; call [signIn] then. Throws [StateError] when nothing is pending,
+  /// or [SyncApiException] when the server rejects the code (wrong, expired,
+  /// or too many attempts) — same contract as [resendApprovalEmail].
+  Future<String?> verifyEmailCode(String code) async {
     final s = _state;
     final pending = s?.pendingApprovalEmail;
-    if (s == null ||
-        pending == null ||
-        pendingApprovalMode != ServerApprovalMode.email) {
+    if (s == null || pending == null || !awaitingEmailCode) {
       throw StateError(currentL.syncServiceEmailVerificationNotPending);
     }
     final api = SyncApi(s.serverUrl ?? kDefaultSyncServerUrl);
+    final ({bool awaitingApproval, String? message}) result;
     try {
-      await api.verifyEmailCode(email: pending, code: code);
+      result = await api.verifyEmailCode(email: pending, code: code);
     } finally {
       api.close();
     }
+    if (!result.awaitingApproval) return null;
+    s.pendingEmailVerified = true;
+    await s.save();
+    notifyListeners();
+    return result.message ?? currentL.loginAwaitingApproval;
+  }
+
+  /// Records that [email]'s account exists and is verified but not yet
+  /// approved, as a refused sign-in reported it (the code may have been
+  /// entered on another device, or before a reinstall).
+  Future<void> _markAwaitingApproval(String serverUrl, String email) async {
+    final s = _state;
+    if (s == null) return;
+    s
+      ..serverUrl = serverUrl
+      ..pendingApprovalEmail = email
+      ..pendingApprovalMode = ServerApprovalMode.email.name
+      ..pendingEmailVerified = true;
+    await s.save();
+    notifyListeners();
   }
 
   /// Asks the server to email a 6-digit password-reset code (valid for 15
@@ -904,7 +961,8 @@ class SyncService extends ChangeNotifier {
     if (s == null || s.pendingApprovalEmail == null) return;
     s
       ..pendingApprovalEmail = null
-      ..pendingApprovalMode = null;
+      ..pendingApprovalMode = null
+      ..pendingEmailVerified = false;
     await s.save();
     notifyListeners();
   }
@@ -1233,7 +1291,8 @@ class SyncService extends ChangeNotifier {
     s.clearAccount();
     s
       ..pendingApprovalEmail = null
-      ..pendingApprovalMode = null;
+      ..pendingApprovalMode = null
+      ..pendingEmailVerified = false;
     await s.save();
     _applyServerAccess();
     notifyListeners();

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../app/native_overlay_decoration.dart';
 import 'theme_style.dart';
 
 /// Semantic color tokens for luma. Both the dark ("dark gray lavender") and
@@ -920,11 +921,13 @@ class LumaTheme {
             )
           : base.scrollbarTheme,
       tooltipTheme: TooltipThemeData(
-        decoration: BoxDecoration(
-          color: p.surfaceHover,
-          // Half a card's radius: 8 on the default theme, rounder on Coffee.
-          borderRadius: BorderRadius.circular(decor.cardRadius / 2),
-          border: Border.all(color: p.border, width: decor.borderWidth),
+        decoration: NativeOverlayDecoration(
+          BoxDecoration(
+            color: p.surfaceHover,
+            // Half a card's radius: 8 on the default theme, rounder on Coffee.
+            borderRadius: BorderRadius.circular(decor.cardRadius / 2),
+            border: Border.all(color: p.border, width: decor.borderWidth),
+          ),
         ),
         textStyle: TextStyle(color: p.textPrimary, fontSize: 12),
       ),

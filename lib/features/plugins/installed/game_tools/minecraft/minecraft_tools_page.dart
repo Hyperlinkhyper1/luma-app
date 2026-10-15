@@ -484,22 +484,29 @@ class _AudienceBar extends StatelessWidget {
         controller: search,
         onChanged: (_) => onSearch(),
         style: TextStyle(color: luma.textPrimary, fontSize: 13.5),
-        decoration: mcInputDecoration(
-          context,
-          hint: t.mcToolsSearchHint,
-          prefixIcon: Icons.search_rounded,
-        ).copyWith(
-          suffixIcon: search.text.isEmpty
-              ? null
-              : IconButton(
-                  tooltip: MaterialLocalizations.of(context).deleteButtonTooltip,
-                  icon: Icon(Icons.close_rounded, size: 16, color: luma.textMuted),
-                  onPressed: () {
-                    search.clear();
-                    onSearch();
-                  },
-                ),
-        ),
+        decoration:
+            mcInputDecoration(
+              context,
+              hint: t.mcToolsSearchHint,
+              prefixIcon: Icons.search_rounded,
+            ).copyWith(
+              suffixIcon: search.text.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: MaterialLocalizations.of(
+                        context,
+                      ).deleteButtonTooltip,
+                      icon: Icon(
+                        Icons.close_rounded,
+                        size: 16,
+                        color: luma.textMuted,
+                      ),
+                      onPressed: () {
+                        search.clear();
+                        onSearch();
+                      },
+                    ),
+            ),
       ),
     );
     return LayoutBuilder(
@@ -508,22 +515,22 @@ class _AudienceBar extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _AudienceTabs(selected: selected, onSelect: onSelect, compact: true),
+              _AudienceTabs(
+                selected: selected,
+                onSelect: onSelect,
+                compact: true,
+              ),
               const SizedBox(height: 10),
               field,
             ],
           );
         }
-        return Row(
+        return Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          spacing: 16,
+          runSpacing: 10,
           children: [
-            Flexible(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: _AudienceTabs(selected: selected, onSelect: onSelect),
-              ),
-            ),
-            const SizedBox(width: 16),
-            const Spacer(),
+            _AudienceTabs(selected: selected, onSelect: onSelect),
             field,
           ],
         );
@@ -532,8 +539,8 @@ class _AudienceBar extends StatelessWidget {
   }
 }
 
-/// A segmented control whose highlight slides between the sub-tabs. The
-/// tabs share one width so the highlight only has to move, never resize.
+/// Equal-width audience buttons, with each selected fill and foreground
+/// painted together so the label always stays readable.
 class _AudienceTabs extends StatelessWidget {
   const _AudienceTabs({
     required this.selected,
@@ -548,8 +555,6 @@ class _AudienceTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final count = McAudience.values.length;
-    final index = selected?.index;
     final row = Row(
       mainAxisSize: compact ? MainAxisSize.max : MainAxisSize.min,
       children: [
@@ -578,42 +583,7 @@ class _AudienceTabs extends StatelessWidget {
           ),
         ],
       ),
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: AnimatedOpacity(
-              duration: McMotion.fast,
-              opacity: index == null ? 0 : 1,
-              child: AnimatedAlign(
-                duration: McMotion.reduced(context) ? Duration.zero : McMotion.medium,
-                curve: Curves.easeOutBack,
-                alignment: Alignment(
-                  count == 1 ? 0 : -1 + 2 * (index ?? 0) / (count - 1),
-                  0,
-                ),
-                child: FractionallySizedBox(
-                  widthFactor: 1 / count,
-                  heightFactor: 1,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: luma.accent,
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                          color: luma.accent.withValues(alpha: 0.35),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          if (compact) row else IntrinsicWidth(child: row),
-        ],
-      ),
+      child: compact ? row : IntrinsicWidth(child: row),
     );
   }
 }
@@ -647,44 +617,52 @@ class _AudienceTab extends StatelessWidget {
         selected: selected,
         label: '${audience.label(t)}, ${t.mcToolsCount(count)}',
         child: Material(
-          type: MaterialType.transparency,
+          color: selected ? luma.accent : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(10),
-            hoverColor: selected ? Colors.transparent : luma.surfaceHover,
+            splashFactory: NoSplash.splashFactory,
+            highlightColor: Colors.transparent,
+            focusColor: luma.textPrimary.withValues(alpha: 0.12),
+            // Active ink highlights cache their initial alpha, so switching
+            // an opaque hover color to transparent can briefly paint black.
+            hoverColor: luma.accent.withValues(alpha: 0.08),
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 16, vertical: 10),
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 6 : 16,
+                vertical: 10,
+              ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  TweenAnimationBuilder<Color?>(
-                    tween: ColorTween(end: selected ? luma.onAccent : luma.textSecondary),
-                    duration: McMotion.fast,
-                    builder: (context, color, _) =>
-                        Icon(audience.icon, size: 17, color: color),
+                  Icon(
+                    audience.icon,
+                    size: 17,
+                    color: selected ? luma.onAccent : luma.textSecondary,
                   ),
                   const SizedBox(width: 8),
                   Flexible(
-                    child: AnimatedDefaultTextStyle(
-                      duration: McMotion.fast,
-                      style: DefaultTextStyle.of(context).style.copyWith(
+                    child: Text(
+                      audience.label(t),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
                         color: fg,
                         fontSize: 13.5,
                         fontWeight: FontWeight.w700,
-                      ),
-                      child: Text(
-                        audience.label(t),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),
                   if (!compact) const SizedBox(width: 8),
                   if (!compact)
-                    AnimatedContainer(
-                      duration: McMotion.fast,
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 1,
+                      ),
                       decoration: BoxDecoration(
                         color: selected
                             ? luma.onAccent.withValues(alpha: 0.18)

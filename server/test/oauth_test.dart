@@ -404,7 +404,7 @@ void main() {
       });
     }
 
-    test('email-mode OAuth still verifies an eligible pending account',
+    test('email-mode OAuth verifies a pending account but leaves approval',
         () async {
       final user = await registerExisting();
       user.status = 'pending';
@@ -416,7 +416,10 @@ void main() {
         'authKey': authKey(1),
       });
       expect(completed['httpStatus'], 200);
-      expect(user.status, 'active');
+      expect(completed['token'], isNull);
+      expect(completed['status'], 'pending_approval');
+      expect(user.status, 'pending');
+      expect(user.awaitingApproval, isTrue);
     });
 
     test('OAuth leaves manual approval pending', () async {

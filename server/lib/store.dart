@@ -38,6 +38,7 @@ class StoredUser {
     this.status = 'active',
     this.verificationTokenHash,
     this.verificationExpiresAtMs,
+    this.emailVerifiedAtMs,
     this.passwordResetCodeHash,
     this.passwordResetCodeExpiresAtMs,
     this.lastLoginAtMs,
@@ -123,6 +124,17 @@ class StoredUser {
   String? verificationTokenHash;
   int? verificationExpiresAtMs;
 
+  /// When the owner proved the address (the emailed code, or a provider
+  /// vouching for it), or null when they never have. Proving it does *not*
+  /// approve the account: under email approval the account is officially
+  /// created at that point but stays `pending` until the operator approves
+  /// it from the dashboard, and gets nothing but the account handshake
+  /// until then.
+  int? emailVerifiedAtMs;
+
+  /// Created and email-verified, waiting only on the operator.
+  bool get awaitingApproval => isPending && emailVerifiedAtMs != null;
+
   /// SHA-256 of the 6-digit "forgot password" code emailed by
   /// Api._forgotPassword, or null when none is outstanding. Kept apart from
   /// [verificationTokenHash] so asking for a reset can never verify a
@@ -179,6 +191,7 @@ class StoredUser {
         'status': status,
         'verificationTokenHash': verificationTokenHash,
         'verificationExpiresAtMs': verificationExpiresAtMs,
+        'emailVerifiedAtMs': emailVerifiedAtMs,
         'passwordResetCodeHash': passwordResetCodeHash,
         'passwordResetCodeExpiresAtMs': passwordResetCodeExpiresAtMs,
         'lastLoginAtMs': lastLoginAtMs,
@@ -204,6 +217,7 @@ class StoredUser {
         status: j['status'] as String? ?? 'active',
         verificationTokenHash: j['verificationTokenHash'] as String?,
         verificationExpiresAtMs: j['verificationExpiresAtMs'] as int?,
+        emailVerifiedAtMs: j['emailVerifiedAtMs'] as int?,
         passwordResetCodeHash: j['passwordResetCodeHash'] as String?,
         passwordResetCodeExpiresAtMs:
             j['passwordResetCodeExpiresAtMs'] as int?,

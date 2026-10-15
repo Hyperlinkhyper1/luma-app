@@ -84,6 +84,7 @@ class SpotifyRepository extends ChangeNotifier {
   String? _listeningAccountId;
   bool _disposed = false;
   int _generation = 0;
+  int _connectGeneration = 0;
   Future<void> _storageQueue = Future.value();
 
   Future<void> _store(Future<void> Function() operation) {
@@ -101,6 +102,7 @@ class SpotifyRepository extends ChangeNotifier {
   Future<void> importConnection(Map<String, dynamic>? data) async {
     final credential = data == null ? null : SpotifyCredentials.fromJson(data);
     await load();
+    await cancelConnect();
     _generation++;
     await _store(
       () => data == null
@@ -143,8 +145,11 @@ class SpotifyRepository extends ChangeNotifier {
     if (id.isEmpty) {
       throw SpotifyOAuthException(currentL.accountOverviewSpotifyEnterClientId);
     }
+    final generation = ++_connectGeneration;
     final tokens = await _oauth.authorize(id);
+    _checkConnect(generation);
     final profile = await _api.profile(tokens.accessToken);
+    _checkConnect(generation);
     final refreshToken = tokens.refreshToken;
     if (refreshToken == null || refreshToken.isEmpty) {
       throw SpotifyOAuthException(
@@ -163,24 +168,46 @@ class SpotifyRepository extends ChangeNotifier {
       accountId: profile['id'] as String?,
     );
     final oldAccountId = _credentials?.accountId;
+    await _store(() async {
+      _checkConnect(generation);
+      final previous = _credentials;
+      await _secrets.write(_storageKey, jsonEncode(credentials.toJson()));
+      if (_disposed || generation != _connectGeneration) {
+        if (previous == null) {
+          await _secrets.delete(_storageKey);
+        } else {
+          await _secrets.write(_storageKey, jsonEncode(previous.toJson()));
+        }
+        _checkConnect(generation);
+      }
+      _generation++;
+      _loading = false;
+      _credentials = credentials;
+      _listeningAccountId = null;
+      _listeningTotal = SpotifyListeningTotal.empty;
+      _snapshot = null;
+      _error = null;
+    });
     if (oldAccountId != null && oldAccountId != credentials.accountId) {
       await _store(() => _secrets.delete(_minutesKey(oldAccountId)));
     }
-    await _store(
-      () => _secrets.write(_storageKey, jsonEncode(credentials.toJson())),
-    );
-    _generation++;
-    _loading = false;
-    _credentials = credentials;
-    _listeningAccountId = null;
-    _listeningTotal = SpotifyListeningTotal.empty;
-    _snapshot = null;
-    _error = null;
     _notify();
     await refresh();
   }
 
+  Future<void> cancelConnect() async {
+    _connectGeneration++;
+    await _oauth.cancelAuthorization();
+  }
+
+  void _checkConnect(int generation) {
+    if (_disposed || generation != _connectGeneration) {
+      throw SpotifyOAuthException(currentL.syncOAuthSignInCancelled);
+    }
+  }
+
   Future<void> disconnect() async {
+    await cancelConnect();
     _generation++;
     final accountId = _credentials?.accountId ?? _listeningAccountId;
     if (accountId != null) {
@@ -238,9 +265,14 @@ class SpotifyRepository extends ChangeNotifier {
       displayName: credentials.displayName,
       accountId: credentials.accountId,
     );
-    await _store(
-      () => _secrets.write(_storageKey, jsonEncode(updated.toJson())),
-    );
+    await _store(() async {
+      if (generation != _generation) {
+        throw SpotifyOAuthException(
+          currentL.accountOverviewSpotifyConnectionChanged,
+        );
+      }
+      await _secrets.write(_storageKey, jsonEncode(updated.toJson()));
+    });
     if (generation != _generation) {
       throw SpotifyOAuthException(
         currentL.accountOverviewSpotifyConnectionChanged,
@@ -444,6 +476,7 @@ class SpotifyRepository extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _connectGeneration++;
     _api.dispose();
     _oauth.dispose();
     super.dispose();

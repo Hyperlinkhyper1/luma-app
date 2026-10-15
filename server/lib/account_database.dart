@@ -30,6 +30,7 @@ class AccountDatabase {
     'accessRevokedReason',
     'recoveryEnvelope',
     'recoveryKeyBox',
+    'emailVerifiedAtMs',
   ];
 
   /// Upper bound on a stored recovery envelope or key box, base64. Each
@@ -55,7 +56,7 @@ class AccountDatabase {
     result._use((db) {
       final version =
           db.select('PRAGMA user_version').single.values.single as int;
-      if (version > 2)
+      if (version > 3)
         throw StateError('Account database requires a newer server.');
       db.execute('''
 CREATE TABLE IF NOT EXISTS users (
@@ -104,6 +105,18 @@ CREATE TABLE IF NOT EXISTS migration_state (source TEXT PRIMARY KEY, digest TEXT
             }
           }
           db.execute('PRAGMA user_version = 2');
+        });
+      }
+      if (version < 3) {
+        result._transaction(db, () {
+          final columns = {
+            for (final row in db.select('PRAGMA table_info(users)'))
+              row['name'] as String
+          };
+          if (!columns.contains('emailVerifiedAtMs')) {
+            db.execute('ALTER TABLE users ADD COLUMN emailVerifiedAtMs INTEGER');
+          }
+          db.execute('PRAGMA user_version = 3');
         });
       }
     });

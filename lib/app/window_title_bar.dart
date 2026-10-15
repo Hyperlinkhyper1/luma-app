@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
@@ -192,15 +191,11 @@ class _DragRegion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Listener(
-      onPointerDown: (event) {
-        if (event.buttons == kPrimaryButton) windowStartDrag();
-      },
-      child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onDoubleTap: windowToggleMaximize,
-        child: child,
-      ),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onPanStart: (_) => windowStartDrag(),
+      onDoubleTap: windowToggleMaximize,
+      child: child,
     );
   }
 }

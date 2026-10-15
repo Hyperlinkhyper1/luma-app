@@ -113,7 +113,13 @@ class BlockModelResolver {
       // No model, or a model that resolved to nothing. Guess at the texture
       // that shares the block's name, which covers most simple blocks even
       // from a resource pack that only replaces textures.
-      textures = {'all': 'block/$name'};
+      textures = {
+        'all': switch (name) {
+          'water' || 'bubble_column' => 'block/water_still',
+          'lava' => 'block/lava_still',
+          _ => 'block/$name',
+        },
+      };
     }
 
     final faces = List<String?>.filled(6, null);
@@ -150,8 +156,9 @@ class BlockModelResolver {
 
     final variants = json['variants'];
     if (variants is Map) {
-      // An empty key matches everything; otherwise every `k=v` in the key has
-      // to hold. Prefer the most specific match that fits.
+      // Respect every supplied property. ID-only tools omit properties, so
+      // use the first compatible variant for those unspecified states.
+      // Prefer the variant matching the most supplied properties.
       _Variant? best;
       var bestScore = -1;
       variants.forEach((key, value) {
@@ -160,6 +167,7 @@ class BlockModelResolver {
             : _parseConditions(key);
         var score = 0;
         for (final entry in conditions.entries) {
+          if (!properties.containsKey(entry.key)) continue;
           if (properties[entry.key] != entry.value) {
             score = -1;
             break;
@@ -167,7 +175,9 @@ class BlockModelResolver {
           score++;
         }
         if (score > bestScore) {
-          final chosen = value is List ? (value.isEmpty ? null : value.first) : value;
+          final chosen = value is List
+              ? (value.isEmpty ? null : value.first)
+              : value;
           if (chosen is Map) {
             bestScore = score;
             best = _Variant.fromJson(chosen);
@@ -187,14 +197,19 @@ class BlockModelResolver {
         final when = part['when'];
         if (when is Map && !_multipartMatches(when, properties)) continue;
         final apply = part['apply'];
-        final chosen = apply is List ? (apply.isEmpty ? null : apply.first) : apply;
+        final chosen = apply is List
+            ? (apply.isEmpty ? null : apply.first)
+            : apply;
         if (chosen is Map) return _Variant.fromJson(chosen);
       }
     }
     return null;
   }
 
-  bool _multipartMatches(Map<dynamic, dynamic> when, Map<String, String> props) {
+  bool _multipartMatches(
+    Map<dynamic, dynamic> when,
+    Map<String, String> props,
+  ) {
     final or = when['OR'];
     if (or is List) {
       for (final clause in or) {
@@ -310,20 +325,20 @@ class BlockModelResolver {
   }
 
   static CubeFace _rotateY90(CubeFace face) => switch (face) {
-        CubeFace.north => CubeFace.east,
-        CubeFace.east => CubeFace.south,
-        CubeFace.south => CubeFace.west,
-        CubeFace.west => CubeFace.north,
-        _ => face,
-      };
+    CubeFace.north => CubeFace.east,
+    CubeFace.east => CubeFace.south,
+    CubeFace.south => CubeFace.west,
+    CubeFace.west => CubeFace.north,
+    _ => face,
+  };
 
   static CubeFace _rotateX90(CubeFace face) => switch (face) {
-        CubeFace.down => CubeFace.north,
-        CubeFace.north => CubeFace.up,
-        CubeFace.up => CubeFace.south,
-        CubeFace.south => CubeFace.down,
-        _ => face,
-      };
+    CubeFace.down => CubeFace.north,
+    CubeFace.north => CubeFace.up,
+    CubeFace.up => CubeFace.south,
+    CubeFace.south => CubeFace.down,
+    _ => face,
+  };
 
   static String _stripNamespace(String value) {
     final colon = value.indexOf(':');
@@ -339,8 +354,8 @@ class _Variant {
   final int y;
 
   factory _Variant.fromJson(Map<dynamic, dynamic> json) => _Variant(
-        '${json['model'] ?? ''}',
-        (json['x'] as num?)?.toInt() ?? 0,
-        (json['y'] as num?)?.toInt() ?? 0,
-      );
+    '${json['model'] ?? ''}',
+    (json['x'] as num?)?.toInt() ?? 0,
+    (json['y'] as num?)?.toInt() ?? 0,
+  );
 }

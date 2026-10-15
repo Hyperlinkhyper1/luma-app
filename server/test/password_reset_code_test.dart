@@ -294,7 +294,7 @@ void main() {
               .single;
           expect(row['recoveryEnvelope'], envelope);
           expect(row['recoveryKeyBox'], keyBox);
-          expect(db.select('PRAGMA user_version').single.values.single, 2);
+          expect(db.select('PRAGMA user_version').single.values.single, 3);
         } finally {
           db.close();
         }

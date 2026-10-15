@@ -178,6 +178,7 @@ class _AccountOverviewPageState extends State<AccountOverviewPage> {
     if (_started) return;
     _started = true;
     AccountOverviewScope.of(context).load();
+    YoutubeScope.of(context).load();
     SpotifyScope.of(context).load();
   }
 

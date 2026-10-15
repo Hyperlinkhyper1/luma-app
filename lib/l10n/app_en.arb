@@ -1,4 +1,28 @@
 {
+  "homeTileSteamGamePrice": "Steam game price",
+  "homeTileCs2SkinPrice": "CS2 skin price",
+  "homeTileCs2TrackedGraph": "Tracked CS2 skins graph",
+  "homeChooseSteamGame": "Choose a Steam game",
+  "homeChooseCs2Skin": "Choose a CS2 skin",
+  "homeSteamAllGames": "All tracked games",
+  "homeSteamAllSkins": "All tracked CS2 skins",
+  "homeSteamGamesEmpty": "Track a game in Steam Tools to add its price here.",
+  "homeSteamSkinsEmpty": "Track a CS2 skin in Steam Tools to add its price or graph here.",
+  "homeSteamGameUnavailable": "This game is no longer tracked. Choose another game in the tile settings.",
+  "homeSteamSkinUnavailable": "This CS2 skin is no longer tracked. Choose another skin in the tile settings.",
+  "homeSteamDataError": "Could not load Steam Tools data.",
+  "homeOpenSteamTools": "Open Steam Tools",
+  "homeSteamSavedPrices": "Latest saved prices",
+  "homeSteamMixedCurrency": "These prices use different currencies and cannot be combined in one graph.",
+  "homeSteamPriceChecked": "Checked {date}",
+  "@homeSteamPriceChecked": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+
   "teamClipboardSettings": "Settings",
   "teamSettingsTitle": "Team settings",
   "teamSettingsSubtitle": "Only leads see this tab. Give a member extra permissions on their own, or give them a tag and set what everyone with that tag may do.",
@@ -1900,6 +1924,30 @@
   "accountStartFamilyHint": "Start one to share your calendar.",
   "accountCreateFamily": "Create a family",
   "accountManageFamily": "Manage family",
+  "accountPageSubtitle": "Manage your profile, sync, plan and family.",
+  "accountNavSync": "Sync & devices",
+  "accountDetailsTitle": "Account details",
+  "accountManage": "Manage",
+  "accountNotSignedIn": "Not signed in",
+  "accountLocalProfile": "Local profile",
+  "accountStatusActive": "Active",
+  "accountStatusPending": "Waiting for approval",
+  "accountStatusLocal": "Local only",
+  "accountFieldLastSynced": "Last synced",
+  "accountFieldSyncStorage": "Sync storage",
+  "accountStorageOf": "{used} of {total}",
+  "@accountStorageOf": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "accountPlanIncluded": "Included in your plan",
+  "accountStatsSubtitle": "Lifetime totals and the places you've been.",
   "familyTitle": "Family",
   "familyBackToAccount": "Back to account",
   "familyStartTitle": "Start a family",
@@ -2005,6 +2053,10 @@
   "loginConfirmPassphrase": "Confirm passphrase",
   "loginUnlockAndSignIn": "Unlock and sign in",
   "loginUseDifferentAccount": "Use a different account",
+  "loginAccountCreated": "Account created",
+  "loginAwaitingApproval": "Your email is verified and your account is created. The server operator still has to approve it. Until they do, this device leaves the server alone. Sign in once you've been approved.",
+  "loginVerifyEmail": "Verify email",
+  "loginEmailVerifiedSignIn": "Your email is verified. Sign in to continue.",
   "loginAlmostThere": "Almost there",
   "loginNeedsApproval": "Your account has to be approved before you can sign in.",
   "loginBackToSignIn": "Back to sign in",
@@ -2074,8 +2126,8 @@
   "loginTermsOfService": "Terms of service",
   "loginPrivacyPolicy": "Privacy policy",
   "planPriceFree": "Free",
-  "planPriceOrbit": "$3 / month",
-  "planPriceNova": "$6 / month",
+  "planPriceOrbit": "$4 / month",
+  "planPriceNova": "$8 / month",
   "planCoreBlurb": "All the basics, right on your device.",
   "planOrbitBlurb": "More synced features, SFTP, Groceries List and the Coffee and Autumn themes.",
   "planNovaBlurb": "Everything in sync on every device, plus the premium tools.",
@@ -2372,6 +2424,14 @@
   "serverGateEnterCode": "Enter code",
   "serverGatePendingEmail": "Your account ({email}) still needs a thumbs-up. Enter the 6-digit code we emailed you to finish signing in. Until then we leave the server completely alone.",
   "@serverGatePendingEmail": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "serverGateAwaitingApproval": "Your account ({email}) is created and your email is verified. Now the server owner just has to approve it. Sign in once they have. Until then we leave the server completely alone.",
+  "@serverGateAwaitingApproval": {
     "placeholders": {
       "email": {
         "type": "String"
@@ -6136,7 +6196,7 @@
   "spotifyDisconnectNote": "Disconnecting removes the stored listening total from this device.",
   "spotifyClientIdLabel": "Spotify Client ID",
   "spotifyClientIdHint": "Paste your Client ID",
-  "spotifySetupSteps": "1. Create an app in the Spotify Developer Dashboard (Web API).\n2. Add http://127.0.0.1:8888/callback as its redirect URI. Include the port exactly as shown.\n3. Copy the app Client ID here, then sign in through your browser. A development-mode app requires Spotify Premium.",
+  "spotifySetupSteps": "1. Create an app in the Spotify Developer Dashboard (Web API).\n2. Add both http://127.0.0.1:8888/callback and http://127.0.0.1/callback as redirect URIs. Keep the 8888 URI for existing setups; the URI without a port lets luma automatically use a free port if 8888 is busy.\n3. Copy the app Client ID here, then sign in through your browser. A development-mode app requires Spotify Premium.",
   "spotifyOpenDashboard": "Open Spotify Developer Dashboard",
   "spotifyTokensNote": "Tokens stay in this device’s secure storage. luma reads your Spotify data directly.",
   "spotifyReconnect": "Reconnect",
@@ -19319,6 +19379,14 @@
   "syncSettingsEnterCode": "Enter code",
   "syncSettingsPendingEmailCode": "{email} is waiting to be approved. Enter the 6-digit code we emailed you to finish signing in. Until then this device does not contact the server at all, and the plugins that need it stay switched off.",
   "@syncSettingsPendingEmailCode": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "syncSettingsAwaitingApproval": "{email} is created and verified, and is now waiting for the server operator to approve it. Sign in once they have. Until then this device doesn't contact the server at all, and the plugins that need it stay switched off.",
+  "@syncSettingsAwaitingApproval": {
     "placeholders": {
       "email": {
         "type": "String"

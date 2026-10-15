@@ -135,7 +135,7 @@ void main() {
       expect(store.usersById.values.single.status, 'pending');
     });
 
-    test('the correct code activates the account and unlocks sign-in',
+    test('the correct code creates the account but leaves it awaiting approval',
         () async {
       await setUpApi();
       await register('bob@example.com');
@@ -144,8 +144,32 @@ void main() {
       final verified = await call('POST', '/api/v1/auth/verify-code',
           body: {'email': 'bob@example.com', 'code': code});
       expect(verified['httpStatus'], 200);
-      expect(store.usersById.values.single.status, 'active');
+      expect(verified['status'], 'awaiting_approval');
+      final user = store.usersById.values.single;
+      expect(user.status, 'pending');
+      expect(user.emailVerifiedAtMs, isNotNull);
+      expect(user.awaitingApproval, isTrue);
 
+      final refused = await call('POST', '/api/v1/auth/login', body: {
+        'email': 'bob@example.com',
+        'authKey': authKey(1),
+      });
+      expect(refused['httpStatus'], 403);
+      expect(refused['error'], 'account_awaiting_approval');
+      expect(refused['token'], isNull);
+
+      // A verified account is past the code stage: no new code goes out.
+      final sentBefore = mailer.sendCount;
+      await call('POST', '/api/v1/auth/resend-verification',
+          body: {'email': 'bob@example.com'});
+      expect(mailer.sendCount, sentBefore);
+
+      // Survives a restart, so the state is not just in memory.
+      final reopened = await Store.open(dir.path);
+      expect(reopened.usersById.values.single.awaitingApproval, isTrue);
+
+      // The operator's Approve is what lets it in.
+      user.status = 'active';
       final login = await call('POST', '/api/v1/auth/login', body: {
         'email': 'bob@example.com',
         'authKey': authKey(1),

@@ -66,8 +66,10 @@ enum ApprovalMode {
   /// deployment works with no SMTP configured at all.
   manual,
 
-  /// The user approves their own account by typing a 6-digit code emailed
-  /// to them.
+  /// The user proves their address by typing a 6-digit code emailed to
+  /// them. That makes the account official, but it still waits for the
+  /// operator to approve it from the admin dashboard before it gets anything
+  /// past the account handshake.
   email,
 
   /// No approval step: accounts are active (and signed in) the moment they
@@ -1594,6 +1596,15 @@ class Api {
   Response? _loginEligibility(StoredUser u) {
     if (u.accessRevoked) return _accessRevokedResponse(u);
     if (u.passwordResetRequired) return _passwordResetRequiredResponse();
+    if (u.awaitingApproval) {
+      // Its own code, so the app stops offering code entry and settles into
+      // "created, waiting on the operator" instead.
+      return errorResponse(
+          403,
+          'account_awaiting_approval',
+          'Your account is created and your email is verified. It is now '
+              'waiting for the server operator to approve it.');
+    }
     if (u.isPending) {
       return errorResponse(
           403,
@@ -1874,20 +1885,31 @@ class Api {
                 config.approvalMode != ApprovalMode.email)) {
           return ineligible;
         }
+        store.linkOAuthIdentity(existing, flow.provider, identity.subject);
         if (existing.isPending) {
-          // The provider vouched for the address, which is precisely what an
-          // email-verification code was there to establish — so accept it in
-          // that mode. Under manual approval the operator's decision is the
-          // gate, and no provider substitutes for it.
-          if (config.approvalMode == ApprovalMode.email) {
-            existing.status = 'active';
+          // Only email approval gets here. The provider vouched for the
+          // address, which is exactly what the emailed code was there to
+          // establish — so it counts as verified, but like the code it only
+          // makes the account official: the operator still has to approve it.
+          if (existing.emailVerifiedAtMs == null) {
+            existing.emailVerifiedAtMs = DateTime.now().millisecondsSinceEpoch;
             existing.verificationTokenHash = null;
             existing.verificationExpiresAtMs = null;
-            await store.logActivity('account_verified',
-                '${existing.email} verified via ${spec.displayName}');
+            await store.logActivity(
+                'account_verified',
+                '${existing.email} verified via ${spec.displayName} '
+                    '(awaiting approval)');
           }
+          _oauthFlows.remove(flow);
+          await store.saveUsers();
+          return jsonResponse(200, {
+            'status': 'pending_approval',
+            'approval': config.approvalMode.name,
+            'message': 'Your email is verified and your account is created. '
+                'The server operator still has to approve it before you can '
+                'sign in.',
+          });
         }
-        store.linkOAuthIdentity(existing, flow.provider, identity.subject);
         _oauthFlows.remove(flow);
         final token = await _createSession(existing, deviceLabel: deviceLabel);
         existing.lastLoginAtMs = DateTime.now().millisecondsSinceEpoch;
@@ -1917,10 +1939,12 @@ class Api {
             400, 'bad_kdf_iterations', 'Invalid KDF iterations.');
       }
       final authSalt = randomBytes(16);
-      // Under manual approval a new account still waits for the operator;
-      // the provider only proves the address is real, not that this
-      // deployment wants the person behind it.
-      final pending = config.approvalMode == ApprovalMode.manual;
+      // A new account still waits for the operator whenever this server holds
+      // new accounts; the provider only proves the address is real, not that
+      // this deployment wants the person behind it. Under email approval
+      // that proof stands in for the emailed code.
+      final pending = config.approvalMode.holdsNewAccounts;
+      final now = DateTime.now().millisecondsSinceEpoch;
       final user = StoredUser(
         id: base64UrlEncode(randomBytes(12)).replaceAll('=', ''),
         email: identity.email,
@@ -1929,8 +1953,10 @@ class Api {
         kdfSalt: base64Encode(kdfSalt),
         kdfIterations: iterations,
         quotaBytes: kPlanQuotaBytes[kDefaultPlanId]!,
-        createdAtMs: DateTime.now().millisecondsSinceEpoch,
+        createdAtMs: now,
         status: pending ? 'pending' : 'active',
+        emailVerifiedAtMs:
+            config.approvalMode == ApprovalMode.email ? now : null,
       );
       store.usersById[user.id] = user;
       store.userIdByEmail[user.email] = user.id;
@@ -2058,6 +2084,7 @@ class Api {
 
       if (user == null ||
           !user.isPending ||
+          user.emailVerifiedAtMs != null ||
           user.verificationTokenHash == null) {
         return errorResponse(
             400, 'bad_code', 'That code is invalid or has already been used.');
@@ -2075,15 +2102,19 @@ class Api {
         return errorResponse(
             400, 'code_expired', 'That code has expired. Request a new one.');
       }
-      user.status = 'active';
+      // The code proves the address and makes the account official, but it
+      // stays 'pending': only the operator's Approve lets it reach anything
+      // past the account handshake.
+      user.emailVerifiedAtMs = now;
       user.verificationTokenHash = null;
       user.verificationExpiresAtMs = null;
       await store.saveUsers();
-      await store.logActivity(
-          'account_verified', '${user.email} verified their email');
+      await store.logActivity('account_verified',
+          '${user.email} verified their email (awaiting approval)');
       return jsonResponse(200, {
-        'status': 'verified',
-        'message': 'Your email is verified. Sign in to continue.',
+        'status': 'awaiting_approval',
+        'message': 'Your email is verified and your account is created. The '
+            'server operator still has to approve it before you can sign in.',
       });
     });
   }
@@ -2125,7 +2156,7 @@ class Api {
     return store.lock.synchronized(() async {
       final userId = store.userIdByEmail[email];
       final user = userId == null ? null : store.usersById[userId];
-      if (user == null || !user.isPending) {
+      if (user == null || !user.isPending || user.emailVerifiedAtMs != null) {
         return jsonResponse(200, genericResponse);
       }
       final verificationCode = await _issueVerificationCode(user);
@@ -6793,6 +6824,7 @@ class Api {
   Map<String, dynamic> _adminUserJson(StoredUser user) => {
         'email': user.email,
         'status': user.status,
+        'emailVerifiedAtMs': user.emailVerifiedAtMs,
         'planId': user.planId,
         'createdAtMs': user.createdAtMs,
         'usedBytes': store.usedBytes(user.id),
@@ -10769,7 +10801,9 @@ syncToolbar();
               ? '<span class="badge warn">reset pending</span>'
               : bannedIps.isNotEmpty
                   ? '<span class="badge err">ip banned</span>'
-                  : '<span class="badge $statusClass">${_htmlEscape(u.status)}</span>';
+                  : u.awaitingApproval
+                      ? '<span class="badge warn">verified · awaiting approval</span>'
+                      : '<span class="badge $statusClass">${_htmlEscape(u.status)}</span>';
       return '<tr>'
           '<td data-label="Email">$safeEmail${_teamBoardBadge(u)}</td>'
           '<td data-label="Status">$statusBadge</td>'

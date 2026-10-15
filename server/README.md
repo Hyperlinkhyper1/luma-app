@@ -215,11 +215,14 @@ reports which mode is in effect:
 | Mode | Who approves | On register | `/auth/resend-verification` |
 |---|---|---|---|
 | `manual` (default) | The operator, from `/admin` → Users → Approve | account created `pending`, no mail sent, `{status: "pending_approval", approval: "manual"}` | no-op with an explanatory message |
-| `email` | The user, via the emailed `/auth/verify` link | same, plus the mail | re-sends the link (3 / 15 min per address) |
+| `email` | The user proves the address with the emailed code (`/auth/verify-code`, which records `emailVerifiedAtMs` but leaves the account `pending`), then the operator approves it from `/admin` | same, plus the mail | re-sends the code (3 / 15 min per address) until it has been entered |
 | `open` | Nobody | account created `active`, token returned immediately | no-op |
 
 `POST /auth/login` on a pending account returns `403
-account_pending_approval` in every mode; only the message differs.
+account_pending_approval` in every mode; only the message differs. Once the
+address is verified but the operator has not approved yet, it returns `403
+account_awaiting_approval` instead, so the app shows "created, waiting for
+approval" rather than asking for a code again.
 The app mirrors that — a device with no approved account sends nothing but
 the four handshake calls (`/auth/params`, `/auth/register`, `/auth/login`,
 `/auth/resend-verification`). That is why `/plugins/download` is

@@ -11,6 +11,8 @@ import '../../../../app/widgets.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../l10n/current_l.dart';
 import '../../../../theme/luma_theme.dart';
+import '../_shared/scene_localization_bridge.dart';
+import '../_shared/scene_localizations.dart';
 import '../_shared/windows_webview.dart';
 import 'ais_key_store.dart';
 import 'ais_stream_client.dart';
@@ -46,6 +48,8 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
   InAppWebViewController? _inAppController;
   StreamSubscription? _windowsMsgSub;
   bool _loading = true;
+  bool _pageLoaded = false;
+  String? _locale;
 
   final _client = AisStreamClient();
   StreamSubscription<AisConnectionState>? _stateSub;
@@ -160,6 +164,49 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
 
   String? _apiKey;
   late final Future<void> _keyLoad = _loadKey();
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locale = Localizations.localeOf(context).languageCode;
+    if (_locale != locale) {
+      _locale = locale;
+      if (_pageLoaded) unawaited(_pushLocale());
+    }
+  }
+
+  Future<void> _pushLocale() async {
+    if (!mounted) return;
+    final t = L.of(context);
+    final locale = Localizations.localeOf(context).languageCode;
+    final strings = {
+      ...sceneKeyStrings(t, 'transport_tracker'),
+      ...sceneDynamicStrings(t, 'transport_tracker'),
+    };
+    final sourceStrings = sceneSourceStrings(t, 'transport_tracker');
+    if (Platform.isWindows) {
+      await SceneLocalizationBridge.sendWindows(
+        _windowsController,
+        language: locale,
+        strings: strings,
+        sourceStrings: sourceStrings,
+      );
+    } else {
+      await SceneLocalizationBridge.sendAndroid(
+        _inAppController,
+        language: locale,
+        strings: strings,
+        sourceStrings: sourceStrings,
+      );
+    }
+  }
+
+  void _onPageLoaded() {
+    if (!mounted) return;
+    _pageLoaded = true;
+    unawaited(_pushLocale());
+    _armLoadingFallback();
+  }
 
   @override
   void initState() {
@@ -559,7 +606,7 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
                       windowsAssetPath('assets/transport_tracker/index.html'),
                     ).toString(),
                     onController: _onWindowsController,
-                    onLoaded: _armLoadingFallback,
+                    onLoaded: _onPageLoaded,
                   )
                 : InAppWebView(
                     initialFile: 'assets/transport_tracker/index.html',
@@ -580,7 +627,7 @@ class _TransportTrackerPageState extends State<TransportTrackerPage> {
                         },
                       );
                     },
-                    onLoadStop: (controller, url) => _armLoadingFallback(),
+                    onLoadStop: (controller, url) => _onPageLoaded(),
                   ),
             ),
           ),

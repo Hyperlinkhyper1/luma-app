@@ -9,6 +9,8 @@
 
 #include <WebView2.h>
 
+#include "native_webview_region.h"
+
 #include <functional>
 #include <map>
 #include <memory>
@@ -21,8 +23,8 @@
 // every frame into a Flutter texture, and relays each mouse move through a
 // platform channel. For a WebGL game that capped out near 13 fps and froze on
 // every drag. A windowed WebView2 presents straight to the screen and takes
-// input directly, at the cost of nothing Flutter draws being able to cover it;
-// the Dart side hides the window whenever it is not the top-most content.
+// input directly. Tooltip regions let Flutter draw above it; the Dart side
+// hides the window whenever another route covers the content.
 class NativeWebviewManager {
  public:
   NativeWebviewManager(flutter::BinaryMessenger* messenger, HWND parent,
@@ -38,6 +40,7 @@ class NativeWebviewManager {
     Microsoft::WRL::ComPtr<ICoreWebView2Controller> controller;
     Microsoft::WRL::ComPtr<ICoreWebView2> webview;
     RECT bounds{0, 0, 0, 0};
+    std::vector<NativeWebviewOcclusion> occlusions;
     bool visible = false;
     bool destroyed = false;
   };
@@ -51,6 +54,7 @@ class NativeWebviewManager {
                        std::function<void(ICoreWebView2Environment*)> ready);
   void CreateController(int64_t id, const std::wstring& url);
   void ApplyBounds(View& view);
+  void ApplyOcclusion(View& view);
   void ApplyVisibility(View& view);
   void Emit(const std::string& method, int64_t id, const std::string& data);
   void Destroy(int64_t id);

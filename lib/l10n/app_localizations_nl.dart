@@ -9,6 +9,62 @@ class LNl extends L {
   LNl([String locale = 'nl']) : super(locale);
 
   @override
+  String get homeTileSteamGamePrice => 'Steam-gameprijs';
+
+  @override
+  String get homeTileCs2SkinPrice => 'CS2-skinprijs';
+
+  @override
+  String get homeTileCs2TrackedGraph => 'Grafiek van gevolgde CS2-skins';
+
+  @override
+  String get homeChooseSteamGame => 'Kies een Steam-game';
+
+  @override
+  String get homeChooseCs2Skin => 'Kies een CS2-skin';
+
+  @override
+  String get homeSteamAllGames => 'Alle gevolgde games';
+
+  @override
+  String get homeSteamAllSkins => 'Alle gevolgde CS2-skins';
+
+  @override
+  String get homeSteamGamesEmpty =>
+      'Volg een game in Steam Tools om hier de prijs toe te voegen.';
+
+  @override
+  String get homeSteamSkinsEmpty =>
+      'Volg een CS2-skin in Steam Tools om hier de prijs of grafiek toe te voegen.';
+
+  @override
+  String get homeSteamGameUnavailable =>
+      'Deze game wordt niet meer gevolgd. Kies een andere game in de tegelinstellingen.';
+
+  @override
+  String get homeSteamSkinUnavailable =>
+      'Deze CS2-skin wordt niet meer gevolgd. Kies een andere skin in de tegelinstellingen.';
+
+  @override
+  String get homeSteamDataError =>
+      'Steam Tools-gegevens konden niet worden geladen.';
+
+  @override
+  String get homeOpenSteamTools => 'Steam Tools openen';
+
+  @override
+  String get homeSteamSavedPrices => 'Laatst opgeslagen prijzen';
+
+  @override
+  String get homeSteamMixedCurrency =>
+      'Deze prijzen gebruiken verschillende valuta en kunnen niet in één grafiek worden gecombineerd.';
+
+  @override
+  String homeSteamPriceChecked(String date) {
+    return 'Gecontroleerd op $date';
+  }
+
+  @override
   String get teamClipboardSettings => 'Instellingen';
 
   @override
@@ -3872,6 +3928,52 @@ class LNl extends L {
   String get accountManageFamily => 'Gezin beheren';
 
   @override
+  String get accountPageSubtitle =>
+      'Beheer je profiel, sync, abonnement en gezin.';
+
+  @override
+  String get accountNavSync => 'Sync & apparaten';
+
+  @override
+  String get accountDetailsTitle => 'Accountgegevens';
+
+  @override
+  String get accountManage => 'Beheren';
+
+  @override
+  String get accountNotSignedIn => 'Niet ingelogd';
+
+  @override
+  String get accountLocalProfile => 'Lokaal profiel';
+
+  @override
+  String get accountStatusActive => 'Actief';
+
+  @override
+  String get accountStatusPending => 'Wacht op goedkeuring';
+
+  @override
+  String get accountStatusLocal => 'Alleen lokaal';
+
+  @override
+  String get accountFieldLastSynced => 'Laatst gesynchroniseerd';
+
+  @override
+  String get accountFieldSyncStorage => 'Sync-opslag';
+
+  @override
+  String accountStorageOf(String used, String total) {
+    return '$used van $total';
+  }
+
+  @override
+  String get accountPlanIncluded => 'Inbegrepen in je abonnement';
+
+  @override
+  String get accountStatsSubtitle =>
+      'Totalen van altijd en de plekken waar je bent geweest.';
+
+  @override
   String get familyTitle => 'Gezin';
 
   @override
@@ -4117,6 +4219,20 @@ class LNl extends L {
   String get loginUseDifferentAccount => 'Gebruik een ander account';
 
   @override
+  String get loginAccountCreated => 'Account aangemaakt';
+
+  @override
+  String get loginAwaitingApproval =>
+      'Je e-mailadres is bevestigd en je account is aangemaakt. De serverbeheerder moet het nog goedkeuren. Tot die tijd laat dit apparaat de server met rust. Log in zodra je bent goedgekeurd.';
+
+  @override
+  String get loginVerifyEmail => 'E-mailadres bevestigen';
+
+  @override
+  String get loginEmailVerifiedSignIn =>
+      'Je e-mailadres is bevestigd. Log in om verder te gaan.';
+
+  @override
   String get loginAlmostThere => 'Bijna klaar';
 
   @override
@@ -4249,10 +4365,10 @@ class LNl extends L {
   String get planPriceFree => 'Gratis';
 
   @override
-  String get planPriceOrbit => '\$3 / maand';
+  String get planPriceOrbit => '\$4 / maand';
 
   @override
-  String get planPriceNova => '\$6 / maand';
+  String get planPriceNova => '\$8 / maand';
 
   @override
   String get planCoreBlurb => 'Alle basisfuncties, direct op je apparaat.';
@@ -4640,6 +4756,11 @@ class LNl extends L {
   @override
   String serverGatePendingEmail(String email) {
     return 'Je account ($email) moet nog worden goedgekeurd. Voer de 6-cijferige code in die we je hebben gemaild om het inloggen af te ronden. Tot die tijd laten we de server volledig met rust.';
+  }
+
+  @override
+  String serverGateAwaitingApproval(String email) {
+    return 'Je account ($email) is aangemaakt en je e-mailadres is bevestigd. Nu moet de eigenaar van de server het alleen nog goedkeuren. Log in zodra dat is gebeurd. Tot die tijd laten we de server volledig met rust.';
   }
 
   @override
@@ -10145,7 +10266,7 @@ class LNl extends L {
 
   @override
   String get spotifySetupSteps =>
-      '1. Maak een app in het Spotify Developer Dashboard (Web API).\n2. Voeg http://127.0.0.1:8888/callback toe als redirect-URI. Neem de poort precies zo over.\n3. Kopieer hier de client-ID van de app en meld je daarna aan via je browser. Een app in ontwikkelmodus vereist Spotify Premium.';
+      '1. Maak een app in het Spotify Developer Dashboard (Web API).\n2. Voeg zowel http://127.0.0.1:8888/callback als http://127.0.0.1/callback toe als redirect-URI’s. Behoud de URI met poort 8888 voor bestaande instellingen; met de URI zonder poort kan luma automatisch een vrije poort gebruiken als 8888 bezet is.\n3. Kopieer hier de client-ID van de app en meld je daarna aan via je browser. Een app in ontwikkelmodus vereist Spotify Premium.';
 
   @override
   String get spotifyOpenDashboard => 'Spotify Developer Dashboard openen';
@@ -30034,6 +30155,11 @@ class LNl extends L {
   @override
   String syncSettingsPendingEmailCode(String email) {
     return '$email wacht op goedkeuring. Voer de 6-cijferige code in die we je per e-mail hebben gestuurd om het inloggen af te ronden. Tot die tijd neemt dit apparaat helemaal geen contact op met de server, en blijven de plug-ins die het nodig hebben uitgeschakeld.';
+  }
+
+  @override
+  String syncSettingsAwaitingApproval(String email) {
+    return '$email is aangemaakt en bevestigd, en wacht nu op goedkeuring door de serverbeheerder. Log in zodra het is goedgekeurd. Tot die tijd neemt dit apparaat helemaal geen contact op met de server, en blijven de plug-ins die hem nodig hebben uitgeschakeld.';
   }
 
   @override

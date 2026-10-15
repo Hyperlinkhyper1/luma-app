@@ -197,8 +197,11 @@ Open `https://sync.yourdomain.com/admin` and sign in with your
 first, each with an **Approve** button. Press it and the person can sign in
 immediately — nothing is emailed, in either direction.
 
-Prefer users to approve themselves by email instead? Set
-`LUMA_APPROVAL_MODE=email` and fill in the `LUMA_SMTP_*` settings. Running a
+Want users to prove their email address first? Set
+`LUMA_APPROVAL_MODE=email` and fill in the `LUMA_SMTP_*` settings. Entering
+the emailed code creates the account officially, but it still waits for your
+**Approve** (listed as "verified · awaiting approval") before it can sign in
+or reach anything else on the server. Running a
 server only you can reach and want no approval step at all? Set
 `LUMA_APPROVAL_MODE=open`.
 
@@ -431,7 +434,7 @@ variables in a small `.bat` wrapper).
 |---|---|
 | `curl https://…/health` fails | DNS not propagated yet, or ports 80/443 blocked. `docker compose logs caddy` shows certificate errors. |
 | App says "This server does not accept new accounts" | Registration is closed (`LUMA_ALLOW_REGISTRATION=false`). Set it to `true` (or remove it) and restart to allow sign-ups. |
-| App says an account is "waiting to be approved" | Working as intended: approve it from the admin dashboard's Users tab (section 6.1). Under `LUMA_APPROVAL_MODE=email` it instead means the verification mail hasn't been opened — the user can resend it from *Settings → Sync & account*, and you can still approve them by hand. |
+| App says an account is "waiting to be approved" | Working as intended: approve it from the admin dashboard's Users tab (section 6.1). Under `LUMA_APPROVAL_MODE=email` it either means the code hasn't been entered yet — the user can resend it from *Settings → Sync & account* — or, once it has ("verified · awaiting approval" on the dashboard), that the account is created and waiting for your Approve. You can approve either kind by hand. |
 | A plugin shows "needs an approved account" | By design: it only works through the server, and this device has no approved account yet. Sign in once the account is approved and it switches on. |
 | App says "Session expired" | Tokens expire after 90 days of inactivity — just sign in again. Data is untouched. |
 | "Could not decrypt this snapshot" | The account's data was encrypted under a different password (e.g. password was changed on another device before it finished re-encrypting). Sign in again on the device that has the data and let it re-upload. |

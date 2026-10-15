@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/account/account_page.dart';
+import 'package:luma/l10n/app_localizations.dart';
 import 'package:luma/storage/storage_guard.dart';
 import 'package:luma/storage/storage_guard_scope.dart';
 import 'package:luma/theme/luma_theme.dart';
@@ -96,6 +97,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: LumaTheme.dark,
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         home: Scaffold(
           body: StorageGuardScope(
             service: guard,
@@ -134,6 +137,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: LumaTheme.dark,
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         home: Scaffold(
           body: StorageGuardScope(
             service: guard,
