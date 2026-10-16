@@ -11,7 +11,7 @@ const _kDeciderFallbackModels = [
   'perplexity/pplx-decider-flash-v1.2',
 ];
 
-/// The admin dashboard's Decider test tab: the moderation suite in
+/// The Add benchmark dialog's Decider test: the moderation suite in
 /// `decider_test.dart` run against decision models on OpenRouter or
 /// Perplexity, with the server's OpenRouter key or one pasted for the batch.
 extension DeciderTestsApi on Api {
@@ -368,32 +368,28 @@ extension DeciderTestsApi on Api {
     return jsonResponse(200, {'ok': true});
   }
 
-  /// The Decider test tab.
-  String _adminDeciderPanel() {
+  /// The Decider test half of the Add benchmark dialog, shown by the
+  /// switch in the dialog's header. Its own form, endpoints and runs.
+  String _adminDeciderView() {
     final providerOptions = DeciderProvider.values.map((p) {
       final hasKey =
           p == DeciderProvider.openrouter && config.openRouterKeyConfigured;
       return '<option value="${p.name}">${Api._htmlEscape(p.label)}'
           '${hasKey ? '' : ' (paste a key)'}</option>';
     }).join();
-    return '<div class="tab-panel" id="panel-decider">'
-        '${Api._panelHead('Decider test (Moderation)', 'Runs decision models '
-            '— Perplexity\'s Decider and the other models OpenRouter lists '
-            'with decisions output — through a hard moderation suite, and '
-            'plots what each one costs against how often it is right.')}'
-        '<style>$_deciderCss</style>'
-        '<div class="card">'
-        '${Api._cardHead('scan', 'Run models')}'
-        '<div class="maint-desc" tabindex="0">Every case hands the model a '
-        'made-up platform rulebook, the facts about the author and the post, '
-        'and asks which action the rules require. The answers turn on dates, '
-        'sums, follower counts, quote marks and which rule outranks which — '
-        'work a decision model has to do in one pass. The server checks each '
-        'answer against the expected one: the top option for a choice, the '
-        'right side of 50% for a yes/no, within half a level for a score. '
-        'A checklist case only counts when every question is right. Runs use '
-        'the server\'s OpenRouter key unless you paste one; a pasted key is '
-        'used for this batch only and never saved.</div>'
+    return '<style>$_deciderCss</style>'
+        '<div id="dtView" class="dt-view" hidden>'
+        '<section class="dt-sec">'
+        '<div class="bg-step-head"><h3>Models</h3>'
+        '<span id="dtPickCount" class="bg-step-hint">Loading models…</span></div>'
+        '<div class="dt-desc">Every case hands the model a made-up platform '
+        'rulebook, the facts about the author and the post, and asks which '
+        'action the rules require. The answers turn on dates, sums, follower '
+        'counts, quote marks and which rule outranks which — work a decision '
+        'model has to do in one pass. The server checks each answer against '
+        'the expected one; a checklist case only counts when every question '
+        'is right. Runs use the server\'s OpenRouter key unless you paste '
+        'one; a pasted key is used for this batch only and never saved.</div>'
         '<div class="dt-form">'
         '<div><label for="dtProvider">Provider</label>'
         '<select id="dtProvider">$providerOptions</select></div>'
@@ -405,49 +401,46 @@ extension DeciderTestsApi on Api {
         '<div><label for="dtExtra">Other model IDs</label>'
         '<input id="dtExtra" type="text" spellcheck="false" autocomplete="off" '
         'placeholder="comma-separated, e.g. typesafe/jev-latest"></div>'
-        '<div class="dt-buttons">'
-        '<button id="dtRunBtn" type="button" class="btn btn-primary">Run selected</button>'
-        '<button id="dtStopBtn" type="button" class="btn btn-ghost" hidden>Stop</button>'
-        '</div></div>'
-        '<div class="dt-pick-head"><span id="dtPickCount" class="muted">Loading models…</span>'
-        '<span><button type="button" class="btn btn-ghost btn-sm" id="dtPickDeciders">Perplexity Deciders</button> '
-        '<button type="button" class="btn btn-ghost btn-sm" id="dtPickAll">All</button> '
-        '<button type="button" class="btn btn-ghost btn-sm" id="dtPickNone">None</button></span></div>'
+        '</div>'
+        '<div class="dt-pick-head">'
+        '<button type="button" class="btn btn-ghost btn-sm" id="dtPickDeciders">Perplexity Deciders</button>'
+        '<button type="button" class="btn btn-ghost btn-sm" id="dtPickAll">All</button>'
+        '<button type="button" class="btn btn-ghost btn-sm" id="dtPickNone">None</button></div>'
         '<div id="dtModels" class="dt-models"></div>'
-        '<div id="dtStatus" class="maint-status" style="margin-top:12px" aria-live="polite"></div>'
         '<div id="dtProgress" class="bn-progress" hidden>'
         '<div class="bn-progress-head"><span id="dtProgressLabel"></span>'
         '<span id="dtProgressQueue" class="muted"></span></div>'
         '<div class="bn-bar" role="progressbar" aria-label="Decider test progress" '
         'aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="dtBar">'
         '<div id="dtBarFill" class="bn-bar-fill"></div></div></div>'
-        '</div>'
-        '<div class="card">'
-        '${Api._cardHead('chart', 'Cost vs performance', extra: '<select id="dtMetric" aria-label="Metric">'
-            '<option value="accuracy">Accuracy</option>'
-            '<option value="meanPTrue">Probability on the right answer</option>'
-            '</select>')}'
-        '<div class="maint-desc" tabindex="0">Each dot is a model\'s latest '
-        'finished run. Left to right is what 1,000 cases cost (log scale); '
-        'up is how many it got right. The line links the models nothing '
-        'else beats on both. The dashed line is random guessing; the dotted '
-        'one is 50%, the ceiling this suite is built to hold the best model '
-        'under.</div>'
+        '</section>'
+        '<section class="dt-sec">'
+        '<div class="bg-step-head"><h3>Cost vs performance</h3>'
+        '<select id="dtMetric" aria-label="Metric">'
+        '<option value="accuracy">Accuracy</option>'
+        '<option value="meanPTrue">Probability on the right answer</option>'
+        '</select></div>'
+        '<div class="dt-desc">Each dot is a model\'s latest finished run. Left '
+        'to right is what 1,000 cases cost (log scale); up is how many it got '
+        'right. The line links the models nothing else beats on both. The '
+        'dashed line is random guessing; the dotted one is 50%, the ceiling '
+        'this suite is built to hold the best model under.</div>'
         '<div id="dtChart" class="dt-chart"><div class="muted">No finished runs yet.</div></div>'
-        '</div>'
-        '<div class="card">'
-        '${Api._cardHead('clipboard', 'Runs')}'
-        '<div style="overflow-x:auto">'
+        '</section>'
+        '<section class="dt-sec">'
+        '<div class="bg-step-head"><h3>Runs</h3></div>'
+        '<div class="dt-table">'
         '<table><thead><tr><th>When</th><th>Model</th><th>Accuracy</th>'
         '<th>P(right)</th><th>By skill</th><th>Cost</th><th>Per 1k cases</th>'
         '<th>Errors</th><th>Avg time</th><th></th></tr></thead>'
         '<tbody id="dtRuns"><tr><td colspan="10" class="muted">Loading…</td></tr>'
-        '</tbody></table></div></div>'
-        '<details class="card fold dt-suite">'
-        '<summary>${Api._cardHead('code', 'Suite', extra: '<span id="dtSuiteBadge" class="badge"></span>')}</summary>'
-        '<div class="fold-body">'
-        '<div class="maint-desc" tabindex="0"><code>policies</code> maps an id '
-        'to a <code>title</code>, the <code>rules</code> text and its '
+        '</tbody></table></div>'
+        '</section>'
+        '<details class="bg-prompt dt-suite"><summary>Suite '
+        '<span id="dtSuiteBadge" class="badge"></span></summary>'
+        '<div class="dt-suite-body">'
+        '<div class="dt-desc"><code>policies</code> maps an id to a '
+        '<code>title</code>, the <code>rules</code> text and its '
         '<code>actions</code> (name → meaning). Each case has an '
         '<code>id</code>, a <code>policy</code>, a <code>skill</code> tag, a '
         '<code>context</code> object and the <code>content</code>. A case with '
@@ -456,12 +449,18 @@ extension DeciderTestsApi on Api {
         'score, <code>instructions</code>, <code>criteria</code>) needs an '
         '<code>expect</code> per question: an option name, true/false, or a '
         'level index. Up to $kDeciderTestMaxCases cases.</div>'
-        '<textarea id="dtSuite" spellcheck="false" aria-label="Decider suite JSON"></textarea>'
-        '<div class="maint-actions" style="margin-top:10px">'
-        '<button id="dtSuiteSave" type="button" class="btn btn-primary">Save suite</button>'
-        '<button id="dtSuiteReset" type="button" class="btn btn-ghost">Reset to built-in suite</button>'
-        '<span id="dtSuiteStatus" class="muted" style="font-size:12px"></span>'
-        '</div></div></details>'
+        '<textarea id="dtSuite" class="bn-input" spellcheck="false" aria-label="Decider suite JSON"></textarea>'
+        '<div class="bg-prompt-foot">'
+        '<span id="dtSuiteStatus" class="muted"></span><span>'
+        '<button id="dtSuiteReset" type="button" class="btn btn-ghost btn-sm">Reset to built-in suite</button> '
+        '<button id="dtSuiteSave" type="button" class="btn btn-primary btn-sm">Save suite</button>'
+        '</span></div></div></details>'
+        '</div>'
+        '<div id="dtFoot" class="bn-dlg-foot" hidden>'
+        '<span id="dtStatus" class="bn-foot-note" aria-live="polite"></span>'
+        '<button type="button" class="btn btn-ghost" data-close>Close</button>'
+        '<button id="dtStopBtn" type="button" class="btn btn-ghost" hidden>Stop</button>'
+        '<button id="dtRunBtn" type="button" class="btn btn-primary">Run selected</button>'
         '</div>';
   }
 
@@ -469,14 +468,28 @@ extension DeciderTestsApi on Api {
 }
 
 const _deciderCss = r'''
-.dt-form{display:grid;grid-template-columns:minmax(140px,.8fr) minmax(200px,1.4fr) minmax(220px,1.6fr) auto;gap:10px;align-items:end;background:#12101e;border:1px solid #221c33;border-radius:12px;padding:12px 14px;margin-top:12px}
+.bg-dialog.is-decider{width:min(1080px,calc(100vw - 32px))}
+.bg-dialog.is-decider form{flex:none}
+.bg-dialog.is-decider form .bg-body,.bg-dialog.is-decider form .bn-dlg-foot{display:none}
+.bg-mode{display:inline-flex;gap:2px;margin-top:12px;padding:3px;border-radius:10px;background:#12101e;border:1px solid #241e36}
+.bg-mode button{font:inherit;font-size:12.5px;font-weight:600;color:#9b94b3;background:none;border:0;border-radius:7px;padding:6px 12px;cursor:pointer}
+.bg-mode button:hover{color:#ece8f7}
+.bg-mode button[aria-selected=true]{background:#8a7ee0;color:#14111f}
+.bg-mode button:focus-visible{outline:2px solid #8a7ee0;outline-offset:2px}
+.dt-view{overflow:auto;padding:4px 22px 18px;display:flex;flex-direction:column;gap:22px;min-height:0;flex:1}
+.dt-view[hidden],.bn-dlg-foot[hidden]{display:none}
+.dt-desc{font-size:12.5px;color:#9b94b3;line-height:1.5;margin-bottom:10px}
+.dt-table{overflow-x:auto}
+.dt-table table{width:100%}
+.dt-suite-body{padding:0 12px}
+.dt-suite .badge{margin-left:4px}
+.dt-form{display:grid;grid-template-columns:minmax(140px,.8fr) minmax(200px,1.4fr) minmax(220px,1.6fr);gap:10px;align-items:end;background:#12101e;border:1px solid #221c33;border-radius:12px;padding:12px 14px}
 .dt-form label{display:block;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#8d86a8;margin-bottom:6px}
-.dt-form select,.dt-form input,.dt-suite textarea,#dtMetric{width:100%;background:#1a1530;color:#ece8f7;border:1px solid #2d2645;border-radius:9px;padding:8px 10px;font:13px inherit;outline:none;box-sizing:border-box}
-#dtMetric{width:auto;padding:5px 8px;font-size:12px}
+.dt-form select,.dt-form input,#dtMetric{width:100%;background:#1a1530;color:#ece8f7;border:1px solid #2d2645;border-radius:9px;padding:8px 10px;font:13px inherit;outline:none;box-sizing:border-box}
+#dtMetric{width:auto;margin-left:auto;padding:5px 8px;font-size:12px}
 .dt-form input{font-family:ui-monospace,Consolas,monospace;font-size:12.5px}
 .dt-form select:focus,.dt-form input:focus,.dt-suite textarea:focus{border-color:#8a7ee0}
-.dt-buttons{display:flex;gap:6px}
-.dt-pick-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:14px 0 8px;font-size:12px;flex-wrap:wrap}
+.dt-pick-head{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin:12px 0 8px;flex-wrap:wrap}
 .dt-models{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px;max-height:300px;overflow:auto;padding-right:4px}
 .dt-model{display:flex;gap:8px;align-items:flex-start;background:#151122;border:1px solid #221c33;border-radius:9px;padding:7px 9px;cursor:pointer;font-size:12.5px}
 .dt-model:hover{border-color:#3a3160}
@@ -498,11 +511,12 @@ const _deciderCss = r'''
 .dt-kinds{font-size:12px;color:#c5bed9;white-space:nowrap}
 .dt-detail td{background:#151122}
 .dt-detail table td{font-size:12px;vertical-align:top;overflow-wrap:anywhere}
-.dt-suite textarea{min-height:360px;resize:vertical;font:12px/1.5 ui-monospace,Consolas,monospace}
+.dt-suite textarea{display:block;width:100%;box-sizing:border-box;min-height:320px;max-height:50vh;resize:vertical;font:12px/1.5 ui-monospace,Consolas,monospace}
 @media (max-width:900px){.dt-form{grid-template-columns:1fr}}
+@media (max-width:700px){.dt-view{padding-left:14px;padding-right:14px}}
 ''';
 
-/// The Decider test tab: model picker, batch runs, the cost/performance
+/// The Decider test view in the Add benchmark dialog: model picker, batch runs, the cost/performance
 /// chart, the results table and the suite editor.
 const _deciderScript = r'''
 (function () {
@@ -532,6 +546,28 @@ const _deciderScript = r'''
   let models = [];
   let keyTouched = false;
   key.addEventListener('keydown', () => { keyTouched = true; });
+
+  // The Add benchmark dialog's header switch: scene benchmark or this test.
+  const dlg = document.getElementById('bgDialog');
+  const view = document.getElementById('dtView');
+  const foot = document.getElementById('dtFoot');
+  const sub = document.getElementById('bgSub');
+  const sceneSub = sub ? sub.textContent : '';
+  const modeBtns = dlg ? dlg.querySelectorAll('.bg-mode [data-mode]') : [];
+  function setMode(mode) {
+    const decider = mode === 'decider';
+    if (dlg) dlg.classList.toggle('is-decider', decider);
+    view.hidden = !decider;
+    foot.hidden = !decider;
+    modeBtns.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.mode === mode)));
+    if (sub) sub.textContent = decider
+      ? 'Decision models work through a hard moderation suite; the server scores every answer and plots cost against accuracy. Separate from the scene benchmarks.'
+      : sceneSub;
+    try { localStorage.setItem('lumaBenchmarkMode', decider ? 'decider' : 'scene'); } catch (_) {}
+    if (decider) load();
+  }
+  window.lumaBenchmarkMode = setMode;
+  modeBtns.forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
   key.addEventListener('paste', () => { keyTouched = true; });
 
   function esc(v) {
@@ -830,6 +866,8 @@ const _deciderScript = r'''
     });
   });
 
-  load();
+  let saved = 'scene';
+  try { saved = localStorage.getItem('lumaBenchmarkMode') || 'scene'; } catch (_) {}
+  if (saved === 'decider') setMode('decider'); else load();
 })();
 ''';

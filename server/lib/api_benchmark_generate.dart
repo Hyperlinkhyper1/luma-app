@@ -1006,13 +1006,25 @@ extension BenchmarkGenerateApi on Api {
 /// The "Add benchmark" dialog: key → model → test → entry, top to bottom.
 /// The script fills the key, model and test lists from
 /// `/admin/benchmarks/generate` and the Assistant tab's model data.
-String _bgDialogHtml() => '<dialog id="bgDialog" class="bn-dialog bg-dialog" '
+///
+/// A switch in the header flips the dialog to [deciderView], the Decider
+/// test (see `api_decider_tests.dart`). It sits outside the scene form and
+/// has its own endpoints and runs; the two only share the dialog.
+String _bgDialogHtml({String deciderView = ''}) =>
+    '<dialog id="bgDialog" class="bn-dialog bg-dialog" '
     'aria-labelledby="bgTitle">'
     '<form id="bgForm" novalidate>'
     '<div class="bn-dlg-head"><div><h2 id="bgTitle">Add a benchmark</h2>'
-    '<div class="bn-dlg-sub">A model on one of the server\'s keys writes the '
+    '<div id="bgSub" class="bn-dlg-sub">A model on one of the server\'s keys writes the '
     'scene from the test\'s prompt. It is added as a new entry; existing '
-    'entries are never touched.</div></div>'
+    'entries are never touched.</div>'
+    '${deciderView.isEmpty ? '' : '<div class="bg-mode" role="tablist" '
+        'aria-label="Benchmark kind">'
+        '<button type="button" role="tab" data-mode="scene" '
+        'aria-selected="true">Scene benchmark</button>'
+        '<button type="button" role="tab" data-mode="decider" '
+        'aria-selected="false">Decider test (Moderation)</button></div>'}'
+    '</div>'
     '<button type="button" class="bn-icon-btn" data-close aria-label="Close">'
     '${Api._bnCloseIcon}</button></div>'
     '<div class="bg-body">'
@@ -1095,7 +1107,7 @@ String _bgDialogHtml() => '<dialog id="bgDialog" class="bn-dialog bg-dialog" '
     '<button type="button" class="btn btn-ghost" data-close>Cancel</button>'
     '<button id="bgStart" type="submit" class="btn btn-primary">Start run'
     '</button></div>'
-    '</form></dialog>';
+    '</form>$deciderView</dialog>';
 
 const _bgCss = r'''
 .bg-dialog{width:min(820px,calc(100vw - 32px))}
@@ -1499,6 +1511,7 @@ const _bgScript = r'''
   // effort read from its "(High)"-style suffix, as a starting guess.
   function openDialog(rep) {
     replace = rep || null;
+    if (replace && window.lumaBenchmarkMode) window.lumaBenchmarkMode('scene');
     nameBox.readOnly = !!replace;
     vendor.disabled = !!replace;
     if (replace) {

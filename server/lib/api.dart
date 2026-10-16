@@ -3124,7 +3124,7 @@ class Api {
   /// `api_school_tests.dart`).
   late final SchoolTestStore schoolTests = SchoolTestStore(config.dataDir);
 
-  /// The Decider test tab's moderation suite and runs (see
+  /// The Add benchmark dialog's Decider test: its moderation suite and runs (see
   /// `api_decider_tests.dart`).
   late final DeciderTestStore deciderTests = DeciderTestStore(config.dataDir);
 
@@ -11138,7 +11138,6 @@ syncToolbar();
         '<button class="tab-btn" data-tab="metrics">Metrics</button>'
         '<button class="tab-btn" data-tab="assistant">Assistant</button>'
         '<button class="tab-btn" data-tab="tests">Tests</button>'
-        '<button class="tab-btn" data-tab="decider">Decider test</button>'
         '<button class="tab-btn" data-tab="control">Maintenance</button>'
         '</div>'
         '${_adminAssistantPanel(googleModels, mistralModels)}'
@@ -11367,7 +11366,8 @@ syncToolbar();
         '${_cardHead('cube', 'AI benchmark scenes')}'
         '<div class="maint-desc" tabindex="0">Adds a model\'s run of one of the AI Usage '
         'plugin\'s tests. "Add benchmark" has a model on one of the '
-        'server\'s keys write the scene from the test\'s prompt; "Upload" '
+        'server\'s keys write the scene from the test\'s prompt, or runs '
+        'the separate Decider test (Moderation) on decision models; "Upload" '
         'takes a page you already have. Either way the scene is live in the '
         'app right away and is committed to <code>server/benchmarks/</code> '
         'on GitHub (with <code>[skip ci]</code>, so no release build runs), '
@@ -11384,7 +11384,7 @@ syncToolbar();
         '<div id="bgRuns" class="bg-runs" aria-live="polite"></div>'
         '<div id="bgRepairs" class="bg-runs" aria-live="polite"></div>'
         '$_bmUploadDialogHtml'
-        '${_bgDialogHtml()}'
+        '${_bgDialogHtml(deciderView: _adminDeciderView())}'
         '</div>'
         '<div class="card">'
         '${_cardHead('image', 'AI benchmark banners', extra: '<button id="bannersRepairSettingsBtn" type="button" class="bn-icon-btn bn-icon-btn--sm" aria-label="Banner render settings" title="Banner render settings">${_ico('cog')}</button>')}'
@@ -11428,7 +11428,6 @@ syncToolbar();
         '${_sectionLabel('School test')}'
         '${_adminSchoolTestsCard()}'
         '</div>'
-        '${_adminDeciderPanel()}'
         '<script>$_adminMenuScript</script>'
         '<script>$_adminTabScript</script>'
         '<script>$_adminUsageScript</script>'
@@ -13537,7 +13536,6 @@ window.lumaAskReason = function (form, message) {
     metrics: document.getElementById('panel-metrics'),
     assistant: document.getElementById('panel-assistant'),
     tests: document.getElementById('panel-tests'),
-    decider: document.getElementById('panel-decider'),
     control: document.getElementById('panel-control'),
   };
   function activate(tab) {
