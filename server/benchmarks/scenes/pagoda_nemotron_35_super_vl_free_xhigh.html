@@ -615,7 +615,7 @@ const statFps = document.getElementById('statFps');
 const statHint = document.getElementById('statHint');
 
 window.__VOXEL__ = {
-  voxelCount: totalVoxel,
+  voxelCount: totalVoxels,
   fps: 0,
   pagodaFloors: 5,
   timeOfDay: 0
@@ -643,12 +643,11 @@ function animate(now) {
     fps = frames;
     frames = 0;
     lastFpsTime = now;
-    statFps.textContent = `${fps} FPS`;
-    statVox.textContent = `${totalVoxel} voxels`;
-    window.__VOXEL__.voxelCount = totalVoxel;
-    window.__VOXEL__.fps = fps;
-    window.__VOXEL__.timeOfDay = timeOfDay;
-  }
+    statFps.textContent = `${fps} FPS`;  statVox.textContent = `${totalVoxels} voxels`;
+  window.__VOXEL__.voxelCount = totalVoxels;
+  window.__VOXEL__.fps = fps;
+  window.__VOXEL__.timeOfDay = timeOfDay;
+}
 }
 
 window.addEventListener('resize', () => {
