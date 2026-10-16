@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nightjar N-7 · Thessaly & Crane</title>
+<style>
+:root{--ink:#ece4d2;--mute:#9aa3b8;--gold:#dcb878;--glass:rgba(7,11,22,.74);--edge:rgba(220,184,120,.3);--sky:#7fb2ff}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#03050b;color:var(--ink);font:13px/1.45 system-ui,”Segoe UI”,sans-serif;-webkit-user-select:none;user-select:none}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;outline:none;touch-action:none;cursor:grab}
+#c.grab{cursor:grabbing}#c.hot{cursor:pointer}
+.ui{position:fixed;z-index:2;background:var(--glass);border:1px solid var(--edge);border-radius:12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+body.off .ui:not(#hide){display:none}
+button{font:inherit;color:var(--ink);background:rgba(255,255,255,.04);border:1px solid var(--edge);border-radius:8px;padding:6px 10px;cursor:pointer;white-space:nowrap}
+button:hover{border-color:var(--gold)}
+button.on{background:rgba(220,184,120,.2);border-color:var(--gold)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--sky);outline-offset:2px}
+input[type=range]{accent-color:var(--gold);width:110px;vertical-align:middle}
+.kicker{font-size:10px;letter-spacing:.24em;color:var(--gold);text-transform:uppercase}
+.lab{color:var(--mute);font-size:11px;letter-spacing:.12em;text-transform:uppercase;margin-top:2px}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#load{left:50%;top:50%;transform:translate(-50%,-50%);padding:14px 22px;font-family:Georgia,serif;letter-spacing:.06em;transition:opacity .6s}
+#nogl{left:50%;top:50%;transform:translate(-50%,-50%);max-width:420px;padding:18px;text-align:center}
+[hidden]{display:none!important}
+#brand{left:18px;top:16px;padding:14px 18px;min-width:250px;opacity:0;animation:rise .9s ease 3.3s forwards}
+h1{margin:4px 0 0;font:600 28px/1.05 Georgia,”Times New Roman”,serif;letter-spacing:.02em}
+h1 small{display:block;margin-top:4px;font:500 12px system-ui,sans-serif;color:var(--mute);letter-spacing:.06em}
+#way{margin-top:8px;color:var(--mute);font-size:12px}
+#spec{left:18px;top:184px;width:300px;padding:12px 14px;font-size:12px}
+#spec dl{display:grid;grid-template-columns:70px 1fr;gap:5px 10px;margin:8px 0 0}
+#spec dt{color:var(--gold)}#spec dd{margin:0}
+#tools{right:16px;top:16px;width:280px;padding:12px;display:grid;gap:7px}
+#moves{left:50%;bottom:16px;transform:translateX(-50%);padding:10px;display:flex;flex-direction:column;gap:8px;align-items:center;max-width:calc(100vw - 32px)}
+#moves .row{justify-content:center}
+#cap{left:50%;top:20%;transform:translateX(-50%);padding:8px 16px;font:italic 600 18px Georgia,serif;letter-spacing:.04em;opacity:0;pointer-events:none;white-space:nowrap}
+#cap.show{animation:cap 1.8s ease both}
+#tag{position:fixed;z-index:3;pointer-events:none;padding:4px 9px;font-size:12px;background:rgba(7,11,22,.88);border:1px solid var(--gold);border-radius:6px;white-space:nowrap}
+#hide{right:16px;bottom:16px;z-index:3}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes cap{0%{opacity:0;transform:translate(-50%,6px)}12%,80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-6px)}}
+@media (max-width:760px){
+#spec{display:none}
+#brand{min-width:0;width:calc(100% - 20px);left:10px;top:10px;padding:10px 12px}
+h1{font-size:22px}
+#tools{left:10px;right:10px;top:auto;bottom:168px;width:auto;max-height:34vh;overflow:auto;grid-template-columns:1fr}
+#moves{left:10px;right:10px;transform:none;bottom:8px;max-width:none}
+#hide{right:10px;bottom:auto;top:auto;bottom:8px}
+}
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Nightjar N-7 butterfly knife, interactive 3D"></canvas>
+<div id="load" class="ui">Forging the Nightjar…</div>
+<div id="nogl" class="ui" hidden>WebGL is unavailable in this view, so the knife cannot be drawn. Turn on hardware graphics or open the page in a browser with WebGL.</div>
+<header id="brand" class="ui">
+<div class="kicker">Thessaly & Crane · Harbour Works</div>
+<h1>Nightjar<small>Model N-7 “Vesper” · balisong</small></h1>
+<div id="way"></div>
+</header>
+<section id="spec" class="ui">
+<div class="kicker">Specification</div>
+<dl>
+<dt>Length</dt><dd>23.0 cm open · 13.1 cm closed</dd>
+<dt>Blade</dt><dd>10.4 cm stonewashed powder steel, hollow grind, shark-fin belly</dd>
+<dt>Handles</dt><dd>Anodised titanium. Bite handle has a crescent window with a brass insert; safe handle has a milled tern-wing lattice</dd>
+<dt>Latch</dt><dd>Brass crescent swing latch</dd>
+<dt>Weight</dt><dd>118 g</dd>
+<dt>Pivot</dt><dd>Titanium pivot screws, bronze bushings, brass zen pins</dd>
+<dt>Mark</dt><dd>Crescent over a dot, engraved on the blade</dd>
+</dl>
+</section>
+<div id="cap" class="ui"></div>
+<div id="tag" class="ui" hidden></div>
+<nav id="moves" class="ui">
+<div class="row">
+<button data-move="open">1 Basic open</button>
+<button data-move="close">2 Basic close</button>
+<button data-move="chaplin">3 Chaplin</button>
+<button data-move="zen">4 Zen rollover</button>
+<button data-move="fan">5 Fan</button>
+<button data-move="helix">6 Helix</button>
+<button data-move="aerial">7 Aerial</button>
+<button data-move="dive">8 Nightjar dive</button>
+</div>
+<div class="row">
+<button id="combo">Combo (C)</button>
+<button id="free">Freestyle (F)</button>
+<button id="stop">Stop (Esc)</button>
+</div>
+</nav>
+<aside id="tools" class="ui">
+<div class="lab">Camera</div>
+<div class="row">
+<button data-cam="hero">Hero</button><button data-cam="blade">Blade</button><button data-cam="pivot">Pivot</button><button data-cam="latch">Latch</button><button data-cam="top">Top</button>
+</div>
+<div class="row"><button id="explode">Exploded view (E)</button><button id="turn">Turntable</button></div>
+<div class="lab">Colourway</div>
+<div class="row"><button data-way="nightjar">Nightjar</button><button data-way="dawnline">Dawnline</button><button data-way="kelp">Kelp</button></div>
+<div class="lab">Motion</div>
+<div class="row"><label>Speed <input id="speed" type="range" min="0.25" max="2" step="0.05" value="1"> <span id="spd">1.00×</span></label></div>
+<div class="row"><button id="slow">Slow-mo (S)</button><button id="trail">Trail (T)</button></div>
+<div class="lab">Sound</div>
+<div class="row"><button id="mute">Mute (M)</button><label>Volume <input id="vol" type="range" min="0" max="1" step="0.05" value="0.7"></label></div>
+</aside>
+<button id="hide" class="ui">Hide UI (H)</button>
+<script type="importmap">
+{“imports”:{“three”:”https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from ‘three’;
+import { OrbitControls } from ‘three/addons/controls/OrbitControls.js’;
+
+const PI = Math.PI, TAU = PI * 2;
+const $ = (s) => document.querySelector(s);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const seg = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+const win = (t, a, b, r = 0.05) => clamp(Math.min((t - a) / r, (b - t) / r), 0, 1);
+const outCubic = (t) => 1 - Math.pow(1 - t, 3);
+const inOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const stop = (t) => { t = clamp(t, 0, 1); return outCubic(t) + 0.03 * Math.sin(TAU * t) * (1 - t); };
+const qEuler = (x, y, z) => new THREE.Quaternion().setFromEuler(new THREE.Euler(x, y, z, ‘XYZ’));
+let seed = 4242;
+const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+const WAYS = [
+{ id: ‘nightjar’, name: ‘Nightjar’, note: ‘midnight anodised titanium, brass pivots, copper inlay’, blade: 0xc3cad8, handle: 0x1d2b55, metal: 0.6, rough: 0.3, pivot: 0xd9b46e, latch: 0xd9b46e, insert: 0xe0bb72, accent: 0xc9825a, sound: { f: 2600, d: 0.07 } },
+{ id: ‘dawnline’, name: ‘Dawnline’, note: ‘ivory G10, rose-gold pivots, copper-brown inlay’, blade: 0xd6d1c9, handle: 0xe8dfcc, metal: 0.05, rough: 0.48, pivot: 0xe3a68e, latch: 0xe3a68e, insert: 0xb4623f, accent: 0x8f4f36, sound: { f: 1500, d: 0.1 } },
+{ id: ‘kelp’, name: ‘Kelp’, note: ‘kelp-black carbon weave, titanium pivots, teal latch’, blade: 0x9ea6b1, handle: 0x101e1b, metal: 0.25, rough: 0.4, pivot: 0x9ba4af, latch: 0x3fb59c, insert: 0x3fb59c, accent: 0x3fb59c, sound: { f: 3200, d: 0.05 } }
+];
+let W = WAYS[0];
+
+function tex(w, h, draw, srgb = false) {
+const c = document.createElement(‘canvas’); c.width = w; c.height = h;
+draw(c.getContext(‘2d’), w, h);
+const t = new THREE.CanvasTexture(c);
+t.anisotropy = 8;
+if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+return t;
+}
+function uvFit(t, x0, x1, y0, y1) {
+t.repeat.set(1 / (x1 - x0), 1 / (y1 - y0));
+t.offset.set(-x0 / (x1 - x0), -y0 / (y1 - y0));
+return t;
+}
+
+const bladeMap = uvFit(tex(1024, 256, (g, w, h) => {
+g.fillStyle = ‘#d3d8e0’; g.fillRect(0, 0, w, h);
+for (let i = 0; i < 7000; i++) {
+g.fillStyle = rnd() < 0.5 ? ‘rgba(255,255,255,.12)’ : ‘rgba(60,70,90,.07)’;
+g.fillRect(rnd() * w, rnd() * h, 3 + rnd() * 26, 1);
+}
+const mx = ((0 - -0.9) / 10.8) * w, my = (1.15 / 2.55) * h;
+g.save(); g.translate(mx, my);
+g.strokeStyle = ‘#2a3144’; g.fillStyle = ‘#2a3144’; g.lineWidth = 4;
+g.beginPath(); g.arc(0, 0, 54, 0, TAU); g.stroke();
+g.beginPath(); g.arc(0, -30, 6, 0, TAU); g.fill();
+g.beginPath(); g.arc(0, 10, 22, PI * 0.15, PI * 1.85); g.arc(8, 10, 17, PI * 1.6, PI * 0.4, true); g.fill();
+g.restore();
+g.fillStyle = ‘#2a3144’; g.font = ‘500 15px system-ui,sans-serif’;
+g.fillText(‘NIGHTJAR · N-7’, ((3 + 0.9) / 10.8) * w, ((1.15 - 0.55) / 2.55) * h);
+}, true), -0.9, 9.9, -1.4, 1.15);
+
+const grainBump = uvFit(tex(512, 512, (g, w, h) => {
+g.fillStyle = ‘#808080’; g.fillRect(0, 0, w, h);
+for (let i = 0; i < 16000; i++) {
+const v = (100 + rnd() * 110) | 0;
+g.fillStyle = rgb(${v},${v},${v});
+g.fillRect(rnd() * w, rnd() * h, 1 + rnd() * 2, 1 + rnd() * 2);
+}
+}), -1, 11.75, -1.15, 1.15);
+
+const millBump = uvFit(tex(512, 512, (g, w, h) => {
+g.fillStyle = ‘#9a9a9a’; g.fillRect(0, 0, w, h);
+g.strokeStyle = ‘#222’; g.lineWidth = 9; g.lineJoin = ‘round’;
+for (let r = -1; r < 18; r++) {
+g.beginPath();
+for (let x = 0; x <= w + 32; x += 32) {
+const y = r * 30 + ((x / 32) % 2) * 15;
+if (x === 0) g.moveTo(x, y); else g.lineTo(x, y);
+}
+g.stroke();
+}
+}), -1, 11.75, -1.15, 1.15);
+
+const MAT = {
+blade: new THREE.MeshPhysicalMaterial({ map: bladeMap, metalness: 1, roughness: 0.3, clearcoat: 0.4, clearcoatRoughness: 0.18 }),
+biteH: new THREE.MeshPhysicalMaterial({ metalness: 0.6, roughness: 0.34, clearcoat: 1, clearcoatRoughness: 0.12, iridescence: 0.5, iridescenceIOR: 1.6, bumpMap: grainBump, bumpScale: 0.6 }),
+safeH: new THREE.MeshPhysicalMaterial({ metalness: 0.6, roughness: 0.34, clearcoat: 1, clearcoatRoughness: 0.12, iridescence: 0.5, iridescenceIOR: 1.6, bumpMap: millBump, bumpScale: 1.2 }),
+pivot: new THREE.MeshPhysicalMaterial({ metalness: 1, roughness: 0.22, clearcoat: 0.6 }),
+latch: new THREE.MeshPhysicalMaterial({ metalness: 1, roughness: 0.28 }),
+insert: new THREE.MeshPhysicalMaterial({ metalness: 1, roughness: 0.25 }),
+accent: new THREE.MeshPhysicalMaterial({ metalness: 1, roughness: 0.3 }),
+ti: new THREE.MeshPhysicalMaterial({ color: 0x7d8694, metalness: 1, roughness: 0.34 }),
+skin: new THREE.MeshPhysicalMaterial({ color: 0xc78f72, roughness: 0.55, clearcoat: 0.25, clearcoatRoughness: 0.45, sheen: 0.5, sheenColor: new THREE.Color(0xffc9a8) })
+};
+
+const canvas = $(‘#c’);
+let renderer;
+try {
+renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: ‘high-performance’ });
+} catch (err) {
+$(‘#load’).hidden = true; $(‘#nogl’).hidden = false;
+throw err;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight, false);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x05080f, 70, 190);
+const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.1, 500);
+camera.position.set(0, 8, 78);
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.add(new THREE.Mesh(new THREE.SphereGeometry(40, 32, 16), new THREE.MeshBasicMaterial({ color: 0x101a34, side: THREE.BackSide })));
+[[0, 26, -14, 46, 6, [3.2, 2.7, 2.0]], [-26, 8, 8, 5, 26, [1.2, 1.6, 3.0]], [24, 4, 18, 5, 22, [2.4, 2.0, 1.5]], [0, -14, 0, 80, 80, [0.25, 0.3, 0.4]]].forEach(([x, y, z, w, h, c]) => {
+const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(...c), side: THREE.DoubleSide }));
+m.position.set(x, y, z); m.lookAt(0, 0, 0); envScene.add(m);
+});
+scene.environment = pmrem.fromScene(envScene, 0.03).texture;
+
+const sky = tex(1024, 512, (g, w, h) => {
+const gr = g.createLinearGradient(0, 0, 0, h);
+gr.addColorStop(0, ‘#050916’); gr.addColorStop(0.6, ‘#132445’); gr.addColorStop(1, ‘#1c2f55’);
+g.fillStyle = gr; g.fillRect(0, 0, w, h);
+for (let i = 0; i < 260; i++) {
+g.fillStyle = rgba(255,255,255,${0.2 + rnd() * 0.7});
+g.fillRect(rnd() * w, rnd() * h * 0.7, 1.5, 1.5);
+}
+const mg = g.createRadialGradient(w * 0.72, h * 0.26, 10, w * 0.72, h * 0.26, 150);
+mg.addColorStop(0, ‘rgba(255,240,205,.9)’); mg.addColorStop(0.2, ‘rgba(255,230,180,.3)’); mg.addColorStop(1, ‘rgba(255,230,180,0)’);
+g.fillStyle = mg; g.fillRect(0, 0, w, h);
+g.fillStyle = ‘#fff3d6’; g.beginPath(); g.arc(w * 0.72, h * 0.26, 34, 0, TAU); g.fill();
+}, true);
+const backdrop = new THREE.Mesh(new THREE.PlaneGeometry(300, 150), new THREE.MeshBasicMaterial({ map: sky, depthWrite: false, fog: false }));
+backdrop.position.set(0, 12, -90);
+scene.add(backdrop);
+
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: 0x0a1426, roughness: 0.22, metalness: 0.55 }));
+floor.rotation.x = -PI / 2; floor.position.y = -9; floor.receiveShadow = true;
+scene.add(floor);
+
+const beamGroup = new THREE.Group();
+beamGroup.position.set(-46, 9, -52);
+scene.add(beamGroup);
+const beam = new THREE.Mesh(new THREE.CylinderGeometry(16, 0.6, 96, 28, 1, true), new THREE.MeshBasicMaterial({ color: 0xffe6b8, transparent: true, opacity: 0.07, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+beam.rotation.z = -PI / 2; beam.position.x = 48;
+beamGroup.add(beam);
+
+const key = new THREE.DirectionalLight(0xffe2b8, 2.4);
+key.position.set(-12, 14, 16); key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.left = -14; key.shadow.camera.right = 14; key.shadow.camera.top = 14; key.shadow.camera.bottom = -14;
+key.shadow.bias = -0.0005; key.shadow.normalBias = 0.02;
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x7fa6ff, 1.6);
+rim.position.set(10, 8, -12);
+scene.add(rim);
+scene.add(new THREE.HemisphereLight(0x9bb8ff, 0x0a0d14, 0.5));
+const sweep = new THREE.PointLight(0xffe2b8, 0, 40, 2);
+sweep.position.set(-16, 6, 10);
+scene.add(sweep);
+
+function crescentPts(cx, cy, R, n = 40) {
+const d = 0.3 * R, pts = [];
+for (let i = 0; i <= n; i++) { const a = -1.72 + (3.44 * i) / n; pts.push([cx + R * Math.cos(a), cy + R * Math.sin(a)]); }
+for (let i = 0; i <= n; i++) { const a = 1.42 - (2.84 * i) / n; pts.push([cx - d + R * Math.cos(a), cy + R * Math.sin(a)]); }
+return pts;
+}
+function bladeGeo() {
+const s = new THREE.Shape();
+s.moveTo(-0.9, 0.95);
+s.lineTo(0.6, 1.05);
+s.quadraticCurveTo(5.0, 1.15, 8.6, 0.85);
+s.quadraticCurveTo(9.5, 0.6, 9.9, 0.05);
+s.quadraticCurveTo(7.6, -0.75, 4.2, -1.05);
+s.quadraticCurveTo(1.6, -1.25, 0.1, -1.05);
+s.lineTo(-0.2, -1.4);
+s.lineTo(-0.9, -1.3);
+s.closePath();
+const hole = new THREE.Path(); hole.absarc(0, 0, 0.2, 0, TAU, true);
+s.holes.push(hole);
+return new THREE.ExtrudeGeometry(s, { depth: 0.14, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.04, bevelSegments: 3, curveSegments: 24 }).translate(0, 0, -0.07);
+}
+function handleGeo(crescent) {
+const s = new THREE.Shape();
+s.moveTo(0, 1.0);
+s.bezierCurveTo(3.2, 1.12, 7.0, 1.0, 9.8, 0.78);
+s.quadraticCurveTo(11.7, 0.5, 11.75, 0);
+s.quadraticCurveTo(11.7, -0.5, 9.8, -0.78);
+s.bezierCurveTo(7.0, -1.0, 3.2, -1.12, 0, -1.0);
+s.absarc(0, 0, 1.0, -PI / 2, -PI * 1.5, true);
+const pin = new THREE.Path(); pin.absarc(0, 0, 0.3, 0, TAU, true);
+s.holes.push(pin);
+if (crescent) {
+const h = new THREE.Path();
+crescentPts(6.0, 0, 0.72).forEach(([x, y], i) => (i ? h.lineTo(x, y) : h.moveTo(x, y)));
+s.holes.push(h);
+}
+return new THREE.ExtrudeGeometry(s, { depth: 0.32, bevelEnabled: true, bevelThickness: 0.035, bevelSize: 0.03, bevelSegments: 3, curveSegments: 20 });
+}
+function crescentGeo(R) {
+const s = new THREE.Shape();
+crescentPts(6.0, 0, R).forEach(([x, y], i) => (i ? s.lineTo(x, y) : s.moveTo(x, y)));
+return new THREE.ExtrudeGeometry(s, { depth: 0.3, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 2, curveSegments: 12 });
+}
+function latchGeo() {
+const s = new THREE.Shape();
+s.moveTo(0, -0.2); s.lineTo(2.3, -0.2); s.quadraticCurveTo(2.9, 0, 2.3, 0.2); s.lineTo(0, 0.2); s.closePath();
+return new THREE.ExtrudeGeometry(s, { depth: 0.06, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 2, curveSegments: 8 });
+}
+const cyl = (r, h, seg = 20) => new THREE.CylinderGeometry(r, r, h, seg).rotateX(PI / 2);
+
+const pick = [];
+function part(geo, mat, parent, label, pos, opts = {}) {
+const m = new THREE.Mesh(geo, mat);
+m.castShadow = true; m.receiveShadow = true;
+if (pos) m.position.set(pos[0], pos[1], pos[2]);
+if (label) { m.userData.label = label; pick.push(m); }
+if (opts.handle) m.userData.handle = opts.handle;
+parent.add(m);
+return m;
+}
+
+const knife = new THREE.Group();
+scene.add(knife);
+const biteG = new THREE.Group(), safeG = new THREE.Group(), pinBite = new THREE.Group(), pinSafe = new THREE.Group();
+knife.add(biteG, safeG, pinBite, pinSafe);
+
+part(bladeGeo(), MAT.blade, knife, ‘Blade’, [0, 0, 0]);
+part(cyl(0.14, 1.4), MAT.ti, knife, ‘Pivot screw’, [0, 0, 0]);
+part(handleGeo(true), MAT.biteH, biteG, ‘Bite handle’, [0, 0, 0.155], { handle: ‘bite’ });
+part(handleGeo(false), MAT.safeH, safeG, ‘Safe handle’, [0, 0, -0.475], { handle: ‘safe’ });
+part(crescentGeo(0.7), MAT.insert, biteG, ‘Brass crescent insert’, [0, 0, 0.14]);
+const latch = part(latchGeo(), MAT.latch, biteG, ‘Latch’, [7.4, 0.1, 0.5]);
+part(new THREE.BoxGeometry(9.0, 0.05, 0.03), MAT.accent, biteG, ‘Copper inlay’, [5.2, 0.86, 0.515]);
+part(new THREE.BoxGeometry(9.0, 0.05, 0.03), MAT.accent, biteG, ‘Copper inlay’, [5.2, -0.86, 0.515]);
+[[4.2, 0.45, 0.52], [4.2, -0.45, 0.52]].forEach((p) => part(cyl(0.09, 0.05, 12), MAT.ti, biteG, ‘Handle screw’, p));
+[[4.2, 0.45, -0.52], [4.2, -0.45, -0.52]].forEach((p) => part(cyl(0.09, 0.05, 12), MAT.ti, safeG, ‘Handle screw’, p));
+
+function pivotHW(g, s) {
+part(cyl(0.4, 0.05), MAT.ti, g, ‘Washer’, [0, 0, s * 0.55]);
+part(cyl(0.22, 0.14, 24), MAT.pivot, g, ‘Pivot screw head’, [0, 0, s * 0.67]);
+part(new THREE.TorusGeometry(0.26, 0.05, 12, 36), MAT.accent, g, ‘Bronze bushing’, [0, 0, s * 0.52]);
+part(cyl(0.07, 0.14, 10), MAT.accent, g, ‘Zen pin’, [0.5, 0.25, s * 0.62]);
+part(cyl(0.07, 0.14, 10), MAT.accent, g, ‘Zen pin’, [-0.5, -0.25, s * 0.62]);
+}
+pivotHW(pinBite, 1);
+pivotHW(pinSafe, -1);
+
+const hand = new THREE.Group();
+scene.add(hand);
+const handPart = (geo, x, y, z, rx = 0, ry = 0, rz = 0) => {
+const m = new THREE.Mesh(geo, MAT.skin);
+m.position.set(x, y, z); m.rotation.set(rx, ry, rz); m.castShadow = true;
+hand.add(m); return m;
+};
+handPart(new THREE.SphereGeometry(1.15, 24, 18), 0, -2.05, 0.25);
+for (let i = 0; i < 4; i++) handPart(new THREE.CapsuleGeometry(0.27, 1.5, 6, 12), 0.05, -0.25 - i * 0.42, 1.05, 0, 0, PI / 2);
+handPart(new THREE.CapsuleGeometry(0.28, 1.2, 6, 12), 0.85, -0.7, -0.95, 0, 0, PI / 2 - 0.4);
+handPart(new THREE.CapsuleGeometry(0.95, 6.5, 8, 16), 0.6, -6.6, -0.6, 0.12, 0, 0);
+
+const TN = 70;
+const tPos = new Float32Array(TN * 3), tCol = new Float32Array(TN * 3);
+const tGeo = new THREE.BufferGeometry();
+tGeo.setAttribute(‘position’, new THREE.BufferAttribute(tPos, 3));
+tGeo.setAttribute(‘color’, new THREE.BufferAttribute(tCol, 3));
+tGeo.setDrawRange(0, 0);
+const trail = new THREE.Line(tGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+trail.frustumCulled = false; trail.visible = false;
+scene.add(trail);
+let trailN = 0;
+const tipV = new THREE.Vector3();
+function pushTrail(v) {
+tPos.copyWithin(3, 0, (TN - 1) * 3);
+tPos.set([v.x, v.y, v.z], 0);
+trailN = Math.min(TN, trailN + 1);
+for (let i = 0; i < trailN; i++) {
+const f = 1 - i / TN;
+tCol[i * 3] = 1.0 * f; tCol[i * 3 + 1] = 0.78 * f; tCol[i * 3 + 2] = 0.45 * f;
+}
+tGeo.attributes.position.needsUpdate = true;
+tGeo.attributes.color.needsUpdate = true;
+tGeo.setDrawRange(0, trailN);
+}
+
+function applyWay(w) {
+W = w;
+MAT.blade.color.setHex(w.blade);
+MAT.biteH.color.setHex(w.handle); MAT.safeH.color.setHex(w.handle);
+MAT.biteH.metalness = MAT.safeH.metalness = w.metal;
+MAT.biteH.roughness = MAT.safeH.roughness = w.rough;
+MAT.pivot.color.setHex(w.pivot); MAT.latch.color.setHex(w.latch);
+MAT.insert.color.setHex(w.insert); MAT.accent.color.setHex(w.accent);
+$(‘#way’).textContent = ${w.name} · ${w.note};
+document.querySelectorAll(‘[data-way]’).forEach((b) => b.classList.toggle(‘on’, b.dataset.way === w.id));
+}
+applyWay(WAYS[0]);
+
+let AC = null, master = null, noiseBuf = null, muted = false, vol = 0.7;
+let swishF, swishG, rattleF, rattleG;
+function audioInit() {
+if (AC) return;
+AC = new (window.AudioContext || window.webkitAudioContext)();
+master = AC.createGain(); master.gain.value = muted ? 0 : vol; master.connect(AC.destination);
+noiseBuf = AC.createBuffer(1, AC.sampleRate * 2, AC.sampleRate);
+const d = noiseBuf.getChannelData(0);
+for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+const loop = (f, q) => {
+const s = AC.createBufferSource(); s.buffer = noiseBuf; s.loop = true;
+const bp = AC.createBiquadFilter(); bp.type = ‘bandpass’; bp.frequency.value = f; bp.Q.value = q;
+const g = AC.createGain(); g.gain.value = 0;
+s.connect(bp).connect(g).connect(master); s.start();
+return [bp, g];
+};
+[swishF, swishG] = loop(700, 2.5);
+[rattleF, rattleG] = loop(2400, 5);
+}
+function audioOn() { audioInit(); if (AC.state === ‘suspended’) AC.resume(); }
+function clack(v, prof) {
+const t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain();
+o.type = ‘sine’;
+o.frequency.setValueAtTime(prof.f * 1.5, t);
+o.frequency.exponentialRampToValueAtTime(prof.f * 0.7, t + prof.d);
+g.gain.setValueAtTime(v * 0.6, t);
+g.gain.exponentialRampToValueAtTime(0.0008, t + prof.d);
+o.connect(g).connect(master); o.start(t); o.stop(t + prof.d + 0.02);
+const n = AC.createBufferSource(), hp = AC.createBiquadFilter(), ng = AC.createGain();
+n.buffer = noiseBuf; hp.type = ‘highpass’; hp.frequency.value = prof.f * 1.3;
+ng.gain.setValueAtTime(v * 0.7, t);
+ng.gain.exponentialRampToValueAtTime(0.0008, t + 0.025);
+n.connect(hp).connect(ng).connect(master); n.start(t, Math.random(), 0.04);
+}
+function ring(v) {
+const t = AC.currentTime, f0 = W.sound.f * 0.75;
+[[1, 1, 1.6], [2.76, 0.5, 1.1], [5.4, 0.25, 0.7], [8.93, 0.12, 0.4]].forEach(([r, a, dec]) => {
+const o = AC.createOscillator(), g = AC.createGain();
+o.frequency.value = f0 * r;
+g.gain.setValueAtTime(0.0001, t);
+g.gain.linearRampToValueAtTime(v * a * 0.18, t + 0.005);
+g.gain.exponentialRampToValueAtTime(0.0001, t + dec);
+o.connect(g).connect(master); o.start(t); o.stop(t + dec + 0.05);
+});
+}
+
+const BASE = { bite: PI, safe: PI, lat: 0, px: 0, py: 0, pz: 0, rx: 0, ry: 0, rz: 0 };
+const MOVES = {
+open: { name: ‘Basic open’, from: ‘closed’, dur: 1.9, fn: (t) => ({
+bite: PI * stop(seg(t, 0.46, 0.9)), safe: PI * stop(seg(t, 0.14, 0.5)), lat: win(t, 0.03, 0.46, 0.04) }) },
+close: { name: ‘Basic close’, from: ‘open’, dur: 1.9, fn: (t) => ({
+bite: PI * (1 - stop(seg(t, 0.14, 0.56))), safe: PI * (1 - stop(seg(t, 0.5, 0.92))), lat: win(t, 0.02, 0.9, 0.04) }) },
+chaplin: { name: ‘Chaplin’, from: ‘open’, dur: 1.7, fn: (t) => ({
+rx: PI * inOut(t), py: 1.6 * Math.sin(PI * t), pz: 0.9 * Math.sin(PI * t),
+bite: PI - 0.22 * Math.sin(PI * t), safe: PI - 0.22 * Math.sin(PI * t) }) },
+zen: { name: ‘Zen rollover’, from: ‘open’, dur: 1.8, fn: (t) => ({
+ry: PI * inOut(t), py: 0.5 * Math.sin(PI * t), pz: -1.1 * Math.sin(PI * t) }) },
+fan: { name: ‘Fan’, from: ‘open’, dur: 2.6, fn: (t) => ({ rz: 6 * PI * inOut(t) }) },
+helix: { name: ‘Helix’, from: ‘open’, dur: 2.2, fn: (t) => ({
+rx: 4 * PI * inOut(t), ry: (PI / 3) * Math.sin(PI * t), py: 0.8 * Math.sin(PI * t) }) },
+aerial: { name: ‘Aerial’, from: ‘open’, dur: 2.4, fn: (t) => ({
+py: 28 * t * (1 - t), rz: TAU * t, bite: PI * (0.5 + 0.5 * Math.cos(TAU * t)) }) },
+dive: { name: ‘Nightjar dive’, from: ‘open’, dur: 2.6, fn: (t) => ({
+ry: TAU * inOut(t), py: 0.9 * Math.sin(PI * t), pz: 1.2 * Math.sin(PI * t),
+bite: PI - 1.0 * Math.pow(Math.sin(PI * t), 2), safe: PI - 1.2 * Math.sin(TAU * t) * Math.sin(PI * t) }) }
+};
+const COMBO = [‘chaplin’, ‘zen’, ‘fan’, ‘helix’, ‘aerial’, ‘dive’];
+const FREE = [‘chaplin’, ‘zen’, ‘fan’, ‘helix’, ‘aerial’, ‘dive’, ‘close’];
+
+const S = { base: new THREE.Quaternion(), bite: 0, safe: 0, latSm: 0, cur: null, queue: [], mode: ‘’, last: ‘’, ci: 0, ex: 0, exT: 0, speed: 1, slow: false, drag: null };
+const isOpen = () => S.bite > PI - 0.3 && S.safe > PI - 0.3;
+const pickFree = () => { let k; do { k = FREE[Math.floor(Math.random() * FREE.length)]; } while (k === S.last); return k; };
+const capEl = $(‘#cap’);
+function setCap(t) { capEl.textContent = t; capEl.classList.remove(‘show’); void capEl.offsetWidth; capEl.classList.add(‘show’); }
+
+function start(k) {
+const m = MOVES[k];
+S.last = k;
+S.cur = { m, t: 0, from: { bite: S.bite, safe: S.safe, lat: 0, px: 0, py: 0, pz: 0 } };
+setCap(m.name);
+}
+function next() {
+let k = S.queue.shift();
+if (!k && S.mode === ‘combo’) k = COMBO[S.ci++ % COMBO.length];
+if (!k && S.mode === ‘free’) k = pickFree();
+if (!k) { S.cur = null; return; }
+if (k === ‘open’ && isOpen()) return next();
+if (k === ‘close’ && !isOpen()) return next();
+if (MOVES[k].from === ‘open’ && !isOpen()) { S.queue.unshift(k); k = ‘open’; }
+start(k);
+}
+function run(k) { S.mode = ‘’; S.queue = [k]; if (!S.cur) next(); }
+
+function stepMove(dt) {
+const c = S.cur;
+c.t += (dt * S.speed * (S.slow ? 0.35 : 1)) / c.m.dur;
+const mv = { ...BASE, ...c.m.fn(clamp(c.t, 0, 1)) };
+if (c.t >= 1) {
+S.base.multiply(qEuler(mv.rx, mv.ry, m
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nightjar N-7 · Thessaly & Crane</title>
+<style>
+:root{--ink:#ece4d2;--mute:#9aa3b8;--gold:#dcb878;--glass:rgba(7,11,22,.74);--edge:rgba(220,184,120,.3)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#03050b;color:var(--ink);font:13px/1.45 system-ui,”Segoe UI”,sans-serif;user-select:none}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;outline:none;touch-action:none;cursor:grab}
+#c.hot{cursor:pointer}#c.grab{cursor:grabbing}
+.ui{position:fixed;z-index:2;background:var(--glass);border:1px solid var(--edge);border-radius:12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+body.off .ui:not(#hide){display:none}
+button{font:inherit;color:var(--ink);background:rgba(255,255,255,.04);border:1px solid var(--edge);border-radius:8px;padding:6px 10px;cursor:pointer;white-space:nowrap}
+button:hover{border-color:var(--gold)}
+button.on{background:rgba(220,184,120,.2);border-color:var(--gold)}
+button:focus-visible,input:focus-visible{outline:2px solid #7fb2ff;outline-offset:2px}
+input[type=range]{accent-color:var(--gold);width:110px;vertical-align:middle}
+.kicker{font-size:10px;letter-spacing:.24em;color:var(--gold);text-transform:uppercase}
+.lab{color:var(--mute);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+[hidden]{display:none!important}
+#load{left:50%;top:50%;transform:translate(-50%,-50%);padding:14px 22px;font-family:Georgia,serif;letter-spacing:.06em;transition:opacity .6s}
+#nogl{left:50%;top:50%;transform:translate(-50%,-50%);max-width:420px;padding:18px;text-align:center}
+#brand{left:18px;top:16px;padding:14px 18px;min-width:250px;opacity:0;animation:rise .9s ease 3.3s forwards}
+h1{margin:4px 0 0;font:600 28px/1.05 Georgia,”Times New Roman”,serif}
+h1 small{display:block;margin-top:4px;font:500 12px system-ui,sans-serif;color:var(--mute)}
+#way{margin-top:8px;color:var(--mute);font-size:12px}
+#spec{left:18px;top:184px;width:300px;padding:12px 14px;font-size:12px}
+#spec dl{display:grid;grid-template-columns:70px 1fr;gap:5px 10px;margin:8px 0 0}
+#spec dt{color:var(--gold)}#spec dd{margin:0}
+#tools{right:16px;top:16px;width:280px;padding:12px;display:grid;gap:7px}
+#moves{left:50%;bottom:16px;transform:translateX(-50%);padding:10px;display:grid;gap:8px;justify-items:center;max-width:calc(100vw - 32px)}
+#cap{left:50%;top:20%;transform:translateX(-50%);padding:8px 16px;font:italic 600 18px Georgia,serif;opacity:0;pointer-events:none;white-space:nowrap}
+#cap.show{animation:cap 1.8s ease both}
+#tag{position:fixed;z-index:3;pointer-events:none;padding:4px 9px;font-size:12px;background:rgba(7,11,22,.88);border:1px solid var(--gold);border-radius:6px;white-space:nowrap}
+#hide{right:16px;bottom:16px;z-index:3}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes cap{0%{opacity:0;transform:translate(-50%,6px)}12%,80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-6px)}}
+@media(max-width:760px){
+#spec{display:none}
+#brand{min-width:0;width:calc(100% - 20px);left:10px;top:10px}
+h1{font-size:22px}
+#tools{left:10px;right:10px;top:auto;bottom:170px;width:auto;max-height:34vh;overflow:auto}
+#moves{left:8px;right:8px;transform:none;bottom:8px;max-width:none}
+}
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Nightjar N-7 butterfly knife, interactive 3D"></canvas>
+<div id="load" class="ui">Forging the Nightjar…</div>
+<div id="nogl" class="ui" hidden>WebGL is unavailable in this view, so the knife cannot be drawn. Turn on hardware graphics or open this page in a browser with WebGL.</div>
+<header id="brand" class="ui">
+<div class="kicker">Thessaly & Crane · Harbour Works</div>
+<h1>Nightjar<small>Model N-7 “Vesper” · balisong</small></h1>
+<div id="way"></div>
+</header>
+<section id="spec" class="ui">
+<div class="kicker">Specification</div>
+<dl>
+<dt>Length</dt><dd>23.0 cm open · 13.1 cm closed</dd>
+<dt>Blade</dt><dd>10.4 cm stonewashed powder steel, hollow grind, shark-fin belly</dd>
+<dt>Handles</dt><dd>Anodised titanium. Bite handle has a crescent window with a brass insert; safe handle has a milled tern-wing lattice</dd>
+<dt>Latch</dt><dd>Brass crescent swing latch</dd>
+<dt>Weight</dt><dd>118 g</dd>
+<dt>Pivot</dt><dd>Titanium pivot screws, bronze bushings, brass zen pins</dd>
+<dt>Mark</dt><dd>Crescent over a dot, engraved on the blade</dd>
+</dl>
+</section>
+<div id="cap" class="ui"></div>
+<div id="tag" class="ui" hidden></div>
+<nav id="moves" class="ui">
+<div class="row">
+<button data-move="open">1 Basic open</button>
+<button data-move="close">2 Basic close</button>
+<button data-move="chaplin">3 Chaplin</button>
+<button data-move="zen">4 Zen rollover</button>
+<button data-move="fan">5 Fan</button>
+<button data-move="helix">6 Helix</button>
+<button data-move="aerial">7 Aerial</button>
+<button data-move="dive">8 Nightjar dive</button>
+</div>
+<div class="row">
+<button id="combo">Combo (C)</button>
+<button id="free">Freestyle (F)</button>
+<button id="stop">Stop (Esc)</button>
+</div>
+</nav>
+<aside id="tools" class="ui">
+<div class="lab">Camera</div>
+<div class="row">
+<button data-cam="hero">Hero</button><button data-cam="blade">Blade</button><button data-cam="pivot">Pivot</button><button data-cam="latch">Latch</button><button data-cam="top">Top</button>
+</div>
+<div class="row"><button id="explode">Exploded view (E)</button><button id="turn">Turntable</button></div>
+<div class="lab">Colourway</div>
+<div class="row"><button data-way="nightjar">Nightjar</button><button data-way="dawnline">Dawnline</button><button data-way="kelp">Kelp</button></div>
+<div class="lab">Motion</div>
+<div class="row"><label>Speed <input id="speed" type="range" min="0.25" max="2" step="0.05" value="1"> <span id="spd">1.00×</span></label></div>
+<div class="row"><button id="slow">Slow-mo (S)</button><button id="trail">Trail (T)</button></div>
+<div class="lab">Sound</div>
+<div class="row"><button id="mute">Mute (M)</button><label>Volume <input id="vol" type="range" min="0" max="1" step="0.05" value="0.7"></label></div>
+</aside>
+<button id="hide" class="ui">Hide UI (H)</button>
+<script type="importmap">
+{“imports”:{“three”:”https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from ‘three’;
+import { OrbitControls } from ‘three/addons/controls/OrbitControls.js’;
+
+const PI = Math.PI, TAU = PI * 2;
+const $ = (s) => document.querySelector(s);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const seg = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+const win = (t, a, b, r = 0.05) => clamp(Math.min((t - a) / r, (b - t) / r), 0, 1);
+const smooth = (t) => t * t * (3 - 2 * t);
+const oc = (t) => 1 - Math.pow(1 - t, 3);
+const io = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const stop = (t) => { t = clamp(t, 0, 1); return oc(t) + 0.03 * Math.sin(TAU * t) * (1 - t); };
+const qE = (x, y, z) => new THREE.Quaternion().setFromEuler(new THREE.Euler(x, y, z));
+let sd = 4242;
+const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+
+const WAYS = [
+{ id: ‘nightjar’, name: ‘Nightjar’, note: ‘midnight anodised titanium, brass pivots, copper inlay’, blade: 0xc3cad8, handle: 0x1d2b55, metal: 0.6, rough: 0.3, pivot: 0xd9b46e, latch: 0xd9b46e, insert: 0xe0bb72, accent: 0xc9825a, sound: { f: 2600, d: 0.07 } },
+{ id: ‘dawnline’, name: ‘Dawnline’, note: ‘ivory G10, rose-gold pivots, copper-brown inlay’, blade: 0xd6d1c9, handle: 0xe8dfcc, metal: 0.05, rough: 0.48, pivot: 0xe3a68e, latch: 0xe3a68e, insert: 0xb4623f, accent: 0x8f4f36, sound: { f: 1500, d: 0.1 } },
+{ id: ‘kelp’, name: ‘Kelp’, note: ‘kelp-black carbon weave, titanium pivots, teal latch’, blade: 0x9ea6b1, handle: 0x101e1b, metal: 0.25, rough: 0.4, pivot: 0x9ba4af, latch: 0x3fb59c, insert: 0x3fb59c, accent: 0x3fb59c, sound: { f: 3200, d: 0.05 } }
+];
+let W = WAYS[0];
+
+function tex(w, h, draw, srgb) {
+const c = document.createElement(‘canvas’); c.width = w; c.height = h;
+draw(c.getContext(‘2d’), w, h);
+const t = new THREE.CanvasTexture(c);
+t.anisotropy = 8;
+if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+return t;
+}
+function fit(t, x0, x1, y0, y1) {
+t.repeat.set(1 / (x1 - x0), 1 / (y1 - y0));
+t.offset.set(-x0 / (x1 - x0), -y0 / (y1 - y0));
+return t;
+}
+
+const bladeMap = fit(tex(1024, 256, (g, w, h) => {
+g.fillStyle = ‘#d3d8e0’; g.fillRect(0, 0, w, h);
+for (let i = 0; i < 7000; i++) {
+g.fillStyle = rnd() < 0.5 ? ‘rgba(255,255,255,.12)’ : ‘rgba(60,70,90,.07)’;
+g.fillRect(rnd() * w, rnd() * h, 3 + rnd() * 26, 1);
+}
+g.save();
+g.translate((0.9 / 10.8) * w, (1.15 / 2.55) * h);
+g.strokeStyle = ‘#2a3144’; g.fillStyle = ‘#2a3144’; g.lineWidth = 4;
+g.beginPath(); g.arc(0, 0, 54, 0, TAU); g.stroke();
+g.beginPath(); g.arc(0, -30, 6, 0, TAU); g.fill();
+g.beginPath(); g.arc(0, 10, 22, PI * 0.15, PI * 1.85); g.arc(8, 10, 17, PI * 1.6, PI * 0.4, true); g.fill();
+g.restore();
+g.fillStyle = ‘#2a3144’; g.font = ‘500 15px system-ui,sans-serif’;
+g.fillText(‘NIGHTJAR · N-7’, (3.9 / 10.8) * w, ((1.15 - 0.55) / 2.55) * h);
+}, true), -0.9, 9.9, -1.4, 1.15);
+
+const grainBump = fit(tex(512, 512, (g, w, h) => {
+g.fillStyle = ‘#808080’; g.fillRect(0, 0, w, h);
+for (let i = 0; i < 16000; i++) {
+const v = (100 + rnd() * 110) | 0;
+g.fillStyle = rgb(${v},${v},${v});
+g.fillRect(rnd() * w, rnd() * h, 1 + rnd() * 2, 1 + rnd() * 2);
+}
+}, false), -1, 11.75, -1.15, 1.15);
+
+const millBump = fit(tex(512, 512, (g, w, h) => {
+g.fillStyle = ‘#9a9a9a’; g.fillRect(0, 0, w, h);
+g.strokeStyle = ‘#222’; g.lineWidth = 9; g.lineJoin = ‘round’;
+for (let r = -1; r < 18; r++) {
+g.beginPath();
+for (let x = 0; x <= w + 32; x += 32) {
+const y = r * 30 + ((x / 32) % 2) * 15;
+if (x === 0) g.moveTo(x, y); else g.lineTo(x, y);
+}
+g.stroke();
+}
+}, false), -1, 11.75, -1.15, 1.15);
+
+const MAT = {
+blade: new THREE.MeshPhysicalMaterial({ map: bladeMap, metalness: 1, roughness: 0.3, clearcoat: 0.4, clearcoatRoughness: 0.18 }),
+biteH: new THREE.MeshPhysicalMaterial({ metalness: 0.6, roughness: 0.34, clearcoat: 1, clearcoatRoughness: 0.12, iridescence: 0.5, iridescenceIOR: 1.6, bumpMap: grainBump, bumpScale: 0.6 }),
+safeH: new THREE.MeshPhysicalMaterial({ metalness: 0.6, roughness: 0.34, clearcoat: 1, clearcoatRoughness: 0.12, iridescence: 0.5, iridescenceIOR: 1.6, bumpMap: millBump, bumpScale: 1.2 }),
+pivot: new THREE.MeshPhysicalMaterial({ metalness: 1, roughness: 0.22, clearcoat: 0.6 }),
+latch: new THREE.MeshPhysicalMaterial({ metalness: 1, roughness: 0.28 }),
+insert: new THREE.MeshPhysicalMaterial({ metalness: 1, roughness: 0.25 }),
+accent: new THREE.MeshPhysicalMaterial({ metalness: 1, roughness: 0.3 }),
+ti: new THREE.MeshPhysicalMaterial({ color: 0x7d8694, metalness: 1, roughness: 0.34 }),
+skin: new THREE.MeshPhysicalMaterial({ color: 0xc78f72, roughness: 0.55, clearcoat: 0.25, clearcoatRoughness: 0.45, sheen: 0.5, sheenColor: new THREE.Color(0xffc9a8) })
+};
+
+const canvas = $(‘#c’);
+let R;
+try {
+R = new THREE.WebGLRenderer({ canvas, antialias: true });
+} catch (err) {
+$(‘#load’).hidden = true; $(‘#nogl’).hidden = false;
+throw err;
+}
+R.setPixelRatio(Math.min(devicePixelRatio, 2));
+R.setSize(innerWidth, innerHeight, false);
+R.outputColorSpace = THREE.SRGBColorSpace;
+R.toneMapping = THREE.ACESFilmicToneMapping;
+R.toneMappingExposure = 1.1;
+R.shadowMap.enabled = true;
+R.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x05080f, 70, 190);
+const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.1, 500);
+camera.position.set(0, 8, 78);
+
+const pick = [];
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function hits(e) {
+const r = canvas.getBoundingClientRect();
+ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+ray.setFromCamera(ndc, camera);
+return ray.intersectObjects(pick, false);
+}
+canvas.addEventListener(‘pointerdown’, (e) => {
+audioOn();
+if (S.cur) return;
+const h = hits(e).find((i) => i.object.userData.handle);
+if (!h) return;
+S.drag = { w: h.object.userData.handle, x: e.clientX, a: S[h.object.userData.handle] };
+canvas.setPointerCapture(e.pointerId);
+canvas.classList.add(‘grab’);
+controls.enabled = false;
+});
+canvas.addEventListener(‘pointermove’, (e) => {
+if (S.drag) { S[S.drag.w] = clamp(S.drag.a + (e.clientX - S.drag.x) * 0.012, 0, PI); return; }
+const h = hits(e)[0];
+canvas.classList.toggle(‘hot’, !!(h && h.object.userData.handle));
+const t = $(‘#tag’);
+if (S.exT > 0.5 && h && h.object.userData.label) {
+t.hidden = false; t.textContent = h.object.userData.label;
+t.style.left = e.clientX + 14 + ‘px’; t.style.top = e.clientY + 10 + ‘px’;
+} else t.hidden = true;
+});
+const endDrag = () => { S.drag = null; controls.enabled = true; canvas.classList.remove(‘grab’); };
+canvas.addEventListener(‘pointerup’, endDrag);
+canvas.addEventListener(‘pointercancel’, endDrag);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.minDistance = 4;
+controls.maxDistance = 90;
+controls.autoRotateSpeed = 0.7;
+
+const pmrem = new THREE.PMREMGenerator(R);
+const envScene = new THREE.Scene();
+envScene.add(new THREE.Mesh(new THREE.SphereGeometry(40, 32, 16), new THREE.MeshBasicMaterial({ color: 0x101a34, side: THREE.BackSide })));
+[[0, 26, -14, 46, 6, [3.2, 2.7, 2.0]], [-26, 8, 8, 5, 26, [1.2, 1.6, 3.0]], [24, 4, 18, 5, 22, [2.4, 2.0, 1.5]], [0, -14, 0, 80, 80, [0.25, 0.3, 0.4]]].forEach(([x, y, z, w, h, c]) => {
+const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(...c), side: THREE.DoubleSide }));
+m.position.set(x, y, z); m.lookAt(0, 0, 0); envScene.add(m);
+});
+scene.environment = pmrem.fromScene(envScene, 0.03).texture;
+
+const sky = tex(1024, 512, (g, w, h) => {
+const gr = g.createLinearGradient(0, 0, 0, h);
+gr.addColorStop(0, ‘#050916’); gr.addColorStop(0.6, ‘#132445’); gr.addColorStop(1, ‘#1c2f55’);
+g.fillStyle = gr; g.fillRect(0, 0, w, h);
+for (let i = 0; i < 260; i++) {
+g.fillStyle = rgba(255,255,255,${0.2 + rnd() * 0.7});
+g.fillRect(rnd() * w, rnd() * h * 0.7, 1.5, 1.5);
+}
+const mg = g.createRadialGradient(w * 0.72, h * 0.26, 10, w * 0.72, h * 0.26, 150);
+mg.addColorStop(0, ‘rgba(255,240,205,.9)’); mg.addColorStop(0.2, ‘rgba(255,230,180,.3)’); mg.addColorStop(1, ‘rgba(255,230,180,0)’);
+g.fillStyle = mg; g.fillRect(0, 0, w, h);
+g.fillStyle = ‘#fff3d6’; g.beginPath(); g.arc(w * 0.72, h * 0.26, 34, 0, TAU); g.fill();
+}, true);
+const backdrop = new THREE.Mesh(new THREE.PlaneGeometry(300, 150), new THREE.MeshBasicMaterial({ map: sky, depthWrite: false, fog: false }));
+backdrop.position.set(0, 12, -90);
+scene.add(backdrop);
+
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: 0x0a1426, roughness: 0.22, metalness: 0.55 }));
+floor.rotation.x = -PI / 2; floor.position.y = -9; floor.receiveShadow = true;
+scene.add(floor);
+
+const beamGroup = new THREE.Group();
+beamGroup.position.set(-46, 9, -52);
+scene.add(beamGroup);
+const beam = new THREE.Mesh(new THREE.CylinderGeometry(16, 0.6, 96, 28, 1, true), new THREE.MeshBasicMaterial({ color: 0xffe6b8, transparent: true, opacity: 0.07, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+beam.rotation.z = -PI / 2; beam.position.x = 48;
+beamGroup.add(beam);
+
+const keyLight = new THREE.DirectionalLight(0xffe2b8, 2.4);
+keyLight.position.set(-12, 14, 16); keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+Object.assign(keyLight.shadow.camera, { left: -14, right: 14, top: 14, bottom: -14 });
+keyLight.shadow.normalBias = 0.02;
+scene.add(keyLight);
+const rimLight = new THREE.DirectionalLight(0x7fa6ff, 1.6);
+rimLight.position.set(10, 8, -12);
+scene.add(rimLight);
+scene.add(new THREE.HemisphereLight(0x9bb8ff, 0x0a0d14, 0.5));
+const sweep = new THREE.PointLight(0xffe2b8, 0, 40, 2);
+sweep.position.set(-16, 6, 10);
+scene.add(sweep);
+
+function crescentPts(cx, cy, Rr, n = 40) {
+const d = 0.3 * Rr, pts = [];
+for (let i = 0; i <= n; i++) { const a = -1.72 + (3.44 * i) / n; pts.push([cx + Rr * Math.cos(a), cy + Rr * Math.sin(a)]); }
+for (let i = 0; i <= n; i++) { const a = 1.42 - (2.84 * i) / n; pts.push([cx - d + Rr * Math.cos(a), cy + Rr * Math.sin(a)]); }
+return pts;
+}
+function shapeFrom(pts) {
+const s = new THREE.Shape();
+pts.forEach(([x, y], i) => (i ? s.lineTo(x, y) : s.moveTo(x, y)));
+return s;
+}
+function bladeGeo() {
+const s = new THREE.Shape();
+s.moveTo(-0.9, 0.95);
+s.lineTo(0.6, 1.05);
+s.quadraticCurveTo(5.0, 1.15, 8.6, 0.85);
+s.quadraticCurveTo(9.5, 0.6, 9.9, 0.05);
+s.quadraticCurveTo(7.6, -0.75, 4.2, -1.05);
+s.quadraticCurveTo(1.6, -1.25, 0.1, -1.05);
+s.lineTo(-0.2, -1.4);
+s.lineTo(-0.9, -1.3);
+s.closePath();
+const hole = new THREE.Path(); hole.absarc(0, 0, 0.2, 0, TAU, true);
+s.holes.push(hole);
+return new THREE.ExtrudeGeometry(s, { depth: 0.14, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.04, bevelSegments: 3, curveSegments: 24 }).translate(0, 0, -0.07);
+}
+function handleGeo(crescent) {
+const s = new THREE.Shape();
+s.moveTo(0, 1.0);
+s.bezierCurveTo(3.2, 1.12, 7.0, 1.0, 9.8, 0.78);
+s.quadraticCurveTo(11.7, 0.5, 11.75, 0);
+s.quadraticCurveTo(11.7, -0.5, 9.8, -0.78);
+s.bezierCurveTo(7.0, -1.0, 3.2, -1.12, 0, -1.0);
+s.absarc(0, 0, 1.0, -PI / 2, -PI * 1.5, true);
+const pin = new THREE.Path(); pin.absarc(0, 0, 0.3, 0, TAU, true);
+s.holes.push(pin);
+if (crescent) {
+const h = shapeFrom(crescentPts(6.0, 0, 0.72));
+s.holes.push(new THREE.Path(h.getPoints(40)));
+}
+return new THREE.ExtrudeGeometry(s, { depth: 0.32, bevelEnabled: true, bevelThickness: 0.035, bevelSize: 0.03, bevelSegments: 3, curveSegments: 20 });
+}
+function crescentGeo(Rr) {
+return new THREE.ExtrudeGeometry(shapeFrom(crescentPts(6.0, 0, Rr)), { depth: 0.3, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 2, curveSegments: 12 });
+}
+function latchGeo() {
+const s = new THREE.Shape();
+s.moveTo(0, -0.2); s.lineTo(2.3, -0.2); s.quadraticCurveTo(2.9, 0, 2.3, 0.2); s.lineTo(0, 0.2); s.closePath();
+return new THREE.ExtrudeGeometry(s, { depth: 0.06, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 2, curveSegments: 8 });
+}
+const cyl = (r, h, sg = 20) => new THREE.CylinderGeometry(r, r, h, sg).rotateX(PI / 2);
+
+const knife = new THREE.Group();
+const biteG = new THREE.Group(), safeG = new THREE.Group(), pinBite = new THREE.Group(), pinSafe = new THREE.Group();
+knife.add(biteG, safeG, pinBite, pinSafe);
+scene.add(knife);
+
+function part(geo, mat, parent, label, pos, handle) {
+const m = new THREE.Mesh(geo, mat);
+m.castShadow = true; m.receiveShadow = true;
+if (pos) m.position.set(pos[0], pos[1], pos[2]);
+if (label) { m.userData.label = label; pick.push(m); }
+if (handle) m.userData.handle = handle;
+parent.add(m);
+return m;
+}
+part(bladeGeo(), MAT.blade, knife, ‘Blade’, [0, 0, 0]);
+part(cyl(0.14, 1.4), MAT.ti, knife, ‘Pivot screw’, [0, 0, 0]);
+part(handleGeo(true), MAT.biteH, biteG, ‘Bite handle’, [0, 0, 0.155], ‘bite’);
+part(handleGeo(false), MAT.safeH, safeG, ‘Safe handle’, [0, 0, -0.475], ‘safe’);
+part(crescentGeo(0.7), MAT.insert, biteG, ‘Brass crescent insert’, [0, 0, 0.14]);
+const latch = part(latchGeo(), MAT.latch, biteG, ‘Latch’, [7.4, 0.1, 0.5]);
+part(new THREE.BoxGeometry(9.0, 0.05, 0.03), MAT.accent, biteG, ‘Copper inlay’, [5.2, 0.86, 0.515]);
+part(new THREE.BoxGeometry(9.0, 0.05, 0.03), MAT.accent, biteG, ‘Copper inlay’, [5.2, -0.86, 0.515]);
+[0.45, -0.45].forEach((y) => {
+part(cyl(0.09, 0.05, 12), MAT.ti, biteG, ‘Handle screw’, [4.2, y, 0.52]);
+part(cyl(0.09, 0.05, 12), MAT.ti, safeG, ‘Handle screw’, [4.2, y, -0.52]);
+});
+function pivotHW(g, s) {
+part(cyl(0.4, 0.05), MAT.ti, g, ‘Washer’, [0, 0, s * 0.55]);
+part(cyl(0.22, 0.14, 24), MAT.pivot, g, ‘Pivot screw head’, [0, 0, s * 0.67]);
+part(new THREE.TorusGeometry(0.26, 0.05, 12, 36), MAT.accent, g, ‘Bronze bushing’, [0, 0, s * 0.52]);
+part(cyl(0.07, 0.14, 10), MAT.accent, g, ‘Zen pin’, [0.5, 0.25, s * 0.62]);
+part(cyl(0.07, 0.14, 10), MAT.accent, g, ‘Zen pin’, [-0.5, -0.25, s * 0.62]);
+}
+pivotHW(pinBite, 1);
+pivotHW(pinSafe, -1);
+
+const hand = new THREE.Group();
+scene.add(hand);
+function handPart(geo, x, y, z, rx = 0, ry = 0, rz = 0) {
+const m = new THREE.Mesh(geo, MAT.skin);
+m.position.set(x, y, z); m.rotation.set(rx, ry, rz); m.castShadow = true;
+hand.add(m);
+}
+handPart(new THREE.SphereGeometry(1.15, 24, 18), 0, -2.05, 0.25);
+for (let i = 0; i < 4; i++) handPart(new THREE.CapsuleGeometry(0.27, 1.5, 6, 12), 0.05, -0.25 - i * 0.42, 1.05, 0, 0, PI / 2);
+handPart(new THREE.CapsuleGeometry(0.28, 1.2, 6, 12), 0.85, -0.7, -0.95, 0, 0, PI / 2 - 0.4);
+handPart(new THREE.CapsuleGeometry(0.95, 6.5, 8, 16), 0.6, -6.6, -0.6, 0.12, 0, 0);
+
+const TN = 70;
+const tPos = new Float32Array(TN * 3), tCol = new Float32Array(TN * 3);
+const tGeo = new THREE.BufferGeometry();
+tGeo.setAttribute(‘position’, new THREE.BufferAttribute(tPos, 3));
+tGeo.setAttribute(‘color’, new THREE.BufferAttribute(tCol, 3));
+tGeo.setDrawRange(0, 0);
+const trail = new THREE.Line(tGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+trail.frustumCulled = false; trail.visible = false;
+scene.add(trail);
+let trailN = 0;
+const tipV = new THREE.Vector3();
+function pushTrail(v) {
+tPos.copyWithin(3, 0, (TN - 1) * 3);
+tPos.set([v.x, v.y, v.z], 0);
+trailN = Math.min(TN, trailN + 1);
+for (let i = 0; i < trailN; i++) {
+const f = 1 - i / TN;
+tCol[i * 3] = f; tCol[i * 3 + 1] = 0.78 * f; tCol[i * 3 + 2] = 0.45 * f;
+}
+tGeo.attributes.position.needsUpdate = true;
+tGeo.attributes.color.needsUpdate = true;
+tGeo.setDrawRange(0, trailN);
+}
+
+function applyWay(w) {
+W = w;
+MAT.blade.color.setHex(w.blade);
+MAT.biteH.color.setHex(w.handle); MAT.safeH.color.setHex(w.handle);
+MAT.biteH.metalness = MAT.safeH.metalness = w.metal;
+MAT.biteH.roughness = MAT.safeH.roughness = w.rough;
+MAT.pivot.color.setHex(w.pivot); MAT.latch.color.setHex(w.latch);
+MAT.insert.color.setHex(w.insert); MAT.accent.color.setHex(w.accent);
+$(‘#way’).textContent = ${w.name} · ${w.note};
+document.querySelectorAll(‘[data-way]’).forEach((b) => b.classList.toggle(‘on’, b.dataset.way === w.id));
+}
+applyWay(WAYS[0]);
+
+let AC = null, master = null, noiseBuf = null, swishF, swishG, rattleF, rattleG;
+let muted = false, vol = 0.7;
+function audioInit() {
+if (AC) return;
+AC = new (window.AudioContext || window.webkitAudioContext)();
+master = AC.createGain(); master.gain.value = muted ? 0 : vol; master.connect(AC.destination);
+noiseBuf = AC.createBuffer(1, AC.sampleRate * 2, AC.sampleRate);
+const d = noiseBuf.getChannelData(0);
+for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+const loop = (f, q) => {
+const s = AC.createBufferSource(); s.buffer = noiseBuf; s.loop = true;
+const bp = AC.createBiquadFilter(); bp.type = ‘bandpass’; bp.frequency.value = f; bp.Q.value = q;
+const g = AC.createGain(); g.gain.value = 0;
+s.connect(bp).connect(g).connect(master); s.start();
+return [bp, g];
+};
+[swishF, swishG] = loop(700, 2.5);
+[rattleF, rattleG] = loop(2400, 5);
+}
+function audioOn() { audioInit(); if (AC.state === ‘suspended’) AC.resume(); }
+function clack(v, prof) {
+const t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain();
+o.type = ‘sine’;
+o.frequency.setValueAtTime(prof.f * 1.5, t);
+o.frequency.exponentialRampToValueAtTime(prof.f * 0.7, t + prof.d);
+g.gain.setValueAtTime(v * 0.6, t);
+g.gain.exponentialRampToValueAtTime(0.0008, t + prof.d);
+o.connect(g).connect(master); o.start(t); o.stop(t + prof.d + 0.02);
+const n = AC.createBufferSource(), hp = AC.createBiquadFilter(), ng = AC.createGain();
+n.buffer = noiseBuf; hp.type = ‘highpass’; hp.frequency.value = prof.f * 1.3;
+ng.gain.setValueAtTime(v * 0.7, t);
+ng.gain.exponentialRampToValueAtTime(0.0008, t + 0.025);
+n.connect(hp).connect(ng).connect(master); n.start(t, Math.random(), 0.04);
+}
+function ring(v) {
+const t = AC.currentTime, f0 = W.sound.f * 0.75;
+[[1, 1, 1.6], [2.76, 0.5, 1.1], [5.4, 0.25, 0.7], [8.93, 0.12, 0.4]].forEach(([r, a, dec]) => {
+const o = AC.createOscillator(), g = AC.createGain();
+o.frequency.value = f0 * r;
+g.gain.setValueAtTime(0.0001, t);
+g.gain.linearRampToValueAtTime(v * a * 0.18, t + 0.005);
+g.gain.exponentialRampToValueAtTime(0.0001, t + dec);
+o.connect(g).connect(master); o.start(t); o.stop(t + dec + 0.05);
+});
+}
+
+const BASE = { bite: PI, safe: PI, lat: 0, px: 0, py: 0, pz: 0, rx: 0, ry: 0, rz: 0 };
+const MOVES = {
+open: { name: ‘Basic open’, from: ‘closed’, dur: 1.9, fn: (t) => ({
+bite: PI * stop(seg(t, 0.46, 0.9)), safe: PI * stop(seg(t, 0.14, 0.5)), lat: win(t, 0.03, 0.46, 0.04) }) },
+close: { name: ‘Basic close’, from: ‘open’, dur: 1.9, fn: (t) => ({
+bite: PI * (1 - stop(seg(t, 0.14, 0.56))), safe: PI * (1 - stop(seg(t, 0.5, 0.92))), lat: win(t, 0.02, 0.9, 0.04) }) },
+chaplin: { name: ‘Chaplin’, from: ‘open’, dur: 1.7, fn: (t) => ({
+rx: PI * io(t), py: 1.6 * Math.sin(PI * t), pz: 0.9 * Math.sin(PI * t),
+bite: PI - 0.22 * Math.sin(PI * t), safe: PI - 0.22 * Math.sin(PI * t) }) },
+zen: { name: ‘Zen rollover’, from: ‘open’, dur: 1.8, fn: (t) => ({
+ry: PI * io(t), py: 0.5 * Math.sin(PI * t), pz: -1.1 * Math.sin(PI * t) }) },
+fan: { name: ‘Fan’, from: ‘open’, dur: 2.6, fn: (t) => ({ rz: 6 * PI * io(t) }) },
+helix: { name: ‘Helix’, from: ‘open’, dur: 2.2, fn: (t) => ({
+rx: 4 * PI * io(t), ry: (PI / 3) * Math.sin(PI * t), py: 0.8 * Math.sin(PI * t) }) },
+aerial: { name: ‘Aerial’, from: ‘open’, dur: 2.4, fn: (t) => ({
+py: 28 * t * (1 - t), rz: TAU * t, bite: PI * (0.5 + 0.5 * Math.cos(TAU * t)) }) },
+dive: { name: ‘Nightjar dive’, from: ‘open’, dur: 2.6, fn: (t) => ({
+ry: TAU * io(t), py: 0.9 * Math.sin(PI * t), pz: 1.2 * Math.sin(PI * t),
+bite: PI - 1.0 * Math.pow(Math.sin(PI * t), 2), safe: PI - 1.2 * Math.sin(TAU * t) * Math.sin(PI * t) }) }
+};
+const COMBO = [‘chaplin’, ‘zen’, ‘fan’, ‘helix’, ‘aerial’, ‘dive’];
+const FREE = [‘chaplin’, ‘zen’, ‘fan’, ‘helix’, ‘aerial’, ‘dive’, ‘close’];
+
+const S = { base: new THREE.Quaternion(), bite: 0, safe: 0, latSm: 0, cur: null, queue: [], mode: ‘’, last: ‘’, ci: 0, exT: 0, ex: 0, speed: 1, slow: false, drag: null };
+const isOpen = () => S.bite > PI - 0.3 && S.safe > PI - 0.3;
+const pickFree = () => { let k; do { k = FREE[Math.floor(Math.random() * FREE.length)]; } while (k === S.last); return k; };
+const capEl = $(‘#cap’);
+function setCap(t) { capEl.textContent = t; capEl.classList.remove(‘show’); void capEl.offsetWidth; capEl.classList.add(‘show’); }
+
+function start(k) {
+const m = MOVES[k];
+S.last = k;
+S.cur = { m, t: 0, from: { bite: S.bite, safe: S.safe, lat: 0, px: 0, py: 0, pz: 0 } };
+setCap(m.name);
+}
+function next() {
+let k = S.queue.shift();
+if (!k && S.mode === ‘combo’) k = COMBO[S.ci++ % COMBO.length];
+if (!k && S.mode === ‘free’) k = pickFree();
+if (!k) { S.cur = null; return; }
+if (k === ‘open’ && isOpen()) return next();
+if (k === ‘close’ && !isOpen()) return next();
+if (MOVES[k].from === ‘open’ && !isOpen()) { S.queue.unshift(k); k = ‘open’; }
+start(k);
+}
+function run(k) { S.mode = ‘’; S.queue = [k]; if (!S.cur) next(); }
+
+function stepMove(dt) {
+const c = S.cur;
+c.t += (dt * S.speed * (S.slow ? 0.35 : 1)) / c.m.dur;
+const mv = { ...BASE, ...c.m.fn(clamp(c.t, 0, 1)) };
+if (c.t >= 1) {
+S.base.multiply(qE(mv.rx, mv.ry, mv.rz));
+S.bite = mv.bite; S.safe = mv.safe;
+S.cur = null;
+next();
+return null;
+}
+const m0 = { ...BASE, ...c.m.fn(0) };
+const k = 1 - smooth(clamp(c.t / 0.1, 0, 1));
+const p = { ...mv, mv: true };
+for (const q of [‘bite’, ‘safe’, ‘lat’, ‘px’, ‘py’, ‘pz’]) p[q] = mv[q] + (c.from[q] - m0[q]) * k;
+return p;
+}
+
+const CAMS = { hero: [[0, 3, 34], [0, 0, 0]], blade: [[4, 2.2, 14], [4, 0, 0]], pivot: [[0, 2, 8.5], [0, 0, 0]], latch: [[5, -2.5, 10], [6.5, 0.2, 0]], top: [[0, 34, 0.01], [0, 0, 0]] };
+const cam = { t: 1, dur: 1, a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), d: new THREE.Vector3() };
+function camTo(k, dur = 1.1) {
+const [p, g] = CAMS[k];
+cam.a.copy(camera.position); cam.b.copy(controls.target);
+cam.c.set(...p); cam.d.set(...g);
+cam.t = 0; cam.dur = dur;
+controls.autoRotate = false;
+$(‘#turn’).classList.remove(‘on’);
+}
+
+const intro = { t: 0, fired: false, done: false, cap: false };
+function runIntro(dt) {
+intro.t += dt;
+const s = clamp(intro.t / 3, 0, 1);
+sweep.position.x = lerp(-16, 16, s);
+sweep.intensity = 110 * Math.sin(PI * s);
+if (!intro.cap && intro.t > 0.4) { intro.cap = true; setCap(‘Thessaly & Crane · Nightjar N-7’); }
+if (!intro.fired && intro.t > 2.2) { intro.fired = true; run(‘open’); }
+if (intro.t > 6) {
+intro.done = true; sweep.intensity = 0;
+controls.autoRotate = true;
+$(‘#turn’).classList.add(‘on’);
+}
+}
+
+const clock = new THREE.Clock();
+let prev = { bite: 0, safe: 0, rx: 0, ry: 0, rz: 0, px: 0, py: 0, pz: 0, lat: 0 };
+let prevOpen = false, prevLat = 0, wasMv = false, loaded = false;
+const tip = new THREE.Vector3();
+
+function frame() {
+requestAnimationFrame(frame);
+const dt = Math.min(clock.getDelta(), 0.05);
+if (!intro.done) runIntro(dt);
+
+let p = S.cur ? stepMove(dt) : null;
+if (!p) {
+const mid = (a) => a > 0.08 && a < PI - 0.08;
+const target = mid(S.bite) || mid(S.safe) ? 1 : 0;
+S.latSm += (target - S.latSm) * (1 - Math.exp(-dt * 12));
+p = { bite: S.bite, safe: S.safe, lat: S.latSm, px: 0, py: 0, pz: 0, rx: 0, ry: 0, rz: 0, mv: false };
+}
+
+biteG.rotation.z = p.bite;
+safeG.rotation.z = p.safe;
+latch.rotation.z = -1.4 * clamp(p.lat, 0, 1);
+knife.position.set(p.px, p.py, p.pz);
+knife.quaternion.copy(S.base).multiply(qE(p.rx, p.ry, p.rz));
+knife.updateMatrixWorld(true);
+
+S.ex += (S.exT - S.ex) * (1 - Math.exp(-dt * 6));
+biteG.position.z = 1.9 * S.ex;
+safeG.position.z = -1.9 * S.ex;
+pinBite.position.z = 3.2 * S.ex;
+pinSafe.position.z = -3.2 * S.ex;
+
+if (cam.t < 1) {
+cam.t = Math.min(1, cam.t + dt / cam.dur);
+const e = io(cam.t);
+camera.position.lerpVectors(cam.a, cam.c, e);
+controls.target.lerpVectors(cam.b, cam.d, e);
+}
+controls.update();
+
+const ds = dt > 0 ? 1 / dt : 0;
+const vb = (p.bite - prev.bite) * ds, vs = (p.safe - prev.safe) * ds;
+if (AC) {
+for (const [a0, a1, v] of [[prev.bite, p.bite, vb], [prev.safe, p.safe, vs]]) {
+if (Math.abs(v) > 0.8 && ((a0 < PI - 0.06 && a1 >= PI - 0.06) || (a0 > 0.06 && a1 <= 0.06))) clack(clamp(Math.abs(v) / 16, 0.2, 1), W.sound);
+}
+const isOpenNow = p.bite > PI - 0.06 && p.safe > PI - 0.06;
+if (isOpenNow && !prevOpen) ring(0.7);
+prevOpen = isOpenNow;
+const lt = p.lat > 0.5 ? 1 : 0;
+if (lt !== prevLat) clack(0.35, { f: 4200, d: 0.03 });
+prevLat = lt;
+const mv = p.mv && wasMv;
+const spin = mv ? Math.hypot(p.rx - prev.rx, p.ry - prev.ry, p.rz - prev.rz) * ds : 0;
+const drift = mv ? Math.hypot(p.px - prev.px, p.py - prev.py, p.pz - prev.pz) * ds : 0;
+const sw = spin + drift * 0.5;
+swishG.gain.setTargetAtTime(Math.min(0.3, sw * 0.012), AC.currentTime, 0.04);
+swishF.frequency.setTargetAtTime(480 + sw * 60, AC.currentTime, 0.04);
+rattleG.gain.setTargetAtTime(Math.min(0.12, (Math.abs(vb) + Math.abs(vs)) * 0.004), AC.currentTime, 0.04);
+rattleF.frequency.setTargetAtTime(1800 + (Math.abs(vb) + Math.abs(vs)) * 30, AC.currentTime, 0.04);
+}
+prev = p;
+wasMv = !!p.mv;
+
+if (trail.visible) { tip.set(9.9, 0.05, 0).applyMatrix4(knife.matrixWorld); pushTrail(tip); }
+beamGroup.rotation.y = Math.sin(clock.elapsedTime * 0.35) * 1.1 + 0.7;
+R.render(scene, camera);
+if (!loaded && clock.elapsedTime > 0.3) {
+loaded = true;
+$(‘#load’).style.opacity = 0;
+setTimeout(() => { $(‘#load’).hidden = true; }, 700);
+}
+}
+
+const tag = (id, f) => { $(‘#’ + id).onclick = (e) => e.currentTarget.classList.toggle(‘on’, f()); };
+document.querySelectorAll(‘[data-move]’).forEach((b) => { b.onclick = () => { audioOn(); run(b.dataset.move); }; });
+document.querySelectorAll(‘[data-cam]’).forEach((b) => { b.onclick = () => camTo(b.dataset.cam); });
+document.querySelectorAll(‘[data-way]’).forEach((b) => { b.onclick = () => applyWay(WAYS.find((w) => w.id === b.dataset.way)); });
+$(‘#combo’).onclick = () => { audioOn(); S.mode = ‘combo’; S.queue = []; S.ci = 0; if (!S.cur) next(); };
+$(‘#free’).onclick = () => { audioOn(); S.mode = ‘free’; S.queue = []; if (!S.cur) next(); };
+$(‘#stop’).onclick = () => { S.mode = ‘’; S.queue = []; };
+tag(‘explode’, () => (S.exT = S.exT ? 0 : 1) === 1);
+tag(‘turn’, () => (controls.autoRotate = !controls.autoRotate));
+tag(‘slow’, () => (S.slow = !S.slow));
+tag(‘trail’, () => { trail.visible = !trail.visible; if (!trail.visible) trailN = 0; return trail.visible; });
+tag(‘mute’, () => {
+muted = !muted;
+if (master) master.gain.setTargetAtTime(muted ? 0 : vol, AC.currentTime, 0.02);
+return muted;
+});
+$(‘#speed’).oninput = (e) => { S.speed = +e.target.value; $(‘#spd’).textContent = S.speed.toFixed(2) + ‘×’; };
+$(‘#vol’).oninput = (e) => { vol = +e.target.value; if (master) master.gain.setTargetAtTime(muted ? 0 : vol, AC.currentTime, 0.02); };
+$(‘#hide’).onclick = () => {
+document.body.classList.toggle(‘off’);
+$(‘#hide’).textContent = document.body.classList.contains(‘off’) ? ‘Show UI (H)’ : ‘Hide UI (H)’;
+};
+
+const KEY = { 1: ‘open’, 2: ‘close’, 3: ‘chaplin’, 4: ‘zen’, 5: ‘fan’, 6: ‘helix’, 7: ‘aerial’, 8: ‘dive’ };
+const KEYBTN = { c: ‘#combo’, f: ‘#free’, Escape: ‘#stop’, h: ‘#hide’, e: ‘#explode’, t: ‘#trail’, s: ‘#slow’, m: ‘#mute’ };
+addEventListener(‘keydown’, (e) => {
+if (e.repeat || e.target.tagName === ‘INPUT’) return;
+audioOn();
+if (KEY[e.key]) run(KEY[e.key]);
+else if (KEYBTN[e.key]) $(KEYBTN[e.key]).click();
+});
+addEventListener(‘resize’, () => {
+camera.aspect = innerWidth / innerHeight;
+camera.updateProjectionMatrix();
+R.setSize(innerWidth, innerHeight, false);
+});
+
+camera.position.set(0, 8, 78);
+camTo(‘hero’, 3.2);
+frame();
+</script>
+</body>
+</html>
