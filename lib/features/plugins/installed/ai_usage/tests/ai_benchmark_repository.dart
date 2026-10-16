@@ -11,6 +11,7 @@ import '../../../../../sync/server_access.dart';
 import '../../../../../sync/sync_service.dart';
 import 'ai_benchmark.dart';
 import 'ai_benchmark_api.dart';
+import 'decider_results.dart';
 
 /// Directory under the app-support root the roster and downloaded scenes live
 /// in.
@@ -155,6 +156,39 @@ class AiBenchmarkRepository extends ChangeNotifier {
       _error = '$e';
     } finally {
       _refreshing = false;
+      api.close();
+      notifyListeners();
+    }
+  }
+
+  DeciderBoard? _decider;
+  bool _deciderLoading = false;
+  String? _deciderError;
+
+  /// The Decider test's results, once fetched this session.
+  DeciderBoard? get decider => _decider;
+  bool get deciderLoading => _deciderLoading;
+  String? get deciderError => _deciderError;
+
+  /// Fetches the Decider test's results. Like the roster, it does nothing
+  /// at all unless this device holds an approved account.
+  Future<void> loadDecider() async {
+    if (_deciderLoading) return;
+    final sync = _sync;
+    final baseUrl = sync?.serverUrl;
+    if (sync == null || !sync.serverReady || baseUrl == null) return;
+    _deciderLoading = true;
+    _deciderError = null;
+    notifyListeners();
+    final api = _apiFactory(baseUrl, sync.authToken);
+    try {
+      _decider = DeciderBoard.fromJson(await api.fetchDecider());
+    } on ServerAccessDeniedException {
+      // The gate shut mid-request; the page already says to sign in.
+    } catch (e) {
+      _deciderError = '$e';
+    } finally {
+      _deciderLoading = false;
       api.close();
       notifyListeners();
     }

@@ -1,4 +1,5 @@
 import '../l10n/current_l.dart';
+import 'loyalty.dart';
 
 /// A displayable plan tier. The selected plan's [storageMb] is the server-side
 /// sync storage quota this plan grants — how much of the user's synced data
@@ -14,6 +15,7 @@ class Plan {
     required this.storageMb,
     required this.maxSyncCollections,
     required this.maxFamilyMembers,
+    required this.monthlyPriceCents,
   });
 
   final String id;
@@ -38,11 +40,27 @@ class Plan {
   /// which must stay in sync with this).
   final int maxFamilyMembers;
 
-  String get priceLabel => switch (id) {
-        'orbit' => currentL.planPriceOrbit,
-        'nova' => currentL.planPriceNova,
-        _ => currentL.planPriceFree,
-      };
+  /// List price per month, in cents. Zero for the free plan.
+  final int monthlyPriceCents;
+
+  bool get isPaid => monthlyPriceCents > 0;
+
+  /// What this plan costs per month with the loyalty discount applied when
+  /// [loyal]: [kLoyaltyDiscountCents] off a paid plan, never below zero.
+  int priceCentsFor({required bool loyal}) {
+    if (!loyal || !isPaid) return monthlyPriceCents;
+    final cents = monthlyPriceCents - kLoyaltyDiscountCents;
+    return cents < 0 ? 0 : cents;
+  }
+
+  String get priceLabel => priceLabelFor(loyal: false);
+
+  String priceLabelFor({required bool loyal}) {
+    if (!isPaid) return currentL.planPriceFree;
+    return currentL.planPricePerMonth(
+      formatPlanCents(priceCentsFor(loyal: loyal)),
+    );
+  }
 
   String get blurb => switch (id) {
         'orbit' => currentL.planOrbitBlurb,
@@ -98,6 +116,7 @@ const kPlans = <Plan>[
     storageMb: 5,
     maxSyncCollections: 3,
     maxFamilyMembers: 4,
+    monthlyPriceCents: 0,
   ),
   Plan(
     id: 'orbit',
@@ -106,6 +125,7 @@ const kPlans = <Plan>[
     storageMb: 15,
     maxSyncCollections: 5,
     maxFamilyMembers: 6,
+    monthlyPriceCents: 400,
   ),
   Plan(
     id: 'nova',
@@ -114,8 +134,14 @@ const kPlans = <Plan>[
     storageMb: 30,
     maxSyncCollections: null,
     maxFamilyMembers: 12,
+    monthlyPriceCents: 800,
   ),
 ];
+
+/// Whole dollars without a fraction ("4"), otherwise two decimals ("3.50").
+String formatPlanCents(int cents) => cents % 100 == 0
+    ? '${cents ~/ 100}'
+    : (cents / 100).toStringAsFixed(2);
 
 Plan planById(String id) => kPlans.firstWhere(
       (p) => p.id == id,

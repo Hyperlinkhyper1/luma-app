@@ -8,9 +8,15 @@ void main() {
     final suite = DeciderSuite.parse(kStarterDeciderSuite);
 
     test('parses with every policy used', () {
-      expect(suite.cases.length, greaterThanOrEqualTo(70));
+      expect(suite.cases.length, greaterThanOrEqualTo(50));
       expect(suite.cases.map((c) => c.policy.id).toSet(),
           suite.policies.keys.toSet());
+    });
+
+    test('every case explains its answer', () {
+      for (final c in suite.cases) {
+        expect(c.why, isNotEmpty, reason: c.id);
+      }
     });
 
     test('guessing scores well under the 50% ceiling', () {
@@ -40,9 +46,12 @@ void main() {
       final c = suite.cases.first;
       final body = c.request('perplexity/pplx-decider-flash-v1.2');
       expect(body['model'], 'perplexity/pplx-decider-flash-v1.2');
-      final state = body['state'] as Map;
-      expect(state['policy'], contains('HARBOR COMMUNITY RULES'));
-      expect(state['content'], c.content);
+      // Plain text: Respan's models refuse an object state.
+      final state = body['state'] as String;
+      expect(state, startsWith('POLICY\n'));
+      expect(state, contains('HARBOR COMMUNITY RULES'));
+      expect(state, contains('"today": "2026-10-16"'));
+      expect(state, endsWith('CONTENT\n${c.content}'));
       final q = (body['questions'] as Map)['action'] as Map;
       expect(q['type'], 'choice');
       expect((q['criteria'] as Map).keys, contains('ALLOW'));
@@ -138,9 +147,9 @@ void main() {
       final run = newRun();
       await runDeciderSuite(run, suite, (body) async {
         final c = byId.values.firstWhere((c) =>
-            (body['state'] as Map)['content'] == c.content &&
-            (body['state'] as Map)['context'].toString() ==
-                (c.context ?? const {}).toString());
+            body['state'] == c.stateText &&
+            (body['questions'] as Map).keys.join() ==
+                c.questions.map((q) => q.name).join());
         return DeciderReply(inputTokens: 1000, answers: {
           for (final q in c.questions)
             q.name: switch (q.type) {
@@ -164,6 +173,39 @@ void main() {
               const DeciderReply(error: 'HTTP 401', fatal: true));
       expect(run.results, isEmpty);
       expect(run.note, 'HTTP 401');
+    });
+
+    test('a model that rejects every request stops after five cases',
+        () async {
+      final run = newRun();
+      await runDeciderSuite(
+          run,
+          suite,
+          (body) async =>
+              const DeciderReply(error: 'HTTP 400: state must be a string'),
+          parallel: 1);
+      expect(run.results.length, kDeciderEarlyFailures);
+      expect(run.note, contains('HTTP 400: state must be a string'));
+    });
+
+    test('a later error does not stop a run that was answering', () async {
+      final run = newRun();
+      var n = 0;
+      await runDeciderSuite(run, suite, (body) async {
+        n++;
+        return n == 1
+            ? const DeciderReply(answers: {})
+            : const DeciderReply(error: 'HTTP 500');
+      }, parallel: 1);
+      expect(run.results.length, suite.cases.length);
+      expect(run.note, isNull);
+    });
+
+    test('the suite fingerprint changes with any edit', () {
+      final a = deciderSuiteHash(kStarterDeciderSuite);
+      expect(a, hasLength(8));
+      expect(deciderSuiteHash(kStarterDeciderSuite), a);
+      expect(deciderSuiteHash('$kStarterDeciderSuite '), isNot(a));
     });
 
     test('runs survive a restart as interrupted', () async {

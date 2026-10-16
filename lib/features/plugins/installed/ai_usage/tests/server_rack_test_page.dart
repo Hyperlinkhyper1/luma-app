@@ -5,11 +5,10 @@ import 'package:flutter/material.dart';
 import '../../../../../app/widgets.dart';
 import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
-import '../../_shared/windows_webview.dart'
-    show WindowsWebview, windowsAssetPath;
 import 'pagoda_test_page.dart' show ModelButton;
 import 'ai_benchmark_scope.dart';
 import 'ai_benchmark.dart';
+import 'benchmark_webview.dart';
 import 'model_banner.dart';
 import 'model_search_field.dart';
 import 'test_view_prefs.dart';
@@ -158,13 +157,11 @@ class _ServerRackTestPageState extends State<ServerRackTestPage> {
           title: Text(selected?.model ?? _uploadedModel!),
           leading: back,
         ),
-        body: Platform.isWindows
+        body: BenchmarkWebview.supported
             ? selected != null
-                  ? WindowsWebview(
+                  ? BenchmarkWebview(
                       key: ValueKey(selected.asset),
-                      fileUrl: Uri.file(
-                        windowsAssetPath(selected.asset),
-                      ).toString(),
+                      assetPath: selected.asset,
                     )
                   : FutureBuilder<File>(
                       future: _uploadedScene,
@@ -187,9 +184,9 @@ class _ServerRackTestPageState extends State<ServerRackTestPage> {
                             ),
                           );
                         }
-                        return WindowsWebview(
+                        return BenchmarkWebview(
                           key: ValueKey(snapshot.data!.path),
-                          fileUrl: Uri.file(snapshot.data!.path).toString(),
+                          path: snapshot.data!.path,
                         );
                       },
                     )

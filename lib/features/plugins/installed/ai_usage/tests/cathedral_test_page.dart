@@ -6,10 +6,10 @@ import 'package:flutter/material.dart';
 import '../../../../../app/widgets.dart';
 import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
-import '../../_shared/windows_webview.dart';
 import 'ai_benchmark.dart';
 import 'ai_benchmark_repository.dart';
 import 'ai_benchmark_scope.dart';
+import 'benchmark_webview.dart';
 import 'model_banner.dart';
 import 'model_search_field.dart';
 import 'pagoda_test_page.dart' show ModelButton;
@@ -120,7 +120,11 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
               onChanged: (v) => setState(() => _query = v),
             ),
             const SizedBox(height: 20),
-            Row(
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 16,
+              runSpacing: 8,
               children: [
                 Text(
                   t.aiBenchmarkSelectModel,
@@ -130,7 +134,6 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const Spacer(),
                 LumaSegmentedTabs(
                   tabs: [t.aiBenchmarkViewList, t.aiBenchmarkViewBanners],
                   selectedIndex: _bannerView ? 1 : 0,
@@ -209,7 +212,7 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
       onPressed: () => setState(() => _selectedId = null),
     );
 
-    if (!Platform.isWindows) {
+    if (!BenchmarkWebview.supported) {
       return Scaffold(
         backgroundColor: luma.background,
         appBar: AppBar(
@@ -289,7 +292,9 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
     final glb = await repo.sceneFile(benchmark.id, extension: 'glb');
     final viewer = File('${glb.path}.viewer.html');
     if (await viewer.exists() &&
-        await viewer.lastModified().then((t) => !t.isBefore(glb.lastModifiedSync()))) {
+        await viewer.lastModified().then(
+          (t) => !t.isBefore(glb.lastModifiedSync()),
+        )) {
       return viewer;
     }
     final data = base64Encode(await glb.readAsBytes());
@@ -298,7 +303,8 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
   }
 }
 
-String _viewerHtml(String base64Glb) => '''<!doctype html>
+String _viewerHtml(String base64Glb) =>
+    '''<!doctype html>
 <html><head><meta charset="utf-8">
 <style>html,body{margin:0;height:100%;background:#0d0d12}
 model-viewer{width:100%;height:100%;--poster-color:transparent}</style>
@@ -330,9 +336,9 @@ class _GlbWebviewState extends State<_GlbWebview> {
     return Stack(
       children: [
         Positioned.fill(
-          child: WindowsWebview(
+          child: BenchmarkWebview(
             key: ValueKey(widget.path),
-            fileUrl: Uri.file(widget.path).toString(),
+            path: widget.path,
             onLoaded: () {
               if (mounted) setState(() => _loading = false);
             },

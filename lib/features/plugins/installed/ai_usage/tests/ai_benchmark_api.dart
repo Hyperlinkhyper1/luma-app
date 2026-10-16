@@ -89,6 +89,29 @@ class AiBenchmarkApi {
     );
   }
 
+  /// The Decider test's results: each decision model's latest run on the
+  /// moderation suite, with its accuracy and cost.
+  Future<Map<String, dynamic>> fetchDecider() async {
+    final response = await _client.get(
+      Uri.parse('$baseUrl/api/v1/ai-benchmarks/decider'),
+      headers: {if (token case final value?) 'Authorization': 'Bearer $value'},
+    ).timeout(_timeout);
+    if (response.statusCode != 200) {
+      throw AiBenchmarkApiException(
+        response.statusCode,
+        currentL.aiBenchmarkServerFailed(
+          currentL.aiBenchmarkWhatDecider,
+          response.statusCode,
+        ),
+      );
+    }
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    if (decoded is! Map<String, dynamic>) {
+      throw AiBenchmarkApiException(200, currentL.aiBenchmarkMalformed);
+    }
+    return decoded;
+  }
+
   /// Downloads one scene's HTML. The caller verifies the bytes against the
   /// manifest's hash before trusting them.
   Future<Uint8List> fetchScene(String id) =>

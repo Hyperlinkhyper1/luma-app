@@ -7,6 +7,7 @@ import 'package:luma_sync_server/ai_model_catalog.dart';
 import 'package:luma_sync_server/ai_usage_store.dart';
 import 'package:luma_sync_server/api.dart';
 import 'package:luma_sync_server/chat_store.dart';
+import 'package:luma_sync_server/decider_test.dart';
 import 'package:luma_sync_server/family_store.dart';
 import 'package:luma_sync_server/mail.dart';
 import 'package:luma_sync_server/recipe_store.dart';
@@ -286,12 +287,67 @@ void main() {
     test('refuses every route without a bearer token', () async {
       for (final path in [
         '/api/v1/ai-benchmarks',
+        '/api/v1/ai-benchmarks/decider',
         '/api/v1/ai-benchmarks/scene/pagoda_demo',
         '/api/v1/ai-benchmarks/preview/pagoda_demo',
         '/api/v1/ai-benchmarks/fallback/pagoda-preview.png',
       ]) {
         expect((await get(path)).statusCode, 401, reason: path);
       }
+    });
+
+    test('decider results: latest current-suite run per model, no keys',
+        () async {
+      final token = await seedApprovedUser();
+      final current = deciderSuiteHash(kStarterDeciderSuite);
+      DeciderRun run(String id, String model, bool right,
+              {String? suite, String status = 'done'}) =>
+          DeciderRun(
+            id: id,
+            provider: DeciderProvider.openrouter,
+            model: model,
+            ownKey: true,
+            keyHint: 'sk-or-v1-…abcd',
+            startedAtMs: 1,
+            total: 1,
+            chance: 20,
+            suite: suite ?? current,
+            status: status,
+            results: [
+              DeciderCaseResult(
+                  id: 'c',
+                  skill: 'dates',
+                  policy: 'harbor',
+                  right: right,
+                  pTrue: right ? 0.9 : 0.1,
+                  expected: 'BAN',
+                  got: 'BAN',
+                  ms: 10,
+                  inputTokens: 1000,
+                  costUsd: 0.00002),
+            ],
+          );
+      // Oldest first, as the store keeps them: "b" is the newer run.
+      await File('${dir.path}/decider_tests.json').writeAsString(jsonEncode({
+        'runs': [
+          run('a', 'perplexity/pplx-decider-v1.2', false).toJson(),
+          run('b', 'perplexity/pplx-decider-v1.2', true).toJson(),
+          run('c', 'respan/span-02', true, suite: 'oldsuite').toJson(),
+          run('d', 'typesafe/jev-1.14', true, status: 'stopped').toJson(),
+        ],
+      }));
+      final response =
+          await get('/api/v1/ai-benchmarks/decider', token: token);
+      expect(response.statusCode, 200);
+      final body = await response.readAsString();
+      expect(body, isNot(contains('sk-or')));
+      final decoded = jsonDecode(body) as Map<String, dynamic>;
+      final models = decoded['models'] as List;
+      expect(models, hasLength(1));
+      expect(models.single['model'], 'perplexity/pplx-decider-v1.2');
+      expect(models.single['accuracy'], 100);
+      expect(models.single['costPer1k'], closeTo(0.02, 1e-9));
+      expect(decoded['cases'], greaterThan(0));
     });
 
     test('manifest lists scenes with hashes', () async {

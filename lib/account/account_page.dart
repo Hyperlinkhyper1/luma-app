@@ -17,6 +17,8 @@ import '../sync/sync_scope.dart';
 import '../sync/sync_service.dart';
 import '../theme/luma_theme.dart';
 import 'family_page.dart';
+import 'loyalty.dart';
+import 'loyalty_card.dart';
 import 'plan.dart';
 import 'plan_selection_page.dart';
 import 'stats_section.dart';
@@ -395,6 +397,8 @@ class _SectionBody extends StatelessWidget {
           <Widget>[
             const _IdentityCard(),
             const SizedBox(height: 16),
+            const LoyaltyCard(),
+            const SizedBox(height: 16),
             _AccountDetailsCard(
               onManage: () => onSelect(_AccountSection.sync),
             ),
@@ -459,6 +463,7 @@ class _IdentityCard extends StatelessWidget {
         final path = settings.avatarPath;
         final hasImage = path != null && File(path).existsSync();
         final plan = planById(settings.selectedPlanId);
+        final loyalty = loyaltyStatusOf(settings);
         final email = sync.email;
         return LumaCard(
           child: _AdaptiveCardRow(
@@ -493,6 +498,12 @@ class _IdentityCard extends StatelessWidget {
                       label: plan.name,
                       color: luma.accent,
                     ),
+                    if (loyalty.active)
+                      _Tag(
+                        icon: loyalty.rank.icon,
+                        label: loyalty.rank.name,
+                        color: luma.accent,
+                      ),
                     _StatusTag(sync: sync),
                   ],
                 ),
@@ -722,7 +733,9 @@ class _AccountDetailsCard extends StatelessWidget {
           ),
           _DetailField(
             label: t.accountPlanTitle,
-            value: '${plan.name} · ${plan.priceLabel}',
+            value: '${plan.name} · ${plan.priceLabelFor(
+              loyal: loyaltyStatusOf(settings).discountUnlocked,
+            )}',
           ),
           _DetailField(
             label: t.familyTitle,
@@ -1096,6 +1109,7 @@ class _PlanSummary extends StatelessWidget {
       listenable: settings,
       builder: (context, _) {
         final plan = planById(settings.selectedPlanId);
+        final loyal = loyaltyStatusOf(settings).discountUnlocked;
         return LumaCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1123,13 +1137,22 @@ class _PlanSummary extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          plan.priceLabel,
+                          plan.priceLabelFor(loyal: loyal),
                           style: TextStyle(
                             color: luma.accent,
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
+                        if (loyal && plan.isPaid)
+                          Text(
+                            plan.priceLabel,
+                            style: TextStyle(
+                              color: luma.textMuted,
+                              fontSize: 12,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
                       ],
                     ),
                     const SizedBox(height: 4),

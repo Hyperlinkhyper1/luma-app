@@ -84,6 +84,7 @@ class SettingsController extends ChangeNotifier {
     required String selectedPlanId,
     required String? planExpiresAt,
     required String adminPlanId,
+    required String? paidSince,
     required int aiCallsToday,
     required String? aiCallsResetDate,
     required String aiProviderId,
@@ -106,6 +107,7 @@ class SettingsController extends ChangeNotifier {
        _selectedPlanId = selectedPlanId,
        _planExpiresAt = planExpiresAt,
        _adminPlanId = adminPlanId,
+       _paidSince = paidSince,
        _aiCallsToday = aiCallsToday,
        _aiCallsResetDate = aiCallsResetDate,
        _aiProviderId = aiProviderId,
@@ -148,6 +150,12 @@ class SettingsController extends ChangeNotifier {
   /// Local-only (persisted, not synced): each device learns it from the
   /// server directly.
   String _adminPlanId;
+
+  /// ISO-8601 timestamp of when the current unbroken run on a paid plan
+  /// began, or null while on Core. Drives the loyalty rank and the yearly
+  /// discount (see lib/account/loyalty.dart); kept current by
+  /// [_trackPaidSince] whenever the effective plan changes.
+  String? _paidSince;
   int _aiCallsToday;
   String? _aiCallsResetDate;
   String _aiProviderId;
@@ -256,6 +264,30 @@ class SettingsController extends ChangeNotifier {
     if (next == _adminPlanId) return;
     _adminPlanId = next;
     _changed();
+  }
+
+  /// When the current unbroken paid streak began, or null while on Core.
+  DateTime? get paidSince {
+    _rolloverPlanExpiryIfNeeded();
+    final raw = _paidSince;
+    return raw == null ? null : DateTime.tryParse(raw);
+  }
+
+  /// Starts the paid streak the moment the effective plan turns paid and
+  /// ends it the moment it falls back to Core, so a lapse resets the loyalty
+  /// ladder. Renewing a code before it expires never touches it. Returns
+  /// whether anything changed.
+  bool _trackPaidSince() {
+    final paid = _tierIndex(_effectivePlanId) > 0;
+    if (paid && _paidSince == null) {
+      _paidSince = DateTime.now().toIso8601String();
+      return true;
+    }
+    if (!paid && _paidSince != null) {
+      _paidSince = null;
+      return true;
+    }
+    return false;
   }
 
   void _rolloverPlanExpiryIfNeeded() {
@@ -509,6 +541,7 @@ class SettingsController extends ChangeNotifier {
   }
 
   void _changed() {
+    _trackPaidSince();
     notifyListeners();
     // Persist in the background; a storage hiccup must not block the UI.
     _persist();
@@ -528,6 +561,7 @@ class SettingsController extends ChangeNotifier {
     'avatarPath': _avatarPath,
     'selectedPlanId': _selectedPlanId,
     'planExpiresAt': _planExpiresAt,
+    'paidSince': _paidSince,
     'navOrder': _navOrder,
     'visitedCountries': _visitedCountries,
     'useAmericanGpaScale': _useAmericanGpaScale,
@@ -555,6 +589,8 @@ class SettingsController extends ChangeNotifier {
     _avatarPath = data['avatarPath'] as String?;
     _selectedPlanId = data['selectedPlanId'] as String? ?? 'core';
     _planExpiresAt = data['planExpiresAt'] as String?;
+    _paidSince = _earlierTimestamp(_paidSince, data['paidSince'] as String?);
+    _trackPaidSince();
     _navOrder = _parseNavOrder(data['navOrder']);
     _visitedCountries = _parseStringList(data['visitedCountries']);
     _useAmericanGpaScale = data['useAmericanGpaScale'] == true;
@@ -585,6 +621,7 @@ class SettingsController extends ChangeNotifier {
           // Local-device-only — deliberately not part of exportData/importData
           // (sync): each device learns its admin-granted plan from /account.
           'adminPlanId': _adminPlanId,
+          'paidSince': _paidSince,
           'aiCallsToday': _aiCallsToday,
           'aiCallsResetDate': _aiCallsResetDate,
           'aiProviderId': _aiProviderId,
@@ -618,7 +655,7 @@ class SettingsController extends ChangeNotifier {
       file = null;
     }
 
-    return SettingsController._(
+    final controller = SettingsController._(
       themeMode: _parseEnum(
         ThemeMode.values,
         data['themeMode'],
@@ -642,6 +679,7 @@ class SettingsController extends ChangeNotifier {
       selectedPlanId: data['selectedPlanId'] as String? ?? 'core',
       planExpiresAt: data['planExpiresAt'] as String?,
       adminPlanId: data['adminPlanId'] as String? ?? 'core',
+      paidSince: data['paidSince'] as String?,
       aiCallsToday: data['aiCallsToday'] as int? ?? 0,
       aiCallsResetDate: data['aiCallsResetDate'] as String?,
       // Luma Support (mistral) was retired from the pickers; land its
@@ -659,6 +697,20 @@ class SettingsController extends ChangeNotifier {
       trackBackendAiUsage: data['trackBackendAiUsage'] == true,
       file: file,
     );
+    // An account already on a paid plan before streaks were tracked starts
+    // its streak now rather than never.
+    if (controller._trackPaidSince()) await controller._persist();
+    return controller;
+  }
+
+  /// The earlier of two ISO-8601 timestamps, so merging a synced snapshot
+  /// never shortens a paid streak another device has been counting longer.
+  static String? _earlierTimestamp(String? a, String? b) {
+    final pa = a == null ? null : DateTime.tryParse(a);
+    final pb = b == null ? null : DateTime.tryParse(b);
+    if (pa == null) return pb == null ? null : b;
+    if (pb == null) return a;
+    return pb.isBefore(pa) ? b : a;
   }
 
   static T _parseEnum<T extends Enum>(List<T> values, Object? raw, T fallback) {

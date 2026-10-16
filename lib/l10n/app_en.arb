@@ -573,7 +573,7 @@
   "settingsAmericanGpa": "American grades",
   "settingsAmericanGpaSub": "Use American 4.0 grades in School instead of Dutch 1-to-10s.",
   "settingsAiAssistant": "AI Assistant",
-  "settingsAiAssistantSub": "Pop in your own Anthropic key to start chatting.",
+  "settingsAiAssistantSub": "Choose your provider, manage keys, and make the Assistant yours.",
   "settingsAbout": "About",
   "settingsResetDefaults": "Put everything back",
   "settingsResetTitle": "Start fresh?",
@@ -2126,8 +2126,89 @@
   "loginTermsOfService": "Terms of service",
   "loginPrivacyPolicy": "Privacy policy",
   "planPriceFree": "Free",
-  "planPriceOrbit": "$4 / month",
-  "planPriceNova": "$8 / month",
+  "planPricePerMonth": "${amount} / month",
+  "@planPricePerMonth": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "loyaltyTitle": "Loyalty rank",
+  "loyaltyRankStardust": "Stardust",
+  "loyaltyRankComet": "Comet",
+  "loyaltyRankStar": "Star",
+  "loyaltyRankConstellation": "Constellation",
+  "loyaltyRankGalaxy": "Galaxy",
+  "loyaltyDaysSubscribed": "{count, plural, =1{1 day subscribed} other{{count} days subscribed}}",
+  "@loyaltyDaysSubscribed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "loyaltyDaysToRank": "{count, plural, =1{1 day to {rank}} other{{count} days to {rank}}}",
+  "@loyaltyDaysToRank": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "rank": {
+        "type": "String"
+      }
+    }
+  },
+  "loyaltyDaysToDiscount": "{count, plural, =1{1 day until your plan is $1 cheaper} other{{count} days until your plan is $1 cheaper}}",
+  "@loyaltyDaysToDiscount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "loyaltyDiscountUnlocked": "Loyalty discount unlocked: $1 off every month",
+  "loyaltyDiscountBadge": "$1 off",
+  "loyaltyTopRank": "Top rank reached",
+  "loyaltySubscribedSince": "Subscribed since {date}",
+  "@loyaltySubscribedSince": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "loyaltyMilestoneMonths": "{count, plural, =0{Start} other{{count} mo}}",
+  "@loyaltyMilestoneMonths": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "loyaltyProgressSemantics": "{percent}% of the way to a year subscribed, current rank {rank}",
+  "@loyaltyProgressSemantics": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      },
+      "rank": {
+        "type": "String"
+      }
+    }
+  },
+  "loyaltyResetNote": "Your rank resets if your plan falls back to Core.",
+  "loyaltyInactiveTitle": "Earn a loyalty rank",
+  "loyaltyInactiveBody": "Subscribe to Orbit or Nova to start climbing. Stay subscribed for a year and your plan gets $1 cheaper every month.",
+  "loyaltyViewPlans": "View plans",
+  "loyaltyDiscountedFrom": "was {price}",
+  "@loyaltyDiscountedFrom": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
   "planCoreBlurb": "All the basics, right on your device.",
   "planOrbitBlurb": "More synced features, SFTP, Groceries List and the Coffee and Autumn themes.",
   "planNovaBlurb": "Everything in sync on every device, plus the premium tools.",
@@ -24486,5 +24567,24 @@
         "type": "int"
       }
     }
-  }
+  },
+  "aiTestDeciderTitle": "Decider Test (Moderation)",
+  "aiDeciderIntro": "Decision models answer a hard moderation suite: made-up platform rulebooks where the right call turns on dates, sums, counts and which rule outranks which. Each dot is a model's latest run — left to right is what 1,000 cases cost, up is how many it got right.",
+  "aiDeciderChartTitle": "Cost vs performance",
+  "aiDeciderCostAxis": "Cost per 1,000 cases (log scale)",
+  "aiDeciderGuessing": "guessing {pct}%",
+  "@aiDeciderGuessing": {"placeholders":{"pct":{"type":"String"}}},
+  "aiDeciderCeiling": "50% ceiling",
+  "aiDeciderFree": "free",
+  "aiDeciderRanking": "Models",
+  "aiDeciderRight": "{pct}% right",
+  "@aiDeciderRight": {"placeholders":{"pct":{"type":"String"}}},
+  "aiDeciderPerThousand": "{cost} per 1,000 cases",
+  "@aiDeciderPerThousand": {"placeholders":{"cost":{"type":"String"}}},
+  "aiDeciderSuiteLine": "{cases} cases · guessing scores {pct}%",
+  "@aiDeciderSuiteLine": {"placeholders":{"cases":{"type":"String"},"pct":{"type":"String"}}},
+  "aiDeciderEmpty": "No models tested yet",
+  "aiDeciderEmptyDetail": "Results show up here once a decision model has been run through the suite.",
+  "aiDeciderDirect": "via Perplexity",
+  "aiBenchmarkWhatDecider": "the decider results"
 }

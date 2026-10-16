@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import '../../../../../app/widgets.dart';
 import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
-import '../../_shared/windows_webview.dart';
 import 'ai_benchmark.dart';
 import 'ai_benchmark_scope.dart';
+import 'benchmark_webview.dart';
 import 'model_banner.dart';
 import 'model_search_field.dart';
 import 'pagoda_test_page.dart' show ModelButton;
@@ -117,7 +117,11 @@ class _KeyboardTestPageState extends State<KeyboardTestPage> {
               onChanged: (v) => setState(() => _query = v),
             ),
             const SizedBox(height: 20),
-            Row(
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 16,
+              runSpacing: 8,
               children: [
                 Text(
                   t.aiTestsSelectModel,
@@ -127,7 +131,6 @@ class _KeyboardTestPageState extends State<KeyboardTestPage> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const Spacer(),
                 LumaSegmentedTabs(
                   tabs: [t.aiTestsListView, t.aiTestsBannersView],
                   selectedIndex: _bannerView ? 1 : 0,
@@ -165,7 +168,9 @@ class _KeyboardTestPageState extends State<KeyboardTestPage> {
                     ? t.aiTestsKeyboardNoScenes
                     : t.aiTestsScenesSignInHint,
                 action: LumaGhostButton(
-                  label: repo.refreshing ? t.aiTestsRefreshing : t.commonRefresh,
+                  label: repo.refreshing
+                      ? t.aiTestsRefreshing
+                      : t.commonRefresh,
                   icon: Icons.refresh_rounded,
                   onTap: repo.refreshing || !repo.canRefresh
                       ? null
@@ -204,7 +209,7 @@ class _KeyboardTestPageState extends State<KeyboardTestPage> {
       onPressed: () => setState(() => _selectedId = null),
     );
 
-    if (!Platform.isWindows) {
+    if (!BenchmarkWebview.supported) {
       return Scaffold(
         backgroundColor: luma.background,
         appBar: AppBar(
@@ -294,9 +299,9 @@ class _SceneWebviewState extends State<_SceneWebview> {
     return Stack(
       children: [
         Positioned.fill(
-          child: WindowsWebview(
+          child: BenchmarkWebview(
             key: ValueKey(widget.path),
-            fileUrl: Uri.file(widget.path).toString(),
+            path: widget.path,
             onLoaded: () {
               if (mounted) setState(() => _loading = false);
             },

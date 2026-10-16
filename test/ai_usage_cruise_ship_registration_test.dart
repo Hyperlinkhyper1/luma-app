@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,12 +14,16 @@ import 'package:luma/features/plugins/installed/ai_usage/tests/model_banner.dart
 import 'package:luma/features/plugins/installed/ai_usage/tests/test_view_prefs.dart';
 import 'package:luma/features/plugins/installed/ai_usage/tests/tests_tab.dart';
 import 'package:luma/features/plugins/installed/_shared/native_webview.dart';
+import 'package:luma/l10n/app_localizations.dart';
 import 'package:luma/theme/luma_theme.dart';
 
 Widget _app(AiBenchmarkRepository repository) => AiBenchmarkScope(
   repository: repository,
   child: MaterialApp(
     theme: LumaTheme.dark,
+    localizationsDelegates: L.localizationsDelegates,
+    supportedLocales: L.supportedLocales,
+    locale: const Locale('en'),
     home: const Scaffold(body: TestsTab()),
   ),
 );
@@ -113,12 +118,11 @@ void main() {
     await tester.tap(find.text('Banners'));
     await tester.pumpAndSettle();
     final banners = tester.widgetList<ModelBanner>(find.byType(ModelBanner));
+    final benchmark = cruiseShipBenchmark(lookupL(const Locale('en')));
     expect(banners, hasLength(2));
     expect(
       banners
-          .singleWhere(
-            (banner) => banner.benchmark.id == cruiseShipBenchmark.id,
-          )
+          .singleWhere((banner) => banner.benchmark.id == benchmark.id)
           .benchmark
           .vendor,
       'openai',
@@ -126,6 +130,8 @@ void main() {
   });
 
   testWidgets('cruise scene uses the native mouse-input host', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
     await tester.runAsync(
       () => TestViewPrefs.saveBannerView('cruise_ship', false),
     );
@@ -160,6 +166,7 @@ void main() {
     await tester.pump();
     expect(find.text('Error from the disposed scene'), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
+    debugDefaultTargetPlatformOverride = null;
   }, skip: !Platform.isWindows);
 
   testWidgets('cruise list and banners fit a 320px window', (tester) async {

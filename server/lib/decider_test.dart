@@ -37,9 +37,12 @@ const kDeciderQuestionTypes = ['choice', 'noul', 'score'];
 
 /// The instructions a case gets when it only names the expected action.
 const kDeciderDefaultInstructions =
-    'Apply the rules in state.policy exactly as written to state.content, '
-    'using the facts in state.context. Which single action do the rules '
-    'require?';
+    'Apply the POLICY exactly as written to the CONTENT, using the facts in '
+    'CONTEXT. Which single action does the policy require?';
+
+/// How many failed cases, before any was answered, stop a run: the model is
+/// refusing the request itself, so the rest would fail the same way.
+const kDeciderEarlyFailures = 5;
 
 /// Where a run sends its requests. OpenRouter serves every decisions model
 /// on its alpha endpoint; Perplexity serves its own Decider models.
@@ -92,6 +95,16 @@ String deciderKeyHint(String key) {
 }
 
 String _str(Object? raw) => raw is String ? raw.trim() : '';
+
+/// A short fingerprint of a suite's text (FNV-1a, 32 bit), so runs made on
+/// an older or edited suite can be told apart from current ones.
+String deciderSuiteHash(String text) {
+  var h = 0x811c9dc5;
+  for (final unit in utf8.encode(text)) {
+    h = ((h ^ unit) * 0x01000193) & 0xffffffff;
+  }
+  return h.toRadixString(16).padLeft(8, '0');
+}
 
 /// One rulebook the cases point at.
 class DeciderPolicy {
@@ -160,6 +173,7 @@ class DeciderCase {
     required this.context,
     required this.content,
     required this.questions,
+    this.why = '',
   });
 
   final String id;
@@ -172,6 +186,9 @@ class DeciderCase {
   final String content;
   final List<DeciderQuestion> questions;
 
+  /// The worked answer, shown next to a wrong one in a run's details.
+  final String why;
+
   /// The odds of getting the whole case right by guessing.
   double get chance =>
       questions.fold(1.0, (p, q) => p / math.max(1, q.optionCount));
@@ -180,16 +197,20 @@ class DeciderCase {
       ? questions.single.expectedLabel
       : questions.map((q) => '${q.name}: ${q.expectedLabel}').join(', ');
 
-  /// The decisions API body for [model].
+  /// The decisions API body for [model]. The state is one plain text, the
+  /// one shape every decisions model takes: Respan's accept only a string
+  /// or their own chat transcript, not an arbitrary object.
   Map<String, dynamic> request(String model) => {
         'model': model,
-        'state': {
-          'policy': '${policy.title}\n\n${policy.rules}',
-          'context': context ?? const {},
-          'content': content,
-        },
+        'state': stateText,
         'questions': {for (final q in questions) q.name: q.toRequest()},
       };
+
+  String get stateText {
+    final facts = const JsonEncoder.withIndent('  ').convert(context ?? const {});
+    return 'POLICY\n${policy.title}\n${policy.rules}\n\n'
+        'CONTEXT\n$facts\n\nCONTENT\n$content';
+  }
 }
 
 /// The operator's suite: the policies and the cases.
@@ -273,6 +294,7 @@ class DeciderSuite {
         context: raw['context'],
         content: content,
         questions: _questionsOf(raw, policy, label),
+        why: _str(raw['why']),
       ));
     }
     return DeciderSuite(policies, cases);
@@ -419,6 +441,7 @@ class DeciderCaseResult {
     this.inputTokens = 0,
     this.costUsd = 0,
     this.error,
+    this.why = '',
   });
 
   final String id;
@@ -432,6 +455,7 @@ class DeciderCaseResult {
   final int inputTokens;
   final double costUsd;
   final String? error;
+  final String why;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -445,6 +469,7 @@ class DeciderCaseResult {
         'inputTokens': inputTokens,
         'costUsd': costUsd,
         if (error != null) 'error': error,
+        if (why.isNotEmpty) 'why': why,
       };
 
   static DeciderCaseResult? fromJson(Object? raw) {
@@ -461,6 +486,7 @@ class DeciderCaseResult {
       inputTokens: (raw['inputTokens'] as num?)?.toInt() ?? 0,
       costUsd: (raw['costUsd'] as num?)?.toDouble() ?? 0,
       error: raw['error'] is String ? raw['error'] as String : null,
+      why: _str(raw['why']),
     );
   }
 }
@@ -512,7 +538,8 @@ Future<DeciderCaseResult> attemptDeciderCase(
         ms: ms,
         inputTokens: reply.inputTokens,
         costUsd: cost,
-        error: reply.error ?? 'No answers in the reply.');
+        error: reply.error ?? 'No answers in the reply.',
+        why: c.why);
   }
   var right = true;
   var pTrue = 1.0;
@@ -533,7 +560,8 @@ Future<DeciderCaseResult> attemptDeciderCase(
       got: got.join(', '),
       ms: ms,
       inputTokens: reply.inputTokens,
-      costUsd: cost);
+      costUsd: cost,
+      why: c.why);
 }
 
 /// One run of the suite against one model.
@@ -546,6 +574,7 @@ class DeciderRun {
     required this.startedAtMs,
     required this.total,
     required this.chance,
+    this.suite = '',
     this.keyHint,
     this.status = 'queued',
     this.finishedAtMs,
@@ -563,6 +592,10 @@ class DeciderRun {
 
   /// What guessing would have scored on the suite this run used, 0 to 100.
   final double chance;
+
+  /// [deciderSuiteHash] of the suite this run used. Runs on another suite
+  /// are not comparable with runs on the current one.
+  final String suite;
 
   /// `queued`, `running`, `done`, `stopped`, `failed` or `interrupted`.
   String status;
@@ -627,6 +660,7 @@ class DeciderRun {
         'total': total,
         'done': results.length,
         'chance': double.parse(chance.toStringAsFixed(1)),
+        if (suite.isNotEmpty) 'suite': suite,
         'accuracy': double.parse(accuracy.toStringAsFixed(1)),
         'meanPTrue': double.parse(meanPTrue.toStringAsFixed(1)),
         'costUsd': costUsd,
@@ -661,6 +695,7 @@ class DeciderRun {
       startedAtMs: (raw['startedAtMs'] as num?)?.toInt() ?? 0,
       total: (raw['total'] as num?)?.toInt() ?? 0,
       chance: (raw['chance'] as num?)?.toDouble() ?? 0,
+      suite: _str(raw['suite']),
       status: status == 'running' || status == 'queued' ? 'interrupted' : status,
       finishedAtMs: (raw['finishedAtMs'] as num?)?.toInt(),
       note: raw['note'] is String ? raw['note'] as String : null,
@@ -703,6 +738,13 @@ Future<void> runDeciderSuite(
         break;
       }
       run.results.add(result);
+      if (run.results.length == kDeciderEarlyFailures &&
+          run.results.every((r) => r.error != null) &&
+          !run.stopRequested) {
+        run.stopRequested = true;
+        run.note = 'The first $kDeciderEarlyFailures cases all failed: '
+            '${run.results.first.error}';
+      }
       await onProgress?.call();
     }
   }

@@ -1070,7 +1070,7 @@ class LNl extends L {
 
   @override
   String get settingsAiAssistantSub =>
-      'Stop je eigen Anthropic-sleutel erin en kletsen maar.';
+      'Kies je provider, beheer sleutels en pas de Assistant aan naar jouw wensen.';
 
   @override
   String get settingsAbout => 'Over';
@@ -4365,10 +4365,110 @@ class LNl extends L {
   String get planPriceFree => 'Gratis';
 
   @override
-  String get planPriceOrbit => '\$4 / maand';
+  String planPricePerMonth(String amount) {
+    return '\$$amount / maand';
+  }
 
   @override
-  String get planPriceNova => '\$8 / maand';
+  String get loyaltyTitle => 'Loyaliteitsrang';
+
+  @override
+  String get loyaltyRankStardust => 'Sterrenstof';
+
+  @override
+  String get loyaltyRankComet => 'Komeet';
+
+  @override
+  String get loyaltyRankStar => 'Ster';
+
+  @override
+  String get loyaltyRankConstellation => 'Sterrenbeeld';
+
+  @override
+  String get loyaltyRankGalaxy => 'Melkweg';
+
+  @override
+  String loyaltyDaysSubscribed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count dagen geabonneerd',
+      one: '1 dag geabonneerd',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String loyaltyDaysToRank(int count, String rank) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Nog $count dagen tot $rank',
+      one: 'Nog 1 dag tot $rank',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String loyaltyDaysToDiscount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Nog $count dagen tot je abonnement \$1 goedkoper is',
+      one: 'Nog 1 dag tot je abonnement \$1 goedkoper is',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get loyaltyDiscountUnlocked =>
+      'Loyaliteitskorting ontgrendeld: elke maand \$1 korting';
+
+  @override
+  String get loyaltyDiscountBadge => '\$1 korting';
+
+  @override
+  String get loyaltyTopRank => 'Hoogste rang bereikt';
+
+  @override
+  String loyaltySubscribedSince(String date) {
+    return 'Geabonneerd sinds $date';
+  }
+
+  @override
+  String loyaltyMilestoneMonths(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count mnd',
+      zero: 'Start',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String loyaltyProgressSemantics(int percent, String rank) {
+    return '$percent% van een jaar geabonneerd, huidige rang $rank';
+  }
+
+  @override
+  String get loyaltyResetNote =>
+      'Je rang begint opnieuw als je abonnement terugvalt naar Core.';
+
+  @override
+  String get loyaltyInactiveTitle => 'Verdien een loyaliteitsrang';
+
+  @override
+  String get loyaltyInactiveBody =>
+      'Neem Orbit of Nova om te beginnen met klimmen. Blijf een jaar geabonneerd en je abonnement wordt elke maand \$1 goedkoper.';
+
+  @override
+  String get loyaltyViewPlans => 'Bekijk abonnementen';
+
+  @override
+  String loyaltyDiscountedFrom(String price) {
+    return 'was $price';
+  }
 
   @override
   String get planCoreBlurb => 'Alle basisfuncties, direct op je apparaat.';
@@ -40083,4 +40183,59 @@ class LNl extends L {
   String teamClipboardFileTooDeep(String name, int depth) {
     return '$name is dieper genest dan $depth niveaus.';
   }
+
+  @override
+  String get aiTestDeciderTitle => 'Decider-test (moderatie)';
+
+  @override
+  String get aiDeciderIntro =>
+      'Beslismodellen beantwoorden een zware moderatieset: verzonnen platformregels waarbij het juiste besluit afhangt van datums, sommen, tellingen en welke regel voorgaat. Elke stip is de laatste run van een model — van links naar rechts wat 1.000 gevallen kosten, omhoog hoe vaak het goed was.';
+
+  @override
+  String get aiDeciderChartTitle => 'Kosten tegenover prestaties';
+
+  @override
+  String get aiDeciderCostAxis => 'Kosten per 1.000 gevallen (logschaal)';
+
+  @override
+  String aiDeciderGuessing(String pct) {
+    return 'gokken $pct%';
+  }
+
+  @override
+  String get aiDeciderCeiling => 'plafond 50%';
+
+  @override
+  String get aiDeciderFree => 'gratis';
+
+  @override
+  String get aiDeciderRanking => 'Modellen';
+
+  @override
+  String aiDeciderRight(String pct) {
+    return '$pct% goed';
+  }
+
+  @override
+  String aiDeciderPerThousand(String cost) {
+    return '$cost per 1.000 gevallen';
+  }
+
+  @override
+  String aiDeciderSuiteLine(String cases, String pct) {
+    return '$cases gevallen · gokken scoort $pct%';
+  }
+
+  @override
+  String get aiDeciderEmpty => 'Nog geen modellen getest';
+
+  @override
+  String get aiDeciderEmptyDetail =>
+      'Resultaten verschijnen hier zodra een beslismodel de set heeft doorlopen.';
+
+  @override
+  String get aiDeciderDirect => 'via Perplexity';
+
+  @override
+  String get aiBenchmarkWhatDecider => 'de decider-resultaten';
 }

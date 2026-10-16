@@ -148,10 +148,12 @@ class _PetSettingsSectionState extends State<PetSettingsSection> {
             ),
           if (PetRepository.supportsGlobalHotKey && pet.enabled) ...[
             const SizedBox(height: 4),
-            Row(
+            Wrap(
+              spacing: 16,
+              runSpacing: 12,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 HotKeyVirtualView(hotKey: pet.hotKey),
-                const Spacer(),
                 LumaGhostButton(
                   label: t.petSettingsRebind,
                   icon: Icons.keyboard_rounded,
@@ -165,8 +167,11 @@ class _PetSettingsSectionState extends State<PetSettingsSection> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.warning_amber_rounded,
-                    size: 16, color: luma.warning),
+                Icon(
+                  Icons.warning_amber_rounded,
+                  size: 16,
+                  color: luma.warning,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -185,25 +190,36 @@ class _PetSettingsSectionState extends State<PetSettingsSection> {
           // The way in that needs nothing else: no hotkey, no registration,
           // no keyboard at all. Sits above the name field because it is what
           // most people come to this card for.
-          Row(
-            children: [
-              LumaPrimaryButton(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final action = LumaPrimaryButton(
                 label: t.petSettingsSummon,
                 icon: Icons.auto_awesome_rounded,
                 onTap: pet.open,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  t.petSettingsSummonHint,
-                  style: TextStyle(
-                    color: luma.textMuted,
-                    fontSize: 12.5,
-                    height: 1.35,
-                  ),
+              );
+              final hint = Text(
+                t.petSettingsSummonHint,
+                style: TextStyle(
+                  color: luma.textSecondary,
+                  fontSize: 12.5,
+                  height: 1.35,
                 ),
-              ),
-            ],
+              );
+              if (constraints.maxWidth < 480 ||
+                  MediaQuery.textScalerOf(context).scale(14) > 20) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [action, const SizedBox(height: 12), hint],
+                );
+              }
+              return Row(
+                children: [
+                  action,
+                  const SizedBox(width: 12),
+                  Expanded(child: hint),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 16),
           Row(

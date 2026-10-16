@@ -5,10 +5,9 @@ import 'package:flutter/material.dart';
 import '../../../../../app/widgets.dart';
 import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
-import '../../_shared/windows_webview.dart'
-    show WindowsWebview, windowsAssetPath;
 import 'ai_benchmark.dart';
 import 'ai_benchmark_scope.dart';
+import 'benchmark_webview.dart';
 import 'model_banner.dart';
 import 'model_search_field.dart';
 import 'pagoda_test_page.dart' show ModelButton;
@@ -141,7 +140,11 @@ class _PcTestPageState extends State<PcTestPage> {
               onChanged: (v) => setState(() => _query = v),
             ),
             const SizedBox(height: 20),
-            Row(
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 16,
+              runSpacing: 8,
               children: [
                 Text(
                   t.aiTestSelectModel,
@@ -151,7 +154,6 @@ class _PcTestPageState extends State<PcTestPage> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const Spacer(),
                 LumaSegmentedTabs(
                   tabs: [t.aiTestViewList, t.aiTestViewBanners],
                   selectedIndex: _bannerView ? 1 : 0,
@@ -225,7 +227,7 @@ class _PcTestPageState extends State<PcTestPage> {
     final t = L.of(context);
     final repo = AiBenchmarkScope.of(context);
 
-    if (!Platform.isWindows) {
+    if (!BenchmarkWebview.supported) {
       return Scaffold(
         backgroundColor: luma.background,
         appBar: AppBar(
@@ -329,13 +331,10 @@ class _PcSceneWebviewState extends State<_PcSceneWebview> {
     return Stack(
       children: [
         Positioned.fill(
-          child: WindowsWebview(
+          child: BenchmarkWebview(
             key: ValueKey(widget.assetPath ?? widget.path),
-            fileUrl: Uri.file(
-              widget.assetPath == null
-                  ? widget.path!
-                  : windowsAssetPath(widget.assetPath!),
-            ).toString(),
+            path: widget.path,
+            assetPath: widget.assetPath,
             onLoaded: () {
               if (mounted) setState(() => _loading = false);
             },

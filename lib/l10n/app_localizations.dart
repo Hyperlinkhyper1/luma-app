@@ -1868,7 +1868,7 @@ abstract class L {
   /// No description provided for @settingsAiAssistantSub.
   ///
   /// In en, this message translates to:
-  /// **'Pop in your own Anthropic key to start chatting.'**
+  /// **'Choose your provider, manage keys, and make the Assistant yours.'**
   String get settingsAiAssistantSub;
 
   /// No description provided for @settingsAbout.
@@ -7781,17 +7781,131 @@ abstract class L {
   /// **'Free'**
   String get planPriceFree;
 
-  /// No description provided for @planPriceOrbit.
+  /// No description provided for @planPricePerMonth.
   ///
   /// In en, this message translates to:
-  /// **'\$4 / month'**
-  String get planPriceOrbit;
+  /// **'\${amount} / month'**
+  String planPricePerMonth(String amount);
 
-  /// No description provided for @planPriceNova.
+  /// No description provided for @loyaltyTitle.
   ///
   /// In en, this message translates to:
-  /// **'\$8 / month'**
-  String get planPriceNova;
+  /// **'Loyalty rank'**
+  String get loyaltyTitle;
+
+  /// No description provided for @loyaltyRankStardust.
+  ///
+  /// In en, this message translates to:
+  /// **'Stardust'**
+  String get loyaltyRankStardust;
+
+  /// No description provided for @loyaltyRankComet.
+  ///
+  /// In en, this message translates to:
+  /// **'Comet'**
+  String get loyaltyRankComet;
+
+  /// No description provided for @loyaltyRankStar.
+  ///
+  /// In en, this message translates to:
+  /// **'Star'**
+  String get loyaltyRankStar;
+
+  /// No description provided for @loyaltyRankConstellation.
+  ///
+  /// In en, this message translates to:
+  /// **'Constellation'**
+  String get loyaltyRankConstellation;
+
+  /// No description provided for @loyaltyRankGalaxy.
+  ///
+  /// In en, this message translates to:
+  /// **'Galaxy'**
+  String get loyaltyRankGalaxy;
+
+  /// No description provided for @loyaltyDaysSubscribed.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 day subscribed} other{{count} days subscribed}}'**
+  String loyaltyDaysSubscribed(int count);
+
+  /// No description provided for @loyaltyDaysToRank.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 day to {rank}} other{{count} days to {rank}}}'**
+  String loyaltyDaysToRank(int count, String rank);
+
+  /// No description provided for @loyaltyDaysToDiscount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 day until your plan is \$1 cheaper} other{{count} days until your plan is \$1 cheaper}}'**
+  String loyaltyDaysToDiscount(int count);
+
+  /// No description provided for @loyaltyDiscountUnlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Loyalty discount unlocked: \$1 off every month'**
+  String get loyaltyDiscountUnlocked;
+
+  /// No description provided for @loyaltyDiscountBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'\$1 off'**
+  String get loyaltyDiscountBadge;
+
+  /// No description provided for @loyaltyTopRank.
+  ///
+  /// In en, this message translates to:
+  /// **'Top rank reached'**
+  String get loyaltyTopRank;
+
+  /// No description provided for @loyaltySubscribedSince.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribed since {date}'**
+  String loyaltySubscribedSince(String date);
+
+  /// No description provided for @loyaltyMilestoneMonths.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Start} other{{count} mo}}'**
+  String loyaltyMilestoneMonths(int count);
+
+  /// No description provided for @loyaltyProgressSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% of the way to a year subscribed, current rank {rank}'**
+  String loyaltyProgressSemantics(int percent, String rank);
+
+  /// No description provided for @loyaltyResetNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Your rank resets if your plan falls back to Core.'**
+  String get loyaltyResetNote;
+
+  /// No description provided for @loyaltyInactiveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Earn a loyalty rank'**
+  String get loyaltyInactiveTitle;
+
+  /// No description provided for @loyaltyInactiveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribe to Orbit or Nova to start climbing. Stay subscribed for a year and your plan gets \$1 cheaper every month.'**
+  String get loyaltyInactiveBody;
+
+  /// No description provided for @loyaltyViewPlans.
+  ///
+  /// In en, this message translates to:
+  /// **'View plans'**
+  String get loyaltyViewPlans;
+
+  /// No description provided for @loyaltyDiscountedFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'was {price}'**
+  String loyaltyDiscountedFrom(String price);
 
   /// No description provided for @planCoreBlurb.
   ///
@@ -65296,6 +65410,96 @@ abstract class L {
   /// In en, this message translates to:
   /// **'{name} nests deeper than {depth} levels.'**
   String teamClipboardFileTooDeep(String name, int depth);
+
+  /// No description provided for @aiTestDeciderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Decider Test (Moderation)'**
+  String get aiTestDeciderTitle;
+
+  /// No description provided for @aiDeciderIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Decision models answer a hard moderation suite: made-up platform rulebooks where the right call turns on dates, sums, counts and which rule outranks which. Each dot is a model\'s latest run — left to right is what 1,000 cases cost, up is how many it got right.'**
+  String get aiDeciderIntro;
+
+  /// No description provided for @aiDeciderChartTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cost vs performance'**
+  String get aiDeciderChartTitle;
+
+  /// No description provided for @aiDeciderCostAxis.
+  ///
+  /// In en, this message translates to:
+  /// **'Cost per 1,000 cases (log scale)'**
+  String get aiDeciderCostAxis;
+
+  /// No description provided for @aiDeciderGuessing.
+  ///
+  /// In en, this message translates to:
+  /// **'guessing {pct}%'**
+  String aiDeciderGuessing(String pct);
+
+  /// No description provided for @aiDeciderCeiling.
+  ///
+  /// In en, this message translates to:
+  /// **'50% ceiling'**
+  String get aiDeciderCeiling;
+
+  /// No description provided for @aiDeciderFree.
+  ///
+  /// In en, this message translates to:
+  /// **'free'**
+  String get aiDeciderFree;
+
+  /// No description provided for @aiDeciderRanking.
+  ///
+  /// In en, this message translates to:
+  /// **'Models'**
+  String get aiDeciderRanking;
+
+  /// No description provided for @aiDeciderRight.
+  ///
+  /// In en, this message translates to:
+  /// **'{pct}% right'**
+  String aiDeciderRight(String pct);
+
+  /// No description provided for @aiDeciderPerThousand.
+  ///
+  /// In en, this message translates to:
+  /// **'{cost} per 1,000 cases'**
+  String aiDeciderPerThousand(String cost);
+
+  /// No description provided for @aiDeciderSuiteLine.
+  ///
+  /// In en, this message translates to:
+  /// **'{cases} cases · guessing scores {pct}%'**
+  String aiDeciderSuiteLine(String cases, String pct);
+
+  /// No description provided for @aiDeciderEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No models tested yet'**
+  String get aiDeciderEmpty;
+
+  /// No description provided for @aiDeciderEmptyDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Results show up here once a decision model has been run through the suite.'**
+  String get aiDeciderEmptyDetail;
+
+  /// No description provided for @aiDeciderDirect.
+  ///
+  /// In en, this message translates to:
+  /// **'via Perplexity'**
+  String get aiDeciderDirect;
+
+  /// No description provided for @aiBenchmarkWhatDecider.
+  ///
+  /// In en, this message translates to:
+  /// **'the decider results'**
+  String get aiBenchmarkWhatDecider;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

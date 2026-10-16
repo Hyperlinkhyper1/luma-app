@@ -6,6 +6,7 @@ import '../settings/settings_controller.dart';
 import '../settings/settings_scope.dart';
 import '../sync/sync_scope.dart';
 import '../theme/luma_theme.dart';
+import 'loyalty.dart';
 import 'plan.dart';
 import 'plan_code_dialog.dart';
 
@@ -149,6 +150,7 @@ class _PlanGrid extends StatelessWidget {
       builder: (context, _) {
         final selectedId = settings.selectedPlanId;
         final expiresAt = settings.planExpiresAt;
+        final loyal = loyaltyStatusOf(settings).discountUnlocked;
         return LayoutBuilder(
           builder: (context, constraints) {
             final wide = constraints.maxWidth >= 720;
@@ -158,6 +160,7 @@ class _PlanGrid extends StatelessWidget {
                   plan: plan,
                   selected: plan.id == selectedId,
                   expiresAt: plan.id == selectedId ? expiresAt : null,
+                  loyal: loyal,
                   onTap: () => _selectPlan(context, settings, plan),
                 ),
             ];
@@ -324,11 +327,16 @@ class _PlanCard extends StatefulWidget {
     required this.selected,
     required this.onTap,
     this.expiresAt,
+    this.loyal = false,
   });
 
   final Plan plan;
   final bool selected;
   final VoidCallback onTap;
+
+  /// Whether the account has earned the loyalty discount, which takes $1
+  /// off every paid plan's monthly price.
+  final bool loyal;
 
   /// When this (selected) plan reverts to Core, if it was code-redeemed.
   final DateTime? expiresAt;
@@ -450,7 +458,7 @@ class _PlanCardState extends State<_PlanCard> {
                     const SizedBox(height: 6),
                     // Price
                     Text(
-                      plan.priceLabel,
+                      plan.priceLabelFor(loyal: widget.loyal),
                       style: TextStyle(
                         color: luma.accent,
                         fontSize: 32,
@@ -458,6 +466,42 @@ class _PlanCardState extends State<_PlanCard> {
                         letterSpacing: -0.5,
                       ),
                     ),
+                    if (widget.loyal && plan.isPaid) ...[
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(
+                            plan.priceLabel,
+                            style: TextStyle(
+                              color: luma.textMuted,
+                              fontSize: 13,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.sell_rounded,
+                                size: 13,
+                                color: luma.success,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                t.loyaltyDiscountBadge,
+                                style: TextStyle(
+                                  color: luma.success,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     Text(
                       plan.blurb,

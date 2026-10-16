@@ -1004,7 +1004,7 @@ class LZh extends L {
   String get settingsAiAssistant => 'AI 助手';
 
   @override
-  String get settingsAiAssistantSub => '连接你自己的 Anthropic API 密钥。';
+  String get settingsAiAssistantSub => '选择服务商、管理密钥，让助手更合你心意。';
 
   @override
   String get settingsAbout => '关于';
@@ -4164,10 +4164,105 @@ class LZh extends L {
   String get planPriceFree => '免费';
 
   @override
-  String get planPriceOrbit => '每月 4 美元';
+  String planPricePerMonth(String amount) {
+    return '每月 $amount 美元';
+  }
 
   @override
-  String get planPriceNova => '每月 8 美元';
+  String get loyaltyTitle => '忠诚等级';
+
+  @override
+  String get loyaltyRankStardust => '星尘';
+
+  @override
+  String get loyaltyRankComet => '彗星';
+
+  @override
+  String get loyaltyRankStar => '恒星';
+
+  @override
+  String get loyaltyRankConstellation => '星座';
+
+  @override
+  String get loyaltyRankGalaxy => '星系';
+
+  @override
+  String loyaltyDaysSubscribed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '已订阅 $count 天',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String loyaltyDaysToRank(int count, String rank) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '距 $rank 还有 $count 天',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String loyaltyDaysToDiscount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '再过 $count 天，你的套餐每月便宜 1 美元',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get loyaltyDiscountUnlocked => '已解锁忠诚折扣：每月便宜 1 美元';
+
+  @override
+  String get loyaltyDiscountBadge => '减 1 美元';
+
+  @override
+  String get loyaltyTopRank => '已达到最高等级';
+
+  @override
+  String loyaltySubscribedSince(String date) {
+    return '订阅始于 $date';
+  }
+
+  @override
+  String loyaltyMilestoneMonths(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个月',
+      zero: '开始',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String loyaltyProgressSemantics(int percent, String rank) {
+    return '已完成一年订阅的 $percent%，当前等级 $rank';
+  }
+
+  @override
+  String get loyaltyResetNote => '如果套餐回落到 Core，等级会重新开始。';
+
+  @override
+  String get loyaltyInactiveTitle => '赢取忠诚等级';
+
+  @override
+  String get loyaltyInactiveBody =>
+      '订阅 Orbit 或 Nova 即可开始升级。连续订阅一年，套餐每月便宜 1 美元。';
+
+  @override
+  String get loyaltyViewPlans => '查看套餐';
+
+  @override
+  String loyaltyDiscountedFrom(String price) {
+    return '原价 $price';
+  }
 
   @override
   String get planCoreBlurb => '所有基础功能，直接在你的设备上。';
@@ -37982,4 +38077,58 @@ class LZh extends L {
   String teamClipboardFileTooDeep(String name, int depth) {
     return '$name 的嵌套层级超过 $depth 层。';
   }
+
+  @override
+  String get aiTestDeciderTitle => 'Decider 测试（内容审核）';
+
+  @override
+  String get aiDeciderIntro =>
+      '决策模型回答一套高难度的审核题：虚构的平台规则，正确判断取决于日期、计算、计数以及哪条规则优先。每个点是一个模型最近一次运行——从左到右是 1,000 道题的成本，越高表示答对越多。';
+
+  @override
+  String get aiDeciderChartTitle => '成本与表现';
+
+  @override
+  String get aiDeciderCostAxis => '每 1,000 道题的成本（对数刻度）';
+
+  @override
+  String aiDeciderGuessing(String pct) {
+    return '随机猜测 $pct%';
+  }
+
+  @override
+  String get aiDeciderCeiling => '50% 上限';
+
+  @override
+  String get aiDeciderFree => '免费';
+
+  @override
+  String get aiDeciderRanking => '模型';
+
+  @override
+  String aiDeciderRight(String pct) {
+    return '答对 $pct%';
+  }
+
+  @override
+  String aiDeciderPerThousand(String cost) {
+    return '每 1,000 道题 $cost';
+  }
+
+  @override
+  String aiDeciderSuiteLine(String cases, String pct) {
+    return '$cases 道题 · 随机猜测得 $pct%';
+  }
+
+  @override
+  String get aiDeciderEmpty => '还没有测试过的模型';
+
+  @override
+  String get aiDeciderEmptyDetail => '决策模型跑完这套题后，结果会显示在这里。';
+
+  @override
+  String get aiDeciderDirect => '经由 Perplexity';
+
+  @override
+  String get aiBenchmarkWhatDecider => 'Decider 结果';
 }

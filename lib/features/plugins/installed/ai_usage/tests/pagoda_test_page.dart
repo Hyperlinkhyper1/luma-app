@@ -4,21 +4,20 @@ import 'package:flutter/material.dart';
 import '../../../../../app/widgets.dart';
 import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
-import '../../_shared/windows_webview.dart';
 import '../leaderboard/ai_vendor_style.dart';
 import '../leaderboard/vendor_logos.dart';
 import 'ai_benchmark.dart';
 import 'ai_benchmark_scope.dart';
+import 'benchmark_webview.dart';
 import 'model_banner.dart';
 import 'model_search_field.dart';
 import 'test_view_prefs.dart';
-import '../../_shared/windows_webview.dart' show windowsAssetPath;
 
 /// The **Pagoda Test** page loads an interactive Three.js voxel garden
 /// benchmark — a procedurally generated Japanese garden with a 5-story pagoda.
 ///
 /// The scene demonstrates voxel rendering, animation, interaction, and dynamic
-/// day/night cycles. It runs in an embedded WebView on Windows.
+/// day/night cycles. It runs in an embedded WebView on Windows and phones.
 ///
 /// Scenes used to ship inside the app bundle; they live on the luma server
 /// now. The roster comes from [AiBenchmarkScope], each scene downloads on
@@ -384,7 +383,11 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
               onChanged: (v) => setState(() => _query = v),
             ),
             const SizedBox(height: 20),
-            Row(
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 16,
+              runSpacing: 8,
               children: [
                 Text(
                   t.aiTestsSelectModel,
@@ -394,7 +397,6 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const Spacer(),
                 LumaSegmentedTabs(
                   tabs: [t.aiTestsListView, t.aiTestsBannersView],
                   selectedIndex: _bannerView ? 1 : 0,
@@ -467,7 +469,7 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
     final t = L.of(context);
     final repo = AiBenchmarkScope.of(context);
 
-    if (!Platform.isWindows) {
+    if (!BenchmarkWebview.supported) {
       return Scaffold(
         backgroundColor: luma.background,
         appBar: AppBar(
@@ -503,10 +505,9 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
       ),
       body: _nativeModelIds.contains(benchmark.id)
           ? _SceneWebview(
-              path: windowsAssetPath(
-                _nativeAssetPaths[benchmark.id] ??
-                    'assets/tests/pagoda_space_bunny.html',
-              ),
+              assetPath:
+                  _nativeAssetPaths[benchmark.id] ??
+                  'assets/tests/pagoda_space_bunny.html',
             )
           : FutureBuilder<File>(
               future: repo.sceneFile(benchmark.id),
@@ -557,10 +558,10 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
 /// The embedded scene, remounted per file so going back and opening another
 /// model never shows the previous scene.
 class _SceneWebview extends StatefulWidget {
-  const _SceneWebview({this.path, this.html});
+  const _SceneWebview({this.path, this.assetPath});
 
   final String? path;
-  final String? html;
+  final String? assetPath;
 
   @override
   State<_SceneWebview> createState() => _SceneWebviewState();
@@ -575,12 +576,10 @@ class _SceneWebviewState extends State<_SceneWebview> {
     return Stack(
       children: [
         Positioned.fill(
-          child: WindowsWebview(
-            key: ValueKey(widget.path ?? 'native-pagoda'),
-            fileUrl: widget.path == null
-                ? null
-                : Uri.file(widget.path!).toString(),
-            html: widget.html,
+          child: BenchmarkWebview(
+            key: ValueKey(widget.path ?? widget.assetPath),
+            path: widget.path,
+            assetPath: widget.assetPath,
             onLoaded: () {
               if (mounted) setState(() => _loading = false);
             },

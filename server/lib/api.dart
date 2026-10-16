@@ -651,6 +651,7 @@ class Api {
           _requireAuth(_sendChatMessage))
       ..get('/api/v1/ai-models', _requireAuth(_listAiModels))
       ..get('/api/v1/ai-benchmarks', _requireAuth(_listAiBenchmarks))
+      ..get('/api/v1/ai-benchmarks/decider', _requireAuth(_deciderResults))
       ..get('/api/v1/ai-benchmarks/scene/<id>',
           _requireAuth(_getAiBenchmarkScene))
       ..get('/api/v1/ai-benchmarks/preview/<id>',
@@ -3384,7 +3385,7 @@ class Api {
     final meteredMode = kAiModeNames.containsKey(mode) ? mode : 'normal';
     if (mode == 'smartest' && user.planId != 'nova') {
       return errorResponse(
-          403, 'plan_required', 'Pulsar requires a Nova (\$6/month) plan.');
+          403, 'plan_required', 'Pulsar requires a Nova (\$8/month) plan.');
     }
     final budget = aiTokenBudget(user.planId);
     if (!aiUsage.canSpend(user.id, budget)) {
@@ -10690,8 +10691,8 @@ syncToolbar();
 
     const planLabels = {
       'core': 'Core (Free)',
-      'orbit': 'Orbit (\$3/mo)',
-      'nova': 'Nova (\$6/mo)',
+      'orbit': 'Orbit (\$4/mo)',
+      'nova': 'Nova (\$8/mo)',
     };
 
     String fmtCount(int n) => n

@@ -9,6 +9,7 @@ import 'package:luma/features/plugins/installed/ai_usage/tests/ai_benchmark_scop
 import 'package:luma/features/plugins/installed/ai_usage/tests/hero_tile.dart';
 import 'package:luma/features/plugins/installed/ai_usage/tests/pagoda_test_page.dart';
 import 'package:luma/features/plugins/installed/ai_usage/tests/tests_tab.dart';
+import 'package:luma/l10n/app_localizations.dart';
 import 'package:luma/theme/luma_theme.dart';
 
 /// Benchmark tile art downloads from the luma server now — nothing ships in
@@ -21,6 +22,8 @@ Widget _app({AiBenchmarkManifest manifest = AiBenchmarkManifest.empty}) =>
     AiBenchmarkScope(
       repository: AiBenchmarkRepository.withManifest(manifest),
       child: MaterialApp(
+        localizationsDelegates: L.localizationsDelegates,
+        supportedLocales: L.supportedLocales,
         theme: LumaTheme.dark,
         home: const Scaffold(body: TestsTab()),
       ),

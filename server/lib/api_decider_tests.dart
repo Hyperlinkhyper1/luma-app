@@ -29,6 +29,7 @@ extension DeciderTestsApi on Api {
       'customSuite': deciderTests.customSuite,
       'cases': suite?.cases.length ?? 0,
       'chance': double.parse((suite?.chancePercent ?? 0).toStringAsFixed(1)),
+      'suiteHash': deciderSuiteHash(deciderTests.suiteText),
       if (suiteError != null) 'suiteError': suiteError,
       'serverKeys': [
         if (config.openRouterKeyConfigured) DeciderProvider.openrouter.name,
@@ -58,6 +59,10 @@ extension DeciderTestsApi on Api {
       if (data is List) {
         for (final m in data) {
           if (m is! Map || m['id'] is! String) continue;
+          // "~vendor/x-latest" ids are routers onto a dated model that is
+          // already in the list, so running them would just repeat it.
+          final id = m['id'] as String;
+          if (id.startsWith('~') || id.endsWith('-latest')) continue;
           final outputs = m['architecture']?['output_modalities'];
           if (outputs is List && !outputs.contains('decisions')) continue;
           final prompt = double.tryParse('${m['pricing']?['prompt'] ?? ''}');
@@ -87,6 +92,55 @@ extension DeciderTestsApi on Api {
 
   Future<Response> _adminDeciderTestsModels(Request request) async =>
       jsonResponse(200, {'models': await _deciderModelList()});
+
+  /// The results for the app's AI Usage → Tests → Decider test: each model's
+  /// latest finished run on the current suite. Only scores and costs leave
+  /// the server — no key hints, no per-case answers, no suite text.
+  Future<Response> _deciderResults(Request request, StoredUser user) async {
+    final hash = deciderSuiteHash(deciderTests.suiteText);
+    var cases = 0;
+    var chance = 0.0;
+    try {
+      final suite = DeciderSuite.parse(deciderTests.suiteText);
+      cases = suite.cases.length;
+      chance = suite.chancePercent;
+    } on FormatException {
+      // A broken saved suite still lets the app show the runs it has.
+    }
+    final seen = <String>{};
+    final models = <Map<String, dynamic>>[];
+    for (final run in deciderTests.runs) {
+      if (run.status != 'done' || run.results.isEmpty || run.suite != hash) {
+        continue;
+      }
+      if (!seen.add('${run.provider.name}|${run.model}')) continue;
+      final s = run.summaryJson();
+      models.add({
+        'model': run.model,
+        'provider': run.provider.name,
+        'providerLabel': run.provider.label,
+        'accuracy': s['accuracy'],
+        'meanPTrue': s['meanPTrue'],
+        'costUsd': run.costUsd,
+        'costPer1k': run.costPer1k,
+        'avgMs': s['avgMs'],
+        'bySkill': s['bySkill'],
+        'finishedAtMs': run.finishedAtMs ?? run.startedAtMs,
+      });
+    }
+    models.sort((a, b) =>
+        (b['accuracy'] as num).compareTo(a['accuracy'] as num));
+    return Response(200,
+        body: jsonEncode({
+          'cases': cases,
+          'chance': double.parse(chance.toStringAsFixed(1)),
+          'models': models,
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+        });
+  }
 
   Future<Response> _adminDeciderTestsRunDetail(Request request) async {
     final run = deciderTests.run(request.params['id'] ?? '');
@@ -163,6 +217,7 @@ extension DeciderTestsApi on Api {
           startedAtMs: now.millisecondsSinceEpoch,
           total: suite.cases.length,
           chance: suite.chancePercent,
+          suite: deciderSuiteHash(deciderTests.suiteText),
         ),
     ];
     await deciderTests.addAll(runs);
@@ -403,6 +458,8 @@ extension DeciderTestsApi on Api {
         'placeholder="comma-separated, e.g. typesafe/jev-latest"></div>'
         '</div>'
         '<div class="dt-pick-head">'
+        '<label class="dt-hide-free"><input type="checkbox" id="dtHideFree"> Hide free models</label>'
+        '<button type="button" class="btn btn-ghost btn-sm" id="dtPickTodo">Not run yet</button>'
         '<button type="button" class="btn btn-ghost btn-sm" id="dtPickDeciders">Perplexity Deciders</button>'
         '<button type="button" class="btn btn-ghost btn-sm" id="dtPickAll">All</button>'
         '<button type="button" class="btn btn-ghost btn-sm" id="dtPickNone">None</button></div>'
@@ -490,12 +547,20 @@ const _deciderCss = r'''
 .dt-form input{font-family:ui-monospace,Consolas,monospace;font-size:12.5px}
 .dt-form select:focus,.dt-form input:focus,.dt-suite textarea:focus{border-color:#8a7ee0}
 .dt-pick-head{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin:12px 0 8px;flex-wrap:wrap}
+.dt-hide-free{margin-right:auto;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#c5bed9;cursor:pointer}
+.dt-hide-free input{accent-color:#8a7ee0}
 .dt-models{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px;max-height:300px;overflow:auto;padding-right:4px}
 .dt-model{display:flex;gap:8px;align-items:flex-start;background:#151122;border:1px solid #221c33;border-radius:9px;padding:7px 9px;cursor:pointer;font-size:12.5px}
 .dt-model:hover{border-color:#3a3160}
 .dt-model input{margin-top:2px;accent-color:#8a7ee0}
 .dt-model code{font-size:11.5px;color:#c5bed9;overflow-wrap:anywhere}
 .dt-model .muted{font-size:11px}
+.dt-model>span{min-width:0;flex:1}
+.dt-model.is-done{opacity:.72}
+.dt-model-head{display:flex;align-items:baseline;justify-content:space-between;gap:6px}
+.dt-tag{flex:none;font-size:10.5px;font-weight:650;padding:1px 7px;border-radius:99px;border:1px solid #352c55;background:#241d3d;color:#b9b0f5;white-space:nowrap}
+.dt-tag.done{background:#16261b;border-color:#24382b;color:#9ad8a3}
+.dt-tag.busy{background:#2d2614;border-color:#655025;color:#e8c37a}
 .dt-chart{margin-top:10px}
 .dt-chart svg{width:100%;height:auto;display:block}
 .dt-chart text{font:11px ui-sans-serif,system-ui,sans-serif;fill:#a9a0c3}
@@ -506,6 +571,12 @@ const _deciderCss = r'''
 .dt-chart .dt-ceiling{stroke:#e0c87e;stroke-dasharray:2 4;opacity:.7}
 .dt-chart .dt-label{fill:#ece8f7;font-size:11.5px}
 .dt-chart circle{stroke:#0f0c1a;stroke-width:1.5}
+.dt-chart circle.dt-direct{stroke:#fff;stroke-width:2}
+.dt-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:12px;color:#c5bed9}
+.dt-legend span{display:inline-flex;align-items:center;gap:6px}
+.dt-legend i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.dt-legend i.dt-direct-key{border:2px solid #fff;box-sizing:border-box;background:transparent}
+.dt-why{margin-top:4px;font-size:11.5px;color:#a9a0c3;max-width:420px}
 .dt-score{font:600 20px ui-monospace,Consolas,monospace}
 .dt-score.good{color:#7ee08a}.dt-score.mid{color:#e0c87e}.dt-score.bad{color:#e07e7e}
 .dt-kinds{font-size:12px;color:#c5bed9;white-space:nowrap}
@@ -607,31 +678,72 @@ const _deciderScript = r'''
     });
     return ids;
   }
+  // Where each model stands on the chosen provider: its latest finished
+  // run, or that it is queued or running now. No entry means never run.
+  function standing() {
+    const out = new Map();
+    ((lastState && lastState.runs) || []).forEach((r) => {
+      if (r.provider !== provider.value || !current(r)) return;
+      const id = r.provider === 'perplexity' && r.model.indexOf('/') < 0 ? 'perplexity/' + r.model : r.model;
+      const had = out.get(id);
+      if (r.status === 'running' || r.status === 'queued') out.set(id, { busy: true });
+      else if (r.status === 'done' && r.done && !had) out.set(id, { run: r });
+    });
+    return out;
+  }
+  const hideFree = document.getElementById('dtHideFree');
+  try { hideFree.checked = localStorage.getItem('lumaDeciderHideFree') === '1'; } catch (_) {}
+  function isFree(m) { return m.inputPerM === 0 || /:free$/.test(m.id); }
+  function visibleModels() {
+    return models.filter((m) => (provider.value !== 'perplexity' || /^perplexity\//.test(m.id))
+      && !(hideFree.checked && isFree(m)));
+  }
+  hideFree.addEventListener('change', () => {
+    try { localStorage.setItem('lumaDeciderHideFree', hideFree.checked ? '1' : '0'); } catch (_) {}
+    renderModels();
+  });
   function updateCount() {
     const n = selected().length;
-    pickCount.textContent = models.length + ' decision models · ' + n + ' selected';
+    const st = standing();
+    const list = visibleModels();
+    const todo = list.filter((m) => !st.has(m.id)).length;
+    pickCount.textContent = list.length + ' decision models · ' + todo + ' not run yet · ' + n + ' selected';
   }
+  let rendered = false;
   function renderModels() {
-    const onPerplexity = provider.value === 'perplexity';
-    const list = onPerplexity ? models.filter((m) => /^perplexity\//.test(m.id)) : models;
-    modelsBox.innerHTML = list.map((m) => '<label class="dt-model">'
-      + '<input type="checkbox" value="' + esc(m.id) + '"'
-      + (/^perplexity\/pplx-decider-(flash-)?v1\.2$/.test(m.id) ? ' checked' : '') + '>'
-      + '<span><div>' + esc(m.name) + '</div><code>' + esc(m.id) + '</code>'
-      + '<div class="muted">' + (m.inputPerM == null ? 'price unknown'
-        : m.inputPerM === 0 ? 'free' : money(m.inputPerM) + ' / M input · output free')
-      + (m.context ? ' · ' + Math.round(m.context / 1024) + 'k ctx' : '') + '</div></span></label>').join('');
+    const was = new Set(Array.from(modelsBox.querySelectorAll('input:checked')).map((i) => i.value));
+    const st = standing();
+    const list = visibleModels().slice().sort((x, y) =>
+      (st.has(x.id) ? 1 : 0) - (st.has(y.id) ? 1 : 0) || x.id.localeCompare(y.id));
+    modelsBox.innerHTML = list.map((m) => {
+      const s = st.get(m.id);
+      const checked = rendered ? was.has(m.id) : !s && /^perplexity\/pplx-decider-(flash-)?v1\.2$/.test(m.id);
+      const tag = !s ? '<span class="dt-tag todo">Not run yet</span>'
+        : s.busy ? '<span class="dt-tag busy">Running</span>'
+        : '<span class="dt-tag done">' + s.run.accuracy.toFixed(1) + '% · ' + esc(new Date(s.run.startedAtMs).toLocaleDateString()) + '</span>';
+      return '<label class="dt-model' + (s ? ' is-done' : '') + '">'
+        + '<input type="checkbox" value="' + esc(m.id) + '"' + (checked ? ' checked' : '') + '>'
+        + '<span><div class="dt-model-head"><span>' + esc(m.name) + '</span>' + tag + '</div><code>' + esc(m.id) + '</code>'
+        + '<div class="muted">' + (m.inputPerM == null ? 'price unknown'
+          : m.inputPerM === 0 ? 'free' : money(m.inputPerM) + ' / M input · output free')
+        + (m.context ? ' · ' + Math.round(m.context / 1024) + 'k ctx' : '') + '</div></span></label>';
+    }).join('');
+    rendered = list.length > 0 && !!lastState;
     updateCount();
   }
   modelsBox.addEventListener('change', updateCount);
   extra.addEventListener('input', updateCount);
-  provider.addEventListener('change', renderModels);
+  provider.addEventListener('change', () => { rendered = false; renderModels(); });
   function pick(test) {
     modelsBox.querySelectorAll('input').forEach((i) => { i.checked = test(i.value); });
     updateCount();
   }
   document.getElementById('dtPickAll').addEventListener('click', () => pick(() => true));
   document.getElementById('dtPickNone').addEventListener('click', () => pick(() => false));
+  document.getElementById('dtPickTodo').addEventListener('click', () => {
+    const st = standing();
+    pick((id) => !st.has(id));
+  });
   document.getElementById('dtPickDeciders').addEventListener('click',
     () => pick((id) => /^perplexity\/pplx-decider/.test(id)));
 
@@ -640,11 +752,32 @@ const _deciderScript = r'''
     renderModels();
   }).catch(() => { pickCount.textContent = 'Could not load the model list.'; });
 
-  // The latest finished run per provider and model.
+  // Runs made on an older or edited suite don't compare with current ones:
+  // they drop off the chart and their models count as not run yet.
+  function current(r) { return !!lastState && r.suite === lastState.suiteHash; }
+
+  // Dot colours follow the company's logo. Companies not listed get a
+  // steady colour of their own from their name.
+  const BRAND = {
+    perplexity: '#20b8cd', openai: '#10a37f', cloudflare: '#f38020', microsoft: '#00a4ef',
+    google: '#4285f4', anthropic: '#d97757', mistralai: '#fa520f', 'meta-llama': '#0668e1',
+    meta: '#0668e1', nvidia: '#76b900', amazon: '#ff9900', ibm: '#0f62fe', upstage: '#805cfb',
+    togethercomputer: '#0f6fff', 'x-ai': '#e7e7e7', deepseek: '#4d6bfe', qwen: '#615ced',
+  };
+  function vendorOf(id) { return id.indexOf('/') < 0 ? 'perplexity' : id.split('/')[0].replace(/^~/, ''); }
+  function colorOf(id) {
+    const v = vendorOf(id);
+    if (BRAND[v]) return BRAND[v];
+    let h = 0;
+    for (const ch of v) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return 'hsl(' + (h % 360) + ',62%,64%)';
+  }
+
+  // The latest finished run per provider and model on the current suite.
   function latestPoints(runs) {
     const seen = new Map();
     runs.forEach((r) => {
-      if (r.status !== 'done' || !r.done) return;
+      if (r.status !== 'done' || !r.done || !current(r)) return;
       const k = r.provider + '|' + r.model;
       if (!seen.has(k)) seen.set(k, r);
     });
@@ -698,7 +831,7 @@ const _deciderScript = r'''
     const placed = [];
     sorted.forEach((p) => {
       const px = x(p.costPer1k), py = y(p[key]);
-      const color = p.provider === 'perplexity' ? '#7ee0c8' : (front.includes(p) ? '#a99cff' : '#6f66a8');
+      const color = colorOf(p.model);
       const name = p.model.replace(/^[^/]+\//, '') + (p.provider === 'perplexity' ? ' (direct)' : '');
       let ly = py - 9;
       while (placed.some((q) => Math.abs(q.y - ly) < 13 && Math.abs(q.x - px) < 150)) ly += 13;
@@ -707,16 +840,22 @@ const _deciderScript = r'''
       svg += '<g><title>' + esc(p.model) + ' · ' + esc(p.providerLabel) + '\n'
         + 'Accuracy ' + p.accuracy.toFixed(1) + '% · P(right) ' + p.meanPTrue.toFixed(1) + '%\n'
         + money(p.costPer1k) + ' per 1,000 cases · run cost ' + money(p.costUsd) + '</title>'
-        + '<circle cx="' + px + '" cy="' + py + '" r="6" fill="' + color + '"/></g>'
+        + '<circle cx="' + px + '" cy="' + py + '" r="' + (front.includes(p) ? 7 : 6) + '" fill="' + color + '"'
+        + (p.provider === 'perplexity' ? ' class="dt-direct"' : '') + '/></g>'
         + '<text class="dt-label" x="' + (px + (anchor === 'end' ? -9 : 9)) + '" y="' + ly + '" text-anchor="' + anchor + '">'
         + esc(name) + ' · ' + p[key].toFixed(1) + '%</text>';
     });
-    chart.innerHTML = svg + '</svg>';
+    const vendors = Array.from(new Set(sorted.map((p) => vendorOf(p.model)))).sort();
+    chart.innerHTML = svg + '</svg><div class="dt-legend">' + vendors.map((v) =>
+      '<span><i style="background:' + colorOf(v + '/x') + '"></i>' + esc(v) + '</span>').join('')
+      + (sorted.some((p) => p.provider === 'perplexity') ? '<span><i class="dt-direct-key"></i>white ring: Perplexity direct</span>' : '')
+      + '</div>';
   }
   metric.addEventListener('change', () => { if (lastState) renderChart(lastState); });
 
   function render(state) {
     lastState = state;
+    if (models.length) renderModels();
     const runs = state.runs || [];
     if (!runs.length) {
       rows.innerHTML = '<tr><td colspan="10" class="muted">No runs yet.</td></tr>';
@@ -727,7 +866,7 @@ const _deciderScript = r'''
         const badge = r.status === 'running'
           ? '<span class="badge warn">running ' + r.done + '/' + r.total + '</span>'
           : r.status === 'queued' ? '<span class="badge">queued</span>'
-          : r.status === 'done' ? ''
+          : r.status === 'done' ? (current(r) ? '' : '<span class="badge" title="Scored on an older or edited suite; not on the chart">older suite</span>')
           : '<span class="badge err">' + esc(r.status) + ' at ' + r.done + '/' + r.total + '</span>'
             + (r.note ? '<div class="muted" style="font-size:11px;color:#e07e7e;max-width:340px">' + esc(r.note) + '</div>' : '');
         return '<tr data-run="' + esc(r.id) + '">'
@@ -784,7 +923,7 @@ const _deciderScript = r'''
         + '<th>Model said</th><th>Result</th><th>P(right)</th><th>Time</th></tr></thead><tbody>'
         + results.map((c) => '<tr><td class="nowrap">' + esc(c.id) + '</td>'
           + '<td>' + esc(c.policy) + '</td><td>' + esc(c.skill) + '</td>'
-          + '<td>' + esc(c.expected) + '</td>'
+          + '<td>' + esc(c.expected) + (!c.right && c.why ? '<div class="dt-why">' + esc(c.why) + '</div>' : '') + '</td>'
           + '<td>' + esc(c.got) + (c.error ? '<div class="badge err">' + esc(c.error) + '</div>' : '') + '</td>'
           + '<td><span class="dt-score ' + (c.right ? 'good' : 'bad') + '" style="font-size:13px">' + (c.right ? '✓' : '✗') + '</span></td>'
           + '<td>' + Math.round(c.pTrue * 100) + '%</td>'

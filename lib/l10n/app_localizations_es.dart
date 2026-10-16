@@ -1070,7 +1070,7 @@ class LEs extends L {
 
   @override
   String get settingsAiAssistantSub =>
-      'Conecta tu propia clave API de Anthropic.';
+      'Elige tu proveedor, gestiona las claves y personaliza el Asistente.';
 
   @override
   String get settingsAbout => 'Acerca de';
@@ -4369,10 +4369,110 @@ class LEs extends L {
   String get planPriceFree => 'Gratis';
 
   @override
-  String get planPriceOrbit => '4 \$ / mes';
+  String planPricePerMonth(String amount) {
+    return '$amount \$ / mes';
+  }
 
   @override
-  String get planPriceNova => '8 \$ / mes';
+  String get loyaltyTitle => 'Rango de fidelidad';
+
+  @override
+  String get loyaltyRankStardust => 'Polvo estelar';
+
+  @override
+  String get loyaltyRankComet => 'Cometa';
+
+  @override
+  String get loyaltyRankStar => 'Estrella';
+
+  @override
+  String get loyaltyRankConstellation => 'Constelación';
+
+  @override
+  String get loyaltyRankGalaxy => 'Galaxia';
+
+  @override
+  String loyaltyDaysSubscribed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count días suscrito',
+      one: '1 día suscrito',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String loyaltyDaysToRank(int count, String rank) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count días para $rank',
+      one: '1 día para $rank',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String loyaltyDaysToDiscount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count días para que tu plan cueste 1 \$ menos',
+      one: '1 día para que tu plan cueste 1 \$ menos',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get loyaltyDiscountUnlocked =>
+      'Descuento de fidelidad desbloqueado: 1 \$ menos cada mes';
+
+  @override
+  String get loyaltyDiscountBadge => '−1 \$';
+
+  @override
+  String get loyaltyTopRank => 'Rango máximo alcanzado';
+
+  @override
+  String loyaltySubscribedSince(String date) {
+    return 'Suscrito desde el $date';
+  }
+
+  @override
+  String loyaltyMilestoneMonths(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count m',
+      zero: 'Inicio',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String loyaltyProgressSemantics(int percent, String rank) {
+    return '$percent % del camino a un año suscrito, rango actual $rank';
+  }
+
+  @override
+  String get loyaltyResetNote =>
+      'Tu rango se reinicia si tu plan vuelve a Core.';
+
+  @override
+  String get loyaltyInactiveTitle => 'Consigue un rango de fidelidad';
+
+  @override
+  String get loyaltyInactiveBody =>
+      'Suscríbete a Orbit o Nova para empezar a subir. Sigue suscrito un año y tu plan costará 1 \$ menos cada mes.';
+
+  @override
+  String get loyaltyViewPlans => 'Ver planes';
+
+  @override
+  String loyaltyDiscountedFrom(String price) {
+    return 'antes $price';
+  }
 
   @override
   String get planCoreBlurb => 'Todo lo básico, directamente en tu dispositivo.';
@@ -40230,4 +40330,59 @@ class LEs extends L {
   String teamClipboardFileTooDeep(String name, int depth) {
     return '$name tiene más de $depth niveles de anidación.';
   }
+
+  @override
+  String get aiTestDeciderTitle => 'Prueba Decider (moderación)';
+
+  @override
+  String get aiDeciderIntro =>
+      'Los modelos de decisión responden a una batería de moderación difícil: reglamentos de plataformas inventados donde la decisión correcta depende de fechas, cálculos, recuentos y qué regla prevalece. Cada punto es la última ejecución de un modelo: de izquierda a derecha lo que cuestan 1.000 casos, hacia arriba cuántos acertó.';
+
+  @override
+  String get aiDeciderChartTitle => 'Coste frente a rendimiento';
+
+  @override
+  String get aiDeciderCostAxis => 'Coste por 1.000 casos (escala log)';
+
+  @override
+  String aiDeciderGuessing(String pct) {
+    return 'al azar $pct %';
+  }
+
+  @override
+  String get aiDeciderCeiling => 'techo del 50 %';
+
+  @override
+  String get aiDeciderFree => 'gratis';
+
+  @override
+  String get aiDeciderRanking => 'Modelos';
+
+  @override
+  String aiDeciderRight(String pct) {
+    return '$pct % de aciertos';
+  }
+
+  @override
+  String aiDeciderPerThousand(String cost) {
+    return '$cost por 1.000 casos';
+  }
+
+  @override
+  String aiDeciderSuiteLine(String cases, String pct) {
+    return '$cases casos · al azar se obtiene $pct %';
+  }
+
+  @override
+  String get aiDeciderEmpty => 'Aún no hay modelos probados';
+
+  @override
+  String get aiDeciderEmptyDetail =>
+      'Los resultados aparecen aquí cuando un modelo de decisión ha pasado la batería.';
+
+  @override
+  String get aiDeciderDirect => 'vía Perplexity';
+
+  @override
+  String get aiBenchmarkWhatDecider => 'los resultados de Decider';
 }

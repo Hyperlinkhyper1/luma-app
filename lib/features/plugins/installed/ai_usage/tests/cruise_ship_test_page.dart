@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -13,61 +14,76 @@ import '../../_shared/windows_webview.dart' show windowsAssetPath;
 import 'ai_benchmark.dart';
 import 'ai_benchmark_repository.dart';
 import 'ai_benchmark_scope.dart';
+import 'benchmark_webview.dart';
 import 'model_banner.dart';
 import 'model_search_field.dart';
 import 'pagoda_test_page.dart' show ModelButton;
 import 'test_view_prefs.dart';
 
 AiBenchmark cruiseShipBenchmark(L t) => AiBenchmark(
-      id: 'cruise_ship_gpt6_astra_ultra',
-      kind: 'cruise_ship',
-      model: 'GPT 6 Astra (Ultra)',
-      vendor: 'openai',
-      description: t.aiCruiseGptDescription,
-      sizeBytes: 0,
-      sha256: '',
-    );
+  id: 'cruise_ship_gpt6_astra_ultra',
+  kind: 'cruise_ship',
+  model: 'GPT 6 Astra (Ultra)',
+  vendor: 'openai',
+  description: t.aiCruiseGptDescription,
+  sizeBytes: 0,
+  sha256: '',
+);
 
 const cruiseShipAsset =
     'server/benchmarks/scenes/cruise_ship_gpt6_astra_ultra/index.html';
 
 AiBenchmark cruiseShipOpusBenchmark(L t) => AiBenchmark(
-      id: 'cruise_ship_opus55_ultracode',
-      kind: 'cruise_ship',
-      model: 'Opus 5.5 (Ultracode)',
-      vendor: 'anthropic',
-      description: t.aiCruiseOpusDescription,
-      sizeBytes: 0,
-      sha256: '',
-    );
+  id: 'cruise_ship_opus55_ultracode',
+  kind: 'cruise_ship',
+  model: 'Opus 5.5 (Ultracode)',
+  vendor: 'anthropic',
+  description: t.aiCruiseOpusDescription,
+  sizeBytes: 0,
+  sha256: '',
+);
 
 const cruiseShipOpusAsset =
     'assets/ai_usage/cruise_ship_tests/opus_5_5_ultracode.html';
 
 /// Contestants bundled with the app, so they work with no server. A server
 /// entry with the same id replaces its fallback.
-List<AiBenchmark> _bundledCruiseShips(L t) =>
-    [cruiseShipBenchmark(t), cruiseShipOpusBenchmark(t)];
+List<AiBenchmark> _bundledCruiseShips(L t) => [
+  cruiseShipBenchmark(t),
+  cruiseShipOpusBenchmark(t),
+];
 
 const _bundledCruiseScenes = {
   'cruise_ship_gpt6_astra_ultra': cruiseShipAsset,
   'cruise_ship_opus55_ultracode': cruiseShipOpusAsset,
 };
 
-/// Where a contestant's scene lives on disk: the bundled copy while the
+class _CruiseSceneSource {
+  const _CruiseSceneSource.file(this.path) : assetPath = null;
+  const _CruiseSceneSource.asset(this.assetPath) : path = null;
+
+  final String? path;
+  final String? assetPath;
+
+  String get key => path ?? assetPath!;
+}
+
+/// Where a contestant's scene lives: the bundled copy while the
 /// server has no published file for it, otherwise the verified download.
-Future<String> _cruiseScenePath(
+Future<_CruiseSceneSource> _cruiseSceneSource(
   AiBenchmarkRepository repository,
   AiBenchmark benchmark,
 ) async {
   final bundled = _bundledCruiseScenes[benchmark.id];
   if (bundled != null && benchmark.sha256.isEmpty) {
-    return windowsAssetPath(bundled);
+    return _CruiseSceneSource.asset(bundled);
   }
   try {
-    return (await repository.sceneFile(benchmark.id)).path;
+    return _CruiseSceneSource.file(
+      (await repository.sceneFile(benchmark.id)).path,
+    );
   } catch (_) {
-    if (bundled != null) return windowsAssetPath(bundled);
+    if (bundled != null) return _CruiseSceneSource.asset(bundled);
     rethrow;
   }
 }
@@ -108,11 +124,13 @@ class _CruiseShipTestPageState extends State<CruiseShipTestPage> {
     AiBenchmarkRepository repository,
     AiBenchmark benchmark,
   ) async {
+    if (!Platform.isWindows) return;
     final messenger = ScaffoldMessenger.of(context);
     final t = L.of(context);
     var opened = false;
     try {
-      final path = await _cruiseScenePath(repository, benchmark);
+      final source = await _cruiseSceneSource(repository, benchmark);
+      final path = source.path ?? windowsAssetPath(source.assetPath!);
       opened = await launchUrl(
         Uri.file(path),
         mode: LaunchMode.externalApplication,
@@ -215,7 +233,10 @@ class _CruiseShipTestPageState extends State<CruiseShipTestPage> {
                             ),
                           ),
                           LumaSegmentedTabs(
-                            tabs: [t.aiBenchmarkViewList, t.aiBenchmarkViewBanners],
+                            tabs: [
+                              t.aiBenchmarkViewList,
+                              t.aiBenchmarkViewBanners,
+                            ],
                             selectedIndex: _bannerView ? 1 : 0,
                             onSelect: (index) {
                               final banners = index == 1;
@@ -256,7 +277,7 @@ class _CruiseShipTestPageState extends State<CruiseShipTestPage> {
                     ],
                   ),
                 )
-              : !Platform.isWindows
+              : !BenchmarkWebview.supported
               ? Padding(
                   padding: EdgeInsets.all(24),
                   child: LumaEmptyState(
@@ -291,16 +312,16 @@ class _CruiseSceneLoader extends StatefulWidget {
 }
 
 class _CruiseSceneLoaderState extends State<_CruiseSceneLoader> {
-  late Future<String> _path = _load();
+  late Future<_CruiseSceneSource> _source = _load();
 
-  Future<String> _load() =>
-      _cruiseScenePath(widget.repository, widget.benchmark);
+  Future<_CruiseSceneSource> _load() =>
+      _cruiseSceneSource(widget.repository, widget.benchmark);
 
   @override
   Widget build(BuildContext context) {
     final t = L.of(context);
-    return FutureBuilder<String>(
-      future: _path,
+    return FutureBuilder<_CruiseSceneSource>(
+      future: _source,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return LumaEmptyState(
@@ -310,24 +331,24 @@ class _CruiseSceneLoaderState extends State<_CruiseSceneLoader> {
             action: LumaGhostButton(
               label: t.commonRetry,
               icon: Icons.refresh_rounded,
-              onTap: () => setState(() => _path = _load()),
+              onTap: () => setState(() => _source = _load()),
             ),
           );
         }
-        final path = snapshot.data;
-        if (path == null) {
+        final source = snapshot.data;
+        if (source == null) {
           return const Center(child: CircularProgressIndicator());
         }
-        return _CruiseSceneWebview(key: ValueKey(path), path: path);
+        return _CruiseSceneWebview(key: ValueKey(source.key), source: source);
       },
     );
   }
 }
 
 class _CruiseSceneWebview extends StatefulWidget {
-  const _CruiseSceneWebview({super.key, required this.path});
+  const _CruiseSceneWebview({super.key, required this.source});
 
-  final String path;
+  final _CruiseSceneSource source;
 
   @override
   State<_CruiseSceneWebview> createState() => _CruiseSceneWebviewState();
@@ -398,22 +419,37 @@ class _CruiseSceneWebviewState extends State<_CruiseSceneWebview> {
   Widget build(BuildContext context) {
     final attempt = _attempt;
     final t = L.of(context);
+    void onMessage(dynamic message) {
+      if (mounted && attempt == _attempt) _receive(message);
+    }
+
+    void onError(String message) {
+      if (!mounted || attempt != _attempt) return;
+      _receive({'type': 'cruise-error', 'message': message});
+    }
+
     return Stack(
       children: [
         Positioned.fill(
-          child: NativeWebview(
-            key: ValueKey('${widget.path}:$_attempt'),
-            fileUrl: Uri.file(widget.path).toString(),
-            visible: _error == null,
-            background: context.luma.background,
-            onMessage: (message) {
-              if (mounted && attempt == _attempt) _receive(message);
-            },
-            onError: (message) {
-              if (!mounted || attempt != _attempt) return;
-              _receive({'type': 'cruise-error', 'message': message});
-            },
-          ),
+          child: defaultTargetPlatform == TargetPlatform.windows
+              ? NativeWebview(
+                  key: ValueKey('${widget.source.key}:$_attempt'),
+                  fileUrl: Uri.file(
+                    widget.source.path ??
+                        windowsAssetPath(widget.source.assetPath!),
+                  ).toString(),
+                  visible: _error == null,
+                  background: context.luma.background,
+                  onMessage: onMessage,
+                  onError: onError,
+                )
+              : BenchmarkWebview(
+                  key: ValueKey('${widget.source.key}:$_attempt'),
+                  path: widget.source.path,
+                  assetPath: widget.source.assetPath,
+                  onMessage: onMessage,
+                  onError: onError,
+                ),
         ),
         if (!_ready && _error == null)
           const IgnorePointer(
