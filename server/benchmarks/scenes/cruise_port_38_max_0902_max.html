@@ -202,7 +202,7 @@ body.uihidden #uibox{display:block}
     <div class="lab">Time of day · Tagus light</div>
     <div class="row">
       <button id="btnPlay" title="Play / pause time">❚❚</button>
-      <input id="time" type="range" min="0" max="24" step="0.01" value="18.4" aria-label="Time of day">
+      <input id="time" type="range" min="0" max="24" step="0.01" value="17.7" aria-label="Time of day">
       <div class="speeds">
         <button data-sp="0.4">·4×</button><button data-sp="1" class="on">1×</button><button data-sp="6">6×</button>
       </div>
@@ -357,7 +357,7 @@ function ribbonGeometry(curve,width,segs,yOff=0,closed=false){
 let renderer,scene,camera,orbit,plc,composer,bloom,sky,water,sunLight,hemi,fillLight;
 const sunDir=new THREE.Vector3(0,1,0);
 const clock=new THREE.Vector2();
-let timeOfDay=18.4,timePlaying=true,timeScale=1,weather='clear';
+let timeOfDay=17.7,timePlaying=true,timeScale=1,weather='clear';
 let nightFactor=0,goldenFactor=0,exposure=.55;
 let shipRoot,shipHull,shipGroup,radarSpin,flagMesh;
 let walkMode=false,followMode=null,followObj=null;
@@ -2142,7 +2142,259 @@ function updateRopes(){
     deformRope(r.geo,pts,.13,r.seg,r.rad);
   });
 }
-//__PART_F__
+/* ══════════════════════════════ 10 · BOOT, CAMERAS, DEPARTURE, LOOP ══════════════════════════════ */
+const el=id=>document.getElementById(id);
+const HOURS_PER_SEC=1/20;
+const CAMS={
+  orbit:{p:[330,150,430],t:[0,26,0]},
+  miradouro:{p:[-120,118,-300],t:[10,22,30]},
+  waterfront:{p:[64,11,-6],t:[0,30,34]},
+  aerial:{p:[260,340,-120],t:[0,20,25]},
+  river:{p:[-150,14,430],t:[0,34,26]},
+  deck:{p:[40,66,30],t:[-120,30,-200]}
+};
+const tween={active:false,t:0,dur:1.8,from:null,to:null};
+const depState={goal:0,p:0};
+let lastT=0,booted=false,timeEl=null;
+
+function toast(msg){
+  const t=el('toast');if(!t)return;
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove('show'),2600);
+}
+function setStatus(msg){const s=el('mStatus');if(s)s.textContent=msg;}
+function setUIHidden(h){
+  uiHidden=h;
+  el('hud').classList.toggle('hidden',h);
+  document.body.classList.toggle('uihidden',h);
+}
+function horn(){
+  if(!soundOn)return;
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!horn.ctx)horn.ctx=new AC();
+    const ctx=horn.ctx,t0=ctx.currentTime,g=ctx.createGain();
+    g.gain.setValueAtTime(0,t0);
+    g.gain.linearRampToValueAtTime(.16,t0+.15);
+    g.gain.setValueAtTime(.16,t0+2.4);
+    g.gain.linearRampToValueAtTime(0,t0+3.2);
+    g.connect(ctx.destination);
+    [196,247].forEach(f=>{
+      const o=ctx.createOscillator();
+      o.type='sawtooth';o.frequency.value=f;o.connect(g);
+      o.start(t0);o.stop(t0+3.3);
+    });
+  }catch(e){}
+}
+
+function flyTo(key){
+  const c=CAMS[key];if(!c)return;
+  tween.from={p:camera.position.clone(),t:orbit.target.clone()};
+  tween.to={p:new THREE.Vector3(...c.p),t:new THREE.Vector3(...c.t)};
+  tween.t=0;tween.active=true;
+  if(walkMode)exitWalk();
+}
+function flyToPoint(t,dist){
+  tween.from={p:camera.position.clone(),t:orbit.target.clone()};
+  tween.to={p:new THREE.Vector3(t[0]+dist*.55,t[1]+dist*.35,t[2]+dist*.8),t:new THREE.Vector3(...t)};
+  tween.t=0;tween.active=true;
+  if(walkMode)exitWalk();
+}
+const markTargets={
+  castle:[()=>{const p=city.castle;return [p.x,p.y+40,p.z];},240],
+  pantheon:[()=>{const p=city.pantheon;return [p.x,p.y+20,p.z];},200],
+  se:[()=>{const p=city.se;return [p.x,p.y+30,p.z];},200],
+  praca:[()=>{const p=city.praca;return [p.x,p.y+6,p.z];},260],
+  bridge:[()=>{const b=city.bridge;return [b.x,b.y,b.z];},620],
+  cristo:[()=>{const p=city.cristo;return [p.x,p.y+30,p.z];},520],
+  alfama:[()=>[-60,30,-120],260],
+  berth:[()=>[BERTH.x,BERTH.y+20,BERTH.z],260]
+};
+function flyToMark(key){
+  const m=markTargets[key];if(!m)return;
+  flyToPoint(m[0](),m[1]);
+}
+
+function enterWalk(){
+  walkMode=true;
+  document.body.classList.add('walk');
+  orbit.enabled=false;
+  tween.active=false;
+  camera.position.set(34,QUAY_Y+1.8,-12);
+  camera.lookAt(0,QUAY_Y+10,20);
+  plc.lock();
+  el('btnWalk').textContent='Leave walk mode';
+}
+function exitWalk(){
+  if(!walkMode)return;
+  walkMode=false;
+  document.body.classList.remove('walk');
+  orbit.enabled=true;
+  if(plc.isLocked)plc.unlock();
+  const fwd=camera.getWorldDirection(new THREE.Vector3());
+  orbit.target.copy(camera.position).addScaledVector(fwd,60);
+  orbit.update();
+  el('btnWalk').textContent='Enter walk mode';
+}
+function stepWalk(dt){
+  const sp=(keys.ShiftLeft||keys.ShiftRight?18:6)*dt;
+  const f=camera.getWorldDirection(new THREE.Vector3());f.y=0;
+  if(f.lengthSq()<1e-6)f.set(0,0,-1);f.normalize();
+  const r=new THREE.Vector3().crossVectors(f,camera.up).normalize();
+  if(keys.KeyW)camera.position.addScaledVector(f,sp);
+  if(keys.KeyS)camera.position.addScaledVector(f,-sp);
+  if(keys.KeyD)camera.position.addScaledVector(r,sp);
+  if(keys.KeyA)camera.position.addScaledVector(r,-sp);
+  camera.position.x=clamp(camera.position.x,-260,260);
+  camera.position.z=clamp(camera.position.z,-160,QUAY_EDGE_Z-.6);
+  camera.position.y=QUAY_Y+1.8;
+}
+
+function stepTween(dt){
+  tween.t=Math.min(1,tween.t+dt/tween.dur);
+  const e=smoothstep(0,1,tween.t);
+  camera.position.lerpVectors(tween.from.p,tween.to.p,e);
+  orbit.target.lerpVectors(tween.from.t,tween.to.t,e);
+  if(tween.t>=1)tween.active=false;
+}
+
+function stepDeparture(dt){
+  depState.p=clamp(depState.p+(depState.goal?1:-1)*dt/120,0,1);
+  const k=smoothstep(0,1,depState.p);
+  shipRoot.position.x=BERTH.x-700*k;
+  shipRoot.rotation.y=.12*k;
+  const ropeTarget=depState.p>.004?0:1;
+  for(const r of shipParts.ropes||[])r.state=lerp(r.state,ropeTarget,Math.min(1,dt*.9));
+  const gangTarget=depState.p>.01?1:0;
+  const gk=(shipParts.gangwayK=lerp(shipParts.gangwayK??0,gangTarget,Math.min(1,dt*.5)));
+  for(const g of shipParts.gangways||[])g.rotation.x=lerp(-.30,-1.25,gk);
+}
+
+function stepBridge(dt){
+  const bc=life.bridgeCars;if(!bc)return;
+  const y=city.bridge.y+.5;
+  bc.data.forEach((c,i)=>{
+    c.z+=c.dir*c.sp*dt;
+    if(c.z>bc.z1)c.z=bc.z0;
+    if(c.z<bc.z0)c.z=bc.z1;
+    dummy.position.set(bc.x+c.lane,y,c.z);
+    dummy.rotation.set(0,0,0);
+    dummy.updateMatrix();
+    bc.mesh.setMatrixAt(i,dummy.matrix);
+  });
+  bc.mesh.instanceMatrix.needsUpdate=true;
+}
+
+function wireUI(){
+  timeEl=el('time');
+  timeEl.addEventListener('input',()=>{timeOfDay=parseFloat(timeEl.value);});
+  const playBtn=el('btnPlay');
+  playBtn.addEventListener('click',()=>{
+    timePlaying=!timePlaying;
+    playBtn.textContent=timePlaying?'❚❚':'▶';
+  });
+  document.querySelectorAll('[data-sp]').forEach(b=>b.addEventListener('click',()=>{
+    timeScale=parseFloat(b.dataset.sp);
+    document.querySelectorAll('[data-sp]').forEach(x=>x.classList.toggle('on',x===b));
+  }));
+  document.querySelectorAll('[data-wx]').forEach(b=>b.addEventListener('click',()=>{
+    weather=b.dataset.wx;
+    document.querySelectorAll('[data-wx]').forEach(x=>x.classList.toggle('on',x===b));
+    toast(b.textContent.trim()==='Clear'?'Clear sky':b.textContent.trim());
+  }));
+  document.querySelectorAll('[data-cam]').forEach(b=>b.addEventListener('click',()=>flyTo(b.dataset.cam)));
+  document.querySelectorAll('[data-mark]').forEach(b=>b.addEventListener('click',()=>flyToMark(b.dataset.mark)));
+  el('btnWalk').addEventListener('click',()=>{walkMode?exitWalk():enterWalk();});
+  const departBtn=el('btnDepart');
+  departBtn.addEventListener('click',()=>{
+    depState.goal=depState.goal?0:1;
+    departBtn.firstChild.textContent=depState.goal?'Return to berth ':'Departure ';
+    if(depState.goal){
+      horn();
+      setStatus('Casting off · horn sounding · tug pushing the bow out');
+      toast('Casting off');
+    }else{
+      setStatus('Returning to berth · tug alongside');
+      toast('Returning to berth');
+    }
+  });
+  soundOn=true;
+  const soundBtn=el('btnSound');
+  soundBtn.textContent='Sound on';
+  soundBtn.addEventListener('click',()=>{
+    soundOn=!soundOn;
+    soundBtn.textContent=soundOn?'Sound on':'Sound off';
+  });
+  el('btnUI').addEventListener('click',()=>setUIHidden(true));
+  el('btnUI2').addEventListener('click',()=>setUIHidden(false));
+  window.addEventListener('keydown',e=>{
+    if(e.code==='KeyH'&&!e.repeat){setUIHidden(!uiHidden);return;}
+    keys[e.code]=true;
+    if(e.code==='Escape'&&walkMode)exitWalk();
+  });
+  window.addEventListener('keyup',e=>{keys[e.code]=false;});
+  window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
+}
+
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt=Math.min(Math.max((now-lastT)/1000,0),.1);
+  lastT=now;
+  if(timePlaying)timeOfDay=(timeOfDay+dt*timeScale*HOURS_PER_SEC)%24;
+  if(timeEl&&document.activeElement!==timeEl)timeEl.value=timeOfDay.toFixed(2);
+  if(tween.active)stepTween(dt);
+  if(walkMode)stepWalk(dt);
+  else orbit.update();
+  stepDeparture(dt);
+  updateSun();
+  if(water)water.material.uniforms['time'].value+=dt;
+  shipRoot.updateMatrixWorld(true);
+  updateRopes();
+  stepBridge(dt);
+  for(const r of shipParts.radar||[])if(r&&r.rotation)r.rotation.y+=dt*1.2;
+  composer.render(dt);
+  fpsAcc+=dt;fpsN++;
+  if(fpsAcc>=.5){const f=el('mFps');if(f)f.textContent=Math.round(fpsN/fpsAcc);fpsAcc=0;fpsN=0;}
+  if(!booted){booted=true;el('loader').classList.add('done');}
+  if(!depState.goal&&depState.p<=0){
+    const s=el('mStatus');if(s&&s.textContent.startsWith('Returning'))s.textContent='Berthed · gangways down · 18 decks';
+  }
+  if(depState.goal&&depState.p>=1){
+    const s=el('mStatus');if(s&&s.textContent.startsWith('Casting'))s.textContent='Under way · westbound on the Tagus';
+  }
+}
+
+async function boot(){
+  const txt=el('ldTxt'),fill=el('ldFill');
+  const steps=[
+    ['opening WebGL',initCore],
+    ['sky and sun',initSky],
+    ['the Tagus',initWater],
+    ['materials',initMaterials],
+    ['terrain',buildTerrain],
+    ['quay and terminal',()=>{buildQuay();buildTerminal();}],
+    ['Alfama and the river',buildCity],
+    ['the ship',()=>{buildShip();buildMooringLines();}]
+  ];
+  for(let i=0;i<steps.length;i++){
+    txt.textContent=steps[i][0]+'…';
+    fill.style.width=(i/steps.length*100).toFixed(0)+'%';
+    await raf();
+    steps[i][1]();
+  }
+  fill.style.width='100%';
+  txt.textContent='';
+  shipParts.gangwayK=0;
+  updateSun();
+  wireUI();
+  setStatus('Berthed · gangways down · 18 decks');
+  lastT=performance.now();
+  requestAnimationFrame(frame);
+}
+boot().catch(err=>{
+  console.error(err);
+  el('loader').classList.add('done');
+});
 </script>
 </body>
 </html>

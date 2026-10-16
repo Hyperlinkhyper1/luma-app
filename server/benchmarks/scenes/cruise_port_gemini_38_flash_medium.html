@@ -506,8 +506,8 @@
       for (let y = 0; y < 256; y++) {
         for (let x = 0; x < 256; x++) {
           const idx = (y * 256 + x) * 4;
-          const nx = Math.sin(x * 0.12) * Math.cos(y * 0.12);
-          const ny = Math.cos(x * 0.14) * Math.sin(y * 0.14);
+          const nx = 0.6 * Math.sin(x * 0.09 + Math.sin(y * 0.05) * 2.1) + 0.4 * Math.sin(x * 0.23 - y * 0.17 + 1.3);
+          const ny = 0.6 * Math.cos(y * 0.11 + Math.cos(x * 0.04) * 1.9) + 0.4 * Math.sin(x * 0.19 + y * 0.27 + 0.7);
           imgData.data[idx] = Math.floor((nx * 0.5 + 0.5) * 255);
           imgData.data[idx + 1] = Math.floor((ny * 0.5 + 0.5) * 255);
           imgData.data[idx + 2] = 255;
@@ -683,7 +683,7 @@
             varying vec2 vUv;
 
             void main() {
-              vUv = uv * 35.0;
+              vUv = uv * 12.0;
               vec3 pos = position;
               
               // Animated Gerstner waves

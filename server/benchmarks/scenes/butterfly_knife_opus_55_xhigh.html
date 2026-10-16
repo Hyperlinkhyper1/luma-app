@@ -1,0 +1,1937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Carrow &amp; Tine — Calibre 23 “Remontoire” Balisong</title>
+<style>
+:root{--ink:#efe9df;--dim:#a79e92;--gold:#e5ad8d;--gold2:#f6d2bb;--blue:#6b8cf0;--panel:rgba(12,13,17,.76);--line:rgba(229,173,141,.26)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#07080a;color:var(--ink);font:12px/1.35 "Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif;-webkit-user-select:none;user-select:none}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none}
+.serif{font-family:"Didot","Bodoni 72","Bodoni MT","Big Caslon",Georgia,"Times New Roman",serif}
+.panel{position:fixed;background:var(--panel);border:1px solid var(--line);border-radius:10px;backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);box-shadow:0 10px 30px rgba(0,0,0,.35);transition:opacity .45s,transform .45s}
+body.noui .panel,body.noui #caption{opacity:0;pointer-events:none;transform:translateY(6px)}
+#brand{top:12px;left:12px;padding:10px 12px 9px;width:268px}
+#brand .row{display:flex;gap:10px;align-items:center}
+#brand img{width:44px;height:44px;flex:none}
+#maker{font-size:15px;letter-spacing:.24em;color:var(--gold2)}
+#model{font-size:12.5px;letter-spacing:.06em;margin-top:2px}
+#model b{letter-spacing:.18em;font-weight:600;color:#fff}
+#tag{color:var(--dim);font-size:10.5px;letter-spacing:.08em;margin-top:2px}
+#spec{margin-top:8px;border-top:1px solid var(--line);padding-top:6px;display:none}
+#brand.open #spec{display:block}
+#spec table{border-collapse:collapse;width:100%}
+#spec td{padding:2px 0;vertical-align:top;font-size:11px}
+#spec td:first-child{color:var(--gold);width:74px;letter-spacing:.06em;text-transform:uppercase;font-size:9.5px;padding-top:3px}
+#spec .lot{margin-top:6px;color:var(--dim);font-size:10.5px}
+#spec .lot span{color:var(--ink)}
+button{font:inherit;color:var(--ink);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);border-radius:7px;padding:5px 8px;cursor:pointer;transition:background .15s,border-color .15s,color .15s;white-space:nowrap}
+button:hover{background:rgba(229,173,141,.14);border-color:rgba(229,173,141,.5)}
+button.on{background:rgba(229,173,141,.22);border-color:var(--gold);color:#fff}
+button:disabled{opacity:.4;cursor:default}
+button kbd{font:10px/1 ui-monospace,Consolas,monospace;color:var(--gold);margin-right:5px;opacity:.85}
+.mini{padding:3px 7px;font-size:11px}
+#specbtn{margin-top:7px}
+#side{top:12px;right:12px;padding:9px;width:236px;display:flex;flex-direction:column;gap:8px}
+.lbl{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:4px}
+.seg{display:flex;gap:4px;flex-wrap:wrap}
+.seg button{flex:1 1 auto}
+#ways{display:flex;gap:7px;align-items:center}
+.sw{width:24px;height:24px;border-radius:50%;padding:0;border:2px solid rgba(255,255,255,.18);flex:none}
+.sw.on{border-color:#fff;box-shadow:0 0 0 2px rgba(229,173,141,.6)}
+#wayname{font-size:11px;color:var(--dim);margin-left:2px}
+input[type=range]{-webkit-appearance:none;appearance:none;height:4px;border-radius:3px;background:rgba(255,255,255,.18);outline:none;flex:1;min-width:60px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--gold2);border:0;cursor:pointer}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--gold2);border:0;cursor:pointer}
+.line{display:flex;gap:6px;align-items:center}
+#moves{left:50%;bottom:12px;transform:translateX(-50%);padding:8px 9px;display:flex;flex-direction:column;gap:6px;max-width:calc(100vw - 24px)}
+body.noui #moves{transform:translate(-50%,6px)}
+#moverow{display:flex;gap:4px;flex-wrap:wrap;justify-content:center}
+#ctlrow{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap}
+#speedv{width:38px;text-align:right;font-variant-numeric:tabular-nums;color:var(--gold2)}
+#caption{position:fixed;left:50%;bottom:104px;transform:translateX(-50%);text-align:center;pointer-events:none;transition:opacity .3s}
+#caption .m{font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:#fff;text-shadow:0 2px 10px #000}
+#caption .p{font-size:11px;color:var(--gold2);margin-top:2px;letter-spacing:.06em;text-shadow:0 1px 6px #000;min-height:14px}
+#title{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:5vh;pointer-events:none;opacity:0;transition:opacity 1.1s}
+#title.show{opacity:1}
+#title img{width:74px;height:74px;margin-bottom:10px;filter:drop-shadow(0 4px 14px rgba(0,0,0,.6))}
+#title .a{font-size:24px;letter-spacing:.42em;color:var(--gold2);text-shadow:0 2px 16px #000}
+#title .b{font-size:15px;letter-spacing:.3em;margin-top:8px;text-shadow:0 2px 14px #000}
+#title .c{font-size:11px;letter-spacing:.32em;color:var(--dim);margin-top:8px;text-transform:uppercase}
+#tip{position:fixed;pointer-events:none;background:rgba(10,11,14,.9);border:1px solid var(--gold);border-radius:7px;padding:5px 8px;font-size:11.5px;max-width:240px;display:none;z-index:5}
+#tip b{color:var(--gold2);display:block;font-weight:600;letter-spacing:.04em}
+#tip span{color:var(--dim)}
+#hint{position:fixed;left:12px;bottom:14px;color:var(--dim);font-size:10.5px;letter-spacing:.04em;pointer-events:none;transition:opacity .4s;max-width:230px}
+body.noui #hint{opacity:0}
+#showui{position:fixed;right:12px;bottom:12px;display:none;z-index:6}
+body.noui #showui{display:block}
+#loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#07080a;z-index:10;transition:opacity .8s}
+#loading .r{width:46px;height:46px;border-radius:50%;border:2px solid rgba(229,173,141,.2);border-top-color:var(--gold);animation:spin 1s linear infinite}
+#loading .t{margin-top:14px;letter-spacing:.3em;font-size:11px;color:var(--gold2);text-transform:uppercase}
+@keyframes spin{to{transform:rotate(360deg)}}
+#nogl{position:fixed;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:24px;background:#07080a;z-index:11;font-size:14px;line-height:1.6}
+#nogl b{color:var(--gold2);letter-spacing:.2em}
+@media (max-width:760px){#brand{width:220px}#side{width:200px}#spec{max-height:40vh;overflow:auto}#caption{bottom:150px}}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<canvas id="c" tabindex="0"></canvas>
+
+<div id="brand" class="panel">
+  <div class="row">
+    <img id="logo" alt="">
+    <div>
+      <div id="maker" class="serif">CARROW &amp; TINE</div>
+      <div id="model" class="serif">Calibre 23 · <b>REMONTOIRE</b></div>
+      <div id="tag">Jewelled balisong · Genève finish</div>
+    </div>
+  </div>
+  <button id="specbtn" class="mini">Spec card ▾</button>
+  <div id="spec">
+    <table>
+      <tr><td>Length</td><td>23.4 cm open · 13.6 cm closed</td></tr>
+      <tr><td>Blade</td><td>10.4 cm Breguet leaf with a moon window, 7.0 cm edge, 3.6 mm stock</td></tr>
+      <tr><td>Steel</td><td id="sp-steel">Powder stainless, 61 HRC — satin flats, mirror swedge &amp; edge bevel</td></tr>
+      <tr><td>Handles</td><td id="sp-hand">Rhodium-plated nickel silver, flinqué guilloché, skeleton windows, heat-blued titanium channel walls</td></tr>
+      <tr><td>Pivots</td><td>Twin jewelled pivots: synthetic-ruby bushings, phosphor-bronze washers, blued Torx screws</td></tr>
+      <tr><td>Latch</td><td>Pallet-fork latch with ruby pallet stones, gravity swung</td></tr>
+      <tr><td>Weight</td><td>148 g</td></tr>
+      <tr><td>Signature</td><td>Rose-gold tourbillon collars geared 3 : 1 — they turn as the handles swing</td></tr>
+      <tr><td>Motto</td><td class="serif" style="letter-spacing:.12em">TEMPUS MANU TENETUR</td></tr>
+    </table>
+    <div class="lot">Design direction — palette <span>rhodium, heat-blue &amp; rose gold</span> · blade <span>Breguet hand</span> · handles <span>guilloché skeleton channels</span> · latch <span>escapement pallet fork</span> · theme <span>haute horlogerie</span> · stage <span>sunburst dial under a balance wheel</span> · pivots &amp; sound <span>jewel bearings that tick like an escapement</span></div>
+  </div>
+</div>
+
+<div id="side" class="panel">
+  <div>
+    <div class="lbl">Mode</div>
+    <div class="seg" id="modes">
+      <button data-mode="showcase" class="on">Showcase</button>
+      <button data-mode="inspect">Inspect</button>
+      <button data-mode="perform">Perform</button>
+    </div>
+  </div>
+  <div>
+    <div class="lbl">Camera</div>
+    <div class="seg" id="cams">
+      <button class="mini" data-cam="hero">Hero</button>
+      <button class="mini" data-cam="blade">Blade</button>
+      <button class="mini" data-cam="pivot">Pivot</button>
+      <button class="mini" data-cam="latch">Latch</button>
+      <button class="mini" data-cam="top">Top</button>
+    </div>
+  </div>
+  <div class="seg">
+    <button id="explode">Exploded view <kbd style="margin:0 0 0 5px">E</kbd></button>
+  </div>
+  <div>
+    <div class="lbl">Colourway</div>
+    <div id="ways"></div>
+  </div>
+  <div>
+    <div class="lbl">Sound</div>
+    <div class="line"><button id="mute" class="mini">Sound on</button><input id="vol" type="range" min="0" max="1" step="0.01" value="0.7" aria-label="Volume"></div>
+  </div>
+  <button id="hideui" class="mini">Hide UI <kbd style="margin:0 0 0 4px">H</kbd></button>
+</div>
+
+<div id="caption"><div class="m" id="capm"></div><div class="p" id="capp"></div></div>
+
+<div id="moves" class="panel">
+  <div id="moverow"></div>
+  <div id="ctlrow">
+    <button id="combo"><kbd>C</kbd>Combo</button>
+    <button id="free"><kbd>F</kbd>Freestyle</button>
+    <button id="stop"><kbd>␣</kbd>Stop</button>
+    <span class="line" style="min-width:150px"><span style="color:var(--dim)">Speed</span><input id="speed" type="range" min="0.25" max="2" step="0.05" value="1" aria-label="Speed"><span id="speedv">1.00×</span></span>
+    <button id="slow"><kbd>S</kbd>Slow-mo</button>
+    <button id="trail"><kbd>T</kbd>Trail</button>
+    <button id="handbtn" class="on"><kbd>G</kbd>Hand</button>
+  </div>
+</div>
+
+<div id="title"><img id="tlogo" alt=""><div class="a serif">CARROW &amp; TINE</div><div class="b serif">CALIBRE 23 · REMONTOIRE</div><div class="c">tempus manu tenetur</div></div>
+<div id="tip"></div>
+<div id="hint">Drag to orbit · scroll to zoom · right-drag to pan · in Inspect, drag a handle to flip it by hand</div>
+<button id="showui" class="mini">Show UI (H)</button>
+<div id="loading"><div class="r"></div><div class="t">Winding the movement…</div></div>
+<div id="nogl"><div><b>CARROW &amp; TINE</b><br>This showcase needs WebGL, which is unavailable in this browser or has been disabled.<br>Try enabling hardware acceleration or opening the page in a current Chrome, Edge, Firefox or Safari.</div></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+const $ = (id) => document.getElementById(id);
+const PI = Math.PI, TAU = Math.PI * 2;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (t) => t * t * (3 - 2 * t);
+const sstep = (a, b, x) => smooth(clamp((x - a) / (b - a), 0, 1));
+const EASE = {
+  lin: (t) => t,
+  s: smooth,
+  io: (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2),
+  in: (t) => t * t,
+  out: (t) => 1 - (1 - t) * (1 - t),
+  // a handle falling onto its pin: pushed, accelerating, hits the stop at full speed, rebounds a few degrees, settles
+  swing: (t) => {
+    const h = 0.8;
+    if (t < h) { const u = t / h; return 0.22 * u + 0.78 * u * u; }
+    const v = (t - h) / (1 - h);
+    return 1 - 0.05 * Math.sin(PI * v) * (1 - 0.35 * v);
+  },
+  // trapezoid velocity: spin up, cruise, spin down
+  spin: (t) => {
+    const a = 0.22, vmax = 1 / (1 - a);
+    if (t < a) return 0.5 * vmax * t * t / a;
+    if (t > 1 - a) { const r = 1 - t; return 1 - 0.5 * vmax * r * r / a; }
+    return 0.5 * vmax * a + vmax * (t - a);
+  },
+};
+const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const QZ = (a) => new THREE.Quaternion().setFromAxisAngle(V3(0, 0, 1), a);
+const qAxis = (ax, a) => new THREE.Quaternion().setFromAxisAngle(ax, a);
+const qBasis = (x, y, z) => new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
+const rand = (() => { let s = 1234567; return () => ((s = (s * 16807) % 2147483647) / 2147483647); })();
+
+function hasWebGL() {
+  try { const c = document.createElement('canvas'); return !!(window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl'))); } catch (e) { return false; }
+}
+function failGL() { $('loading').style.display = 'none'; $('nogl').style.display = 'flex'; }
+if (!hasWebGL()) { failGL(); throw new Error('WebGL unavailable'); }
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true, powerPreference: 'high-performance' });
+} catch (e) { failGL(); throw e; }
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight, false);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(32, window.innerWidth / window.innerHeight, 0.5, 900);
+camera.position.set(7, 17.5, 57);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 14.2, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 9;
+controls.maxDistance = 170;
+controls.maxPolarAngle = PI * 0.495;
+controls.enabled = false;
+
+// ───────────────────────── procedural textures ─────────────────────────
+function makeCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+
+// Maker's mark: a balance wheel — double rim, timing screws, three curved arms, a breathing hairspring, a jewel at the hub.
+function drawEmblem(ctx, cx, cy, r, col, lw, jewel) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.lineWidth = lw * 1.25;
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.stroke();
+  ctx.lineWidth = lw * 0.7;
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.83, 0, TAU); ctx.stroke();
+  for (let i = 0; i < 8; i++) {
+    const a = i / 8 * TAU + PI / 8;
+    ctx.beginPath(); ctx.arc(Math.cos(a) * r * 1.09, Math.sin(a) * r * 1.09, lw * 0.95, 0, TAU); ctx.fill();
+  }
+  ctx.lineWidth = lw * 0.9;
+  for (let i = 0; i < 3; i++) {
+    const a = i / 3 * TAU - PI / 2, b = a + 0.55;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * r * 0.13, Math.sin(a) * r * 0.13);
+    ctx.quadraticCurveTo(Math.cos(a + 0.42) * r * 0.55, Math.sin(a + 0.42) * r * 0.55, Math.cos(b) * r * 0.83, Math.sin(b) * r * 0.83);
+    ctx.stroke();
+  }
+  ctx.lineWidth = lw * 0.45;
+  ctx.beginPath();
+  for (let t = 0; t <= 1.0001; t += 0.01) {
+    const a = t * 3.3 * TAU, rr = r * (0.16 + 0.42 * t);
+    const x = Math.cos(a) * rr, y = Math.sin(a) * rr;
+    t === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.1, 0, TAU); ctx.fill();
+  if (jewel) { ctx.fillStyle = jewel; ctx.beginPath(); ctx.arc(0, 0, r * 0.055, 0, TAU); ctx.fill(); }
+  ctx.restore();
+}
+
+function emblemDataURL(size, col, bg) {
+  const c = makeCanvas(size, size), g = c.getContext('2d');
+  if (bg) { g.fillStyle = bg; g.beginPath(); g.arc(size / 2, size / 2, size / 2, 0, TAU); g.fill(); }
+  drawEmblem(g, size / 2, size / 2, size * 0.36, col, size * 0.03, '#d4143a');
+  return c.toDataURL();
+}
+
+// Blade: u = (x+1)/12 along the knife, v front half = upper canvas half, back half = lower (mirrored text so it reads from behind)
+const BLADE_TEX = { W: 2048, H: 512 };
+function bladeUV(x, y, back) {
+  const v = 0.5 * (y + 1.3) / 2.6;
+  return [(x + 1) / 12, back ? v : 0.5 + v];
+}
+function makeBladeTextures() {
+  const { W, H } = BLADE_TEX, sx = W / 12, sy = (H / 2) / 2.6;
+  const albedo = makeCanvas(W, H), rough = makeCanvas(W, H);
+  const A = albedo.getContext('2d'), R = rough.getContext('2d');
+  A.fillStyle = '#e4e6e9'; A.fillRect(0, 0, W, H);
+  R.fillStyle = 'rgb(70,70,70)'; R.fillRect(0, 0, W, H);
+  // satin brushing: thousands of fine streaks along the blade
+  for (let i = 0; i < 5200; i++) {
+    const y = rand() * H, x = rand() * W - 200, len = 80 + rand() * 520, a = 0.03 + rand() * 0.07;
+    const light = rand() > 0.5;
+    A.fillStyle = light ? `rgba(255,255,255,${a})` : `rgba(90,96,104,${a})`;
+    A.fillRect(x, y, len, rand() > 0.7 ? 1.4 : 0.8);
+    R.fillStyle = light ? `rgba(40,40,40,${a * 1.6})` : `rgba(120,120,120,${a * 1.6})`;
+    R.fillRect(x, y, len, 1);
+  }
+  const face = (ctx, back, fn) => {
+    ctx.save();
+    // cm space with y up: canvas_x = (x+1)*sx, canvas_y = base - (y+1.3)*sy
+    const base = back ? H : H / 2;
+    ctx.setTransform(sx, 0, 0, -sy, sx, base - 1.3 * sy);
+    fn(ctx);
+    ctx.restore();
+  };
+  const text = (ctx, str, x, y, h, font, spacing, mirror, align = 'left') => {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(mirror ? -1 : 1, -1);
+    ctx.scale(h / 100, h / 100);
+    ctx.font = font.replace('#', '100px');
+    ctx.textAlign = align; ctx.textBaseline = 'middle';
+    if ('letterSpacing' in ctx) ctx.letterSpacing = spacing + 'px';
+    ctx.fillText(str, 0, 0);
+    ctx.restore();
+  };
+  const etch = (ctx, isRough, back) => {
+    const col = isRough ? 'rgb(150,150,150)' : 'rgb(118,122,128)';
+    ctx.fillStyle = col; ctx.strokeStyle = col;
+    if (!back) {
+      // maker's mark on the ricasso
+      ctx.save(); ctx.scale(1, 1);
+      drawEmblem(ctx, 1.36, 0.06, 0.4, col, 0.035, null);
+      ctx.restore();
+      text(ctx, 'REMONTOIRE', 3.75, 0.52, 0.3, '600 # Georgia, "Times New Roman", serif', 18, false);
+      text(ctx, 'CARROW & TINE · CALIBRE 23 · GENÈVE', 3.78, 0.2, 0.13, '# Georgia, serif', 10, false);
+    } else {
+      // read from behind: mirrored in texture space
+      text(ctx, 'TEMPUS MANU TENETUR', 7.6, 0.5, 0.2, 'italic # Georgia, "Times New Roman", serif', 12, true, 'left');
+      text(ctx, 'Nº 023 · 61 HRC', 2.7, 0.0, 0.14, '# Georgia, serif', 8, true, 'left');
+    }
+  };
+  face(A, false, (c) => etch(c, false, false));
+  face(A, true, (c) => etch(c, false, true));
+  face(R, false, (c) => etch(c, true, false));
+  face(R, true, (c) => etch(c, true, true));
+  const map = new THREE.CanvasTexture(albedo);
+  map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 8;
+  const rmap = new THREE.CanvasTexture(rough); rmap.anisotropy = 8;
+  return { map, rmap };
+}
+
+// Flinqué guilloché for the handle scales: engine-turned waves inside a polished frame and polished window chamfers.
+const PLATE = { x0: -0.62, x1: 13.0, half: 0.6, windows: [[3.0, 6.2], [7.0, 10.2]], wr: 0.2 };
+function plateHalf(x) { return PLATE.half - 0.045 * Math.sin(PI * clamp(x / 13, 0, 1)); }
+function windowDist(x, y) {
+  let d = 9;
+  for (const [a, b] of PLATE.windows) {
+    const cx = clamp(x, a + PLATE.wr, b - PLATE.wr);
+    d = Math.min(d, Math.hypot(x - cx, y) - PLATE.wr);
+  }
+  return d;
+}
+function plateEdgeDist(x, y) {
+  let d = plateHalf(x) - Math.abs(y);
+  if (x < 0) d = Math.min(d, 0.62 - Math.hypot(x, y));
+  d = Math.min(d, PLATE.x1 - x);
+  return d;
+}
+function makeGuillocheTextures() {
+  const W = 2048, H = 192, data = new Uint8Array(W * H * 4), rdat = new Uint8Array(W * H * 4);
+  const f1 = 7.2, f2 = 1.15, amp = 0.62, k = 0.011;
+  const hAt = (x, y) => {
+    const ph = y * f1 + amp * Math.sin(TAU * x * f2) + 0.22 * Math.sin(TAU * (x * 0.37 + y * 0.8));
+    return 0.5 - 0.5 * Math.cos(TAU * ph);
+  };
+  const ex = (x, y) => {
+    const de = plateEdgeDist(x, y), dw = windowDist(x, y);
+    // 1 = guilloché field, 0 = polished frame
+    return sstep(0.1, 0.16, de) * sstep(0.06, 0.12, dw);
+  };
+  const dx = (PLATE.x1 - PLATE.x0) / W, dy = 1.24 / H;
+  for (let j = 0; j < H; j++) {
+    const y = -0.62 + (j + 0.5) * dy;
+    for (let i = 0; i < W; i++) {
+      const x = PLATE.x0 + (i + 0.5) * dx;
+      const m = ex(x, y);
+      const gx = (hAt(x + dx, y) - hAt(x - dx, y)) / (2 * dx) * m;
+      const gy = (hAt(x, y + dy) - hAt(x, y - dy)) / (2 * dy) * m;
+      let nx = -gx * k, ny = -gy * k, nz = 1;
+      const l = Math.hypot(nx, ny, nz); nx /= l; ny /= l; nz /= l;
+      const o = (j * W + i) * 4;
+      data[o] = (nx * 0.5 + 0.5) * 255; data[o + 1] = (ny * 0.5 + 0.5) * 255; data[o + 2] = (nz * 0.5 + 0.5) * 255; data[o + 3] = 255;
+      const rr = lerp(0.07, 0.17 + 0.08 * hAt(x, y), m);
+      rdat[o] = rdat[o + 1] = rdat[o + 2] = rr * 255; rdat[o + 3] = 255;
+    }
+  }
+  const n = new THREE.DataTexture(data, W, H, THREE.RGBAFormat);
+  n.wrapS = n.wrapT = THREE.ClampToEdgeWrapping; n.anisotropy = 8; n.generateMipmaps = true;
+  n.minFilter = THREE.LinearMipmapLinearFilter; n.magFilter = THREE.LinearFilter; n.needsUpdate = true;
+  const r = new THREE.DataTexture(rdat, W, H, THREE.RGBAFormat);
+  r.generateMipmaps = true; r.minFilter = THREE.LinearMipmapLinearFilter; r.magFilter = THREE.LinearFilter; r.needsUpdate = true;
+  return { normal: n, rough: r };
+}
+
+// The stage: a sunburst-brushed slate dial with a printed minute track and the maker's name.
+function makeDialTextures() {
+  const S = 2048, c = makeCanvas(S, S), g = c.getContext('2d'), C = S / 2;
+  const grd = g.createRadialGradient(C, C, 0, C, C, C);
+  grd.addColorStop(0, '#3a3f49'); grd.addColorStop(0.7, '#262a32'); grd.addColorStop(1, '#16181d');
+  g.fillStyle = grd; g.fillRect(0, 0, S, S);
+  // fine radial sunburst streaks
+  g.save(); g.translate(C, C);
+  for (let i = 0; i < 2600; i++) {
+    const a = rand() * TAU, r0 = rand() * C * 0.3, r1 = r0 + C * (0.25 + rand() * 0.7);
+    g.strokeStyle = rand() > 0.5 ? `rgba(255,255,255,${0.012 + rand() * 0.025})` : `rgba(0,0,0,${0.03 + rand() * 0.04})`;
+    g.lineWidth = 0.6 + rand();
+    g.beginPath(); g.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); g.lineTo(Math.cos(a) * r1, Math.sin(a) * r1); g.stroke();
+  }
+  const ink = '#d9d2c6';
+  g.strokeStyle = ink; g.fillStyle = ink;
+  g.lineWidth = 3; g.beginPath(); g.arc(0, 0, C * 0.905, 0, TAU); g.stroke();
+  g.lineWidth = 1.6; g.beginPath(); g.arc(0, 0, C * 0.855, 0, TAU); g.stroke();
+  for (let i = 0; i < 60; i++) {
+    if (i % 5 === 0) continue;
+    const a = i / 60 * TAU;
+    g.save(); g.rotate(a); g.fillRect(-2, -C * 0.9, 4, C * 0.04); g.restore();
+  }
+  for (let i = 0; i < 240; i++) {
+    if (i % 4 === 0) continue;
+    const a = i / 240 * TAU;
+    g.save(); g.rotate(a); g.fillRect(-0.8, -C * 0.9, 1.6, C * 0.018); g.restore();
+  }
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  const say = (str, y, px, sp, font = 'Georgia, "Times New Roman", serif') => {
+    g.font = `${px}px ${font}`;
+    if ('letterSpacing' in g) g.letterSpacing = sp + 'px';
+    g.fillText(str, 0, y);
+  };
+  drawEmblem(g, 0, -C * 0.55, C * 0.07, ink, 4, '#c8143a');
+  say('CARROW & TINE', -C * 0.4, 64, 22);
+  say('GENÈVE', -C * 0.34, 30, 18);
+  say('REMONTOIRE', C * 0.38, 46, 20);
+  say('23 JEWELS · TEMPUS MANU TENETUR', C * 0.44, 24, 10, 'Georgia, serif');
+  g.restore();
+  const map = new THREE.CanvasTexture(c); map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 8;
+  // anisotropy direction field: radial brushing → the sunburst highlight that sweeps as the camera moves
+  const A = 256, ad = new Uint8Array(A * A * 4);
+  for (let j = 0; j < A; j++) for (let i = 0; i < A; i++) {
+    let x = (i + 0.5) / A - 0.5, y = (j + 0.5) / A - 0.5; const l = Math.hypot(x, y) || 1;
+    x /= l; y /= l; const o = (j * A + i) * 4;
+    ad[o] = (x * 0.5 + 0.5) * 255; ad[o + 1] = (y * 0.5 + 0.5) * 255; ad[o + 2] = 255; ad[o + 3] = 255;
+  }
+  const aniso = new THREE.DataTexture(ad, A, A, THREE.RGBAFormat);
+  aniso.magFilter = THREE.LinearFilter; aniso.minFilter = THREE.LinearFilter; aniso.needsUpdate = true;
+  return { map, aniso };
+}
+
+function makeBackground() {
+  const c = makeCanvas(512, 512), g = c.getContext('2d');
+  const grd = g.createRadialGradient(256, 210, 20, 256, 256, 380);
+  grd.addColorStop(0, '#1b1d23'); grd.addColorStop(0.55, '#0d0e12'); grd.addColorStop(1, '#040405');
+  g.fillStyle = grd; g.fillRect(0, 0, 512, 512);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
+function makeBlobTexture() {
+  const c = makeCanvas(256, 256), g = c.getContext('2d');
+  const grd = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+  grd.addColorStop(0, 'rgba(0,0,0,0.75)'); grd.addColorStop(0.45, 'rgba(0,0,0,0.35)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, 256, 256);
+  return new THREE.CanvasTexture(c);
+}
+
+// Procedural photo studio for reflections: strip softboxes and a warm key panel, prefiltered with PMREM.
+function buildEnvironment() {
+  const es = new THREE.Scene();
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(90, 48, 24), new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false,
+    vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: `varying vec3 vP; void main(){
+      float h = vP.y;
+      vec3 top = vec3(0.055,0.06,0.075), hor = vec3(0.10,0.085,0.07), bot = vec3(0.012,0.011,0.01);
+      vec3 c = h > 0.0 ? mix(hor, top, pow(h, 0.6)) : mix(hor, bot, pow(-h, 0.45));
+      gl_FragColor = vec4(c, 1.0); }`,
+  }));
+  es.add(sky);
+  const panel = (w, h, pos, col, k) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(...col).multiplyScalar(k), side: THREE.DoubleSide }));
+    m.position.set(...pos); m.lookAt(0, 0, 0); es.add(m); return m;
+  };
+  panel(80, 10, [0, 62, 4], [1, 1, 1], 5.5);
+  panel(28, 44, [-58, 20, 24], [1, 0.92, 0.82], 3.4);
+  panel(7, 54, [54, 16, -26], [0.78, 0.86, 1], 4.4);
+  panel(70, 3.5, [0, 5, -64], [1, 0.95, 0.9], 2.2);
+  panel(16, 9, [14, 34, 58], [1, 1, 1], 3.2);
+  panel(90, 30, [0, 16, 78], [0.95, 0.95, 1], 2.4);
+  panel(70, 6, [0, 40, 72], [1, 1, 1], 4.5);
+  panel(10, 40, [-22, 18, 66], [1, 0.96, 0.9], 4.0);
+  panel(60, 60, [0, -40, 30], [0.6, 0.55, 0.5], 0.35);
+  panel(5, 30, [-30, 10, -55], [0.9, 0.7, 0.55], 2.0);
+  const pm = new THREE.PMREMGenerator(renderer);
+  const rt = pm.fromScene(es, 0.03, 0.1, 300);
+  pm.dispose();
+  return rt.texture;
+}
+
+// ───────────────────────── the knife ─────────────────────────
+// Units are centimetres. Blade frame: pivots at (0, ±a), blade points +x, spine +y, pivot axis z.
+const K = { a: 0.62, L: 13.0, tip: 10.4, plateZ: 0.38, latchX: 12.55 };
+PLATE.half = 0.57;
+
+const bladeTex = makeBladeTextures();
+const gTex = makeGuillocheTextures();
+
+const MAT = {
+  satin: new THREE.MeshPhysicalMaterial({ color: 0xdcdfe4, metalness: 1, roughness: 1, roughnessMap: bladeTex.rmap, map: bladeTex.map, anisotropy: 0.35 }),
+  mirror: new THREE.MeshPhysicalMaterial({ color: 0xf0f2f5, metalness: 1, roughness: 0.05 }),
+  spine: new THREE.MeshPhysicalMaterial({ color: 0xd2d5da, metalness: 1, roughness: 0.28 }),
+  scale: new THREE.MeshPhysicalMaterial({ color: 0xe7e4de, metalness: 1, roughness: 1, roughnessMap: gTex.rough, normalMap: gTex.normal, clearcoatRoughness: 0.04 }),
+  scaleSide: new THREE.MeshPhysicalMaterial({ color: 0xe7e4de, metalness: 1, roughness: 0.09 }),
+  hw: new THREE.MeshPhysicalMaterial({ color: 0x2a4cc2, metalness: 1, roughness: 0.2, iridescence: 0.8, iridescenceIOR: 1.7, iridescenceThicknessRange: [260, 560], clearcoat: 0.35, clearcoatRoughness: 0.1 }),
+  collar: new THREE.MeshPhysicalMaterial({ color: 0xeeac8c, metalness: 1, roughness: 0.16 }),
+  bronze: new THREE.MeshPhysicalMaterial({ color: 0xc98a4c, metalness: 1, roughness: 0.3 }),
+  ruby: new THREE.MeshPhysicalMaterial({ color: 0xd3112f, metalness: 0, roughness: 0.03, clearcoat: 1, clearcoatRoughness: 0.02, emissive: 0x40000a, ior: 1.76, specularIntensity: 1 }),
+  steel: new THREE.MeshPhysicalMaterial({ color: 0xbfc3ca, metalness: 1, roughness: 0.26 }),
+  recess: new THREE.MeshStandardMaterial({ color: 0x07080a, metalness: 0.3, roughness: 0.6 }),
+};
+
+const PARTS = [];
+function part(geo, mat, parent, label, desc, off, pos, extra) {
+  const m = new THREE.Mesh(geo, mat);
+  if (pos) m.position.copy(pos);
+  m.castShadow = true; m.receiveShadow = true;
+  m.userData = { label, desc, home: m.position.clone(), off: off ? off.clone() : V3(), ...(extra || {}) };
+  parent.add(m); PARTS.push(m);
+  return m;
+}
+function uvFromPos(geo, fn) {
+  const p = geo.attributes.position, uv = new Float32Array(p.count * 2);
+  for (let i = 0; i < p.count; i++) { const r = fn(p.getX(i), p.getY(i), p.getZ(i)); uv[i * 2] = r[0]; uv[i * 2 + 1] = r[1]; }
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+}
+const ang = (x, y) => Math.atan2(y, x);
+
+// ── blade: flat tang + ricasso (extruded with bevels) and a lofted, ground blade body
+function tangShape() {
+  const a = K.a, rl = 0.44, s = new THREE.Shape();
+  s.moveTo(-0.8, -0.48);
+  s.lineTo(-0.8, 0.48);
+  s.lineTo(-0.417, 0.48);
+  s.absarc(0, a, rl, ang(-0.417, 0.48 - a), ang(0.413, 0.47 - a), true);
+  s.lineTo(0.7, 0.47);
+  s.lineTo(0.7, 0.93);
+  s.lineTo(0.8, 1.0);
+  s.lineTo(3.4, 1.0);
+  s.lineTo(3.4, -0.95);
+  s.lineTo(3.25, -0.95);
+  s.absarc(3.0, -0.95, 0.25, 0, PI, false);
+  s.lineTo(1.2, -0.95);
+  s.quadraticCurveTo(1.12, -1.13, 0.95, -1.13);
+  s.lineTo(0.78, -1.13);
+  s.quadraticCurveTo(0.7, -1.12, 0.7, -1.02);
+  s.lineTo(0.7, -0.47);
+  s.lineTo(0.413, -0.47);
+  s.absarc(0, -a, rl, ang(0.413, -0.47 + a), ang(-0.417, -0.48 + a), true);
+  s.lineTo(-0.8, -0.48);
+  const hole = (x, y, r) => { const h = new THREE.Path(); h.absarc(x, y, r, 0, TAU, true); s.holes.push(h); };
+  hole(0, a, 0.17); hole(0, -a, 0.17); hole(2.2, 0.18, 0.36);
+  return s;
+}
+function bladeProfile(x) {
+  const t = clamp((x - 3.4) / 7.0, 0, 1);
+  const s = clamp((x - 7.2) / 3.2, 0, 1);
+  const top = x <= 7.2 ? 1.0 - 0.01 * (x - 3.4) : 0.22 + 0.742 * Math.pow(Math.max(0, 1 - Math.pow(s, 2.2)), 0.85);
+  const bot = -0.95 + 1.17 * Math.pow(t, 2.4);
+  const th = 0.18 * (1 - 0.3 * t) * clamp((10.4 - x) / 0.9, 0.04, 1);
+  const g = lerp(-0.06, 0.22, Math.pow(t, 1.6));
+  const ss = sstep(7.4, 10.0, x);
+  const sw = top - (top - g) * 0.5 * ss;
+  const hs = th * (1 - 0.72 * ss);
+  const eb = Math.min(g - 0.004, bot + 0.075 * clamp((top - bot) / 0.6, 0, 1));
+  const te = Math.min(0.034, th * 0.55);
+  return { top, bot, g, sw, hs, th, eb, te };
+}
+function buildBladeBody() {
+  const N = 76, xs = [];
+  for (let i = 0; i <= N; i++) xs.push(3.4 + 7.0 * (1 - Math.pow(1 - i / N, 1.45)));
+  const P = xs.map(bladeProfile);
+  const builders = { flat: [], grind: [], mirror: [], spine: [] };
+  const strip = (group, fa, fb, uvMode) => {
+    const pos = [], uv = [], idx = [];
+    xs.forEach((x, i) => {
+      const A = fa(P[i]), B = fb(P[i]);
+      pos.push(x, A[0], A[1], x, B[0], B[1]);
+      const back = uvMode === 'z' ? A[1] < 0 : false;
+      uv.push(...bladeUV(x, A[0], back), ...bladeUV(x, B[0], uvMode === 'z' ? B[1] < 0 : false));
+    });
+    // orient every quad so its normal faces away from the blade's mid-plane
+    const mid = (i) => { const p = P[i]; return [(p.top + p.bot) / 2, 0]; };
+    for (let i = 0; i < xs.length - 1; i++) {
+      const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
+      const ax = pos.slice(a * 3, a * 3 + 3), bx = pos.slice(b * 3, b * 3 + 3), cx = pos.slice(c * 3, c * 3 + 3);
+      const e1 = V3(bx[0] - ax[0], bx[1] - ax[1], bx[2] - ax[2]), e2 = V3(cx[0] - ax[0], cx[1] - ax[1], cx[2] - ax[2]);
+      const n = e1.clone().cross(e2);
+      const m = mid(i), out = V3(0, (ax[1] + bx[1]) / 2 - m[0], (ax[2] + bx[2]) / 2 - m[1]);
+      if (n.dot(out) >= 0) idx.push(a, b, c, b, d, c); else idx.push(a, c, b, b, c, d);
+    }
+    builders[group].push({ pos, uv, idx });
+  };
+  for (const sg of [1, -1]) {
+    strip('mirror', (p) => [p.top, sg * p.hs], (p) => [p.sw, sg * p.th], 'z');
+    strip('flat', (p) => [p.sw, sg * p.th], (p) => [p.g, sg * p.th], 'z');
+    strip('grind', (p) => [p.g, sg * p.th], (p) => [p.eb, sg * p.te], 'z');
+    strip('mirror', (p) => [p.eb, sg * p.te], (p) => [p.bot, sg * 0.003], 'z');
+  }
+  strip('spine', (p) => [p.top, -p.hs], (p) => [p.top, p.hs], 'front');
+  strip('spine', (p) => [p.bot, 0.003], (p) => [p.bot, -0.003], 'front');
+  const out = {};
+  for (const k in builders) {
+    const pos = [], uv = [], idx = [];
+    for (const b of builders[k]) {
+      const o = pos.length / 3;
+      pos.push(...b.pos); uv.push(...b.uv); idx.push(...b.idx.map((v) => v + o));
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx); g.computeVertexNormals();
+    out[k] = g;
+  }
+  return out;
+}
+
+const knife = new THREE.Group(); knife.name = 'knife'; scene.add(knife);
+const bladeG = new THREE.Group(); knife.add(bladeG);
+const biteG = new THREE.Group(); biteG.position.set(0, -K.a, 0); knife.add(biteG);
+const safeG = new THREE.Group(); safeG.position.set(0, K.a, 0); knife.add(safeG);
+biteG.userData.handle = 'bite'; safeG.userData.handle = 'safe';
+biteG.userData.home = biteG.position.clone(); safeG.userData.home = safeG.position.clone();
+
+{
+  const bladeDesc = 'Breguet leaf · powder stainless, 61 HRC · satin flats, mirror swedge & edge bevel, moon window';
+  const tg = new THREE.ExtrudeGeometry(tangShape(), { depth: 0.3, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.025, bevelSegments: 2, curveSegments: 28 });
+  tg.translate(0, 0, -0.15);
+  uvFromPos(tg, (x, y, z) => bladeUV(x, y, z < 0));
+  const tm = part(tg, [MAT.satin, MAT.spine], bladeG, 'Blade', bladeDesc, V3());
+  const body = buildBladeBody();
+  part(body.flat, MAT.satin, bladeG, 'Blade', bladeDesc, V3());
+  part(body.grind, MAT.satin, bladeG, 'Blade · flat grind', 'The grind runs from the plunge line to a mirror-polished secondary edge bevel', V3());
+  part(body.mirror, MAT.mirror, bladeG, 'Blade · swedge & edge bevel', 'Mirror-polished, so highlights slide along the edge as it turns', V3());
+  part(body.spine, MAT.spine, bladeG, 'Blade · spine', bladeDesc, V3());
+  // polished rim inside the moon window
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.022, 10, 48), MAT.mirror);
+  rim.position.set(2.2, 0.18, 0); rim.scale.set(1, 1, 7.5); bladeG.add(rim);
+  tm.userData.isBlade = true;
+}
+
+// ── handles
+function plateShape() {
+  const s = new THREE.Shape(), N = 48, h0 = plateHalf(0);
+  s.moveTo(0, h0);
+  s.absarc(0, 0, h0, PI / 2, PI * 1.5, false);
+  for (let i = 1; i <= N; i++) { const x = 12.7 * i / N; s.lineTo(x, -plateHalf(x)); }
+  s.quadraticCurveTo(13.0, -plateHalf(13), 13.0, -plateHalf(13) + 0.3);
+  s.lineTo(13.0, plateHalf(13) - 0.3);
+  s.quadraticCurveTo(13.0, plateHalf(13), 12.7, plateHalf(12.7));
+  for (let i = N - 1; i >= 1; i--) { const x = 12.7 * i / N; s.lineTo(x, plateHalf(x)); }
+  s.lineTo(0, h0);
+  for (const [a, b] of PLATE.windows) {
+    const w = new THREE.Path(), r = PLATE.wr;
+    w.absarc(a + r, 0, r, PI / 2, PI * 1.5, false);
+    w.lineTo(b - r, -r);
+    w.absarc(b - r, 0, r, -PI / 2, PI / 2, false);
+    w.lineTo(a + r, r);
+    s.holes.push(w);
+  }
+  return s;
+}
+function lathe(points, segs = 32) { return new THREE.LatheGeometry(points.map(([x, y]) => new THREE.Vector2(x, y)), segs); }
+function torxShape(r) {
+  const s = new THREE.Shape();
+  for (let i = 0; i <= 96; i++) {
+    const a = i / 96 * TAU, rr = r * (0.78 + 0.22 * Math.cos(a * 6));
+    i ? s.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : s.moveTo(rr, 0);
+  }
+  return s;
+}
+function ringShape(ro, ri) { const s = new THREE.Shape(); s.absarc(0, 0, ro, 0, TAU, false); const h = new THREE.Path(); h.absarc(0, 0, ri, 0, TAU, true); s.holes.push(h); return s; }
+function collarShape() {
+  const s = new THREE.Shape(); s.absarc(0, 0, 0.55, 0, TAU, false);
+  const n = 5, ri = 0.355, ro = 0.465, spoke = 0.32;
+  for (let i = 0; i < n; i++) {
+    const a0 = i / n * TAU + spoke / 2, a1 = (i + 1) / n * TAU - spoke / 2, h = new THREE.Path();
+    h.absarc(0, 0, ro, a0 + 0.08, a1 + 0.08, false);
+    h.absarc(0, 0, ri, a1 - 0.05, a0 - 0.05, true);
+    s.holes.push(h);
+  }
+  const c = new THREE.Path(); c.absarc(0, 0, 0.3, 0, TAU, true); s.holes.push(c);
+  return s;
+}
+function latchShape() {
+  const s = new THREE.Shape();
+  s.moveTo(0, 0.22);
+  s.lineTo(1.0, 0.17);
+  s.quadraticCurveTo(1.12, 0.245, 1.27, 0.23);
+  s.lineTo(1.5, 0.19);
+  s.quadraticCurveTo(1.575, 0.15, 1.5, 0.112);
+  s.lineTo(1.18, 0.106);
+  s.absarc(1.18, 0, 0.106, PI / 2, PI * 1.5, false);
+  s.lineTo(1.5, -0.112);
+  s.quadraticCurveTo(1.575, -0.15, 1.5, -0.19);
+  s.lineTo(1.27, -0.23);
+  s.quadraticCurveTo(1.12, -0.245, 1.0, -0.17);
+  s.lineTo(0, -0.22);
+  s.absarc(0, 0, 0.22, -PI / 2, PI / 2, true);
+  const h = new THREE.Path(); h.absarc(0, 0, 0.07, 0, TAU, true); s.holes.push(h);
+  return s;
+}
+
+const GEO = (() => {
+  const plate = new THREE.ExtrudeGeometry(plateShape(), { depth: 0.26, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.042, bevelSegments: 3, curveSegments: 20 });
+  plate.translate(0, 0, -0.13);
+  uvFromPos(plate, (x, y) => [(x - PLATE.x0) / (PLATE.x1 - PLATE.x0), (y + 0.62) / 1.24]);
+  const screw = lathe([[0, 0], [0.12, 0], [0.126, 0.02], [0.112, 0.055], [0.07, 0.08], [0, 0.088]], 24); screw.rotateX(PI / 2);
+  const pscrew = lathe([[0, 0], [0.3, 0], [0.312, 0.028], [0.285, 0.07], [0.2, 0.108], [0.09, 0.128], [0, 0.132]], 40); pscrew.rotateX(PI / 2);
+  const torxS = new THREE.ShapeGeometry(torxShape(0.045)), torxP = new THREE.ShapeGeometry(torxShape(0.085));
+  const washer = new THREE.ExtrudeGeometry(ringShape(0.36, 0.17), { depth: 0.018, bevelEnabled: false, curveSegments: 32 });
+  const bushing = lathe([[0.07, -0.18], [0.165, -0.18], [0.165, 0.18], [0.07, 0.18], [0.07, -0.18]], 28); bushing.rotateX(PI / 2);
+  const shaft = new THREE.CylinderGeometry(0.07, 0.07, 1.1, 16); shaft.rotateX(PI / 2);
+  const collar = new THREE.ExtrudeGeometry(collarShape(), { depth: 0.035, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.01, bevelSegments: 2, curveSegments: 18 });
+  const jewel = new THREE.SphereGeometry(0.048, 16, 10);
+  const zen = new THREE.CylinderGeometry(0.1, 0.1, 0.42, 16); zen.rotateX(PI / 2);
+  const pinHead = lathe([[0, 0], [0.105, 0], [0.1, 0.018], [0.06, 0.03], [0, 0.034]], 18); pinHead.rotateX(PI / 2);
+  const wall = new RoundedBoxGeometry(10.7, 0.1, 0.4, 2, 0.03);
+  const latch = new THREE.ExtrudeGeometry(latchShape(), { depth: 0.12, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.018, bevelSegments: 2, curveSegments: 16 });
+  latch.translate(0, 0, -0.06);
+  const stone = new THREE.BoxGeometry(0.18, 0.075, 0.17);
+  const latchPin = new THREE.CylinderGeometry(0.088, 0.088, 0.42, 16); latchPin.rotateX(PI / 2);
+  return { plate, screw, pscrew, torxS, torxP, washer, bushing, shaft, collar, jewel, zen, pinHead, wall, latch, stone, latchPin };
+})();
+
+const HANDLE = {};
+function buildHandle(g, name) {
+  const side = name === 'bite' ? -1 : 1, Name = name === 'bite' ? 'Bite handle' : 'Safe handle';
+  const H = { group: g };
+  const z = K.plateZ;
+  H.front = part(GEO.plate, [MAT.scale, MAT.scaleSide], g, `${Name} · front scale`, 'scale', V3(0, 0, 1.7), V3(0, 0, z));
+  H.back = part(GEO.plate, [MAT.scale, MAT.scaleSide], g, `${Name} · back scale`, 'scale', V3(0, 0, -1.7), V3(0, 0, -z));
+  part(GEO.wall, MAT.hw, g, `${Name} · channel wall`, name === 'bite' ? 'Heat-blued titanium. The kicker keeps the edge from ever touching it.' : 'Heat-blued titanium spacer on the spine side', V3(0, side * 0.95, 0), V3(6.65, side * 0.52, 0));
+  for (const x of [2.0, 6.6, 11.4]) {
+    for (const zs of [1, -1]) {
+      const sc = part(GEO.screw, MAT.hw, g, 'Scale screw', 'Heat-blued steel, Torx T6', V3(0, 0, zs * 3.1), V3(x, side * 0.52, zs * 0.56));
+      if (zs < 0) sc.scale.z = -1;
+      const tx = new THREE.Mesh(GEO.torxS, MAT.recess); tx.position.z = 0.089; sc.add(tx);
+    }
+  }
+  // pivot stack: screw heads, washers, ruby bushing, shaft, tourbillon collar
+  const pf = part(GEO.pscrew, MAT.hw, g, 'Pivot screw', 'Heat-blued, Torx T8, threaded into the opposite head', V3(0, 0, 4.4), V3(0, 0, 0.6));
+  const pb = part(GEO.pscrew, MAT.hw, g, 'Pivot screw', 'Heat-blued, Torx T8', V3(0, 0, -4.4), V3(0, 0, -0.56)); pb.scale.z = -1;
+  for (const m of [pf, pb]) { const t = new THREE.Mesh(GEO.torxP, MAT.recess); t.position.z = 0.133; m.add(t); }
+  part(GEO.shaft, MAT.steel, g, 'Pivot shaft', 'Hardened steel shaft through both scales and the tang', V3(0, 0, 5.6), V3(0, 0, 0));
+  part(GEO.washer, MAT.bronze, g, 'Washer', 'Phosphor bronze, 0.18 mm', V3(0, 0, 0.95), V3(0, 0, 0.181));
+  const wb = part(GEO.washer, MAT.bronze, g, 'Washer', 'Phosphor bronze, 0.18 mm', V3(0, 0, -0.95), V3(0, 0, -0.199));
+  wb.scale.z = 1;
+  part(GEO.bushing, MAT.ruby, g, 'Jewel bushing', 'Synthetic ruby, pressed into the scales — the tang turns on it', V3(0, 0, 0.5), V3(0, 0, 0));
+  const collar = part(GEO.collar, MAT.collar, g, 'Tourbillon collar', 'Signature: rose gold, geared 3 : 1 — it spins as the handle swings', V3(0, 0, 3.6), V3(0, 0, 0.56));
+  for (let i = 0; i < 3; i++) {
+    const j = new THREE.Mesh(GEO.jewel, MAT.ruby), a = i / 3 * TAU + 0.3;
+    j.position.set(Math.cos(a) * 0.51, Math.sin(a) * 0.51, 0.045); j.scale.z = 0.6; collar.add(j);
+  }
+  H.collar = collar;
+  const zp = part(GEO.zen, MAT.steel, g, 'Zen pin', 'Rides round the tang and stops the handle exactly at open and closed', V3(0, 0, 2.4), V3(0.56, 0, 0));
+  for (const zs of [1, -1]) { const h = new THREE.Mesh(GEO.pinHead, MAT.hw); h.position.z = zs * 0.56; if (zs < 0) h.scale.z = -1; zp.add(h); }
+  if (name === 'bite') {
+    const lg = new THREE.Group(); lg.position.set(K.latchX, 0, 0); g.add(lg);
+    const lm = part(GEO.latch, MAT.hw, lg, 'Pallet-fork latch', 'Shaped like an escapement pallet fork, with two ruby pallet stones', V3(0.8, 0, 2.4), V3(0, 0, 0));
+    for (const s of [1, -1]) { const st = new THREE.Mesh(GEO.stone, MAT.ruby); st.position.set(0.62, s * 0.165, 0); st.rotation.z = s * 0.55; lm.add(st); }
+    const lp = part(GEO.latchPin, MAT.steel, g, 'Latch pivot pin', 'The latch swings freely on it', V3(0, 0, -2.4), V3(K.latchX, 0, 0));
+    for (const zs of [1, -1]) { const h = new THREE.Mesh(GEO.pinHead, MAT.hw); h.position.z = zs * 0.56; if (zs < 0) h.scale.z = -1; lp.add(h); }
+    H.latch = lg;
+  } else {
+    const lp = part(GEO.latchPin, MAT.steel, g, 'Latch pin', 'The pallet fork hooks over it, closed or open', V3(0, 0, -2.4), V3(K.latchX, 0, 0));
+    for (const zs of [1, -1]) { const h = new THREE.Mesh(GEO.pinHead, MAT.hw); h.position.z = zs * 0.56; if (zs < 0) h.scale.z = -1; lp.add(h); }
+  }
+  HANDLE[name] = H;
+}
+buildHandle(biteG, 'bite');
+buildHandle(safeG, 'safe');
+knife.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+
+// pose the articulation: b, s ∈ [0,1] (0 closed, 1 open); latch angle in the bite handle's frame
+function applyArticulation(b, s, latch) {
+  biteG.rotation.z = -PI * b;
+  safeG.rotation.z = PI * s;
+  HANDLE.bite.collar.rotation.z = 2 * (-PI * b);
+  HANDLE.safe.collar.rotation.z = 2 * (PI * s);
+  HANDLE.bite.latch.rotation.z = latch;
+}
+
+// ── colourways
+const WAYS = [
+  { name: 'Rhodium Flinqué', sw: 'linear-gradient(135deg,#f4f2ee,#b9b6b0 55%,#2a4cc2 56%)',
+    scale: { color: 0xe7e4de, metalness: 1, clearcoat: 0, iridescence: 0, nscale: 1 }, side: { color: 0xe7e4de, metalness: 1, roughness: 0.09 },
+    hw: 'blued', collar: 0xeeac8c, blade: 0xdcdfe4, mirror: 0xf0f2f5, snd: { bright: 1.0, damp: 1.0 },
+    steel: 'Powder stainless, 61 HRC — satin flats, mirror swedge & edge bevel',
+    hand: 'Rhodium-plated nickel silver, flinqué guilloché, skeleton windows, heat-blued titanium channel walls' },
+  { name: 'Bleu Nuit', sw: 'linear-gradient(135deg,#4a6ee6,#1a2a78 60%,#e8c26e 61%)',
+    scale: { color: 0x2c4fc8, metalness: 1, clearcoat: 0.3, iridescence: 0.7, nscale: 1 }, side: { color: 0xd9dbe0, metalness: 1, roughness: 0.08 },
+    hw: 'rhodium', collar: 0xe9c473, blade: 0xdcdfe4, mirror: 0xf0f2f5, snd: { bright: 1.08, damp: 1.0 },
+    steel: 'Powder stainless, 61 HRC — satin flats, mirror swedge & edge bevel',
+    hand: 'Flame-blued steel scales over flinqué guilloché, rhodium frames and screws, yellow-gold collars' },
+  { name: 'Or Rose', sw: 'linear-gradient(135deg,#f6c7ad,#c98466 58%,#2a4cc2 59%)',
+    scale: { color: 0xf0b394, metalness: 1, clearcoat: 0, iridescence: 0, nscale: 1 }, side: { color: 0xf0b394, metalness: 1, roughness: 0.08 },
+    hw: 'blued', collar: 0xe6e7ea, blade: 0xdcdfe4, mirror: 0xf0f2f5, snd: { bright: 0.92, damp: 1.15 },
+    steel: 'Powder stainless, 61 HRC — satin flats, mirror swedge & edge bevel',
+    hand: '5N rose-gold plated scales, flinqué guilloché, heat-blued hardware, rhodium collars' },
+  { name: 'Grand Feu', sw: 'linear-gradient(135deg,#ffffff,#e9e5dc 55%,#5d6168 56%)',
+    scale: { color: 0xf4f1ea, metalness: 0.0, clearcoat: 1, iridescence: 0, nscale: 0.55, rough: 0.55 }, side: { color: 0xeeac8c, metalness: 1, roughness: 0.12 },
+    hw: 'blued', collar: 0xeeac8c, blade: 0x7a7e86, mirror: 0xaeb3bb, snd: { bright: 0.78, damp: 1.7 },
+    steel: 'Ruthenium-black powder stainless, 61 HRC — satin flats, mirror bevels',
+    hand: 'Grand feu white enamel fired over flinqué guilloché, rose-gold frames, heat-blued hardware' },
+];
+let wayIndex = 0;
+function applyWay(i) {
+  wayIndex = i; const w = WAYS[i];
+  MAT.scale.color.setHex(w.scale.color); MAT.scale.metalness = w.scale.metalness;
+  MAT.scale.clearcoat = w.scale.clearcoat; MAT.scale.iridescence = w.scale.iridescence;
+  MAT.scale.iridescenceIOR = 1.6; MAT.scale.iridescenceThicknessRange = [240, 520];
+  MAT.scale.normalScale.set(w.scale.nscale, w.scale.nscale);
+  MAT.scale.roughness = w.scale.rough || 1;
+  MAT.scaleSide.color.setHex(w.side.color); MAT.scaleSide.metalness = w.side.metalness; MAT.scaleSide.roughness = w.side.roughness;
+  if (w.hw === 'blued') { MAT.hw.color.setHex(0x2a4cc2); MAT.hw.iridescence = 0.8; MAT.hw.roughness = 0.2; }
+  else { MAT.hw.color.setHex(0xe1e3e8); MAT.hw.iridescence = 0; MAT.hw.roughness = 0.12; }
+  MAT.collar.color.setHex(w.collar);
+  MAT.satin.color.setHex(w.blade); MAT.spine.color.setHex(w.blade); MAT.mirror.color.setHex(w.mirror);
+  for (const m of Object.values(MAT)) m.needsUpdate = true;
+  const sp = document.getElementById('sp-hand'); if (sp) sp.textContent = w.hand;
+  const st = document.getElementById('sp-steel'); if (st) st.textContent = w.steel;
+}
+function partDesc(m) {
+  const d = m.userData.desc;
+  if (d === 'scale') return WAYS[wayIndex].hand.split(',')[0];
+  return d;
+}
+
+// mass properties for the free-flight anchor (grams, cm): the knife turns about its real centre of mass
+const MASS = { blade: 52, handle: 48, bladeC: V3(4.6, 0.05, 0), handleC: 6.3 };
+function comLocal(b, s, out = V3()) {
+  const ab = -PI * b, as = PI * s;
+  out.set(
+    MASS.blade * MASS.bladeC.x + MASS.handle * (Math.cos(ab) * MASS.handleC) + MASS.handle * (Math.cos(as) * MASS.handleC),
+    MASS.blade * MASS.bladeC.y + MASS.handle * (-K.a + Math.sin(ab) * MASS.handleC) + MASS.handle * (K.a + Math.sin(as) * MASS.handleC),
+    0).divideScalar(MASS.blade + 2 * MASS.handle);
+  return out;
+}
+// a part's frame inside the blade frame
+function partLocal(name, b, s) {
+  switch (name) {
+    case 'bite': return { p: V3(0, -K.a, 0), q: QZ(-PI * b) };
+    case 'safe': return { p: V3(0, K.a, 0), q: QZ(PI * s) };
+    case 'com': return { p: comLocal(b, s), q: new THREE.Quaternion() };
+    default: return { p: V3(), q: new THREE.Quaternion() };
+  }
+}
+
+// ───────────────────────── stage: a sunburst dial under a balance wheel ─────────────────────────
+scene.background = makeBackground();
+scene.environment = buildEnvironment();
+
+const STAGE = { group: new THREE.Group() };
+scene.add(STAGE.group);
+{
+  const dt = makeDialTextures();
+  const dialMat = new THREE.MeshPhysicalMaterial({ map: dt.map, metalness: 0.82, roughness: 0.36, anisotropy: 0.9, anisotropyMap: dt.aniso, clearcoat: 0.55, clearcoatRoughness: 0.14 });
+  const dial = new THREE.Mesh(new THREE.CircleGeometry(34, 160), dialMat);
+  dial.rotation.x = -PI / 2; dial.receiveShadow = true; STAGE.group.add(dial);
+  const caseMat = new THREE.MeshPhysicalMaterial({ color: 0xd9dade, metalness: 1, roughness: 0.12 });
+  const rehaut = new THREE.Mesh(lathe([[33.2, 0.0], [34.1, 0.7], [34.3, 0.75]], 160), new THREE.MeshPhysicalMaterial({ color: 0x2b2f37, metalness: 0.9, roughness: 0.3 }));
+  rehaut.receiveShadow = true; STAGE.group.add(rehaut);
+  const bezel = new THREE.Mesh(lathe([[34.3, 0.75], [34.6, 1.35], [35.6, 1.75], [37.0, 1.6], [37.8, 0.9], [38.0, -0.6], [37.6, -3.2], [36.2, -3.4]], 180), caseMat);
+  bezel.receiveShadow = true; bezel.castShadow = true; STAGE.group.add(bezel);
+  // applied rose-gold indices (instanced), doubled at twelve
+  const idxMat = new THREE.MeshPhysicalMaterial({ color: 0xeeae8e, metalness: 1, roughness: 0.14 });
+  const idxGeo = new RoundedBoxGeometry(0.85, 0.45, 3.6, 2, 0.12);
+  const im = new THREE.InstancedMesh(idxGeo, idxMat, 13);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
+  let n = 0;
+  for (let i = 0; i < 12; i++) {
+    const a = i / 12 * TAU;
+    const offs = i === 0 ? [-0.75, 0.75] : [0];
+    for (const o of offs) {
+      const r = 27.6, x = Math.sin(a) * r + Math.cos(a) * o, z = -Math.cos(a) * r + Math.sin(a) * o;
+      q.setFromAxisAngle(V3(0, 1, 0), -a);
+      m4.compose(V3(x, 0.24, z), q, V3(1, 1, 1)); im.setMatrixAt(n++, m4);
+    }
+  }
+  im.castShadow = true; im.receiveShadow = true; STAGE.group.add(im);
+  // a contact shadow that follows the knife
+  STAGE.blob = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: makeBlobTexture(), transparent: true, depthWrite: false, opacity: 0.6 }));
+  STAGE.blob.rotation.x = -PI / 2; STAGE.blob.position.y = 0.03; STAGE.blob.renderOrder = 2; STAGE.group.add(STAGE.blob);
+
+  // the balance wheel halo
+  const bw = new THREE.Group(); bw.position.set(0, 15.5, -27); bw.scale.setScalar(0.8); STAGE.group.add(bw); STAGE.balance = bw;
+  const goldMat = new THREE.MeshPhysicalMaterial({ color: 0xd9ab93, metalness: 1, roughness: 0.3 });
+  const blueMat = new THREE.MeshPhysicalMaterial({ color: 0x2747b6, metalness: 1, roughness: 0.22, iridescence: 0.7, iridescenceIOR: 1.6, iridescenceThicknessRange: [250, 520] });
+  const rotor = new THREE.Group(); bw.add(rotor); STAGE.rotor = rotor;
+  const rim = new THREE.Mesh(lathe([[11.9, -0.4], [12.9, -0.4], [12.95, 0], [12.9, 0.4], [11.9, 0.4], [11.85, 0], [11.9, -0.4]], 160), goldMat);
+  rim.rotation.x = PI / 2; rotor.add(rim);
+  for (let i = 0; i < 3; i++) {
+    const arm = new THREE.Mesh(new RoundedBoxGeometry(11.6, 0.55, 0.42, 2, 0.12), goldMat);
+    const a = i / 3 * TAU + PI / 2;
+    arm.position.set(Math.cos(a) * 6.3, Math.sin(a) * 6.3, 0); arm.rotation.z = a; rotor.add(arm);
+  }
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.9, 40), goldMat); hub.rotation.x = PI / 2; rotor.add(hub);
+  const jew = new THREE.Mesh(new THREE.SphereGeometry(0.5, 24, 16), MAT.ruby); jew.position.z = 0.45; jew.scale.z = 0.5; rotor.add(jew);
+  const sGeo = lathe([[0, 0], [0.42, 0], [0.42, 0.5], [0.36, 0.62], [0, 0.66]], 14);
+  const sg = new THREE.InstancedMesh(sGeo, goldMat, 9), sb = new THREE.InstancedMesh(sGeo, blueMat, 9);
+  for (let i = 0; i < 18; i++) {
+    const a = i / 18 * TAU; q.setFromAxisAngle(V3(0, 0, 1), a - PI / 2);
+    m4.compose(V3(Math.cos(a) * 12.9, Math.sin(a) * 12.9, 0), q, V3(1, 1, 1));
+    (i % 2 ? sb : sg).setMatrixAt(i >> 1, m4);
+  }
+  rotor.add(sg, sb);
+  const pts = [];
+  for (let i = 0; i <= 420; i++) { const t = i / 420, a = t * 7.2 * TAU, r = 1.6 + 7.2 * t; pts.push(V3(Math.cos(a) * r, Math.sin(a) * r, -0.9)); }
+  const spring = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 900, 0.06, 6), blueMat);
+  bw.add(spring); STAGE.spring = spring;
+  // a cock bridge holding the balance, like the bridge over a movement's balance
+  const bridgeShape = new THREE.Shape();
+  bridgeShape.moveTo(-1.6, 0); bridgeShape.absarc(0, 0, 1.6, PI, 0, true); bridgeShape.lineTo(1.0, -16); bridgeShape.lineTo(-1.0, -16); bridgeShape.lineTo(-1.6, 0);
+  const bridge = new THREE.Mesh(new THREE.ExtrudeGeometry(bridgeShape, { depth: 0.5, bevelEnabled: true, bevelThickness: 0.12, bevelSize: 0.12, bevelSegments: 2 }),
+    new THREE.MeshPhysicalMaterial({ color: 0xc9ccd2, metalness: 1, roughness: 0.18 }));
+  bw.traverse((o) => { if (o.isMesh) o.castShadow = false; });
+
+  // two dark wheels turning far behind
+  const gearShape = (R, teeth, hole) => {
+    const s = new THREE.Shape();
+    for (let i = 0; i <= teeth * 8; i++) {
+      const a = i / (teeth * 8) * TAU, ph = (i % 8) / 8;
+      const r = R + (ph > 0.15 && ph < 0.55 ? 0.9 : 0);
+      i ? s.lineTo(Math.cos(a) * r, Math.sin(a) * r) : s.moveTo(r, 0);
+    }
+    const h = new THREE.Path(); h.absarc(0, 0, hole, 0, TAU, true); s.holes.push(h);
+    for (let k = 0; k < 5; k++) {
+      const w = new THREE.Path(), a0 = k / 5 * TAU + 0.18, a1 = (k + 1) / 5 * TAU - 0.18;
+      w.absarc(0, 0, R * 0.8, a0, a1, false); w.absarc(0, 0, hole + 1.8, a1, a0, true); s.holes.push(w);
+    }
+    return s;
+  };
+  const gm = new THREE.MeshPhysicalMaterial({ color: 0x23252b, metalness: 0.9, roughness: 0.55, transparent: true, opacity: 0.55 });
+  const g1 = new THREE.Mesh(new THREE.ExtrudeGeometry(gearShape(20, 60, 2.2), { depth: 0.8, bevelEnabled: false, curveSegments: 6 }), gm);
+  const g2 = new THREE.Mesh(new THREE.ExtrudeGeometry(gearShape(10.4, 31, 1.6), { depth: 0.8, bevelEnabled: false, curveSegments: 6 }), gm);
+  g1.position.set(-36, 30, -70); g2.position.set(-36 + 31.1, 30 + 6.5, -70);
+  STAGE.group.add(g1, g2); STAGE.gears = [g1, g2];
+}
+
+// lights: a warm key raking along the blade, a cool rim on the handles, and a sweep used by the reveal
+const LIGHT = {};
+{
+  const key = new THREE.SpotLight(0xfff0dc, 3.4, 0, 0.38, 0.7, 0);
+  key.position.set(-34, 46, 30); key.target.position.set(0, 12, 0);
+  key.castShadow = true; key.shadow.mapSize.set(2048, 2048);
+  key.shadow.camera.near = 20; key.shadow.camera.far = 170; key.shadow.bias = -0.0002; key.shadow.normalBias = 0.03; key.shadow.radius = 4;
+  const rim = new THREE.SpotLight(0xa9c3ff, 5.0, 0, 0.42, 0.8, 0);
+  rim.position.set(30, 26, -36); rim.target.position.set(0, 12, 0);
+  const sweep = new THREE.SpotLight(0xffffff, 0, 0, 0.1, 0.55, 0);
+  sweep.position.set(-10, 40, 40); sweep.target.position.set(-20, 14, 0);
+  const hemi = new THREE.HemisphereLight(0xb8c4d8, 0x1a1410, 0.25);
+  scene.add(key, key.target, rim, rim.target, sweep, sweep.target, hemi);
+  Object.assign(LIGHT, { key, rim, sweep, hemi });
+}
+
+// ───────────────────────── the automaton hand ─────────────────────────
+const HM = {
+  porcelain: new THREE.MeshPhysicalMaterial({ color: 0xf2eee7, metalness: 0, roughness: 0.4, clearcoat: 0.85, clearcoatRoughness: 0.12, sheen: 0.4, sheenColor: new THREE.Color(0xffffff), sheenRoughness: 0.6 }),
+  joint: new THREE.MeshPhysicalMaterial({ color: 0xe7a985, metalness: 1, roughness: 0.22 }),
+};
+const HAND = { root: new THREE.Group(), fingers: [], thumb: [] };
+scene.add(HAND.root);
+{
+  const R = HAND.root;
+  const palm = new THREE.Mesh(new RoundedBoxGeometry(8.2, 9.0, 2.6, 4, 1.05), HM.porcelain);
+  R.add(palm);
+  const plateC = makeCanvas(256, 256), pg = plateC.getContext('2d');
+  pg.fillStyle = '#e9ab88'; pg.fillRect(0, 0, 256, 256);
+  drawEmblem(pg, 128, 128, 84, '#7a4a33', 7, '#b5122f');
+  const pt = new THREE.CanvasTexture(plateC); pt.colorSpace = THREE.SRGBColorSpace;
+  const bp = new THREE.Mesh(new THREE.CircleGeometry(1.7, 48), new THREE.MeshPhysicalMaterial({ map: pt, metalness: 1, roughness: 0.25 }));
+  bp.position.set(0, 0.6, -1.31); bp.rotation.y = PI; R.add(bp);
+  const band = (r, tube) => { const t = new THREE.Mesh(new THREE.TorusGeometry(r, tube, 8, 32), HM.joint); t.rotation.x = PI / 2; return t; };
+  const FING = [
+    { x: 2.95, y: 4.25, r: 0.78, len: [3.8, 2.4, 2.0], spread: 0.07 },
+    { x: 0.98, y: 4.45, r: 0.8, len: [4.2, 2.7, 2.1], spread: 0.0 },
+    { x: -0.98, y: 4.3, r: 0.76, len: [3.9, 2.5, 2.0], spread: -0.06 },
+    { x: -2.9, y: 3.9, r: 0.66, len: [3.1, 1.9, 1.7], spread: -0.14 },
+  ];
+  for (const f of FING) {
+    const joints = [];
+    let parent = R;
+    for (let k = 0; k < 3; k++) {
+      const j = new THREE.Group();
+      if (k === 0) j.position.set(f.x, f.y, 0.2); else j.position.set(0, f.len[k - 1], 0);
+      parent.add(j);
+      const r = f.r * (1 - 0.07 * k);
+      const seg = new THREE.Mesh(new THREE.CapsuleGeometry(r, f.len[k] - r * 0.4, 5, 14), HM.porcelain);
+      seg.position.y = f.len[k] / 2; j.add(seg);
+      const bnd = band(r * 1.0, 0.075); j.add(bnd);
+      joints.push(j); parent = j;
+    }
+    HAND.fingers.push({ joints, spread: f.spread });
+  }
+  const tb = new THREE.Group(); tb.position.set(3.45, -2.2, 0.55); R.add(tb);
+  const tl = [3.0, 2.6, 2.2], tr = [0.98, 0.84, 0.78];
+  let parent = tb;
+  for (let k = 0; k < 3; k++) {
+    const j = new THREE.Group(); if (k) j.position.set(0, tl[k - 1], 0); parent.add(j);
+    const seg = new THREE.Mesh(new THREE.CapsuleGeometry(tr[k], tl[k] - tr[k] * 0.4, 5, 14), HM.porcelain);
+    seg.position.y = tl[k] / 2; j.add(seg); if (k) j.add(band(tr[k], 0.075));
+    HAND.thumb.push(j); parent = j;
+  }
+  const wrist = band(2.45, 0.3); wrist.position.y = -4.55; wrist.scale.set(1.18, 1, 0.66); R.add(wrist);
+  const fore = new THREE.Mesh(lathe([[2.4, 0], [2.45, -1.5], [2.66, -7], [2.82, -12.6], [2.6, -13.2], [0, -13.25]], 40), HM.porcelain);
+  fore.position.y = -4.6; fore.scale.z = 0.64; R.add(fore);
+  const sleeve = band(2.85, 0.32); sleeve.position.y = -16.6; sleeve.scale.set(1.04, 1, 0.68); R.add(sleeve);
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(3.0, 2.7, 0.9, 40), HM.joint); cap.position.y = -17.9; cap.scale.z = 0.66; R.add(cap);
+  R.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+}
+// joint angles: 4 fingers × [mcp, pip, dip], thumb [abduct, oppose, mcp, ip], spread factor
+const POSES = {
+  grip: [1.3, 1.62, 0.85, 1.34, 1.66, 0.86, 1.38, 1.68, 0.88, 1.42, 1.7, 0.9, -0.2, 1.1, 0.55, 0.45, 0.3],
+  hold: [1.12, 1.42, 0.75, 1.18, 1.48, 0.78, 1.22, 1.5, 0.8, 1.26, 1.55, 0.82, -0.3, 0.95, 0.42, 0.35, 0.4],
+  release: [0.95, 1.15, 0.6, 0.12, 0.1, 0.05, 0.1, 0.08, 0.05, 0.1, 0.08, 0.05, -0.5, 0.9, 0.35, 0.3, 1],
+  pinch: [1.0, 1.25, 0.65, 0.14, 0.1, 0.06, 0.12, 0.1, 0.06, 0.12, 0.1, 0.06, -0.42, 0.98, 0.42, 0.36, 0.8],
+  catch: [0.32, 0.42, 0.22, 0.28, 0.4, 0.22, 0.28, 0.4, 0.2, 0.3, 0.42, 0.22, -0.55, 0.85, 0.25, 0.15, 1.2],
+  loose: [0.2, 0.22, 0.12, 0.13, 0.15, 0.08, 0.13, 0.15, 0.08, 0.15, 0.16, 0.08, -0.72, 0.78, 0.3, 0.2, 1],
+  flat: [0.04, 0.04, 0.02, 0.03, 0.03, 0.02, 0.03, 0.03, 0.02, 0.04, 0.04, 0.02, 0.55, 0.3, 0.1, 0.1, 1.3],
+  fan: [0.02, 0.02, 0.02, 1.45, 1.75, 0.95, 1.5, 1.8, 1.0, 1.55, 1.82, 1.0, -0.3, 1.05, 0.55, 0.5, 0.4],
+};
+function applyHandPose(p) {
+  HAND.fingers.forEach((f, i) => {
+    f.joints[0].rotation.set(p[i * 3], 0, f.spread * p[16]);
+    f.joints[1].rotation.x = p[i * 3 + 1];
+    f.joints[2].rotation.x = p[i * 3 + 2];
+  });
+  HAND.thumb[0].quaternion.copy(QZ(-0.78 + p[12])).multiply(qAxis(V3(1, 0, 0), p[13]));
+  HAND.thumb[1].rotation.x = p[14];
+  HAND.thumb[2].rotation.x = p[15];
+}
+// hand orientations in world space, each pinned by one hand-space point to a world point
+const HAND_PRESETS = {
+  fist: { q: qAxis(V3(0, 0, 1), 0.08).multiply(qBasis(V3(0, 1, 0), V3(-1, 0, 0), V3(0, 0, 1))), at: V3(0, 2.8, 2.6), world: V3(-1.5, 9.0, 3) },
+  fan: { q: qBasis(V3(0, 1, 0), V3(0, 0, 1), V3(1, 0, 0)), at: V3(2.75, 10.2, 0.4), world: V3(-1.0, 12.5, 4) },
+  roll: { q: qBasis(V3(0, -0.6, 0.8), V3(-1, 0, 0), V3(0, -0.8, -0.6)), at: V3(0, 5.5, 0), world: V3(-1.0, 11.0, 3) },
+};
+const HAND_YAW = qAxis(V3(0, 1, 0), 0.5);
+for (const k in HAND_PRESETS) {
+  const h = HAND_PRESETS[k];
+  h.q = HAND_YAW.clone().multiply(h.q);
+  h.p = h.world.clone().sub(h.at.clone().applyQuaternion(h.q));
+}
+
+// ───────────────────────── kinematics & the move performer ─────────────────────────
+const ONE = V3(1, 1, 1);
+const standG = new THREE.Group(); standG.position.set(0, 13.5, 0); scene.add(standG);
+const ST = {
+  mode: 'reveal', parent: 'stand',
+  T: { p: V3(), q: new THREE.Quaternion() },
+  b: 0, s: 0, latch: PI / 2, latchV: 0, latchMode: 'lock',
+  pose: POSES.grip.slice(),
+  handQ: HAND_PRESETS.fist.q.clone(), handP: HAND_PRESETS.fist.p.clone(), flick: V3(),
+  presence: 0, presenceTarget: 0, yaw: 0, yawSpeed: 0,
+};
+const UI = { hand: true, trail: false, slow: false, speed: 1, exploded: false };
+
+function parentMatrix(name) {
+  if (name === 'hand') { HAND.root.updateMatrixWorld(true); return HAND.root.matrixWorld; }
+  standG.updateMatrixWorld(true); return standG.matrixWorld;
+}
+function reparent(name) {
+  if (ST.parent === name) return;
+  const W = parentMatrix(ST.parent).clone().multiply(new THREE.Matrix4().compose(ST.T.p, ST.T.q, ONE));
+  const L = parentMatrix(name).clone().invert().multiply(W), sc = V3();
+  L.decompose(ST.T.p, ST.T.q, sc);
+  ST.parent = name;
+}
+function anchorOf(an, b = ST.b, s = ST.s) {
+  const pl = partLocal(an, b, s);
+  return { p: ST.T.p.clone().add(pl.p.applyQuaternion(ST.T.q)), q: ST.T.q.clone().multiply(pl.q) };
+}
+function setFromAnchor(an, A, b, s) {
+  const pl = partLocal(an, b, s);
+  const q = A.q.clone().multiply(pl.q.invert());
+  ST.T.q.copy(q).normalize();
+  ST.T.p.copy(A.p).sub(pl.p.applyQuaternion(q));
+}
+function bladeT(p, q) { return { p, q }; }
+// canonical blade poses — hand space ('OPEN','CLOSED','FAN') and stand space ('S_OPEN','S_CLOSED')
+const FAN_C = V3(-2.4, 0.95, 0);
+const CANON = {
+  OPEN: () => bladeT(V3(6.2, 2.8, 2.6), new THREE.Quaternion()),
+  CLOSED: () => bladeT(V3(6.2, 2.2, 2.6), QZ(PI)),
+  FAN: () => { const q = qBasis(V3(1, 0, 0), V3(0, 0, -1), V3(0, 1, 0)); return bladeT(V3(2.75, 10.2, 0.4).sub(FAN_C.clone().applyQuaternion(q)), q); },
+  S_OPEN: () => { const q = QZ(PI / 2 - 0.42); return bladeT(V3(-1.6, 0, 0).applyQuaternion(q).negate(), q); },
+  S_CLOSED: () => { const q = QZ(PI / 2 - 0.16); return bladeT(V3(6.2, 0, 0).applyQuaternion(q).negate(), q); },
+  S_VERT: () => { const q = QZ(PI / 2); return bladeT(V3(-1.6, 0, 0).applyQuaternion(q).negate(), q); },
+  S_VERT_C: () => { const q = QZ(PI / 2); return bladeT(V3(6.2, 0, 0).applyQuaternion(q).negate(), q); },
+};
+function canonAnchor(name, an, b, s) {
+  const T = typeof name === 'function' ? name(b, s) : CANON[name]();
+  const pl = partLocal(an, b, s);
+  return { p: T.p.clone().add(pl.p.applyQuaternion(T.q)), q: T.q.clone().multiply(pl.q) };
+}
+// the zen rollover's path: round the hand's long axis — over the back first, then back under the palm
+function rollPath(u) {
+  const e = EASE.io(u), phi = TAU * e;
+  const x = Math.cos(phi) > 0 ? 7.2 * Math.cos(phi) : 5.8 * Math.cos(phi);
+  const z = Math.sin(phi) > 0 ? 0.25 - 3.15 * Math.sin(phi) : 0.25 - 3.35 * Math.sin(phi);
+  const r = V3(Math.cos(phi), 0, -Math.sin(phi)), xk = V3(0, 1, 0), yk = r.clone().cross(xk).negate();
+  const zk = xk.clone().cross(yk);
+  const q = qBasis(xk, yk, zk).multiply(qAxis(V3(1, 0, 0), TAU * e));
+  return { p: V3(x, 5.5, z), q };
+}
+
+// one phase of a move: articulation (b, s, latch), the anchored part's motion, hand pose and wrist
+const PERF = { queue: [], cur: null, move: null, after: null, combo: null, free: false, lastMove: null };
+function keyed(k, u) {
+  if (u <= k[0][0]) return k[0][1];
+  for (let i = 1; i < k.length; i++) {
+    if (u <= k[i][0]) { const [u0, v0] = k[i - 1], [u1, v1] = k[i]; return lerp(v0, v1, smooth((u - u0) / (u1 - u0))); }
+  }
+  return k[k.length - 1][1];
+}
+function artic(ph, key, u, v0, v1) {
+  if (ph[key + 'k']) return keyed(ph[key + 'k'], u);
+  if (v0 === v1) return v0;
+  const toStop = v1 === 0 || v1 === 1;
+  const e = EASE[ph[key + 'e'] || (toStop && Math.abs(v1 - v0) > 0.3 ? 'swing' : 'io')];
+  return v0 + (v1 - v0) * e(u);
+}
+function startPhase(ph) {
+  const an = ph.an || 'blade';
+  const P = { ph, an, t: 0, b0: ST.b, s0: ST.s,
+    b1: ph.b ?? (ph.bk ? ph.bk[ph.bk.length - 1][1] : ST.b), s1: ph.s ?? (ph.sk ? ph.sk[ph.sk.length - 1][1] : ST.s),
+    pose0: ST.pose.slice(), hq0: ST.handQ.clone(), hp0: ST.handP.clone(), fl0: ST.flick.clone() };
+  P.A0 = anchorOf(an);
+  if (ph.to) P.A1 = canonAnchor(ph.to, an, P.b1, P.s1);
+  if (ph.toA) P.A1 = ph.toA();
+  if (ph.rot) {
+    const r = ph.rot;
+    if (r.p && r.p.part) { const A = anchorOf(r.p.part); P.pivot = V3(...r.p.at).applyQuaternion(A.q).add(A.p); }
+    else P.pivot = (r.p ? r.p.clone() : P.A0.p.clone());
+    if (r.ax && r.ax.part) P.axis = V3(...r.ax.dir).applyQuaternion(anchorOf(r.ax.part).q).normalize();
+    else P.axis = (r.ax || V3(0, 0, 1)).clone().normalize();
+  }
+  if (ph.fly) {
+    const pq = new THREE.Quaternion(); parentMatrix(ST.parent).decompose(V3(), pq, V3());
+    P.up = V3(0, 1, 0).applyQuaternion(pq.invert());
+    P.spinAx = V3(0, 0, 1).applyQuaternion(ST.T.q).normalize();
+  }
+  if (ph.L === 'free' && ST.latchMode !== 'free') { P.lFrom = ST.latch; P.lTo = 0; ST.latchMode = 'driven'; }
+  if (ph.L === 'open' || ph.L === 'closed') { P.lFrom = ST.latch; P.lTo = ph.L === 'open' ? -PI / 2 : PI / 2; ST.latchMode = 'driven'; }
+  if (ph.hand) { P.hq1 = HAND_PRESETS[ph.hand].q; P.hp1 = HAND_PRESETS[ph.hand].p; }
+  P.fl1 = ph.flick ? V3(...ph.flick) : (ph.keepFlick ? ST.flick.clone() : V3());
+  P.pose1 = ph.pose ? POSES[ph.pose] : null;
+  if (ph.onStart) ph.onStart();
+  if (ph.cap !== undefined) setCaption(null, ph.cap);
+  PERF.cur = P;
+}
+function stepPhase(dt) {
+  const P = PERF.cur; if (!P) return;
+  const ph = P.ph;
+  P.t += dt;
+  const u = clamp(P.t / ph.d, 0, 1);
+  const b = artic(ph, 'b', u, P.b0, P.b1), s = artic(ph, 's', u, P.s0, P.s1);
+  let A = P.A0;
+  if (ph.fly) {
+    const p = P.A0.p.clone().lerp(P.A1.p, u).addScaledVector(P.up, ph.fly.h * 4 * u * (1 - u));
+    const q = qAxis(P.spinAx, (ph.fly.n || 0) * TAU * u).multiply(P.A0.q.clone().slerp(P.A1.q, u));
+    A = { p, q };
+  } else if (ph.path) {
+    A = ph.path(u);
+  } else if (ph.rot) {
+    const th = ph.rot.ang * EASE[ph.rot.e || 'io'](u), R = qAxis(P.axis, th);
+    A = { p: P.A0.p.clone().sub(P.pivot).applyQuaternion(R).add(P.pivot), q: R.multiply(P.A0.q) };
+  } else if (P.A1) {
+    const e = EASE[ph.te || 'io'](u);
+    A = { p: P.A0.p.clone().lerp(P.A1.p, e), q: P.A0.q.clone().slerp(P.A1.q, e) };
+  }
+  ST.b = clamp(b, 0, 1); ST.s = clamp(s, 0, 1);
+  setFromAnchor(P.an, A, ST.b, ST.s);
+  if (P.lTo !== undefined) {
+    const lu = P.lTo === 0 ? EASE.out(clamp(u / 0.6, 0, 1)) : EASE.in(clamp((u - 0.35) / 0.65, 0, 1));
+    ST.latch = lerp(P.lFrom, P.lTo, lu);
+  }
+  if (P.hq1) { const e = EASE.io(u); ST.handQ.copy(P.hq0).slerp(P.hq1, e); ST.handP.copy(P.hp0).lerp(P.hp1, e); }
+  const fe = EASE.io(clamp(u / (ph.fe || 1), 0, 1));
+  ST.flick.copy(P.fl0).lerp(P.fl1, fe);
+  if (P.pose1) { const e = smooth(clamp(u / 0.65, 0, 1)); for (let i = 0; i < ST.pose.length; i++) ST.pose[i] = lerp(P.pose0[i], P.pose1[i], e); }
+  if (u >= 1) {
+    if (P.lTo === 0) { ST.latchMode = 'free'; ST.latch = 0; ST.latchV = 0; }
+    else if (P.lTo !== undefined) { ST.latchMode = 'lock'; ST.latch = P.lTo; }
+    PERF.cur = null;
+    const rest = P.t - ph.d;
+    nextPhase();
+    if (PERF.cur && rest > 0) stepPhase(rest);
+  }
+}
+function nextPhase() {
+  if (PERF.queue.length) { startPhase(PERF.queue.shift()); return; }
+  if (PERF.after) { const f = PERF.after; PERF.after = null; f(); }
+}
+
+// ───────────── the moves ─────────────
+const piv = (part, at) => ({ part, at });
+const MOVES = {
+  open: { name: 'Basic Open', need: 'closed', ph: () => [
+    { d: 0.22, an: 'blade', L: 'free', pose: 'hold', cap: 'latch swings clear' },
+    { d: 0.42, an: 'bite', s: 1, pose: 'release', flick: [0, 0, -0.32], cap: 'safe handle drops' },
+    { d: 0.46, an: 'bite', b: 1, pose: 'catch', flick: [0, 0, 0.28], cap: 'bite handle swings round' },
+    { d: 0.3, an: 'blade', to: 'OPEN', te: 'out', pose: 'grip', L: 'open', cap: 'caught · latched open' },
+  ] },
+  close: { name: 'Basic Close', need: 'open', ph: () => [
+    { d: 0.22, an: 'blade', L: 'free', pose: 'hold', cap: 'latch swings clear' },
+    { d: 0.44, an: 'bite', b: 0, pose: 'release', flick: [0, 0, -0.3], cap: 'blade swings home' },
+    { d: 0.42, an: 'bite', s: 0, pose: 'release', flick: [0, 0, 0.24], cap: 'safe handle closes' },
+    { d: 0.3, an: 'blade', to: 'CLOSED', te: 'out', pose: 'grip', L: 'closed', cap: 'latched closed' },
+  ] },
+  chaplin: { name: 'Chaplin', need: 'open', ph: () => [
+    { d: 0.2, an: 'blade', L: 'free', pose: 'hold' },
+    { d: 0.42, an: 'safe', b: 0, pose: 'pinch', flick: [0, 0, 0.22], cap: 'bite handle flips over' },
+    { d: 0.66, an: 'safe', rot: { p: piv('safe', [3.2, 0, 0]), ax: V3(0, 0, 1), ang: -TAU, e: 'io' }, pose: 'pinch', flick: [0, 0, -0.18], cap: 'cane twirl round the fingers' },
+    { d: 0.44, an: 'safe', b: 1, pose: 'catch', flick: [0, 0, 0], cap: 'handles swap back · caught' },
+    { d: 0.26, an: 'blade', to: 'OPEN', te: 'out', pose: 'grip', L: 'open' },
+  ] },
+  rollover: { name: 'Zen Rollover', need: 'open', ph: () => [
+    { d: 0.22, an: 'blade', L: 'free', pose: 'hold' },
+    { d: 0.5, an: 'com', toA: () => rollPath(0), te: 'io', hand: 'roll', pose: 'flat', cap: 'knife onto the knuckles' },
+    { d: 1.25, an: 'com', path: rollPath, bk: [[0, 1], [0.3, 0.88], [0.5, 1], [0.78, 0.9], [1, 1]], sk: [[0, 1], [0.22, 1], [0.42, 0.86], [0.64, 1], [0.9, 0.92], [1, 1]], pose: 'flat', cap: 'rolls over the back of the hand' },
+    { d: 0.5, an: 'blade', to: 'OPEN', te: 'io', hand: 'fist', pose: 'catch', cap: 'and back into the palm' },
+    { d: 0.22, an: 'blade', pose: 'grip', L: 'open' },
+  ] },
+  fan: { name: 'Fan', need: 'open', ph: () => [
+    { d: 0.2, an: 'blade', L: 'free', pose: 'hold' },
+    { d: 0.5, an: 'blade', to: 'FAN', te: 'io', s: 0.7, se: 'io', hand: 'fan', pose: 'fan', cap: 'index finger between the handles' },
+    { d: 1.55, an: 'blade', rot: { p: piv('blade', [FAN_C.x, FAN_C.y, 0]), ax: { part: 'blade', dir: [0, 0, 1] }, ang: -3 * TAU, e: 'spin' }, sk: [[0, 0.7], [0.2, 0.62], [0.45, 0.76], [0.7, 0.6], [0.88, 0.74], [1, 0.7]], pose: 'fan', cap: 'three turns round the finger' },
+    { d: 0.5, an: 'blade', to: 'OPEN', te: 'io', s: 1, se: 'swing', hand: 'fist', pose: 'catch', cap: 'safe handle slaps home' },
+    { d: 0.22, an: 'blade', pose: 'grip', L: 'open' },
+  ] },
+  helix: { name: 'Helix', need: 'open', ph: () => [
+    { d: 0.2, an: 'blade', L: 'free', pose: 'hold' },
+    { d: 0.46, an: 'bite', rot: { p: piv('bite', [6.4, 0, 0]), ax: { part: 'bite', dir: [1, 0, 0] }, ang: PI, e: 'in' }, s: 0, se: 'io', pose: 'loose', flick: [0, -0.35, 0], cap: 'twirls about its long axis' },
+    { d: 0.46, an: 'bite', rot: { p: piv('bite', [6.4, 0, 0]), ax: { part: 'bite', dir: [1, 0, 0] }, ang: PI, e: 'out' }, s: 1, pose: 'loose', flick: [0, 0, 0], cap: 'while the safe handle flips over' },
+    { d: 0.26, an: 'blade', to: 'OPEN', te: 'out', pose: 'grip', L: 'open' },
+  ] },
+  aerial: { name: 'Aerial', need: 'open', ph: () => [
+    { d: 0.2, an: 'blade', L: 'free', pose: 'hold' },
+    { d: 0.26, an: 'blade', to: () => { const T = CANON.OPEN(); T.p.x -= 1.4; return T; }, te: 'io', flick: [0, 0, -0.3], pose: 'hold', cap: 'wind-up' },
+    { d: 1.08, an: 'com', fly: { h: 8, n: -2 }, to: 'OPEN', s: 0.62, sk: [[0, 1], [0.32, 0.22], [0.66, 0.3], [1, 0.62]], pose: 'catch', flick: [0, 0, 0.12], fe: 0.25, cap: 'tossed · two turns · handles flare mid-air' },
+    { d: 0.3, an: 'bite', s: 1, pose: 'grip', flick: [0, 0, 0], cap: 'caught by the bite handle' },
+    { d: 0.22, an: 'blade', to: 'OPEN', te: 'out', L: 'open' },
+  ] },
+  remontoire: { name: 'The Remontoire', need: 'open', ph: () => {
+    const beat = (i) => [
+      { d: 0.2, an: 'safe', b: 0, rot: { p: piv('safe', [3.2, 0, 0]), ax: V3(0, 0, 1), ang: -PI / 4, e: 'io' }, pose: 'pinch', cap: `escapement · tick ${i + 1}` },
+      { d: 0.2, an: 'safe', b: 1, rot: { p: piv('safe', [3.2, 0, 0]), ax: V3(0, 0, 1), ang: -PI / 4, e: 'io' }, pose: 'pinch', cap: `escapement · tock ${i + 1}` },
+    ];
+    return [
+      { d: 0.2, an: 'blade', L: 'free', pose: 'pinch', cap: 'winding' },
+      ...beat(0), ...beat(1), ...beat(2), ...beat(3),
+      { d: 0.82, an: 'com', fly: { h: 3.5, n: 1 }, to: 'OPEN', sk: [[0, 1], [0.35, 0.5], [0.72, 0.82], [1, 1]], pose: 'catch', cap: 'the remontoire releases' },
+      { d: 0.24, an: 'blade', to: 'OPEN', te: 'out', pose: 'grip', L: 'open' },
+    ];
+  } },
+};
+const MOVE_ORDER = ['open', 'close', 'chaplin', 'rollover', 'fan', 'helix', 'aerial', 'remontoire'];
+const COMBO_ORDER = ['open', 'chaplin', 'rollover', 'fan', 'helix', 'aerial', 'remontoire', 'close'];
+
+function isOpen() { return ST.b > 0.5 && ST.s > 0.5; }
+function atCanon() {
+  if (ST.parent !== 'hand') return false;
+  const atStop = (v) => v < 1e-3 || v > 1 - 1e-3;
+  if (!atStop(ST.b) || !atStop(ST.s) || Math.abs(ST.b - ST.s) > 0.5) return false;
+  const T = CANON[isOpen() ? 'OPEN' : 'CLOSED']();
+  return T.p.distanceTo(ST.T.p) < 0.06 && T.q.angleTo(ST.T.q) < 0.03 && ST.handQ.angleTo(HAND_PRESETS.fist.q) < 0.02 && ST.flick.length() < 0.02;
+}
+function recoverPhases(open) {
+  return [
+    { d: 0.45, an: 'blade', to: open ? 'OPEN' : 'CLOSED', te: 'io', b: open ? 1 : 0, s: open ? 1 : 0, be: 'io', se: 'io', hand: 'fist', pose: 'grip', cap: 'back to the grip' },
+    { d: 0.18, an: 'blade', L: open ? 'open' : 'closed', pose: 'grip' },
+  ];
+}
+function queueMove(id, then) {
+  const phases = [];
+  let open = isOpen();
+  if (!atCanon()) { open = ST.b + ST.s > 1; phases.push(...recoverPhases(open)); }
+  const M = MOVES[id];
+  const pre = M.need === 'closed' && open ? 'close' : (M.need === 'open' && !open ? 'open' : null);
+  const tag = (mid, list) => { const first = list[0]; list[0] = { ...first, onStart: () => { PERF.move = mid; setCaption(MOVES[mid].name, first.cap || ''); } }; return list; };
+  if (pre) phases.push(...tag(pre, MOVES[pre].ph()));
+  phases.push(...tag(id, M.ph()));
+  PERF.queue.push(...phases);
+  PERF.after = () => { PERF.lastMove = id; PERF.move = null; if (then) then(); else idleCaption(); };
+  if (!PERF.cur) nextPhase();
+}
+function stopPerformance(hard) {
+  PERF.queue.length = 0; PERF.after = null; PERF.combo = null; PERF.free = false;
+  if (hard) { PERF.cur = null; PERF.move = null; }
+  setActiveChain();
+}
+// interrupting: let the current phase finish its swing, then start the new move from wherever the knife is
+function requestMove(id) {
+  ensurePerform(() => {
+    stopPerformance(false);
+    PERF.queue.length = 0;
+    const go = () => queueMove(id);
+    if (PERF.cur) PERF.after = go; else go();
+  });
+}
+function playCombo() {
+  ensurePerform(() => {
+    stopPerformance(false); PERF.combo = 0; setActiveChain();
+    const step = () => {
+      if (PERF.combo === null) return;
+      const id = COMBO_ORDER[PERF.combo % COMBO_ORDER.length]; PERF.combo++;
+      queueMove(id, step);
+    };
+    if (PERF.cur) PERF.after = step; else step();
+  });
+}
+function playFreestyle() {
+  ensurePerform(() => {
+    stopPerformance(false); PERF.free = true; setActiveChain();
+    const step = () => {
+      if (!PERF.free) return;
+      const pool = MOVE_ORDER.filter((m) => m !== PERF.lastMove && m !== 'close' && !(m === 'open' && isOpen()));
+      if (isOpen() && PERF.lastMove !== 'close' && rand() < 0.14) pool.push('close');
+      const id = pool[Math.floor(rand() * pool.length)];
+      queueMove(id, step);
+    };
+    if (PERF.cur) PERF.after = step; else step();
+  });
+}
+
+// ───────────── modes: showcase (turntable), inspect (by hand), perform (in the automaton hand) ─────────────
+function ensurePerform(fn) {
+  if (ST.mode === 'perform' && ST.entering) { ST.pending = fn; return; }
+  if (ST.mode === 'perform' && ST.parent === 'hand') { fn(); return; }
+  setMode('perform', fn);
+}
+function setMode(m, then) {
+  if (ST.mode === 'reveal') finishReveal();
+  const prev = ST.mode;
+  ST.mode = m;
+  document.querySelectorAll('#modes button').forEach((b) => b.classList.toggle('on', b.dataset.mode === m));
+  if (m === 'perform') {
+    if (UI.exploded) toggleExplode(false);
+    ST.presenceTarget = 1;
+    if (prev !== 'perform' || ST.parent !== 'hand') {
+      stopPerformance(true);
+      reparent('hand');
+      const open = ST.b > 0.5 || ST.s > 0.5;
+      ST.entering = true;
+      PERF.queue.push(
+        { d: 0.95, an: 'blade', to: open ? 'OPEN' : 'CLOSED', te: 'io', b: open ? 1 : 0, s: open ? 1 : 0, be: 'io', se: 'io', hand: 'fist', pose: 'grip', cap: '' },
+        { d: 0.2, an: 'blade', L: open ? 'open' : 'closed', pose: 'grip' },
+      );
+      PERF.after = () => { ST.entering = false; const f = ST.pending || then; ST.pending = null; if (f) f(); else idleCaption(); };
+      nextPhase();
+      setCaption('In hand', 'pick a move — keys 1–8');
+      moveCamera(CAMS.perform(), 1.2);
+    } else if (then) then();
+  } else {
+    stopPerformance(true);
+    ST.presenceTarget = 0; ST.entering = false;
+    const fromHand = ST.parent !== 'stand';
+    reparent('stand');
+    SIM.sync();
+    const open = ST.b + ST.s > 1;
+    const pose = m === 'inspect' ? (open ? 'S_VERT' : 'S_VERT_C') : (open ? 'S_OPEN' : 'S_CLOSED');
+    PERF.queue.push(
+      { d: fromHand ? 0.9 : 0.6, an: 'blade', to: pose, te: 'io', b: open ? 1 : 0, s: open ? 1 : 0, be: 'io', se: 'io' },
+      { d: 0.2, an: 'blade', L: open ? 'open' : 'closed' },
+    );
+    PERF.after = () => { SIM.sync(); if (then) then(); };
+    nextPhase();
+    if (m === 'inspect') {
+      const c = CAMT ? CAMT.c.pos : camera.position, t = CAMT ? CAMT.c.tgt : controls.target;
+      ST.yawTarget = Math.atan2(c.x - t.x, c.z - t.z);
+    } else ST.yawTarget = null;
+    if (fromHand) moveCamera(CAMS.hero(), 1.2);
+    setCaption(m === 'inspect' ? 'Inspect' : '', m === 'inspect' ? 'drag a handle to open or close it · hover any part' : '');
+  }
+}
+
+// ───────────── the reveal ─────────────
+const REVEAL = { t: 0, on: true, fast: false, titleShown: false, done: false };
+function startReveal() {
+  ST.parent = 'stand';
+  const T = CANON.S_CLOSED(); ST.T.p.copy(T.p); ST.T.q.copy(T.q);
+  ST.b = 0; ST.s = 0; ST.latch = PI / 2; ST.latchMode = 'lock';
+  LIGHT.key.intensity = 0; LIGHT.rim.intensity = 0; LIGHT.hemi.intensity = 0.04;
+  camera.position.set(-5, 15, 26); controls.target.set(0, 13.5, 0);
+  PERF.queue.push(
+    { d: 1.5, an: 'blade', rot: { p: V3(0, 0, 0), ax: V3(0, 1, 0), ang: 0.9, e: 'io' } },
+    { d: 0.32, an: 'blade', L: 'free' },
+    { d: 0.48, an: 'blade', s: 1 },
+    { d: 0.5, an: 'blade', b: 1 },
+    { d: 1.25, an: 'com', fly: { h: 2.6, n: 1 }, to: 'S_OPEN' },
+    { d: 0.3, an: 'blade', L: 'open' },
+  );
+  PERF.after = null;
+  nextPhase();
+}
+function stepReveal(dt) {
+  const R = REVEAL; R.t += dt;
+  const t = R.t;
+  LIGHT.rim.intensity = 5.0 * sstep(0.1, 1.6, t);
+  LIGHT.key.intensity = 3.4 * sstep(1.2, 4.2, t);
+  LIGHT.hemi.intensity = 0.25 * sstep(0.5, 4.0, t);
+  const sw = clamp((t - 4.1) / 1.9, 0, 1);
+  LIGHT.sweep.intensity = 40 * Math.sin(PI * sw);
+  LIGHT.sweep.position.set(lerp(-26, 22, sw), 34, 34);
+  LIGHT.sweep.target.position.set(lerp(-9, 9, sw), 14, 0);
+  const cp = sstep(0, 6.4, t);
+  camera.position.set(lerp(-5, 7, cp), lerp(15, 17.5, cp), lerp(26, 57, cp));
+  controls.target.set(0, lerp(13.5, 14.2, cp), 0);
+  if (t > 4.3 && !R.titleShown) { R.titleShown = true; $('title').classList.add('show'); }
+  if (t > 7.4) finishReveal();
+}
+function finishReveal() {
+  if (REVEAL.done) return;
+  REVEAL.done = true; REVEAL.on = false;
+  $('title').classList.remove('show');
+  LIGHT.key.intensity = 3.4; LIGHT.rim.intensity = 5.0; LIGHT.hemi.intensity = 0.25; LIGHT.sweep.intensity = 0;
+  // fast-forward whatever is left of the opening flourish
+  let guard = 0;
+  while ((PERF.cur || PERF.queue.length) && guard++ < 400) stepPhase(0.05);
+  ST.mode = 'showcase';
+  const hc = CAMS.hero(); camera.position.copy(hc.pos); controls.target.copy(hc.tgt);
+  controls.enabled = true;
+  document.body.classList.remove('noui');
+  SIM.sync();
+}
+
+// ───────────────────────── sound: everything synthesised, triggered by the animation itself ─────────────────────────
+const AU = { ctx: null, master: null, muted: false, vol: 0.7 };
+function audioInit() {
+  if (AU.ctx) { if (AU.ctx.state === 'suspended') AU.ctx.resume(); return; }
+  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+  const c = new AC(); AU.ctx = c;
+  const comp = c.createDynamicsCompressor();
+  comp.threshold.value = -16; comp.ratio.value = 4; comp.attack.value = 0.002; comp.release.value = 0.15;
+  AU.master = c.createGain(); AU.master.gain.value = AU.muted ? 0 : AU.vol;
+  AU.master.connect(comp); comp.connect(c.destination);
+  const len = Math.floor(c.sampleRate * 1.1), ir = c.createBuffer(2, len, c.sampleRate);
+  for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+  AU.verb = c.createConvolver(); AU.verb.buffer = ir;
+  const vg = c.createGain(); vg.gain.value = 0.22; AU.verb.connect(vg); vg.connect(AU.master);
+  const nb = c.createBuffer(1, c.sampleRate * 2, c.sampleRate), nd = nb.getChannelData(0);
+  for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+  AU.noise = nb;
+  const loop = (type, f, q) => {
+    const src = c.createBufferSource(); src.buffer = nb; src.loop = true;
+    const bp = c.createBiquadFilter(); bp.type = type; bp.frequency.value = f; bp.Q.value = q;
+    const g = c.createGain(); g.gain.value = 0;
+    src.connect(bp); bp.connect(g); g.connect(AU.master); src.start(c.currentTime + Math.random() * 0.5);
+    return { bp, g };
+  };
+  AU.swish = loop('bandpass', 600, 0.9);
+  AU.whistle = loop('bandpass', 2400, 9);
+  AU.whir = loop('bandpass', 2200, 2.5);
+}
+function env(g, t, amp, decay) {
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(Math.max(amp, 0.0002), t + 0.0015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+}
+function burst(t, dur, f, q, amp, wet = 0) {
+  const c = AU.ctx, src = c.createBufferSource(); src.buffer = AU.noise;
+  const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = q;
+  const g = c.createGain(); env(g, t, amp, dur);
+  src.connect(bp); bp.connect(g); g.connect(AU.master); if (wet) g.connect(AU.verb);
+  src.start(t, Math.random() * 1.5); src.stop(t + dur + 0.05);
+}
+function partial(t, f, amp, decay, wet = 0) {
+  const c = AU.ctx, o = c.createOscillator(); o.type = 'sine'; o.frequency.value = f;
+  const g = c.createGain(); env(g, t, amp, decay);
+  o.connect(g); g.connect(AU.master); if (wet) g.connect(AU.verb);
+  o.start(t); o.stop(t + decay + 0.05);
+}
+const SND = {
+  latch(open) {
+    if (!AU.ctx) return; const t = AU.ctx.currentTime, w = WAYS[wayIndex].snd;
+    burst(t, 0.012, 5200 * w.bright, 5, 0.5); partial(t, open ? 2600 : 3100, 0.1, 0.03);
+    burst(t + 0.012, 0.01, 7600 * w.bright, 6, 0.28);
+  },
+  clack(v) {
+    if (!AU.ctx) return; const t = AU.ctx.currentTime, w = WAYS[wayIndex].snd;
+    burst(t, 0.018 / w.damp + 0.004, 3100 * w.bright, 1.7, 0.85 * v, 1);
+    [1730, 2890, 4410, 6170].forEach((f, i) => partial(t, f * w.bright * (1 + (Math.random() - 0.5) * 0.02), [0.3, 0.2, 0.14, 0.08][i] * v, [0.12, 0.08, 0.055, 0.035][i] / w.damp, 1));
+    partial(t, 155, 0.35 * v, 0.045);
+  },
+  ring(v) {
+    if (!AU.ctx) return; const t = AU.ctx.currentTime + 0.004, f0 = WAYS[wayIndex].blade === 0x7a7e86 ? 1130 : 1215;
+    [1, 2.756, 5.404, 8.933].forEach((r, i) => partial(t, f0 * r, [0.17, 0.1, 0.06, 0.035][i] * v, [1.5, 0.8, 0.45, 0.25][i], 1));
+    partial(t, f0 * 1.0037, 0.07 * v, 1.2, 1);
+  },
+  tick(v) {
+    if (!AU.ctx) return; const t = AU.ctx.currentTime;
+    burst(t, 0.005, 8400, 4, 0.2 * v); partial(t, 5650, 0.045 * v, 0.014);
+  },
+};
+function audioFrame(tipSpeed, handleSpeed) {
+  if (!AU.ctx || !AU.swish) return;
+  const t = AU.ctx.currentTime;
+  const g = Math.pow(clamp((tipSpeed - 25) / 420, 0, 1), 1.4) * 0.6;
+  AU.swish.g.gain.setTargetAtTime(g, t, 0.025);
+  AU.swish.bp.frequency.setTargetAtTime(clamp(300 + tipSpeed * 6.5, 300, 5600), t, 0.025);
+  AU.whistle.g.gain.setTargetAtTime(Math.pow(clamp((tipSpeed - 230) / 520, 0, 1), 1.2) * 0.1, t, 0.04);
+  AU.whistle.bp.frequency.setTargetAtTime(1400 + tipSpeed * 3.2, t, 0.04);
+  AU.whir.g.gain.setTargetAtTime(clamp(handleSpeed / 22, 0, 1) * 0.05, t, 0.03);
+  AU.whir.bp.frequency.setTargetAtTime(1800 + handleSpeed * 55, t, 0.03);
+}
+function setMuted(m) {
+  AU.muted = m; $('mute').textContent = m ? 'Sound off' : 'Sound on'; $('mute').classList.toggle('on', !m);
+  if (AU.master) AU.master.gain.setTargetAtTime(m ? 0 : AU.vol, AU.ctx.currentTime, 0.05);
+}
+
+// events read off the animation every frame: pins, latch, blade ring, pivot ticks, swish
+const EV = { b: 0, s: 0, eng: 1, acc: { b: 0, s: 0 }, tip: null, tipSpeed: 0, hSpeed: 0, flash: { bite: 0, safe: 0 } };
+function detectEvents(dt) {
+  if (dt <= 0) return;
+  const other = { b: 's', s: 'b' };
+  let hs = 0;
+  for (const k of ['b', 's']) {
+    const v = ST[k], p = EV[k], speed = Math.abs(v - p) / dt * PI;
+    hs = Math.max(hs, speed);
+    const hit0 = v <= 5e-4 && p > 5e-4, hit1 = v >= 1 - 5e-4 && p < 1 - 5e-4;
+    if (hit0 || hit1) {
+      SND.clack(clamp(speed / 15, 0.05, 1));
+      EV.flash[k === 'b' ? 'bite' : 'safe'] = 1;
+      if (hit1 && ST[other[k]] >= 1 - 5e-4 && speed > 4.5) SND.ring(clamp(speed / 14, 0.35, 1));
+    }
+    EV.acc[k] += Math.abs(v - p) * 180;
+    let n = 0;
+    while (EV.acc[k] >= 14) { EV.acc[k] -= 14; if (n++ < 2) SND.tick(clamp(speed / 12, 0.3, 1)); }
+    EV[k] = v;
+  }
+  const eng = Math.abs(ST.latch - PI / 2) < 0.004 ? 1 : (Math.abs(ST.latch + PI / 2) < 0.004 ? -1 : 0);
+  if (eng !== EV.eng) SND.latch(eng !== 0);
+  EV.eng = eng;
+  const tip = knife.localToWorld(V3(K.tip - 0.05, 0.22, 0));
+  EV.tipSpeed = EV.tip ? lerp(EV.tipSpeed, tip.distanceTo(EV.tip) / dt, 0.5) : 0;
+  EV.tip = tip;
+  EV.hSpeed = lerp(EV.hSpeed, hs, 0.5);
+  audioFrame(EV.tipSpeed, EV.hSpeed);
+}
+
+// a free latch is a little pendulum: gravity, the handle's own spin and a damped return
+const LP = { prevDir: null, w: 0, wPrev: 0 };
+function stepLatch(dt) {
+  if (dt <= 0) return;
+  const qb = knife.quaternion.clone().multiply(QZ(-PI * ST.b));
+  const n = V3(0, 0, 1).applyQuaternion(qb), dir = V3(1, 0, 0).applyQuaternion(qb);
+  if (LP.prevDir) { LP.w = lerp(LP.w, LP.prevDir.clone().cross(dir).dot(n) / dt, 0.5); }
+  const alphaB = (LP.w - LP.wPrev) / dt; LP.wPrev = LP.w; LP.prevDir = dir;
+  if (ST.latchMode !== 'free') return;
+  const ld = V3(Math.cos(ST.latch), Math.sin(ST.latch), 0).applyQuaternion(qb);
+  const grav = ld.clone().cross(V3(0, -1, 0)).dot(n);
+  const acc = 55 * grav - 9 * ST.latch - 4 * ST.latchV - clamp(alphaB, -400, 400) * 0.35 - Math.sin(ST.latch) * LP.w * LP.w * 0.25;
+  ST.latchV += acc * dt;
+  ST.latch += ST.latchV * dt;
+  if (ST.latch > 1.0) { ST.latch = 1.0; ST.latchV = -Math.abs(ST.latchV) * 0.3; }
+  if (ST.latch < -1.0) { ST.latch = -1.0; ST.latchV = Math.abs(ST.latchV) * 0.3; }
+}
+
+// inspect mode: handles under gravity, one of them dragged by the pointer, the latch re-engaging on its own
+const SIM = {
+  w: { b: 0, s: 0 }, drag: null, quiet: 0, latching: null,
+  sync() { this.w.b = 0; this.w.s = 0; this.drag = null; this.latching = null; this.quiet = 0; },
+  torque(name, th) {
+    const a = name === 'b' ? -PI * th : PI * th;
+    const d = V3(Math.cos(a), Math.sin(a), 0).applyQuaternion(knife.quaternion);
+    const n = V3(0, 0, 1).applyQuaternion(knife.quaternion);
+    return d.cross(V3(0, -1, 0)).dot(n);
+  },
+  step(dt) {
+    if (this.latching) {
+      const L = this.latching; L.t += dt; const u = clamp(L.t / 0.22, 0, 1);
+      ST.latch = lerp(L.from, L.to, EASE.in(u));
+      if (u >= 1) { ST.latchMode = 'lock'; ST.latch = L.to; this.latching = null; }
+      return;
+    }
+    const locked = ST.latchMode !== 'free';
+    for (const k of ['b', 's']) {
+      if (locked) { this.w[k] = 0; continue; }
+      let th = ST[k], w = this.w[k];
+      if (this.drag && this.drag.k === k) {
+        w = (this.drag.target - th) * 24;
+      } else {
+        const tau = this.torque(k, th);
+        w += (k === 'b' ? -tau : tau) * 22 * dt;
+        const near = th > 0.5 ? 1 - th : th;
+        if (near < 0.22) w += (th > 0.5 ? 1 : -1) * 3.2 * (1 - near / 0.22) * dt;
+        w *= Math.exp(-1.6 * dt);
+      }
+      th += w * dt;
+      if (th < 0) { th = 0; if (w < 0) w = -w * 0.28; if (Math.abs(w) < 0.05) w = 0; }
+      if (th > 1) { th = 1; if (w > 0) w = -w * 0.28; if (Math.abs(w) < 0.05) w = 0; }
+      ST[k] = th; this.w[k] = w;
+    }
+    const together = (ST.b < 1e-3 && ST.s < 1e-3) || (ST.b > 1 - 1e-3 && ST.s > 1 - 1e-3);
+    if (!locked && together && !this.drag && Math.abs(this.w.b) + Math.abs(this.w.s) < 0.02) this.quiet += dt; else this.quiet = 0;
+    if (this.quiet > 0.45) {
+      this.quiet = 0; ST.latchMode = 'driven';
+      this.latching = { from: ST.latch, to: ST.b > 0.5 ? -PI / 2 : PI / 2, t: 0 };
+    }
+  },
+  grab(k) {
+    if (ST.latchMode !== 'free') { ST.latchMode = 'free'; ST.latch = 0.25 * (ST.b > 0.5 ? -1 : 1); ST.latchV = 0; this.latching = null; }
+  },
+};
+
+// the fading ribbon behind the blade tip
+const TRAIL = { n: 52, pts: [] };
+{
+  const n = TRAIL.n, g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 2 * 3), 3));
+  g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 2 * 4), 4));
+  const idx = [];
+  for (let i = 0; i < n - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+  g.setIndex(idx);
+  TRAIL.mesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+  TRAIL.mesh.frustumCulled = false; TRAIL.mesh.visible = false; scene.add(TRAIL.mesh);
+}
+function stepTrail() {
+  const T = TRAIL;
+  if (!UI.trail) { T.mesh.visible = false; T.pts.length = 0; return; }
+  T.mesh.visible = true;
+  T.pts.push([knife.localToWorld(V3(K.tip - 0.05, 0.22, 0)), knife.localToWorld(V3(8.6, 0.5, 0))]);
+  while (T.pts.length > T.n) T.pts.shift();
+  const pos = T.mesh.geometry.attributes.position, col = T.mesh.geometry.attributes.color, m = T.pts.length;
+  const ca = new THREE.Color(0xffc9a8), cb = new THREE.Color(0x6f8dff);
+  for (let i = 0; i < T.n; i++) {
+    const j = Math.max(0, i - (T.n - m)), P = T.pts[Math.min(j, m - 1)];
+    pos.setXYZ(i * 2, P[0].x, P[0].y, P[0].z); pos.setXYZ(i * 2 + 1, P[1].x, P[1].y, P[1].z);
+    const f = i < T.n - m ? 0 : (i - (T.n - m)) / Math.max(1, m - 1), a = Math.pow(f, 1.6) * 0.75;
+    const c = cb.clone().lerp(ca, f);
+    col.setXYZW(i * 2, c.r, c.g, c.b, a); col.setXYZW(i * 2 + 1, c.r * 0.6, c.g * 0.6, c.b * 0.6, a * 0.15);
+  }
+  pos.needsUpdate = true; col.needsUpdate = true;
+}
+
+// ───────────────────────── exploded view, hover labels, dragging a handle ─────────────────────────
+const EXP = { e: 0, target: 0 };
+function toggleExplode(on) {
+  if (on === undefined) on = !UI.exploded;
+  UI.exploded = on; EXP.target = on ? 1 : 0;
+  $('explode').classList.toggle('on', on);
+  if (on) {
+    if (ST.mode !== 'inspect') setMode('inspect');
+    SIM.drag = null;
+    setCaption('Exploded view', 'hover a part to name it');
+    setTimeout(() => moveCamera(CAMS.exploded(), 1.3), ST.parent === 'hand' ? 900 : 0);
+  } else if (ST.mode === 'inspect') { setCaption('Inspect', 'drag a handle to open or close it · hover any part'); moveCamera(CAMS.hero(), 1.1); }
+}
+function stepExplode(dt) {
+  EXP.e += clamp(EXP.target - EXP.e, -dt * 0.9, dt * 0.9);
+  const k = EASE.io(clamp(EXP.e, 0, 1));
+  for (const m of PARTS) m.position.copy(m.userData.home).addScaledVector(m.userData.off, k);
+  biteG.position.set(0, -K.a - 0.9 * k, 0); safeG.position.set(0, K.a + 0.9 * k, 0);
+}
+
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+const PICKABLE = PARTS.filter((m) => m.visible);
+// invisible grab volumes, so a handle can be caught through its skeleton windows too
+const GRAB = [['bite', biteG], ['safe', safeG]].map(([n, g]) => {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(13.6, 1.25, 1.3), new THREE.MeshBasicMaterial());
+  m.position.set(6.2, 0, 0); m.visible = false; m.userData.handle = n; g.add(m); return m;
+});
+function pick(ev, list = PICKABLE) {
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hit = ray.intersectObjects(list, false)[0];
+  return hit || null;
+}
+function handleOf(o) { while (o) { if (o.userData && o.userData.handle) return o.userData.handle; o = o.parent; } return null; }
+function pointerAngle(ev, k) {
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const n = V3(0, 0, 1).applyQuaternion(knife.quaternion);
+  const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(n, knife.position);
+  const P = ray.ray.intersectPlane(plane, V3());
+  if (!P) return null;
+  const L = knife.worldToLocal(P), py = k === 'b' ? -K.a : K.a;
+  return Math.atan2(L.y - py, L.x);
+}
+const tip = $('tip');
+let downAt = null;
+renderer.domElement.addEventListener('pointerdown', (ev) => {
+  audioInit();
+  if (REVEAL.on) { REVEAL.fast = true; return; }
+  downAt = [ev.clientX, ev.clientY];
+  if (ST.mode !== 'inspect' || UI.exploded || PERF.cur || ev.button !== 0) return;
+  const h = pick(ev, GRAB); if (!h) return;
+  const name = handleOf(h.object); if (!name) return;
+  const k = name === 'bite' ? 'b' : 's';
+  const a = pointerAngle(ev, k); if (a === null) return;
+  const ha = k === 'b' ? -PI * ST[k] : PI * ST[k];
+  SIM.grab(k);
+  SIM.drag = { k, off: ha - a, target: ST[k] };
+  controls.enabled = false;
+  renderer.domElement.setPointerCapture(ev.pointerId);
+  setCaption(name === 'bite' ? 'Bite handle' : 'Safe handle', 'swing it round its own pivot');
+});
+renderer.domElement.addEventListener('pointermove', (ev) => {
+  if (SIM.drag) {
+    const k = SIM.drag.k, a = pointerAngle(ev, k); if (a === null) return;
+    const cur = k === 'b' ? -PI * ST[k] : PI * ST[k];
+    let want = a + SIM.drag.off;
+    want += TAU * Math.round((cur - want) / TAU);
+    SIM.drag.target = clamp(k === 'b' ? -want / PI : want / PI, 0, 1);
+    tip.style.display = 'none';
+    return;
+  }
+  if (ST.mode === 'perform' || REVEAL.on || ev.buttons) { tip.style.display = 'none'; return; }
+  const h = pick(ev);
+  if (h) {
+    const m = h.object;
+    tip.innerHTML = `<b>${m.userData.label}</b><span>${partDesc(m)}</span>`;
+    tip.style.display = 'block';
+    tip.style.left = Math.min(window.innerWidth - 250, ev.clientX + 14) + 'px';
+    tip.style.top = Math.min(window.innerHeight - 70, ev.clientY + 14) + 'px';
+    renderer.domElement.style.cursor = ST.mode === 'inspect' && !UI.exploded && handleOf(m) ? 'grab' : 'help';
+  } else if (ST.mode === 'inspect' && !UI.exploded && pick(ev, GRAB)) { tip.style.display = 'none'; renderer.domElement.style.cursor = 'grab';
+  } else { tip.style.display = 'none'; renderer.domElement.style.cursor = ''; }
+});
+const endDrag = () => {
+  if (SIM.drag) { SIM.drag = null; controls.enabled = true; setCaption('Inspect', 'drag a handle to open or close it · hover any part'); }
+};
+renderer.domElement.addEventListener('pointerup', endDrag);
+renderer.domElement.addEventListener('pointercancel', endDrag);
+renderer.domElement.addEventListener('pointerleave', () => { tip.style.display = 'none'; });
+
+// ───────────────────────── camera presets ─────────────────────────
+function knifeAxes() {
+  const q = knife.quaternion;
+  let n = V3(0, 0, 1).applyQuaternion(q);
+  const x = V3(1, 0, 0).applyQuaternion(q), y = V3(0, 1, 0).applyQuaternion(q);
+  const toCam = camera.position.clone().sub(knife.position);
+  if (n.dot(toCam) < 0) n.negate();
+  return { n, x, y };
+}
+function knifeCenter() { return knife.localToWorld(comLocal(ST.b, ST.s)); }
+const CAMS = {
+  hero: () => ({ pos: V3(7, 17.5, 57), tgt: V3(0, 14.2, 0) }),
+  perform: () => ({ pos: V3(37, 23.5, 48), tgt: V3(0.5, 15.5, 1) }),
+  blade: () => { const { n, x } = knifeAxes(); const t = knife.localToWorld(V3(6.0, 0.1, 0)); return { pos: t.clone().addScaledVector(n, 12).addScaledVector(x, -2.5).add(V3(0, 2.5, 0)), tgt: t }; },
+  pivot: () => { const { n, x, y } = knifeAxes(); const t = knife.localToWorld(V3(0.2, 0, 0.3)); return { pos: t.clone().addScaledVector(n, 6.5).addScaledVector(x, 1.6).addScaledVector(y, 1.4), tgt: t }; },
+  latch: () => {
+    const { n, x } = knifeAxes();
+    const t = biteG.localToWorld(V3(K.latchX, 0, 0));
+    const out = biteG.localToWorld(V3(K.latchX + 3, 0, 0)).sub(t).normalize();
+    return { pos: t.clone().addScaledVector(out, 5.2).addScaledVector(n, 3.4).add(V3(0, 1.4, 0)), tgt: t.clone().addScaledVector(out, 0.4) };
+  },
+  top: () => { const c = knifeCenter(); return { pos: c.clone().add(V3(0.01, 58, 4)), tgt: c }; },
+  exploded: () => { const { n } = knifeAxes(); const c = knifeCenter().add(V3(0, 1.5, 0)); const side = V3(0, 1, 0).cross(n).normalize(); return { pos: c.clone().addScaledVector(n, 34).addScaledVector(side, 30).add(V3(0, 10, 0)), tgt: c }; },
+};
+let CAMT = null;
+function moveCamera(c, d = 1.0) { CAMT = { p0: camera.position.clone(), t0: controls.target.clone(), c, t: 0, d }; }
+function stepCamera(dt) {
+  if (!CAMT) return;
+  CAMT.t += dt; const e = EASE.io(clamp(CAMT.t / CAMT.d, 0, 1));
+  camera.position.lerpVectors(CAMT.p0, CAMT.c.pos, e);
+  controls.target.lerpVectors(CAMT.t0, CAMT.c.tgt, e);
+  if (e >= 1) CAMT = null;
+}
+controls.addEventListener('start', () => { CAMT = null; });
+
+// ───────────────────────── UI ─────────────────────────
+function setCaption(main, sub) {
+  if (main !== null && main !== undefined) $('capm').textContent = main;
+  if (sub !== null && sub !== undefined) $('capp').textContent = sub;
+}
+function idleCaption() {
+  if (ST.mode === 'perform') setCaption('Ready', 'keys 1–8 · C combo · F freestyle');
+}
+function setActiveChain() {
+  $('combo').classList.toggle('on', PERF.combo !== null);
+  $('free').classList.toggle('on', !!PERF.free);
+}
+{
+  const labels = { open: 'Basic open', close: 'Basic close', chaplin: 'Chaplin', rollover: 'Zen rollover', fan: 'Fan', helix: 'Helix', aerial: 'Aerial', remontoire: 'Remontoire' };
+  const row = $('moverow');
+  MOVE_ORDER.forEach((id, i) => {
+    const b = document.createElement('button');
+    b.dataset.move = id; b.innerHTML = `<kbd>${i + 1}</kbd>${labels[id]}`;
+    if (id === 'remontoire') b.title = 'Signature move: four escapement beats, then the stored turn is released';
+    b.addEventListener('click', () => { audioInit(); requestMove(id); });
+    row.appendChild(b);
+  });
+  $('combo').onclick = () => { audioInit(); if (PERF.combo !== null) { stopPerformance(false); idleCaptionLater(); } else playCombo(); };
+  $('free').onclick = () => { audioInit(); if (PERF.free) { stopPerformance(false); idleCaptionLater(); } else playFreestyle(); };
+  $('stop').onclick = () => { stopPerformance(false); idleCaptionLater(); };
+  $('speed').oninput = (e) => { UI.speed = +e.target.value; $('speedv').textContent = UI.speed.toFixed(2) + '×'; };
+  $('slow').onclick = () => { UI.slow = !UI.slow; $('slow').classList.toggle('on', UI.slow); };
+  $('trail').onclick = () => { UI.trail = !UI.trail; $('trail').classList.toggle('on', UI.trail); };
+  $('handbtn').onclick = () => { UI.hand = !UI.hand; $('handbtn').classList.toggle('on', UI.hand); };
+  document.querySelectorAll('#modes button').forEach((b) => b.addEventListener('click', () => { audioInit(); if (b.dataset.mode !== ST.mode) { if (UI.exploded && b.dataset.mode !== 'inspect') toggleExplode(false); setMode(b.dataset.mode); } }));
+  document.querySelectorAll('#cams button').forEach((b) => b.addEventListener('click', () => {
+    if (ST.mode === 'showcase' || ST.mode === 'reveal') setMode('inspect');
+    const go = () => moveCamera(CAMS[b.dataset.cam](), 1.0);
+    ST.parent === 'stand' && !PERF.cur ? go() : setTimeout(go, 950);
+  }));
+  $('explode').onclick = () => toggleExplode();
+  const ways = $('ways');
+  WAYS.forEach((w, i) => {
+    const b = document.createElement('button'); b.className = 'sw' + (i === 0 ? ' on' : ''); b.style.background = w.sw; b.title = w.name;
+    b.onclick = () => { applyWay(i); ways.querySelectorAll('.sw').forEach((x, j) => x.classList.toggle('on', j === i)); $('wayname').textContent = w.name; };
+    ways.appendChild(b);
+  });
+  const wn = document.createElement('span'); wn.id = 'wayname'; wn.textContent = WAYS[0].name; ways.appendChild(wn);
+  $('mute').onclick = () => { audioInit(); setMuted(!AU.muted); };
+  $('vol').oninput = (e) => { AU.vol = +e.target.value; audioInit(); if (AU.master && !AU.muted) AU.master.gain.setTargetAtTime(AU.vol, AU.ctx.currentTime, 0.05); };
+  $('hideui').onclick = () => document.body.classList.add('noui');
+  $('showui').onclick = () => document.body.classList.remove('noui');
+  $('specbtn').onclick = () => { const o = $('brand').classList.toggle('open'); $('specbtn').textContent = o ? 'Spec card ▴' : 'Spec card ▾'; };
+  const logo = emblemDataURL(128, '#f3cdb6', 'rgba(255,255,255,0)');
+  $('logo').src = logo; $('tlogo').src = logo;
+  setMuted(false);
+  window.addEventListener('keydown', (e) => {
+    if (e.target && e.target.tagName === 'INPUT') return;
+    audioInit();
+    const k = e.key.toLowerCase();
+    if (k >= '1' && k <= '8') { requestMove(MOVE_ORDER[+k - 1]); return; }
+    if (k === 'c') $('combo').click();
+    else if (k === 'f') $('free').click();
+    else if (k === ' ') { e.preventDefault(); $('stop').click(); }
+    else if (k === 'h') document.body.classList.toggle('noui');
+    else if (k === 'e') toggleExplode();
+    else if (k === 's') $('slow').click();
+    else if (k === 't') $('trail').click();
+    else if (k === 'g') $('handbtn').click();
+    else if (k === 'm') $('mute').click();
+  });
+}
+function idleCaptionLater() { if (!PERF.cur) idleCaption(); else PERF.after = () => idleCaption(); }
+
+function highlightMove() {
+  const cur = PERF.move;
+  document.querySelectorAll('#moverow button').forEach((b) => b.classList.toggle('on', b.dataset.move === cur));
+}
+
+// ───────────────────────── main loop ─────────────────────────
+const tmpS = V3();
+function applyKnife() {
+  const M = parentMatrix(ST.parent);
+  const W = M.clone().multiply(new THREE.Matrix4().compose(ST.T.p, ST.T.q, ONE));
+  W.decompose(knife.position, knife.quaternion, tmpS);
+  applyArticulation(ST.b, ST.s, ST.latch);
+  knife.updateMatrixWorld(true);
+}
+function updateHandRoot(dt) {
+  ST.presence += clamp(ST.presenceTarget - ST.presence, -dt * 1.25, dt * 1.25);
+  const pe = EASE.io(clamp(ST.presence, 0, 1));
+  const fq = new THREE.Quaternion().setFromEuler(new THREE.Euler(ST.flick.x, ST.flick.y, ST.flick.z));
+  const wrist = V3(0, -4.6, 0);
+  HAND.root.quaternion.copy(ST.handQ).multiply(fq);
+  HAND.root.position.copy(ST.handP).add(wrist.clone().sub(wrist.clone().applyQuaternion(fq)).applyQuaternion(ST.handQ)).add(V3(44, -7, 6).multiplyScalar(1 - pe));
+  HAND.root.visible = ST.presence > 0.002 && UI.hand;
+  HAND.root.updateMatrixWorld(true);
+  applyHandPose(ST.pose);
+}
+let tAll = 0, frames = 0;
+function tick(dtReal) {
+  tAll += dtReal;
+  const scale = UI.speed * (UI.slow ? 0.3 : 1);
+  let dtA = dtReal;
+  if (REVEAL.on) {
+    dtA = dtReal * (REVEAL.fast ? 5 : 1);
+    stepReveal(dtA);
+    if (REVEAL.on) stepPhase(dtA);
+  } else {
+    dtA = ST.mode === 'perform' ? dtReal * scale : dtReal;
+    if (PERF.cur) stepPhase(dtA);
+    ST.yawSpeed = lerp(ST.yawSpeed, ST.mode === 'showcase' ? 0.24 : 0, clamp(dtReal * 1.5, 0, 1));
+    standG.rotation.y += ST.yawSpeed * dtReal;
+    if (ST.mode === 'inspect' && ST.yawTarget != null) {
+      let d = ST.yawTarget - standG.rotation.y; d -= TAU * Math.round(d / TAU);
+      standG.rotation.y += d * clamp(dtReal * 3, 0, 1);
+    }
+    ST.lift = lerp(ST.lift || 0, ST.mode === 'inspect' ? 1.8 : 0, clamp(dtReal * 2, 0, 1));
+    standG.position.y = 13.5 + ST.lift + (ST.mode === 'showcase' ? 0.25 * Math.sin(tAll * 0.9) : 0);
+    if (ST.mode === 'inspect' && !PERF.cur && ST.parent === 'stand') SIM.step(dtReal);
+  }
+  updateHandRoot(dtReal);
+  applyKnife();
+  stepLatch(dtA);
+  applyArticulation(ST.b, ST.s, ST.latch);
+  stepExplode(dtReal);
+  knife.updateMatrixWorld(true);
+  detectEvents(dtReal);
+  stepTrail();
+  // stage life: the balance wheel beats, its hairspring breathes, the far wheels mesh
+  const ba = 1.7 * Math.sin(TAU * 0.42 * tAll);
+  STAGE.rotor.rotation.z = ba;
+  STAGE.spring.rotation.z = ba * 0.5; STAGE.spring.scale.setScalar(1 + 0.035 * Math.sin(TAU * 0.42 * tAll));
+  STAGE.gears[0].rotation.z = tAll * 0.03; STAGE.gears[1].rotation.z = -tAll * 0.03 * (20 / 10.4) + 0.05;
+  for (const k of ['bite', 'safe']) { EV.flash[k] *= Math.exp(-dtReal * 9); HANDLE[k].collar.material.emissive?.setScalar?.(0); }
+  // contact shadow under the knife
+  const c = knifeCenter(), h = Math.max(0, c.y);
+  STAGE.blob.position.set(c.x, 0.03, c.z);
+  const sz = 16 + h * 0.6; STAGE.blob.scale.set(sz * 1.25, sz, 1);
+  STAGE.blob.material.opacity = clamp(0.75 / (1 + h / 16), 0.1, 0.6);
+  stepCamera(dtReal);
+  controls.update();
+  highlightMove();
+  renderer.render(scene, camera);
+  if (++frames === 2) { $('loading').style.opacity = '0'; setTimeout(() => $('loading').remove(), 900); }
+}
+const clock = new THREE.Clock();
+function frame() { requestAnimationFrame(frame); tick(Math.min(clock.getDelta(), 0.05)); }
+function onResize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', onResize);
+
+applyWay(0);
+document.body.classList.add('noui');
+startReveal();
+applyKnife();
+frame();
+
+// debug/automation hook
+window.__BK = { ST, PERF, UI, EXP, REVEAL, requestMove, playCombo, playFreestyle, setMode, finishReveal, toggleExplode, applyWay, moveCamera, CAMS,
+  advance(sec, fps = 60) { const n = Math.round(sec * fps); for (let i = 0; i < n; i++) tick(1 / fps); },
+  render() { renderer.render(scene, camera); },
+  pickAt(x, y) { const h = pick({ clientX: x, clientY: y }); return h ? { label: h.object.userData.label, handle: handleOf(h.object), el: document.elementFromPoint(x, y)?.id } : { el: document.elementFromPoint(x, y)?.id }; }, knife, HAND, camera, controls, renderer, THREE, PARTS, scene, AU };
+</script>
+</body>
+</html>

@@ -103,5 +103,18 @@ class AiUsageDatabase extends _$AiUsageDatabase {
             await m.createTable(aiUsageRemoteDevices);
           }
         },
+        // Tens of thousands of turns build up here. Every range query and
+        // every per-device lookup used to read the whole table, which the
+        // backend-usage poll did twice every 30 seconds.
+        beforeOpen: (_) async {
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS ai_usage_turns_timestamp '
+            'ON ai_usage_turns (timestamp)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS ai_usage_turns_device_id '
+            'ON ai_usage_turns (device_id)',
+          );
+        },
       );
 }

@@ -30,6 +30,7 @@ import 'benchmark_repair.dart';
 import 'chat_store.dart';
 import 'classroom.dart';
 import 'cs2_offline_store.dart';
+import 'decider_test.dart';
 import 'deploy_console.dart';
 import 'power_console.dart';
 import 'update_check.dart';
@@ -54,6 +55,7 @@ import 'web_search.dart';
 part 'api_benchmark_generate.dart';
 part 'api_benchmark_repair.dart';
 part 'api_classroom.dart';
+part 'api_decider_tests.dart';
 part 'api_school_tests.dart';
 part 'api_team_board.dart';
 part 'api_team_discord.dart';
@@ -776,6 +778,17 @@ class Api {
           '/admin/school-tests/suite', _requireAdmin(_adminSchoolTestsSuite))
       ..post('/admin/school-tests/runs/<id>/delete',
           _requireAdmin(_adminSchoolTestsDelete))
+      ..get('/admin/decider-tests', _requireAdmin(_adminDeciderTestsState))
+      ..get('/admin/decider-tests/models',
+          _requireAdmin(_adminDeciderTestsModels))
+      ..get('/admin/decider-tests/runs/<id>',
+          _requireAdmin(_adminDeciderTestsRunDetail))
+      ..post('/admin/decider-tests/run', _requireAdmin(_adminDeciderTestsStart))
+      ..post('/admin/decider-tests/stop', _requireAdmin(_adminDeciderTestsStop))
+      ..post(
+          '/admin/decider-tests/suite', _requireAdmin(_adminDeciderTestsSuite))
+      ..post('/admin/decider-tests/runs/<id>/delete',
+          _requireAdmin(_adminDeciderTestsDelete))
       ..post('/admin/classroom/country/reset',
           _requireAdmin(_adminClassroomCountryReset))
       ..post('/admin/team-board/access', _requireAdmin(_adminTeamBoardAccess))
@@ -3110,6 +3123,10 @@ class Api {
   /// The Tests tab's school test: the operator's cases and every run (see
   /// `api_school_tests.dart`).
   late final SchoolTestStore schoolTests = SchoolTestStore(config.dataDir);
+
+  /// The Decider test tab's moderation suite and runs (see
+  /// `api_decider_tests.dart`).
+  late final DeciderTestStore deciderTests = DeciderTestStore(config.dataDir);
 
   /// The Team Clipboard: its entries, files and who is on the team (see
   /// `api_team_board.dart`).
@@ -11121,6 +11138,7 @@ syncToolbar();
         '<button class="tab-btn" data-tab="metrics">Metrics</button>'
         '<button class="tab-btn" data-tab="assistant">Assistant</button>'
         '<button class="tab-btn" data-tab="tests">Tests</button>'
+        '<button class="tab-btn" data-tab="decider">Decider test</button>'
         '<button class="tab-btn" data-tab="control">Maintenance</button>'
         '</div>'
         '${_adminAssistantPanel(googleModels, mistralModels)}'
@@ -11410,6 +11428,7 @@ syncToolbar();
         '${_sectionLabel('School test')}'
         '${_adminSchoolTestsCard()}'
         '</div>'
+        '${_adminDeciderPanel()}'
         '<script>$_adminMenuScript</script>'
         '<script>$_adminTabScript</script>'
         '<script>$_adminUsageScript</script>'
@@ -11421,6 +11440,7 @@ syncToolbar();
         '<script>$_adminBenchmarkUploadScript</script>'
         '<script>$_bgScript</script>'
         '<script>$_adminSchoolTestsScript</script>'
+        '<script>$_adminDeciderScript</script>'
         '<script>${DeployConsole.deployScript}</script>'
         '<script>${UpdateCheckConsole.updateCheckScript}</script>'
         '<script>${UpdateCheckConsole.rebootScript}</script>'
@@ -13517,6 +13537,7 @@ window.lumaAskReason = function (form, message) {
     metrics: document.getElementById('panel-metrics'),
     assistant: document.getElementById('panel-assistant'),
     tests: document.getElementById('panel-tests'),
+    decider: document.getElementById('panel-decider'),
     control: document.getElementById('panel-control'),
   };
   function activate(tab) {

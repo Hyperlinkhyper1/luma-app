@@ -271,6 +271,11 @@ class _AppShellState extends State<AppShell> {
 
   Future<void> _closePetWindowController(WindowController window) async {
     try {
+      await window.invokeMethod<void>(petWindowMethodHide);
+    } catch (_) {
+      // Muting its animations is a nicety; the hide below still has to run.
+    }
+    try {
       await window.hide();
     } catch (_) {
       if (identical(_petWindow, window)) _petWindow = null;

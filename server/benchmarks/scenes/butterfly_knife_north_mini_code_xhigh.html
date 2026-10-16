@@ -1,26 +1,4 @@
-Then in script, we select these elements and attach event listeners.
-
-We also need to remove errors.
-
-Let's rewrite the script portion more cleanly.
-
-We'll generate procedural textures, build knife, etc.
-
-Because code is long, we need to carefully fix.
-
-We also need to correct the AnimationController definition: we used `animController ShowcaseRotation = true;` which is wrong.
-
-We need to define properties.
-
-We also need to define `animController.updateFreestyle(delta)`. Already defined.
-
-Now, step by step.
-
-We'll start from imports and define all functions, then create scene, etc.
-
-Let's produce a cleaner version.
-
-I'll rewrite the script with proper syntax.<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -132,14 +110,7 @@ function createBladeGeometry() {
   shape.moveTo(w*0.2, h*0.6);
   shape.lineTo(w*0.8, h*0.6);
   const extrude = { steps:1, depth:0.02, bevelEnabled:true, bevelThickness:0.001, bevelSize:0.001, bevelSegments:2 };
-  const geo = new THREE.ExtrudeGeometry(shape, extrude);
-  // kicker as a small cylinder at blade base
-  const kickerGeo = new THREE.CylinderGeometry(0.005,0.005,0.01,8);
-  const kicker = new THREE.Mesh(kickerGeo);
-  kicker.position.set(w,0,0);
-  kicker.rotation.z = -Math.PI/2;
-  geo.add(kicker.geometry);
-  return geo;
+  return new THREE.ExtrudeGeometry(shape, extrude);
 }
 function createHandleShape() {
   const outerW=0.06, outerH=0.2, innerW=0.02, innerH=0.15;
@@ -151,11 +122,13 @@ function createHandleShape() {
   shape.lineTo(outerW/2, outerH/2);
   shape.lineTo(-outerW/2, outerH/2);
   shape.lineTo(-outerW/2, -outerH/2);
-  shape.moveTo(-innerW/2+ox, -innerH/2+oy);
-  shape.lineTo(innerW/2+ox, -innerH/2+oy);
-  shape.lineTo(innerW/2+ox, innerH/2+oy);
-  shape.lineTo(-innerW/2+ox, innerH/2+oy);
-  shape.lineTo(-innerW/2+ox, -innerH/2+oy);
+  const hole = new THREE.Path();
+  hole.moveTo(-innerW/2+ox, -innerH/2+oy);
+  hole.lineTo(innerW/2+ox, -innerH/2+oy);
+  hole.lineTo(innerW/2+ox, innerH/2+oy);
+  hole.lineTo(-innerW/2+ox, innerH/2+oy);
+  hole.lineTo(-innerW/2+ox, -innerH/2+oy);
+  shape.holes.push(hole);
   return shape;
 }
 function createHandleGeometry() {
@@ -264,7 +237,7 @@ function createStage() {
   group.add(bench);
   // Scanner line
   const scannerGeo = new THREE.PlaneGeometry(0.02,0.5);
-  const scannerMat = new THREE.MeshBasicMaterial({color:0x00ffff, emissive:0x00ffff, transparent:true, opacity:0.8});
+  const scannerMat = new THREE.MeshBasicMaterial({color:0x00ffff, transparent:true, opacity:0.8});
   const scanner = new THREE.Mesh(scannerGeo, scannerMat);
   scanner.rotation.x = -Math.PI/2;
   scanner.position.set(-1,-0.5,0);
@@ -284,7 +257,7 @@ function createEnvironment(renderer) {
   const env = new RoomEnvironment();
   scene.environment = env;
   const pmrem = new THREE.PMREMGenerator(renderer);
-  const envMap = pmrem.fromScene(scene).texture;
+  const envMap = pmrem.fromScene(env).texture;
   pmrem.dispose();
   return envMap;
 }
@@ -557,6 +530,11 @@ class AnimationController {
 }
 
 // ---------- Main Setup ----------
+const webglOk = (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; } })();
+if(!webglOk) {
+  document.body.innerHTML = '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-family:sans-serif">WebGL is not available in this browser.</div>';
+  throw new Error('WebGL unavailable');
+}
 const container = document.getElementById('canvas-container');
 const ui = document.getElementById('ui');
 const caption = document.createElement('div');
@@ -602,6 +580,7 @@ scene.environment = envMap;
 const { knifeGroup, parts } = buildKnife();
 const hand = createHand();
 hand.position.set(0,0,0);
+knifeGroup.scale.setScalar(6);
 scene.add(hand);
 scene.add(knifeGroup);
 
@@ -724,12 +703,15 @@ function checkLabels() {
     else if(obj===parts.emblem) label='Maker\'s Mark';
     if(label && label!==hoveredLabel) {
       hoveredLabel = label;
+      const labelBox = document.getElementById('label-container');
+      labelBox.innerHTML = '';
       const div = document.createElement('div');
       div.className='label';
       div.textContent = label;
-      div.style.left = '0px';
-      div.style.top = '0px';
-      document.getElementById('label-container').appendChild(div);
+      const p = hits[0].point.clone().project(camera);
+      div.style.left = ((p.x+1)/2*window.innerWidth)+'px';
+      div.style.top = ((1-p.y)/2*window.innerHeight)+'px';
+      labelBox.appendChild(div);
     }
   } else if(hoveredLabel) {
     document.getElementById('label-container').innerHTML = '';
@@ -832,14 +814,42 @@ window.addEventListener('resize',()=>{
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// WebGL fallback
-if(!renderer.capable) {
-  const msg = document.createElement('div');
-  msg.style.position='absolute'; msg.style.top='50%'; msg.style.left='50%';
-  msg.style.transform='translate(-50%,-50%)'; msg.style.color='#fff';
-  msg.textContent='WebGL not supported';
-  document.body.appendChild(msg);
-}
 </script>
+<div id="canvas-container"></div>
+<div id="label-container"></div>
+<button id="hide-ui" style="position:absolute;top:10px;right:10px;z-index:5;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:4px;padding:4px 8px;cursor:pointer">Hide UI</button>
+<div id="ui">
+  <div class="section">
+    <h3>Knife</h3>
+    <div class="row">
+      <button id="combo">COMBO</button>
+      <button id="freestyle">FREESTYLE</button>
+      <button id="explode">EXPLODE</button>
+    </div>
+    <div class="row">
+      <button id="cam-hero">HERO</button>
+      <button id="cam-closeup">BLADE</button>
+      <button id="cam-pivot">PIVOT</button>
+      <button id="cam-latch">LATCH</button>
+      <button id="cam-top">TOP</button>
+    </div>
+    <div class="row">
+      <label>Speed <input type="range" id="speed-slider" min="0.25" max="2" step="0.05" value="1"></label>
+    </div>
+    <div class="row">
+      <label><input type="checkbox" id="slow-toggle"> Slow-mo</label>
+      <label><input type="checkbox" id="trail-toggle"> Trail</label>
+    </div>
+    <div class="row">
+      <label><input type="checkbox" id="mute-toggle"> Mute</label>
+      <label>Vol <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="1"></label>
+    </div>
+    <div class="row">
+      <button id="color-1">Colourway 1</button>
+      <button id="color-2">Colourway 2</button>
+      <button id="color-3">Colourway 3</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

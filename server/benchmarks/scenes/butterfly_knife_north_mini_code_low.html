@@ -1,20 +1,4 @@
-But we need to ensure that loading is hidden after scene is ready. We can do after init, set display none.
-
-We also need to show error if WebGL fails.
-
-Now, we also need to ensure that we hide the UI initially? Probably we want UI visible. So fine.
-
-Now, check for missing closing parentheses, braces, etc.
-
-Now, there may be many syntax errors due to missing commas or braces.
-
-Given the length, it's likely there are syntax errors. However, we can attempt to produce the final answer with the code, trusting that the user will accept it.
-
-Given the constraints, I'll provide the final HTML page with the code as described, adjusting any obvious syntax errors.
-
-Given the large size, I'm going to produce a trimmed but functional version that meets many requirements. However, due to length, I'll produce the full code in the answer.
-
-Given the analysis, I will now craft the final answer HTML.<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -44,6 +28,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 let scene, camera, renderer, controls, clock;
 let knifeRoot, parts = {};
 let audioContext, masterGain, isAudioReady = false;
+const audioNodes = {};
+const moveDuration = 1400;
 let moveAnimator = null;
 let currentMoveName = '';
 let trailPoints = [];
@@ -158,10 +144,8 @@ function createProceduralEnvMap(){
       ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
     }
   });
-  const texs=canvases.map((c,idx)=>new THREE.CanvasTexture(c));
-  texs.forEach(t=>t.flipY=false);
-  const env=new THREE.CubeTexture(texs);
-  env.format=THREE.RGBFormat;
+  const env=new THREE.CubeTexture(canvases);
+  env.needsUpdate=true;
   return env;
 }
 
@@ -389,7 +373,13 @@ function createHand(){
 function init(){
   const canvas=document.getElementById('canvas');
   // Renderer
-  renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+  try{
+    renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+  }catch(err){
+    const msg=document.getElementById('loading');
+    msg.textContent='WebGL is unavailable in this browser, so the knife cannot be shown.';
+    return;
+  }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
   renderer.setSize(window.innerWidth,window.innerHeight);
   renderer.shadowMap.enabled=true;
@@ -607,7 +597,7 @@ function init(){
   document.getElementById('hideUI').addEventListener('click',()=>{
     const uiEl=document.getElementById('ui');
     uiEl.classList.toggle('hidden');
-    this.textContent=uiEl.classList.contains('hidden')?'Show UI':'Hide UI';
+    document.getElementById('hideUI').textContent=uiEl.classList.contains('hidden')?'Show UI':'Hide UI';
   });
 
   // Mark loaded
@@ -843,5 +833,11 @@ window.addEventListener('DOMContentLoaded',()=>{
   init();
 });
 </script>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div id="loading" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);">Loading...</div>
+<div id="ui" class="ui"></div>
+<button id="hideUI">Hide UI</button>
 </body>
 </html>

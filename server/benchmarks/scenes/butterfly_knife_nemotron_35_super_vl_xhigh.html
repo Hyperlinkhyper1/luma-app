@@ -23,7 +23,7 @@ caption.show{opacity:1}
 .spec{font-size:11px;line-height:1.5;opacity:0.9;max-width:260px}
 .spec b{color:#d9b36f}
 .hide{position:absolute;top:10px;right:10px;z-index:50}
-#fallback{display:none;position:absolute;inset:0;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px}
+#fallback{display:none;position:absolute;inset:0;background:#111;color:#fff;align-items:center;justify-content:center;font-size:18px}
 #loading{position:absolute;inset:0;background:#0b0c0e;color:#e8e8e8;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:60;transition:opacity .4s}
 #loading.bar{width:220px;height:4px;background:#1a1d24;margin-top:12px;border-radius:2px;overflow:hidden}
 #loading.bar .fill{width:0%;height:100%;background:#b5874a}
@@ -49,7 +49,7 @@ a{color:#b5874a}
       <span id="vSpeed" style="font-size:11px;opacity:0.7;min-width:24px">1×</span>
       <button id="btnSlow">Slow-mo</button>
       <button id="btnTrail">Trail</button>
-      <button id="btnMute">Mute</span>
+      <button id="btnMute">Mute</button>
       <input type="range" id="sVol" min="0" max="100" value="70" class="slider" style="width:80px">
     </div>
     <div class="grid" id="moves">
@@ -157,6 +157,7 @@ function playLatch(open){
 const PI2=Math.PI*2;
 function lerp(a,b,t){ return a+(b-a)*t; }
 function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
+const Ease={ inOutCubic:t=>t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2, outBack:t=>{ const c1=1.70158, c3=c1+1; return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2); } };
 
 // ---------------- Procedural Textures ----------------
 function tex(draw,w=256,h=256){
@@ -227,7 +228,7 @@ function envCanvas(face){
   },256,256);
 }
 const envMap = new THREE.CubeTexture([envCanvas('px'),envCanvas('nx'),envCanvas('py'),envCanvas('ny'),envCanvas('pz'),envCanvas('nz')]);
-envMap.colorSpace=THREE.SRGBColorSpace;
+envMap.colorSpace=THREE.SRGBColorSpace; envMap.needsUpdate=true;
 
 // ---------------- Materials ----------------
 function buildMaterials(cw){
@@ -385,7 +386,7 @@ class Knife {
     this.root.add(this.pinOpen); this.root.add(this.pinClosed);
 
     // store original positions for explode
-    this.traverse(o=>{ if(o!==this.root){ this.origPos.set(o, o.position.clone()); } });
+    this.root.traverse(o=>{ if(o!==this.root){ this.origPos.set(o, o.position.clone()); } });
   }
   setPose(p){
     this.root.position.copy(p.rootPos);
@@ -416,8 +417,8 @@ class Knife {
     // handle children
     [this.bite,this.safe].forEach(g=>{
       g.children.forEach(c=>{
-        if(c.type==='Mesh'&&c.geometry.type==='ExtrudeGeometry'&&c.parameters&&c.parameters.depth===0.0045) c.material=m.handleScale;
-        if(c.type==='Mesh'&&c.geometry.type==='ExtrudeGeometry'&&c.parameters&&c.parameters.depth===0.003) c.material=m.liner;
+        if(c.type==='Mesh'&&c.geometry.type==='ExtrudeGeometry'&&c.parameters&&c.parameters.options.depth===0.0045) c.material=m.handleScale;
+        if(c.type==='Mesh'&&c.geometry.type==='ExtrudeGeometry'&&c.parameters&&c.parameters.options.depth===0.003) c.material=m.liner;
         if(c.type==='Mesh'&&c.geometry.type==='PlaneGeometry') c.material=m.handleInlay;
         if(c.type==='Mesh'&&c.geometry.type==='CylinderGeometry') c.material=m.pin;
       });
@@ -472,9 +473,31 @@ function buildHand(){
     f.position.set(y,z+len/2,-0.035); f.rotation.x=rot; return f;
   };
   // fingers around handle area (will be repositioned per pose)
-  this.handFingers=[finger(0.11,-0.022,0,0.2), finger(0.11,0.022,0,-0.2), finger(0.11,0,0.02,0)];
-  this.handFingers.forEach(f=>h.add(f));
+  const fingers=[finger(0.11,-0.022,0,0.2), finger(0.11,0.022,0,-0.2), finger(0.11,0,0.02,0)];
+  fingers.forEach(f=>h.add(f));
+  h.userData.fingers=fingers;
   return h;
+}
+
+// ---------------- Move player ----------------
+class MovePlayer{
+  constructor(app){ this.app=app; this.active=false; this.cur=null; }
+  play(from,to,dur,ease,done){ this.active=true; this.cur={from,to,dur:Math.max(dur,0.001),ease,done,t:0}; }
+  update(dt){
+    const c=this.cur; if(!c) return;
+    c.t+=dt;
+    const k=Math.min(c.t/c.dur,1);
+    const e=c.ease?c.ease(k):k;
+    const a=c.from, b=c.to;
+    this.app.applyPose({
+      rootPos:new THREE.Vector3().lerpVectors(a.rootPos,b.rootPos,e),
+      rootQuat:new THREE.Quaternion().slerpQuaternions(a.rootQuat,b.rootQuat,e),
+      biteAngle:lerp(a.biteAngle,b.biteAngle,e),
+      safeAngle:lerp(a.safeAngle,b.safeAngle,e),
+      latch:lerp(a.latch,b.latch,e)
+    });
+    if(k>=1){ this.cur=null; this.active=false; if(c.done) c.done(); }
+  }
 }
 
 // ---------------- App ----------------
@@ -517,13 +540,14 @@ class App {
     this.stage=buildStage(); this.scene.add(this.stage);
     this.knife=new Knife(); this.knife.sceneAdd(this.scene);
     this.hand=buildHand(); this.scene.add(this.hand);
+    this.handFingers=this.hand.userData.fingers;
 
     // lights
     const amb=new THREE.AmbientLight(0xffffff,0.35); this.scene.add(amb);
     const key=new THREE.DirectionalLight(0xffe6cc,1.4);
     key.position.set(-0.8,1.2,0.6); key.castShadow=true; key.shadow.mapSize.set(1024,1024); this.scene.add(key);
     const rim=new THREE.SpotLight(0xffffff,1.0);
-    rim.position.set(0.6,0.8,-0.6); rim.target.set(0,0,0); rim.angle=Math.PI/4; rim.penumbra=0.6; rim.castShadow=true; this.scene.add(rim);
+    rim.position.set(0.6,0.8,-0.6); rim.target.position.set(0,0,0); rim.angle=Math.PI/4; rim.penumbra=0.6; rim.castShadow=true; this.scene.add(rim);
     this.scene.add(rim.target);
     const fill=new THREE.DirectionalLight(0x8fa8d8,0.25); fill.position.set(-0.4,-0.4,0.8); this.scene.add(fill);
 
@@ -544,6 +568,7 @@ class App {
     this.trailLine=new THREE.Line(this.trailGeo, new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:0.5}));
     this.trailLine.frustumCulled=false; this.scene.add(this.trailLine);
 
+    this.movePlayer=new MovePlayer(this);
     this.bindUI();
     this.startReveal();
     this.animate();
@@ -578,6 +603,9 @@ class App {
       const ui=document.getElementById('ui'); ui.style.display=ui.style.display==='none'?'':'none';
       document.getElementById('btnHide').textContent=ui.style.display==='none'?'Show UI ▾':'Hide UI ▾';
     });
+    const unlockAudio=()=>{ if(!audioCtx) initAudio(); if(audioCtx&&audioCtx.state==='suspended') audioCtx.resume(); };
+    window.addEventListener('pointerdown',unlockAudio);
+    window.addEventListener('keydown',unlockAudio);
     window.addEventListener('resize',()=>this.resize());
     // drag inspect
     let dragging=false, dragHandle=null, startY=0, startAngle=0;
@@ -667,47 +695,47 @@ class App {
     const mk=(from,to,dur,ease,sound)=>{ seq.push({from,to,dur:dur/sp,ease,sound}); };
     const half=0.35/sp;
     if(name==='open'){
-      setCaption('Basic Open');
+      this.setCaption('Basic Open');
       mk(closed, {rootPos:closed.rootPos, rootQuat:closed.rootQuat, biteAngle:closed.biteAngle, safeAngle:closed.safeAngle, latch:1}, 0.25/sp, null, ()=>playLatch(true));
-      mk({...closed,latch:1}, {rootPos:open.rootPos, rootQuat:open.rootQuat, biteAngle:0, safeAngle:-Math.PI*0.35, latch:1}, half, THREE.MathUtils.Ease.inOutCubic);
-      mk(seq[seq.length-1].to, {rootPos:open.rootPos, rootQuat:open.rootQuat, biteAngle:0, safeAngle:0, latch:1}, 0.45/sp, THREE.MathUtils.Ease.outBack, ()=>playRing());
+      mk({...closed,latch:1}, {rootPos:open.rootPos, rootQuat:open.rootQuat, biteAngle:0, safeAngle:-Math.PI*0.35, latch:1}, half, Ease.inOutCubic);
+      mk(seq[seq.length-1].to, {rootPos:open.rootPos, rootQuat:open.rootQuat, biteAngle:0, safeAngle:0, latch:1}, 0.45/sp, Ease.outBack, ()=>playRing());
     } else if(name==='close'){
-      setCaption('Basic Close');
+      this.setCaption('Basic Close');
       mk(open, {rootPos:open.rootPos, rootQuat:open.rootQuat, biteAngle:0, safeAngle:0, latch:1}, 0.2/sp, null, ()=>playLatch(true));
-      mk(seq[seq.length-1].to, {rootPos:closed.rootPos, rootQuat:closed.rootQuat, biteAngle:Math.PI*0.55, safeAngle:-Math.PI*0.55, latch:1}, half, THREE.MathUtils.Ease.inOutCubic);
-      mk(seq[seq.length-1].to, closed, 0.5/sp, THREE.MathUtils.Ease.outBack, ()=>{ playClack(0.9); playLatch(false); });
+      mk(seq[seq.length-1].to, {rootPos:closed.rootPos, rootQuat:closed.rootQuat, biteAngle:Math.PI*0.55, safeAngle:-Math.PI*0.55, latch:1}, half, Ease.inOutCubic);
+      mk(seq[seq.length-1].to, closed, 0.5/sp, Ease.outBack, ()=>{ playClack(0.9); playLatch(false); });
     } else if(name==='chaplin'){
-      setCaption('Chaplin');
+      this.setCaption('Chaplin');
       const flipQ=new THREE.Quaternion().setFromEuler(new THREE.Euler(0,0,Math.PI));
-      mk(open, {rootPos:new THREE.Vector3(0,0.18,0), rootQuat:flipQ, biteAngle:0, safeAngle:0, latch:1}, 0.5/sp, THREE.MathUtils.Ease.inOutCubic, ()=>playRing());
-      mk(seq[seq.length-1].to, {rootPos:new THREE.Vector3(0,0.18,0), rootQuat:new THREE.Quaternion(), biteAngle:Math.PI, safeAngle:-Math.PI, latch:1}, 0.5/sp, THREE.MathUtils.Ease.inOutCubic, ()=>{ playClack(0.9); playLatch(false); });
+      mk(open, {rootPos:new THREE.Vector3(0,0.18,0), rootQuat:flipQ, biteAngle:0, safeAngle:0, latch:1}, 0.5/sp, Ease.inOutCubic, ()=>playRing());
+      mk(seq[seq.length-1].to, {rootPos:new THREE.Vector3(0,0.18,0), rootQuat:new THREE.Quaternion(), biteAngle:Math.PI, safeAngle:-Math.PI, latch:1}, 0.5/sp, Ease.inOutCubic, ()=>{ playClack(0.9); playLatch(false); });
     } else if(name==='zen'){
-      setCaption('Zen Rollover');
+      this.setCaption('Zen Rollover');
       const q=new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI,0,0));
-      mk(open, {rootPos:new THREE.Vector3(0,0.18,0), rootQuat:q, biteAngle:Math.PI, safeAngle:-Math.PI, latch:1}, 0.6/sp, THREE.MathUtils.Ease.inOutCubic, ()=>playRattle());
-      mk(seq[seq.length-1].to, open, 0.6/sp, THREE.MathUtils.Ease.inOutCubic, ()=>playRing());
+      mk(open, {rootPos:new THREE.Vector3(0,0.18,0), rootQuat:q, biteAngle:Math.PI, safeAngle:-Math.PI, latch:1}, 0.6/sp, Ease.inOutCubic, ()=>playRattle());
+      mk(seq[seq.length-1].to, open, 0.6/sp, Ease.inOutCubic, ()=>playRing());
     } else if(name==='fan'){
-      setCaption('Fan');
+      this.setCaption('Fan');
       // hold safe handle, fan bite handle around
       mk(open, {rootPos:new THREE.Vector3(0,0.18,0), rootQuat:new THREE.Quaternion(), biteAngle:0, safeAngle:0, latch:1}, 0.15/sp, null, ()=>playLatch(true));
       let a=0;
       for(let i=0;i<5;i++){
-        mk({...seq[seq.length-1].to}, {rootPos:new THREE.Vector3(0,0.18,0), rootQuat:new THREE.Quaternion(), biteAngle:PI2*(i+1), safeAngle:0, latch:1}, 0.4/sp, THREE.MathUtils.Ease.inOutCubic);
+        mk({...seq[seq.length-1].to}, {rootPos:new THREE.Vector3(0,0.18,0), rootQuat:new THREE.Quaternion(), biteAngle:PI2*(i+1), safeAngle:0, latch:1}, 0.4/sp, Ease.inOutCubic);
       }
-      mk(seq[seq.length-1].to, open, 0.35/sp, THREE.MathUtils.Ease.outBack, ()=>playClack(0.7));
+      mk(seq[seq.length-1].to, open, 0.35/sp, Ease.outBack, ()=>playClack(0.7));
     } else if(name==='helix'){
-      setCaption('Helix');
-      mk(open, {rootPos:new THREE.Vector3(0,0.18,0), rootQuat:new THREE.Quaternion().setFromEuler(new THREE.Euler(0,Math.PI*2,Math.PI)), biteAngle:Math.PI, safeAngle:-Math.PI, latch:1}, 0.9/sp, THREE.MathUtils.Ease.inOutCubic, ()=>{ playSwish(1.2); playClack(0.8); playLatch(false); });
-      mk(seq[seq.length-1].to, open, 0.7/sp, THREE.MathUtils.Ease.inOutCubic, ()=>playRing());
+      this.setCaption('Helix');
+      mk(open, {rootPos:new THREE.Vector3(0,0.18,0), rootQuat:new THREE.Quaternion().setFromEuler(new THREE.Euler(0,Math.PI*2,Math.PI)), biteAngle:Math.PI, safeAngle:-Math.PI, latch:1}, 0.9/sp, Ease.inOutCubic, ()=>{ playSwish(1.2); playClack(0.8); playLatch(false); });
+      mk(seq[seq.length-1].to, open, 0.7/sp, Ease.inOutCubic, ()=>playRing());
     } else if(name==='aerial'){
-      setCaption('Aerial');
+      this.setCaption('Aerial');
       mk(open, {rootPos:new THREE.Vector3(0,0.55,0), rootQuat:new THREE.Quaternion().setFromEuler(new THREE.Euler(0.3,0.8,0)), biteAngle:0, safeAngle:0, latch:1}, 0.4/sp, null, ()=>playSwish(1.6));
-      mk(seq[seq.length-1].to, {rootPos:new THREE.Vector3(0,0.18,0), rootQuat:new THREE.Quaternion().setFromEuler(new THREE.Euler(0,Math.PI,0)), biteAngle:Math.PI, safeAngle:-Math.PI, latch:1}, 0.8/sp, THREE.MathUtils.Ease.inOutCubic, ()=>{ playClack(1.0); playLatch(false); });
+      mk(seq[seq.length-1].to, {rootPos:new THREE.Vector3(0,0.18,0), rootQuat:new THREE.Quaternion().setFromEuler(new THREE.Euler(0,Math.PI,0)), biteAngle:Math.PI, safeAngle:-Math.PI, latch:1}, 0.8/sp, Ease.inOutCubic, ()=>{ playClack(1.0); playLatch(false); });
     } else if(name==='sig'){
-      setCaption('Desert Whirl');
+      this.setCaption('Desert Whirl');
       mk(open, {rootPos:new THREE.Vector3(0,0.18,0), rootQuat:new THREE.Quaternion(), biteAngle:0, safeAngle:0, latch:1}, 0.2/sp, null, ()=>playLatch(true));
       mk(seq[seq.length-1].to, {rootPos:new THREE.Vector3(0,0.3,0), rootQuat:new THREE.Quaternion().setFromEuler(new THREE.Euler(0,Math.PI*0.5,Math.PI*0.5)), biteAngle:PI2*1.5, safeAngle:-PI2*0.5, latch:1}, 0.9/sp, null, ()=>{ playSwish(1.4); playRattle(); });
-      mk(seq[seq.length-1].to, closed, 0.7/sp, THREE.MathUtils.Ease.outBack, ()=>{ playClack(1.0); playLatch(false); playRing(); });
+      mk(seq[seq.length-1].to, closed, 0.7/sp, Ease.outBack, ()=>{ playClack(1.0); playLatch(false); playRing(); });
     }
     this.startSeq(seq, ()=>{ if(name==='aerial'||name==='helix') stopSwish(); });
   }
@@ -777,7 +805,7 @@ class App {
       const t=(performance.now()-t0)/2200;
       if(t<1){
         const tt=Math.min(t,1);
-        const e=THREE.MathUtils.Ease.inOutCubic(tt);
+        const e=Ease.inOutCubic(tt);
         knife.setPose({
           rootPos: new THREE.Vector3(0,0.18,0).lerpVectors(startPos, new THREE.Vector3(0,0.18,0), e),
           rootQuat: new THREE.Quaternion().slerpQuaternions(startQ, open.rootQuat, e),
@@ -838,8 +866,7 @@ class App {
       // already applied in pointermove; keep sounds checked
       this.applyPose(this.lastPose);
     } else if(this.movePlayer&&this.movePlayer.active){
-      const ended=this.movePlayer.update(dt,1);
-      if(ended){ this.movePlayer=null; }
+      this.movePlayer.update(dt);
     }
 
     this.knife.setExplode(this.state.explode);
@@ -850,27 +877,13 @@ class App {
       tip.applyMatrix4(this.knife.blade.matrixWorld);
       this.trailPts.push({x:tip.x,y:tip.y,z:tip.z,age:0});
       if(this.trailPts.length>60) this.trailPts.shift();
+      this.trailPts.forEach(p=>{ p.age+=dt; });
+      this.trailPts=this.trailPts.filter(p=>p.age<0.9);
       const pos=this.trailGeo.attributes.position; const col=this.trailGeo.attributes.color;
-      let n=0;
-      this.trailPts.forEach((p,i)=>{
-        p.age+=dt;
-        const a=1-clamp(p.age/0.9,0,1);
-        if(a<=0) return;
-        pos.setXYZ(n*3, p.x,p.y,p.z);
-        col.setXYZ(n*3, 1,0.85,0.6); col.setXYZ(n*3+1,1,0.85,0.6); col.setXYZ(n*3+2,1,0.85,0.6);
-        // duplicate for line segments
-        n++;
-      });
-      // simple: draw points as line segments from array by repeating? We just update first N positions; need pairs.
-      // Rebuild easier:
-      const arrP=[]; const arrC=[];
-      this.trailPts.forEach((p,j)=>{
-        const a=1-clamp(p.age/0.9,0,1); if(a<=0) return;
-        arrP.push(p.x,p.y,p.z); arrC.push(1,0.85,0.6);
-      });
-      pos.count=arrP.length; pos.needsUpdate=true;
-      col.count=arrC.length; col.needsUpdate=true;
-      this.trailLine.material.opacity=0.5;
+      const n=this.trailPts.length;
+      for(let i=0;i<n;i++){ const p=this.trailPts[i]; pos.setXYZ(i,p.x,p.y,p.z); col.setXYZ(i,1,0.85,0.6); }
+      this.trailGeo.setDrawRange(0,n);
+      pos.needsUpdate=true; col.needsUpdate=true;
     }
 
     // swish based on angular velocity approx

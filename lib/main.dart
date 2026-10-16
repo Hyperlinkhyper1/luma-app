@@ -768,6 +768,13 @@ class _LumaAppState extends State<LumaApp> {
     GatedServerClient.trackBackendAiUsage = () =>
         widget.settings.trackBackendAiUsage;
     _backendUsageTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      // Nobody sees these numbers while the window sits in the tray; the
+      // first tick after it comes back catches up.
+      final state = WidgetsBinding.instance.lifecycleState;
+      if (state == AppLifecycleState.hidden ||
+          state == AppLifecycleState.paused) {
+        return;
+      }
       unawaited(_aiUsageRepository.refreshBackendUsage());
     });
     StorageGuardService.instance = _storageGuard;

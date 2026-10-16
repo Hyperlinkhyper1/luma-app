@@ -40,6 +40,12 @@ class AiUsageRepository extends ChangeNotifier {
   bool _backendRefreshPending = false;
   bool _disposed = false;
 
+  /// The account whose backend rows are the only ones left in the table, so
+  /// the sweep of other accounts' rows runs once per account change rather
+  /// than on every poll. Null until the first sweep.
+  ({String? account})? _sweptBackendFor;
+  bool _backendChecked = false;
+
   @override
   void dispose() {
     _disposed = true;
@@ -53,27 +59,39 @@ class AiUsageRepository extends ChangeNotifier {
       return;
     }
     _refreshingBackend = true;
+    var changed = false;
     try {
       final account = _backendAccount?.call();
       final deviceId = account == null ? null : 'backend:$account';
-      await (_db.delete(_db.aiUsageTurns)..where(
-            (t) =>
-                t.deviceId.like('backend:%') &
-                (deviceId == null
-                    ? const Constant(true)
-                    : t.deviceId.equals(deviceId).not()),
-          ))
-          .go();
+      if (_sweptBackendFor == null || _sweptBackendFor!.account != account) {
+        // A range rather than LIKE 'backend:%', so the device_id index
+        // serves it.
+        final swept =
+            await (_db.delete(_db.aiUsageTurns)..where(
+                  (t) =>
+                      t.deviceId.isBiggerOrEqualValue('backend:') &
+                      t.deviceId.isSmallerThanValue('backend;') &
+                      (deviceId == null
+                          ? const Constant(true)
+                          : t.deviceId.equals(deviceId).not()),
+                ))
+                .go();
+        _sweptBackendFor = (account: account);
+        if (swept > 0) changed = true;
+      }
       if (account == null) return;
       final calls = await _fetchBackendCalls();
       if (_disposed || calls == null || _backendAccount?.call() != account) {
         return;
       }
       await _db.transaction(() async {
-        final existing = await (_db.select(
-          _db.aiUsageTurns,
-        )..where((t) => t.deviceId.equals(deviceId!))).get();
-        final seen = existing.map((t) => t.messageId).toSet();
+        final messageIdColumn = _db.aiUsageTurns.messageId;
+        final seen = await (_db.selectOnly(_db.aiUsageTurns)
+              ..addColumns([messageIdColumn])
+              ..where(_db.aiUsageTurns.deviceId.equals(deviceId!)))
+            .map((row) => row.read(messageIdColumn))
+            .get()
+            .then((ids) => ids.toSet());
         for (final call in calls) {
           final id = call['id'];
           final at = call['atMs'];
@@ -118,20 +136,29 @@ class AiUsageRepository extends ChangeNotifier {
                   deviceId: Value(deviceId),
                 ),
               );
+          changed = true;
         }
       });
-      final lumaTurn =
-          await (_db.select(_db.aiUsageTurns)
-                ..where((t) => t.source.equalsValue(AiUsageSource.luma))
-                ..limit(1))
-              .getSingleOrNull();
-      _lumaUsageFound = lumaTurn != null;
+      // This poll runs every 30 seconds and almost always finds nothing new,
+      // so the table is only re-checked, and listeners only told, on change.
+      if (changed || !_backendChecked) {
+        _backendChecked = true;
+        final lumaTurn =
+            await (_db.select(_db.aiUsageTurns)
+                  ..where((t) => t.source.equalsValue(AiUsageSource.luma))
+                  ..limit(1))
+                .getSingleOrNull();
+        if (_lumaUsageFound != (lumaTurn != null)) {
+          _lumaUsageFound = lumaTurn != null;
+          changed = true;
+        }
+      }
     } catch (error) {
       debugPrint('Backend AI usage refresh failed: $error');
     } finally {
       _refreshingBackend = false;
       if (!_disposed) {
-        notifyListeners();
+        if (changed) notifyListeners();
         if (_backendRefreshPending) {
           _backendRefreshPending = false;
           await refreshBackendUsage();

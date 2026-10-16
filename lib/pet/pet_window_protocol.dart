@@ -18,3 +18,4 @@ const String petMethodAutoClicker = 'autoClicker';
 
 const String petWindowMethodShow = 'window_show';
 const String petWindowMethodRefresh = 'window_refresh';
+const String petWindowMethodHide = 'window_hide';

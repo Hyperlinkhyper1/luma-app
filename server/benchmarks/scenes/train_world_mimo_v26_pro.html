@@ -667,7 +667,7 @@ const EDGE_PTS = {
   C:  [[-20,42],[-15,33],[-7,25.5],[3,20],[13,16.6],[21,17.2],[27,22],[30,29],[29,36],[25,42]]
 };
 
-const BLOCK_OF = { W:'B_WEST', N:'B_NORTH', E:'B_EAST', M1:'B_MAIN', M2:'B_MAIN', M3:'B_MAIN',
+const BLOCK_OF = { W:'B_WEST', N:'B_NORTH', E:'B_EAST', M1:'B_MAIN', M2:'B_MAIN', M3:'B_JOIN',
                    LW:'B_LOOP', L:'B_LOOP', LE:'B_LOOP', C:'B_CHORD' };
 
 const edges = {};
@@ -677,7 +677,7 @@ for(const id in EDGE_PTS){
 }
 
 const blocks = {};
-for(const id of ['B_WEST','B_NORTH','B_EAST','B_MAIN','B_LOOP','B_CHORD']){
+for(const id of ['B_WEST','B_NORTH','B_EAST','B_MAIN','B_JOIN','B_LOOP','B_CHORD']){
   blocks[id] = { id, occupied:new Set(), reserved:null, wasHeld:false, locks:[], label:id.replace('B_','') };
 }
 // sections worked in both directions: entry requires the exit section free too
@@ -867,7 +867,7 @@ const RAIL_PROFILE = [
 const BALLAST_PROFILE = [[-3.0,-1.40],[-1.95,-0.80],[1.95,-0.80],[3.0,-1.40]];
 
 const trackGroup = new THREE.Group();
-const blockMeshes = { B_WEST:[], B_NORTH:[], B_EAST:[], B_MAIN:[], B_LOOP:[], B_CHORD:[] };
+const blockMeshes = { B_WEST:[], B_NORTH:[], B_EAST:[], B_MAIN:[], B_JOIN:[], B_LOOP:[], B_CHORD:[] };
 
 const sleeperPlacements = [];
 for(const id in edges){
@@ -1230,16 +1230,16 @@ const SIGNALS = [
   { id:'SG-E-CW',  edge:'E',  u:0.035, dir: 1, protects:'B_EAST',  ahead:['B_NORTH','B_WEST'] },
   { id:'SG-N-CW',  edge:'N',  u:0.035, dir: 1, protects:'B_NORTH', ahead:['B_WEST','B_MAIN'] },
   { id:'SG-M1-CW', edge:'M1', u:0.10,  dir: 1, protects:'B_MAIN',  ahead:['B_EAST','B_NORTH'] },
-  { id:'SG-C-CW',  edge:'C',  u:0.075, dir: 1, protects:'B_CHORD', ahead:['B_MAIN','B_EAST'] },
-  { id:'SG-M3-CW', edge:'M3', u:0.11,  dir: 1, protects:'B_MAIN',  ahead:['B_EAST','B_NORTH'] },
+  { id:'SG-C-CW',  edge:'C',  u:0.075, dir: 1, protects:'B_CHORD', ahead:['B_JOIN','B_EAST'] },
+  { id:'SG-M3-CW', edge:'M3', u:0.11,  dir: 1, protects:'B_JOIN',  ahead:['B_EAST','B_NORTH'] },
   { id:'SG-L-CW',  edge:'LW', u:0.16,  dir: 1, protects:'B_LOOP',  ahead:['B_MAIN','B_EAST'] },
 
   { id:'SG-W-CCW', edge:'W',  u:0.965, dir:-1, protects:'B_WEST',  ahead:['B_NORTH','B_EAST'] },
-  { id:'SG-E-CCW', edge:'E',  u:0.965, dir:-1, protects:'B_EAST',  ahead:['B_MAIN','B_WEST'] },
+  { id:'SG-E-CCW', edge:'E',  u:0.965, dir:-1, protects:'B_EAST',  ahead:['B_JOIN','B_WEST'] },
   { id:'SG-N-CCW', edge:'N',  u:0.965, dir:-1, protects:'B_NORTH', ahead:['B_EAST','B_MAIN'] },
   { id:'SG-M1-CCW',edge:'M1', u:0.90,  dir:-1, protects:'B_MAIN',  ahead:['B_WEST','B_NORTH'] },
   { id:'SG-C-CCW', edge:'C',  u:0.925, dir:-1, protects:'B_CHORD', ahead:['B_MAIN','B_NORTH'] },
-  { id:'SG-M3-CCW',edge:'M3', u:0.89,  dir:-1, protects:'B_MAIN',  ahead:['B_WEST','B_NORTH'] },
+  { id:'SG-M3-CCW',edge:'M3', u:0.89,  dir:-1, protects:'B_JOIN',  ahead:['B_MAIN','B_WEST'] },
   { id:'SG-L-CCW', edge:'LE', u:0.84,  dir:-1, protects:'B_LOOP',  ahead:['B_MAIN','B_WEST'] }
 ];
 
@@ -1314,7 +1314,7 @@ for(const s of SIGNALS) buildSignal(s);
    ============================================================ */
 const BLOCK_COLORS = {
   B_WEST:0x37d67a, B_NORTH:0xffb347, B_EAST:0x5b7dd8,
-  B_MAIN:0xff7a5c, B_LOOP:0xc78bff, B_CHORD:0x6fe3d2
+  B_MAIN:0xff7a5c, B_JOIN:0xffa36b, B_LOOP:0xc78bff, B_CHORD:0x6fe3d2
 };
 const blockOverlayMats = {};
 for(const id in blocks){
@@ -1975,10 +1975,10 @@ freight.stopPlan   = [ashStop(15), [{ edge:'C', dist:MILL_D, dwell:17, name:'Mil
 // start positions: spread around the layout, with plenty of path behind each train
 attachPath(steam,'W',1); attachPath(steam,'M1',1); attachPath(steam,'M2',1);
 steam.d = edges.W.len + edges.M1.len + 8;
-attachPath(electric,'W',-1); attachPath(electric,'N',-1); attachPath(electric,'E',-1);
-electric.d = edges.W.len + edges.N.len + 26;
-attachPath(freight,'M3',1); attachPath(freight,'E',1); attachPath(freight,'N',1);
-freight.d = edges.M3.len + edges.E.len + 62;
+attachPath(electric,'E',-1);
+electric.d = 80;
+attachPath(freight,'N',1);
+freight.d = 80;
 extendPath(steam); extendPath(electric); extendPath(freight);
 
 /* ============================================================
@@ -2031,60 +2031,99 @@ function signalAhead(t){
   return { sig:best, dist:bestD };
 }
 
-function requestRoute(t, sig){
-  const b = blocks[sig.protects];
-  if(b.reserved === t.id) return true;
-  if(b.reserved && b.reserved !== t.id) return false;
-  for(const id of b.occupied) if(id !== t.id) return false;
-  const exitB = blocks[sig.ahead[0]];
-  if(SINGLE_SECTION[sig.protects]){
-    if(exitB.reserved && exitB.reserved !== t.id) return false;
-    for(const id of exitB.occupied) if(id !== t.id) return false;
-  }
-  b.reserved = t.id; b.wasHeld = false; b.locks = [];
-  if(SINGLE_SECTION[sig.protects] && !exitB.reserved){
-    exitB.reserved = t.id; exitB.wasHeld = false;
-  }
-  // lock the turnouts this route needs
-  let acc = 0;
-  for(let i=0;i<t.seq.length;i++){
-    const s = t.seq[i];
-    if(s.e.id === sig.edge && s.dir === sig.dir){
-      const next = t.seq[i+1];
-      if(next){
-        const req = TURNOUT_REQ[s.e.id + '>' + next.e.id];
-        if(req){
-          for(const r of req){
-            const tc = turnouts[r.n];
-            if(!tc.lock || tc.lock === t.id){ tc.target = r.p; tc.lock = t.id; b.locks.push(tc); }
-          }
-        }
-      }
-      break;
+function nextSignalOnPath(t, sig){
+  let started = false;
+  for(const s of t.seq){
+    if(!started){ if(s.e.id === sig.edge && s.dir === sig.dir) started = true; else continue; }
+    for(const s2 of SIGNALS){
+      if(s2 === sig || s2.edge !== s.e.id || s2.dir !== s.dir) continue;
+      if(s.e.id === sig.edge && (s.dir > 0 ? s2.u <= sig.u : s2.u >= sig.u)) continue;
+      return s2;
     }
-    acc += s.e.len;
   }
+  return null;
+}
+function routeWindow(t, sig){
+  const out = [sig.protects, sig.ahead[0]];
+  const nxt = nextSignalOnPath(t, sig);
+  let started = false, span = 0;
+  for(const s of t.seq){
+    if(!started){ if(s.e.id === sig.edge && s.dir === sig.dir) started = true; else continue; }
+    if(!out.includes(s.e.block)) out.push(s.e.block);
+    if(nxt && s.e.id === nxt.edge && s.dir === nxt.dir) break;
+    span += s.e.len;
+    if(span > 250) break;
+  }
+  if(nxt){
+    for(const id of [nxt.protects, nxt.ahead[0]]) if(!out.includes(id)) out.push(id);
+  }
+  return out;
+}
+function routeTurnouts(t, sig){
+  const reqs = [];
+  let started = false, span = 0;
+  for(let i=0;i<t.seq.length-1;i++){
+    const s = t.seq[i];
+    if(!started){ if(s.e.id === sig.edge && s.dir === sig.dir) started = true; else continue; }
+    const req = TURNOUT_REQ[s.e.id + '>' + t.seq[i+1].e.id];
+    if(req) reqs.push(...req);
+    span += s.e.len;
+    if(span > 90) break;
+  }
+  return reqs;
+}
+function dropReservations(t, keep){
+  for(const b of Object.values(blocks)){
+    if(b.reserved === t.id && !b.occupied.has(t.id) && !keep.includes(b.id)){ b.reserved = null; b.wasHeld = false; }
+  }
+  const holds = Object.values(blocks).some(b => b.reserved === t.id);
+  if(!holds) for(const tc of Object.values(turnouts)){ if(tc.lock === t.id) tc.lock = null; }
+}
+function requestRoute(t, sig){
+  const S = routeWindow(t, sig);
+  const reqs = routeTurnouts(t, sig);
+  let ok = true;
+  for(const id of S){
+    const b = blocks[id];
+    if(b.reserved && b.reserved !== t.id){ ok = false; break; }
+    for(const x of b.occupied) if(x !== t.id){ ok = false; break; }
+    if(!ok) break;
+  }
+  if(ok) for(const r of reqs){
+    const tc = turnouts[r.n];
+    if(tc.lock && tc.lock !== t.id){ ok = false; break; }
+  }
+  if(!ok){
+    dropReservations(t, [sig.protects]);
+    t.resv = [sig.protects];
+    return false;
+  }
+  dropReservations(t, S);
+  for(const id of S){
+    const b = blocks[id];
+    if(b.reserved !== t.id){ b.reserved = t.id; b.wasHeld = false; }
+  }
+  for(const r of reqs){
+    const tc = turnouts[r.n];
+    tc.target = r.p; tc.lock = t.id;
+  }
+  t.resv = S;
   return true;
 }
 
 function releaseRoutes(){
   for(const b of Object.values(blocks)){
     if(!b.reserved) continue;
-    const held = b.occupied.has(b.reserved);
-    if(held){ b.wasHeld = true; continue; }
-    if(!b.wasHeld) continue;
-    for(const tc of b.locks){ if(tc.lock === b.reserved){ tc.lock = null; } }
-    b.locks = [];
-    b.reserved = null;
-    b.wasHeld = false;
+    const o = trainById(b.reserved);
+    if(!o){ b.reserved = null; b.wasHeld = false; continue; }
+    if(b.occupied.has(o.id)){ b.wasHeld = true; continue; }
+    if(b.wasHeld || !(o.resv || []).includes(b.id)){ b.reserved = null; b.wasHeld = false; }
   }
   for(const tc of Object.values(turnouts)){
-    if(tc.lock && !trains.some(t=>t.id===tc.lock)) tc.lock = null;
-    if(tc.lock){
-      let holds = false;
-      for(const b of Object.values(blocks)) if(b.reserved === tc.lock){ holds = true; break; }
-      if(!holds) tc.lock = null;
-    }
+    if(!tc.lock) continue;
+    const o = trainById(tc.lock);
+    const holds = !!o && Object.values(blocks).some(b => b.reserved === o.id);
+    if(!holds) tc.lock = null;
   }
 }
 
@@ -2156,10 +2195,10 @@ function updateTrain(t, dt){
   t.nextSignal = sig;
   t.nextSignalDist = dist;
 
-  if(sig && dist < 150) requestRoute(t, sig);
+  const routeOk = (sig && dist < 150) ? requestRoute(t, sig) : true;
 
   if(sig){
-    const a = aspectFor(sig, t);
+    const a = routeOk ? aspectFor(sig, t) : 'R';
     sig.aspectForTrain = a;
     if(a === 'R'){
       const d = Math.max(0, dist - 2.6);
@@ -2462,7 +2501,7 @@ crossing.distOnEdge = closestDistOnEdge(edges.E, CROSSING_POS.x, CROSSING_POS.z)
 
 const BLOCK_SHORT = {
   B_WEST:'W1 WEST', B_NORTH:'N1 SINGLE', B_EAST:'E1 EAST',
-  B_MAIN:'S1 MAIN', B_LOOP:'S2 LOOP', B_CHORD:'C1 CHORD'
+  B_MAIN:'S1 MAIN', B_JOIN:'S1 JOIN', B_LOOP:'S2 LOOP', B_CHORD:'C1 CHORD'
 };
 const leftEl = document.getElementById('left');
 const cards = trains.map(t=>{
@@ -2606,7 +2645,7 @@ const diagBase = [], diagLive = [], diagSig = [], diagTurn = [];
   }
 }
 const DIAG_COLOR = { B_WEST:'#37d67a', B_NORTH:'#ffb347', B_EAST:'#5b7dd8',
-  B_MAIN:'#ff7a5c', B_LOOP:'#c78bff', B_CHORD:'#6fe3d2' };
+  B_MAIN:'#ff7a5c', B_JOIN:'#ffa36b', B_LOOP:'#c78bff', B_CHORD:'#6fe3d2' };
 function updateDiagram(){
   for(const d of diagLive){
     const b = blocks[d.block];
@@ -2936,6 +2975,7 @@ updateSignals();
 updateDayNight();
 onResize();
 frame();
+window.__dbg=()=>({blocks:Object.fromEntries(Object.values(blocks).map(b=>[b.id,{res:b.reserved,occ:[...b.occupied]}])),trains:trains.map(t=>({id:t.id,d:Math.round(t.d),resv:t.resv,bl:[...t.blocks],state:t.state,sig:t.nextSignal&&t.nextSignal.id,dist:Math.round(t.nextSignalDist||0),speed:t.speed,seq:t.seq.map(s=>s.e.id+s.dir).join(' ')})),tc:Object.fromEntries(Object.values(turnouts).map(t=>[t.id,t.lock]))});
 
 </script>
 </body>

@@ -103,7 +103,7 @@ import{UnrealBloomPass}from'three/addons/postprocessing/UnrealBloomPass.js';
 let scene,camera,renderer,controls,composer;
 let clock=new THREE.Clock();
 let audioCtx=null,mute=false,volume=.6;
-let currentMove=null,animTime=0,animDuration=0,animStartPose=null,animEndPose=null;
+let currentMove=null,animTime=0,animStartPose=null,animEndPose=null;
 let comboQueue=[],comboIdx=0,freestyleNext=null;
 let speedMult=1,slowMo=false,trailOn=false,exploded=false,colorwayIdx=0;
 let knifeGroup,biteHandle,SAFE_HANDLE,latchMesh,latchSwing;
@@ -323,13 +323,8 @@ function buildBladeFull(){
   const bladeGroup=new THREE.Group();
   
   // Main blade body - extrude the profile, centered on XZ
-  const profile=createBladeProfile();
-  // Scale profile properly
+  const bladeShape=createBladeProfile();
   const pScale=SCALE_CM;
-  // Shift to center
-  profile.points.forEach(p=>{p.x*=pScale;p.y*=pScale;});
-  
-  const bladeShape=new THREE.Shape(profile.points);
   
   const extrudeDepth=5*pScale; // blade thickness
   const exSettings={depth:extrudeDepth,bevelEnabled:true,bevelThickness:0.08*pScale,bevelSize:0.08*pScale,bevelSegments:2};
@@ -579,7 +574,7 @@ function buildHand(){
   
   // Thumb
   const thumbParts=[
-    {len:12*w=pScale,h:5*pScale,d:5*pScale,pos:[-2*pScale,12*pScale,4*pScale],rot:[0,0,-.3]},
+    {len:12*pScale,h:5*pScale,d:5*pScale,pos:[-2*pScale,12*pScale,4*pScale],rot:[0,0,-.3]},
     {len:10*pScale,h:4*pScale,d:4*pScale,pos:[-5*pScale,2*pScale,3*pScale],rot:[0,0,-.2]}
   ];
   thumbParts.forEach(p=>{
@@ -870,6 +865,10 @@ function stopAnyAnimation(){
   hideCaption();
 }
 
+function resetKnifePosition(){
+  knifeGroup.position.set(0,.5,0);
+}
+
 let animStart=0,animDuration=0,animPoseCallback=null,animStartCallback=null,animEndCallback=null;
 let captionTimer=null;
 
@@ -1140,7 +1139,7 @@ const moves={
     animateMove('lava_float',duration,t=>{
       const phase1=easeOutCubic(Math.min(t/.25,1));
       const phase2=easeInOutCubic(Math.min(Math.max((t-.25)/.45,0),1));
-      const phase3=easeInOutCubic(Math.min(Math.max((t-.7)/.3,0),0);
+      const phase3=easeInOutCubic(Math.min(Math.max((t-.7)/.3,0),1));
       
       latchSwing.rotation.x=-.6*phase1;
       
@@ -1303,8 +1302,8 @@ function init(){
   scene.add(handModel);
   
   // Trail
-  trail=createTrail();
-  scene.add(trail);
+  trailLine=createTrail();
+  scene.add(trailLine);
   
   // Events
   window.addEventListener('resize',onResize);
@@ -1490,7 +1489,7 @@ function onMouseDown(e){
   raycaster.setFromCamera(mouse,camera);
   
   // Check handle intersection
-  const intersects=raycaster.intersectObjects([biteHandle,...SAFE_HANDLE.children,...latchSwing.children,true]);
+  const intersects=raycaster.intersectObjects([biteHandle,SAFE_HANDLE,latchSwing],true);
   if(intersects.length>0){
     initAudio();
     const obj=intersects[0].object;
@@ -1546,7 +1545,7 @@ function onMouseMove(e){
 
 function onMouseUp(){
   dragTarget=null;
-  controls.enabled=!explode;
+  controls.enabled=!exploded;
 }
 
 function onTouchStart(e){
@@ -1608,7 +1607,7 @@ function onTouchMove(e){
   }
 }
 
-function onTouchEnd(){dragTarget=null;controls.enabled=!explode;}
+function onTouchEnd(){dragTarget=null;controls.enabled=!exploded;}
 
 function onKeyDown(e){
   if(e.key==='1')moves.basicopen(getMoveDuration('basicopen'));
@@ -1688,7 +1687,7 @@ function hideExplodedView(){
     const pe=easeInOutCubic(t);
     
     parts.forEach(p=>{
-      if(p.userData.origPos&&!explode){
+      if(p.userData.origPos&&!exploded){
         p.position.lerpVectors(
           p.userData.explodeTarget||p.position,
           p.userData.origPos,

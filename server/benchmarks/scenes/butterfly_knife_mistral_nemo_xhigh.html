@@ -5,16 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Neon Noir Butterfly Knife</title>
   <style>
-    body { margin: 0; overflow: hidden; }
-    #ui { position: absolute; top: 1rem; left: 1rem; z-index: 1; }
-    #info { display: none; margin-top: 0.5rem; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #07070b; color: #e8e8f0; font-family: system-ui, sans-serif; }
+    canvas { display: block; touch-action: none; }
+    #ui { position: absolute; top: 1rem; left: 1rem; z-index: 1; max-width: min(380px, calc(100vw - 2rem)); padding: 0.6rem; border-radius: 8px; background: rgba(8, 8, 14, 0.6); font-size: 13px; line-height: 1.4; }
+    #ui.hidden { display: none; }
+    #ui button { margin: 2px; padding: 4px 8px; border: 1px solid #3a3a4a; border-radius: 4px; background: #1a1a24; color: #e8e8f0; font: inherit; cursor: pointer; }
+    #ui button:hover { border-color: #2be8ff; }
+    #ui button.on { border-color: #ff2bd6; color: #ff8ae8; }
+    #ui input[type="range"] { vertical-align: middle; width: 90px; }
+    #hideUi { position: absolute; top: 1rem; right: 1rem; z-index: 2; padding: 4px 8px; border: 1px solid #3a3a4a; border-radius: 4px; background: rgba(8, 8, 14, 0.6); color: #e8e8f0; font: inherit; cursor: pointer; }
+    #info { display: none; margin-top: 0.5rem; max-height: 40vh; overflow: auto; }
     #info.show { display: block; }
+    #info h2 { margin: 0.2rem 0; font-size: 16px; }
+    #info p, #info li { margin: 0.2rem 0; }
+    #caption { position: absolute; bottom: 1.5rem; left: 50%; transform: translateX(-50%); z-index: 1; min-height: 1.5em; font-size: 18px; letter-spacing: 0.2em; text-transform: uppercase; color: #ff8ae8; text-shadow: 0 0 12px #ff2bd6; pointer-events: none; white-space: nowrap; }
+    #loading { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; font-size: 18px; letter-spacing: 0.2em; color: #2be8ff; }
+    #loading.done { display: none; }
+    #nogl { position: absolute; inset: 0; z-index: 4; display: none; align-items: center; justify-content: center; padding: 2rem; text-align: center; font-size: 16px; }
+    @media (max-width: 600px) { #ui { font-size: 12px; } #caption { font-size: 14px; } }
   </style>
   <script type="importmap">
     {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
   </script>
 </head>
 <body>
+  <div id="loading">FORGING CIRCUITBREAKER</div>
+  <div id="nogl">WebGL is not available in this window, so the knife cannot be rendered.</div>
   <div id="ui">
     <button id="open">Open</button>
     <button id="close">Close</button>
@@ -33,6 +49,14 @@
       <input type="checkbox" id="mute"> Mute
       <input type="range" id="volume" min="0" max="1" step="0.01" value="1">
     </div>
+    <div>
+      View:
+      <button data-preset="hero">Hero</button>
+      <button data-preset="blade">Blade</button>
+      <button data-preset="pivot">Pivot</button>
+      <button data-preset="latch">Latch</button>
+      <button data-preset="top">Top</button>
+    </div>
     <button id="infoBtn">Info</button>
     <div id="info">
       <h2>Neon Noir Butterfly Knife</h2>
@@ -42,520 +66,657 @@
       <ul>
         <li>Overall length: 230mm</li>
         <li>Blade length: 100mm</li>
-        <li>Materials: Black chrome, magenta & cyan emissive lines, G10 handles</li>
+        <li>Materials: Black chrome, magenta &amp; cyan emissive lines, G10 handles</li>
         <li>Weight: 150g</li>
         <li>Pivot system: Bushing</li>
       </ul>
     </div>
   </div>
+  <button id="hideUi">Hide UI</button>
+  <div id="caption"></div>
   <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-    import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
     import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
     import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-    import { Sky } from 'three/addons/objects/Sky.js';
-    import { Water } from 'three/addons/objects/Water.js';
+    import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-    let scene, camera, renderer, composer, controls, clock, knife, hand, moves, currentMove, speed, slowmo, trail, mute, volume, infoVisible;
+    const TAU = Math.PI * 2;
+    const PI = Math.PI;
+    const BASE_Y = 2.5;
+    const $ = (id) => document.getElementById(id);
+    const clamp01 = (v) => Math.min(1, Math.max(0, v));
+    const smooth = (t) => t * t * (3 - 2 * t);
+    const seg = (p, a, b, lo, hi) => a + (b - a) * smooth(clamp01((p - lo) / (hi - lo)));
+    const lin = (p, a, b, lo, hi) => a + (b - a) * clamp01((p - lo) / (hi - lo));
+    const arc = (p, h) => Math.sin(PI * p) * h;
+    const norm = (v) => ((v % TAU) + TAU) % TAU;
+    const withPose = (b, o) => Object.assign({}, b, o);
+    function bounceAt(p, at, amp) {
+      const q = (p - at) / 0.08;
+      return q > 0 && q < 1 ? amp * Math.sin(q * TAU) * (1 - q) : 0;
+    }
+    const hinge = (p, a, b, lo, hi) => seg(p, a, b, lo, hi) + bounceAt(p, hi, Math.sign(b - a) * 0.05);
+    const stopDist = (a) => {
+      const am = norm(a);
+      return Math.min(am, TAU - am, Math.abs(am - PI));
+    };
 
-    init();
-    animate();
+    const MOVE_KEYS = ['open', 'close', 'chaplin', 'zen', 'fan', 'helix', 'aerial', 'signature'];
+    const COMBO = ['open', 'chaplin', 'zen', 'fan', 'helix', 'aerial', 'signature', 'close'];
+    const LABELS = {
+      open: 'Basic open', close: 'Basic close', chaplin: 'Chaplin', zen: 'Zen rollover',
+      fan: 'Fan', helix: 'Helix', aerial: 'Aerial', signature: 'Circuit Break'
+    };
 
-    function init() {
-      scene = new THREE.Scene();
-      scene.background = new THREE.Color(0xcccccc);
+    const MOVES = {
+      open: { dur: 1.2, fn: (p, b) => withPose(b, {
+        latch: seg(p, b.latch, 1, 0, 0.12),
+        safe: hinge(p, b.safe, PI, 0.1, 0.5),
+        bite: hinge(p, b.bite, PI, 0.42, 0.92)
+      }) },
+      close: { dur: 1.2, fn: (p, b) => withPose(b, {
+        bite: hinge(p, b.bite, 0, 0, 0.5),
+        safe: hinge(p, b.safe, 0, 0.4, 0.9),
+        latch: seg(p, b.latch, 0, 0.85, 1)
+      }) },
+      chaplin: { dur: 1.8, fn: (p, b) => withPose(b, {
+        ry: seg(p, b.ry, b.ry + PI, 0.05, 0.95),
+        py: b.py + arc(p, 3.5)
+      }) },
+      zen: { dur: 1.8, fn: (p, b) => withPose(b, {
+        rx: seg(p, b.rx, b.rx + PI, 0.05, 0.95),
+        py: b.py + arc(p, 1.8),
+        pz: b.pz + arc(p, 2.4)
+      }) },
+      fan: { dur: 2.6, fn: (p, b) => withPose(b, {
+        latch: seg(p, b.latch, 1, 0, 0.1),
+        bite: hinge(p, b.bite, PI, 0, 0.22),
+        safe: hinge(p, b.safe, PI, 0.05, 0.25) + seg(p, 0, 6 * PI, 0.25, 0.9)
+      }) },
+      helix: { dur: 2.2, fn: (p, b) => withPose(b, {
+        rx: lin(p, b.rx, b.rx + 4 * PI, 0, 1),
+        ry: seg(p, b.ry, b.ry + PI, 0, 1),
+        py: b.py + arc(p, 3)
+      }) },
+      aerial: { dur: 2.6, fn: (p, b) => withPose(b, {
+        py: b.py + arc(p, 6),
+        rz: lin(p, b.rz, b.rz + TAU, 0.08, 0.92),
+        latch: seg(p, b.latch, 1, 0, 0.12),
+        safe: hinge(p, b.safe, PI, 0.25, 0.5),
+        bite: hinge(p, b.bite, PI, 0.42, 0.62)
+      }) },
+      signature: { dur: 2.8, fn: (p, b) => withPose(b, {
+        py: b.py + arc(p, 4.5),
+        rz: b.rz + lin(p, 0, 4 * PI, 0.28, 0.8),
+        latch: seg(p, b.latch, 1, 0, 0.1) + seg(p, 0, -1, 0.9, 1),
+        bite: hinge(p, b.bite, PI, 0.25, 0.4) + seg(p, 0, -PI, 0.82, 0.92),
+        safe: hinge(p, b.safe, PI, 0.08, 0.3) + seg(p, 0, -PI, 0.88, 0.97)
+      }) }
+    };
 
-      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.z = 500;
+    const PRESETS = {
+      hero: { pos: [0, 10, 40], target: [0, BASE_Y, 0], spin: true },
+      blade: { pos: [5.5, 4, 12], target: [5.5, BASE_Y, 0] },
+      pivot: { pos: [-2.5, 4.5, 9], target: [0, BASE_Y, 0] },
+      latch: { pos: [12, 6, 7], target: [8.9, BASE_Y, 1.5] },
+      top: { pos: [0, 32, 0.01], target: [0, BASE_Y, 0] }
+    };
 
-      renderer = new THREE.WebGLRenderer({ antialias: true });
+    function main() {
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setSize(window.innerWidth, window.innerHeight);
-      document.body.appendChild(renderer.domElement);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      document.body.insertBefore(renderer.domElement, document.getElementById('caption'));
 
-      composer = new EffectComposer(renderer);
-      const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0, 0);
-      composer.addPass(new THREE.RenderPass(scene, camera));
-      composer.addPass(bloomPass);
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x07070b);
+      scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
 
-      controls = new OrbitControls(camera, renderer.domElement);
-      controls.enablePan = false;
-      controls.enableZoom = false;
-
-      clock = new THREE.Clock();
-
-      createLights();
-      createStage();
-      createKnife();
-      createHand();
-      createMoves();
-
-      window.addEventListener('resize', onWindowResize);
-      document.addEventListener('keydown', onDocumentKeyDown);
-      document.getElementById('infoBtn').addEventListener('click', toggleInfo);
-      document.getElementById('speed').addEventListener('input', (e) => speed = parseFloat(e.target.value));
-      document.getElementById('slowmo').addEventListener('change', (e) => slowmo = e.target.checked);
-      document.getElementById('trail').addEventListener('change', (e) => trail = e.target.checked);
-      document.getElementById('mute').addEventListener('change', (e) => mute = e.target.checked);
-      document.getElementById('volume').addEventListener('input', (e) => volume = parseFloat(e.target.value));
-
-      document.getElementById('open').addEventListener('click', () => playMove('open'));
-      document.getElementById('close').addEventListener('click', () => playMove('close'));
-      document.getElementById('chaplin').addEventListener('click', () => playMove('chaplin'));
-      document.getElementById('zen').addEventListener('click', () => playMove('zen'));
-      document.getElementById('fan').addEventListener('click', () => playMove('fan'));
-      document.getElementById('helix').addEventListener('click', () => playMove('helix'));
-      document.getElementById('aerial').addEventListener('click', () => playMove('aerial'));
-      document.getElementById('signature').addEventListener('click', () => playMove('signature'));
-      document.getElementById('combo').addEventListener('click', () => playCombo());
-      document.getElementById('freestyle').addEventListener('click', () => playFreestyle());
-    }
-
-    function createLights() {
-      const environment = new RoomEnvironment();
-      scene.add(environment);
-
-      const sky = new Sky();
-      sky.scale.setScalar(1000);
-      scene.add(sky);
-
-      const sun = new THREE.Vector3();
-      environment.getSunDirection(sun);
-
-      const skyUniforms = sky.material.uniforms;
-      skyUniforms['turbidity'].value = 10;
-      skyUniforms['rayleigh'].value = 3;
-      skyUniforms['mieCoefficient'].value = 0.005;
-      skyUniforms['mieDirectionalG'].value = 0.8;
-
-      const waterGeometry = new THREE.PlaneGeometry(1000, 1000);
-      const water = new Water(waterGeometry, {
-        textureWidth: 512,
-        textureHeight: 512,
-        waterNormals: new THREE.TextureLoader().load('https://threejs.org/examples/textures/waternormals.jpg', function (texture) {
-          texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-        }),
-        flowDirection: new THREE.Vector2(1, 1),
-        color: 0x0066ff,
-        transparent: true,
-        opacity: 1,
-        depth: 1.2,
-        flowSpeed: 0.5,
-        scale: 20
-      });
-      scene.add(water);
-    }
-
-    function createStage() {
-      const tableGeometry = new THREE.BoxGeometry(200, 50, 100);
-      const tableMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
-      const table = new THREE.Mesh(tableGeometry, tableMaterial);
-      table.position.y = -25;
-      scene.add(table);
-
-      const windowGeometry = new THREE.PlaneGeometry(200, 100);
-      const windowMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 });
-      const window = new THREE.Mesh(windowGeometry, windowMaterial);
-      window.position.x = 100;
-      window.position.y = 25;
-      window.rotation.x = Math.PI / 2;
-      scene.add(window);
-    }
-
-    function createKnife() {
-      const bladeGeometry = new THREE.ShapeGeometry(new THREE.Shape([
-        new THREE.Vector2(-50, 0),
-        new THREE.Vector2(50, 0),
-        new THREE.Vector2(50, 10),
-        new THREE.Vector2(-50, 10)
-      ]), { curveSegments: 4 });
-      const bladeMaterial = new THREE.MeshPhysicalMaterial({ color: 0x333333, metalness: 0.9, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.1 });
-      const blade = new THREE.Mesh(bladeGeometry, bladeMaterial);
-      blade.position.y = 5;
-      blade.rotation.x = Math.PI / 2;
-
-      const handleGeometry = new THREE.CylinderGeometry(10, 10, 100, 32);
-      const handleMaterial = new THREE.MeshPhysicalMaterial({ color: 0x111111, metalness: 0.9, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.1 });
-      const handle1 = new THREE.Mesh(handleGeometry, handleMaterial);
-      handle1.position.x = 60;
-      handle1.rotation.z = Math.PI / 2;
-      const handle2 = new THREE.Mesh(handleGeometry, handleMaterial);
-      handle2.position.x = -60;
-      handle2.rotation.z = Math.PI / 2;
-
-      const latchGeometry = new THREE.BoxGeometry(20, 10, 5);
-      const latchMaterial = new THREE.MeshPhysicalMaterial({ color: 0x333333, metalness: 0.9, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.1 });
-      const latch = new THREE.Mesh(latchGeometry, latchMaterial);
-      latch.position.x = 60;
-      latch.position.y = 50;
-      latch.rotation.z = Math.PI / 2;
-
-      const pivotGeometry = new THREE.CylinderGeometry(5, 5, 10, 32);
-      const pivotMaterial = new THREE.MeshPhysicalMaterial({ color: 0xcccccc, metalness: 0.9, roughness: 0.5 });
-      const pivot1 = new THREE.Mesh(pivotGeometry, pivotMaterial);
-      pivot1.position.x = 60;
-      pivot1.position.y = 50;
-      pivot1.rotation.z = Math.PI / 2;
-      const pivot2 = new THREE.Mesh(pivotGeometry, pivotMaterial);
-      pivot2.position.x = -60;
-      pivot2.position.y = 50;
-      pivot2.rotation.z = Math.PI / 2;
-
-      const zenPinGeometry = new THREE.CylinderGeometry(3, 3, 10, 32);
-      const zenPinMaterial = new THREE.MeshPhysicalMaterial({ color: 0xcccccc, metalness: 0.9, roughness: 0.5 });
-      const zenPin1 = new THREE.Mesh(zenPinGeometry, zenPinMaterial);
-      zenPin1.position.x = 60;
-      zenPin1.position.y = 60;
-      zenPin1.rotation.z = Math.PI / 2;
-      const zenPin2 = new THREE.Mesh(zenPinGeometry, zenPinMaterial);
-      zenPin2.position.x = -60;
-      zenPin2.position.y = 60;
-      zenPin2.rotation.z = Math.PI / 2;
-
-      const kickerGeometry = new THREE.BoxGeometry(10, 5, 5);
-      const kickerMaterial = new THREE.MeshPhysicalMaterial({ color: 0x333333, metalness: 0.9, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.1 });
-      const kicker = new THREE.Mesh(kickerGeometry, kickerMaterial);
-      kicker.position.x = 50;
-      kicker.position.y = -5;
-
-      const makerMarkGeometry = new THREE.TextGeometry('NN', { font: new THREE.FontLoader().load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json') });
-      const makerMarkMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-      const makerMark = new THREE.Mesh(makerMarkGeometry, makerMarkMaterial);
-      makerMark.position.x = 45;
-      makerMark.position.y = 5;
-      makerMark.rotation.x = Math.PI / 2;
-
-      const signatureDetailGeometry = new THREE.TextGeometry('CB', { font: new THREE.FontLoader().load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json') });
-      const signatureDetailMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-      const signatureDetail = new THREE.Mesh(signatureDetailGeometry, signatureDetailMaterial);
-      signatureDetail.position.x = -45;
-      signatureDetail.position.y = 5;
-      signatureDetail.rotation.x = Math.PI / 2;
-
-      const group = new THREE.Group();
-      group.add(blade, handle1, handle2, latch, pivot1, pivot2, zenPin1, zenPin2, kicker, makerMark, signatureDetail);
-      knife = group;
-
-      scene.add(knife);
-    }
-
-    function createHand() {
-      const geometry = new THREE.BoxGeometry(10, 10, 10);
-      const material = new THREE.MeshBasicMaterial({ color: 0xcccccc });
-      const mesh = new THREE.Mesh(geometry, material);
-      hand = mesh;
-
-      scene.add(hand);
-    }
-
-    function createMoves() {
-      const open = {
-        start: () => {
-          knife.rotation.x = -Math.PI / 2;
-          knife.rotation.y = 0;
-          knife.children[1].rotation.x = 0;
-          knife.children[2].rotation.x = 0;
-          knife.children[3].visible = true;
-        },
-        update: (delta) => {
-          const t = Math.min(1, delta / 0.5);
-          knife.rotation.x = -Math.PI / 2 + (Math.PI - Math.PI / 2) * t;
-          knife.children[1].rotation.x = (Math.PI / 2) * t;
-          knife.children[2].rotation.x = -(Math.PI / 2) * t;
-          knife.children[3].visible = t === 1;
-        },
-        end: () => {
-          knife.children[3].visible = false;
-          playSound('latch', 0.5);
-        }
-      };
-
-      const close = {
-        start: () => {
-          knife.rotation.x = 0;
-          knife.rotation.y = 0;
-          knife.children[1].rotation.x = Math.PI / 2;
-          knife.children[2].rotation.x = -Math.PI / 2;
-          knife.children[3].visible = true;
-        },
-        update: (delta) => {
-          const t = Math.min(1, delta / 0.5);
-          knife.rotation.x = (Math.PI / 2) * t;
-          knife.children[1].rotation.x = Math.PI / 2 - (Math.PI / 2) * t;
-          knife.children[2].rotation.x = -Math.PI / 2 + (Math.PI / 2) * t;
-          knife.children[3].visible = t === 1;
-        },
-        end: () => {
-          knife.children[3].visible = false;
-          playSound('latch', 0.5);
-        }
-      };
-
-      const chaplin = {
-        start: () => {
-          knife.rotation.x = 0;
-          knife.rotation.y = 0;
-          knife.children[1].rotation.x = Math.PI / 2;
-          knife.children[2].rotation.x = -Math.PI / 2;
-          knife.children[3].visible = true;
-        },
-        update: (delta) => {
-          const t = Math.min(1, delta / 0.5);
-          knife.rotation.x = (Math.PI / 2) * t;
-          knife.children[1].rotation.x = Math.PI / 2 - (Math.PI / 2) * t;
-          knife.children[2].rotation.x = -Math.PI / 2 + (Math.PI / 2) * t;
-          knife.children[3].visible = t === 1;
-        },
-        end: () => {
-          knife.children[3].visible = false;
-          playSound('latch', 0.5);
-        }
-      };
-
-      const zen = {
-        start: () => {
-          knife.rotation.x = 0;
-          knife.rotation.y = 0;
-          knife.children[1].rotation.x = Math.PI / 2;
-          knife.children[2].rotation.x = -Math.PI / 2;
-          knife.children[3].visible = true;
-        },
-        update: (delta) => {
-          const t = Math.min(1, delta / 0.5);
-          knife.rotation.x = (Math.PI / 2) * t;
-          knife.children[1].rotation.x = Math.PI / 2 - (Math.PI / 2) * t;
-          knife.children[2].rotation.x = -Math.PI / 2 + (Math.PI / 2) * t;
-          knife.children[3].visible = t === 1;
-        },
-        end: () => {
-          knife.children[3].visible = false;
-          playSound('latch', 0.5);
-        }
-      };
-
-      const fan = {
-        start: () => {
-          knife.rotation.x = 0;
-          knife.rotation.y = 0;
-          knife.children[1].rotation.x = Math.PI / 2;
-          knife.children[2].rotation.x = -Math.PI / 2;
-          knife.children[3].visible = true;
-        },
-        update: (delta) => {
-          const t = Math.min(1, delta / 0.5);
-          knife.rotation.x = (Math.PI / 2) * t;
-          knife.children[1].rotation.x = Math.PI / 2 - (Math.PI / 2) * t;
-          knife.children[2].rotation.x = -Math.PI / 2 + (Math.PI / 2) * t;
-          knife.children[3].visible = t === 1;
-        },
-        end: () => {
-          knife.children[3].visible = false;
-          playSound('latch', 0.5);
-        }
-      };
-
-      const helix = {
-        start: () => {
-          knife.rotation.x = 0;
-          knife.rotation.y = 0;
-          knife.children[1].rotation.x = Math.PI / 2;
-          knife.children[2].rotation.x = -Math.PI / 2;
-          knife.children[3].visible = true;
-        },
-        update: (delta) => {
-          const t = Math.min(1, delta / 0.5);
-          knife.rotation.x = (Math.PI / 2) * t;
-          knife.children[1].rotation.x = Math.PI / 2 - (Math.PI / 2) * t;
-          knife.children[2].rotation.x = -Math.PI / 2 + (Math.PI / 2) * t;
-          knife.children[3].visible = t === 1;
-        },
-        end: () => {
-          knife.children[3].visible = false;
-          playSound('latch', 0.5);
-        }
-      };
-
-      const aerial = {
-        start: () => {
-          knife.rotation.x = 0;
-          knife.rotation.y = 0;
-          knife.children[1].rotation.x = Math.PI / 2;
-          knife.children[2].rotation.x = -Math.PI / 2;
-          knife.children[3].visible = true;
-        },
-        update: (delta) => {
-          const t = Math.min(1, delta / 0.5);
-          knife.rotation.x = (Math.PI / 2) * t;
-          knife.children[1].rotation.x = Math.PI / 2 - (Math.PI / 2) * t;
-          knife.children[2].rotation.x = -Math.PI / 2 + (Math.PI / 2) * t;
-          knife.children[3].visible = t === 1;
-        },
-        end: () => {
-          knife.children[3].visible = false;
-          playSound('latch', 0.5);
-        }
-      };
-
-      const signature = {
-        start: () => {
-          knife.rotation.x = 0;
-          knife.rotation.y = 0;
-          knife.children[1].rotation.x = Math.PI / 2;
-          knife.children[2].rotation.x = -Math.PI / 2;
-          knife.children[3].visible = true;
-        },
-        update: (delta) => {
-          const t = Math.min(1, delta / 0.5);
-          knife.rotation.x = (Math.PI / 2) * t;
-          knife.children[1].rotation.x = Math.PI / 2 - (Math.PI / 2) * t;
-          knife.children[2].rotation.x = -Math.PI / 2 + (Math.PI / 2) * t;
-          knife.children[3].visible = t === 1;
-        },
-        end: () => {
-          knife.children[3].visible = false;
-          playSound('latch', 0.5);
-        }
-      };
-
-      moves = {
-        open,
-        close,
-        chaplin,
-        zen,
-        fan,
-        helix,
-        aerial,
-        signature
-      };
-    }
-
-    function playMove(move) {
-      if (currentMove) return;
-      currentMove = moves[move];
-      currentMove.start();
-      animateMove();
-    }
-
-    function animateMove() {
-      const delta = clock.getDelta() * speed;
-      currentMove.update(delta);
-      if (currentMove.update(delta) < 1) {
-        requestAnimationFrame(animateMove);
-      } else {
-        currentMove.end();
-        currentMove = null;
-      }
-    }
-
-    function playCombo() {
-      const movesOrder = ['open', 'close', 'chaplin', 'zen', 'fan', 'helix', 'aerial', 'signature', 'close'];
-      let index = 0;
-      function nextMove() {
-        if (index < movesOrder.length) {
-          playMove(movesOrder[index]);
-          index++;
-          setTimeout(nextMove, 1000);
-        }
-      }
-      nextMove();
-    }
-
-    function playFreestyle() {
-      const movesOrder = Object.keys(moves);
-      let index = 0;
-      function nextMove() {
-        if (index < movesOrder.length) {
-          playMove(movesOrder[index]);
-          index = Math.floor(Math.random() * movesOrder.length);
-          setTimeout(nextMove, 1000);
-        }
-      }
-      nextMove();
-    }
-
-    function onWindowResize() {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      composer.setSize(window.innerWidth, window.innerHeight);
-    }
-
-    function onDocumentKeyDown(event) {
-      if (event.key >= '1' && event.key <= '8') {
-        playMove(event.key);
-      }
-    }
-
-    function toggleInfo() {
-      infoVisible = !infoVisible;
-      document.getElementById('info').classList.toggle('show');
-    }
-
-    function createAudioContext() {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      return new AudioContext();
-    }
-
-    const audioContext = createAudioContext();
-    const analyser = audioContext.createAnalyser();
-    analyser.fftSize = 2048;
-    const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-
-    function playSound(sound, volume) {
-      if (mute) return;
-      const audio = new Audio(`https://example.com/${sound}.mp3`);
-      audio.volume = volume * volume;
-      audio.play();
-      audio.addEventListener('ended', () => audio.remove());
-    }
-
-    function createOscillator(freq, volume) {
-      const oscillator = audioContext.createOscillator();
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
-      oscillator.connect(analyser);
-      analyser.connect(audioContext.destination);
-      oscillator.start();
-      return oscillator;
-    }
-
-    function createNoise(freq, volume) {
-      const noise = audioContext.createBufferSource();
-      const buffer = audioContext.createBuffer(1, bufferLength, audioContext.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferLength; i++) {
-        data[i] = Math.random() * 2 - 1;
-      }
-      noise.buffer = buffer;
-      noise.connect(analyser);
-      analyser.connect(audioContext.destination);
-      noise.start();
-      return noise;
-    }
-
-    function createFilter(freq, volume) {
-      const filter = audioContext.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(freq, audioContext.currentTime);
-      filter.connect(analyser);
-      analyser.connect(audioContext.destination);
-      return filter;
-    }
-
-    function animate() {
-      requestAnimationFrame(animate);
+      const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.1, 300);
+      camera.position.set(0, 10, 40);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.target.set(0, BASE_Y, 0);
+      controls.enableDamping = true;
+      controls.minDistance = 5;
+      controls.maxDistance = 70;
       controls.update();
-      composer.render();
-      if (currentMove) {
-        analyser.getByteTimeDomainData(dataArray);
-        const average = dataArray.reduce((a, b) => a + b) / bufferLength;
-        const freq = average * 100;
-        const volume = average * 0.1;
-        playSound('swish', volume);
-        createOscillator(freq, volume);
+
+      const composer = new EffectComposer(renderer);
+      composer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      composer.setSize(window.innerWidth, window.innerHeight);
+      composer.addPass(new RenderPass(scene, camera));
+      composer.addPass(new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.35, 0.5, 0.9));
+      composer.addPass(new OutputPass());
+
+      const key = new THREE.DirectionalLight(0xfff1e0, 2.6);
+      key.position.set(-18, 16, 14);
+      key.castShadow = true;
+      key.shadow.mapSize.set(2048, 2048);
+      Object.assign(key.shadow.camera, { left: -18, right: 18, top: 18, bottom: -18, near: 1, far: 80 });
+      key.shadow.camera.updateProjectionMatrix();
+      key.shadow.bias = -0.0005;
+      key.target.position.set(0, BASE_Y, 0);
+      scene.add(key, key.target);
+      const rim = new THREE.DirectionalLight(0x2be8ff, 1.5);
+      rim.position.set(12, 8, -14);
+      const fill = new THREE.DirectionalLight(0xff2bd6, 0.7);
+      fill.position.set(14, 2, 10);
+      scene.add(rim, fill, new THREE.AmbientLight(0x303040, 0.4));
+
+      const ground = new THREE.Mesh(
+        new THREE.CircleGeometry(60, 96),
+        new THREE.MeshStandardMaterial({ color: 0x0d0d14, roughness: 0.8, metalness: 0.05 })
+      );
+      ground.rotation.x = -PI / 2;
+      ground.position.y = BASE_Y - 5.2;
+      ground.receiveShadow = true;
+      scene.add(ground);
+      const stageRing = new THREE.Mesh(
+        new THREE.TorusGeometry(12, 0.05, 8, 160),
+        new THREE.MeshBasicMaterial({ color: new THREE.Color(2.5, 0.3, 2.0) })
+      );
+      stageRing.rotation.x = -PI / 2;
+      stageRing.position.y = BASE_Y - 5.15;
+      scene.add(stageRing);
+
+      const bladeMat = new THREE.MeshPhysicalMaterial({ color: 0x2b2c33, metalness: 1, roughness: 0.2, clearcoat: 0.5, clearcoatRoughness: 0.08 });
+      const g10 = new THREE.MeshPhysicalMaterial({ color: 0x15151c, metalness: 0, roughness: 0.6, clearcoat: 0.25, clearcoatRoughness: 0.4 });
+      const steel = new THREE.MeshPhysicalMaterial({ color: 0xc9ccd4, metalness: 1, roughness: 0.28 });
+      const magenta = new THREE.MeshStandardMaterial({ color: 0xff2bd6, emissive: 0xff2bd6, emissiveIntensity: 2.2 });
+      const cyan = new THREE.MeshStandardMaterial({ color: 0x2be8ff, emissive: 0x2be8ff, emissiveIntensity: 2.2 });
+
+      const knifeRoot = new THREE.Group();
+      const showcase = new THREE.Group();
+      showcase.add(knifeRoot);
+      scene.add(showcase);
+      const body = new THREE.Group();
+      knifeRoot.add(body);
+
+      const bladeShape = new THREE.Shape();
+      bladeShape.moveTo(-0.7, 0.42);
+      bladeShape.lineTo(9.4, 0.36);
+      bladeShape.quadraticCurveTo(10.5, 0.3, 10.9, 0.0);
+      bladeShape.quadraticCurveTo(9.2, -0.55, 6.0, -0.8);
+      bladeShape.lineTo(2.4, -0.9);
+      bladeShape.lineTo(1.3, -1.25);
+      bladeShape.lineTo(0.7, -1.1);
+      bladeShape.lineTo(-0.7, -0.5);
+      bladeShape.closePath();
+      const bladeGeo = new THREE.ExtrudeGeometry(bladeShape, {
+        depth: 0.12, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.03, bevelSegments: 3, curveSegments: 12
+      });
+      bladeGeo.translate(0, 0, -0.06);
+      const blade = new THREE.Mesh(bladeGeo, bladeMat);
+      body.add(blade);
+
+      const markCanvas = document.createElement('canvas');
+      markCanvas.width = 512;
+      markCanvas.height = 256;
+      const mctx = markCanvas.getContext('2d');
+      mctx.strokeStyle = 'rgba(230,230,240,0.9)';
+      mctx.lineWidth = 6;
+      mctx.beginPath();
+      mctx.arc(256, 128, 108, 0, TAU);
+      mctx.stroke();
+      mctx.fillStyle = 'rgba(230,230,240,0.95)';
+      mctx.font = 'bold 150px Georgia, serif';
+      mctx.textAlign = 'center';
+      mctx.textBaseline = 'middle';
+      mctx.fillText('NN', 256, 140);
+      const markMat = new THREE.MeshStandardMaterial({
+        map: new THREE.CanvasTexture(markCanvas), transparent: true, depthWrite: false, metalness: 1, roughness: 0.35, opacity: 0
+      });
+      const markGeo = new THREE.PlaneGeometry(1.7, 0.85);
+      const markFront = new THREE.Mesh(markGeo, markMat);
+      markFront.position.set(5.4, -0.2, 0.094);
+      const markBack = new THREE.Mesh(markGeo, markMat);
+      markBack.position.set(5.4, -0.2, -0.094);
+      markBack.rotation.y = PI;
+      body.add(markFront, markBack);
+
+      const handleShape = new THREE.Shape();
+      handleShape.moveTo(-0.8, -1.1);
+      handleShape.lineTo(7.8, -0.95);
+      handleShape.quadraticCurveTo(10.8, -0.9, 10.6, 0);
+      handleShape.quadraticCurveTo(10.8, 0.9, 7.8, 0.95);
+      handleShape.lineTo(-0.8, 1.1);
+      handleShape.quadraticCurveTo(-1.4, 0, -0.8, -1.1);
+      const pinHole = new THREE.Path();
+      pinHole.absarc(0, 0, 0.3, 0, TAU, true);
+      handleShape.holes.push(pinHole);
+      const handleGeo = new THREE.ExtrudeGeometry(handleShape, {
+        depth: 0.55, bevelEnabled: true, bevelThickness: 0.06, bevelSize: 0.06, bevelSegments: 3, curveSegments: 24
+      });
+
+      const plate = (mat, z) => {
+        const m = new THREE.Mesh(handleGeo, mat);
+        m.position.z = z;
+        m.castShadow = true;
+        m.receiveShadow = true;
+        return m;
+      };
+      const biteGroup = new THREE.Group();
+      biteGroup.add(plate(g10, 0.16), plate(g10, -0.71));
+      const safeGroup = new THREE.Group();
+      safeGroup.add(plate(g10, 0.86), plate(g10, -1.41));
+      body.add(biteGroup, safeGroup);
+
+      for (const s of [1, -1]) {
+        for (const [y, mat] of [[0.55, magenta], [-0.55, cyan]]) {
+          const strip = new THREE.Mesh(new THREE.BoxGeometry(7.0, 0.07, 0.03), mat);
+          strip.position.set(4.6, y, s * 1.49);
+          safeGroup.add(strip);
+        }
       }
+
+      const latchPivot = new THREE.Group();
+      latchPivot.position.set(8.9, 0, 1.56);
+      safeGroup.add(latchPivot);
+      const lever = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.5, 0.14), steel);
+      lever.position.x = -1.2;
+      lever.castShadow = true;
+      latchPivot.add(lever);
+      const latchRivet = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.12, 20).rotateX(PI / 2), steel);
+      latchRivet.position.z = 0.04;
+      latchPivot.add(latchRivet);
+
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 3.4, 24).rotateX(PI / 2), steel);
+      body.add(shaft);
+      for (const s of [1, -1]) {
+        const head = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.12, 28).rotateX(PI / 2), steel);
+        head.position.z = s * 1.62;
+        body.add(head);
+      }
+
+      knifeRoot.traverse((o) => {
+        if (o.isMesh) {
+          o.castShadow = true;
+          o.receiveShadow = true;
+        }
+      });
+      markFront.castShadow = false;
+      markBack.castShadow = false;
+      safeGroup.children.forEach((c) => { if (c.material === magenta || c.material === cyan) c.castShadow = false; });
+
+      const TRAIL_MAX = 60;
+      const trailPos = new Float32Array(TRAIL_MAX * 3);
+      const trailCol = new Float32Array(TRAIL_MAX * 3);
+      const trailGeo = new THREE.BufferGeometry();
+      trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+      trailGeo.setAttribute('color', new THREE.BufferAttribute(trailCol, 3));
+      const trailLine = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({
+        vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false
+      }));
+      trailLine.frustumCulled = false;
+      trailLine.visible = false;
+      scene.add(trailLine);
+      const trailPts = [];
+
+      let state = { rx: 0, ry: 0, rz: 0, px: 0, py: 0, pz: 0, bite: 0, safe: 0, latch: 0 };
+      let lastPose = Object.assign({}, state);
+      let active = null;
+      let lastName = null;
+      let mode = null;
+      const queue = [];
+      let turnOn = false;
+      let goal = null;
+      let reveal = { t: 0, queued: false };
+      let lastCaption = null;
+
+      function applyPose(s) {
+        knifeRoot.position.set(0, BASE_Y + s.py, s.pz);
+        knifeRoot.rotation.set(s.rx, s.ry, s.rz);
+        biteGroup.rotation.z = s.bite;
+        safeGroup.rotation.z = s.safe;
+        latchPivot.rotation.z = -0.9 * s.latch;
+      }
+
+      function isOpen(s) {
+        return Math.abs(norm(s.bite) - PI) < 0.05 && Math.abs(norm(s.safe) - PI) < 0.05;
+      }
+
+      function startMove(name) {
+        const base = Object.assign({}, state);
+        active = { name, t: 0, dur: MOVES[name].dur, base, wasOpen: isOpen(base) };
+        lastName = name;
+        lastPose = Object.assign({}, base);
+      }
+
+      function finishMove(final) {
+        const s = Object.assign({}, final, {
+          rx: norm(final.rx), ry: norm(final.ry), rz: norm(final.rz),
+          bite: norm(final.bite), safe: norm(final.safe), px: 0, py: 0, pz: 0
+        });
+        applyPose(s);
+        if (!active.wasOpen && isOpen(s)) ring();
+        state = s;
+        lastPose = Object.assign({}, s);
+        active = null;
+      }
+
+      function fillFromMode() {
+        if (mode === 'combo') {
+          queue.push(...COMBO);
+        } else if (mode === 'freestyle') {
+          const pool = MOVE_KEYS.filter((n) => n !== lastName);
+          queue.push(pool[Math.floor(Math.random() * pool.length)]);
+        }
+      }
+
+      function requestMove(name) {
+        ensureAudio();
+        mode = null;
+        queue.length = 0;
+        queue.push(name);
+        refreshModeButtons();
+      }
+
+      function refreshModeButtons() {
+        $('combo').classList.toggle('on', mode === 'combo');
+        $('freestyle').classList.toggle('on', mode === 'freestyle');
+      }
+
+      const timeScale = () => parseFloat($('speed').value) * ($('slowmo').checked ? 0.35 : 1);
+
+      function updateReveal(dt) {
+        reveal.t += dt;
+        const q = clamp01(reveal.t / 2.6);
+        showcase.rotation.y = -1.1 * (1 - smooth(q));
+        key.position.x = -18 + 27 * smooth(q);
+        markMat.opacity = q;
+        if (!reveal.queued && reveal.t > 0.6) {
+          reveal.queued = true;
+          queue.push('open');
+        }
+        if (reveal.t > 3.2) {
+          reveal = null;
+          turnOn = true;
+        }
+      }
+
+      function updatePreset() {
+        if (!goal) return;
+        camera.position.lerp(goal.pos, 0.07);
+        controls.target.lerp(goal.target, 0.07);
+        if (camera.position.distanceTo(goal.pos) < 0.02 && controls.target.distanceTo(goal.target) < 0.02) goal = null;
+      }
+
+      function updateCaption() {
+        const text = active ? LABELS[active.name] : (reveal ? 'CircuitBreaker  -  Neon Noir Forge' : '');
+        if (text !== lastCaption) {
+          $('caption').textContent = text;
+          lastCaption = text;
+        }
+      }
+
+      function updateTrail() {
+        if (!$('trail').checked) {
+          trailPts.length = 0;
+          trailLine.visible = false;
+          return;
+        }
+        const tip = new THREE.Vector3(10.9, 0, 0);
+        blade.localToWorld(tip);
+        trailPts.push(tip);
+        if (trailPts.length > TRAIL_MAX) trailPts.shift();
+        const n = trailPts.length;
+        for (let i = 0; i < n; i++) {
+          const pt = trailPts[i];
+          const f = (i + 1) / n;
+          trailPos[i * 3] = pt.x;
+          trailPos[i * 3 + 1] = pt.y;
+          trailPos[i * 3 + 2] = pt.z;
+          trailCol[i * 3] = 0.16 * f;
+          trailCol[i * 3 + 1] = 0.91 * f;
+          trailCol[i * 3 + 2] = f;
+        }
+        trailGeo.setDrawRange(0, n);
+        trailGeo.attributes.position.needsUpdate = true;
+        trailGeo.attributes.color.needsUpdate = true;
+        trailLine.visible = n > 1;
+      }
+
+      function step(dt) {
+        const simDt = dt * timeScale();
+        if (reveal) updateReveal(dt);
+        if (!active) {
+          if (!queue.length && mode) fillFromMode();
+          if (queue.length) startMove(queue.shift());
+        }
+        let angSpeed = 0;
+        let handleSpeed = 0;
+        if (active) {
+          const m = MOVES[active.name];
+          active.t += simDt;
+          const p = clamp01(active.t / m.dur);
+          const next = m.fn(p, active.base);
+          if (simDt > 0) {
+            angSpeed = (Math.abs(next.rx - lastPose.rx) + Math.abs(next.ry - lastPose.ry) + Math.abs(next.rz - lastPose.rz)) / simDt;
+            for (const k of ['bite', 'safe']) {
+              const v = Math.abs(next[k] - lastPose[k]) / simDt;
+              handleSpeed += v;
+              const dNow = stopDist(next[k]);
+              const dPrev = stopDist(lastPose[k]);
+              if (v > 0.6 && dNow < 0.03 && dPrev >= 0.03 && !(active.name === 'fan' && k === 'safe')) {
+                clack(Math.min(1, v / 9));
+              }
+            }
+            if ((lastPose.latch < 0.5) !== (next.latch < 0.5)) latchClick();
+          }
+          applyPose(next);
+          lastPose = next;
+          if (p >= 1) finishMove(next);
+        } else if (turnOn) {
+          showcase.rotation.y += dt * 0.22;
+        }
+        updateAudio(angSpeed, handleSpeed);
+        updateCaption();
+        updateTrail();
+        updatePreset();
+      }
+
+      applyPose(state);
+      renderer.render(scene, camera);
+
+      function frame() {
+        requestAnimationFrame(frame);
+        step(Math.min(clock.getDelta(), 0.05));
+        controls.update();
+        composer.render();
+      }
+      const clock = new THREE.Clock();
+
+      let actx = null;
+      let master = null;
+      let noiseBuf = null;
+      let swishF = null;
+      let swishG = null;
+      let rattleF = null;
+      let rattleG = null;
+
+      function syncVolume() {
+        if (!actx) return;
+        const level = $('mute').checked ? 0 : parseFloat($('volume').value);
+        master.gain.setTargetAtTime(level * 0.8, actx.currentTime, 0.02);
+      }
+
+      function ensureAudio() {
+        if (actx) {
+          if (actx.state === 'suspended') actx.resume();
+          return;
+        }
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        actx = new AC();
+        master = actx.createGain();
+        master.connect(actx.destination);
+        noiseBuf = actx.createBuffer(1, actx.sampleRate * 2, actx.sampleRate);
+        const data = noiseBuf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+        const sw = actx.createBufferSource();
+        sw.buffer = noiseBuf;
+        sw.loop = true;
+        swishF = actx.createBiquadFilter();
+        swishF.type = 'bandpass';
+        swishF.frequency.value = 400;
+        swishF.Q.value = 2;
+        swishG = actx.createGain();
+        swishG.gain.value = 0;
+        sw.connect(swishF).connect(swishG).connect(master);
+        sw.start();
+        const rt = actx.createBufferSource();
+        rt.buffer = noiseBuf;
+        rt.loop = true;
+        rattleF = actx.createBiquadFilter();
+        rattleF.type = 'highpass';
+        rattleF.frequency.value = 2400;
+        rattleG = actx.createGain();
+        rattleG.gain.value = 0;
+        rt.connect(rattleF).connect(rattleG).connect(master);
+        rt.start();
+        syncVolume();
+      }
+
+      function noiseHit(freq, type, dur, gain) {
+        const t = actx.currentTime;
+        const s = actx.createBufferSource();
+        s.buffer = noiseBuf;
+        const f = actx.createBiquadFilter();
+        f.type = type;
+        f.frequency.value = freq;
+        f.Q.value = 1.5;
+        const g = actx.createGain();
+        g.gain.setValueAtTime(gain, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        s.connect(f).connect(g).connect(master);
+        s.start(t, Math.random(), dur + 0.05);
+      }
+
+      function clack(v) {
+        if (!actx) return;
+        const t = actx.currentTime;
+        noiseHit(2600, 'bandpass', 0.035, 0.9 * v);
+        const o = actx.createOscillator();
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(1900, t);
+        o.frequency.exponentialRampToValueAtTime(900, t + 0.04);
+        const g = actx.createGain();
+        g.gain.setValueAtTime(0.4 * v, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+        o.connect(g).connect(master);
+        o.start(t);
+        o.stop(t + 0.06);
+      }
+
+      function latchClick() {
+        if (!actx) return;
+        noiseHit(3800, 'highpass', 0.012, 0.5);
+        noiseHit(1500, 'bandpass', 0.02, 0.25);
+      }
+
+      function ring() {
+        if (!actx) return;
+        const t = actx.currentTime;
+        [[1046.5, 1], [2886, 0.5], [5650, 0.25], [8290, 0.12]].forEach(([f, g]) => {
+          const o = actx.createOscillator();
+          o.type = 'sine';
+          o.frequency.value = f;
+          const e = actx.createGain();
+          e.gain.setValueAtTime(0.0001, t);
+          e.gain.exponentialRampToValueAtTime(g * 0.5, t + 0.003);
+          e.gain.exponentialRampToValueAtTime(0.0001, t + 1.6);
+          o.connect(e).connect(master);
+          o.start(t);
+          o.stop(t + 1.7);
+        });
+      }
+
+      function updateAudio(angSpeed, handleSpeed) {
+        if (!actx) return;
+        const t = actx.currentTime;
+        swishG.gain.setTargetAtTime(Math.min(0.35, angSpeed * 0.02), t, 0.05);
+        swishF.frequency.setTargetAtTime(300 + Math.min(1200, angSpeed * 60), t, 0.05);
+        rattleG.gain.setTargetAtTime(Math.min(0.12, handleSpeed * 0.01), t, 0.05);
+      }
+
+      function playCombo() {
+        ensureAudio();
+        if (mode === 'combo') {
+          mode = null;
+          queue.length = 0;
+        } else {
+          mode = 'combo';
+          queue.length = 0;
+        }
+        refreshModeButtons();
+      }
+
+      function playFreestyle() {
+        ensureAudio();
+        if (mode === 'freestyle') {
+          mode = null;
+          queue.length = 0;
+        } else {
+          mode = 'freestyle';
+          queue.length = 0;
+        }
+        refreshModeButtons();
+      }
+
+      MOVE_KEYS.forEach((name) => $(name).addEventListener('click', () => requestMove(name)));
+      $('combo').addEventListener('click', playCombo);
+      $('freestyle').addEventListener('click', playFreestyle);
+      document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') return;
+        const i = '12345678'.indexOf(e.key);
+        if (i >= 0) requestMove(MOVE_KEYS[i]);
+      });
+      document.addEventListener('pointerdown', ensureAudio);
+      $('mute').addEventListener('change', syncVolume);
+      $('volume').addEventListener('input', syncVolume);
+      $('trail').addEventListener('change', () => { if (!$('trail').checked) trailPts.length = 0; });
+      $('infoBtn').addEventListener('click', () => $('info').classList.toggle('show'));
+      $('hideUi').addEventListener('click', () => {
+        const hidden = $('ui').classList.toggle('hidden');
+        $('hideUi').textContent = hidden ? 'Show UI' : 'Hide UI';
+      });
+      document.querySelectorAll('[data-preset]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const pr = PRESETS[btn.dataset.preset];
+          goal = { pos: new THREE.Vector3(...pr.pos), target: new THREE.Vector3(...pr.target) };
+          turnOn = !!pr.spin;
+        });
+      });
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        composer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      applyPose(state);
+      reveal = { t: 0, queued: false };
+      showcase.rotation.y = -1.1;
+      frame();
+      $('loading').classList.add('done');
+    }
+
+    try {
+      main();
+    } catch (err) {
+      console.error(err);
+      $('loading').classList.add('done');
+      $('nogl').style.display = 'flex';
+      $('nogl').textContent = /WebGL/i.test(String(err && err.message))
+        ? 'WebGL is not available in this window, so the knife cannot be rendered.'
+        : 'The knife could not start: ' + (err && err.message);
     }
   </script>
 </body>

@@ -28,6 +28,9 @@ Future<void> runPetWindow(
     localeName == null || localeName.isEmpty ? null : Locale(localeName),
   );
   final snapshot = ValueNotifier<(int, Map<String, dynamic>)>((0, arguments));
+  // Dismissing only hides this window, and its engine keeps drawing frames
+  // for anything still animating. Tickers stay off until the next summon.
+  final shown = ValueNotifier<bool>(true);
   await controller.setWindowMethodHandler((call) async {
     switch (call.method) {
       case petWindowMethodShow:
@@ -35,6 +38,7 @@ Future<void> runPetWindow(
           snapshot.value.$1 + 1,
           Map<String, dynamic>.from(call.arguments as Map),
         );
+        shown.value = true;
         await controller.show();
         try {
           await windowManager.focus();
@@ -44,6 +48,8 @@ Future<void> runPetWindow(
           snapshot.value.$1 + 1,
           Map<String, dynamic>.from(call.arguments as Map),
         );
+      case petWindowMethodHide:
+        shown.value = false;
       default:
         throw MissingPluginException('Unknown pet window method ${call.method}');
     }
@@ -58,11 +64,16 @@ Future<void> runPetWindow(
     await controller.show();
   }
   runApp(
-    ValueListenableBuilder<(int, Map<String, dynamic>)>(
-      valueListenable: snapshot,
-      builder: (_, value, _) => _PetWindowApp(
-        key: ValueKey(value.$1),
-        arguments: value.$2,
+    ValueListenableBuilder<bool>(
+      valueListenable: shown,
+      builder: (_, isShown, child) =>
+          TickerMode(enabled: isShown, child: child!),
+      child: ValueListenableBuilder<(int, Map<String, dynamic>)>(
+        valueListenable: snapshot,
+        builder: (_, value, _) => _PetWindowApp(
+          key: ValueKey(value.$1),
+          arguments: value.$2,
+        ),
       ),
     ),
   );
@@ -307,7 +318,12 @@ class _PetAutoClickerPanelState extends State<PetAutoClickerPanel> {
   }
 
   Future<void> _refresh() async {
-    if (_busy || !mounted) return;
+    // Tickers are off while the pet window is hidden; so is this poll.
+    if (_busy ||
+        !mounted ||
+        !TickerMode.getValuesNotifier(context).value.enabled) {
+      return;
+    }
     try {
       final result = await petMainChannel.invokeMethod<Map<dynamic, dynamic>>(
         petMethodAutoClicker,

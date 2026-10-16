@@ -103,6 +103,15 @@
         "server/benchmarks/scenes"
       ],
       "port": 8129
+    },
+    {
+      "name": "luma-server-decider-preview",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "const {spawn}=require('child_process');const os=require('os'),path=require('path');const env={...process.env,LUMA_PORT:'8131',LUMA_DATA_DIR:path.join(os.tmpdir(),'claude','C--Users-ayden-Files-Intellij-Programs-luma-app','c47cba56-cd56-49e3-b047-9d5559dad530','scratchpad','decider-data'),LUMA_ADMIN_KEY:'preview-admin-key-0001',LUMA_OPENROUTER_API_KEY:'',LUMA_MISTRAL_API_KEY:'',LUMA_GOOGLE_API_KEY:''};spawn('dart',['run','bin/luma_server.dart'],{cwd:'server',env,stdio:'inherit',shell:true})"
+      ],
+      "port": 8131
     }
   ]
 }

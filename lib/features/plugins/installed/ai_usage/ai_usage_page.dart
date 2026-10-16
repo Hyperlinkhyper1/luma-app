@@ -65,6 +65,35 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
   AiUsageSortMetric _projectSort = AiUsageSortMetric.tokens;
   AiUsageSortMetric _providerSort = AiUsageSortMetric.tokens;
   bool _combineByCompany = false;
+  Stream<List<AiUsageTurn>>? _turns;
+  (AiUsageRangePreset, DateTime?)? _turnsKey;
+
+  /// The drift query for the selected range, reused across rebuilds. The
+  /// repository notifies on every scan and sync step; a fresh query each time
+  /// re-read the whole table. Its end bound sits a year out so new turns
+  /// arrive through drift's own table updates, and the start is kept to the
+  /// minute so a rolling window still moves along.
+  Stream<List<AiUsageTurn>> _turnsFor(AiUsageRepository repo) {
+    final now = DateTime.now();
+    final (start, _) = resolveAiUsageRange(_preset, now);
+    final key = (
+      _preset,
+      start == null
+          ? null
+          : DateTime(
+              start.year,
+              start.month,
+              start.day,
+              start.hour,
+              start.minute,
+            ),
+    );
+    if (_turns == null || key != _turnsKey) {
+      _turnsKey = key;
+      _turns = repo.watchRange(start, DateTime(now.year + 1));
+    }
+    return _turns!;
+  }
 
   @override
   void didChangeDependencies() {
@@ -139,8 +168,6 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
           );
         }
 
-        final (start, end) = resolveAiUsageRange(_preset, DateTime.now());
-
         return Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
           child: Column(
@@ -160,7 +187,7 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
               const SizedBox(height: 16),
               Expanded(
                 child: StreamData<List<AiUsageTurn>>(
-                  stream: repo.watchRange(start, end),
+                  stream: _turnsFor(repo),
                   builder: (context, turns) => _AiUsageBody(
                     turns: _sourceFilter == null
                         ? turns

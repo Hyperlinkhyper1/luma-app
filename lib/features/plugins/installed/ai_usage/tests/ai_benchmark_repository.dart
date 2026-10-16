@@ -238,14 +238,38 @@ class AiBenchmarkRepository extends ChangeNotifier {
   /// Whether the cached [file] still matches the manifest's [expected]
   /// SHA-256. An empty expectation means an old server that sends no hashes —
   /// trust the file, as before.
+  ///
+  /// Every test page opened refreshes the roster, which re-checks a few
+  /// hundred previews. A file that passed and hasn't changed on disk since is
+  /// not read and hashed again.
   Future<bool> _matchesHash(File file, String expected) async {
     if (expected.isEmpty) return true;
     try {
-      return sha256.convert(await file.readAsBytes()).toString() == expected;
+      final stat = await file.stat();
+      final verified = _verifiedHashes[file.path];
+      if (verified != null &&
+          verified.hash == expected &&
+          verified.size == stat.size &&
+          verified.modified == stat.modified) {
+        return true;
+      }
+      final matches =
+          sha256.convert(await file.readAsBytes()).toString() == expected;
+      if (matches) {
+        _verifiedHashes[file.path] = (
+          hash: expected,
+          size: stat.size,
+          modified: stat.modified,
+        );
+      }
+      return matches;
     } catch (_) {
       return false;
     }
   }
+
+  final Map<String, ({String hash, int size, DateTime modified})>
+  _verifiedHashes = {};
 
   /// The scene's HTML on disk, downloading and verifying it first when needed.
   ///

@@ -90,49 +90,36 @@ class _AccountPageState extends State<AccountPage> {
           );
         }
 
-        return Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1120),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(32, 24, 32, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const _PageHeader(),
-                  const SizedBox(height: 24),
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          width: 232,
-                          child: _SideNav(
-                            selected: _section,
-                            onSelect: _select,
-                          ),
-                        ),
-                        const SizedBox(width: 28),
-                        Expanded(
-                          child: SingleChildScrollView(
-                            key: PageStorageKey('account-${_section.name}'),
-                            padding: const EdgeInsets.only(bottom: 40),
-                            child: Align(
-                              alignment: Alignment.topLeft,
-                              child: ConstrainedBox(
-                                constraints:
-                                    const BoxConstraints(maxWidth: 780),
-                                child: body,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(32, 24, 32, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const _PageHeader(),
+              const SizedBox(height: 24),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 248,
+                      child: _SideNav(
+                        selected: _section,
+                        onSelect: _select,
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 28),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        key: PageStorageKey('account-${_section.name}'),
+                        padding: const EdgeInsets.only(bottom: 40),
+                        child: body,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
           ),
         );
       },
@@ -780,7 +767,9 @@ class _AccountDetailsCard extends StatelessWidget {
               LayoutBuilder(
                 builder: (context, constraints) {
                   const gap = 24.0;
-                  final columns = constraints.maxWidth >= 440 ? 2 : 1;
+                  final columns = constraints.maxWidth >= 900
+                      ? 3
+                      : (constraints.maxWidth >= 440 ? 2 : 1);
                   final width =
                       (constraints.maxWidth - gap * (columns - 1)) / columns;
                   return Wrap(
@@ -1176,7 +1165,9 @@ class _PlanSummary extends StatelessWidget {
               LayoutBuilder(
                 builder: (context, constraints) {
                   const gap = 20.0;
-                  final columns = constraints.maxWidth >= 520 ? 2 : 1;
+                  final columns = constraints.maxWidth >= 1000
+                      ? 3
+                      : (constraints.maxWidth >= 520 ? 2 : 1);
                   final width =
                       (constraints.maxWidth - gap * (columns - 1)) / columns;
                   return Wrap(

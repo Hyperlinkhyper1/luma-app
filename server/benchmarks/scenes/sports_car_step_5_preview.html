@@ -641,7 +641,7 @@ const RIMS=[['Silver',M.rim],['Black',M.rimDark],['Bronze',new THREE.MeshPhysica
 /* ==================================================================
    4. THE CAR — sculpted lofted shell
    ================================================================== */
-const NJ=NPH;
+const NJ=64;
 function cr(p0,p1,p2,p3,t){const t2=t*t,t3=t2*t;return .5*((2*p1)+(-p0+p2)*t+(2*p0-5*p1+4*p2-p3)*t2+(-p0+3*p1-3*p2+p3)*t3);}
 
 // station table: z, halfWidth, bottomY, topY, nBot, nTop, tumble, flare
@@ -2359,7 +2359,119 @@ function drawCluster(){
   c.tex.needsUpdate=true;
 }
 
-//@@PART5@@
+/* ==================================================================
+   17. MODES, RENDER LOOP, INPUT WIRING
+   ================================================================== */
+composer.passes[0].camera=studioCam;
+let mode=0,frameN=0,elapsed=0,lastNow=performance.now(),loaderDone=false;
+const _wp=new THREE.Vector3();
+function hideLoader(){
+  if(loaderDone)return;
+  loaderDone=true;
+  $('lFill').style.width='100%';$('lStat').textContent='READY';
+  setTimeout(()=>$('loader').classList.add('done'),350);
+}
+function setMode(m){
+  if(m===mode)return;
+  mode=m;
+  const drive=m===1;
+  $('btnStudio').classList.toggle('on',!drive);
+  $('btnDrive').classList.toggle('on',drive);
+  $('hud').classList.toggle('on',drive);
+  $('labels').style.display=drive?'none':'';
+  $('panel').style.display=drive?'none':'';
+  controls.enabled=!drive;
+  if(drive){
+    xrayTarget=0;xray=0;
+    for(const o of matOrig){o.m.transparent=o.tr;o.m.opacity=o.op;o.m.depthWrite=o.dw;o.m.needsUpdate=true;}
+    chassis.visible=false;
+    driveScene.add(carRoot);
+    carRoot.rotation.set(0,0,0);
+    camTween.active=false;
+    resetCar();
+    clearSkids();
+    camPos.set(car.pos.x-Math.sin(car.yaw)*7,2.4,car.pos.z-Math.cos(car.yaw)*7);
+    camAim.copy(car.pos).setY(0.9);
+    initAudio();
+    if(engine)engine.master.gain.setTargetAtTime(muted?0:0.2,actx.currentTime,0.1);
+  }else{
+    studioScene.add(carRoot);
+    carRoot.position.set(0,0,0);carRoot.rotation.x=0;carRoot.rotation.z=0;
+    carTilt.rotation.set(0,0,0);
+    for(const w of wheelMeshes)w.pivot.rotation.y=0;
+    if(engine)engine.master.gain.setTargetAtTime(0,actx.currentTime,0.05);
+    goCam(0,false);
+    turntable=true;syncUI();
+  }
+}
+function driveStep(dt){
+  const n=Math.max(1,Math.ceil(dt*120)),h=dt/n;
+  car.slipR=0;car.slipF=0;
+  for(let i=0;i<n;i++)stepVehicle(h);
+}
+function updateTyres(){
+  const spd=Math.hypot(car.vel.x,car.vel.z);
+  for(let i=0;i<4;i++){
+    const w=wheelMeshes[i],front=i<2;
+    const sl=front?car.slipF:car.slipR;
+    if(front)w.pivot.rotation.y=car.steer;
+    w.hub.rotation.x=front?car.spinF:car.spinR;
+    if(spd>2.5&&sl>0.12){
+      w.hub.getWorldPosition(_wp);
+      addSkid(_wp.x,_wp.z,car.yaw,0.20,clamp((sl-0.12)*1.2,0.12,0.8));
+      if(Math.random()<0.45)emitSmoke(_wp.x,0.22,_wp.z,-car.vel.x*0.2,-car.vel.z*0.2,0.5+Math.random()*0.35);
+    }
+  }
+}
+function tick(){
+  const now=performance.now();
+  const dt=clamp((now-lastNow)/1000,0.001,0.05);
+  lastNow=now;elapsed+=dt;frameN++;
+  if(mode===1){
+    driveStep(dt);
+    carRoot.position.copy(car.pos);
+    carRoot.rotation.y=car.yaw;
+    carTilt.rotation.set(car.pitch,0,car.roll);
+    const kmh=Math.hypot(car.vel.x,car.vel.z)*3.6;
+    if(kmh>120)wingTarget=1;else if(kmh<80)wingTarget=0;
+    brakeOn=car.brake>0.12;
+    updateTyres();
+    updateDriveCam(dt);
+    updateAudio(dt);
+    updateSmoke(dt);
+    updateHUD();
+    if(frameN%3===0)drawMinimap();
+    updateWing(dt);updateDoors(dt);updateLights(dt,elapsed);
+    renderer.render(driveScene,driveCam);
+  }else{
+    brakeOn=false;
+    wingTarget=0;
+    updateStudio(dt,elapsed);
+    updateDoors(dt);updateWing(dt);updateLights(dt,elapsed);
+    composer.render(dt);
+    if(wantShot){
+      const a=document.createElement('a');
+      a.download='orione-gt-v.png';a.href=renderer.domElement.toDataURL('image/png');
+      a.click();wantShot=false;
+    }
+  }
+  if(frameN%4===0)drawCluster();
+  if(!loaderDone)$('lFill').style.width=Math.min(95,frameN*25)+'%';
+  if(!loaderDone&&frameN>=4)hideLoader();
+}
+renderer.setAnimationLoop(tick);
+
+$('btnStudio').onclick=()=>setMode(0);
+$('btnDrive').onclick=()=>setMode(1);
+$('btnUI').onclick=()=>$('ui').classList.toggle('hide');
+addEventListener('pointerdown',()=>initAudio());
+addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
+addEventListener('resize',()=>{
+  const w=innerWidth,h=innerHeight;
+  renderer.setSize(w,h);composer.setSize(w,h);
+  studioCam.aspect=w/h;studioCam.updateProjectionMatrix();
+  driveCam.aspect=w/h;driveCam.updateProjectionMatrix();
+});
 </script>
 </body>
 </html>

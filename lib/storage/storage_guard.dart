@@ -85,12 +85,21 @@ class StorageGuardService extends ChangeNotifier {
       final dir = await getApplicationSupportDirectory();
       final accumulator = _StorageAccumulator(dir.path);
       if (await dir.exists()) {
-        await for (final entity in dir.list(recursive: true, followLinks: false)) {
-          if (entity is! File) continue;
-          try {
-            accumulator.add(entity.path, await entity.length());
-          } catch (_) {
-            // File may have been deleted mid-walk — ignore.
+        await for (final entity in dir.list(followLinks: false)) {
+          if (entity is File) {
+            await _count(accumulator, entity);
+          } else if (entity is Directory) {
+            // The excluded caches hold most of the files here (thousands of
+            // gallery thumbnails), so they are skipped rather than walked
+            // and then discarded file by file.
+            final name = _relativeSegments(dir.path, entity.path).firstOrNull;
+            if (_excludedDirNames.contains(name)) continue;
+            await for (final nested in entity.list(
+              recursive: true,
+              followLinks: false,
+            )) {
+              if (nested is File) await _count(accumulator, nested);
+            }
           }
         }
       }
@@ -102,6 +111,14 @@ class StorageGuardService extends ChangeNotifier {
       // block every write in the app.
     } finally {
       _refreshing = false;
+    }
+  }
+
+  static Future<void> _count(_StorageAccumulator accumulator, File file) async {
+    try {
+      accumulator.add(file.path, await file.length());
+    } catch (_) {
+      // File may have been deleted mid-walk — ignore.
     }
   }
 
