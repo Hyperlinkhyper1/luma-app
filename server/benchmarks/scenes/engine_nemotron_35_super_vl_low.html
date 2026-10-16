@@ -585,7 +585,9 @@ function updateMechanics(theta){
     iv.spr.scale.set(1, 1 - ivLift/0.075*0.55, 1);
 
     // exhaust valve
-    ev.vGrp.position.copy(evClosed := closedPos.clone()).lerp(evOpen := openPos.clone(), evLift/0.075);
+    const evClosed = closedPos.clone();
+    const evOpen = openPos.clone();
+    ev.vGrp.position.copy(evClosed).lerp(evOpen, evLift/0.075);
     ev.vGrp.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), axis);
     ev.spr.position.copy(evClosed).addScaledVector(axis, 0.12);
     ev.spr.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1), axis);
