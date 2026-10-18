@@ -11376,5 +11376,6 @@
   "aiDeciderEmpty": "还没有测试过的模型",
   "aiDeciderEmptyDetail": "决策模型跑完这套题后，结果会显示在这里。",
   "aiDeciderDirect": "经由 Perplexity",
+  "aiDeciderHidden": "已略过：{old} 个模型使用旧题库测试，{unfinished} 个模型的运行未完成。请从管理后台重新运行。",
   "aiBenchmarkWhatDecider": "Decider 结果"
 }

@@ -65495,6 +65495,12 @@ abstract class L {
   /// **'via Perplexity'**
   String get aiDeciderDirect;
 
+  /// No description provided for @aiDeciderHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Left out: {old} models run on an older suite, {unfinished} whose run did not finish. Run them again from the admin dashboard.'**
+  String aiDeciderHidden(String old, String unfinished);
+
   /// No description provided for @aiBenchmarkWhatDecider.
   ///
   /// In en, this message translates to:

@@ -40458,5 +40458,10 @@ class LFr extends L {
   String get aiDeciderDirect => 'via Perplexity';
 
   @override
+  String aiDeciderHidden(String old, String unfinished) {
+    return 'Écartés : $old modèles testés sur une ancienne série, $unfinished dont l\'exécution ne s\'est pas terminée. Relancez-les depuis le tableau de bord admin.';
+  }
+
+  @override
   String get aiBenchmarkWhatDecider => 'les résultats Decider';
 }

@@ -64,10 +64,21 @@ class DeciderEntry {
 
 /// Everything the Decider test page shows.
 class DeciderBoard {
-  const DeciderBoard(
-      {required this.cases, required this.chance, required this.entries});
+  const DeciderBoard({
+    required this.cases,
+    required this.chance,
+    required this.entries,
+    this.otherSuite = 0,
+    this.unfinished = 0,
+  });
 
   final int cases;
+
+  /// Models whose finished runs used an older suite, so they are left out.
+  final int otherSuite;
+
+  /// Models with no finished run (failed, stopped, interrupted), left out.
+  final int unfinished;
 
   /// What guessing scores on the suite, 0 to 100.
   final double chance;
@@ -81,10 +92,15 @@ class DeciderBoard {
       if (raw is List)
         for (final m in raw) ?DeciderEntry.fromJson(m),
     ]..sort((a, b) => b.accuracy.compareTo(a.accuracy));
+    final hidden = json['hidden'];
+    int count(String key) =>
+        hidden is Map && hidden[key] is num ? (hidden[key] as num).toInt() : 0;
     return DeciderBoard(
       cases: (json['cases'] as num?)?.toInt() ?? 0,
       chance: (json['chance'] as num?)?.toDouble() ?? 0,
       entries: entries,
+      otherSuite: count('otherSuite'),
+      unfinished: count('unfinished'),
     );
   }
 

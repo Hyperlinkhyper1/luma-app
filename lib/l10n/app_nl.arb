@@ -11376,5 +11376,6 @@
   "aiDeciderEmpty": "Nog geen modellen getest",
   "aiDeciderEmptyDetail": "Resultaten verschijnen hier zodra een beslismodel de set heeft doorlopen.",
   "aiDeciderDirect": "via Perplexity",
+  "aiDeciderHidden": "Weggelaten: {old} modellen getest op een oudere set, {unfinished} waarvan de run niet afgerond is. Draai ze opnieuw vanuit het admin-dashboard.",
   "aiBenchmarkWhatDecider": "de decider-resultaten"
 }

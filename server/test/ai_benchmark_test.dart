@@ -348,6 +348,7 @@ void main() {
       expect(models.single['accuracy'], 100);
       expect(models.single['costPer1k'], closeTo(0.02, 1e-9));
       expect(decoded['cases'], greaterThan(0));
+      expect(decoded['hidden'], {'otherSuite': 1, 'unfinished': 1});
     });
 
     test('manifest lists scenes with hashes', () async {

@@ -11376,5 +11376,6 @@
   "aiDeciderEmpty": "Aucun modèle testé",
   "aiDeciderEmptyDetail": "Les résultats s'affichent ici dès qu'un modèle de décision a passé la série.",
   "aiDeciderDirect": "via Perplexity",
+  "aiDeciderHidden": "Écartés : {old} modèles testés sur une ancienne série, {unfinished} dont l'exécution ne s'est pas terminée. Relancez-les depuis le tableau de bord admin.",
   "aiBenchmarkWhatDecider": "les résultats Decider"
 }

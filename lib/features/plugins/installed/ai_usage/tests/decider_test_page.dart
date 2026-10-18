@@ -90,7 +90,14 @@ class _DeciderTestPageState extends State<DeciderTestPage> {
                     title: t.aiDeciderEmpty,
                     subtitle: !repo.canRefresh
                         ? t.aiBenchmarkSignInToFetch
-                        : repo.deciderError ?? t.aiDeciderEmptyDetail,
+                        : repo.deciderError ??
+                            (board != null &&
+                                    board.otherSuite + board.unfinished > 0
+                                ? t.aiDeciderHidden(
+                                    '${board.otherSuite}',
+                                    '${board.unfinished}',
+                                  )
+                                : t.aiDeciderEmptyDetail),
                   )
                 else ...[
                   LumaCard(child: _chart(context, board)),

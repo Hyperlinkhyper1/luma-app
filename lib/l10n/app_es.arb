@@ -11376,5 +11376,6 @@
   "aiDeciderEmpty": "Aún no hay modelos probados",
   "aiDeciderEmptyDetail": "Los resultados aparecen aquí cuando un modelo de decisión ha pasado la batería.",
   "aiDeciderDirect": "vía Perplexity",
+  "aiDeciderHidden": "Omitidos: {old} modelos probados con una batería anterior, {unfinished} cuya ejecución no terminó. Vuelve a ejecutarlos desde el panel de administración.",
   "aiBenchmarkWhatDecider": "los resultados de Decider"
 }

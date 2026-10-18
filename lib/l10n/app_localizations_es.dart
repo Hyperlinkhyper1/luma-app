@@ -40384,5 +40384,10 @@ class LEs extends L {
   String get aiDeciderDirect => 'vía Perplexity';
 
   @override
+  String aiDeciderHidden(String old, String unfinished) {
+    return 'Omitidos: $old modelos probados con una batería anterior, $unfinished cuya ejecución no terminó. Vuelve a ejecutarlos desde el panel de administración.';
+  }
+
+  @override
   String get aiBenchmarkWhatDecider => 'los resultados de Decider';
 }

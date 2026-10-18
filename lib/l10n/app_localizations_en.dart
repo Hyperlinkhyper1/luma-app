@@ -39946,5 +39946,10 @@ class LEn extends L {
   String get aiDeciderDirect => 'via Perplexity';
 
   @override
+  String aiDeciderHidden(String old, String unfinished) {
+    return 'Left out: $old models run on an older suite, $unfinished whose run did not finish. Run them again from the admin dashboard.';
+  }
+
+  @override
   String get aiBenchmarkWhatDecider => 'the decider results';
 }

@@ -40237,5 +40237,10 @@ class LNl extends L {
   String get aiDeciderDirect => 'via Perplexity';
 
   @override
+  String aiDeciderHidden(String old, String unfinished) {
+    return 'Weggelaten: $old modellen getest op een oudere set, $unfinished waarvan de run niet afgerond is. Draai ze opnieuw vanuit het admin-dashboard.';
+  }
+
+  @override
   String get aiBenchmarkWhatDecider => 'de decider-resultaten';
 }

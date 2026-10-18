@@ -108,12 +108,20 @@ extension DeciderTestsApi on Api {
       // A broken saved suite still lets the app show the runs it has.
     }
     final seen = <String>{};
+    final otherSuite = <String>{};
+    final unfinished = <String>{};
     final models = <Map<String, dynamic>>[];
     for (final run in deciderTests.runs) {
-      if (run.status != 'done' || run.results.isEmpty || run.suite != hash) {
+      final key = '${run.provider.name}|${run.model}';
+      if (run.status != 'done' || run.results.isEmpty) {
+        if (!run.active) unfinished.add(key);
         continue;
       }
-      if (!seen.add('${run.provider.name}|${run.model}')) continue;
+      if (run.suite != hash) {
+        otherSuite.add(key);
+        continue;
+      }
+      if (!seen.add(key)) continue;
       final s = run.summaryJson();
       models.add({
         'model': run.model,
@@ -135,6 +143,10 @@ extension DeciderTestsApi on Api {
           'cases': cases,
           'chance': double.parse(chance.toStringAsFixed(1)),
           'models': models,
+          'hidden': {
+            'otherSuite': otherSuite.difference(seen).length,
+            'unfinished': unfinished.difference(seen).length,
+          },
         }),
         headers: {
           'Content-Type': 'application/json',

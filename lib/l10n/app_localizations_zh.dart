@@ -38130,5 +38130,10 @@ class LZh extends L {
   String get aiDeciderDirect => '经由 Perplexity';
 
   @override
+  String aiDeciderHidden(String old, String unfinished) {
+    return '已略过：$old 个模型使用旧题库测试，$unfinished 个模型的运行未完成。请从管理后台重新运行。';
+  }
+
+  @override
   String get aiBenchmarkWhatDecider => 'Decider 结果';
 }

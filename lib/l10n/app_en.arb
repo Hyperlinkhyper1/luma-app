@@ -24586,5 +24586,7 @@
   "aiDeciderEmpty": "No models tested yet",
   "aiDeciderEmptyDetail": "Results show up here once a decision model has been run through the suite.",
   "aiDeciderDirect": "via Perplexity",
+  "aiDeciderHidden": "Left out: {old} models run on an older suite, {unfinished} whose run did not finish. Run them again from the admin dashboard.",
+  "@aiDeciderHidden": {"placeholders":{"old":{"type":"String"},"unfinished":{"type":"String"}}},
   "aiBenchmarkWhatDecider": "the decider results"
 }
