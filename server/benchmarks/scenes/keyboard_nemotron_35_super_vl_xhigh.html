@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Mechanical Keyboard Showcase</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0b0d; color: #eee; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  #canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; }
+  .controls {
+    position: absolute; top: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px;
+    background: rgba(0,0,0,0.55); padding: 14px; border-radius: 12px; backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.1); z-index: 50; font-size: 13px;
+  }
+  .controls button {
+    width: 100%; padding: 10px 12px; border: none; border-radius: 7px; background: #ffffff;
+    color: #111; font-weight: 700; cursor: pointer; font-size: 13px; line-height: 1.2;
+  }
+  .controls button:hover { background: #e5e5e5; }
+  .controls button.active { background: #4f46e5; color: #fff; }
+  #hint {
+    position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+    background: rgba(255,255,255,0.9); color: #111; padding: 8px 16px; border-radius: 20px;
+    font-size: 13px; pointer-events: none; z-index: 50;
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="canvas"></div>
+<div id="hint">Click anywhere to enable audio</div>
+<div class="controls">
+  <button id="btnReplay">Replay Assembly</button>
+  <button id="btnMute">Mute</button>
+  <button id="btnRgb">RGB: Off</button>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ---------- Layout data ----------
+const unit = 19; // mm-ish grid
+const rows = [
+  [ {key:'Escape', w:1, sound:'modifier'}, {key:'1', w:1, sound:'default'}, {key:'2', w:1, sound:'default'}, {key:'3', w:1, sound:'default'}, {key:'4', w:1, sound:'default'}, {key:'5', w:1, sound:'default'}, {key:'6', w:1, sound:'default'}, {key:'-', w:1, sound:'default'}, {key:'=', w:1, sound:'default'}, {key:'Backspace', w:2, sound:'backspace'} ],
+  [ {key:'Tab', w:1.5, sound:'modifier'}, {key:'q', w:1, sound:'default'}, {key:'w', w:1, sound:'default'}, {key:'e', w:1, sound:'default'}, {key:'r', w:1, sound:'default'}, {key:'t', w:1, sound:'default'}, {key:'y', w:1, sound:'default'}, {key:'u', w:1, sound:'default'}, {key:'i', w:1, sound:'default'}, {key:'o', w:1, sound:'default'}, {key:'p', w:1, sound:'default'}, {key:'[', w:1, sound:'default'}, {key:']', w:1, sound:'default'}, {key:'\\', w:1.5, sound:'default'} ],
+  [ {key:'CapsLock', w:1.75, sound:'modifier'}, {key:'a', w:1, sound:'default'}, {key:'s', w:1, sound:'default'}, {key:'d', w:1, sound:'default'}, {key:'f', w:1, sound:'default'}, {key:'g', w:1, sound:'default'}, {key:'h', w:1, sound:'default'}, {key:'j', w:1, sound:'default'}, {key:'k', w:1, sound:'default'}, {key:'l', w:1, sound:'default'}, {key:';', w:1, sound:'default'}, {key:"'", w:1, sound:'default'}, {key:'Enter', w:2.25, sound:'enter'} ],
+  [ {key:'ShiftLeft', w:2.25, sound:'modifier'}, {key:'z', w:1, sound:'default'}, {key:'x', w:1, sound:'default'}, {key:'c', w:1, sound:'default'}, {key:'v', w:1, sound:'default'}, {key:'b', w:1, sound:'default'}, {key:'n', w:1, sound:'default'}, {key:'m', w:1, sound:'default'}, {key:',', w:1, sound:'default'}, {key:'.', w:1, sound:'default'}, {key:'/', w:1, sound:'default'}, {key:'ShiftRight', w:2.75, sound:'modifier'} ],
+  [ {key:'ControlLeft', w:1.5, sound:'modifier'}, {key:'SuperLeft', w:1.5, sound:'modifier'}, {key:'AltLeft', w:1.25, sound:'modifier'}, {key:' ', w:6.25, sound:'space'}, {key:'AltRight', w:1.25, sound:'modifier'}, {key:'Fn', w:1, sound:'modifier'}, {key:'ControlRight', w:1.5, sound:'modifier'} ]
+];
+const rowStartX = [0, 0.5, 1.25, 2.25, 0]; // stagger per row in units
+
+const keyData = [];
+rows.forEach((row, ri) => {
+  let x = rowStartX[ri] * unit;
+  row.forEach((kd) => {
+    keyData.push({
+      key: kd.key,
+      x: x,
+      z: ri * unit,
+      w: kd.w * unit,
+      d: unit - 2,
+      sound: kd.sound
+    });
+    x += kd.w * unit;
+  });
+});
+
+// Global left-to-right install order
+const installOrder = keyData.slice().sort((a, b) => a.x - b.x || a.z - b.z);
+
+// Case dimensions
+let maxRight = 0, maxBack = 0;
+keyData.forEach(k => {
+  maxRight = Math.max(maxRight, k.x + k.w);
+  maxBack = Math.max(maxBack, k.z + k.d);
+});
+const pad = 25;
+const caseW = maxRight + pad;
+const caseD = maxBack + pad;
+const pcbW = caseW - 30;
+const pcbD = caseD - 30;
+
+// Vertical stack constants
+const bottomThick = 6;
+const pcbThick = 1.6;
+const foamThick = 3;
+const plateThick = 3;
+const pcbY = bottomThick + pcbThick / 2;
+const foamY = bottomThick + pcbThick + foamThick / 2;
+const plateY = bottomThick + pcbThick + foamThick + plateThick / 2;
+const plateTop = bottomThick + pcbThick + foamThick + plateThick;
+const switchHousingH = 14;
+const switchGroupY = plateTop + switchHousingH / 2; // 20.6
+const stemCenterRel = switchHousingH / 2 + 2.5; // 9.5 above group center
+const keycapBottom = switchGroupY + stemCenterRel + 2.5; // 32.6
+const keycapH = 8;
+const keycapY = keycapBottom + keycapH / 2; // 36.6
+
+// ---------- Scene setup ----------
+const container = document.getElementById('canvas');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b0b0d);
+scene.fog = new THREE.Fog(0x0b0b0d, 40, 200);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
+camera.position.set(90, 85, 95);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.target.set(0, 22, 0);
+controls.minDistance = 45;
+controls.maxDistance = 220;
+controls.enablePan = false;
+
+// Lights
+const ambient = new THREE.AmbientLight(0xffffff, 0.35);
+scene.add(ambient);
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+dirLight.position.set(60, 120, 60);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.set(2048, 2048);
+scene.add(dirLight);
+
+// RGB underglow point light
+const rgbLight = new THREE.PointLight(0xffffff, 40, 90);
+rgbLight.position.set(0, 4, 0);
+scene.add(rgbLight);
+
+// ---------- Materials ----------
+const matCase = new THREE.MeshStandardMaterial({ color: 0x161618, roughness: 0.85, metalness: 0.08 });
+const matPCB = new THREE.MeshStandardMaterial({ color: 0x2d5a2d, roughness: 0.6, metalness: 0.1 });
+const matFoam = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.95, metalness: 0 });
+const matPlate = new THREE.MeshStandardMaterial({ color: 0xb8b8b8, roughness: 0.25, metalness: 0.85 });
+const matSwitch = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.45, metalness: 0.2 });
+const matStem = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.35, metalness: 0 });
+
+function capMaterial(type) {
+  let c = 0xe8e8e8;
+  if (type === 'modifier') c = 0xd0d0d0;
+  if (type === 'enter' || type === 'backspace') c = 0xc0c0c0;
+  return new THREE.MeshStandardMaterial({ color: c, roughness: 0.4, metalness: 0.05 });
+}
+
+// ---------- Keyboard group ----------
+const keyboard = new THREE.Group();
+scene.add(keyboard);
+
+// Case walls
+const bottom = new THREE.Mesh(new THREE.BoxGeometry(caseW, bottomThick, caseD), matCase);
+bottom.position.y = bottomThick / 2;
+bottom.castShadow = true; bottom.receiveShadow = true;
+keyboard.add(bottom);
+
+const wallFB = new THREE.Mesh(new THREE.BoxGeometry(caseW, 14, 4), matCase);
+wallFB.position.set(0, bottomThick + 7, -caseD / 2 + 2);
+wallFB.castShadow = true; wallFB.receiveShadow = true;
+keyboard.add(wallFB);
+const wallBB = wallFB.clone();
+wallBB.position.set(0, bottomThick + 7, caseD / 2 - 2);
+keyboard.add(wallBB);
+
+const wallLR = new THREE.Mesh(new THREE.BoxGeometry(4, 14, caseD - 8), matCase);
+wallLR.position.set(-caseW / 2 + 2, bottomThick + 7, 0);
+wallLR.castShadow = true; wallLR.receiveShadow = true;
+keyboard.add(wallLR);
+const wallRR = wallLR.clone();
+wallRR.position.set(caseW / 2 - 2, bottomThick + 7, 0);
+keyboard.add(wallRR);
+
+// PCB
+const pcb = new THREE.Mesh(new THREE.BoxGeometry(pcbW, pcbThick, pcbD), matPCB);
+pcb.position.y = pcbY;
+pcb.castShadow = true; pcb.receiveShadow = true;
+keyboard.add(pcb);
+
+// Foam
+const foam = new THREE.Mesh(new THREE.BoxGeometry(pcbW, foamThick, pcbD), matFoam);
+foam.position.y = foamY;
+foam.castShadow = true; foam.receiveShadow = true;
+keyboard.add(foam);
+
+// Plate
+const plate = new THREE.Mesh(new THREE.BoxGeometry(pcbW, plateThick, pcbD), matPlate);
+plate.position.y = plateY;
+plate.castShadow = true; plate.receiveShadow = true;
+keyboard.add(plate);
+
+// Switches and keycaps
+const switches = [];
+const keycaps = [];
+
+const housingGeo = new THREE.BoxGeometry(14, switchHousingH, 14);
+const stemGeo = new THREE.BoxGeometry(5, 5, 5);
+
+installOrder.forEach(kd => {
+  // Switch group
+  const swGroup = new THREE.Group();
+  swGroup.position.set(kd.x, switchGroupY, kd.z);
+  const housing = new THREE.Mesh(housingGeo, matSwitch);
+  housing.castShadow = true; housing.receiveShadow = true;
+  swGroup.add(housing);
+  const stem = new THREE.Mesh(stemGeo, matStem);
+  stem.position.y = stemCenterRel;
+  stem.castShadow = true; stem.receiveShadow = true;
+  swGroup.add(stem);
+  keyboard.add(swGroup);
+  switches.push({ group: swGroup, kd, finalY: switchGroupY });
+
+  // Keycap
+  const capGeo = new THREE.BoxGeometry(kd.w - 1, keycapH, kd.d - 1);
+  const cap = new THREE.Mesh(capGeo, capMaterial(kd.sound));
+  cap.position.set(kd.x, keycapY, kd.z);
+  cap.castShadow = true; cap.receiveShadow = true;
+  cap.userData = { kd };
+  keyboard.add(cap);
+  keycaps.push({ mesh: cap, kd, finalY: keycapY });
+});
+
+// Center the whole keyboard
+keyboard.position.set(-caseW / 2, 0, -caseD / 2);
+
+// ---------- Tween system ----------
+const tweens = [];
+
+function easeOutCubic(t) {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+class Tween {
+  constructor(setFn, start, end, duration, delay, ease, onComplete) {
+    this.setFn = setFn;
+    this.start = start;
+    this.end = end;
+    this.duration = duration;
+    this.delay = delay;
+    this.ease = ease || easeOutCubic;
+    this.onComplete = onComplete;
+    this.t = 0;
+    this.started = false;
+    this.finished = false;
+  }
+  update(dt) {
+    if (this.finished) return;
+    if (!this.started) {
+      this.t += dt;
+      if (this.t < this.delay) return;
+      this.started = true;
+      this.t = 0;
+    }
+    this.t += dt;
+    const p = Math.min(this.t / this.duration, 1);
+    this.setFn(this.start + (this.end - this.start) * this.ease(p));
+    if (p >= 1) {
+      this.setFn(this.end);
+      this.finished = true;
+      if (this.onComplete) this.onComplete();
+    }
+  }
+}
+
+function addTween(setFn, start, end, duration, delay, onComplete) {
+  const t = new Tween(setFn, start, end, duration, delay, easeOutCubic, onComplete);
+  tweens.push(t);
+  return t;
+}
+
+function updateTweens(dt) {
+  for (let i = tweens.length - 1; i >= 0; i--) {
+    tweens[i].update(dt);
+    if (tweens[i].finished) tweens.splice(i, 1);
+  }
+}
+
+// ---------- Assembly ----------
+const startY = 420;
+
+function startAssembly() {
+  tweens.length = 0;
+  pcb.position.y = startY;
+  foam.position.y = startY;
+  plate.position.y = startY;
+  switches.forEach(s => s.group.position.y = startY);
+  keycaps.forEach(k => k.mesh.position.y = startY);
+
+  // Layers
+  addTween(v => pcb.position.y = v, startY, pcbY, 1000, 0);
+  addTween(v => foam.position.y = v, startY, foamY, 800, 1000);
+  addTween(v => plate.position.y = v, startY, plateY, 800, 2000);
+
+  // Switches left to right
+  let delay = 3000;
+  installOrder.forEach((kd, i) => {
+    const sw = switches.find(s => s.kd === kd);
+    addTween(v => sw.group.position.y = v, startY, sw.finalY, 650, delay + i * 38);
+  });
+  delay += installOrder.length * 38 + 350;
+
+  // Keycaps left to right
+  installOrder.forEach((kd, i) => {
+    const cap = keycaps.find(k => k.kd === kd);
+    addTween(v => cap.mesh.position.y = v, startY, cap.finalY, 520, delay + i * 28);
+  });
+}
+
+const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (prefersReduced) {
+  pcb.position.y = pcbY;
+  foam.position.y = foamY;
+  plate.position.y = plateY;
+  switches.forEach(s => s.group.position.y = s.finalY);
+  keycaps.forEach(k => k.mesh.position.y = k.finalY);
+} else {
+  setTimeout(startAssembly, 400);
+}
+
+// ---------- Interaction ----------
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+function pressKeyMesh(mesh) {
+  const startY = mesh.position.y;
+  addTween(v => mesh.position.y = v, startY, startY - 3, 90, 0, () => {
+    addTween(v => mesh.position.y = v, startY - 3, startY, 90, 0);
+  });
+  const kd = mesh.userData.kd;
+  playKeySound(kd.sound);
+}
+
+function onPointerDown(e) {
+  initAudio();
+  if (e.target.closest('.controls')) return;
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(keycaps.map(k => k.mesh));
+  if (hits.length) pressKeyMesh(hits[0].object);
+}
+
+window.addEventListener('pointerdown', onPointerDown);
+
+// Physical keyboard
+const keyMap = new Map();
+keyData.forEach(kd => {
+  keyMap.set(kd.key, kd);
+  if (kd.key === 'ShiftLeft' || kd.key === 'ShiftRight') keyMap.set('Shift', kd);
+  if (kd.key === 'ControlLeft' || kd.key === 'ControlRight') keyMap.set('Control', kd);
+  if (kd.key === 'AltLeft' || kd.key === 'AltRight') keyMap.set('Alt', kd);
+  if (kd.key === 'SuperLeft') keyMap.set('Meta', kd);
+});
+
+window.addEventListener('keydown', e => {
+  initAudio();
+  const kd = keyMap.get(e.key);
+  if (!kd) return;
+  const cap = keycaps.find(k => k.kd === kd);
+  if (cap) {
+    pressKeyMesh(cap.mesh);
+    if (e.key === ' ') e.preventDefault();
+  }
+});
+
+// ---------- Audio ----------
+let audioCtx = null;
+let muted = false;
+let audioHintShown = true;
+
+function initAudio() {
+  if (!audioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (Ctx) audioCtx = new Ctx();
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().then(() => { audioHintShown = false; document.getElementById('hint').style.display = 'none'; });
+  } else {
+    audioHintShown = false;
+    document.getElementById('hint').style.display = 'none';
+  }
+}
+
+function playKeySound(type) {
+  if (muted || !audioCtx) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const now = audioCtx.currentTime;
+
+  let freq = 850;
+  let noiseGainVal = 0.35;
+  let oscGainVal = 0.12;
+  let oscDur = 0.12;
+  let noiseDur = 0.06;
+
+  if (type === 'space') { freq = 150; noiseGainVal = 0.75; oscGainVal = 0.05; oscDur = 0.16; noiseDur = 0.11; }
+  else if (type === 'enter') { freq = 400; noiseGainVal = 0.55; oscGainVal = 0.10; oscDur = 0.13; noiseDur = 0.08; }
+  else if (type === 'backspace') { freq = 250; noiseGainVal = 0.65; oscGainVal = 0.09; oscDur = 0.11; noiseDur = 0.09; }
+  else if (type === 'modifier') { freq = 650; noiseGainVal = 0.48; oscGainVal = 0.13; oscDur = 0.12; noiseDur = 0.07; }
+
+  // Noise burst
+  const len = Math.max(1, Math.floor(audioCtx.sampleRate * noiseDur));
+  const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const ns = audioCtx.createBufferSource();
+  ns.buffer = buf;
+  const ng = audioCtx.createGain();
+  ng.gain.setValueAtTime(noiseGainVal, now);
+  ng.gain.exponentialRampToValueAtTime(0.0001, now + noiseDur);
+  ns.connect(ng).connect(audioCtx.destination);
+  ns.start(now);
+
+  // Tone
+  const osc = audioCtx.createOscillator();
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(freq, now);
+  osc.frequency.exponentialRampToValueAtTime(freq * 0.4, now + oscDur);
+  const og = audioCtx.createGain();
+  og.gain.setValueAtTime(oscGainVal, now);
+  og.gain.exponentialRampToValueAtTime(0.0001, now + oscDur);
+  osc.connect(og).connect(audioCtx.destination);
+  osc.start(now);
+  osc.stop(now + oscDur + 0.05);
+}
+
+// ---------- UI ----------
+const btnReplay = document.getElementById('btnReplay');
+const btnMute = document.getElementById('btnMute');
+const btnRgb = document.getElementById('btnRgb');
+let rgbEnabled = false;
+let rgbHue = 0;
+
+btnReplay.addEventListener('click', e => {
+  e.stopPropagation();
+  initAudio();
+  startAssembly();
+});
+
+btnMute.addEventListener('click', e => {
+  e.stopPropagation();
+  muted = !muted;
+  btnMute.textContent = muted ? 'Unmute' : 'Mute';
+  btnMute.classList.toggle('active', muted);
+});
+
+btnRgb.addEventListener('click', e => {
+  e.stopPropagation();
+  rgbEnabled = !rgbEnabled;
+  btnRgb.textContent = rgbEnabled ? 'RGB: On' : 'RGB: Off';
+  btnRgb.classList.toggle('active', rgbEnabled);
+  if (!rgbEnabled) rgbLight.color.setHex(0x000000);
+});
+
+// ---------- Render loop ----------
+let last = performance.now();
+let rgbTime = 0;
+
+function animate(time) {
+  requestAnimationFrame(animate);
+  const dt = time - last;
+  last = time;
+
+  controls.update();
+  updateTweens(dt);
+
+  rgbTime += dt;
+  if (rgbEnabled) {
+    rgbHue = (rgbHue + dt * 0.0004) % 1;
+    rgbLight.color.setHSL(rgbHue, 0.9, 0.55);
+    rgbLight.intensity = 40 + Math.sin(time * 0.002) * 10;
+  }
+
+  renderer.render(scene, camera);
+}
+
+requestAnimationFrame(animate);
+
+// Resize
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
