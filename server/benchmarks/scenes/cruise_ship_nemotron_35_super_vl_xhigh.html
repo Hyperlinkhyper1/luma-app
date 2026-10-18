@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MSC Virtuosa - Deck Walk</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+  canvas { display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  #ui {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    color: #fff; background: rgba(0, 10, 20, 0.85); z-index: 10; pointer-events: auto;
+  }
+  #ui h1 { margin: 0 0 10px; font-size: 2rem; letter-spacing: 2px; text-transform: uppercase; color: #00d2ff; text-shadow: 0 0 20px rgba(0,210,255,0.5); }
+  #ui p { margin: 0 0 25px; opacity: 0.9; font-size: 1.1rem; }
+  #ui button {
+    padding: 14px 32px; font-size: 1rem; background: #00d2ff; color: #001e2f;
+    border: none; border-radius: 4px; cursor: pointer; font-weight: bold; text-transform: uppercase;
+    box-shadow: 0 0 30px rgba(0,210,255,0.6); transition: transform 0.1s;
+  }
+  #ui button:active { transform: scale(0.97); }
+  #crosshair {
+    position: absolute; top: 50%; left: 50%; width: 12px; height: 12px;
+    background: rgba(255,255,255,0.7); border-radius: 50%; transform: translate(-50%, -50%);
+    pointer-events: none; z-index: 5;
+  }
+  #hud {
+    position: absolute; bottom: 30px; left: 30px; color: rgba(255,255,255,0.8);
+    font-family: monospace; font-size: 13px; line-height: 1.6; pointer-events: none; z-index: 5;
+    text-shadow: 0 0 8px rgba(0,0,0,0.8);
+  }
+</style>
+</head>
+<body>
+
+<div id="ui">
+  <h1>MSC Virtuosa</h1>
+  <p>Procedural Deck 7 Experience</p>
+  <button id="startBtn">Board the Ship</button>
+</div>
+<div id="crosshair"></div>
+<div id="hud">Deck: 7<br>Position: Starboard<br>Weather: Clear<br>Time: Day</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+// --- CONFIG ---
+const SHIP_LENGTH = 330;
+const SHIP_WIDTH = 47;
+const SHIP_HEIGHT = 72;
+const DECK_HEIGHT = 3.6;
+const PLAYER_HEIGHT = 1.6;
+const WALK_SPEED = 5.0;
+
+// --- GLOBALS ---
+let scene, camera, renderer, controls, clock;
+let ship, sea, sunLight, ambientLight, rainParticles;
+let raycaster;
+let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+let prevTime = performance.now();
+let weather = 'clear';
+let timeOfDay = 0.25; // 0..1 cycle
+let isLocked = false;
+
+const ui = document.getElementById('ui');
+const startBtn = document.getElementById('startBtn');
+const hud = document.getElementById('hud');
+
+// --- INIT ---
+function init() {
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x001a2e, 0.00015);
+
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+  camera.position.set(0, 30, 28);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  document.body.appendChild(renderer.domElement);
+
+  clock = new THREE.Clock();
+
+  // Lights
+  ambientLight = new THREE.AmbientLight(0xffffff, 0.35);
+  scene.add(ambientLight);
+
+  sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.width = 2048;
+  sunLight.shadow.mapSize.height = 2048;
+  sunLight.shadow.camera.near = 50;
+  sunLight.shadow.camera.far = 1200;
+  sunLight.shadow.camera.left = -400;
+  sunLight.shadow.camera.right = 400;
+  sunLight.shadow.camera.top = 400;
+  sunLight.shadow.camera.bottom = -400;
+  scene.add(sunLight);
+
+  // Controls
+  controls = new PointerLockControls(camera, document.body);
+  startBtn.addEventListener('click', () => {
+    controls.lock();
+  });
+  controls.addEventListener('lock', () => {
+    ui.style.display = 'none';
+    isLocked = true;
+  });
+  controls.addEventListener('unlock', () => {
+    ui.style.display = 'flex';
+    isLocked = false;
+  });
+
+  // Build world
+  createShip();
+  createSea();
+  createLifeboatsDeck7();
+  createWeatherSystem();
+
+  // Raycaster for foot-lock / walking
+  raycaster = new THREE.Raycaster(new THREE.Vector3(0, -1, 0), new THREE.Vector3(0, -1, 0), 0, 12);
+
+  // Input listeners
+  document.addEventListener('keydown', onKeyDown);
+  document.addEventListener('keyup', onKeyUp);
+  window.addEventListener('resize', onWindowResize);
+
+  // Start position: Deck 7 next to lifeboats
+  const deck7Y = 5 + 6 * DECK_HEIGHT;
+  camera.position.set(0, deck7Y + PLAYER_HEIGHT, 28);
+  controls.getObject().position.copy(camera.position);
+
+  animate();
+}
+
+// --- SHIP CONSTRUCTION (Procedural, Organic-ish) ---
+function createShip() {
+  ship = new THREE.Group();
+  ship.name = 'MSC_Virtuosa';
+
+  const hullMat = new THREE.MeshStandardMaterial({ color: 0x0a2540, roughness: 0.4, metalness: 0.2 });
+  const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf2f4f8, roughness: 0.6, metalness: 0.1 });
+  const darkBlueMat = new THREE.MeshStandardMaterial({ color: 0x003d7a, roughness: 0.3, metalness: 0.4 });
+  const yellowMat = new THREE.MeshStandardMaterial({ color: 0xffd200, roughness: 0.3, metalness: 0.5 });
+  const blackMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
+  const glassMat = new THREE.MeshStandardMaterial({ color: 0x2a4a6a, roughness: 0.2, metalness: 0.8 });
+
+  // 1. Hull (underwater + above water)
+  const hull = new THREE.Mesh(new THREE.BoxGeometry(SHIP_LENGTH, 60, SHIP_WIDTH), hullMat);
+  hull.position.y = -5; // draft into sea
+  hull.castShadow = true; hull.receiveShadow = true;
+  ship.add(hull);
+
+  // Waterline stripe / hull paint separation
+  const waterline = new THREE.Mesh(new THREE.BoxGeometry(SHIP_LENGTH, 2, SHIP_WIDTH + 0.5), darkBlueMat);
+  waterline.position.y = 24;
+  waterline.position.z = SHIP_WIDTH / 2 + 0.26;
+  waterline.castShadow = true;
+  ship.add(waterline);
+
+  // 2. Lower white superstructure base
+  const lowerDeck = new THREE.Mesh(new THREE.BoxGeometry(SHIP_LENGTH - 20, 18, SHIP_WIDTH - 4), whiteMat);
+  lowerDeck.position.y = 26;
+  lowerDeck.castShadow = true; lowerDeck.receiveShadow = true;
+  ship.add(lowerDeck);
+
+  // 3. Main accommodation block (the big white boxy part)
+  const acc = new THREE.Mesh(new THREE.BoxGeometry(SHIP_LENGTH - 60, 48, SHIP_WIDTH - 14), whiteMat);
+  acc.position.y = 52;
+  acc.position.z = 2;
+  acc.castShadow = true; acc.receiveShadow = true;
+  ship.add(acc);
+
+  // 4. Upper decks tapering towards bow/stern
+  const upper1 = new THREE.Mesh(new THREE.BoxGeometry(SHIP_LENGTH - 100, 16, SHIP_WIDTH - 24), whiteMat);
+  upper1.position.y = 78;
+  upper1.position.z = -2;
+  upper1.castShadow = true;
+  ship.add(upper1);
+
+  const upper2 = new THREE.Mesh(new THREE.BoxGeometry(SHIP_LENGTH - 140, 14, SHIP_WIDTH - 30), whiteMat);
+  upper2.position.y = 96;
+  upper2.position.z = -5;
+  upper2.castShadow = true;
+  ship.add(upper2);
+
+  // 5. Bridge / Wheelhouse forward top
+  const bridge = new THREE.Mesh(new THREE.BoxGeometry(45, 14, 26), whiteMat);
+  bridge.position.set(SHIP_LENGTH / 2 - 50, 112, 0);
+  bridge.castShadow = true;
+  ship.add(bridge);
+
+  const bridgeWindows = new THREE.Mesh(new THREE.BoxGeometry(42, 6, 24), glassMat);
+  bridgeWindows.position.set(SHIP_LENGTH / 2 - 50, 116, 13.1);
+  ship.add(bridgeWindows);
+
+  // 6. Funnel (MSC colors)
+  const funnelBase = new THREE.Mesh(new THREE.BoxGeometry(30, 22, 18), darkBlueMat);
+  funnelBase.position.set(SHIP_LENGTH / 2 - 110, 104, 0);
+  funnelBase.castShadow = true;
+  ship.add(funnelBase);
+
+  const funnelTop = new THREE.Mesh(new THREE.BoxGeometry(26, 10, 14), yellowMat);
+  funnelTop.position.set(SHIP_LENGTH / 2 - 110, 120, 0);
+  funnelTop.castShadow = true;
+  ship.add(funnelTop);
+
+  // 7. Procedural balconies / cabins along the side (Deck 7 area especially)
+  // We'll add rows of small boxes to simulate balconies on the starboard side
+  const balconyMat = new THREE.MeshStandardMaterial({ color: 0xe8eef5, roughness: 0.7 });
+  const railingMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
+
+  const deckStartY = 5 + 6 * DECK_HEIGHT; // Deck 7 level approx
+  const rows = 12;
+  const cols = 14;
+  for (let r = 0; r < rows; r++) {
+    const y = deckStartY + r * DECK_HEIGHT;
+    for (let c = 0; c < cols; c++) {
+      const x = -SHIP_LENGTH / 2 + 20 + c * 18;
+      // Only on starboard side facing player initially
+      const b = new THREE.Mesh(new THREE.BoxGeometry(14, 0.5, 2.5), balconyMat);
+      b.position.set(x, y + 1, SHIP_WIDTH / 2 + 1.3);
+      b.castShadow = true;
+      ship.add(b);
+
+      // Glass railings
+      const glass = new THREE.Mesh(new THREE.BoxGeometry(13, 1.2, 2.2), glassMat);
+      glass.position.set(x, y + 1.6, SHIP_WIDTH / 2 + 2.6);
+      ship.add(glass);
+    }
+  }
+
+  // 8. Lifeboat davits on deck 7 side (grouped)
+  // Lifeboats added separately to position near camera start
+
+  scene.add(ship);
+}
+
+function createLifeboatsDeck7() {
+  const deck7Y = 5 + 6 * DECK_HEIGHT;
+  const boatMat = new THREE.MeshStandardMaterial({ color: 0xc62828, roughness: 0.4 });
+  const boatWhite = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.5 });
+  const davitMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5 });
+
+  const startX = -60;
+  const spacing = 22;
+
+  for (let i = 0; i < 4; i++) {
+    const x = startX + i * spacing;
+    const z = 23.5 + 2;
+
+    // Davit structure
+    const davit = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 7, 8), davitMat);
+    davit.position.set(x, deck7Y + 3.5, z);
+    davit.rotation.x = Math.PI / 2;
+    ship.add(davit);
+
+    // Lifeboat hull
+    const boat = new THREE.Mesh(new THREE.BoxGeometry(6, 2.4, 3.6), boatMat);
+    boat.position.set(x, deck7Y + 1.2, z);
+    boat.castShadow = true;
+    ship.add(boat);
+
+    // Boat canopy / white top
+    const top = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.6, 4), boatWhite);
+    top.position.set(x, deck7Y + 2.9, z);
+    ship.add(top);
+
+    // Name plate (tiny)
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(1, 0.3, 0.1), new THREE.MeshStandardMaterial({color:0xffff00}));
+    plate.position.set(x, deck7Y + 1.5, z + 1.9);
+    ship.add(plate);
+  }
+}
+
+function createSea() {
+  // Custom shader water, no textures
+  const vertexShader = `
+    uniform float uTime;
+    varying float vWave;
+    varying vec3 vNormal;
+    void main() {
+      vec3 pos = position;
+      float wave = sin(pos.x * 0.08 + uTime * 1.5) * cos(pos.z * 0.08 + uTime * 1.2) * 1.6;
+      wave += sin(pos.x * 0.17 - uTime * 1.0) * 0.8;
+      pos.y += wave;
+      vWave = wave;
+      vNormal = normalize(normal + vec3(dFdx(wave), 1.0, dFdy(wave)));
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+    }
+  `;
+
+  const fragmentShader = `
+    uniform float uTime;
+    uniform vec3 uDeepColor;
+    uniform vec3 uShallowColor;
+    varying float vWave;
+    varying vec3 vNormal;
+    void main() {
+      vec3 base = mix(uDeepColor, uShallowColor, clamp(vWave * 0.4 + 0.5, 0.0, 1.0));
+      float fresnel = pow(1.0 - dot(vNormal, vec3(0.0,1.0,0.0)), 3.0);
+      base = mix(base, vec3(0.9, 0.95, 1.0), fresnel * 0.6);
+      gl_FragColor = vec4(base, 1.0);
+    }
+  `;
+
+  const seaMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uDeepColor: { value: new THREE.Color(0x001a2e) },
+      uShallowColor: { value: new THREE.Color(0x006994) }
+    },
+    vertexShader,
+    fragmentShader,
+    side: THREE.DoubleSide,
+    fog: true
+  });
+
+  sea = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000, 128, 128), seaMat);
+  sea.rotation.x = -Math.PI / 2;
+  sea.position.y = 0;
+  sea.receiveShadow = true;
+  scene.add(sea);
+
+  return seaMat;
+}
+
+const seaMat = createSea();
+
+// --- WEATHER / PARTICLES ---
+function createWeatherSystem() {
+  const count = 4000;
+  const positions = new Float32Array(count * 3);
+  const velocities = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    positions[i * 3] = (Math.random() - 0.5) * 1200;
+    positions[i * 3 + 1] = Math.random() * 400;
+    positions[i * 3 + 2] = (Math.random() - 0.5) * 1200;
+    velocities[i] = 10 + Math.random() * 15;
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const material = new THREE.PointsMaterial({ color: 0xbbddff, size: 0.7, transparent: true, opacity: 0.6 });
+  rainParticles = new THREE.Points(geometry, material);
+  rainParticles.visible = false;
+  scene.add(rainParticles);
+
+  // store velocities for update
+  rainParticles.userData.velocities = velocities;
+}
+
+function updateWeather(delta) {
+  // cycle weather slowly
+  const t = performance.now() * 0.001;
+  const w = Math.sin(t * 0.15);
+  if (w > 0.85 && weather !== 'rainy') {
+    setWeather('rainy');
+  } else if (w < 0.6 && weather !== 'clear') {
+    setWeather('clear');
+  }
+
+  if (rainParticles && rainParticles.visible) {
+    const pos = rainParticles.geometry.attributes.position.array;
+    const vel = rainParticles.userData.velocities;
+    for (let i = 0; i < pos.length; i += 3) {
+      pos[i + 1] -= vel[i / 3] * delta;
+      if (pos[i + 1] < -20) pos[i + 1] = 300 + Math.random() * 100;
+    }
+    rainParticles.geometry.attributes.position.needsUpdate = true;
+  }
+}
+
+function setWeather(type) {
+  weather = type;
+  if (type === 'rainy') {
+    rainParticles.visible = true;
+    scene.fog.color.set(0x1a2a3a);
+    scene.fog.density = 0.0004;
+    ambientLight.intensity = 0.25;
+    sunLight.intensity = 0.4;
+  } else {
+    rainParticles.visible = false;
+    scene.fog.color.set(0x001a2e);
+    scene.fog.density = 0.00015;
+    ambientLight.intensity = 0.35;
+    sunLight.intensity = 1.2;
+  }
+  updateHud();
+}
+
+// --- DAY / NIGHT CYCLE ---
+function updateDayNightCycle(delta) {
+  timeOfDay += delta * 0.05; // speed
+  if (timeOfDay > 1) timeOfDay = 0;
+
+  // Sun position on a dome
+  const angle = timeOfDay * Math.PI * 2;
+  const radius = 600;
+  const sunX = Math.sin(angle) * radius;
+  const sunY = Math.cos(angle) * radius * 0.8; // stays mostly above horizon
+  const sunZ = Math.cos(angle) * radius * 0.4;
+  sunLight.position.set(sunX, sunY, sunZ);
+  sunLight.target.position.set(0, 0, 0);
+
+  // Sky color lerp
+  const dayColor = new THREE.Color(0x87ceeb);
+  const nightColor = new THREE.Color(0x02020a);
+  const currentSky = new THREE.Color().lerpColors(nightColor, dayColor, Math.abs(Math.sin(angle)));
+  scene.background = currentSky;
+
+  // Fog color follow sky slightly
+  scene.fog.color.lerpColors(new THREE.Color(0x00050a), currentSky, 0.5);
+
+  // Light intensity
+  const daylight = Math.max(0, Math.sin(angle));
+  sunLight.intensity = 1.2 * daylight + 0.2;
+  ambientLight.intensity = 0.35 + daylight * 0.4;
+
+  // Sea shader time
+  seaMat.uniforms.uTime.value = performance.now() * 0.001;
+
+  updateHud();
+}
+
+function updateHud() {
+  const h = Math.floor(timeOfDay * 24);
+  const m = Math.floor((timeOfDay * 24 - h) * 60);
+  const timeStr = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+  hud.innerHTML = `Deck: 7<br>Position: Starboard<br>Weather: ${weather.charAt(0).toUpperCase() + weather.slice(1)}<br>Time: ${timeStr}`;
+}
+
+// --- INPUT ---
+function onKeyDown(e) {
+  switch (e.code) {
+    case 'KeyW': moveForward = true; break;
+    case 'KeyS': moveBackward = true; break;
+    case 'KeyA': moveLeft = true; break;
+    case 'KeyD': moveRight = true; break;
+  }
+}
+function onKeyUp(e) {
+  switch (e.code) {
+    case 'KeyW': moveForward = false; break;
+    case 'KeyS': moveBackward = false; break;
+    case 'KeyA': moveLeft = false; break;
+    case 'KeyD': moveRight = false; break;
+  }
+}
+
+// --- MAIN LOOP ---
+function animate() {
+  requestAnimationFrame(animate);
+
+  const time = performance.now();
+  const delta = (time - prevTime) / 1000;
+  prevTime = time;
+
+  if (isLocked && controls.isLocked) {
+    // Movement
+    const speed = WALK_SPEED;
+    if (moveForward) controls.moveForward(speed * delta);
+    if (moveBackward) controls.moveForward(-speed * delta);
+    if (moveRight) controls.moveRight(speed * delta);
+    if (moveLeft) controls.moveRight(-speed * delta);
+
+    // Sync camera to controls object (PointerLockControls moves camera directly)
+    // Raycast downward to lock to surface (ship deck or sea)
+    raycaster.ray.origin.copy(controls.getObject().position);
+    raycaster.ray.origin.y += 0.2;
+    raycaster.ray.direction.set(0, -1, 0);
+
+    const intersects = raycaster.intersectObjects([ship, sea], true);
+    if (intersects.length > 0) {
+      const hit = intersects[0];
+      const targetY = hit.point.y + PLAYER_HEIGHT;
+      // Smooth vertical interpolation for walking up/down decks
+      const curY = controls.getObject().position.y;
+      controls.getObject().position.y += (targetY - curY) * 0.15;
+    }
+  }
+
+  updateDayNightCycle(delta);
+  updateWeather(delta);
+
+  renderer.render(scene, camera);
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+init();
+</script>
+</body>
+</html>
