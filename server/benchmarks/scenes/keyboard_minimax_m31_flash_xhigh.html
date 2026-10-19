@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#080c12">
+<title>Monolith 75 — Mechanical Keyboard Showcase</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #080c12;
+    --panel: rgba(15, 21, 30, 0.78);
+    --line: rgba(255, 255, 255, 0.1);
+    --text: #edf2f4;
+    --muted: #84919d;
+    --accent: #ff9870;
+    --accent-2: #67c8bb;
+    --progress: 0;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  body {
+    position: relative;
+    min-width: 320px;
+    color: var(--text);
+    background:
+      radial-gradient(circle at 52% 45%, rgba(42, 69, 83, 0.2), transparent 42%),
+      radial-gradient(circle at 15% 12%, rgba(255, 145, 96, 0.08), transparent 28%),
+      linear-gradient(145deg, #090d14 0%, #06090e 68%, #0a0e15 100%);
+    font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(circle at 50% 46%, #000 0%, rgba(0,0,0,0.45) 44%, transparent 76%);
+  }
+
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.42) 100%);
+  }
+
+  button {
+    font: inherit;
+  }
+
+  .topbar {
+    position: fixed;
+    z-index: 40;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 22px 28px;
+    pointer-events: none;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+  }
+
+  .brand-mark {
+    position: relative;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 12px;
+    background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 10px 30px rgba(0,0,0,0.24);
+  }
+
+  .brand-mark::before {
+    content: "";
+    position: absolute;
+    left: 9px;
+    right: 9px;
+    top: 10px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--accent);
+    box-shadow: 0 8px 0 rgba(255,255,255,0.28), 0 16px 0 rgba(255,255,255,0.12);
+  }
+
+  .eyebrow {
+    margin: 0 0 3px;
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 20px;
+    line-height: 1;
+    font-weight: 720;
+    letter-spacing: 0.11em;
+  }
+
+  h1 span {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .controls {
+    display: flex;
+    gap: 9px;
+    pointer-events: auto;
+  }
+
+  .control-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-height: 40px;
+    padding: 0 14px;
+    color: #dce4e8;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 11px;
+    background: rgba(15,21,30,0.72);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 9px 28px rgba(0,0,0,0.2);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    cursor: pointer;
+    transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease;
+  }
+
+  .control-button:hover {
+    color: #fff;
+    border-color: rgba(255,255,255,0.24);
+    background: rgba(25,34,45,0.88);
+    transform: translateY(-1px);
+  }
+
+  .control-button:active {
+    transform: translateY(0) scale(0.98);
+  }
+
+  .control-button:focus-visible {
+    outline: 2px solid var(--accent-2);
+    outline-offset: 3px;
+  }
+
+  .control-button svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .control-button span {
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: 0.05em;
+  }
+
+  #muteButton.muted {
+    color: #ffac91;
+    border-color: rgba(255,152,112,0.28);
+  }
+
+  #muteButton .sound-waves {
+    transition: opacity 150ms ease;
+  }
+
+  #muteButton .sound-slash {
+    opacity: 0;
+    transition: opacity 150ms ease;
+  }
+
+  #muteButton.muted .sound-waves {
+    opacity: 0.18;
+  }
+
+  #muteButton.muted .sound-slash {
+    opacity: 1;
+  }
+
+  .stage {
+    position: fixed;
+    z-index: 5;
+    inset: 86px 0 94px;
+    overflow: hidden;
+    perspective: 1600px;
+    perspective-origin: 50% 46%;
+  }
+
+  .scene {
+    position: absolute;
+    inset: 0;
+  }
+
+  .rig {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 920px;
+    height: 300px;
+    margin-left: -460px;
+    margin-top: -150px;
+    transform-style: preserve-3d;
+    transform-origin: 50% 50%;
+    will-change: transform;
+  }
+
+  .ground {
+    position: absolute;
+    left: -70px;
+    top: -70px;
+    width: 1060px;
+    height: 440px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.34) 42%, transparent 72%);
+    transform: translateZ(-43px);
+    filter: blur(7px);
+    pointer-events: none;
+  }
+
+  .layer {
+    position: absolute;
+    inset: 0;
+    width: 920px;
+    height: 300px;
+    transform-style: preserve-3d;
+    pointer-events: none;
+  }
+
+  .case-layer { transform: translate3d(0, 0, -18px); }
+  .pcb-layer { transform: translate3d(0, 0, -1px); }
+  .foam-layer { transform: translate3d(0, 0, 5px); }
+  .plate-layer { transform: translate3d(0, 0, 10px); }
+  .switch-layer { transform: translate3d(0, 0, 14px); }
+  .cap-layer { transform: translate3d(0, 0, 36px); }
+
+  .box-object {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform-style: preserve-3d;
+  }
+
+  .face {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform-origin: 0 0;
+    backface-visibility: visible;
+    pointer-events: none;
+  }
+
+  .case-base .face.top {
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 12% 12%, rgba(255,255,255,0.055), transparent 22%),
+      linear-gradient(145deg, #1c2733, #0c121a 72%);
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+
+  .case-base .face.front {
+    background: linear-gradient(180deg, #253241, #101720 58%, #080d13);
+    border-top: 1px solid rgba(255,255,255,0.12);
+  }
+
+  .case-base .face.right {
+    background: linear-gradient(180deg, #1b2632, #0b1118);
+  }
+
+  .case-base .face.back,
+  .case-base .face.left {
+    background: #0c1219;
+  }
+
+  .case-base .face.bottom {
+    background: #070b10;
+  }
+
+  .case-inset {
+    position: absolute;
+    inset: 10px;
+    border: 1px solid rgba(255,255,255,0.055);
+    border-radius: 16px;
+    box-shadow: inset 0 0 0 5px rgba(0,0,0,0.12);
+  }
+
+  .case-inset::after {
+    content: "MONOLITH  /  CNC 6063";
+    position: absolute;
+    right: 19px;
+    bottom: 11px;
+    color: rgba(255,255,255,0.19);
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+  }
+
+  .accent-strip .face.top {
+    background: linear-gradient(90deg, transparent, #ff9870 18%, #ffc0a2 50%, #ff9870 82%, transparent);
+    box-shadow: 0 0 18px rgba(255,152,112,0.25);
+  }
+
+  .accent-strip .face.front {
+    background: #b9553f;
+  }
+
+  .case-foot .face.top,
+  .case-foot .face.bottom {
+    background: #080c11;
+  }
+
+  .case-foot .face.front,
+  .case-foot .face.right,
+  .case-foot .face.back,
+  .case-foot .face.left {
+    background: #0b1016;
+  }
+
+  .pcb-board .face.top {
+    overflow: hidden;
+    background:
+      linear-gradient(90deg, transparent 0 13%, rgba(104,217,178,0.1) 13% 13.2%, transparent 13.2%),
+      linear-gradient(0deg, transparent 0 22%, rgba(104,217,178,0.08) 22% 22.2%, transparent 22.2%),
+      repeating-linear-gradient(90deg, transparent 0 31px, rgba(108,225,185,0.07) 32px 33px),
+      repeating-linear-gradient(0deg, transparent 0 27px, rgba(108,225,185,0.05) 28px 29px),
+      linear-gradient(145deg, #17483f, #0b2927 75%);
+    border: 1px solid rgba(135,255,213,0.2);
+  }
+
+  .pcb-art {
+    position: absolute;
+    inset: 0;
+    opacity: 0.72;
+  }
+
+  .pcb-art svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .pcb-art path,
+  .pcb-art line,
+  .pcb-art circle {
+    fill: none;
+    stroke: #70d9b0;
+    stroke-width: 1.1;
+    opacity: 0.52;
+  }
+
+  .pcb-chip {
+    position: absolute;
+    width: 54px;
+    height: 42px;
+    border: 1px solid rgba(201,255,235,0.16);
+    border-radius: 3px;
+    background: linear-gradient(145deg, #172124, #080d10);
+    box-shadow: 0 4px 0 #07100d;
+  }
+
+  .pcb-chip::after {
+    content: "MX-CTRL";
+    position: absolute;
+    left: 7px;
+    top: 15px;
+    color: rgba(206,255,239,0.5);
+    font-size: 6px;
+    letter-spacing: 0.12em;
+  }
+
+  .foam-board .face.top {
+    background:
+      radial-gradient(circle, rgba(255,255,255,0.08) 0 1px, transparent 1.4px) 0 0 / 9px 9px,
+      linear-gradient(145deg, #4b354e, #302437);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .foam-board .face.front {
+    background: linear-gradient(180deg, #5a3d5b, #2c2032);
+  }
+
+  .plate-board .face.top {
+    background:
+      radial-gradient(circle, rgba(8,12,16,0.8) 0 4px, transparent 4.5px) 0 0 / 46px 44px,
+      linear-gradient(145deg, #59636d, #38434d);
+    border: 1px solid rgba(255,255,255,0.13);
+  }
+
+  .plate-board .face.front {
+    background: linear-gradient(180deg, #66717b, #303a44);
+  }
+
+  .plate-frame .face.top {
+    background: linear-gradient(145deg, #394653, #1b2530);
+    border: 1px solid rgba(255,255,255,0.11);
+  }
+
+  .plate-frame .face.front {
+    background: linear-gradient(180deg, #43505d, #161e27);
+  }
+
+  .plate-frame .face.right {
+    background: #1b2530;
+  }
+
+  .switch-housing .face.top {
+    background:
+      linear-gradient(90deg, transparent 48%, rgba(255,255,255,0.06) 49% 51%, transparent 52%),
+      linear-gradient(0deg, transparent 48%, rgba(255,255,255,0.06) 49% 51%, transparent 52%),
+      linear-gradient(145deg, #27323d, #121a23);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .switch-housing .face.front {
+    background: linear-gradient(180deg, #1c2630, #090e14);
+  }
+
+  .switch-housing .face.right {
+    background: #111820;
+  }
+
+  .switch-stem .face.top {
+    background: linear-gradient(145deg, #ffb08d, #e76f50);
+    border: 1px solid rgba(255,255,255,0.2);
+    box-shadow: inset 0 0 0 3px rgba(118,43,29,0.24);
+  }
+
+  .switch-stem .face.front {
+    background: #b84f39;
+  }
+
+  .stabilizer .face.top {
+    background: linear-gradient(145deg, #b44e3a, #713125);
+    border: 1px solid rgba(255,255,255,0.11);
+  }
+
+  .stabilizer .face.front {
+    background: #56241d;
+  }
+
+  .switch {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    transform-style: preserve-3d;
+    pointer-events: none;
+    will-change: transform;
+  }
+
+  .stem-holder {
+    position: absolute;
+    left: 9px;
+    top: 9px;
+    width: 12px;
+    height: 12px;
+    --stem-z: 11px;
+    transform: translateZ(var(--stem-z));
+    transform-style: preserve-3d;
+    transition: transform 75ms cubic-bezier(.2,.8,.2,1);
+  }
+
+  .switch.pressed .stem-holder {
+    --stem-z: 8px;
+  }
+
+  .keycap {
+    position: absolute;
+    transform-style: preserve-3d;
+    pointer-events: auto;
+    cursor: pointer;
+    touch-action: none;
+    will-change: transform;
+  }
+
+  .body.is-assembling .keycap,
+  .body.is-assembling .knob {
+    pointer-events: none;
+  }
+
+  .cap-body {
+    transform-style: preserve-3d;
+    transition: transform 90ms cubic-bezier(.2,.8,.2,1);
+  }
+
+  .keycap.pressed .cap-body {
+    transform: translateZ(-5.5px) scaleY(0.985);
+  }
+
+  .cap-body .face.top {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: linear-gradient(145deg, var(--cap-a), var(--cap-b));
+    border: 1px solid rgba(255,255,255,0.13);
+    box-shadow:
+      inset 0 1px 1px rgba(255,255,255,0.32),
+      inset 0 -2px 4px rgba(0,0,0,0.08);
+  }
+
+  .cap-body .face.front {
+    background: linear-gradient(180deg, var(--side-a), var(--side-b));
+    border-top: 1px solid rgba(255,255,255,0.12);
+  }
+
+  .cap-body .face.right {
+    background: linear-gradient(180deg, var(--side-a), var(--side-b));
+  }
+
+  .cap-body .face.back,
+  .cap-body .face.left {
+    background: var(--side-b);
+  }
+
+  .cap-body .face.bottom {
+    background: #8e9692;
+  }
+
+  .legend {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--legend);
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 680;
+    letter-spacing: -0.01em;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.18);
+    pointer-events: none;
+  }
+
+  .cap-body.function .legend {
+    font-size: 9px;
+    font-weight: 620;
+  }
+
+  .cap-body.modifier .legend,
+  .cap-body.nav .legend {
+    font-size: 9px;
+    font-weight: 670;
+  }
+
+  .cap-body.accent .legend,
+  .cap-body.enter .legend {
+    font-size: 12px;
+  }
+
+  .keycap:hover .cap-body .face.top {
+    filter: brightness(1.07);
+  }
+
+  .knob {
+    position: absolute;
+    left: 842px;
+    top: 17px;
+    width: 42px;
+    height: 42px;
+    transform-style: preserve-3d;
+    pointer-events: auto;
+    cursor: pointer;
+    --angle: 0deg;
+  }
+
+  .knob-ring,
+  .knob-slice,
+  .knob-top {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+  }
+
+  .knob-ring {
+    transform: translateZ(16px);
+    border: 2px solid #7f8b95;
+    box-shadow: inset 0 0 0 5px #1b242e, 0 0 0 4px #111820;
+  }
+
+  .knob-slice {
+    background: linear-gradient(145deg, #4d5965, #1b242d);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .knob-top {
+    display: block;
+    transform: translateZ(30px) rotate(var(--angle));
+    background:
+      radial-gradient(circle at 37% 31%, #64717d, #2b3641 54%, #151d25 100%);
+    border: 1px solid rgba(255,255,255,0.2);
+    box-shadow: inset 0 1px 2px rgba(255,255,255,0.18), inset 0 -3px 5px rgba(0,0,0,0.35);
+    transition: transform 240ms cubic-bezier(.2,.8,.2,1);
+  }
+
+  .knob-top::after {
+    content: "";
+    position: absolute;
+    left: calc(50% - 1px);
+    top: 6px;
+    width: 2px;
+    height: 11px;
+    border-radius: 2px;
+    background: var(--accent);
+    box-shadow: 0 0 8px rgba(255,152,112,0.45);
+  }
+
+  .assembly-hud {
+    position: fixed;
+    z-index: 30;
+    left: 28px;
+    bottom: 23px;
+    width: 326px;
+    padding: 14px 16px 13px;
+    border: 1px solid var(--line);
+    border-radius: 15px;
+    background: var(--panel);
+    box-shadow: 0 18px 55px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.04);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    pointer-events: none;
+  }
+
+  .hud-topline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    color: #71808c;
+    font-size: 8px;
+    font-weight: 750;
+    letter-spacing: 0.19em;
+    text-transform: uppercase;
+  }
+
+  .hud-topline span:last-child {
+    color: var(--accent-2);
+  }
+
+  .stage-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 42px;
+  }
+
+  .stage-number {
+    display: grid;
+    place-items: center;
+    width: 39px;
+    height: 39px;
+    flex: 0 0 auto;
+    color: var(--accent);
+    border: 1px solid rgba(255,152,112,0.24);
+    border-radius: 11px;
+    background: rgba(255,152,112,0.07);
+    font-size: 12px;
+    font-weight: 760;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stage-copy {
+    min-width: 0;
+  }
+
+  .stage-copy strong {
+    display: block;
+    margin-bottom: 3px;
+    font-size: 12px;
+    font-weight: 680;
+    letter-spacing: 0.02em;
+  }
+
+  .stage-copy small {
+    display: block;
+    overflow: hidden;
+    color: #7d8b97;
+    font-size: 9px;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .progress-track {
+    height: 2px;
+    margin-top: 12px;
+    overflow: hidden;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.08);
+  }
+
+  .progress-fill {
+    display: block;
+    width: 100%;
+    height: 100%;
+    transform: scaleX(0);
+    transform-origin: left center;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    box-shadow: 0 0 10px rgba(103,200,187,0.45);
+  }
+
+  .input-hud {
+    position: fixed;
+    z-index: 30;
+    right: 28px;
+    bottom: 25px;
+    min-width: 172px;
+    padding: 12px 15px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: rgba(15,21,30,0.7);
+    box-shadow: 0 14px 42px rgba(0,0,0,0.22);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    text-align: right;
+    pointer-events: none;
+  }
+
+  .input-hud small {
+    display: block;
+    margin-bottom: 5px;
+    color: #71808c;
+    font-size: 8px;
+    font-weight: 750;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .input-hud strong {
+    display: block;
+    max-width: 230px;
+    overflow: hidden;
+    font-size: 14px;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .input-hud span {
+    display: block;
+    margin-top: 4px;
+    color: var(--accent-2);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .audio-hint {
+    position: fixed;
+    z-index: 35;
+    right: 28px;
+    bottom: 104px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 11px;
+    color: #9ba8b2;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 999px;
+    background: rgba(10,15,22,0.68);
+    font-size: 9px;
+    letter-spacing: 0.025em;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    pointer-events: none;
+    transition: opacity 260ms ease, transform 260ms ease;
+  }
+
+  .audio-hint.hidden {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+
+  .audio-hint i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-2);
+    box-shadow: 0 0 0 0 rgba(103,200,187,0.4);
+    animation: audioPulse 1.8s infinite;
+  }
+
+  @keyframes audioPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(103,200,187,0.35); }
+    50% { box-shadow: 0 0 0 6px rgba(103,200,187,0); }
+  }
+
+  .scene-tag {
+    position: fixed;
+    z-index: 12;
+    left: 29px;
+    top: 100px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: rgba(164,178,188,0.6);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.17em;
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+
+  .scene-tag::before {
+    content: "";
+    width: 23px;
+    height: 1px;
+    background: rgba(255,255,255,0.18);
+  }
+
+  body.playing .case-layer {
+    animation: caseIn 1s cubic-bezier(.2,.75,.2,1) both;
+  }
+
+  body.playing .pcb-layer {
+    animation: pcbIn 1.05s cubic-bezier(.2,.75,.2,1) both;
+  }
+
+  body.playing .foam-layer {
+    animation: foamIn .88s 1.2s cubic-bezier(.2,.75,.2,1) both;
+  }
+
+  body.playing .plate-layer {
+    animation: plateIn .88s 2.15s cubic-bezier(.2,.75,.2,1) both;
+  }
+
+  body.playing .switch {
+    animation: partIn .5s var(--delay) cubic-bezier(.22,.75,.18,1) both;
+  }
+
+  body.playing .keycap {
+    animation: partIn .55s var(--delay) cubic-bezier(.22,.75,.18,1) both;
+  }
+
+  @keyframes caseIn {
+    0% { transform: translate3d(-34px, 56px, -150px) rotateZ(2deg); }
+    72% { transform: translate3d(0, -3px, -14px) rotateZ(-0.3deg); }
+    100% { transform: translate3d(0, 0, -18px) rotateZ(0); }
+  }
+
+  @keyframes pcbIn {
+    0% { transform: translate3d(78px, 42px, -178px) rotateZ(-4deg); }
+    68% { transform: translate3d(0, 4px, 5px) rotateZ(.5deg); }
+    86% { transform: translate3d(0, -1px, -3px) rotateZ(-.15deg); }
+    100% { transform: translate3d(0, 0, -1px) rotateZ(0); }
+  }
+
+  @keyframes foamIn {
+    0% { transform: translate3d(-62px, -118px, 210px) rotateZ(4deg); }
+    68% { transform: translate3d(0, 5px, 11px) rotateZ(-.4deg); }
+    86% { transform: translate3d(0, -1px, 3px) rotateZ(.15deg); }
+    100% { transform: translate3d(0, 0, 5px) rotateZ(0); }
+  }
+
+  @keyframes plateIn {
+    0% { transform: translate3d(76px, -104px, 196px) rotateZ(-3.5deg); }
+    68% { transform: translate3d(0, 5px, 16px) rotateZ(.4deg); }
+    86% { transform: translate3d(0, -1px, 8px) rotateZ(-.15deg); }
+    100% { transform: translate3d(0, 0, 10px) rotateZ(0); }
+  }
+
+  @keyframes partIn {
+    0% {
+      visibility: hidden;
+      transform: translate3d(var(--from-x), var(--from-y), var(--from-z)) rotateZ(var(--from-r));
+    }
+    10% { visibility: visible; }
+    70% {
+      transform: translate3d(0, 4px, 10px) rotateZ(.35deg);
+    }
+    86% {
+      transform: translate3d(0, -1px, -2px) rotateZ(-.15deg);
+    }
+    100% {
+      visibility: visible;
+      transform: translate3d(0, 0, 0) rotateZ(0);
+    }
+  }
+
+  @media (max-width: 760px) {
+    .topbar {
+      padding: 15px 16px;
+    }
+
+    .brand-mark {
+      width: 37px;
+      height: 37px;
+      border-radius: 10px;
+    }
+
+    .brand-mark::before {
+      left: 8px;
+      right: 8px;
+      top: 9px;
+    }
+
+    .eyebrow {
+      display: none;
+    }
+
+    h1 {
+      font-size: 16px;
+    }
+
+    .control-button {
+      min-height: 38px;
+      padding: 0 11px;
+    }
+
+    .control-button span {
+      display: none;
+    }
+
+    .stage {
+      inset: 72px 0 112px;
+    }
+
+    .assembly-hud {
+      left: 14px;
+      right: 14px;
+      bottom: 13px;
+      width: auto;
+      padding: 11px 13px;
+    }
+
+    .stage-copy small {
+      max-width: 230px;
+    }
+
+    .input-hud {
+      display: none;
+    }
+
+    .audio-hint {
+      top: 67px;
+      right: 14px;
+      bottom: auto;
+    }
+
+    .scene-tag {
+      display: none;
+    }
+  }
+
+  @media (max-height: 590px) and (orientation: landscape) {
+    .topbar {
+      padding-top: 10px;
+      padding-bottom: 10px;
+    }
+
+    .stage {
+      inset: 58px 0 76px;
+    }
+
+    .assembly-hud {
+      bottom: 10px;
+      padding-top: 9px;
+      padding-bottom: 9px;
+    }
+
+    .hud-topline {
+      display: none;
+    }
+
+    .input-hud,
+    .audio-hint,
+    .scene-tag {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body.playing .case-layer,
+    body.playing .pcb-layer,
+    body.playing .foam-layer,
+    body.playing .plate-layer,
+    body.playing .switch,
+    body.playing .keycap {
+      animation-duration: 1ms !important;
+      animation-delay: 0ms !important;
+    }
+
+    .cap-body,
+    .stem-holder,
+    .knob-top {
+      transition-duration: 45ms !important;
+    }
+
+    .audio-hint i {
+      animation: none;
+    }
+  }
+</style>
+</head>
+<body class="is-assembling">
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark" aria-hidden="true"></div>
+    <div>
+      <p class="eyebrow">Exploded assembly / interactive edition</p>
+      <h1>MONOLITH <span>75</span></h1>
+    </div>
+  </div>
+  <div class="controls">
+    <button class="control-button" id="replayButton" type="button" aria-label="Replay assembly animation">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4.8 8.2A8 8 0 1 1 4 14"></path>
+        <path d="M4.8 3.8v4.4h4.4"></path>
+      </svg>
+      <span>Replay</span>
+    </button>
+    <button class="control-button" id="muteButton" type="button" aria-label="Mute keyboard sounds" aria-pressed="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 9.5h3l4-3.5v12l-4-3.5H5z"></path>
+        <path class="sound-waves" d="M15 9a4.2 4.2 0 0 1 0 6M17.7 6.7a7.6 7.6 0 0 1 0 10.6"></path>
+        <path class="sound-slash" d="M4 4l16 16"></path>
+      </svg>
+      <span id="muteLabel">Sound on</span>
+    </button>
+  </div>
+</header>
+
+<main class="stage" id="stage" aria-label="Interactive three-dimensional mechanical keyboard">
+  <div class="scene">
+    <div class="rig" id="rig">
+      <div class="ground"></div>
+      <div class="layer case-layer" id="caseLayer"></div>
+      <div class="layer pcb-layer" id="pcbLayer"></div>
+      <div class="layer foam-layer" id="foamLayer"></div>
+      <div class="layer plate-layer" id="plateLayer"></div>
+      <div class="layer switch-layer" id="switchLayer"></div>
+      <div class="layer cap-layer" id="capLayer"></div>
+    </div>
+  </div>
+</main>
+
+<div class="scene-tag">CNC aluminum / 75% layout / live Web Audio</div>
+
+<section class="assembly-hud" aria-live="polite">
+  <div class="hud-topline">
+    <span>Assembly sequence</span>
+    <span>05 layers</span>
+  </div>
+  <div class="stage-row">
+    <div class="stage-number" id="stageNumber">01</div>
+    <div class="stage-copy">
+      <strong id="stageTitle">PCB + chassis</strong>
+      <small id="stageDetail">Preparing the structural base and logic board</small>
+    </div>
+  </div>
+  <div class="progress-track"><span class="progress-fill" id="progressFill"></span></div>
+</section>
+
+<div class="input-hud" aria-live="polite">
+  <small>Last input</small>
+  <strong id="lastKey">READY</strong>
+  <span id="inputSource">Awaiting interaction</span>
+</div>
+
+<div class="audio-hint" id="audioHint">
+  <i aria-hidden="true"></i>
+  <span>Tap a key or use your keyboard to arm sound</span>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const UNIT = 42;
+  const STEP = 46;
+  const GAP = 4;
+  const START_X = 50;
+  const BOARD_W = 920;
+  const BOARD_H = 300;
+
+  const body = document.body;
+  const rig = document.getElementById("rig");
+  const stage = document.getElementById("stage");
+  const caseLayer = document.getElementById("caseLayer");
+  const pcbLayer = document.getElementById("pcbLayer");
+  const foamLayer = document.getElementById("foamLayer");
+  const plateLayer = document.getElementById("plateLayer");
+  const switchLayer = document.getElementById("switchLayer");
+  const capLayer = document.getElementById("capLayer");
+  const progressFill = document.getElementById("progressFill");
+  const stageNumber = document.getElementById("stageNumber");
+  const stageTitle = document.getElementById("stageTitle");
+  const stageDetail = document.getElementById("stageDetail");
+  const lastKey = document.getElementById("lastKey");
+  const inputSource = document.getElementById("inputSource");
+  const audioHint = document.getElementById("audioHint");
+  const muteButton = document.getElementById("muteButton");
+  const muteLabel = document.getElementById("muteLabel");
+  const replayButton = document.getElementById("replayButton");
+
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const keyMap = new Map();
+  const switchMap = new Map();
+
+  function makeRow(y, height, items) {
+    let cursor = START_X;
+    return items.map(item => {
+      cursor += (item.gap || 0) * STEP;
+      const key = {
+        label: item.label,
+        code: item.code,
+        type: item.type || "alpha",
+        u: item.u || 1,
+        x: cursor,
+        y,
+        w: (item.u || 1) * STEP - GAP,
+        h: height
+      };
+      cursor += key.u * STEP;
+      return key;
+    });
+  }
+
+  const functionKeys = makeRow(17, 30, [
+    { label: "Esc", code: "Escape", type: "accent" },
+    { label: "F1", code: "F1", type: "function", gap: .5 },
+    { label: "F2", code: "F2", type: "function" },
+    { label: "F3", code: "F3", type: "function" },
+    { label: "F4", code: "F4", type: "function" },
+    { label: "F5", code: "F5", type: "function", gap: .5 },
+    { label: "F6", code: "F6", type: "function" },
+    { label: "F7", code: "F7", type: "function" },
+    { label: "F8", code: "F8", type: "function" },
+    { label: "F9", code: "F9", type: "function", gap: .5 },
+    { label: "F10", code: "F10", type: "function" },
+    { label: "F11", code: "F11", type: "function" },
+    { label: "F12", code: "F12", type: "function" }
+  ]);
+
+  const numberKeys = makeRow(55, 38, [
+    { label: "`", code: "Backquote" },
+    { label: "1", code: "Digit1" },
+    { label: "2", code: "Digit2" },
+    { label: "3", code: "Digit3" },
+    { label: "4", code: "Digit4" },
+    { label: "5", code: "Digit5" },
+    { label: "6", code: "Digit6" },
+    { label: "7", code: "Digit7" },
+    { label: "8", code: "Digit8" },
+    { label: "9", code: "Digit9" },
+    { label: "0", code: "Digit0" },
+    { label: "−", code: "Minus" },
+    { label: "=", code: "Equal" },
+    { label: "⌫", code: "Backspace", u: 2, type: "modifier" },
+    { label: "Del", code: "Delete", type: "nav", gap: .5 }
+  ]);
+
+  const qKeys = makeRow(97, 38, [
+    { label: "↹", code: "Tab", u: 1.5, type: "modifier" },
+    { label: "Q", code: "KeyQ" },
+    { label: "W", code: "KeyW" },
+    { label: "E", code: "KeyE" },
+    { label: "R", code: "KeyR" },
+    { label: "T", code: "KeyT" },
+    { label: "Y", code: "KeyY" },
+    { label: "U", code: "KeyU" },
+    { label: "I", code: "KeyI" },
+    { label: "O", code: "KeyO" },
+    { label: "P", code: "KeyP" },
+    { label: "[", code: "BracketLeft" },
+    { label: "]", code: "BracketRight" },
+    { label: "\\", code: "Backslash", u: 1.5 },
+    { label: "Pg↑", code: "PageUp", type: "nav", gap: .5 }
+  ]);
+
+  const aKeys = makeRow(139, 38, [
+    { label: "⇪", code: "CapsLock", u: 1.75, type: "modifier" },
+    { label: "A", code: "KeyA" },
+    { label: "S", code: "KeyS" },
+    { label: "D", code: "KeyD" },
+    { label: "F", code: "KeyF" },
+    { label: "G", code: "KeyG" },
+    { label: "H", code: "KeyH" },
+    { label: "J", code: "KeyJ" },
+    { label: "K", code: "KeyK" },
+    { label: "L", code: "KeyL" },
+    { label: ";", code: "Semicolon" },
+    { label: "'", code: "Quote" },
+    { label: "↵", code: "Enter", u: 2.25, type: "enter" },
+    { label: "Pg↓", code: "PageDown", type: "nav", gap: .5 }
+  ]);
+
+  const shiftKeys = makeRow(181, 38, [
+    { label: "⇧", code: "ShiftLeft", u: 2.25, type: "modifier" },
+    { label: "Z", code: "KeyZ" },
+    { label: "X", code: "KeyX" },
+    { label: "C", code: "KeyC" },
+    { label: "V", code: "KeyV" },
+    { label: "B", code: "KeyB" },
+    { label: "N", code: "KeyN" },
+    { label: "M", code: "KeyM" },
+    { label: ",", code: "Comma" },
+    { label: ".", code: "Period" },
+    { label: "/", code: "Slash" },
+    { label: "⇧", code: "ShiftRight", u: 1.75, type: "modifier" },
+    { label: "↑", code: "ArrowUp", type: "nav", gap: .5 },
+    { label: "End", code: "End", type: "nav" }
+  ]);
+
+  const bottomKeys = makeRow(225, 42, [
+    { label: "Ctrl", code: "ControlLeft", u: 1.25, type: "modifier" },
+    { label: "⌘", code: "MetaLeft", u: 1.25, type: "modifier" },
+    { label: "Alt", code: "AltLeft", u: 1.25, type: "modifier" },
+    { label: "", code: "Space", u: 6.25 },
+    { label: "Alt", code: "AltRight", u: 1.25, type: "modifier" },
+    { label: "Fn", code: "Fn", u: 1.25, type: "modifier" },
+    { label: "Ctrl", code: "ControlRight", u: 1.25, type: "modifier" },
+    { label: "←", code: "ArrowLeft", type: "nav", gap: .5 },
+    { label: "↓", code: "ArrowDown", type: "nav" },
+    { label: "→", code: "ArrowRight", type: "nav" }
+  ]);
+
+  const keys = [...functionKeys, ...numberKeys, ...qKeys, ...aKeys, ...shiftKeys, ...bottomKeys];
+
+  function addBox(parent, w, h, d, className) {
+    const box = document.createElement("div");
+    box.className = `box-object ${className}`;
+    box.style.width = `${w}px`;
+    box.style.height = `${h}px`;
+
+    const matrices = {
+      top: `matrix3d(1,0,0,0,0,1,0,0,0,0,1,0,0,0,${d / 2},1)`,
+      bottom: `matrix3d(1,0,0,0,0,-1,0,0,0,0,-1,0,0,${h},${-d / 2},1)`,
+      front: `matrix3d(1,0,0,0,0,0,1,0,0,1,0,0,0,${h / 2},${-d / 2},1)`,
+      back: `matrix3d(1,0,0,0,0,0,-1,0,0,-1,0,0,0,${-h / 2},${d / 2},1)`,
+      right: `matrix3d(0,0,1,0,0,1,0,0,1,0,0,0,${w / 2},0,${-d / 2},1)`,
+      left: `matrix3d(0,0,-1,0,0,1,0,0,-1,0,0,0,${-w / 2},0,${d / 2},1)`
+    };
+
+    const sizes = {
+      top: [w, h],
+      bottom: [w, h],
+      front: [w, d],
+      back: [w, d],
+      right: [d, h],
+      left: [d, h]
+    };
+
+    const faces = {};
+    for (const name of Object.keys(matrices)) {
+      const face = document.createElement("div");
+      face.className = `face ${name}`;
+      face.style.width = `${sizes[name][0]}px`;
+      face.style.height = `${sizes[name][1]}px`;
+      face.style.transform = matrices[name];
+      box.appendChild(face);
+      faces[name] = face;
+    }
+
+    parent.appendChild(box);
+    return { box, faces };
+  }
+
+  function buildChassis() {
+    const chassis = addBox(caseLayer, BOARD_W, BOARD_H, 28, "case-base");
+    chassis.faces.top.innerHTML = '<div class="case-inset"></div>';
+
+    const accent = addBox(caseLayer, 420, 4, 3, "accent-strip");
+    accent.box.style.left = "250px";
+    accent.box.style.top = "292px";
+    accent.box.style.transform = "translateZ(13px)";
+
+    const footPositions = [
+      [26, 274], [866, 274], [26, 18], [866, 18]
+    ];
+    footPositions.forEach(([x, y]) => {
+      const foot = addBox(caseLayer, 28, 12, 8, "case-foot");
+      foot.box.style.left = `${x}px`;
+      foot.box.style.top = `${y}px`;
+      foot.box.style.transform = "translateZ(-17px)";
+    });
+  }
+
+  function buildPCB() {
+    const pcb = addBox(pcbLayer, 850, 260, 4, "pcb-board");
+    pcb.box.style.left = "35px";
+    pcb.box.style.top = "20px";
+    pcb.faces.top.innerHTML = `
+      <div class="pcb-art">
+        <svg viewBox="0 0 850 260" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M22 32H128L153 57H309V126H387V204H710L746 170H830"></path>
+          <path d="M18 218H190L222 186H313V89H441L475 55H711"></path>
+          <path d="M61 12V76L91 106V158H251L278 185V248"></path>
+          <path d="M824 28V102L792 134V226H645L611 192H535"></path>
+          <path d="M365 12V66L397 98V165H473L509 201H605"></path>
+          <path d="M27 151H152L181 122H301M554 22V61L588 95H827"></path>
+          <circle cx="153" cy="57" r="4"></circle>
+          <circle cx="746" cy="170" r="4"></circle>
+          <circle cx="397" cy="98" r="4"></circle>
+          <circle cx="611" cy="192" r="4"></circle>
+        </svg>
+        <div class="pcb-chip" style="left:397px;top:108px"></div>
+        <div class="pcb-chip" style="left:678px;top:82px;width:42px;height:30px"></div>
+        <div class="pcb-chip" style="left:102px;top:178px;width:38px;height:28px"></div>
+      </div>`;
+  }
+
+  function buildFoam() {
+    const foam = addBox(foamLayer, 834, 252, 6, "foam-board");
+    foam.box.style.left = "43px";
+    foam.box.style.top = "24px";
+  }
+
+  function buildPlateAndKnob() {
+    const plate = addBox(plateLayer, 844, 270, 5, "plate-board");
+    plate.box.style.left = "38px";
+    plate.box.style.top = "10px";
+
+    const frameSpecs = [
+      [10, 0, 900, 10],
+      [10, 290, 900, 10],
+      [0, 10, 10, 280],
+      [910, 10, 10, 280]
+    ];
+    frameSpecs.forEach(([x, y, w, h]) => {
+      const frame = addBox(plateLayer, w, h, 14, "plate-frame");
+      frame.box.style.left = `${x}px`;
+      frame.box.style.top = `${y}px`;
+      frame.box.style.transform = "translateZ(5px)";
+    });
+
+    const knob = document.createElement("div");
+    knob.className = "knob";
+    knob.setAttribute("role", "button");
+    knob.setAttribute("aria-label", "Rotary encoder, click to rotate");
+    knob.title = "Rotary encoder — click to rotate";
+
+    const ring = document.createElement("div");
+    ring.className = "knob-ring";
+    knob.appendChild(ring);
+
+    for (let i = 0; i < 6; i++) {
+      const slice = document.createElement("div");
+      slice.className = "knob-slice";
+      slice.style.transform = `translateZ(${18 + i * 2}px)`;
+      knob.appendChild(slice);
+    }
+
+    const knobTop = document.createElement("div");
+    knobTop.className = "knob-top";
+    knob.appendChild(knobTop);
+    plateLayer.appendChild(knob);
+
+    let knobAngle = 0;
+    knob.addEventListener("click", () => {
+      if (!assemblyReady) return;
+      knobAngle = (knobAngle + 30) % 360;
+      knob.style.setProperty("--angle", `${knobAngle}deg`);
+      lastKey.textContent = "ENCODER";
+      inputSource.textContent = "Rotary control";
+      playProfile("function");
+    });
+  }
+
+  const capPalettes = {
+    alpha: {
+      "--cap-a": "#f3f1e8", "--cap-b": "#d3d7d0",
+      "--side-a": "#b7bdb7", "--side-b": "#8d9691",
+      "--legend": "#1b2730"
+    },
+    modifier: {
+      "--cap-a": "#344453", "--cap-b": "#24313e",
+      "--side-a": "#23303b", "--side-b": "#131c25",
+      "--legend": "#dce7eb"
+    },
+    nav: {
+      "--cap-a": "#5b6975", "--cap-b": "#3c4955",
+      "--side-a": "#35424d", "--side-b": "#202b35",
+      "--legend": "#eef3f4"
+    },
+    function: {
+      "--cap-a": "#2b3947", "--cap-b": "#1c2935",
+      "--side-a": "#202d38", "--side-b": "#111a23",
+      "--legend": "#9db0bd"
+    },
+    accent: {
+      "--cap-a": "#ff9f78", "--cap-b": "#db684e",
+      "--side-a": "#bd513d", "--side-b": "#853a2f",
+      "--legend": "#241a18"
+    },
+    enter: {
+      "--cap-a": "#71d0bf", "--cap-b": "#3e9c91",
+      "--side-a": "#347f76", "--side-b": "#245b56",
+      "--legend": "#112c29"
+    }
+  };
+
+  function applyPalette(element, type) {
+    const palette = capPalettes[type] || capPalettes.alpha;
+    Object.entries(palette).forEach(([name, value]) => element.style.setProperty(name, value));
+  }
+
+  function buildKeys() {
+    keys.forEach((key, index) => {
+      const switchEl = document.createElement("div");
+      switchEl.className = "switch";
+      switchEl.dataset.code = key.code;
+      switchEl.style.left = `${key.x + (key.w - 30) / 2}px`;
+      switchEl.style.top = `${key.y + (key.h - 30) / 2}px`;
+      switchEl.style.setProperty("--delay", `${3.05 + index * 0.022}s`);
+      switchEl.style.setProperty("--from-x", `${-26 - (key.x / 843) * 74}px`);
+      switchEl.style.setProperty("--from-y", `${-92 - (index % 3) * 16}px`);
+      switchEl.style.setProperty("--from-z", `${148 + (index % 4) * 15}px`);
+      switchEl.style.setProperty("--from-r", `${-4 + (index % 5) * 2}deg`);
+
+      addBox(switchEl, 30, 30, 11, "switch-housing");
+
+      const stemHolder = document.createElement("div");
+      stemHolder.className = "stem-holder";
+      addBox(stemHolder, 12, 12, 8, "switch-stem");
+      switchEl.appendChild(stemHolder);
+
+      if (key.code === "Space") {
+        const leftStab = addBox(switchEl, 16, 16, 6, "stabilizer");
+        leftStab.box.style.left = "-83px";
+        leftStab.box.style.top = "7px";
+        leftStab.box.style.transform = "translateZ(-1px)";
+
+        const rightStab = addBox(switchEl, 16, 16, 6, "stabilizer");
+        rightStab.box.style.left = "97px";
+        rightStab.box.style.top = "7px";
+        rightStab.box.style.transform = "translateZ(-1px)";
+      } else if (key.u >= 2) {
+        const stabilizer = addBox(switchEl, 16, 16, 6, "stabilizer");
+        stabilizer.box.style.left = `${key.w - 42}px`;
+        stabilizer.box.style.top = "7px";
+        stabilizer.box.style.transform = "translateZ(-1px)";
+      }
+
+      switchLayer.appendChild(switchEl);
+      switchMap.set(key.code, switchEl);
+
+      const capEl = document.createElement("div");
+      capEl.className = "keycap";
+      capEl.dataset.code = key.code;
+      capEl.dataset.display = key.label || key.code;
+      capEl.style.left = `${key.x}px`;
+      capEl.style.top = `${key.y}px`;
+      capEl.style.width = `${key.w}px`;
+      capEl.style.height = `${key.h}px`;
+      capEl.style.setProperty("--delay", `${5.1 + index * 0.024}s`);
+      capEl.style.setProperty("--from-x", `${-30 - (key.x / 843) * 80}px`);
+      capEl.style.setProperty("--from-y", `${-102 - (index % 4) * 14}px`);
+      capEl.style.setProperty("--from-z", `${182 + (index % 5) * 17}px`);
+      capEl.style.setProperty("--from-r", `${-5 + (index % 6) * 2}deg`);
+
+      const cap = addBox(capEl, key.w, key.h, 12, `cap-body ${key.type}`);
+      applyPalette(cap.box, key.type);
+
+      const legend = document.createElement("span");
+      legend.className = "legend";
+      legend.textContent = key.label;
+      cap.faces.top.appendChild(legend);
+
+      capLayer.appendChild(capEl);
+      keyMap.set(key.code, capEl);
+
+      capEl.addEventListener("pointerdown", event => {
+        event.preventDefault();
+        if (!assemblyReady) return;
+        try { capEl.setPointerCapture(event.pointerId); } catch (_) {}
+        pressKey(capEl, "On-screen");
+      });
+
+      capEl.addEventListener("pointerup", event => {
+        event.preventDefault();
+        releaseKey(capEl);
+      });
+
+      capEl.addEventListener("pointercancel", () => releaseKey(capEl));
+      capEl.addEventListener("lostpointercapture", () => releaseKey(capEl));
+    });
+  }
+
+  buildChassis();
+  buildPCB();
+  buildFoam();
+  buildPlateAndKnob();
+  buildKeys();
+
+  let assemblyReady = false;
+  let assemblyTimers = [];
+  let progressFrame = 0;
+
+  function setStage(index, title, detail) {
+    stageNumber.textContent = String(index + 1).padStart(2, "0");
+    stageTitle.textContent = title;
+    stageDetail.textContent = detail;
+  }
+
+  function clearAssembly() {
+    assemblyTimers.forEach(clearTimeout);
+    assemblyTimers = [];
+    cancelAnimationFrame(progressFrame);
+  }
+
+  function finishAssembly() {
+    assemblyReady = true;
+    body.classList.remove("is-assembling");
+    setStage(4, "Assembly complete", "Click a key or use your physical keyboard");
+    progressFill.style.transform = "scaleX(1)";
+    lastKey.textContent = "READY";
+    inputSource.textContent = "Awaiting interaction";
+  }
+
+  function startAssembly() {
+    clearAssembly();
+    assemblyReady = false;
+    body.classList.remove("playing");
+    body.classList.add("is-assembling");
+    document.querySelectorAll(".pressed").forEach(el => el.classList.remove("pressed"));
+    void body.offsetWidth;
+    body.classList.add("playing");
+
+    progressFill.style.transform = "scaleX(0)";
+    setStage(0, "PCB + chassis", "Preparing the structural base and logic board");
+
+    if (reducedMotion) {
+      assemblyTimers.push(setTimeout(finishAssembly, 120));
+      return;
+    }
+
+    const start = performance.now();
+    const duration = 7400;
+    const updateProgress = now => {
+      const progress = Math.min((now - start) / duration, 1);
+      progressFill.style.transform = `scaleX(${progress})`;
+      if (progress < 1) progressFrame = requestAnimationFrame(updateProgress);
+    };
+    progressFrame = requestAnimationFrame(updateProgress);
+
+    assemblyTimers.push(setTimeout(() => {
+      setStage(1, "Acoustic foam", "Damping layer settling between PCB and plate");
+    }, 1200));
+
+    assemblyTimers.push(setTimeout(() => {
+      setStage(2, "Support plate", "Aluminum plate descending into the foam stack");
+    }, 2100));
+
+    assemblyTimers.push(setTimeout(() => {
+      setStage(3, "Mechanical switches", `${keys.length} switches installing row by row, left to right`);
+    }, 3000));
+
+    assemblyTimers.push(setTimeout(() => {
+      setStage(4, "Keycap installation", `${keys.length} sculpted caps locking into place`);
+    }, 5050));
+
+    assemblyTimers.push(setTimeout(finishAssembly, 7350));
+  }
+
+  function fitScene() {
+    const rect = stage.getBoundingClientRect();
+    const availableWidth = Math.max(280, rect.width - 30);
+    const availableHeight = Math.max(220, rect.height - 24);
+    const scale = Math.min(availableWidth / 1040, availableHeight / 520, 1.15);
+    const rotation = rect.width < 700 ? -8 : -13;
+    rig.style.transform = `rotateX(54deg) rotateZ(${rotation}deg) scale(${scale})`;
+  }
+
+  window.addEventListener("resize", fitScene, { passive: true });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", fitScene, { passive: true });
+  }
+  fitScene();
+
+  let audioContext = null;
+  let masterGain = null;
+  let noiseBuffer = null;
+  let muted = false;
+
+  async function ensureAudio() {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) {
+      audioHint.querySelector("span").textContent = "Web Audio is unavailable in this browser";
+      return null;
+    }
+
+    if (!audioContext) {
+      audioContext = new AudioContextClass();
+      masterGain = audioContext.createGain();
+      masterGain.gain.value = muted ? 0 : 0.58;
+      masterGain.connect(audioContext.destination);
+
+      const length = Math.floor(audioContext.sampleRate * 0.14);
+      noiseBuffer = audioContext.createBuffer(1, length, audioContext.sampleRate);
+      const data = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < length; i++) {
+        data[i] = (Math.random() * 2 - 1) * (1 - i / length);
+      }
+    }
+
+    if (audioContext.state === "suspended") {
+      try {
+        await audioContext.resume();
+      } catch (_) {}
+    }
+
+    if (audioContext.state === "running") {
+      audioHint.classList.add("hidden");
+    }
+    return audioContext;
+  }
+
+  const profiles = {
+    alpha: { freq: 330, end: 170, decay: .095, noise: .13, filter: "bandpass", filterFreq: 1700, q: 1.1, wave: "triangle" },
+    space: { freq: 92, end: 57, decay: .24, noise: .18, filter: "lowpass", filterFreq: 760, q: .7, wave: "sine" },
+    enter: { freq: 205, end: 118, decay: .15, noise: .15, filter: "bandpass", filterFreq: 1120, q: 1.4, wave: "triangle" },
+    backspace: { freq: 278, end: 145, decay: .105, noise: .19, filter: "highpass", filterFreq: 1800, q: .8, wave: "square" },
+    shift: { freq: 128, end: 84, decay: .11, noise: .09, filter: "lowpass", filterFreq: 520, q: .7, wave: "sine" },
+    control: { freq: 105, end: 72, decay: .13, noise: .07, filter: "lowpass", filterFreq: 430, q: .6, wave: "sine" },
+    alt: { freq: 148, end: 91, decay: .13, noise: .08, filter: "bandpass", filterFreq: 740, q: .9, wave: "triangle" },
+    meta: { freq: 192, end: 123, decay: .11, noise: .08, filter: "bandpass", filterFreq: 1350, q: 1.2, wave: "sine" },
+    caps: { freq: 172, end: 108, decay: .13, noise: .1, filter: "bandpass", filterFreq: 980, q: 1.1, wave: "triangle" },
+    fn: { freq: 335, end: 220, decay: .075, noise: .1, filter: "highpass", filterFreq: 2200, q: .7, wave: "sine" },
+    tab: { freq: 140, end: 95, decay: .11, noise: .08, filter: "bandpass", filterFreq: 850, q: .8, wave: "triangle" },
+    function: { freq: 470, end: 280, decay: .07, noise: .11, filter: "highpass", filterFreq: 2400, q: .8, wave: "sine" },
+    nav: { freq: 365, end: 220, decay: .08, noise: .12, filter: "bandpass", filterFreq: 1750, q: 1.1, wave: "triangle" }
+  };
+
+  function profileForCode(code) {
+    if (code === "Space") return profiles.space;
+    if (code === "Enter") return profiles.enter;
+    if (code === "Backspace" || code === "Delete") return profiles.backspace;
+    if (code === "ShiftLeft" || code === "ShiftRight") return profiles.shift;
+    if (code === "ControlLeft" || code === "ControlRight") return profiles.control;
+    if (code === "AltLeft" || code === "AltRight") return profiles.alt;
+    if (code === "MetaLeft" || code === "MetaRight") return profiles.meta;
+    if (code === "CapsLock") return profiles.caps;
+    if (code === "Fn") return profiles.fn;
+    if (code === "Tab") return profiles.tab;
+    if (code === "Escape" || /^F\d+$/.test(code)) return profiles.function;
+    if (code.startsWith("Arrow") || code === "PageUp" || code === "PageDown" || code === "End" || code === "Home") return profiles.nav;
+    return profiles.alpha;
+  }
+
+  async function playProfile(type) {
+    if (muted) return;
+    const ctx = await ensureAudio();
+    if (!ctx || ctx.state !== "running" || !masterGain) return;
+
+    const profile = profiles[type] || profiles.alpha;
+    const now = ctx.currentTime;
+
+    let output = masterGain;
+    if (typeof ctx.createStereoPanner === "function") {
+      const panner = ctx.createStereoPanner();
+      panner.pan.value = Math.max(-0.7, Math.min(0.7, (Math.random() - 0.5) * 0.7));
+      panner.connect(masterGain);
+      output = panner;
+    }
+
+    const noise = ctx.createBufferSource();
+    noise.buffer = noiseBuffer;
+    const filter = ctx.createBiquadFilter();
+    filter.type = profile.filter;
+    filter.frequency.setValueAtTime(profile.filterFreq, now);
+    filter.Q.setValueAtTime(profile.q, now);
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(.0001, now);
+    noiseGain.gain.exponentialRampToValueAtTime(profile.noise, now + .0025);
+    noiseGain.gain.exponentialRampToValueAtTime(.0001, now + profile.decay);
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(output);
+    noise.start(now);
+    noise.stop(now + profile.decay + .025);
+
+    const oscillator = ctx.createOscillator();
+    oscillator.type = profile.wave;
+    oscillator.frequency.setValueAtTime(profile.freq, now);
+    oscillator.frequency.exponentialRampToValueAtTime(Math.max(35, profile.end), now + profile.decay);
+    const toneGain = ctx.createGain();
+    toneGain.gain.setValueAtTime(.0001, now);
+    toneGain.gain.exponentialRampToValueAtTime(type === "alpha" ? .105 : .15, now + .003);
+    toneGain.gain.exponentialRampToValueAtTime(.0001, now + profile.decay);
+    oscillator.connect(toneGain);
+    toneGain.connect(output);
+    oscillator.start(now);
+    oscillator.stop(now + profile.decay + .03);
+
+    if (type === "backspace") {
+      const second = ctx.createBufferSource();
+      second.buffer = noiseBuffer;
+      const secondFilter = ctx.createBiquadFilter();
+      secondFilter.type = "highpass";
+      secondFilter.frequency.value = 2600;
+      const secondGain = ctx.createGain();
+      secondGain.gain.setValueAtTime(.0001, now + .012);
+      secondGain.gain.exponentialRampToValueAtTime(.08, now + .015);
+      secondGain.gain.exponentialRampToValueAtTime(.0001, now + .075);
+      second.connect(secondFilter);
+      secondFilter.connect(secondGain);
+      secondGain.connect(output);
+      second.start(now + .012);
+      second.stop(now + .085);
+    }
+  }
+
+  function playSound(key) {
+    const code = key.dataset.code || "";
+    const type = profileForCode(code);
+    playProfile(type === profiles.alpha ? "alpha" : Object.keys(profiles).find(name => profiles[name] === type) || "alpha");
+  }
+
+  function pressKey(key, source) {
+    key.classList.add("pressed");
+    const switchEl = switchMap.get(key.dataset.code);
+    if (switchEl) switchEl.classList.add("pressed");
+    lastKey.textContent = key.dataset.display || key.dataset.code;
+    inputSource.textContent = source;
+    playSound(key);
+  }
+
+  function releaseKey(key) {
+    key.classList.remove("pressed");
+    const switchEl = switchMap.get(key.dataset.code);
+    if (switchEl) switchEl.classList.remove("pressed");
+  }
+
+  function releaseAll() {
+    document.querySelectorAll(".pressed").forEach(el => el.classList.remove("pressed"));
+  }
+
+  const modifierCodes = new Set([
+    "ShiftLeft", "ShiftRight", "ControlLeft", "ControlRight",
+    "AltLeft", "AltRight", "MetaLeft", "MetaRight", "CapsLock", "Fn"
+  ]);
+
+  window.addEventListener("keydown", event => {
+    if (!assemblyReady) return;
+    const key = keyMap.get(event.code);
+    if (!key) return;
+
+    const active = document.activeElement;
+    const isControlFocus = active && active.matches("button, input, textarea, select");
+    if (isControlFocus && (event.code === "Space" || event.code === "Enter")) return;
+
+    if ((event.ctrlKey || event.metaKey || event.altKey) && !modifierCodes.has(event.code)) return;
+    if (event.repeat) return;
+
+    if (event.code !== "Tab" && !(isControlFocus && (event.code === "Space" || event.code === "Enter"))) {
+      if (["Space", "Backspace", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.code)) {
+        event.preventDefault();
+      }
+    }
+
+    pressKey(key, "Physical keyboard");
+  }, { passive: false });
+
+  window.addEventListener("keyup", event => {
+    const key = keyMap.get(event.code);
+    if (key) releaseKey(key);
+  });
+
+  window.addEventListener("blur", releaseAll);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) releaseAll();
+  });
+
+  document.addEventListener("pointerdown", () => {
+    ensureAudio().catch(() => {});
+  }, { once: true, capture: true });
+
+  document.addEventListener("keydown", () => {
+    ensureAudio().catch(() => {});
+  }, { once: true, capture: true });
+
+  muteButton.addEventListener("click", () => {
+    muted = !muted;
+    muteButton.classList.toggle("muted", muted);
+    muteButton.setAttribute("aria-pressed", String(muted));
+    muteButton.setAttribute("aria-label", muted ? "Unmute keyboard sounds" : "Mute keyboard sounds");
+    muteLabel.textContent = muted ? "Muted" : "Sound on";
+    if (masterGain && audioContext) {
+      masterGain.gain.setTargetAtTime(muted ? 0 : .58, audioContext.currentTime, .012);
+    }
+    if (!muted) ensureAudio().catch(() => {});
+    muteButton.blur();
+  });
+
+  replayButton.addEventListener("click", () => {
+    startAssembly();
+    replayButton.blur();
+    if (!reducedMotion && typeof replayButton.animate === "function") {
+      replayButton.animate(
+        [{ transform: "rotate(0deg)" }, { transform: "rotate(-360deg)" }],
+        { duration: 620, easing: "cubic-bezier(.2,.75,.2,1)" }
+      );
+    }
+  });
+
+  requestAnimationFrame(() => {
+    startAssembly();
+  });
+})();
+</script>
+</body>
+</html>
