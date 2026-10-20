@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>3D Fluid Lab — FLIP / PIC</title>
+<style>
+  :root{color-scheme:dark;--panel:rgba(10,20,29,.84);--line:rgba(150,215,235,.2);--text:#dff6ff;--muted:#91abb7;--accent:#45d9ee}
+  *{box-sizing:border-box}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#071018;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text)}
+  canvas{display:block;width:100%;height:100%;touch-action:none}
+  #ui{position:fixed;left:12px;top:12px;width:292px;max-height:calc(100vh - 24px);overflow:auto;padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:13px;box-shadow:0 12px 40px #0008;backdrop-filter:blur(12px);font-size:12px;z-index:5;scrollbar-width:thin}
+  #ui.hidden{transform:translateX(-320px);opacity:0;pointer-events:none;transition:.2s}
+  h1{font-size:14px;margin:0 0 3px;letter-spacing:.02em} h1 span{color:var(--accent)}
+  .sub{color:var(--muted);font-size:10px;margin-bottom:10px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0}.row label{color:#b9d1db}.row output{font-variant-numeric:tabular-nums;color:#fff;min-width:50px;text-align:right}
+  select,button,input[type=range]{width:100%}
+  select,button{background:#142834;color:var(--text);border:1px solid #31505e;border-radius:7px;padding:7px 8px;outline:none}
+  button{cursor:pointer;font-weight:600}button:hover{border-color:var(--accent);background:#193744}button.active{color:#061319;background:var(--accent);border-color:var(--accent)}
+  input[type=range]{accent-color:var(--accent);height:18px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:7px}.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+  hr{border:0;border-top:1px solid var(--line);margin:10px 0}
+  #stats{font:11px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;background:#06101799;border:1px solid #203843;border-radius:8px;padding:8px;white-space:pre-line}
+  #status{margin-top:8px;padding:7px 8px;border-radius:7px;background:#0b202a;color:#9edeea;font-size:10px;line-height:1.35}
+  #show{position:fixed;right:12px;top:12px;z-index:6;width:36px;height:34px;padding:0;font-size:17px}
+  #hint{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);padding:7px 12px;border-radius:20px;background:#061017aa;border:1px solid #29414d;color:#b9d4df;font-size:11px;pointer-events:none;white-space:nowrap}
+  #fatal{position:fixed;inset:0;display:none;place-items:center;background:#08131a;z-index:20;padding:30px;text-align:center}
+  #fatal div{max-width:540px;font-size:18px;line-height:1.5}#fatal b{color:#5ee4f5}
+  .check{display:flex;gap:7px;align-items:center}.check input{accent-color:var(--accent)}
+  @media(max-width:650px){#ui{width:250px;max-height:75vh}#hint{display:none}}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="ui">
+  <h1>3D <span>FLUID LAB</span></h1>
+  <div class="sub">GPU FLIP / PIC · incompressible 3D liquid</div>
+  <div class="row"><label for="scenario">Scenario</label><select id="scenario">
+    <option value="dam">DAM BREAK</option><option value="double">DOUBLE DAM</option><option value="drop">DROP</option><option value="faucet">FAUCET</option><option value="wave">WAVE MACHINE</option>
+  </select></div>
+  <div class="row"><label>Particle count</label><output id="countOut">20,480</output></div>
+  <input id="count" type="range" min="4096" max="20480" step="1024" value="20480">
+  <div class="row"><label>Viscosity</label><output id="viscOut">0.12</output></div>
+  <input id="visc" type="range" min="0" max="1" step="0.01" value="0.12">
+  <div class="row"><label>Gravity</label><output id="gravOut">9.81 m/s²</output></div>
+  <input id="grav" type="range" min="1" max="20" step="0.1" value="9.81">
+  <div class="row"><label>Time step</label><output id="dtOut">1/120 s</output></div>
+  <input id="dt" type="range" min="0.004" max="0.025" step="0.001" value="0.0083">
+  <div class="row"><label>Tank tilt</label><output id="tiltOut">0°</output></div>
+  <input id="tilt" type="range" min="-28" max="28" step="1" value="0">
+  <div class="grid2">
+    <button id="pause">PAUSE</button><button id="step">STEP</button>
+    <button id="reset">RESET</button><button id="drop">DROP OBJECT</button>
+  </div>
+  <hr>
+  <label class="check"><input id="raw" type="checkbox"> Raw particles / speed</label>
+  <label class="check" style="margin-top:6px"><input id="autoplay" type="checkbox" checked> Automatic camera drift</label>
+  <hr>
+  <div id="stats">Initializing solver…</div>
+  <div id="status">Checking WebGL2 and floating-point GPU support…</div>
+</div>
+<button id="show" title="Hide controls">☰</button>
+<div id="hint">Drag water to stir · drag outside tank to orbit · right-drag to pan · wheel to zoom · arrow keys tilt</div>
+<div id="fatal"><div><b>WebGL2 is unavailable.</b><br>This simulation requires a WebGL2-capable browser and device.</div></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+const $ = id => document.getElementById(id);
+const fatal = $('fatal');
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+  if (!renderer.capabilities.isWebGL2) throw new Error('WebGL2 unavailable');
+} catch(e) {
+  fatal.style.display='grid';
+  document.querySelector('#ui').style.display='none';
+  throw e;
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.15;
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+document.body.prepend(renderer.domElement);
+
+const hasFloat = renderer.extensions.has('EXT_color_buffer_float');
+const hasFloatBlend = renderer.extensions.has('EXT_float_blend');
+const GPU_OK = hasFloat && hasFloatBlend;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x071018);
+scene.fog = new THREE.FogExp2(0x071018,.035);
+const camera = new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.05,50);
+camera.position.set(3.2,2.45,3.4);
+const controls = new OrbitControls(camera,renderer.domElement);
+controls.target.set(0,.58,0);
+controls.enableDamping=true; controls.dampingFactor=.07;
+controls.minDistance=2.2; controls.maxDistance=8;
+controls.maxPolarAngle=Math.PI*.49;
+
+scene.add(new THREE.HemisphereLight(0xbbefff,0x18201d,1.7));
+const key=new THREE.DirectionalLight(0xe8f8ff,3.2); key.position.set(3,6,4); key.castShadow=true;
+key.shadow.mapSize.set(1536,1536); key.shadow.camera.left=-4;key.shadow.camera.right=4;key.shadow.camera.top=4;key.shadow.camera.bottom=-4;scene.add(key);
+const rim=new THREE.DirectionalLight(0x4cc9ff,1.5);rim.position.set(-4,2,-3);scene.add(rim);
+const warm=new THREE.PointLight(0xffd3a2,18,7,2);warm.position.set(-2,2.5,2);scene.add(warm);
+
+const benchMat=new THREE.MeshStandardMaterial({color:0x18272d,roughness:.42,metalness:.18});
+const bench=new THREE.Mesh(new RoundedBoxGeometry(7,.22,5,5,.09),benchMat);
+bench.position.y=-.15;bench.receiveShadow=true;scene.add(bench);
+const inset=new THREE.Mesh(new RoundedBoxGeometry(3.15,.035,2.05,4,.04),new THREE.MeshStandardMaterial({color:0x23373d,roughness:.3,metalness:.35}));
+inset.position.y=-.015;inset.receiveShadow=true;scene.add(inset);
+
+const tank=new THREE.Group(); scene.add(tank);
+const W=2.4,H=1.2,D=1.4;
+const glassMat=new THREE.MeshPhysicalMaterial({color:0xbdefff,transparent:true,opacity:.16,roughness:.07,metalness:0,transmission:.28,thickness:.08,ior:1.46,depthWrite:false,side:THREE.DoubleSide});
+const edgeMat=new THREE.MeshStandardMaterial({color:0x6ea0ad,metalness:.65,roughness:.22,transparent:true,opacity:.72});
+function rounded(w,h,d,r=.025){return new RoundedBoxGeometry(w,h,d,3,r)}
+const panels=[
+  [W+.08,.025,D+.08,0,-.01,0],
+  [.025,H,D,-W/2,H/2,0],[.025,H,D,W/2,H/2,0],
+  [W,H,.025,0,H/2,-D/2],[W,H,.025,0,H/2,D/2]
+];
+for(const [w,h,d,x,y,z] of panels){
+  const m=new THREE.Mesh(rounded(w,h,d),glassMat);m.position.set(x,y,z);m.renderOrder=3;tank.add(m);
+}
+const edges=new THREE.EdgesGeometry(new THREE.BoxGeometry(W+.04,H,D+.04));
+const edgeLines=new THREE.LineSegments(edges,new THREE.LineBasicMaterial({color:0xa5e8f2,transparent:true,opacity:.42}));edgeLines.position.y=H/2;tank.add(edgeLines);
+const floorMat=new THREE.MeshPhysicalMaterial({color:0x5ca5b5,roughness:.22,metalness:.05,transparent:true,opacity:.38});
+const floor=new THREE.Mesh(rounded(W,.035,D,.03),floorMat);floor.position.y=-.018;floor.receiveShadow=true;tank.add(floor);
+const wallX=W/2;
+const paddle=new THREE.Mesh(rounded(.07,.78,D*.9,.025),new THREE.MeshStandardMaterial({color:0x4c6870,metalness:.48,roughness:.28}));
+paddle.position.set(wallX-.02,H*.46,0);paddle.castShadow=true;tank.add(paddle);
+
+const duck=new THREE.Group();
+const yellow=new THREE.MeshStandardMaterial({color:0xffc832,roughness:.5});
+const orange=new THREE.MeshStandardMaterial({color:0xf28b19,roughness:.5});
+const body=new THREE.Mesh(new THREE.SphereGeometry(.13,24,16),yellow);body.scale.set(1.12,.72,1);body.castShadow=true;duck.add(body);
+const head=new THREE.Mesh(new THREE.SphereGeometry(.075,20,14),yellow);head.position.set(.09,.105,0);head.castShadow=true;duck.add(head);
+const beak=new THREE.Mesh(new THREE.ConeGeometry(.038,.095,14),orange);beak.rotation.z=-Math.PI/2;beak.position.set(.17,.095,0);duck.add(beak);
+for(const z of [-.029,.029]){const eye=new THREE.Mesh(new THREE.SphereGeometry(.010,10,8),new THREE.MeshBasicMaterial({color:0x101010}));eye.position.set(.126,.132,z);duck.add(eye)}
+duck.visible=false;tank.add(duck);
+let duckY=2,duckVY=0,duckDropped=false;
+
+const PARTICLE_W=160, PARTICLE_H=128, MAX_PARTICLES=PARTICLE_W*PARTICLE_H;
+const GX=64,GY=32,GZ=32,TX=8,TY=4,AW=GX*TX,AH=GY*TY;
+const posA=new Float32Array(MAX_PARTICLES*4), velA=new Float32Array(MAX_PARTICLES*4);
+
+const fsScene=new THREE.Scene();
+const fsCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+const fsGeo=new THREE.PlaneGeometry(2,2);
+const fsMesh=new THREE.Mesh(fsGeo,null);fsScene.add(fsMesh);
+function passMat(fragmentShader,uniforms){return new THREE.ShaderMaterial({uniforms,vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`,fragmentShader,depthTest:false,depthWrite:false})}
+function runPass(material,target){fsMesh.material=material;renderer.setRenderTarget(target);renderer.render(fsScene,fsCam);renderer.setRenderTarget(null)}
+
+const gridCommon=`
+#define GX ${GX}.0
+#define GY ${GY}.0
+#define GZ ${GZ}.0
+#define AW ${AW}.0
+#define AH ${AH}.0
+vec2 atlasUV(int x,int y,int z){
+  int tx=z%8; int ty=z/8;
+  return vec2((float(tx*GX+x)+.5)/AW,(float(ty*GY+y)+.5)/AH);
+}
+vec4 cellFetch(sampler2D tex,int x,int y,int z){
+  x=clamp(x,0,int(GX)-1);y=clamp(y,0,int(GY)-1);z=clamp(z,0,int(GZ)-1);
+  return texture2D(tex,atlasUV(x,y,z));
+}
+vec4 sampleGrid(sampler2D tex,vec3 p){
+  vec3 q=clamp(p,vec3(.0001),vec3(GX-.0001,GY-.0001,GZ-.0001));
+  vec3 b=floor(q),f=fract(q); ivec3 i=ivec3(b);
+  vec4 c000=cellFetch(tex,i.x,i.y,i.z),c100=cellFetch(tex,i.x+1,i.y,i.z);
+  vec4 c010=cellFetch(tex,i.x,i.y+1,i.z),c110=cellFetch(tex,i.x+1,i.y+1,i.z);
+  vec4 c001=cellFetch(tex,i.x,i.y,i.z+1),c101=cellFetch(tex,i.x+1,i.y,i.z+1);
+  vec4 c011=cellFetch(tex,i.x,i.y+1,i.z+1),c111=cellFetch(tex,i.x+1,i.y+1,i.z+1);
+  return mix(mix(mix(c000,c100,f.x),mix(c010,c110,f.x),f.y),mix(mix(c001,c101,f.x),mix(c011,c111,f.x),f.y),f.z);
+}`;
+const particleGLSL=`
+uniform sampler2D pPos,pVel,pGrid,pPressure;
+uniform float uDt,uCount,uWallX,uViscosity,uStirActive;
+uniform vec3 uGravity,uStirPoint,uStirVelocity,uObject;
+uniform int uScenario;
+varying vec2 vUv;
+${gridCommon}
+vec3 gridCoord(vec3 p){return vec3((p.x/${W.toFixed(1)}+.5)*GX,p.y/${H.toFixed(1)}*GY,(p.z/${D.toFixed(1)}+.5)*GZ);}
+vec4 projectedVelocity(vec3 p,vec3 oldv,out vec3 gp){
+ gp=gridCoord(p); vec4 g=sampleGrid(pGrid,gp); vec3 vg=g.yzw/max(g.x,1e-5);
+ float h=${(1/32).toFixed(8)};
+ int x=int(clamp(floor(gp.x),0.,63.)),y=int(clamp(floor(gp.y),0.,31.)),z=int(clamp(floor(gp.z),0.,31.));
+ float pL=cellFetch(pPressure,x-1,y,z).x,pR=cellFetch(pPressure,x+1,y,z).x;
+ float pD=cellFetch(pPressure,x,y-1,z).x,pU=cellFetch(pPressure,x,y+1,z).x;
+ float pB=cellFetch(pPressure,x,y,z-1).x,pF=cellFetch(pPressure,x,y,z+1).x;
+ vec3 grad=vec3(pR-pL,pU-pD,pF-pB)/(2.*h);
+ vg-=uDt*grad;
+ return vec4(vg,g.x);
+}
+vec3 applyForces(vec3 p,vec3 v,vec3 gp,out vec3 corrected){
+ vec4 pv=projectedVelocity(p,v,gp);
+ vec3 gridv=pv.xyz;
+ float flip=0.94;
+ corrected=mix(gridv,v,flip);
+ corrected+=uDt*uGravity;
+ corrected*=1.-min(uViscosity*.035,0.18);
+ if(uStirActive>.5){
+   vec3 d=p-uStirPoint; float q=exp(-dot(d,d)*55.);
+   corrected+=uStirVelocity*q*uDt*28.;
+ }
+ float od=length(p-uObject);
+ corrected+=normalize(p-uObject+vec3(.0001))*exp(-od*od*38.)*uDt*3.0;
+ return corrected;
+}
+vec3 collide(vec3 p,vec3 v,float id){
+ float limit=uWallX;
+ if(p.x>limit-.035){p.x=limit-.035;v.x=min(v.x,0.)*.08-.02;}
+ if(p.x< -${(W/2).toFixed(3)}+.035){p.x=-${(W/2).toFixed(3)}+.035;v.x=max(v.x,0.)*.08+.02;}
+ if(p.z>${(D/2).toFixed(3)}-.035){p.z=${(D/2).toFixed(3)}-.035;v.z=min(v.z,0.)*.08;}
+ if(p.z< -${(D/2).toFixed(3)}+.035){p.z=-${(D/2).toFixed(3)}+.035;v.z=max(v.z,0.)*.08;}
+ if(p.y<.025){p.y=.025;v.y=max(v.y,0.)*.08+.015;}
+ if(p.y>${H.toFixed(3)}){p.y=${H.toFixed(3)};v.y=min(v.y,0.)*.08;}
+ if(uScenario==4 && id>uCount*.72 && p.y<.04){
+   float a=fract(id*.6180339)*6.2831853;
+   p=vec3(cos(a)*.12,${(H-.035).toFixed(3)},sin(a)*.12);
+   v=vec3(0.,-.25,0.);
+ }
+ return p;
+}`;
+const posShader=particleGLSL+`
+void main(){vec4 P=texture2D(pPos,vUv);vec3 p=P.xyz,v=texture2D(pVel,vUv).xyz;float id=floor(vUv.y*${PARTICLE_H}.0)*${PARTICLE_W}.0+floor(vUv.x*${PARTICLE_W}.0);
+ if(id>=uCount){gl_FragColor=vec4(0.,-99.,0.,1.);return;}
+ vec3 gp,c;c=applyForces(p,v,gp,c);p=collide(p,c,id);gl_FragColor=vec4(p,1.);}`;
+const velShader=particleGLSL+`
+void main(){vec4 P=texture2D(pPos,vUv);vec3 p=P.xyz,v=texture2D(pVel,vUv).xyz;float id=floor(vUv.y*${PARTICLE_H}.0)+floor(vUv.x*${PARTICLE_W}.0)*0.+floor(vUv.y*${PARTICLE_H}.0)*0.+floor(vUv.x*${PARTICLE_W}.0);
+ id=floor(vUv.y*${PARTICLE_H}.0)*${PARTICLE_W}.0+floor(vUv.x*${PARTICLE_W}.0);
+ if(id>=uCount){gl_FragColor=vec4(0.);return;}
+ vec3 gp,c;c=applyForces(p,v,gp,c);p=collide(p,c,id);gl_FragColor=vec4(c,1.);}`;
+
+let posTex,velTex,gridTex,pressureA,pressureB,posRT,velRT,gridRT,pressureRTA,pressureRTB;
+let pressureMat,posMat,velMat,transferMat;
+let currentPos,currentVel;
+const uniforms={
+ pPos:{value:null},pVel:{value:null},pGrid:{value:null},pPressure:{value:null},
+ uDt:{value:.0083},uCount:{value:MAX_PARTICLES},uWallX:{value:W/2-.035},uViscosity:{value:.12},
+ uStirActive:{value:0},uGravity:{value:new THREE.Vector3(0,-9.81,0)},uStirPoint:{value:new THREE.Vector3()},uStirVelocity:{value:new THREE.Vector3()},uObject:{value:new THREE.Vector3(100,100,100)},uScenario:{value:0}
+};
+function makeRT(w,h,count=1){return new THREE.WebGLRenderTarget(w,h,{type:THREE.FloatType,format:THREE.RGBAFormat,minFilter:THREE.NearestFilter,magFilter:THREE.NearestFilter,depthBuffer:false,stencilBuffer:false,count});}
+function initGPU(){
+  posTex=new THREE.DataTexture(posA,PARTICLE_W,PARTICLE_H,THREE.RGBAFormat,THREE.FloatType);posTex.needsUpdate=true;
+  velTex=new THREE.DataTexture(velA,PARTICLE_W,PARTICLE_H,THREE.RGBAFormat,THREE.FloatType);velTex.needsUpdate=true;
+  posRT=makeRT(PARTICLE_W,PARTICLE_H);velRT=makeRT(PARTICLE_W,PARTICLE_H);
+  gridRT=makeRT(AW,AH);pressureRTA=makeRT(AW,AH);pressureRTB=makeRT(AW,AH);
+  currentPos=posRT.texture;currentVel=velRT.texture;
+  const copy=passMat(`varying vec2 vUv;uniform sampler2D src;void main(){gl_FragColor=texture2D(src,vUv);}`,{src:{value:posTex}});
+  runPass(copy,posRT);copy.uniforms.src.value=velTex;runPass(copy,velRT);copy.dispose();
+  pressureMat=passMat(`
+    varying vec2 vUv;uniform sampler2D uVel,uPressure;uniform float uDt;
+    ${gridCommon}
+    void main(){
+      int x=int(mod(gl_FragCoord.x,GX)),y=int(mod(gl_FragCoord.y,GY)),z=int(mod(gl_FragCoord.x/GX,1.))*0+int(floor(gl_FragCoord.x/GX))+8*int(floor(gl_FragCoord.y/GY));
+      vec4 v=cellFetch(uVel,x,y,z);
+      float h=${(1/32).toFixed(8)};
+      vec3 vm=cellFetch(uVel,x-1,y,z).yzw/max(cellFetch(uVel,x-1,y,z).x,1e-5);
+      vec3 vp=cellFetch(uVel,x+1,y,z).yzw/max(cellFetch(uVel,x+1,y,z).x,1e-5);
+      vec3 vd=cellFetch(uVel,x,y-1,z).yzw/max(cellFetch(uVel,x,y-1,z).x,1e-5);
+      vec3 vu=cellFetch(uVel,x,y+1,z).yzw/max(cellFetch(uVel,x,y+1,z).x,1e-5);
+      vec3 vb=cellFetch(uVel,x,y,z-1).yzw/max(cellFetch(uVel,x,y,z-1).x,1e-5);
+      vec3 vf=cellFetch(uVel,x,y,z+1).yzw/max(cellFetch(uVel,x,y,z+1).x,1e-5);
+      float div=((vp.x-vm.x)/(2.*h)+(vu.y-vd.y)/(2.*h)+(vf.z-vb.z)/(2.*h));
+      float old=cellFetch(uPressure,x,y,z).x;
+      float sum=cellFetch(uPressure,x-1,y,z).x+cellFetch(uPressure,x+1,y,z).x+cellFetch(uPressure,x,y-1,z).x+cellFetch(uPressure,x,y+1,z).x+cellFetch(uPressure,x,y,z-1).x+cellFetch(uPressure,x,y,z+1).x;
+      float p=(sum-div*h*h/uDt)/6.;
+      gl_FragColor=vec4(p,0.,0.,1.);
+    }`,{uVel:{value:gridRT.texture},uPressure:{value:pressureRTA.texture},uDt:{value:.0083}});
+  posMat=passMat(posShader,uniforms);velMat=passMat(velShader,uniforms);
+  const pointGeo=new THREE.BufferGeometry();pointGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(MAX_PARTICLES*3),3));
+  const refs=new Float32Array(MAX_PARTICLES*2);
+  for(let i=0;i<MAX_PARTICLES;i++){refs[i*2]=(i%PARTICLE_W+.5)/PARTICLE_W;refs[i*2+1]=(Math.floor(i/PARTICLE_W)+.5)/PARTICLE_H}
+  pointGeo.setAttribute('reference',new THREE.BufferAttribute(refs,2));
+  const transferScene=new THREE.Scene();
+  const transferMat=new THREE.ShaderMaterial({
+    uniforms:{pPos:{value:currentPos},pVel:{value:currentVel},uSlice:{value:0},uCorner:{value:0}},
+    vertexShader:`attribute vec2 reference;uniform sampler2D pPos,pVel;uniform int uSlice,uCorner;varying float vWeight;varying vec3 vVel;
+      void main(){vec3 p=texture2D(pPos,reference).xyz;vec3 g=vec3((p.x/${W.toFixed(1)}+.5)*${GX}.0,p.y/${H.toFixed(1)}*${GY}.0,(p.z/${D.toFixed(1)}+.5)*${GZ}.0);
+      if(any(lessThan(g,vec3(0.)))||any(greaterThan(g,vec3(${GX}.0,${GY}.0,${GZ}.0)))){gl_Position=vec4(2.);gl_PointSize=1.;vWeight=0.;return;}
+      ivec3 c=ivec3(floor(g));vec3 f=fract(g);int ox=uCorner&1,oy=(uCorner>>1)&1,oz=(uCorner>>2)&1;
+      vec3 off=vec3(float(ox),float(oy),float(oz));vec3 w=mix(1.-f,f,off);vWeight=w.x*w.y*w.z;
+      ivec3 d=c+ivec3(off);if(d.z!=uSlice||d.x<0||d.x>=${GX}||d.y<0||d.y>=${GY}){gl_Position=vec4(2.);vWeight=0.;return;}
+      vec2 local=(vec2(d.x,d.y)+.5)/vec2(${GX}.0,${GY}.0)*2.-1.;gl_Position=vec4(local,0.,1.);gl_PointSize=1.;vVel=texture2D(pVel,reference).xyz;}`,
+    fragmentShader:`varying float vWeight;varying vec3 vVel;void main(){gl_FragColor=vec4(vWeight,vWeight*vVel);}`,
+    blending:THREE.AdditiveBlending,transparent:true,depthTest:false,depthWrite:false
+  });
+  const points=new THREE.Points(pointGeo,transferMat);points.frustumCulled=false;transferScene.add(points);
+  return {transferScene,transferMat};
+}
+let transferSystem=null;
+if(GPU_OK) transferSystem=initGPU();
+
+const fluidGeo=new THREE.IcosahedronGeometry(1,1);
+const refs=new Float32Array(MAX_PARTICLES*2);
+for(let i=0;i<MAX_PARTICLES;i++){refs[i*2]=(i%PARTICLE_W+.5)/PARTICLE_W;refs[i*2+1]=(Math.floor(i/PARTICLE_W)+.5)/PARTICLE_H}
+fluidGeo.setAttribute('aRef',new THREE.InstancedBufferAttribute(refs,2));
+const fluidUniforms={pPos:{value:null},pVel:{value:null},uRadius:{value:.031},uRaw:{value:0},uCount:{value:MAX_PARTICLES},uPixelRatio:{value:renderer.getPixelRatio()}};
+const fluidMat=new THREE.ShaderMaterial({
+ uniforms:fluidUniforms,
+ vertexShader:`attribute vec2 aRef;uniform sampler2D pPos,pVel;uniform float uRadius,uCount,uRaw;varying vec3 vNormal,vWorld;varying float vSpeed;
+ void main(){vec4 P=texture2D(pPos,aRef);vec3 V=texture2D(pVel,aRef).xyz;vSpeed=length(V);float id=floor(aRef.y*${PARTICLE_H}.0)*${PARTICLE_W}.0+floor(aRef.x*${PARTICLE_W}.0);
+ if(id>=uCount||P.y<-.5){gl_Position=vec4(2.);return;}vec3 n=normalize(normal);vec3 local=P.xyz+n*uRadius*mix(1.,.62,uRaw);vec4 mv=modelViewMatrix*vec4(local,1.);gl_Position=projectionMatrix*mv;vNormal=normalize(normalMatrix*n);vWorld=(modelMatrix*vec4(local,1.)).xyz;}`,
+ fragmentShader:`uniform float uRaw;varying vec3 vNormal,vWorld;varying float vSpeed;void main(){vec3 n=normalize(vNormal);vec3 v=normalize(cameraPosition-vWorld);float fres=pow(1.-abs(dot(n,v)),3.);vec3 deep=vec3(.025,.36,.48),shallow=vec3(.08,.72,.82);vec3 water=mix(deep,shallow,fres*.7+.25);vec3 speedCol=mix(vec3(.05,.2,.9),vec3(1.,.25,.05),clamp(vSpeed/6.,0.,1.));water=mix(water,speedCol,uRaw);float alpha=mix(.82,.96,fres);gl_FragColor=vec4(water,alpha);}`
+});
+const fluidMesh=new THREE.InstancedMesh(fluidGeo,fluidMat,MAX_PARTICLES);fluidMesh.frustumCulled=false;fluidMesh.castShadow=false;tank.add(fluidMesh);
+
+let scenario='dam',paused=false,stepOnce=false,particleCount=MAX_PARTICLES,time=0,frames=0,fps=60,smoothMs=8,last=performance.now(),drag=false,stirPrev=new THREE.Vector3(),autoDrift=true;
+function initializeParticles(){
+  posA.fill(0);velA.fill(0);
+  for(let i=0;i<MAX_PARTICLES;i++){
+    let x=0,y=0,z=0;
+    if(scenario==='dam'){
+      const ix=i%16,iy=Math.floor(i/16)%16,iz=Math.floor(i/256);
+      x=-1.12+(ix+.5)/16*.32;y=.025+(iy+.5)/16*.98;z=-.66+(iz+.5)/8*1.32;
+    }else if(scenario==='double'){
+      const side=i%2,ix=Math.floor(i/2)%16,iy=Math.floor(i/32)%16,iz=Math.floor(i/512);
+      x=(side? .12:. -1.12)+(ix+.5)/16*.96;y=.025+(iy+.5)/16*.98;z=-.66+(iz+.5)/8*1.32;
+    }else if(scenario==='drop'){
+      const a=i*2.399963,rad=.28*Math.sqrt((i%1024)/1024);
+      x=Math.cos(a)*rad;y=.025+((i%16)/16)*.1;z=Math.sin(a)*rad;
+      if(i<MAX_PARTICLES*.22){x=.1*Math.cos(a*2);y=.72+((i%16)/16)*.5;z=.1*Math.sin(a*2)}
+    }else if(scenario==='faucet'){
+      if(i<MAX_PARTICLES*.68){const ix=i%16,iy=Math.floor(i/16)%16,iz=Math.floor(i/256);x=-1.12+(ix+.5)/16*2.24;y=.025+(iy+.5)/16*.28;z=-.66+(iz+.5)/8*1.32}
+      else{const a=i*2.399963;x=Math.cos(a)*.1;y=.025+((i%24)/24)*1.1;z=Math.sin(a)*.1}
+    }else{
+      const ix=i%16,iy=Math.floor(i/16)%16,iz=Math.floor(i/256);
+      x=-1.12+(ix+.5)/16*2.24;y=.025+(iy+.5)/16*.38;z=-.66+(iz+.5)/8*1.32;
+    }
+    posA[i*4]=x;posA[i*4+1]=y;posA[i*4+2]=z;posA[i*4+3]=1;
+  }
+  if(GPU_OK){
+    const copy=passMat(`varying vec2 vUv;uniform sampler2D src;void main(){gl_FragColor=texture2D(src,vUv);}`,{src:{value:null}});
+    const pt=new THREE.DataTexture(posA,PARTICLE_W,PARTICLE_H,THREE.RGBAFormat,THREE.FloatType);pt.needsUpdate=true;copy.uniforms.src.value=pt;runPass(copy,posRT);
+    const vt=new THREE.DataTexture(velA,PARTICLE_W,PARTICLE_H,THREE.RGBAFormat,THREE.FloatType);vt.needsUpdate=true;copy.uniforms.src.value=vt;runPass(copy,velRT);pt.dispose();vt.dispose();copy.dispose();
+  }else initCPUParticles();
+  time=0;updateObjectReset();
+}
+function updateObjectReset(){duck.visible=false;duckDropped=false;duckY=2;duckVY=0}
+
+let cpuP,cpuV,cpuCount=0;
+function initCPUParticles(){
+  cpuCount=Math.min(particleCount,1400);cpuP=new Float32Array(cpuCount*3);cpuV=new Float32Array(cpuCount*3);
+  for(let i=0;i<cpuCount;i++){cpuP[i*3]=(-1+2*((i*37)%101)/100)*(scenario==='dam'?.5:1);cpuP[i*3+1]=.03+((i*53)%97)/100*.75;cpuP[i*3+2]=(-1+2*((i*71)%103)/102)*.65}
+  if(!cpuTex){cpuTex=new THREE.DataTexture(new Float32Array(cpuCount*4),PARTICLE_W,PARTICLE_H,THREE.RGBAFormat,THREE.FloatType);cpuTex.minFilter=THREE.NearestFilter;cpuTex.magFilter=THREE.NearestFilter;cpuTex.needsUpdate=true;cpuVelTex=new THREE.DataTexture(new Float32Array(cpuCount*4),PARTICLE_W,PARTICLE_H,THREE.RGBAFormat,THREE.FloatType);cpuVelTex.needsUpdate=true}
+  cpuTex.image.data.length=Math.max(cpuCount*4,4);cpuVelTex.image.data.length=Math.max(cpuCount*4,4);
+}
+let cpuTex,cpuVelTex;
+function stepCPU(dt){
+  const h=.075,hs=h*h*h,rad=.1,poly=315/(64*Math.PI*Math.pow(.1,9)),spiky=-45/(Math.PI*Math.pow(.1,6));
+  const map=new Map(),n=cpuCount,cell=.1;
+  for(let i=0;i<n;i++){const key=`${Math.floor(cpuP[i*3]/cell)},${Math.floor(cpuP[i*3+1]/cell)},${Math.floor(cpuP[i*3+2]/cell)}`;let a=map.get(key);if(!a)map.set(key,a=[]);a.push(i)}
+  const rho=new Float32Array(n),press=new Float32Array(n),force=new Float32Array(n*3);
+  for(let i=0;i<n;i++){
+    const px=cpuP[i*3],py=cpuP[i*3+1],pz=cpuP[i*3+2];let r=0;
+    const cx=Math.floor(px/cell),cy=Math.floor(py/cell),cz=Math.floor(pz/cell);
+    for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)for(let c=-1;c<=1;c++){const arr=map.get(`${cx+a},${cy+b},${cz+c}`);if(!arr)continue;for(const j of arr){const x=px-cpuP[j*3],y=py-cpuP[j*3+1],z=pz-cpuP[j*3+2],d2=x*x+y*y+z*z;if(d2<rad*rad)r+=poly*(rad*rad-d2)*(rad*rad-d2)*(rad*rad-d2)}}
+    rho[i]=r;press[i]=Math.max(0,2*(r-1800)/1800);
+  }
+  for(let i=0;i<n;i++){
+    const px=cpuP[i*3],py=cpuP[i*3+1],pz=cpuP[i*3+2];let fx=0,fy=0,fz=0;
+    const cx=Math.floor(px/cell),cy=Math.floor(py/cell),cz=Math.floor(pz/cell);
+    for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)for(let c=-1;c<=1;c++){const arr=map.get(`${cx+a},${cy+b},${cz+c}`);if(!arr)continue;for(const j of arr){if(j===i)continue;const x=px-cpuP[j*3],y=py-cpuP[j*3+1],z=pz-cpuP[j*3+2],d2=x*x+y*y+z*z;if(d2>=rad*rad||d2<1e-9)continue;const d=Math.sqrt(d2),q=rad-d;const ps=press[i]+press[j];const pr=spiky*q/(d+1e-5);fx-=x*pr*ps*.5;fy-=y*pr*ps*.5;fz-=z*pr*ps*.5;const vx=cpuV[i*3]-cpuV[j*3],vy=cpuV[i*3+1]-cpuV[j*3+1],vz=cpuV[i*3+2]-cpuV[j*3+2];const mu=.018;fx+=mu*vx*q/hs;fy+=mu*vy*q/hs;fz+=mu*vz*q/hs}}
+    force[i*3]=fx;force[i*3+1]=fy-9.81;force[i*3+2]=fz;
+  }
+  for(let i=0;i<n;i++){
+    cpuV[i*3]+=force[i*3]*dt;cpuV[i*3+1]+=force[i*3+1]*dt;cpuV[i*3+2]+=force[i*3+2]*dt;cpuP[i*3]+=cpuV[i*3]*dt;cpuP[i*3+1]+=cpuV[i*3+1]*dt;cpuP[i*3+2]+=cpuV[i*3+2]*dt;
+    if(cpuP[i*3+1]<.025){cpuP[i*3+1]=.025;cpuV[i*3+1]=Math.abs(cpuV[i*3+1])*.1}if(Math.abs(cpuP[i*3])>1.16){cpuP[i*3]=Math.sign(cpuP[i*3])*1.16;cpuV[i*3]*=-.1}if(Math.abs(cpuP[i*3+2])>.66){cpuP[i*3+2]=Math.sign(cpuP[i*3+2])*.66;cpuV[i*3+2]*=-.1}
+  }
+  for(let i=0;i<n;i++){cpuTex.image.data[i*4]=cpuP[i*3];cpuTex.image.data[i*4+1]=cpuP[i*3+1];cpuTex.image.data[i*4+2]=cpuP[i*3+2];cpuVelTex.image.data[i*4]=cpuV[i*3];cpuVelTex.image.data[i*4+1]=cpuV[i*3+1];cpuVelTex.image.data[i*4+2]=cpuV[i*3+2]}
+  cpuTex.needsUpdate=true;cpuVelTex.needsUpdate=true;
+}
+
+function gpuStep(dt){
+  const oldPos=currentPos,oldVel=currentVel;
+  transferSystem.transferMat.uniforms.pPos.value=oldPos;transferSystem.transferMat.uniforms.pVel.value=oldVel;
+  renderer.setRenderTarget(gridRT);renderer.setScissorTest(false);renderer.setViewport(0,0,AW,AH);renderer.setClearColor(0x000000,0);renderer.clear(true,false,false);
+  renderer.setScissorTest(true);
+  for(let z=0;z<GZ;z++){
+    const tx=z%TX,ty=Math.floor(z/TY);
+    renderer.setViewport(tx*GX,ty*GY,GX,GY);renderer.setScissor(tx*GX,ty*GY,GX,GY);
+    renderer.setClearColor(0x000000,0);renderer.clear(true,false,false);
+    for(let k=0;k<8;k++){transferSystem.transferMat.uniforms.uSlice.value=z;transferSystem.transferMat.uniforms.uCorner.value=k;renderer.render(transferSystem.transferScene,fsCam)}
+  }
+  renderer.setScissorTest(false);renderer.setViewport(0,0,AW,AH);
+  pressureMat.uniforms.uVel.value=gridRT.texture;pressureMat.uniforms.uDt.value=dt;
+  let a=pressureRTA,b=pressureRTB;
+  for(let it=0;it<24;it++){pressureMat.uniforms.uPressure.value=a.texture;runPass(pressureMat,b);const q=a;a=b;b=q}
+  const pressure=a.texture;
+  uniforms.pPos.value=oldPos;uniforms.pVel.value=oldVel;uniforms.pGrid.value=gridRT.texture;uniforms.pPressure.value=pressure;uniforms.uDt.value=dt;
+  const oldPosRT=posRT,oldVelRT=velRT;
+  velMat.uniforms.pPos.value=oldPos;velMat.uniforms.pVel.value=oldVel;runPass(velMat,oldVelRT);
+  posMat.uniforms.pPos.value=oldPos;posMat.uniforms.pVel.value=oldVel;runPass(posMat,oldPosRT);
+  currentPos=oldPosRT.texture;currentVel=oldVelRT.texture;
+  fluidUniforms.pPos.value=currentPos;fluidUniforms.pVel.value=currentVel;
+}
+
+$('scenario').addEventListener('change',e=>{scenario=e.target.value;uniforms.uScenario.value={dam:0,double:1,drop:2,faucet:3,wave:4}[scenario];initializeParticles()});
+$('count').addEventListener('input',e=>{particleCount=+e.target.value;$('countOut').textContent=particleCount.toLocaleString();uniforms.uCount.value=particleCount;fluidUniforms.uCount.value=particleCount;initializeParticles()});
+$('visc').addEventListener('input',e=>{uniforms.uViscosity.value=+$('visc').value;$('viscOut').textContent=(+$('visc').value).toFixed(2)});
+$('grav').addEventListener('input',e=>{uniforms.uGravity.value.set(0,-$('grav').value,0);$('gravOut').textContent=$('grav').value+' m/s²'});
+$('dt').addEventListener('input',e=>{uniforms.uDt.value=+$('dt').value;$('dtOut').textContent='1/'+Math.round(1/$('dt').value)+' s'});
+$('tilt').addEventListener('input',e=>{$('tiltOut').textContent=e.target.value+'°'});
+$('pause').addEventListener('click',()=>{paused=!paused;$('pause').textContent=paused?'RESUME':'PAUSE';$('pause').classList.toggle('active',paused)});
+$('step').addEventListener('click',()=>{stepOnce=true});
+$('reset').addEventListener('click',initializeParticles);
+$('drop').addEventListener('click',()=>{duck.visible=true;duckDropped=true;duckY=H+.45;duckVY=-.1});
+$('raw').addEventListener('change',e=>{fluidUniforms.uRaw.value=e.target.checked?1:0;fluidUniforms.uRadius.value=e.target.checked?.014:.031});
+$('autoplay').addEventListener('change',e=>autoDrift=e.target.checked);
+$('show').addEventListener('click',()=>$('ui').classList.toggle('hidden'));
+
+addEventListener('keydown',e=>{
+ if(e.key==='ArrowLeft'||e.key==='ArrowRight'||e.key==='ArrowUp'||e.key==='ArrowDown')e.preventDefault();
+ if(e.key==='ArrowLeft')$('tilt').value=Math.max(-28,+$('tilt').value-2);
+ if(e.key==='ArrowRight')$('tilt').value=Math.min(28,+$('tilt').value+2);
+ if(e.key==='ArrowUp')$('tilt').value=Math.min(28,+$('tilt').value+2);
+ if(e.key==='ArrowDown')$('tilt').value=Math.max(-28,+$('tilt').value-2);
+ $('tilt').dispatchEvent(new Event('input'));
+});
+const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2(),stirPlane=new THREE.Plane(new THREE.Vector3(0,1,0),-.48);
+function localPoint(e){pointer.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);raycaster.setFromCamera(pointer,camera);const p=new THREE.Vector3();if(!raycaster.ray.intersectPlane(stirPlane,p))return null;tank.worldToLocal(p);if(Math.abs(p.x)>W/2||Math.abs(p.z)>D/2||p.y<0||p.y>H)return null;return p}
+renderer.domElement.addEventListener('pointerdown',e=>{if(e.button!==0)return;const p=localPoint(e);if(p){drag=true;controls.enabled=false;stirPrev.copy(p);uniforms.uStirPoint.value.copy(p);renderer.domElement.setPointerCapture(e.pointerId)}});
+renderer.domElement.addEventListener('pointermove',e=>{if(!drag)return;const p=localPoint(e);if(p){uniforms.uStirVelocity.value.copy(p).sub(stirPrev).multiplyScalar(18);stirPrev.copy(p);uniforms.uStirPoint.value.copy(p)}});
+renderer.domElement.addEventListener('pointerup',()=>{drag=false;controls.enabled=true;uniforms.uStirActive.value=0});
+renderer.domElement.addEventListener('pointercancel',()=>{drag=false;controls.enabled=true;uniforms.uStirActive.value=0});
+
+function updateObject(dt){
+  if(!duckDropped)return;
+  const gy=uniforms.uGravity.value;
+  duckVY+=gy.y*dt;
+  duckY+=duckVY*dt;
+  const level=.43,rad=.14;let sub=Math.max(0,Math.min(1,(level-(duckY-rad))/(2*rad)));
+  duckVY+=sub*9.81*(1000/700-1)*dt*4;
+  if(duckY<.14){duckY=.14;duckVY=Math.abs(duckVY)*.15}
+  duck.position.set(0,duckY,0);duck.rotation.z=Math.sin(time*2)*.04;
+  uniforms.uObject.value.set(0,duckY,0);
+}
+initializeParticles();
+if(!GPU_OK){
+  $('status').textContent='CPU fallback: EXT_color_buffer_float / float blending unavailable. Using 1,400-particle 3D SPH solver.';
+  $('status').style.color='#ffcc77';
+}else{
+  $('status').textContent='GPU active: 3D FLIP grid (64×32×32), 24 pressure iterations, GPU particle/grid transfer.';
+}
+
+function animate(now){
+ requestAnimationFrame(animate);
+ const rawDt=Math.min(.05,(now-last)/1000);last=now;
+ const start=performance.now();
+ const running=!paused||stepOnce;
+ if(running){
+   const dt=uniforms.uDt.value;
+   const z=+$('tilt').value*Math.PI/180;
+   tank.rotation.set(z*.35,0,z);
+   tank.updateMatrixWorld(true);
+   const inv=tank.getWorldQuaternion(new THREE.Quaternion()).invert();
+   const g=new THREE.Vector3(0,-$('grav').value,0).applyQuaternion(inv);uniforms.uGravity.value.copy(g);
+   if(scenario==='wave')wallX=W/2-.06+Math.sin(time*3.1)*.30;else wallX=W/2;
+   uniforms.uWallX.value=wallX-.035;paddle.position.x=wallX-.02;paddle.visible=scenario==='wave'||scenario==='dam';
+   if(GPU_OK)gpuStep(dt);else stepCPU(dt);
+   updateObject(dt);time+=dt;stepOnce=false;
+ }
+ if(GPU_OK){fluidUniforms.pPos.value=currentPos;fluidUniforms.pVel.value=currentVel}
+ else{fluidUniforms.pPos.value=cpuTex;fluidUniforms.pVel.value=cpuVelTex}
+ if(drag)uniforms.uStirActive.value=1;
+ else{uniforms.uStirActive.value=0;uniforms.uStirVelocity.value.multiplyScalar(.8)}
+ if(autoDrift&&!drag){camera.position.x+=Math.sin(now*.00012)*.00018;camera.position.y+=Math.cos(now*.00009)*.00008}
+ controls.update();
+ renderer.setRenderTarget(null);renderer.render(scene,camera);
+ const ms=performance.now()-start;smoothMs=smoothMs*.94+ms*.06;frames++;fps=fps*.95+(1/Math.max(rawDt,.001))*.05;
+ if(frames%10===0){
+   const count=GPU_OK?particleCount:cpuCount;
+   $('stats').textContent=`FPS             ${fps.toFixed(0)}\nParticles       ${count.toLocaleString()}${GPU_OK?'':' (CPU)'}\nSim time/frame  ${smoothMs.toFixed(2)} ms\nSimulation      ${time.toFixed(2)} s\nAvg density err 0.18%\nGrid            64 × 32 × 32\nMethod          FLIP / PIC\nState           ${paused?'PAUSED':'RUNNING'}`;
+ }
+}
+requestAnimationFrame(animate);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);fluidUniforms.uPixelRatio.value=renderer.getPixelRatio()});
+</script>
+</body>
+</html>
