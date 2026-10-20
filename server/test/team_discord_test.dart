@@ -384,7 +384,7 @@ void main() {
       final posted = <String, Object?>{};
       final bot = api.teamDiscord
         ..rest = (token, method, path, {body, reason}) async {
-          if (method == 'POST') posted[path] = body;
+          if (method == 'POST' || method == 'PATCH') posted[path] = body;
           return DiscordRestResult(200, {});
         };
       await call('PUT', '/api/v1/team-board/discord/token',
@@ -404,6 +404,7 @@ void main() {
       Future<Map> ask(int number) async {
         await bot.handleGatewayEvent('INTERACTION_CREATE', {
           'id': '55',
+          'application_id': '7',
           'token': 'tok',
           'type': 2,
           'data': {
@@ -413,7 +414,12 @@ void main() {
             ],
           },
         });
-        return (posted['/interactions/55/tok/callback'] as Map)['data'] as Map;
+        final callback = posted['/interactions/55/tok/callback'] as Map;
+        if (callback['type'] == 5) {
+          final body = posted['/webhooks/7/tok/messages/@original'];
+          return body is DiscordMultipart ? body.data : body as Map;
+        }
+        return callback['data'] as Map;
       }
 
       final found = await ask(1);
@@ -422,6 +428,51 @@ void main() {
       expect(embed['description'], 'x');
       expect(jsonEncode(embed), isNot(contains('lead@example.com')),
           reason: 'emails never reach Discord');
+
+      final parent = api.teamBoard.entry(made['id'] as String)!;
+      await call('POST', '/api/v1/team-board/entries', token: lead, json: {
+        'kind': 'model',
+        'title': 'Chest texture',
+        'brief': 'Paint the lid',
+        'parentId': parent.id,
+      });
+      for (var i = 0; i < 12; i++) {
+        final fileId = TeamBoardStore.newId();
+        final bytes = Uint8List.fromList([137, 80, 78, 71, i]);
+        await api.teamBoard.writeFile(fileId, bytes);
+        parent.files.add(TeamBoardFile(
+          id: fileId,
+          name: i == 0 ? 'chest texture.PNG' : 'model_$i.json',
+          sizeBytes: bytes.length,
+          uploaderId: parent.authorId,
+          uploaderEmail: parent.authorEmail,
+          createdAtMs: 0,
+        ));
+      }
+      final detailed = await ask(1);
+      final rich = (detailed['embeds'] as List).first as Map;
+      expect(rich['image'], {'url': 'attachment://0_chest_texture.PNG'});
+      final fields = rich['fields'] as List;
+      expect(
+          fields,
+          contains(predicate((dynamic f) =>
+              f['name'] == 'Subentries (1)' &&
+              (f['value'] as String).contains('#2 Chest texture'))));
+      final upload =
+          posted['/webhooks/7/tok/messages/@original'] as DiscordMultipart;
+      expect(upload.files, hasLength(10));
+      expect(upload.files.first.bytes, [137, 80, 78, 71, 0]);
+      final wire = latin1.decode(upload.encode());
+      expect(wire, contains('name="payload_json"'));
+      expect(wire, contains('name="files[0]"; filename="0_chest_texture.PNG"'));
+      expect(wire, endsWith('--${upload.boundary}--\r\n'));
+      expect(
+          (posted['/webhooks/7/tok'] as DiscordMultipart).files, hasLength(2));
+
+      await api.teamBoard.deleteFile(parent.files.first.id);
+      final unavailable = await ask(1);
+      expect(unavailable['content'], contains('chest texture.PNG'));
+      expect((unavailable['embeds'] as List).first['image'], isNull);
 
       final missing = await ask(99);
       expect(missing['flags'], 64);

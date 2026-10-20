@@ -898,15 +898,99 @@ class TeamDiscordBot {
       }
     }
     final entry = number == null ? null : board?.entryByNumber(number);
-    final Map<String, dynamic> reply = entry == null
-        ? {
-            'content': 'There is no task #${number ?? '?'} on the board.',
-            'flags': 64,
+    if (entry != null) {
+      final acknowledged = await rest(
+          token, 'POST', '/interactions/$id/$interactionToken/callback',
+          body: {'type': 5});
+      if (!acknowledged.ok) {
+        _note(DiscordLogEntry('error',
+            'Could not acknowledge /mentiontask: ${acknowledged.describe()}'));
+        return;
+      }
+      final appId = d['application_id'];
+      if (appId is! String) return;
+      final embed = discordEntryEmbed(entry, board!);
+      final batches = <List<DiscordUpload>>[[]];
+      final unavailable = <String>[];
+      final limit = d['attachment_size_limit'] as int? ?? 10 * 1024 * 1024;
+      var batchBytes = 0;
+      for (final file in entry.files) {
+        Uint8List? bytes;
+        if (file.sizeBytes <= limit) {
+          try {
+            bytes = await board!.readFile(file.id);
+          } on FileSystemException {
+            bytes = null;
           }
-        : {
-            'embeds': [discordEntryEmbed(entry, board!)],
-            'allowed_mentions': {'parse': <String>[]},
-          };
+        }
+        if (bytes == null || bytes.length > limit) {
+          unavailable.add(file.name);
+          continue;
+        }
+        if (batches.last.length == 10 ||
+            batchBytes + bytes.length > 20 * 1024 * 1024) {
+          batches.add([]);
+          batchBytes = 0;
+        }
+        final index = batches.last.length;
+        final safeName = file.name.replaceAll(RegExp(r'[^a-zA-Z0-9_.-]'), '_');
+        batches.last.add(DiscordUpload('${index}_$safeName', bytes));
+        batchBytes += bytes.length;
+      }
+      for (var i = 0; i < batches.length; i++) {
+        final files = batches[i];
+        final data = <String, dynamic>{
+          if (i == 0) 'embeds': [embed],
+          if (i > 0) 'content': 'More files for #${entry.number}',
+          'allowed_mentions': {'parse': <String>[]},
+          'attachments': [
+            for (var j = 0; j < files.length; j++)
+              {'id': j, 'filename': files[j].name},
+          ],
+        };
+        final pngs = files.where((f) => f.name.toLowerCase().endsWith('.png'));
+        if (pngs.isNotEmpty) {
+          final images = [
+            for (final png in pngs)
+              {
+                'image': {'url': 'attachment://${png.name}'}
+              },
+          ];
+          if (i == 0) {
+            embed['image'] = images.first['image'];
+            data['embeds'] = [embed, ...images.skip(1)];
+          } else {
+            data['embeds'] = images;
+          }
+        }
+        if (i == 0 && unavailable.isNotEmpty) {
+          final names = unavailable.join(', ');
+          data['content'] = 'Could not attach ${unavailable.length} file(s) '
+              '(missing or over Discord’s upload limit): '
+              '${names.length > 1700 ? '${names.substring(0, 1699)}…' : names}';
+        }
+        final result = await rest(token, i == 0 ? 'PATCH' : 'POST',
+            '/webhooks/$appId/$interactionToken${i == 0 ? '/messages/@original' : ''}',
+            body: files.isEmpty ? data : DiscordMultipart(data, files));
+        if (!result.ok) {
+          _note(DiscordLogEntry('error',
+              'Could not send /mentiontask files: ${result.describe()}'));
+          await rest(token, 'POST', '/webhooks/$appId/$interactionToken',
+              body: {
+                'content':
+                    'Could not send the details or files for #${entry.number}. '
+                        'Please try /mentiontask again.',
+                'allowed_mentions': {'parse': <String>[]},
+              });
+          break;
+        }
+      }
+      return;
+    }
+    final reply = {
+      'content': 'There is no task #${number ?? '?'} on the board.',
+      'flags': 64,
+    };
     final r = await rest(
         token, 'POST', '/interactions/$id/$interactionToken/callback',
         body: {'type': 4, 'data': reply});
@@ -952,9 +1036,16 @@ class TeamDiscordBot {
           request.headers
               .set('X-Audit-Log-Reason', Uri.encodeComponent(reason));
         }
-        final payload = body == null ? null : utf8.encode(jsonEncode(body));
+        final payload = body == null
+            ? null
+            : body is DiscordMultipart
+                ? body.encode()
+                : utf8.encode(jsonEncode(body));
         if (payload != null) {
-          request.headers.contentType = ContentType.json;
+          request.headers.contentType = body is DiscordMultipart
+              ? ContentType('multipart', 'form-data',
+                  parameters: {'boundary': body.boundary})
+              : ContentType.json;
           request.add(payload);
         }
         meter?.netOutBytes += discordUtf8Length(
@@ -1045,8 +1136,10 @@ Map<String, dynamic> discordEntryEmbed(
   String who(String userId) {
     final discordName =
         userId == entry.authorId ? entry.discord?.authorName ?? '' : '';
-    return board.nameOf(userId) ??
-        (discordName.isEmpty ? 'a team member' : discordName);
+    return clip(
+        board.nameOf(userId) ??
+            (discordName.isEmpty ? 'a team member' : discordName),
+        128);
   }
 
   final bug = entry.kind == 'bug';
@@ -1057,10 +1150,18 @@ Map<String, dynamic> discordEntryEmbed(
     _ => bug ? 'Fixed' : 'Added',
   };
   final parent = entry.parentId == null ? null : board.entry(entry.parentId!);
+  final children = board.childrenOf(entry.id);
+  final fileNames = [
+    ...entry.files.map((f) => f.name),
+    for (final file
+        in entry.discord?.attachments ?? const <TeamBoardDiscordAttachment>[])
+      '[${file.name}](${file.messageUrl}) (original Discord post)',
+  ];
   return {
     'title': clip('#${entry.number} ${entry.title}', 256),
-    if (entry.brief.trim().isNotEmpty)
-      'description': clip(entry.brief.trim(), 4096),
+    'description': entry.brief.trim().isEmpty
+        ? 'No description added.'
+        : clip(entry.brief.trim(), 4096),
     if (entry.discord?.url case final url?) 'url': url,
     'color': switch (entry.kind) {
       'bug' => 0xE5484D,
@@ -1087,14 +1188,63 @@ Map<String, dynamic> discordEntryEmbed(
       if (parent != null)
         {
           'name': 'Part of',
-          'value': clip('#${parent.number} ${parent.title}', 1024),
+          'value': clip('#${parent.number} ${parent.title}', 150),
         },
+      {
+        'name': 'Files (${fileNames.length})',
+        'value': fileNames.isEmpty
+            ? 'No files attached.'
+            : clip(fileNames.join('\n'), 600),
+      },
+      {
+        'name': 'Subentries (${children.length})',
+        'value': children.isEmpty
+            ? 'No subentries.'
+            : clip(
+                children
+                    .map((e) => '#${e.number} ${e.title} '
+                        '(${e.closed ? 'closed' : e.stage})')
+                    .join('\n'),
+                600),
+      },
     ],
     'footer': {'text': 'Filed by ${who(entry.authorId)} · Team Clipboard'},
     'timestamp':
         DateTime.fromMillisecondsSinceEpoch(entry.createdAtMs, isUtc: true)
             .toIso8601String(),
   };
+}
+
+class DiscordUpload {
+  DiscordUpload(this.name, this.bytes);
+  final String name;
+  final Uint8List bytes;
+}
+
+class DiscordMultipart {
+  DiscordMultipart(this.data, this.files);
+  final Map<String, dynamic> data;
+  final List<DiscordUpload> files;
+  final String boundary = 'luma_${base64UrlEncode(randomBytes(18))}';
+
+  Uint8List encode() {
+    final buffer = BytesBuilder(copy: false);
+    void text(String value) => buffer.add(utf8.encode(value));
+    text('--$boundary\r\n'
+        'Content-Disposition: form-data; name="payload_json"\r\n'
+        'Content-Type: application/json\r\n\r\n${jsonEncode(data)}\r\n');
+    for (var i = 0; i < files.length; i++) {
+      final file = files[i];
+      text('--$boundary\r\n'
+          'Content-Disposition: form-data; name="files[$i]"; '
+          'filename="${file.name}"\r\n'
+          'Content-Type: application/octet-stream\r\n\r\n');
+      buffer.add(file.bytes);
+      text('\r\n');
+    }
+    text('--$boundary--\r\n');
+    return buffer.takeBytes();
+  }
 }
 
 class DiscordRestResult {
