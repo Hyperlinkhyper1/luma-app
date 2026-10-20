@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Miniature Railway World</title>
+<style>
+:root{--glass:rgba(12,20,28,.84);--line:#67d9c2;--muted:#a9bac2;--gold:#ffd27a}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101820;color:#edf5f3;font:13px system-ui,sans-serif}
+#view{position:fixed;inset:0}canvas{display:block}
+#hud{position:fixed;inset:0;pointer-events:none}.panel{pointer-events:auto;background:var(--glass);border:1px solid #ffffff22;border-radius:12px;box-shadow:0 8px 30px #0006;backdrop-filter:blur(8px)}
+#top{position:absolute;left:14px;top:14px;width:350px;padding:12px}.brand{font-weight:800;letter-spacing:.08em;color:var(--line);font-size:15px}.sub{color:var(--muted);margin:4px 0 10px;font-size:11px}
+#trains{display:grid;gap:7px}.train{border:1px solid #ffffff18;border-radius:8px;padding:8px;background:#ffffff08;cursor:pointer}.train:hover{border-color:var(--line)}.trainhead{display:flex;justify-content:space-between;font-weight:700}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}.steam .dot{background:#f3a35c}.emu .dot{background:#63d7ff}.freight .dot{background:#b99cff}.row{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-top:4px}.state{color:var(--gold)}
+#controls{position:absolute;right:14px;top:14px;width:245px;padding:11px}.row2{display:flex;gap:5px;flex-wrap:wrap;margin:7px 0}button,select{pointer-events:auto;background:#20313a;color:#eaf5f1;border:1px solid #ffffff25;border-radius:7px;padding:7px 9px;cursor:pointer}button:hover{background:#2d4a53}button.active{border-color:var(--line);color:var(--line)}input[type=range]{width:100%}.label{font-size:11px;color:var(--muted);letter-spacing:.04em}
+#diagram{position:absolute;left:14px;bottom:14px;width:430px;height:250px;padding:8px;display:none}#diagram canvas{width:100%;height:100%;border-radius:7px;background:#101c25}
+#explain{position:absolute;right:14px;bottom:14px;width:330px;padding:12px;display:none;color:#c7d5d4;font-size:12px;line-height:1.45}#explain h3{color:var(--line);margin:0 0 7px}
+#legend{position:absolute;right:14px;top:245px;width:245px;padding:9px;display:none}.key{display:flex;justify-content:space-between;margin:4px 0;font-size:11px}.sw{width:16px;height:8px;display:inline-block;border-radius:2px;margin-right:5px}.red{background:#ff4242}.yellow{background:#ffd044}.green{background:#42e985}.occupied{background:#b56bff}.route{background:#42e985}
+#toast{position:absolute;left:50%;top:18px;transform:translateX(-50%);background:#000a;border:1px solid #ffffff22;padding:8px 12px;border-radius:8px;opacity:0;transition:.25s}
+#loading{position:fixed;inset:0;display:grid;place-items:center;background:#101820;z-index:20;color:var(--line);font-weight:700;letter-spacing:.12em}
+#loading span{animation:pulse 1s infinite alternate}@keyframes pulse{to{opacity:.35}}
+#mini{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);color:#b9c9c8;font-size:11px;background:#0c151dcc;padding:6px 10px;border-radius:6px}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="view"></div>
+<div id="loading"><span>BUILDING THE RAILWAY…</span></div>
+<div id="hud">
+  <section id="top" class="panel"><div class="brand">NORTHVALE MINIATURE RAILWAY</div><div class="sub">A shared network governed by block signalling</div><div id="trains"></div></section>
+  <section id="controls" class="panel">
+    <div class="row2"><button data-view="overview" class="active">Overview</button><button data-view="station">Station</button><button data-view="bridge">Bridge</button><button data-view="crossing">Crossing</button></div>
+    <div class="row2"><button id="pause">Pause</button><button data-speed="1" class="active">1×</button><button data-speed="2">2×</button><button data-speed="4">4×</button></div>
+    <div class="row2"><button id="diagramBtn">Schematic</button><button id="legendBtn">Block colours</button><button id="explainBtn">How it works</button></div>
+    <div class="label">TIME OF DAY <span id="clock">09:00</span></div><input id="daynight" type="range" min="0" max="24" value="9">
+    <div class="label">Camera: drag to orbit · scroll to zoom · click a train to follow</div>
+  </section>
+  <section id="diagram" class="panel"><canvas id="schematic"></canvas></section>
+  <section id="legend" class="panel"><div class="key"><span><i class="sw occupied"></i>Occupied block</span><span>Train</span></div><div class="key"><span><i class="sw route"></i>Reserved route</span><span>Switch locked</span></div><div class="key"><span><i class="sw red"></i>RED</span><span>Stop / no route</span></div><div class="key"><span><i class="sw yellow"></i>YELLOW</span><span>Next block clear</span></div><div class="key"><span><i class="sw green"></i>GREEN</span><span>Two blocks clear</span></div></section>
+  <section id="explain" class="panel"><h3>How the signalling works</h3>Every section of track is a block. A block may contain only one train. Before a train enters the next block, the interlocking reserves the route and locks any switch points. Signals show the state of the route ahead: red means stop, yellow means proceed with caution, and green means two blocks are clear. The single-track tunnel section has a directional lock, so only one direction may reserve it at a time. Click a signal to hold it at red; click it again to release it.</section>
+  <div id="toast"></div><div id="mini">REAL-TIME INTERLOCKING · 3 TRAINS · ONE NETWORK</div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+const $=s=>document.querySelector(s);
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x9ac9df); scene.fog=new THREE.Fog(0x9ac9df,55,125);
+const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.1,220); camera.position.set(42,38,48);
+const renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap; renderer.outputColorSpace=THREE.SRGBColorSpace; $('#view').appendChild(renderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement); controls.target.set(0,0,0); controls.enableDamping=true; controls.maxPolarAngle=Math.PI*.48;
+if(!renderer.getContext()){ $('#loading').innerHTML='<span>WEBGL IS UNAVAILABLE<br>Please use a WebGL-capable browser.</span>'; throw new Error('no webgl'); }
+$('#loading').style.display='none';
+const hemi=new THREE.HemisphereLight(0xbfe7ff,0x445448,2);scene.add(hemi);const sun=new THREE.DirectionalLight(0xfff0c7,2.5);sun.position.set(-25,40,25);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);scene.add(sun);
+const mat=(c,rough=.75,metal=0)=>new THREE.MeshStandardMaterial({color:c,roughness:rough,metalness:metal});
+const M={wood:mat(0x765238),ground:mat(0x729a54),grass:mat(0x6f9d57),ballast:mat(0x77716b),rail:mat(0x8e9697,.25,.8),dark:mat(0x202b2d),road:mat(0x333b3d),water:mat(0x2789a7,.2,.2),red:mat(0xb52e32),cream:mat(0xf0e1b5),blue:mat(0x3a86a8),green:mat(0x3c9b68),roof:mat(0x6c3c36),yellow:mat(0xf4c34d),white:mat(0xf2f3e8)};
+function box(w,h,d,m,x=0,y=0,z=0,parent=scene){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;parent.add(o);return o}
+function cyl(r,h,m,x=0,y=0,z=0,parent=scene,seg=12){const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,seg),m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;parent.add(o);return o}
+function sphere(r,m,x,y,z,parent=scene){const o=new THREE.Mesh(new THREE.SphereGeometry(r,10,8),m);o.position.set(x,y,z);o.castShadow=true;parent.add(o);return o}
+function label(text,color='#dff8f0',size=3){const c=document.createElement('canvas');c.width=256;c.height=64;const x=c.getContext('2d');x.fillStyle=color;x.font='bold 32px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(text,128,32);const t=new THREE.CanvasTexture(c);const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthTest:false}));s.scale.set(size,size/4,1);return s}
+// baseboard
+box(78,2,45,M.wood,0,-1.4,0);box(76,1.2,43,M.grass,0,-.25,0);
+for(let i=0;i<22;i++){box(.15,.03,42,mat(i%2?0x86613d:0x68482f),-37+i*3.5,-.82,0)}
+// river and banks
+box(8,.08,43,M.water,8,-.13,0);box(.45,.25,43,mat(0x6e8b53),3.8,-.02,0);box(.45,.25,43,mat(0x6e8b53),12.2,-.02,0);
+// hills
+function hill(x,z,r,h,color=0x628b4d){const g=new THREE.Mesh(new THREE.SphereGeometry(r,24,12),mat(color));g.scale.y=h/r;g.position.set(x,-.1,z);g.castShadow=true;scene.add(g)}
+hill(-10,4,9,5,0x63884c);hill(-18,9,6,3,0x6e9659);hill(0,13,8,4,0x5f8749);
+// tunnel portal
+const tunnel=box(4.8,5,2.2,M.rock||mat(0x596d57),-10,2.1,0); // arch impression
+box(1.2,3.8,2.4,mat(0x263a39),-10,1.1,0);
+// bridge
+for(let z=-3;z<=3;z+=1.5){box(.35,4,.35,M.rail,8,1.8,z)}box(8.5,.35,.4,M.rail,8,3.7,-3.4);box(8.5,.35,.4,M.rail,8,3.7,3.4);box(8.5,.35,7,M.wood,8,0,0);
+// roads and crossing
+box(3,.03,42,M.road,24,0,0);box(42,.03,3,M.road,0,0,24);
+for(let z=-19;z<22;z+=4)box(.1,.02,2.1,M.white,24,.04,z);for(let x=-20;x<22;x+=4)box(2.1,.02,.1,M.white,x,.04,24);
+// village
+function house(x,z,col){const b=box(5,3.3,4,mat(col),x,1.65,z);const r=new THREE.Mesh(new THREE.ConeGeometry(3.7,2.4,4),M.roof);r.rotation.y=Math.PI/4;r.position.set(x,4.1,z);r.castShadow=true;scene.add(r);box(.45,1.4,.45,M.roof,x+1.2,4.7,z-.7);box(1.2,1,.08,M.cream,x,1.4,z-2.05);box(.8,.8,.08,M.cream,x-1.5,2,z-2.05)}
+house(-25,12,0xd9b478);house(-28,16,0xb56f5b);house(14,16,0xd7c58e);house(19,17,0x7d9aaf);
+const church=box(5,6,7,mat(0xd4c5a0),-29,3,19);const steeple=box(3,6,3,mat(0xd4c5a0),-29,8,19);const roof=new THREE.Mesh(new THREE.ConeGeometry(2.5,4,4),M.roof);roof.rotation.y=Math.PI/4;roof.position.set(-29,13,19);scene.add(roof);box(.25,4,.25,M.dark,-29,16,19);box(1.5,.7,.08,M.cream,-29,12,17.4);
+// trees
+for(let i=0;i<30;i++){let x=-34+Math.random()*68,z=-18+Math.random()*37;if(Math.abs(x-8)<5||Math.abs(x-24)<4||Math.abs(z-24)<4)continue;const h=1.5+Math.random()*2;cyl(.15,h,M.dark,x,h/2,z);const c=new THREE.Mesh(new THREE.ConeGeometry(1.3,h*.7,8),mat(i%2?0x3e7149:0x4d8250));c.position.set(x,h,z);c.castShadow=true;scene.add(c)}
+// fences
+for(let x=-20;x<=20;x+=2)box(.12,1.1,.12,M.wood,x,.55,10);box(40,.1,.1,M.wood,0,.8,10);
+// rails graph
+const nodes={W:[-32,0,0],A:[-18,0,0],B:[0,0,0],C:[16,0,0],E:[32,0,0],P:[-10,0,12],Q:[8,0,12]};
+const edges={WA:{a:'W',b:'A',curve:null},AB:{a:'A',b:'B',curve:null},BC:{a:'B',b:'C',curve:null},CE:{a:'C',b:'E',curve:null},AP:{a:'A',b:'P',curve:null},PQ:{a:'P',b:'Q',curve:null},QC:{a:'Q',b:'C',curve:null}};
+function edgeCurve(e){if(e.curve)return e.curve;let a=nodes[e.a],b=nodes[e.b],pts=[V(a[0],.18,a[2]),V((a[0]+b[0])/2,.18,(a[2]+b[2])/2),V(b[0],.18,b[2])];if(e.a==='A'&&e.b==='B')pts[1].x=-10;e.curve=new THREE.CatmullRomCurve3(pts);return e.curve}
+const trackGroup=new THREE.Group();scene.add(trackGroup);
+for(const [id,e] of Object.entries(edges)){const c=edgeCurve(e),pts=c.getPoints(40),geo=new THREE.BufferGeometry().setFromPoints(pts);const ballast=new THREE.Mesh(new THREE.TubeGeometry(c,40,.48,6,false),M.ballast);ballast.position.y=-.1;trackGroup.add(ballast);for(let i=0;i<pts.length-1;i++){const p=pts[i],q=pts[i+1],dir=q.clone().sub(p).normalize(),side=V(-dir.z,0,dir.x);for(const s of [-.22,.22]){const a=p.clone().addScaledVector(side,s),b=q.clone().addScaledVector(side,s);const rail=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,a.distanceTo(b),6),M.rail);rail.position.copy(a).add(b).multiplyScalar(.5);rail.quaternion.setFromUnitVectors(V(0,1,0),b.clone().sub(a).normalize());trackGroup.add(rail)}const sl=box(.75,.08,.16,M.dark,p.x,.02,p.z);sl.rotation.y=Math.atan2(dir.x,dir.z)}}
+// signals
+const signals={};const signalGroup=new THREE.Group();scene.add(signalGroup);
+for(const [id,e] of Object.entries(edges)){for(const dir of [1,-1]){const n=dir===1?e.b:e.a,key=id+':'+dir;const p=nodes[n],g=new THREE.Group();g.position.set(p[0]+(dir===1?.8:-.8),0,p[2]+1.25);cyl(.08,2.2,M.dark,0,1.1,0,g);box(.6,1.1,.25,M.dark,0,2.25,0,g);const lamp= new THREE.Mesh(new THREE.SphereGeometry(.19,10,8),new THREE.MeshBasicMaterial({color:0xff3030}));lamp.position.set(0,2.55,.16);g.add(lamp);const lamp2=new THREE.Mesh(new THREE.SphereGeometry(.16,10,8),new THREE.MeshBasicMaterial({color:0x222222}));lamp2.position.set(0,2.08,.16);g.add(lamp2);signalGroup.add(g);signals[key]={id,dir,group:g,lamp,lamp2,manual:false,aspect:'red'}}}
+// switch blades
+const switches=[];[['A','WA','AB'],['A','AB','AP'],['C','BC','CE'],['C','QC','CE']].forEach(([n,a,b],i)=>{const s={node:n,pos:0,blades:[]};const p=nodes[n];for(let j=0;j<2;j++){const blade=box(.08,.04,1.2,M.rail,p[0]+(j? .18:-.18),.22,p[2]+.4);s.blades.push(blade)}switches.push(s)});
+// crossing barriers
+const barriers=[];for(const z of [24,24]){const g=new THREE.Group();g.position.set(24,0,z+(z>0?2.8:-2.8));const arm=box(.18,.18,5.5,M.red,0,1.2,0,g);barriers.push(arm)}const crossingLights=[];for(const x of [22.5,25.5])for(const z of [21.8,26.2]){const l=sphere(.12,new THREE.MeshBasicMaterial({color:0x550000}),x,.8,z);crossingLights.push(l)}
+// cars
+const cars=[];for(let i=0;i<4;i++){const g=new THREE.Group();const col=[0xd85b4f,0x5e9fc5,0xe4c572,0x8a6cb4][i];box(2.1,.7,1.15,mat(col),0,.65,0,g);box(1.2,.55,1.05,M.cream,0,1.2,0,g);for(const x of [-.65,.65])for(const z of [-.56,.56]){const w=cyl(.2,.12,M.dark,x,.3,z,g,10);w.rotation.x=Math.PI/2}scene.add(g);cars.push(g)}
+// train definitions
+const trainDefs=[{name:'Steam / 401',kind:'steam',color:0x30383b,route:['WA+','AB+','BC+','CE+','CE-','BC-','AB-','WA-'],start:12},{name:'Electric / E2',kind:'emu',color:0xe8eef0,route:['WA+','AP+','PQ+','QC+','CE+','CE-','QC-','PQ-','AP-','WA-'],start:3},{name:'Diesel Freight / 88',kind:'freight',color:0xc58b32,route:['WA+','AB+','BC+','CE+','CE-','BC-','AB-','WA-'],start:34}];
+function makeTrain(def){const root=new THREE.Group();scene.add(root);const carsG=[];const n=def.kind==='steam'?4:def.kind==='emu'?3:5;for(let i=0;i<n;i++){const g=new THREE.Group();if(def.kind==='steam'&&i===0){cyl(.7,1.8,mat(def.color),0,1,0,g);box(1.3,.8,1.4,M.dark,0,2,0,g);cyl(.22,1.5,M.dark,0,2.2,0,g)}else if(def.kind==='freight'&&i===0){box(2.6,1.4,1.5,mat(def.color),0,1,0,g);box(1.2,.8,1.3,M.dark,0,2,0,g)}else{const col=def.kind==='emu'?M.white:(i%2?M.blue:M.red);box(2.4,1,1.35,col,0,.85,0,g);box(1.5,.5,1.25,M.cream,0,1.55,0,g)}const wheels=[];for(const x of [-.75,.75])for(const z of [-.62,.62]){const w=cyl(.25,.12,M.dark,x,.3,z,g,12);w.rotation.x=Math.PI/2;wheels.push(w)}root.add(g);carsG.push({g,wheels})}if(def.kind==='emu'){const p=box(1.2,.12,.8,M.dark,0,2.15,0,root);p.rotation.z=.1}return {def,root,carsG,s:0,speed:0,dwell:0,occupied:new Set(),reservations:new Set(),color:def.color}}
+const trains=trainDefs.map(makeTrain); // route distances
+function parseRoute(def){let arr=[];for(const q of def.route){const id=q.slice(0,-1),dir=q.endsWith('+')?1:-1;arr.push({id,dir,len:edgeCurve(edges[id]).getLength(),start:0})}let s=0;arr.forEach(x=>{x.start=s;s+=x.len});return {arr,total:s}}
+trains.forEach((t,i)=>{t.path=parseRoute(t.def);t.s=t.def.start;});
+function segmentAt(t,s){let x=((s%t.path.total)+t.path.total)%t.path.total;for(let i=0;i<t.path.arr.length;i++){const a=t.path.arr[i];if(x<=a.start+a.len)return {i,seg:a,local:x-a.start}}return {i:0,seg:t.path.arr[0],local:0}}
+function pointOn(t,dist){const q=segmentAt(t,dist),e=edges[q.seg.id],c=edgeCurve(e),p=c.getPointAt(Math.max(0,Math.min(1,q.local/q.seg.len))),tan=c.getTangentAt(Math.max(0,Math.min(1,q.local/q.seg.len)));if(q.seg.dir<0)tan.negate();return {p,tan,seg:q.seg}}
+function occupancy(t){t.occupied.clear();for(const car of t.carsG){const q=pointOn(t,t.s-car.g.position.x*0- (t.carsG.indexOf(car)*3.1+1.5));t.occupied.add(q.seg.id)}}
+const reserved={};let singleDir=0;
+function otherOccupant(id,t){return trains.find(x=>x!==t&&x.occupied.has(id))}
+function reservedBy(id,t){return trains.find(x=>x!==t&&x.reservations.has(id))}
+function signalAspect(t,seg){const key=seg.id+':'+seg.dir,s=signals[key];if(s.manual)return 'red';if(otherOccupant(seg.id,t)||reservedBy(seg.id,t))return 'red';const idx=t.path.arr.indexOf(seg),next=t.path.arr[(idx+1)%t.path.arr.length];if(otherOccupant(next.id,t)||reservedBy(next.id,t))return 'yellow';if(t.path.arr.length>1){const n2=t.path.arr[(idx+2)%t.path.arr.length];if(otherOccupant(n2.id,t)||reservedBy(n2.id,t))return 'yellow'}return 'green'}
+function reserve(t,seg){if(otherOccupant(seg.id,t)||reservedBy(seg.id,t))return false;if(seg.id==='AB'&&singleDir&&singleDir!==seg.dir)return false;if(seg.id==='AB')singleDir=seg.dir;t.reservations.add(seg.id);return true}
+function updateSignals(){for(const t of trains){const q=segmentAt(t,t.s),idx=q.i;const next=t.path.arr[(idx+1)%t.path.arr.length];const asp=signalAspect(t,next);signals[next.id+':'+next.dir].aspect=asp}for(const s of Object.values(signals)){const on=s.aspect==='green'?0:s.aspect==='yellow'?1:2;s.lamp.visible=on!==0;s.lamp2.visible=on===2;s.lamp.material.color.set(on===0?0x35ff85:0xffd23d);s.lamp2.material.color.set(0xff3030)}}
+function updateTrain(t,dt){if(t.dwell>0){t.dwell-=dt;updateTrainVisual(t);return}const q=segmentAt(t,t.s),next=t.path.arr[(q.i+1)%t.path.arr.length];const asp=signalAspect(t,next);const distToSignal=q.seg.len-q.local;let desired=asp==='green'?3.8:asp==='yellow'?1.8:0;if(distToSignal<2.2)desired=0;if(asp==='red'&&distToSignal<2.2){t.speed=Math.max(0,t.speed-dt*3.5)}else t.speed=Math.min(desired,t.speed+dt*1.2);if(t.speed>0){t.s+=t.speed*dt;occupancy(t);if(!t.reservations.has(next.id))reserve(t,next);const after=segmentAt(t,t.s);if(after.i!==q.i&&after.seg.dir!==next.dir){t.dwell=2.5}}else if(distToSignal<2.3){t.dwell=.1; if(!reserve(t,next))t.dwell=.05}
+// release reservations and old blocks
+for(const id of [...t.reservations])if(!t.occupied.has(id)&&segmentAt(t,t.s).seg.id!==id)t.reservations.delete(id);
+updateTrainVisual(t)}
+function updateTrainVisual(t){for(let i=0;i<t.carsG.length;i++){const c=t.carsG[i],q=pointOn(t,t.s-(i*3.1+1.5));c.g.position.copy(q.p);c.g.position.y+=.35;c.g.rotation.y=Math.atan2(q.tan.x,q.tan.z);for(const w of c.wheels)w.rotation.z-=t.speed*dtWheel;}
+const dtWheel=.08;
+function updateWorld(dt){occupancy(trains[0]);trains.forEach(t=>occupancy(t));for(const t of trains)updateTrain(t,dt);updateSignals();for(const c of cars){c.position.z+=dt*2; if(c.position.z>25)c.position.z=-25;if(Math.abs(c.position.x-24)<2&&Math.abs(c.position.z-24)<2)c.position.z=25}
+// crossing
+const near=trains.some(t=>{const q=pointOn(t,t.s);return q.p.x>19&&q.p.x<29&&Math.abs(q.p.z-24)<5});for(const a of barriers)a.rotation.x=THREE.MathUtils.lerp(a.rotation.x,near?Math.PI/2:0,dt*4);for(const l of crossingLights)l.material.color.set(near?0xff2222:0x551111)}
+// UI
+const trainPanels={};trains.forEach(t=>{const d=document.createElement('div');d.className='train '+t.def.kind;d.innerHTML=`<div class="trainhead"><span><i class="dot"></i>${t.def.name}</span><span class="speed">0.0</span></div><div class="row"><span class="where">—</span><span class="aspect">RED</span></div><div class="row"><span class="state">running</span><span class="next">next —</span></div>`;$('#trains').appendChild(d);trainPanels[t.def.name]=d;d.onclick=()=>followTrain(t)});
+let follow=null, paused=false,speed=1,showBlocks=false,day=9;function toast(x){$('#toast').textContent=x;$('#toast').style.opacity=1;setTimeout(()=>$('#toast').style.opacity=0,1800)}
+function followTrain(t){follow=t;toast('Following '+t.def.name);controls.target.set(0,0,0)}
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-view]').forEach(x=>x.classList.remove('active'));b.classList.add('active');follow=null;let p=b.dataset.view==='station'?[-27,18,18]:b.dataset.view==='bridge'?[8,15,18]:b.dataset.view==='crossing'?[25,16,28]:[0,35,48];camera.position.set(...p);controls.target.set(0,0,0)});
+$('#pause').onclick=()=>{paused=!paused;$('#pause').textContent=paused?'Resume':'Pause'};document.querySelectorAll('[data-speed]').forEach(b=>b.onclick=()=>{speed=+b.dataset.speed;document.querySelectorAll('[data-speed]').forEach(x=>x.classList.remove('active'));b.classList.add('active')});
+$('#diagramBtn').onclick=()=>{$('#diagram').style.display=$('#diagram').style.display==='block'?'none':'block'};$('#legendBtn').onclick=()=>{$('#legend').style.display=$('#legend').style.display==='block'?'none':'block';showBlocks=!showBlocks;trains.forEach(t=>t.carsG.forEach(c=>c.g.traverse(o=>{if(o.isMesh)o.material.color.set(showBlocks?(t.occupied.has(segmentAt(t,t.s).seg.id)?0x9a63ff:0xffffff):c.original||c.g.children[0].material.color)}))};$('#explainBtn').onclick=()=>{$('#explain').style.display=$('#explain').style.display==='block'?'none':'block'};$('#daynight').oninput=e=>{day=+e.target.value;$('#clock').textContent=String(Math.floor(day)).padStart(2,'0')+':00';const night=day<6||day>19;scene.background.set(night?0x101b32:0x9ac9df);scene.fog.color.copy(scene.background);hemi.intensity=night?.55:2;sun.intensity=night?.25:2.5};
+// schematic
+const sch=$('#schematic'),ctx=sch.getContext('2d');function drawSchematic(){const w=sch.clientWidth,h=sch.clientHeight;sch.width=w*devicePixelRatio;sch.height=h*devicePixelRatio;ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);ctx.clearRect(0,0,w,h);const sc=10,ox=w/2,oy=h/2;const pt=id=>{const n=nodes[id];return [ox+n[0]*sc,oy+n[2]*sc]};for(const [id,e] of Object.entries(edges)){const a=pt(e.a),b=pt(e.b);ctx.strokeStyle='#526975';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(...a);ctx.lineTo(...b);ctx.stroke();const occ=trains.find(t=>t.occupied.has(id));ctx.strokeStyle=occ?'#b36cff':(showBlocks?'#294653':'#78939a');ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(...a);ctx.lineTo(...b);ctx.stroke();if(trains.some(t=>t.reservations.has(id))){ctx.strokeStyle='#4be58a';ctx.lineWidth=2;ctx.setLineDash([4,3]);ctx.beginPath();ctx.moveTo(...a);ctx.lineTo(...b);ctx.stroke();ctx.setLineDash([])}for(const [key,s] of Object.entries(signals)){if(!key.startsWith(id+':'))continue;const p=pt(s.dir===1?edges[id].b:edges[id].a);ctx.fillStyle=s.aspect==='green'?'#42e985':s.aspect==='yellow'?'#ffd044':'#ff4242';ctx.beginPath();ctx.arc(p[0]+s.dir*7,p[1],3.5,0,7);ctx.fill();s.canvas={x:p[0]+s.dir*7,y:p[1]}}}for(const t of trains){const q=pointOn(t,t.s),p=[ox+q.p.x*sc,oy+q.p.z*sc];ctx.fillStyle='#'+t.color.toString(16).padStart(6,'0');ctx.beginPath();ctx.arc(p[0],p[1],6,0,7);ctx.fill();ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.fillText(t.def.kind==='steam'?'401':t.def.kind==='emu'?'E2':'88',p[0]+8,p[1]-5)}for(const [key,s] of Object.entries(signals)){if(s.canvas){ctx.fillStyle='#111';ctx.beginPath();ctx.arc(s.canvas.x,s.canvas.y,5,0,7);ctx.fill();ctx.fillStyle=s.aspect==='green'?'#42e985':s.aspect==='yellow'?'#ffd044':'#ff4242';ctx.beginPath();ctx.arc(s.canvas.x,s.canvas.y,3,0,7);ctx.fill()}}
+sch.onclick=e=>{const r=sch.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;for(const [key,s] of Object.entries(signals)){if(s.canvas&&Math.hypot(s.canvas.x-x,s.canvas.y-y)<8){s.manual=!s.manual;toast(s.manual?'Signal held at RED':'Signal released');return}}}
+renderer.domElement.addEventListener('click',e=>{const rect=renderer.domElement.getBoundingClientRect(),mouse=new THREE.Vector2((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);ray.setFromCamera(mouse,camera);for(const t of trains){const p=pointOn(t,t.s).p;if(ray.ray.distanceToPoint(p)<3){followTrain(t);break}}});
+const ray=new THREE.Raycaster();
+let last=performance.now();function loop(now){requestAnimationFrame(loop);const dt=Math.min(.05,(now-last)/1000);last=now;if(!paused)updateWorld(dt*speed);if(follow){const p=pointOn(follow,follow.s).p;controls.target.lerp(p,.08);camera.position.lerp(p.clone().add(V(9,7,10)),.04)}renderer.render(scene,camera);for(const t of trains){const q=pointOn(t,t.s),idx=q.i,next=t.path.arr[(idx+1)%t.path.arr.length],asp=signalAspect(t,next),d=trainPanels[t.def.name];d.querySelector('.speed').textContent=(t.speed*3.6).toFixed(1)+' km/h';d.querySelector('.where').textContent=q.seg.id;d.querySelector('.aspect').textContent=asp.toUpperCase();d.querySelector('.state').textContent=t.dwell>0?'dwelling at station':asp==='red'?'braking for signal':t.speed<.1?'waiting for route':'running';d.querySelector('.next').textContent='next '+next.id}if($('#diagram').style.display==='block')drawSchematic();}
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2))});requestAnimationFrame(loop);
+</script>
+</body>
+</html>

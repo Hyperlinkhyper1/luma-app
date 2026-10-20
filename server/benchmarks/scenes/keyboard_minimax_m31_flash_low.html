@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aperture 75 — Mechanical Keyboard Showcase</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #080b11;
+    --panel: rgba(20, 25, 35, .78);
+    --line: rgba(255,255,255,.09);
+    --text: #edf2f7;
+    --muted: #8d98aa;
+    --accent: #7de3ff;
+    --accent-2: #a98cff;
+    --scale: 1;
+  }
+  * { box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+  body {
+    background:
+      radial-gradient(circle at 50% 22%, rgba(57,88,135,.18), transparent 38%),
+      radial-gradient(circle at 18% 85%, rgba(109,67,157,.12), transparent 35%),
+      linear-gradient(145deg, #0b0f17, #05070b 72%);
+    color: var(--text);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    user-select: none;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: .16;
+    background-image:
+      linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+    background-size: 46px 46px;
+    mask-image: linear-gradient(to bottom, black, transparent 80%);
+  }
+  .app { width: 100%; height: 100%; position: relative; isolation: isolate; }
+  header {
+    position: absolute;
+    z-index: 20;
+    top: clamp(18px, 3.5vh, 36px);
+    left: clamp(18px, 4vw, 60px);
+    right: clamp(18px, 4vw, 60px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+  .brand { max-width: 520px; }
+  .eyebrow {
+    display: flex; align-items: center; gap: 10px;
+    color: var(--accent); text-transform: uppercase; letter-spacing: .24em;
+    font-size: 10px; font-weight: 800; margin-bottom: 9px;
+  }
+  .eyebrow::before { content: ""; width: 28px; height: 1px; background: currentColor; }
+  h1 { margin: 0; font-size: clamp(27px, 3.3vw, 50px); line-height: .98; letter-spacing: -.045em; font-weight: 720; }
+  .brand p { color: var(--muted); margin: 12px 0 0; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+  .controls {
+    pointer-events: auto;
+    display: flex; gap: 8px; align-items: center;
+    padding: 7px;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,.3);
+    backdrop-filter: blur(18px);
+  }
+  button.control {
+    appearance: none; border: 1px solid transparent; color: var(--text);
+    background: transparent; border-radius: 9px; padding: 10px 13px;
+    font: inherit; font-size: 12px; font-weight: 650; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px; transition: .2s ease;
+  }
+  button.control:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.08); }
+  button.control:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .icon { width: 16px; height: 16px; display: inline-grid; place-items: center; }
+  .replay svg { width: 15px; height: 15px; }
+  .divider { width: 1px; height: 22px; background: var(--line); margin: 0 2px; }
+  .live {
+    position: absolute; z-index: 20; left: clamp(18px, 4vw, 60px); bottom: clamp(18px, 3.2vh, 36px);
+    color: var(--muted); font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    display: flex; gap: 9px; align-items: center;
+  }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #76f0b4; box-shadow: 0 0 14px #76f0b4; }
+  .sound-hint {
+    position: absolute; z-index: 30; left: 50%; bottom: 28px; transform: translateX(-50%);
+    background: rgba(12,16,24,.9); border: 1px solid rgba(125,227,255,.25); color: #dff8ff;
+    padding: 10px 15px; border-radius: 999px; font-size: 12px; box-shadow: 0 10px 40px #0008;
+    transition: opacity .35s, transform .35s; pointer-events: none;
+  }
+  .sound-hint.hidden { opacity: 0; transform: translate(-50%, 8px); }
+  .stage {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    perspective: 1500px; perspective-origin: 50% 43%;
+  }
+  .scaled {
+    width: 1140px; height: 450px; position: relative;
+    transform: scale(var(--scale)); transform-style: preserve-3d;
+  }
+  .board {
+    position: absolute; left: 10px; top: 32px; width: 1120px; height: 382px;
+    transform-style: preserve-3d; transform: rotateX(57deg) rotateZ(-7deg);
+    filter: drop-shadow(0 45px 40px rgba(0,0,0,.48));
+  }
+  .layer { position: absolute; inset: 0; transform-style: preserve-3d; }
+  .case {
+    inset: 8px 7px 8px 7px; border-radius: 22px;
+    background: linear-gradient(145deg, #303744, #171c25 48%, #0d1118);
+    border: 1px solid #48515f;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.12),
+      inset 0 -18px 30px rgba(0,0,0,.45),
+      0 16px 0 #0a0d12,
+      0 28px 0 #151a22,
+      0 39px 0 #080b0f;
+    transform: translateZ(-20px);
+  }
+  .case::after {
+    content: "APERTURE / 75"; position: absolute; right: 28px; bottom: 15px;
+    font-size: 9px; letter-spacing: .28em; color: #737d8e; font-weight: 800;
+  }
+  .pcb {
+    inset: 27px 24px 30px 24px; border-radius: 13px;
+    background:
+      radial-gradient(circle at 25% 30%, rgba(72,255,169,.12) 0 2px, transparent 3px),
+      radial-gradient(circle at 70% 67%, rgba(72,255,169,.1) 0 2px, transparent 3px),
+      linear-gradient(135deg, #123e36, #0c2b29 60%, #09211f);
+    border: 2px solid #205449;
+    box-shadow: inset 0 0 0 1px rgba(104,255,201,.12), 0 0 24px rgba(65,255,183,.07);
+    overflow: hidden;
+  }
+  .pcb::before, .pcb::after {
+    content: ""; position: absolute; pointer-events: none;
+  }
+  .pcb::before {
+    inset: 0; opacity: .34;
+    background-image: linear-gradient(90deg, transparent 48%, #66d1a8 49%, #66d1a8 51%, transparent 52%),
+                      linear-gradient(transparent 48%, #66d1a8 49%, #66d1a8 51%, transparent 52%);
+    background-size: 95px 62px;
+  }
+  .pcb::after {
+    width: 90px; height: 34px; right: 34px; top: 25px; border: 1px solid #53a88e;
+    background: repeating-linear-gradient(90deg, transparent 0 9px, rgba(83,168,142,.3) 9px 10px);
+  }
+  .foam {
+    inset: 34px 31px 37px 31px; border-radius: 10px;
+    background: linear-gradient(135deg, #d8dce2, #aeb4bf);
+    box-shadow: inset 0 1px 1px #fff, inset 0 -8px 12px rgba(0,0,0,.16);
+  }
+  .foam::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    background: radial-gradient(circle, rgba(64,72,84,.42) 0 2px, transparent 2.5px) 0 0 / 56px 52px;
+    opacity: .36;
+  }
+  .plate {
+    inset: 37px 34px 40px 34px; border-radius: 9px;
+    background: linear-gradient(145deg, #586171, #303744 55%, #222832);
+    border: 1px solid #798496; box-shadow: inset 0 1px 0 #9ba4b366;
+  }
+  .switch {
+    position: absolute; width: 38px; height: 38px; transform-style: preserve-3d;
+  }
+  .switch .housing {
+    position: absolute; inset: 0; border-radius: 5px;
+    background: linear-gradient(145deg, #252d38, #11161d);
+    border: 1px solid #667080; box-shadow: 0 5px 7px #0008, inset 0 1px 0 #ffffff22;
+    transform: translateZ(7px);
+  }
+  .switch .stem {
+    position: absolute; width: 13px; height: 13px; left: 12.5px; top: 12.5px;
+    background: #c46e45; border: 1px solid #f2a36e; box-shadow: 0 2px 3px #0008;
+    transform: translateZ(12px);
+  }
+  .key {
+    position: absolute; padding: 0; margin: 0; border: 0; outline: 0;
+    transform-style: preserve-3d; background: transparent; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .key-travel { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; }
+  .cap {
+    position: absolute; left: 3px; right: 3px; top: 3px; bottom: 7px;
+    border-radius: 6px; transform-style: preserve-3d;
+    background: linear-gradient(145deg, #384252, #202733 58%, #171d27);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.13), inset 0 -5px 8px rgba(0,0,0,.3);
+  }
+  .cap.mod { background: linear-gradient(145deg, #4b3e63, #2d253c 60%, #211b2d); }
+  .cap.accent { background: linear-gradient(145deg, #28778a, #175364 62%, #103e4b); }
+  .cap.warm { background: linear-gradient(145deg, #755040, #493127 62%, #33231d); }
+  .cap .top {
+    position: absolute; inset: 0; border-radius: inherit;
+    display: flex; align-items: center; justify-content: center;
+    color: #dce4ee; font-size: 11px; font-weight: 680; letter-spacing: .02em;
+    text-shadow: 0 1px 1px #000; transform: translateZ(12px);
+    background: linear-gradient(145deg, rgba(255,255,255,.035), transparent 45%);
+  }
+  .cap .front, .cap .right {
+    position: absolute; background: #151b24; border: 1px solid rgba(255,255,255,.055);
+  }
+  .cap .front { left: 0; right: 0; bottom: 0; height: 7px; transform-origin: top; transform: rotateX(-90deg); }
+  .cap .right { top: 0; bottom: 0; right: 0; width: 7px; transform-origin: left; transform: rotateY(90deg); }
+  .key:hover .cap { filter: brightness(1.13); }
+  .key:focus-visible .cap { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .legend {
+    position: absolute; z-index: 20; right: clamp(18px, 4vw, 60px); bottom: clamp(18px, 3.2vh, 36px);
+    text-align: right; color: var(--muted); font-size: 10px; line-height: 1.7; letter-spacing: .12em; text-transform: uppercase;
+  }
+  .legend strong { color: #c9d3df; font-weight: 700; }
+  .progress {
+    position: absolute; z-index: 21; left: 50%; top: 16px; transform: translateX(-50%);
+    width: 180px; height: 2px; background: rgba(255,255,255,.08); border-radius: 2px; overflow: hidden;
+  }
+  .progress span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .2s linear; }
+  .knob {
+    position: absolute; width: 48px; height: 48px; border-radius: 50%;
+    background: radial-gradient(circle at 38% 32%, #8793a3, #303946 42%, #121720 72%);
+    border: 2px solid #596474; transform: translateZ(69px);
+    box-shadow: 0 8px 0 #0a0e13, 0 12px 12px #0008, inset 0 1px 2px #fff8;
+    cursor: pointer;
+  }
+  .knob::after { content: ""; position: absolute; width: 3px; height: 11px; background: var(--accent); left: 21px; top: 5px; border-radius: 3px; box-shadow: 0 0 8px var(--accent); }
+  @media (max-width: 760px) {
+    header { top: 16px; left: 16px; right: 16px; }
+    .brand p { display: none; }
+    .controls { gap: 2px; padding: 4px; }
+    button.control { padding: 9px; }
+    .control .label { display: none; }
+    .legend { display: none; }
+    .live { left: 16px; bottom: 14px; }
+    .progress { top: 82px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { scroll-behavior: auto !important; }
+  }
+</style>
+</head>
+<body>
+<main class="app" aria-label="Interactive 3D mechanical keyboard showcase">
+  <header>
+    <div class="brand">
+      <div class="eyebrow">Precision series / 01</div>
+      <h1>APERTURE 75</h1>
+      <p>Hot-swap mechanical keyboard · gasket mount</p>
+    </div>
+    <div class="controls" aria-label="Showcase controls">
+      <button class="control replay" id="replay" title="Replay assembly" aria-label="Replay assembly">
+        <span class="icon replay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></span>
+        <span class="label">Replay</span>
+      </button>
+      <span class="divider"></span>
+      <button class="control" id="mute" aria-pressed="false" title="Toggle sound">
+        <span class="icon" id="muteIcon">◖))</span><span class="label" id="muteLabel">Sound on</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="progress" aria-hidden="true"><span id="progressBar"></span></div>
+
+  <section class="stage" aria-label="3D keyboard assembly">
+    <div class="scaled" id="scaled">
+      <div class="board" id="board">
+        <div class="layer case" id="caseLayer"></div>
+        <div class="layer pcb" id="pcbLayer"></div>
+        <div class="layer foam" id="foamLayer"></div>
+        <div class="layer plate" id="plateLayer"></div>
+        <div class="layer" id="switchLayer"></div>
+        <div class="layer" id="capLayer"></div>
+        <div class="knob" id="knob" role="button" tabindex="0" aria-label="Rotary volume knob"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="live"><span class="live-dot"></span><span id="status">Initializing assembly</span></div>
+  <div class="legend"><strong>75% / Linear</strong><br>Aluminum case · POM caps · Hot-swap PCB</div>
+  <div class="sound-hint" id="soundHint">Tap a key or press any key to enable sound</div>
+</main>
+
+<script>
+(() => {
+  "use strict";
+
+  const rows = [
+    [
+      ["Escape","Escape",1,"accent"],["1","Digit1",1],["2","Digit2",1],["3","Digit3",1],["4","Digit4",1],["5","Digit5",1],["6","Digit6",1],["7","Digit7",1],["8","Digit8",1],["9","Digit9",1],["0","Digit0",1],["-","Minus",1],["=","Equal",1],["Backspace","Backspace",2,"mod"],["Delete","Delete",1,"mod"]
+    ],
+    [
+      ["Tab","Tab",1.5,"mod"],["Q","KeyQ",1],["W","KeyW",1],["E","KeyE",1],["R","KeyR",1],["T","KeyT",1],["Y","KeyY",1],["U","KeyU",1],["I","KeyI",1],["O","KeyO",1],["P","KeyP",1],["[","BracketLeft",1],["]","BracketRight",1],["\\","Backslash",1.5],["Home","Home",1,"mod"]
+    ],
+    [
+      ["Caps Lock","CapsLock",1.75,"mod"],["A","KeyA",1],["S","KeyS",1],["D","KeyD",1],["F","KeyF",1],["G","KeyG",1],["H","KeyH",1],["J","KeyJ",1],["K","KeyK",1],["L","KeyL",1],[";","Semicolon",1],["'","Quote",1],["Enter","Enter",2.25,"accent"],["Page Up","PageUp",1,"mod"]
+    ],
+    [
+      ["Shift","ShiftLeft",2.25,"mod"],["Z","KeyZ",1],["X","KeyX",1],["C","KeyC",1],["V","KeyV",1],["B","KeyB",1],["N","KeyN",1],["M","KeyM",1],[",","Comma",1],[".","Period",1],["/","Slash",1],["Shift","ShiftRight",2.75,"mod"],["↑","ArrowUp",1,"mod"],["End","End",1,"mod"]
+    ],
+    [
+      ["Ctrl","ControlLeft",1.25,"mod"],["◇","MetaLeft",1.25,"mod"],["Alt","AltLeft",1.25,"mod"],["","Space",6.25,"warm"],["Alt","AltRight",1.25,"mod"],["Fn","Fn",1.25,"mod"],["▦","ContextMenu",1.25,"mod"],["Ctrl","ControlRight",1.25,"mod"],["←","ArrowLeft",1,"mod"],["↓","ArrowDown",1,"mod"],["→","ArrowRight",1,"mod"]
+    ]
+  ];
+
+  const UNIT = 55, GAP = 6, ROW = 55, START_X = 61, START_Y = 51;
+  const keyData = [];
+  const capLayer = document.getElementById("capLayer");
+  const switchLayer = document.getElementById("switchLayer");
+  const board = document.getElementById("board");
+
+  rows.forEach((row, rowIndex) => {
+    let x = START_X;
+    row.forEach(([label, code, units, group]) => {
+      const width = units * UNIT + (units - 1) * GAP;
+      const y = START_Y + rowIndex * ROW;
+      keyData.push({label, code, width, x, y, group: group || "alpha"});
+      x += width + GAP;
+    });
+  });
+
+  function makeSwitch(k) {
+    const el = document.createElement("div");
+    el.className = "switch";
+    el.style.width = k.width + "px";
+    el.style.height = "39px";
+    el.style.transform = `translate3d(${k.x + 7}px,${k.y + 5}px,42px)`;
+    el.innerHTML = '<div class="housing"></div><div class="stem"></div>';
+    el.dataset.final = `translate3d(${k.x + 7}px,${k.y + 5}px,42px)`;
+    switchLayer.appendChild(el);
+    return el;
+  }
+
+  function makeKey(k) {
+    const button = document.createElement("button");
+    button.className = "key";
+    button.type = "button";
+    button.dataset.code = k.code;
+    button.dataset.group = k.group;
+    button.setAttribute("aria-label", k.label || k.code);
+    button.style.width = k.width + "px";
+    button.style.height = "45px";
+    button.style.transform = `translate3d(${k.x}px,${k.y}px,68px)`;
+    button.dataset.final = `translate3d(${k.x}px,${k.y}px,68px)`;
+    const cls = k.group === "alpha" ? "" : k.group;
+    const display = k.label || (k.code === "Space" ? "" : k.code);
+    button.innerHTML = `<div class="key-travel"><div class="cap ${cls}"><div class="top">${display}</div><div class="front"></div><div class="right"></div></div></div>`;
+    button.addEventListener("pointerdown", e => {
+      e.preventDefault();
+      pressKey(button, true);
+    });
+    button.addEventListener("pointerup", () => pressKey(button, false));
+    button.addEventListener("pointerleave", () => {
+      if (button.classList.contains("pressed")) pressKey(button, false);
+    });
+    capLayer.appendChild(button);
+    return button;
+  }
+
+  const switches = keyData.map(makeSwitch);
+  const keys = keyData.map(makeKey);
+  const keyMap = new Map(keys.map(k => [k.dataset.code, k]));
+
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const status = document.getElementById("status");
+  const progressBar = document.getElementById("progressBar");
+  const hint = document.getElementById("soundHint");
+  let muted = false;
+  let audio = null;
+  let master = null;
+  let assemblyRunning = false;
+
+  function initAudio() {
+    if (!audio) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      audio = new AudioCtx();
+      master = audio.createGain();
+      master.gain.value = muted ? 0 : .72;
+      master.connect(audio.destination);
+    }
+    if (audio.state === "suspended") audio.resume();
+    hint.classList.add("hidden");
+  }
+
+  function tone(freq, duration, type, volume, delay = 0, endFreq = null) {
+    if (!audio || muted) return;
+    const now = audio.currentTime + delay;
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+    const filter = audio.createBiquadFilter();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+    if (endFreq) osc.frequency.exponentialRampToValueAtTime(endFreq, now + duration);
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(Math.min(freq * 8, 12000), now);
+    gain.gain.setValueAtTime(.0001, now);
+    gain.gain.exponentialRampToValueAtTime(volume, now + .003);
+    gain.gain.exponentialRampToValueAtTime(.0001, now + duration);
+    osc.connect(filter); filter.connect(gain); gain.connect(master);
+    osc.start(now); osc.stop(now + duration + .02);
+  }
+
+  function noise(duration, volume, cutoff, delay = 0) {
+    if (!audio || muted) return;
+    const length = Math.ceil(audio.sampleRate * duration);
+    const buffer = audio.createBuffer(1, length, audio.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / length);
+    const src = audio.createBufferSource(); src.buffer = buffer;
+    const filter = audio.createBiquadFilter(); filter.type = "lowpass"; filter.frequency.value = cutoff;
+    const gain = audio.createGain(); gain.gain.value = volume;
+    src.connect(filter); filter.connect(gain); gain.connect(master); src.start(audio.currentTime + delay);
+  }
+
+  function soundFor(key) {
+    if (!key) return;
+    const code = key.dataset.code;
+    const group = key.dataset.group;
+    if (code === "Space") {
+      tone(92, .18, "sine", .42, 0, 48);
+      noise(.12, .12, 650);
+    } else if (code === "Enter") {
+      tone(310, .12, "triangle", .28, 0, 175);
+      noise(.055, .13, 2600);
+    } else if (code === "Backspace") {
+      tone(185, .11, "square", .18, 0, 115);
+      noise(.1, .16, 1800);
+    } else if (group === "mod") {
+      tone(225, .09, "triangle", .22, 0, 145);
+      noise(.045, .1, 2100);
+    } else {
+      const variation = (code.charCodeAt(code.length - 1) % 7) * 18;
+      tone(390 + variation, .075, "sine", .23, 0, 270);
+      noise(.035, .075, 3600);
+    }
+  }
+
+  function pressKey(key, down = true) {
+    if (!key) return;
+    const travel = key.querySelector(".key-travel");
+    key.classList.toggle("pressed", down);
+    if (reduced) {
+      travel.style.transform = down ? "translateZ(-8px)" : "translateZ(0)";
+    } else {
+      travel.animate(
+        [{transform:"translateZ(0)"},{transform:`translateZ(${down ? -9 : 0}px)`}],
+        {duration: down ? 65 : 115, easing: down ? "ease-out" : "cubic-bezier(.2,.8,.2,1)"}
+      );
+    }
+    if (down) { initAudio(); soundFor(key); }
+  }
+
+  document.getElementById("mute").addEventListener("click", () => {
+    muted = !muted;
+    initAudio();
+    if (master) master.gain.setTargetAtTime(muted ? 0 : .72, audio.currentTime, .02);
+    const b = document.getElementById("mute");
+    b.setAttribute("aria-pressed", String(muted));
+    document.getElementById("muteIcon").textContent = muted ? "◖×" : "◖))";
+    document.getElementById("muteLabel").textContent = muted ? "Sound off" : "Sound on";
+  });
+
+  document.getElementById("replay").addEventListener("click", () => {
+    initAudio();
+    runAssembly();
+  });
+
+  document.getElementById("knob").addEventListener("pointerdown", () => {
+    initAudio();
+    const knob = document.getElementById("knob");
+    knob.animate([{transform:"translateZ(69px) rotate(0deg)"},{transform:"translateZ(69px) rotate(35deg)"},{transform:"translateZ(69px) rotate(0deg)"}], {duration:420,easing:"ease-out"});
+    tone(520,.07,"sine",.2,0,420);
+    tone(680,.09,"sine",.16,.08,520);
+  });
+  document.getElementById("knob").addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); document.getElementById("knob").dispatchEvent(new PointerEvent("pointerdown")); }
+  });
+
+  document.addEventListener("pointerdown", initAudio, {once:true});
+  document.addEventListener("keydown", e => {
+    if (e.repeat) return;
+    const key = keyMap.get(e.code);
+    if (key) {
+      e.preventDefault();
+      pressKey(key, true);
+      setTimeout(() => pressKey(key, false), 105);
+    } else {
+      initAudio();
+    }
+  });
+  document.addEventListener("keyup", e => {
+    const key = keyMap.get(e.code);
+    if (key && key.classList.contains("pressed")) pressKey(key, false);
+  });
+
+  function animateElement(el, from, to, duration, delay, easing = "cubic-bezier(.22,.78,.2,1)") {
+    const animation = el.animate(
+      [{transform:from, opacity:.08},{transform:to, opacity:1}],
+      {duration, delay, easing, fill:"backwards"}
+    );
+    return animation.finished.catch(()=>{});
+  }
+
+  async function runAssembly() {
+    assemblyRunning = true;
+    status.textContent = "Assembling PCB";
+    progressBar.style.width = "0%";
+    document.getAnimations().forEach(a => {
+      if (a.playState === "running" && a.effect && a.effect.target && a.effect.target.closest(".board")) a.cancel();
+    });
+
+    const pcb = document.getElementById("pcbLayer");
+    const foam = document.getElementById("foamLayer");
+    const plate = document.getElementById("plateLayer");
+    const caseLayer = document.getElementById("caseLayer");
+
+    if (reduced) {
+      pcb.style.transform = "translateZ(0)";
+      foam.style.transform = "translateZ(18px)";
+      plate.style.transform = "translateZ(36px)";
+      switches.forEach(s => s.style.transform = s.dataset.final);
+      keys.forEach(k => k.style.transform = k.dataset.final);
+      status.textContent = "Assembly complete";
+      progressBar.style.width = "100%";
+      assemblyRunning = false;
+      return;
+    }
+
+    const jobs = [];
+    jobs.push(animateElement(pcb, "translateZ(-150px)", "translateZ(0)", 850, 100));
+    jobs.push(animateElement(foam, "translateZ(-95px)", "translateZ(18px)", 850, 950));
+    jobs.push(animateElement(plate, "translateZ(-175px)", "translateZ(36px)", 850, 1800));
+
+    switches.forEach((s, i) => {
+      const from = `translate3d(${keyData[i].x + 7}px,${keyData[i].y - 18}px,-240px)`;
+      jobs.push(animateElement(s, from, s.dataset.final, 420, 2550 + i * 18, "cubic-bezier(.18,.76,.2,1)"));
+    });
+
+    keys.forEach((k, i) => {
+      const from = `translate3d(${keyData[i].x}px,${keyData[i].y - 22}px,-310px)`;
+      jobs.push(animateElement(k, from, k.dataset.final, 430, 3750 + i * 20, "cubic-bezier(.18,.76,.2,1)"));
+    });
+
+    const progressTimer = setInterval(() => {
+      const p = Math.min(100, parseFloat(progressBar.style.width) + 1.7);
+      progressBar.style.width = p + "%";
+    }, 80);
+    setTimeout(() => {
+      status.textContent = "Installing keycaps";
+    }, 3700);
+    await Promise.all(jobs);
+    clearInterval(progressTimer);
+    progressBar.style.width = "100%";
+    status.textContent = "Assembly complete";
+    assemblyRunning = false;
+  }
+
+  function resize() {
+    const w = window.innerWidth, h = window.innerHeight;
+    const availableW = w - 28;
+    const availableH = h - (w < 760 ? 125 : 155);
+    const scale = Math.min(availableW / 1140, availableH / 450);
+    document.documentElement.style.setProperty("--scale", Math.max(.28, scale).toFixed(4));
+    const scaled = document.getElementById("scaled");
+    scaled.style.marginTop = (w < 760 ? 25 : 0) + "px";
+  }
+  window.addEventListener("resize", resize);
+  resize();
+  setTimeout(runAssembly, 350);
+})();
+</script>
+</body>
+</html>

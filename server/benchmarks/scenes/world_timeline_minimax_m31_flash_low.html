@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>A Timeline of the World</title>
+<style>
+:root{--ink:#f5f1e8;--muted:#b9c6c9;--gold:#e8bb63;--glass:rgba(7,15,22,.72)}
+*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#061019;color:var(--ink);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+#app{position:relative;width:100%;height:100%;min-height:500px;overflow:hidden;background:#061019}
+#stage{position:absolute;inset:0;width:100%;height:100%;display:block}
+#vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 44%,transparent 38%,rgba(0,0,0,.22) 70%,rgba(0,0,0,.7) 100%)}
+#hud{position:absolute;left:clamp(18px,4vw,70px);top:clamp(18px,5vh,60px);width:min(520px,42vw);pointer-events:none;text-shadow:0 2px 18px #000}
+.eyebrow{font-size:clamp(10px,1vw,13px);letter-spacing:.22em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:10px}
+#chapterTitle{font-family:Georgia,"Times New Roman",serif;font-size:clamp(30px,4.2vw,68px);line-height:.98;margin:0 0 10px;font-weight:500;letter-spacing:-.035em}
+#chapterDate{font-size:clamp(13px,1.3vw,18px);color:#f2d596;margin-bottom:12px}
+#caption{font-size:clamp(14px,1.35vw,20px);line-height:1.48;color:#edf0ed;max-width:500px;margin:0;text-shadow:0 2px 10px #000}
+#progressLabel{position:absolute;right:clamp(18px,4vw,70px);top:clamp(20px,5vh,60px);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#d9e3e5;opacity:.8}
+#timelineWrap{position:absolute;left:0;right:0;bottom:0;height:clamp(100px,17vh,160px);padding:12px clamp(14px,3vw,50px) 18px;background:linear-gradient(transparent,rgba(3,10,16,.94) 28%);display:flex;flex-direction:column;gap:7px}
+#controls{height:34px;display:flex;align-items:center;gap:8px;z-index:3}
+button,select{font:inherit;color:var(--ink);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:7px;padding:6px 11px;cursor:pointer;transition:.2s}
+button:hover,select:hover{background:rgba(232,187,99,.22);border-color:var(--gold)}button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+#play{width:40px;font-weight:bold;color:#071019;background:var(--gold);border-color:var(--gold)}
+#clock{font-variant-numeric:tabular-nums;color:#d9e2e3;margin-left:8px;font-size:12px;letter-spacing:.04em}
+#hint{margin-left:auto;color:#91a4aa;font-size:11px}
+#timeline{width:100%;height:65px;display:block;cursor:pointer;user-select:none;touch-action:none}
+#timeline text{font-family:system-ui,sans-serif}
+#loading{position:absolute;inset:0;display:grid;place-items:center;background:#061019;z-index:10;transition:opacity 1s}.hidden{opacity:0;pointer-events:none}
+@media(max-width:700px){#hud{top:22px;width:min(90vw,520px)}#progressLabel{display:none}#caption{font-size:13px;max-width:78vw}#chapterTitle{font-size:34px}#hint{display:none}#timelineWrap{height:118px;padding-left:12px;padding-right:12px}}
+</style>
+</head>
+<body>
+<div id="app">
+<svg id="stage" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="An animated illustrated timeline from the formation of Earth to the digital age">
+<defs>
+ <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#081421"/><stop offset=".55" stop-color="#17364a"/><stop offset="1" stop-color="#6a7772"/></linearGradient>
+ <radialGradient id="space"><stop stop-color="#203a54"/><stop offset="1" stop-color="#030711"/></radialGradient>
+ <radialGradient id="earthGlow"><stop stop-color="#b9e3f1" stop-opacity=".7"/><stop offset=".65" stop-color="#4d9ab7" stop-opacity=".18"/><stop offset="1" stop-color="#1c4260" stop-opacity="0"/></radialGradient>
+ <radialGradient id="magma"><stop stop-color="#fff2a1"/><stop offset=".38" stop-color="#f05d28"/><stop offset=".75" stop-color="#8e1c25"/><stop offset="1" stop-color="#24121b"/></radialGradient>
+ <linearGradient id="rock" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#55616a"/><stop offset="1" stop-color="#171e25"/></linearGradient>
+ <linearGradient id="ice" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#e8fbff"/><stop offset="1" stop-color="#79a9bc"/></linearGradient>
+ <linearGradient id="land" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#789b61"/><stop offset="1" stop-color="#314c37"/></linearGradient>
+ <linearGradient id="sand" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#d3b46f"/><stop offset="1" stop-color="#7c6745"/></linearGradient>
+ <linearGradient id="city" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#172a39"/><stop offset="1" stop-color="#080c13"/></linearGradient>
+ <radialGradient id="sun"><stop stop-color="#fff7c8"/><stop offset=".5" stop-color="#ffb746"/><stop offset="1" stop-color="#e44d29" stop-opacity="0"/></radialGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <filter id="soft"><feGaussianBlur stdDeviation="18"/></filter>
+ <filter id="shadow"><feDropShadow dx="0" dy="8" stdDeviation="8" flood-opacity=".5"/></filter>
+ <pattern id="stars" width="180" height="140" patternUnits="userSpaceOnUse"><circle cx="12" cy="22" r="1.2" fill="#fff"/><circle cx="82" cy="73" r=".8" fill="#cfe8ff"/><circle cx="141" cy="31" r="1.5" fill="#fff"/><circle cx="166" cy="112" r=".7" fill="#fff"/></pattern>
+ <pattern id="icePattern" width="60" height="44" patternUnits="userSpaceOnUse"><path d="M0 20L18 2l20 18L60 0M0 44L30 16l30 28" fill="none" stroke="#d9f7ff" stroke-width="2" opacity=".35"/></pattern>
+ <clipPath id="globeClip"><circle cx="800" cy="410" r="270"/></clipPath>
+ <g id="ember"><circle r="4" fill="#ff9a32"/><circle r="8" fill="#ff4e22" opacity=".25"/></g>
+ <g id="snow"><circle r="3" fill="#eafaff"/><path d="M-5 0H5M0-5V5" stroke="#fff" stroke-width=".7" opacity=".6"/></g>
+ <g id="trilobite"><ellipse rx="25" ry="11" fill="#b56b3d" stroke="#572b27" stroke-width="2"/><path d="M-15-5H15M-9-8V8M-2-10V10M5-9V9M12-6V6" stroke="#e0a36b" fill="none"/><circle cx="-25" cy="0" r="6" fill="#c9814d"/></g>
+ <g id="fish"><path d="M-28 0Q0-20 28 0Q0 20-28 0" fill="#e49b55" stroke="#6d4732"/><path d="M28 0l15-10v20z" fill="#b26c3c"/><circle cx="-16" cy="-3" r="2.5" fill="#111"/></g>
+ <g id="dino"><path d="M-85 10Q-40-45 12-22l30-18 24 12-20 17 28 5 18-20 13 4-15 25-42 7Q-12 32-85 10Z" fill="#58754b" stroke="#243a2b" stroke-width="3"/><path d="M-58 8l-8 30m24-27 4 29m20-31 12 26M12-19l-5-32m19 29 3-28" stroke="#354b34" stroke-width="7" stroke-linecap="round"/><circle cx="50" cy="-25" r="3" fill="#111"/></g>
+ <g id="mammal"><ellipse rx="27" ry="15" fill="#a87552"/><circle cx="26" cy="-5" r="12" fill="#bd8960"/><path d="M21-14l-4-13 12 8M31-13l6-11" fill="#80583f"/><path d="M-20 10l-3 14M-8 11l1 14M8 10l5 14" stroke="#76503c" stroke-width="5"/></g>
+ <g id="person"><circle cy="-30" r="6" fill="#d6ad83"/><path d="M0-23L-1 3M0-15L-11 1M0-15L12-3M-1 3L-8 18M-1 3L9 18" stroke="#d5c19c" stroke-width="3" fill="none" stroke-linecap="round"/></g>
+ <g id="tree"><path d="M0 0V-60" stroke="#63452f" stroke-width="8"/><path d="M0-65Q-38-58-29-25Q-15-30 0-13Q17-29 31-28Q38-60 0-65Z" fill="#4c7547"/></g>
+ <g id="building"><path d="M0 0V-80H34V0M17-80V-112M8-112H26" fill="#34434c" stroke="#d5b978" stroke-width="2"/><path d="M8-20h8v-12H8zm12 0h8v-12h-8zM8-43h8v-12H8zm12 0h8v-12h-8z" fill="#edc56f"/></g>
+</defs>
+
+<rect width="1600" height="900" fill="url(#sky)"/>
+<rect id="starsLayer" width="1600" height="900" fill="url(#stars)" opacity=".8"/>
+<g id="ambient">
+ <circle id="sun" cx="1320" cy="145" r="120" fill="url(#sun)" filter="url(#soft)"/>
+ <g id="starfield" fill="#fff"><circle cx="100" cy="100" r="2"/><circle cx="320" cy="180" r="1.5"/><circle cx="520" cy="75" r="2"/><circle cx="710" cy="140" r="1.3"/><circle cx="900" cy="90" r="1.8"/><circle cx="1100" cy="210" r="1.4"/><circle cx="1450" cy="90" r="2"/></g>
+</g>
+
+<g id="planet" transform="translate(800 410)">
+ <circle r="340" fill="url(#earthGlow)" opacity=".65"/>
+ <circle id="planetDisc" r="270" fill="#285d78" stroke="#8cc4d5" stroke-width="3"/>
+ <g clip-path="url(#globeClip)">
+  <path id="moltenCrust" d="M-330-130Q-170-260 20-190T310-100L300 320H-330Z" fill="url(#magma)" opacity="1"/>
+  <path id="coolCrust" d="M-300-170Q-100-220 80-160T320-100L300 320H-300Z" fill="url(#rock)" opacity="0"/>
+  <path id="earlyOcean" d="M-310-120Q-120-190 80-100T320-70L300 320H-310Z" fill="#226f91" opacity="0"/>
+  <path id="iceOcean" d="M-310-150Q-100-220 80-160T320-100L300 320H-310Z" fill="url(#ice)" opacity="0"/>
+  <path id="landMass" d="M-285 15Q-210-55-142-35L-112 15-150 65-245 78ZM-60-150L30-170 82-130 47-68-25-78ZM92 55L170 22 235 72 207 165 121 178 65 130ZM-135 145L-45 112 20 165-18 255-110 235Z" fill="url(#land)" opacity="0"/>
+  <path id="pangaea" d="M-245 10Q-180-75-90-45L-30-115 70-72 155-8 221 70 142 142 35 111-55 160-170 112Z" fill="url(#land)" opacity="0"/>
+  <path id="futureLand" d="M-285 20Q-210-55-142-35L-112 15-150 65-245 78ZM-60-150L30-170 82-130 47-68-25-78ZM92 55L170 22 235 72 207 165 121 178 65 130ZM-135 145L-45 112 20 165-18 255-110 235Z" fill="url(#land)" opacity="0"/>
+ </g>
+ <circle id="iceCap" r="270" fill="url(#icePattern)" opacity="0"/>
+ <g id="life" opacity="0">
+  <g id="stromatolites" fill="#88785b" stroke="#3c443c" stroke-width="3"><path d="M-175 140q15-42 30 0zM-125 150q18-48 36 0zM-65 138q15-40 30 0z"/><path d="M-190 150h220" stroke="#303c39" stroke-width="5"/></g>
+  <g id="trilobites" opacity="0"><use href="#trilobite" transform="translate(-120 80) rotate(-12) scale(.8)"/><use href="#trilobite" transform="translate(10 120) rotate(8)"/><use href="#trilobite" transform="translate(125 70) scale(.7)"/></g>
+  <g id="fishes" opacity="0"><use href="#fish" transform="translate(-80 20)"/><use href="#fish" transform="translate(80 -25) scale(.8)"/><use href="#fish" transform="translate(20 75) scale(.65)"/></g>
+  <g id="forest" opacity="0"><use href="#tree" transform="translate(-170 80) scale(1.1)"/><use href="#tree" transform="translate(-80 100)"/><use href="#tree" transform="translate(30 90) scale(1.3)"/><use href="#tree" transform="translate(140 80) scale(.9)"/></g>
+  <g id="dinosaurs" opacity="0"><use href="#dino" transform="translate(-80 70) scale(1.1)"/><use href="#dino" transform="translate(85 110) scale(.75)"/></g>
+  <g id="mammals" opacity="0"><use href="#mammal" transform="translate(-95 80) scale(.8)"/><use href="#mammal" transform="translate(70 20) scale(.7)"/></g>
+ </g>
+ <circle r="278" fill="none" stroke="#b4e3ef" stroke-width="3" opacity=".25"/>
+</g>
+
+<g id="impact" opacity="0">
+ <circle cx="800" cy="180" r="25" fill="#ffb04a" filter="url(#glow)"/>
+ <path d="M790 195Q775 270 800 350" stroke="#ff793d" stroke-width="12" fill="none" stroke-linecap="round" filter="url(#glow)"/>
+</g>
+<g id="emberField" opacity="0" filter="url(#glow)">
+ <use href="#ember" x="780" y="350"/><use href="#ember" x="840" y="330"/><use href="#ember" x="815" y="280"/><use href="#ember" x="870" y="380"/><use href="#ember" x="760" y="300"/>
+</g>
+<g id="snowField" opacity="0">
+ <use href="#snow" x="120" y="110"/><use href="#snow" x="280" y="180"/><use href="#snow" x="460" y="90"/><use href="#snow" x="650" y="160"/><use href="#snow" x="900" y="110"/><use href="#snow" x="1080" y="210"/><use href="#snow" x="1250" y="120"/><use href="#snow" x="1420" y="240"/>
+</g>
+
+<g id="foreground" opacity="0">
+ <g id="people" opacity="0"><use href="#person" transform="translate(270 690) scale(1.2)"/><use href="#person" transform="translate(310 700) scale(1.1)"/><use href="#person" transform="translate(350 690) scale(1.3)"/><use href="#person" transform="translate(390 705) scale(1)"/></g>
+ <g id="pyramids" opacity="0"><path d="M140 700L300 390 460 700Z" fill="#c7a460"/><path d="M300 390L460 700H300Z" fill="#8f6d3f"/><path d="M510 700L620 480 730 700Z" fill="#b79250"/><path d="M620 480L730 700H620Z" fill="#76552f"/></g>
+ <g id="classical" opacity="0" fill="#ddd0aa" stroke="#6d5a40" stroke-width="3"><path d="M180 690V535h220v155zM165 535h250L290 475zM205 690v-100h45v100zm70 0v-100h45v100z"/><path d="M440 690V565h150v125zM425 565h180l-90-55zM475 690v-80h25v80zm40 0v-80h25v80z"/></g>
+ <g id="medieval" opacity="0" fill="#7d8582" stroke="#384448" stroke-width="4"><path d="M150 700V470h120v230zM145 470h130l-65-55zM250 570h180v130H250zM235 570h210l-105-75z"/><path d="M184 525h50v55h-50zm110 100h40v45h-40z"/></g>
+ <g id="ships" opacity="0" stroke="#d8b66b" fill="#654b32" stroke-width="4"><path d="M260 635h190l-28 55H290zM340 635V450M340 475l130 75H340M340 505L230 570h110"/><path d="M1180 670h160l-24 42h-115zM1240 670V520M1240 540l100 60h-100"/></g>
+ <g id="industry" opacity="0" fill="#3d4547" stroke="#171d20" stroke-width="4"><path d="M170 700V540h95v160zM230 590l80-45v155zM330 700V490h105v210zM390 590l85-40v150z"/><path d="M365 490V360h22v130M425 700V390h25v310" fill="#555d5d"/><path d="M340 400q70-80 125 0" fill="none" stroke="#a9a49a" stroke-width="22" opacity=".4"/></g>
+ <g id="flight" opacity="0" fill="#d8d9d2" stroke="#394852" stroke-width="3"><path d="M790 300l190 45-75 15 45 38-18 7-60-30-20 20z"/><path d="M820 300l-10 50-85-10z"/></g>
+ <g id="rocket" opacity="0"><path d="M800 175q35 35 25 150h-50q-10-115 25-150z" fill="#e7e4d8" stroke="#454b50" stroke-width="4"/><path d="M800 175q-35 35-25 150l25 15 25-15q10-115-25-150z" fill="#b54839"/><path d="M775 285l-28 45 31-9M825 285l28 45-31-9" fill="#d9d4c4" stroke="#454b50" stroke-width="4"/><circle cx="800" cy="240" r="9" fill="#5cb7d2"/></g>
+ <g id="modern" opacity="0"><rect x="160" y="520" width="330" height="190" fill="url(#city)"/><g fill="#f6cf6c"><rect x="185" y="545" width="18" height="10"/><rect x="220" y="545" width="18" height="10"/><rect x="260" y="545" width="18" height="10"/><rect x="310" y="545" width="18" height="10"/><rect x="350" y="545" width="18" height="10"/><rect x="405" y="545" width="18" height="10"/><rect x="185" y="580" width="18" height="10"/><rect x="255" y="580" width="18" height="10"/><rect x="325" y="580" width="18" height="10"/><rect x="405" y="580" width="18" height="10"/><rect x="215" y="620" width="18" height="10"/><rect x="285" y="620" width="18" height="10"/><rect x="355" y="620" width="18" height="10"/></g><path d="M140 710H1380" stroke="#2c5262" stroke-width="30"/><path d="M160 760q120-45 240 0t240 0 240 0 240 0 240 0" stroke="#3a7891" fill="none" stroke-width="5"/><g id="digitalLines" fill="none" stroke="#56d5da" stroke-width="3" opacity=".8"><path d="M630 705h160l35-45h170l40 45h180"/><circle cx="790" cy="660" r="7" fill="#56d5da"/><circle cx="1010" cy="660" r="7" fill="#56d5da"/></g></g>
+</g>
+</svg>
+<div id="vignette"></div>
+<div id="hud" aria-live="polite">
+ <div class="eyebrow" id="chapterNumber">Chapter 1 of 19</div>
+ <h1 id="chapterTitle">Earth takes shape</h1>
+ <div id="chapterDate">About 4.54 billion years ago</div>
+ <p id="caption">A cloud of cosmic material gathered and collapsed into the young Earth. A giant impact with the protoplanet Theia helped form the Moon.</p>
+</div>
+<div id="progressLabel">A TIMELINE OF THE WORLD</div>
+<div id="timelineWrap">
+ <div id="controls">
+  <button id="play" aria-label="Pause">Ⅱ</button>
+  <button id="restart" aria-label="Restart">↺</button>
+  <select id="speed" aria-label="Playback speed"><option value=".5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
+  <span id="clock">00:00 / 02:30</span>
+  <span id="hint">SPACE play/pause · ← → chapters · drag to scrub</span>
+ </div>
+ <svg id="timeline" viewBox="0 0 1400 65" preserveAspectRatio="none" aria-label="Interactive history timeline">
+  <defs><linearGradient id="timeGrad"><stop stop-color="#513d76"/><stop offset=".3" stop-color="#39798a"/><stop offset=".65" stop-color="#c78b54"/><stop offset="1" stop-color="#e8bb63"/></linearGradient></defs>
+  <g id="bands"></g><g id="ticks"></g><g id="labels"></g>
+  <g id="playhead" transform="translate(0 0)"><path d="M0 0v52" stroke="#fff" stroke-width="3"/><circle cy="0" r="7" fill="#e8bb63" stroke="#fff" stroke-width="2"/></g>
+ </svg>
+</div>
+<div id="loading">FORMING THE WORLD…</div>
+</div>
+<script>
+const chapters=[
+{title:"Earth takes shape",date:"About 4.54 billion years ago",caption:"A cloud of cosmic material gathered and collapsed into the young Earth. A giant impact with the protoplanet Theia helped form the Moon.",dur:8},
+{title:"A world of fire and water",date:"The Hadean · about 4.6–4.0 billion years ago",caption:"The Hadean Earth was hot, volcanic and largely molten. Over time the crust cooled, and the first oceans condensed from water vapor.",dur:8},
+{title:"The first quiet builders",date:"About 3.7–3.5 billion years ago",caption:"The earliest life forms were microscopic. Microbial communities built layered stromatolites, leaving some of the oldest known traces of life on Earth.",dur:8},
+{title:"The sky changes colour",date:"Great Oxidation Event · about 2.4 billion years ago",caption:"Cyanobacteria released oxygen into the oceans and atmosphere. As oxygen rose, the seas and sky took on a dramatically different colour.",dur:8},
+{title:"The planet in white",date:"Snowball Earth · about 720–635 million years ago",caption:"Repeated glaciations may have covered most of the planet in ice. The long freeze ended, and complex multicellular life soon flourished.",dur:8},
+{title:"The Cambrian explosion",date:"About 538 million years ago",caption:"Animal body plans appeared rapidly in the oceans, including arthropods such as trilobites, along with many unfamiliar forms.",dur:8},
+{title:"Life climbs ashore",date:"Roughly 470–375 million years ago",caption:"Plants colonized the land first, followed by fungi, invertebrates and the first vertebrates. Forests spread and animal life grew more diverse.",dur:9},
+{title:"Pangaea and the dinosaurs",date:"Pangaea formed c. 335–300 million years ago · dinosaurs 252–66 million years ago",caption:"The supercontinent Pangaea assembled and later split apart. Dinosaurs became dominant during the Mesozoic, with birds among their descendants.",dur:9},
+{title:"A world after impact",date:"66 million years ago",caption:"An asteroid struck Earth with catastrophic force, ending the non-avian dinosaur era. Many ecosystems collapsed before life gradually recovered.",dur:7},
+{title:"The mammals rise",date:"About 66 million years ago onward",caption:"Small mammals survived the aftermath and diversified as dinosaurs disappeared. Later hominins emerged in the dynamic world of the Cenozoic.",dur:8},
+{title:"Homo sapiens",date:"About 300,000 years ago",caption:"Anatomically modern humans appeared in Africa. Over time our species spread across the world, adapting to many climates and cultures.",dur:8},
+{title:"Fields and settled life",date:"Farming begins · about 10,000 BCE",caption:"People began cultivating crops and domesticating animals in several regions. Surplus food supported villages, then the first cities.",dur:8},
+{title:"Cities on the river",date:"Early civilisations · Mesopotamia and Egypt · Great Pyramid c. 2560 BCE",caption:"Mesopotamian cities and ancient Egypt developed writing, law, monumental architecture and trade. The Great Pyramid of Giza was built around 2560 BCE.",dur:9},
+{title:"The classical world",date:"Greece and Rome · Han China · roughly 5th century BCE–5th century CE",caption:"Greek philosophy and drama, Roman law and engineering, and Han Chinese administration and invention shaped an interconnected classical world.",dur:8},
+{title:"Roads, faith and exchange",date:"The medieval world · roughly 5th–14th centuries",caption:"Trade routes, guilds, universities and faith connected communities across Afro-Eurasia. Knowledge was preserved and transformed across languages and cultures.",dur:8},
+{title:"Ideas cross the world",date:"Printing press c. 1450 · Atlantic voyage 1492",caption:"Movable type made books faster and more widely available in Europe. In 1492 Columbus’s Atlantic voyage linked Europe and the Americas, beginning sustained Columbian Exchange.",dur:8},
+{title:"Steam and steel",date:"Industrial Revolution · from about 1760",caption:"Steam power, mechanized textile production and fossil fuels transformed work, cities and transport. Industrialization also intensified inequality and environmental damage.",dur:9},
+{title:"The century of flight",date:"Powered flight 1903 · world wars 1914–1918 and 1939–1945 · Moon landing 1969",caption:"Aviation shrank the world, two world wars reshaped it, and a rocket carried humans to the Moon on 20 July 1969. Science and technology accelerated.",dur:10},
+{title:"The digital present",date:"Late 20th century to today",caption:"Computers and the internet created a new global information network. Connected cities, spacecraft and digital services now extend human reach into the present day.",dur:10}
+];
+const $=s=>document.querySelector(s), stage=$("#stage"), playhead=$("#playhead"), ticks=$("#ticks"), labels=$("#labels"), bands=$("#bands");
+const total=chapters.reduce((a,c)=>a+c.dur,0), dur=total;
+let elapsed=0,playing=true,speed=1,last=performance.now(),drag=false;
+const q=s=>document.querySelector(s);
+function setAttr(id,v){const e=q(id);if(e)e.setAttribute("opacity",v)}
+function lerp(a,b,t){return a+(b-a)*t}
+function chapterAt(t){let x=0;for(let i=0;i<chapters.length;i++){x+=chapters[i].dur;if(t<x)return {i,local:(t-(x-chapters[i].dur))/chapters[i].dur,start:x-chapters[i].dur};}return {i:chapters.length-1,local:1,start:dur-chapters[chapters.length-1].dur}}
+const tickX=i=>{let x=0;for(let k=0;k<i;k++)x+=chapters[k].dur;return x/dur*1400};
+chapters.forEach((c,i)=>{const x=tickX(i),g=document.createElementNS("http://www.w3.org/2000/svg","g");g.setAttribute("class","tick");g.dataset.i=i;g.style.cursor="pointer";g.innerHTML=`<line x1="${x}" x2="${x}" y1="15" y2="40" stroke="#f4d28a" stroke-width="2"/><circle cx="${x}" cy="15" r="5" fill="#f4d28a"/>`;ticks.appendChild(g)});
+const eraDefs=[["Hadean",0,2,"#654454"],["Archean",2,3,"#4e6870"],["Proterozoic",3,5,"#3c7d8e"],["Paleozoic",5,8,"#588466"],["Mesozoic",8,10,"#a07949"],["Cenozoic",10,12,"#7b805a"],["Human history",12,19,"#b07b4e"]];
+eraDefs.forEach(([n,a,b,c])=>{const x=tickX(a),w=tickX(b)-x,el=document.createElementNS("http://www.w3.org/2000/svg","rect");el.setAttribute("x",x);el.setAttribute("y",42);el.setAttribute("width",w-2);el.setAttribute("height",12);el.setAttribute("rx",3);el.setAttribute("fill",c);bands.appendChild(el);const tx=document.createElementNS("http://www.w3.org/2000/svg","text");tx.setAttribute("x",x+5);tx.setAttribute("y",64);tx.setAttribute("font-size","9");tx.setAttribute("fill","#c4d0d1");tx.textContent=n;labels.appendChild(tx)});
+const base=document.createElementNS("http://www.w3.org/2000/svg","rect");base.setAttribute("x",0);base.setAttribute("y",42);base.setAttribute("width",1400);base.setAttribute("height",12);base.setAttribute("rx",3);base.setAttribute("fill","url(#timeGrad)");base.setAttribute("opacity",".3");bands.insertBefore(base,bands.firstChild);
+function showChapter(i){const c=chapters[i];$("#chapterTitle").textContent=c.title;$("#chapterDate").textContent=c.date;$("#caption").textContent=c.caption;$("#chapterNumber").textContent=`Chapter ${i+1} of ${chapters.length}`}
+function setPlaying(v){playing=v;$("#play").textContent=v?"Ⅱ":"▶";$("#play").setAttribute("aria-label",v?"Pause":"Play")}
+$("#play").onclick=()=>setPlaying(!playing);$("#restart").onclick=()=>{elapsed=0;setPlaying(true)};$("#speed").onchange=e=>speed=+e.target.value;
+addEventListener("keydown",e=>{if(e.code==="Space"){e.preventDefault();setPlaying(!playing)}if(e.code==="ArrowRight"||e.code==="ArrowLeft"){e.preventDefault();const c=chapterAt(elapsed).i;let n=Math.max(0,Math.min(chapters.length-1,c+(e.code==="ArrowRight"?1:-1)));elapsed=chapterAt(elapsed).start+1;while(n>c&&e.code==="ArrowLeft"){n--;elapsed=chapterAt(elapsed).start+1}n=Math.max(0,Math.min(chapters.length-1,n));elapsed=chapters.slice(0,n).reduce((a,x)=>a+x.dur,0)+.01;showChapter(n)}});
+function scrub(e){const r=$("#timeline").getBoundingClientRect();elapsed=Math.max(0,Math.min(dur,(e.clientX-r.left)/r.width*dur));const c=chapterAt(elapsed);showChapter(c.i)}
+$("#timeline").addEventListener("pointerdown",e=>{drag=true;$("#timeline").setPointerCapture(e.pointerId);scrub(e)});$("#timeline").addEventListener("pointermove",e=>{if(drag)scrub(e)});$("#timeline").addEventListener("pointerup",()=>drag=false);ticks.addEventListener("click",e=>{const t=e.target.closest(".tick");if(t){elapsed=chapters.slice(0,+t.dataset.i).reduce((a,x)=>a+x.dur,0)+.01;showChapter(+t.dataset.i)}});
+function fmt(t){let s=Math.floor(t),m=Math.floor(s/60);s%=60;return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`}
+function opacity(id,on,local){setAttr(id,on?Math.min(1,local*3):0)}
+function update(t){const c=chapterAt(t),i=c.i,l=c.local;showChapter(i);$("#clock").textContent=`${fmt(t)} / ${fmt(dur)}`;playhead.setAttribute("transform",`translate(${t/dur*1400} 0)`);
+ const scene=stage.querySelector("#planet"), fg=stage.querySelector("#foreground");
+ let sx=0,sy=0,zoom=1;if(i<2){sx=-800;sy=-410;zoom=.8}if(i>=5&&i<12){sx=-800;sy=-410;zoom=1.05}
+ scene.setAttribute("transform",`translate(${sx} ${sy}) scale(${zoom})`);fg.setAttribute("opacity",i>=12?1:0);
+ // continuously changing world
+ setAttr("#moltenCrust",i<2?1:0);setAttr("#coolCrust",i>=1&&i<3?1:0);setAttr("#earlyOcean",i>=2?1:0);setAttr("#landMass",i>=5?1:0);setAttr("#pangaea",i===7?1:0);setAttr("#futureLand",i>=8?1:0);setAttr("#iceOcean",i===4?1:0);setAttr("#iceCap",i===4?1:0);
+ q("#landMass").setAttribute("opacity",i>=5&&i<7?1:0);q("#pangaea").setAttribute("opacity",i===7?1:0);q("#futureLand").setAttribute("opacity",i>=8?1:0);
+ q("#life").setAttribute("opacity",i>=2?1:0);q("#stromatolites").setAttribute("opacity",i===2?1:0);q("#trilobites").setAttribute("opacity",i===5?1:0);q("#fishes").setAttribute("opacity",i===6?1:0);q("#forest").setAttribute("opacity",i===6?1:0);q("#dinosaurs").setAttribute("opacity",i===7?1:0);q("#mammals").setAttribute("opacity",i>=9?1:0);
+ q("#snowField").setAttribute("opacity",i===4?1:0);q("#impact").setAttribute("opacity",i===8&&l<.8?1:0);q("#emberField").setAttribute("opacity",i===8?Math.max(0,1-l*1.4):0);
+ q("#pyramids").setAttribute("opacity",i===12?1:0);q("#classical").setAttribute("opacity",i===13?1:0);q("#medieval").setAttribute("opacity",i===14?1:0);q("#ships").setAttribute("opacity",i===15?1:0);q("#industry").setAttribute("opacity",i===16?1:0);q("#flight").setAttribute("opacity",i===17&&l>.2?1:0);q("#rocket").setAttribute("opacity",i===17&&l>.45?1:0);q("#modern").setAttribute("opacity",i===18?1:0);q("#people").setAttribute("opacity",i>=11?1:0);
+ // time-of-day / palette
+ const sky=q("#sky");if(i<2){sky.setAttribute("fill","#29151d")}else if(i<4){sky.setAttribute("fill","#17364a")}else if(i===4){sky.setAttribute("fill","#54798a")}else if(i<12){sky.setAttribute("fill","#1b465b")}else if(i<17){sky.setAttribute("fill","#243d4d")}else{sky.setAttribute("fill","#081421")}
+ q("#starsLayer").setAttribute("opacity",i<2||i>=18?1:.1);
+ // subtle motion
+ const bob=Math.sin(t*1.3)*5;scene.setAttribute("transform",`translate(${sx} ${sy+ bob}) scale(${zoom})`);
+ if(i===0){q("#impact").setAttribute("opacity",l<.45?1:0);q("#impact").setAttribute("transform",`translate(0 ${-l*80})`)}
+}
+function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;if(playing&&!drag){elapsed+=dt*speed;if(elapsed>=dur){elapsed=0;showChapter(0)}}update(elapsed);requestAnimationFrame(loop)}
+showChapter(0);update(0);requestAnimationFrame(loop);setTimeout(()=>$("#loading").classList.add("hidden"),350);
+</script>
+</body>
+</html>
