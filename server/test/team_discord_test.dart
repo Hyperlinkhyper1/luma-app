@@ -379,6 +379,55 @@ void main() {
       expect(reopened.replies.single.match, 'contains');
     });
 
+    test('/mentiontask answers with the numbered entry', () async {
+      final lead = await register('lead@example.com', role: 'lead');
+      final posted = <String, Object?>{};
+      final bot = api.teamDiscord
+        ..rest = (token, method, path, {body, reason}) async {
+          if (method == 'POST') posted[path] = body;
+          return DiscordRestResult(200, {});
+        };
+      await call('PUT', '/api/v1/team-board/discord/token',
+          token: lead, json: {'token': _token});
+      final made = await call('POST', '/api/v1/team-board/entries',
+          token: lead,
+          json: {'kind': 'bug', 'title': 'Chest eats rubies', 'brief': 'x'});
+      expect(made['number'], 1, reason: '$made');
+
+      await bot.handleGatewayEvent('READY', {
+        'user': {'id': '7', 'username': 'luma'},
+        'application': {'id': '7'},
+      });
+      expect(
+          (posted['/applications/7/commands'] as Map)['name'], 'mentiontask');
+
+      Future<Map> ask(int number) async {
+        await bot.handleGatewayEvent('INTERACTION_CREATE', {
+          'id': '55',
+          'token': 'tok',
+          'type': 2,
+          'data': {
+            'name': 'mentiontask',
+            'options': [
+              {'name': 'id', 'type': 4, 'value': number},
+            ],
+          },
+        });
+        return (posted['/interactions/55/tok/callback'] as Map)['data'] as Map;
+      }
+
+      final found = await ask(1);
+      final embed = (found['embeds'] as List).single as Map;
+      expect(embed['title'], '#1 Chest eats rubies');
+      expect(embed['description'], 'x');
+      expect(jsonEncode(embed), isNot(contains('lead@example.com')),
+          reason: 'emails never reach Discord');
+
+      final missing = await ask(99);
+      expect(missing['flags'], 64);
+      expect(missing['content'], contains('#99'));
+    });
+
     test('a forum post goes on the board and stays in step with it', () async {
       final lead = await register('lead@example.com', role: 'lead');
       final calls = <String>[];

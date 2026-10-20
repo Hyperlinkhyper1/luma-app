@@ -133,6 +133,18 @@ class TeamTaskRow extends StatelessWidget {
           ),
           const SizedBox(width: 6),
         ],
+        if (entry.number > 0) ...[
+          Text(
+            '#${entry.number}',
+            style: TextStyle(
+              color: luma.textMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+          const SizedBox(width: 6),
+        ],
         Expanded(
           child: Text(
             entry.title,

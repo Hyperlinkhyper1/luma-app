@@ -741,6 +741,16 @@ class TeamDiscordBot {
         status = 'online';
         statusReason = null;
         _note(DiscordLogEntry('info', 'Connected to Discord.'));
+        final app = d['application'];
+        if (app is Map && app['id'] is String) {
+          await _registerCommands(app['id'] as String, token);
+        }
+      case 'INTERACTION_CREATE':
+        try {
+          await _onInteraction(d, token);
+        } catch (e) {
+          _note(DiscordLogEntry('error', 'Handling a command failed: $e'));
+        }
       case 'GUILD_CREATE':
         final id = d['id'];
         if (id is! String) return;
@@ -849,6 +859,60 @@ class TeamDiscordBot {
         if (!sent.ok) return fail('Could not send a reply', sent);
         _note(DiscordLogEntry('reply', trigger,
             guild: where.guild, channel: where.channel, user: where.user));
+    }
+  }
+
+  /// Creates or updates the bot's slash commands. Posting a command with a
+  /// name that already exists overwrites it, so this is safe on every
+  /// connect.
+  Future<void> _registerCommands(String appId, String token) async {
+    final r = await rest(token, 'POST', '/applications/$appId/commands', body: {
+      'name': 'mentiontask',
+      'type': 1,
+      'description': 'Show a Team Clipboard entry by its number',
+      'options': [
+        {
+          'type': 4,
+          'name': 'id',
+          'description': 'The entry number, like 12 for #12',
+          'required': true,
+          'min_value': 1,
+        },
+      ],
+    });
+    if (!r.ok) {
+      _note(DiscordLogEntry(
+          'error', 'Could not register /mentiontask: ${r.describe()}'));
+    }
+  }
+
+  Future<void> _onInteraction(Map d, String token) async {
+    final id = d['id'], interactionToken = d['token'];
+    final data = d['data'];
+    if (id is! String || interactionToken is! String || data is! Map) return;
+    if (d['type'] != 2 || data['name'] != 'mentiontask') return;
+    int? number;
+    for (final o in data['options'] as List? ?? const []) {
+      if (o is Map && o['name'] == 'id' && o['value'] is int) {
+        number = o['value'] as int;
+      }
+    }
+    final entry = number == null ? null : board?.entryByNumber(number);
+    final Map<String, dynamic> reply = entry == null
+        ? {
+            'content': 'There is no task #${number ?? '?'} on the board.',
+            'flags': 64,
+          }
+        : {
+            'embeds': [discordEntryEmbed(entry, board!)],
+            'allowed_mentions': {'parse': <String>[]},
+          };
+    final r = await rest(
+        token, 'POST', '/interactions/$id/$interactionToken/callback',
+        body: {'type': 4, 'data': reply});
+    if (!r.ok) {
+      _note(DiscordLogEntry(
+          'error', 'Could not answer /mentiontask: ${r.describe()}'));
     }
   }
 
@@ -970,6 +1034,67 @@ class TeamDiscordBot {
       client.close(force: true);
     }
   }
+}
+
+/// The embed /mentiontask posts for [entry]. Names only, never emails:
+/// the embed is public to the whole Discord server.
+Map<String, dynamic> discordEntryEmbed(
+    TeamBoardEntry entry, TeamBoardStore board) {
+  String clip(String text, int max) =>
+      text.length > max ? '${text.substring(0, max - 1)}…' : text;
+  String who(String userId) {
+    final discordName =
+        userId == entry.authorId ? entry.discord?.authorName ?? '' : '';
+    return board.nameOf(userId) ??
+        (discordName.isEmpty ? 'a team member' : discordName);
+  }
+
+  final bug = entry.kind == 'bug';
+  final stage = switch (entry.stage) {
+    'idea' => bug ? 'Open' : 'Idea',
+    'claimed' => 'Claimed',
+    'done' => 'Done',
+    _ => bug ? 'Fixed' : 'Added',
+  };
+  final parent = entry.parentId == null ? null : board.entry(entry.parentId!);
+  return {
+    'title': clip('#${entry.number} ${entry.title}', 256),
+    if (entry.brief.trim().isNotEmpty)
+      'description': clip(entry.brief.trim(), 4096),
+    if (entry.discord?.url case final url?) 'url': url,
+    'color': switch (entry.kind) {
+      'bug' => 0xE5484D,
+      'model' => 0x8E4EC6,
+      _ => 0x3E8ED0,
+    },
+    'fields': [
+      {
+        'name': 'Kind',
+        'value': '${entry.kind[0].toUpperCase()}${entry.kind.substring(1)}',
+        'inline': true,
+      },
+      {
+        'name': 'Stage',
+        'value': entry.closed ? '$stage (closed)' : stage,
+        'inline': true,
+      },
+      if (entry.claimedById != null)
+        {
+          'name': 'Claimed by',
+          'value': who(entry.claimedById!),
+          'inline': true
+        },
+      if (parent != null)
+        {
+          'name': 'Part of',
+          'value': clip('#${parent.number} ${parent.title}', 1024),
+        },
+    ],
+    'footer': {'text': 'Filed by ${who(entry.authorId)} · Team Clipboard'},
+    'timestamp':
+        DateTime.fromMillisecondsSinceEpoch(entry.createdAtMs, isUtc: true)
+            .toIso8601String(),
+  };
 }
 
 class DiscordRestResult {

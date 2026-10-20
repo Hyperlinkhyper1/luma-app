@@ -170,6 +170,61 @@ void main() {
         ['claimed', 'old-idea', 'done', 'added', 'closed']);
   });
 
+  test('entries get numbers that survive a reload and are never reused',
+      () async {
+    TeamBoardEntry make(String id, int at, [int number = 0]) => TeamBoardEntry(
+        id: id,
+        kind: 'bug',
+        title: id,
+        brief: '',
+        authorId: 'u',
+        authorEmail: 'u@x.com',
+        createdAtMs: at,
+        updatedAtMs: at,
+        number: number);
+    final dir = Directory.systemTemp.createTempSync('team_board_numbers');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final board = TeamBoardStore(dir.path);
+    await board.mutate(() {
+      board.addEntry(make('a', 1));
+      board.addEntry(make('b', 2));
+      board.addEntry(make('c', 3));
+    });
+    expect([
+      for (final id in ['a', 'b', 'c']) board.entry(id)!.number
+    ], [
+      1,
+      2,
+      3
+    ]);
+    await board.mutate(() => board.removeEntry('c'));
+    await board.mutate(() => board.addEntry(make('d', 4)));
+    expect(board.entry('d')!.number, 4);
+
+    final reloaded = TeamBoardStore(dir.path);
+    expect(reloaded.entryByNumber(2)!.id, 'b');
+    await reloaded.mutate(() => reloaded.addEntry(make('e', 5)));
+    expect(reloaded.entry('e')!.number, 5);
+  });
+
+  test('a board from before numbering is numbered oldest first', () {
+    final dir = Directory.systemTemp.createTempSync('team_board_legacy');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    Directory('${dir.path}/team_board').createSync();
+    Map<String, Object> raw(String id, int at) => {
+          'id': id,
+          'kind': 'suggestion',
+          'title': id,
+          'createdAtMs': at,
+        };
+    File('${dir.path}/team_board/board.json').writeAsStringSync(jsonEncode({
+      'entries': [raw('newer', 20), raw('older', 10)],
+    }));
+    final board = TeamBoardStore(dir.path);
+    expect(board.entry('older')!.number, 1);
+    expect(board.entry('newer')!.number, 2);
+  });
+
   group('endpoints', () {
     late Directory dir;
     late Handler handler;

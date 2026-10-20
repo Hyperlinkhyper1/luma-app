@@ -139,6 +139,7 @@ extension TeamBoardApi on Api {
           'missing': d.missing,
           'attachments': [for (final a in d.attachments) a.toJson()],
         },
+      'number': e.number,
       'claimedByMe': e.claimedById == viewer.id,
       'createdAtMs': e.createdAtMs,
       'updatedAtMs': e.updatedAtMs,

@@ -315,7 +315,9 @@ class _Header extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SelectableText(
-                entry.title,
+                entry.number > 0
+                    ? '#${entry.number} ${entry.title}'
+                    : entry.title,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontSize: 20,

@@ -180,9 +180,14 @@ class TeamEntry {
     this.parentId,
     this.discord,
     this.messages,
+    this.number = 0,
   });
 
   final String id;
+
+  /// The short number the team calls the entry by (#12), or 0 when the
+  /// server has not given it one.
+  final int number;
   final TeamEntryKind kind;
   final String title;
   final String brief;
@@ -218,6 +223,7 @@ class TeamEntry {
     final messages = j['messages'];
     return TeamEntry(
       id: j['id'] as String,
+      number: j['number'] as int? ?? 0,
       kind: TeamEntryKind.parse(j['kind']),
       title: j['title'] as String? ?? '',
       brief: j['brief'] as String? ?? '',

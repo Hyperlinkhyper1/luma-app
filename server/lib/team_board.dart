@@ -289,12 +289,18 @@ class TeamBoardEntry {
     this.claimedByEmail,
     this.parentId,
     this.discord,
+    this.number = 0,
     List<TeamBoardFile>? files,
     List<TeamBoardMessage>? messages,
   })  : files = files ?? [],
         messages = messages ?? [];
 
   final String id;
+
+  /// The short number the team calls the entry by (#1, #2, …), handed out
+  /// by [TeamBoardStore.addEntry] and never reused. 0 until it is on the
+  /// board.
+  int number;
   String kind;
   String title;
   String brief;
@@ -330,6 +336,7 @@ class TeamBoardEntry {
 
   Map<String, dynamic> toJson() => {
         'id': id,
+        'number': number,
         'kind': kind,
         'title': title,
         'brief': brief,
@@ -355,6 +362,7 @@ class TeamBoardEntry {
     final stage = raw['stage'];
     return TeamBoardEntry(
       id: id,
+      number: raw['number'] as int? ?? 0,
       kind: kTeamBoardKinds.contains(kind) ? kind as String : 'suggestion',
       title: title,
       brief: raw['brief'] as String? ?? '',
@@ -768,6 +776,8 @@ class TeamBoardStore {
         final entry = TeamBoardEntry.fromJson(raw);
         if (entry != null) _entries[entry.id] = entry;
       }
+      _nextNumber = decoded['nextNumber'] as int? ?? 1;
+      _numberUnnumbered();
     } catch (e) {
       stderr.writeln('[luma] could not read $_boardPath: $e');
     }
@@ -785,6 +795,30 @@ class TeamBoardStore {
   final Map<String, Set<String>> _memberTags = {};
   final Map<String, TeamBoardEntry> _entries = {};
   final AsyncLock _lock = AsyncLock();
+
+  /// The number the next entry gets. Kept apart from the entries so a
+  /// removed entry's number is never handed out again.
+  int _nextNumber = 1;
+
+  /// Numbers entries from before numbering existed, oldest first.
+  void _numberUnnumbered() {
+    for (final e in _entries.values) {
+      if (e.number >= _nextNumber) _nextNumber = e.number + 1;
+    }
+    final missing = _entries.values.where((e) => e.number <= 0).toList()
+      ..sort((a, b) => a.createdAtMs.compareTo(b.createdAtMs));
+    for (final e in missing) {
+      e.number = _nextNumber++;
+    }
+  }
+
+  /// The entry the team calls #[number].
+  TeamBoardEntry? entryByNumber(int number) {
+    for (final e in _entries.values) {
+      if (e.number == number) return e;
+    }
+    return null;
+  }
 
   /// Bumped by every change, so the app can ask "anything new?" cheaply.
   int revision = 0;
@@ -933,7 +967,13 @@ class TeamBoardStore {
         return result;
       });
 
-  void addEntry(TeamBoardEntry entry) => _entries[entry.id] = entry;
+  /// Puts [entry] on the board under the next free number. Call inside
+  /// [mutate].
+  void addEntry(TeamBoardEntry entry) {
+    if (entry.number <= 0) entry.number = _nextNumber;
+    if (entry.number >= _nextNumber) _nextNumber = entry.number + 1;
+    _entries[entry.id] = entry;
+  }
 
   /// Takes [id] off the board. Call inside [mutate], then [deleteFile] each
   /// of the returned entry's files. Entries filed under it stay on the
@@ -951,6 +991,7 @@ class TeamBoardStore {
         _boardPath,
         jsonEncode({
           'revision': revision,
+          'nextNumber': _nextNumber,
           'members': _roles,
           'names': _names,
           'tags': [for (final t in _tags) t.toJson()],
