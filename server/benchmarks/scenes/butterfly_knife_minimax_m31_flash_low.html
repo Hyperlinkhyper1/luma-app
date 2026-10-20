@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>SCARAB X — Balisong Benchmark</title>
+<style>
+:root{--red:#d71932;--red2:#ff4356;--ink:#070708;--glass:rgba(12,12,15,.76);--line:rgba(255,255,255,.14);--sand:#d7b878;--cyan:#6de7ff}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050506;color:#f4efe7;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
+canvas{display:block;width:100%;height:100%}.hud{position:fixed;inset:0;pointer-events:none}.panel{pointer-events:auto;background:linear-gradient(135deg,rgba(18,18,22,.88),rgba(7,7,9,.76));border:1px solid var(--line);backdrop-filter:blur(14px);box-shadow:0 12px 40px #0008}
+#brand{position:absolute;left:22px;top:18px;width:275px;padding:17px 18px 15px;border-radius:3px 18px 18px 18px;border-left:3px solid var(--red)}
+.eyebrow{font-size:10px;letter-spacing:.25em;color:#aaa;text-transform:uppercase}.brandName{font-size:27px;letter-spacing:.12em;font-weight:800;margin:4px 0 1px}.brandName em{color:var(--red2);font-style:normal}.model{font-size:12px;letter-spacing:.18em;color:var(--sand)}
+#controls{position:absolute;left:22px;bottom:20px;width:min(410px,calc(100vw - 44px));padding:13px;border-radius:14px;max-height:62vh;overflow:auto}
+.row{display:flex;gap:7px;flex-wrap:wrap;margin:7px 0}.btn,.seg{pointer-events:auto;border:1px solid var(--line);background:#151519;color:#eee;padding:8px 10px;border-radius:7px;font-size:11px;letter-spacing:.06em;cursor:pointer;transition:.18s}.btn:hover,.seg:hover{background:#29252a;border-color:#d7193288}.btn.active,.seg.active{background:var(--red);border-color:#ff5265;box-shadow:0 0 18px #d7193244}.small{font-size:9px;color:#aaa;margin-top:7px;line-height:1.45}
+#right{position:absolute;right:22px;top:18px;width:220px;padding:15px;border-radius:16px}.cardTitle{font-size:10px;letter-spacing:.2em;color:var(--sand);margin-bottom:9px}.spec{display:flex;justify-content:space-between;border-top:1px solid #ffffff12;padding:6px 0;font-size:10px}.spec span:first-child{color:#888}.swatches{display:flex;gap:7px}.sw{width:30px;height:30px;border-radius:50%;border:2px solid #fff4;cursor:pointer}.sw.active{outline:2px solid #fff;outline-offset:2px}
+#topTools{position:absolute;right:22px;bottom:20px;display:flex;gap:7px;pointer-events:auto}.caption{position:absolute;left:50%;bottom:28px;transform:translateX(-50%);padding:8px 17px;border-radius:20px;background:#08080bd9;border:1px solid #ffffff20;font-size:12px;letter-spacing:.22em;opacity:0;transition:.2s}.caption.show{opacity:1}
+#reveal{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:radial-gradient(circle,#16101588,#030304 65%);z-index:5;pointer-events:none;transition:opacity .7s}.revealMark{width:82px;height:82px;border:2px solid var(--red);transform:rotate(45deg);display:grid;place-items:center;margin-bottom:30px;animation:pulse 1.8s infinite}.revealMark:after{content:"S";font-size:37px;transform:rotate(-45deg);color:var(--red2);font-weight:900}#reveal h1{font-size:48px;letter-spacing:.28em;margin:0 0 8px}#reveal p{letter-spacing:.35em;color:#aaa;font-size:11px}@keyframes pulse{50%{box-shadow:0 0 50px #d7193277;transform:rotate(135deg)}}.hide{opacity:0!important}
+#label{position:absolute;display:none;pointer-events:none;background:#0b0b0ee8;border:1px solid #fff3;color:#fff;padding:5px 8px;border-radius:4px;font-size:10px;letter-spacing:.08em}
+#noWeb{position:fixed;inset:0;display:none;place-items:center;background:#070708;z-index:20;text-align:center;padding:30px}.noWeb h2{color:#ff4356}
+#hint{position:absolute;left:50%;top:18px;transform:translateX(-50%);font-size:10px;letter-spacing:.13em;color:#aaa;background:#09090bd9;padding:8px 14px;border-radius:20px;border:1px solid #ffffff12}
+@media(max-width:700px){#right{display:none}#brand{width:225px}#controls{bottom:12px;left:12px;width:calc(100vw - 24px);max-height:49vh}.btn{padding:7px 8px}#topTools{right:12px;bottom:calc(49vh + 22px)}#hint{display:none}}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="noWeb"><div><h2>WebGL unavailable</h2><p>This interactive 3D benchmark needs a WebGL-capable browser.</p></div></div>
+<div class="hud">
+  <section id="brand" class="panel">
+    <div class="eyebrow">Sirocco Instrument Works</div>
+    <div class="brandName">SCARAB <em>X</em></div>
+    <div class="model">DESERT NOMAD / B-23</div>
+  </section>
+  <section id="right" class="panel">
+    <div class="cardTitle">SPECIFICATION</div>
+    <div class="spec"><span>Overall length</span><b>230 mm</b></div>
+    <div class="spec"><span>Blade length</span><b>102 mm</b></div>
+    <div class="spec"><span>Closed</span><b>132 mm</b></div>
+    <div class="spec"><span>Blade</span><b>154CM steel</b></div>
+    <div class="spec"><span>Scales</span><b>Flake G-10</b></div>
+    <div class="spec"><span>Weight</span><b>118 g</b></div>
+    <div class="spec"><span>Pivot</span><b>Soft washers</b></div>
+    <div class="cardTitle" style="margin-top:13px">LOT FINISH</div>
+    <div class="swatches">
+      <div class="sw active" data-way="0" title="Candy Apple Dusk" style="background:linear-gradient(135deg,#ef3049,#7a0714)"></div>
+      <div class="sw" data-way="1" title="Sunbleached" style="background:linear-gradient(135deg,#edb467,#823522)"></div>
+      <div class="sw" data-way="2" title="Night Eclipse" style="background:linear-gradient(135deg,#32465c,#10151e)"></div>
+    </div>
+  </section>
+  <section id="controls" class="panel">
+    <div class="cardTitle">PERFORMANCE</div>
+    <div class="row" id="moves">
+      <button class="btn active" data-move="open">1 BASIC OPEN</button><button class="btn" data-move="close">2 BASIC CLOSE</button>
+      <button class="btn" data-move="chaplin">3 CHAPLIN</button><button class="btn" data-move="rollover">4 ROLLOVER</button>
+      <button class="btn" data-move="fan">5 FAN</button><button class="btn" data-move="helix">6 HELIX</button>
+      <button class="btn" data-move="aerial">7 AERIAL</button><button class="btn" data-move="scarab">8 SCARAB DROP</button>
+    </div>
+    <div class="row">
+      <button class="btn" id="combo">COMBO</button><button class="btn" id="freestyle">FREESTYLE</button>
+      <button class="btn" id="inspect">INSPECT MODE</button><button class="btn" id="explode">EXPLODED</button>
+    </div>
+    <div class="row">
+      <span style="font-size:10px;align-self:center;min-width:48px">SPEED</span><input id="speed" type="range" min=".25" max="2" step=".05" value="1" style="width:125px">
+      <button class="btn" id="slow">SLOW ½×</button><button class="btn" id="trail">TRAIL</button><button class="btn" id="mute">SOUND ON</button>
+      <input id="volume" aria-label="volume" type="range" min="0" max="1" step=".01" value=".55" style="width:65px">
+    </div>
+    <div class="row">
+      <button class="btn" data-cam="hero">HERO</button><button class="btn" data-cam="blade">BLADE</button><button class="btn" data-cam="pivot">PIVOT</button><button class="btn" data-cam="latch">LATCH</button><button class="btn" data-cam="top">TOP</button><button class="btn" id="hideUI">HIDE UI</button>
+    </div>
+    <div class="small">Drag the blade or either red handle to articulate it. Drag the stage to orbit · wheel to zoom · right-drag to pan.</div>
+  </section>
+  <div id="topTools" class="panel" style="padding:7px"><button class="btn" id="reset">RESET VIEW</button></div>
+  <div id="caption" class="caption"></div><div id="hint">DRAG TO ORBIT · DRAG THE KNIFE TO ARTICULATE</div><div id="label"></div>
+  <div id="reveal"><div class="revealMark"></div><h1>SCARAB X</h1><p>BUILT FOR THE LONG WAY HOME</p></div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
+import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
+import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+let renderer;
+try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});}catch(e){$('#noWeb').style.display='grid';throw e}
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;document.body.prepend(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x050506);scene.fog=new THREE.FogExp2(0x050506,.026);
+const camera=new THREE.PerspectiveCamera(38,innerWidth/innerHeight,.01,100);camera.position.set(7,3.3,8.2);
+const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.target.set(0,1.35,0);controls.minDistance=3;controls.maxDistance=20;
+const pmrem=new THREE.PMREMGenerator(renderer);scene.environment=pmrem.fromScene(new RoomEnvironment(),.04).texture;
+const composer=new EffectComposer(renderer);composer.addPass(new RenderPass(scene,camera));const bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),.32,.65,.82);composer.addPass(bloom);
+
+const redMat=new THREE.MeshPhysicalMaterial({color:0xc51028,metalness:.48,roughness:.26,clearcoat:1,clearcoatRoughness:.12});
+const blackMat=new THREE.MeshPhysicalMaterial({color:0x090a0d,metalness:.9,roughness:.18,clearcoat:.4});
+const edgeMat=new THREE.MeshPhysicalMaterial({color:0xdde6ed,metalness:1,roughness:.075});
+const steelMat=new THREE.MeshPhysicalMaterial({color:0x677078,metalness:1,roughness:.3});
+const rubberMat=new THREE.MeshPhysicalMaterial({color:0x151518,metalness:.2,roughness:.58});
+const sandMat=new THREE.MeshStandardMaterial({color:0x8c5b32,roughness:.95,metalness:.02});
+const glowMat=new THREE.MeshBasicMaterial({color:0xff243e});
+const labelRoot=new THREE.Group();scene.add(labelRoot);
+const parts=[]; const named=[];
+
+function partLabel(obj,text){const s=new THREE.Sprite(new THREE.SpriteMaterial({map:texture(text),transparent:true,depthTest:false}));s.scale.set(1.3,.28,1);s.visible=false;labelRoot.add(s);named.push({obj,s,text});}
+function texture(text){const c=document.createElement('canvas');c.width=512;c.height=112;const x=c.getContext('2d');x.fillStyle='rgba(8,8,10,.92)';x.fillRect(0,0,512,112);x.strokeStyle='#d71932';x.lineWidth=5;x.strokeRect(3,3,506,106);x.fillStyle='#fff';x.font='600 25px system-ui';x.textAlign='center';x.textBaseline='middle';x.fillText(text,256,58);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
+function extruded(shape,depth,mat,bevel=.008){const g=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:true,bevelSegments:3,steps:1,bevelSize:bevel,bevelThickness:bevel});g.translate(0,0,-depth/2);g.computeVertexNormals();return new THREE.Mesh(g,mat)}
+function cylinder(r,h,mat,rad=32){return new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,rad),mat)}
+function screw(r=.035){const g=new THREE.Group();const h=cylinder(r,.025,blackMat,24);h.rotation.x=Math.PI/2;g.add(h);const slot=new THREE.Mesh(new THREE.BoxGeometry(r*1.25,.008,.012),steelMat);slot.position.z=.016;g.add(slot);return g}
+function zenPin(){return cylinder(.018,.34,steelMat,20)}
+
+const knife=new THREE.Group();knife.position.y=1.35;scene.add(knife);
+const root=new THREE.Group();knife.add(root);
+const bladePivot=new THREE.Group();root.add(bladePivot);
+const bitePivot=new THREE.Group();root.add(bitePivot);
+const safePivot=new THREE.Group();root.add(safePivot);
+
+const bladeShape=new THREE.Shape();bladeShape.moveTo(0,-.022);bladeShape.bezierCurveTo(.16,-.04,.58,-.115,.91,-.105);bladeShape.quadraticCurveTo(1.0,-.10,1.075,0);bladeShape.quadraticCurveTo(1.0,.10,.91,.105);bladeShape.bezierCurveTo(.58,.115,.16,.04,0,.022);bladeShape.closePath();
+const blade=extruded(bladeShape,.038,blackMat,.006);bladePivot.add(blade);parts.push(blade);
+const edgeShape=new THREE.Shape();edgeShape.moveTo(.03,-.018);edgeShape.lineTo(.96,-.09);edgeShape.quadraticCurveTo(1.01,-.09,1.065,0);edgeShape.quadraticCurveTo(1.01,.09,.96,.09);edgeShape.lineTo(.03,.018);edgeShape.closePath();const edge=extruded(edgeShape,.043,edgeMat,.002);edge.position.z=.001;bladePivot.add(edge);
+const spine=new THREE.Mesh(new THREE.BoxGeometry(.9,.009,.046),steelMat);spine.position.set(.47,.094,0);bladePivot.add(spine);
+const choil=new THREE.Mesh(new THREE.CylinderGeometry(.038,.038,.045,24,1,false,0,Math.PI),edgeMat);choil.rotation.x=Math.PI/2;choil.position.set(.025,0,0);bladePivot.add(choil);
+const tang=new THREE.Mesh(new THREE.BoxGeometry(.18,.055,.035),blackMat);tang.position.set(-.06,0,0);bladePivot.add(tang);
+const kicker=new THREE.Mesh(new THREE.BoxGeometry(.10,.055,.055),steelMat);kicker.position.set(.09,-.045,0);kicker.rotation.z=-.18;bladePivot.add(kicker);partLabel(kicker,'KICKER — EDGE GUARD');
+// etched maker emblem, made from geometry
+const emblem=new THREE.Group();emblem.position.set(.55,0,.026);for(let i=0;i<3;i++){const bar=new THREE.Mesh(new THREE.BoxGeometry(.18,.012,.006),steelMat);bar.rotation.z=(i-1)*.72;emblem.add(bar)}bladePivot.add(emblem);partLabel(emblem,'SCARAB EMBLEM / 154CM');
+const mark=new THREE.Mesh(new THREE.TorusGeometry(.025,.003,8,24),steelMat);mark.position.set(.75,0,.025);bladePivot.add(mark);
+
+function handleShape(){const s=new THREE.Shape();s.moveTo(.02,-.095);s.bezierCurveTo(.12,-.145,.2,-.14,.27,-.105);s.bezierCurveTo(.34,-.065,.29,-.038,.36,-.012);s.bezierCurveTo(.41,.022,.37,.058,.43,.086);s.bezierCurveTo(.49,.12,.54,.18,.56,.235);s.quadraticCurveTo(.59,.28,.54,.30);s.lineTo(.03,.14);s.quadraticCurveTo(0,.02,.02,-.095);s.closePath();return s}
+function makeHandle(parent,z,kind){const g=new THREE.Group();parent.add(g);const shell=extruded(handleShape(),.085,redMat,.012);shell.position.z=z;g.add(shell);parts.push(shell);
+ const liner=extruded(handleShape(),.014,blackMat,.005);liner.scale.set(.91,.91,1);liner.position.z=z+(z>0?.049:-.049);g.add(liner);
+ // ergonomic groove ribs
+ for(let i=0;i<5;i++){const rib=new THREE.Mesh(new THREE.TorusGeometry(.052-i*.006,.006,8,24,Math.PI*1.25),rubberMat);rib.position.set(.21+i*.045,.02,z+(z>0?.057:-.057));rib.rotation.x=Math.PI/2;rib.rotation.z=-.5;g.add(rib)}
+ // woven desert signature inlays
+ for(let i=0;i<6;i++){const inlay=new THREE.Mesh(new THREE.BoxGeometry(.11,.008,.005),i%2?edgeMat:blackMat);inlay.position.set(.34,-.03+i*.025,z+(z>0?.061:-.061));inlay.rotation.z=(i%2?1:-1)*.45;g.add(inlay)}
+ const pin=zenPin();pin.rotation.x=Math.PI/2;pin.position.set(.05,0,z);g.add(pin);partLabel(pin,kind+' ZEN PIN');
+ return g}
+const bite=makeHandle(bitePivot,.092,'BITE'),safe=makeHandle(safePivot,-.092,'SAFE');
+// pivot hardware
+for(const p of [bitePivot,safePivot]){const bushing=cylinder(.072,.10,steelMat,40);bushing.rotation.x=Math.PI/2;p.add(bushing);const wash=new THREE.Mesh(new THREE.TorusGeometry(.047,.008,10,40),rubberMat);wash.position.z=.058;p.add(wash);const sc=screw(.043);sc.position.z=.075;p.add(sc);partLabel(sc,'SOFT WASHER PIVOT');}
+// latch on bite
+const latchPivot=new THREE.Group();latchPivot.position.set(.46,.18,.125);bitePivot.add(latchPivot);const latch=extruded((()=>{const s=new THREE.Shape();s.moveTo(0,-.028);s.lineTo(.13,-.035);s.lineTo(.16,0);s.lineTo(.13,.035);s.lineTo(0,.028);s.closePath();return s})(),.025,blackMat,.005);latchPivot.add(latch);const latchTip=new THREE.Mesh(new THREE.CylinderGeometry(.031,.031,.03,24),blackMat);latchTip.rotation.x=Math.PI/2;latchTip.position.set(.15,0,0);latchPivot.add(latchTip);partLabel(latchTip,'T-LATCH / SCARAB TOGGLE');
+// hand
+const hand=new THREE.Group();root.add(hand);const skin=new THREE.MeshPhysicalMaterial({color:0x9a654e,roughness:.75});
+for(let i=0;i<4;i++){const f=new THREE.Mesh(new THREE.CapsuleGeometry(.055,.17,4,8),skin);f.position.set(-.16+i*.085,-.13,.19);f.rotation.z=1.2;f.rotation.x=.1;hand.add(f)}
+const palm=new THREE.Mesh(new THREE.CapsuleGeometry(.13,.26,5,10),skin);palm.scale.set(1.25,.7,.65);palm.position.set(.02,-.22,.2);hand.add(palm);
+// stage
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(70,70),new THREE.MeshPhysicalMaterial({color:0x030304,metalness:.92,roughness:.22,clearcoat:1}));floor.rotation.x=-Math.PI/2;floor.position.y=-1.55;floor.receiveShadow=true;scene.add(floor);
+for(let i=0;i<4;i++){const dune=new THREE.Mesh(new THREE.SphereGeometry(2.2+i*.35,40,18,0,Math.PI*2,0,Math.PI/2),sandMat);dune.scale.set(2.4,.13+i*.035,1);dune.position.set(-7+i*4,-1.56,-3-i*.8);scene.add(dune)}
+const ring=new THREE.Mesh(new THREE.TorusGeometry(2.25,.035,12,100),new THREE.MeshBasicMaterial({color:0xff2445}));ring.position.set(0,1.15,-2.35);scene.add(ring);const ring2=new THREE.Mesh(new THREE.TorusGeometry(2.42,.009,8,100),glowMat);ring2.position.copy(ring.position);scene.add(ring2);
+const sun=new THREE.Mesh(new THREE.CircleGeometry(1.05,64),new THREE.MeshBasicMaterial({color:0xffb24a,transparent:true,opacity:.75}));sun.position.set(-3.5,3.2,-5);scene.add(sun);
+scene.add(new THREE.HemisphereLight(0x8899bb,0x251008,1.2));const key=new THREE.SpotLight(0xffd8c0,120,30,.48,.5,1.5);key.position.set(4,8,5);key.target=knife;scene.add(key,key.target);const rim=new THREE.SpotLight(0xff183b,100,25,.5,.6,1);rim.position.set(-5,3,-3);scene.add(rim);const bladeLight=new THREE.PointLight(0xbdeaff,18,7);bladeLight.position.set(2,3,1);scene.add(bladeLight);
+const contact=new THREE.Mesh(new THREE.CircleGeometry(1.7,48),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.42,depthWrite:false}));contact.rotation.x=-Math.PI/2;contact.position.y=-1.535;scene.add(contact);
+
+let biteA=0,safeA=Math.PI,bladeA=0,hingeA=0;
+function setAngles(t){bitePivot.rotation.z=biteA;safePivot.rotation.z=safeA;bladePivot.rotation.z=bladeA;}
+setAngles();
+let audio=null,muted=false,volume=.55;
+function initAudio(){if(!audio)audio=new (window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume()}
+function tone(freq,dur,amp=.1,type='sine'){if(!audio||muted)return;const o=audio.createOscillator(),g=audio.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(amp*volume,audio.currentTime);g.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+dur);o.connect(g).connect(audio.destination);o.start();o.stop(audio.currentTime+dur)}
+function click(strong=false){tone(strong?1850:2450,.055,strong?.22:.11,'square');tone(strong?430:680,.09,.07,'triangle')}
+function ring(){if(!audio||muted)return;[1840,2710,3930].forEach((f,i)=>setTimeout(()=>tone(f,.35-i*.06,.055/(i+1),'sine'),i*8))}
+function swish(p){if(!audio||muted)return;const n=audio.sampleRate*.18,b=audio.createBuffer(1,n,audio.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n);const s=audio.createBufferSource(),f=audio.createBiquadFilter(),g=audio.createGain();s.buffer=b;f.type='bandpass';f.frequency.value=350+p*1100;f.Q.value=2;g.gain.value=Math.min(.14,.025+p*.1)*volume;s.connect(f).connect(g).connect(audio.destination);s.start()}
+function hinge(){tone(95,.13,.08,'triangle');tone(210,.09,.035,'square')}
+
+const names={open:'BASIC OPEN',close:'BASIC CLOSE',chaplin:'CHAPLIN',rollover:'ZEN ROLLOVER',fan:'FAN',helix:'HELIX',aerial:'AERIAL',scarab:'SCARAB DROP'};
+let playing=false,moveStart=0,currentMove='open',combo=false,freestyle=false,lastFree='',speed=1,slow=false,trailOn=false,inspect=false;
+let explode=false,explodeT=0,showcase=true,revealT=0;
+const trailPts=[],trailGeo=new THREE.BufferGeometry(),trailArray=new Float32Array(90*3);trailGeo.setAttribute('position',new THREE.BufferAttribute(trailArray,3));const trail=new THREE.Line(trailGeo,new THREE.LineBasicMaterial({color:0xff314d,transparent:true,opacity:.8}));scene.add(trail);
+function startMove(name){initAudio();currentMove=name;playing=true;moveStart=performance.now();latchPivot.rotation.z=-.75;caption(name);$('#caption').classList.add('show');$$('#moves .btn').forEach(b=>b.classList.toggle('active',b.dataset.move===name));}
+const poses={
+open:{b:0,s:Math.PI,bl:0,x:0,y:0,z:0,rx:0,rz:0},
+close:{b:0,s:0,bl:Math.PI,x:0,y:0,z:0,rx:0,rz:0},
+chaplin:{b:Math.PI,s:0,bl:Math.PI,x:.3,y:.8,z:0,rx:Math.PI,rz:Math.PI},
+rollover:{b:Math.PI,s:0,bl:Math.PI,x:-.2,y:.3,z:.3,rx:0,rz:-Math.PI/2},
+fan:{b:0,s:Math.PI,bl:0,x:.2,y:0,z:.2,rx:0,rz:0},
+helix:{b:0,s:Math.PI,bl:0,x:0,y:.7,z:0,rx:Math.PI,rz:Math.PI},
+aerial:{b:Math.PI,s:0,bl:Math.PI,x:0,y:2,z:0,rx:0,rz:Math.PI*2},
+scarab:{b:Math.PI,s:0,bl:Math.PI,x:.4,y:1.2,z:.2,rx:Math.PI*.6,rz:Math.PI}
+};
+function lerpPose(a,b,t){for(const k in a)a[k]??b[k];for(const k in a)if(typeof a[k]==='number')a[k]=THREE.MathUtils.lerp(a[k],b[k],t)}
+let lastAngular=0,lastSoundAngle=0;
+function updateMove(now){if(!playing)return;let t=(now-moveStart)/(2600/speed);if(t>=1){playing=false;$('#caption').classList.remove('show');if(currentMove==='close'||currentMove==='aerial'||currentMove==='scarab')latchPivot.rotation.z=0;if(combo)setTimeout(()=>startMove(nextMove()),220);else if(freestyle)setTimeout(()=>{let a=Object.keys(names).filter(x=>x!==lastFree);lastFree=a[Math.floor(Math.random()*a.length)];startMove(lastFree)},350);return}
+const p=poses[currentMove]||poses.open;let q={...p},ease=1-Math.pow(1-t,3);
+if(currentMove==='open'){q.b=THREE.MathUtils.lerp(0,Math.PI,ease);q.s=THREE.MathUtils.lerp(Math.PI,0,ease);q.bl=0;q.rz=0}
+if(currentMove==='close'){q.b=THREE.MathUtils.lerp(Math.PI,0,ease);q.s=THREE.MathUtils.lerp(0,Math.PI,ease);q.bl=THREE.MathUtils.lerp(0,Math.PI,ease);q.rz=0}
+if(currentMove==='chaplin'){q.b=Math.PI*Math.sin(t*Math.PI);q.s=Math.PI*(1-Math.sin(t*Math.PI));q.bl=Math.PI*Math.sin(t*Math.PI);q.rz=Math.PI*ease;q.rx=Math.sin(t*Math.PI*2)*.7}
+if(currentMove==='rollover'){q.b=Math.PI*Math.sin(t*Math.PI);q.s=Math.PI*(1-Math.sin(t*Math.PI));q.rz=-Math.PI*ease;q.y=Math.sin(t*Math.PI)*.55}
+if(currentMove==='fan'){q.b=Math.sin(t*Math.PI*8)*Math.PI;q.s=Math.PI*Math.sin(t*Math.PI);q.x=Math.sin(t*Math.PI*8)*.12;q.z=.1}
+if(currentMove==='helix'){q.rz=Math.PI*2*ease;q.rx=Math.PI*ease;q.y=Math.sin(t*Math.PI)*.5;q.bl=Math.PI*Math.sin(t*Math.PI)}
+if(currentMove==='aerial'){q.rz=Math.PI*2*ease;q.rx=Math.PI*2*ease;q.y=Math.sin(t*Math.PI)*1.25;q.x=Math.sin(t*Math.PI*2)*.4}
+if(currentMove==='scarab'){q.rz=Math.PI*ease;q.rx=Math.PI*.7*Math.sin(t*Math.PI);q.y=Math.sin(t*Math.PI)*1.1;q.x=Math.sin(t*Math.PI*2)*.2;q.b=Math.PI*Math.sin(t*Math.PI);q.s=Math.PI*(1-Math.sin(t*Math.PI))}
+biteA=q.b;safeA=q.s;bladeA=q.bl;root.position.x=q.x;root.position.y=q.y;root.position.z=q.z;root.rotation.x=q.rx;root.rotation.z=q.rz;
+const ang=Math.abs(q.b-lastSoundAngle);lastSoundAngle=q.b;if(ang>.55&&t>.1){hinge();if(t>.65)click(true)}if(Math.abs(q.b-lastAngular)>.08)swish(Math.min(1,Math.abs(q.b-lastAngular)*3));lastAngular=q.b;if(currentMove==='open'&&t>.75&&!openRing){ring();openRing=true}
+}
+let openRing=false;function nextMove(){let a=Object.keys(names);return a[Math.floor(Math.random()*a.length)]}
+$$('#moves .btn').forEach(b=>b.addEventListener('click',()=>{combo=false;freestyle=false;$('#combo').classList.remove('active');$('#freestyle').classList.remove('active');startMove(b.dataset.move)}));
+$('#combo').onclick=()=>{combo=!combo;freestyle=false;$('#combo').classList.toggle('active',combo);$('#freestyle').classList.remove('active');if(combo)startMove('open')};
+$('#freestyle').onclick=()=>{freestyle=!freestyle;combo=false;$('#freestyle').classList.toggle('active',freestyle);$('#combo').classList.remove('active');if(freestyle){lastFree='';startMove(nextMove())}else playing=false};
+$('#speed').oninput=e=>speed=+e.target.value;$('#slow').onclick=()=>{slow=!slow;$('#slow').classList.toggle('active',slow);$('#slow').textContent=slow?'SLOW ON ½×':'SLOW ½×'};
+$('#trail').onclick=()=>{trailOn=!trailOn;$('#trail').classList.toggle('active',trailOn);trail.visible=trailOn};
+$('#mute').onclick=()=>{initAudio();muted=!muted;$('#mute').textContent=muted?'SOUND OFF':'SOUND ON'};$('#volume').oninput=e=>volume=+e.target.value;
+$('#inspect').onclick=()=>{inspect=!inspect;$('#inspect').classList.toggle('active',inspect);$('#inspect').textContent=inspect?'ARTICULATE MODE':'INSPECT MODE'};
+$('#explode').onclick=()=>{explode=!explode;$('#explode').classList.toggle('active',explode)};
+const cams={hero:{p:[7,3.3,8.2],t:[0,1.35,0]},blade:{p:[3.2,1.8,2.2],t:[.4,1.35,0]},pivot:{p:[1.1,1.65,1.7],t:[0,1.35,0]},latch:{p:[1.1,2,1.1],t:[.35,1.45,.1]},top:{p:[.01,8,.01],t:[0,1.2,0]}};
+$$('[data-cam]').forEach(b=>b.onclick=()=>{const c=cams[b.dataset.cam];camera.position.set(...c.p);controls.target.set(...c.t);controls.update()});
+$('#reset').onclick=()=>{camera.position.set(7,3.3,8.2);controls.target.set(0,1.35,0);controls.update()};
+$('#hideUI').onclick=()=>$$('.panel,.caption,#hint').forEach(e=>e.classList.toggle('hide'));
+addEventListener('keydown',e=>{if(e.key>='1'&&e.key<='8'){const b=$$('#moves .btn')[+e.key-1];b.click()}if(e.code==='Space'){e.preventDefault();$('#explode').click()}if(e.key.toLowerCase()==='c')$('#combo').click();if(e.key.toLowerCase()==='f')$('#freestyle').click()});
+addEventListener('pointerdown',initAudio,{once:true});
+// dragging articulation
+const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let drag=null;
+renderer.domElement.addEventListener('pointerdown',e=>{if(e.button!==0)return;mouse.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(mouse,camera);const hit=ray.intersectObjects([blade,...parts],true)[0];if(hit&&(hit.object===blade||parts.includes(hit.object)||hit.object.parent===bite||hit.object.parent===safe)){drag={x:e.clientX,startB:biteA,startS:safeA};controls.enabled=false;latchPivot.rotation.z=-.75}});
+addEventListener('pointermove',e=>{if(!drag)return;const d=(e.clientX-drag.x)*.012;biteA=drag.startB+d;safeA=drag.startS-d*.35;setAngles();});
+addEventListener('pointerup',()=>{if(drag){drag=null;controls.enabled=true}});
+renderer.domElement.addEventListener('pointermove',e=>{if(drag)return;mouse.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(mouse,camera);const hits=ray.intersectObjects(Object.values(named).map(x=>x.obj),true);if(hits.length){const l=labelRoot.children.find(s=>ray.intersectObject(s).length);if(l){$('#label').textContent=l.userData.text||'PART';$('#label').style.display='block';$('#label').style.left=e.clientX+12+'px';$('#label').style.top=e.clientY+12+'px'}}else $('#label').style.display='none'});
+named.forEach(({obj,s,text})=>{s.userData.text=text;obj.userData.label=s;});
+// exploded view offsets
+const offsets={bladePivot:new THREE.Vector3(0,0,1.7),bitePivot:new THREE.Vector3(0,0,.72),safePivot:new THREE.Vector3(0,0,-.72),latchPivot:new THREE.Vector3(.45,.45,.4)};
+function updateExplode(dt){explodeT=THREE.MathUtils.damp(explodeT,explode?1:0,5,dt);for(const k in offsets){const obj=k==='latchPivot'?latchPivot:k==='bladePivot'?bladePivot:k==='bitePivot'?bitePivot:safePivot;obj.position.copy(offsets[k]).multiplyScalar(explodeT)}named.forEach(n=>{n.s.visible=explodeT>.25;n.s.position.copy(n.obj.getWorldPosition(new THREE.Vector3()));n.s.position.y+=.25});}
+const clock=new THREE.Clock();let last=performance.now();
+function animate(now){requestAnimationFrame(animate);const dt=Math.min(.04,(now-last)/1000);last=now;
+ if(revealT<5){revealT+=dt;const t=Math.min(1,revealT/4);knife.rotation.y=THREE.MathUtils.lerp(-1.4,.2,1-Math.pow(1-t,3));biteA=THREE.MathUtils.lerp(Math.PI,0,t);safeA=THREE.MathUtils.lerp(0,Math.PI,t);bladeA=0;if(revealT>1&&!openRing){ring();openRing=true}if(revealT>4.7)$('#reveal').classList.add('hide')}
+ else if(!playing&&showcase&&!drag){root.rotation.y+=dt*.22;root.rotation.x=Math.sin(now*.00035)*.08}
+ updateMove(now);if(!playing&&!drag)setAngles();updateExplode(dt);
+ // light sweep
+ const sweep=Math.sin(now*.00035)*5;bladeLight.position.set(sweep,2.6,2);ring.rotation.z+=dt*.04;
+ // trail
+ if(trailOn){trailPts.push(blade.getWorldPosition(new THREE.Vector3()));if(trailPts.length>90)trailPts.shift();trailPts.forEach((p,i)=>{trailArray[i*3]=p.x;trailArray[i*3+1]=p.y;trailArray[i*3+2]=p.z});trailGeo.attributes.position.needsUpdate=true;trailGeo.setDrawRange(0,trailPts.length)}else trailPts.length=0;
+ controls.update();composer.render();
+}
+requestAnimationFrame(animate);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2))});
+</script>
+</body>
+</html>
