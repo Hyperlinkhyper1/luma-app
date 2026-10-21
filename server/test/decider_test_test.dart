@@ -56,6 +56,36 @@ void main() {
       expect(q['type'], 'choice');
       expect((q['criteria'] as Map).keys, contains('ALLOW'));
     });
+
+    test('a yes/no-only model gets every question split into yes/no ones', () {
+      for (final c in suite.cases) {
+        final body = c.request('respan/span-01-lite:free');
+        final questions = body['questions'] as Map;
+        for (final q in questions.values) {
+          expect(q['type'], 'noul');
+          expect(q['instructions'], isA<String>());
+          expect(q['criteria'], isA<String>());
+        }
+        final answers = {
+          for (final e in questions.entries) e.key: {'noul': 0.1},
+        };
+        for (final q in c.questions) {
+          final key = switch (q.type) {
+            'choice' => '${q.name}__${q.expect}',
+            'score' => '${q.name}__${q.expect}',
+            _ => q.name,
+          };
+          answers[key] = {
+            'noul': q.type == 'noul' && q.expect == false ? 0.1 : 0.9
+          };
+        }
+        final folded = c.foldNoulAnswers(answers);
+        for (final q in c.questions) {
+          expect(scoreDeciderAnswer(q, folded[q.name]).right, isTrue,
+              reason: '${c.id} ${q.name}');
+        }
+      }
+    });
   });
 
   group('parse', () {
@@ -86,7 +116,10 @@ void main() {
         criteria: {'ALLOW': '', 'REMOVE': ''},
         expect: 'REMOVE');
     const noul = DeciderQuestion(
-        name: 'n', type: 'noul', instructions: 'i', criteria: null,
+        name: 'n',
+        type: 'noul',
+        instructions: 'i',
+        criteria: null,
         expect: false);
     const score = DeciderQuestion(
         name: 's',
@@ -155,7 +188,10 @@ void main() {
             q.name: switch (q.type) {
               'noul' => {'noul': q.expect == true ? 0.9 : 0.1},
               'score' => {'score': (q.expect as int).toDouble()},
-              _ => {'choice': q.expect, 'probabilities': {q.expect: 1.0}},
+              _ => {
+                  'choice': q.expect,
+                  'probabilities': {q.expect: 1.0}
+                },
             },
         });
       }, pricePerMInput: 0.01);
@@ -166,17 +202,13 @@ void main() {
 
     test('a refused key stops the run with its error', () async {
       final run = newRun();
-      await runDeciderSuite(
-          run,
-          suite,
-          (body) async =>
-              const DeciderReply(error: 'HTTP 401', fatal: true));
+      await runDeciderSuite(run, suite,
+          (body) async => const DeciderReply(error: 'HTTP 401', fatal: true));
       expect(run.results, isEmpty);
       expect(run.note, 'HTTP 401');
     });
 
-    test('a model that rejects every request stops after five cases',
-        () async {
+    test('a model that rejects every request stops after five cases', () async {
       final run = newRun();
       await runDeciderSuite(
           run,

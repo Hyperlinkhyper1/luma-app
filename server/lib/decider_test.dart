@@ -40,6 +40,11 @@ const kDeciderDefaultInstructions =
     'Apply the POLICY exactly as written to the CONTENT, using the facts in '
     'CONTEXT. Which single action does the policy require?';
 
+/// Models that answer yes/no questions only: Respan's span-01 family
+/// refuses `choice` and `score` questions, and wants plain-string
+/// instructions and criteria on the yes/no ones.
+bool deciderNoulOnly(String model) => model.startsWith('respan/span-01');
+
 /// How many failed cases, before any was answered, stop a run: the model is
 /// refusing the request itself, so the rest would fail the same way.
 const kDeciderEarlyFailures = 5;
@@ -157,6 +162,71 @@ class DeciderQuestion {
         if (criteria != null) 'criteria': criteria,
       };
 
+  /// The yes/no questions standing in for this one on a model that takes
+  /// nothing else: one per option or level, each asking whether that
+  /// option is the answer, with plain-string instructions and criteria.
+  Map<String, Map<String, dynamic>> toNoulRequests() => switch (type) {
+        'choice' => {
+            for (final e in (criteria as Map).entries)
+              '${name}__${e.key}': _noul(
+                  '$instructions\n\nIs "${e.key}" the action that applies? '
+                      'Answer yes only for this one action.',
+                  '${e.key}: ${e.value}'),
+          },
+        'score' => {
+            for (var i = 0; i < (criteria as List).length; i++)
+              '${name}__$i': _noul(
+                  '$instructions\n\nIs level $i the one that applies? '
+                      'Answer yes only for this one level.',
+                  'Level $i: ${(criteria as List)[i]}'),
+          },
+        _ => {
+            name: _noul(
+                instructions,
+                'Answer yes when the question above is true for the content, '
+                'no when it is false.'),
+          },
+      };
+
+  static Map<String, dynamic> _noul(String instructions, String criteria) =>
+      {'type': 'noul', 'instructions': instructions, 'criteria': criteria};
+
+  /// This question's answer rebuilt from the yes/no [answers] of
+  /// [toNoulRequests]; null when the model left any of them out.
+  Map<String, dynamic>? foldNoulAnswer(Map answers) {
+    double? p(String key) {
+      final a = answers[key];
+      final v = a is Map ? _num(a['noul']) : double.nan;
+      return v.isNaN ? null : v;
+    }
+
+    if (type == 'noul') {
+      final v = p(name);
+      return v == null ? null : {'noul': v};
+    }
+    final keys = type == 'choice'
+        ? [for (final k in (criteria as Map).keys) '$k']
+        : [for (var i = 0; i < (criteria as List).length; i++) '$i'];
+    final ps = <double>[];
+    for (final k in keys) {
+      final v = p('${name}__$k');
+      if (v == null) return null;
+      ps.add(v);
+    }
+    final total = ps.fold(0.0, (s, v) => s + v);
+    var best = 0;
+    for (var i = 1; i < ps.length; i++) {
+      if (ps[i] > ps[best]) best = i;
+    }
+    final probs = {
+      for (var i = 0; i < ps.length; i++)
+        keys[i]: total <= 0 ? 1 / ps.length : ps[i] / total,
+    };
+    return type == 'choice'
+        ? {'choice': keys[best], 'probabilities': probs}
+        : {'score': best, 'probabilities': probs};
+  }
+
   String get expectedLabel => switch (type) {
         'noul' => expect == true ? 'yes' : 'no',
         'score' => 'level $expect',
@@ -199,15 +269,26 @@ class DeciderCase {
 
   /// The decisions API body for [model]. The state is one plain text, the
   /// one shape every decisions model takes: Respan's accept only a string
-  /// or their own chat transcript, not an arbitrary object.
+  /// or their own chat transcript, not an arbitrary object. A yes/no-only
+  /// model gets every question split into yes/no ones.
   Map<String, dynamic> request(String model) => {
         'model': model,
         'state': stateText,
-        'questions': {for (final q in questions) q.name: q.toRequest()},
+        'questions': deciderNoulOnly(model)
+            ? {for (final q in questions) ...q.toNoulRequests()}
+            : {for (final q in questions) q.name: q.toRequest()},
+      };
+
+  /// Folds the reply of a yes/no-only model back into one answer per
+  /// question, the shape [scoreDeciderAnswer] reads.
+  Map foldNoulAnswers(Map answers) => {
+        for (final q in questions)
+          if (q.foldNoulAnswer(answers) case final a?) q.name: a,
       };
 
   String get stateText {
-    final facts = const JsonEncoder.withIndent('  ').convert(context ?? const {});
+    final facts =
+        const JsonEncoder.withIndent('  ').convert(context ?? const {});
     return 'POLICY\n${policy.title}\n${policy.rules}\n\n'
         'CONTEXT\n$facts\n\nCONTENT\n$content';
   }
@@ -360,7 +441,9 @@ class DeciderSuite {
             throw FormatException('$where: expect one of its criteria.');
           }
         case 'score':
-          if (criteria is! List || criteria.length < 2 || criteria.length > 10) {
+          if (criteria is! List ||
+              criteria.length < 2 ||
+              criteria.length > 10) {
             throw FormatException('$where needs 2 to 10 levels.');
           }
           if (expect is! int || expect < 0 || expect >= criteria.length) {
@@ -414,8 +497,8 @@ DeciderAnswer scoreDeciderAnswer(DeciderQuestion q, Object? answer) {
       final s = _num(answer['score']);
       if (s.isNaN) return const DeciderAnswer(false, 0, 'no answer');
       final p = probs is Map ? _num(probs['${q.expect}']) : double.nan;
-      return DeciderAnswer((s - (q.expect as int)).abs() < 0.5,
-          p.isNaN ? 0 : p, 'level ${s.toStringAsFixed(2)}');
+      return DeciderAnswer((s - (q.expect as int)).abs() < 0.5, p.isNaN ? 0 : p,
+          'level ${s.toStringAsFixed(2)}');
     default:
       final choice = answer['choice'];
       if (choice is! String) return const DeciderAnswer(false, 0, 'no answer');
@@ -526,7 +609,10 @@ Future<DeciderCaseResult> attemptDeciderCase(
   final ms = watch.elapsedMilliseconds;
   final cost = reply.costUsd ??
       (pricePerMInput == null ? 0.0 : reply.inputTokens * pricePerMInput / 1e6);
-  if (reply.answers == null) {
+  final answers = reply.answers == null || !deciderNoulOnly(model)
+      ? reply.answers
+      : c.foldNoulAnswers(reply.answers!);
+  if (answers == null) {
     return DeciderCaseResult(
         id: c.id,
         skill: c.skill,
@@ -545,7 +631,7 @@ Future<DeciderCaseResult> attemptDeciderCase(
   var pTrue = 1.0;
   final got = <String>[];
   for (final q in c.questions) {
-    final a = scoreDeciderAnswer(q, reply.answers![q.name]);
+    final a = scoreDeciderAnswer(q, answers[q.name]);
     right = right && a.right;
     pTrue *= a.pTrue;
     got.add(c.questions.length == 1 ? a.got : '${q.name}: ${a.got}');
@@ -612,8 +698,8 @@ class DeciderRun {
       results.where((r) => r.error == null);
 
   /// Share of answered cases that were right, 0 to 100.
-  double get accuracy => _pct(_answered.where((r) => r.right).length,
-      _answered.length);
+  double get accuracy =>
+      _pct(_answered.where((r) => r.right).length, _answered.length);
 
   /// The average probability put on the right answer, 0 to 100.
   double get meanPTrue => _answered.isEmpty
@@ -696,7 +782,8 @@ class DeciderRun {
       total: (raw['total'] as num?)?.toInt() ?? 0,
       chance: (raw['chance'] as num?)?.toDouble() ?? 0,
       suite: _str(raw['suite']),
-      status: status == 'running' || status == 'queued' ? 'interrupted' : status,
+      status:
+          status == 'running' || status == 'queued' ? 'interrupted' : status,
       finishedAtMs: (raw['finishedAtMs'] as num?)?.toInt(),
       note: raw['note'] is String ? raw['note'] as String : null,
       results: [
