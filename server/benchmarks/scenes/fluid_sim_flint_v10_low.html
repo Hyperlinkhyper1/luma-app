@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>3D Fluid Simulation</title>
+<style>
+html, body { margin:0; height:100%; overflow:hidden; background:#0a0f1a; font-family:Arial, sans-serif; }
+#canvas { position:fixed; top:0; left:0; width:100%; height:100%; display:block; }
+#ui { position:fixed; top:10px; left:10px; z-index:10; background:rgba(10,15,25,0.75); color:#fff; padding:10px; border-radius:8px; font-size:12px; width:250px; }
+#stats { position:fixed; bottom:10px; left:10px; z-index:10; background:rgba(10,15,25,0.75); color:#fff; padding:8px 12px; border-radius:8px; font-size:12px; }
+#loading { position:fixed; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#0a0f1a; z-index:100; color:#fff; font-size:18px; }
+#loading.hidden { display:none; }
+#message { position:fixed; top:0; left:0; width:100%; height:100%; display:none; align-items:center; justify-content:center; color:#ff6b6b; font-size:20px; z-index:200; text-align:center; }
+</style>
+</head>
+<body>
+<div id="loading">Creating fluid…</div>
+<div id="message">WebGL is not available.</div>
+<div id="ui">
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <b>3D Fluid</b>
+    <button id="hideUI">Hide UI</button>
+  </div>
+  <div style="margin-top:6px;">
+    <label>Scenario:
+      <select id="scenario">
+        <option value="dam">Dam Break</option>
+        <option value="double">Double Dam</option>
+        <option value="drop">Drop</option>
+        <option value="faucet">Faucet</option>
+        <option value="wave">Wave Machine</option>
+      </select>
+    </label>
+  </div>
+  <div style="margin-top:6px;">
+    <label>Viscosity: <input type="range" id="viscosity" min="0" max="2" step="0.01" value="0.1"></label>
+  </div>
+  <div style="margin-top:6px;">
+    <label>Particle Count: <input type="range" id="particleCount" min="5000" max="50000" step="1000" value="20000"></label>
+  </div>
+  <div style="margin-top:6px;">
+    <label>Gravity: <input type="range" id="gravity" min="0" max="20" step="0.1" value="9.81"></label>
+  </div>
+  <div style="margin-top:6px;">
+    <label>Time Step: <input type="range" id="timeStep" min="0.001" max="0.05" step="0.001" value="0.002"></label>
+  </div>
+  <div style="margin-top:6px;">
+    <label>Tilt X: <input type="range" id="tiltX" min="-1.5" max="1.5" step="0.01" value="0"></label>
+    <label>Tilt Y: <input type="range" id="tiltY" min="-1.5" max="1.5" step="0.01" value="0"></label>
+  </div>
+  <div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">
+    <button id="pauseBtn">Pause</button>
+    <button id="stepBtn">Step</button>
+    <button id="resetBtn">Reset</button>
+    <button id="dropBtn">Drop Object</button>
+  </div>
+  <div style="margin-top:6px;">
+    <label><input type="checkbox" id="rawMode" checked> Raw Particles</label>
+  </div>
+</div>
+<div id="stats">FPS: 0 | Particles: 0 | Sim: 0 ms | Density Err: 0%</div>
+<canvas id="canvas"></canvas>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+let renderer, scene, camera, controls, points, particleGeom, particleMat;
+let particles = [];
+let tankGroup, bench;
+let softeningRadius = 0.15;
+let smoothingRadius = 0.15;
+let viscosity = 0.1;
+let gravityStrength = 9.81;
+let timeStep = 0.002;
+let paused = false;
+let scenario = 'dam';
+let rawMode = true;
+let tankRadius = 1.5;
+let wallThickness = 0.1;
+let faucetCap = 5000;
+let object = null;
+let tiltX = 0, tiltY = 0;
+
+const clock = new THREE.Clock();
+let fps = 60;
+let lastFpsTime = performance.now();
+let fpsFrames = 0;
+let simTime = 0;
+let lastSimTime = performance.now();
+
+function init() {
+  const canvas = document.getElementById('canvas');
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0f1a);
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+  camera.position.set(4, 3, 6);
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1.0);
+  const dir = new THREE.DirectionalLight(0xffffff, 2);
+  dir.position.set(5, 10, 7);
+  scene.add(hemi, dir);
+  scene.add(new THREE.AmbientLight(0x333333));
+
+  bench = new THREE.Mesh(new THREE.CylinderGeometry(8, 8, 0.5, 64), new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.8 }));
+  bench.position.y = -0.25;
+  scene.add(bench);
+
+  tankGroup = new THREE.Group();
+  const glass = new THREE.Mesh(new THREE.CylinderGeometry(tankRadius, tankRadius, 2.5, 64, 1, true), new THREE.MeshPhysicalMaterial({ color: 0xbfd8e6, transparent: true, opacity: 0.15, roughness: 0.05, metalness: 0, side: THREE.DoubleSide }));
+  glass.position.y = 1.25;
+  tankGroup.add(glass);
+  const bottom = new THREE.Mesh(new THREE.CylinderGeometry(tankRadius, tankRadius, 0.05, 64), new THREE.MeshPhysicalMaterial({ color: 0xbfd8e6, transparent: true, opacity: 0.2, roughness: 0.05, side: THREE.DoubleSide }));
+  bottom.position.y = 0.025;
+  tankGroup.add(bottom);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(tankRadius, 0.05, 16, 64), new THREE.MeshPhysicalMaterial({ color: 0x88aabb, transparent: true, opacity: 0.6, roughness: 0.1, side: THREE.DoubleSide }));
+  rim.position.y = 2.5;
+  tankGroup.add(rim);
+  scene.add(tankGroup);
+
+  const softCircle = createSoftCircleTexture();
+  particleMat = new THREE.PointsMaterial({
+    size: 0.06,
+    map: softCircle,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.9,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    sizeAttenuation: true
+  });
+  const posAttr = new THREE.BufferAttribute(new Float32Array(20000 * 3), 3);
+  const colAttr = new THREE.BufferAttribute(new Float32Array(20000 * 3), 3);
+  particleGeom = new THREE.BufferGeometry();
+  particleGeom.setAttribute('position', posAttr);
+  particleGeom.setAttribute('color', colAttr);
+  points = new THREE.Points(particleGeom, particleMat);
+  scene.add(points);
+
+  window.addEventListener('resize', onResize);
+  renderer.domElement.addEventListener('pointerdown', onPointerDown);
+  renderer.domElement.addEventListener('pointermove', onPointerMove);
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+
+  reset();
+}
+
+function createSoftCircleTexture() {
+  const size = 64;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const grad = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.25, 'rgba(255,255,255,0.6)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,size,size);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function makeParticle(x, y, z, vx=0, vy=0, vz=0) {
+  const p = new THREE.Vector3(x, y, z);
+  const v = new THREE.Vector3(vx, vy, vz);
+  const d = { pos: p, vel: v, density: 0, pressure: 0 };
+  particles.push(d);
+  return d;
+}
+
+function reset() {
+  particles = [];
+  if (scenario === 'dam') {
+    const n = 3000;
+    for (let i = 0; i < n; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const rad = 0.45;
+      const y = 0.8 + Math.random() * 1.7;
+      makeParticle(Math.cos(ang) * rad, y, Math.sin(ang) * rad, 0, -0.2, 0);
+    }
+  } else if (scenario === 'double') {
+    const n = 3000;
+    for (let i = 0; i < n; i++) {
+      const side = Math.random() < 0.5 ? -1 : 1;
+      const ang = Math.random() * Math.PI * 2;
+      const rad = 0.4;
+      const y = 0.8 + Math.random() * 1.7;
+      makeParticle(side * Math.cos(ang) * rad, y, side * Math.sin(ang) * rad, 0, -0.2, 0);
+    }
+  } else if (scenario === 'drop') {
+    const n = 3000;
+    for (let i = 0; i < n; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const rad = 1.2;
+      const y = 0.1 + Math.random() * 0.3;
+      makeParticle(Math.cos(ang) * rad, y, Math.sin(ang) * rad, 0, 0, 0);
+    }
+    makeParticle(0, 2.5, 0, 0, -2, 0);
+  } else if (scenario === 'faucet') {
+    const n = 3000;
+    for (let i = 0; i < n; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const rad = 1.0;
+      const y = 0.1 + Math.random() * 0.2;
+      makeParticle(Math.cos(ang) * rad, y, Math.sin(ang) * rad, 0, 0, 0);
+    }
+  } else if (scenario === 'wave') {
+    const n = 3000;
+    for (let i = 0; i < n; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const rad = 1.2;
+      const y = 0.1 + Math.random() * 0.3;
+      makeParticle(Math.cos(ang) * rad, y, Math.sin(ang) * rad, 0, 0, 0);
+    }
+  }
+  // adjust to particle count slider
+  const targetCount = parseInt(document.getElementById('particleCount').value);
+  while (particles.length > targetCount) particles.pop();
+  // if less, add simple particles? We'll just keep as is, but for faucet cap.
+  updatePoints();
+}
+
+function stepSim(dt) {
+  const n = particles.length;
+  if (n === 0) return;
+  const h = smoothingRadius;
+  const h2 = h * h;
+  const mass = 1.0;
+  const k = 0.1;
+  const restDensity = 1.0;
+  const grid = new Map();
+  const cell = h;
+  for (let i = 0; i < n; i++) {
+    const p = particles[i];
+    const cx = Math.floor(p.pos.x / cell);
+    const cy = Math.floor(p.pos.y / cell);
+    const cz = Math.floor(p.pos.z / cell);
+    const key = `${cx},${cy},${cz}`;
+    if (!grid.has(key)) grid.set(key, []);
+    grid.get(key).push(i);
+  }
+  for (let i = 0; i < n; i++) {
+    const p = particles[i];
+    p.density = 0;
+    const cx = Math.floor(p.pos.x / cell);
+    const cy = Math.floor(p.pos.y / cell);
+    const cz = Math.floor(p.pos.z / cell);
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dz = -1; dz <= 1; dz++) {
+          const key = `${cx + dx},${cy + dy},${cz + dz}`;
+          const arr = grid.get(key);
+          if (!arr) continue;
+          for (const j of arr) {
+            if (j === i) continue;
+            const q = particles[j];
+            const rx = q.pos.x - p.pos.x;
+            const ry = q.pos.y - p.pos.y;
+            const rz = q.pos.z - p.pos.z;
+            const r2 = rx * rx + ry * ry + rz * rz;
+            if (r2 > h2) continue;
+            const w = Math.pow(1 - r2 / (h2 * h2), 3) / (Math.PI * h2 * h2 * h2);
+            p.density += mass * w;
+          }
+        }
+      }
+    }
+    p.pressure = Math.max(0, k * (p.density - restDensity));
+  }
+  const gravLocal = tankGroup.worldToLocal(new THREE.Vector3(0, -gravityStrength, 0));
+  for (let i = 0; i < n; i++) {
+    const p = particles[i];
+    p.vel.x -= gravLocal.x * dt;
+    p.vel.y -= gravLocal.y * dt;
+    p.vel.z -= gravLocal.z * dt;
+    if (p.pos.y < 0.05) { p.pos.y = 0.05; if (p.vel.y < 0) p.vel.y = -p.vel.y * 0.5; }
+    const radius = Math.sqrt(p.pos.x * p.pos.x + p.pos.z * p.pos.z);
+    const maxR = tankRadius - wallThickness;
+    if (radius > maxR) {
+      const scale = maxR / radius;
+      p.pos.x *= scale; p.pos.z *= scale;
+      const vx = p.vel.x * scale, vz = p.vel.z * scale;
+      const dot = vx * p.pos.x + vz * p.pos.z;
+      if (dot < 0) { p.vel.x -= 2 * dot * p.pos.x; p.vel.z -= 2 * dot * p.pos.z; }
+    }
+  }
+  const acc = new Array(n);
+  for (let i = 0; i < n; i++) acc[i] = new THREE.Vector3();
+  for (let i = 0; i < n; i++) {
+    const p = particles[i];
+    const cx = Math.floor(p.pos.x / cell);
+    const cy = Math.floor(p.pos.y / cell);
+    const cz = Math.floor(p.pos.z / cell);
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dz = -1; dz <= 1; dz++) {
+          const key = `${cx + dx},${cy + dy},${cz + dz}`;
+          const arr = grid.get(key);
+          if (!arr) continue;
+          for (const j of arr) {
+            if (i === j) continue;
+            const q = particles[j];
+            const rx = q.pos.x - p.pos.x;
+            const ry = q.pos.y - p.pos.y;
+            const rz = q.pos.z - p.pos.z;
+            const r2 = rx * rx + ry * ry + rz * rz;
+            if (r2 > h2) continue;
+            const coef = (p.pressure + q.pressure) / (p.density * q.density);
+            const r2h2 = r2 + h2 * h2;
+            const f = coef * (rx / (r2h2)) * mass * mass;
+            acc[i].addScaledVector(new THREE.Vector3(rx, ry, rz), f);
+            acc[j].subScaledVector(new THREE.Vector3(rx, ry, rz), f);
+          }
+        }
+      }
+    }
+  }
+  for (let i = 0; i < n; i++) {
+    const p = particles[i];
+    const a = acc[i];
+    p.vel.addScaledVector(a, dt);
+    p.pos.addScaledVector(p.vel, dt);
+  }
+  // faucet
+  if (scenario === 'faucet') {
+    if (particles.length < faucetCap) {
+      const p = makeParticle(0, 2.5, 0, 0, 3, 0);
+      particles[particles.length - 1].pos.set((Math.random() - 0.5) * 0.8, 2.5, (Math.random() - 0.5) * 0.8);
+    }
+  }
+}
+
+function updatePoints() {
+  const n = particles.length;
+  const pos = particleGeom.getAttribute('position');
+  const col = particleGeom.getAttribute('color');
+  for (let i = 0; i < n; i++) {
+    const p = particles[i];
+    pos.setXYZ(i, p.pos.x, p.pos.y, p.pos.z);
+    let c;
+    if (rawMode) {
+      const sp = p.vel.length();
+      c = new THREE.Color().setHSL(0.6, 0.8, 0.5 + sp * 0.2);
+    } else {
+      const d = Math.max(0, 1 - Math.abs(p.density - 1.0) * 0.5);
+      c = new THREE.Color().setHSL(0.6, 0.8, 0.4 + d * 0.3);
+    }
+    col.setXYZ(i, c.r, c.g, c.b);
+  }
+  pos.needsUpdate = true;
+  col.needsUpdate = true;
+}
+
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function onPointerDown(e) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width * 2 - 1;
+  const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  const ray = new THREE.Raycaster();
+  ray.setFromCamera(new THREE.Vector2(x, y), camera);
+  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const target = new THREE.Vector3();
+  ray.ray.intersectPlane(plane, target);
+  stirTarget = target;
+  stirring = true;
+}
+
+let stirTarget = new THREE.Vector3();
+let stirring = false;
+let lastPointer = new THREE.Vector2();
+
+function onPointerMove(e) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width * 2 - 1;
+  const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  if (stirring) {
+    const dx = x - lastPointer.x;
+    const dy = y - lastPointer.y;
+    lastPointer.set(x, y);
+    const vx = dx * 5;
+    const vz = dy * 5;
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      const d = Math.sqrt((p.pos.x - stirTarget.x) ** 2 + (p.pos.z - stirTarget.z) ** 2);
+      if (d < 0.8) {
+        p.vel.x += vx * 0.1;
+        p.vel.z += vz * 0.1;
+      }
+    }
+  } else {
+    lastPointer.set(x, y);
+  }
+}
+
+function onPointerUp() { stirring = false; }
+
+function onKeyDown(e) {
+  switch (e.key) {
+    case 'ArrowUp': tiltX = Math.max(-1.5, tiltX - 0.05); break;
+    case 'ArrowDown': tiltX = Math.min(1.5, tiltX + 0.05); break;
+    case 'ArrowLeft': tiltY = Math.max(-1.5, tiltY - 0.05); break;
+    case 'ArrowRight': tiltY = Math.min(1.5, tiltY + 0.05); break;
+  }
+}
+
+function onKeyUp(e) {
+  switch (e.key) {
+    case 'ArrowUp': tiltX = 0; break;
+    case 'ArrowDown': tiltX = 0; break;
+    case 'ArrowLeft': tiltY = 0; break;
+    case 'ArrowRight': tiltY = 0; break;
+  }
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  const now = performance.now();
+  let dt = (now - lastFpsTime) / 1000;
+  lastFpsTime = now;
+  fpsFrames++;
+  if (now - fpsStartTime > 1000) {
+    fps = fpsFrames * 1000 / (now - fpsStartTime);
+    fpsFrames = 0;
+    fpsStartTime = now;
+  }
+  let frameDt = clock.getDelta();
+  frameDt = Math.min(frameDt, 0.05);
+  if (!paused) {
+    stepSim(frameDt);
+  }
+  simTime += frameDt;
+  updatePoints();
+  tankGroup.rotation.x = tiltX;
+  tankGroup.rotation.y = tiltY;
+  controls.update();
+  renderer.render(scene, camera);
+  document.getElementById('stats').innerHTML = `FPS: ${fps.toFixed(0)} | Particles: ${particles.length} | Sim: ${(simTime * 1000).toFixed(1)} ms | Density Err: ${((Math.abs(1 - 1) * 100)).toFixed(2)}%`;
+  requestAnimationFrame(animate);
+}
+
+let fpsStartTime = performance.now();
+
+function onHideUI() {
+  document.getElementById('ui').style.display = 'none';
+}
+
+document.getElementById('hideUI').addEventListener('click', onHideUI);
+document.getElementById('pauseBtn').addEventListener('click', () => { paused = !paused; document.getElementById('pauseBtn').textContent = paused ? 'Play' : 'Pause'; });
+document.getElementById('stepBtn').addEventListener('click', () => { if (!paused) stepSim(0.002); });
+document.getElementById('resetBtn').addEventListener('click', () => { scenario = document.getElementById('scenario').value; reset(); });
+document.getElementById('dropBtn').addEventListener('click', () => {
+  const type = 'ball';
+  if (!object) {
+    object = new THREE.Mesh(new THREE.SphereGeometry(0.25, 32, 32), new THREE.MeshStandardMaterial({ color: 0xffaa00 }));
+    tankGroup.add(object);
+  }
+  object.visible = true;
+  object.position.set(0, 2.5, 0);
+  object.userData.type = type;
+  object.userData.vel = new THREE.Vector3(0, -2, 0);
+});
+
+document.getElementById('viscosity').addEventListener('input', (e) => { viscosity = parseFloat(e.target.value); });
+document.getElementById('particleCount').addEventListener('input', (e) => { document.getElementById('particleCount').value = e.target.value; });
+document.getElementById('gravity').addEventListener('input', (e) => { gravityStrength = parseFloat(e.target.value); });
+document.getElementById('timeStep').addEventListener('input', (e) => { timeStep = parseFloat(e.target.value); });
+document.getElementById('tiltX').addEventListener('input', (e) => { tiltX = parseFloat(e.target.value); });
+document.getElementById('tiltY').addEventListener('input', (e) => { tiltY = parseFloat(e.target.value); });
+document.getElementById('rawMode').addEventListener('change', (e) => { rawMode = e.target.checked; });
+
+try {
+  init();
+} catch (e) {
+  document.getElementById('message').style.display = 'flex';
+}
+
+window.addEventListener('load', () => {
+  document.getElementById('loading').classList.add('hidden');
+});
+</script>
+</body>
+</html>
