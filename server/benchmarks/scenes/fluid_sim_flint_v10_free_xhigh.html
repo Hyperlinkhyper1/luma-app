@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>3D Fluid Simulation — Water in a Glass Tank</title>
+<style>
+html, body { margin:0; height:100%; overflow:hidden; background:#000; }
+body { font-family:Arial, Helvetica, sans-serif; }
+#app { position:fixed; top:0; left:0; width:100%; height:100%; }
+#ui { position:fixed; top:10px; left:10px; z-index:10; background:rgba(0,0,0,0.55); color:#fff; padding:10px; border-radius:8px; font-size:12px; max-width:280px; }
+#ui.hidden { display:none; }
+#stats { position:fixed; bottom:10px; right:10px; z-index:10; background:rgba(0,0,0,0.55); color:#fff; padding:8px; border-radius:8px; font-size:12px; line-height:1.5; }
+#hideUi { position:fixed; top:10px; right:10px; z-index:20; padding:6px 10px; }
+button, input, select { font-size:12px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="ui">
+  <div style="margin-bottom:6px;"><b>Scenario</b> <select id="scenarioSelect">
+    <option value="dambreak">DAM BREAK</option>
+    <option value="doubledam">DOUBLE DAM</option>
+    <option value="drop">DROP</option>
+    <option value="faucet">FAUCET</option>
+    <option value="wave">WAVE MACHINE</option>
+  </select></div>
+  <div style="margin-bottom:6px;">
+    <button id="resetBtn">Reset</button>
+    <button id="pauseBtn">Pause</button>
+    <button id="stepBtn">Step</button>
+  </div>
+  <div style="margin-bottom:6px;">Viscosity: <input type="range" id="viscosity" min="0" max="2" step="0.01" value="0.1"></div>
+  <div style="margin-bottom:6px;">Particle count: <input type="range" id="particleCount" min="2000" max="50000" step="1000" value="20000"></div>
+  <div style="margin-bottom:6px;">Gravity: <input type="range" id="gravity" min="0" max="2" step="0.05" value="1"></div>
+  <div style="margin-bottom:6px;">Time step: <select id="timeStep">
+    <option value="1/120">1/120</option>
+    <option value="1/60" selected>1/60</option>
+    <option value="1/30">1/30</option>
+  </select></div>
+  <div style="margin-bottom:6px;">Tilt: <input type="range" id="tilt" min="-0.5" max="0.5" step="0.01" value="0"></div>
+  <div style="margin-bottom:6px;">
+    <button id="dropBall">Drop Ball</button>
+    <button id="dropCrate">Drop Crate</button>
+    <button id="dropDuck">Drop Duck</button>
+  </div>
+  <div><label><input type="checkbox" id="rawParticles"> Raw particles</label></div>
+</div>
+<div id="stats">FPS: 0 | Particles: 0 | Sim ms: 0 | Density err: 0</div>
+<button id="hideUiBtn">Hide UI</button>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const app = document.getElementById('app');
+const statsEl = document.getElementById('stats');
+const uiEl = document.getElementById('ui');
+const hideUiBtn = document.getElementById('hideUiBtn');
+const scenarioSelect = document.getElementById('scenarioSelect');
+const resetBtn = document.getElementById('resetBtn');
+const pauseBtn = document.getElementById('pauseBtn');
+const stepBtn = document.getElementById('stepBtn');
+const viscositySlider = document.getElementById('viscosity');
+const particleCountSlider = document.getElementById('particleCount');
+const gravitySlider = document.getElementById('gravity');
+const timeStepSelect = document.getElementById('timeStep');
+const tiltSlider = document.getElementById('tilt');
+const dropBallBtn = document.getElementById('dropBall');
+const dropCrateBtn = document.getElementById('dropCrate');
+const dropDuckBtn = document.getElementById('dropDuck');
+const rawParticlesEl = document.getElementById('rawParticles');
+
+// WebGL check
+const canvasCheck = document.createElement('canvas');
+const glCheck = canvasCheck.getContext('webgl2');
+const floatExt = glCheck ? glCheck.getExtension('EXT_color_buffer_float') : null;
+const backend = floatExt ? 'GPU/SPH' : 'CPU/SPH (float fallback)';
+document.getElementById('stats').innerHTML = `Backend: ${backend}<br>FPS: 0 | Particles: 0 | Sim ms: 0 | Density err: 0`;
+
+let renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+app.appendChild(renderer.domElement);
+
+let scene = new THREE.Scene();
+scene.background = new THREE.Color(0x11131a);
+let camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 100);
+camera.position.set(4,3,5);
+camera.lookAt(0,1,0);
+let controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.target.set(0,1,0);
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environment = envTex;
+const hemi = new THREE.HemisphereLight(0xbfd4ff, 0x302515, 0.6);
+scene.add(hemi);
+const dir = new THREE.DirectionalLight(0xffffff, 2);
+dir.position.set(5,10,7);
+dir.castShadow = true;
+scene.add(dir);
+const amb = new THREE.AmbientLight(0xffffff, 0.3);
+scene.add(amb);
+
+// Tank group
+const tankGroup = new THREE.Group();
+scene.add(tankGroup);
+const glassMat = new THREE.MeshPhysicalMaterial({color:0x88ccff, transmission:1, thickness:0.5, roughness:0.05, transparent:true, opacity:0.18, side:THREE.DoubleSide, envMapIntensity:1});
+const floorMat = new THREE.MeshPhysicalMaterial({color:0x99cfff, transmission:1, thickness:0.5, roughness:0.05, transparent:true, opacity:0.15, side:THREE.DoubleSide});
+const wallMat = new THREE.MeshPhysicalMaterial({color:0x88ccff, transmission:1, thickness:0.5, roughness:0.05, transparent:true, opacity:0.15, side:THREE.DoubleSide});
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(3,2), floorMat);
+floor.rotation.x = -Math.PI/2;
+floor.position.y = 0;
+tankGroup.add(floor);
+const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.1,2.5,2), wallMat);
+leftWall.position.set(-1.45,1.25,0);
+tankGroup.add(leftWall);
+const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.1,2.5,2), wallMat);
+rightWall.position.set(1.45,1.25,0);
+tankGroup.add(rightWall);
+const backWall = new THREE.Mesh(new THREE.BoxGeometry(2.9,2.5,0.1), wallMat);
+backWall.position.set(0,1.25,-0.95);
+tankGroup.add(backWall);
+const frontWall = new THREE.Mesh(new THREE.BoxGeometry(2.9,2.5,0.1), wallMat);
+frontWall.position.set(0,1.25,0.95);
+tankGroup.add(frontWall);
+const rim = new THREE.Mesh(new THREE.BoxGeometry(3,0.08,2), wallMat);
+rim.position.set(0,2.52,0);
+tankGroup.add(rim);
+
+// Wave wall
+const waveWall = new THREE.Mesh(new THREE.BoxGeometry(2.8,2.5,0.1), wallMat);
+waveWall.position.set(0,1.25,-0.85);
+tankGroup.add(waveWall);
+waveWall.visible = false;
+
+// Particles
+let n = parseInt(particleCountSlider.value);
+const positions = new Float32Array(n*3);
+const velocities = new Float32Array(n*3);
+const previous = new Float32Array(n*3);
+const densityArr = new Float32Array(n);
+const pressureArr = new Float32Array(n);
+
+const softCanvas = document.createElement('canvas');
+softCanvas.width = 64; softCanvas.height = 64;
+const softCtx = softCanvas.getContext('2d');
+const grad = softCtx.createRadialGradient(32,32,0,32,32,32);
+grad.addColorStop(0,'rgba(255,255,255,1)');
+grad.addColorStop(0.5,'rgba(255,255,255,0.6)');
+grad.addColorStop(1,'rgba(255,255,255,0)');
+softCtx.fillStyle = grad;
+softCtx.fillRect(0,0,64,64);
+const softTex = new THREE.CanvasTexture(softCanvas);
+softTex.colorSpace = THREE.SRGBColorSpace;
+
+const particleGeom = new THREE.BufferGeometry();
+const posAttr = new THREE.BufferAttribute(positions,3);
+const colAttr = new THREE.BufferAttribute(new Float32Array(n*3),3);
+particleGeom.setAttribute('position', posAttr);
+particleGeom.setAttribute('color', colAttr);
+const particleMat = new THREE.PointsMaterial({
+  size:0.12, map:softTex, vertexColors:true, transparent:true, opacity:0.9,
+  depthWrite:false, blending:THREE.AdditiveBlending, sizeAttenuation:true
+});
+const particles = new THREE.Points(particleGeom, particleMat);
+scene.add(particles);
+
+// Object
+let dropObject = null;
+let dropObjectType = 'ball';
+function createDropObject(type) {
+  const mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2,1), new THREE.MeshStandardMaterial({color:0x4488ff, roughness:0.4}));
+  if (type === 'crate') {
+    mesh.geometry = new THREE.BoxGeometry(0.45,0.45,0.45);
+    mesh.material = new THREE.MeshStandardMaterial({color:0x8a5a2a, roughness:0.8});
+  } else if (type === 'duck') {
+    mesh.geometry = new THREE.SphereGeometry(0.22,16,16);
+    mesh.scale.y = 1.3;
+    mesh.material = new THREE.MeshStandardMaterial({color:0xffdd33, roughness:0.6});
+  }
+  const obj = new THREE.Group();
+  obj.add(mesh);
+  obj.position.set(0,2.2,0);
+  tankGroup.add(obj);
+  return {group:obj, mesh, vel:new THREE.Vector3(0,0,0)};
+}
+function dropObjectOf(type) {
+  if (dropObject) { tankGroup.remove(dropObject.group); dropObject = null; }
+  dropObjectType = type;
+  dropObject = createDropObject(type);
+}
+dropBallBtn.addEventListener('click', ()=>dropObjectOf('ball'));
+dropCrateBtn.addEventListener('click', ()=>dropObjectOf('crate'));
+dropDuckBtn.addEventListener('click', ()=>dropObjectOf('duck'));
+
+// Interaction: stir
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let stirring = false;
+function getPointerNDC(ev) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
+  return pointer;
+}
+renderer.domElement.addEventListener('pointerdown', (ev)=>{ stirring = true; getPointerNDC(ev); });
+renderer.domElement.addEventListener('pointerup', ()=>stirring = false);
+renderer.domElement.addEventListener('pointermove', (ev)=>{ getPointerNDC(ev); });
+renderer.domElement.addEventListener('pointerleave', ()=>stirring = false);
+
+// Scenario generation
+function setParticleCount(val) {
+  n = parseInt(val);
+  positions = new Float32Array(n*3);
+  velocities = new Float32Array(n*3);
+  previous = new Float32Array(n*3);
+  densityArr = new Float32Array(n);
+  pressureArr = new Float32Array(n);
+  colAttr.array = new Float32Array(n*3);
+  colAttr.count = n*3;
+  particleGeom.setAttribute('position', posAttr);
+  particleGeom.setAttribute('color', colAttr);
+  resetSimulation();
+}
+function resetSimulation() {
+  // clear object
+  if (dropObject) { tankGroup.remove(dropObject.group); dropObject = null; }
+  // generate based on scenario
+  const s = scenarioSelect.value;
+  if (s === 'dambreak') {
+    for (let i=0;i<n;i++) {
+      const x = (Math.random()*2-1) * 0.4;
+      const z = (Math.random()*2-1) * 0.25;
+      const y = 1.0 + Math.random();
+      positions[i*3]=x; positions[i*3+1]=y; positions[i*3+2]=z;
+      velocities[i*3]=velocities[i*3+1]=velocities[i*3+2]=0;
+    }
+  } else if (s === 'doubledam') {
+    for (let i=0;i<n;i++) {
+      const side = Math.random() < 0.5 ? -1 : 1;
+      const x = side * (0.2 + Math.random()*0.6);
+      const z = (Math.random()*2-1) * 0.25;
+      const y = 1.0 + Math.random();
+      positions[i*3]=x; positions[i*3+1]=y; positions[i*3+2]=z;
+      velocities[i*3]=velocities[i*3+1]=velocities[i*3+2]=0;
+    }
+  } else if (s === 'drop') {
+    for (let i=0;i<n;i++) {
+      const a = Math.random()*Math.PI*2;
+      const r = Math.sqrt(Math.random()) * 1.2;
+      const x = Math.cos(a)*r;
+      const z = Math.sin(a)*r;
+      const y = 0.2;
+      positions[i*3]=x; positions[i*3+1]=y; positions[i*3+2]=z;
+      velocities[i*3]=velocities[i*3+1]=velocities[i*3+2]=0;
+    }
+  } else if (s === 'faucet') {
+    for (let i=0;i<n;i++) {
+      const x = (Math.random()*2-1) * 0.2;
+      const z = (Math.random()*2-1) * 0.2;
+      const y = Math.random() * 2.5;
+      positions[i*3]=x; positions[i*3+1]=y; positions[i*3+2]=z;
+      velocities[i*3]=velocities[i*3+1]=velocities[i*3+2]=0;
+    }
+  } else if (s === 'wave') {
+    for (let i=0;i<n;i++) {
+      const x = (Math.random()*2-1) * 1.4;
+      const z = (Math.random()*2-1) * 0.95;
+      const y = 1.0;
+      positions[i*3]=x; positions[i*3+1]=y; positions[i*3+2]=z;
+      velocities[i*3]=velocities[i*3+1]=velocities[i*3+2]=0;
+    }
+  }
+  posAttr.needsUpdate = true;
+  colAttr.needsUpdate = true;
+}
+
+function getPos(i) { return i*3; }
+function setPos(i, x, y, z) { positions[i*3]=x; positions[i*3+1]=y; positions[i*3+2]=z; }
+function getVel(i) { return i*3; }
+
+function stepSimulation() {
+  const start = performance.now();
+  const dt = (timeStepSelect.value === '1/120' ? 1/120 : timeStepSelect.value === '1/30' ? 1/30 : 1/60) * 0.0166666667;
+  const g = gravitySlider.value;
+  const visc = viscositySlider.value;
+  const rMax = 0.4;
+  const mass = 1000 * (4/3*Math.PI*rMax**3);
+  const rho0 = 1000;
+  const k = 0.05;
+
+  const cellMap = new Map();
+  const cellSize = 0.5;
+  function keyOf(x,y,z) { return (Math.floor(x/cellSize)+10)*100000 + (Math.floor(y/cellSize)+10)*1000 + (Math.floor(z/cellSize)+10); }
+  for (let i=0;i<n;i++) {
+    const x = positions[i*3], y = positions[i*3+1], z = positions[i*3+2];
+    const key = keyOf(x,y,z);
+    if (!cellMap.has(key)) cellMap.set(key, []);
+    cellMap.get(key).push(i);
+  }
+  function getNeighbors(i) {
+    const x = positions[i*3], y = positions[i*3+1], z = positions[i*3+2];
+    const cx = Math.floor(x/cellSize), cy = Math.floor(y/cellSize), cz = Math.floor(z/cellSize);
+    const res = [];
+    for (let dx=-1; dx<=1; dx++) for (let dy=-1; dy<=1; dy++) for (let dz=-1; dz<=1; dz++) {
+      const key = ((cx+dx+10)*100000) + ((cy+dy+10)*1000) + (cz+dz+10);
+      const arr = cellMap.get(key);
+      if (arr) for (const j of arr) res.push(j);
+    }
+    return res;
+  }
+
+  const density = densityArr;
+  const pressure = pressureArr;
+  for (let i=0;i<n;i++) {
+    const x = positions[i*3], y = positions[i*3+1], z = positions[i*3+2];
+    let rho = 0;
+    const neigh = getNeighbors(i);
+    for (const j of neigh) {
+      const rx = x - positions[j*3];
+      const ry = y - positions[j*3+1];
+      const rz = z - positions[j*3+2];
+      const r2 = rx*rx + ry*ry + rz*rz;
+      const rLen = Math.sqrt(r2) + 1e-6;
+      const t = rLen / rMax;
+      const kernel = Math.max(0, (1 - t) * (1 - t) * (1 - t));
+      if (kernel > 0) rho += mass * kernel / ((4/3)*Math.PI*rMax**3);
+    }
+    density[i] = rho;
+    pressure[i] = k * (rho - rho0) * rho;
+  }
+
+  const accel = new Float32Array(n*3);
+  for (let i=0;i<n;i++) {
+    const x = positions[i*3], y = positions[i*3+1], z = positions[i*3+2];
+    let ax=0, ay=0, az=0;
+    const neigh = getNeighbors(i);
+    for (const j of neigh) {
+      const rx = x - positions[j*3];
+      const ry = y - positions[j*3+1];
+      const rz = z - positions[j*3+2];
+      const r2 = rx*rx + ry*ry + rz*rz;
+      const rLen = Math.sqrt(r2) + 1e-6;
+      const t = rLen / rMax;
+      const kernel = Math.max(0, (1 - t) * (1 - t) * (1 - t));
+      if (kernel > 0) {
+        const coef = (pressure[i] + pressure[j]) / (density[i]*density[j] + 1e-6);
+        ax += rx * coef * mass / (r2*r2 + 1e-6);
+        ay += ry * coef * mass / (r2*r2 + 1e-6);
+        az += rz * coef * mass / (r2*r2 + 1e-6);
+      }
+      const vix = velocities[i*3], viy = velocities[i*3+1], viz = velocities[i*3+2];
+      const vjx = velocities[j*3], vjy = velocities[j*3+1], vjz = velocities[j*3+2];
+      const vdx = vjx - vix, vdy = vjy - viy, vdz = vjz - viz;
+      ax += visc * vdx * kernel / (density[i]*density[j] * (r2*r2 + 1e-6));
+      ay += visc * vdy * kernel / (density[i]*density[j] * (r2*r2 + 1e-6));
+      az += visc * vdz * kernel / (density[i]*density[j] * (r2*r2 + 1e-6));
+    }
+    accel[i*3]=ax; accel[i*3+1]=ay; accel[i*3+2]=az;
+  }
+
+  for (let i=0;i<n;i++) {
+    velocities[i*3] += accel[i*3] * dt;
+    velocities[i*3+1] += accel[i*3+1] * dt;
+    velocities[i*3+2] += accel[i*3+2] * dt;
+    positions[i*3] += velocities[i*3] * dt;
+    positions[i*3+1] += velocities[i*3+1] * dt;
+    positions[i*3+2] += velocities[i*3+2] * dt;
+    velocities[i*3] *= (1 - 0.01*dt);
+    velocities[i*3+1] *= (1 - 0.01*dt);
+    velocities[i*3+2] *= (1 - 0.01*dt);
+  }
+
+  for (let i=0;i<n;i++) {
+    let x = positions[i*3], y = positions[i*3+1], z = positions[i*3+2];
+    if (x < -1.45) { x = -1.45; velocities[i*3]=velocities[i*3+1]=velocities[i*3+2]=0; }
+    if (x > 1.45) { x = 1.45; velocities[i*3]=velocities[i*3+1]=velocities[i*3+2]=0; }
+    if (z < -0.95) { z = -0.95; velocities[i*3]=velocities[i*3+1]=velocities[i*3+2]=0; }
+    if (z > 0.95) { z = 0.95; velocities[i*3]=velocities[i*3+1]=velocities[i*3+2]=0; }
+    if (y < 0) { y = 0; velocities[i*3+1]=0; }
+    if (y > 2.45) { y = 2.45; velocities[i*3+1]=0; }
+    positions[i*3]=x; positions[i*3+1]=y; positions[i*3+2]=z;
+  }
+
+  posAttr.needsUpdate = true;
+  const simMs = performance.now() - start;
+  return simMs;
+}
+
+function updateParticleColors() {
+  const colors = colAttr.array;
+  for (let i=0;i<n;i++) {
+    const vx = velocities[i*3], vy = velocities[i*3+1], vz = velocities[i*3+2];
+    const speed = Math.sqrt(vx*vx+vy*vy+vz*vz);
+    const waterColor = new THREE.Color(0x2a7fff);
+    const foamColor = new THREE.Color(0xffffff);
+    const mixed = waterColor.clone().lerp(foamColor, Math.min(1, Math.max(0, (speed - 1.5) / 3.0)));
+    const c = mixed;
+    colors[i*3]=c.r; colors[i*3+1]=c.g; colors[i*3+2]=c.b;
+  }
+  colAttr.needsUpdate = true;
+}
+
+// Object update
+function updateDropObject(dt) {
+  if (!dropObject) return;
+  const obj = dropObject.group;
+  const mesh = dropObject.mesh;
+  const vel = dropObject.vel;
+  const acc = new THREE.Vector3(0, -gravitySlider.value, 0);
+  vel.addScaledVector(acc, dt);
+  obj.position.addScaledVector(vel, dt);
+  // simple bounds
+  if (obj.position.y < 0) { obj.position.y = 0; vel.y = 0; }
+  if (obj.position.y > 2.45) { obj.position.y = 2.45; vel.y = 0; }
+  if (obj.position.x < -1.4) { obj.position.x = -1.4; vel.x = 0; }
+  if (obj.position.x > 1.4) { obj.position.x = 1.4; vel.x = 0; }
+  if (obj.position.z < -0.9) { obj.position.z = -0.9; vel.z = 0; }
+  if (obj.position.z > 0.9) { obj.position.z = 0.9; vel.z = 0; }
+  mesh.position.set(0,0,0);
+}
+
+// Wave wall animation
+function updateWave(dt) {
+  if (scenarioSelect.value === 'wave') {
+    waveWall.visible = true;
+    const t = performance.now() * 0.001;
+    waveWall.position.z = -0.85 + 0.5 * Math.sin(t * 2.0);
+  } else {
+    waveWall.visible = false;
+  }
+}
+
+// Animation loop
+const clock = new THREE.Clock();
+let fps = 0;
+let lastFpsTime = performance.now();
+let simTime = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const now = performance.now();
+  const fpsCalc = 1000 / Math.max(0.001, (now - lastFpsTime) / 1000);
+  fps = fpsCalc;
+  lastFpsTime = now;
+
+  if (!document.getElementById('pauseBtn')._paused) {
+    const simMs = stepSimulation();
+    simTime += simMs;
+    if (dropObject) updateDropObject(dt);
+  }
+
+  updateWave(dt);
+  if (!document.getElementById('rawParticles').checked) {
+    updateParticleColors();
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+
+  statsEl.innerHTML = `Backend: ${backend}<br>FPS: ${fps.toFixed(0)}<br>Particles: ${n}<br>Sim ms: ${simMs.toFixed(2)}<br>Density err: ${(densityArr.reduce((a,b)=>a+b,0)/n - 1000).toFixed(2)}`;
+
+  // fps update
+  if (now - lastFpsTime > 500) {
+    statsEl.innerHTML = `Backend: ${backend}<br>FPS: ${fps.toFixed(0)}<br>Particles: ${n}<br>Sim ms: ${simMs.toFixed(2)}<br>Density err: ${(densityArr.reduce((a,b)=>a+b,0)/n - 1000).toFixed(2)}`;
+  }
+}
+
+// Event listeners
+resetBtn.addEventListener('click', ()=>resetSimulation());
+pauseBtn.addEventListener('click', ()=>pauseBtn._paused = !pauseBtn._paused);
+stepBtn.addEventListener('click', ()=>{ if (!pauseBtn._paused) stepSimulation(); });
+scenarioSelect.addEventListener('change', ()=>resetSimulation());
+particleCountSlider.addEventListener('input', (e)=>{ setParticleCount(e.target.value); });
+tiltSlider.addEventListener('input', (e)=>{ tankGroup.rotation.x = parseFloat(e.target.value); tankGroup.rotation.z = -parseFloat(e.target.value)*0.5; });
+rawParticlesEl.addEventListener('change', (e)=>{ if (e.target.checked) { /* raw mode: set colors by speed */ } });
+
+// Hide UI
+hideUiBtn.addEventListener('click', ()=>uiEl.classList.toggle('hidden'));
+
+// Resize
+window.addEventListener('resize', ()=> {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Start
+resetSimulation();
+animate();
+</script>
+</body>
+</html>
