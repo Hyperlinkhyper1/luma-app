@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aurelian Foundry — Dune Compass 13</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#07090d;font-family:Inter,Arial,sans-serif;color:#e8e2d5}
+#app{position:fixed;inset:0}
+canvas{display:block}
+#ui{position:fixed;inset:0;pointer-events:none;z-index:10}
+#ui a,.ui-t{pointer-events:auto}
+#top{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:10px 14px;background:linear-gradient(rgba(5,7,10,.75),transparent);pointer-events:none}
+#top>*{pointer-events:auto}
+h1{font-size:14px;letter-spacing:.35em;margin:0;text-transform:uppercase;color:#f3e7cf;font-weight:600}
+h1 span{color:#c99b5f}
+#brand{font-size:10px;letter-spacing:.2em;color:#9a8a6f;text-transform:uppercase;margin-top:2px}
+#topbtns{display:flex;gap:6px}
+button,input,select{font-family:inherit}
+button{cursor:pointer;border:1px solid rgba(232,226,213,.25);background:rgba(12,14,18,.65);color:#e8e2d5;border-radius:6px;padding:6px 9px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;backdrop-filter:blur(4px)}
+button:hover{border-color:#c99b5f;color:#fff}
+button.active{background:#c99b5f;color:#14100a;border-color:#c99b5f}
+#moves{position:absolute;top:58px;left:14px;display:grid;grid-template-columns:repeat(3,58px);gap:6px;pointer-events:auto}
+.movebtn{aspect-ratio:1;font-size:10px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%}
+#bottom{position:absolute;left:0;right:0;bottom:0;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:10px 14px;background:linear-gradient(transparent,rgba(5,7,10,.8));pointer-events:none}
+#bottom>*{pointer-events:auto}
+.group{display:flex;gap:6px;align-items:center;background:rgba(12,14,18,.55);border:1px solid rgba(232,226,213,.12);padding:6px;border-radius:8px;backdrop-filter:blur(4px)}
+.group label{font-size:9px;color:#9a8a6f;text-transform:uppercase;letter-spacing:.12em}
+input[type=range]{width:90px}
+#caption{position:absolute;top:70px;left:50%;transform:translateX(-50%);padding:6px 14px;border-radius:20px;background:rgba(12,14,18,.7);border:1px solid rgba(201,155,95,.5);font-size:12px;letter-spacing:.15em;text-transform:uppercase;color:#f3e7cf;pointer-events:none;opacity:0;transition:opacity .3s}
+#caption.show{opacity:1}
+#loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#07090d;color:#c99b5f;letter-spacing:.3em;font-size:12px;z-index:20}
+#webgl-error{position:fixed;inset:0;display:none;align-items:center;justify-content:center;color:#fff;background:#000;text-align:center;padding:20px}
+#webgl-error.show{display:flex}
+#crosshair? no
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="ui">
+  <div id="top">
+    <div>
+      <h1>Aurelian <span>Foundry</span></h1>
+      <div id="brand">Dune Compass 13</div>
+    </div>
+    <div id="topbtns">
+      <button id="hideui" title="Hide interface">Hide UI</button>
+      <button id="mute" title="Mute sound">Mute</button>
+    </div>
+  </div>
+  <div id="moves">
+    <button class="movebtn" data-move="basic-open">Open</button>
+    <button class="movebtn" data-move="basic-close">Close</button>
+    <button class="movebtn" data-move="chaplin">Chaplin</button>
+    <button class="movebtn" data-move="zen">Zen</button>
+    <button class="movebtn" data-move="fan">Fan</button>
+    <button class="movebtn" data-move="helix">Helix</button>
+    <button class="movebtn" data-move="aerial">Aerial</button>
+    <button class="movebtn" data-move="dune-coil">Dune Coil</button>
+  </div>
+  <div id="caption"></div>
+  <div id="bottom">
+    <div class="group">
+      <label>Speed</label>
+      <input type="range" id="speed" min="0.25" max="2" step="0.05" value="1">
+    </div>
+    <div class="group">
+      <label>Slow</label>
+      <button id="slowmo">Off</button>
+    </div>
+    <div class="group">
+      <label>Trail</label>
+      <button id="trail">Off</button>
+    </div>
+    <div class="group">
+      <label>Music</label>
+      <input type="range" id="vol" min="0" max="1" step="0.01" value="0.7">
+    </div>
+    <div class="group">
+      <label>Cameras</label>
+      <button data-cam="hero">Hero</button>
+      <button data-cam="blade">Blade</button>
+      <button data-cam="pivot">Pivot</button>
+      <button data-cam="latch">Latch</button>
+      <button data-cam="top">Top</button>
+    </div>
+    <div class="group">
+      <label>Inspect</label>
+      <button id="inspect">On</button>
+    </div>
+    <div class="group">
+      <label>Exploded</label>
+      <button id="exploded">Off</button>
+    </div>
+    <div class="group">
+      <label>Combo</label>
+      <button id="combo">Off</button>
+    </div>
+    <div class="group">
+      <label>Freestyle</label>
+      <button id="freestyle">Off</button>
+    </div>
+  </div>
+</div>
+<div id="caption"></div>
+<div id="loading">PROCEDURALISING DESERT STEEL</div>
+<div id="webgl-error">WebGL is not available in this browser.</div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const app = document.getElementById('app');
+const captionEl = document.getElementById('caption');
+const loadingEl = document.getElementById('loading');
+const errorEl = document.getElementById('webgl-error');
+const moveButtons = document.querySelectorAll('.movebtn');
+const camButtons = document.querySelectorAll('[data-cam]');
+const controls = new OrbitControls();
+let renderer, scene, camera, controls2, knife, bladeGroup, safePivot, bitePivot, latchGroup, trailLine;
+let currentMove = null, moveStart = 0, moveDuration = 1, moveId = '';
+let keysPressed = {};
+let audioCtx, masterGain, muted = false;
+
+function init() {
+  try {
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    app.appendChild(renderer.domElement);
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0c10);
+    scene.fog = new THREE.Fog(0x0a0c10, 8, 20);
+    camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.05, 100);
+    camera.position.set(3.2, 2.2, 4.5);
+
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.maxPolarAngle = Math.PI * 0.52;
+    controls.minDistance = 0.8;
+    controls.maxDistance = 12;
+    controls.target.set(0, 0, 0);
+    controls2 = controls;
+
+    const key = new THREE.KeyLight(0xfff1dd, 2.2);
+    key.position.set(4, 6, 5);
+    key.castShadow = true;
+    key.shadow.mapSize.width = 1024;
+    key.shadow.mapSize.height = 1024;
+    scene.add(key);
+    const rim = new THREE.DirectionalLight(0x8fb4ff, 1.6);
+    rim.position.set(-5, 2, -4);
+    scene.add(rim);
+    const fill = new THREE.AmbientLight(0x556);
+    scene.add(fill);
+    const spot = new THREE.SpotLight(0xffe2b8, 1.2, 12, 0.5, 0.6, 2);
+    spot.position.set(0, 4, 2);
+    scene.add(spot);
+
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(7, 64), new THREE.MeshStandardMaterial({ color: 0x12151c, roughness: 0.9, metalness: 0 }));
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -1.4;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    const caseMat = new THREE.MeshStandardMaterial({ color: 0x2a1418, roughness: 0.95, metalness: 0 });
+    const caseMesh = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.5, 3.0), caseMat);
+    caseMesh.position.y = -0.15;
+    caseMesh.receiveShadow = true;
+    scene.add(caseMesh);
+    const velvet = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.25, 2.6), new THREE.MeshStandardMaterial({ color: 0x1a0a0e, roughness: 1, metalness: 0 }));
+    velvet.position.y = 0.35;
+    scene.add(velvet);
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(3.6, 1.7, 3.2), new THREE.MeshPhysicalMaterial({ color: 0xcfe6ff, transparent: true, opacity: 0.12, roughness: 0.05, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.05 }));
+    glass.position.y = -0.15;
+    scene.add(glass);
+
+    const bladeMat = new THREE.MeshPhysicalMaterial({ color: 0x232830, metalness: 0.92, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.12 });
+    const bladeTex = makeMetalTexture();
+    bladeMat.map = bladeTex;
+    bladeMat.metalnessMap = bladeMat.map;
+    const blade = new THREE.Mesh(new THREE.ExtrudeGeometry(bladeShape(), { depth: 0.14, bevelEnabled: true, bevelThickness: 0.045, bevelSize: 0.045, bevelSegments: 3 }), bladeMat);
+    blade.rotation.z = Math.PI / 2;
+    blade.position.x = 0.25;
+    blade.castShadow = true;
+    blade.receiveShadow = true;
+    bladeGroup = new THREE.Group();
+    bladeGroup.add(blade);
+    knife = new THREE.Group();
+    knife.add(bladeGroup);
+    scene.add(knife);
+
+    const copperMat = new THREE.MeshPhysicalMaterial({ color: 0xb87333, metalness: 0.85, roughness: 0.3, clearcoat: 1 });
+    const copperTex = makeCopperTexture();
+    copperMat.map = copperTex;
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x7a4a22, roughness: 0.55 });
+    const steelMat = new THREE.MeshPhysicalMaterial({ color: 0xcfd2d6, metalness: 1, roughness: 0.18 });
+
+    safePivot = new THREE.Group();
+    safePivot.position.set(0, 0, -0.18);
+    bitePivot = new THREE.Group();
+    bitePivot.position.set(0, 0, 0.18);
+    knife.add(safePivot, bitePivot);
+
+    const safeHandle = new THREE.Mesh(new THREE.CapsuleGeometry(0.17, 0.78, 4, 14), copperMat);
+    safeHandle.position.set(-0.95, 0, -0.18);
+    safeHandle.rotation.z = Math.PI / 2;
+    safeHandle.castShadow = true;
+    safePivot.add(safeHandle);
+
+    const biteHandle = new THREE.Mesh(new THREE.CapsuleGeometry(0.17, 0.78, 4, 14), copperMat);
+    biteHandle.position.set(-0.95, 0, 0.18);
+    biteHandle.rotation.z = Math.PI / 2;
+    biteHandle.castShadow = true;
+    bitePivot.add(biteHandle);
+
+    const pivotBase = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.5, 24), steelMat);
+    pivotBase.rotation.x = Math.PI / 2;
+    pivotBase.position.set(0, 0, 0);
+    knife.add(pivotBase);
+
+    latchGroup = new THREE.Group();
+    const latch = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.18, 0.12), new THREE.MeshPhysicalMaterial({ color: 0x3a2a20, metalness: 0.9, roughness: 0.35, clearcoat: 1 }));
+    latch.position.set(0, 0, 0);
+    latchGroup.add(latch);
+    knife.add(latchGroup);
+
+    trailLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xffc98a, transparent: true, opacity: 0.8 }));
+    scene.add(trailLine);
+
+    applyPose();
+    scene.add(knife);
+
+    const resize = () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    };
+    window.addEventListener('resize', resize);
+  } catch (e) {
+    errorEl.classList.add('show');
+    console.error(e);
+  }
+}
+
+function bladeShape() {
+  const s = new THREE.Shape();
+  s.moveTo(-0.55, -0.42);
+  s.lineTo(1.15, -0.55);
+  s.lineTo(1.75, -0.32);
+  s.lineTo(1.85, 0);
+  s.lineTo(1.75, 0.32);
+  s.lineTo(1.15, 0.55);
+  s.lineTo(-0.55, 0.42);
+  s.lineTo(-0.55, -0.42);
+  return s;
+}
+
+function makeMetalTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const x = c.getContext('2d');
+  x.fillStyle = '#232830';
+  x.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 1800; i++) {
+    x.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.08)';
+    x.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(4, 1);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+function makeCopperTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const x = c.getContext('2d');
+  const grad = x.createLinearGradient(0, 0, 256, 0);
+  grad.addColorStop(0, '#8a5527');
+  grad.addColorStop(0.5, '#b87333');
+  grad.addColorStop(1, '#8a5527');
+  x.fillStyle = grad;
+  x.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 40; i++) {
+    x.fillStyle = `rgba(80, 120, 40, ${0.08 + Math.random() * 0.15})`;
+    x.beginPath();
+    x.ellipse(Math.random() * 256, Math.random() * 256, 8 + Math.random() * 18, 4 + Math.random() * 8, 0, 0, Math.PI * 2);
+    x.fill();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2, 2);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+function applyPose() {
+  if (!safePivot || !bitePivot || !bladeGroup || !latchGroup) return;
+  safePivot.rotation.y = 0;
+  bitePivot.rotation.y = 0;
+  bladeGroup.rotation.x = 0;
+  latchGroup.position.z = 0;
+  latchGroup.visible = true;
+}
+
+function lerpAngle(a, b, t) {
+  let d = b - a;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return a + d * t;
+}
+
+function setMovePose(t) {
+  if (!moveId) return;
+  const m = MOVES[moveId];
+  if (!m) return;
+  const kf = m.poses;
+  let p = kf[0];
+  const last = kf[kf.length - 1];
+  for (let i = 0; i < kf.length; i++) {
+    if (t <= (kf[i + 1] ? kf[i + 1].t : 1) || i === kf.length - 1) {
+      p = kf[i];
+      break;
+    }
+  }
+  const f = last.t === 0 ? 0 : (t - p.t) / (last.t - p.t);
+  const e = f * f * (3 - 2 * f);
+  safePivot.rotation.y = lerpAngle(safePivot.rotation.y, p.safe, e);
+  bitePivot.rotation.y = lerpAngle(bitePivot.rotation.y, p.bite, e);
+  bladeGroup.rotation.x = lerpAngle(bladeGroup.rotation.x, p.blade, e);
+  latchGroup.visible = p.latch > 0.5;
+}
+
+function playMove(id) {
+  moveId = id;
+  moveStart = performance.now();
+  moveDuration = MOVES[id] ? MOVES[id].duration : 0.8;
+  if (!moveId) return;
+}
+
+function updateMove() {
+  if (!moveId) return;
+  const t = (performance.now() - moveStart) / 1000 / moveDuration;
+  if (t >= 1) {
+    setMovePose(1);
+    return;
+  }
+  setMovePose(Math.min(t, 1));
+}
+
+const MOVES = {
+  'basic-open': { duration: 0.8, poses: [
+    { t: 0, safe: 0, bite: 0, blade: 0, latch: 1 },
+    { t: 0.55, safe: -Math.PI / 2, bite: Math.PI / 2, blade: 0, latch: 1 }
+  ]},
+  'basic-close': { duration: 0.8, poses: [
+    { t: 0, safe: -Math.PI / 2, bite: Math.PI / 2, blade: 0, latch: 1 },
+    { t: 0.55, safe: 0, bite: 0, blade: 0, latch: 1 }
+  ]},
+  'chaplin': { duration: 0.9, poses: [
+    { t: 0, safe: -Math.PI / 2, bite: Math.PI / 2, blade: 0, latch: 1 },
+    { t: 0.45, safe: 0, bite: 0, blade: Math.PI, latch: 1 },
+    { t: 1, safe: Math.PI / 2, bite: -Math.PI / 2, blade: 0, latch: 1 }
+  ]},
+  'zen': { duration: 0.9, poses: [
+    { t: 0, safe: -Math.PI / 2, bite: Math.PI / 2, blade: 0, latch: 1 },
+    { t: 0.5, safe: Math.PI, bite: -Math.PI, blade: 0, latch: 1 },
+    { t: 1, safe: Math.PI / 2, bite: -Math.PI / 2, blade: 0, latch: 1 }
+  ]},
+  'fan': { duration: 1.4, poses: [
+    { t: 0, safe: -Math.PI / 2, bite: Math.PI / 2, blade: 0, latch: 0 },
+    { t: 0.8, safe: -Math.PI / 2, bite: Math.PI / 2 + Math.PI * 2, blade: 0, latch: 0 },
+    { t: 1.2, safe: -Math.PI / 2, bite: Math.PI / 2, blade: 0, latch: 0 },
+    { t: 1.4, safe: -Math.PI / 2, bite: Math.PI / 2, blade: 0, latch: 1 }
+  ]},
+  'helix': { duration: 1.1, poses: [
+    { t: 0, safe: -Math.PI / 2, bite: Math.PI / 2, blade: 0, latch: 1 },
+    { t: 0.55, safe: -Math.PI / 2, bite: Math.PI / 2, blade: Math.PI * 2, latch: 1 },
+    { t: 1, safe: -Math.PI / 2, bite: Math.PI / 2, blade: 0, latch: 1 }
+  ]},
+  'aerial': { duration: 1.6, poses: [
+    { t: 0, safe: -Math.PI / 2, bite: Math.PI / 2, blade: 0, latch: 1 },
+    { t: 0.6, safe: Math.PI / 2, bite: -Math.PI / 2, blade: Math.PI * 1.5, latch: 0 },
+    { t: 1.2, safe: -Math.PI / 2, bite: Math.PI / 2, blade: Math.PI * 3, latch: 0 },
+    { t: 1.6, safe: -Math.PI / 2, bite: Math.PI / 2, blade: 0, latch: 1 }
+  ]},
+  'dune-coil': { duration: 1.0, poses: [
+    { t: 0, safe: -Math.PI / 2, bite: Math.PI / 2, blade: 0, latch: 1 },
+    { t: 0.5, safe: Math.PI / 2, bite: -Math.PI / 2, blade: Math.PI * 2, latch: 1 },
+    { t: 1, safe: -Math.PI / 2, bite: Math.PI / 2, blade: 0, latch: 1 }
+  ]}
+};
+
+function makeAudio() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = muted ? 0 : 0.7;
+  masterGain.connect(audioCtx.destination);
+  const noise = () => {
+    const len = audioCtx.sampleRate * 1;
+    const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 800;
+    src.connect(filter).connect(masterGain);
+    src.start();
+  };
+  window.__latchClick = () => {
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'square';
+    o.frequency.value = 1800;
+    g.gain.setValueAtTime(0.25, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+    o.connect(g).connect(masterGain);
+    o.start();
+    o.stop(audioCtx.currentTime + 0.09);
+  };
+  window.__bladeRing = () => {
+    for (let i = 0; i < 3; i++) {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = 'sine';
+      o.frequency.value = 2200 + i * 180;
+      g.gain.setValueAtTime(0.12, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+      o.connect(g).connect(masterGain);
+      o.start();
+      o.stop(audioCtx.currentTime + 0.4);
+    }
+  };
+}
+
+function startAudio() {
+  if (!audioCtx) makeAudio();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function loop() {
+  requestAnimationFrame(loop);
+  const now = performance.now();
+  if (moveId) updateMove();
+  controls2.update();
+  if (trailLine.visible) {
+    const tip = new THREE.Vector3();
+    bladeGroup.getWorldPosition(tip);
+    // simple trail
+  }
+  renderer.render(scene, camera);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  const now = performance.now();
+  if (moveId) updateMove();
+  controls2.update();
+  renderer.render(scene, camera);
+}
+
+function start() {
+  scene.add(new THREE.DirectionalLight(0xffffff, 0.4));
+  animate();
+}
+
+function resize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+window.addEventListener('resize', resize);
+init();
+startAudio();
+start();
+window.__setMovePose = setMovePose;
+window.__playMove = playMove;
+window.__getMove = () => moveId;
+
+document.getElementById('speed').addEventListener('input', (e) => {
+  const v = parseFloat(e.target.value);
+  moveDuration = (moveDuration / (v / 1)) || moveDuration;
+});
+document.getElementById('slowmo').addEventListener('click', () => {
+  const b = document.getElementById('slowmo');
+  b.textContent = b.classList.contains('active') ? 'Off' : 'On';
+  b.classList.toggle('active');
+});
+document.getElementById('trail').addEventListener('click', () => {
+  const b = document.getElementById('trail');
+  b.textContent = b.classList.contains('active') ? 'Off' : 'On';
+  b.classList.toggle('active');
+});
+document.getElementById('mute').addEventListener('click', () => {
+  muted = !muted;
+  document.getElementById('mute').textContent = muted ? 'Unmute' : 'Mute';
+  if (masterGain) masterGain.gain.value = muted ? 0 : 0.7;
+});
+document.getElementById('vol').addEventListener('input', (e) => {
+  if (masterGain) masterGain.gain.value = parseFloat(e.target.value);
+});
+document.getElementById('hideui').addEventListener('click', () => {
+  document.getElementById('ui').style.opacity = '0';
+  document.getElementById('hideui').style.opacity = '0';
+});
+document.getElementById('inspect').addEventListener('click', () => {
+  const b = document.getElementById('inspect');
+  b.textContent = b.classList.contains('active') ? 'Off' : 'On';
+  b.classList.toggle('active');
+});
+document.getElementById('exploded').addEventListener('click', () => {
+  const b = document.getElementById('exploded');
+  b.textContent = b.classList.contains('active') ? 'Off' : 'On';
+  b.classList.toggle('active');
+});
+document.getElementById('combo').addEventListener('click', () => {
+  const b = document.getElementById('combo');
+  b.textContent = b.classList.contains('active') ? 'Off' : 'On';
+  b.classList.toggle('active');
+});
+document.getElementById('freestyle').addEventListener('click', () => {
+  const b = document.getElementById('freestyle');
+  b.textContent = b.classList.contains('active') ? 'Off' : 'On';
+  b.classList.toggle('active');
+});
+
+moveButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const id = btn.dataset.move;
+    playMove(id);
+    captionEl.classList.add('show');
+    captionEl.textContent = MOVES[id] ? MOVES[id].name || id : id;
+    startAudio();
+  });
+});
+camButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const cam = btn.dataset.cam;
+    if (cam === 'hero') { camera.position.set(2.8, 1.8, 3.6); controls2.target.set(0, 0, 0); }
+    if (cam === 'blade') { camera.position.set(1.2, 0.7, 2.2); controls2.target.set(0.8, 0, 0); }
+    if (cam === 'pivot') { camera.position.set(0.3, 0.6, 0.8); controls2.target.set(0, 0, 0); }
+    if (cam === 'latch') { camera.position.set(0.2, 0.8, 0.5); controls2.target.set(0, 0, 0); }
+    if (cam === 'top') { camera.position.set(0, 3.5, 0.4); controls2.target.set(0, 0, 0); }
+  });
+});
+document.addEventListener('keydown', (e) => {
+  const k = e.key.toLowerCase();
+  if (k.startsWith('1')) playMove('basic-open');
+  if (k.startsWith('2')) playMove('basic-close');
+  if (k.startsWith('3')) playMove('chaplin');
+  if (k.startsWith('4')) playMove('zen');
+  if (k.startsWith('5')) playMove('fan');
+  if (k.startsWith('6')) playMove('helix');
+  if (k.startsWith('7')) playMove('aerial');
+  if (k.startsWith('8')) playMove('dune-coil');
+});
+
+setTimeout(() => {
+  loadingEl.style.opacity = '0';
+  setTimeout(() => loadingEl.style.display = 'none', 600);
+}, 1200);
+
+window.addEventListener('resize', resize);
+</script>
+</body>
+</html>
