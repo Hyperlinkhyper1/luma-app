@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Gaming PC</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+body { margin:0; overflow:hidden; background:#05070a; font-family: 'Segoe UI', system-ui, sans-serif; }
+canvas { display:block; }
+#hud { position:fixed; right:16px; bottom:16px; width:290px; padding:14px; background:rgba(10,14,20,0.88); border:1px solid rgba(255,255,255,0.12); border-radius:18px; backdrop-filter: blur(12px); color:#e8eef7; z-index:10; box-shadow:0 10px 40px rgba(0,0,0,0.6); }
+#hud h2 { margin:0 0 10px; font-size:13px; letter-spacing:2px; text-transform:uppercase; color:#8fa3c0; font-weight:600; }
+.power-row { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+.power-btn { width:64px; height:64px; border-radius:50%; border:2px solid rgba(255,255,255,0.2); background: radial-gradient(circle at 30% 30%, #1a2230, #0a0e14); color:#8fa3c0; cursor:pointer; display:flex; align-items:center; justify-content:center; transition: all .2s; box-shadow: inset 0 0 10px rgba(0,0,0,0.8); }
+.power-btn.on { border-color: rgba(0,255,255,0.6); box-shadow: 0 0 20px rgba(0,255,255,0.4), inset 0 0 15px rgba(0,255,255,0.2); color:#00ffff; }
+.power-btn .icon { font-size:24px; }
+.control { margin-bottom:10px; }
+.control label { display:flex; justify-content:space-between; font-size:11px; color:#9fb0c8; margin-bottom:4px; letter-spacing:0.5px; }
+input[type="range"] { width:100%; }
+input[type="color"] { width:100%; height:32px; border:none; background:transparent; padding:0; cursor:pointer; }
+select { width:100%; background:#0a0e14; color:#e8eef7; border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:6px; }
+.hud-buttons { display:flex; gap:8px; margin-top:10px; }
+.hud-buttons button { flex:1; padding:8px; font-size:11px; border-radius:8px; border:1px solid rgba(255,255,255,0.15); background:#141a24; color:#c6d2e2; cursor:pointer; }
+.hud-buttons button.active { background:rgba(0,255,255,0.15); border-color:rgba(0,255,255,0.5); color:#00ffff; }
+.small { font-size:10px; color:#7c8aa0; }
+</style>
+</head>
+<body>
+<div id="hud">
+  <h2>PC Control</h2>
+  <div class="power-row">
+    <button id="powerBtn" class="power-btn"><span class="icon">⏻</span></button>
+    <div>
+      <div id="powerState">OFFLINE</div>
+      <div class="small">System Status</div>
+    </div>
+  </div>
+  <div class="control">
+    <label>RGB Color <span id="rgbVal">#00FFFF</span></label>
+    <input type="color" id="rgbColor" value="#00FFFF">
+  </div>
+  <div class="control">
+    <label>RGB Brightness <span id="rgbBrightVal">100%</span></label>
+    <input type="range" id="rgbBright" min="0" max="100" value="100">
+  </div>
+  <div class="control">
+    <label>Fan Speed <span id="fanSpeedVal">50%</span></label>
+    <input type="range" id="fanSpeed" min="0" max="100" value="50">
+  </div>
+  <div class="control">
+    <label>Cooling Mode</label>
+    <select id="coolMode">
+      <option value="auto">Auto</option>
+      <option value="quiet">Quiet</option>
+      <option value="performance">Performance</option>
+    </select>
+  </div>
+  <div class="hud-buttons">
+    <button id="pumpBtn">Pump</button>
+    <button id="lcdBtn">LCD</button>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05070a);
+scene.fog = new THREE.Fog(0x05070a, 14, 30);
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 100);
+camera.position.set(7, 5, 9);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 2.2, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.minDistance = 5;
+controls.maxDistance = 25;
+controls.maxPolarAngle = 1.52;
+controls.minPolarAngle = 0.1;
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.5);
+keyLight.position.set(6, 9, 6);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.left = -5;
+keyLight.shadow.camera.right = 5;
+keyLight.shadow.camera.top = 5;
+keyLight.shadow.camera.bottom = -5;
+keyLight.shadow.camera.far = 20;
+scene.add(keyLight);
+
+const fill = new THREE.DirectionalLight(0x4488ff, 0.5);
+fill.position.set(-6, 4, -4);
+scene.add(fill);
+
+const rim = new THREE.DirectionalLight(0xff4488, 0.8);
+rim.position.set(0, 7, -6);
+scene.add(rim);
+
+const caseMat = new THREE.MeshStandardMaterial({ color: 0x151a22, metalness: 0.8, roughness: 0.35 });
+const panelMat = new THREE.MeshStandardMaterial({ color: 0x0a0d12, metalness: 0.6, roughness: 0.4 });
+const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x88ccff, metalness: 0.1, roughness: 0.05, transparent: true, opacity: 0.15, side: THREE.DoubleSide, thickness: 0.05 });
+const metalMat = new THREE.MeshStandardMaterial({ color: 0x2a2f3a, metalness: 0.9, roughness: 0.25 });
+const blackMat = new THREE.MeshStandardMaterial({ color: 0x05070a, metalness: 0.2, roughness: 0.5 });
+const pcbMat = new THREE.MeshStandardMaterial({ color: 0x1a1f2b, metalness: 0.6, roughness: 0.4 });
+const ramMat = new THREE.MeshStandardMaterial({ color: 0x1a2a5a, metalness: 0.7, roughness: 0.3 });
+const deskMat = new THREE.MeshStandardMaterial({ color: 0x2a1c12, metalness: 0.6, roughness: 0.7 });
+
+function box(w, h, d, mat, x = 0, y = 0, z = 0) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z);
+  m.castShadow = true;
+  m.receiveShadow = true;
+  scene.add(m);
+  return m;
+}
+
+// Case panels
+box(2.2, 0.2, 5.2, caseMat, 0, 0.1, 0);
+box(2.2, 0.2, 5.2, caseMat, 0, 4.7, 0);
+box(2.2, 4.8, 0.2, caseMat, 0, 2.4, 2.5);
+box(2.0, 4.6, 0.2, panelMat, 0, 2.4, -2.5);
+box(0.2, 4.6, 4.8, caseMat, -1.05, 2.4, 0);
+box(0.05, 4.4, 4.6, glassMat, 1.08, 2.4, 0);
+
+// Front mesh slats
+for (let i = -8; i <= 8; i++) {
+  box(0.08, 3.5, 0.05, blackMat, i * 0.2, 2.4, -2.61);
+}
+
+// Motherboard
+box(1.8, 3.0, 0.25, pcbMat, -0.2, 2.4, 0.9);
+box(0.5, 0.5, 0.3, metalMat, -0.7, 2.8, 0.75);
+box(0.6, 1.4, 0.5, metalMat, -0.7, 2.4, 0.6);
+box(0.4, 0.4, 0.3, blackMat, -0.7, 2.9, 0.6);
+
+const rgbMats = [];
+function makeEmissive(color) {
+  const m = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: color, emissiveIntensity: 0 });
+  return m;
+}
+
+// RAM
+for (let i = 0; i < 8; i++) {
+  const m = box(0.12, 0.9, 0.05, ramMat, -0.6 + i * 0.15, 2.4, 0.75);
+  if (i === 7) rgbMats.push(m.material);
+}
+
+// AIO pump
+box(0.5, 0.6, 0.6, blackMat, -0.7, 2.9, 0.6);
+const aioStrip = box(0.52, 0.15, 0.62, makeEmissive(new THREE.Color(0x00ffff)), -0.7, 3.0, 0.6);
+rgbMats.push(aioStrip.material);
+
+// Motherboard RGB strip
+const moboStrip = box(0.05, 2.5, 0.05, makeEmissive(new THREE.Color(0x00ffff)), 0.5, 2.4, 0.75);
+rgbMats.push(moboStrip.material);
+
+// GPU
+const gpu = new THREE.Mesh(new RoundedBoxGeometry(1.7, 0.65, 3.6, 2, 0.1, 2, 0.1, 0.1), metalMat);
+gpu.position.set(0.2, 2.0, -0.5);
+gpu.castShadow = true;
+gpu.receiveShadow = true;
+scene.add(gpu);
+box(1.8, 0.2, 3.8, metalMat, 0.2, 2.35, -0.5);
+
+// Fans
+const fanGroups = [];
+function createFan(pos, radius, axis) {
+  const fan = new THREE.Group();
+  fan.position.copy(pos);
+  fan.userData.axis = axis;
+  if (axis === 'Z') fan.rotation.x = Math.PI / 2;
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.45, radius * 0.45, 0.15, 24), blackMat);
+  hub.position.set(0, 0, 0);
+  fan.add(hub);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.04, 12, 48), makeEmissive(new THREE.Color(0x00ffff)));
+  ring.position.set(0, 0, 0);
+  fan.add(ring);
+  rgbMats.push(ring.material);
+  const bladeMat = blackMat;
+  for (let i = 0; i < 5; i++) {
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(radius * 0.8, 0.06, radius * 0.35), bladeMat);
+    blade.position.set(0, 0, 0);
+    blade.rotation.y = (i / 5) * Math.PI * 2;
+    blade.rotation.z = Math.PI / 6;
+    fan.add(blade);
+  }
+  scene.add(fan);
+  fanGroups.push(fan);
+  return fan;
+}
+
+createFan(new THREE.Vector3(0, 2.0, -2.45), 0.55, 'Z');
+createFan(new THREE.Vector3(0, 3.6, -2.45), 0.55, 'Z');
+createFan(new THREE.Vector3(0.5, 2.4, 2.45), 0.55, 'Z');
+createFan(new THREE.Vector3(0, 4.75, -0.5), 0.7, 'Y');
+createFan(new THREE.Vector3(0.2, 2.35, -1.2), 0.35, 'Y');
+createFan(new THREE.Vector3(0.2, 2.35, 0.2), 0.35, 'Y');
+
+// Power button
+const powerBtnMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.1, 32), blackMat);
+powerBtnMesh.position.set(0, 4.2, -2.61);
+powerBtnMesh.rotation.x = Math.PI / 2;
+powerBtnMesh.castShadow = true;
+scene.add(powerBtnMesh);
+const powerLED = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 16), makeEmissive(new THREE.Color(0x00ffff)));
+powerLED.position.set(0, 4.2, -2.67);
+scene.add(powerLED);
+
+// Desk
+const desk = new THREE.Mesh(new THREE.BoxGeometry(12, 0.4, 5), deskMat);
+desk.position.set(0, -0.2, 0);
+desk.castShadow = true;
+desk.receiveShadow = true;
+scene.add(desk);
+
+// Display
+const canvas = document.createElement('canvas');
+canvas.width = 256;
+canvas.height = 128;
+const ctx = canvas.getContext('2d');
+const tex = new THREE.CanvasTexture(canvas);
+const displayMat = new THREE.MeshBasicMaterial({ map: tex });
+const display = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.6), displayMat);
+display.position.set(0.2, 2.35, -1.5);
+display.rotation.x = -Math.PI / 2;
+scene.add(display);
+
+const state = {
+  on: false,
+  rgbColor: new THREE.Color(0x00ffff),
+  rgbBrightness: 1,
+  fanSpeed: 0.5,
+  pump: 1,
+  startupProgress: 0,
+  lcdOn: true
+};
+
+function updateRGB() {
+  const c = state.rgbColor;
+  for (const mat of rgbMats) {
+    mat.emissive.set(c);
+    mat.emissiveIntensity = state.on ? state.rgbBrightness * 2.5 : 0;
+  }
+  if (powerLED.material) {
+    powerLED.material.emissive.set(0x00ffff);
+    powerLED.material.emissiveIntensity = state.on ? 5 : 0;
+  }
+}
+
+function startPower() {
+  state.on = true;
+  state.startupProgress = 0;
+}
+
+function shutdown() {
+  state.on = false;
+  state.startupProgress = 0;
+  state.pump = 0;
+}
+
+function easeOut(t) {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+
+  if (state.on) {
+    state.startupProgress = Math.min(1, state.startupProgress + dt / 2.5);
+  } else {
+    state.startupProgress = 0;
+  }
+  const prog = state.startupProgress;
+  const fanSpin = state.on ? easeOut(prog) * easeOut(prog) * state.fanSpeed * 0.8 : 0;
+  const pump = state.on ? easeOut(prog) * state.pump : 0;
+  const rgbInt = state.on ? easeOut(prog) * state.rgbBrightness * 2.5 : 0;
+
+  for (const fan of fanGroups) {
+    const axis = fan.userData.axis;
+    const vec = new THREE.Vector3(axis === 'Z' ? 0 : 0, axis === 'Y' ? 1 : 0, axis === 'Z' ? 1 : 0);
+    fan.rotateOnWorldAxis(vec, dt * fanSpin);
+  }
+
+  for (const mat of rgbMats) {
+    mat.emissive.set(state.rgbColor);
+    mat.emissiveIntensity = rgbInt;
+  }
+  powerLED.material.emissive.set(0x00ffff);
+  powerLED.material.emissiveIntensity = state.on ? 5 : 0;
+
+  if (displayMat) {
+    displayMat.emissiveIntensity = state.on && state.lcdOn ? 1 : 0;
+  }
+
+  // LCD animation
+  if (state.on && state.lcdOn) {
+    ctx.clearRect(0, 0, 256, 128);
+    ctx.fillStyle = '#001a10';
+    ctx.fillRect(0, 0, 256, 128);
+    ctx.strokeStyle = `hsl(${(t * 50) % 360}, 100%, 50%)`;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    for (let i = 0; i < 256; i++) {
+      const y = 64 + Math.sin(i / 20 + t * 5) * 30 + Math.sin(i / 10 - t * 3) * 20;
+      if (i === 0) ctx.moveTo(i, y);
+      else ctx.lineTo(i, y);
+    }
+    ctx.stroke();
+    tex.needsUpdate = true;
+  }
+
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+document.getElementById('powerBtn').addEventListener('click', () => {
+  if (!state.on) startPower();
+  else shutdown();
+});
+
+document.getElementById('rgbColor').addEventListener('input', (e) => {
+  state.rgbColor.set(new THREE.Color(e.target.value));
+  document.getElementById('rgbVal').textContent = e.target.value;
+  updateRGB();
+});
+
+document.getElementById('rgbBright').addEventListener('input', (e) => {
+  state.rgbBrightness = parseFloat(e.target.value) / 100;
+  document.getElementById('rgbBrightVal').textContent = Math.round(state.rgbBrightness * 100) + '%';
+  updateRGB();
+});
+
+document.getElementById('fanSpeed').addEventListener('input', (e) => {
+  state.fanSpeed = parseFloat(e.target.value) / 100;
+  document.getElementById('fanSpeedVal').textContent = Math.round(state.fanSpeed * 100) + '%';
+});
+
+document.getElementById('coolMode').addEventListener('change', (e) => {
+  if (e.target.value === 'quiet') state.fanSpeed = 0.2;
+  if (e.target.value === 'performance') state.fanSpeed = 0.9;
+  if (e.target.value === 'auto') state.fanSpeed = 0.5;
+  document.getElementById('fanSpeed').value = state.fanSpeed * 100;
+  document.getElementById('fanSpeedVal').textContent = Math.round(state.fanSpeed * 100) + '%';
+});
+
+document.getElementById('pumpBtn').addEventListener('click', () => {
+  state.pump = state.pump > 0 ? 0 : 1;
+  document.getElementById('pumpBtn').classList.toggle('active', state.pump > 0);
+});
+
+document.getElementById('lcdBtn').addEventListener('click', () => {
+  state.lcdOn = !state.lcdOn;
+  document.getElementById('lcdBtn').classList.toggle('active', state.lcdOn);
+});
+
+updateRGB();
+</script>
+</body>
+</html>
