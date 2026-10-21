@@ -40243,4 +40243,275 @@ class LNl extends L {
 
   @override
   String get aiBenchmarkWhatDecider => 'de decider-resultaten';
+
+  @override
+  String get pluginNameCommandDashboard => 'Commandodashboard';
+
+  @override
+  String get cmdDashWindowsOnlyTitle =>
+      'Commandodashboard is alleen voor Windows';
+
+  @override
+  String get cmdDashWindowsOnlySubtitle =>
+      'Het draait commando\'s en .bat-bestanden via cmd.exe, dus het werkt voorlopig alleen op Windows.';
+
+  @override
+  String cmdDashSummary(int count, int running) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count commando\'s',
+      one: '1 commando',
+    );
+    return '$_temp0 · $running actief';
+  }
+
+  @override
+  String get cmdDashAddCommand => 'Commando toevoegen';
+
+  @override
+  String get cmdDashAddScript => '.bat-bestand toevoegen';
+
+  @override
+  String get cmdDashEmptyTitle => 'Nog geen commando\'s';
+
+  @override
+  String get cmdDashEmptySubtitle =>
+      'Voeg een commando of .bat-bestand toe en het wordt een knop die je met één klik start.';
+
+  @override
+  String get cmdDashKindCommand => 'Commando';
+
+  @override
+  String get cmdDashKindScript => 'Scriptbestand';
+
+  @override
+  String get cmdDashBadgeAdmin => 'Admin';
+
+  @override
+  String get cmdDashBadgeHost => 'Host';
+
+  @override
+  String get cmdDashBadgeWindow => 'Eigen venster';
+
+  @override
+  String get cmdDashStatusIdle => 'Nog niet gestart';
+
+  @override
+  String get cmdDashStatusStarting => 'Starten…';
+
+  @override
+  String get cmdDashStatusRunning => 'Actief';
+
+  @override
+  String get cmdDashStatusStopped => 'Gestopt';
+
+  @override
+  String get cmdDashStatusFinished => 'Klaar';
+
+  @override
+  String get cmdDashStatusFailedToStart => 'Kon niet starten';
+
+  @override
+  String cmdDashStatusFailed(int code) {
+    return 'Mislukt (afsluitcode $code)';
+  }
+
+  @override
+  String get cmdDashRun => 'Start';
+
+  @override
+  String get cmdDashStop => 'Stop';
+
+  @override
+  String cmdDashCopyName(String name) {
+    return '$name (kopie)';
+  }
+
+  @override
+  String cmdDashDeleteTitle(String name) {
+    return '\"$name\" verwijderen?';
+  }
+
+  @override
+  String get cmdDashDeleteBody =>
+      'De knop verdwijnt van het dashboard. Scriptbestanden op schijf blijven onaangeroerd.';
+
+  @override
+  String get cmdDashCancel => 'Annuleren';
+
+  @override
+  String get cmdDashDelete => 'Verwijderen';
+
+  @override
+  String get cmdDashSave => 'Opslaan';
+
+  @override
+  String get cmdDashMoreActions => 'Meer acties';
+
+  @override
+  String get cmdDashEdit => 'Bewerken';
+
+  @override
+  String get cmdDashDuplicate => 'Dupliceren';
+
+  @override
+  String cmdDashStartedAt(String time) {
+    return 'Gestart om $time';
+  }
+
+  @override
+  String get cmdDashAdminNote =>
+      'Draait als administrator — Windows vraagt elke keer om toestemming, en bij stoppen nog een keer.';
+
+  @override
+  String get cmdDashOwnWindowOutput =>
+      'Dit commando draait in een eigen consolevenster, dus de uitvoer staat daar.';
+
+  @override
+  String get cmdDashNoOutput => 'Nog geen uitvoer.';
+
+  @override
+  String get cmdDashOutput => 'Uitvoer';
+
+  @override
+  String get cmdDashCopyOutput => 'Uitvoer kopiëren';
+
+  @override
+  String get cmdDashClearOutput => 'Uitvoer wissen';
+
+  @override
+  String get cmdDashConnection => 'Verbinding';
+
+  @override
+  String get cmdDashHostOffline =>
+      'Niet actief. Druk op Start om de host te starten.';
+
+  @override
+  String get cmdDashWaitingForPort => 'Wachten tot de host zijn poort meldt…';
+
+  @override
+  String get cmdDashAddress => 'Adres';
+
+  @override
+  String get cmdDashCopyAddress => 'Adres kopiëren';
+
+  @override
+  String get cmdDashCopied => 'Gekopieerd';
+
+  @override
+  String get cmdDashOpenInBrowser => 'Openen in browser';
+
+  @override
+  String get cmdDashChecking => 'Verbinding controleren…';
+
+  @override
+  String get cmdDashListening => 'Neemt verbindingen aan';
+
+  @override
+  String get cmdDashNotListening => 'Neemt nog geen verbindingen aan';
+
+  @override
+  String cmdDashRojoServer(String version) {
+    return 'Rojo $version';
+  }
+
+  @override
+  String get cmdDashRojoStudioConnected => 'Roblox Studio is verbonden';
+
+  @override
+  String get cmdDashRojoStudioNotConnected => 'Roblox Studio is niet verbonden';
+
+  @override
+  String get cmdDashRojoStudioHint =>
+      'Open Roblox Studio en druk op Connect in de Rojo-plugin.';
+
+  @override
+  String cmdDashClients(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count clients verbonden',
+      one: '1 client verbonden',
+      zero: 'Geen clients verbonden',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cmdDashNoClients => 'Er is nu niets met deze poort verbonden.';
+
+  @override
+  String get cmdDashEditorAddTitle => 'Nieuw commando';
+
+  @override
+  String get cmdDashEditorEditTitle => 'Commando bewerken';
+
+  @override
+  String get cmdDashPresets => 'Snel beginnen';
+
+  @override
+  String get cmdDashFieldName => 'Naam';
+
+  @override
+  String get cmdDashFieldCommand => 'Opdrachtregel';
+
+  @override
+  String get cmdDashFieldCommandHint => 'bijv. rojo serve';
+
+  @override
+  String get cmdDashFieldScript => 'Scriptbestand (.bat, .cmd, .ps1)';
+
+  @override
+  String get cmdDashBrowse => 'Bladeren';
+
+  @override
+  String get cmdDashFieldWorkingDir => 'Uitvoeren in map (optioneel)';
+
+  @override
+  String get cmdDashFieldWorkingDirHelper =>
+      'Scriptbestanden draaien in hun eigen map, tenzij je een andere kiest.';
+
+  @override
+  String get cmdDashAdminToggle => 'Als administrator uitvoeren';
+
+  @override
+  String get cmdDashAdminToggleHelp =>
+      'Windows vraagt bij elke run om toestemming. De uitvoer wordt nog steeds opgevangen.';
+
+  @override
+  String get cmdDashHostToggle => 'Blijft draaien (host iets)';
+
+  @override
+  String get cmdDashHostToggleHelp =>
+      'Voor servers zoals rojo serve: het dashboard toont het adres en wie er verbonden is.';
+
+  @override
+  String get cmdDashFieldPort => 'Poort (optioneel)';
+
+  @override
+  String get cmdDashFieldPortHelper =>
+      'Laat leeg om hem uit de uitvoer te lezen.';
+
+  @override
+  String get cmdDashOwnWindowToggle => 'Openen in een eigen consolevenster';
+
+  @override
+  String get cmdDashOwnWindowToggleHelp =>
+      'Voor scripts die om invoer vragen. De uitvoer blijft in dat venster.';
+
+  @override
+  String get cmdDashIcon => 'Pictogram';
+
+  @override
+  String get cmdDashErrorName => 'Geef de knop een naam.';
+
+  @override
+  String get cmdDashErrorCommand => 'Voer een commando in.';
+
+  @override
+  String get cmdDashErrorScript => 'Kies een scriptbestand.';
+
+  @override
+  String get cmdDashErrorPort => 'Voer een poort tussen 1 en 65535 in.';
 }

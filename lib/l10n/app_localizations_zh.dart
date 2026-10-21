@@ -38136,4 +38136,261 @@ class LZh extends L {
 
   @override
   String get aiBenchmarkWhatDecider => 'Decider 结果';
+
+  @override
+  String get pluginNameCommandDashboard => '命令面板';
+
+  @override
+  String get cmdDashWindowsOnlyTitle => '命令面板仅限 Windows';
+
+  @override
+  String get cmdDashWindowsOnlySubtitle =>
+      '它通过 cmd.exe 运行命令和 .bat 文件，因此目前只能在 Windows 上使用。';
+
+  @override
+  String cmdDashSummary(int count, int running) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个命令',
+    );
+    return '$_temp0 · $running 个运行中';
+  }
+
+  @override
+  String get cmdDashAddCommand => '添加命令';
+
+  @override
+  String get cmdDashAddScript => '添加 .bat 文件';
+
+  @override
+  String get cmdDashEmptyTitle => '还没有命令';
+
+  @override
+  String get cmdDashEmptySubtitle => '添加一个命令或 .bat 文件，它就会变成一键运行的按钮。';
+
+  @override
+  String get cmdDashKindCommand => '命令';
+
+  @override
+  String get cmdDashKindScript => '脚本文件';
+
+  @override
+  String get cmdDashBadgeAdmin => '管理员';
+
+  @override
+  String get cmdDashBadgeHost => '主机';
+
+  @override
+  String get cmdDashBadgeWindow => '独立窗口';
+
+  @override
+  String get cmdDashStatusIdle => '尚未运行';
+
+  @override
+  String get cmdDashStatusStarting => '正在启动…';
+
+  @override
+  String get cmdDashStatusRunning => '运行中';
+
+  @override
+  String get cmdDashStatusStopped => '已停止';
+
+  @override
+  String get cmdDashStatusFinished => '已完成';
+
+  @override
+  String get cmdDashStatusFailedToStart => '无法启动';
+
+  @override
+  String cmdDashStatusFailed(int code) {
+    return '失败（退出代码 $code）';
+  }
+
+  @override
+  String get cmdDashRun => '运行';
+
+  @override
+  String get cmdDashStop => '停止';
+
+  @override
+  String cmdDashCopyName(String name) {
+    return '$name（副本）';
+  }
+
+  @override
+  String cmdDashDeleteTitle(String name) {
+    return '删除“$name”？';
+  }
+
+  @override
+  String get cmdDashDeleteBody => '该按钮会从面板中移除。磁盘上的脚本文件不受影响。';
+
+  @override
+  String get cmdDashCancel => '取消';
+
+  @override
+  String get cmdDashDelete => '删除';
+
+  @override
+  String get cmdDashSave => '保存';
+
+  @override
+  String get cmdDashMoreActions => '更多操作';
+
+  @override
+  String get cmdDashEdit => '编辑';
+
+  @override
+  String get cmdDashDuplicate => '复制';
+
+  @override
+  String cmdDashStartedAt(String time) {
+    return '启动于 $time';
+  }
+
+  @override
+  String get cmdDashAdminNote => '以管理员身份运行：Windows 每次都会请求授权，停止时还会再请求一次。';
+
+  @override
+  String get cmdDashOwnWindowOutput => '此命令在独立的控制台窗口中运行，输出会显示在那里。';
+
+  @override
+  String get cmdDashNoOutput => '还没有输出。';
+
+  @override
+  String get cmdDashOutput => '输出';
+
+  @override
+  String get cmdDashCopyOutput => '复制输出';
+
+  @override
+  String get cmdDashClearOutput => '清除输出';
+
+  @override
+  String get cmdDashConnection => '连接';
+
+  @override
+  String get cmdDashHostOffline => '未运行。按“运行”启动主机。';
+
+  @override
+  String get cmdDashWaitingForPort => '正在等待主机报告端口…';
+
+  @override
+  String get cmdDashAddress => '地址';
+
+  @override
+  String get cmdDashCopyAddress => '复制地址';
+
+  @override
+  String get cmdDashCopied => '已复制';
+
+  @override
+  String get cmdDashOpenInBrowser => '在浏览器中打开';
+
+  @override
+  String get cmdDashChecking => '正在检查连接…';
+
+  @override
+  String get cmdDashListening => '正在接受连接';
+
+  @override
+  String get cmdDashNotListening => '尚未接受连接';
+
+  @override
+  String cmdDashRojoServer(String version) {
+    return 'Rojo $version';
+  }
+
+  @override
+  String get cmdDashRojoStudioConnected => 'Roblox Studio 已连接';
+
+  @override
+  String get cmdDashRojoStudioNotConnected => 'Roblox Studio 未连接';
+
+  @override
+  String get cmdDashRojoStudioHint => '打开 Roblox Studio，在 Rojo 插件中点击 Connect。';
+
+  @override
+  String cmdDashClients(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '已连接 $count 个客户端',
+      zero: '没有已连接的客户端',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cmdDashNoClients => '目前没有任何连接到此端口。';
+
+  @override
+  String get cmdDashEditorAddTitle => '新建命令';
+
+  @override
+  String get cmdDashEditorEditTitle => '编辑命令';
+
+  @override
+  String get cmdDashPresets => '快速开始';
+
+  @override
+  String get cmdDashFieldName => '名称';
+
+  @override
+  String get cmdDashFieldCommand => '命令行';
+
+  @override
+  String get cmdDashFieldCommandHint => '例如 rojo serve';
+
+  @override
+  String get cmdDashFieldScript => '脚本文件（.bat、.cmd、.ps1）';
+
+  @override
+  String get cmdDashBrowse => '浏览';
+
+  @override
+  String get cmdDashFieldWorkingDir => '运行目录（可选）';
+
+  @override
+  String get cmdDashFieldWorkingDirHelper => '除非另选目录，脚本文件会在其所在文件夹中运行。';
+
+  @override
+  String get cmdDashAdminToggle => '以管理员身份运行';
+
+  @override
+  String get cmdDashAdminToggleHelp => '每次运行时 Windows 都会显示授权提示。输出仍会被捕获。';
+
+  @override
+  String get cmdDashHostToggle => '保持运行（托管服务）';
+
+  @override
+  String get cmdDashHostToggleHelp => '适用于 rojo serve 等服务器：面板会显示地址和已连接的对象。';
+
+  @override
+  String get cmdDashFieldPort => '端口（可选）';
+
+  @override
+  String get cmdDashFieldPortHelper => '留空则从输出中读取。';
+
+  @override
+  String get cmdDashOwnWindowToggle => '在独立的控制台窗口中打开';
+
+  @override
+  String get cmdDashOwnWindowToggleHelp => '适用于需要输入的脚本。输出保留在该窗口中。';
+
+  @override
+  String get cmdDashIcon => '图标';
+
+  @override
+  String get cmdDashErrorName => '请为按钮命名。';
+
+  @override
+  String get cmdDashErrorCommand => '请输入要运行的命令。';
+
+  @override
+  String get cmdDashErrorScript => '请选择一个脚本文件。';
+
+  @override
+  String get cmdDashErrorPort => '请输入 1 到 65535 之间的端口。';
 }

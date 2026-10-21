@@ -1039,6 +1039,34 @@
       }
     },
     {
+      "id": "command-dashboard",
+      "name": "Command Dashboard",
+      "description": "Turn the commands and .bat files you keep typing into one-click buttons. Mark a button to run as administrator and Windows asks for permission when you press it. Hosts like rojo serve or a dev server stay running, and the dashboard shows their address, whether they accept connections and who is connected — for Rojo, whether Roblox Studio is linked. Output streams straight into luma. Windows only.",
+      "icon": "terminal",
+      "category": "Utility",
+      "tags": ["Utility", "System"],
+      "free": true,
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Commandodashboard",
+          "description": "Maak van de commando's en .bat-bestanden die je steeds intypt knoppen die je met één klik start. Markeer een knop om als administrator te draaien en Windows vraagt om toestemming zodra je erop drukt. Hosts zoals rojo serve of een dev-server blijven draaien, en het dashboard toont hun adres, of ze verbindingen aannemen en wie er verbonden is — bij Rojo ook of Roblox Studio gekoppeld is. De uitvoer verschijnt direct in luma. Alleen voor Windows."
+        },
+        "fr": {
+          "name": "Tableau de commandes",
+          "description": "Transformez les commandes et fichiers .bat que vous tapez sans cesse en boutons à un clic. Marquez un bouton pour l'exécuter en tant qu'administrateur et Windows demande l'autorisation quand vous appuyez dessus. Les hôtes comme rojo serve ou un serveur de développement restent actifs, et le tableau affiche leur adresse, s'ils acceptent des connexions et qui est connecté — pour Rojo, si Roblox Studio est relié. La sortie s'affiche directement dans luma. Windows uniquement."
+        },
+        "es": {
+          "name": "Panel de comandos",
+          "description": "Convierte los comandos y archivos .bat que siempre escribes en botones de un clic. Marca un botón para ejecutarlo como administrador y Windows pedirá permiso al pulsarlo. Los hosts como rojo serve o un servidor de desarrollo siguen en marcha, y el panel muestra su dirección, si aceptan conexiones y quién está conectado; con Rojo, si Roblox Studio está vinculado. La salida aparece directamente en luma. Solo para Windows."
+        },
+        "zh": {
+          "name": "命令面板",
+          "description": "把你反复输入的命令和 .bat 文件变成一键运行的按钮。将按钮标记为以管理员身份运行后，按下时 Windows 会请求授权。rojo serve 或开发服务器之类的主机会保持运行，面板会显示它们的地址、是否接受连接以及谁已连接；对于 Rojo，还会显示 Roblox Studio 是否已连接。输出直接显示在 luma 中。仅限 Windows。"
+        }
+      }
+    },
+    {
       "id": "account-overview",
       "name": "Account Overview",
       "description": "Your developer and creator accounts in one dashboard, one service per sidebar entry. GitHub: every commit, star, fork and release download across your repositories, the issues and pull requests you are involved in, recent Actions runs and their success rate, plus usage meters for Copilot, your storage allowance and your workflow compute minutes. MC Content: CurseForge and Modrinth combined into one library with download trends and graphs, and Planet Minecraft under its own header with views, downloads and diamonds. Every key is encrypted on this device and goes only to the platform it belongs to, never to a luma server.",
@@ -1091,6 +1119,34 @@
         "zh": {
           "name": "白板",
           "description": "一块无限延展的画布。提供钢笔、荧光笔、形状、箭头、便利贴和文字，带七种墨水颜色、单键工具快捷键和完整撤销。扫过即可擦除整笔线条，可平移和缩放画布，并将任意白板导出为精确裁剪到所绘内容的 PNG。"
+        }
+      }
+    },
+    {
+      "id": "map-maker",
+      "name": "Map Maker",
+      "description": "Design custom fantasy transit diagrams, city layouts, and home plans with an octilinear schematic editor.",
+      "icon": "map",
+      "category": "Utility",
+      "tags": ["Utility", "Design", "Creative"],
+      "free": true,
+      "version": "1.0.0",
+      "i18n": {
+        "nl": {
+          "name": "Kaartenmaker",
+          "description": "Ontwerp aangepaste fantasie-transitdiagrammen, stadslay-outs en woningplattegronden met een octilineaire schematische editor."
+        },
+        "fr": {
+          "name": "Créateur de cartes",
+          "description": "Concevez des plans de transport fantastiques personnalisés, des plans de ville et des plans de maison avec un éditeur schématique octilinéaire."
+        },
+        "es": {
+          "name": "Creador de mapas",
+          "description": "Diseña esquemas de transporte de fantasía personalizados, planos de ciudades y distribuciones de viviendas con un editor esquemático octilineal."
+        },
+        "zh": {
+          "name": "地图工坊",
+          "description": "使用正八向示意图编辑器设计自定义架空轨道交通图、城市规划与住宅户型图。"
         }
       }
     }

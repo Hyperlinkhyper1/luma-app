@@ -28,6 +28,7 @@ import '../features/plugins/installed/city_planner/city_planner_page.dart';
 import '../features/plugins/installed/file_tree/file_tree_page.dart';
 import '../features/plugins/installed/gallery/gallery_page.dart';
 import '../features/plugins/installed/device_health/device_health_page.dart';
+import '../features/plugins/installed/command_dashboard/command_dashboard_page.dart';
 import '../features/plugins/installed/account_overview/account_overview_shell.dart';
 import '../features/plugins/installed/file_viewer/file_viewer_page.dart';
 import '../features/plugins/installed/groceries/groceries_page.dart';
@@ -52,6 +53,7 @@ import '../features/plugins/installed/airline_tycoon/airline_tycoon_page.dart';
 import '../features/plugins/installed/server_tycoon/server_tycoon_page.dart';
 import '../features/plugins/installed/space_colony/space_colony_page.dart';
 import '../features/plugins/installed/subway_builder/subway_builder_page.dart';
+import '../features/plugins/installed/map_maker/map_maker_page.dart';
 import '../features/plugins/installed/transport_tracker/transport_tracker_page.dart';
 import '../features/plugins/installed/usage/usage_page.dart';
 import '../features/plugins/installed/wifi_speed_test/wifi_speed_test_page.dart';
@@ -914,6 +916,7 @@ class _AppShellState extends State<AppShell> {
     'airline-tycoon' => const AirlineTycoonPage(),
     'space-colony' => const SpaceColonyPage(),
     'subway-builder' => const SubwayBuilderPage(),
+    'map-maker' => const MapMakerPage(),
     'transport-tracker' => const TransportTrackerPage(),
     'city-planner' => const CityPlannerPage(),
     'mood-journal' => const MoodJournalPage(),
@@ -943,6 +946,7 @@ class _AppShellState extends State<AppShell> {
     'gallery' => const GalleryPage(),
     'nfc-tag-editor' => const NfcTagEditorPage(),
     'device-health' => const DeviceHealthPage(),
+    'command-dashboard' => const CommandDashboardPage(),
     'account-overview' => const AccountOverviewPage(),
     _ => LumaEmptyState(
       icon: Icons.extension_off_rounded,

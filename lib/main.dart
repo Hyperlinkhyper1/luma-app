@@ -45,6 +45,8 @@ import 'features/plugins/installed/steam_tools/cs2_market_repository.dart';
 import 'features/plugins/installed/steam_tools/cs2_market_scope.dart';
 import 'features/plugins/installed/device_health/device_health_repository.dart';
 import 'features/plugins/installed/device_health/device_health_scope.dart';
+import 'features/plugins/installed/command_dashboard/command_dashboard_repository.dart';
+import 'features/plugins/installed/command_dashboard/command_dashboard_scope.dart';
 import 'features/plugins/installed/account_overview/account_connections_sync.dart';
 import 'features/plugins/installed/account_overview/account_overview_repository.dart';
 import 'features/plugins/installed/account_overview/account_overview_scope.dart';
@@ -334,6 +336,11 @@ class _LumaAppState extends State<LumaApp> {
   // nothing to sync, unlike AI Usage's rebuildable-but-still-stored cache.
   late final DeviceHealthRepository _deviceHealthRepository =
       DeviceHealthRepository();
+
+  // Command Dashboard's buttons are paths and tools on this machine, so they
+  // live in one local JSON file and are deliberately not a sync collection.
+  late final CommandDashboardRepository _commandDashboardRepository =
+      CommandDashboardRepository();
 
   // Account Overview keeps no local database either: it is a cached snapshot
   // of a remote account, written to one JSON file by the repository itself.
@@ -961,6 +968,7 @@ class _LumaAppState extends State<LumaApp> {
     _recipeBookDb.close();
     _galleryRepository.dispose();
     _deviceHealthRepository.dispose();
+    _commandDashboardRepository.dispose();
     _accountConnections.dispose();
     _accountOverviewRepository.dispose();
     _mcContentRepository.dispose();
@@ -1113,6 +1121,8 @@ class _LumaAppState extends State<LumaApp> {
                                                                                                     repository: _smartHomeRepository,
                                                                                                     child: WhiteboardScope(
                                                                                                       repository: _whiteboardRepository,
+                                                                                                      child: CommandDashboardScope(
+                                                                                                      repository: _commandDashboardRepository,
                                                                                                       child: AudioToolsScope(
                                                                                                         repository: _audioToolsRepository,
                                                                                                         child: ListenableBuilder(
@@ -1166,6 +1176,7 @@ class _LumaAppState extends State<LumaApp> {
                                                                                                                 );
                                                                                                               },
                                                                                                         ),
+                                                                                                      ),
                                                                                                       ),
                                                                                                     ),
                                                                                                   ),

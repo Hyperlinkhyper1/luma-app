@@ -16,6 +16,7 @@ String pluginDisplayName(L t, String id, String fallback) => switch (id) {
   'calendar' => t.pluginNameCalendar,
   'card-wallet' => t.pluginNameCardWallet,
   'city-planner' => t.pluginNameCityPlanner,
+  'command-dashboard' => t.pluginNameCommandDashboard,
   'cloud-files' => t.pluginNameCloudFiles,
   'data-management' => t.pluginNameDataManagement,
   'device-health' => t.pluginNameDeviceHealth,

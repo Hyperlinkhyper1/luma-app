@@ -1,0 +1,32 @@
+{
+  "id": "command-dashboard",
+  "name": "Command Dashboard",
+  "version": "1.0.0",
+  "description": "Your commands and .bat files as one-click buttons, with administrator runs and a live view of hosts like rojo serve. Windows only.",
+  "icon": "terminal",
+  "category": "Utility",
+  "details": "Stop opening Command Prompt for the same handful of commands. Every button on the dashboard runs one command line or one script file (.bat, .cmd or .ps1) with a single click, and its output streams into a console right inside luma.\n\nAdministrator: switch a button to run as administrator and Windows shows its usual permission prompt each time you press it. Output is still captured.\n\nHosts: mark a button as something that keeps running — rojo serve, npm run dev, a game server — and the dashboard watches it. It reads the port from the output (or uses the one you set), shows the address, whether it accepts connections, and every client connected to it. Rojo is recognised automatically and tells you whether Roblox Studio is linked.\n\nScripts that ask for input can open in their own console window instead. Commands are stored on this device only and are never synced.",
+  "screenshots": [],
+  "i18n": {
+    "nl": {
+      "name": "Commandodashboard",
+      "description": "Je commando's en .bat-bestanden als knoppen met één klik, met administratorruns en een live overzicht van hosts zoals rojo serve. Alleen voor Windows.",
+      "details": "Stop met het openen van de opdrachtprompt voor steeds dezelfde handvol commando's. Elke knop op het dashboard voert met één klik één opdrachtregel of één scriptbestand (.bat, .cmd of .ps1) uit, en de uitvoer verschijnt in een console binnen luma.\n\nAdministrator: zet een knop op uitvoeren als administrator en Windows toont zijn gebruikelijke toestemmingsvraag elke keer dat je erop drukt. De uitvoer wordt nog steeds opgevangen.\n\nHosts: markeer een knop als iets dat blijft draaien — rojo serve, npm run dev, een gameserver — en het dashboard houdt het in de gaten. Het leest de poort uit de uitvoer (of gebruikt de poort die je instelt) en toont het adres, of er verbindingen worden aangenomen en elke verbonden client. Rojo wordt automatisch herkend en laat zien of Roblox Studio gekoppeld is.\n\nScripts die om invoer vragen kunnen in een eigen consolevenster openen. Commando's worden alleen op dit apparaat bewaard en nooit gesynchroniseerd."
+    },
+    "fr": {
+      "name": "Tableau de commandes",
+      "description": "Vos commandes et fichiers .bat en boutons à un clic, avec exécution administrateur et vue en direct des hôtes comme rojo serve. Windows uniquement.",
+      "details": "Arrêtez d'ouvrir l'invite de commandes pour la même poignée de commandes. Chaque bouton du tableau exécute une ligne de commande ou un fichier script (.bat, .cmd ou .ps1) d'un seul clic, et sa sortie s'affiche dans une console directement dans luma.\n\nAdministrateur : réglez un bouton pour qu'il s'exécute en tant qu'administrateur et Windows affiche sa demande d'autorisation habituelle chaque fois que vous appuyez dessus. La sortie reste capturée.\n\nHôtes : marquez un bouton comme quelque chose qui reste actif — rojo serve, npm run dev, un serveur de jeu — et le tableau le surveille. Il lit le port dans la sortie (ou utilise celui que vous indiquez), affiche l'adresse, indique s'il accepte des connexions et liste chaque client connecté. Rojo est reconnu automatiquement et indique si Roblox Studio est relié.\n\nLes scripts qui demandent une saisie peuvent s'ouvrir dans leur propre fenêtre de console. Les commandes sont stockées uniquement sur cet appareil et ne sont jamais synchronisées."
+    },
+    "es": {
+      "name": "Panel de comandos",
+      "description": "Tus comandos y archivos .bat como botones de un clic, con ejecución como administrador y vista en vivo de hosts como rojo serve. Solo para Windows.",
+      "details": "Deja de abrir el símbolo del sistema para el mismo puñado de comandos. Cada botón del panel ejecuta una línea de comandos o un archivo de script (.bat, .cmd o .ps1) con un solo clic, y su salida aparece en una consola dentro de luma.\n\nAdministrador: configura un botón para ejecutarse como administrador y Windows mostrará su solicitud de permiso habitual cada vez que lo pulses. La salida se sigue capturando.\n\nHosts: marca un botón como algo que sigue en marcha —rojo serve, npm run dev, un servidor de juegos— y el panel lo vigila. Lee el puerto de la salida (o usa el que indiques), muestra la dirección, si acepta conexiones y cada cliente conectado. Rojo se reconoce automáticamente e indica si Roblox Studio está vinculado.\n\nLos scripts que piden datos pueden abrirse en su propia ventana de consola. Los comandos se guardan solo en este dispositivo y nunca se sincronizan."
+    },
+    "zh": {
+      "name": "命令面板",
+      "description": "把命令和 .bat 文件变成一键按钮，支持以管理员身份运行，并实时查看 rojo serve 等主机。仅限 Windows。",
+      "details": "不必再为那几条常用命令反复打开命令提示符。面板上的每个按钮都能一键运行一条命令行或一个脚本文件（.bat、.cmd 或 .ps1），输出会直接显示在 luma 内的控制台中。\n\n管理员：将按钮设为以管理员身份运行后，每次按下时 Windows 都会显示常规的授权提示。输出仍会被捕获。\n\n主机：把按钮标记为会持续运行的程序，例如 rojo serve、npm run dev 或游戏服务器，面板就会持续监视它。它会从输出中读取端口（或使用你设置的端口），并显示地址、是否接受连接以及每个已连接的客户端。Rojo 会被自动识别，并显示 Roblox Studio 是否已连接。\n\n需要输入的脚本可以改为在独立的控制台窗口中打开。命令只保存在这台设备上，绝不会同步。"
+    }
+  }
+}

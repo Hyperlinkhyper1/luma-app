@@ -65506,6 +65506,468 @@ abstract class L {
   /// In en, this message translates to:
   /// **'the decider results'**
   String get aiBenchmarkWhatDecider;
+
+  /// No description provided for @pluginNameCommandDashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Command Dashboard'**
+  String get pluginNameCommandDashboard;
+
+  /// No description provided for @cmdDashWindowsOnlyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Command Dashboard is Windows only'**
+  String get cmdDashWindowsOnlyTitle;
+
+  /// No description provided for @cmdDashWindowsOnlySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'It runs commands and .bat files through cmd.exe, so it only works on Windows for now.'**
+  String get cmdDashWindowsOnlySubtitle;
+
+  /// No description provided for @cmdDashSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 command} other{{count} commands}} · {running} running'**
+  String cmdDashSummary(int count, int running);
+
+  /// No description provided for @cmdDashAddCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Add command'**
+  String get cmdDashAddCommand;
+
+  /// No description provided for @cmdDashAddScript.
+  ///
+  /// In en, this message translates to:
+  /// **'Add .bat file'**
+  String get cmdDashAddScript;
+
+  /// No description provided for @cmdDashEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No commands yet'**
+  String get cmdDashEmptyTitle;
+
+  /// No description provided for @cmdDashEmptySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a command or a .bat file and it becomes a button you can run with one click.'**
+  String get cmdDashEmptySubtitle;
+
+  /// No description provided for @cmdDashKindCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Command'**
+  String get cmdDashKindCommand;
+
+  /// No description provided for @cmdDashKindScript.
+  ///
+  /// In en, this message translates to:
+  /// **'Script file'**
+  String get cmdDashKindScript;
+
+  /// No description provided for @cmdDashBadgeAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin'**
+  String get cmdDashBadgeAdmin;
+
+  /// No description provided for @cmdDashBadgeHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Host'**
+  String get cmdDashBadgeHost;
+
+  /// No description provided for @cmdDashBadgeWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Own window'**
+  String get cmdDashBadgeWindow;
+
+  /// No description provided for @cmdDashStatusIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Not run yet'**
+  String get cmdDashStatusIdle;
+
+  /// No description provided for @cmdDashStatusStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting…'**
+  String get cmdDashStatusStarting;
+
+  /// No description provided for @cmdDashStatusRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get cmdDashStatusRunning;
+
+  /// No description provided for @cmdDashStatusStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped'**
+  String get cmdDashStatusStopped;
+
+  /// No description provided for @cmdDashStatusFinished.
+  ///
+  /// In en, this message translates to:
+  /// **'Finished'**
+  String get cmdDashStatusFinished;
+
+  /// No description provided for @cmdDashStatusFailedToStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t start'**
+  String get cmdDashStatusFailedToStart;
+
+  /// No description provided for @cmdDashStatusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed (exit code {code})'**
+  String cmdDashStatusFailed(int code);
+
+  /// No description provided for @cmdDashRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Run'**
+  String get cmdDashRun;
+
+  /// No description provided for @cmdDashStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get cmdDashStop;
+
+  /// No description provided for @cmdDashCopyName.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (copy)'**
+  String cmdDashCopyName(String name);
+
+  /// No description provided for @cmdDashDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete \"{name}\"?'**
+  String cmdDashDeleteTitle(String name);
+
+  /// No description provided for @cmdDashDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The button is removed from the dashboard. Script files on disk are not touched.'**
+  String get cmdDashDeleteBody;
+
+  /// No description provided for @cmdDashCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cmdDashCancel;
+
+  /// No description provided for @cmdDashDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get cmdDashDelete;
+
+  /// No description provided for @cmdDashSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get cmdDashSave;
+
+  /// No description provided for @cmdDashMoreActions.
+  ///
+  /// In en, this message translates to:
+  /// **'More actions'**
+  String get cmdDashMoreActions;
+
+  /// No description provided for @cmdDashEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get cmdDashEdit;
+
+  /// No description provided for @cmdDashDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get cmdDashDuplicate;
+
+  /// No description provided for @cmdDashStartedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Started at {time}'**
+  String cmdDashStartedAt(String time);
+
+  /// No description provided for @cmdDashAdminNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs as administrator — Windows asks for permission every time, and stopping it asks once more.'**
+  String get cmdDashAdminNote;
+
+  /// No description provided for @cmdDashOwnWindowOutput.
+  ///
+  /// In en, this message translates to:
+  /// **'This command runs in its own console window, so its output shows there.'**
+  String get cmdDashOwnWindowOutput;
+
+  /// No description provided for @cmdDashNoOutput.
+  ///
+  /// In en, this message translates to:
+  /// **'No output yet.'**
+  String get cmdDashNoOutput;
+
+  /// No description provided for @cmdDashOutput.
+  ///
+  /// In en, this message translates to:
+  /// **'Output'**
+  String get cmdDashOutput;
+
+  /// No description provided for @cmdDashCopyOutput.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy output'**
+  String get cmdDashCopyOutput;
+
+  /// No description provided for @cmdDashClearOutput.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear output'**
+  String get cmdDashClearOutput;
+
+  /// No description provided for @cmdDashConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection'**
+  String get cmdDashConnection;
+
+  /// No description provided for @cmdDashHostOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Not running. Press Run to start the host.'**
+  String get cmdDashHostOffline;
+
+  /// No description provided for @cmdDashWaitingForPort.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the host to announce its port…'**
+  String get cmdDashWaitingForPort;
+
+  /// No description provided for @cmdDashAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get cmdDashAddress;
+
+  /// No description provided for @cmdDashCopyAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy address'**
+  String get cmdDashCopyAddress;
+
+  /// No description provided for @cmdDashCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get cmdDashCopied;
+
+  /// No description provided for @cmdDashOpenInBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in browser'**
+  String get cmdDashOpenInBrowser;
+
+  /// No description provided for @cmdDashChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking the connection…'**
+  String get cmdDashChecking;
+
+  /// No description provided for @cmdDashListening.
+  ///
+  /// In en, this message translates to:
+  /// **'Accepting connections'**
+  String get cmdDashListening;
+
+  /// No description provided for @cmdDashNotListening.
+  ///
+  /// In en, this message translates to:
+  /// **'Not accepting connections yet'**
+  String get cmdDashNotListening;
+
+  /// No description provided for @cmdDashRojoServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Rojo {version}'**
+  String cmdDashRojoServer(String version);
+
+  /// No description provided for @cmdDashRojoStudioConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Roblox Studio is connected'**
+  String get cmdDashRojoStudioConnected;
+
+  /// No description provided for @cmdDashRojoStudioNotConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Roblox Studio is not connected'**
+  String get cmdDashRojoStudioNotConnected;
+
+  /// No description provided for @cmdDashRojoStudioHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Roblox Studio and press Connect in the Rojo plugin.'**
+  String get cmdDashRojoStudioHint;
+
+  /// No description provided for @cmdDashClients.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No clients connected} =1{1 client connected} other{{count} clients connected}}'**
+  String cmdDashClients(int count);
+
+  /// No description provided for @cmdDashNoClients.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing is connected to this port right now.'**
+  String get cmdDashNoClients;
+
+  /// No description provided for @cmdDashEditorAddTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New command'**
+  String get cmdDashEditorAddTitle;
+
+  /// No description provided for @cmdDashEditorEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit command'**
+  String get cmdDashEditorEditTitle;
+
+  /// No description provided for @cmdDashPresets.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick start'**
+  String get cmdDashPresets;
+
+  /// No description provided for @cmdDashFieldName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get cmdDashFieldName;
+
+  /// No description provided for @cmdDashFieldCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Command line'**
+  String get cmdDashFieldCommand;
+
+  /// No description provided for @cmdDashFieldCommandHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. rojo serve'**
+  String get cmdDashFieldCommandHint;
+
+  /// No description provided for @cmdDashFieldScript.
+  ///
+  /// In en, this message translates to:
+  /// **'Script file (.bat, .cmd, .ps1)'**
+  String get cmdDashFieldScript;
+
+  /// No description provided for @cmdDashBrowse.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse'**
+  String get cmdDashBrowse;
+
+  /// No description provided for @cmdDashFieldWorkingDir.
+  ///
+  /// In en, this message translates to:
+  /// **'Run in folder (optional)'**
+  String get cmdDashFieldWorkingDir;
+
+  /// No description provided for @cmdDashFieldWorkingDirHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Script files run in their own folder unless you pick another.'**
+  String get cmdDashFieldWorkingDirHelper;
+
+  /// No description provided for @cmdDashAdminToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Run as administrator'**
+  String get cmdDashAdminToggle;
+
+  /// No description provided for @cmdDashAdminToggleHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows shows a permission prompt every run. Output is still captured.'**
+  String get cmdDashAdminToggleHelp;
+
+  /// No description provided for @cmdDashHostToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Keeps running (hosts something)'**
+  String get cmdDashHostToggle;
+
+  /// No description provided for @cmdDashHostToggleHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'For servers like rojo serve: the dashboard shows the address and who is connected.'**
+  String get cmdDashHostToggleHelp;
+
+  /// No description provided for @cmdDashFieldPort.
+  ///
+  /// In en, this message translates to:
+  /// **'Port (optional)'**
+  String get cmdDashFieldPort;
+
+  /// No description provided for @cmdDashFieldPortHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty to read it from the output.'**
+  String get cmdDashFieldPortHelper;
+
+  /// No description provided for @cmdDashOwnWindowToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in its own console window'**
+  String get cmdDashOwnWindowToggle;
+
+  /// No description provided for @cmdDashOwnWindowToggleHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'For scripts that ask for input. Output stays in that window.'**
+  String get cmdDashOwnWindowToggleHelp;
+
+  /// No description provided for @cmdDashIcon.
+  ///
+  /// In en, this message translates to:
+  /// **'Icon'**
+  String get cmdDashIcon;
+
+  /// No description provided for @cmdDashErrorName.
+  ///
+  /// In en, this message translates to:
+  /// **'Give the button a name.'**
+  String get cmdDashErrorName;
+
+  /// No description provided for @cmdDashErrorCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a command to run.'**
+  String get cmdDashErrorCommand;
+
+  /// No description provided for @cmdDashErrorScript.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a script file.'**
+  String get cmdDashErrorScript;
+
+  /// No description provided for @cmdDashErrorPort.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a port between 1 and 65535.'**
+  String get cmdDashErrorPort;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

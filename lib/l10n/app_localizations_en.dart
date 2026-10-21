@@ -39952,4 +39952,274 @@ class LEn extends L {
 
   @override
   String get aiBenchmarkWhatDecider => 'the decider results';
+
+  @override
+  String get pluginNameCommandDashboard => 'Command Dashboard';
+
+  @override
+  String get cmdDashWindowsOnlyTitle => 'Command Dashboard is Windows only';
+
+  @override
+  String get cmdDashWindowsOnlySubtitle =>
+      'It runs commands and .bat files through cmd.exe, so it only works on Windows for now.';
+
+  @override
+  String cmdDashSummary(int count, int running) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count commands',
+      one: '1 command',
+    );
+    return '$_temp0 · $running running';
+  }
+
+  @override
+  String get cmdDashAddCommand => 'Add command';
+
+  @override
+  String get cmdDashAddScript => 'Add .bat file';
+
+  @override
+  String get cmdDashEmptyTitle => 'No commands yet';
+
+  @override
+  String get cmdDashEmptySubtitle =>
+      'Add a command or a .bat file and it becomes a button you can run with one click.';
+
+  @override
+  String get cmdDashKindCommand => 'Command';
+
+  @override
+  String get cmdDashKindScript => 'Script file';
+
+  @override
+  String get cmdDashBadgeAdmin => 'Admin';
+
+  @override
+  String get cmdDashBadgeHost => 'Host';
+
+  @override
+  String get cmdDashBadgeWindow => 'Own window';
+
+  @override
+  String get cmdDashStatusIdle => 'Not run yet';
+
+  @override
+  String get cmdDashStatusStarting => 'Starting…';
+
+  @override
+  String get cmdDashStatusRunning => 'Running';
+
+  @override
+  String get cmdDashStatusStopped => 'Stopped';
+
+  @override
+  String get cmdDashStatusFinished => 'Finished';
+
+  @override
+  String get cmdDashStatusFailedToStart => 'Couldn\'t start';
+
+  @override
+  String cmdDashStatusFailed(int code) {
+    return 'Failed (exit code $code)';
+  }
+
+  @override
+  String get cmdDashRun => 'Run';
+
+  @override
+  String get cmdDashStop => 'Stop';
+
+  @override
+  String cmdDashCopyName(String name) {
+    return '$name (copy)';
+  }
+
+  @override
+  String cmdDashDeleteTitle(String name) {
+    return 'Delete \"$name\"?';
+  }
+
+  @override
+  String get cmdDashDeleteBody =>
+      'The button is removed from the dashboard. Script files on disk are not touched.';
+
+  @override
+  String get cmdDashCancel => 'Cancel';
+
+  @override
+  String get cmdDashDelete => 'Delete';
+
+  @override
+  String get cmdDashSave => 'Save';
+
+  @override
+  String get cmdDashMoreActions => 'More actions';
+
+  @override
+  String get cmdDashEdit => 'Edit';
+
+  @override
+  String get cmdDashDuplicate => 'Duplicate';
+
+  @override
+  String cmdDashStartedAt(String time) {
+    return 'Started at $time';
+  }
+
+  @override
+  String get cmdDashAdminNote =>
+      'Runs as administrator — Windows asks for permission every time, and stopping it asks once more.';
+
+  @override
+  String get cmdDashOwnWindowOutput =>
+      'This command runs in its own console window, so its output shows there.';
+
+  @override
+  String get cmdDashNoOutput => 'No output yet.';
+
+  @override
+  String get cmdDashOutput => 'Output';
+
+  @override
+  String get cmdDashCopyOutput => 'Copy output';
+
+  @override
+  String get cmdDashClearOutput => 'Clear output';
+
+  @override
+  String get cmdDashConnection => 'Connection';
+
+  @override
+  String get cmdDashHostOffline => 'Not running. Press Run to start the host.';
+
+  @override
+  String get cmdDashWaitingForPort =>
+      'Waiting for the host to announce its port…';
+
+  @override
+  String get cmdDashAddress => 'Address';
+
+  @override
+  String get cmdDashCopyAddress => 'Copy address';
+
+  @override
+  String get cmdDashCopied => 'Copied';
+
+  @override
+  String get cmdDashOpenInBrowser => 'Open in browser';
+
+  @override
+  String get cmdDashChecking => 'Checking the connection…';
+
+  @override
+  String get cmdDashListening => 'Accepting connections';
+
+  @override
+  String get cmdDashNotListening => 'Not accepting connections yet';
+
+  @override
+  String cmdDashRojoServer(String version) {
+    return 'Rojo $version';
+  }
+
+  @override
+  String get cmdDashRojoStudioConnected => 'Roblox Studio is connected';
+
+  @override
+  String get cmdDashRojoStudioNotConnected => 'Roblox Studio is not connected';
+
+  @override
+  String get cmdDashRojoStudioHint =>
+      'Open Roblox Studio and press Connect in the Rojo plugin.';
+
+  @override
+  String cmdDashClients(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count clients connected',
+      one: '1 client connected',
+      zero: 'No clients connected',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cmdDashNoClients => 'Nothing is connected to this port right now.';
+
+  @override
+  String get cmdDashEditorAddTitle => 'New command';
+
+  @override
+  String get cmdDashEditorEditTitle => 'Edit command';
+
+  @override
+  String get cmdDashPresets => 'Quick start';
+
+  @override
+  String get cmdDashFieldName => 'Name';
+
+  @override
+  String get cmdDashFieldCommand => 'Command line';
+
+  @override
+  String get cmdDashFieldCommandHint => 'e.g. rojo serve';
+
+  @override
+  String get cmdDashFieldScript => 'Script file (.bat, .cmd, .ps1)';
+
+  @override
+  String get cmdDashBrowse => 'Browse';
+
+  @override
+  String get cmdDashFieldWorkingDir => 'Run in folder (optional)';
+
+  @override
+  String get cmdDashFieldWorkingDirHelper =>
+      'Script files run in their own folder unless you pick another.';
+
+  @override
+  String get cmdDashAdminToggle => 'Run as administrator';
+
+  @override
+  String get cmdDashAdminToggleHelp =>
+      'Windows shows a permission prompt every run. Output is still captured.';
+
+  @override
+  String get cmdDashHostToggle => 'Keeps running (hosts something)';
+
+  @override
+  String get cmdDashHostToggleHelp =>
+      'For servers like rojo serve: the dashboard shows the address and who is connected.';
+
+  @override
+  String get cmdDashFieldPort => 'Port (optional)';
+
+  @override
+  String get cmdDashFieldPortHelper =>
+      'Leave empty to read it from the output.';
+
+  @override
+  String get cmdDashOwnWindowToggle => 'Open in its own console window';
+
+  @override
+  String get cmdDashOwnWindowToggleHelp =>
+      'For scripts that ask for input. Output stays in that window.';
+
+  @override
+  String get cmdDashIcon => 'Icon';
+
+  @override
+  String get cmdDashErrorName => 'Give the button a name.';
+
+  @override
+  String get cmdDashErrorCommand => 'Enter a command to run.';
+
+  @override
+  String get cmdDashErrorScript => 'Pick a script file.';
+
+  @override
+  String get cmdDashErrorPort => 'Enter a port between 1 and 65535.';
 }
