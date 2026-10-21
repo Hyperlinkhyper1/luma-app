@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>SVG World Timeline</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#05010f;font-family:Arial,Helvetica,sans-serif}
+#app{height:100%;display:flex;flex-direction:column}
+#scene{flex:1;position:relative;min-height:0;background:#05010f}
+#scene svg{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
+.hud{position:absolute;top:14px;left:16px;max-width:440px;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.9);pointer-events:none;z-index:10}
+.hud h1{margin:0 0 2px;font-size:30px;line-height:1.1}
+.hud .date{margin:0 0 6px;font-weight:bold;color:#ffd166;font-size:16px}
+.hud p{margin:0;font-size:14px;line-height:1.25}
+#controls{position:absolute;left:0;right:0;bottom:96px;display:flex;justify-content:center;gap:8px;z-index:20;pointer-events:none}
+#controls button{pointer-events:auto;background:rgba(10,6,30,.65);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:8px;padding:8px 12px;font-size:14px;cursor:pointer;backdrop-filter:blur(4px)}
+#controls button.active{background:rgba(255,209,102,.25);border-color:#ffd166}
+#timeline{position:absolute;left:0;right:0;bottom:0;height:90px;background:rgba(5,2,20,.65);border-top:1px solid rgba(255,255,255,.25);z-index:30}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="scene">
+    <svg id="mainSVG" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#ff7b00"/>
+          <stop offset="100%" stop-color="#ffb37b"/>
+        </linearGradient>
+        <linearGradient id="skyBlue" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#0a3d91"/>
+          <stop offset="100%" stop-color="#87ceeb"/>
+        </linearGradient>
+        <linearGradient id="oceanGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#0a4a8f"/>
+          <stop offset="100%" stop-color="#1e90ff"/>
+        </linearGradient>
+        <linearGradient id="landGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#2d6a4f"/>
+          <stop offset="100%" stop-color="#74c69d"/>
+        </linearGradient>
+        <linearGradient id="magmaGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#ff3d00"/>
+          <stop offset="100%" stop-color="#ff8c42"/>
+        </linearGradient>
+        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="6" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="12"/>
+        </filter>
+      </defs>
+      <rect x="-300" y="-300" width="2200" height="1600" fill="url(#skyGrad)"/>
+      <g id="oceanG"><circle cx="800" cy="450" r="370" fill="url(#oceanGrad)"/></g>
+      <g id="landG"><path d="M0,450 Q200,300 400,420 T800,400 T1200,430 T1600,380 L1600,900 L0,900 Z" fill="url(#landGrad)"/></g>
+      <g id="earthG"><circle cx="800" cy="450" r="300" fill="url(#magmaGrad)"/></g>
+      <g id="iceG"><circle cx="800" cy="450" r="370" fill="#eaf6ff" opacity="0"/></g>
+      <g id="atmosphereG"><circle cx="800" cy="450" r="340" fill="none" stroke="#7dd3fc" stroke-width="6" opacity="0.6" filter="url(#glow)"/></g>
+      <g id="cloudsG">
+        <ellipse cx="500" cy="250" rx="120" ry="30" fill="#ffffff" opacity="0.4"/>
+        <ellipse cx="1100" cy="180" rx="150" ry="35" fill="#ffffff" opacity="0.35"/>
+        <ellipse cx="800" cy="550" rx="180" ry="40" fill="#ffffff" opacity="0.25"/>
+      </g>
+      <g id="starsG" opacity="0">...</g>
+      <g id="ch0">
+        <g id="moonG"><circle cx="1150" cy="250" r="45" fill="#ddd" opacity="0.9"/></g>
+        <g id="impactG" opacity="0">...</g>
+      </g>
+      <g id="ch1">
+        <g id="oceanG2" opacity="0">...</g>
+      </g>
+      <g id="ch2">
+        <g id="microbeG">...</g>
+      </g>
+      <g id="ch3">
+        <g id="oxygenG">...</g>
+      </g>
+      <g id="ch4">
+        <g id="iceG2" opacity="0">...</g>
+      </g>
+      <g id="ch5">
+        <g id="lifeG">...</g>
+      </g>
+      <g id="ch6">
+        <g id="landLifeG">...</g>
+      </g>
+      <g id="ch7">
+        <g id="dinoG">...</g>
+      </g>
+      <g id="ch8">
+        <g id="impactG">...</g>
+      </g>
+      <g id="ch9">
+        <g id="mammalG">...</g>
+      </g>
+      <g id="ch10">
+        <g id="humanG">...</g>
+      </g>
+      <g id="ch11">
+        <g id="farmG">...</g>
+      </g>
+      <g id="ch12">
+        <g id="cityG">...</g>
+      </g>
+      <g id="ch13">
+        <g id="classicalG">...</g>
+      </g>
+      <g id="ch14">
+        <g id="medievalG">...</g>
+      </g>
+      <g id="ch15">
+        <g id="techG">...</g>
+      </g>
+      <g id="ch16">
+        <g id="industryG">...</g>
+      </g>
+      <g id="ch17">
+        <g id="twentiethG">...</g>
+      </g>
+      <g id="ch18">
+        <g id="digitalG">...</g>
+      </g>
+    </svg>
+    <div id="hud">
+      <h1 id="hudTitle">The Birth of Earth</h1>
+      <div class="date" id="hudDate">4.54 billion years ago</div>
+      <p id="hudCaption">The planet forms from swirling dust and gas.</p>
+    </div>
+    <div id="controls">
+      <button id="playBtn">Pause</button>
+      <button id="speedBtn">Speed: 1x</button>
+      <button id="restartBtn">Restart</button>
+    </div>
+  </div>
+  <svg id="timelineSVG" viewBox="0 0 1600 90" preserveAspectRatio="none">
+    <rect x="0" y="0" width="1600" height="90" fill="rgba(5,2,20,0.8)"/>
+    <line x1="0" y1="45" x2="1600" y2="45" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
+    <line id="playhead" x1="0" y1="0" x2="0" y2="90" stroke="#ffd166" stroke-width="3"/>
+    <text id="tlDate" x="800" y="28" text-anchor="middle" fill="#fff" font-size="14">4.54 billion years ago</text>
+  </svg>
+</div>
+<script>
+const chapters = [
+ {id:'earth', title:'The Birth of Earth', date:'4.54 billion years ago', caption:'The planet forms from swirling dust and gas, then a Mars-sized body called Theia strikes to form the Moon.', start:0, end:6},
+ {id:'hadean', title:'The Hadean', date:'4.54–4.0 billion years ago', caption:'The surface is molten rock; water begins to condense into the first ocean.', start:6, end:14},
+ {id:'life', title:'First Life', date:'3.7–3.5 billion years ago', caption:'Microbial mats and stromatolites slowly harness sunlight.', start:14, end:26},
+ {id:'goe', title:'Great Oxidation', date:'2.4 billion years ago', caption:'Photosynthetic microbes oxygenate the sky and sea.', start:26, end:38},
+ {id:'snowball', title:'Snowball Earth', date:'720–635 million years ago', caption:'Ice sheets expand as the climate freezes.', start:38, end:50},
+ {id:'cambrian', title:'Cambrian Explosion', date:'538 million years ago', caption:'Life diversifies rapidly into complex animal forms.', start:50, end:64},
+ {id:'land', title:'Life on Land', date:'470–375 million years ago', caption:'Plants and then animals move onto the continents.', start:64, end:80},
+ {id:'dino', title:'Age of Dinosaurs', date:'252–66 million years ago', caption:'Pangaea forms and breaks apart; dinosaurs dominate.', start:80, end:108},
+ {id:'impact', title:'Asteroid Impact', date:'66 million years ago', caption:'The Chicxulub impact wipes out the dinosaurs.', start:108, end:118},
+ {id:'mammals', title:'Rise of Mammals', date:'66–10 million years ago', caption:'Mammals rise to fill the empty world.', start:118, end:136},
+ {id:'humans', title:'Homo sapiens', date:'300,000 years ago', caption:'Our species emerges.', start:136, end:156},
+ {id:'farm', title:'Farming Begins', date:'10,000 BCE', caption:'People begin to cultivate plants and domesticate animals.', start:156, end:170},
+ {id:'civil', title:'Early Civilisations', date:'3500 BCE–2560 BCE', caption:'Mesopotamia and Egypt build cities and the Great Pyramid.', start:170, end:190},
+ {id:'classical', title:'Classical World', date:'500 BCE–500 CE', caption:'Greece, Rome, and Han China flourish.', start:190, end:210},
+ {id:'medieval', title:'Middle Ages', date:'500–1500 CE', caption:'Post-Roman world, trade and ideas.', start:210, end:230},
+ {id:'print', title:'Printing & Exploration', date:'1450–1492 CE', caption:'The press and Columbus’s voyage.', start:230, end:250},
+ {id:'industrial', title:'Industrial Revolution', date:'1760 CE', caption:'Machines, factories and steam.', start:250, end:270},
+ {id:'twentieth', title:'20th Century', date:'1903–1969 CE', caption:'Flight, world wars, Moon landing.', start:270, end:295},
+ {id:'digital', title:'Digital Age', date:'2025 CE', caption:'Computers, networks, rockets, AI.', start:295, end:300}
+];
+const TOTAL = 300;
+let playing = true, speed = 1, startTime = performance.now(), pausedAt = 0, currentTime = 0;
+let rafId = 0;
+function getTime(){ if(!playing) return pausedAt; let t = (performance.now() - startTime)/1000*speed; if(t >= TOTAL){ t = TOTAL; startTime = performance.now(); pausedAt = 0; } return t; }
+function loop(ts){ let t = getTime(); currentTime = t; update(t); rafId = requestAnimationFrame(loop); }
+function update(t){
+  let idx = 0;
+  for(let i=0;i<chapters.length;i++){ if(t>=chapters[i].start && t<=chapters[i].end){ idx=i; break; } }
+  const ch = chapters[idx];
+  document.getElementById('hudTitle').textContent = ch.title;
+  document.getElementById('hudDate').textContent = ch.date;
+  document.getElementById('hudCaption').textContent = ch.caption;
+  const ph = document.getElementById('playhead');
+  ph.setAttribute('x1', (t/TOTAL*1600).toFixed(1));
+  ph.setAttribute('x2', (t/TOTAL*1600).toFixed(1));
+  document.getElementById('tlDate').textContent = ch.date;
+}
+function setOp(id, val){ const el = document.getElementById(id); if(el) el.setAttribute('opacity', val); }
+function chapterOpacity(i, t){
+  const ch = chapters[i];
+  if(t < ch.start+1) return Math.max(0, (ch.start+1 - t)/1);
+  if(t > ch.end-1) return Math.max(0, (t - (ch.end-1))/1);
+  return 1;
+}
+function updateOpacities(t){
+  for(let i=0;i<chapters.length;i++){ setOp('ch'+i, chapterOpacity(i,t)); }
+  setOp('iceG', (currentTime>38 && currentTime<50) ? 1 : 0);
+  setOp('iceG2', (currentTime>38 && currentTime<50) ? 1 : 0);
+  setOp('microbeG', (currentTime>14 && currentTime<26) ? 1 : 0);
+  setOp('lifeG', (currentTime>50 && currentTime<80) ? 1 : 0);
+  setOp('landLifeG', (currentTime>64 && currentTime<80) ? 1 : 0);
+  setOp('dinoG', (currentTime>80 && currentTime<108) ? 1 : 0);
+  setOp('impactG', (currentTime>108 && currentTime<118) ? 1 : 0);
+  setOp('mammalG', (currentTime>118 && currentTime<136) ? 1 : 0);
+  setOp('humanG', (currentTime>136 && currentTime<156) ? 1 : 0);
+  setOp('farmG', (currentTime>156 && currentTime<170) ? 1 : 0);
+  setOp('cityG', (currentTime>170 && currentTime<190) ? 1 : 0);
+  setOp('classicalG', (currentTime>190 && currentTime<210) ? 1 : 0);
+  setOp('medievalG', (currentTime>210 && currentTime<230) ? 1 : 0);
+  setOp('techG', (currentTime>230 && currentTime<250) ? 1 : 0);
+  setOp('industryG', (currentTime>250 && currentTime<270) ? 1 : 0);
+  setOp('twentiethG', (currentTime>270 && currentTime<295) ? 1 : 0);
+  setOp('digitalG', (currentTime>295) ? 1 : 0);
+}
+function update(t){ let idx=0; for(let i=0;i<chapters.length;i++){ if(t>=chapters[i].start && t<=chapters[i].end){ idx=i; break; } } const ch=chapters[idx]; document.getElementById('hudTitle').textContent=ch.title; document.getElementById('hudDate').textContent=ch.date; document.getElementById('hudCaption').textContent=ch.caption; const ph=document.getElementById('playhead'); ph.setAttribute('x1', (t/TOTAL*1600).toFixed(1)); ph.setAttribute('x2', (t/TOTAL*1600).toFixed(1)); document.getElementById('tlDate').textContent=ch.date; for(let i=0;i<chapters.length;i++){ setOp('ch'+i, chapterOpacity(i,t)); } updateOpacities(t); }
+function restart(){ playing=true; speed=document.getElementById('speedBtn').textContent.includes('0.5')?0.5:1; startTime=performance.now(); pausedAt=0; }
+function togglePlay(){ playing=!playing; if(playing){ startTime=performance.now(); } else { pausedAt=getTime(); } document.getElementById('playBtn').textContent = playing?'Pause':'Play'; }
+function cycleSpeed(){ if(speed===1){ speed=2; document.getElementById('speedBtn').textContent='Speed: 2x'; } else if(speed===2){ speed=1; document.getElementById('speedBtn').textContent='Speed: 1x'; } else { speed=0.5; document.getElementById('speedBtn').textContent='Speed: 0.5x'; } }
+function nextChapter(){ const cur = chapters.findIndex(c=>currentTime>=c.start && currentTime<=c.end); let nxt = (cur+1)%chapters.length; pausedAt = chapters[nxt].start; playing=true; startTime=performance.now(); }
+function prevChapter(){ const cur = chapters.findIndex(c=>currentTime>=c.start && currentTime<=c.end); let prv = (cur-1+chapters.length)%chapters.length; pausedAt = chapters[prv].end; playing=true; startTime=performance.now(); }
+document.getElementById('playBtn').addEventListener('click', togglePlay);
+document.getElementById('speedBtn').addEventListener('click', cycleSpeed);
+document.getElementById('restartBtn').addEventListener('click', restart);
+document.addEventListener('keydown', (e)=>{ if(e.code==='Space'){ e.preventDefault(); togglePlay(); } if(e.key==='ArrowRight'){ nextChapter(); } if(e.key==='ArrowLeft'){ prevChapter(); } });
+rafId = requestAnimationFrame(loop);
+</script>
+</body>
+</html>
