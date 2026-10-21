@@ -17747,6 +17747,110 @@ class LEn extends L {
   String get gameToolsMafiaBlurb => 'Role counting';
 
   @override
+  String get gameToolsChatTranslatorLabel => 'Chat Translator';
+
+  @override
+  String get gameToolsChatTranslatorBlurb => 'Translate CS2 chat in an overlay';
+
+  @override
+  String get cs2TrTitle => 'CS2 Chat Translator';
+
+  @override
+  String get cs2TrSubtitle =>
+      'Translates foreign-language chat and shows it color-coded in a transparent overlay on top of the game. It only reads the console.log file CS2 writes, so it never touches the game itself and is VAC-safe.';
+
+  @override
+  String get cs2TrSetupTitle => 'One-time setup';
+
+  @override
+  String get cs2TrSetupLaunchOptions =>
+      'In Steam, add this to CS2\'s launch options:';
+
+  @override
+  String get cs2TrSetupWindowed =>
+      'Set CS2\'s display mode to Fullscreen Windowed, so the overlay can sit on top of the game.';
+
+  @override
+  String get cs2TrCopy => 'Copy';
+
+  @override
+  String get cs2TrCopied => 'Copied';
+
+  @override
+  String cs2TrLogFound(String path) {
+    return 'Found console.log: $path';
+  }
+
+  @override
+  String get cs2TrLogMissing =>
+      'CS2 wasn\'t found. Enter the path to console.log under Options.';
+
+  @override
+  String get cs2TrOptionsTitle => 'Options';
+
+  @override
+  String get cs2TrTargetLang => 'Translate into (language code)';
+
+  @override
+  String get cs2TrHideAfter => 'Hide each line after (seconds)';
+
+  @override
+  String get cs2TrMaxLines => 'Lines shown at once';
+
+  @override
+  String get cs2TrOverlayX => 'Overlay X (px)';
+
+  @override
+  String get cs2TrOverlayY => 'Overlay Y (empty = auto)';
+
+  @override
+  String get cs2TrLogPath => 'console.log path (empty = find automatically)';
+
+  @override
+  String get cs2TrShowOverlay => 'Show the overlay';
+
+  @override
+  String get cs2TrShowOverlayHint =>
+      'When off, translations only appear in the output below.';
+
+  @override
+  String get cs2TrStart => 'Start translator';
+
+  @override
+  String get cs2TrStop => 'Stop translator';
+
+  @override
+  String get cs2TrTest => 'Test with sample lines';
+
+  @override
+  String get cs2TrRunning =>
+      'Running. Drag the white dot in the overlay to move it; right-click the dot to close it.';
+
+  @override
+  String get cs2TrRunningNoOverlay =>
+      'Running without an overlay. Translations appear in the output below.';
+
+  @override
+  String cs2TrStartFailed(String error) {
+    return 'Couldn\'t start the translator: $error';
+  }
+
+  @override
+  String get cs2TrHowItWorks =>
+      'Every foreign-language message gets a \"(translated from …)\" label. Google Translate is tried first, with MyMemory as a fallback. Short Latin-script words like \"gg\" are left alone, because language detection guesses wrong on them. Translated lines are also echoed into the CS2 console.';
+
+  @override
+  String get cs2TrOutputTitle => 'Output';
+
+  @override
+  String get cs2TrOutputEmpty =>
+      'Nothing yet. Chat and translations appear here once the translator is running.';
+
+  @override
+  String get cs2TrWindowsOnly =>
+      'The chat translator needs Windows, where CS2 and its overlay run.';
+
+  @override
   String gameToolsComingSoonTitle(String game) {
     return '$game tools are coming soon';
   }

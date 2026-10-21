@@ -7,6 +7,7 @@ import '../roblox_tools/mafia/mafia_role_counter_tab.dart';
 import '../steam_tools/ui/cs2_market_tab.dart';
 import '../steam_tools/ui/cs2_selling_calculator_tab.dart';
 import '../steam_tools/ui/steam_price_tracker_tab.dart';
+import 'cs2_translator/cs2_chat_translator_tab.dart';
 import 'minecraft/mc_tool_catalog.dart';
 import 'minecraft/minecraft_tools_page.dart';
 
@@ -41,6 +42,7 @@ enum GameToolsSection {
   priceTracker(game: GameToolsGame.steam, icon: Icons.trending_down_rounded),
   cs2Market(game: GameToolsGame.steam, icon: Icons.diamond_outlined),
   sellingCalculator(game: GameToolsGame.steam, icon: Icons.calculate_outlined),
+  chatTranslator(game: GameToolsGame.steam, icon: Icons.translate_rounded),
   mafia(game: GameToolsGame.roblox, icon: Icons.theater_comedy_rounded),
   minecraft(game: GameToolsGame.minecraft, icon: Icons.widgets_rounded);
 
@@ -53,6 +55,7 @@ enum GameToolsSection {
     GameToolsSection.priceTracker => t.pluginNamePriceTracker,
     GameToolsSection.cs2Market => t.gameToolsCs2MarketLabel,
     GameToolsSection.sellingCalculator => t.gameToolsSellingCalculatorLabel,
+    GameToolsSection.chatTranslator => t.gameToolsChatTranslatorLabel,
     GameToolsSection.mafia => 'Mafia',
     GameToolsSection.minecraft => t.mcToolsCount(McTool.values.length),
   };
@@ -63,6 +66,7 @@ enum GameToolsSection {
     GameToolsSection.priceTracker => t.gameToolsPriceTrackerBlurb,
     GameToolsSection.cs2Market => t.gameToolsCs2MarketBlurb,
     GameToolsSection.sellingCalculator => t.gameToolsSellingCalculatorBlurb,
+    GameToolsSection.chatTranslator => t.gameToolsChatTranslatorBlurb,
     GameToolsSection.mafia => t.gameToolsMafiaBlurb,
     GameToolsSection.minecraft => t.gameToolsMinecraftBlurb,
   };
@@ -137,6 +141,7 @@ class _GameToolsPageState extends State<GameToolsPage> {
               GameToolsSection.cs2Market => const Cs2MarketTab(),
               GameToolsSection.sellingCalculator =>
                 const Cs2SellingCalculatorTab(),
+              GameToolsSection.chatTranslator => const Cs2ChatTranslatorTab(),
               GameToolsSection.mafia => const MafiaRoleCounterTab(),
               GameToolsSection.minecraft => const MinecraftToolsPage(),
             },

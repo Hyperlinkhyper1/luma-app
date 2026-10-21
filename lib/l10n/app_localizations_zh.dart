@@ -16885,6 +16885,102 @@ class LZh extends L {
   String get gameToolsMafiaBlurb => '角色计数';
 
   @override
+  String get gameToolsChatTranslatorLabel => '聊天翻译';
+
+  @override
+  String get gameToolsChatTranslatorBlurb => '在覆盖层中翻译 CS2 聊天';
+
+  @override
+  String get cs2TrTitle => 'CS2 聊天翻译';
+
+  @override
+  String get cs2TrSubtitle =>
+      '翻译外语聊天，并在游戏上方的透明覆盖层中按颜色显示。它只读取 CS2 写入的 console.log 文件，从不触碰游戏本身，因此不会触发 VAC。';
+
+  @override
+  String get cs2TrSetupTitle => '一次性设置';
+
+  @override
+  String get cs2TrSetupLaunchOptions => '在 Steam 中，将以下内容添加到 CS2 的启动选项：';
+
+  @override
+  String get cs2TrSetupWindowed => '将 CS2 的显示模式设为全屏窗口化，这样覆盖层才能显示在游戏上方。';
+
+  @override
+  String get cs2TrCopy => '复制';
+
+  @override
+  String get cs2TrCopied => '已复制';
+
+  @override
+  String cs2TrLogFound(String path) {
+    return '已找到 console.log：$path';
+  }
+
+  @override
+  String get cs2TrLogMissing => '未找到 CS2。请在“选项”中填写 console.log 的路径。';
+
+  @override
+  String get cs2TrOptionsTitle => '选项';
+
+  @override
+  String get cs2TrTargetLang => '翻译为（语言代码）';
+
+  @override
+  String get cs2TrHideAfter => '每行隐藏时间（秒）';
+
+  @override
+  String get cs2TrMaxLines => '同时显示的行数';
+
+  @override
+  String get cs2TrOverlayX => '覆盖层 X（像素）';
+
+  @override
+  String get cs2TrOverlayY => '覆盖层 Y（留空 = 自动）';
+
+  @override
+  String get cs2TrLogPath => 'console.log 路径（留空 = 自动查找）';
+
+  @override
+  String get cs2TrShowOverlay => '显示覆盖层';
+
+  @override
+  String get cs2TrShowOverlayHint => '关闭后，翻译只显示在下方的输出中。';
+
+  @override
+  String get cs2TrStart => '启动翻译';
+
+  @override
+  String get cs2TrStop => '停止翻译';
+
+  @override
+  String get cs2TrTest => '用示例行测试';
+
+  @override
+  String get cs2TrRunning => '运行中。拖动覆盖层中的白点可移动它；右键单击白点可关闭。';
+
+  @override
+  String get cs2TrRunningNoOverlay => '正在无覆盖层运行。翻译显示在下方的输出中。';
+
+  @override
+  String cs2TrStartFailed(String error) {
+    return '无法启动翻译：$error';
+  }
+
+  @override
+  String get cs2TrHowItWorks =>
+      '每条外语消息都会带上“(translated from …)”标签。优先使用 Google 翻译，失败时改用 MyMemory。像“gg”这样的短拉丁字母词会被跳过，因为语言检测常会误判。翻译后的行也会回显到 CS2 控制台。';
+
+  @override
+  String get cs2TrOutputTitle => '输出';
+
+  @override
+  String get cs2TrOutputEmpty => '暂无内容。翻译运行后，聊天和翻译会显示在这里。';
+
+  @override
+  String get cs2TrWindowsOnly => '聊天翻译需要 Windows，CS2 及其覆盖层在该系统上运行。';
+
+  @override
   String gameToolsComingSoonTitle(String game) {
     return '$game 工具即将推出';
   }

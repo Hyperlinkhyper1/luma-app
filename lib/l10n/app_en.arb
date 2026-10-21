@@ -11039,6 +11039,50 @@
   "gameToolsSellingCalculatorLabel": "Selling Calculator",
   "gameToolsSellingCalculatorBlurb": "Estimate CS2 sale proceeds",
   "gameToolsMafiaBlurb": "Role counting",
+  "gameToolsChatTranslatorLabel": "Chat Translator",
+  "gameToolsChatTranslatorBlurb": "Translate CS2 chat in an overlay",
+  "cs2TrTitle": "CS2 Chat Translator",
+  "cs2TrSubtitle": "Translates foreign-language chat and shows it color-coded in a transparent overlay on top of the game. It only reads the console.log file CS2 writes, so it never touches the game itself and is VAC-safe.",
+  "cs2TrSetupTitle": "One-time setup",
+  "cs2TrSetupLaunchOptions": "In Steam, add this to CS2's launch options:",
+  "cs2TrSetupWindowed": "Set CS2's display mode to Fullscreen Windowed, so the overlay can sit on top of the game.",
+  "cs2TrCopy": "Copy",
+  "cs2TrCopied": "Copied",
+  "cs2TrLogFound": "Found console.log: {path}",
+  "@cs2TrLogFound": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "cs2TrLogMissing": "CS2 wasn't found. Enter the path to console.log under Options.",
+  "cs2TrOptionsTitle": "Options",
+  "cs2TrTargetLang": "Translate into (language code)",
+  "cs2TrHideAfter": "Hide each line after (seconds)",
+  "cs2TrMaxLines": "Lines shown at once",
+  "cs2TrOverlayX": "Overlay X (px)",
+  "cs2TrOverlayY": "Overlay Y (empty = auto)",
+  "cs2TrLogPath": "console.log path (empty = find automatically)",
+  "cs2TrShowOverlay": "Show the overlay",
+  "cs2TrShowOverlayHint": "When off, translations only appear in the output below.",
+  "cs2TrStart": "Start translator",
+  "cs2TrStop": "Stop translator",
+  "cs2TrTest": "Test with sample lines",
+  "cs2TrRunning": "Running. Drag the white dot in the overlay to move it; right-click the dot to close it.",
+  "cs2TrRunningNoOverlay": "Running without an overlay. Translations appear in the output below.",
+  "cs2TrStartFailed": "Couldn't start the translator: {error}",
+  "@cs2TrStartFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "cs2TrHowItWorks": "Every foreign-language message gets a \"(translated from …)\" label. Google Translate is tried first, with MyMemory as a fallback. Short Latin-script words like \"gg\" are left alone, because language detection guesses wrong on them. Translated lines are also echoed into the CS2 console.",
+  "cs2TrOutputTitle": "Output",
+  "cs2TrOutputEmpty": "Nothing yet. Chat and translations appear here once the translator is running.",
+  "cs2TrWindowsOnly": "The chat translator needs Windows, where CS2 and its overlay run.",
   "gameToolsComingSoonTitle": "{game} tools are coming soon",
   "@gameToolsComingSoonTitle": {
     "placeholders": {

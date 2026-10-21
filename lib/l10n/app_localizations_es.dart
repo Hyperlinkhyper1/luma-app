@@ -17895,6 +17895,112 @@ class LEs extends L {
   String get gameToolsMafiaBlurb => 'Recuento de roles';
 
   @override
+  String get gameToolsChatTranslatorLabel => 'Traductor de chat';
+
+  @override
+  String get gameToolsChatTranslatorBlurb =>
+      'Chat de CS2 traducido en superposición';
+
+  @override
+  String get cs2TrTitle => 'Traductor de chat de CS2';
+
+  @override
+  String get cs2TrSubtitle =>
+      'Traduce el chat en otros idiomas y lo muestra con colores en una superposición transparente sobre el juego. Solo lee el archivo console.log que escribe CS2, así que nunca toca el juego y es seguro frente a VAC.';
+
+  @override
+  String get cs2TrSetupTitle => 'Configuración inicial';
+
+  @override
+  String get cs2TrSetupLaunchOptions =>
+      'En Steam, añade esto a las opciones de lanzamiento de CS2:';
+
+  @override
+  String get cs2TrSetupWindowed =>
+      'Pon el modo de pantalla de CS2 en Pantalla completa en ventana para que la superposición quede encima del juego.';
+
+  @override
+  String get cs2TrCopy => 'Copiar';
+
+  @override
+  String get cs2TrCopied => 'Copiado';
+
+  @override
+  String cs2TrLogFound(String path) {
+    return 'console.log encontrado: $path';
+  }
+
+  @override
+  String get cs2TrLogMissing =>
+      'No se encontró CS2. Indica la ruta de console.log en Opciones.';
+
+  @override
+  String get cs2TrOptionsTitle => 'Opciones';
+
+  @override
+  String get cs2TrTargetLang => 'Traducir a (código de idioma)';
+
+  @override
+  String get cs2TrHideAfter => 'Ocultar cada línea tras (segundos)';
+
+  @override
+  String get cs2TrMaxLines => 'Líneas visibles a la vez';
+
+  @override
+  String get cs2TrOverlayX => 'Superposición X (px)';
+
+  @override
+  String get cs2TrOverlayY => 'Superposición Y (vacío = auto)';
+
+  @override
+  String get cs2TrLogPath =>
+      'Ruta de console.log (vacío = buscar automáticamente)';
+
+  @override
+  String get cs2TrShowOverlay => 'Mostrar la superposición';
+
+  @override
+  String get cs2TrShowOverlayHint =>
+      'Desactivada, las traducciones solo aparecen en la salida de abajo.';
+
+  @override
+  String get cs2TrStart => 'Iniciar traductor';
+
+  @override
+  String get cs2TrStop => 'Detener traductor';
+
+  @override
+  String get cs2TrTest => 'Probar con líneas de ejemplo';
+
+  @override
+  String get cs2TrRunning =>
+      'En marcha. Arrastra el punto blanco de la superposición para moverla; haz clic derecho en el punto para cerrarla.';
+
+  @override
+  String get cs2TrRunningNoOverlay =>
+      'En marcha sin superposición. Las traducciones aparecen en la salida de abajo.';
+
+  @override
+  String cs2TrStartFailed(String error) {
+    return 'No se pudo iniciar el traductor: $error';
+  }
+
+  @override
+  String get cs2TrHowItWorks =>
+      'Cada mensaje en otro idioma lleva la etiqueta \"(translated from …)\". Primero se prueba Google Translate y, si falla, MyMemory. Las palabras cortas en alfabeto latino como \"gg\" se omiten, porque la detección de idioma suele fallar con ellas. Las líneas traducidas también se envían a la consola de CS2.';
+
+  @override
+  String get cs2TrOutputTitle => 'Salida';
+
+  @override
+  String get cs2TrOutputEmpty =>
+      'Nada todavía. El chat y las traducciones aparecen aquí cuando el traductor está en marcha.';
+
+  @override
+  String get cs2TrWindowsOnly =>
+      'El traductor de chat necesita Windows, donde funcionan CS2 y su superposición.';
+
+  @override
   String gameToolsComingSoonTitle(String game) {
     return 'Las herramientas de $game llegarán pronto';
   }

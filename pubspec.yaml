@@ -162,6 +162,7 @@ flutter:
     - assets/security/
     - assets/world/
     - assets/device_health/
+    - assets/cs2_translator/
     - assets/airline_tycoon/
     - assets/airline_tycoon/scene/
     - assets/airline_tycoon/scene/vendor/

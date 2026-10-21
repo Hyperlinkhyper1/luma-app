@@ -64,7 +64,8 @@ void main() {
         for (final q in questions.values) {
           expect(q['type'], 'noul');
           expect(q['instructions'], isA<String>());
-          expect(q['criteria'], isA<String>());
+          expect((q['criteria'] as Map).keys, ['true', 'false']);
+          expect((q['criteria'] as Map).values, everyElement(isA<String>()));
         }
         final answers = {
           for (final e in questions.entries) e.key: {'noul': 0.1},

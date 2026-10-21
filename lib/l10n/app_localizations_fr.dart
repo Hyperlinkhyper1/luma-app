@@ -17944,6 +17944,112 @@ class LFr extends L {
   String get gameToolsMafiaBlurb => 'Comptage des rôles';
 
   @override
+  String get gameToolsChatTranslatorLabel => 'Traducteur de chat';
+
+  @override
+  String get gameToolsChatTranslatorBlurb =>
+      'Chat CS2 traduit en surimpression';
+
+  @override
+  String get cs2TrTitle => 'Traducteur de chat CS2';
+
+  @override
+  String get cs2TrSubtitle =>
+      'Traduit le chat en langue étrangère et l\'affiche en couleur dans une surimpression transparente au-dessus du jeu. Il lit seulement le fichier console.log écrit par CS2 : il ne touche jamais au jeu et reste sans risque pour VAC.';
+
+  @override
+  String get cs2TrSetupTitle => 'Configuration unique';
+
+  @override
+  String get cs2TrSetupLaunchOptions =>
+      'Dans Steam, ajoutez ceci aux options de lancement de CS2 :';
+
+  @override
+  String get cs2TrSetupWindowed =>
+      'Réglez le mode d\'affichage de CS2 sur Plein écran fenêtré, pour que la surimpression reste au-dessus du jeu.';
+
+  @override
+  String get cs2TrCopy => 'Copier';
+
+  @override
+  String get cs2TrCopied => 'Copié';
+
+  @override
+  String cs2TrLogFound(String path) {
+    return 'console.log trouvé : $path';
+  }
+
+  @override
+  String get cs2TrLogMissing =>
+      'CS2 est introuvable. Indiquez le chemin de console.log dans les Options.';
+
+  @override
+  String get cs2TrOptionsTitle => 'Options';
+
+  @override
+  String get cs2TrTargetLang => 'Traduire en (code de langue)';
+
+  @override
+  String get cs2TrHideAfter => 'Masquer chaque ligne après (secondes)';
+
+  @override
+  String get cs2TrMaxLines => 'Lignes affichées à la fois';
+
+  @override
+  String get cs2TrOverlayX => 'Surimpression X (px)';
+
+  @override
+  String get cs2TrOverlayY => 'Surimpression Y (vide = auto)';
+
+  @override
+  String get cs2TrLogPath =>
+      'Chemin de console.log (vide = recherche automatique)';
+
+  @override
+  String get cs2TrShowOverlay => 'Afficher la surimpression';
+
+  @override
+  String get cs2TrShowOverlayHint =>
+      'Désactivée, les traductions apparaissent seulement dans la sortie ci-dessous.';
+
+  @override
+  String get cs2TrStart => 'Démarrer le traducteur';
+
+  @override
+  String get cs2TrStop => 'Arrêter le traducteur';
+
+  @override
+  String get cs2TrTest => 'Tester avec des exemples';
+
+  @override
+  String get cs2TrRunning =>
+      'En cours. Faites glisser le point blanc de la surimpression pour la déplacer ; clic droit sur le point pour la fermer.';
+
+  @override
+  String get cs2TrRunningNoOverlay =>
+      'En cours sans surimpression. Les traductions apparaissent dans la sortie ci-dessous.';
+
+  @override
+  String cs2TrStartFailed(String error) {
+    return 'Impossible de démarrer le traducteur : $error';
+  }
+
+  @override
+  String get cs2TrHowItWorks =>
+      'Chaque message en langue étrangère reçoit une mention « (translated from …) ». Google Traduction est essayé en premier, avec MyMemory en secours. Les mots courts en alphabet latin comme « gg » sont ignorés, car la détection de langue s\'y trompe. Les lignes traduites sont aussi renvoyées dans la console de CS2.';
+
+  @override
+  String get cs2TrOutputTitle => 'Sortie';
+
+  @override
+  String get cs2TrOutputEmpty =>
+      'Rien pour le moment. Le chat et les traductions apparaissent ici une fois le traducteur lancé.';
+
+  @override
+  String get cs2TrWindowsOnly =>
+      'Le traducteur de chat nécessite Windows, où tournent CS2 et sa surimpression.';
+
+  @override
   String gameToolsComingSoonTitle(String game) {
     return 'Les outils $game arrivent bientôt';
   }

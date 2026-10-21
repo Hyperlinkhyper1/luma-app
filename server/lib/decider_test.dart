@@ -164,32 +164,39 @@ class DeciderQuestion {
 
   /// The yes/no questions standing in for this one on a model that takes
   /// nothing else: one per option or level, each asking whether that
-  /// option is the answer, with plain-string instructions and criteria.
+  /// option is the answer, with string instructions and a string for each of true and false.
   Map<String, Map<String, dynamic>> toNoulRequests() => switch (type) {
         'choice' => {
             for (final e in (criteria as Map).entries)
               '${name}__${e.key}': _noul(
                   '$instructions\n\nIs "${e.key}" the action that applies? '
                       'Answer yes only for this one action.',
-                  '${e.key}: ${e.value}'),
+                  '${e.key}: ${e.value}',
+                  'A different action applies.'),
           },
         'score' => {
             for (var i = 0; i < (criteria as List).length; i++)
               '${name}__$i': _noul(
                   '$instructions\n\nIs level $i the one that applies? '
                       'Answer yes only for this one level.',
-                  'Level $i: ${(criteria as List)[i]}'),
+                  'Level $i: ${(criteria as List)[i]}',
+                  'A different level applies.'),
           },
         _ => {
             name: _noul(
                 instructions,
-                'Answer yes when the question above is true for the content, '
-                'no when it is false.'),
+                'The statement in the question is true for the content.',
+                'The statement in the question is false for the content.'),
           },
       };
 
-  static Map<String, dynamic> _noul(String instructions, String criteria) =>
-      {'type': 'noul', 'instructions': instructions, 'criteria': criteria};
+  static Map<String, dynamic> _noul(
+          String instructions, String yes, String no) =>
+      {
+        'type': 'noul',
+        'instructions': instructions,
+        'criteria': {'true': yes, 'false': no},
+      };
 
   /// This question's answer rebuilt from the yes/no [answers] of
   /// [toNoulRequests]; null when the model left any of them out.

@@ -29079,6 +29079,186 @@ abstract class L {
   /// **'Role counting'**
   String get gameToolsMafiaBlurb;
 
+  /// No description provided for @gameToolsChatTranslatorLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat Translator'**
+  String get gameToolsChatTranslatorLabel;
+
+  /// No description provided for @gameToolsChatTranslatorBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate CS2 chat in an overlay'**
+  String get gameToolsChatTranslatorBlurb;
+
+  /// No description provided for @cs2TrTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'CS2 Chat Translator'**
+  String get cs2TrTitle;
+
+  /// No description provided for @cs2TrSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Translates foreign-language chat and shows it color-coded in a transparent overlay on top of the game. It only reads the console.log file CS2 writes, so it never touches the game itself and is VAC-safe.'**
+  String get cs2TrSubtitle;
+
+  /// No description provided for @cs2TrSetupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'One-time setup'**
+  String get cs2TrSetupTitle;
+
+  /// No description provided for @cs2TrSetupLaunchOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'In Steam, add this to CS2\'s launch options:'**
+  String get cs2TrSetupLaunchOptions;
+
+  /// No description provided for @cs2TrSetupWindowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Set CS2\'s display mode to Fullscreen Windowed, so the overlay can sit on top of the game.'**
+  String get cs2TrSetupWindowed;
+
+  /// No description provided for @cs2TrCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get cs2TrCopy;
+
+  /// No description provided for @cs2TrCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get cs2TrCopied;
+
+  /// No description provided for @cs2TrLogFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Found console.log: {path}'**
+  String cs2TrLogFound(String path);
+
+  /// No description provided for @cs2TrLogMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'CS2 wasn\'t found. Enter the path to console.log under Options.'**
+  String get cs2TrLogMissing;
+
+  /// No description provided for @cs2TrOptionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Options'**
+  String get cs2TrOptionsTitle;
+
+  /// No description provided for @cs2TrTargetLang.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate into (language code)'**
+  String get cs2TrTargetLang;
+
+  /// No description provided for @cs2TrHideAfter.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide each line after (seconds)'**
+  String get cs2TrHideAfter;
+
+  /// No description provided for @cs2TrMaxLines.
+  ///
+  /// In en, this message translates to:
+  /// **'Lines shown at once'**
+  String get cs2TrMaxLines;
+
+  /// No description provided for @cs2TrOverlayX.
+  ///
+  /// In en, this message translates to:
+  /// **'Overlay X (px)'**
+  String get cs2TrOverlayX;
+
+  /// No description provided for @cs2TrOverlayY.
+  ///
+  /// In en, this message translates to:
+  /// **'Overlay Y (empty = auto)'**
+  String get cs2TrOverlayY;
+
+  /// No description provided for @cs2TrLogPath.
+  ///
+  /// In en, this message translates to:
+  /// **'console.log path (empty = find automatically)'**
+  String get cs2TrLogPath;
+
+  /// No description provided for @cs2TrShowOverlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the overlay'**
+  String get cs2TrShowOverlay;
+
+  /// No description provided for @cs2TrShowOverlayHint.
+  ///
+  /// In en, this message translates to:
+  /// **'When off, translations only appear in the output below.'**
+  String get cs2TrShowOverlayHint;
+
+  /// No description provided for @cs2TrStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start translator'**
+  String get cs2TrStart;
+
+  /// No description provided for @cs2TrStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop translator'**
+  String get cs2TrStop;
+
+  /// No description provided for @cs2TrTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Test with sample lines'**
+  String get cs2TrTest;
+
+  /// No description provided for @cs2TrRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running. Drag the white dot in the overlay to move it; right-click the dot to close it.'**
+  String get cs2TrRunning;
+
+  /// No description provided for @cs2TrRunningNoOverlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Running without an overlay. Translations appear in the output below.'**
+  String get cs2TrRunningNoOverlay;
+
+  /// No description provided for @cs2TrStartFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t start the translator: {error}'**
+  String cs2TrStartFailed(String error);
+
+  /// No description provided for @cs2TrHowItWorks.
+  ///
+  /// In en, this message translates to:
+  /// **'Every foreign-language message gets a \"(translated from …)\" label. Google Translate is tried first, with MyMemory as a fallback. Short Latin-script words like \"gg\" are left alone, because language detection guesses wrong on them. Translated lines are also echoed into the CS2 console.'**
+  String get cs2TrHowItWorks;
+
+  /// No description provided for @cs2TrOutputTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Output'**
+  String get cs2TrOutputTitle;
+
+  /// No description provided for @cs2TrOutputEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing yet. Chat and translations appear here once the translator is running.'**
+  String get cs2TrOutputEmpty;
+
+  /// No description provided for @cs2TrWindowsOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'The chat translator needs Windows, where CS2 and its overlay run.'**
+  String get cs2TrWindowsOnly;
+
   /// No description provided for @gameToolsComingSoonTitle.
   ///
   /// In en, this message translates to:

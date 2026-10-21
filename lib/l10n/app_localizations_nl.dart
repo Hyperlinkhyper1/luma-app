@@ -17875,6 +17875,110 @@ class LNl extends L {
   String get gameToolsMafiaBlurb => 'Rollen tellen';
 
   @override
+  String get gameToolsChatTranslatorLabel => 'Chatvertaler';
+
+  @override
+  String get gameToolsChatTranslatorBlurb => 'CS2-chat vertaald in een overlay';
+
+  @override
+  String get cs2TrTitle => 'CS2-chatvertaler';
+
+  @override
+  String get cs2TrSubtitle =>
+      'Vertaalt chat in andere talen en toont die in kleur in een transparante overlay boven de game. Het leest alleen het console.log-bestand dat CS2 schrijft, raakt de game zelf nooit aan en is dus VAC-veilig.';
+
+  @override
+  String get cs2TrSetupTitle => 'Eenmalige instelling';
+
+  @override
+  String get cs2TrSetupLaunchOptions =>
+      'Voeg dit in Steam toe aan de startopties van CS2:';
+
+  @override
+  String get cs2TrSetupWindowed =>
+      'Zet de weergavemodus van CS2 op Volledig scherm in venster, zodat de overlay boven de game kan staan.';
+
+  @override
+  String get cs2TrCopy => 'Kopiëren';
+
+  @override
+  String get cs2TrCopied => 'Gekopieerd';
+
+  @override
+  String cs2TrLogFound(String path) {
+    return 'console.log gevonden: $path';
+  }
+
+  @override
+  String get cs2TrLogMissing =>
+      'CS2 is niet gevonden. Vul onder Opties het pad naar console.log in.';
+
+  @override
+  String get cs2TrOptionsTitle => 'Opties';
+
+  @override
+  String get cs2TrTargetLang => 'Vertalen naar (taalcode)';
+
+  @override
+  String get cs2TrHideAfter => 'Elke regel verbergen na (seconden)';
+
+  @override
+  String get cs2TrMaxLines => 'Regels tegelijk zichtbaar';
+
+  @override
+  String get cs2TrOverlayX => 'Overlay X (px)';
+
+  @override
+  String get cs2TrOverlayY => 'Overlay Y (leeg = automatisch)';
+
+  @override
+  String get cs2TrLogPath => 'Pad naar console.log (leeg = automatisch zoeken)';
+
+  @override
+  String get cs2TrShowOverlay => 'Overlay tonen';
+
+  @override
+  String get cs2TrShowOverlayHint =>
+      'Uit: vertalingen verschijnen alleen in de uitvoer hieronder.';
+
+  @override
+  String get cs2TrStart => 'Vertaler starten';
+
+  @override
+  String get cs2TrStop => 'Vertaler stoppen';
+
+  @override
+  String get cs2TrTest => 'Testen met voorbeeldregels';
+
+  @override
+  String get cs2TrRunning =>
+      'Actief. Sleep de witte stip in de overlay om hem te verplaatsen; klik met rechts op de stip om hem te sluiten.';
+
+  @override
+  String get cs2TrRunningNoOverlay =>
+      'Actief zonder overlay. Vertalingen verschijnen in de uitvoer hieronder.';
+
+  @override
+  String cs2TrStartFailed(String error) {
+    return 'Kon de vertaler niet starten: $error';
+  }
+
+  @override
+  String get cs2TrHowItWorks =>
+      'Elk bericht in een andere taal krijgt een label \"(translated from …)\". Eerst wordt Google Translate geprobeerd, met MyMemory als terugval. Korte woorden in Latijns schrift zoals \"gg\" worden overgeslagen, omdat taaldetectie daar vaak naast zit. Vertaalde regels worden ook in de CS2-console gezet.';
+
+  @override
+  String get cs2TrOutputTitle => 'Uitvoer';
+
+  @override
+  String get cs2TrOutputEmpty =>
+      'Nog niets. Chat en vertalingen verschijnen hier zodra de vertaler draait.';
+
+  @override
+  String get cs2TrWindowsOnly =>
+      'De chatvertaler werkt alleen op Windows, waar CS2 en de overlay draaien.';
+
+  @override
   String gameToolsComingSoonTitle(String game) {
     return '$game-hulpmiddelen komen eraan';
   }
