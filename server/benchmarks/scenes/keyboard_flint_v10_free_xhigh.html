@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mechanical Keyboard 3D</title>
+<style>
+  html, body { margin:0; padding:0; height:100%; overflow:hidden; background:#0b0d10; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; }
+  #app { position:fixed; top:0; left:0; width:100%; height:100%; }
+  #app canvas { display:block; width:100%; height:100%; }
+  #ui { position:fixed; top:12px; left:12px; right:12px; display:flex; justify-content:space-between; align-items:flex-start; pointer-events:none; z-index:20; }
+  button { pointer-events:auto; background:rgba(20,24,30,0.8); color:#e8edf2; border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:10px 16px; font-size:14px; cursor:pointer; backdrop-filter: blur(6px); transition: all 0.2s ease; }
+  button:hover { background:rgba(40,50,62,0.9); transform: translateY(-1px); }
+  button:active { transform: translateY(0); }
+  #hint { position:fixed; bottom:22px; left:50%; transform:translateX(-50%); color:rgba(255,255,255,0.65); font-size:13px; background:rgba(10,12,16,0.6); padding:8px 14px; border-radius:20px; pointer-events:none; z-index:20; border:1px solid rgba(255,255,255,0.08); }
+  #soundHint { position:fixed; bottom:70px; left:50%; transform:translateX(-50%); color:#0b0d10; background:#e8edf2; padding:10px 18px; border-radius:24px; font-size:14px; font-weight:600; pointer-events:none; z-index:21; display:none; }
+  #soundHint.show { display:block; }
+  @media (prefers-reduced-motion: reduce) {
+    #hint { display:none; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="ui">
+  <button id="replayBtn">Replay Assembly</button>
+  <button id="muteBtn">Mute</button>
+</div>
+<div id="hint">Click a key to press it</div>
+<div id="soundHint">Click to enable sound</div>
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<script>
+const app = document.getElementById('app');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b0d10);
+scene.fog = new THREE.Fog(0x0b0d10, 12, 30);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(1.1, -2.2, 1.9);
+const cameraTarget = new THREE.Vector3(0, 2.6, 0.4);
+camera.lookAt(cameraTarget);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+app.appendChild(renderer.domElement);
+
+const ambient = new THREE.AmbientLight(0x404060);
+scene.add(ambient);
+const dir = new THREE.DirectionalLight(0xffffff, 1.2);
+dir.position.set(2, 4, 6);
+scene.add(dir);
+const dir2 = new THREE.DirectionalLight(0x4488ff, 0.6);
+dir2.position.set(-3, -2, 3);
+scene.add(dir2);
+
+const keyboardRoot = new THREE.Group();
+scene.add(keyboardRoot);
+
+const pcbGroup = new THREE.Group();
+const foamGroup = new THREE.Group();
+const plateGroup = new THREE.Group();
+keyboardRoot.add(pcbGroup, foamGroup, plateGroup);
+
+const pcbMat = new THREE.MeshStandardMaterial({ color: 0x1a3d2b, roughness: 0.55, metalness: 0.25 });
+const foamMat = new THREE.MeshStandardMaterial({ color: 0x101014, roughness: 0.95, metalness: 0.05 });
+const plateMat = new THREE.MeshStandardMaterial({ color: 0x8a8f98, roughness: 0.25, metalness: 0.85 });
+const switchMat = new THREE.MeshStandardMaterial({ color: 0x1e2126, roughness: 0.35, metalness: 0.7 });
+const keyMat = new THREE.MeshStandardMaterial({ color: 0x2c2f36, roughness: 0.5, metalness: 0.2 });
+const accentMat = new THREE.MeshStandardMaterial({ color: 0x00a8ff, roughness: 0.35, metalness: 0.4 });
+
+function addBox(parent, geo, mat, x, y, z) {
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(x, y, z);
+  parent.add(mesh);
+  return mesh;
+}
+
+// PCB, foam, plate
+addBox(pcbGroup, new THREE.BoxGeometry(16, 6, 0.2), pcbMat, 0, 2.8, 0);
+addBox(foamGroup, new THREE.BoxGeometry(15.5, 5.5, 0.15), foamMat, 0, 2.8, 0);
+addBox(plateGroup, new THREE.BoxGeometry(16.2, 5.8, 0.15), plateMat, 0, 2.8, 0);
+
+// Layout rows: front to back
+const rows = [
+  { y: 0.0, keys: [
+    { code:'ControlLeft', label:'Ctrl', width:1.25, type:'modifier' },
+    { code:'MetaLeft', label:'Win', width:1.25, type:'modifier' },
+    { code:'AltLeft', label:'Alt', width:1.25, type:'modifier' },
+    { code:'Space', label:'Space', width:6.25, type:'space' },
+    { code:'AltRight', label:'Alt', width:1.25, type:'modifier' },
+    { code:'MetaRight', label:'Win', width:1.25, type:'modifier' },
+    { code:'ContextMenu', label:'Menu', width:1.25, type:'modifier' },
+    { code:'ControlRight', label:'Ctrl', width:1.25, type:'modifier' }
+  ]},
+  { y: 1.2, keys: [
+    { code:'ShiftLeft', label:'Shift', width:2.25, type:'shift' },
+    { code:'KeyZ', label:'Z', width:1, type:'key' },
+    { code:'KeyX', label:'X', width:1, type:'key' },
+    { code:'KeyC', label:'C', width:1, type:'key' },
+    { code:'KeyV', label:'V', width:1, type:'key' },
+    { code:'KeyB', label:'B', width:1, type:'key' },
+    { code:'KeyN', label:'N', width:1, type:'key' },
+    { code:'KeyM', label:'M', width:1, type:'key' },
+    { code:'Comma', label:',', width:1, type:'key' },
+    { code:'Period', label:'.', width:1, type:'key' },
+    { code:'Slash', label:'/', width:1, type:'key' },
+    { code:'ShiftRight', label:'Shift', width:2.25, type:'shift' }
+  ]},
+  { y: 2.4, keys: [
+    { code:'CapsLock', label:'Caps', width:1.75, type:'modifier' },
+    { code:'KeyA', label:'A', width:1, type:'key' },
+    { code:'KeyS', label:'S', width:1, type:'key' },
+    { code:'KeyD', label:'D', width:1, type:'key' },
+    { code:'KeyF', label:'F', width:1, type:'key' },
+    { code:'KeyG', label:'G', width:1, type:'key' },
+    { code:'KeyH', label:'H', width:1, type:'key' },
+    { code:'KeyJ', label:'J', width:1, type:'key' },
+    { code:'KeyK', label:'K', width:1, type:'key' },
+    { code:'KeyL', label:'L', width:1, type:'key' },
+    { code:'Semicolon', label:';', width:1, type:'key' },
+    { code:'Quote', label:'\'', width:1, type:'key' },
+    { code:'Enter', label:'Enter', width:2.25, type:'enter' }
+  ]},
+  { y: 3.6, keys: [
+    { code:'Tab', label:'Tab', width:1.5, type:'modifier' },
+    { code:'KeyQ', label:'Q', width:1, type:'key' },
+    { code:'KeyW', label:'W', width:1, type:'key' },
+    { code:'KeyE', label:'E', width:1, type:'key' },
+    { code:'KeyR', label:'R', width:1, type:'key' },
+    { code:'KeyT', label:'T', width:1, type:'key' },
+    { code:'KeyY', label:'Y', width:1, type:'key' },
+    { code:'KeyU', label:'U', width:1, type:'key' },
+    { code:'KeyI', label:'I', width:1, type:'key' },
+    { code:'KeyO', label:'O', width:1, type:'key' },
+    { code:'KeyP', label:'P', width:1, type:'key' },
+    { code:'BracketLeft', label:'[', width:1, type:'key' },
+    { code:'BracketRight', label:']', width:1, type:'key' },
+    { code:'Backslash', label:'\\', width:1.5, type:'key' }
+  ]},
+  { y: 4.8, keys: [
+    { code:'Backquote', label:'`', width:1, type:'key' },
+    { code:'Digit1', label:'1', width:1, type:'key' },
+    { code:'Digit2', label:'2', width:1, type:'key' },
+    { code:'Digit3', label:'3', width:1, type:'key' },
+    { code:'Digit4', label:'4', width:1, type:'key' },
+    { code:'Digit5', label:'5', width:1, type:'key' },
+    { code:'Digit6', label:'6', width:1, type:'key' },
+    { code:'Digit7', label:'7', width:1, type:'key' },
+    { code:'Digit8', label:'8', width:1, type:'key' },
+    { code:'Digit9', label:'9', width:1, type:'key' },
+    { code:'Digit0', label:'0', width:1, type:'key' },
+    { code:'Minus', label:'-', width:1, type:'key' },
+    { code:'Equal', label:'=', width:1, type:'key' },
+    { code:'Backspace', label:'Backspace', width:2, type:'backspace' }
+  ]}
+];
+
+const keyRecords = [];
+const keyByCode = {};
+let cursorX = -7.5;
+
+function createKey(key, rowY) {
+  const width = key.width;
+  const x = cursorX + width / 2;
+  cursorX += width;
+  const keycap = new THREE.Mesh(new THREE.BoxGeometry(width * 0.95, 0.95, 0.2), keyMat);
+  keycap.position.set(x, rowY, 0.85);
+  keyboardRoot.add(keycap);
+  const sw = new THREE.Mesh(new THREE.BoxGeometry(width * 0.85, 0.7, 0.3), switchMat);
+  sw.position.set(x, rowY, 0.55);
+  keyboardRoot.add(sw);
+  const rec = Object.assign({}, key, { x, rowY, keycapMesh: keycap, switchMesh: sw });
+  keyRecords.push(rec);
+  keyByCode[key.code] = rec;
+  return rec;
+}
+
+for (const row of rows) {
+  cursorX = -7.5;
+  for (const key of row.keys) {
+    createKey(key, row.y);
+  }
+}
+
+// Initial assembly positions
+pcbGroup.position.z = -0.3;
+foamGroup.position.z = -0.1;
+plateGroup.position.z = 0.1;
+for (const k of keyRecords) {
+  k.switchMesh.position.z = 1.1;
+  k.keycapMesh.position.z = 1.3;
+}
+
+// Animation state
+const clock = new THREE.Clock();
+let assemblyState = 'idle'; // idle, playing, done
+let startTime = 0;
+const assemblyDuration = 8;
+function startAssembly() {
+  assemblyState = 'playing';
+  startTime = clock.getElapsedTime();
+}
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+function easeOutCubic(t) {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+// Key press state
+const keyStates = {};
+for (const k of keyRecords) {
+  keyStates[k.code] = { state: 'idle', pressStart: 0, releaseStart: 0 };
+}
+
+function pressKey(key) {
+  const st = keyStates[key.code];
+  if (st.state === 'idle') {
+    st.state = 'press';
+    st.pressStart = clock.getElapsedTime();
+    playKeySound(key);
+  }
+}
+function releaseKey(key) {
+  const st = keyStates[key.code];
+  if (st.state === 'press') {
+    st.state = 'release';
+    st.releaseStart = clock.getElapsedTime();
+  }
+}
+
+// Audio
+let audioCtx = null;
+let masterGain = null;
+let muted = false;
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = muted ? 0 : 1;
+    masterGain.connect(audioCtx.destination);
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+function playClick(freq, duration, type = 'sine') {
+  if (!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  const now = audioCtx.currentTime;
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(0.5, now + 0.005);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+  osc.connect(gain);
+  gain.connect(masterGain);
+  osc.start(now);
+  osc.stop(now + duration + 0.05);
+}
+function playKeySound(key) {
+  if (!audioCtx) return;
+  switch (key.type) {
+    case 'space': playClick(60, 0.25, 'sine'); break;
+    case 'enter': playClick(80, 0.3, 'triangle'); break;
+    case 'backspace': playClick(70, 0.25, 'square'); break;
+    case 'modifier': playClick(100, 0.2, 'sine'); break;
+    case 'shift': playClick(110, 0.2, 'sine'); break;
+    default: playClick(140 + Math.random() * 20, 0.08, 'sine');
+  }
+}
+
+// UI
+const replayBtn = document.getElementById('replayBtn');
+const muteBtn = document.getElementById('muteBtn');
+const soundHint = document.getElementById('soundHint');
+function updateMute() {
+  muted = !muted;
+  muteBtn.textContent = muted ? 'Unmute' : 'Mute';
+  if (masterGain) masterGain.gain.value = muted ? 0 : 1;
+}
+muteBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  updateMute();
+});
+replayBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  startAssembly();
+});
+
+// First interaction enable audio
+function enableAudioOnFirst() {
+  initAudio();
+  soundHint.classList.remove('show');
+}
+window.addEventListener('pointerdown', enableAudioOnFirst, { once: true });
+window.addEventListener('keydown', enableAudioOnFirst, { once: true });
+
+// Raycaster for clicks
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+const keycapMeshes = keyRecords.map(k => k.keycapMesh);
+function onPointerDown(e) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const intersects = raycaster.intersectObjects(keycapMeshes, true);
+  if (intersects.length > 0) {
+    const obj = intersects[0].object;
+    const key = keyRecords.find(k => k.keycapMesh === obj);
+    if (key) {
+      pressKey(key);
+      const st = keyStates[key.code];
+      st.state = 'press';
+      st.pressStart = clock.getElapsedTime();
+      playKeySound(key);
+      // For click, release after short delay
+      setTimeout(() => {
+        if (keyStates[key.code].state === 'press') releaseKey(key);
+      }, 90);
+    }
+  }
+}
+renderer.domElement.addEventListener('pointerdown', onPointerDown);
+
+// Physical keyboard input
+window.addEventListener('keydown', (e) => {
+  const key = keyByCode[e.code];
+  if (key) {
+    pressKey(key);
+  }
+});
+window.addEventListener('keyup', (e) => {
+  const key = keyByCode[e.code];
+  if (key) {
+    releaseKey(key);
+  }
+});
+
+// Render loop
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  const t = clock.getElapsedTime();
+
+  // Assembly animation
+  if (assemblyState === 'playing') {
+    const at = (t - startTime) / assemblyDuration;
+    if (at >= 1) {
+      assemblyState = 'done';
+      pcbGroup.position.z = 0;
+      foamGroup.position.z = 0.15;
+      plateGroup.position.z = 0.35;
+      for (const k of keyRecords) {
+        k.switchMesh.position.z = 0.55;
+        k.keycapMesh.position.z = 0.85;
+      }
+    } else {
+      const p = Math.min(1, Math.max(0, at));
+      const e = easeInOutCubic(p);
+      pcbGroup.position.z = -0.3 + (0 - (-0.3)) * e;
+      foamGroup.position.z = -0.1 + (0.15 - (-0.1)) * Math.min(1, Math.max(0, (p - 0.025) / 0.025)) * (p < 0.05 ? 1 : 1);
+      // Simplified: just set based on thresholds
+      if (p < 0.025) pcbGroup.position.z = -0.3 + 0.3 * ease(p / 0.025);
+      else pcbGroup.position.z = 0;
+      if (p < 0.05) foamGroup.position.z = -0.1 + 0.25 * ease((p - 0.025) / 0.025);
+      else foamGroup.position.z = 0.15;
+      if (p < 0.075) plateGroup.position.z = 0.1 + 0.25 * ease((p - 0.05) / 0.025);
+      else plateGroup.position.z = 0.35;
+
+      const switchStartBase = 0.075;
+      for (let i = 0; i < keyRecords.length; i++) {
+        const k = keyRecords[i];
+        const st = switchStartBase + i * 0.008;
+        const prog = Math.min(1, Math.max(0, (p - st) / 0.04));
+        const e2 = prog < 1 ? easeOutCubic(prog) : 1;
+        k.switchMesh.position.z = 1.1 + (0.55 - 1.1) * e2;
+      }
+      const keycapStartBase = switchStartBase + keyRecords.length * 0.008 + 0.05;
+      for (let i = 0; i < keyRecords.length; i++) {
+        const k = keyRecords[i];
+        const st = keycapStartBase + i * 0.005;
+        const prog = Math.min(1, Math.max(0, (p - st) / 0.03));
+        const e2 = prog < 1 ? easeOutCubic(prog) : 1;
+        k.keycapMesh.position.z = 1.3 + (0.85 - 1.3) * e2;
+      }
+    }
+  }
+
+  // Key press animation
+  for (const k of keyRecords) {
+    const st = keyStates[k.code];
+    const keycap = k.keycapMesh;
+    const finalZ = 0.85;
+    const pressZ = 0.80;
+    if (st.state === 'press') {
+      const t = (t - st.pressStart) / 0.05;
+      if (t >= 1) {
+        keycap.position.z = pressZ;
+        st.state = 'pressed';
+      } else {
+        const e = easeOutCubic(Math.min(1, t));
+        keycap.position.z = finalZ + (pressZ - finalZ) * e;
+      }
+    } else if (st.state === 'release') {
+      const t = (t - st.releaseStart) / 0.05;
+      if (t >= 1) {
+        keycap.position.z = finalZ;
+        st.state = 'idle';
+      } else {
+        const e = easeOutCubic(Math.min(1, t));
+        keycap.position.z = pressZ + (finalZ - pressZ) * e;
+      }
+    } else {
+      keycap.position.z = finalZ;
+    }
+  }
+
+  camera.position.lerp(cameraTarget.clone().add(new THREE.Vector3(0, -3.0, 1.2)), 0.02);
+  camera.lookAt(cameraTarget);
+  renderer.render(scene, camera);
+}
+
+// Resize
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Start
+startAssembly(); // begin assembly on load? Or wait? Prompt: when page opens, animate exploded-view assembly. So start immediately.
+animate();
+
+// Reduced motion
+const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (prefersReduced) {
+  assemblyState = 'done';
+  pcbGroup.position.z = 0;
+  foamGroup.position.z = 0.15;
+  plateGroup.position.z = 0.35;
+  for (const k of keyRecords) {
+    k.switchMesh.position.z = 0.55;
+    k.keycapMesh.position.z = 0.85;
+  }
+}
+</script>
+</body>
+</html>
