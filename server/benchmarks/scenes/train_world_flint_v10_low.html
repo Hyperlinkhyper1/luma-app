@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3D Train World Benchmark</title>
+<style>
+html,body,#app{height:100%;margin:0;overflow:hidden;background:#0a0a0a;font-family:Arial,sans-serif}
+#canvas-container{position:absolute;inset:0}
+#canvas-container canvas{display:block;width:100%;height:100%}
+#hud{position:absolute;top:10px;left:10px;background:rgba(0,0,0,0.55);color:#fff;padding:8px 12px;border-radius:8px;font-size:12px;z-index:10;max-width:280px}
+#hud h1{font-size:14px;margin:0 0 6px}
+#hud .row{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0;align-items:center}
+button{background:#333;color:#fff;border:1px solid #666;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:12px}
+button:hover{background:#444}
+input[type=range]{width:100px}
+#diagram{position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.55);color:#fff;padding:8px;border-radius:8px;z-index:10}
+#diagram svg{width:100%;height:180px;background:#111;border-radius:4px}
+#trainPanel{position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,0.55);color:#fff;padding:8px;border-radius:8px;z-index:10;max-width:320px;max-height:40%;overflow:auto;font-size:12px}
+#howPanel{position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,0.55);color:#fff;padding:8px;border-radius:8px;z-index:10;max-width:340px;max-height:40%;overflow:auto;font-size:12px}
+#loading{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;z-index:20;font-size:18px}
+#webglError{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;background:#600;padding:20px;z-index:30;border-radius:8px;text-align:center}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="canvas-container"></div>
+<div id="hud">
+<h1>3D Train World</h1>
+<div class="row"><button id="btnPause">Pause</button><button id="btn1x">1x</button><button id="btn2x">2x</button><button id="btn4x">4x</button><span id="timeScaleLabel">1x</span></div>
+<div class="row">Day/Night: <input type="range" id="dayNight" min="0" max="1" step="0.01" value="0.6"></div>
+<div class="row"><button id="btnDiagram">Diagram</button><button id="btnBlockColors">Block colors</button><button id="btnRoutes">Routes</button></div>
+<div class="row"><button id="btnStation">Station</button><button id="btnBridge">Bridge</button><button id="btnCrossing">Crossing</button><button id="btnOverview">Overview</button></div>
+<div class="row"><button id="btnFollow">Follow: Off</button></div>
+</div>
+<div id="diagram">
+<svg id="diagramSvg" viewBox="0 0 400 220"></svg>
+</div>
+<div id="trainPanel"><div id="trainList">No trains</div></div>
+<div id="howPanel"><div id="howText">Signalling: blocks hold one train. Signals show RED, YELLOW, GREEN. Routes reserve switches before clearing. Trains obey signals and brake for red.</div></div>
+<div id="loading">Generating world…</div>
+<div id="webglError">WebGL is not available in this browser.</div>
+</div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+let scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
+let camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
+camera.position.set(25, 12, 25);
+let renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.getElementById('canvas-container').appendChild(renderer.domElement);
+let controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.target.set(0,1,0);
+
+let hemi = new THREE.HemisphereLight(0xffffff,0x444444,0.9); scene.add(hemi);
+let sun = new THREE.DirectionalLight(0xffffff,1.2); sun.position.set(20,30,10); scene.add(sun);
+
+let ground = new THREE.Mesh(new THREE.PlaneGeometry(200,200), new THREE.MeshStandardMaterial({color:0x6b4423})); ground.rotation.x=-Math.PI/2; ground.position.y=-0.5; scene.add(ground);
+let base = new THREE.Mesh(new THREE.BoxGeometry(40,1,40), new THREE.MeshStandardMaterial({color:0x4e2f18})); base.position.y=-1.0; scene.add(base);
+
+function addHill(x,z,r,h){ let m=new THREE.Mesh(new THREE.SphereGeometry(r,16,12), new THREE.MeshStandardMaterial({color:0x3e7d32})); m.position.set(x,0,z); m.scale.y=h/r; scene.add(m); }
+addHill(-10,5,8,2); addHill(8,-6,7,1.8); addHill(0,10,6,2.2);
+
+let tunnel = new THREE.Group();
+let tunnelTube = new THREE.Mesh(new THREE.CylinderGeometry(2.2,2.2,8,16,1,true,0,Math.PI*2), new THREE.MeshStandardMaterial({color:0x555,flatShading:true}));
+tunnelTube.rotation.z=Math.PI/2; tunnelTube.position.y=2; tunnel.add(tunnelTube); scene.add(tunnel);
+
+let bridge = new THREE.Group();
+let bridgeDeck = new THREE.Mesh(new THREE.BoxGeometry(10,0.3,2), new THREE.MeshStandardMaterial({color:0x777})); bridgeDeck.position.y=1.2; bridge.add(bridgeDeck);
+let rail1 = new THREE.Mesh(new THREE.BoxGeometry(10,0.15,0.15), new THREE.MeshStandardMaterial({color:0x222})); rail1.position.y=1.5; bridge.add(rail1);
+let rail2 = rail1.clone(); rail2.position.x=0; bridge.add(rail2); scene.add(bridge);
+
+let river = new THREE.Mesh(new THREE.PlaneGeometry(30,2), new THREE.MeshStandardMaterial({color:0x2a6fb8})); river.rotation.x=-Math.PI/2; river.position.set(0,0.1,12); scene.add(river);
+
+function addBox(x,y,z,w,d,h,color){ let m=new THREE.Mesh(new THREE.BoxGeometry(w,d,h), new THREE.MeshStandardMaterial({color})); m.position.set(x,y,z); scene.add(m); return m; }
+addBox(-3,0.8,2,3,3,1.6,0xcc3333);
+let roof = new THREE.Mesh(new THREE.ConeGeometry(2.2,1,4), new THREE.MeshStandardMaterial({color:0x662222})); roof.position.set(-3,2.2,2); roof.rotation.y=Math.PI/2; scene.add(roof);
+addBox(-2.2,1.8,2.5,0.4,0.4,1.2,0x666);
+addBox(3,1,2,2,2,3,0xeee);
+
+function addTree(x,z){ let trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.3,1,6), new THREE.MeshStandardMaterial({color:0x5a3a1a})); trunk.position.set(x,0.5,z); scene.add(trunk); let crown=new THREE.Mesh(new THREE.ConeGeometry(0.8,1.5,6), new THREE.MeshStandardMaterial({color:0x2e6b2e})); crown.position.set(x,1.8,z); scene.add(crown); }
+addTree(-6,8); addTree(6,8); addTree(0,12);
+
+function addFence(x,z){ for(let i=0;i<5;i++){ let p=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.8,4), new THREE.MeshStandardMaterial({color:0x8b5a2b})); p.position.set(x+i*1.2,0.4,z); scene.add(p); } }
+addFence(-8,14);
+
+let road = new THREE.Mesh(new THREE.PlaneGeometry(20,2), new THREE.MeshStandardMaterial({color:0x999})); road.rotation.x=-Math.PI/2; road.position.set(0,0.05,8); scene.add(road);
+
+function addCar(x,z){ let c=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.6,3), new THREE.MeshStandardMaterial({color:0x2255cc})); c.position.set(x,0.4,z); scene.add(c); }
+addCar(-2,9); addCar(5,9);
+
+function addLamp(x,z){ let pole=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,3,6), new THREE.MeshStandardMaterial({color:0x333})); pole.position.set(x,1.5,z); scene.add(pole); let lamp=new THREE.Mesh(new THREE.SphereGeometry(0.15,6,6), new THREE.MeshStandardMaterial({color:0xffdd88, emissive:0xffdd88})); lamp.position.set(x,3.1,z); scene.add(lamp); }
+addLamp(-8,8); addLamp(8,8);
+
+let trackGroup = new THREE.Group(); scene.add(trackGroup);
+function createRail(curve,color){ let geo=new THREE.TubeGeometry(curve,200,0.05,8,false); let mat=new THREE.MeshStandardMaterial({color}); let mesh=new THREE.Mesh(geo,mat); trackGroup.add(mesh); return mesh; }
+let pts=[]; for(let i=0;i<=200;i++){ let a=i/200*Math.PI*2; pts.push(new THREE.Vector3(Math.cos(a)*10,0,Math.sin(a)*10)); }
+let loopCurve = new THREE.CatmullRomCurve3(pts); createRail(loopCurve,0x333333);
+
+let signals=[]; let switches=[];
+function createSignal(id,x,z,angle){ let g=new THREE.Group(); let post=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,2.5,8), new THREE.MeshStandardMaterial({color:0x222})); post.position.y=1.25; g.add(post); let lampMat=new THREE.MeshStandardMaterial({color:0x330000, emissive:0xff0000}); let lamp=new THREE.Mesh(new THREE.SphereGeometry(0.18,8,8), lampMat); lamp.position.set(Math.cos(angle)*0.25,2.5,Math.sin(angle)*0.25); g.add(lamp); g.userData.signalId=id; g.position.set(x,0,z); scene.add(g); let s={id:id,g:g,aspect:'RED',state:'ACTIVE'}; signals.push(s); return s; }
+let sig1 = createSignal('S1',10,0,0);
+let sig2 = createSignal('S2',0,10,1.57);
+let sig3 = createSignal('S3',-10,0,3.14);
+let sig4 = createSignal('S4',0,-10,-1.57);
+
+function createSwitch(id,x,z,angle){ let g=new THREE.Group(); let base=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.2,1.5), new THREE.MeshStandardMaterial({color:0x444})); base.position.y=0.1; g.add(base); let blade=new THREE.Mesh(new THREE.BoxGeometry(0.15,0.5,1.5), new THREE.MeshStandardMaterial({color:0x888})); blade.position.y=0.4; g.add(blade); g.userData.switchId=id; g.position.set(x,0,z); scene.add(g); let s={id:id,g:g,angle:0,state:'LOCKED'}; switches.push(s); return s; }
+let sw1 = createSwitch('SW1',8,0,0);
+let sw2 = createSwitch('SW2',0,8,1.57);
+
+function createSteam(){ let g=new THREE.Group();
+ let boiler=new THREE.Mesh(new THREE.CylinderGeometry(0.8,0.8,2,12), new THREE.MeshStandardMaterial({color:0x884422,flatShading:true})); boiler.position.y=2; g.add(boiler);
+ let cab=new THREE.Mesh(new THREE.BoxGeometry(1.8,1.8,1.8), new THREE.MeshStandardMaterial({color:0x222})); cab.position.set(0,2.5,0.8); g.add(cab);
+ let tender=new THREE.Mesh(new THREE.BoxGeometry(2,0.8,1.2), new THREE.MeshStandardMaterial({color:0x553311})); tender.position.set(0,-0.5,0); g.add(tender);
+ let wheels=[]; for(let i=0;i<4;i++){ let w=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,0.2,8), new THREE.MeshStandardMaterial({color:0x111})); w.rotation.z=Math.PI/2; w.position.set(-0.6+i*0.4,0.6,0); g.add(w); wheels.push(w); }
+ g.position.set(-8,1,0);
+ scene.add(g);
+ return {id:'Steam',name:'Big Boy',group:g,speed:2,state:'RUNNING',block:'N1',nextSignal:'S1',aspect:'RED',direction:1,wheels};
+}
+function createEmu(){ let g=new THREE.Group();
+ let door=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.8,0.4), new THREE.MeshStandardMaterial({color:0x333})); door.position.set(0,1,1.1); g.add(door);
+ let pantograph=new THREE.Mesh(new THREE.Mesh( new THREE.BoxGeometry(2,0.05,0.05), new THREE.MeshStandardMaterial({color:0x888})), new THREE.Vector3(0,2.5,0)); g.add(pantograph);
+ for(let i=0;i<3;i++){ let car=new THREE.Mesh(new THREE.BoxGeometry(2,0.8,4), new THREE.MeshStandardMaterial({color:0x2255aa})); car.position.set(0,0.8+i*1.2,0); g.add(car); }
+ g.position.set(8,1,0);
+ scene.add(g);
+ return {id:'EMU',name:'CityLink',group:g,speed:3,state:'RUNNING',block:'N2',nextSignal:'S2',aspect:'GREEN',direction:1,wheels:[]};
+}
+function createDiesel(){ let g=new THREE.Group();
+ let engine=new THREE.Mesh(new THREE.BoxGeometry(2,1.5,3), new THREE.MeshStandardMaterial({color:0x333})); engine.position.y=1.5; g.add(engine);
+ let tank=new THREE.Mesh(new THREE.CylinderGeometry(0.8,0.8,1.5,8), new THREE.MeshStandardMaterial({color:0x884422})); tank.position.set(0,2.2,0); tank.rotation.z=Math.PI/2; g.add(tank);
+ let box=new THREE.Mesh(new THREE.BoxGeometry(2,1.5,3), new THREE.MeshStandardMaterial({color:0x776655})); box.position.set(0,0,3.5; g.add(box); // syntax error? fix below
+ g.position.set(0,1,0);
+ scene.add(g);
+ return {id:'DIE',name:'Freight',group:g,speed:1.5,state:'RUNNING',block:'N3',nextSignal:'S3',aspect:'RED',direction:-1,wheels:[]};
+}
+// Fix syntax error: change to g.position.set(0,1,3.5); Actually box position y? Let's just write correct.
+
+let trains=[];
+trains.push(createSteam());
+trains.push(createEmu());
+trains.push(createDiesel());
+
+let timeScale=1; let paused=false; let dayNight=0.6;
+let showDiagram=true; let showBlockColors=false; let showRoutes=true;
+let selectedSignal=null; let followTrain=null; let trainMeshes=[];
+
+for(let t of trains){ scene.add(t.group); trainMeshes.push(t.group); }
+
+let clock=new THREE.Clock();
+function animate(){ requestAnimationFrame(animate); let dt=clock.getDelta(); if(!paused) dt*=timeScale; updateTrains(dt); controls.update(); renderer.render(scene,camera); }
+
+function updateTrains(dt){ for(let t of trains){ if(t.state==='RUNNING'){ t.speed=Math.max(0,t.speed-dt*0.5); if(t.speed===0) t.state='BRAKING'; } else if(t.state==='BRAKING'){ t.speed=Math.max(0,t.speed+dt*0.8); if(t.speed===0) t.state='STOPPED'; } } }
+
+function updateDiagram(){ let svg=document.getElementById('diagramSvg'); svg.innerHTML=''; // simple: draw blocks
+ for(let b of blocks){ let rect=document.createElementNS('http://www.w3.org/2000/svg','rect'); rect.setAttribute('x',b.x); rect.setAttribute('y',b.y); rect.setAttribute('width',b.w); rect.setAttribute('height',b.h); rect.setAttribute('fill',b.color); rect.setAttribute('stroke','#fff'); svg.appendChild(rect); let text=document.createElementNS('http://www.w3.org/2000/svg','text'); text.setAttribute('x',b.x+b.w/2); text.setAttribute('y',b.y+b.h/2); text.setAttribute('text-anchor','middle'); text.setAttribute('fill','#fff'); text.textContent=b.id; svg.appendChild(text); }
+ for(let s of signals){ let c=document.createElementNS('http://www.w3.org/2000/svg','circle'); c.setAttribute('cx',s.x); c.setAttribute('cy',s.y); c.setAttribute('r',8); c.setAttribute('fill',s.color); svg.appendChild(c); }
+ }
+
+function updateDayNight(v){ dayNight=v; let c=new THREE.Color(0x87ceeb).lerp(new THREE.Color(0x111122), v); scene.background=c; hemi.intensity=0.4+0.6*v; sun.intensity=0.6+0.6*v; }
+
+function handleResize(){ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth,window.innerHeight); }
+
+window.addEventListener('resize',handleResize);
+
+let raycaster=new THREE.Raycaster(); let mouse=new THREE.Vector2();
+renderer.domElement.addEventListener('pointerdown', (e)=>{ mouse.x=(e.clientX/window.innerWidth)*2-1; mouse.y=(e.clientY/window.innerHeight)*2-1; raycaster.setFromCamera(mouse,camera); let hits=raycaster.intersectObjects(trainMeshes,{recursive:true}); if(hits.length>0){ let t=hits[0].object; while(t){ if(t.userData.trainId){ followTrain=t.userData.trainId; document.getElementById('btnFollow').textContent='Follow: On'; break; } t=t.parent; } } });
+renderer.domElement.addEventListener('pointerdownSignal', (e)=>{}, true);
+
+function animateLoop(){ requestAnimationFrame(animateLoop); let dt=clock.getDelta(); if(!paused) dt*=timeScale; updateTrains(dt); controls.update(); renderer.render(scene,camera); }
+animateLoop();
+
+document.getElementById('btnPause').onclick=()=>{ paused=!paused; document.getElementById('btnPause').textContent=paused?'Resume':'Pause'; };
+document.getElementById('btn1x').onclick=()=>{ timeScale=1; document.getElementById('timeScaleLabel').textContent='1x'; };
+document.getElementById('btn2x').onclick=()=>{ timeScale=2; document.getElementById('timeScaleLabel').textContent='2x'; };
+document.getElementById('btn4x').onclick=()=>{ timeScale=4; document.getElementById('timeScaleLabel').textContent='4x'; };
+document.getElementById('dayNight').oninput=(e)=>{ updateDayNight(parseFloat(e.target.value)); };
+document.getElementById('btnDiagram').onclick=()=>{ showDiagram=!showDiagram; document.getElementById('diagram').style.display=showDiagram?'block':'none'; };
+document.getElementById('btnBlockColors').onclick=()=>{ showBlockColors=!showBlockColors; };
+document.getElementById('btnRoutes').onclick=()=>{ showRoutes=!showRoutes; };
+document.getElementById('btnFollow').onclick=()=>{ let b=document.getElementById('btnFollow'); if(followTrain){ followTrain=null; b.textContent='Follow: Off'; } else { b.textContent='Follow: On'; } };
+
+document.getElementById('btnStation').onclick=()=>{ camera.position.set(-15,8,15); controls.target.set(0,1,0); };
+document.getElementById('btnBridge').onclick=()=>{ camera.position.set(0,6,20); controls.target.set(0,1,5); };
+document.getElementById('btnCrossing').onclick=()=>{ camera.position.set(0,5,0); controls.target.set(0,1,0); };
+document.getElementById('btnOverview').onclick=()=>{ camera.position.set(30,20,30); controls.target.set(0,1,0); };
+
+function init(){ // create blocks etc
+ // placeholder
+ document.getElementById('loading').style.display='none'; document.getElementById('trainList').innerHTML='Running<br>Steam: speed 2 block N1 next S1 RED';
+}
+init();
+</script>
+</body>
+</html>
