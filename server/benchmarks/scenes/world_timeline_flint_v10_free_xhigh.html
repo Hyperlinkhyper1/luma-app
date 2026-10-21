@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>SVG Animation Benchmark</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#000}
+#app{position:fixed;inset:0}
+svg.stage{position:absolute;inset:0;width:100%;height:100%;display:block}
+text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+#hudTitle{fill:#fff;font-size:44px;font-weight:800}
+#hudDate{fill:#ffd166;font-size:26px;font-weight:700}
+#hudCaption{fill:#eaf6ff;font-size:18px;max-width:900px}
+#controls{position:absolute;top:12px;right:12px;display:flex;gap:8px;align-items:center;z-index:10}
+button,select{background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.55);border-radius:8px;padding:8px 12px;font-size:14px;cursor:pointer}
+button:hover,select:hover{background:rgba(0,0,0,.8)}
+select option{color:#000}
+#readout{position:absolute;top:12px;left:12px;color:#fff;background:rgba(0,0,0,.55);padding:8px 12px;border-radius:8px;font-size:14px;z-index:10;border:1px solid rgba(255,255,255,.55)}
+</style>
+</head>
+<body>
+<div id="app">
+<svg id="stage" class="stage" viewBox="0 0 1440 810" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="skyGrad" cx="50%" cy="35%" r="90%">
+      <stop offset="0%" stop-color="#2b6cb0"/>
+      <stop offset="55%" stop-color="#6fa8dc"/>
+      <stop offset="100%" stop-color="#0b2545"/>
+    </radialGradient>
+    <linearGradient id="oceanGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2f6f97"/>
+      <stop offset="100%" stop-color="#0a2540"/>
+    </linearGradient>
+    <radialGradient id="magmaGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffb35c"/>
+      <stop offset="55%" stop-color="#ef476f"/>
+      <stop offset="100%" stop-color="#590d22"/>
+    </radialGradient>
+    <radialGradient id="iceGrad" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#f4fbff"/>
+      <stop offset="100%" stop-color="#a9c8e8"/>
+    </radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="8"/></filter>
+  </defs>
+
+  <rect id="bg" x="0" y="0" width="1440" height="810" fill="url(#skyGrad)"/>
+  <g id="stars" opacity="0">
+    <circle cx="120" cy="90" r="1.5" fill="#fff"/>
+    <circle cx="300" cy="50" r="1" fill="#fff"/>
+    <circle cx="480" cy="110" r="2" fill="#fff"/>
+    <circle cx="650" cy="60" r="1.2" fill="#fff"/>
+    <circle cx="820" cy="100" r="1.5" fill="#fff"/>
+    <circle cx="980" cy="60" r="1" fill="#fff"/>
+    <circle cx="1150" cy="90" r="2.2" fill="#fff"/>
+    <circle cx="1300" cy="50" r="1.5" fill="#fff"/>
+    <circle cx="200" cy="180" r="1" fill="#fff"/>
+    <circle cx="500" cy="160" r="1.2" fill="#fff"/>
+  </g>
+  <circle id="sun" cx="1120" cy="120" r="55" fill="#ffd166" filter="url(#glow)"/>
+  <rect id="ocean" x="0" y="470" width="1440" height="340" fill="url(#oceanGrad)"/>
+  <path id="land" d="M0,470 C220,400 420,450 700,440 C980,430 1150,470 1440,450 L1440,470 L0,470 Z" fill="#2f6b43" opacity="0.85"/>
+  <circle id="magmaGlow" cx="720" cy="520" r="190" fill="url(#magmaGrad)" opacity="0"/>
+  <ellipse id="iceCaps" cx="720" cy="520" rx="520" ry="130" fill="url(#iceGrad)" opacity="0"/>
+
+  <g id="lifeMagma" data-life="magma" display="block">
+    <path d="M500,520 C480,460 560,420 650,430 C740,440 780,480 760,520 C720,560 540,560 500,520 Z" fill="#ef476f" opacity="0.8"/>
+  </g>
+  <g id="lifeMicro" data-life="micro" display="none">
+    <g stroke="#7bd88f" stroke-width="5" fill="none" stroke-linecap="round">
+      <path d="M180,540 q9,-28 18,0 q9,-38 18,0 q9,-28 18,0"/>
+      <path d="M240,550 q9,-28 18,0 q9,-38 18,0 q9,-28 18,0"/>
+      <path d="M300,535 q9,-28 18,0 q9,-38 18,0 q9,-28 18,0"/>
+    </g>
+  </g>
+  <g id="lifeTrilobita" data-life="trilobita" display="none">
+    <path d="M420,540 L470,520 L520,540 L470,560 Z" fill="#c9a227"/>
+  </g>
+  <g id="lifeFish" data-life="fish" display="none">
+    <path d="M380,550 Q420,535 460,550 Q500,565 540,550" stroke="#ffd166" stroke-width="6" fill="none"/>
+  </g>
+  <g id="lifePlants" data-life="plants" display="none">
+    <path d="M560,560 C560,520 570,500 580,480 C590,500 600,520 600,560 Z" fill="#8bc34a"/>
+  </g>
+  <g id="lifeForest" data-life="forest" display="none">
+    <g fill="#2e7d32"><circle cx="620" cy="520" r="18"/><circle cx="660" cy="510" r="22"/><circle cx="700" cy="525" r="16"/></g>
+  </g>
+  <g id="lifeDino" data-life="dino" display="none">
+    <path d="M640,560 L690,515 M740,560 L690,585 Z" fill="#8d6e63"/>
+  </g>
+  <g id="lifeMammal" data-life="mammal" display="none">
+    <path d="M760,560 L810,520 L860,560 L810,585 Z" fill="#a1887f"/>
+  </g>
+  <g id="lifeHuman" data-life="human" display="none">
+    <circle cx="880" cy="540" r="9" fill="#f2d7c9"/>
+    <path d="M871,540 L889,540 L883,555 L877,555 Z" fill="#3e2723"/>
+  </g>
+  <g id="lifeFarm" data-life="farm" display="none">
+    <rect x="900" y="520" width="80" height="30" fill="#6b8e23"/>
+    <rect x="990" y="515" width="70" height="35" fill="#7cb342"/>
+  </g>
+  <g id="lifeCity" data-life="city" display="none">
+    <rect x="900" y="470" width="20" height="50" fill="#455a64"/>
+    <rect x="930" y="450" width="16" height="70" fill="#546e7a"/>
+    <rect x="960" y="480" width="18" height="40" fill="#37474f"/>
+  </g>
+  <g id="lifeFactory" data-life="factory" display="none">
+    <rect x="900" y="470" width="30" height="60" fill="#616161"/>
+    <rect x="915" y="450" width="10" height="30" fill="#9e9e9e"/>
+    <circle cx="920" cy="440" r="8" fill="#b0bec5"/>
+  </g>
+  <g id="lifePlane" data-life="plane" display="none">
+    <path d="M1000,420 L1080,390 L1120,410 L1040,440 Z" fill="#eceff1"/>
+  </g>
+  <g id="lifeRocket" data-life="rocket" display="none">
+    <path d="M1200,420 L1230,350 L1260,420 Z" fill="#ef5350"/>
+    <circle cx="1230" cy="370" r="8" fill="#fff59d"/>
+  </g>
+  <g id="lifeShip" data-life="ship" display="none">
+    <path d="M250,540 L320,540 L310,560 L260,560 Z" fill="#8d6e63"/>
+  </g>
+  <g id="lifeMoon" data-life="moon" display="none">
+    <circle cx="1250" cy="150" r="35" fill="#cfd8dc"/>
+  </g>
+
+  <text id="hudTitle" x="60" y="70" font-size="44" font-weight="800">Formation of the Earth</text>
+  <text id="hudDate" x="60" y="110" font-size="26" font-weight="700">4.54 billion years ago</text>
+  <text id="hudCaption" x="60" y="150" font-size="18" max-width="900">The molten planet cools as the Moon-forming impact churns the young Earth.</text>
+
+  <line id="tlBase" x1="40" y1="780" x2="1440" y2="780" stroke="#fff" stroke-opacity="0.35" stroke-width="2"/>
+  <rect id="eraPaleozoic" x="40" y="740" width="300" height="40" fill="#7b1fa2" opacity="0.25"/>
+  <rect id="eraMesozoic" x="340" y="740" width="300" height="40" fill="#c62828" opacity="0.25"/>
+  <rect id="eraCenozoic" x="640" y="740" width="300" height="40" fill="#2e7d32" opacity="0.25"/>
+  <rect id="eraHuman" x="940" y="740" width="500" height="40" fill="#f9a825" opacity="0.25"/>
+  <line id="tlPlay" x1="40" y1="780" x2="40" y2="800" stroke="#ffd166" stroke-width="4"/>
+</svg>
+</div>
+
+<div id="readout">4.54 billion years ago</div>
+<div id="controls">
+  <button id="btnPlay" onclick="togglePlay()">Pause</button>
+  <button id="btnRestart" onclick="restart()">Restart</button>
+  <select id="speed">
+    <option value="0.5">0.5x</option>
+    <option value="1" selected>1x</option>
+    <option value="2">2x</option>
+  </select>
+  <button id="btnPrev" onclick="prevChapter()">Prev</button>
+  <button id="btnNext" onclick="nextChapter()">Next</button>
+</div>
+
+<script>
+const stage = document.getElementById('stage');
+const hudTitle = document.getElementById('hudTitle');
+const hudDate = document.getElementById('hudDate');
+const hudCaption = document.getElementById('hudCaption');
+const readout = document.getElementById('readout');
+const btnPlay = document.getElementById('btnPlay');
+const btnRestart = document.getElementById('btnRestart');
+const speedEl = document.getElementById('speed');
+const btnPrev = document.getElementById('btnPrev');
+const btnNext = document.getElementById('btnNext');
+const tlPlay = document.getElementById('tlPlay');
+
+const chapters = [
+  {id:1,title:"Formation of the Earth",date:"4.54 billion years ago",caption:"The molten planet cools as the Moon-forming impact churns the young Earth.",start:4540000000,end:4540000000,life:["magma"],bg:"magma"},
+  {id:2,title:"The Hadean",date:"4.54 billion years ago",caption:"The surface is molten; water from volcanoes begins the first oceans.",start:4540000000,end:4000000000,life:["magma","micro"],bg:"magma"},
+  {id:3,title:"First Life",date:"3.7–3.5 billion years ago",caption:"Microbial mats and stromatolites emerge in the early oceans.",start:3700000000,end:3500000000,life:["micro"],bg:"ocean"},
+  {id:4,title:"Great Oxidation Event",date:"2.4 billion years ago",caption:"Oxygen rises and changes the sky and sea.",start:2400000000,end:2300000000,life:["micro"],bg:"ocean"},
+  {id:5,title:"Snowball Earth",date:"720–635 million years ago",caption:"Ice sheets cover the planet.",start:720000000,end:635000000,life:[],bg:"ice"},
+  {id:6,title:"Cambrian Explosion",date:"538 million years ago",caption:"Life diversifies rapidly with trilobites and early arthropods.",start:538000000,end:528000000,life:["trilobita","fish"],bg:"ocean"},
+  {id:7,title:"Life on Land",date:"470–375 million years ago",caption:"Plants and animals move onto land.",start:470000000,end:375000000,life:["plants","forest","fish"],bg:"ocean"},
+  {id:8,title:"Pangaea and Dinosaurs",date:"252–66 million years ago",caption:"Continents assemble into Pangaea; dinosaurs rise.",start:252000000,end:66000000,life:["dino","forest"],bg:"land"},
+  {id:9,title:"Asteroid Impact",date:"66 million years ago",caption:"The Chicxulub impact ends the dinosaurs.",start:66000000,end:65800000,life:["fire"],bg:"fire"},
+  {id:10,title:"Rise of Mammals",date:"65 million years ago",caption:"Mammals survive and diversify after the impact.",start:65000000,end:1000000,life:["mammal","forest"],bg:"land"},
+  {id:11,title:"Homo sapiens",date:"300,000 years ago",caption:"Anatomically modern humans appear.",start:300000,end:200000,life:["human"],bg:"land"},
+  {id:12,title:"Farming Begins",date:"10,000–8,000 BCE",caption:"Plants and animals are domesticated.",start:10000,end:8000,life:["farm","human"],bg:"land"},
+  {id:13,title:"Early Civilisations",date:"4,500–2,560 BCE",caption:"Mesopotamia and Egypt build cities and pyramids.",start:4500,end:2560,life:["city","human"],bg:"land"},
+  {id:14,title:"Classical World",date:"2,500–500 BCE",caption:"Greece, Rome, and Han China flourish.",start:2500,end:1500,life:["city","human"],bg:"land"},
+  {id:15,title:"Medieval World",date:"1,500–1,000 CE",caption:"Cities, kingdoms, and cultures develop.",start:1500,end:1000,life:["city","human"],bg:"land"},
+  {id:16,title:"Printing and Exploration",date:"c. 1450–1492 CE",caption:"The printing press and Age of Exploration begin.",start:574,end:532,life:["ship","city"],bg:"land"},
+  {id:17,title:"Industrial Revolution",date:"c. 1760–1900 CE",caption:"Factories and steam power transform society.",start:264,end:124,life:["factory","city"],bg:"land"},
+  {id:18,title:"20th Century",date:"1903–1969 CE",caption:"Powered flight, world wars, and the Moon landing.",start:121,end:55,life:["plane","factory","moon","city"],bg:"land"},
+  {id:19,title:"Digital Age",date:"1969–today",caption:"Computers, networks, and space exploration accelerate.",start:55,end:0,life:["rocket","city","factory"],bg:"land"}
+];
+
+let currentTime = 4540000000;
+let playing = true;
+let speed = 1;
+let startTime = performance.now();
+const duration = 180;
+
+function timeToX(t) {
+  if (t >= 5000) {
+    const denom = Math.log10(4540000000) - Math.log10(5000);
+    return 40 + (Math.log10(4540000000) - Math.log10(t)) / denom * 1100;
+  } else {
+    return 1140 + (5000 - t) / 5000 * 300;
+  }
+}
+
+function formatDate(t) {
+  if (t >= 4540000000) return "4.54 billion years ago";
+  if (t >= 1000000) return (t / 1000000).toFixed(1).replace(".0", "") + " million years ago";
+  if (t >= 10000) return Math.round(t) + " BCE";
+  if (t >= 1000) return Math.round(t) + " BCE";
+  if (t >= 1) return Math.round(t) + " BCE";
+  return Math.round(t) + " years ago";
+}
+
+function getChapter(t) {
+  for (let i = 0; i < chapters.length; i++) {
+    if (t >= chapters[i].start && t <= chapters[i].end) return chapters[i];
+  }
+  return chapters[chapters.length - 1];
+}
+
+function update(t) {
+  currentTime = t;
+  const c = getChapter(t);
+  hudTitle.textContent = c.title;
+  hudDate.textContent = c.date;
+  hudCaption.textContent = c.caption;
+  readout.textContent = formatDate(t);
+  document.querySelectorAll('[data-life]').forEach(el => {
+    el.style.display = c.life.includes(el.getAttribute('data-life')) ? 'block' : 'none';
+  });
+  const bg = document.getElementById('bg');
+  const ocean = document.getElementById('ocean');
+  const land = document.getElementById('land');
+  const magma = document.getElementById('magmaGlow');
+  const ice = document.getElementById('iceCaps');
+  if (c.bg === 'magma') {
+    bg.style.fill = '#2b1055';
+    ocean.style.fill = '#1a0b2e';
+    land.style.fill = '#3b1d5a';
+    magma.style.opacity = 1;
+    ice.style.opacity = 0;
+  } else if (c.bg === 'ice') {
+    bg.style.fill = '#0b2545';
+    ocean.style.fill = '#0a2540';
+    land.style.fill = '#1a3a5a';
+    magma.style.opacity = 0;
+    ice.style.opacity = 1;
+  } else if (c.bg === 'fire') {
+    bg.style.fill = '#2b0505';
+    ocean.style.fill = '#1a0505';
+    land.style.fill = '#3b0a0a';
+    magma.style.opacity = 0;
+    ice.style.opacity = 0;
+  } else {
+    bg.style.fill = 'url(#skyGrad)';
+    ocean.style.fill = 'url(#oceanGrad)';
+    land.style.fill = '#2f6b43';
+    magma.style.opacity = 0;
+    ice.style.opacity = 0;
+  }
+  const x = timeToX(t);
+  tlPlay.setAttribute('x1', x);
+  tlPlay.setAttribute('x2', x);
+}
+
+function frame(now) {
+  if (playing) {
+    const elapsed = (now - startTime) / 1000 * speed;
+    const t = 4540000000 - (elapsed % duration);
+    update(t);
+  }
+  requestAnimationFrame(frame);
+}
+
+function togglePlay() {
+  playing = !playing;
+  btnPlay.textContent = playing ? 'Pause' : 'Play';
+}
+
+function restart() {
+  playing = true;
+  startTime = performance.now();
+  update(4540000000);
+}
+
+function setSpeed() {
+  speed = parseFloat(speedEl.value);
+}
+
+speedEl.addEventListener('change', setSpeed);
+
+function prevChapter() {
+  const idx = chapters.findIndex(c => currentTime >= c.start && currentTime <= c.end);
+  const c = chapters[(idx - 1 + chapters.length) % chapters.length];
+  playing = true;
+  startTime = performance.now();
+  update(c.end);
+}
+
+function nextChapter() {
+  const idx = chapters.findIndex(c => currentTime >= c.start && currentTime <= c.end);
+  const c = chapters[(idx + 1) % chapters.length];
+  playing = true;
+  startTime = performance.now();
+  update(c.start);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+  if (e.key === 'ArrowLeft') prevChapter();
+  if (e.key === 'ArrowRight') nextChapter();
+});
+
+update(4540000000);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
