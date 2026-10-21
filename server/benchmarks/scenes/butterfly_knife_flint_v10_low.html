@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Abyss K3 Balisong</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#05070d;font-family:Arial,Helvetica,sans-serif;color:#e8e6df;}
+#app{position:fixed;inset:0;}
+#app canvas{display:block;}
+#ui{position:fixed;top:12px;right:12px;z-index:20;width:232px;padding:10px 12px;background:rgba(10,14,22,.78);border:1px solid rgba(255,215,140,.25);border-radius:12px;backdrop-filter:blur(8px);}
+#ui h1{font-size:15px;margin:0 0 2px;letter-spacing:.12em;color:#f5d9a8;text-transform:uppercase;}
+#ui .sub{font-size:10px;color:#9fb0c3;margin-bottom:8px;letter-spacing:.08em;}
+#moveGrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+#moveGrid button{font:10px/1.2 Arial;background:#141a26;color:#dfe7f2;border:1px solid #2a3648;border-radius:6px;padding:6px 4px;cursor:pointer;}
+#moveGrid button:hover{background:#1d2839;}
+#moveGrid button.active{background:#3a2a18;color:#ffe1ae;border-color:#a06a2c;}
+#controls{margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:10px;}
+#controls label{display:flex;flex-direction:column;gap:2px;}
+#controls input[type=range]{width:90px;}
+#caption{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:20;padding:8px 18px;background:rgba(10,14,22,.72);border:1px solid rgba(255,215,140,.3);border-radius:999px;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#ffe1ae;pointer-events:none;}
+#loading{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:#05070d;color:#f5d9a8;letter-spacing:.3em;font-size:12px;}
+#error{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;color:#ff8b8b;padding:20px;text-align:center;}
+#spec{position:fixed;left:12px;bottom:12px;z-index:20;width:240px;padding:10px 12px;background:rgba(10,14,22,.78);border:1px solid rgba(255,215,140,.25);border-radius:12px;font-size:10px;color:#cfd8e3;}
+#spec b{color:#f5d9a8;}
+@media(max-width:640px){#ui{width:180px;}#spec{display:none;}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="ui">
+<h1>Abyss K3</h1>
+<div class="sub">DEEP-SEA BALISONG · OXBLOOD / BRASS / STEEL</div>
+<div id="moveGrid"></div>
+<div id="controls">
+<label>Speed <input id="speed" type="range" min="0.25" max="2" step="0.05" value="1"></label>
+<label>Slow motion <input id="slowmo" type="checkbox" checked></label>
+<label>Trail <input id="trail" type="checkbox" checked></label>
+<label>Mute <input id="mute" type="checkbox" checked></label>
+</div>
+<div style="margin-top:8px;display:flex;gap:6px;">
+<button id="openBtn">Open</button>
+<button id="closeBtn">Close</button>
+<button id="cameraBtn">Camera</button>
+<button id="inspectBtn">Inspect</button>
+<button id="colourBtn">Colour</button>
+<button id="hideBtn">Hide UI</button>
+</div>
+</div>
+<div id="caption">STANDBY</div>
+<div id="loading">ABYSS K3 · GENERATING</div>
+<div id="error">WEBGL UNAVAILABLE</div>
+<div id="spec">
+<b>ABYSS K3</b> · Deep Sea Balisong<br>
+O. L. <b>0.130</b> C · B. L. <b>0.085</b><br>
+Brass / Oxblood / Polished Steel<br>
+Weight <b>0.412 kg</b> · <b>Titanium Bushings</b>
+</div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const moves = [
+  {id:'basicOpen', name:'Basic Open'},
+  {id:'basicClose', name:'Basic Close'},
+  {id:'chaplin', name:'Chaplin'},
+  {id:'zen', name:'Zen Rollover'},
+  {id:'fan', name:'Deep Fan'},
+  {id:'helix', name:'Abyss Helix'},
+  {id:'aerial', name:'Abyss Aerial'},
+  {id:'signature', name:'Kraken Flip'}
+];
+
+const grid = document.getElementById('moveGrid');
+moves.forEach(m=>{const b=document.createElement('button');b.dataset.id=m.id;b.textContent=m.name;b.type='button';grid.appendChild(b);});
+grid.addEventListener('click',e=>{if(e.target.tagName==='BUTTON'){playMove(e.target.dataset.id);}});
+document.getElementById('openBtn').onclick=()=>playMove('basicOpen');
+document.getElementById('closeBtn').onclick=()=>playMove('basicClose');
+document.getElementById('cameraBtn').onclick=()=>setCamera('HERO');
+document.getElementById('inspectBtn').onclick=()=>{document.getElementById('ui').style.display=document.getElementById('ui').style.display==='none'?'block':'none';};
+document.getElementById('colourBtn').onclick=()=>cycleColourway();
+document.getElementById('hideBtn').onclick=()=>{document.getElementById('ui').style.display='none';document.getElementById('caption').style.display='none';};
+document.getElementById('mute').onchange=e=>{audio.muted=e.target.checked;};
+const vol=document.getElementById('speed');
+vol.addEventListener('input',e=>speedFactor=Number(e.target.value));
+const slow=document.getElementById('slowmo');
+slow.onchange=e=>slowMotion=e.target.checked;
+const trail=document.getElementById('trail');
+trail.onchange=e=>{trailEnabled=e.target.checked;};
+
+let speedFactor=1;
+let slowMotion=true;
+let trailEnabled=true;
+let audio=new THREE.AudioContext();
+let masterGain=audio.createGain();masterGain.gain.value=0.5;masterGain.connect(audio.destination);audio.connect(masterGain);
+let muted=false;
+
+function beep(freq,dur,type='sine',gain=0.2){if(muted)return;const o=audio.createOscillator(),g=audio.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(gain,audio.currentTime);g.gain.exponentialRampToValueAtTime(0.001,audio.currentTime+dur);o.connect(g);g.connect(masterGain);o.start();o.stop(audio.currentTime+dur);}
+
+function noiseBuffer(){const b=audio.createBuffer(1,audio.sampleRate*0.5,audio.sampleRate);const d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;return b;}
+let noiseBuf=noiseBuffer();
+function swish(strength,pitch){if(muted)return;const src=audio.createBufferSource();src.buffer=noiseBuf;const f=audio.createBiquadFilter();f.type='bandpass';f.frequency.value=pitch;const g=audio.createGain();const t=audio.currentTime;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(Math.max(0.001,strength),t+0.015);g.gain.exponentialRampToValueAtTime(0.001,t+0.25);src.connect(f);f.connect(g);g.connect(masterGain);src.start();}
+
+function metalClack(){beep(1800+Math.random()*1200,0.05,'square',0.08);beep(300,0.08,'triangle',0.12);}
+
+function init(){
+const app=document.getElementById('app');
+renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.05;
+app.appendChild(renderer.domElement);
+scene=new THREE.Scene();
+scene.background=new THREE.Color(0x071018);
+scene.fog=new THREE.Fog(0x071018,6,14);
+camera=new THREE.PerspectiveCamera(38,innerWidth/innerHeight,0.05,100);
+camera.position.set(2.1,1.5,2.4);
+controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;controls.dampingFactor=0.06;controls.maxPolarAngle=Math.PI/2.05;controls.minDistance(0.4);controls.maxDistance(8);
+
+const pmrem=new THREE.PMREMGenerator(renderer);
+scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
+
+const key=new THREE.DirectionalLight(0xfff1d6,2.6);key.position.set(3,5,4);key.castShadow=true;key.shadow.mapSize.width=1024;key.shadow.mapSize.height=1024;key.shadow.camera.near=0.1;key.shadow.camera.far=10;key.shadow.camera.left=-3;key.shadow.camera.right=3;key.shadow.camera.top=3;key.shadow.camera.bottom=-3;scene.add(key);
+const rim=new THREE.DirectionalLight(0x66aaff,2.2);rim.position.set(-4,3,-3);scene.add(rim);
+const fill=new THREE.AmbientLight(0x334455,0.6);scene.add(fill);
+
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(30,30,40,40),new THREE.MeshStandardMaterial({color:0xb98a55,roughness:1,metalness:0}));
+ground.rotation.x=-Math.PI/2;
+const gp=ground.geometry.attributes.position;
+for(let i=0;i<gp.count;i++){const x=gp.getX(i),y=gp.getY(i);gp.setZ(i,1.6*Math.sin(x*0.22)+0.8*Math.cos(y*0.18)+0.4*Math.sin((x+y)*0.12));}
+ground.geometry.computeVertexNormals();ground.receiveShadow=true;scene.add(ground);
+
+const bladeMat=new THREE.MeshPhysicalMaterial({color:0xd9d9e2,metalness:1,roughness:0.12,clearcoat:1,clearcoatRoughness:0.05});
+const brassMat=new THREE.MeshPhysicalMaterial({color:0xb58a4a,metalness:1,roughness:0.28,clearcoat:0.6,clearcoatRoughness:0.15});
+const oxMat=new THREE.MeshPhysicalMaterial({color:0x6e0f14,metalness:0.25,roughness:0.35});
+const steelDark=new THREE.MeshPhysicalMaterial({color:0x22262e,metalness:0.9,roughness:0.35});
+
+const bladeShape=new THREE.Shape();
+bladeShape.moveTo(0,-0.055);
+bladeShape.lineTo(0.62,-0.055);
+bladeShape.lineTo(0.78,-0.02);
+bladeShape.lineTo(0.78,0.02);
+bladeShape.lineTo(0.62,0.055);
+bladeShape.lineTo(0,0.055);
+bladeShape.closePath();
+const bladeGeo=new THREE.ExtrudeGeometry(bladeShape,{depth:0.09,bevelEnabled:true,bevelThickness:0.008,bevelSize:0.008,bevelSegments:2,curveSegments:8});
+const blade=new THREE.Mesh(bladeGeo,bladeMat);blade.position.set(0.12,0,0);blade.castShadow=true;blade.receiveShadow=true;
+
+const safePivot=new THREE.Group();safePivot.position.set(0.18,-0.13,0);
+const bitePivot=new THREE.Group();bitePivot.position.set(0.18,0.13,0);
+const latch=new THREE.Group();latch.position.set(0.12,0,0);
+
+function addHandle(pivot,side){
+const h=new THREE.Mesh(new THREE.CylinderGeometry(0.075,0.095,0.2,32),brassMat);
+h.rotation.z=Math.PI/2;h.position.y=side*0.13;h.castShadow=true;
+const grip=new THREE.Mesh(new THREE.TorusGeometry(0.085,0.018,12,32),oxMat);grip.rotation.z=Math.PI/2;grip.position.y=side*0.13;
+pivot.add(h);pivot.add(grip);return h;
+}
+const safeHandle=addHandle(safePivot,-1);
+const biteHandle=addHandle(bitePivot,1);
+
+const tang=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.05,0.03),steelDark);tang.position.set(0.06,0,0);
+const pivotCap=new THREE.Mesh(new THREE.SphereGeometry(0.035,16,12),steelDark);pivotCap.position.set(0.12,0,0);
+
+const knife=new THREE.Group();
+knife.add(blade);
+knife.add(safePivot);knife.add(bitePivot);knife.add(latch);knife.add(tang);knife.add(pivotCap);
+knife.position.set(0,0,0);
+scene.add(knife);
+
+// Trail
+const trailMat=new THREE.LineBasicMaterial({color:0xffc46b,transparent:true,opacity:0.55});
+const trailPoints=[];
+const trailLine=new THREE.Line(trailPoints,trailMat);
+scene.add(trailLine);
+
+// Lights shadow
+key.target.position.set(0,0,0);
+scene.add(key.target);
+
+// Camera
+let cameraPresets={HERO:{pos:[2.2,1.6,2.6],target:[0,0,0]},BLADE:{pos:[0.9,0.8,1.8],target:[0.7,0,0]},PIVOT:{pos:[0.5,0.6,0.8],target:[0.1,0,0]},LATCH:{pos:[0.3,0.8,0.8],target:[0.15,0,0]},TOP:{pos:[0,3,0.2],target:[0,0,0]}};
+
+function setCamera(name){cameraPresets[name]?camera.position.set(...cameraPresets[name].pos):null;camera.lookAt(cameraPresets[name]?cameraPresets[name].target:[0,0,0]);}
+document.getElementById('cameraBtn').onclick=()=>{const n=prompt('Camera preset: HERO, BLADE, PIVOT, LATCH, TOP','HERO');if(n)setCamera(n.toUpperCase());};
+
+// Colourways
+let colourIndex=0;
+function cycleColourway(){
+colourIndex=(colourIndex+1)%3;
+const mats=[bladeMat,brassMat,oxMat];
+if(colourIndex===0){bladeMat.color.set(0xd9d9e2);brassMat.color.set(0xb58a4a);oxMat.color.set(0x6e0f14);}
+if(colourIndex===1){bladeMat.color.set(0x2f5d50);brassMat.color.set(0x1f3a33);oxMat.color.set(0x0e2a24);}
+if(colourIndex===2){bladeMat.color.set(0x4a3a55);brassMat.color.set(0x3a2c3a);oxMat.color.set(0x241a28);}
+};
+
+// Move system
+let currentMove=null;
+let moveTime=0;
+let moveDuration=2.2;
+let captionEl=document.getElementById('caption');
+
+function setCaption(t){captionEl.textContent=t;}
+
+function lerp(a,b,t){return a+(b-a)*t;}
+function damp(a,b,t,speed=3){const ct=Math.pow(1-speed,-t)?1:1;return a+(b-a)*Math.min(1,Math.pow(2,-speed*t));}
+
+function playMove(id){
+const map={basicOpen:()=>{currentMove='basicOpen';moveTime=0;moveDuration=1.8;setCaption('Basic Open');},basicClose:()=>{currentMove='basicClose';moveTime=0;moveDuration=1.8;setCaption('Basic Close');},chaplin:()=>{currentMove='chaplin';moveTime=0;moveDuration=2.2;setCaption('Chaplin');},zen:()=>{currentMove='zen';moveTime=0;moveDuration=2.2;setCaption('Zen Rollover');},fan:()=>{currentMove='fan';moveTime=0;moveDuration=2.8;setCaption('Deep Fan');},helix:()=>{currentMove='helix';moveTime=0;moveDuration=2.2;setCaption('Abyss Helix');},aerial:()=>{currentMove='aerial';moveTime=0;moveDuration=2.6;setCaption('Abyss Aerial');},signature:()=>{currentMove='signature';moveTime=0;moveDuration=2.2;setCaption('Kraken Flip');}};
+(map[id]||function(){})();
+};
+
+function update(dt){
+if(currentMove){
+moveTime+=dt*speedFactor;
+if(moveTime>moveDuration){
+currentMove=null;moveTime=0;setCaption('STANDBY');
+}
+}
+}
+
+function loop(){
+const dt=clock.getDelta();
+const t=clock.elapsedTime;
+if(slowMotion) dt*=0.5;
+update(dt);
+controls.update();
+renderer.render(scene,camera);
+requestAnimationFrame(loop);
+}
+
+function animateOpen(t){
+const k=Math.min(1,t/1.8);const e=1-Math.pow(1-k,3);
+safePivot.rotation.y=lerp(Math.PI*0.85,0,e);bitePivot.rotation.y=lerp(-Math.PI*0.85,0,e);latch.rotation.z=lerp(Math.PI*0.7,0,e);
+knife.position.x=lerp(0,0,0);
+}
+function animateClose(t){
+const k=Math.min(1,t/1.8);const e=1-Math.pow(1-k,3);
+safePivot.rotation.y=lerp(0,Math.PI*0.85,e);bitePivot.rotation.y=lerp(0,-Math.PI*0.85,e);latch.rotation.z=lerp(0,Math.PI*0.7,e);
+}
+function animateChaplin(t){...}
+function animateZen(t){...}
+function animateFan(t){...}
+function animateHelix(t){...}
+function animateAerial(t){...}
+function animateSignature(t){...}
+
+// placeholder animate functions using currentMove
+function animate(){
+if(currentMove){
+const t=moveTime/moveDuration;
+if(currentMove==='basicOpen')animateOpen(t);
+else if(currentMove==='basicClose')animateClose(t);
+else if(currentMove==='chaplin'){}
+else if(currentMove==='zen'){}
+else if(currentMove==='fan'){}
+else if(currentMove==='helix'){}
+else if(currentMove==='aerial'){}
+else if(currentMove==='signature'){}
+}
+}
+
+// Audio triggers on move time events could go here.
+
+init();
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight);});
+renderer.setAnimationLoop(()=>{const dt=clock.getDelta();const t=clock.elapsedTime;if(slowMotion)dt*=0.5;update(dt);animate();controls.update();renderer.render(scene,camera);requestAnimationFrame(loop);});
+</script>
+</body>
+</html><!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Abyss K3 Balisong</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#05070d;font-family:Arial,Helvetica,sans-serif;color:#e8e6df;}
+#app{position:fixed;inset:0;}
+#app canvas{display:block;}
+#ui{position:fixed;top:12px;right:12px;z-index:20;width:232px;padding:10px 12px;background:rgba(10,14,22,.78);border:1px solid rgba(255,215,140,.25);border-radius:12px;backdrop-filter:blur(8px);}
+#ui h1{font-size:15px;margin:0 0 2px;letter-spacing:.12em;color:#f5d9a8;text-transform:uppercase;}
+#ui .sub{font-size:10px;color:#9fb0c3;margin-bottom:8px;letter-spacing:.08em;}
+#moveGrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+#moveGrid button{font:10px/1.2 Arial;background:#141a26;color:#dfe7f2;border:1px solid #2a3648;border-radius:6px;padding:6px 4px;cursor:pointer;}
+#moveGrid button:hover{background:#1d2839;}
+#moveGrid button.active{background:#3a2a18;color:#ffe1ae;border-color:#a06a2c;}
+#controls{margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:10px;}
+#controls label{display:flex;flex-direction:column;gap:2px;}
+#controls input[type=range]{width:90px;}
+#caption{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:20;padding:8px 18px;background:rgba(10,14,22,.72);border:1px solid rgba(255,215,140,.3);border-radius:999px;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#ffe1ae;pointer-events:none;}
+#loading{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:#05070d;color:#f5d9a8;letter-spacing:.3em;font-size:12px;}
+#error{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;color:#ff8b8b;padding:20px;text-align:center;}
+#spec{position:fixed;left:12px;bottom:12px;z-index:20;width:240px;padding:10px 12px;background:rgba(10,14,22,.78);border:1px solid rgba(255,215,140,.25);border-radius:12px;font-size:10px;color:#cfd8e3;}
+#spec b{color:#f5d9a8;}
+@media(max-width:640px){#ui{width:180px;}#spec{display:none;}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="ui">
+<h1>Abyss K3</h1>
+<div class="sub">DEEP-SEA BALISONG · OXBLOOD / BRASS / STEEL</div>
+<div id="moveGrid"></div>
+<div id="controls">
+<label>Speed <input id="speed" type="range" min="0.25" max="2" step="0.05" value="1"></label>
+<label>Slow motion <input id="slowmo" type="checkbox" checked></label>
+<label>Trail <input id="trail" type="checkbox" checked></label>
+<label>Mute <input id="mute" type="checkbox" checked></label>
+</div>
+<div style="margin-top:8px;display:flex;gap:6px;">
+<button id="openBtn">Open</button>
+<button id="closeBtn">Close</button>
+<button id="cameraBtn">Camera</button>
+<button id="inspectBtn">Inspect</button>
+<button id="colourBtn">Colour</button>
+<button id="hideBtn">Hide UI</button>
+</div>
+</div>
+<div id="caption">STANDBY</div>
+<div id="loading">ABYSS K3 · GENERATING</div>
+<div id="error">WEBGL UNAVAILABLE</div>
+<div id="spec">
+<b>ABYSS K3</b> · Deep Sea Balisong<br>
+O. L. <b>0.130</b> C · B. L. <b>0.085</b><br>
+Brass / Oxblood / Polished Steel<br>
+Weight <b>0.412 kg</b> · <b>Titanium Bushings</b>
+</div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const moves = [
+  {id:'basicOpen', name:'Basic Open'},
+  {id:'basicClose', name:'Basic Close'},
+  {id:'chaplin', name:'Chaplin'},
+  {id:'zen', name:'Zen Rollover'},
+  {id:'fan', name:'Deep Fan'},
+  {id:'helix', name:'Abyss Helix'},
+  {id:'aerial', name:'Abyss Aerial'},
+  {id:'signature', name:'Kraken Flip'}
+];
+
+const grid = document.getElementById('moveGrid');
+moves.forEach(m=>{const b=document.createElement('button');b.dataset.id=m.id;b.textContent=m.name;b.type='button';grid.appendChild(b);});
+grid.addEventListener('click',e=>{if(e.target.tagName==='BUTTON'){playMove(e.target.dataset.id);}});
+document.getElementById('openBtn').onclick=()=>playMove('basicOpen');
+document.getElementById('closeBtn').onclick=()=>playMove('basicClose');
+document.getElementById('cameraBtn').onclick=()=>{const n=prompt('Camera preset: HERO, BLADE, PIVOT, LATCH, TOP','HERO');if(n)setCamera(n.toUpperCase());};
+document.getElementById('inspectBtn').onclick=()=>{document.getElementById('ui').style.display=document.getElementById('ui').style.display==='none'?'block':'none';};
+document.getElementById('colourBtn').onclick=()=>cycleColourway();
+document.getElementById('hideBtn').onclick=()=>{document.getElementById('ui').style.display='none';document.getElementById('caption').style.display='none';};
+document.getElementById('mute').onchange=e=>{audio.muted=e.target.checked;};
+const vol=document.getElementById('speed');
+vol.addEventListener('input',e=>speedFactor=Number(e.target.value));
+const slow=document.getElementById('slowmo');
+slow.onchange=e=>slowMotion=e.target.checked;
+const trail=document.getElementById('trail');
+trail.onchange=e=>{trailEnabled=e.target.checked;};
+
+let speedFactor=1;
+let slowMotion=true;
+let trailEnabled=true;
+let audio=new THREE.AudioContext();
+let masterGain=audio.createGain();masterGain.gain.value=0.5;masterGain.connect(audio.destination);audio.connect(masterGain);
+let muted=false;
+function beep(freq,dur,type='sine',gain=0.2){if(muted)return;const o=audio.createOscillator(),g=audio.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(gain,audio.currentTime);g.gain.exponentialRampToValueAtTime(0.001,audio.currentTime+dur);o.connect(g);g.connect(masterGain);o.start();o.stop(audio.currentTime+dur);}
+function noiseBuffer(){const b=audio.createBuffer(1,audio.sampleRate*0.5,audio.sampleRate);const d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;return b;}
+let noiseBuf=noiseBuffer();
+function swish(strength,pitch){if(muted)return;const src=audio.createBufferSource();src.buffer=noiseBuf;const f=audio.createBiquadFilter();f.type='bandpass';f.frequency.value=pitch;const g=audio.createGain();const t=audio.currentTime;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(Math.max(0.001,strength),t+0.015);g.gain.exponentialRampToValueAtTime(0.001,t+0.25);src.connect(f);f.connect(g);g.connect(masterGain);src.start();}
+function metalClack(){beep(1800+Math.random()*1200,0.05,'square',0.08);beep(300,0.08,'triangle',0.12);}
+
+function init(){
+const app=document.getElementById('app');
+renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.05;
+app.appendChild(renderer.domElement);
+scene=new THREE.Scene();
+scene.background=new THREE.Color(0x071018);
+scene.fog=new THREE.Fog(0x071018,6,14);
+camera=new THREE.PerspectiveCamera(38,innerWidth/innerHeight,0.05,100);
+camera.position.set(2.1,1.5,2.4);
+controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;controls.dampingFactor=0.06;controls.maxPolarAngle=Math.PI/2.05;controls.minDistance(0.4);controls.maxDistance(8);
+const pmrem=new THREE.PMREMGenerator(renderer);
+scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
+const key=new THREE.DirectionalLight(0xfff1d6,2.6);key.position.set(3,5,4);key.castShadow=true;key.shadow.mapSize.width=1024;key.shadow.mapSize.height=1024;key.shadow.camera.near=0.1;key.shadow.camera.far=10;key.shadow.camera.left=-3;key.shadow.camera.right=3;key.shadow.camera.top=3;key.shadow.camera.bottom=-3;scene.add(key);
+const rim=new THREE.DirectionalLight(0x66aaff,2.2);rim.position.set(-4,3,-3);scene.add(rim);
+const fill=new THREE.AmbientLight(0x334455,0.6);scene.add(fill);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(30,30,40,40),new THREE.MeshStandardMaterial({color:0xb98a55,roughness:1,metalness:0}));
+ground.rotation.x=-Math.PI/2;
+const gp=ground.geometry.attributes.position;
+for(let i=0;i<gp.count;i++){const x=gp.getX(i),y=gp.getY(i);gp.setZ(i,1.6*Math.sin(x*0.22)+0.8*Math.cos(y*0.18)+0.4*Math.sin((x+y)*0.12));}
+ground.geometry.computeVertexNormals();ground.receiveShadow=true;scene.add(ground);
+const bladeMat=new THREE.MeshPhysicalMaterial({color:0xd9d9e2,metalness:1,roughness:0.12,clearcoat:1,clearcoatRoughness:0.05});
+const brassMat=new THREE.MeshPhysicalMaterial({color:0xb58a4a,metalness:1,roughness:0.28,clearcoat:0.6,clearcoatRoughness:0.15});
+const oxMat=new THREE.MeshPhysicalMaterial({color:0x6e0f14,metalness:0.25,roughness:0.35});
+const steelDark=new THREE.MeshPhysicalMaterial({color:0x22262e,metalness:0.9,roughness:0.35});
+const bladeShape=new THREE.Shape();
+bladeShape.moveTo(0,-0.055);
+bladeShape.lineTo(0.62,-0.055);
+bladeShape.lineTo(0.78,-0.02);
+bladeShape.lineTo(0.78,0.02);
+bladeShape.lineTo(0.62,0.055);
+bladeShape.lineTo(0,0.055);
+bladeShape.closePath();
+const bladeGeo=new THREE.ExtrudeGeometry(bladeShape,{depth:0.09,bevelEnabled:true,bevelThickness:0.008,bevelSize:0.008,bevelSegments:2,curveSegments:8});
+const blade=new THREE.Mesh(bladeGeo,bladeMat);blade.position.set(0.12,0,0);blade.castShadow=true;blade.receiveShadow=true;
+const safePivot=new THREE.Group();safePivot.position.set(0.18,-0.13,0);
+const bitePivot=new THREE.Group();bitePivot.position.set(0.18,0.13,0);
+const latch=new THREE.Group();latch.position.set(0.12,0,0);
+function addHandle(pivot,side){const h=new THREE.Mesh(new THREE.CylinderGeometry(0.075,0.095,0.2,32),brassMat);h.rotation.z=Math.PI/2;h.position.y=side*0.13;h.castShadow=true;const grip=new THREE.Mesh(new THREE.TorusGeometry(0.085,0.018,12,32),oxMat);grip.rotation.z=Math.PI/2;grip.position.y=side*0.13;pivot.add(h);pivot.add(grip);return h;}
+const safeHandle=addHandle(safePivot,-1);
+const biteHandle=addHandle(bitePivot,1);
+const tang=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.05,0.03),steelDark);tang.position.set(0.06,0,0);
+const pivotCap=new THREE.Mesh(new THREE.SphereGeometry(0.035,16,12),steelDark);pivotCap.position.set(0.12,0,0);
+const knife=new THREE.Group();
+knife.add(blade);knife.add(safePivot);knife.add(bitePivot);knife.add(latch);knife.add(tang);knife.add(pivotCap);
+scene.add(knife);
+const trailMat=new THREE.LineBasicMaterial({color:0xffc46b,transparent:true,opacity:0.55});
+const trailPoints=[];const trailLine=new THREE.Line(trailPoints,trailMat);scene.add(trailLine);
+const key=new THREE.DirectionalLight(0xfff1d6,2.6);key.position.set(3,5,4);key.castShadow=true;key.shadow.mapSize.width=1024;key.shadow.mapSize.height=1024;key.shadow.camera.near=0.1;key.shadow.camera.far=10;key.shadow.camera.left=-3;key.shadow.camera.right=3;key.shadow.camera.top=3;key.shadow.camera.bottom=-3;scene.add(key);
+const rim=new THREE.DirectionalLight(0x66aaff,2.2);rim.position.set(-4,3,-3);scene.add(rim);
+const fill=new THREE.AmbientLight(0x334455,0.6);scene.add(fill);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(30,30,40,40),new THREE.MeshStandardMaterial({color:0xb98a55,roughness:1,metalness:0}));
+ground.rotation.x=-Math.PI/2;
+const gp=ground.geometry.attributes.position;
+for(let i=0;i<gp.count;i++){const x=gp.getX(i),y=gp.getY(i);gp.setZ(i,1.6*Math.sin(x*0.22)+0.8*Math.cos(y*0.18)+0.4*Math.sin((x+y)*0.12));}
+ground.geometry.computeVertexNormals();ground.receiveShadow=true;scene.add(ground);
+const key2=new THREE.DirectionalLight(0xfff1d6,2.6);key2.position.set(3,5,4);key2.castShadow=true;key2.shadow.mapSize.width=1024;key2.shadow.mapSize.height=1024;key2.shadow.camera.near=0.1;key2.shadow.camera.far=10;key2.shadow.camera.left=-3;key2.shadow.camera.right=3;key2.shadow.camera.top=3;key2.shadow.camera.bottom=-3;scene.add(key2);
+key2.target.position.set(0,0,0);scene.add(key2.target);
+let cameraPresets={HERO:{pos:[2.2,1.6,2.6],target:[0,0,0]},BLADE:{pos:[0.9,0.8,1.8],target:[0.7,0,0]},PIVOT:{pos:[0.5,0.6,0.8],target:[0.1,0,0]},LATCH:{pos:[0.3,0.8,0.8],target:[0.15,0,0]},TOP:{pos:[0,3,0.2],target:[0,0,0]}}};
+function setCamera(name){const p=cameraPresets[name];if(p){camera.position.set(...p.pos);camera.lookAt(p.target);}else{camera.position.set(2.2,1.6,2.6);camera.lookAt(0,0,0);}};
+document.getElementById('cameraBtn').onclick=()=>{const n=prompt('Camera preset: HERO, BLADE, PIVOT, LATCH, TOP','HERO');if(n)setCamera(n.toUpperCase());};
+let colourIndex=0;
+function cycleColourway(){colourIndex=(colourIndex+1)%3;const mats=[bladeMat,brassMat,oxMat];if(colourIndex===0){bladeMat.color.set(0xd9d9e2);brassMat.color.set(0xb58a4a);oxMat.color.set(0x6e0f14);}if(colourIndex===1){bladeMat.color.set(0x2f5d50);brassMat.color.set(0x1f3a33);oxMat.color.set(0x0e2a24);}if(colourIndex===2){bladeMat.color.set(0x4a3a55);brassMat.color.set(0x3a2c3a);oxMat.color.set(0x241a28);}};
+let currentMove=null;
+let moveTime=0;
+let moveDuration=2.2;
+let captionEl=document.getElementById('caption');
+function setCaption(t){captionEl.textContent=t;}
+function playMove(id){
+const map={basicOpen:()=>{currentMove='basicOpen';moveTime=0;moveDuration=1.8;setCaption('Basic Open');},basicClose:()=>{currentMove='basicClose';moveTime=0;moveDuration=1.8;setCaption('Basic Close');},chaplin:()=>{currentMove='chaplin';moveTime=0;moveDuration=2.2;setCaption('Chaplin');},zen:()=>{currentMove='zen';moveTime=0;moveDuration=2.2;setCaption('Zen Rollover');},fan:()=>{currentMove='fan';moveTime=0;moveDuration=2.8;setCaption('Deep Fan');},helix:()=>{currentMove='helix';moveTime=0;moveDuration=2.2;setCaption('Abyss Helix');},aerial:()=>{currentMove='aerial';moveTime=0;moveDuration=2.6;setCaption('Abyss Aerial');},signature:()=>{currentMove='signature';moveTime=0;moveDuration=2.2;setCaption('Kraken Flip');}};
+(map[id]||function(){})();
+}
+function update(dt){if(currentMove){moveTime+=dt*speedFactor;if(moveTime>moveDuration){currentMove=null;moveTime=0;setCaption('STANDBY');}}}
+function lerp(a,b,t){return a+(b-a)*t;}
+function animateOpen(t){const k=Math.min(1,t/1.8);const e=1-Math.pow(1-k,3);safePivot.rotation.y=lerp(Math.PI*0.85,0,e);bitePivot.rotation.y=lerp(-Math.PI*0.85,0,e);latch.rotation.z=lerp(Math.PI*0.7,0,e);}
+function animateClose(t){const k=Math.min(1,t/1.8);const e=1-Math.pow(1-k,3);safePivot.rotation.y=lerp(0,Math.PI*0.85,e);bitePivot.rotation.y=lerp(0,-Math.PI*0.85,e);latch.rotation.z=lerp(0,Math.PI*0.7,e);}
+function animate(t){
+if(!currentMove)return;
+const tt=moveTime/moveDuration;
+if(currentMove==='basicOpen')animateOpen(tt);
+else if(currentMove==='basicClose')animateClose(tt);
+}
+function loop(){const dt=clock.getDelta();const t=clock.elapsedTime;if(slowMotion)dt*=0.5;update(dt);animate();controls.update();renderer.render(scene,camera);requestAnimationFrame(loop);}
+function init(){initScene();}
+function initScene(){
+const clock=new THREE.Clock();
+function loop2(){const dt=clock.getDelta();const t=clock.elapsedTime;if(slowMotion)dt*=0.5;update(dt);animate();controls.update();renderer.render(scene,camera);requestAnimationFrame(loop2);}
+loop2();
+}
+try{initScene();document.getElementById('loading').style.display='none';}catch(e){document.getElementById('error').style.display='flex';document.getElementById('error').textContent='WEBGL FAILED: '+e.message;}
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+renderer.setAnimationLoop(()=>{const dt=clock.getDelta();const t=clock.elapsedTime;if(slowMotion)dt*=0.5;update(dt);animate();controls.update();renderer.render(scene,camera);requestAnimationFrame(loop);});
+}
+</script>
+</body>
+</html>
