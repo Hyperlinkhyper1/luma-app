@@ -8,6 +8,7 @@ import '../steam_tools/ui/cs2_market_tab.dart';
 import '../steam_tools/ui/cs2_selling_calculator_tab.dart';
 import '../steam_tools/ui/steam_price_tracker_tab.dart';
 import 'cs2_translator/cs2_chat_translator_tab.dart';
+import 'cs2_translator/cs2_voice_translate_tab.dart';
 import 'minecraft/mc_tool_catalog.dart';
 import 'minecraft/minecraft_tools_page.dart';
 
@@ -18,6 +19,7 @@ import 'minecraft/minecraft_tools_page.dart';
 /// accounts: adding the next one is a new value here plus its sections.
 enum GameToolsGame {
   steam('Steam', Icons.sports_esports_rounded),
+  cs2('CS2 tools', Icons.sports_esports_outlined),
   roblox('Roblox', Icons.videogame_asset_rounded),
   minecraft('Minecraft', Icons.widgets_rounded);
 
@@ -40,9 +42,10 @@ enum GameToolsGame {
 /// index is also the [IndexedStack] index in [GameToolsPage].
 enum GameToolsSection {
   priceTracker(game: GameToolsGame.steam, icon: Icons.trending_down_rounded),
-  cs2Market(game: GameToolsGame.steam, icon: Icons.diamond_outlined),
-  sellingCalculator(game: GameToolsGame.steam, icon: Icons.calculate_outlined),
-  chatTranslator(game: GameToolsGame.steam, icon: Icons.translate_rounded),
+  cs2Market(game: GameToolsGame.cs2, icon: Icons.diamond_outlined),
+  sellingCalculator(game: GameToolsGame.cs2, icon: Icons.calculate_outlined),
+  chatTranslator(game: GameToolsGame.cs2, icon: Icons.translate_rounded),
+  voiceTranslate(game: GameToolsGame.cs2, icon: Icons.mic_rounded),
   mafia(game: GameToolsGame.roblox, icon: Icons.theater_comedy_rounded),
   minecraft(game: GameToolsGame.minecraft, icon: Icons.widgets_rounded);
 
@@ -56,6 +59,7 @@ enum GameToolsSection {
     GameToolsSection.cs2Market => t.gameToolsCs2MarketLabel,
     GameToolsSection.sellingCalculator => t.gameToolsSellingCalculatorLabel,
     GameToolsSection.chatTranslator => t.gameToolsChatTranslatorLabel,
+    GameToolsSection.voiceTranslate => t.gameToolsVoiceTranslateLabel,
     GameToolsSection.mafia => 'Mafia',
     GameToolsSection.minecraft => t.mcToolsCount(McTool.values.length),
   };
@@ -67,6 +71,7 @@ enum GameToolsSection {
     GameToolsSection.cs2Market => t.gameToolsCs2MarketBlurb,
     GameToolsSection.sellingCalculator => t.gameToolsSellingCalculatorBlurb,
     GameToolsSection.chatTranslator => t.gameToolsChatTranslatorBlurb,
+    GameToolsSection.voiceTranslate => t.gameToolsVoiceTranslateBlurb,
     GameToolsSection.mafia => t.gameToolsMafiaBlurb,
     GameToolsSection.minecraft => t.gameToolsMinecraftBlurb,
   };
@@ -142,6 +147,7 @@ class _GameToolsPageState extends State<GameToolsPage> {
               GameToolsSection.sellingCalculator =>
                 const Cs2SellingCalculatorTab(),
               GameToolsSection.chatTranslator => const Cs2ChatTranslatorTab(),
+              GameToolsSection.voiceTranslate => const Cs2VoiceTranslateTab(),
               GameToolsSection.mafia => const MafiaRoleCounterTab(),
               GameToolsSection.minecraft => const MinecraftToolsPage(),
             },

@@ -40326,4 +40326,88 @@ class LEn extends L {
 
   @override
   String get cmdDashErrorPort => 'Enter a port between 1 and 65535.';
+
+  @override
+  String get gameToolsVoiceTranslateLabel => 'Voice translate';
+
+  @override
+  String get gameToolsVoiceTranslateBlurb =>
+      'Speak and send translated CS2 chat';
+
+  @override
+  String get cs2VoiceTitle => 'CS2 Voice translate';
+
+  @override
+  String get cs2VoiceSubtitle =>
+      'Speak, translate, and automatically send the result to CS2 all-chat.';
+
+  @override
+  String get cs2VoiceEnable => 'Enable voice translate';
+
+  @override
+  String get cs2VoiceEnableHint =>
+      'Works while luma is open, including while you play CS2. Closing luma disables the microphone and keybind.';
+
+  @override
+  String get cs2VoiceTargetLanguage => 'Translate into';
+
+  @override
+  String get cs2VoiceCustomLanguage => 'Choose another language…';
+
+  @override
+  String get cs2VoiceLanguageHint => 'For example: Finnish';
+
+  @override
+  String get cs2VoiceLanguageRequired => 'Enter a language.';
+
+  @override
+  String get cs2VoiceHotkeyTitle => 'Recording keybind';
+
+  @override
+  String get cs2VoiceHotkeyHint =>
+      'Press your own keybind, then Save. Use it to start and stop recording while luma is open.';
+
+  @override
+  String get cs2VoiceChangeHotkey => 'Set keybind';
+
+  @override
+  String get cs2VoiceRecordingHint =>
+      'Press once to record with your default microphone, then again to translate and send. Recording stops after 30 seconds. Cancel discards it.';
+
+  @override
+  String get cs2VoiceStopAndSend => 'Stop, translate and send';
+
+  @override
+  String get cs2VoiceRecord => 'Start recording';
+
+  @override
+  String get cs2VoiceCancel => 'Cancel recording / request';
+
+  @override
+  String get cs2VoiceLoading => 'Loading voice settings…';
+
+  @override
+  String get cs2VoiceRetry => 'Try again';
+
+  @override
+  String get cs2VoiceTranscript => 'What you said';
+
+  @override
+  String get cs2VoiceTranscriptEmpty =>
+      'Your transcript will appear here after recording.';
+
+  @override
+  String get cs2VoiceTranslation => 'Translated message';
+
+  @override
+  String get cs2VoiceTranslationEmpty =>
+      'Your latest translated message will appear here.';
+
+  @override
+  String get cs2VoiceSetup =>
+      'In Steam, open CS2 → Properties → General → Launch Options. Add these options and restart CS2:';
+
+  @override
+  String get cs2VoiceAdminRouting =>
+      'Uses your provider API key and the models selected in Admin → Assistant → Voice translate. Sign in with an approved Luma account.';
 }

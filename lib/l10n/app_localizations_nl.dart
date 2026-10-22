@@ -40618,4 +40618,88 @@ class LNl extends L {
 
   @override
   String get cmdDashErrorPort => 'Voer een poort tussen 1 en 65535 in.';
+
+  @override
+  String get gameToolsVoiceTranslateLabel => 'Spraakvertaler';
+
+  @override
+  String get gameToolsVoiceTranslateBlurb =>
+      'Spreek en stuur vertaalde CS2-chat';
+
+  @override
+  String get cs2VoiceTitle => 'CS2-spraakvertaler';
+
+  @override
+  String get cs2VoiceSubtitle =>
+      'Spreek, vertaal en verstuur het resultaat automatisch naar de algemene CS2-chat.';
+
+  @override
+  String get cs2VoiceEnable => 'Spraakvertaler inschakelen';
+
+  @override
+  String get cs2VoiceEnableHint =>
+      'Werkt zolang luma open is, ook terwijl je CS2 speelt. Als je luma sluit, worden de microfoon en sneltoets uitgeschakeld.';
+
+  @override
+  String get cs2VoiceTargetLanguage => 'Vertalen naar';
+
+  @override
+  String get cs2VoiceCustomLanguage => 'Een andere taal kiezen…';
+
+  @override
+  String get cs2VoiceLanguageHint => 'Bijvoorbeeld: Fins';
+
+  @override
+  String get cs2VoiceLanguageRequired => 'Voer een taal in.';
+
+  @override
+  String get cs2VoiceHotkeyTitle => 'Opnamesneltoets';
+
+  @override
+  String get cs2VoiceHotkeyHint =>
+      'Druk op je eigen sneltoets en daarna op Opslaan. Hiermee start en stop je opnames zolang luma open is.';
+
+  @override
+  String get cs2VoiceChangeHotkey => 'Sneltoets instellen';
+
+  @override
+  String get cs2VoiceRecordingHint =>
+      'Druk eenmaal om op te nemen met je standaardmicrofoon en nogmaals om te vertalen en versturen. De opname stopt na 30 seconden. Annuleren verwijdert de opname.';
+
+  @override
+  String get cs2VoiceStopAndSend => 'Stoppen, vertalen en versturen';
+
+  @override
+  String get cs2VoiceRecord => 'Opname starten';
+
+  @override
+  String get cs2VoiceCancel => 'Opname / verzoek annuleren';
+
+  @override
+  String get cs2VoiceLoading => 'Spraakinstellingen laden…';
+
+  @override
+  String get cs2VoiceRetry => 'Opnieuw proberen';
+
+  @override
+  String get cs2VoiceTranscript => 'Wat je zei';
+
+  @override
+  String get cs2VoiceTranscriptEmpty =>
+      'Je transcriptie verschijnt hier na de opname.';
+
+  @override
+  String get cs2VoiceTranslation => 'Vertaald bericht';
+
+  @override
+  String get cs2VoiceTranslationEmpty =>
+      'Je laatste vertaalde bericht verschijnt hier.';
+
+  @override
+  String get cs2VoiceSetup =>
+      'Open in Steam CS2 → Eigenschappen → Algemeen → Startopties. Voeg deze opties toe en start CS2 opnieuw:';
+
+  @override
+  String get cs2VoiceAdminRouting =>
+      'Gebruikt je provider-API-sleutel en de modellen uit Beheer → Assistant → Spraakvertaler. Log in met een goedgekeurd Luma-account.';
 }

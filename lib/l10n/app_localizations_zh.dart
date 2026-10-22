@@ -38489,4 +38489,82 @@ class LZh extends L {
 
   @override
   String get cmdDashErrorPort => '请输入 1 到 65535 之间的端口。';
+
+  @override
+  String get gameToolsVoiceTranslateLabel => '语音翻译';
+
+  @override
+  String get gameToolsVoiceTranslateBlurb => '说话并发送翻译后的 CS2 聊天消息';
+
+  @override
+  String get cs2VoiceTitle => 'CS2 语音翻译';
+
+  @override
+  String get cs2VoiceSubtitle => '说话、翻译，并自动将结果发送到 CS2 全体聊天。';
+
+  @override
+  String get cs2VoiceEnable => '启用语音翻译';
+
+  @override
+  String get cs2VoiceEnableHint =>
+      '仅在 luma 打开时生效，玩 CS2 时也可使用。关闭 luma 会停用麦克风和快捷键。';
+
+  @override
+  String get cs2VoiceTargetLanguage => '翻译为';
+
+  @override
+  String get cs2VoiceCustomLanguage => '选择其他语言…';
+
+  @override
+  String get cs2VoiceLanguageHint => '例如：芬兰语';
+
+  @override
+  String get cs2VoiceLanguageRequired => '请输入语言。';
+
+  @override
+  String get cs2VoiceHotkeyTitle => '录音快捷键';
+
+  @override
+  String get cs2VoiceHotkeyHint => '按下自定义快捷键，然后保存。在 luma 打开时，用此快捷键开始和停止录音。';
+
+  @override
+  String get cs2VoiceChangeHotkey => '设置快捷键';
+
+  @override
+  String get cs2VoiceRecordingHint =>
+      '按一次使用默认麦克风录音，再按一次进行翻译并发送。录音将在 30 秒后停止。取消将丢弃录音。';
+
+  @override
+  String get cs2VoiceStopAndSend => '停止、翻译并发送';
+
+  @override
+  String get cs2VoiceRecord => '开始录音';
+
+  @override
+  String get cs2VoiceCancel => '取消录音 / 请求';
+
+  @override
+  String get cs2VoiceLoading => '正在加载语音设置…';
+
+  @override
+  String get cs2VoiceRetry => '重试';
+
+  @override
+  String get cs2VoiceTranscript => '您说的内容';
+
+  @override
+  String get cs2VoiceTranscriptEmpty => '录音结束后，转写内容将显示在此处。';
+
+  @override
+  String get cs2VoiceTranslation => '翻译后的消息';
+
+  @override
+  String get cs2VoiceTranslationEmpty => '您最近翻译的消息将显示在此处。';
+
+  @override
+  String get cs2VoiceSetup => '在 Steam 中打开 CS2 → 属性 → 通用 → 启动选项。添加以下选项并重启 CS2：';
+
+  @override
+  String get cs2VoiceAdminRouting =>
+      '使用您的提供商 API 密钥和在 Admin → Assistant → 语音翻译中选择的模型。请使用已批准的 Luma 账户登录。';
 }

@@ -3,13 +3,21 @@ import 'dart:io';
 
 import 'ai_image.dart';
 import 'ai_mode_routing.dart';
+import 'cs2_voice_translate.dart';
 import 'util.dart';
 
 /// Every model selector on the Assistant tab: the three chat modes, the AI
 /// Detector, the book reviewer, the classroom tutor and the picture model.
 /// Each has a main model and can name an "if possible" model in front of it.
-final kAiModelSelectors = List<String>.unmodifiable(
-    [...kAiModeNames.keys, 'detector', 'bookreview', 'classroom', 'picture']);
+final kAiModelSelectors = List<String>.unmodifiable([
+  ...kAiModeNames.keys,
+  'detector',
+  'bookreview',
+  'classroom',
+  'picture',
+  kCs2TranscribeSelector,
+  kCs2TranslateSelector
+]);
 
 const _preferredSuffix = '.preferred';
 
@@ -25,7 +33,8 @@ String aiSelectorOf(String key) => isAiPreferredKey(key)
 
 /// Upstreams [selector] can run on; only some of them can draw.
 bool aiSelectorAccepts(String selector, AiUpstream upstream) =>
-    selector != 'picture' || kAiImageUpstreams.contains(upstream);
+    (selector != 'picture' || kAiImageUpstreams.contains(upstream)) &&
+    cs2VoiceAccepts(selector, upstream);
 
 /// The operator's "if possible" model per selector, kept in
 /// `ai_preferred_models.json`. A request goes to it whenever its provider
@@ -74,8 +83,10 @@ class AiPreferredStore {
         } else {
           next[selector] = route;
         }
-        await atomicWriteString(_file.path,
-            jsonEncode({for (final e in next.entries) e.key: e.value.toJson()}));
+        await atomicWriteString(
+            _file.path,
+            jsonEncode(
+                {for (final e in next.entries) e.key: e.value.toJson()}));
         _routes
           ..clear()
           ..addAll(next);

@@ -66148,6 +66148,156 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Enter a port between 1 and 65535.'**
   String get cmdDashErrorPort;
+
+  /// No description provided for @gameToolsVoiceTranslateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice translate'**
+  String get gameToolsVoiceTranslateLabel;
+
+  /// No description provided for @gameToolsVoiceTranslateBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Speak and send translated CS2 chat'**
+  String get gameToolsVoiceTranslateBlurb;
+
+  /// No description provided for @cs2VoiceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'CS2 Voice translate'**
+  String get cs2VoiceTitle;
+
+  /// No description provided for @cs2VoiceSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Speak, translate, and automatically send the result to CS2 all-chat.'**
+  String get cs2VoiceSubtitle;
+
+  /// No description provided for @cs2VoiceEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable voice translate'**
+  String get cs2VoiceEnable;
+
+  /// No description provided for @cs2VoiceEnableHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Works while luma is open, including while you play CS2. Closing luma disables the microphone and keybind.'**
+  String get cs2VoiceEnableHint;
+
+  /// No description provided for @cs2VoiceTargetLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate into'**
+  String get cs2VoiceTargetLanguage;
+
+  /// No description provided for @cs2VoiceCustomLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose another language…'**
+  String get cs2VoiceCustomLanguage;
+
+  /// No description provided for @cs2VoiceLanguageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'For example: Finnish'**
+  String get cs2VoiceLanguageHint;
+
+  /// No description provided for @cs2VoiceLanguageRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a language.'**
+  String get cs2VoiceLanguageRequired;
+
+  /// No description provided for @cs2VoiceHotkeyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording keybind'**
+  String get cs2VoiceHotkeyTitle;
+
+  /// No description provided for @cs2VoiceHotkeyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Press your own keybind, then Save. Use it to start and stop recording while luma is open.'**
+  String get cs2VoiceHotkeyHint;
+
+  /// No description provided for @cs2VoiceChangeHotkey.
+  ///
+  /// In en, this message translates to:
+  /// **'Set keybind'**
+  String get cs2VoiceChangeHotkey;
+
+  /// No description provided for @cs2VoiceRecordingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Press once to record with your default microphone, then again to translate and send. Recording stops after 30 seconds. Cancel discards it.'**
+  String get cs2VoiceRecordingHint;
+
+  /// No description provided for @cs2VoiceStopAndSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop, translate and send'**
+  String get cs2VoiceStopAndSend;
+
+  /// No description provided for @cs2VoiceRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'Start recording'**
+  String get cs2VoiceRecord;
+
+  /// No description provided for @cs2VoiceCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel recording / request'**
+  String get cs2VoiceCancel;
+
+  /// No description provided for @cs2VoiceLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading voice settings…'**
+  String get cs2VoiceLoading;
+
+  /// No description provided for @cs2VoiceRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get cs2VoiceRetry;
+
+  /// No description provided for @cs2VoiceTranscript.
+  ///
+  /// In en, this message translates to:
+  /// **'What you said'**
+  String get cs2VoiceTranscript;
+
+  /// No description provided for @cs2VoiceTranscriptEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Your transcript will appear here after recording.'**
+  String get cs2VoiceTranscriptEmpty;
+
+  /// No description provided for @cs2VoiceTranslation.
+  ///
+  /// In en, this message translates to:
+  /// **'Translated message'**
+  String get cs2VoiceTranslation;
+
+  /// No description provided for @cs2VoiceTranslationEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Your latest translated message will appear here.'**
+  String get cs2VoiceTranslationEmpty;
+
+  /// No description provided for @cs2VoiceSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'In Steam, open CS2 → Properties → General → Launch Options. Add these options and restart CS2:'**
+  String get cs2VoiceSetup;
+
+  /// No description provided for @cs2VoiceAdminRouting.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses your provider API key and the models selected in Admin → Assistant → Voice translate. Sign in with an approved Luma account.'**
+  String get cs2VoiceAdminRouting;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

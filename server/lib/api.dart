@@ -30,6 +30,7 @@ import 'benchmark_repair.dart';
 import 'chat_store.dart';
 import 'classroom.dart';
 import 'cs2_offline_store.dart';
+import 'cs2_voice_translate.dart';
 import 'decider_test.dart';
 import 'deploy_console.dart';
 import 'power_console.dart';
@@ -55,6 +56,7 @@ import 'web_search.dart';
 part 'api_benchmark_generate.dart';
 part 'api_benchmark_repair.dart';
 part 'api_classroom.dart';
+part 'api_cs2_voice_translate.dart';
 part 'api_decider_tests.dart';
 part 'api_school_tests.dart';
 part 'api_team_board.dart';
@@ -362,6 +364,7 @@ class Api {
       PreviewRenderService? previewRenders,
       this.benchmarkRepairPrice,
       this.benchmarkRepairCall,
+      this.cs2VoiceCall,
       BenchmarkGithubPublisher? benchmarkGithub})
       : _oauthClient = oauthClient ?? OAuthClient(),
         benchmarkGithub = benchmarkGithub ?? BenchmarkGithubPublisher(),
@@ -456,6 +459,11 @@ class Api {
   /// one with a fake transport.
   final BenchmarkGithubPublisher benchmarkGithub;
   final Cs2OfflineStore? cs2OfflineStore;
+  final Future<(int, String)> Function(AiModeRoute, Map<String, dynamic>)?
+      cs2VoiceCall;
+  late final Cs2VoiceConfigStore cs2VoiceConfig =
+      Cs2VoiceConfigStore(config.dataDir);
+  final Set<String> _cs2VoicePending = {};
   final SubwayRelay _subwayRelay = SubwayRelay();
   final SubwayTicketStore _subwayTickets = SubwayTicketStore();
 
@@ -613,6 +621,7 @@ class Api {
       ..post('/api/v1/steam/itad/overview', _requireAuth(_itadOverviewProxy))
       ..get('/api/v1/steam/cs2/offline', _requireAuth(_cs2OfflineGet))
       ..put('/api/v1/steam/cs2/offline', _requireAuth(_cs2OfflinePut))
+      ..post('/api/v1/cs2/voice-translate', _requireAuth(_cs2VoiceTranslate))
       ..get('/api/v1/sync/<collection>', _requireAuth(_getBlob))
       ..put('/api/v1/sync/<collection>', _requireAuth(_putBlob))
       ..delete('/api/v1/sync/<collection>', _requireAuth(_deleteBlobHandler))
@@ -770,6 +779,7 @@ class Api {
       ..post('/admin/ai-detector', _requireAdmin(_adminAiDetectorSave))
       ..post('/admin/ai-book-review', _requireAdmin(_adminAiBookReviewSave))
       ..post('/admin/ai-classroom', _requireAdmin(_adminAiClassroomSave))
+      ..post('/admin/ai-cs2-voice', _requireAdmin(_adminCs2VoiceSave))
       ..get('/admin/school-tests', _requireAdmin(_adminSchoolTestsState))
       ..get('/admin/school-tests/runs/<id>',
           _requireAdmin(_adminSchoolTestsRunDetail))
@@ -1051,7 +1061,8 @@ class Api {
                 path == 'api/v1/ai/detect' ||
                 path == 'api/v1/ai/book-review')) ||
         path == 'api/v1/classroom/question' ||
-        path == 'api/v1/classroom/review') {
+        path == 'api/v1/classroom/review' ||
+        path == 'api/v1/cs2/voice-translate') {
       return ('ai', _aiChatLimiter);
     }
     if (path == 'api/v1/ai/image') {
@@ -2865,6 +2876,8 @@ class Api {
       'bookreview' => _aiBookReviewRoute(),
       'classroom' => _aiClassroomRoute(),
       'picture' => aiImageConfig.resolve(config.configuredAiUpstreams),
+      kCs2TranscribeSelector || kCs2TranslateSelector =>
+        cs2VoiceConfig.resolve(mode, config.configuredAiUpstreams),
       _ => aiModeRoutes.resolve(mode, config.configuredAiUpstreams),
     };
   }
@@ -2875,6 +2888,8 @@ class Api {
       'bookreview' => 'Book reviewer',
       'classroom' => 'Classroom tutor',
       'picture' => 'Picture model',
+      kCs2TranscribeSelector => 'CS2 voice transcription',
+      kCs2TranslateSelector => 'CS2 voice translation',
       final selector => aiModeRoutes.displayName(selector),
     };
     return isAiPreferredKey(mode) ? '$label (if possible)' : label;
@@ -3032,6 +3047,11 @@ class Api {
                 upstream.name: aiModeRoutes
                     .resolve('smarter', config.configuredAiUpstreams)
                     ?.model,
+            },
+          kCs2TranscribeSelector || kCs2TranslateSelector => {
+              for (final upstream in AiUpstream.values)
+                if (cs2VoiceAccepts(mode, upstream))
+                  upstream.name: cs2VoiceDefaultModel(mode, upstream),
             },
           _ => {
               for (final upstream in kDefaultAiModeModels.entries)
@@ -3585,7 +3605,9 @@ class Api {
         (!kAiModeNames.containsKey(mode) &&
             mode != 'detector' &&
             mode != 'bookreview' &&
-            mode != 'classroom')) {
+            mode != 'classroom' &&
+            mode != kCs2TranscribeSelector &&
+            mode != kCs2TranslateSelector)) {
       return errorResponse(400, 'bad_request', 'Unknown mode.');
     }
     // The detector and the book reviewer follow Nebula until a model is set.
@@ -3602,6 +3624,10 @@ class Api {
         return errorResponse(400, 'bad_request', 'Choose a valid provider.');
       }
       final modelInput = body['model'];
+      if (!aiSelectorAccepts(mode, selectedUpstream)) {
+        return errorResponse(400, 'unsupported_provider',
+            'Choose Google AI Studio or OpenRouter for audio transcription.');
+      }
       if (modelInput is! String) {
         return errorResponse(400, 'bad_request', 'Model must be text.');
       }
@@ -3610,7 +3636,9 @@ class Api {
           : null;
       final upstream = nebulaRoute?.upstream ?? selectedUpstream;
       final model = modelInput.trim().isEmpty
-          ? nebulaRoute?.model ??
+          ? (mode == kCs2TranscribeSelector || mode == kCs2TranslateSelector)
+              ? cs2VoiceDefaultModel(mode, upstream)
+              : nebulaRoute?.model ??
               kDefaultAiModeModels[upstream]![followsNebula ? 'smarter' : mode]!
           : modelInput.trim();
       if (!isValidAiModelId(model)) {
@@ -3639,6 +3667,8 @@ class Api {
         'detector' => _aiDetectorRoute(),
         'bookreview' => _aiBookReviewRoute(),
         'classroom' => _aiClassroomRoute(),
+        kCs2TranscribeSelector || kCs2TranslateSelector =>
+          cs2VoiceConfig.resolve(mode, config.configuredAiUpstreams),
         _ => aiModeRoutes.resolve(mode, config.configuredAiUpstreams),
       };
     }
@@ -11608,6 +11638,7 @@ syncToolbar();
       ('ai-sec-bookreview', 'book', 'Book reviewer'),
       ('ai-sec-classroom', 'cap', 'Classroom tutor'),
       ('ai-sec-picture', 'image', 'Pictures'),
+      ('ai-sec-cs2voice', 'sparkles', 'Voice translate'),
     ];
     final subnav = '<nav class="subnav" aria-label="Assistant sections">'
         '${sections.map((s) => '<a href="#${s.$1}">${_ico(s.$2)}${s.$3}</a>').join()}'
@@ -11731,6 +11762,7 @@ syncToolbar();
         '${_adminAiBookReviewCard(configured)}'
         '${_adminAiClassroomCard(configured)}'
         '${_adminAiImageCard(configured)}'
+        '${_adminCs2VoiceCards(configured)}'
         '</div>';
   }
 
@@ -11908,12 +11940,17 @@ syncToolbar();
     required String defaultInstructions,
     required int maxInstructionChars,
     required String saveLabel,
+    String defaultLabel = 'Nebula',
+    String? sectionId,
   }) {
     String esc(String s) => _htmlEscape(s).replaceAll('"', '&quot;');
     final upstream = stored?.upstream ??
         live?.upstream ??
-        (configured.isEmpty ? AiUpstream.google : configured.first);
-    final upstreamOptions = AiUpstream.values.map((u) {
+        AiUpstream.values.firstWhere(
+            (u) => configured.contains(u) && aiSelectorAccepts(mode, u),
+            orElse: () => AiUpstream.google);
+    final upstreamOptions = AiUpstream.values
+        .where((u) => aiSelectorAccepts(mode, u)).map((u) {
       final hasKey = configured.contains(u);
       return '<option value="${u.name}"${u == upstream ? ' selected' : ''}>'
           '${esc(u.label)}${hasKey ? '' : ' (no key)'}</option>';
@@ -11928,10 +11965,10 @@ syncToolbar();
     if (live == null) {
       status = '<span class="badge err">no key</span>';
     } else if (stored != null && stored.upstream != live.upstream) {
-      status = '<span class="badge warn">key missing — using Nebula\'s '
+      status = '<span class="badge warn">key missing — using $defaultLabel '
           '${esc(live.model)}</span>';
     } else if (stored == null) {
-      status = '<span class="badge warn">same as Nebula · '
+      status = '<span class="badge warn">same as $defaultLabel · '
           '${esc(live.model)}</span>';
     } else {
       status = '<span class="badge ok">custom</span>';
@@ -11945,7 +11982,7 @@ syncToolbar();
       'classroom' => 'cap',
       _ => 'sparkles',
     };
-    return '<section class="ai-sec" id="ai-sec-$mode"><div class="card">'
+    return '<section class="ai-sec" id="ai-sec-${sectionId ?? mode}"><div class="card">'
         '${_cardHead(icon, esc(title))}'
         '<div class="maint-desc" tabindex="0">${esc(description)}</div>'
         '<form method="post" action="$action" class="ai-routes ai-reviewer-form" '
@@ -11987,7 +12024,7 @@ syncToolbar();
         '<template>${esc(defaultInstructions)}</template>'
         '<div class="form-foot">'
         '<button type="submit" class="btn btn-primary">${esc(saveLabel)}</button>'
-        '<span class="muted">Leave the model blank to follow Nebula.</span>'
+        '<span class="muted">Leave the model blank to use $defaultLabel.</span>'
         '</div>'
         '</form>'
         '</div></section>';
