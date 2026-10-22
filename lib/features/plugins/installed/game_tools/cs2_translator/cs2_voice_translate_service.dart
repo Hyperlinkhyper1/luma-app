@@ -482,14 +482,25 @@ class Cs2VoiceTranslateService extends ChangeNotifier {
             }),
           )
           .timeout(const Duration(seconds: 90));
-      final body = jsonDecode(utf8.decode(response.bodyBytes));
+      Object? body;
+      try {
+        body = jsonDecode(utf8.decode(response.bodyBytes));
+      } on FormatException {
+        body = null;
+      }
       if (response.statusCode != 200) {
         final message = body is Map ? body['message'] ?? body['error'] : null;
         throw StateError(
           message is String
               ? message
+              : body == null && response.statusCode >= 500
+              ? 'The luma server could not be reached '
+                    '(${response.statusCode}). Try again in a moment.'
               : 'Voice translation failed (${response.statusCode}).',
         );
+      }
+      if (body == null) {
+        throw const FormatException('The server sent an unreadable reply.');
       }
       return Cs2VoiceTranslation.fromJson(
         Map<String, dynamic>.from(body as Map),

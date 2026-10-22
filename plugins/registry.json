@@ -1125,7 +1125,7 @@
     {
       "id": "map-maker",
       "name": "Map Maker",
-      "description": "Design custom transit maps and city plans with different road types, houses, parks, and public buildings.",
+      "description": "Design transit maps and precise city plans with curved roads, feature snapping, connected housing lots, and editable layers.",
       "icon": "map",
       "category": "Utility",
       "tags": ["Utility", "Design", "Creative"],
@@ -1134,19 +1134,19 @@
       "i18n": {
         "nl": {
           "name": "Kaartenmaker",
-          "description": "Ontwerp eigen OV-kaarten en stadsplannen met verschillende soorten wegen, huizen, parken en openbare gebouwen."
+          "description": "Ontwerp OV-kaarten en nauwkeurige stadsplannen met gebogen wegen, objectuitlijning, aangesloten woonpercelen en bewerkbare lagen."
         },
         "fr": {
           "name": "Créateur de cartes",
-          "description": "Créez vos plans de transport et de ville avec différents types de routes, des maisons, des parcs et des bâtiments publics."
+          "description": "Créez des plans de transport et de ville précis avec routes courbes, accrochage aux objets, parcelles résidentielles raccordées et couches modifiables."
         },
         "es": {
           "name": "Creador de mapas",
-          "description": "Diseña mapas de transporte y planos urbanos con distintos tipos de vías, casas, parques y edificios públicos."
+          "description": "Diseña mapas de transporte y planos urbanos precisos con vías curvas, ajuste a elementos, parcelas residenciales conectadas y capas editables."
         },
         "zh": {
           "name": "地图工坊",
-          "description": "使用不同类型的道路、住宅、公园和公共建筑，设计自己的交通线路图和城市规划。"
+          "description": "使用曲线道路、要素捕捉、接入道路的住宅地块和可编辑图层，设计交通线路图与精确的城市规划。"
         }
       }
     }

@@ -20,9 +20,9 @@
   "mapMakerCitySaved": "City plan saved",
   "mapMakerCityFinishRoad": "Finish road",
   "mapMakerCityCancelRoad": "Cancel road",
-  "mapMakerCityRoadHint": "Click to set road points. Finish road to commit.",
-  "mapMakerCityPlaceHint": "Click on the map to place. Rotate changes the direction.",
-  "mapMakerCitySelectHint": "Select a road or building. Drag buildings to move them.",
+  "mapMakerCityRoadHint": "Click to add vertices. Finish the road, then use Select to drag its vertices.",
+  "mapMakerCityPlaceHint": "Click to place. Road access aligns the lot and adds a driveway.",
+  "mapMakerCitySelectHint": "Select a feature. Drag road vertices or move buildings.",
   "mapMakerCityPanHint": "Drag to move around. Scroll or pinch to zoom.",
   "mapMakerCityStats": "{roads} roads · {buildings} buildings",
   "mapMakerCityMenu": "Maps",
@@ -24819,5 +24819,75 @@
   "cs2VoiceTranslation": "Translated message",
   "cs2VoiceTranslationEmpty": "Your latest translated message will appear here.",
   "cs2VoiceSetup": "In Steam, open CS2 → Properties → General → Launch Options. Add these options and restart CS2:",
-  "cs2VoiceAdminRouting": "Uses your provider API key and the models selected in Admin → Assistant → Voice translate. Sign in with an approved Luma account."
+  "cs2VoiceAdminRouting": "Uses your provider API key and the models selected in Admin → Assistant → Voice translate. Sign in with an approved Luma account.",
+  "mapMakerCityLayers": "Layers",
+  "mapMakerCityProperties": "Feature properties",
+  "mapMakerCityDigitizing": "Digitizing",
+  "mapMakerCityStraight": "Straight",
+  "mapMakerCityCurved": "Curved",
+  "mapMakerCityCurveHint": "Place at least three points. Use Select to drag vertices and refine the curve.",
+  "mapMakerCitySnap": "Snapping",
+  "mapMakerCitySnapGrid": "Grid",
+  "mapMakerCitySnapVertices": "Vertices",
+  "mapMakerCitySnapSegments": "Segments",
+  "mapMakerCitySnapIntersections": "Intersections",
+  "mapMakerCitySnapTolerance": "Tolerance",
+  "mapMakerCitySnapStatus": "{kind, select, grid{Grid snap} vertex{Vertex snap} segment{Segment snap} intersection{Junction snap} other{Free cursor}}",
+  "@mapMakerCitySnapStatus": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "mapMakerCityAutoConnect": "Road frontage",
+  "mapMakerCityAutoConnectHint": "Align buildings with local roads and add access paths.",
+  "mapMakerCityParcels": "Parcels",
+  "mapMakerCityConnections": "Access paths",
+  "mapMakerCityJunctions": "Junctions",
+  "mapMakerCityLocalPlan": "Local plan · metres",
+  "mapMakerCityCoordinates": "X {x} m · Y {y} m",
+  "@mapMakerCityCoordinates": {
+    "placeholders": {
+      "x": {
+        "type": "String"
+      },
+      "y": {
+        "type": "String"
+      }
+    }
+  },
+  "mapMakerCityLength": "Length: {value} m",
+  "@mapMakerCityLength": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "mapMakerCityArea": "Area: {value} m²",
+  "@mapMakerCityArea": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "mapMakerCityConnected": "Connected to road",
+  "mapMakerCityDisconnected": "No road access",
+  "mapMakerCityNoSelection": "Select a feature to inspect its geometry and properties.",
+  "mapMakerCityInvalidPlacement": "No accessible space here. Place a street first, move along the road, or disable road frontage.",
+  "mapMakerCityRoadClass": "Road class",
+  "mapMakerCityGeometry": "Geometry",
+  "mapMakerCityConnectedCount": "Access: {connected}/{total} buildings",
+  "@mapMakerCityConnectedCount": {
+    "placeholders": {
+      "connected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  }
 }

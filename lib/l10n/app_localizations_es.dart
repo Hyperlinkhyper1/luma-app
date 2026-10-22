@@ -97,15 +97,15 @@ class LEs extends L {
 
   @override
   String get mapMakerCityRoadHint =>
-      'Haz clic para colocar los puntos de la vía. Termínala para añadirla.';
+      'Haz clic para añadir vértices. Termina la vía y usa Seleccionar para arrastrarlos.';
 
   @override
   String get mapMakerCityPlaceHint =>
-      'Haz clic en el mapa para colocar. Girar cambia la orientación.';
+      'Haz clic para colocar. El acceso vial alinea la parcela y añade una entrada.';
 
   @override
   String get mapMakerCitySelectHint =>
-      'Selecciona una vía o un edificio. Arrastra los edificios para moverlos.';
+      'Selecciona un elemento. Arrastra vértices de vías o mueve edificios.';
 
   @override
   String get mapMakerCityPanHint =>
@@ -41008,4 +41008,112 @@ class LEs extends L {
   @override
   String get cs2VoiceAdminRouting =>
       'Usa tu clave API del proveedor y los modelos elegidos en Admin → Assistant → Traducción de voz. Inicia sesión con una cuenta Luma aprobada.';
+
+  @override
+  String get mapMakerCityLayers => 'Capas';
+
+  @override
+  String get mapMakerCityProperties => 'Propiedades del elemento';
+
+  @override
+  String get mapMakerCityDigitizing => 'Digitalización';
+
+  @override
+  String get mapMakerCityStraight => 'Recta';
+
+  @override
+  String get mapMakerCityCurved => 'Curva';
+
+  @override
+  String get mapMakerCityCurveHint =>
+      'Coloca al menos tres puntos. Arrastra vértices con Seleccionar para ajustar la curva.';
+
+  @override
+  String get mapMakerCitySnap => 'Ajuste';
+
+  @override
+  String get mapMakerCitySnapGrid => 'Cuadrícula';
+
+  @override
+  String get mapMakerCitySnapVertices => 'Vértices';
+
+  @override
+  String get mapMakerCitySnapSegments => 'Segmentos';
+
+  @override
+  String get mapMakerCitySnapIntersections => 'Intersecciones';
+
+  @override
+  String get mapMakerCitySnapTolerance => 'Tolerancia';
+
+  @override
+  String mapMakerCitySnapStatus(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'grid': 'Ajuste a cuadrícula',
+      'vertex': 'Ajuste a vértice',
+      'segment': 'Ajuste a segmento',
+      'intersection': 'Ajuste a cruce',
+      'other': 'Cursor libre',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get mapMakerCityAutoConnect => 'Frente a la vía';
+
+  @override
+  String get mapMakerCityAutoConnectHint =>
+      'Alinea edificios con vías locales y añade accesos.';
+
+  @override
+  String get mapMakerCityParcels => 'Parcelas';
+
+  @override
+  String get mapMakerCityConnections => 'Accesos';
+
+  @override
+  String get mapMakerCityJunctions => 'Cruces';
+
+  @override
+  String get mapMakerCityLocalPlan => 'Plano local · metros';
+
+  @override
+  String mapMakerCityCoordinates(String x, String y) {
+    return 'X $x m · Y $y m';
+  }
+
+  @override
+  String mapMakerCityLength(String value) {
+    return 'Longitud: $value m';
+  }
+
+  @override
+  String mapMakerCityArea(String value) {
+    return 'Superficie: $value m²';
+  }
+
+  @override
+  String get mapMakerCityConnected => 'Conectado a la vía';
+
+  @override
+  String get mapMakerCityDisconnected => 'Sin acceso a la vía';
+
+  @override
+  String get mapMakerCityNoSelection =>
+      'Selecciona un elemento para ver su geometría y propiedades.';
+
+  @override
+  String get mapMakerCityInvalidPlacement =>
+      'No hay espacio accesible aquí. Dibuja una calle, desplázate por la vía o desactiva el frente a la vía.';
+
+  @override
+  String get mapMakerCityRoadClass => 'Tipo de vía';
+
+  @override
+  String get mapMakerCityGeometry => 'Geometría';
+
+  @override
+  String mapMakerCityConnectedCount(int connected, int total) {
+    return 'Acceso: $connected/$total edificios';
+  }
 }

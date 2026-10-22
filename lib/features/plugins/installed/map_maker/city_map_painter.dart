@@ -2,11 +2,14 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'city_map_geometry.dart';
 import 'city_map_models.dart';
 import 'map_maker_geometry.dart';
 
-const kCityPaper = Color(0xFFEAF0E3);
-const _selectionColor = Color(0xFF008CA8);
+const kCityPaper = Color(0xFFF5F5F0);
+const _selectionColor = Color(0xFF07839B);
+const _snapColor = Color(0xFFBC4088);
+const _invalidColor = Color(0xFFBA5148);
 
 class CityMapPainter extends CustomPainter {
   CityMapPainter({
@@ -17,6 +20,16 @@ class CityMapPainter extends CustomPainter {
     this.previewBuilding,
     this.showGrid = true,
     this.textDirection = TextDirection.ltr,
+    this.showRoads = true,
+    this.showBuildings = true,
+    this.showParcels = true,
+    this.showConnections = true,
+    this.showJunctions = false,
+    this.draftCurved = false,
+    this.snapResult,
+    this.validPlacement = true,
+    this.viewScale = 1,
+    this.fontFamily,
   });
 
   final CityMap map;
@@ -26,76 +39,132 @@ class CityMapPainter extends CustomPainter {
   final CityBuilding? previewBuilding;
   final bool showGrid;
   final TextDirection textDirection;
+  final bool showRoads;
+  final bool showBuildings;
+  final bool showParcels;
+  final bool showConnections;
+  final bool showJunctions;
+  final bool draftCurved;
+  final CitySnapResult? snapResult;
+  final bool validPlacement;
+  final double viewScale;
+  final String? fontFamily;
+
+  double get _scale => viewScale.clamp(.1, 5);
+  double get _fine => .75 / _scale;
 
   @override
   void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.clipRect(Offset.zero & size);
     canvas.drawRect(Offset.zero & size, Paint()..color = kCityPaper);
     if (showGrid) _paintGrid(canvas, size);
-
-    for (final building in map.buildings) {
-      if (building.kind == CityBuildingKind.park) {
-        _paintBuilding(canvas, building);
+    if (showBuildings) {
+      for (final building in map.buildings) {
+        if (building.kind == CityBuildingKind.park) {
+          _paintBuilding(canvas, building);
+        }
       }
     }
-    for (final road in map.roads) {
-      _paintRoadBase(canvas, road.points, road.kind, border: true);
-    }
-    for (final road in map.roads) {
-      _paintRoadBase(canvas, road.points, road.kind, border: false);
-    }
-    for (final road in map.roads) {
-      _paintRoadMarkings(canvas, road.points, road.kind);
-    }
-    for (final building in map.buildings) {
-      if (building.kind != CityBuildingKind.park) {
-        _paintBuilding(canvas, building);
+    if (showParcels) {
+      for (final building in map.buildings) {
+        _paintParcel(canvas, building);
       }
     }
-    for (final building in map.buildings) {
-      if (building.id == selectedId) _paintBuildingSelection(canvas, building);
-      if (building.name.trim().isNotEmpty) _paintName(canvas, building);
-    }
-    for (final road in map.roads) {
-      if (road.id == selectedId) _paintRoadSelection(canvas, road);
-    }
-
-    if (draftRoad.isNotEmpty) {
-      if (draftRoad.length > 1) {
-        canvas.saveLayer(null, Paint()..color = const Color(0xBBFFFFFF));
-        _paintRoadBase(canvas, draftRoad, roadKind, border: true);
-        _paintRoadBase(canvas, draftRoad, roadKind, border: false);
-        _paintRoadMarkings(canvas, draftRoad, roadKind);
-        canvas.restore();
-        _drawDashedPath(
-          canvas,
-          polylinePath(draftRoad),
-          Paint()
-            ..color = _selectionColor
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2,
+    if (showRoads) {
+      final lines = {for (final road in map.roads) road.id: road.centerline};
+      for (var pass = 0; pass < 3; pass++) {
+        for (final road in map.roads) {
+          _paintRoadBase(canvas, lines[road.id]!, road.kind, pass: pass);
+        }
+      }
+      canvas.save();
+      var markingArea = Path()..addRect(Offset.zero & size);
+      for (final junction in map.junctions) {
+        if (junction.roadIds.length < 2) continue;
+        var width = 0.0;
+        for (final road in map.roads) {
+          if (junction.roadIds.contains(road.id)) {
+            width = math.max(width, road.kind.width);
+          }
+        }
+        markingArea = Path.combine(
+          PathOperation.difference,
+          markingArea,
+          Path()..addOval(
+            Rect.fromCircle(center: junction.position, radius: width / 2 + 4),
+          ),
         );
       }
-      for (final point in draftRoad) {
-        _paintHandle(canvas, point);
+      canvas.clipPath(markingArea);
+      for (final road in map.roads) {
+        _paintRoadMarkings(canvas, lines[road.id]!, road.kind);
+      }
+      canvas.restore();
+      for (final road in map.roads) {
+        if (road.name.trim().isNotEmpty) {
+          _paintRoadName(canvas, road, lines[road.id]!);
+        }
       }
     }
-
+    if (showConnections) {
+      for (final building in map.buildings) {
+        _paintConnection(canvas, building);
+      }
+    }
+    if (showBuildings) {
+      for (final building in map.buildings) {
+        if (building.kind != CityBuildingKind.park) {
+          _paintBuilding(canvas, building);
+        }
+      }
+      for (final building in map.buildings) {
+        if (building.id == selectedId) {
+          _paintBuildingSelection(canvas, building);
+        }
+        if (building.name.trim().isNotEmpty) {
+          _paintBuildingName(canvas, building);
+        }
+      }
+    }
+    if (showJunctions && showRoads) {
+      for (final junction in map.junctions) {
+        if (junction.roadIds.length >= 2) {
+          _paintHandle(
+            canvas,
+            junction.position,
+            color: const Color(0xFF638775),
+          );
+        }
+      }
+    }
+    if (showRoads) {
+      for (final road in map.roads) {
+        if (road.id == selectedId) _paintRoadSelection(canvas, road);
+      }
+    }
+    _paintDraft(canvas);
     final preview = previewBuilding;
     if (preview != null) {
-      canvas.saveLayer(null, Paint()..color = const Color(0xAFFFFFFF));
+      canvas.saveLayer(null, Paint()..color = const Color(0xBFFFFFFF));
+      _paintParcel(canvas, preview, preview: true);
+      _paintConnection(canvas, preview);
       _paintBuilding(canvas, preview);
       canvas.restore();
-      _paintBuildingSelection(canvas, preview);
+      _paintBuildingSelection(canvas, preview, invalid: !validPlacement);
     }
+    final snap = snapResult;
+    if (snap != null) _paintSnap(canvas, snap);
+    canvas.restore();
   }
 
   void _paintGrid(Canvas canvas, Size size) {
     final minor = Paint()
-      ..color = const Color(0x13546D4A)
-      ..strokeWidth = 0.7;
+      ..color = const Color(0x145F6B68)
+      ..strokeWidth = .5 / _scale;
     final major = Paint()
-      ..color = const Color(0x22546D4A)
-      ..strokeWidth = 1;
+      ..color = const Color(0x235F6B68)
+      ..strokeWidth = .65 / _scale;
     for (var x = 0.0; x <= size.width; x += kCityGrid) {
       canvas.drawLine(
         Offset(x, 0),
@@ -116,23 +185,32 @@ class CityMapPainter extends CustomPainter {
     Canvas canvas,
     List<Offset> points,
     CityRoadKind kind, {
-    required bool border,
+    required int pass,
   }) {
     if (points.length < 2) return;
-    final isPath = kind == CityRoadKind.pedestrian;
+    final pedestrian = kind == CityRoadKind.pedestrian;
+    final color = switch (pass) {
+      0 => pedestrian ? const Color(0xFFB8B5A9) : const Color(0xFFADB3B1),
+      1 => pedestrian ? const Color(0xFFE9E5D9) : const Color(0xFFECEDE7),
+      _ => switch (kind) {
+        CityRoadKind.street => const Color(0xFFD3D8D5),
+        CityRoadKind.avenue => const Color(0xFFCAD1CD),
+        CityRoadKind.highway => const Color(0xFFB6C0BD),
+        CityRoadKind.pedestrian => const Color(0xFFE6E1D3),
+      },
+    };
     canvas.drawPath(
       polylinePath(points),
       Paint()
-        ..color = border
-            ? (isPath ? const Color(0xFFB8AD91) : const Color(0xFFC8CCBE))
-            : switch (kind) {
-                CityRoadKind.street => const Color(0xFF697174),
-                CityRoadKind.avenue => const Color(0xFF596368),
-                CityRoadKind.highway => const Color(0xFF48545C),
-                CityRoadKind.pedestrian => const Color(0xFFDDCFAB),
-              }
+        ..color = color
         ..style = PaintingStyle.stroke
-        ..strokeWidth = kind.width + (border ? (isPath ? 3 : 8) : 0)
+        ..strokeWidth =
+            kind.width +
+            (pass == 0
+                ? 7
+                : pass == 1
+                ? 5
+                : 0)
         ..strokeJoin = StrokeJoin.round
         ..strokeCap = StrokeCap.round,
     );
@@ -151,55 +229,52 @@ class CityMapPainter extends CustomPainter {
           canvas,
           path,
           Paint()
-            ..color = const Color(0xBCEEF0E5)
+            ..color = const Color(0xDDF8FAF4)
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.4,
-          dash: 9,
-          gap: 11,
+            ..strokeWidth = 1.3,
+          dash: 8,
+          gap: 9,
         );
       case CityRoadKind.avenue:
         canvas.drawPath(
           path,
           Paint()
-            ..color = const Color(0xFFB9BEA5)
+            ..color = const Color(0xFFE6E8DB)
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 5
-            ..strokeJoin = StrokeJoin.round
-            ..strokeCap = StrokeCap.round,
+            ..strokeWidth = 4
+            ..strokeJoin = StrokeJoin.round,
         );
-        _paintOffsetLane(canvas, points, 12, dashed: true);
-        _paintOffsetLane(canvas, points, -12, dashed: true);
+        _paintOffsetLane(canvas, points, 11, dashed: true);
+        _paintOffsetLane(canvas, points, -11, dashed: true);
       case CityRoadKind.highway:
-        canvas.drawPath(
-          path,
-          Paint()
-            ..color = const Color(0xFFDDC57D)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 5
-            ..strokeJoin = StrokeJoin.round,
+        _paintOffsetLane(
+          canvas,
+          points,
+          2,
+          dashed: false,
+          color: const Color(0xFFE9E2B9),
         );
-        canvas.drawPath(
-          path,
-          Paint()
-            ..color = const Color(0xFF48545C)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2.5
-            ..strokeJoin = StrokeJoin.round,
+        _paintOffsetLane(
+          canvas,
+          points,
+          -2,
+          dashed: false,
+          color: const Color(0xFFE9E2B9),
         );
-        _paintOffsetLane(canvas, points, 14, dashed: true);
-        _paintOffsetLane(canvas, points, -14, dashed: true);
-        _paintOffsetLane(canvas, points, 25, dashed: false);
-        _paintOffsetLane(canvas, points, -25, dashed: false);
+        _paintOffsetLane(canvas, points, 13, dashed: true);
+        _paintOffsetLane(canvas, points, -13, dashed: true);
+        _paintOffsetLane(canvas, points, 24, dashed: false);
+        _paintOffsetLane(canvas, points, -24, dashed: false);
       case CityRoadKind.pedestrian:
         _drawDashedPath(
           canvas,
           path,
           Paint()
-            ..color = const Color(0x75A99A76)
+            ..color = const Color(0x88978F7F)
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.2,
-          dash: 2,
-          gap: 8,
+            ..strokeWidth = .9,
+          dash: 1,
+          gap: 6,
         );
     }
   }
@@ -209,470 +284,438 @@ class CityMapPainter extends CustomPainter {
     List<Offset> points,
     double offset, {
     required bool dashed,
+    Color color = const Color(0xEAF7F9F2),
   }) {
-    final paint = Paint()
-      ..color = const Color(0xB8F2F1DE)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.1;
-    for (var i = 1; i < points.length; i++) {
-      final delta = points[i] - points[i - 1];
-      if (delta.distance < 0.1) continue;
-      final normal = Offset(-delta.dy, delta.dx) / delta.distance * offset;
-      final path = Path()
-        ..moveTo((points[i - 1] + normal).dx, (points[i - 1] + normal).dy)
-        ..lineTo((points[i] + normal).dx, (points[i] + normal).dy);
-      if (dashed) {
-        _drawDashedPath(canvas, path, paint, dash: 11, gap: 10);
-      } else {
-        canvas.drawPath(path, paint);
-      }
+    if (points.length < 2) return;
+    final shifted = <Offset>[];
+    for (var i = 0; i < points.length; i++) {
+      final before = points[math.max(0, i - 1)];
+      final after = points[math.min(points.length - 1, i + 1)];
+      final tangent = after - before;
+      final length = tangent.distance;
+      shifted.add(
+        length < .001
+            ? points[i]
+            : points[i] + Offset(-tangent.dy, tangent.dx) / length * offset,
+      );
     }
+    final path = polylinePath(shifted);
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = 1.1;
+    if (dashed) {
+      _drawDashedPath(canvas, path, paint, dash: 9, gap: 9);
+    } else {
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  bool _hasParcel(CityBuilding building) =>
+      building.kind != CityBuildingKind.tree &&
+      building.kind != CityBuildingKind.park;
+
+  void _paintParcel(
+    Canvas canvas,
+    CityBuilding building, {
+    bool preview = false,
+  }) {
+    if (!_hasParcel(building) || building.parcel.length < 3) return;
+    final path = polylinePath(building.parcel, close: true);
+    canvas.drawPath(path, Paint()..color = const Color(0x55E5DFCC));
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = preview
+            ? _selectionColor.withValues(alpha: .65)
+            : const Color(0xFFB4B6A9)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _fine,
+    );
+    if (building.roadId != null && building.roadAnchor != null) {
+      final angle = building.rotation;
+      final tangent = Offset(math.cos(angle), math.sin(angle));
+      final front =
+          building.position +
+          Offset(-math.sin(angle), math.cos(angle)) *
+              (building.size.height / 2 + 12);
+      final halfWidth = building.size.width / 2 + 12;
+      canvas.drawLine(
+        front - tangent * halfWidth,
+        front + tangent * halfWidth,
+        Paint()
+          ..color = const Color(0xFF788F7B)
+          ..strokeWidth = 1.4 / _scale,
+      );
+    }
+  }
+
+  void _paintConnection(Canvas canvas, CityBuilding building) {
+    final anchor = building.roadAnchor;
+    if (building.roadId == null || anchor == null || !_hasParcel(building)) {
+      return;
+    }
+    final entrance = building.entrance;
+    if ((anchor - entrance).distance < .01) return;
+    canvas.drawLine(
+      entrance,
+      anchor,
+      Paint()
+        ..color = const Color(0xFFB5B9AE)
+        ..strokeCap = StrokeCap.butt
+        ..strokeWidth = 7,
+    );
+    canvas.drawLine(
+      entrance,
+      anchor,
+      Paint()
+        ..color = const Color(0xFFF0EEE4)
+        ..strokeCap = StrokeCap.butt
+        ..strokeWidth = 5.5,
+    );
+    canvas.drawCircle(
+      anchor,
+      1.6 / _scale,
+      Paint()..color = const Color(0xFF6E897B),
+    );
   }
 
   void _paintBuilding(Canvas canvas, CityBuilding building) {
     canvas.save();
     canvas.translate(building.x, building.y);
-    canvas.rotate(building.quarterTurns * math.pi / 2);
-    final size = building.size;
-    final lot = Rect.fromCenter(
+    canvas.rotate(building.rotation);
+    final bounds = Rect.fromCenter(
       center: Offset.zero,
-      width: size.width,
-      height: size.height,
+      width: building.size.width,
+      height: building.size.height,
     );
-
-    switch (building.kind) {
-      case CityBuildingKind.house:
-        _paintHouse(canvas, lot);
-      case CityBuildingKind.apartment:
-        _paintApartment(canvas, lot);
-      case CityBuildingKind.shop:
-        _paintShop(canvas, lot);
-      case CityBuildingKind.office:
-        _paintOffice(canvas, lot);
-      case CityBuildingKind.school:
-        _paintSchool(canvas, lot);
-      case CityBuildingKind.hospital:
-        _paintHospital(canvas, lot);
-      case CityBuildingKind.park:
-        _paintPark(canvas, lot);
-      case CityBuildingKind.tree:
-        _paintTree(canvas, Offset.zero, 9.5);
+    if (building.kind == CityBuildingKind.tree) {
+      _paintTree(canvas, Offset.zero, 9);
+    } else if (building.kind == CityBuildingKind.park) {
+      _paintPark(canvas, bounds);
+    } else {
+      final color = switch (building.kind) {
+        CityBuildingKind.house => const Color(0xFFDCD3BF),
+        CityBuildingKind.apartment => const Color(0xFFD7CFBD),
+        CityBuildingKind.shop => const Color(0xFFDBCEBC),
+        CityBuildingKind.office => const Color(0xFFCDD6D8),
+        CityBuildingKind.school => const Color(0xFFE0D9C0),
+        CityBuildingKind.hospital => const Color(0xFFDFD5D2),
+        _ => const Color(0xFFD9D6CB),
+      };
+      canvas.drawRect(bounds, Paint()..color = color);
+      canvas.drawRect(
+        bounds,
+        Paint()
+          ..color = const Color(0xFF81867D)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1 / _scale,
+      );
+      if (building.kind == CityBuildingKind.house) {
+        final paint = Paint()
+          ..color = const Color(0xFFB3AB96)
+          ..strokeWidth = _fine;
+        canvas.drawLine(
+          Offset(0, bounds.top + 3),
+          Offset(0, bounds.bottom - 3),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(bounds.left + 3, bounds.top + 3),
+          Offset(0, bounds.top + 12),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(bounds.right - 3, bounds.top + 3),
+          Offset(0, bounds.top + 12),
+          paint,
+        );
+      } else {
+        canvas.drawRect(
+          bounds.deflate(5),
+          Paint()
+            ..color = const Color(0x70868A80)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = _fine,
+        );
+      }
+      final connected = building.roadId != null && building.roadAnchor != null;
+      canvas.drawLine(
+        Offset(-4, bounds.bottom),
+        Offset(4, bounds.bottom),
+        Paint()
+          ..color = connected
+              ? const Color(0xFF607F70)
+              : const Color(0xFFBD8752)
+          ..strokeWidth = 2 / _scale,
+      );
+      if (building.kind == CityBuildingKind.hospital) {
+        final paint = Paint()
+          ..color = const Color(0xFFAB8D87)
+          ..strokeWidth = 3;
+        canvas.drawLine(const Offset(-7, 0), const Offset(7, 0), paint);
+        canvas.drawLine(const Offset(0, -7), const Offset(0, 7), paint);
+      }
     }
     canvas.restore();
   }
 
-  void _paintLot(Canvas canvas, Rect lot, {bool paved = false}) {
-    _roundRect(
-      canvas,
-      lot.deflate(1),
-      paved ? const Color(0xFFD6DBD1) : const Color(0xFFCBDEB8),
-      radius: 4,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(lot.deflate(1), const Radius.circular(4)),
+  void _paintPark(Canvas canvas, Rect bounds) {
+    canvas.drawRect(bounds, Paint()..color = const Color(0xFFDDE7D5));
+    canvas.drawRect(
+      bounds,
       Paint()
-        ..color = const Color(0x557F9272)
+        ..color = const Color(0xFFACBBA1)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.8,
-    );
-  }
-
-  void _paintRoof(Canvas canvas, Rect rect, Color color, {double radius = 2}) {
-    _roundRect(
-      canvas,
-      rect.shift(const Offset(2, 3)),
-      const Color(0x33505D47),
-      radius: radius,
-    );
-    _roundRect(canvas, rect, color, radius: radius);
-  }
-
-  void _paintHouse(Canvas canvas, Rect lot) {
-    _paintLot(canvas, lot);
-    canvas.drawRect(
-      Rect.fromLTWH(-3, 8, 6, lot.bottom - 8),
-      Paint()..color = const Color(0xFFE3D7BD),
-    );
-    final roof = Rect.fromLTRB(lot.left + 7, lot.top + 6, lot.right - 7, 11);
-    _paintRoof(canvas, roof, const Color(0xFFB9674E));
-    final rightSlope = Rect.fromLTRB(0, roof.top, roof.right, roof.bottom);
-    canvas.drawRect(rightSlope, Paint()..color = const Color(0xFF9C4F3E));
-    canvas.drawLine(
-      Offset(0, roof.top),
-      Offset(0, roof.bottom),
-      Paint()
-        ..color = const Color(0xFFD49371)
-        ..strokeWidth = 2,
-    );
-    for (var y = roof.top + 6; y < roof.bottom - 2; y += 6) {
-      canvas.drawLine(
-        Offset(roof.left + 1, y),
-        Offset(roof.right - 1, y),
-        Paint()
-          ..color = const Color(0x33713D31)
-          ..strokeWidth = 0.8,
-      );
-    }
-    canvas.drawRect(
-      Rect.fromLTWH(roof.left + 5, roof.top + 4, 5, 7),
-      Paint()..color = const Color(0xFFE2D9BF),
-    );
-    _paintTree(canvas, Offset(lot.right - 7, lot.bottom - 8), 4.5);
-  }
-
-  void _paintApartment(Canvas canvas, Rect lot) {
-    _paintLot(canvas, lot, paved: true);
-    final roof = lot.deflate(8);
-    _paintRoof(canvas, roof, const Color(0xFFCCBC9A));
-    canvas.drawRect(
-      Rect.fromLTRB(
-        roof.left + 4,
-        roof.top + 4,
-        roof.right - 4,
-        roof.bottom - 4,
-      ),
-      Paint()..color = const Color(0xFFE1D5B8),
-    );
-    _paintWindows(
-      canvas,
-      roof,
-      columns: 4,
-      rows: 3,
-      color: const Color(0xFF768F91),
-    );
-    _roundRect(canvas, Rect.fromLTWH(-7, -8, 14, 16), const Color(0xFFACAD9E));
-    canvas.drawRect(
-      const Rect.fromLTWH(-3, -4, 6, 8),
-      Paint()..color = const Color(0xFF7E8D85),
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(-6, roof.bottom, 12, 5),
-      Paint()..color = const Color(0xFF8D8C7D),
-    );
-    _paintTree(canvas, Offset(lot.left + 5, lot.bottom - 6), 4);
-    _paintTree(canvas, Offset(lot.right - 5, lot.bottom - 6), 4);
-  }
-
-  void _paintShop(Canvas canvas, Rect lot) {
-    _paintLot(canvas, lot, paved: true);
-    final roof = Rect.fromLTRB(
-      lot.left + 6,
-      lot.top + 5,
-      lot.right - 6,
-      lot.bottom - 10,
-    );
-    _paintRoof(canvas, roof, const Color(0xFFDAAF65));
-    _roundRect(
-      canvas,
-      Rect.fromLTWH(roof.left + 8, roof.top + 6, 16, 8),
-      const Color(0xFFE9D19B),
-    );
-    final count = (roof.width / 6).floor();
-    for (var i = 0; i < count; i++) {
-      canvas.drawRect(
-        Rect.fromLTWH(
-          roof.left + i * roof.width / count,
-          roof.bottom - 2,
-          roof.width / count,
-          7,
-        ),
-        Paint()
-          ..color = i.isEven
-              ? const Color(0xFFCF7660)
-              : const Color(0xFFF3E6CD),
-      );
-    }
-    canvas.drawRect(
-      Rect.fromLTWH(-4, roof.bottom + 5, 8, 3),
-      Paint()..color = const Color(0xFF7D9C9C),
-    );
-    _paintTree(canvas, Offset(lot.right - 5, lot.bottom - 5), 3.5);
-  }
-
-  void _paintOffice(Canvas canvas, Rect lot) {
-    _paintLot(canvas, lot, paved: true);
-    final roof = Rect.fromLTRB(
-      lot.left + 10,
-      lot.top + 6,
-      lot.right - 10,
-      lot.bottom - 9,
-    );
-    _paintRoof(canvas, roof, const Color(0xFF789FA6), radius: 3);
-    _paintWindows(
-      canvas,
-      roof,
-      columns: 4,
-      rows: 7,
-      color: const Color(0xFFBDD4D2),
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(
-        roof.left + 10,
-        roof.top + 10,
-        roof.width - 20,
-        roof.height - 20,
-      ),
-      Paint()..color = const Color(0xFF567D87),
-    );
-    _roundRect(
-      canvas,
-      const Rect.fromLTWH(-9, -12, 18, 24),
-      const Color(0xFFB5C6BC),
-    );
-    for (var y = -8.0; y <= 7; y += 5) {
-      canvas.drawLine(
-        Offset(-6, y),
-        Offset(6, y),
-        Paint()
-          ..color = const Color(0xFF7D948C)
-          ..strokeWidth = 1.2,
-      );
-    }
-    canvas.drawRect(
-      Rect.fromLTWH(-8, roof.bottom - 2, 16, 7),
-      Paint()..color = const Color(0xFFCCE1D9),
-    );
-  }
-
-  void _paintSchool(Canvas canvas, Rect lot) {
-    _paintLot(canvas, lot);
-    final yard = Rect.fromLTRB(
-      lot.left + 7,
-      lot.top + 7,
-      lot.left + 43,
-      lot.bottom - 7,
-    );
-    _roundRect(canvas, yard, const Color(0xFFB8CCA0));
-    canvas.drawRect(
-      yard.deflate(4),
-      Paint()
-        ..color = const Color(0x99F4F1D5)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1,
+        ..strokeWidth = _fine,
     );
     canvas.drawLine(
-      Offset(yard.left + 4, yard.center.dy),
-      Offset(yard.right - 4, yard.center.dy),
+      Offset(bounds.left + 10, bounds.bottom - 10),
+      Offset(bounds.right - 10, bounds.top + 10),
       Paint()
-        ..color = const Color(0x99F4F1D5)
-        ..strokeWidth = 1,
+        ..color = const Color(0xFFEEEBDD)
+        ..strokeWidth = 5,
     );
-    final roof = Rect.fromLTRB(
-      lot.left + 51,
-      lot.top + 6,
-      lot.right - 7,
-      lot.bottom - 10,
-    );
-    _paintRoof(canvas, roof, const Color(0xFFC48E5D));
-    _paintWindows(
-      canvas,
-      roof,
-      columns: 5,
-      rows: 3,
-      color: const Color(0xFFDBDFBF),
-    );
-    canvas.drawRect(
-      Rect.fromLTRB(
-        roof.left + 6,
-        roof.top + 7,
-        roof.right - 6,
-        roof.bottom - 7,
-      ),
-      Paint()..color = const Color(0xFFD9AF78),
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(roof.center.dx - 4, roof.bottom, 8, 8),
-      Paint()..color = const Color(0xFFE2D8BD),
-    );
-    _paintTree(canvas, Offset(lot.left + 45, lot.top + 10), 4);
-    _paintTree(canvas, Offset(lot.left + 45, lot.bottom - 10), 4);
-  }
-
-  void _paintHospital(Canvas canvas, Rect lot) {
-    _paintLot(canvas, lot, paved: true);
-    final roof = lot.deflate(10);
-    _paintRoof(canvas, roof, const Color(0xFFE3E8DE), radius: 4);
-    _paintWindows(
-      canvas,
-      roof,
-      columns: 6,
-      rows: 5,
-      color: const Color(0xFF99B7B4),
-    );
-    canvas.drawRect(roof.deflate(10), Paint()..color = const Color(0xFFF4F3E9));
-    final cross = Paint()..color = const Color(0xFFD5796C);
-    canvas.drawRect(const Rect.fromLTWH(-5, -17, 10, 34), cross);
-    canvas.drawRect(const Rect.fromLTWH(-17, -5, 34, 10), cross);
-    _roundRect(
-      canvas,
-      Rect.fromLTWH(-11, roof.bottom - 3, 22, 8),
-      const Color(0xFF8DACA8),
-    );
-  }
-
-  void _paintPark(Canvas canvas, Rect lot) {
-    _roundRect(canvas, lot.deflate(1), const Color(0xFFBBD79C), radius: 9);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(lot.deflate(2), const Radius.circular(8)),
-      Paint()
-        ..color = const Color(0xFF9ABF7E)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
-    );
-    final path = Path()
-      ..moveTo(lot.left, lot.bottom - 12)
-      ..quadraticBezierTo(-5, lot.bottom - 12, -7, 0)
-      ..quadraticBezierTo(-12, lot.top + 12, lot.right, lot.top + 12);
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = const Color(0xFFE4D7B2)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 8
-        ..strokeCap = StrokeCap.round,
-    );
-    canvas.drawOval(
-      Rect.fromLTWH(lot.right - 40, lot.bottom - 37, 28, 22),
-      Paint()..color = const Color(0xFF8BBBC0),
-    );
-    canvas.drawArc(
-      Rect.fromLTWH(lot.right - 36, lot.bottom - 33, 18, 10),
-      0.1,
-      2.2,
-      false,
-      Paint()
-        ..color = const Color(0xFFB7D5D0)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.3,
-    );
-    _paintTree(canvas, Offset(lot.left + 19, lot.top + 19), 12);
-    _paintTree(canvas, Offset(lot.left + 42, lot.top + 31), 9);
-    _paintTree(canvas, Offset(lot.right - 19, lot.top + 33), 10);
-    _paintTree(canvas, Offset(lot.left + 23, lot.bottom - 24), 9);
-    _roundRect(
-      canvas,
-      Rect.fromLTWH(5, lot.top + 25, 14, 4),
-      const Color(0xFFAD8B58),
-      radius: 1,
-    );
+    _paintTree(canvas, Offset(bounds.left + 22, bounds.top + 22), 10);
+    _paintTree(canvas, Offset(bounds.left + 23, bounds.bottom - 24), 8);
+    _paintTree(canvas, Offset(bounds.right - 24, bounds.top + 25), 9);
   }
 
   void _paintTree(Canvas canvas, Offset center, double radius) {
+    canvas.drawCircle(center, radius, Paint()..color = const Color(0x888DA67D));
     canvas.drawCircle(
-      center + const Offset(2, 3),
+      center,
       radius,
-      Paint()..color = const Color(0x28546638),
-    );
-    canvas.drawCircle(center, radius, Paint()..color = const Color(0xFF6F9D60));
-    canvas.drawCircle(
-      center + Offset(-radius * 0.18, -radius * 0.2),
-      radius * 0.75,
-      Paint()..color = const Color(0xFF8AB574),
-    );
-    canvas.drawCircle(
-      center + Offset(-radius * 0.24, -radius * 0.3),
-      radius * 0.34,
-      Paint()..color = const Color(0xFFA1C587),
-    );
-  }
-
-  void _paintWindows(
-    Canvas canvas,
-    Rect rect, {
-    required int columns,
-    required int rows,
-    required Color color,
-  }) {
-    final paint = Paint()..color = color;
-    for (var x = 0; x < columns; x++) {
-      final left = rect.left + 4 + x * (rect.width - 8) / columns;
-      canvas.drawRect(Rect.fromLTWH(left, rect.top + 2, 4, 4), paint);
-      canvas.drawRect(Rect.fromLTWH(left, rect.bottom - 6, 4, 4), paint);
-    }
-    for (var y = 0; y < rows; y++) {
-      final top = rect.top + 8 + y * (rect.height - 16) / rows;
-      canvas.drawRect(Rect.fromLTWH(rect.left + 2, top, 4, 4), paint);
-      canvas.drawRect(Rect.fromLTWH(rect.right - 6, top, 4, 4), paint);
-    }
-  }
-
-  void _paintBuildingSelection(Canvas canvas, CityBuilding building) {
-    canvas.save();
-    canvas.translate(building.x, building.y);
-    canvas.rotate(building.quarterTurns * math.pi / 2);
-    final bounds = Rect.fromCenter(
-      center: Offset.zero,
-      width: building.size.width + 8,
-      height: building.size.height + 8,
-    );
-    _drawDashedPath(
-      canvas,
-      Path()
-        ..addRRect(RRect.fromRectAndRadius(bounds, const Radius.circular(5))),
       Paint()
-        ..color = _selectionColor
+        ..color = const Color(0xFF879B79)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
-      dash: 5,
-      gap: 3,
+        ..strokeWidth = _fine,
     );
-    canvas.restore();
+    final paint = Paint()
+      ..color = const Color(0xFF6D8063)
+      ..strokeWidth = _fine;
+    canvas.drawLine(
+      center - const Offset(2.5, 0),
+      center + const Offset(2.5, 0),
+      paint,
+    );
+    canvas.drawLine(
+      center - const Offset(0, 2.5),
+      center + const Offset(0, 2.5),
+      paint,
+    );
+  }
+
+  void _paintBuildingSelection(
+    Canvas canvas,
+    CityBuilding building, {
+    bool invalid = false,
+  }) {
+    final color = invalid ? _invalidColor : _selectionColor;
+    if (showParcels && _hasParcel(building)) {
+      _drawDashedPath(
+        canvas,
+        polylinePath(building.parcel, close: true),
+        Paint()
+          ..color = color.withValues(alpha: .75)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1 / _scale,
+        dash: 5 / _scale,
+        gap: 3 / _scale,
+      );
+    }
+    canvas.drawPath(
+      polylinePath(building.footprint, close: true),
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.8 / _scale,
+    );
+    for (final point in building.footprint) {
+      _paintHandle(canvas, point, color: color, radius: 3);
+    }
+    if (invalid) {
+      final offset = Offset(6 / _scale, 6 / _scale);
+      final paint = Paint()
+        ..color = color
+        ..strokeWidth = 2 / _scale;
+      canvas.drawLine(
+        building.position - offset,
+        building.position + offset,
+        paint,
+      );
+      canvas.drawLine(
+        building.position + Offset(-offset.dx, offset.dy),
+        building.position + Offset(offset.dx, -offset.dy),
+        paint,
+      );
+    }
   }
 
   void _paintRoadSelection(Canvas canvas, CityRoad road) {
     if (road.points.length < 2) return;
-    _drawDashedPath(
-      canvas,
-      polylinePath(road.points),
+    canvas.drawPath(
+      polylinePath(road.centerline),
       Paint()
-        ..color = const Color(0xFF72D1E5)
+        ..color = _selectionColor
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3,
-      dash: 8,
-      gap: 5,
+        ..strokeWidth = 1.5 / _scale,
     );
     for (final point in road.points) {
       _paintHandle(canvas, point);
     }
   }
 
-  void _paintHandle(Canvas canvas, Offset point) {
-    canvas.drawCircle(point, 4.5, Paint()..color = const Color(0xFFF9FCF4));
-    canvas.drawCircle(
-      point,
-      4.5,
+  void _paintDraft(Canvas canvas) {
+    if (draftRoad.isEmpty) return;
+    if (draftRoad.length > 1) {
+      final points = CityRoad(
+        id: 'draft',
+        points: draftRoad,
+        curved: draftCurved,
+      ).centerline;
+      canvas.saveLayer(null, Paint()..color = const Color(0xBDFFFFFF));
+      for (var pass = 0; pass < 3; pass++) {
+        _paintRoadBase(canvas, points, roadKind, pass: pass);
+      }
+      _paintRoadMarkings(canvas, points, roadKind);
+      canvas.restore();
+      _drawDashedPath(
+        canvas,
+        polylinePath(points),
+        Paint()
+          ..color = _selectionColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.6 / _scale,
+        dash: 6 / _scale,
+        gap: 4 / _scale,
+      );
+    }
+    for (final point in draftRoad) {
+      _paintHandle(canvas, point);
+    }
+  }
+
+  void _paintHandle(
+    Canvas canvas,
+    Offset point, {
+    Color color = _selectionColor,
+    double radius = 3.5,
+  }) {
+    final rect = Rect.fromCenter(
+      center: point,
+      width: radius * 2 / _scale,
+      height: radius * 2 / _scale,
+    );
+    canvas.drawRect(rect, Paint()..color = const Color(0xFFFDFEFA));
+    canvas.drawRect(
+      rect,
       Paint()
-        ..color = _selectionColor
+        ..color = color
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.7,
+        ..strokeWidth = 1.2 / _scale,
     );
   }
 
-  void _paintName(Canvas canvas, CityBuilding building) {
+  void _paintSnap(Canvas canvas, CitySnapResult snap) {
+    final point = snap.position;
+    final radius = 6 / _scale;
+    final paint = Paint()
+      ..color = snap.kind == CitySnapKind.none
+          ? const Color(0xFF7F8D89)
+          : _snapColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4 / _scale;
+    final rect = Rect.fromCircle(center: point, radius: radius);
+    switch (snap.kind) {
+      case CitySnapKind.vertex:
+        canvas.drawRect(rect, paint);
+      case CitySnapKind.segment:
+        canvas.drawCircle(point, radius, paint);
+        canvas.drawLine(
+          point - Offset(radius * 1.6, 0),
+          point + Offset(radius * 1.6, 0),
+          paint,
+        );
+      case CitySnapKind.intersection:
+        canvas.drawPath(
+          Path()
+            ..moveTo(point.dx, point.dy - radius * 1.3)
+            ..lineTo(point.dx + radius * 1.3, point.dy)
+            ..lineTo(point.dx, point.dy + radius * 1.3)
+            ..lineTo(point.dx - radius * 1.3, point.dy)
+            ..close(),
+          paint,
+        );
+      case CitySnapKind.grid:
+      case CitySnapKind.none:
+        canvas.drawLine(
+          point - Offset(radius, 0),
+          point + Offset(radius, 0),
+          paint,
+        );
+        canvas.drawLine(
+          point - Offset(0, radius),
+          point + Offset(0, radius),
+          paint,
+        );
+    }
+  }
+
+  void _paintRoadName(Canvas canvas, CityRoad road, List<Offset> points) {
+    if (_scale < .45 || points.length < 2) return;
+    final metrics = polylinePath(points).computeMetrics().toList();
+    if (metrics.isEmpty) return;
+    final tangent = metrics.first.getTangentForOffset(metrics.first.length / 2);
+    if (tangent == null) return;
     final painter = TextPainter(
       text: TextSpan(
-        text: building.name,
-        style: const TextStyle(
-          color: Color(0xFF344B3A),
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          backgroundColor: Color(0xDAEEF3E8),
+        text: road.name,
+        style: TextStyle(
+          fontFamily: fontFamily,
+          color: const Color(0xFF5E6A64),
+          fontSize: 10 / _scale,
+          fontWeight: FontWeight.w500,
+          backgroundColor: const Color(0xCFEEF0E9),
         ),
       ),
       textDirection: textDirection,
       maxLines: 1,
       ellipsis: '…',
-    )..layout(maxWidth: math.max(96.0, building.bounds.width + 24));
-    painter.paint(
-      canvas,
-      Offset(building.x - painter.width / 2, building.bounds.bottom + 4),
-    );
+    )..layout(maxWidth: 160 / _scale);
+    var angle = math.atan2(tangent.vector.dy, tangent.vector.dx);
+    if (angle > math.pi / 2) angle -= math.pi;
+    if (angle < -math.pi / 2) angle += math.pi;
+    canvas.save();
+    canvas.translate(tangent.position.dx, tangent.position.dy);
+    canvas.rotate(angle);
+    painter.paint(canvas, Offset(-painter.width / 2, -painter.height / 2));
+    canvas.restore();
   }
 
-  void _roundRect(Canvas canvas, Rect rect, Color color, {double radius = 2}) {
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, Radius.circular(radius)),
-      Paint()..color = color,
+  void _paintBuildingName(Canvas canvas, CityBuilding building) {
+    if (_scale < .5 && building.id != selectedId) return;
+    final painter = TextPainter(
+      text: TextSpan(
+        text: building.name,
+        style: TextStyle(
+          fontFamily: fontFamily,
+          color: const Color(0xFF59615A),
+          fontSize: 10 / _scale,
+          backgroundColor: const Color(0xDDF5F5F0),
+        ),
+      ),
+      textDirection: textDirection,
+      maxLines: 1,
+      ellipsis: '…',
+    )..layout(maxWidth: math.max(96 / _scale, building.bounds.width + 24));
+    painter.paint(
+      canvas,
+      Offset(
+        building.x - painter.width / 2,
+        building.bounds.bottom + 5 / _scale,
+      ),
     );
   }
 

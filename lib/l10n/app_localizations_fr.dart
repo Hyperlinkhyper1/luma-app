@@ -97,15 +97,15 @@ class LFr extends L {
 
   @override
   String get mapMakerCityRoadHint =>
-      'Cliquez pour placer les points de la route, puis terminez-la pour l\'ajouter.';
+      'Cliquez pour ajouter des sommets. Terminez la route, puis déplacez ses sommets avec Sélectionner.';
 
   @override
   String get mapMakerCityPlaceHint =>
-      'Cliquez sur la carte pour placer. Pivoter change l\'orientation.';
+      'Cliquez pour placer. L\'accès routier aligne la parcelle et ajoute une allée.';
 
   @override
   String get mapMakerCitySelectHint =>
-      'Sélectionnez une route ou un bâtiment. Faites glisser les bâtiments pour les déplacer.';
+      'Sélectionnez un objet. Déplacez les sommets des routes ou les bâtiments.';
 
   @override
   String get mapMakerCityPanHint =>
@@ -41084,4 +41084,112 @@ class LFr extends L {
   @override
   String get cs2VoiceAdminRouting =>
       'Utilise votre clé API et les modèles choisis dans Admin → Assistant → Traduction vocale. Connectez-vous avec un compte Luma approuvé.';
+
+  @override
+  String get mapMakerCityLayers => 'Couches';
+
+  @override
+  String get mapMakerCityProperties => 'Propriétés de l’objet';
+
+  @override
+  String get mapMakerCityDigitizing => 'Numérisation';
+
+  @override
+  String get mapMakerCityStraight => 'Droit';
+
+  @override
+  String get mapMakerCityCurved => 'Courbe';
+
+  @override
+  String get mapMakerCityCurveHint =>
+      'Placez au moins trois points. Déplacez les sommets avec Sélectionner pour affiner la courbe.';
+
+  @override
+  String get mapMakerCitySnap => 'Accrochage';
+
+  @override
+  String get mapMakerCitySnapGrid => 'Grille';
+
+  @override
+  String get mapMakerCitySnapVertices => 'Sommets';
+
+  @override
+  String get mapMakerCitySnapSegments => 'Segments';
+
+  @override
+  String get mapMakerCitySnapIntersections => 'Intersections';
+
+  @override
+  String get mapMakerCitySnapTolerance => 'Tolérance';
+
+  @override
+  String mapMakerCitySnapStatus(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'grid': 'Sur la grille',
+      'vertex': 'Sur un sommet',
+      'segment': 'Sur un segment',
+      'intersection': 'Sur une intersection',
+      'other': 'Curseur libre',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get mapMakerCityAutoConnect => 'Façade sur rue';
+
+  @override
+  String get mapMakerCityAutoConnectHint =>
+      'Alignez les bâtiments sur les rues locales et ajoutez des accès.';
+
+  @override
+  String get mapMakerCityParcels => 'Parcelles';
+
+  @override
+  String get mapMakerCityConnections => 'Voies d’accès';
+
+  @override
+  String get mapMakerCityJunctions => 'Jonctions';
+
+  @override
+  String get mapMakerCityLocalPlan => 'Plan local · mètres';
+
+  @override
+  String mapMakerCityCoordinates(String x, String y) {
+    return 'X $x m · Y $y m';
+  }
+
+  @override
+  String mapMakerCityLength(String value) {
+    return 'Longueur : $value m';
+  }
+
+  @override
+  String mapMakerCityArea(String value) {
+    return 'Surface : $value m²';
+  }
+
+  @override
+  String get mapMakerCityConnected => 'Relié à la route';
+
+  @override
+  String get mapMakerCityDisconnected => 'Sans accès routier';
+
+  @override
+  String get mapMakerCityNoSelection =>
+      'Sélectionnez un objet pour examiner sa géométrie et ses propriétés.';
+
+  @override
+  String get mapMakerCityInvalidPlacement =>
+      'Aucun espace accessible ici. Dessinez d’abord une rue, déplacez-vous le long de la route ou désactivez la façade sur rue.';
+
+  @override
+  String get mapMakerCityRoadClass => 'Type de voie';
+
+  @override
+  String get mapMakerCityGeometry => 'Géométrie';
+
+  @override
+  String mapMakerCityConnectedCount(int connected, int total) {
+    return 'Accès : $connected/$total bâtiments';
+  }
 }

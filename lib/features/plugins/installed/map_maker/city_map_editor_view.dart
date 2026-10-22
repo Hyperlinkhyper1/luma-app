@@ -9,6 +9,7 @@ import '../../../../theme/luma_theme.dart';
 import 'city_map_models.dart';
 import 'city_map_painter.dart';
 import 'city_plan_controller.dart';
+import 'city_plan_inspector.dart';
 import 'map_maker_models.dart';
 import 'map_maker_store.dart';
 
@@ -38,6 +39,11 @@ class _CityMapEditorViewState extends State<CityMapEditorView> {
   Offset? _hover;
   Offset _dragOffset = Offset.zero;
   bool _showGrid = true;
+  bool _showRoads = true;
+  bool _showBuildings = true;
+  bool _showParcels = true;
+  bool _showConnections = true;
+  bool _showJunctions = false;
   bool _centered = false;
 
   @override
@@ -48,6 +54,12 @@ class _CityMapEditorViewState extends State<CityMapEditorView> {
       store: widget.store ?? MapMakerStore.instance,
     )..addListener(_changed);
     _title = TextEditingController(text: widget.save.title);
+    _transform.addListener(_onTransform);
+  }
+
+  void _onTransform() {
+    _plan.viewScale = _transform.value.getMaxScaleOnAxis();
+    _plan.updateHover(_hover);
   }
 
   void _changed() {
@@ -57,11 +69,13 @@ class _CityMapEditorViewState extends State<CityMapEditorView> {
   @override
   void dispose() {
     _plan.removeListener(_changed);
+    _plan.commitFeatureNames(notify: false);
     _plan.endMove();
     _plan.rename(_title.text);
     unawaited(_plan.store.flush());
     _plan.dispose();
     _title.dispose();
+    _transform.removeListener(_onTransform);
     _transform.dispose();
     _canvasFocus.dispose();
     _titleFocus.dispose();
@@ -69,8 +83,12 @@ class _CityMapEditorViewState extends State<CityMapEditorView> {
   }
 
   Future<void> _save({bool leave = false}) async {
+    _plan.commitFeatureNames();
     _plan.endMove();
-    if (_plan.draftRoad.length >= 2) _plan.finishRoad();
+    if (_plan.draftRoad.isNotEmpty && !_plan.finishRoad()) {
+      _roadError();
+      return;
+    }
     _plan.rename(_title.text);
     await _plan.store.flush();
     if (!mounted) return;
@@ -86,7 +104,7 @@ class _CityMapEditorViewState extends State<CityMapEditorView> {
   void _viewAt(Offset center, double scale) {
     _transform.value = Matrix4.identity()
       ..translateByDouble(_viewport.width / 2, _viewport.height / 2, 0, 1)
-      ..scaleByDouble(scale, scale, 1, 1)
+      ..scaleByDouble(scale, scale, scale, 1)
       ..translateByDouble(-center.dx, -center.dy, 0, 1);
   }
 
@@ -97,7 +115,7 @@ class _CityMapEditorViewState extends State<CityMapEditorView> {
       content = content?.expandToInclude(building.bounds) ?? building.bounds;
     }
     for (final road in _plan.map.roads) {
-      for (final point in road.points) {
+      for (final point in road.centerline) {
         final bounds = Rect.fromCircle(center: point, radius: road.kind.width);
         content = content?.expandToInclude(bounds) ?? bounds;
       }
@@ -126,26 +144,183 @@ class _CityMapEditorViewState extends State<CityMapEditorView> {
 
   void _finishRoad() {
     if (!_plan.finishRoad()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(L.of(context).mapMakerCityRoadDraftHint)),
-      );
+      _roadError();
     }
   }
 
-  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
-    if (_titleFocus.hasFocus || event is! KeyDownEvent) {
-      return KeyEventResult.ignored;
+  void _roadError() {
+    final t = L.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _plan.curvedRoad
+              ? t.mapMakerCityCurveHint
+              : t.mapMakerCityRoadDraftHint,
+        ),
+      ),
+    );
+  }
+
+  void _tapCanvas(Offset position) {
+    _canvasFocus.requestFocus();
+    if (_plan.tool == CityPlanTool.building &&
+        !_plan.previewPlacement(position).valid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(L.of(context).mapMakerCityInvalidPlacement)),
+      );
     }
+    _plan.tap(position);
+  }
+
+  Future<void> _openInspector() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.sizeOf(context).height * .75,
+          child: CityPlanInspector(plan: _plan),
+        ),
+      ),
+    );
+    if (mounted) _plan.commitFeatureNames();
+  }
+
+  Widget _layers({VoidCallback? refresh}) {
+    final t = L.of(context);
+    final colors = context.luma;
+    Widget layer(
+      String key,
+      IconData icon,
+      String label,
+      bool value,
+      ValueChanged<bool> change,
+    ) => SizedBox(
+      height: 30,
+      child: Row(
+        children: [
+          Checkbox(
+            key: ValueKey(key),
+            value: value,
+            visualDensity: VisualDensity.compact,
+            onChanged: (next) {
+              setState(() => change(next ?? false));
+              refresh?.call();
+            },
+          ),
+          Icon(icon, size: 15, color: colors.textMuted),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 12, color: colors.textSecondary),
+            ),
+          ),
+        ],
+      ),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          child: Text(
+            t.mapMakerCityLayers,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+          ),
+        ),
+        layer(
+          'city-layer-buildings',
+          Icons.square_outlined,
+          t.mapMakerCityBuildings,
+          _showBuildings,
+          (value) {
+            _showBuildings = value;
+            _plan.buildingsVisible = value;
+            if (!value && _plan.selectedBuilding != null) {
+              _plan.selectedId = null;
+            }
+          },
+        ),
+        layer(
+          'city-layer-parcels',
+          Icons.grid_on_rounded,
+          t.mapMakerCityParcels,
+          _showParcels,
+          (value) => _showParcels = value,
+        ),
+        layer(
+          'city-layer-roads',
+          Icons.route_outlined,
+          t.mapMakerCityRoads,
+          _showRoads,
+          (value) {
+            _showRoads = value;
+            _plan.roadsVisible = value;
+            if (!value && _plan.selectedRoad != null) _plan.selectedId = null;
+          },
+        ),
+        layer(
+          'city-layer-access',
+          Icons.link_rounded,
+          t.mapMakerCityConnections,
+          _showConnections,
+          (value) => _showConnections = value,
+        ),
+        layer(
+          'city-layer-junctions',
+          Icons.control_point_rounded,
+          t.mapMakerCityJunctions,
+          _showJunctions,
+          (value) => _showJunctions = value,
+        ),
+        layer(
+          'city-layer-grid',
+          Icons.grid_4x4_rounded,
+          t.mapMakerCityGrid,
+          _showGrid,
+          (value) => _showGrid = value,
+        ),
+      ],
+    );
+  }
+
+  void _openLayers() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, refresh) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 18),
+            child: _layers(refresh: () => refresh(() {})),
+          ),
+        ),
+      ),
+    );
+  }
+
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
     final key = event.logicalKey;
     final control =
         HardwareKeyboard.instance.isControlPressed ||
         HardwareKeyboard.instance.isMetaPressed;
+    if (control && key == LogicalKeyboardKey.keyS) {
+      unawaited(_save());
+      return KeyEventResult.handled;
+    }
+    if (_titleFocus.hasFocus ||
+        FocusManager.instance.primaryFocus?.context
+                ?.findAncestorStateOfType<EditableTextState>() !=
+            null) {
+      return KeyEventResult.ignored;
+    }
     if (control && key == LogicalKeyboardKey.keyZ) {
       HardwareKeyboard.instance.isShiftPressed ? _plan.redo() : _plan.undo();
     } else if (control && key == LogicalKeyboardKey.keyY) {
       _plan.redo();
-    } else if (control && key == LogicalKeyboardKey.keyS) {
-      unawaited(_save());
     } else if (key == LogicalKeyboardKey.escape) {
       _plan.setTool(CityPlanTool.select);
     } else if (key == LogicalKeyboardKey.enter &&
@@ -190,16 +365,16 @@ class _CityMapEditorViewState extends State<CityMapEditorView> {
   }) {
     final luma = context.luma;
     return Padding(
-      padding: EdgeInsets.only(right: compact ? 6 : 0, bottom: compact ? 0 : 4),
+      padding: EdgeInsets.only(right: compact ? 4 : 0, bottom: 0),
       child: Material(
         color: selected ? luma.accentSubtle : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(3),
         child: InkWell(
           key: ValueKey(id),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(3),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             child: Row(
               mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
               children: [
@@ -253,7 +428,7 @@ class _CityMapEditorViewState extends State<CityMapEditorView> {
     if (compact) {
       return Container(
         color: context.luma.surface,
-        height: 58,
+        height: 48,
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -268,7 +443,7 @@ class _CityMapEditorViewState extends State<CityMapEditorView> {
       );
     }
     Widget heading(String text) => Padding(
-      padding: const EdgeInsets.fromLTRB(12, 14, 12, 10),
+      padding: const EdgeInsets.fromLTRB(10, 12, 10, 6),
       child: Text(
         text,
         style: TextStyle(
@@ -279,13 +454,18 @@ class _CityMapEditorViewState extends State<CityMapEditorView> {
       ),
     );
     return Container(
-      width: 212,
-      color: context.luma.surface,
+      width: 220,
+      decoration: BoxDecoration(
+        color: context.luma.surface,
+        border: Border(right: BorderSide(color: context.luma.border)),
+      ),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(6),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _layers(),
+            const Divider(height: 20),
             heading(t.mapMakerCityRoads),
             ...roads,
             const Divider(),
@@ -338,6 +518,51 @@ class _CityMapEditorViewState extends State<CityMapEditorView> {
               t.mapMakerCityPan,
               () => _plan.setTool(CityPlanTool.pan),
               selected: _plan.tool == CityPlanTool.pan,
+            ),
+            const VerticalDivider(indent: 10, endIndent: 10),
+            TextButton.icon(
+              key: const ValueKey('city-straight'),
+              onPressed: () => _plan.setCurvedRoad(false),
+              icon: Icon(
+                Icons.straight_rounded,
+                size: 18,
+                color: !_plan.curvedRoad
+                    ? context.luma.accent
+                    : context.luma.textMuted,
+              ),
+              label: Text(
+                t.mapMakerCityStraight,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+            TextButton.icon(
+              key: const ValueKey('city-curve'),
+              onPressed: () => _plan.setCurvedRoad(true),
+              icon: Icon(
+                Icons.gesture_rounded,
+                size: 18,
+                color: _plan.curvedRoad
+                    ? context.luma.accent
+                    : context.luma.textMuted,
+              ),
+              label: Text(
+                t.mapMakerCityCurved,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+            _action(
+              'city-snap',
+              Icons.settings_input_composite_rounded,
+              t.mapMakerCitySnap,
+              () => _plan.setSnapping(enabled: !_plan.snapEnabled),
+              selected: _plan.snapEnabled,
+            ),
+            _action(
+              'city-frontage',
+              Icons.add_home_work_outlined,
+              t.mapMakerCityAutoConnect,
+              () => _plan.setConnectHousing(!_plan.connectHousing),
+              selected: _plan.connectHousing,
             ),
             const VerticalDivider(indent: 10, endIndent: 10),
             _action(
@@ -400,6 +625,19 @@ class _CityMapEditorViewState extends State<CityMapEditorView> {
               t.mapMakerCityResetView,
               _fit,
             ),
+            const VerticalDivider(indent: 10, endIndent: 10),
+            _action(
+              'city-layers',
+              Icons.layers_outlined,
+              t.mapMakerCityLayers,
+              _openLayers,
+            ),
+            _action(
+              'city-properties',
+              Icons.tune_rounded,
+              t.mapMakerCityProperties,
+              _openInspector,
+            ),
           ],
         ),
       ),
@@ -408,9 +646,16 @@ class _CityMapEditorViewState extends State<CityMapEditorView> {
 
   Widget _canvas() {
     final t = L.of(context);
+    final placement = _plan.tool == CityPlanTool.building && _hover != null
+        ? _plan.previewPlacement(_hover!)
+        : null;
     final hint = switch (_plan.tool) {
-      CityPlanTool.road => t.mapMakerCityRoadHint,
-      CityPlanTool.building => t.mapMakerCityPlaceHint,
+      CityPlanTool.road =>
+        _plan.curvedRoad ? t.mapMakerCityCurveHint : t.mapMakerCityRoadHint,
+      CityPlanTool.building =>
+        placement != null && !placement.valid
+            ? t.mapMakerCityInvalidPlacement
+            : t.mapMakerCityAutoConnectHint,
       CityPlanTool.pan => t.mapMakerCityPanHint,
       CityPlanTool.delete => t.mapMakerCityDelete,
       CityPlanTool.select => t.mapMakerCitySelectHint,
@@ -441,26 +686,29 @@ class _CityMapEditorViewState extends State<CityMapEditorView> {
                         ? SystemMouseCursors.grab
                         : SystemMouseCursors.precise,
                     onHover: (event) {
-                      final point = _plan.map.snap(event.localPosition);
-                      if (_hover != point) setState(() => _hover = point);
+                      _hover = event.localPosition;
+                      _plan.updateHover(_hover);
                     },
-                    onExit: (_) => setState(() => _hover = null),
+                    onExit: (_) {
+                      _hover = null;
+                      _plan.updateHover(null);
+                    },
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       dragStartBehavior: DragStartBehavior.down,
                       onTapUp: (details) {
-                        _canvasFocus.requestFocus();
-                        _plan.tap(details.localPosition);
+                        _tapCanvas(details.localPosition);
                       },
                       onPanStart: _plan.tool != CityPlanTool.select
                           ? null
                           : (details) {
                               _canvasFocus.requestFocus();
                               _plan.beginMove(details.localPosition);
-                              _dragOffset =
-                                  (_plan.selectedBuilding?.position ??
-                                      details.localPosition) -
-                                  details.localPosition;
+                              _dragOffset = _plan.movingRoadVertex
+                                  ? Offset.zero
+                                  : (_plan.selectedBuilding?.position ??
+                                            details.localPosition) -
+                                        details.localPosition;
                             },
                       onPanUpdate: _plan.tool != CityPlanTool.select
                           ? null
@@ -480,21 +728,31 @@ class _CityMapEditorViewState extends State<CityMapEditorView> {
                           map: _plan.map,
                           selectedId: _plan.selectedId,
                           showGrid: _showGrid,
+                          showRoads: _showRoads,
+                          showBuildings: _showBuildings,
+                          showParcels: _showParcels,
+                          showConnections: _showConnections,
+                          showJunctions: _showJunctions,
+                          viewScale: _plan.viewScale,
+                          snapResult: _plan.snapEnabled
+                              ? _plan.hoverSnap
+                              : null,
+                          draftCurved: _plan.curvedRoad,
+                          validPlacement: placement?.valid ?? true,
                           roadKind: _plan.roadKind,
                           textDirection: Directionality.of(context),
+                          fontFamily: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.fontFamily,
                           draftRoad: [
                             ..._plan.draftRoad,
                             if (_plan.tool == CityPlanTool.road &&
                                 _plan.draftRoad.isNotEmpty &&
                                 _hover != null &&
                                 _hover != _plan.draftRoad.last)
-                              _hover!,
+                              _plan.hoverSnap?.position ?? _hover!,
                           ],
-                          previewBuilding:
-                              _plan.tool == CityPlanTool.building &&
-                                  _hover != null
-                              ? _plan.previewBuilding(_hover!)
-                              : null,
+                          previewBuilding: placement?.building,
                         ),
                       ),
                     ),
@@ -523,9 +781,7 @@ class _CityMapEditorViewState extends State<CityMapEditorView> {
                         ),
                         FilledButton.icon(
                           key: const ValueKey('city-finish-road'),
-                          onPressed: _plan.draftRoad.length >= 2
-                              ? _finishRoad
-                              : null,
+                          onPressed: _plan.canFinishRoad ? _finishRoad : null,
                           icon: const Icon(Icons.check_rounded, size: 18),
                           label: Text(t.mapMakerCityFinishRoad),
                         ),
@@ -534,6 +790,11 @@ class _CityMapEditorViewState extends State<CityMapEditorView> {
                   ),
                 ),
               ),
+            Positioned(
+              left: 12,
+              bottom: 74,
+              child: IgnorePointer(child: _scaleBar()),
+            ),
             Positioned(
               left: 12,
               right: 12,
@@ -562,6 +823,94 @@ class _CityMapEditorViewState extends State<CityMapEditorView> {
           ],
         );
       },
+    );
+  }
+
+  Widget _scaleBar() {
+    final scale = _plan.viewScale;
+    final target = 100 / scale * kCityMetersPerUnit;
+    final metres = [
+      1,
+      2,
+      5,
+      10,
+      20,
+      50,
+      100,
+      200,
+    ].lastWhere((value) => value <= target, orElse: () => 1);
+    final width = metres / kCityMetersPerUnit * scale;
+    return Container(
+      padding: const EdgeInsets.all(7),
+      decoration: BoxDecoration(
+        color: const Color(0xEFFFFFFF),
+        border: Border.all(color: const Color(0xFFC9CDCD)),
+        borderRadius: BorderRadius.circular(2),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$metres m',
+            style: const TextStyle(color: Color(0xFF3E464B), fontSize: 10),
+          ),
+          const SizedBox(height: 2),
+          Container(
+            width: width,
+            height: 6,
+            decoration: const BoxDecoration(
+              border: Border(
+                left: BorderSide(color: Color(0xFF3E464B)),
+                bottom: BorderSide(color: Color(0xFF3E464B), width: 2),
+                right: BorderSide(color: Color(0xFF3E464B)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusBar(bool compact) {
+    final t = L.of(context);
+    final colors = context.luma;
+    final cursor = _plan.hoverSnap?.position ?? _hover;
+    final parcels = _plan.map.buildings.where((building) => building.hasParcel);
+    final connected = parcels.where((building) => building.connected).length;
+    final segments = <String>[
+      if (!compact) t.mapMakerCityLocalPlan,
+      if (cursor != null)
+        t.mapMakerCityCoordinates(
+          (cursor.dx * kCityMetersPerUnit).toStringAsFixed(1),
+          (cursor.dy * kCityMetersPerUnit).toStringAsFixed(1),
+        ),
+      t.mapMakerCitySnapStatus(_plan.hoverSnap?.kind.name ?? 'none'),
+      '${(_plan.viewScale * 100).round()}%',
+      if (!compact) t.mapMakerCityConnectedCount(connected, parcels.length),
+    ];
+    return Container(
+      height: 30,
+      decoration: BoxDecoration(
+        color: colors.surface,
+        border: Border(top: BorderSide(color: colors.border)),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Row(
+          children: [
+            for (final text in segments)
+              Padding(
+                padding: const EdgeInsets.only(right: 24),
+                child: Text(
+                  text,
+                  style: TextStyle(fontSize: 10, color: colors.textMuted),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -650,9 +999,20 @@ class _CityMapEditorViewState extends State<CityMapEditorView> {
                       children: [
                         if (!compact) _palette(false),
                         Expanded(child: _canvas()),
+                        if (constraints.maxWidth >= 1240)
+                          Container(
+                            width: 252,
+                            decoration: BoxDecoration(
+                              border: Border(
+                                left: BorderSide(color: luma.border),
+                              ),
+                            ),
+                            child: CityPlanInspector(plan: _plan),
+                          ),
                       ],
                     ),
                   ),
+                  _statusBar(compact),
                 ],
               );
             },

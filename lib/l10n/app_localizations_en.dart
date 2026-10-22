@@ -97,15 +97,15 @@ class LEn extends L {
 
   @override
   String get mapMakerCityRoadHint =>
-      'Click to set road points. Finish road to commit.';
+      'Click to add vertices. Finish the road, then use Select to drag its vertices.';
 
   @override
   String get mapMakerCityPlaceHint =>
-      'Click on the map to place. Rotate changes the direction.';
+      'Click to place. Road access aligns the lot and adds a driveway.';
 
   @override
   String get mapMakerCitySelectHint =>
-      'Select a road or building. Drag buildings to move them.';
+      'Select a feature. Drag road vertices or move buildings.';
 
   @override
   String get mapMakerCityPanHint =>
@@ -40565,4 +40565,112 @@ class LEn extends L {
   @override
   String get cs2VoiceAdminRouting =>
       'Uses your provider API key and the models selected in Admin → Assistant → Voice translate. Sign in with an approved Luma account.';
+
+  @override
+  String get mapMakerCityLayers => 'Layers';
+
+  @override
+  String get mapMakerCityProperties => 'Feature properties';
+
+  @override
+  String get mapMakerCityDigitizing => 'Digitizing';
+
+  @override
+  String get mapMakerCityStraight => 'Straight';
+
+  @override
+  String get mapMakerCityCurved => 'Curved';
+
+  @override
+  String get mapMakerCityCurveHint =>
+      'Place at least three points. Use Select to drag vertices and refine the curve.';
+
+  @override
+  String get mapMakerCitySnap => 'Snapping';
+
+  @override
+  String get mapMakerCitySnapGrid => 'Grid';
+
+  @override
+  String get mapMakerCitySnapVertices => 'Vertices';
+
+  @override
+  String get mapMakerCitySnapSegments => 'Segments';
+
+  @override
+  String get mapMakerCitySnapIntersections => 'Intersections';
+
+  @override
+  String get mapMakerCitySnapTolerance => 'Tolerance';
+
+  @override
+  String mapMakerCitySnapStatus(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'grid': 'Grid snap',
+      'vertex': 'Vertex snap',
+      'segment': 'Segment snap',
+      'intersection': 'Junction snap',
+      'other': 'Free cursor',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get mapMakerCityAutoConnect => 'Road frontage';
+
+  @override
+  String get mapMakerCityAutoConnectHint =>
+      'Align buildings with local roads and add access paths.';
+
+  @override
+  String get mapMakerCityParcels => 'Parcels';
+
+  @override
+  String get mapMakerCityConnections => 'Access paths';
+
+  @override
+  String get mapMakerCityJunctions => 'Junctions';
+
+  @override
+  String get mapMakerCityLocalPlan => 'Local plan · metres';
+
+  @override
+  String mapMakerCityCoordinates(String x, String y) {
+    return 'X $x m · Y $y m';
+  }
+
+  @override
+  String mapMakerCityLength(String value) {
+    return 'Length: $value m';
+  }
+
+  @override
+  String mapMakerCityArea(String value) {
+    return 'Area: $value m²';
+  }
+
+  @override
+  String get mapMakerCityConnected => 'Connected to road';
+
+  @override
+  String get mapMakerCityDisconnected => 'No road access';
+
+  @override
+  String get mapMakerCityNoSelection =>
+      'Select a feature to inspect its geometry and properties.';
+
+  @override
+  String get mapMakerCityInvalidPlacement =>
+      'No accessible space here. Place a street first, move along the road, or disable road frontage.';
+
+  @override
+  String get mapMakerCityRoadClass => 'Road class';
+
+  @override
+  String get mapMakerCityGeometry => 'Geometry';
+
+  @override
+  String mapMakerCityConnectedCount(int connected, int total) {
+    return 'Access: $connected/$total buildings';
+  }
 }

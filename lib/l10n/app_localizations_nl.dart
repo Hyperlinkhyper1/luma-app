@@ -97,15 +97,15 @@ class LNl extends L {
 
   @override
   String get mapMakerCityRoadHint =>
-      'Klik om wegpunten te plaatsen. Rond de weg af om deze toe te voegen.';
+      'Klik om wegpunten toe te voegen. Rond de weg af en versleep de punten met Selecteren.';
 
   @override
   String get mapMakerCityPlaceHint =>
-      'Klik op de kaart om te plaatsen. Draaien verandert de richting.';
+      'Klik om te plaatsen. Wegtoegang lijnt het perceel uit en voegt een oprit toe.';
 
   @override
   String get mapMakerCitySelectHint =>
-      'Selecteer een weg of gebouw. Versleep gebouwen om ze te verplaatsen.';
+      'Selecteer een object. Versleep wegpunten of verplaats gebouwen.';
 
   @override
   String get mapMakerCityPanHint =>
@@ -40858,4 +40858,112 @@ class LNl extends L {
   @override
   String get cs2VoiceAdminRouting =>
       'Gebruikt je provider-API-sleutel en de modellen uit Beheer → Assistant → Spraakvertaler. Log in met een goedgekeurd Luma-account.';
+
+  @override
+  String get mapMakerCityLayers => 'Lagen';
+
+  @override
+  String get mapMakerCityProperties => 'Objecteigenschappen';
+
+  @override
+  String get mapMakerCityDigitizing => 'Intekenen';
+
+  @override
+  String get mapMakerCityStraight => 'Recht';
+
+  @override
+  String get mapMakerCityCurved => 'Gebogen';
+
+  @override
+  String get mapMakerCityCurveHint =>
+      'Plaats minstens drie punten. Versleep knooppunten met Selecteren om de bocht te verfijnen.';
+
+  @override
+  String get mapMakerCitySnap => 'Uitlijnen';
+
+  @override
+  String get mapMakerCitySnapGrid => 'Raster';
+
+  @override
+  String get mapMakerCitySnapVertices => 'Knooppunten';
+
+  @override
+  String get mapMakerCitySnapSegments => 'Lijnsegmenten';
+
+  @override
+  String get mapMakerCitySnapIntersections => 'Kruisingen';
+
+  @override
+  String get mapMakerCitySnapTolerance => 'Tolerantie';
+
+  @override
+  String mapMakerCitySnapStatus(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'grid': 'Rasteruitlijning',
+      'vertex': 'Knooppuntuitlijning',
+      'segment': 'Lijnuitlijning',
+      'intersection': 'Kruispuntuitlijning',
+      'other': 'Vrije cursor',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get mapMakerCityAutoConnect => 'Weggerichte kavels';
+
+  @override
+  String get mapMakerCityAutoConnectHint =>
+      'Lijn gebouwen uit langs lokale wegen en voeg toegangspaden toe.';
+
+  @override
+  String get mapMakerCityParcels => 'Kavels';
+
+  @override
+  String get mapMakerCityConnections => 'Toegangspaden';
+
+  @override
+  String get mapMakerCityJunctions => 'Kruispunten';
+
+  @override
+  String get mapMakerCityLocalPlan => 'Lokaal plan · meters';
+
+  @override
+  String mapMakerCityCoordinates(String x, String y) {
+    return 'X $x m · Y $y m';
+  }
+
+  @override
+  String mapMakerCityLength(String value) {
+    return 'Lengte: $value m';
+  }
+
+  @override
+  String mapMakerCityArea(String value) {
+    return 'Oppervlakte: $value m²';
+  }
+
+  @override
+  String get mapMakerCityConnected => 'Verbonden met weg';
+
+  @override
+  String get mapMakerCityDisconnected => 'Geen toegang tot weg';
+
+  @override
+  String get mapMakerCityNoSelection =>
+      'Selecteer een object om geometrie en eigenschappen te bekijken.';
+
+  @override
+  String get mapMakerCityInvalidPlacement =>
+      'Hier is geen toegankelijke ruimte. Teken eerst een straat, verschuif langs de weg of schakel weggerichte kavels uit.';
+
+  @override
+  String get mapMakerCityRoadClass => 'Wegtype';
+
+  @override
+  String get mapMakerCityGeometry => 'Geometrie';
+
+  @override
+  String mapMakerCityConnectedCount(int connected, int total) {
+    return 'Toegang: $connected/$total gebouwen';
+  }
 }

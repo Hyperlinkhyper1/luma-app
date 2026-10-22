@@ -232,19 +232,19 @@ abstract class L {
   /// No description provided for @mapMakerCityRoadHint.
   ///
   /// In en, this message translates to:
-  /// **'Click to set road points. Finish road to commit.'**
+  /// **'Click to add vertices. Finish the road, then use Select to drag its vertices.'**
   String get mapMakerCityRoadHint;
 
   /// No description provided for @mapMakerCityPlaceHint.
   ///
   /// In en, this message translates to:
-  /// **'Click on the map to place. Rotate changes the direction.'**
+  /// **'Click to place. Road access aligns the lot and adds a driveway.'**
   String get mapMakerCityPlaceHint;
 
   /// No description provided for @mapMakerCitySelectHint.
   ///
   /// In en, this message translates to:
-  /// **'Select a road or building. Drag buildings to move them.'**
+  /// **'Select a feature. Drag road vertices or move buildings.'**
   String get mapMakerCitySelectHint;
 
   /// No description provided for @mapMakerCityPanHint.
@@ -66538,6 +66538,180 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Uses your provider API key and the models selected in Admin → Assistant → Voice translate. Sign in with an approved Luma account.'**
   String get cs2VoiceAdminRouting;
+
+  /// No description provided for @mapMakerCityLayers.
+  ///
+  /// In en, this message translates to:
+  /// **'Layers'**
+  String get mapMakerCityLayers;
+
+  /// No description provided for @mapMakerCityProperties.
+  ///
+  /// In en, this message translates to:
+  /// **'Feature properties'**
+  String get mapMakerCityProperties;
+
+  /// No description provided for @mapMakerCityDigitizing.
+  ///
+  /// In en, this message translates to:
+  /// **'Digitizing'**
+  String get mapMakerCityDigitizing;
+
+  /// No description provided for @mapMakerCityStraight.
+  ///
+  /// In en, this message translates to:
+  /// **'Straight'**
+  String get mapMakerCityStraight;
+
+  /// No description provided for @mapMakerCityCurved.
+  ///
+  /// In en, this message translates to:
+  /// **'Curved'**
+  String get mapMakerCityCurved;
+
+  /// No description provided for @mapMakerCityCurveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Place at least three points. Use Select to drag vertices and refine the curve.'**
+  String get mapMakerCityCurveHint;
+
+  /// No description provided for @mapMakerCitySnap.
+  ///
+  /// In en, this message translates to:
+  /// **'Snapping'**
+  String get mapMakerCitySnap;
+
+  /// No description provided for @mapMakerCitySnapGrid.
+  ///
+  /// In en, this message translates to:
+  /// **'Grid'**
+  String get mapMakerCitySnapGrid;
+
+  /// No description provided for @mapMakerCitySnapVertices.
+  ///
+  /// In en, this message translates to:
+  /// **'Vertices'**
+  String get mapMakerCitySnapVertices;
+
+  /// No description provided for @mapMakerCitySnapSegments.
+  ///
+  /// In en, this message translates to:
+  /// **'Segments'**
+  String get mapMakerCitySnapSegments;
+
+  /// No description provided for @mapMakerCitySnapIntersections.
+  ///
+  /// In en, this message translates to:
+  /// **'Intersections'**
+  String get mapMakerCitySnapIntersections;
+
+  /// No description provided for @mapMakerCitySnapTolerance.
+  ///
+  /// In en, this message translates to:
+  /// **'Tolerance'**
+  String get mapMakerCitySnapTolerance;
+
+  /// No description provided for @mapMakerCitySnapStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'{kind, select, grid{Grid snap} vertex{Vertex snap} segment{Segment snap} intersection{Junction snap} other{Free cursor}}'**
+  String mapMakerCitySnapStatus(String kind);
+
+  /// No description provided for @mapMakerCityAutoConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Road frontage'**
+  String get mapMakerCityAutoConnect;
+
+  /// No description provided for @mapMakerCityAutoConnectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Align buildings with local roads and add access paths.'**
+  String get mapMakerCityAutoConnectHint;
+
+  /// No description provided for @mapMakerCityParcels.
+  ///
+  /// In en, this message translates to:
+  /// **'Parcels'**
+  String get mapMakerCityParcels;
+
+  /// No description provided for @mapMakerCityConnections.
+  ///
+  /// In en, this message translates to:
+  /// **'Access paths'**
+  String get mapMakerCityConnections;
+
+  /// No description provided for @mapMakerCityJunctions.
+  ///
+  /// In en, this message translates to:
+  /// **'Junctions'**
+  String get mapMakerCityJunctions;
+
+  /// No description provided for @mapMakerCityLocalPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Local plan · metres'**
+  String get mapMakerCityLocalPlan;
+
+  /// No description provided for @mapMakerCityCoordinates.
+  ///
+  /// In en, this message translates to:
+  /// **'X {x} m · Y {y} m'**
+  String mapMakerCityCoordinates(String x, String y);
+
+  /// No description provided for @mapMakerCityLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Length: {value} m'**
+  String mapMakerCityLength(String value);
+
+  /// No description provided for @mapMakerCityArea.
+  ///
+  /// In en, this message translates to:
+  /// **'Area: {value} m²'**
+  String mapMakerCityArea(String value);
+
+  /// No description provided for @mapMakerCityConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected to road'**
+  String get mapMakerCityConnected;
+
+  /// No description provided for @mapMakerCityDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'No road access'**
+  String get mapMakerCityDisconnected;
+
+  /// No description provided for @mapMakerCityNoSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a feature to inspect its geometry and properties.'**
+  String get mapMakerCityNoSelection;
+
+  /// No description provided for @mapMakerCityInvalidPlacement.
+  ///
+  /// In en, this message translates to:
+  /// **'No accessible space here. Place a street first, move along the road, or disable road frontage.'**
+  String get mapMakerCityInvalidPlacement;
+
+  /// No description provided for @mapMakerCityRoadClass.
+  ///
+  /// In en, this message translates to:
+  /// **'Road class'**
+  String get mapMakerCityRoadClass;
+
+  /// No description provided for @mapMakerCityGeometry.
+  ///
+  /// In en, this message translates to:
+  /// **'Geometry'**
+  String get mapMakerCityGeometry;
+
+  /// No description provided for @mapMakerCityConnectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Access: {connected}/{total} buildings'**
+  String mapMakerCityConnectedCount(int connected, int total);
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

@@ -96,13 +96,13 @@ class LZh extends L {
   String get mapMakerCityCancelRoad => '取消道路';
 
   @override
-  String get mapMakerCityRoadHint => '点击设置道路节点，然后完成道路以添加。';
+  String get mapMakerCityRoadHint => '点击添加顶点。完成道路后，使用“选择”拖动顶点。';
 
   @override
-  String get mapMakerCityPlaceHint => '点击地图放置。旋转可更改方向。';
+  String get mapMakerCityPlaceHint => '点击放置。启用道路连接后，地块会沿路对齐并添加出入口。';
 
   @override
-  String get mapMakerCitySelectHint => '选择道路或建筑。拖动建筑可移动位置。';
+  String get mapMakerCitySelectHint => '选择要素。拖动道路顶点或移动建筑。';
 
   @override
   String get mapMakerCityPanHint => '拖动可平移视图，滚动或双指缩放可调整大小。';
@@ -38716,4 +38716,108 @@ class LZh extends L {
   @override
   String get cs2VoiceAdminRouting =>
       '使用您的提供商 API 密钥和在 Admin → Assistant → 语音翻译中选择的模型。请使用已批准的 Luma 账户登录。';
+
+  @override
+  String get mapMakerCityLayers => '图层';
+
+  @override
+  String get mapMakerCityProperties => '要素属性';
+
+  @override
+  String get mapMakerCityDigitizing => '绘制';
+
+  @override
+  String get mapMakerCityStraight => '直线';
+
+  @override
+  String get mapMakerCityCurved => '曲线';
+
+  @override
+  String get mapMakerCityCurveHint => '放置至少三个点。使用选择工具拖动顶点来调整曲线。';
+
+  @override
+  String get mapMakerCitySnap => '捕捉';
+
+  @override
+  String get mapMakerCitySnapGrid => '网格';
+
+  @override
+  String get mapMakerCitySnapVertices => '顶点';
+
+  @override
+  String get mapMakerCitySnapSegments => '线段';
+
+  @override
+  String get mapMakerCitySnapIntersections => '交点';
+
+  @override
+  String get mapMakerCitySnapTolerance => '容差';
+
+  @override
+  String mapMakerCitySnapStatus(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'grid': '网格捕捉',
+      'vertex': '顶点捕捉',
+      'segment': '线段捕捉',
+      'intersection': '交点捕捉',
+      'other': '自由光标',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get mapMakerCityAutoConnect => '临街地块';
+
+  @override
+  String get mapMakerCityAutoConnectHint => '将建筑沿本地道路对齐并添加出入口连接。';
+
+  @override
+  String get mapMakerCityParcels => '地块';
+
+  @override
+  String get mapMakerCityConnections => '出入口连接';
+
+  @override
+  String get mapMakerCityJunctions => '道路节点';
+
+  @override
+  String get mapMakerCityLocalPlan => '本地规划 · 米';
+
+  @override
+  String mapMakerCityCoordinates(String x, String y) {
+    return 'X $x 米 · Y $y 米';
+  }
+
+  @override
+  String mapMakerCityLength(String value) {
+    return '长度：$value 米';
+  }
+
+  @override
+  String mapMakerCityArea(String value) {
+    return '面积：$value 平方米';
+  }
+
+  @override
+  String get mapMakerCityConnected => '已连接道路';
+
+  @override
+  String get mapMakerCityDisconnected => '未连接道路';
+
+  @override
+  String get mapMakerCityNoSelection => '选择要素以查看几何形状和属性。';
+
+  @override
+  String get mapMakerCityInvalidPlacement => '此处没有可通达的空间。请先绘制街道、沿道路移动，或关闭临街地块。';
+
+  @override
+  String get mapMakerCityRoadClass => '道路类型';
+
+  @override
+  String get mapMakerCityGeometry => '几何形状';
+
+  @override
+  String mapMakerCityConnectedCount(int connected, int total) {
+    return '道路连接：$connected/$total 栋建筑';
+  }
 }
