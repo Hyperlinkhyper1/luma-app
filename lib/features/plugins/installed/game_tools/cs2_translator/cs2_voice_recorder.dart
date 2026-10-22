@@ -52,6 +52,17 @@ class WindowsCs2VoiceRecorder implements Cs2VoiceRecorder {
   Completer<Uint8List>? _audio;
   int _generation = 0;
 
+  static String _commandPath(Directory directory) =>
+      '${directory.path}${Platform.pathSeparator}command';
+
+  // The helper polls for this file: a line written to its stdin through
+  // Process.start never reaches Windows PowerShell's Console.In.
+  static Future<void> _send(Directory directory, String command) async {
+    final pending = File('${_commandPath(directory)}.tmp');
+    await pending.writeAsString(command, flush: true);
+    await pending.rename(_commandPath(directory));
+  }
+
   @override
   Future<void> start() async {
     final generation = ++_generation;
@@ -76,6 +87,7 @@ class WindowsCs2VoiceRecorder implements Cs2VoiceRecorder {
         'Hidden',
         '-File',
         file.path,
+        _commandPath(directory),
       ]);
       if (generation != _generation) {
         process.kill();
@@ -132,11 +144,13 @@ class WindowsCs2VoiceRecorder implements Cs2VoiceRecorder {
   Future<Uint8List> stop() async {
     final generation = _generation;
     final process = _process;
+    final directory = _directory;
     final audio = _audio;
-    if (process == null || audio == null) throw const Cs2VoiceCancelled();
+    if (process == null || directory == null || audio == null) {
+      throw const Cs2VoiceCancelled();
+    }
     try {
-      process.stdin.writeln('stop');
-      await process.stdin.flush().timeout(_stopTimeout);
+      await _send(directory, 'stop').timeout(_stopTimeout);
       final bytes = await audio.future.timeout(_stopTimeout);
       await process.exitCode.timeout(const Duration(seconds: 3));
       return bytes;
@@ -164,8 +178,9 @@ class WindowsCs2VoiceRecorder implements Cs2VoiceRecorder {
     }
     if (process != null) {
       try {
-        process.stdin.writeln('cancel');
-        await process.stdin.flush().timeout(_cleanupTimeout);
+        if (directory != null) {
+          await _send(directory, 'cancel').timeout(_cleanupTimeout);
+        }
         await process.exitCode.timeout(_cleanupTimeout);
       } catch (_) {
         process.kill();

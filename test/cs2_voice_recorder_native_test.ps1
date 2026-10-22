@@ -102,17 +102,18 @@ $directory = Join-Path ([IO.Path]::GetTempPath()) ('luma-recorder-test-' + [Guid
 $null = New-Item -ItemType Directory -Path $directory
 $fixture = $script.Replace($match.Groups[1].Value, $match.Groups[1].Value + [Environment]::NewLine + $fake)
 $fixture = $fixture.Replace('$capture = New-Object LumaVoiceCapture', '$capture = New-Object LumaVoiceCapture((New-Object LumaTestWaveInput))')
-$fixture = $fixture.Replace('ReadCommand(31000)', 'ReadCommand(300)')
+$fixture = $fixture.Replace('Read-LumaCommand $CommandPath 31000', 'Read-LumaCommand $CommandPath 300')
 $fixturePath = Join-Path $directory 'recorder.ps1'
+$commandPath = Join-Path $directory 'command'
 [IO.File]::WriteAllText($fixturePath, $fixture)
 try {
     foreach ($command in @('stop', 'cancel', 'no-command')) {
+        if (Test-Path -LiteralPath $commandPath) { Remove-Item -LiteralPath $commandPath -Force }
         $info = New-Object Diagnostics.ProcessStartInfo
         $info.FileName = 'powershell.exe'
-        $info.Arguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $fixturePath + '"'
+        $info.Arguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $fixturePath + '" "' + $commandPath + '"'
         $info.UseShellExecute = $false
         $info.CreateNoWindow = $true
-        $info.RedirectStandardInput = $true
         $info.RedirectStandardOutput = $true
         $info.RedirectStandardError = $true
         $process = [Diagnostics.Process]::Start($info)
@@ -120,7 +121,10 @@ try {
             $ready = $process.StandardOutput.ReadLineAsync()
             Assert-True ($ready.Wait(15000)) 'Helper did not start.'
             Assert-True (($ready.Result | ConvertFrom-Json).event -eq 'recording') 'Helper did not announce recording.'
-            if ($command -ne 'no-command') { $process.StandardInput.WriteLine($command); $process.StandardInput.Flush() }
+            if ($command -ne 'no-command') {
+                [IO.File]::WriteAllText($commandPath + '.tmp', $command)
+                [IO.File]::Move($commandPath + '.tmp', $commandPath)
+            }
             $result = $process.StandardOutput.ReadLineAsync()
             Assert-True ($result.Wait(3000)) 'Helper stop/cancel/timeout did not return promptly.'
             $event = $result.Result | ConvertFrom-Json
@@ -137,6 +141,7 @@ try {
 } finally {
     # Only the explicitly created test files are removed.
     Remove-Item -LiteralPath $fixturePath -Force
+    if (Test-Path -LiteralPath $commandPath) { Remove-Item -LiteralPath $commandPath -Force }
     Remove-Item -LiteralPath $directory -Force
 }
 Write-Output 'Passed: buffered WAV capture, failure cleanup, cancellation, and real Windows PowerShell stop/cancel/timeout protocol (synthetic audio; no microphone access).'

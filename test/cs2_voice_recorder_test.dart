@@ -6,42 +6,30 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/plugins/installed/game_tools/cs2_translator/cs2_voice_protocol.dart';
 import 'package:luma/features/plugins/installed/game_tools/cs2_translator/cs2_voice_recorder.dart';
 
-class _CommandConsumer implements StreamConsumer<List<int>> {
-  _CommandConsumer(this.onCommand);
-  final void Function(String) onCommand;
-
-  @override
-  Future<void> addStream(Stream<List<int>> stream) async {
-    await for (final command
-        in stream.transform(utf8.decoder).transform(const LineSplitter())) {
-      onCommand(command);
-    }
-  }
-
-  @override
-  Future<void> close() async {}
-}
-
 class _RecorderProcess implements Process {
-  _RecorderProcess({this.respond = true}) {
-    stdin = IOSink(
-      _CommandConsumer((command) {
-        commands.add(command);
-        if (!respond) return;
-        if (command == 'stop') {
-          emit({
-            'event': 'audio',
-            'data': base64Encode([1, 2, 3]),
-          });
-        }
-        finish();
-      }),
-      encoding: utf8,
-    );
-  }
+  _RecorderProcess({this.respond = true});
 
   final bool respond;
   final commands = <String>[];
+  Timer? _watch;
+
+  void watch(String commandPath) {
+    _watch = Timer.periodic(const Duration(milliseconds: 2), (_) {
+      final file = File(commandPath);
+      if (!file.existsSync()) return;
+      final command = file.readAsStringSync();
+      file.deleteSync();
+      commands.add(command);
+      if (!respond) return;
+      if (command == 'stop') {
+        emit({
+          'event': 'audio',
+          'data': base64Encode([1, 2, 3]),
+        });
+      }
+      finish();
+    });
+  }
   final output = StreamController<List<int>>();
   final errors = StreamController<List<int>>();
   final exited = Completer<int>();
@@ -50,6 +38,7 @@ class _RecorderProcess implements Process {
       output.add(utf8.encode('${jsonEncode(event)}\n'));
 
   void finish() {
+    _watch?.cancel();
     if (exited.isCompleted) return;
     exited.complete(0);
     unawaited(output.close());
@@ -61,7 +50,7 @@ class _RecorderProcess implements Process {
   @override
   int get pid => 123;
   @override
-  late final IOSink stdin;
+  IOSink get stdin => throw UnsupportedError('The recorder signals by file.');
   @override
   Stream<List<int>> get stdout => output.stream;
   @override
@@ -90,7 +79,8 @@ void main() {
       startProcess: (executable, arguments) async {
         expect(executable, 'powershell.exe');
         expect(arguments, containsAllInOrder(['-WindowStyle', 'Hidden']));
-        scriptPath = arguments.last;
+        scriptPath = arguments[arguments.length - 2];
+        process.watch(arguments.last);
         expect(await File(scriptPath!).readAsString(), 'fake recorder script');
         process.emit({'event': 'recording'});
         return process;
@@ -102,7 +92,7 @@ void main() {
 
   tearDown(() async {
     await recorder.cancel();
-    await process.stdin.close();
+    process.finish();
     expect(scriptPath == null || !await File(scriptPath!).exists(), isTrue);
   });
 

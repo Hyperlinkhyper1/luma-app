@@ -1,3 +1,5 @@
+param([Parameter(Mandatory = $true)][string]$CommandPath)
+
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 
@@ -6,8 +8,6 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 [StructLayout(LayoutKind.Sequential, Pack = 2)]
 public struct LumaWaveFormat {
@@ -147,21 +147,26 @@ public sealed class LumaVoiceCapture : IDisposable {
         if (buffer != IntPtr.Zero) { Marshal.FreeHGlobal(buffer); buffer = IntPtr.Zero; }
     }
 
-    public static string ReadCommand(int timeoutMilliseconds) {
-        // Windows PowerShell's synchronized Console.In can block inside ReadLineAsync.
-        var command = Task.Factory.StartNew(() => Console.In.ReadLine(),
-            CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
-        return command.Wait(timeoutMilliseconds) ? command.Result : null;
-    }
 }
 '@
+
+# luma drops "stop" or "cancel" into this file. Stdin can't carry it: a line
+# written by the app's Process.start pipe never reaches Console.In here.
+function Read-LumaCommand([string]$path, [int]$timeoutMilliseconds) {
+    $deadline = [DateTime]::UtcNow.AddMilliseconds($timeoutMilliseconds)
+    while ([DateTime]::UtcNow -lt $deadline) {
+        if ([IO.File]::Exists($path)) { return ([IO.File]::ReadAllText($path)).Trim() }
+        Start-Sleep -Milliseconds 30
+    }
+    return $null
+}
 
 $capture = New-Object LumaVoiceCapture
 try {
     $capture.Start()
     [Console]::WriteLine('{"event":"recording"}')
     [Console]::Out.Flush()
-    $command = [LumaVoiceCapture]::ReadCommand(31000)
+    $command = Read-LumaCommand $CommandPath 31000
     if ($command -ne 'stop') { throw 'Recording cancelled or timed out.' }
     $bytes = $capture.Stop()
     $capture.Dispose()
