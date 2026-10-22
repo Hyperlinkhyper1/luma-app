@@ -3090,8 +3090,7 @@ class Api {
       await _evaluateAiPrice(mode, route: route, fetch: true, force: true);
       final entry = aiPriceGuard.entry(mode);
       if (entry.source == 'endpoints') {
-        await aiPriceGuard.accept(mode, route, entry.paid ?? entry.latest,
-            source: 'endpoints');
+        await aiPriceGuard.acceptEndpoints(mode, route);
       } else {
         await aiPriceGuard.accept(mode, route, priceFor(aiCatalog, route));
       }
@@ -3318,9 +3317,9 @@ class Api {
   /// the operator's key for this one call (the Tests tab's own-key runs).
   Future<(int, String)> _callAiUpstream(
       AiModeRoute route, Map<String, dynamic> upstreamBody,
-      {String? apiKey}) {
+      {String? apiKey, Uri? endpoint}) {
     return _postJsonWithRetry(
-      Uri.parse(route.upstream.endpoint),
+      endpoint ?? Uri.parse(route.upstream.endpoint),
       {
         HttpHeaders.authorizationHeader:
             'Bearer ${apiKey ?? config.aiUpstreamKey(route.upstream)}',
@@ -3681,14 +3680,23 @@ class Api {
       // One overall deadline, well inside Cloudflare's 100 s origin timeout:
       // a slow model plus the 429 retry could otherwise outlast it, and the
       // dashboard would get Cloudflare's HTML error page instead of JSON.
-      final (status, responseBody) = await _callAiUpstream(
-          route,
-          _aiUpstreamBody({
-            'messages': [
+      final voiceTest = mode == kCs2TranscribeSelector ||
+          mode == kCs2TranslateSelector;
+      final testMessages = mode == kCs2TranscribeSelector
+          ? cs2VoiceTranscriptionMessages(cs2VoiceTestAudio())
+          : <Map<String, dynamic>>[
               {'role': 'user', 'content': 'Reply with just the word OK.'}
-            ],
+            ];
+      final testBody = voiceTest
+          ? _cs2VoiceRequestBody(mode, route, testMessages)
+          : _aiUpstreamBody({
+            'messages': testMessages,
             'max_tokens': 256,
-          }, route)).timeout(_aiTestDeadline);
+          }, route);
+      final (status, responseBody) = await (voiceTest
+              ? _callCs2VoiceUpstream(mode, route, testBody)
+              : _callAiUpstream(route, testBody))
+          .timeout(_aiTestDeadline);
       final ms = DateTime.now().difference(started).inMilliseconds;
       String? reply;
       String? error;
@@ -3696,7 +3704,11 @@ class Api {
         final rawDecoded = jsonDecode(responseBody);
         if (rawDecoded is Map) {
           final decoded = Map<String, dynamic>.from(rawDecoded);
-          reply = decoded['choices']?[0]?['message']?['content'] as String?;
+          if (cs2VoiceUsesTranscriptionEndpoint(mode, route)) {
+            reply = decoded['text'] is String ? decoded['text'] as String : null;
+          } else {
+            reply = decoded['choices']?[0]?['message']?['content'] as String?;
+          }
           if (status != HttpStatus.ok) {
             final upstreamError = decoded['error'];
             if (upstreamError is Map) {
@@ -3726,6 +3738,10 @@ class Api {
               ? '${responseBody.substring(0, 500)}…'
               : responseBody;
         }
+      }
+      if (status == HttpStatus.ok &&
+          cs2VoiceUsesTranscriptionEndpoint(mode, route) && reply == null) {
+        error = 'The transcription endpoint did not return a text field.';
       }
       if (status != HttpStatus.ok && error == null) {
         error = switch (status) {

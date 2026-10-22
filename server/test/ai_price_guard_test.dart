@@ -112,6 +112,19 @@ void main() {
       expect(AiPriceGuardStore(dir.path).isDisabled('smartest'), isTrue);
     });
 
+    test('accepting after a discount ends keeps the mode on', () async {
+      final guard = AiPriceGuardStore(dir.path);
+      await guard.recordPaid(
+          'smartest', route, 'DeepInfra', const AiPrice(0.075, 0.25));
+      const ended = AiEndpointPrice('DeepInfra', 0.15, 0.5);
+      expect(await guard.evaluateEndpoints('smartest', route, [ended, fireworks]),
+          isTrue);
+      await guard.acceptEndpoints('smartest', route);
+      expect(guard.isDisabled('smartest'), isFalse);
+      expect(await guard.evaluateEndpoints('smartest', route, [ended, fireworks]),
+          isFalse);
+    });
+
     test('being served by a pricier provider pauses the mode', () async {
       final guard = AiPriceGuardStore(dir.path);
       await guard.recordPaid(

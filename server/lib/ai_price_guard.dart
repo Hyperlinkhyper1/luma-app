@@ -36,6 +36,14 @@ class AiPrice {
       !_higher(e.output, output) &&
       !_higher(e.imageOutput, image);
 
+  /// The higher of this and [other] on each side.
+  AiPrice orHigher(AiPrice other) {
+    double? pick(double? a, double? b) =>
+        a == null ? b : b == null ? a : (a > b ? a : b);
+    return AiPrice(pick(input, other.input), pick(output, other.output),
+        pick(image, other.image));
+  }
+
   Map<String, dynamic> toJson() =>
       {'input': input, 'output': output, if (image != null) 'image': image};
 
@@ -307,6 +315,22 @@ class AiPriceGuardStore {
       ..latest = price
       ..disabled = false;
     await _save();
+  }
+
+  /// Accepts an OpenRouter mode's current endpoint price. The baseline must
+  /// admit both the cheapest endpoint up now and the provider that last
+  /// served it: accepting only the last charged price would keep a price
+  /// from before a discount ended, and the next check would pause it again.
+  Future<void> acceptEndpoints(String mode, AiModeRoute route) async {
+    final e = entry(mode);
+    final paid = e.paid;
+    final latest = e.latest;
+    final price = paid == null
+        ? latest
+        : latest == null
+            ? paid
+            : paid.orHigher(latest);
+    await accept(mode, route, price, source: 'endpoints');
   }
 
   /// Turning the guard off also turns a guard-disabled mode back on.

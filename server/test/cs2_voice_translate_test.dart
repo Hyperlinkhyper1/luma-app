@@ -31,6 +31,30 @@ class _OfflineModelCatalogClient implements HttpClient {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _VoiceTransportClient implements HttpClient {
+  _VoiceTransportClient(this.client, this.local, this.urls);
+
+  final HttpClient client;
+  final Uri local;
+  final List<Uri> urls;
+
+  @override
+  Future<HttpClientRequest> postUrl(Uri url) {
+    urls.add(url);
+    return client.postUrl(local.resolve(url.path));
+  }
+
+  @override
+  Future<HttpClientRequest> getUrl(Uri url) async =>
+      throw const SocketException('External model discovery disabled.');
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 Uint8List recording({int seconds = 1}) {
   final bytes = Uint8List(44 + seconds * 32000);
   final data = ByteData.sublistView(bytes);
@@ -53,6 +77,13 @@ Uint8List recording({int seconds = 1}) {
 }
 
 void main() {
+  test('OpenRouter transcription defaults to Whisper and uses valid test audio',
+      () {
+    expect(cs2VoiceDefaultModel(kCs2TranscribeSelector, AiUpstream.openrouter),
+        'openai/whisper-large-v3-turbo');
+    expect(validateCs2VoiceWav(base64Decode(cs2VoiceTestAudio())),
+        const Duration(milliseconds: 250));
+  });
   test(
     'full weekly allowances exchange for exactly 10, 30 and 120 voice minutes',
     () {
@@ -236,6 +267,7 @@ void main() {
           adminKey: 'test-admin',
           mistralApiKey: null,
           googleApiKey: 'fake-google-key',
+          openRouterApiKey: 'fake-router-key',
           itadApiKey: null,
           groceriesUrl: '',
           groceriesAdminKey: null,
@@ -262,13 +294,16 @@ void main() {
           return (
             200,
             jsonEncode({
-              'choices': [
-                {
-                  'message': {
-                    'content': jsonEncode({'text': text}),
+              if (body.containsKey('input_audio'))
+                'text': text
+              else
+                'choices': [
+                  {
+                    'message': {
+                      'content': jsonEncode({'text': text}),
+                    },
                   },
-                },
-              ],
+                ],
               'usage': {
                 'prompt_tokens': 7,
                 'completion_tokens': 3,
@@ -305,6 +340,198 @@ void main() {
             body: form ?? jsonEncode(body ?? input()),
           ),
         );
+
+    void useRealTransport() {
+      api = Api(
+          store,
+          api.config,
+          api.mailer,
+          api.familyStore,
+          api.chatStore,
+          usage,
+          api.subwayStore,
+          api.recipeStore,
+          api.aiCatalog,
+          api.aiBenchmarks);
+      handler = api.handler;
+    }
+
+    Future<void> saveWhisper({bool preferred = false}) async {
+      if (preferred) {
+        final response = await call(
+          path: '/admin/ai-cs2-voice',
+          admin: true,
+          form: 'selector=cs2transcribe&cs2transcribe.upstream=google&'
+              'cs2transcribe.model=gemini-test&'
+              'cs2transcribe.preferred.upstream=openrouter&'
+              'cs2transcribe.preferred.model=openai%2Fwhisper-large-v3-turbo',
+        );
+        expect(response.statusCode, 200);
+      } else {
+        await api.cs2VoiceConfig.save(
+            kCs2TranscribeSelector,
+            const Cs2VoiceModelConfig(
+                route: AiModeRoute(
+                    AiUpstream.openrouter, 'openai/whisper-large-v3-turbo')));
+      }
+    }
+
+    for (final preferred in [false, true]) {
+      test(
+          'OpenRouter ${preferred ? "preferred" : "main"} transcription uses audio JSON and reads text',
+          () async {
+        await saveWhisper(preferred: preferred);
+        final response = await call();
+        expect(response.statusCode, 200);
+        final decoded = jsonDecode(await response.readAsString());
+        expect(decoded['transcript'], 'Two on B');
+        expect(decoded['translation'], 'Twee op B');
+        expect(upstreamCalls, hasLength(2));
+        expect(upstreamCalls.first, {
+          'model': 'openai/whisper-large-v3-turbo',
+          'input_audio': {'data': input()['audioBase64'], 'format': 'wav'},
+          'response_format': 'json',
+          'temperature': 0,
+        });
+        expect(upstreamCalls.last['messages'], isA<List>());
+        expect(usage.unitsUsed('voice', const Duration(hours: 5)), 0);
+      });
+    }
+
+    test('empty OpenRouter transcription refunds weekly usage', () async {
+      await saveWhisper();
+      emptyTranscript = true;
+      expect((await call()).statusCode, 502);
+      expect(upstreamCalls, hasLength(1));
+      expect(usage.unitsUsed('voice', const Duration(days: 7)), 0);
+    });
+
+    test('admin transcription test sends audio and reads top-level text',
+        () async {
+      final response =
+          await call(path: '/admin/ai-routes/test', admin: true, body: {
+        'mode': 'cs2transcribe',
+        'upstream': 'openrouter',
+        'model': 'openai/whisper-large-v3-turbo'
+      });
+      expect(response.statusCode, 200);
+      final decoded = jsonDecode(await response.readAsString());
+      expect(decoded['ok'], true);
+      expect(decoded['reply'], 'Two on B');
+      expect(upstreamCalls.single['input_audio'],
+          {'data': cs2VoiceTestAudio(), 'format': 'wav'});
+      expect(upstreamCalls.single.containsKey('messages'), false);
+      expect(usage.unitsUsed('voice', const Duration(days: 7)), 0);
+    });
+
+    test(
+        'real transport selects transcription URL for recordings and admin tests',
+        () async {
+      useRealTransport();
+      await saveWhisper();
+      await api.cs2VoiceConfig.save(
+          kCs2TranslateSelector,
+          const Cs2VoiceModelConfig(
+              route: AiModeRoute(
+                  AiUpstream.openrouter, 'translation-chat-model')));
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      final client = HttpClient();
+      addTearDown(() async {
+        client.close(force: true);
+        await server.close(force: true);
+      });
+      final urls = <Uri>[];
+      final bodies = <Map<String, dynamic>>[];
+      var fail = false;
+      Object transcriptionResponse = {
+        'text': 'Two on B',
+        'usage': {'input_tokens': 7, 'output_tokens': 3, 'total_tokens': 10},
+      };
+      server.listen((request) async {
+        bodies.add(jsonDecode(await utf8.decoder.bind(request).join())
+            as Map<String, dynamic>);
+        request.response.headers.contentType = ContentType.json;
+        if (fail) {
+          request.response.statusCode = 400;
+          request.response.write(jsonEncode({
+            'error': {'message': 'Bad audio'}
+          }));
+        } else if (request.uri.path.endsWith('/audio/transcriptions')) {
+          request.response.write(jsonEncode(transcriptionResponse));
+        } else {
+          request.response.write(jsonEncode({
+            'choices': [
+              {
+                'message': {
+                  'content': jsonEncode({'text': 'Twee op B'})
+                }
+              }
+            ],
+            'usage': {'total_tokens': 10}
+          }));
+        }
+        await request.response.close();
+      });
+      await HttpOverrides.runZoned(() async {
+        final response = await call();
+        expect(response.statusCode, 200);
+        expect(jsonDecode(await response.readAsString())['translation'],
+            'Twee op B');
+        expect(urls.map((url) => url.toString()), [
+          'https://openrouter.ai/api/v1/audio/transcriptions',
+          'https://openrouter.ai/api/v1/chat/completions',
+        ]);
+        expect(bodies.first.containsKey('messages'), false);
+        expect(bodies.last.containsKey('input_audio'), false);
+        expect(usage.unitsUsed('voice', const Duration(hours: 5)), 0);
+        for (final saved in [false, true]) {
+          final tested =
+              await call(path: '/admin/ai-routes/test', admin: true, body: {
+            'mode': 'cs2transcribe',
+            if (!saved) ...{
+              'upstream': 'openrouter',
+              'model': 'openai/whisper-large-v3-turbo'
+            }
+          });
+          final result = jsonDecode(await tested.readAsString());
+          expect(result['ok'], true);
+          expect(result['reply'], 'Two on B');
+          expect(urls.last.path, '/api/v1/audio/transcriptions');
+        }
+        transcriptionResponse = {'text': ''};
+        final silent = await call(
+            path: '/admin/ai-routes/test',
+            admin: true,
+            body: {'mode': 'cs2transcribe'});
+        final silentResult = jsonDecode(await silent.readAsString());
+        expect(silentResult['ok'], true);
+        expect(silentResult['reply'], '');
+        for (final malformed in <Object>[
+          {'choices': []},
+          [],
+          'invalid reply'
+        ]) {
+          transcriptionResponse = malformed;
+          final invalid = await call(
+              path: '/admin/ai-routes/test',
+              admin: true,
+              body: {'mode': 'cs2transcribe'});
+          final invalidResult = jsonDecode(await invalid.readAsString());
+          expect(invalidResult['ok'], false);
+          expect(invalidResult['error'], contains('text field'));
+        }
+        fail = true;
+        final failed = await call(
+            path: '/admin/ai-routes/test',
+            admin: true,
+            body: {'mode': 'cs2transcribe'});
+        final failure = jsonDecode(await failed.readAsString());
+        expect(failure['ok'], false);
+        expect(failure['error'], 'Bad audio');
+      },
+          createHttpClient: (_) => _VoiceTransportClient(
+              client, Uri.parse('http://127.0.0.1:${server.port}'), urls));
+    });
 
     test(
       'requires authentication and rejects invalid audio before spending a key',

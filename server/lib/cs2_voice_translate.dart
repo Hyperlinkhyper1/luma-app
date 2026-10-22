@@ -35,7 +35,55 @@ bool cs2VoiceAccepts(String selector, AiUpstream upstream) =>
     selector != kCs2TranscribeSelector || upstream != AiUpstream.mistral;
 
 String cs2VoiceDefaultModel(String selector, AiUpstream upstream) =>
-    kDefaultAiModeModels[upstream]!['smarter']!;
+    selector == kCs2TranscribeSelector && upstream == AiUpstream.openrouter
+        ? 'openai/whisper-large-v3-turbo'
+        : kDefaultAiModeModels[upstream]!['smarter']!;
+
+bool cs2VoiceUsesTranscriptionEndpoint(String selector, AiModeRoute route) =>
+    selector == kCs2TranscribeSelector &&
+    route.upstream == AiUpstream.openrouter;
+
+List<Map<String, dynamic>> cs2VoiceTranscriptionMessages(String audioBase64,
+        {String instructions = kCs2VoiceTranscribeInstructions}) =>
+    [
+      {
+        'role': 'system',
+        'content':
+            '$instructions\nReturn only a JSON object {"text":"the transcript"}.',
+      },
+      {
+        'role': 'user',
+        'content': [
+          {'type': 'text', 'text': 'Transcribe this microphone recording.'},
+          {
+            'type': 'input_audio',
+            'input_audio': {'data': audioBase64, 'format': 'wav'},
+          },
+        ],
+      },
+    ];
+
+/// A short silent WAV tests the transcription endpoint without user audio.
+String cs2VoiceTestAudio() {
+  final bytes = Uint8List(44 + 8000);
+  final data = ByteData.sublistView(bytes);
+  void tag(int offset, String text) =>
+      bytes.setRange(offset, offset + 4, ascii.encode(text));
+  tag(0, 'RIFF');
+  data.setUint32(4, bytes.length - 8, Endian.little);
+  tag(8, 'WAVE');
+  tag(12, 'fmt ');
+  data.setUint32(16, 16, Endian.little);
+  data.setUint16(20, 1, Endian.little);
+  data.setUint16(22, 1, Endian.little);
+  data.setUint32(24, 16000, Endian.little);
+  data.setUint32(28, 32000, Endian.little);
+  data.setUint16(32, 2, Endian.little);
+  data.setUint16(34, 16, Endian.little);
+  tag(36, 'data');
+  data.setUint32(40, bytes.length - 44, Endian.little);
+  return base64Encode(bytes);
+}
 
 class Cs2VoiceModelConfig {
   const Cs2VoiceModelConfig({this.route, this.instructions});

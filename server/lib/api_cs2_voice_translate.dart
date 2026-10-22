@@ -50,27 +50,9 @@ extension Cs2VoiceTranslateApi on Api {
       final transcript = await _cs2VoiceStep(
           user,
           kCs2TranscribeSelector,
-          [
-            {
-              'role': 'system',
-              'content':
-                  '${speechConfig.instructions ?? kCs2VoiceTranscribeInstructions}'
-                      '\nReturn only a JSON object {"text":"the transcript"}.',
-            },
-            {
-              'role': 'user',
-              'content': [
-                {
-                  'type': 'text',
-                  'text': 'Transcribe this microphone recording.'
-                },
-                {
-                  'type': 'input_audio',
-                  'input_audio': {'data': input.audioBase64, 'format': 'wav'},
-                },
-              ],
-            },
-          ],
+          cs2VoiceTranscriptionMessages(input.audioBase64,
+              instructions:
+                  speechConfig.instructions ?? kCs2VoiceTranscribeInstructions),
           deadline);
       final translationConfig = cs2VoiceConfig.model(kCs2TranslateSelector);
       final translation = await _cs2VoiceStep(
@@ -142,19 +124,19 @@ extension Cs2VoiceTranslateApi on Api {
       );
     }
     for (final candidate in candidates) {
-      final upstreamBody = Api._aiUpstreamBody({
-        'messages': messages,
-        'max_tokens': 2048,
-        'temperature': 0,
-      }, candidate.route);
-      _applyAiMaxPrice(candidate.key, candidate.route, upstreamBody);
+      final upstreamBody =
+          _cs2VoiceRequestBody(selector, candidate.route, messages);
+      if (!cs2VoiceUsesTranscriptionEndpoint(selector, candidate.route)) {
+        _applyAiMaxPrice(candidate.key, candidate.route, upstreamBody);
+      }
       final remaining = deadline.difference(DateTime.now());
       if (remaining <= Duration.zero)
         throw TimeoutException('Voice translation');
-      final (status, responseBody) = await (cs2VoiceCall != null
-              ? cs2VoiceCall!(candidate.route, upstreamBody)
-              : _callAiUpstream(candidate.route, upstreamBody))
-          .timeout(
+      final (status, responseBody) = await _callCs2VoiceUpstream(
+        selector,
+        candidate.route,
+        upstreamBody,
+      ).timeout(
         remaining < const Duration(seconds: 35)
             ? remaining
             : const Duration(seconds: 35),
@@ -170,10 +152,14 @@ extension Cs2VoiceTranslateApi on Api {
         responseBody,
       );
       String? content;
-      try {
-        final decoded = jsonDecode(responseBody);
-        content = decoded['choices']?[0]?['message']?['content'] as String?;
-      } catch (_) {}
+      if (cs2VoiceUsesTranscriptionEndpoint(selector, candidate.route)) {
+        content = responseBody;
+      } else {
+        try {
+          final decoded = jsonDecode(responseBody);
+          content = decoded['choices']?[0]?['message']?['content'] as String?;
+        } catch (_) {}
+      }
       final parsed = content == null ? null : parseCs2VoiceReply(content);
       if (parsed != null) return parsed;
     }
@@ -186,6 +172,42 @@ extension Cs2VoiceTranslateApi on Api {
           : 'The translation model did not return a usable message. Try again.',
     );
   }
+
+  Map<String, dynamic> _cs2VoiceRequestBody(
+      String selector, AiModeRoute route, List<Map<String, dynamic>> messages) {
+    if (cs2VoiceUsesTranscriptionEndpoint(selector, route)) {
+      for (final message in messages) {
+        final content = message['content'];
+        if (content is! List) continue;
+        for (final part in content) {
+          if (part is Map && part['type'] == 'input_audio') {
+            return {
+              'model': route.model,
+              'input_audio': part['input_audio'],
+              'response_format': 'json',
+              'temperature': 0,
+            };
+          }
+        }
+      }
+      throw StateError('Transcription requires microphone audio.');
+    }
+    return Api._aiUpstreamBody({
+      'messages': messages,
+      'max_tokens': 2048,
+      'temperature': 0,
+    }, route);
+  }
+
+  Future<(int, String)> _callCs2VoiceUpstream(String selector,
+          AiModeRoute route, Map<String, dynamic> upstreamBody) =>
+      cs2VoiceCall != null
+          ? cs2VoiceCall!(route, upstreamBody)
+          : _callAiUpstream(route, upstreamBody,
+              endpoint: cs2VoiceUsesTranscriptionEndpoint(selector, route)
+                  ? Uri.parse(
+                      'https://openrouter.ai/api/v1/audio/transcriptions')
+                  : null);
 
   Future<Response> _adminCs2VoiceSave(Request request) async {
     final form = Uri.splitQueryString(await request.readAsString());
@@ -286,8 +308,11 @@ extension Cs2VoiceTranslateApi on Api {
           'CS2 voice transcription',
           'Game tools → CS2 tools → Voice translate sends a short microphone '
               'recording to this model first. Select an audio-capable Google AI '
-              'Studio or OpenRouter model. Test checks connectivity with text; '
-              'record in the app to verify audio support. Your API key stays on '
+              'Studio model or an OpenRouter transcription model such as Whisper. '
+              'Test sends a short silent WAV to check audio connectivity. '
+              'OpenRouter transcription uses its audio/transcriptions endpoint; '
+              'chat instructions and reasoning settings apply only to chat models. '
+              'Your API key stays on '
               'the server. Recording time uses only the shared weekly AI allowance: '
               'Free 10 minutes, Orbit 30 minutes, Nova 2 hours per full allowance. '
               'The rolling 5-hour allowance is unchanged.',
