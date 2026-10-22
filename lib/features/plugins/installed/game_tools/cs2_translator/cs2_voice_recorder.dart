@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'cs2_voice_protocol.dart';
@@ -13,6 +14,39 @@ abstract interface class Cs2VoiceRecorder {
 }
 
 class WindowsCs2VoiceRecorder implements Cs2VoiceRecorder {
+  WindowsCs2VoiceRecorder()
+    : _startProcess = Process.start,
+      _loadScript = _loadBundledScript,
+      _stopTimeout = const Duration(seconds: 10),
+      _cleanupTimeout = const Duration(seconds: 2);
+
+  @visibleForTesting
+  factory WindowsCs2VoiceRecorder.forTesting({
+    required Future<Process> Function(String, List<String>) startProcess,
+    required Future<String> Function() loadScript,
+    Duration stopTimeout = const Duration(seconds: 10),
+    Duration cleanupTimeout = const Duration(seconds: 2),
+  }) => WindowsCs2VoiceRecorder._withDependencies(
+    startProcess,
+    loadScript,
+    stopTimeout,
+    cleanupTimeout,
+  );
+
+  WindowsCs2VoiceRecorder._withDependencies(
+    this._startProcess,
+    this._loadScript,
+    this._stopTimeout,
+    this._cleanupTimeout,
+  );
+
+  static Future<String> _loadBundledScript() =>
+      rootBundle.loadString('assets/cs2_translator/cs2-voice-recorder.ps1');
+
+  final Future<Process> Function(String, List<String>) _startProcess;
+  final Future<String> Function() _loadScript;
+  final Duration _stopTimeout;
+  final Duration _cleanupTimeout;
   Process? _process;
   Directory? _directory;
   Completer<Uint8List>? _audio;
@@ -21,9 +55,7 @@ class WindowsCs2VoiceRecorder implements Cs2VoiceRecorder {
   @override
   Future<void> start() async {
     final generation = ++_generation;
-    final script = await rootBundle.loadString(
-      'assets/cs2_translator/cs2-voice-recorder.ps1',
-    );
+    final script = await _loadScript();
     if (generation != _generation) throw const Cs2VoiceCancelled();
     final directory = await Directory.systemTemp.createTemp('luma-cs2-voice-');
     if (generation != _generation) {
@@ -35,7 +67,7 @@ class WindowsCs2VoiceRecorder implements Cs2VoiceRecorder {
       final file = File('${directory.path}/recorder.ps1');
       await file.writeAsString(script, flush: true);
       if (generation != _generation) throw const Cs2VoiceCancelled();
-      final process = await Process.start('powershell.exe', [
+      final process = await _startProcess('powershell.exe', [
         '-NoProfile',
         '-NonInteractive',
         '-ExecutionPolicy',
@@ -104,10 +136,15 @@ class WindowsCs2VoiceRecorder implements Cs2VoiceRecorder {
     if (process == null || audio == null) throw const Cs2VoiceCancelled();
     try {
       process.stdin.writeln('stop');
-      await process.stdin.flush();
-      final bytes = await audio.future.timeout(const Duration(seconds: 10));
+      await process.stdin.flush().timeout(_stopTimeout);
+      final bytes = await audio.future.timeout(_stopTimeout);
       await process.exitCode.timeout(const Duration(seconds: 3));
       return bytes;
+    } on TimeoutException {
+      throw StateError(
+        'The microphone did not finish recording. Try again or check your '
+        'default Windows microphone and its privacy permissions.',
+      );
     } finally {
       if (generation == _generation) await cancel();
     }
@@ -118,15 +155,23 @@ class WindowsCs2VoiceRecorder implements Cs2VoiceRecorder {
     _generation++;
     final process = _process;
     final directory = _directory;
+    final audio = _audio;
     _process = null;
     _directory = null;
+    _audio = null;
+    if (audio != null && !audio.isCompleted) {
+      audio.completeError(const Cs2VoiceCancelled());
+    }
     if (process != null) {
       try {
         process.stdin.writeln('cancel');
-        await process.stdin.flush();
-        await process.exitCode.timeout(const Duration(seconds: 2));
+        await process.stdin.flush().timeout(_cleanupTimeout);
+        await process.exitCode.timeout(_cleanupTimeout);
       } catch (_) {
         process.kill();
+        try {
+          await process.exitCode.timeout(_cleanupTimeout);
+        } catch (_) {}
       }
     }
     if (directory != null) {
