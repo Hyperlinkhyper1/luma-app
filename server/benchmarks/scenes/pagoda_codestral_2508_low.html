@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Pagoda Benchmark</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            z-index: 100;
+        }
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            z-index: 100;
+        }
+        button {
+            background: #4A2C1A;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            margin: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        input[type="range"] {
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div id="hud">
+        <div>VOXEL GARDEN</div>
+        <div id="voxelCount">0 voxels</div>
+        <div id="fps">0 FPS</div>
+        <div>Click lanterns</div>
+    </div>
+    <div id="controls">
+        <div>
+            <button id="pauseBtn">Pause</button>
+            <input type="range" id="timeSlider" min="0" max="1" step="0.01" value="0.5">
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2e);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 20, 50);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        document.body.appendChild(renderer.domElement);
+
+        // Controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.5;
+
+        // Lights
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(100, 100, 50);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        scene.add(directionalLight);
+
+        const hemisphereLight = new THREE.HemisphereLight(0x606c38, 0x1a1a2e, 0.3);
+        scene.add(hemisphereLight);
+
+        // Lantern lights
+        const lanternLights = [];
+        for (let i = 0; i < 4; i++) {
+            const lanternLight = new THREE.PointLight(0xffd700, 1, 20, 2);
+            lanternLight.position.set(0, 0, 0);
+            lanternLight.castShadow = true;
+            lanternLight.visible = false;
+            scene.add(lanternLight);
+            lanternLights.push(lanternLight);
+        }
+
+        // Voxel materials
+        const materials = {
+            vermillion: new THREE.MeshStandardMaterial({ color: 0xC73E1D, roughness: 0.3, metalness: 0.1 }),
+            gold: new THREE.MeshStandardMaterial({ color: 0xE8B86D, roughness: 0.2, metalness: 0.8 }),
+            teak: new THREE.MeshStandardMaterial({ color: 0x4A2C1A, roughness: 0.5, metalness: 0.1 }),
+            jade: new THREE.MeshStandardMaterial({ color: 0x2D6A4F, roughness: 0.4, metalness: 0.2 }),
+            sakura: new THREE.MeshStandardMaterial({ color: 0xFFB7C5, roughness: 0.2, metalness: 0.1 }),
+            stone: new THREE.MeshStandardMaterial({ color: 0x9AA0A6, roughness: 0.6, metalness: 0.1 }),
+            pond: new THREE.MeshStandardMaterial({ color: 0x7ED6DF, roughness: 0.1, metalness: 0.9, transparent: true, opacity: 0.8 }),
+            moss: new THREE.MeshStandardMaterial({ color: 0x606C38, roughness: 0.5, metalness: 0.1 })
+        };
+
+        // Voxel geometry
+        const voxelGeometry = new THREE.BoxGeometry(1, 1, 1);
+
+        // Create instanced meshes for each material
+        const instancedMeshes = {};
+        for (const [name, material] of Object.entries(materials)) {
+            instancedMeshes[name] = new THREE.InstancedMesh(voxelGeometry, material, 10000);
+            instancedMeshes[name].castShadow = true;
+            instancedMeshes[name].receiveShadow = true;
+            scene.add(instancedMeshes[name]);
+        }
+
+        // Procedural generation functions
+        function createPagoda() {
+            const pagodaHeight = 28;
+            const floorHeights = [8, 6, 5, 4, 3];
+            const floorPositions = [0, 8, 14, 19, 23];
+            const roofHeight = 2;
+
+            let voxelCount = 0;
+            const matrix = new THREE.Matrix4();
+
+            // Base
+            for (let y = 0; y < 2; y++) {
+                for (let x = -4; x <= 4; x++) {
+                    for (let z = -4; z <= 4; z++) {
+                        if (Math.abs(x) <= 3 && Math.abs(z) <= 3) {
+                            matrix.setPosition(x, y, z);
+                            instancedMeshes.stone.setMatrixAt(voxelCount++, matrix);
+                        }
+                    }
+                }
+            }
+
+            // Floors
+            for (let floor = 0; floor < 5; floor++) {
+                const height = floorHeights[floor];
+                const yPos = floorPositions[floor];
+
+                // Walls
+                for (let y = 0; y < height; y++) {
+                    for (let x = -3; x <= 3; x++) {
+                        for (let z = -3; z <= 3; z++) {
+                            if (Math.abs(x) === 3 || Math.abs(z) === 3) {
+                                matrix.setPosition(x, yPos + y, z);
+                                instancedMeshes.teak.setMatrixAt(voxelCount++, matrix);
+                            }
+                        }
+                    }
+                }
+
+                // Pillars
+                const pillarPositions = [
+                    [-3, -3], [-3, 3], [3, -3], [3, 3],
+                    [-2, -2], [-2, 2], [2, -2], [2, 2]
+                ];
+
+                for (const [x, z] of pillarPositions) {
+                    for (let y = 0; y < height; y++) {
+                        matrix.setPosition(x, yPos + y, z);
+                        instancedMeshes.vermillion.setMatrixAt(voxelCount++, matrix);
+                    }
+                }
+
+                // Roof
+                if (floor < 4) {
+                    const nextFloorHeight = floorHeights[floor + 1];
+                    const roofStart = yPos + height;
+                    const roofEnd = roofStart + roofHeight;
+
+                    for (let y = roofStart; y < roofEnd; y++) {
+                        const size = 4 - (y - roofStart) * 0.5;
+                        for (let x = -size; x <= size; x++) {
+                            for (let z = -size; z <= size; z++) {
+                                if (Math.abs(x) <= size && Math.abs(z) <= size) {
+                                    matrix.setPosition(x, y, z);
+                                    instancedMeshes.jade.setMatrixAt(voxelCount++, matrix);
+                                }
+                            }
+                        }
+                    }
+
+                    // Roof details
+                    for (let x = -3; x <= 3; x += 2) {
+                        for (let z = -3; z <= 3; z += 2) {
+                            if (Math.abs(x) === 3 || Math.abs(z) === 3) {
+                                matrix.setPosition(x, roofEnd, z);
+                                instancedMeshes.gold.setMatrixAt(voxelCount++, matrix);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Top finial
+            matrix.setPosition(0, floorPositions[4] + floorHeights[4] + roofHeight + 1, 0);
+            instancedMeshes.gold.setMatrixAt(voxelCount++, matrix);
+
+            // Update instance counts
+            for (const mesh of Object.values(instancedMeshes)) {
+                mesh.instanceMatrix.needsUpdate = true;
+                mesh.count = voxelCount;
+            }
+
+            return voxelCount;
+        }
+
+        function createTerrain() {
+            const size = 64;
+            const matrix = new THREE.Matrix4();
+            let voxelCount = 0;
+
+            // Main island
+            for (let x = -size/2; x < size/2; x++) {
+                for (let z = -size/2; z < size/2; z++) {
+                    const distance = Math.sqrt(x*x + z*z);
+                    if (distance < size/2 - 2) {
+                        const height = 2 + Math.sin(x*0.1) * 0.5 + Math.cos(z*0.1) * 0.5;
+                        for (let y = 0; y < height; y++) {
+                            matrix.setPosition(x, y, z);
+                            instancedMeshes.stone.setMatrixAt(voxelCount++, matrix);
+                        }
+                    }
+                }
+            }
+
+            // Floating islands
+            const floatingIslands = [
+                { x: 20, z: 20, size: 10 },
+                { x: -25, z: 15, size: 8 },
+                { x: 15, z: -25, size: 6 }
+            ];
+
+            for (const island of floatingIslands) {
+                for (let x = island.x - island.size/2; x < island.x + island.size/2; x++) {
+                    for (let z = island.z - island.size/2; z < island.z + island.size/2; z++) {
+                        const distance = Math.sqrt((x-island.x)*(x-island.x) + (z-island.z)*(z-island.z));
+                        if (distance < island.size/2 - 1) {
+                            const height = 1 + Math.sin(x*0.2) * 0.3 + Math.cos(z*0.2) * 0.3;
+                            for (let y = 0; y < height; y++) {
+                                matrix.setPosition(x, y, z);
+                                instancedMeshes.stone.setMatrixAt(voxelCount++, matrix);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Waterfall
+            for (let y = 0; y < 15; y++) {
+                const width = 2 + y * 0.1;
+                for (let x = -width; x <= width; x++) {
+                    matrix.setPosition(30, y, 0);
+                    instancedMeshes.pond.setMatrixAt(voxelCount++, matrix);
+                }
+            }
+
+            // Update instance counts
+            for (const mesh of Object.values(instancedMeshes)) {
+                mesh.instanceMatrix.needsUpdate = true;
+                mesh.count = voxelCount;
+            }
+
+            return voxelCount;
+        }
+
+        function createPath() {
+            const matrix = new THREE.Matrix4();
+            let voxelCount = 0;
+
+            // Zig-zag path
+            const pathPoints = [
+                { x: 0, z: 30 }, { x: 5, z: 25 }, { x: -5, z: 20 },
+                { x: 5, z: 15 }, { x: -5, z: 10 }, { x: 5, z: 5 },
+                { x: 0, z: 0 }
+            ];
+
+            for (let i = 0; i < pathPoints.length - 1; i++) {
+                const p1 = pathPoints[i];
+                const p2 = pathPoints[i+1];
+
+                const dx = p2.x - p1.x;
+                const dz = p2.z - p1.z;
+                const length = Math.sqrt(dx*dx + dz*dz);
+
+                for (let t = 0; t <= 1; t += 0.1) {
+                    const x = p1.x + t * dx;
+                    const z = p1.z + t * dz;
+
+                    // Path width
+                    for (let px = -1; px <= 1; px++) {
+                        for (let pz = -1; pz <= 1; pz++) {
+                            matrix.setPosition(x + px, 0.5, z + pz);
+                            instancedMeshes.stone.setMatrixAt(voxelCount++, matrix);
+                        }
+                    }
+                }
+            }
+
+            // Update instance counts
+            for (const mesh of Object.values(instancedMeshes)) {
+                mesh.instanceMatrix.needsUpdate = true;
+                mesh.count = voxelCount;
+            }
+
+            return voxelCount;
+        }
+
+        function createPond() {
+            const matrix = new THREE.Matrix4();
+            let voxelCount = 0;
+
+            // Pond surface
+            for (let x = -15; x <= 15; x++) {
+                for (let z = -15; z <= 15; z++) {
+                    if (Math.sqrt(x*x + z*z) < 15) {
+                        matrix.setPosition(x, 0.1, z);
+                        instancedMeshes.pond.setMatrixAt(voxelCount++, matrix);
+                    }
+                }
+            }
+
+            // Pond edges
+            for (let x = -15; x <= 15; x++) {
+                for (let z = -15; z <= 15; z++) {
+                    if (Math.abs(Math.sqrt(x*x + z*z) - 15) < 1) {
+                        for (let y = 0; y < 2; y++) {
+                            matrix.setPosition(x, y, z);
+                            instancedMeshes.stone.setMatrixAt(voxelCount++, matrix);
+                        }
+                    }
+                }
+            }
+
+            // Update instance counts
+            for (const mesh of Object.values(instancedMeshes)) {
+                mesh.instanceMatrix.needsUpdate = true;
+                mesh.count = voxelCount;
+            }
+
+            return voxelCount;
+        }
+
+        function createBridge() {
+            const matrix = new THREE.Matrix4();
+            let voxelCount = 0;
+
+            // Bridge supports
+            for (let x = -10; x <= 10; x += 5) {
+                for (let y = 0; y < 3; y++) {
+                    for (let z = -2; z <= 2; z++) {
+                        matrix.setPosition(x, y, 10 + z);
+                        instancedMeshes.teak.setMatrixAt(voxelCount++, matrix);
+                    }
+                }
+            }
+
+            // Bridge deck
+            for (let x = -10; x <= 10; x++) {
+                for (let z = 8; z <= 12; z++) {
+                    matrix.setPosition(x, 3, z);
+                    instancedMeshes.teak.setMatrixAt(voxelCount++, matrix);
+                }
+            }
+
+            // Update instance counts
+            for (const mesh of Object.values(instancedMeshes)) {
+                mesh.instanceMatrix.needsUpdate = true;
+                mesh.count = voxelCount;
+            }
+
+            return voxelCount;
+        }
+
+        function createTorii() {
+            const matrix = new THREE.Matrix4();
+            let voxelCount = 0;
+
+            // Torii base
+            for (let x = -2; x <= 2; x++) {
+                for (let z = -1; z <= 1; z++) {
+                    for (let y = 0; y < 4; y++) {
+                        matrix.setPosition(x, y, 30 + z);
+                        instancedMeshes.teak.setMatrixAt(voxelCount++, matrix);
+                    }
+                }
+            }
+
+            // Torii posts
+            for (let x = -3; x <= 3; x += 6) {
+                for (let y = 0; y < 6; y++) {
+                    matrix.setPosition(x, y, 30);
+                    instancedMeshes.teak.setMatrixAt(voxelCount++, matrix);
+                }
+            }
+
+            // Torii bars
+            for (let y = 4; y < 6; y++) {
+                for (let x = -3; x <= 3; x++) {
+                    matrix.setPosition(x, y, 30);
+                    instancedMeshes.vermillion.setMatrixAt(voxelCount++, matrix);
+                }
+            }
+
+            // Update instance counts
+            for (const mesh of Object.values(instancedMeshes)) {
+                mesh.instanceMatrix.needsUpdate = true;
+                mesh.count = voxelCount;
+            }
+
+            return voxelCount;
+        }
+
+        function createBambooFence() {
+            const matrix = new THREE.Matrix4();
+            let voxelCount = 0;
+
+            for (let z = 25; z <= 35; z += 2) {
+                for (let y = 0; y < 5; y++) {
+                    matrix.setPosition(-15, y, z);
+                    instancedMeshes.teak.setMatrixAt(voxelCount++, matrix);
+                }
+            }
+
+            // Update instance counts
+            for (const mesh of Object.values(instancedMeshes)) {
+                mesh.instanceMatrix.needsUpdate = true;
+                mesh.count = voxelCount;
+            }
+
+            return voxelCount;
+        }
+
+        function createJizoStatues() {
+            const matrix = new THREE.Matrix4();
+            let voxelCount = 0;
+
+            const positions = [
+                { x: -10, z: 20 },
+                { x: 10, z: 20 }
+            ];
+
+            for (const pos of positions) {
+                // Base
+                for (let x = -1; x <= 1; x++) {
+                    for (let z = -1; z <= 1; z++) {
+                        matrix.setPosition(pos.x + x, 0, pos.z + z);
+                        instancedMeshes.stone.setMatrixAt(voxelCount++, matrix);
+                    }
+                }
+
+                // Statue
+                for (let y = 1; y < 4; y++) {
+                    matrix.setPosition(pos.x, y, pos.z);
+                    instancedMeshes.teak.setMatrixAt(voxelCount++, matrix);
+                }
+
+                // Head
+                matrix.setPosition(pos.x, 4, pos.z);
+                instancedMeshes.vermillion.setMatrixAt(voxelCount++, matrix);
+            }
+
+            // Update instance counts
+            for (const mesh of Object.values(instancedMeshes)) {
+                mesh.instanceMatrix.needsUpdate = true;
+                mesh.count = voxelCount;
+            }
+
+            return voxelCount;
+        }
+
+        function createFlowers() {
+            const matrix = new THREE.Matrix4();
+            let voxelCount = 0;
+
+            for (let i = 0; i < 40; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 5 + Math.random() * 10;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+
+                matrix.setPosition(x, 0.5, z);
+                instancedMeshes.sakura.setMatrixAt(voxelCount++, matrix);
+            }
+
+            // Update instance counts
+            for (const mesh of Object.values(instancedMeshes)) {
+                mesh.instanceMatrix.needsUpdate = true;
+                mesh.count = voxelCount;
+            }
+
+            return voxelCount;
+        }
+
+        function createLanterns() {
+            const matrix = new THREE.Matrix4();
+            let voxelCount = 0;
+
+            const positions = [
+                { x: -10, z: -10 },
+                { x: 10, z: -10 },
+                { x: -10, z: 10 },
+                { x: 10, z: 10 }
+            ];
+
+            for (let i = 0; i < 4; i++) {
+                const pos = positions[i];
+
+                // Base
+                for (let x = -1; x <= 1; x++) {
+                    for (let z = -1; z <= 1; z++) {
+                        matrix.setPosition(pos.x + x, 0, pos.z + z);
+                        instancedMeshes.stone.setMatrixAt(voxelCount++, matrix);
+                    }
+                }
+
+                // Pole
+                for (let y = 1; y < 4; y++) {
+                    matrix.setPosition(pos.x, y, pos.z);
+                    instancedMeshes.teak.setMatrixAt(voxelCount++, matrix);
+                }
+
+                // Lantern
+                for (let x = -1; x <= 1; x++) {
+                    for (let z = -1; z <= 1; z++) {
+                        matrix.setPosition(pos.x + x, 4, pos.z + z);
+                        instancedMeshes.gold.setMatrixAt(voxelCount++, matrix);
+                    }
+                }
+
+                // Light position
+                lanternLights[i].position.set(pos.x, 4, pos.z);
+            }
+
+            // Update instance counts
+            for (const mesh of Object.values(instancedMeshes)) {
+                mesh.instanceMatrix.needsUpdate = true;
+                mesh.count = voxelCount;
+            }
+
+            return voxelCount;
+        }
+
+        // Create all elements
+        let totalVoxels = 0;
+        totalVoxels += createPagoda();
+        totalVoxels += createTerrain();
+        totalVoxels += createPath();
+        totalVoxels += createPond();
+        totalVoxels += createBridge();
+        totalVoxels += createTorii();
+        totalVoxels += createBambooFence();
+        totalVoxels += createJizoStatues();
+        totalVoxels += createFlowers();
+        totalVoxels += createLanterns();
+
+        // Trees
+        const trees = [];
+        const treeTypes = ['sakura', 'pine', 'maple', 'willow'];
+        const treeCounts = { sakura: 3, pine: 2, maple: 2, willow: 1 };
+
+        for (const type of treeTypes) {
+            for (let i = 0; i < treeCounts[type]; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 15 + Math.random() * 10;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+
+                trees.push({
+                    type,
+                    x,
+                    z,
+                    height: 5 + Math.random() * 3,
+                    leaves: 3 + Math.random() * 2
+                });
+            }
+        }
+
+        // Create trees
+        const matrix = new THREE.Matrix4();
+        for (const tree of trees) {
+            // Trunk
+            for (let y = 0; y < tree.height; y++) {
+                matrix.setPosition(tree.x, y, tree.z);
+                instancedMeshes.teak.setMatrixAt(totalVoxels++, matrix);
+            }
+
+            // Leaves
+            for (let y = tree.height - tree.leaves; y < tree.height + tree.leaves; y++) {
+                const size = tree.leaves - Math.abs(y - (tree.height - 1));
+                for (let x = -size; x <= size; x++) {
+                    for (let z = -size; z <= size; z++) {
+                        if (Math.abs(x) + Math.abs(z) <= size) {
+                            matrix.setPosition(tree.x + x, y, tree.z + z);
+                            if (tree.type === 'sakura') {
+                                instancedMeshes.sakura.setMatrixAt(totalVoxels++, matrix);
+                            } else if (tree.type === 'pine') {
+                                instancedMeshes.moss.setMatrixAt(totalVoxels++, matrix);
+                            } else if (tree.type === 'maple') {
+                                instancedMeshes.vermillion.setMatrixAt(totalVoxels++, matrix);
+                            } else if (tree.type === 'willow') {
+                                instancedMeshes.gold.setMatrixAt(totalVoxels++, matrix);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Update instance counts
+        for (const mesh of Object.values(instancedMeshes)) {
+            mesh.instanceMatrix.needsUpdate = true;
+            mesh.count = totalVoxels;
+        }
+
+        // Koi fish
+        const koi = [];
+        for (let i = 0; i < 6; i++) {
+            koi.push({
+                x: Math.random() * 20 - 10,
+                y: 1,
+                z: Math.random() * 20 - 10,
+                speed: 0.1 + Math.random() * 0.2,
+                angle: Math.random() * Math.PI * 2,
+                color: i % 2 === 0 ? 0xC73E1D : 0xE8B86D
+            });
+        }
+
+        // Sakura petals
+        const petals = [];
+        for (let i = 0; i < 50; i++) {
+            petals.push({
+                x: Math.random() * 30 - 15,
+                y: 10 + Math.random() * 5,
+                z: Math.random() * 30 - 15,
+                speed: 0.1 + Math.random() * 0.3,
+                angle: Math.random() * Math.PI * 2,
+                rotation: Math.random() * Math.PI * 2
+            });
+        }
+
+        // Birds
+        const birds = [];
+        for (let i = 0; i < 3; i++) {
+            birds.push({
+                x: Math.random() * 50 - 25,
+                y: 15 + Math.random() * 5,
+                z: Math.random() * 50 - 25,
+                speed: 0.2 + Math.random() * 0.3,
+                angle: Math.random() * Math.PI * 2,
+                wingAngle: 0,
+                wingSpeed: 0.1 + Math.random() * 0.2
+            });
+        }
+
+        // Animation variables
+        let time = 0;
+        let isPaused = false;
+        let timeOfDay = 0.5;
+
+        // HUD elements
+        const voxelCountElement = document.getElementById('voxelCount');
+        const fpsElement = document.getElementById('fps');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const timeSlider = document.getElementById('timeSlider');
+
+        // Update HUD
+        voxelCountElement.textContent = `${totalVoxels} voxels`;
+
+        // Event listeners
+        pauseBtn.addEventListener('click', () => {
+            isPaused = !isPaused;
+            pauseBtn.textContent = isPaused ? 'Play' : 'Pause';
+        });
+
+        timeSlider.addEventListener('input', (e) => {
+            timeOfDay = parseFloat(e.target.value);
+        });
+
+        // Lantern interaction
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        function onMouseClick(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            for (let i = 0; i < lanternLights.length; i++) {
+                const lantern = lanternLights[i];
+                const sphere = new THREE.Sphere(lantern.position, 2);
+                if (raycaster.ray.intersectsSphere(sphere)) {
+                    lantern.visible = !lantern.visible;
+                    break;
+                }
+            }
+        }
+
+        window.addEventListener('click', onMouseClick, false);
+
+        // Camera intro
+        let introProgress = 0;
+        const introDuration = 2.5;
+        const startPosition = new THREE.Vector3(0, 5, 50);
+        const endPosition = new THREE.Vector3(0, 20, 50);
+
+        // FPS calculation
+        let frameCount = 0;
+        let lastTime = performance.now();
+        let fps = 0;
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const currentTime = performance.now();
+            const deltaTime = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+
+            // Update FPS
+            frameCount++;
+            if (currentTime > 1000) {
+                fps = Math.round(frameCount / (currentTime / 1000));
+                fpsElement.textContent = `${fps} FPS`;
+                frameCount = 0;
+            }
+
+            if (isPaused) {
+                renderer.render(scene, camera);
+                return;
+            }
+
+            // Camera intro
+            if (introProgress < introDuration) {
+                introProgress += deltaTime;
+                const progress = Math.min(introProgress / introDuration, 1);
+                camera.position.lerpVectors(startPosition, endPosition, progress);
+                camera.lookAt(0, 10, 0);
+            } else {
+                controls.update();
+            }
+
+            // Time of day
+            time += deltaTime * 0.1;
+            const dayTime = timeOfDay * Math.PI * 2;
+
+            // Sun position
+            directionalLight.position.x = Math.cos(dayTime) * 100;
+            directionalLight.position.y = Math.sin(dayTime) * 100;
+            directionalLight.position.z = Math.sin(dayTime) * 50;
+
+            // Sky color
+            const skyColor = new THREE.Color().lerpColors(
+                new THREE.Color(0x1a1a2e),
+                new THREE.Color(0x87CEEB),
+                Math.sin(dayTime) * 0.5 + 0.5
+            );
+            scene.background = skyColor;
+
+            // Lanterns
+            for (let i = 0; i < lanternLights.length; i++) {
+                if (lanternLights[i].visible) {
+                    lanternLights[i].intensity = 1 + Math.sin(time * 5) * 0.2;
+                }
+            }
+
+            // Koi fish
+            for (const fish of koi) {
+                fish.angle += fish.speed * deltaTime;
+                fish.x = Math.cos(fish.angle) * 10;
+                fish.z = Math.sin(fish.angle) * 10;
+            }
+
+            // Sakura petals
+            for (const petal of petals) {
+                petal.y -= petal.speed * deltaTime;
+                petal.rotation += 0.1 * deltaTime;
+
+                if (petal.y < 0) {
+                    petal.y = 10 + Math.random() * 5;
+                    petal.x = Math.random() * 30 - 15;
+                    petal.z = Math.random() * 30 - 15;
+                }
+            }
+
+            // Birds
+            for (const bird of birds) {
+                bird.angle += bird.speed * deltaTime;
+                bird.x = Math.cos(bird.angle) * 20;
+                bird.z = Math.sin(bird.angle) * 20;
+                bird.y = 15 + Math.sin(time * 2) * 2;
+                bird.wingAngle += bird.wingSpeed * deltaTime;
+            }
+
+            // Tree wind
+            for (const tree of trees) {
+                tree.leaves = 3 + Math.sin(time * 2) * 0.5;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start animation
+        animate();
+
+        // Expose voxel data
+        window.__VOXEL__ = {
+            voxelCount: totalVoxels,
+            fps: () => fps,
+            pagodaFloors: 5,
+            timeOfDay: () => timeOfDay
+        };
+    </script>
+</body>
+</html>
