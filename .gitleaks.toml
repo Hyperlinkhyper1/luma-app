@@ -34,3 +34,11 @@ condition = "AND"
 paths = ['''^assets/city_planner/main\.js$''']
 regexTarget = "match"
 regexes = ['''^SAVE_KEY = "metroplan_save_v1"$''']
+
+[[allowlists]]
+description = "Public voice translation localization key following the keybind label"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^lib/l10n/app_en\.arb$''']
+regexTarget = "secret"
+regexes = ["^cs2VoiceRecordingHint$"]
