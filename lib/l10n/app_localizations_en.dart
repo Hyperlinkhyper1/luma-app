@@ -40560,7 +40560,7 @@ class LEn extends L {
 
   @override
   String get cs2VoiceSetup =>
-      'In Steam, open CS2 → Properties → General → Launch Options. Add these options and restart CS2:';
+      'One-time setup: open the CS2 developer console (~) and run this command. After each translation, press Numpad Enter in CS2 to send it to chat:';
 
   @override
   String get cs2VoiceAdminRouting =>

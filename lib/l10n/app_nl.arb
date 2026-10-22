@@ -11548,7 +11548,7 @@
   "cs2VoiceTranscriptEmpty": "Je transcriptie verschijnt hier na de opname.",
   "cs2VoiceTranslation": "Vertaald bericht",
   "cs2VoiceTranslationEmpty": "Je laatste vertaalde bericht verschijnt hier.",
-  "cs2VoiceSetup": "Open in Steam CS2 → Eigenschappen → Algemeen → Startopties. Voeg deze opties toe en start CS2 opnieuw:",
+  "cs2VoiceSetup": "Eenmalig instellen: open de CS2-ontwikkelaarsconsole (~) en voer deze opdracht uit. Druk na elke vertaling in CS2 op Enter van het numerieke toetsenblok om hem in de chat te sturen:",
   "cs2VoiceAdminRouting": "Gebruikt je provider-API-sleutel en de modellen uit Beheer → Assistant → Spraakvertaler. Log in met een goedgekeurd Luma-account.",
   "mapMakerCityLayers": "Lagen",
   "mapMakerCityProperties": "Objecteigenschappen",

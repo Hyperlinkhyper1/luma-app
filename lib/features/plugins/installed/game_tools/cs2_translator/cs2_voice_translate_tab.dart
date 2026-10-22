@@ -8,7 +8,7 @@ import '../../../../../app/widgets.dart';
 import '../../../../../l10n/app_localizations.dart';
 import '../../../../../sync/sync_scope.dart';
 import '../../../../../theme/luma_theme.dart';
-import 'cs2_chat_translator_tab.dart';
+import 'cs2_voice_protocol.dart';
 import 'cs2_voice_translate_service.dart';
 
 class Cs2VoiceTranslateTab extends StatefulWidget {
@@ -436,7 +436,7 @@ class _Cs2VoiceTranslateTabState extends State<Cs2VoiceTranslateTab> {
           children: [
             Flexible(
               child: SelectableText(
-                Cs2ChatTranslatorTab.launchOptions,
+                cs2SayBindCommand,
                 style: TextStyle(
                   color: luma.textPrimary,
                   fontFamily: 'monospace',
@@ -450,7 +450,7 @@ class _Cs2VoiceTranslateTabState extends State<Cs2VoiceTranslateTab> {
               icon: const Icon(Icons.copy_rounded, size: 18),
               onPressed: () {
                 Clipboard.setData(
-                  const ClipboardData(text: Cs2ChatTranslatorTab.launchOptions),
+                  const ClipboardData(text: cs2SayBindCommand),
                 );
                 ScaffoldMessenger.maybeOf(
                   context,

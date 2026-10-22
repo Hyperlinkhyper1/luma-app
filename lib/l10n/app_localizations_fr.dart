@@ -41079,7 +41079,7 @@ class LFr extends L {
 
   @override
   String get cs2VoiceSetup =>
-      'Dans Steam, ouvrez CS2 → Propriétés → Général → Options de lancement. Ajoutez ces options et redémarrez CS2 :';
+      'Configuration unique : ouvrez la console développeur de CS2 (~) et exécutez cette commande. Après chaque traduction, appuyez sur Entrée du pavé numérique dans CS2 pour l’envoyer dans le chat :';
 
   @override
   String get cs2VoiceAdminRouting =>

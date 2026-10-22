@@ -11548,7 +11548,7 @@
   "cs2VoiceTranscriptEmpty": "La transcripción aparecerá aquí después de grabar.",
   "cs2VoiceTranslation": "Mensaje traducido",
   "cs2VoiceTranslationEmpty": "Tu último mensaje traducido aparecerá aquí.",
-  "cs2VoiceSetup": "En Steam, abre CS2 → Propiedades → General → Opciones de lanzamiento. Añade estas opciones y reinicia CS2:",
+  "cs2VoiceSetup": "Configuración única: abre la consola de desarrollador de CS2 (~) y ejecuta este comando. Tras cada traducción, pulsa Intro del teclado numérico en CS2 para enviarla al chat:",
   "cs2VoiceAdminRouting": "Usa tu clave API del proveedor y los modelos elegidos en Admin → Assistant → Traducción de voz. Inicia sesión con una cuenta Luma aprobada.",
   "mapMakerCityLayers": "Capas",
   "mapMakerCityProperties": "Propiedades del elemento",

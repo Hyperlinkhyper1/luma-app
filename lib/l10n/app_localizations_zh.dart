@@ -38711,7 +38711,8 @@ class LZh extends L {
   String get cs2VoiceTranslationEmpty => '您最近翻译的消息将显示在此处。';
 
   @override
-  String get cs2VoiceSetup => '在 Steam 中打开 CS2 → 属性 → 通用 → 启动选项。添加以下选项并重启 CS2：';
+  String get cs2VoiceSetup =>
+      '一次性设置：打开 CS2 开发者控制台（~）并运行此命令。每次翻译后，在 CS2 中按小键盘回车键即可发送到聊天：';
 
   @override
   String get cs2VoiceAdminRouting =>

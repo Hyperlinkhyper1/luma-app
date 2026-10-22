@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'cs2_translator_service.dart';
+
 String sanitizeCs2ChatMessage(String text, {int maxBytes = 120}) {
   final clean = text
       .replaceAll(RegExp(r'[\x00-\x1f\x7f-\x9f\u2028\u2029]'), ' ')
@@ -23,59 +25,45 @@ String sanitizeCs2ChatMessage(String text, {int maxBytes = 120}) {
   return message;
 }
 
-const cs2NetconPort = 2121;
+/// The one-time console command that makes Numpad Enter send the latest
+/// translation. CS2 ignores -netconport, so luma can't type into the console
+/// itself; it rewrites [cs2SayConfigFile] and the player's key runs it.
+const cs2SayConfigFile = 'luma_say.cfg';
+const cs2SayBindCommand = 'bind "KP_ENTER" "exec luma_say"';
 
-// CS2's -netconport can listen on the PC's LAN address instead of loopback,
-// so every local address is worth a try before giving up.
-Future<Socket> connectCs2Netcon() async {
-  final candidates = <InternetAddress>[
-    InternetAddress.loopbackIPv4,
-    InternetAddress.loopbackIPv6,
-  ];
-  try {
-    for (final interface in await NetworkInterface.list()) {
-      candidates.addAll(interface.addresses);
-    }
-  } on SocketException {
-    // Loopback alone is still worth trying.
-  }
-  SocketException? lastError;
-  for (final address in candidates) {
-    try {
-      return await Socket.connect(
-        address,
-        cs2NetconPort,
-        timeout: const Duration(milliseconds: 600),
-      );
-    } on SocketException catch (error) {
-      lastError = error;
-    }
-  }
-  throw lastError ??
-      const SocketException('No local address accepted the connection.');
+Future<Directory?> findCs2ConfigDirectory() async {
+  final log = await Cs2TranslatorService.instance.findConsoleLog();
+  if (log == null) return null;
+  final cfg = Directory('${File(log).parent.path}${Platform.pathSeparator}cfg');
+  return await cfg.exists() ? cfg : null;
 }
 
 Future<String> sendCs2Chat(
   String text,
   bool Function() stillCurrent, {
-  Future<Socket> Function()? connect,
+  Future<Directory?> Function()? findConfigDirectory,
 }) async {
   final message = sanitizeCs2ChatMessage(text);
-  final socket = await (connect ?? connectCs2Netcon)();
-  final incoming = socket.listen((_) {}, onError: (Object _) {});
-  try {
-    if (!stillCurrent()) throw const Cs2VoiceCancelled();
-    socket.add(utf8.encode('say "$message"\n'));
-    await socket.flush().timeout(const Duration(seconds: 2));
-    return message;
-  } finally {
-    socket.destroy();
-    await incoming.cancel();
-  }
+  final cfg = await (findConfigDirectory ?? findCs2ConfigDirectory)();
+  if (cfg == null) throw const Cs2NotFound();
+  if (!stillCurrent()) throw const Cs2VoiceCancelled();
+  await File(
+    '${cfg.path}${Platform.pathSeparator}$cs2SayConfigFile',
+  ).writeAsString('say "$message"\n', flush: true);
+  return message;
 }
 
 class Cs2VoiceCancelled implements Exception {
   const Cs2VoiceCancelled();
+}
+
+class Cs2NotFound implements Exception {
+  const Cs2NotFound();
+
+  @override
+  String toString() =>
+      'CS2 was not found in your Steam libraries, so the message could not '
+      'be saved.';
 }
 
 class Cs2VoiceTranslation {

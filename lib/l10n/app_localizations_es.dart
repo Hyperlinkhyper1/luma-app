@@ -41003,7 +41003,7 @@ class LEs extends L {
 
   @override
   String get cs2VoiceSetup =>
-      'En Steam, abre CS2 → Propiedades → General → Opciones de lanzamiento. Añade estas opciones y reinicia CS2:';
+      'Configuración única: abre la consola de desarrollador de CS2 (~) y ejecuta este comando. Tras cada traducción, pulsa Intro del teclado numérico en CS2 para enviarla al chat:';
 
   @override
   String get cs2VoiceAdminRouting =>

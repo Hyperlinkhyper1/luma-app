@@ -40853,7 +40853,7 @@ class LNl extends L {
 
   @override
   String get cs2VoiceSetup =>
-      'Open in Steam CS2 → Eigenschappen → Algemeen → Startopties. Voeg deze opties toe en start CS2 opnieuw:';
+      'Eenmalig instellen: open de CS2-ontwikkelaarsconsole (~) en voer deze opdracht uit. Druk na elke vertaling in CS2 op Enter van het numerieke toetsenblok om hem in de chat te sturen:';
 
   @override
   String get cs2VoiceAdminRouting =>

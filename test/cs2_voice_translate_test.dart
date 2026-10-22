@@ -252,56 +252,36 @@ void main() {
     }
   });
 
-  test('writes exactly one say command over a real loopback socket', () async {
-    final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
-    addTearDown(server.close);
-    final received = Completer<String>();
-    server.listen((socket) {
-      final bytes = <int>[];
-      socket.listen(
-        bytes.addAll,
-        onDone: () {
-          received.complete(utf8.decode(bytes));
-          socket.destroy();
-        },
-      );
-    });
+  test('writes exactly one say command to the CS2 cfg file', () async {
+    final cfg = await Directory.systemTemp.createTemp('luma-cs2-cfg-');
+    addTearDown(() => cfg.delete(recursive: true));
     final sent = await sendCs2Chat(
       'Hallo "team"; go\nB',
       () => true,
-      connect: () => Socket.connect(InternetAddress.loopbackIPv4, server.port),
+      findConfigDirectory: () async => cfg,
     );
     expect(sent, "Hallo 'team' go B");
     expect(
-      await received.future.timeout(const Duration(seconds: 3)),
+      await File('${cfg.path}/$cs2SayConfigFile').readAsString(),
       'say "Hallo \'team\' go B"\n',
     );
   });
 
-  test('cancellation after connection sends zero bytes', () async {
-    final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
-    addTearDown(server.close);
-    final received = Completer<int>();
-    server.listen((socket) {
-      var count = 0;
-      socket.listen(
-        (bytes) => count += bytes.length,
-        onDone: () {
-          received.complete(count);
-          socket.destroy();
-        },
-      );
-    });
+  test('a cancelled send leaves the cfg file untouched', () async {
+    final cfg = await Directory.systemTemp.createTemp('luma-cs2-cfg-');
+    addTearDown(() => cfg.delete(recursive: true));
     await expectLater(
-      sendCs2Chat(
-        'hello',
-        () => false,
-        connect: () =>
-            Socket.connect(InternetAddress.loopbackIPv4, server.port),
-      ),
+      sendCs2Chat('hello', () => false, findConfigDirectory: () async => cfg),
       throwsA(isA<Cs2VoiceCancelled>()),
     );
-    expect(await received.future.timeout(const Duration(seconds: 3)), 0);
+    expect(await File('${cfg.path}/$cs2SayConfigFile').exists(), isFalse);
+  });
+
+  test('a missing CS2 install is reported', () async {
+    await expectLater(
+      sendCs2Chat('hello', () => true, findConfigDirectory: () async => null),
+      throwsA(isA<Cs2NotFound>()),
+    );
   });
 
   test(
@@ -447,21 +427,21 @@ void main() {
   });
 
   test(
-    'network failure leaves translation visible and reports no send',
+    'a missing CS2 install leaves translation visible and reports no send',
     () async {
       final service = Cs2VoiceTranslateService.forTesting(
         recorder: _Recorder(),
         serverReady: () => true,
         translate: (_, _) async =>
             const Cs2VoiceTranslation(transcript: 'a', translation: 'b'),
-        send: (_, _) async => throw const SocketException('connection refused'),
+        send: (_, _) async => throw const Cs2NotFound(),
       );
       addTearDown(service.dispose);
       await service.setEnabled(true);
       await service.toggleRecording();
       await service.toggleRecording();
       expect(service.translation, 'b');
-      expect(service.error, contains('2121'));
+      expect(service.error, contains('CS2 was not found'));
       expect(service.status, 'Message was not sent');
     },
   );

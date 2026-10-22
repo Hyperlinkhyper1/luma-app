@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:luma/app/widgets.dart';
-import 'package:luma/features/plugins/installed/game_tools/cs2_translator/cs2_chat_translator_tab.dart';
+import 'package:luma/features/plugins/installed/game_tools/cs2_translator/cs2_voice_protocol.dart';
 import 'package:luma/features/plugins/installed/game_tools/cs2_translator/cs2_voice_translate_service.dart';
 import 'package:luma/features/plugins/installed/game_tools/cs2_translator/cs2_voice_translate_tab.dart';
 import 'package:luma/l10n/app_localizations.dart';
@@ -111,7 +111,7 @@ void main() {
 
         expect(tester.takeException(), isNull);
         expect(find.text('CS2 Voice translate'), findsOneWidget);
-        expect(find.text(Cs2ChatTranslatorTab.launchOptions), findsOneWidget);
+        expect(find.text(cs2SayBindCommand), findsOneWidget);
         expect(service.enabled, isFalse);
         expect(service.recording, isFalse);
 

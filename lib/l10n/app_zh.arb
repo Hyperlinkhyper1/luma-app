@@ -11548,7 +11548,7 @@
   "cs2VoiceTranscriptEmpty": "录音结束后，转写内容将显示在此处。",
   "cs2VoiceTranslation": "翻译后的消息",
   "cs2VoiceTranslationEmpty": "您最近翻译的消息将显示在此处。",
-  "cs2VoiceSetup": "在 Steam 中打开 CS2 → 属性 → 通用 → 启动选项。添加以下选项并重启 CS2：",
+  "cs2VoiceSetup": "一次性设置：打开 CS2 开发者控制台（~）并运行此命令。每次翻译后，在 CS2 中按小键盘回车键即可发送到聊天：",
   "cs2VoiceAdminRouting": "使用您的提供商 API 密钥和在 Admin → Assistant → 语音翻译中选择的模型。请使用已批准的 Luma 账户登录。",
   "mapMakerCityLayers": "图层",
   "mapMakerCityProperties": "要素属性",

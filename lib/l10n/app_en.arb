@@ -24818,7 +24818,7 @@
   "cs2VoiceTranscriptEmpty": "Your transcript will appear here after recording.",
   "cs2VoiceTranslation": "Translated message",
   "cs2VoiceTranslationEmpty": "Your latest translated message will appear here.",
-  "cs2VoiceSetup": "In Steam, open CS2 → Properties → General → Launch Options. Add these options and restart CS2:",
+  "cs2VoiceSetup": "One-time setup: open the CS2 developer console (~) and run this command. After each translation, press Numpad Enter in CS2 to send it to chat:",
   "cs2VoiceAdminRouting": "Uses your provider API key and the models selected in Admin → Assistant → Voice translate. Sign in with an approved Luma account.",
   "mapMakerCityLayers": "Layers",
   "mapMakerCityProperties": "Feature properties",

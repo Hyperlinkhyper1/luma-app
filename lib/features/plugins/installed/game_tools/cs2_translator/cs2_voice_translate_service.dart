@@ -427,19 +427,17 @@ class Cs2VoiceTranslateService extends ChangeNotifier {
       }
       _transcript = result.transcript;
       _translation = result.translation;
-      _status = 'Sending to CS2 console…';
+      _status = 'Saving for CS2…';
       _notify();
       final sent = await _send(result.translation, current);
       if (!current()) return;
       _translation = sent;
-      _status = 'Sent to CS2 console';
+      _status = 'Ready — press Numpad Enter in CS2 to send';
     } on Cs2VoiceCancelled {
       return;
     } catch (error) {
       if (current()) {
-        _error = error is SocketException
-            ? 'Cannot connect to CS2 on port 2121. Launch CS2 with -condebug -netconport 2121.'
-            : '$error';
+        _error = '$error';
         _status = 'Message was not sent';
       }
     } finally {

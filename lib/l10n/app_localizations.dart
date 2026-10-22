@@ -66530,7 +66530,7 @@ abstract class L {
   /// No description provided for @cs2VoiceSetup.
   ///
   /// In en, this message translates to:
-  /// **'In Steam, open CS2 → Properties → General → Launch Options. Add these options and restart CS2:'**
+  /// **'One-time setup: open the CS2 developer console (~) and run this command. After each translation, press Numpad Enter in CS2 to send it to chat:'**
   String get cs2VoiceSetup;
 
   /// No description provided for @cs2VoiceAdminRouting.
