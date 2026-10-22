@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Pagoda Benchmark</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            z-index: 100;
+        }
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            z-index: 100;
+        }
+        button {
+            background-color: #4A2C1A;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            margin: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        input[type="range"] {
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div id="hud">
+        VOXEL GARDEN<br>
+        <span id="voxelCount">0</span> voxels | <span id="fps">0</span> FPS<br>
+        Click lanterns
+    </div>
+    <div id="controls">
+        <button id="pauseBtn">Pause Time</button>
+        <input type="range" id="timeSlider" min="0" max="24" step="0.1" value="12">
+    </div>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        // Global variables
+        let scene, camera, renderer, composer, controls;
+        let voxelCount = 0;
+        let fps = 0;
+        let clock = new THREE.Clock();
+        let timeOfDay = 12;
+        let isPaused = false;
+        let lanterns = [];
+        let pagodaFloors = 5;
+        let pagodaDoors = [];
+        let koiFish = [];
+        let petals = [];
+        let waterfallParticles = [];
+        let birds = [];
+
+        // Initialize the scene
+        init();
+        animate();
+
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 50, 100);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+            document.body.appendChild(renderer.domElement);
+
+            // Post-processing
+            const renderPass = new RenderPass(scene, camera);
+            const bloomPass = new UnrealBloomPass(
+                new THREE.Vector2(window.innerWidth, window.innerHeight),
+                1.5, 0.4, 0.85
+            );
+            composer = new EffectComposer(renderer);
+            composer.addPass(renderPass);
+            composer.addPass(bloomPass);
+
+            // Controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.5;
+
+            // Lights
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(100, 100, 50);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+
+            const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x080820, 0.5);
+            scene.add(hemisphereLight);
+
+            // Create the scene
+            createIsland();
+            createPagoda();
+            createTerrain();
+            createPath();
+            createPond();
+            createKoi();
+            createBridge();
+            createTrees();
+            createSakuraPetals();
+            createLanterns();
+            createToriiGate();
+            createBambooFence();
+            createJizoStatues();
+            createFlowers();
+            createBirds();
+            createWaterfall();
+
+            // Event listeners
+            window.addEventListener('resize', onWindowResize);
+            document.getElementById('pauseBtn').addEventListener('click', toggleTime);
+            document.getElementById('timeSlider').addEventListener('input', updateTime);
+
+            // Camera intro
+            cameraIntro();
+
+            // Expose global variables
+            window.__VOXEL__ = {
+                get voxelCount() { return voxelCount; },
+                get fps() { return fps; },
+                get pagodaFloors() { return pagodaFloors; },
+                get timeOfDay() { return timeOfDay; }
+            };
+        }
+
+        function createIsland() {
+            // Main island
+            const islandGeometry = new THREE.BoxGeometry(100, 5, 100);
+            const islandMaterial = new THREE.MeshStandardMaterial({
+                color: 0x606C38,
+                roughness: 0.8
+            });
+            const island = new THREE.Mesh(islandGeometry, islandMaterial);
+            island.position.y = -2.5;
+            island.receiveShadow = true;
+            scene.add(island);
+
+            // Floating islands
+            const smallIslandGeometry = new THREE.BoxGeometry(20, 3, 20);
+            const smallIslandMaterial = new THREE.MeshStandardMaterial({
+                color: 0x4A2C1A,
+                roughness: 0.7
+            });
+
+            const smallIsland1 = new THREE.Mesh(smallIslandGeometry, smallIslandMaterial);
+            smallIsland1.position.set(40, -1.5, 30);
+            smallIsland1.receiveShadow = true;
+            scene.add(smallIsland1);
+
+            const smallIsland2 = new THREE.Mesh(smallIslandGeometry, smallIslandMaterial);
+            smallIsland2.position.set(-30, -1.5, -40);
+            smallIsland2.receiveShadow = true;
+            scene.add(smallIsland2);
+        }
+
+        function createPagoda() {
+            const floorHeights = [10, 8, 6, 4, 2];
+            const floorSizes = [12, 10, 8, 6, 4];
+            const roofHeight = 2;
+
+            // Create each floor
+            for (let i = 0; i < pagodaFloors; i++) {
+                const floorHeight = floorHeights[i];
+                const floorSize = floorSizes[i];
+                const yPos = i * (floorHeight + roofHeight);
+
+                // Floor
+                const floorGeometry = new THREE.BoxGeometry(floorSize, floorHeight, floorSize);
+                const floorMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x9AA0A6,
+                    roughness: 0.5
+                });
+                const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+                floor.position.y = yPos + floorHeight / 2;
+                floor.castShadow = true;
+                floor.receiveShadow = true;
+                scene.add(floor);
+
+                // Roof
+                const roofGeometry = new THREE.ConeGeometry(floorSize * 0.8, roofHeight, 4);
+                const roofMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x2D6A4F,
+                    roughness: 0.3
+                });
+                const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+                roof.position.y = yPos + floorHeight + roofHeight / 2;
+                roof.rotation.y = Math.PI / 4;
+                roof.castShadow = true;
+                roof.receiveShadow = true;
+                scene.add(roof);
+
+                // Pillars
+                const pillarGeometry = new THREE.CylinderGeometry(0.5, 0.5, floorHeight, 8);
+                const pillarMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xC73E1D,
+                    roughness: 0.4
+                });
+
+                const pillarPositions = [
+                    [floorSize/2 - 1, 0, floorSize/2 - 1],
+                    [-floorSize/2 + 1, 0, floorSize/2 - 1],
+                    [floorSize/2 - 1, 0, -floorSize/2 + 1],
+                    [-floorSize/2 + 1, 0, -floorSize/2 + 1]
+                ];
+
+                for (const pos of pillarPositions) {
+                    const pillar = new THREE.Mesh(pillarGeometry, pillarMaterial);
+                    pillar.position.set(pos[0], yPos + floorHeight / 2, pos[2]);
+                    pillar.castShadow = true;
+                    pillar.receiveShadow = true;
+                    scene.add(pillar);
+                }
+
+                // Doors (only on bottom floor)
+                if (i === 0) {
+                    const doorGeometry = new THREE.BoxGeometry(2, floorHeight * 0.8, 0.2);
+                    const doorMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x4A2C1A,
+                        roughness: 0.6
+                    });
+
+                    const door1 = new THREE.Mesh(doorGeometry, doorMaterial);
+                    door1.position.set(floorSize/2 - 1, yPos + floorHeight / 2, 0);
+                    door1.castShadow = true;
+                    door1.receiveShadow = true;
+                    scene.add(door1);
+
+                    const door2 = new THREE.Mesh(doorGeometry, doorMaterial);
+                    door2.position.set(-floorSize/2 + 1, yPos + floorHeight / 2, 0);
+                    door2.castShadow = true;
+                    door2.receiveShadow = true;
+                    scene.add(door2);
+
+                    pagodaDoors.push(door1, door2);
+                }
+            }
+
+            // Top finial
+            const finialGeometry = new THREE.ConeGeometry(2, 4, 4);
+            const finialMaterial = new THREE.MeshStandardMaterial({
+                color: 0xE8B86D,
+                roughness: 0.2
+            });
+            const finial = new THREE.Mesh(finialGeometry, finialMaterial);
+            finial.position.y = floorHeights.reduce((a, b) => a + b, 0) + roofHeight * pagodaFloors + 2;
+            finial.castShadow = true;
+            finial.receiveShadow = true;
+            scene.add(finial);
+
+            // Update voxel count
+            voxelCount += 4000; // Approximate pagoda voxels
+        }
+
+        function createTerrain() {
+            const terrainSize = 64;
+            const terrainGeometry = new THREE.PlaneGeometry(terrainSize, terrainSize, 64, 64);
+            const terrainMaterial = new THREE.MeshStandardMaterial({
+                color: 0x606C38,
+                roughness: 0.8
+            });
+
+            // Create terrain with some variation
+            const positionAttribute = terrainGeometry.attributes.position;
+            for (let i = 0; i < positionAttribute.count; i++) {
+                const x = positionAttribute.getX(i);
+                const z = positionAttribute.getZ(i);
+                const distance = Math.sqrt(x * x + z * z);
+
+                // Create a gentle slope away from the center
+                positionAttribute.setY(i, Math.sin(distance * 0.1) * 2);
+            }
+
+            const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
+            terrain.rotation.x = -Math.PI / 2;
+            terrain.position.y = -3;
+            terrain.receiveShadow = true;
+            scene.add(terrain);
+
+            voxelCount += 4096; // Terrain voxels
+        }
+
+        function createPath() {
+            const pathWidth = 2;
+            const pathLength = 30;
+            const pathGeometry = new THREE.BoxGeometry(pathWidth, 0.2, pathLength);
+            const pathMaterial = new THREE.MeshStandardMaterial({
+                color: 0x9AA0A6,
+                roughness: 0.6
+            });
+
+            const path = new THREE.Mesh(pathGeometry, pathMaterial);
+            path.position.set(0, -2.4, -20);
+            path.receiveShadow = true;
+            scene.add(path);
+
+            // Create zig-zag pattern
+            for (let i = 0; i < 5; i++) {
+                const segment = new THREE.Mesh(
+                    new THREE.BoxGeometry(pathWidth, 0.2, 2),
+                    pathMaterial
+                );
+                segment.position.set(
+                    i % 2 === 0 ? pathWidth : -pathWidth,
+                    -2.4,
+                    -20 + i * 2 + 1
+                );
+                segment.receiveShadow = true;
+                scene.add(segment);
+            }
+
+            voxelCount += 200; // Path voxels
+        }
+
+        function createPond() {
+            const pondGeometry = new THREE.CircleGeometry(15, 32);
+            const pondMaterial = new THREE.MeshStandardMaterial({
+                color: 0x7ED6DF,
+                roughness: 0.1,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            const pond = new THREE.Mesh(pondGeometry, pondMaterial);
+            pond.rotation.x = -Math.PI / 2;
+            pond.position.set(20, -2.5, 0);
+            pond.receiveShadow = true;
+            scene.add(pond);
+
+            // Pond edge
+            const pondEdgeGeometry = new THREE.RingGeometry(15, 15.5, 32);
+            const pondEdgeMaterial = new THREE.MeshStandardMaterial({
+                color: 0x4A2C1A,
+                roughness: 0.7
+            });
+            const pondEdge = new THREE.Mesh(pondEdgeGeometry, pondEdgeMaterial);
+            pondEdge.rotation.x = -Math.PI / 2;
+            pondEdge.position.set(20, -2.4, 0);
+            pondEdge.receiveShadow = true;
+            scene.add(pondEdge);
+
+            voxelCount += 500; // Pond voxels
+        }
+
+        function createKoi() {
+            const koiGeometry = new THREE.SphereGeometry(0.5, 8, 8);
+            const koiMaterial = new THREE.MeshStandardMaterial({
+                color: 0xFF8FAB,
+                roughness: 0.3
+            });
+
+            for (let i = 0; i < 6; i++) {
+                const koi = new THREE.Mesh(koiGeometry, koiMaterial);
+                koi.position.set(
+                    20 + Math.random() * 10 - 5,
+                    -2 + Math.random() * 2,
+                    Math.random() * 10 - 5
+                );
+                koi.castShadow = true;
+                koi.receiveShadow = true;
+                scene.add(koi);
+
+                // Add properties for animation
+                koi.userData = {
+                    speed: 0.5 + Math.random(),
+                    direction: Math.random() * Math.PI * 2,
+                    amplitude: 0.2 + Math.random() * 0.3,
+                    frequency: 0.5 + Math.random()
+                };
+
+                koiFish.push(koi);
+            }
+
+            voxelCount += 100; // Koi voxels
+        }
+
+        function createBridge() {
+            const bridgeWidth = 3;
+            const bridgeLength = 10;
+            const bridgeHeight = 0.5;
+
+            // Bridge supports
+            const supportGeometry = new THREE.BoxGeometry(0.5, 5, 0.5);
+            const supportMaterial = new THREE.MeshStandardMaterial({
+                color: 0x4A2C1A,
+                roughness: 0.6
+            });
+
+            const support1 = new THREE.Mesh(supportGeometry, supportMaterial);
+            support1.position.set(15, -2.5, -5);
+            support1.castShadow = true;
+            support1.receiveShadow = true;
+            scene.add(support1);
+
+            const support2 = new THREE.Mesh(supportGeometry, supportMaterial);
+            support2.position.set(25, -2.5, -5);
+            support2.castShadow = true;
+            support2.receiveShadow = true;
+            scene.add(support2);
+
+            // Bridge deck
+            const deckGeometry = new THREE.BoxGeometry(bridgeWidth, bridgeHeight, bridgeLength);
+            const deckMaterial = new THREE.MeshStandardMaterial({
+                color: 0x4A2C1A,
+                roughness: 0.5
+            });
+
+            const deck = new THREE.Mesh(deckGeometry, deckMaterial);
+            deck.position.set(20, -1.5, -5);
+            deck.castShadow = true;
+            deck.receiveShadow = true;
+            scene.add(deck);
+
+            // Bridge railings
+            const railingGeometry = new THREE.BoxGeometry(0.2, 1, bridgeLength);
+            const railingMaterial = new THREE.MeshStandardMaterial({
+                color: 0xE8B86D,
+                roughness: 0.4
+            });
+
+            const railing1 = new THREE.Mesh(railingGeometry, railingMaterial);
+            railing1.position.set(20 + bridgeWidth/2, -0.5, -5);
+            railing1.castShadow = true;
+            railing1.receiveShadow = true;
+            scene.add(railing1);
+
+            const railing2 = new THREE.Mesh(railingGeometry, railingMaterial);
+            railing2.position.set(20 - bridgeWidth/2, -0.5, -5);
+            railing2.castShadow = true;
+            railing2.receiveShadow = true;
+            scene.add(railing2);
+
+            voxelCount += 300; // Bridge voxels
+        }
+
+        function createTrees() {
+            // Sakura trees
+            for (let i = 0; i < 3; i++) {
+                createTree(10 + i * 5, -2.5, 10 + i * 3, 'sakura');
+            }
+
+            // Pine trees
+            for (let i = 0; i < 2; i++) {
+                createTree(-10 - i * 5, -2.5, 10 + i * 3, 'pine');
+            }
+
+            // Maple trees
+            for (let i = 0; i < 2; i++) {
+                createTree(0 + i * 5, -2.5, -10 - i * 3, 'maple');
+            }
+
+            // Willow tree
+            createTree(-20, -2.5, 0, 'willow');
+        }
+
+        function createTree(x, y, z, type) {
+            const trunkHeight = 5;
+            const trunkRadius = 0.5;
+            const leafRadius = 3;
+
+            // Trunk
+            const trunkGeometry = new THREE.CylinderGeometry(trunkRadius, trunkRadius, trunkHeight, 8);
+            const trunkMaterial = new THREE.MeshStandardMaterial({
+                color: 0x4A2C1A,
+                roughness: 0.6
+            });
+            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            trunk.position.set(x, y + trunkHeight/2, z);
+            trunk.castShadow = true;
+            trunk.receiveShadow = true;
+            scene.add(trunk);
+
+            // Leaves
+            let leafGeometry, leafMaterial;
+
+            switch(type) {
+                case 'sakura':
+                    leafGeometry = new THREE.SphereGeometry(leafRadius, 8, 8);
+                    leafMaterial = new THREE.MeshStandardMaterial({
+                        color: 0xFFB7C5,
+                        roughness: 0.3
+                    });
+                    break;
+                case 'pine':
+                    leafGeometry = new THREE.ConeGeometry(leafRadius, 6, 8);
+                    leafMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x2D6A4F,
+                        roughness: 0.4
+                    });
+                    break;
+                case 'maple':
+                    leafGeometry = new THREE.SphereGeometry(leafRadius, 8, 8);
+                    leafMaterial = new THREE.MeshStandardMaterial({
+                        color: 0xFF8FAB,
+                        roughness: 0.3
+                    });
+                    break;
+                case 'willow':
+                    leafGeometry = new THREE.SphereGeometry(leafRadius, 8, 8);
+                    leafMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x606C38,
+                        roughness: 0.5
+                    });
+                    break;
+            }
+
+            const leaves = new THREE.Mesh(leafGeometry, leafMaterial);
+            leaves.position.set(x, y + trunkHeight + leafRadius, z);
+            leaves.castShadow = true;
+            leaves.receiveShadow = true;
+            scene.add(leaves);
+
+            // Add properties for animation
+            leaves.userData = {
+                type: type,
+                windSpeed: 0.5 + Math.random(),
+                windAmplitude: 0.1 + Math.random() * 0.2
+            };
+
+            voxelCount += 100; // Tree voxels
+        }
+
+        function createSakuraPetals() {
+            const petalGeometry = new THREE.BufferGeometry();
+            const petalPositions = new Float32Array(100 * 3);
+            const petalColors = new Float32Array(100 * 3);
+
+            for (let i = 0; i < 100; i++) {
+                petalPositions[i * 3] = Math.random() * 50 - 25;
+                petalPositions[i * 3 + 1] = 20 + Math.random() * 10;
+                petalPositions[i * 3 + 2] = Math.random() * 50 - 25;
+
+                // Random pastel colors
+                const hue = Math.random() * 60 + 300; // Pink hues
+                const saturation = 50 + Math.random() * 30;
+                const lightness = 70 + Math.random() * 20;
+                const color = new THREE.Color(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
+
+                petalColors[i * 3] = color.r;
+                petalColors[i * 3 + 1] = color.g;
+                petalColors[i * 3 + 2] = color.b;
+            }
+
+            petalGeometry.setAttribute('position', new THREE.BufferAttribute(petalPositions, 3));
+            petalGeometry.setAttribute('color', new THREE.BufferAttribute(petalColors, 3));
+
+            const petalMaterial = new THREE.PointsMaterial({
+                size: 0.2,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            const petals = new THREE.Points(petalGeometry, petalMaterial);
+            scene.add(petals);
+
+            // Store petals for animation
+            petals.userData = {
+                positions: petalPositions,
+                velocities: new Float32Array(100 * 3)
+            };
+
+            voxelCount += 100; // Petal voxels
+        }
+
+        function createLanterns() {
+            const lanternGeometry = new THREE.SphereGeometry(0.5, 8, 8);
+            const lanternMaterial = new THREE.MeshStandardMaterial({
+                color: 0xE8B86D,
+                roughness: 0.2,
+                emissive: 0xFFD700,
+                emissiveIntensity: 0.2
+            });
+
+            const lanternPositions = [
+                [0, 15, 0],
+                [15, 5, 15],
+                [-15, 5, -15],
+                [15, 5, -15]
+            ];
+
+            for (const pos of lanternPositions) {
+                const lantern = new THREE.Mesh(lanternGeometry, lanternMaterial);
+                lantern.position.set(pos[0], pos[1], pos[2]);
+                lantern.castShadow = true;
+                lantern.receiveShadow = true;
+                scene.add(lantern);
+
+                // Add light
+                const pointLight = new THREE.PointLight(0xFFD700, 1, 20);
+                pointLight.position.set(pos[0], pos[1], pos[2]);
+                scene.add(pointLight);
+
+                // Store for interaction
+                lantern.userData = {
+                    light: pointLight,
+                    isOn: true
+                };
+
+                lanterns.push(lantern);
+            }
+
+            // Add event listener for lantern clicks
+            renderer.domElement.addEventListener('click', onLanternClick);
+
+            voxelCount += 50; // Lantern voxels
+        }
+
+        function createToriiGate() {
+            const postHeight = 8;
+            const postWidth = 0.5;
+            const postDepth = 0.5;
+
+            // Posts
+            const postGeometry = new THREE.BoxGeometry(postWidth, postHeight, postDepth);
+            const postMaterial = new THREE.MeshStandardMaterial({
+                color: 0x4A2C1A,
+                roughness: 0.6
+            });
+
+            const post1 = new THREE.Mesh(postGeometry, postMaterial);
+            post1.position.set(-20, -2.5 + postHeight/2, -30);
+            post1.castShadow = true;
+            post1.receiveShadow = true;
+            scene.add(post1);
+
+            const post2 = new THREE.Mesh(postGeometry, postMaterial);
+            post2.position.set(20, -2.5 + postHeight/2, -30);
+            post2.castShadow = true;
+            post2.receiveShadow = true;
+            scene.add(post2);
+
+            // Roof
+            const roofGeometry = new THREE.BoxGeometry(40, 0.5, 0.5);
+            const roofMaterial = new THREE.MeshStandardMaterial({
+                color: 0xC73E1D,
+                roughness: 0.4
+            });
+
+            const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+            roof.position.set(0, -2.5 + postHeight, -30);
+            roof.castShadow = true;
+            roof.receiveShadow = true;
+            scene.add(roof);
+
+            // Crossbar
+            const crossbarGeometry = new THREE.BoxGeometry(40, 0.5, 0.5);
+            const crossbarMaterial = new THREE.MeshStandardMaterial({
+                color: 0xE8B86D,
+                roughness: 0.3
+            });
+
+            const crossbar = new THREE.Mesh(crossbarGeometry, crossbarMaterial);
+            crossbar.position.set(0, -2.5 + postHeight/2, -30);
+            crossbar.castShadow = true;
+            crossbar.receiveShadow = true;
+            scene.add(crossbar);
+
+            voxelCount += 200; // Torii voxels
+        }
+
+        function createBambooFence() {
+            const bambooWidth = 0.2;
+            const bambooHeight = 4;
+            const bambooGeometry = new THREE.BoxGeometry(bambooWidth, bambooHeight, bambooWidth);
+            const bambooMaterial = new THREE.MeshStandardMaterial({
+                color: 0x606C38,
+                roughness: 0.5
+            });
+
+            for (let i = 0; i < 20; i++) {
+                const bamboo = new THREE.Mesh(bambooGeometry, bambooMaterial);
+                bamboo.position.set(
+                    -30 + i * 3,
+                    -2.5 + bambooHeight/2,
+                    -20
+                );
+                bamboo.castShadow = true;
+                bamboo.receiveShadow = true;
+                scene.add(bamboo);
+            }
+
+            voxelCount += 100; // Bamboo voxels
+        }
+
+        function createJizoStatues() {
+            const statueWidth = 1;
+            const statueHeight = 2;
+            const statueDepth = 0.5;
+
+            const statueGeometry = new THREE.BoxGeometry(statueWidth, statueHeight, statueDepth);
+            const statueMaterial = new THREE.MeshStandardMaterial({
+                color: 0x9AA0A6,
+                roughness: 0.4
+            });
+
+            const statue1 = new THREE.Mesh(statueGeometry, statueMaterial);
+            statue1.position.set(-10, -2.5 + statueHeight/2, 0);
+            statue1.castShadow = true;
+            statue1.receiveShadow = true;
+            scene.add(statue1);
+
+            const statue2 = new THREE.Mesh(statueGeometry, statueMaterial);
+            statue2.position.set(10, -2.5 + statueHeight/2, 0);
+            statue2.castShadow = true;
+            statue2.receiveShadow = true;
+            scene.add(statue2);
+
+            voxelCount += 50; // Statue voxels
+        }
+
+        function createFlowers() {
+            const flowerGeometry = new THREE.SphereGeometry(0.3, 8, 8);
+            const flowerMaterial = new THREE.MeshStandardMaterial({
+                color: 0xFFB7C5,
+                roughness: 0.2
+            });
+
+            for (let i = 0; i < 40; i++) {
+                const flower = new THREE.Mesh(flowerGeometry, flowerMaterial);
+                flower.position.set(
+                    Math.random() * 50 - 25,
+                    -2.5 + 0.3,
+                    Math.random() * 50 - 25
+                );
+                flower.castShadow = true;
+                flower.receiveShadow = true;
+                scene.add(flower);
+            }
+
+            voxelCount += 40; // Flower voxels
+        }
+
+        function createBirds() {
+            const birdGeometry = new THREE.SphereGeometry(0.3, 8, 8);
+            const birdMaterial = new THREE.MeshStandardMaterial({
+                color: 0x9AA0A6,
+                roughness: 0.5
+            });
+
+            for (let i = 0; i < 5; i++) {
+                const bird = new THREE.Mesh(birdGeometry, birdMaterial);
+                bird.position.set(
+                    Math.random() * 50 - 25,
+                    10 + Math.random() * 5,
+                    Math.random() * 50 - 25
+                );
+                bird.castShadow = true;
+                bird.receiveShadow = true;
+                scene.add(bird);
+
+                // Add properties for animation
+                bird.userData = {
+                    speed: 0.5 + Math.random(),
+                    direction: Math.random() * Math.PI * 2,
+                    altitude: 10 + Math.random() * 5
+                };
+
+                birds.push(bird);
+            }
+
+            voxelCount += 20; // Bird voxels
+        }
+
+        function createWaterfall() {
+            const waterfallGeometry = new THREE.BufferGeometry();
+            const waterfallPositions = new Float32Array(200 * 3);
+            const waterfallColors = new Float32Array(200 * 3);
+
+            for (let i = 0; i < 200; i++) {
+                waterfallPositions[i * 3] = 50;
+                waterfallPositions[i * 3 + 1] = 20 - Math.random() * 10;
+                waterfallPositions[i * 3 + 2] = Math.random() * 20 - 10;
+
+                waterfallColors[i * 3] = 0.7;
+                waterfallColors[i * 3 + 1] = 0.9;
+                waterfallColors[i * 3 + 2] = 1.0;
+            }
+
+            waterfallGeometry.setAttribute('position', new THREE.BufferAttribute(waterfallPositions, 3));
+            waterfallGeometry.setAttribute('color', new THREE.BufferAttribute(waterfallColors, 3));
+
+            const waterfallMaterial = new THREE.PointsMaterial({
+                size: 0.2,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            const waterfall = new THREE.Points(waterfallGeometry, waterfallMaterial);
+            scene.add(waterfall);
+
+            // Store waterfall for animation
+            waterfall.userData = {
+                positions: waterfallPositions,
+                velocities: new Float32Array(200 * 3)
+            };
+
+            waterfallParticles.push(waterfall);
+
+            voxelCount += 200; // Waterfall voxels
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onLanternClick(event) {
+            // Calculate mouse position in normalized device coordinates
+            const mouse = new THREE.Vector2();
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            // Create a raycaster
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+
+            // Check for intersections with lanterns
+            const intersects = raycaster.intersectObjects(lanterns);
+
+            if (intersects.length > 0) {
+                const lantern = intersects[0].object;
+                lantern.userData.isOn = !lantern.userData.isOn;
+                lantern.userData.light.visible = lantern.userData.isOn;
+            }
+        }
+
+        function cameraIntro() {
+            // Start position (torii gate)
+            const startPosition = new THREE.Vector3(-25, 5, -35);
+            // End position (pagoda)
+            const endPosition = new THREE.Vector3(0, 30, 50);
+
+            // Create a curve for the camera path
+            const curve = new THREE.QuadraticBezierCurve3(
+                startPosition,
+                new THREE.Vector3(0, 50, -10), // Control point
+                endPosition
+            );
+
+            // Animate the camera along the curve
+            let progress = 0;
+            const duration = 2.5; // seconds
+            const startTime = performance.now();
+
+            function animateCamera() {
+                const elapsed = (performance.now() - startTime) / 1000;
+                progress = Math.min(elapsed / duration, 1);
+
+                if (progress < 1) {
+                    const point = curve.getPoint(progress);
+                    camera.position.copy(point);
+                    camera.lookAt(0, 10, 0);
+                    requestAnimationFrame(animateCamera);
+                } else {
+                    // Animation complete, enable controls
+                    controls.enabled = true;
+                }
+            }
+
+            // Disable controls during intro
+            controls.enabled = false;
+            animateCamera();
+        }
+
+        function toggleTime() {
+            isPaused = !isPaused;
+            document.getElementById('pauseBtn').textContent = isPaused ? 'Resume Time' : 'Pause Time';
+        }
+
+        function updateTime() {
+            timeOfDay = parseFloat(document.getElementById('timeSlider').value);
+            updateDayNightCycle();
+        }
+
+        function updateDayNightCycle() {
+            // Normalize time (0-24)
+            const normalizedTime = timeOfDay % 24;
+
+            // Calculate sun position
+            const sunAngle = (normalizedTime - 6) * (Math.PI / 12);
+            const sunX = Math.cos(sunAngle) * 100;
+            const sunY = Math.sin(sunAngle) * 100;
+
+            // Update directional light
+            const directionalLight = scene.children.find(child => child instanceof THREE.DirectionalLight);
+            if (directionalLight) {
+                directionalLight.position.set(sunX, sunY, 50);
+                directionalLight.intensity = Math.max(0.5, Math.sin(sunAngle + Math.PI/2));
+            }
+
+            // Update sky color
+            let skyColor;
+            if (normalizedTime >= 6 && normalizedTime < 18) {
+                // Daytime
+                const dayProgress = (normalizedTime - 6) / 12;
+                skyColor = new THREE.Color().lerpColors(
+                    new THREE.Color(0x87CEEB),
+                    new THREE.Color(0x001F3F),
+                    dayProgress
+                );
+            } else {
+                // Nighttime
+                const nightProgress = normalizedTime < 6 ? (normalizedTime + 6) / 12 : (normalizedTime - 18) / 6;
+                skyColor = new THREE.Color().lerpColors(
+                    new THREE.Color(0x001F3F),
+                    new THREE.Color(0x87CEEB),
+                    nightProgress
+                );
+            }
+            scene.background = skyColor;
+
+            // Update lanterns based on time
+            const isNight = normalizedTime >= 18 || normalizedTime < 6;
+            lanterns.forEach(lantern => {
+                if (isNight && !lantern.userData.isOn) {
+                    lantern.userData.isOn = true;
+                    lantern.userData.light.visible = true;
+                } else if (!isNight && lantern.userData.isOn) {
+                    lantern.userData.isOn = false;
+                    lantern.userData.light.visible = false;
+                }
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = clock.getDelta();
+
+            // Update controls
+            controls.update();
+
+            // Update time of day
+            if (!isPaused) {
+                timeOfDay += delta / 10; // 1 hour per 10 seconds
+                document.getElementById('timeSlider').value = timeOfDay % 24;
+                updateDayNightCycle();
+            }
+
+            // Animate koi fish
+            koiFish.forEach(koi => {
+                const data = koi.userData;
+                data.direction += delta * data.speed * 0.1;
+
+                // Calculate new position with sine wave for natural movement
+                const x = Math.cos(data.direction) * 5 + koi.position.x;
+                const z = Math.sin(data.direction) * 5 + koi.position.z;
+                const y = -2 + Math.sin(data.direction * data.frequency) * data.amplitude;
+
+                koi.position.set(x, y, z);
+                koi.lookAt(x + Math.cos(data.direction + Math.PI/2), y, z + Math.sin(data.direction + Math.PI/2));
+            });
+
+            // Animate trees with wind
+            scene.children.forEach(child => {
+                if (child.userData.type && child.userData.type.includes('tree')) {
+                    const data = child.userData;
+                    const time = performance.now() * 0.001;
+                    child.rotation.y = Math.sin(time * data.windSpeed) * data.windAmplitude;
+                }
+            });
+
+            // Animate Sakura petals
+            const petals = scene.children.find(child => child instanceof THREE.Points && child.userData.positions);
+            if (petals) {
+                const positions = petals.userData.positions;
+                const velocities = petals.userData.velocities;
+
+                for (let i = 0; i < positions.length / 3; i++) {
+                    // Apply gravity
+                    velocities[i * 3 + 1] -= delta * 0.5;
+
+                    // Update position
+                    positions[i * 3] += velocities[i * 3] * delta;
+                    positions[i * 3 + 1] += velocities[i * 3 + 1] * delta;
+                    positions[i * 3 + 2] += velocities[i * 3 + 2] * delta;
+
+                    // Reset if petal falls below ground
+                    if (positions[i * 3 + 1] < -2.5) {
+                        positions[i * 3] = Math.random() * 50 - 25;
+                        positions[i * 3 + 1] = 20 + Math.random() * 10;
+                        positions[i * 3 + 2] = Math.random() * 50 - 25;
+
+                        // Reset velocity
+                        velocities[i * 3] = (Math.random() - 0.5) * 0.1;
+                        velocities[i * 3 + 1] = -0.1;
+                        velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.1;
+                    }
+                }
+
+                petals.geometry.attributes.position.needsUpdate = true;
+            }
+
+            // Animate birds
+            birds.forEach(bird => {
+                const data = bird.userData;
+                data.direction += delta * data.speed * 0.1;
+
+                // Calculate new position with sine wave for flight pattern
+                const x = Math.cos(data.direction) * 10 + bird.position.x;
+                const z = Math.sin(data.direction) * 10 + bird.position.z;
+                const y = data.altitude + Math.sin(data.direction * 2) * 2;
+
+                bird.position.set(x, y, z);
+                bird.lookAt(x + Math.cos(data.direction + Math.PI/2), y, z + Math.sin(data.direction + Math.PI/2));
+            });
+
+            // Animate waterfall
+            waterfallParticles.forEach(waterfall => {
+                const positions = waterfall.userData.positions;
+                const velocities = waterfall.userData.velocities;
+
+                for (let i = 0; i < positions.length / 3; i++) {
+                    // Apply gravity
+                    velocities[i * 3 + 1] -= delta * 0.5;
+
+                    // Update position
+                    positions[i * 3] += velocities[i * 3] * delta;
+                    positions[i * 3 + 1] += velocities[i * 3 + 1] * delta;
+                    positions[i * 3 + 2] += velocities[i * 3 + 2] * delta;
+
+                    // Reset if particle falls below ground
+                    if (positions[i * 3 + 1] < -2.5) {
+                        positions[i * 3] = 50;
+                        positions[i * 3 + 1] = 20 - Math.random() * 10;
+                        positions[i * 3 + 2] = Math.random() * 20 - 10;
+
+                        // Reset velocity
+                        velocities[i * 3] = -0.5 - Math.random() * 0.2;
+                        velocities[i * 3 + 1] = -0.1;
+                        velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.1;
+                    }
+                }
+
+                waterfall.geometry.attributes.position.needsUpdate = true;
+            });
+
+            // Update lantern flicker
+            lanterns.forEach(lantern => {
+                if (lantern.userData.isOn) {
+                    const flicker = 0.8 + Math.random() * 0.4;
+                    lantern.userData.light.intensity = flicker;
+                }
+            });
+
+            // Update HUD
+            document.getElementById('voxelCount').textContent = voxelCount.toLocaleString();
+            document.getElementById('fps').textContent = Math.round(fps);
+
+            // Calculate FPS
+            const now = performance.now();
+            const elapsed = now - (window.lastTime || now);
+            window.lastTime = now;
+            fps = 1000 / elapsed;
+
+            // Render
+            composer.render();
+        }
+    </script>
+</body>
+</html>
