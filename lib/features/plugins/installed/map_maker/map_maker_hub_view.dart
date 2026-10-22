@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'map_maker_store.dart';
 
@@ -9,15 +10,20 @@ class MapMakerHubView extends StatelessWidget {
     super.key,
     required this.onOpenSaves,
     required this.onNewTransitMap,
+    required this.onNewCityMap,
+    this.store,
   });
 
   final VoidCallback onOpenSaves;
   final VoidCallback onNewTransitMap;
+  final VoidCallback onNewCityMap;
+  final MapMakerStore? store;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
     final isPhone = context.isPhoneWidth;
+    final t = L.of(context);
 
     return Scaffold(
       backgroundColor: luma.background,
@@ -95,6 +101,7 @@ class MapMakerHubView extends StatelessWidget {
                             flex: 5,
                             child: _BigSavesButton(
                               onTap: onOpenSaves,
+                              store: store,
                             ),
                           ),
                           const SizedBox(width: 20),
@@ -114,20 +121,12 @@ class MapMakerHubView extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 12),
                                 _PlannerActionTile(
-                                  title: 'City Planner',
-                                  subtitle:
-                                      'Urban district zoning, road grids, and population blueprints.',
+                                  title: t.mapMakerCityPlanner,
+                                  subtitle: t.mapMakerCityDescription,
                                   icon: Icons.location_city_rounded,
                                   iconColor: const Color(0xFFE6B422),
-                                  isAvailable: false,
-                                  onTap: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('City Planner is coming soon!'),
-                                        duration: Duration(seconds: 2),
-                                      ),
-                                    );
-                                  },
+                                  isAvailable: true,
+                                  onTap: onNewCityMap,
                                 ),
                                 const SizedBox(height: 12),
                                 _PlannerActionTile(
@@ -140,7 +139,9 @@ class MapMakerHubView extends StatelessWidget {
                                   onTap: () {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text('Home Planner is coming soon!'),
+                                        content: Text(
+                                          'Home Planner is coming soon!',
+                                        ),
                                         duration: Duration(seconds: 2),
                                       ),
                                     );
@@ -155,9 +156,7 @@ class MapMakerHubView extends StatelessWidget {
                   else
                     Column(
                       children: [
-                        _BigSavesButton(
-                          onTap: onOpenSaves,
-                        ),
+                        _BigSavesButton(onTap: onOpenSaves, store: store),
                         const SizedBox(height: 16),
                         _PlannerActionTile(
                           title: 'Transit Map',
@@ -170,20 +169,12 @@ class MapMakerHubView extends StatelessWidget {
                         ),
                         const SizedBox(height: 12),
                         _PlannerActionTile(
-                          title: 'City Planner',
-                          subtitle:
-                              'Urban district zoning, road grids, and population blueprints.',
+                          title: t.mapMakerCityPlanner,
+                          subtitle: t.mapMakerCityDescription,
                           icon: Icons.location_city_rounded,
                           iconColor: const Color(0xFFE6B422),
-                          isAvailable: false,
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('City Planner is coming soon!'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          },
+                          isAvailable: true,
+                          onTap: onNewCityMap,
                         ),
                         const SizedBox(height: 12),
                         _PlannerActionTile(
@@ -215,9 +206,10 @@ class MapMakerHubView extends StatelessWidget {
 }
 
 class _BigSavesButton extends StatefulWidget {
-  const _BigSavesButton({required this.onTap});
+  const _BigSavesButton({required this.onTap, this.store});
 
   final VoidCallback onTap;
+  final MapMakerStore? store;
 
   @override
   State<_BigSavesButton> createState() => _BigSavesButtonState();
@@ -230,11 +222,12 @@ class _BigSavesButtonState extends State<_BigSavesButton> {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final decor = context.lumaDecor;
+    final store = widget.store ?? MapMakerStore.instance;
 
     return ListenableBuilder(
-      listenable: MapMakerStore.instance,
+      listenable: store,
       builder: (context, _) {
-        final saveCount = MapMakerStore.instance.saves.length;
+        final saveCount = store.saves.length;
 
         return MouseRegion(
           cursor: SystemMouseCursors.click,
@@ -428,11 +421,7 @@ class _PlannerActionTileState extends State<_PlannerActionTile> {
                   color: widget.iconColor.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  widget.icon,
-                  color: widget.iconColor,
-                  size: 22,
-                ),
+                child: Icon(widget.icon, color: widget.iconColor, size: 22),
               ),
               const SizedBox(width: 16),
               Expanded(

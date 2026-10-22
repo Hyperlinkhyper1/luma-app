@@ -23,19 +23,45 @@ String sanitizeCs2ChatMessage(String text, {int maxBytes = 120}) {
   return message;
 }
 
+const cs2NetconPort = 2121;
+
+// CS2's -netconport can listen on the PC's LAN address instead of loopback,
+// so every local address is worth a try before giving up.
+Future<Socket> connectCs2Netcon() async {
+  final candidates = <InternetAddress>[
+    InternetAddress.loopbackIPv4,
+    InternetAddress.loopbackIPv6,
+  ];
+  try {
+    for (final interface in await NetworkInterface.list()) {
+      candidates.addAll(interface.addresses);
+    }
+  } on SocketException {
+    // Loopback alone is still worth trying.
+  }
+  SocketException? lastError;
+  for (final address in candidates) {
+    try {
+      return await Socket.connect(
+        address,
+        cs2NetconPort,
+        timeout: const Duration(milliseconds: 600),
+      );
+    } on SocketException catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError ??
+      const SocketException('No local address accepted the connection.');
+}
+
 Future<String> sendCs2Chat(
   String text,
   bool Function() stillCurrent, {
   Future<Socket> Function()? connect,
 }) async {
   final message = sanitizeCs2ChatMessage(text);
-  final socket =
-      await (connect?.call() ??
-          Socket.connect(
-            InternetAddress.loopbackIPv4,
-            2121,
-            timeout: const Duration(seconds: 2),
-          ));
+  final socket = await (connect ?? connectCs2Netcon)();
   final incoming = socket.listen((_) {}, onError: (Object _) {});
   try {
     if (!stillCurrent()) throw const Cs2VoiceCancelled();

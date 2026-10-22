@@ -9,6 +9,158 @@ class LNl extends L {
   LNl([String locale = 'nl']) : super(locale);
 
   @override
+  String get mapMakerCityPlanner => 'Stadsplanner';
+
+  @override
+  String get mapMakerNewCity => 'Nieuw stadsplan';
+
+  @override
+  String mapMakerCityDefaultTitle(int number) {
+    return 'Stadsplan $number';
+  }
+
+  @override
+  String mapMakerCityRoadType(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'street': 'Straat',
+      'avenue': 'Laan',
+      'highway': 'Snelweg',
+      'pedestrian': 'Voetpad',
+      'other': 'Weg',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String mapMakerCityBuildingType(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'house': 'Huis',
+      'apartment': 'Appartementen',
+      'shop': 'Winkel',
+      'office': 'Kantoor',
+      'school': 'School',
+      'hospital': 'Ziekenhuis',
+      'park': 'Park',
+      'tree': 'Boom',
+      'other': 'Gebouw',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get mapMakerCitySelect => 'Selecteren';
+
+  @override
+  String get mapMakerCityPan => 'Verschuiven';
+
+  @override
+  String get mapMakerCityRoads => 'Wegen';
+
+  @override
+  String get mapMakerCityBuildings => 'Gebouwen';
+
+  @override
+  String get mapMakerCityUndo => 'Ongedaan maken';
+
+  @override
+  String get mapMakerCityRedo => 'Opnieuw';
+
+  @override
+  String get mapMakerCityRotate => 'Draaien';
+
+  @override
+  String get mapMakerCityDelete => 'Verwijderen';
+
+  @override
+  String get mapMakerCityGrid => 'Raster';
+
+  @override
+  String get mapMakerCityZoomIn => 'Inzoomen';
+
+  @override
+  String get mapMakerCityZoomOut => 'Uitzoomen';
+
+  @override
+  String get mapMakerCityResetView => 'Weergave herstellen';
+
+  @override
+  String get mapMakerCitySave => 'Opslaan';
+
+  @override
+  String get mapMakerCitySaved => 'Stadsplan opgeslagen';
+
+  @override
+  String get mapMakerCityFinishRoad => 'Weg afronden';
+
+  @override
+  String get mapMakerCityCancelRoad => 'Weg annuleren';
+
+  @override
+  String get mapMakerCityRoadHint =>
+      'Klik om wegpunten te plaatsen. Rond de weg af om deze toe te voegen.';
+
+  @override
+  String get mapMakerCityPlaceHint =>
+      'Klik op de kaart om te plaatsen. Draaien verandert de richting.';
+
+  @override
+  String get mapMakerCitySelectHint =>
+      'Selecteer een weg of gebouw. Versleep gebouwen om ze te verplaatsen.';
+
+  @override
+  String get mapMakerCityPanHint =>
+      'Sleep om de kaart te verschuiven. Scrol of knijp om te zoomen.';
+
+  @override
+  String mapMakerCityStats(int roads, int buildings) {
+    return '$roads wegen · $buildings gebouwen';
+  }
+
+  @override
+  String get mapMakerCityMenu => 'Kaarten';
+
+  @override
+  String get mapMakerCityRoadDraftHint =>
+      'Voeg minstens twee verschillende punten toe.';
+
+  @override
+  String get mapMakerCityName => 'Naam';
+
+  @override
+  String get mapMakerCityDescription =>
+      'Ontwerp straten, lanen, snelwegen, huizen, parken en openbare gebouwen.';
+
+  @override
+  String get mapMakerNewMap => 'Nieuwe kaart';
+
+  @override
+  String get mapMakerTransitMap => 'OV-kaart';
+
+  @override
+  String get mapMakerCityEmptyHint =>
+      'Maak een stadsplan of OV-kaart en keer hier terug om verder te ontwerpen.';
+
+  @override
+  String get mapMakerSavedMaps => 'Opgeslagen kaarten';
+
+  @override
+  String get mapMakerCityRename => 'Kaart hernoemen';
+
+  @override
+  String get mapMakerCityDeleteTitle => 'Kaart verwijderen?';
+
+  @override
+  String mapMakerCityDeleteMessage(String title) {
+    return '\"$title\" verwijderen? Dit kan niet ongedaan worden gemaakt.';
+  }
+
+  @override
+  String get mapMakerCityCancel => 'Annuleren';
+
+  @override
+  String get mapMakerCityOpen => 'Openen';
+
+  @override
   String get homeTileSteamGamePrice => 'Steam-gameprijs';
 
   @override

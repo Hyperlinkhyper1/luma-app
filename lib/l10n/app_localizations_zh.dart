@@ -9,6 +9,151 @@ class LZh extends L {
   LZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get mapMakerCityPlanner => '城市规划器';
+
+  @override
+  String get mapMakerNewCity => '新建城市规划';
+
+  @override
+  String mapMakerCityDefaultTitle(int number) {
+    return '城市规划 $number';
+  }
+
+  @override
+  String mapMakerCityRoadType(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'street': '街道',
+      'avenue': '大道',
+      'highway': '高速公路',
+      'pedestrian': '步行道',
+      'other': '道路',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String mapMakerCityBuildingType(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'house': '住宅',
+      'apartment': '公寓',
+      'shop': '商店',
+      'office': '办公楼',
+      'school': '学校',
+      'hospital': '医院',
+      'park': '公园',
+      'tree': '树木',
+      'other': '建筑',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get mapMakerCitySelect => '选择';
+
+  @override
+  String get mapMakerCityPan => '平移';
+
+  @override
+  String get mapMakerCityRoads => '道路';
+
+  @override
+  String get mapMakerCityBuildings => '建筑';
+
+  @override
+  String get mapMakerCityUndo => '撤销';
+
+  @override
+  String get mapMakerCityRedo => '重做';
+
+  @override
+  String get mapMakerCityRotate => '旋转';
+
+  @override
+  String get mapMakerCityDelete => '删除';
+
+  @override
+  String get mapMakerCityGrid => '网格';
+
+  @override
+  String get mapMakerCityZoomIn => '放大';
+
+  @override
+  String get mapMakerCityZoomOut => '缩小';
+
+  @override
+  String get mapMakerCityResetView => '重置视图';
+
+  @override
+  String get mapMakerCitySave => '保存';
+
+  @override
+  String get mapMakerCitySaved => '城市规划已保存';
+
+  @override
+  String get mapMakerCityFinishRoad => '完成道路';
+
+  @override
+  String get mapMakerCityCancelRoad => '取消道路';
+
+  @override
+  String get mapMakerCityRoadHint => '点击设置道路节点，然后完成道路以添加。';
+
+  @override
+  String get mapMakerCityPlaceHint => '点击地图放置。旋转可更改方向。';
+
+  @override
+  String get mapMakerCitySelectHint => '选择道路或建筑。拖动建筑可移动位置。';
+
+  @override
+  String get mapMakerCityPanHint => '拖动可平移视图，滚动或双指缩放可调整大小。';
+
+  @override
+  String mapMakerCityStats(int roads, int buildings) {
+    return '$roads 条道路 · $buildings 座建筑';
+  }
+
+  @override
+  String get mapMakerCityMenu => '地图';
+
+  @override
+  String get mapMakerCityRoadDraftHint => '请至少添加两个不同的节点。';
+
+  @override
+  String get mapMakerCityName => '名称';
+
+  @override
+  String get mapMakerCityDescription => '规划街道、大道、高速公路、住宅、公园和公共建筑。';
+
+  @override
+  String get mapMakerNewMap => '新建地图';
+
+  @override
+  String get mapMakerTransitMap => '交通线路图';
+
+  @override
+  String get mapMakerCityEmptyHint => '创建城市规划或交通线路图，然后返回此处继续设计。';
+
+  @override
+  String get mapMakerSavedMaps => '已保存的地图';
+
+  @override
+  String get mapMakerCityRename => '重命名地图';
+
+  @override
+  String get mapMakerCityDeleteTitle => '删除地图？';
+
+  @override
+  String mapMakerCityDeleteMessage(String title) {
+    return '删除“$title”？此操作无法撤销。';
+  }
+
+  @override
+  String get mapMakerCityCancel => '取消';
+
+  @override
+  String get mapMakerCityOpen => '打开';
+
+  @override
   String get homeTileSteamGamePrice => 'Steam 游戏价格';
 
   @override

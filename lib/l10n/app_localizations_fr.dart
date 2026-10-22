@@ -9,6 +9,158 @@ class LFr extends L {
   LFr([String locale = 'fr']) : super(locale);
 
   @override
+  String get mapMakerCityPlanner => 'Planificateur urbain';
+
+  @override
+  String get mapMakerNewCity => 'Nouveau plan de ville';
+
+  @override
+  String mapMakerCityDefaultTitle(int number) {
+    return 'Plan de ville $number';
+  }
+
+  @override
+  String mapMakerCityRoadType(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'street': 'Rue',
+      'avenue': 'Avenue',
+      'highway': 'Autoroute',
+      'pedestrian': 'Chemin piéton',
+      'other': 'Route',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String mapMakerCityBuildingType(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'house': 'Maison',
+      'apartment': 'Appartements',
+      'shop': 'Magasin',
+      'office': 'Bureaux',
+      'school': 'École',
+      'hospital': 'Hôpital',
+      'park': 'Parc',
+      'tree': 'Arbre',
+      'other': 'Bâtiment',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get mapMakerCitySelect => 'Sélectionner';
+
+  @override
+  String get mapMakerCityPan => 'Déplacer la vue';
+
+  @override
+  String get mapMakerCityRoads => 'Routes';
+
+  @override
+  String get mapMakerCityBuildings => 'Bâtiments';
+
+  @override
+  String get mapMakerCityUndo => 'Annuler';
+
+  @override
+  String get mapMakerCityRedo => 'Rétablir';
+
+  @override
+  String get mapMakerCityRotate => 'Pivoter';
+
+  @override
+  String get mapMakerCityDelete => 'Supprimer';
+
+  @override
+  String get mapMakerCityGrid => 'Grille';
+
+  @override
+  String get mapMakerCityZoomIn => 'Agrandir';
+
+  @override
+  String get mapMakerCityZoomOut => 'Réduire';
+
+  @override
+  String get mapMakerCityResetView => 'Réinitialiser la vue';
+
+  @override
+  String get mapMakerCitySave => 'Enregistrer';
+
+  @override
+  String get mapMakerCitySaved => 'Plan de ville enregistré';
+
+  @override
+  String get mapMakerCityFinishRoad => 'Terminer la route';
+
+  @override
+  String get mapMakerCityCancelRoad => 'Annuler la route';
+
+  @override
+  String get mapMakerCityRoadHint =>
+      'Cliquez pour placer les points de la route, puis terminez-la pour l\'ajouter.';
+
+  @override
+  String get mapMakerCityPlaceHint =>
+      'Cliquez sur la carte pour placer. Pivoter change l\'orientation.';
+
+  @override
+  String get mapMakerCitySelectHint =>
+      'Sélectionnez une route ou un bâtiment. Faites glisser les bâtiments pour les déplacer.';
+
+  @override
+  String get mapMakerCityPanHint =>
+      'Faites glisser pour déplacer la vue. Faites défiler ou pincez pour zoomer.';
+
+  @override
+  String mapMakerCityStats(int roads, int buildings) {
+    return '$roads routes · $buildings bâtiments';
+  }
+
+  @override
+  String get mapMakerCityMenu => 'Cartes';
+
+  @override
+  String get mapMakerCityRoadDraftHint =>
+      'Ajoutez au moins deux points différents.';
+
+  @override
+  String get mapMakerCityName => 'Nom';
+
+  @override
+  String get mapMakerCityDescription =>
+      'Dessinez rues, avenues, autoroutes, maisons, parcs et bâtiments publics.';
+
+  @override
+  String get mapMakerNewMap => 'Nouvelle carte';
+
+  @override
+  String get mapMakerTransitMap => 'Plan de transports';
+
+  @override
+  String get mapMakerCityEmptyHint =>
+      'Créez un plan de ville ou de transports, puis revenez ici pour continuer.';
+
+  @override
+  String get mapMakerSavedMaps => 'Cartes enregistrées';
+
+  @override
+  String get mapMakerCityRename => 'Renommer la carte';
+
+  @override
+  String get mapMakerCityDeleteTitle => 'Supprimer la carte ?';
+
+  @override
+  String mapMakerCityDeleteMessage(String title) {
+    return 'Supprimer « $title » ? Cette action est irréversible.';
+  }
+
+  @override
+  String get mapMakerCityCancel => 'Annuler';
+
+  @override
+  String get mapMakerCityOpen => 'Ouvrir';
+
+  @override
   String get homeTileSteamGamePrice => 'Prix d’un jeu Steam';
 
   @override

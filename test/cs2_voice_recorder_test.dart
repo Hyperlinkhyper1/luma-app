@@ -13,23 +13,28 @@ class _RecorderProcess implements Process {
   final commands = <String>[];
   Timer? _watch;
 
-  void watch(String commandPath) {
+  void watch(String commandDirectory) {
     _watch = Timer.periodic(const Duration(milliseconds: 2), (_) {
-      final file = File(commandPath);
-      if (!file.existsSync()) return;
-      final command = file.readAsStringSync();
-      file.deleteSync();
-      commands.add(command);
-      if (!respond) return;
-      if (command == 'stop') {
-        emit({
-          'event': 'audio',
-          'data': base64Encode([1, 2, 3]),
-        });
+      for (final command in ['stop', 'cancel']) {
+        if (commands.contains(command)) continue;
+        if (!File('$commandDirectory/$command').existsSync()) continue;
+        handle(command);
       }
-      finish();
     });
   }
+
+  void handle(String command) {
+    commands.add(command);
+    if (!respond) return;
+    if (command == 'stop') {
+      emit({
+        'event': 'audio',
+        'data': base64Encode([1, 2, 3]),
+      });
+    }
+    finish();
+  }
+
   final output = StreamController<List<int>>();
   final errors = StreamController<List<int>>();
   final exited = Completer<int>();

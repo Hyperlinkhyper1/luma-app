@@ -103,6 +103,240 @@ abstract class L {
     Locale('zh'),
   ];
 
+  /// No description provided for @mapMakerCityPlanner.
+  ///
+  /// In en, this message translates to:
+  /// **'City Planner'**
+  String get mapMakerCityPlanner;
+
+  /// No description provided for @mapMakerNewCity.
+  ///
+  /// In en, this message translates to:
+  /// **'New City Plan'**
+  String get mapMakerNewCity;
+
+  /// No description provided for @mapMakerCityDefaultTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'City Plan {number}'**
+  String mapMakerCityDefaultTitle(int number);
+
+  /// No description provided for @mapMakerCityRoadType.
+  ///
+  /// In en, this message translates to:
+  /// **'{kind, select, street{Street} avenue{Avenue} highway{Highway} pedestrian{Footpath} other{Road}}'**
+  String mapMakerCityRoadType(String kind);
+
+  /// No description provided for @mapMakerCityBuildingType.
+  ///
+  /// In en, this message translates to:
+  /// **'{kind, select, house{House} apartment{Apartments} shop{Shop} office{Office} school{School} hospital{Hospital} park{Park} tree{Tree} other{Building}}'**
+  String mapMakerCityBuildingType(String kind);
+
+  /// No description provided for @mapMakerCitySelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get mapMakerCitySelect;
+
+  /// No description provided for @mapMakerCityPan.
+  ///
+  /// In en, this message translates to:
+  /// **'Pan'**
+  String get mapMakerCityPan;
+
+  /// No description provided for @mapMakerCityRoads.
+  ///
+  /// In en, this message translates to:
+  /// **'Roads'**
+  String get mapMakerCityRoads;
+
+  /// No description provided for @mapMakerCityBuildings.
+  ///
+  /// In en, this message translates to:
+  /// **'Buildings'**
+  String get mapMakerCityBuildings;
+
+  /// No description provided for @mapMakerCityUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get mapMakerCityUndo;
+
+  /// No description provided for @mapMakerCityRedo.
+  ///
+  /// In en, this message translates to:
+  /// **'Redo'**
+  String get mapMakerCityRedo;
+
+  /// No description provided for @mapMakerCityRotate.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate'**
+  String get mapMakerCityRotate;
+
+  /// No description provided for @mapMakerCityDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get mapMakerCityDelete;
+
+  /// No description provided for @mapMakerCityGrid.
+  ///
+  /// In en, this message translates to:
+  /// **'Grid'**
+  String get mapMakerCityGrid;
+
+  /// No description provided for @mapMakerCityZoomIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom in'**
+  String get mapMakerCityZoomIn;
+
+  /// No description provided for @mapMakerCityZoomOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom out'**
+  String get mapMakerCityZoomOut;
+
+  /// No description provided for @mapMakerCityResetView.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset view'**
+  String get mapMakerCityResetView;
+
+  /// No description provided for @mapMakerCitySave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get mapMakerCitySave;
+
+  /// No description provided for @mapMakerCitySaved.
+  ///
+  /// In en, this message translates to:
+  /// **'City plan saved'**
+  String get mapMakerCitySaved;
+
+  /// No description provided for @mapMakerCityFinishRoad.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish road'**
+  String get mapMakerCityFinishRoad;
+
+  /// No description provided for @mapMakerCityCancelRoad.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel road'**
+  String get mapMakerCityCancelRoad;
+
+  /// No description provided for @mapMakerCityRoadHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Click to set road points. Finish road to commit.'**
+  String get mapMakerCityRoadHint;
+
+  /// No description provided for @mapMakerCityPlaceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Click on the map to place. Rotate changes the direction.'**
+  String get mapMakerCityPlaceHint;
+
+  /// No description provided for @mapMakerCitySelectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a road or building. Drag buildings to move them.'**
+  String get mapMakerCitySelectHint;
+
+  /// No description provided for @mapMakerCityPanHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag to move around. Scroll or pinch to zoom.'**
+  String get mapMakerCityPanHint;
+
+  /// No description provided for @mapMakerCityStats.
+  ///
+  /// In en, this message translates to:
+  /// **'{roads} roads · {buildings} buildings'**
+  String mapMakerCityStats(int roads, int buildings);
+
+  /// No description provided for @mapMakerCityMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Maps'**
+  String get mapMakerCityMenu;
+
+  /// No description provided for @mapMakerCityRoadDraftHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least two different points.'**
+  String get mapMakerCityRoadDraftHint;
+
+  /// No description provided for @mapMakerCityName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get mapMakerCityName;
+
+  /// No description provided for @mapMakerCityDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan streets, avenues, highways, homes, parks, and public buildings.'**
+  String get mapMakerCityDescription;
+
+  /// No description provided for @mapMakerNewMap.
+  ///
+  /// In en, this message translates to:
+  /// **'New Map'**
+  String get mapMakerNewMap;
+
+  /// No description provided for @mapMakerTransitMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Transit Map'**
+  String get mapMakerTransitMap;
+
+  /// No description provided for @mapMakerCityEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a city plan or transit map, then return here to continue designing.'**
+  String get mapMakerCityEmptyHint;
+
+  /// No description provided for @mapMakerSavedMaps.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved Maps'**
+  String get mapMakerSavedMaps;
+
+  /// No description provided for @mapMakerCityRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename Map'**
+  String get mapMakerCityRename;
+
+  /// No description provided for @mapMakerCityDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Map?'**
+  String get mapMakerCityDeleteTitle;
+
+  /// No description provided for @mapMakerCityDeleteMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete \"{title}\"? This cannot be undone.'**
+  String mapMakerCityDeleteMessage(String title);
+
+  /// No description provided for @mapMakerCityCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get mapMakerCityCancel;
+
+  /// No description provided for @mapMakerCityOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get mapMakerCityOpen;
+
   /// No description provided for @homeTileSteamGamePrice.
   ///
   /// In en, this message translates to:

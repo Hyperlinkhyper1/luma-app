@@ -52,16 +52,15 @@ class WindowsCs2VoiceRecorder implements Cs2VoiceRecorder {
   Completer<Uint8List>? _audio;
   int _generation = 0;
 
-  static String _commandPath(Directory directory) =>
-      '${directory.path}${Platform.pathSeparator}command';
+  // The helper polls this folder for an empty "stop" or "cancel" file: a line
+  // written to its stdin through Process.start never reaches Windows
+  // PowerShell's Console.In.
+  static String _commandDirectory(Directory directory) =>
+      '${directory.path}${Platform.pathSeparator}commands';
 
-  // The helper polls for this file: a line written to its stdin through
-  // Process.start never reaches Windows PowerShell's Console.In.
-  static Future<void> _send(Directory directory, String command) async {
-    final pending = File('${_commandPath(directory)}.tmp');
-    await pending.writeAsString(command, flush: true);
-    await pending.rename(_commandPath(directory));
-  }
+  static Future<void> _send(Directory directory, String command) => File(
+    '${_commandDirectory(directory)}${Platform.pathSeparator}$command',
+  ).create(recursive: true);
 
   @override
   Future<void> start() async {
@@ -87,7 +86,7 @@ class WindowsCs2VoiceRecorder implements Cs2VoiceRecorder {
         'Hidden',
         '-File',
         file.path,
-        _commandPath(directory),
+        _commandDirectory(directory),
       ]);
       if (generation != _generation) {
         process.kill();

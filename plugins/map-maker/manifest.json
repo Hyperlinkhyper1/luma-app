@@ -2,7 +2,7 @@
   "id": "map-maker",
   "name": "Map Maker",
   "version": "1.0.0",
-  "description": "Design custom fantasy transit diagrams, city layouts, and home plans with an octilinear schematic editor.",
+  "description": "Design custom transit maps and city plans with different road types, houses, parks, and public buildings.",
   "icon": "map",
   "category": "Utility",
   "tags": [
@@ -10,24 +10,28 @@
     "Design",
     "Creative"
   ],
-  "details": "Map Maker lets you design schematic fantasy transit maps, urban city blueprints, and home floorplans.\n\nThe Transit Map designer provides an authentic octilinear diagram canvas with grid-snapping, multiple colored routes, transfers and termini, airport markers, and curved waterways. Create custom metro systems for fictional worlds, tabletop campaigns, or transit enthusiasts.",
+  "details": "Design your own transit network or city plan in Map Maker. Save each project and reopen it from Saved Maps to continue designing.\n\nCity Planner lets you draw streets, avenues, highways, and footpaths. Place houses, apartments, shops, offices, schools, hospitals, parks, and trees. Select and move buildings, rotate them, or delete pieces. Undo and redo changes, toggle the grid, and pan and zoom around your plan.\n\nThe Transit Map designer offers an octilinear schematic canvas with grid snapping, multiple colored routes, transfers and termini, airport markers, and curved waterways.",
   "screenshots": [],
   "i18n": {
     "nl": {
       "name": "Kaartenmaker",
-      "description": "Ontwerp aangepaste fantasie-transitdiagrammen, stadslay-outs en woningplattegronden met een octilineaire schematische editor."
+      "description": "Ontwerp eigen OV-kaarten en stadsplannen met verschillende soorten wegen, huizen, parken en openbare gebouwen.",
+      "details": "Ontwerp je eigen vervoersnetwerk of stadsplan in Kaartenmaker. Sla elk project op en open het opnieuw via Opgeslagen kaarten om verder te ontwerpen.\n\nMet de Stadsplanner teken je straten, lanen, snelwegen en voetpaden. Plaats huizen, appartementen, winkels, kantoren, scholen, ziekenhuizen, parken en bomen. Selecteer en verplaats gebouwen, draai ze of verwijder onderdelen. Maak wijzigingen ongedaan of voer ze opnieuw uit, schakel het raster aan of uit en verschuif of zoom de kaart.\n\nDe OV-kaarteneditor biedt een octilineair schematisch tekenvlak met rasteruitlijning, meerdere gekleurde lijnen, overstappunten en eindstations, luchthavenmarkeringen en gebogen waterwegen."
     },
     "fr": {
       "name": "Créateur de cartes",
-      "description": "Concevez des plans de transport fantastiques personnalisés, des plans de ville et des plans de maison avec un éditeur schématique octilinéaire."
+      "description": "Créez vos plans de transport et de ville avec différents types de routes, des maisons, des parcs et des bâtiments publics.",
+      "details": "Créez votre propre réseau de transport ou plan de ville dans le Créateur de cartes. Enregistrez chaque projet, puis rouvrez-le depuis les Cartes enregistrées pour continuer.\n\nLe planificateur urbain permet de dessiner des rues, des avenues, des autoroutes et des chemins piétons. Placez des maisons, des appartements, des magasins, des bureaux, des écoles, des hôpitaux, des parcs et des arbres. Sélectionnez et déplacez les bâtiments, faites-les pivoter ou supprimez des éléments. Annulez et rétablissez les modifications, affichez ou masquez la grille, déplacez la vue et zoomez sur votre plan.\n\nLe concepteur de plans de transport propose un canevas schématique octilinéaire avec alignement sur la grille, plusieurs lignes colorées, des correspondances et des terminus, des repères d'aéroport et des cours d'eau courbes."
     },
     "es": {
       "name": "Creador de mapas",
-      "description": "Diseña esquemas de transporte de fantasía personalizados, planos de ciudades y distribuciones de viviendas con un editor esquemático octilineal."
+      "description": "Diseña mapas de transporte y planos urbanos con distintos tipos de vías, casas, parques y edificios públicos.",
+      "details": "Diseña tu propia red de transporte o plano urbano en el Creador de mapas. Guarda cada proyecto y vuelve a abrirlo desde Mapas guardados para continuar.\n\nEl planificador urbano permite dibujar calles, avenidas, autopistas y senderos peatonales. Coloca casas, apartamentos, tiendas, oficinas, escuelas, hospitales, parques y árboles. Selecciona y mueve edificios, gíralos o elimina elementos. Deshaz y rehace cambios, muestra u oculta la cuadrícula, desplaza la vista y ajusta el zoom de tu plano.\n\nEl diseñador de mapas de transporte ofrece un lienzo esquemático octilineal con ajuste a la cuadrícula, varias líneas de colores, transbordos y terminales, marcadores de aeropuerto y cursos de agua curvos."
     },
     "zh": {
       "name": "地图工坊",
-      "description": "使用正八向示意图编辑器设计自定义架空轨道交通图、城市规划与住宅户型图。"
+      "description": "使用不同类型的道路、住宅、公园和公共建筑，设计自己的交通线路图和城市规划。",
+      "details": "在地图工坊中设计自己的交通网络或城市规划。保存每个项目后，可从已保存的地图重新打开并继续设计。\n\n城市规划器支持绘制街道、大道、高速公路和步行道。放置住宅、公寓、商店、办公楼、学校、医院、公园和树木。选择并移动建筑、旋转建筑或删除元素。撤销和重做修改，显示或隐藏网格，并平移和缩放规划视图。\n\n交通线路图编辑器提供八方向示意图画布，支持网格吸附、多条彩色线路、换乘站和终点站、机场标记以及弯曲的水道。"
     }
   }
 }

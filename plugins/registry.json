@@ -1125,7 +1125,7 @@
     {
       "id": "map-maker",
       "name": "Map Maker",
-      "description": "Design custom fantasy transit diagrams, city layouts, and home plans with an octilinear schematic editor.",
+      "description": "Design custom transit maps and city plans with different road types, houses, parks, and public buildings.",
       "icon": "map",
       "category": "Utility",
       "tags": ["Utility", "Design", "Creative"],
@@ -1134,19 +1134,19 @@
       "i18n": {
         "nl": {
           "name": "Kaartenmaker",
-          "description": "Ontwerp aangepaste fantasie-transitdiagrammen, stadslay-outs en woningplattegronden met een octilineaire schematische editor."
+          "description": "Ontwerp eigen OV-kaarten en stadsplannen met verschillende soorten wegen, huizen, parken en openbare gebouwen."
         },
         "fr": {
           "name": "Créateur de cartes",
-          "description": "Concevez des plans de transport fantastiques personnalisés, des plans de ville et des plans de maison avec un éditeur schématique octilinéaire."
+          "description": "Créez vos plans de transport et de ville avec différents types de routes, des maisons, des parcs et des bâtiments publics."
         },
         "es": {
           "name": "Creador de mapas",
-          "description": "Diseña esquemas de transporte de fantasía personalizados, planos de ciudades y distribuciones de viviendas con un editor esquemático octilineal."
+          "description": "Diseña mapas de transporte y planos urbanos con distintos tipos de vías, casas, parques y edificios públicos."
         },
         "zh": {
           "name": "地图工坊",
-          "description": "使用正八向示意图编辑器设计自定义架空轨道交通图、城市规划与住宅户型图。"
+          "description": "使用不同类型的道路、住宅、公园和公共建筑，设计自己的交通线路图和城市规划。"
         }
       }
     }

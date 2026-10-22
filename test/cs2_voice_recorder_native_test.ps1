@@ -102,13 +102,14 @@ $directory = Join-Path ([IO.Path]::GetTempPath()) ('luma-recorder-test-' + [Guid
 $null = New-Item -ItemType Directory -Path $directory
 $fixture = $script.Replace($match.Groups[1].Value, $match.Groups[1].Value + [Environment]::NewLine + $fake)
 $fixture = $fixture.Replace('$capture = New-Object LumaVoiceCapture', '$capture = New-Object LumaVoiceCapture((New-Object LumaTestWaveInput))')
-$fixture = $fixture.Replace('Read-LumaCommand $CommandPath 31000', 'Read-LumaCommand $CommandPath 300')
+$fixture = $fixture.Replace('Read-LumaCommand $CommandDirectory 31000', 'Read-LumaCommand $CommandDirectory 300')
 $fixturePath = Join-Path $directory 'recorder.ps1'
-$commandPath = Join-Path $directory 'command'
+$commandPath = Join-Path $directory 'commands'
 [IO.File]::WriteAllText($fixturePath, $fixture)
 try {
     foreach ($command in @('stop', 'cancel', 'no-command')) {
-        if (Test-Path -LiteralPath $commandPath) { Remove-Item -LiteralPath $commandPath -Force }
+        if (Test-Path -LiteralPath $commandPath) { Remove-Item -LiteralPath $commandPath -Recurse -Force }
+        $null = New-Item -ItemType Directory -Path $commandPath
         $info = New-Object Diagnostics.ProcessStartInfo
         $info.FileName = 'powershell.exe'
         $info.Arguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $fixturePath + '" "' + $commandPath + '"'
@@ -122,8 +123,7 @@ try {
             Assert-True ($ready.Wait(15000)) 'Helper did not start.'
             Assert-True (($ready.Result | ConvertFrom-Json).event -eq 'recording') 'Helper did not announce recording.'
             if ($command -ne 'no-command') {
-                [IO.File]::WriteAllText($commandPath + '.tmp', $command)
-                [IO.File]::Move($commandPath + '.tmp', $commandPath)
+                [IO.File]::WriteAllText((Join-Path $commandPath $command), '')
             }
             $result = $process.StandardOutput.ReadLineAsync()
             Assert-True ($result.Wait(3000)) 'Helper stop/cancel/timeout did not return promptly.'
@@ -141,7 +141,7 @@ try {
 } finally {
     # Only the explicitly created test files are removed.
     Remove-Item -LiteralPath $fixturePath -Force
-    if (Test-Path -LiteralPath $commandPath) { Remove-Item -LiteralPath $commandPath -Force }
+    if (Test-Path -LiteralPath $commandPath) { Remove-Item -LiteralPath $commandPath -Recurse -Force }
     Remove-Item -LiteralPath $directory -Force
 }
 Write-Output 'Passed: buffered WAV capture, failure cleanup, cancellation, and real Windows PowerShell stop/cancel/timeout protocol (synthetic audio; no microphone access).'

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/widgets.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../theme/luma_theme.dart';
 import 'map_maker_models.dart';
 import 'map_maker_store.dart';
@@ -11,26 +12,35 @@ class MapMakerSavesView extends StatelessWidget {
     required this.onBack,
     required this.onOpenSave,
     required this.onNewTransitMap,
+    required this.onNewCityMap,
+    this.store,
   });
 
   final VoidCallback onBack;
   final ValueChanged<MapMakerSave> onOpenSave;
   final VoidCallback onNewTransitMap;
+  final VoidCallback onNewCityMap;
+  final MapMakerStore? store;
+  MapMakerStore get _store => store ?? MapMakerStore.instance;
 
   Future<void> _renameSave(BuildContext context, MapMakerSave save) async {
     final controller = TextEditingController(text: save.title);
     final luma = context.luma;
+    final t = L.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: luma.surface,
-        title: Text('Rename Map', style: TextStyle(color: luma.textPrimary)),
+        title: Text(
+          t.mapMakerCityRename,
+          style: TextStyle(color: luma.textPrimary),
+        ),
         content: TextField(
           controller: controller,
           autofocus: true,
           style: TextStyle(color: luma.textPrimary),
           decoration: InputDecoration(
-            labelText: 'Map Name',
+            labelText: t.mapMakerCityName,
             labelStyle: TextStyle(color: luma.textSecondary),
             focusedBorder: UnderlineInputBorder(
               borderSide: BorderSide(color: luma.accent),
@@ -41,49 +51,63 @@ class MapMakerSavesView extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+            child: Text(
+              t.mapMakerCityCancel,
+              style: TextStyle(color: luma.textSecondary),
+            ),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: luma.accent),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text('Save', style: TextStyle(color: luma.onAccent)),
+            child: Text(
+              t.mapMakerCitySave,
+              style: TextStyle(color: luma.onAccent),
+            ),
           ),
         ],
       ),
     );
 
     if (confirmed == true && controller.text.trim().isNotEmpty) {
-      await MapMakerStore.instance.rename(save.id, controller.text.trim());
+      await _store.rename(save.id, controller.text.trim());
     }
+    controller.dispose();
   }
 
   Future<void> _deleteSave(BuildContext context, MapMakerSave save) async {
     final luma = context.luma;
+    final t = L.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: luma.surface,
-        title: Text('Delete Map?', style: TextStyle(color: luma.textPrimary)),
+        title: Text(
+          t.mapMakerCityDeleteTitle,
+          style: TextStyle(color: luma.textPrimary),
+        ),
         content: Text(
-          'Are you sure you want to delete "${save.title}"? This cannot be undone.',
+          t.mapMakerCityDeleteMessage(save.title),
           style: TextStyle(color: luma.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+            child: Text(
+              t.mapMakerCityCancel,
+              style: TextStyle(color: luma.textSecondary),
+            ),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: luma.danger),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete'),
+            child: Text(t.mapMakerCityDelete),
           ),
         ],
       ),
     );
 
     if (confirmed == true) {
-      await MapMakerStore.instance.delete(save.id);
+      await _store.delete(save.id);
     }
   }
 
@@ -101,6 +125,7 @@ class MapMakerSavesView extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final isPhone = context.isPhoneWidth;
+    final t = L.of(context);
 
     return Scaffold(
       backgroundColor: luma.background,
@@ -119,13 +144,15 @@ class MapMakerSavesView extends StatelessWidget {
             children: [
               LumaGhostButton(
                 icon: Icons.arrow_back_rounded,
-                label: 'Menu',
+                label: t.mapMakerCityMenu,
                 onTap: onBack,
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Text(
-                  'Saved Maps',
+                  t.mapMakerSavedMaps,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 20,
@@ -133,31 +160,54 @@ class MapMakerSavesView extends StatelessWidget {
                   ),
                 ),
               ),
-              LumaPrimaryButton(
-                icon: Icons.add_rounded,
-                label: 'New Transit Map',
-                onTap: onNewTransitMap,
+              PopupMenuButton<MapMakerKind>(
+                tooltip: t.mapMakerNewMap,
+                icon: Icon(Icons.add_rounded, color: luma.accent),
+                onSelected: (kind) => kind == MapMakerKind.city
+                    ? onNewCityMap()
+                    : onNewTransitMap(),
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: MapMakerKind.city,
+                    child: Text(t.mapMakerNewCity),
+                  ),
+                  PopupMenuItem(
+                    value: MapMakerKind.transit,
+                    child: Text(t.mapMakerTransitMap),
+                  ),
+                ],
               ),
             ],
           ),
         ),
       ),
       body: ListenableBuilder(
-        listenable: MapMakerStore.instance,
+        listenable: _store,
         builder: (context, _) {
-          final saves = MapMakerStore.instance.saves;
+          final saves = _store.saves;
 
           if (saves.isEmpty) {
             return Center(
               child: LumaEmptyState(
                 icon: Icons.map_outlined,
-                title: 'No saved maps yet',
-                subtitle:
-                    'Start designing custom fantasy transit maps with octilinear lines, stations, and rivers.',
-                action: LumaPrimaryButton(
-                  icon: Icons.add_rounded,
-                  label: 'Create First Map',
-                  onTap: onNewTransitMap,
+                title: t.mapMakerSavedMaps,
+                subtitle: t.mapMakerCityEmptyHint,
+                action: Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    LumaPrimaryButton(
+                      icon: Icons.location_city_rounded,
+                      label: t.mapMakerNewCity,
+                      onTap: onNewCityMap,
+                    ),
+                    LumaGhostButton(
+                      icon: Icons.alt_route_rounded,
+                      label: t.mapMakerTransitMap,
+                      onTap: onNewTransitMap,
+                    ),
+                  ],
                 ),
               ),
             );
@@ -193,11 +243,11 @@ class MapMakerSavesView extends StatelessWidget {
                           physics: const NeverScrollableScrollPhysics(),
                           gridDelegate:
                               SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: crossAxisCount,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                            mainAxisExtent: 200,
-                          ),
+                                crossAxisCount: crossAxisCount,
+                                crossAxisSpacing: 16,
+                                mainAxisSpacing: 16,
+                                mainAxisExtent: 200,
+                              ),
                           itemCount: saves.length,
                           itemBuilder: (context, index) {
                             final save = saves[index];
@@ -250,6 +300,9 @@ class _SaveCardState extends State<_SaveCard> {
     final luma = context.luma;
     final decor = context.lumaDecor;
     final transit = widget.save.transit;
+    final t = L.of(context);
+    final isCity = widget.save.kind == MapMakerKind.city;
+    final color = isCity ? const Color(0xFFE6B422) : const Color(0xFF0077C0);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovering = true),
@@ -260,9 +313,7 @@ class _SaveCardState extends State<_SaveCard> {
           color: _hovering ? luma.surfaceHover : luma.surface,
           borderRadius: decor.cardBorderRadius,
           border: Border.all(
-            color: _hovering
-                ? luma.accent.withValues(alpha: 0.6)
-                : luma.border,
+            color: _hovering ? luma.accent.withValues(alpha: 0.6) : luma.border,
             width: decor.borderWidth,
           ),
           boxShadow: _hovering
@@ -289,12 +340,14 @@ class _SaveCardState extends State<_SaveCard> {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0077C0).withValues(alpha: 0.14),
+                        color: color.withValues(alpha: 0.14),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(
-                        Icons.alt_route_rounded,
-                        color: Color(0xFF0077C0),
+                      child: Icon(
+                        isCity
+                            ? Icons.location_city_rounded
+                            : Icons.alt_route_rounded,
+                        color: color,
                         size: 20,
                       ),
                     ),
@@ -315,7 +368,9 @@ class _SaveCardState extends State<_SaveCard> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Transit Map • ${widget.formattedDate}',
+                            '${isCity ? t.mapMakerCityPlanner : t.mapMakerTransitMap} • ${widget.formattedDate}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: luma.textMuted,
                               fontSize: 11,
@@ -340,9 +395,16 @@ class _SaveCardState extends State<_SaveCard> {
                           value: 'rename',
                           child: Row(
                             children: [
-                              Icon(Icons.edit_rounded, size: 16, color: luma.textSecondary),
+                              Icon(
+                                Icons.edit_rounded,
+                                size: 16,
+                                color: luma.textSecondary,
+                              ),
                               const SizedBox(width: 8),
-                              Text('Rename', style: TextStyle(color: luma.textPrimary)),
+                              Text(
+                                t.mapMakerCityRename,
+                                style: TextStyle(color: luma.textPrimary),
+                              ),
                             ],
                           ),
                         ),
@@ -350,9 +412,16 @@ class _SaveCardState extends State<_SaveCard> {
                           value: 'delete',
                           child: Row(
                             children: [
-                              Icon(Icons.delete_rounded, size: 16, color: luma.danger),
+                              Icon(
+                                Icons.delete_rounded,
+                                size: 16,
+                                color: luma.danger,
+                              ),
                               const SizedBox(width: 8),
-                              Text('Delete', style: TextStyle(color: luma.danger)),
+                              Text(
+                                t.mapMakerCityDelete,
+                                style: TextStyle(color: luma.danger),
+                              ),
                             ],
                           ),
                         ),
@@ -362,58 +431,79 @@ class _SaveCardState extends State<_SaveCard> {
                 ),
                 const SizedBox(height: 12),
                 // Stats row
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: luma.surfaceHover,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '${transit.stations.length} stops',
-                        style: TextStyle(color: luma.textSecondary, fontSize: 11),
-                      ),
+                if (isCity)
+                  Text(
+                    t.mapMakerCityStats(
+                      widget.save.city.roads.length,
+                      widget.save.city.buildings.length,
                     ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: luma.surfaceHover,
-                        borderRadius: BorderRadius.circular(6),
+                    style: TextStyle(color: luma.textSecondary, fontSize: 12),
+                  )
+                else
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: luma.surfaceHover,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '${transit.stations.length} stops',
+                          style: TextStyle(
+                            color: luma.textSecondary,
+                            fontSize: 11,
+                          ),
+                        ),
                       ),
-                      child: Text(
-                        '${transit.lines.length} lines',
-                        style: TextStyle(color: luma.textSecondary, fontSize: 11),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: luma.surfaceHover,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '${transit.lines.length} lines',
+                          style: TextStyle(
+                            color: luma.textSecondary,
+                            fontSize: 11,
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Line color dots
-                    Expanded(
-                      child: Wrap(
-                        spacing: 4,
-                        children: [
-                          for (final line in transit.lines.take(6))
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: Color(line.color),
-                                shape: BoxShape.circle,
+                      const SizedBox(width: 8),
+                      // Line color dots
+                      Expanded(
+                        child: Wrap(
+                          spacing: 4,
+                          children: [
+                            for (final line in transit.lines.take(6))
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: Color(line.color),
+                                  shape: BoxShape.circle,
+                                ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
               ],
             ),
             Row(
               children: [
                 Expanded(
                   child: LumaPrimaryButton(
-                    label: 'Open',
+                    label: t.mapMakerCityOpen,
                     icon: Icons.open_in_browser_rounded,
                     onTap: widget.onOpen,
                   ),

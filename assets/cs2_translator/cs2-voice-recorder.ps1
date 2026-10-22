@@ -1,4 +1,4 @@
-param([Parameter(Mandatory = $true)][string]$CommandPath)
+param([Parameter(Mandatory = $true)][string]$CommandDirectory)
 
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
@@ -150,12 +150,14 @@ public sealed class LumaVoiceCapture : IDisposable {
 }
 '@
 
-# luma drops "stop" or "cancel" into this file. Stdin can't carry it: a line
-# written by the app's Process.start pipe never reaches Console.In here.
-function Read-LumaCommand([string]$path, [int]$timeoutMilliseconds) {
+# luma creates an empty "stop" or "cancel" file in this folder. Stdin can't
+# carry it: a line written by the app's Process.start pipe never reaches
+# Console.In here.
+function Read-LumaCommand([string]$directory, [int]$timeoutMilliseconds) {
     $deadline = [DateTime]::UtcNow.AddMilliseconds($timeoutMilliseconds)
     while ([DateTime]::UtcNow -lt $deadline) {
-        if ([IO.File]::Exists($path)) { return ([IO.File]::ReadAllText($path)).Trim() }
+        if ([IO.File]::Exists((Join-Path $directory 'cancel'))) { return 'cancel' }
+        if ([IO.File]::Exists((Join-Path $directory 'stop'))) { return 'stop' }
         Start-Sleep -Milliseconds 30
     }
     return $null
@@ -166,7 +168,7 @@ try {
     $capture.Start()
     [Console]::WriteLine('{"event":"recording"}')
     [Console]::Out.Flush()
-    $command = Read-LumaCommand $CommandPath 31000
+    $command = Read-LumaCommand $CommandDirectory 31000
     if ($command -ne 'stop') { throw 'Recording cancelled or timed out.' }
     $bytes = $capture.Stop()
     $capture.Dispose()

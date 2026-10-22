@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'city_map_models.dart';
 import 'map_maker_geometry.dart';
 
 /// Colours that read like printed transit diagrams — red through teal, plus
@@ -323,41 +324,50 @@ class MapMakerSave {
     required this.kind,
     required this.updatedAt,
     TransitMap? transit,
-  }) : transit = transit ?? TransitMap.empty();
+    CityMap? city,
+  }) : transit = transit ?? TransitMap.empty(),
+       city = city ?? CityMap();
 
   final String id;
   String title;
   final MapMakerKind kind;
   DateTime updatedAt;
   TransitMap transit;
+  CityMap city;
 
   MapMakerSave clone() => MapMakerSave(
-        id: id,
-        title: title,
-        kind: kind,
-        updatedAt: updatedAt,
-        transit: transit.clone(),
-      );
+    id: id,
+    title: title,
+    kind: kind,
+    updatedAt: updatedAt,
+    transit: transit.clone(),
+    city: city.clone(),
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'kind': kind.name,
-        'updatedAt': updatedAt.toIso8601String(),
-        'transit': transit.toJson(),
-      };
+    'id': id,
+    'title': title,
+    'kind': kind.name,
+    'updatedAt': updatedAt.toIso8601String(),
+    'transit': transit.toJson(),
+    'city': city.toJson(),
+  };
 
   factory MapMakerSave.fromJson(Map<String, dynamic> json) => MapMakerSave(
-        id: json['id']?.toString() ?? '',
-        title: json['title']?.toString() ?? '',
-        kind: MapMakerKind.values.firstWhere(
-          (value) => value.name == json['kind'],
-          orElse: () => MapMakerKind.transit,
-        ),
-        updatedAt: DateTime.tryParse(json['updatedAt']?.toString() ?? '') ??
-            DateTime.fromMillisecondsSinceEpoch(0),
-        transit: json['transit'] is Map<String, dynamic>
-            ? TransitMap.fromJson(json['transit'] as Map<String, dynamic>)
-            : TransitMap.empty(),
-      );
+    id: json['id']?.toString() ?? '',
+    title: json['title']?.toString() ?? '',
+    kind: MapMakerKind.values.firstWhere(
+      (value) => value.name == json['kind'],
+      orElse: () => MapMakerKind.transit,
+    ),
+    updatedAt:
+        DateTime.tryParse(json['updatedAt']?.toString() ?? '') ??
+        DateTime.fromMillisecondsSinceEpoch(0),
+    transit: json['transit'] is Map<String, dynamic>
+        ? TransitMap.fromJson(json['transit'] as Map<String, dynamic>)
+        : TransitMap.empty(),
+    city: json['city'] is Map<String, dynamic>
+        ? CityMap.fromJson(json['city'] as Map<String, dynamic>)
+        : CityMap(),
+  );
 }

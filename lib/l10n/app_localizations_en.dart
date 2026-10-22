@@ -9,6 +9,157 @@ class LEn extends L {
   LEn([String locale = 'en']) : super(locale);
 
   @override
+  String get mapMakerCityPlanner => 'City Planner';
+
+  @override
+  String get mapMakerNewCity => 'New City Plan';
+
+  @override
+  String mapMakerCityDefaultTitle(int number) {
+    return 'City Plan $number';
+  }
+
+  @override
+  String mapMakerCityRoadType(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'street': 'Street',
+      'avenue': 'Avenue',
+      'highway': 'Highway',
+      'pedestrian': 'Footpath',
+      'other': 'Road',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String mapMakerCityBuildingType(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'house': 'House',
+      'apartment': 'Apartments',
+      'shop': 'Shop',
+      'office': 'Office',
+      'school': 'School',
+      'hospital': 'Hospital',
+      'park': 'Park',
+      'tree': 'Tree',
+      'other': 'Building',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get mapMakerCitySelect => 'Select';
+
+  @override
+  String get mapMakerCityPan => 'Pan';
+
+  @override
+  String get mapMakerCityRoads => 'Roads';
+
+  @override
+  String get mapMakerCityBuildings => 'Buildings';
+
+  @override
+  String get mapMakerCityUndo => 'Undo';
+
+  @override
+  String get mapMakerCityRedo => 'Redo';
+
+  @override
+  String get mapMakerCityRotate => 'Rotate';
+
+  @override
+  String get mapMakerCityDelete => 'Delete';
+
+  @override
+  String get mapMakerCityGrid => 'Grid';
+
+  @override
+  String get mapMakerCityZoomIn => 'Zoom in';
+
+  @override
+  String get mapMakerCityZoomOut => 'Zoom out';
+
+  @override
+  String get mapMakerCityResetView => 'Reset view';
+
+  @override
+  String get mapMakerCitySave => 'Save';
+
+  @override
+  String get mapMakerCitySaved => 'City plan saved';
+
+  @override
+  String get mapMakerCityFinishRoad => 'Finish road';
+
+  @override
+  String get mapMakerCityCancelRoad => 'Cancel road';
+
+  @override
+  String get mapMakerCityRoadHint =>
+      'Click to set road points. Finish road to commit.';
+
+  @override
+  String get mapMakerCityPlaceHint =>
+      'Click on the map to place. Rotate changes the direction.';
+
+  @override
+  String get mapMakerCitySelectHint =>
+      'Select a road or building. Drag buildings to move them.';
+
+  @override
+  String get mapMakerCityPanHint =>
+      'Drag to move around. Scroll or pinch to zoom.';
+
+  @override
+  String mapMakerCityStats(int roads, int buildings) {
+    return '$roads roads · $buildings buildings';
+  }
+
+  @override
+  String get mapMakerCityMenu => 'Maps';
+
+  @override
+  String get mapMakerCityRoadDraftHint => 'Add at least two different points.';
+
+  @override
+  String get mapMakerCityName => 'Name';
+
+  @override
+  String get mapMakerCityDescription =>
+      'Plan streets, avenues, highways, homes, parks, and public buildings.';
+
+  @override
+  String get mapMakerNewMap => 'New Map';
+
+  @override
+  String get mapMakerTransitMap => 'Transit Map';
+
+  @override
+  String get mapMakerCityEmptyHint =>
+      'Create a city plan or transit map, then return here to continue designing.';
+
+  @override
+  String get mapMakerSavedMaps => 'Saved Maps';
+
+  @override
+  String get mapMakerCityRename => 'Rename Map';
+
+  @override
+  String get mapMakerCityDeleteTitle => 'Delete Map?';
+
+  @override
+  String mapMakerCityDeleteMessage(String title) {
+    return 'Delete \"$title\"? This cannot be undone.';
+  }
+
+  @override
+  String get mapMakerCityCancel => 'Cancel';
+
+  @override
+  String get mapMakerCityOpen => 'Open';
+
+  @override
   String get homeTileSteamGamePrice => 'Steam game price';
 
   @override

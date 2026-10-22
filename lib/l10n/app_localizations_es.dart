@@ -9,6 +9,158 @@ class LEs extends L {
   LEs([String locale = 'es']) : super(locale);
 
   @override
+  String get mapMakerCityPlanner => 'Planificador urbano';
+
+  @override
+  String get mapMakerNewCity => 'Nuevo plano urbano';
+
+  @override
+  String mapMakerCityDefaultTitle(int number) {
+    return 'Plano urbano $number';
+  }
+
+  @override
+  String mapMakerCityRoadType(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'street': 'Calle',
+      'avenue': 'Avenida',
+      'highway': 'Autopista',
+      'pedestrian': 'Sendero peatonal',
+      'other': 'Vía',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String mapMakerCityBuildingType(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'house': 'Casa',
+      'apartment': 'Apartamentos',
+      'shop': 'Tienda',
+      'office': 'Oficinas',
+      'school': 'Escuela',
+      'hospital': 'Hospital',
+      'park': 'Parque',
+      'tree': 'Árbol',
+      'other': 'Edificio',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get mapMakerCitySelect => 'Seleccionar';
+
+  @override
+  String get mapMakerCityPan => 'Mover vista';
+
+  @override
+  String get mapMakerCityRoads => 'Vías';
+
+  @override
+  String get mapMakerCityBuildings => 'Edificios';
+
+  @override
+  String get mapMakerCityUndo => 'Deshacer';
+
+  @override
+  String get mapMakerCityRedo => 'Rehacer';
+
+  @override
+  String get mapMakerCityRotate => 'Girar';
+
+  @override
+  String get mapMakerCityDelete => 'Eliminar';
+
+  @override
+  String get mapMakerCityGrid => 'Cuadrícula';
+
+  @override
+  String get mapMakerCityZoomIn => 'Acercar';
+
+  @override
+  String get mapMakerCityZoomOut => 'Alejar';
+
+  @override
+  String get mapMakerCityResetView => 'Restablecer vista';
+
+  @override
+  String get mapMakerCitySave => 'Guardar';
+
+  @override
+  String get mapMakerCitySaved => 'Plano urbano guardado';
+
+  @override
+  String get mapMakerCityFinishRoad => 'Terminar vía';
+
+  @override
+  String get mapMakerCityCancelRoad => 'Cancelar vía';
+
+  @override
+  String get mapMakerCityRoadHint =>
+      'Haz clic para colocar los puntos de la vía. Termínala para añadirla.';
+
+  @override
+  String get mapMakerCityPlaceHint =>
+      'Haz clic en el mapa para colocar. Girar cambia la orientación.';
+
+  @override
+  String get mapMakerCitySelectHint =>
+      'Selecciona una vía o un edificio. Arrastra los edificios para moverlos.';
+
+  @override
+  String get mapMakerCityPanHint =>
+      'Arrastra para mover la vista. Desplázate o pellizca para ajustar el zoom.';
+
+  @override
+  String mapMakerCityStats(int roads, int buildings) {
+    return '$roads vías · $buildings edificios';
+  }
+
+  @override
+  String get mapMakerCityMenu => 'Mapas';
+
+  @override
+  String get mapMakerCityRoadDraftHint =>
+      'Añade al menos dos puntos diferentes.';
+
+  @override
+  String get mapMakerCityName => 'Nombre';
+
+  @override
+  String get mapMakerCityDescription =>
+      'Diseña calles, avenidas, autopistas, casas, parques y edificios públicos.';
+
+  @override
+  String get mapMakerNewMap => 'Nuevo mapa';
+
+  @override
+  String get mapMakerTransitMap => 'Mapa de transporte';
+
+  @override
+  String get mapMakerCityEmptyHint =>
+      'Crea un plano urbano o mapa de transporte y vuelve aquí para continuar.';
+
+  @override
+  String get mapMakerSavedMaps => 'Mapas guardados';
+
+  @override
+  String get mapMakerCityRename => 'Renombrar mapa';
+
+  @override
+  String get mapMakerCityDeleteTitle => '¿Eliminar mapa?';
+
+  @override
+  String mapMakerCityDeleteMessage(String title) {
+    return '¿Eliminar «$title»? Esta acción no se puede deshacer.';
+  }
+
+  @override
+  String get mapMakerCityCancel => 'Cancelar';
+
+  @override
+  String get mapMakerCityOpen => 'Abrir';
+
+  @override
   String get homeTileSteamGamePrice => 'Precio de juego de Steam';
 
   @override

@@ -1,4 +1,81 @@
 {
+  "mapMakerCityPlanner": "City Planner",
+  "mapMakerNewCity": "New City Plan",
+  "mapMakerCityDefaultTitle": "City Plan {number}",
+  "mapMakerCityRoadType": "{kind, select, street{Street} avenue{Avenue} highway{Highway} pedestrian{Footpath} other{Road}}",
+  "mapMakerCityBuildingType": "{kind, select, house{House} apartment{Apartments} shop{Shop} office{Office} school{School} hospital{Hospital} park{Park} tree{Tree} other{Building}}",
+  "mapMakerCitySelect": "Select",
+  "mapMakerCityPan": "Pan",
+  "mapMakerCityRoads": "Roads",
+  "mapMakerCityBuildings": "Buildings",
+  "mapMakerCityUndo": "Undo",
+  "mapMakerCityRedo": "Redo",
+  "mapMakerCityRotate": "Rotate",
+  "mapMakerCityDelete": "Delete",
+  "mapMakerCityGrid": "Grid",
+  "mapMakerCityZoomIn": "Zoom in",
+  "mapMakerCityZoomOut": "Zoom out",
+  "mapMakerCityResetView": "Reset view",
+  "mapMakerCitySave": "Save",
+  "mapMakerCitySaved": "City plan saved",
+  "mapMakerCityFinishRoad": "Finish road",
+  "mapMakerCityCancelRoad": "Cancel road",
+  "mapMakerCityRoadHint": "Click to set road points. Finish road to commit.",
+  "mapMakerCityPlaceHint": "Click on the map to place. Rotate changes the direction.",
+  "mapMakerCitySelectHint": "Select a road or building. Drag buildings to move them.",
+  "mapMakerCityPanHint": "Drag to move around. Scroll or pinch to zoom.",
+  "mapMakerCityStats": "{roads} roads · {buildings} buildings",
+  "mapMakerCityMenu": "Maps",
+  "mapMakerCityRoadDraftHint": "Add at least two different points.",
+  "mapMakerCityName": "Name",
+  "mapMakerCityDescription": "Plan streets, avenues, highways, homes, parks, and public buildings.",
+  "mapMakerNewMap": "New Map",
+  "mapMakerTransitMap": "Transit Map",
+  "mapMakerCityEmptyHint": "Create a city plan or transit map, then return here to continue designing.",
+  "mapMakerSavedMaps": "Saved Maps",
+  "mapMakerCityRename": "Rename Map",
+  "mapMakerCityDeleteTitle": "Delete Map?",
+  "mapMakerCityDeleteMessage": "Delete \"{title}\"? This cannot be undone.",
+  "mapMakerCityCancel": "Cancel",
+  "mapMakerCityOpen": "Open",
+  "@mapMakerCityDefaultTitle": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "@mapMakerCityRoadType": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "@mapMakerCityBuildingType": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "@mapMakerCityStats": {
+    "placeholders": {
+      "roads": {
+        "type": "int"
+      },
+      "buildings": {
+        "type": "int"
+      }
+    }
+  },
+  "@mapMakerCityDeleteMessage": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
   "homeTileSteamGamePrice": "Steam game price",
   "homeTileCs2SkinPrice": "CS2 skin price",
   "homeTileCs2TrackedGraph": "Tracked CS2 skins graph",

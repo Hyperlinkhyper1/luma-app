@@ -130,6 +130,27 @@ class MapMakerStore extends ChangeNotifier {
     return save;
   }
 
+  Future<MapMakerSave> createCity({String? title}) async {
+    await _ready;
+    final save = MapMakerSave(
+      id: _newId(),
+      title: (title == null || title.trim().isEmpty)
+          ? 'Untitled City Plan'
+          : title.trim(),
+      kind: MapMakerKind.city,
+      updatedAt: DateTime.now(),
+    );
+    _saves.insert(0, save);
+    notifyListeners();
+    await _persist();
+    if (!_memory) {
+      try {
+        StorageGuard.instance.scheduleRefresh();
+      } catch (_) {}
+    }
+    return save;
+  }
+
   void put(MapMakerSave save) {
     final index = _saves.indexWhere((s) => s.id == save.id);
     save.updatedAt = DateTime.now();
