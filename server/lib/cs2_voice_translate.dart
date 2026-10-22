@@ -3,10 +3,20 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'ai_mode_routing.dart';
+import 'ai_usage_store.dart';
 import 'util.dart';
 
 const kCs2TranscribeSelector = 'cs2transcribe';
 const kCs2TranslateSelector = 'cs2translate';
+const kCs2VoiceWeeklyMinutes = {'core': 10, 'orbit': 30, 'nova': 120};
+
+int cs2VoiceWeeklyMinutesForPlan(String? planId) =>
+    kCs2VoiceWeeklyMinutes[planId] ?? kCs2VoiceWeeklyMinutes['core']!;
+
+double cs2VoiceAllowanceUnits(Duration audio, String? planId) =>
+    aiTokenBudget(planId).weekly *
+    audio.inMicroseconds /
+    Duration(minutes: cs2VoiceWeeklyMinutesForPlan(planId)).inMicroseconds;
 const kCs2VoiceMaxAudioBytes = 1500000;
 const kCs2VoiceMaxBodyBytes = 2100000;
 const kCs2VoiceMaxInstructions = 8000;
@@ -63,8 +73,10 @@ class Cs2VoiceConfigStore {
       final raw = jsonDecode(_file.readAsStringSync());
       if (raw is! Map) return;
       for (final selector in [kCs2TranscribeSelector, kCs2TranslateSelector]) {
-        _models[selector] =
-            Cs2VoiceModelConfig.fromJson(raw[selector], selector);
+        _models[selector] = Cs2VoiceModelConfig.fromJson(
+          raw[selector],
+          selector,
+        );
       }
     } catch (e) {
       stderr.writeln('[luma] could not read ${_file.path}: $e');
@@ -94,9 +106,9 @@ class Cs2VoiceConfigStore {
       _lock.synchronized(() async {
         final next = {..._models, selector: config};
         await atomicWriteString(
-            _file.path,
-            jsonEncode(
-                {for (final e in next.entries) e.key: e.value.toJson()}));
+          _file.path,
+          jsonEncode({for (final e in next.entries) e.key: e.value.toJson()}),
+        );
         _models
           ..clear()
           ..addAll(next);
@@ -104,10 +116,11 @@ class Cs2VoiceConfigStore {
 }
 
 class Cs2VoiceInput {
-  const Cs2VoiceInput(this.audioBase64, this.targetLanguage);
+  const Cs2VoiceInput(this.audioBase64, this.targetLanguage, this.duration);
 
   final String audioBase64;
   final String targetLanguage;
+  final Duration duration;
 
   static Cs2VoiceInput parse(Map<String, dynamic> raw) {
     final language = raw['targetLanguage'];
@@ -130,12 +143,12 @@ class Cs2VoiceInput {
     } on FormatException {
       throw const FormatException('The recording is not valid base64 audio.');
     }
-    validateCs2VoiceWav(bytes);
-    return Cs2VoiceInput(base64Encode(bytes), language.trim());
+    final duration = validateCs2VoiceWav(bytes);
+    return Cs2VoiceInput(base64Encode(bytes), language.trim(), duration);
   }
 }
 
-void validateCs2VoiceWav(Uint8List bytes) {
+Duration validateCs2VoiceWav(Uint8List bytes) {
   if (bytes.length < 44 || bytes.length > kCs2VoiceMaxAudioBytes) {
     throw const FormatException('The recording is empty or too large.');
   }
@@ -145,21 +158,34 @@ void validateCs2VoiceWav(Uint8List bytes) {
     throw const FormatException('The recording is not a WAV file.');
   }
   final data = ByteData.sublistView(bytes);
+  if (data.getUint32(4, Endian.little) + 8 != bytes.length) {
+    throw const FormatException('The WAV recording is incomplete.');
+  }
   var byteRate = 0;
   var audioBytes = 0;
-  for (var offset = 12; offset + 8 <= bytes.length;) {
+  var blockAlign = 0;
+  var formatFound = false;
+  var dataFound = false;
+  var offset = 12;
+  for (; offset + 8 <= bytes.length;) {
     final size = data.getUint32(offset + 4, Endian.little);
     final end = offset + 8 + size;
     if (end > bytes.length) {
       throw const FormatException('The WAV recording is incomplete.');
     }
-    if (tag(offset) == 'fmt ' && size >= 16) {
+    if (tag(offset) == 'fmt ') {
+      if (size < 16 || formatFound || dataFound) {
+        throw const FormatException(
+          'The WAV recording has ambiguous audio headers.',
+        );
+      }
+      formatFound = true;
       final encoding = data.getUint16(offset + 8, Endian.little);
       final channels = data.getUint16(offset + 10, Endian.little);
       final sampleRate = data.getUint32(offset + 12, Endian.little);
       byteRate = data.getUint32(offset + 16, Endian.little);
       final bits = data.getUint16(offset + 22, Endian.little);
-      final blockAlign = data.getUint16(offset + 20, Endian.little);
+      blockAlign = data.getUint16(offset + 20, Endian.little);
       if (encoding != 1 ||
           channels < 1 ||
           channels > 2 ||
@@ -171,8 +197,21 @@ void validateCs2VoiceWav(Uint8List bytes) {
         throw const FormatException('Use 16-bit PCM WAV microphone audio.');
       }
     }
-    if (tag(offset) == 'data') audioBytes += size;
+    if (tag(offset) == 'data') {
+      if (!formatFound || dataFound) {
+        throw const FormatException(
+          'The WAV recording has ambiguous audio data.',
+        );
+      }
+      dataFound = true;
+      audioBytes = size;
+    }
     offset = end + (size.isOdd ? 1 : 0);
+  }
+  if (offset != bytes.length ||
+      blockAlign <= 0 ||
+      audioBytes % blockAlign != 0) {
+    throw const FormatException('The WAV recording is incomplete.');
   }
   if (byteRate <= 0 || audioBytes < byteRate ~/ 5) {
     throw const FormatException('The recording is too short.');
@@ -180,6 +219,9 @@ void validateCs2VoiceWav(Uint8List bytes) {
   if (audioBytes > byteRate * 30) {
     throw const FormatException('Record at most 30 seconds at a time.');
   }
+  return Duration(
+    microseconds: audioBytes * Duration.microsecondsPerSecond ~/ byteRate,
+  );
 }
 
 String? parseCs2VoiceReply(String reply, {int maxChars = 4000}) {

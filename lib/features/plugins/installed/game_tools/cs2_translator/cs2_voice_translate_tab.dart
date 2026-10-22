@@ -319,6 +319,14 @@ class _Cs2VoiceTranslateTabState extends State<Cs2VoiceTranslateTab> {
                                 fontSize: 12.5,
                               ),
                             ),
+                            const SizedBox(height: 8),
+                            Text(
+                              t.cs2VoiceAllowanceHint,
+                              style: TextStyle(
+                                color: luma.textMuted,
+                                fontSize: 12.5,
+                              ),
+                            ),
                           ],
                         ),
                       ),

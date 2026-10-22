@@ -66233,6 +66233,12 @@ abstract class L {
   /// **'Press once to record with your default microphone, then again to translate and send. Recording stops after 30 seconds. Cancel discards it.'**
   String get cs2VoiceRecordingHint;
 
+  /// No description provided for @cs2VoiceAllowanceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A full weekly AI allowance provides Free 10 min, Orbit 30 min or Nova 2 hours of voice translation. Shared with chat; only the weekly bar is used, never the 5-hour bar.'**
+  String get cs2VoiceAllowanceHint;
+
   /// No description provided for @cs2VoiceStopAndSend.
   ///
   /// In en, this message translates to:

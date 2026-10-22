@@ -40893,6 +40893,10 @@ class LFr extends L {
       'Appuyez une fois pour enregistrer avec votre microphone par défaut, puis à nouveau pour traduire et envoyer. L\'enregistrement s\'arrête après 30 secondes. Annuler l\'efface.';
 
   @override
+  String get cs2VoiceAllowanceHint =>
+      'Une allocation IA hebdomadaire complète offre 10 min en gratuit, 30 min avec Orbit ou 2 heures avec Nova pour la traduction vocale. Partagée avec le chat ; seule la barre hebdomadaire est utilisée, jamais celle de 5 heures.';
+
+  @override
   String get cs2VoiceStopAndSend => 'Arrêter, traduire et envoyer';
 
   @override

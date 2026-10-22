@@ -40375,6 +40375,10 @@ class LEn extends L {
       'Press once to record with your default microphone, then again to translate and send. Recording stops after 30 seconds. Cancel discards it.';
 
   @override
+  String get cs2VoiceAllowanceHint =>
+      'A full weekly AI allowance provides Free 10 min, Orbit 30 min or Nova 2 hours of voice translation. Shared with chat; only the weekly bar is used, never the 5-hour bar.';
+
+  @override
   String get cs2VoiceStopAndSend => 'Stop, translate and send';
 
   @override

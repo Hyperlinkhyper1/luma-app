@@ -458,6 +458,7 @@ class Cs2VoiceTranslateService extends ChangeNotifier {
     if (sync == null || !sync.serverReady) {
       throw const ServerAccessDeniedException();
     }
+    final token = sync.authToken;
     final base = Uri.parse(sync.serverUrl!);
     final endpoint = base.replace(
       path:
@@ -471,7 +472,7 @@ class Cs2VoiceTranslateService extends ChangeNotifier {
           .post(
             endpoint,
             headers: {
-              'Authorization': 'Bearer ${sync.authToken}',
+              'Authorization': 'Bearer $token',
               'Content-Type': 'application/json',
             },
             body: jsonEncode({
@@ -496,6 +497,11 @@ class Cs2VoiceTranslateService extends ChangeNotifier {
     } finally {
       client.close();
       if (identical(_activeClient, client)) _activeClient = null;
+      if (identical(_sync, sync) &&
+          sync.serverReady &&
+          sync.authToken == token) {
+        sync.notifyAiUsageChanged();
+      }
     }
   }
 

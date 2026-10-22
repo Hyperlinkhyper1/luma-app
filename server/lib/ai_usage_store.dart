@@ -123,6 +123,7 @@ class AiUsageStore {
   /// userId -> {'tokens': [[ms, tokens, mode, units], ...], 'support': [ms, ...],
   ///             'webSearches': [ms, ...]}
   final Map<String, dynamic> _data;
+  int _weeklyReservationSequence = 0;
 
   static const _tokenWindow = Duration(days: 7);
   static const _supportWindow = Duration(days: 1);
@@ -170,8 +171,10 @@ class AiUsageStore {
             e.length > 2 && e[2] is String ? e[2] as String : 'normal',
             e.length > 3 && e[3] is num
                 ? (e[3] as num).toInt()
-                : aiUsageUnits((e[1] as num).toInt(),
-                    e.length > 2 && e[2] is String ? e[2] as String : 'normal'),
+                : aiUsageUnits(
+                    (e[1] as num).toInt(),
+                    e.length > 2 && e[2] is String ? e[2] as String : 'normal',
+                  ),
           ),
     ];
   }
@@ -184,6 +187,67 @@ class AiUsageStore {
       for (final e in raw)
         if (e is num && e.toInt() > cutoff) e.toInt(),
     ];
+  }
+
+  List<(int, String, double)> _weeklyOnlyEvents(String userId) {
+    final raw = _entry(userId)['weeklyOnly'] as List? ?? const [];
+    final cutoff = DateTime.now().subtract(_tokenWindow).millisecondsSinceEpoch;
+    return [
+      for (final event in raw)
+        if (event is List &&
+            event.length == 3 &&
+            event[0] is num &&
+            (event[0] as num).toInt() > cutoff &&
+            event[1] is String &&
+            event[2] is num &&
+            (event[2] as num).isFinite &&
+            (event[2] as num) > 0)
+          (
+            (event[0] as num).toInt(),
+            event[1] as String,
+            (event[2] as num).toDouble(),
+          ),
+    ];
+  }
+
+  double _weeklyUnitsUsed(String userId) =>
+      _tokenEvents(userId).fold<double>(0, (sum, event) => sum + event.$4) +
+      _weeklyOnlyEvents(userId).fold<double>(0, (sum, event) => sum + event.$3);
+
+  /// Reserves a flat share of the weekly allowance before an upstream call.
+  /// The five-hour allowance and purchased credits are never used here.
+  Future<String?> reserveWeeklyOnly(
+    String userId,
+    double units,
+    AiTokenBudget budget,
+  ) async {
+    if (!units.isFinite ||
+        units <= 0 ||
+        budget.weekly <= 0 ||
+        _weeklyUnitsUsed(userId) + units > budget.weekly + 0.000001) {
+      return null;
+    }
+    final now = DateTime.now();
+    final id = '${now.microsecondsSinceEpoch}-${++_weeklyReservationSequence}';
+    final entry = Map<String, dynamic>.from(_entry(userId));
+    entry['weeklyOnly'] = [
+      for (final event in _weeklyOnlyEvents(userId))
+        [event.$1, event.$2, event.$3],
+      [now.millisecondsSinceEpoch, id, units],
+    ];
+    _data[userId] = entry;
+    await _save();
+    return id;
+  }
+
+  Future<void> releaseWeeklyOnly(String userId, String reservationId) async {
+    final entry = Map<String, dynamic>.from(_entry(userId));
+    entry['weeklyOnly'] = [
+      for (final event in _weeklyOnlyEvents(userId))
+        if (event.$2 != reservationId) [event.$1, event.$2, event.$3],
+    ];
+    _data[userId] = entry;
+    await _save();
   }
 
   /// Raw tokens this user consumed within the trailing [window], optionally
@@ -199,11 +263,20 @@ class AiUsageStore {
 
   /// Usage units this user spent, across every mode, within the trailing
   /// [window] — the number the plan's allowance is measured in.
+  /// Weekly-only charges join the seven-day total without entering five hours.
   int unitsUsed(String userId, Duration window) {
     final cutoff = DateTime.now().subtract(window).millisecondsSinceEpoch;
     var sum = 0;
     for (final e in _tokenEvents(userId)) {
       if (e.$1 > cutoff) sum += e.$4;
+    }
+    if (window >= _tokenWindow) {
+      final total = sum +
+          _weeklyOnlyEvents(userId)
+              .where((event) => event.$1 > cutoff)
+              .fold<double>(0, (units, event) => units + event.$3);
+      final nearest = total.round();
+      return (total - nearest).abs() < 0.000001 ? nearest : total.ceil();
     }
     return sum;
   }
@@ -254,10 +327,7 @@ class AiUsageStore {
     final events = _webSearchEvents(userId);
     if (limit <= 0 || events.length >= limit) return false;
     final entry = Map<String, dynamic>.from(_entry(userId));
-    entry['webSearches'] = [
-      ...events,
-      DateTime.now().millisecondsSinceEpoch,
-    ];
+    entry['webSearches'] = [...events, DateTime.now().millisecondsSinceEpoch];
     _data[userId] = entry;
     await _save();
     return true;
@@ -265,8 +335,12 @@ class AiUsageStore {
 
   /// Logs [tokens] of [mode]. [units] is what they cost the allowance; it
   /// defaults to the mode's weight times the tokens.
-  Future<void> recordTokens(String userId, int tokens,
-      {String mode = 'normal', int? units}) async {
+  Future<void> recordTokens(
+    String userId,
+    int tokens, {
+    String mode = 'normal',
+    int? units,
+  }) async {
     if (tokens <= 0) return;
     final entry = Map<String, dynamic>.from(_entry(userId));
     entry['tokens'] = [
@@ -325,7 +399,11 @@ class AiUsageStore {
   /// and to purchased credits once it does not. Either way the better modes
   /// cost more: the charge is the tokens times the mode's weight.
   Future<void> charge(
-      String userId, int tokens, String mode, AiTokenBudget budget) async {
+    String userId,
+    int tokens,
+    String mode,
+    AiTokenBudget budget,
+  ) async {
     if (_windowsOpen(userId, budget) || creditBalance(userId) <= 0) {
       return recordTokens(userId, tokens, mode: mode);
     }
@@ -335,7 +413,11 @@ class AiUsageStore {
   /// Like [charge] for a flat [cost], already in usage units, that must fit
   /// whole in the allowance. The mode only labels the event; it adds no weight.
   Future<void> chargeFlat(
-      String userId, int cost, String mode, AiTokenBudget budget) async {
+    String userId,
+    int cost,
+    String mode,
+    AiTokenBudget budget,
+  ) async {
     if (_windowsFit(userId, budget, cost) || creditBalance(userId) < cost) {
       return recordTokens(userId, cost, mode: mode, units: cost);
     }
@@ -425,20 +507,21 @@ class AiUsageStore {
       final at = row[0] as int;
       final total = _count(row[6]);
       final group = groups.putIfAbsent(
-          '${row[1]}\u0000${row[2]}\u0000${row[3]}',
-          () => {
-                'feature': row[1],
-                'upstream': row[2],
-                'model': row[3],
-                'calls': 0,
-                'inputTokens': 0,
-                'outputTokens': 0,
-                'totalTokens': 0,
-                'tokens7d': 0,
-                'costUsd': null,
-                'firstAtMs': at,
-                'lastAtMs': at,
-              });
+        '${row[1]}\u0000${row[2]}\u0000${row[3]}',
+        () => {
+          'feature': row[1],
+          'upstream': row[2],
+          'model': row[3],
+          'calls': 0,
+          'inputTokens': 0,
+          'outputTokens': 0,
+          'totalTokens': 0,
+          'tokens7d': 0,
+          'costUsd': null,
+          'firstAtMs': at,
+          'lastAtMs': at,
+        },
+      );
       group['calls'] = (group['calls'] as int) + 1;
       group['inputTokens'] = (group['inputTokens'] as int) + _count(row[4]);
       group['outputTokens'] = (group['outputTokens'] as int) + _count(row[5]);
@@ -450,14 +533,17 @@ class AiUsageStore {
       group['lastAtMs'] = at;
     }
     final models = groups.values.toList()
-      ..sort((a, b) =>
-          (b['totalTokens'] as int).compareTo(a['totalTokens'] as int));
+      ..sort(
+        (a, b) => (b['totalTokens'] as int).compareTo(a['totalTokens'] as int),
+      );
     // Per UTC day for the dashboard's charts: only days that saw a call,
     // with each day's tokens split by feature.
     final now = DateTime.now().toUtc();
-    final dailyCutoff = DateTime.utc(now.year, now.month, now.day)
-        .subtract(const Duration(days: dailyDays - 1))
-        .millisecondsSinceEpoch;
+    final dailyCutoff = DateTime.utc(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(const Duration(days: dailyDays - 1)).millisecondsSinceEpoch;
     final days = <int, Map<String, dynamic>>{};
     for (final row in rows) {
       final at = row[0] as int;
@@ -465,14 +551,15 @@ class AiUsageStore {
       final d = DateTime.fromMillisecondsSinceEpoch(at, isUtc: true);
       final dayMs = DateTime.utc(d.year, d.month, d.day).millisecondsSinceEpoch;
       final day = days.putIfAbsent(
-          dayMs,
-          () => {
-                'dayMs': dayMs,
-                'calls': 0,
-                'tokens': 0,
-                'costUsd': null,
-                'features': <String, int>{},
-              });
+        dayMs,
+        () => {
+          'dayMs': dayMs,
+          'calls': 0,
+          'tokens': 0,
+          'costUsd': null,
+          'features': <String, int>{},
+        },
+      );
       final total = _count(row[6]);
       day['calls'] = (day['calls'] as int) + 1;
       day['tokens'] = (day['tokens'] as int) + total;
@@ -576,8 +663,9 @@ class AiCallUsage {
     final usage = decoded['usage'];
     if (usage is Map) {
       final input = count(usage['prompt_tokens'] ?? usage['input_tokens']);
-      final output =
-          count(usage['completion_tokens'] ?? usage['output_tokens']);
+      final output = count(
+        usage['completion_tokens'] ?? usage['output_tokens'],
+      );
       final total = count(usage['total_tokens']);
       final cost = usage['cost'];
       final details =

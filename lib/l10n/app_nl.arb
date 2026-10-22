@@ -11499,6 +11499,7 @@
   "cs2VoiceHotkeyHint": "Druk op je eigen sneltoets en daarna op Opslaan. Hiermee start en stop je opnames zolang luma open is.",
   "cs2VoiceChangeHotkey": "Sneltoets instellen",
   "cs2VoiceRecordingHint": "Druk eenmaal om op te nemen met je standaardmicrofoon en nogmaals om te vertalen en versturen. De opname stopt na 30 seconden. Annuleren verwijdert de opname.",
+  "cs2VoiceAllowanceHint": "Een volledige wekelijkse AI-toelage biedt gratis 10 min, Orbit 30 min of Nova 2 uur spraakvertaling. Gedeeld met chat; alleen de weekbalk wordt gebruikt, nooit de 5-uursbalk.",
   "cs2VoiceStopAndSend": "Stoppen, vertalen en versturen",
   "cs2VoiceRecord": "Opname starten",
   "cs2VoiceCancel": "Opname / verzoek annuleren",

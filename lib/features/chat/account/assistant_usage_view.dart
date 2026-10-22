@@ -32,11 +32,48 @@ class AssistantUsageView extends StatefulWidget {
 
 class _AssistantUsageViewState extends State<AssistantUsageView> {
   Future<AiServerStatus?>? _status;
+  SyncService? _usageSync;
+  int? _usageRevision;
+  String? _usageToken;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _status ??= SyncScope.of(context).aiStatus();
+    final sync = SyncScope.of(context);
+    if (!identical(_usageSync, sync)) {
+      _usageSync?.removeListener(_onUsageChanged);
+      _usageSync = sync;
+      sync.addListener(_onUsageChanged);
+      _status = null;
+    }
+    if (_status == null ||
+        _usageRevision != sync.aiUsageRevision ||
+        _usageToken != sync.authToken) {
+      _reloadUsage(sync);
+    }
+  }
+
+  void _reloadUsage(SyncService sync) {
+    _usageRevision = sync.aiUsageRevision;
+    _usageToken = sync.authToken;
+    _status = sync.aiStatus();
+  }
+
+  void _onUsageChanged() {
+    final sync = _usageSync;
+    if (!mounted ||
+        sync == null ||
+        (_usageRevision == sync.aiUsageRevision &&
+            _usageToken == sync.authToken)) {
+      return;
+    }
+    setState(() => _reloadUsage(sync));
+  }
+
+  @override
+  void dispose() {
+    _usageSync?.removeListener(_onUsageChanged);
+    super.dispose();
   }
 
   @override

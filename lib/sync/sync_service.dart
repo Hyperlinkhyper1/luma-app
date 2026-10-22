@@ -1550,6 +1550,14 @@ class SyncService extends ChangeNotifier {
     }
   }
 
+  int _aiUsageRevision = 0;
+  int get aiUsageRevision => _aiUsageRevision;
+
+  void notifyAiUsageChanged() {
+    _aiUsageRevision++;
+    notifyListeners();
+  }
+
   Future<List<Map<String, dynamic>>?> backendAiUsageCalls() async {
     final api = _api;
     if (api == null || !serverReady) return null;

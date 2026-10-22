@@ -40667,6 +40667,10 @@ class LNl extends L {
       'Druk eenmaal om op te nemen met je standaardmicrofoon en nogmaals om te vertalen en versturen. De opname stopt na 30 seconden. Annuleren verwijdert de opname.';
 
   @override
+  String get cs2VoiceAllowanceHint =>
+      'Een volledige wekelijkse AI-toelage biedt gratis 10 min, Orbit 30 min of Nova 2 uur spraakvertaling. Gedeeld met chat; alleen de weekbalk wordt gebruikt, nooit de 5-uursbalk.';
+
+  @override
   String get cs2VoiceStopAndSend => 'Stoppen, vertalen en versturen';
 
   @override

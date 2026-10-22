@@ -40817,6 +40817,10 @@ class LEs extends L {
       'Pulsa una vez para grabar con el micrófono predeterminado y otra vez para traducir y enviar. La grabación se detiene a los 30 segundos. Cancelar la descarta.';
 
   @override
+  String get cs2VoiceAllowanceHint =>
+      'La asignación semanal completa de IA permite 10 min gratis, 30 min con Orbit o 2 horas con Nova de traducción de voz. Se comparte con el chat; solo usa la barra semanal, nunca la de 5 horas.';
+
+  @override
   String get cs2VoiceStopAndSend => 'Detener, traducir y enviar';
 
   @override

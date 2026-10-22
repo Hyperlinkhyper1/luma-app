@@ -38535,6 +38535,10 @@ class LZh extends L {
       '按一次使用默认麦克风录音，再按一次进行翻译并发送。录音将在 30 秒后停止。取消将丢弃录音。';
 
   @override
+  String get cs2VoiceAllowanceHint =>
+      '完整的每周 AI 用量可用于语音翻译：免费版 10 分钟、Orbit 30 分钟、Nova 2 小时。与聊天共享每周额度，不占用 5 小时额度。';
+
+  @override
   String get cs2VoiceStopAndSend => '停止、翻译并发送';
 
   @override

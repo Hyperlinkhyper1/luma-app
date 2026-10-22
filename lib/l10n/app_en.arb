@@ -24731,6 +24731,7 @@
   "cs2VoiceHotkeyHint": "Press your own keybind, then Save. Use it to start and stop recording while luma is open.",
   "cs2VoiceChangeHotkey": "Set keybind",
   "cs2VoiceRecordingHint": "Press once to record with your default microphone, then again to translate and send. Recording stops after 30 seconds. Cancel discards it.",
+  "cs2VoiceAllowanceHint": "A full weekly AI allowance provides Free 10 min, Orbit 30 min or Nova 2 hours of voice translation. Shared with chat; only the weekly bar is used, never the 5-hour bar.",
   "cs2VoiceStopAndSend": "Stop, translate and send",
   "cs2VoiceRecord": "Start recording",
   "cs2VoiceCancel": "Cancel recording / request",

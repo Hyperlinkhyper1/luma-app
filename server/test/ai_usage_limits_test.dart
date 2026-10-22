@@ -5,6 +5,100 @@ import 'package:luma_sync_server/ai_usage_store.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test(
+    'weekly-only charges persist without changing five-hour usage or credits',
+    () async {
+      final dir = await Directory.systemTemp.createTemp('ai_weekly_only_');
+      addTearDown(() => dir.delete(recursive: true));
+      final store = await AiUsageStore.open(dir.path);
+      const budget = AiTokenBudget(1000);
+      await store.recordTokens('u', budget.fiveHour);
+      await store.addCredits('u', 5000);
+      final id = await store.reserveWeeklyOnly('u', 250, budget);
+      expect(id, isNotNull);
+      expect(store.unitsUsed('u', const Duration(hours: 5)), 150);
+      expect(store.unitsUsed('u', const Duration(days: 7)), 400);
+      expect(store.creditBalance('u'), 5000);
+      final reopened = await AiUsageStore.open(dir.path);
+      expect(reopened.unitsUsed('u', const Duration(hours: 5)), 150);
+      expect(reopened.unitsUsed('u', const Duration(days: 7)), 400);
+      await reopened.releaseWeeklyOnly('u', id!);
+      expect(reopened.unitsUsed('u', const Duration(days: 7)), 150);
+      expect(reopened.unitsUsed('u', const Duration(hours: 5)), 150);
+    },
+  );
+
+  test(
+    'weekly reservations cannot race past the allowance or spend credits',
+    () async {
+      final dir = await Directory.systemTemp.createTemp('ai_weekly_race_');
+      addTearDown(() => dir.delete(recursive: true));
+      final store = await AiUsageStore.open(dir.path);
+      const budget = AiTokenBudget(100);
+      await store.addCredits('u', 10000);
+      final reservations = await Future.wait([
+        store.reserveWeeklyOnly('u', 60, budget),
+        store.reserveWeeklyOnly('u', 60, budget),
+      ]);
+      expect(reservations.whereType<String>(), hasLength(1));
+      expect(store.unitsUsed('u', const Duration(days: 7)), 60);
+      expect(store.unitsUsed('u', const Duration(hours: 5)), 0);
+      expect(await store.reserveWeeklyOnly('u', 41, budget), isNull);
+      expect(store.creditBalance('u'), 10000);
+      expect(await store.reserveWeeklyOnly('other', 100, budget), isNotNull);
+    },
+  );
+
+  test(
+    'fractional weekly charges accumulate without per-recording rounding loss',
+    () async {
+      final dir = await Directory.systemTemp.createTemp('ai_weekly_fraction_');
+      addTearDown(() => dir.delete(recursive: true));
+      final store = await AiUsageStore.open(dir.path);
+      const budget = AiTokenBudget(100);
+      for (var i = 0; i < 3; i++) {
+        expect(await store.reserveWeeklyOnly('u', 100 / 3, budget), isNotNull);
+      }
+      expect(store.unitsUsed('u', const Duration(days: 7)), 100);
+      expect(await store.reserveWeeklyOnly('u', 0.01, budget), isNull);
+      expect(store.unitsUsed('u', const Duration(hours: 5)), 0);
+      expect(store.canSpend('u', budget), isFalse);
+    },
+  );
+
+  test(
+    'weekly-only charges expire after seven days and preserve legacy usage',
+    () async {
+      final dir = await Directory.systemTemp.createTemp('ai_weekly_expiry_');
+      addTearDown(() => dir.delete(recursive: true));
+      final now = DateTime.now();
+      await File('${dir.path}/ai_usage.json').writeAsString(
+        jsonEncode({
+          'u': {
+            'tokens': [
+              [now.millisecondsSinceEpoch, 25],
+            ],
+            'weeklyOnly': [
+              [
+                now.subtract(const Duration(days: 8)).millisecondsSinceEpoch,
+                'expired',
+                900,
+              ],
+              [now.millisecondsSinceEpoch, 'active', 100],
+            ],
+          },
+        }),
+      );
+      final store = await AiUsageStore.open(dir.path);
+      expect(store.unitsUsed('u', const Duration(days: 7)), 125);
+      expect(store.unitsUsed('u', const Duration(hours: 5)), 25);
+      await store.recordTokens('u', 10);
+      final reopened = await AiUsageStore.open(dir.path);
+      expect(reopened.unitsUsed('u', const Duration(days: 7)), 135);
+      expect(reopened.unitsUsed('u', const Duration(hours: 5)), 35);
+    },
+  );
+
   test('one weekly allowance per plan; five hours is 15 percent', () {
     expect(aiTokenBudget('core').weekly, 1000000);
     expect(aiTokenBudget('orbit').weekly, 5000000);
@@ -33,14 +127,19 @@ void main() {
     await store.charge('u', 100000, 'smartest', budget);
     expect(store.unitsUsed('u', const Duration(days: 7)), 500000);
     expect(store.tokensUsed('u', const Duration(days: 7)), 300000);
-    expect(store.tokensUsed('u', const Duration(days: 7), mode: 'smarter'),
-        100000);
+    expect(
+      store.tokensUsed('u', const Duration(days: 7), mode: 'smarter'),
+      100000,
+    );
 
     expect(store.canSpend('u', budget), isTrue);
     await store.charge('u', 200000, 'smartest', budget);
     expect(store.unitsUsed('u', const Duration(days: 7)), 1000000);
-    expect(store.canSpend('u', budget), isFalse,
-        reason: 'past the five-hour share of the shared allowance');
+    expect(
+      store.canSpend('u', budget),
+      isFalse,
+      reason: 'past the five-hour share of the shared allowance',
+    );
   });
 
   test('a flat cost is already in units and takes no mode weight', () async {
@@ -52,53 +151,57 @@ void main() {
     expect(store.unitsUsed('u', const Duration(days: 7)), 350000);
   });
 
-  test('credits are spent at the mode weight once the allowance is gone',
-      () async {
-    final dir = await Directory.systemTemp.createTemp('ai_credit_weight_');
-    addTearDown(() => dir.delete(recursive: true));
-    final store = await AiUsageStore.open(dir.path);
-    final budget = aiTokenBudget('core');
-    await store.addCredits('u', 1000000);
-    await store.recordTokens('u', budget.weekly, mode: 'normal');
-    expect(store.canSpend('u', budget), isTrue);
-    await store.charge('u', 100000, 'smartest', budget);
-    expect(store.creditBalance('u'), 750000);
-  });
+  test(
+    'credits are spent at the mode weight once the allowance is gone',
+    () async {
+      final dir = await Directory.systemTemp.createTemp('ai_credit_weight_');
+      addTearDown(() => dir.delete(recursive: true));
+      final store = await AiUsageStore.open(dir.path);
+      final budget = aiTokenBudget('core');
+      await store.addCredits('u', 1000000);
+      await store.recordTokens('u', budget.weekly, mode: 'normal');
+      expect(store.canSpend('u', budget), isTrue);
+      await store.charge('u', 100000, 'smartest', budget);
+      expect(store.creditBalance('u'), 750000);
+    },
+  );
 
-  test('AI checks: plans include weekly reviews, extras cost a weekly share',
-      () async {
-    expect(aiCheckerWeeklyChecksForPlan('core'), 0);
-    expect(aiCheckerWeeklyChecksForPlan('orbit'), 10);
-    expect(aiCheckerWeeklyChecksForPlan('nova'), 30);
-    expect(aiCheckerWeeklyChecksForPlan(null), 0);
-    expect(aiCheckerExchangePercentForPlan('core'), 10);
-    expect(aiCheckerExchangePercentForPlan('orbit'), 4);
-    expect(aiCheckerExchangePercentForPlan('nova'), 2);
-    for (final plan in ['core', 'orbit', 'nova']) {
-      final budget = aiTokenBudget(plan);
-      expect(budget.weekly * aiCheckerExchangePercentForPlan(plan) ~/ 100,
-          lessThanOrEqualTo(budget.fiveHour));
-    }
+  test(
+    'AI checks: plans include weekly reviews, extras cost a weekly share',
+    () async {
+      expect(aiCheckerWeeklyChecksForPlan('core'), 0);
+      expect(aiCheckerWeeklyChecksForPlan('orbit'), 10);
+      expect(aiCheckerWeeklyChecksForPlan('nova'), 30);
+      expect(aiCheckerWeeklyChecksForPlan(null), 0);
+      expect(aiCheckerExchangePercentForPlan('core'), 10);
+      expect(aiCheckerExchangePercentForPlan('orbit'), 4);
+      expect(aiCheckerExchangePercentForPlan('nova'), 2);
+      for (final plan in ['core', 'orbit', 'nova']) {
+        final budget = aiTokenBudget(plan);
+        expect(
+          budget.weekly * aiCheckerExchangePercentForPlan(plan) ~/ 100,
+          lessThanOrEqualTo(budget.fiveHour),
+        );
+      }
 
-    final dir = await Directory.systemTemp.createTemp('ai_checks_');
-    addTearDown(() => dir.delete(recursive: true));
-    final store = await AiUsageStore.open(dir.path);
-    expect(store.aiChecksUsed('u'), 0);
-    await store.recordAiCheck('u');
-    await store.recordAiCheck('u');
-    expect(store.aiChecksUsed('u'), 2);
-    expect(store.aiChecksUsed('someone-else'), 0);
-    final reopened = await AiUsageStore.open(dir.path);
-    expect(reopened.aiChecksUsed('u'), 2);
-  });
+      final dir = await Directory.systemTemp.createTemp('ai_checks_');
+      addTearDown(() => dir.delete(recursive: true));
+      final store = await AiUsageStore.open(dir.path);
+      expect(store.aiChecksUsed('u'), 0);
+      await store.recordAiCheck('u');
+      await store.recordAiCheck('u');
+      expect(store.aiChecksUsed('u'), 2);
+      expect(store.aiChecksUsed('someone-else'), 0);
+      final reopened = await AiUsageStore.open(dir.path);
+      expect(reopened.aiChecksUsed('u'), 2);
+    },
+  );
 
   test('credit packs are priced as listed', () {
-    expect([for (final p in kAiCreditPacks) (p.tokens, p.priceCents)], [
-      (1000000, 200),
-      (2500000, 400),
-      (5000000, 750),
-      (10000000, 1400),
-    ]);
+    expect(
+      [for (final p in kAiCreditPacks) (p.tokens, p.priceCents)],
+      [(1000000, 200), (2500000, 400), (5000000, 750), (10000000, 1400)],
+    );
     expect(aiCreditPackById('credits_5m')?.priceCents, 750);
     expect(aiCreditPackById('nope'), isNull);
   });
@@ -141,25 +244,44 @@ void main() {
     await store.recordTokens('user', 100, mode: 'normal');
     await store.recordTokens('user', 200, mode: 'smarter');
     final reopened = await AiUsageStore.open(dir.path);
-    expect(reopened.tokensUsed('user', const Duration(days: 7), mode: 'normal'),
-        100);
     expect(
-        reopened.tokensUsed('user', const Duration(days: 7), mode: 'smarter'),
-        200);
+      reopened.tokensUsed('user', const Duration(days: 7), mode: 'normal'),
+      100,
+    );
     expect(
-        reopened.tokensUsed('user', const Duration(days: 7), mode: 'smartest'),
-        0);
+      reopened.tokensUsed('user', const Duration(days: 7), mode: 'smarter'),
+      200,
+    );
+    expect(
+      reopened.tokensUsed('user', const Duration(days: 7), mode: 'smartest'),
+      0,
+    );
   });
 
   test('pre-mode usage remains charged to Aurora', () async {
     final dir = await Directory.systemTemp.createTemp('ai_usage_legacy_');
     addTearDown(() => dir.delete(recursive: true));
     final now = DateTime.now().millisecondsSinceEpoch;
-    await File('${dir.path}${Platform.pathSeparator}ai_usage.json')
-        .writeAsString(jsonEncode({'user': {'tokens': [[now, 75]]}}));
+    await File(
+      '${dir.path}${Platform.pathSeparator}ai_usage.json',
+    ).writeAsString(
+      jsonEncode({
+        'user': {
+          'tokens': [
+            [now, 75],
+          ],
+        },
+      }),
+    );
     final store = await AiUsageStore.open(dir.path);
-    expect(store.tokensUsed('user', const Duration(days: 7), mode: 'normal'), 75);
-    expect(store.tokensUsed('user', const Duration(days: 7), mode: 'smarter'), 0);
+    expect(
+      store.tokensUsed('user', const Duration(days: 7), mode: 'normal'),
+      75,
+    );
+    expect(
+      store.tokensUsed('user', const Duration(days: 7), mode: 'smarter'),
+      0,
+    );
     expect(store.unitsUsed('user', const Duration(days: 7)), 75);
   });
 
@@ -167,15 +289,18 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('ai_usage_nounits_');
     addTearDown(() => dir.delete(recursive: true));
     final now = DateTime.now().millisecondsSinceEpoch;
-    await File('${dir.path}${Platform.pathSeparator}ai_usage.json')
-        .writeAsString(jsonEncode({
-      'user': {
-        'tokens': [
-          [now, 100, 'smarter'],
-          [now, 100, 'smartest', 40],
-        ],
-      },
-    }));
+    await File(
+      '${dir.path}${Platform.pathSeparator}ai_usage.json',
+    ).writeAsString(
+      jsonEncode({
+        'user': {
+          'tokens': [
+            [now, 100, 'smarter'],
+            [now, 100, 'smartest', 40],
+          ],
+        },
+      }),
+    );
     final store = await AiUsageStore.open(dir.path);
     expect(store.unitsUsed('user', const Duration(days: 7)), 150 + 40);
   });
@@ -184,21 +309,47 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('ai_calls_');
     addTearDown(() => dir.delete(recursive: true));
     final store = await AiUsageStore.open(dir.path);
-    final chat = AiCallUsage.parse(jsonEncode({
-      'model': 'google/gemini-3-flash',
-      'usage': {'prompt_tokens': 120, 'completion_tokens': 30, 'total_tokens': 150, 'cost': 0.002},
-    }));
+    final chat = AiCallUsage.parse(
+      jsonEncode({
+        'model': 'google/gemini-3-flash',
+        'usage': {
+          'prompt_tokens': 120,
+          'completion_tokens': 30,
+          'total_tokens': 150,
+          'cost': 0.002,
+        },
+      }),
+    );
     expect(chat.model, 'google/gemini-3-flash');
     expect(chat.totalTokens, 150);
-    await store.recordCall('user',
-        feature: 'Assistant · Aurora', upstream: 'OpenRouter', model: 'fallback', usage: chat);
-    await store.recordCall('user',
-        feature: 'Assistant · Aurora', upstream: 'OpenRouter', model: 'fallback', usage: chat);
-    await store.recordCall('user',
-        feature: 'Picture', upstream: 'Google AI Studio', model: 'imagen',
-        usage: AiCallUsage.parse(jsonEncode({
-          'usageMetadata': {'promptTokenCount': 10, 'candidatesTokenCount': 1290},
-        })));
+    await store.recordCall(
+      'user',
+      feature: 'Assistant · Aurora',
+      upstream: 'OpenRouter',
+      model: 'fallback',
+      usage: chat,
+    );
+    await store.recordCall(
+      'user',
+      feature: 'Assistant · Aurora',
+      upstream: 'OpenRouter',
+      model: 'fallback',
+      usage: chat,
+    );
+    await store.recordCall(
+      'user',
+      feature: 'Picture',
+      upstream: 'Google AI Studio',
+      model: 'imagen',
+      usage: AiCallUsage.parse(
+        jsonEncode({
+          'usageMetadata': {
+            'promptTokenCount': 10,
+            'candidatesTokenCount': 1290,
+          },
+        }),
+      ),
+    );
 
     final reopened = await AiUsageStore.open(dir.path);
     final summary = reopened.callSummary('user');
@@ -217,8 +368,10 @@ void main() {
     expect(daily, hasLength(1));
     expect(daily.single['calls'], 3);
     expect(daily.single['tokens'], 1600);
-    expect(daily.single['features'],
-        {'Assistant · Aurora': 300, 'Picture': 1300});
+    expect(daily.single['features'], {
+      'Assistant · Aurora': 300,
+      'Picture': 1300,
+    });
     expect(reopened.callSummary('nobody')['models'], isEmpty);
     expect(reopened.callSummary('nobody')['daily'], isEmpty);
 

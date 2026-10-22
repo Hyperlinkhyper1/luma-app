@@ -11499,6 +11499,7 @@
   "cs2VoiceHotkeyHint": "Appuyez sur votre raccourci, puis sur Enregistrer. Il démarre et arrête les enregistrements tant que luma est ouvert.",
   "cs2VoiceChangeHotkey": "Définir le raccourci",
   "cs2VoiceRecordingHint": "Appuyez une fois pour enregistrer avec votre microphone par défaut, puis à nouveau pour traduire et envoyer. L'enregistrement s'arrête après 30 secondes. Annuler l'efface.",
+  "cs2VoiceAllowanceHint": "Une allocation IA hebdomadaire complète offre 10 min en gratuit, 30 min avec Orbit ou 2 heures avec Nova pour la traduction vocale. Partagée avec le chat ; seule la barre hebdomadaire est utilisée, jamais celle de 5 heures.",
   "cs2VoiceStopAndSend": "Arrêter, traduire et envoyer",
   "cs2VoiceRecord": "Démarrer l'enregistrement",
   "cs2VoiceCancel": "Annuler l'enregistrement / la requête",
