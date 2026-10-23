@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Voxel Garden</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#b9dce5;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  canvas{display:block;width:100%;height:100%;touch-action:none}
+  #hud{position:fixed;inset:0;pointer-events:none;color:#fff;z-index:5;text-shadow:0 2px 12px rgba(20,25,30,.28)}
+  #brand{position:absolute;top:24px;left:26px;padding:16px 19px 15px;border:1px solid rgba(255,255,255,.28);border-radius:15px;background:linear-gradient(135deg,rgba(20,37,39,.55),rgba(20,37,39,.25));backdrop-filter:blur(12px);box-shadow:0 10px 35px rgba(17,30,35,.12)}
+  #brand h1{font-size:17px;letter-spacing:.25em;margin:0 0 8px;font-weight:750}
+  #stats{font-size:12px;letter-spacing:.08em;color:#f5e5bd;font-variant-numeric:tabular-nums}
+  #hint{margin-top:9px;font-size:11px;letter-spacing:.04em;color:rgba(255,255,255,.76)}
+  #badge{position:absolute;right:25px;top:25px;border:1px solid rgba(255,255,255,.25);background:rgba(25,42,44,.32);backdrop-filter:blur(10px);padding:9px 13px;border-radius:999px;font-size:10px;letter-spacing:.18em}
+  #controls{pointer-events:auto;position:absolute;left:50%;bottom:22px;transform:translateX(-50%);display:flex;align-items:center;gap:13px;min-width:min(460px,calc(100vw - 28px));padding:12px 15px;border-radius:16px;background:rgba(19,33,36,.58);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(14px);box-shadow:0 10px 35px rgba(12,22,25,.18)}
+  #clock{width:60px;font-size:12px;letter-spacing:.08em;color:#ffe6ad;font-variant-numeric:tabular-nums}
+  input[type=range]{flex:1;min-width:100px;accent-color:#e8b86d;cursor:pointer;height:4px}
+  button{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;border-radius:9px;padding:7px 11px;font:inherit;font-size:11px;letter-spacing:.06em;cursor:pointer;white-space:nowrap}
+  button:hover{background:rgba(255,255,255,.2)}
+  #vignette{position:fixed;inset:0;pointer-events:none;z-index:2;background:radial-gradient(circle at 50% 43%,transparent 48%,rgba(15,28,35,.15) 120%)}
+  @media(max-width:600px){#brand{top:14px;left:14px;padding:12px 14px}#brand h1{font-size:14px}#badge{display:none}#controls{bottom:14px}#hint{font-size:10px}}
+</style>
+<script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="vignette"></div>
+<div id="hud">
+  <div id="brand">
+    <h1>VOXEL GARDEN</h1>
+    <div id="stats">Building the floating garden…</div>
+    <div id="hint">Click lanterns · Click pagoda floors to open doors</div>
+  </div>
+  <div id="badge">春 · FIVE-STORY PAGODA</div>
+  <div id="controls">
+    <span id="clock">08:10</span>
+    <input id="timeSlider" aria-label="Time of day" type="range" min="0" max="1000" value="340">
+    <button id="pause">PAUSE</button>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#b9dce5');
+scene.fog = new THREE.Fog('#b9dce5', 88, 185);
+
+const renderer = new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.08;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.prepend(renderer.domElement);
+
+const camera = new THREE.PerspectiveCamera(43,innerWidth/innerHeight,.1,300);
+camera.position.set(0,4.8,30.5);
+
+const controls = new OrbitControls(camera,renderer.domElement);
+controls.target.set(3,10,-4);
+controls.enableDamping = true;
+controls.dampingFactor = .055;
+controls.minDistance = 18;
+controls.maxDistance = 105;
+controls.maxPolarAngle = Math.PI*.57;
+controls.autoRotate = false;
+controls.autoRotateSpeed = .32;
+controls.enabled = false;
+
+const hemi = new THREE.HemisphereLight('#dff4ff','#4b4035',1.15);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight('#fff2d4',2.25);
+sun.position.set(35,48,28);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.left = -48;
+sun.shadow.camera.right = 48;
+sun.shadow.camera.top = 48;
+sun.shadow.camera.bottom = -48;
+sun.shadow.camera.near = 1;
+sun.shadow.camera.far = 150;
+sun.shadow.bias = -.00035;
+sun.shadow.normalBias = .035;
+scene.add(sun);
+scene.add(sun.target);
+
+const sunDisc = new THREE.Mesh(
+  new THREE.SphereGeometry(2.2,16,12),
+  new THREE.MeshBasicMaterial({color:'#ffe6a3',fog:false})
+);
+scene.add(sunDisc);
+
+let seed = 918273;
+function rnd(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}
+function hash(x,z){const n=Math.sin(x*127.1+z*311.7)*43758.5453;return n-Math.floor(n)}
+const clamp=THREE.MathUtils.clamp;
+const smooth=(a,b,x)=>{x=clamp((x-a)/(b-a),0,1);return x*x*(3-2*x)};
+
+const boxGeo = new THREE.BoxGeometry(1,1,1);
+const mats = {};
+function material(name,color,extra={}){
+  const m = new THREE.MeshStandardMaterial({color,roughness:.82,metalness:0,...extra});
+  m.name=name;
+  mats[name]=m;
+  return m;
+}
+const M = {
+  verm:material('vermillion','#C73E1D'),
+  vermDark:material('vermillion shade','#9F2F19'),
+  gold:material('gold','#E8B86D',{roughness:.36,metalness:.42}),
+  teak:material('deep teak','#4A2C1A'),
+  teakLight:material('cedar','#71432A'),
+  jade:material('jade','#2D6A4F',{roughness:.58}),
+  jadeLight:material('jade highlights','#40916C',{roughness:.58}),
+  jadeDark:material('jade shadow','#214F3D'),
+  stone:material('stone','#9AA0A6'),
+  stoneLight:material('light stone','#B5BABD'),
+  stoneDark:material('dark stone','#6F777C'),
+  moss:material('moss','#606C38'),
+  grass:material('grass','#6F8F4E'),
+  grassLight:material('grass light','#819D59'),
+  grassDark:material('grass dark','#59773F'),
+  dirt:material('earth','#735038'),
+  dirtDark:material('earth dark','#533A2C'),
+  rock:material('floating rock','#6D6B68'),
+  rockLight:material('floating rock light','#817D75'),
+  rockDark:material('floating rock dark','#4C5051'),
+  paper:material('illuminated washi','#FFD7A0',{emissive:'#FF9D55',emissiveIntensity:.75,roughness:.7}),
+  pink:material('sakura','#FFB7C5'),
+  pinkDeep:material('sakura deep','#FF8FAB'),
+  pinkPale:material('sakura pale','#FFE5EC'),
+  pine:material('pine needles','#285943'),
+  pineLight:material('pine tips','#3D7552'),
+  maple:material('maple red','#B84632'),
+  mapleGold:material('maple amber','#DB7B35'),
+  willow:material('willow','#789755'),
+  bamboo:material('bamboo','#A1A963'),
+  bambooDark:material('bamboo joints','#737C45'),
+  water:material('pond water','#7ED6DF',{transparent:true,opacity:.76,roughness:.18,metalness:.08,depthWrite:false}),
+  pondBed:material('pond bed','#386F6A'),
+  white:material('ivory','#F3E6CF'),
+  black:material('ink','#273238'),
+  redBib:material('jizo bib','#B83A32')
+};
+
+let totalVoxels=0;
+const dummy=new THREE.Object3D();
+class VoxelBatch{
+  constructor(parent){this.parent=parent;this.groups=new Map()}
+  add(mat,x,y,z,sx=1,sy=1,sz=1,ry=0,rz=0,rx=0){
+    const key=mat.uuid;
+    if(!this.groups.has(key))this.groups.set(key,{mat,items:[]});
+    this.groups.get(key).items.push([x,y,z,sx,sy,sz,rx,ry,rz]);
+    totalVoxels++;
+  }
+  build(){
+    for(const {mat,items} of this.groups.values()){
+      const mesh=new THREE.InstancedMesh(boxGeo,mat,items.length);
+      for(let i=0;i<items.length;i++){
+        const v=items[i];
+        dummy.position.set(v[0],v[1],v[2]);
+        dummy.scale.set(v[3],v[4],v[5]);
+        dummy.rotation.set(v[6],v[7],v[8]);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(i,dummy.matrix);
+      }
+      mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+      mesh.castShadow=!mat.transparent;
+      mesh.receiveShadow=true;
+      mesh.computeBoundingSphere();
+      this.parent.add(mesh);
+    }
+    this.groups.clear();
+  }
+}
+
+const world=new VoxelBatch(scene);
+const terrain=new Map();
+const key=(x,z)=>x+','+z;
+function boundary(x,z){
+  const a=Math.atan2(z,x);
+  const r=Math.sqrt(x*x*1.02+z*z*.97);
+  return r < 29.3+1.15*Math.sin(a*5)+.65*Math.sin(a*9+1.2);
+}
+function inPond(x,z){
+  const pond=((x+13)/7.4)**2+((z-5)/5.3)**2<1;
+  const channel=x<-19&&x>-30&&Math.abs(z-4)<1.55;
+  return pond||channel;
+}
+function groundAt(x,z){
+  const v=terrain.get(key(Math.round(x),Math.round(z)));
+  return v?v.h:0;
+}
+
+/* The 64 × 64 main island: grass cap, soil strata and a tapered rocky underside. */
+for(let x=-32;x<32;x++){
+  for(let z=-32;z<32;z++){
+    if(!boundary(x,z))continue;
+    const r=Math.sqrt(x*x+z*z);
+    const h=(r>23&&hash(x,z)>.72)?.5:0;
+    const d=4+Math.floor(Math.max(0,1-r/31)*15+hash(x+9,z-4)*3);
+    terrain.set(key(x,z),{h,d});
+    const water=inPond(x,z);
+    if(water){
+      world.add(M.pondBed,x,-1.02,z,.99,.35,.99);
+      world.add(M.water,x,-.18,z,1.01,.24,1.01);
+      world.add(M.dirtDark,x,-1.65,z,1,1,1);
+      world.add(M.dirtDark,x,-2.65,z,1,1,1);
+    }else{
+      const g=hash(x*2,z*3);
+      world.add(g>.82?M.grassLight:g<.15?M.grassDark:M.grass,x,h-.5,z,.99,.99,.99);
+      world.add(hash(x,z+2)>.6?M.dirt:M.dirtDark,x,h-1.5,z,.99,.99,.99);
+      world.add(M.dirtDark,x,h-2.5,z,.99,.99,.99);
+      if(hash(x+4,z)>.91)world.add(M.moss,x,h+.025,z,.72,.05,.72);
+      let nearWater=false;
+      for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]])if(inPond(x+dx,z+dz))nearWater=true;
+      if(nearWater)world.add(hash(x,z)>.5?M.stone:M.stoneDark,x,h+.08,z,.96,.3,.96);
+    }
+    world.add(hash(x-2,z)>.68?M.rockLight:M.rock,x,-d,z,.99,.99,.99);
+    const edge=!boundary(x+1,z)||!boundary(x-1,z)||!boundary(x,z+1)||!boundary(x,z-1);
+    if(edge){
+      for(let y=-3.5;y>-d;y-=1){
+        const rm=hash(x+y,z)>.7?M.rockDark:M.rock;
+        world.add(rm,x,y,z,.99,.99,.99);
+      }
+    }
+  }
+}
+for(const [k,v] of terrain){
+  const [x,z]=k.split(',').map(Number);
+  let deepest=v.d;
+  for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]){
+    const n=terrain.get(key(x+dx,z+dz));
+    if(n)deepest=Math.max(deepest,n.d);
+  }
+  for(let d=v.d+1;d<deepest;d++)world.add(d%3===0?M.rockDark:M.rock,x,-d,z,.99,.99,.99);
+}
+
+/* Zig-zag stone approach. */
+const pathPoints=[[0,25],[0,21],[-2.2,18],[1.8,15],[-.4,12],[2.4,9],[3,5.2]];
+for(let p=0;p<pathPoints.length-1;p++){
+  const a=pathPoints[p],b=pathPoints[p+1];
+  const dx=b[0]-a[0],dz=b[1]-a[1],len=Math.hypot(dx,dz),steps=Math.ceil(len/1.15);
+  for(let i=0;i<steps;i++){
+    const t=i/steps,x=a[0]+dx*t,z=a[1]+dz*t,y=groundAt(x,z);
+    world.add((i+p)%3===0?M.stoneLight:M.stone,x,y+.11,z,1.55,.22,.92,Math.atan2(dx,dz)+(rnd()-.5)*.12);
+  }
+}
+
+/* Five-story Goju-no-To. */
+const PX=3,PZ=-4;
+const pagodaFloors=5;
+const floorStates=[];
+const clickTargets=[];
+const invisibleMat=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,colorWrite:false});
+function boxMesh(mat,parent,x,y,z,sx,sy,sz){
+  const mesh=new THREE.Mesh(boxGeo,mat);
+  mesh.position.set(x,y,z);mesh.scale.set(sx,sy,sz);
+  mesh.castShadow=!mat.transparent;mesh.receiveShadow=true;
+  parent.add(mesh);totalVoxels++;
+  return mesh;
+}
+
+for(let layer=0;layer<2;layer++){
+  const half=7.2-layer*.65,step=.8,y=.24+layer*.42;
+  for(let x=-half;x<=half;x+=step)for(let z=-half;z<=half;z+=step){
+    world.add(hash(x*4,z*4)>.76?M.stoneLight:M.stone,PX+x,y,PZ+z,.77,.42,.77);
+  }
+}
+for(let s=0;s<4;s++)world.add(M.stoneLight,PX,.18+s*.18,PZ+7.5+s*.42,4.8-s*.5,.28,.85);
+
+const widths=[10.8,9.2,7.8,6.4,5.0];
+for(let floor=0;floor<5;floor++){
+  const fy=1.02+floor*4.25,w=widths[floor],half=w/2;
+  const roofY=fy+2.9,roofHalf=half+2.05;
+  const state={open:false,amount:0,left:null,right:null};
+  floorStates.push(state);
+
+  for(const sx of [-1,1])for(const sz of [-1,1]){
+    world.add(M.verm,PX+sx*(half-.28),fy+1.38,PZ+sz*(half-.28),.48,2.82,.48);
+    world.add(M.gold,PX+sx*(half-.28),fy+2.72,PZ+sz*(half-.28),.72,.25,.72);
+  }
+  for(const side of [-1,1]){
+    world.add(M.verm,PX+side*(half-.25),fy+1.38,PZ,.42,2.82,.42);
+    world.add(M.verm,PX,fy+1.38,PZ+side*(half-.25),.42,2.82,.42);
+  }
+
+  const step=.55;
+  for(const side of [-1,1]){
+    for(let u=-half+.65;u<=half-.65;u+=step){
+      for(let j=0;j<4;j++){
+        const yy=fy+.42+j*.55;
+        const doorGap=side===1&&Math.abs(u)<1.18;
+        if(!doorGap){
+          const frontBackMat=(j===1||j===2)&&Math.round((u+half)/step)%3!==0?M.paper:M.white;
+          world.add(frontBackMat,PX+u,yy,PZ+side*(half-.16),.51,.51,.26);
+        }
+        const sideMat=(j===1||j===2)&&Math.round((u+half)/step)%3!==0?M.paper:M.white;
+        world.add(sideMat,PX+side*(half-.16),yy,PZ+u,.26,.51,.51);
+      }
+    }
+  }
+  world.add(M.teak,PX,fy+.1,PZ,w+.45,.25,w+.45);
+  world.add(M.paper,PX,fy+1.35,PZ,.9,1.8,.9);
+
+  const balcony=half+.68;
+  for(let u=-balcony;u<=balcony;u+=.55){
+    forconst:
+  }
+}
+</script>
+</body>
+</html>
