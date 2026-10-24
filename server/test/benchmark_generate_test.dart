@@ -10,6 +10,68 @@ import 'package:test/test.dart';
 /// Covers the pure half of the dashboard's "Add benchmark": pulling the
 /// page out of a model's reply, reading the stream, and naming the entry.
 void main() {
+  group('benchmarkProvidersFrom', () {
+    Map<String, Object?> endpoint(String tag, String prompt, String out,
+            {num discount = 0, Object? throughput}) =>
+        {
+          'provider_name': tag.split('/').first,
+          'tag': tag,
+          'quantization': 'fp8',
+          'service_tier': null,
+          'pricing': {
+            'prompt': prompt,
+            'completion': out,
+            'input_cache_read': '0.00000001',
+            'discount': discount,
+          },
+          'max_completion_tokens': 16384,
+          'uptime_last_1d': 99.5,
+          'throughput_last_30m': throughput,
+          'supported_parameters': ['reasoning', 'max_tokens'],
+          'status': 0,
+        };
+
+    test('reads per-million prices, cheapest output first', () {
+      final rows = benchmarkProvidersFrom({
+        'data': {
+          'endpoints': [
+            endpoint('wafer', '0.00000016', '0.0000005'),
+            endpoint('deepinfra/fp8', '0.000000098', '0.000000294',
+                discount: 0.51, throughput: {'p50': 64}),
+          ],
+        },
+      });
+      expect(rows.map((r) => r['tag']), ['deepinfra/fp8', 'wafer']);
+      expect(rows.first['input'], closeTo(0.098, 1e-9));
+      expect(rows.first['output'], closeTo(0.294, 1e-9));
+      expect(rows.first['discount'], 0.51);
+      expect(rows.first['throughput'], 64);
+      expect(rows.first['maxOutput'], 16384);
+      expect(rows.last['discount'], 0.0);
+    });
+
+    test('drops rows it cannot price or route to', () {
+      final rows = benchmarkProvidersFrom({
+        'data': {
+          'endpoints': [
+            endpoint('Bad Tag!', '0.1', '0.1'),
+            {'tag': 'noprice', 'pricing': {}},
+            'junk',
+          ],
+        },
+      });
+      expect(rows, isEmpty);
+      expect(benchmarkProvidersFrom('not json'), isEmpty);
+    });
+
+    test('pins a run to the one provider', () {
+      expect(benchmarkProviderRouting('deepinfra/fp8'), {
+        'order': ['deepinfra/fp8'],
+        'allow_fallbacks': false,
+      });
+    });
+  });
+
   group('extractBenchmarkHtml', () {
     const page = '<!DOCTYPE html><html><body><canvas></canvas></body></html>';
 
@@ -163,8 +225,8 @@ void main() {
       expect(dealt.trimRight(), endsWith('breaks it.'));
       expect(benchmarkPromptWithLot(kind, prompt, 'butterfly_knife_x'), dealt);
       expect(benchmarkPromptWithLot('pagoda', prompt, 'x'), prompt);
-      expect(benchmarkPromptWithLot(kind, 'my own prompt', 'x'),
-          'my own prompt');
+      expect(
+          benchmarkPromptWithLot(kind, 'my own prompt', 'x'), 'my own prompt');
 
       for (final line in [
         'PALETTE AND FINISH',

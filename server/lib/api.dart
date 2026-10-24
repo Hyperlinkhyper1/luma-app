@@ -848,6 +848,8 @@ class Api {
           _requireAdmin(_adminBenchmarkGenState))
       ..post('/admin/benchmarks/generate',
           _requireAdmin(_adminBenchmarkGenStart))
+      ..get('/admin/benchmarks/generate/providers',
+          _requireAdmin(_adminBenchmarkGenProviders))
       ..post('/admin/benchmarks/generate/<id>/stop',
           _requireAdmin(_adminBenchmarkGenStop))
       ..post('/admin/benchmarks/generate/<id>/dismiss',

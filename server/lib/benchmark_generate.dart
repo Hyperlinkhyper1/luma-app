@@ -392,6 +392,77 @@ String benchmarkBatchBaseModel(String modelId) =>
         ? modelId.substring(0, modelId.length - kBenchmarkBatchSuffix.length)
         : modelId;
 
+/// An OpenRouter provider slug as its endpoints list tags it
+/// (`deepinfra/fp8`, `sail-research`).
+final kOpenRouterProviderPattern =
+    RegExp(r'^[a-z0-9][a-z0-9._-]{0,60}(/[a-z0-9._-]{1,30})?$');
+
+/// The providers OpenRouter serves [modelId] through, read from its
+/// `GET /models/{id}/endpoints` reply: one row each, prices per million
+/// tokens with any discount already applied, cheapest output first.
+List<Map<String, Object?>> benchmarkProvidersFrom(Object? decoded) {
+  final data = decoded is Map ? decoded['data'] : null;
+  final endpoints = data is Map ? data['endpoints'] : null;
+  if (endpoints is! List) return const [];
+  double? perM(Object? v) {
+    final d = v is num ? v.toDouble() : double.tryParse('$v');
+    return d == null || d < 0 ? null : d * 1e6;
+  }
+
+  double? stat(Object? v) {
+    if (v is num) return v.toDouble();
+    if (v is Map && v['p50'] is num) return (v['p50'] as num).toDouble();
+    return null;
+  }
+
+  final rows = <Map<String, Object?>>[];
+  for (final e in endpoints) {
+    if (e is! Map) continue;
+    final tag = e['tag'];
+    final pricing = e['pricing'];
+    if (tag is! String || !kOpenRouterProviderPattern.hasMatch(tag)) continue;
+    if (pricing is! Map) continue;
+    final input = perM(pricing['prompt']), output = perM(pricing['completion']);
+    if (input == null || output == null) continue;
+    final discount = pricing['discount'] is num
+        ? (pricing['discount'] as num).toDouble()
+        : 0.0;
+    final params = e['supported_parameters'];
+    rows.add({
+      'tag': tag,
+      'name': e['provider_name'] is String ? e['provider_name'] : tag,
+      'quantization':
+          e['quantization'] is String && e['quantization'] != 'unknown'
+              ? e['quantization']
+              : null,
+      'tier': e['service_tier'] is String ? e['service_tier'] : null,
+      'input': input,
+      'output': output,
+      'cacheRead': perM(pricing['input_cache_read']),
+      'discount': discount > 0 && discount < 1 ? discount : 0.0,
+      'maxOutput': (e['max_completion_tokens'] as num?)?.toInt(),
+      'context': (e['context_length'] as num?)?.toInt(),
+      'uptime': stat(e['uptime_last_1d']) ?? stat(e['uptime_last_30m']),
+      'latencyMs': stat(e['latency_last_30m']),
+      'throughput': stat(e['throughput_last_30m']),
+      'reasoning': params is List && params.contains('reasoning'),
+      'down': e['status'] is num && (e['status'] as num) < 0,
+    });
+  }
+  rows.sort((a, b) =>
+      (a['output'] as double).compareTo(b['output'] as double) != 0
+          ? (a['output'] as double).compareTo(b['output'] as double)
+          : (a['input'] as double).compareTo(b['input'] as double));
+  return rows;
+}
+
+/// OpenRouter's routing block pinning a request to [provider] alone, so a
+/// run is never quietly served (and billed) by a different one.
+Map<String, Object> benchmarkProviderRouting(String provider) => {
+      'order': [provider],
+      'allow_fallbacks': false,
+    };
+
 /// Batch statuses OpenRouter never moves on from.
 const kBenchmarkBatchTerminal = {'completed', 'failed', 'expired', 'cancelled'};
 

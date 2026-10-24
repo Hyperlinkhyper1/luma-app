@@ -16,6 +16,10 @@ class BenchmarkGenJob {
     required this.startedAtMs,
     this.batchId,
     this.replaces = false,
+    this.provider,
+    this.providerName,
+    this.providerInput,
+    this.providerOutput,
   });
 
   /// Rebuilds a batch run saved by [toState] after a restart.
@@ -37,6 +41,10 @@ class BenchmarkGenJob {
       startedAtMs: (j['startedAtMs'] as num).toInt(),
       batchId: batchId,
       replaces: j['replaces'] == true,
+      provider: j['provider'] as String?,
+      providerName: j['providerName'] as String?,
+      providerInput: (j['providerInput'] as num?)?.toDouble(),
+      providerOutput: (j['providerOutput'] as num?)?.toDouble(),
     )
       ..status = j['status'] == 'failed' || j['status'] == 'stopped'
           ? j['status'] as String
@@ -70,6 +78,14 @@ class BenchmarkGenJob {
   /// True when this run writes a new page for an existing entry (same id,
   /// name and company) instead of adding one. The old page is backed up.
   final bool replaces;
+
+  /// The one OpenRouter provider the run is pinned to (`deepinfra/fp8`),
+  /// with its name and the per-million prices it listed when the run
+  /// started. Null lets OpenRouter route as it likes.
+  final String? provider;
+  final String? providerName;
+  final double? providerInput;
+  final double? providerOutput;
 
   /// Runs through OpenRouter's Batch API: half price, no stream, done
   /// within 24 hours.
@@ -141,6 +157,10 @@ class BenchmarkGenJob {
         'batchStatus': batchStatus,
         'batchId': batchId,
         'replaces': replaces,
+        'provider': provider,
+        'providerName': providerName,
+        'providerInput': providerInput,
+        'providerOutput': providerOutput,
         ...publish,
       };
 
@@ -172,10 +192,19 @@ class BenchmarkGenJob {
         'error': error,
         'finishedAtMs': finishedAtMs,
         'replaces': replaces,
+        'provider': provider,
+        'providerName': providerName,
+        'providerInput': providerInput,
+        'providerOutput': providerOutput,
       };
 }
 
 final _benchmarkGenJobs = <BenchmarkGenJob>[];
+
+/// OpenRouter's provider list per model, kept a few minutes so opening the
+/// list and then starting the run read the same prices.
+final _benchmarkProviderCache =
+    <String, (DateTime, List<Map<String, Object?>>)>{};
 
 extension BenchmarkGenerateApi on Api {
   static const _maxRunning = 3;
@@ -285,6 +314,42 @@ extension BenchmarkGenerateApi on Api {
     });
   }
 
+  /// The providers OpenRouter serves one model through, with their prices,
+  /// for the dialog's provider list.
+  Future<Response> _adminBenchmarkGenProviders(Request request) async {
+    final model = benchmarkBatchBaseModel(
+        (request.url.queryParameters['model'] ?? '').trim());
+    if (!isValidAiModelId(model) || !model.contains('/')) {
+      return errorResponse(400, 'bad_request', 'Pick an OpenRouter model.');
+    }
+    final providers = await _benchmarkProviders(model);
+    if (providers == null) {
+      return errorResponse(
+          502, 'upstream', 'OpenRouter did not list the providers for $model.');
+    }
+    return jsonResponse(200, {'model': model, 'providers': providers});
+  }
+
+  /// [model]'s providers from OpenRouter, or null when it couldn't say.
+  Future<List<Map<String, Object?>>?> _benchmarkProviders(String model) async {
+    final cached = _benchmarkProviderCache[model];
+    if (cached != null &&
+        DateTime.now().difference(cached.$1) < const Duration(minutes: 10)) {
+      return cached.$2;
+    }
+    final path = model.split('/').map(Uri.encodeComponent).join('/');
+    final (status, body) =
+        await _openRouterBatchCall('GET', '/models/$path/endpoints');
+    if (status == HttpStatus.notFound) return const [];
+    if (status != HttpStatus.ok) return null;
+    final providers = benchmarkProvidersFrom(body);
+    _benchmarkProviderCache[model] = (DateTime.now(), providers);
+    if (_benchmarkProviderCache.length > 200) {
+      _benchmarkProviderCache.remove(_benchmarkProviderCache.keys.first);
+    }
+    return providers;
+  }
+
   /// Starts a run. The scene id is picked here, never by the client, so a
   /// run only ever adds a new contestant, unless the request names an
   /// existing test to regenerate (`replaceId`).
@@ -392,6 +457,29 @@ extension BenchmarkGenerateApi on Api {
             409, 'busy', 'A run is already waiting on that batch.');
       }
     }
+    // A provider pins the run to that one OpenRouter endpoint. Its prices
+    // are looked up here, never taken from the client.
+    final providerTag = str('provider');
+    Map<String, Object?>? provider;
+    if (providerTag.isNotEmpty) {
+      if (upstream != AiUpstream.openrouter || batch) {
+        return errorResponse(400, 'bad_request',
+            'A provider can only be picked for a streamed OpenRouter run.');
+      }
+      if (!kOpenRouterProviderPattern.hasMatch(providerTag)) {
+        return errorResponse(400, 'bad_request', 'That isn\'t a provider.');
+      }
+      final providers = await _benchmarkProviders(model);
+      if (providers == null) {
+        return errorResponse(502, 'upstream',
+            'OpenRouter did not list the providers for $model. Try again, or let OpenRouter pick.');
+      }
+      provider = providers.where((p) => p['tag'] == providerTag).firstOrNull;
+      if (provider == null) {
+        return errorResponse(400, 'bad_request',
+            'OpenRouter does not serve $model through $providerTag.');
+      }
+    }
     final running = _benchmarkGenJobs
         .where((j) => j.status == 'running' && j.batch == batch)
         .length;
@@ -425,6 +513,10 @@ extension BenchmarkGenerateApi on Api {
       maxTokens: maxTokens,
       startedAtMs: DateTime.now().millisecondsSinceEpoch,
       batchId: existingBatch.isEmpty ? null : existingBatch,
+      provider: provider == null ? null : providerTag,
+      providerName: provider?['name'] as String?,
+      providerInput: provider?['input'] as double?,
+      providerOutput: provider?['output'] as double?,
     );
     _benchmarkGenJobs.add(job);
     await _pruneBenchmarkGenJobs();
@@ -683,6 +775,8 @@ extension BenchmarkGenerateApi on Api {
         'reasoning': effort == 'none' ? {'enabled': false} : {'effort': effort},
       if (effort != null && route.upstream != AiUpstream.openrouter)
         'reasoning_effort': effort,
+      if (job.provider != null)
+        'provider': benchmarkProviderRouting(job.provider!),
     };
   }
 
@@ -763,9 +857,8 @@ extension BenchmarkGenerateApi on Api {
             await _finishBenchmarkGen(job, acc);
           }
           // The reply is saved here now; OpenRouter needn't keep a copy.
-          unawaited(
-              _openRouterBatchCall('DELETE', '/batches/${job.batchId}')
-                  .then((_) {}, onError: (_) {}));
+          unawaited(_openRouterBatchCall('DELETE', '/batches/${job.batchId}')
+              .then((_) {}, onError: (_) {}));
           return;
         }
       } else if (missing ||
@@ -786,11 +879,10 @@ extension BenchmarkGenerateApi on Api {
     job.status = 'stopped';
   }
 
-  /// One call to OpenRouter's Batch API on the server's key. Returns the
-  /// status and the decoded JSON, or the raw text when it isn't JSON; a
-  /// network failure comes back as status 0.
-  Future<(int, Object?)> _openRouterBatchCall(
-      String method, String path,
+  /// One call to OpenRouter's REST API (batches, model endpoints) on the
+  /// server's key. Returns the status and the decoded JSON, or the raw text
+  /// when it isn't JSON; a network failure comes back as status 0.
+  Future<(int, Object?)> _openRouterBatchCall(String method, String path,
       {Map<String, dynamic>? body}) async {
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 30);
@@ -944,6 +1036,7 @@ extension BenchmarkGenerateApi on Api {
         'from the admin dashboard: '
         '${job.route.upstream.label} · $model'
         '${effort == null ? '' : ' · $effort reasoning'}'
+        '${job.providerName == null ? '' : ' · via ${job.providerName}'}'
         '${job.batch ? ' · batch' : ''}.';
     final bytes = utf8.encode(page!);
     final Map<String, dynamic> entry;
@@ -1054,6 +1147,11 @@ String _bgDialogHtml({String deciderView = ''}) =>
     '<input id="bgModelId" class="bn-input" maxlength="200" '
     'spellcheck="false" autocomplete="off" placeholder="vendor/model-name">'
     '</label>'
+    '<div id="bgProviderField" class="bg-provider" hidden>'
+    '<div class="bg-prov-head"><span id="bgProvLabel">Provider</span>'
+    '<span id="bgProvNote" class="muted"></span></div>'
+    '<div id="bgProviders" class="bg-providers" role="radiogroup" '
+    'aria-labelledby="bgProvLabel"></div></div>'
     '<label id="bgBatchIdField" class="bm-field" style="margin-top:10px" '
     'hidden><span>Existing batch id <span class="muted">(optional: wait on '
     'a batch that was already submitted instead of paying for a new one)'
@@ -1139,6 +1237,27 @@ const _bgCss = r'''
 .bg-model-stats{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:11.5px;color:#c5bed9;margin-top:3px;font-variant-numeric:tabular-nums}
 .bg-model-stats b{color:#ece8f7;font-weight:600}
 .bg-empty{grid-column:1/-1;color:#8d86a8;font-size:12.5px;padding:14px 4px}
+.bg-provider{margin-top:12px}
+.bg-prov-head{display:flex;align-items:baseline;gap:10px;margin-bottom:6px;font-size:12.5px;color:#c5bed9;font-weight:600}
+.bg-prov-head .muted{margin-left:auto;font-weight:400;font-size:12px}
+.bg-providers{max-height:300px;overflow:auto;border:1px solid #241e36;border-radius:10px;background:#12101e}
+.bg-prov-row{display:grid;grid-template-columns:minmax(0,2fr) repeat(4,minmax(64px,.8fr)) minmax(58px,.7fr) minmax(74px,.9fr);gap:8px;align-items:center;width:100%;padding:8px 12px;text-align:right;font:inherit;font-size:12.5px;color:#c5bed9;font-variant-numeric:tabular-nums;background:none;border:0;border-bottom:1px solid #1d1830}
+.bg-prov-row:last-child{border-bottom:0}
+.bg-prov-row>:first-child{text-align:left;min-width:0}
+.bg-prov-cols{position:sticky;top:0;z-index:1;background:#16132a;color:#8d86a8;font-size:11.5px;font-weight:600;padding-top:7px;padding-bottom:7px}
+button.bg-prov-row{cursor:pointer}
+button.bg-prov-row:hover{background:#161228}
+button.bg-prov-row:focus-visible{outline:2px solid #8a7ee0;outline-offset:-2px}
+button.bg-prov-row[aria-checked=true]{background:#1a1530;box-shadow:inset 3px 0 0 #8a7ee0;color:#ece8f7}
+.bg-prov-name{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;color:#ece8f7;font-weight:600}
+.bg-prov-sub{display:block;font-size:11px;color:#8d86a8;font-weight:400;margin-top:2px}
+.bg-prov-row s{color:#6f6889;margin-right:4px;font-size:11px}
+.bg-prov-row .is-off{color:#7ee08a}
+.bg-prov-row .bg-prov-est b{color:#d9d2ff;font-weight:650}
+.bg-prov-row .bg-tag.is-off{background:#17301f;border-color:#24502f;color:#8ee59a}
+.bg-prov-row .bg-tag.is-down{background:#3a2430;border-color:#5a3040;color:#ec9a9a}
+.bg-prov-row .is-warn{color:#e8c37a}
+.bg-providers .bg-empty{padding:12px}
 .bg-prompt{margin-top:10px;background:#12101e;border:1px solid #241e36;border-radius:10px}
 .bg-prompt>summary{cursor:pointer;padding:10px 12px;font-size:12.5px;color:#c5bed9;font-weight:600;list-style:none;display:flex;gap:8px;align-items:center}
 .bg-prompt>summary::-webkit-details-marker{display:none}
@@ -1185,7 +1304,7 @@ const _bgCss = r'''
 .bg-bar::after{content:"";position:absolute;inset:0;width:35%;border-radius:99px;background:linear-gradient(90deg,#8a7ee0,#a89bf0);animation:bg-slide 1.4s ease-in-out infinite}
 @keyframes bg-slide{from{transform:translateX(-100%)}to{transform:translateX(290%)}}
 @media (prefers-reduced-motion:reduce){.bg-bar::after{animation:none;width:100%;opacity:.5}}
-@media (max-width:700px){.bg-body{padding-left:14px;padding-right:14px}.bg-run{grid-template-columns:1fr}.bg-run-actions{justify-content:flex-start}.bg-preview code{margin-left:0}}
+@media (max-width:700px){.bg-prov-row{grid-template-columns:minmax(0,1.6fr) repeat(2,minmax(56px,.8fr)) minmax(68px,.9fr)}.bg-prov-row>.bg-prov-wide{display:none}.bg-body{padding-left:14px;padding-right:14px}.bg-run{grid-template-columns:1fr}.bg-run-actions{justify-content:flex-start}.bg-preview code{margin-left:0}}
 ''';
 
 /// Drives the dialog and the runs list under the scenes card. Polls the
@@ -1212,6 +1331,10 @@ const _bgScript = r'''
   // Set while regenerating an existing test: { id, kind, name }.
   let replace = null;
   let timer = null;
+  // OpenRouter's providers for the model in provFor; provTag is the one
+  // picked, '' for letting OpenRouter route.
+  let providers = null, provFor = '', provPending = '', provErr = '', provTag = '', provReq = 0, provTimer = null;
+  const providersBox = $('bgProviders');
 
   function esc(v) {
     return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({
@@ -1268,6 +1391,106 @@ const _bgScript = r'''
       cost: p ? (input * p.input + out * p.output) / 1e6 : null };
   }
   function currentTest() { return state && state.costModel ? state.tests.find((x) => x.kind === kind) : null; }
+
+  // The provider list only applies to a streamed OpenRouter model.
+  function providerApplies(id) { return key === 'openrouter' && id.includes('/') && !isBatch(id); }
+  function pickedProvider() {
+    const id = modelId.value.trim();
+    return provTag && providers && provFor === id ? providers.find((p) => p.tag === provTag) || null : null;
+  }
+  // [m] priced like [p]: the provider's own rates instead of the catalog's.
+  function withProvider(m, p) {
+    if (!p) return m;
+    return Object.assign({}, m || { id: modelId.value.trim(), upstream: key }, { input: p.input, output: p.output });
+  }
+  function loadProviders() {
+    const id = modelId.value.trim();
+    if (providerApplies(id) && (id === provFor || id === provPending)) { renderProviders(); return; }
+    clearTimeout(provTimer);
+    const n = ++provReq;
+    providers = null; provFor = ''; provTag = ''; provErr = '';
+    provPending = providerApplies(id) ? id : '';
+    renderProviders();
+    if (!provPending) return;
+    // Typing an ID waits for a pause before asking.
+    provTimer = setTimeout(() => {
+      fetch('/admin/benchmarks/generate/providers?model=' + encodeURIComponent(id), { credentials: 'same-origin' })
+        .then(json).then((r) => {
+          if (n !== provReq) return;
+          provPending = '';
+          provFor = id;
+          providers = Array.isArray(r.providers) ? r.providers : null;
+          provErr = providers ? '' : r.message || 'Could not list the providers.';
+          autofill();
+        }).catch(() => {
+          if (n !== provReq) return;
+          provPending = '';
+          provFor = id; providers = null; provErr = 'Could not list the providers (network error).';
+          renderProviders();
+        });
+    }, 300);
+  }
+  function renderProviders() {
+    const id = modelId.value.trim();
+    const show = providerApplies(id);
+    $('bgProviderField').hidden = !show;
+    if (!show) return;
+    const note = $('bgProvNote');
+    if (provFor !== id) { note.textContent = ''; providersBox.innerHTML = '<div class="bg-empty">Loading OpenRouter’s providers…</div>'; return; }
+    if (!providers) { note.textContent = ''; providersBox.innerHTML = '<div class="bg-empty">' + esc(provErr) + ' The run can still let OpenRouter pick.</div>'; return; }
+    note.textContent = providers.length ? providers.length + ' serve' + (providers.length === 1 ? 's' : '') + ' this model · per million tokens' : '';
+    const t = currentTest();
+    const cap = Number(maxTokens.value) || 0;
+    function est(m) {
+      if (!t || t.manual || !priceOf(m)) return '–';
+      const e = estimate(m, effort.value, t);
+      return e.cost == null ? '–' : '≈ <b>' + esc(usd(e.cost)) + '</b>';
+    }
+    function was(p, v) { return p.discount ? '<s>' + esc(price(v / (1 - p.discount))) + '</s>' : ''; }
+    function cell(v, cls) { return '<span' + (cls ? ' class="' + cls + '"' : '') + '>' + v + '</span>'; }
+    const head = '<div class="bg-prov-row bg-prov-cols" aria-hidden="true"><span>Provider</span><span>Input</span><span>Output</span>'
+      + '<span class="bg-prov-wide">Cache read</span><span class="bg-prov-wide">Max out</span><span class="bg-prov-wide">Uptime</span><span>Est. / run</span></div>';
+    const auto = '<button type="button" role="radio" class="bg-prov-row" data-value="" aria-checked="false">'
+      + '<span><span class="bg-prov-name">Auto</span><span class="bg-prov-sub">OpenRouter picks, and falls back on errors</span></span>'
+      + cell(esc(model && price(model.input) || '–')) + cell(esc(model && price(model.output) || '–'))
+      + cell('–', 'bg-prov-wide') + cell(model && model.maxOutput ? kfmt(model.maxOutput) : '–', 'bg-prov-wide') + cell('–', 'bg-prov-wide')
+      + cell(est(model), 'bg-prov-est') + '</button>';
+    const rows = providers.map((p) => {
+      const tags = [];
+      if (p.quantization) tags.push('<span class="bg-tag">' + esc(p.quantization) + '</span>');
+      if (p.tier) tags.push('<span class="bg-tag">' + esc(p.tier.charAt(0).toUpperCase() + p.tier.slice(1)) + '</span>');
+      if (p.discount) tags.push('<span class="bg-tag is-off">' + Math.round(p.discount * 100) + '% off</span>');
+      if (p.down) tags.push('<span class="bg-tag is-down">Down</span>');
+      const sub = [];
+      if (p.latencyMs != null) sub.push((p.latencyMs / 1000).toFixed(2) + 's latency');
+      if (p.throughput != null) sub.push(Math.round(p.throughput) + ' tps');
+      if (!p.reasoning) sub.push('no reasoning control');
+      const short = p.maxOutput && cap > p.maxOutput;
+      return '<button type="button" role="radio" class="bg-prov-row" data-value="' + esc(p.tag) + '" aria-checked="false"'
+        + ' title="' + esc(p.name + ' · ' + p.tag + (short ? ' · writes at most ' + kfmt(p.maxOutput) + ' tokens' : '')) + '">'
+        + '<span><span class="bg-prov-name">' + esc(p.name) + tags.join('') + '</span>'
+        + (sub.length ? '<span class="bg-prov-sub">' + esc(sub.join(' · ')) + '</span>' : '') + '</span>'
+        + cell(was(p, p.input) + esc(price(p.input)), p.discount ? 'is-off' : '')
+        + cell(was(p, p.output) + esc(price(p.output)), p.discount ? 'is-off' : '')
+        + cell(p.cacheRead == null ? '–' : esc(price(p.cacheRead)), 'bg-prov-wide')
+        + cell(p.maxOutput ? kfmt(p.maxOutput) : '–', 'bg-prov-wide' + (short ? ' is-warn' : ''))
+        + cell(p.uptime == null ? '–' : p.uptime.toFixed(1) + '%', 'bg-prov-wide')
+        + cell(est(withProvider(model, p)), 'bg-prov-est') + '</button>';
+    });
+    const focused = providersBox.contains(document.activeElement) ? document.activeElement.dataset.value : null;
+    providersBox.innerHTML = head + auto + (providers.length ? rows.join('')
+      : '<div class="bg-empty">OpenRouter lists no providers for this model.</div>');
+    radio(providersBox, provTag);
+    if (focused != null) {
+      const b = [...providersBox.querySelectorAll('[role=radio]')].find((x) => x.dataset.value === focused);
+      if (b) b.focus();
+    }
+  }
+  function pickProvider(tag) {
+    provTag = tag;
+    radio(providersBox, tag);
+    autofill();
+  }
   function effortCols(m) {
     if (!thinks(m)) return [''];
     const b = baseOf(m);
@@ -1282,7 +1505,9 @@ const _bgScript = r'''
       table.innerHTML = '';
       return;
     }
-    const e = estimate(model, effort.value, t);
+    const prov = pickedProvider();
+    const pm = withProvider(model, prov);
+    const e = estimate(pm, effort.value, t);
     const parts = [e.cost == null
       ? '<span>Estimated cost: no price listed for this model</span>'
       : '<span>Estimated cost <b>≈ ' + usd(e.cost) + '</b> per run</span>'];
@@ -1290,6 +1515,10 @@ const _bgScript = r'''
     if (!thinks(model)) parts.push('<span class="muted">Lists no reasoning, so effort changes nothing</span>');
     if (e.capped) parts.push('<span class="bg-cost-warn">Reaches the ' + kfmt(e.out) + ' output cap; the page may be cut off</span>');
     if (e.ref) parts.push('<span class="muted">OpenRouter price for the same model</span>');
+    if (prov) parts.push('<span class="muted">on ' + esc(prov.name) + '’s prices</span>');
+    if (prov && prov.maxOutput && (Number(maxTokens.value) || 0) > prov.maxOutput) {
+      parts.push('<span class="bg-cost-warn">' + esc(prov.name) + ' writes at most ' + kfmt(prov.maxOutput) + ' tokens, below the output cap</span>');
+    }
     line.innerHTML = parts.join('');
 
     const cols = effortCols(model);
@@ -1299,7 +1528,7 @@ const _bgScript = r'''
       + cols.map((c) => '<th>' + esc(c ? EFFORT_LABEL[c] : 'Any effort') + '</th>').join('')
       + '</tr></thead><tbody>'
       + tests.map((x) => '<tr><td>' + esc(x.label) + '</td>' + cols.map((c) => {
-        const r = estimate(model, c, x);
+        const r = estimate(pm, c, x);
         const cls = [x.kind === kind && c === cur ? 'is-current' : '', r.capped ? 'is-capped' : ''].filter(Boolean).join(' ');
         return '<td' + (cls ? ' class="' + cls + '"' : '')
           + ' title="' + esc(kfmt(r.input) + ' in · ' + kfmt(r.out) + ' out' + (r.capped ? ', at the output cap' : '')) + '">'
@@ -1460,8 +1689,10 @@ const _bgScript = r'''
     if (!vendorEdited && !replace) vendor.value = entryVendor();
     if (!maxEdited) {
       const def = state ? state.defaultMaxTokens : 64000;
-      maxTokens.value = model && model.maxOutput ? Math.min(model.maxOutput, def) : def;
+      const prov = pickedProvider();
+      maxTokens.value = Math.min(def, model && model.maxOutput || def, prov && prov.maxOutput || def);
     }
+    loadProviders();
     preview();
   }
   function preview() {
@@ -1483,6 +1714,7 @@ const _bgScript = r'''
 
   radioKeys(keysBox, pickKey);
   radioKeys(testsBox, pickTest);
+  radioKeys(providersBox, pickProvider);
   modelsBox.addEventListener('click', (e) => {
     const b = e.target.closest('[role=option]');
     if (b) pickModel(b.dataset.id);
@@ -1499,8 +1731,8 @@ const _bgScript = r'''
   });
   nameBox.addEventListener('input', () => { nameEdited = nameBox.value.trim() !== ''; preview(); });
   vendor.addEventListener('change', () => { vendorEdited = true; preview(); });
-  maxTokens.addEventListener('input', () => { maxEdited = true; renderCost(); renderModels(); });
-  prompt.addEventListener('input', renderCost);
+  maxTokens.addEventListener('input', () => { maxEdited = true; renderCost(); renderModels(); renderProviders(); });
+  prompt.addEventListener('input', () => { renderCost(); renderProviders(); });
   $('bgPromptReset').addEventListener('click', () => { if (kind) pickTest(kind); });
   dlg.addEventListener('click', (e) => {
     if (e.target.closest('[data-close]') || e.target === dlg) dlg.close();
@@ -1575,6 +1807,7 @@ const _bgScript = r'''
       name: nameBox.value.trim(), vendor: vendor.value,
       maxTokens: Number(maxTokens.value) || undefined,
       batchId: isBatch(id) ? $('bgBatchId').value.trim() : '',
+      provider: pickedProvider() ? provTag : '',
       prompt: t && prompt.value === t.prompt ? '' : prompt.value,
       replaceId: replace ? replace.id : '',
     }).then((j) => {
@@ -1603,7 +1836,8 @@ const _bgScript = r'''
       if (j.chars) bits.push('Generated: ' + (j.outputTokens ? kfmt(j.outputTokens) + ' output tokens / ' : '') + kfmt(j.chars) + ' chars');
       else if (j.reasoningChars) bits.push(kfmt(j.reasoningChars) + ' characters of reasoning');
       if (j.tokens) bits.push(kfmt(j.tokens) + ' total tokens');
-      const jp = priceOf(allModels.find((m) => m.upstream === j.upstream && m.id === j.model));
+      const jp = j.providerOutput != null ? { input: j.providerInput || 0, output: j.providerOutput }
+        : priceOf(allModels.find((m) => m.upstream === j.upstream && m.id === j.model));
       if (j.tokens && jp) {
         const out = Math.min(j.outputTokens || 0, j.tokens);
         bits.push('Cost ≈ ' + usd(((j.tokens - out) * jp.input + out * jp.output) / 1e6));
@@ -1634,6 +1868,7 @@ const _bgScript = r'''
         + (j.replaces ? '<span class="badge">Regenerate</span>' : '') + badge + '</div>'
         + '<div class="bg-run-meta">' + esc(j.upstreamLabel) + ' · <code>' + esc(j.model) + '</code>'
         + (j.effort ? ' · ' + esc(EFFORT_LABEL[j.effort] || j.effort) + ' reasoning' : '')
+        + (j.providerName ? ' · via ' + esc(j.providerName) : '')
         + ' → <code>' + esc(j.sceneId) + '</code></div></div>'
         + '<div class="bg-run-actions">' + actions.join('') + '</div>'
         + (running ? '<div class="bg-bar" role="progressbar" aria-label="' + esc(j.name) + ' is running"></div>' : '')
