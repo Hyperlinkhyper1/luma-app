@@ -34,6 +34,8 @@ import 'cs2_voice_translate.dart';
 import 'decider_test.dart';
 import 'deploy_console.dart';
 import 'power_console.dart';
+import 'admin_projects.dart';
+import 'fishing_waters.dart';
 import 'update_check.dart';
 import 'family_store.dart';
 import 'mail.dart';
@@ -116,6 +118,7 @@ class ServerConfig {
     required this.oauthProviders,
     this.searxngUrl,
     this.openRouterApiKey,
+    this.fishingWatersKey,
   });
 
   final int port;
@@ -175,6 +178,11 @@ class ServerConfig {
   /// which upstream and model is picked in the admin dashboard's Assistant
   /// tab (see [AiModeRoutingStore]). Never sent to clients.
   final String? openRouterApiKey;
+
+  /// LUMA_FISHING_WATERS_KEY: the shared secret the Roblox game Fishing
+  /// Waters sends with its heartbeats (see [FishingWaters]). Unset leaves
+  /// that bridge switched off.
+  final String? fishingWatersKey;
 
   bool get openRouterKeyConfigured =>
       openRouterApiKey != null && openRouterApiKey!.isNotEmpty;
@@ -303,6 +311,7 @@ class ServerConfig {
       mistralApiKey: env['LUMA_MISTRAL_API_KEY'],
       googleApiKey: env['LUMA_GOOGLE_API_KEY'],
       openRouterApiKey: env['LUMA_OPENROUTER_API_KEY'],
+      fishingWatersKey: env['LUMA_FISHING_WATERS_KEY'],
       itadApiKey: env['LUMA_ITAD_API_KEY'],
       groceriesUrl:
           env['LUMA_GROCERIES_URL'] ?? 'https://groceries.luma-app.cc',
@@ -735,12 +744,25 @@ class Api {
       ..post(
           '/api/v1/subway/rooms/<code>/ticket', _requireAuth(_mintSubwayTicket))
       ..get('/api/v1/subway/room/<room>', _subwayRoomSocket)
+      ..post('/api/v1/fishing-waters/heartbeat',
+          (Request r) => fishingWaters.heartbeat(r))
       ..get('/admin/login', _adminLoginPage)
       ..post('/admin/login', _adminLoginSubmit)
       ..post('/admin/logout', _adminLogout)
       ..post('/admin/logout-all', _requireAdmin(_adminLogoutAll))
       ..get('/admin', _requireAdmin(_adminDashboard))
       ..get('/admin/users', _requireAdmin(_adminUsers))
+      ..get('/admin/fishing-waters/state', _requireAdmin(fishingWaters.state))
+      ..post('/admin/fishing-waters/weather',
+          _requireAdmin(fishingWaters.setWeather))
+      ..post(
+          '/admin/fishing-waters/grants', _requireAdmin(fishingWaters.grant))
+      ..post('/admin/fishing-waters/grants/revoke',
+          _requireAdmin(fishingWaters.revoke))
+      ..get(
+          '/admin/fishing-waters/avatar/<id>',
+          (Request r, String id) =>
+              _requireAdmin((r) => fishingWaters.avatar(r, id))(r))
       ..get('/admin/stats', _requireAdmin(_adminStats))
       ..get('/admin/metrics', _requireAdmin(_adminMetrics))
       ..get('/admin/metrics/history', _requireAdmin(_adminMetricsHistory))
@@ -3153,6 +3175,11 @@ class Api {
   /// The Team Clipboard: its entries, files and who is on the team (see
   /// `api_team_board.dart`).
   late final TeamBoardStore teamBoard = TeamBoardStore(config.dataDir);
+
+  /// The admin dashboard's Fishing Waters project and the Roblox game's
+  /// heartbeat endpoint (see `fishing_waters.dart`).
+  late final FishingWaters fishingWaters =
+      FishingWaters(config.dataDir, gameKey: config.fishingWatersKey);
 
   /// The Team Clipboard's Discord bot (see `api_team_discord.dart`). It
   /// only connects once `main` calls `start`.
@@ -11151,10 +11178,9 @@ syncToolbar();
     final body = '<!doctype html><html><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         '<title>luma admin</title>'
-        '<style>$_adminCss$_bannersCss$_bmCss$_adminPolishCss$_bgCss${PowerConsole.css}</style>'
+        '<style>$_adminCss$_bannersCss$_bmCss$_adminPolishCss$_bgCss${PowerConsole.css}${AdminProjects.css}</style>'
         '</head><body class="no-js"><div class="wrap admin-wrap">'
-        '<header class="top"><h1>luma<span class="dot">.</span> admin</h1>'
-        '<span class="sub">server console</span>'
+        '<header class="top">${AdminProjects.switcherHtml}'
         '<div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">'
         '${PowerConsole.headerButtonsHtml}'
         '<a href="/admin/website" class="btn btn-ghost btn-sm">Website</a>'
@@ -11166,6 +11192,7 @@ syncToolbar();
         '</form>'
         '</div></header>'
         '${PowerConsole.dialogHtml}'
+        '<div class="project" id="project-luma">'
         '<div class="stats">'
         '<div class="stat"><div class="n">${stats['totalAccounts']}</div><div class="l">Total accounts</div></div>'
         '<div class="stat"><div class="n">${stats['activeAccounts']}</div><div class="l">Active</div></div>'
@@ -11477,6 +11504,8 @@ syncToolbar();
         '${_sectionLabel('School test')}'
         '${_adminSchoolTestsCard()}'
         '</div>'
+        '</div>'
+        '${AdminProjects.fishingWatersHtml}'
         '<script>$_adminMenuScript</script>'
         '<script>$_adminTabScript</script>'
         '<script>$_adminUsageScript</script>'
@@ -11493,6 +11522,8 @@ syncToolbar();
         '<script>${UpdateCheckConsole.updateCheckScript}</script>'
         '<script>${UpdateCheckConsole.rebootScript}</script>'
         '<script>${PowerConsole.script}</script>'
+        '<script>${AdminProjects.fishingWatersScript}</script>'
+        '<script>${AdminProjects.switcherScript}</script>'
         '</body></html>';
 
     return Response(200,
@@ -13580,7 +13611,7 @@ window.lumaAskReason = function (form, message) {
   /// redirect back to the page (see _adminSetPlan/_adminVerifyUser).
   static const _adminTabScript = r'''
 (function () {
-  const buttons = document.querySelectorAll('.tab-btn');
+  const buttons = document.querySelectorAll('#project-luma .tab-btn');
   const panels = {
     users: document.getElementById('panel-users'),
     usage: document.getElementById('panel-usage'),
