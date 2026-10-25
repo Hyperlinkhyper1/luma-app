@@ -208,6 +208,9 @@ class FishingWaters {
         'windSpeed': _num(weather['windSpeed']) ?? 0,
         'windAngle': _num(weather['windAngle']) ?? 0,
         'waveAmplitude': _num(weather['waveAmplitude']) ?? 0,
+        'maxWaveAmplitude':
+            (_num(weather['maxWaveAmplitude']) ?? 0.72).clamp(0.1, 20),
+        'radar': _radar(weather['radar']),
         'seed': _int(weather['seed']) ?? 1,
         'cycleElapsed': _num(weather['cycleElapsed']) ?? 0,
       },
@@ -482,6 +485,46 @@ class FishingWaters {
 
   static int? _int(Object? value) =>
       value is num && value.isFinite ? value.toInt() : null;
+
+  // Only accept complete, bounded grids so the radar never plots malformed data.
+  static Map<String, dynamic>? _radar(Object? raw) {
+    if (raw is! Map || raw['version'] != 1) return null;
+    final resolution = _int(raw['resolution']);
+    final halfSize = _num(raw['halfSize']);
+    final cells = raw['cells'];
+    if (resolution == null ||
+        resolution < 2 ||
+        resolution > 33 ||
+        halfSize == null ||
+        halfSize < 100 ||
+        halfSize > 10000 ||
+        cells is! List ||
+        cells.length != resolution * resolution) return null;
+    final clean = <List<num>>[];
+    for (final cell in cells) {
+      if (cell is! List || cell.length != 4) return null;
+      final values = cell.map(_num).toList();
+      if (values.any((v) => v == null)) return null;
+      clean.add([
+        values[0]!.clamp(0, 1),
+        values[1]!.clamp(0, 1),
+        values[2]!.clamp(0, 100),
+        values[3]!.clamp(0, 20),
+      ]);
+    }
+    num peak(int channel) =>
+        clean.fold<num>(0, (a, c) => a > c[channel] ? a : c[channel]);
+    return {
+      'version': 1,
+      'resolution': resolution,
+      'halfSize': halfSize,
+      'cells': clean,
+      'peakRain': peak(0),
+      'peakStorm': peak(1),
+      'peakWind': peak(2),
+      'peakWave': peak(3),
+    };
+  }
 
   static num? _num(Object? value) =>
       value is num && value.isFinite ? value : null;

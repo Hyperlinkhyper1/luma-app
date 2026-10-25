@@ -127,6 +127,64 @@ void main() {
     expect(body['weatherOverride'], isNull);
   });
 
+  test('regional weather samples round-trip and malformed grids are discarded',
+      () async {
+    final body = heartbeatBody();
+    final weather = body['weather'] as Map;
+    weather['maxWaveAmplitude'] = 4.5;
+    weather['radar'] = {
+      'version': 1,
+      'resolution': 2,
+      'halfSize': 5200,
+      'cells': [
+        [0, 0, 6, 0.3],
+        [0.5, 0.2, 25, 1.5],
+        [1, 1, 52, 4.5],
+        [0.1, 0, 10, 0.5]
+      ],
+      'peakRain': 999,
+    };
+    final (ok, _) = await send('POST', '/api/v1/fishing-waters/heartbeat',
+        json: body, gameKey: 'game-secret');
+    expect(ok, 200);
+    final (_, state) =
+        await send('GET', '/admin/fishing-waters/state', admin: true);
+    final reported =
+        ((state['servers'] as List).single as Map)['weather'] as Map;
+    expect(reported['maxWaveAmplitude'], 4.5);
+    final radar = reported['radar'] as Map;
+    expect(radar['cells'], (weather['radar'] as Map)['cells']);
+    expect(radar['peakRain'], 1);
+    expect(radar['peakWave'], 4.5);
+    for (final bad in [
+      {'version': 1, 'resolution': 34, 'halfSize': 5200, 'cells': []},
+      {
+        'version': 1,
+        'resolution': 2,
+        'halfSize': 5200,
+        'cells': [
+          [1, 2]
+        ]
+      },
+      {
+        'version': 1,
+        'resolution': 2,
+        'halfSize': 5200,
+        'cells': List.filled(4, [0, 'bad', 1, 2])
+      },
+    ]) {
+      weather['radar'] = bad;
+      await send('POST', '/api/v1/fishing-waters/heartbeat',
+          json: body, gameKey: 'game-secret');
+      final (_, invalid) =
+          await send('GET', '/admin/fishing-waters/state', admin: true);
+      expect(
+          (((invalid['servers'] as List).single as Map)['weather']
+              as Map)['radar'],
+          isNull);
+    }
+  });
+
   test('live players, weather override and grants round-trip', () async {
     await send('POST', '/api/v1/fishing-waters/heartbeat',
         json: heartbeatBody(), gameKey: 'game-secret');

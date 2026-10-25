@@ -118,12 +118,13 @@ class AdminProjects {
       '<div class="card fw-radar-card">'
       '<div class="fw-card-head"><h2>Radar</h2>'
       '<div class="fw-seg-group" id="fwRange" role="group" aria-label="Radar range">'
-      '<button type="button" class="fw-seg" data-range="harbour" aria-pressed="true">Harbour</button>'
-      '<button type="button" class="fw-seg" data-range="world" aria-pressed="false">World</button>'
+      '<button type="button" class="fw-seg" data-range="harbour" aria-pressed="false">Harbour</button>'
+      '<button type="button" class="fw-seg" data-range="world" aria-pressed="true">World</button>'
       '</div></div>'
       '<div class="fw-server-pick" id="fwServerPick" role="group" aria-label="Server"></div>'
       '<div class="fw-radar-box"><canvas id="fwRadar" role="img" aria-label="Weather radar"></canvas>'
       '<div class="fw-radar-empty" id="fwRadarEmpty" hidden>No live server to show.</div></div>'
+      '<p class="fw-note" id="fwRadarReadout" aria-live="polite">Move over the radar to inspect rain, wind and waves.</p>'
       '<div class="fw-legend">'
       '<span><i style="background:#35b45a"></i>Light</span>'
       '<span><i style="background:#c4d93a"></i>Moderate</span>'
@@ -425,7 +426,7 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
   if (!root) return;
   function $(id) { return document.getElementById(id); }
   var state = null, fetchedAt = 0, timer = null, tickTimer = null, failed = false;
-  var tab = 'online', selectedJob = null, range = 'harbour', filter = '';
+  var tab = 'online', selectedJob = null, range = 'world', filter = '';
   var reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function ico(paths) { return '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">' + paths + '</svg>'; }
@@ -655,23 +656,28 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
     } else pick.innerHTML = '';
 
     var s = server();
-    $('fwRadarEmpty').hidden = !!s;
+    $('fwRadarEmpty').hidden = !!(s && s.weather.radar);
+    $('fwRadarEmpty').textContent = s ? 'Regional radar requires an updated game server.' : 'No live server to show.';
+    $('fwRadarReadout').textContent = s && s.weather.radar
+      ? 'Live regional rain · green to red shows increasing severity. Move over the radar for local wind and swell. Inner lake sheltered. Updated ' + ago(s.seenAt) + '.'
+      : 'Waiting for regional weather samples.';
     var nowBox = $('fwNow');
     if (!s) {
       nowBox.innerHTML = '<div class="muted">Waiting for a live server…</div>';
     } else {
       var w = s.weather, from = compass(bearingOf(w.windAngle) + 180);
-      nowBox.innerHTML = '<div class="fw-now-head"><div class="fw-now-ico">' + (ICONS[w.kind] || ICONS.Clear) + '</div>' +
-        '<div><div class="fw-now-kind">' + esc(label(w.kind)) + '</div><div class="fw-now-sub">' +
-        (w.override ? 'Locked by an override' : 'Following the forecast') + (list.length > 1 ? ' · server ' + esc(shortJob(s.jobId)) : '') +
+      var peakKind = w.radar ? (w.radar.peakStorm > 0.38 ? 'Storm' : w.radar.peakRain > 0.4 ? 'Rain' : w.radar.peakRain > 0.06 ? 'LightRain' : 'Clear') : w.kind;
+      nowBox.innerHTML = '<div class="fw-now-head"><div class="fw-now-ico">' + (ICONS[peakKind] || ICONS.Clear) + '</div>' +
+        '<div><div class="fw-now-kind">' + esc(label(peakKind)) + '</div><div class="fw-now-sub">' +
+        (w.radar ? 'Moving fronts · strongest readings across the map' : (w.override ? 'Locked by an override' : 'Following the forecast')) + (list.length > 1 ? ' · server ' + esc(shortJob(s.jobId)) : '') +
         '</div></div></div><div class="fw-meters">' +
-        meter('Rain', Math.round(w.rain * 100) + '%', w.rain) +
+        meter('Peak rain', Math.round((w.radar ? w.radar.peakRain : w.rain) * 100) + '%', w.radar ? w.radar.peakRain : w.rain) +
         meter('Cloud cover', Math.round(w.cloudCover * 100) + '%', w.cloudCover) +
-        meter('Wind', Math.round(w.windSpeed) + ' studs/s · from ' + from, w.windSpeed / 56) +
-        meter('Swell', w.waveAmplitude.toFixed(2) + ' studs', w.waveAmplitude / 0.72) +
+        meter('Peak wind', Math.round(w.radar ? w.radar.peakWind : w.windSpeed) + ' studs/s · from ' + from, (w.radar ? w.radar.peakWind : w.windSpeed) / 56) +
+        meter('Peak swell amplitude', (w.radar ? w.radar.peakWave : w.waveAmplitude).toFixed(2) + ' studs', (w.radar ? w.radar.peakWave : w.waveAmplitude) / (w.maxWaveAmplitude || 0.72)) +
         '</div>';
-      $('fwRadar').setAttribute('aria-label', 'Weather radar: ' + label(w.kind) + ', rain ' + Math.round(w.rain * 100) +
-        '%, wind ' + Math.round(w.windSpeed) + ' studs per second from the ' + from + ', ' + s.players.length + ' players shown.');
+      $('fwRadar').setAttribute('aria-label', 'Regional weather radar, green light rain through red storm cores. Peak condition ' + label(peakKind) + ', peak rain ' + Math.round((w.radar ? w.radar.peakRain : w.rain) * 100) +
+        '%, peak wind ' + Math.round(w.radar ? w.radar.peakWind : w.windSpeed) + ' studs per second from the ' + from + ', ' + s.players.length + ' players shown.');
     }
 
     var kinds = ['Auto'].concat(state.weather.kinds || []);
@@ -693,10 +699,10 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
     if (state.weather.override) {
       note.className = 'fw-note lock';
       note.innerHTML = 'Every server is locked to <b>' + esc(label(state.weather.override)) + '</b>' +
-        (state.weather.setAt ? ' (set ' + esc(ago(state.weather.setAt)) + ')' : '') + '. Pick <b>Auto</b> to resume the forecast.';
+        (state.weather.setAt ? ' (set ' + esc(ago(state.weather.setAt)) + ')' : '') + '. Regional fronts keep moving. Pick <b>Auto</b> to resume the forecast.';
     } else {
       note.className = 'fw-note';
-      note.innerHTML = 'Following the built-in forecast. Picking a type locks every live server to it within 15 seconds.';
+      note.innerHTML = 'Auto follows the overall forecast. Picking a type sets weather strength on every server within 15 seconds; regional fronts keep moving.';
     }
     renderForecast(s);
   }
@@ -730,7 +736,7 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
       t += st.duration;
     }
     box.innerHTML = bar + (locked
-      ? '<p class="fw-note lock" style="margin-top:0">The forecast is paused while this server is locked to ' + esc(label(s.weather.override)) + '.</p>'
+      ? '<p class="fw-note lock" style="margin-top:0">The forecast is paused while this server is locked to ' + esc(label(s.weather.override)) + '. Regional fronts keep moving.</p>'
       : '<ul class="fw-upcoming">' + items.join('') + '</ul>');
   }
 
@@ -868,17 +874,35 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
     { name: 'Frostmere Expanse', x: 300, z: -3700, r: 1300 }
   ];
   var RANGES = { harbour: 1100, world: 5300 };
-  var cells = null, cellSeed = null, rafId = 0;
+  var rafId = 0, radarGrid = null, radarImage = null;
+  function sampleRadar(grid, x, z) {
+    var n = grid.resolution, span = grid.halfSize * 2;
+    if (Math.abs(x) > grid.halfSize || Math.abs(z) > grid.halfSize) return null;
+    var u = (x + grid.halfSize) / span * (n - 1), v = (z + grid.halfSize) / span * (n - 1);
+    var col = Math.min(n - 2, Math.floor(u)), row = Math.min(n - 2, Math.floor(v));
+    var fx = u - col, fz = v - row;
+    var a = grid.cells[row * n + col], b = grid.cells[row * n + col + 1];
+    var c = grid.cells[(row + 1) * n + col], d = grid.cells[(row + 1) * n + col + 1];
+    return a.map(function (_, i) { return (a[i] * (1 - fx) + b[i] * fx) * (1 - fz) + (c[i] * (1 - fx) + d[i] * fx) * fz; });
+  }
+  function weatherImage(grid) {
+    if (radarGrid === grid && radarImage) return radarImage;
+    radarGrid = grid;
+    var image = document.createElement('canvas'), pixels = 174;
+    image.width = image.height = pixels;
+    var context = image.getContext('2d'), data = context.createImageData(pixels, pixels);
+    for (var y = 0; y < pixels; y++) for (var x = 0; x < pixels; x++) {
+      var point = sampleRadar(grid, (x / (pixels - 1) * 2 - 1) * grid.halfSize, (y / (pixels - 1) * 2 - 1) * grid.halfSize);
+      var rain = point[0], severity = Math.max(rain, point[1]);
+      var color = rainColor(severity), i = (y * pixels + x) * 4;
+      data.data[i] = color[0]; data.data[i + 1] = color[1]; data.data[i + 2] = color[2];
+      data.data[i + 3] = Math.round(Math.min(0.82, Math.max(0, rain - 0.025) * 2.8) * 255);
+    }
+    context.putImageData(data, 0, 0);
+    radarImage = image;
+    return image;
+  }
 
-  function rng(seed) {
-    var s = (seed >>> 0) || 1;
-    return function () { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
-  }
-  function makeCells(seed) {
-    var r = rng(seed), out = [];
-    for (var i = 0; i < 90; i++) out.push({ x: r(), y: r(), size: 0.06 + r() * 0.16, w: r(), heat: r(), core: r() });
-    return out;
-  }
   function rainColor(v) {
     return v < 0.3 ? [53, 180, 90] : v < 0.55 ? [196, 217, 58] : v < 0.8 ? [242, 184, 75] : [236, 95, 95];
   }
@@ -929,34 +953,12 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
     poly(ISLAND, '#1b3a2d', '#3d7357');
     poly(LAKE, '#0a2230', 'rgba(61,115,87,.6)');
 
-    // Precipitation: a seeded field of cells drifting with the server's wind.
+    // Measured game samples, in the same world coordinates as islands and players.
     var s = server();
-    if (s) {
-      var w = s.weather;
-      if (cellSeed !== w.seed) { cells = makeCells(w.seed); cellSeed = w.seed; }
-      var span = rad * 2.6, a = w.windAngle * Math.PI / 180;
-      var drift = (t / 1000) * w.windSpeed * 0.9 * (1100 / R) * k;
-      var coverage = Math.min(1, w.cloudCover * 0.45 + w.rain * 0.7);
-      var dx = Math.cos(a) * drift, dy = Math.sin(a) * drift;
-      cells.forEach(function (cell) {
-        if (cell.w > coverage) return;
-        var x = ((cell.x * span + dx) % span + span) % span - span / 2 + c;
-        var y = ((cell.y * span + dy) % span + span) % span - span / 2 + c;
-        var r = cell.size * rad * (0.8 + w.cloudCover * 0.5);
-        var g = ctx.createRadialGradient(x, y, 0, x, y, r);
-        if (w.rain < 0.05) {
-          g.addColorStop(0, 'rgba(180,195,210,' + (0.16 * w.cloudCover) + ')');
-          g.addColorStop(1, 'rgba(180,195,210,0)');
-        } else {
-          var v = Math.min(1, w.rain * (0.45 + cell.heat * 0.55) + w.storm * cell.core * 0.4);
-          var col = rainColor(v).join(',');
-          g.addColorStop(0, 'rgba(' + col + ',.78)');
-          g.addColorStop(0.55, 'rgba(' + col + ',.38)');
-          g.addColorStop(1, 'rgba(' + col + ',0)');
-        }
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-      });
+    if (s && s.weather.radar) {
+      var grid = s.weather.radar, corner = px(-grid.halfSize, -grid.halfSize);
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(weatherImage(grid), corner[0], corner[1], grid.halfSize * 2 * k, grid.halfSize * 2 * k);
     }
 
     // Range rings and crosshair
@@ -1029,6 +1031,19 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
       ctx.fillText('wind', ax, ay + 30);
     }
   }
+  $('fwRadar').addEventListener('pointermove', function (event) {
+    var s = server();
+    if (!s || !s.weather.radar) return;
+    var rect = this.getBoundingClientRect(), c = rect.width / 2, rad = c - 18;
+    var dx = event.clientX - rect.left - c, dz = event.clientY - rect.top - c;
+    if (dx * dx + dz * dz > rad * rad) return;
+    var x = dx / rad * RANGES[range], z = dz / rad * RANGES[range];
+    var p = sampleRadar(s.weather.radar, x, z);
+    if (!p) return;
+    var condition = p[1] > 0.38 ? 'Storm core' : p[0] > 0.4 ? 'Rain' : p[0] > 0.06 ? 'Light rain' : 'Clear';
+    $('fwRadarReadout').textContent = condition + ' · X ' + Math.round(x) + ', Z ' + Math.round(z) +
+      ' · rain ' + Math.round(p[0] * 100) + '% · wind ' + p[2].toFixed(1) + ' studs/s · swell amplitude ' + p[3].toFixed(2) + ' studs';
+  });
   window.addEventListener('resize', function () { if (reduceMotion) drawRadar(0); });
 })();
 ''';
