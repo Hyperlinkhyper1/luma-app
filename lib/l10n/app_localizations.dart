@@ -65921,6 +65921,144 @@ abstract class L {
   /// **'the decider results'**
   String get aiBenchmarkWhatDecider;
 
+  /// No description provided for @aiBenchmarkWhatTts.
+  ///
+  /// In en, this message translates to:
+  /// **'the text to speech results'**
+  String get aiBenchmarkWhatTts;
+
+  /// No description provided for @aiBenchmarkWhatClip.
+  ///
+  /// In en, this message translates to:
+  /// **'the audio clip'**
+  String get aiBenchmarkWhatClip;
+
+  /// No description provided for @aiTestTtsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Text to Speech'**
+  String get aiTestTtsTitle;
+
+  /// No description provided for @aiTtsIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Speech models read the same four scripts: a train station announcement and a poem in a woman\'s voice, the same poem and a speech in a man\'s. Tap a model to listen.'**
+  String get aiTtsIntro;
+
+  /// No description provided for @aiTtsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No speech models tested yet'**
+  String get aiTtsEmpty;
+
+  /// No description provided for @aiTtsEmptyDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Results show up here once a speech model has read the scripts.'**
+  String get aiTtsEmptyDetail;
+
+  /// No description provided for @aiTtsHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Left out: {count} runs that read older scripts.'**
+  String aiTtsHidden(String count);
+
+  /// No description provided for @aiTtsModelLine.
+  ///
+  /// In en, this message translates to:
+  /// **'{cost} for all four · made in {time}'**
+  String aiTtsModelLine(String cost, String time);
+
+  /// No description provided for @aiTtsClipMeta.
+  ///
+  /// In en, this message translates to:
+  /// **'{cost} · made in {time}'**
+  String aiTtsClipMeta(String cost, String time);
+
+  /// No description provided for @aiTtsPlays.
+  ///
+  /// In en, this message translates to:
+  /// **'plays {length}'**
+  String aiTtsPlays(String length);
+
+  /// No description provided for @aiTtsVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice: {voice}'**
+  String aiTtsVoice(String voice);
+
+  /// No description provided for @aiTtsDefaultVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'provider default'**
+  String get aiTtsDefaultVoice;
+
+  /// No description provided for @aiTtsClipFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'This model could not read this script.'**
+  String get aiTtsClipFailed;
+
+  /// No description provided for @aiTtsPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Play'**
+  String get aiTtsPlay;
+
+  /// No description provided for @aiTtsPause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get aiTtsPause;
+
+  /// No description provided for @aiTtsShowText.
+  ///
+  /// In en, this message translates to:
+  /// **'Show text'**
+  String get aiTtsShowText;
+
+  /// No description provided for @aiTtsHideText.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide text'**
+  String get aiTtsHideText;
+
+  /// No description provided for @aiTtsWoman.
+  ///
+  /// In en, this message translates to:
+  /// **'Woman'**
+  String get aiTtsWoman;
+
+  /// No description provided for @aiTtsMan.
+  ///
+  /// In en, this message translates to:
+  /// **'Man'**
+  String get aiTtsMan;
+
+  /// No description provided for @aiTtsTestStation.
+  ///
+  /// In en, this message translates to:
+  /// **'Train station announcement'**
+  String get aiTtsTestStation;
+
+  /// No description provided for @aiTtsTestPoemFemale.
+  ///
+  /// In en, this message translates to:
+  /// **'Poem reading (woman)'**
+  String get aiTtsTestPoemFemale;
+
+  /// No description provided for @aiTtsTestPoemMale.
+  ///
+  /// In en, this message translates to:
+  /// **'Poem reading (man)'**
+  String get aiTtsTestPoemMale;
+
+  /// No description provided for @aiTtsTestSpeechMale.
+  ///
+  /// In en, this message translates to:
+  /// **'Speech (man)'**
+  String get aiTtsTestSpeechMale;
+
   /// No description provided for @pluginNameCommandDashboard.
   ///
   /// In en, this message translates to:

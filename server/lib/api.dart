@@ -32,6 +32,7 @@ import 'classroom.dart';
 import 'cs2_offline_store.dart';
 import 'cs2_voice_translate.dart';
 import 'decider_test.dart';
+import 'tts_test.dart';
 import 'deploy_console.dart';
 import 'power_console.dart';
 import 'admin_projects.dart';
@@ -60,6 +61,7 @@ part 'api_benchmark_repair.dart';
 part 'api_classroom.dart';
 part 'api_cs2_voice_translate.dart';
 part 'api_decider_tests.dart';
+part 'api_tts_tests.dart';
 part 'api_school_tests.dart';
 part 'api_team_board.dart';
 part 'api_team_discord.dart';
@@ -670,6 +672,9 @@ class Api {
       ..get('/api/v1/ai-models', _requireAuth(_listAiModels))
       ..get('/api/v1/ai-benchmarks', _requireAuth(_listAiBenchmarks))
       ..get('/api/v1/ai-benchmarks/decider', _requireAuth(_deciderResults))
+      ..get('/api/v1/ai-benchmarks/tts', _requireAuth(_ttsResults))
+      ..get('/api/v1/ai-benchmarks/tts/audio/<id>/<test>',
+          _requireAuth(_ttsAppAudio))
       ..get('/api/v1/ai-benchmarks/scene/<id>',
           _requireAuth(_getAiBenchmarkScene))
       ..get('/api/v1/ai-benchmarks/preview/<id>',
@@ -822,6 +827,14 @@ class Api {
           '/admin/decider-tests/suite', _requireAdmin(_adminDeciderTestsSuite))
       ..post('/admin/decider-tests/runs/<id>/delete',
           _requireAdmin(_adminDeciderTestsDelete))
+      ..get('/admin/tts-tests', _requireAdmin(_adminTtsTestsState))
+      ..get('/admin/tts-tests/models', _requireAdmin(_adminTtsTestsModels))
+      ..get('/admin/tts-tests/audio/<id>/<test>',
+          _requireAdmin(_adminTtsTestsAudio))
+      ..post('/admin/tts-tests/run', _requireAdmin(_adminTtsTestsStart))
+      ..post('/admin/tts-tests/stop', _requireAdmin(_adminTtsTestsStop))
+      ..post('/admin/tts-tests/runs/<id>/delete',
+          _requireAdmin(_adminTtsTestsDelete))
       ..post('/admin/classroom/country/reset',
           _requireAdmin(_adminClassroomCountryReset))
       ..post('/admin/team-board/access', _requireAdmin(_adminTeamBoardAccess))
@@ -3171,6 +3184,10 @@ class Api {
   /// The Add benchmark dialog's Decider test: its moderation suite and runs (see
   /// `api_decider_tests.dart`).
   late final DeciderTestStore deciderTests = DeciderTestStore(config.dataDir);
+
+  /// The Add benchmark dialog's Text to Speech test: its runs and clips (see
+  /// `api_tts_tests.dart`).
+  late final TtsTestStore ttsTests = TtsTestStore(config.dataDir);
 
   /// The Team Clipboard: its entries, files and who is on the team (see
   /// `api_team_board.dart`).
@@ -11443,7 +11460,8 @@ syncToolbar();
         '<div class="maint-desc" tabindex="0">Adds a model\'s run of one of the AI Usage '
         'plugin\'s tests. "Add benchmark" has a model on one of the '
         'server\'s keys write the scene from the test\'s prompt, or runs '
-        'the separate Decider test (Moderation) on decision models; "Upload" '
+        'the separate Decider test (Moderation) on decision models or the '
+        'Text to Speech test on speech models; "Upload" '
         'takes a page you already have. Either way the scene is live in the '
         'app right away and is committed to <code>server/benchmarks/</code> '
         'on GitHub (with <code>[skip ci]</code>, so no release build runs), '
@@ -11460,7 +11478,7 @@ syncToolbar();
         '<div id="bgRuns" class="bg-runs" aria-live="polite"></div>'
         '<div id="bgRepairs" class="bg-runs" aria-live="polite"></div>'
         '$_bmUploadDialogHtml'
-        '${_bgDialogHtml(deciderView: _adminDeciderView())}'
+        '${_bgDialogHtml(deciderView: _adminDeciderView(), ttsView: _adminTtsView())}'
         '</div>'
         '<div class="card">'
         '${_cardHead('image', 'AI benchmark banners', extra: '<button id="bannersRepairSettingsBtn" type="button" class="bn-icon-btn bn-icon-btn--sm" aria-label="Banner render settings" title="Banner render settings">${_ico('cog')}</button>')}'
@@ -11517,6 +11535,7 @@ syncToolbar();
         '<script>$_adminBenchmarkUploadScript</script>'
         '<script>$_bgScript</script>'
         '<script>$_adminSchoolTestsScript</script>'
+        '<script>$_adminTtsScript</script>'
         '<script>$_adminDeciderScript</script>'
         '<script>${DeployConsole.deployScript}</script>'
         '<script>${UpdateCheckConsole.updateCheckScript}</script>'

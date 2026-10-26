@@ -40501,6 +40501,87 @@ class LNl extends L {
   String get aiBenchmarkWhatDecider => 'de decider-resultaten';
 
   @override
+  String get aiBenchmarkWhatTts => 'de tekst-naar-spraakresultaten';
+
+  @override
+  String get aiBenchmarkWhatClip => 'het geluidsfragment';
+
+  @override
+  String get aiTestTtsTitle => 'Tekst naar spraak';
+
+  @override
+  String get aiTtsIntro =>
+      'Spraakmodellen lezen dezelfde vier teksten voor: een omroepbericht op het station en een gedicht met een vrouwenstem, hetzelfde gedicht en een toespraak met een mannenstem. Tik op een model om te luisteren.';
+
+  @override
+  String get aiTtsEmpty => 'Nog geen spraakmodellen getest';
+
+  @override
+  String get aiTtsEmptyDetail =>
+      'De resultaten verschijnen hier zodra een spraakmodel de teksten heeft voorgelezen.';
+
+  @override
+  String aiTtsHidden(String count) {
+    return 'Weggelaten: $count runs die oudere teksten lazen.';
+  }
+
+  @override
+  String aiTtsModelLine(String cost, String time) {
+    return '$cost voor alle vier · gemaakt in $time';
+  }
+
+  @override
+  String aiTtsClipMeta(String cost, String time) {
+    return '$cost · gemaakt in $time';
+  }
+
+  @override
+  String aiTtsPlays(String length) {
+    return 'speelt $length';
+  }
+
+  @override
+  String aiTtsVoice(String voice) {
+    return 'Stem: $voice';
+  }
+
+  @override
+  String get aiTtsDefaultVoice => 'standaard van de aanbieder';
+
+  @override
+  String get aiTtsClipFailed => 'Dit model kon deze tekst niet voorlezen.';
+
+  @override
+  String get aiTtsPlay => 'Afspelen';
+
+  @override
+  String get aiTtsPause => 'Pauzeren';
+
+  @override
+  String get aiTtsShowText => 'Tekst tonen';
+
+  @override
+  String get aiTtsHideText => 'Tekst verbergen';
+
+  @override
+  String get aiTtsWoman => 'Vrouw';
+
+  @override
+  String get aiTtsMan => 'Man';
+
+  @override
+  String get aiTtsTestStation => 'Omroepbericht op het station';
+
+  @override
+  String get aiTtsTestPoemFemale => 'Gedicht voorlezen (vrouw)';
+
+  @override
+  String get aiTtsTestPoemMale => 'Gedicht voorlezen (man)';
+
+  @override
+  String get aiTtsTestSpeechMale => 'Toespraak (man)';
+
+  @override
   String get pluginNameCommandDashboard => 'Commandodashboard';
 
   @override

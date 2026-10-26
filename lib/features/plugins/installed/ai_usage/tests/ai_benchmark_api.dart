@@ -112,6 +112,35 @@ class AiBenchmarkApi {
     return decoded;
   }
 
+  /// The Text to Speech test's results: the scripts and each speech model's
+  /// latest clips with what they cost and took.
+  Future<Map<String, dynamic>> fetchTts() async {
+    final response = await _client.get(
+      Uri.parse('$baseUrl/api/v1/ai-benchmarks/tts'),
+      headers: {if (token case final value?) 'Authorization': 'Bearer $value'},
+    ).timeout(_timeout);
+    if (response.statusCode != 200) {
+      throw AiBenchmarkApiException(
+        response.statusCode,
+        currentL.aiBenchmarkServerFailed(
+          currentL.aiBenchmarkWhatTts,
+          response.statusCode,
+        ),
+      );
+    }
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    if (decoded is! Map<String, dynamic>) {
+      throw AiBenchmarkApiException(200, currentL.aiBenchmarkMalformed);
+    }
+    return decoded;
+  }
+
+  /// Downloads one Text to Speech clip.
+  Future<Uint8List> fetchTtsClip(String runId, String test) => _fetchBytes(
+      'tts/audio',
+      '${Uri.encodeComponent(runId)}/${Uri.encodeComponent(test)}',
+      currentL.aiBenchmarkWhatClip);
+
   /// Downloads one scene's HTML. The caller verifies the bytes against the
   /// manifest's hash before trusting them.
   Future<Uint8List> fetchScene(String id) =>

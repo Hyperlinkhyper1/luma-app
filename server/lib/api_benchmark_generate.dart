@@ -1102,8 +1102,9 @@ extension BenchmarkGenerateApi on Api {
 ///
 /// A switch in the header flips the dialog to [deciderView], the Decider
 /// test (see `api_decider_tests.dart`). It sits outside the scene form and
-/// has its own endpoints and runs; the two only share the dialog.
-String _bgDialogHtml({String deciderView = ''}) =>
+/// has its own endpoints and runs; the two only share the dialog. The
+/// [ttsView], the Text to Speech test (`api_tts_tests.dart`), is a third.
+String _bgDialogHtml({String deciderView = '', String ttsView = ''}) =>
     '<dialog id="bgDialog" class="bn-dialog bg-dialog" '
     'aria-labelledby="bgTitle">'
     '<form id="bgForm" novalidate>'
@@ -1116,7 +1117,10 @@ String _bgDialogHtml({String deciderView = ''}) =>
         '<button type="button" role="tab" data-mode="scene" '
         'aria-selected="true">Scene benchmark</button>'
         '<button type="button" role="tab" data-mode="decider" '
-        'aria-selected="false">Decider test (Moderation)</button></div>'}'
+        'aria-selected="false">Decider test (Moderation)</button>'
+        '${ttsView.isEmpty ? '' : '<button type="button" role="tab" '
+            'data-mode="tts" aria-selected="false">Text to speech</button>'}'
+        '</div>'}'
     '</div>'
     '<button type="button" class="bn-icon-btn" data-close aria-label="Close">'
     '${Api._bnCloseIcon}</button></div>'
@@ -1205,7 +1209,7 @@ String _bgDialogHtml({String deciderView = ''}) =>
     '<button type="button" class="btn btn-ghost" data-close>Cancel</button>'
     '<button id="bgStart" type="submit" class="btn btn-primary">Start run'
     '</button></div>'
-    '</form>$deciderView</dialog>';
+    '</form>$deciderView$ttsView</dialog>';
 
 const _bgCss = r'''
 .bg-dialog{width:min(820px,calc(100vw - 32px))}

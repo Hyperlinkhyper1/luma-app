@@ -40209,6 +40209,87 @@ class LEn extends L {
   String get aiBenchmarkWhatDecider => 'the decider results';
 
   @override
+  String get aiBenchmarkWhatTts => 'the text to speech results';
+
+  @override
+  String get aiBenchmarkWhatClip => 'the audio clip';
+
+  @override
+  String get aiTestTtsTitle => 'Text to Speech';
+
+  @override
+  String get aiTtsIntro =>
+      'Speech models read the same four scripts: a train station announcement and a poem in a woman\'s voice, the same poem and a speech in a man\'s. Tap a model to listen.';
+
+  @override
+  String get aiTtsEmpty => 'No speech models tested yet';
+
+  @override
+  String get aiTtsEmptyDetail =>
+      'Results show up here once a speech model has read the scripts.';
+
+  @override
+  String aiTtsHidden(String count) {
+    return 'Left out: $count runs that read older scripts.';
+  }
+
+  @override
+  String aiTtsModelLine(String cost, String time) {
+    return '$cost for all four · made in $time';
+  }
+
+  @override
+  String aiTtsClipMeta(String cost, String time) {
+    return '$cost · made in $time';
+  }
+
+  @override
+  String aiTtsPlays(String length) {
+    return 'plays $length';
+  }
+
+  @override
+  String aiTtsVoice(String voice) {
+    return 'Voice: $voice';
+  }
+
+  @override
+  String get aiTtsDefaultVoice => 'provider default';
+
+  @override
+  String get aiTtsClipFailed => 'This model could not read this script.';
+
+  @override
+  String get aiTtsPlay => 'Play';
+
+  @override
+  String get aiTtsPause => 'Pause';
+
+  @override
+  String get aiTtsShowText => 'Show text';
+
+  @override
+  String get aiTtsHideText => 'Hide text';
+
+  @override
+  String get aiTtsWoman => 'Woman';
+
+  @override
+  String get aiTtsMan => 'Man';
+
+  @override
+  String get aiTtsTestStation => 'Train station announcement';
+
+  @override
+  String get aiTtsTestPoemFemale => 'Poem reading (woman)';
+
+  @override
+  String get aiTtsTestPoemMale => 'Poem reading (man)';
+
+  @override
+  String get aiTtsTestSpeechMale => 'Speech (man)';
+
+  @override
   String get pluginNameCommandDashboard => 'Command Dashboard';
 
   @override

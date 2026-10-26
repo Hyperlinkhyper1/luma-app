@@ -12,6 +12,7 @@ import '../../../../../sync/sync_service.dart';
 import 'ai_benchmark.dart';
 import 'ai_benchmark_api.dart';
 import 'decider_results.dart';
+import 'tts_results.dart';
 
 /// Directory under the app-support root the roster and downloaded scenes live
 /// in.
@@ -191,6 +192,77 @@ class AiBenchmarkRepository extends ChangeNotifier {
       _deciderLoading = false;
       api.close();
       notifyListeners();
+    }
+  }
+
+  TtsBoard? _tts;
+  bool _ttsLoading = false;
+  String? _ttsError;
+
+  /// The Text to Speech test's results, once fetched this session.
+  TtsBoard? get tts => _tts;
+  bool get ttsLoading => _ttsLoading;
+  String? get ttsError => _ttsError;
+
+  /// Fetches the Text to Speech results. Does nothing at all unless this
+  /// device holds an approved account.
+  Future<void> loadTts() async {
+    if (_ttsLoading) return;
+    final sync = _sync;
+    final baseUrl = sync?.serverUrl;
+    if (sync == null || !sync.serverReady || baseUrl == null) return;
+    _ttsLoading = true;
+    _ttsError = null;
+    notifyListeners();
+    final api = _apiFactory(baseUrl, sync.authToken);
+    try {
+      _tts = TtsBoard.fromJson(await api.fetchTts());
+    } on ServerAccessDeniedException {
+      // The gate shut mid-request; the page already says to sign in.
+    } catch (e) {
+      _ttsError = '$e';
+    } finally {
+      _ttsLoading = false;
+      api.close();
+      notifyListeners();
+    }
+  }
+
+  /// Clip downloads in flight or done. A run's clips never change, so the
+  /// run id and test name are the whole key.
+  final Map<String, Future<File>> _ttsClips = {};
+
+  /// One clip on disk, downloaded the first time it is played. A failed
+  /// download is forgotten so the next tap retries.
+  Future<File> ttsClipFile(String runId, String test, String format) {
+    final key = '${runId}_$test.$format';
+    return _ttsClips[key] ??= _loadTtsClip(runId, test, key)
+        .catchError((Object e, StackTrace s) {
+      _ttsClips.remove(key);
+      return Future<File>.error(e, s);
+    });
+  }
+
+  Future<File> _loadTtsClip(String runId, String test, String name) async {
+    if (!RegExp(r'^[a-z0-9_]+\.(mp3|wav)$').hasMatch(name)) {
+      throw StateError(currentL.aiBenchmarkUnknownId(name));
+    }
+    final root = await _cacheRoot();
+    final file = File('${root.path}/tts/$name');
+    if (await file.exists() && await file.length() > 0) return file;
+    final sync = _sync;
+    final baseUrl = sync?.serverUrl;
+    if (sync == null || !sync.serverReady || baseUrl == null) {
+      throw StateError(currentL.aiBenchmarkSignInToDownload);
+    }
+    final api = _apiFactory(baseUrl, sync.authToken);
+    try {
+      final bytes = await api.fetchTtsClip(runId, test);
+      await file.parent.create(recursive: true);
+      await file.writeAsBytes(bytes, flush: true);
+      return file;
+    } finally {
+      api.close();
     }
   }
 

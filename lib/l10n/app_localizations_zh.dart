@@ -38379,6 +38379,85 @@ class LZh extends L {
   String get aiBenchmarkWhatDecider => 'Decider 结果';
 
   @override
+  String get aiBenchmarkWhatTts => '文字转语音结果';
+
+  @override
+  String get aiBenchmarkWhatClip => '音频片段';
+
+  @override
+  String get aiTestTtsTitle => '文字转语音';
+
+  @override
+  String get aiTtsIntro => '语音模型朗读同样的四段文本：女声的火车站广播和一首诗，男声的同一首诗和一段演讲。点按模型即可收听。';
+
+  @override
+  String get aiTtsEmpty => '还没有测试过语音模型';
+
+  @override
+  String get aiTtsEmptyDetail => '语音模型读完这些文本后，结果会显示在这里。';
+
+  @override
+  String aiTtsHidden(String count) {
+    return '未显示：$count 次朗读的是旧文本。';
+  }
+
+  @override
+  String aiTtsModelLine(String cost, String time) {
+    return '四段共 $cost · 生成用时 $time';
+  }
+
+  @override
+  String aiTtsClipMeta(String cost, String time) {
+    return '$cost · 生成用时 $time';
+  }
+
+  @override
+  String aiTtsPlays(String length) {
+    return '时长 $length';
+  }
+
+  @override
+  String aiTtsVoice(String voice) {
+    return '声音：$voice';
+  }
+
+  @override
+  String get aiTtsDefaultVoice => '服务商默认声音';
+
+  @override
+  String get aiTtsClipFailed => '此模型未能朗读这段文本。';
+
+  @override
+  String get aiTtsPlay => '播放';
+
+  @override
+  String get aiTtsPause => '暂停';
+
+  @override
+  String get aiTtsShowText => '显示文本';
+
+  @override
+  String get aiTtsHideText => '隐藏文本';
+
+  @override
+  String get aiTtsWoman => '女声';
+
+  @override
+  String get aiTtsMan => '男声';
+
+  @override
+  String get aiTtsTestStation => '火车站广播';
+
+  @override
+  String get aiTtsTestPoemFemale => '诗歌朗读（女声）';
+
+  @override
+  String get aiTtsTestPoemMale => '诗歌朗读（男声）';
+
+  @override
+  String get aiTtsTestSpeechMale => '演讲（男声）';
+
+  @override
   String get pluginNameCommandDashboard => '命令面板';
 
   @override

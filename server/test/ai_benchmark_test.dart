@@ -13,6 +13,7 @@ import 'package:luma_sync_server/mail.dart';
 import 'package:luma_sync_server/recipe_store.dart';
 import 'package:luma_sync_server/store.dart';
 import 'package:luma_sync_server/subway_store.dart';
+import 'package:luma_sync_server/tts_test.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 
@@ -288,6 +289,8 @@ void main() {
       for (final path in [
         '/api/v1/ai-benchmarks',
         '/api/v1/ai-benchmarks/decider',
+        '/api/v1/ai-benchmarks/tts',
+        '/api/v1/ai-benchmarks/tts/audio/a/poem_male',
         '/api/v1/ai-benchmarks/scene/pagoda_demo',
         '/api/v1/ai-benchmarks/preview/pagoda_demo',
         '/api/v1/ai-benchmarks/fallback/pagoda-preview.png',
@@ -349,6 +352,68 @@ void main() {
       expect(models.single['costPer1k'], closeTo(0.02, 1e-9));
       expect(decoded['cases'], greaterThan(0));
       expect(decoded['hidden'], {'otherSuite': 1, 'unfinished': 1});
+    });
+
+    test('tts results: latest current-scripts run per model, clips play',
+        () async {
+      final token = await seedApprovedUser();
+      TtsRun run(String id, String model,
+              {String? scripts, String status = 'done'}) =>
+          TtsRun(
+            id: id,
+            model: model,
+            femaleVoice: 'Kore',
+            maleVoice: 'Charon',
+            startedAtMs: 1,
+            scripts: scripts ?? kTtsScriptHash,
+            ownKey: true,
+            keyHint: 'sk-or-v1-…abcd',
+            status: status,
+            clips: [
+              TtsClip(
+                  test: 'poem_male',
+                  voice: 'Charon',
+                  format: 'mp3',
+                  bytes: 3,
+                  ms: 1200,
+                  costUsd: 0.004),
+            ],
+          );
+      await File('${dir.path}/tts_tests.json').writeAsString(jsonEncode({
+        'runs': [
+          run('a', 'google/gemini-3.1-flash-tts-preview').toJson(),
+          run('b', 'google/gemini-3.1-flash-tts-preview').toJson(),
+          run('c', 'elevenlabs/eleven-v3', scripts: 'oldtext').toJson(),
+          run('d', 'x-ai/grok-voice-tts-1.0', status: 'failed').toJson(),
+        ],
+      }));
+      await Directory('${dir.path}/tts_runs/b').create(recursive: true);
+      await File('${dir.path}/tts_runs/b/poem_male.mp3')
+          .writeAsBytes([1, 2, 3]);
+
+      final response = await get('/api/v1/ai-benchmarks/tts', token: token);
+      expect(response.statusCode, 200);
+      final body = await response.readAsString();
+      expect(body, isNot(contains('sk-or')));
+      final decoded = jsonDecode(body) as Map<String, dynamic>;
+      final models = decoded['models'] as List;
+      expect(models, hasLength(1));
+      expect(models.single['runId'], 'b');
+      expect(models.single['costUsd'], closeTo(0.004, 1e-9));
+      expect(models.single['totalMs'], 1200);
+      expect((decoded['tests'] as List), hasLength(kTtsTests.length));
+      expect(decoded['hidden'], {'otherScripts': 1});
+
+      final audio = await get('/api/v1/ai-benchmarks/tts/audio/b/poem_male',
+          token: token);
+      expect(audio.statusCode, 200);
+      expect(audio.headers['content-type'], 'audio/mpeg');
+      expect(await audio.read().expand((c) => c).toList(), [1, 2, 3]);
+      expect(
+          (await get('/api/v1/ai-benchmarks/tts/audio/b/speech_male',
+                  token: token))
+              .statusCode,
+          404);
     });
 
     test('manifest lists scenes with hashes', () async {

@@ -10,6 +10,7 @@ import 'ai_benchmark_scope.dart';
 import 'cathedral_test_page.dart';
 import 'cruise_ship_test_page.dart';
 import 'decider_test_page.dart';
+import 'tts_test_page.dart';
 import 'engine_test_page.dart';
 import 'hero_tile.dart';
 import 'keyboard_test_page.dart';
@@ -218,6 +219,16 @@ class _TestsTabState extends State<TestsTab> {
         width: width,
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute<void>(builder: (_) => const DeciderTestPage()),
+        ),
+      ),
+      LumaHeroTile(
+        title: t.aiTestTtsTitle,
+        subtitle: newOpenScreen,
+        artworkAboveBand: true,
+        fallbackIcon: Icons.record_voice_over_rounded,
+        width: width,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const TtsTestPage()),
         ),
       ),
       for (final test in sceneTestsOf(t))

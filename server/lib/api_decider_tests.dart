@@ -630,24 +630,33 @@ const _deciderScript = r'''
   let keyTouched = false;
   key.addEventListener('keydown', () => { keyTouched = true; });
 
-  // The Add benchmark dialog's header switch: scene benchmark or this test.
+  // The Add benchmark dialog's header switch: scene benchmark, this test,
+  // or the Text to Speech test (api_tts_tests.dart), which listens for the
+  // luma-benchmark-mode event to load itself.
   const dlg = document.getElementById('bgDialog');
   const view = document.getElementById('dtView');
   const foot = document.getElementById('dtFoot');
+  const ttView = document.getElementById('ttView');
+  const ttFoot = document.getElementById('ttFoot');
   const sub = document.getElementById('bgSub');
   const sceneSub = sub ? sub.textContent : '';
   const modeBtns = dlg ? dlg.querySelectorAll('.bg-mode [data-mode]') : [];
   function setMode(mode) {
+    if (mode === 'tts' && !ttView) mode = 'scene';
     const decider = mode === 'decider';
-    if (dlg) dlg.classList.toggle('is-decider', decider);
+    const tts = mode === 'tts';
+    if (dlg) dlg.classList.toggle('is-decider', decider || tts);
     view.hidden = !decider;
     foot.hidden = !decider;
+    if (ttView) { ttView.hidden = !tts; ttFoot.hidden = !tts; }
     modeBtns.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.mode === mode)));
     if (sub) sub.textContent = decider
       ? 'Decision models work through a hard moderation suite; the server scores every answer and plots cost against accuracy. Separate from the scene benchmarks.'
+      : tts ? 'Speech models read the same four scripts in a woman\'s and a man\'s voice. Every clip is kept with its cost and time, and shows up in the app to listen to.'
       : sceneSub;
-    try { localStorage.setItem('lumaBenchmarkMode', decider ? 'decider' : 'scene'); } catch (_) {}
+    try { localStorage.setItem('lumaBenchmarkMode', mode); } catch (_) {}
     if (decider) load();
+    document.dispatchEvent(new CustomEvent('luma-benchmark-mode', { detail: mode }));
   }
   window.lumaBenchmarkMode = setMode;
   modeBtns.forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
@@ -1019,6 +1028,6 @@ const _deciderScript = r'''
 
   let saved = 'scene';
   try { saved = localStorage.getItem('lumaBenchmarkMode') || 'scene'; } catch (_) {}
-  if (saved === 'decider') setMode('decider'); else load();
+  if (saved === 'decider' || saved === 'tts') setMode(saved); else load();
 })();
 ''';
