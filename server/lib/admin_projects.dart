@@ -141,6 +141,16 @@ class AdminProjects {
       '<div class="card">'
       '<h2>Set weather</h2>'
       '<div class="fw-kinds" id="fwKinds" role="radiogroup" aria-label="Weather"></div>'
+      '<form id="fwBlackHole" class="fw-blackhole" hidden>'
+      '<h3>Black hole location</h3>'
+      '<p class="fw-note">Click the radar or enter world coordinates. The whirlpool forms here. '
+      'Every fish gains Corrupted; fishing within 250 studs also grants Void Touched (+200% value).</p>'
+      '<div class="fw-blackhole-coords">'
+      '<label for="fwBlackHoleX">X · east<input id="fwBlackHoleX" type="number" min="-5200" max="5200" step="any" required placeholder="Select a point"></label>'
+      '<label for="fwBlackHoleZ">Z · south<input id="fwBlackHoleZ" type="number" min="-5200" max="5200" step="any" required placeholder="Select a point"></label>'
+      '</div><p class="fw-note" id="fwBlackHoleStatus" aria-live="polite"></p>'
+      '<button type="submit" class="fw-blackhole-spawn" id="fwBlackHoleSpawn" disabled>Spawn black hole</button>'
+      '</form>'
       '<p class="fw-note" id="fwWeatherNote">Applies to every live server within '
       '15 seconds. <b>Auto</b> follows the built-in forecast.</p>'
       '</div>'
@@ -278,7 +288,7 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
 .fw-server-pick:empty{display:none}
 .fw-radar-box{position:relative;width:100%;max-width:620px;margin:0 auto;aspect-ratio:1}
 .fw-radar-box canvas{width:100%;height:100%;display:block}
-.fw-radar-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#86a3b0;font-size:13px}
+.fw-radar-empty{pointer-events:none;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#86a3b0;font-size:13px}
 .fw-radar-empty[hidden]{display:none}
 .fw-legend{display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:center;margin-top:14px;font-size:12px;color:#9bb6c2}
 .fw-legend span{display:inline-flex;align-items:center;gap:6px}
@@ -302,6 +312,18 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
 .fw-kind:active{transform:scale(.97)}
 .fw-kind[aria-checked=true]{border-color:#4cc3d9;background:#0f2a32;color:#bff0f8;box-shadow:inset 0 0 0 1px #4cc3d9}
 .fw-kind:disabled{opacity:.55;cursor:progress}
+.fw-kind[data-kind=BlackHole]{color:#d1adff;border-color:#553971;background:#21132f}
+.fw-kind[data-kind=BlackHole][aria-checked=true]{border-color:#b17aff;box-shadow:inset 0 0 0 1px #b17aff;background:#321b48}
+.fw-blackhole{margin-top:16px;padding:16px;border:1px solid #553971;border-radius:12px;background:#1b1228}
+.fw-blackhole[hidden]{display:none}
+.fw-blackhole h3{font-size:14px;margin:0;color:#dfc5ff}
+.fw-blackhole .fw-note{margin-top:8px;color:#b8a1ca}
+.fw-blackhole-coords{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.fw-blackhole-coords label{font-size:12px;color:#d1badf}
+.fw-blackhole-coords input{box-sizing:border-box;width:100%;min-width:0;margin-top:6px;padding:9px;border:1px solid #5a3d72;border-radius:7px;background:#110b1c;color:#f0e6ff;font:inherit}
+.fw-blackhole-spawn{width:100%;margin-top:14px;min-height:40px;border:1px solid #b17aff;border-radius:8px;background:#6b35a3;color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.fw-blackhole-spawn:disabled{opacity:.45;cursor:default}
+.fw-blackhole-spawn:focus-visible,.fw-blackhole-coords input:focus-visible{outline:2px solid #d1adff;outline-offset:3px}
 .fw-note{font-size:12.5px;color:#86a3b0;line-height:1.55;margin:12px 0 0}
 .fw-note b{color:#c3dbe3}
 .fw-note.lock{color:#f2d68a}
@@ -427,6 +449,7 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
   function $(id) { return document.getElementById(id); }
   var state = null, fetchedAt = 0, timer = null, tickTimer = null, failed = false;
   var tab = 'online', selectedJob = null, range = 'world', filter = '';
+  var choosingBlackHole = false, locationDirty = false, weatherBusy = false;
   var reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function ico(paths) { return '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">' + paths + '</svg>'; }
@@ -436,9 +459,10 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
     LightRain: ico('<path d="M7 15.5h9.5a4 4 0 0 0 .4-8 5.5 5.5 0 0 0-10.6 1.4A3.4 3.4 0 0 0 7 15.5z"/><path d="M10 19l-.5 1.5M14 19l-.5 1.5"/>'),
     Rain: ico('<path d="M7 14.5h9.5a4 4 0 0 0 .4-8 5.5 5.5 0 0 0-10.6 1.4A3.4 3.4 0 0 0 7 14.5z"/><path d="M8.5 17.5l-1 2.5M12.5 17.5l-1 2.5M16.5 17.5l-1 2.5"/>'),
     Storm: ico('<path d="M7 14.5h9.5a4 4 0 0 0 .4-8 5.5 5.5 0 0 0-10.6 1.4A3.4 3.4 0 0 0 7 14.5z"/><path d="M12.5 13.5l-2.5 4h3.5l-2 4"/>'),
+    BlackHole: ico('<circle cx="12" cy="12" r="4"/><ellipse cx="12" cy="12" rx="10" ry="5" transform="rotate(-25 12 12)"/>'),
     Pass: ico('<path d="M4 9.5h16v3H4z"/><path d="M5.5 12.5V20h13v-7.5"/><path d="M12 9.5V20"/><path d="M12 9.5C10.5 6 7 5.4 7 7.6 7 9 9.5 9.5 12 9.5zM12 9.5c1.5-3.5 5-4.1 5-1.9 0 1.4-2.5 1.9-5 1.9z"/>')
   };
-  var KIND_COLOR = { Clear: '#e8c35a', LightRain: '#7f9cf0', Rain: '#5872d9', Storm: '#d9536a' };
+  var KIND_COLOR = { Clear: '#e8c35a', LightRain: '#7f9cf0', Rain: '#5872d9', Storm: '#d9536a', BlackHole: '#aa6bfa' };
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -558,7 +582,7 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
     return ids;
   }
   function server() {
-    var list = state.servers || [];
+    var list = state && state.servers || [];
     return list.filter(function (s) { return s.jobId === selectedJob; })[0] || list[0] || null;
   }
 
@@ -666,10 +690,10 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
       nowBox.innerHTML = '<div class="muted">Waiting for a live server…</div>';
     } else {
       var w = s.weather, from = compass(bearingOf(w.windAngle) + 180);
-      var peakKind = w.radar ? (w.radar.peakStorm > 0.38 ? 'Storm' : w.radar.peakRain > 0.4 ? 'Rain' : w.radar.peakRain > 0.06 ? 'LightRain' : 'Clear') : w.kind;
+      var peakKind = w.kind === 'BlackHole' ? 'BlackHole' : w.radar ? (w.radar.peakStorm > 0.38 ? 'Storm' : w.radar.peakRain > 0.4 ? 'Rain' : w.radar.peakRain > 0.06 ? 'LightRain' : 'Clear') : w.kind;
       nowBox.innerHTML = '<div class="fw-now-head"><div class="fw-now-ico">' + (ICONS[peakKind] || ICONS.Clear) + '</div>' +
         '<div><div class="fw-now-kind">' + esc(label(peakKind)) + '</div><div class="fw-now-sub">' +
-        (w.radar ? 'Moving fronts · strongest readings across the map' : (w.override ? 'Locked by an override' : 'Following the forecast')) + (list.length > 1 ? ' · server ' + esc(shortJob(s.jobId)) : '') +
+        (w.kind === 'BlackHole' ? 'Admin event · map-wide corruption' : w.radar ? 'Moving fronts · strongest readings across the map' : (w.override ? 'Locked by an override' : 'Following the forecast')) + (list.length > 1 ? ' · server ' + esc(shortJob(s.jobId)) : '') +
         '</div></div></div><div class="fw-meters">' +
         meter('Peak rain', Math.round((w.radar ? w.radar.peakRain : w.rain) * 100) + '%', w.radar ? w.radar.peakRain : w.rain) +
         meter('Cloud cover', Math.round(w.cloudCover * 100) + '%', w.cloudCover) +
@@ -681,7 +705,7 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
     }
 
     var kinds = ['Auto'].concat(state.weather.kinds || []);
-    var active = state.weather.override || 'Auto';
+    var active = choosingBlackHole ? 'BlackHole' : state.weather.override || 'Auto';
     var box = $('fwKinds');
     if (box.dataset.kinds !== kinds.join()) {
       box.dataset.kinds = kinds.join();
@@ -696,7 +720,13 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
       b.tabIndex = on ? 0 : -1;
     });
     var note = $('fwWeatherNote');
-    if (state.weather.override) {
+    if (choosingBlackHole) {
+      note.className = 'fw-note';
+      note.textContent = 'Choose the location, then spawn. Current weather continues until you apply it.';
+    } else if (state.weather.override === 'BlackHole') {
+      note.className = 'fw-note lock';
+      note.textContent = 'Black hole event active on every server. Pick Auto or another weather to end it.';
+    } else if (state.weather.override) {
       note.className = 'fw-note lock';
       note.innerHTML = 'Every server is locked to <b>' + esc(label(state.weather.override)) + '</b>' +
         (state.weather.setAt ? ' (set ' + esc(ago(state.weather.setAt)) + ')' : '') + '. Regional fronts keep moving. Pick <b>Auto</b> to resume the forecast.';
@@ -704,6 +734,7 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
       note.className = 'fw-note';
       note.innerHTML = 'Auto follows the overall forecast. Picking a type sets weather strength on every server within 15 seconds; regional fronts keep moving.';
     }
+    renderBlackHole();
     renderForecast(s);
   }
   function meter(k, v, f) {
@@ -797,14 +828,69 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
     this.querySelectorAll('.fw-seg').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
     if (reduceMotion) drawRadar(performance.now());
   });
+  function selectedPoint() {
+    var x = $('fwBlackHoleX'), z = $('fwBlackHoleZ');
+    if (!x.value || !z.value || !x.checkValidity() || !z.checkValidity()) return null;
+    var point = { x: Number(x.value), z: Number(z.value) };
+    return Number.isFinite(point.x) && Number.isFinite(point.z) ? point : null;
+  }
+  function renderBlackHole() {
+    var active = state && state.weather.override === 'BlackHole';
+    var center = active && state.weather.blackHole;
+    $('fwBlackHole').hidden = !choosingBlackHole && !active;
+    if (!locationDirty && center) {
+      $('fwBlackHoleX').value = center.x;
+      $('fwBlackHoleZ').value = center.z;
+    }
+    var point = selectedPoint();
+    var button = $('fwBlackHoleSpawn');
+    button.disabled = weatherBusy || !point;
+    button.textContent = weatherBusy ? 'Applying…' : active ? 'Move black hole' : 'Spawn black hole';
+    $('fwBlackHoleStatus').textContent = center
+      ? 'Active at X ' + center.x + ', Z ' + center.z + ' · Void Touched radius: 250 studs.'
+      : point ? 'Selected X ' + point.x + ', Z ' + point.z + ' · applies to every live server.'
+      : 'Select a point on the radar or enter X and Z.';
+    $('fwRadar').style.cursor = choosingBlackHole || active ? 'crosshair' : '';
+  }
+  function setWeather(kind, point) {
+    if (weatherBusy) return;
+    weatherBusy = true;
+    $('fwKinds').querySelectorAll('.fw-kind').forEach(function (x) { x.disabled = true; });
+    renderBlackHole();
+    var body = { kind: kind };
+    if (point) body.blackHole = point;
+    return post('/admin/fishing-waters/weather', body)
+      .then(function () { choosingBlackHole = false; locationDirty = false; renderWeather(); })
+      .catch(function (err) { alert(err.message); })
+      .then(function () {
+        weatherBusy = false;
+        $('fwKinds').querySelectorAll('.fw-kind').forEach(function (x) { x.disabled = false; });
+        renderBlackHole();
+      });
+  }
   $('fwKinds').addEventListener('click', function (e) {
     var b = e.target.closest('.fw-kind');
-    if (!b || b.getAttribute('aria-checked') === 'true') return;
-    var buttons = this.querySelectorAll('.fw-kind');
-    buttons.forEach(function (x) { x.disabled = true; });
-    post('/admin/fishing-waters/weather', { kind: b.dataset.kind })
-      .catch(function (err) { alert(err.message); })
-      .then(function () { buttons.forEach(function (x) { x.disabled = false; }); });
+    if (!b || weatherBusy) return;
+    if (b.dataset.kind === 'BlackHole') {
+      choosingBlackHole = true;
+      renderWeather();
+      $('fwBlackHoleX').focus();
+      return;
+    }
+    if (!choosingBlackHole && b.getAttribute('aria-checked') === 'true') return;
+    setWeather(b.dataset.kind);
+  });
+  ['fwBlackHoleX', 'fwBlackHoleZ'].forEach(function (id) {
+    $(id).addEventListener('input', function () {
+      locationDirty = true;
+      renderBlackHole();
+      if (reduceMotion) drawRadar(0);
+    });
+  });
+  $('fwBlackHole').addEventListener('submit', function (event) {
+    event.preventDefault();
+    var point = selectedPoint();
+    if (point) setWeather('BlackHole', point);
   });
   $('fwKinds').addEventListener('keydown', function (e) {
     if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].indexOf(e.key) < 0) return;
@@ -1002,6 +1088,21 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
         }
       });
     }
+    // The solid circle is live; the dashed circle previews the pending position.
+    var activeHole = state && state.weather.override === 'BlackHole' && state.weather.blackHole;
+    var pendingHole = (choosingBlackHole || locationDirty) && selectedPoint();
+    function holeMarker(point, pending) {
+      if (!point) return;
+      var q = px(point.x, point.z);
+      ctx.beginPath(); ctx.arc(q[0], q[1], Math.max(5, 250 * k), 0, Math.PI * 2);
+      ctx.strokeStyle = pending ? '#e4caff' : '#ad72ff'; ctx.fillStyle = 'rgba(128,51,202,.25)';
+      ctx.lineWidth = 2; ctx.setLineDash(pending ? [4, 3] : []); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(q[0], q[1], 4, 0, Math.PI * 2); ctx.fillStyle = '#08030d'; ctx.fill();
+      ctx.fillStyle = '#e4caff'; ctx.font = '600 11px ui-sans-serif,system-ui,sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(pending ? 'Selected location' : 'Black hole', q[0], q[1] - Math.max(13, 250 * k + 8));
+    }
+    holeMarker(activeHole, false);
+    holeMarker(pendingHole, true);
     ctx.restore();
 
     // Bezel, compass points and range label
@@ -1031,6 +1132,18 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
       ctx.fillText('wind', ax, ay + 30);
     }
   }
+  $('fwRadar').addEventListener('click', function (event) {
+    if (!state || weatherBusy || (!choosingBlackHole && state.weather.override !== 'BlackHole')) return;
+    var rect = this.getBoundingClientRect(), c = rect.width / 2, rad = c - 18;
+    var dx = event.clientX - rect.left - c, dz = event.clientY - rect.top - c;
+    if (rad <= 0 || dx * dx + dz * dz > rad * rad) return;
+    var x = Math.round(dx / rad * RANGES[range]), z = Math.round(dz / rad * RANGES[range]);
+    if (Math.abs(x) > 5200 || Math.abs(z) > 5200) return;
+    $('fwBlackHoleX').value = x; $('fwBlackHoleZ').value = z;
+    locationDirty = true;
+    renderBlackHole();
+    if (reduceMotion) drawRadar(0);
+  });
   $('fwRadar').addEventListener('pointermove', function (event) {
     var s = server();
     if (!s || !s.weather.radar) return;

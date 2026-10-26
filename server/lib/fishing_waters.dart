@@ -50,12 +50,13 @@ class FishingWaters {
   static const _defaultPasses = [
     {'key': 'AutoStore', 'name': 'Auto Store', 'id': 3722004182},
   ];
-  static const _defaultKinds = ['Clear', 'LightRain', 'Rain', 'Storm'];
+  static const _defaultKinds = ['Clear', 'LightRain', 'Rain', 'Storm', 'BlackHole'];
 
   final Map<String, Map<String, dynamic>> _servers = {};
   final Map<int, (int, List<int>)> _avatars = {};
   bool _loaded = false;
   String? _override;
+  Map<String, num>? _blackHole;
   int _overrideAt = 0;
   List<Map<String, dynamic>> _grants = [];
   List<Map<String, dynamic>> _passes =
@@ -75,13 +76,15 @@ class FishingWaters {
       if (decoded is! Map) return;
       _override = decoded['override'] as String?;
       _overrideAt = (decoded['overrideAt'] as num?)?.toInt() ?? 0;
+      _blackHole = _override == 'BlackHole' ? _point(decoded['blackHole']) : null;
+      if (_override == 'BlackHole' && _blackHole == null) _override = null;
       _grants = _maps(decoded['grants']);
       final passes = _maps(decoded['passes']);
       if (passes.isNotEmpty) _passes = passes;
       _schedule = _maps(decoded['schedule']);
       final kinds = decoded['kinds'];
       if (kinds is List && kinds.isNotEmpty) {
-        _kinds = kinds.whereType<String>().toList();
+        _kinds = {...kinds.whereType<String>(), 'BlackHole'}.toList();
       }
     } catch (_) {
       // A damaged optional file must not stop the server starting; the
@@ -98,6 +101,7 @@ class FishingWaters {
       jsonEncode({
         'override': _override,
         'overrideAt': _overrideAt,
+        'blackHole': _blackHole,
         'grants': _grants,
         'passes': _passes,
         'schedule': _schedule,
@@ -182,6 +186,7 @@ class FishingWaters {
             .map((k) => _str(k, 24))
             .toList()
         : <String>[];
+    if (kinds.isNotEmpty && !kinds.contains('BlackHole')) kinds.add('BlackHole');
     if (kinds.isNotEmpty && jsonEncode(kinds) != jsonEncode(_kinds)) {
       _kinds = kinds;
       changed = true;
@@ -211,6 +216,9 @@ class FishingWaters {
         'maxWaveAmplitude':
             (_num(weather['maxWaveAmplitude']) ?? 0.72).clamp(0.1, 20),
         'radar': _radar(weather['radar']),
+        'blackHole': weather['kind'] == 'BlackHole' && _point(weather['blackHole']) != null
+            ? {..._point(weather['blackHole'])!, 'radius': 250}
+            : null,
         'seed': _int(weather['seed']) ?? 1,
         'cycleElapsed': _num(weather['cycleElapsed']) ?? 0,
       },
@@ -229,6 +237,7 @@ class FishingWaters {
       'intervalSeconds': heartbeatSeconds,
       'weatherOverride': _override,
       'weatherVersion': _overrideAt,
+      'blackHole': _blackHole,
       'grants': grants,
     });
   }
@@ -252,6 +261,7 @@ class FishingWaters {
       'servers': servers,
       'weather': {
         'override': _override,
+        'blackHole': _blackHole,
         'setAt': _overrideAt == 0 ? null : _overrideAt,
         'kinds': _kinds,
         'schedule': _schedule,
@@ -276,8 +286,15 @@ class FishingWaters {
       return errorResponse(400, 'unknown_weather',
           'Unknown weather type. Pick one of ${_kinds.join(', ')}.');
     }
+    final blackHole = kind == 'BlackHole' ? _point(body['blackHole']) : null;
+    if (kind == 'BlackHole' && blackHole == null) {
+      return errorResponse(400, 'invalid_location',
+          'Select a black hole location with finite X and Z coordinates between -5200 and 5200.');
+    }
     _override = kind;
-    _overrideAt = _nowMs;
+    _blackHole = blackHole;
+    final now = _nowMs;
+    _overrideAt = now > _overrideAt ? now : _overrideAt + 1;
     await _save();
     return jsonResponse(200, stateJson());
   }
@@ -485,6 +502,13 @@ class FishingWaters {
 
   static int? _int(Object? value) =>
       value is num && value.isFinite ? value.toInt() : null;
+
+  static Map<String, num>? _point(Object? value) {
+    if (value is! Map) return null;
+    final x = _num(value['x']), z = _num(value['z']);
+    if (x == null || z == null || x.abs() > 5200 || z.abs() > 5200) return null;
+    return {'x': x, 'z': z};
+  }
 
   // Only accept complete, bounded grids so the radar never plots malformed data.
   static Map<String, dynamic>? _radar(Object? raw) {

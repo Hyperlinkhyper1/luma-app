@@ -234,6 +234,57 @@ void main() {
     expect(afterRevoke['grants'], isEmpty);
   });
 
+  test('black holes require an admin and a bounded point, then reach game servers', () async {
+    final (unauthorized, _) = await send('POST', '/admin/fishing-waters/weather',
+        json: {'kind': 'BlackHole', 'blackHole': {'x': 30, 'z': -60}});
+    expect(unauthorized, isNot(200));
+    for (final point in [null, {}, {'x': 0}, {'x': '10', 'z': 0}, {'x': 5201, 'z': 0}, {'x': 0, 'z': -5201}]) {
+      final (status, _) = await send('POST', '/admin/fishing-waters/weather',
+          admin: true, json: {'kind': 'BlackHole', 'blackHole': point});
+      expect(status, 400);
+    }
+    final (status, state) = await send('POST', '/admin/fishing-waters/weather',
+        admin: true, json: {'kind': 'BlackHole', 'blackHole': {'x': 100.5, 'z': -200}});
+    expect(status, 200);
+    expect((state['weather'] as Map)['blackHole'], {'x': 100.5, 'z': -200});
+    final (_, reply) = await send('POST', '/api/v1/fishing-waters/heartbeat',
+        json: heartbeatBody(), gameKey: 'game-secret');
+    expect(reply['weatherOverride'], 'BlackHole');
+    expect(reply['blackHole'], {'x': 100.5, 'z': -200});
+    final (_, refreshed) = await send('GET', '/admin/fishing-waters/state', admin: true);
+    expect((refreshed['weather'] as Map)['kinds'], contains('BlackHole'));
+    final (moved, afterMove) = await send('POST', '/admin/fishing-waters/weather',
+        admin: true, json: {'kind': 'BlackHole', 'blackHole': {'x': -5200, 'z': 5200}});
+    expect(moved, 200);
+    expect((afterMove['weather'] as Map)['blackHole'], {'x': -5200, 'z': 5200});
+    final (clear, afterClear) = await send('POST', '/admin/fishing-waters/weather',
+        admin: true, json: {'kind': 'Auto'});
+    expect(clear, 200);
+    expect((afterClear['weather'] as Map)['blackHole'], isNull);
+    final (_, cleared) = await send('POST', '/api/v1/fishing-waters/heartbeat',
+        json: heartbeatBody(), gameKey: 'game-secret');
+    expect(cleared['blackHole'], isNull);
+    expect(cleared['weatherOverride'], isNull);
+  });
+
+  test('black hole locations persist and same-clock moves change the version', () async {
+    final clock = DateTime.fromMillisecondsSinceEpoch(12345);
+    final first = FishingWaters(dir.path, gameKey: 'k', clock: () => clock);
+    Future<Response> setPoint(FishingWaters bridge, num x, num z) => bridge.setWeather(Request(
+        'POST', Uri.parse('http://localhost/'),
+        body: jsonEncode({'kind': 'BlackHole', 'blackHole': {'x': x, 'z': z}})));
+    expect((await setPoint(first, 100, 200)).statusCode, 200);
+    final v1 = (first.stateJson()['weather'] as Map)['setAt'] as int;
+    expect((await setPoint(first, 300, 400)).statusCode, 200);
+    final v2 = (first.stateJson()['weather'] as Map)['setAt'] as int;
+    expect(v2, greaterThan(v1));
+    final second = FishingWaters(dir.path, gameKey: 'k', clock: () => clock);
+    final weather = second.stateJson()['weather'] as Map;
+    expect(weather['override'], 'BlackHole');
+    expect(weather['blackHole'], {'x': 300, 'z': 400});
+    expect(weather['setAt'], v2);
+  });
+
   test('a closing server drops off the dashboard', () async {
     await send('POST', '/api/v1/fishing-waters/heartbeat',
         json: heartbeatBody(), gameKey: 'game-secret');
@@ -286,6 +337,9 @@ void main() {
     expect(html, contains('data-project="fw"'));
     expect(html, contains('id="project-luma"'));
     expect(html, contains('id="project-fw"'));
+    expect(html, contains('id="fwBlackHoleX"'));
+    expect(html, contains('id="fwBlackHoleZ"'));
+    expect(html, contains('id="fwBlackHoleSpawn"'));
 
     // Both projects sit side by side inside the page wrapper: the luma one
     // must be closed before Fishing Waters opens, and the wrapper after it.
