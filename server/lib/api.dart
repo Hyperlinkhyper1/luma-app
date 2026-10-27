@@ -1605,9 +1605,12 @@ class Api {
         'set up authenticator',
         '${_adminErrorLine(error)}'
             '<p><strong>Link your authenticator app</strong></p>'
-            '<p class="hint">In your app choose <em>Add account → Enter a setup '
-            'key</em> (time-based) and enter this key — or, on the phone that '
-            'has the app, tap the button below.</p>'
+            '<p class="hint">Scan this code with your authenticator app '
+            '(Microsoft Authenticator: <em>+ → Other account</em>).</p>'
+            '<div style="margin:12px 0">${AdminTotp.qrSvg(secret)}</div>'
+            '<p class="hint">Can\'t scan? Choose <em>Enter a setup key</em> '
+            '(time-based) and type this key — or, on the phone that has the '
+            'app, tap the button below.</p>'
             '<p style="font-family:ui-monospace,monospace;font-size:15px;'
             'letter-spacing:.04em;word-break:break-all;user-select:all">'
             '${_htmlEscape(grouped)}</p>'
@@ -1717,7 +1720,8 @@ class Api {
           200,
           _totpEnrollHtml(token, pending.secret,
               error: "That code did not match. Check that the phone's clock "
-                  'is set automatically and use the newest code.'));
+                  'is set automatically and use the newest code. Server '
+                  'time: ${DateTime.now().toUtc().toIso8601String().substring(11, 19)} UTC.'));
     }
     _pendingTotpEnrollments.clear();
     // Anything signed in before the second factor existed is void now; the

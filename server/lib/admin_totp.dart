@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart' as c;
+import 'package:qr/qr.dart';
 
 import 'util.dart';
 
@@ -195,4 +196,27 @@ class AdminTotp {
       'otpauth://totp/${Uri.encodeComponent('luma:$account')}'
       '?secret=${base32Encode(secret)}&issuer=luma&algorithm=SHA1'
       '&digits=6&period=30';
+
+  /// [otpauthUri] as an inline SVG QR code, for scanning from a phone with
+  /// Microsoft/Google Authenticator. Built server-side so the page needs no
+  /// script and the secret never leaves this response.
+  static String qrSvg(Uint8List secret, {String account = 'admin'}) {
+    final image = QrImage(QrCode.fromData(
+        data: otpauthUri(secret, account: account),
+        errorCorrectLevel: QrErrorCorrectLevel.M));
+    final n = image.moduleCount;
+    const quiet = 4;
+    final path = StringBuffer();
+    for (var y = 0; y < n; y++) {
+      for (var x = 0; x < n; x++) {
+        if (image.isDark(y, x)) path.write('M${x + quiet} ${y + quiet}h1v1h-1z');
+      }
+    }
+    final size = n + quiet * 2;
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 $size $size" '
+        'shape-rendering="crispEdges" role="img" aria-label="Authenticator QR code" '
+        'style="width:100%;max-width:240px;display:block;margin:0 auto">'
+        '<rect width="$size" height="$size" fill="#fff"/>'
+        '<path d="$path" fill="#000"/></svg>';
+  }
 }
