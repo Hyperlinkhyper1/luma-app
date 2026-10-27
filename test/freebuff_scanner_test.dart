@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
+import 'package:luma/features/plugins/installed/ai_usage/ai_usage_pricing.dart';
 import 'package:luma/features/plugins/installed/ai_usage/ai_usage_source.dart';
 import 'package:luma/features/plugins/installed/ai_usage/data/ai_usage_database.dart';
 import 'package:luma/features/plugins/installed/ai_usage/freebuff_scanner.dart';
@@ -220,6 +221,53 @@ void main() {
 
     final row = (await db.select(db.aiUsageTurns).get()).single;
     expect(row.model, 'z-ai/glm-5.3-flash');
+  });
+
+  test('a hosted-catalog model key is stored as the real model id', () async {
+    final dir = projectDir('proj');
+    final sqliteDb = _openFixtureDb(dbFileIn(dir).path);
+    _insertThread(sqliteDb, id: 'thread-1', model: 'm-cb71f819fe');
+    _insertMessage(sqliteDb, threadId: 'thread-1', ts: 1000, metrics: _metrics());
+    sqliteDb.close();
+
+    await scanner.scanDirectory(db, tempDir);
+
+    final row = (await db.select(db.aiUsageTurns).get()).single;
+    expect(row.model, 'mimo/mimo-v2.6-pro');
+  });
+
+  test('hosted-catalog keys resolve; unknown keys and plain ids pass through', () {
+    expect(resolveFreebuffModel('m-cb71f819fe'), 'mimo/mimo-v2.6-pro');
+    expect(resolveFreebuffModel('m-79293c5b7d'), 'fbc/claude-haiku-5.5');
+    expect(resolveFreebuffModel('m-0000000000'), 'm-0000000000');
+    expect(resolveFreebuffModel('z-ai/glm-5.3-flash'), 'z-ai/glm-5.3-flash');
+  });
+
+  test('catalog providers price at their own rate, not the generic fallback', () {
+    for (final model in [
+      'mimo/mimo-v2.6-pro',
+      'upstage/solar-mini4',
+      'qwen/qwen3.8-flash',
+      'minimax/minimax-m3',
+      'x-ai/grok-4.7',
+      'moonshotai/kimi-k3',
+      'm-cb71f819fe',
+    ]) {
+      expect(isBillableModel(AiUsageSource.freebuff, model), isTrue, reason: model);
+      expect(
+        pricingFor(AiUsageSource.freebuff, model),
+        isNot(same(kFreebuffGenericProviderFallback)),
+        reason: model,
+      );
+    }
+    expect(
+      pricingFor(AiUsageSource.freebuff, 'anthropic/claude-opus-4.8'),
+      same(kAnthropicPricing['claude-opus-4-8']),
+    );
+    expect(
+      pricingFor(AiUsageSource.freebuff, 'stealth/space-bunny-alpha'),
+      same(kFreebuffGenericProviderFallback),
+    );
   });
 
   test('a rescan only picks up messages created after the watermark', () async {

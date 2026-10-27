@@ -81,13 +81,15 @@ AiPricingRates? _opencodePricingFor(String model) {
 /// `_opencodePricingFor` documents. A bare slug that isn't a recognized
 /// Anthropic or OpenAI model (Freebuff's own default harness, e.g. GLM) has
 /// no provider to key off of, so it prices at the generic fallback rather
-/// than going unbillable.
+/// than going unbillable. Freebuff's catalog writes Claude versions with a
+/// dot (`claude-opus-4.8`), so those are dashed before the Anthropic lookup.
 AiPricingRates _freebuffPricingFor(String model) {
   final split = splitFreebuffModel(model);
   final provider = split?.$1.toLowerCase();
   final modelId = split?.$2 ?? model;
   if (provider == 'anthropic' || isAnthropicBillableModel(modelId)) {
-    return anthropicPricingFor(modelId) ?? kFreebuffGenericProviderFallback;
+    return anthropicPricingFor(modelId.replaceAll('.', '-')) ??
+        kFreebuffGenericProviderFallback;
   }
   if (provider == 'openai' || isOpenAiBillableModel(modelId)) {
     return openAiPricingFor(modelId) ?? kFreebuffGenericProviderFallback;

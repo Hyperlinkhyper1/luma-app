@@ -703,16 +703,21 @@ String companyForModel(AiUsageSource source, String model) {
       }
       final provider = split.$1.toLowerCase();
       return switch (provider) {
-        'anthropic' => 'Anthropic',
+        'anthropic' || 'fbc' => 'Anthropic',
         'openai' => 'OpenAI',
         'google' => 'Google',
         'z-ai' => 'Zhipu AI',
         'deepseek' => 'DeepSeek',
-        'crof' => 'Moonshot AI',
-        'meta' => 'Meta',
-        'mistral' => 'Mistral',
-        'xai' => 'xAI',
+        'crof' || 'moonshotai' => 'Moonshot AI',
+        'meta' || 'meta-llama' => 'Meta',
+        'mistral' || 'mistralai' => 'Mistral',
+        'xai' || 'x-ai' => 'xAI',
         'openrouter' => 'OpenRouter',
+        'mimo' => 'Xiaomi',
+        'upstage' => 'Upstage',
+        'qwen' => 'Alibaba',
+        'minimax' => 'MiniMax',
+        'stealth' => 'Stealth',
         _ => provider.isEmpty
             ? currentL.commonOther
             : '${provider[0].toUpperCase()}${provider.substring(1)}',

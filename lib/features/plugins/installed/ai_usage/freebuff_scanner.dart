@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
+import 'ai_usage_pricing_freebuff.dart';
 import 'ai_usage_project.dart';
 import 'ai_usage_source.dart';
 import 'data/ai_usage_database.dart';
@@ -125,7 +126,7 @@ class FreebuffScanner {
       for (final row in sqliteDb.select('SELECT id, model, project_path FROM threads')) {
         final id = row['id'] as String?;
         if (id == null) continue;
-        modelByThread[id] = (row['model'] as String?) ?? '';
+        modelByThread[id] = resolveFreebuffModel((row['model'] as String?) ?? '');
         projectPathByThread[id] = row['project_path'] as String?;
       }
 

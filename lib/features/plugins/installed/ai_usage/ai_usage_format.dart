@@ -60,7 +60,7 @@ String _shortFreebuffModelName(String model) {
   }
   final (provider, modelId) = split;
   return switch (provider) {
-    'anthropic' => _shortModelName(modelId),
+    'anthropic' || 'fbc' => _shortModelName(modelId),
     'openai' => _shortOpenAiModelName(modelId),
     _ => modelId,
   };
