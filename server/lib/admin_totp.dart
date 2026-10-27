@@ -107,7 +107,17 @@ class AdminTotp {
 
   File get _file => File('$dataDir/admin_totp.json');
 
-  Uint8List? get secret => misconfigured ? null : (_envSecret ?? _fileSecret);
+  /// Deleting admin_totp.json on the host re-opens enrollment straight away,
+  /// without a restart, as the enrollment page promises.
+  Uint8List? get secret {
+    if (misconfigured) return null;
+    if (_envSecret != null) return _envSecret;
+    if (_fileSecret != null && !_file.existsSync()) {
+      _fileSecret = null;
+      _lastStep = -1;
+    }
+    return _fileSecret;
+  }
   bool get enrolled => secret != null;
 
   void _load() {
