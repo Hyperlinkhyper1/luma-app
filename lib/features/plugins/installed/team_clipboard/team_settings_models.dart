@@ -1,3 +1,5 @@
+import 'team_clipboard_models.dart';
+
 /// What a lead can let a member do, one by one or through a tag. A lead
 /// always has every one. The names are the server's keys.
 enum TeamPermission {
@@ -96,11 +98,17 @@ class TeamMemberAccess {
   );
 }
 
-/// What a lead's Settings tab works on: the team's tags and every member.
+/// What a lead's Settings tab works on: the team's tags, the tags entries
+/// can carry, and every member.
 class TeamSettings {
-  const TeamSettings({required this.tags, required this.members});
+  const TeamSettings({
+    required this.tags,
+    required this.members,
+    this.entryTags = const [],
+  });
 
   final List<TeamTag> tags;
+  final List<TeamEntryTag> entryTags;
   final List<TeamMemberAccess> members;
 
   TeamTag? tag(String id) => tags.where((t) => t.id == id).firstOrNull;
@@ -112,6 +120,10 @@ class TeamSettings {
     tags: [
       for (final t in j['tags'] as List? ?? const [])
         TeamTag.fromJson(t as Map<String, dynamic>),
+    ],
+    entryTags: [
+      for (final t in j['entryTags'] as List? ?? const [])
+        TeamEntryTag.fromJson(t as Map<String, dynamic>),
     ],
     members: [
       for (final m in j['members'] as List? ?? const [])

@@ -151,9 +151,13 @@ class _ChatMessageListState extends State<ChatMessageList> {
             widget.thinking &&
             (messages.isEmpty || messages.last.role == 'user');
         final itemCount = messages.length + (pending ? 1 : 0);
+        final narrow = MediaQuery.sizeOf(context).width < 500;
         return ListView.builder(
           controller: _scrollController,
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: narrow
+              ? const EdgeInsets.fromLTRB(14, 4, 14, 16)
+              : const EdgeInsets.fromLTRB(20, 8, 20, 24),
           itemCount: itemCount,
           itemBuilder: (context, i) {
             final Widget child = i == messages.length

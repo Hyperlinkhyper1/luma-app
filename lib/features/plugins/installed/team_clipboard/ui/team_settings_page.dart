@@ -5,6 +5,7 @@ import '../../../../../l10n/app_localizations.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/team_clipboard_api.dart';
 import '../team_clipboard_controller.dart';
+import '../team_clipboard_models.dart';
 import '../team_settings_models.dart';
 import 'team_clipboard_style.dart';
 
@@ -121,6 +122,38 @@ class _TeamSettingsPageState extends State<TeamSettingsPage> {
     ),
   );
 
+  /// Saves [edited] in place of [original], or as a new entry tag.
+  Future<String?> _saveEntryTag(TeamEntryTag? original, TeamEntryTag edited) =>
+      _save(
+        (api) => api.saveSettings(
+          entryTags: original == null
+              ? [..._settings!.entryTags, edited]
+              : [
+                  for (final t in _settings!.entryTags)
+                    t.id == original.id ? edited : t,
+                ],
+        ),
+      );
+
+  Future<String?> _deleteEntryTag(TeamEntryTag tag) => _save(
+    (api) => api.saveSettings(
+      entryTags: [
+        for (final t in _settings!.entryTags)
+          if (t.id != tag.id) t,
+      ],
+    ),
+  );
+
+  Future<void> _editEntryTag([TeamEntryTag? tag]) => showDialog<void>(
+    context: context,
+    builder: (context) => _EntryTagDialog(
+      tag: tag,
+      count: _settings!.entryTags.length,
+      onSave: (edited) => _saveEntryTag(tag, edited),
+      onDelete: tag == null ? null : () => _deleteEntryTag(tag),
+    ),
+  );
+
   Future<void> _editMember(TeamMemberAccess member) => showDialog<void>(
     context: context,
     builder: (context) => _MemberDialog(
@@ -164,6 +197,12 @@ class _TeamSettingsPageState extends State<TeamSettingsPage> {
       onNew: () => _editTag(),
       onEdit: _editTag,
     );
+    final entryTags = _EntryTagsCard(
+      tags: settings.entryTags,
+      entries: widget.controller.entries,
+      onNew: () => _editEntryTag(),
+      onEdit: _editEntryTag,
+    );
     return RefreshIndicator(
       onRefresh: _load,
       child: LayoutBuilder(
@@ -198,13 +237,21 @@ class _TeamSettingsPageState extends State<TeamSettingsPage> {
                   children: [
                     Expanded(flex: 3, child: members),
                     const SizedBox(width: 16),
-                    Expanded(flex: 2, child: tags),
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [tags, const SizedBox(height: 16), entryTags],
+                      ),
+                    ),
                   ],
                 )
               else ...[
                 members,
                 const SizedBox(height: 16),
                 tags,
+                const SizedBox(height: 16),
+                entryTags,
               ],
             ],
           );
@@ -260,51 +307,6 @@ class _CardTitle extends StatelessWidget {
         ),
         ?trailing,
       ],
-    );
-  }
-}
-
-/// A team tag as a small coloured label.
-class TeamTagChip extends StatelessWidget {
-  const TeamTagChip({super.key, required this.name, required this.color});
-
-  final String name;
-  final int color;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = teamTagColor(color, context.luma);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      decoration: BoxDecoration(
-        color: c.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: c.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(color: c, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 5),
-          Flexible(
-            child: Text(
-              name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: c,
-                fontSize: 11.5,
-                fontWeight: FontWeight.w600,
-                height: 1.2,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -533,6 +535,92 @@ class _TagsCard extends StatelessWidget {
                         '${t.teamSettingsTagMembers(settings.wearing(tag.id!))}'
                         ' · '
                         '${t.teamSettingsTagPermissionCount(tag.permissions.length)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: luma.textMuted, fontSize: 12),
+                      ),
+                    ),
+                    Icon(Icons.edit_rounded, size: 16, color: luma.textMuted),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// The tags entries can carry. Anyone picks them when making an entry and
+/// filters the board by them; only a lead makes them here.
+class _EntryTagsCard extends StatelessWidget {
+  const _EntryTagsCard({
+    required this.tags,
+    required this.entries,
+    required this.onNew,
+    required this.onEdit,
+  });
+
+  final List<TeamEntryTag> tags;
+  final List<TeamEntry> entries;
+  final VoidCallback onNew;
+  final ValueChanged<TeamEntryTag> onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = L.of(context);
+    final luma = context.luma;
+    return LumaCard(
+      padding: const EdgeInsets.fromLTRB(16, 12, 12, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _CardTitle(
+            icon: Icons.label_outline_rounded,
+            title: t.teamSettingsEntryTags,
+            count: tags.length,
+            trailing: TextButton.icon(
+              key: const ValueKey('team-settings-new-entry-tag'),
+              onPressed: onNew,
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: Text(t.teamSettingsNewTag),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(0, 4, 4, 6),
+            child: Text(
+              t.teamSettingsEntryTagsHint,
+              style: TextStyle(
+                color: luma.textMuted,
+                fontSize: 12.5,
+                height: 1.4,
+              ),
+            ),
+          ),
+          for (final (i, tag) in tags.indexed) ...[
+            if (i > 0) Divider(height: 1, color: luma.border),
+            InkWell(
+              key: ValueKey('team-settings-entry-tag-${tag.id}'),
+              onTap: () => onEdit(tag),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 4,
+                  vertical: 10,
+                ),
+                child: Row(
+                  children: [
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 170),
+                      child: TeamTagChip(name: tag.name, color: tag.color),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        t.teamSettingsEntryTagCount(
+                          entries.where((e) => e.tags.contains(tag.id)).length,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(color: luma.textMuted, fontSize: 12),
@@ -1174,6 +1262,216 @@ class _TagDialogState extends State<_TagDialog> {
         ),
         LumaPrimaryButton(
           key: const ValueKey('team-settings-save'),
+          label: t.commonSave,
+          icon: Icons.check_rounded,
+          loading: _saving,
+          onTap: _saving || _name.text.trim().isEmpty ? null : _save,
+        ),
+      ],
+    );
+  }
+}
+
+/// Makes or edits an entry tag: just a name and a colour, since entry tags
+/// carry no permissions.
+class _EntryTagDialog extends StatefulWidget {
+  const _EntryTagDialog({
+    required this.tag,
+    required this.count,
+    required this.onSave,
+    this.onDelete,
+  });
+
+  /// Null for a new tag.
+  final TeamEntryTag? tag;
+
+  /// How many entry tags the team has, so a new one starts on the next
+  /// colour.
+  final int count;
+  final Future<String?> Function(TeamEntryTag tag) onSave;
+  final Future<String?> Function()? onDelete;
+
+  @override
+  State<_EntryTagDialog> createState() => _EntryTagDialogState();
+}
+
+class _EntryTagDialogState extends State<_EntryTagDialog> {
+  late final _name = TextEditingController(text: widget.tag?.name ?? '');
+  late int _color = widget.tag?.color ?? widget.count % _paletteSize;
+  bool _saving = false;
+  String? _error;
+
+  static const _paletteSize = 8;
+
+  L get t => L.of(context);
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final name = _name.text.trim();
+    if (name.isEmpty) return;
+    await _run(
+      () => widget.onSave(
+        TeamEntryTag(id: widget.tag?.id, name: name, color: _color),
+      ),
+    );
+  }
+
+  Future<void> _delete() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(t.teamSettingsDeleteTag),
+        content: Text(t.teamSettingsDeleteEntryTagConfirm(widget.tag!.name)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(t.commonCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              t.commonDelete,
+              style: TextStyle(color: context.luma.danger),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) await _run(widget.onDelete!);
+  }
+
+  Future<void> _run(Future<String?> Function() call) async {
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    final error = await call();
+    if (!mounted) return;
+    if (error == null) {
+      Navigator.of(context).pop();
+    } else {
+      setState(() {
+        _saving = false;
+        _error = error;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final palette = teamTagPalette(luma);
+    return AlertDialog(
+      title: Text(
+        widget.tag == null ? t.teamSettingsNewTag : t.teamSettingsEditTag,
+      ),
+      content: SizedBox(
+        width: 420,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                key: const ValueKey('team-settings-entry-tag-name'),
+                controller: _name,
+                autofocus: widget.tag == null,
+                enabled: !_saving,
+                maxLength: 24,
+                onChanged: (_) => setState(() {}),
+                onSubmitted: (_) => _saving ? null : _save(),
+                decoration: InputDecoration(
+                  labelText: t.teamSettingsTagName,
+                  hintText: t.teamSettingsEntryTagNameHint,
+                ),
+              ),
+              _SectionLabel(t.teamSettingsTagColor),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (var i = 0; i < _paletteSize; i++)
+                    Semantics(
+                      selected: i == _color,
+                      button: true,
+                      child: InkWell(
+                        onTap: _saving
+                            ? null
+                            : () => setState(() => _color = i),
+                        customBorder: const CircleBorder(),
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: palette[i],
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: i == _color
+                                  ? luma.textPrimary
+                                  : Colors.transparent,
+                              width: 2,
+                            ),
+                          ),
+                          child: i == _color
+                              ? Icon(
+                                  Icons.check_rounded,
+                                  size: 16,
+                                  color: luma.onAccent,
+                                )
+                              : null,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              if (_name.text.trim().isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TeamTagChip(name: _name.text.trim(), color: _color),
+                ),
+              ],
+              if (widget.onDelete != null) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    key: const ValueKey('team-settings-delete-entry-tag'),
+                    onPressed: _saving ? null : _delete,
+                    icon: Icon(
+                      Icons.delete_outline_rounded,
+                      color: luma.danger,
+                    ),
+                    label: Text(
+                      t.teamSettingsDeleteTag,
+                      style: TextStyle(color: luma.danger),
+                    ),
+                  ),
+                ),
+              ],
+              if (_error != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  _error!,
+                  style: TextStyle(color: luma.danger, fontSize: 12.5),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        LumaGhostButton(
+          label: t.commonCancel,
+          onTap: _saving ? null : () => Navigator.of(context).pop(),
+        ),
+        LumaPrimaryButton(
+          key: const ValueKey('team-settings-entry-tag-save'),
           label: t.commonSave,
           icon: Icons.check_rounded,
           loading: _saving,

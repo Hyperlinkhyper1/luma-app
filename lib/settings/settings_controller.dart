@@ -89,6 +89,7 @@ class SettingsController extends ChangeNotifier {
     required String? aiCallsResetDate,
     required String aiProviderId,
     required String aiMode,
+    String pictureTier = 'standard',
     required Map<String, int> modelUsage,
     required List<String> navOrder,
     required List<String> visitedCountries,
@@ -112,6 +113,7 @@ class SettingsController extends ChangeNotifier {
        _aiCallsResetDate = aiCallsResetDate,
        _aiProviderId = aiProviderId,
        _aiMode = aiMode,
+       _pictureTier = pictureTier,
        _modelUsage = modelUsage,
        _navOrder = navOrder,
        _visitedCountries = visitedCountries,
@@ -160,6 +162,7 @@ class SettingsController extends ChangeNotifier {
   String? _aiCallsResetDate;
   String _aiProviderId;
   String _aiMode;
+  String _pictureTier;
 
   /// Lifetime successful-message count per model, keyed by
   /// `modelUsageKeyFor(...)` (see providers/ai_usage.dart) — e.g.
@@ -338,6 +341,18 @@ class SettingsController extends ChangeNotifier {
   void setAiMode(String mode) {
     if (mode == _aiMode) return;
     _aiMode = mode;
+    _changed();
+  }
+
+  /// Which of the operator's two picture models the Assistant's picture
+  /// mode draws with: `standard` (cheaper) or `pro`. A local per-device
+  /// choice, like [aiMode].
+  String get pictureTier => _pictureTier;
+
+  void setPictureTier(String tier) {
+    final next = tier == 'pro' ? 'pro' : 'standard';
+    if (next == _pictureTier) return;
+    _pictureTier = next;
     _changed();
   }
 
@@ -531,6 +546,7 @@ class SettingsController extends ChangeNotifier {
     _aiCallsResetDate = null;
     _aiProviderId = 'anthropic';
     _aiMode = 'normal';
+    _pictureTier = 'standard';
     _modelUsage = const {};
     _navOrder = const [];
     _visitedCountries = const [];
@@ -626,6 +642,7 @@ class SettingsController extends ChangeNotifier {
           'aiCallsResetDate': _aiCallsResetDate,
           'aiProviderId': _aiProviderId,
           'aiMode': _aiMode,
+          'pictureTier': _pictureTier,
           'modelUsage': _modelUsage,
           'trackBackendAiUsage': _trackBackendAiUsage,
           'navOrder': _navOrder,
@@ -689,6 +706,7 @@ class SettingsController extends ChangeNotifier {
         final id => id,
       },
       aiMode: data['aiMode'] as String? ?? 'normal',
+      pictureTier: data['pictureTier'] == 'pro' ? 'pro' : 'standard',
       modelUsage: _parseModelUsage(data['modelUsage']),
       navOrder: _parseNavOrder(data['navOrder']),
       visitedCountries: _parseStringList(data['visitedCountries']),

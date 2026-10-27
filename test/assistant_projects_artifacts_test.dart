@@ -239,7 +239,7 @@ void main() {
   });
 
   test(
-    'Free blocks uploads, selected artifacts, picture mode, and unadvertised tools',
+    'Free blocks uploads, selected artifacts, and unadvertised tools',
     () async {
       final chat = await repo.createConversation();
       settings.setAdminPlan('core');
@@ -254,11 +254,6 @@ void main() {
             text: 'text',
           ),
         ],
-      );
-      await controller.sendMessage(
-        chat,
-        'picture',
-        mode: AssistantComposeMode.picture,
       );
       expect(client.calls, 0);
       client.action = (execute) async {
@@ -345,10 +340,11 @@ void main() {
   });
 
   test(
-    'Orbit picture mode stores and indexes the returned picture; Free never calls the image service',
+    'picture mode stores and indexes the returned picture on every plan, sending the chosen tier',
     () async {
       final sync = _ServerSync();
       var requests = 0;
+      final tiers = <Object?>[];
       final imageController = ChatController(
         repository: repo,
         keyStore: _Keys(),
@@ -360,6 +356,7 @@ void main() {
           serverUrl: url,
           httpClient: MockClient((request) async {
             requests++;
+            tiers.add((jsonDecode(request.body) as Map)['tier']);
             return http.Response(
               jsonEncode({
                 'image': base64Encode([1, 2, 3]),
@@ -384,13 +381,15 @@ void main() {
         expect(await File(artifact.path).readAsBytes(), [1, 2, 3]);
         expect((await repo.loadMessages(chat)).last.role, 'assistant');
         settings.setAdminPlan('core');
+        settings.setPictureTier('pro');
         await imageController.sendMessage(
           chat,
           'Draw another cat',
           mode: AssistantComposeMode.picture,
         );
-        expect(requests, 1);
-        expect((await repo.loadMessages(chat)).last.role, 'error');
+        expect(requests, 2);
+        expect(tiers, ['standard', 'pro']);
+        expect((await repo.loadMessages(chat)).last.role, 'assistant');
       } finally {
         imageController.dispose();
         sync.dispose();

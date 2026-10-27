@@ -822,6 +822,84 @@ void main() {
           isEmpty);
     });
 
+    test('a lead makes entry tags and anyone on the team uses them', () async {
+      final member = await register('member@example.com');
+      final lead = await register('lead@example.com');
+      await setRole('member@example.com', 'member');
+      await setRole('lead@example.com', 'lead');
+
+      final refused = await call('PUT', '/api/v1/team-board/settings',
+          token: member,
+          json: {
+            'entryTags': [
+              {'name': 'Blocks'}
+            ]
+          });
+      expect(refused['httpStatus'], 403);
+
+      final saved = await call('PUT', '/api/v1/team-board/settings',
+          token: lead,
+          json: {
+            'entryTags': [
+              {'name': 'Blocks', 'color': 2},
+              {'name': 'Mobs', 'color': 5},
+            ]
+          });
+      expect(saved['httpStatus'], 200);
+      final tags = saved['entryTags'] as List;
+      final blocks = tags[0]['id'] as String, mobs = tags[1]['id'] as String;
+      expect(tags[1]['color'], 5);
+
+      final board = await call('GET', '/api/v1/team-board', token: member);
+      expect([for (final t in board['entryTags'] as List) t['name']],
+          ['Blocks', 'Mobs']);
+
+      final made = await call('POST', '/api/v1/team-board/entries',
+          token: member,
+          json: {
+            'kind': 'model',
+            'title': 'Ruby ore',
+            'tags': [mobs, 'gone', blocks, mobs],
+          });
+      expect(made['httpStatus'], 201);
+      expect(made['tags'], [blocks, mobs]);
+      final id = made['id'] as String;
+
+      final kept = await call('PUT', '/api/v1/team-board/entries/$id',
+          token: member, json: {'title': 'Ruby ore v2'});
+      expect(kept['tags'], [blocks, mobs]);
+      final retagged = await call('PUT', '/api/v1/team-board/entries/$id',
+          token: member,
+          json: {
+            'tags': [mobs]
+          });
+      expect(retagged['tags'], [mobs]);
+      expect(
+          (await call('PUT', '/api/v1/team-board/entries/$id',
+              token: member, json: {'tags': 'Mobs'}))['httpStatus'],
+          400);
+
+      await call('PUT', '/api/v1/team-board/settings', token: lead, json: {
+        'entryTags': [
+          {'id': blocks, 'name': 'Blocks', 'color': 2}
+        ]
+      });
+      final after =
+          await call('GET', '/api/v1/team-board/entries/$id', token: member);
+      expect(after['tags'], isEmpty);
+
+      expect(
+          (await call('PUT', '/api/v1/team-board/settings',
+              token: lead,
+              json: {
+                'entryTags': [
+                  {'name': 'Mobs'},
+                  {'name': 'mobs'}
+                ]
+              }))['httpStatus'],
+          409);
+    });
+
     test('settings refuse unknown permissions and clashing tags', () async {
       final lead = await register('lead@example.com');
       await setRole('lead@example.com', 'lead');

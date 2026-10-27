@@ -4,15 +4,43 @@ import 'dart:io';
 import 'ai_mode_routing.dart';
 import 'util.dart';
 
-/// Share of the weekly usage allowance one picture costs, per plan. Plans
-/// missing here can't use picture mode at all.
+/// The two picture models the operator assigns on the Assistant tab: a
+/// cheaper standard one and a pricier pro one. Each is its own model
+/// selector, so it gets its own price guard and "if possible" model.
+const kAiImageSelector = 'picture';
+const kAiImageProSelector = 'picture_pro';
+const kAiImageSelectors = [kAiImageSelector, kAiImageProSelector];
+
+bool isAiImageSelector(String selector) =>
+    kAiImageSelectors.contains(selector);
+
+/// The selector a picture request draws with: `tier: "pro"` picks the pro
+/// model, anything else the standard one.
+String aiImageSelectorForTier(Object? tier) =>
+    tier == 'pro' ? kAiImageProSelector : kAiImageSelector;
+
+/// Share of the weekly usage allowance one standard picture costs, per plan.
+/// Plans missing here (the free plan) pay the `core` share.
 const Map<String, int> kAiImageWeeklyPercent = {
+  'core': 10,
   'orbit': 7,
   'nova': 3,
 };
 
-int? aiImageWeeklyPercentForPlan(String? planId) =>
-    kAiImageWeeklyPercent[planId];
+/// The same for the pro picture model.
+const Map<String, int> kAiImageProWeeklyPercent = {
+  'core': 20,
+  'orbit': 14,
+  'nova': 6,
+};
+
+int aiImageWeeklyPercentForPlan(String? planId,
+    {String selector = kAiImageSelector}) {
+  final table = selector == kAiImageProSelector
+      ? kAiImageProWeeklyPercent
+      : kAiImageWeeklyPercent;
+  return table[planId] ?? table['core']!;
+}
 
 /// Longest prompt forwarded to the image model.
 const kAiImageMaxPromptChars = 4000;
@@ -26,6 +54,17 @@ const kDefaultAiImageModels = {
   AiUpstream.google: 'imagen-4.0-generate-001',
   AiUpstream.openrouter: 'google/gemini-2.5-flash-image',
 };
+
+/// The pro picture model's defaults.
+const kDefaultAiImageProModels = {
+  AiUpstream.google: 'imagen-4.0-ultra-generate-001',
+  AiUpstream.openrouter: 'google/gemini-3-pro-image-preview',
+};
+
+Map<AiUpstream, String> aiImageDefaultModels(String selector) =>
+    selector == kAiImageProSelector
+        ? kDefaultAiImageProModels
+        : kDefaultAiImageModels;
 
 /// Google serves Imagen on the OpenAI-compat images endpoint. OpenRouter
 /// draws through its unified images endpoint, which takes every image model;
@@ -130,17 +169,22 @@ String _sniffMime(String b64) {
   return 'image/png';
 }
 
-/// Keeps the operator's picture-model choice in `ai_image.json`.
+/// Keeps the operator's picture-model choices in `ai_image.json`: the
+/// standard model under `route` (its original key) and the pro one under
+/// `pro`.
 class AiImageConfigStore {
   AiImageConfigStore(String dataDir)
       : _file = File('$dataDir/ai_image.json') {
     try {
       if (_file.existsSync()) {
         final decoded = jsonDecode(_file.readAsStringSync());
-        final route =
-            AiModeRoute.fromJson(decoded is Map ? decoded['route'] : null);
-        if (route != null && kAiImageUpstreams.contains(route.upstream)) {
-          _route = route;
+        if (decoded is Map) {
+          for (final selector in kAiImageSelectors) {
+            final route = AiModeRoute.fromJson(decoded[_keyOf(selector)]);
+            if (route != null && kAiImageUpstreams.contains(route.upstream)) {
+              _routes[selector] = route;
+            }
+          }
         }
       }
     } catch (e) {
@@ -149,28 +193,42 @@ class AiImageConfigStore {
   }
 
   final File _file;
-  AiModeRoute? _route;
+  final Map<String, AiModeRoute> _routes = {};
 
-  /// The operator's stored pick, whether or not its upstream has a key.
-  AiModeRoute? get stored => _route;
+  static String _keyOf(String selector) =>
+      selector == kAiImageProSelector ? 'pro' : 'route';
 
-  /// The route pictures are drawn with: the stored pick when its upstream
-  /// has a key, otherwise the default of the first configured upstream
-  /// that can draw.
-  AiModeRoute? resolve(Set<AiUpstream> configured) {
-    final chosen = _route;
+  /// The operator's stored pick for [selector], whether or not its upstream
+  /// has a key.
+  AiModeRoute? stored([String selector = kAiImageSelector]) =>
+      _routes[selector];
+
+  /// The route [selector]'s pictures are drawn with: the stored pick when
+  /// its upstream has a key, otherwise the default of the first configured
+  /// upstream that can draw.
+  AiModeRoute? resolve(Set<AiUpstream> configured,
+      [String selector = kAiImageSelector]) {
+    final chosen = _routes[selector];
     if (chosen != null && configured.contains(chosen.upstream)) return chosen;
     for (final upstream in kAiImageUpstreams) {
       if (configured.contains(upstream)) {
-        return AiModeRoute(upstream, kDefaultAiImageModels[upstream]!);
+        return AiModeRoute(upstream, aiImageDefaultModels(selector)[upstream]!);
       }
     }
     return null;
   }
 
-  Future<void> save(AiModeRoute? route) async {
-    _route = route;
+  Future<void> save(AiModeRoute? route,
+      [String selector = kAiImageSelector]) async {
+    if (route == null) {
+      _routes.remove(selector);
+    } else {
+      _routes[selector] = route;
+    }
     await atomicWriteString(
-        _file.path, jsonEncode({if (route != null) 'route': route.toJson()}));
+        _file.path,
+        jsonEncode({
+          for (final e in _routes.entries) _keyOf(e.key): e.value.toJson(),
+        }));
   }
 }

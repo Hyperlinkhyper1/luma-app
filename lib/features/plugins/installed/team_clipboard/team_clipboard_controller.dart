@@ -71,6 +71,7 @@ class TeamClipboardController extends ChangeNotifier {
   String? _me;
   Set<TeamPermission> _permissions = const {};
   List<TeamTag> _myTags = const [];
+  List<TeamEntryTag> _entryTags = const [];
   int? _revision;
   List<TeamEntry> _entries = const [];
   bool _loading = false;
@@ -104,6 +105,15 @@ class TeamClipboardController extends ChangeNotifier {
 
   /// The tags a lead put on this account.
   List<TeamTag> get myTags => _myTags;
+
+  /// The tags a lead made for entries, in the team's order.
+  List<TeamEntryTag> get entryTags => _entryTags;
+
+  /// [entry]'s tags that still exist, in the team's order.
+  List<TeamEntryTag> tagsOf(TeamEntry entry) => [
+    for (final t in _entryTags)
+      if (entry.tags.contains(t.id)) t,
+  ];
   bool get onTeam => _access == TeamAccess.member || _access == TeamAccess.lead;
 
   /// The signed-in email, for the "ask the admin" screen.
@@ -208,6 +218,7 @@ class TeamClipboardController extends ChangeNotifier {
     _me = null;
     _permissions = const {};
     _myTags = const [];
+    _entryTags = const [];
     _revision = null;
     _entries = const [];
     _error = null;
@@ -254,6 +265,7 @@ class TeamClipboardController extends ChangeNotifier {
         _me = snapshot.me;
         _permissions = snapshot.permissions;
         _myTags = snapshot.tags;
+        _entryTags = snapshot.entryTags;
         _revision = snapshot.revision;
         if (snapshot.entries case final entries?) {
           _applyBoard(entries);
@@ -374,6 +386,7 @@ class TeamClipboardController extends ChangeNotifier {
     required String title,
     required String brief,
     String? parentId,
+    List<String> tags = const [],
     List<TeamPickedFile> files = const [],
   }) async {
     var entry = await _change(
@@ -382,6 +395,7 @@ class TeamClipboardController extends ChangeNotifier {
         title: title,
         brief: brief,
         parentId: parentId,
+        tags: tags,
       ),
     );
     final failed = <String>[];
@@ -404,6 +418,7 @@ class TeamClipboardController extends ChangeNotifier {
     required String title,
     required String brief,
     required String? parentId,
+    required List<String> tags,
   }) => _change(
     (api) => api.update(
       id,
@@ -411,6 +426,7 @@ class TeamClipboardController extends ChangeNotifier {
       title: title,
       brief: brief,
       parentId: parentId,
+      tags: tags,
     ),
   );
 

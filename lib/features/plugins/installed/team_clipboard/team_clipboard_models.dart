@@ -181,6 +181,7 @@ class TeamEntry {
     this.discord,
     this.messages,
     this.number = 0,
+    this.tags = const [],
   });
 
   final String id;
@@ -208,6 +209,9 @@ class TeamEntry {
 
   /// The main thread this entry is filed under, or null.
   final String? parentId;
+
+  /// The ids of the [TeamEntryTag]s it carries, in the team's tag order.
+  final List<String> tags;
 
   /// The Discord forum post this entry came from, if the bot made it.
   final TeamEntryDiscord? discord;
@@ -249,6 +253,10 @@ class TeamEntry {
       canClose: j['canClose'] == true,
       canDelete: j['canDelete'] == true,
       parentId: j['parentId'] as String?,
+      tags: [
+        for (final t in j['tags'] as List? ?? const [])
+          if (t is String) t,
+      ],
       discord: TeamEntryDiscord.fromJson(j['discord']),
       messages: messages is List
           ? [
@@ -258,6 +266,26 @@ class TeamEntry {
           : null,
     );
   }
+}
+
+/// A tag a lead makes for entries, like "Blocks" or "1.21 port". Anyone on
+/// the team can put it on an entry and filter the board by it. Unlike a
+/// member tag it carries no permissions. A tag not saved yet has a null
+/// [id]; [color] picks from the app's tag palette.
+class TeamEntryTag {
+  const TeamEntryTag({this.id, required this.name, this.color = 0});
+
+  final String? id;
+  final String name;
+  final int color;
+
+  factory TeamEntryTag.fromJson(Map<String, dynamic> j) => TeamEntryTag(
+    id: j['id'] as String?,
+    name: j['name'] as String? ?? '',
+    color: j['color'] as int? ?? 0,
+  );
+
+  Map<String, dynamic> toJson() => {'id': ?id, 'name': name, 'color': color};
 }
 
 /// The extensions the board takes, as the server checks them.

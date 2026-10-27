@@ -313,6 +313,33 @@ class LEn extends L {
   }
 
   @override
+  String get teamSettingsEntryTags => 'Entry tags';
+
+  @override
+  String get teamSettingsEntryTagsHint =>
+      'Anyone can put these on an entry and filter the board by them. Only leads make them.';
+
+  @override
+  String teamSettingsEntryTagCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'on $count entries',
+      one: 'on 1 entry',
+      zero: 'not used yet',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get teamSettingsEntryTagNameHint => 'Blocks, Mobs, 1.21 port…';
+
+  @override
+  String teamSettingsDeleteEntryTagConfirm(String name) {
+    return 'Delete the $name tag? It comes off every entry that has it.';
+  }
+
+  @override
   String get teamSettingsNoMembers =>
       'Nobody else is on the team yet. The admin adds people from the dashboard.';
 
@@ -40119,6 +40146,9 @@ class LEn extends L {
 
   @override
   String get teamClipboardEditorNewTitle => 'New entry';
+
+  @override
+  String get teamClipboardEditorTags => 'Tags';
 
   @override
   String get teamClipboardEditorKind => 'Type';

@@ -96,7 +96,11 @@ class _ChatBubbleState extends State<ChatBubble> {
           alignment: Alignment.centerRight,
           child: LayoutBuilder(
             builder: (context, constraints) => ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.8),
+              constraints: BoxConstraints(
+                maxWidth:
+                    constraints.maxWidth *
+                    (constraints.maxWidth < 500 ? 0.88 : 0.8),
+              ),
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -258,8 +262,13 @@ class _ChatBubbleState extends State<ChatBubble> {
   }) {
     final luma = context.luma;
     final t = L.of(context);
+    // Touch screens have no hover to reveal the row, so it stays shown.
+    final touch = switch (Theme.of(context).platform) {
+      TargetPlatform.android || TargetPlatform.iOS => true,
+      _ => false,
+    };
     return AnimatedOpacity(
-      opacity: visible || _copied ? 1 : 0,
+      opacity: visible || touch || _copied ? 1 : 0,
       duration: const Duration(milliseconds: 120),
       child: Padding(
         padding: const EdgeInsets.only(top: 4),

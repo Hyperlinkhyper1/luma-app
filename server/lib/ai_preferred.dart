@@ -7,14 +7,15 @@ import 'cs2_voice_translate.dart';
 import 'util.dart';
 
 /// Every model selector on the Assistant tab: the three chat modes, the AI
-/// Detector, the book reviewer, the classroom tutor and the picture model.
-/// Each has a main model and can name an "if possible" model in front of it.
+/// Detector, the book reviewer, the classroom tutor and the two picture
+/// models. Each has a main model and can name an "if possible" model in
+/// front of it.
 final kAiModelSelectors = List<String>.unmodifiable([
   ...kAiModeNames.keys,
   'detector',
   'bookreview',
   'classroom',
-  'picture',
+  ...kAiImageSelectors,
   kCs2TranscribeSelector,
   kCs2TranslateSelector
 ]);
@@ -33,7 +34,7 @@ String aiSelectorOf(String key) => isAiPreferredKey(key)
 
 /// Upstreams [selector] can run on; only some of them can draw.
 bool aiSelectorAccepts(String selector, AiUpstream upstream) =>
-    (selector != 'picture' || kAiImageUpstreams.contains(upstream)) &&
+    (!isAiImageSelector(selector) || kAiImageUpstreams.contains(upstream)) &&
     cs2VoiceAccepts(selector, upstream);
 
 /// The operator's "if possible" model per selector, kept in

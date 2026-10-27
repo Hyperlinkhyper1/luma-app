@@ -92,9 +92,13 @@ class TeamTaskRow extends StatelessWidget {
     required this.subDone,
     required this.onTap,
     this.onAddSubEntry,
+    this.tags = const [],
   });
 
   final TeamEntry entry;
+
+  /// The entry tags [entry] carries, in the team's order.
+  final List<TeamEntryTag> tags;
   final bool table;
   final bool child;
   final bool compact;
@@ -159,6 +163,48 @@ class TeamTaskRow extends StatelessWidget {
             ),
           ),
         ),
+        if (tags.isNotEmpty) ...[
+          const SizedBox(width: 6),
+          if (compact)
+            Tooltip(
+              message: tags.map((tag) => tag.name).join(', '),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final tag in tags)
+                    Container(
+                      margin: const EdgeInsets.only(left: 3),
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: teamTagColor(tag.color, luma),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                ],
+              ),
+            )
+          else
+            for (final tag in tags.take(2))
+              Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 110),
+                  child: TeamTagChip(name: tag.name, color: tag.color),
+                ),
+              ),
+          if (!compact && tags.length > 2)
+            Tooltip(
+              message: tags.skip(2).map((tag) => tag.name).join(', '),
+              child: Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: Text(
+                  '+${tags.length - 2}',
+                  style: TextStyle(color: luma.textMuted, fontSize: 11.5),
+                ),
+              ),
+            ),
+        ],
         if (entry.discord case final discord?) ...[
           const SizedBox(width: 6),
           if (teamDiscordMissingLabel(t, discord.missing) case final missing?)

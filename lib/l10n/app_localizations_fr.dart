@@ -316,6 +316,33 @@ class LFr extends L {
   }
 
   @override
+  String get teamSettingsEntryTags => 'Étiquettes d\'entrée';
+
+  @override
+  String get teamSettingsEntryTagsHint =>
+      'Tout le monde peut les mettre sur une entrée et filtrer le tableau avec. Seuls les responsables les créent.';
+
+  @override
+  String teamSettingsEntryTagCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'sur $count entrées',
+      one: 'sur 1 entrée',
+      zero: 'pas encore utilisée',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get teamSettingsEntryTagNameHint => 'Blocs, Mobs, portage 1.21…';
+
+  @override
+  String teamSettingsDeleteEntryTagConfirm(String name) {
+    return 'Supprimer l\'étiquette $name ? Elle sera retirée de chaque entrée qui l\'a.';
+  }
+
+  @override
   String get teamSettingsNoMembers =>
       'Personne d\'autre n\'est encore dans l\'équipe. L\'administrateur ajoute des gens depuis le tableau de bord.';
 
@@ -40634,6 +40661,9 @@ class LFr extends L {
 
   @override
   String get teamClipboardEditorNewTitle => 'Nouvelle entrée';
+
+  @override
+  String get teamClipboardEditorTags => 'Étiquettes';
 
   @override
   String get teamClipboardEditorKind => 'Type';

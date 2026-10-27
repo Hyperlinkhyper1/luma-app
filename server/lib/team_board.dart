@@ -53,6 +53,11 @@ const kTeamBoardMaxTagChars = 24;
 /// How many colours a tag can pick from; the app owns the palette.
 const kTeamBoardTagColors = 8;
 
+/// How many tags a lead can make for entries ("Blocks", "1.21 port", …).
+/// These are apart from the member tags above: they carry no permissions,
+/// they only sort the board.
+const kTeamBoardMaxEntryTags = 30;
+
 /// The only files the board takes: models and textures, the `.mcmeta`
 /// that animates a texture, and the game logs that come with a bug report.
 const kTeamBoardFileExtensions = ['png', 'json', 'mcmeta', 'log', 'txt'];
@@ -290,9 +295,11 @@ class TeamBoardEntry {
     this.parentId,
     this.discord,
     this.number = 0,
+    List<String>? tags,
     List<TeamBoardFile>? files,
     List<TeamBoardMessage>? messages,
-  })  : files = files ?? [],
+  })  : tags = tags ?? [],
+        files = files ?? [],
         messages = messages ?? [];
 
   final String id;
@@ -319,6 +326,9 @@ class TeamBoardEntry {
 
   /// The Discord forum post this entry came from, if it did.
   final TeamBoardDiscordLink? discord;
+
+  /// The ids of the entry tags it carries, in the team's tag order.
+  List<String> tags;
 
   /// The last time anything happened to the entry — an edit, a stage, a
   /// file or a message. The board sorts on it and the app polls on it.
@@ -347,6 +357,7 @@ class TeamBoardEntry {
         'claimedById': claimedById,
         'claimedByEmail': claimedByEmail,
         'parentId': parentId,
+        if (tags.isNotEmpty) 'tags': tags,
         if (discord != null) 'discord': discord!.toJson(),
         'createdAtMs': createdAtMs,
         'updatedAtMs': updatedAtMs,
@@ -373,6 +384,10 @@ class TeamBoardEntry {
       claimedById: raw['claimedById'] as String?,
       claimedByEmail: raw['claimedByEmail'] as String?,
       parentId: raw['parentId'] as String?,
+      tags: [
+        for (final t in raw['tags'] as List? ?? const [])
+          if (t is String) t,
+      ],
       discord: TeamBoardDiscordLink.fromJson(raw['discord']),
       createdAtMs: raw['createdAtMs'] as int? ?? 0,
       updatedAtMs: raw['updatedAtMs'] as int? ?? 0,
@@ -656,6 +671,33 @@ class TeamBoardTag {
   }
 }
 
+/// A tag a lead makes for entries, which anyone can then put on an entry
+/// and filter the board by.
+class TeamBoardEntryTag {
+  TeamBoardEntryTag({required this.id, required this.name, required this.color});
+
+  final String id;
+  final String name;
+  final int color;
+
+  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'color': color};
+
+  static TeamBoardEntryTag? fromJson(Object? raw) {
+    if (raw is! Map) return null;
+    final id = raw['id'];
+    final name = cleanTeamBoardTagName(raw['name']);
+    if (id is! String || !TeamBoardStore.idPattern.hasMatch(id)) return null;
+    if (name == null) return null;
+    final color = raw['color'];
+    return TeamBoardEntryTag(
+      id: id,
+      name: name,
+      color:
+          color is int && color >= 0 && color < kTeamBoardTagColors ? color : 0,
+    );
+  }
+}
+
 /// A tag's name, trimmed, or null when it is empty, too long or carries
 /// control characters.
 String? cleanTeamBoardTagName(Object? raw) {
@@ -772,9 +814,16 @@ class TeamBoardStore {
           if (ids.isNotEmpty) _memberTags[userId] = ids;
         });
       }
+      for (final raw in decoded['entryTags'] as List? ?? const []) {
+        final tag = TeamBoardEntryTag.fromJson(raw);
+        if (tag != null) _entryTags.add(tag);
+      }
       for (final raw in decoded['entries'] as List? ?? const []) {
         final entry = TeamBoardEntry.fromJson(raw);
-        if (entry != null) _entries[entry.id] = entry;
+        if (entry != null) {
+          entry.tags = entryTagIds(entry.tags);
+          _entries[entry.id] = entry;
+        }
       }
       _nextNumber = decoded['nextNumber'] as int? ?? 1;
       _numberUnnumbered();
@@ -787,6 +836,7 @@ class TeamBoardStore {
   final Map<String, String> _roles = {};
   final Map<String, String> _names = {};
   final List<TeamBoardTag> _tags = [];
+  final List<TeamBoardEntryTag> _entryTags = [];
 
   /// Permissions a lead gave one member directly, on top of their tags'.
   final Map<String, Set<String>> _grants = {};
@@ -837,6 +887,28 @@ class TeamBoardStore {
   Map<String, String> get roles => Map.unmodifiable(_roles);
 
   List<TeamBoardTag> get tags => List.unmodifiable(_tags);
+
+  List<TeamBoardEntryTag> get entryTags => List.unmodifiable(_entryTags);
+
+  /// [ids] cut down to entry tags that exist, once each, in tag order.
+  List<String> entryTagIds(Iterable<String> ids) {
+    final wanted = ids.toSet();
+    return [
+      for (final t in _entryTags)
+        if (wanted.contains(t.id)) t.id
+    ];
+  }
+
+  /// Replaces the entry tag list. A tag left out is gone, and comes off
+  /// every entry that carried it. Call inside [mutate].
+  void replaceEntryTags(List<TeamBoardEntryTag> tags) {
+    _entryTags
+      ..clear()
+      ..addAll(tags);
+    for (final e in _entries.values) {
+      e.tags = entryTagIds(e.tags);
+    }
+  }
 
   /// The permissions a lead gave [userId] directly.
   Set<String> grantsOf(String userId) => {...?_grants[userId]};
@@ -1001,6 +1073,7 @@ class TeamBoardStore {
           'memberTags': {
             for (final m in _memberTags.entries) m.key: m.value.toList(),
           },
+          'entryTags': [for (final t in _entryTags) t.toJson()],
           'entries': _entries.values.map((e) => e.toJson()).toList(),
         }));
   }

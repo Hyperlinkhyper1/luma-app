@@ -2035,6 +2035,8 @@ class AiServerStatus {
     this.modeVersions = const {},
     this.pictureConfigured = false,
     this.pictureWeeklyPct,
+    this.pictureProConfigured = false,
+    this.pictureProWeeklyPct,
     this.imageInputModes = const {},
     this.aiCheckUsed = 0,
     this.aiCheckLimit = 0,
@@ -2095,6 +2097,10 @@ class AiServerStatus {
   /// the plan can't make pictures.
   final int? pictureWeeklyPct;
 
+  /// The same for the operator's pricier "Pro" picture model.
+  final bool pictureProConfigured;
+  final int? pictureProWeeklyPct;
+
   AiModeUsage usageFor(String mode) =>
       modes[mode] ??
       AiModeUsage(fiveHourPct: fiveHourPct, weeklyPct: weeklyPct);
@@ -2117,6 +2123,10 @@ class AiServerStatus {
       pictureConfigured: picture['configured'] == true,
       pictureWeeklyPct: picture['weeklyPct'] is num
           ? (picture['weeklyPct'] as num).toInt()
+          : null,
+      pictureProConfigured: picture['proConfigured'] == true,
+      pictureProWeeklyPct: picture['proWeeklyPct'] is num
+          ? (picture['proWeeklyPct'] as num).toInt()
           : null,
       mistralConfigured: json['mistralConfigured'] == true,
       googleConfigured: json['googleConfigured'] == true,

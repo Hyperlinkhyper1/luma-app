@@ -315,6 +315,33 @@ class LNl extends L {
   }
 
   @override
+  String get teamSettingsEntryTags => 'Tags voor items';
+
+  @override
+  String get teamSettingsEntryTagsHint =>
+      'Iedereen kan deze op een item zetten en het bord erop filteren. Alleen leads maken ze.';
+
+  @override
+  String teamSettingsEntryTagCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'op $count items',
+      one: 'op 1 item',
+      zero: 'nog niet gebruikt',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get teamSettingsEntryTagNameHint => 'Blokken, Mobs, 1.21-port…';
+
+  @override
+  String teamSettingsDeleteEntryTagConfirm(String name) {
+    return 'De tag $name verwijderen? Hij gaat van elk item af dat hem heeft.';
+  }
+
+  @override
   String get teamSettingsNoMembers =>
       'Er zit nog niemand anders in het team. De beheerder voegt mensen toe via het dashboard.';
 
@@ -40411,6 +40438,9 @@ class LNl extends L {
 
   @override
   String get teamClipboardEditorNewTitle => 'Nieuw item';
+
+  @override
+  String get teamClipboardEditorTags => 'Tags';
 
   @override
   String get teamClipboardEditorKind => 'Soort';

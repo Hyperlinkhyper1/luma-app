@@ -298,6 +298,31 @@ class LZh extends L {
   }
 
   @override
+  String get teamSettingsEntryTags => '条目标签';
+
+  @override
+  String get teamSettingsEntryTagsHint => '任何人都可以给条目加上这些标签并按标签筛选看板。只有负责人能创建。';
+
+  @override
+  String teamSettingsEntryTagCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '用于 $count 个条目',
+      zero: '尚未使用',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get teamSettingsEntryTagNameHint => '方块、生物、1.21 移植…';
+
+  @override
+  String teamSettingsDeleteEntryTagConfirm(String name) {
+    return '删除标签 $name？所有带此标签的条目都会被移除该标签。';
+  }
+
+  @override
   String get teamSettingsNoMembers => '团队里还没有其他人。管理员可在后台添加成员。';
 
   @override
@@ -38291,6 +38316,9 @@ class LZh extends L {
 
   @override
   String get teamClipboardEditorNewTitle => '新建条目';
+
+  @override
+  String get teamClipboardEditorTags => '标签';
 
   @override
   String get teamClipboardEditorKind => '类型';

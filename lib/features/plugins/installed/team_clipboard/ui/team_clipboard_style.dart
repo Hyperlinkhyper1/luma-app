@@ -180,3 +180,48 @@ class TeamCheckerboard extends CustomPainter {
   bool shouldRepaint(TeamCheckerboard old) =>
       old.a != a || old.b != b || old.cell != cell;
 }
+
+/// A team tag as a small coloured label.
+class TeamTagChip extends StatelessWidget {
+  const TeamTagChip({super.key, required this.name, required this.color});
+
+  final String name;
+  final int color;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = teamTagColor(color, context.luma);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: c.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: c.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: c,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                height: 1.2,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -256,20 +256,20 @@ class _ComposeModeButtonState extends State<ComposeModeButton> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-            MenuItemButton(
-              style: artifactItemStyle,
-              onPressed: _available.picture && _available.picturePercent != null
-                  ? () => _selectArtifact('picture')
-                  : null,
-              child: Text(
-                _available.picturePercent != null
-                    ? 'Picture · ${_available.picturePercent}% weekly usage'
-                    : 'Picture unavailable',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
           ],
+          MenuItemButton(
+            style: artifactItemStyle,
+            onPressed: _available.picture && _available.picturePercent != null
+                ? () => _selectArtifact('picture')
+                : null,
+            child: Text(
+              _available.picturePercent != null
+                  ? 'Picture · ${_available.picturePercent}% weekly usage'
+                  : 'Picture unavailable',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
         child: ListTile(
           dense: true,
@@ -279,7 +279,7 @@ class _ComposeModeButtonState extends State<ComposeModeButton> {
           subtitle: Text(
             widget.filesAllowed
                 ? 'Choose a file type'
-                : 'Requires Orbit or Nova',
+                : 'Pictures only · files need Orbit or Nova',
           ),
         ),
       ),

@@ -104,27 +104,35 @@ void main() {
     },
   );
 
-  testWidgets('Free cannot open artifact choices by hovering or tapping', (
+  testWidgets('Free sees only the picture choice under artifacts', (
     tester,
   ) async {
+    final modes = <AssistantComposeMode>[];
     final artifacts = <String?>[];
     await tester.pumpWidget(
-      _host(filesAllowed: false, onArtifactTypeChanged: artifacts.add),
+      _host(
+        filesAllowed: false,
+        picture: true,
+        picturePercent: 10,
+        onChanged: modes.add,
+        onArtifactTypeChanged: artifacts.add,
+      ),
     );
     await _openMenu(tester);
-    expect(find.text('Requires Orbit or Nova'), findsNWidgets(2));
+    expect(find.text('Requires Orbit or Nova'), findsOneWidget);
+    expect(find.text('Pictures only · files need Orbit or Nova'), findsOneWidget);
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await mouse.addPointer(location: const Offset(700, 500));
     addTearDown(mouse.removePointer);
     await mouse.moveTo(tester.getCenter(find.text('Artifact generation')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Artifact generation'));
-    await tester.pumpAndSettle();
     for (final type in assistantArtifactTypes.entries) {
       expect(find.text('${type.value} (.${type.key})'), findsNothing);
     }
-    expect(find.text('Picture unavailable'), findsNothing);
-    expect(artifacts, isEmpty);
+    await tester.tap(find.text('Picture · 10% weekly usage'));
+    await tester.pumpAndSettle();
+    expect(modes, [AssistantComposeMode.picture]);
+    expect(artifacts, [null]);
     expect(tester.takeException(), isNull);
   });
 

@@ -49,6 +49,7 @@ class _TeamEntryEditorState extends State<_TeamEntryEditor> {
   late String? _parentId = widget.existing?.parentId ?? widget.parentId;
   late final _title = TextEditingController(text: widget.existing?.title);
   late final _brief = TextEditingController(text: widget.existing?.brief);
+  late final Set<String> _tags = {...?widget.existing?.tags};
   final List<TeamPickedFile> _files = [];
   bool _saving = false;
   String? _error;
@@ -106,6 +107,10 @@ class _TeamEntryEditorState extends State<_TeamEntryEditor> {
     });
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.maybeOf(context);
+    final tags = [
+      for (final tag in widget.controller.entryTags)
+        if (_tags.contains(tag.id)) tag.id!,
+    ];
     try {
       if (_isNew) {
         final (_, failed) = await widget.controller.create(
@@ -113,6 +118,7 @@ class _TeamEntryEditorState extends State<_TeamEntryEditor> {
           title: title,
           brief: _brief.text,
           parentId: _parentId,
+          tags: tags,
           files: _files,
         );
         if (failed.isNotEmpty) {
@@ -129,6 +135,7 @@ class _TeamEntryEditorState extends State<_TeamEntryEditor> {
           title: title,
           brief: _brief.text,
           parentId: _parentId,
+          tags: tags,
         );
       }
       navigator.pop();
@@ -146,6 +153,7 @@ class _TeamEntryEditorState extends State<_TeamEntryEditor> {
     final t = L.of(context);
     final luma = context.luma;
     final parents = _parentChoices;
+    final entryTags = widget.controller.entryTags;
     final isSub = _isNew && widget.parentId != null;
     return Dialog(
       backgroundColor: luma.surface,
@@ -186,6 +194,27 @@ class _TeamEntryEditorState extends State<_TeamEntryEditor> {
                     ),
                 ],
               ),
+              if (entryTags.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                _Label(t.teamClipboardEditorTags),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final tag in entryTags)
+                      _TagChoice(
+                        key: ValueKey('team-editor-tag-${tag.id}'),
+                        tag: tag,
+                        selected: _tags.contains(tag.id),
+                        onTap: _saving
+                            ? null
+                            : () => setState(() {
+                                if (!_tags.remove(tag.id)) _tags.add(tag.id!);
+                              }),
+                      ),
+                  ],
+                ),
+              ],
               if (parents.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 _Label(t.teamClipboardMainThread),
@@ -342,6 +371,69 @@ class _Label extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// One entry tag in the editor, ticked when the entry carries it.
+class _TagChoice extends StatelessWidget {
+  const _TagChoice({
+    super.key,
+    required this.tag,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final TeamEntryTag tag;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final color = teamTagColor(tag.color, luma);
+    return Semantics(
+      selected: selected,
+      button: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected ? color.withValues(alpha: 0.16) : luma.background,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? color : luma.border,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                selected ? Icons.check_rounded : Icons.circle,
+                size: selected ? 14 : 9,
+                color: color,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  tag.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: selected ? luma.textPrimary : luma.textSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _KindChoice extends StatelessWidget {

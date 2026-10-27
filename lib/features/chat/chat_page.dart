@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -49,6 +50,13 @@ import 'widgets/assistant_sidebar_transition.dart';
 import 'widgets/assistant_artifacts_view.dart';
 
 const _wideBreakpoint = 760.0;
+
+/// Phones and tablets: no hover, so row actions stay visible and tap
+/// targets grow to finger size.
+bool _isTouch(BuildContext context) => switch (Theme.of(context).platform) {
+  TargetPlatform.android || TargetPlatform.iOS => true,
+  _ => false,
+};
 
 /// The AI Assistant tab: chats with the selected hosted provider or the
 /// optional local model, with tool use for actions like installing a plugin
@@ -344,13 +352,10 @@ class _ChatLayoutState extends State<_ChatLayout> {
   /// into the new chat's thread.
   AssistantComposeMode _composeMode = AssistantComposeMode.chat;
 
-  /// Pictures require Orbit or Nova. Plan/research require Nova, with
+  /// Pictures are open to every plan. Plan/research require Nova, with
   /// research restricted to the models that can run it.
   AssistantComposeMode _effectiveComposeMode(SettingsController settings) {
-    if (_composeMode == AssistantComposeMode.picture &&
-        assistantFilesAllowed(settings.selectedPlanId)) {
-      return _composeMode;
-    }
+    if (_composeMode == AssistantComposeMode.picture) return _composeMode;
     if (!composeModesUnlocked(settings.selectedPlanId)) {
       return AssistantComposeMode.chat;
     }
@@ -483,6 +488,7 @@ class _ChatLayoutState extends State<_ChatLayout> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= _wideBreakpoint;
+        final touch = _isTouch(context);
         final activeId = widget.activeConversationId;
         final sidebar = AssistantSidebar(
           activeConversationId: activeId,
@@ -512,8 +518,10 @@ class _ChatLayoutState extends State<_ChatLayout> {
           hintText: activeId == null
               ? L.of(context).assistantHowCanIHelp
               : null,
-          minLines: activeId == null ? 2 : 1,
-          autofocus: true,
+          minLines: activeId == null && wide ? 2 : 1,
+          // On a phone, focusing would throw the keyboard over the page on
+          // every visit; the user taps the field when they want to type.
+          autofocus: !touch,
           composeMode: _effectiveComposeMode(settings),
           onComposeModeChanged: (mode) => setState(() => _composeMode = mode),
           onSend: (text) => _send(activeId, text),
@@ -546,6 +554,7 @@ class _ChatLayoutState extends State<_ChatLayout> {
                       ? _HomeView(
                           syncService: widget.syncService,
                           composer: composer,
+                          pinComposer: !wide,
                           onSuggestion: (prompt) {
                             _homeText.value = TextEditingValue(
                               text: prompt,
@@ -565,6 +574,7 @@ class _ChatLayoutState extends State<_ChatLayout> {
                           draft: widget.controller.draftReply,
                           activity: widget.controller.activity,
                           composer: composer,
+                          compact: !wide,
                           onOpenPlugin: widget.onOpenPlugin,
                         ));
 
@@ -607,10 +617,14 @@ class _ChatLayoutState extends State<_ChatLayout> {
         return Scaffold(
           key: _scaffoldKey,
           backgroundColor: Colors.transparent,
+          // The app shell's own Scaffold already lifts its body above the
+          // keyboard; resizing here too would leave a keyboard-sized gap.
+          resizeToAvoidBottomInset: false,
+          drawerEdgeDragWidth: touch ? 32 : null,
           drawer: wide
               ? null
               : Drawer(
-                  width: 300,
+                  width: math.min(300, constraints.maxWidth * 0.86),
                   backgroundColor: context.luma.rail,
                   shape: const RoundedRectangleBorder(),
                   child: SafeArea(child: sidebar),
@@ -947,7 +961,7 @@ class _SidebarRowState extends State<_SidebarRow> {
             : (d) => widget.onSecondaryTap!(d.globalPosition),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 100),
-          height: 36,
+          height: _isTouch(context) ? 44 : 36,
           padding: const EdgeInsets.symmetric(horizontal: 8),
           decoration: BoxDecoration(
             color: widget.selected
@@ -989,7 +1003,7 @@ class _ConversationTileState extends State<_ConversationTile> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
-    final showMenuButton = _hovering || widget.selected;
+    final showMenuButton = _hovering || widget.selected || _isTouch(context);
     return _SidebarRow(
       selected: widget.selected,
       onTap: widget.onTap,
@@ -1175,14 +1189,15 @@ class _IconAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final target = _isTouch(context) ? math.max(size, 40.0) : size;
     return IconButton(
       tooltip: tooltip,
       onPressed: onTap,
       iconSize: size * 0.56,
       color: luma.textSecondary,
       style: IconButton.styleFrom(
-        minimumSize: Size.square(size),
-        maximumSize: Size.square(size),
+        minimumSize: Size.square(target),
+        maximumSize: Size.square(target),
         padding: EdgeInsets.zero,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -1313,11 +1328,16 @@ class _HomeView extends StatelessWidget {
     required this.syncService,
     required this.composer,
     required this.onSuggestion,
+    this.pinComposer = false,
   });
 
   final SyncService syncService;
   final Widget composer;
   final ValueChanged<String> onSuggestion;
+
+  /// Phones keep the composer docked at the bottom, within thumb reach and
+  /// right above the keyboard, with the greeting and chips above it.
+  final bool pinComposer;
 
   @override
   Widget build(BuildContext context) {
@@ -1360,8 +1380,9 @@ class _HomeView extends StatelessWidget {
       ),
     ];
 
-    return LayoutBuilder(
+    final page = LayoutBuilder(
       builder: (context, constraints) => SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: ConstrainedBox(
           constraints: BoxConstraints(minHeight: constraints.maxHeight),
@@ -1393,9 +1414,8 @@ class _HomeView extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 30),
-                  composer,
-                  const SizedBox(height: 18),
+                  if (!pinComposer) ...[const SizedBox(height: 30), composer],
+                  SizedBox(height: pinComposer ? 24 : 18),
                   Wrap(
                     alignment: WrapAlignment.center,
                     spacing: 8,
@@ -1409,13 +1429,24 @@ class _HomeView extends StatelessWidget {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 40),
+                  SizedBox(height: pinComposer ? 16 : 40),
                 ],
               ),
             ),
           ),
         ),
       ),
+    );
+    if (!pinComposer) return page;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(child: page),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+          child: composer,
+        ),
+      ],
     );
   }
 }
@@ -1715,6 +1746,7 @@ class _ConversationThread extends StatelessWidget {
     required this.activity,
     required this.composer,
     required this.onOpenPlugin,
+    this.compact = false,
   });
 
   final int conversationId;
@@ -1723,6 +1755,9 @@ class _ConversationThread extends StatelessWidget {
   final ValueListenable<AssistantActivity?> activity;
   final Widget composer;
   final ValueChanged<String> onOpenPlugin;
+
+  /// Phone width: a tighter gutter so the composer gets the screen's width.
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -1740,7 +1775,9 @@ class _ConversationThread extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          padding: compact
+              ? const EdgeInsets.fromLTRB(10, 0, 10, 10)
+              : const EdgeInsets.fromLTRB(16, 0, 16, 14),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: chatColumnWidth),
@@ -2058,8 +2095,9 @@ class _ModelSelector extends StatefulWidget {
   const _ModelSelector({required this.settings, this.picture = false});
   final SettingsController settings;
 
-  /// Picture mode draws with the admin-picked image model whatever chat
-  /// model is selected, so the pill names that instead and stops opening.
+  /// Picture mode draws with one of the two admin-picked image models
+  /// whatever chat model is selected, so the pill names that instead and
+  /// opens a Standard / Pro choice.
   final bool picture;
 
   @override
@@ -2069,6 +2107,7 @@ class _ModelSelector extends StatefulWidget {
 class _ModelSelectorState extends State<_ModelSelector> {
   SyncService? _sync;
   Map<String, String> modeVersions = const {};
+  AiServerStatus? _status;
 
   SettingsController get settings => widget.settings;
 
@@ -2085,8 +2124,111 @@ class _ModelSelectorState extends State<_ModelSelector> {
     final sync = _sync;
     final status = await sync?.aiStatus();
     if (!mounted || !identical(sync, _sync)) return;
-    setState(() => modeVersions = status?.modeVersions ?? const {});
+    setState(() {
+      _status = status;
+      modeVersions = status?.modeVersions ?? const {};
+    });
   }
+
+  /// Where a menu opened from the pill anchors: the pill's own rect,
+  /// relative to the overlay.
+  RelativeRect _menuPosition() {
+    final button = context.findRenderObject()! as RenderBox;
+    final overlay =
+        Overlay.of(context).context.findRenderObject()! as RenderBox;
+    return RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(Offset.zero, ancestor: overlay),
+        button.localToGlobal(
+          button.size.bottomRight(Offset.zero),
+          ancestor: overlay,
+        ),
+      ),
+      Offset.zero & overlay.size,
+    );
+  }
+
+  /// The picture pill's menu: the operator's cheaper standard model and
+  /// the pricier pro one, each with what a picture costs on this plan.
+  Future<void> _openPictureMenu() async {
+    await _refreshVersions();
+    if (!mounted) return;
+    final luma = context.luma;
+    final status = _status;
+
+    PopupMenuItem<String> item(
+      String tier,
+      String label,
+      int? percent,
+      bool available,
+    ) {
+      final selected = settings.pictureTier == tier;
+      final enabled = available && percent != null;
+      return PopupMenuItem<String>(
+        value: tier,
+        enabled: enabled,
+        height: 40,
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: !enabled
+                      ? luma.textMuted
+                      : selected
+                      ? luma.accent
+                      : luma.textPrimary,
+                  fontSize: 13,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ),
+            Text(
+              enabled ? '$percent% weekly usage' : 'Unavailable',
+              style: TextStyle(color: luma.textMuted, fontSize: 10.5),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 16,
+              child: selected
+                  ? Icon(Icons.check_rounded, size: 16, color: luma.accent)
+                  : null,
+            ),
+          ],
+        ),
+      );
+    }
+
+    final picked = await showMenu<String>(
+      context: context,
+      position: _menuPosition(),
+      constraints: const BoxConstraints(minWidth: 270, maxWidth: 330),
+      color: luma.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: luma.border),
+      ),
+      items: [
+        item(
+          'standard',
+          _pictureLabel('standard'),
+          status?.pictureWeeklyPct,
+          status?.pictureConfigured ?? false,
+        ),
+        item(
+          'pro',
+          _pictureLabel('pro'),
+          status?.pictureProWeeklyPct,
+          status?.pictureProConfigured ?? false,
+        ),
+      ],
+    );
+    if (picked != null) settings.setPictureTier(picked);
+  }
+
+  static String _pictureLabel(String tier) =>
+      tier == 'pro' ? 'Luma Picture Pro' : 'Luma Picture';
 
   _ModelChoice get _active =>
       [..._lumaModelsFor(settings, modeVersions), ..._apiKeyModels].firstWhere(
@@ -2099,25 +2241,13 @@ class _ModelSelectorState extends State<_ModelSelector> {
     if (!mounted) return;
     final luma = context.luma;
     final t = L.of(context);
-    final button = context.findRenderObject()! as RenderBox;
-    final overlay =
-        Overlay.of(context).context.findRenderObject()! as RenderBox;
     // The button's own rect, relative to the overlay — the same anchor
     // PopupMenuButton itself uses. showMenu positions the menu's top-left
     // here and then, if it would overflow the bottom of the window, shifts
     // the whole menu up just enough to stay on screen (see
     // _PopupMenuRouteLayout._fitInsideScreen in the framework) — that's what
     // makes it "expand upward" here, since the pill sits near the bottom.
-    final position = RelativeRect.fromRect(
-      Rect.fromPoints(
-        button.localToGlobal(Offset.zero, ancestor: overlay),
-        button.localToGlobal(
-          button.size.bottomRight(Offset.zero),
-          ancestor: overlay,
-        ),
-      ),
-      Offset.zero & overlay.size,
-    );
+    final position = _menuPosition();
 
     PopupMenuItem<_ModelChoice> item(_ModelChoice choice) {
       final selected = choice.isActive(settings);
@@ -2203,7 +2333,7 @@ class _ModelSelectorState extends State<_ModelSelector> {
     final luma = context.luma;
     final picture = widget.picture;
     return TextButton(
-      onPressed: picture ? null : _openMenu,
+      onPressed: picture ? _openPictureMenu : _openMenu,
       style: TextButton.styleFrom(
         foregroundColor: luma.textSecondary,
         disabledForegroundColor: luma.textSecondary,
@@ -2217,19 +2347,17 @@ class _ModelSelectorState extends State<_ModelSelector> {
         children: [
           Flexible(
             child: Text(
-              picture ? 'Luma Picture 1.0' : _active.label,
+              picture ? _pictureLabel(settings.pictureTier) : _active.label,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
             ),
           ),
-          if (!picture) ...[
-            const SizedBox(width: 2),
-            Icon(
-              Icons.keyboard_arrow_down_rounded,
-              size: 17,
-              color: luma.textMuted,
-            ),
-          ],
+          const SizedBox(width: 2),
+          Icon(
+            Icons.keyboard_arrow_down_rounded,
+            size: 17,
+            color: luma.textMuted,
+          ),
         ],
       ),
     );

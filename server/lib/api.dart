@@ -3157,6 +3157,11 @@ class Api {
         'configured':
             aiImageConfig.resolve(config.configuredAiUpstreams) != null,
         'weeklyPct': aiImageWeeklyPercentForPlan(user.planId),
+        'proConfigured': aiImageConfig.resolve(
+                config.configuredAiUpstreams, kAiImageProSelector) !=
+            null,
+        'proWeeklyPct': aiImageWeeklyPercentForPlan(user.planId,
+            selector: kAiImageProSelector),
       },
     });
   }
@@ -3225,7 +3230,8 @@ class Api {
       'detector' => _aiDetectorRoute(),
       'bookreview' => _aiBookReviewRoute(),
       'classroom' => _aiClassroomRoute(),
-      'picture' => aiImageConfig.resolve(config.configuredAiUpstreams),
+      kAiImageSelector || kAiImageProSelector =>
+        aiImageConfig.resolve(config.configuredAiUpstreams, mode),
       kCs2TranscribeSelector || kCs2TranslateSelector =>
         cs2VoiceConfig.resolve(mode, config.configuredAiUpstreams),
       _ => aiModeRoutes.resolve(mode, config.configuredAiUpstreams),
@@ -3237,7 +3243,8 @@ class Api {
       'detector' => 'AI Detector',
       'bookreview' => 'Book reviewer',
       'classroom' => 'Classroom tutor',
-      'picture' => 'Picture model',
+      kAiImageSelector => 'Picture model',
+      kAiImageProSelector => 'Pro picture model',
       kCs2TranscribeSelector => 'CS2 voice transcription',
       kCs2TranslateSelector => 'CS2 voice translation',
       final selector => aiModeRoutes.displayName(selector),
@@ -3387,8 +3394,9 @@ class Api {
         'upstreamId': route.upstream.name,
         'defaultModels': switch (mode) {
           _ when isAiPreferredKey(mode) => const <String, String>{},
-          'picture' => {
-              for (final e in kDefaultAiImageModels.entries) e.key.name: e.value,
+          kAiImageSelector || kAiImageProSelector => {
+              for (final e in aiImageDefaultModels(mode).entries)
+                e.key.name: e.value,
             },
           'detector' || 'bookreview' || 'classroom' => {
               for (final upstream in AiUpstream.values)
@@ -3973,7 +3981,9 @@ class Api {
       }
       mode = aiSelectorOf(mode);
     }
-    if (mode == 'picture') return _adminAiImageTest(body);
+    if (mode is String && isAiImageSelector(mode)) {
+      return _adminAiImageTest(mode, body);
+    }
     if (mode is! String ||
         (!kAiModeNames.containsKey(mode) &&
             mode != 'detector' &&
@@ -4542,21 +4552,18 @@ class Api {
   /// allowance ([kAiImageWeeklyPercent]), rather than its token count, since
   /// image models bill per picture.
   Future<Response> _aiImage(Request request, StoredUser user) async {
-    final pct = aiImageWeeklyPercentForPlan(user.planId);
-    if (pct == null) {
-      return errorResponse(
-          403, 'plan_required', assistantFilePlanMessage);
-    }
-    final route = aiImageConfig.resolve(config.configuredAiUpstreams);
-    if (route == null) {
-      return errorResponse(
-          404, 'not_configured', 'No picture model is configured.');
-    }
     Map<String, dynamic> body;
     try {
       body = await _readJson(request);
     } on FormatException {
       return errorResponse(400, 'bad_request', 'Malformed request.');
+    }
+    final selector = aiImageSelectorForTier(body['tier']);
+    final pct = aiImageWeeklyPercentForPlan(user.planId, selector: selector);
+    final route = aiImageConfig.resolve(config.configuredAiUpstreams, selector);
+    if (route == null) {
+      return errorResponse(
+          404, 'not_configured', 'No picture model is configured.');
     }
     final raw = body['prompt'];
     final prompt = raw is String ? raw.trim() : '';
@@ -4582,7 +4589,7 @@ class Api {
 
     Response paused() => errorResponse(503, 'model_disabled',
         'Picture mode is paused right now. Try again later.');
-    final candidates = await _aiCandidates('picture', route);
+    final candidates = await _aiCandidates(selector, route);
     if (candidates.isEmpty) return paused();
 
     // The "if possible" model draws first; the main model takes over when
@@ -4625,7 +4632,9 @@ class Api {
             'The picture model could not draw that. Try again.');
       }
       await _recordAiPaid(candidate.key, drawWith, responseBody);
-      await _logAiCall(user, 'Picture', drawWith, responseBody);
+      await _logAiCall(user,
+          selector == kAiImageProSelector ? 'Picture Pro' : 'Picture',
+          drawWith, responseBody);
       final image = parseAiImageResponse(responseBody);
       if (image == null) {
         if (!last) continue;
@@ -4638,6 +4647,7 @@ class Api {
         'mimeType': image.mimeType,
         if (image.text != null) 'text': image.text,
         'model': drawWith.model,
+        'tier': selector == kAiImageProSelector ? 'pro' : 'standard',
         'weeklyPct': pct,
       });
     }
@@ -4647,7 +4657,8 @@ class Api {
   /// The picture card's Test button: draws one small picture with the
   /// provider and model currently in the form (saved or not), so the
   /// operator sees the model really returns an image before users try it.
-  Future<Response> _adminAiImageTest(Map<String, dynamic> body) async {
+  Future<Response> _adminAiImageTest(
+      String selector, Map<String, dynamic> body) async {
     AiModeRoute? route;
     if (body.containsKey('upstream') || body.containsKey('model')) {
       final upstreamValue = body['upstream'];
@@ -4660,7 +4671,7 @@ class Api {
       final modelInput = body['model'];
       final model = modelInput is String && modelInput.trim().isNotEmpty
           ? modelInput.trim()
-          : kDefaultAiImageModels[upstream]!;
+          : aiImageDefaultModels(selector)[upstream]!;
       if (!isValidAiModelId(model)) {
         return errorResponse(400, 'bad_request', 'Enter a valid model ID.');
       }
@@ -4674,7 +4685,7 @@ class Api {
       }
       route = AiModeRoute(upstream, model);
     } else {
-      route = aiImageConfig.resolve(config.configuredAiUpstreams);
+      route = aiImageConfig.resolve(config.configuredAiUpstreams, selector);
     }
     if (route == null) {
       return errorResponse(404, 'not_configured',
@@ -4734,17 +4745,21 @@ class Api {
     }
   }
 
-  /// Saves the Assistant tab's picture model card. A blank model falls back
-  /// to the default of the first provider with a key.
+  /// Saves one of the Assistant tab's picture model cards (standard or pro,
+  /// named by the form's `selector`). A blank model falls back to the
+  /// default of the first provider with a key.
   Future<Response> _adminAiImageSave(Request request) async {
     Map<String, String> form = const {};
     try {
       form = Uri.splitQueryString(await request.readAsString());
     } catch (_) {}
+    final selector = form['selector'] == kAiImageProSelector
+        ? kAiImageProSelector
+        : kAiImageSelector;
     AiModeRoute? route;
-    final model = (form['picture.model'] ?? '').trim();
+    final model = (form['$selector.model'] ?? '').trim();
     if (model.isNotEmpty) {
-      final upstream = AiUpstream.parse(form['picture.upstream']);
+      final upstream = AiUpstream.parse(form['$selector.upstream']);
       if (upstream == null || !kAiImageUpstreams.contains(upstream)) {
         return errorResponse(
             400, 'bad_request', 'Pick Google AI Studio or OpenRouter.');
@@ -4755,15 +4770,15 @@ class Api {
       }
       route = AiModeRoute(upstream, model);
     }
-    final preferred = _formPreferredRoute(form, 'picture');
+    final preferred = _formPreferredRoute(form, selector);
     if (preferred.error != null) {
       return errorResponse(400, 'bad_request', preferred.error!);
     }
-    await aiImageConfig.save(route);
-    await aiPreferred.save('picture', preferred.route);
+    await aiImageConfig.save(route, selector);
+    await aiPreferred.save(selector, preferred.route);
     await store.logActivity(
         'ai_routes_changed',
-        'Picture model → ${route?.model ?? 'default'}'
+        '${_guardedLabel(selector)} → ${route?.model ?? 'default'}'
             '${preferred.route == null ? '' : ' (if possible ${preferred.route!.model})'}');
     return _adminFormResponse(request, '/admin',
         fragment: 'assistant',
@@ -12121,6 +12136,7 @@ syncToolbar();
       ('ai-sec-bookreview', 'book', 'Book reviewer'),
       ('ai-sec-classroom', 'cap', 'Classroom tutor'),
       ('ai-sec-picture', 'image', 'Pictures'),
+      ('ai-sec-picture_pro', 'image', 'Pro pictures'),
       ('ai-sec-cs2voice', 'sparkles', 'Voice translate'),
     ];
     final subnav = '<nav class="subnav" aria-label="Assistant sections">'
@@ -12244,7 +12260,8 @@ syncToolbar();
         '${_adminAiDetectorCard(configured)}'
         '${_adminAiBookReviewCard(configured)}'
         '${_adminAiClassroomCard(configured)}'
-        '${_adminAiImageCard(configured)}'
+        '${_adminAiImageCard(configured, kAiImageSelector)}'
+        '${_adminAiImageCard(configured, kAiImageProSelector)}'
         '${_adminCs2VoiceCards(configured)}'
         '</div>';
   }
@@ -12309,7 +12326,7 @@ syncToolbar();
           'spellcheck="false" autocomplete="off">'
           '<button type="button" class="btn btn-ghost btn-sm ai-browse" '
           'data-mode="$key">Browse models</button>',
-      effort: selector == 'picture'
+      effort: isAiImageSelector(selector)
           ? null
           : '<select name="$key.effort" id="ai-effort-$key">'
               '$effortOptions</select>',
@@ -12513,13 +12530,15 @@ syncToolbar();
         '</div></section>';
   }
 
-  /// The Assistant tab's picture model card: which model the Assistant's
-  /// picture mode draws with. Uses the `picture` mode name so the model
-  /// browser and the provider → suggestions swap work on it unchanged.
-  String _adminAiImageCard(Set<AiUpstream> configured) {
+  /// One of the Assistant tab's picture model cards: which model the
+  /// Assistant's standard or pro picture option draws with. Uses the
+  /// selector as its mode name so the model browser and the provider →
+  /// suggestions swap work on it unchanged.
+  String _adminAiImageCard(Set<AiUpstream> configured, String selector) {
     String esc(String s) => _htmlEscape(s).replaceAll('"', '&quot;');
-    final stored = aiImageConfig.stored;
-    final live = aiImageConfig.resolve(configured);
+    final pro = selector == kAiImageProSelector;
+    final stored = aiImageConfig.stored(selector);
+    final live = aiImageConfig.resolve(configured, selector);
     final upstream = stored?.upstream ??
         live?.upstream ??
         kAiImageUpstreams.firstWhere(configured.contains,
@@ -12540,41 +12559,48 @@ syncToolbar();
     } else {
       status = '<span class="badge ok">custom</span>';
     }
-    final costs = kAiImageWeeklyPercent.entries
-        .map((e) => '${esc(e.key)} ${e.value}%')
+    final costs = (pro ? kAiImageProWeeklyPercent : kAiImageWeeklyPercent)
+        .entries
+        .map((e) => '${esc(e.key == 'core' ? 'free' : e.key)} ${e.value}%')
         .join(', ');
-    return '<section class="ai-sec" id="ai-sec-picture"><div class="card">'
-        '${_cardHead('image', 'Picture model')}'
-        '<div class="maint-desc" tabindex="0">The model behind the Assistant\'s picture '
-        'mode. Google AI Studio draws with Imagen through its images '
+    final s = selector;
+    return '<section class="ai-sec" id="ai-sec-$s"><div class="card">'
+        '${_cardHead('image', pro ? 'Pro picture model' : 'Picture model')}'
+        '<div class="maint-desc" tabindex="0">'
+        '${pro ? 'The pricier picture model users can pick as "Pro" in the '
+            'Assistant, for higher-quality pictures. ' : 'The standard, cheaper model behind the Assistant\'s picture '
+            'mode, available on every plan. '}'
+        'Google AI Studio draws with Imagen through its images '
         'endpoint; OpenRouter draws through its images endpoint with any '
         'image model (Gemini Flash Image, Ming, FLUX…). Each picture takes a flat share of the '
         'user\'s weekly limit for the mode they have selected: $costs.</div>'
         '<form method="post" action="/admin/ai-image" class="ai-routes" '
-        'id="aiImageForm">'
+        'id="aiImageForm-$s">'
+        '<input type="hidden" name="selector" value="$s">'
         '<div class="ai-detector-grid">'
-        '<div><label for="ai-upstream-picture">Provider</label>'
-        '<select name="picture.upstream" id="ai-upstream-picture" '
-        'class="ai-upstream" data-mode="picture">$upstreamOptions</select></div>'
-        '<div><label for="ai-model-picture">Model</label>'
-        '<input type="text" name="picture.model" id="ai-model-picture" '
+        '<div><label for="ai-upstream-$s">Provider</label>'
+        '<select name="$s.upstream" id="ai-upstream-$s" '
+        'class="ai-upstream" data-mode="$s">$upstreamOptions</select></div>'
+        '<div><label for="ai-model-$s">Model</label>'
+        '<input type="text" name="$s.model" id="ai-model-$s" '
         'list="ai-dl-${upstream.name}" value="${esc(stored?.model ?? '')}" '
-        'placeholder="${esc(live?.model ?? kDefaultAiImageModels[upstream]!)}" '
+        'placeholder="${esc(live?.model ?? aiImageDefaultModels(s)[upstream]!)}" '
         'maxlength="200" spellcheck="false" autocomplete="off">'
         '<button type="button" class="btn btn-ghost btn-sm ai-browse" '
-        'data-mode="picture">Browse models</button></div>'
+        'data-mode="$s">Browse models</button></div>'
         '<div><span class="ai-detector-label">Status</span>$status'
         '<div style="margin-top:6px"><button type="button" '
-        'class="btn btn-ghost btn-sm ai-test" data-mode="picture">Test</button>'
-        '<div class="ai-test-out muted" id="ai-test-picture"></div></div>'
-        '<div id="ai-paused-picture"></div></div>'
-        '<div class="ai-price-cell" data-mode="picture">'
+        'class="btn btn-ghost btn-sm ai-test" data-mode="$s">Test</button>'
+        '<div class="ai-test-out muted" id="ai-test-$s"></div></div>'
+        '<div id="ai-paused-$s"></div></div>'
+        '<div class="ai-price-cell" data-mode="$s">'
         '<span class="ai-detector-label">Price / 1M tokens</span>'
-        '${_aiPriceBlock('picture')}</div>'
+        '${_aiPriceBlock(s)}</div>'
         '</div>'
-        '${_aiPreferredGrid('picture', configured)}'
+        '${_aiPreferredGrid(s, configured)}'
         '<div class="form-foot">'
-        '<button type="submit" class="btn btn-primary">Save picture model</button>'
+        '<button type="submit" class="btn btn-primary">'
+        'Save ${pro ? 'pro ' : ''}picture model</button>'
         '<span class="muted">Leave the model blank for the default.</span>'
         '</div>'
         '</form>'

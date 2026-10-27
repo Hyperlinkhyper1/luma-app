@@ -141,6 +141,8 @@ class _ChatInputBarState extends State<ChatInputBar> {
     final luma = context.luma;
     final t = L.of(context);
     final blocked = !widget.enabled;
+    final screen = MediaQuery.sizeOf(context);
+    final narrow = screen.width < 500;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -172,7 +174,9 @@ class _ChatInputBarState extends State<ChatInputBar> {
                   child: widget.attachments,
                 ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+                padding: narrow
+                    ? const EdgeInsets.fromLTRB(16, 13, 16, 0)
+                    : const EdgeInsets.fromLTRB(18, 16, 18, 0),
                 child: Focus(
                   onFocusChange: (_) => setState(() {}),
                   child: TextField(
@@ -181,7 +185,10 @@ class _ChatInputBarState extends State<ChatInputBar> {
                     enabled: !blocked,
                     autofocus: widget.autofocus,
                     minLines: widget.minLines,
-                    maxLines: 10,
+                    // With a phone keyboard up, ten lines would push the
+                    // transcript off screen.
+                    maxLines: screen.height < 760 ? 5 : 10,
+                    textCapitalization: TextCapitalization.sentences,
                     keyboardType: TextInputType.multiline,
                     textInputAction: switch (defaultTargetPlatform) {
                       TargetPlatform.android ||
@@ -207,7 +214,9 @@ class _ChatInputBarState extends State<ChatInputBar> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+                padding: narrow
+                    ? const EdgeInsets.fromLTRB(6, 6, 8, 8)
+                    : const EdgeInsets.fromLTRB(10, 10, 10, 10),
                 child: Row(
                   children: [
                     Expanded(

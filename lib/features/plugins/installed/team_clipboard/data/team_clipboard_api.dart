@@ -34,6 +34,7 @@ class TeamBoardSnapshot {
     this.me,
     this.permissions = const {},
     this.tags = const [],
+    this.entryTags = const [],
     this.entries,
   });
 
@@ -50,6 +51,9 @@ class TeamBoardSnapshot {
 
   /// The tags a lead put on this account.
   final List<TeamTag> tags;
+
+  /// The tags a lead made for entries, in the team's order.
+  final List<TeamEntryTag> entryTags;
 
   /// Null when nothing changed since the revision asked about.
   final List<TeamEntry>? entries;
@@ -102,6 +106,10 @@ class TeamClipboardApi {
         for (final t in body['tags'] as List? ?? const [])
           TeamTag.fromJson(t as Map<String, dynamic>),
       ],
+      entryTags: [
+        for (final t in body['entryTags'] as List? ?? const [])
+          TeamEntryTag.fromJson(t as Map<String, dynamic>),
+      ],
       entries: body['unchanged'] == true
           ? null
           : [
@@ -123,12 +131,14 @@ class TeamClipboardApi {
     required String title,
     required String brief,
     String? parentId,
+    List<String> tags = const [],
   }) async => TeamEntry.fromJson(
     await _send('POST', '/entries', {
       'kind': kind.name,
       'title': title,
       'brief': brief,
       'parentId': ?parentId,
+      'tags': tags,
     }),
   );
 
@@ -140,12 +150,14 @@ class TeamClipboardApi {
     required String title,
     required String brief,
     required String? parentId,
+    required List<String> tags,
   }) async => TeamEntry.fromJson(
     await _send('PUT', '/entries/$id', {
       'kind': kind.name,
       'title': title,
       'brief': brief,
       'parentId': parentId,
+      'tags': tags,
     }),
   );
 
@@ -219,14 +231,18 @@ class TeamClipboardApi {
   }
 
   /// Saves the whole tag list (a tag without an id is new, one left out is
-  /// deleted) and/or what each of [members] gets directly and wears.
+  /// deleted), the whole entry tag list the same way, and/or what each of
+  /// [members] gets directly and wears.
   Future<TeamSettings> saveSettings({
     List<TeamTag>? tags,
+    List<TeamEntryTag>? entryTags,
     List<({String id, Set<TeamPermission>? permissions, List<String>? tags})>?
     members,
   }) async => TeamSettings.fromJson(
     await _send('PUT', '/settings', {
       if (tags != null) 'tags': [for (final t in tags) t.toJson()],
+      if (entryTags != null)
+        'entryTags': [for (final t in entryTags) t.toJson()],
       if (members != null)
         'members': [
           for (final m in members)

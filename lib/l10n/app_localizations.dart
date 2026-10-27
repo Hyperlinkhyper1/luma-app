@@ -571,6 +571,36 @@ abstract class L {
   /// **'Delete the {name} tag? Everyone who has it loses what it allowed.'**
   String teamSettingsDeleteTagConfirm(String name);
 
+  /// No description provided for @teamSettingsEntryTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Entry tags'**
+  String get teamSettingsEntryTags;
+
+  /// No description provided for @teamSettingsEntryTagsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone can put these on an entry and filter the board by them. Only leads make them.'**
+  String get teamSettingsEntryTagsHint;
+
+  /// No description provided for @teamSettingsEntryTagCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{not used yet} =1{on 1 entry} other{on {count} entries}}'**
+  String teamSettingsEntryTagCount(int count);
+
+  /// No description provided for @teamSettingsEntryTagNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocks, Mobs, 1.21 port…'**
+  String get teamSettingsEntryTagNameHint;
+
+  /// No description provided for @teamSettingsDeleteEntryTagConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the {name} tag? It comes off every entry that has it.'**
+  String teamSettingsDeleteEntryTagConfirm(String name);
+
   /// No description provided for @teamSettingsNoMembers.
   ///
   /// In en, this message translates to:
@@ -65788,6 +65818,12 @@ abstract class L {
   /// In en, this message translates to:
   /// **'New entry'**
   String get teamClipboardEditorNewTitle;
+
+  /// No description provided for @teamClipboardEditorTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags'**
+  String get teamClipboardEditorTags;
 
   /// No description provided for @teamClipboardEditorKind.
   ///

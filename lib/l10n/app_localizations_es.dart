@@ -316,6 +316,33 @@ class LEs extends L {
   }
 
   @override
+  String get teamSettingsEntryTags => 'Etiquetas de entrada';
+
+  @override
+  String get teamSettingsEntryTagsHint =>
+      'Cualquiera puede ponerlas en una entrada y filtrar el tablero con ellas. Solo los líderes las crean.';
+
+  @override
+  String teamSettingsEntryTagCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'en $count entradas',
+      one: 'en 1 entrada',
+      zero: 'sin usar aún',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get teamSettingsEntryTagNameHint => 'Bloques, Mobs, port 1.21…';
+
+  @override
+  String teamSettingsDeleteEntryTagConfirm(String name) {
+    return '¿Eliminar la etiqueta $name? Se quitará de todas las entradas que la tengan.';
+  }
+
+  @override
   String get teamSettingsNoMembers =>
       'Aún no hay nadie más en el equipo. El administrador añade gente desde el panel.';
 
@@ -40560,6 +40587,9 @@ class LEs extends L {
 
   @override
   String get teamClipboardEditorNewTitle => 'Nueva entrada';
+
+  @override
+  String get teamClipboardEditorTags => 'Etiquetas';
 
   @override
   String get teamClipboardEditorKind => 'Tipo';

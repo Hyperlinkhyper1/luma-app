@@ -94,6 +94,9 @@ class _FakeBoard {
 
   /// What the Settings endpoints hold.
   final List<Map<String, dynamic>> tags = [];
+
+  /// The tags entries can carry; the board and Settings both send them.
+  final List<Map<String, dynamic>> entryTags = [];
   final List<Map<String, dynamic>> members = [
     {
       'id': 'u-pixel',
@@ -116,6 +119,7 @@ class _FakeBoard {
   Map<String, dynamic> get _settings => {
     'permissions': [for (final p in TeamPermission.values) p.name],
     'tags': tags,
+    'entryTags': entryTags,
     'members': [
       for (final m in members)
         {
@@ -149,6 +153,17 @@ class _FakeBoard {
             if (ids.contains(id)) id,
         ];
       }
+    }
+    if (body['entryTags'] case final List<dynamic> next) {
+      var n = entryTags.length;
+      final kept = [
+        for (final t in next.cast<Map<String, dynamic>>())
+          {...t, 'id': t['id'] ?? 'g${n++}'},
+      ];
+      entryTags
+        ..clear()
+        ..addAll(kept);
+      revision++;
     }
     if (body['members'] case final List<dynamic> changes) {
       for (final c in changes.cast<Map<String, dynamic>>()) {
@@ -240,6 +255,7 @@ class _FakeBoard {
         'permissions': lead
             ? [for (final p in TeamPermission.values) p.name]
             : permissions,
+        'entryTags': entryTags,
         'revision': revision,
       };
       if (request.url.queryParameters['since'] == '$revision') {
@@ -280,6 +296,18 @@ class _FakeBoard {
       me = name.isEmpty ? 'pixel' : name;
       revision++;
       return json({'me': me, 'revision': revision});
+    }
+    if (path == '/api/v1/team-board/entries' && request.method == 'POST') {
+      final body = jsonDecode(request.body) as Map<String, dynamic>;
+      final made = _entry(
+        'n${revision + 1}',
+        body['title'] as String,
+        kind: body['kind'] as String,
+        updatedAtMs: 9900,
+      )..['tags'] = body['tags'] ?? <String>[];
+      entries.add(made);
+      revision++;
+      return json(_full(made['id'] as String), 201);
     }
     final blob = RegExp(r'^/api/v1/team-board/files/(\w+)$').firstMatch(path);
     if (blob != null && blobs.containsKey(blob.group(1))) {
@@ -1387,6 +1415,98 @@ void main() {
       expect(chip, findsOneWidget, reason: label);
       expect(tester.getRect(chip).right, lessThanOrEqualTo(list.left));
     }
+    await _unmount(tester);
+  });
+
+  testWidgets('a lead makes an entry tag in Settings', (tester) async {
+    final board = _FakeBoard(lead: true);
+    await _pump(tester, board);
+    await tester.tap(find.byKey(const ValueKey('team-clipboard-settings-tab')));
+    await tester.pumpAndSettle();
+
+    final add = find.byKey(const ValueKey('team-settings-new-entry-tag'));
+    await tester.ensureVisible(add);
+    await tester.pumpAndSettle();
+    await tester.tap(add);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('team-settings-entry-tag-name')),
+      'Blocks',
+    );
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const ValueKey('team-settings-entry-tag-save')),
+    );
+    await tester.pumpAndSettle();
+
+    final put = [
+      for (final r in board.requests)
+        if (r.method == 'PUT') jsonDecode(r.body) as Map<String, dynamic>,
+    ].single;
+    expect(put['entryTags'], [
+      {'name': 'Blocks', 'color': 0},
+    ]);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(
+      find.byKey(const ValueKey('team-settings-entry-tag-g0')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+    await _unmount(tester);
+  });
+
+  testWidgets('the board filters on an entry tag', (tester) async {
+    final board = _FakeBoard()
+      ..entryTags.addAll([
+        {'id': 'g0', 'name': 'Blocks', 'color': 2},
+        {'id': 'g1', 'name': 'Mobs', 'color': 5},
+      ]);
+    board.entries
+      ..firstWhere((e) => e['id'] == 'b0')['tags'] = ['g0']
+      ..firstWhere((e) => e['id'] == 'c0')['tags'] = ['g1'];
+    await _pump(tester, board);
+    expect(find.text('Ruby ore'), findsOneWidget);
+    expect(find.text('Chest lid clips'), findsOneWidget);
+
+    final blocks = find.byKey(const ValueKey('team-filter-tag-g0'));
+    await tester.tap(blocks);
+    await tester.pumpAndSettle();
+    expect(find.text('Ruby ore'), findsOneWidget);
+    expect(find.text('Chest lid clips'), findsNothing);
+    expect(find.text('Copper lantern'), findsNothing);
+
+    await tester.tap(blocks);
+    await tester.pumpAndSettle();
+    expect(find.text('Chest lid clips'), findsOneWidget);
+    expect(find.text('Copper lantern'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await _unmount(tester);
+  });
+
+  testWidgets('a new entry carries the tags picked for it', (tester) async {
+    final board = _FakeBoard()
+      ..entryTags.addAll([
+        {'id': 'g0', 'name': 'Blocks', 'color': 2},
+        {'id': 'g1', 'name': 'Mobs', 'color': 5},
+      ]);
+    await _pump(tester, board);
+    await tester.tap(find.text('New entry'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'e.g. Ruby ore block'),
+      'Zombie hat',
+    );
+    await tester.tap(find.byKey(const ValueKey('team-editor-tag-g1')));
+    await tester.pump();
+    await tester.tap(find.text('Add to board'));
+    await tester.pumpAndSettle();
+
+    final post = board.requests.firstWhere(
+      (r) => r.method == 'POST' && r.url.path.endsWith('/entries'),
+    );
+    expect((jsonDecode(post.body) as Map)['tags'], ['g1']);
+    expect(find.byType(Dialog), findsNothing);
+    expect(tester.takeException(), isNull);
     await _unmount(tester);
   });
 }

@@ -34,6 +34,9 @@ enum _WorkspacePage { tasks, library, discordBot, settings }
 class _TeamClipboardPageState extends State<TeamClipboardPage> {
   TeamClipboardController? _controller;
   _KindFilter _filter = _KindFilter.all;
+
+  /// The entry tag the board is cut down to, or null for every entry.
+  String? _tagFilter;
   String _query = '';
   _WorkspacePage _page = _WorkspacePage.tasks;
   bool _showTodo = true;
@@ -58,6 +61,14 @@ class _TeamClipboardPageState extends State<TeamClipboardPage> {
     super.dispose();
   }
 
+  /// [_tagFilter] while that tag still exists; a lead deleting it lets the
+  /// whole board show again.
+  String? get _activeTag {
+    final id = _tagFilter;
+    if (id == null) return null;
+    return _controller?.entryTags.any((t) => t.id == id) == true ? id : null;
+  }
+
   bool _matches(TeamEntry e) {
     final kindOk = switch (_filter) {
       _KindFilter.all => true,
@@ -66,6 +77,7 @@ class _TeamClipboardPageState extends State<TeamClipboardPage> {
       _KindFilter.model => e.kind == TeamEntryKind.model,
     };
     if (!kindOk) return false;
+    if (_activeTag case final tag? when !e.tags.contains(tag)) return false;
     final q = _query.trim().toLowerCase();
     if (q.isEmpty) return true;
     return e.title.toLowerCase().contains(q) ||
@@ -123,11 +135,15 @@ class _TeamClipboardPageState extends State<TeamClipboardPage> {
                     final list = _BoardList(
                       controller: controller,
                       filter: _filter,
+                      tagFilter: _activeTag,
                       query: _query,
                       showTodo: _showTodo,
                       showFinished: _showFinished,
                       matches: _matches,
                       onFilter: (f) => setState(() => _filter = f),
+                      onTagFilter: (id) => setState(
+                        () => _tagFilter = id == _activeTag ? null : id,
+                      ),
                       onQuery: (q) => setState(() => _query = q),
                       onToggleFinished: () =>
                           setState(() => _showFinished = !_showFinished),
@@ -413,11 +429,13 @@ class _BoardList extends StatelessWidget {
   const _BoardList({
     required this.controller,
     required this.filter,
+    required this.tagFilter,
     required this.query,
     required this.showTodo,
     required this.showFinished,
     required this.matches,
     required this.onFilter,
+    required this.onTagFilter,
     required this.onQuery,
     required this.onToggleTodo,
     required this.onToggleFinished,
@@ -428,11 +446,15 @@ class _BoardList extends StatelessWidget {
 
   final TeamClipboardController controller;
   final _KindFilter filter;
+  final String? tagFilter;
   final String query;
   final bool showTodo;
   final bool showFinished;
   final bool Function(TeamEntry) matches;
   final ValueChanged<_KindFilter> onFilter;
+
+  /// Picks an entry tag to filter by; the one already picked clears it.
+  final ValueChanged<String> onTagFilter;
   final ValueChanged<String> onQuery;
   final VoidCallback onToggleTodo;
   final VoidCallback onToggleFinished;
@@ -457,6 +479,7 @@ class _BoardList extends StatelessWidget {
       return TeamTaskRow(
         key: ValueKey(entry.id),
         entry: entry,
+        tags: controller.tagsOf(entry),
         table: table,
         child: child,
         compact: compact,
@@ -581,6 +604,26 @@ class _BoardList extends StatelessWidget {
                         selected: f == filter,
                         iconOnly: compact,
                         onTap: () => onFilter(f),
+                      ),
+                    ),
+                  if (controller.entryTags.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(4, 4, 10, 4),
+                      child: VerticalDivider(
+                        width: 1,
+                        thickness: 1,
+                        color: luma.border,
+                      ),
+                    ),
+                  for (final tag in controller.entryTags)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: _FilterChip(
+                        key: ValueKey('team-filter-tag-${tag.id}'),
+                        label: tag.name,
+                        dot: teamTagColor(tag.color, luma),
+                        selected: tag.id == tagFilter,
+                        onTap: () => onTagFilter(tag.id!),
                       ),
                     ),
                 ],
@@ -827,15 +870,20 @@ class _SearchFieldState extends State<_SearchField> {
 
 class _FilterChip extends StatelessWidget {
   const _FilterChip({
+    super.key,
     required this.label,
     required this.selected,
     required this.onTap,
     this.icon,
+    this.dot,
     this.iconOnly = false,
   });
 
   final String label;
   final IconData? icon;
+
+  /// An entry tag's colour, shown as a dot before the label.
+  final Color? dot;
   final bool selected;
   final VoidCallback onTap;
 
@@ -875,6 +923,17 @@ class _FilterChip extends StatelessWidget {
                   color: selected ? luma.accent : luma.textSecondary,
                 ),
                 if (!bare) const SizedBox(width: 5),
+              ],
+              if (dot case final color?) ...[
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
               ],
               if (!bare)
                 Text(

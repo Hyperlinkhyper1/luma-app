@@ -24,9 +24,10 @@ class LumaImage {
   };
 }
 
-/// Asks the luma server (POST /api/v1/ai/image) to draw a picture with the
-/// model the operator picked in the admin dashboard. The server charges a
-/// flat share of the weekly limit of [mode] per picture.
+/// Asks the luma server (POST /api/v1/ai/image) to draw a picture with one
+/// of the two models the operator picked in the admin dashboard — `tier`
+/// `standard` or `pro`. The server charges a flat share of the weekly limit
+/// of [mode] per picture, more for pro.
 class LumaImageClient {
   LumaImageClient({required this.serverUrl, this.httpClient});
 
@@ -39,6 +40,7 @@ class LumaImageClient {
     required String authToken,
     required String prompt,
     required String mode,
+    String tier = 'standard',
   }) async {
     var base = serverUrl.trim();
     while (base.endsWith('/')) {
@@ -54,7 +56,7 @@ class LumaImageClient {
               'Authorization': 'Bearer $authToken',
               'Content-Type': 'application/json',
             },
-            body: jsonEncode({'prompt': prompt, 'mode': mode}),
+            body: jsonEncode({'prompt': prompt, 'mode': mode, 'tier': tier}),
           )
           .timeout(const Duration(seconds: 150));
     } on ServerAccessDeniedException catch (e) {

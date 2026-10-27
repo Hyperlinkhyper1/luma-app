@@ -78,6 +78,15 @@ extension TeamBoardApi on Api {
     return null;
   }
 
+  /// [raw] as a list of entry tag ids, or null when it isn't a list of
+  /// strings. Ids of tags that no longer exist are dropped later, by
+  /// [TeamBoardStore.entryTagIds], so a tag a lead deleted a moment ago
+  /// doesn't refuse the whole save.
+  static List<String>? _teamEntryTagsParam(Object? raw) {
+    if (raw is! List || raw.any((t) => t is! String)) return null;
+    return [for (final t in raw) t as String];
+  }
+
   /// Changes the name this account goes by on the board. An empty name
   /// goes back to the email's.
   Future<Response> _teamNameSet(Request request, StoredUser user) async {
@@ -132,6 +141,7 @@ extension TeamBoardApi on Api {
           ? null
           : _teamName(e.claimedById!, e.claimedByEmail ?? ''),
       'parentId': e.parentId,
+      'tags': e.tags,
       if (e.discord case final d?)
         'discord': {
           'url': d.url,
@@ -201,6 +211,7 @@ extension TeamBoardApi on Api {
           if (teamBoard.tagsOf(user.id).contains(t.id))
             {'name': t.name, 'color': t.color}
       ],
+      'entryTags': [for (final t in teamBoard.entryTags) t.toJson()],
       'revision': teamBoard.revision,
     };
     if (since == teamBoard.revision) {
@@ -268,6 +279,10 @@ extension TeamBoardApi on Api {
     if (parentId != null && parentId is! String) {
       return errorResponse(400, 'bad_parent', 'Pick a main thread.');
     }
+    final tags = _teamEntryTagsParam(body['tags'] ?? const []);
+    if (tags == null) {
+      return errorResponse(400, 'bad_tags', 'Malformed tag list.');
+    }
     final now = DateTime.now().millisecondsSinceEpoch;
     final entry = TeamBoardEntry(
       id: TeamBoardStore.newId(),
@@ -281,6 +296,7 @@ extension TeamBoardApi on Api {
       parentId: parentId as String?,
     );
     final problem = await teamBoard.mutate(() {
+      entry.tags = teamBoard.entryTagIds(tags);
       if (parentId != null) {
         final why = _teamParentProblem(null, parentId);
         if (why != null) return why;
@@ -318,11 +334,17 @@ extension TeamBoardApi on Api {
     if (parentId != null && parentId is! String) {
       return errorResponse(400, 'bad_parent', 'Pick a main thread.');
     }
+    final tags =
+        body.containsKey('tags') ? _teamEntryTagsParam(body['tags']) : null;
+    if (body.containsKey('tags') && tags == null) {
+      return errorResponse(400, 'bad_tags', 'Malformed tag list.');
+    }
     final problem = await teamBoard.mutate(() {
       if (moves && parentId != null && parentId != entry.parentId) {
         final why = _teamParentProblem(entry, parentId as String);
         if (why != null) return why;
       }
+      if (tags != null) entry.tags = teamBoard.entryTagIds(tags);
       entry
         ..kind = kind as String
         ..title = title
@@ -584,6 +606,7 @@ extension TeamBoardApi on Api {
       'permissions': kTeamBoardPermissions,
       'tagColors': kTeamBoardTagColors,
       'tags': [for (final t in teamBoard.tags) t.toJson()],
+      'entryTags': [for (final t in teamBoard.entryTags) t.toJson()],
       'members': members,
       'revision': teamBoard.revision,
     };
@@ -596,8 +619,9 @@ extension TeamBoardApi on Api {
   }
 
   /// Saves `tags` (the whole list: a tag without a known id is new, and a
-  /// tag left out is deleted) and/or `members` (each `{id, permissions?,
-  /// tags?}`). One bad item refuses the lot.
+  /// tag left out is deleted), `entryTags` (the same, for the tags entries
+  /// carry) and/or `members` (each `{id, permissions?, tags?}`). One bad
+  /// item refuses the lot.
   Future<Response> _teamSettingsUpdate(Request request, StoredUser user) async {
     final refused = _teamLeadOnly(user);
     if (refused != null) return refused;
@@ -646,6 +670,41 @@ extension TeamBoardApi on Api {
       }
     }
 
+    List<TeamBoardEntryTag>? entryTags;
+    if (body.containsKey('entryTags')) {
+      final raw = body['entryTags'];
+      if (raw is! List || raw.length > kTeamBoardMaxEntryTags) {
+        return errorResponse(400, 'bad_tags',
+            'A team has at most $kTeamBoardMaxEntryTags entry tags.');
+      }
+      final known = {for (final t in teamBoard.entryTags) t.id};
+      final names = <String>{};
+      entryTags = [];
+      for (final r in raw) {
+        if (r is! Map) {
+          return errorResponse(400, 'bad_tags', 'Malformed tag.');
+        }
+        final name = cleanTeamBoardTagName(r['name']);
+        if (name == null) {
+          return errorResponse(400, 'bad_tag_name',
+              'Give each tag a name of at most $kTeamBoardMaxTagChars characters.');
+        }
+        if (!names.add(name.toLowerCase())) {
+          return errorResponse(
+              409, 'tag_taken', 'There is already a tag called $name.');
+        }
+        final id = r['id'];
+        final color = r['color'];
+        entryTags.add(TeamBoardEntryTag(
+          id: id is String && known.contains(id) ? id : TeamBoardStore.newId(),
+          name: name,
+          color: color is int && color >= 0 && color < kTeamBoardTagColors
+              ? color
+              : 0,
+        ));
+      }
+    }
+
     final changes =
         <({String id, Set<String>? permissions, Set<String>? tags})>[];
     if (body.containsKey('members')) {
@@ -681,6 +740,7 @@ extension TeamBoardApi on Api {
 
     await teamBoard.mutate(() {
       if (tags != null) teamBoard.replaceTags(tags);
+      if (entryTags != null) teamBoard.replaceEntryTags(entryTags);
       for (final c in changes) {
         teamBoard.setAccess(c.id, permissions: c.permissions, tagIds: c.tags);
       }
