@@ -223,7 +223,8 @@ void main() {
       expect((await login('erin@example.com', 1))['httpStatus'], 200);
     });
 
-    test('5 wrong attempts burn the code, even the right one after', () async {
+    test('5 wrong attempts lock out the guesser but leave the code alone',
+        () async {
       await register('frank@example.com');
       await call(
           '/api/v1/auth/forgot-password', {'email': 'frank@example.com'});
@@ -237,7 +238,9 @@ void main() {
       final locked = await reset('frank@example.com', correct);
       expect(locked['httpStatus'], 429);
       expect(locked['error'], 'too_many_attempts');
-      expect(store.usersById.values.single.passwordResetCodeHash, isNull);
+      // Someone else's wrong guesses must not destroy the owner's code — the
+      // owner, on their own connection, can still use it.
+      expect(store.usersById.values.single.passwordResetCodeHash, isNotNull);
     });
 
     test('a reset code is stored apart from the verification code', () async {

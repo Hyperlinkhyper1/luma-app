@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -43,6 +45,51 @@ Uint8List pbkdf2Sha256(
     block++;
   }
   return Uint8List.fromList(out.takeBytes().sublist(0, dkLen));
+}
+
+/// Hash work allowed to run at once. Each hash is CPU-bound for tens of
+/// milliseconds, so beyond a few cores more parallelism only queues up
+/// behind itself; capping it keeps a burst of logins from taking every core
+/// away from sync and the admin dashboard.
+final AsyncSemaphore _hashSlots =
+    AsyncSemaphore((Platform.numberOfProcessors - 1).clamp(1, 4));
+
+/// [pbkdf2Sha256] on a background isolate. Run inline on the event loop it
+/// stalls every other request — sync, WebSockets, the dashboard — for the
+/// whole hash, and login hashes even for unknown emails, so a modest login
+/// rate from many addresses would freeze the server.
+Future<Uint8List> pbkdf2Sha256Async(
+        List<int> password, List<int> salt, int iterations, int dkLen) =>
+    _hashSlots.run(() => Isolate.run(
+        () => pbkdf2Sha256(password, salt, iterations, dkLen)));
+
+/// Lets at most [permits] tasks run at once; the rest wait in order.
+class AsyncSemaphore {
+  AsyncSemaphore(this.permits);
+
+  final int permits;
+  int _inUse = 0;
+  final Queue<Completer<void>> _waiters = Queue();
+
+  Future<T> run<T>(Future<T> Function() task) async {
+    if (_inUse < permits) {
+      _inUse++;
+    } else {
+      final turn = Completer<void>();
+      _waiters.add(turn);
+      await turn.future;
+    }
+    try {
+      return await task();
+    } finally {
+      // Hand the slot straight to the next waiter, if any.
+      if (_waiters.isNotEmpty) {
+        _waiters.removeFirst().complete();
+      } else {
+        _inUse--;
+      }
+    }
+  }
 }
 
 /// Compares two byte lists without leaking where they differ.
@@ -126,3 +173,23 @@ Response jsonResponse(int status, Map<String, dynamic> body) => Response(status,
 Response errorResponse(int status, String code, String message,
         {Map<String, dynamic>? extra}) =>
     jsonResponse(status, {'error': code, 'message': message, ...?extra});
+
+/// What per-IP limits and bans key on: [address] itself for IPv4, the /64
+/// prefix (`2001:db8:1:2::/64`) for IPv6 — one home connection or VPS gets a
+/// whole /64, so keying on /128 would hand an attacker unlimited budgets. An
+/// IPv4-mapped IPv6 address comes back as plain IPv4. Anything that doesn't
+/// parse (an already-bucketed key, 'unknown') is returned unchanged.
+String ipBucket(String address) {
+  final parsed =
+      InternetAddress.tryParse(address.replaceAll(RegExp(r'^\[|\]$'), ''));
+  if (parsed == null) return address;
+  if (parsed.type != InternetAddressType.IPv6) return parsed.address;
+  final b = parsed.rawAddress;
+  final mapped =
+      b.sublist(0, 10).every((x) => x == 0) && b[10] == 0xff && b[11] == 0xff;
+  if (mapped) return '${b[12]}.${b[13]}.${b[14]}.${b[15]}';
+  final groups = [
+    for (var i = 0; i < 8; i += 2) ((b[i] << 8) | b[i + 1]).toRadixString(16)
+  ];
+  return '${groups.join(':')}::/64';
+}

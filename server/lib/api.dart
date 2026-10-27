@@ -36,6 +36,7 @@ import 'tts_test.dart';
 import 'deploy_console.dart';
 import 'power_console.dart';
 import 'admin_projects.dart';
+import 'admin_totp.dart';
 import 'fishing_waters.dart';
 import 'update_check.dart';
 import 'family_store.dart';
@@ -121,6 +122,9 @@ class ServerConfig {
     this.searxngUrl,
     this.openRouterApiKey,
     this.fishingWatersKey,
+    this.adminTotpRequired = false,
+    this.adminTotpSecret,
+    this.clientIpHeader,
   });
 
   final int port;
@@ -155,6 +159,25 @@ class ServerConfig {
   final String? adminKey;
 
   bool get adminEnabled => adminKey != null && adminKey!.isNotEmpty;
+
+  /// Whether signing in to /admin also takes a code from the operator's
+  /// authenticator app (see AdminTotp). Always on for a real server —
+  /// [ServerConfig.fromEnvironment] sets it — and off only for tests that
+  /// construct a config by hand.
+  final bool adminTotpRequired;
+
+  /// LUMA_ADMIN_TOTP_SECRET: a base32 TOTP key to use instead of enrolling
+  /// from the login page.
+  final String? adminTotpSecret;
+
+  /// LUMA_CLIENT_IP_HEADER: a header the reverse proxy always overwrites
+  /// with the real client address (the shipped Caddyfile sets
+  /// X-Luma-Client-IP from Cloudflare's CF-Connecting-IP). Only read when
+  /// [trustProxy] is on; unset falls back to the last X-Forwarded-For hop.
+  final String? clientIpHeader;
+
+  /// The shortest LUMA_ADMIN_KEY [ServerConfig.fromEnvironment] accepts.
+  static const minAdminKeyLength = 32;
 
   /// A Mistral ("Luma" in the app's UI) API key configured once by the
   /// operator, so individual users don't each have to paste their own — see
@@ -280,6 +303,21 @@ class ServerConfig {
   /// LUMA_ALLOW_REGISTRATION=false to close it (existing accounts keep working).
   bool get registrationEnabled => allowRegistration;
 
+  /// A key short enough to guess would make the admin dashboard — deploys,
+  /// host reboots, every account — one brute force away, so a weak one
+  /// disables the dashboard instead of being used.
+  static String? _strongAdminKey(String? raw) {
+    final key = raw?.trim();
+    if (key == null || key.isEmpty) return null;
+    if (key.length < minAdminKeyLength) {
+      stderr.writeln('[luma] LUMA_ADMIN_KEY is shorter than '
+          '$minAdminKeyLength characters, so the admin dashboard is '
+          'DISABLED. Generate a strong one with `openssl rand -hex 32`.');
+      return null;
+    }
+    return key;
+  }
+
   factory ServerConfig.fromEnvironment(Map<String, String> env) {
     int intOf(String key, int fallback) =>
         int.tryParse(env[key] ?? '') ?? fallback;
@@ -309,7 +347,12 @@ class ServerConfig {
               'false' => ApprovalMode.open,
               _ => ApprovalMode.manual,
             },
-      adminKey: env['LUMA_ADMIN_KEY'],
+      adminKey: _strongAdminKey(env['LUMA_ADMIN_KEY']),
+      adminTotpRequired: true,
+      adminTotpSecret: env['LUMA_ADMIN_TOTP_SECRET'],
+      clientIpHeader: (env['LUMA_CLIENT_IP_HEADER'] ?? '').trim().isEmpty
+          ? null
+          : env['LUMA_CLIENT_IP_HEADER']!.trim().toLowerCase(),
       mistralApiKey: env['LUMA_MISTRAL_API_KEY'],
       googleApiKey: env['LUMA_GOOGLE_API_KEY'],
       openRouterApiKey: env['LUMA_OPENROUTER_API_KEY'],
@@ -409,7 +452,8 @@ class Api {
         _codeAttemptLimiter =
             RateLimiter(maxRequests: 5, window: const Duration(minutes: 10)),
         // Same idea for password-reset codes, with the window matching
-        // [kPasswordResetCodeTtl] for the same reason.
+        // [kPasswordResetCodeTtl] for the same reason — but keyed per
+        // (address, requester), see [_checkResetCode].
         _resetCodeAttemptLimiter =
             RateLimiter(maxRequests: 5, window: kPasswordResetCodeTtl),
         _adminFailLimiter =
@@ -528,11 +572,34 @@ class Api {
   /// polling, low enough that the admin surface can't be hammered.
   final RateLimiter _adminLimiter;
 
-  /// Per-*email* limit on failed logins, so one account's password can't be
-  /// brute-forced from many IPs (the per-IP [_authLimiter] alone doesn't
-  /// stop a distributed guesser). Only failures count — successful logins
-  /// never lock anyone out.
+  /// Failed logins per (email, requester IP). Keying on the email alone
+  /// let anyone who knew an address keep its owner locked out with ten bad
+  /// guesses every 15 minutes; this way the guesser only locks itself out.
+  /// Only failures count — successful logins never lock anyone out.
   final RateLimiter _loginFailLimiter;
+
+  /// Failed logins per email from every requester together — the backstop
+  /// against one password being guessed from many IPs. It never applies to
+  /// an address this account has signed in from before, so even a
+  /// distributed attacker can't lock the owner out of their usual devices.
+  final RateLimiter _loginEmailFailLimiter =
+      RateLimiter(maxRequests: 50, window: const Duration(hours: 1));
+
+  /// Wrong reset-code guesses per address across all requesters, above the
+  /// per-requester [_resetCodeAttemptLimiter]; exhausting it burns the code.
+  final RateLimiter _resetCodeEmailLimiter =
+      RateLimiter(maxRequests: 30, window: kPasswordResetCodeTtl);
+
+  bool _loginLocked(String email, String clientKey, StoredUser? user) {
+    if (_loginFailLimiter.isLimited('$email|$clientKey')) return true;
+    final knownDevice = user != null && user.recentIps.contains(clientKey);
+    return !knownDevice && _loginEmailFailLimiter.isLimited(email);
+  }
+
+  void _noteLoginFailure(String email, String clientKey) {
+    _loginFailLimiter.allow('$email|$clientKey');
+    _loginEmailFailLimiter.allow(email);
+  }
 
   /// Per-account limit on joining a subway room with a code that does not
   /// exist. Holding a code is all it takes to join and read a room's state,
@@ -607,6 +674,9 @@ class Api {
       ..get('/api/v1/account', _requireAuth(_accountInfo))
       ..post('/api/v1/account/delete', _requireAuth(_deleteAccount))
       ..post('/api/v1/account/recovery', _requireAuth(_setRecovery))
+      ..post('/api/v1/account/email/send-code',
+          _requireAuth(_sendEmailVerificationCode))
+      ..post('/api/v1/account/email/verify', _requireAuth(_confirmEmail))
       ..post('/api/v1/account/deletion-request',
           _requireAuth(_requestAccountDeletion))
       ..post('/api/v1/account/deletion-request/cancel',
@@ -753,6 +823,7 @@ class Api {
           (Request r) => fishingWaters.heartbeat(r))
       ..get('/admin/login', _adminLoginPage)
       ..post('/admin/login', _adminLoginSubmit)
+      ..post('/admin/login/enroll', _adminTotpEnrollSubmit)
       ..post('/admin/logout', _adminLogout)
       ..post('/admin/logout-all', _requireAdmin(_adminLogoutAll))
       ..get('/admin', _requireAdmin(_adminDashboard))
@@ -1136,19 +1207,41 @@ class Api {
     return ('g', _generalLimiter);
   }
 
-  String _clientKey(Request request) {
+  String _clientKey(Request request) => clientKeyFor(request, config);
+
+  /// The address every per-IP limit, ban and lockout keys on.
+  ///
+  /// Behind Cloudflare the last X-Forwarded-For hop is a Cloudflare edge
+  /// shared by many unrelated clients, so the proxy can instead hand over
+  /// the real client in [ServerConfig.clientIpHeader] (the shipped Caddyfile
+  /// sets X-Luma-Client-IP from CF-Connecting-IP, overwriting anything the
+  /// client sent). IPv6 addresses are bucketed by /64 — one home connection
+  /// or VPS gets a whole /64, and keying on /128 would hand an attacker
+  /// unlimited fresh budgets.
+  static String clientKeyFor(Request request, ServerConfig config) {
+    String? raw;
     if (config.trustProxy) {
-      final forwarded = request.headers['x-forwarded-for'];
-      if (forwarded != null && forwarded.isNotEmpty) {
-        // Take the LAST entry — that's the one appended by our own trusted
-        // proxy. Earlier entries are client-supplied and trivially spoofed,
-        // which would let an attacker rotate fake IPs past the rate limiter.
-        return forwarded.split(',').last.trim();
+      final header = config.clientIpHeader;
+      if (header != null) {
+        final value = request.headers[header]?.split(',').first.trim();
+        if (value != null && value.isNotEmpty) raw = value;
+      }
+      if (raw == null) {
+        final forwarded = request.headers['x-forwarded-for'];
+        if (forwarded != null && forwarded.isNotEmpty) {
+          // Take the LAST entry — that's the one appended by our own trusted
+          // proxy. Earlier entries are client-supplied and trivially spoofed,
+          // which would let an attacker rotate fake IPs past the rate limiter.
+          raw = forwarded.split(',').last.trim();
+        }
       }
     }
-    final conn = request.context['shelf.io.connection_info'];
-    if (conn is HttpConnectionInfo) return conn.remoteAddress.address;
-    return 'unknown';
+    if (raw == null) {
+      final conn = request.context['shelf.io.connection_info'];
+      if (conn is HttpConnectionInfo) raw = conn.remoteAddress.address;
+    }
+    if (raw == null) return 'unknown';
+    return ipBucket(raw);
   }
 
   /// Gate in front of every Resend call ([_register]'s email-mode branch and
@@ -1239,20 +1332,22 @@ class Api {
       if (request.url.queryParameters.containsKey('key')) {
         return _withAdminHeaders(Response.found('/admin/login'));
       }
-      final clientKey = _clientKey(request);
-      // Refuse outright while this IP is over its failed-attempt budget —
-      // only *failed* attempts count, so the dashboard's own polling never
-      // locks a legitimate operator out.
-      if (_adminFailLimiter.isLimited(clientKey)) {
-        return errorResponse(429, 'rate_limited',
-                'Too many failed admin attempts. Try again later.')
-            .change(headers: {
-          'Retry-After': '${_adminFailLimiter.retryAfterSeconds(clientKey)}',
-        });
-      }
-
+      // A signed-in operator is let through before any failure budget is
+      // consulted: someone else's wrong guesses from the same address (a
+      // shared Cloudflare edge, a NAT) must never lock out a valid session.
       if (_hasValidAdminSession(request)) {
         return _withAdminHeaders(await handler(request));
+      }
+
+      final clientKey = _clientKey(request);
+      // Refuse outright while this IP (or the whole server) is over its
+      // failed-attempt budget — only *failed* attempts count, so the
+      // dashboard's own polling never locks a legitimate operator out.
+      final locked = _adminLockout(clientKey);
+      if (locked != null) {
+        return errorResponse(429, 'rate_limited',
+                'Too many failed admin attempts. Try again later.')
+            .change(headers: {'Retry-After': '$locked'});
       }
 
       // Fall back to the raw key, for non-browser/API callers (curl, scripts)
@@ -1267,9 +1362,23 @@ class Api {
       final match =
           constantTimeEquals(utf8.encode(provided), utf8.encode(expected));
       if (!match) {
-        _adminFailLimiter.allow(clientKey);
+        _noteAdminFailure(clientKey);
         return errorResponse(
             401, 'unauthorized', 'Invalid or missing admin key.');
+      }
+      // Scripts need the second factor too, as an X-Admin-Totp header with
+      // the authenticator's current code — otherwise the header would be a
+      // way round the code the login form asks for.
+      if (_totpInForce) {
+        if (!_adminTotp.enrolled) {
+          return errorResponse(403, 'totp_not_enrolled',
+              'Sign in at /admin/login once to set up the authenticator app.');
+        }
+        if (!_adminTotp.verifyHeader(request.headers['x-admin-totp'] ?? '')) {
+          _noteAdminFailure(clientKey);
+          return errorResponse(401, 'totp_required',
+              'Send the authenticator code in the X-Admin-Totp header.');
+        }
       }
       return _withAdminHeaders(await handler(request));
     };
@@ -1337,6 +1446,9 @@ class Api {
   bool _hasValidAdminSession(Request request) {
     final token = _adminSessionToken(request);
     if (token == null) return false;
+    // No session counts until the authenticator is set up, so one made
+    // before the second factor existed has to sign in again with a code.
+    if (_totpInForce && !_adminTotp.enrolled) return false;
     final tokenHash = c.sha256.convert(utf8.encode(token)).toString();
     final session = _adminSessionByTokenHash[tokenHash];
     if (session == null) return false;
@@ -1355,12 +1467,57 @@ class Api {
         session.expiresAt <= now || session.keyFp != _adminKeyFingerprint);
   }
 
-  String get _adminKeyFingerprint => c.Hmac(c.sha256, store.serverSecret)
-      .convert(utf8.encode(config.adminKey!))
-      .toString();
+  /// Binds sessions to the admin key and, when the second factor is in
+  /// force, to the enrolled TOTP secret: rotating either one signs every
+  /// dashboard out.
+  String get _adminKeyFingerprint {
+    final totp = _totpInForce ? _adminTotp.secret : null;
+    final material = totp == null
+        ? config.adminKey!
+        : '${config.adminKey!}\u0000totp:${base32Encode(totp)}';
+    return c.Hmac(c.sha256, store.serverSecret)
+        .convert(utf8.encode(material))
+        .toString();
+  }
 
   late final AdminSessionStore _adminSessions =
       AdminSessionStore(config.dataDir);
+
+  late final AdminTotp _adminTotp =
+      AdminTotp(config.dataDir, envSecret: config.adminTotpSecret);
+
+  /// Server-wide ceiling on failed admin sign-ins (wrong key or wrong code),
+  /// on top of the per-IP [_adminFailLimiter]: an attacker spreading guesses
+  /// over many addresses still gets no more than this many an hour. Tripping
+  /// it locks the login form for everyone, but never an operator who is
+  /// already signed in — [_requireAdmin] checks the session first.
+  final RateLimiter _adminGlobalFailLimiter =
+      RateLimiter(maxRequests: 20, window: const Duration(hours: 1));
+
+  /// Authenticator-app enrollments started at /admin/login but not yet
+  /// confirmed with a code, keyed by SHA-256 of the one-time token the
+  /// enrollment form carries.
+  final Map<String, ({Uint8List secret, int expiresAtMs})>
+      _pendingTotpEnrollments = {};
+  static const _totpEnrollmentTtl = Duration(minutes: 10);
+
+  bool get _totpInForce => config.adminTotpRequired;
+
+  void _noteAdminFailure(String clientKey) {
+    _adminFailLimiter.allow(clientKey);
+    _adminGlobalFailLimiter.allow('global');
+  }
+
+  /// Seconds the login stays locked for [clientKey], or null when it isn't.
+  int? _adminLockout(String clientKey) {
+    if (_adminFailLimiter.isLimited(clientKey)) {
+      return _adminFailLimiter.retryAfterSeconds(clientKey);
+    }
+    if (_adminGlobalFailLimiter.isLimited('global')) {
+      return _adminGlobalFailLimiter.retryAfterSeconds('global');
+    }
+    return null;
+  }
 
   /// Whether to mark the session cookie `Secure` (HTTPS-only). Mirrors the
   /// scheme-detection [_originHint] already uses for the landing page: trust
@@ -1379,65 +1536,195 @@ class Api {
     return '$minutes minute${minutes == 1 ? '' : 's'}';
   }
 
+  String _adminPageHtml(String title, String body) =>
+      '<!doctype html><html><head><meta charset="utf-8">'
+      '<meta name="viewport" content="width=device-width, initial-scale=1">'
+      '<title>luma admin — ${_htmlEscape(title)}</title>'
+      '<style>$_adminCss</style></head><body><div class="wrap" '
+      'style="max-width:380px;padding-top:15vh">'
+      '<header class="top"><h1>luma<span class="dot">.</span> admin</h1></header>'
+      '<div class="card">$body</div></div></body></html>';
+
+  static String _adminErrorLine(String? message) => message == null
+      ? ''
+      : '<p class="hint" style="color:#e07e7e">${_htmlEscape(message)}</p>';
+
+  /// The authenticator code field, shared by the sign-in and enrollment
+  /// forms. `one-time-code` lets a phone offer the code from the app.
+  static String _totpInput({bool disabled = false}) =>
+      '<input type="text" name="code" placeholder="6-digit code" required '
+      'inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" '
+      'maxlength="7" ${disabled ? 'disabled' : ''} style="width:100%">';
+
   String _adminLoginFormHtml({bool failed = false, int? lockedSeconds}) {
+    final misconfigured = _totpInForce && _adminTotp.misconfigured;
+    final askCode = _totpInForce && _adminTotp.enrolled;
+    final enrollNext = _totpInForce && !_adminTotp.enrolled && !misconfigured;
     final message = lockedSeconds != null
         ? 'Too many failed attempts — try again in ${_fmtWait(lockedSeconds)}.'
-        : (failed ? 'Invalid admin key.' : null);
-    return '<!doctype html><html><head><meta charset="utf-8">'
-        '<meta name="viewport" content="width=device-width, initial-scale=1">'
-        '<title>luma admin — sign in</title>'
-        '<style>$_adminCss</style></head><body><div class="wrap" '
-        'style="max-width:360px;padding-top:15vh">'
-        '<header class="top"><h1>luma<span class="dot">.</span> admin</h1></header>'
-        '<div class="card">'
-        '${message != null ? '<p class="hint" style="color:#e07e7e">${_htmlEscape(message)}</p>' : ''}'
-        '<form method="post" action="/admin/login">'
-        '<div class="product-form" style="flex-direction:column;align-items:stretch">'
-        '<input type="password" name="key" placeholder="Admin key" autofocus required '
-        '${lockedSeconds != null ? 'disabled' : ''} style="width:100%">'
-        '<button type="submit" class="btn btn-primary" '
-        '${lockedSeconds != null ? 'disabled' : ''}>Sign in</button>'
-        '</div></form></div></div></body></html>';
+        : misconfigured
+            ? 'LUMA_ADMIN_TOTP_SECRET is not a valid key — fix it in the '
+                'server .env and restart.'
+            : (failed
+                ? (askCode
+                    ? 'Invalid admin key or authenticator code.'
+                    : 'Invalid admin key.')
+                : null);
+    final disabled = lockedSeconds != null || misconfigured;
+    final enrollHint = enrollNext
+        ? '<p class="hint">Next you will link an authenticator app (Google '
+            'Authenticator, Authy, 1Password…). Every sign-in after that asks '
+            'for its 30-second code.</p>'
+        : '';
+    return _adminPageHtml(
+        'sign in',
+        '${_adminErrorLine(message)}'
+            '<form method="post" action="/admin/login">'
+            '<div class="product-form" style="flex-direction:column;align-items:stretch">'
+            '<input type="password" name="key" placeholder="Admin key" autofocus required '
+            'autocomplete="current-password" '
+            '${disabled ? 'disabled' : ''} style="width:100%">'
+            '${askCode ? _totpInput(disabled: disabled) : ''}'
+            '<button type="submit" class="btn btn-primary" '
+            '${disabled ? 'disabled' : ''}>Sign in</button>'
+            '</div></form>$enrollHint');
   }
+
+  /// Step two of the first sign-in: show the new secret and ask for a code
+  /// from it, which proves the operator's app really holds it before the
+  /// server starts requiring it.
+  String _totpEnrollHtml(String enrollmentToken, Uint8List secret,
+      {String? error}) {
+    final key = base32Encode(secret);
+    final grouped = [
+      for (var i = 0; i < key.length; i += 4)
+        key.substring(i, i + 4 > key.length ? key.length : i + 4)
+    ].join(' ');
+    final uri = AdminTotp.otpauthUri(secret);
+    return _adminPageHtml(
+        'set up authenticator',
+        '${_adminErrorLine(error)}'
+            '<p><strong>Link your authenticator app</strong></p>'
+            '<p class="hint">In your app choose <em>Add account → Enter a setup '
+            'key</em> (time-based) and enter this key — or, on the phone that '
+            'has the app, tap the button below.</p>'
+            '<p style="font-family:ui-monospace,monospace;font-size:15px;'
+            'letter-spacing:.04em;word-break:break-all;user-select:all">'
+            '${_htmlEscape(grouped)}</p>'
+            '<p><a class="btn" href="${_htmlEscape(uri)}">Open in authenticator app</a></p>'
+            '<form method="post" action="/admin/login/enroll">'
+            '<input type="hidden" name="enrollment" value="${_htmlEscape(enrollmentToken)}">'
+            '<div class="product-form" style="flex-direction:column;align-items:stretch">'
+            '${_totpInput()}'
+            '<button type="submit" class="btn btn-primary">Confirm and sign in</button>'
+            '</div></form>'
+            '<p class="hint">This key is shown once. Lost the phone? Delete '
+            "admin_totp.json from the server's data directory and sign in "
+            'again to re-enroll.</p>');
+  }
+
+  Response _adminHtml(int status, String body) => Response(status,
+      body: body,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'Referrer-Policy': 'no-referrer',
+      });
 
   Response _adminLoginPage(Request request) {
     if (!config.adminEnabled)
       return errorResponse(404, 'not_found', 'Not found.');
     final locked = int.tryParse(request.url.queryParameters['locked'] ?? '');
-    return Response(200,
-        body: _adminLoginFormHtml(
+    return _adminHtml(
+        200,
+        _adminLoginFormHtml(
             failed: request.url.queryParameters.containsKey('failed'),
-            lockedSeconds: locked),
-        headers: {
-          'Content-Type': 'text/html; charset=utf-8',
-          'Cache-Control': 'no-store',
-        });
+            lockedSeconds: locked));
+  }
+
+  /// The login and enrollment routes are reachable by anyone, so the body is
+  /// capped: each form is a couple of short fields, and an uncapped read
+  /// would let a single request stream gigabytes into memory.
+  Future<Map<String, String>> _readAdminForm(Request request) async {
+    try {
+      final raw = await _readCappedString(request, 4096);
+      if (raw != null) return Uri.splitQueryString(raw);
+    } catch (_) {}
+    return const {};
   }
 
   Future<Response> _adminLoginSubmit(Request request) async {
     if (!config.adminEnabled)
       return errorResponse(404, 'not_found', 'Not found.');
     final clientKey = _clientKey(request);
-    if (_adminFailLimiter.isLimited(clientKey)) {
-      final wait = _adminFailLimiter.retryAfterSeconds(clientKey);
-      return Response.found('/admin/login?locked=$wait');
-    }
-    // This route is reachable by anyone, so the body is capped: a login form
-    // is one field, and an uncapped read would let a single request stream
-    // gigabytes into memory.
-    Map<String, String> form = const {};
-    try {
-      final raw = await _readCappedString(request, 4096);
-      if (raw != null) form = Uri.splitQueryString(raw);
-    } catch (_) {}
+    final locked = _adminLockout(clientKey);
+    if (locked != null) return Response.found('/admin/login?locked=$locked');
+    final form = await _readAdminForm(request);
     final provided = form['key'] ?? '';
     final match = constantTimeEquals(
         utf8.encode(provided), utf8.encode(config.adminKey!));
     if (!match) {
-      _adminFailLimiter.allow(clientKey);
+      _noteAdminFailure(clientKey);
       return Response.found('/admin/login?failed=1');
     }
 
+    if (_totpInForce) {
+      if (_adminTotp.misconfigured) return Response.found('/admin/login');
+      if (!_adminTotp.enrolled) {
+        final token = base64UrlEncode(randomBytes(32)).replaceAll('=', '');
+        final secret = AdminTotp.newSecret();
+        final now = DateTime.now().millisecondsSinceEpoch;
+        _pendingTotpEnrollments
+          ..removeWhere((_, e) => e.expiresAtMs <= now)
+          ..[c.sha256.convert(utf8.encode(token)).toString()] = (
+            secret: secret,
+            expiresAtMs: now + _totpEnrollmentTtl.inMilliseconds,
+          );
+        return _adminHtml(200, _totpEnrollHtml(token, secret));
+      }
+      if (!_adminTotp.verifyLogin(form['code'] ?? '')) {
+        _noteAdminFailure(clientKey);
+        return Response.found('/admin/login?failed=1');
+      }
+    }
+
+    return _establishAdminSession(Response.found('/admin'), request);
+  }
+
+  /// Confirms an enrollment begun by [_adminLoginSubmit]. The one-time token
+  /// in the form is only ever handed to someone who just typed the admin
+  /// key, and [AdminTotp.completeEnrollment] refuses once a secret is kept.
+  Future<Response> _adminTotpEnrollSubmit(Request request) async {
+    if (!config.adminEnabled || !_totpInForce) {
+      return errorResponse(404, 'not_found', 'Not found.');
+    }
+    final clientKey = _clientKey(request);
+    final locked = _adminLockout(clientKey);
+    if (locked != null) return Response.found('/admin/login?locked=$locked');
+    final form = await _readAdminForm(request);
+    final token = form['enrollment'] ?? '';
+    final tokenHash = c.sha256.convert(utf8.encode(token)).toString();
+    final pending = _pendingTotpEnrollments[tokenHash];
+    if (pending == null ||
+        pending.expiresAtMs <= DateTime.now().millisecondsSinceEpoch ||
+        _adminTotp.enrolled) {
+      _pendingTotpEnrollments.remove(tokenHash);
+      return Response.found('/admin/login');
+    }
+    if (!_adminTotp.completeEnrollment(pending.secret, form['code'] ?? '')) {
+      _noteAdminFailure(clientKey);
+      return _adminHtml(
+          200,
+          _totpEnrollHtml(token, pending.secret,
+              error: "That code did not match. Check that the phone's clock "
+                  'is set automatically and use the newest code.'));
+    }
+    _pendingTotpEnrollments.clear();
+    // Anything signed in before the second factor existed is void now; the
+    // fingerprint change already does this, the clear makes it immediate.
+    _adminSessionByTokenHash.clear();
+    await store.logActivity('admin_totp_enrolled',
+        'Authenticator app linked to the admin dashboard');
     return _establishAdminSession(Response.found('/admin'), request);
   }
 
@@ -1688,16 +1975,16 @@ class Api {
       return errorResponse(400, 'bad_request', 'Invalid email or auth key.');
     }
 
-    // Refuse before doing any hashing work while this address is over its
-    // failed-attempt budget. Keyed by email, not IP, so rotating IPs doesn't
-    // buy an attacker more guesses at the same account.
-    if (_loginFailLimiter.isLimited(email)) {
+    final userId = store.userIdByEmail[email];
+    final user = userId == null ? null : store.usersById[userId];
+    final clientKey = _clientKey(request);
+
+    // Refuse before doing any hashing work while this requester is over its
+    // failed-attempt budget for this address (see [_loginLocked]).
+    if (_loginLocked(email, clientKey, user)) {
       return errorResponse(429, 'rate_limited',
           'Too many failed sign-in attempts for this account. Try again later.');
     }
-
-    final userId = store.userIdByEmail[email];
-    final user = userId == null ? null : store.usersById[userId];
 
     // Always burn the same hashing work so response timing does not reveal
     // whether the account exists.
@@ -1708,7 +1995,7 @@ class Api {
 
     if (user == null ||
         !constantTimeEquals(hash, base64Decode(user.authHash))) {
-      _loginFailLimiter.allow(email);
+      _noteLoginFailure(email, clientKey);
       // A forced reset is announced even on a wrong password, because the
       // password that is on file is exactly the one the user can no longer
       // use — telling them "wrong password" would send them round in
@@ -1844,11 +2131,10 @@ class Api {
 
       flow.identity = identity;
       if (user != null) {
-        // Matching an existing account by verified email is exactly what
-        // links the provider to it, so an account made with an email and
-        // password can be signed into with the button from then on.
-        store.linkOAuthIdentity(user, spec.id, identity.subject);
-        await store.saveUsers();
+        // Not linked here: an account found by email alone may have been
+        // registered by someone who never owned the address. The provider
+        // is linked in [_oauthComplete], only once the account's own
+        // passphrase has been given as well.
         flow
           ..existingAccount = true
           ..kdfSalt = user.kdfSalt
@@ -1918,14 +2204,14 @@ class Api {
           store.usersById[store.userIdByEmail[identity.email]];
 
       if (existing != null) {
-        if (_loginFailLimiter.isLimited(existing.email)) {
+        if (_loginLocked(existing.email, _clientKey(request), existing)) {
           return errorResponse(429, 'rate_limited',
               'Too many failed sign-in attempts for this account. Try again later.');
         }
         final hash = await _hashAuthKey(
             authKey, Uint8List.fromList(base64Decode(existing.authSalt)));
         if (!constantTimeEquals(hash, base64Decode(existing.authHash))) {
-          _loginFailLimiter.allow(existing.email);
+          _noteLoginFailure(existing.email, _clientKey(request));
           flow.attempts++;
           if (flow.attempts >= OAuthFlow.maxAttempts) {
             _oauthFlows.remove(flow);
@@ -1948,6 +2234,14 @@ class Api {
           return ineligible;
         }
         store.linkOAuthIdentity(existing, flow.provider, identity.subject);
+        // The provider vouched for this address and the passphrase proved
+        // the account, so the email now counts as verified — what invites
+        // and future provider sign-ins rely on.
+        if (identity.email == existing.email &&
+            existing.emailVerifiedAtMs == null &&
+            !existing.isPending) {
+          existing.emailVerifiedAtMs = DateTime.now().millisecondsSinceEpoch;
+        }
         if (existing.isPending) {
           // Only email approval gets here. The provider vouched for the
           // address, which is exactly what the emailed code was there to
@@ -2431,11 +2725,16 @@ class Api {
   }
 
   /// Checks a forgotten-password code without spending it. Returns the user
-  /// on success, or the error response to send. Every call counts against
-  /// [_resetCodeAttemptLimiter], and exhausting it burns the code — see
-  /// [_verifyCode] for why both matter. Caller holds [store.lock].
+  /// on success, or the error response to send. Caller holds [store.lock].
+  ///
+  /// Wrong guesses count per (address, requester) in
+  /// [_resetCodeAttemptLimiter], which refuses that requester but leaves the
+  /// code alone — otherwise anyone who knows an email could destroy every
+  /// code its owner asks for with five bad guesses. Only the far higher
+  /// per-address [_resetCodeEmailLimiter], a backstop against guessing
+  /// spread across many addresses, burns the code.
   Future<(StoredUser?, Response?)> _checkResetCode(
-      String email, Object? code) async {
+      String email, Object? code, String clientKey) async {
     if (code is! String || !RegExp(r'^\d{6}$').hasMatch(code)) {
       return (
         null,
@@ -2446,7 +2745,14 @@ class Api {
     final userId = store.userIdByEmail[email];
     final user = userId == null ? null : store.usersById[userId];
 
-    if (!_resetCodeAttemptLimiter.allow(email)) {
+    if (_resetCodeAttemptLimiter.isLimited('$email|$clientKey')) {
+      return (
+        null,
+        errorResponse(429, 'too_many_attempts',
+            'Too many incorrect attempts. Try again later.'),
+      );
+    }
+    if (!_resetCodeEmailLimiter.allow(email)) {
       if (user != null && user.passwordResetCodeHash != null) {
         user.passwordResetCodeHash = null;
         user.passwordResetCodeExpiresAtMs = null;
@@ -2471,6 +2777,7 @@ class Api {
     final codeHash = c.sha256.convert(utf8.encode(code)).toString();
     if (!constantTimeEquals(utf8.encode(user.passwordResetCodeHash!),
         utf8.encode(codeHash))) {
+      _resetCodeAttemptLimiter.allow('$email|$clientKey');
       return (null, errorResponse(400, 'bad_code', 'That code is incorrect.'));
     }
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -2496,11 +2803,12 @@ class Api {
     final email = _normalizeEmail(body['email']);
     if (email == null) return errorResponse(400, 'bad_email', 'Invalid email.');
     return store.lock.synchronized(() async {
-      final (user, error) = await _checkResetCode(email, body['code']);
+      final (user, error) =
+          await _checkResetCode(email, body['code'], _clientKey(request));
       if (error != null) return error;
       // A right code already wins everything this limiter guards, and the
       // reset itself still has to pass it.
-      _resetCodeAttemptLimiter.forget(email);
+      _resetCodeEmailLimiter.forget(email);
       if (!user!.hasRecoveryKey) {
         return errorResponse(404, 'no_recovery_key',
             'This account has no recovery key set up.');
@@ -2601,7 +2909,8 @@ class Api {
     }
 
     return store.lock.synchronized(() async {
-      final (checked, error) = await _checkResetCode(email, code);
+      final (checked, error) =
+          await _checkResetCode(email, code, _clientKey(request));
       if (error != null) return error;
       final user = checked!;
       if (keepData && !user.hasRecoveryKey) {
@@ -2628,8 +2937,8 @@ class Api {
       await store.saveUsers();
       await store.saveSessions();
       if (!keepData) await store.saveCollections();
-      _loginFailLimiter.forget(email);
-      _resetCodeAttemptLimiter.forget(email);
+      _loginEmailFailLimiter.forget(email);
+      _resetCodeEmailLimiter.forget(email);
       await store.logActivity(
           'password_reset_done',
           keepData
@@ -2958,9 +3267,7 @@ class Api {
     if (route.upstream != AiUpstream.openrouter) return null;
     final maxPrice = aiPriceGuard.maxPrice(mode, route);
     if (maxPrice == null) return null;
-    final provider = upstreamBody['provider'];
     upstreamBody['provider'] = {
-      if (provider is Map) ...provider,
       'max_price': {
         if (maxPrice.input != null) 'prompt': maxPrice.input! * 1.000001,
         if (maxPrice.output != null) 'completion': maxPrice.output! * 1.000001,
@@ -3326,26 +3633,43 @@ class Api {
     }
   }
 
-  /// Builds the upstream request body for [route] from the client's body.
-  /// Only `model`, `max_tokens` and reasoning are rewritten; everything else
-  /// (messages, tools) passes straight through. OpenRouter spells reasoning
-  /// as a `reasoning` object rather than OpenAI's `reasoning_effort`.
-  /// [maxTokensCap] is raised only by server-side callers that need room
-  /// for a reasoning model's thinking (the classroom, the school test); a
-  /// client's own request stays capped at 4096.
+  /// The only client fields an AI proxy forwards upstream. Everything is
+  /// billed to the operator's key, so anything else — OpenRouter's `models`
+  /// fallback list, `plugins` (billed per call, outside the token meter),
+  /// `provider` routing, `max_completion_tokens`, `stream`, `n` — is dropped
+  /// rather than passed through.
+  static const aiUpstreamFields = {
+    'messages',
+    'tools',
+    'tool_choice',
+    'temperature',
+    'top_p',
+  };
+
+  /// Copies just [aiUpstreamFields] out of a client body.
+  static Map<String, dynamic> allowedAiFields(Map<String, dynamic> body) => {
+        for (final key in aiUpstreamFields)
+          if (body.containsKey(key)) key: body[key],
+      };
+
+  /// Builds the upstream request body for [route] from the client's body:
+  /// [aiUpstreamFields] pass through, `model` comes from the route,
+  /// `max_tokens` is clamped and reasoning is set. OpenRouter spells
+  /// reasoning as a `reasoning` object rather than OpenAI's
+  /// `reasoning_effort`. [maxTokensCap] is raised only by server-side
+  /// callers that need room for a reasoning model's thinking (the classroom,
+  /// the school test); a client's own request stays capped at 4096.
   static Map<String, dynamic> _aiUpstreamBody(
       Map<String, dynamic> body, AiModeRoute route,
       {int maxTokensCap = 4096}) {
     final maxTokensRaw = body['max_tokens'];
     final effort = route.reasoningEffort ?? body['reasoning_effort'];
     final out = {
-      ...body,
+      ...allowedAiFields(body),
       'model': route.model,
       'max_tokens':
           (maxTokensRaw is int ? maxTokensRaw : 1024).clamp(1, maxTokensCap),
-    }
-      ..remove('agent_id')
-      ..remove('reasoning_effort');
+    };
     if (effort is String && effort.isNotEmpty) {
       if (route.upstream == AiUpstream.openrouter) {
         out['reasoning'] =
@@ -4794,6 +5118,30 @@ class Api {
   /// leaves their device. The request body is forwarded to Mistral almost
   /// unchanged except that hosted agent routing is stripped and `max_tokens`
   /// is clamped. Mistral's hosted Agents API is outside its ZDR coverage.
+  /// The one model Luma Support runs on. The app has only ever asked for
+  /// this one.
+  static const kSupportMistralModel = 'mistral-small-latest';
+
+  /// Each user's latest counted Luma Support turn, and how many tool
+  /// follow-up calls it has made since.
+  final Map<String, ({int atMs, int followUps})> _supportTurns = {};
+  static const _supportTurnWindow = Duration(minutes: 5);
+  static const _supportFollowUpsPerTurn = 8;
+
+  /// A call that doesn't end with a user message is a tool follow-up, so it
+  /// is free — but only a few of them, shortly after a turn that counted.
+  bool _supportFollowUpAllowed(String userId) {
+    final turn = _supportTurns[userId];
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (turn == null ||
+        now - turn.atMs > _supportTurnWindow.inMilliseconds ||
+        turn.followUps >= _supportFollowUpsPerTurn) {
+      return false;
+    }
+    _supportTurns[userId] = (atMs: turn.atMs, followUps: turn.followUps + 1);
+    return true;
+  }
+
   Future<Response> _mistralChatProxy(Request request, StoredUser user) async {
     if (!config.mistralKeyConfigured) {
       return errorResponse(404, 'not_configured',
@@ -4819,8 +5167,10 @@ class Api {
     }
     // One "support message" = one user turn. A single turn can trigger
     // several upstream calls when the model uses tools (the follow-up calls
-    // end with a 'tool' role message), so only count calls that end with a
-    // fresh user message.
+    // end with a 'tool' role message), so only calls that end with a fresh
+    // user message are counted — and a follow-up is only accepted inside a
+    // turn that was, see [_supportFollowUpAllowed]. Otherwise ending the
+    // array with an assistant or tool message would skip the daily cap.
     final messages = body['messages'] as List;
     final lastMessage = messages.isNotEmpty && messages.last is Map
         ? messages.last as Map
@@ -4834,15 +5184,21 @@ class Api {
           "You've used all $kSupportMessagesPerDay Luma Support messages for "
               'today — more tomorrow.');
     }
+    if (!isNewUserTurn && !_supportFollowUpAllowed(user.id)) {
+      return errorResponse(
+          429,
+          'usage_limit',
+          'Send a new message to keep talking to Luma Support.');
+    }
     final maxTokensRaw = body['max_tokens'];
+    // The model is the server's choice, not the client's: any Mistral model
+    // would otherwise be billable to the operator's key, large and
+    // reasoning tiers included.
     final upstreamBody = {
-      ...body,
-      'model': body['model'] is String
-          ? body['model']
-          : 'mistral-small-latest',
+      ...allowedAiFields(body),
+      'model': kSupportMistralModel,
       'max_tokens': (maxTokensRaw is int ? maxTokensRaw : 1024).clamp(1, 4096),
     };
-    upstreamBody.remove('agent_id');
     const url = 'https://api.mistral.ai/v1/chat/completions';
 
     try {
@@ -4854,6 +5210,10 @@ class Api {
       );
       if (status == 200 && isNewUserTurn) {
         await aiUsage.recordSupportMessage(user.id);
+        _supportTurns[user.id] = (
+          atMs: DateTime.now().millisecondsSinceEpoch,
+          followUps: 0,
+        );
       }
       if (status == 200) {
         await _logAiCall(
@@ -5380,6 +5740,7 @@ class Api {
   Future<Response> _adminBenchmarkUploadStatus(Request request) async =>
       jsonResponse(200, {
         'github': benchmarkGithub.enabled,
+        if (benchmarkGithub.setupProblem case final problem?) 'problem': problem,
         'repo': benchmarkGithub.repo,
         'branch': benchmarkGithub.branch,
         'maxBytes': AiBenchmarkStore.maxUploadBytes,
@@ -6354,7 +6715,22 @@ class Api {
     });
   }
 
+  /// Invites are addressed by email, so accepting one has to prove the
+  /// address: otherwise whoever registered `mom@example.com` first — and
+  /// was approved by an operator who trusted the name — could take an
+  /// invite meant for the real owner.
+  Response? _requireVerifiedEmail(StoredUser user) {
+    if (user.emailVerifiedAtMs != null) return null;
+    return errorResponse(
+        403,
+        'email_unverified',
+        'Confirm your email address before accepting invites — luma can '
+            'email a code to ${user.email}.');
+  }
+
   Future<Response> _acceptFamilyInvite(Request request, StoredUser user) async {
+    final unverified = _requireVerifiedEmail(user);
+    if (unverified != null) return unverified;
     final inviteId = request.params['inviteId']!;
     return store.lock.synchronized(() async {
       final now = _nowMs;
@@ -6690,11 +7066,38 @@ class Api {
     } on FormatException {
       return errorResponse(400, 'bad_key', 'Invalid public key.');
     }
+    // Replacing a key is what makes new messages readable by whoever holds
+    // the new private half, so a stolen session token alone must not do it.
+    // Only a session that signed in with the password a few minutes ago
+    // can — which is exactly what a new device has just done. A first key,
+    // or re-sending the same one, is always fine.
+    final existing = chatStore.publicKeyByUserId[user.id];
+    if (existing != null && existing != key) {
+      final session = _sessionOf(request);
+      final age = DateTime.now().millisecondsSinceEpoch -
+          (session?.createdAtMs ?? 0);
+      if (session == null || age > _chatKeyReplaceWindow.inMilliseconds) {
+        return errorResponse(403, 'reauth_required',
+            'Sign out and back in on this device to set up a new chat key.');
+      }
+    }
     return store.lock.synchronized(() async {
       chatStore.publicKeyByUserId[user.id] = key;
       await chatStore.saveKeys();
       return jsonResponse(200, {'ok': true});
     });
+  }
+
+  static const _chatKeyReplaceWindow = Duration(minutes: 15);
+
+  /// The session behind [request]'s bearer token — [_requireAuth] has
+  /// already checked it is valid.
+  StoredSession? _sessionOf(Request request) {
+    final auth = request.headers['authorization'] ?? '';
+    if (!auth.startsWith('Bearer ')) return null;
+    final token = auth.substring(7).trim();
+    return store
+        .sessionsByTokenHash[c.sha256.convert(utf8.encode(token)).toString()];
   }
 
   Response _getChatKey(Request request, StoredUser user) {
@@ -6777,6 +7180,8 @@ class Api {
   }
 
   Future<Response> _acceptChatInvite(Request request, StoredUser user) async {
+    final unverified = _requireVerifiedEmail(user);
+    if (unverified != null) return unverified;
     if (!chatStore.publicKeyByUserId.containsKey(user.id)) {
       return errorResponse(
           400, 'no_key', 'Set up chat encryption on this device first.');
@@ -10914,9 +11319,15 @@ syncToolbar();
                   : u.awaitingApproval
                       ? '<span class="badge warn">verified · awaiting approval</span>'
                       : '<span class="badge $statusClass">${_htmlEscape(u.status)}</span>';
+      // Approving an account vouches for the person, not the address:
+      // until it is verified, invites and provider sign-ins won't trust it.
+      final emailBadge = u.emailVerifiedAtMs == null
+          ? ' <span class="badge" title="Nobody has proven they own this '
+              'address">email unverified</span>'
+          : '';
       return '<tr>'
           '<td data-label="Email">$safeEmail${_teamBoardBadge(u)}</td>'
-          '<td data-label="Status">$statusBadge</td>'
+          '<td data-label="Status">$statusBadge$emailBadge</td>'
           '<td data-label="Plan">${_htmlEscape(planLabels[u.planId] ?? u.planId)}</td>'
           '<td data-label="Storage">'
           '<div class="meter"><div style="width:${pct.toStringAsFixed(0)}%"></div></div>'
@@ -14076,7 +14487,7 @@ window.lumaAskReason = function (form, message) {
         if (j.maxBytes) maxBytes = j.maxBytes;
         $('bmGithubNote').textContent = j.github
           ? 'Commits to ' + j.repo + ' (' + j.branch + ') with [skip ci].'
-          : 'GitHub is not set up (LUMA_BENCHMARK_GITHUB_TOKEN) — the scene only goes live on this server.';
+          : (j.problem || 'GitHub is not set up (LUMA_BENCHMARK_GITHUB_TOKEN) — the scene only goes live on this server.');
       })
       .catch(function () { $('bmGithubNote').textContent = ''; });
   }
@@ -15927,10 +16338,10 @@ window.lumaAskReason = function (form, message) {
 
   // ---- Helpers -------------------------------------------------------------
 
-  /// PBKDF2 over the client's already-derived auth key. Kept `async` so the
-  /// call sites stay unchanged; the work itself is fast (20k iterations).
-  Future<Uint8List> _hashAuthKey(Uint8List authKey, Uint8List salt) async =>
-      pbkdf2Sha256(authKey, salt, _serverHashIterations, 32);
+  /// PBKDF2 over the client's already-derived auth key, on a background
+  /// isolate with a server-wide concurrency cap (see [pbkdf2Sha256Async]).
+  Future<Uint8List> _hashAuthKey(Uint8List authKey, Uint8List salt) =>
+      pbkdf2Sha256Async(authKey, salt, _serverHashIterations, 32);
 
   /// Creates a session and returns (token, expiresAtMs). Caller holds the lock.
   Future<(String, int)> _createSession(StoredUser user,
@@ -15962,6 +16373,73 @@ window.lumaAskReason = function (form, message) {
   /// Generates a fresh 6-digit verification code, stores only its hash
   /// against the user (mirroring how session tokens are handled), and
   /// returns the raw code to send by email. Caller holds the store lock.
+  /// Emails a signed-in account a code proving it owns its address — for
+  /// accounts approved by hand (manual mode never sends one at sign-up) that
+  /// now need a verified email, e.g. to accept an invite.
+  Future<Response> _sendEmailVerificationCode(
+      Request request, StoredUser user) async {
+    if (user.emailVerifiedAtMs != null) {
+      return jsonResponse(200, {'verified': true});
+    }
+    if (!mailer.resendConfig.enabled) {
+      return errorResponse(503, 'mail_not_configured',
+          'This server cannot send email, so it cannot verify addresses. '
+              'Ask the server operator to set up email.');
+    }
+    if (!_resendLimiter.allow(user.email) || !_allowVerificationSend(request)) {
+      return errorResponse(429, 'rate_limited',
+          'Too many verification requests. Try again later.');
+    }
+    return store.lock.synchronized(() async {
+      final code = await _issueVerificationCode(user);
+      await store.saveUsers();
+      await _sendVerificationEmail(user, code);
+      return jsonResponse(200, {'verified': false, 'sent': true});
+    });
+  }
+
+  Future<Response> _confirmEmail(Request request, StoredUser user) async {
+    if (user.emailVerifiedAtMs != null) {
+      return jsonResponse(200, {'verified': true});
+    }
+    final body = await _readJson(request);
+    final code = body['code'];
+    if (code is! String || !RegExp(r'^\d{6}$').hasMatch(code)) {
+      return errorResponse(
+          400, 'bad_code', 'Enter the 6-digit code from your email.');
+    }
+    return store.lock.synchronized(() async {
+      // Keyed by account, not address: only this account's own session can
+      // reach here, so nobody else can burn its code with wrong guesses.
+      final attemptKey = 'account:${user.id}';
+      if (!_codeAttemptLimiter.allow(attemptKey)) {
+        user.verificationTokenHash = null;
+        user.verificationExpiresAtMs = null;
+        await store.saveUsers();
+        return errorResponse(429, 'too_many_attempts',
+            'Too many incorrect attempts. Request a new code.');
+      }
+      final hash = user.verificationTokenHash;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      if (hash == null || (user.verificationExpiresAtMs ?? 0) <= now) {
+        return errorResponse(
+            400, 'code_expired', 'That code has expired. Request a new one.');
+      }
+      final codeHash = c.sha256.convert(utf8.encode(code)).toString();
+      if (!constantTimeEquals(utf8.encode(hash), utf8.encode(codeHash))) {
+        return errorResponse(400, 'bad_code', 'That code is incorrect.');
+      }
+      user.emailVerifiedAtMs = now;
+      user.verificationTokenHash = null;
+      user.verificationExpiresAtMs = null;
+      _codeAttemptLimiter.forget(attemptKey);
+      await store.saveUsers();
+      await store.logActivity(
+          'account_verified', '${user.email} verified their email');
+      return jsonResponse(200, {'verified': true});
+    });
+  }
+
   Future<String> _issueVerificationCode(StoredUser user) async {
     final code = randomDigits(6);
     user.verificationTokenHash = c.sha256.convert(utf8.encode(code)).toString();

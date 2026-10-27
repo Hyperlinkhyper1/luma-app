@@ -253,9 +253,8 @@ void main() {
       expect(
         platform.views.last.params.initialUrlRequest?.url.toString(),
         Uri.file(
-          benchmark.kind == 'cathedral'
-              ? '${scene.path}.viewer.html'
-              : scene.path,
+          '${benchmark.kind == 'cathedral' ? '${scene.path}.viewer.html' : scene.path}'
+          '.sandboxed.html',
         ).toString(),
       );
       expect(platform.views.last.params.initialFile, isNull);
@@ -273,32 +272,43 @@ void main() {
           AiBenchmarkManifest.empty,
         );
         addTearDown(repository.dispose);
-        final path = '${Directory.systemTemp.path}/phone cache/scene.html';
+        final directory = Directory.systemTemp.createTempSync('phone cache');
+        addTearDown(() => directory.deleteSync(recursive: true));
+        final path = '${directory.path}/scene.html';
+        File(path).writeAsStringSync(
+          '<!doctype html><html><head><title>x</title></head></html>',
+        );
         await tester.pumpWidget(
           _app(
             repository,
             home: BenchmarkWebview(path: path, onMessage: received.add),
           ),
         );
-        await tester.pumpAndSettle();
+        await _finishLoading(tester, platform);
         final view = platform.views.last;
+        final sandboxed = '$path.sandboxed.html';
         expect(BenchmarkWebview.supported, isTrue);
         expect(
           view.params.initialUrlRequest?.url.toString(),
-          Uri.file(path).toString(),
+          Uri.file(sandboxed).toString(),
+        );
+        expect(
+          File(sandboxed).readAsStringSync(),
+          startsWith('<!doctype html><meta charset="utf-8">'
+              '<meta http-equiv="Content-Security-Policy"'),
         );
         expect(view.params.initialSettings?.javaScriptEnabled, isTrue);
         expect(
           view.params.initialSettings?.allowFileAccessFromFileURLs,
-          isTrue,
+          isFalse,
         );
         expect(
           view.params.initialSettings?.allowUniversalAccessFromFileURLs,
-          isTrue,
+          isFalse,
         );
         expect(
           view.params.initialSettings?.allowingReadAccessTo.toString(),
-          Uri.directory(File(path).parent.path).toString(),
+          Uri.file(sandboxed).toString(),
         );
         expect(
           view.params.initialUserScripts!.single.injectionTime,

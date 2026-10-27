@@ -280,12 +280,38 @@ void main() {
 
     test('is off without a token', () {
       expect(BenchmarkGithubPublisher(environment: const {}).enabled, isFalse);
-      expect(
-          BenchmarkGithubPublisher(environment: const {
-            'LUMA_BENCHMARK_GITHUB_TOKEN': ' ',
-            'LUMA_BENCHMARK_GITHUB_REPO': '',
-          }).repo,
-          'Hyperlinkhyper1/luma-app');
+      final blank = BenchmarkGithubPublisher(environment: const {
+        'LUMA_BENCHMARK_GITHUB_TOKEN': ' ',
+        'LUMA_BENCHMARK_GITHUB_REPO': '',
+      });
+      expect(blank.repo, 'Hyperlinkhyper1/Luma-App-Benchmarks');
+      expect(blank.branch, 'main');
+      expect(blank.setupProblem, contains('LUMA_BENCHMARK_GITHUB_TOKEN'));
+    });
+
+    test('refuses the app repository, whatever the case', () async {
+      var calls = 0;
+      final publisher = BenchmarkGithubPublisher(
+        environment: const {
+          'LUMA_BENCHMARK_GITHUB_TOKEN': 'tok',
+          'LUMA_BENCHMARK_GITHUB_REPO': 'hyperlinkhyper1/LUMA-APP',
+        },
+        transport: (method, url, headers, body) async {
+          calls++;
+          return (status: 500, body: '{}');
+        },
+      );
+      expect(publisher.enabled, isFalse);
+      expect(publisher.setupProblem, contains('app repository'));
+      await expectLater(
+        publisher.publish(
+          entry: {'id': 'keyboard_x', 'kind': 'keyboard', 'model': 'X'},
+          fileName: 'keyboard_x.html',
+          bytes: utf8.encode('<html></html>'),
+        ),
+        throwsA(isA<GithubPublishException>()),
+      );
+      expect(calls, 0);
     });
 
     test('commits scene and manifest in one [skip ci] commit', () async {
@@ -298,7 +324,8 @@ void main() {
         transport: (method, url, headers, body) async {
           expect(headers['Authorization'], 'Bearer tok');
           final path =
-              url.path.replaceFirst('/repos/Hyperlinkhyper1/luma-app', '');
+              url.path
+              .replaceFirst('/repos/Hyperlinkhyper1/Luma-App-Benchmarks', '');
           calls.add('$method $path');
           final json = body == null ? null : jsonDecode(body);
           switch ('$method $path') {
@@ -307,7 +334,7 @@ void main() {
                 status: 201,
                 body: jsonEncode({'sha': 'blob${calls.length}'})
               );
-            case 'GET /git/ref/heads/master':
+            case 'GET /git/ref/heads/main':
               return (
                 status: 200,
                 body: jsonEncode({
@@ -321,7 +348,7 @@ void main() {
                   'tree': {'sha': 'tree0'}
                 })
               );
-            case 'GET /contents/server/benchmarks/manifest.json':
+            case 'GET /contents/manifest.json':
               return (status: 200, body: '{"benchmarks":[]}');
             case 'POST /git/trees':
               treeBody = json as Map<String, dynamic>;
@@ -329,7 +356,7 @@ void main() {
             case 'POST /git/commits':
               commitBody = json as Map<String, dynamic>;
               return (status: 201, body: jsonEncode({'sha': 'c1'}));
-            case 'PATCH /git/refs/heads/master':
+            case 'PATCH /git/refs/heads/main':
               // First attempt races someone else's push.
               return refAttempts++ == 0
                   ? (status: 422, body: '{"message":"not a fast forward"}')
@@ -343,15 +370,16 @@ void main() {
         fileName: 'keyboard_x.html',
         bytes: utf8.encode('<html></html>'),
       );
-      expect(url, 'https://github.com/Hyperlinkhyper1/luma-app/commit/c1');
+      expect(url,
+          'https://github.com/Hyperlinkhyper1/Luma-App-Benchmarks/commit/c1');
       expect(commitBody!['message'], contains('[skip ci]'));
       expect(commitBody!['parents'], ['head']);
       final paths = [
         for (final t in treeBody!['tree'] as List) (t as Map)['path'],
       ];
       expect(paths, [
-        'server/benchmarks/scenes/keyboard_x.html',
-        'server/benchmarks/manifest.json',
+        'scenes/keyboard_x.html',
+        'manifest.json',
       ]);
       expect(refAttempts, 2);
     });

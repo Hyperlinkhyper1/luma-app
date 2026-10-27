@@ -74,6 +74,50 @@ POWER_LOG_FILE="$DATA_DIR/power.log"
 WIKI_STATE_FILE="$DATA_DIR/wiki.state"
 WIKI_START_CMD_FILE="$DATA_DIR/wiki.start-cmd"
 
+# Every path on $DATA_DIR is writable from inside the luma-sync container, so
+# any of them may have been swapped for a symlink to a file on this host. A
+# plain `>` follows it, which would let a compromised container overwrite
+# ~/.bashrc or anything else this user can write. Nothing below writes to
+# $DATA_DIR with `>` or `>>`; it goes through these three instead.
+#
+# write_to FILE CMD... runs CMD with stdout and stderr going to FILE, created
+# fresh: whatever sat at FILE is removed, and bash's noclobber then opens the
+# new file with O_EXCL, which refuses a symlink rather than following it.
+# noclobber still opens an existing non-regular file (a device, a fifo), so
+# the open fd must turn out to be a regular file as well.
+write_to() {
+  local file="$1"
+  shift
+  (
+    rm -f -- "$file" 2>/dev/null
+    set -C
+    exec >"$file" 2>&1 || exit 125
+    [ -f /dev/fd/1 ] || exit 125
+    set +C
+    "$@"
+  )
+}
+
+# publish FILE CMD... is write_to through a temporary name, renamed over FILE
+# in one step, for files the container may read mid-write. mv -T replaces
+# whatever is at FILE, a symlink included, without following it.
+publish() {
+  local file="$1" tmp="$1.tmp.$$"
+  shift
+  write_to "$tmp" "$@" && mv -fT -- "$tmp" "$file" && return 0
+  rm -f -- "$tmp" 2>/dev/null
+  return 1
+}
+
+# freshen FILE bumps FILE's mtime, creating it when missing. touch -h never
+# follows a symlink, so only a regular file is touched in place.
+freshen() {
+  if [ -f "$1" ] && [ ! -L "$1" ] && touch -h -- "$1" 2>/dev/null; then
+    return 0
+  fi
+  write_to "$1" true
+}
+
 # Read LUMA_REPO_PATH from server/.env rather than hardcoding it, so this
 # can never drift from the same value the container's gate check
 # (Api._adminDeploy, via config.repoPathConfigured) is enforcing.
@@ -170,15 +214,21 @@ wiki_start_cmd() {
 }
 
 sync_wiki_state() {
-  wiki_ctl status > "$WIKI_STATE_FILE.tmp" 2>/dev/null &&
-    mv -f "$WIKI_STATE_FILE.tmp" "$WIKI_STATE_FILE"
-  wiki_start_cmd > "$WIKI_START_CMD_FILE.tmp" 2>/dev/null &&
-    mv -f "$WIKI_START_CMD_FILE.tmp" "$WIKI_START_CMD_FILE"
+  publish "$WIKI_STATE_FILE" wiki_ctl status
+  publish "$WIKI_START_CMD_FILE" wiki_start_cmd
 }
 
-# Runs the "<action> <target>" read from power.request.
+# Runs the "<action> <target>" read from power.request. The request is
+# container-written, so nothing from it is echoed until it has matched one
+# of the fixed actions.
 power() {
   local action="$1" target="$2"
+  case "$action:$target" in
+    stop:wiki | start:wiki | restart:all | shutdown:all) ;;
+    *)
+      echo "==> Unknown power request — ignored ($(date -Is))"
+      return 1 ;;
+  esac
   echo "==> $action $target requested from the admin dashboard ($(date -Is))"
   case "$action:$target" in
     stop:wiki)
@@ -201,10 +251,14 @@ power() {
       echo "==> Everything is stopped. Start it again with:"
       echo "cd $REPO_PATH/server && docker compose up -d"
       wiki_start_cmd ;;
-    *)
-      echo "Unknown request: '$action $target'"
-      return 1 ;;
   esac
+}
+
+run_power() {
+  power "$@"
+  local code=$?
+  [ "$code" -eq 0 ] || echo "==> FAILED (exit $code)."
+  return "$code"
 }
 
 step() {
@@ -213,8 +267,8 @@ step() {
 }
 
 touch_files() {
-  : 2>/dev/null > "$LOCK_FILE" || true
-  : 2>/dev/null > "$HEARTBEAT_FILE" || true
+  freshen "$LOCK_FILE"
+  freshen "$HEARTBEAT_FILE"
 }
 
 # A deploy runs synchronously in the main loop below, so nothing there can
@@ -236,8 +290,8 @@ refresher_stop() {
 }
 
 touch_update_files() {
-  : 2>/dev/null > "$UPDATE_LOCK_FILE" || true
-  : 2>/dev/null > "$HEARTBEAT_FILE" || true
+  freshen "$UPDATE_LOCK_FILE"
+  freshen "$HEARTBEAT_FILE"
 }
 
 # System updates can also take minutes (apt upgrade + driver autoinstall +
@@ -304,6 +358,21 @@ deploy() {
   step "Rebuilding and restarting luma-sync"
   cd server || return 1
   docker compose up -d --build luma-sync || return 1
+}
+
+# deploy, plus the closing lines deploy.log has always ended with.
+run_deploy() {
+  ( deploy )
+  local code=$?
+  if [ "$code" -eq 0 ]; then
+    echo "==> Deploy finished successfully."
+    if [ "$(script_hash)" != "$SELF_HASH" ]; then
+      echo "==> deploy-watcher.sh itself was updated — reloading it."
+    fi
+  else
+    echo "==> Deploy FAILED (exit $code) — nothing was restarted."
+  fi
+  return "$code"
 }
 
 # Installs apt upgrades + graphics driver updates for the host, then
@@ -403,10 +472,13 @@ check_updates() {
   echo "==> System update and restart complete."
 }
 
+reboot_pkgs() {
+  cat /var/run/reboot-required.pkgs 2>/dev/null || true
+}
+
 sync_reboot_required() {
   if [ -f /var/run/reboot-required ]; then
-    cat /var/run/reboot-required.pkgs 2>/dev/null > "$REBOOT_REQUIRED_FILE" ||
-      : > "$REBOOT_REQUIRED_FILE"
+    publish "$REBOOT_REQUIRED_FILE" reboot_pkgs
   else
     rm -f "$REBOOT_REQUIRED_FILE"
   fi
@@ -434,7 +506,7 @@ while true; do
   # unbacked when this file goes stale, so a stopped watcher says so
   # instead of the deploy just quietly never happening.
   if [ "$beat" -le 0 ]; then
-    : 2>/dev/null > "$HEARTBEAT_FILE" || true
+    freshen "$HEARTBEAT_FILE"
     sync_reboot_required
     sync_wiki_state
     beat=5
@@ -464,18 +536,13 @@ while true; do
     touch_files
     rm -f "$REQUEST_FILE" "$STATUS_FILE"
     refresher_start
-    ( deploy ) > "$LOG_FILE" 2>&1
+    write_to "$LOG_FILE" run_deploy
     code=$?
     refresher_stop
-    if [ "$code" -eq 0 ]; then
-      echo "==> Deploy finished successfully." >> "$LOG_FILE"
-    else
-      echo "==> Deploy FAILED (exit $code) — nothing was restarted." >> "$LOG_FILE"
-    fi
     # Status before lock: the container reads the lock to decide whether a
     # run is still going, so clearing it first would briefly expose a
     # finished deploy with no recorded exit code.
-    echo "$code" > "$STATUS_FILE"
+    publish "$STATUS_FILE" echo "$code"
     rm -f "$LOCK_FILE"
     beat=0
 
@@ -484,20 +551,17 @@ while true; do
     # service. systemd keeps tracking the same PID across the exec, and if
     # the new copy is broken, Restart=always brings it back.
     if [ "$code" -eq 0 ] && [ "$(script_hash)" != "$SELF_HASH" ]; then
-      echo "==> deploy-watcher.sh itself was updated — reloading it." \
-        >> "$LOG_FILE"
       exec "$SCRIPT_DIR/deploy-watcher.sh"
     fi
   fi
 
   if [ -f "$UPDATE_REQUEST_FILE" ]; then
-    : 2>/dev/null > "$UPDATE_LOCK_FILE" || true
-    : 2>/dev/null > "$HEARTBEAT_FILE" || true
+    touch_update_files
     rm -f "$UPDATE_REQUEST_FILE"
     update_refresher_start
-    ( check_updates ) > "$UPDATE_LOG_FILE" 2>&1
+    write_to "$UPDATE_LOG_FILE" check_updates
     update_refresher_stop
-    date -Is > "$UPDATE_DONE_FILE"
+    publish "$UPDATE_DONE_FILE" date -Is
     rm -f "$UPDATE_LOCK_FILE"
     beat=0
   fi
@@ -506,18 +570,22 @@ while true; do
   # after whoever asked for it has moved on.
   if [ -f "$POWER_REQUEST_FILE" ]; then
     fresh="$(find "$POWER_REQUEST_FILE" -mmin -2 2>/dev/null)"
-    read -r p_action p_target < "$POWER_REQUEST_FILE" || true
+    # Only a regular file is read: a symlink here would point the read at a
+    # host file of the container's choosing.
+    p_action=""
+    p_target=""
+    if [ -f "$POWER_REQUEST_FILE" ] && [ ! -L "$POWER_REQUEST_FILE" ]; then
+      read -r -n 64 p_action p_target < "$POWER_REQUEST_FILE" || true
+    fi
     if [ -n "$fresh" ]; then
       # Log before dropping the request, so the dashboard never sees
       # "no request, empty log" and reads it as finished.
-      echo "==> Working on it ($(date -Is))" > "$POWER_LOG_FILE"
+      write_to "$POWER_LOG_FILE" echo "==> Working on it ($(date -Is))"
       rm -f "$POWER_REQUEST_FILE"
-      ( power "${p_action:-}" "${p_target:-}" ) > "$POWER_LOG_FILE" 2>&1
-      code=$?
-      [ "$code" -eq 0 ] || echo "==> FAILED (exit $code)." >> "$POWER_LOG_FILE"
+      write_to "$POWER_LOG_FILE" run_power "$p_action" "$p_target"
     else
       rm -f "$POWER_REQUEST_FILE"
-      echo "==> Ignored a request older than two minutes ($(date -Is))." > "$POWER_LOG_FILE"
+      write_to "$POWER_LOG_FILE" echo "==> Ignored a request older than two minutes ($(date -Is))."
     fi
     sync_wiki_state
     beat=0
@@ -531,9 +599,9 @@ while true; do
     fresh="$(find "$REBOOT_REQUEST_FILE" -mmin -2 2>/dev/null)"
     rm -f "$REBOOT_REQUEST_FILE"
     if [ -n "$fresh" ]; then
-      reboot_host > "$REBOOT_LOG_FILE" 2>&1
+      write_to "$REBOOT_LOG_FILE" reboot_host
     else
-      echo "==> Ignored a reboot request older than two minutes ($(date -Is))." > "$REBOOT_LOG_FILE"
+      write_to "$REBOOT_LOG_FILE" echo "==> Ignored a reboot request older than two minutes ($(date -Is))."
     fi
   fi
   sleep 2

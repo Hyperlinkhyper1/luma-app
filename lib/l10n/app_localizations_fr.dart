@@ -5166,6 +5166,22 @@ class LFr extends L {
   String get updateRestarting => 'Redémarrage de luma';
 
   @override
+  String get emailVerifyTitle => 'Confirmez votre e-mail';
+
+  @override
+  String get emailVerifyBody =>
+      'Les invitations sont envoyées par e-mail, luma doit donc savoir que cette adresse est bien la vôtre. Nous avons envoyé un code à 6 chiffres à l\'adresse de votre compte.';
+
+  @override
+  String get emailVerifyCodeHint => 'Code à 6 chiffres';
+
+  @override
+  String get emailVerifyConfirm => 'Confirmer';
+
+  @override
+  String get emailVerifyResend => 'Envoyer un nouveau code';
+
+  @override
   String get familyInboxTitle => 'Boîte de réception';
 
   @override
@@ -22361,6 +22377,31 @@ class LFr extends L {
 
   @override
   String get secureChatMessageHint => 'Message…';
+
+  @override
+  String secureChatKeyChangedBanner(String email) {
+    return 'La clé de sécurité de $email a changé. Cela arrive quand la personne configure le chat sur un nouvel appareil — ou quand quelqu\'un essaie de lire vos messages. Comparez le numéro de sécurité avec elle avant de faire confiance à la nouvelle clé.';
+  }
+
+  @override
+  String secureChatKeyChangedSendBlocked(String email) {
+    return 'La clé de sécurité de $email a changé. Vérifiez le numéro de sécurité et faites confiance à la nouvelle clé avant d\'envoyer.';
+  }
+
+  @override
+  String get secureChatTrustNewKey => 'Faire confiance à la nouvelle clé';
+
+  @override
+  String get secureChatSafetyNumberTitle => 'Numéro de sécurité';
+
+  @override
+  String secureChatSafetyNumberBody(String email) {
+    return 'Comparez ce numéro avec $email en personne ou lors d\'un appel. S\'il est identique sur les deux appareils, personne ne s\'est glissé dans cette conversation.';
+  }
+
+  @override
+  String get secureChatUnverifiedSender =>
+      'Envoyé depuis une ancienne version de luma — expéditeur non vérifié';
 
   @override
   String get secureChatCouldNotDecrypt =>

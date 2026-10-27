@@ -18,6 +18,7 @@ class ChatMessageView {
     required this.text,
     required this.createdAtMs,
     this.failedToDecrypt = false,
+    this.unverified = false,
   });
 
   final String id;
@@ -25,6 +26,10 @@ class ChatMessageView {
   final String text;
   final int createdAtMs;
   final bool failedToDecrypt;
+
+  /// Sent by an older app in the anonymous v1 format, so nothing proves
+  /// who wrote it (see ChatCrypto).
+  final bool unverified;
 }
 
 /// One conversation, with its decrypted message history.
@@ -34,6 +39,7 @@ class ChatConversationView {
     required this.peerUserId,
     required this.peerEmail,
     required this.peerPublicKey,
+    required this.pinnedPeerKey,
     required this.messages,
   });
 
@@ -41,11 +47,25 @@ class ChatConversationView {
   final String peerUserId;
   final String peerEmail;
   final String? peerPublicKey;
+
+  /// The peer key this device trusted first (or last approved). Messages
+  /// are only accepted from, and sealed for, this key.
+  final String? pinnedPeerKey;
   final List<ChatMessageView> messages;
 
   /// Whether the peer has ever published an encryption key — until they do,
   /// no message can be sealed for them.
   bool get peerReady => peerPublicKey != null;
+
+  /// The server now hands out a different key for the peer than the one
+  /// pinned here. Either they set chat up on a new device, or someone —
+  /// the server included — is trying to read along. Sending stops until
+  /// the user compares safety numbers and calls
+  /// [ChatRepository.trustNewKey].
+  bool get keyChanged =>
+      peerPublicKey != null &&
+      pinnedPeerKey != null &&
+      peerPublicKey != pinnedPeerKey;
 
   ChatMessageView? get lastMessage => messages.isEmpty ? null : messages.last;
 }
@@ -117,6 +137,7 @@ class ChatRepository extends ChangeNotifier {
         text: m['text'] as String? ?? '',
         createdAtMs: m['createdAtMs'] as int,
         failedToDecrypt: m['failed'] as bool? ?? false,
+        unverified: m['verified'] == false && m['failed'] != true,
       );
     }).toList()
       ..sort((a, b) => a.createdAtMs.compareTo(b.createdAtMs));
@@ -125,9 +146,12 @@ class ChatRepository extends ChangeNotifier {
       peerUserId: c.peerUserId,
       peerEmail: c.peerEmail,
       peerPublicKey: c.peerPublicKey,
+      pinnedPeerKey: _cache?.pinnedKeys[c.peerUserId],
       messages: messages,
     );
   }
+
+  String? get ownPublicKey => _ownPublicKey;
 
   // ---- Lifecycle ----------------------------------------------------------
 
@@ -187,10 +211,86 @@ class ChatRepository extends ChangeNotifier {
     try {
       await api.putPublicKey(key);
       _uploadedKeyForToken = _apiToken;
+    } on ChatApiException catch (e) {
+      // The server only lets a recent sign-in replace a chat key; say so
+      // rather than leaving peers sealing messages for a key we lack.
+      if (e.code == 'reauth_required') _lastError = e.message;
     } catch (_) {
       // Will retry on the next periodic refresh via _onSyncChanged staying stable.
     }
     unawaited(refresh());
+  }
+
+  /// Opens [blob] as a message from [senderUserId] in [conv]: the peer's
+  /// messages must come from their pinned key, ours from our own.
+  Future<OpenedMessage> _open(
+      String blob, String senderUserId, RemoteConversation conv) async {
+    final sender = senderUserId == conv.peerUserId
+        ? (_cache!.pinnedKeys[conv.peerUserId] ?? conv.peerPublicKey)
+        : _ownPublicKey;
+    if (sender == null) {
+      throw ChatCryptoException(currentL.secureChatCouldNotDecrypt);
+    }
+    return ChatCrypto.open(blob, _identity!,
+        expectedSender: ChatCrypto.decodePublicKey(sender));
+  }
+
+  Map<String, dynamic> _messageJson(
+      {required String id,
+      required String senderUserId,
+      required int createdAtMs,
+      required String blob,
+      OpenedMessage? opened}) =>
+      {
+        'id': id,
+        'senderUserId': senderUserId,
+        'createdAtMs': createdAtMs,
+        'text': opened?.text ?? '',
+        'failed': opened == null,
+        if (opened != null) 'verified': opened.authenticated,
+        // Kept only while unreadable, so trusting a peer's new key can try
+        // again.
+        if (opened == null) 'blob': blob,
+      };
+
+  /// Pins the peer's current key after the user has checked it (ideally by
+  /// comparing safety numbers), and retries the messages that would not
+  /// open under the old one.
+  Future<void> trustNewKey(String conversationId) async {
+    final cache = _cache;
+    final conv = conversation(conversationId);
+    final key = conv?.peerPublicKey;
+    if (cache == null || conv == null || key == null) return;
+    cache.pinnedKeys[conv.peerUserId] = key;
+    final remote = RemoteConversation.fromJson({
+      'id': conv.id,
+      'peerUserId': conv.peerUserId,
+      'peerEmail': conv.peerEmail,
+      'peerPublicKey': key,
+      'createdAtMs': 0,
+    });
+    final messages = List<dynamic>.of(
+        cache.messagesByConversation[conversationId] ?? const []);
+    for (var i = 0; i < messages.length; i++) {
+      final m = messages[i] as Map<String, dynamic>;
+      final blob = m['blob'];
+      if (m['failed'] != true || blob is! String) continue;
+      OpenedMessage? opened;
+      try {
+        opened = await _open(blob, m['senderUserId'] as String, remote);
+      } on ChatCryptoException {
+        opened = null;
+      }
+      messages[i] = _messageJson(
+          id: m['id'] as String,
+          senderUserId: m['senderUserId'] as String,
+          createdAtMs: m['createdAtMs'] as int,
+          blob: blob,
+          opened: opened);
+    }
+    cache.messagesByConversation[conversationId] = messages;
+    await cache.save();
+    notifyListeners();
   }
 
   /// Pulls invites and conversations, then any new messages in each
@@ -214,6 +314,10 @@ class ChatRepository extends ChangeNotifier {
       final remoteConversations = await api.listConversations();
 
       for (final conv in remoteConversations) {
+        // Trust on first use: the first key seen for a peer is the one
+        // every later message is checked against.
+        final peerKey = conv.peerPublicKey;
+        if (peerKey != null) cache.pinnedKeys.putIfAbsent(conv.peerUserId, () => peerKey);
         final sinceMs = _lastFetchedMsByConversation[conv.id];
         List<RemoteChatMessage> newMessages;
         try {
@@ -231,21 +335,18 @@ class ChatRepository extends ChangeNotifier {
 
         for (final m in newMessages) {
           if (existingIds.contains(m.id)) continue;
-          String text;
-          bool failed = false;
+          OpenedMessage? opened;
           try {
-            text = await ChatCrypto.open(m.blob, identity);
+            opened = await _open(m.blob, m.senderUserId, conv);
           } on ChatCryptoException {
-            text = '';
-            failed = true;
+            opened = null;
           }
-          existing.add({
-            'id': m.id,
-            'senderUserId': m.senderUserId,
-            'createdAtMs': m.createdAtMs,
-            'text': text,
-            'failed': failed,
-          });
+          existing.add(_messageJson(
+              id: m.id,
+              senderUserId: m.senderUserId,
+              createdAtMs: m.createdAtMs,
+              blob: m.blob,
+              opened: opened));
           if (m.createdAtMs >
               (_lastFetchedMsByConversation[conv.id] ?? 0)) {
             _lastFetchedMsByConversation[conv.id] = m.createdAtMs;
@@ -297,6 +398,11 @@ class ChatRepository extends ChangeNotifier {
     await refresh();
   }
 
+  Future<void> sendEmailVerificationCode() =>
+      _requireApi().sendEmailVerificationCode();
+
+  Future<void> confirmEmail(String code) => _requireApi().confirmEmail(code);
+
   Future<void> declineInvite(String inviteId) async {
     final api = _requireApi();
     await api.declineInvite(inviteId);
@@ -315,11 +421,14 @@ class ChatRepository extends ChangeNotifier {
     if (peerKey == null) {
       throw StateError(currentL.secureChatPeerNoKey);
     }
+    if (conv!.keyChanged) {
+      throw StateError(currentL.secureChatKeyChangedSendBlocked(conv.peerEmail));
+    }
 
-    final blobForRecipient =
-        await ChatCrypto.seal(text, ChatCrypto.decodePublicKey(peerKey));
+    final blobForRecipient = await ChatCrypto.seal(
+        text, ChatCrypto.decodePublicKey(peerKey), identity);
     final blobForSender = await ChatCrypto.seal(
-        text, ChatCrypto.decodePublicKey(_ownPublicKey!));
+        text, ChatCrypto.decodePublicKey(_ownPublicKey!), identity);
 
     await api.sendMessage(conversationId,
         blobForRecipient: blobForRecipient, blobForSender: blobForSender);

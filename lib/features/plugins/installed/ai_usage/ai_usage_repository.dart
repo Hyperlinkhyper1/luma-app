@@ -23,6 +23,7 @@ class AiUsageRepository extends ChangeNotifier {
     FreebuffScanner? freebuffScanner,
     Future<List<Map<String, dynamic>>?> Function()? fetchBackendCalls,
     String? Function()? backendAccount,
+    Future<void> Function()? cloudSync,
   }) : _claudeScanner = claudeScanner ?? const ClaudeCodeScanner(),
        _codexScanner = codexScanner ?? const CodexCliScanner(),
        _antigravityScanner = antigravityScanner ?? const AntigravityScanner(),
@@ -31,9 +32,12 @@ class AiUsageRepository extends ChangeNotifier {
        // ignore: prefer_initializing_formals
        _fetchBackendCalls = fetchBackendCalls,
        // ignore: prefer_initializing_formals
-       _backendAccount = backendAccount;
+       _backendAccount = backendAccount,
+       // ignore: prefer_initializing_formals
+       _cloudSync = cloudSync;
 
   final AiUsageDatabase _db;
+  final Future<void> Function()? _cloudSync;
   final Future<List<Map<String, dynamic>>?> Function()? _fetchBackendCalls;
   final String? Function()? _backendAccount;
   bool _refreshingBackend = false;
@@ -174,6 +178,7 @@ class AiUsageRepository extends ChangeNotifier {
   final FreebuffScanner _freebuffScanner;
 
   bool _scanning = false;
+  bool _cloudSyncing = false;
   bool? _claudeCodeDirFound; // null = not yet checked
   bool? _codexCliDirFound;
   bool? _antigravityDirFound;
@@ -188,7 +193,7 @@ class AiUsageRepository extends ChangeNotifier {
   OpencodeScanResult? _lastOpencodeResult;
   FreebuffScanResult? _lastFreebuffResult;
 
-  bool get scanning => _scanning;
+  bool get scanning => _scanning || _cloudSyncing;
 
   /// Whether `~/.claude/projects` was found on this device â€” null until the
   /// first [rescan] completes.
@@ -260,6 +265,27 @@ class AiUsageRepository extends ChangeNotifier {
       (_lastAntigravityResult?.turnsAdded ?? 0) +
       (_lastOpencodeResult?.turnsAdded ?? 0) +
       (_lastFreebuffResult?.turnsAdded ?? 0);
+
+  /// What the page's refresh does: [rescan] this device, then exchange
+  /// usage with the user's other devices through [_cloudSync] so theirs
+  /// shows up without waiting for an app restart. The cloud step is a no-op
+  /// when AI Usage sync is off or the server is unreachable.
+  Future<void> refresh() async {
+    if (scanning) return;
+    await rescan();
+    final cloudSync = _cloudSync;
+    if (cloudSync == null || _disposed) return;
+    _cloudSyncing = true;
+    notifyListeners();
+    try {
+      await cloudSync();
+    } catch (error) {
+      debugPrint('AI usage cloud sync failed: $error');
+    } finally {
+      _cloudSyncing = false;
+      if (!_disposed) await loadRemoteDevices();
+    }
+  }
 
   /// Scans every known local source for new/changed session logs and stores
   /// any new usage. Safe to call repeatedly â€” unchanged files are skipped

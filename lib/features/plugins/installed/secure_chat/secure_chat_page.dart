@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../account/email_verification_dialog.dart';
 import '../../../../app/widgets.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../sync/sync_scope.dart';
 import '../../../../theme/luma_theme.dart';
 import 'chat_repository.dart';
 import 'data/chat_api.dart';
+import 'data/chat_crypto.dart';
 import 'secure_chat_scope.dart';
 import 'widgets/chat_invite_dialog.dart';
 
@@ -300,7 +302,17 @@ class _InvitesSection extends StatelessWidget {
       {required bool accept}) async {
     try {
       if (accept) {
-        await chat.acceptInvite(inviteId);
+        try {
+          await chat.acceptInvite(inviteId);
+        } on ChatApiException catch (e) {
+          if (!e.needsEmailVerification || !context.mounted) rethrow;
+          final verified = await showEmailVerificationDialog(
+            context,
+            sendCode: chat.sendEmailVerificationCode,
+            confirm: chat.confirmEmail,
+          );
+          if (verified) await chat.acceptInvite(inviteId);
+        }
       } else {
         await chat.declineInvite(inviteId);
       }
@@ -335,6 +347,58 @@ class _ChatThreadState extends State<_ChatThread> {
     super.dispose();
   }
 
+  /// Shows the number both people should see for the peer's current key —
+  /// the one about to be trusted when it has just changed.
+  Future<void> _showSafetyNumber(
+      BuildContext context, ChatConversationView conv) async {
+    final own = widget.chat.ownPublicKey;
+    final peer = conv.peerPublicKey;
+    if (own == null || peer == null) return;
+    final number = await ChatCrypto.safetyNumber(own, peer);
+    if (!context.mounted) return;
+    final luma = context.luma;
+    final t = L.of(context);
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: luma.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(t.secureChatSafetyNumberTitle,
+            style: TextStyle(
+                color: luma.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w700)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(t.secureChatSafetyNumberBody(conv.peerEmail),
+                style:
+                    TextStyle(color: luma.textMuted, fontSize: 13, height: 1.4)),
+            const SizedBox(height: 16),
+            SelectableText(
+              number,
+              style: TextStyle(
+                color: luma.textPrimary,
+                fontSize: 18,
+                height: 1.6,
+                letterSpacing: 1.5,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(t.commonClose,
+                style: TextStyle(color: luma.textSecondary)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty || _sending) return;
@@ -357,6 +421,7 @@ class _ChatThreadState extends State<_ChatThread> {
     final t = L.of(context);
     final conv = widget.chat.conversation(widget.conversationId);
     if (conv == null) return const SizedBox.shrink();
+    final canSend = conv.peerReady && !conv.keyChanged;
 
     return Column(
       children: [
@@ -364,16 +429,59 @@ class _ChatThreadState extends State<_ChatThread> {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              Icon(Icons.lock_rounded, size: 16, color: luma.success),
+              Icon(conv.keyChanged ? Icons.lock_open_rounded : Icons.lock_rounded,
+                  size: 16,
+                  color: conv.keyChanged ? luma.warning : luma.success),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(conv.peerEmail,
                     style: TextStyle(
                         color: luma.textPrimary, fontSize: 15, fontWeight: FontWeight.w700)),
               ),
+              if (conv.peerReady && widget.chat.ownPublicKey != null)
+                IconButton(
+                  tooltip: t.secureChatSafetyNumberTitle,
+                  icon: Icon(Icons.verified_user_outlined,
+                      size: 18, color: luma.textSecondary),
+                  onPressed: () => _showSafetyNumber(context, conv),
+                ),
             ],
           ),
         ),
+        if (conv.keyChanged)
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: luma.warning.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: luma.warning.withValues(alpha: 0.4)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(t.secureChatKeyChangedBanner(conv.peerEmail),
+                    style: TextStyle(
+                        color: luma.textPrimary, fontSize: 13, height: 1.4)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    TextButton(
+                      onPressed: () => _showSafetyNumber(context, conv),
+                      child: Text(t.secureChatSafetyNumberTitle,
+                          style: TextStyle(color: luma.accent)),
+                    ),
+                    TextButton(
+                      onPressed: () => widget.chat.trustNewKey(conv.id),
+                      child: Text(t.secureChatTrustNewKey,
+                          style: TextStyle(color: luma.warning)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         Expanded(
           child: conv.messages.isEmpty
               ? LumaEmptyState(
@@ -407,7 +515,7 @@ class _ChatThreadState extends State<_ChatThread> {
               Expanded(
                 child: TextField(
                   controller: _controller,
-                  enabled: conv.peerReady && !_sending,
+                  enabled: canSend && !_sending,
                   minLines: 1,
                   maxLines: 5,
                   style: TextStyle(color: luma.textPrimary, fontSize: 14),
@@ -437,7 +545,7 @@ class _ChatThreadState extends State<_ChatThread> {
                             strokeWidth: 2, color: luma.onAccent),
                       )
                     : Icon(Icons.send_rounded, color: luma.onAccent),
-                onPressed: conv.peerReady ? _send : null,
+                onPressed: canSend ? _send : null,
               ),
             ],
           ),
@@ -479,6 +587,18 @@ class _MessageBubble extends StatelessWidget {
                 fontStyle: message.failedToDecrypt ? FontStyle.italic : FontStyle.normal,
               ),
             ),
+            if (message.unverified) ...[
+              const SizedBox(height: 4),
+              Text(
+                t.secureChatUnverifiedSender,
+                style: TextStyle(
+                  color: (message.mine ? luma.onAccent : luma.warning)
+                      .withValues(alpha: 0.85),
+                  fontSize: 10,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
             const SizedBox(height: 4),
             Text(
               time,

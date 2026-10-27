@@ -5114,6 +5114,22 @@ class LEn extends L {
   String get updateRestarting => 'Restarting luma';
 
   @override
+  String get emailVerifyTitle => 'Confirm your email';
+
+  @override
+  String get emailVerifyBody =>
+      'Invites are addressed by email, so luma has to know this address is yours. We sent a 6-digit code to your account\'s email.';
+
+  @override
+  String get emailVerifyCodeHint => '6-digit code';
+
+  @override
+  String get emailVerifyConfirm => 'Confirm';
+
+  @override
+  String get emailVerifyResend => 'Send a new code';
+
+  @override
   String get familyInboxTitle => 'Inbox';
 
   @override
@@ -22109,6 +22125,31 @@ class LEn extends L {
 
   @override
   String get secureChatMessageHint => 'Message…';
+
+  @override
+  String secureChatKeyChangedBanner(String email) {
+    return '$email\'s security key changed. That happens when they set up chat on a new device — or when someone is trying to read along. Compare safety numbers with them before you trust it.';
+  }
+
+  @override
+  String secureChatKeyChangedSendBlocked(String email) {
+    return '$email\'s security key changed. Check the safety number and trust the new key before sending.';
+  }
+
+  @override
+  String get secureChatTrustNewKey => 'Trust new key';
+
+  @override
+  String get secureChatSafetyNumberTitle => 'Safety number';
+
+  @override
+  String secureChatSafetyNumberBody(String email) {
+    return 'Compare this number with $email in person or on a call. If it is the same on both devices, nobody is in the middle of this chat.';
+  }
+
+  @override
+  String get secureChatUnverifiedSender =>
+      'Sent from an older version of luma — sender not verified';
 
   @override
   String get secureChatCouldNotDecrypt => 'Could not decrypt this message.';

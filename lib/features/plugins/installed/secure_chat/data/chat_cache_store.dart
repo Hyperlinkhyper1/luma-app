@@ -21,6 +21,10 @@ class ChatCacheStore {
   /// conversationId -> list of {id, senderUserId, createdAtMs, text}
   Map<String, List<dynamic>> messagesByConversation = {};
 
+  /// peerUserId -> the chat public key this device trusts for them, pinned
+  /// the first time it was seen (see ChatRepository.refresh).
+  Map<String, String> pinnedKeys = {};
+
   static Future<ChatCacheStore> load({
     Directory? storageDir,
     SecureSecretStore? secretStore,
@@ -41,6 +45,11 @@ class ChatCacheStore {
         for (final entry in messages.entries)
           entry.key: (entry.value as List? ?? const []),
       };
+      final pins = data['pinnedKeys'] as Map<String, dynamic>? ?? const {};
+      store.pinnedKeys = {
+        for (final entry in pins.entries)
+          if (entry.value is String) entry.key: entry.value as String,
+      };
     } catch (_) {
       // A corrupt cache file just means an empty cache until the next refresh.
     }
@@ -51,5 +60,6 @@ class ChatCacheStore {
     'conversations': conversationsJson,
     'invites': invitesJson,
     'messages': messagesByConversation,
+    'pinnedKeys': pinnedKeys,
   });
 }

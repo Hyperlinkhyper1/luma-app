@@ -4,9 +4,15 @@ import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/plugins/installed/ai_usage/ai_usage_cloud_sync.dart';
+import 'package:luma/features/plugins/installed/ai_usage/ai_usage_repository.dart';
 import 'package:luma/features/plugins/installed/ai_usage/ai_usage_source.dart';
 import 'package:luma/features/plugins/installed/ai_usage/ai_usage_stats.dart';
+import 'package:luma/features/plugins/installed/ai_usage/antigravity_scanner.dart';
+import 'package:luma/features/plugins/installed/ai_usage/claude_code_scanner.dart';
+import 'package:luma/features/plugins/installed/ai_usage/codex_cli_scanner.dart';
 import 'package:luma/features/plugins/installed/ai_usage/data/ai_usage_database.dart';
+import 'package:luma/features/plugins/installed/ai_usage/freebuff_scanner.dart';
+import 'package:luma/features/plugins/installed/ai_usage/opencode_scanner.dart';
 
 /// An in-memory stand-in for the sync server's per-user object store, shared
 /// between the "devices" in a test the way one account's server would be.
@@ -259,4 +265,85 @@ void main() {
     final name = server.objects.keys.single;
     expect(RegExp(r'^[a-z0-9_]{1,32}$').hasMatch(name), isTrue);
   });
+
+  test('refreshing the page pulls other devices in straight away', () async {
+    await laptop.addTurn(input: 100, output: 10);
+    await laptop.sync.syncOnOpen();
+    final repo = AiUsageRepository(
+      desktop.db,
+      claudeScanner: const _NoClaude(),
+      codexScanner: const _NoCodex(),
+      antigravityScanner: const _NoAntigravity(),
+      opencodeScanner: const _NoOpencode(),
+      freebuffScanner: const _NoFreebuff(),
+      cloudSync: desktop.sync.syncOnOpen,
+    );
+    addTearDown(repo.dispose);
+    await desktop.addTurn(input: 5, output: 1);
+
+    await repo.refresh();
+
+    expect(await desktop.totalInput(), 105);
+    expect(repo.remoteDevices.map((d) => d.name), ['laptop']);
+    expect(repo.scanning, isFalse);
+    expect(server.objects, hasLength(2));
+  });
+
+  test('a failed cloud sync still finishes the refresh', () async {
+    final repo = AiUsageRepository(
+      desktop.db,
+      claudeScanner: const _NoClaude(),
+      codexScanner: const _NoCodex(),
+      antigravityScanner: const _NoAntigravity(),
+      opencodeScanner: const _NoOpencode(),
+      freebuffScanner: const _NoFreebuff(),
+      cloudSync: () async => throw const SocketException('offline'),
+    );
+    addTearDown(repo.dispose);
+
+    await repo.refresh();
+
+    expect(repo.scanning, isFalse);
+    expect(repo.lastScanAt, isNotNull);
+  });
+}
+
+class _NoClaude extends ClaudeCodeScanner {
+  const _NoClaude();
+
+  @override
+  Future<ClaudeCodeScanResult> scan(AiUsageDatabase db) async =>
+      ClaudeCodeScanResult.unavailable;
+}
+
+class _NoCodex extends CodexCliScanner {
+  const _NoCodex();
+
+  @override
+  Future<CodexCliScanResult> scan(AiUsageDatabase db) async =>
+      CodexCliScanResult.unavailable;
+}
+
+class _NoAntigravity extends AntigravityScanner {
+  const _NoAntigravity();
+
+  @override
+  Future<AntigravityScanResult> scan(AiUsageDatabase db) async =>
+      AntigravityScanResult.unavailable;
+}
+
+class _NoOpencode extends OpencodeScanner {
+  const _NoOpencode();
+
+  @override
+  Future<OpencodeScanResult> scan(AiUsageDatabase db) async =>
+      OpencodeScanResult.unavailable;
+}
+
+class _NoFreebuff extends FreebuffScanner {
+  const _NoFreebuff();
+
+  @override
+  Future<FreebuffScanResult> scan(AiUsageDatabase db) async =>
+      FreebuffScanResult.unavailable;
 }

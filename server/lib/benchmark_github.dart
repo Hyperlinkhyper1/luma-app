@@ -5,15 +5,19 @@ import 'dart:io';
 typedef GithubTransport = Future<({int status, String body})> Function(
     String method, Uri url, Map<String, String> headers, String? body);
 
-/// Commits benchmark scenes uploaded from the admin dashboard to the repo,
-/// so `server/benchmarks/` on GitHub stays the complete roster.
+/// Commits benchmark scenes uploaded from the admin dashboard to a dedicated
+/// benchmarks repository, so GitHub keeps the complete roster.
 ///
-/// The server's container has no checkout and no git credentials (the host's
-/// deploy watcher does the pulling), so this talks to the Git Data API
-/// instead: the scene and the updated `manifest.json` land as one commit on
-/// the branch, and the next "Update & restart server" pulls them back in as
-/// seed files. Needs `LUMA_BENCHMARK_GITHUB_TOKEN`, a fine-grained token with
-/// Contents read/write on just this repository; without it uploads still go
+/// Never the app's own repository. A token with Contents write there could
+/// change `lib/`, and every push to the app's master builds a release the
+/// updater installs silently — so whoever got hold of this server could ship
+/// code to every client. A token scoped to the benchmarks repository can't.
+///
+/// The server's container has no checkout and no git credentials, so this
+/// talks to the Git Data API instead: the scene and the updated
+/// `manifest.json` land as one commit on the branch. Needs
+/// `LUMA_BENCHMARK_GITHUB_TOKEN`, a fine-grained token with Contents
+/// read/write on just the benchmarks repository; without it uploads still go
 /// live on the server, they just aren't pushed.
 class BenchmarkGithubPublisher {
   BenchmarkGithubPublisher({
@@ -26,8 +30,11 @@ class BenchmarkGithubPublisher {
   final GithubTransport _transport;
 
   static const _api = 'https://api.github.com';
-  static const scenesPath = 'server/benchmarks/scenes';
-  static const manifestPath = 'server/benchmarks/manifest.json';
+  static const scenesPath = 'scenes';
+  static const manifestPath = 'manifest.json';
+
+  /// The app's repository, which this must never write to.
+  static const appRepo = 'Hyperlinkhyper1/luma-app';
 
   String _env(String key, String fallback) {
     final value = _environment[key]?.trim() ?? '';
@@ -37,11 +44,27 @@ class BenchmarkGithubPublisher {
   String get _token => _env('LUMA_BENCHMARK_GITHUB_TOKEN', '');
 
   String get repo =>
-      _env('LUMA_BENCHMARK_GITHUB_REPO', 'Hyperlinkhyper1/luma-app');
+      _env('LUMA_BENCHMARK_GITHUB_REPO', 'Hyperlinkhyper1/Luma-App-Benchmarks');
 
-  String get branch => _env('LUMA_BENCHMARK_GITHUB_BRANCH', 'master');
+  String get branch => _env('LUMA_BENCHMARK_GITHUB_BRANCH', 'main');
 
-  bool get enabled => _token.isNotEmpty;
+  bool get _targetsAppRepo => repo.toLowerCase() == appRepo.toLowerCase();
+
+  bool get enabled => _token.isNotEmpty && !_targetsAppRepo;
+
+  /// Why uploads won't reach GitHub, or null when they will.
+  String? get setupProblem {
+    if (_token.isEmpty) {
+      return 'GitHub is not set up (LUMA_BENCHMARK_GITHUB_TOKEN) — the scene '
+          'only goes live on this server.';
+    }
+    if (_targetsAppRepo) {
+      return 'LUMA_BENCHMARK_GITHUB_REPO points at the app repository '
+          '($appRepo), which this server must not write to — set it to the '
+          'benchmarks repository. The scene only goes live on this server.';
+    }
+    return null;
+  }
 
   /// With [bytes] null only the manifest stanza changes (an edit).
   ///
@@ -72,9 +95,8 @@ class BenchmarkGithubPublisher {
     required String fileName,
     required List<int>? bytes,
   }) async {
-    if (!enabled) {
-      throw const GithubPublishException(
-          'LUMA_BENCHMARK_GITHUB_TOKEN is not set on the server.');
+    if (setupProblem case final problem?) {
+      throw GithubPublishException(problem);
     }
     final sceneBlob = bytes == null
         ? null

@@ -21,20 +21,11 @@ RUN dart pub get --offline && dart build cli --target bin/luma_server.dart -o /t
 # only drops a request file on the /data volume — the actual git pull and
 # `docker compose up -d --build` run on the host via deploy-watcher.sh (a
 # systemd service, see luma-deploy-watcher.service), not in this container.
-# This image no longer needs the host's Docker socket for that reason; git,
-# docker-ce-cli and docker-compose-plugin below are kept only because
-# they're occasionally useful for in-container debugging over `docker exec`.
+# Nothing here runs git, curl or docker, so none of them are installed: each
+# was only more to work with for whoever got code execution in here.
 FROM debian:bookworm-slim
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        ca-certificates git curl gnupg \
-    && install -m 0755 -d /etc/apt/keyrings \
-    && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
-    && chmod a+r /etc/apt/keyrings/docker.asc \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian bookworm stable" \
-        > /etc/apt/sources.list.d/docker.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends docker-ce-cli docker-compose-plugin \
+    && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /data
 
@@ -58,4 +49,8 @@ ENV LUMA_PORT=8080
 EXPOSE 8080
 VOLUME /data
 
-CMD ["/app/bundle/bin/luma_server"]
+# Starts as root only to hand /data to an unprivileged user, then drops to
+# it with no capabilities left — see docker-entrypoint.sh.
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod 0755 /app/docker-entrypoint.sh
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

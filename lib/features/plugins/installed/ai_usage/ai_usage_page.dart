@@ -104,11 +104,11 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
     if (_started) return;
     _started = true;
     // Deferred a frame: `of(context)` registers this element as a dependent
-    // of the InheritedNotifier, and `rescan()` notifies synchronously —
+    // of the InheritedNotifier, and `refresh()` notifies synchronously —
     // notifying *during* this build pass would dirty an element that is
     // still building (a '!_dirty' assert in debug).
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) AiUsageScope.of(context).rescan();
+      if (mounted) AiUsageScope.of(context).refresh();
     });
   }
 
@@ -162,7 +162,7 @@ class _AiUsageDashboardTabState extends State<AiUsageDashboardTab> {
               action: LumaGhostButton(
                 label: repo.scanning ? t.homeAiUsageScanning : t.aiUsageRescan,
                 icon: Icons.refresh_rounded,
-                onTap: repo.scanning ? null : repo.rescan,
+                onTap: repo.scanning ? null : repo.refresh,
               ),
             ),
           );
@@ -525,7 +525,7 @@ class _TopBar extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : Icon(Icons.refresh_rounded, color: luma.textSecondary),
-                onPressed: repo.scanning ? null : repo.rescan,
+                onPressed: repo.scanning ? null : repo.refresh,
               ),
               IconButton(
                 tooltip: t.aiUsageDisplaySettingsTooltip,
@@ -571,7 +571,7 @@ class _TopBar extends StatelessWidget {
                   ),
                 )
               : Icon(Icons.refresh_rounded, color: luma.textSecondary),
-          onPressed: repo.scanning ? null : repo.rescan,
+          onPressed: repo.scanning ? null : repo.refresh,
         ),
         IconButton(
           tooltip: t.aiUsageDisplaySettingsTooltip,

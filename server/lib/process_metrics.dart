@@ -505,10 +505,10 @@ class ProcSnapshot {
     try {
       final raw = File('$dir/cmdline').readAsBytesSync();
       if (raw.isNotEmpty) {
-        command = utf8
+        command = redactCommandLine(utf8
             .decode(raw, allowMalformed: true)
             .replaceAll('\u0000', ' ')
-            .trim();
+            .trim());
         if (command.length > 400) command = command.substring(0, 400);
       }
     } catch (_) {}
@@ -569,4 +569,45 @@ class ProcSnapshot {
     } catch (_) {}
     return out;
   }
+}
+
+final _secretName = RegExp(
+    r'(token|secret|passw(or)?d|passwd|pwd|api[_-]?key|access[_-]?key|'
+    r'private[_-]?key|auth|credential|cookie|session)',
+    caseSensitive: false);
+final _flagWithValue = RegExp(r'^(--?[\w.-]+)=(.+)$');
+final _envAssignment = RegExp(r'^([A-Za-z_][A-Za-z0-9_]*)=(.+)$');
+final _urlCredentials =
+    RegExp(r'([a-z][a-z0-9+.-]*://)[^/\s:@]+:[^/\s@]+@', caseSensitive: false);
+
+/// Masks what looks like a secret in a host process's command line before
+/// the admin Metrics tab shows it: `--token X`, `--api-key=X`, `PASSWORD=X`
+/// and `scheme://user:pass@host`. Host processes pass secrets this way
+/// (e.g. `cloudflared tunnel run --token ...`), and the dashboard is the last
+/// place they should end up readable.
+String redactCommandLine(String command) {
+  final parts = command.split(' ');
+  for (var i = 0; i < parts.length; i++) {
+    final part =
+        parts[i].replaceAllMapped(_urlCredentials, (m) => '${m[1]}***@');
+    parts[i] = part;
+    final flag = _flagWithValue.firstMatch(part);
+    if (flag != null) {
+      if (_secretName.hasMatch(flag[1]!)) parts[i] = '${flag[1]}=***';
+      continue;
+    }
+    final env = _envAssignment.firstMatch(part);
+    if (env != null) {
+      if (_secretName.hasMatch(env[1]!)) parts[i] = '${env[1]}=***';
+      continue;
+    }
+    if (part.startsWith('-') &&
+        _secretName.hasMatch(part) &&
+        i + 1 < parts.length &&
+        !parts[i + 1].startsWith('-')) {
+      parts[i + 1] = '***';
+      i++;
+    }
+  }
+  return parts.join(' ');
 }

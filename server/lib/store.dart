@@ -51,7 +51,9 @@ class StoredUser {
     Map<String, String>? oauthSubjects,
     List<String>? recentIps,
   })  : oauthSubjects = oauthSubjects ?? {},
-        recentIps = recentIps ?? [];
+        // Stored before IPv6 was bucketed by /64; normalised so old bans
+        // and new requests key the same way.
+        recentIps = (recentIps ?? []).map(ipBucket).toSet().toList();
 
   final String id;
   String email;
@@ -503,7 +505,7 @@ class BannedIp {
       };
 
   factory BannedIp.fromJson(Map<String, dynamic> j) => BannedIp(
-        ip: j['ip'] as String,
+        ip: ipBucket(j['ip'] as String),
         createdAtMs: j['createdAtMs'] as int? ?? 0,
         email: j['email'] as String?,
         reason: j['reason'] as String?,

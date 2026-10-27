@@ -288,6 +288,7 @@ class FamilyApiException implements Exception {
 
   bool get isNotFound => status == 404;
   bool get isLimitExceeded => code == 'family_limit_exceeded';
+  bool get needsEmailVerification => code == 'email_unverified';
 
   @override
   String toString() => message;
@@ -367,6 +368,15 @@ class FamilyApi {
 
   Future<void> declineInvite(String inviteId) async {
     await _postJson('/family/invites/$inviteId/decline', const {});
+  }
+
+  /// Emails this account a code proving it owns its address.
+  Future<void> sendEmailVerificationCode() async {
+    await _postJson('/account/email/send-code', const {});
+  }
+
+  Future<void> confirmEmail(String code) async {
+    await _postJson('/account/email/verify', {'code': code});
   }
 
   Future<void> removeMember(String familyId, String userId) async {

@@ -256,6 +256,7 @@ class _LumaAppState extends State<LumaApp> {
     fetchBackendCalls: () => _sync.backendAiUsageCalls(),
     backendAccount: () =>
         _sync.serverReady ? '${_sync.serverUrl}:${_sync.email}' : null,
+    cloudSync: () => _aiUsageCloudSync.syncOnOpen(),
   );
   late final AiWorkbenchRepository _aiWorkbenchRepository =
       AiWorkbenchRepository();

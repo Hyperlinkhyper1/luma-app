@@ -8963,6 +8963,36 @@ abstract class L {
   /// **'Restarting luma'**
   String get updateRestarting;
 
+  /// No description provided for @emailVerifyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm your email'**
+  String get emailVerifyTitle;
+
+  /// No description provided for @emailVerifyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Invites are addressed by email, so luma has to know this address is yours. We sent a 6-digit code to your account\'s email.'**
+  String get emailVerifyBody;
+
+  /// No description provided for @emailVerifyCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'6-digit code'**
+  String get emailVerifyCodeHint;
+
+  /// No description provided for @emailVerifyConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get emailVerifyConfirm;
+
+  /// No description provided for @emailVerifyResend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a new code'**
+  String get emailVerifyResend;
+
   /// No description provided for @familyInboxTitle.
   ///
   /// In en, this message translates to:
@@ -36111,6 +36141,42 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Message…'**
   String get secureChatMessageHint;
+
+  /// No description provided for @secureChatKeyChangedBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'{email}\'s security key changed. That happens when they set up chat on a new device — or when someone is trying to read along. Compare safety numbers with them before you trust it.'**
+  String secureChatKeyChangedBanner(String email);
+
+  /// No description provided for @secureChatKeyChangedSendBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'{email}\'s security key changed. Check the safety number and trust the new key before sending.'**
+  String secureChatKeyChangedSendBlocked(String email);
+
+  /// No description provided for @secureChatTrustNewKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Trust new key'**
+  String get secureChatTrustNewKey;
+
+  /// No description provided for @secureChatSafetyNumberTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Safety number'**
+  String get secureChatSafetyNumberTitle;
+
+  /// No description provided for @secureChatSafetyNumberBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare this number with {email} in person or on a call. If it is the same on both devices, nobody is in the middle of this chat.'**
+  String secureChatSafetyNumberBody(String email);
+
+  /// No description provided for @secureChatUnverifiedSender.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent from an older version of luma — sender not verified'**
+  String get secureChatUnverifiedSender;
 
   /// No description provided for @secureChatCouldNotDecrypt.
   ///

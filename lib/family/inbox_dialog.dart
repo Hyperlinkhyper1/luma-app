@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../account/email_verification_dialog.dart';
 import '../app/widgets.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/luma_theme.dart';
@@ -47,7 +48,17 @@ class _InboxDialogState extends State<_InboxDialog> {
       String inviteId, Future<void> Function(String) action) async {
     setState(() => _busyIds.add(inviteId));
     try {
-      await action(inviteId);
+      try {
+        await action(inviteId);
+      } on FamilyApiException catch (e) {
+        if (!e.needsEmailVerification || !mounted) rethrow;
+        final verified = await showEmailVerificationDialog(
+          context,
+          sendCode: widget.familyRepo.sendEmailVerificationCode,
+          confirm: widget.familyRepo.confirmEmail,
+        );
+        if (verified) await action(inviteId);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)

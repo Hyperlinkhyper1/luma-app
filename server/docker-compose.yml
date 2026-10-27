@@ -6,6 +6,10 @@ services:
     environment:
       # Caddy sits in front of us, so the forwarded client IP is trustworthy.
       LUMA_TRUST_PROXY: "true"
+      # The real client address, which the Caddyfile always overwrites from
+      # Cloudflare's CF-Connecting-IP. The last X-Forwarded-For hop would be
+      # a Cloudflare edge shared by many unrelated users.
+      LUMA_CLIENT_IP_HEADER: X-Luma-Client-IP
       # Enables the /admin/website editor over the mounted wiki checkout.
       LUMA_WIKI_DIR: /wiki
       LUMA_SEARXNG_URL: http://searxng:8080
@@ -16,7 +20,9 @@ services:
       - ../wiki:/wiki
       # Read-only host procfs for the admin Metrics tab's per-process
       # breakdown. The container's own /proc lists only its own processes,
-      # while the CPU tile (/proc/stat) is host-wide.
+      # while the CPU tile (/proc/stat) is host-wide. Command lines read
+      # from here have tokens, keys and passwords masked before the
+      # dashboard sees them (redactCommandLine in process_metrics.dart).
       - /proc:/host/proc:ro
       # No Docker socket and no repo bind mount here on purpose. The admin
       # dashboard's "Update & restart server" button used to run
@@ -38,6 +44,23 @@ services:
     depends_on:
       - searxng
       - renderer
+    # The server itself runs unprivileged: docker-entrypoint.sh starts as
+    # root only to hand /data over, using the capabilities below, then
+    # drops to the owner of /data (or LUMA_SYNC_UID) with none left. The
+    # image is read-only apart from /data, /wiki and a scratch /tmp.
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=1g,mode=1777
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+      - SETPCAP
+    security_opt:
+      - no-new-privileges:true
 
   renderer:
     build:

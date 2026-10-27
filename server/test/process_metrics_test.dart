@@ -4,6 +4,26 @@ import 'package:luma_sync_server/process_metrics.dart';
 import 'package:test/test.dart';
 
 void main() {
+  group('redactCommandLine', () {
+    test('masks secrets passed as flags, assignments and URLs', () {
+      expect(redactCommandLine('cloudflared tunnel run --token eyJhIjoi'),
+          'cloudflared tunnel run --token ***');
+      expect(redactCommandLine('app --api-key=sk-123 --port=8080'),
+          'app --api-key=*** --port=8080');
+      expect(redactCommandLine('env DB_PASSWORD=hunter2 PATH=/bin node x.js'),
+          'env DB_PASSWORD=*** PATH=/bin node x.js');
+      expect(redactCommandLine('psql postgres://me:s3cret@db/app'),
+          'psql postgres://***@db/app');
+    });
+
+    test('leaves ordinary command lines alone', () {
+      const plain = '/usr/bin/dockerd -H fd:// --containerd=/run/c.sock';
+      expect(redactCommandLine(plain), plain);
+      expect(redactCommandLine('node --verbose -p 3000'),
+          'node --verbose -p 3000');
+    });
+  });
+
   late Directory root;
 
   setUp(() => root = Directory.systemTemp.createTempSync('fake_proc'));

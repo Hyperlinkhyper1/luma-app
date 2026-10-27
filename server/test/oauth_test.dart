@@ -294,6 +294,9 @@ void main() {
       // would derive a key that decrypts nothing.
       expect(polled['kdfSalt'], kdfSalt());
       expect(polled['kdfIterations'], 200000);
+      // Matching by email alone must not link the provider yet: whoever
+      // registered the address may not own it. Only the passphrase does.
+      expect(store.usersById[userId]!.oauthSubjects, isEmpty);
 
       final completed =
           await call('POST', '/api/v1/auth/oauth/complete', body: {

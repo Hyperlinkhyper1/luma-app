@@ -39,14 +39,23 @@ plus the test, company, model and reasoning effort, derives the id
 1. saves it to `<dataDir>/ai_benchmarks/uploads/` with its stanza in
    `uploads.json`, so the app lists it at once;
 2. with `LUMA_BENCHMARK_GITHUB_TOKEN` set (see `server/.env.example`),
-   commits the scene and the updated `manifest.json` here as one
-   `[skip ci]` commit — `release.yml` also ignores pushes that only touch
-   `server/benchmarks/**`, so no release build runs;
+   commits the scene and the updated `manifest.json` as one commit to the
+   dedicated benchmarks repository
+   ([Hyperlinkhyper1/Luma-App-Benchmarks](https://github.com/Hyperlinkhyper1/Luma-App-Benchmarks)),
+   at `scenes/<id>.<ext>` and `manifest.json` in its root;
 3. renders its banner if it has none.
 
-An upload wins over the seed only while it is newer: once "Update & restart
-server" pulls the commit in, the seed copy (and any later edit to it) is
-served again. The company is stored as an optional `vendor` key; without one
+Uploads never commit to this repository. The server's token can only write
+to the benchmarks repository, because a token with write access here could
+change `lib/` and ship it to every client through the auto-release and the
+silent updater. The server refuses to publish if `LUMA_BENCHMARK_GITHUB_REPO`
+points here.
+
+So an upload stays an upload in `<dataDir>/ai_benchmarks/uploads/` — on a
+volume that survives redeploys — rather than coming back as a seed file.
+To make one part of the seed baked into the image, copy it from the
+benchmarks repository into this folder by hand, review it, and commit it
+like any other change. An upload wins over the seed only while it is newer. The company is stored as an optional `vendor` key; without one
 the app still works the company out from the model name.
 
 ## Adding a scene by hand

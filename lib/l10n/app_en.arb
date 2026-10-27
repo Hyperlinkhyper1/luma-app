@@ -2702,6 +2702,11 @@
   "updateStageVerifying": "Verifying files",
   "updateStagePreparing": "Preparing installer",
   "updateRestarting": "Restarting luma",
+  "emailVerifyTitle": "Confirm your email",
+  "emailVerifyBody": "Invites are addressed by email, so luma has to know this address is yours. We sent a 6-digit code to your account's email.",
+  "emailVerifyCodeHint": "6-digit code",
+  "emailVerifyConfirm": "Confirm",
+  "emailVerifyResend": "Send a new code",
   "familyInboxTitle": "Inbox",
   "familyInboxPendingInvites": "{count, plural, =1{1 pending invite} other{{count} pending invites}}",
   "@familyInboxPendingInvites": {
@@ -13977,6 +13982,33 @@
     }
   },
   "secureChatMessageHint": "Message…",
+  "secureChatKeyChangedBanner": "{email}'s security key changed. That happens when they set up chat on a new device — or when someone is trying to read along. Compare safety numbers with them before you trust it.",
+  "@secureChatKeyChangedBanner": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "secureChatKeyChangedSendBlocked": "{email}'s security key changed. Check the safety number and trust the new key before sending.",
+  "@secureChatKeyChangedSendBlocked": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "secureChatTrustNewKey": "Trust new key",
+  "secureChatSafetyNumberTitle": "Safety number",
+  "secureChatSafetyNumberBody": "Compare this number with {email} in person or on a call. If it is the same on both devices, nobody is in the middle of this chat.",
+  "@secureChatSafetyNumberBody": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "secureChatUnverifiedSender": "Sent from an older version of luma — sender not verified",
   "secureChatCouldNotDecrypt": "Could not decrypt this message.",
   "secureChatEnterValidEmail": "Enter a valid email address.",
   "secureChatInviteTitle": "Start an encrypted chat",

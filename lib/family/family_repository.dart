@@ -219,6 +219,11 @@ class FamilyRepository extends ChangeNotifier {
     await refresh();
   }
 
+  Future<void> sendEmailVerificationCode() =>
+      _requireApi().sendEmailVerificationCode();
+
+  Future<void> confirmEmail(String code) => _requireApi().confirmEmail(code);
+
   /// Marks one operator message read, locally first so the badge drops at
   /// once, then on the server.
   Future<void> markMessageRead(String messageId) async {

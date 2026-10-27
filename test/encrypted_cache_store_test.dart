@@ -174,6 +174,7 @@ class _ChatCache implements _Cache {
     'conversations': store.conversationsJson,
     'invites': store.invitesJson,
     'messages': store.messagesByConversation,
+    'pinnedKeys': store.pinnedKeys,
   };
 
   @override

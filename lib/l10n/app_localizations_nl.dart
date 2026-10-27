@@ -5144,6 +5144,22 @@ class LNl extends L {
   String get updateRestarting => 'luma wordt opnieuw gestart';
 
   @override
+  String get emailVerifyTitle => 'Bevestig je e-mailadres';
+
+  @override
+  String get emailVerifyBody =>
+      'Uitnodigingen gaan per e-mail, dus luma moet weten dat dit adres van jou is. We hebben een 6-cijferige code naar het e-mailadres van je account gestuurd.';
+
+  @override
+  String get emailVerifyCodeHint => '6-cijferige code';
+
+  @override
+  String get emailVerifyConfirm => 'Bevestigen';
+
+  @override
+  String get emailVerifyResend => 'Nieuwe code sturen';
+
+  @override
   String get familyInboxTitle => 'Postvak IN';
 
   @override
@@ -22267,6 +22283,31 @@ class LNl extends L {
 
   @override
   String get secureChatMessageHint => 'Bericht…';
+
+  @override
+  String secureChatKeyChangedBanner(String email) {
+    return 'De beveiligingssleutel van $email is veranderd. Dat gebeurt als ze chat op een nieuw apparaat instellen — of als iemand probeert mee te lezen. Vergelijk eerst de veiligheidscode met ze voordat je de sleutel vertrouwt.';
+  }
+
+  @override
+  String secureChatKeyChangedSendBlocked(String email) {
+    return 'De beveiligingssleutel van $email is veranderd. Controleer de veiligheidscode en vertrouw de nieuwe sleutel voordat je iets stuurt.';
+  }
+
+  @override
+  String get secureChatTrustNewKey => 'Nieuwe sleutel vertrouwen';
+
+  @override
+  String get secureChatSafetyNumberTitle => 'Veiligheidscode';
+
+  @override
+  String secureChatSafetyNumberBody(String email) {
+    return 'Vergelijk deze code met $email, in persoon of via een gesprek. Is hij op beide apparaten gelijk, dan zit er niemand tussen.';
+  }
+
+  @override
+  String get secureChatUnverifiedSender =>
+      'Verstuurd vanuit een oudere versie van luma — afzender niet geverifieerd';
 
   @override
   String get secureChatCouldNotDecrypt =>

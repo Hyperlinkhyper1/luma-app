@@ -4903,6 +4903,22 @@ class LZh extends L {
   String get updateRestarting => '正在重启 luma';
 
   @override
+  String get emailVerifyTitle => '确认你的邮箱';
+
+  @override
+  String get emailVerifyBody =>
+      '邀请是按邮箱地址发送的，所以 luma 需要确认这个地址属于你。我们已向你账户的邮箱发送了一个 6 位验证码。';
+
+  @override
+  String get emailVerifyCodeHint => '6 位验证码';
+
+  @override
+  String get emailVerifyConfirm => '确认';
+
+  @override
+  String get emailVerifyResend => '重新发送验证码';
+
+  @override
   String get familyInboxTitle => '收件箱';
 
   @override
@@ -21081,6 +21097,30 @@ class LZh extends L {
 
   @override
   String get secureChatMessageHint => '消息…';
+
+  @override
+  String secureChatKeyChangedBanner(String email) {
+    return '$email 的安全密钥已更改。这可能是对方在新设备上设置了聊天，也可能是有人试图偷看。请先和对方核对安全码，再信任新密钥。';
+  }
+
+  @override
+  String secureChatKeyChangedSendBlocked(String email) {
+    return '$email 的安全密钥已更改。请核对安全码并信任新密钥后再发送。';
+  }
+
+  @override
+  String get secureChatTrustNewKey => '信任新密钥';
+
+  @override
+  String get secureChatSafetyNumberTitle => '安全码';
+
+  @override
+  String secureChatSafetyNumberBody(String email) {
+    return '请当面或通话时与 $email 核对这串数字。如果两台设备上完全相同，说明没有人在中间截取这段聊天。';
+  }
+
+  @override
+  String get secureChatUnverifiedSender => '来自旧版 luma 的消息 — 发送者未验证';
 
   @override
   String get secureChatCouldNotDecrypt => '无法解密此消息。';

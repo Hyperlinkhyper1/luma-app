@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -11,7 +12,64 @@ import '../../../../../app/widgets.dart';
 import '../../../../../l10n/app_localizations.dart';
 import '../../_shared/windows_webview.dart';
 
-/// Opens an unchanged benchmark document from the bundle or download cache.
+/// The Content-Security-Policy a downloaded benchmark scene runs under. Scenes
+/// are LLM-written and come from the luma server, so they are untrusted code:
+/// they get the CDNs they import from and nothing to send data back with — no
+/// fetch, XHR or WebSocket beyond data: and blob: URLs. Mirrors the policy the
+/// server's preview renderer (server/tool/renderer_network.mjs) enforces.
+const sceneCsp =
+    "default-src 'none'; "
+    "script-src 'unsafe-inline' 'unsafe-eval' blob: https://cdn.jsdelivr.net "
+    'https://unpkg.com https://cdnjs.cloudflare.com https://esm.sh '
+    'https://cdn.tailwindcss.com; '
+    "style-src 'unsafe-inline' https://fonts.googleapis.com; "
+    'font-src data: https://fonts.gstatic.com; '
+    'img-src data: blob: https:; '
+    'media-src data: blob:; '
+    'connect-src data: blob:; '
+    'worker-src blob: data:; '
+    "frame-src 'none'; "
+    "object-src 'none'; "
+    "base-uri 'none'; "
+    "form-action 'none'";
+
+/// [html] with [sceneCsp] in front of everything but its doctype, so the
+/// policy is in force before the scene's first script or stylesheet. The
+/// charset comes first because the policy pushes the scene's own
+/// `<meta charset>` past the 1024 bytes a browser scans for it.
+String withSceneCsp(String html) {
+  final source = html.startsWith('﻿') ? html.substring(1) : html;
+  final doctype = RegExp(
+    r'^\s*<!doctype[^>]*>',
+    caseSensitive: false,
+  ).firstMatch(source);
+  final at = doctype?.end ?? 0;
+  return '${source.substring(0, at)}'
+      '<meta charset="utf-8">'
+      '<meta http-equiv="Content-Security-Policy" content="$sceneCsp">'
+      '${source.substring(at)}';
+}
+
+/// Writes the scene at [path] next to itself with [withSceneCsp] applied and
+/// returns the copy's path. A copy newer than the scene is reused.
+Future<String> sandboxedScene(String path) async {
+  final source = File(path);
+  final copy = File('$path.sandboxed.html');
+  if (await copy.exists() &&
+      !(await copy.lastModified()).isBefore(await source.lastModified())) {
+    return copy.path;
+  }
+  final html = utf8.decode(await source.readAsBytes(), allowMalformed: true);
+  final temp = File('${copy.path}.${DateTime.now().microsecondsSinceEpoch}');
+  await temp.writeAsString(withSceneCsp(html), flush: true);
+  await temp.rename(copy.path);
+  return copy.path;
+}
+
+/// Opens a benchmark document from the bundle or download cache. Downloaded
+/// scenes and inline HTML run under [sceneCsp], and no scene may read other
+/// files: on Android a `file://` page with universal file access could read
+/// anything in the app's data directory and post it out.
 class BenchmarkWebview extends StatefulWidget {
   const BenchmarkWebview({
     super.key,
@@ -56,6 +114,10 @@ class _BenchmarkWebviewState extends State<BenchmarkWebview> {
   String? _error;
   int _generation = 0;
 
+  /// The [sandboxedScene] copy of [BenchmarkWebview.path], once written.
+  String? _scenePath;
+  int _preparing = 0;
+
   // The documents already use WebView2's messaging API. Supplying its mobile
   // equivalent here keeps the benchmark files identical on every platform.
   static const _messageBridge = r'''
@@ -84,6 +146,12 @@ class _BenchmarkWebviewState extends State<BenchmarkWebview> {
 ''';
 
   @override
+  void initState() {
+    super.initState();
+    _prepare();
+  }
+
+  @override
   void didUpdateWidget(BenchmarkWebview oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.path != widget.path ||
@@ -95,7 +163,25 @@ class _BenchmarkWebviewState extends State<BenchmarkWebview> {
       _loadedFired = false;
       _failed = false;
       _error = null;
+      if (oldWidget.path != widget.path) _prepare();
     }
+  }
+
+  void _prepare() {
+    final path = widget.path;
+    final generation = ++_preparing;
+    _scenePath = null;
+    if (path == null || !BenchmarkWebview.supported) return;
+    sandboxedScene(path).then(
+      (copy) {
+        if (mounted && generation == _preparing) {
+          setState(() => _scenePath = copy);
+        }
+      },
+      onError: (Object error) {
+        if (mounted && generation == _preparing) _fail('$error');
+      },
+    );
   }
 
   void _loadStarted() {
@@ -130,6 +216,7 @@ class _BenchmarkWebviewState extends State<BenchmarkWebview> {
       _failed = false;
       _error = null;
     });
+    if (_scenePath == null) _prepare();
   }
 
   @override
@@ -148,6 +235,9 @@ class _BenchmarkWebviewState extends State<BenchmarkWebview> {
         ),
       );
     }
+    final path = _scenePath;
+    if (widget.path != null && path == null) return const SizedBox.shrink();
+    final html = widget.html == null ? null : withSceneCsp(widget.html!);
     final sourceKey = ValueKey((
       widget.path,
       widget.assetPath,
@@ -157,12 +247,10 @@ class _BenchmarkWebviewState extends State<BenchmarkWebview> {
     if (defaultTargetPlatform == TargetPlatform.windows) {
       return WindowsWebview(
         key: sourceKey,
-        fileUrl: widget.html == null
-            ? Uri.file(
-                widget.path ?? windowsAssetPath(widget.assetPath!),
-              ).toString()
+        fileUrl: html == null
+            ? Uri.file(path ?? windowsAssetPath(widget.assetPath!)).toString()
             : null,
-        html: widget.html,
+        html: html,
         onLoaded: _loaded,
         onController: widget.onMessage == null
             ? null
@@ -174,26 +262,24 @@ class _BenchmarkWebviewState extends State<BenchmarkWebview> {
               },
       );
     }
-    final path = widget.path;
     return InAppWebView(
       key: sourceKey,
       initialFile: widget.assetPath,
       initialUrlRequest: path == null
           ? null
           : URLRequest(url: WebUri(Uri.file(path).toString())),
-      initialData: widget.html == null
-          ? null
-          : InAppWebViewInitialData(data: widget.html!),
+      initialData: html == null ? null : InAppWebViewInitialData(data: html),
       initialSettings: InAppWebViewSettings(
         javaScriptEnabled: true,
         hardwareAcceleration: true,
         supportZoom: false,
-        allowFileAccess: true,
-        allowFileAccessFromFileURLs: true,
-        allowUniversalAccessFromFileURLs: true,
+        allowFileAccess: html == null,
+        allowContentAccess: false,
+        allowFileAccessFromFileURLs: false,
+        allowUniversalAccessFromFileURLs: false,
         allowingReadAccessTo: path == null
             ? null
-            : WebUri(Uri.directory(File(path).parent.path).toString()),
+            : WebUri(Uri.file(path).toString()),
       ),
       gestureRecognizers: {
         Factory<OneSequenceGestureRecognizer>(EagerGestureRecognizer.new),

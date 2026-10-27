@@ -156,9 +156,22 @@ out. The dashboard also offers **Sign out all admin sessions**. Legacy session
 files require a fresh sign-in after upgrading. Browser writes require an
 `Origin` matching the request host; header-authenticated scripts may omit it.
 
-Failed admin-key attempts are rate-limited separately from successful
-polling (10 failures / 15 min per IP), so the dashboard's own background
-polling never locks a legitimate operator out.
+Every sign-in takes a second factor: the 30-second code from an
+authenticator app (RFC 6238, SHA-1, 6 digits). The first sign-in with the key
+shows a setup key (and an `otpauth://` link) and asks for one code back
+before the secret is kept in `admin_totp.json`; after that the login form asks
+for key + code every time, and each code works for one sign-in only.
+`LUMA_ADMIN_TOTP_SECRET` can supply the key instead. Scripts send the code in
+`X-Admin-Totp` next to `X-Admin-Key`. Sessions are also bound to the TOTP
+secret, so re-enrolling signs everyone out. To re-enroll after losing the
+phone, delete `admin_totp.json` on the host. `LUMA_ADMIN_KEY` must be at least
+32 characters or the dashboard stays disabled.
+
+Failed admin attempts (wrong key or wrong code) are rate-limited separately
+from successful polling: 1 per minute per IP plus 20 per hour server-wide.
+A valid session cookie is checked before either budget, so neither the
+dashboard's own polling nor someone else's guesses ever lock out an operator
+who is already signed in.
 
 ## Rate limiting
 

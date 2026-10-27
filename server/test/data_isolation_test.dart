@@ -109,7 +109,7 @@ void main() {
     };
   }
 
-  Future<String> register(String email) async {
+  Future<String> register(String email, {bool verified = true}) async {
     final authKey = c.sha256.convert(utf8.encode('key:$email')).bytes;
     final result = await call('POST', '/auth/register', json: {
       'email': email,
@@ -118,6 +118,12 @@ void main() {
       'kdfIterations': 210000,
     });
     expect(result['httpStatus'], 201, reason: 'register: $result');
+    // As if each person had confirmed the code emailed to them: accepting a
+    // family or chat invite needs a verified address.
+    if (verified) {
+      store.usersById[store.userIdByEmail[email]]!.emailVerifiedAtMs =
+          DateTime.now().millisecondsSinceEpoch;
+    }
     return result['token'] as String;
   }
 
@@ -137,6 +143,81 @@ void main() {
     }
     return out.takeBytes();
   }
+
+  group('an unverified email is not an identity', () {
+    test('invites need a verified address, which a code then proves',
+        () async {
+      final a = await register('a@example.com');
+      final b = await register('b@example.com', verified: false);
+      final familyId = (await call('POST', '/family',
+          json: {'name': 'Home'}, token: a))['id'] as String;
+      final invite = await call('POST', '/family/$familyId/invite',
+          json: {'email': 'b@example.com'}, token: a);
+
+      final refused = await call(
+          'POST', '/family/invites/${invite['id']}/accept',
+          token: b);
+      expect(refused['httpStatus'], 403);
+      expect(refused['error'], 'email_unverified');
+
+      // No mailer on this server, so it says so instead of pretending.
+      final send = await call('POST', '/account/email/send-code', token: b);
+      expect(send['httpStatus'], 503);
+
+      // Plant the code a configured mailer would have sent.
+      final user = store.usersById[store.userIdByEmail['b@example.com']]!;
+      user
+        ..verificationTokenHash =
+            c.sha256.convert(utf8.encode('424242')).toString()
+        ..verificationExpiresAtMs =
+            DateTime.now().millisecondsSinceEpoch + 60000;
+      final wrong = await call('POST', '/account/email/verify',
+          json: {'code': '000000'}, token: b);
+      expect(wrong['error'], 'bad_code');
+      final ok = await call('POST', '/account/email/verify',
+          json: {'code': '424242'}, token: b);
+      expect(ok['verified'], isTrue);
+      expect(user.emailVerifiedAtMs, isNotNull);
+
+      final accepted = await call(
+          'POST', '/family/invites/${invite['id']}/accept',
+          token: b);
+      expect(accepted['httpStatus'], 200);
+    });
+  });
+
+  group('chat keys', () {
+    test('a stolen token cannot swap in a new chat key', () async {
+      final a = await register('a@example.com');
+      final first = base64Encode(List.filled(32, 1));
+      final second = base64Encode(List.filled(32, 2));
+      expect((await call('PUT', '/chat/key',
+          json: {'publicKey': first}, token: a))['httpStatus'], 200);
+      // Re-sending the same key is always fine.
+      expect((await call('PUT', '/chat/key',
+          json: {'publicKey': first}, token: a))['httpStatus'], 200);
+
+      // A fresh sign-in may replace it — that is what a new device does.
+      expect((await call('PUT', '/chat/key',
+          json: {'publicKey': second}, token: a))['httpStatus'], 200);
+
+      // An old session may not.
+      final session = store.sessionsByTokenHash.values
+          .firstWhere((s) => s.userId == store.userIdByEmail['a@example.com']);
+      store.sessionsByTokenHash[session.tokenHash] = StoredSession(
+        tokenHash: session.tokenHash,
+        userId: session.userId,
+        createdAtMs: DateTime.now()
+            .subtract(const Duration(hours: 1))
+            .millisecondsSinceEpoch,
+        expiresAtMs: session.expiresAtMs,
+      );
+      final refused = await call('PUT', '/chat/key',
+          json: {'publicKey': first}, token: a);
+      expect(refused['httpStatus'], 403);
+      expect(refused['error'], 'reauth_required');
+    });
+  });
 
   group('one account cannot reach another account\'s data', () {
     test('sync snapshots are per account, even under the same name',
