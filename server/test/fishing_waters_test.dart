@@ -285,6 +285,65 @@ void main() {
     expect(weather['setAt'], v2);
   });
 
+  test('supercells take an optional bounded location that reaches game servers', () async {
+    final (unauthorized, _) = await send('POST', '/admin/fishing-waters/weather',
+        json: {'kind': 'Supercell', 'supercell': {'x': 30, 'z': -60}});
+    expect(unauthorized, isNot(200));
+    await send('POST', '/api/v1/fishing-waters/heartbeat',
+        json: heartbeatBody()..['kinds'] = ['Clear', 'Supercell', 'Storm'],
+        gameKey: 'game-secret');
+    for (final point in [{}, {'x': 0}, {'x': '10', 'z': 0}, {'x': 5201, 'z': 0}, {'x': 0, 'z': -5201}]) {
+      final (status, _) = await send('POST', '/admin/fishing-waters/weather',
+          admin: true, json: {'kind': 'Supercell', 'supercell': point});
+      expect(status, 400);
+    }
+    final (placed, state) = await send('POST', '/admin/fishing-waters/weather',
+        admin: true, json: {'kind': 'Supercell', 'supercell': {'x': 400, 'z': 600}});
+    expect(placed, 200);
+    expect((state['weather'] as Map)['supercell'], {'x': 400, 'z': 600});
+    final (_, reply) = await send('POST', '/api/v1/fishing-waters/heartbeat',
+        json: heartbeatBody()..['kinds'] = ['Clear', 'Supercell', 'Storm'],
+        gameKey: 'game-secret');
+    expect(reply['weatherOverride'], 'Supercell');
+    expect(reply['supercell'], {'x': 400, 'z': 600});
+    expect(reply['blackHole'], isNull);
+
+    // Leaving the location out circles a random player: the game picks the spot.
+    final (random, afterRandom) = await send('POST', '/admin/fishing-waters/weather',
+        admin: true, json: {'kind': 'Supercell'});
+    expect(random, 200);
+    expect((afterRandom['weather'] as Map)['supercell'], isNull);
+    final (_, randomReply) = await send('POST', '/api/v1/fishing-waters/heartbeat',
+        json: heartbeatBody()..['kinds'] = ['Clear', 'Supercell', 'Storm'],
+        gameKey: 'game-secret');
+    expect(randomReply['weatherOverride'], 'Supercell');
+    expect(randomReply['supercell'], isNull);
+
+    final (blackHole, _) = await send('POST', '/admin/fishing-waters/weather',
+        admin: true, json: {'kind': 'BlackHole', 'blackHole': {'x': 10, 'z': 20}});
+    expect(blackHole, 200);
+    final (_, afterBlackHole) = await send('GET', '/admin/fishing-waters/state', admin: true);
+    expect((afterBlackHole['weather'] as Map)['supercell'], isNull);
+  });
+
+  test('supercell locations persist and clear with the override', () async {
+    final clock = DateTime.fromMillisecondsSinceEpoch(12345);
+    final first = FishingWaters(dir.path, gameKey: 'k', clock: () => clock);
+    await first.heartbeat(Request('POST', Uri.parse('http://localhost/'),
+        headers: {'x-fishing-waters-key': 'k'},
+        body: jsonEncode({'jobId': 'job-1', 'kinds': ['Clear', 'Supercell']})));
+    final placed = await first.setWeather(Request('POST', Uri.parse('http://localhost/'),
+        body: jsonEncode({'kind': 'Supercell', 'supercell': {'x': 300, 'z': 400}})));
+    expect(placed.statusCode, 200);
+    final second = FishingWaters(dir.path, gameKey: 'k', clock: () => clock);
+    final weather = second.stateJson()['weather'] as Map;
+    expect(weather['override'], 'Supercell');
+    expect(weather['supercell'], {'x': 300, 'z': 400});
+    await second.setWeather(Request('POST', Uri.parse('http://localhost/'),
+        body: jsonEncode({'kind': 'Clear'})));
+    expect((second.stateJson()['weather'] as Map)['supercell'], isNull);
+  });
+
   test('a closing server drops off the dashboard', () async {
     await send('POST', '/api/v1/fishing-waters/heartbeat',
         json: heartbeatBody(), gameKey: 'game-secret');
@@ -340,6 +399,9 @@ void main() {
     expect(html, contains('id="fwBlackHoleX"'));
     expect(html, contains('id="fwBlackHoleZ"'));
     expect(html, contains('id="fwBlackHoleSpawn"'));
+    expect(html, contains('id="fwSupercellX"'));
+    expect(html, contains('id="fwSupercellSpawn"'));
+    expect(html, contains('id="fwSupercellRandom"'));
 
     // Both projects sit side by side inside the page wrapper: the luma one
     // must be closed before Fishing Waters opens, and the wrapper after it.

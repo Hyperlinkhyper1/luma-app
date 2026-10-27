@@ -6305,6 +6305,25 @@ class Api {
     });
   }
 
+  /// The room behind `<code>` when [user] is in it. A room the caller isn't
+  /// in answers exactly like one that doesn't exist and counts as a wrong
+  /// guess on the join limiter, so no room route can be used to find live
+  /// codes around [_joinSubwayRoom]'s budget.
+  (SubwayRoom?, Response?) _subwayRoomOf(Request request, StoredUser user) {
+    final code = (request.params['code'] ?? '').toUpperCase();
+    final room = subwayStore.roomsByCode[code];
+    if (room != null && room.isMember(user.id)) return (room, null);
+    if (_roomJoinFailLimiter.isLimited(user.id)) {
+      return (
+        null,
+        errorResponse(429, 'rate_limited',
+            'Too many wrong room codes. Try again later.')
+      );
+    }
+    _roomJoinFailLimiter.allow(user.id);
+    return (null, errorResponse(404, 'not_found', 'Room not found.'));
+  }
+
   /// Owner-only. [contactUserId] must already be someone the caller has an
   /// accepted chat conversation with — this is the "existing chat contacts
   /// only" invite scope. Does not itself send anything; the client is
@@ -6312,17 +6331,15 @@ class Api {
   /// (the server cannot compose one — chat messages are end-to-end
   /// encrypted client-side, see chat_store.dart).
   Future<Response> _inviteToSubwayRoom(Request request, StoredUser user) async {
-    final code = (request.params['code'] ?? '').toUpperCase();
     final body = await _readJson(request);
     final contactUserId = body['contactUserId'];
     if (contactUserId is! String || contactUserId.isEmpty) {
       return errorResponse(400, 'bad_request', 'Missing contactUserId.');
     }
     return store.lock.synchronized(() async {
-      final room = subwayStore.roomsByCode[code];
-      if (room == null)
-        return errorResponse(404, 'not_found', 'Room not found.');
-      if (room.ownerId != user.id) {
+      final (room, missing) = _subwayRoomOf(request, user);
+      if (missing != null) return missing;
+      if (room!.ownerId != user.id) {
         return errorResponse(
             403, 'forbidden', 'Only the room owner can invite.');
       }
@@ -6369,12 +6386,9 @@ class Api {
   }
 
   Future<Response> _putSubwayState(Request request, StoredUser user) async {
-    final code = (request.params['code'] ?? '').toUpperCase();
-    final room = subwayStore.roomsByCode[code];
-    if (room == null) return errorResponse(404, 'not_found', 'Room not found.');
-    if (!room.isMember(user.id)) {
-      return errorResponse(403, 'forbidden', 'Not a member of this room.');
-    }
+    final (room, missing) = _subwayRoomOf(request, user);
+    if (missing != null) return missing;
+    final code = room!.code;
     final raw = await _readCappedString(request, _maxSubwayStateBytes);
     if (raw == null) {
       return errorResponse(413, 'too_large', 'Room state too large.');
@@ -6399,13 +6413,9 @@ class Api {
   }
 
   Future<Response> _getSubwayState(Request request, StoredUser user) async {
-    final code = (request.params['code'] ?? '').toUpperCase();
-    final room = subwayStore.roomsByCode[code];
-    if (room == null) return errorResponse(404, 'not_found', 'Room not found.');
-    if (!room.isMember(user.id)) {
-      return errorResponse(403, 'forbidden', 'Not a member of this room.');
-    }
-    final stateJson = await subwayStore.readState(code);
+    final (room, missing) = _subwayRoomOf(request, user);
+    if (missing != null) return missing;
+    final stateJson = await subwayStore.readState(room!.code);
     if (stateJson == null)
       return errorResponse(404, 'no_state', 'Room has no state yet.');
     return Response.ok(stateJson,
@@ -6417,16 +6427,11 @@ class Api {
   /// every few seconds while held, expires on its own if that client goes
   /// away so someone else can pick it up. Not who "owns" the room.
   Future<Response> _claimSubwayClock(Request request, StoredUser user) async {
-    final code = (request.params['code'] ?? '').toUpperCase();
     return store.lock.synchronized(() async {
-      final room = subwayStore.roomsByCode[code];
-      if (room == null)
-        return errorResponse(404, 'not_found', 'Room not found.');
-      if (!room.isMember(user.id)) {
-        return errorResponse(403, 'forbidden', 'Not a member of this room.');
-      }
+      final (room, missing) = _subwayRoomOf(request, user);
+      if (missing != null) return missing;
       final now = _nowMs;
-      final held = room.clockHolderId != null &&
+      final held = room!.clockHolderId != null &&
           room.clockLeaseExpiresAtMs != null &&
           room.clockLeaseExpiresAtMs! > now;
       if (held && room.clockHolderId != user.id) {
@@ -6444,12 +6449,10 @@ class Api {
   }
 
   Future<Response> _releaseSubwayClock(Request request, StoredUser user) async {
-    final code = (request.params['code'] ?? '').toUpperCase();
     return store.lock.synchronized(() async {
-      final room = subwayStore.roomsByCode[code];
-      if (room == null)
-        return errorResponse(404, 'not_found', 'Room not found.');
-      if (room.clockHolderId == user.id) {
+      final (room, missing) = _subwayRoomOf(request, user);
+      if (missing != null) return missing;
+      if (room!.clockHolderId == user.id) {
         room.clockHolderId = null;
         room.clockLeaseExpiresAtMs = null;
         await subwayStore.saveRooms();
@@ -6464,13 +6467,9 @@ class Api {
   /// handshake, so this keeps the real session token out of the connection
   /// URL / any proxy log line).
   Future<Response> _mintSubwayTicket(Request request, StoredUser user) async {
-    final code = (request.params['code'] ?? '').toUpperCase();
-    final room = subwayStore.roomsByCode[code];
-    if (room == null) return errorResponse(404, 'not_found', 'Room not found.');
-    if (!room.isMember(user.id)) {
-      return errorResponse(403, 'forbidden', 'Not a member of this room.');
-    }
-    final ticket = _subwayTickets.mint(user.id, code);
+    final (room, missing) = _subwayRoomOf(request, user);
+    if (missing != null) return missing;
+    final ticket = _subwayTickets.mint(user.id, room!.code);
     return jsonResponse(200, {
       'ticket': ticket,
       'ttlSeconds': SubwayTicketStore.ttl.inSeconds,
@@ -6623,11 +6622,22 @@ class Api {
     return jsonResponse(200, _familyJson(family, user, includeInvites: true));
   }
 
-  Future<Response> _inviteFamilyMember(Request request, StoredUser user) async {
+  /// The family behind `<id>` when [user] is in it. Someone outside it gets
+  /// the same 404 as for a family that doesn't exist, so family ids can't
+  /// be confirmed by probing.
+  (Family?, Response?) _familyOf(Request request, StoredUser user) {
     final familyId = request.params['id']!;
     final family = familyStore.familiesById[familyId];
-    if (family == null)
-      return errorResponse(404, 'not_found', 'Family not found.');
+    if (family == null || !familyStore.isMember(familyId, user.id)) {
+      return (null, errorResponse(404, 'not_found', 'Family not found.'));
+    }
+    return (family, null);
+  }
+
+  Future<Response> _inviteFamilyMember(Request request, StoredUser user) async {
+    final (family, missing) = _familyOf(request, user);
+    if (missing != null) return missing;
+    final familyId = family!.id;
     if (family.ownerUserId != user.id) {
       return errorResponse(
           403, 'forbidden', 'Only the family owner can invite members.');
@@ -6815,11 +6825,10 @@ class Api {
   }
 
   Future<Response> _removeFamilyMember(Request request, StoredUser user) async {
-    final familyId = request.params['id']!;
     final targetUserId = request.params['userId']!;
-    final family = familyStore.familiesById[familyId];
-    if (family == null)
-      return errorResponse(404, 'not_found', 'Family not found.');
+    final (family, missing) = _familyOf(request, user);
+    if (missing != null) return missing;
+    final familyId = family!.id;
     final isOwner = family.ownerUserId == user.id;
     final isSelf = targetUserId == user.id;
     if (!isOwner && !isSelf) {
@@ -6841,10 +6850,9 @@ class Api {
   }
 
   Future<Response> _deleteFamily(Request request, StoredUser user) async {
-    final familyId = request.params['id']!;
-    final family = familyStore.familiesById[familyId];
-    if (family == null)
-      return errorResponse(404, 'not_found', 'Family not found.');
+    final (family, missing) = _familyOf(request, user);
+    if (missing != null) return missing;
+    final familyId = family!.id;
     if (family.ownerUserId != user.id) {
       return errorResponse(
           403, 'forbidden', 'Only the family owner can delete the family.');
@@ -6860,14 +6868,9 @@ class Api {
   }
 
   Future<Response> _addSharedEvent(Request request, StoredUser user) async {
-    final familyId = request.params['id']!;
-    final family = familyStore.familiesById[familyId];
-    if (family == null)
-      return errorResponse(404, 'not_found', 'Family not found.');
-    if (!familyStore.isMember(familyId, user.id)) {
-      return errorResponse(
-          403, 'forbidden', 'You are not a member of this family.');
-    }
+    final (family, missing) = _familyOf(request, user);
+    if (missing != null) return missing;
+    final familyId = family!.id;
     final body = await _readJson(request);
     final parsed = _parseSharedEventBody(body, familyId);
     if (parsed is _ParseError) {
@@ -6912,31 +6915,25 @@ class Api {
   }
 
   Response _listSharedEvents(Request request, StoredUser user) {
-    final familyId = request.params['id']!;
-    if (familyStore.familiesById[familyId] == null) {
-      return errorResponse(404, 'not_found', 'Family not found.');
-    }
-    if (!familyStore.isMember(familyId, user.id)) {
-      return errorResponse(
-          403, 'forbidden', 'You are not a member of this family.');
-    }
-    final events = familyStore.visibleEvents(familyId, user.id);
+    final (family, missing) = _familyOf(request, user);
+    if (missing != null) return missing;
+    final events = familyStore.visibleEvents(family!.id, user.id);
     return jsonResponse(200, {'events': events.map(_sharedEventJson).toList()});
   }
 
   Future<Response> _updateSharedEvent(Request request, StoredUser user) async {
-    final familyId = request.params['id']!;
     final eventId = request.params['eventId']!;
-    final family = familyStore.familiesById[familyId];
-    if (family == null)
-      return errorResponse(404, 'not_found', 'Family not found.');
-    final event = familyStore.sharedEventsByFamilyId[familyId]?[eventId];
-    if (event == null)
-      return errorResponse(404, 'not_found', 'Event not found.');
     // Authorship alone is not enough: someone who wrote an event and then
     // left (or was removed from) the family keeps no write access to it.
-    if (!familyStore.isMember(familyId, user.id) ||
-        (event.authorUserId != user.id && family.ownerUserId != user.id)) {
+    final (family, missing) = _familyOf(request, user);
+    if (missing != null) return missing;
+    final familyId = family!.id;
+    final event = familyStore.sharedEventsByFamilyId[familyId]?[eventId];
+    if (event == null ||
+        (!event.visibleTo(user.id) && family.ownerUserId != user.id)) {
+      return errorResponse(404, 'not_found', 'Event not found.');
+    }
+    if (event.authorUserId != user.id && family.ownerUserId != user.id) {
       return errorResponse(403, 'forbidden',
           'Only the author or family owner can edit this event.');
     }
@@ -6976,16 +6973,16 @@ class Api {
   }
 
   Future<Response> _deleteSharedEvent(Request request, StoredUser user) async {
-    final familyId = request.params['id']!;
     final eventId = request.params['eventId']!;
-    final family = familyStore.familiesById[familyId];
-    if (family == null)
-      return errorResponse(404, 'not_found', 'Family not found.');
+    final (family, missing) = _familyOf(request, user);
+    if (missing != null) return missing;
+    final familyId = family!.id;
     final event = familyStore.sharedEventsByFamilyId[familyId]?[eventId];
-    if (event == null)
+    if (event == null ||
+        (!event.visibleTo(user.id) && family.ownerUserId != user.id)) {
       return errorResponse(404, 'not_found', 'Event not found.');
-    if (!familyStore.isMember(familyId, user.id) ||
-        (event.authorUserId != user.id && family.ownerUserId != user.id)) {
+    }
+    if (event.authorUserId != user.id && family.ownerUserId != user.id) {
       return errorResponse(403, 'forbidden',
           'Only the author or family owner can delete this event.');
     }

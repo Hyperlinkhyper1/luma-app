@@ -264,18 +264,22 @@ void main() {
       final eventId = event['id'] as String;
 
       expect((await call('GET', '/family', token: b))['httpStatus'], 404);
-      for (final (method, path, body) in [
-        ('GET', '/family/$familyId/events', null),
-        ('POST', '/family/$familyId/events',
-            {'title': 'x', 'startMs': 1, 'endMs': 2}),
-        ('PUT', '/family/$familyId/events/$eventId',
-            {'title': 'x', 'startMs': 1, 'endMs': 2}),
-        ('DELETE', '/family/$familyId/events/$eventId', null),
-        ('POST', '/family/$familyId/invite', {'email': 'b@example.com'}),
-        ('POST', '/family/$familyId/delete', null),
-      ]) {
-        final r = await call(method, path, json: body, token: b);
-        expect(r['httpStatus'], 403, reason: '$method $path: $r');
+      // An outsider can't tell a real family from a made-up id.
+      for (final id in [familyId, 'no-such-family']) {
+        for (final (method, path, body) in [
+          ('GET', '/family/$id/events', null),
+          ('POST', '/family/$id/events',
+              {'title': 'x', 'startMs': 1, 'endMs': 2}),
+          ('PUT', '/family/$id/events/$eventId',
+              {'title': 'x', 'startMs': 1, 'endMs': 2}),
+          ('DELETE', '/family/$id/events/$eventId', null),
+          ('POST', '/family/$id/invite', {'email': 'b@example.com'}),
+          ('POST', '/family/$id/members/someone/remove', null),
+          ('POST', '/family/$id/delete', null),
+        ]) {
+          final r = await call(method, path, json: body, token: b);
+          expect(r['httpStatus'], 404, reason: '$method $path: $r');
+        }
       }
 
       final events = await call('GET', '/family/$familyId/events', token: a);
@@ -302,11 +306,11 @@ void main() {
 
       final edit = await call('PUT', '/family/$familyId/events/$eventId',
           json: {'title': 'Changed', 'startMs': 1, 'endMs': 2}, token: b);
-      expect(edit['httpStatus'], 403);
+      expect(edit['httpStatus'], 404);
       final delete = await call(
           'DELETE', '/family/$familyId/events/$eventId',
           token: b);
-      expect(delete['httpStatus'], 403);
+      expect(delete['httpStatus'], 404);
     });
 
     test('a chat is visible only to its two members', () async {
@@ -393,17 +397,53 @@ void main() {
       await call('PUT', '/subway/rooms/$code/state',
           json: {'stations': []}, token: a);
 
+      // A live room looks exactly like a missing one to a non-member.
       for (final (method, path) in [
         ('GET', '/subway/rooms/$code/state'),
         ('PUT', '/subway/rooms/$code/state'),
         ('POST', '/subway/rooms/$code/ticket'),
         ('POST', '/subway/rooms/$code/clock/claim'),
+        ('POST', '/subway/rooms/$code/clock/release'),
+        ('POST', '/subway/rooms/$code/invite'),
       ]) {
-        final r = await call(method, path,
-            json: method == 'PUT' ? {'x': 1} : null, token: b);
-        expect(r['httpStatus'], 403, reason: '$method $path');
+        final body = switch (path) {
+          _ when method == 'PUT' => {'x': 1},
+          _ when path.endsWith('/invite') => {'contactUserId': 'x'},
+          _ => null,
+        };
+        final r = await call(method, path, json: body, token: b);
+        expect(r['httpStatus'], 404, reason: '$method $path');
       }
       expect((await call('GET', '/subway/rooms', token: b))['rooms'], isEmpty);
+    });
+
+    test('room routes cannot be used to probe codes past the join limit',
+        () async {
+      final a = await register('a@example.com');
+      final b = await register('b@example.com');
+      final code = (await call('POST', '/subway/rooms', token: a))['code']
+          as String;
+
+      var last = 0;
+      for (var i = 0; i < 11; i++) {
+        last = (await call('GET', '/subway/rooms/ZZZZZ$i/state', token: b))[
+            'httpStatus'] as int;
+      }
+      expect(last, 429);
+      expect((await call('GET', '/subway/rooms/$code/state', token: b))[
+          'httpStatus'], 429);
+      expect((await call('POST', '/subway/rooms/$code/join', token: b))[
+          'httpStatus'], 429);
+      // The owner's own room is unaffected by someone else's guessing.
+      expect((await call('POST', '/subway/rooms/$code/ticket', token: a))[
+          'httpStatus'], 200);
+    });
+
+    test('wrong room codes lock out joining', () async {
+      final a = await register('a@example.com');
+      final b = await register('b@example.com');
+      final code = (await call('POST', '/subway/rooms', token: a))['code']
+          as String;
 
       var last = 0;
       for (var i = 0; i < 11; i++) {

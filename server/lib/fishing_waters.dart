@@ -57,6 +57,7 @@ class FishingWaters {
   bool _loaded = false;
   String? _override;
   Map<String, num>? _blackHole;
+  Map<String, num>? _supercell;
   int _overrideAt = 0;
   List<Map<String, dynamic>> _grants = [];
   List<Map<String, dynamic>> _passes =
@@ -78,6 +79,7 @@ class FishingWaters {
       _overrideAt = (decoded['overrideAt'] as num?)?.toInt() ?? 0;
       _blackHole = _override == 'BlackHole' ? _point(decoded['blackHole']) : null;
       if (_override == 'BlackHole' && _blackHole == null) _override = null;
+      _supercell = _override == 'Supercell' ? _point(decoded['supercell']) : null;
       _grants = _maps(decoded['grants']);
       final passes = _maps(decoded['passes']);
       if (passes.isNotEmpty) _passes = passes;
@@ -102,6 +104,7 @@ class FishingWaters {
         'override': _override,
         'overrideAt': _overrideAt,
         'blackHole': _blackHole,
+        'supercell': _supercell,
         'grants': _grants,
         'passes': _passes,
         'schedule': _schedule,
@@ -238,6 +241,7 @@ class FishingWaters {
       'weatherOverride': _override,
       'weatherVersion': _overrideAt,
       'blackHole': _blackHole,
+      'supercell': _supercell,
       'grants': grants,
     });
   }
@@ -262,6 +266,7 @@ class FishingWaters {
       'weather': {
         'override': _override,
         'blackHole': _blackHole,
+        'supercell': _supercell,
         'setAt': _overrideAt == 0 ? null : _overrideAt,
         'kinds': _kinds,
         'schedule': _schedule,
@@ -291,8 +296,16 @@ class FishingWaters {
       return errorResponse(400, 'invalid_location',
           'Select a black hole location with finite X and Z coordinates between -5200 and 5200.');
     }
+    // Unlike a black hole, a supercell may omit its location: the game then
+    // circles it over a random player. A location that is sent must be valid.
+    final supercell = kind == 'Supercell' ? _point(body['supercell']) : null;
+    if (kind == 'Supercell' && body['supercell'] != null && supercell == null) {
+      return errorResponse(400, 'invalid_location',
+          'Select a supercell location with finite X and Z coordinates between -5200 and 5200.');
+    }
     _override = kind;
     _blackHole = blackHole;
+    _supercell = supercell;
     final now = _nowMs;
     _overrideAt = now > _overrideAt ? now : _overrideAt + 1;
     await _save();

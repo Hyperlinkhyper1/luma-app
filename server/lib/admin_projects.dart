@@ -151,6 +151,17 @@ class AdminProjects {
       '</div><p class="fw-note" id="fwBlackHoleStatus" aria-live="polite"></p>'
       '<button type="submit" class="fw-blackhole-spawn" id="fwBlackHoleSpawn" disabled>Spawn black hole</button>'
       '</form>'
+      '<form id="fwSupercell" class="fw-supercell" hidden>'
+      '<h3>Supercell location</h3>'
+      '<p class="fw-note">Click the radar or enter world coordinates. The storm cell circles that spot on every server, '
+      'bringing gusts and tornadoes.</p>'
+      '<div class="fw-supercell-coords">'
+      '<label for="fwSupercellX">X · east<input id="fwSupercellX" type="number" min="-5200" max="5200" step="any" required placeholder="Select a point"></label>'
+      '<label for="fwSupercellZ">Z · south<input id="fwSupercellZ" type="number" min="-5200" max="5200" step="any" required placeholder="Select a point"></label>'
+      '</div><p class="fw-note" id="fwSupercellStatus" aria-live="polite"></p>'
+      '<button type="submit" class="fw-supercell-spawn" id="fwSupercellSpawn" disabled>Spawn supercell</button>'
+      '<button type="button" class="fw-supercell-random" id="fwSupercellRandom">Circle a random player instead</button>'
+      '</form>'
       '<p class="fw-note" id="fwWeatherNote">Applies to every live server within '
       '15 seconds. <b>Auto</b> follows the built-in forecast.</p>'
       '</div>'
@@ -314,6 +325,8 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
 .fw-kind:disabled{opacity:.55;cursor:progress}
 .fw-kind[data-kind=BlackHole]{color:#d1adff;border-color:#553971;background:#21132f}
 .fw-kind[data-kind=BlackHole][aria-checked=true]{border-color:#b17aff;box-shadow:inset 0 0 0 1px #b17aff;background:#321b48}
+.fw-kind[data-kind=Supercell]{color:#ffc39a;border-color:#7a4a2a;background:#23150c}
+.fw-kind[data-kind=Supercell][aria-checked=true]{border-color:#ff9a5c;box-shadow:inset 0 0 0 1px #ff9a5c;background:#3a2213}
 .fw-blackhole{margin-top:16px;padding:16px;border:1px solid #553971;border-radius:12px;background:#1b1228}
 .fw-blackhole[hidden]{display:none}
 .fw-blackhole h3{font-size:14px;margin:0;color:#dfc5ff}
@@ -324,6 +337,18 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
 .fw-blackhole-spawn{width:100%;margin-top:14px;min-height:40px;border:1px solid #b17aff;border-radius:8px;background:#6b35a3;color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
 .fw-blackhole-spawn:disabled{opacity:.45;cursor:default}
 .fw-blackhole-spawn:focus-visible,.fw-blackhole-coords input:focus-visible{outline:2px solid #d1adff;outline-offset:3px}
+.fw-supercell{margin-top:16px;padding:16px;border:1px solid #7a4a2a;border-radius:12px;background:#1d120a}
+.fw-supercell[hidden]{display:none}
+.fw-supercell h3{font-size:14px;margin:0;color:#ffd9bd}
+.fw-supercell .fw-note{margin-top:8px;color:#c9a68a}
+.fw-supercell-coords{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.fw-supercell-coords label{font-size:12px;color:#e9c9ad}
+.fw-supercell-coords input{box-sizing:border-box;width:100%;min-width:0;margin-top:6px;padding:9px;border:1px solid #6d4428;border-radius:7px;background:#150c06;color:#fff1e6;font:inherit}
+.fw-supercell-spawn{width:100%;margin-top:14px;min-height:40px;border:1px solid #ff9a5c;border-radius:8px;background:#a64f22;color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.fw-supercell-spawn:disabled{opacity:.45;cursor:default}
+.fw-supercell-random{width:100%;margin-top:8px;min-height:36px;border:1px solid #6d4428;border-radius:8px;background:transparent;color:#ffd9bd;font:inherit;font-size:12.5px;cursor:pointer}
+.fw-supercell-random:disabled{opacity:.45;cursor:default}
+.fw-supercell-spawn:focus-visible,.fw-supercell-random:focus-visible,.fw-supercell-coords input:focus-visible{outline:2px solid #ffb98a;outline-offset:3px}
 .fw-note{font-size:12.5px;color:#86a3b0;line-height:1.55;margin:12px 0 0}
 .fw-note b{color:#c3dbe3}
 .fw-note.lock{color:#f2d68a}
@@ -449,7 +474,9 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
   function $(id) { return document.getElementById(id); }
   var state = null, fetchedAt = 0, timer = null, tickTimer = null, failed = false;
   var tab = 'online', selectedJob = null, range = 'world', filter = '';
-  var choosingBlackHole = false, locationDirty = false, weatherBusy = false;
+  // Per location weather: whether its spot is being picked, and whether the typed or clicked coordinates differ from the server's.
+  var choosing = { BlackHole: false, Supercell: false }, dirty = { BlackHole: false, Supercell: false };
+  var weatherBusy = false;
   var reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function ico(paths) { return '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">' + paths + '</svg>'; }
@@ -460,6 +487,7 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
     Rain: ico('<path d="M7 14.5h9.5a4 4 0 0 0 .4-8 5.5 5.5 0 0 0-10.6 1.4A3.4 3.4 0 0 0 7 14.5z"/><path d="M8.5 17.5l-1 2.5M12.5 17.5l-1 2.5M16.5 17.5l-1 2.5"/>'),
     Storm: ico('<path d="M7 14.5h9.5a4 4 0 0 0 .4-8 5.5 5.5 0 0 0-10.6 1.4A3.4 3.4 0 0 0 7 14.5z"/><path d="M12.5 13.5l-2.5 4h3.5l-2 4"/>'),
     BlackHole: ico('<circle cx="12" cy="12" r="4"/><ellipse cx="12" cy="12" rx="10" ry="5" transform="rotate(-25 12 12)"/>'),
+    Supercell: ico('<path d="M4 5h16"/><path d="M6.5 9.5h11"/><path d="M9 14h6"/><path d="M11 18.5h2"/>'),
     Pass: ico('<path d="M4 9.5h16v3H4z"/><path d="M5.5 12.5V20h13v-7.5"/><path d="M12 9.5V20"/><path d="M12 9.5C10.5 6 7 5.4 7 7.6 7 9 9.5 9.5 12 9.5zM12 9.5c1.5-3.5 5-4.1 5-1.9 0 1.4-2.5 1.9-5 1.9z"/>')
   };
   var KIND_COLOR = { Clear: '#e8c35a', LightRain: '#7f9cf0', Rain: '#5872d9', Storm: '#d9536a', BlackHole: '#aa6bfa' };
@@ -705,7 +733,7 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
     }
 
     var kinds = ['Auto'].concat(state.weather.kinds || []);
-    var active = choosingBlackHole ? 'BlackHole' : state.weather.override || 'Auto';
+    var active = choosingKind() || state.weather.override || 'Auto';
     var box = $('fwKinds');
     if (box.dataset.kinds !== kinds.join()) {
       box.dataset.kinds = kinds.join();
@@ -720,7 +748,7 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
       b.tabIndex = on ? 0 : -1;
     });
     var note = $('fwWeatherNote');
-    if (choosingBlackHole) {
+    if (choosingKind()) {
       note.className = 'fw-note';
       note.textContent = 'Choose the location, then spawn. Current weather continues until you apply it.';
     } else if (state.weather.override === 'BlackHole') {
@@ -734,7 +762,7 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
       note.className = 'fw-note';
       note.innerHTML = 'Auto follows the overall forecast. Picking a type sets weather strength on every server within 15 seconds; regional fronts keep moving.';
     }
-    renderBlackHole();
+    renderLocations();
     renderForecast(s);
   }
   function meter(k, v, f) {
@@ -828,21 +856,28 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
     this.querySelectorAll('.fw-seg').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
     if (reduceMotion) drawRadar(performance.now());
   });
-  function selectedPoint() {
-    var x = $('fwBlackHoleX'), z = $('fwBlackHoleZ');
+  function selectedPoint(kind) {
+    var x = $('fw' + kind + 'X'), z = $('fw' + kind + 'Z');
     if (!x.value || !z.value || !x.checkValidity() || !z.checkValidity()) return null;
     var point = { x: Number(x.value), z: Number(z.value) };
     return Number.isFinite(point.x) && Number.isFinite(point.z) ? point : null;
   }
+  // The location weather whose spot is being picked, if any.
+  function choosingKind() { return choosing.BlackHole ? 'BlackHole' : choosing.Supercell ? 'Supercell' : null; }
+  // The location the radar edits: the one being picked, else the one in effect.
+  function locationKind() {
+    var o = state && state.weather.override;
+    return choosingKind() || (o === 'BlackHole' || o === 'Supercell' ? o : null);
+  }
   function renderBlackHole() {
     var active = state && state.weather.override === 'BlackHole';
     var center = active && state.weather.blackHole;
-    $('fwBlackHole').hidden = !choosingBlackHole && !active;
-    if (!locationDirty && center) {
+    $('fwBlackHole').hidden = !choosing.BlackHole && !active;
+    if (!dirty.BlackHole && center) {
       $('fwBlackHoleX').value = center.x;
       $('fwBlackHoleZ').value = center.z;
     }
-    var point = selectedPoint();
+    var point = selectedPoint('BlackHole');
     var button = $('fwBlackHoleSpawn');
     button.disabled = weatherBusy || !point;
     button.textContent = weatherBusy ? 'Applying…' : active ? 'Move black hole' : 'Spawn black hole';
@@ -850,48 +885,85 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
       ? 'Active at X ' + center.x + ', Z ' + center.z + ' · Void Touched radius: 250 studs.'
       : point ? 'Selected X ' + point.x + ', Z ' + point.z + ' · applies to every live server.'
       : 'Select a point on the radar or enter X and Z.';
-    $('fwRadar').style.cursor = choosingBlackHole || active ? 'crosshair' : '';
+  }
+  function renderSupercell() {
+    var active = state && state.weather.override === 'Supercell';
+    var center = active && state.weather.supercell;
+    $('fwSupercell').hidden = !choosing.Supercell && !active;
+    if (!dirty.Supercell && center) {
+      $('fwSupercellX').value = center.x;
+      $('fwSupercellZ').value = center.z;
+    }
+    var point = selectedPoint('Supercell');
+    var button = $('fwSupercellSpawn');
+    button.disabled = weatherBusy || !point;
+    button.textContent = weatherBusy ? 'Applying…' : active ? 'Move supercell' : 'Spawn supercell';
+    $('fwSupercellRandom').disabled = weatherBusy;
+    $('fwSupercellStatus').textContent = center
+      ? 'Active at X ' + center.x + ', Z ' + center.z + ' · circles that spot on every live server.'
+      : active ? 'Circling a random player. Pick a point to move it.'
+      : point ? 'Selected X ' + point.x + ', Z ' + point.z + ' · applies to every live server.'
+      : 'Select a point on the radar or enter X and Z.';
+  }
+  // Both location forms and the radar's crosshair follow the same state.
+  function renderLocations() {
+    renderBlackHole();
+    renderSupercell();
+    $('fwRadar').style.cursor = locationKind() ? 'crosshair' : '';
   }
   function setWeather(kind, point) {
     if (weatherBusy) return;
     weatherBusy = true;
     $('fwKinds').querySelectorAll('.fw-kind').forEach(function (x) { x.disabled = true; });
-    renderBlackHole();
+    renderLocations();
     var body = { kind: kind };
-    if (point) body.blackHole = point;
+    if (point) body[kind === 'Supercell' ? 'supercell' : 'blackHole'] = point;
     return post('/admin/fishing-waters/weather', body)
-      .then(function () { choosingBlackHole = false; locationDirty = false; renderWeather(); })
+      .then(function () {
+        choosing.BlackHole = choosing.Supercell = false;
+        dirty.BlackHole = dirty.Supercell = false;
+        renderWeather();
+      })
       .catch(function (err) { alert(err.message); })
       .then(function () {
         weatherBusy = false;
         $('fwKinds').querySelectorAll('.fw-kind').forEach(function (x) { x.disabled = false; });
-        renderBlackHole();
+        renderLocations();
       });
   }
   $('fwKinds').addEventListener('click', function (e) {
     var b = e.target.closest('.fw-kind');
     if (!b || weatherBusy) return;
-    if (b.dataset.kind === 'BlackHole') {
-      choosingBlackHole = true;
+    if (b.dataset.kind === 'BlackHole' || b.dataset.kind === 'Supercell') {
+      choosing.BlackHole = b.dataset.kind === 'BlackHole';
+      choosing.Supercell = b.dataset.kind === 'Supercell';
       renderWeather();
-      $('fwBlackHoleX').focus();
+      $('fw' + b.dataset.kind + 'X').focus();
       return;
     }
-    if (!choosingBlackHole && b.getAttribute('aria-checked') === 'true') return;
+    if (!choosingKind() && b.getAttribute('aria-checked') === 'true') return;
     setWeather(b.dataset.kind);
   });
-  ['fwBlackHoleX', 'fwBlackHoleZ'].forEach(function (id) {
-    $(id).addEventListener('input', function () {
-      locationDirty = true;
-      renderBlackHole();
-      if (reduceMotion) drawRadar(0);
+  ['BlackHole', 'Supercell'].forEach(function (kind) {
+    ['fw' + kind + 'X', 'fw' + kind + 'Z'].forEach(function (id) {
+      $(id).addEventListener('input', function () {
+        dirty[kind] = true;
+        renderLocations();
+        if (reduceMotion) drawRadar(0);
+      });
     });
   });
   $('fwBlackHole').addEventListener('submit', function (event) {
     event.preventDefault();
-    var point = selectedPoint();
+    var point = selectedPoint('BlackHole');
     if (point) setWeather('BlackHole', point);
   });
+  $('fwSupercell').addEventListener('submit', function (event) {
+    event.preventDefault();
+    var point = selectedPoint('Supercell');
+    if (point) setWeather('Supercell', point);
+  });
+  $('fwSupercellRandom').addEventListener('click', function () { setWeather('Supercell'); });
   $('fwKinds').addEventListener('keydown', function (e) {
     if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].indexOf(e.key) < 0) return;
     var buttons = Array.prototype.slice.call(this.querySelectorAll('.fw-kind'));
@@ -960,6 +1032,12 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
     { name: 'Frostmere Expanse', x: 300, z: -3700, r: 1300 }
   ];
   var RANGES = { harbour: 1100, world: 5300 };
+  // Rings drawn at each location: a black hole's Void Touched reach, and the
+  // orbit a supercell cell circles (Weather.ForcedSupercellOrbit).
+  var MARK = {
+    BlackHole: { name: 'Black hole', reach: 250, live: '#ad72ff', pending: '#e4caff', fill: 'rgba(128,51,202,.25)' },
+    Supercell: { name: 'Supercell', reach: 380, live: '#ff9a5c', pending: '#ffd2b0', fill: 'rgba(230,110,50,.22)' }
+  };
   var rafId = 0, radarGrid = null, radarImage = null;
   function sampleRadar(grid, x, z) {
     var n = grid.resolution, span = grid.halfSize * 2;
@@ -1088,21 +1166,23 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
         }
       });
     }
-    // The solid circle is live; the dashed circle previews the pending position.
-    var activeHole = state && state.weather.override === 'BlackHole' && state.weather.blackHole;
-    var pendingHole = (choosingBlackHole || locationDirty) && selectedPoint();
-    function holeMarker(point, pending) {
+    // The solid ring is live; the dashed ring previews a location being picked.
+    function locationMarker(point, kind, pending) {
       if (!point) return;
-      var q = px(point.x, point.z);
-      ctx.beginPath(); ctx.arc(q[0], q[1], Math.max(5, 250 * k), 0, Math.PI * 2);
-      ctx.strokeStyle = pending ? '#e4caff' : '#ad72ff'; ctx.fillStyle = 'rgba(128,51,202,.25)';
+      var m = MARK[kind], q = px(point.x, point.z);
+      ctx.beginPath(); ctx.arc(q[0], q[1], Math.max(5, m.reach * k), 0, Math.PI * 2);
+      ctx.strokeStyle = pending ? m.pending : m.live; ctx.fillStyle = m.fill;
       ctx.lineWidth = 2; ctx.setLineDash(pending ? [4, 3] : []); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
       ctx.beginPath(); ctx.arc(q[0], q[1], 4, 0, Math.PI * 2); ctx.fillStyle = '#08030d'; ctx.fill();
-      ctx.fillStyle = '#e4caff'; ctx.font = '600 11px ui-sans-serif,system-ui,sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText(pending ? 'Selected location' : 'Black hole', q[0], q[1] - Math.max(13, 250 * k + 8));
+      ctx.fillStyle = m.pending; ctx.font = '600 11px ui-sans-serif,system-ui,sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(pending ? 'Selected location' : m.name, q[0], q[1] - Math.max(13, m.reach * k + 8));
     }
-    holeMarker(activeHole, false);
-    holeMarker(pendingHole, true);
+    ['BlackHole', 'Supercell'].forEach(function (kind) {
+      var live = state && state.weather.override === kind && (kind === 'BlackHole' ? state.weather.blackHole : state.weather.supercell);
+      var pending = (choosing[kind] || (dirty[kind] && state && state.weather.override === kind)) && selectedPoint(kind);
+      locationMarker(live, kind, false);
+      locationMarker(pending, kind, true);
+    });
     ctx.restore();
 
     // Bezel, compass points and range label
@@ -1133,15 +1213,16 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
     }
   }
   $('fwRadar').addEventListener('click', function (event) {
-    if (!state || weatherBusy || (!choosingBlackHole && state.weather.override !== 'BlackHole')) return;
+    var kind = locationKind();
+    if (!state || weatherBusy || !kind) return;
     var rect = this.getBoundingClientRect(), c = rect.width / 2, rad = c - 18;
     var dx = event.clientX - rect.left - c, dz = event.clientY - rect.top - c;
     if (rad <= 0 || dx * dx + dz * dz > rad * rad) return;
     var x = Math.round(dx / rad * RANGES[range]), z = Math.round(dz / rad * RANGES[range]);
     if (Math.abs(x) > 5200 || Math.abs(z) > 5200) return;
-    $('fwBlackHoleX').value = x; $('fwBlackHoleZ').value = z;
-    locationDirty = true;
-    renderBlackHole();
+    $('fw' + kind + 'X').value = x; $('fw' + kind + 'Z').value = z;
+    dirty[kind] = true;
+    renderLocations();
     if (reduceMotion) drawRadar(0);
   });
   $('fwRadar').addEventListener('pointermove', function (event) {
