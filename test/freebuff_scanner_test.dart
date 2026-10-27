@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
+import 'package:luma/features/plugins/installed/ai_usage/ai_usage_format.dart';
 import 'package:luma/features/plugins/installed/ai_usage/ai_usage_pricing.dart';
 import 'package:luma/features/plugins/installed/ai_usage/ai_usage_source.dart';
 import 'package:luma/features/plugins/installed/ai_usage/data/ai_usage_database.dart';
@@ -241,6 +242,14 @@ void main() {
     expect(resolveFreebuffModel('m-79293c5b7d'), 'fbc/claude-haiku-5.5');
     expect(resolveFreebuffModel('m-0000000000'), 'm-0000000000');
     expect(resolveFreebuffModel('z-ai/glm-5.3-flash'), 'z-ai/glm-5.3-flash');
+  });
+
+  test('Freebuff models show the name Freebuff gives them', () {
+    expect(displayName(AiUsageSource.freebuff, 'm-cb71f819fe'), 'Freebuff · MiMo 2.6 Pro');
+    expect(displayName(AiUsageSource.freebuff, 'upstage/solar-mini4'), 'Freebuff · Solar Mini 4');
+    expect(displayName(AiUsageSource.freebuff, 'anthropic/claude-opus-4.8'), 'Freebuff · Opus 4.8');
+    expect(displayName(AiUsageSource.freebuff, 'fbc/claude-haiku-5.5'), 'Freebuff · Haiku 5.5');
+    expect(displayName(AiUsageSource.freebuff, 'acme/new-model'), 'Freebuff · new-model');
   });
 
   test('catalog providers price at their own rate, not the generic fallback', () {
