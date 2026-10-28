@@ -21,8 +21,11 @@ class AiBenchmarkApiException implements Exception {
 /// What a manifest fetch produced: either a fresh roster, or nothing because
 /// the server confirmed the copy we already hold is current.
 class AiBenchmarkFetchResult {
-  const AiBenchmarkFetchResult(
-      {this.manifest, this.etag, this.unchanged = false});
+  const AiBenchmarkFetchResult({
+    this.manifest,
+    this.etag,
+    this.unchanged = false,
+  });
 
   final AiBenchmarkManifest? manifest;
   final String? etag;
@@ -40,8 +43,8 @@ class AiBenchmarkFetchResult {
 /// tab stays cheap to visit.
 class AiBenchmarkApi {
   AiBenchmarkApi(String baseUrl, {this.token, http.Client? client})
-      : baseUrl = _normalizeBaseUrl(baseUrl),
-        _client = GatedServerClient(inner: client);
+    : baseUrl = _normalizeBaseUrl(baseUrl),
+      _client = GatedServerClient(inner: client);
 
   final String baseUrl;
   String? token;
@@ -58,13 +61,15 @@ class AiBenchmarkApi {
   }
 
   Future<AiBenchmarkFetchResult> fetchManifest({String? knownEtag}) async {
-    final response = await _client.get(
-      Uri.parse('$baseUrl/api/v1/ai-benchmarks'),
-      headers: {
-        if (token case final value?) 'Authorization': 'Bearer $value',
-        'If-None-Match': ?knownEtag,
-      },
-    ).timeout(_timeout);
+    final response = await _client
+        .get(
+          Uri.parse('$baseUrl/api/v1/ai-benchmarks'),
+          headers: {
+            if (token case final value?) 'Authorization': 'Bearer $value',
+            'If-None-Match': ?knownEtag,
+          },
+        )
+        .timeout(_timeout);
 
     if (response.statusCode == 304) {
       return AiBenchmarkFetchResult(etag: knownEtag, unchanged: true);
@@ -92,10 +97,14 @@ class AiBenchmarkApi {
   /// The Decider test's results: each decision model's latest run on the
   /// moderation suite, with its accuracy and cost.
   Future<Map<String, dynamic>> fetchDecider() async {
-    final response = await _client.get(
-      Uri.parse('$baseUrl/api/v1/ai-benchmarks/decider'),
-      headers: {if (token case final value?) 'Authorization': 'Bearer $value'},
-    ).timeout(_timeout);
+    final response = await _client
+        .get(
+          Uri.parse('$baseUrl/api/v1/ai-benchmarks/decider'),
+          headers: {
+            if (token case final value?) 'Authorization': 'Bearer $value',
+          },
+        )
+        .timeout(_timeout);
     if (response.statusCode != 200) {
       throw AiBenchmarkApiException(
         response.statusCode,
@@ -112,13 +121,39 @@ class AiBenchmarkApi {
     return decoded;
   }
 
+  Future<Map<String, dynamic>> fetchWikiSearch() async {
+    final response = await _client
+        .get(
+          Uri.parse('$baseUrl/api/v1/ai-benchmarks/wiki-search'),
+          headers: {
+            if (token case final value?) 'Authorization': 'Bearer $value',
+          },
+        )
+        .timeout(_timeout);
+    if (response.statusCode != 200) {
+      throw AiBenchmarkApiException(
+        response.statusCode,
+        'Could not load wiki search results.',
+      );
+    }
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    if (decoded is! Map<String, dynamic>) {
+      throw AiBenchmarkApiException(200, currentL.aiBenchmarkMalformed);
+    }
+    return decoded;
+  }
+
   /// The Text to Speech test's results: the scripts and each speech model's
   /// latest clips with what they cost and took.
   Future<Map<String, dynamic>> fetchTts() async {
-    final response = await _client.get(
-      Uri.parse('$baseUrl/api/v1/ai-benchmarks/tts'),
-      headers: {if (token case final value?) 'Authorization': 'Bearer $value'},
-    ).timeout(_timeout);
+    final response = await _client
+        .get(
+          Uri.parse('$baseUrl/api/v1/ai-benchmarks/tts'),
+          headers: {
+            if (token case final value?) 'Authorization': 'Bearer $value',
+          },
+        )
+        .timeout(_timeout);
     if (response.statusCode != 200) {
       throw AiBenchmarkApiException(
         response.statusCode,
@@ -137,9 +172,10 @@ class AiBenchmarkApi {
 
   /// Downloads one Text to Speech clip.
   Future<Uint8List> fetchTtsClip(String runId, String test) => _fetchBytes(
-      'tts/audio',
-      '${Uri.encodeComponent(runId)}/${Uri.encodeComponent(test)}',
-      currentL.aiBenchmarkWhatClip);
+    'tts/audio',
+    '${Uri.encodeComponent(runId)}/${Uri.encodeComponent(test)}',
+    currentL.aiBenchmarkWhatClip,
+  );
 
   /// Downloads one scene's HTML. The caller verifies the bytes against the
   /// manifest's hash before trusting them.
@@ -159,19 +195,26 @@ class AiBenchmarkApi {
   /// Downloads generic tile artwork, e.g. `pagoda-preview.png`.
   Future<Uint8List?> fetchFallback(String file) async {
     try {
-      return await _fetchBytes('fallback', file, currentL.aiBenchmarkWhatArtwork);
+      return await _fetchBytes(
+        'fallback',
+        file,
+        currentL.aiBenchmarkWhatArtwork,
+      );
     } on AiBenchmarkApiException catch (e) {
       if (e.status == 404) return null;
       rethrow;
     }
   }
 
-  Future<Uint8List> _fetchBytes(
-      String route, String id, String what) async {
-    final response = await _client.get(
-      Uri.parse('$baseUrl/api/v1/ai-benchmarks/$route/$id'),
-      headers: {if (token case final value?) 'Authorization': 'Bearer $value'},
-    ).timeout(_timeout);
+  Future<Uint8List> _fetchBytes(String route, String id, String what) async {
+    final response = await _client
+        .get(
+          Uri.parse('$baseUrl/api/v1/ai-benchmarks/$route/$id'),
+          headers: {
+            if (token case final value?) 'Authorization': 'Bearer $value',
+          },
+        )
+        .timeout(_timeout);
 
     if (response.statusCode != 200) {
       throw AiBenchmarkApiException(

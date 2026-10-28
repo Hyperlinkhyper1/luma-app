@@ -65,6 +65,14 @@ class AdminProjects {
       'aria-checked="false" data-project="fw">$_fwLogo'
       '<span class="proj-item-text"><b>Fishing Waters</b><small>Roblox game</small></span>'
       '$_check</button>'
+      '<div class="proj-separator" role="separator"></div>'
+      '<a class="proj-item proj-link" role="menuitem" href="/admin/website">'
+      '<span class="proj-web-icon"><svg viewBox="0 0 24 24" aria-hidden="true">'
+      '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5'
+      'c2.5 2.3 3.5 5.3 3.5 8.5s-1 6.2-3.5 8.5C9.5 18.2 '
+      '8.5 15.2 8.5 12s1-6.2 3.5-8.5z"/></svg></span>'
+      '<span class="proj-item-text"><b>Website</b><small>Pages &amp; publishing</small></span>'
+      '<span class="proj-link-arrow" aria-hidden="true">↗</span></a>'
       '</div>';
 
   static String get fishingWatersHtml =>
@@ -218,6 +226,11 @@ header.top{align-items:center;position:relative}
 .proj-menu-label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#7f7898;padding:8px 10px 6px}
 .proj-item{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:8px 10px;border:0;border-radius:10px;background:transparent;color:#ece8f7;font:inherit;text-align:left;cursor:pointer;transition:background .12s}
 .proj-item:hover{background:#241d3d}
+.proj-link{text-decoration:none}
+.proj-web-icon{display:grid;place-items:center;width:30px;height:30px;flex:none;border-radius:8px;background:#302849;color:#c9befb}
+.proj-web-icon svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.proj-link-arrow{color:#aaa0ca;font-size:16px;margin-right:2px}
+.proj-separator{height:1px;background:#322a4d;margin:6px 10px}
 .proj-item:focus-visible{outline:2px solid #8a7ee0;outline-offset:-2px}
 .proj-item[aria-checked=true]{background:#1f1935}
 .proj-item-text{display:flex;flex-direction:column;flex:1;min-width:0}
@@ -399,7 +412,8 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
   var btn = document.getElementById('projBtn');
   var menu = document.getElementById('projMenu');
   if (!btn || !menu) return;
-  var items = Array.prototype.slice.call(menu.querySelectorAll('.proj-item'));
+  var items = Array.prototype.slice.call(menu.querySelectorAll('[data-project]'));
+  var menuItems = Array.prototype.slice.call(menu.querySelectorAll('[role^=menuitem]'));
   var views = { luma: document.getElementById('project-luma'), fw: document.getElementById('project-fw') };
   var titles = { luma: 'luma admin', fw: 'Fishing Waters · admin' };
   var current = null;
@@ -444,14 +458,14 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
     });
   });
   menu.addEventListener('keydown', function (e) {
-    var i = items.indexOf(document.activeElement);
+    var i = menuItems.indexOf(document.activeElement);
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
-      var next = (i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
-      items[next].focus();
+      var next = (i + (e.key === 'ArrowDown' ? 1 : -1) + menuItems.length) % menuItems.length;
+      menuItems[next].focus();
     } else if (e.key === 'Home' || e.key === 'End') {
       e.preventDefault();
-      items[e.key === 'Home' ? 0 : items.length - 1].focus();
+      menuItems[e.key === 'Home' ? 0 : menuItems.length - 1].focus();
     } else if (e.key === 'Escape') {
       e.preventDefault();
       close(true);

@@ -10,6 +10,7 @@ import 'ai_benchmark_scope.dart';
 import 'cathedral_test_page.dart';
 import 'cruise_ship_test_page.dart';
 import 'decider_test_page.dart';
+import 'wiki_search_test_page.dart';
 import 'tts_test_page.dart';
 import 'engine_test_page.dart';
 import 'hero_tile.dart';
@@ -135,15 +136,24 @@ class _TestsTabState extends State<TestsTab> {
     final newOpenScreen = t.aiTestNewOpenScreen;
     return [
       LumaHeroTile(
+        title: 'Wiki search test',
+        subtitle: openScreen,
+        fallbackIcon: Icons.search_rounded,
+        width: width,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const WikiSearchTestPage()),
+        ),
+      ),
+      LumaHeroTile(
         title: t.aiTestPagodaTitle,
         subtitle: openScreen,
         imageFile: _tileArt(repo, 'pagoda'),
         artworkAboveBand: true,
         fallbackIcon: Icons.temple_buddhist_rounded,
         width: width,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const PagodaTestPage()),
-        ),
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute<void>(builder: (_) => const PagodaTestPage())),
       ),
       LumaHeroTile(
         title: t.aiTestEngineTitle,
@@ -152,9 +162,9 @@ class _TestsTabState extends State<TestsTab> {
         artworkAboveBand: true,
         fallbackIcon: Icons.precision_manufacturing_rounded,
         width: width,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const EngineTestPage()),
-        ),
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute<void>(builder: (_) => const EngineTestPage())),
       ),
       LumaHeroTile(
         title: t.aiTestPcTitle,
@@ -163,9 +173,9 @@ class _TestsTabState extends State<TestsTab> {
         artworkAboveBand: true,
         fallbackIcon: Icons.computer_rounded,
         width: width,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const PcTestPage()),
-        ),
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute<void>(builder: (_) => const PcTestPage())),
       ),
       LumaHeroTile(
         title: t.aiTestCathedralTitle,
@@ -227,9 +237,9 @@ class _TestsTabState extends State<TestsTab> {
         artworkAboveBand: true,
         fallbackIcon: Icons.record_voice_over_rounded,
         width: width,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const TtsTestPage()),
-        ),
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute<void>(builder: (_) => const TtsTestPage())),
       ),
       for (final test in sceneTestsOf(t))
         LumaHeroTile(
@@ -240,9 +250,7 @@ class _TestsTabState extends State<TestsTab> {
           fallbackIcon: test.icon,
           width: width,
           onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => SceneTestPage(test: test),
-            ),
+            MaterialPageRoute<void>(builder: (_) => SceneTestPage(test: test)),
           ),
         ),
     ];

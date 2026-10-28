@@ -33,6 +33,7 @@ import 'cs2_offline_store.dart';
 import 'cs2_voice_translate.dart';
 import 'decider_test.dart';
 import 'tts_test.dart';
+import 'wiki_search_test.dart';
 import 'deploy_console.dart';
 import 'power_console.dart';
 import 'admin_projects.dart';
@@ -63,6 +64,7 @@ part 'api_classroom.dart';
 part 'api_cs2_voice_translate.dart';
 part 'api_decider_tests.dart';
 part 'api_tts_tests.dart';
+part 'api_wiki_tests.dart';
 part 'api_school_tests.dart';
 part 'api_team_board.dart';
 part 'api_team_discord.dart';
@@ -741,6 +743,7 @@ class Api {
           _requireAuth(_sendChatMessage))
       ..get('/api/v1/ai-models', _requireAuth(_listAiModels))
       ..get('/api/v1/ai-benchmarks', _requireAuth(_listAiBenchmarks))
+      ..get('/api/v1/ai-benchmarks/wiki-search', _requireAuth(_wikiResults))
       ..get('/api/v1/ai-benchmarks/decider', _requireAuth(_deciderResults))
       ..get('/api/v1/ai-benchmarks/tts', _requireAuth(_ttsResults))
       ..get('/api/v1/ai-benchmarks/tts/audio/<id>/<test>',
@@ -898,6 +901,9 @@ class Api {
           '/admin/decider-tests/suite', _requireAdmin(_adminDeciderTestsSuite))
       ..post('/admin/decider-tests/runs/<id>/delete',
           _requireAdmin(_adminDeciderTestsDelete))
+      ..get('/admin/wiki-tests', _requireAdmin(_wikiState))
+      ..get('/admin/wiki-tests/models', _requireAdmin(_wikiModels))
+      ..post('/admin/wiki-tests/run', _requireAdmin(_wikiStart))
       ..get('/admin/tts-tests', _requireAdmin(_adminTtsTestsState))
       ..get('/admin/tts-tests/models', _requireAdmin(_adminTtsTestsModels))
       ..get('/admin/tts-tests/audio/<id>/<test>',
@@ -3507,6 +3513,7 @@ class Api {
   /// The Add benchmark dialog's Text to Speech test: its runs and clips (see
   /// `api_tts_tests.dart`).
   late final TtsTestStore ttsTests = TtsTestStore(config.dataDir);
+  late final _WikiStore wikiTests = _WikiStore(config.dataDir);
 
   /// The Team Clipboard: its entries, files and who is on the team (see
   /// `api_team_board.dart`).
@@ -8576,14 +8583,15 @@ class Api {
               '<span class="tree-phantom-badge">not created</span> with a '
               'shortcut to make it.</p>'
           : '';
-      return '<div class="card table-card">'
+      return '<section class="site-collection" data-collection="${_htmlEscape(collection)}">'
           '<div class="tree-head">'
-          '<h2><span>$name</span><span class="count-pill">${entry.value.length}</span></h2>'
+          '<div><h2><span>${_htmlEscape(name)}</span><span class="count-pill">${entry.value.length}</span></h2>'
+          '<p class="site-collection-sub">Pages in ${_htmlEscape(name)}</p></div>'
           '$newDevlogBtn'
           '</div>'
-          '<div class="tree" role="tree">${_renderWikiTree(tree.children, collection: collection)}</div>'
+          '<div class="tree">${_renderWikiTree(tree.children, collection: collection)}</div>'
           '$newPageHint'
-          '</div>';
+          '</section>';
     }).join();
 
     return Response(200,
@@ -8591,47 +8599,45 @@ class Api {
             '<meta name="viewport" content="width=device-width, initial-scale=1">'
             '<title>luma admin — website</title>'
             '<style>$_adminCss$_wikiTreeCss</style></head>'
-            '<body><div class="wrap">'
-            '<header class="top"><h1>luma<span class="dot">.</span> website</h1>'
-            '<span class="sub">page editor</span>'
-            '<nav style="margin-left:auto">'
-            '<a href="/admin" class="btn btn-ghost btn-sm">← dashboard</a>'
-            '</nav></header>'
-            '<div class="stats">'
-            '<div class="stat"><div class="n">${pages.length}</div>'
-            '<div class="l">Pages</div></div>'
-            '<div class="stat"><div class="n">${byCollection.length}</div>'
-            '<div class="l">Collections</div></div>'
-            '<div class="stat"><div class="n">$teamCount</div>'
-            '<div class="l">Team members</div></div>'
+            '<body class="site-admin"><div class="wrap site-wrap">'
+            '<header class="site-header">'
+            '<div><a class="site-back" href="/admin">← Admin dashboard</a>'
+            '<p class="site-eyebrow">Luma / Website</p>'
+            '<h1>Website content</h1>'
+            '<p class="site-intro">Edit your pages, manage the team and publish changes.</p></div>'
+            '<div class="site-header-mark" aria-hidden="true">✦</div>'
+            '</header>'
+            '<div class="site-overview" aria-label="Website overview">'
+            '<div><strong>${pages.length}</strong><span>Pages</span></div>'
+            '<div><strong>${byCollection.length}</strong><span>Collections</span></div>'
+            '<div><strong>$teamCount</strong><span>Team members</span></div>'
             '</div>'
+            '<div class="site-layout"><main class="site-content">'
+            '<div class="site-content-head"><div><p class="site-eyebrow">Content library</p>'
+            '<h2>Pages &amp; collections</h2></div>'
+            '<label class="site-search" id="siteSearchWrap" hidden>'
+            '<span class="site-search-icon" aria-hidden="true">⌕</span>'
+            '<span class="site-sr-only">Search pages</span>'
+            '<input id="siteSearch" type="search" placeholder="Search pages…" autocomplete="off">'
+            '</label></div>'
+            '<p class="site-content-help">Choose a page to edit. Expand a collection to see nested pages.</p>'
+            '<p id="siteSearchEmpty" class="site-empty" hidden>No pages match your search.</p>'
             '$sections'
-            '<div class="card table-card">'
-            '<div class="tree-head">'
-            '<h2><span>Team</span><span class="count-pill">$teamCount</span></h2>'
-            '<a href="/admin/website/team" class="btn btn-primary btn-sm">'
-            'Edit roster</a>'
-            '</div>'
-            '<p class="hint tree-hint">The cards on '
-            '<code>/wiki/team</code> — name, role, description, icon and '
-            'avatar per person. Stored as <code>team.json</code> rather than a '
-            'Markdown page, so it has its own form instead of appearing in the '
-            'tree above.</p>'
-            '</div>'
-            '<div class="card">'
-            '<h2>Publish</h2>'
-            '<p class="hint">Saved edits stay in draft on the server until you '
-            'publish — this commits them to git, rebuilds the site with '
-            'Astro, and rsyncs the result live.</p>'
-            '<div class="product-form">'
-            '<form method="post" action="/admin/website/build" style="margin:0">'
-            '<button type="submit" class="btn btn-primary">Publish site '
-            '(rebuild)</button></form>'
+            '</main><aside class="site-sidebar" aria-label="Website management">'
+            '<section class="site-side-card"><p class="site-eyebrow">People</p>'
+            '<h2>Team roster</h2>'
+            '<p>Manage the people and profiles shown on the team page.</p>'
+            '<a href="/admin/website/team" class="btn btn-ghost">Edit roster <span aria-hidden="true">→</span></a>'
+            '</section>'
+            '<section class="site-side-card site-publish"><p class="site-eyebrow">Go live</p>'
+            '<h2>Publish changes</h2>'
+            '<p>Saved edits remain drafts until you publish. Publishing commits the changes, rebuilds the site and puts it live.</p>'
+            '<form method="post" action="/admin/website/build">'
+            '<button type="submit" class="btn btn-primary">Publish site <span aria-hidden="true">↗</span></button></form>'
             '<span id="buildbadge" class="badge" style="display:none"></span>'
-            '</div>'
             '<pre id="buildlog" class="log" style="display:none;margin-top:12px"></pre>'
-            '</div>'
-            '<script>$_wikiBuildScript</script>'
+            '</section></aside></div>'
+            '<script>$_wikiBuildScript$_wikiIndexScript</script>'
             '</div></body></html>',
         headers: {'Content-Type': 'text/html; charset=utf-8'});
   }
@@ -8751,6 +8757,106 @@ padding:1px 6px;font-size:11.5px;color:#c7c1e6}
 letter-spacing:.03em;text-transform:uppercase;color:#e0c87e;
 background:rgba(224,200,126,.12);border:1px dashed rgba(224,200,126,.4);
 border-radius:999px;padding:2px 8px}
+
+/* Website content library */
+.site-wrap{max-width:1400px;padding-top:30px}
+.site-header{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;padding:0 0 25px;border-bottom:1px solid #302941}
+.site-back{display:inline-flex;color:#bcb3de;font-size:13px;text-decoration:none;margin-bottom:27px}
+.site-back:hover{color:#fff}.site-back:focus-visible,.site-content a:focus-visible,.site-sidebar a:focus-visible,.site-sidebar button:focus-visible{outline:2px solid #b4a6ff;outline-offset:3px}
+.site-eyebrow{color:#a89bd4;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin:0 0 7px}
+.site-header h1{font-size:32px;letter-spacing:-.035em;line-height:1.15}
+.site-intro{color:#b0a8c6;margin:9px 0 0;font-size:14px}
+.site-header-mark{display:grid;place-items:center;width:62px;height:62px;border:1px solid #41365f;border-radius:17px;background:#201a33;color:#c3b7ff;font-size:30px}
+.site-overview{display:flex;gap:0;padding:20px 0 23px;border-bottom:1px solid #302941;margin-bottom:32px}
+.site-overview>div{display:flex;align-items:baseline;gap:9px;padding:0 26px;border-left:1px solid #302941}
+.site-overview>div:first-child{padding-left:0;border-left:0}.site-overview strong{font-size:20px;font-variant-numeric:tabular-nums;line-height:1}
+.site-overview span{font-size:12px;color:#aaa2bf}
+.site-layout{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:26px;align-items:start}
+.site-content{min-width:0}.site-content-head{display:flex;align-items:end;justify-content:space-between;gap:20px}
+.site-content-head h2,.site-side-card h2{font-size:19px;line-height:1.25;letter-spacing:-.02em;text-transform:none;color:#ece8f7;margin:0}
+.site-content-help{color:#a69ebc;font-size:13px;margin:8px 0 18px}
+.site-search{display:flex;align-items:center;gap:8px;width:250px;max-width:100%;padding:0 11px;border:1px solid #3a3151;border-radius:9px;background:#151120;color:#aaa2bf}
+.site-search[hidden],.site-empty[hidden],.site-collection[hidden],.tree-row[hidden],.tree-node[hidden]{display:none}
+.site-search:focus-within{border-color:#a698f2;box-shadow:0 0 0 3px rgba(166,152,242,.14)}
+.site-search-icon{font-size:22px;line-height:1}.site-search input{width:100%;min-width:0;min-height:40px;background:transparent;border:0;outline:0;color:#eee9ff;font:inherit;font-size:13px}
+.site-search input::placeholder{color:#a49ab9;opacity:1}.site-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.site-empty{padding:18px;border:1px dashed #423958;border-radius:10px;color:#b6adc9}
+.site-collection{background:#171322;border:1px solid #302941;border-radius:13px;margin-bottom:14px;overflow:hidden}
+.site-collection .tree-head{padding:17px 18px 14px;margin:0;border-bottom:1px solid #302941}
+.site-collection .tree-head h2{font-size:15px;letter-spacing:0;text-transform:none;color:#eeeaf9}
+.site-collection-sub{margin:4px 0 0;font-size:12px;color:#a79fba}
+.site-collection .tree{padding:8px}
+.site-collection .tree-row,.site-collection .tree-node>summary{min-height:43px}
+.site-collection .tree-row a,.site-collection .tree-node>summary{font-size:13.5px;color:#dfdaf0}
+.site-collection .tree-edit,.site-collection .tree-delete{opacity:1;border-radius:7px;color:#c4bcdb!important;border-color:#403753;padding:5px 10px!important}
+.site-collection .tree-delete{color:#e4aaaa!important}.site-collection .tree-delete:focus-visible{outline:2px solid #b4a6ff;outline-offset:2px}
+.site-collection .tree-hint{margin:0;padding:13px 18px 16px;border-color:#302941;color:#aaa2bc;line-height:1.6}
+.site-sidebar{display:grid;gap:14px}.site-side-card{background:#171322;border:1px solid #302941;border-radius:13px;padding:20px}
+.site-side-card p:not(.site-eyebrow){color:#b0a8c4;font-size:13px;line-height:1.6;margin:10px 0 18px}
+.site-side-card .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:38px;text-decoration:none}
+.site-publish{border-color:#4a3d70;background:#1b162a}.site-publish form{margin:0}.site-publish .badge{margin-top:12px}
+.site-publish .log{max-width:100%;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+@media(max-width:850px){.site-layout{grid-template-columns:1fr}.site-sidebar{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.site-wrap{padding:20px 16px 40px}.site-header-mark{display:none}.site-header h1{font-size:27px}.site-back{margin-bottom:22px}.site-overview{gap:12px;justify-content:space-between}.site-overview>div{display:flex;flex-direction:column;gap:5px;padding:0 10px}.site-content-head{align-items:stretch;flex-direction:column;gap:14px}.site-search{width:100%}.site-sidebar{grid-template-columns:1fr}.site-collection .tree-head{flex-wrap:wrap}.site-collection .tree-row{padding-left:10px}.site-collection .tree-children{margin-left:10px;padding-left:7px}}
+''';
+
+  static const _wikiIndexScript = r'''
+(function () {
+  var search = document.getElementById('siteSearch');
+  var wrap = document.getElementById('siteSearchWrap');
+  var empty = document.getElementById('siteSearchEmpty');
+  if (!search || !wrap || !empty) return;
+  var sections = Array.prototype.slice.call(document.querySelectorAll('.site-collection'));
+  var previous = new WeakMap(), filtering = false;
+  wrap.hidden = false;
+  function filterTree(container, prefix, query) {
+    var any = false;
+    Array.prototype.forEach.call(container.children, function (child) {
+      if (child.classList.contains('tree-row')) {
+        var link = child.querySelector('a');
+        var path = link ? link.getAttribute('href').toLowerCase() : '';
+        var match = (prefix + ' ' + path).indexOf(query) !== -1;
+        child.hidden = !match;
+        any = any || match;
+      } else if (child.classList.contains('tree-node')) {
+        var label = child.querySelector('summary .tree-label').textContent.toLowerCase();
+        var children = child.querySelector('.tree-children');
+        var match = filterTree(children, prefix + '/' + label, query);
+        child.hidden = !match;
+        if (match) child.open = true;
+        any = any || match;
+      }
+    });
+    return any;
+  }
+  search.addEventListener('input', function () {
+    var query = search.value.trim().toLowerCase();
+    if (query && !filtering) {
+      document.querySelectorAll('.tree-node').forEach(function (node) { previous.set(node, node.open); });
+      filtering = true;
+    }
+    if (!query) {
+      sections.forEach(function (section) {
+        section.hidden = false;
+        section.querySelectorAll('.tree-row,.tree-node').forEach(function (node) {
+          node.hidden = false;
+          if (node.classList.contains('tree-node') && filtering) node.open = previous.get(node) || false;
+        });
+      });
+      filtering = false;
+      empty.hidden = true;
+      return;
+    }
+    var any = false;
+    sections.forEach(function (section) {
+      var prefix = section.dataset.collection.toLowerCase();
+      var match = filterTree(section.querySelector('.tree'), prefix, query);
+      section.hidden = !match;
+      any = any || match;
+    });
+    empty.hidden = any;
+  });
+})();
 ''';
 
   /// Page name from the request path, e.g. /admin/website/wiki/simply-cozy
@@ -11627,7 +11733,6 @@ syncToolbar();
         '<header class="top">${AdminProjects.switcherHtml}'
         '<div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">'
         '${PowerConsole.headerButtonsHtml}'
-        '<a href="/admin/website" class="btn btn-ghost btn-sm">Website</a>'
         '<form method="post" action="/admin/logout" style="margin:0">'
         '<button type="submit" class="btn btn-ghost btn-sm">Sign out</button>'
         '</form>'
@@ -11905,7 +12010,7 @@ syncToolbar();
         '<div id="bgRuns" class="bg-runs" aria-live="polite"></div>'
         '<div id="bgRepairs" class="bg-runs" aria-live="polite"></div>'
         '$_bmUploadDialogHtml'
-        '${_bgDialogHtml(deciderView: _adminDeciderView(), ttsView: _adminTtsView())}'
+        '${_bgDialogHtml(deciderView: _adminDeciderView(), ttsView: _adminTtsView(), wikiView: _wikiView())}'
         '</div>'
         '<div class="card">'
         '${_cardHead('image', 'AI benchmark banners', extra: '<button id="bannersRepairSettingsBtn" type="button" class="bn-icon-btn bn-icon-btn--sm" aria-label="Banner render settings" title="Banner render settings">${_ico('cog')}</button>')}'
@@ -11964,6 +12069,7 @@ syncToolbar();
         '<script>$_adminSchoolTestsScript</script>'
         '<script>$_adminTtsScript</script>'
         '<script>$_adminDeciderScript</script>'
+        '<script>$_wikiScript</script>'
         '<script>${DeployConsole.deployScript}</script>'
         '<script>${UpdateCheckConsole.updateCheckScript}</script>'
         '<script>${UpdateCheckConsole.rebootScript}</script>'

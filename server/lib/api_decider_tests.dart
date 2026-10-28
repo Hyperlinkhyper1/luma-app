@@ -636,6 +636,7 @@ const _deciderScript = r'''
   const dlg = document.getElementById('bgDialog');
   const view = document.getElementById('dtView');
   const foot = document.getElementById('dtFoot');
+  const wikiView = document.getElementById('wikiView');
   const ttView = document.getElementById('ttView');
   const ttFoot = document.getElementById('ttFoot');
   const sub = document.getElementById('bgSub');
@@ -645,7 +646,9 @@ const _deciderScript = r'''
     if (mode === 'tts' && !ttView) mode = 'scene';
     const decider = mode === 'decider';
     const tts = mode === 'tts';
-    if (dlg) dlg.classList.toggle('is-decider', decider || tts);
+    const wiki = mode === 'wiki';
+    if (wikiView) wikiView.hidden = !wiki;
+    if (dlg) dlg.classList.toggle('is-decider', decider || tts || wiki);
     view.hidden = !decider;
     foot.hidden = !decider;
     if (ttView) { ttView.hidden = !tts; ttFoot.hidden = !tts; }
@@ -653,7 +656,7 @@ const _deciderScript = r'''
     if (sub) sub.textContent = decider
       ? 'Decision models work through a hard moderation suite; the server scores every answer and plots cost against accuracy. Separate from the scene benchmarks.'
       : tts ? 'Speech models read the same four scripts in a woman\'s and a man\'s voice. Every clip is kept with its cost and time, and shows up in the app to listen to.'
-      : sceneSub;
+      : wiki ? 'Rank wiki passages for difficult search queries using embedding similarity.' : sceneSub;
     try { localStorage.setItem('lumaBenchmarkMode', mode); } catch (_) {}
     if (decider) load();
     document.dispatchEvent(new CustomEvent('luma-benchmark-mode', { detail: mode }));
@@ -1028,6 +1031,6 @@ const _deciderScript = r'''
 
   let saved = 'scene';
   try { saved = localStorage.getItem('lumaBenchmarkMode') || 'scene'; } catch (_) {}
-  if (saved === 'decider' || saved === 'tts') setMode(saved); else load();
+  if (saved === 'decider' || saved === 'tts' || saved === 'wiki') setMode(saved); else load();
 })();
 ''';

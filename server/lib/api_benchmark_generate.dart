@@ -1104,7 +1104,7 @@ extension BenchmarkGenerateApi on Api {
 /// test (see `api_decider_tests.dart`). It sits outside the scene form and
 /// has its own endpoints and runs; the two only share the dialog. The
 /// [ttsView], the Text to Speech test (`api_tts_tests.dart`), is a third.
-String _bgDialogHtml({String deciderView = '', String ttsView = ''}) =>
+String _bgDialogHtml({String deciderView = '', String ttsView = '', String wikiView = ''}) =>
     '<dialog id="bgDialog" class="bn-dialog bg-dialog" '
     'aria-labelledby="bgTitle">'
     '<form id="bgForm" novalidate>'
@@ -1120,6 +1120,7 @@ String _bgDialogHtml({String deciderView = '', String ttsView = ''}) =>
         'aria-selected="false">Decider test (Moderation)</button>'
         '${ttsView.isEmpty ? '' : '<button type="button" role="tab" '
             'data-mode="tts" aria-selected="false">Text to speech</button>'}'
+        '${wikiView.isEmpty ? '' : '<button type="button" role="tab" data-mode="wiki" aria-selected="false">Embedding models</button>'}'
         '</div>'}'
     '</div>'
     '<button type="button" class="bn-icon-btn" data-close aria-label="Close">'
@@ -1209,7 +1210,7 @@ String _bgDialogHtml({String deciderView = '', String ttsView = ''}) =>
     '<button type="button" class="btn btn-ghost" data-close>Cancel</button>'
     '<button id="bgStart" type="submit" class="btn btn-primary">Start run'
     '</button></div>'
-    '</form>$deciderView$ttsView</dialog>';
+    '</form>$deciderView$ttsView$wikiView</dialog>';
 
 const _bgCss = r'''
 .bg-dialog{width:min(820px,calc(100vw - 32px))}

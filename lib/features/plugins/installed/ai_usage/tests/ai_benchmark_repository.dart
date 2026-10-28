@@ -34,28 +34,29 @@ const String kAiBenchmarkCacheDir = 'ai_benchmarks_cache';
 /// only attempted once [SyncService.serverReady] is true — without an approved
 /// account there is no roster at all, and the Tests tab says so.
 class AiBenchmarkRepository extends ChangeNotifier {
-  AiBenchmarkRepository(this._sync,
-      {AiBenchmarkApi Function(String, String?)? apiFactory,
-      Future<Directory> Function()? cacheDirProvider})
-      : _apiFactory = apiFactory ??
-            ((baseUrl, token) => AiBenchmarkApi(baseUrl, token: token)),
-        _cacheDirProvider =
-            cacheDirProvider ?? getApplicationSupportDirectory;
+  AiBenchmarkRepository(
+    this._sync, {
+    AiBenchmarkApi Function(String, String?)? apiFactory,
+    Future<Directory> Function()? cacheDirProvider,
+  }) : _apiFactory =
+           apiFactory ??
+           ((baseUrl, token) => AiBenchmarkApi(baseUrl, token: token)),
+       _cacheDirProvider = cacheDirProvider ?? getApplicationSupportDirectory;
 
   /// A repository over a roster that is already in hand, with no sync service
   /// behind it — nothing it does can reach the network. Used by tests, and the
   /// honest shape for any caller that has no account to fetch from.
   @visibleForTesting
-  AiBenchmarkRepository.withManifest(AiBenchmarkManifest manifest,
-      {Directory? cacheDir})
-      : _sync = null,
-        _apiFactory = ((baseUrl, token) => AiBenchmarkApi(baseUrl)),
-        _cacheDirProvider = cacheDir == null
-            ? (() async =>
-                Directory.systemTemp.createTemp('luma_bench_test'))
-            : (() async => cacheDir),
-        _manifest = manifest,
-        _loaded = true {
+  AiBenchmarkRepository.withManifest(
+    AiBenchmarkManifest manifest, {
+    Directory? cacheDir,
+  }) : _sync = null,
+       _apiFactory = ((baseUrl, token) => AiBenchmarkApi(baseUrl)),
+       _cacheDirProvider = cacheDir == null
+           ? (() async => Directory.systemTemp.createTemp('luma_bench_test'))
+           : (() async => cacheDir),
+       _manifest = manifest,
+       _loaded = true {
     if (cacheDir != null) {
       _rootPath =
           '${cacheDir.path}${Platform.pathSeparator}$kAiBenchmarkCacheDir';
@@ -95,8 +96,7 @@ class AiBenchmarkRepository extends ChangeNotifier {
   /// Whether a server fetch is even possible on this device right now.
   bool get canRefresh => _sync?.serverReady ?? false;
 
-  List<AiBenchmark> benchmarksOfKind(String kind) =>
-      _manifest.ofKind(kind);
+  List<AiBenchmark> benchmarksOfKind(String kind) => _manifest.ofKind(kind);
 
   AiBenchmark? byId(String id) => _manifest.byId(id);
 
@@ -195,6 +195,32 @@ class AiBenchmarkRepository extends ChangeNotifier {
     }
   }
 
+  Map<String, dynamic>? wikiSearch;
+  bool wikiSearchLoading = false;
+  String? wikiSearchError;
+
+  Future<void> loadWikiSearch() async {
+    if (wikiSearchLoading) return;
+    final sync = _sync;
+    final baseUrl = sync?.serverUrl;
+    if (sync == null || !sync.serverReady || baseUrl == null) return;
+    wikiSearchLoading = true;
+    wikiSearchError = null;
+    notifyListeners();
+    final api = _apiFactory(baseUrl, sync.authToken);
+    try {
+      wikiSearch = await api.fetchWikiSearch();
+    } on ServerAccessDeniedException {
+      // The account gate closed while loading.
+    } catch (e) {
+      wikiSearchError = '$e';
+    } finally {
+      wikiSearchLoading = false;
+      api.close();
+      notifyListeners();
+    }
+  }
+
   TtsBoard? _tts;
   bool _ttsLoading = false;
   String? _ttsError;
@@ -236,8 +262,10 @@ class AiBenchmarkRepository extends ChangeNotifier {
   /// download is forgotten so the next tap retries.
   Future<File> ttsClipFile(String runId, String test, String format) {
     final key = '${runId}_$test.$format';
-    return _ttsClips[key] ??= _loadTtsClip(runId, test, key)
-        .catchError((Object e, StackTrace s) {
+    return _ttsClips[key] ??= _loadTtsClip(runId, test, key).catchError((
+      Object e,
+      StackTrace s,
+    ) {
       _ttsClips.remove(key);
       return Future<File>.error(e, s);
     });
@@ -321,7 +349,9 @@ class AiBenchmarkRepository extends ChangeNotifier {
         final file = File('${root.path}/fallbacks/$fallback');
         if (await file.exists() &&
             await _matchesHash(
-                file, _manifest.fallbackHashes[fallback] ?? '')) {
+              file,
+              _manifest.fallbackHashes[fallback] ?? '',
+            )) {
           continue;
         }
         try {
@@ -391,8 +421,10 @@ class AiBenchmarkRepository extends ChangeNotifier {
   /// is forgotten so Retry really retries.
   Future<File> sceneFile(String id, {String extension = 'html'}) {
     final key = '$id.$extension:${byId(id)?.sha256}';
-    return _scenes[key] ??= _loadScene(id, extension)
-        .catchError((Object e, StackTrace s) {
+    return _scenes[key] ??= _loadScene(id, extension).catchError((
+      Object e,
+      StackTrace s,
+    ) {
       _scenes.remove(key);
       return Future<File>.error(e, s);
     });
@@ -423,8 +455,7 @@ class AiBenchmarkRepository extends ChangeNotifier {
         // Usually the roster is older than the scene (repaired or re-uploaded
         // since), so fetch a fresh one for the retry.
         await refreshFromServer(force: true);
-        throw AiBenchmarkApiException(
-            200, currentL.aiBenchmarkIntegrityFailed);
+        throw AiBenchmarkApiException(200, currentL.aiBenchmarkIntegrityFailed);
       }
       await file.parent.create(recursive: true);
       await file.writeAsBytes(bytes, flush: true);
@@ -457,7 +488,8 @@ class AiBenchmarkRepository extends ChangeNotifier {
   Future<Directory> _cacheRoot() async {
     final support = await _cacheDirProvider();
     final root = Directory(
-        '${support.path}${Platform.pathSeparator}$kAiBenchmarkCacheDir');
+      '${support.path}${Platform.pathSeparator}$kAiBenchmarkCacheDir',
+    );
     await root.create(recursive: true);
     _rootPath = root.path;
     return root;
@@ -496,29 +528,31 @@ class AiBenchmarkRepository extends ChangeNotifier {
   Future<void> _writeCache(AiBenchmarkManifest manifest, String? etag) async {
     try {
       final root = await _cacheRoot();
-      await File('${root.path}/manifest.json').writeAsString(jsonEncode({
-        'etag': etag,
-        'manifest': {
-          'refreshedAtMs': manifest.refreshedAt?.millisecondsSinceEpoch,
-          'fallbackPreviews': manifest.fallbackPreviews,
-          'previewHashes': manifest.previewHashes,
-          'fallbackHashes': manifest.fallbackHashes,
-          'benchmarks': [
-            for (final b in manifest.benchmarks)
-              {
-                'id': b.id,
-                'kind': b.kind,
-                'model': b.model,
-                'description': b.description,
-                'sizeBytes': b.sizeBytes,
-                'sha256': b.sha256,
-                'updatedAtMs': b.updatedAt?.millisecondsSinceEpoch,
-                'hasPreview': b.hasPreview,
-                'previewSha256': b.previewSha256,
-              },
-          ],
-        },
-      }));
+      await File('${root.path}/manifest.json').writeAsString(
+        jsonEncode({
+          'etag': etag,
+          'manifest': {
+            'refreshedAtMs': manifest.refreshedAt?.millisecondsSinceEpoch,
+            'fallbackPreviews': manifest.fallbackPreviews,
+            'previewHashes': manifest.previewHashes,
+            'fallbackHashes': manifest.fallbackHashes,
+            'benchmarks': [
+              for (final b in manifest.benchmarks)
+                {
+                  'id': b.id,
+                  'kind': b.kind,
+                  'model': b.model,
+                  'description': b.description,
+                  'sizeBytes': b.sizeBytes,
+                  'sha256': b.sha256,
+                  'updatedAtMs': b.updatedAt?.millisecondsSinceEpoch,
+                  'hasPreview': b.hasPreview,
+                  'previewSha256': b.previewSha256,
+                },
+            ],
+          },
+        }),
+      );
     } catch (_) {
       // Cache is an optimisation. Failing to write it costs one download on
       // the next launch and nothing else.
