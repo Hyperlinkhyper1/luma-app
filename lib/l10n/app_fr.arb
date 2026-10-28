@@ -11618,5 +11618,14 @@
   "mapMakerCityInvalidPlacement": "Aucun espace accessible ici. Dessinez d’abord une rue, déplacez-vous le long de la route ou désactivez la façade sur rue.",
   "mapMakerCityRoadClass": "Type de voie",
   "mapMakerCityGeometry": "Géométrie",
-  "mapMakerCityConnectedCount": "Accès : {connected}/{total} bâtiments"
+  "mapMakerCityConnectedCount": "Accès : {connected}/{total} bâtiments",
+  "cs2TeammateVoiceTitle": "Traduction vocale des coéquipiers",
+  "cs2TeammateVoiceDescription": "Dirigez la voix de CS2 vers une source d’enregistrement Windows, comme un câble audio virtuel ou Stereo Mix, puis sélectionnez-la. Luma affiche la transcription et la traduction dans la superposition du chat. Les joueurs ne peuvent pas être identifiés.",
+  "cs2TeammateVoicePrivacy": "Le son de la source choisie est envoyé au serveur Luma configuré et aux fournisseurs d’IA et utilise votre quota vocal hebdomadaire. Les autres sons de cette source peuvent aussi être envoyés. Les sons faibles peuvent être ignorés.",
+  "cs2TeammateVoiceSource": "Source d’enregistrement",
+  "cs2TeammateVoiceFindSources": "Rechercher les sources",
+  "cs2TeammateVoiceStart": "Commencer l’écoute",
+  "cs2TeammateVoiceStop": "Arrêter l’écoute",
+  "cs2TeammateVoiceRunning": "Écoute et traduit vers la langue cible du traducteur de chat.",
+  "cs2TeammateVoiceIdle": "Démarrez le traducteur de chat et choisissez une source."
 }

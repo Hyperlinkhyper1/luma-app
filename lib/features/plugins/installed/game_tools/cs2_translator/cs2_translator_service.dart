@@ -111,6 +111,8 @@ class Cs2TranslatorService extends ChangeNotifier {
   static const _maxOutputLines = 200;
 
   Process? _process;
+  Directory? _voiceInbox;
+  int _voiceSequence = 0;
   bool _testing = false;
   final List<String> _output = [];
 
@@ -216,6 +218,10 @@ class Cs2TranslatorService extends ChangeNotifier {
   Future<String?> _launch(List<String> args, {required bool testing}) async {
     try {
       final script = await _writeScript();
+      final inbox = testing
+          ? null
+          : await Directory.systemTemp.createTemp('luma-cs2-chat-');
+      _voiceInbox = inbox;
       _output.clear();
       _testing = testing;
       final process = await Process.start('powershell.exe', [
@@ -227,6 +233,7 @@ class Cs2TranslatorService extends ChangeNotifier {
         '-File',
         script,
         ...args,
+        if (inbox != null) ...['-VoiceInbox', inbox.path],
       ]);
       _process = process;
       notifyListeners();
@@ -241,17 +248,46 @@ class Cs2TranslatorService extends ChangeNotifier {
           if (identical(_process, process)) {
             _process = null;
             _testing = false;
+            _voiceInbox = null;
+            if (inbox != null) unawaited(_deleteInbox(inbox));
             notifyListeners();
           }
         }),
       );
       return null;
     } catch (e) {
+      final inbox = _voiceInbox;
+      _voiceInbox = null;
+      if (inbox != null) unawaited(_deleteInbox(inbox));
       _process = null;
       _testing = false;
       notifyListeners();
       return '$e';
     }
+  }
+
+  Future<void> _deleteInbox(Directory inbox) async {
+    try {
+      await inbox.delete(recursive: true);
+    } catch (_) {}
+  }
+
+  Future<void> showVoiceLine(String transcript, String translation) async {
+    final inbox = _voiceInbox;
+    if (!running || inbox == null) {
+      throw StateError('Start the chat translator first.');
+    }
+    final stem = '${DateTime.now().microsecondsSinceEpoch}-${_voiceSequence++}';
+    final pending = File('${inbox.path}${Platform.pathSeparator}$stem.tmp');
+    await pending.writeAsString(
+      jsonEncode({'transcript': transcript, 'translation': translation}),
+      flush: true,
+    );
+    if (!running || !identical(inbox, _voiceInbox)) {
+      if (await pending.exists()) await pending.delete();
+      return;
+    }
+    await pending.rename('${inbox.path}${Platform.pathSeparator}$stem.json');
   }
 
   void _addLine(String line) {

@@ -45,12 +45,49 @@ public sealed class LumaTestWaveInput : ILumaWaveInput {
     public int Close(System.IntPtr device) { Calls.Add("close"); return 0; }
     public string Error(int code) { return "test microphone error"; }
 }
+public sealed class LumaTestContinuousInput : ILumaWaveInput {
+    public int Added, Prepared, Unprepared, ResetCount, Closed;
+    public int Open(out System.IntPtr device, ref LumaWaveFormat format) { device = new System.IntPtr(42); return 0; }
+    public int Prepare(System.IntPtr device, System.IntPtr header, uint size) { Prepared++; return 0; }
+    public int AddBuffer(System.IntPtr device, System.IntPtr header, uint size) {
+        Added++;
+        var wave = (LumaWaveHeader)System.Runtime.InteropServices.Marshal.PtrToStructure(header, typeof(LumaWaveHeader));
+        var samples = new byte[wave.BufferLength];
+        for (int i = 0; i < samples.Length; i += 2) { samples[i] = 0xe8; samples[i + 1] = 0x03; }
+        System.Runtime.InteropServices.Marshal.Copy(samples, 0, wave.Data, samples.Length);
+        wave.BytesRecorded = wave.BufferLength;
+        wave.Flags = 1;
+        System.Runtime.InteropServices.Marshal.StructureToPtr(wave, header, false);
+        return 0;
+    }
+    public int Start(System.IntPtr device) { return 0; }
+    public int Reset(System.IntPtr device) { ResetCount++; return 0; }
+    public int Unprepare(System.IntPtr device, System.IntPtr header, uint size) { Unprepared++; return 0; }
+    public int Close(System.IntPtr device) { Closed++; return 0; }
+    public string Error(int code) { return "test audio error"; }
+}
 '@
 Add-Type -TypeDefinition ($match.Groups[1].Value + [Environment]::NewLine + $fake)
 
 function Assert-True($condition, [string]$message) {
     if (-not $condition) { throw $message }
 }
+
+$continuousInput = New-Object LumaTestContinuousInput
+$continuous = New-Object LumaContinuousCapture($continuousInput)
+try {
+    $continuous.Start()
+    for ($i = 0; $i -lt 6; $i++) {
+        $wav = $continuous.Next()
+        Assert-True ($wav.Length -eq 160044) 'Continuous capture returned the wrong segment length.'
+        Assert-True ([BitConverter]::ToInt32($wav, 40) -eq 160000) 'Continuous capture returned an invalid WAV header.'
+        Assert-True ([LumaContinuousCapture]::Audible($wav)) 'Audible audio was incorrectly skipped.'
+    }
+    $silence = New-Object byte[] 160044
+    Assert-True (-not [LumaContinuousCapture]::Audible($silence)) 'Silence was sent for transcription.'
+} finally { $continuous.Dispose() }
+Assert-True ($continuousInput.Prepared -eq 4 -and $continuousInput.Added -eq 10) 'Continuous buffers were not queued and recycled.'
+Assert-True ($continuousInput.ResetCount -eq 1 -and $continuousInput.Unprepared -eq 4 -and $continuousInput.Closed -eq 1) 'Continuous capture did not release all buffers.'
 
 foreach ($count in @(6400, 32000, 960000)) {
     $inputDevice = New-Object LumaTestWaveInput

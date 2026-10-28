@@ -41344,4 +41344,35 @@ class LFr extends L {
   String mapMakerCityConnectedCount(int connected, int total) {
     return 'Accès : $connected/$total bâtiments';
   }
+
+  @override
+  String get cs2TeammateVoiceTitle => 'Traduction vocale des coéquipiers';
+
+  @override
+  String get cs2TeammateVoiceDescription =>
+      'Dirigez la voix de CS2 vers une source d’enregistrement Windows, comme un câble audio virtuel ou Stereo Mix, puis sélectionnez-la. Luma affiche la transcription et la traduction dans la superposition du chat. Les joueurs ne peuvent pas être identifiés.';
+
+  @override
+  String get cs2TeammateVoicePrivacy =>
+      'Le son de la source choisie est envoyé au serveur Luma configuré et aux fournisseurs d’IA et utilise votre quota vocal hebdomadaire. Les autres sons de cette source peuvent aussi être envoyés. Les sons faibles peuvent être ignorés.';
+
+  @override
+  String get cs2TeammateVoiceSource => 'Source d’enregistrement';
+
+  @override
+  String get cs2TeammateVoiceFindSources => 'Rechercher les sources';
+
+  @override
+  String get cs2TeammateVoiceStart => 'Commencer l’écoute';
+
+  @override
+  String get cs2TeammateVoiceStop => 'Arrêter l’écoute';
+
+  @override
+  String get cs2TeammateVoiceRunning =>
+      'Écoute et traduit vers la langue cible du traducteur de chat.';
+
+  @override
+  String get cs2TeammateVoiceIdle =>
+      'Démarrez le traducteur de chat et choisissez une source.';
 }

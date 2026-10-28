@@ -13,6 +13,7 @@ param(
     [int]$OverlayX = 20,
     [int]$OverlayY = -1,       # -1 = automatic (bottom-left, above the chat area)
     [string]$Snapshot = "",    # render the overlay with sample lines to a PNG and exit (for checking the look)
+    [string]$VoiceInbox = "",
     [switch]$NoOverlay,
     [switch]$Test
 )
@@ -413,6 +414,17 @@ function Update-Chat {
     foreach ($line in Read-NewLines) {
         $item = Parse-Line $line
         if ($item) { Show-Line $item }
+    }
+    if ($VoiceInbox -and [IO.Directory]::Exists($VoiceInbox)) {
+        foreach ($file in Get-ChildItem -LiteralPath $VoiceInbox -Filter '*.json' | Sort-Object Name) {
+            try {
+                $voice = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
+                if ($voice.transcript -and $voice.translation) {
+                    $translated = if ($voice.translation -ne $voice.transcript) { $voice.translation } else { $null }
+                    Show-Line @{ Team = 'VOICE'; Dot = $false; Dead = $false; Name = 'Teammate audio'; Loc = ''; Msg = $voice.transcript; Trans = $translated; Lang = 'voice' }
+                }
+            } finally { Remove-Item -LiteralPath $file.FullName -Force -ErrorAction SilentlyContinue }
+        }
     }
     if ($script:overlay) { $script:overlay.Expire($HideAfterSeconds) }
 }

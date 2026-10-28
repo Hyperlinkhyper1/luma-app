@@ -66952,6 +66952,60 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Access: {connected}/{total} buildings'**
   String mapMakerCityConnectedCount(int connected, int total);
+
+  /// No description provided for @cs2TeammateVoiceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Teammate voice translation'**
+  String get cs2TeammateVoiceTitle;
+
+  /// No description provided for @cs2TeammateVoiceDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Route CS2 voice to a Windows recording source (such as a virtual audio cable or Stereo Mix), then select that source. Luma displays the transcript and translation in the chat overlay. Player names cannot be identified.'**
+  String get cs2TeammateVoiceDescription;
+
+  /// No description provided for @cs2TeammateVoicePrivacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio from the selected source is sent to the configured Luma server and AI providers and uses your weekly voice allowance. Any other audio on that source can also be sent. Quiet audio may be skipped.'**
+  String get cs2TeammateVoicePrivacy;
+
+  /// No description provided for @cs2TeammateVoiceSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording source'**
+  String get cs2TeammateVoiceSource;
+
+  /// No description provided for @cs2TeammateVoiceFindSources.
+  ///
+  /// In en, this message translates to:
+  /// **'Find recording sources'**
+  String get cs2TeammateVoiceFindSources;
+
+  /// No description provided for @cs2TeammateVoiceStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start listening'**
+  String get cs2TeammateVoiceStart;
+
+  /// No description provided for @cs2TeammateVoiceStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop listening'**
+  String get cs2TeammateVoiceStop;
+
+  /// No description provided for @cs2TeammateVoiceRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening and translating into the chat translator’s target language.'**
+  String get cs2TeammateVoiceRunning;
+
+  /// No description provided for @cs2TeammateVoiceIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the chat translator and choose a source to begin.'**
+  String get cs2TeammateVoiceIdle;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

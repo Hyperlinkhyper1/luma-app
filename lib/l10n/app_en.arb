@@ -24969,5 +24969,14 @@
         "type": "int"
       }
     }
-  }
+  },
+  "cs2TeammateVoiceTitle": "Teammate voice translation",
+  "cs2TeammateVoiceDescription": "Route CS2 voice to a Windows recording source (such as a virtual audio cable or Stereo Mix), then select that source. Luma displays the transcript and translation in the chat overlay. Player names cannot be identified.",
+  "cs2TeammateVoicePrivacy": "Audio from the selected source is sent to the configured Luma server and AI providers and uses your weekly voice allowance. Any other audio on that source can also be sent. Quiet audio may be skipped.",
+  "cs2TeammateVoiceSource": "Recording source",
+  "cs2TeammateVoiceFindSources": "Find recording sources",
+  "cs2TeammateVoiceStart": "Start listening",
+  "cs2TeammateVoiceStop": "Stop listening",
+  "cs2TeammateVoiceRunning": "Listening and translating into the chat translator’s target language.",
+  "cs2TeammateVoiceIdle": "Start the chat translator and choose a source to begin."
 }

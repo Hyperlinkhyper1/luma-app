@@ -590,6 +590,21 @@ void main() {
     });
 
     test(
+        'continuous listening accepts empty speech and uses the weekly allowance',
+        () async {
+      emptyTranscript = true;
+      final response =
+          await call(body: {...input(), 'allowEmptyTranscript': true});
+      expect(response.statusCode, 200);
+      expect(jsonDecode(await response.readAsString()),
+          {'transcript': '', 'translation': ''});
+      expect(upstreamCalls, hasLength(1));
+      expect(usage.unitsUsed('voice', const Duration(hours: 5)), 0);
+      expect(usage.unitsUsed('voice', const Duration(days: 7)),
+          cs2VoiceAllowanceUnits(const Duration(seconds: 1), 'core').ceil());
+    });
+
+    test(
       'weekly allowance blocks direct requests even with purchased credits',
       () async {
         final budget = aiTokenBudget('core');

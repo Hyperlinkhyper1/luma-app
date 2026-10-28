@@ -11618,5 +11618,14 @@
   "mapMakerCityInvalidPlacement": "Hier is geen toegankelijke ruimte. Teken eerst een straat, verschuif langs de weg of schakel weggerichte kavels uit.",
   "mapMakerCityRoadClass": "Wegtype",
   "mapMakerCityGeometry": "Geometrie",
-  "mapMakerCityConnectedCount": "Toegang: {connected}/{total} gebouwen"
+  "mapMakerCityConnectedCount": "Toegang: {connected}/{total} gebouwen",
+  "cs2TeammateVoiceTitle": "Spraak van teamgenoten vertalen",
+  "cs2TeammateVoiceDescription": "Leid de CS2-spraak naar een Windows-opnamebron, zoals een virtuele audiokabel of Stereo Mix, en selecteer die bron. Luma toont de transcriptie en vertaling in de chatoverlay. Spelers kunnen niet worden herkend.",
+  "cs2TeammateVoicePrivacy": "Audio van de geselecteerde bron wordt naar de ingestelde Luma-server en AI-aanbieders verzonden en gebruikt je wekelijkse spraaklimiet. Ook andere audio op die bron kan worden verzonden. Stille audio kan worden overgeslagen.",
+  "cs2TeammateVoiceSource": "Opnamebron",
+  "cs2TeammateVoiceFindSources": "Opnamebronnen zoeken",
+  "cs2TeammateVoiceStart": "Luisteren starten",
+  "cs2TeammateVoiceStop": "Luisteren stoppen",
+  "cs2TeammateVoiceRunning": "Luistert en vertaalt naar de doeltaal van de chatvertaler.",
+  "cs2TeammateVoiceIdle": "Start de chatvertaler en kies een bron om te beginnen."
 }

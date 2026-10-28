@@ -41118,4 +41118,35 @@ class LNl extends L {
   String mapMakerCityConnectedCount(int connected, int total) {
     return 'Toegang: $connected/$total gebouwen';
   }
+
+  @override
+  String get cs2TeammateVoiceTitle => 'Spraak van teamgenoten vertalen';
+
+  @override
+  String get cs2TeammateVoiceDescription =>
+      'Leid de CS2-spraak naar een Windows-opnamebron, zoals een virtuele audiokabel of Stereo Mix, en selecteer die bron. Luma toont de transcriptie en vertaling in de chatoverlay. Spelers kunnen niet worden herkend.';
+
+  @override
+  String get cs2TeammateVoicePrivacy =>
+      'Audio van de geselecteerde bron wordt naar de ingestelde Luma-server en AI-aanbieders verzonden en gebruikt je wekelijkse spraaklimiet. Ook andere audio op die bron kan worden verzonden. Stille audio kan worden overgeslagen.';
+
+  @override
+  String get cs2TeammateVoiceSource => 'Opnamebron';
+
+  @override
+  String get cs2TeammateVoiceFindSources => 'Opnamebronnen zoeken';
+
+  @override
+  String get cs2TeammateVoiceStart => 'Luisteren starten';
+
+  @override
+  String get cs2TeammateVoiceStop => 'Luisteren stoppen';
+
+  @override
+  String get cs2TeammateVoiceRunning =>
+      'Luistert en vertaalt naar de doeltaal van de chatvertaler.';
+
+  @override
+  String get cs2TeammateVoiceIdle =>
+      'Start de chatvertaler en kies een bron om te beginnen.';
 }

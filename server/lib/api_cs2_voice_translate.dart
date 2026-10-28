@@ -53,7 +53,12 @@ extension Cs2VoiceTranslateApi on Api {
           cs2VoiceTranscriptionMessages(input.audioBase64,
               instructions:
                   speechConfig.instructions ?? kCs2VoiceTranscribeInstructions),
-          deadline);
+          deadline,
+          allowEmpty: input.allowEmptyTranscript);
+      if (transcript.isEmpty) {
+        completed = true;
+        return jsonResponse(200, {'transcript': '', 'translation': ''});
+      }
       final translationConfig = cs2VoiceConfig.model(kCs2TranslateSelector);
       final translation = await _cs2VoiceStep(
           user,
@@ -106,8 +111,9 @@ extension Cs2VoiceTranslateApi on Api {
     StoredUser user,
     String selector,
     List<Map<String, dynamic>> messages,
-    DateTime deadline,
-  ) async {
+    DateTime deadline, {
+    bool allowEmpty = false,
+  }) async {
     final route = cs2VoiceConfig.resolve(
       selector,
       config.configuredAiUpstreams,
@@ -160,7 +166,9 @@ extension Cs2VoiceTranslateApi on Api {
           content = decoded['choices']?[0]?['message']?['content'] as String?;
         } catch (_) {}
       }
-      final parsed = content == null ? null : parseCs2VoiceReply(content);
+      final parsed = content == null
+          ? null
+          : parseCs2VoiceReply(content, allowEmpty: allowEmpty);
       if (parsed != null) return parsed;
     }
     throw errorResponse(

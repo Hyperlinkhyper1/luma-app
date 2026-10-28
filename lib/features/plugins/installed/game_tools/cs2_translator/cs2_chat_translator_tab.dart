@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 
 import '../../../../../app/widgets.dart';
 import '../../../../../l10n/app_localizations.dart';
+import '../../../../../sync/sync_scope.dart';
 import '../../../../../theme/luma_theme.dart';
+import 'cs2_teammate_voice_service.dart';
 import 'cs2_translator_service.dart';
 
 /// Game Tools' CS2 chat translator: setup steps, the script's options, a
@@ -19,6 +21,11 @@ class Cs2ChatTranslatorTab extends StatefulWidget {
 
 class _Cs2ChatTranslatorTabState extends State<Cs2ChatTranslatorTab> {
   final _service = Cs2TranslatorService.instance;
+  final _voice = Cs2TeammateVoiceService.instance;
+  List<Cs2VoiceInputDevice> _voiceDevices = [];
+  int? _voiceDevice;
+  bool _loadingDevices = false;
+  String? _deviceError;
   final _lang = TextEditingController();
   final _hide = TextEditingController();
   final _lines = TextEditingController();
@@ -36,7 +43,33 @@ class _Cs2ChatTranslatorTabState extends State<Cs2ChatTranslatorTab> {
   void initState() {
     super.initState();
     _service.addListener(_onService);
+    _voice.addListener(_onService);
     if (Cs2TranslatorService.supported) _load();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _voice.configure(SyncScope.maybeOf(context));
+  }
+
+  Future<void> _findVoiceDevices() async {
+    setState(() {
+      _loadingDevices = true;
+      _deviceError = null;
+    });
+    try {
+      final devices = await _voice.listDevices();
+      if (!mounted) return;
+      setState(() {
+        _voiceDevices = devices;
+        _voiceDevice = null;
+      });
+    } catch (error) {
+      if (mounted) setState(() => _deviceError = '$error');
+    } finally {
+      if (mounted) setState(() => _loadingDevices = false);
+    }
   }
 
   Future<void> _load() async {
@@ -64,6 +97,7 @@ class _Cs2ChatTranslatorTabState extends State<Cs2ChatTranslatorTab> {
   @override
   void dispose() {
     _service.removeListener(_onService);
+    _voice.removeListener(_onService);
     for (final c in [_lang, _hide, _lines, _x, _y, _logPath]) {
       c.dispose();
     }
@@ -130,6 +164,8 @@ class _Cs2ChatTranslatorTabState extends State<Cs2ChatTranslatorTab> {
                   const SizedBox(height: 14),
                   _controls(t, luma),
                   const SizedBox(height: 14),
+                  _voiceCard(t, luma),
+                  const SizedBox(height: 14),
                   _outputCard(t, luma),
                 ],
               ],
@@ -139,6 +175,81 @@ class _Cs2ChatTranslatorTabState extends State<Cs2ChatTranslatorTab> {
       ],
     );
   }
+
+  Widget _voiceCard(L t, LumaPalette luma) => LumaCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _heading(t.cs2TeammateVoiceTitle, luma),
+        Text(
+          t.cs2TeammateVoiceDescription,
+          style: TextStyle(color: luma.textSecondary),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          t.cs2TeammateVoicePrivacy,
+          style: TextStyle(color: luma.textSecondary),
+        ),
+        const SizedBox(height: 12),
+        if (_voiceDevices.isNotEmpty)
+          DropdownButtonFormField<int>(
+            initialValue: _voiceDevice,
+            decoration: InputDecoration(labelText: t.cs2TeammateVoiceSource),
+            items: [
+              for (final device in _voiceDevices)
+                DropdownMenuItem(
+                  value: device.id,
+                  child: Text(device.name, overflow: TextOverflow.ellipsis),
+                ),
+            ],
+            onChanged: _voice.running
+                ? null
+                : (value) => setState(() => _voiceDevice = value),
+          ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            OutlinedButton.icon(
+              onPressed: _loadingDevices || _voice.running
+                  ? null
+                  : _findVoiceDevices,
+              icon: const Icon(Icons.refresh),
+              label: Text(t.cs2TeammateVoiceFindSources),
+            ),
+            if (_voice.running)
+              FilledButton.icon(
+                onPressed: _voice.stop,
+                icon: const Icon(Icons.stop),
+                label: Text(t.cs2TeammateVoiceStop),
+              )
+            else
+              FilledButton.icon(
+                onPressed: _voiceDevice == null || !_service.running
+                    ? null
+                    : () =>
+                          _voice.start(_voiceDevice!, _readFields().targetLang),
+                icon: const Icon(Icons.hearing),
+                label: Text(t.cs2TeammateVoiceStart),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _voice.running ? t.cs2TeammateVoiceRunning : t.cs2TeammateVoiceIdle,
+          style: TextStyle(color: luma.textSecondary),
+        ),
+        if (_deviceError != null || _voice.error != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _deviceError ?? _voice.error!,
+            style: TextStyle(color: luma.textSecondary),
+          ),
+        ],
+      ],
+    ),
+  );
 
   Widget _heading(String text, LumaPalette luma) => Padding(
     padding: const EdgeInsets.only(bottom: 12),

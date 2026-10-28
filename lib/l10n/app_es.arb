@@ -11618,5 +11618,14 @@
   "mapMakerCityInvalidPlacement": "No hay espacio accesible aquí. Dibuja una calle, desplázate por la vía o desactiva el frente a la vía.",
   "mapMakerCityRoadClass": "Tipo de vía",
   "mapMakerCityGeometry": "Geometría",
-  "mapMakerCityConnectedCount": "Acceso: {connected}/{total} edificios"
+  "mapMakerCityConnectedCount": "Acceso: {connected}/{total} edificios",
+  "cs2TeammateVoiceTitle": "Traducción de voz de compañeros",
+  "cs2TeammateVoiceDescription": "Dirige la voz de CS2 a una fuente de grabación de Windows, como un cable de audio virtual o Stereo Mix, y selecciónala. Luma muestra la transcripción y la traducción en la superposición del chat. No se puede identificar a los jugadores.",
+  "cs2TeammateVoicePrivacy": "El audio de la fuente seleccionada se envía al servidor de Luma configurado y a los proveedores de IA y consume tu cuota semanal de voz. También se pueden enviar otros sonidos de esa fuente. El audio silencioso puede omitirse.",
+  "cs2TeammateVoiceSource": "Fuente de grabación",
+  "cs2TeammateVoiceFindSources": "Buscar fuentes",
+  "cs2TeammateVoiceStart": "Empezar a escuchar",
+  "cs2TeammateVoiceStop": "Dejar de escuchar",
+  "cs2TeammateVoiceRunning": "Escuchando y traduciendo al idioma de destino del traductor de chat.",
+  "cs2TeammateVoiceIdle": "Inicia el traductor de chat y elige una fuente para empezar."
 }

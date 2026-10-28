@@ -38968,4 +38968,33 @@ class LZh extends L {
   String mapMakerCityConnectedCount(int connected, int total) {
     return '道路连接：$connected/$total 栋建筑';
   }
+
+  @override
+  String get cs2TeammateVoiceTitle => '队友语音翻译';
+
+  @override
+  String get cs2TeammateVoiceDescription =>
+      '将 CS2 语音路由到 Windows 录音源（如虚拟音频线或立体声混音），然后选择该录音源。Luma 会在聊天浮层中显示转录和翻译。无法识别具体玩家。';
+
+  @override
+  String get cs2TeammateVoicePrivacy =>
+      '所选录音源的音频会发送至配置的 Luma 服务器和 AI 提供商，并消耗每周语音额度。该录音源的其他声音也可能被发送。较安静的音频可能被跳过。';
+
+  @override
+  String get cs2TeammateVoiceSource => '录音源';
+
+  @override
+  String get cs2TeammateVoiceFindSources => '查找录音源';
+
+  @override
+  String get cs2TeammateVoiceStart => '开始收听';
+
+  @override
+  String get cs2TeammateVoiceStop => '停止收听';
+
+  @override
+  String get cs2TeammateVoiceRunning => '正在收听并翻译为聊天翻译器的目标语言。';
+
+  @override
+  String get cs2TeammateVoiceIdle => '启动聊天翻译器并选择录音源即可开始。';
 }

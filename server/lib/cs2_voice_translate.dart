@@ -164,11 +164,13 @@ class Cs2VoiceConfigStore {
 }
 
 class Cs2VoiceInput {
-  const Cs2VoiceInput(this.audioBase64, this.targetLanguage, this.duration);
+  const Cs2VoiceInput(this.audioBase64, this.targetLanguage, this.duration,
+      {this.allowEmptyTranscript = false});
 
   final String audioBase64;
   final String targetLanguage;
   final Duration duration;
+  final bool allowEmptyTranscript;
 
   static Cs2VoiceInput parse(Map<String, dynamic> raw) {
     final language = raw['targetLanguage'];
@@ -192,7 +194,8 @@ class Cs2VoiceInput {
       throw const FormatException('The recording is not valid base64 audio.');
     }
     final duration = validateCs2VoiceWav(bytes);
-    return Cs2VoiceInput(base64Encode(bytes), language.trim(), duration);
+    return Cs2VoiceInput(base64Encode(bytes), language.trim(), duration,
+        allowEmptyTranscript: raw['allowEmptyTranscript'] == true);
   }
 }
 
@@ -272,7 +275,8 @@ Duration validateCs2VoiceWav(Uint8List bytes) {
   );
 }
 
-String? parseCs2VoiceReply(String reply, {int maxChars = 4000}) {
+String? parseCs2VoiceReply(String reply,
+    {int maxChars = 4000, bool allowEmpty = false}) {
   var text = reply.trim();
   if (text.startsWith('```')) {
     text = text
@@ -283,7 +287,9 @@ String? parseCs2VoiceReply(String reply, {int maxChars = 4000}) {
     final raw = jsonDecode(text);
     if (raw is! Map || raw['text'] is! String) return null;
     final value = (raw['text'] as String).trim();
-    return value.isNotEmpty && value.length <= maxChars ? value : null;
+    return (value.isNotEmpty || allowEmpty) && value.length <= maxChars
+        ? value
+        : null;
   } catch (_) {
     return null;
   }

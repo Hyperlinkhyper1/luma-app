@@ -1,4 +1,4 @@
-param([Parameter(Mandatory = $true)][string]$CommandDirectory)
+param([string]$CommandDirectory = "", [int]$DeviceId = -1, [switch]$ListDevices, [switch]$Continuous)
 
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
@@ -38,6 +38,26 @@ public interface ILumaWaveInput {
 }
 
 public sealed class LumaWaveInput : ILumaWaveInput {
+    private readonly uint deviceId;
+    public LumaWaveInput() : this(-1) {}
+    public LumaWaveInput(int deviceId) { this.deviceId = unchecked((uint)deviceId); }
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct WaveInCaps {
+        public ushort Manufacturer, Product; public uint Version;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string Name;
+        public uint Formats; public ushort Channels, Reserved;
+    }
+    [DllImport("winmm.dll")] private static extern uint waveInGetNumDevs();
+    [DllImport("winmm.dll", CharSet = CharSet.Unicode)]
+    private static extern int waveInGetDevCapsW(UIntPtr id, out WaveInCaps caps, uint size);
+    public static string[] Devices() {
+        var names = new string[waveInGetNumDevs()];
+        for (uint i = 0; i < names.Length; i++) {
+            WaveInCaps caps;
+            names[i] = waveInGetDevCapsW((UIntPtr)i, out caps, (uint)Marshal.SizeOf(typeof(WaveInCaps))) == 0 ? caps.Name : "Unavailable";
+        }
+        return names;
+    }
     [DllImport("winmm.dll")]
     private static extern int waveInOpen(out IntPtr device, uint deviceId,
         ref LumaWaveFormat format, UIntPtr callback, UIntPtr instance, uint flags);
@@ -57,7 +77,7 @@ public sealed class LumaWaveInput : ILumaWaveInput {
     private static extern int waveInGetErrorText(int code, StringBuilder message, uint size);
 
     public int Open(out IntPtr device, ref LumaWaveFormat format) {
-        return waveInOpen(out device, uint.MaxValue, ref format, UIntPtr.Zero, UIntPtr.Zero, 0);
+        return waveInOpen(out device, deviceId, ref format, UIntPtr.Zero, UIntPtr.Zero, 0);
     }
     public int Prepare(IntPtr device, IntPtr header, uint size) { return waveInPrepareHeader(device, header, size); }
     public int AddBuffer(IntPtr device, IntPtr header, uint size) { return waveInAddBuffer(device, header, size); }
@@ -80,6 +100,7 @@ public sealed class LumaVoiceCapture : IDisposable {
     private bool prepared, reset, disposed;
 
     public LumaVoiceCapture() : this(new LumaWaveInput()) {}
+    public LumaVoiceCapture(int deviceId) : this(new LumaWaveInput(deviceId)) {}
     public LumaVoiceCapture(ILumaWaveInput input) { this.input = input; }
 
     private void Check(int result) {
@@ -148,6 +169,95 @@ public sealed class LumaVoiceCapture : IDisposable {
     }
 
 }
+
+public sealed class LumaContinuousCapture : IDisposable {
+    private const int BufferBytes = 5 * 32000;
+    private const int BufferCount = 4;
+    private readonly ILumaWaveInput input;
+    private readonly uint headerSize = (uint)Marshal.SizeOf(typeof(LumaWaveHeader));
+    private readonly IntPtr[] buffers = new IntPtr[BufferCount];
+    private readonly IntPtr[] headers = new IntPtr[BufferCount];
+    private readonly bool[] prepared = new bool[BufferCount];
+    private IntPtr device;
+    private int next;
+    private bool disposed;
+
+    public LumaContinuousCapture(int deviceId) : this(new LumaWaveInput(deviceId)) {}
+    public LumaContinuousCapture(ILumaWaveInput input) { this.input = input; }
+    private void Check(int result) {
+        if (result != 0) throw new InvalidOperationException(input.Error(result));
+    }
+    public void Start() {
+        var format = new LumaWaveFormat { FormatTag = 1, Channels = 1,
+            SamplesPerSecond = 16000, AverageBytesPerSecond = 32000,
+            BlockAlign = 2, BitsPerSample = 16 };
+        try {
+            Check(input.Open(out device, ref format));
+            for (int i = 0; i < BufferCount; i++) {
+                buffers[i] = Marshal.AllocHGlobal(BufferBytes);
+                headers[i] = Marshal.AllocHGlobal((int)headerSize);
+                Marshal.StructureToPtr(new LumaWaveHeader {
+                    Data = buffers[i], BufferLength = BufferBytes
+                }, headers[i], false);
+                Check(input.Prepare(device, headers[i], headerSize));
+                prepared[i] = true;
+                Check(input.AddBuffer(device, headers[i], headerSize));
+            }
+            Check(input.Start(device));
+        } catch { Dispose(); throw; }
+    }
+    public byte[] Next() {
+        LumaWaveHeader wave;
+        var deadline = DateTime.UtcNow.AddSeconds(15);
+        do {
+            System.Threading.Thread.Sleep(10);
+            if (DateTime.UtcNow >= deadline) throw new InvalidOperationException("The recording device stopped delivering audio.");
+            wave = (LumaWaveHeader)Marshal.PtrToStructure(headers[next], typeof(LumaWaveHeader));
+        } while ((wave.Flags & 1) == 0);
+        int count = checked((int)wave.BytesRecorded);
+        if (count != BufferBytes) throw new InvalidOperationException("The recording device returned incomplete audio.");
+        var samples = new byte[count];
+        Marshal.Copy(buffers[next], samples, 0, count);
+        Check(input.AddBuffer(device, headers[next], headerSize));
+        next = (next + 1) % BufferCount;
+        using (var stream = new MemoryStream(44 + count))
+        using (var writer = new BinaryWriter(stream)) {
+            writer.Write(Encoding.ASCII.GetBytes("RIFF")); writer.Write(36 + count);
+            writer.Write(Encoding.ASCII.GetBytes("WAVEfmt ")); writer.Write(16);
+            writer.Write((ushort)1); writer.Write((ushort)1); writer.Write(16000);
+            writer.Write(32000); writer.Write((ushort)2); writer.Write((ushort)16);
+            writer.Write(Encoding.ASCII.GetBytes("data")); writer.Write(count);
+            writer.Write(samples); writer.Flush();
+            return stream.ToArray();
+        }
+    }
+    public static bool Audible(byte[] wav) {
+        double sum = 0;
+        for (int i = 44; i < wav.Length; i += 2) {
+            double sample = BitConverter.ToInt16(wav, i);
+            sum += sample * sample;
+        }
+        return Math.Sqrt(sum / ((wav.Length - 44) / 2)) >= 200;
+    }
+    public void Dispose() {
+        if (disposed) return;
+        disposed = true;
+        if (device != IntPtr.Zero) {
+            input.Reset(device);
+            bool released = true;
+            for (int i = 0; i < BufferCount; i++) {
+                if (prepared[i] && input.Unprepare(device, headers[i], headerSize) != 0) released = false;
+            }
+            bool closed = input.Close(device) == 0;
+            device = IntPtr.Zero;
+            if (!released || !closed) return;
+        }
+        for (int i = 0; i < BufferCount; i++) {
+            if (headers[i] != IntPtr.Zero) Marshal.FreeHGlobal(headers[i]);
+            if (buffers[i] != IntPtr.Zero) Marshal.FreeHGlobal(buffers[i]);
+        }
+    }
+}
 '@
 
 # luma creates an empty "stop" or "cancel" file in this folder. Stdin can't
@@ -161,6 +271,34 @@ function Read-LumaCommand([string]$directory, [int]$timeoutMilliseconds) {
         Start-Sleep -Milliseconds 30
     }
     return $null
+}
+
+if ($ListDevices) {
+    $devices = [LumaWaveInput]::Devices()
+    $items = @()
+    for ($i = 0; $i -lt $devices.Length; $i++) { $items += @{ id = $i; name = $devices[$i] } }
+    [Console]::WriteLine((ConvertTo-Json -InputObject $items -Compress))
+    return
+}
+if ($Continuous) {
+    $capture = New-Object LumaContinuousCapture -ArgumentList $DeviceId
+    try {
+        $capture.Start()
+        [Console]::WriteLine('{"event":"recording"}')
+        [Console]::Out.Flush()
+        while (-not [IO.File]::Exists((Join-Path $CommandDirectory 'cancel'))) {
+            $bytes = $capture.Next()
+            if ([LumaContinuousCapture]::Audible($bytes)) {
+                [Console]::WriteLine((@{ event = 'audio'; data = [Convert]::ToBase64String($bytes) } | ConvertTo-Json -Compress))
+                [Console]::Out.Flush()
+            }
+        }
+    } catch {
+        [Console]::WriteLine((@{ event = 'error'; message = $_.Exception.Message } | ConvertTo-Json -Compress))
+        [Console]::Out.Flush()
+        exit 1
+    } finally { $capture.Dispose() }
+    return
 }
 
 $capture = New-Object LumaVoiceCapture
