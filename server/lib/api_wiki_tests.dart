@@ -1,6 +1,6 @@
 part of 'api.dart';
 
-const _wikiVersion = 'wiki-search-v1';
+const _wikiVersion = 'wiki-search-v2';
 
 class _WikiStore {
   _WikiStore(String dir) : file = File('$dir/wiki-search-results.json') {
@@ -155,7 +155,7 @@ extension WikiTestsApi on Api {
   String _wikiView() => '''<div id="wikiView" hidden class="dt-view">
     <section class="dt-sec">
     <div class="bg-step-head"><h3>Models</h3><span id="wikiCount" class="bg-step-hint">Loading models…</span></div>
-    <div class="dt-desc">Embeds 24 passages and 24 indirect queries. Score is mean reciprocal rank at 10; higher is better. Select one model or enter a model ID. Runs use the server's OpenRouter key unless you paste one.</div>
+    <div class="dt-desc">Embeds ${wikiPassages.length} passages and ${wikiQueries.length} queries, including related distractors. Score is mean reciprocal rank at 10; higher is better. Select one model or enter a model ID. Runs use the server's OpenRouter key unless you paste one.</div>
     <div class="dt-form">
     <div><label for="wikiKey">OpenRouter API key (optional)</label><input id="wikiKey" type="password" autocomplete="new-password" placeholder="Use the server's key"></div>
     <div><label for="wikiManual">Other model ID</label><input id="wikiManual" type="text" autocomplete="off" spellcheck="false" placeholder="vendor/model"></div>
