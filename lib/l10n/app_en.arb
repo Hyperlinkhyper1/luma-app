@@ -168,6 +168,25 @@
       }
     }
   },
+  "teamSettingsEntryTags": "Entry tags",
+  "teamSettingsEntryTagsHint": "Anyone can put these on an entry and filter the board by them. Only leads make them.",
+  "teamSettingsEntryTagCount": "{count, plural, =0{not used yet} =1{on 1 entry} other{on {count} entries}}",
+  "@teamSettingsEntryTagCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "teamSettingsEntryTagNameHint": "Blocks, Mobs, 1.21 port…",
+  "teamSettingsDeleteEntryTagConfirm": "Delete the {name} tag? It comes off every entry that has it.",
+  "@teamSettingsDeleteEntryTagConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "teamSettingsNoMembers": "Nobody else is on the team yet. The admin adds people from the dashboard.",
   "teamSettingsGroupBoard": "Board",
   "teamSettingsGroupLibrary": "Assets library",
@@ -24633,6 +24652,7 @@
   "teamClipboardDeleteConfirmTitle": "Delete this entry?",
   "teamClipboardDeleteConfirmBody": "Its brief, files and chat are removed for the whole team.",
   "teamClipboardEditorNewTitle": "New entry",
+  "teamClipboardEditorTags": "Tags",
   "teamClipboardEditorKind": "Type",
   "teamClipboardEditorTitleLabel": "Title",
   "teamClipboardEditorTitleHint": "e.g. Ruby ore block",
