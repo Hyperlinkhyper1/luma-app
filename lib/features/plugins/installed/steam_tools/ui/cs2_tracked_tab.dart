@@ -10,6 +10,7 @@ import '../steam_price_history.dart' show formatSteamPrice;
 import 'cs2_item_detail_page.dart';
 import 'cs2_price_chart.dart';
 import 'cs2_shared.dart';
+import 'cs2_starting_price_dialog.dart';
 
 /// One tracked copy, joined with its listing's shared metadata and price —
 /// what every widget below actually renders. [Cs2MarketEntry] alone has no
@@ -112,7 +113,7 @@ class Cs2TrackedBody extends StatelessWidget {
                         subtitle: t.cs2TrackedNoMatchSubtitle,
                       )
                     else
-                      _TrackedGrid(rows: rows),
+                      _TrackedGrid(rows: rows, repository: repository),
                   ],
                 );
               },
@@ -250,9 +251,10 @@ class _PortfolioCardState extends State<_PortfolioCard> {
 /// two copies of the same listing get two tiles, since each has its own
 /// starting price and gain/loss.
 class _TrackedGrid extends StatelessWidget {
-  const _TrackedGrid({required this.rows});
+  const _TrackedGrid({required this.rows, required this.repository});
 
   final List<_TrackedRow> rows;
+  final Cs2MarketRepository repository;
 
   @override
   Widget build(BuildContext context) {
@@ -266,15 +268,32 @@ class _TrackedGrid extends StatelessWidget {
         mainAxisSpacing: 14,
       ),
       itemCount: rows.length,
-      itemBuilder: (context, index) => _TrackedTile(row: rows[index]),
+      itemBuilder: (context, index) =>
+          _TrackedTile(row: rows[index], repository: repository),
     );
   }
 }
 
 class _TrackedTile extends StatelessWidget {
-  const _TrackedTile({required this.row});
+  const _TrackedTile({required this.row, required this.repository});
 
   final _TrackedRow row;
+  final Cs2MarketRepository repository;
+
+  Future<void> _editCost(BuildContext context) async {
+    final result = await showCs2StartingPriceDialog(
+      context,
+      title: 'Set purchase or key cost',
+      subtitle: row.item.displayName,
+      wears: const [],
+      wear: row.item.wear,
+      wearEditable: false,
+      suggestedCents: row.entry.startingPriceCents,
+    );
+    if (result != null) {
+      await repository.setEntryStartingPrice(row.entry.id, result.priceCents);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -292,20 +311,25 @@ class _TrackedTile extends StatelessWidget {
       borderRadius: radius,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => Cs2ItemDetailPage(
-              skinId: item.skinId,
-              initialWear: item.wear,
-              initialStatTrak: item.statTrak,
+        onTap: () {
+          if (!repository.catalog.any((skin) => skin.id == item.skinId)) {
+            _editCost(context);
+            return;
+          }
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => Cs2ItemDetailPage(
+                skinId: item.skinId,
+                initialWear: item.wear,
+                initialStatTrak: item.statTrak,
+              ),
             ),
-          ),
-        ),
+          );
+        },
         child: Semantics(
           label: '${item.displayName}, ${_variantLabel(t, item)}, '
               '${priceCents == null ? t.steamPriceNotChecked : formatSteamPrice(priceCents, item.currency)}',
           button: true,
-          excludeSemantics: true,
           child: Container(
             decoration: BoxDecoration(
               borderRadius: radius,
@@ -316,7 +340,36 @@ class _TrackedTile extends StatelessWidget {
               children: [
                 AspectRatio(
                   aspectRatio: 1.4,
-                  child: Cs2ItemImage(url: item.imageUrl),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Cs2ItemImage(url: item.imageUrl),
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: PopupMenuButton<String>(
+                          tooltip: 'Item actions',
+                          onSelected: (action) {
+                            if (action == 'cost') {
+                              _editCost(context);
+                            } else if (action == 'remove') {
+                              repository.untrackEntry(entry.id);
+                            }
+                          },
+                          itemBuilder: (_) => [
+                            const PopupMenuItem(
+                              value: 'cost',
+                              child: Text('Set purchase or key cost'),
+                            ),
+                            const PopupMenuItem(
+                              value: 'remove',
+                              child: Text('Remove from tracking'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),

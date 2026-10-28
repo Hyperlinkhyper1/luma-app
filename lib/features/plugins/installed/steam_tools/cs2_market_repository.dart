@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../../../../l10n/current_l.dart';
 import '../../../../storage/storage_guard.dart';
 import 'cs2_catalog_service.dart';
+import 'cs2_inventory_api.dart';
 import 'cs2_market_api.dart';
 import 'cs2_models.dart';
 import 'data/steam_database.dart';
@@ -172,6 +173,7 @@ class Cs2MarketRepository extends ChangeNotifier {
   Future<Map<String, dynamic>> _exportOfflineSnapshot() async {
     final items = await _db.allCs2Items();
     final entries = await _db.allCs2Entries();
+    final assetKeys = await _db.allCs2InventoryAssetKeys();
     final points = await _db.allCs2PricePoints();
     return {
       'enabled': _offlineTrackingEnabled,
@@ -199,6 +201,7 @@ class Cs2MarketRepository extends ChangeNotifier {
         for (final entry in entries)
           {
             'marketHashName': entry.marketHashName,
+            'steamAssetKey': assetKeys[entry.id],
             'startingPriceCents': entry.startingPriceCents,
             'startingPriceAtMs': entry.startingPriceAt?.millisecondsSinceEpoch,
             'trackedAtMs': entry.trackedAt.millisecondsSinceEpoch,
@@ -256,6 +259,8 @@ class Cs2MarketRepository extends ChangeNotifier {
     }
 
     final entries = <Cs2MarketEntriesCompanion>[];
+    final assetKeys = <String?>[];
+    final usedAssetKeys = <String>{};
     for (final raw in rawEntries.whereType<Map>()) {
       final entry = Map<String, dynamic>.from(raw);
       final hash = entry['marketHashName'];
@@ -268,6 +273,9 @@ class Cs2MarketRepository extends ChangeNotifier {
           trackedAt: Value(_dateFromMs(entry['trackedAtMs']) ?? DateTime.now()),
         ),
       );
+      final key = entry['steamAssetKey'];
+      assetKeys.add(key is String && key.isNotEmpty && usedAssetKeys.add(key)
+          ? key : null);
     }
 
     final points = <Cs2MarketPricePointsCompanion>[];
@@ -292,6 +300,7 @@ class Cs2MarketRepository extends ChangeNotifier {
         items: items,
         entries: entries,
         points: points,
+        steamAssetKeys: assetKeys,
       );
     } finally {
       _offlineApplying = false;
@@ -535,6 +544,57 @@ class Cs2MarketRepository extends ChangeNotifier {
     } else {
       unawaited(refreshPrice(marketHashName, force: true));
     }
+  }
+
+  /// Adds inventory copies by Steam asset identity. A missing cost is kept
+  /// unknown until the user supplies the price they paid or a key cost.
+  Future<int> importInventory(String steamId, List<Cs2InventoryItem> inventory) async {
+    var added = 0;
+    for (final asset in inventory) {
+      final hash = asset.marketHashName;
+      final wearMatch = RegExp(r' \((Factory New|Minimal Wear|Field-Tested|Well-Worn|Battle-Scarred)\)$').firstMatch(hash);
+      final wear = wearMatch?.group(1);
+      var base = wearMatch == null ? hash : hash.substring(0, wearMatch.start);
+      final statTrak = base.contains('StatTrak™ ');
+      base = base.replaceFirst('StatTrak™ ', '');
+      final souvenir = base.contains('Souvenir ');
+      base = base.replaceFirst('Souvenir ', '');
+      Cs2SkinDef? skin;
+      if (!souvenir) {
+        for (final candidate in _catalog) {
+          if (candidate.name == base &&
+              cs2MarketHashName(baseName: candidate.name, wear: wear, statTrak: statTrak) == hash) {
+            skin = candidate;
+            break;
+          }
+        }
+      }
+      final inserted = await _db.addImportedCs2Item(
+        Cs2MarketItemsCompanion.insert(
+          marketHashName: hash,
+          skinId: skin?.id ?? 'steam:$hash',
+          displayName: skin?.name ?? hash,
+          weaponName: skin?.weaponName ?? base.split(' | ').first,
+          rarityName: skin?.rarityName ?? '',
+          rarityColor: skin?.rarityColor ?? '#b0c3d9',
+          caseName: Value(skin?.caseName),
+          imageUrl: asset.iconUrl.isNotEmpty ? asset.iconUrl : (skin?.imageUrl ?? ''),
+          wear: Value(wear),
+          statTrak: Value(statTrak),
+        ),
+        steamId + ':' + asset.assetId,
+      );
+      if (inserted) added++;
+    }
+    if (added > 0) {
+      StorageGuard.instance.scheduleRefresh();
+      if (_offlineTrackingEnabled) {
+        _queueOfflinePush();
+      } else {
+        unawaited(refreshAllPrices());
+      }
+    }
+    return added;
   }
 
   /// Stops tracking one copy. Its listing's shared price and history are

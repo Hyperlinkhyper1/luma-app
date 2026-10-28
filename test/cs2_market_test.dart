@@ -70,6 +70,64 @@ Cs2MarketEntry _entry(
     );
 
 void main() {
+  test('Steam asset imports are repeatable and preserve the cost basis', () async {
+    final db = SteamDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final item = Cs2MarketItemsCompanion.insert(
+      marketHashName: 'AK-47 | Redline (Field-Tested)',
+      skinId: 'redline',
+      displayName: 'AK-47 | Redline',
+      weaponName: 'AK-47',
+      rarityName: 'Classified',
+      rarityColor: '#d32ce6',
+      imageUrl: '',
+    );
+    expect(await db.addImportedCs2Item(item, '123:1'), isTrue);
+    final first = (await db.allCs2Entries()).single;
+    await db.setCs2EntryStartingPrice(first.id, 250);
+    expect(await db.addImportedCs2Item(item, '123:1'), isFalse);
+    expect(await db.addImportedCs2Item(item, '123:2'), isTrue);
+    expect(await db.addImportedCs2Item(item, '456:1'), isTrue);
+    final entries = await db.allCs2Entries();
+    expect(entries, hasLength(3));
+    expect(entries.first.startingPriceCents, 250);
+    final keys = await db.allCs2InventoryAssetKeys();
+    expect(keys.values.toSet(), {'123:1', '123:2', '456:1'});
+    final companions = [for (final entry in entries) entry.toCompanion(false)];
+    final snapshotKeys = [for (final entry in entries) keys[entry.id]];
+    await db.replaceCs2OfflineData(
+      items: [item], entries: companions, points: [], steamAssetKeys: snapshotKeys,
+    );
+    expect((await db.allCs2InventoryAssetKeys()).values.toSet(), keys.values.toSet());
+    final restored = await db.allCs2Entries();
+    expect(restored.first.startingPriceCents, 250);
+    await db.replaceCs2OfflineData(
+      items: [item],
+      entries: [for (final entry in restored) entry.toCompanion(false)],
+      points: [],
+    );
+    expect((await db.allCs2InventoryAssetKeys()).values, contains('123:1'));
+    expect(await db.addImportedCs2Item(item, '123:1'), isFalse);
+  });
+
+  test('legacy snapshots do not guess identities for indistinguishable copies', () async {
+    final db = SteamDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final item = Cs2MarketItemsCompanion.insert(
+      marketHashName: 'AK-47 | Redline (Field-Tested)', skinId: 'redline',
+      displayName: 'AK-47 | Redline', weaponName: 'AK-47', rarityName: 'Classified',
+      rarityColor: '#d32ce6', imageUrl: '',
+    );
+    await db.addImportedCs2Item(item, '123:1');
+    await db.addImportedCs2Item(item, '123:2');
+    await db.customStatement('UPDATE cs2_market_entries SET tracked_at = 123456');
+    final copies = await db.allCs2Entries();
+    await db.replaceCs2OfflineData(
+      items: [item], entries: [for (final copy in copies) copy.toCompanion(false)], points: [],
+    );
+    expect(await db.allCs2InventoryAssetKeys(), isEmpty);
+  });
+
   group('market hash names', () {
     test('a plain skin with a wear', () {
       expect(

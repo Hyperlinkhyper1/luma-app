@@ -222,11 +222,14 @@ class SteamDatabase extends _$SteamDatabase {
       );
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (m) => m.createAll(),
+    onCreate: (m) async {
+      await m.createAll();
+      await _createCs2InventoryAssets();
+    },
     onUpgrade: (m, from, to) async {
       if (from < 2) {
         await m.createTable(cs2MarketItems);
@@ -279,8 +282,22 @@ class SteamDatabase extends _$SteamDatabase {
         // Tracked tab, doubling the portfolio total along with it.
         await dedupeCs2Entries();
       }
+      if (from < 7) await _createCs2InventoryAssets();
     },
   );
+
+  Future<void> _createCs2InventoryAssets() => customStatement(
+    'CREATE TABLE IF NOT EXISTS cs2_inventory_assets '
+    '(steam_asset_key TEXT PRIMARY KEY NOT NULL, entry_id INTEGER NOT NULL UNIQUE)',
+  );
+
+  /// Maps local tracked entry IDs to stable Steam asset identities.
+  Future<Map<int, String>> allCs2InventoryAssetKeys() async {
+    final rows = await customSelect(
+      'SELECT entry_id, steam_asset_key FROM cs2_inventory_assets',
+    ).get();
+    return {for (final row in rows) row.read<int>('entry_id'): row.read<String>('steam_asset_key')};
+  }
 
   /// Collapses entries that agree on listing, starting price and tracked-at
   /// down to one each, keeping the lowest id — such entries are
@@ -487,16 +504,59 @@ class SteamDatabase extends _$SteamDatabase {
     required List<Cs2MarketItemsCompanion> items,
     required List<Cs2MarketEntriesCompanion> entries,
     required List<Cs2MarketPricePointsCompanion> points,
+    List<String?>? steamAssetKeys,
   }) async {
     await transaction(() async {
+      // Older clients omit asset keys. Reattach keys to matching copies so
+      // applying their snapshots cannot make the next import duplicate them.
+      final oldEntries = await allCs2Entries();
+      final oldKeys = await allCs2InventoryAssetKeys();
+      final reserved = steamAssetKeys?.whereType<String>().toSet() ?? <String>{};
+      final candidates = <(String, DateTime, int?, DateTime?), List<String>>{};
+      for (final entry in oldEntries) {
+        final key = oldKeys[entry.id];
+        if (key == null || reserved.contains(key)) continue;
+        final signature = (entry.marketHashName, entry.trackedAt,
+            entry.startingPriceCents, entry.startingPriceAt);
+        candidates.putIfAbsent(signature, () => []).add(key);
+      }
+      final incomingCounts = <(String, DateTime, int?, DateTime?), int>{};
+      for (var i = 0; i < entries.length; i++) {
+        final entry = entries[i];
+        if ((steamAssetKeys != null && i < steamAssetKeys.length &&
+                steamAssetKeys[i] != null) || !entry.trackedAt.present) continue;
+        final signature = (entry.marketHashName.value, entry.trackedAt.value,
+            entry.startingPriceCents.present ? entry.startingPriceCents.value : null,
+            entry.startingPriceAt.present ? entry.startingPriceAt.value : null);
+        incomingCounts[signature] = (incomingCounts[signature] ?? 0) + 1;
+      }
       await delete(cs2MarketPricePoints).go();
+      await customStatement('DELETE FROM cs2_inventory_assets');
       await delete(cs2MarketEntries).go();
       await delete(cs2MarketItems).go();
       for (final item in items) {
         await into(cs2MarketItems).insert(item);
       }
-      for (final entry in entries) {
-        await into(cs2MarketEntries).insert(entry);
+      for (var i = 0; i < entries.length; i++) {
+        final entryId = await into(cs2MarketEntries).insert(entries[i]);
+        var key = steamAssetKeys != null && i < steamAssetKeys.length
+            ? steamAssetKeys[i] : null;
+        final entry = entries[i];
+        if (key == null && entry.trackedAt.present) {
+          final signature = (entry.marketHashName.value, entry.trackedAt.value,
+              entry.startingPriceCents.present ? entry.startingPriceCents.value : null,
+              entry.startingPriceAt.present ? entry.startingPriceAt.value : null);
+          final matching = candidates[signature];
+          if (matching != null && matching.length == 1 && incomingCounts[signature] == 1) {
+            key = matching.single;
+          }
+        }
+        if (key != null && key.isNotEmpty) {
+          await customStatement(
+            'INSERT INTO cs2_inventory_assets (steam_asset_key, entry_id) VALUES (?, ?)',
+            [key, entryId],
+          );
+        }
       }
       for (final point in points) {
         await into(cs2MarketPricePoints).insert(point);
@@ -526,6 +586,27 @@ class SteamDatabase extends _$SteamDatabase {
   Future<void> addCs2Entry(Cs2MarketEntriesCompanion entry) =>
       into(cs2MarketEntries).insert(entry);
 
+  /// Adds one inventory asset once, retaining any existing cost basis.
+  Future<bool> addImportedCs2Item(
+    Cs2MarketItemsCompanion item,
+    String steamAssetKey,
+  ) => transaction(() async {
+    final existing = await customSelect(
+      'SELECT entry_id FROM cs2_inventory_assets WHERE steam_asset_key = ?',
+      variables: [Variable.withString(steamAssetKey)],
+    ).getSingleOrNull();
+    if (existing != null) return false;
+    await addTrackedCs2Item(item);
+    final entryId = await into(cs2MarketEntries).insert(
+      Cs2MarketEntriesCompanion.insert(marketHashName: item.marketHashName.value),
+    );
+    await customStatement(
+      'INSERT INTO cs2_inventory_assets (steam_asset_key, entry_id) VALUES (?, ?)',
+      [steamAssetKey, entryId],
+    );
+    return true;
+  });
+
   /// Stops tracking one copy. If it was the last entry for its listing, the
   /// listing itself and the local price history built for it are dropped
   /// too — there is nowhere else that history lives, and there is no reason
@@ -538,6 +619,7 @@ class SteamDatabase extends _$SteamDatabase {
         cs2MarketEntries,
       )..where((e) => e.id.equals(id))).getSingleOrNull();
       if (entry == null) return;
+      await customStatement('DELETE FROM cs2_inventory_assets WHERE entry_id = ?', [id]);
       await (delete(cs2MarketEntries)..where((e) => e.id.equals(id))).go();
 
       final remaining = await (select(

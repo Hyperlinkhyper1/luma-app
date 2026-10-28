@@ -6,9 +6,11 @@ import '../../../../../l10n/app_localizations.dart';
 import '../../../../../settings/settings_scope.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../../../../../sync/sync_scope.dart';
+import '../cs2_inventory_controller.dart';
 import '../cs2_market_repository.dart';
 import '../cs2_market_scope.dart';
 import '../cs2_models.dart';
+import 'cs2_inventory_dialog.dart';
 import 'cs2_item_detail_page.dart';
 import 'cs2_shared.dart';
 import 'cs2_tracked_tab.dart';
@@ -48,6 +50,8 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
   String _browseQuery = '';
   String _trackedQuery = '';
   bool _started = false;
+  bool _inventoryReady = false;
+  late final Cs2InventoryController _inventory;
   _Cs2MarketView _view = _Cs2MarketView.browse;
 
   @override
@@ -55,12 +59,47 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
     super.didChangeDependencies();
     if (_started) return;
     _started = true;
-    Cs2MarketScope.of(context).loadCatalog();
-    Cs2MarketScope.of(context).refreshOfflineSnapshot();
+    final repository = Cs2MarketScope.of(context);
+    _inventory = Cs2InventoryController(
+      importInventory: (id, items) async {
+        await repository.importInventory(id, items);
+      },
+    );
+    repository.loadCatalog();
+    _startInventory(repository);
+  }
+
+  Future<void> _startInventory(Cs2MarketRepository repository) async {
+    await repository.refreshOfflineSnapshot();
+    if (!mounted) return;
+    await _inventory.startup();
+    if (mounted) setState(() => _inventoryReady = true);
+  }
+
+  Future<void> _showInventory() async {
+    await showCs2InventoryDialog(
+      context,
+      steamId: _inventory.steamId,
+      onConnect: (profile) async {
+        final success = await _inventory.connect(profile);
+        if (success && mounted) setState(() => _view = _Cs2MarketView.tracked);
+        return success ? null : (_inventory.lastError ?? 'Could not connect Steam.');
+      },
+      onRefresh: () async {
+        final success = await _inventory.refresh();
+        return success ? null : (_inventory.lastError ?? 'Could not refresh the inventory.');
+      },
+      onDisconnect: () async {
+        if (!await _inventory.disconnect()) {
+          throw Exception(_inventory.lastError ?? 'Could not disconnect Steam.');
+        }
+      },
+    );
   }
 
   @override
   void dispose() {
+    if (_started) _inventory.dispose();
     _browseController.dispose();
     _trackedController.dispose();
     super.dispose();
@@ -86,8 +125,23 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
           }),
           view: _view,
           onViewChanged: (v) => setState(() => _view = v),
+          inventory: _inventory,
+          inventoryReady: _inventoryReady,
+          onInventory: _showInventory,
         ),
         const _OfflineSavingCard(),
+        ListenableBuilder(
+          listenable: _inventory,
+          builder: (context, _) {
+            final error = _inventory.lastError;
+            if (error == null) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+              child: Text('Steam inventory: $error',
+                style: TextStyle(color: luma.danger, fontSize: 12)),
+            );
+          },
+        ),
         ListenableBuilder(
           listenable: repository,
           builder: (context, _) {
@@ -266,8 +320,14 @@ class _Toolbar extends StatelessWidget {
     required this.onQuery,
     required this.view,
     required this.onViewChanged,
+    required this.inventory,
+    required this.inventoryReady,
+    required this.onInventory,
   });
 
+  final Cs2InventoryController inventory;
+  final bool inventoryReady;
+  final VoidCallback onInventory;
   final TextEditingController controller;
   final ValueChanged<String> onQuery;
   final _Cs2MarketView view;
@@ -341,7 +401,20 @@ class _Toolbar extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
+          ListenableBuilder(
+            listenable: inventory,
+            builder: (context, _) => TextButton.icon(
+              onPressed: inventoryReady && !inventory.busy ? onInventory : null,
+              icon: const Icon(Icons.inventory_2_outlined, size: 18),
+              label: Text(!inventoryReady || inventory.busy
+                  ? 'Loading Steam inventory…'
+                  : inventory.steamId == null
+                      ? 'Connect Steam inventory'
+                      : 'Manage Steam inventory'),
+            ),
+          ),
+          const SizedBox(height: 6),
           Row(
             children: [
               Expanded(
