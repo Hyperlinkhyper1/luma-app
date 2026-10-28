@@ -59,7 +59,7 @@ class _WikiSearchTestPageState extends State<WikiSearchTestPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Embedding models rank wiki-like passages for indirect searches and close distractors. The score is mean reciprocal rank at 10: a correct first result earns 100%, lower ranks earn less.',
+                  'Embedding models rank fictional reference passages with closely related distractors. The score is mean reciprocal rank at 10: a correct first result earns 100%, lower ranks earn less.',
                   style: TextStyle(color: luma.textSecondary),
                 ),
                 const SizedBox(height: 20),

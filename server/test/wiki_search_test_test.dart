@@ -23,9 +23,20 @@ void main() {
         .map((i) => List<double>.from(documents[i]))
         .toList();
     expect(wikiScore([...documents, ...queries]), closeTo(100, 0.00001));
-    queries[0] = List<double>.from(documents[1]);
+    queries[0][0] = 0.5;
+    queries[0][1] = 1;
     expect(wikiScore([...documents, ...queries]),
         closeTo(100 * (47.5 / 48), 0.00001));
+  });
+
+  test('identical embeddings get average tie credit, not corpus-order credit',
+      () {
+    final vectors =
+        List.generate(wikiPassages.length + wikiQueries.length, (_) => [1.0]);
+    final harmonicTen = List.generate(10, (i) => 1 / (i + 1))
+        .fold<double>(0, (sum, value) => sum + value);
+    expect(wikiScore(vectors),
+        closeTo(100 * harmonicTen / wikiPassages.length, 0.00001));
   });
 
   test('rejects incomplete and invalid embeddings', () {
