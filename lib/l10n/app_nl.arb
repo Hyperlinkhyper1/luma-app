@@ -7213,6 +7213,7 @@
   "cs2MarketTracked": "Gevolgd",
   "cs2MarketSearchTracked": "Zoek in wat je volgt op naam, wapen of zeldzaamheid",
   "cs2MarketSearchAny": "Zoek een CS2-item op naam, wapen, zeldzaamheid of koffer",
+  "cs2MarketWaitingForSteam": "Steam beperkt prijscontroles. Even wachten voordat we opnieuw proberen…",
   "cs2MarketCheckingProgress": "Prijzen controleren: {done} van {total}",
   "cs2MarketDismiss": "Sluiten",
   "cs2MarketCatalogEmpty": "Catalogus is leeg",

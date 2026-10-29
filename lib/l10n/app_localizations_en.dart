@@ -26814,6 +26814,10 @@ class LEn extends L {
       'Search any CS2 item by name, weapon, rarity or case';
 
   @override
+  String get cs2MarketWaitingForSteam =>
+      'Steam is rate limiting price checks. Waiting before retrying…';
+
+  @override
   String cs2MarketCheckingProgress(int done, int total) {
     return 'Checking prices: $done of $total';
   }

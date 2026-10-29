@@ -43338,6 +43338,12 @@ abstract class L {
   /// **'Search any CS2 item by name, weapon, rarity or case'**
   String get cs2MarketSearchAny;
 
+  /// No description provided for @cs2MarketWaitingForSteam.
+  ///
+  /// In en, this message translates to:
+  /// **'Steam is rate limiting price checks. Waiting before retrying…'**
+  String get cs2MarketWaitingForSteam;
+
   /// No description provided for @cs2MarketCheckingProgress.
   ///
   /// In en, this message translates to:

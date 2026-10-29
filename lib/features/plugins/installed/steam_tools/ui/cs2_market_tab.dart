@@ -543,6 +543,13 @@ class _PriceRefreshBar extends StatelessWidget {
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
+                if (repository.priceRateLimitWaiting) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    t.cs2MarketWaitingForSteam,
+                    style: TextStyle(color: luma.textMuted, fontSize: 12),
+                  ),
+                ],
                 const SizedBox(height: 6),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(3),

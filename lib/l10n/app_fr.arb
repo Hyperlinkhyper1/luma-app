@@ -6983,6 +6983,7 @@
   "cs2MarketTracked": "Suivis",
   "cs2MarketSearchTracked": "Rechercher parmi vos suivis : nom, arme, rareté",
   "cs2MarketSearchAny": "Rechercher un objet CS2 : nom, arme, rareté, caisse",
+  "cs2MarketWaitingForSteam": "Steam limite les vérifications de prix. Nouvelle tentative après une pause…",
   "cs2MarketCheckingProgress": "Vérification des prix — {done} sur {total}",
   "cs2MarketDismiss": "Ignorer",
   "cs2MarketCatalogEmpty": "Le catalogue est vide",

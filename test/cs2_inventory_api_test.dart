@@ -55,7 +55,7 @@ void main() {
         'success': 1,
         'assets': [asset('3', 'c')],
         'descriptions': [description('c', 'Type_Hands', '★ Sport Gloves | Hedge Maze (Field-Tested)')],
-      }), 200);
+      }), 200, headers: {'content-type': 'application/json'});
     }));
     final items = await api.fetchInventory(steamId);
     expect(items.map((i) => i.assetId), ['1', '3']);

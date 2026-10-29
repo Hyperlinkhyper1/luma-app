@@ -25523,6 +25523,9 @@ class LZh extends L {
   String get cs2MarketSearchAny => '搜索任意 CS2 物品：名称、武器、稀有度、武器箱';
 
   @override
+  String get cs2MarketWaitingForSteam => 'Steam 正在限制价格查询。稍后将重试…';
+
+  @override
   String cs2MarketCheckingProgress(int done, int total) {
     return '正在检查价格 — $done/$total';
   }

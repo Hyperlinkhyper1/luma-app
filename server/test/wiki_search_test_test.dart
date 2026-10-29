@@ -2,6 +2,46 @@ import 'package:test/test.dart';
 import '../lib/wiki_search_test.dart';
 
 void main() {
+  test('catalog prices enrich existing runs and preserve unknown prices', () {
+    final catalog = wikiCatalogModels([
+      {
+        'id': 'paid',
+        'pricing': {'prompt': '0.00000002'}
+      },
+      {
+        'id': 'free',
+        'pricing': {'prompt': '0'}
+      },
+      {
+        'id': 'unknown',
+        'pricing': {'prompt': '-1'}
+      },
+      {
+        'id': 'invalid',
+        'pricing': {'prompt': 'NaN'}
+      },
+      {'id': 'missing'},
+    ]);
+    final runs = [
+      {'model': 'paid', 'score': 80.0},
+      {'model': 'free', 'score': 70.0},
+      {'model': 'unknown', 'score': 60.0},
+      {'model': 'invalid', 'score': 50.0},
+      {'model': 'missing', 'score': 40.0},
+      {'model': 'unlisted', 'score': 30.0},
+    ];
+    final results = wikiResultsWithPrices(runs, catalog);
+    expect(results[0]['pricePerMillion'], closeTo(0.02, 0.000001));
+    expect(results[1]['pricePerMillion'], 0);
+    for (final result in results.skip(2)) {
+      expect(result.containsKey('pricePerMillion'), isFalse);
+    }
+    expect(results.map((r) => r['score']), runs.map((r) => r['score']));
+    expect(wikiResultsWithPrices(runs, null), runs);
+    expect(runs.first.containsKey('pricePerMillion'), isFalse);
+    expect(() => wikiCatalogModels(null), throwsFormatException);
+  });
+
   test('expanded retrieval suite has explicit answers and hard distractors',
       () {
     expect(wikiQueries.length, greaterThanOrEqualTo(48));

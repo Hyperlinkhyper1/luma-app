@@ -6983,6 +6983,7 @@
   "cs2MarketTracked": "已追踪",
   "cs2MarketSearchTracked": "搜索已追踪的物品：名称、武器、稀有度",
   "cs2MarketSearchAny": "搜索任意 CS2 物品：名称、武器、稀有度、武器箱",
+  "cs2MarketWaitingForSteam": "Steam 正在限制价格查询。稍后将重试…",
   "cs2MarketCheckingProgress": "正在检查价格 — {done}/{total}",
   "cs2MarketDismiss": "关闭",
   "cs2MarketCatalogEmpty": "目录为空",

@@ -17189,6 +17189,7 @@
   "cs2MarketTracked": "Tracked",
   "cs2MarketSearchTracked": "Search what you track by name, weapon or rarity",
   "cs2MarketSearchAny": "Search any CS2 item by name, weapon, rarity or case",
+  "cs2MarketWaitingForSteam": "Steam is rate limiting price checks. Waiting before retrying…",
   "cs2MarketCheckingProgress": "Checking prices: {done} of {total}",
   "@cs2MarketCheckingProgress": {
     "placeholders": {

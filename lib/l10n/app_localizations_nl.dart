@@ -27018,6 +27018,10 @@ class LNl extends L {
       'Zoek een CS2-item op naam, wapen, zeldzaamheid of koffer';
 
   @override
+  String get cs2MarketWaitingForSteam =>
+      'Steam beperkt prijscontroles. Even wachten voordat we opnieuw proberen…';
+
+  @override
   String cs2MarketCheckingProgress(int done, int total) {
     return 'Prijzen controleren: $done van $total';
   }

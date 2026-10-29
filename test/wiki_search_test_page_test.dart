@@ -34,6 +34,7 @@ void main() {
     );
 
     expect(find.text('Embedding model comparison'), findsOneWidget);
+    expect(find.text('Cost vs performance'), findsOneWidget);
     expect(find.text('Retrieval score · 48 queries'), findsOneWidget);
     expect(find.byType(LinearProgressIndicator), findsNWidgets(3));
     expect(find.text('Model conclusions'), findsOneWidget);

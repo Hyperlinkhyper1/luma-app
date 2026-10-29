@@ -27145,6 +27145,10 @@ class LFr extends L {
       'Rechercher un objet CS2 : nom, arme, rareté, caisse';
 
   @override
+  String get cs2MarketWaitingForSteam =>
+      'Steam limite les vérifications de prix. Nouvelle tentative après une pause…';
+
+  @override
   String cs2MarketCheckingProgress(int done, int total) {
     return 'Vérification des prix — $done sur $total';
   }

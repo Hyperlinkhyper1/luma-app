@@ -2,6 +2,11 @@ part of 'api.dart';
 
 const _wikiVersion = 'wiki-search-v3';
 
+List<Map<String, dynamic>>? _wikiModelsCache;
+DateTime? _wikiModelsAt;
+DateTime? _wikiModelsRetryAt;
+Future<List<Map<String, dynamic>>?>? _wikiModelsPending;
+
 class _WikiStore {
   _WikiStore(String dir) : file = File('$dir/wiki-search-results.json') {
     try {
@@ -32,41 +37,75 @@ extension WikiTestsApi on Api {
         'serverKey': config.openRouterKeyConfigured,
       });
 
-  Future<Response> _wikiResults(Request request, StoredUser user) async =>
-      jsonResponse(200, {
-        'cases': wikiQueries.length,
-        'models':
-            wikiTests.runs.where((r) => r['suite'] == _wikiVersion).toList(),
-      });
+  Future<Response> _wikiResults(Request request, StoredUser user) async {
+    final runs =
+        wikiTests.runs.where((r) => r['suite'] == _wikiVersion).toList();
+    final catalog = runs.isEmpty
+        ? null
+        : await _wikiModelList().timeout(const Duration(seconds: 4),
+            onTimeout: () => _wikiModelsCache);
+    return jsonResponse(200, {
+      'cases': wikiQueries.length,
+      'models': wikiResultsWithPrices(runs, catalog),
+    });
+  }
 
-  Future<Response> _wikiModels(Request request) async {
+  Future<List<Map<String, dynamic>>?> _wikiModelList() {
+    final at = _wikiModelsAt;
+    if (_wikiModelsCache != null &&
+        at != null &&
+        DateTime.now().difference(at) < const Duration(minutes: 30)) {
+      return Future.value(_wikiModelsCache);
+    }
+    if (_wikiModelsRetryAt != null &&
+        DateTime.now().isBefore(_wikiModelsRetryAt!)) {
+      return Future.value(_wikiModelsCache);
+    }
+    return _wikiModelsPending ??= _fetchWikiModels().whenComplete(() {
+      _wikiModelsPending = null;
+    });
+  }
+
+  Future<List<Map<String, dynamic>>?> _fetchWikiModels() async {
     final key = config.openRouterApiKey;
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 10);
     try {
       final req = await client
-          .getUrl(Uri.parse('https://openrouter.ai/api/v1/embeddings/models'));
+          .getUrl(Uri.parse('https://openrouter.ai/api/v1/embeddings/models'))
+          .timeout(const Duration(seconds: 10));
       if (key != null && key.isNotEmpty)
         req.headers.set('Authorization', 'Bearer $key');
       final res = await req.close().timeout(const Duration(seconds: 20));
-      final body = await res.transform(utf8.decoder).join();
+      final body = await res
+          .transform(utf8.decoder)
+          .join()
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode != 200)
-        throw HttpException('Model catalog returned ${res.statusCode}');
+        throw HttpException(
+            'Model catalog returned ' + res.statusCode.toString());
       final data = (jsonDecode(body) as Map)['data'];
-      return jsonResponse(200, {
-        'models': [
-          if (data is List)
-            for (final m in data)
-              if (m is Map && m['id'] is String)
-                {'id': m['id'], 'name': m['name'] ?? m['id']},
-        ]
-      });
-    } catch (_) {
-      return errorResponse(502, 'catalog_unavailable',
-          'Could not load the embedding model catalog.');
+      final models = wikiCatalogModels(data);
+      _wikiModelsCache = models;
+      _wikiModelsAt = DateTime.now();
+      _wikiModelsRetryAt = null;
+      return models;
+    } catch (e) {
+      _wikiModelsRetryAt = DateTime.now().add(const Duration(seconds: 30));
+      stderr.writeln('[luma] wiki model list: $e');
+      return _wikiModelsCache;
     } finally {
       client.close(force: true);
     }
+  }
+
+  Future<Response> _wikiModels(Request request) async {
+    final models = await _wikiModelList();
+    if (models == null) {
+      return errorResponse(502, 'catalog_unavailable',
+          'Could not load the embedding model catalog.');
+    }
+    return jsonResponse(200, {'models': models});
   }
 
   Future<Response> _wikiStart(Request request) async {

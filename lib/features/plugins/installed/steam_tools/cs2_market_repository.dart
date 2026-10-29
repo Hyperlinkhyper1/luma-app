@@ -31,6 +31,8 @@ class Cs2MarketRepository extends ChangeNotifier {
     Cs2MarketApi? api,
     Cs2OfflineSnapshotFetcher? fetchOfflineSnapshot,
     Cs2OfflineSnapshotPusher? pushOfflineSnapshot,
+    this.priceCheckSpacing = const Duration(milliseconds: 2600),
+    this.priceRateLimitRetryDelay = const Duration(minutes: 1),
   }) : _catalogService = catalogService ?? Cs2CatalogService(),
        _api = api ?? Cs2MarketApi(),
        _fetchOfflineSnapshot = fetchOfflineSnapshot,
@@ -66,6 +68,13 @@ class Cs2MarketRepository extends ChangeNotifier {
   int _priceChecked = 0;
   int _priceTotal = 0;
   bool _cancelPriceRefresh = false;
+  bool _priceSweepStarting = false;
+  bool _priceRateLimitWaiting = false;
+  bool _disposed = false;
+  Timer? _priceWaitTimer;
+  Completer<void>? _priceWaitCompleter;
+  final Duration priceCheckSpacing;
+  final Duration priceRateLimitRetryDelay;
   bool _offlineSnapshotLoaded = false;
   bool _offlineTrackingEnabled = false;
   bool _offlineSaving = false;
@@ -102,6 +111,7 @@ class Cs2MarketRepository extends ChangeNotifier {
   int get priceChecked => _priceChecked;
   int get priceTotal => _priceTotal;
   bool get refreshingPrices => _priceTotal > 0;
+  bool get priceRateLimitWaiting => _priceRateLimitWaiting;
   bool get offlineSnapshotLoaded => _offlineSnapshotLoaded;
   bool get offlineTrackingEnabled => _offlineTrackingEnabled;
   bool get offlineSaving => _offlineSaving;
@@ -477,6 +487,11 @@ class Cs2MarketRepository extends ChangeNotifier {
   /// shows "price now" for a listing that isn't being watched yet, without
   /// starting a history for something the user was only glancing at.
   Future<Cs2MarketPrice?> checkPriceOnce(String marketHashName) async {
+    if (_priceSweepStarting || _priceTotal > 0) {
+      _error = 'Price checks are already running. Please wait until they finish.';
+      if (!_disposed) notifyListeners();
+      return null;
+    }
     if (_fetchingPrice.contains(marketHashName)) return null;
     _fetchingPrice.add(marketHashName);
     notifyListeners();
@@ -622,6 +637,11 @@ class Cs2MarketRepository extends ChangeNotifier {
   static const _priceFreshness = Duration(hours: 3);
 
   Future<void> refreshPrice(String marketHashName, {bool force = false}) async {
+    if (_priceSweepStarting || _priceTotal > 0) {
+      _error = 'Price checks are already running. Please wait until they finish.';
+      if (!_disposed) notifyListeners();
+      return;
+    }
     if (_fetchingPrice.contains(marketHashName)) return;
     if (!force) {
       final row = await _db.cs2Item(marketHashName);
@@ -653,58 +673,107 @@ class Cs2MarketRepository extends ChangeNotifier {
     }
   }
 
-  /// The Community Market rate-limits far more aggressively than the store
-  /// API â€” this spacing is deliberately wider than
-  /// `SteamRepository._storeCallSpacing`.
-  static const _marketCallSpacing = Duration(milliseconds: 2600);
+  /// Waits between requests or retries, but wakes immediately on cancellation.
+  Future<void> _waitForPriceSweep(Duration delay) async {
+    if (_cancelPriceRefresh || _disposed || delay <= Duration.zero) return;
+    final completion = Completer<void>();
+    _priceWaitCompleter = completion;
+    _priceWaitTimer = Timer(delay, () {
+      if (!completion.isCompleted) completion.complete();
+    });
+    await completion.future;
+    _priceWaitTimer?.cancel();
+    _priceWaitTimer = null;
+    if (identical(_priceWaitCompleter, completion)) _priceWaitCompleter = null;
+  }
+
+  void _wakePriceSweep() {
+    _priceWaitTimer?.cancel();
+    final completion = _priceWaitCompleter;
+    if (completion != null && !completion.isCompleted) completion.complete();
+  }
 
   Future<void> refreshAllPrices({bool scheduled = false}) async {
-    if (scheduled && _offlineTrackingEnabled) return;
-    if (_priceTotal > 0) return;
-    final items = await _db.watchTrackedCs2Items().first;
-    if (items.isEmpty) return;
-
-    _cancelPriceRefresh = false;
-    _priceChecked = 0;
-    _priceTotal = items.length;
-    _error = null;
-    notifyListeners();
-
+    if ((scheduled && _offlineTrackingEnabled) || _disposed ||
+        _priceTotal > 0 || _priceSweepStarting) {
+      return;
+    }
+    _priceSweepStarting = true;
     try {
-      for (final item in items) {
-        if (_cancelPriceRefresh) break;
-        try {
-          final price = await _api.priceOverview(item.marketHashName);
-          await _db.recordCs2Price(
-            item.marketHashName,
-            lowestCents: price?.lowestCents,
-            medianCents: price?.medianCents,
-            currency: 'USD',
-          );
-        } on Cs2MarketApiException catch (e) {
-          if (e.status == 429) {
-            _error = e.message;
-            break;
+      final items = await _db.watchTrackedCs2Items().first;
+      if (items.isEmpty || _disposed) return;
+      // Start with unpriced and least recently checked items so a later sweep
+      // can progress even if Steam rate-limits it again.
+      items.sort((a, b) {
+        final aTime = a.priceFetchedAt;
+        final bTime = b.priceFetchedAt;
+        if (aTime == null) return bTime == null ? 0 : -1;
+        if (bTime == null) return 1;
+        return aTime.compareTo(bTime);
+      });
+      _cancelPriceRefresh = false;
+      _priceChecked = 0;
+      _priceTotal = items.length;
+      _error = null;
+      notifyListeners();
+
+      try {
+        for (final item in items) {
+          if (_cancelPriceRefresh || _disposed) break;
+          var rateLimitRetries = 0;
+          while (!_cancelPriceRefresh && !_disposed) {
+            try {
+              final price = await _api.priceOverview(item.marketHashName);
+              if (_cancelPriceRefresh || _disposed) break;
+              await _db.recordCs2Price(
+                item.marketHashName,
+                lowestCents: price?.lowestCents,
+                medianCents: price?.medianCents,
+                currency: 'USD',
+              );
+              break;
+            } on Cs2MarketApiException catch (e) {
+              if (e.status != 429) break;
+              if (rateLimitRetries >= 3) {
+                _error = e.message;
+                return;
+              }
+              final delay = priceRateLimitRetryDelay * (1 << rateLimitRetries);
+              rateLimitRetries++;
+              _priceRateLimitWaiting = true;
+              if (!_disposed) notifyListeners();
+              await _waitForPriceSweep(delay);
+              _priceRateLimitWaiting = false;
+              if (!_disposed) notifyListeners();
+            } catch (_) {
+              // Skip this listing and keep going.
+              break;
+            }
           }
-        } catch (_) {
-          // Skip this listing and keep going.
+          if (_cancelPriceRefresh || _disposed) break;
+          _priceChecked++;
+          notifyListeners();
+          if (_priceChecked < _priceTotal) {
+            await _waitForPriceSweep(priceCheckSpacing);
+          }
         }
-        _priceChecked++;
-        notifyListeners();
-        if (!_cancelPriceRefresh) await Future.delayed(_marketCallSpacing);
+      } finally {
+        if (!_disposed) _queueOfflinePush();
+        _priceChecked = 0;
+        _priceTotal = 0;
+        _priceRateLimitWaiting = false;
+        if (!_disposed) notifyListeners();
       }
     } finally {
-      _queueOfflinePush();
-      _priceChecked = 0;
-      _priceTotal = 0;
-      notifyListeners();
+      _priceSweepStarting = false;
     }
   }
 
   void cancelPriceRefresh() {
-    if (_priceTotal == 0) return;
+    if (_priceTotal == 0 || _cancelPriceRefresh) return;
     _cancelPriceRefresh = true;
-    notifyListeners();
+    _wakePriceSweep();
+    if (!_disposed) notifyListeners();
   }
 
   /// Runs an immediate sweep if any tracked listing has gone longer than
@@ -728,7 +797,9 @@ class Cs2MarketRepository extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _cancelPriceRefresh = true;
+    _wakePriceSweep();
     _sweepTimer?.cancel();
     _catalogService.close();
     _api.close();

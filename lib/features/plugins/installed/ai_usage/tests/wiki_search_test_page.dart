@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../../app/widgets.dart';
 import '../../../../../theme/luma_theme.dart';
 import 'ai_benchmark_scope.dart';
+import 'wiki_search_cost_chart.dart';
 
 class WikiSearchTestPage extends StatefulWidget {
   const WikiSearchTestPage({super.key});
@@ -83,6 +84,8 @@ class _WikiSearchTestPageState extends State<WikiSearchTestPage> {
                             : 'Sign in to an approved account to load results.'),
                   )
                 else ...[
+                  WikiSearchCostChart(models: models),
+                  const SizedBox(height: 20),
                   LumaCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

@@ -1,5 +1,44 @@
 import 'dart:math' as math;
 
+/// Parses OpenRouter embedding catalog prices, in USD per million input tokens.
+List<Map<String, dynamic>> wikiCatalogModels(Object? data) {
+  if (data is! List) throw const FormatException('Missing model catalog');
+  final models = <Map<String, dynamic>>[];
+  for (final m in data) {
+    if (m is! Map || m['id'] is! String) continue;
+    final pricing = m['pricing'];
+    final prompt =
+        pricing is Map ? double.tryParse(pricing['prompt'].toString()) : null;
+    final price = prompt == null ? null : prompt * 1e6;
+    models.add({
+      'id': m['id'],
+      'name': m['name'] is String ? m['name'] : m['id'],
+      if (price != null && price.isFinite && price >= 0)
+        'pricePerMillion': price,
+    });
+  }
+  if (models.isEmpty) throw const FormatException('Empty model catalog');
+  return models;
+}
+
+/// Adds available catalog prices without changing or dropping saved runs.
+List<Map<String, dynamic>> wikiResultsWithPrices(
+    List<Map<String, dynamic>> runs, List<Map<String, dynamic>>? catalog) {
+  final prices = <String, double>{
+    if (catalog != null)
+      for (final model in catalog)
+        if (model['pricePerMillion'] is double)
+          model['id'] as String: model['pricePerMillion'] as double,
+  };
+  return [
+    for (final run in runs)
+      {
+        ...run,
+        if (prices[run['model']] case final price?) 'pricePerMillion': price,
+      },
+  ];
+}
+
 // Fictional reference passages in groups of four. Each group deliberately
 // shares entities and vocabulary while changing relationships or conditions.
 // Every question has one relevant passage in the full corpus.

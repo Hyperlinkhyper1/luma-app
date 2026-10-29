@@ -54,12 +54,19 @@ class Cs2OfflineStore {
 /// is skipped rather than run immediately when the process starts, so opening
 /// the app or restarting the server never creates an extra refresh.
 class Cs2OfflineScheduler {
-  Cs2OfflineScheduler({required this.accounts, required this.store}) {
+  Cs2OfflineScheduler({
+    required this.accounts,
+    required this.store,
+    Future<({int statusCode, String body})> Function(Uri uri)? fetchPrice,
+    Duration requestSpacing = const Duration(milliseconds: 2600),
+  }) : _fetchPrice = fetchPrice, _requestSpacing = requestSpacing {
     _timer = Timer.periodic(const Duration(seconds: 15), (_) => runDue());
   }
 
   final Store accounts;
   final Cs2OfflineStore store;
+  final Future<({int statusCode, String body})> Function(Uri uri)? _fetchPrice;
+  final Duration _requestSpacing;
   Timer? _timer;
   bool _running = false;
 
@@ -134,11 +141,25 @@ class Cs2OfflineScheduler {
             .toList()
         : <Map<String, dynamic>>[];
     final observedAtMs = DateTime.now().toUtc().millisecondsSinceEpoch;
+    final checkOrder = items.indexed.toList()
+      ..sort((a, b) {
+        final aValue = a.$2['priceFetchedAtMs'];
+        final bValue = b.$2['priceFetchedAtMs'];
+        final aTime = aValue is num ? aValue.toInt() : null;
+        final bTime = bValue is num ? bValue.toInt() : null;
+        if (aTime == null && bTime != null) return -1;
+        if (aTime != null && bTime == null) return 1;
+        final ageOrder = (aTime ?? 0).compareTo(bTime ?? 0);
+        return ageOrder == 0 ? a.$1.compareTo(b.$1) : ageOrder;
+      });
     final client = HttpClient();
+    var requested = false;
     try {
-      for (final item in items) {
+      for (final (_, item) in checkOrder) {
         final hash = item['marketHashName'];
         if (hash is! String || hash.isEmpty) continue;
+        if (requested) await Future<void>.delayed(_requestSpacing);
+        requested = true;
         try {
           final uri =
               Uri.https('steamcommunity.com', '/market/priceoverview/', {
@@ -146,13 +167,25 @@ class Cs2OfflineScheduler {
             'currency': '1',
             'market_hash_name': hash,
           });
-          final request = await client.getUrl(uri);
-          final response =
-              await request.close().timeout(const Duration(seconds: 30));
-          if (response.statusCode == 429) break;
-          final body =
-              jsonDecode(await response.transform(utf8.decoder).join());
-          if (response.statusCode != 200 ||
+          final fetchPrice = _fetchPrice;
+          final result = fetchPrice == null
+              ? await () async {
+                  final request = await client.getUrl(uri);
+                  final response = await request.close().timeout(
+                    const Duration(seconds: 30),
+                  );
+                  if (response.statusCode == 429) {
+                    return (statusCode: response.statusCode, body: '');
+                  }
+                  return (
+                    statusCode: response.statusCode,
+                    body: await response.transform(utf8.decoder).join(),
+                  );
+                }()
+              : await fetchPrice(uri);
+          if (result.statusCode == 429) break;
+          final body = jsonDecode(result.body);
+          if (result.statusCode != 200 ||
               body is! Map ||
               body['success'] != true) {
             continue;
@@ -175,7 +208,6 @@ class Cs2OfflineScheduler {
           // One listing failing must not prevent the rest of the account's
           // scheduled sweep from being attempted.
         }
-        await Future<void>.delayed(const Duration(milliseconds: 2600));
       }
     } finally {
       client.close(force: true);

@@ -6983,6 +6983,7 @@
   "cs2MarketTracked": "Seguidos",
   "cs2MarketSearchTracked": "Busca lo que sigues: nombre, arma, rareza",
   "cs2MarketSearchAny": "Busca cualquier objeto de CS2: nombre, arma, rareza, caja",
+  "cs2MarketWaitingForSteam": "Steam está limitando las consultas de precios. Esperando para volver a intentarlo…",
   "cs2MarketCheckingProgress": "Comprobando precios — {done} de {total}",
   "cs2MarketDismiss": "Descartar",
   "cs2MarketCatalogEmpty": "El catálogo está vacío",

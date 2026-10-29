@@ -27087,6 +27087,10 @@ class LEs extends L {
       'Busca cualquier objeto de CS2: nombre, arma, rareza, caja';
 
   @override
+  String get cs2MarketWaitingForSteam =>
+      'Steam está limitando las consultas de precios. Esperando para volver a intentarlo…';
+
+  @override
   String cs2MarketCheckingProgress(int done, int total) {
     return 'Comprobando precios — $done de $total';
   }
