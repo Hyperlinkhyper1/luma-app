@@ -96,12 +96,31 @@ jobs:
             "/DMyAppVersion=${{ steps.ver.outputs.version }}" `
             windows/installer/luma.iss
 
+      # GitHub's generate-notes endpoint sometimes 500s for a few minutes,
+      # and the action's own retries all land within two seconds. If that
+      # happens, wait and publish once more without generated notes rather
+      # than fail a 30-minute build over its changelog.
       - name: Publish release
+        id: publish
+        continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: luma ${{ steps.ver.outputs.version }}
           generate_release_notes: true
+          files: dist/luma-setup.exe
+
+      - name: Wait before retrying the release
+        if: steps.publish.outcome == 'failure'
+        shell: bash
+        run: sleep 90
+
+      - name: Publish release (retry without generated notes)
+        if: steps.publish.outcome == 'failure'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: luma ${{ steps.ver.outputs.version }}
           files: dist/luma-setup.exe
 
   build-linux:
@@ -195,12 +214,31 @@ jobs:
           cd build/linux/x64/release/bundle
           tar -czf "../luma-${{ steps.ver.outputs.version }}-linux-x64.tar.gz" .
 
+      # GitHub's generate-notes endpoint sometimes 500s for a few minutes,
+      # and the action's own retries all land within two seconds. If that
+      # happens, wait and publish once more without generated notes rather
+      # than fail a 30-minute build over its changelog.
       - name: Publish release
+        id: publish
+        continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: luma ${{ steps.ver.outputs.version }}
           generate_release_notes: true
+          files: build/linux/x64/release/luma-${{ steps.ver.outputs.version }}-linux-x64.tar.gz
+
+      - name: Wait before retrying the release
+        if: steps.publish.outcome == 'failure'
+        shell: bash
+        run: sleep 90
+
+      - name: Publish release (retry without generated notes)
+        if: steps.publish.outcome == 'failure'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: luma ${{ steps.ver.outputs.version }}
           files: build/linux/x64/release/luma-${{ steps.ver.outputs.version }}-linux-x64.tar.gz
 
   build-android:
@@ -325,12 +363,31 @@ jobs:
           done
           ls -lh dist
 
+      # GitHub's generate-notes endpoint sometimes 500s for a few minutes,
+      # and the action's own retries all land within two seconds. If that
+      # happens, wait and publish once more without generated notes rather
+      # than fail a 30-minute build over its changelog.
       - name: Publish release
+        id: publish
+        continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: luma ${{ steps.ver.outputs.version }}
           generate_release_notes: true
+          files: dist/luma-${{ steps.ver.outputs.version }}-*.apk
+
+      - name: Wait before retrying the release
+        if: steps.publish.outcome == 'failure'
+        shell: bash
+        run: sleep 90
+
+      - name: Publish release (retry without generated notes)
+        if: steps.publish.outcome == 'failure'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: luma ${{ steps.ver.outputs.version }}
           files: dist/luma-${{ steps.ver.outputs.version }}-*.apk
 
   build-ios:
@@ -399,10 +456,29 @@ jobs:
           cd build/ios/ipa
           zip -r "../../../luma-${{ steps.ver.outputs.version }}-unsigned.ipa" Payload
 
+      # GitHub's generate-notes endpoint sometimes 500s for a few minutes,
+      # and the action's own retries all land within two seconds. If that
+      # happens, wait and publish once more without generated notes rather
+      # than fail a 30-minute build over its changelog.
       - name: Publish release
+        id: publish
+        continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: luma ${{ steps.ver.outputs.version }}
           generate_release_notes: true
+          files: luma-${{ steps.ver.outputs.version }}-unsigned.ipa
+
+      - name: Wait before retrying the release
+        if: steps.publish.outcome == 'failure'
+        shell: bash
+        run: sleep 90
+
+      - name: Publish release (retry without generated notes)
+        if: steps.publish.outcome == 'failure'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: luma ${{ steps.ver.outputs.version }}
           files: luma-${{ steps.ver.outputs.version }}-unsigned.ipa
