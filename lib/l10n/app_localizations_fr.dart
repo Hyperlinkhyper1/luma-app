@@ -27498,6 +27498,38 @@ class LFr extends L {
   }
 
   @override
+  String cs2TrackedQuantity(int count) {
+    return '×$count';
+  }
+
+  @override
+  String get cs2TrackedSetCost => 'Définir le prix d\'achat ou de la clé';
+
+  @override
+  String get cs2TrackedSetCostEach => 'Définir le prix par exemplaire';
+
+  @override
+  String get cs2TrackedRemove => 'Ne plus suivre';
+
+  @override
+  String get cs2TrackedRemoveOne => 'Retirer un exemplaire';
+
+  @override
+  String cs2TrackedRemoveAll(int count) {
+    return 'Retirer les $count exemplaires';
+  }
+
+  @override
+  String cs2MarketPausedUntil(String time) {
+    return 'Steam limite les vérifications de prix. Elles reprendront seules à $time.';
+  }
+
+  @override
+  String cs2MarketBackfilling(int done, int total) {
+    return 'Chargement de l\'historique des prix Steam : $done sur $total';
+  }
+
+  @override
   String cs2TrackedGainLossCoverage(int withStart, int total) {
     return 'Gains/pertes concernent les $withStart sur $total ayant un prix de départ.';
   }

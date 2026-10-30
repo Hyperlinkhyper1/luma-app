@@ -43888,6 +43888,54 @@ abstract class L {
   /// **'{count, plural, =1{1 copy tracked} other{{count} copies tracked}}'**
   String cs2TrackedCopiesTracked(int count);
 
+  /// No description provided for @cs2TrackedQuantity.
+  ///
+  /// In en, this message translates to:
+  /// **'×{count}'**
+  String cs2TrackedQuantity(int count);
+
+  /// No description provided for @cs2TrackedSetCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Set purchase or key cost'**
+  String get cs2TrackedSetCost;
+
+  /// No description provided for @cs2TrackedSetCostEach.
+  ///
+  /// In en, this message translates to:
+  /// **'Set cost per copy'**
+  String get cs2TrackedSetCostEach;
+
+  /// No description provided for @cs2TrackedRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from tracking'**
+  String get cs2TrackedRemove;
+
+  /// No description provided for @cs2TrackedRemoveOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove one copy'**
+  String get cs2TrackedRemoveOne;
+
+  /// No description provided for @cs2TrackedRemoveAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove all {count} copies'**
+  String cs2TrackedRemoveAll(int count);
+
+  /// No description provided for @cs2MarketPausedUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'Steam is rate limiting price checks. They resume by themselves at {time}.'**
+  String cs2MarketPausedUntil(String time);
+
+  /// No description provided for @cs2MarketBackfilling.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading Steam price history: {done} of {total}'**
+  String cs2MarketBackfilling(int done, int total);
+
   /// No description provided for @cs2TrackedGainLossCoverage.
   ///
   /// In en, this message translates to:

@@ -4854,7 +4854,9 @@ class Api {
       return errorResponse(403, 'plan_required',
           'CS2 offline saving requires an Orbit or Nova account.');
     }
-    final raw = await _readCappedString(request, 4 * 1024 * 1024);
+    // No cap on how many listings or copies are tracked; this only bounds
+    // one request's size so a broken client can't exhaust memory.
+    final raw = await _readCappedString(request, kCs2OfflineMaxBodyBytes);
     if (raw == null) {
       return errorResponse(
           413, 'body_too_large', 'CS2 offline saving data is too large.');
@@ -4878,12 +4880,6 @@ class Api {
         rawPoints is! List) {
       return errorResponse(400, 'bad_request',
           'enabled, items, entries and points are required.');
-    }
-    if (rawItems.length > 500 ||
-        rawEntries.length > 1000 ||
-        rawPoints.length > 20000) {
-      return errorResponse(400, 'bad_request',
-          'Too many tracked listings or price observations.');
     }
     final items = <Map<String, dynamic>>[];
     for (final item in rawItems) {
@@ -4926,7 +4922,7 @@ class Api {
     config['points'] = _mergeCs2OfflinePoints(
       previous?['points'],
       points,
-      maxPoints: 20000,
+      maxPoints: kCs2OfflineMaxPoints,
     );
     if (!enabled) {
       config['nextCheckAtMs'] = null;

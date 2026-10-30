@@ -6,11 +6,12 @@ import 'package:http/testing.dart';
 import 'package:luma/features/plugins/installed/steam_tools/cs2_inventory_api.dart';
 
 const steamId = '76561198012345678';
-Map<String, Object> description(String id, String type, String name) => {
+Map<String, Object> description(String id, String type, String name, {int? marketable}) => {
   'classid': id,
   'instanceid': '0',
   'market_hash_name': name,
   'icon_url': 'icon-$id',
+  'marketable': ?marketable,
   'tags': [
     {'category': 'Type', 'internal_name': type},
   ],
@@ -36,7 +37,7 @@ void main() {
     api.close();
   });
 
-  test('paginates, links class and instance, and filters other item types', () async {
+  test('paginates, links class and instance, and skips unmarketable items', () async {
     var calls = 0;
     final api = Cs2InventoryApi(client: MockClient((request) async {
       calls++;
@@ -44,8 +45,12 @@ void main() {
       if (calls == 1) {
         return http.Response(jsonEncode({
           'success': 1,
-          'assets': [asset('1', 'a'), asset('2', 'b')],
-          'descriptions': [description('a', 'CSGO_Type_Rifle', 'AK-47 | Redline (Field-Tested)'), description('b', 'CSGO_Type_WeaponCase', 'Case')],
+          'assets': [asset('1', 'a'), asset('2', 'b'), asset('4', 'd')],
+          'descriptions': [
+            description('a', 'CSGO_Type_Rifle', 'AK-47 | Redline (Field-Tested)'),
+            description('b', 'CSGO_Type_Collectible', 'Service Medal', marketable: 0),
+            description('d', 'CSGO_Type_WeaponCase', 'Kilowatt Case', marketable: 1),
+          ],
           'more_items': 1,
           'last_assetid': '2',
         }), 200);
@@ -58,7 +63,8 @@ void main() {
       }), 200, headers: {'content-type': 'application/json'});
     }));
     final items = await api.fetchInventory(steamId);
-    expect(items.map((i) => i.assetId), ['1', '3']);
+    expect(items.map((i) => i.assetId), ['1', '4', '3']);
+    expect(items[1].marketHashName, 'Kilowatt Case');
     expect(items.first.marketHashName, 'AK-47 | Redline (Field-Tested)');
     expect(items.first.iconUrl, 'https://community.cloudflare.steamstatic.com/economy/image/icon-a');
     expect(calls, 2);

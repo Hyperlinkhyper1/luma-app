@@ -12,24 +12,26 @@ import 'cs2_price_chart.dart';
 import 'cs2_shared.dart';
 import 'cs2_starting_price_dialog.dart';
 
-/// One tracked copy, joined with its listing's shared metadata and price —
-/// what every widget below actually renders. [Cs2MarketEntry] alone has no
-/// name, image or current price; those live once on [Cs2MarketItem] and are
-/// shared by every copy of that listing.
-class _TrackedRow {
-  const _TrackedRow({required this.entry, required this.item});
+/// Every tracked copy of one listing, joined with that listing's shared
+/// metadata and price — what one tile renders. [Cs2MarketEntry] alone has
+/// no name, image or current price; those live once on [Cs2MarketItem].
+class _TrackedGroup {
+  const _TrackedGroup({required this.item, required this.entries});
 
-  final Cs2MarketEntry entry;
   final Cs2MarketItem item;
+  final List<Cs2MarketEntry> entries;
+
+  int? get priceCents => item.lastLowestCents ?? item.lastMedianCents;
+  int get totalCents => (priceCents ?? 0) * entries.length;
 }
 
-/// The CS2 Market's "Tracked" view: every copy being watched, plus one
+/// The CS2 Market's "Tracked" view: every listing being watched, plus one
 /// combined total-value chart across all of them.
 ///
-/// [Cs2MarketTab] owns the Browse/Tracked toggle and the search field this
-/// takes [query] from — the same box narrows the catalog grid in Browse and
-/// this list in Tracked, since typing a weapon name to find is the same
-/// action either way.
+/// Copies of the same listing share one tile with a ×N count — a linked
+/// inventory can hold hundreds of one case or sticker, and a tile per copy
+/// would bury everything else. The grid is built lazily so an inventory of
+/// any size scrolls as smoothly as a handful of items.
 class Cs2TrackedBody extends StatelessWidget {
   const Cs2TrackedBody({
     super.key,
@@ -70,13 +72,23 @@ class Cs2TrackedBody extends StatelessWidget {
             // An entry whose listing hasn't arrived on this stream tick yet
             // (the two streams update independently) is skipped rather than
             // shown half-built — the next emission fills it in immediately.
-            final allRows = [
-              for (final entry in entriesSnapshot.data!)
-                if (itemsByHash[entry.marketHashName] case final item?)
-                  _TrackedRow(entry: entry, item: item),
-            ];
+            final entriesByHash = <String, List<Cs2MarketEntry>>{};
+            for (final entry in entriesSnapshot.data!) {
+              if (!itemsByHash.containsKey(entry.marketHashName)) continue;
+              (entriesByHash[entry.marketHashName] ??= []).add(entry);
+            }
+            final allGroups = [
+              for (final MapEntry(key: hash, value: entries)
+                  in entriesByHash.entries)
+                _TrackedGroup(item: itemsByHash[hash]!, entries: entries),
+            ]..sort((a, b) {
+                final byValue = b.totalCents.compareTo(a.totalCents);
+                return byValue != 0
+                    ? byValue
+                    : a.item.displayName.compareTo(b.item.displayName);
+              });
 
-            if (allRows.isEmpty) {
+            if (allGroups.isEmpty) {
               return LumaEmptyState(
                 icon: Icons.star_border_rounded,
                 title: t.cs2TrackedEmptyTitle,
@@ -85,35 +97,56 @@ class Cs2TrackedBody extends StatelessWidget {
             }
 
             final trimmed = query.trim().toLowerCase();
-            final rows = trimmed.isEmpty
-                ? allRows
-                : allRows
-                    .where((r) =>
-                        r.item.displayName.toLowerCase().contains(trimmed) ||
-                        r.item.weaponName.toLowerCase().contains(trimmed) ||
-                        r.item.rarityName.toLowerCase().contains(trimmed))
+            final groups = trimmed.isEmpty
+                ? allGroups
+                : allGroups
+                    .where((g) =>
+                        g.item.displayName.toLowerCase().contains(trimmed) ||
+                        g.item.weaponName.toLowerCase().contains(trimmed) ||
+                        g.item.rarityName.toLowerCase().contains(trimmed))
                     .toList();
 
             return StreamBuilder<List<Cs2MarketPricePoint>>(
               stream: repository.watchAllPriceHistory(),
               builder: (context, historySnapshot) {
                 final allPoints = historySnapshot.data ?? const [];
-                return ListView(
-                  padding: const EdgeInsets.all(20),
-                  children: [
-                    _PortfolioCard(
-                      rows: allRows,
-                      allPoints: allPoints,
+                return CustomScrollView(
+                  slivers: [
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                      sliver: SliverToBoxAdapter(
+                        child: _PortfolioCard(
+                          groups: allGroups,
+                          allPoints: allPoints,
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 20),
-                    if (rows.isEmpty)
-                      LumaEmptyState(
-                        icon: Icons.search_off_rounded,
-                        title: t.cs2TrackedNoMatchTitle(query),
-                        subtitle: t.cs2TrackedNoMatchSubtitle,
+                    if (groups.isEmpty)
+                      SliverToBoxAdapter(
+                        child: LumaEmptyState(
+                          icon: Icons.search_off_rounded,
+                          title: t.cs2TrackedNoMatchTitle(query),
+                          subtitle: t.cs2TrackedNoMatchSubtitle,
+                        ),
                       )
                     else
-                      _TrackedGrid(rows: rows, repository: repository),
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                        sliver: SliverGrid.builder(
+                          gridDelegate:
+                              const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 220,
+                            mainAxisExtent: 290,
+                            crossAxisSpacing: 14,
+                            mainAxisSpacing: 14,
+                          ),
+                          itemCount: groups.length,
+                          itemBuilder: (context, index) => _TrackedTile(
+                            group: groups[index],
+                            repository: repository,
+                          ),
+                        ),
+                      ),
                   ],
                 );
               },
@@ -129,9 +162,9 @@ class Cs2TrackedBody extends StatelessWidget {
 /// current total and the aggregate gain/loss across whichever tracked
 /// copies have a starting price set.
 class _PortfolioCard extends StatefulWidget {
-  const _PortfolioCard({required this.rows, required this.allPoints});
+  const _PortfolioCard({required this.groups, required this.allPoints});
 
-  final List<_TrackedRow> rows;
+  final List<_TrackedGroup> groups;
   final List<Cs2MarketPricePoint> allPoints;
 
   @override
@@ -145,28 +178,28 @@ class _PortfolioCardState extends State<_PortfolioCard> {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final t = L.of(context);
+    final entries = [for (final g in widget.groups) ...g.entries];
     final series = buildCs2PortfolioSeries(
       widget.allPoints,
-      [for (final r in widget.rows) r.entry],
+      entries,
       _range,
       DateTime.now(),
     );
 
-    final currentTotal = widget.rows.fold<int>(
-      0,
-      (sum, r) => sum + (r.item.lastLowestCents ?? r.item.lastMedianCents ?? 0),
-    );
-    final withStart =
-        widget.rows.where((r) => r.entry.startingPriceCents != null).toList();
-    final startingTotal =
-        withStart.fold<int>(0, (sum, r) => sum + r.entry.startingPriceCents!);
-    final currentForStart = withStart.fold<int>(
-      0,
-      (sum, r) => sum +
-          (r.item.lastLowestCents ??
-              r.item.lastMedianCents ??
-              r.entry.startingPriceCents!),
-    );
+    final currentTotal =
+        widget.groups.fold<int>(0, (sum, g) => sum + g.totalCents);
+    var withStart = 0;
+    var startingTotal = 0;
+    var currentForStart = 0;
+    for (final group in widget.groups) {
+      for (final entry in group.entries) {
+        final start = entry.startingPriceCents;
+        if (start == null) continue;
+        withStart++;
+        startingTotal += start;
+        currentForStart += group.priceCents ?? start;
+      }
+    }
 
     return LumaCard(
       child: Column(
@@ -208,13 +241,13 @@ class _PortfolioCardState extends State<_PortfolioCard> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      t.cs2TrackedCopiesTracked(widget.rows.length),
+                      t.cs2TrackedCopiesTracked(entries.length),
                       style: TextStyle(color: luma.textMuted, fontSize: 12),
                     ),
                   ],
                 ),
               ),
-              if (withStart.isNotEmpty)
+              if (withStart > 0)
                 Cs2GainLossBadge(
                   deltaCents: currentForStart - startingTotal,
                   startingCents: startingTotal,
@@ -222,11 +255,10 @@ class _PortfolioCardState extends State<_PortfolioCard> {
                 ),
             ],
           ),
-          if (withStart.isNotEmpty && withStart.length < widget.rows.length) ...[
+          if (withStart > 0 && withStart < entries.length) ...[
             const SizedBox(height: 6),
             Text(
-              t.cs2TrackedGainLossCoverage(
-                  withStart.length, widget.rows.length),
+              t.cs2TrackedGainLossCoverage(withStart, entries.length),
               style: TextStyle(color: luma.textMuted, fontSize: 11),
             ),
           ],
@@ -247,51 +279,35 @@ class _PortfolioCardState extends State<_PortfolioCard> {
   }
 }
 
-/// Every tracked copy, grid-laid-out the same way the Browse catalog is —
-/// two copies of the same listing get two tiles, since each has its own
-/// starting price and gain/loss.
-class _TrackedGrid extends StatelessWidget {
-  const _TrackedGrid({required this.rows, required this.repository});
-
-  final List<_TrackedRow> rows;
-  final Cs2MarketRepository repository;
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 220,
-        mainAxisExtent: 290,
-        crossAxisSpacing: 14,
-        mainAxisSpacing: 14,
-      ),
-      itemCount: rows.length,
-      itemBuilder: (context, index) =>
-          _TrackedTile(row: rows[index], repository: repository),
-    );
-  }
-}
-
 class _TrackedTile extends StatelessWidget {
-  const _TrackedTile({required this.row, required this.repository});
+  const _TrackedTile({required this.group, required this.repository});
 
-  final _TrackedRow row;
+  final _TrackedGroup group;
   final Cs2MarketRepository repository;
 
+  /// One copy's cost, or — for a stack of identical items such as cases —
+  /// the same per-copy cost on every copy at once.
   Future<void> _editCost(BuildContext context) async {
+    final t = L.of(context);
+    final single = group.entries.length == 1;
     final result = await showCs2StartingPriceDialog(
       context,
-      title: 'Set purchase or key cost',
-      subtitle: row.item.displayName,
+      title: single ? t.cs2TrackedSetCost : t.cs2TrackedSetCostEach,
+      subtitle: group.item.displayName,
       wears: const [],
-      wear: row.item.wear,
+      wear: group.item.wear,
       wearEditable: false,
-      suggestedCents: row.entry.startingPriceCents,
+      suggestedCents: group.entries.first.startingPriceCents,
     );
-    if (result != null) {
-      await repository.setEntryStartingPrice(row.entry.id, result.priceCents);
+    if (result == null) return;
+    for (final entry in group.entries) {
+      await repository.setEntryStartingPrice(entry.id, result.priceCents);
+    }
+  }
+
+  Future<void> _removeAll() async {
+    for (final entry in group.entries) {
+      await repository.untrackEntry(entry.id);
     }
   }
 
@@ -300,10 +316,13 @@ class _TrackedTile extends StatelessWidget {
     final luma = context.luma;
     final decor = context.lumaDecor;
     final radius = BorderRadius.circular(decor.cardRadius);
-    final item = row.item;
-    final entry = row.entry;
-    final priceCents = item.lastLowestCents ?? item.lastMedianCents;
-    final starting = entry.startingPriceCents;
+    final item = group.item;
+    final count = group.entries.length;
+    final priceCents = group.priceCents;
+    final starts = [
+      for (final e in group.entries) ?e.startingPriceCents,
+    ];
+    final startingTotal = starts.fold<int>(0, (sum, s) => sum + s);
     final t = L.of(context);
 
     return Material(
@@ -328,6 +347,7 @@ class _TrackedTile extends StatelessWidget {
         },
         child: Semantics(
           label: '${item.displayName}, ${_variantLabel(t, item)}, '
+              '${count > 1 ? '${t.cs2TrackedQuantity(count)}, ' : ''}'
               '${priceCents == null ? t.steamPriceNotChecked : formatSteamPrice(priceCents, item.currency)}',
           button: true,
           child: Container(
@@ -344,27 +364,65 @@ class _TrackedTile extends StatelessWidget {
                     fit: StackFit.expand,
                     children: [
                       Cs2ItemImage(url: item.imageUrl),
+                      if (count > 1)
+                        Positioned(
+                          left: 8,
+                          top: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: luma.accent,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              t.cs2TrackedQuantity(count),
+                              style: TextStyle(
+                                color: luma.onAccent,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures()
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       Positioned(
                         right: 0,
                         top: 0,
                         child: PopupMenuButton<String>(
                           tooltip: 'Item actions',
                           onSelected: (action) {
-                            if (action == 'cost') {
-                              _editCost(context);
-                            } else if (action == 'remove') {
-                              repository.untrackEntry(entry.id);
+                            switch (action) {
+                              case 'cost':
+                                _editCost(context);
+                              case 'remove':
+                                repository.untrackEntry(group.entries.last.id);
+                              case 'removeAll':
+                                _removeAll();
                             }
                           },
                           itemBuilder: (_) => [
-                            const PopupMenuItem(
+                            PopupMenuItem(
                               value: 'cost',
-                              child: Text('Set purchase or key cost'),
+                              child: Text(count == 1
+                                  ? t.cs2TrackedSetCost
+                                  : t.cs2TrackedSetCostEach),
                             ),
-                            const PopupMenuItem(
+                            PopupMenuItem(
                               value: 'remove',
-                              child: Text('Remove from tracking'),
+                              child: Text(count == 1
+                                  ? t.cs2TrackedRemove
+                                  : t.cs2TrackedRemoveOne),
                             ),
+                            if (count > 1)
+                              PopupMenuItem(
+                                value: 'removeAll',
+                                child: Text(t.cs2TrackedRemoveAll(count)),
+                              ),
                           ],
                         ),
                       ),
@@ -389,10 +447,11 @@ class _TrackedTile extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      Cs2RarityChip(
-                        name: item.rarityName,
-                        colorHex: item.rarityColor,
-                      ),
+                      if (item.rarityName.isNotEmpty)
+                        Cs2RarityChip(
+                          name: item.rarityName,
+                          colorHex: item.rarityColor,
+                        ),
                       const SizedBox(height: 6),
                       Text(
                         _variantLabel(t, item),
@@ -421,10 +480,11 @@ class _TrackedTile extends StatelessWidget {
                               ),
                             ),
                           ),
-                          if (starting != null && priceCents != null)
+                          if (starts.isNotEmpty && priceCents != null)
                             Cs2GainLossBadge(
-                              deltaCents: priceCents - starting,
-                              startingCents: starting,
+                              deltaCents:
+                                  priceCents * starts.length - startingTotal,
+                              startingCents: startingTotal,
                               currency: item.currency,
                             ),
                         ],
@@ -440,11 +500,17 @@ class _TrackedTile extends StatelessWidget {
     );
   }
 
+  /// Wear and StatTrak for a skin; Steam's item type ("Sticker",
+  /// "Container") for everything the skin catalog doesn't cover.
   static String _variantLabel(L t, Cs2MarketItem item) {
     final parts = <String>[
       if (item.wear != null) item.wear!,
       if (item.statTrak) 'StatTrak™',
     ];
-    return parts.isEmpty ? t.cs2NoWearVariants : parts.join(' · ');
+    if (parts.isNotEmpty) return parts.join(' · ');
+    if (item.skinId.startsWith('steam:') && item.weaponName.isNotEmpty) {
+      return item.weaponName;
+    }
+    return t.cs2NoWearVariants;
   }
 }

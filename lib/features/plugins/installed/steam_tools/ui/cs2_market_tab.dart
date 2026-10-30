@@ -166,6 +166,10 @@ class _Cs2MarketTabState extends State<Cs2MarketTab> {
               ? _PriceRefreshBar(repository: repository)
               : const SizedBox.shrink(),
         ),
+        ListenableBuilder(
+          listenable: repository,
+          builder: (context, _) => _PriceStatusLine(repository: repository),
+        ),
         Expanded(
           child: tracked
               // Tracked listings live entirely in the local database, not the
@@ -569,6 +573,53 @@ class _PriceRefreshBar extends StatelessWidget {
             icon: Icons.stop_rounded,
             onTap: repository.cancelPriceRefresh,
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The background work that needs no action: a sweep resting after Steam
+/// rate limited it, and Steam's price history arriving listing by listing.
+class _PriceStatusLine extends StatelessWidget {
+  const _PriceStatusLine({required this.repository});
+
+  final Cs2MarketRepository repository;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final t = L.of(context);
+    final paused = repository.priceSweepPausedUntil;
+    final lines = [
+      if (paused != null)
+        t.cs2MarketPausedUntil(
+          MaterialLocalizations.of(context).formatTimeOfDay(
+            TimeOfDay.fromDateTime(paused),
+            alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
+          ),
+        ),
+      if (repository.backfillingHistory)
+        t.cs2MarketBackfilling(
+          repository.backfillDone,
+          repository.backfillTotal,
+        ),
+    ];
+    if (lines.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final line in lines)
+            Text(
+              line,
+              style: TextStyle(
+                color: luma.textMuted,
+                fontSize: 12,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
         ],
       ),
     );

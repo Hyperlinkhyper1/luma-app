@@ -25853,6 +25853,38 @@ class LZh extends L {
   }
 
   @override
+  String cs2TrackedQuantity(int count) {
+    return '×$count';
+  }
+
+  @override
+  String get cs2TrackedSetCost => '设置购买价或钥匙成本';
+
+  @override
+  String get cs2TrackedSetCostEach => '设置每件的成本';
+
+  @override
+  String get cs2TrackedRemove => '停止追踪';
+
+  @override
+  String get cs2TrackedRemoveOne => '移除一件';
+
+  @override
+  String cs2TrackedRemoveAll(int count) {
+    return '移除全部 $count 件';
+  }
+
+  @override
+  String cs2MarketPausedUntil(String time) {
+    return 'Steam 正在限制价格查询，将于 $time 自动恢复。';
+  }
+
+  @override
+  String cs2MarketBackfilling(int done, int total) {
+    return '正在加载 Steam 价格历史：$done / $total';
+  }
+
+  @override
   String cs2TrackedGainLossCoverage(int withStart, int total) {
     return '盈亏仅统计设置了起始价格的 $withStart/$total 件。';
   }

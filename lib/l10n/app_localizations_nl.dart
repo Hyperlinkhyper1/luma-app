@@ -27370,6 +27370,38 @@ class LNl extends L {
   }
 
   @override
+  String cs2TrackedQuantity(int count) {
+    return '×$count';
+  }
+
+  @override
+  String get cs2TrackedSetCost => 'Aankoop- of sleutelprijs instellen';
+
+  @override
+  String get cs2TrackedSetCostEach => 'Prijs per exemplaar instellen';
+
+  @override
+  String get cs2TrackedRemove => 'Niet meer volgen';
+
+  @override
+  String get cs2TrackedRemoveOne => 'Eén exemplaar verwijderen';
+
+  @override
+  String cs2TrackedRemoveAll(int count) {
+    return 'Alle $count exemplaren verwijderen';
+  }
+
+  @override
+  String cs2MarketPausedUntil(String time) {
+    return 'Steam beperkt prijscontroles. Ze gaan om $time vanzelf verder.';
+  }
+
+  @override
+  String cs2MarketBackfilling(int done, int total) {
+    return 'Steam-prijsgeschiedenis laden: $done van $total';
+  }
+
+  @override
   String cs2TrackedGainLossCoverage(int withStart, int total) {
     return 'Winst/verlies geldt voor de $withStart van $total met een startprijs.';
   }

@@ -115,7 +115,8 @@ class _Cs2InventoryDialogState extends State<Cs2InventoryDialog> {
             children: [
               Text(
                 'Enter your Steam profile URL or 17-digit Steam ID to import '
-                'your CS2 skins. No Steam password or API key is needed.',
+                'your CS2 skins, stickers, cases and everything else the '
+                'market sells. No Steam password or API key is needed.',
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 16),

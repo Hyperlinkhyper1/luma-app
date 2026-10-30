@@ -8,11 +8,22 @@ class Cs2InventoryItem {
     required this.assetId,
     required this.marketHashName,
     required this.iconUrl,
+    this.typeName = '',
+    this.rarityName = '',
+    this.rarityColor,
   });
 
   final String assetId;
   final String marketHashName;
   final String iconUrl;
+
+  /// Steam's own "Type" tag, e.g. "Sticker", "Container" or "Rifle" — the
+  /// only label there is for items the skin catalog does not cover.
+  final String typeName;
+  final String rarityName;
+
+  /// "#rrggbb", or null when Steam sent no rarity colour.
+  final String? rarityColor;
 }
 
 class Cs2InventoryException implements Exception {
@@ -41,6 +52,30 @@ class Cs2InventoryApi {
     'CSGO_Type_Knife',
     'Type_Hands',
   };
+
+  /// Whether a description is something the Community Market can price:
+  /// skins, but also stickers, cases, keys, agents, patches, charms, music
+  /// kits and graffiti. Medals, coins and stock items are not. A freshly
+  /// traded item is briefly unmarketable while trade protection runs, which
+  /// Steam signals with a restriction rather than dropping the flag for good.
+  static bool _isPriceable(Map description, List? tags) {
+    final marketable = description['marketable'];
+    if (marketable == 1 || marketable == true) return true;
+    if (description['market_tradable_restriction'] != null ||
+        description['market_marketable_restriction'] != null) {
+      return true;
+    }
+    return tags != null && tags.any((tag) =>
+        tag is Map && tag['category'] == 'Type' && _weaponTypes.contains(tag['internal_name']));
+  }
+
+  static Map? _tag(List? tags, String category) {
+    if (tags == null) return null;
+    for (final tag in tags) {
+      if (tag is Map && tag['category'] == category) return tag;
+    }
+    return null;
+  }
 
   /// Resolves a Steam profile URL, vanity name, or SteamID64 without a key.
   Future<String> resolveSteamId(String input) async {
@@ -172,18 +207,26 @@ class Cs2InventoryApi {
           throw const Cs2InventoryException('Steam returned an incomplete inventory.');
         }
         if (!seenAssets.add(assetId)) continue;
-        final tags = description['tags'];
-        final isWeapon = tags is List && tags.any((tag) =>
-            tag is Map && tag['category'] == 'Type' && _weaponTypes.contains(tag['internal_name']));
+        final rawTags = description['tags'];
+        final tags = rawTags is List ? rawTags : null;
         final name = description['market_hash_name'];
-        if (!isWeapon || name is! String || name.isEmpty) continue;
+        if (name is! String || name.isEmpty || !_isPriceable(description, tags)) continue;
         final icon = description['icon_url'];
+        final type = _tag(tags, 'Type')?['localized_tag_name'];
+        final rarity = _tag(tags, 'Rarity');
+        final rarityName = rarity?['localized_tag_name'];
+        final color = rarity?['color'];
         items.add(Cs2InventoryItem(
           assetId: assetId,
           marketHashName: name,
           iconUrl: icon is String && icon.isNotEmpty
               ? 'https://community.cloudflare.steamstatic.com/economy/image/$icon'
               : '',
+          typeName: type is String ? type : '',
+          rarityName: rarityName is String ? rarityName : '',
+          rarityColor: color is String && RegExp(r'^[0-9a-fA-F]{6}$').hasMatch(color)
+              ? '#$color'
+              : null,
         ));
       }
       final more = decoded['more_items'] == 1 || decoded['more_items'] == true;

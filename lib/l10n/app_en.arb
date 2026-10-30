@@ -17450,6 +17450,45 @@
       }
     }
   },
+  "cs2TrackedQuantity": "×{count}",
+  "@cs2TrackedQuantity": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cs2TrackedSetCost": "Set purchase or key cost",
+  "cs2TrackedSetCostEach": "Set cost per copy",
+  "cs2TrackedRemove": "Remove from tracking",
+  "cs2TrackedRemoveOne": "Remove one copy",
+  "cs2TrackedRemoveAll": "Remove all {count} copies",
+  "@cs2TrackedRemoveAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cs2MarketPausedUntil": "Steam is rate limiting price checks. They resume by themselves at {time}.",
+  "@cs2MarketPausedUntil": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "cs2MarketBackfilling": "Loading Steam price history: {done} of {total}",
+  "@cs2MarketBackfilling": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "cs2TrackedGainLossCoverage": "Gain/loss covers the {withStart} of {total} with a starting price set.",
   "@cs2TrackedGainLossCoverage": {
     "placeholders": {

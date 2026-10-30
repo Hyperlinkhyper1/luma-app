@@ -27166,6 +27166,38 @@ class LEn extends L {
   }
 
   @override
+  String cs2TrackedQuantity(int count) {
+    return '×$count';
+  }
+
+  @override
+  String get cs2TrackedSetCost => 'Set purchase or key cost';
+
+  @override
+  String get cs2TrackedSetCostEach => 'Set cost per copy';
+
+  @override
+  String get cs2TrackedRemove => 'Remove from tracking';
+
+  @override
+  String get cs2TrackedRemoveOne => 'Remove one copy';
+
+  @override
+  String cs2TrackedRemoveAll(int count) {
+    return 'Remove all $count copies';
+  }
+
+  @override
+  String cs2MarketPausedUntil(String time) {
+    return 'Steam is rate limiting price checks. They resume by themselves at $time.';
+  }
+
+  @override
+  String cs2MarketBackfilling(int done, int total) {
+    return 'Loading Steam price history: $done of $total';
+  }
+
+  @override
   String cs2TrackedGainLossCoverage(int withStart, int total) {
     return 'Gain/loss covers the $withStart of $total with a starting price set.';
   }

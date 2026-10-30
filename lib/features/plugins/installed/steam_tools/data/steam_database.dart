@@ -558,9 +558,7 @@ class SteamDatabase extends _$SteamDatabase {
           );
         }
       }
-      for (final point in points) {
-        await into(cs2MarketPricePoints).insert(point);
-      }
+      await batch((b) => b.insertAll(cs2MarketPricePoints, points));
     });
   }
 
@@ -669,6 +667,86 @@ class SteamDatabase extends _$SteamDatabase {
         ),
       );
     });
+  }
+
+  /// Records one bulk-file reading for many listings in one transaction, so
+  /// the Tracked tab rebuilds once rather than once per listing. Stored as
+  /// the median: the bulk file is an average of recent sales, not the
+  /// cheapest current listing.
+  Future<void> recordCs2Prices(
+    Map<String, int> medianCents, {
+    required DateTime observedAt,
+    String currency = 'USD',
+  }) async {
+    if (medianCents.isEmpty) return;
+    await batch((b) {
+      for (final MapEntry(key: hash, value: cents) in medianCents.entries) {
+        b.update(
+          cs2MarketItems,
+          Cs2MarketItemsCompanion(
+            lastLowestCents: const Value(null),
+            lastMedianCents: Value(cents),
+            currency: Value(currency),
+            priceFetchedAt: Value(observedAt),
+          ),
+          where: (i) => i.marketHashName.equals(hash),
+        );
+        b.insert(
+          cs2MarketPricePoints,
+          Cs2MarketPricePointsCompanion.insert(
+            marketHashName: hash,
+            observedAt: observedAt,
+            medianCents: Value(cents),
+            currency: currency,
+          ),
+        );
+      }
+    });
+  }
+
+  /// The oldest reading held for every listing that has one.
+  Future<Map<String, DateTime>> earliestCs2PointByHash() async {
+    final rows = await customSelect(
+      'SELECT market_hash_name AS hash, MIN(observed_at) AS first '
+      'FROM cs2_market_price_points GROUP BY market_hash_name',
+      readsFrom: {cs2MarketPricePoints},
+    ).get();
+    return {
+      for (final row in rows)
+        row.read<String>('hash'): row.read<DateTime>('first'),
+    };
+  }
+
+  /// Backfills Steam's own sale history for one listing. Only points older
+  /// than the first reading already held are kept, so a backfill never
+  /// interleaves with — or duplicates — what this device recorded itself,
+  /// and running it twice adds nothing the second time.
+  Future<int> insertCs2HistoryPoints(
+    String marketHashName,
+    List<(DateTime, int)> points, {
+    String currency = 'USD',
+  }) async {
+    // Untracked while its history was downloading: nothing to attach it to.
+    if (await cs2Item(marketHashName) == null) return 0;
+    final first = (await earliestCs2PointByHash())[marketHashName];
+    final keep = [
+      for (final (at, cents) in points)
+        if (first == null || at.isBefore(first.subtract(const Duration(hours: 1))))
+          (at, cents),
+    ];
+    if (keep.isEmpty) return 0;
+    await batch((b) {
+      b.insertAll(cs2MarketPricePoints, [
+        for (final (at, cents) in keep)
+          Cs2MarketPricePointsCompanion.insert(
+            marketHashName: marketHashName,
+            observedAt: at,
+            medianCents: Value(cents),
+            currency: currency,
+          ),
+      ]);
+    });
+    return keep.length;
   }
 
   /// Sets (or, with `null`, clears) the manual cost-basis one entry's

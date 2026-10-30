@@ -135,7 +135,10 @@ void main() {
       });
       await repository.refreshAllPrices();
       expect(requested, ['A', 'B', 'B', 'B', 'B']);
-      expect(repository.error, isNotNull);
+      // Steam kept refusing: the sweep rests and resumes by itself rather
+      // than leaving an error for the user to deal with.
+      expect(repository.error, isNull);
+      expect(repository.priceSweepPausedUntil, isNotNull);
       rateLimited = false;
       requested.clear();
       await repository.refreshAllPrices();

@@ -41,7 +41,9 @@ import 'features/plugins/installed/ai_usage/tests/ai_benchmark_scope.dart';
 import 'features/plugins/installed/steam_tools/data/steam_database.dart';
 import 'features/plugins/installed/steam_tools/steam_repository.dart';
 import 'features/plugins/installed/steam_tools/steam_scope.dart';
+import 'features/plugins/installed/steam_tools/cs2_bulk_price_api.dart';
 import 'features/plugins/installed/steam_tools/cs2_market_repository.dart';
+import 'features/plugins/installed/steam_tools/cs2_price_history_api.dart';
 import 'features/plugins/installed/steam_tools/cs2_market_scope.dart';
 import 'features/plugins/installed/device_health/device_health_repository.dart';
 import 'features/plugins/installed/device_health/device_health_scope.dart';
@@ -152,6 +154,7 @@ import 'family/family_scope.dart';
 import 'finance/data/database.dart';
 import 'finance/finance_repository.dart';
 import 'finance/finance_scope.dart';
+import 'finance/fx_service.dart';
 import 'p2p/peer_sync_controller.dart';
 import 'pet/pet_repository.dart';
 import 'pet/pet_scope.dart';
@@ -277,6 +280,14 @@ class _LumaAppState extends State<LumaApp> {
     _steamDb,
     fetchOfflineSnapshot: () => _sync.getCs2OfflineSnapshot(),
     pushOfflineSnapshot: (snapshot) => _sync.putCs2OfflineSnapshot(snapshot),
+    bulkPrices: Cs2BulkPriceApi(),
+    historyApi: Cs2PriceHistoryApi(
+      usdPerUnit: (currency) async {
+        final eur = await FxService.eurPerUnit(currency);
+        final usd = await FxService.eurPerUnit('USD');
+        return eur == null || usd == null ? null : eur / usd;
+      },
+    ),
   );
   late final AiCatalogRepository _aiCatalogRepository = AiCatalogRepository(
     _sync,

@@ -27439,6 +27439,38 @@ class LEs extends L {
   }
 
   @override
+  String cs2TrackedQuantity(int count) {
+    return '×$count';
+  }
+
+  @override
+  String get cs2TrackedSetCost => 'Fijar precio de compra o de llave';
+
+  @override
+  String get cs2TrackedSetCostEach => 'Fijar precio por copia';
+
+  @override
+  String get cs2TrackedRemove => 'Dejar de seguir';
+
+  @override
+  String get cs2TrackedRemoveOne => 'Quitar una copia';
+
+  @override
+  String cs2TrackedRemoveAll(int count) {
+    return 'Quitar las $count copias';
+  }
+
+  @override
+  String cs2MarketPausedUntil(String time) {
+    return 'Steam está limitando las consultas de precios. Se reanudarán solas a las $time.';
+  }
+
+  @override
+  String cs2MarketBackfilling(int done, int total) {
+    return 'Cargando historial de precios de Steam: $done de $total';
+  }
+
+  @override
   String cs2TrackedGainLossCoverage(int withStart, int total) {
     return 'La ganancia/pérdida cubre $withStart de $total con precio inicial.';
   }

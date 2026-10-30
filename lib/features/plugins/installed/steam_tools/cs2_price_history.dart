@@ -3,13 +3,10 @@ import 'data/steam_database.dart';
 
 /// The windows the CS2 price chart can be shown over.
 ///
-/// Deliberately shorter than [SteamPriceRange]'s options: that chart's "5Y"
-/// is meaningful because IsThereAnyDeal has actually been logging Steam
-/// prices for years before the plugin ever asked. Nothing plays that role
-/// here — Steam's Community Market publishes no history of its own, so
-/// every point in this chart is a reading luma itself took. Offering "5Y"
-/// on data that cannot be older than this device's own tracking would imply
-/// a record that does not exist.
+/// Shorter than [SteamPriceRange]'s options: a tracked listing's chart is
+/// luma's own readings plus at most a year of Steam's sale history, which
+/// `Cs2MarketRepository.backfillHistory` thins and keeps no further back
+/// than that, so a "5Y" would imply a record that isn't held.
 enum Cs2PriceRange {
   day(Duration(days: 1)),
   week(Duration(days: 7)),
@@ -73,7 +70,50 @@ class Cs2PriceSeries {
   bool get isFlat => lowestCents != null && lowestCents == highestCents;
 }
 
-/// Builds the series for [range] out of every reading luma has taken.
+/// The most points a CS2 chart is handed. Beyond this a line of hourly
+/// readings is mostly jitter at chart width; averaging neighbours into time
+/// buckets keeps the trend and drops the noise.
+const kCs2MaxChartSamples = 80;
+
+/// Averages [samples] (oldest first) into at most [maxSamples] equal time
+/// buckets. The first and last samples are kept exactly, so the line still
+/// starts and ends on real values — the current price in particular.
+List<Cs2PriceSample> smoothCs2Samples(
+  List<Cs2PriceSample> samples, {
+  int maxSamples = kCs2MaxChartSamples,
+}) {
+  if (samples.length <= maxSamples || maxSamples < 3) return samples;
+  final first = samples.first;
+  final last = samples.last;
+  final startMs = first.at.millisecondsSinceEpoch;
+  final spanMs = last.at.millisecondsSinceEpoch - startMs;
+  if (spanMs <= 0) return [first, last];
+  final buckets = maxSamples - 2;
+  final sums = List<int>.filled(buckets, 0);
+  final times = List<int>.filled(buckets, 0);
+  final counts = List<int>.filled(buckets, 0);
+  for (var i = 1; i < samples.length - 1; i++) {
+    final ms = samples[i].at.millisecondsSinceEpoch;
+    final index = ((ms - startMs) * buckets ~/ spanMs).clamp(0, buckets - 1);
+    sums[index] += samples[i].priceCents;
+    times[index] += ms - startMs;
+    counts[index]++;
+  }
+  return [
+    first,
+    for (var i = 0; i < buckets; i++)
+      if (counts[i] > 0)
+        Cs2PriceSample(
+          at: DateTime.fromMillisecondsSinceEpoch(
+            startMs + times[i] ~/ counts[i],
+          ),
+          priceCents: (sums[i] / counts[i]).round(),
+        ),
+    last,
+  ];
+}
+
+/// Builds the series for [range] out of every reading held for a listing.
 ///
 /// Unlike the game price chart, there is no carrying a value forward from
 /// before the window: these are direct observations, not a log of changes,
@@ -95,34 +135,37 @@ Cs2PriceSeries buildCs2PriceSeries(
           Cs2PriceSample(at: p.observedAt, priceCents: cents),
   ];
 
-  return Cs2PriceSeries(samples: samples, range: range, currency: currency);
+  return Cs2PriceSeries(
+    samples: smoothCs2Samples(samples),
+    range: range,
+    currency: currency,
+  );
 }
 
-/// Combines every tracked copy's readings into one "total value" series —
-/// at each observation, the sum of every copy's most-recently-known price.
+/// Combines every tracked copy's readings into one "total value" series:
+/// what everything held *now* was worth at each moment in the window.
 /// Reuses [Cs2PriceSeries]/[Cs2PriceSample] rather than a parallel
 /// "portfolio" type, since a total is just another price over time as far as
 /// the chart is concerned.
 ///
 /// This is the one series in this file that *does* carry a value forward
-/// across a gap, unlike [buildCs2PriceSeries] just above. That's deliberate,
-/// not an oversight: a single listing's chart is a log of direct
-/// observations, so a gap is honestly just a gap. A portfolio total is a
-/// different kind of number — it only means something if every tracked copy
-/// contributes at once, and listings are checked staggered (see
-/// `Cs2MarketRepository._marketCallSpacing`), never in lockstep. Without
-/// carrying forward, the total would appear to crash to a fraction of its
-/// real value every time it was drawn between two listings' checks.
+/// across a gap, unlike [buildCs2PriceSeries] just above. A single
+/// listing's chart is a log of direct observations, so a gap is honestly
+/// just a gap. A portfolio total only means something if every copy
+/// contributes at once, and listings are priced at different moments —
+/// without carrying each one's last-known price forward, the total would
+/// appear to crash every time it was drawn between two listings' readings.
 ///
-/// [entries] is needed alongside the price points because more than one
-/// copy can share a listing — Steam prices the listing once, but two copies
-/// of it each count toward the total. A copy only starts contributing from
-/// its own [Cs2MarketEntries.trackedAt], so buying a second copy shows up as
-/// the total stepping up right when it was added, not retroactively. This is
-/// necessarily an approximation for a copy that was *removed*: there is no
-/// "untracked at" timestamp kept anywhere, so a sold/removed copy is simply
-/// absent from [entries] and its contribution disappears for the whole
-/// window rather than only from when it was actually removed.
+/// Every copy in [entries] counts across the whole window, regardless of
+/// when it was tracked: an inventory linked today is worth charting from
+/// before today, and Steam's backfilled history is what makes that
+/// possible. For the same reason a listing whose first reading falls inside
+/// the window counts at that first price before it, rather than as $0 —
+/// otherwise every newly linked item would draw a cliff from nothing.
+///
+/// Readings that share a timestamp (one bulk price update covers every
+/// listing at once) become one sample, and the line always ends at [now]
+/// with the current total.
 Cs2PriceSeries buildCs2PortfolioSeries(
   List<Cs2MarketPricePoint> allPoints,
   List<Cs2MarketEntry> entries,
@@ -134,51 +177,66 @@ Cs2PriceSeries buildCs2PortfolioSeries(
       allPoints.isEmpty ? fallbackCurrency : allPoints.last.currency;
   final start = range.startFrom(now);
 
-  final trackedSinceByHash = <String, List<DateTime>>{};
+  final units = <String, int>{};
   for (final entry in entries) {
-    (trackedSinceByHash[entry.marketHashName] ??= []).add(entry.trackedAt);
+    units[entry.marketHashName] = (units[entry.marketHashName] ?? 0) + 1;
   }
-  int unitsAt(String hash, DateTime at) =>
-      trackedSinceByHash[hash]?.where((since) => !since.isAfter(at)).length ??
-      0;
 
-  final lastPriceByHash = <String, int>{};
+  final price = <String, int>{};
+  for (final p in allPoints) {
+    if (!units.containsKey(p.marketHashName)) continue;
+    if ((p.lowestCents ?? p.medianCents) case final cents?) {
+      price.putIfAbsent(p.marketHashName, () => cents);
+    }
+  }
+  if (price.isEmpty) {
+    return Cs2PriceSeries(samples: const [], range: range, currency: currency);
+  }
+
+  var total = price.entries.fold<int>(
+    0,
+    (sum, e) => sum + e.value * units[e.key]!,
+  );
+  void apply(Cs2MarketPricePoint p) {
+    final count = units[p.marketHashName];
+    if (count == null) return;
+    if ((p.lowestCents ?? p.medianCents) case final cents?) {
+      total += (cents - price[p.marketHashName]!) * count;
+      price[p.marketHashName] = cents;
+    }
+  }
+
   final samples = <Cs2PriceSample>[];
-
-  int totalAt(DateTime at) => lastPriceByHash.entries.fold<int>(
-        0,
-        (sum, e) => sum + e.value * unitsAt(e.key, at),
-      );
-
-  final before = start == null
-      ? const <Cs2MarketPricePoint>[]
-      : allPoints.where((p) => p.observedAt.isBefore(start));
-  for (final p in before) {
-    if ((p.lowestCents ?? p.medianCents) case final cents?) {
-      lastPriceByHash[p.marketHashName] = cents;
-    }
-  }
-  // Seed one sample right at the window start from whatever was already
-  // known coming in, so a real portfolio with no reading that happens to
-  // land inside a narrow window still draws something rather than looking
-  // empty.
-  if (start != null && lastPriceByHash.isNotEmpty) {
-    samples.add(Cs2PriceSample(at: start, priceCents: totalAt(start)));
-  }
-
-  final within = start == null
-      ? allPoints
-      : allPoints.where((p) => !p.observedAt.isBefore(start));
-  for (final p in within) {
-    if ((p.lowestCents ?? p.medianCents) case final cents?) {
-      lastPriceByHash[p.marketHashName] = cents;
-      samples.add(
-        Cs2PriceSample(at: p.observedAt, priceCents: totalAt(p.observedAt)),
-      );
+  void add(DateTime at) {
+    if (samples.isNotEmpty && samples.last.at == at) {
+      samples[samples.length - 1] = Cs2PriceSample(at: at, priceCents: total);
+    } else {
+      samples.add(Cs2PriceSample(at: at, priceCents: total));
     }
   }
 
-  return Cs2PriceSeries(samples: samples, range: range, currency: currency);
+  var seeded = false;
+  for (final p in allPoints) {
+    if (start != null && p.observedAt.isBefore(start)) {
+      apply(p);
+      seeded = true;
+      continue;
+    }
+    // Seed one sample right at the window start from whatever was already
+    // known coming in, so a narrow window with no reading of its own still
+    // draws the carried-forward total rather than looking empty.
+    if (seeded && samples.isEmpty) add(start!);
+    apply(p);
+    add(p.observedAt);
+  }
+  if (seeded && samples.isEmpty) add(start!);
+  if (samples.isNotEmpty && samples.last.at.isBefore(now)) add(now);
+
+  return Cs2PriceSeries(
+    samples: smoothCs2Samples(samples),
+    range: range,
+    currency: currency,
+  );
 }
 
 /// One reading recentred on a starting price — positive means it's worth

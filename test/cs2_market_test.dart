@@ -338,7 +338,8 @@ void main() {
       final entries = [_entry(redline, longAgo), _entry(karambit, longAgo)];
       final series =
           buildCs2PortfolioSeries(points, entries, Cs2PriceRange.day, now);
-      expect(series.samples.map((s) => s.priceCents), [1000, 51000, 51200]);
+      // The Karambit counts at its first price before its first reading.
+      expect(series.samples.map((s) => s.priceCents), [51000, 51000, 51200]);
     });
 
     test('a reading from before the window is carried forward as a seed',
@@ -350,10 +351,58 @@ void main() {
       final entries = [_entry(redline, longAgo), _entry(karambit, longAgo)];
       final series =
           buildCs2PortfolioSeries(points, entries, Cs2PriceRange.week, now);
-      // Seeded at the window start with just the Redline's carried-forward
-      // price, then the Karambit's own in-window reading adds to the total.
-      expect(series.samples.first.priceCents, 1000);
+      // Seeded at the window start with the Redline's carried-forward price
+      // plus the Karambit at its first known price — it is held, so it
+      // counts before its first reading rather than as nothing.
+      expect(series.samples.first.at, now.subtract(const Duration(days: 7)));
+      expect(series.samples.first.priceCents, 51000);
       expect(series.samples.last.priceCents, 51000);
+    });
+
+    test('a listing first priced mid-window does not draw a cliff from zero',
+        () {
+      final linkedAt = now.subtract(const Duration(days: 1));
+      final points = [
+        _point(redline, now.subtract(const Duration(days: 6)), lowest: 1000),
+        _point(karambit, linkedAt, lowest: 50000),
+        _point(karambit, now, lowest: 52000),
+      ];
+      final entries = [_entry(redline, longAgo), _entry(karambit, linkedAt)];
+      final series =
+          buildCs2PortfolioSeries(points, entries, Cs2PriceRange.week, now);
+      expect(series.samples.map((s) => s.priceCents), [51000, 51000, 53000]);
+      expect(series.lowestCents, 51000);
+    });
+
+    test('one bulk update across many listings is one sample, and the line '
+        'reaches now', () {
+      final at = now.subtract(const Duration(hours: 5));
+      final points = [
+        _point(redline, at, median: 1000),
+        _point(karambit, at, median: 50000),
+      ];
+      final entries = [_entry(redline, longAgo), _entry(karambit, longAgo)];
+      final series =
+          buildCs2PortfolioSeries(points, entries, Cs2PriceRange.day, now);
+      expect(series.samples.map((s) => s.at), [at, now]);
+      expect(series.samples.map((s) => s.priceCents), [51000, 51000]);
+    });
+
+    test('a long history is averaged down to a chart-sized line', () {
+      final points = [
+        for (var h = 0; h < 24 * 30; h++)
+          _point(redline, now.subtract(Duration(hours: h)),
+              lowest: 1000 + (h.isEven ? 50 : -50)),
+      ].reversed.toList();
+      final entries = [_entry(redline, longAgo)];
+      final series =
+          buildCs2PortfolioSeries(points, entries, Cs2PriceRange.month, now);
+      expect(series.samples.length, lessThanOrEqualTo(kCs2MaxChartSamples));
+      expect(series.samples.last.at, now);
+      expect(series.samples.last.priceCents, 1050);
+      // Averaging neighbours flattens the hour-to-hour jitter.
+      final middle = series.samples.sublist(1, series.samples.length - 1);
+      expect(middle.every((s) => (s.priceCents - 1000).abs() <= 30), isTrue);
     });
 
     test('"All" has nothing to carry forward from, so no seed sample', () {
@@ -363,8 +412,9 @@ void main() {
       final entries = [_entry(redline, longAgo.subtract(const Duration(days: 365)))];
       final series =
           buildCs2PortfolioSeries(points, entries, Cs2PriceRange.all, now);
-      expect(series.samples, hasLength(1));
-      expect(series.samples.single.priceCents, 1000);
+      // The one real reading, then carried forward to now — no seed before it.
+      expect(series.samples.map((s) => s.priceCents), [1000, 1000]);
+      expect(series.samples.first.at, now.subtract(const Duration(days: 400)));
     });
 
     test('falls back to the median when a listing has no lowest', () {
@@ -392,23 +442,19 @@ void main() {
       expect(series.samples.single.priceCents, 2000);
     });
 
-    test('a second copy only starts contributing from when it was tracked',
-        () {
-      final firstCopyOnly =
-          now.subtract(const Duration(hours: 3)); // before the 2nd copy existed
+    test('every copy held now counts across the whole window, however '
+        'recently it was tracked', () {
       final points = [
-        _point(redline, firstCopyOnly, lowest: 1000),
+        _point(redline, now.subtract(const Duration(hours: 3)), lowest: 1000),
         _point(redline, now, lowest: 1000),
       ];
       final entries = [
         _entry(redline, longAgo, id: 1),
-        // Added an hour before "now" — too late to count at firstCopyOnly.
         _entry(redline, now.subtract(const Duration(hours: 1)), id: 2),
       ];
       final series =
           buildCs2PortfolioSeries(points, entries, Cs2PriceRange.day, now);
-      expect(series.samples.first.priceCents, 1000);
-      expect(series.samples.last.priceCents, 2000);
+      expect(series.samples.map((s) => s.priceCents), [2000, 2000]);
     });
   });
 
