@@ -147,14 +147,57 @@ export async function renderWithProcess(scene, signal) {
 
 const safeHeader = (text) => String(text ?? '').replace(/[^\x20-\x7e]/g, ' ').slice(0, 1000);
 
-export function createRendererServer({ render = renderWithProcess, maxJobs = 6 } = {}) {
+// Runs one Luau bundle under lute: the Fishing Waters fish editor's model
+// previews, built from AI-written species files. Lives here rather than in the
+// main server for the same reason AI HTML does — this container holds no data
+// or credentials and has no route out.
+export async function runLuauWithProcess(source, signal, { lute = process.env.LUMA_LUTE_BIN ?? 'lute', timeoutMs = 90000 } = {}) {
+  const scratch = await fs.mkdtemp(path.join(os.tmpdir(), 'luma_luau_'));
+  let child;
+  const kill = () => { try { child?.kill('SIGKILL'); } catch { /* Already exited. */ } };
+  const timeout = setTimeout(kill, timeoutMs);
+  try {
+    await fs.writeFile(path.join(scratch, 'bundle.luau'), source);
+    child = spawn(lute, ['run', 'bundle.luau'], {
+      cwd: scratch,
+      env: { PATH: process.platform === 'win32' ? process.env.PATH : '/usr/local/bin:/usr/bin:/bin',
+        ...(process.platform === 'win32' ? { SystemRoot: process.env.SystemRoot } : {}),
+        HOME: scratch, TMPDIR: scratch },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const out = [];
+    let outLength = 0;
+    let err = '';
+    child.stdout.on('data', (chunk) => {
+      outLength += chunk.length;
+      if (outLength > maxBody) kill(); else out.push(chunk);
+    });
+    child.stderr.on('data', (chunk) => { err = (err + chunk.toString('utf8')).slice(-32000); });
+    signal.addEventListener('abort', kill, { once: true });
+    if (signal.aborted) kill();
+    const code = await new Promise((resolve, reject) => {
+      child.once('error', reject);
+      child.once('close', (exit, killed) => resolve(killed ? -1 : exit));
+    });
+    if (signal.aborted) throw new Error('Run cancelled.');
+    return { code, stdout: Buffer.concat(out).toString('utf8'), stderr: outLength > maxBody ? 'Output too large.' : err };
+  } finally {
+    clearTimeout(timeout);
+    signal.removeEventListener('abort', kill);
+    kill();
+    await fs.rm(scratch, { recursive: true, force: true });
+  }
+}
+
+export function createRendererServer({ render = renderWithProcess, runLuau = runLuauWithProcess, maxJobs = 6 } = {}) {
   let active = 0;
   const server = http.createServer(async (request, response) => {
     if (request.method === 'GET' && request.url === '/health') {
       response.writeHead(200, { 'Content-Type': 'text/plain' }).end('ok');
       return;
     }
-    if (request.method !== 'POST' || request.url !== '/render') {
+    const luau = request.url === '/luau';
+    if (request.method !== 'POST' || (request.url !== '/render' && !luau)) {
       response.writeHead(404).end();
       return;
     }
@@ -173,6 +216,17 @@ export function createRendererServer({ render = renderWithProcess, maxJobs = 6 }
         length += chunk.length;
         if (length > maxBody) { response.writeHead(413).end(); return; }
         chunks.push(chunk);
+      }
+      if (luau) {
+        let source;
+        try { source = JSON.parse(Buffer.concat(chunks).toString('utf8')).source; } catch { /* Checked below. */ }
+        if (typeof source !== 'string' || source.length === 0 || source.length > 16 * 1024 * 1024) {
+          response.writeHead(400).end('Invalid Luau request.');
+          return;
+        }
+        const result = await runLuau(source, controller.signal);
+        response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(result));
+        return;
       }
       let scene;
       try { scene = validateScene(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }

@@ -1,4 +1,16 @@
 FROM node:24-bookworm-slim
+# lute runs the Fishing Waters fish editor's model previews (POST /luau); the
+# AI-written Luau they execute belongs in this sandbox, not the main server.
+ARG LUTE_VERSION=v1.0.0
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates wget unzip \
+    && wget -qO /tmp/lute.zip "https://github.com/luau-lang/lute/releases/download/${LUTE_VERSION}/lute-linux-x86_64.zip" \
+    && unzip -q /tmp/lute.zip -d /usr/local/bin \
+    && chmod +x /usr/local/bin/lute \
+    && rm /tmp/lute.zip \
+    && apt-get purge -y wget unzip \
+    && rm -rf /var/lib/apt/lists/* \
+    && lute --version
 RUN apt-get update \
     && apt-get install -y --no-install-recommends chromium \
         libgl1-mesa-dri libegl-mesa0 libegl1 mesa-vulkan-drivers \

@@ -4,7 +4,7 @@ import http from 'node:http';
 import { createRequire } from 'node:module';
 import test from 'node:test';
 import { browserNetworkArgs, isolatePage, sceneUrl, vendorBody, vendorResource } from '../tool/renderer_network.mjs';
-import { createRendererServer, renderWithProcess, validateScene } from '../tool/renderer_service.mjs';
+import { createRendererServer, renderWithProcess, runLuauWithProcess, validateScene } from '../tool/renderer_service.mjs';
 
 test('container syscall profile keeps default denial and supports glibc thread fallback', async () => {
   const profile = JSON.parse(await fs.readFile(new URL('../renderer-seccomp.json', import.meta.url), 'utf8'));
@@ -146,4 +146,37 @@ test('isolated renderer service produces a real PNG through its HTTP contract',
     const png = Buffer.from(await response.arrayBuffer());
     assert.ok(png.length > 1000);
     assert.equal(png.subarray(1, 4).toString(), 'PNG');
+  });
+
+test('luau runs report output, failures and reject malformed requests', async (t) => {
+  const runs = [];
+  const server = createRendererServer({
+    runLuau: async (source) => {
+      runs.push(source);
+      return source.includes('error(') ? { code: 1, stdout: '', stderr: 'boom' } : { code: 0, stdout: 'ok\n', stderr: '' };
+    },
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  t.after(() => new Promise((r) => { server.closeAllConnections(); server.close(r); }));
+  const post = (body) => fetch(`http://127.0.0.1:${server.address().port}/luau`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  assert.deepEqual(await (await post({ source: 'print("ok")' })).json(), { code: 0, stdout: 'ok\n', stderr: '' });
+  assert.deepEqual(await (await post({ source: 'error("x")' })).json(), { code: 1, stdout: '', stderr: 'boom' });
+  assert.equal((await post({ source: '' })).status, 400);
+  assert.equal((await post({ nope: 1 })).status, 400);
+  assert.equal(runs.length, 2);
+});
+
+test('luau runs execute under lute with a timeout',
+  { skip: !process.env.LUMA_TEST_LUTE, timeout: 60000 }, async () => {
+    const lute = process.env.LUMA_TEST_LUTE;
+    const signal = new AbortController().signal;
+    const ok = await runLuauWithProcess('print(1 + 1)', signal, { lute });
+    assert.deepEqual([ok.code, ok.stdout.trim()], [0, '2']);
+    const failed = await runLuauWithProcess('error("broken fish")', signal, { lute });
+    assert.notEqual(failed.code, 0);
+    assert.match(failed.stderr + failed.stdout, /broken fish/);
+    const slow = await runLuauWithProcess('while true do end', signal, { lute, timeoutMs: 1500 });
+    assert.equal(slow.code, -1);
   });

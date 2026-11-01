@@ -1,10 +1,13 @@
+import 'admin_fish_library.dart';
+
 /// The admin dashboard's project switcher (the logo menu in the top-left
 /// corner) and the Fishing Waters project it switches to. The luma project is
 /// the original dashboard in api.dart; this file only adds the switcher
 /// around it and the second project's markup, styles and script.
 ///
 /// Fishing Waters data comes from /admin/fishing-waters/* (see
-/// fishing_waters.dart), polled while that project is on screen.
+/// fishing_waters.dart), polled while that project is on screen. The Fish
+/// tab lives in admin_fish_library.dart.
 class AdminProjects {
   static const _lumaLogo =
       '<img class="proj-logo" src="data:image/png;base64,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" '
@@ -40,6 +43,8 @@ class AdminProjects {
         '<path d="M4 9.5h16v3H4z"/><path d="M5.5 12.5V20h13v-7.5"/>'
         '<path d="M12 9.5V20"/><path d="M12 9.5C10.5 6 7 5.4 7 7.6 7 9 9.5 9.5 '
         '12 9.5zM12 9.5c1.5-3.5 5-4.1 5-1.9 0 1.4-2.5 1.9-5 1.9z"/>'),
+    'fish': _ico('<path d="M3 12c2.6-4 8-5.4 12.4-2.4L20 6.5l-1.2 5.5 1.2 5.5-4.6-3.1C11 17.4 5.6 16 3 12z"/>'
+        '<circle cx="7.6" cy="11.4" r=".9"/>'),
   };
 
   /// Replaces the dashboard's plain `<h1>`: the logo, title and caret are one
@@ -99,6 +104,7 @@ class AdminProjects {
       '<button class="tab-btn fw-tab" role="tab" data-fwtab="online">${_icons['users']}Online</button>'
       '<button class="tab-btn fw-tab" role="tab" data-fwtab="weather">${_icons['weather']}Weather</button>'
       '<button class="tab-btn fw-tab" role="tab" data-fwtab="products">${_icons['products']}Products</button>'
+      '<button class="tab-btn fw-tab" role="tab" data-fwtab="fish">${_icons['fish']}Fish</button>'
       '</div>'
       '<div class="fw-live" id="fwLive" aria-live="polite"><span class="fw-pulse"></span>'
       '<span id="fwLiveText">Connecting…</span></div>'
@@ -206,6 +212,7 @@ class AdminProjects {
       '<tbody id="fwGrants"><tr><td colspan="5" class="muted">Loading…</td></tr></tbody></table></div>'
       '</div>'
       '</div>'
+      '${AdminFishLibrary.html}'
       '</div>';
 
   static const css = r'''
@@ -577,7 +584,7 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
   // ---- tabs --------------------------------------------------------------
   var tabs = Array.prototype.slice.call(root.querySelectorAll('.fw-tab'));
   function activate(next, updateHash) {
-    if (['online', 'weather', 'products'].indexOf(next) < 0) next = 'online';
+    if (['online', 'weather', 'products', 'fish'].indexOf(next) < 0) next = 'online';
     tab = next;
     tabs.forEach(function (b) {
       var on = b.dataset.fwtab === next;
@@ -586,6 +593,8 @@ body.theme-fw .proj-menu-label,body.theme-fw .proj-item-text small,body.theme-fw
     });
     root.querySelectorAll('.fw-panel').forEach(function (p) { p.classList.toggle('active', p.id === 'fw-panel-' + next); });
     if (updateHash) history.replaceState(null, '', '#fw-' + next);
+    // The Fish tab (admin_fish_library.dart) loads itself when first shown.
+    document.dispatchEvent(new CustomEvent('fwtab', { detail: next }));
     radarLoop();
   }
   tabs.forEach(function (b) { b.addEventListener('click', function () { activate(b.dataset.fwtab, true); }); });

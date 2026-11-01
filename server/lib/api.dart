@@ -38,6 +38,8 @@ import 'deploy_console.dart';
 import 'power_console.dart';
 import 'admin_projects.dart';
 import 'admin_totp.dart';
+import 'admin_fish_library.dart';
+import 'fish_library.dart';
 import 'fishing_waters.dart';
 import 'update_check.dart';
 import 'family_store.dart';
@@ -842,6 +844,41 @@ class Api {
           '/admin/fishing-waters/avatar/<id>',
           (Request r, String id) =>
               _requireAdmin((r) => fishingWaters.avatar(r, id))(r))
+      ..get('/admin/fishing-waters/fish', _requireAdmin(fishLibrary.library))
+      ..get('/admin/fishing-waters/fish/providers',
+          _requireAdmin(_adminFishProviders))
+      ..get(
+          '/admin/fishing-waters/fish/model/<slug>',
+          (Request r, String slug) =>
+              _requireAdmin((r) => fishLibrary.model(r, slug))(r))
+      ..get(
+          '/admin/fishing-waters/fish/source/<id>',
+          (Request r, String id) =>
+              _requireAdmin((r) => fishLibrary.source(r, id))(r))
+      ..post(
+          '/admin/fishing-waters/fish/<id>/quick',
+          (Request r, String id) => _requireAdmin(
+              _sameOriginOnly((r) => fishLibrary.quickEdit(r, id)))(r))
+      ..get('/admin/fishing-waters/fish-jobs', _requireAdmin(fishLibrary.jobs))
+      ..post('/admin/fishing-waters/fish-jobs',
+          _requireAdmin(_sameOriginOnly(fishLibrary.createJob)))
+      ..get(
+          '/admin/fishing-waters/fish-jobs/<id>',
+          (Request r, String id) =>
+              _requireAdmin((r) => fishLibrary.job(r, id))(r))
+      ..get(
+          '/admin/fishing-waters/fish-jobs/<id>/preview',
+          (Request r, String id) =>
+              _requireAdmin((r) => fishLibrary.preview(r, id))(r))
+      ..post(
+          '/admin/fishing-waters/fish-jobs/<id>/<action>',
+          (Request r, String id, String action) => _requireAdmin(
+              _sameOriginOnly((r) async => switch (action) {
+                    'approve' => await fishLibrary.approveJob(r, id),
+                    'revise' => await fishLibrary.reviseJob(r, id),
+                    'discard' => await fishLibrary.discardJob(r, id),
+                    _ => errorResponse(404, 'not_found', 'Not found.'),
+                  }))(r))
       ..get('/admin/stats', _requireAdmin(_adminStats))
       ..get('/admin/metrics', _requireAdmin(_adminMetrics))
       ..get('/admin/metrics/history', _requireAdmin(_adminMetricsHistory))
@@ -3525,6 +3562,15 @@ class Api {
   /// heartbeat endpoint (see `fishing_waters.dart`).
   late final FishingWaters fishingWaters =
       FishingWaters(config.dataDir, gameKey: config.fishingWatersKey);
+
+  /// The Fishing Waters project's fish library and editor: species read
+  /// from and committed to the game's GitHub repo (see `fish_library.dart`).
+  late final FishLibrary fishLibrary = FishLibrary(
+    dataDir: config.dataDir,
+    wikiDir: config.wikiDir,
+    aiKey: (upstream) => config.aiUpstreamKey(upstream),
+    publicUrl: config.publicUrl,
+  );
 
   /// The Team Clipboard's Discord bot (see `api_team_discord.dart`). It
   /// only connects once `main` calls `start`.
@@ -8435,6 +8481,69 @@ class Api {
   /// `Origin: null` on its own form posts, so a null Origin falls back to
   /// Sec-Fetch-Site, which pages cannot set. A sandboxed or foreign page
   /// reports `cross-site` there and stays refused.
+  /// [handler] behind the same Origin check as the website editor's posts.
+  /// The fish editor commits to GitHub and spends AI credit, so a request
+  /// another site makes with the operator's cookie must never reach it.
+  FutureOr<Response> Function(Request) _sameOriginOnly(
+          FutureOr<Response> Function(Request) handler) =>
+      (request) => _sameOrigin(request)
+          ? handler(request)
+          : errorResponse(403, 'bad_origin', 'Cross-origin request rejected.');
+
+  /// The fish editor's provider, model and effort pickers: every provider
+  /// with its models, and whether the server holds its key.
+  Future<Response> _adminFishProviders(Request request) async {
+    final configured = config.configuredAiUpstreams;
+    final catalogById = {for (final model in aiCatalog.models) model.id: model};
+    Map<String, Object?> entry(String id, AiModel? model) => {
+          'id': id,
+          'name': model?.name ?? id,
+          if (model != null) 'efforts': model.supportedEfforts,
+          if (model?.defaultEffort != null) 'defaultEffort': model!.defaultEffort,
+          if (model != null) 'images': model.inputModalities.contains('image'),
+          if (model?.inputPricePerM != null) 'input': model!.inputPricePerM,
+          if (model?.outputPricePerM != null) 'output': model!.outputPricePerM,
+        };
+    final google = {
+      ...kDefaultAiModeModels[AiUpstream.google]!.values,
+      if (configured.contains(AiUpstream.google))
+        ...await _googleModelIdsForSuggestions(),
+    };
+    final mistral = {
+      ...kDefaultAiModeModels[AiUpstream.mistral]!.values,
+      if (configured.contains(AiUpstream.mistral))
+        ...mistralModelSuggestions(await _mistralModelIdsForSuggestions()),
+    };
+    return jsonResponse(200, {
+      'efforts': ['', 'none', 'minimal', 'low', 'medium', 'high', 'xhigh'],
+      'providers': [
+        {
+          'id': AiUpstream.openrouter.name,
+          'label': AiUpstream.openrouter.label,
+          'configured': configured.contains(AiUpstream.openrouter),
+          'models': [
+            for (final model in aiCatalog.routingModels)
+              entry(model.id, catalogById[model.id] ?? model),
+          ],
+        },
+        {
+          'id': AiUpstream.google.name,
+          'label': AiUpstream.google.label,
+          'configured': configured.contains(AiUpstream.google),
+          'models': [for (final id in google) entry(id, catalogById['google/$id'])],
+        },
+        {
+          'id': AiUpstream.mistral.name,
+          'label': AiUpstream.mistral.label,
+          'configured': configured.contains(AiUpstream.mistral),
+          'models': [
+            for (final id in mistral) entry(id, catalogById['mistralai/$id']),
+          ],
+        },
+      ],
+    });
+  }
+
   bool _sameOrigin(Request request) {
     final origin = request.headers['origin'];
     if (origin == null) return request.headers['x-admin-key'] != null;
@@ -11774,7 +11883,7 @@ syncToolbar();
     final body = '<!doctype html><html><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         '<title>luma admin</title>'
-        '<style>$_adminCss$_bannersCss$_bmCss$_adminPolishCss$_bgCss${PowerConsole.css}${AdminProjects.css}</style>'
+        '<style>$_adminCss$_bannersCss$_bmCss$_adminPolishCss$_bgCss${PowerConsole.css}${AdminProjects.css}${AdminFishLibrary.css}</style>'
         '</head><body class="no-js"><div class="wrap admin-wrap">'
         '<header class="top">${AdminProjects.switcherHtml}'
         '<div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">'
@@ -12121,6 +12230,7 @@ syncToolbar();
         '<script>${UpdateCheckConsole.rebootScript}</script>'
         '<script>${PowerConsole.script}</script>'
         '<script>${AdminProjects.fishingWatersScript}</script>'
+        '<script>${AdminFishLibrary.script}</script>'
         '<script>${AdminProjects.switcherScript}</script>'
         '</body></html>';
 
