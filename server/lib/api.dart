@@ -988,6 +988,8 @@ class Api {
           _requireAdmin(_updateCheck.rebootStatus))
       ..get('/admin/website',_requireAdmin(_adminWebsiteIndex))
       ..post('/admin/website/build', _requireAdmin(_adminWebsiteBuild))
+      ..post('/admin/website/fish-refresh',
+          _requireAdmin(_adminWebsiteFishRefresh))
       ..get('/admin/website/build/status',
           _requireAdmin(_adminWebsiteBuildStatus))
       // Preview assets + upload must be registered before the <page|.*>
@@ -8545,6 +8547,24 @@ class Api {
       } catch (_) {}
     }
 
+    // The Fishing Waters fish library is generated data too (refreshed from
+    // the game repo by the button below), so summarise what's live.
+    var fishSummary = 'Not refreshed on this server yet.';
+    if (await _wikiFishCatalogFile.exists()) {
+      try {
+        final decoded = jsonDecode(await _wikiFishCatalogFile.readAsString());
+        final species = decoded['species'] as List;
+        final models = species.where((s) => s is Map && s['model'] == true);
+        final source = decoded['source'] as Map;
+        final refreshed = DateTime.tryParse('${source['refreshed']}');
+        final commit = source['commit'];
+        fishSummary = '${species.length} species, ${models.length} with '
+            '3D models'
+            '${commit is String ? ' · game @ ${_htmlEscape(commit)}' : ''}'
+            '${refreshed != null ? ' · refreshed ${refreshed.toUtc().toIso8601String().substring(0, 16).replaceFirst('T', ' ')} UTC' : ''}';
+      } catch (_) {}
+    }
+
     final sections = byCollection.entries.map((entry) {
       final collection = entry.key;
       final name = collectionNames[collection] ?? collection;
@@ -8624,6 +8644,15 @@ class Api {
             '<h2>Team roster</h2>'
             '<p>Manage the people and profiles shown on the team page.</p>'
             '<a href="/admin/website/team" class="btn btn-ghost">Edit roster <span aria-hidden="true">→</span></a>'
+            '</section>'
+            '<section class="site-side-card"><p class="site-eyebrow">Fishing Waters</p>'
+            '<h2>Fish library</h2>'
+            '<p>Pull every species, its catch data and its in-game 3D model from the '
+            'Fishing Waters repo on GitHub, then rebuild and publish the site. '
+            'Progress shows under Publish changes.</p>'
+            '<p class="site-fish-summary">$fishSummary</p>'
+            '<form method="post" action="/admin/website/fish-refresh">'
+            '<button type="submit" class="btn btn-ghost">Refresh fish library <span aria-hidden="true">↻</span></button></form>'
             '</section>'
             '<section class="site-side-card site-publish"><p class="site-eyebrow">Go live</p>'
             '<h2>Publish changes</h2>'
@@ -8789,6 +8818,7 @@ border-radius:999px;padding:2px 8px}
 .site-collection .tree-hint{margin:0;padding:13px 18px 16px;border-color:#302941;color:#aaa2bc;line-height:1.6}
 .site-sidebar{display:grid;gap:14px}.site-side-card{background:#171322;border:1px solid #302941;border-radius:13px;padding:20px}
 .site-side-card p:not(.site-eyebrow){color:#b0a8c4;font-size:13px;line-height:1.6;margin:10px 0 18px}
+.site-side-card p.site-fish-summary{margin-top:-6px;font-size:12px;color:#8e86a6}
 .site-side-card .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:38px;text-decoration:none}
 .site-publish{border-color:#4a3d70;background:#1b162a}.site-publish form{margin:0}.site-publish .badge{margin-top:12px}
 .site-publish .log{max-width:100%;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -9694,6 +9724,24 @@ border-radius:999px;padding:2px 8px}
     return Response.found('/admin/website');
   }
 
+  /// "Refresh fish library": the builder container pulls the Fishing Waters
+  /// game from GitHub, re-exports every species and in-game model
+  /// (scripts/sync-fish-library.mjs in the site source), then rebuilds and
+  /// publishes. Like publishing, this process only drops a flag file.
+  Future<Response> _adminWebsiteFishRefresh(Request request) async {
+    final unavailable = _wikiUnavailable();
+    if (unavailable != null) return unavailable;
+    if (!_sameOrigin(request)) {
+      return errorResponse(403, 'bad_origin', 'Cross-origin request rejected.');
+    }
+    File('${config.wikiDir}/.fish-refresh-request')
+        .writeAsStringSync(DateTime.now().toIso8601String());
+    return Response.found('/admin/website');
+  }
+
+  File get _wikiFishCatalogFile =>
+      File('${config.wikiDir}/source/src/data/fish-catalog.json');
+
   Future<Response> _adminWebsiteBuildStatus(Request request) async {
     final unavailable = _wikiUnavailable();
     if (unavailable != null) return unavailable;
@@ -9715,7 +9763,8 @@ border-radius:999px;padding:2px 8px}
         if (log.length > 20000) log = log.substring(log.length - 20000);
       } catch (_) {}
     }
-    final pending = File('${config.wikiDir}/.build-request').existsSync();
+    final pending = File('${config.wikiDir}/.build-request').existsSync() ||
+        File('${config.wikiDir}/.fish-refresh-request').existsSync();
     return jsonResponse(200, {
       'pending': pending,
       'status': jsonDecode(status),
@@ -9742,7 +9791,8 @@ border-radius:999px;padding:2px 8px}
       .then(function (s) {
         var state = (s.status && s.status.state) || '';
         var busy = s.pending || state === 'building';
-        if (busy) setBadge('Building…', 'warn');
+        var fish = state === 'building' && s.status.reason === 'fish library refresh';
+        if (busy) setBadge(fish ? 'Refreshing fish…' : 'Building…', 'warn');
         else if (state === 'ok') setBadge('Live', 'ok');
         else if (state === 'error') setBadge('Build failed', 'err');
         if (busy || state === 'error') {
