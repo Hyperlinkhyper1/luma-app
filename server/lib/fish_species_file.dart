@@ -6,8 +6,9 @@
 library;
 
 /// Shared.CatchConditions keys a species can require, split the way the
-/// editor shows them.
-const kFishWeather = ['Rain', 'Clear', 'Storm'];
+/// editor shows them. Weather keys are alternatives (any one of them will
+/// do); every other key must hold.
+const kFishWeather = ['Rain', 'Clear', 'Storm', 'Supercell', 'BlackHole'];
 const kFishTime = ['Day', 'Night'];
 const kFishPlace = ['Beach'];
 const kFishConditions = [...kFishWeather, ...kFishTime, ...kFishPlace];
@@ -283,8 +284,6 @@ String? conditionConflict(List<String> requires) {
   }
   bool has(String key) => requires.contains(key);
   if (has('Day') && has('Night')) return 'A species cannot need both day and night.';
-  if (has('Rain') && has('Clear')) return 'Clear skies mean no rain; pick one.';
-  if (has('Clear') && has('Storm')) return 'A storm is never clear; pick one.';
   return null;
 }
 

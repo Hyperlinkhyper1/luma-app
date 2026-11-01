@@ -847,6 +847,8 @@ class Api {
       ..get('/admin/fishing-waters/fish', _requireAdmin(fishLibrary.library))
       ..get('/admin/fishing-waters/fish/providers',
           _requireAdmin(_adminFishProviders))
+      ..get('/admin/fishing-waters/fish/hosts',
+          _requireAdmin(_adminFishHosts))
       ..get(
           '/admin/fishing-waters/fish/model/<slug>',
           (Request r, String slug) =>
@@ -8540,6 +8542,32 @@ class Api {
             for (final id in mistral) entry(id, catalogById['mistralai/$id']),
           ],
         },
+      ],
+    });
+  }
+
+  /// The fish editor's host picker: every endpoint OpenRouter can send
+  /// `?model=` to, cheapest first, with the price it charges there.
+  Future<Response> _adminFishHosts(Request request) async {
+    final model = request.url.queryParameters['model'] ?? '';
+    if (!isValidAiModelId(model) || !model.contains('/')) {
+      return errorResponse(400, 'bad_request', 'Pick an OpenRouter model.');
+    }
+    final endpoints = [...?await _openRouterEndpoints(model, fetch: true)]
+      ..sort((a, b) => (a.input + a.output).compareTo(b.input + b.output));
+    return jsonResponse(200, {
+      'hosts': [
+        for (final e in endpoints)
+          if (e.tag != null)
+            {
+              'tag': e.tag,
+              'name': e.provider,
+              if (e.quantization != null) 'quantization': e.quantization,
+              'input': e.input,
+              'output': e.output,
+              if (e.discount > 0) 'discount': e.discount,
+              'up': e.up,
+            },
       ],
     });
   }

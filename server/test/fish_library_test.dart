@@ -54,6 +54,14 @@ class FakeGithub {
 
   Future<({int status, String body})> call(
       String method, Uri url, Map<String, String> headers, String? body) async {
+    if (url.host == 'raw.githubusercontent.com') {
+      // /<owner>/<repo>/<commit>/<path…>
+      final segments = url.pathSegments;
+      calls.add('RAW ${segments.skip(3).join('/')}');
+      final tree = trees[commits[segments[2]]?.tree];
+      final sha = tree?[segments.skip(3).join('/')];
+      return sha == null ? (status: 404, body: '404') : (status: 200, body: blobs[sha]!);
+    }
     final path = url.path.replaceFirst(RegExp(r'^/repos/[^/]+/[^/]+'), '');
     calls.add('$method $path');
     ({int status, String body}) ok(Object json) =>
@@ -289,7 +297,9 @@ void main() {
           FishSpeciesFile('Trout', _trout).withFields(f);
       expect(edit({}).problem(pools), isNull);
       expect(edit({'Requires': ['Day', 'Night']}).problem(pools), contains('day and night'));
-      expect(edit({'Requires': ['Rain', 'Clear']}).problem(pools), isNotNull);
+      // Weather keys are alternatives, so any mix of them is fine.
+      expect(edit({'Requires': ['Rain', 'Clear', 'Supercell', 'BlackHole']}).problem(pools), isNull);
+      expect(edit({'Requires': ['Hail']}).problem(pools), contains('Unknown condition'));
       expect(edit({'MinKg': 20}).problem(pools), contains('MinKg'));
       expect(edit({'Pools': ['Moon']}).problem(pools), contains('Unknown pool'));
       expect(edit({'Rarity': 'Mythic'}).problem(pools), contains('Rarity'));
@@ -311,6 +321,26 @@ void main() {
     final fish = {for (final f in json['fish'] as List) f['id']: f};
     expect(fish.keys, containsAll(['Trout', 'SharkMeat']));
     expect(fish['Trout']['seasons'], ['Summer']);
+  });
+
+  test('without a token the library reads files raw, spending two API calls', () async {
+    final json = await _json(library(token: null).library(_get('/')));
+    expect(json['canCommit'], isFalse);
+    expect((json['fish'] as List).map((f) => f['id']), containsAll(['Trout', 'SharkMeat']));
+    expect(github.calls.where((c) => !c.startsWith('RAW ')), hasLength(2));
+    expect(github.calls, contains('RAW src/shared/Fish/Trout.luau'));
+  });
+
+  test('GitHub failures answer with a reason the proxy passes through', () async {
+    final lib = FishLibrary(
+      dataDir: dir.path,
+      environment: const {},
+      github: (method, url, headers, body) async =>
+          (status: 403, body: '{"message":"API rate limit exceeded for 1.2.3.4."}'),
+    );
+    final response = await lib.library(_get('/'));
+    expect(response.statusCode, 424);
+    expect((await _json(response))['message'], contains('rate limit'));
   });
 
   test('a repo still on the single-file layout says so', () async {
@@ -483,6 +513,21 @@ void main() {
     expect(await status({...base, 'image': 'data:text/html;base64,AAAA'}), 400);
     expect(await status({'mode': 'new', 'provider': 'openrouter', 'model': 'm', 'effort': '',
         'fields': {'name': 'X Fish', 'pools': <String>[]}}), 400);
+    expect(await status({...base, 'host': 'Wafer US!'}), 400);
+  });
+
+  test('a picked OpenRouter host is pinned without fallbacks', () async {
+    final prompts = <String>[];
+    final lib = library(replies: [_trout.replaceFirst('BaseValue = 10', 'BaseValue = 12')], prompts: prompts);
+    final created = await _json(lib.createJob(_post('/', {
+      'mode': 'edit', 'fishId': 'Trout', 'provider': 'openrouter',
+      'model': 'vendor/model:batch', 'effort': '', 'prompt': 'x', 'host': 'wafer/fp8',
+    })));
+    expect(created['host'], 'wafer/fp8');
+    await _settle(lib, created['id'] as String);
+    final sent = jsonDecode(prompts.first) as Map;
+    expect(sent['model'], 'vendor/model:batch');
+    expect(sent['provider'], {'order': ['wafer/fp8'], 'allow_fallbacks': false});
   });
 
   final game = Platform.environment['LUMA_TEST_FISHING_WATERS'] ??

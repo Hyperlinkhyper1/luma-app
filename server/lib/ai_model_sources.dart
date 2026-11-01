@@ -852,9 +852,18 @@ String? _trimDescription(String? raw) {
 /// after any discount.
 class AiEndpointPrice {
   const AiEndpointPrice(this.provider, this.input, this.output,
-      {this.imageOutput, this.discount = 0, this.up = true});
+      {this.imageOutput,
+      this.discount = 0,
+      this.up = true,
+      this.tag,
+      this.quantization});
 
   final String provider;
+
+  /// OpenRouter's id for this one endpoint (`wafer/fp8`), which a request's
+  /// `provider.order` accepts; a provider can run several.
+  final String? tag;
+  final String? quantization;
   final double input;
   final double output;
 
@@ -878,7 +887,12 @@ List<AiEndpointPrice> parseOpenRouterEndpoints(Object? decoded) {
             AiEndpointPrice(e['provider_name'] as String, input, output,
                 imageOutput: _perMillion(_map(e['pricing'])['image_output']),
                 discount: _num(_map(e['pricing'])['discount']) ?? 0,
-                up: _num(e['status']) == null || _num(e['status'])! >= 0),
+                up: _num(e['status']) == null || _num(e['status'])! >= 0,
+                tag: e['tag'] is String ? e['tag'] as String : null,
+                quantization: e['quantization'] is String &&
+                        e['quantization'] != 'unknown'
+                    ? e['quantization'] as String
+                    : null),
   ];
 }
 

@@ -74,6 +74,10 @@ class FishLibrary {
   final String? Function(AiUpstream upstream)? aiKey;
 
   static const _api = 'https://api.github.com';
+
+  /// GitHub failures answer 424, not 502: the proxy in front of the server
+  /// swaps a 502's body for its own error page, which hid the reason.
+  static const _githubStatus = 424;
   static const fishDir = 'src/shared/Fish';
   static const _maxBody = 12 * 1024 * 1024;
   static const _maxImage = 8 * 1024 * 1024;
@@ -136,24 +140,43 @@ class FishLibrary {
       for (final item in (tree['tree'] as List).whereType<Map>())
         if (item['type'] == 'blob') item['path'] as String: item['sha'] as String,
     };
+    _commitOf[files] = commit;
     _head = (commit: commit, files: files, at: _clock());
     return (commit: commit, files: files);
   }
 
-  Future<String> _blob(String sha) async {
+  /// Which commit a [_tree] file map belongs to, for raw downloads.
+  final Expando<String> _commitOf = Expando();
+
+  /// One file's text, cached by blob SHA. Without a token it comes from
+  /// raw.githubusercontent.com, which doesn't count against the anonymous
+  /// API limit of 60 calls an hour — and one library load reads every species.
+  Future<String> _blob(Map<String, String> files, String path) async {
+    final sha = files[path]!;
     final cached = _blobs[sha];
     if (cached != null) return cached;
-    final blob = await _call('GET', '/git/blobs/$sha') as Map;
-    final text = utf8.decode(
-        base64.decode((blob['content'] as String).replaceAll('\n', '')));
+    final commit = _commitOf[files];
+    final String text;
+    if (_token.isEmpty && commit != null) {
+      final result = await _github(
+          'GET',
+          Uri.parse('https://raw.githubusercontent.com/$repo/$commit/'
+              '${path.split('/').map(Uri.encodeComponent).join('/')}'),
+          {'User-Agent': 'luma-fish-library'},
+          null);
+      if (result.status != 200) throw _GithubError(result.status, '');
+      text = result.body;
+    } else {
+      final blob = await _call('GET', '/git/blobs/$sha') as Map;
+      text = utf8.decode(
+          base64.decode((blob['content'] as String).replaceAll('\n', '')));
+    }
     if (_blobs.length > 2000) _blobs.clear();
     return _blobs[sha] = text;
   }
 
-  Future<String?> _file(Map<String, String> files, String path) async {
-    final sha = files[path];
-    return sha == null ? null : _blob(sha);
-  }
+  Future<String?> _file(Map<String, String> files, String path) async =>
+      files.containsKey(path) ? _blob(files, path) : null;
 
   final AsyncLock _commitLock = AsyncLock();
 
@@ -238,7 +261,7 @@ class FishLibrary {
         .where((p) => p.startsWith('$fishDir/') && p.endsWith('.luau'))
         .toList()
       ..sort();
-    final texts = await Future.wait(paths.map((p) => _blob(files[p]!)));
+    final texts = await Future.wait(paths.map((p) => _blob(files, p)));
     return {
       for (var i = 0; i < paths.length; i++)
         paths[i].substring(fishDir.length + 1, paths[i].length - 5):
@@ -301,9 +324,9 @@ class FishLibrary {
         ],
       });
     } on _GithubError catch (e) {
-      return errorResponse(502, 'github', e.describe(repo));
+      return errorResponse(_githubStatus, 'github', e.describe(repo));
     } on SocketException {
-      return errorResponse(502, 'github', 'GitHub could not be reached.');
+      return errorResponse(_githubStatus, 'github', 'GitHub could not be reached.');
     }
   }
 
@@ -347,7 +370,7 @@ class FishLibrary {
       if (text == null) return errorResponse(404, 'not_found', 'No such fish.');
       return jsonResponse(200, {'id': id, 'source': text, 'commit': head.commit});
     } on _GithubError catch (e) {
-      return errorResponse(502, 'github', e.describe(repo));
+      return errorResponse(_githubStatus, 'github', e.describe(repo));
     }
   }
 
@@ -384,7 +407,7 @@ class FishLibrary {
     } on _Conflict catch (e) {
       return errorResponse(409, 'conflict', e.describe());
     } on _GithubError catch (e) {
-      return errorResponse(502, 'github', e.describe(repo));
+      return errorResponse(_githubStatus, 'github', e.describe(repo));
     }
   }
 
@@ -563,6 +586,12 @@ class FishLibrary {
         effort != 'xhigh') {
       return errorResponse(400, 'bad_request', 'Unknown effort level.');
     }
+    final host = (body['host'] as String? ?? '').trim();
+    if (host.isNotEmpty &&
+        (upstream != AiUpstream.openrouter ||
+            !RegExp(r'^[a-z0-9][a-z0-9._/-]{0,99}$').hasMatch(host))) {
+      return errorResponse(400, 'bad_request', 'Unknown host.');
+    }
     if (prompt.length > 8000) {
       return errorResponse(400, 'bad_request', 'The prompt is too long.');
     }
@@ -621,6 +650,7 @@ class FishLibrary {
       provider: upstream.name,
       model: model,
       effort: effort,
+      host: host,
       fields: fields.map((k, v) => MapEntry(k, v)),
       hasImage: image != null,
       createdAt: _clock().millisecondsSinceEpoch,
@@ -706,7 +736,7 @@ class FishLibrary {
       return errorResponse(409, 'conflict', e.describe());
     } on _GithubError catch (e) {
       job.status = 'ready';
-      return errorResponse(502, 'github', e.describe(repo));
+      return errorResponse(_githubStatus, 'github', e.describe(repo));
     }
   }
 
@@ -824,6 +854,14 @@ class FishLibrary {
       } else if (job.effort != 'none') {
         body['reasoning_effort'] = job.effort == 'minimal' ? 'low' : job.effort;
       }
+    }
+    // A picked host is pinned: OpenRouter fails the call rather than
+    // quietly answering from a pricier or differently quantised endpoint.
+    if (upstream == AiUpstream.openrouter && job.host.isNotEmpty) {
+      body['provider'] = {
+        'order': [job.host],
+        'allow_fallbacks': false,
+      };
     }
     final result = await _ai(
         Uri.parse(upstream.endpoint),
@@ -984,9 +1022,9 @@ $format
 - Builders work in fish lengths: snout at X = +0.5, tail at X = -0.5, back
   towards +Y, sides along Z. b.random(lo, hi) is a seeded random.
 - Pools may only name: ${pools.map((p) => '${p['id']} (${p['name']}${p['inherits'] != null ? ', also bites every ${p['inherits']} species' : ''})').join('; ')}.
-- Requires keys must all hold at the spot: Rain, Clear, Storm (weather),
-  Day, Night (time), Beach (sandy shallows). Never Day with Night, Rain with
-  Clear, or Clear with Storm.
+- Requires keys: Rain, Clear, Storm, Supercell, BlackHole (weather; any one
+  listed will do), Day, Night (time), Beach (sandy shallows). Every non-weather
+  key must hold. Never Day with Night.
 - Keep MinKg ≤ AverageKg ≤ MaxKg. Shapes lists Normal, Big and Huge cargo
   footprints ("#" fills a cell); bigger fish take more cells.
 - Prefer a model with real detail (countershaded body, fins, eyes, markings)
@@ -1234,6 +1272,7 @@ class FishJob {
     required this.effort,
     required this.fields,
     required this.createdAt,
+    this.host = '',
     this.hasImage = false,
   }) : updatedAt = createdAt;
 
@@ -1244,6 +1283,9 @@ class FishJob {
   final String provider;
   final String model;
   final String effort;
+
+  /// OpenRouter endpoint tag the job is pinned to; empty lets OpenRouter pick.
+  final String host;
   final Map<String, Object?> fields;
   final bool hasImage;
   final int createdAt;
@@ -1277,6 +1319,7 @@ class FishJob {
         'provider': provider,
         'model': model,
         'effort': effort,
+        if (host.isNotEmpty) 'host': host,
         'prompt': prompt,
         'createdAt': createdAt,
         'updatedAt': updatedAt,
@@ -1311,6 +1354,7 @@ class FishJob {
         provider: j['provider'] as String,
         model: j['model'] as String,
         effort: j['effort'] as String? ?? '',
+        host: j['host'] as String? ?? '',
         fields: Map<String, Object?>.from(j['fields'] as Map? ?? {}),
         createdAt: (j['createdAt'] as num).toInt(),
         hasImage: j['hasImage'] == true,

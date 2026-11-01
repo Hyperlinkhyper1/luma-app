@@ -51,6 +51,7 @@ class AdminFishLibrary {
 .fl-card:focus-visible{outline:2px solid #4cc3d9;outline-offset:2px}
 .fl-card-top{display:flex;align-items:center;gap:8px;min-width:0}
 .fl-swatch{width:30px;height:18px;border-radius:9px 4px 4px 9px;flex:none;border:1px solid rgba(255,255,255,.12)}
+.fl-fish{width:42px;height:25px;flex:none}
 .fl-card b{font-size:14px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fl-card small{font-size:12px;color:#86a3b0;font-variant-numeric:tabular-nums}
 .fl-rar{display:inline-flex;align-items:center;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:650;border:1px solid currentColor;width:max-content}
@@ -111,6 +112,9 @@ class AdminFishLibrary {
 .fl-pill:has(input:focus-visible){outline:2px solid #4cc3d9;outline-offset:2px}
 .fl-pill.biome:not(:has(input:checked)){border-style:dashed}
 .fl-hint{font-size:11.5px;color:#6f8f9c;line-height:1.45}
+.fl-hostrow[hidden],.fl-hostline .fl-pill[hidden]{display:none}
+.fl-hostline{display:flex;gap:8px;align-items:center}
+.fl-hostline select{flex:1}
 .fl-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
 .fl-row .grow{flex:1}
 .fl-msg{font-size:13px;min-height:1em}
@@ -145,7 +149,7 @@ class AdminFishLibrary {
     });
   }
   var RARITY_COLOR = { Junk: '#9d8568', Common: '#c4c4c4', Uncommon: '#6fca7d', Rare: '#52a3e5', Epic: '#b06ce6', Legendary: '#f0b040' };
-  var COND_LABEL = { Rain: 'Rain', Clear: 'Clear skies', Storm: 'Storm', Day: 'Daytime', Night: 'Night', Beach: 'Beach' };
+  var COND_LABEL = { Rain: 'Rain', Clear: 'Clear skies', Storm: 'Storm', Supercell: 'Supercell', BlackHole: 'Black hole', Day: 'Daytime', Night: 'Night', Beach: 'Beach' };
   var lib = null, selected = null, providers = null, jobs = [], loaded = false;
   var jobTimer = null, viewer = null, reviewViewer = null;
 
@@ -393,7 +397,11 @@ class AdminFishLibrary {
   }
   function seasonText(f) {
     var s = f.seasons && f.seasons.length ? f.seasons.join(', ') : 'All year';
-    return f.requires && f.requires.length ? s + ' · ' + f.requires.map(function (k) { return COND_LABEL[k] || k; }).join(' + ') : s;
+    if (!f.requires || !f.requires.length) return s;
+    var label = function (k) { return COND_LABEL[k] || k; };
+    var weather = f.requires.filter(function (k) { return lib.conditions.weather.indexOf(k) >= 0; }).map(label).join(' or ');
+    var rest = f.requires.filter(function (k) { return lib.conditions.weather.indexOf(k) < 0; }).map(label);
+    return s + ' · ' + (weather ? [weather] : []).concat(rest).join(' + ');
   }
   function num(v) { return v == null ? '–' : (Math.round(v * 1000) / 1000).toLocaleString(); }
 
@@ -423,6 +431,25 @@ class AdminFishLibrary {
       return !p || f.pools.indexOf(p) >= 0;
     }).sort(function (a, b) { return order.indexOf(a.rarity) - order.indexOf(b.rarity) || a.name.localeCompare(b.name); });
   }
+  var FISH_SHAPES = {
+    fish: { body: 'M3 18C8 9 22 6 34 8C40 9 42 14 41 18C42 22 40 27 34 28C22 30 8 27 3 18Z', fins: ['M38 18L57 6L52 18L57 30Z', 'M18 12C22 3 33 2 38 10Z', 'M27 24C30 30 35 31 38 27Z'], eye: [11, 16, 2.3] },
+    shark: { body: 'M2 18C8 10 20 7 34 8C41 9 44 14 44 18C44 22 41 27 34 28C20 29 8 26 2 18Z', fins: ['M40 18L58 8L54 18L58 28Z', 'M18 10L24 1L31 11Z'], eye: [10, 16, 2.3] },
+    eel: { body: 'M2 17C8 13 16 13 24 15C34 17 40 12 50 12C54 12 57 14 58 17C57 20 54 22 50 22C40 22 34 20 24 21C16 22 8 21 2 17Z', fins: [], eye: [8, 16, 2] },
+    flat: { body: 'M4 18C10 9 24 7 36 9C46 10 54 13 57 18C54 23 46 26 36 27C24 29 10 27 4 18Z', fins: [], eye: [14, 15, 2.2] },
+    puffer: { body: 'M6 18C6 8 16 4 26 4C36 4 42 10 42 18C42 26 36 32 26 32C16 32 6 28 6 18Z', fins: ['M40 18L51 12L51 24Z'], eye: [16, 15, 2.8] }
+  };
+  function fishIcon(f) {
+    var pal = f.palette || { back: '#2b4f5c', body: '#4c7383', belly: '#9bb6c2', fin: '#3a6172', eye: '#14110f' };
+    var shape = /shark/i.test(f.name) ? FISH_SHAPES.shark : /eel\b/i.test(f.name) ? FISH_SHAPES.eel : /ray\b|flounder|halibut/i.test(f.name) ? FISH_SHAPES.flat : /puffer/i.test(f.name) ? FISH_SHAPES.puffer : FISH_SHAPES.fish;
+    var id = 'fl-fish-' + String(f.id).replace(/[^A-Za-z0-9]/g, ''), eye = shape.eye;
+    return '<svg class="fl-fish" viewBox="0 0 60 36" aria-hidden="true" focusable="false">' +
+      '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + pal.back + '"/>' +
+      '<stop offset=".5" stop-color="' + pal.body + '"/><stop offset="1" stop-color="' + pal.belly + '"/></linearGradient></defs>' +
+      shape.fins.map(function (d) { return '<path d="' + d + '" fill="' + pal.fin + '"/>'; }).join('') +
+      '<path d="' + shape.body + '" fill="url(#' + id + ')"/>' +
+      '<circle cx="' + eye[0] + '" cy="' + eye[1] + '" r="' + eye[2] + '" fill="#f7eddc"/>' +
+      '<circle cx="' + (eye[0] + 0.6) + '" cy="' + eye[1] + '" r="' + (eye[2] * 0.55) + '" fill="' + pal.eye + '"/></svg>';
+  }
   function renderGrid() {
     if (!lib) return;
     var list = filtered();
@@ -433,8 +460,9 @@ class AdminFishLibrary {
       var kind = kindOf(f);
       if (kind) tags += '<span class="fl-tag">' + esc(kind) + '</span>';
       if (!f.hasBuild) tags += '<span class="fl-tag warn">No model</span>';
+      var icon = (kind || /squid/i.test(f.name)) ? '<span class="fl-swatch" style="background:' + swatch + '"></span>' : fishIcon(f);
       return '<button type="button" class="fl-card" role="listitem" data-id="' + esc(f.id) + '" aria-current="' + (f.id === selected) + '">' +
-        '<span class="fl-card-top"><span class="fl-swatch" style="background:' + swatch + '"></span><b>' + esc(f.name) + '</b></span>' +
+        '<span class="fl-card-top">' + icon + '<b>' + esc(f.name) + '</b></span>' +
         '<span class="fl-rar" style="color:' + color + '">' + esc(f.rarity) + '</span>' +
         '<small>1 in ' + num(f.odds) + ' · $' + num(f.value) + ' · ' + num(f.averageKg) + ' kg</small>' +
         '<span class="fl-tags">' + tags + '</span></button>';
@@ -586,15 +614,16 @@ class AdminFishLibrary {
     });
   }
   function conditionFields(requires) {
-    var weather = lib.conditions.weather.filter(function (k) { return requires.indexOf(k) >= 0; })[0] || '';
     var time = lib.conditions.time.filter(function (k) { return requires.indexOf(k) >= 0; })[0] || '';
-    return '<div class="fl-field wide"><span>Weather</span>' + pills('weather', [{ value: '', label: 'Any' }].concat(lib.conditions.weather.map(function (k) { return { value: k, label: COND_LABEL[k] }; })), [weather], 'radio') + '</div>' +
+    return '<div class="fl-field wide"><span>Weather <span class="fl-hint">(bites in any picked weather; none picked = any weather)</span></span>' +
+      pills('weather', lib.conditions.weather.map(function (k) { return { value: k, label: COND_LABEL[k] || k }; }), requires) + '</div>' +
       '<div class="fl-field wide"><span>Time of day</span>' + pills('time', [{ value: '', label: 'Any' }].concat(lib.conditions.time.map(function (k) { return { value: k, label: COND_LABEL[k] }; })), [time], 'radio') + '</div>' +
       '<div class="fl-field wide"><span>Spot</span>' + pills('place', lib.conditions.place.map(function (k) { return { value: k, label: COND_LABEL[k] + ' only' }; }), requires) + '</div>';
   }
   function readConditions(form) {
-    var out = [];
-    ['weather', 'time'].forEach(function (n) { var v = (form.querySelector('input[name="' + n + '"]:checked') || {}).value; if (v) out.push(v); });
+    var out = checkedValues(form, 'weather');
+    var time = (form.querySelector('input[name="time"]:checked') || {}).value;
+    if (time) out.push(time);
     return out.concat(checkedValues(form, 'place'));
   }
   function seasonsField(seasons) {
@@ -720,18 +749,49 @@ class AdminFishLibrary {
       '<label class="fl-field">Provider<select id="flProvider"><option>Loading…</option></select></label>' +
       '<label class="fl-field" style="grid-column:span 2">Model<input id="flModel" list="flModels" autocomplete="off" spellcheck="false" placeholder="Model id"><datalist id="flModels"></datalist></label>' +
       '<label class="fl-field">Effort<select id="flEffort"></select></label>' +
+      '<div class="fl-field wide fl-hostrow" id="flHostRow" hidden><span>Host <span class="fl-hint">(picking one pins the job to it, with no fallback)</span></span>' +
+      '<div class="fl-hostline"><select id="flHost" aria-label="OpenRouter host"><option value="">Any host (OpenRouter picks)</option></select>' +
+      '<label class="fl-pill" id="flBatchPill" title="OpenRouter\'s batch variant: cheaper, but answers can take longer" hidden><input type="checkbox" id="flBatch">Batch</label></div></div>' +
       '<span class="fl-hint wide" id="flModelHint"></span></div>';
   }
+  var hostCache = {};
   function wirePicker() {
     var prov = $('flProvider'), model = $('flModel'), effort = $('flEffort'), hint = $('flModelHint');
+    var host = $('flHost'), batch = $('flBatch');
     var saved = store('ai') || {};
     function provider() { return providers && providers.providers.filter(function (p) { return p.id === prov.value; })[0]; }
     function info() { var p = provider(); return p && p.models.filter(function (m) { return m.id === model.value; })[0]; }
+    function listed(id) { var p = provider(); return !!p && p.models.some(function (m) { return m.id === id; }); }
+    function baseId() { return model.value.trim().replace(/:batch$/, ''); }
+    function price(v) { return '$' + (v < 0.01 ? +v.toPrecision(2) : +v.toFixed(3)); }
     function drawModels() {
       var p = provider();
       if (!p) return;
       $('flModels').innerHTML = p.models.map(function (m) { return '<option value="' + esc(m.id) + '">' + esc(m.name !== m.id ? m.name : '') + '</option>'; }).join('');
       drawEffort();
+      drawHosts();
+    }
+    // OpenRouter only: the endpoints serving this exact model id (a :batch id has its own).
+    function drawHosts() {
+      var open = prov.value === 'openrouter', id = model.value.trim();
+      $('flHostRow').hidden = !open || !id;
+      $('flBatchPill').hidden = !open || !listed(baseId() + ':batch');
+      batch.checked = /:batch$/.test(id);
+      if (!open || !id) return;
+      var want = host.value || (saved.model === id ? saved.host : '') || '';
+      function fill(list, note) {
+        if (model.value.trim() !== id) return;
+        host.innerHTML = '<option value="">' + esc(note || 'Any host (OpenRouter picks)') + '</option>' + list.map(function (h) {
+          return '<option value="' + esc(h.tag) + '"' + (h.up ? '' : ' disabled') + '>' + esc(h.name) + (h.quantization ? ' · ' + esc(h.quantization) : '') +
+            ' · ' + price(h.input) + ' in / ' + price(h.output) + ' out' + (h.discount ? ' · ' + Math.round(h.discount * 100) + '% off' : '') + (h.up ? '' : ' (down)') + '</option>';
+        }).join('');
+        host.value = list.some(function (h) { return h.tag === want && h.up; }) ? want : '';
+      }
+      if (hostCache[id]) return fill(hostCache[id]);
+      fill([], 'Loading hosts…');
+      api('/admin/fishing-waters/fish/hosts?model=' + encodeURIComponent(id))
+        .then(function (j) { hostCache[id] = j.hosts; fill(j.hosts); })
+        .catch(function (e) { fill([], 'Any host (' + e.message + ')'); });
     }
     function drawEffort() {
       var m = info(), list = m && m.efforts && m.efforts.length ? [''].concat(m.efforts) : providers.efforts, cur = effort.value || saved.effort || '';
@@ -750,14 +810,16 @@ class AdminFishLibrary {
       model.value = saved.provider === prov.value && saved.model ? saved.model : (provider() && provider().models[0] ? provider().models[0].id : '');
       drawModels();
     }
-    prov.addEventListener('change', function () { model.value = provider() && provider().models[0] ? provider().models[0].id : ''; drawModels(); });
-    model.addEventListener('change', drawEffort);
+    prov.addEventListener('change', function () { model.value = provider() && provider().models[0] ? provider().models[0].id : ''; host.value = ''; drawModels(); });
+    model.addEventListener('change', function () { host.value = ''; drawEffort(); drawHosts(); });
+    batch.addEventListener('change', function () { model.value = baseId() + (batch.checked ? ':batch' : ''); host.value = ''; drawEffort(); drawHosts(); });
     effort.addEventListener('change', function () { saved.effort = effort.value; });
     (providers ? Promise.resolve(providers) : api('/admin/fishing-waters/fish/providers').then(function (j) { providers = j; return j; }))
       .then(fill).catch(function (e) { hint.textContent = e.message; });
   }
   function picked() {
-    var choice = { provider: $('flProvider').value, model: $('flModel').value.trim(), effort: $('flEffort').value };
+    var choice = { provider: $('flProvider').value, model: $('flModel').value.trim(), effort: $('flEffort').value,
+      host: $('flProvider').value === 'openrouter' ? $('flHost').value : '' };
     store('ai', choice);
     return choice;
   }
@@ -766,6 +828,7 @@ class AdminFishLibrary {
     var choice = picked();
     if (!choice.provider || !choice.model) { msg.className = 'fl-msg grow err'; msg.textContent = 'Pick a provider and model.'; return; }
     request.provider = choice.provider; request.model = choice.model; request.effort = choice.effort;
+    if (choice.host) request.host = choice.host;
     if (image) request.image = image;
     msg.className = 'fl-msg grow'; msg.textContent = 'Starting…';
     api('/admin/fishing-waters/fish-jobs', { body: request }).then(function (job) {
@@ -825,7 +888,7 @@ class AdminFishLibrary {
   function renderReview(job) {
     var name = job.mode === 'new' ? (job.fields && job.fields.Name) || job.fishId : job.fishId;
     title((job.mode === 'new' ? 'New fish: ' : 'Edit: ') + name);
-    var meta = '<p class="fl-hint">' + esc(job.provider) + ' · ' + esc(job.model) + (job.effort ? ' · ' + esc(job.effort) + ' effort' : '') +
+    var meta = '<p class="fl-hint">' + esc(job.provider) + ' · ' + esc(job.model) + (job.host ? ' via ' + esc(job.host) : '') + (job.effort ? ' · ' + esc(job.effort) + ' effort' : '') +
       (job.tokens ? ' · ' + job.tokens.toLocaleString() + ' tokens' : '') + (job.cost ? ' · $' + job.cost.toFixed(4) : '') + '</p>';
     if (BUSY[job.status]) {
       body.innerHTML = meta + '<div class="fl-progress"><span class="fl-spinner"></span><div><b>' + esc(job.status === 'previewing' ? 'Building the 3D preview' : job.status === 'committing' ? 'Committing' : 'Writing the fish') + '</b><br><span class="fl-hint">' + esc(job.stage || 'Queued…') + '</span></div></div>' +
