@@ -483,6 +483,7 @@ class Api {
         _loginFailLimiter =
             RateLimiter(maxRequests: 10, window: const Duration(minutes: 15)) {
     _adminSessionByTokenHash.addAll(_adminSessions.load());
+    _adminTrustByTokenHash.addAll(_adminTrustedDevices.load());
   }
 
   final Store store;
@@ -652,6 +653,16 @@ class Api {
   final Map<String, AdminSession> _adminSessionByTokenHash = {};
   static const _adminSessionTtl = Duration(hours: 12);
   static const _adminCookieName = 'luma_admin';
+
+  /// Devices the operator ticked "Trust this device" on, keyed by SHA-256 of
+  /// the trust cookie's token. A trusted device still needs the admin key
+  /// every [_adminSessionTtl], but skips the authenticator code until
+  /// [_adminTrustTtl] after the sign-in that last asked for one. Bound to
+  /// [_adminKeyFingerprint] like sessions, so rotating the key or the
+  /// authenticator forgets every device; "sign out everywhere" does too.
+  final Map<String, AdminSession> _adminTrustByTokenHash = {};
+  static const _adminTrustTtl = Duration(days: 30);
+  static const _adminTrustCookieName = 'luma_admin_trust';
 
   Handler get handler {
     final router = Router()
@@ -836,6 +847,8 @@ class Api {
       ..get('/admin/fishing-waters/state', _requireAdmin(fishingWaters.state))
       ..post('/admin/fishing-waters/weather',
           _requireAdmin(fishingWaters.setWeather))
+      ..post('/admin/fishing-waters/limited',
+          _requireAdmin(fishingWaters.setLimited))
       ..post(
           '/admin/fishing-waters/grants', _requireAdmin(fishingWaters.grant))
       ..post('/admin/fishing-waters/grants/revoke',
@@ -1431,7 +1444,8 @@ class Api {
     };
   }
 
-  Response _establishAdminSession(Response response, Request request) {
+  Response _establishAdminSession(Response response, Request request,
+      {String? trustCookie}) {
     final token = base64UrlEncode(randomBytes(32)).replaceAll('=', '');
     final tokenHash = c.sha256.convert(utf8.encode(token)).toString();
     _pruneAdminSessions();
@@ -1442,10 +1456,11 @@ class Api {
     );
     _adminSessions.save(_adminSessionByTokenHash);
     final secure = _isSecureRequest(request);
+    final session = '$_adminCookieName=$token; Path=/admin; HttpOnly; '
+        'SameSite=Strict${secure ? '; Secure' : ''}; '
+        'Max-Age=${_adminSessionTtl.inSeconds}';
     return response.change(headers: {
-      'Set-Cookie': '$_adminCookieName=$token; Path=/admin; HttpOnly; '
-          'SameSite=Strict${secure ? '; Secure' : ''}; '
-          'Max-Age=${_adminSessionTtl.inSeconds}',
+      'Set-Cookie': [session, if (trustCookie != null) trustCookie],
     });
   }
 
@@ -1478,16 +1493,56 @@ class Api {
             "font-src 'self'",
       });
 
-  String? _adminSessionToken(Request request) {
+  String? _adminSessionToken(Request request) =>
+      _adminCookie(request, _adminCookieName);
+
+  String? _adminCookie(Request request, String cookieName) {
     final cookieHeader = request.headers['cookie'];
     if (cookieHeader == null) return null;
     for (final part in cookieHeader.split(';')) {
       final eq = part.indexOf('=');
       if (eq < 0) continue;
       final name = part.substring(0, eq).trim();
-      if (name == _adminCookieName) return part.substring(eq + 1).trim();
+      if (name == cookieName) return part.substring(eq + 1).trim();
     }
     return null;
+  }
+
+  /// Whether this browser holds a live trust cookie, letting its sign-in
+  /// skip the authenticator code (never the admin key).
+  bool _isTrustedAdminDevice(Request request) {
+    final token = _adminCookie(request, _adminTrustCookieName);
+    if (token == null || token.isEmpty) return false;
+    if (!_totpInForce || !_adminTotp.enrolled) return false;
+    final tokenHash = c.sha256.convert(utf8.encode(token)).toString();
+    final trust = _adminTrustByTokenHash[tokenHash];
+    if (trust == null) return false;
+    if (trust.expiresAt <= DateTime.now().millisecondsSinceEpoch ||
+        !constantTimeEquals(
+            utf8.encode(trust.keyFp), utf8.encode(_adminKeyFingerprint))) {
+      _adminTrustByTokenHash.remove(tokenHash);
+      _adminTrustedDevices.save(_adminTrustByTokenHash);
+      return false;
+    }
+    return true;
+  }
+
+  /// The Set-Cookie value that trusts this browser for [_adminTrustTtl].
+  /// Scoped to the login routes: no other page needs to see it.
+  String _trustAdminDevice(Request request) {
+    final token = base64UrlEncode(randomBytes(32)).replaceAll('=', '');
+    final now = DateTime.now().millisecondsSinceEpoch;
+    _adminTrustByTokenHash
+      ..removeWhere((_, t) => t.expiresAt <= now || t.keyFp != _adminKeyFingerprint)
+      ..[c.sha256.convert(utf8.encode(token)).toString()] = AdminSession(
+        expiresAt: now + _adminTrustTtl.inMilliseconds,
+        keyFp: _adminKeyFingerprint,
+      );
+    _adminTrustedDevices.save(_adminTrustByTokenHash);
+    final secure = _isSecureRequest(request);
+    return '$_adminTrustCookieName=$token; Path=/admin/login; HttpOnly; '
+        'SameSite=Strict${secure ? '; Secure' : ''}; '
+        'Max-Age=${_adminTrustTtl.inSeconds}';
   }
 
   bool _hasValidAdminSession(Request request) {
@@ -1529,6 +1584,10 @@ class Api {
 
   late final AdminSessionStore _adminSessions =
       AdminSessionStore(config.dataDir);
+
+  late final AdminSessionStore _adminTrustedDevices = AdminSessionStore(
+      config.dataDir,
+      fileName: 'admin_trusted_devices.json');
 
   late final AdminTotp _adminTotp =
       AdminTotp(config.dataDir, envSecret: config.adminTotpSecret);
@@ -1603,9 +1662,18 @@ class Api {
       'inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" '
       'maxlength="7" ${disabled ? 'disabled' : ''} style="width:100%">';
 
-  String _adminLoginFormHtml({bool failed = false, int? lockedSeconds}) {
+  static String _trustDeviceCheckbox({bool disabled = false}) =>
+      '<label class="hint" style="display:flex;gap:8px;align-items:center;'
+      'margin:0;cursor:pointer">'
+      '<input type="checkbox" name="trust" value="1" '
+      '${disabled ? 'disabled' : ''}>'
+      'Trust this device for 30 days (the admin key is still asked every '
+      '12 hours)</label>';
+
+  String _adminLoginFormHtml(
+      {bool failed = false, int? lockedSeconds, bool trusted = false}) {
     final misconfigured = _totpInForce && _adminTotp.misconfigured;
-    final askCode = _totpInForce && _adminTotp.enrolled;
+    final askCode = _totpInForce && _adminTotp.enrolled && !trusted;
     final enrollNext = _totpInForce && !_adminTotp.enrolled && !misconfigured;
     final message = lockedSeconds != null
         ? 'Too many failed attempts — try again in ${_fmtWait(lockedSeconds)}.'
@@ -1632,9 +1700,12 @@ class Api {
             'autocomplete="current-password" '
             '${disabled ? 'disabled' : ''} style="width:100%">'
             '${askCode ? _totpInput(disabled: disabled) : ''}'
+            '${askCode ? _trustDeviceCheckbox(disabled: disabled) : ''}'
             '<button type="submit" class="btn btn-primary" '
             '${disabled ? 'disabled' : ''}>Sign in</button>'
-            '</div></form>$enrollHint');
+            '</div></form>$enrollHint'
+            '${trusted && !disabled ? '<p class="hint">This device is trusted, '
+                'so no authenticator code is needed.</p>' : ''}');
   }
 
   /// Step two of the first sign-in: show the new secret and ask for a code
@@ -1689,7 +1760,8 @@ class Api {
         200,
         _adminLoginFormHtml(
             failed: request.url.queryParameters.containsKey('failed'),
-            lockedSeconds: locked));
+            lockedSeconds: locked,
+            trusted: _isTrustedAdminDevice(request)));
   }
 
   /// The login and enrollment routes are reachable by anyone, so the body is
@@ -1732,9 +1804,15 @@ class Api {
           );
         return _adminHtml(200, _totpEnrollHtml(token, secret));
       }
-      if (!_adminTotp.verifyLogin(form['code'] ?? '')) {
-        _noteAdminFailure(clientKey);
-        return Response.found('/admin/login?failed=1');
+      if (!_isTrustedAdminDevice(request)) {
+        if (!_adminTotp.verifyLogin(form['code'] ?? '')) {
+          _noteAdminFailure(clientKey);
+          return Response.found('/admin/login?failed=1');
+        }
+        if (form['trust'] == '1') {
+          return _establishAdminSession(Response.found('/admin'), request,
+              trustCookie: _trustAdminDevice(request));
+        }
       }
     }
 
@@ -1792,9 +1870,13 @@ class Api {
     });
   }
 
+  /// Also forgets every trusted device, so the next sign-in anywhere asks
+  /// for the authenticator code again.
   Response _adminLogoutAll(Request request) {
     _adminSessionByTokenHash.clear();
     _adminSessions.save(_adminSessionByTokenHash);
+    _adminTrustByTokenHash.clear();
+    _adminTrustedDevices.save(_adminTrustByTokenHash);
     return _adminLogout(request);
   }
 

@@ -947,7 +947,12 @@ class FishLibrary {
         ..add('Requires: ${(f['Requires'] as List).isEmpty ? 'nothing (omit Requires)' : (f['Requires'] as List).join(', ')}')
         ..add('Choose RarityDenominator, weights, BaseValue, Fight and Shapes '
             'in line with existing species of the same rarity and pools, and '
-            'write a detailed Build for its 3D model.');
+            'write a detailed Build for its 3D model.')
+        ..add('Rarity tiers, commonest first: '
+            '${kFishRarities.where((r) => r != 'Junk' && r != 'Limited').join(', ')}. '
+            'Limited is a special tier: it bites only while the dashboard has '
+            'it switched on, at the chance set there, so its RarityDenominator '
+            'only counts for the rarest-catch record; give it a high one.');
       if (job.prompt.isNotEmpty) lines.add('Notes from the designer: ${job.prompt}');
     }
     if (image != null) {

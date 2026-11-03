@@ -19,7 +19,12 @@ const kFishRarities = [
   'Uncommon',
   'Rare',
   'Epic',
-  'Legendary'
+  'Legendary',
+  'Mythical',
+  'Exotic',
+  'Divine',
+  // Bites only while switched on in the dashboard, at the chance set there.
+  'Limited'
 ];
 
 /// Data fields in the order they appear in a module; a missing field is

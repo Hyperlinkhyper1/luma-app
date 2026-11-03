@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:shelf/shelf.dart';
 
+import 'fish_species_file.dart';
 import 'util.dart';
 
 /// One HTTP call to a Roblox web API: status code and body bytes. Tests
@@ -19,9 +20,10 @@ typedef RobloxFetch = Future<(int, List<int>)> Function(String method, Uri url,
 /// heartbeat here (`POST /api/v1/fishing-waters/heartbeat`, authenticated by
 /// LUMA_FISHING_WATERS_KEY) with its players, weather and gamepass catalogue,
 /// and the response carries back what the operator decided on the dashboard:
-/// the weather override and the gamepass grants for the players in that
-/// server. Live servers are memory-only and drop out when they stop
-/// reporting; the override, grants and last-known catalogue persist in
+/// the weather override, the gamepass grants for the players in that
+/// server and which Limited fish bite at what chance. Live servers are
+/// memory-only and drop out when they stop reporting; the override, grants,
+/// Limited fish and last-known catalogue persist in
 /// `fishing_waters.json`.
 class FishingWaters {
   FishingWaters(this.dataDir,
@@ -60,6 +62,10 @@ class FishingWaters {
   Map<String, num>? _supercell;
   int _overrideAt = 0;
   List<Map<String, dynamic>> _grants = [];
+
+  /// Limited fish by species id: {enabled, chance} with chance in percent
+  /// per catch. A species with no entry is off.
+  Map<String, Map<String, dynamic>> _limited = {};
   List<Map<String, dynamic>> _passes =
       _defaultPasses.map((p) => Map<String, dynamic>.from(p)).toList();
   List<Map<String, dynamic>> _schedule = [];
@@ -81,6 +87,14 @@ class FishingWaters {
       if (_override == 'BlackHole' && _blackHole == null) _override = null;
       _supercell = _override == 'Supercell' ? _point(decoded['supercell']) : null;
       _grants = _maps(decoded['grants']);
+      final limited = decoded['limited'];
+      if (limited is Map) {
+        _limited = {
+          for (final e in limited.entries)
+            if (e.key is String && e.value is Map)
+              e.key as String: Map<String, dynamic>.from(e.value as Map)
+        };
+      }
       final passes = _maps(decoded['passes']);
       if (passes.isNotEmpty) _passes = passes;
       _schedule = _maps(decoded['schedule']);
@@ -106,6 +120,7 @@ class FishingWaters {
         'blackHole': _blackHole,
         'supercell': _supercell,
         'grants': _grants,
+        'limited': _limited,
         'passes': _passes,
         'schedule': _schedule,
         'kinds': _kinds,
@@ -243,6 +258,12 @@ class FishingWaters {
       'blackHole': _blackHole,
       'supercell': _supercell,
       'grants': grants,
+      // Only the switched-on ones, in percent; the game turns off any it
+      // doesn't see.
+      'limitedFish': {
+        for (final e in _limited.entries)
+          if (e.value['enabled'] == true) e.key: e.value['chance'],
+      },
     });
   }
 
@@ -273,6 +294,7 @@ class FishingWaters {
       },
       'passes': _passes,
       'grants': grants,
+      'limited': _limited,
     };
   }
 
@@ -308,6 +330,29 @@ class FishingWaters {
     _supercell = supercell;
     final now = _nowMs;
     _overrideAt = now > _overrideAt ? now : _overrideAt + 1;
+    await _save();
+    return jsonResponse(200, stateJson());
+  }
+
+  /// Switches a Limited fish on or off and sets its chance per catch, in
+  /// percent. The species doesn't have to exist yet, so a fish can be set up
+  /// while the AI is still making it.
+  Future<Response> setLimited(Request request) async {
+    final body = await _readJson(request);
+    if (body == null) {
+      return errorResponse(400, 'bad_request', 'Expected a JSON object.');
+    }
+    _load();
+    final fishId = _str(body['fishId'], 60);
+    if (!isFishId(fishId)) {
+      return errorResponse(400, 'bad_request', 'Pick a fish.');
+    }
+    final chance = _num(body['chance']);
+    if (chance == null || chance <= 0 || chance > 100) {
+      return errorResponse(400, 'invalid_chance',
+          'The chance must be more than 0% and at most 100%.');
+    }
+    _limited[fishId] = {'enabled': body['enabled'] == true, 'chance': chance};
     await _save();
     return jsonResponse(200, stateJson());
   }

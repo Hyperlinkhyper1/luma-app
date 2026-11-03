@@ -192,6 +192,68 @@ void main() {
       expect(stale.headers['location'], '/admin/login?failed=1');
     });
 
+    test('a trusted device skips the code but never the key', () async {
+      final (secret, _) = await enroll();
+      handler = await build();
+      final trusting = await form('/admin/login', {
+        'key': adminKey,
+        'code': totpCode(secret, nowStep() + 1),
+        'trust': '1',
+      });
+      expect(trusting.headers['location'], '/admin');
+      final trustCookie = trusting.headersAll['set-cookie']!
+          .firstWhere((c) => c.startsWith('luma_admin_trust='));
+      expect(trustCookie, contains('Path=/admin/login'));
+      expect(trustCookie, contains('Max-Age=${30 * 24 * 3600}'));
+      final cookie = trustCookie.split(';').first;
+
+      Future<Response> trustedForm(Map<String, String> fields) =>
+          Future.value(handler(Request(
+            'POST',
+            Uri.parse('http://localhost/admin/login'),
+            headers: {
+              'content-type': 'application/x-www-form-urlencoded',
+              'origin': 'http://localhost',
+              'cookie': cookie,
+            },
+            body: Uri(queryParameters: fields).query,
+          )));
+
+      // Across a restart, too: the trust is kept on disk.
+      handler = await build();
+      final page = await handler(Request(
+          'GET', Uri.parse('http://localhost/admin/login'),
+          headers: {'cookie': cookie}));
+      expect(await page.readAsString(), isNot(contains('name="code"')));
+      final keyOnly = await trustedForm({'key': adminKey});
+      expect(keyOnly.headers['location'], '/admin');
+      expect((await withCookie(cookieOf(keyOnly))).statusCode, 200);
+      final wrongKey = await trustedForm({'key': 'nope'});
+      expect(wrongKey.headers['location'], '/admin/login?failed=1');
+
+      // Signing out everywhere forgets the device.
+      final signedOut = await handler(Request(
+        'POST',
+        Uri.parse('http://localhost/admin/logout-all'),
+        headers: {'cookie': cookieOf(keyOnly), 'origin': 'http://localhost'},
+      ));
+      expect(signedOut.statusCode, 302);
+      // A restart also clears the wrong-key lockout from above.
+      handler = await build();
+      final again = await trustedForm({'key': adminKey});
+      expect(again.headers['location'], '/admin/login?failed=1');
+    });
+
+    test('an unticked sign-in does not trust the device', () async {
+      final (secret, _) = await enroll();
+      handler = await build();
+      final ok = await form('/admin/login',
+          {'key': adminKey, 'code': totpCode(secret, nowStep() + 1)});
+      expect(ok.headers['location'], '/admin');
+      expect(ok.headersAll['set-cookie']!
+          .any((c) => c.startsWith('luma_admin_trust=')), isFalse);
+    });
+
     test('the X-Admin-Key header also needs X-Admin-Totp', () async {
       final (secret, _) = await enroll();
       Future<Response> call(Map<String, String> headers) =>

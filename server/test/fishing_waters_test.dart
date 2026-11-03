@@ -234,6 +234,43 @@ void main() {
     expect(afterRevoke['grants'], isEmpty);
   });
 
+  test('Limited fish are switched on with a chance, persist and reach game servers',
+      () async {
+    final (unauthorized, _) = await send('POST', '/admin/fishing-waters/limited',
+        json: {'fishId': 'Comet', 'enabled': true, 'chance': 2});
+    expect(unauthorized, isNot(200));
+    for (final body in [
+      {'fishId': 'comet', 'enabled': true, 'chance': 2},
+      {'fishId': 'Comet', 'enabled': true, 'chance': 0},
+      {'fishId': 'Comet', 'enabled': true, 'chance': 101},
+      {'fishId': 'Comet', 'enabled': true, 'chance': '5'},
+    ]) {
+      final (status, _) = await send('POST', '/admin/fishing-waters/limited',
+          admin: true, json: body);
+      expect(status, 400);
+    }
+    final (ok, state) = await send('POST', '/admin/fishing-waters/limited',
+        admin: true, json: {'fishId': 'Comet', 'enabled': true, 'chance': 2.5});
+    expect(ok, 200);
+    expect(state['limited'], {
+      'Comet': {'enabled': true, 'chance': 2.5}
+    });
+    await send('POST', '/admin/fishing-waters/limited',
+        admin: true, json: {'fishId': 'Ghost', 'enabled': false, 'chance': 10});
+    final (_, reply) = await send('POST', '/api/v1/fishing-waters/heartbeat',
+        json: heartbeatBody(), gameKey: 'game-secret');
+    expect(reply['limitedFish'], {'Comet': 2.5});
+
+    final reloaded = FishingWaters(dir.path, gameKey: 'game-secret');
+    expect((reloaded.stateJson()['limited'] as Map).keys, ['Comet', 'Ghost']);
+
+    await send('POST', '/admin/fishing-waters/limited',
+        admin: true, json: {'fishId': 'Comet', 'enabled': false, 'chance': 2.5});
+    final (_, off) = await send('POST', '/api/v1/fishing-waters/heartbeat',
+        json: heartbeatBody(), gameKey: 'game-secret');
+    expect(off['limitedFish'], isEmpty);
+  });
+
   test('black holes require an admin and a bounded point, then reach game servers', () async {
     final (unauthorized, _) = await send('POST', '/admin/fishing-waters/weather',
         json: {'kind': 'BlackHole', 'blackHole': {'x': 30, 'z': -60}});

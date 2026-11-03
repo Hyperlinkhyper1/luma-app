@@ -58,6 +58,12 @@ class AdminFishLibrary {
 .fl-tags{display:flex;flex-wrap:wrap;gap:4px}
 .fl-tag{font-size:10.5px;padding:1px 7px;border-radius:999px;background:#102733;border:1px solid #214555;color:#9bb6c2;white-space:nowrap}
 .fl-tag.warn{background:#2a1d0c;border-color:#6d5a28;color:#f2d68a}
+.fl-tag.on{background:#0c2a1b;border-color:#2b7a52;color:#8ff0b8}
+.fl-limited{border:1px solid #5a2a52;border-radius:12px;padding:12px;margin-top:14px;background:rgba(40,10,36,.35)}
+.fl-limited h4{margin:0 0 4px;font-size:13px;color:#ff9be8}
+.fl-limited p{margin:0 0 10px;font-size:12px;color:#86a3b0}
+.fl-limited .fl-form{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+.fl-limited[hidden]{display:none}
 .fl-detail{position:sticky;top:12px;margin-bottom:0}
 .fl-detail h3{margin:0;font-size:20px;letter-spacing:-.01em}
 .fl-detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
@@ -148,9 +154,11 @@ class AdminFishLibrary {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
-  var RARITY_COLOR = { Junk: '#9d8568', Common: '#c4c4c4', Uncommon: '#6fca7d', Rare: '#52a3e5', Epic: '#b06ce6', Legendary: '#f0b040' };
+  var RARITY_COLOR = { Junk: '#9d8568', Common: '#c4c4c4', Uncommon: '#6fca7d', Rare: '#52a3e5', Epic: '#b06ce6', Legendary: '#f0b040', Mythical: '#e83e5c', Exotic: '#34dec4', Divine: '#fff2b2', Limited: '#ff54d6' };
   var COND_LABEL = { Rain: 'Rain', Clear: 'Clear skies', Storm: 'Storm', Supercell: 'Supercell', BlackHole: 'Black hole', Day: 'Daytime', Night: 'Night', Beach: 'Beach' };
   var lib = null, selected = null, providers = null, jobs = [], loaded = false;
+  // Limited fish switches from the dashboard state: { id: { enabled, chance } }.
+  var limited = {};
   var jobTimer = null, viewer = null, reviewViewer = null;
 
   function api(path, options) {
@@ -404,10 +412,30 @@ class AdminFishLibrary {
     return s + ' · ' + (weather ? [weather] : []).concat(rest).join(' + ');
   }
   function num(v) { return v == null ? '–' : (Math.round(v * 1000) / 1000).toLocaleString(); }
+  function limitedText(f) {
+    var l = limited[f.id];
+    return l && l.enabled ? num(l.chance) + '% per catch' : 'Not obtainable';
+  }
+  // Switch a Limited fish on or off; works before the species exists, too.
+  function saveLimited(id, enabled, chance) {
+    return api('/admin/fishing-waters/limited', { body: { fishId: id, enabled: enabled, chance: chance } }).then(function (s) { limited = s.limited || {}; renderGrid(); });
+  }
+  function limitedFields(l) {
+    l = l || {};
+    return '<label class="fl-field">Chance per catch (%)<input name="chance" type="number" min="0.0001" max="100" step="any" value="' + esc(l.chance != null ? l.chance : 1) + '"></label>' +
+      '<div class="fl-field"><span>In game</span>' + pills('enabled', [{ value: 'on', label: 'Obtainable' }], l.enabled ? ['on'] : []) + '</div>';
+  }
+  function readLimited(form) {
+    var chance = parseFloat(form.chance.value);
+    if (!(chance > 0 && chance <= 100)) return null;
+    return { enabled: checkedValues(form, 'enabled').length > 0, chance: chance };
+  }
 
   function load(fresh) {
     $('flMeta').textContent = 'Loading the fish library…';
-    return api('/admin/fishing-waters/fish' + (fresh ? '?fresh=1' : '')).then(function (json) {
+    var states = api('/admin/fishing-waters/state').then(function (s) { limited = s.limited || {}; }).catch(function () {});
+    return Promise.all([api('/admin/fishing-waters/fish' + (fresh ? '?fresh=1' : '')), states]).then(function (both) {
+      var json = both[0];
       lib = json; loaded = true;
       var rar = $('flRarity'), pool = $('flPool'), r = rar.value, p = pool.value;
       rar.innerHTML = '<option value="">All rarities</option>' + json.rarities.map(function (x) { return '<option>' + esc(x) + '</option>'; }).join('');
@@ -460,11 +488,12 @@ class AdminFishLibrary {
       var kind = kindOf(f);
       if (kind) tags += '<span class="fl-tag">' + esc(kind) + '</span>';
       if (!f.hasBuild) tags += '<span class="fl-tag warn">No model</span>';
+      if (f.rarity === 'Limited') tags += limited[f.id] && limited[f.id].enabled ? '<span class="fl-tag on">Live</span>' : '<span class="fl-tag">Off</span>';
       var icon = (kind || /squid/i.test(f.name)) ? '<span class="fl-swatch" style="background:' + swatch + '"></span>' : fishIcon(f);
       return '<button type="button" class="fl-card" role="listitem" data-id="' + esc(f.id) + '" aria-current="' + (f.id === selected) + '">' +
         '<span class="fl-card-top">' + icon + '<b>' + esc(f.name) + '</b></span>' +
         '<span class="fl-rar" style="color:' + color + '">' + esc(f.rarity) + '</span>' +
-        '<small>1 in ' + num(f.odds) + ' · $' + num(f.value) + ' · ' + num(f.averageKg) + ' kg</small>' +
+        '<small>' + (f.rarity === 'Limited' ? esc(limitedText(f)) : '1 in ' + num(f.odds)) + ' · $' + num(f.value) + ' · ' + num(f.averageKg) + ' kg</small>' +
         '<span class="fl-tags">' + tags + '</span></button>';
     }).join('') : '<div class="fw-empty"><b>No fish match</b>Try another filter.</div>';
   }
@@ -491,7 +520,7 @@ class AdminFishLibrary {
       '<span class="fl-hint">Drag to turn · scroll to zoom · double-click to reset</span></div>' +
       '<dl class="fl-facts">' +
       '<dt>Id</dt><dd>' + esc(f.id) + '</dd>' +
-      '<dt>Odds</dt><dd>1 in ' + num(f.odds) + '</dd>' +
+      (f.rarity === 'Limited' ? '<dt>Chance</dt><dd>' + esc(limitedText(f)) + '</dd>' : '<dt>Odds</dt><dd>1 in ' + num(f.odds) + '</dd>') +
       '<dt>Weight</dt><dd>' + num(f.minKg) + ' – ' + num(f.maxKg) + ' kg (avg ' + num(f.averageKg) + ')</dd>' +
       '<dt>Value</dt><dd>$' + num(f.value) + ' at average weight</dd>' +
       '<dt>Fight</dt><dd>+' + num(f.fight) + '</dd>' +
@@ -499,12 +528,27 @@ class AdminFishLibrary {
       '<dt>When</dt><dd>' + esc(seasonText(f)) + '</dd>' +
       '<dt>Model</dt><dd>' + (f.hasBuild ? (f.model ? 'In game and exported' : 'In game; not exported yet (refresh the wiki)') : 'None yet') + '</dd>' +
       '</dl>' +
+      (f.rarity === 'Limited' ? '<form class="fl-limited" id="flLimited" novalidate><h4>Limited drop</h4>' +
+        '<p>Live servers pick this up on their next heartbeat (about 15 s). While it is obtainable, every catch where it bites has this flat chance to be ' + esc(f.name) + '.</p>' +
+        '<div class="fl-form">' + limitedFields(limited[f.id]) + '</div>' +
+        '<div class="fl-row"><span class="fl-msg grow" id="flLimitedMsg" role="status"></span><button type="submit" class="btn btn-primary">Save</button></div></form>' : '') +
       '<details class="fl-source" id="flSource"><summary>Luau source</summary><pre class="fl-code">Loading…</pre></details>';
     viewer = new Viewer($('flViewerBox'));
     if (f.hasBuild) {
       viewer.load('/admin/fishing-waters/fish/model/' + encodeURIComponent(f.slug)).then(function () { viewerControls(viewer, $('flVariant')); });
     } else viewer.message('This species has no Build yet. Ask the AI editor for a model.');
     $('flEditThis').onclick = function () { openEditor({ step: 'edit', fish: f.id }); };
+    if ($('flLimited')) $('flLimited').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var msg = $('flLimitedMsg'), value = readLimited(this);
+      if (!value) { msg.className = 'fl-msg grow err'; msg.textContent = 'Pick a chance above 0% and at most 100%.'; return; }
+      msg.className = 'fl-msg grow'; msg.textContent = 'Saving…';
+      saveLimited(f.id, value.enabled, value.chance).then(function () {
+        msg.className = 'fl-msg grow ok'; msg.textContent = value.enabled ? 'Live at ' + num(value.chance) + '% per catch.' : 'Saved; not obtainable.';
+        var dd = $('flDetail').querySelector('.fl-facts dt + dd + dt + dd');
+        if (dd) dd.textContent = limitedText(f);
+      }).catch(function (err) { msg.className = 'fl-msg grow err'; msg.textContent = err.message; });
+    });
     $('flSource').addEventListener('toggle', function () {
       if (!this.open || this.dataset.loaded) return;
       var pre = this.querySelector('pre'), el = this;
@@ -694,6 +738,8 @@ class AdminFishLibrary {
       '<div class="fl-form">' +
       '<label class="fl-field">Name<input name="name" maxlength="60" required placeholder="e.g. Ember Snapper"></label>' +
       '<label class="fl-field">Rarity<select name="rarity"><option value="">Let the AI choose</option>' + lib.rarities.filter(function (r) { return r !== 'Junk'; }).map(function (r) { return '<option>' + esc(r) + '</option>'; }).join('') + '</select></label>' +
+      '<div class="fl-field wide fl-limited" id="flNewLimited" hidden><h4>Limited drop</h4><p>Limited fish skip the normal odds: while obtainable, each catch where it bites has this chance to be it. You can change both later on the fish.</p>' +
+      '<div class="fl-form">' + limitedFields({ chance: 1, enabled: false }) + '</div></div>' +
       seasonsField([]) + conditionFields([]) +
       '<div class="fl-field wide"><span>Where it bites</span>' + pills('pools', poolOptions(), []) +
       '<span class="fl-hint">Dashed areas (biomes) get their own pool the moment a fish names them; players there still catch every Open Sea fish too.</span></div>' +
@@ -701,6 +747,7 @@ class AdminFishLibrary {
       imageField() + '</div>' + aiPicker() +
       '<div class="fl-row"><span class="fl-msg grow" id="flNewMsg" role="status"></span><button type="submit" class="btn btn-primary">Generate fish</button></div></form>';
     wireImage(); wirePicker();
+    $('flNew').rarity.addEventListener('change', function () { $('flNewLimited').hidden = this.value !== 'Limited'; });
     $('flNew').addEventListener('submit', function (e) {
       e.preventDefault();
       var form = this, msg = $('flNewMsg');
@@ -709,7 +756,14 @@ class AdminFishLibrary {
       if (!fields.name) { msg.className = 'fl-msg grow err'; msg.textContent = 'Give it a name.'; return; }
       if (!fields.pools.length) { msg.className = 'fl-msg grow err'; msg.textContent = 'Pick at least one place it bites.'; return; }
       if (fields.seasons.length === 4) fields.seasons = [];
-      startJob({ mode: 'new', fields: fields, prompt: form.prompt.value.trim() }, msg);
+      var drop = null;
+      if (fields.rarity === 'Limited') {
+        drop = readLimited(form);
+        if (!drop) { msg.className = 'fl-msg grow err'; msg.textContent = 'Pick a chance above 0% and at most 100%.'; return; }
+      }
+      startJob({ mode: 'new', fields: fields, prompt: form.prompt.value.trim() }, msg, drop && function (job) {
+        return saveLimited(job.fishId, drop.enabled, drop.chance);
+      });
     });
   }
 
@@ -824,7 +878,7 @@ class AdminFishLibrary {
     return choice;
   }
 
-  function startJob(request, msg) {
+  function startJob(request, msg, started) {
     var choice = picked();
     if (!choice.provider || !choice.model) { msg.className = 'fl-msg grow err'; msg.textContent = 'Pick a provider and model.'; return; }
     request.provider = choice.provider; request.model = choice.model; request.effort = choice.effort;
@@ -832,6 +886,7 @@ class AdminFishLibrary {
     if (image) request.image = image;
     msg.className = 'fl-msg grow'; msg.textContent = 'Starting…';
     api('/admin/fishing-waters/fish-jobs', { body: request }).then(function (job) {
+      if (started) started(job).catch(function () {});
       jobs.unshift(job); renderJobs(); loadJobs();
       openEditor({ step: 'job', job: job.id });
     }).catch(function (e) { msg.className = 'fl-msg grow err'; msg.textContent = e.message; });

@@ -420,12 +420,16 @@ class AdminSession {
 /// reasoning that an operator can just log in again after a restart — but
 /// that quietly broke the one page whose whole job is to restart the server:
 /// the deploy button killed the session of the very operator driving it.
+///
+/// The dashboard's trusted devices (see `Api._adminTrustTtl`) are kept the
+/// same way, in their own file.
 class AdminSessionStore {
-  AdminSessionStore(this.dataDir);
+  AdminSessionStore(this.dataDir, {this.fileName = 'admin_sessions.json'});
 
   final String dataDir;
+  final String fileName;
 
-  File get _file => File('$dataDir/admin_sessions.json');
+  File get _file => File('$dataDir/$fileName');
 
   /// Expired entries are dropped on the way in; anything malformed is
   /// ignored, which only costs a re-login.
