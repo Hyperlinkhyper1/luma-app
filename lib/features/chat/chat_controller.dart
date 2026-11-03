@@ -138,16 +138,24 @@ class ChatController extends ChangeNotifier {
   bool _sending = false;
   bool get isSending => _sending;
 
-  Future<bool> supportsImageInput() async {
+  Future<bool> supportsImageInput({
+    AssistantComposeMode mode = AssistantComposeMode.chat,
+  }) async {
+    if (mode == AssistantComposeMode.picture) {
+      final status = await _syncService?.aiStatus();
+      return _settings.pictureTier == 'pro'
+          ? status?.pictureProImageInput ?? false
+          : status?.pictureImageInput ?? false;
+    }
     final provider = _settings.aiProviderId;
     if (provider == 'openai' || provider == 'anthropic') return true;
     if (provider != 'google') return false;
     if (await _keyStore.readKey(provider) != null) return true;
     final selected = aiModeById(_settings.aiMode);
-    final mode = selected.availableForPlan(_settings.selectedPlanId)
+    final chatMode = selected.availableForPlan(_settings.selectedPlanId)
         ? selected
         : AiMode.normal;
-    return (await _syncService?.aiStatus())?.imageInputModes[mode.name] ??
+    return (await _syncService?.aiStatus())?.imageInputModes[chatMode.name] ??
         false;
   }
 
@@ -171,8 +179,8 @@ class ChatController extends ChangeNotifier {
   /// the UI should be watching `ChatRepository.watchMessages` and needs no
   /// return value from this call.
   ///
-  /// Plan and research require Nova. Uploads and file/picture generation
-  /// require Orbit or Nova, including when callers bypass the composer.
+  /// Plan and research require Nova. Uploads and file generation require
+  /// Orbit or Nova, including when callers bypass the composer.
   Future<void> sendMessage(
     int conversationId,
     String userText, {
@@ -207,10 +215,7 @@ class ChatController extends ChangeNotifier {
     List<AssistantAttachment> attachments = const [],
   }) async {
     final filesAllowed = assistantFilesAllowed(_settings.selectedPlanId);
-    if (!filesAllowed &&
-        (attachments.isNotEmpty ||
-            artifactType != null ||
-            mode == AssistantComposeMode.picture)) {
+    if (!filesAllowed && (attachments.isNotEmpty || artifactType != null)) {
       await _repository.addMessage(
         conversationId,
         'error',
@@ -232,18 +237,6 @@ class ChatController extends ChangeNotifier {
         mode != AssistantComposeMode.picture) {
       mode = AssistantComposeMode.chat;
     }
-    if (mode == AssistantComposeMode.picture) {
-      if (attachments.isNotEmpty) {
-        await _repository.addMessage(
-          conversationId,
-          'error',
-          'Picture generation does not support attachments. Remove the files to continue.',
-        );
-        return;
-      }
-      return _sendPicture(conversationId, userText);
-    }
-
     final providerId = _settings.aiProviderId;
     try {
       for (final attachment in attachments) {
@@ -253,15 +246,25 @@ class ChatController extends ChangeNotifier {
       await _repository.addMessage(conversationId, 'error', error.message);
       return;
     }
-    final imageInput = await supportsImageInput();
+    final needsImageCapability =
+        mode != AssistantComposeMode.picture ||
+        attachments.any((a) => a.isImage);
+    final imageInput = needsImageCapability
+        ? await supportsImageInput(mode: mode)
+        : false;
     if (attachments.length > 3 ||
-        attachments.any((a) => a.isImage && !imageInput)) {
+        attachments.any((a) => a.isImage && !imageInput) ||
+        (mode == AssistantComposeMode.picture &&
+            attachments.any((a) => !a.isImage))) {
       await _repository.addMessage(
         conversationId,
         'error',
         'Choose up to three attachments supported by this model.',
       );
       return;
+    }
+    if (mode == AssistantComposeMode.picture) {
+      return _sendPicture(conversationId, userText, attachments: attachments);
     }
     final usingLocalModel = providerId == AiProviderId.local.name;
     var apiKey = usingLocalModel
@@ -491,7 +494,11 @@ class ChatController extends ChangeNotifier {
   /// picture model, charged as a flat share of the selected Luma AI mode's
   /// weekly limit. The picture is kept on this device and the reply points
   /// at it.
-  Future<void> _sendPicture(int conversationId, String prompt) async {
+  Future<void> _sendPicture(
+    int conversationId,
+    String prompt, {
+    List<AssistantAttachment> attachments = const [],
+  }) async {
     final sync = _syncService;
     if (sync == null || !sync.serverReady) {
       await _repository.addMessage(
@@ -509,12 +516,31 @@ class ChatController extends ChangeNotifier {
     activity.value = const AssistantActivity.picture();
     notifyListeners();
     try {
-      await _repository.addMessage(conversationId, 'user', prompt);
+      await _repository.addMessage(
+        conversationId,
+        'user',
+        prompt,
+        metadataJson: attachments.isEmpty
+            ? null
+            : jsonEncode({
+                'attachments': attachments.map((a) => a.toJson()).toList(),
+              }),
+      );
       await _maybeTitleConversation(conversationId, prompt);
 
-      final image = await _imageClientFor(
-        sync.serverUrl!,
-      ).generate(authToken: sync.authToken!, prompt: prompt, mode: mode.name);
+      final image = await _imageClientFor(sync.serverUrl!).generate(
+        authToken: sync.authToken!,
+        prompt: prompt,
+        mode: mode.name,
+        tier: _settings.pictureTier,
+        images: [
+          for (final attachment in attachments)
+            AiInputImage(
+              mimeType: attachment.mimeType,
+              data: attachment.base64Data!,
+            ),
+        ],
+      );
       final dir = await _imageDirectory();
       await dir.create(recursive: true);
       final file = File(

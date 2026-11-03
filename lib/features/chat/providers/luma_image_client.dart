@@ -41,6 +41,7 @@ class LumaImageClient {
     required String prompt,
     required String mode,
     String tier = 'standard',
+    List<AiInputImage> images = const [],
   }) async {
     var base = serverUrl.trim();
     while (base.endsWith('/')) {
@@ -56,7 +57,16 @@ class LumaImageClient {
               'Authorization': 'Bearer $authToken',
               'Content-Type': 'application/json',
             },
-            body: jsonEncode({'prompt': prompt, 'mode': mode, 'tier': tier}),
+            body: jsonEncode({
+              'prompt': prompt,
+              'mode': mode,
+              'tier': tier,
+              if (images.isNotEmpty)
+                'images': [
+                  for (final image in images)
+                    {'mimeType': image.mimeType, 'data': image.data},
+                ],
+            }),
           )
           .timeout(const Duration(seconds: 150));
     } on ServerAccessDeniedException catch (e) {

@@ -94,7 +94,8 @@ void main() {
   }
 
   var ipCounter = 0;
-  Future<Response> call(String method, String path, {String? token}) async =>
+  Future<Response> call(String method, String path,
+          {String? token, Map<String, dynamic>? payload}) async =>
       await handler(Request(
         method,
         Uri.parse('http://localhost$path'),
@@ -104,8 +105,36 @@ void main() {
           'X-Forwarded-For': '10.${ipCounter ~/ 65536 % 256}'
               '.${ipCounter ~/ 256 % 256}.${ipCounter++ % 256}',
         },
-        body: method == 'POST' ? jsonEncode({'prompt': 'x'}) : null,
+        body: method == 'POST' ? jsonEncode(payload ?? {'prompt': 'x'}) : null,
       ));
+
+  test('picture references enforce the plan and validate before upstream calls',
+      () async {
+    final token = seedUser('image-user');
+    final image = {'mimeType': 'image/png', 'data': 'YQ=='};
+    final locked =
+        await call('POST', '/api/v1/ai/image', token: token, payload: {
+      'prompt': 'Edit this',
+      'images': [image]
+    });
+    expect(locked.statusCode, 403);
+    store.usersById['image-user']!.planId = 'orbit';
+    final malformed =
+        await call('POST', '/api/v1/ai/image', token: token, payload: {
+      'prompt': 'Edit this',
+      'images': [image, image, image, image]
+    });
+    expect(malformed.statusCode, 400);
+    final large =
+        await call('POST', '/api/v1/ai/image', token: token, payload: {
+      'prompt': 'Edit this',
+      'images': [
+        {'mimeType': 'image/png', 'data': base64Encode(List.filled(100000, 0))},
+      ]
+    });
+    expect(large.statusCode, 404);
+    expect(jsonDecode(await large.readAsString())['error'], 'not_configured');
+  });
 
   test('an account is capped across rotating IPs', () async {
     final token = seedUser('u1');

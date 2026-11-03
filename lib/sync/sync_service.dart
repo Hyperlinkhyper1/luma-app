@@ -2037,6 +2037,8 @@ class AiServerStatus {
     this.pictureWeeklyPct,
     this.pictureProConfigured = false,
     this.pictureProWeeklyPct,
+    this.pictureImageInput = false,
+    this.pictureProImageInput = false,
     this.imageInputModes = const {},
     this.aiCheckUsed = 0,
     this.aiCheckLimit = 0,
@@ -2099,6 +2101,8 @@ class AiServerStatus {
 
   /// The same for the operator's pricier "Pro" picture model.
   final bool pictureProConfigured;
+  final bool pictureImageInput;
+  final bool pictureProImageInput;
   final int? pictureProWeeklyPct;
 
   AiModeUsage usageFor(String mode) =>
@@ -2121,6 +2125,8 @@ class AiServerStatus {
             entry.key.toString(): entry.value == true,
       },
       pictureConfigured: picture['configured'] == true,
+      pictureImageInput: picture['imageInput'] == true,
+      pictureProImageInput: picture['proImageInput'] == true,
       pictureWeeklyPct: picture['weeklyPct'] is num
           ? (picture['weeklyPct'] as num).toInt()
           : null,

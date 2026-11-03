@@ -6,6 +6,96 @@ import 'package:luma_sync_server/ai_mode_routing.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('validates reference image counts, types, base64 and sizes', () {
+    expect(parseAiImageInputs(null), isEmpty);
+    final input = {'mimeType': 'image/png', 'data': 'YQ=='};
+    expect(parseAiImageInputs([input]).single.dataUrl,
+        'data:image/png;base64,YQ==');
+    for (final invalid in [
+      'not a list',
+      [input, input, input, input],
+      [
+        {'mimeType': 'text/plain', 'data': 'YQ=='}
+      ],
+      [
+        {'mimeType': 'image/png', 'data': ''}
+      ],
+      [
+        {'mimeType': 'image/png', 'data': '%%%'}
+      ],
+      [
+        {
+          'mimeType': 'image/png',
+          'data': base64Encode(List.filled(4 * 1024 * 1024 + 1, 0))
+        }
+      ],
+    ]) {
+      expect(() => parseAiImageInputs(invalid), throwsFormatException);
+    }
+  });
+
+  test('picture input follows model capabilities and the supported transport',
+      () {
+    const gemini = AiModeRoute(AiUpstream.google, 'gemini-2.5-flash-image');
+    const imagen = AiModeRoute(AiUpstream.google, 'imagen-4.0-generate-001');
+    const router = AiModeRoute(AiUpstream.openrouter, 'vendor/edit-model');
+    expect(aiImageSupportsInput(gemini), isTrue);
+    expect(aiImageSupportsInput(imagen), isFalse);
+    expect(aiImageSupportsInput(router), isFalse);
+    expect(aiImageSupportsInput(router, inputModalities: ['text', 'image']),
+        isTrue);
+    expect(aiImageSupportsInput(gemini, inputModalities: ['text']), isFalse);
+  });
+
+  test('OpenRouter forwards references alongside the prompt', () {
+    const route = AiModeRoute(AiUpstream.openrouter, 'vendor/edit-model');
+    final body = aiImageRequestBody(route, 'Make it blue', images: const [
+      AiImageInput(mimeType: 'image/png', data: 'YQ=='),
+    ]);
+    expect(body['prompt'], 'Make it blue');
+    expect(body['input_references'], [
+      {
+        'type': 'image_url',
+        'image_url': {'url': 'data:image/png;base64,YQ=='}
+      },
+    ]);
+  });
+
+  test('Gemini uses native image input and output', () {
+    const route = AiModeRoute(AiUpstream.google, 'gemini-2.5-flash-image');
+    expect(aiImageEndpoint(route.upstream, model: route.model).path,
+        '/v1beta/models/gemini-2.5-flash-image:generateContent');
+    final body = aiImageRequestBody(route, 'Make it blue', images: const [
+      AiImageInput(mimeType: 'image/png', data: 'YQ=='),
+    ]);
+    expect((body['contents'] as List).single['parts'], [
+      {'text': 'Make it blue'},
+      {
+        'inlineData': {'mimeType': 'image/png', 'data': 'YQ=='}
+      },
+    ]);
+    final image = parseAiImageResponse(jsonEncode({
+      'candidates': [
+        {
+          'content': {
+            'parts': [
+              {
+                'thought': true,
+                'inlineData': {'mimeType': 'image/png', 'data': 'hidden'}
+              },
+              {'text': 'A blue cat'},
+              {
+                'inlineData': {'mimeType': 'image/png', 'data': 'YQ=='}
+              },
+            ]
+          }
+        },
+      ],
+    }));
+    expect(image!.base64, 'YQ==');
+    expect(image.mimeType, 'image/png');
+    expect(image.text, 'A blue cat');
+  });
   test('picture costs a flat weekly share on every plan', () {
     expect(aiImageWeeklyPercentForPlan('orbit'), 7);
     expect(aiImageWeeklyPercentForPlan('nova'), 3);
@@ -15,8 +105,7 @@ void main() {
 
   test('the pro picture model costs more than the standard one', () {
     for (final plan in ['core', 'orbit', 'nova']) {
-      expect(
-          aiImageWeeklyPercentForPlan(plan, selector: kAiImageProSelector),
+      expect(aiImageWeeklyPercentForPlan(plan, selector: kAiImageProSelector),
           greaterThan(aiImageWeeklyPercentForPlan(plan)));
     }
     expect(aiImageSelectorForTier('pro'), kAiImageProSelector);
@@ -26,15 +115,16 @@ void main() {
 
   test('google requests go to the images endpoint as b64', () {
     const route = AiModeRoute(AiUpstream.google, 'imagen-4.0-generate-001');
-    expect(aiImageEndpoint(route.upstream).path, endsWith('/images/generations'));
+    expect(
+        aiImageEndpoint(route.upstream).path, endsWith('/images/generations'));
     final body = aiImageRequestBody(route, 'a cat');
     expect(body['prompt'], 'a cat');
     expect(body['response_format'], 'b64_json');
   });
 
   test('openrouter requests go to its unified images endpoint', () {
-    const route = AiModeRoute(
-        AiUpstream.openrouter, 'inclusionai/ming-image-0.1-design');
+    const route =
+        AiModeRoute(AiUpstream.openrouter, 'inclusionai/ming-image-0.1-design');
     expect(aiImageEndpoint(route.upstream).toString(),
         'https://openrouter.ai/api/v1/images');
     final body = aiImageRequestBody(route, 'a cat');

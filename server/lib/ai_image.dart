@@ -11,8 +11,7 @@ const kAiImageSelector = 'picture';
 const kAiImageProSelector = 'picture_pro';
 const kAiImageSelectors = [kAiImageSelector, kAiImageProSelector];
 
-bool isAiImageSelector(String selector) =>
-    kAiImageSelectors.contains(selector);
+bool isAiImageSelector(String selector) => kAiImageSelectors.contains(selector);
 
 /// The selector a picture request draws with: `tier: "pro"` picks the pro
 /// model, anything else the standard one.
@@ -45,6 +44,57 @@ int aiImageWeeklyPercentForPlan(String? planId,
 /// Longest prompt forwarded to the image model.
 const kAiImageMaxPromptChars = 4000;
 
+class AiImageInput {
+  const AiImageInput({required this.mimeType, required this.data});
+  final String mimeType;
+  final String data;
+
+  String get dataUrl => 'data:$mimeType;base64,$data';
+}
+
+List<AiImageInput> parseAiImageInputs(Object? raw) {
+  if (raw == null) return const [];
+  if (raw is! List || raw.length > 3) {
+    throw const FormatException('Choose up to three reference images.');
+  }
+  return [
+    for (final item in raw) _parseAiImageInput(item),
+  ];
+}
+
+AiImageInput _parseAiImageInput(Object? raw) {
+  if (raw is! Map ||
+      !const ['image/png', 'image/jpeg', 'image/webp']
+          .contains(raw['mimeType']) ||
+      raw['data'] is! String) {
+    throw const FormatException('Use PNG, JPEG or WebP reference images.');
+  }
+  final data = raw['data'] as String;
+  if (data.isEmpty ||
+      data.length > 5600000 ||
+      base64Decode(data).length > 4 * 1024 * 1024) {
+    throw const FormatException(
+        'Each reference image must be smaller than 4 MB.');
+  }
+  return AiImageInput(mimeType: raw['mimeType'] as String, data: data);
+}
+
+bool aiImageUsesGemini(AiModeRoute route) =>
+    route.upstream == AiUpstream.google && route.model.startsWith('gemini-');
+
+bool aiImageSupportsInput(AiModeRoute? route, {List<String>? inputModalities}) {
+  if (route == null) return false;
+  if (route.upstream == AiUpstream.google && !aiImageUsesGemini(route)) {
+    return false;
+  }
+  if (inputModalities != null && inputModalities.isNotEmpty) {
+    return inputModalities.contains('image');
+  }
+  return aiImageUsesGemini(route) ||
+      (route.upstream == AiUpstream.openrouter &&
+          route.model.startsWith('google/gemini-'));
+}
+
 /// The upstreams that can draw. Mistral has no image model behind the
 /// OpenAI-shape API, so it is left out of the dashboard's picker.
 const kAiImageUpstreams = [AiUpstream.google, AiUpstream.openrouter];
@@ -66,31 +116,61 @@ Map<AiUpstream, String> aiImageDefaultModels(String selector) =>
         ? kDefaultAiImageProModels
         : kDefaultAiImageModels;
 
-/// Google serves Imagen on the OpenAI-compat images endpoint. OpenRouter
-/// draws through its unified images endpoint, which takes every image model;
-/// image-only ones (Ming, FLUX…) refuse chat completions outright.
-Uri aiImageEndpoint(AiUpstream upstream) => switch (upstream) {
+/// Google serves Imagen on the OpenAI-compat images endpoint and Gemini
+/// through generateContent. OpenRouter uses its unified images endpoint.
+Uri aiImageEndpoint(AiUpstream upstream, {String? model}) => switch (upstream) {
+      AiUpstream.google when model != null && model.startsWith('gemini-') =>
+        Uri.parse(
+            'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent'),
       AiUpstream.google => Uri.parse(
           'https://generativelanguage.googleapis.com/v1beta/openai/images/generations'),
-      AiUpstream.openrouter =>
-        Uri.parse('https://openrouter.ai/api/v1/images'),
+      AiUpstream.openrouter => Uri.parse('https://openrouter.ai/api/v1/images'),
       _ => Uri.parse(upstream.endpoint),
     };
 
-Map<String, dynamic> aiImageRequestBody(AiModeRoute route, String prompt) =>
-    switch (route.upstream) {
-      AiUpstream.google => {
-          'model': route.model,
-          'prompt': prompt,
-          'n': 1,
-          'response_format': 'b64_json',
+Map<String, dynamic> aiImageRequestBody(AiModeRoute route, String prompt,
+    {List<AiImageInput> images = const []}) {
+  if (aiImageUsesGemini(route)) {
+    return {
+      'contents': [
+        {
+          'role': 'user',
+          'parts': [
+            {'text': prompt},
+            for (final image in images)
+              {
+                'inlineData': {'mimeType': image.mimeType, 'data': image.data}
+              },
+          ],
         },
-      _ => {
-          'model': route.model,
-          'prompt': prompt,
-          'n': 1,
-        },
+      ],
+      'generationConfig': {
+        'responseModalities': ['TEXT', 'IMAGE']
+      },
     };
+  }
+  return switch (route.upstream) {
+    AiUpstream.google => {
+        'model': route.model,
+        'prompt': prompt,
+        'n': 1,
+        'response_format': 'b64_json',
+      },
+    _ => {
+        'model': route.model,
+        'prompt': prompt,
+        'n': 1,
+        if (images.isNotEmpty)
+          'input_references': [
+            for (final image in images)
+              {
+                'type': 'image_url',
+                'image_url': {'url': image.dataUrl}
+              },
+          ],
+      },
+  };
+}
 
 /// One generated picture, still base64 so it can go straight back out as
 /// JSON.
@@ -105,10 +185,8 @@ class AiImageResult {
   final String? text;
 }
 
-/// Pulls the first picture out of either response shape: an images
-/// endpoint's `data[].b64_json` (with OpenRouter's `media_type`), or a chat
-/// completion's `choices[].message.images[].image_url.url` data URL. Null
-/// when the model answered without one.
+/// Reads a picture from Gemini's inline parts, an images endpoint's
+/// `data[].b64_json`, or a chat completion's image data URL.
 AiImageResult? parseAiImageResponse(String body) {
   Object? decoded;
   try {
@@ -117,6 +195,35 @@ AiImageResult? parseAiImageResponse(String body) {
     return null;
   }
   if (decoded is! Map) return null;
+
+  final candidates = decoded['candidates'];
+  if (candidates is List) {
+    for (final candidate in candidates) {
+      final content = candidate is Map ? candidate['content'] : null;
+      final parts = content is Map ? content['parts'] : null;
+      if (parts is! List) continue;
+      final text = parts
+          .whereType<Map>()
+          .where((part) => part['thought'] != true && part['text'] is String)
+          .map((part) => part['text'] as String)
+          .join('\n')
+          .trim();
+      for (final part in parts.whereType<Map>()) {
+        if (part['thought'] == true) continue;
+        final inline = part['inlineData'] ?? part['inline_data'];
+        if (inline is! Map) continue;
+        final data = inline['data'];
+        final mime = inline['mimeType'] ?? inline['mime_type'];
+        if (data is String &&
+            data.isNotEmpty &&
+            mime is String &&
+            mime.startsWith('image/')) {
+          return AiImageResult(
+              base64: data, mimeType: mime, text: text.isEmpty ? null : text);
+        }
+      }
+    }
+  }
 
   final data = decoded['data'];
   if (data is List) {
@@ -139,8 +246,9 @@ AiImageResult? parseAiImageResponse(String body) {
     final message = (choices.first as Map)['message'];
     if (message is Map) {
       final content = message['content'];
-      final text =
-          content is String && content.trim().isNotEmpty ? content.trim() : null;
+      final text = content is String && content.trim().isNotEmpty
+          ? content.trim()
+          : null;
       final images = message['images'];
       if (images is List) {
         for (final image in images) {
@@ -148,9 +256,9 @@ AiImageResult? parseAiImageResponse(String body) {
               ? (image['image_url'] as Map)['url']
               : null;
           if (url is! String) continue;
-          final match =
-              RegExp(r'^data:(image/[a-zA-Z0-9.+-]+);base64,(.+)$', dotAll: true)
-                  .firstMatch(url);
+          final match = RegExp(r'^data:(image/[a-zA-Z0-9.+-]+);base64,(.+)$',
+                  dotAll: true)
+              .firstMatch(url);
           if (match == null) continue;
           return AiImageResult(
               base64: match.group(2)!.trim(),
@@ -173,8 +281,7 @@ String _sniffMime(String b64) {
 /// standard model under `route` (its original key) and the pro one under
 /// `pro`.
 class AiImageConfigStore {
-  AiImageConfigStore(String dataDir)
-      : _file = File('$dataDir/ai_image.json') {
+  AiImageConfigStore(String dataDir) : _file = File('$dataDir/ai_image.json') {
     try {
       if (_file.existsSync()) {
         final decoded = jsonDecode(_file.readAsStringSync());

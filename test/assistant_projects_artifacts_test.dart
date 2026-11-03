@@ -33,6 +33,11 @@ class _Keys implements AiKeyStore {
 
 class _ServerSync extends ChangeNotifier implements SyncService {
   @override
+  Future<AiServerStatus?> aiStatus() async => AiServerStatus.fromJson({
+    'imageInputModes': {'normal': true},
+    'picture': {'imageInput': true, 'proImageInput': false},
+  });
+  @override
   bool get serverReady => true;
   @override
   String? get serverUrl => 'https://luma.example';
@@ -390,6 +395,93 @@ void main() {
         expect(requests, 2);
         expect(tiers, ['standard', 'pro']);
         expect((await repo.loadMessages(chat)).last.role, 'assistant');
+      } finally {
+        imageController.dispose();
+        sync.dispose();
+      }
+    },
+  );
+
+  test(
+    'picture reference images persist with text and require a capable tier',
+    () async {
+      settings.setAdminPlan('orbit');
+      final sync = _ServerSync();
+      var calls = 0;
+      final imageController = ChatController(
+        repository: repo,
+        keyStore: _Keys(),
+        tools: _Tools(),
+        settings: settings,
+        syncService: sync,
+        imageDirectory: () async => directory,
+        imageClientFor: (url) => LumaImageClient(
+          serverUrl: url,
+          httpClient: MockClient((request) async {
+            calls++;
+            final body = jsonDecode(request.body) as Map;
+            expect(body['prompt'], 'Make this blue');
+            expect(body['tier'], 'standard');
+            expect(body['images'], [
+              {'mimeType': 'image/png', 'data': 'YQ=='},
+            ]);
+            return http.Response(jsonEncode({'image': 'Yg=='}), 200);
+          }),
+        ),
+      );
+      const attachment = AssistantAttachment(
+        name: 'cat.png',
+        mimeType: 'image/png',
+        base64Data: 'YQ==',
+      );
+      try {
+        final chat = await repo.createConversation();
+        await imageController.sendMessage(
+          chat,
+          'Make this blue',
+          mode: AssistantComposeMode.picture,
+          attachments: [attachment],
+        );
+        final messages = await repo.loadMessages(chat);
+        expect(messages.last.role, 'assistant');
+        expect(messages.first.content, 'Make this blue');
+        expect(
+          chatAttachmentsOf(messages.first.metadataJson).single.base64Data,
+          'YQ==',
+        );
+        expect(calls, 1);
+
+        settings.setPictureTier('pro');
+        expect(
+          await imageController.supportsImageInput(
+            mode: AssistantComposeMode.picture,
+          ),
+          isFalse,
+        );
+        await imageController.sendMessage(
+          chat,
+          'Make this blue',
+          mode: AssistantComposeMode.picture,
+          attachments: [attachment],
+        );
+        expect((await repo.loadMessages(chat)).last.role, 'error');
+        expect(calls, 1);
+
+        settings.setPictureTier('standard');
+        await imageController.sendMessage(
+          chat,
+          'Make this blue',
+          mode: AssistantComposeMode.picture,
+          attachments: const [
+            AssistantAttachment(
+              name: 'a.txt',
+              mimeType: 'text/plain',
+              text: 'hi',
+            ),
+          ],
+        );
+        expect((await repo.loadMessages(chat)).last.role, 'error');
+        expect(calls, 1);
       } finally {
         imageController.dispose();
         sync.dispose();

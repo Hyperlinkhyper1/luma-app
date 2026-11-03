@@ -417,13 +417,27 @@ class _ChatLayoutState extends State<_ChatLayout> {
   Future<void> _upload() async {
     final settings = SettingsScope.of(context);
     if (!assistantFilesAllowed(settings.selectedPlanId)) return;
-    final supportsImages = await widget.controller.supportsImageInput();
+    final picture =
+        _effectiveComposeMode(settings) == AssistantComposeMode.picture;
+    final supportsImages = await widget.controller.supportsImageInput(
+      mode: _effectiveComposeMode(settings),
+    );
     if (!mounted) return;
+    if (picture && !supportsImages) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'This picture model does not support reference images. Choose another model to upload an image.',
+          ),
+        ),
+      );
+      return;
+    }
     final picked = await FilePicker.pickFiles(
       allowMultiple: true,
       type: FileType.custom,
       allowedExtensions: [
-        ...AssistantAttachment.textExtensions,
+        if (!picture) ...AssistantAttachment.textExtensions,
         if (supportsImages) ...AssistantAttachment.imageExtensions,
       ],
     );
@@ -1986,15 +2000,31 @@ class _ChatComposerState extends State<_ChatComposer> {
       sending: widget.controller.isSending,
       enabled: !_blocked,
       caption: '',
-      leading: ComposeModeButton(
-        mode: composeMode,
-        onChanged: widget.onComposeModeChanged,
-        availability: _composeModeAvailability,
-        modesAllowed: composeModesUnlocked(settings.selectedPlanId),
-        filesAllowed: assistantFilesAllowed(settings.selectedPlanId),
-        artifactType: widget.artifactType,
-        onArtifactTypeChanged: widget.onArtifactTypeChanged,
-        onUpload: widget.onUpload,
+      leading: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (assistantFilesAllowed(settings.selectedPlanId) &&
+              MediaQuery.sizeOf(context).width >= 500)
+            IconButton(
+              tooltip: composeMode == AssistantComposeMode.picture
+                  ? 'Add reference images'
+                  : 'Attach files or images',
+              onPressed: widget.controller.isSending ? null : widget.onUpload,
+              icon: const Icon(Icons.attach_file_rounded, size: 19),
+            ),
+          Flexible(
+            child: ComposeModeButton(
+              mode: composeMode,
+              onChanged: widget.onComposeModeChanged,
+              availability: _composeModeAvailability,
+              modesAllowed: composeModesUnlocked(settings.selectedPlanId),
+              filesAllowed: assistantFilesAllowed(settings.selectedPlanId),
+              artifactType: widget.artifactType,
+              onArtifactTypeChanged: widget.onArtifactTypeChanged,
+              onUpload: widget.onUpload,
+            ),
+          ),
+        ],
       ),
       hasAttachments: widget.attachments.isNotEmpty,
       attachments: widget.attachments.isEmpty

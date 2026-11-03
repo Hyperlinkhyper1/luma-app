@@ -3218,11 +3218,31 @@ class Api {
   /// token numbers (the budgets are a server-side implementation detail).
   bool _assistantRouteSupportsImages(AiModeRoute? route) {
     if (route == null) return false;
-    final catalog = aiCatalog.routingModelById(route.model);
+    final catalog = aiCatalog.routingModelById(route.model) ??
+        aiCatalog.routingModelById('${route.upstream.name}/${route.model}');
     if (catalog != null && catalog.inputModalities.isNotEmpty) {
       return catalog.inputModalities.contains('image');
     }
-    return route.upstream == AiUpstream.google && route.model.startsWith('gemini-');
+    return (route.upstream == AiUpstream.google &&
+            route.model.startsWith('gemini-')) ||
+        (route.upstream == AiUpstream.openrouter &&
+            route.model.startsWith('google/gemini-'));
+  }
+
+  bool _pictureRouteSupportsImages(AiModeRoute? route) {
+    if (route == null) return false;
+    final catalog = aiCatalog.routingModelById(route.model) ??
+        aiCatalog.routingModelById('${route.upstream.name}/${route.model}');
+    return aiImageSupportsInput(route, inputModalities: catalog?.inputModalities);
+  }
+
+  bool _selectorSupportsImages(String selector, AiModeRoute? main,
+      {bool picture = false}) {
+    final supports = picture
+        ? _pictureRouteSupportsImages
+        : _assistantRouteSupportsImages;
+    return supports(main) ||
+        supports(aiPreferred.resolve(selector, config.configuredAiUpstreams));
   }
 
   Response _aiStatus(Request request, StoredUser user) {
@@ -3253,7 +3273,7 @@ class Api {
       'googleConfigured': config.configuredAiUpstreams.isNotEmpty,
       'modeVersions': aiModeRoutes.versions,
       'imageInputModes': {
-        for (final mode in modes.keys) mode: _assistantRouteSupportsImages(
+        for (final mode in modes.keys) mode: _selectorSupportsImages(mode,
           aiModeRoutes.resolve(mode, config.configuredAiUpstreams)),
       },
       'usage': {
@@ -3283,6 +3303,11 @@ class Api {
         ],
       },
       'picture': {
+        'imageInput': _selectorSupportsImages(kAiImageSelector,
+            aiImageConfig.resolve(config.configuredAiUpstreams), picture: true),
+        'proImageInput': _selectorSupportsImages(kAiImageProSelector,
+            aiImageConfig.resolve(config.configuredAiUpstreams, kAiImageProSelector),
+            picture: true),
         'configured':
             aiImageConfig.resolve(config.configuredAiUpstreams) != null,
         'weeklyPct': aiImageWeeklyPercentForPlan(user.planId),
@@ -4693,9 +4718,19 @@ class Api {
   Future<Response> _aiImage(Request request, StoredUser user) async {
     Map<String, dynamic> body;
     try {
-      body = await _readJson(request);
+      body = await _readJson(request,
+          maxBytes: assistantChatBodyLimit(user.planId));
     } on FormatException {
       return errorResponse(400, 'bad_request', 'Malformed request.');
+    }
+    final List<AiImageInput> images;
+    try {
+      images = parseAiImageInputs(body['images']);
+    } on FormatException catch (error) {
+      return errorResponse(400, 'bad_request', error.message);
+    }
+    if (images.isNotEmpty && !assistantFilesAllowed(user.planId)) {
+      return errorResponse(403, 'plan_required', assistantFilePlanMessage);
     }
     final selector = aiImageSelectorForTier(body['tier']);
     final pct = aiImageWeeklyPercentForPlan(user.planId, selector: selector);
@@ -4728,7 +4763,14 @@ class Api {
 
     Response paused() => errorResponse(503, 'model_disabled',
         'Picture mode is paused right now. Try again later.');
-    final candidates = await _aiCandidates(selector, route);
+    final candidates = (await _aiCandidates(selector, route))
+        .where((candidate) => images.isEmpty ||
+            _pictureRouteSupportsImages(candidate.route))
+        .toList();
+    if (images.isNotEmpty && candidates.isEmpty) {
+      return errorResponse(400, 'unsupported_attachment',
+          'This picture model does not support reference images. Choose another model or remove the images.');
+    }
     if (candidates.isEmpty) return paused();
 
     // The "if possible" model draws first; the main model takes over when
@@ -4736,15 +4778,18 @@ class Api {
     for (final (index, candidate) in candidates.indexed) {
       final last = index == candidates.length - 1;
       final drawWith = candidate.route;
-      final imageBody = aiImageRequestBody(drawWith, prompt);
+      final imageBody = aiImageRequestBody(drawWith, prompt, images: images);
       final maxPrice = _applyAiMaxPrice(candidate.key, drawWith, imageBody);
       final int status;
       final String responseBody;
       try {
         (status, responseBody) = await _postJsonWithRetry(
-          aiImageEndpoint(drawWith.upstream),
+          aiImageEndpoint(drawWith.upstream, model: drawWith.model),
           {
-            HttpHeaders.authorizationHeader:
+            if (aiImageUsesGemini(drawWith))
+              'x-goog-api-key': config.aiUpstreamKey(drawWith.upstream)!
+            else
+              HttpHeaders.authorizationHeader:
                 'Bearer ${config.aiUpstreamKey(drawWith.upstream)}',
             if (drawWith.upstream == AiUpstream.openrouter) ...{
               'HTTP-Referer': config.publicUrl,
@@ -4833,9 +4878,12 @@ class Api {
     final started = DateTime.now();
     try {
       final (status, responseBody) = await _postJsonWithRetry(
-        aiImageEndpoint(route.upstream),
+        aiImageEndpoint(route.upstream, model: route.model),
         {
-          HttpHeaders.authorizationHeader:
+          if (aiImageUsesGemini(route))
+            'x-goog-api-key': config.aiUpstreamKey(route.upstream)!
+          else
+            HttpHeaders.authorizationHeader:
               'Bearer ${config.aiUpstreamKey(route.upstream)}',
           if (route.upstream == AiUpstream.openrouter) ...{
             'HTTP-Referer': config.publicUrl,

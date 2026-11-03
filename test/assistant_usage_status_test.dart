@@ -4,6 +4,18 @@ import 'package:luma/features/chat/providers/ai_modes.dart';
 import 'package:luma/features/chat/providers/ai_usage.dart';
 
 void main() {
+  test(
+    'picture input capabilities are independent and default to unsupported',
+    () {
+      final status = AiServerStatus.fromJson({
+        'picture': {'imageInput': true, 'proImageInput': false},
+      });
+      expect(status.pictureImageInput, isTrue);
+      expect(status.pictureProImageInput, isFalse);
+      expect(AiServerStatus.fromJson({}).pictureImageInput, isFalse);
+      expect(AiServerStatus.fromJson({}).pictureProImageInput, isFalse);
+    },
+  );
   test('server versions update branded model and usage names', () {
     final status = AiServerStatus.fromJson({
       'modeVersions': {'normal': '1.9', 'smarter': '2.0', 'smartest': '10.0'},

@@ -103,36 +103,39 @@ void main() {
   research({required bool parallel}) async {
     final client = _FakeResearchClient('["one?", "two?", "three?"]');
     final activity = <AssistantActivity>[];
-    final result = await DeepResearch(
-      client: client,
-      apiKey: 'k',
-      parallel: parallel,
-      systemPrompt: 'base',
-      onActivity: activity.add,
-    ).run(const [
-      AiTurn(role: 'user', text: 'earlier'),
-      AiTurn(role: 'assistant', text: 'reply'),
-      AiTurn(role: 'user', text: 'big question'),
-    ]);
+    final result =
+        await DeepResearch(
+          client: client,
+          apiKey: 'k',
+          parallel: parallel,
+          systemPrompt: 'base',
+          onActivity: activity.add,
+        ).run(const [
+          AiTurn(role: 'user', text: 'earlier'),
+          AiTurn(role: 'assistant', text: 'reply'),
+          AiTurn(role: 'user', text: 'big question'),
+        ]);
     return (result, client, activity);
   }
 
-  test('parallel research runs the agents at once and writes up all notes',
-      () async {
-    final (result, client, activity) = await research(parallel: true);
-    expect(client.calls, hasLength(5));
-    expect(client.maxInFlight, 3);
-    for (final q in ['one?', 'two?', 'three?']) {
-      expect(result.text, contains('notes on $q'));
-    }
-    expect(result.usage!.requests, 5);
-    expect(result.usage!.inputTokens, 50);
-    expect(client.calls.last.first.text, 'earlier');
-    expect(client.systemPrompts.every((p) => p.startsWith('base')), isTrue);
-    expect(activity.first.questions, isEmpty);
-    expect(activity.last.writing, isTrue);
-    expect(activity.last.done, {0, 1, 2});
-  });
+  test(
+    'parallel research runs the agents at once and writes up all notes',
+    () async {
+      final (result, client, activity) = await research(parallel: true);
+      expect(client.calls, hasLength(5));
+      expect(client.maxInFlight, 3);
+      for (final q in ['one?', 'two?', 'three?']) {
+        expect(result.text, contains('notes on $q'));
+      }
+      expect(result.usage!.requests, 5);
+      expect(result.usage!.inputTokens, 50);
+      expect(client.calls.last.first.text, 'earlier');
+      expect(client.systemPrompts.every((p) => p.startsWith('base')), isTrue);
+      expect(activity.first.questions, isEmpty);
+      expect(activity.last.writing, isTrue);
+      expect(activity.last.done, {0, 1, 2});
+    },
+  );
 
   test('on-device research runs the agents one after another', () async {
     final (result, client, _) = await research(parallel: false);
@@ -184,11 +187,42 @@ void main() {
         prompt: 'a cat',
         mode: 'smarter',
       );
-      expect(sent, {'prompt': 'a cat', 'mode': 'smarter'});
+      expect(sent, {'prompt': 'a cat', 'mode': 'smarter', 'tier': 'standard'});
       expect(image.bytes, [1, 2, 3]);
       expect(image.extension, 'jpg');
       expect(image.text, 'A cat');
     });
+
+    test(
+      'sends reference images with text and the selected picture tier',
+      () async {
+        final client = LumaImageClient(
+          serverUrl: 'https://luma.example',
+          httpClient: MockClient((request) async {
+            expect(jsonDecode(request.body), {
+              'prompt': 'Make this blue',
+              'mode': 'normal',
+              'tier': 'pro',
+              'images': [
+                {'mimeType': 'image/png', 'data': 'YQ=='},
+                {'mimeType': 'image/jpeg', 'data': 'Yg=='},
+              ],
+            });
+            return http.Response(jsonEncode({'image': 'YQ=='}), 200);
+          }),
+        );
+        await client.generate(
+          authToken: 'tok',
+          prompt: 'Make this blue',
+          mode: 'normal',
+          tier: 'pro',
+          images: const [
+            AiInputImage(mimeType: 'image/png', data: 'YQ=='),
+            AiInputImage(mimeType: 'image/jpeg', data: 'Yg=='),
+          ],
+        );
+      },
+    );
 
     test('surfaces the server usage-limit message', () async {
       final client = LumaImageClient(
