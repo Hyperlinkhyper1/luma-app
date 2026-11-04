@@ -17,8 +17,12 @@ class ComposeModeAvailability {
   final bool picture;
 
   /// Share of the weekly limit one picture costs on this plan.
-  final int? picturePercent;
+  final double? picturePercent;
 }
+
+/// A picture's weekly share as shown in menus: `1.5` → "1.5", `3.0` → "3".
+String formatPicturePercent(double pct) =>
+    pct == pct.roundToDouble() ? pct.toInt().toString() : pct.toString();
 
 IconData composeModeIcon(AssistantComposeMode mode) => switch (mode) {
   AssistantComposeMode.plan => Icons.lightbulb_outline_rounded,
@@ -264,7 +268,7 @@ class _ComposeModeButtonState extends State<ComposeModeButton> {
                 : null,
             child: Text(
               _available.picturePercent != null
-                  ? 'Picture · ${_available.picturePercent}% weekly usage'
+                  ? 'Picture · ${formatPicturePercent(_available.picturePercent!)}% weekly usage'
                   : 'Picture unavailable',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

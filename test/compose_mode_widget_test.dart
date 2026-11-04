@@ -53,7 +53,7 @@ void main() {
           availability: ComposeModeAvailability(
             research: true,
             picture: true,
-            picturePercent: 3,
+            picturePercent: 1.5,
           ),
         ),
       ),
@@ -66,7 +66,7 @@ void main() {
     expect(find.text('Deep research'), findsOneWidget);
     await tester.tap(find.text('Artifact generation'));
     await tester.pumpAndSettle();
-    expect(find.text('Picture · 3% weekly usage'), findsOneWidget);
+    expect(find.text('Picture · 1.5% weekly usage'), findsOneWidget);
 
     await tester.tap(find.text('Plan mode'));
     await tester.pumpAndSettle();

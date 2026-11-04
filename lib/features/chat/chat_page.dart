@@ -2189,7 +2189,7 @@ class _ModelSelectorState extends State<_ModelSelector> {
     PopupMenuItem<String> item(
       String tier,
       String label,
-      int? percent,
+      double? percent,
       bool available,
     ) {
       final selected = settings.pictureTier == tier;
@@ -2215,7 +2215,7 @@ class _ModelSelectorState extends State<_ModelSelector> {
               ),
             ),
             Text(
-              enabled ? '$percent% weekly usage' : 'Unavailable',
+              enabled ? '${formatPicturePercent(percent)}% weekly usage' : 'Unavailable',
               style: TextStyle(color: luma.textMuted, fontSize: 10.5),
             ),
             const SizedBox(width: 8),

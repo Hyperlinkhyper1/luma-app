@@ -919,6 +919,7 @@ class Api {
           _requireAdmin(_adminDecideDeletionRequest))
       ..post('/admin/plan', _requireAdmin(_adminSetPlan))
       ..post('/admin/credits', _requireAdmin(_adminGrantCredits))
+      ..post('/admin/ai-limits/reset', _requireAdmin(_adminResetAiLimits))
       ..post('/admin/groceries/sync', _requireAdmin(_adminGroceriesSync))
       ..post('/admin/groceries/reload', _requireAdmin(_adminGroceriesReload))
       ..get('/admin/groceries/status', _requireAdmin(_adminGroceriesStatus))
@@ -4714,7 +4715,8 @@ class Api {
   /// The Assistant's picture mode: draws one image with the operator's
   /// picture model. Each picture costs a flat share of the user's weekly
   /// allowance ([kAiImageWeeklyPercent]), rather than its token count, since
-  /// image models bill per picture.
+  /// image models bill per picture. The five-hour allowance and purchased
+  /// credits are never touched.
   Future<Response> _aiImage(Request request, StoredUser user) async {
     Map<String, dynamic> body;
     try {
@@ -4747,20 +4749,30 @@ class Api {
     if (prompt.length > kAiImageMaxPromptChars) {
       return errorResponse(400, 'too_long', 'That description is too long.');
     }
-    final requested = body['mode'];
-    var mode = requested is String && kAiModeNames.containsKey(requested)
-        ? requested
-        : 'normal';
-    if (mode == 'smartest' && user.planId != 'nova') mode = 'normal';
-
     final budget = aiTokenBudget(user.planId);
-    final cost = budget.weekly * pct ~/ 100;
-    if (!aiUsage.canAfford(user.id, budget, cost)) {
+    final reservation = await aiUsage.reserveWeeklyOnly(
+        user.id, budget.weekly * pct / 100, budget);
+    if (reservation == null) {
       return errorResponse(429, 'usage_limit',
-          "There isn't enough of your usage limit left for a picture — it "
-              'frees up again over time, or buy extra credits.');
+          "There isn't enough of your weekly limit left for a picture — it "
+              'frees up again over the coming days.');
     }
+    var drawn = false;
+    try {
+      final response =
+          await _aiImageDraw(user, selector, route, prompt, images, pct);
+      drawn = response.statusCode == HttpStatus.ok;
+      return response;
+    } finally {
+      if (!drawn) await aiUsage.releaseWeeklyOnly(user.id, reservation);
+    }
+  }
 
+  /// The upstream half of [_aiImage], run once the picture's share of the
+  /// weekly allowance is reserved. Anything but a 200 releases it again.
+  Future<Response> _aiImageDraw(StoredUser user, String selector,
+      AiModeRoute route, String prompt, List<AiImageInput> images,
+      double pct) async {
     Response paused() => errorResponse(503, 'model_disabled',
         'Picture mode is paused right now. Try again later.');
     final candidates = (await _aiCandidates(selector, route))
@@ -4825,7 +4837,6 @@ class Api {
         return errorResponse(502, 'no_image',
             'The picture model answered without a picture. Try rewording it.');
       }
-      await aiUsage.chargeFlat(user.id, cost, mode, budget);
       return jsonResponse(200, {
         'image': image.base64,
         'mimeType': image.mimeType,
@@ -8418,6 +8429,27 @@ class Api {
         });
   }
 
+  /// Users tab → Actions → "Reset AI limits": empties the account's rolling
+  /// 5-hour and weekly windows so its plan allowance is full again.
+  /// Purchased credits are left alone.
+  Future<Response> _adminResetAiLimits(Request request) async {
+    Map<String, String> form = const {};
+    try {
+      form = Uri.splitQueryString(await request.readAsString());
+    } catch (_) {}
+    final email = form['email']?.trim().toLowerCase();
+    final userId = email == null ? null : store.userIdByEmail[email];
+    if (userId == null || store.usersById[userId] == null) {
+      return errorResponse(404, 'not_found', 'No account with that email.');
+    }
+    final weekly = aiUsage.unitsUsed(userId, const Duration(days: 7));
+    await aiUsage.resetLimits(userId);
+    await store.logActivity('ai_limits_reset',
+        '$email had their AI limits reset ($weekly weekly units cleared)');
+    return _adminFormResponse(request, '/admin',
+        fragment: 'users', json: {'ok': true, 'clearedWeeklyUnits': weekly});
+  }
+
   /// Proxies a "reload the groceries database" click to the supermarket-db
   /// API's own admin endpoint. Keeping this server in the middle means the
   /// groceries admin key stays in this process's environment — the dashboard
@@ -11720,6 +11752,11 @@ syncToolbar();
         '<div class="menu-sep"></div>',
         ..._teamBoardMenuItems(u, jsEmail, item),
         '<div class="menu-sep"></div>',
+        item('/admin/ai-limits/reset', 'Reset AI limits',
+            confirm: 'Reset the AI limits for $jsEmail?\\n\\nTheir 5-hour '
+                'and weekly Luma AI usage, web searches, support messages '
+                'and AI Detector checks go back to zero. Purchased credits '
+                'are kept.'),
         if (classroomCountries.countryOf(u.id) case final country?) ...[
           item('/admin/classroom/country/reset',
               'Reset classroom country (${_htmlEscape(country)})',
@@ -11823,6 +11860,7 @@ syncToolbar();
       'admin_revoked': 'Admin revoked',
       'plan_granted': 'Plan granted',
       'credits_granted': 'AI credits granted',
+      'ai_limits_reset': 'AI limits reset',
       'classroom_country_reset': 'Classroom country reset',
       'team_board_access': 'Team Clipboard access',
       'school_test_run': 'School test',
@@ -12978,7 +13016,8 @@ syncToolbar();
     }
     final costs = (pro ? kAiImageProWeeklyPercent : kAiImageWeeklyPercent)
         .entries
-        .map((e) => '${esc(e.key == 'core' ? 'free' : e.key)} ${e.value}%')
+        .map((e) => '${esc(e.key == 'core' ? 'free' : e.key)} '
+            '${formatAiImagePercent(e.value)}%')
         .join(', ');
     final s = selector;
     return '<section class="ai-sec" id="ai-sec-$s"><div class="card">'

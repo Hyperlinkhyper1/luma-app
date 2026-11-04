@@ -2097,13 +2097,13 @@ class AiServerStatus {
 
   /// Share of the weekly limit one picture costs on this plan; null when
   /// the plan can't make pictures.
-  final int? pictureWeeklyPct;
+  final double? pictureWeeklyPct;
 
   /// The same for the operator's pricier "Pro" picture model.
   final bool pictureProConfigured;
   final bool pictureImageInput;
   final bool pictureProImageInput;
-  final int? pictureProWeeklyPct;
+  final double? pictureProWeeklyPct;
 
   AiModeUsage usageFor(String mode) =>
       modes[mode] ??
@@ -2128,11 +2128,11 @@ class AiServerStatus {
       pictureImageInput: picture['imageInput'] == true,
       pictureProImageInput: picture['proImageInput'] == true,
       pictureWeeklyPct: picture['weeklyPct'] is num
-          ? (picture['weeklyPct'] as num).toInt()
+          ? (picture['weeklyPct'] as num).toDouble()
           : null,
       pictureProConfigured: picture['proConfigured'] == true,
       pictureProWeeklyPct: picture['proWeeklyPct'] is num
-          ? (picture['proWeeklyPct'] as num).toInt()
+          ? (picture['proWeeklyPct'] as num).toDouble()
           : null,
       mistralConfigured: json['mistralConfigured'] == true,
       googleConfigured: json['googleConfigured'] == true,

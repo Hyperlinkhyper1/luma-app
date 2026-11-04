@@ -97,10 +97,13 @@ void main() {
     expect(image.text, 'A blue cat');
   });
   test('picture costs a flat weekly share on every plan', () {
-    expect(aiImageWeeklyPercentForPlan('orbit'), 7);
-    expect(aiImageWeeklyPercentForPlan('nova'), 3);
-    expect(aiImageWeeklyPercentForPlan('core'), 10);
-    expect(aiImageWeeklyPercentForPlan(null), 10);
+    for (final plan in ['core', 'orbit', 'nova', null]) {
+      expect(aiImageWeeklyPercentForPlan(plan), 1.5);
+      expect(
+          aiImageWeeklyPercentForPlan(plan, selector: kAiImageProSelector), 3);
+    }
+    expect(formatAiImagePercent(1.5), '1.5');
+    expect(formatAiImagePercent(3), '3');
   });
 
   test('the pro picture model costs more than the standard one', () {

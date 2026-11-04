@@ -19,27 +19,32 @@ String aiImageSelectorForTier(Object? tier) =>
     tier == 'pro' ? kAiImageProSelector : kAiImageSelector;
 
 /// Share of the weekly usage allowance one standard picture costs, per plan.
-/// Plans missing here (the free plan) pay the `core` share.
-const Map<String, int> kAiImageWeeklyPercent = {
-  'core': 10,
-  'orbit': 7,
-  'nova': 3,
+/// Plans missing here (the free plan) pay the `core` share. Pictures only
+/// ever draw on the weekly allowance, never the five-hour one.
+const Map<String, double> kAiImageWeeklyPercent = {
+  'core': 1.5,
+  'orbit': 1.5,
+  'nova': 1.5,
 };
 
 /// The same for the pro picture model.
-const Map<String, int> kAiImageProWeeklyPercent = {
-  'core': 20,
-  'orbit': 14,
-  'nova': 6,
+const Map<String, double> kAiImageProWeeklyPercent = {
+  'core': 3,
+  'orbit': 3,
+  'nova': 3,
 };
 
-int aiImageWeeklyPercentForPlan(String? planId,
+double aiImageWeeklyPercentForPlan(String? planId,
     {String selector = kAiImageSelector}) {
   final table = selector == kAiImageProSelector
       ? kAiImageProWeeklyPercent
       : kAiImageWeeklyPercent;
   return table[planId] ?? table['core']!;
 }
+
+/// `1.5` → "1.5", `3.0` → "3".
+String formatAiImagePercent(double pct) =>
+    pct == pct.roundToDouble() ? pct.toInt().toString() : pct.toString();
 
 /// Longest prompt forwarded to the image model.
 const kAiImageMaxPromptChars = 4000;

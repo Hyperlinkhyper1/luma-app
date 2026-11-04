@@ -11,7 +11,7 @@ import 'package:luma/theme/luma_theme.dart';
 Widget _host({
   bool filesAllowed = true,
   bool picture = false,
-  int? picturePercent,
+  double? picturePercent,
   String? artifactType,
   Alignment alignment = Alignment.topLeft,
   AssistantComposeMode mode = AssistantComposeMode.chat,
@@ -188,7 +188,7 @@ void main() {
         await tester.pumpAndSettle();
         final label = available.picturePercent == null
             ? 'Picture unavailable'
-            : 'Picture · ${available.picturePercent}% weekly usage';
+            : 'Picture · ${formatPicturePercent(available.picturePercent!)}% weekly usage';
         expect(
           tester.widget<MenuItemButton>(_menuItem(label)).onPressed,
           isNull,

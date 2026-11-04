@@ -378,4 +378,32 @@ void main() {
     await reopened.deleteUser('user');
     expect(reopened.callSummary('user')['models'], isEmpty);
   });
+
+  test('resetLimits clears every window but keeps credits', () async {
+    final dir = await Directory.systemTemp.createTemp('ai_reset_limits_');
+    addTearDown(() => dir.delete(recursive: true));
+    final store = await AiUsageStore.open(dir.path);
+    const budget = AiTokenBudget(1000);
+    await store.recordTokens('u', 150);
+    await store.reserveWeeklyOnly('u', 200, budget);
+    await store.recordSupportMessage('u');
+    await store.consumeWebSearch('u', 5);
+    await store.recordAiCheck('u');
+    await store.addCredits('u', 777);
+    await store.recordTokens('other', 50);
+
+    await store.resetLimits('u');
+
+    final reopened = await AiUsageStore.open(dir.path);
+    for (final s in [store, reopened]) {
+      expect(s.unitsUsed('u', const Duration(hours: 5)), 0);
+      expect(s.unitsUsed('u', const Duration(days: 7)), 0);
+      expect(s.supportMessagesUsed('u'), 0);
+      expect(s.webSearchesUsed('u'), 0);
+      expect(s.aiChecksUsed('u'), 0);
+      expect(s.creditBalance('u'), 777);
+      expect(s.unitsUsed('other', const Duration(days: 7)), 50);
+    }
+    await store.resetLimits('nobody');
+  });
 }

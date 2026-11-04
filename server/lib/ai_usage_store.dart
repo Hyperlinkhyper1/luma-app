@@ -591,6 +591,26 @@ class AiUsageStore {
 
   static int _count(Object? v) => v is num ? v.toInt() : 0;
 
+  /// Gives [userId] a fresh allowance: clears every rolling window (5-hour
+  /// and weekly units, support messages, web searches, AI Detector checks).
+  /// Purchased credits and the admin call log are kept.
+  Future<void> resetLimits(String userId) async {
+    final entry = _data[userId];
+    if (entry is! Map<String, dynamic>) return;
+    final kept = Map<String, dynamic>.from(entry)
+      ..remove('tokens')
+      ..remove('weeklyOnly')
+      ..remove('support')
+      ..remove('webSearches')
+      ..remove('aiChecks');
+    if (kept.isEmpty) {
+      _data.remove(userId);
+    } else {
+      _data[userId] = kept;
+    }
+    await _save();
+  }
+
   /// Forgets a deleted account's usage history.
   Future<void> deleteUser(String userId) async {
     if (_calls.remove(userId) != null) await _saveCalls();
