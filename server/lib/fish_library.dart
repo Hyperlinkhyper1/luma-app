@@ -947,7 +947,8 @@ class FishLibrary {
         ..add('Requires: ${(f['Requires'] as List).isEmpty ? 'nothing (omit Requires)' : (f['Requires'] as List).join(', ')}')
         ..add('Choose RarityDenominator, weights, BaseValue, Fight and Shapes '
             'in line with existing species of the same rarity and pools, and '
-            'write a detailed Build for its 3D model.')
+            'write a detailed Build for its 3D model with a smooth 3D mesh '
+            'body skin (see the rules).')
         ..add('Rarity tiers, commonest first: '
             '${kFishRarities.where((r) => r != 'Junk' && r != 'Limited').join(', ')}. '
             'Limited is a special tier: it bites only while the dashboard has '
@@ -1034,6 +1035,27 @@ $format
   footprints ("#" fills a cell); bigger fish take more cells.
 - Prefer a model with real detail (countershaded body, fins, eyes, markings)
   matching the species, like the examples.
+- The body must be a smooth 3D mesh skin, never only loose spheres. In game
+  each client swaps the body spheres for a lofted EditableMesh that copies
+  their colours; the spheres stay underneath as the fallback (and are what the
+  preview shows). Get the skin one of these ways:
+  * b:fishBody(depth, width, colors, headDrop) skins itself through the
+    envelope of its spheres. b:layered calls in the same `colors` table made
+    right after it (snout, jaw, hump), before any b:top/b:bottom/b:surface/
+    fin/mark call, join the skin. Layers in other colours stay spheres on top.
+  * b:loftBody(stations, colors, depth, width, headDrop) for a hand-tuned
+    profile: stations are { x, top, bottom, half width }, snout first.
+  * The kit families carp, trout, sturgeon, eel and flatfish are skinned.
+  * A body of your own from b:layered spheres: call b:beginSkin(colors)
+    first; the layers in that colours table join the skin until the first
+    surface query, or b:finishSkin() to keep later layers (an open jaw)
+    separate.
+  * Anything else: b:smoothSkin(b:envelope(sections), parts,
+    { Side = part, Back = part, Belly = part }, sections), using the parts
+    and sections b:body returns (b:layered returns its side, back and belly
+    parts). Do this before laying fins, eyes and markings, so they sit on the
+    skin.
+  Only non-fish (crabs, shells, algae, junk) may skip the skin.
 
 ## The Builder (from Shared.FishModels)
 ```lua
@@ -1262,6 +1284,7 @@ String packModel(Map<String, dynamic> fish) {
     'boundsSize': base['boundsSize'],
     'parts': baseParts.map(pack).toList(),
     'variants': out,
+    if (fish['skin'] != null) 'skin': fish['skin'],
   });
 }
 

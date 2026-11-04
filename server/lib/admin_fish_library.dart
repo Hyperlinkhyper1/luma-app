@@ -247,6 +247,49 @@ class AdminFishLibrary {
     return [box, sphere(), wedge, cyl];
   }
 
+  // The smooth body the game's clients loft over the sphere body
+  // (FishMeshes.luau; see the wiki's skinGeometry): one triangle list per
+  // band, coloured from swatch a blended towards b (0 side, 1 back, 2 belly).
+  var SKIN_BANDS = [[0, 0.34, 1, 1, 0, [1, -1]], [0.34, 0.42, 1, 0, 0.35, [1, -1]], [0.42, 0.48, 1, 0, 0.7, [1, -1]], [0.48, 0.62, 0, 0, 0, [1, -1]],
+    [0.62, 0.68, 0, 2, 0.35, [1, -1]], [0.68, 0.74, 0, 2, 0.7, [1, -1]], [0.74, 1, 2, 2, 0, [1, -1]]];
+  var FLAT_BANDS = [[0, 1, 0, 0, 0, [1]], [0, 1, 2, 2, 0, [-1]]];
+  function skinGeometry(skin) {
+    var rings = skin.rings, z0 = skin.z || 0;
+    function point(r, ang) {
+      var c = Math.cos(ang), mid = (r[1] + r[2]) / 2, half = (r[1] - r[2]) / 2;
+      return [r[0], mid + half * c, z0 + r[3] * Math.sin(ang) * (1 - 0.18 * c)];
+    }
+    function sub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+    function normalAt(i, ang) {
+      var r = rings[i], p = point(r, ang);
+      var along = sub(point(rings[Math.max(i - 1, 0)], ang), point(rings[Math.min(i + 1, rings.length - 1)], ang));
+      var around = sub(point(r, ang + 0.01), point(r, ang - 0.01));
+      var n = [along[1] * around[2] - along[2] * around[1], along[2] * around[0] - along[0] * around[2], along[0] * around[1] - along[1] * around[0]];
+      var out = sub(p, [r[0], (r[1] + r[2]) / 2, z0]), l = Math.hypot(n[0], n[1], n[2]);
+      if (l < 1e-9) { n = out; l = Math.hypot(n[0], n[1], n[2]) || 1; }
+      if (n[0] * out[0] + n[1] * out[1] + n[2] * out[2] < 0) l = -l;
+      return [n[0] / l, n[1] / l, n[2] / l];
+    }
+    var first = rings[0], last = rings[rings.length - 1];
+    var snout = [[first[0] + 0.024, (first[1] + first[2]) / 2, z0], [1, 0, 0]], tail = [[last[0] - 0.016, (last[1] + last[2]) / 2, z0], [-1, 0, 0]];
+    return (skin.mode === 'flat' ? FLAT_BANDS : SKIN_BANDS).map(function (band) {
+      var from = band[0], to = band[1], steps = Math.max(2, Math.ceil((to - from) * 28)), pos = [], nor = [];
+      function tri() { for (var k = 0; k < 3; k++) { var v = arguments[k]; pos.push(v[0][0], v[0][1], v[0][2]); nor.push(v[1][0], v[1][1], v[1][2]); } }
+      band[5].forEach(function (side) {
+        var grid = rings.map(function (r, i) {
+          var row = [];
+          for (var st = 0; st <= steps; st++) { var ang = side * Math.PI * (from + (to - from) * st / steps); row.push([point(r, ang), normalAt(i, ang)]); }
+          return row;
+        });
+        for (var i = 0; i < grid.length - 1; i++) for (var st = 0; st < steps; st++) {
+          tri(grid[i][st], grid[i + 1][st], grid[i + 1][st + 1]); tri(grid[i][st], grid[i + 1][st + 1], grid[i][st + 1]);
+        }
+        for (st = 0; st < steps; st++) { tri(snout, grid[0][st], grid[0][st + 1]); tri(tail, grid[grid.length - 1][st], grid[grid.length - 1][st + 1]); }
+      });
+      return { a: band[2], b: band[3], mix: band[4], pos: new Float32Array(pos), nor: new Float32Array(nor) };
+    });
+  }
+
   function hexRgb(hex) { var n = parseInt(String(hex).slice(1), 16); return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255]; }
   function hsv(hh, s, v) {
     var i = Math.floor(hh * 6), f = hh * 6 - i, p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
@@ -303,6 +346,12 @@ class AdminFishLibrary {
       return r.json();
     }).then(function (data) {
       if (self.token !== token) return;
+      self.skin = data.skin ? skinGeometry(data.skin).map(function (band) {
+        var gl = self.gl;
+        var pb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, pb); gl.bufferData(gl.ARRAY_BUFFER, band.pos, gl.STATIC_DRAW);
+        var nb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, nb); gl.bufferData(gl.ARRAY_BUFFER, band.nor, gl.STATIC_DRAW);
+        return { p: pb, n: nb, count: band.pos.length / 3, a: band.a, b: band.b, mix: band.mix };
+      }) : [];
       self.data = data; self.yaw = 0; self.pitch = 0; self.zoom = 1; self.spin = !matchMedia('(prefers-reduced-motion: reduce)').matches;
       self.variant('Normal'); self.message('');
     }).catch(function (e) { if (self.token === token) self.message(e.message); });
@@ -319,7 +368,20 @@ class AdminFishLibrary {
       (v.paint || []).forEach(function (p) { var part = parts[p[0]]; if (part) { part.color = p[1]; part.material = p[2]; part.t = p[3] || 0; part.rainbow = p[4]; } });
       (v.add || []).forEach(function (n) { parts.push(unpack(n)); });
     }
+    // The skin replaces the sphere body and copies its swatch parts' paint.
+    var skin = d.skin;
+    if (skin && this.skin) {
+      (skin.hide || []).forEach(function (i) { if (parts[i]) parts[i].hidden = true; });
+      var swatch = skin.swatch.map(function (i) { return parts[i]; });
+      this.skin.forEach(function (g) {
+        var a = swatch[g.a], b = swatch[g.b];
+        if (!a || !b) return;
+        parts.push({ geo: g, a: a, b: b, mix: g.mix, t: a.t, material: a.material });
+      });
+    }
+    parts = parts.filter(function (p) { return !p.hidden; });
     parts.forEach(function (p) {
+      if (p.geo) { p.m = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]); return; }
       var s = p.size, sx = s[0], sy = s[1], sz = s[2];
       if (p.shape === 3) { var dd = Math.min(sy, sz); sy = dd; sz = dd; }
       p.m = new Float32Array([p.r[0] * sx, p.r[1] * sx, p.r[2] * sx, 0, p.u[0] * sy, p.u[1] * sy, p.u[2] * sy, 0, p.b[0] * sz, p.b[1] * sz, p.b[2] * sz, 0, p.pos[0], p.pos[1], p.pos[2], 1]);
@@ -353,8 +415,15 @@ class AdminFishLibrary {
     var hue = (time || 0) / 4000, self = this, animated = this.spin;
     var opaque = this.parts.filter(function (p) { return p.t < 0.02; }), clear = this.parts.filter(function (p) { return p.t >= 0.02 && p.t < 0.99; });
     function drawPart(p) {
-      var g = self.geo[p.shape] || self.geo[0], col = p.rgb;
-      if (p.rainbow) { col = hsv(((p.rainbow[0] + hue) % 1 + 1) % 1, p.rainbow[1], p.rainbow[2]); animated = true; }
+      var g = p.geo || self.geo[p.shape] || self.geo[0], col = p.rgb;
+      function paint(q) {
+        if (q.rainbow) { animated = true; return hsv(((q.rainbow[0] + hue) % 1 + 1) % 1, q.rainbow[1], q.rainbow[2]); }
+        return q.rgb || (q.rgb = hexRgb(q.color));
+      }
+      if (p.geo) {
+        var ca = paint(p.a), cb = paint(p.b);
+        col = [ca[0] + (cb[0] - ca[0]) * p.mix, ca[1] + (cb[1] - ca[1]) * p.mix, ca[2] + (cb[2] - ca[2]) * p.mix];
+      } else if (p.rainbow) col = paint(p);
       gl.bindBuffer(gl.ARRAY_BUFFER, g.p); gl.enableVertexAttribArray(self.attr.p); gl.vertexAttribPointer(self.attr.p, 3, gl.FLOAT, false, 0, 0);
       gl.bindBuffer(gl.ARRAY_BUFFER, g.n); gl.enableVertexAttribArray(self.attr.n); gl.vertexAttribPointer(self.attr.n, 3, gl.FLOAT, false, 0, 0);
       gl.uniformMatrix4fv(self.loc.m, false, p.m); gl.uniform3fv(self.loc.c, col);
